@@ -17,44 +17,47 @@ $exePath = Join-Path $installDir "ContextTools.exe"
 Write-Host "正在將常駐執行檔安裝至: $exePath" -ForegroundColor Cyan
 Copy-Item -Path $sourceExe -Destination $exePath -Force
 
-# 2. 清除舊版可能遺留在登錄檔的 PPTX 右鍵選項 (現已統一由 SendTo 處理)
+# 2. 清除舊版可能遺留在登錄檔的 PPTX 右鍵選項
 $oldPptKey = "HKCU:\Software\Classes\SystemFileAssociations\.pptx\shell\ContextTools_PPT2PDF"
 if (Test-Path $oldPptKey) {
     Write-Host "清除舊版右鍵登錄檔殘留..." -ForegroundColor Yellow
     Remove-Item -Path $oldPptKey -Recurse -Force
 }
 
-# 3. 所有功能統一透過 SendTo 資料夾掛載
+# 3. 清除舊版 SendTo 捷徑 (重新命名前的殘留)
 $sendToPath = [Environment]::GetFolderPath("SendTo")
+$oldShortcuts = @(
+    "批次轉為 PDF (多份PPT).lnk",
+    "圖片轉 PDF (合併).lnk",
+    "圖片垂直拼貼 (長圖).lnk",
+    "合併為單一 PDF.lnk"
+)
+foreach ($old in $oldShortcuts) {
+    $oldPath = Join-Path $sendToPath $old
+    if (Test-Path $oldPath) {
+        Remove-Item $oldPath -Force
+        Write-Host "已移除舊捷徑: $old" -ForegroundColor Yellow
+    }
+}
+
+# 4. 建立新版 SendTo 捷徑
 $wshell = New-Object -ComObject WScript.Shell
 
-Write-Host "Registering PPTX to PDF in SendTo..."
-$pptShortcut = $wshell.CreateShortcut((Join-Path $sendToPath "批次轉為 PDF (多份PPT).lnk"))
-$pptShortcut.TargetPath = $exePath
-$pptShortcut.Arguments = "ppt2pdf"
-$pptShortcut.IconLocation = $exePath
-$pptShortcut.Save()
+Write-Host "Registering 簡報轉 PDF..."
+$s = $wshell.CreateShortcut((Join-Path $sendToPath "簡報轉 PDF.lnk"))
+$s.TargetPath = $exePath; $s.Arguments = "ppt2pdf"; $s.IconLocation = $exePath; $s.Save()
 
-Write-Host "Registering Merge PDF in SendTo..."
-$pdfShortcut = $wshell.CreateShortcut((Join-Path $sendToPath "合併為單一 PDF.lnk"))
-$pdfShortcut.TargetPath = $exePath
-$pdfShortcut.Arguments = "merge-pdf"
-$pdfShortcut.IconLocation = $exePath
-$pdfShortcut.Save()
+Write-Host "Registering PDF 合併..."
+$s = $wshell.CreateShortcut((Join-Path $sendToPath "PDF 合併.lnk"))
+$s.TargetPath = $exePath; $s.Arguments = "merge-pdf"; $s.IconLocation = $exePath; $s.Save()
 
-Write-Host "Registering Image to PDF in SendTo..."
-$imgPdfShortcut = $wshell.CreateShortcut((Join-Path $sendToPath "圖片轉 PDF (合併).lnk"))
-$imgPdfShortcut.TargetPath = $exePath
-$imgPdfShortcut.Arguments = "img2pdf"
-$imgPdfShortcut.IconLocation = $exePath
-$imgPdfShortcut.Save()
+Write-Host "Registering 圖片合併成 PDF..."
+$s = $wshell.CreateShortcut((Join-Path $sendToPath "圖片合併成 PDF.lnk"))
+$s.TargetPath = $exePath; $s.Arguments = "img2pdf"; $s.IconLocation = $exePath; $s.Save()
 
-Write-Host "Registering Image Stitch in SendTo..."
-$imgStitchShortcut = $wshell.CreateShortcut((Join-Path $sendToPath "圖片垂直拼貼 (長圖).lnk"))
-$imgStitchShortcut.TargetPath = $exePath
-$imgStitchShortcut.Arguments = "img-stitch"
-$imgStitchShortcut.IconLocation = $exePath
-$imgStitchShortcut.Save()
+Write-Host "Registering 圖片垂直拼接..."
+$s = $wshell.CreateShortcut((Join-Path $sendToPath "圖片垂直拼接.lnk"))
+$s.TargetPath = $exePath; $s.Arguments = "img-stitch"; $s.IconLocation = $exePath; $s.Save()
 
 Write-Host "`n安裝與註冊成功！" -ForegroundColor Green
 Write-Host "執行檔已複製至 AppData。現在您可以隨意刪除下載的原始腳本或資料夾了。"
