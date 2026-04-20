@@ -3,6 +3,7 @@ using System.IO;
 using System.Linq;
 using System.Drawing;
 using System.Collections.Generic;
+using System.Runtime.InteropServices;
 using PdfSharp.Pdf;
 using PdfSharp.Pdf.IO;
 using PdfSharp.Drawing;
@@ -11,6 +12,14 @@ namespace ContextTools
 {
     class Program
     {
+        // Native Win32 MessageBox — zero WinForms dependency, keeps exe tiny
+        [DllImport("user32.dll", CharSet = CharSet.Unicode)]
+        static extern int MessageBox(IntPtr hWnd, string text, string caption, uint type);
+        const uint MB_OK = 0x0, MB_ICONWARNING = 0x30, MB_ICONERROR = 0x10;
+
+        static void ShowWarning(string msg, string title) =>
+            MessageBox(IntPtr.Zero, msg, title, MB_OK | MB_ICONWARNING);
+
         static void Main(string[] args)
         {
             if (args.Length < 2)
@@ -76,10 +85,8 @@ namespace ContextTools
                 string allowedList = string.Join(", ", allowed);
                 string invalidList = string.Join("\n  ", invalid.Select(Path.GetFileName));
                 string msg = $"指令\u300c{command}\u300d\u53ea\u63a5\u53d7\u4ee5\u4e0b\u683c\u5f0f\uff1a{allowedList}\n\n\u4ee5\u4e0b\u6a94\u6848\u683c\u5f0f\u4e0d\u7b26\uff0c\u5df2\u4e2d\u6b62\u57f7\u884c\uff1a\n  {invalidList}";
-                Console.WriteLine("[\u932f\u8aa4] " + msg);
-                System.Windows.Forms.MessageBox.Show(msg, "ContextTools \u2014 \u683c\u5f0f\u932f\u8aa4",
-                    System.Windows.Forms.MessageBoxButtons.OK,
-                    System.Windows.Forms.MessageBoxIcon.Warning);
+                Console.WriteLine("[錯誤] " + msg);
+                ShowWarning(msg, "ContextTools — 格式錯誤");
                 Environment.Exit(1);
             }
         }
@@ -90,9 +97,7 @@ namespace ContextTools
             {
                 string msg = $"指令「{command}」至少需要 {min} 個檔案，但您只傳入了 {files.Count} 個。\n\n請多選幾個檔案後，再透過「傳送到」執行。";
                 Console.WriteLine("[錯誤] " + msg);
-                System.Windows.Forms.MessageBox.Show(msg, "ContextTools — 檔案數量不足",
-                    System.Windows.Forms.MessageBoxButtons.OK,
-                    System.Windows.Forms.MessageBoxIcon.Warning);
+                ShowWarning(msg, "ContextTools — 檔案數量不足");
                 Environment.Exit(1);
             }
         }
