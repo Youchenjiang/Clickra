@@ -45,9 +45,12 @@ Ensure `ContextTools.exe` is in the same folder as `setup_context_menu.ps1`.
 Right-click `setup_context_menu.ps1` and select **"Run with PowerShell"**.
 
 ### Step 3: Interactive Choices
-The installer will ask:
-- **Installation Path**: By default, it installs to `%LOCALAPPDATA%\ContextTools`. You can press **Enter** to accept or type a custom path (e.g., `D:\Tools\ContextTools`).
-- **Clean Up**: Once the script says "Success", you can safely **delete** the original download folder. Everything needed is now safely tucked away in your chosen installation directory.
+The script will present a menu:
+1. **Install / Update**: Sets up the shortcuts and installs the executable.
+2. **Uninstall (Restore)**: Removes all shortcuts and registry entries, and offers to delete the installation folder.
+3. **Exit**: Closes the script.
+
+During installation, the script will ask for an **Installation Path**. By default, it installs to `%LOCALAPPDATA%\ContextTools`. You can press **Enter** to accept or type a custom path.
 
 ---
 
