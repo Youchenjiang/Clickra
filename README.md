@@ -42,7 +42,7 @@ Two main packaging modes are available depending on your needs.
 ### Option 1: Native Ultra-Fast Mode (Framework-Dependent)
 *Recommended, ~150KB file size, 0.01s instant boot.* Requires `.NET Desktop Runtime` installed on the target machine.
 ```bash
-dotnet publish -c Release -r win-x64 --self-contained false -p:PublishSingleFile=true
+dotnet publish -c Release -r win-x64 -p:SelfContained=false -p:PublishSingleFile=true
 ```
 
 ### Option 2: Portable Mode (Self-Contained)
