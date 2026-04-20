@@ -1,56 +1,61 @@
 # setup_context_menu.ps1
 $ErrorActionPreference = "Stop"
 
-$exePath = Resolve-Path ".\ContextTools.exe" -ErrorAction Stop | Select-Object -ExpandProperty Path
-if (-not $exePath) {
-    Write-Host "ContextTools.exe could not be found. Please ensure it is compiled and present in the same directory." -ForegroundColor Red
+$sourceExe = Resolve-Path ".\ContextTools.exe" -ErrorAction SilentlyContinue | Select-Object -ExpandProperty Path
+if (-not $sourceExe) {
+    Write-Host "找不到 ContextTools.exe。請確認執行檔與本腳本放在同一個資料夾。" -ForegroundColor Red
     Exit
 }
 
-Write-Host "Registering Context Menu commands for ContextTools.exe at: $exePath" -ForegroundColor Cyan
+# 1. 將執行檔安裝至系統使用者安全路徑 (AppData\Local)
+$installDir = Join-Path $env:LOCALAPPDATA "ContextTools"
+if (-not (Test-Path $installDir)) {
+    New-Item -Path $installDir -ItemType Directory -Force | Out-Null
+}
 
-# 1. PPTX to PDF
+$exePath = Join-Path $installDir "ContextTools.exe"
+Write-Host "正在將常駐執行檔安裝至: $exePath" -ForegroundColor Cyan
+Copy-Item -Path $sourceExe -Destination $exePath -Force
+
+# 2. PPTX 轉 PDF (登錄檔寫入)
 Write-Host "Registering PPTX to PDF..."
 $pptKey = "HKCU:\Software\Classes\SystemFileAssociations\.pptx\shell\ContextTools_PPT2PDF"
 New-Item -Path $pptKey -Force | Out-Null
-Set-ItemProperty -Path $pptKey -Name "MUIVerb" -Value "⚡ 轉為 PDF (極速)"
+Set-ItemProperty -Path $pptKey -Name "MUIVerb" -Value "轉為 PDF"
 Set-ItemProperty -Path $pptKey -Name "Icon" -Value "$exePath"
 $pptCmd = "$pptKey\command"
 New-Item -Path $pptCmd -Force | Out-Null
 Set-ItemProperty -Path $pptCmd -Name "(default)" -Value "`"$exePath`" ppt2pdf `"%1`""
 
-# For Merge operations (Multiple files), we use Windows "SendTo" folder because right-clicking multiple files 
-# will spawn N instances of the application instead of passing them all as arguments to one application.
+# 3. 處理多選檔案 (利用 SendTo 資料夾)
 $sendToPath = [Environment]::GetFolderPath("SendTo")
-
-# 2. Merge PDF Shortcut
-Write-Host "Registering PDF Merge in SendTo..."
 $wshell = New-Object -ComObject WScript.Shell
-$pdfShortcut = $wshell.CreateShortcut((Join-Path $sendToPath "⚡ 合併選取的檔案 (PDF).lnk"))
+
+Write-Host "Registering Merge PDF in SendTo..."
+$pdfShortcut = $wshell.CreateShortcut((Join-Path $sendToPath "合併為單一 PDF.lnk"))
 $pdfShortcut.TargetPath = $exePath
 $pdfShortcut.Arguments = "merge-pdf"
 $pdfShortcut.IconLocation = $exePath
 $pdfShortcut.Save()
 
-# 3. Image to PDF Shortcut
 Write-Host "Registering Image to PDF in SendTo..."
-$imgPdfShortcut = $wshell.CreateShortcut((Join-Path $sendToPath "⚡ 將選取圖片合併為一份 PDF.lnk"))
+$imgPdfShortcut = $wshell.CreateShortcut((Join-Path $sendToPath "圖片轉 PDF (合併).lnk"))
 $imgPdfShortcut.TargetPath = $exePath
 $imgPdfShortcut.Arguments = "img2pdf"
 $imgPdfShortcut.IconLocation = $exePath
 $imgPdfShortcut.Save()
 
-# 4. Image Stitch Shortcut
 Write-Host "Registering Image Stitch in SendTo..."
-$imgStitchShortcut = $wshell.CreateShortcut((Join-Path $sendToPath "⚡ 將選取圖片垂直拼貼成長圖.lnk"))
+$imgStitchShortcut = $wshell.CreateShortcut((Join-Path $sendToPath "圖片垂直拼貼 (長圖).lnk"))
 $imgStitchShortcut.TargetPath = $exePath
 $imgStitchShortcut.Arguments = "img-stitch"
 $imgStitchShortcut.IconLocation = $exePath
 $imgStitchShortcut.Save()
 
-Write-Host "`nSuccessfully Registered!" -ForegroundColor Green
-Write-Host "Usage Tips:"
-Write-Host "- For .pptx files: Just Right-Click -> '⚡ 轉為 PDF (極速)'"
-Write-Host "- For merging multiple files: Select all files -> Right-Click -> 'Send to (傳送到)' -> Choose the corresponding ⚡ tool."
+Write-Host "`n安裝與註冊成功！" -ForegroundColor Green
+Write-Host "執行檔已複製至 AppData。現在您可以隨意刪除下載的原始腳本或資料夾了。"
+Write-Host "`n【操作說明】"
+Write-Host "- 單一檔案 (.pptx): 點擊右鍵 -> 選擇「轉為 PDF」"
+Write-Host "- 多重檔案 (.pdf, .jpg 等): 選取多個檔案 -> 右鍵 ->「傳送到 (Send to)」 -> 點選對應的合併選項"
 
-Read-Host -Prompt "Press Enter to exit"
+Read-Host -Prompt "按 Enter 鍵退出..."
