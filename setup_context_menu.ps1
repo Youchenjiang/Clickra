@@ -17,21 +17,18 @@ $exePath = Join-Path $installDir "ContextTools.exe"
 Write-Host "正在將常駐執行檔安裝至: $exePath" -ForegroundColor Cyan
 Copy-Item -Path $sourceExe -Destination $exePath -Force
 
-# 2. PPTX 轉 PDF (登錄檔寫入)
-Write-Host "Registering PPTX to PDF..."
-$pptKey = "HKCU:\Software\Classes\SystemFileAssociations\.pptx\shell\ContextTools_PPT2PDF"
-New-Item -Path $pptKey -Force | Out-Null
-Set-ItemProperty -Path $pptKey -Name "MUIVerb" -Value "轉為 PDF"
-Set-ItemProperty -Path $pptKey -Name "Icon" -Value "$exePath"
-$pptCmd = "$pptKey\command"
-New-Item -Path $pptCmd -Force | Out-Null
-Set-ItemProperty -Path $pptCmd -Name "(default)" -Value "`"$exePath`" ppt2pdf `"%1`""
+# 2. 清除舊版可能遺留在登錄檔的 PPTX 右鍵選項 (現已統一由 SendTo 處理)
+$oldPptKey = "HKCU:\Software\Classes\SystemFileAssociations\.pptx\shell\ContextTools_PPT2PDF"
+if (Test-Path $oldPptKey) {
+    Write-Host "清除舊版右鍵登錄檔殘留..." -ForegroundColor Yellow
+    Remove-Item -Path $oldPptKey -Recurse -Force
+}
 
-# 3. 處理多選檔案 (利用 SendTo 資料夾)
+# 3. 所有功能統一透過 SendTo 資料夾掛載
 $sendToPath = [Environment]::GetFolderPath("SendTo")
 $wshell = New-Object -ComObject WScript.Shell
 
-Write-Host "Registering PPTX Batch Convert in SendTo..."
+Write-Host "Registering PPTX to PDF in SendTo..."
 $pptShortcut = $wshell.CreateShortcut((Join-Path $sendToPath "批次轉為 PDF (多份PPT).lnk"))
 $pptShortcut.TargetPath = $exePath
 $pptShortcut.Arguments = "ppt2pdf"
@@ -62,7 +59,6 @@ $imgStitchShortcut.Save()
 Write-Host "`n安裝與註冊成功！" -ForegroundColor Green
 Write-Host "執行檔已複製至 AppData。現在您可以隨意刪除下載的原始腳本或資料夾了。"
 Write-Host "`n【操作說明】"
-Write-Host "- 單一檔案 (.pptx): 點擊右鍵 -> 選擇「轉為 PDF」"
-Write-Host "- 多重檔案 (.pdf, .jpg 等): 選取多個檔案 -> 右鍵 ->「傳送到 (Send to)」 -> 點選對應的合併選項"
+Write-Host "- 所有操作：選取一或多個檔案 -> 右鍵 ->「傳送到 (Send to)」 -> 選擇對應的功能"
 
 Read-Host -Prompt "按 Enter 鍵退出..."
