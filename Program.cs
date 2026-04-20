@@ -31,7 +31,7 @@ namespace ContextTools
                 switch (command)
                 {
                     case "ppt2pdf":
-                        ConvertPptToPdf(files[0]);
+                        ConvertPptToPdf(files);
                         break;
                     case "merge-pdf":
                         MergePdfs(files, Path.Combine(outputDir, "Merged_PDF.pdf"));
@@ -58,30 +58,42 @@ namespace ContextTools
             }
         }
 
-        static void ConvertPptToPdf(string filePath)
+        static void ConvertPptToPdf(List<string> files)
         {
-            string outputPdfPath = Path.ChangeExtension(filePath, ".pdf");
-
             Type pptType = Type.GetTypeFromProgID("PowerPoint.Application") 
                            ?? throw new Exception("PowerPoint is not installed or accessible.");
             
             dynamic pptApp = Activator.CreateInstance(pptType);
-            dynamic presentation = null;
             try
             {
-                // Open presentation in background (msoFalse = 0)
-                presentation = pptApp.Presentations.Open(filePath, WithWindow: 0);
-                
-                // Save as PDF (ppSaveAsPDF = 32)
-                presentation.SaveAs(outputPdfPath, 32);
-                Console.WriteLine($"Saved PPT to: {outputPdfPath}");
+                foreach (var filePath in files)
+                {
+                    string outputPdfPath = Path.ChangeExtension(filePath, ".pdf");
+                    dynamic presentation = null;
+                    try
+                    {
+                        // Open presentation in background (msoFalse = 0)
+                        presentation = pptApp.Presentations.Open(filePath, WithWindow: 0);
+                        
+                        // Save as PDF (ppSaveAsPDF = 32)
+                        presentation.SaveAs(outputPdfPath, 32);
+                        Console.WriteLine($"Saved PPT to: {outputPdfPath}");
+                    }
+                    catch (Exception ex)
+                    {
+                        Console.WriteLine($"Failed to convert {filePath}: {ex.Message}");
+                    }
+                    finally
+                    {
+                        if (presentation != null)
+                        {
+                            presentation.Close();
+                        }
+                    }
+                }
             }
             finally
             {
-                if (presentation != null)
-                {
-                    presentation.Close();
-                }
                 pptApp.Quit();
             }
         }

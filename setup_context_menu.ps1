@@ -31,6 +31,13 @@ Set-ItemProperty -Path $pptCmd -Name "(default)" -Value "`"$exePath`" ppt2pdf `"
 $sendToPath = [Environment]::GetFolderPath("SendTo")
 $wshell = New-Object -ComObject WScript.Shell
 
+Write-Host "Registering PPTX Batch Convert in SendTo..."
+$pptShortcut = $wshell.CreateShortcut((Join-Path $sendToPath "批次轉為 PDF (多份PPT).lnk"))
+$pptShortcut.TargetPath = $exePath
+$pptShortcut.Arguments = "ppt2pdf"
+$pptShortcut.IconLocation = $exePath
+$pptShortcut.Save()
+
 Write-Host "Registering Merge PDF in SendTo..."
 $pdfShortcut = $wshell.CreateShortcut((Join-Path $sendToPath "合併為單一 PDF.lnk"))
 $pdfShortcut.TargetPath = $exePath
