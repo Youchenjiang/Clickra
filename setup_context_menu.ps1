@@ -1,8 +1,8 @@
 # setup_context_menu.ps1
 $ErrorActionPreference = "Stop"
 
-$sourceExe = Resolve-Path ".\ContextTools.exe" -ErrorAction SilentlyContinue | Select-Object -ExpandProperty Path
-if (-not $sourceExe) {
+$sourceExe = Join-Path $PSScriptRoot "ContextTools.exe"
+if (-not (Test-Path $sourceExe)) {
     Write-Host "找不到 ContextTools.exe。請確認執行檔與本腳本放在同一個資料夾。" -ForegroundColor Red
     Exit
 }
