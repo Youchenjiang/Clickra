@@ -7,8 +7,21 @@ if (-not (Test-Path $sourceExe)) {
     Exit
 }
 
-# 1. 將執行檔安裝至系統使用者安全路徑 (AppData\Local)
-$installDir = Join-Path $env:LOCALAPPDATA "ContextTools"
+# 1. 詢問安裝路徑
+$defaultDir = Join-Path $env:LOCALAPPDATA "ContextTools"
+Write-Host ""
+Write-Host "【安裝位置】" -ForegroundColor Cyan
+Write-Host "預設路徑: $defaultDir"
+$customDir = Read-Host "直接按 Enter 使用預設路徑，或輸入自訂安裝路徑"
+
+if ([string]::IsNullOrWhiteSpace($customDir)) {
+    $installDir = $defaultDir
+} else {
+    $installDir = $customDir.Trim().Trim('"')
+}
+
+Write-Host "安裝至: $installDir" -ForegroundColor Cyan
+
 if (-not (Test-Path $installDir)) {
     New-Item -Path $installDir -ItemType Directory -Force | Out-Null
 }
@@ -16,7 +29,6 @@ if (-not (Test-Path $installDir)) {
 $exePath = Join-Path $installDir "ContextTools.exe"
 $icoPath = Join-Path $installDir "app.ico"
 
-Write-Host "正在將常駐執行檔安裝至: $exePath" -ForegroundColor Cyan
 Copy-Item -Path $sourceExe -Destination $exePath -Force
 
 # 同時複製 ico 檔至安裝目錄供捷徑直接引用
