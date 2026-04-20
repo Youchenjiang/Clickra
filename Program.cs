@@ -36,14 +36,17 @@ namespace ContextTools
                         break;
                     case "merge-pdf":
                         ValidateExtensions(files, command, ".pdf");
+                        RequireMinFiles(files, command, 2);
                         MergePdfs(files, Path.Combine(outputDir, "Merged_PDF.pdf"));
                         break;
                     case "img2pdf":
                         ValidateExtensions(files, command, ".jpg", ".jpeg", ".png", ".bmp", ".gif", ".tiff", ".webp");
+                        RequireMinFiles(files, command, 2);
                         MergeImagesToPdf(files, Path.Combine(outputDir, "Merged_Images.pdf"));
                         break;
                     case "img-stitch":
                         ValidateExtensions(files, command, ".jpg", ".jpeg", ".png", ".bmp", ".gif", ".tiff", ".webp");
+                        RequireMinFiles(files, command, 2);
                         StitchImages(files, Path.Combine(outputDir, "Stitched_Image.png"));
                         break;
                     default:
@@ -75,6 +78,19 @@ namespace ContextTools
                 string msg = $"指令\u300c{command}\u300d\u53ea\u63a5\u53d7\u4ee5\u4e0b\u683c\u5f0f\uff1a{allowedList}\n\n\u4ee5\u4e0b\u6a94\u6848\u683c\u5f0f\u4e0d\u7b26\uff0c\u5df2\u4e2d\u6b62\u57f7\u884c\uff1a\n  {invalidList}";
                 Console.WriteLine("[\u932f\u8aa4] " + msg);
                 System.Windows.Forms.MessageBox.Show(msg, "ContextTools \u2014 \u683c\u5f0f\u932f\u8aa4",
+                    System.Windows.Forms.MessageBoxButtons.OK,
+                    System.Windows.Forms.MessageBoxIcon.Warning);
+                Environment.Exit(1);
+            }
+        }
+
+        static void RequireMinFiles(List<string> files, string command, int min)
+        {
+            if (files.Count < min)
+            {
+                string msg = $"指令「{command}」至少需要 {min} 個檔案，但您只傳入了 {files.Count} 個。\n\n請多選幾個檔案後，再透過「傳送到」執行。";
+                Console.WriteLine("[錯誤] " + msg);
+                System.Windows.Forms.MessageBox.Show(msg, "ContextTools — 檔案數量不足",
                     System.Windows.Forms.MessageBoxButtons.OK,
                     System.Windows.Forms.MessageBoxIcon.Warning);
                 Environment.Exit(1);
