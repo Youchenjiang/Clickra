@@ -14,8 +14,18 @@ if (-not (Test-Path $installDir)) {
 }
 
 $exePath = Join-Path $installDir "ContextTools.exe"
+$icoPath = Join-Path $installDir "app.ico"
+
 Write-Host "正在將常駐執行檔安裝至: $exePath" -ForegroundColor Cyan
 Copy-Item -Path $sourceExe -Destination $exePath -Force
+
+# 同時複製 ico 檔至安裝目錄供捷徑直接引用
+$sourceIco = Join-Path $PSScriptRoot "app.ico"
+if (Test-Path $sourceIco) {
+    Copy-Item -Path $sourceIco -Destination $icoPath -Force
+} else {
+    $icoPath = $exePath  # fallback to exe if ico not found
+}
 
 # 2. 清除舊版可能遺留在登錄檔的 PPTX 右鍵選項
 $oldPptKey = "HKCU:\Software\Classes\SystemFileAssociations\.pptx\shell\ContextTools_PPT2PDF"
@@ -45,19 +55,19 @@ $wshell = New-Object -ComObject WScript.Shell
 
 Write-Host "Registering 簡報轉 PDF..."
 $s = $wshell.CreateShortcut((Join-Path $sendToPath "簡報轉 PDF.lnk"))
-$s.TargetPath = $exePath; $s.Arguments = "ppt2pdf"; $s.IconLocation = $exePath; $s.Save()
+$s.TargetPath = $exePath; $s.Arguments = "ppt2pdf"; $s.IconLocation = "$icoPath,0"; $s.Save()
 
 Write-Host "Registering PDF 合併..."
 $s = $wshell.CreateShortcut((Join-Path $sendToPath "PDF 合併.lnk"))
-$s.TargetPath = $exePath; $s.Arguments = "merge-pdf"; $s.IconLocation = $exePath; $s.Save()
+$s.TargetPath = $exePath; $s.Arguments = "merge-pdf"; $s.IconLocation = "$icoPath,0"; $s.Save()
 
 Write-Host "Registering 圖片合併成 PDF..."
 $s = $wshell.CreateShortcut((Join-Path $sendToPath "圖片合併成 PDF.lnk"))
-$s.TargetPath = $exePath; $s.Arguments = "img2pdf"; $s.IconLocation = $exePath; $s.Save()
+$s.TargetPath = $exePath; $s.Arguments = "img2pdf"; $s.IconLocation = "$icoPath,0"; $s.Save()
 
 Write-Host "Registering 圖片垂直拼接..."
 $s = $wshell.CreateShortcut((Join-Path $sendToPath "圖片垂直拼接.lnk"))
-$s.TargetPath = $exePath; $s.Arguments = "img-stitch"; $s.IconLocation = $exePath; $s.Save()
+$s.TargetPath = $exePath; $s.Arguments = "img-stitch"; $s.IconLocation = "$icoPath,0"; $s.Save()
 
 Write-Host "`n安裝與註冊成功！" -ForegroundColor Green
 Write-Host "執行檔已複製至 AppData。現在您可以隨意刪除下載的原始腳本或資料夾了。"
