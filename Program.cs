@@ -31,15 +31,19 @@ namespace ContextTools
                 switch (command)
                 {
                     case "ppt2pdf":
+                        ValidateExtensions(files, command, ".pptx", ".ppt");
                         ConvertPptToPdf(files);
                         break;
                     case "merge-pdf":
+                        ValidateExtensions(files, command, ".pdf");
                         MergePdfs(files, Path.Combine(outputDir, "Merged_PDF.pdf"));
                         break;
                     case "img2pdf":
+                        ValidateExtensions(files, command, ".jpg", ".jpeg", ".png", ".bmp", ".gif", ".tiff", ".webp");
                         MergeImagesToPdf(files, Path.Combine(outputDir, "Merged_Images.pdf"));
                         break;
                     case "img-stitch":
+                        ValidateExtensions(files, command, ".jpg", ".jpeg", ".png", ".bmp", ".gif", ".tiff", ".webp");
                         StitchImages(files, Path.Combine(outputDir, "Stitched_Image.png"));
                         break;
                     default:
@@ -55,6 +59,25 @@ namespace ContextTools
                 Console.WriteLine(ex.StackTrace);
                 Console.WriteLine("Press any key to exit...");
                 Console.ReadKey(); // Wait so user can see what failed instead of window instantly closing
+            }
+        }
+
+        static void ValidateExtensions(List<string> files, string command, params string[] allowed)
+        {
+            var invalid = files
+                .Where(f => !allowed.Contains(Path.GetExtension(f).ToLowerInvariant()))
+                .ToList();
+
+            if (invalid.Count > 0)
+            {
+                string allowedList = string.Join(", ", allowed);
+                string invalidList = string.Join("\n  ", invalid.Select(Path.GetFileName));
+                string msg = $"指令\u300c{command}\u300d\u53ea\u63a5\u53d7\u4ee5\u4e0b\u683c\u5f0f\uff1a{allowedList}\n\n\u4ee5\u4e0b\u6a94\u6848\u683c\u5f0f\u4e0d\u7b26\uff0c\u5df2\u4e2d\u6b62\u57f7\u884c\uff1a\n  {invalidList}";
+                Console.WriteLine("[\u932f\u8aa4] " + msg);
+                System.Windows.Forms.MessageBox.Show(msg, "ContextTools \u2014 \u683c\u5f0f\u932f\u8aa4",
+                    System.Windows.Forms.MessageBoxButtons.OK,
+                    System.Windows.Forms.MessageBoxIcon.Warning);
+                Environment.Exit(1);
             }
         }
 
