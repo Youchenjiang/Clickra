@@ -37,8 +37,16 @@ If you wish to recompile the standalone executable:
 - .NET SDK (8.0 or newer recommended)
 - `PdfSharp` & `System.Drawing.Common` (Handled automatically by NuGet)
 
-**Command:**
+Two main packaging modes are available depending on your needs.
+
+### Option 1: Native Ultra-Fast Mode (Framework-Dependent)
+*Recommended, ~150KB file size, 0.01s instant boot.* Requires `.NET Desktop Runtime` installed on the target machine.
+```bash
+dotnet publish -c Release -r win-x64 --self-contained false -p:PublishSingleFile=true
+```
+
+### Option 2: Portable Mode (Self-Contained)
+*Plug-and-play, ~75MB file size, ~0.08s boot.* Bundles the entire `.NET Core` engine so it can run flawlessly on vanilla machines without any pre-installed .NET runtimes.
 ```bash
 dotnet publish -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true
 ```
-This produces a standalone executable that works on any 64-bit Windows machine, even without the .NET runtime installed.
