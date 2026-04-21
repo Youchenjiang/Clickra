@@ -179,8 +179,9 @@ namespace ContextToolsShell
         public static unsafe int GetIcon(IntPtr _this, IntPtr psi, IntPtr* ppsz)
         {
             if (((UniversalObject*)_this)->Data == -1) {
-                string path = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "ContextTools", "app.ico");
-                *ppsz = Marshal.StringToCoTaskMemUni(path); return 0;
+                string app = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "ContextTools", "ContextTools.exe");
+                string iconPath = app + ",0";
+                *ppsz = Marshal.StringToCoTaskMemUni(iconPath); return 0;
             }
             return -2147467263;
         }
