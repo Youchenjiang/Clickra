@@ -65,9 +65,7 @@ function Install-ContextTools {
     Smart-Copy "$sourceDir\ContextToolsShell.dll.manifest" "$installDir\ContextToolsShell.dll.manifest"
     Smart-Copy (Join-Path $sourceDir "ContextTools.exe") "$installDir\ContextTools.exe"
     Smart-Copy (Join-Path $sourceDir "app.ico") "$installDir\app.ico"
-    
-    $sourcePng = "C:\Users\g1014308\Documents\GitHub\Youchen\photo\1.png"
-    if (Test-Path $sourcePng) { Smart-Copy $sourcePng "$installDir\app.png" }
+    Smart-Copy (Join-Path $sourceDir "app.png") "$installDir\app.png"
 
     # 4. 數位簽署與信任
     Write-Host "正在確保數位信任憑證..." -ForegroundColor Gray
