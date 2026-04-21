@@ -54,9 +54,8 @@ function Install-ContextTools {
     # 2. 部署核心組件與資產 (使用內置部署引擎)
     Write-Host "正在部署核心組件與資產..." -ForegroundColor Gray
     
-    # 先拷貝主程式與圖示
+    # 先拷貝主程式
     Smart-Copy (Join-Path $sourceDir "ContextTools.exe") "$installDir\ContextTools.exe"
-    Smart-Copy (Join-Path $sourceDir "app.ico") "$installDir\app.ico"
     
     # 執行內置部署引擎提取 XML, PNG 與 DLL
     & "$installDir\ContextTools.exe" --deploy "$installDir" | Out-Null
