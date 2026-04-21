@@ -3,6 +3,7 @@ using System.IO;
 using System.Linq;
 using System.Drawing;
 using System.Collections.Generic;
+using System.Reflection;
 using System.Runtime.InteropServices;
 using PdfSharp.Pdf;
 using PdfSharp.Pdf.IO;
@@ -26,13 +27,20 @@ namespace ContextTools
             {
                 Console.WriteLine("ContextTools v3.0.0 (Modern Shell Edition)");
                 Console.WriteLine("Author: Youchen Jiang");
-                Console.WriteLine("Commands: ppt2pdf, merge-pdf, img2pdf, img-stitch");
+                Console.WriteLine("Commands: ppt2pdf, merge-pdf, img2pdf, img-stitch, --deploy");
+                return;
+            }
+
+            if (args[0].ToLowerInvariant() == "--deploy" && args.Length >= 2)
+            {
+                DeployAssets(args[1]);
                 return;
             }
 
             if (args.Length < 2)
             {
                 Console.WriteLine("Usage: ContextTools <command> <file...>");
+                Console.WriteLine("Deployment: ContextTools --deploy <target_dir>");
                 return;
             }
 
@@ -213,6 +221,34 @@ namespace ContextTools
             stitched.Save(outputPath, System.Drawing.Imaging.ImageFormat.Png);
             Console.WriteLine($"Stitched {files.Count} images to: {outputPath}");
 #pragma warning restore CA1416
+        }
+        static void DeployAssets(string targetDir)
+        {
+            if (!Directory.Exists(targetDir)) Directory.CreateDirectory(targetDir);
+
+            var assembly = Assembly.GetExecutingAssembly();
+            // Resource names match "ContextTools.Resources.FileName"
+            var resources = new Dictionary<string, string>
+            {
+                { "ContextTools.Resources.AppxManifest.xml", "AppxManifest.xml" },
+                { "ContextTools.Resources.app.png", "app.png" },
+                { "ContextTools.Resources.ContextToolsShell.dll", "ContextToolsShell.dll" }
+            };
+
+            foreach (var res in resources)
+            {
+                Console.WriteLine($"Deploying {res.Value}...");
+                using var stream = assembly.GetManifestResourceStream(res.Key);
+                if (stream == null)
+                {
+                    Console.WriteLine($"[Error] Could not find embedded resource: {res.Key}");
+                    continue;
+                }
+
+                using var fileStream = File.Create(Path.Combine(targetDir, res.Value));
+                stream.CopyTo(fileStream);
+            }
+            Console.WriteLine("Deployment completed successfully.");
         }
     }
 }
