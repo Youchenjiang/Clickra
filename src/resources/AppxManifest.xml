@@ -4,9 +4,10 @@
   xmlns:rescap="http://schemas.microsoft.com/appx/manifest/foundation/windows10/restrictedcapabilities"
   xmlns:desktop4="http://schemas.microsoft.com/appx/manifest/desktop/windows10/4"
   xmlns:desktop5="http://schemas.microsoft.com/appx/manifest/desktop/windows10/5"
+  xmlns:desktop9="http://schemas.microsoft.com/appx/manifest/desktop/windows10/9"
   xmlns:com="http://schemas.microsoft.com/appx/manifest/com/windows10"
   xmlns:uap10="http://schemas.microsoft.com/appx/manifest/uap/windows10/10"
-  IgnorableNamespaces="uap rescap desktop4 desktop5 com uap10">
+  IgnorableNamespaces="uap rescap desktop4 desktop5 desktop9 com uap10">
 
   <Identity
     Name="ContextToolsSparsePackage"
@@ -49,6 +50,12 @@
             </desktop5:ItemType>
           </desktop4:FileExplorerContextMenus>
         </desktop4:Extension>
+
+        <desktop9:Extension Category="windows.shellExplorerCommand">
+          <desktop9:ShellExplorerCommand 
+            Clsid="FA2159B5-1234-4567-89AB-CDEF12345678"
+            Icon="app.png" />
+        </desktop9:Extension>
 
         <com:Extension Category="windows.comServer">
           <com:ComServer>
