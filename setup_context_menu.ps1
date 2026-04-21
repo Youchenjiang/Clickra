@@ -12,10 +12,17 @@ if (-not ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdenti
 function Show-Header {
     Clear-Host
     Write-Host "============================" -ForegroundColor Cyan
-    Write-Host "   ⚙️ ContextTools v$Version" -ForegroundColor Cyan
-    Write-Host "   (Modern Shell Edition)" -ForegroundColor Cyan
+    Write-Host "      ContextTools v$Version" -ForegroundColor Cyan
     Write-Host "============================" -ForegroundColor Cyan
     Write-Host ""
+}
+
+function Get-InstallDir {
+    $defaultDir = Join-Path $env:LOCALAPPDATA "ContextTools"
+    Write-Host "預設安裝路徑: $defaultDir" -ForegroundColor Gray
+    $inputDir = Read-Host "請輸入安裝路徑 (直接按 Enter 使用預設)"
+    if ([string]::IsNullOrWhiteSpace($inputDir)) { return $defaultDir }
+    return $inputDir
 }
 
 function Smart-Copy {
