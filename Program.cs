@@ -22,10 +22,17 @@ namespace ContextTools
 
         static void Main(string[] args)
         {
+            if (args.Length == 0 || args[0] == "-v" || args[0] == "--version")
+            {
+                Console.WriteLine("ContextTools v3.0.0 (Modern Shell Edition)");
+                Console.WriteLine("Author: Youchen Jiang");
+                Console.WriteLine("Commands: ppt2pdf, merge-pdf, img2pdf, img-stitch");
+                return;
+            }
+
             if (args.Length < 2)
             {
                 Console.WriteLine("Usage: ContextTools <command> <file...>");
-                Console.WriteLine("Commands: ppt2pdf, merge-pdf, img2pdf, img-stitch");
                 return;
             }
 
