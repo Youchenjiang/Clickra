@@ -76,7 +76,6 @@ function Install-ContextTools {
 
     # 5. 註冊 Windows 11 稀疏封裝
     Write-Host "正在註冊封裝身分..." -ForegroundColor Gray
-    Smart-Copy (Join-Path $sourceDir "AppxManifest.xml") "$installDir\AppxManifest.xml"
     try {
         Get-AppxPackage -Name "ContextToolsSparsePackage" | Remove-AppxPackage -ErrorAction SilentlyContinue
         Add-AppxPackage -Path "$installDir\AppxManifest.xml" -Register -ExternalLocation $installDir
