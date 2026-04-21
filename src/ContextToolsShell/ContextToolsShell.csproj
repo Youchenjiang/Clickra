@@ -11,6 +11,8 @@
     <Authors>Youchen Jiang</Authors>
     <Description>NativeAOT Shell Extension for Windows 11 Modern Menu</Description>
     <ApplicationManifest>../resources/ContextToolsShell.dll.manifest</ApplicationManifest>
+    <DebugType>none</DebugType>
+    <CopyOutputSymbolsToPublishDirectory>false</CopyOutputSymbolsToPublishDirectory>
     <!-- NativeAOT for Sub-menu support -->
   </PropertyGroup>
 

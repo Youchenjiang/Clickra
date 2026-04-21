@@ -10,6 +10,8 @@
     <Authors>Youchen Jiang</Authors>
     <Description>Instant Windows Context Menu Utility Suite</Description>
     <ApplicationManifest>../resources/ContextTools.exe.manifest</ApplicationManifest>
+    <DebugType>none</DebugType>
+    <CopyOutputSymbolsToPublishDirectory>false</CopyOutputSymbolsToPublishDirectory>
   </PropertyGroup>
 
   <ItemGroup>

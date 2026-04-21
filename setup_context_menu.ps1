@@ -51,14 +51,30 @@ function Install-ContextTools {
 
     $logPath = [System.IO.Path]::Combine([System.IO.Path]::GetTempPath(), "ContextTools.log")
 
-    # 2. 編譯 Shell Extension
-    Write-Host "正在編譯 NativeAOT 選單組件..." -ForegroundColor Gray
-    $shellProj = Join-Path $sourceDir "src\ContextToolsShell\ContextToolsShell.csproj"
-    dotnet publish $shellProj -c Release -r win-x64 -p:PublishAot=true --output "$installDir\temp_build"
-    
+    # 2. 獲取選單組件 (編譯或使用現成)
     $shellDll = Join-Path $installDir "ContextToolsShell.dll"
-    Smart-Copy "$installDir\temp_build\ContextToolsShell.dll" $shellDll
-    Remove-Item "$installDir\temp_build" -Recurse -Force
+    $localDll = Join-Path $sourceDir "ContextToolsShell.dll"
+    $shellProj = Join-Path $sourceDir "src\ContextToolsShell\ContextToolsShell.csproj"
+
+    if (Get-Command dotnet -ErrorAction SilentlyContinue) {
+        Write-Host "偵測到 .NET 環境，正在編譯最新 NativeAOT 選單組件..." -ForegroundColor Gray
+        try {
+            dotnet publish $shellProj -c Release -r win-x64 -p:PublishAot=true --output "$installDir\temp_build"
+            Smart-Copy "$installDir\temp_build\ContextToolsShell.dll" $shellDll
+            Remove-Item "$installDir\temp_build" -Recurse -Force
+        } catch {
+            if (Test-Path $localDll) {
+                Write-Host "⚠️ 編譯失敗，改為使用目錄下的預編譯組件..." -ForegroundColor Yellow
+                Smart-Copy $localDll $shellDll
+            } else { throw $_ }
+        }
+    } elseif (Test-Path $localDll) {
+        Write-Host "🚀 未偵測到 .NET 環境，正在使用現有的預編譯選單組件..." -ForegroundColor Cyan
+        Smart-Copy $localDll $shellDll
+    } else {
+        Write-Host "❌ 錯誤：未偵測到 .NET SDK 且目錄下無現成組件，無法進行安裝。" -ForegroundColor Red
+        Exit
+    }
 
     # 3. 處理身分宣告與資產
     Smart-Copy (Join-Path $sourceDir "ContextTools.exe") "$installDir\ContextTools.exe"
