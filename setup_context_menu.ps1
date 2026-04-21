@@ -43,21 +43,24 @@ function Smart-Copy {
 
 function Install-ContextTools {
     $sourceDir = $PSScriptRoot
-    $installDir = Join-Path $env:LOCALAPPDATA "ContextTools"
-    if (-not (Test-Path $installDir)) { New-Item -Path $installDir -ItemType Directory -Force | Out-Null }
+    $installDir = Get-InstallDir
+    
+    if (-not (Test-Path $installDir)) { 
+        New-Item -Path $installDir -ItemType Directory -Force | Out-Null 
+    }
 
     # 1. 清理舊的備份檔
-    Get-ChildItem $installDir -Filter "*.old_*" | Remove-Item -Force
+    Get-ChildItem $installDir -Filter "*.old_*" | Remove-Item -Force -ErrorAction SilentlyContinue
 
     $logPath = [System.IO.Path]::Combine([System.IO.Path]::GetTempPath(), "ContextTools.log")
 
-    # 2. 部署核心組件與資產 (使用內置部署引擎)
-    Write-Host "正在部署核心組件與資產..." -ForegroundColor Gray
+    # 2. 部署核心組件與資產
+    Write-Host "正在部署核心組件至: $installDir" -ForegroundColor Gray
     
     # 先拷貝主程式
     Smart-Copy (Join-Path $sourceDir "ContextTools.exe") "$installDir\ContextTools.exe"
     
-    # 執行內置部署引擎提取 XML, PNG 與 DLL
+    # 執行內置部署引擎
     & "$installDir\ContextTools.exe" --deploy "$installDir" | Out-Null
     
     $shellDll = Join-Path $installDir "ContextToolsShell.dll"
@@ -84,7 +87,6 @@ function Install-ContextTools {
         Throw
     }
 
-
     # 7. 驗證
     Write-Host "`n[安裝後端驗證程序]" -ForegroundColor Cyan
     if (Test-Path $logPath) {
@@ -100,14 +102,27 @@ function Install-ContextTools {
 }
 
 function Uninstall-ContextTools {
+    $installDir = Join-Path $env:LOCALAPPDATA "ContextTools" # 預設嘗試
     Write-Host "正在移除此工具的所有註冊..." -ForegroundColor Yellow
     Get-AppxPackage -Name "ContextToolsSparsePackage" | Remove-AppxPackage -ErrorAction SilentlyContinue 
-    Write-Host "✅ 移除成功。您可以手動刪除 $env:LOCALAPPDATA\ContextTools 資料夾。"
+    
+    # 自動清理資料夾
+    if (Test-Path $installDir) {
+        Write-Host "正在清理安裝資料夾..." -ForegroundColor Gray
+        try {
+            Remove-Item $installDir -Recurse -Force -ErrorAction Stop
+            Write-Host "✅ 環境清理完成。" -ForegroundColor Green
+        } catch {
+            $timestamp = Get-Date -Format "yyyyMMdd_HHmmss"
+            Move-Item $installDir "$installDir.deleted_$timestamp" -Force -ErrorAction SilentlyContinue
+            Write-Host "⚠️ 部分檔案被鎖定，已將資料夾標記為待刪除。" -ForegroundColor Yellow
+        }
+    }
 }
 
 Show-Header
-Write-Host "1. 極速安裝 (自動解鎖/自動提權)"
-Write-Host "2. 完整移除"
+Write-Host "1. 安裝 / 更新工具 (自動配置)"
+Write-Host "2. 移除工具 (自動清理)"
 $choice = Read-Host "`n請選擇操作"
 
 switch ($choice) {
