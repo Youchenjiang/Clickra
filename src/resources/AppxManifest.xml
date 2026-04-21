@@ -12,7 +12,7 @@
   <Identity
     Name="ContextToolsSparsePackage"
     Publisher="CN=ContextTools"
-    Version="1.0.0.0" />
+    Version="3.0.0.0" />
 
   <Properties>
     <DisplayName>ContextTools Modern Menu</DisplayName>
