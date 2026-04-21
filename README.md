@@ -14,6 +14,16 @@ Most productivity scripts are written in Python. While powerful, Python suffers 
 
 ---
 
+## 📜 Version History
+
+| Version | Release Date | Key Milestone |
+| :--- | :--- | :--- |
+| **v1.0.0** | Dec 07, 2025 | Initial CLI release (Python-based legacy). |
+| **v2.0.0** | Apr 21, 2026 | Shift to C# CLI with interactive "SendTo" installer. |
+| **v3.0.0** | **Current** | **NativeAOT Shell Extension**. Full Windows 11 modern menu support with sub-menus. |
+
+---
+
 ## ✨ Features & Usage
 
 All features are bundled into a single executable `ContextTools.exe` and integrated via the **"Send To"** menu for maximum stability.
