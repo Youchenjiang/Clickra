@@ -1,5 +1,6 @@
 # setup_context_menu.ps1
 $ErrorActionPreference = "Stop"
+$Version = "3.0.0"
 
 # 1. 檢查系統管理員權限
 $currentPrincipal = New-Object Security.Principal.WindowsPrincipal([Security.Principal.WindowsIdentity]::GetCurrent())
@@ -12,7 +13,8 @@ if (-not $currentPrincipal.IsInRole([Security.Principal.WindowsBuiltInRole]::Adm
 function Show-Header {
     Clear-Host
     Write-Host "============================" -ForegroundColor Cyan
-    Write-Host "   ⚙️ ContextTools 穩健版" -ForegroundColor Cyan
+    Write-Host "   ⚙️ ContextTools v$Version" -ForegroundColor Cyan
+    Write-Host "   (Modern Shell Edition)" -ForegroundColor Cyan
     Write-Host "============================" -ForegroundColor Cyan
     Write-Host ""
 }
