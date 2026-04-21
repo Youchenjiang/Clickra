@@ -5,8 +5,9 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <PublishAot>true</PublishAot>
-    <EnableComHosting>true</EnableComHosting>
-    <!-- We need to export COM methods. NativeAOT handles this. -->
+    <NativeLib>Shared</NativeLib>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <!-- NativeAOT for Sub-menu support -->
   </PropertyGroup>
 
 </Project>
