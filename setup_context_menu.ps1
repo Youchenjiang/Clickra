@@ -84,11 +84,6 @@ function Install-ContextTools {
         Throw
     }
 
-    # 6. 重啟資源管理器 (非強制，僅為確保即時生效)
-    Write-Host "正在重新啟動檔案總管以載入全新選單..." -ForegroundColor Gray
-    taskkill /f /im explorer.exe 2>$null | Out-Null
-    start explorer.exe
-    Start-Sleep -Seconds 3
 
     # 7. 驗證
     Write-Host "`n[安裝後端驗證程序]" -ForegroundColor Cyan
