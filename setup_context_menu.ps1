@@ -61,8 +61,6 @@ function Install-ContextTools {
     Remove-Item "$installDir\temp_build" -Recurse -Force
 
     # 3. 處理身分宣告與資產
-    Smart-Copy "$sourceDir\ContextTools.exe.manifest" "$installDir\ContextTools.exe.manifest"
-    Smart-Copy "$sourceDir\ContextToolsShell.dll.manifest" "$installDir\ContextToolsShell.dll.manifest"
     Smart-Copy (Join-Path $sourceDir "ContextTools.exe") "$installDir\ContextTools.exe"
     Smart-Copy (Join-Path $sourceDir "app.ico") "$installDir\app.ico"
     Smart-Copy (Join-Path $sourceDir "app.png") "$installDir\app.png"
