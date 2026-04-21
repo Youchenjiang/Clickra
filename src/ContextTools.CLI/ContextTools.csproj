@@ -6,7 +6,6 @@
     <ApplicationIcon>../resources/app.ico</ApplicationIcon>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
-    <Version>3.0.0</Version>
     <Authors>Youchen Jiang</Authors>
     <Description>Instant Windows Context Menu Utility Suite</Description>
     <DebugType>none</DebugType>

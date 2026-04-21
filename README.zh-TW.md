@@ -66,15 +66,33 @@
 
 ---
 
-## 🛠️ 開發者與技術架構
+## 🛠️ 開發者指南 (Developer Guide)
 
-### 專案結構
-- `src/ContextTools.CLI`: 負責檔案處理的核心邏輯。
-- `src/ContextToolsShell`: 採用 NativeAOT 實作的 COM 選單擴展組件。
-- `src/resources`: 存放身分宣告 (Manifest) 與圖標資產。
+如果您想要自訂功能或編譯自己的版本，請參考以下指南。
 
-### 核心黑科技：資產隱寫部署
-我們在 `ContextTools.exe` 中嵌入了 `AppxManifest.xml`、`app.png` 以及 `ContextToolsShell.dll`。當執行 `--deploy` 指令時，主程式會自動釋放這些組件，實現真正的「零外部依賴」分發。
+### 1. 統一版本管理
+本專案採用 `src/Directory.Build.props` 進行全域版本控制。
+*   **如何更新版本**：只需修改該檔案中的 `<Version>` 標籤（例如 `3.1.1`）。
+*   **自動同步**：安裝腳本 `setup_context_menu.ps1` 會在執行時自動讀取執行檔版本，並同步更新選單身分清單 (`AppxManifest.xml`)。
+
+### 2. 編譯指令 (How to Build)
+由於採用了資產隱寫技術，編譯必須分為兩個階段：
+
+**第一階段：編譯選單組件 (DLL)**
+```powershell
+dotnet publish src\ContextToolsShell\ContextToolsShell.csproj -c Release -r win-x64 -p:PublishAot=true --output .
+```
+
+**第二階段：編譯主程式 (CLI)**
+這會將產出的 DLL 以及 `src/resources` 中的資產封裝進執行檔：
+```powershell
+dotnet publish src\ContextTools.CLI\ContextTools.csproj -c Release -r win-x64 -p:PublishSingleFile=true -p:SelfContained=false --output .
+```
+
+### 3. 如何增加新功能
+1.  **核心邏輯**：在 `src/ContextTools.CLI/Program.cs` 中增加新的命令處理分支。
+2.  **選單介面**：修改 `src/ContextToolsShell/ShellExtension.cs` 中的 `SubTitles` 與 `SubArgs` 陣列。
+3.  **重新編譯**：按照上述編譯順序重新產出 `ContextTools.exe` 即可。
 
 ---
 

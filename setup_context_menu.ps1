@@ -88,7 +88,17 @@ function Install-ContextTools {
     Write-Host "正在註冊封裝身分..." -ForegroundColor Gray
     try {
         Get-AppxPackage -Name "ContextToolsSparsePackage" | Remove-AppxPackage -ErrorAction SilentlyContinue
-        Add-AppxPackage -Path "$installDir\AppxManifest.xml" -Register -ExternalLocation $installDir
+        
+        # 智慧版本同步：將 AppxManifest 的版本與執行檔同步
+        $exeVersion = (Get-Item "$installDir\ContextTools.exe").VersionInfo.FileVersion
+        if ($exeVersion -match "^\d+\.\d+\.\d+$") { $exeVersion += ".0" } # 補足四位元數
+        $manifestPath = "$installDir\AppxManifest.xml"
+        [xml]$manifest = Get-Content $manifestPath
+        $manifest.Package.Identity.Version = $exeVersion
+        $manifest.Save($manifestPath)
+        Write-Host "已同步封裝版本至: $exeVersion" -ForegroundColor Gray
+
+        Add-AppxPackage -Path "$manifestPath" -Register -ExternalLocation $installDir
     } catch {
         Write-Host "封裝註冊失敗！詳情: $($_.Exception.Message)" -ForegroundColor Red
         Throw

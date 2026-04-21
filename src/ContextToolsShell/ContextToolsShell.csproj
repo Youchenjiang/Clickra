@@ -7,7 +7,6 @@
     <PublishAot>true</PublishAot>
     <NativeLib>Shared</NativeLib>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
-    <Version>3.0.0</Version>
     <Authors>Youchen Jiang</Authors>
     <Description>NativeAOT Shell Extension for Windows 11 Modern Menu</Description>
     <ApplicationManifest>../resources/ContextToolsShell.dll.manifest</ApplicationManifest>
