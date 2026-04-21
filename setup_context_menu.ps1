@@ -53,7 +53,7 @@ function Install-ContextTools {
 
     # 2. 編譯 Shell Extension
     Write-Host "正在編譯 NativeAOT 選單組件..." -ForegroundColor Gray
-    $shellProj = Join-Path $sourceDir "ContextToolsShell\ContextToolsShell.csproj"
+    $shellProj = Join-Path $sourceDir "src\ContextToolsShell\ContextToolsShell.csproj"
     dotnet publish $shellProj -c Release -r win-x64 -p:PublishAot=true --output "$installDir\temp_build"
     
     $shellDll = Join-Path $installDir "ContextToolsShell.dll"
