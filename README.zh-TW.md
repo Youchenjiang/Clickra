@@ -92,5 +92,29 @@ dotnet publish -c Release -r win-x64 --self-contained true -p:PublishSingleFile=
 
 ---
 
+## 🧠 技術心得 (開發實錄)
+
+在 **NativeAOT** 環境下建構高性能的 Shell Extension 是極具挑戰性的。以下是我們在開發過程中克服的關鍵技術難點：
+
+### 1. NativeAOT 下的手工 COM VTable
+由於 NativeAOT 不支援標準的 `.NET COM Interop`，我們必須為 `IExplorerCommand` 和 `IEnumExplorerCommand` 手動構建 VTable。
+- **解決方案**：我們實作了 `UniversalObject` 內存結構，將多個介面（Primary, Selection）整合到單一對齊的內存塊中，確保與 Windows Shell 期望的 C 風格對象實現二進位級別的相容。
+
+### 2. Windows 11 「影子介面」之謎
+標準文件建議實作 `IExplorerCommand` 時使用其官方 GUID。然而，在現代 Windows 11 版本中，檔案總管經常會詢問一些未公開的 **「影子 GUID」**（例如：`ea5d0de4-770d-4da0-a9f8-d7f9a140ff79`）。
+- **關鍵發現**：如果在 `QueryInterface` 中不支援這些替代 GUID，子選單的箭頭往往會消失，或者指令會變得無法點擊。
+
+### 3. VTable 槽位敏感度 (導致閃退的主因)
+開發過程中 `explorer.exe` 閃退最常見的原因是 **VTable 參數不匹配**。
+- **陷阱**：將一個 2 參數的 COM 方法（如 `IInitializeCommand::Initialize`）對應到一個 1 參數的 C# 方法會導致堆疊失衡（Stack Imbalance）。由於擴充功能運行在 Explorer 進程內，單個堆疊錯誤就會導致整個桌面環境直接崩潰。
+- **安全準則**：如果無法完美匹配函數簽名，回傳 `E_NOINTERFACE` 比提供一個錯誤的實作要安全得多。
+
+### 4. 日誌記錄與性能瓶頸
+在「介面查詢風暴 (QueryInterface Storm)」期間（Explorer 每秒會詢問數百次介面），同步檔案 I/O（寫日誌）是性能的殺手。
+- **問題**：在熱路徑（Hot Path）中開啟檔案句柄會導致死結（Deadlock）和介面凍結。
+- **規範**：本專案中的所有高頻率 COM 方法均為「無日誌 (Log-Free)」實作，以確保右鍵選單保持極速反應。
+
+---
+
 ## 📄 授權說明
 本專案使用 **PDFsharp** (MIT 授權)。
