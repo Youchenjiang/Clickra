@@ -84,9 +84,9 @@ dotnet publish src\ContextToolsShell\ContextToolsShell.csproj -c Release -r win-
 ```
 
 **第二階段：編譯主程式 (CLI)**
-這會將產出的 DLL 以及 `src/resources` 中的資產封裝進執行檔：
+這會將產出的 DLL 以及 `src/resources` 中的資產封裝進執行檔，並採用 NativeAOT 達成零依賴：
 ```powershell
-dotnet publish src\ContextTools.CLI\ContextTools.csproj -c Release -r win-x64 -p:PublishSingleFile=true -p:SelfContained=false --output .
+dotnet publish src\ContextTools.CLI\ContextTools.csproj -c Release -r win-x64 --output .
 ```
 
 ### 3. 如何增加新功能

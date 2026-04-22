@@ -9,6 +9,8 @@
     <Authors>Youchen Jiang</Authors>
     <Description>Instant Windows Context Menu Utility Suite</Description>
     <DebugType>none</DebugType>
+    <PublishAot>true</PublishAot>
+    <OptimizationPreference>Speed</OptimizationPreference>
     <CopyOutputSymbolsToPublishDirectory>false</CopyOutputSymbolsToPublishDirectory>
   </PropertyGroup>
 
