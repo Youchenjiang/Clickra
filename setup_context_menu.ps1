@@ -84,6 +84,10 @@ function Install-ContextTools {
 
     # 4. 數位簽署與信任
     Write-Host "正在確保數位信任憑證..." -ForegroundColor Gray
+    
+    # 確保系統開啟側載功能 (Sideloading)
+    reg add "HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\AppModelUnlock" /v AllowAllTrustedApps /t REG_DWORD /d 1 /f | Out-Null
+
     $certSubject = "CN=ContextTools"
     $cert = Get-ChildItem Cert:\CurrentUser\My | Where-Object { $_.Subject -eq $certSubject } | Select-Object -First 1
     if ($null -eq $cert) {
@@ -92,6 +96,10 @@ function Install-ContextTools {
         Import-Certificate -FilePath "$installDir\ContextTools.cer" -CertStoreLocation Cert:\LocalMachine\Root | Out-Null
         Import-Certificate -FilePath "$installDir\ContextTools.cer" -CertStoreLocation Cert:\LocalMachine\TrustedPeople | Out-Null
     }
+    
+    # 關鍵步驟：必須同時簽署執行檔與 DLL
+    $exePath = Join-Path $installDir "ContextTools.exe"
+    Set-AuthenticodeSignature -FilePath $exePath -Certificate $cert | Out-Null
     Set-AuthenticodeSignature -FilePath $shellDll -Certificate $cert | Out-Null
 
     # 5. 註冊 Windows 11 稀疏封裝
