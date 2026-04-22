@@ -136,6 +136,15 @@ function Install-ContextTools {
     } else {
         Write-Host "❌ 驗證失敗：未找到運行日誌。" -ForegroundColor Red
     }
+
+    # 8. 安全性清理詢問
+    Write-Host "`n為了安裝，我們暫時啟動了開發者安裝原則。" -ForegroundColor Gray
+    $cleanChoice = Read-Host "是否要在完成後恢復系統安全性（關閉開發人員模式繞過）？ [Y/N]"
+    if ($cleanChoice -eq "Y" -or $cleanChoice -eq "y") {
+        Write-Host "正在恢復安全設定..." -ForegroundColor Gray
+        reg delete $unlockPath /v AllowDevelopmentWithoutDevLicense /f | Out-Null
+        Write-Host "✅ 已恢復系統安全設定。" -ForegroundColor Green
+    }
 }
 
 function Uninstall-ContextTools {
