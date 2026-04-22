@@ -83,10 +83,12 @@ function Install-ContextTools {
     $shellDll = Join-Path $installDir "ContextToolsShell.dll"
 
     # 4. 數位簽署與信任
-    Write-Host "正在確保數位信任憑證..." -ForegroundColor Gray
+    Write-Host "正在確保數位信任憑證與開發者權限..." -ForegroundColor Gray
     
-    # 確保系統開啟側載功能 (Sideloading)
-    reg add "HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\AppModelUnlock" /v AllowAllTrustedApps /t REG_DWORD /d 1 /f | Out-Null
+    # 智慧繞過：強制開啟側載與開發者安裝原則 (不需要使用者去設定頁面手動點開)
+    $unlockPath = "HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\AppModelUnlock"
+    reg add $unlockPath /v AllowAllTrustedApps /t REG_DWORD /d 1 /f | Out-Null
+    reg add $unlockPath /v AllowDevelopmentWithoutDevLicense /t REG_DWORD /d 1 /f | Out-Null
 
     $certSubject = "CN=ContextTools"
     $cert = Get-ChildItem Cert:\CurrentUser\My | Where-Object { $_.Subject -eq $certSubject } | Select-Object -First 1
