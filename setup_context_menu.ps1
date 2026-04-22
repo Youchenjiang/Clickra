@@ -139,11 +139,15 @@ function Install-ContextTools {
 
     # 8. 安全性清理詢問
     Write-Host "`n為了安裝，我們暫時啟動了開發者安裝原則。" -ForegroundColor Gray
-    $cleanChoice = Read-Host "是否要在完成後恢復系統安全性（關閉開發人員模式繞過）？ [Y/N]"
-    if ($cleanChoice -eq "Y" -or $cleanChoice -eq "y") {
+    $cleanChoice = Read-Host "是否要在完成後恢復系統安全性（關閉開發人員模式繞過）？ [Y/n] (預設 Y)"
+    
+    # 預設為 Y，且不區分大小寫
+    if ([string]::IsNullOrWhiteSpace($cleanChoice) -or $cleanChoice.ToUpper() -eq "Y") {
         Write-Host "正在恢復安全設定..." -ForegroundColor Gray
         reg delete $unlockPath /v AllowDevelopmentWithoutDevLicense /f | Out-Null
         Write-Host "✅ 已恢復系統安全設定。" -ForegroundColor Green
+    } else {
+        Write-Host "ℹ️ 已跳過安全性恢復，系統仍將保留開發者安裝權限。" -ForegroundColor Yellow
     }
 }
 
