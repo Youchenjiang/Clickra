@@ -49,7 +49,17 @@ function Smart-Copy {
 }
 
 function Install-ContextTools {
-    $sourceDir = $PSScriptRoot
+    # 智慧路徑識別：優先使用腳本目錄，若為空（如互動式執行）則使用當前目錄
+    $sourceDir = if ([string]::IsNullOrEmpty($PSScriptRoot)) { Get-Location } else { $PSScriptRoot }
+    
+    # 驗證執行檔是否存在
+    $exePath = Join-Path $sourceDir "ContextTools.exe"
+    if (-not (Test-Path $exePath)) {
+        Write-Host "❌ 找不到 ContextTools.exe！" -ForegroundColor Red
+        Write-Host "請確保 .ps1 腳本與 .exe 執行檔放在同一個資料夾內。" -ForegroundColor Yellow
+        return
+    }
+
     $installDir = Get-InstallDir
     
     if (-not (Test-Path $installDir)) { 
