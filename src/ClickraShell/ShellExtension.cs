@@ -193,12 +193,14 @@ namespace ClickraShell
             int idx = obj->Data;
             
             // ECS_ENABLED = 0, ECS_HIDDEN = 2
-            *p = 2; // 預設隱藏
+            *p = 2; // Default: Hidden
             
-            if (psi == IntPtr.Zero) return 0;
+            // Sub-commands may not get psi. Use ShellItems from IObjectWithSelection.
+            IntPtr selection = (psi != IntPtr.Zero) ? psi : obj->ShellItems;
+            if (selection == IntPtr.Zero) return 0;
 
             try {
-                var files = GetSelectedFiles(psi);
+                var files = GetSelectedFiles(selection);
                 if (files.Count == 0) return 0;
 
                 bool matches = false;
