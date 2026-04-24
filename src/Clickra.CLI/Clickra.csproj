@@ -22,6 +22,8 @@
   <ItemGroup>
     <EmbeddedResource Include="..\resources\AppxManifest.xml" Link="Resources\AppxManifest.xml" />
     <EmbeddedResource Include="..\resources\app.png" Link="Resources\app.png" />
+    <EmbeddedResource Include="..\resources\Clickra.exe.manifest" Link="Resources\Clickra.exe.manifest" />
+    <EmbeddedResource Include="..\resources\ClickraShell.dll.manifest" Link="Resources\ClickraShell.dll.manifest" />
     <EmbeddedResource Include="..\..\ClickraShell.dll" Link="Resources\ClickraShell.dll" />
   </ItemGroup>
 

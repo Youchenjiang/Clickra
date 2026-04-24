@@ -232,6 +232,8 @@ try {{
             {
                 { "Clickra.Resources.AppxManifest.xml", "AppxManifest.xml" },
                 { "Clickra.Resources.app.png", "app.png" },
+                { "Clickra.Resources.Clickra.exe.manifest", "Clickra.exe.manifest" },
+                { "Clickra.Resources.ClickraShell.dll.manifest", "ClickraShell.dll.manifest" },
                 { "Clickra.Resources.ClickraShell.dll", "ClickraShell.dll" }
             };
 
