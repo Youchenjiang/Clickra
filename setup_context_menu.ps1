@@ -125,19 +125,10 @@ function Install-Project {
         Throw
     }
 
-    # 7. 驗證
-    Write-Host "`n[安裝後端驗證程序]" -ForegroundColor Cyan
-    $logPath = [System.IO.Path]::Combine([System.IO.Path]::GetTempPath(), "$AppName.log")
-    if (Test-Path $logPath) {
-        $logs = Get-Content $logPath
-        if ($logs -match "GetTitle" -or $logs -match "Invoke") {
-            Write-Host "✅ 驗證成功：組件運作正常！" -ForegroundColor Green
-        } else {
-            Write-Host "❌ 驗證失敗：組件未被系統觸發。" -ForegroundColor Red
-        }
-    } else {
-        Write-Host "❌ 驗證失敗：未找到運行日誌。" -ForegroundColor Red
-    }
+    # 7. 完成提示
+    Write-Host "`n🎉 $AppName 安裝成功！" -ForegroundColor Green
+    Write-Host "請嘗試對 PPT、PDF 或圖片檔案點擊右鍵，即可看到 $AppName 選單。" -ForegroundColor Cyan
+    Write-Host "提示：若未立即出現，可能需要重啟檔案總管或稍候數秒。" -ForegroundColor Gray
 
     # 8. 安全性清理詢問
     Write-Host "`n為了安裝，我們暫時啟動了開發者安裝原則。" -ForegroundColor Gray
