@@ -117,24 +117,47 @@ namespace Clickra
             }
         }
 
+        // --- NativeAOT-Compatible COM Interfaces for PowerPoint ---
+        [ComImport, Guid("91493440-5A91-11CF-8700-00AA0060263B"), InterfaceType(ComInterfaceType.InterfaceIsIDispatch)]
+        public interface IPowerPointApp
+        {
+            [DispId(2002)] IPresentations Presentations { get; }
+            [DispId(2005)] void Quit();
+        }
+
+        [ComImport, Guid("91493444-5A91-11CF-8700-00AA0060263B"), InterfaceType(ComInterfaceType.InterfaceIsIDispatch)]
+        public interface IPresentations
+        {
+            [DispId(2001)] IPresentation Open(string FileName, int ReadOnly = 0, int Untitled = 0, int WithWindow = -1);
+        }
+
+        [ComImport, Guid("91493441-5A91-11CF-8700-00AA0060263B"), InterfaceType(ComInterfaceType.InterfaceIsIDispatch)]
+        public interface IPresentation
+        {
+            [DispId(2011)] void SaveAs(string FileName, int FileFormat, int EmbedTrueTypeFonts = -1);
+            [DispId(2004)] void Close();
+        }
+
         static void ConvertPptToPdf(List<string> files)
         {
-            Type pptType = Type.GetTypeFromProgID("PowerPoint.Application") 
-                           ?? throw new Exception("PowerPoint is not installed or accessible.");
+            // Use direct CLSID to bypass ProgID lookup which fails in NativeAOT
+            Guid pptClsid = new Guid("91493440-5A91-11CF-8700-00AA0060263B");
+            Type pptType = Type.GetTypeFromCLSID(pptClsid) 
+                           ?? throw new Exception("PowerPoint CLSID not found. Is Office installed?");
             
-            dynamic pptApp = Activator.CreateInstance(pptType);
+            var pptApp = (IPowerPointApp)Activator.CreateInstance(pptType)!;
             try
             {
                 foreach (var filePath in files)
                 {
                     string outputPdfPath = Path.ChangeExtension(filePath, ".pdf");
-                    dynamic presentation = null;
+                    IPresentation? presentation = null;
                     try
                     {
-                        // Open presentation in background (msoFalse = 0)
+                        // Open presentation in background (WithWindow: 0 = msoFalse)
                         presentation = pptApp.Presentations.Open(filePath, WithWindow: 0);
                         
-                        // Save as PDF (ppSaveAsPDF = 32)
+                        // Save as PDF (FileFormat: 32 = ppSaveAsPDF)
                         presentation.SaveAs(outputPdfPath, 32);
                         Console.WriteLine($"Saved PPT to: {outputPdfPath}");
                     }
@@ -144,10 +167,7 @@ namespace Clickra
                     }
                     finally
                     {
-                        if (presentation != null)
-                        {
-                            presentation.Close();
-                        }
+                        presentation?.Close();
                     }
                 }
             }
