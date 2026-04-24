@@ -12,13 +12,13 @@ if (-not ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdenti
 function Show-Header {
     Clear-Host
     Write-Host "============================" -ForegroundColor Cyan
-    Write-Host "      ContextTools v$Version" -ForegroundColor Cyan
+    Write-Host "      Clickra v$Version" -ForegroundColor Cyan
     Write-Host "============================" -ForegroundColor Cyan
     Write-Host ""
 }
 
 function Get-InstallDir {
-    $defaultDir = Join-Path $env:LOCALAPPDATA "ContextTools"
+    $defaultDir = Join-Path $env:LOCALAPPDATA "Clickra"
     Write-Host "預設安裝路徑: $defaultDir" -ForegroundColor Gray
     $inputDir = Read-Host "請輸入安裝路徑 (直接按 Enter 使用預設)"
     if ([string]::IsNullOrWhiteSpace($inputDir)) { return $defaultDir }
@@ -48,14 +48,14 @@ function Smart-Copy {
     }
 }
 
-function Install-ContextTools {
+function Install-Clickra {
     # 智慧路徑識別：優先使用腳本目錄，若為空（如互動式執行）則使用當前目錄
     $sourceDir = if ([string]::IsNullOrEmpty($PSScriptRoot)) { Get-Location } else { $PSScriptRoot }
     
     # 驗證執行檔是否存在
-    $exePath = Join-Path $sourceDir "ContextTools.exe"
+    $exePath = Join-Path $sourceDir "Clickra.exe"
     if (-not (Test-Path $exePath)) {
-        Write-Host "❌ 找不到 ContextTools.exe！" -ForegroundColor Red
+        Write-Host "❌ 找不到 Clickra.exe！" -ForegroundColor Red
         Write-Host "請確保 .ps1 腳本與 .exe 執行檔放在同一個資料夾內。" -ForegroundColor Yellow
         return
     }
@@ -69,18 +69,18 @@ function Install-ContextTools {
     # 1. 清理舊的備份檔
     Get-ChildItem $installDir -Filter "*.old_*" | Remove-Item -Force -ErrorAction SilentlyContinue
 
-    $logPath = [System.IO.Path]::Combine([System.IO.Path]::GetTempPath(), "ContextTools.log")
+    $logPath = [System.IO.Path]::Combine([System.IO.Path]::GetTempPath(), "Clickra.log")
 
     # 2. 部署核心組件與資產
     Write-Host "正在部署核心組件至: $installDir" -ForegroundColor Gray
     
     # 先拷貝主程式
-    Smart-Copy (Join-Path $sourceDir "ContextTools.exe") "$installDir\ContextTools.exe"
+    Smart-Copy (Join-Path $sourceDir "Clickra.exe") "$installDir\Clickra.exe"
     
     # 執行內置部署引擎
-    & "$installDir\ContextTools.exe" --deploy "$installDir" | Out-Null
+    & "$installDir\Clickra.exe" --deploy "$installDir" | Out-Null
     
-    $shellDll = Join-Path $installDir "ContextToolsShell.dll"
+    $shellDll = Join-Path $installDir "ClickraShell.dll"
 
     # 4. 數位簽署與信任
     Write-Host "正在確保數位信任憑證與開發者權限..." -ForegroundColor Gray
@@ -90,27 +90,27 @@ function Install-ContextTools {
     reg add $unlockPath /v AllowAllTrustedApps /t REG_DWORD /d 1 /f | Out-Null
     reg add $unlockPath /v AllowDevelopmentWithoutDevLicense /t REG_DWORD /d 1 /f | Out-Null
 
-    $certSubject = "CN=ContextTools"
+    $certSubject = "CN=Clickra"
     $cert = Get-ChildItem Cert:\CurrentUser\My | Where-Object { $_.Subject -eq $certSubject } | Select-Object -First 1
     if ($null -eq $cert) {
         $cert = New-SelfSignedCertificate -Subject $certSubject -Type Custom -KeySpec Signature -KeyUsage DigitalSignature -TextExtension @("2.5.29.37={text}1.3.6.1.5.5.7.3.3") -CertStoreLocation Cert:\CurrentUser\My
-        Export-Certificate -Cert $cert -FilePath "$installDir\ContextTools.cer" | Out-Null
-        Import-Certificate -FilePath "$installDir\ContextTools.cer" -CertStoreLocation Cert:\LocalMachine\Root | Out-Null
-        Import-Certificate -FilePath "$installDir\ContextTools.cer" -CertStoreLocation Cert:\LocalMachine\TrustedPeople | Out-Null
+        Export-Certificate -Cert $cert -FilePath "$installDir\Clickra.cer" | Out-Null
+        Import-Certificate -FilePath "$installDir\Clickra.cer" -CertStoreLocation Cert:\LocalMachine\Root | Out-Null
+        Import-Certificate -FilePath "$installDir\Clickra.cer" -CertStoreLocation Cert:\LocalMachine\TrustedPeople | Out-Null
     }
     
     # 關鍵步驟：必須同時簽署執行檔與 DLL
-    $exePath = Join-Path $installDir "ContextTools.exe"
+    $exePath = Join-Path $installDir "Clickra.exe"
     Set-AuthenticodeSignature -FilePath $exePath -Certificate $cert | Out-Null
     Set-AuthenticodeSignature -FilePath $shellDll -Certificate $cert | Out-Null
 
     # 5. 註冊 Windows 11 稀疏封裝
     Write-Host "正在註冊封裝身分..." -ForegroundColor Gray
     try {
-        Get-AppxPackage -Name "ContextToolsSparsePackage" | Remove-AppxPackage -ErrorAction SilentlyContinue
+        Get-AppxPackage -Name "ClickraSparsePackage" | Remove-AppxPackage -ErrorAction SilentlyContinue
         
         # 智慧版本同步：將 AppxManifest 的版本與執行檔同步
-        $exeVersion = (Get-Item "$installDir\ContextTools.exe").VersionInfo.FileVersion
+        $exeVersion = (Get-Item "$installDir\Clickra.exe").VersionInfo.FileVersion
         if ($exeVersion -match "^\d+\.\d+\.\d+$") { $exeVersion += ".0" } # 補足四位元數
         $manifestPath = "$installDir\AppxManifest.xml"
         [xml]$manifest = Get-Content $manifestPath
@@ -151,10 +151,10 @@ function Install-ContextTools {
     }
 }
 
-function Uninstall-ContextTools {
-    $installDir = Join-Path $env:LOCALAPPDATA "ContextTools" # 預設嘗試
+function Uninstall-Clickra {
+    $installDir = Join-Path $env:LOCALAPPDATA "Clickra" # 預設嘗試
     Write-Host "正在移除此工具的所有註冊..." -ForegroundColor Yellow
-    Get-AppxPackage -Name "ContextToolsSparsePackage" | Remove-AppxPackage -ErrorAction SilentlyContinue 
+    Get-AppxPackage -Name "ClickraSparsePackage" | Remove-AppxPackage -ErrorAction SilentlyContinue 
     
     # 自動清理資料夾
     if (Test-Path $installDir) {
@@ -176,8 +176,8 @@ Write-Host "2. 移除工具 (自動清理)"
 $choice = Read-Host "`n請選擇操作"
 
 switch ($choice) {
-    "1" { Install-ContextTools }
-    "2" { Uninstall-ContextTools }
+    "1" { Install-Clickra }
+    "2" { Uninstall-Clickra }
 }
 
 Write-Host ""

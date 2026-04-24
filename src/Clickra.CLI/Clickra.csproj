@@ -22,7 +22,7 @@
   <ItemGroup>
     <EmbeddedResource Include="..\resources\AppxManifest.xml" Link="Resources\AppxManifest.xml" />
     <EmbeddedResource Include="..\resources\app.png" Link="Resources\app.png" />
-    <EmbeddedResource Include="..\..\ContextToolsShell.dll" Link="Resources\ContextToolsShell.dll" />
+    <EmbeddedResource Include="..\..\ClickraShell.dll" Link="Resources\ClickraShell.dll" />
   </ItemGroup>
 
 </Project>
