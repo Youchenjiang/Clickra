@@ -1,5 +1,6 @@
 # setup_context_menu.ps1
 $ErrorActionPreference = "Stop"
+$AppName = "Clickra"
 $Version = "3.0.0"
 
 # 0. 自動提升權限 (Auto-Elevation)
@@ -12,13 +13,13 @@ if (-not ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdenti
 function Show-Header {
     Clear-Host
     Write-Host "============================" -ForegroundColor Cyan
-    Write-Host "      Clickra v$Version" -ForegroundColor Cyan
+    Write-Host "      $AppName v$Version" -ForegroundColor Cyan
     Write-Host "============================" -ForegroundColor Cyan
     Write-Host ""
 }
 
 function Get-InstallDir {
-    $defaultDir = Join-Path $env:LOCALAPPDATA "Clickra"
+    $defaultDir = Join-Path $env:LOCALAPPDATA $AppName
     Write-Host "預設安裝路徑: $defaultDir" -ForegroundColor Gray
     $inputDir = Read-Host "請輸入安裝路徑 (直接按 Enter 使用預設)"
     if ([string]::IsNullOrWhiteSpace($inputDir)) { return $defaultDir }
@@ -48,14 +49,14 @@ function Smart-Copy {
     }
 }
 
-function Install-Clickra {
+function Install-Project {
     # 智慧路徑識別：優先使用腳本目錄，若為空（如互動式執行）則使用當前目錄
     $sourceDir = if ([string]::IsNullOrEmpty($PSScriptRoot)) { Get-Location } else { $PSScriptRoot }
     
     # 驗證執行檔是否存在
-    $exePath = Join-Path $sourceDir "Clickra.exe"
+    $exePath = Join-Path $sourceDir "$AppName.exe"
     if (-not (Test-Path $exePath)) {
-        Write-Host "❌ 找不到 Clickra.exe！" -ForegroundColor Red
+        Write-Host "❌ 找不到 $AppName.exe！" -ForegroundColor Red
         Write-Host "請確保 .ps1 腳本與 .exe 執行檔放在同一個資料夾內。" -ForegroundColor Yellow
         return
     }
@@ -69,48 +70,48 @@ function Install-Clickra {
     # 1. 清理舊的備份檔
     Get-ChildItem $installDir -Filter "*.old_*" | Remove-Item -Force -ErrorAction SilentlyContinue
 
-    $logPath = [System.IO.Path]::Combine([System.IO.Path]::GetTempPath(), "Clickra.log")
+    $logPath = [System.IO.Path]::Combine([System.IO.Path]::GetTempPath(), "$AppName.log")
 
     # 2. 部署核心組件與資產
     Write-Host "正在部署核心組件至: $installDir" -ForegroundColor Gray
     
     # 先拷貝主程式
-    Smart-Copy (Join-Path $sourceDir "Clickra.exe") "$installDir\Clickra.exe"
+    Smart-Copy (Join-Path $sourceDir "$AppName.exe") "$installDir\$AppName.exe"
     
     # 執行內置部署引擎
-    & "$installDir\Clickra.exe" --deploy "$installDir" | Out-Null
+    & "$installDir\$AppName.exe" --deploy "$installDir" | Out-Null
     
-    $shellDll = Join-Path $installDir "ClickraShell.dll"
+    $shellDll = Join-Path $installDir "$AppName`Shell.dll"
 
     # 4. 數位簽署與信任
     Write-Host "正在確保數位信任憑證與開發者權限..." -ForegroundColor Gray
     
-    # 智慧繞過：強制開啟側載與開發者安裝原則 (不需要使用者去設定頁面手動點開)
+    # 智慧繞過：強制開啟側載與開發者安裝原則
     $unlockPath = "HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\AppModelUnlock"
     reg add $unlockPath /v AllowAllTrustedApps /t REG_DWORD /d 1 /f | Out-Null
     reg add $unlockPath /v AllowDevelopmentWithoutDevLicense /t REG_DWORD /d 1 /f | Out-Null
 
-    $certSubject = "CN=Clickra"
+    $certSubject = "CN=$AppName"
     $cert = Get-ChildItem Cert:\CurrentUser\My | Where-Object { $_.Subject -eq $certSubject } | Select-Object -First 1
     if ($null -eq $cert) {
         $cert = New-SelfSignedCertificate -Subject $certSubject -Type Custom -KeySpec Signature -KeyUsage DigitalSignature -TextExtension @("2.5.29.37={text}1.3.6.1.5.5.7.3.3") -CertStoreLocation Cert:\CurrentUser\My
-        Export-Certificate -Cert $cert -FilePath "$installDir\Clickra.cer" | Out-Null
-        Import-Certificate -FilePath "$installDir\Clickra.cer" -CertStoreLocation Cert:\LocalMachine\Root | Out-Null
-        Import-Certificate -FilePath "$installDir\Clickra.cer" -CertStoreLocation Cert:\LocalMachine\TrustedPeople | Out-Null
+        Export-Certificate -Cert $cert -FilePath "$installDir\$AppName.cer" | Out-Null
+        Import-Certificate -FilePath "$installDir\$AppName.cer" -CertStoreLocation Cert:\LocalMachine\Root | Out-Null
+        Import-Certificate -FilePath "$installDir\$AppName.cer" -CertStoreLocation Cert:\LocalMachine\TrustedPeople | Out-Null
     }
     
     # 關鍵步驟：必須同時簽署執行檔與 DLL
-    $exePath = Join-Path $installDir "Clickra.exe"
+    $exePath = Join-Path $installDir "$AppName.exe"
     Set-AuthenticodeSignature -FilePath $exePath -Certificate $cert | Out-Null
     Set-AuthenticodeSignature -FilePath $shellDll -Certificate $cert | Out-Null
 
     # 5. 註冊 Windows 11 稀疏封裝
     Write-Host "正在註冊封裝身分..." -ForegroundColor Gray
     try {
-        Get-AppxPackage -Name "ClickraSparsePackage" | Remove-AppxPackage -ErrorAction SilentlyContinue
+        Get-AppxPackage -Name "$AppName`SparsePackage" | Remove-AppxPackage -ErrorAction SilentlyContinue
         
         # 智慧版本同步：將 AppxManifest 的版本與執行檔同步
-        $exeVersion = (Get-Item "$installDir\Clickra.exe").VersionInfo.FileVersion
+        $exeVersion = (Get-Item "$installDir\$AppName.exe").VersionInfo.FileVersion
         if ($exeVersion -match "^\d+\.\d+\.\d+$") { $exeVersion += ".0" } # 補足四位元數
         $manifestPath = "$installDir\AppxManifest.xml"
         [xml]$manifest = Get-Content $manifestPath
@@ -126,6 +127,7 @@ function Install-Clickra {
 
     # 7. 驗證
     Write-Host "`n[安裝後端驗證程序]" -ForegroundColor Cyan
+    $logPath = [System.IO.Path]::Combine([System.IO.Path]::GetTempPath(), "$AppName.log")
     if (Test-Path $logPath) {
         $logs = Get-Content $logPath
         if ($logs -match "GetTitle" -or $logs -match "Invoke") {
@@ -151,10 +153,10 @@ function Install-Clickra {
     }
 }
 
-function Uninstall-Clickra {
-    $installDir = Join-Path $env:LOCALAPPDATA "Clickra" # 預設嘗試
+function Uninstall-Project {
+    $installDir = Get-InstallDir
     Write-Host "正在移除此工具的所有註冊..." -ForegroundColor Yellow
-    Get-AppxPackage -Name "ClickraSparsePackage" | Remove-AppxPackage -ErrorAction SilentlyContinue 
+    Get-AppxPackage -Name "$AppName`SparsePackage" | Remove-AppxPackage -ErrorAction SilentlyContinue 
     
     # 自動清理資料夾
     if (Test-Path $installDir) {
@@ -176,8 +178,8 @@ Write-Host "2. 移除工具 (自動清理)"
 $choice = Read-Host "`n請選擇操作"
 
 switch ($choice) {
-    "1" { Install-Clickra }
-    "2" { Uninstall-Clickra }
+    "1" { Install-Project }
+    "2" { Uninstall-Project }
 }
 
 Write-Host ""
