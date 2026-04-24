@@ -28,7 +28,7 @@ namespace Clickra
             {
                 Console.WriteLine("Clickra v3.0.0 (Modern Shell Edition)");
                 Console.WriteLine("Author: Youchen Jiang");
-                Console.WriteLine("Commands: ppt2pdf, merge-pdf, img2pdf, img-stitch, --deploy");
+                Console.WriteLine("Commands: ppt2pdf, merge-pdf, img2pdf, img-merge, img-stitch, --deploy");
                 return;
             }
 
@@ -67,8 +67,16 @@ namespace Clickra
                     case "img2pdf":
                         ValidateExtensions(files, command, ".jpg", ".jpeg", ".png", ".bmp", ".gif", ".tiff", ".webp");
                         RequireMinFiles(files, command, 1);
-                        string pdfName = files.Count == 1 ? Path.GetFileNameWithoutExtension(files[0]) + ".pdf" : "Merged_Images.pdf";
-                        MergeImagesToPdf(files, Path.Combine(outputDir, pdfName));
+                        foreach (var f in files)
+                        {
+                            string outName = Path.Combine(outputDir, Path.GetFileNameWithoutExtension(f) + ".pdf");
+                            MergeImagesToPdf(new List<string> { f }, outName);
+                        }
+                        break;
+                    case "img-merge":
+                        ValidateExtensions(files, command, ".jpg", ".jpeg", ".png", ".bmp", ".gif", ".tiff", ".webp");
+                        RequireMinFiles(files, command, 2);
+                        MergeImagesToPdf(files, Path.Combine(outputDir, "Merged_Images.pdf"));
                         break;
                     case "img-stitch":
                         ValidateExtensions(files, command, ".jpg", ".jpeg", ".png", ".bmp", ".gif", ".tiff", ".webp");

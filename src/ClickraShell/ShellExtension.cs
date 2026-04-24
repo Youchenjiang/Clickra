@@ -120,8 +120,8 @@ namespace ClickraShell
 
     internal static class ComMethods
     {
-        private static readonly string[] SubTitles = { "簡報轉 PDF", "PDF 合併", "圖片合併成 PDF", "圖片垂直拼接" };
-        private static readonly string[] SubArgs = { "ppt2pdf", "merge-pdf", "img2pdf", "img-stitch" };
+        private static readonly string[] SubTitles = { "簡報轉 PDF", "PDF 合併", "圖片轉 PDF", "圖片合併成 PDF", "圖片垂直拼接" };
+        private static readonly string[] SubArgs = { "ppt2pdf", "merge-pdf", "img2pdf", "img-merge", "img-stitch" };
 
         internal static unsafe int CreateObject(IntPtr vt, Guid* riid, IntPtr* ppv, ComObjectType type, int data = -1)
         {
@@ -204,7 +204,7 @@ namespace ClickraShell
                 bool matches = false;
                 if (idx == -1) {
                     // 主選單：只要有任何一個功能符合就顯示
-                    matches = IsMatch(0, files) || IsMatch(1, files) || IsMatch(2, files) || IsMatch(3, files);
+                    matches = IsMatch(0, files) || IsMatch(1, files) || IsMatch(2, files) || IsMatch(3, files) || IsMatch(4, files);
                 } else {
                     matches = IsMatch(idx, files);
                 }
@@ -224,12 +224,17 @@ namespace ClickraShell
                     return files.Count >= 1 && files.All(f => f.EndsWith(".ppt", StringComparison.OrdinalIgnoreCase) || f.EndsWith(".pptx", StringComparison.OrdinalIgnoreCase));
                 case 1: // Merge PDF: 至少兩個 PDF
                     return files.Count >= 2 && files.All(f => f.EndsWith(".pdf", StringComparison.OrdinalIgnoreCase));
-                case 2: // Image2PDF: 至少一個圖片
+                case 2: // Image2PDF (1:1): 至少一個圖片
                 {
                     string[] imgExts = { ".png", ".jpg", ".jpeg", ".bmp", ".gif", ".tiff", ".webp" };
                     return files.Count >= 1 && files.All(f => imgExts.Any(ext => f.EndsWith(ext, StringComparison.OrdinalIgnoreCase)));
                 }
-                case 3: // ImageStitch: 至少兩個圖片
+                case 3: // Image Merge (N:1): 至少兩個圖片
+                {
+                    string[] imgExts = { ".png", ".jpg", ".jpeg", ".bmp", ".gif", ".tiff", ".webp" };
+                    return files.Count >= 2 && files.All(f => imgExts.Any(ext => f.EndsWith(ext, StringComparison.OrdinalIgnoreCase)));
+                }
+                case 4: // ImageStitch: 至少兩個圖片
                 {
                     string[] imgExts = { ".png", ".jpg", ".jpeg", ".bmp", ".gif", ".tiff", ".webp" };
                     return files.Count >= 2 && files.All(f => imgExts.Any(ext => f.EndsWith(ext, StringComparison.OrdinalIgnoreCase)));
