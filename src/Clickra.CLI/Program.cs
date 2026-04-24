@@ -66,8 +66,9 @@ namespace Clickra
                         break;
                     case "img2pdf":
                         ValidateExtensions(files, command, ".jpg", ".jpeg", ".png", ".bmp", ".gif", ".tiff", ".webp");
-                        RequireMinFiles(files, command, 2);
-                        MergeImagesToPdf(files, Path.Combine(outputDir, "Merged_Images.pdf"));
+                        RequireMinFiles(files, command, 1);
+                        string pdfName = files.Count == 1 ? Path.GetFileNameWithoutExtension(files[0]) + ".pdf" : "Merged_Images.pdf";
+                        MergeImagesToPdf(files, Path.Combine(outputDir, pdfName));
                         break;
                     case "img-stitch":
                         ValidateExtensions(files, command, ".jpg", ".jpeg", ".png", ".bmp", ".gif", ".tiff", ".webp");

@@ -224,10 +224,16 @@ namespace ClickraShell
                     return files.Count >= 1 && files.All(f => f.EndsWith(".ppt", StringComparison.OrdinalIgnoreCase) || f.EndsWith(".pptx", StringComparison.OrdinalIgnoreCase));
                 case 1: // Merge PDF: 至少兩個 PDF
                     return files.Count >= 2 && files.All(f => f.EndsWith(".pdf", StringComparison.OrdinalIgnoreCase));
-                case 2: // Image2PDF: 至少兩個圖片
+                case 2: // Image2PDF: 至少一個圖片
+                {
+                    string[] imgExts = { ".png", ".jpg", ".jpeg", ".bmp", ".gif", ".tiff", ".webp" };
+                    return files.Count >= 1 && files.All(f => imgExts.Any(ext => f.EndsWith(ext, StringComparison.OrdinalIgnoreCase)));
+                }
                 case 3: // ImageStitch: 至少兩個圖片
+                {
                     string[] imgExts = { ".png", ".jpg", ".jpeg", ".bmp", ".gif", ".tiff", ".webp" };
                     return files.Count >= 2 && files.All(f => imgExts.Any(ext => f.EndsWith(ext, StringComparison.OrdinalIgnoreCase)));
+                }
                 default:
                     return false;
             }
