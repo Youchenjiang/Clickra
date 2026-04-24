@@ -5,6 +5,7 @@ using System.Drawing;
 using System.Collections.Generic;
 using System.Reflection;
 using System.Runtime.InteropServices;
+using System.Runtime.InteropServices.Marshalling;
 using PdfSharp.Pdf;
 using PdfSharp.Pdf.IO;
 using PdfSharp.Drawing;
@@ -117,63 +118,43 @@ namespace Clickra
             }
         }
 
-        // --- NativeAOT-Compatible COM Interfaces for PowerPoint ---
-        [ComImport, Guid("91493440-5A91-11CF-8700-00AA0060263B"), InterfaceType(ComInterfaceType.InterfaceIsIDispatch)]
-        public interface IPowerPointApp
-        {
-            [DispId(2002)] IPresentations Presentations { get; }
-            [DispId(2005)] void Quit();
-        }
-
-        [ComImport, Guid("91493444-5A91-11CF-8700-00AA0060263B"), InterfaceType(ComInterfaceType.InterfaceIsIDispatch)]
-        public interface IPresentations
-        {
-            [DispId(2001)] IPresentation Open(string FileName, int ReadOnly = 0, int Untitled = 0, int WithWindow = -1);
-        }
-
-        [ComImport, Guid("91493441-5A91-11CF-8700-00AA0060263B"), InterfaceType(ComInterfaceType.InterfaceIsIDispatch)]
-        public interface IPresentation
-        {
-            [DispId(2011)] void SaveAs(string FileName, int FileFormat, int EmbedTrueTypeFonts = -1);
-            [DispId(2004)] void Close();
-        }
-
         static void ConvertPptToPdf(List<string> files)
         {
-            // Use direct CLSID to bypass ProgID lookup which fails in NativeAOT
-            Guid pptClsid = new Guid("91493440-5A91-11CF-8700-00AA0060263B");
-            Type pptType = Type.GetTypeFromCLSID(pptClsid) 
-                           ?? throw new Exception("PowerPoint CLSID not found. Is Office installed?");
-            
-            var pptApp = (IPowerPointApp)Activator.CreateInstance(pptType)!;
-            try
+            foreach (var filePath in files)
             {
-                foreach (var filePath in files)
+                string fullPath = Path.GetFullPath(filePath);
+                string outputPdfPath = Path.ChangeExtension(fullPath, ".pdf");
+                Console.WriteLine($"Converting: {Path.GetFileName(filePath)}...");
+
+                // PowerScript: The most stable way to handle Office COM on Windows
+                string psScript = $@"
+$ppt = New-Object -ComObject PowerPoint.Application;
+try {{
+    $pres = $ppt.Presentations.Open('{fullPath.Replace("'", "''")}', 0, 0, 0);
+    $pres.SaveAs('{outputPdfPath.Replace("'", "''")}', 32);
+    $pres.Close();
+    Write-Host 'Success';
+}} finally {{
+    $ppt.Quit();
+    [System.Runtime.InteropServices.Marshal]::ReleaseComObject($ppt) | Out-Null
+}}";
+                
+                var startInfo = new System.Diagnostics.ProcessStartInfo
                 {
-                    string outputPdfPath = Path.ChangeExtension(filePath, ".pdf");
-                    IPresentation? presentation = null;
-                    try
-                    {
-                        // Open presentation in background (WithWindow: 0 = msoFalse)
-                        presentation = pptApp.Presentations.Open(filePath, WithWindow: 0);
-                        
-                        // Save as PDF (FileFormat: 32 = ppSaveAsPDF)
-                        presentation.SaveAs(outputPdfPath, 32);
-                        Console.WriteLine($"Saved PPT to: {outputPdfPath}");
-                    }
-                    catch (Exception ex)
-                    {
-                        Console.WriteLine($"Failed to convert {filePath}: {ex.Message}");
-                    }
-                    finally
-                    {
-                        presentation?.Close();
-                    }
-                }
-            }
-            finally
-            {
-                pptApp.Quit();
+                    FileName = "powershell.exe",
+                    Arguments = $"-NoProfile -ExecutionPolicy Bypass -Command \"{psScript}\"",
+                    UseShellExecute = false,
+                    RedirectStandardOutput = true,
+                    CreateNoWindow = true
+                };
+
+                using var process = System.Diagnostics.Process.Start(startInfo);
+                process?.WaitForExit();
+                
+                if (File.Exists(outputPdfPath))
+                    Console.WriteLine("Done.");
+                else
+                    Console.WriteLine("Failed to convert (PowerShell returned error).");
             }
         }
 
