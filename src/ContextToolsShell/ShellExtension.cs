@@ -186,7 +186,82 @@ namespace ContextToolsShell
         }
         [UnmanagedCallersOnly(CallConvs = new[] { typeof(CallConvStdcall) })] public static unsafe int GetToolTip(IntPtr _this, IntPtr psi, IntPtr* p) { *p = IntPtr.Zero; return 0; }
         [UnmanagedCallersOnly(CallConvs = new[] { typeof(CallConvStdcall) })] public static unsafe int GetCanonicalName(IntPtr _this, Guid* p) { *p = Guid.Empty; return 0; }
-        [UnmanagedCallersOnly(CallConvs = new[] { typeof(CallConvStdcall) })] public static unsafe int GetState(IntPtr _this, IntPtr psi, int slow, uint* p) { *p = 0; return 0; }
+        [UnmanagedCallersOnly(CallConvs = new[] { typeof(CallConvStdcall) })]
+        public static unsafe int GetState(IntPtr _this, IntPtr psi, int slow, uint* p)
+        {
+            var obj = (UniversalObject*)_this;
+            int idx = obj->Data;
+            
+            // ECS_ENABLED = 0, ECS_HIDDEN = 2
+            *p = 2; // 預設隱藏
+            
+            if (psi == IntPtr.Zero) return 0;
+
+            try {
+                var files = GetSelectedFiles(psi);
+                if (files.Count == 0) return 0;
+
+                bool matches = false;
+                if (idx == -1) {
+                    // 主選單：只要有任何一個功能符合就顯示
+                    matches = IsMatch(0, files) || IsMatch(1, files) || IsMatch(2, files) || IsMatch(3, files);
+                } else {
+                    matches = IsMatch(idx, files);
+                }
+
+                if (matches) *p = 0;
+            } catch {
+                *p = 0; // 出錯時保險起見顯示出來
+            }
+
+            return 0;
+        }
+
+        private static bool IsMatch(int idx, List<string> files)
+        {
+            switch (idx) {
+                case 0: // PPT2PDF: 至少一個檔案，且全為 PPT
+                    return files.Count >= 1 && files.All(f => f.EndsWith(".ppt", StringComparison.OrdinalIgnoreCase) || f.EndsWith(".pptx", StringComparison.OrdinalIgnoreCase));
+                case 1: // Merge PDF: 至少兩個 PDF
+                    return files.Count >= 2 && files.All(f => f.EndsWith(".pdf", StringComparison.OrdinalIgnoreCase));
+                case 2: // Image2PDF: 至少兩個圖片
+                case 3: // ImageStitch: 至少兩個圖片
+                    string[] imgExts = { ".png", ".jpg", ".jpeg", ".bmp", ".gif", ".tiff", ".webp" };
+                    return files.Count >= 2 && files.All(f => imgExts.Any(ext => f.EndsWith(ext, StringComparison.OrdinalIgnoreCase)));
+                default:
+                    return false;
+            }
+        }
+
+        private static unsafe List<string> GetSelectedFiles(IntPtr psi)
+        {
+            var files = new List<string>();
+            if (psi == IntPtr.Zero) return files;
+
+            IntPtr vt = *(IntPtr*)psi;
+            delegate* unmanaged[Stdcall]<IntPtr, uint*, int> getCount = (delegate* unmanaged[Stdcall]<IntPtr, uint*, int>)(*(IntPtr*)(vt + 7 * IntPtr.Size));
+            delegate* unmanaged[Stdcall]<IntPtr, uint, IntPtr*, int> getItemAt = (delegate* unmanaged[Stdcall]<IntPtr, uint, IntPtr*, int>)(*(IntPtr*)(vt + 8 * IntPtr.Size));
+            
+            uint count = 0;
+            if (getCount(psi, &count) == 0) {
+                for (uint i = 0; i < count; i++) {
+                    IntPtr item = IntPtr.Zero;
+                    if (getItemAt(psi, i, &item) == 0) {
+                        IntPtr ivt = *(IntPtr*)item;
+                        delegate* unmanaged[Stdcall]<IntPtr, uint, IntPtr*, int> getName = (delegate* unmanaged[Stdcall]<IntPtr, uint, IntPtr*, int>)(*(IntPtr*)(ivt + 5 * IntPtr.Size));
+                        IntPtr namePtr = IntPtr.Zero;
+                        if (getName(item, 0x80058000, &namePtr) == 0) {
+                            string? path = Marshal.PtrToStringUni(namePtr);
+                            if (!string.IsNullOrEmpty(path)) files.Add(path);
+                            Marshal.FreeCoTaskMem(namePtr);
+                        }
+                        delegate* unmanaged[Stdcall]<IntPtr, uint> releaseChild = (delegate* unmanaged[Stdcall]<IntPtr, uint>)(*(IntPtr*)(ivt + 2 * IntPtr.Size));
+                        releaseChild(item);
+                    }
+                }
+            }
+            return files;
+        }
         [UnmanagedCallersOnly(CallConvs = new[] { typeof(CallConvStdcall) })] public static unsafe int GetFlags(IntPtr _this, uint* p) { *p = (uint)(((UniversalObject*)_this)->Data == -1 ? 1 : 0); return 0; }
         
         [UnmanagedCallersOnly(CallConvs = new[] { typeof(CallConvStdcall) })]
