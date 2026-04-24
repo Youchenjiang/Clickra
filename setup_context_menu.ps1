@@ -58,6 +58,13 @@ function Install-Project {
     Smart-Copy $exeSource "$installDir\${AppName}.exe"
     & "$installDir\${AppName}.exe" --deploy "$installDir" | Out-Null
     
+    # 2. 強制開啟側載權限 (修復 0x80073CFF 錯誤)
+    Write-Host "正在配置系統側載權限..." -ForegroundColor Gray
+    $unlockPath = "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\AppModelUnlock"
+    if (-not (Test-Path $unlockPath)) { New-Item $unlockPath -Force | Out-Null }
+    Set-ItemProperty -Path $unlockPath -Name "AllowAllTrustedApps" -Value 1 -Type DWord -Force
+    Set-ItemProperty -Path $unlockPath -Name "AllowDevelopmentWithoutDevLicense" -Value 1 -Type DWord -Force
+
     $shellDll = Join-Path $installDir "${AppName}Shell.dll"
 
     # 2. 憑證與簽署
