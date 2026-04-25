@@ -1,7 +1,7 @@
 # setup_context_menu.ps1
 $ErrorActionPreference = "Stop"
 $AppName = "Clickra"
-$Version = "3.0.0.6"
+$Version = "3.0.2.0"
 
 # 0. 自動提升權限 (Auto-Elevation)
 if (-not ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)) {
@@ -105,24 +105,35 @@ function Install-Project {
     Set-AuthenticodeSignature -FilePath $exePath -Certificate $cert | Out-Null
     Set-AuthenticodeSignature -FilePath $shellDll -Certificate $cert | Out-Null
 
-    # 5. 註冊 Windows 11 稀疏封裝
-    Write-Host "正在註冊封裝身分..." -ForegroundColor Gray
-    try {
-        Get-AppxPackage -Name "$AppName`SparsePackage" | Remove-AppxPackage -ErrorAction SilentlyContinue
-        
-        # 智慧版本同步：將 AppxManifest 的版本與執行檔同步
-        $exeVersion = (Get-Item "$installDir\$AppName.exe").VersionInfo.FileVersion
-        if ($exeVersion -match "^\d+\.\d+\.\d+$") { $exeVersion += ".0" } # 補足四位元數
-        $manifestPath = "$installDir\AppxManifest.xml"
-        [xml]$manifest = Get-Content $manifestPath
-        $manifest.Package.Identity.Version = $exeVersion
-        $manifest.Save($manifestPath)
-        Write-Host "已同步封裝版本至: $exeVersion" -ForegroundColor Gray
-
-        Add-AppxPackage -Path "$manifestPath" -Register -ExternalLocation $installDir
-    } catch {
-        Write-Host "封裝註冊失敗！詳情: $($_.Exception.Message)" -ForegroundColor Red
-        Throw
+    # 5. 註冊 Windows 11 稀疏封裝 (僅支援 Win11 Build 22000+)
+    $isWin11 = [Environment]::OSVersion.Version.Build -ge 22000
+    if ($isWin11) {
+        Write-Host "偵測到 Windows 11，正在註冊現代化選單封裝..." -ForegroundColor Gray
+        try {
+            # 徹底靜音舊封裝移除
+            $oldPkg = Get-AppxPackage -Name "$AppName`SparsePackage" -ErrorAction SilentlyContinue
+            if ($null -ne $oldPkg) {
+                $oldPkg | Remove-AppxPackage -ErrorAction SilentlyContinue | Out-Null
+            }
+            
+            # 智慧版本同步：將 AppxManifest 的版本與執行檔同步
+            $exeFile = Get-Item (Join-Path $installDir "$AppName.exe")
+            $exeVersion = $exeFile.VersionInfo.FileVersion
+            if ($exeVersion -match "^\d+\.\d+\.\d+$") { $exeVersion += ".0" } 
+            
+            $manifestPath = Join-Path $installDir "AppxManifest.xml"
+            [xml]$manifest = Get-Content $manifestPath -Encoding UTF8
+            $manifest.Package.Identity.Version = $exeVersion
+            $manifest.Save($manifestPath)
+            
+            Add-AppxPackage -Path "$manifestPath" -Register -ExternalLocation $installDir -ErrorAction Stop | Out-Null
+            Write-Host "✅ 現代選單註冊成功 (版本: $exeVersion)" -ForegroundColor Green
+        } catch {
+            Write-Host "⚠️ 現代選單註冊失敗，但主程式已部署。可能原因：開發人員模式未完全開啟。 詳情: $($_.Exception.Message)" -ForegroundColor Yellow
+        }
+    } else {
+        Write-Host "ℹ️ 偵測到 Windows 10 或更舊版本。" -ForegroundColor Yellow
+        Write-Host "提示：Windows 11 之前的系統不支援現代化子選單。此工具目前僅針對 Windows 11 優化。" -ForegroundColor Gray
     }
 
     # 7. 完成提示
