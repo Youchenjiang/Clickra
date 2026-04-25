@@ -1,3 +1,4 @@
+param(
     [Parameter(Mandatory=$false)]
     [ValidateSet("major", "minor", "patch", "revision")]
     [string]$Type = "revision",
@@ -51,6 +52,21 @@ Set-Content $manifestPath $newManifest -NoNewline
 $installer = Get-Content $installerPath -Raw
 $newInstaller = $installer -replace '\$Version = "[\d\.]+"', "`$Version = ""$newVersion"""
 Set-Content $installerPath $newInstaller -NoNewline
+
+# 4. 更新 README 檔案
+$readmeFiles = @("README.md", "README.zh-TW.md")
+foreach ($f in $readmeFiles) {
+    if (Test-Path $f) {
+        $content = Get-Content $f -Raw
+        # 更新標題 (# Clickra vX.X.X.X)
+        $content = $content -replace '(# Clickra v)[\d\.]+', "`${1}$newVersion"
+        # 更新表格中的「當前」版本 (支援有無空格的情況)
+        $content = $content -replace '(\*\*v)[\d\.]+(\*\*\s*\|\s*\*\*當前\*\*)', "`${1}$newVersion`${2}"
+        $content = $content -replace '(\*\*v)[\d\.]+(\*\*\s*\|\s*\*\*Current\*\*)', "`${1}$newVersion`${2}"
+        Set-Content $f $content -NoNewline
+        Write-Host "📝 已同步文檔: $f" -ForegroundColor Gray
+    }
+}
 
 Write-Host "✅ 所有檔案已同步完成！" -ForegroundColor Green
 

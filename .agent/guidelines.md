@@ -3,7 +3,7 @@
 ## 1. Git 完整性
 - **禁止 Nuke-and-Pave**：嚴禁刪除舊檔案再新增同名檔案。改名必須使用 `git mv`。
 - **原子化提交**：一個 Commit 只做一件事。更名與邏輯修改必須分開。
-- **版本號同步**：每次修改功能或 UI 後，必須執行 `powershell -File scripts/bump_version.ps1 -Build` 增加 Revision、同步版本號並自動重新編譯產物，以確保 Windows 11 選單快取刷新且 DLL 內容與版本一致。
+- **版本號同步**：每次修改功能或 UI 後，必須執行 `powershell -File scripts/bump_version.ps1 -Build` 增加 Revision、同步版本號（含 README 文檔）並自動重新編譯產物，以確保 Windows 11 選單快取刷新且內外版本一致。
 - **Commit 審核**：在執行 Commit 之前，必須執行 `git status` 確認沒有暫存 test 垃圾。
 
 ## 2. 代碼穩定性
