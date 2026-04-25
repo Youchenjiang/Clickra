@@ -1,0 +1,63 @@
+name: Release Clickra
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  build:
+    runs-on: windows-latest
+    permissions:
+      contents: write
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: '10.0.x' # 根據專案使用的版本
+        include-prerelease: true
+
+    - name: Install NativeAOT Dependencies
+      run: |
+        # windows-latest 已內建 Visual Studio 編譯工具，通常不需額外安裝
+
+    - name: Build Clickra CLI (NativeAOT)
+      run: dotnet publish src/Clickra.CLI/Clickra.csproj -c Release -r win-x64 --output ./publish
+
+    - name: Build Clickra Shell Extension (NativeAOT)
+      run: dotnet publish src/ClickraShell/ClickraShell.csproj -c Release -r win-x64 --output ./publish
+
+    - name: Prepare Release Package
+      run: |
+        # 建立只包含發佈所需檔案的資料夾
+        mkdir release_pkg
+        copy ./publish/Clickra.exe release_pkg/
+        copy ./setup_context_menu.ps1 release_pkg/
+        copy ./README.zh-TW.md release_pkg/README.txt
+        
+    - name: Zip Release
+      shell: pwsh
+      run: Compress-Archive -Path ./release_pkg/* -DestinationPath Clickra.zip
+
+    - name: Create Release
+      uses: softprops/action-gh-release@v2
+      with:
+        files: Clickra.zip
+        body: |
+          ## 🚀 Clickra Release ${{ github.ref_name }}
+          
+          ### 📦 Package Contents
+          - `Clickra.exe`: The core engine (Standalone NativeAOT).
+          - `setup_context_menu.ps1`: The smart installer.
+          
+          ### 🛠️ Installation
+          1. Download `Clickra.zip`.
+          2. Extract all files.
+          3. Right-click `setup_context_menu.ps1` and select "Run with PowerShell".
+        draft: false
+        prerelease: false
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
