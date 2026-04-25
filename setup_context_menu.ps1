@@ -1,7 +1,7 @@
 # setup_context_menu.ps1
 $ErrorActionPreference = "Stop"
 $AppName = "Clickra"
-$Version = "3.0.0.4"
+$Version = "3.0.0.6"
 
 # 0. 自動提升權限 (Auto-Elevation)
 if (-not ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)) {
