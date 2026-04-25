@@ -1,53 +1,116 @@
-# ⚡ Clickra v3.0.0
+# Clickra v3.0
 
-**Clickra** 是一個專為 Windows 11 設計的高性能、原生右鍵選單工具套件。
+這是一個專為 Windows 11 設計的高性能原生右鍵選單工具套件。採用 C# NativeAOT 技術開發，徹底取代啟動緩慢的 Python 腳本，提供毫秒級的即時響應。
 
-透過採用 **C# NativeAOT** 技術，Clickra 徹底解決了傳統腳本工具啟動緩慢的問題，提供毫秒級的即時響應體驗，讓檔案處理變得像系統原生功能一樣流暢。
-
----
-
-## ✨ 核心特性
-
-*   **極速響應**：啟動延遲 < 0.01 秒，體感零延遲。
-*   **零依賴 (Zero-Dependency)**：無需安裝 .NET Runtime 或 Python，純原生二進位執行。
-*   **情境感知 (Context-Aware)**：智慧偵測選取檔案，只顯示相關功能，保持選單清爽。
-*   **工業級穩定性**：支援檔案鎖定自動繞過與無感更新。
-*   **專業安裝引擎**：一鍵部署、自動提權、數位簽章與現代選單註冊。
+[English Version (英文版)](README.md)
 
 ---
 
-## 🛠️ 功能概覽
+## 📌 為什麼選擇 Clickra？
 
-*   📄 **簡報轉 PDF**：背景靜默呼叫 PowerPoint 引擎，支持多檔批量處理。
-*   🔗 **PDF 合併**：極速將多份 PDF 依序合併，自動清理暫存資源。
-*   🖼️ **圖片合併成 PDF**：無損封裝多張圖片為多頁 PDF。
-*   🎞️ **圖片垂直拼接**：自動對齊並垂直拼接多張圖片，適合製作長圖。
+大多數生產力腳本（如 PDF 合併、圖片轉檔）通常使用 Python 編寫。雖然開發快速，但 Python 每次執行都有 **1-2 秒的「冷啟動」延遲**。對於右鍵選單這種頻繁操作來說，這幾秒鐘的等待非常破壞節奏。
+
+**Clickra** 採用 **NativeAOT (原生預編譯)** 技術：
+*   **啟動速度 < 0.01 秒**：體感上完全沒有延遲，感覺就像是 Windows 內建的功能。
+*   **零依賴**：不需要安裝 .NET Runtime 或 Python 環境，點開即用。
+*   **現代外觀**：完全整合進 Windows 11 的現代右鍵選單，支援優雅的「子選單」架構。
 
 ---
 
-## 🚀 快速開始
+## 📜 版本演進
 
-為了達到極致的簡捷，Clickra 採用了 **「資產隱寫 (Asset Embedding)」** 技術，分發包僅包含兩個核心檔案：
+| 版本       | 日期       | 關鍵里程碑                                                             |
+| :--------- | :--------- | :--------------------------------------------------------------------- |
+| **v1.0.0** | 2025/12/07 | 初始版本 (Python 遺產)。                                               |
+| **v2.0.0** | 2026/04/21 | 轉型 C# CLI 並導入互動式安裝程式。                                     |
+| **v3.0.0** | **當前**   | **NativeAOT Shell Extension**。全面支援 Win11 現代選單與資產隱寫打包。 |
 
-1.  `Clickra.exe` (主程式，內置所有選單組件)
+---
+
+## ✨ 核心功能
+
+### 1. 📂 現代化子選單 (Windows 11 Only)
+所有功能皆優雅地收納在 `Clickra` 子選單中，避免佔用一級選單空間，保持桌面簡潔。
+
+### 2. 📄 簡報轉 PDF (PPT/PPTX to PDF)
+*   **功能**：在背景靜默呼叫 PowerPoint 引擎進行高品質轉檔。
+*   **特色**：支援多選檔案，一次處理多個簡報而不會彈出多個視窗。
+
+### 3. 🔗 PDF 合併 (PDF Merge)
+*   **功能**：將選取的多份 PDF 依照檔名順序合併為單一檔案。
+*   **特色**：極速處理，並自動清理臨時資源。
+
+### 4. 🖼️ 圖片轉 PDF (Images to PDF)
+*   **功能**：將多張圖片（JPG, PNG, WebP 等）直接封裝成一份多頁 PDF。
+*   **特色**：不損畫質，保留原始解析度。
+
+### 5. 🎞️ 圖片垂直拼接 (Image Stitch)
+*   **功能**：將多張圖片垂直「黏合」成一張超長圖。
+*   **特色**：自動對齊，適合製作長圖或網頁截圖拼接。
+
+---
+
+## 🚀 專業安裝流程 (兩檔流)
+
+為了達到極致的簡潔，我們採用了 **「資產隱寫 (Asset Embedding)」** 技術。您的分發包中只需要有：
+1.  `Clickra.exe` (主程式，內置所有選單資源)
 2.  `setup_context_menu.ps1` (智慧安裝腳本)
 
 ### 安裝步驟：
-1.  下載專案。
-2.  右鍵點擊 `setup_context_menu.ps1`，選擇 **「使用 PowerShell 執行」**。
-3.  選擇安裝路徑後，腳本將自動完成憑證安裝與選單掛載。
+1.  右鍵點擊 `setup_context_menu.ps1`，選擇 **「使用 PowerShell 執行」**。
+2.  **選擇路徑**：您可以選擇預設路徑或輸入自訂的安裝位置。
+3.  **自動配置**：腳本會自動提取內置資源、註冊身分、安裝數位憑證並完成選單掛載。
+
+### 移除步驟：
+執行腳本並選擇 **「2. 移除工具」**，系統將自動清理註冊資訊並移除安裝資料夾。
 
 ---
 
-## 🧠 技術底層 (The Tech Behind Clickra)
+## 🛠️ 開發者指南 (Developer Guide)
 
-Clickra 是 Windows 開發領域的一次深度探索：
-*   **手寫 COM VTables**：在不使用標準 .NET COM Interop 的情況下，手動構建 `IExplorerCommand` 虛擬函數表。
-*   **稀疏封裝 (Sparse Packages)**：利用 Windows 11 的現代應用身分識別系統實作右鍵選單擴充。
-*   **資源隱寫 (Resource Steganography)**：在編譯期將 DLL 與 Manifest 封裝進執行檔資源，實作「兩檔流」安裝。
+如果您想要自訂功能或編譯自己的版本，請參考以下指南。
+
+### 1. 統一版本管理
+本專案採用 `src/Directory.Build.props` 進行全域版本控制。
+*   **如何更新版本**：只需修改該檔案中的 `<Version>` 標籤（例如 `3.1.1`）。
+*   **自動同步**：安裝腳本 `setup_context_menu.ps1` 會在執行時自動讀取執行檔版本，並同步更新選單身分清單 (`AppxManifest.xml`)。
+
+### 2. 編譯指令 (How to Build)
+由於採用了資產隱寫技術，編譯必須分為兩個階段：
+
+**第一階段：編譯選單組件 (DLL)**
+```powershell
+dotnet publish src\ClickraShell\ClickraShell.csproj -c Release -r win-x64 -p:PublishAot=true --output .
+```
+
+**第二階段：編譯主程式 (CLI)**
+這會將產出的 DLL 以及 `src/resources` 中的資產封裝進執行檔，並採用 NativeAOT 達成零依賴：
+```powershell
+dotnet publish src\Clickra.CLI\Clickra.csproj -c Release -r win-x64 --output .
+```
+
+### 3. 如何增加新功能
+1.  **核心邏輯**：在 `src/Clickra.CLI/Program.cs` 中增加新的命令處理分支。
+2.  **選單介面**：修改 `src/ClickraShell/ShellExtension.cs` 中的 `SubTitles` 與 `SubArgs` 陣列。
+3.  **重新編譯**：按照上述編譯順序重新產出 `Clickra.exe` 即可。
+
+---
+
+## 🧠 技術深度分享 (開發血淚史)
+
+在 **NativeAOT** 下開發 Shell Extension 是一場與 Windows 底層的博弈：
+
+### 1. 手寫 COM VTables
+NativeAOT 不支援標準的 `.NET COM Interop`。我們必須手動構建 `IExplorerCommand` 的虛擬函數表 (VTable)。
+*   **解法**：使用 `UniversalObject` 記憶體結構，將多個介面（Primary, Selection）整合進一個對齊的區塊，確保二進位級別的相容性。
+
+### 2. Windows 11 「影子介面」
+標準文件建議實作 `IExplorerCommand` 時使用官方 GUID。但 Windows 11 經常會詢問一些未公開的 **「影子 GUID」**。如果不支援這些 GUID，子選單的箭頭將無法顯示。
+
+### 3. VTable 槽位與堆疊平衡
+由於擴充功能運行在 `explorer.exe` 進程內，任何參數不匹配（例如 2 參數方法誤寫為 1 參數）都會導致堆疊失衡，進而引發整台電腦的檔案總管瞬間崩潰。
 
 ---
 
 ## 📄 許可協議
-本專案使用 MIT License。
-核心組件使用 **PDFsharp** (MIT License)。
+本專案使用 **PDFsharp** (MIT License)。

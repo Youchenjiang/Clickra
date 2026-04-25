@@ -1,4 +1,4 @@
-# ⚡ Windows ContextTools v3.0
+# Clickra v3.0
 
 A high-performance, native context menu utility suite for Windows 11. Powered by C# NativeAOT, it provides sub-millisecond responsiveness, replacing slow Python scripts with a truly native user experience.
 
@@ -6,11 +6,11 @@ A high-performance, native context menu utility suite for Windows 11. Powered by
 
 ---
 
-## 📌 Why ContextTools?
+## 📌 Why Clickra?
 
 Most productivity scripts (PDF merging, image conversion, etc.) are typically written in Python. While powerful, Python suffers from a **1-2 second "cold start" delay** every time you run a script. For context menu actions, this delay feels like an eternity.
 
-**ContextTools** is built using **NativeAOT (Native Ahead-of-Time)** technology:
+**Clickra** is built using **NativeAOT (Native Ahead-of-Time)** technology:
 *   **Zero Latency**: Starts in **less than 0.01 seconds**. It feels instantaneous, just like a built-in Windows feature.
 *   **Zero Dependencies**: No need to install .NET Runtime or Python. It's a truly self-contained binary.
 *   **Modern Aesthetics**: Fully integrated into the Windows 11 modern context menu with a sleek sub-menu architecture.
@@ -30,7 +30,7 @@ Most productivity scripts (PDF merging, image conversion, etc.) are typically wr
 ## ✨ Core Features
 
 ### 1. 📂 Modern Sub-menu (Windows 11 Only)
-Commands are elegantly tucked away in the `ContextTools (⚡)` sub-menu, keeping your primary context menu clean and uncluttered.
+Commands are elegantly tucked away in the `Clickra` sub-menu, keeping your primary context menu clean and uncluttered.
 
 ### 2. 📄 PPT/PPTX to PDF
 *   **Feature**: Silently exports PowerPoint presentations to high-quality PDFs in the background.
@@ -53,7 +53,7 @@ Commands are elegantly tucked away in the `ContextTools (⚡)` sub-menu, keeping
 ## 🚀 Professional Installation (Two-File Bundle)
 
 To achieve maximum minimalism, we use **Asset Embedding** technology. Your distribution package only needs two files:
-1.  `ContextTools.exe` (The engine, containing all menu assets)
+1.  `Clickra.exe` (The engine, containing all menu assets)
 2.  `setup_context_menu.ps1` (The smart installer)
 
 ### Installation:
@@ -69,12 +69,12 @@ Run the script and choose **"2. Remove Tool"**. It will automatically unregister
 ## 🛠️ Developer & Architecture
 
 ### Project Structure
-- `src/ContextTools.CLI`: Core logic for file processing.
-- `src/ContextToolsShell`: NativeAOT implementation of the COM Shell Extension.
+- `src/Clickra.CLI`: Core logic for file processing.
+- `src/ClickraShell`: NativeAOT implementation of the COM Shell Extension.
 - `src/resources`: Identity manifests and visual assets.
 
 ### Technology: Stealth Asset Deployment
-`ContextTools.exe` embeds `AppxManifest.xml`, `app.png`, and `ContextToolsShell.dll` as resources. The `--deploy` flag extracts these components on-the-fly, enabling a "Zero Side-car" distribution model.
+`Clickra.exe` embeds `AppxManifest.xml`, `app.png`, and `ClickraShell.dll` as resources. The `--deploy` flag extracts these components on-the-fly, enabling a "Zero Side-car" distribution model.
 
 ---
 
