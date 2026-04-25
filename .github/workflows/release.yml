@@ -4,6 +4,7 @@ on:
   push:
     tags:
       - 'v*'
+  workflow_dispatch: # 允許手動從介面執行測試
 
 jobs:
   build:
@@ -24,11 +25,13 @@ jobs:
       run: |
         # windows-latest 已內建 Visual Studio 編譯工具，通常不需額外安裝
 
+    - name: Build Clickra Shell Extension (NativeAOT)
+      run: |
+        dotnet publish src/ClickraShell/ClickraShell.csproj -c Release -r win-x64 --output ./publish_shell
+        copy ./publish_shell/ClickraShell.dll ./ClickraShell.dll
+
     - name: Build Clickra CLI (NativeAOT)
       run: dotnet publish src/Clickra.CLI/Clickra.csproj -c Release -r win-x64 --output ./publish
-
-    - name: Build Clickra Shell Extension (NativeAOT)
-      run: dotnet publish src/ClickraShell/ClickraShell.csproj -c Release -r win-x64 --output ./publish
 
     - name: Prepare Release Package
       run: |
