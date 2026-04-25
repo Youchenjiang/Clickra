@@ -94,4 +94,5 @@ Because the extension runs inside `explorer.exe`, any stack imbalance (like a mi
 ---
 
 ## 📄 License
-This project uses **PDFsharp** (MIT License).
+This project is licensed under the **Apache License 2.0**.
+Core components use **PDFsharp** (MIT License).
