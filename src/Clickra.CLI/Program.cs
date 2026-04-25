@@ -94,8 +94,11 @@ namespace Clickra
             {
                 Console.WriteLine($"Error: {ex.Message}");
                 Console.WriteLine(ex.StackTrace);
-                Console.WriteLine("Press any key to exit...");
-                Console.ReadKey(); // Wait so user can see what failed instead of window instantly closing
+                if (Environment.UserInteractive && !Console.IsInputRedirected)
+                {
+                    Console.WriteLine("Press any key to exit...");
+                    Console.ReadKey();
+                }
             }
         }
 
@@ -189,6 +192,8 @@ try {{
             foreach (var f in files)
             {
                 Console.WriteLine($"Adding image: {f}");
+                // In PDFsharp 6, it's safer to ensure the file exists and is accessible
+                if (!File.Exists(f)) throw new FileNotFoundException("Image file not found", f);
                 using var ximg = XImage.FromFile(f);
                 var page = doc.AddPage();
                 
