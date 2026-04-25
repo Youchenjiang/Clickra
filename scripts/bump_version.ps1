@@ -1,7 +1,9 @@
-param(
     [Parameter(Mandatory=$false)]
     [ValidateSet("major", "minor", "patch", "revision")]
-    [string]$Type = "revision"
+    [string]$Type = "revision",
+    
+    [Parameter(Mandatory=$false)]
+    [switch]$Build
 )
 
 $ErrorActionPreference = "Stop"
@@ -51,3 +53,10 @@ $newInstaller = $installer -replace '\$Version = "[\d\.]+"', "`$Version = ""$new
 Set-Content $installerPath $newInstaller -NoNewline
 
 Write-Host "✅ 所有檔案已同步完成！" -ForegroundColor Green
+
+if ($Build) {
+    Write-Host "`n🏗️ 正在開始自動編譯 (NativeAOT)..." -ForegroundColor Cyan
+    dotnet publish src/Clickra.CLI/Clickra.csproj -c Release -r win-x64 --output .
+    dotnet publish src/ClickraShell/ClickraShell.csproj -c Release -r win-x64 --output .
+    Write-Host "🚀 編譯產物已更新！" -ForegroundColor Green
+}
