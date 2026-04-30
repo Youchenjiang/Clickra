@@ -26,7 +26,8 @@ namespace Clickra
         {
             if (args.Length == 0 || args[0] == "-v" || args[0] == "--version")
             {
-                Console.WriteLine("Clickra v3.0.0 (Modern Shell Edition)");
+                var version = Assembly.GetExecutingAssembly().GetName().Version?.ToString(3) ?? "3.0.2";
+                Console.WriteLine($"Clickra v{version} (Modern Shell Edition)");
                 Console.WriteLine("Author: Youchen Jiang");
                 Console.WriteLine("Commands: ppt2pdf, merge-pdf, img2pdf, img-merge, img-stitch, --deploy");
                 return;
