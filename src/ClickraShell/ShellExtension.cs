@@ -3,31 +3,22 @@ using System.Diagnostics;
 using System.IO;
 using System.Text;
 using System.Runtime.CompilerServices;
+using System.Globalization;
+using System.Xml.Linq;
+
+// Win32 API for dynamic DLL path resolution
+internal static partial class Kernel32
+{
+    [DllImport("kernel32.dll", CharSet = CharSet.Unicode)]
+    public static extern bool GetModuleHandleExW(uint dwFlags, IntPtr lpModuleName, out IntPtr phModule);
+
+    [DllImport("kernel32.dll", CharSet = CharSet.Unicode)]
+    public static extern uint GetModuleFileNameW(IntPtr hModule, unsafe char* lpFilename, uint nSize);
+}
 
 namespace ClickraShell
 {
-    public static class Logger
-    {
-        private static readonly string LogPath = Path.Combine(Path.GetTempPath(), "Clickra.log");
-        public static void Log(string message)
-        {
-            try { File.AppendAllText(LogPath, $"[{DateTime.Now:HH:mm:ss}] {message}\n"); } catch { }
-        }
-    }
-
-    internal static class Guids
-    {
-        public static readonly Guid Clsid = new Guid("FA2159B5-1234-4567-89AB-CDEF12345678");
-        public static readonly Guid IID_IUnknown = new Guid("00000000-0000-0000-C000-000000000046");
-        public static readonly Guid IID_IClassFactory = new Guid("00000001-0000-0000-C000-000000000046");
-        public static readonly Guid IID_IExplorerCommand = new Guid("a08ce4d0-fa25-44ab-b57c-c7b1c323e0b9");
-        public static readonly Guid IID_IExplorerCommand_Alt = new Guid("ea5d0de4-770d-4da0-a9f8-d7f9a140ff79");
-        public static readonly Guid IID_IEnumExplorerCommand = new Guid("bc141877-0130-4ad3-9111-92a2a0de599c");
-        public static readonly Guid IID_IEnumExplorerCommand_Alt = new Guid("a88826f8-186f-4987-aade-ea0cef8fbfe8");
-        public static readonly Guid IID_IObjectWithSelection = new Guid("1ac7516e-e6bb-4a69-b63f-e841904dc5a6");
-    }
-
-    internal enum ComObjectType { Factory = 0, Command = 1, Enum = 2 }
+    internal enum ComObjectType { Factory, Command, Enum }
 
     [StructLayout(LayoutKind.Sequential)]
     internal struct UniversalObject
@@ -38,6 +29,18 @@ namespace ClickraShell
         public ComObjectType Type;
         public int Data;
         public IntPtr ShellItems;
+    }
+
+    internal static class Guids
+    {
+        public static readonly Guid Clsid = new("FA2159B5-1031-4A51-B1A3-417A20B16B4D");
+        public static readonly Guid IID_IUnknown = new("00000000-0000-0000-C000-000000000046");
+        public static readonly Guid IID_IClassFactory = new("00000001-0000-0000-C000-000000000046");
+        public static readonly Guid IID_IExplorerCommand = new("a08ce4d0-fa25-44ab-b57c-c7b3c3ef1cf0");
+        public static readonly Guid IID_IExplorerCommand_Alt = new("a08ce4d0-fa25-44ab-b57c-c7b3c3ef1cf0");
+        public static readonly Guid IID_IEnumExplorerCommand = new("c5740441-fa60-492d-944c-354313f8c7b6");
+        public static readonly Guid IID_IEnumExplorerCommand_Alt = new("c5740441-fa60-492d-944c-354313f8c7b6");
+        public static readonly Guid IID_IObjectWithSelection = new("b196b287-bab4-101a-b69c-00aa00341d07");
     }
 
     public class Exporter
@@ -118,9 +121,44 @@ namespace ClickraShell
         }
     }
 
+    internal static class ShellUtils
+    {
+        public static string GetModuleDir()
+        {
+            IntPtr fnPtr = (IntPtr)(delegate* unmanaged[Stdcall]<IntPtr, uint>)&ComMethods.PrimaryAddRef;
+            if (Kernel32.GetModuleHandleExW(6, fnPtr, out IntPtr hModule))
+            {
+                unsafe
+                {
+                    char* buf = stackalloc char[260];
+                    uint len = Kernel32.GetModuleFileNameW(hModule, buf, 260);
+                    if (len > 0) return Path.GetDirectoryName(new string(buf, 0, (int)len)) ?? string.Empty;
+                }
+            }
+            return string.Empty;
+        }
+
+        public static string GetString(string key)
+        {
+            try
+            {
+                string dir = GetModuleDir();
+                bool isEn = CultureInfo.CurrentUICulture.Name.StartsWith("en", StringComparison.OrdinalIgnoreCase);
+                string resPath = Path.Combine(dir, "Strings", isEn ? "en-us" : "zh-tw", "Resources.resw");
+                
+                if (!File.Exists(resPath)) return key;
+
+                var doc = XDocument.Load(resPath);
+                var data = doc.Root?.Elements("data").FirstOrDefault(e => e.Attribute("name")?.Value == key);
+                return data?.Element("value")?.Value ?? key;
+            }
+            catch { return key; }
+        }
+    }
+
     internal static class ComMethods
     {
-        private static readonly string[] SubTitles = { "簡報轉 PDF", "PDF 合併", "圖片轉 PDF", "圖片合併成 PDF", "圖片垂直拼接" };
+        private static readonly string[] MenuKeys = { "Menu_Ppt2Pdf", "Menu_MergePdf", "Menu_Img2Pdf", "Menu_ImgMerge", "Menu_ImgStitch" };
         private static readonly string[] SubArgs = { "ppt2pdf", "merge-pdf", "img2pdf", "img-merge", "img-stitch" };
 
         internal static unsafe int CreateObject(IntPtr vt, Guid* riid, IntPtr* ppv, ComObjectType type, int data = -1)
@@ -132,9 +170,6 @@ namespace ClickraShell
             ReleaseInternal(instance);
             return hr;
         }
-
-        [UnmanagedCallersOnly(CallConvs = new[] { typeof(CallConvStdcall) })] public static unsafe int PrimaryQI(IntPtr _this, Guid* riid, IntPtr* ppv) => QIInternal(_this, riid, ppv);
-        [UnmanagedCallersOnly(CallConvs = new[] { typeof(CallConvStdcall) })] public static unsafe int SelectionQI(IntPtr _this, Guid* riid, IntPtr* ppv) => QIInternal(_this - IntPtr.Size, riid, ppv);
 
         internal static unsafe int QIInternal(IntPtr basePtr, Guid* riid, IntPtr* ppv)
         {
@@ -172,109 +207,78 @@ namespace ClickraShell
         public static unsafe int GetTitle(IntPtr _this, IntPtr psi, IntPtr* ppsz)
         {
             int idx = ((UniversalObject*)_this)->Data;
-            string t = (idx == -1) ? "Clickra" : SubTitles[idx];
+            string t = (idx == -1) ? "Clickra" : ShellUtils.GetString(MenuKeys[idx]);
             *ppsz = Marshal.StringToCoTaskMemUni(t); return 0;
         }
+
         [UnmanagedCallersOnly(CallConvs = new[] { typeof(CallConvStdcall) })]
         public static unsafe int GetIcon(IntPtr _this, IntPtr psi, IntPtr* ppsz)
         {
-            if (((UniversalObject*)_this)->Data == -1) {
-                string path = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Clickra", "app.png");
-                *ppsz = Marshal.StringToCoTaskMemUni(path); return 0;
+            *ppsz = IntPtr.Zero;
+            if (((UniversalObject*)_this)->Data == -1)
+            {
+                string iconPath = Path.Combine(ShellUtils.GetModuleDir(), "app.png");
+                if (File.Exists(iconPath)) { *ppsz = Marshal.StringToCoTaskMemUni(iconPath); return 0; }
             }
-            return -2147467263;
+            return -2147467263; // E_NOTIMPL
         }
+
         [UnmanagedCallersOnly(CallConvs = new[] { typeof(CallConvStdcall) })] public static unsafe int GetToolTip(IntPtr _this, IntPtr psi, IntPtr* p) { *p = IntPtr.Zero; return 0; }
         [UnmanagedCallersOnly(CallConvs = new[] { typeof(CallConvStdcall) })] public static unsafe int GetCanonicalName(IntPtr _this, Guid* p) { *p = Guid.Empty; return 0; }
+        
         [UnmanagedCallersOnly(CallConvs = new[] { typeof(CallConvStdcall) })]
         public static unsafe int GetState(IntPtr _this, IntPtr psi, int slow, uint* p)
         {
             var obj = (UniversalObject*)_this;
             int idx = obj->Data;
-            
-            // ECS_ENABLED = 0, ECS_HIDDEN = 2
             *p = 2; // Default: Hidden
             
-            // Sub-commands may not get psi. Use ShellItems from IObjectWithSelection.
-            IntPtr selection = (psi != IntPtr.Zero) ? psi : obj->ShellItems;
-            if (selection == IntPtr.Zero) return 0;
+            if (idx == -1) { *p = 0; return 0; } // Root always enabled
 
-            try {
-                var files = GetSelectedFiles(selection);
-                if (files.Count == 0) return 0;
+            var files = GetFiles(psi);
+            if (files.Count == 0) return 0;
 
-                bool matches = false;
-                if (idx == -1) {
-                    // 主選單：只要有任何一個功能符合就顯示
-                    matches = IsMatch(0, files) || IsMatch(1, files) || IsMatch(2, files) || IsMatch(3, files) || IsMatch(4, files);
-                } else {
-                    matches = IsMatch(idx, files);
-                }
-
-                if (matches) *p = 0;
-            } catch {
-                *p = 0; // 出錯時保險起見顯示出來
-            }
-
+            string ext = Path.GetExtension(files[0]).ToLowerInvariant();
+            bool ok = idx switch {
+                0 => ext == ".ppt" || ext == ".pptx",
+                1 => ext == ".pdf",
+                2 or 3 or 4 => new[] { ".jpg", ".jpeg", ".png", ".bmp", ".gif", ".tiff", ".webp" }.Contains(ext),
+                _ => false
+            };
+            if (ok) *p = 0; // ECS_ENABLED
             return 0;
         }
 
-        private static bool IsMatch(int idx, List<string> files)
-        {
-            switch (idx) {
-                case 0: // PPT2PDF: 至少一個檔案，且全為 PPT
-                    return files.Count >= 1 && files.All(f => f.EndsWith(".ppt", StringComparison.OrdinalIgnoreCase) || f.EndsWith(".pptx", StringComparison.OrdinalIgnoreCase));
-                case 1: // Merge PDF: 至少兩個 PDF
-                    return files.Count >= 2 && files.All(f => f.EndsWith(".pdf", StringComparison.OrdinalIgnoreCase));
-                case 2: // Image2PDF (1:1): 至少一個圖片
-                {
-                    string[] imgExts = { ".png", ".jpg", ".jpeg", ".bmp", ".gif", ".tiff", ".webp" };
-                    return files.Count >= 1 && files.All(f => imgExts.Any(ext => f.EndsWith(ext, StringComparison.OrdinalIgnoreCase)));
-                }
-                case 3: // Image Merge (N:1): 至少兩個圖片
-                {
-                    string[] imgExts = { ".png", ".jpg", ".jpeg", ".bmp", ".gif", ".tiff", ".webp" };
-                    return files.Count >= 2 && files.All(f => imgExts.Any(ext => f.EndsWith(ext, StringComparison.OrdinalIgnoreCase)));
-                }
-                case 4: // ImageStitch: 至少兩個圖片
-                {
-                    string[] imgExts = { ".png", ".jpg", ".jpeg", ".bmp", ".gif", ".tiff", ".webp" };
-                    return files.Count >= 2 && files.All(f => imgExts.Any(ext => f.EndsWith(ext, StringComparison.OrdinalIgnoreCase)));
-                }
-                default:
-                    return false;
-            }
-        }
-
-        private static unsafe List<string> GetSelectedFiles(IntPtr psi)
+        private static unsafe List<string> GetFiles(IntPtr psi)
         {
             var files = new List<string>();
-            if (psi == IntPtr.Zero) return files;
-
-            IntPtr vt = *(IntPtr*)psi;
-            delegate* unmanaged[Stdcall]<IntPtr, uint*, int> getCount = (delegate* unmanaged[Stdcall]<IntPtr, uint*, int>)(*(IntPtr*)(vt + 7 * IntPtr.Size));
-            delegate* unmanaged[Stdcall]<IntPtr, uint, IntPtr*, int> getItemAt = (delegate* unmanaged[Stdcall]<IntPtr, uint, IntPtr*, int>)(*(IntPtr*)(vt + 8 * IntPtr.Size));
-            
-            uint count = 0;
-            if (getCount(psi, &count) == 0) {
-                for (uint i = 0; i < count; i++) {
-                    IntPtr item = IntPtr.Zero;
-                    if (getItemAt(psi, i, &item) == 0) {
-                        IntPtr ivt = *(IntPtr*)item;
-                        delegate* unmanaged[Stdcall]<IntPtr, uint, IntPtr*, int> getName = (delegate* unmanaged[Stdcall]<IntPtr, uint, IntPtr*, int>)(*(IntPtr*)(ivt + 5 * IntPtr.Size));
-                        IntPtr namePtr = IntPtr.Zero;
-                        if (getName(item, 0x80058000, &namePtr) == 0) {
-                            string? path = Marshal.PtrToStringUni(namePtr);
-                            if (!string.IsNullOrEmpty(path)) files.Add(path);
-                            Marshal.FreeCoTaskMem(namePtr);
+            if (psi != IntPtr.Zero)
+            {
+                IntPtr vt = *(IntPtr*)psi;
+                delegate* unmanaged[Stdcall]<IntPtr, uint*, int> getCount = (delegate* unmanaged[Stdcall]<IntPtr, uint*, int>)(*(IntPtr*)(vt + 7 * IntPtr.Size));
+                delegate* unmanaged[Stdcall]<IntPtr, uint, IntPtr*, int> getItemAt = (delegate* unmanaged[Stdcall]<IntPtr, uint, IntPtr*, int>)(*(IntPtr*)(vt + 8 * IntPtr.Size));
+                uint count = 0;
+                if (getCount(psi, &count) == 0) {
+                    for (uint i = 0; i < count; i++) {
+                        IntPtr item = IntPtr.Zero;
+                        if (getItemAt(psi, i, &item) == 0) {
+                            IntPtr ivt = *(IntPtr*)item;
+                            delegate* unmanaged[Stdcall]<IntPtr, uint, IntPtr*, int> getName = (delegate* unmanaged[Stdcall]<IntPtr, uint, IntPtr*, int>)(*(IntPtr*)(ivt + 5 * IntPtr.Size));
+                            IntPtr namePtr = IntPtr.Zero;
+                            if (getName(item, 0x80058000, &namePtr) == 0) {
+                                string? path = Marshal.PtrToStringUni(namePtr);
+                                if (!string.IsNullOrEmpty(path)) files.Add(path);
+                                Marshal.FreeCoTaskMem(namePtr);
+                            }
+                            delegate* unmanaged[Stdcall]<IntPtr, uint> releaseChild = (delegate* unmanaged[Stdcall]<IntPtr, uint>)(*(IntPtr*)(ivt + 2 * IntPtr.Size));
+                            releaseChild(item);
                         }
-                        delegate* unmanaged[Stdcall]<IntPtr, uint> releaseChild = (delegate* unmanaged[Stdcall]<IntPtr, uint>)(*(IntPtr*)(ivt + 2 * IntPtr.Size));
-                        releaseChild(item);
                     }
                 }
             }
             return files;
         }
+
         [UnmanagedCallersOnly(CallConvs = new[] { typeof(CallConvStdcall) })] public static unsafe int GetFlags(IntPtr _this, uint* p) { *p = (uint)(((UniversalObject*)_this)->Data == -1 ? 1 : 0); return 0; }
         
         [UnmanagedCallersOnly(CallConvs = new[] { typeof(CallConvStdcall) })]
@@ -294,35 +298,11 @@ namespace ClickraShell
             
             StringBuilder sb = new StringBuilder();
             sb.Append(SubArgs[idx]);
-            try {
-                if (psi != IntPtr.Zero) {
-                    IntPtr vt = *(IntPtr*)psi;
-                    delegate* unmanaged[Stdcall]<IntPtr, uint*, int> getCount = (delegate* unmanaged[Stdcall]<IntPtr, uint*, int>)(*(IntPtr*)(vt + 7 * IntPtr.Size));
-                    delegate* unmanaged[Stdcall]<IntPtr, uint, IntPtr*, int> getItemAt = (delegate* unmanaged[Stdcall]<IntPtr, uint, IntPtr*, int>)(*(IntPtr*)(vt + 8 * IntPtr.Size));
-                    uint count = 0;
-                    if (getCount(psi, &count) == 0) {
-                        for (uint i = 0; i < count; i++) {
-                            IntPtr item = IntPtr.Zero;
-                            if (getItemAt(psi, i, &item) == 0) {
-                                IntPtr ivt = *(IntPtr*)item;
-                                delegate* unmanaged[Stdcall]<IntPtr, uint, IntPtr*, int> getName = (delegate* unmanaged[Stdcall]<IntPtr, uint, IntPtr*, int>)(*(IntPtr*)(ivt + 5 * IntPtr.Size));
-                                IntPtr namePtr = IntPtr.Zero;
-                                if (getName(item, 0x80058000, &namePtr) == 0) {
-                                    string? path = Marshal.PtrToStringUni(namePtr);
-                                    if (!string.IsNullOrEmpty(path)) sb.Append(" \"").Append(path).Append("\"");
-                                    Marshal.FreeCoTaskMem(namePtr);
-                                }
-                                delegate* unmanaged[Stdcall]<IntPtr, uint> releaseChild = (delegate* unmanaged[Stdcall]<IntPtr, uint>)(*(IntPtr*)(ivt + 2 * IntPtr.Size));
-                                releaseChild(item);
-                            }
-                        }
-                    }
-                }
-            } catch { }
-            try {
-                string app = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Clickra", "Clickra.exe");
-                Process.Start(new ProcessStartInfo(app, sb.ToString()) { UseShellExecute = true });
-            } catch { }
+            var files = GetFiles(psi);
+            foreach (var f in files) sb.Append(" \"").Append(f).Append("\"");
+
+            string app = Path.Combine(ShellUtils.GetModuleDir(), "Clickra.exe");
+            if (File.Exists(app)) Process.Start(new ProcessStartInfo(app, sb.ToString()) { UseShellExecute = true });
             return 0;
         }
 
@@ -331,7 +311,7 @@ namespace ClickraShell
         {
             var p = (UniversalObject*)_this;
             uint f = 0; Guid iid = Guids.IID_IExplorerCommand;
-            while (f < celt && p->Data < SubTitles.Length) {
+            while (f < celt && p->Data < SubArgs.Length) {
                 CreateObject(Exporter.GetCommandVt(), &iid, &rgelt[f], ComObjectType.Command, p->Data);
                 p->Data++; f++;
             }
@@ -340,6 +320,6 @@ namespace ClickraShell
         }
         [UnmanagedCallersOnly(CallConvs = new[] { typeof(CallConvStdcall) })] public static unsafe int EnumSkip(IntPtr _this, uint c) { ((UniversalObject*)_this)->Data += (int)c; return 0; }
         [UnmanagedCallersOnly(CallConvs = new[] { typeof(CallConvStdcall) })] public static unsafe int EnumReset(IntPtr _this) { ((UniversalObject*)_this)->Data = 0; return 0; }
-        [UnmanagedCallersOnly(CallConvs = new[] { typeof(CallConvStdcall) })] public static unsafe int EnumClone(IntPtr _this, IntPtr* p) { *p = IntPtr.Zero; return -2147467263; }
+        [UnmanagedCallersOnly(CallConvs = new[] { typeof(CallConvStdcall) })] public static unsafe int EnumClone(IntPtr _this, IntPtr* ppv) { *ppv = IntPtr.Zero; return -2147467263; }
     }
 }
