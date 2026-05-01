@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <resheader name="resmimetype">
+    <value>text/microsoft-resx</value>
+  </resheader>
+  <resheader name="version">
+    <value>2.0</value>
+  </resheader>
+  <resheader name="reader">
+    <value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <resheader name="writer">
+    <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <data name="AppName" xml:space="preserve">
+    <value>Clickra</value>
+  </data>
+  <data name="AppDescription" xml:space="preserve">
+    <value>專為 Windows 11 設計的高性能原生右鍵選單工具套件。</value>
+  </data>
+  <data name="Menu_Ppt2Pdf" xml:space="preserve">
+    <value>簡報轉 PDF</value>
+  </data>
+  <data name="Menu_MergePdf" xml:space="preserve">
+    <value>PDF 合併</value>
+  </data>
+  <data name="Menu_Img2Pdf" xml:space="preserve">
+    <value>圖片轉 PDF</value>
+  </data>
+  <data name="Menu_ImgMerge" xml:space="preserve">
+    <value>圖片合併成 PDF</value>
+  </data>
+  <data name="Menu_ImgStitch" xml:space="preserve">
+    <value>圖片垂直拼接</value>
+  </data>
+</root>

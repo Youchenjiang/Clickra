@@ -1,0 +1,81 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Package
+  xmlns="http://schemas.microsoft.com/appx/manifest/foundation/windows10"
+  xmlns:uap="http://schemas.microsoft.com/appx/manifest/uap/windows10"
+  xmlns:rescap="http://schemas.microsoft.com/appx/manifest/foundation/windows10/restrictedcapabilities"
+  xmlns:desktop4="http://schemas.microsoft.com/appx/manifest/desktop/windows10/4"
+  xmlns:desktop5="http://schemas.microsoft.com/appx/manifest/desktop/windows10/5"
+  xmlns:desktop9="http://schemas.microsoft.com/appx/manifest/desktop/windows10/9"
+  xmlns:com="http://schemas.microsoft.com/appx/manifest/com/windows10"
+  xmlns:uap10="http://schemas.microsoft.com/appx/manifest/uap/windows10/10"
+  IgnorableNamespaces="uap rescap desktop4 desktop5 desktop9 com uap10">
+
+  <Identity
+    Name="g1014308.Clickra"
+    Publisher="CN=CBF59877-21AD-4BC4-8F91-FE8DA520A138"
+    Version="3.0.2.0" />
+
+  <Properties>
+    <DisplayName>ms-resource:AppName</DisplayName>
+    <PublisherDisplayName>g1014308</PublisherDisplayName>
+    <Logo>Assets\StoreLogo.png</Logo>
+  </Properties>
+
+  <Dependencies>
+    <TargetDeviceFamily Name="Windows.Desktop" MinVersion="10.0.19041.0" MaxVersionTested="10.0.22621.0" />
+  </Dependencies>
+
+  <Resources>
+    <Resource Language="zh-TW" />
+    <Resource Language="en-US" />
+  </Resources>
+
+  <Applications>
+    <Application Id="App"
+      Executable="Clickra.exe"
+      EntryPoint="Windows.FullTrustApplication">
+      <uap:VisualElements
+        DisplayName="ms-resource:AppName"
+        Description="ms-resource:AppDescription"
+        BackgroundColor="transparent"
+        Square150x150Logo="Assets\Square150x150Logo.png"
+        Square44x44Logo="Assets\Square44x44Logo.png">
+        <uap:DefaultTile Wide310x150Logo="Assets\Wide310x150Logo.png" />
+      </uap:VisualElements>
+
+      <Extensions>
+        <!-- 使用正確的 desktop5:ItemType (非 desktop4) 避免層級錯誤 -->
+        <desktop4:Extension Category="windows.fileExplorerContextMenus">
+          <desktop4:FileExplorerContextMenus>
+            <desktop5:ItemType Type="*">
+              <desktop5:Verb Id="ClickraMenu" Clsid="FA2159B5-1234-4567-89AB-CDEF12345678" />
+            </desktop5:ItemType>
+            <desktop5:ItemType Type="Directory">
+              <desktop5:Verb Id="ClickraDirMenu" Clsid="FA2159B5-1234-4567-89AB-CDEF12345678" />
+            </desktop5:ItemType>
+          </desktop4:FileExplorerContextMenus>
+        </desktop4:Extension>
+
+        <!-- 使用 desktop9 告知系統此為 IExplorerCommand 的傳統型 handler -->
+        <desktop9:Extension Category="windows.fileExplorerClassicContextMenuHandler">
+          <desktop9:FileExplorerClassicContextMenuHandler>
+            <desktop9:ExtensionHandler Type="*" Clsid="FA2159B5-1234-4567-89AB-CDEF12345678" />
+          </desktop9:FileExplorerClassicContextMenuHandler>
+        </desktop9:Extension>
+
+        <!-- COM 伺服器註冊 -->
+        <com:Extension Category="windows.comServer">
+          <com:ComServer>
+            <com:SurrogateServer DisplayName="Clickra Context Menu Handler">
+              <com:Class Id="FA2159B5-1234-4567-89AB-CDEF12345678" Path="ClickraShell.dll" ThreadingModel="Both" />
+            </com:SurrogateServer>
+          </com:ComServer>
+        </com:Extension>
+      </Extensions>
+    </Application>
+  </Applications>
+
+  <Capabilities>
+    <rescap:Capability Name="runFullTrust" />
+  </Capabilities>
+</Package>
