@@ -17,7 +17,7 @@ namespace Clickra
         // Native Win32 MessageBox — zero WinForms dependency, keeps exe tiny
         [DllImport("user32.dll", CharSet = CharSet.Unicode)]
         static extern int MessageBox(IntPtr hWnd, string text, string caption, uint type);
-        const uint MB_OK = 0x0, MB_ICONWARNING = 0x30, MB_ICONERROR = 0x10;
+        const uint MB_OK = 0x0, MB_ICONWARNING = 0x30, MB_ICONERROR = 0x10, MB_ICONINFORMATION = 0x40;
 
         static void ShowWarning(string msg, string title) =>
             MessageBox(IntPtr.Zero, msg, title, MB_OK | MB_ICONWARNING);
@@ -27,6 +27,13 @@ namespace Clickra
             if (args.Length == 0 || args[0] == "-v" || args[0] == "--version")
             {
                 var version = Assembly.GetExecutingAssembly().GetName().Version?.ToString(3) ?? "3.0.2";
+                
+                if (args.Length == 0)
+                {
+                    MessageBox(IntPtr.Zero, $"Clickra v{version} is installed successfully.\n\nPlease right-click on supported files (PDF, Images, PPT) in Windows File Explorer to use the application.", "Clickra", MB_OK | MB_ICONINFORMATION);
+                    return;
+                }
+
                 Console.WriteLine($"Clickra v{version} (Modern Shell Edition)");
                 Console.WriteLine("Author: Youchen Jiang");
                 Console.WriteLine("Commands: ppt2pdf, merge-pdf, img2pdf, img-merge, img-stitch, --deploy");
