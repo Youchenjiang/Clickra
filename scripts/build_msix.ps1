@@ -6,6 +6,13 @@ $packagingDir = "$root/packaging/msix"
 $layoutDir = "$packagingDir/Layout"
 $publishDir = "$root/publish"
 
+# Add Windows SDK tools to PATH
+$sdkPath = "C:\Windows Kits\10\bin\10.0.26100.0\x64"
+if (Test-Path $sdkPath) {
+    $env:Path = "$sdkPath;$env:Path"
+    Write-Host "🛠️  Using Windows SDK tools from: $sdkPath" -ForegroundColor Gray
+}
+
 Write-Host "🏗️  Starting Clickra MSIX Build..." -ForegroundColor Cyan
 
 # 1. Clean up

@@ -13,7 +13,7 @@ internal static partial class Kernel32
     public static extern bool GetModuleHandleExW(uint dwFlags, IntPtr lpModuleName, out IntPtr phModule);
 
     [DllImport("kernel32.dll", CharSet = CharSet.Unicode)]
-    public static extern uint GetModuleFileNameW(IntPtr hModule, unsafe char* lpFilename, uint nSize);
+    public static unsafe extern uint GetModuleFileNameW(IntPtr hModule, char* lpFilename, uint nSize);
 }
 
 namespace ClickraShell
@@ -188,6 +188,9 @@ namespace ClickraShell
             }
             return -2147467262; 
         }
+
+        [UnmanagedCallersOnly(CallConvs = new[] { typeof(CallConvStdcall) })] public static unsafe int PrimaryQI(IntPtr _this, Guid* riid, IntPtr* ppv) => QIInternal(_this, riid, ppv);
+        [UnmanagedCallersOnly(CallConvs = new[] { typeof(CallConvStdcall) })] public static unsafe int SelectionQI(IntPtr _this, Guid* riid, IntPtr* ppv) => QIInternal(_this - IntPtr.Size, riid, ppv);
 
         [UnmanagedCallersOnly(CallConvs = new[] { typeof(CallConvStdcall) })] public static unsafe uint PrimaryAddRef(IntPtr _this) => AddRefInternal(_this);
         [UnmanagedCallersOnly(CallConvs = new[] { typeof(CallConvStdcall) })] public static unsafe uint SelectionAddRef(IntPtr _this) => AddRefInternal(_this - IntPtr.Size);

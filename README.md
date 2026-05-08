@@ -1,4 +1,4 @@
-# Clickra v3.0.2
+# Clickra v3.0.3.0
 
 A high-performance, native context menu utility suite for Windows 11. Powered by C# NativeAOT, it provides sub-millisecond responsiveness, replacing slow Python scripts with a truly native user experience.
 
@@ -25,7 +25,8 @@ Most productivity scripts (PDF merging, image conversion, etc.) are typically wr
 | **v2.0.0** | Apr 21, 2026 | Shift to C# CLI with interactive installer. |
 | **v3.0.0** | Apr 24, 2026 | **NativeAOT Shell Extension**. Full Win11 modern menu support with Asset Embedding. |
 | **v3.0.1** | Apr 25, 2026 | Logic Decoupling & Dev Guidelines. Split image processing and introduced AI-driven automation. |
-| **v3.0.2** | **Current** | **Cross-version Stability Release**. Fixed Win10/11 compatibility and installer errors. |
+| **v3.0.2**   | May 05, 2026 | **Cross-version Stability Release**. Fixed Win10/11 compatibility and installer errors. |
+| **v3.0.3.0** | **Current** | **Store Compliance**. Fixed version revision number requirements. |
 
 ---
 
