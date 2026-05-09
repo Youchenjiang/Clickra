@@ -1,7 +1,7 @@
 # Create a self-signed certificate for local Clickra development
 # Password: 1234
 
-$certName = "ClickraDev"
+$certName = "CBF59877-21AD-4BC4-8F91-FE8DA520A138"
 $password = ConvertTo-SecureString "1234" -AsPlainText -Force
 $outPath = "packaging/msix/ClickraDev.pfx"
 
