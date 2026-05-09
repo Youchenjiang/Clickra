@@ -1,13 +1,13 @@
-name: Release Clickra
+name: Release Clickra MSIX
 
 on:
   push:
     tags:
       - 'v*'
-  workflow_dispatch: # 允許手動從介面執行測試
+  workflow_dispatch:
 
 jobs:
-  build:
+  build-and-release:
     runs-on: windows-latest
     permissions:
       contents: write
@@ -20,52 +20,56 @@ jobs:
       with:
         dotnet-version: '10.0.x'
 
-    - name: Install NativeAOT Dependencies
-      run: |
-        # windows-latest 已內建 Visual Studio 編譯工具，通常不需額外安裝
+    - name: Publish Shell DLL
+      run: dotnet publish src/ClickraShell/ClickraShell.csproj -c Release -r win-x64 --output ./publish/shell
 
-    - name: Build Clickra Shell Extension (NativeAOT)
-      run: |
-        dotnet publish src/ClickraShell/ClickraShell.csproj -c Release -r win-x64 --output ./publish_shell
-        copy ./publish_shell/ClickraShell.dll ./ClickraShell.dll
+    - name: Publish CLI App
+      run: dotnet publish src/Clickra.CLI/Clickra.csproj -c Release -r win-x64 --output ./publish/cli
 
-    - name: Build Clickra CLI (NativeAOT)
-      run: dotnet publish src/Clickra.CLI/Clickra.csproj -c Release -r win-x64 --output ./publish
-
-    - name: Prepare Release Package
-      run: |
-        # 建立只包含發佈所需檔案的資料夾
-        mkdir release_pkg
-        copy ./publish/Clickra.exe release_pkg/
-        copy ./setup_context_menu.ps1 release_pkg/
-        copy ./README.zh-TW.md release_pkg/README.txt
-        
-    - name: Zip Release
+    - name: Prepare MSIX Layout
       shell: pwsh
-      run: Compress-Archive -Path ./release_pkg/* -DestinationPath Clickra.zip
+      run: |
+        New-Item -ItemType Directory -Path ./msix_layout -Force
+        New-Item -ItemType Directory -Path ./msix_layout/Assets -Force
+        Copy-Item "./publish/cli/Clickra.exe" "./msix_layout/"
+        Copy-Item "./publish/shell/ClickraShell.dll" "./msix_layout/"
+        Copy-Item "./packaging/msix/AppxManifest.xml" "./msix_layout/"
+        Copy-Item "./packaging/msix/Assets/*" "./msix_layout/Assets/" -Recurse
 
-    - name: Upload Artifact (For Manual Verification)
-      uses: actions/upload-artifact@v4
-      with:
-        name: Clickra-Artifact
-        path: Clickra.zip
+    - name: Find Windows SDK Tools
+      id: sdk-tools
+      shell: pwsh
+      run: |
+        $kitPath = "C:\Program Files (x86)\Windows Kits\10\bin"
+        $latestVersion = Get-ChildItem -Path $kitPath | Where-Object { $_.Name -match "^10\.0\." } | Sort-Object Name -Descending | Select-Object -First 1
+        $sdkBin = Join-Path $kitPath $latestVersion.Name "x64"
+        echo "SDK_BIN=$sdkBin" >> $env:GITHUB_ENV
+        Write-Host "Found SDK tools at: $sdkBin"
 
-    - name: Create Release
-      if: startsWith(github.ref, 'refs/tags/v') # 僅在有 Tag 時建立 Release
+    - name: Create MSIX Package
+      shell: pwsh
+      run: |
+        & "${{ env.SDK_BIN }}\makeappx.exe" pack /d ./msix_layout /p Clickra.msix /o
+
+    - name: Sign MSIX (CI Self-Signed)
+      shell: pwsh
+      run: |
+        $cert = New-SelfSignedCertificate -Type Custom -Subject "CN=YouchenJiang" -KeyUsage DigitalSignature -FriendlyName "Clickra CI Cert" -CertStoreLocation "Cert:\CurrentUser\My" -TextExtension @("2.5.29.37={text}1.3.6.1.5.5.7.3.3")
+        & "${{ env.SDK_BIN }}\signtool.exe" sign /fd SHA256 /a /sha1 $($cert.Thumbprint) Clickra.msix
+
+    - name: Create GitHub Release
+      if: startsWith(github.ref, 'refs/tags/v')
       uses: softprops/action-gh-release@v2
       with:
-        files: Clickra.zip
+        files: Clickra.msix
         body: |
           ## 🚀 Clickra Release ${{ github.ref_name }}
           
-          ### 📦 Package Contents
-          - `Clickra.exe`: The core engine (Standalone NativeAOT).
-          - `setup_context_menu.ps1`: The smart installer.
+          ### 📦 Installation
+          1. Download the attached `Clickra.msix`.
+          2. Double-click to install.
           
-          ### 🛠️ Installation
-          1. Download `Clickra.zip`.
-          2. Extract all files.
-          3. Right-click `setup_context_menu.ps1` and select "Run with PowerShell".
+          *Note: This package is signed with a CI certificate for automation.*
         draft: false
         prerelease: false
       env:
