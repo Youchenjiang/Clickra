@@ -5,3 +5,4 @@ obj/
 *.cer
 publish/
 packaging/msix/Layout/
+*.pfx
