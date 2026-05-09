@@ -33,13 +33,18 @@ namespace ClickraShell
 
     internal static class Guids
     {
-        public static readonly Guid Clsid = new("FA2159B5-1031-4A51-B1A3-417A20B16B4D");
+        public static readonly Guid Clsid = new("B17A34D2-55E0-4D6F-8D1F-7A6E9C2B30A1");
         public static readonly Guid IID_IUnknown = new("00000000-0000-0000-C000-000000000046");
         public static readonly Guid IID_IClassFactory = new("00000001-0000-0000-C000-000000000046");
+        
+        // IExplorerCommand IIDs (including compatibility variations found in logs)
         public static readonly Guid IID_IExplorerCommand = new("a08ce4d0-fa25-44ab-b57c-c7b3c3ef1cf0");
-        public static readonly Guid IID_IExplorerCommand_Alt = new("a08ce4d0-fa25-44ab-b57c-c7b3c3ef1cf0");
+        public static readonly Guid IID_IExplorerCommand_Compat = new("a08ce4d0-fa25-44ab-b57c-c7b1c323e0b9");
+        
+        // IEnumExplorerCommand IIDs (including compatibility variations found in logs)
         public static readonly Guid IID_IEnumExplorerCommand = new("c5740441-fa60-492d-944c-354313f8c7b6");
-        public static readonly Guid IID_IEnumExplorerCommand_Alt = new("c5740441-fa60-492d-944c-354313f8c7b6");
+        public static readonly Guid IID_IEnumExplorerCommand_Compat = new("a88826f8-186f-4987-aade-ea0cef8fbfe8");
+        
         public static readonly Guid IID_IObjectWithSelection = new("b196b287-bab4-101a-b69c-00aa00341d07");
     }
 
@@ -54,7 +59,8 @@ namespace ClickraShell
         public static unsafe int DllGetClassObject(Guid* rclsid, Guid* riid, IntPtr* ppv)
         {
             *ppv = IntPtr.Zero;
-            if (*rclsid != Guids.Clsid) return -2147221231;
+            if (*rclsid != Guids.Clsid) return -2147221231; // CLASS_E_CLASSNOTAVAILABLE
+            
             if (_factoryVt == IntPtr.Zero) _factoryVt = CreateVTable(5, new IntPtr[] {
                 (IntPtr)(delegate* unmanaged[Stdcall]<IntPtr, Guid*, IntPtr*, int>)&ComMethods.PrimaryQI,
                 (IntPtr)(delegate* unmanaged[Stdcall]<IntPtr, uint>)&ComMethods.PrimaryAddRef,
@@ -123,7 +129,7 @@ namespace ClickraShell
 
     internal static class ShellUtils
     {
-        public static string GetModuleDir()
+        public static unsafe string GetModuleDir()
         {
             IntPtr fnPtr = (IntPtr)(delegate* unmanaged[Stdcall]<IntPtr, uint>)&ComMethods.PrimaryAddRef;
             if (Kernel32.GetModuleHandleExW(6, fnPtr, out IntPtr hModule))
@@ -179,14 +185,14 @@ namespace ClickraShell
             bool primary = false;
             if (req == Guids.IID_IUnknown) primary = true;
             else if (p->Type == ComObjectType.Factory && req == Guids.IID_IClassFactory) primary = true;
-            else if (p->Type == ComObjectType.Command && (req == Guids.IID_IExplorerCommand || req == Guids.IID_IExplorerCommand_Alt)) primary = true;
-            else if (p->Type == ComObjectType.Enum && (req == Guids.IID_IEnumExplorerCommand || req == Guids.IID_IEnumExplorerCommand_Alt)) primary = true;
+            else if (p->Type == ComObjectType.Command && (req == Guids.IID_IExplorerCommand || req == Guids.IID_IExplorerCommand_Compat)) primary = true;
+            else if (p->Type == ComObjectType.Enum && (req == Guids.IID_IEnumExplorerCommand || req == Guids.IID_IEnumExplorerCommand_Compat)) primary = true;
 
             if (primary) { *ppv = basePtr; AddRefInternal(basePtr); return 0; }
             if (req == Guids.IID_IObjectWithSelection && (p->Type == ComObjectType.Command || p->Type == ComObjectType.Enum)) {
                 *ppv = basePtr + IntPtr.Size; AddRefInternal(basePtr); return 0;
             }
-            return -2147467262; 
+            return -2147467262; // E_NOINTERFACE
         }
 
         [UnmanagedCallersOnly(CallConvs = new[] { typeof(CallConvStdcall) })] public static unsafe int PrimaryQI(IntPtr _this, Guid* riid, IntPtr* ppv) => QIInternal(_this, riid, ppv);
@@ -234,9 +240,9 @@ namespace ClickraShell
         {
             var obj = (UniversalObject*)_this;
             int idx = obj->Data;
-            *p = 2; // Default: Hidden
+            *p = 2; // Default: Hidden (ECS_HIDDEN)
             
-            if (idx == -1) { *p = 0; return 0; } // Root always enabled
+            if (idx == -1) { *p = 0; return 0; } // Root always enabled (ECS_ENABLED)
 
             var files = GetFiles(psi);
             if (files.Count == 0) return 0;
