@@ -67,7 +67,9 @@
         <com:Extension Category="windows.comServer">
           <com:ComServer>
             <com:SurrogateServer DisplayName="Clickra Context Menu Handler">
-              <com:Class Id="B17A34D2-55E0-4D6F-8D1F-7A6E9C2B30A1" Path="ClickraShell.dll" ThreadingModel="Both" />
+              <com:Class Id="B17A34D2-55E0-4D6F-8D1F-7A6E9C2B30A1" Path="ClickraShell.dll" ThreadingModel="Both">
+              <com:DefaultIcon Path="app.ico" />
+            </com:Class>
             </com:SurrogateServer>
           </com:ComServer>
         </com:Extension>
