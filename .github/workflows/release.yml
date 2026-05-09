@@ -35,6 +35,9 @@ jobs:
         Copy-Item "./publish/shell/ClickraShell.dll" "./msix_layout/"
         Copy-Item "./packaging/msix/AppxManifest.xml" "./msix_layout/"
         Copy-Item "./packaging/msix/Assets/*" "./msix_layout/Assets/" -Recurse
+        Copy-Item "./src/resources/app.ico" "./msix_layout/app.ico"
+        # Also ensure app.png exists for modern menu
+        Copy-Item "./packaging/msix/Assets/StoreLogo.png" "./msix_layout/app.png"
 
     - name: Find Windows SDK Tools
       id: sdk-tools

@@ -39,6 +39,10 @@ Copy-Item "$publishDir/shell/ClickraShell.dll" "$layoutDir/"
 if (Test-Path "$packagingDir/Assets/StoreLogo.png") {
     Copy-Item "$packagingDir/Assets/StoreLogo.png" "$layoutDir/app.png"
 }
+# Copy ICO for classic menu support
+if (Test-Path "src/resources/app.ico") {
+    Copy-Item "src/resources/app.ico" "$layoutDir/app.ico"
+}
 
 # 4. Compile Resources (MakePri)
 Write-Host "📑 Compiling Resource Index (PRI)..." -ForegroundColor Gray
