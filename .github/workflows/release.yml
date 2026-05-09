@@ -54,7 +54,8 @@ jobs:
     - name: Sign MSIX (CI Self-Signed)
       shell: pwsh
       run: |
-        $cert = New-SelfSignedCertificate -Type Custom -Subject "CN=YouchenJiang" -KeyUsage DigitalSignature -FriendlyName "Clickra CI Cert" -CertStoreLocation "Cert:\CurrentUser\My" -TextExtension @("2.5.29.37={text}1.3.6.1.5.5.7.3.3")
+        # The Subject MUST match the Publisher in AppxManifest.xml
+        $cert = New-SelfSignedCertificate -Type Custom -Subject "CN=CBF59877-21AD-4BC4-8F91-FE8DA520A138" -KeyUsage DigitalSignature -FriendlyName "Clickra CI Cert" -CertStoreLocation "Cert:\CurrentUser\My" -TextExtension @("2.5.29.37={text}1.3.6.1.5.5.7.3.3")
         & "${{ env.SDK_BIN }}\signtool.exe" sign /fd SHA256 /a /sha1 $($cert.Thumbprint) Clickra.msix
 
     - name: Create GitHub Release
