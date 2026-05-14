@@ -52,11 +52,8 @@ $readmeFiles = @("README.md", "README.zh-TW.md")
 foreach ($f in $readmeFiles) {
     if (Test-Path $f) {
         $content = Get-Content $f -Raw
-        # 更新標題 (# Clickra vX.X.X.X)
-        $content = $content -replace '(# Clickra v)[\d\.]+', "`${1}$newVersion"
-        # 更新表格中的「當前」版本
-        $content = $content -replace '(\*\*v)[\d\.]+(\*\*\s*\|\s*\*\*當前\*\*)', "`${1}$newVersion`${2}"
-        $content = $content -replace '(\*\*v)[\d\.]+(\*\*\s*\|\s*\*\*Current\*\*)', "`${1}$newVersion`${2}"
+        # 更新標題 (# Clickra vX.X.X.X) - 僅替換第一行
+        $content = $content -replace '(?m)^# Clickra v[\d\.]+', "# Clickra v$newVersion"
         Set-Content $f $content -NoNewline
         Write-Host "📝 已同步文檔: $f" -ForegroundColor Gray
     }

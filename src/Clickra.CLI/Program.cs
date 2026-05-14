@@ -146,17 +146,23 @@ namespace Clickra
                 string outputPdfPath = Path.ChangeExtension(fullPath, ".pdf");
                 Console.WriteLine($"Converting: {Path.GetFileName(filePath)}...");
 
-                // PowerScript: The most stable way to handle Office COM on Windows
+                // PowerScript: Capture output and errors for better UX
                 string psScript = $@"
-$ppt = New-Object -ComObject PowerPoint.Application;
+$ErrorActionPreference = 'Stop'
 try {{
-    $pres = $ppt.Presentations.Open('{fullPath.Replace("'", "''")}', 0, 0, 0);
-    $pres.SaveAs('{outputPdfPath.Replace("'", "''")}', 32);
-    $pres.Close();
-    Write-Host 'Success';
-}} finally {{
-    $ppt.Quit();
-    [System.Runtime.InteropServices.Marshal]::ReleaseComObject($ppt) | Out-Null
+    $ppt = New-Object -ComObject PowerPoint.Application
+    try {{
+        $pres = $ppt.Presentations.Open('{fullPath.Replace("'", "''")}', -1, 0, 0)
+        $pres.SaveAs('{outputPdfPath.Replace("'", "''")}', 32)
+        $pres.Close()
+        Write-Host 'Success'
+    }} finally {{
+        $ppt.Quit()
+        [System.Runtime.InteropServices.Marshal]::ReleaseComObject($ppt) | Out-Null
+    }}
+}} catch {{
+    Write-Error $_.Exception.Message
+    exit 1
 }}";
                 
                 var startInfo = new System.Diagnostics.ProcessStartInfo
@@ -165,16 +171,30 @@ try {{
                     Arguments = $"-NoProfile -ExecutionPolicy Bypass -Command \"{psScript}\"",
                     UseShellExecute = false,
                     RedirectStandardOutput = true,
+                    RedirectStandardError = true,
                     CreateNoWindow = true
                 };
 
                 using var process = System.Diagnostics.Process.Start(startInfo);
+                string output = process?.StandardOutput.ReadToEnd() ?? "";
+                string error = process?.StandardError.ReadToEnd() ?? "";
                 process?.WaitForExit();
                 
                 if (File.Exists(outputPdfPath))
+                {
                     Console.WriteLine("Done.");
+                }
                 else
-                    Console.WriteLine("Failed to convert (PowerShell returned error).");
+                {
+                    Console.WriteLine("Failed to convert.");
+                    if (!string.IsNullOrWhiteSpace(error))
+                    {
+                        if (error.Contains("0x80040154") || error.Contains("New-Object"))
+                            Console.WriteLine("[Required] Microsoft PowerPoint is not installed. This feature requires Microsoft PowerPoint to be installed on your system.");
+                        else
+                            Console.WriteLine($"[Error Detail] {error.Trim()}");
+                    }
+                }
             }
         }
 

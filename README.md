@@ -1,4 +1,4 @@
-# Clickra v3.0.4.0
+# Clickra v3.0.5.0
 
 A high-performance, native context menu utility suite for Windows 11. Powered by C# NativeAOT, it provides sub-millisecond responsiveness, replacing slow Python scripts with a truly native user experience.
 
@@ -27,7 +27,8 @@ Most productivity scripts (PDF merging, image conversion, etc.) are typically wr
 | **v3.0.1** | Apr 25, 2026 | Logic Decoupling & Dev Guidelines. Split image processing and introduced AI-driven automation. |
 | **v3.0.2**   | May 05, 2026 | **Cross-version Stability Release**. Fixed Win10/11 compatibility and installer errors. |
 | **v3.0.3.0** | May 07, 2026 | **Store Compliance**. Fixed version revision number requirements. |
-| **v3.0.4.0** | **Current** | **Critical Shell Fix**. Resolved Windows 11 context menu visibility issues (Store Policy 10.1.2.10) by supporting system-specific IIDs and synchronizing CLSID across manifests. |
+| **v3.0.4.0** | May 11, 2026 | **Critical Shell Fix**. Resolved Windows 11 context menu visibility issues (Store Policy 10.1.2.10) by supporting system-specific IIDs and synchronizing CLSID across manifests. |
+| **v3.0.5.0** | **Current** | **Diagnostic & Compatibility Fix**. Improved PPT conversion error handling and explicit PowerPoint dependency disclosure for Store compliance. |
 
 ---
 
