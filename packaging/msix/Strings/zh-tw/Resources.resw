@@ -16,7 +16,7 @@
     <value>Clickra</value>
   </data>
   <data name="AppDescription" xml:space="preserve">
-    <value>專為 Windows 11 設計的高性能原生右鍵選單工具套件。</value>
+    <value>注意：此應用程式的「簡報轉 PDF」功能需要安裝 Microsoft PowerPoint。專為 Windows 11 設計的高性能原生右鍵選單工具套件。</value>
   </data>
   <data name="Menu_Ppt2Pdf" xml:space="preserve">
     <value>簡報轉 PDF</value>

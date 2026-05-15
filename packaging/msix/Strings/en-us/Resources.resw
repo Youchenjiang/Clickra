@@ -16,7 +16,7 @@
     <value>Clickra</value>
   </data>
   <data name="AppDescription" xml:space="preserve">
-    <value>A high-performance, native context menu utility suite for Windows 11.</value>
+    <value>Note: The PPT to PDF conversion feature requires Microsoft PowerPoint to be installed. A high-performance native context menu utility for Windows 11.</value>
   </data>
   <data name="Menu_Ppt2Pdf" xml:space="preserve">
     <value>Convert Presentation to PDF</value>
