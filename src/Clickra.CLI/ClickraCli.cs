@@ -6,8 +6,8 @@ using System.Collections.Generic;
 using System.Reflection;
 using System.Runtime.InteropServices;
 using System.Runtime.InteropServices.Marshalling;
-using PdfSharp.Pdf;
 using Clickra.Core;
+using Clickra.UI;
 
 namespace Clickra
 {
@@ -29,13 +29,13 @@ namespace Clickra
                 
                 if (args.Length == 0)
                 {
-                    MessageBox(IntPtr.Zero, $"Clickra v{version} is installed successfully.\n\nPlease right-click on supported files (PDF, Images, PPT) in Windows File Explorer to use the application.", "Clickra", MB_OK | MB_ICONINFORMATION);
+                    DashboardWindow.Show();
                     return;
                 }
 
                 Console.WriteLine($"Clickra v{version} (Modern Shell Edition)");
                 Console.WriteLine("Author: Youchen Jiang");
-                Console.WriteLine("Commands: ppt2pdf, merge-pdf, img2pdf, img-merge, img-stitch, --deploy");
+                Console.WriteLine("Commands: ppt2pdf, word2pdf, merge-pdf, img2pdf, img-merge, img-stitch, --deploy");
                 return;
             }
 
