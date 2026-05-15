@@ -7,8 +7,7 @@ using System.Reflection;
 using System.Runtime.InteropServices;
 using System.Runtime.InteropServices.Marshalling;
 using PdfSharp.Pdf;
-using PdfSharp.Pdf.IO;
-using PdfSharp.Drawing;
+using Clickra.Core;
 
 namespace Clickra
 {
@@ -65,12 +64,12 @@ namespace Clickra
                 {
                     case "ppt2pdf":
                         ValidateExtensions(files, command, ".pptx", ".ppt");
-                        ConvertPptToPdf(files);
+                        FileProcessor.ConvertPptToPdf(files, msg => Console.WriteLine(msg));
                         break;
                     case "merge-pdf":
                         ValidateExtensions(files, command, ".pdf");
                         RequireMinFiles(files, command, 2);
-                        MergePdfs(files, Path.Combine(outputDir, "Merged_PDF.pdf"));
+                        FileProcessor.MergePdfs(files, Path.Combine(outputDir, "Merged_PDF.pdf"));
                         break;
                     case "img2pdf":
                         ValidateExtensions(files, command, ".jpg", ".jpeg", ".png", ".bmp", ".gif", ".tiff", ".webp");
@@ -78,18 +77,18 @@ namespace Clickra
                         foreach (var f in files)
                         {
                             string outName = Path.Combine(outputDir, Path.GetFileNameWithoutExtension(f) + ".pdf");
-                            MergeImagesToPdf(new List<string> { f }, outName);
+                            FileProcessor.ImagesToPdf(new List<string> { f }, outName);
                         }
                         break;
                     case "img-merge":
                         ValidateExtensions(files, command, ".jpg", ".jpeg", ".png", ".bmp", ".gif", ".tiff", ".webp");
                         RequireMinFiles(files, command, 2);
-                        MergeImagesToPdf(files, Path.Combine(outputDir, "Merged_Images.pdf"));
+                        FileProcessor.ImagesToPdf(files, Path.Combine(outputDir, "Merged_Images.pdf"));
                         break;
                     case "img-stitch":
                         ValidateExtensions(files, command, ".jpg", ".jpeg", ".png", ".bmp", ".gif", ".tiff", ".webp");
                         RequireMinFiles(files, command, 2);
-                        StitchImages(files, Path.Combine(outputDir, "Stitched_Image.png"));
+                        FileProcessor.StitchImages(files, Path.Combine(outputDir, "Stitched_Image.png"));
                         break;
                     default:
                         Console.WriteLine("Unknown command: " + command);
@@ -138,133 +137,7 @@ namespace Clickra
             }
         }
 
-        static void ConvertPptToPdf(List<string> files)
-        {
-            foreach (var filePath in files)
-            {
-                string fullPath = Path.GetFullPath(filePath);
-                string outputPdfPath = Path.ChangeExtension(fullPath, ".pdf");
-                Console.WriteLine($"Converting: {Path.GetFileName(filePath)}...");
 
-                // PowerScript: Capture output and errors for better UX
-                string psScript = $@"
-$ErrorActionPreference = 'Stop'
-try {{
-    $ppt = New-Object -ComObject PowerPoint.Application
-    try {{
-        $pres = $ppt.Presentations.Open('{fullPath.Replace("'", "''")}', -1, 0, 0)
-        $pres.SaveAs('{outputPdfPath.Replace("'", "''")}', 32)
-        $pres.Close()
-        Write-Host 'Success'
-    }} finally {{
-        $ppt.Quit()
-        [System.Runtime.InteropServices.Marshal]::ReleaseComObject($ppt) | Out-Null
-    }}
-}} catch {{
-    Write-Error $_.Exception.Message
-    exit 1
-}}";
-                
-                var startInfo = new System.Diagnostics.ProcessStartInfo
-                {
-                    FileName = "powershell.exe",
-                    Arguments = $"-NoProfile -ExecutionPolicy Bypass -Command \"{psScript}\"",
-                    UseShellExecute = false,
-                    RedirectStandardOutput = true,
-                    RedirectStandardError = true,
-                    CreateNoWindow = true
-                };
-
-                using var process = System.Diagnostics.Process.Start(startInfo);
-                string output = process?.StandardOutput.ReadToEnd() ?? "";
-                string error = process?.StandardError.ReadToEnd() ?? "";
-                process?.WaitForExit();
-                
-                if (File.Exists(outputPdfPath))
-                {
-                    Console.WriteLine("Done.");
-                }
-                else
-                {
-                    Console.WriteLine("Failed to convert.");
-                    if (!string.IsNullOrWhiteSpace(error))
-                    {
-                        if (error.Contains("0x80040154") || error.Contains("New-Object"))
-                            Console.WriteLine("[Required] Microsoft PowerPoint is not installed. This feature requires Microsoft PowerPoint to be installed on your system.");
-                        else
-                            Console.WriteLine($"[Error Detail] {error.Trim()}");
-                    }
-                }
-            }
-        }
-
-        static void MergePdfs(List<string> files, string outputPath)
-        {
-            using var outDoc = new PdfDocument();
-            foreach (var f in files)
-            {
-                Console.WriteLine($"Importing: {f}");
-                using var inDoc = PdfReader.Open(f, PdfDocumentOpenMode.Import);
-                for (int i = 0; i < inDoc.PageCount; i++)
-                {
-                    outDoc.AddPage(inDoc.Pages[i]);
-                }
-            }
-            outDoc.Save(outputPath);
-            Console.WriteLine($"Merged {files.Count} PDFs to: {outputPath}");
-        }
-
-        static void MergeImagesToPdf(List<string> files, string outputPath)
-        {
-            using var doc = new PdfDocument();
-            foreach (var f in files)
-            {
-                Console.WriteLine($"Adding image: {f}");
-                // In PDFsharp 6, it's safer to ensure the file exists and is accessible
-                if (!File.Exists(f)) throw new FileNotFoundException("Image file not found", f);
-                using var ximg = XImage.FromFile(f);
-                var page = doc.AddPage();
-                
-                // Set page size to match image pixels (assuming 72 DPI base)
-                double resolutionX = ximg.HorizontalResolution > 0 ? ximg.HorizontalResolution : 72.0;
-                double resolutionY = ximg.VerticalResolution > 0 ? ximg.VerticalResolution : 72.0;
-                
-                page.Width = ximg.PixelWidth * 72.0 / resolutionX;
-                page.Height = ximg.PixelHeight * 72.0 / resolutionY;
-
-                using var gfx = XGraphics.FromPdfPage(page);
-                gfx.DrawImage(ximg, 0, 0, page.Width, page.Height);
-            }
-            doc.Save(outputPath);
-            Console.WriteLine($"Created Image PDF at: {outputPath}");
-        }
-
-        static void StitchImages(List<string> files, string outputPath)
-        {
-#pragma warning disable CA1416 // Validate platform compatibility
-            List<Image> images = files.Select(Image.FromFile).ToList();
-            
-            int totalWidth = images.Max(img => img.Width);
-            int totalHeight = images.Sum(img => img.Height);
-
-            using var stitched = new Bitmap(totalWidth, totalHeight);
-            using var gfx = Graphics.FromImage(stitched);
-            gfx.Clear(Color.White);
-
-            int currentY = 0;
-            foreach (var img in images)
-            {
-                // Draw centered horizontally
-                int x = (totalWidth - img.Width) / 2;
-                gfx.DrawImage(img, x, currentY, img.Width, img.Height);
-                currentY += img.Height;
-                img.Dispose();
-            }
-
-            stitched.Save(outputPath, System.Drawing.Imaging.ImageFormat.Png);
-            Console.WriteLine($"Stitched {files.Count} images to: {outputPath}");
-#pragma warning restore CA1416
-        }
         static void DeployAssets(string targetDir)
         {
             if (!Directory.Exists(targetDir)) Directory.CreateDirectory(targetDir);
