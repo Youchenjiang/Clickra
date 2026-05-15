@@ -1,5 +1,8 @@
 # Clickra v3.0.5.0
 
+[![Microsoft Store](https://img.shields.io/badge/Microsoft%20Store-Clickra-blue?style=for-the-badge&logo=microsoft-store)](https://apps.microsoft.com/detail/9NGLBF6P1KLD)
+[![License: Apache 2.0](https://img.shields.io/badge/License-Apache%202.0-blue.svg?style=for-the-badge)](https://opensource.org/licenses/Apache-2.0)
+
 A high-performance, native context menu utility suite for Windows 11. Powered by C# NativeAOT, it provides sub-millisecond responsiveness, replacing slow Python scripts with a truly native user experience.
 
 [閱讀中文版 (Read in Traditional Chinese)](README.zh-TW.md)
@@ -40,6 +43,7 @@ Commands are elegantly tucked away in the `Clickra` sub-menu, keeping your prima
 ### 2. 📄 PPT/PPTX to PDF
 *   **Feature**: Silently exports PowerPoint presentations to high-quality PDFs in the background.
 *   **Native Power**: Handles multiple files in a single pass without spawning dozens of windows.
+*   **Requirement**: Microsoft PowerPoint must be installed locally for this feature.
 
 ### 3. 🔗 PDF Merge
 *   **Feature**: Merges selected PDF files into a single document based on filename order.
@@ -55,31 +59,35 @@ Commands are elegantly tucked away in the `Clickra` sub-menu, keeping your prima
 
 ---
 
-## 🚀 Professional Installation (Two-File Bundle)
+## 🛠️ Installation
 
-To achieve maximum minimalism, we use **Asset Embedding** technology. Your distribution package only needs two files:
-1.  `Clickra.exe` (The engine, containing all menu assets)
-2.  `setup_context_menu.ps1` (The smart installer)
+### Recommended: Microsoft Store (Auto-updates)
+[![Microsoft Store Badge](https://developer.microsoft.com/en-us/store/badges/images/English_get-it-from-MS.png)](https://apps.microsoft.com/detail/9NGLBF6P1KLD)
 
-### Installation:
-1.  Right-click `setup_context_menu.ps1` and select **"Run with PowerShell"**.
-2.  **Custom Path**: Choose the default path or enter your own installation directory.
-3.  **Auto-Deploy**: The script calls the executable's deployment engine to extract manifests, icons, and DLLs automatically.
-
-### Uninstallation:
-Run the script and choose **"2. Remove Tool"**. It will automatically unregister the shell extension and clean up the installation folder.
+### Manual: GitHub Release
+1.  Download the latest `Clickra.msix` from [Releases](../../releases).
+2.  Double-click the file to install.
 
 ---
 
-## 🛠️ Developer & Architecture
+### 2. How to Build
+Since we use asset embedding, the build is a two-stage process:
 
-### Project Structure
-- `src/Clickra.CLI`: Core logic for file processing.
-- `src/ClickraShell`: NativeAOT implementation of the COM Shell Extension.
-- `src/resources`: Identity manifests and visual assets.
+**Stage 1: Build the Shell Extension (DLL)**
+```powershell
+dotnet publish src\ClickraShell\ClickraShell.csproj -c Release -r win-x64 -p:PublishAot=true --output .
+```
 
-### Technology: Stealth Asset Deployment
-`Clickra.exe` embeds `AppxManifest.xml`, `app.png`, and `ClickraShell.dll` as resources. The `--deploy` flag extracts these components on-the-fly, enabling a "Zero Side-car" distribution model.
+**Stage 2: Build the Main App (CLI)**
+This embeds the DLL and assets from `src/resources` into the final executable using NativeAOT:
+```powershell
+dotnet publish src\Clickra.CLI\Clickra.csproj -c Release -r win-x64 --output .
+```
+
+### 3. How to add new features
+1.  **Core Logic**: Add new command handling in `src/Clickra.CLI/Program.cs`.
+2.  **UI Menu**: Modify the `SubTitles` and `SubArgs` arrays in `src/ClickraShell/ShellExtension.cs`.
+3.  **Re-build**: Re-publish `Clickra.exe` following the build sequence above.
 
 ---
 

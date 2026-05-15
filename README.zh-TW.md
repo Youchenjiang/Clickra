@@ -1,5 +1,8 @@
 # Clickra v3.0.5.0
 
+[![Microsoft Store](https://img.shields.io/badge/Microsoft%20Store-Clickra-blue?style=for-the-badge&logo=microsoft-store)](https://apps.microsoft.com/detail/9NGLBF6P1KLD)
+[![License: Apache 2.0](https://img.shields.io/badge/License-Apache%202.0-blue.svg?style=for-the-badge)](https://opensource.org/licenses/Apache-2.0)
+
 這是一個專為 Windows 11 設計的高性能原生右鍵選單工具套件。採用 C# NativeAOT 技術開發，徹底取代啟動緩慢的 Python 腳本，提供毫秒級的即時響應。
 
 [English Version (英文版)](README.md)
@@ -40,6 +43,7 @@
 ### 2. 📄 簡報轉 PDF (PPT/PPTX to PDF)
 *   **功能**：在背景靜默呼叫 PowerPoint 引擎進行高品質轉檔。
 *   **特色**：支援多選檔案，一次處理多個簡報而不會彈出多個視窗。
+*   **需求**：此功能需本地安裝 Microsoft PowerPoint。
 
 ### 3. 🔗 PDF 合併 (PDF Merge)
 *   **功能**：將選取的多份 PDF 依照檔名順序合併為單一檔案。
@@ -55,30 +59,16 @@
 
 ---
 
-## 🚀 專業安裝流程 (兩檔流)
+## 🛠️ 安裝說明
 
-為了達到極致的簡潔，我們採用了 **「資產隱寫 (Asset Embedding)」** 技術。您的分發包中只需要有：
-1.  `Clickra.exe` (主程式，內置所有選單資源)
-2.  `setup_context_menu.ps1` (智慧安裝腳本)
+### 推薦方法：Microsoft Store (自動更新)
+[![Microsoft Store Badge](https://developer.microsoft.com/en-us/store/badges/images/English_get-it-from-MS.png)](https://apps.microsoft.com/detail/9NGLBF6P1KLD)
 
-### 安裝步驟：
-1.  右鍵點擊 `setup_context_menu.ps1`，選擇 **「使用 PowerShell 執行」**。
-2.  **選擇路徑**：您可以選擇預設路徑或輸入自訂的安裝位置。
-3.  **自動配置**：腳本會自動提取內置資源、註冊身分、安裝數位憑證並完成選單掛載。
-
-### 移除步驟：
-執行腳本並選擇 **「2. 移除工具」**，系統將自動清理註冊資訊並移除安裝資料夾。
+### 手動安裝 (GitHub Release)
+1.  從 [Releases](../../releases) 下載最新的 `Clickra.msix`。
+2.  雙擊檔案進行安裝。
 
 ---
-
-## 🛠️ 開發者指南 (Developer Guide)
-
-如果您想要自訂功能或編譯自己的版本，請參考以下指南。
-
-### 1. 統一版本管理
-本專案採用 `src/Directory.Build.props` 進行全域版本控制。
-*   **如何更新版本**：只需修改該檔案中的 `<Version>` 標籤（例如 `3.1.1`）。
-*   **自動同步**：安裝腳本 `setup_context_menu.ps1` 會在執行時自動讀取執行檔版本，並同步更新選單身分清單 (`AppxManifest.xml`)。
 
 ### 2. 編譯指令 (How to Build)
 由於採用了資產隱寫技術，編譯必須分為兩個階段：
