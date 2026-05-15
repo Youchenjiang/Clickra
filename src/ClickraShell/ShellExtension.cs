@@ -260,8 +260,13 @@ namespace ClickraShell
             var files = GetFiles(psi);
             if (files.Count == 0) return 0;
 
-            // Show menu only if at least one selected file is supported for this specific command (or root)
-            if (files.Any(f => IsSupported(f, idx)))
+            // Specific logic for multi-file commands
+            bool countOk = idx switch {
+                1 or 4 => files.Count > 1, // Merge PDF and Image Stitch require at least 2 files
+                _ => true
+            };
+
+            if (countOk && files.Any(f => IsSupported(f, idx)))
             {
                 *p = 0; // ECS_ENABLED
             }
