@@ -235,26 +235,37 @@ namespace ClickraShell
         [UnmanagedCallersOnly(CallConvs = new[] { typeof(CallConvStdcall) })] public static unsafe int GetToolTip(IntPtr _this, IntPtr psi, IntPtr* p) { *p = IntPtr.Zero; return 0; }
         [UnmanagedCallersOnly(CallConvs = new[] { typeof(CallConvStdcall) })] public static unsafe int GetCanonicalName(IntPtr _this, Guid* p) { *p = Guid.Empty; return 0; }
         
+        private static bool IsSupported(string path, int idx)
+        {
+            string ext = Path.GetExtension(path).ToLowerInvariant();
+            if (string.IsNullOrEmpty(ext)) return false;
+
+            return idx switch
+            {
+                -1 => new[] { ".ppt", ".pptx", ".pdf", ".jpg", ".jpeg", ".png", ".bmp", ".gif", ".tiff", ".webp" }.Contains(ext),
+                0 => ext == ".ppt" || ext == ".pptx",
+                1 => ext == ".pdf",
+                2 or 3 or 4 => new[] { ".jpg", ".jpeg", ".png", ".bmp", ".gif", ".tiff", ".webp" }.Contains(ext),
+                _ => false
+            };
+        }
+
         [UnmanagedCallersOnly(CallConvs = new[] { typeof(CallConvStdcall) })]
         public static unsafe int GetState(IntPtr _this, IntPtr psi, int slow, uint* p)
         {
             var obj = (UniversalObject*)_this;
             int idx = obj->Data;
             *p = 2; // Default: Hidden (ECS_HIDDEN)
-            
-            if (idx == -1) { *p = 0; return 0; } // Root always enabled (ECS_ENABLED)
 
             var files = GetFiles(psi);
             if (files.Count == 0) return 0;
 
-            string ext = Path.GetExtension(files[0]).ToLowerInvariant();
-            bool ok = idx switch {
-                0 => ext == ".ppt" || ext == ".pptx",
-                1 => ext == ".pdf",
-                2 or 3 or 4 => new[] { ".jpg", ".jpeg", ".png", ".bmp", ".gif", ".tiff", ".webp" }.Contains(ext),
-                _ => false
-            };
-            if (ok) *p = 0; // ECS_ENABLED
+            // Show menu only if at least one selected file is supported for this specific command (or root)
+            if (files.Any(f => IsSupported(f, idx)))
+            {
+                *p = 0; // ECS_ENABLED
+            }
+
             return 0;
         }
 
