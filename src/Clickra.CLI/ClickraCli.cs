@@ -66,6 +66,10 @@ namespace Clickra
                         ValidateExtensions(files, command, ".pptx", ".ppt");
                         FileProcessor.ConvertPptToPdf(files, msg => Console.WriteLine(msg));
                         break;
+                    case "word2pdf":
+                        ValidateExtensions(files, command, ".docx", ".doc");
+                        FileProcessor.ConvertWordToPdf(files, msg => Console.WriteLine(msg));
+                        break;
                     case "merge-pdf":
                         ValidateExtensions(files, command, ".pdf");
                         RequireMinFiles(files, command, 2);

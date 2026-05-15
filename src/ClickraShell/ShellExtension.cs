@@ -164,8 +164,8 @@ namespace ClickraShell
 
     internal static class ComMethods
     {
-        private static readonly string[] MenuKeys = { "Menu_Ppt2Pdf", "Menu_MergePdf", "Menu_Img2Pdf", "Menu_ImgMerge", "Menu_ImgStitch" };
-        private static readonly string[] SubArgs = { "ppt2pdf", "merge-pdf", "img2pdf", "img-merge", "img-stitch" };
+        private static readonly string[] MenuKeys = { "Menu_Ppt2Pdf", "Menu_Word2Pdf", "Menu_MergePdf", "Menu_Img2Pdf", "Menu_ImgMerge", "Menu_ImgStitch" };
+        private static readonly string[] SubArgs = { "ppt2pdf", "word2pdf", "merge-pdf", "img2pdf", "img-merge", "img-stitch" };
 
         internal static unsafe int CreateObject(IntPtr vt, Guid* riid, IntPtr* ppv, ComObjectType type, int data = -1)
         {
@@ -242,10 +242,11 @@ namespace ClickraShell
 
             return idx switch
             {
-                -1 => new[] { ".ppt", ".pptx", ".pdf", ".jpg", ".jpeg", ".png", ".bmp", ".gif", ".tiff", ".webp" }.Contains(ext),
+                -1 => new[] { ".ppt", ".pptx", ".doc", ".docx", ".pdf", ".jpg", ".jpeg", ".png", ".bmp", ".gif", ".tiff", ".webp" }.Contains(ext),
                 0 => ext == ".ppt" || ext == ".pptx",
-                1 => ext == ".pdf",
-                2 or 3 or 4 => new[] { ".jpg", ".jpeg", ".png", ".bmp", ".gif", ".tiff", ".webp" }.Contains(ext),
+                1 => ext == ".doc" || ext == ".docx",
+                2 => ext == ".pdf",
+                3 or 4 or 5 => new[] { ".jpg", ".jpeg", ".png", ".bmp", ".gif", ".tiff", ".webp" }.Contains(ext),
                 _ => false
             };
         }
@@ -262,7 +263,7 @@ namespace ClickraShell
 
             // Specific logic for multi-file commands
             bool countOk = idx switch {
-                1 or 4 => files.Count > 1, // Merge PDF and Image Stitch require at least 2 files
+                2 or 5 => files.Count > 1, // Merge PDF (2) and Image Stitch (5) require at least 2 files
                 _ => true
             };
 

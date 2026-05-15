@@ -128,5 +128,65 @@ try {{
                 }
             }
         }
+
+        public static void ConvertWordToPdf(List<string> files, Action<string>? onProgress = null)
+        {
+            foreach (var filePath in files)
+            {
+                string fullPath = Path.GetFullPath(filePath);
+                string outputPdfPath = Path.ChangeExtension(fullPath, ".pdf");
+                onProgress?.Invoke($"Converting Word: {Path.GetFileName(filePath)}...");
+
+                // Word COM: wdExportFormatPDF = 17
+                string psScript = $@"
+$ErrorActionPreference = 'Stop'
+try {{
+    $word = New-Object -ComObject Word.Application
+    try {{
+        $doc = $word.Documents.Open('{fullPath.Replace("'", "''")}', $false, $true)
+        $doc.ExportAsFixedFormat('{outputPdfPath.Replace("'", "''")}', 17)
+        $doc.Close($false)
+        Write-Host 'Success'
+    }} finally {{
+        $word.Quit()
+        [System.Runtime.InteropServices.Marshal]::ReleaseComObject($word) | Out-Null
+    }}
+}} catch {{
+    Write-Error $_.Exception.Message
+    exit 1
+}}";
+
+                var startInfo = new System.Diagnostics.ProcessStartInfo
+                {
+                    FileName = "powershell.exe",
+                    Arguments = $"-NoProfile -ExecutionPolicy Bypass -Command \"{psScript}\"",
+                    UseShellExecute = false,
+                    RedirectStandardOutput = true,
+                    RedirectStandardError = true,
+                    CreateNoWindow = true
+                };
+
+                using var process = System.Diagnostics.Process.Start(startInfo);
+                string output = process?.StandardOutput.ReadToEnd() ?? "";
+                string error = process?.StandardError.ReadToEnd() ?? "";
+                process?.WaitForExit();
+
+                if (File.Exists(outputPdfPath))
+                {
+                    onProgress?.Invoke("Done.");
+                }
+                else
+                {
+                    if (!string.IsNullOrWhiteSpace(error))
+                    {
+                        if (error.Contains("0x80040154") || error.Contains("New-Object"))
+                            throw new Exception("Microsoft Word is not installed. This feature requires Microsoft Word to be installed on your system.");
+                        else
+                            throw new Exception($"Word conversion failed: {error.Trim()}");
+                    }
+                    throw new Exception("Word conversion failed with unknown error.");
+                }
+            }
+        }
     }
 }
