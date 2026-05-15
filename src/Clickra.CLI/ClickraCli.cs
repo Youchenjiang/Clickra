@@ -11,7 +11,7 @@ using Clickra.Core;
 
 namespace Clickra
 {
-    class Program
+    class ClickraCli
     {
         // Native Win32 MessageBox — zero WinForms dependency, keeps exe tiny
         [DllImport("user32.dll", CharSet = CharSet.Unicode)]
