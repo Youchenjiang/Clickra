@@ -95,6 +95,13 @@ dotnet publish src\Clickra.CLI\Clickra.csproj -c Release -r win-x64 --output .
 2.  **UI Menu**: Modify the `SubTitles` and `SubArgs` arrays in `src/ClickraShell/ShellExtension.cs`.
 3.  **Re-build**: Re-publish `Clickra.exe` following the build sequence above.
 
+### 4. Development Workflow
+To keep the `main` branch stable, direct pushes to `main` are prohibited. All changes must be made via **Pull Requests (PR)**.
+
+*   **Feature Development (`feature/...`)**: For all new features or bug fixes, branch off from `main` to `feature/<branch-name>`.
+*   **Hotfixes (`hotfix/...`)**: For urgent bugs in the released version, branch off to `hotfix/<branch-name>`.
+*   **Merge Rules**: Once development is done, push your branch and open a PR. Merge into `main` after review.
+
 ---
 
 ## 🧠 Technical Insights (The "War Stories")

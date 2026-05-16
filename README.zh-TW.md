@@ -94,6 +94,13 @@ dotnet publish src\Clickra.CLI\Clickra.csproj -c Release -r win-x64 --output .
 2.  **選單介面**：修改 `src/ClickraShell/ShellExtension.cs` 中的 `SubTitles` 與 `SubArgs` 陣列。
 3.  **重新編譯**：按照上述編譯順序重新產出 `Clickra.exe` 即可。
 
+### 4. 開發與分支規範 (Development Workflow)
+為確保主分支 (`main`) 永遠處於穩定可發布的狀態，本專案禁止直接推送程式碼至 `main`。所有變更皆須透過 **Pull Request (PR)** 合併。
+
+*   **功能開發 (`feature/...`)**：所有新功能或一般修復，請從 `main` 切出 `feature/分支名稱`。
+*   **緊急修復 (`hotfix/...`)**：針對已上線版本的重大 Bug，請切出 `hotfix/分支名稱`。
+*   **合併規則**：開發完成後，推送到遠端並開啟 PR。審查無誤後即可合併進 `main`。
+
 ---
 
 ## 🧠 技術深度分享 (開發血淚史)
