@@ -1,4 +1,4 @@
-# Clickra v3.0.5.0
+# Clickra v3.0.6.0
 
 [![Microsoft Store](https://img.shields.io/badge/Microsoft%20Store-Clickra-blue?style=for-the-badge&logo=microsoft-store)](https://apps.microsoft.com/detail/9NGLBF6P1KLD)
 [![License: Apache 2.0](https://img.shields.io/badge/License-Apache%202.0-blue.svg?style=for-the-badge)](https://opensource.org/licenses/Apache-2.0)
@@ -31,7 +31,9 @@ Most productivity scripts (PDF merging, image conversion, etc.) are typically wr
 | **v3.0.2**   | May 05, 2026 | **Cross-version Stability Release**. Fixed Win10/11 compatibility and installer errors. |
 | **v3.0.3.0** | May 07, 2026 | **Store Compliance**. Fixed version revision number requirements. |
 | **v3.0.4.0** | May 11, 2026 | **Critical Shell Fix**. Resolved Windows 11 context menu visibility issues (Store Policy 10.1.2.10) by supporting system-specific IIDs and synchronizing CLSID across manifests. |
-| **v3.0.5.0** | **Current** | **Diagnostic & Compatibility Fix**. Improved PPT conversion error handling and explicit PowerPoint dependency disclosure for Store compliance. |
+| **v3.0.5.0** | May 13, 2026 | **Diagnostic & Compatibility Fix**. Improved PPT conversion error handling and Store compliance. |
+| **v3.0.6.0** | **Current** | **Native Dashboard & Word-to-PDF**. Implemented high-performance Win32 dashboard and added Microsoft Word conversion engine. Achieved 100% NativeAOT project structure. |
+
 
 ---
 
@@ -40,10 +42,14 @@ Most productivity scripts (PDF merging, image conversion, etc.) are typically wr
 ### 1. 📂 Modern Sub-menu (Windows 11 Only)
 Commands are elegantly tucked away in the `Clickra` sub-menu, keeping your primary context menu clean and uncluttered.
 
-### 2. 📄 PPT/PPTX to PDF
-*   **Feature**: Silently exports PowerPoint presentations to high-quality PDFs in the background.
-*   **Native Power**: Handles multiple files in a single pass without spawning dozens of windows.
-*   **Requirement**: Microsoft PowerPoint must be installed locally for this feature.
+### 2. 📊 Native Dashboard
+*   **Feature**: A high-performance, dark-themed dashboard to monitor system compatibility.
+*   **Status Detection**: Real-time detection of PDF Engine, Microsoft Word, and PowerPoint status.
+*   **AOT Power**: Pure Win32 implementation ensures zero startup lag.
+
+### 3. 📄 Word & PPT to PDF
+*   **Feature**: Silently exports Office documents to high-quality PDFs in the background.
+*   **Requirement**: Microsoft Office (Word/PowerPoint) must be installed locally.
 
 ### 3. 🔗 PDF Merge
 *   **Feature**: Merges selected PDF files into a single document based on filename order.

@@ -1,4 +1,4 @@
-# Clickra v3.0.5.0
+# Clickra v3.0.6.0
 
 [![Microsoft Store](https://img.shields.io/badge/Microsoft%20Store-Clickra-blue?style=for-the-badge&logo=microsoft-store)](https://apps.microsoft.com/detail/9NGLBF6P1KLD)
 [![License: Apache 2.0](https://img.shields.io/badge/License-Apache%202.0-blue.svg?style=for-the-badge)](https://opensource.org/licenses/Apache-2.0)
@@ -31,7 +31,9 @@
 | **v3.0.2**   | 2026/05/05 | **跨版本穩定性修復**。修復 Win10/11 安裝相容性，消除報錯紅字。 |
 | **v3.0.3.0** | 2026/05/07 | **商店合規性更新**。修正版本號修訂編號規範。 |
 | **v3.0.4.0** | 2026/05/11 | **關鍵 Shell 修復**。解決 Windows 11 右鍵選單顯示問題（商店政策 10.1.2.10），支援系統特定 IID 並同步 Manifest CLSID。 |
-| **v3.0.5.0** | **當前**   | **診斷與相容性修復**。強化 PPT 轉換報錯訊息，明確提示 PowerPoint 依賴，符合商店 10.1 披露要求。 |
+| **v3.0.5.0** | 2026/05/13 | **診斷與相容性修復**。強化 PPT 報錯訊息並符合商店披露要求。 |
+| **v3.0.6.0** | **當前**   | **原生儀表板與 Word 轉 PDF**。實作高性能 Win32 儀表板，整合 Word 轉換引擎，並達成 100% NativeAOT 架構。 |
+
 
 ---
 
@@ -40,10 +42,13 @@
 ### 1. 📂 現代化子選單 (Windows 11 Only)
 所有功能皆優雅地收納在 `Clickra` 子選單中，避免佔用一級選單空間，保持桌面簡潔。
 
-### 2. 📄 簡報轉 PDF (PPT/PPTX to PDF)
-*   **功能**：在背景靜默呼叫 PowerPoint 引擎進行高品質轉檔。
-*   **特色**：支援多選檔案，一次處理多個簡報而不會彈出多個視窗。
-*   **需求**：此功能需本地安裝 Microsoft PowerPoint。
+### 2. 📊 原生儀表板 (Native Dashboard)
+*   **功能**：採用高效能 Win32 原生開發的深色模式儀表板。
+*   **特色**：即時偵測 PDF 引擎、Microsoft Word 與 PowerPoint 的安裝狀態。
+
+### 3. 📄 文書轉 PDF (Word & PPT to PDF)
+*   **功能**：在背景靜默呼叫 Office 引擎進行高品質轉檔。
+*   **需求**：此功能需本地安裝對應的 Microsoft Office 軟體。
 
 ### 3. 🔗 PDF 合併 (PDF Merge)
 *   **功能**：將選取的多份 PDF 依照檔名順序合併為單一檔案。
