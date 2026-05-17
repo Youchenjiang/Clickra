@@ -42,10 +42,16 @@ Write-Host "🚀 正在將版本從 $currentVersion 升級至 $newVersion ..." -
 $newProps = $content -replace '<Version>.*</Version>', "<Version>$newVersion</Version>"
 Set-Content $propsPath $newProps -NoNewline
 
-# AppxManifest.xml
-$manifest = Get-Content $manifestPath -Raw
-$newManifest = $manifest -replace '(?<=<Identity\s+[^>]*?Version=")([\d\.]+)', $newVersion
-Set-Content $manifestPath $newManifest -NoNewline
+# AppxManifest.xml (同時更新外層與嵌入層)
+$manifestPaths = @("packaging/msix/AppxManifest.xml", "src/resources/AppxManifest.xml")
+foreach ($mPath in $manifestPaths) {
+    if (Test-Path $mPath) {
+        $manifest = Get-Content $mPath -Raw
+        $newManifest = $manifest -replace '(?<=<Identity\s+[^>]*?Version=")([\d\.]+)', $newVersion
+        Set-Content $mPath $newManifest -NoNewline
+        Write-Host "📦 已同步 Manifest: $mPath" -ForegroundColor Gray
+    }
+}
 
 # 4. 更新 README 檔案
 $readmeFiles = @("README.md", "README.zh-TW.md")

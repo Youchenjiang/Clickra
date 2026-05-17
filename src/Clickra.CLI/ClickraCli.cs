@@ -25,7 +25,7 @@ namespace Clickra
         {
             if (args.Length == 0 || args[0] == "-v" || args[0] == "--version")
             {
-                var version = Assembly.GetExecutingAssembly().GetName().Version?.ToString(3) ?? "3.0.2";
+                var version = Assembly.GetExecutingAssembly().GetName().Version?.ToString(3) ?? "Unknown";
                 
                 if (args.Length == 0)
                 {
@@ -45,54 +45,80 @@ namespace Clickra
                 return;
             }
 
-            if (args.Length < 2)
+            bool quiet = false;
+            var argList = args.ToList();
+            if (argList.Contains("--quiet"))
             {
-                Console.WriteLine("Usage: Clickra <command> <file...>");
+                quiet = true;
+                argList.Remove("--quiet");
+            }
+            if (argList.Contains("--no-ui"))
+            {
+                quiet = true;
+                argList.Remove("--no-ui");
+            }
+
+            if (argList.Count < 2)
+            {
+                Console.WriteLine("Usage: Clickra <command> [options] <file...>");
+                Console.WriteLine("Options: --quiet / --no-ui  (Run in background without GUI)");
                 Console.WriteLine("Deployment: Clickra --deploy <target_dir>");
                 return;
             }
 
-            string command = args[0].ToLowerInvariant();
-            var files = args.Skip(1).OrderBy(f => f).ToList();
+            string command = argList[0].ToLowerInvariant();
+            var files = argList.Skip(1).OrderBy(f => f).ToList();
             string outputDir = Path.GetDirectoryName(files[0]) ?? "";
 
-            Console.WriteLine($"Executing {command} with {files.Count} files...");
+            Console.WriteLine($"Executing {command} with {files.Count} files (Quiet mode: {quiet})...");
 
             try
             {
                 switch (command)
                 {
                     case "ppt2pdf":
-                        ValidateExtensions(files, command, ".pptx", ".ppt");
-                        FileProcessor.ConvertPptToPdf(files, msg => Console.WriteLine(msg));
+                        ValidateExtensions(files, command, quiet, ".pptx", ".ppt");
+                        if (quiet) FileProcessor.ConvertPptToPdf(files, (curr, tot, msg) => Console.WriteLine($"[Progress] {msg}"));
+                        else ProgressWindow.Show(command, files);
                         break;
                     case "word2pdf":
-                        ValidateExtensions(files, command, ".docx", ".doc");
-                        FileProcessor.ConvertWordToPdf(files, msg => Console.WriteLine(msg));
+                        ValidateExtensions(files, command, quiet, ".docx", ".doc");
+                        if (quiet) FileProcessor.ConvertWordToPdf(files, (curr, tot, msg) => Console.WriteLine($"[Progress] {msg}"));
+                        else ProgressWindow.Show(command, files);
                         break;
                     case "merge-pdf":
-                        ValidateExtensions(files, command, ".pdf");
-                        RequireMinFiles(files, command, 2);
-                        FileProcessor.MergePdfs(files, Path.Combine(outputDir, "Merged_PDF.pdf"));
+                        ValidateExtensions(files, command, quiet, ".pdf");
+                        RequireMinFiles(files, command, 2, quiet);
+                        if (quiet) FileProcessor.MergePdfs(files, Path.Combine(outputDir, "Merged_PDF.pdf"), (curr, tot, msg) => Console.WriteLine($"[Progress] {msg}"));
+                        else ProgressWindow.Show(command, files);
                         break;
                     case "img2pdf":
-                        ValidateExtensions(files, command, ".jpg", ".jpeg", ".png", ".bmp", ".gif", ".tiff", ".webp");
-                        RequireMinFiles(files, command, 1);
-                        foreach (var f in files)
+                        ValidateExtensions(files, command, quiet, ".jpg", ".jpeg", ".png", ".bmp", ".gif", ".tiff", ".webp");
+                        RequireMinFiles(files, command, 1, quiet);
+                        if (quiet)
                         {
-                            string outName = Path.Combine(outputDir, Path.GetFileNameWithoutExtension(f) + ".pdf");
-                            FileProcessor.ImagesToPdf(new List<string> { f }, outName);
+                            for (int i = 0; i < files.Count; i++)
+                            {
+                                var f = files[i];
+                                string outName = Path.Combine(outputDir, Path.GetFileNameWithoutExtension(f) + ".pdf");
+                                Console.WriteLine($"[Progress] 正在轉換圖片: {Path.GetFileName(f)} ({i + 1}/{files.Count})...");
+                                FileProcessor.ImagesToPdf(new List<string> { f }, outName, null);
+                            }
+                            Console.WriteLine("[Progress] 轉換完成，正在儲存 PDF...");
                         }
+                        else ProgressWindow.Show(command, files);
                         break;
                     case "img-merge":
-                        ValidateExtensions(files, command, ".jpg", ".jpeg", ".png", ".bmp", ".gif", ".tiff", ".webp");
-                        RequireMinFiles(files, command, 2);
-                        FileProcessor.ImagesToPdf(files, Path.Combine(outputDir, "Merged_Images.pdf"));
+                        ValidateExtensions(files, command, quiet, ".jpg", ".jpeg", ".png", ".bmp", ".gif", ".tiff", ".webp");
+                        RequireMinFiles(files, command, 2, quiet);
+                        if (quiet) FileProcessor.ImagesToPdf(files, Path.Combine(outputDir, "Merged_Images.pdf"), (curr, tot, msg) => Console.WriteLine($"[Progress] {msg}"));
+                        else ProgressWindow.Show(command, files);
                         break;
                     case "img-stitch":
-                        ValidateExtensions(files, command, ".jpg", ".jpeg", ".png", ".bmp", ".gif", ".tiff", ".webp");
-                        RequireMinFiles(files, command, 2);
-                        FileProcessor.StitchImages(files, Path.Combine(outputDir, "Stitched_Image.png"));
+                        ValidateExtensions(files, command, quiet, ".jpg", ".jpeg", ".png", ".bmp", ".gif", ".tiff", ".webp");
+                        RequireMinFiles(files, command, 2, quiet);
+                        if (quiet) FileProcessor.StitchImages(files, Path.Combine(outputDir, "Stitched_Image.png"), (curr, tot, msg) => Console.WriteLine($"[Progress] {msg}"));
+                        else ProgressWindow.Show(command, files);
                         break;
                     default:
                         Console.WriteLine("Unknown command: " + command);
@@ -105,7 +131,7 @@ namespace Clickra
             {
                 Console.WriteLine($"Error: {ex.Message}");
                 Console.WriteLine(ex.StackTrace);
-                if (Environment.UserInteractive && !Console.IsInputRedirected)
+                if (!quiet && Environment.UserInteractive && !Console.IsInputRedirected)
                 {
                     Console.WriteLine("Press any key to exit...");
                     Console.ReadKey();
@@ -113,7 +139,7 @@ namespace Clickra
             }
         }
 
-        static void ValidateExtensions(List<string> files, string command, params string[] allowed)
+        static void ValidateExtensions(List<string> files, string command, bool quiet, params string[] allowed)
         {
             var invalid = files
                 .Where(f => !allowed.Contains(Path.GetExtension(f).ToLowerInvariant()))
@@ -125,18 +151,18 @@ namespace Clickra
                 string invalidList = string.Join("\n  ", invalid.Select(Path.GetFileName));
                 string msg = $"指令\u300c{command}\u300d\u53ea\u63a5\u53d7\u4ee5\u4e0b\u683c\u5f0f\uff1a{allowedList}\n\n\u4ee5\u4e0b\u6a94\u6848\u683c\u5f0f\u4e0d\u7b26\uff0c\u5df2\u4e2d\u6b62\u57f7\u884c\uff1a\n  {invalidList}";
                 Console.WriteLine("[錯誤] " + msg);
-                ShowWarning(msg, "Clickra — 格式錯誤");
+                if (!quiet) ShowWarning(msg, "Clickra — 格式錯誤");
                 Environment.Exit(1);
             }
         }
 
-        static void RequireMinFiles(List<string> files, string command, int min)
+        static void RequireMinFiles(List<string> files, string command, int min, bool quiet)
         {
             if (files.Count < min)
             {
                 string msg = $"指令「{command}」至少需要 {min} 個檔案，但您只傳入了 {files.Count} 個。\n\n請多選幾個檔案後，再透過「傳送到」執行。";
                 Console.WriteLine("[錯誤] " + msg);
-                ShowWarning(msg, "Clickra — 檔案數量不足");
+                if (!quiet) ShowWarning(msg, "Clickra — 檔案數量不足");
                 Environment.Exit(1);
             }
         }

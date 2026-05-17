@@ -1,4 +1,4 @@
-# Clickra v3.0.6.0
+# Clickra v3.0.7.0
 
 [![Microsoft Store](https://img.shields.io/badge/Microsoft%20Store-Clickra-blue?style=for-the-badge&logo=microsoft-store)](https://apps.microsoft.com/detail/9NGLBF6P1KLD)
 [![License: Apache 2.0](https://img.shields.io/badge/License-Apache%202.0-blue.svg?style=for-the-badge)](https://opensource.org/licenses/Apache-2.0)
@@ -32,7 +32,8 @@
 | **v3.0.3.0** | 2026/05/07 | **商店合規性更新**。修正版本號修訂編號規範。 |
 | **v3.0.4.0** | 2026/05/11 | **關鍵 Shell 修復**。解決 Windows 11 右鍵選單顯示問題（商店政策 10.1.2.10），支援系統特定 IID 並同步 Manifest CLSID。 |
 | **v3.0.5.0** | 2026/05/13 | **診斷與相容性修復**。強化 PPT 報錯訊息並符合商店披露要求。 |
-| **v3.0.6.0** | **當前**   | **原生儀表板與 Word 轉 PDF**。實作高性能 Win32 儀表板，整合 Word 轉換引擎，並達成 100% NativeAOT 架構。 |
+| **v3.0.6.0** | 2026/05/15 | **原生儀表板與 Word 轉 PDF**。實作高性能 Win32 儀表板，整合 Word 轉換引擎，並達成 100% NativeAOT 架構。 |
+| **v3.0.7.0** | **當前**   | **動態進度條與完成通知**。實作純 Win32/GDI+ 動態進度視窗，支援 WinUI 3 級別流動光暈動畫、系統主色調連動與原生 Toast 通知。 |
 
 
 ---
@@ -100,6 +101,22 @@ dotnet publish src\Clickra.CLI\Clickra.csproj -c Release -r win-x64 --output .
 *   **功能開發 (`feature/...`)**：所有新功能或一般修復，請從 `main` 切出 `feature/分支名稱`。
 *   **緊急修復 (`hotfix/...`)**：針對已上線版本的重大 Bug，請切出 `hotfix/分支名稱`。
 *   **合併規則**：開發完成後，推送到遠端並開啟 PR。審查無誤後即可合併進 `main`。
+
+### 5. 自動化版本更新與 MSIX 封裝 (Automated Packaging)
+專案內建 PowerShell 腳本，可自動執行版本升級與 MSIX 封裝：
+
+*   **升級版本並重新打包**：
+    ```powershell
+    powershell -File scripts/bump_version.ps1 -Type <major|minor|patch|revision> -Build
+    ```
+    *   `-Type`：指定要遞增的版本號層級（例如 `patch` 會將 `3.0.6.0` 升級至 `3.0.7.0`）。
+    *   `-Build`：升級版本後，自動執行 Native AOT 兩階段編譯、PRI 資源編譯與憑證簽章，直接在根目錄產生最新版 `Clickra.msix`。
+
+*   **單獨封裝 MSIX**：
+    若只想重新編譯打包而不變更版本號：
+    ```powershell
+    powershell -File scripts/build_msix.ps1
+    ```
 
 ---
 

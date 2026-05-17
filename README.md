@@ -1,4 +1,4 @@
-# Clickra v3.0.6.0
+# Clickra v3.0.7.0
 
 [![Microsoft Store](https://img.shields.io/badge/Microsoft%20Store-Clickra-blue?style=for-the-badge&logo=microsoft-store)](https://apps.microsoft.com/detail/9NGLBF6P1KLD)
 [![License: Apache 2.0](https://img.shields.io/badge/License-Apache%202.0-blue.svg?style=for-the-badge)](https://opensource.org/licenses/Apache-2.0)
@@ -32,8 +32,8 @@ Most productivity scripts (PDF merging, image conversion, etc.) are typically wr
 | **v3.0.3.0** | May 07, 2026 | **Store Compliance**. Fixed version revision number requirements. |
 | **v3.0.4.0** | May 11, 2026 | **Critical Shell Fix**. Resolved Windows 11 context menu visibility issues (Store Policy 10.1.2.10) by supporting system-specific IIDs and synchronizing CLSID across manifests. |
 | **v3.0.5.0** | May 13, 2026 | **Diagnostic & Compatibility Fix**. Improved PPT conversion error handling and Store compliance. |
-| **v3.0.6.0** | **Current** | **Native Dashboard & Word-to-PDF**. Implemented high-performance Win32 dashboard and added Microsoft Word conversion engine. Achieved 100% NativeAOT project structure. |
-
+| **v3.0.6.0** | May 15, 2026 | **Native Dashboard & Word-to-PDF**. Implemented high-performance Win32 dashboard and added Microsoft Word conversion engine. Achieved 100% NativeAOT project structure. |
+| **v3.0.7.0** | **Current** | **Dynamic Progress Bar & Toast Notifications**. Implemented pure Win32/GDI+ animated progress window with WinUI 3 style shimmer effects, system accent color integration, and native Windows Toast notifications. |
 
 ---
 
@@ -101,6 +101,22 @@ To keep the `main` branch stable, direct pushes to `main` are prohibited. All ch
 *   **Feature Development (`feature/...`)**: For all new features or bug fixes, branch off from `main` to `feature/<branch-name>`.
 *   **Hotfixes (`hotfix/...`)**: For urgent bugs in the released version, branch off to `hotfix/<branch-name>`.
 *   **Merge Rules**: Once development is done, push your branch and open a PR. Merge into `main` after review.
+
+### 5. Automated Versioning & MSIX Packaging
+The project provides built-in PowerShell scripts for automated version bumping and MSIX packaging:
+
+*   **Bump Version & Build**:
+    ```powershell
+    powershell -File scripts/bump_version.ps1 -Type <major|minor|patch|revision> -Build
+    ```
+    *   `-Type`: Specifies the version component to increment (e.g. `patch` increments `3.0.6.0` to `3.0.7.0`).
+    *   `-Build`: Automatically triggers the Native AOT two-stage build, compiles PRI resources, signs the package with the developer certificate, and generates the final `Clickra.msix` in the root directory.
+
+*   **Standalone MSIX Packaging**:
+    If you only want to rebuild the MSIX package without bumping the version:
+    ```powershell
+    powershell -File scripts/build_msix.ps1
+    ```
 
 ---
 

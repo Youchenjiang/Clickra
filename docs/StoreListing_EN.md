@@ -1,6 +1,6 @@
 # Microsoft Store Listing - English (US)
 
-Below is the complete information for you to copy and paste directly into the Microsoft Partner Center, updated for the v3.0.6.0 release.
+Below is the complete information for you to copy and paste directly into the Microsoft Partner Center, updated for the v3.0.7.0 release.
 
 ---
 
@@ -24,10 +24,9 @@ Clickra respects your privacy. All processing is done 100% locally on your machi
 🔗 Open Source on GitHub: https://github.com/Youchenjiang/Clickra
 
 ## What's new in this version
- - Native Dashboard: Introduced a high-performance Win32 dashboard for system status monitoring.
- - Word to PDF Support: Formally integrated Microsoft Word high-quality conversion engine.
- - 100% Native AOT: Optimized architecture for even faster startup and smaller footprint.
- - UI Fixes: Resolved title bar icon and text rendering issues within the MSIX sandbox.
+ - Dynamic Progress Window: Introduced pure Win32/GDI+ progress bar with Fluent Design shimmer animations and system accent color integration.
+ - Toast Notifications: Automated native Windows notifications upon successful task completion.
+ - Eliminated hardcoded version strings across UI and CLI components to improve maintainability.
 
 ## Product Features
 *(Max 20, displayed as bullet points)*
