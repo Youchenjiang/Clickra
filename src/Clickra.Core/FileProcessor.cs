@@ -12,25 +12,32 @@ namespace Clickra.Core
 {
     public static class FileProcessor
     {
-        public static void MergePdfs(List<string> files, string outputPath)
+        public static void MergePdfs(List<string> files, string outputPath, Action<int, int, string>? onProgress = null)
         {
+            int total = files.Count;
             using var outDoc = new PdfDocument();
-            foreach (var f in files)
+            for (int i = 0; i < files.Count; i++)
             {
+                var f = files[i];
+                onProgress?.Invoke(i + 1, total, $"正在合併: {Path.GetFileName(f)}...");
                 using var inDoc = PdfReader.Open(f, PdfDocumentOpenMode.Import);
-                for (int i = 0; i < inDoc.PageCount; i++)
+                for (int j = 0; j < inDoc.PageCount; j++)
                 {
-                    outDoc.AddPage(inDoc.Pages[i]);
+                    outDoc.AddPage(inDoc.Pages[j]);
                 }
             }
+            onProgress?.Invoke(total, total, "合併完成，正在儲存檔案...");
             outDoc.Save(outputPath);
         }
 
-        public static void ImagesToPdf(List<string> files, string outputPath)
+        public static void ImagesToPdf(List<string> files, string outputPath, Action<int, int, string>? onProgress = null)
         {
+            int total = files.Count;
             using var doc = new PdfDocument();
-            foreach (var f in files)
+            for (int i = 0; i < files.Count; i++)
             {
+                var f = files[i];
+                onProgress?.Invoke(i + 1, total, $"正在處理圖片: {Path.GetFileName(f)}...");
                 if (!File.Exists(f)) throw new FileNotFoundException("Image file not found", f);
                 using var ximg = XImage.FromFile(f);
                 var page = doc.AddPage();
@@ -44,11 +51,14 @@ namespace Clickra.Core
                 using var gfx = XGraphics.FromPdfPage(page);
                 gfx.DrawImage(ximg, 0, 0, page.Width, page.Height);
             }
+            onProgress?.Invoke(total, total, "轉換完成，正在儲存 PDF...");
             doc.Save(outputPath);
         }
 
-        public static void StitchImages(List<string> files, string outputPath)
+        public static void StitchImages(List<string> files, string outputPath, Action<int, int, string>? onProgress = null)
         {
+            int total = files.Count;
+            onProgress?.Invoke(0, total, "正在分析圖片尺寸...");
             List<Image> images = files.Select(Image.FromFile).ToList();
             
             int totalWidth = images.Max(img => img.Width);
@@ -59,24 +69,29 @@ namespace Clickra.Core
             gfx.Clear(Color.White);
 
             int currentY = 0;
-            foreach (var img in images)
+            for (int i = 0; i < images.Count; i++)
             {
+                var img = images[i];
+                onProgress?.Invoke(i + 1, total, $"正在拼接圖片 ({i + 1}/{total})...");
                 int x = (totalWidth - img.Width) / 2;
                 gfx.DrawImage(img, x, currentY, img.Width, img.Height);
                 currentY += img.Height;
                 img.Dispose();
             }
 
+            onProgress?.Invoke(total, total, "拼接完成，正在儲存圖片...");
             stitched.Save(outputPath, System.Drawing.Imaging.ImageFormat.Png);
         }
 
-        public static void ConvertPptToPdf(List<string> files, Action<string>? onProgress = null)
+        public static void ConvertPptToPdf(List<string> files, Action<int, int, string>? onProgress = null)
         {
+            int total = files.Count;
             foreach (var filePath in files)
             {
+                int currentIndex = files.IndexOf(filePath) + 1;
                 string fullPath = Path.GetFullPath(filePath);
                 string outputPdfPath = Path.ChangeExtension(fullPath, ".pdf");
-                onProgress?.Invoke($"Converting: {Path.GetFileName(filePath)}...");
+                onProgress?.Invoke(currentIndex, total, $"正在轉換 PowerPoint: {Path.GetFileName(filePath)}...");
 
                 string psScript = $@"
 $ErrorActionPreference = 'Stop'
@@ -113,7 +128,7 @@ try {{
 
                 if (File.Exists(outputPdfPath))
                 {
-                    onProgress?.Invoke("Done.");
+                    onProgress?.Invoke(currentIndex, total, $"已完成: {Path.GetFileName(filePath)}");
                 }
                 else
                 {
@@ -129,13 +144,15 @@ try {{
             }
         }
 
-        public static void ConvertWordToPdf(List<string> files, Action<string>? onProgress = null)
+        public static void ConvertWordToPdf(List<string> files, Action<int, int, string>? onProgress = null)
         {
+            int total = files.Count;
             foreach (var filePath in files)
             {
+                int currentIndex = files.IndexOf(filePath) + 1;
                 string fullPath = Path.GetFullPath(filePath);
                 string outputPdfPath = Path.ChangeExtension(fullPath, ".pdf");
-                onProgress?.Invoke($"Converting Word: {Path.GetFileName(filePath)}...");
+                onProgress?.Invoke(currentIndex, total, $"正在轉換 Word: {Path.GetFileName(filePath)}...");
 
                 // Word COM: wdExportFormatPDF = 17
                 string psScript = $@"
@@ -173,7 +190,7 @@ try {{
 
                 if (File.Exists(outputPdfPath))
                 {
-                    onProgress?.Invoke("Done.");
+                    onProgress?.Invoke(currentIndex, total, $"已完成: {Path.GetFileName(filePath)}");
                 }
                 else
                 {
