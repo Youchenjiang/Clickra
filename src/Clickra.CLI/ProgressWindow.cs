@@ -12,6 +12,11 @@ using Clickra.Core;
 
 namespace Clickra.UI
 {
+    /// <summary>
+    /// 提供 CLI 執行階段專用的 Win32 進度視窗。
+    /// 本類別採用靜態單次執行 (Single-shot) 架構設計，適用於每次 CLI 呼叫獨立進程運行的情境。
+    /// 資源會在 WM_DESTROY 時透過 CleanupResources 徹底釋放。
+    /// </summary>
     public static class ProgressWindow
     {
         [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Unicode)]
@@ -104,8 +109,8 @@ namespace Clickra.UI
         // GDI+ 雙緩衝與色彩快取
         static Bitmap? _bufferBmp;
         static Graphics? _bufferGraphics;
-        static Color _cachedAccentColor = Color.FromArgb(255, 0, 120, 212);
-        static bool _hasCachedAccent = false;
+        static Color _cachedColorizationColor = Color.FromArgb(255, 0, 120, 212);
+        static bool _hasCachedColorizationColor = false;
 
         // GDI+ 快取字型與筆刷
         static Font? _titleFont;
@@ -120,6 +125,12 @@ namespace Clickra.UI
 
         public static void Show(string command, List<string> files)
         {
+            if (files == null || files.Count == 0)
+            {
+                MessageBox(IntPtr.Zero, "未傳入任何檔案進行處理。", "Clickra — 警告", 0x30); // MB_ICONWARNING
+                return;
+            }
+
             lock (_stateLock)
             {
                 _command = command;
@@ -154,7 +165,7 @@ namespace Clickra.UI
                 _bufferGraphics.SmoothingMode = SmoothingMode.AntiAlias;
             }
 
-            _hasCachedAccent = false;
+            _hasCachedColorizationColor = false;
 
             string className = "ClickraProgressWnd";
             IntPtr hClass = Marshal.StringToHGlobalUni(className);
@@ -271,6 +282,22 @@ namespace Clickra.UI
         {
             try
             {
+                List<string> currentFiles; string cmd;
+                lock (_stateLock)
+                {
+                    currentFiles = _files;
+                    cmd = _command;
+                }
+
+                if (currentFiles == null || currentFiles.Count == 0)
+                {
+                    lock (_stateLock) { _completed = true; _message = "無檔案可處理。"; }
+                    InvalidateRect(hwnd, IntPtr.Zero, true);
+                    Thread.Sleep(1000);
+                    PostMessageW(hwnd, 0x0010, IntPtr.Zero, IntPtr.Zero); // WM_CLOSE
+                    return;
+                }
+
                 Action<int, int, string> progressCallback = (curr, tot, msg) =>
                 {
                     lock (_stateLock)
@@ -282,34 +309,34 @@ namespace Clickra.UI
                     }
                 };
 
-                string outputDir = Path.GetDirectoryName(_files[0]) ?? "";
+                string outputDir = Path.GetDirectoryName(currentFiles[0]) ?? "";
 
-                switch (_command)
+                switch (cmd)
                 {
                     case "ppt2pdf":
-                        FileProcessor.ConvertPptToPdf(_files, progressCallback);
+                        FileProcessor.ConvertPptToPdf(currentFiles, progressCallback);
                         break;
                     case "word2pdf":
-                        FileProcessor.ConvertWordToPdf(_files, progressCallback);
+                        FileProcessor.ConvertWordToPdf(currentFiles, progressCallback);
                         break;
                     case "merge-pdf":
-                        FileProcessor.MergePdfs(_files, Path.Combine(outputDir, "Merged_PDF.pdf"), progressCallback);
+                        FileProcessor.MergePdfs(currentFiles, Path.Combine(outputDir, "Merged_PDF.pdf"), progressCallback);
                         break;
                     case "img2pdf":
-                        for (int i = 0; i < _files.Count; i++)
+                        for (int i = 0; i < currentFiles.Count; i++)
                         {
-                            var f = _files[i];
+                            var f = currentFiles[i];
                             string outName = Path.Combine(outputDir, Path.GetFileNameWithoutExtension(f) + ".pdf");
-                            progressCallback((i * 100) + 50, _files.Count * 100, $"正在轉換圖片: {Path.GetFileName(f)} ({i + 1}/{_files.Count})...");
+                            progressCallback((i * 100) + 50, currentFiles.Count * 100, $"正在轉換圖片: {Path.GetFileName(f)} ({i + 1}/{currentFiles.Count})...");
                             FileProcessor.ImagesToPdf(new List<string> { f }, outName, null);
                         }
-                        progressCallback(_files.Count * 100, _files.Count * 100, "轉換完成，正在儲存 PDF...");
+                        progressCallback(currentFiles.Count * 100, currentFiles.Count * 100, "轉換完成，正在儲存 PDF...");
                         break;
                     case "img-merge":
-                        FileProcessor.ImagesToPdf(_files, Path.Combine(outputDir, "Merged_Images.pdf"), progressCallback);
+                        FileProcessor.ImagesToPdf(currentFiles, Path.Combine(outputDir, "Merged_Images.pdf"), progressCallback);
                         break;
                     case "img-stitch":
-                        FileProcessor.StitchImages(_files, Path.Combine(outputDir, "Stitched_Image.png"), progressCallback);
+                        FileProcessor.StitchImages(currentFiles, Path.Combine(outputDir, "Stitched_Image.png"), progressCallback);
                         break;
                 }
 
@@ -320,9 +347,9 @@ namespace Clickra.UI
                 }
                 InvalidateRect(hwnd, IntPtr.Zero, true);
 
-                ShowToastNotification(_command, _files.Count);
+                ShowToastNotification(cmd, currentFiles.Count);
 
-                Thread.Sleep(3000);
+                Thread.Sleep(1500);
                 PostMessageW(hwnd, 0x0010, IntPtr.Zero, IntPtr.Zero); // WM_CLOSE
             }
             catch (Exception ex)
@@ -369,25 +396,26 @@ try {{
                     CreateNoWindow = true
                 };
                 using var p = System.Diagnostics.Process.Start(startInfo);
+                p?.WaitForExit();
             }
             catch { }
         }
 
-        static Color GetSystemAccentColor()
+        static Color GetSystemColorizationColor()
         {
-            if (_hasCachedAccent) return _cachedAccentColor;
+            if (_hasCachedColorizationColor) return _cachedColorizationColor;
             try
             {
                 DwmGetColorizationColor(out uint color, out bool _);
-                _cachedAccentColor = Color.FromArgb(255, Color.FromArgb((int)color));
-                _hasCachedAccent = true;
-                return _cachedAccentColor;
+                _cachedColorizationColor = Color.FromArgb(255, Color.FromArgb((int)color));
+                _hasCachedColorizationColor = true;
+                return _cachedColorizationColor;
             }
             catch
             {
-                _cachedAccentColor = Color.FromArgb(255, 0, 120, 212); // 微軟藍
-                _hasCachedAccent = true;
-                return _cachedAccentColor;
+                _cachedColorizationColor = Color.FromArgb(255, 0, 120, 212); // 微軟藍
+                _hasCachedColorizationColor = true;
+                return _cachedColorizationColor;
             }
         }
 
@@ -493,7 +521,7 @@ try {{
                     var fillRect = new RectangleF(barX, barY, (float)dispW, barH);
                     using var fillPath = GetRoundedRectPath(fillRect, 6);
                     
-                    Color accent = GetSystemAccentColor();
+                    Color accent = GetSystemColorizationColor();
                     Color accentLight = Lighten(accent, 0.3f);
                     using var gradBrush = new LinearGradientBrush(fillRect, accent, accentLight, LinearGradientMode.Horizontal);
                     g.FillPath(gradBrush, fillPath);
