@@ -7,6 +7,7 @@ using System.Collections.Generic;
 using System.Runtime.InteropServices;
 using System.Drawing;
 using System.Drawing.Text;
+using System.Drawing.Drawing2D;
 using Clickra.Core;
 
 namespace Clickra.UI
@@ -63,11 +64,14 @@ namespace Clickra.UI
         [DllImport("user32.dll")] static extern bool InvalidateRect(IntPtr hWnd, IntPtr lpRect, bool bErase);
         [DllImport("user32.dll")] static extern bool PostMessageW(IntPtr hWnd, uint Msg, IntPtr wParam, IntPtr lParam);
         [DllImport("user32.dll", CharSet = CharSet.Unicode)] static extern int MessageBox(IntPtr hWnd, string text, string caption, uint type);
+        [DllImport("user32.dll")] static extern IntPtr SetTimer(IntPtr hWnd, IntPtr nIDEvent, uint uElapse, IntPtr lpTimerFunc);
+        [DllImport("user32.dll")] static extern bool KillTimer(IntPtr hWnd, IntPtr nIDEvent);
 
         [DllImport("shell32.dll", EntryPoint = "ExtractIconW", CharSet = CharSet.Unicode)] 
         static extern IntPtr ExtractIcon(IntPtr h, string path, int idx);
         
         [DllImport("dwmapi.dll")] static extern int DwmSetWindowAttribute(IntPtr h, int attr, ref int val, int size);
+        [DllImport("dwmapi.dll", PreserveSig = false)] static extern void DwmGetColorizationColor(out uint pcrColorization, out bool pfOpaqueBlend);
 
         const uint WS_OVERLAPPED_FIXED = 0x00CF0000 & ~0x00040000u & ~0x00020000u;
         const int DWMWA_DARK_MODE = 20;
@@ -86,16 +90,23 @@ namespace Clickra.UI
         static string _errorMessage = "";
         static IntPtr _hwnd = IntPtr.Zero;
 
+        static double _currentDispWidth = 0;
+        static double _targetWidth = 0;
+        static float _shimmerOffset = -120;
+
         public static void Show(string command, List<string> files)
         {
             _command = command;
             _files = files;
             _current = 0;
-            _total = files.Count;
+            _total = files.Count * 100;
             _message = "正在準備處理...";
             _completed = false;
             _hasError = false;
             _errorMessage = "";
+            _currentDispWidth = 0;
+            _targetWidth = 0;
+            _shimmerOffset = -120;
 
             string className = "ClickraProgressWnd";
             IntPtr hClass = Marshal.StringToHGlobalUni(className);
@@ -132,6 +143,7 @@ namespace Clickra.UI
             }
 
             ShowWindow(_hwnd, 5);
+            SetTimer(_hwnd, (IntPtr)1, 16, IntPtr.Zero); // 16ms 約 60fps
 
             Thread bgThread = new Thread(() => RunProcessing(_hwnd));
             bgThread.IsBackground = true;
@@ -150,6 +162,25 @@ namespace Clickra.UI
             switch (msg)
             {
                 case 0x0014: return (IntPtr)1; // WM_ERASEBKGND
+                case 0x0113: // WM_TIMER
+                    if (!_completed && !_hasError)
+                    {
+                        if (_currentDispWidth < _targetWidth)
+                        {
+                            double diff = _targetWidth - _currentDispWidth;
+                            double step = diff * 0.15;
+                            if (step < 1.0) step = 1.0;
+                            
+                            _currentDispWidth += step;
+                            if (_currentDispWidth >= _targetWidth) _currentDispWidth = _targetWidth;
+                        }
+                        
+                        _shimmerOffset += 5.0f;
+                        if (_shimmerOffset > 448) _shimmerOffset = -120;
+                        
+                        InvalidateRect(hwnd, IntPtr.Zero, false);
+                    }
+                    return IntPtr.Zero;
                 case 0x000F: // WM_PAINT
                     var ps = new PAINTSTRUCT();
                     var hdc = BeginPaint(hwnd, out ps);
@@ -157,6 +188,7 @@ namespace Clickra.UI
                     EndPaint(hwnd, ref ps);
                     return IntPtr.Zero;
                 case 0x0002: // WM_DESTROY
+                    KillTimer(hwnd, (IntPtr)1);
                     PostQuitMessage(0);
                     return IntPtr.Zero;
             }
@@ -172,7 +204,7 @@ namespace Clickra.UI
                     _current = curr;
                     if (tot > 0) _total = tot;
                     _message = msg;
-                    InvalidateRect(hwnd, IntPtr.Zero, true);
+                    if (_total > 0) _targetWidth = 448.0 * _current / _total;
                 };
 
                 string outputDir = Path.GetDirectoryName(_files[0]) ?? "";
@@ -260,12 +292,50 @@ try {{
             catch { }
         }
 
+        static Color GetSystemAccentColor()
+        {
+            try
+            {
+                DwmGetColorizationColor(out uint color, out bool _);
+                return Color.FromArgb(255, Color.FromArgb((int)color));
+            }
+            catch
+            {
+                return Color.FromArgb(255, 0, 120, 212); // 微軟藍
+            }
+        }
+
+        static Color Lighten(Color c, float amount)
+        {
+            int r = (int)(c.R + (255 - c.R) * amount);
+            int g = (int)(c.G + (255 - c.G) * amount);
+            int b = (int)(c.B + (255 - c.B) * amount);
+            return Color.FromArgb(255, Math.Min(255, r), Math.Min(255, g), Math.Min(255, b));
+        }
+
+        static GraphicsPath GetRoundedRectPath(RectangleF rect, float radius)
+        {
+            var path = new GraphicsPath();
+            if (radius <= 0)
+            {
+                path.AddRectangle(rect);
+                return path;
+            }
+            float d = radius * 2;
+            path.AddArc(rect.X, rect.Y, d, d, 180, 90);
+            path.AddArc(rect.Right - d, rect.Y, d, d, 270, 90);
+            path.AddArc(rect.Right - d, rect.Bottom - d, d, d, 0, 90);
+            path.AddArc(rect.X, rect.Bottom - d, d, d, 90, 90);
+            path.CloseFigure();
+            return path;
+        }
+
         static void Paint(IntPtr hdc)
         {
             using var bmp = new Bitmap(520, 280);
             using var g = Graphics.FromImage(bmp);
             g.TextRenderingHint = TextRenderingHint.AntiAliasGridFit;
-            g.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.AntiAlias;
+            g.SmoothingMode = SmoothingMode.AntiAlias;
             g.Clear(Color.FromArgb(32, 32, 32));
 
             using var titleFont = new Font("Segoe UI Variable Display", 24, FontStyle.Bold);
@@ -304,17 +374,34 @@ try {{
                 g.DrawString(_message, msgFont, Brushes.White, 36, 130);
 
                 int barX = 36, barY = 170, barW = 448, barH = 16;
+                using var bgPath = GetRoundedRectPath(new RectangleF(barX, barY, barW, barH), 6);
                 using var bgBrush = new SolidBrush(Color.FromArgb(45, 45, 45));
-                g.FillRectangle(bgBrush, barX, barY, barW, barH);
+                g.FillPath(bgBrush, bgPath);
                 using var borderPen = new Pen(Color.FromArgb(70, 70, 70));
-                g.DrawRectangle(borderPen, barX, barY, barW, barH);
+                g.DrawPath(borderPen, bgPath);
 
-                if (_total > 0 && _current > 0)
+                if (_currentDispWidth > 3)
                 {
-                    int fillW = (int)(barW * (double)_current / _total);
-                    if (fillW > barW) fillW = barW;
-                    using var fillBrush = new SolidBrush(Color.FromArgb(100, 220, 100));
-                    g.FillRectangle(fillBrush, barX, barY, fillW, barH);
+                    var fillRect = new RectangleF(barX, barY, (float)_currentDispWidth, barH);
+                    using var fillPath = GetRoundedRectPath(fillRect, 6);
+                    
+                    Color accent = GetSystemAccentColor();
+                    Color accentLight = Lighten(accent, 0.3f);
+                    using var gradBrush = new LinearGradientBrush(fillRect, accent, accentLight, LinearGradientMode.Horizontal);
+                    g.FillPath(gradBrush, fillPath);
+
+                    var oldClip = g.Clip;
+                    g.SetClip(fillPath);
+
+                    var shimmerRect = new RectangleF(_shimmerOffset, barY, 120, barH);
+                    using var shimmerBrush = new LinearGradientBrush(shimmerRect, Color.FromArgb(0, 255, 255, 255), Color.FromArgb(100, 255, 255, 255), LinearGradientMode.Horizontal);
+                    var blend = new ColorBlend(3);
+                    blend.Colors = new Color[] { Color.FromArgb(0, 255, 255, 255), Color.FromArgb(100, 255, 255, 255), Color.FromArgb(0, 255, 255, 255) };
+                    blend.Positions = new float[] { 0.0f, 0.5f, 1.0f };
+                    shimmerBrush.InterpolationColors = blend;
+
+                    g.FillRectangle(shimmerBrush, shimmerRect);
+                    g.Clip = oldClip;
                 }
 
                 string pct = _total > 0 ? $"{(_current * 100 / _total)}%" : "";
