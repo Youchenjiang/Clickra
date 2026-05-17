@@ -64,35 +64,31 @@ namespace Clickra
                 {
                     case "ppt2pdf":
                         ValidateExtensions(files, command, ".pptx", ".ppt");
-                        FileProcessor.ConvertPptToPdf(files, msg => Console.WriteLine(msg));
+                        ProgressWindow.Show(command, files);
                         break;
                     case "word2pdf":
                         ValidateExtensions(files, command, ".docx", ".doc");
-                        FileProcessor.ConvertWordToPdf(files, msg => Console.WriteLine(msg));
+                        ProgressWindow.Show(command, files);
                         break;
                     case "merge-pdf":
                         ValidateExtensions(files, command, ".pdf");
                         RequireMinFiles(files, command, 2);
-                        FileProcessor.MergePdfs(files, Path.Combine(outputDir, "Merged_PDF.pdf"));
+                        ProgressWindow.Show(command, files);
                         break;
                     case "img2pdf":
                         ValidateExtensions(files, command, ".jpg", ".jpeg", ".png", ".bmp", ".gif", ".tiff", ".webp");
                         RequireMinFiles(files, command, 1);
-                        foreach (var f in files)
-                        {
-                            string outName = Path.Combine(outputDir, Path.GetFileNameWithoutExtension(f) + ".pdf");
-                            FileProcessor.ImagesToPdf(new List<string> { f }, outName);
-                        }
+                        ProgressWindow.Show(command, files);
                         break;
                     case "img-merge":
                         ValidateExtensions(files, command, ".jpg", ".jpeg", ".png", ".bmp", ".gif", ".tiff", ".webp");
                         RequireMinFiles(files, command, 2);
-                        FileProcessor.ImagesToPdf(files, Path.Combine(outputDir, "Merged_Images.pdf"));
+                        ProgressWindow.Show(command, files);
                         break;
                     case "img-stitch":
                         ValidateExtensions(files, command, ".jpg", ".jpeg", ".png", ".bmp", ".gif", ".tiff", ".webp");
                         RequireMinFiles(files, command, 2);
-                        FileProcessor.StitchImages(files, Path.Combine(outputDir, "Stitched_Image.png"));
+                        ProgressWindow.Show(command, files);
                         break;
                     default:
                         Console.WriteLine("Unknown command: " + command);
