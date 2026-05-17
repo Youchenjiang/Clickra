@@ -79,6 +79,7 @@ namespace Clickra.UI
 
         delegate IntPtr WndProcDelegate(IntPtr h, uint msg, IntPtr w, IntPtr l);
         static WndProcDelegate _wndProc = WndProc;
+        static readonly object _stateLock = new object();
 
         static string _command = "";
         static List<string> _files = new List<string>();
@@ -94,19 +95,60 @@ namespace Clickra.UI
         static double _targetWidth = 0;
         static float _shimmerOffset = -120;
 
+        // GDI+ 雙緩衝與色彩快取
+        static Bitmap? _bufferBmp;
+        static Graphics? _bufferGraphics;
+        static Color _cachedAccentColor = Color.FromArgb(255, 0, 120, 212);
+        static bool _hasCachedAccent = false;
+
+        // GDI+ 快取字型與筆刷
+        static Font? _titleFont;
+        static Font? _subFont;
+        static Font? _headerFont;
+        static Font? _msgFont;
+        static Font? _tipFont;
+        static Font? _pctFont;
+        static Pen? _linePen;
+        static Pen? _borderPen;
+        static SolidBrush? _bgBrush;
+
         public static void Show(string command, List<string> files)
         {
-            _command = command;
-            _files = files;
-            _current = 0;
-            _total = files.Count * 100;
-            _message = "正在準備處理...";
-            _completed = false;
-            _hasError = false;
-            _errorMessage = "";
-            _currentDispWidth = 0;
-            _targetWidth = 0;
-            _shimmerOffset = -120;
+            lock (_stateLock)
+            {
+                _command = command;
+                _files = files;
+                _current = 0;
+                _total = files.Count * 100;
+                _message = "正在準備處理...";
+                _completed = false;
+                _hasError = false;
+                _errorMessage = "";
+                _currentDispWidth = 0;
+                _targetWidth = 0;
+                _shimmerOffset = -120;
+            }
+
+            // 初始化 GDI+ 快取物件
+            _titleFont ??= new Font("Segoe UI Variable Display", 24, FontStyle.Bold);
+            _subFont ??= new Font("Segoe UI Variable Display", 11);
+            _headerFont ??= new Font("Segoe UI Variable Display", 16, FontStyle.Bold);
+            _msgFont ??= new Font("Segoe UI Variable Display", 11);
+            _tipFont ??= new Font("Segoe UI Variable Display", 9);
+            _pctFont ??= new Font("Segoe UI Variable Display", 10, FontStyle.Bold);
+            _linePen ??= new Pen(Color.FromArgb(60, 60, 60));
+            _borderPen ??= new Pen(Color.FromArgb(70, 70, 70));
+            _bgBrush ??= new SolidBrush(Color.FromArgb(45, 45, 45));
+
+            if (_bufferBmp == null)
+            {
+                _bufferBmp = new Bitmap(520, 280);
+                _bufferGraphics = Graphics.FromImage(_bufferBmp);
+                _bufferGraphics.TextRenderingHint = TextRenderingHint.AntiAliasGridFit;
+                _bufferGraphics.SmoothingMode = SmoothingMode.AntiAlias;
+            }
+
+            _hasCachedAccent = false;
 
             string className = "ClickraProgressWnd";
             IntPtr hClass = Marshal.StringToHGlobalUni(className);
@@ -143,7 +185,7 @@ namespace Clickra.UI
             }
 
             ShowWindow(_hwnd, 5);
-            SetTimer(_hwnd, (IntPtr)1, 16, IntPtr.Zero); // 16ms 約 60fps
+            SetTimer(_hwnd, (IntPtr)1, 30, IntPtr.Zero); // 30ms 約 33fps
 
             Thread bgThread = new Thread(() => RunProcessing(_hwnd));
             bgThread.IsBackground = true;
@@ -163,22 +205,25 @@ namespace Clickra.UI
             {
                 case 0x0014: return (IntPtr)1; // WM_ERASEBKGND
                 case 0x0113: // WM_TIMER
-                    if (!_completed && !_hasError)
+                    lock (_stateLock)
                     {
-                        if (_currentDispWidth < _targetWidth)
+                        if (!_completed && !_hasError)
                         {
-                            double diff = _targetWidth - _currentDispWidth;
-                            double step = diff * 0.15;
-                            if (step < 1.0) step = 1.0;
+                            if (_currentDispWidth < _targetWidth)
+                            {
+                                double diff = _targetWidth - _currentDispWidth;
+                                double step = diff * 0.15;
+                                if (step < 1.0) step = 1.0;
+                                
+                                _currentDispWidth += step;
+                                if (_currentDispWidth >= _targetWidth) _currentDispWidth = _targetWidth;
+                            }
                             
-                            _currentDispWidth += step;
-                            if (_currentDispWidth >= _targetWidth) _currentDispWidth = _targetWidth;
+                            _shimmerOffset += 5.0f;
+                            if (_shimmerOffset > 448) _shimmerOffset = -120;
+                            
+                            InvalidateRect(hwnd, IntPtr.Zero, false);
                         }
-                        
-                        _shimmerOffset += 5.0f;
-                        if (_shimmerOffset > 448) _shimmerOffset = -120;
-                        
-                        InvalidateRect(hwnd, IntPtr.Zero, false);
                     }
                     return IntPtr.Zero;
                 case 0x000F: // WM_PAINT
@@ -201,10 +246,13 @@ namespace Clickra.UI
             {
                 Action<int, int, string> progressCallback = (curr, tot, msg) =>
                 {
-                    _current = curr;
-                    if (tot > 0) _total = tot;
-                    _message = msg;
-                    if (_total > 0) _targetWidth = 448.0 * _current / _total;
+                    lock (_stateLock)
+                    {
+                        _current = curr;
+                        if (tot > 0) _total = tot;
+                        _message = msg;
+                        if (_total > 0) _targetWidth = 448.0 * _current / _total;
+                    }
                 };
 
                 string outputDir = Path.GetDirectoryName(_files[0]) ?? "";
@@ -238,8 +286,11 @@ namespace Clickra.UI
                         break;
                 }
 
-                _completed = true;
-                _message = "所有作業已順利完成！";
+                lock (_stateLock)
+                {
+                    _completed = true;
+                    _message = "所有作業已順利完成！";
+                }
                 InvalidateRect(hwnd, IntPtr.Zero, true);
 
                 ShowToastNotification(_command, _files.Count);
@@ -249,8 +300,11 @@ namespace Clickra.UI
             }
             catch (Exception ex)
             {
-                _hasError = true;
-                _errorMessage = ex.Message;
+                lock (_stateLock)
+                {
+                    _hasError = true;
+                    _errorMessage = ex.Message;
+                }
                 InvalidateRect(hwnd, IntPtr.Zero, true);
                 
                 MessageBox(hwnd, $"處理過程中發生錯誤：\n{ex.Message}", "Clickra — 錯誤", 0x10); // MB_ICONERROR
@@ -271,8 +325,8 @@ try {{
     [Windows.UI.Notifications.ToastNotificationManager, Windows.UI.Notifications, ContentType = WindowsRuntime] | Out-Null
     $template = [Windows.UI.Notifications.ToastNotificationManager]::GetTemplateContent([Windows.UI.Notifications.ToastTemplateType]::ToastText02)
     $textNodes = $template.GetElementsByTagName('text')
-    $textNodes.Item(0).AppendChild($template.CreateTextNode('{title.Replace("'", "''")}')) | Out-Null
-    $textNodes.Item(1).AppendChild($template.CreateTextNode('{body.Replace("'", "''")}')) | Out-Null
+    $textNodes.Item(0).AppendChild($template.CreateTextNode('{title.Replace("'", "''").Replace("\"", "`\"")}')) | Out-Null
+    $textNodes.Item(1).AppendChild($template.CreateTextNode('{body.Replace("'", "''").Replace("\"", "`\"")}')) | Out-Null
     $toast = [Windows.UI.Notifications.ToastNotification]::new($template)
     $notifier = [Windows.UI.Notifications.ToastNotificationManager]::CreateToastNotifier('Clickra')
     $notifier.Show($toast)
@@ -294,14 +348,19 @@ try {{
 
         static Color GetSystemAccentColor()
         {
+            if (_hasCachedAccent) return _cachedAccentColor;
             try
             {
                 DwmGetColorizationColor(out uint color, out bool _);
-                return Color.FromArgb(255, Color.FromArgb((int)color));
+                _cachedAccentColor = Color.FromArgb(255, Color.FromArgb((int)color));
+                _hasCachedAccent = true;
+                return _cachedAccentColor;
             }
             catch
             {
-                return Color.FromArgb(255, 0, 120, 212); // 微軟藍
+                _cachedAccentColor = Color.FromArgb(255, 0, 120, 212); // 微軟藍
+                _hasCachedAccent = true;
+                return _cachedAccentColor;
             }
         }
 
@@ -332,57 +391,79 @@ try {{
 
         static void Paint(IntPtr hdc)
         {
-            using var bmp = new Bitmap(520, 280);
-            using var g = Graphics.FromImage(bmp);
-            g.TextRenderingHint = TextRenderingHint.AntiAliasGridFit;
-            g.SmoothingMode = SmoothingMode.AntiAlias;
+            if (_bufferBmp == null || _bufferGraphics == null) return;
+            var g = _bufferGraphics;
             g.Clear(Color.FromArgb(32, 32, 32));
 
-            using var titleFont = new Font("Segoe UI Variable Display", 24, FontStyle.Bold);
-            g.DrawString("Clickra", titleFont, Brushes.White, 36, 28);
+            bool hasErr, comp; string msg, errMsg, pctStr;
+            double dispW; float shimOff; int tot, cur;
 
-            using var subFont = new Font("Segoe UI Variable Display", 11);
-            string subText = _hasError ? "作業失敗" : (_completed ? "作業完成" : "正在執行作業...");
-            Color subColor = _hasError ? Color.FromArgb(255, 90, 70) : (_completed ? Color.FromArgb(100, 220, 100) : Color.FromArgb(160, 160, 160));
-            g.DrawString(subText, subFont, new SolidBrush(subColor), 36, 72);
-
-            using var pen = new Pen(Color.FromArgb(60, 60, 60));
-            g.DrawLine(pen, 36, 110, 484, 110);
-
-            if (_hasError)
+            lock (_stateLock)
             {
-                using var errHeaderFont = new Font("Segoe UI Variable Display", 16, FontStyle.Bold);
-                g.DrawString("❌ 處理失敗", errHeaderFont, new SolidBrush(Color.FromArgb(255, 90, 70)), 36, 130);
-
-                using var errMsgFont = new Font("Segoe UI Variable Display", 10);
-                g.DrawString(_errorMessage, errMsgFont, new SolidBrush(Color.FromArgb(200, 200, 200)), new RectangleF(36, 170, 448, 60));
+                hasErr = _hasError; comp = _completed;
+                msg = _message; errMsg = _errorMessage;
+                dispW = _currentDispWidth; shimOff = _shimmerOffset;
+                tot = _total; cur = _current;
             }
-            else if (_completed)
+
+            if (_titleFont != null)
+                g.DrawString("Clickra", _titleFont, Brushes.White, 36, 28);
+
+            if (_subFont != null)
             {
-                using var successHeaderFont = new Font("Segoe UI Variable Display", 16, FontStyle.Bold);
-                g.DrawString("✔ 轉換成功！", successHeaderFont, new SolidBrush(Color.FromArgb(100, 220, 100)), 36, 130);
+                string subText = hasErr ? "作業失敗" : (comp ? "作業完成" : "正在執行作業...");
+                Color subColor = hasErr ? Color.FromArgb(255, 90, 70) : (comp ? Color.FromArgb(100, 220, 100) : Color.FromArgb(160, 160, 160));
+                using var subBrush = new SolidBrush(subColor);
+                g.DrawString(subText, _subFont, subBrush, 36, 72);
+            }
 
-                using var msgFont = new Font("Segoe UI Variable Display", 11);
-                g.DrawString(_message, msgFont, new SolidBrush(Color.FromArgb(220, 220, 220)), 36, 170);
+            if (_linePen != null)
+                g.DrawLine(_linePen, 36, 110, 484, 110);
 
-                using var tipFont = new Font("Segoe UI Variable Display", 9);
-                g.DrawString("視窗將於數秒後自動關閉...", tipFont, new SolidBrush(Color.FromArgb(120, 120, 120)), 36, 220);
+            if (hasErr)
+            {
+                if (_headerFont != null)
+                {
+                    using var errBrush = new SolidBrush(Color.FromArgb(255, 90, 70));
+                    g.DrawString("❌ 處理失敗", _headerFont, errBrush, 36, 130);
+                }
+                if (_msgFont != null)
+                {
+                    using var errMsgBrush = new SolidBrush(Color.FromArgb(200, 200, 200));
+                    g.DrawString(errMsg, _msgFont, errMsgBrush, new RectangleF(36, 170, 448, 60));
+                }
+            }
+            else if (comp)
+            {
+                if (_headerFont != null)
+                {
+                    using var succBrush = new SolidBrush(Color.FromArgb(100, 220, 100));
+                    g.DrawString("✔ 轉換成功！", _headerFont, succBrush, 36, 130);
+                }
+                if (_msgFont != null)
+                {
+                    using var msgBrush = new SolidBrush(Color.FromArgb(220, 220, 220));
+                    g.DrawString(msg, _msgFont, msgBrush, 36, 170);
+                }
+                if (_tipFont != null)
+                {
+                    using var tipBrush = new SolidBrush(Color.FromArgb(120, 120, 120));
+                    g.DrawString("視窗將於數秒後自動關閉...", _tipFont, tipBrush, 36, 220);
+                }
             }
             else
             {
-                using var msgFont = new Font("Segoe UI Variable Display", 11);
-                g.DrawString(_message, msgFont, Brushes.White, 36, 130);
+                if (_msgFont != null)
+                    g.DrawString(msg, _msgFont, Brushes.White, 36, 130);
 
                 int barX = 36, barY = 170, barW = 448, barH = 16;
                 using var bgPath = GetRoundedRectPath(new RectangleF(barX, barY, barW, barH), 6);
-                using var bgBrush = new SolidBrush(Color.FromArgb(45, 45, 45));
-                g.FillPath(bgBrush, bgPath);
-                using var borderPen = new Pen(Color.FromArgb(70, 70, 70));
-                g.DrawPath(borderPen, bgPath);
+                if (_bgBrush != null) g.FillPath(_bgBrush, bgPath);
+                if (_borderPen != null) g.DrawPath(_borderPen, bgPath);
 
-                if (_currentDispWidth > 3)
+                if (dispW > 3)
                 {
-                    var fillRect = new RectangleF(barX, barY, (float)_currentDispWidth, barH);
+                    var fillRect = new RectangleF(barX, barY, (float)dispW, barH);
                     using var fillPath = GetRoundedRectPath(fillRect, 6);
                     
                     Color accent = GetSystemAccentColor();
@@ -393,7 +474,7 @@ try {{
                     var oldClip = g.Clip;
                     g.SetClip(fillPath);
 
-                    var shimmerRect = new RectangleF(_shimmerOffset, barY, 120, barH);
+                    var shimmerRect = new RectangleF(shimOff, barY, 120, barH);
                     using var shimmerBrush = new LinearGradientBrush(shimmerRect, Color.FromArgb(0, 255, 255, 255), Color.FromArgb(100, 255, 255, 255), LinearGradientMode.Horizontal);
                     var blend = new ColorBlend(3);
                     blend.Colors = new Color[] { Color.FromArgb(0, 255, 255, 255), Color.FromArgb(100, 255, 255, 255), Color.FromArgb(0, 255, 255, 255) };
@@ -404,17 +485,23 @@ try {{
                     g.Clip = oldClip;
                 }
 
-                string pct = _total > 0 ? $"{(_current * 100 / _total)}%" : "";
-                using var pctFont = new Font("Segoe UI Variable Display", 10, FontStyle.Bold);
-                var size = g.MeasureString(pct, pctFont);
-                g.DrawString(pct, pctFont, new SolidBrush(Color.FromArgb(180, 180, 180)), 484 - size.Width, 145);
+                pctStr = tot > 0 ? $"{(cur * 100 / tot)}%" : "";
+                if (_pctFont != null)
+                {
+                    var size = g.MeasureString(pctStr, _pctFont);
+                    using var pctBrush = new SolidBrush(Color.FromArgb(180, 180, 180));
+                    g.DrawString(pctStr, _pctFont, pctBrush, 484 - size.Width, 145);
+                }
 
-                using var tipFont = new Font("Segoe UI Variable Display", 9);
-                g.DrawString("請稍候，正在背景高速處理中...", tipFont, new SolidBrush(Color.FromArgb(100, 100, 100)), 36, 220);
+                if (_tipFont != null)
+                {
+                    using var tipBrush = new SolidBrush(Color.FromArgb(100, 100, 100));
+                    g.DrawString("請稍候，正在背景高速處理中...", _tipFont, tipBrush, 36, 220);
+                }
             }
 
             using var targetG = Graphics.FromHdc(hdc);
-            targetG.DrawImage(bmp, 0, 0);
+            targetG.DrawImage(_bufferBmp, 0, 0);
         }
     }
 }
