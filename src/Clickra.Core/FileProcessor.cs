@@ -59,28 +59,41 @@ namespace Clickra.Core
         {
             int total = files.Count;
             onProgress?.Invoke(10, total * 100, "正在分析圖片尺寸...");
-            List<Image> images = files.Select(Image.FromFile).ToList();
-            
-            int totalWidth = images.Max(img => img.Width);
-            int totalHeight = images.Sum(img => img.Height);
-
-            using var stitched = new Bitmap(totalWidth, totalHeight);
-            using var gfx = Graphics.FromImage(stitched);
-            gfx.Clear(Color.White);
-
-            int currentY = 0;
-            for (int i = 0; i < images.Count; i++)
+            List<Image> images = new List<Image>();
+            try
             {
-                var img = images[i];
-                onProgress?.Invoke((i * 100) + 50, total * 100, $"正在拼接圖片 ({i + 1}/{total})...");
-                int x = (totalWidth - img.Width) / 2;
-                gfx.DrawImage(img, x, currentY, img.Width, img.Height);
-                currentY += img.Height;
-                img.Dispose();
-            }
+                foreach (var f in files)
+                {
+                    images.Add(Image.FromFile(f));
+                }
+                
+                int totalWidth = images.Max(img => img.Width);
+                int totalHeight = images.Sum(img => img.Height);
 
-            onProgress?.Invoke(total * 100, total * 100, "拼接完成，正在儲存圖片...");
-            stitched.Save(outputPath, System.Drawing.Imaging.ImageFormat.Png);
+                using var stitched = new Bitmap(totalWidth, totalHeight);
+                using var gfx = Graphics.FromImage(stitched);
+                gfx.Clear(Color.White);
+
+                int currentY = 0;
+                for (int i = 0; i < images.Count; i++)
+                {
+                    var img = images[i];
+                    onProgress?.Invoke((i * 100) + 50, total * 100, $"正在拼接圖片 ({i + 1}/{total})...");
+                    int x = (totalWidth - img.Width) / 2;
+                    gfx.DrawImage(img, x, currentY, img.Width, img.Height);
+                    currentY += img.Height;
+                }
+
+                onProgress?.Invoke(total * 100, total * 100, "拼接完成，正在儲存圖片...");
+                stitched.Save(outputPath, System.Drawing.Imaging.ImageFormat.Png);
+            }
+            finally
+            {
+                foreach (var img in images)
+                {
+                    try { img?.Dispose(); } catch { }
+                }
+            }
         }
 
         public static void ConvertPptToPdf(List<string> files, Action<int, int, string>? onProgress = null)
@@ -150,6 +163,7 @@ try {{
                     process.BeginOutputReadLine();
                     string error = process.StandardError.ReadToEnd();
                     process.WaitForExit();
+                    process.WaitForExit(); // 確保非同步輸出緩衝區完全排空
 
                     if (!File.Exists(outputPdfPath))
                     {
@@ -234,6 +248,7 @@ try {{
                     process.BeginOutputReadLine();
                     string error = process.StandardError.ReadToEnd();
                     process.WaitForExit();
+                    process.WaitForExit(); // 確保非同步輸出緩衝區完全排空
 
                     if (!File.Exists(outputPdfPath))
                     {
