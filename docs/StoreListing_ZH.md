@@ -1,6 +1,6 @@
 # Microsoft Store 清單 - 中文 (台灣)
 
-以下是供您直接複製貼上至 Microsoft 合作夥伴中心 (Partner Center) 的完整欄位資訊，已更新至 v3.0.6.0 的最新狀態。
+以下是供您直接複製貼上至 Microsoft 合作夥伴中心 (Partner Center) 的完整欄位資訊，已更新至 v3.0.7.0 的最新狀態。
 
 ---
 
@@ -24,10 +24,9 @@ Clickra 100% 於本機執行，保證隱私安全。立刻體驗閃電般的檔�
 🔗 開源專案首頁：https://github.com/Youchenjiang/Clickra
 
 ## 此版本的新增功能 (What's new in this version)
-- 新增原生儀表板 (Native Dashboard)：提供精美的深色介面來監測系統相容性。
-- 新增 Word 轉 PDF 支援：正式整合 Microsoft Word 高品質轉換引擎。
-- 全面 Native AOT 架構：啟動更快速且體積更輕巧。
-- 修正 MSIX 環境下標題列圖示與文字顯示問題。
+- 新增動態進度視窗 (Dynamic Progress Window)：提供具備 Fluent Design 微動畫與系統主色調連動的平滑進度條。
+- 新增完成通知 (Toast Notifications)：轉檔完成後自動推播原生 Windows 通知。
+- 徹底消除 UI 與 CLI 中的硬編碼版本號字串，提升系統維護性。
 
 ## 產品功能 (Product Features)
 *(最多 20 個，以項目符號顯示)*

@@ -25,7 +25,7 @@ namespace Clickra
         {
             if (args.Length == 0 || args[0] == "-v" || args[0] == "--version")
             {
-                var version = Assembly.GetExecutingAssembly().GetName().Version?.ToString(3) ?? "3.0.2";
+                var version = Assembly.GetExecutingAssembly().GetName().Version?.ToString(3) ?? "Unknown";
                 
                 if (args.Length == 0)
                 {

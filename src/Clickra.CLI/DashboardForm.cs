@@ -145,7 +145,9 @@ namespace Clickra.UI
             g.DrawString("Clickra", titleFont, Brushes.White, 36, 40);
 
             using var subFont = new Font("Segoe UI Variable Display", 11);
-            g.DrawString("Modern Context Menu Suite  ·  v3.0.6", subFont,
+            var ver = System.Reflection.Assembly.GetExecutingAssembly().GetName().Version;
+            string verStr = ver != null ? $"{ver.Major}.{ver.Minor}.{ver.Build}" : "Unknown";
+            g.DrawString($"Modern Context Menu Suite  ·  v{verStr}", subFont,
                 new SolidBrush(Color.FromArgb(160, 160, 160)), 40, 95);
 
             using var pen = new Pen(Color.FromArgb(60, 60, 60));
