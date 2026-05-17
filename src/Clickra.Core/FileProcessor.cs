@@ -163,7 +163,6 @@ try {{
                     process.BeginOutputReadLine();
                     string error = process.StandardError.ReadToEnd();
                     process.WaitForExit();
-                    process.WaitForExit(); // 確保非同步輸出緩衝區完全排空
 
                     if (!File.Exists(outputPdfPath))
                     {
@@ -248,7 +247,6 @@ try {{
                     process.BeginOutputReadLine();
                     string error = process.StandardError.ReadToEnd();
                     process.WaitForExit();
-                    process.WaitForExit(); // 確保非同步輸出緩衝區完全排空
 
                     if (!File.Exists(outputPdfPath))
                     {

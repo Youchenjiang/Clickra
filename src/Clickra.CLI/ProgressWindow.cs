@@ -43,6 +43,12 @@ namespace Clickra.UI
             [MarshalAs(UnmanagedType.ByValArray, SizeConst = 32)] public byte[] rgbReserved;
         }
 
+        [StructLayout(LayoutKind.Sequential)]
+        struct RECT { public int left, top, right, bottom; }
+
+        [DllImport("user32.dll", EntryPoint = "AdjustWindowRectEx", CharSet = CharSet.Unicode)]
+        static extern bool AdjustWindowRectEx(ref RECT lpRect, uint dwStyle, bool bMenu, uint dwExStyle);
+
         [DllImport("user32.dll", EntryPoint = "RegisterClassExW", CharSet = CharSet.Unicode)] 
         static extern ushort RegisterClassEx(ref WNDCLASSEX c);
         
@@ -165,15 +171,20 @@ namespace Clickra.UI
 
             RegisterClassEx(ref wc);
 
+            var rect = new RECT { left = 0, top = 0, right = 520, bottom = 280 };
+            AdjustWindowRectEx(ref rect, WS_OVERLAPPED_FIXED, false, 0);
+            int winW = rect.right - rect.left;
+            int winH = rect.bottom - rect.top;
+
             _hwnd = CreateWindowEx(0, className, "Clickra",
-                WS_OVERLAPPED_FIXED, CW_USEDEFAULT, CW_USEDEFAULT, 520, 280,
+                WS_OVERLAPPED_FIXED, CW_USEDEFAULT, CW_USEDEFAULT, winW, winH,
                 IntPtr.Zero, IntPtr.Zero, wc.hInstance, IntPtr.Zero);
 
             int dark = 1;
             DwmSetWindowAttribute(_hwnd, DWMWA_DARK_MODE, ref dark, sizeof(int));
             SetWindowText(_hwnd, "Clickra");
 
-            string exePath = System.Diagnostics.Process.GetCurrentProcess()?.MainModule?.FileName ?? "";
+            string exePath = Environment.ProcessPath ?? "";
             if (!string.IsNullOrEmpty(exePath))
             {
                 var hIcon = ExtractIcon(IntPtr.Zero, exePath, 0);
@@ -185,7 +196,7 @@ namespace Clickra.UI
             }
 
             ShowWindow(_hwnd, 5);
-            SetTimer(_hwnd, (IntPtr)1, 30, IntPtr.Zero); // 30ms 約 33fps
+            SetTimer(_hwnd, (IntPtr)1, 16, IntPtr.Zero); // 16ms 約 60fps
 
             Thread bgThread = new Thread(() => RunProcessing(_hwnd));
             bgThread.IsBackground = true;
@@ -197,6 +208,21 @@ namespace Clickra.UI
             }
 
             Marshal.FreeHGlobal(hClass);
+        }
+
+        static void CleanupResources()
+        {
+            try { _titleFont?.Dispose(); _titleFont = null; } catch { }
+            try { _subFont?.Dispose(); _subFont = null; } catch { }
+            try { _headerFont?.Dispose(); _headerFont = null; } catch { }
+            try { _msgFont?.Dispose(); _msgFont = null; } catch { }
+            try { _tipFont?.Dispose(); _tipFont = null; } catch { }
+            try { _pctFont?.Dispose(); _pctFont = null; } catch { }
+            try { _linePen?.Dispose(); _linePen = null; } catch { }
+            try { _borderPen?.Dispose(); _borderPen = null; } catch { }
+            try { _bgBrush?.Dispose(); _bgBrush = null; } catch { }
+            try { _bufferGraphics?.Dispose(); _bufferGraphics = null; } catch { }
+            try { _bufferBmp?.Dispose(); _bufferBmp = null; } catch { }
         }
 
         static IntPtr WndProc(IntPtr hwnd, uint msg, IntPtr w, IntPtr l)
@@ -234,6 +260,7 @@ namespace Clickra.UI
                     return IntPtr.Zero;
                 case 0x0002: // WM_DESTROY
                     KillTimer(hwnd, (IntPtr)1);
+                    CleanupResources();
                     PostQuitMessage(0);
                     return IntPtr.Zero;
             }
@@ -325,8 +352,8 @@ try {{
     [Windows.UI.Notifications.ToastNotificationManager, Windows.UI.Notifications, ContentType = WindowsRuntime] | Out-Null
     $template = [Windows.UI.Notifications.ToastNotificationManager]::GetTemplateContent([Windows.UI.Notifications.ToastTemplateType]::ToastText02)
     $textNodes = $template.GetElementsByTagName('text')
-    $textNodes.Item(0).AppendChild($template.CreateTextNode('{title.Replace("'", "''").Replace("\"", "`\"")}')) | Out-Null
-    $textNodes.Item(1).AppendChild($template.CreateTextNode('{body.Replace("'", "''").Replace("\"", "`\"")}')) | Out-Null
+    $textNodes.Item(0).AppendChild($template.CreateTextNode('{title.Replace("'", "''").Replace("`", "``").Replace("\"", "`\"")}')) | Out-Null
+    $textNodes.Item(1).AppendChild($template.CreateTextNode('{body.Replace("'", "''").Replace("`", "``").Replace("\"", "`\"")}')) | Out-Null
     $toast = [Windows.UI.Notifications.ToastNotification]::new($template)
     $notifier = [Windows.UI.Notifications.ToastNotificationManager]::CreateToastNotifier('Clickra')
     $notifier.Show($toast)
