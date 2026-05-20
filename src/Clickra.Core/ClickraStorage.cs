@@ -22,10 +22,6 @@ namespace Clickra.Core
         private static readonly object FileLock = new object();
         private static readonly Dictionary<string, string> SettingsCache = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
 
-        // 記憶體中的進行中作業（非持久化，僅供 Dashboard 即時顯示）
-        private static readonly object ActiveLock = new object();
-        private static ActiveRecord? _activeRecord;
-
         static ClickraStorage()
         {
             // 標準 LocalAppData 目錄，MSIX 商店隔離與非商店版均適用
@@ -121,100 +117,63 @@ namespace Clickra.Core
             return Path.GetDirectoryName(sourceFilePath) ?? "";
         }
 
-        // ─── Active Job Tracking (In-Memory) ───────────────────────────────────
+        // ─── Active Job Tracking (File-based IPC) ─────────────────────────────
+        // ProgressWindow 與 DashboardWindow 是不同進程，必須透過檔案溝通即時狀態。
+        // 格式：每行 Key=Value，欄位有 Time / Command / FileCount / Status / ErrorMessage
+
+        private static string ActiveFile => Path.Combine(DataDir, "active.tmp");
 
         /// <summary>
-        /// 記憶體中的進行中作業，用於 Dashboard 即時顯示，不持久化。
-        /// </summary>
-        private class ActiveRecord
-        {
-            public string Command { get; set; } = "";
-            public int FileCount { get; set; }
-            public ConversionStatus Status { get; set; } = ConversionStatus.Pending;
-            public string StartTime { get; set; } = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
-            public string ErrorMessage { get; set; } = "";
-        }
-
-        /// <summary>
-        /// 開始追蹤一個新的作業（Pending 狀態）。應在 UI 執行緒或背景執行緒轉換開始前呼叫。
+        /// 開始追蹤一個新的作業（Pending 狀態），寫入 active.tmp。
         /// </summary>
         public static void StartActiveRecord(string command, int fileCount)
         {
-            lock (ActiveLock)
-            {
-                _activeRecord = new ActiveRecord
-                {
-                    Command = command,
-                    FileCount = fileCount,
-                    Status = ConversionStatus.Pending,
-                    StartTime = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss"),
-                    ErrorMessage = ""
-                };
-            }
+            WriteActiveFile(command, fileCount, ConversionStatus.Pending, "");
         }
 
         /// <summary>
-        /// 將進行中作業的狀態更新為 InProgress。應在實際開始處理前呼叫。
+        /// 將進行中作業的狀態更新為 InProgress。
         /// </summary>
         public static void SetActiveRecordInProgress()
         {
-            lock (ActiveLock)
+            var entry = ReadActiveFile();
+            if (entry.HasValue)
             {
-                if (_activeRecord != null)
-                    _activeRecord.Status = ConversionStatus.InProgress;
+                WriteActiveFile(entry.Value.Command, entry.Value.FileCount, ConversionStatus.InProgress, "");
             }
         }
 
         /// <summary>
-        /// 完成進行中作業：寫入持久化日誌，並清除記憶體中的進行中紀錄。
+        /// 完成進行中作業：寫入持久化日誌，更新 active.tmp 為最終狀態，1.5s 後刪除。
         /// </summary>
         public static void CompleteActiveRecord(bool isSuccess, string errorMsg)
         {
-            string? command = null;
-            int fileCount = 0;
-            string? startTime = null;
+            var entry = ReadActiveFile();
+            string command = entry?.Command ?? "";
+            int fileCount = entry?.FileCount ?? 0;
+            string startTime = entry?.Time ?? DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
 
-            lock (ActiveLock)
-            {
-                if (_activeRecord != null)
-                {
-                    command = _activeRecord.Command;
-                    fileCount = _activeRecord.FileCount;
-                    startTime = _activeRecord.StartTime;
-                    _activeRecord.Status = isSuccess ? ConversionStatus.Success : ConversionStatus.Failed;
-                    _activeRecord.ErrorMessage = errorMsg;
-                }
-            }
+            // 更新 active.tmp 為最終狀態，讓 Dashboard 能在關閉前讀到
+            ConversionStatus finalStatus = isSuccess ? ConversionStatus.Success : ConversionStatus.Failed;
+            WriteActiveFile(command, fileCount, finalStatus, errorMsg, startTime);
 
             // 寫入持久化日誌
-            if (command != null)
+            lock (FileLock)
             {
-                lock (FileLock)
+                try
                 {
-                    try
-                    {
-                        string time = startTime ?? DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
-                        string cleanErr = errorMsg.Replace("\r", " ").Replace("\n", " ").Replace("|", " ");
-                        string line = $"{time}|{command}|{fileCount}|{(isSuccess ? "Success" : "Failed")}|{cleanErr}";
-                        File.AppendAllLines(HistoryFile, new[] { line });
-                    }
-                    catch { }
+                    string cleanErr = errorMsg.Replace("\r", " ").Replace("\n", " ").Replace("|", " ");
+                    string line = $"{startTime}|{command}|{fileCount}|{(isSuccess ? "Success" : "Failed")}|{cleanErr}";
+                    File.AppendAllLines(HistoryFile, new[] { line });
                 }
+                catch { }
             }
 
-            // 短暫保留最終狀態（讓 Dashboard Timer 能讀到最後一次結果），500ms 後清除
+            // 1.5 秒後刪除 active.tmp
             ThreadPool.QueueUserWorkItem(_ =>
             {
                 Thread.Sleep(1500);
-                lock (ActiveLock)
-                {
-                    // 只有在仍是這次完成的作業時才清除（避免覆蓋下一次作業）
-                    if (_activeRecord?.Status == ConversionStatus.Success ||
-                        _activeRecord?.Status == ConversionStatus.Failed)
-                    {
-                        _activeRecord = null;
-                    }
-                }
+                try { File.Delete(ActiveFile); } catch { }
             });
         }
 
@@ -223,18 +182,55 @@ namespace Clickra.Core
         /// </summary>
         public static HistoryEntry? GetActiveEntry()
         {
-            lock (ActiveLock)
+            return ReadActiveFile();
+        }
+
+        private static void WriteActiveFile(string command, int fileCount, ConversionStatus status,
+            string errorMsg, string? time = null)
+        {
+            try
             {
-                if (_activeRecord == null) return null;
+                string t = time ?? DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
+                string cleanErr = errorMsg.Replace("\r", " ").Replace("\n", " ").Replace("|", " ");
+                // 逐行 Key=Value 格式，易於解析且無需 JSON
+                string content =
+                    $"Time={t}\n" +
+                    $"Command={command}\n" +
+                    $"FileCount={fileCount}\n" +
+                    $"Status={status}\n" +
+                    $"ErrorMessage={cleanErr}\n";
+                // 以 Replace 方式寫入，避免並發衝突
+                File.WriteAllText(ActiveFile + ".tmp", content, System.Text.Encoding.UTF8);
+                File.Move(ActiveFile + ".tmp", ActiveFile, overwrite: true);
+            }
+            catch { }
+        }
+
+        private static HistoryEntry? ReadActiveFile()
+        {
+            try
+            {
+                if (!File.Exists(ActiveFile)) return null;
+                var dict = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+                foreach (string line in File.ReadLines(ActiveFile))
+                {
+                    int idx = line.IndexOf('=');
+                    if (idx > 0)
+                        dict[line.Substring(0, idx).Trim()] = line.Substring(idx + 1).Trim();
+                }
+                if (!dict.ContainsKey("Command")) return null;
+                int.TryParse(dict.GetValueOrDefault("FileCount", "0"), out int fc);
+                Enum.TryParse(dict.GetValueOrDefault("Status", "Pending"), out ConversionStatus status);
                 return new HistoryEntry
                 {
-                    Time = _activeRecord.StartTime,
-                    Command = _activeRecord.Command,
-                    FileCount = _activeRecord.FileCount,
-                    Status = _activeRecord.Status,
-                    ErrorMessage = _activeRecord.ErrorMessage
+                    Time = dict.GetValueOrDefault("Time", ""),
+                    Command = dict.GetValueOrDefault("Command", ""),
+                    FileCount = fc,
+                    Status = status,
+                    ErrorMessage = dict.GetValueOrDefault("ErrorMessage", "")
                 };
             }
+            catch { return null; }
         }
 
         // ─── History (Persistent) ──────────────────────────────────────────────
