@@ -280,9 +280,10 @@ namespace Clickra.UI
 
         static void RunProcessing(IntPtr hwnd)
         {
+            List<string> currentFiles = new List<string>();
+            string cmd = "";
             try
             {
-                List<string> currentFiles; string cmd;
                 lock (_stateLock)
                 {
                     currentFiles = _files;
@@ -309,7 +310,7 @@ namespace Clickra.UI
                     }
                 };
 
-                string outputDir = Path.GetDirectoryName(currentFiles[0]) ?? "";
+                string outputDir = ClickraStorage.GetOutputDir(currentFiles[0]);
 
                 switch (cmd)
                 {
@@ -347,6 +348,12 @@ namespace Clickra.UI
                 }
                 InvalidateRect(hwnd, IntPtr.Zero, true);
 
+                try
+                {
+                    ClickraStorage.RecordHistory(cmd, currentFiles.Count, true, "");
+                }
+                catch { }
+
                 ShowToastNotification(cmd, currentFiles.Count);
 
                 Thread.Sleep(1500);
@@ -361,6 +368,12 @@ namespace Clickra.UI
                 }
                 InvalidateRect(hwnd, IntPtr.Zero, true);
                 
+                try
+                {
+                    ClickraStorage.RecordHistory(cmd, currentFiles.Count, false, ex.Message);
+                }
+                catch { }
+                
                 MessageBox(hwnd, $"處理過程中發生錯誤：\n{ex.Message}", "Clickra — 錯誤", 0x10); // MB_ICONERROR
                 PostMessageW(hwnd, 0x0010, IntPtr.Zero, IntPtr.Zero); // WM_CLOSE
             }
@@ -368,6 +381,9 @@ namespace Clickra.UI
 
         static void ShowToastNotification(string command, int count)
         {
+            if (ClickraStorage.GetSetting("Notification") == "false")
+                return;
+
             try
             {
                 string title = "Clickra 轉換成功";

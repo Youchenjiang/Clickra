@@ -45,7 +45,8 @@ namespace Clickra
                 return;
             }
 
-            bool quiet = false;
+            bool quietByDefault = ClickraStorage.GetSetting("QuietMode").Equals("true", StringComparison.OrdinalIgnoreCase);
+            bool quiet = quietByDefault;
             var argList = args.ToList();
             if (argList.Contains("--quiet"))
             {
@@ -57,18 +58,24 @@ namespace Clickra
                 quiet = true;
                 argList.Remove("--no-ui");
             }
+            if (argList.Contains("--show-ui"))
+            {
+                quiet = false;
+                argList.Remove("--show-ui");
+            }
 
             if (argList.Count < 2)
             {
                 Console.WriteLine("Usage: Clickra <command> [options] <file...>");
                 Console.WriteLine("Options: --quiet / --no-ui  (Run in background without GUI)");
+                Console.WriteLine("         --show-ui          (Force show progress window)");
                 Console.WriteLine("Deployment: Clickra --deploy <target_dir>");
                 return;
             }
 
             string command = argList[0].ToLowerInvariant();
             var files = argList.Skip(1).OrderBy(f => f).ToList();
-            string outputDir = Path.GetDirectoryName(files[0]) ?? "";
+            string outputDir = ClickraStorage.GetOutputDir(files[0]);
 
             Console.WriteLine($"Executing {command} with {files.Count} files (Quiet mode: {quiet})...");
 
@@ -125,10 +132,18 @@ namespace Clickra
                         break;
                 }
                 
+                if (quiet)
+                {
+                    try { ClickraStorage.RecordHistory(command, files.Count, true, ""); } catch { }
+                }
                 Console.WriteLine("Operation completed successfully.");
             }
             catch (Exception ex)
             {
+                if (quiet)
+                {
+                    try { ClickraStorage.RecordHistory(command, files.Count, false, ex.Message); } catch { }
+                }
                 Console.WriteLine($"Error: {ex.Message}");
                 Console.WriteLine(ex.StackTrace);
                 if (!quiet && Environment.UserInteractive && !Console.IsInputRedirected)
