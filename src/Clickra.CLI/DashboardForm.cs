@@ -106,6 +106,7 @@ namespace Clickra.UI
         static Font? _sectionFont;
         static Font? _bodyFont;
         static Font? _tagFont;
+        static Font? _iconFont;
 
         public static void Show()
         {
@@ -162,6 +163,7 @@ namespace Clickra.UI
             _sectionFont ??= new Font("Segoe UI Variable Display", 12, FontStyle.Bold);
             _bodyFont ??= new Font("Segoe UI Variable Display", 10);
             _tagFont ??= new Font("Segoe UI Variable Display", 8.5f, FontStyle.Bold);
+            _iconFont ??= new Font("Segoe MDL2 Assets", 11);
 
             if (_bufferBmp == null)
             {
@@ -206,6 +208,7 @@ namespace Clickra.UI
             try { _sectionFont?.Dispose(); _sectionFont = null; } catch { }
             try { _bodyFont?.Dispose(); _bodyFont = null; } catch { }
             try { _tagFont?.Dispose(); _tagFont = null; } catch { }
+            try { _iconFont?.Dispose(); _iconFont = null; } catch { }
             try { _bufferGraphics?.Dispose(); _bufferGraphics = null; } catch { }
             try { _bufferBmp?.Dispose(); _bufferBmp = null; } catch { }
         }
@@ -364,9 +367,9 @@ namespace Clickra.UI
             }
 
             // Draw Tabs
-            DrawTabButton(g, "🏠  首頁狀態", 0, 120);
-            DrawTabButton(g, "📜  轉換歷史", 1, 168);
-            DrawTabButton(g, "⚙  偏好設定", 2, 216);
+            DrawTabButton(g, "\uE80F", "首頁狀態", 0, 120);
+            DrawTabButton(g, "\uE81C", "轉換歷史", 1, 168);
+            DrawTabButton(g, "\uE713", "偏好設定", 2, 216);
 
             // 2. Draw Content Area
             if (_activeTab == 0)
@@ -387,7 +390,7 @@ namespace Clickra.UI
             targetG.DrawImage(_bufferBmp, 0, 0);
         }
 
-        static void DrawTabButton(Graphics g, string text, int tabIndex, int y)
+        static void DrawTabButton(Graphics g, string icon, string label, int tabIndex, int y)
         {
             bool isActive = _activeTab == tabIndex;
             bool isHovered = _hoveredElement == tabIndex;
@@ -411,8 +414,18 @@ namespace Clickra.UI
 
             Color textColor = isActive ? Color.White : (isHovered ? Color.FromArgb(220, 220, 220) : Color.FromArgb(150, 150, 150));
             using var textBrush = new SolidBrush(textColor);
+
+            // Draw Icon (Segoe MDL2 Assets)
+            if (_iconFont != null)
+            {
+                g.DrawString(icon, _iconFont, textBrush, 24, y + 12);
+            }
+
+            // Draw Label (Segoe UI)
             if (_tabFont != null)
-                g.DrawString(text, _tabFont, textBrush, 28, y + 10);
+            {
+                g.DrawString(label, _tabFont, textBrush, 52, y + 10);
+            }
         }
 
         static void DrawOverviewTab(Graphics g)
