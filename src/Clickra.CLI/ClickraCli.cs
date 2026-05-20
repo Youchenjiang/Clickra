@@ -81,6 +81,13 @@ namespace Clickra
 
             try
             {
+                // 登記進行中作業狀態（静默模式下不顯示進度視窗，但仍需誤實時狀態）
+                if (quiet)
+                {
+                    try { ClickraStorage.StartActiveRecord(command, files.Count); } catch { }
+                    try { ClickraStorage.SetActiveRecordInProgress(); } catch { }
+                }
+
                 switch (command)
                 {
                     case "ppt2pdf":
@@ -134,7 +141,7 @@ namespace Clickra
                 
                 if (quiet)
                 {
-                    try { ClickraStorage.RecordHistory(command, files.Count, true, ""); } catch { }
+                    try { ClickraStorage.CompleteActiveRecord(true, ""); } catch { }
                 }
                 Console.WriteLine("Operation completed successfully.");
             }
@@ -142,7 +149,7 @@ namespace Clickra
             {
                 if (quiet)
                 {
-                    try { ClickraStorage.RecordHistory(command, files.Count, false, ex.Message); } catch { }
+                    try { ClickraStorage.CompleteActiveRecord(false, ex.Message); } catch { }
                 }
                 Console.WriteLine($"Error: {ex.Message}");
                 Console.WriteLine(ex.StackTrace);

@@ -310,7 +310,13 @@ namespace Clickra.UI
                     }
                 };
 
+                // 立即建立 Pending 紀錄，讓 Dashboard 可即時看到
+                try { ClickraStorage.StartActiveRecord(cmd, currentFiles.Count); } catch { }
+
                 string outputDir = ClickraStorage.GetOutputDir(currentFiles[0]);
+
+                // 開始實際處理，切換為 InProgress
+                try { ClickraStorage.SetActiveRecordInProgress(); } catch { }
 
                 switch (cmd)
                 {
@@ -348,11 +354,8 @@ namespace Clickra.UI
                 }
                 InvalidateRect(hwnd, IntPtr.Zero, true);
 
-                try
-                {
-                    ClickraStorage.RecordHistory(cmd, currentFiles.Count, true, "");
-                }
-                catch { }
+                // 完成：寫入持久化日誌並暫留 Success 狀態供 Dashboard 讀取
+                try { ClickraStorage.CompleteActiveRecord(true, ""); } catch { }
 
                 ShowToastNotification(cmd, currentFiles.Count);
 
@@ -367,13 +370,10 @@ namespace Clickra.UI
                     _errorMessage = ex.Message;
                 }
                 InvalidateRect(hwnd, IntPtr.Zero, true);
-                
-                try
-                {
-                    ClickraStorage.RecordHistory(cmd, currentFiles.Count, false, ex.Message);
-                }
-                catch { }
-                
+
+                // 失敗：立即寫入持久化日誌並暫留 Failed 狀態供 Dashboard 讀取
+                try { ClickraStorage.CompleteActiveRecord(false, ex.Message); } catch { }
+
                 MessageBox(hwnd, $"處理過程中發生錯誤：\n{ex.Message}", "Clickra — 錯誤", 0x10); // MB_ICONERROR
                 PostMessageW(hwnd, 0x0010, IntPtr.Zero, IntPtr.Zero); // WM_CLOSE
             }

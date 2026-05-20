@@ -75,6 +75,11 @@ namespace Clickra.UI
         [DllImport("dwmapi.dll")] static extern int DwmSetWindowAttribute(IntPtr h, int attr, ref int val, int size);
         [DllImport("dwmapi.dll", PreserveSig = false)] static extern void DwmGetColorizationColor(out uint pcrColorization, out bool pfOpaqueBlend);
 
+        // Timer for real-time history refresh
+        [DllImport("user32.dll")] static extern IntPtr SetTimer(IntPtr hWnd, IntPtr nIDEvent, uint uElapse, IntPtr lpTimerFunc);
+        [DllImport("user32.dll")] static extern bool KillTimer(IntPtr hWnd, IntPtr nIDEvent);
+        static readonly IntPtr TIMER_ID_REFRESH = (IntPtr)1001;
+
         const uint WS_OVERLAPPED_FIXED = 0x00CF0000 & ~0x00040000u & ~0x00020000u;
         const int DWMWA_DARK_MODE = 20;
         const int CW_USEDEFAULT = unchecked((int)0x80000000);
@@ -174,6 +179,9 @@ namespace Clickra.UI
             }
 
             ShowWindow(hwnd, 5);
+
+            // 每 800ms 刷新一次歷史資料（供即時轉換狀態顯示）
+            SetTimer(hwnd, TIMER_ID_REFRESH, 800, IntPtr.Zero);
 
             while (GetMessage(out var msg, IntPtr.Zero, 0, 0))
                 DispatchMessage(ref msg);
@@ -324,7 +332,16 @@ namespace Clickra.UI
                         return (IntPtr)1; // Handled
                     }
                     break;
+                case 0x0113: // WM_TIMER
+                    if (w == TIMER_ID_REFRESH)
+                    {
+                        // 靜默刷新歷史（不重置捲動位置）
+                        RefreshHistoryData();
+                        InvalidateRect(hwnd, IntPtr.Zero, false);
+                    }
+                    return IntPtr.Zero;
                 case 0x0002: // WM_DESTROY
+                    KillTimer(hwnd, TIMER_ID_REFRESH);
                     CleanupResources();
                     PostQuitMessage(0);
                     return IntPtr.Zero;
@@ -494,22 +511,125 @@ namespace Clickra.UI
                 g.DrawLine(divPen, 236, 75, 720, 75);
             }
 
+            // 取得目前進行中作業（若有）
+            var activeEntry = ClickraStorage.GetActiveEntry();
+
+            int rowStartY = 90;
+            int rowSpacing = 52;
+            int drawnRows = 0;
+
+            // ——— 顧示進行中作業（置頂）———
+            if (activeEntry.HasValue)
+            {
+                var ae = activeEntry.Value;
+                int rowY = rowStartY;
+                int rowW = 484, rowH = 44;
+
+                // 進行中作業背景素微醒目（深藍色調）
+                Color activeBgColor = ae.Status switch
+                {
+                    ConversionStatus.Pending    => Color.FromArgb(38, 38, 48),
+                    ConversionStatus.InProgress => Color.FromArgb(30, 42, 55),
+                    ConversionStatus.Success    => Color.FromArgb(30, 44, 34),
+                    ConversionStatus.Failed     => Color.FromArgb(50, 32, 32),
+                    _                           => Color.FromArgb(36, 36, 36)
+                };
+                Color activeBorderColor = ae.Status switch
+                {
+                    ConversionStatus.Pending    => Color.FromArgb(70, 70, 100),
+                    ConversionStatus.InProgress => Color.FromArgb(0, 120, 212),
+                    ConversionStatus.Success    => Color.FromArgb(50, 160, 80),
+                    ConversionStatus.Failed     => Color.FromArgb(200, 60, 60),
+                    _                           => Color.FromArgb(60, 60, 60)
+                };
+
+                using var path = GetRoundedRectPath(new RectangleF(236, rowY, rowW, rowH), 6);
+                using var rowBg = new SolidBrush(activeBgColor);
+                g.FillPath(rowBg, path);
+                using var borderPen = new Pen(activeBorderColor);
+                g.DrawPath(borderPen, path);
+
+                // 時間
+                if (_bodyFont != null)
+                {
+                    using var timeBrush = new SolidBrush(Color.FromArgb(140, 140, 140));
+                    g.DrawString(ae.Time, _bodyFont, timeBrush, 248, rowY + 13);
+                }
+
+                // 指令標籤
+                DrawCommandTag(g, ae.Command, 380, rowY + 11);
+
+                // 檔案數
+                if (_bodyFont != null)
+                {
+                    using var countBrush = new SolidBrush(Color.FromArgb(200, 200, 200));
+                    g.DrawString($"{ae.FileCount} 個檔案", _bodyFont, countBrush, 470, rowY + 13);
+                }
+
+                // 狀態標籤
+                string statusText;
+                Color statusColor;
+                switch (ae.Status)
+                {
+                    case ConversionStatus.Pending:
+                        statusText = "等待中";
+                        statusColor = Color.FromArgb(180, 180, 100);
+                        break;
+                    case ConversionStatus.InProgress:
+                        statusText = "轉換中";
+                        statusColor = Color.FromArgb(80, 160, 240);
+                        break;
+                    case ConversionStatus.Success:
+                        statusText = "成功";
+                        statusColor = Color.FromArgb(100, 220, 100);
+                        break;
+                    case ConversionStatus.Failed:
+                        statusText = "失敗";
+                        statusColor = Color.FromArgb(255, 90, 70);
+                        break;
+                    default:
+                        statusText = "";
+                        statusColor = Color.Gray;
+                        break;
+                }
+                if (_tagFont != null)
+                {
+                    using var statusBrush = new SolidBrush(statusColor);
+                    g.DrawString(statusText, _tagFont, statusBrush, 550, rowY + 13);
+                }
+
+                // 錯誤訊息（失敗時）
+                if (ae.Status == ConversionStatus.Failed && !string.IsNullOrEmpty(ae.ErrorMessage))
+                {
+                    if (_subFont != null)
+                    {
+                        using var errBrush = new SolidBrush(Color.FromArgb(230, 90, 70));
+                        string errText = ae.ErrorMessage.Length > 14 ? ae.ErrorMessage.Substring(0, 14) + "..." : ae.ErrorMessage;
+                        g.DrawString(errText, _subFont, errBrush, 590, rowY + 14);
+                    }
+                }
+
+                drawnRows++;
+            }
+
+            // ——— 顧示持久化歷史紀錄———
             if (_historyEntries == null || _historyEntries.Count == 0)
             {
-                if (_tabFont != null)
+                if (drawnRows == 0 && _tabFont != null)
                 {
                     using var textBrush = new SolidBrush(Color.FromArgb(120, 120, 120));
-                    g.DrawString("尚無任何轉換紀錄。", _tabFont, textBrush, 236, 110);
+                    g.DrawString("尚無任何轉換紀錄。", _tabFont, textBrush, 236, rowStartY + rowSpacing * drawnRows + 10);
                 }
                 return;
             }
 
-            // Draw history rows (up to 6)
-            int limit = Math.Min(6, _historyEntries.Count);
+            // 可展示的動態紀錄最多類國（進行中占一行）
+            int maxHistoryRows = 6 - drawnRows;
+            int limit = Math.Min(maxHistoryRows, _historyEntries.Count);
             for (int i = 0; i < limit; i++)
             {
                 var entry = _historyEntries[i];
-                int rowY = 100 + i * 52;
+                int rowY = rowStartY + (drawnRows + i) * rowSpacing;
                 int rowW = 484, rowH = 44;
 
                 using var path = GetRoundedRectPath(new RectangleF(236, rowY, rowW, rowH), 6);
@@ -519,24 +639,24 @@ namespace Clickra.UI
                 using var borderPen = new Pen(Color.FromArgb(48, 48, 48));
                 g.DrawPath(borderPen, path);
 
-                // Time
+                // 時間
                 if (_bodyFont != null)
                 {
                     using var timeBrush = new SolidBrush(Color.FromArgb(140, 140, 140));
                     g.DrawString(entry.Time, _bodyFont, timeBrush, 248, rowY + 13);
                 }
 
-                // Command Tag
+                // 指令標籤
                 DrawCommandTag(g, entry.Command, 380, rowY + 11);
 
-                // File Count
+                // 檔案數
                 if (_bodyFont != null)
                 {
                     using var countBrush = new SolidBrush(Color.FromArgb(200, 200, 200));
                     g.DrawString($"{entry.FileCount} 個檔案", _bodyFont, countBrush, 470, rowY + 13);
                 }
 
-                // Status tag
+                // 狀態標籤
                 Color statusColor = entry.IsSuccess ? Color.FromArgb(100, 220, 100) : Color.FromArgb(255, 90, 70);
                 string statusText = entry.IsSuccess ? "成功" : "失敗";
                 if (_tagFont != null)
@@ -545,13 +665,13 @@ namespace Clickra.UI
                     g.DrawString(statusText, _tagFont, statusBrush, 550, rowY + 13);
                 }
 
-                // Error Message (if failed, truncated)
+                // 錯誤訊息（失敗時）
                 if (!entry.IsSuccess && !string.IsNullOrEmpty(entry.ErrorMessage))
                 {
                     if (_subFont != null)
                     {
                         using var errBrush = new SolidBrush(Color.FromArgb(230, 90, 70));
-                        string errText = entry.ErrorMessage.Length > 16 ? entry.ErrorMessage.Substring(0, 16) + "..." : entry.ErrorMessage;
+                        string errText = entry.ErrorMessage.Length > 14 ? entry.ErrorMessage.Substring(0, 14) + "..." : entry.ErrorMessage;
                         g.DrawString(errText, _subFont, errBrush, 590, rowY + 14);
                     }
                 }
