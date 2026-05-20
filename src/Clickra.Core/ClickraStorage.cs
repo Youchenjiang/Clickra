@@ -153,11 +153,8 @@ namespace Clickra.Core
             int fileCount = entry?.FileCount ?? 0;
             string startTime = entry?.Time ?? DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
 
-            // 更新 active.tmp 為最終狀態，讓 Dashboard 能在關閉前讀到
-            ConversionStatus finalStatus = isSuccess ? ConversionStatus.Success : ConversionStatus.Failed;
-            WriteActiveFile(command, fileCount, finalStatus, errorMsg, startTime);
-
-            // 寫入持久化日誌
+            // 寫入持久化日誌，然後立刻刪除 active.tmp
+            // 兩步驟必須連續：先落地再消失，Dashboard 下一次 Timer 就會從歷史列表讀到這筆紀錄
             lock (FileLock)
             {
                 try
@@ -169,12 +166,7 @@ namespace Clickra.Core
                 catch { }
             }
 
-            // 1.5 秒後刪除 active.tmp
-            ThreadPool.QueueUserWorkItem(_ =>
-            {
-                Thread.Sleep(1500);
-                try { File.Delete(ActiveFile); } catch { }
-            });
+            try { File.Delete(ActiveFile); } catch { }
         }
 
         /// <summary>
