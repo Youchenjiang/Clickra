@@ -59,6 +59,7 @@ namespace Clickra.UI
 
         [DllImport("user32.dll")] static extern bool ShowWindow(IntPtr h, int n);
         [DllImport("user32.dll")] static extern bool GetMessage(out MSG m, IntPtr h, uint f, uint l);
+        [DllImport("user32.dll")] static extern bool TranslateMessage(ref MSG m);
         [DllImport("user32.dll")] static extern IntPtr DispatchMessage(ref MSG m);
         [DllImport("user32.dll")] static extern IntPtr DefWindowProcW(IntPtr h, uint msg, IntPtr w, IntPtr l);
         [DllImport("user32.dll")] static extern IntPtr BeginPaint(IntPtr h, out PAINTSTRUCT p);
@@ -90,6 +91,19 @@ namespace Clickra.UI
         // UI State Variables
         static int _activeTab = 0; // 0: Overview, 1: History, 2: Settings
         static int _hoveredElement = -1; // IDs of hovered elements
+        
+        // Language Dropdown state
+        static bool _langDropdownOpen = false;
+        static string _langSearchQuery = "";
+        static int _langHoveredIndex = 0;
+        private static readonly List<(string Code, string NativeName, string EnglishName)> SupportedLanguages = new()
+        {
+            ("zh-TW", "繁體中文", "Traditional Chinese"),
+            ("zh-CN", "简体中文", "Simplified Chinese"),
+            ("en-US", "English", "English"),
+            ("ja-JP", "日本語", "Japanese"),
+            ("ko-KR", "한국어", "Korean")
+        };
         
         // History & Statistics Cache
         static List<ClickraStorage.HistoryEntry> _historyEntries = new List<ClickraStorage.HistoryEntry>();
@@ -184,7 +198,10 @@ namespace Clickra.UI
             SetTimer(hwnd, TIMER_ID_REFRESH, 800, IntPtr.Zero);
 
             while (GetMessage(out var msg, IntPtr.Zero, 0, 0))
+            {
+                TranslateMessage(ref msg);
                 DispatchMessage(ref msg);
+            }
             
             Marshal.FreeHGlobal(hClass);
         }
@@ -245,6 +262,8 @@ namespace Clickra.UI
                 if (x >= 356 && x < 431 && y >= 290 && y < 320) return 7;
                 // OutputDir: Downloads
                 if (x >= 441 && x < 516 && y >= 290 && y < 320) return 8;
+                // Language dropdown button
+                if (x >= 236 && x < 476 && y >= 390 && y < 420) return 9;
             }
 
             return -1;
@@ -265,6 +284,21 @@ namespace Clickra.UI
                     {
                         int mouseX = (short)(l.ToInt64() & 0xFFFF);
                         int mouseY = (short)((l.ToInt64() >> 16) & 0xFFFF);
+                        
+                        if (_langDropdownOpen)
+                        {
+                            if (mouseX >= 236 && mouseX <= 476 && mouseY >= 248 && mouseY < 390)
+                            {
+                                int idx = (mouseY - 248) / 26;
+                                var filtered = GetFilteredLanguages();
+                                if (idx >= 0 && idx < filtered.Count && idx != _langHoveredIndex)
+                                {
+                                    _langHoveredIndex = idx;
+                                    InvalidateRect(hwnd, IntPtr.Zero, false);
+                                }
+                            }
+                        }
+
                         int prevHovered = _hoveredElement;
                         _hoveredElement = HitTest(mouseX, mouseY);
                         if (_hoveredElement != prevHovered)
@@ -277,6 +311,36 @@ namespace Clickra.UI
                     {
                         int mouseX = (short)(l.ToInt64() & 0xFFFF);
                         int mouseY = (short)((l.ToInt64() >> 16) & 0xFFFF);
+
+                        if (_langDropdownOpen)
+                        {
+                            if (mouseX >= 236 && mouseX <= 476)
+                            {
+                                if (mouseY >= 210 && mouseY < 248)
+                                {
+                                    // Clicked search box or container top, do nothing but keep open
+                                    return IntPtr.Zero;
+                                }
+                                else if (mouseY >= 248 && mouseY < 390)
+                                {
+                                    int clickedIdx = (mouseY - 248) / 26;
+                                    var filtered = GetFilteredLanguages();
+                                    if (clickedIdx >= 0 && clickedIdx < filtered.Count)
+                                    {
+                                        SelectLanguage(filtered[clickedIdx].Code);
+                                    }
+                                    _langDropdownOpen = false;
+                                    InvalidateRect(hwnd, IntPtr.Zero, false);
+                                    return IntPtr.Zero;
+                                }
+                            }
+                            
+                            // Clicked outside dropdown
+                            _langDropdownOpen = false;
+                            InvalidateRect(hwnd, IntPtr.Zero, false);
+                            return IntPtr.Zero;
+                        }
+
                         int element = HitTest(mouseX, mouseY);
                         if (element >= 0 && element <= 2)
                         {
@@ -289,7 +353,7 @@ namespace Clickra.UI
                         }
                         else if (element == 3) // Clear history
                         {
-                            if (MessageBox(hwnd, "您確定要清除所有的轉換歷史紀錄嗎？", "Clickra", 0x24) == 6) // MB_YESNO | MB_ICONQUESTION, 6 is IDYES
+                            if (MessageBox(hwnd, GetText("history_clear_confirm"), "Clickra", 0x24) == 6) // MB_YESNO | MB_ICONQUESTION, 6 is IDYES
                             {
                                 ClickraStorage.ClearHistory();
                                 RefreshHistoryData();
@@ -323,10 +387,89 @@ namespace Clickra.UI
                             ClickraStorage.SaveSetting("OutputDir", "downloads");
                             InvalidateRect(hwnd, IntPtr.Zero, false);
                         }
+                        else if (element == 9) // Language dropdown button
+                        {
+                            _langDropdownOpen = !_langDropdownOpen;
+                            if (_langDropdownOpen)
+                            {
+                                _langSearchQuery = "";
+                                _langHoveredIndex = 0;
+                            }
+                            InvalidateRect(hwnd, IntPtr.Zero, false);
+                        }
                     }
                     return IntPtr.Zero;
+                case 0x0102: // WM_CHAR
+                    if (_langDropdownOpen)
+                    {
+                        char c = (char)w.ToInt32();
+                        if (c == '\b') // Backspace
+                        {
+                            if (_langSearchQuery.Length > 0)
+                            {
+                                _langSearchQuery = _langSearchQuery.Substring(0, _langSearchQuery.Length - 1);
+                                _langHoveredIndex = 0;
+                                InvalidateRect(hwnd, IntPtr.Zero, false);
+                            }
+                        }
+                        else if (c == 27) // Escape
+                        {
+                            _langDropdownOpen = false;
+                            InvalidateRect(hwnd, IntPtr.Zero, false);
+                        }
+                        else if (c == '\r') // Enter
+                        {
+                            var filtered = GetFilteredLanguages();
+                            if (filtered.Count > 0 && _langHoveredIndex >= 0 && _langHoveredIndex < filtered.Count)
+                            {
+                                SelectLanguage(filtered[_langHoveredIndex].Code);
+                            }
+                            _langDropdownOpen = false;
+                            InvalidateRect(hwnd, IntPtr.Zero, false);
+                        }
+                        else if (!char.IsControl(c))
+                        {
+                            _langSearchQuery += c;
+                            _langHoveredIndex = 0;
+                            InvalidateRect(hwnd, IntPtr.Zero, false);
+                        }
+                        return IntPtr.Zero;
+                    }
+                    break;
+                case 0x0100: // WM_KEYDOWN
+                    if (_langDropdownOpen)
+                    {
+                        int key = w.ToInt32();
+                        if (key == 0x1B) // VK_ESCAPE
+                        {
+                            _langDropdownOpen = false;
+                            InvalidateRect(hwnd, IntPtr.Zero, false);
+                            return IntPtr.Zero;
+                        }
+                        else if (key == 0x26) // VK_UP
+                        {
+                            var filtered = GetFilteredLanguages();
+                            if (filtered.Count > 0)
+                            {
+                                _langHoveredIndex = (_langHoveredIndex - 1 + filtered.Count) % filtered.Count;
+                                InvalidateRect(hwnd, IntPtr.Zero, false);
+                            }
+                            return IntPtr.Zero;
+                        }
+                        else if (key == 0x28) // VK_DOWN
+                        {
+                            var filtered = GetFilteredLanguages();
+                            if (filtered.Count > 0)
+                            {
+                                _langHoveredIndex = (_langHoveredIndex + 1) % filtered.Count;
+                                InvalidateRect(hwnd, IntPtr.Zero, false);
+                            }
+                            return IntPtr.Zero;
+                        }
+                    }
+                    break;
                 case 0x0020: // WM_SETCURSOR
-                    if (_hoveredElement != -1)
+                    if (_hoveredElement != -1 || _langDropdownOpen)
                     {
                         SetCursor(LoadCursorW(IntPtr.Zero, 32649)); // IDC_HAND = 32649
                         return (IntPtr)1; // Handled
@@ -384,9 +527,9 @@ namespace Clickra.UI
             }
 
             // Draw Tabs
-            DrawTabButton(g, "\uE80F", "首頁狀態", 0, 120);
-            DrawTabButton(g, "\uE81C", "轉換歷史", 1, 168);
-            DrawTabButton(g, "\uE713", "偏好設定", 2, 216);
+            DrawTabButton(g, "\uE80F", GetText("tab_status"), 0, 120);
+            DrawTabButton(g, "\uE81C", GetText("tab_history"), 1, 168);
+            DrawTabButton(g, "\uE713", GetText("tab_settings"), 2, 216);
 
             // 2. Draw Content Area
             if (_activeTab == 0)
@@ -449,7 +592,7 @@ namespace Clickra.UI
         {
             // Title
             if (_contentTitleFont != null)
-                g.DrawString("首頁狀態", _contentTitleFont, Brushes.White, 236, 30);
+                g.DrawString(GetText("tab_status"), _contentTitleFont, Brushes.White, 236, 30);
 
             using (var divPen = new Pen(Color.FromArgb(48, 48, 48)))
             {
@@ -458,26 +601,26 @@ namespace Clickra.UI
 
             // Engine status
             if (_sectionFont != null)
-                g.DrawString("轉換引擎狀態", _sectionFont, Brushes.White, 236, 95);
+                g.DrawString(GetText("overview_engine_status"), _sectionFont, Brushes.White, 236, 95);
 
-            DrawEngineRow(g, "PDF 處理核心 (PDF Engine)", true, 236, 125);
-            DrawEngineRow(g, "PowerPoint 轉換器 (PowerPoint)", IsOfficeInstalled("PowerPoint"), 236, 165);
-            DrawEngineRow(g, "Word 轉換器 (Word)", IsOfficeInstalled("Word"), 236, 205);
+            DrawEngineRow(g, GetText("engine_pdf"), true, 236, 125);
+            DrawEngineRow(g, GetText("engine_ppt"), IsOfficeInstalled("PowerPoint"), 236, 165);
+            DrawEngineRow(g, GetText("engine_word"), IsOfficeInstalled("Word"), 236, 205);
 
             // Statistics
             if (_sectionFont != null)
-                g.DrawString("轉換統計", _sectionFont, Brushes.White, 236, 260);
+                g.DrawString(GetText("overview_stats"), _sectionFont, Brushes.White, 236, 260);
 
             // Draw Cards
-            DrawStatCard(g, "總轉換次數", _statTotal.ToString(), Color.FromArgb(200, 200, 200), 236, 290, 140);
-            DrawStatCard(g, "成功次數", _statSuccess.ToString(), Color.FromArgb(100, 220, 100), 396, 290, 140);
-            DrawStatCard(g, "失敗次數", _statFailed.ToString(), Color.FromArgb(255, 90, 70), 556, 290, 140);
+            DrawStatCard(g, GetText("overview_stat_total"), _statTotal.ToString(), Color.FromArgb(200, 200, 200), 236, 290, 140);
+            DrawStatCard(g, GetText("overview_stat_success"), _statSuccess.ToString(), Color.FromArgb(100, 220, 100), 396, 290, 140);
+            DrawStatCard(g, GetText("overview_stat_failed"), _statFailed.ToString(), Color.FromArgb(255, 90, 70), 556, 290, 140);
             
             // Footer tips
             if (_subFont != null)
             {
                 using var tipBrush = new SolidBrush(Color.FromArgb(100, 100, 100));
-                g.DrawString("提示：直接在檔案總管選取檔案，右鍵即可呼叫 Clickra 選單進行轉換。", _subFont, tipBrush, 236, 400);
+                g.DrawString(GetText("overview_tip"), _subFont, tipBrush, 236, 400);
             }
         }
 
@@ -485,7 +628,7 @@ namespace Clickra.UI
         {
             // Title
             if (_contentTitleFont != null)
-                g.DrawString("轉換歷史", _contentTitleFont, Brushes.White, 236, 30);
+                g.DrawString(GetText("tab_history"), _contentTitleFont, Brushes.White, 236, 30);
 
             // Clear button
             bool isClearHovered = _hoveredElement == 3;
@@ -502,8 +645,8 @@ namespace Clickra.UI
             {
                 Color btnText = isClearHovered ? Color.White : Color.FromArgb(200, 200, 200);
                 using var btnTextBrush = new SolidBrush(btnText);
-                var size = g.MeasureString("清除紀錄", _subFont);
-                g.DrawString("清除紀錄", _subFont, btnTextBrush, 630 + (90 - size.Width) / 2, 38 + (28 - size.Height) / 2);
+                var size = g.MeasureString(GetText("history_clear"), _subFont);
+                g.DrawString(GetText("history_clear"), _subFont, btnTextBrush, 630 + (90 - size.Width) / 2, 38 + (28 - size.Height) / 2);
             }
 
             using (var divPen = new Pen(Color.FromArgb(48, 48, 48)))
@@ -563,7 +706,7 @@ namespace Clickra.UI
                 if (_bodyFont != null)
                 {
                     using var countBrush = new SolidBrush(Color.FromArgb(200, 200, 200));
-                    g.DrawString($"{ae.FileCount} 個檔案", _bodyFont, countBrush, 470, rowY + 13);
+                    g.DrawString($"{ae.FileCount} {GetText("label_files")}", _bodyFont, countBrush, 470, rowY + 13);
                 }
 
                 // 狀態標籤
@@ -572,19 +715,19 @@ namespace Clickra.UI
                 switch (ae.Status)
                 {
                     case ConversionStatus.Pending:
-                        statusText = "等待中";
+                        statusText = GetText("status_pending");
                         statusColor = Color.FromArgb(180, 180, 100);
                         break;
                     case ConversionStatus.InProgress:
-                        statusText = "轉換中";
+                        statusText = GetText("status_converting");
                         statusColor = Color.FromArgb(80, 160, 240);
                         break;
                     case ConversionStatus.Success:
-                        statusText = "成功";
+                        statusText = GetText("status_success");
                         statusColor = Color.FromArgb(100, 220, 100);
                         break;
                     case ConversionStatus.Failed:
-                        statusText = "失敗";
+                        statusText = GetText("status_failed");
                         statusColor = Color.FromArgb(255, 90, 70);
                         break;
                     default:
@@ -618,7 +761,7 @@ namespace Clickra.UI
                 if (drawnRows == 0 && _tabFont != null)
                 {
                     using var textBrush = new SolidBrush(Color.FromArgb(120, 120, 120));
-                    g.DrawString("尚無任何轉換紀錄。", _tabFont, textBrush, 236, rowStartY + rowSpacing * drawnRows + 10);
+                    g.DrawString(GetText("history_empty"), _tabFont, textBrush, 236, rowStartY + rowSpacing * drawnRows + 10);
                 }
                 return;
             }
@@ -653,12 +796,12 @@ namespace Clickra.UI
                 if (_bodyFont != null)
                 {
                     using var countBrush = new SolidBrush(Color.FromArgb(200, 200, 200));
-                    g.DrawString($"{entry.FileCount} 個檔案", _bodyFont, countBrush, 470, rowY + 13);
+                    g.DrawString($"{entry.FileCount} {GetText("label_files")}", _bodyFont, countBrush, 470, rowY + 13);
                 }
 
                 // 狀態標籤
                 Color statusColor = entry.IsSuccess ? Color.FromArgb(100, 220, 100) : Color.FromArgb(255, 90, 70);
-                string statusText = entry.IsSuccess ? "成功" : "失敗";
+                string statusText = entry.IsSuccess ? GetText("status_success") : GetText("status_failed");
                 if (_tagFont != null)
                 {
                     using var statusBrush = new SolidBrush(statusColor);
@@ -686,27 +829,27 @@ namespace Clickra.UI
             {
                 case "word2pdf":
                     tagBg = Color.FromArgb(0, 120, 212);
-                    text = "Word → PDF";
+                    text = GetText("cmd_word_to_pdf");
                     break;
                 case "ppt2pdf":
                     tagBg = Color.FromArgb(180, 50, 30);
-                    text = "PPT → PDF";
+                    text = GetText("cmd_ppt_to_pdf");
                     break;
                 case "merge-pdf":
                     tagBg = Color.FromArgb(16, 124, 65);
-                    text = "合併 PDF";
+                    text = GetText("cmd_merge_pdf");
                     break;
                 case "img2pdf":
                     tagBg = Color.FromArgb(100, 60, 180);
-                    text = "圖片 → PDF";
+                    text = GetText("cmd_img_to_pdf");
                     break;
                 case "img-merge":
                     tagBg = Color.FromArgb(0, 130, 135);
-                    text = "圖片合併";
+                    text = GetText("cmd_merge_img");
                     break;
                 case "img-stitch":
                     tagBg = Color.FromArgb(216, 59, 1);
-                    text = "圖片拼接";
+                    text = GetText("cmd_stitch_img");
                     break;
                 default:
                     tagBg = Color.FromArgb(100, 100, 100);
@@ -730,7 +873,7 @@ namespace Clickra.UI
         {
             // Title
             if (_contentTitleFont != null)
-                g.DrawString("偏好設定", _contentTitleFont, Brushes.White, 236, 30);
+                g.DrawString(GetText("tab_settings"), _contentTitleFont, Brushes.White, 236, 30);
 
             using (var divPen = new Pen(Color.FromArgb(48, 48, 48)))
             {
@@ -741,11 +884,11 @@ namespace Clickra.UI
             bool quietMode = ClickraStorage.GetSetting("QuietMode").Equals("true", StringComparison.OrdinalIgnoreCase);
             bool isQuietHovered = _hoveredElement == 4;
             if (_tabFont != null)
-                g.DrawString("背景靜默轉檔", _tabFont, Brushes.White, 236, 100);
+                g.DrawString(GetText("setting_silent_title"), _tabFont, Brushes.White, 236, 100);
             if (_subFont != null)
             {
                 using var subBrush = new SolidBrush(Color.FromArgb(140, 140, 140));
-                g.DrawString("在右鍵選單點擊時直接於背景處理，不顯示進度視窗", _subFont, subBrush, 236, 122);
+                g.DrawString(GetText("setting_silent_desc"), _subFont, subBrush, 236, 122);
             }
             DrawToggleSwitch(g, quietMode, isQuietHovered, 660, 105, 44, 22);
 
@@ -753,27 +896,39 @@ namespace Clickra.UI
             bool notification = ClickraStorage.GetSetting("Notification").Equals("true", StringComparison.OrdinalIgnoreCase);
             bool isNotifHovered = _hoveredElement == 5;
             if (_tabFont != null)
-                g.DrawString("顯示轉換通知", _tabFont, Brushes.White, 236, 170);
+                g.DrawString(GetText("setting_notify_title"), _tabFont, Brushes.White, 236, 170);
             if (_subFont != null)
             {
                 using var subBrush = new SolidBrush(Color.FromArgb(140, 140, 140));
-                g.DrawString("作業完成或失敗後，於系統右下角彈出 Windows Toast 通知", _subFont, subBrush, 236, 192);
+                g.DrawString(GetText("setting_notify_desc"), _subFont, subBrush, 236, 192);
             }
             DrawToggleSwitch(g, notification, isNotifHovered, 660, 175, 44, 22);
 
             // Output path setting
             if (_tabFont != null)
-                g.DrawString("預設輸出路徑", _tabFont, Brushes.White, 236, 240);
+                g.DrawString(GetText("setting_output_title"), _tabFont, Brushes.White, 236, 240);
             if (_subFont != null)
             {
                 using var subBrush = new SolidBrush(Color.FromArgb(140, 140, 140));
-                g.DrawString("選擇轉換後 PDF 與圖片預設的儲存位置", _subFont, subBrush, 236, 262);
+                g.DrawString(GetText("setting_output_desc"), _subFont, subBrush, 236, 262);
             }
 
             string outputDirMode = ClickraStorage.GetSetting("OutputDir");
-            DrawOutputDirButton(g, "與來源相同", outputDirMode.Equals("source", StringComparison.OrdinalIgnoreCase), 6, 236, 290, 110);
-            DrawOutputDirButton(g, "桌面", outputDirMode.Equals("desktop", StringComparison.OrdinalIgnoreCase), 7, 356, 290, 75);
-            DrawOutputDirButton(g, "下載", outputDirMode.Equals("downloads", StringComparison.OrdinalIgnoreCase), 8, 441, 290, 75);
+            DrawOutputDirButton(g, GetText("setting_output_same_as_source"), outputDirMode.Equals("source", StringComparison.OrdinalIgnoreCase), 6, 236, 290, 110);
+            DrawOutputDirButton(g, GetText("setting_output_desktop"), outputDirMode.Equals("desktop", StringComparison.OrdinalIgnoreCase), 7, 356, 290, 75);
+            DrawOutputDirButton(g, GetText("setting_output_downloads"), outputDirMode.Equals("downloads", StringComparison.OrdinalIgnoreCase), 8, 441, 290, 75);
+
+            // Language setting UI block
+            if (_tabFont != null)
+                g.DrawString(GetText("setting_lang_title"), _tabFont, Brushes.White, 236, 340);
+            if (_subFont != null)
+            {
+                using var subBrush = new SolidBrush(Color.FromArgb(140, 140, 140));
+                g.DrawString(GetText("setting_lang_desc"), _subFont, subBrush, 236, 362);
+            }
+
+            // Draw Dropdown Selector
+            DrawLanguageDropdown(g);
         }
 
         static void DrawToggleSwitch(Graphics g, bool state, bool hovered, int x, int y, int w, int h)
@@ -842,7 +997,7 @@ namespace Clickra.UI
             using var textBrush = new SolidBrush(Color.FromArgb(220, 220, 220));
             if (_tabFont != null)
             {
-                string statusText = ok ? "Ready" : "Office Not Installed";
+                string statusText = ok ? GetText("engine_ready") : GetText("engine_office_not_installed");
                 g.DrawString($"{label}:  ", _tabFont, textBrush, x + 20, y);
                 
                 using var statusBrush = new SolidBrush(dotColor);
@@ -926,6 +1081,162 @@ namespace Clickra.UI
                 return key != null;
             }
             catch { return false; }
+        }
+
+        static void DrawLanguageDropdown(Graphics g)
+        {
+            string currentLangCode = ClickraStorage.GetSetting("Language");
+            if (string.IsNullOrEmpty(currentLangCode))
+            {
+                currentLangCode = System.Globalization.CultureInfo.CurrentUICulture.Name;
+            }
+            
+            var currentLang = SupportedLanguages.FirstOrDefault(l => l.Code.Equals(currentLangCode, StringComparison.OrdinalIgnoreCase));
+            if (string.IsNullOrEmpty(currentLang.Code))
+            {
+                currentLang = SupportedLanguages[0]; // Default to Traditional Chinese
+            }
+
+            string displayText = $"{currentLang.NativeName} ({currentLang.EnglishName})";
+            bool isHovered = _hoveredElement == 9;
+
+            int x = 236, y = 390, w = 240, h = 30;
+
+            Color btnBg = isHovered ? Color.FromArgb(55, 55, 55) : Color.FromArgb(40, 40, 40);
+            Color btnBorder = _langDropdownOpen ? GetSystemColorizationColor() : (isHovered ? Color.FromArgb(80, 80, 80) : Color.FromArgb(60, 60, 60));
+            Color textColor = Color.FromArgb(220, 220, 220);
+
+            // Draw button base
+            using (var path = GetRoundedRectPath(new RectangleF(x, y, w, h), 4))
+            using (var bgBrush = new SolidBrush(btnBg))
+            using (var borderPen = new Pen(btnBorder, _langDropdownOpen ? 1.5f : 1f))
+            {
+                g.FillPath(bgBrush, path);
+                g.DrawPath(borderPen, path);
+            }
+
+            // Draw selected language text
+            if (_subFont != null)
+            {
+                using var textBrush = new SolidBrush(textColor);
+                g.DrawString(displayText, _subFont, textBrush, x + 10, y + 7);
+            }
+
+            // Draw Chevron Down icon
+            if (_iconFont != null)
+            {
+                using var iconBrush = new SolidBrush(Color.FromArgb(160, 160, 160));
+                g.DrawString("\uE70D", _iconFont, iconBrush, x + w - 24, y + 9);
+            }
+
+            // Draw overlay popup list if open
+            if (_langDropdownOpen)
+            {
+                int popupH = 180;
+                int popupY = y - popupH; // 210
+
+                // Container path
+                using (var path = GetRoundedRectPath(new RectangleF(x, popupY, w, popupH), 4))
+                using (var bgBrush = new SolidBrush(Color.FromArgb(28, 28, 28)))
+                using (var borderPen = new Pen(Color.FromArgb(60, 60, 60)))
+                {
+                    g.FillPath(bgBrush, path);
+                    g.DrawPath(borderPen, path);
+                }
+
+                // Search input box: y = 216
+                int searchX = x + 6, searchY = popupY + 6, searchW = w - 12, searchH = 26;
+                using (var searchPath = GetRoundedRectPath(new RectangleF(searchX, searchY, searchW, searchH), 4))
+                using (var searchBg = new SolidBrush(Color.FromArgb(45, 45, 45)))
+                using (var searchBorder = new Pen(Color.FromArgb(75, 75, 75)))
+                {
+                    g.FillPath(searchBg, searchPath);
+                    g.DrawPath(searchBorder, searchPath);
+                }
+
+                // Draw Search Icon
+                if (_iconFont != null)
+                {
+                    using var searchIconBrush = new SolidBrush(Color.FromArgb(140, 140, 140));
+                    g.DrawString("\uE721", _iconFont, searchIconBrush, searchX + 8, searchY + 7);
+                }
+
+                // Draw Search Text or Placeholder
+                if (_subFont != null)
+                {
+                    if (string.IsNullOrEmpty(_langSearchQuery))
+                    {
+                        using var placeholderBrush = new SolidBrush(Color.FromArgb(120, 120, 120));
+                        g.DrawString(GetText("search_lang_placeholder"), _subFont, placeholderBrush, searchX + 26, searchY + 6);
+                    }
+                    else
+                    {
+                        using var queryBrush = new SolidBrush(Color.White);
+                        g.DrawString(_langSearchQuery, _subFont, queryBrush, searchX + 26, searchY + 6);
+                    }
+
+                    // Draw flashing cursor (caret)
+                    if ((DateTime.Now.Millisecond / 500) % 2 == 0)
+                    {
+                        var size = g.MeasureString(_langSearchQuery, _subFont);
+                        using var cursorBrush = new SolidBrush(Color.White);
+                        g.FillRectangle(cursorBrush, searchX + 26 + size.Width, searchY + 6, 1.5f, 13);
+                    }
+                }
+
+                // Draw filtered list
+                var filtered = GetFilteredLanguages();
+                int listStartY = searchY + searchH + 6; // 248
+
+                for (int i = 0; i < Math.Min(5, filtered.Count); i++)
+                {
+                    var item = filtered[i];
+                    int itemY = listStartY + i * 26;
+                    int itemH = 24;
+
+                    bool isItemHovered = _langHoveredIndex == i;
+                    Color itemBg = isItemHovered ? GetSystemColorizationColor() : Color.Transparent;
+                    Color itemTextCol = isItemHovered ? Color.White : Color.FromArgb(200, 200, 200);
+
+                    if (isItemHovered)
+                    {
+                        using (var itemPath = GetRoundedRectPath(new RectangleF(x + 4, itemY, w - 8, itemH), 3))
+                        using (var itemBgBrush = new SolidBrush(itemBg))
+                        {
+                            g.FillPath(itemBgBrush, itemPath);
+                        }
+                    }
+
+                    if (_subFont != null)
+                    {
+                        using var itemTextBrush = new SolidBrush(itemTextCol);
+                        g.DrawString($"{item.NativeName} ({item.EnglishName})", _subFont, itemTextBrush, x + 10, itemY + 5);
+                    }
+                }
+            }
+        }
+
+        static List<(string Code, string NativeName, string EnglishName)> GetFilteredLanguages()
+        {
+            if (string.IsNullOrEmpty(_langSearchQuery))
+            {
+                return SupportedLanguages;
+            }
+            return SupportedLanguages.Where(l =>
+                l.NativeName.Contains(_langSearchQuery, StringComparison.OrdinalIgnoreCase) ||
+                l.EnglishName.Contains(_langSearchQuery, StringComparison.OrdinalIgnoreCase) ||
+                l.Code.Contains(_langSearchQuery, StringComparison.OrdinalIgnoreCase)
+            ).ToList();
+        }
+
+        static void SelectLanguage(string code)
+        {
+            ClickraStorage.SaveSetting("Language", code);
+        }
+
+        static string GetText(string key)
+        {
+            return Clickra.Core.Localization.T(key, ClickraStorage.GetSetting("Language"));
         }
     }
 }
