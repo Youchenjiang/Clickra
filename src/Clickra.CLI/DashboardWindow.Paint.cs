@@ -185,7 +185,7 @@ namespace Clickra.UI
             int rowSpacing = 52;
             int drawnRows = 0;
 
-            // ——— 顧示進行中作業（置頂）———
+            // ——— 顯示進行中作業（置頂）———
             if (activeEntry.HasValue)
             {
                 var ae = activeEntry.Value;
@@ -279,7 +279,7 @@ namespace Clickra.UI
                 drawnRows++;
             }
 
-            // ——— 顧示持久化歷史紀錄———
+            // ——— 顯示持久化歷史紀錄———
             if (_historyEntries == null || _historyEntries.Count == 0)
             {
                 if (drawnRows == 0 && _tabFont != null)
@@ -290,12 +290,17 @@ namespace Clickra.UI
                 return;
             }
 
-            // 可展示的動態紀錄最多類國（進行中占一行）
+            // 可展示的動態紀錄最多6行（進行中占一行）
             int maxHistoryRows = 6 - drawnRows;
-            int limit = Math.Min(maxHistoryRows, _historyEntries.Count);
+            if (_historyScrollOffset < 0) _historyScrollOffset = 0;
+            if (_historyScrollOffset > 0 && _historyScrollOffset > _historyEntries.Count - maxHistoryRows)
+            {
+                _historyScrollOffset = Math.Max(0, _historyEntries.Count - maxHistoryRows);
+            }
+            int limit = Math.Min(maxHistoryRows, _historyEntries.Count - _historyScrollOffset);
             for (int i = 0; i < limit; i++)
             {
-                var entry = _historyEntries[i];
+                var entry = _historyEntries[_historyScrollOffset + i];
                 int rowY = rowStartY + (drawnRows + i) * rowSpacing;
                 int rowW = 484, rowH = 44;
 
@@ -340,6 +345,29 @@ namespace Clickra.UI
                         using var errBrush = new SolidBrush(Color.FromArgb(230, 90, 70));
                         string errText = entry.ErrorMessage.Length > 14 ? entry.ErrorMessage.Substring(0, 14) + "..." : entry.ErrorMessage;
                         g.DrawString(errText, _subFont, errBrush, 590, rowY + 14);
+                    }
+                }
+            }
+
+            // Draw scrollbar for History if it overflows
+            if (_historyEntries.Count > maxHistoryRows)
+            {
+                float trackX = 732; // Centered in the 720-760 margin
+                float trackY = rowStartY;
+                float trackW = 5;
+                float trackH = 6 * rowSpacing - 8; // 304 pixels
+                using (var sbTrackBrush = new SolidBrush(Color.FromArgb(40, 40, 40)))
+                {
+                    g.FillRectangle(sbTrackBrush, trackX, trackY, trackW, trackH);
+                }
+
+                float thumbH = Math.Max(20f, ((float)maxHistoryRows / _historyEntries.Count) * trackH);
+                float thumbY = trackY + ((float)_historyScrollOffset / (_historyEntries.Count - maxHistoryRows)) * (trackH - thumbH);
+                using (var sbThumbBrush = new SolidBrush(Color.FromArgb(100, 100, 100)))
+                {
+                    using (var thumbPath = GetRoundedRectPath(new RectangleF(trackX, thumbY, trackW, thumbH), 2.5f))
+                    {
+                        g.FillPath(sbThumbBrush, thumbPath);
                     }
                 }
             }
@@ -406,7 +434,7 @@ namespace Clickra.UI
 
             // Quiet mode setting
             bool quietMode = ClickraStorage.GetSetting("QuietMode").Equals("true", StringComparison.OrdinalIgnoreCase);
-            bool isQuietHovered = _hoveredElement == 4;
+            bool isQuietHovered = _hoveredElement == 5;
             if (_tabFont != null)
                 g.DrawString(GetText("setting_silent_title"), _tabFont, Brushes.White, 236, 100);
             if (_subFont != null)
@@ -418,7 +446,7 @@ namespace Clickra.UI
 
             // Notification setting
             bool notification = ClickraStorage.GetSetting("Notification").Equals("true", StringComparison.OrdinalIgnoreCase);
-            bool isNotifHovered = _hoveredElement == 5;
+            bool isNotifHovered = _hoveredElement == 6;
             if (_tabFont != null)
                 g.DrawString(GetText("setting_notify_title"), _tabFont, Brushes.White, 236, 170);
             if (_subFont != null)
@@ -610,10 +638,7 @@ namespace Clickra.UI
         static void DrawLanguageDropdown(Graphics g)
         {
             string currentLangCode = ClickraStorage.GetSetting("Language");
-            if (string.IsNullOrEmpty(currentLangCode))
-            {
-                currentLangCode = System.Globalization.CultureInfo.CurrentUICulture.Name;
-            }
+            currentLangCode = Clickra.Core.Localization.NormalizeLanguageCode(currentLangCode);
             
             var currentLang = SupportedLanguages.FirstOrDefault(l => l.Code.Equals(currentLangCode, StringComparison.OrdinalIgnoreCase));
             if (string.IsNullOrEmpty(currentLang.Code))
@@ -711,14 +736,23 @@ namespace Clickra.UI
                 // Draw filtered list
                 var filtered = GetFilteredLanguages();
                 int listStartY = searchY + searchH + 6; // 248
+                int maxVisible = 5;
 
-                for (int i = 0; i < Math.Min(5, filtered.Count); i++)
+                if (_langScrollOffset < 0) _langScrollOffset = 0;
+                if (_langScrollOffset > 0 && _langScrollOffset > filtered.Count - maxVisible)
                 {
-                    var item = filtered[i];
+                    _langScrollOffset = Math.Max(0, filtered.Count - maxVisible);
+                }
+
+                int drawCount = Math.Min(maxVisible, filtered.Count - _langScrollOffset);
+                for (int i = 0; i < drawCount; i++)
+                {
+                    int itemIdx = _langScrollOffset + i;
+                    var item = filtered[itemIdx];
                     int itemY = listStartY + i * 26;
                     int itemH = 24;
 
-                    bool isItemHovered = _langHoveredIndex == i;
+                    bool isItemHovered = _langHoveredIndex == itemIdx;
                     Color itemBg = isItemHovered ? GetSystemColorizationColor() : Color.Transparent;
                     Color itemTextCol = isItemHovered ? Color.White : Color.FromArgb(200, 200, 200);
 
@@ -735,6 +769,29 @@ namespace Clickra.UI
                     {
                         using var itemTextBrush = new SolidBrush(itemTextCol);
                         g.DrawString($"{item.NativeName} ({item.EnglishName})", _subFont, itemTextBrush, x + 10, itemY + 5);
+                    }
+                }
+
+                // Draw scrollbar for Language Dropdown
+                if (filtered.Count > maxVisible)
+                {
+                    float trackX = x + w - 8;
+                    float trackY = listStartY;
+                    float trackW = 4;
+                    float trackH = maxVisible * 26 - 2; // 128
+                    using (var sbTrackBrush = new SolidBrush(Color.FromArgb(40, 40, 40)))
+                    {
+                        g.FillRectangle(sbTrackBrush, trackX, trackY, trackW, trackH);
+                    }
+
+                    float thumbH = Math.Max(15f, ((float)maxVisible / filtered.Count) * trackH);
+                    float thumbY = trackY + ((float)_langScrollOffset / (filtered.Count - maxVisible)) * (trackH - thumbH);
+                    using (var sbThumbBrush = new SolidBrush(Color.FromArgb(100, 100, 100)))
+                    {
+                        using (var thumbPath = GetRoundedRectPath(new RectangleF(trackX, thumbY, trackW, thumbH), 2))
+                        {
+                            g.FillPath(sbThumbBrush, thumbPath);
+                        }
                     }
                 }
             }

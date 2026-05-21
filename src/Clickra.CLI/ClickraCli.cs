@@ -81,7 +81,7 @@ namespace Clickra
 
             try
             {
-                // 登記進行中作業狀態（静默模式下不顯示進度視窗，但仍需誤實時狀態）
+                // 登記進行中作業狀態（靜默模式下不顯示進度視窗，但仍需即時狀態）
                 if (quiet)
                 {
                     try { ClickraStorage.StartActiveRecord(command, files.Count); } catch { }
@@ -142,6 +142,8 @@ namespace Clickra
                 if (quiet)
                 {
                     try { ClickraStorage.CompleteActiveRecord(true, ""); } catch { }
+                    System.Threading.Thread.Sleep(1500);
+                    try { ClickraStorage.ClearActiveRecord(); } catch { }
                 }
                 Console.WriteLine("Operation completed successfully.");
             }
@@ -150,6 +152,8 @@ namespace Clickra
                 if (quiet)
                 {
                     try { ClickraStorage.CompleteActiveRecord(false, ex.Message); } catch { }
+                    System.Threading.Thread.Sleep(1500);
+                    try { ClickraStorage.ClearActiveRecord(); } catch { }
                 }
                 Console.WriteLine($"Error: {ex.Message}");
                 Console.WriteLine(ex.StackTrace);

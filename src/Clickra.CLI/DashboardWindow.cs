@@ -36,6 +36,8 @@ namespace Clickra.UI
         
         // History & Statistics Cache
         static List<ClickraStorage.HistoryEntry> _historyEntries = new List<ClickraStorage.HistoryEntry>();
+        static int _historyScrollOffset = 0;
+        static int _langScrollOffset = 0;
         static int _statTotal = 0;
         static int _statSuccess = 0;
         static int _statFailed = 0;
@@ -126,8 +128,8 @@ namespace Clickra.UI
 
             ShowWindow(hwnd, 5);
 
-            // 每 800ms 刷新一次歷史資料（供即時轉換狀態顯示）
-            SetTimer(hwnd, TIMER_ID_REFRESH, 800, IntPtr.Zero);
+            // 每 250ms 刷新一次歷史資料（供即時轉換狀態顯示）
+            SetTimer(hwnd, TIMER_ID_REFRESH, 250, IntPtr.Zero);
 
             while (GetMessage(out var msg, IntPtr.Zero, 0, 0))
             {
@@ -235,7 +237,7 @@ namespace Clickra.UI
                         {
                             if (mouseX >= 236 && mouseX <= 476 && mouseY >= 248 && mouseY < 390)
                             {
-                                int idx = (mouseY - 248) / 26;
+                                int idx = _langScrollOffset + (mouseY - 248) / 26;
                                 var filtered = GetFilteredLanguages();
                                 if (idx >= 0 && idx < filtered.Count && idx != _langHoveredIndex)
                                 {
@@ -269,7 +271,7 @@ namespace Clickra.UI
                                 }
                                 else if (mouseY >= 248 && mouseY < 390)
                                 {
-                                    int clickedIdx = (mouseY - 248) / 26;
+                                    int clickedIdx = _langScrollOffset + (mouseY - 248) / 26;
                                     var filtered = GetFilteredLanguages();
                                     if (clickedIdx >= 0 && clickedIdx < filtered.Count)
                                     {
@@ -295,6 +297,8 @@ namespace Clickra.UI
                             {
                                 RefreshHistoryData();
                             }
+                            _historyScrollOffset = 0;
+                            _langScrollOffset = 0;
                             InvalidateRect(hwnd, IntPtr.Zero, false);
                         }
                         else if (element == 4) // Clear history
@@ -340,6 +344,7 @@ namespace Clickra.UI
                             {
                                 _langSearchQuery = "";
                                 _langHoveredIndex = 0;
+                                _langScrollOffset = 0;
                             }
                             InvalidateRect(hwnd, IntPtr.Zero, false);
                         }
@@ -412,6 +417,7 @@ namespace Clickra.UI
                             {
                                 _langSearchQuery = _langSearchQuery.Substring(0, _langSearchQuery.Length - 1);
                                 _langHoveredIndex = 0;
+                                _langScrollOffset = 0;
                                 InvalidateRect(hwnd, IntPtr.Zero, false);
                             }
                         }
@@ -434,6 +440,7 @@ namespace Clickra.UI
                         {
                             _langSearchQuery += c;
                             _langHoveredIndex = 0;
+                            _langScrollOffset = 0;
                             InvalidateRect(hwnd, IntPtr.Zero, false);
                         }
                         return IntPtr.Zero;
@@ -455,6 +462,14 @@ namespace Clickra.UI
                             if (filtered.Count > 0)
                             {
                                 _langHoveredIndex = (_langHoveredIndex - 1 + filtered.Count) % filtered.Count;
+                                if (_langHoveredIndex < _langScrollOffset)
+                                {
+                                    _langScrollOffset = _langHoveredIndex;
+                                }
+                                else if (_langHoveredIndex >= _langScrollOffset + 5)
+                                {
+                                    _langScrollOffset = _langHoveredIndex - 4;
+                                }
                                 InvalidateRect(hwnd, IntPtr.Zero, false);
                             }
                             return IntPtr.Zero;
@@ -465,6 +480,14 @@ namespace Clickra.UI
                             if (filtered.Count > 0)
                             {
                                 _langHoveredIndex = (_langHoveredIndex + 1) % filtered.Count;
+                                if (_langHoveredIndex < _langScrollOffset)
+                                {
+                                    _langScrollOffset = _langHoveredIndex;
+                                }
+                                else if (_langHoveredIndex >= _langScrollOffset + 5)
+                                {
+                                    _langScrollOffset = _langHoveredIndex - 4;
+                                }
                                 InvalidateRect(hwnd, IntPtr.Zero, false);
                             }
                             return IntPtr.Zero;
@@ -484,6 +507,25 @@ namespace Clickra.UI
                         // 靜默刷新歷史（不重置捲動位置）
                         RefreshHistoryData();
                         InvalidateRect(hwnd, IntPtr.Zero, false);
+                    }
+                    return IntPtr.Zero;
+                case 0x020A: // WM_MOUSEWHEEL
+                    {
+                        short delta = (short)((w.ToInt64() >> 16) & 0xFFFF);
+                        int scrollDir = delta > 0 ? -1 : 1;
+                        if (_langDropdownOpen)
+                        {
+                            var filtered = GetFilteredLanguages();
+                            _langScrollOffset = Math.Max(0, Math.Min(_langScrollOffset + scrollDir, filtered.Count - 5));
+                            InvalidateRect(hwnd, IntPtr.Zero, false);
+                        }
+                        else if (_activeTab == 2) // History Tab
+                        {
+                            int activeDrawn = ClickraStorage.GetActiveEntry().HasValue ? 1 : 0;
+                            int maxHistoryRows = 6 - activeDrawn;
+                            _historyScrollOffset = Math.Max(0, Math.Min(_historyScrollOffset + scrollDir, _historyEntries.Count - maxHistoryRows));
+                            InvalidateRect(hwnd, IntPtr.Zero, false);
+                        }
                     }
                     return IntPtr.Zero;
                 case 0x0002: // WM_DESTROY
