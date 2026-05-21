@@ -44,35 +44,82 @@ namespace Clickra.Core
 
         // ─── Settings ──────────────────────────────────────────────────────────
 
+        private static void RunWithMutex(Action action)
+        {
+            using var mutex = new Mutex(false, "Local\\ClickraStorageMutex_v1");
+            bool acquired = false;
+            try
+            {
+                try
+                {
+                    acquired = mutex.WaitOne(5000, false);
+                }
+                catch (AbandonedMutexException)
+                {
+                    acquired = true;
+                }
+                action();
+            }
+            finally
+            {
+                if (acquired) mutex.ReleaseMutex();
+            }
+        }
+
+        private static T RunWithMutex<T>(Func<T> func)
+        {
+            using var mutex = new Mutex(false, "Local\\ClickraStorageMutex_v1");
+            bool acquired = false;
+            try
+            {
+                try
+                {
+                    acquired = mutex.WaitOne(5000, false);
+                }
+                catch (AbandonedMutexException)
+                {
+                    acquired = true;
+                }
+                return func();
+            }
+            finally
+            {
+                if (acquired) mutex.ReleaseMutex();
+            }
+        }
+
         private static void LoadSettings()
         {
             lock (FileLock)
             {
-                SettingsCache.Clear();
-                // 預設值
-                SettingsCache["QuietMode"] = "false";
-                SettingsCache["Notification"] = "true";
-                SettingsCache["OutputDir"] = "source"; // source, desktop, downloads
-                SettingsCache["Language"] = "";
-
-                if (File.Exists(SettingsFile))
+                RunWithMutex(() =>
                 {
-                    try
+                    SettingsCache.Clear();
+                    // 預設值
+                    SettingsCache["QuietMode"] = "false";
+                    SettingsCache["Notification"] = "true";
+                    SettingsCache["OutputDir"] = "source"; // source, desktop, downloads
+                    SettingsCache["Language"] = "";
+
+                    if (File.Exists(SettingsFile))
                     {
-                        foreach (string line in File.ReadLines(SettingsFile))
+                        try
                         {
-                            if (string.IsNullOrWhiteSpace(line) || line.StartsWith("#")) continue;
-                            int idx = line.IndexOf('=');
-                            if (idx > 0)
+                            foreach (string line in File.ReadLines(SettingsFile))
                             {
-                                string key = line.Substring(0, idx).Trim();
-                                string val = line.Substring(idx + 1).Trim();
-                                SettingsCache[key] = val;
+                                if (string.IsNullOrWhiteSpace(line) || line.StartsWith("#")) continue;
+                                int idx = line.IndexOf('=');
+                                if (idx > 0)
+                                {
+                                    string key = line.Substring(0, idx).Trim();
+                                    string val = line.Substring(idx + 1).Trim();
+                                    SettingsCache[key] = val;
+                                }
                             }
                         }
+                        catch { }
                     }
-                    catch { }
-                }
+                });
             }
         }
 
@@ -89,15 +136,18 @@ namespace Clickra.Core
             lock (FileLock)
             {
                 SettingsCache[key] = val;
-                try
+                RunWithMutex(() =>
                 {
-                    using var sw = new StreamWriter(SettingsFile, false, System.Text.Encoding.UTF8);
-                    foreach (var kvp in SettingsCache)
+                    try
                     {
-                        sw.WriteLine($"{kvp.Key}={kvp.Value}");
+                        using var sw = new StreamWriter(SettingsFile, false, System.Text.Encoding.UTF8);
+                        foreach (var kvp in SettingsCache)
+                        {
+                            sw.WriteLine($"{kvp.Key}={kvp.Value}");
+                        }
                     }
-                }
-                catch { }
+                    catch { }
+                });
             }
         }
 
@@ -106,14 +156,14 @@ namespace Clickra.Core
             string mode = GetSetting("OutputDir");
             if (mode.Equals("desktop", StringComparison.OrdinalIgnoreCase))
             {
-                return Environment.GetFolderPath(Environment.SpecialFolder.Desktop);
+                return Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory);
             }
             if (mode.Equals("downloads", StringComparison.OrdinalIgnoreCase))
             {
                 string userProfile = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
                 string downloads = Path.Combine(userProfile, "Downloads");
                 if (Directory.Exists(downloads)) return downloads;
-                return Environment.GetFolderPath(Environment.SpecialFolder.Desktop);
+                return Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory);
             }
             return Path.GetDirectoryName(sourceFilePath) ?? "";
         }
@@ -129,7 +179,10 @@ namespace Clickra.Core
         /// </summary>
         public static void StartActiveRecord(string command, int fileCount)
         {
-            WriteActiveFile(command, fileCount, ConversionStatus.Pending, "");
+            RunWithMutex(() =>
+            {
+                WriteActiveFileInternal(command, fileCount, ConversionStatus.Pending, "");
+            });
         }
 
         /// <summary>
@@ -137,37 +190,63 @@ namespace Clickra.Core
         /// </summary>
         public static void SetActiveRecordInProgress()
         {
-            var entry = ReadActiveFile();
-            if (entry.HasValue)
+            RunWithMutex(() =>
             {
-                WriteActiveFile(entry.Value.Command, entry.Value.FileCount, ConversionStatus.InProgress, "");
-            }
+                var entry = ReadActiveFileInternal();
+                if (entry.HasValue)
+                {
+                    WriteActiveFileInternal(entry.Value.Command, entry.Value.FileCount, ConversionStatus.InProgress, "");
+                }
+            });
         }
 
         /// <summary>
-        /// 完成進行中作業：寫入持久化日誌，更新 active.tmp 為最終狀態，1.5s 後刪除。
+        /// 完成進行中作業：寫入持久化日誌，並更新 active.tmp 狀態（不立即刪除，保留供 Dashboard 顯示最終狀態）。
         /// </summary>
         public static void CompleteActiveRecord(bool isSuccess, string errorMsg)
         {
-            var entry = ReadActiveFile();
-            string command = entry?.Command ?? "";
-            int fileCount = entry?.FileCount ?? 0;
-            string startTime = entry?.Time ?? DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
+            RunWithMutex(() =>
+            {
+                var entry = ReadActiveFileInternal();
+                string command = entry?.Command ?? "";
+                int fileCount = entry?.FileCount ?? 0;
+                string startTime = entry?.Time ?? DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
 
-            // 寫入持久化日誌，然後立刻刪除 active.tmp
-            // 兩步驟必須連續：先落地再消失，Dashboard 下一次 Timer 就會從歷史列表讀到這筆紀錄
-            lock (FileLock)
+                lock (FileLock)
+                {
+                    try
+                    {
+                        string cleanErr = errorMsg.Replace("\r", " ").Replace("\n", " ").Replace("|", " ");
+                        string line = $"{startTime}|{command}|{fileCount}|{(isSuccess ? "Success" : "Failed")}|{cleanErr}";
+                        File.AppendAllLines(HistoryFile, new[] { line });
+                    }
+                    catch { }
+                }
+
+                try
+                {
+                    WriteActiveFileInternal(command, fileCount, isSuccess ? ConversionStatus.Success : ConversionStatus.Failed, errorMsg, startTime);
+                }
+                catch { }
+            });
+        }
+
+        /// <summary>
+        /// 徹底清除進行中作業的暫存檔。
+        /// </summary>
+        public static void ClearActiveRecord()
+        {
+            RunWithMutex(() =>
             {
                 try
                 {
-                    string cleanErr = errorMsg.Replace("\r", " ").Replace("\n", " ").Replace("|", " ");
-                    string line = $"{startTime}|{command}|{fileCount}|{(isSuccess ? "Success" : "Failed")}|{cleanErr}";
-                    File.AppendAllLines(HistoryFile, new[] { line });
+                    if (File.Exists(ActiveFile))
+                    {
+                        File.Delete(ActiveFile);
+                    }
                 }
                 catch { }
-            }
-
-            try { File.Delete(ActiveFile); } catch { }
+            });
         }
 
         /// <summary>
@@ -175,31 +254,29 @@ namespace Clickra.Core
         /// </summary>
         public static HistoryEntry? GetActiveEntry()
         {
-            return ReadActiveFile();
+            return RunWithMutex(() => ReadActiveFileInternal());
         }
 
-        private static void WriteActiveFile(string command, int fileCount, ConversionStatus status,
+        private static void WriteActiveFileInternal(string command, int fileCount, ConversionStatus status,
             string errorMsg, string? time = null)
         {
             try
             {
                 string t = time ?? DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
                 string cleanErr = errorMsg.Replace("\r", " ").Replace("\n", " ").Replace("|", " ");
-                // 逐行 Key=Value 格式，易於解析且無需 JSON
                 string content =
                     $"Time={t}\n" +
                     $"Command={command}\n" +
                     $"FileCount={fileCount}\n" +
                     $"Status={status}\n" +
                     $"ErrorMessage={cleanErr}\n";
-                // 以 Replace 方式寫入，避免並發衝突
                 File.WriteAllText(ActiveFile + ".tmp", content, System.Text.Encoding.UTF8);
                 File.Move(ActiveFile + ".tmp", ActiveFile, overwrite: true);
             }
             catch { }
         }
 
-        private static HistoryEntry? ReadActiveFile()
+        private static HistoryEntry? ReadActiveFileInternal()
         {
             try
             {
@@ -242,52 +319,58 @@ namespace Clickra.Core
 
         public static List<HistoryEntry> GetHistory(int limit = 50)
         {
-            var list = new List<HistoryEntry>();
-            lock (FileLock)
+            return RunWithMutex(() =>
             {
-                if (!File.Exists(HistoryFile)) return list;
-                try
+                var list = new List<HistoryEntry>();
+                lock (FileLock)
                 {
-                    var lines = File.ReadAllLines(HistoryFile);
-                    int start = Math.Max(0, lines.Length - limit);
-                    for (int i = lines.Length - 1; i >= start; i--)
+                    if (!File.Exists(HistoryFile)) return list;
+                    try
                     {
-                        string line = lines[i];
-                        if (string.IsNullOrWhiteSpace(line)) continue;
-                        string[] parts = line.Split('|');
-                        if (parts.Length >= 4)
+                        var lines = File.ReadAllLines(HistoryFile);
+                        int start = Math.Max(0, lines.Length - limit);
+                        for (int i = lines.Length - 1; i >= start; i--)
                         {
-                            int.TryParse(parts[2], out int count);
-                            bool success = parts[3].Equals("Success", StringComparison.OrdinalIgnoreCase);
-                            list.Add(new HistoryEntry
+                            string line = lines[i];
+                            if (string.IsNullOrWhiteSpace(line)) continue;
+                            string[] parts = line.Split('|');
+                            if (parts.Length >= 4)
                             {
-                                Time = parts[0],
-                                Command = parts[1],
-                                FileCount = count,
-                                Status = success ? ConversionStatus.Success : ConversionStatus.Failed,
-                                ErrorMessage = parts.Length > 4 ? parts[4] : ""
-                            });
+                                int.TryParse(parts[2], out int count);
+                                bool success = parts[3].Equals("Success", StringComparison.OrdinalIgnoreCase);
+                                list.Add(new HistoryEntry
+                                {
+                                    Time = parts[0],
+                                    Command = parts[1],
+                                    FileCount = count,
+                                    Status = success ? ConversionStatus.Success : ConversionStatus.Failed,
+                                    ErrorMessage = parts.Length > 4 ? parts[4] : ""
+                                });
+                            }
                         }
                     }
+                    catch { }
                 }
-                catch { }
-            }
-            return list;
+                return list;
+            });
         }
 
         public static void ClearHistory()
         {
-            lock (FileLock)
+            RunWithMutex(() =>
             {
-                try
+                lock (FileLock)
                 {
-                    if (File.Exists(HistoryFile))
+                    try
                     {
-                        File.Delete(HistoryFile);
+                        if (File.Exists(HistoryFile))
+                        {
+                            File.Delete(HistoryFile);
+                        }
                     }
+                    catch { }
                 }
-                catch { }
-            }
+            });
         }
     }
 }

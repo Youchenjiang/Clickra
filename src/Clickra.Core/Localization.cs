@@ -264,18 +264,25 @@ namespace Clickra.Core
             }
         };
 
-        public static string T(string key, string langCode)
+        public static string NormalizeLanguageCode(string langCode)
         {
             if (string.IsNullOrEmpty(langCode))
             {
                 langCode = System.Globalization.CultureInfo.CurrentUICulture.Name;
             }
 
-            string targetKey = "zh-TW";
-            if (langCode.StartsWith("en", StringComparison.OrdinalIgnoreCase)) targetKey = "en-US";
-            else if (langCode.Equals("zh-CN", StringComparison.OrdinalIgnoreCase)) targetKey = "zh-CN";
-            else if (langCode.StartsWith("ja", StringComparison.OrdinalIgnoreCase)) targetKey = "ja-JP";
-            else if (langCode.StartsWith("ko", StringComparison.OrdinalIgnoreCase)) targetKey = "ko-KR";
+            if (langCode.StartsWith("en", StringComparison.OrdinalIgnoreCase)) return "en-US";
+            if (langCode.Equals("zh-CN", StringComparison.OrdinalIgnoreCase)) return "zh-CN";
+            if (langCode.StartsWith("ja", StringComparison.OrdinalIgnoreCase)) return "ja-JP";
+            if (langCode.StartsWith("ko", StringComparison.OrdinalIgnoreCase)) return "ko-KR";
+            if (langCode.StartsWith("zh", StringComparison.OrdinalIgnoreCase)) return "zh-TW";
+
+            return "zh-TW";
+        }
+
+        public static string T(string key, string langCode)
+        {
+            string targetKey = NormalizeLanguageCode(langCode);
 
             // Try looking up the logical ID in the target language
             if (Translations.TryGetValue(targetKey, out var dict) && dict.TryGetValue(key, out var translated))
