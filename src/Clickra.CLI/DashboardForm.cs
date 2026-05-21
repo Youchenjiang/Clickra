@@ -81,6 +81,46 @@ namespace Clickra.UI
         [DllImport("user32.dll")] static extern bool KillTimer(IntPtr hWnd, IntPtr nIDEvent);
         static readonly IntPtr TIMER_ID_REFRESH = (IntPtr)1001;
 
+        [DllImport("shell32.dll")]
+        static extern void DragAcceptFiles(IntPtr hwnd, bool accept);
+
+        [DllImport("shell32.dll", CharSet = CharSet.Unicode)]
+        static extern uint DragQueryFileW(IntPtr hDrop, uint iFile, IntPtr lpszFile, uint cch);
+
+        [DllImport("shell32.dll")]
+        static extern void DragFinish(IntPtr hDrop);
+
+        [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Unicode)]
+        struct OPENFILENAME
+        {
+            public int lStructSize;
+            public IntPtr hwndOwner;
+            public IntPtr hInstance;
+            public string lpstrFilter;
+            public string lpstrCustomFilter;
+            public int nMaxCustFilter;
+            public int nFilterIndex;
+            public IntPtr lpstrFile;
+            public int nMaxFile;
+            public string lpstrFileTitle;
+            public int nMaxFileTitle;
+            public string lpstrInitialDir;
+            public string lpstrTitle;
+            public int Flags;
+            public short nFileOffset;
+            public short nFileExtension;
+            public string lpstrDefExt;
+            public IntPtr lCustData;
+            public IntPtr lpfnHook;
+            public string lpTemplateName;
+            public IntPtr pvReserved;
+            public int dwReserved;
+            public int FlagsEx;
+        }
+
+        [DllImport("comdlg32.dll", EntryPoint = "GetOpenFileNameW", CharSet = CharSet.Unicode)]
+        static extern bool GetOpenFileName(ref OPENFILENAME ofn);
+
         const uint WS_OVERLAPPED_FIXED = 0x00CF0000 & ~0x00040000u & ~0x00020000u;
         const int DWMWA_DARK_MODE = 20;
         const int CW_USEDEFAULT = unchecked((int)0x80000000);
@@ -89,8 +129,13 @@ namespace Clickra.UI
         static WndProcDelegate _wndProc = WndProc;
 
         // UI State Variables
-        static int _activeTab = 0; // 0: Overview, 1: History, 2: Settings
+        static int _activeTab = 0; // 0: Overview, 1: Convert, 2: History, 3: Settings
         static int _hoveredElement = -1; // IDs of hovered elements
+        
+        // Convert tab state
+        static int _convertCommandIndex = 1; // Default: 1 (word2pdf)
+        static List<string> _selectedFiles = new List<string>();
+        private static readonly string[] ConvertCommands = { "ppt2pdf", "word2pdf", "merge-pdf", "img2pdf", "img-merge", "img-stitch" };
         
         // Language Dropdown state
         static bool _langDropdownOpen = false;
@@ -154,6 +199,9 @@ namespace Clickra.UI
             var hwnd = CreateWindowEx(0, className, "Clickra",
                 WS_OVERLAPPED_FIXED, CW_USEDEFAULT, CW_USEDEFAULT, winW, winH,
                 IntPtr.Zero, IntPtr.Zero, wc.hInstance, IntPtr.Zero);
+
+            // Enable Drag and Drop
+            DragAcceptFiles(hwnd, true);
 
             // Dark title bar
             int dark = 1;
@@ -244,26 +292,40 @@ namespace Clickra.UI
             if (x >= 0 && x < 200 && y >= 120 && y < 160) return 0;
             if (x >= 0 && x < 200 && y >= 168 && y < 208) return 1;
             if (x >= 0 && x < 200 && y >= 216 && y < 256) return 2;
+            if (x >= 0 && x < 200 && y >= 264 && y < 304) return 3;
 
-            if (_activeTab == 1) // History
+            if (_activeTab == 1) // Convert
+            {
+                if (x >= 236 && x < 386 && y >= 95 && y < 135) return 11;
+                if (x >= 398 && x < 548 && y >= 95 && y < 135) return 12;
+                if (x >= 560 && x < 710 && y >= 95 && y < 135) return 13;
+                if (x >= 236 && x < 386 && y >= 145 && y < 185) return 14;
+                if (x >= 398 && x < 548 && y >= 145 && y < 185) return 15;
+                if (x >= 560 && x < 710 && y >= 145 && y < 185) return 16;
+
+                if (_selectedFiles.Count > 0 && x >= 650 && x < 698 && y >= 217 && y < 239) return 19; // Clear button
+                if (x >= 236 && x < 710 && y >= 205 && y < 325) return 17; // Drag & Drop zone
+                if (_selectedFiles.Count > 0 && x >= 236 && x < 710 && y >= 340 && y < 376) return 18; // Start button
+            }
+            else if (_activeTab == 2) // History
             {
                 // Clear history button
-                if (x >= 630 && x < 720 && y >= 38 && y < 66) return 3;
+                if (x >= 630 && x < 720 && y >= 38 && y < 66) return 4;
             }
-            else if (_activeTab == 2) // Settings
+            else if (_activeTab == 3) // Settings
             {
                 // Quiet Mode toggle
-                if (x >= 660 && x < 704 && y >= 105 && y < 127) return 4;
+                if (x >= 660 && x < 704 && y >= 105 && y < 127) return 5;
                 // Notification toggle
-                if (x >= 660 && x < 704 && y >= 175 && y < 197) return 5;
+                if (x >= 660 && x < 704 && y >= 175 && y < 197) return 6;
                 // OutputDir: Source
-                if (x >= 236 && x < 346 && y >= 290 && y < 320) return 6;
+                if (x >= 236 && x < 346 && y >= 290 && y < 320) return 7;
                 // OutputDir: Desktop
-                if (x >= 356 && x < 431 && y >= 290 && y < 320) return 7;
+                if (x >= 356 && x < 431 && y >= 290 && y < 320) return 8;
                 // OutputDir: Downloads
-                if (x >= 441 && x < 516 && y >= 290 && y < 320) return 8;
+                if (x >= 441 && x < 516 && y >= 290 && y < 320) return 9;
                 // Language dropdown button
-                if (x >= 236 && x < 476 && y >= 390 && y < 420) return 9;
+                if (x >= 236 && x < 476 && y >= 390 && y < 420) return 10;
             }
 
             return -1;
@@ -342,16 +404,16 @@ namespace Clickra.UI
                         }
 
                         int element = HitTest(mouseX, mouseY);
-                        if (element >= 0 && element <= 2)
+                        if (element >= 0 && element <= 3)
                         {
                             _activeTab = element;
-                            if (_activeTab == 0 || _activeTab == 1)
+                            if (_activeTab == 0 || _activeTab == 2)
                             {
                                 RefreshHistoryData();
                             }
                             InvalidateRect(hwnd, IntPtr.Zero, false);
                         }
-                        else if (element == 3) // Clear history
+                        else if (element == 4) // Clear history
                         {
                             if (MessageBox(hwnd, GetText("history_clear_confirm"), "Clickra", 0x24) == 6) // MB_YESNO | MB_ICONQUESTION, 6 is IDYES
                             {
@@ -360,34 +422,34 @@ namespace Clickra.UI
                                 InvalidateRect(hwnd, IntPtr.Zero, false);
                             }
                         }
-                        else if (element == 4) // Toggle Quiet Mode
+                        else if (element == 5) // Toggle Quiet Mode
                         {
                             bool current = ClickraStorage.GetSetting("QuietMode").Equals("true", StringComparison.OrdinalIgnoreCase);
                             ClickraStorage.SaveSetting("QuietMode", current ? "false" : "true");
                             InvalidateRect(hwnd, IntPtr.Zero, false);
                         }
-                        else if (element == 5) // Toggle Notification
+                        else if (element == 6) // Toggle Notification
                         {
                             bool current = ClickraStorage.GetSetting("Notification").Equals("true", StringComparison.OrdinalIgnoreCase);
                             ClickraStorage.SaveSetting("Notification", current ? "false" : "true");
                             InvalidateRect(hwnd, IntPtr.Zero, false);
                         }
-                        else if (element == 6) // OutputDir: source
+                        else if (element == 7) // OutputDir: source
                         {
                             ClickraStorage.SaveSetting("OutputDir", "source");
                             InvalidateRect(hwnd, IntPtr.Zero, false);
                         }
-                        else if (element == 7) // OutputDir: desktop
+                        else if (element == 8) // OutputDir: desktop
                         {
                             ClickraStorage.SaveSetting("OutputDir", "desktop");
                             InvalidateRect(hwnd, IntPtr.Zero, false);
                         }
-                        else if (element == 8) // OutputDir: downloads
+                        else if (element == 9) // OutputDir: downloads
                         {
                             ClickraStorage.SaveSetting("OutputDir", "downloads");
                             InvalidateRect(hwnd, IntPtr.Zero, false);
                         }
-                        else if (element == 9) // Language dropdown button
+                        else if (element == 10) // Language dropdown button
                         {
                             _langDropdownOpen = !_langDropdownOpen;
                             if (_langDropdownOpen)
@@ -395,6 +457,63 @@ namespace Clickra.UI
                                 _langSearchQuery = "";
                                 _langHoveredIndex = 0;
                             }
+                            InvalidateRect(hwnd, IntPtr.Zero, false);
+                        }
+                        else if (element >= 11 && element <= 16) // Change convert tool
+                        {
+                            ChangeConvertCommand(element - 11);
+                            InvalidateRect(hwnd, IntPtr.Zero, false);
+                        }
+                        else if (element == 17) // Drag & Drop Zone clicked (Browse files)
+                        {
+                            string cmd = ConvertCommands[_convertCommandIndex];
+                            string filter = GetFilterForCommand(cmd);
+                            string title = GetText("convert_drag_drop_hint");
+                            var chosen = OpenFiles(hwnd, filter, title);
+                            if (chosen.Count > 0)
+                            {
+                                _selectedFiles = chosen;
+                                InvalidateRect(hwnd, IntPtr.Zero, false);
+                            }
+                        }
+                        else if (element == 18) // Start conversion button
+                        {
+                            RunConversion(hwnd);
+                        }
+                        else if (element == 19) // Clear files button
+                        {
+                            _selectedFiles.Clear();
+                            InvalidateRect(hwnd, IntPtr.Zero, false);
+                        }
+                    }
+                    return IntPtr.Zero;
+                case 0x0233: // WM_DROPFILES
+                    {
+                        IntPtr hDrop = w;
+                        uint fileCount = DragQueryFileW(hDrop, 0xFFFFFFFF, IntPtr.Zero, 0);
+                        var droppedFiles = new List<string>();
+                        for (uint i = 0; i < fileCount; i++)
+                        {
+                            uint length = DragQueryFileW(hDrop, i, IntPtr.Zero, 0);
+                            if (length > 0)
+                            {
+                                IntPtr buffer = Marshal.AllocHGlobal((int)(length + 1) * 2);
+                                if (DragQueryFileW(hDrop, i, buffer, length + 1) > 0)
+                                {
+                                    string? file = Marshal.PtrToStringUni(buffer);
+                                    if (!string.IsNullOrEmpty(file))
+                                    {
+                                        droppedFiles.Add(file);
+                                    }
+                                }
+                                Marshal.FreeHGlobal(buffer);
+                            }
+                        }
+                        DragFinish(hDrop);
+
+                        if (droppedFiles.Count > 0)
+                        {
+                            HandleDroppedFiles(droppedFiles);
                             InvalidateRect(hwnd, IntPtr.Zero, false);
                         }
                     }
@@ -528,8 +647,9 @@ namespace Clickra.UI
 
             // Draw Tabs
             DrawTabButton(g, "\uE80F", GetText("tab_status"), 0, 120);
-            DrawTabButton(g, "\uE81C", GetText("tab_history"), 1, 168);
-            DrawTabButton(g, "\uE713", GetText("tab_settings"), 2, 216);
+            DrawTabButton(g, "\uEC7E", GetText("tab_convert"), 1, 168);
+            DrawTabButton(g, "\uE81C", GetText("tab_history"), 2, 216);
+            DrawTabButton(g, "\uE713", GetText("tab_settings"), 3, 264);
 
             // 2. Draw Content Area
             if (_activeTab == 0)
@@ -538,9 +658,13 @@ namespace Clickra.UI
             }
             else if (_activeTab == 1)
             {
-                DrawHistoryTab(g);
+                DrawConvertTab(g);
             }
             else if (_activeTab == 2)
+            {
+                DrawHistoryTab(g);
+            }
+            else if (_activeTab == 3)
             {
                 DrawSettingsTab(g);
             }
@@ -914,9 +1038,9 @@ namespace Clickra.UI
             }
 
             string outputDirMode = ClickraStorage.GetSetting("OutputDir");
-            DrawOutputDirButton(g, GetText("setting_output_same_as_source"), outputDirMode.Equals("source", StringComparison.OrdinalIgnoreCase), 6, 236, 290, 110);
-            DrawOutputDirButton(g, GetText("setting_output_desktop"), outputDirMode.Equals("desktop", StringComparison.OrdinalIgnoreCase), 7, 356, 290, 75);
-            DrawOutputDirButton(g, GetText("setting_output_downloads"), outputDirMode.Equals("downloads", StringComparison.OrdinalIgnoreCase), 8, 441, 290, 75);
+            DrawOutputDirButton(g, GetText("setting_output_same_as_source"), outputDirMode.Equals("source", StringComparison.OrdinalIgnoreCase), 7, 236, 290, 110);
+            DrawOutputDirButton(g, GetText("setting_output_desktop"), outputDirMode.Equals("desktop", StringComparison.OrdinalIgnoreCase), 8, 356, 290, 75);
+            DrawOutputDirButton(g, GetText("setting_output_downloads"), outputDirMode.Equals("downloads", StringComparison.OrdinalIgnoreCase), 9, 441, 290, 75);
 
             // Language setting UI block
             if (_tabFont != null)
@@ -1098,7 +1222,7 @@ namespace Clickra.UI
             }
 
             string displayText = $"{currentLang.NativeName} ({currentLang.EnglishName})";
-            bool isHovered = _hoveredElement == 9;
+            bool isHovered = _hoveredElement == 10;
 
             int x = 236, y = 390, w = 240, h = 30;
 
@@ -1237,6 +1361,349 @@ namespace Clickra.UI
         static string GetText(string key)
         {
             return Clickra.Core.Localization.T(key, ClickraStorage.GetSetting("Language"));
+        }
+
+        static List<string> OpenFiles(IntPtr hwndOwner, string filter, string title)
+        {
+            var files = new List<string>();
+            var ofn = new OPENFILENAME();
+            ofn.lStructSize = Marshal.SizeOf(ofn);
+            ofn.hwndOwner = hwndOwner;
+            ofn.lpstrFilter = filter;
+            
+            int maxFile = 65536;
+            IntPtr fileBuffer = Marshal.AllocHGlobal(maxFile * 2);
+            byte[] zeros = new byte[maxFile * 2];
+            Marshal.Copy(zeros, 0, fileBuffer, zeros.Length);
+            
+            ofn.lpstrFile = fileBuffer;
+            ofn.nMaxFile = maxFile;
+            ofn.lpstrTitle = title;
+            ofn.Flags = 0x00080000 | 0x00000200 | 0x00001000 | 0x00000004;
+
+            if (GetOpenFileName(ref ofn))
+            {
+                var paths = new List<string>();
+                IntPtr currentPtr = fileBuffer;
+                while (true)
+                {
+                    string? s = Marshal.PtrToStringUni(currentPtr);
+                    if (string.IsNullOrEmpty(s)) break;
+                    paths.Add(s);
+                    currentPtr += (s.Length + 1) * 2;
+                }
+
+                if (paths.Count > 0)
+                {
+                    if (paths.Count == 1)
+                    {
+                        files.Add(paths[0]);
+                    }
+                    else
+                    {
+                        string dir = paths[0];
+                        for (int i = 1; i < paths.Count; i++)
+                        {
+                            files.Add(Path.Combine(dir, paths[i]));
+                        }
+                    }
+                }
+            }
+            Marshal.FreeHGlobal(fileBuffer);
+            return files;
+        }
+
+        static bool ValidateConvertFiles(string cmd, List<string> files, out string errorMsg)
+        {
+            errorMsg = "";
+            if (files.Count == 0) return true;
+
+            string[] allowed = cmd switch
+            {
+                "ppt2pdf" => new[] { ".ppt", ".pptx" },
+                "word2pdf" => new[] { ".doc", ".docx" },
+                "merge-pdf" => new[] { ".pdf" },
+                "img2pdf" or "img-merge" or "img-stitch" => new[] { ".jpg", ".jpeg", ".png", ".bmp", ".gif", ".tiff", ".webp" },
+                _ => Array.Empty<string>()
+            };
+
+            var invalid = files.Where(f => !allowed.Contains(Path.GetExtension(f).ToLowerInvariant())).ToList();
+            if (invalid.Count > 0)
+            {
+                errorMsg = GetText("convert_err_invalid_ext");
+                return false;
+            }
+
+            int minFiles = cmd switch
+            {
+                "merge-pdf" or "img-merge" or "img-stitch" => 2,
+                _ => 1
+            };
+
+            if (files.Count < minFiles)
+            {
+                errorMsg = string.Format(GetText("convert_err_min_files"), minFiles);
+                return false;
+            }
+
+            return true;
+        }
+
+        static void HandleDroppedFiles(List<string> files)
+        {
+            var extensions = files.Select(f => Path.GetExtension(f).ToLowerInvariant()).Distinct().ToList();
+            if (extensions.Count == 0) return;
+
+            if (extensions.All(ext => ext == ".ppt" || ext == ".pptx"))
+            {
+                ChangeConvertCommand(0);
+            }
+            else if (extensions.All(ext => ext == ".doc" || ext == ".docx"))
+            {
+                ChangeConvertCommand(1);
+            }
+            else if (extensions.All(ext => ext == ".pdf"))
+            {
+                ChangeConvertCommand(2);
+            }
+            else if (extensions.All(ext => new[] { ".jpg", ".jpeg", ".png", ".bmp", ".gif", ".tiff", ".webp" }.Contains(ext)))
+            {
+                ChangeConvertCommand(files.Count > 1 ? 4 : 3);
+            }
+
+            _selectedFiles = files;
+        }
+
+        static void ChangeConvertCommand(int index)
+        {
+            _convertCommandIndex = index;
+            string cmd = ConvertCommands[index];
+            if (_selectedFiles.Count > 0)
+            {
+                if (!ValidateConvertFiles(cmd, _selectedFiles, out _))
+                {
+                    _selectedFiles.Clear();
+                }
+            }
+        }
+
+        static void RunConversion(IntPtr hwnd)
+        {
+            string cmd = ConvertCommands[_convertCommandIndex];
+            if (_selectedFiles.Count == 0) return;
+
+            if (!ValidateConvertFiles(cmd, _selectedFiles, out string error))
+            {
+                MessageBox(hwnd, error, "Clickra", 0x30);
+                return;
+            }
+
+            var filesCopy = new List<string>(_selectedFiles);
+            var thread = new System.Threading.Thread(() =>
+            {
+                try
+                {
+                    ProgressWindow.Show(cmd, filesCopy);
+                }
+                catch (Exception ex)
+                {
+                    MessageBox(IntPtr.Zero, $"Execution failed: {ex.Message}", "Clickra", 0x10);
+                }
+            });
+            thread.SetApartmentState(System.Threading.ApartmentState.STA);
+            thread.Start();
+
+            _selectedFiles.Clear();
+
+            _activeTab = 2; // Switch to History
+            RefreshHistoryData();
+            InvalidateRect(hwnd, IntPtr.Zero, false);
+        }
+
+        static string GetFilterForCommand(string cmd)
+        {
+            return cmd switch
+            {
+                "ppt2pdf" => "PowerPoint Files (*.ppt; *.pptx)\0*.ppt;*.pptx\0All Files (*.*)\0*.*\0\0",
+                "word2pdf" => "Word Files (*.doc; *.docx)\0*.doc;*.docx\0All Files (*.*)\0*.*\0\0",
+                "merge-pdf" => "PDF Files (*.pdf)\0*.pdf\0All Files (*.*)\0*.*\0\0",
+                _ => "Image Files (*.jpg; *.jpeg; *.png; *.bmp; *.gif; *.tiff; *.webp)\0*.jpg;*.jpeg;*.png;*.bmp;*.gif;*.tiff;*.webp\0All Files (*.*)\0*.*\0\0"
+            };
+        }
+
+        static void DrawConvertTab(Graphics g)
+        {
+            if (_contentTitleFont != null)
+                g.DrawString(GetText("tab_convert"), _contentTitleFont, Brushes.White, 236, 30);
+
+            using (var divPen = new Pen(Color.FromArgb(48, 48, 48)))
+            {
+                g.DrawLine(divPen, 236, 75, 720, 75);
+            }
+
+            for (int i = 0; i < 6; i++)
+            {
+                int col = i % 3;
+                int row = i / 3;
+                int cardX = 236 + col * 162;
+                int cardY = 95 + row * 50;
+                int cardW = 150;
+                int cardH = 40;
+
+                bool isSelected = _convertCommandIndex == i;
+                bool isHovered = _hoveredElement == (11 + i);
+
+                Color cardBg;
+                Color cardBorder;
+                Color textColor;
+
+                if (isSelected)
+                {
+                    cardBg = Color.FromArgb(45, 45, 55);
+                    cardBorder = GetSystemColorizationColor();
+                    textColor = Color.White;
+                }
+                else
+                {
+                    cardBg = isHovered ? Color.FromArgb(50, 50, 50) : Color.FromArgb(36, 36, 36);
+                    cardBorder = isHovered ? Color.FromArgb(80, 80, 80) : Color.FromArgb(48, 48, 48);
+                    textColor = isHovered ? Color.White : Color.FromArgb(200, 200, 200);
+                }
+
+                using var path = GetRoundedRectPath(new RectangleF(cardX, cardY, cardW, cardH), 5);
+                using var bgBrush = new SolidBrush(cardBg);
+                using var borderPen = new Pen(cardBorder, isSelected ? 1.5f : 1f);
+                g.FillPath(bgBrush, path);
+                g.DrawPath(borderPen, path);
+
+                string cmdKey = i switch
+                {
+                    0 => "cmd_ppt_to_pdf",
+                    1 => "cmd_word_to_pdf",
+                    2 => "cmd_merge_pdf",
+                    3 => "cmd_img_to_pdf",
+                    4 => "cmd_merge_img",
+                    5 => "cmd_stitch_img",
+                    _ => ""
+                };
+                string cmdText = GetText(cmdKey);
+                
+                if (_tabFont != null)
+                {
+                    using var textBrush = new SolidBrush(textColor);
+                    var size = g.MeasureString(cmdText, _tabFont);
+                    g.DrawString(cmdText, _tabFont, textBrush, cardX + (cardW - size.Width) / 2, cardY + (cardH - size.Height) / 2);
+                }
+            }
+
+            int zoneX = 236, zoneY = 205, zoneW = 474, zoneH = 120;
+            bool isZoneHovered = _hoveredElement == 17;
+            Color zoneBg = isZoneHovered ? Color.FromArgb(42, 42, 42) : Color.FromArgb(34, 34, 34);
+            Color zoneBorder = isZoneHovered ? GetSystemColorizationColor() : Color.FromArgb(60, 60, 60);
+
+            using (var path = GetRoundedRectPath(new RectangleF(zoneX, zoneY, zoneW, zoneH), 6))
+            using (var bgBrush = new SolidBrush(zoneBg))
+            using (var borderPen = new Pen(zoneBorder, 1.5f))
+            {
+                borderPen.DashStyle = DashStyle.Dash;
+                g.FillPath(bgBrush, path);
+                g.DrawPath(borderPen, path);
+            }
+
+            if (_selectedFiles.Count == 0)
+            {
+                if (_iconFont != null)
+                {
+                    using var iconBrush = new SolidBrush(Color.FromArgb(140, 140, 140));
+                    g.DrawString("\uE118", _iconFont, iconBrush, zoneX + (zoneW - 20) / 2, zoneY + 25);
+                }
+
+                if (_tabFont != null)
+                {
+                    string hint = GetText("convert_drag_drop_hint");
+                    using var textBrush = new SolidBrush(Color.FromArgb(220, 220, 220));
+                    var size = g.MeasureString(hint, _tabFont);
+                    g.DrawString(hint, _tabFont, textBrush, zoneX + (zoneW - size.Width) / 2, zoneY + 55);
+                }
+
+                if (_subFont != null)
+                {
+                    string subHint = GetText("convert_drag_drop_sub");
+                    using var subBrush = new SolidBrush(Color.FromArgb(140, 140, 140));
+                    var size = g.MeasureString(subHint, _subFont);
+                    g.DrawString(subHint, _subFont, subBrush, zoneX + (zoneW - size.Width) / 2, zoneY + 80);
+                }
+            }
+            else
+            {
+                if (_tabFont != null)
+                {
+                    string summary = string.Format(GetText("convert_selected_count"), _selectedFiles.Count);
+                    using var textBrush = new SolidBrush(Color.FromArgb(100, 220, 100));
+                    g.DrawString(summary, _tabFont, textBrush, zoneX + 20, zoneY + 20);
+                }
+
+                if (_subFont != null)
+                {
+                    using var listBrush = new SolidBrush(Color.FromArgb(180, 180, 180));
+                    string joinedNames = string.Join(", ", _selectedFiles.Select(Path.GetFileName));
+                    if (joinedNames.Length > 85)
+                    {
+                        joinedNames = joinedNames.Substring(0, 82) + "...";
+                    }
+                    g.DrawString(joinedNames, _subFont, listBrush, zoneX + 20, zoneY + 50);
+
+                    string outDirMode = ClickraStorage.GetSetting("OutputDir");
+                    string outPathDesc = outDirMode.ToLowerInvariant() switch
+                    {
+                        "desktop" => GetText("setting_output_desktop"),
+                        "downloads" => GetText("setting_output_downloads"),
+                        _ => GetText("setting_output_same_as_source")
+                    };
+                    using var descBrush = new SolidBrush(Color.FromArgb(130, 130, 130));
+                    g.DrawString($"{GetText("setting_output_title")}: {outPathDesc}", _subFont, descBrush, zoneX + 20, zoneY + 85);
+                }
+
+                bool isClearHovered = _hoveredElement == 19;
+                Color clearBtnBg = isClearHovered ? Color.FromArgb(60, 60, 60) : Color.FromArgb(45, 45, 45);
+                Color clearBtnBorder = isClearHovered ? Color.FromArgb(80, 80, 80) : Color.FromArgb(55, 55, 55);
+                using (var path = GetRoundedRectPath(new RectangleF(650, zoneY + 12, 48, 22), 3))
+                using (var bgBrush = new SolidBrush(clearBtnBg))
+                using (var borderPen = new Pen(clearBtnBorder))
+                {
+                    g.FillPath(bgBrush, path);
+                    g.DrawPath(borderPen, path);
+                }
+                if (_subFont != null)
+                {
+                    Color btnText = isClearHovered ? Color.White : Color.FromArgb(180, 180, 180);
+                    using var textBrush = new SolidBrush(btnText);
+                    string clearText = GetText("convert_clear");
+                    var size = g.MeasureString(clearText, _subFont);
+                    g.DrawString(clearText, _subFont, textBrush, 650 + (48 - size.Width) / 2, zoneY + 12 + (22 - size.Height) / 2);
+                }
+            }
+
+            if (_selectedFiles.Count > 0)
+            {
+                bool isBtnHovered = _hoveredElement == 18;
+                Color btnBg = GetSystemColorizationColor();
+                if (isBtnHovered) btnBg = Lighten(btnBg, 0.15f);
+
+                using (var path = GetRoundedRectPath(new RectangleF(zoneX, 340, zoneW, 36), 5))
+                using (var bgBrush = new SolidBrush(btnBg))
+                {
+                    g.FillPath(bgBrush, path);
+                }
+
+                if (_tabFont != null)
+                {
+                    string btnText = GetText("convert_start");
+                    using var textBrush = new SolidBrush(Color.White);
+                    var size = g.MeasureString(btnText, _tabFont);
+                    g.DrawString(btnText, _tabFont, textBrush, zoneX + (zoneW - size.Width) / 2, 340 + (36 - size.Height) / 2);
+                }
+            }
         }
     }
 }
