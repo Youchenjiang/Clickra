@@ -108,6 +108,7 @@ To keep the `main` branch stable, direct pushes to `main` are prohibited. All ch
 *   **Feature Development (`feature/...`)**: For all new features or bug fixes, branch off from `main` to `feature/<branch-name>`.
 *   **Hotfixes (`hotfix/...`)**: For urgent bugs in the released version, branch off to `hotfix/<branch-name>`.
 *   **Merge Rules**: Once development is done, push your branch and open a PR. Merge into `main` after review.
+*   **Git Tags & Releases**: When releasing a new version, create a tag locally with the format `vX.Y.Z.0`. Push the tag directly using `git push origin vX.Y.Z.0`. Direct branch pushes to the remote main/release branches are strictly prohibited.
 
 ### 5. Automated Versioning & MSIX Packaging
 The project provides built-in PowerShell scripts for automated version bumping and MSIX packaging:

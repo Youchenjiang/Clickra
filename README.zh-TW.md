@@ -108,6 +108,7 @@ dotnet publish src\Clickra.CLI\Clickra.csproj -c Release -r win-x64 --output .
 *   **功能開發 (`feature/...`)**：所有新功能或一般修復，請從 `main` 切出 `feature/分支名稱`。
 *   **緊急修復 (`hotfix/...`)**：針對已上線版本的重大 Bug，請切出 `hotfix/分支名稱`。
 *   **合併規則**：開發完成後，推送到遠端並開啟 PR。審查無誤後即可合併進 `main`。
+*   **Git 標籤與發布 (Git Tags)**：版本更新後，請於本地端建立 Git Tag（格式為 `vX.Y.Z.0`）。推送時僅能直接推送該 Tag（例如 `git push origin vX.Y.Z.0`），禁止直接推送分支至遠端主分支。
 
 ### 5. 自動化版本更新與 MSIX 封裝 (Automated Packaging)
 專案內建 PowerShell 腳本，可自動執行版本升級與 MSIX 封裝：
