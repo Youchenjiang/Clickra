@@ -1,4 +1,4 @@
-# Clickra v3.0.7.0
+# Clickra v3.0.8.0
 
 [![Microsoft Store](https://img.shields.io/badge/Microsoft%20Store-Clickra-blue?style=for-the-badge&logo=microsoft-store)](https://apps.microsoft.com/detail/9NGLBF6P1KLD)
 [![License: Apache 2.0](https://img.shields.io/badge/License-Apache%202.0-blue.svg?style=for-the-badge)](https://opensource.org/licenses/Apache-2.0)
@@ -33,7 +33,9 @@ Most productivity scripts (PDF merging, image conversion, etc.) are typically wr
 | **v3.0.4.0** | May 11, 2026 | **Critical Shell Fix**. Resolved Windows 11 context menu visibility issues (Store Policy 10.1.2.10) by supporting system-specific IIDs and synchronizing CLSID across manifests. |
 | **v3.0.5.0** | May 13, 2026 | **Diagnostic & Compatibility Fix**. Improved PPT conversion error handling and Store compliance. |
 | **v3.0.6.0** | May 15, 2026 | **Native Dashboard & Word-to-PDF**. Implemented high-performance Win32 dashboard and added Microsoft Word conversion engine. Achieved 100% NativeAOT project structure. |
-| **v3.0.7.0** | **Current** | **Dynamic Progress Bar & Toast Notifications**. Implemented pure Win32/GDI+ animated progress window with WinUI 3 style shimmer effects, system accent color integration, and native Windows Toast notifications. |
+| **v3.0.7.0** | May 21, 2026 | **Dynamic Progress Bar & Toast Notifications**. Implemented pure Win32/GDI+ animated progress window with WinUI 3 style shimmer effects, system accent color integration, and native Windows Toast notifications. |
+| **v3.0.8.0** | **Current** | **Conversion History & Dashboard Enhancements**. Implemented local conversion history tracking and dynamic Win32 list view, integrated Quick Convert tab, added localized user language switching (zh-TW/en-US), and refactored `DashboardForm` into clean static partial files. |
+
 
 ---
 
@@ -51,17 +53,22 @@ Commands are elegantly tucked away in the `Clickra` sub-menu, keeping your prima
 *   **Feature**: Silently exports Office documents to high-quality PDFs in the background.
 *   **Requirement**: Microsoft Office (Word/PowerPoint) must be installed locally.
 
-### 3. 🔗 PDF Merge
+### 4. 🔗 PDF Merge
 *   **Feature**: Merges selected PDF files into a single document based on filename order.
 *   **Speed**: Instant processing with automated cleanup of temporary resources.
 
-### 4. 🖼️ Images to PDF
+### 5. 🖼️ Images to PDF
 *   **Feature**: Packages multiple images (JPG, PNG, WebP) into a single multi-page PDF.
 *   **Quality**: Pixel-perfect conversion preserving original resolution and aspect ratios.
 
-### 5. 🎞️ Image Stitching
+### 6. 🎞️ Image Stitching
 *   **Feature**: Joins multiple images vertically into a single long-form image.
 *   **Alignment**: Automatic horizontal centering for images of varying widths.
+
+### 7. 🕒 Conversion History
+*   **Feature**: Locally tracks all conversion activities.
+*   **Details**: A high-performance native Win32 list view rendering processed file paths, operation types, timestamps, and execution status.
+
 
 ---
 
