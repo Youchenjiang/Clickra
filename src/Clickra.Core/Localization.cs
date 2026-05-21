@@ -48,7 +48,15 @@ namespace Clickra.Core
                 ["cmd_merge_pdf"] = "合併 PDF",
                 ["cmd_img_to_pdf"] = "圖片 → PDF",
                 ["cmd_merge_img"] = "圖片合併",
-                ["cmd_stitch_img"] = "圖片拼接"
+                ["cmd_stitch_img"] = "圖片拼接",
+                ["tab_convert"] = "快速轉檔",
+                ["convert_drag_drop_hint"] = "拖曳檔案至此，或點擊此處選取檔案",
+                ["convert_drag_drop_sub"] = "支援 Word, PPT, PDF 及多種圖片格式",
+                ["convert_selected_count"] = "已選取 {0} 個檔案",
+                ["convert_clear"] = "清除",
+                ["convert_start"] = "開始轉檔",
+                ["convert_err_min_files"] = "此功能至少需要 {0} 個檔案！",
+                ["convert_err_invalid_ext"] = "檔案格式不符，請重新選取！"
             },
             ["zh-CN"] = new(StringComparer.OrdinalIgnoreCase)
             {
@@ -91,7 +99,15 @@ namespace Clickra.Core
                 ["cmd_merge_pdf"] = "合并 PDF",
                 ["cmd_img_to_pdf"] = "图片 → PDF",
                 ["cmd_merge_img"] = "图片合并",
-                ["cmd_stitch_img"] = "图片拼接"
+                ["cmd_stitch_img"] = "图片拼接",
+                ["tab_convert"] = "快速转档",
+                ["convert_drag_drop_hint"] = "拖拽文件至此，或点击此处选择文件",
+                ["convert_drag_drop_sub"] = "支持 Word, PPT, PDF 及多种图片格式",
+                ["convert_selected_count"] = "已选择 {0} 个文件",
+                ["convert_clear"] = "清除",
+                ["convert_start"] = "开始转档",
+                ["convert_err_min_files"] = "此功能至少需要 {0} 个文件！",
+                ["convert_err_invalid_ext"] = "文件格式不符，请重新选择！"
             },
             ["en-US"] = new(StringComparer.OrdinalIgnoreCase)
             {
@@ -134,7 +150,15 @@ namespace Clickra.Core
                 ["cmd_merge_pdf"] = "Merge PDF",
                 ["cmd_img_to_pdf"] = "Image → PDF",
                 ["cmd_merge_img"] = "Merge Images",
-                ["cmd_stitch_img"] = "Stitch Images"
+                ["cmd_stitch_img"] = "Stitch Images",
+                ["tab_convert"] = "Convert",
+                ["convert_drag_drop_hint"] = "Drag files here, or click to browse",
+                ["convert_drag_drop_sub"] = "Supports Word, PPT, PDF, and image files",
+                ["convert_selected_count"] = "{0} files selected",
+                ["convert_clear"] = "Clear",
+                ["convert_start"] = "Start Conversion",
+                ["convert_err_min_files"] = "This action requires at least {0} files!",
+                ["convert_err_invalid_ext"] = "Invalid file extensions detected!"
             },
             ["ja-JP"] = new(StringComparer.OrdinalIgnoreCase)
             {
@@ -177,7 +201,15 @@ namespace Clickra.Core
                 ["cmd_merge_pdf"] = "PDF 結合",
                 ["cmd_img_to_pdf"] = "画像 → PDF",
                 ["cmd_merge_img"] = "画像結合",
-                ["cmd_stitch_img"] = "画像結合 (縦/横)"
+                ["cmd_stitch_img"] = "画像結合 (縦/横)",
+                ["tab_convert"] = "クイック変換",
+                ["convert_drag_drop_hint"] = "ここにファイルをドラッグするか、クリックして選択",
+                ["convert_drag_drop_sub"] = "Word、PPT、PDF、および画像ファイルをサポート",
+                ["convert_selected_count"] = "{0} 個のファイルが選択されました",
+                ["convert_clear"] = "クリア",
+                ["convert_start"] = "変換開始",
+                ["convert_err_min_files"] = "この機能には少なくとも {0} 個のファイルが必要です！",
+                ["convert_err_invalid_ext"] = "無効なファイル形式が含まれています！"
             },
             ["ko-KR"] = new(StringComparer.OrdinalIgnoreCase)
             {
@@ -220,7 +252,15 @@ namespace Clickra.Core
                 ["cmd_merge_pdf"] = "PDF 병합",
                 ["cmd_img_to_pdf"] = "이미지 → PDF",
                 ["cmd_merge_img"] = "이미지 병합",
-                ["cmd_stitch_img"] = "이미지 이어붙이기"
+                ["cmd_stitch_img"] = "이미지 이어붙이기",
+                ["tab_convert"] = "빠른 변환",
+                ["convert_drag_drop_hint"] = "여기에 파일을 끌어다 놓거나 클릭하여 선택",
+                ["convert_drag_drop_sub"] = "Word, PPT, PDF 및 이미지 파일 지원",
+                ["convert_selected_count"] = "{0}개의 파일이 선택됨",
+                ["convert_clear"] = "지우기",
+                ["convert_start"] = "변환 시작",
+                ["convert_err_min_files"] = "이 작업은 최소 {0}개의 파일이 필요합니다!",
+                ["convert_err_invalid_ext"] = "잘못된 파일 확장자가 감지되었습니다!"
             }
         };
 
