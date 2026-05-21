@@ -13,11 +13,9 @@ using Clickra.Core;
 namespace Clickra.UI
 {
     /// <summary>
-    /// 提供 CLI 執行階段專用的 Win32 進度視窗。
-    /// 本類別採用靜態單次執行 (Single-shot) 架構設計，適用於每次 CLI 呼叫獨立進程運行的情境。
-    /// 資源會在 WM_DESTROY 時透過 CleanupResources 徹底釋放。
+    /// 提供 CLI 執行階段專專用之 Win32 進度視窗。
     /// </summary>
-    public static class ProgressWindow
+    public class ProgressWindow
     {
         [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Unicode)]
         struct WNDCLASSEX
@@ -84,46 +82,59 @@ namespace Clickra.UI
         [DllImport("dwmapi.dll")] static extern int DwmSetWindowAttribute(IntPtr h, int attr, ref int val, int size);
         [DllImport("dwmapi.dll", PreserveSig = false)] static extern void DwmGetColorizationColor(out uint pcrColorization, out bool pfOpaqueBlend);
 
+        [DllImport("user32.dll", EntryPoint = "SetWindowLongPtrW", CharSet = CharSet.Unicode)]
+        static extern IntPtr SetWindowLongPtr(IntPtr hWnd, int nIndex, IntPtr dwNewLong);
+
+        [DllImport("user32.dll", EntryPoint = "GetWindowLongPtrW", CharSet = CharSet.Unicode)]
+        static extern IntPtr GetWindowLongPtr(IntPtr hWnd, int nIndex);
+
         const uint WS_OVERLAPPED_FIXED = 0x00CF0000 & ~0x00040000u & ~0x00020000u;
         const int DWMWA_DARK_MODE = 20;
         const int CW_USEDEFAULT = unchecked((int)0x80000000);
 
         delegate IntPtr WndProcDelegate(IntPtr h, uint msg, IntPtr w, IntPtr l);
-        static WndProcDelegate _wndProc = WndProc;
-        static readonly object _stateLock = new object();
+        static readonly WndProcDelegate _wndProcDelegate = WndProc;
 
-        static string _command = "";
-        static List<string> _files = new List<string>();
-        static int _current = 0;
-        static int _total = 0;
-        static string _message = "";
-        static bool _completed = false;
-        static bool _hasError = false;
-        static string _errorMessage = "";
-        static IntPtr _hwnd = IntPtr.Zero;
+        private readonly object _stateLock = new object();
 
-        static double _currentDispWidth = 0;
-        static double _targetWidth = 0;
-        static float _shimmerOffset = -120;
+        private string _command = "";
+        private List<string> _files = new List<string>();
+        private int _current = 0;
+        private int _total = 0;
+        private string _message = "";
+        private bool _completed = false;
+        private bool _hasError = false;
+        private string _errorMessage = "";
+        private IntPtr _hwnd = IntPtr.Zero;
 
-        // GDI+ 雙緩衝與色彩快取
-        static Bitmap? _bufferBmp;
-        static Graphics? _bufferGraphics;
-        static Color _cachedColorizationColor = Color.FromArgb(255, 0, 120, 212);
-        static bool _hasCachedColorizationColor = false;
+        private double _currentDispWidth = 0;
+        private double _targetWidth = 0;
+        private float _shimmerOffset = -120;
+
+        // GDI+ 雙雙緩衝與色彩快取
+        private Bitmap? _bufferBmp;
+        private Graphics? _bufferGraphics;
+        private Color _cachedColorizationColor = Color.FromArgb(255, 0, 120, 212);
+        private bool _hasCachedColorizationColor = false;
 
         // GDI+ 快取字型與筆刷
-        static Font? _titleFont;
-        static Font? _subFont;
-        static Font? _headerFont;
-        static Font? _msgFont;
-        static Font? _tipFont;
-        static Font? _pctFont;
-        static Pen? _linePen;
-        static Pen? _borderPen;
-        static SolidBrush? _bgBrush;
+        private Font? _titleFont;
+        private Font? _subFont;
+        private Font? _headerFont;
+        private Font? _msgFont;
+        private Font? _tipFont;
+        private Font? _pctFont;
+        private Pen? _linePen;
+        private Pen? _borderPen;
+        private SolidBrush? _bgBrush;
 
         public static void Show(string command, List<string> files)
+        {
+            var window = new ProgressWindow();
+            window.ShowInstance(command, files);
+        }
+
+        private void ShowInstance(string command, List<string> files)
         {
             if (files == null || files.Count == 0)
             {
@@ -173,7 +184,7 @@ namespace Clickra.UI
             var wc = new WNDCLASSEX
             {
                 cbSize = (uint)Marshal.SizeOf<WNDCLASSEX>(),
-                lpfnWndProc = Marshal.GetFunctionPointerForDelegate(_wndProc),
+                lpfnWndProc = Marshal.GetFunctionPointerForDelegate(_wndProcDelegate),
                 hInstance = Marshal.GetHINSTANCE(typeof(ProgressWindow).Module),
                 hCursor = LoadCursorW(IntPtr.Zero, 32512),
                 hbrBackground = IntPtr.Zero,
@@ -187,9 +198,12 @@ namespace Clickra.UI
             int winW = rect.right - rect.left;
             int winH = rect.bottom - rect.top;
 
+            GCHandle handle = GCHandle.Alloc(this);
+            IntPtr lpParam = GCHandle.ToIntPtr(handle);
+
             _hwnd = CreateWindowEx(0, className, "Clickra",
                 WS_OVERLAPPED_FIXED, CW_USEDEFAULT, CW_USEDEFAULT, winW, winH,
-                IntPtr.Zero, IntPtr.Zero, wc.hInstance, IntPtr.Zero);
+                IntPtr.Zero, IntPtr.Zero, wc.hInstance, lpParam);
 
             int dark = 1;
             DwmSetWindowAttribute(_hwnd, DWMWA_DARK_MODE, ref dark, sizeof(int));
@@ -221,7 +235,7 @@ namespace Clickra.UI
             Marshal.FreeHGlobal(hClass);
         }
 
-        static void CleanupResources()
+        private void CleanupResources()
         {
             try { _titleFont?.Dispose(); _titleFont = null; } catch { }
             try { _subFont?.Dispose(); _subFont = null; } catch { }
@@ -237,6 +251,60 @@ namespace Clickra.UI
         }
 
         static IntPtr WndProc(IntPtr hwnd, uint msg, IntPtr w, IntPtr l)
+        {
+            ProgressWindow? window = null;
+            if (msg == 0x0081) // WM_NCCREATE
+            {
+                IntPtr lpCreateParams = Marshal.ReadIntPtr(l);
+                SetWindowLongPtr(hwnd, -21, lpCreateParams); // GWLP_USERDATA = -21
+                if (lpCreateParams != IntPtr.Zero)
+                {
+                    GCHandle gcHandle = GCHandle.FromIntPtr(lpCreateParams);
+                    window = gcHandle.Target as ProgressWindow;
+                    if (window != null) window._hwnd = hwnd;
+                }
+            }
+            else
+            {
+                IntPtr userData = GetWindowLongPtr(hwnd, -21);
+                if (userData != IntPtr.Zero)
+                {
+                    GCHandle gcHandle = GCHandle.FromIntPtr(userData);
+                    if (gcHandle.IsAllocated)
+                    {
+                        window = gcHandle.Target as ProgressWindow;
+                    }
+                }
+            }
+
+            IntPtr result = IntPtr.Zero;
+            if (window != null)
+            {
+                result = window.InstanceWndProc(hwnd, msg, w, l);
+            }
+            else
+            {
+                result = DefWindowProcW(hwnd, msg, w, l);
+            }
+
+            if (msg == 0x0082) // WM_NCDESTROY
+            {
+                IntPtr userData = GetWindowLongPtr(hwnd, -21);
+                if (userData != IntPtr.Zero)
+                {
+                    GCHandle gcHandle = GCHandle.FromIntPtr(userData);
+                    if (gcHandle.IsAllocated)
+                    {
+                        gcHandle.Free();
+                    }
+                    SetWindowLongPtr(hwnd, -21, IntPtr.Zero);
+                }
+            }
+
+            return result;
+        }
+
+        private IntPtr InstanceWndProc(IntPtr hwnd, uint msg, IntPtr w, IntPtr l)
         {
             switch (msg)
             {
@@ -278,11 +346,12 @@ namespace Clickra.UI
             return DefWindowProcW(hwnd, msg, w, l);
         }
 
-        static void RunProcessing(IntPtr hwnd)
+        private void RunProcessing(IntPtr hwnd)
         {
+            List<string> currentFiles = new List<string>();
+            string cmd = "";
             try
             {
-                List<string> currentFiles; string cmd;
                 lock (_stateLock)
                 {
                     currentFiles = _files;
@@ -309,7 +378,13 @@ namespace Clickra.UI
                     }
                 };
 
-                string outputDir = Path.GetDirectoryName(currentFiles[0]) ?? "";
+                // 立即建立 Pending 紀錄，讓 Dashboard 可即時看到
+                try { ClickraStorage.StartActiveRecord(cmd, currentFiles.Count); } catch { }
+
+                string outputDir = ClickraStorage.GetOutputDir(currentFiles[0]);
+
+                // 開始實際處理，切換為 InProgress
+                try { ClickraStorage.SetActiveRecordInProgress(); } catch { }
 
                 switch (cmd)
                 {
@@ -347,9 +422,13 @@ namespace Clickra.UI
                 }
                 InvalidateRect(hwnd, IntPtr.Zero, true);
 
+                // 完成：寫入持久化日誌並暫留 Success 狀態供 Dashboard 讀取
+                try { ClickraStorage.CompleteActiveRecord(true, ""); } catch { }
+
                 ShowToastNotification(cmd, currentFiles.Count);
 
                 Thread.Sleep(1500);
+                try { ClickraStorage.ClearActiveRecord(); } catch { }
                 PostMessageW(hwnd, 0x0010, IntPtr.Zero, IntPtr.Zero); // WM_CLOSE
             }
             catch (Exception ex)
@@ -360,14 +439,21 @@ namespace Clickra.UI
                     _errorMessage = ex.Message;
                 }
                 InvalidateRect(hwnd, IntPtr.Zero, true);
-                
+
+                // 失敗：立即寫入持久化日誌並暫留 Failed 狀態供 Dashboard 讀取
+                try { ClickraStorage.CompleteActiveRecord(false, ex.Message); } catch { }
+
                 MessageBox(hwnd, $"處理過程中發生錯誤：\n{ex.Message}", "Clickra — 錯誤", 0x10); // MB_ICONERROR
+                try { ClickraStorage.ClearActiveRecord(); } catch { }
                 PostMessageW(hwnd, 0x0010, IntPtr.Zero, IntPtr.Zero); // WM_CLOSE
             }
         }
 
-        static void ShowToastNotification(string command, int count)
+        private void ShowToastNotification(string command, int count)
         {
+            if (ClickraStorage.GetSetting("Notification") == "false")
+                return;
+
             try
             {
                 string title = "Clickra 轉換成功";
@@ -401,7 +487,7 @@ try {{
             catch { }
         }
 
-        static Color GetSystemColorizationColor()
+        private Color GetSystemColorizationColor()
         {
             if (_hasCachedColorizationColor) return _cachedColorizationColor;
             try
@@ -419,7 +505,7 @@ try {{
             }
         }
 
-        static Color Lighten(Color c, float amount)
+        private Color Lighten(Color c, float amount)
         {
             int r = (int)(c.R + (255 - c.R) * amount);
             int g = (int)(c.G + (255 - c.G) * amount);
@@ -427,7 +513,7 @@ try {{
             return Color.FromArgb(255, Math.Min(255, r), Math.Min(255, g), Math.Min(255, b));
         }
 
-        static GraphicsPath GetRoundedRectPath(RectangleF rect, float radius)
+        private GraphicsPath GetRoundedRectPath(RectangleF rect, float radius)
         {
             var path = new GraphicsPath();
             if (radius <= 0)
@@ -444,7 +530,7 @@ try {{
             return path;
         }
 
-        static void Paint(IntPtr hdc)
+        private void Paint(IntPtr hdc)
         {
             if (_bufferBmp == null || _bufferGraphics == null) return;
             var g = _bufferGraphics;

@@ -104,7 +104,8 @@ namespace Clickra.Core
                 var filePath = files[i];
                 int fileIndex = i;
                 string fullPath = Path.GetFullPath(filePath);
-                string outputPdfPath = Path.ChangeExtension(fullPath, ".pdf");
+                string outDir = ClickraStorage.GetOutputDir(fullPath);
+                string outputPdfPath = Path.Combine(outDir, Path.GetFileNameWithoutExtension(filePath) + ".pdf");
                 onProgress?.Invoke((fileIndex * 100) + 10, total * 100, $"正在準備轉換 PowerPoint: {Path.GetFileName(filePath)}...");
 
                 string psScript = $@"
@@ -187,7 +188,8 @@ try {{
                 var filePath = files[i];
                 int fileIndex = i;
                 string fullPath = Path.GetFullPath(filePath);
-                string outputPdfPath = Path.ChangeExtension(fullPath, ".pdf");
+                string outDir = ClickraStorage.GetOutputDir(fullPath);
+                string outputPdfPath = Path.Combine(outDir, Path.GetFileNameWithoutExtension(filePath) + ".pdf");
                 onProgress?.Invoke((fileIndex * 100) + 10, total * 100, $"正在準備轉換 Word: {Path.GetFileName(filePath)}...");
 
                 // Word COM: wdExportFormatPDF = 17

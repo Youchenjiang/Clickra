@@ -45,7 +45,8 @@ namespace Clickra
                 return;
             }
 
-            bool quiet = false;
+            bool quietByDefault = ClickraStorage.GetSetting("QuietMode").Equals("true", StringComparison.OrdinalIgnoreCase);
+            bool quiet = quietByDefault;
             var argList = args.ToList();
             if (argList.Contains("--quiet"))
             {
@@ -57,23 +58,36 @@ namespace Clickra
                 quiet = true;
                 argList.Remove("--no-ui");
             }
+            if (argList.Contains("--show-ui"))
+            {
+                quiet = false;
+                argList.Remove("--show-ui");
+            }
 
             if (argList.Count < 2)
             {
                 Console.WriteLine("Usage: Clickra <command> [options] <file...>");
                 Console.WriteLine("Options: --quiet / --no-ui  (Run in background without GUI)");
+                Console.WriteLine("         --show-ui          (Force show progress window)");
                 Console.WriteLine("Deployment: Clickra --deploy <target_dir>");
                 return;
             }
 
             string command = argList[0].ToLowerInvariant();
             var files = argList.Skip(1).OrderBy(f => f).ToList();
-            string outputDir = Path.GetDirectoryName(files[0]) ?? "";
+            string outputDir = ClickraStorage.GetOutputDir(files[0]);
 
             Console.WriteLine($"Executing {command} with {files.Count} files (Quiet mode: {quiet})...");
 
             try
             {
+                // 登記進行中作業狀態（靜默模式下不顯示進度視窗，但仍需即時狀態）
+                if (quiet)
+                {
+                    try { ClickraStorage.StartActiveRecord(command, files.Count); } catch { }
+                    try { ClickraStorage.SetActiveRecordInProgress(); } catch { }
+                }
+
                 switch (command)
                 {
                     case "ppt2pdf":
@@ -125,10 +139,22 @@ namespace Clickra
                         break;
                 }
                 
+                if (quiet)
+                {
+                    try { ClickraStorage.CompleteActiveRecord(true, ""); } catch { }
+                    System.Threading.Thread.Sleep(1500);
+                    try { ClickraStorage.ClearActiveRecord(); } catch { }
+                }
                 Console.WriteLine("Operation completed successfully.");
             }
             catch (Exception ex)
             {
+                if (quiet)
+                {
+                    try { ClickraStorage.CompleteActiveRecord(false, ex.Message); } catch { }
+                    System.Threading.Thread.Sleep(1500);
+                    try { ClickraStorage.ClearActiveRecord(); } catch { }
+                }
                 Console.WriteLine($"Error: {ex.Message}");
                 Console.WriteLine(ex.StackTrace);
                 if (!quiet && Environment.UserInteractive && !Console.IsInputRedirected)

@@ -1,4 +1,4 @@
-# Clickra v3.0.7.0
+# Clickra v3.0.8.0
 
 [![Microsoft Store](https://img.shields.io/badge/Microsoft%20Store-Clickra-blue?style=for-the-badge&logo=microsoft-store)](https://apps.microsoft.com/detail/9NGLBF6P1KLD)
 [![License: Apache 2.0](https://img.shields.io/badge/License-Apache%202.0-blue.svg?style=for-the-badge)](https://opensource.org/licenses/Apache-2.0)
@@ -33,7 +33,9 @@
 | **v3.0.4.0** | 2026/05/11 | **關鍵 Shell 修復**。解決 Windows 11 右鍵選單顯示問題（商店政策 10.1.2.10），支援系統特定 IID 並同步 Manifest CLSID。 |
 | **v3.0.5.0** | 2026/05/13 | **診斷與相容性修復**。強化 PPT 報錯訊息並符合商店披露要求。 |
 | **v3.0.6.0** | 2026/05/15 | **原生儀表板與 Word 轉 PDF**。實作高性能 Win32 儀表板，整合 Word 轉換引擎，並達成 100% NativeAOT 架構。 |
-| **v3.0.7.0** | **當前**   | **動態進度條與完成通知**。實作純 Win32/GDI+ 動態進度視窗，支援 WinUI 3 級別流動光暈動畫、系統主色調連動與原生 Toast 通知。 |
+| **v3.0.7.0** | 2026/05/21 | **動態進度條與完成通知**。實作純 Win32/GDI+ 動態進度視窗，支援 WinUI 3 級別流動光暈動畫、系統主色調連動與原生 Toast 通知。 |
+| **v3.0.8.0** | **當前**   | **轉換歷史紀錄與儀表板優化**。實作本地轉檔歷史紀錄追蹤與原生 Win32 列表 UI，整合快速轉檔分頁，新增多國語系切換 (zh-TW/en-US)，並將 `DashboardForm` 重構拆分為靜態 Partial 類別檔案。 |
+
 
 
 ---
@@ -51,17 +53,22 @@
 *   **功能**：在背景靜默呼叫 Office 引擎進行高品質轉檔。
 *   **需求**：此功能需本地安裝對應的 Microsoft Office 軟體。
 
-### 3. 🔗 PDF 合併 (PDF Merge)
+### 4. 🔗 PDF 合併 (PDF Merge)
 *   **功能**：將選取的多份 PDF 依照檔名順序合併為單一檔案。
 *   **特色**：極速處理，並自動清理臨時資源。
 
-### 4. 🖼️ 圖片轉 PDF (Images to PDF)
+### 5. 🖼️ 圖片轉 PDF (Images to PDF)
 *   **功能**：將多張圖片（JPG, PNG, WebP 等）直接封裝成一份多頁 PDF。
 *   **特色**：不損畫質，保留原始解析度。
 
-### 5. 🎞️ 圖片垂直拼接 (Image Stitch)
+### 6. 🎞️ 圖片垂直拼接 (Image Stitch)
 *   **功能**：將多張圖片垂直「黏合」成一張超長圖。
 *   **特色**：自動對齊，適合製作長圖或網頁截圖拼接。
+
+### 7. 🕒 轉換歷史記錄 (Conversion History)
+*   **功能**：本地追蹤並顯示所有的轉檔操作歷史。
+*   **特色**：採用高性能原生繪製的歷史紀錄列表，呈現轉換的檔案路徑、操作類型、時間戳記與成功/失敗狀態。
+
 
 ---
 
