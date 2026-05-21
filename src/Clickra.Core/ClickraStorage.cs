@@ -53,6 +53,7 @@ namespace Clickra.Core
                 SettingsCache["QuietMode"] = "false";
                 SettingsCache["Notification"] = "true";
                 SettingsCache["OutputDir"] = "source"; // source, desktop, downloads
+                SettingsCache["Language"] = "";
 
                 if (File.Exists(SettingsFile))
                 {
