@@ -83,48 +83,35 @@ Commands are elegantly tucked away in the `Clickra` sub-menu, keeping your prima
 
 ---
 
-### 2. How to Build
-Since we use asset embedding, the build is a two-stage process:
+## 📂 Documentation Directory
 
-**Stage 1: Build the Shell Extension (DLL)**
-```powershell
-dotnet publish src\ClickraShell\ClickraShell.csproj -c Release -r win-x64 -p:PublishAot=true --output .
+To keep the main documentation clean and accessible, Clickra's documentation is divided into specialized guides. Please refer to the branch map below to navigate the repository documentation:
+
+```text
+Clickra/
+├── README.md (or README.zh-TW.md)  # Root Entry (Product Intro, Install, Features, Version History)
+├── PRIVACY.md                      # Privacy Policy (for Windows Store compliance)
+├── LOCAL_BUILD_NOTES.md            # Developer Guidelines (Setup, compilation, packaging, and Git workflow)
+│   └── docs/development/
+│       ├── release_guideline.md    # Versioning constraints & release checklists
+│       ├── shell_extension_best_practices.md # Native COM & Shell Extension development rules
+│       └── shell_diagnostic_guide.md         # Shell extension debugging & registry diagnostics
+└── docs/
+    ├── ROADMAP.md                  # Product Roadmap & Milestones
+    └── StoreListing_*.md           # Store Metadata & Product Descriptions
 ```
 
-**Stage 2: Build the Main App (CLI)**
-This embeds the DLL and assets from `src/resources` into the final executable using NativeAOT:
-```powershell
-dotnet publish src\Clickra.CLI\Clickra.csproj -c Release -r win-x64 --output .
-```
-
-### 3. How to add new features
-1.  **Core Logic**: Add new command handling in `src/Clickra.CLI/Program.cs`.
-2.  **UI Menu**: Modify the `SubTitles` and `SubArgs` arrays in `src/ClickraShell/ShellExtension.cs`.
-3.  **Re-build**: Re-publish `Clickra.exe` following the build sequence above.
-
-### 4. Development Workflow
-To keep the `main` branch stable, direct pushes to `main` are prohibited. All changes must be made via **Pull Requests (PR)**.
-
-*   **Feature Development (`feature/...`)**: For all new features or bug fixes, branch off from `main` to `feature/<branch-name>`.
-*   **Hotfixes (`hotfix/...`)**: For urgent bugs in the released version, branch off to `hotfix/<branch-name>`.
-*   **Merge Rules**: Once development is done, push your branch and open a PR. Merge into `main` after review.
-*   **Git Tags & Releases**: When releasing a new version, create a tag locally with the format `vX.Y.Z.0`. Push the tag directly using `git push origin vX.Y.Z.0`. Direct branch pushes to the remote main/release branches are strictly prohibited.
-
-### 5. Automated Versioning & MSIX Packaging
-The project provides built-in PowerShell scripts for automated version bumping and MSIX packaging:
-
-*   **Bump Version & Build**:
-    ```powershell
-    powershell -File scripts/bump_version.ps1 -Type <major|minor|patch|revision> -Build
-    ```
-    *   `-Type`: Specifies the version component to increment (e.g. `patch` increments `3.0.6.0` to `3.0.7.0`).
-    *   `-Build`: Automatically triggers the Native AOT two-stage build, compiles PRI resources, signs the package with the developer certificate, and generates the final `Clickra.msix` in the root directory.
-
-*   **Standalone MSIX Packaging**:
-    If you only want to rebuild the MSIX package without bumping the version:
-    ```powershell
-    powershell -File scripts/build_msix.ps1
-    ```
+### Document Navigation Links
+*   **Product & Public Documentation**:
+    *   [Roadmap & Future Goals](docs/ROADMAP.md) — High-level milestone tracking and feature plans.
+    *   [Privacy Policy](PRIVACY.md) — Privacy declarations for Windows App Store compliance.
+    *   [Store Listing Metadata](docs/StoreListing_EN.md) — Store descriptions and screenshots index.
+*   **Developer Guidelines (Start Here)**:
+    *   [LOCAL_BUILD_NOTES.md](LOCAL_BUILD_NOTES.md) — Local development compilation, packaging scripts, adding new features, and development Git workflows.
+*   **Specialized Development Guides**:
+    *   [Release & Versioning Guidelines](docs/development/release_guideline.md) — 4-digit version constraints, version update files list, and MSIX store publishing checklist.
+    *   [Shell Extension Best Practices](docs/development/shell_extension_best_practices.md) — COM interface guidelines, NativeAOT integration, and registration practices.
+    *   [Shell Extension Diagnostics & Debugging](docs/development/shell_diagnostic_guide.md) — Debug logging implementation and troubleshooting missing registry/menu commands.
 
 ---
 

@@ -83,48 +83,35 @@
 
 ---
 
-### 2. 編譯指令 (How to Build)
-由於採用了資產隱寫技術，編譯必須分為兩個階段：
+## 📂 專案文件導覽 (Documentation Directory)
 
-**第一階段：編譯選單組件 (DLL)**
-```powershell
-dotnet publish src\ClickraShell\ClickraShell.csproj -c Release -r win-x64 -p:PublishAot=true --output .
+為了保持主說明的簡潔，Clickra 的開發與技術文件皆已分類至獨立導覽中。您可以參考下方的分支圖結構進行查閱：
+
+```text
+Clickra/
+├── README.md (或 README.zh-TW.md)  # 專案首頁入口 (產品介紹、安裝、功能、歷史版本)
+├── PRIVACY.md                      # 隱私權政策 (符合 Windows 應用程式商店合規)
+├── LOCAL_BUILD_NOTES.md            # 開發人員指南 (包含本地編譯、腳本、功能擴充與 Git 分支合併規則)
+│   └── docs/development/
+│       ├── release_guideline.md    # 版本號管理規範與商店上線檢查清單
+│       ├── shell_extension_best_practices.md # Native COM 與 Shell Extension 開發規範
+│       └── shell_diagnostic_guide.md         # Shell 擴充故障診斷與偵錯日誌
+└── docs/
+    ├── ROADMAP.md                  # 產品開發路線圖與里程碑
+    └── StoreListing_*.md           # 微軟商店文案與描述資訊
 ```
 
-**第二階段：編譯主程式 (CLI)**
-這會將產出的 DLL 以及 `src/resources` 中的資產封裝進執行檔，並採用 NativeAOT 達成零依賴：
-```powershell
-dotnet publish src\Clickra.CLI\Clickra.csproj -c Release -r win-x64 --output .
-```
-
-### 3. 如何增加新功能
-1.  **核心邏輯**：在 `src/Clickra.CLI/Program.cs` 中增加新的命令處理分支。
-2.  **選單介面**：修改 `src/ClickraShell/ShellExtension.cs` 中的 `SubTitles` 與 `SubArgs` 陣列。
-3.  **重新編譯**：按照上述編譯順序重新產出 `Clickra.exe` 即可。
-
-### 4. 開發與分支規範 (Development Workflow)
-為確保主分支 (`main`) 永遠處於穩定可發布的狀態，本專案禁止直接推送程式碼至 `main`。所有變更皆須透過 **Pull Request (PR)** 合併。
-
-*   **功能開發 (`feature/...`)**：所有新功能或一般修復，請從 `main` 切出 `feature/分支名稱`。
-*   **緊急修復 (`hotfix/...`)**：針對已上線版本的重大 Bug，請切出 `hotfix/分支名稱`。
-*   **合併規則**：開發完成後，推送到遠端並開啟 PR。審查無誤後即可合併進 `main`。
-*   **Git 標籤與發布 (Git Tags)**：版本更新後，請於本地端建立 Git Tag（格式為 `vX.Y.Z.0`）。推送時僅能直接推送該 Tag（例如 `git push origin vX.Y.Z.0`），禁止直接推送分支至遠端主分支。
-
-### 5. 自動化版本更新與 MSIX 封裝 (Automated Packaging)
-專案內建 PowerShell 腳本，可自動執行版本升級與 MSIX 封裝：
-
-*   **升級版本並重新打包**：
-    ```powershell
-    powershell -File scripts/bump_version.ps1 -Type <major|minor|patch|revision> -Build
-    ```
-    *   `-Type`：指定要遞增的版本號層級（例如 `patch` 會將 `3.0.6.0` 升級至 `3.0.7.0`）。
-    *   `-Build`：升級版本後，自動執行 Native AOT 兩階段編譯、PRI 資源編譯與憑證簽章，直接在根目錄產生最新版 `Clickra.msix`。
-
-*   **單獨封裝 MSIX**：
-    若只想重新編譯打包而不變更版本號：
-    ```powershell
-    powershell -File scripts/build_msix.ps1
-    ```
+### 文件導覽連結
+*   **產品與公開文件**：
+    *   [產品路線圖](docs/ROADMAP.md) — 了解未來版本的功能規劃與里程碑進度。
+    *   [隱私權政策](PRIVACY.md) — 符合 Windows 應用程式商店合規之隱私聲明。
+    *   [商店描述資訊](docs/StoreListing_ZH.md) — 微軟商店中的詳細功能描述文案。
+*   **開發人員核心指南（新進開發者起點）**：
+    *   [LOCAL_BUILD_NOTES.md](LOCAL_BUILD_NOTES.md) — 包含詳細的本地端編譯步驟、自動化打包腳本、功能擴充方法，以及開發分支合併規則。
+*   **進階開發與發布專題**：
+    *   [版本管理與發布規範](docs/development/release_guideline.md) — 定義四位數版本限制、發布時需更新之檔案清單與 Git Tag 規定。
+    *   [Shell 擴充開發最佳實踐](docs/development/shell_extension_best_practices.md) — COM 生命週期、NativeAOT 記憶體管理與 Sparse Package 測試注意事項。
+    *   [Shell 擴充故障診斷與偵錯](docs/development/shell_diagnostic_guide.md) — 如何透過輕量日誌捕獲 `QueryInterface` 失敗的 IID 以及 COM 加載異常。
 
 ---
 
