@@ -92,13 +92,13 @@ Clickra/
 ├── README.md (or README.zh-TW.md)  # Root Entry (Product Intro, Install, Features, Version History)
 ├── PRIVACY.md                      # Privacy Policy (for Windows Store compliance)
 ├── LOCAL_BUILD_NOTES.md            # Developer Guidelines (Setup, compilation, packaging, and Git workflow)
-│   └── docs/development/
-│       ├── release_guideline.md    # Versioning constraints & release checklists
-│       ├── shell_extension_best_practices.md # Native COM & Shell Extension development rules
-│       └── shell_diagnostic_guide.md         # Shell extension debugging & registry diagnostics
 └── docs/
     ├── ROADMAP.md                  # Product Roadmap & Milestones
-    └── StoreListing_*.md           # Store Metadata & Product Descriptions
+    ├── StoreListing_*.md           # Store Metadata & Product Descriptions
+    └── development/
+        ├── release_guideline.md    # Versioning constraints & release checklists
+        ├── shell_extension_best_practices.md # Native COM & Shell Extension development rules
+        └── shell_diagnostic_guide.md         # Shell extension debugging & registry diagnostics
 ```
 
 ### Document Navigation Links

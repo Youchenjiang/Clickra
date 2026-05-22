@@ -12,7 +12,7 @@ The `scripts/build_msix.ps1` script has been updated to automatically detect thi
 
 ## v3.0.8 Technical Context (For AI Handoff)
 - **Architecture**: The entire project (`ClickraShell` and `Clickra.CLI`) is now **100% Native AOT**. Standard WinForms/WPF cannot be used.
-- **UI Rendering**: The Dashboard (`DashboardForm.cs` / `DashboardWindow.cs`) and Progress Window (`ProgressWindow.cs`) use raw Win32 APIs (`CreateWindowExW`) and GDI+.
+- **UI Rendering**: The Dashboard (`DashboardWindow*.cs`) and Progress Window (`ProgressWindow.cs`) use raw Win32 APIs (`CreateWindowExW`) and GDI+.
   - *Rule 1*: Always use `W` (Unicode) suffixed APIs and `Marshal.StringToHGlobalUni` to prevent MSIX title bar truncation (the "C" bug).
   - *Rule 2*: Do not attempt Mica/Acrylic rendering. We use a solid `#202020` dark background because GDI+ cannot blend with DWM Mica properly.
   - *Rule 3*: ProgressWindow uses `WM_TIMER` (16ms) to drive smooth cubic easing animations and shimmer glow overlays. It dynamically fetches system accent color via `DwmGetColorizationColor`.
@@ -33,17 +33,18 @@ Since we use asset embedding, the build is a two-stage process:
 2.  **Stage 2: Build the Main App (CLI)**:
     This embeds the DLL and assets from `src/resources` into the final executable using NativeAOT:
     ```powershell
-    dotnet publish src\Clickra.CLI\Clickra.csproj -c Release -r win-x64 --output .
+    dotnet publish src\Clickra.CLI\Clickra.csproj -c Release -r win-x64 -p:PublishAot=true --output .
     ```
 
 ## Automated Packaging & Versioning Scripts
 The project provides built-in PowerShell scripts for automated version bumping and MSIX packaging:
 
 *   **Bump Version & Build**:
+    By default, the script increments the `patch` version (3rd digit) and resets the `revision` (4th digit) to `0` for Microsoft Store compatibility.
     ```powershell
-    powershell -File scripts/bump_version.ps1 -Type <major|minor|patch|revision> -Build
+    powershell -File scripts/bump_version.ps1 -Build
     ```
-    *   `-Type`: Specifies the version component to increment (e.g. `patch` increments `3.0.6.0` to `3.0.7.0`).
+    *   `-Type`: Optional. Specifies the version component to increment (`major`, `minor`, `patch`). Avoid using `revision` as it generates a non-zero 4th version digit, which is rejected by the Microsoft Store.
     *   `-Build`: Automatically triggers the Native AOT two-stage build, compiles PRI resources, signs the package, and generates the final `Clickra.msix` in the root directory.
 *   **Standalone MSIX Packaging**:
     If you only want to rebuild the MSIX package without bumping the version:

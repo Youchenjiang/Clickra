@@ -3,9 +3,9 @@
 ## 1. Git 完整性
 - **禁止 Nuke-and-Pave**：嚴禁刪除舊檔案再新增同名檔案。改名必須使用 `git mv`。
 - **原子化提交**：一個 Commit 只做一件事。更名與邏輯修改必須分開。
-- **版本號同步**：每次修改功能或 UI 後，必須執行 `powershell -File scripts/bump_version.ps1 -Build` 增加 Revision、同步版本號（含 README 與 MSIX AppxManifest.xml）並自動重新編譯產物，以確保 Windows 11 選單快取刷新且內外版本一致。
+- **版本號同步**：每次修改功能或 UI 後，必須執行 `powershell -File scripts/bump_version.ps1 -Build` 增加 Patch（第 3 碼，且第四碼 Revision 保持為 0）、同步版本號（含 README 與 MSIX AppxManifest.xml）並自動重新編譯產物，以確保 Windows 11 選單快取刷新且內外版本一致，同時符合微軟商店的版號規範。
 - **Commit 審核**：在執行 Commit 之前，必須執行 `git status` 確認沒有暫存 test 垃圾。
-- **Tag 規範**：在更新版本後，必須在本機建立對應的 Git Tag（格式為 `vX.Y.Z.0`）。推送時僅能直接推送該 Tag（如 `git push origin vX.Y.Z.0`），分支的推送必須經由 Pull Request，禁止直接推送分支。
+- **Tag 規範**：在正式對外發布或商店提交、並將版本號整理為 `X.Y.Z.0` 後，必須在本機建立對應的 Git Tag（格式為 `vX.Y.Z.0`）。禁止直接 push 到 `main`、`release` 等受保護分支；`feature/*`、`hotfix/*` 等工作分支可推送到遠端以建立 Pull Request。若需推送 Tag，可使用 `git push origin vX.Y.Z.0`。
 
 ## 2. 代碼穩定性
 - **增量修改 (Incremental Only)**：優先保留原始代碼結構。若要「重構」，必須先在對話中向使用者說明重構理由與覆蓋範圍。

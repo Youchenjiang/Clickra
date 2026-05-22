@@ -40,19 +40,19 @@ $$\text{Version} = \text{Major} . \text{Minor} . \text{Patch} . \mathbf{0}$$
 當要發布/編譯新版本時，必須更新以下檔案中的版本號字串：
 
 ### 3.1 核心專案與編譯配置 (Core & Compilation)
-*   **[Directory.Build.props](file:///c:/Users/g1014308/Documents/GitHub/Youchen/Clickra/src/Directory.Build.props)**:
+*   **[Directory.Build.props](../../src/Directory.Build.props)**:
     更新 `<Version>X.Y.Z.0</Version>` 標籤。這會自動套用至所有編譯出來的 C# 二進位檔 (`Clickra.exe`, `ClickraShell.dll` 等)。
-*   **[src/resources/AppxManifest.xml](file:///c:/Users/g1014308/Documents/GitHub/Youchen/Clickra/src/resources/AppxManifest.xml)**:
+*   **[src/resources/AppxManifest.xml](../../src/resources/AppxManifest.xml)**:
     更新 `<Identity ... Version="X.Y.Z.0" />`。此處為本地開發與資源包專用的 Manifest。
 
 ### 3.2 MSIX 打包配置 (MSIX Packaging)
-*   **[packaging/msix/AppxManifest.xml](file:///c:/Users/g1014308/Documents/GitHub/Youchen/Clickra/packaging/msix/AppxManifest.xml)**:
+*   **[packaging/msix/AppxManifest.xml](../../packaging/msix/AppxManifest.xml)**:
     更新 `<Identity ... Version="X.Y.Z.0" />`。此為最終打包成 `.msix` 用於商店發布的核心 Manifest。
 
 ### 3.3 專案文件 (Documentation)
-*   **[README.md](file:///c:/Users/g1014308/Documents/GitHub/Youchen/Clickra/README.md)**: 更新標題的 `Clickra vX.Y.Z.0` 以及版本歷史表格。
-*   **[README.zh-TW.md](file:///c:/Users/g1014308/Documents/GitHub/Youchen/Clickra/README.zh-TW.md)**: 同步更新繁中說明的標題與版本歷史。
-*   **[docs/ROADMAP.md](file:///c:/Users/g1014308/Documents/GitHub/Youchen/Clickra/docs/ROADMAP.md)**: 更新里程碑狀態與對應的版本號。
+*   **[README.md](../../README.md)**: 更新標題的 `Clickra vX.Y.Z.0` 以及版本歷史表格。
+*   **[README.zh-TW.md](../../README.zh-TW.md)**: 同步更新繁中說明的標題與版本歷史。
+*   **[docs/ROADMAP.md](../ROADMAP.md)**: 更新里程碑狀態與對應的版本號。
 
 ---
 
@@ -64,4 +64,4 @@ $$\text{Version} = \text{Major} . \text{Minor} . \text{Patch} . \mathbf{0}$$
     git tag v3.0.8.0
     git push origin v3.0.8.0
     ```
-*   **注意**：Clickra 專案禁止直接向 remote 推送分支（`git push`），僅允許直接推送 Git 標籤以觸發發布與追蹤。
+*   **注意**：Clickra 專案**禁止直接推送至主要分支或發布分支**（例如 `main` 與 release branches）；開發者可將功能分支推送至 remote 以建立 PR，但正式發布僅允許直接推送 Git 標籤以觸發發布與追蹤。

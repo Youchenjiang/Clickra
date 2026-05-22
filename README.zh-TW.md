@@ -92,13 +92,13 @@ Clickra/
 ├── README.md (或 README.zh-TW.md)  # 專案首頁入口 (產品介紹、安裝、功能、歷史版本)
 ├── PRIVACY.md                      # 隱私權政策 (符合 Windows 應用程式商店合規)
 ├── LOCAL_BUILD_NOTES.md            # 開發人員指南 (包含本地編譯、腳本、功能擴充與 Git 分支合併規則)
-│   └── docs/development/
-│       ├── release_guideline.md    # 版本號管理規範與商店上線檢查清單
-│       ├── shell_extension_best_practices.md # Native COM 與 Shell Extension 開發規範
-│       └── shell_diagnostic_guide.md         # Shell 擴充故障診斷與偵錯日誌
 └── docs/
     ├── ROADMAP.md                  # 產品開發路線圖與里程碑
-    └── StoreListing_*.md           # 微軟商店文案與描述資訊
+    ├── StoreListing_*.md           # 微軟商店文案與描述資訊
+    └── development/
+        ├── release_guideline.md    # 版本號管理規範與商店上線檢查清單
+        ├── shell_extension_best_practices.md # Native COM 與 Shell Extension 開發規範
+        └── shell_diagnostic_guide.md         # Shell 擴充故障診斷與偵錯日誌
 ```
 
 ### 文件導覽連結

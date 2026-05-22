@@ -1,7 +1,7 @@
 param(
     [Parameter(Mandatory=$false)]
     [ValidateSet("major", "minor", "patch", "revision")]
-    [string]$Type = "revision",
+    [string]$Type = "patch",
     
     [Parameter(Mandatory=$false)]
     [switch]$Build
