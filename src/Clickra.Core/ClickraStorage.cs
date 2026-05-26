@@ -22,6 +22,8 @@ namespace Clickra.Core
         private static readonly object FileLock = new object();
         private static readonly Dictionary<string, string> SettingsCache = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
 
+        public static string GetDataDir() => DataDir;
+
         static ClickraStorage()
         {
             // 標準 LocalAppData 目錄，MSIX 商店隔離與非商店版均適用
@@ -165,6 +167,10 @@ namespace Clickra.Core
                 if (Directory.Exists(downloads)) return downloads;
                 return Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory);
             }
+            if (!mode.Equals("source", StringComparison.OrdinalIgnoreCase) && Directory.Exists(mode))
+            {
+                return mode;
+            }
             return Path.GetDirectoryName(sourceFilePath) ?? "";
         }
 
@@ -203,7 +209,7 @@ namespace Clickra.Core
         /// <summary>
         /// 完成進行中作業：寫入持久化日誌，並更新 active.tmp 狀態（不立即刪除，保留供 Dashboard 顯示最終狀態）。
         /// </summary>
-        public static void CompleteActiveRecord(bool isSuccess, string errorMsg)
+        public static void CompleteActiveRecord(bool isSuccess, string errorMsg, string? endTime = null, long elapsedMs = -1, string? inputPaths = null, string? outputPath = null)
         {
             RunWithMutex(() =>
             {
@@ -217,7 +223,10 @@ namespace Clickra.Core
                     try
                     {
                         string cleanErr = errorMsg.Replace("\r", " ").Replace("\n", " ").Replace("|", " ");
-                        string line = $"{startTime}|{command}|{fileCount}|{(isSuccess ? "Success" : "Failed")}|{cleanErr}";
+                        string et = endTime ?? DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
+                        string inputs = (inputPaths ?? "").Replace("\r", " ").Replace("\n", " ").Replace("|", " ");
+                        string output = (outputPath ?? "").Replace("\r", " ").Replace("\n", " ").Replace("|", " ");
+                        string line = $"{startTime}|{command}|{fileCount}|{(isSuccess ? "Success" : "Failed")}|{cleanErr}|{et}|{elapsedMs}|{inputs}|{output}";
                         File.AppendAllLines(HistoryFile, new[] { line });
                     }
                     catch { }
@@ -315,6 +324,10 @@ namespace Clickra.Core
             /// <summary>向下相容：True 代表 Success。</summary>
             public bool IsSuccess => Status == ConversionStatus.Success;
             public string ErrorMessage { get; set; }
+            public string EndTime { get; set; }
+            public long ElapsedMs { get; set; }
+            public string InputPaths { get; set; }
+            public string OutputPath { get; set; }
         }
 
         public static List<HistoryEntry> GetHistory(int limit = 50)
@@ -344,7 +357,11 @@ namespace Clickra.Core
                                     Command = parts[1],
                                     FileCount = count,
                                     Status = success ? ConversionStatus.Success : ConversionStatus.Failed,
-                                    ErrorMessage = parts.Length > 4 ? parts[4] : ""
+                                    ErrorMessage = parts.Length > 4 ? parts[4] : "",
+                                    EndTime = parts.Length > 5 ? parts[5] : parts[0],
+                                    ElapsedMs = parts.Length > 6 && long.TryParse(parts[6], out long ms) ? ms : -1,
+                                    InputPaths = parts.Length > 7 ? parts[7] : "",
+                                    OutputPath = parts.Length > 8 ? parts[8] : ""
                                 });
                             }
                         }
