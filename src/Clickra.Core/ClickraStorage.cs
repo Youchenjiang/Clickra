@@ -222,7 +222,7 @@ namespace Clickra.Core
                 {
                     try
                     {
-                        string cleanErr = errorMsg.Replace("\r", " ").Replace("\n", " ").Replace("|", " ");
+                        string cleanErr = (errorMsg ?? "").Replace("\r", " ").Replace("\n", " ").Replace("|", " ");
                         string et = endTime ?? DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
                         string inputs = (inputPaths ?? "").Replace("\r", " ").Replace("\n", " ").Replace("|", " ");
                         string output = (outputPath ?? "").Replace("\r", " ").Replace("\n", " ").Replace("|", " ");

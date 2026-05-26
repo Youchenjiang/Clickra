@@ -637,7 +637,9 @@ namespace Clickra.UI
                             float deltaX = mouseX - _dragStartMouseX;
                             float trackX = sidebarW + 4;
                             float trackW_sb = (logW - sidebarW) - 8;
-                            if (logH < 460) trackW_sb = (logW - sidebarW) - 16;
+                            float contentH = GetContentHeight(hwnd);
+                            bool showV = logH < contentH;
+                            if (showV) trackW_sb = (logW - sidebarW) - 16;
                             float thumbW = Math.Max(20f, ((logW - sidebarW) / (760f - sidebarW)) * trackW_sb);
                             float scrollRange = 760f - logW;
                             float trackRange = trackW_sb - thumbW;
@@ -967,6 +969,8 @@ namespace Clickra.UI
                                 }
 
                                 // Open Gmail composer link
+                                var ver = System.Reflection.Assembly.GetExecutingAssembly().GetName().Version;
+                                string verStr = ver != null ? $"{ver.Major}.{ver.Minor}.{ver.Build}" : "Unknown";
                                 string timeStr = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
                                 string subject = Uri.EscapeDataString("Clickra Diagnostics Report");
                                 string body = Uri.EscapeDataString(
@@ -974,7 +978,7 @@ namespace Clickra.UI
                                     "請直接將已為您選取好的「history.log」拖曳到此郵件中作為附件。\r\n\r\n" +
                                     $"[系統資訊]\r\n" +
                                     $"作業系統: Windows\r\n" +
-                                    $"Clickra 版本: 3.0.8\r\n" +
+                                    $"Clickra 版本: {verStr}\r\n" +
                                     $"時間: {timeStr}\r\n\r\n" +
                                     "[問題描述]\r\n" +
                                     "（請在此處填寫您遇到的問題...）"
