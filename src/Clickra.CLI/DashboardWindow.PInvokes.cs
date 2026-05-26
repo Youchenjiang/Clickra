@@ -66,6 +66,8 @@ namespace Clickra.UI
         
         [DllImport("shell32.dll", EntryPoint = "ExtractIconW", CharSet = CharSet.Unicode)] 
         static extern IntPtr ExtractIcon(IntPtr h, string path, int idx);
+        [DllImport("user32.dll")]
+        static extern bool DestroyIcon(IntPtr hIcon);
         [DllImport("dwmapi.dll")] static extern int DwmSetWindowAttribute(IntPtr h, int attr, ref int val, int size);
         [DllImport("dwmapi.dll", PreserveSig = false)] static extern void DwmGetColorizationColor(out uint pcrColorization, out bool pfOpaqueBlend);
 

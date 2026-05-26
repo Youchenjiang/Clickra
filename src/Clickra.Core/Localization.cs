@@ -69,7 +69,11 @@ namespace Clickra.Core
                 ["about_diag_body"] = "遇到轉檔失敗或異常嗎？我們為您簡化了回報流程！\n點擊下方按鈕將一鍵開啟 Gmail 線上郵件撰寫，並同步在檔案總管為您選取好日誌檔「history.log」，您只需將該檔案拖曳至郵件中即可快速傳送診斷資訊。",
                 ["about_btn_open_data_dir"] = "檢視日誌資料夾",
                 ["about_btn_github"] = "GitHub 專案",
-                ["about_btn_gmail"] = "Gmail 回報"
+                ["about_btn_gmail"] = "Gmail 回報",
+                ["history_detail_inputs"] = "輸入路徑",
+                ["history_detail_outputs"] = "輸出路徑",
+                ["history_detail_time"] = "轉換時間",
+                ["history_detail_elapsed"] = "執行耗時"
             },
             ["zh-CN"] = new(StringComparer.OrdinalIgnoreCase)
             {
@@ -133,7 +137,11 @@ namespace Clickra.Core
                 ["about_diag_body"] = "遇到转档失败或异常吗？我们为您简化了反馈流程！\n点击下方按钮将一键开启 Gmail 网页版邮件撰写，并同步在文件资源管理器中为您选好日志「history.log」，您只需将该文件拖拽至邮件中即可快速发送诊断信息。",
                 ["about_btn_open_data_dir"] = "查看日志文件夹",
                 ["about_btn_github"] = "GitHub 项目",
-                ["about_btn_gmail"] = "Gmail 反馈"
+                ["about_btn_gmail"] = "Gmail 反馈",
+                ["history_detail_inputs"] = "输入路径",
+                ["history_detail_outputs"] = "输出路径",
+                ["history_detail_time"] = "转换时间",
+                ["history_detail_elapsed"] = "执行耗时"
             },
             ["en-US"] = new(StringComparer.OrdinalIgnoreCase)
             {
@@ -197,7 +205,11 @@ namespace Clickra.Core
                 ["about_diag_body"] = "Encountered a conversion issue? We've streamlined the feedback process!\nClick below to open Gmail Web Composer and highlight 'history.log' in File Explorer. Simply drag the highlighted file into Gmail to send us the diagnostic details.",
                 ["about_btn_open_data_dir"] = "Open Log Folder",
                 ["about_btn_github"] = "View on GitHub",
-                ["about_btn_gmail"] = "Gmail Diagnostics"
+                ["about_btn_gmail"] = "Gmail Diagnostics",
+                ["history_detail_inputs"] = "Input Paths",
+                ["history_detail_outputs"] = "Output Path",
+                ["history_detail_time"] = "Conversion Time",
+                ["history_detail_elapsed"] = "Elapsed Time"
             },
             ["ja-JP"] = new(StringComparer.OrdinalIgnoreCase)
             {
@@ -261,7 +273,11 @@ namespace Clickra.Core
                 ["about_diag_body"] = "変換エラーや不具合が発生しましたか？フィードバックの手順を劇的に簡略化しました！\nボタンをクリックすると、Gmail 作成画面が開き、エクスプローラーでログファイル「history.log」が自動選択されます。ファイルをそのままドラッグ＆ドロップして送信してください。",
                 ["about_btn_open_data_dir"] = "ログフォルダを開く",
                 ["about_btn_github"] = "GitHub で表示",
-                ["about_btn_gmail"] = "Gmail でフィードバック"
+                ["about_btn_gmail"] = "Gmail でフィードバック",
+                ["history_detail_inputs"] = "入力パス",
+                ["history_detail_outputs"] = "出力パス",
+                ["history_detail_time"] = "変換日時",
+                ["history_detail_elapsed"] = "処理時間"
             },
             ["ko-KR"] = new(StringComparer.OrdinalIgnoreCase)
             {
@@ -327,7 +343,11 @@ namespace Clickra.Core
                 ["about_diag_body"] = "변환 중 문제가 발생하면 아래 버튼을 누르면 Gmail 작성 창이 열리고 탐색기에서 로그 파일「history.log」가 자동 선택됩니다. 파일을 메일에 드래그 앤 드롭하여 손쉽게 진단 정보를 보내주세요.",
                 ["about_btn_open_data_dir"] = "로그 폴더 열기",
                 ["about_btn_github"] = "GitHub 리포지토리",
-                ["about_btn_gmail"] = "Gmail 피드백"
+                ["about_btn_gmail"] = "Gmail 피드백",
+                ["history_detail_inputs"] = "입력 경로",
+                ["history_detail_outputs"] = "출력 경로",
+                ["history_detail_time"] = "변환 시간",
+                ["history_detail_elapsed"] = "소요 시간"
             }
         };
 

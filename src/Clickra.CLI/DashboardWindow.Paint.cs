@@ -68,7 +68,8 @@ namespace Clickra.UI
 
             // 2. Draw Content Area (with Clip & Translation)
             var state = g.Save();
-            g.SetClip(new RectangleF(sidebarW * s, 0, (logW - sidebarW) * s, logH * s));
+            float clipW = Math.Max(0f, logW - sidebarW) * s;
+            g.SetClip(new RectangleF(sidebarW * s, 0, clipW, logH * s));
             g.TranslateTransform(-_contentScrollX * s, -_contentScrollY * s);
 
             float virtLogW = Math.Max(760f, logW);
@@ -128,19 +129,22 @@ namespace Clickra.UI
                 float trackX = sidebarW + 4;
                 float trackW_sb = (logW - sidebarW) - 8;
                 if (showV) trackW_sb = (logW - sidebarW) - 16;
-                float thumbW = Math.Max(20f, ((logW - sidebarW) / (760f - sidebarW)) * trackW_sb);
-                float thumbX = trackX + (_contentScrollX / (760f - logW)) * (trackW_sb - thumbW);
-                float trackY = logH - 8;
-                float trackH = 5;
+                if (trackW_sb > 0)
+                {
+                    float thumbW = Math.Max(20f, ((logW - sidebarW) / (760f - sidebarW)) * trackW_sb);
+                    float thumbX = trackX + (_contentScrollX / (760f - logW)) * (trackW_sb - thumbW);
+                    float trackY = logH - 8;
+                    float trackH = 5;
 
-                using (var sbTrackBrush = new SolidBrush(Color.FromArgb(20, 20, 20)))
-                {
-                    g.FillRectangle(sbTrackBrush, trackX * s, trackY * s, trackW_sb * s, trackH * s);
-                }
-                using (var sbThumbBrush = new SolidBrush(Color.FromArgb(100, 100, 100)))
-                using (var thumbPath = GetRoundedRectPath(new RectangleF(thumbX * s, trackY * s, thumbW * s, trackH * s), 2.5f * s))
-                {
-                    g.FillPath(sbThumbBrush, thumbPath);
+                    using (var sbTrackBrush = new SolidBrush(Color.FromArgb(20, 20, 20)))
+                    {
+                        g.FillRectangle(sbTrackBrush, trackX * s, trackY * s, trackW_sb * s, trackH * s);
+                    }
+                    using (var sbThumbBrush = new SolidBrush(Color.FromArgb(100, 100, 100)))
+                    using (var thumbPath = GetRoundedRectPath(new RectangleF(thumbX * s, trackY * s, thumbW * s, trackH * s), 2.5f * s))
+                    {
+                        g.FillPath(sbThumbBrush, thumbPath);
+                    }
                 }
             }
 
@@ -601,18 +605,10 @@ namespace Clickra.UI
             string textDownloads = GetText("setting_output_downloads");
             string textCustom = GetText("setting_output_custom");
 
-            float wSource = 110f, wDesktop = 65f, wDownloads = 80f, wCustom = 100f;
-            using (var tempBmp = new Bitmap(1, 1))
-            using (var tempG = Graphics.FromImage(tempBmp))
-            {
-                if (_subFont != null)
-                {
-                    wSource = Math.Max(110f, tempG.MeasureString(textSource, _subFont).Width / s + 20f);
-                    wDesktop = Math.Max(65f, tempG.MeasureString(textDesktop, _subFont).Width / s + 20f);
-                    wDownloads = Math.Max(80f, tempG.MeasureString(textDownloads, _subFont).Width / s + 20f);
-                    wCustom = Math.Max(100f, tempG.MeasureString(textCustom, _subFont).Width / s + 20f);
-                }
-            }
+            float wSource = _wSource;
+            float wDesktop = _wDesktop;
+            float wDownloads = _wDownloads;
+            float wCustom = _wCustom;
 
             float margin = 10f;
             float xSource = contentX;
@@ -817,29 +813,8 @@ namespace Clickra.UI
             string textGit = GetText("about_btn_github");
             string textGmail = GetText("about_btn_gmail");
 
-            float wGit = 160f, wGmail = 160f;
-            using (var tempBmp = new Bitmap(1, 1))
-            using (var tempG = Graphics.FromImage(tempBmp))
-            {
-                if (_subFont != null)
-                {
-                    if (_iconFont != null)
-                    {
-                        float iconW_git = tempG.MeasureString("\uE71B", _iconFont).Width / s;
-                        float textW_git = tempG.MeasureString(textGit, _subFont).Width / s;
-                        wGit = Math.Max(160f, iconW_git + 6f + textW_git + 24f);
-
-                        float iconW_gmail = tempG.MeasureString("\uE715", _iconFont).Width / s;
-                        float textW_gmail = tempG.MeasureString(textGmail, _subFont).Width / s;
-                        wGmail = Math.Max(160f, iconW_gmail + 6f + textW_gmail + 24f);
-                    }
-                    else
-                    {
-                        wGit = Math.Max(160f, tempG.MeasureString(textGit, _subFont).Width / s + 24f);
-                        wGmail = Math.Max(160f, tempG.MeasureString(textGmail, _subFont).Width / s + 24f);
-                    }
-                }
-            }
+            float wGit = _wGit;
+            float wGmail = _wGmail;
 
             // Button to open GitHub repository
             _githubBtnY = currentY + 12;

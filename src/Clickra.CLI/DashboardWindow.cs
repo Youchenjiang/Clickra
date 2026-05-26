@@ -68,6 +68,13 @@ namespace Clickra.UI
         static float _githubBtnY = 240;
         static int _langDropdownY = 390;
         static float _sidebarWidth = 170f;
+        static IntPtr _hIcon = IntPtr.Zero;
+        static float _wSource = 110f;
+        static float _wDesktop = 65f;
+        static float _wDownloads = 80f;
+        static float _wCustom = 100f;
+        static float _wGit = 160f;
+        static float _wGmail = 160f;
 
         // Content Area Scroll State
         static float _contentScrollX = 0;
@@ -204,6 +211,42 @@ namespace Clickra.UI
             // Sidebar width: 24 (left margin) + 16 (icon) + 12 (icon to text margin) = 52. Plus padding of 24.
             _sidebarWidth = (52f * _dpiScale + maxLabelW + 24f * _dpiScale) / _dpiScale;
             _sidebarWidth = Math.Max(130f, _sidebarWidth); // Ensure it's at least 130px
+
+            // Cache button widths to avoid GC pressure in HitTest
+            using (var tempBmp = new Bitmap(1, 1))
+            using (var tempG = Graphics.FromImage(tempBmp))
+            {
+                if (_subFont != null)
+                {
+                    string textSource = GetText("setting_output_same_as_source");
+                    string textDesktop = GetText("setting_output_desktop");
+                    string textDownloads = GetText("setting_output_downloads");
+                    string textCustom = GetText("setting_output_custom");
+                    
+                    _wSource = Math.Max(110f, tempG.MeasureString(textSource, _subFont).Width / _dpiScale + 20f);
+                    _wDesktop = Math.Max(65f, tempG.MeasureString(textDesktop, _subFont).Width / _dpiScale + 20f);
+                    _wDownloads = Math.Max(80f, tempG.MeasureString(textDownloads, _subFont).Width / _dpiScale + 20f);
+                    _wCustom = Math.Max(100f, tempG.MeasureString(textCustom, _subFont).Width / _dpiScale + 20f);
+
+                    string textGit = GetText("about_btn_github");
+                    string textGmail = GetText("about_btn_gmail");
+                    if (_iconFont != null)
+                    {
+                        float iconW_git = tempG.MeasureString("\uE71B", _iconFont).Width / _dpiScale;
+                        float textW_git = tempG.MeasureString(textGit, _subFont).Width / _dpiScale;
+                        _wGit = Math.Max(160f, iconW_git + 6f + textW_git + 24f);
+
+                        float iconW_gmail = tempG.MeasureString("\uE715", _iconFont).Width / _dpiScale;
+                        float textW_gmail = tempG.MeasureString(textGmail, _subFont).Width / _dpiScale;
+                        _wGmail = Math.Max(160f, iconW_gmail + 6f + textW_gmail + 24f);
+                    }
+                    else
+                    {
+                        _wGit = Math.Max(160f, tempG.MeasureString(textGit, _subFont).Width / _dpiScale + 24f);
+                        _wGmail = Math.Max(160f, tempG.MeasureString(textGmail, _subFont).Width / _dpiScale + 24f);
+                    }
+                }
+            }
         }
 
         static void SetupTrayIcon(IntPtr hwnd, IntPtr hIcon)
@@ -349,18 +392,17 @@ namespace Clickra.UI
 
             // Load icon from exe
             string exePath = Environment.ProcessPath ?? "";
-            IntPtr hIcon = IntPtr.Zero;
             if (!string.IsNullOrEmpty(exePath))
             {
-                hIcon = ExtractIcon(IntPtr.Zero, exePath, 0);
-                if (hIcon != IntPtr.Zero)
+                _hIcon = ExtractIcon(IntPtr.Zero, exePath, 0);
+                if (_hIcon != IntPtr.Zero)
                 {
-                    SendMessageW(hwnd, 0x0080, (IntPtr)0, hIcon); // ICON_BIG
-                    SendMessageW(hwnd, 0x0080, (IntPtr)1, hIcon); // ICON_SMALL
+                    SendMessageW(hwnd, 0x0080, (IntPtr)0, _hIcon); // ICON_BIG
+                    SendMessageW(hwnd, 0x0080, (IntPtr)1, _hIcon); // ICON_SMALL
                 }
             }
 
-            SetupTrayIcon(hwnd, hIcon);
+            SetupTrayIcon(hwnd, _hIcon);
 
             RecreateScaledFonts();
             RecreateBuffer(clientW, clientH);
@@ -410,6 +452,12 @@ namespace Clickra.UI
 
             try { _bufferGraphics?.Dispose(); _bufferGraphics = null; } catch { }
             try { _bufferBmp?.Dispose(); _bufferBmp = null; } catch { }
+
+            if (_hIcon != IntPtr.Zero)
+            {
+                DestroyIcon(_hIcon);
+                _hIcon = IntPtr.Zero;
+            }
         }
 
         static int HitTest(IntPtr hwnd, int x, int y)
@@ -477,23 +525,10 @@ namespace Clickra.UI
                 if (x >= rightToggleX && x < rightToggleX + 44 && y >= 175 && y < 197) return 6;
 
                 // OutputDir buttons
-                string textSource = GetText("setting_output_same_as_source");
-                string textDesktop = GetText("setting_output_desktop");
-                string textDownloads = GetText("setting_output_downloads");
-                string textCustom = GetText("setting_output_custom");
-
-                float wSource = 110f, wDesktop = 65f, wDownloads = 80f, wCustom = 100f;
-                if (_subFont != null)
-                {
-                    using (var tempBmp = new Bitmap(1, 1))
-                    using (var tempG = Graphics.FromImage(tempBmp))
-                    {
-                        wSource = Math.Max(110f, tempG.MeasureString(textSource, _subFont).Width + 20f * _dpiScale) / _dpiScale;
-                        wDesktop = Math.Max(65f, tempG.MeasureString(textDesktop, _subFont).Width + 20f * _dpiScale) / _dpiScale;
-                        wDownloads = Math.Max(80f, tempG.MeasureString(textDownloads, _subFont).Width + 20f * _dpiScale) / _dpiScale;
-                        wCustom = Math.Max(100f, tempG.MeasureString(textCustom, _subFont).Width + 20f * _dpiScale) / _dpiScale;
-                    }
-                }
+                float wSource = _wSource;
+                float wDesktop = _wDesktop;
+                float wDownloads = _wDownloads;
+                float wCustom = _wCustom;
 
                 float margin = 10f;
                 float xSource = contentX;
@@ -511,32 +546,8 @@ namespace Clickra.UI
             }
             else if (_activeTab == 4) // About
             {
-                string textGit = GetText("about_btn_github");
-                string textGmail = GetText("about_btn_gmail");
-
-                float wGit = 160f, wGmail = 160f;
-                if (_subFont != null)
-                {
-                    using (var tempBmp = new Bitmap(1, 1))
-                    using (var tempG = Graphics.FromImage(tempBmp))
-                    {
-                        if (_iconFont != null)
-                        {
-                            float iconW_git = tempG.MeasureString("\uE71B", _iconFont).Width / _dpiScale;
-                            float textW_git = tempG.MeasureString(textGit, _subFont).Width / _dpiScale;
-                            wGit = Math.Max(160f, iconW_git + 6f + textW_git + 24f);
-
-                            float iconW_gmail = tempG.MeasureString("\uE715", _iconFont).Width / _dpiScale;
-                            float textW_gmail = tempG.MeasureString(textGmail, _subFont).Width / _dpiScale;
-                            wGmail = Math.Max(160f, iconW_gmail + 6f + textW_gmail + 24f);
-                        }
-                        else
-                        {
-                            wGit = Math.Max(160f, tempG.MeasureString(textGit, _subFont).Width / _dpiScale + 24f);
-                            wGmail = Math.Max(160f, tempG.MeasureString(textGmail, _subFont).Width / _dpiScale + 24f);
-                        }
-                    }
-                }
+                float wGit = _wGit;
+                float wGmail = _wGmail;
 
                 // GitHub Button: x from contentX to contentX + wGit
                 if (x >= contentX && x < contentX + wGit && y >= _githubBtnY && y < _githubBtnY + 32) return 23;
@@ -640,14 +651,17 @@ namespace Clickra.UI
                             float contentH = GetContentHeight(hwnd);
                             bool showV = logH < contentH;
                             if (showV) trackW_sb = (logW - sidebarW) - 16;
-                            float thumbW = Math.Max(20f, ((logW - sidebarW) / (760f - sidebarW)) * trackW_sb);
-                            float scrollRange = 760f - logW;
-                            float trackRange = trackW_sb - thumbW;
-                            if (trackRange > 0)
+                            if (trackW_sb > 0)
                             {
-                                float deltaScrollX = (deltaX / trackRange) * scrollRange;
-                                _contentScrollX = Math.Max(0, Math.Min(_dragStartScrollX + deltaScrollX, scrollRange));
-                                InvalidateRect(hwnd, IntPtr.Zero, false);
+                                float thumbW = Math.Max(20f, ((logW - sidebarW) / (760f - sidebarW)) * trackW_sb);
+                                float scrollRange = 760f - logW;
+                                float trackRange = trackW_sb - thumbW;
+                                if (trackRange > 0)
+                                {
+                                    float deltaScrollX = (deltaX / trackRange) * scrollRange;
+                                    _contentScrollX = Math.Max(0, Math.Min(_dragStartScrollX + deltaScrollX, scrollRange));
+                                    InvalidateRect(hwnd, IntPtr.Zero, false);
+                                }
                             }
                         }
 
@@ -728,29 +742,33 @@ namespace Clickra.UI
                             float trackX = sidebarW + 4;
                             float trackW_sb = (logW - sidebarW) - 8;
                             if (showV) trackW_sb = (logW - sidebarW) - 16;
-                            float thumbW = Math.Max(20f, ((logW - sidebarW) / (760f - sidebarW)) * trackW_sb);
-                            float thumbX = trackX + (_contentScrollX / (760f - logW)) * (trackW_sb - thumbW);
-
-                            if (mouseX >= trackX && mouseX < trackX + trackW_sb)
+                            if (trackW_sb > 0)
                             {
-                                if (mouseX >= thumbX && mouseX < thumbX + thumbW)
+                                float thumbW = Math.Max(20f, ((logW - sidebarW) / (760f - sidebarW)) * trackW_sb);
+                                float thumbX = trackX + (_contentScrollX / (760f - logW)) * (trackW_sb - thumbW);
+
+                                if (mouseX >= trackX && mouseX < trackX + trackW_sb)
                                 {
-                                    _isDraggingScrollX = true;
-                                    _dragStartMouseX = mouseX;
-                                    _dragStartScrollX = _contentScrollX;
-                                    SetCapture(hwnd);
+                                    if (mouseX >= thumbX && mouseX < thumbX + thumbW)
+                                    {
+                                        _isDraggingScrollX = true;
+                                        _dragStartMouseX = mouseX;
+                                        _dragStartScrollX = _contentScrollX;
+                                        SetCapture(hwnd);
+                                    }
+                                    else
+                                    {
+                                        float trackRange = trackW_sb - thumbW;
+                                        float relativePos = trackRange > 0 ? (mouseX - trackX - thumbW / 2f) / trackRange : 0f;
+                                        _contentScrollX = Math.Max(0, Math.Min(relativePos * (760f - logW), 760f - logW));
+                                        _isDraggingScrollX = true;
+                                        _dragStartMouseX = mouseX;
+                                        _dragStartScrollX = _contentScrollX;
+                                        SetCapture(hwnd);
+                                        InvalidateRect(hwnd, IntPtr.Zero, false);
+                                    }
+                                    return IntPtr.Zero;
                                 }
-                                else
-                                {
-                                    float relativePos = (mouseX - trackX - thumbW / 2f) / (trackW_sb - thumbW);
-                                    _contentScrollX = Math.Max(0, Math.Min(relativePos * (760f - logW), 760f - logW));
-                                    _isDraggingScrollX = true;
-                                    _dragStartMouseX = mouseX;
-                                    _dragStartScrollX = _contentScrollX;
-                                    SetCapture(hwnd);
-                                    InvalidateRect(hwnd, IntPtr.Zero, false);
-                                }
-                                return IntPtr.Zero;
                             }
                         }
 
