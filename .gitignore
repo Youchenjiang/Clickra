@@ -6,3 +6,6 @@ obj/
 publish/
 packaging/msix/Layout/
 *.pfx
+*.dll
+*.pdb
+

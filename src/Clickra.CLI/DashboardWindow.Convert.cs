@@ -179,33 +179,131 @@ namespace Clickra.UI
             };
         }
 
-        static void DrawConvertTab(Graphics g)
+        static void DrawConvertTab(Graphics g, float logW, float logH, float contentX)
         {
+            float s = _dpiScale;
             if (_contentTitleFont != null)
-                g.DrawString(GetText("tab_convert"), _contentTitleFont, Brushes.White, 236, 30);
+                g.DrawString(GetText("tab_convert"), _contentTitleFont, Brushes.White, contentX * s, 30 * s);
 
             using (var divPen = new Pen(Color.FromArgb(48, 48, 48)))
             {
-                g.DrawLine(divPen, 236, 75, 720, 75);
+                g.DrawLine(divPen, contentX * s, 75 * s, (logW - 40) * s, 75 * s);
             }
 
+            int zoneX = (int)contentX, zoneY = 95, zoneW = (int)logW - (int)contentX - 50, zoneH = 120;
+            bool isZoneHovered = _hoveredElement == 17;
+
+            Color zoneBg = isZoneHovered ? Color.FromArgb(42, 42, 42) : Color.FromArgb(34, 34, 34);
+            Color zoneBorder = isZoneHovered ? GetSystemColorizationColor() : Color.FromArgb(60, 60, 60);
+
+            using (var path = GetRoundedRectPath(new RectangleF(zoneX * s, zoneY * s, zoneW * s, zoneH * s), 6 * s))
+            using (var bgBrush = new SolidBrush(zoneBg))
+            using (var borderPen = new Pen(zoneBorder, 1.5f * s))
+            {
+                borderPen.DashStyle = DashStyle.Dash;
+                g.FillPath(bgBrush, path);
+                g.DrawPath(borderPen, path);
+            }
+
+            if (_selectedFiles.Count == 0)
+            {
+                if (_iconFont != null)
+                {
+                    using var iconBrush = new SolidBrush(Color.FromArgb(140, 140, 140));
+                    g.DrawString("\uE118", _iconFont, iconBrush, (zoneX + (zoneW - 20) / 2) * s, (zoneY + 25) * s);
+                }
+
+                if (_tabFont != null)
+                {
+                    string hint = GetText("convert_drag_drop_hint");
+                    using var textBrush = new SolidBrush(Color.FromArgb(220, 220, 220));
+                    var size = g.MeasureString(hint, _tabFont);
+                    g.DrawString(hint, _tabFont, textBrush, (zoneX + (zoneW - size.Width / s) / 2) * s, (zoneY + 55) * s);
+                }
+
+                if (_subFont != null)
+                {
+                    string subHint = GetText("convert_drag_drop_sub");
+                    using var subBrush = new SolidBrush(Color.FromArgb(140, 140, 140));
+                    var size = g.MeasureString(subHint, _subFont);
+                    g.DrawString(subHint, _subFont, subBrush, (zoneX + (zoneW - size.Width / s) / 2) * s, (zoneY + 80) * s);
+                }
+            }
+            else
+            {
+                if (_tabFont != null)
+                {
+                    string summary = string.Format(GetText("convert_selected_count"), _selectedFiles.Count);
+                    using var textBrush = new SolidBrush(Color.FromArgb(100, 220, 100));
+                    g.DrawString(summary, _tabFont, textBrush, (zoneX + 20) * s, (zoneY + 20) * s);
+                }
+
+                if (_subFont != null)
+                {
+                    using var listBrush = new SolidBrush(Color.FromArgb(180, 180, 180));
+                    string joinedNames = string.Join(", ", _selectedFiles.Select(Path.GetFileName));
+                    if (joinedNames.Length > 85)
+                    {
+                        joinedNames = joinedNames.Substring(0, 82) + "...";
+                    }
+                    g.DrawString(joinedNames, _subFont, listBrush, (zoneX + 20) * s, (zoneY + 50) * s);
+
+                    string outDirMode = ClickraStorage.GetSetting("OutputDir");
+                    string outPathDesc = outDirMode.ToLowerInvariant() switch
+                    {
+                        "desktop" => GetText("setting_output_desktop"),
+                        "downloads" => GetText("setting_output_downloads"),
+                        _ => outDirMode.Equals("source", StringComparison.OrdinalIgnoreCase) ? GetText("setting_output_same_as_source") : GetText("setting_output_custom")
+                    };
+                    using var descBrush = new SolidBrush(Color.FromArgb(130, 130, 130));
+                    g.DrawString($"{GetText("setting_output_title")}: {outPathDesc}", _subFont, descBrush, (zoneX + 20) * s, (zoneY + 85) * s);
+                }
+
+                int clearX = (int)logW - 110;
+                bool isClearHovered = _hoveredElement == 19;
+                Color clearBtnBg = isClearHovered ? Color.FromArgb(60, 60, 60) : Color.FromArgb(45, 45, 45);
+                Color clearBtnBorder = isClearHovered ? Color.FromArgb(80, 80, 80) : Color.FromArgb(55, 55, 55);
+                using (var path = GetRoundedRectPath(new RectangleF(clearX * s, (zoneY + 12) * s, 48 * s, 22 * s), 3 * s))
+                using (var bgBrush = new SolidBrush(clearBtnBg))
+                using (var borderPen = new Pen(clearBtnBorder))
+                {
+                    g.FillPath(bgBrush, path);
+                    g.DrawPath(borderPen, path);
+                }
+                if (_subFont != null)
+                {
+                    Color btnText = isClearHovered ? Color.White : Color.FromArgb(180, 180, 180);
+                    using var textBrush = new SolidBrush(btnText);
+                    string clearText = GetText("convert_clear");
+                    var size = g.MeasureString(clearText, _subFont);
+                    g.DrawString(clearText, _subFont, textBrush, (clearX + (48 - size.Width / s) / 2) * s, (zoneY + 12 + (22 - size.Height / s) / 2) * s);
+                }
+            }
+
+            int cardW = (zoneW - 2 * 12) / 3;
             for (int i = 0; i < 6; i++)
             {
                 int col = i % 3;
                 int row = i / 3;
-                int cardX = 236 + col * 162;
-                int cardY = 95 + row * 50;
-                int cardW = 150;
+                int cardX = (int)contentX + col * (cardW + 12);
+                int cardY = 230 + row * 50;
                 int cardH = 40;
 
                 bool isSelected = _convertCommandIndex == i;
                 bool isHovered = _hoveredElement == (11 + i);
+                bool isEnabled = ValidateConvertFiles(ConvertCommands[i], _selectedFiles, out _);
 
                 Color cardBg;
                 Color cardBorder;
                 Color textColor;
 
-                if (isSelected)
+                if (!isEnabled)
+                {
+                    cardBg = Color.FromArgb(28, 28, 28);
+                    cardBorder = Color.FromArgb(36, 36, 36);
+                    textColor = Color.FromArgb(80, 80, 80);
+                }
+                else if (isSelected)
                 {
                     cardBg = Color.FromArgb(45, 45, 55);
                     cardBorder = GetSystemColorizationColor();
@@ -218,9 +316,9 @@ namespace Clickra.UI
                     textColor = isHovered ? Color.White : Color.FromArgb(200, 200, 200);
                 }
 
-                using var path = GetRoundedRectPath(new RectangleF(cardX, cardY, cardW, cardH), 5);
+                using var path = GetRoundedRectPath(new RectangleF(cardX * s, cardY * s, cardW * s, cardH * s), 5 * s);
                 using var bgBrush = new SolidBrush(cardBg);
-                using var borderPen = new Pen(cardBorder, isSelected ? 1.5f : 1f);
+                using var borderPen = new Pen(cardBorder, isSelected ? 1.5f * s : 1f * s);
                 g.FillPath(bgBrush, path);
                 g.DrawPath(borderPen, path);
 
@@ -240,106 +338,18 @@ namespace Clickra.UI
                 {
                     using var textBrush = new SolidBrush(textColor);
                     var size = g.MeasureString(cmdText, _tabFont);
-                    g.DrawString(cmdText, _tabFont, textBrush, cardX + (cardW - size.Width) / 2, cardY + (cardH - size.Height) / 2);
+                    g.DrawString(cmdText, _tabFont, textBrush, (cardX + (cardW - size.Width / s) / 2) * s, (cardY + (cardH - size.Height / s) / 2) * s);
                 }
             }
 
-            int zoneX = 236, zoneY = 205, zoneW = 474, zoneH = 120;
-            bool isZoneHovered = _hoveredElement == 17;
-
-            Color zoneBg = isZoneHovered ? Color.FromArgb(42, 42, 42) : Color.FromArgb(34, 34, 34);
-            Color zoneBorder = isZoneHovered ? GetSystemColorizationColor() : Color.FromArgb(60, 60, 60);
-
-            using (var path = GetRoundedRectPath(new RectangleF(zoneX, zoneY, zoneW, zoneH), 6))
-            using (var bgBrush = new SolidBrush(zoneBg))
-            using (var borderPen = new Pen(zoneBorder, 1.5f))
-            {
-                borderPen.DashStyle = DashStyle.Dash;
-                g.FillPath(bgBrush, path);
-                g.DrawPath(borderPen, path);
-            }
-
-            if (_selectedFiles.Count == 0)
-            {
-                if (_iconFont != null)
-                {
-                    using var iconBrush = new SolidBrush(Color.FromArgb(140, 140, 140));
-                    g.DrawString("\uE118", _iconFont, iconBrush, zoneX + (zoneW - 20) / 2, zoneY + 25);
-                }
-
-                if (_tabFont != null)
-                {
-                    string hint = GetText("convert_drag_drop_hint");
-                    using var textBrush = new SolidBrush(Color.FromArgb(220, 220, 220));
-                    var size = g.MeasureString(hint, _tabFont);
-                    g.DrawString(hint, _tabFont, textBrush, zoneX + (zoneW - size.Width) / 2, zoneY + 55);
-                }
-
-                if (_subFont != null)
-                {
-                    string subHint = GetText("convert_drag_drop_sub");
-                    using var subBrush = new SolidBrush(Color.FromArgb(140, 140, 140));
-                    var size = g.MeasureString(subHint, _subFont);
-                    g.DrawString(subHint, _subFont, subBrush, zoneX + (zoneW - size.Width) / 2, zoneY + 80);
-                }
-            }
-            else
-            {
-                if (_tabFont != null)
-                {
-                    string summary = string.Format(GetText("convert_selected_count"), _selectedFiles.Count);
-                    using var textBrush = new SolidBrush(Color.FromArgb(100, 220, 100));
-                    g.DrawString(summary, _tabFont, textBrush, zoneX + 20, zoneY + 20);
-                }
-
-                if (_subFont != null)
-                {
-                    using var listBrush = new SolidBrush(Color.FromArgb(180, 180, 180));
-                    string joinedNames = string.Join(", ", _selectedFiles.Select(Path.GetFileName));
-                    if (joinedNames.Length > 85)
-                    {
-                        joinedNames = joinedNames.Substring(0, 82) + "...";
-                    }
-                    g.DrawString(joinedNames, _subFont, listBrush, zoneX + 20, zoneY + 50);
-
-                    string outDirMode = ClickraStorage.GetSetting("OutputDir");
-                    string outPathDesc = outDirMode.ToLowerInvariant() switch
-                    {
-                        "desktop" => GetText("setting_output_desktop"),
-                        "downloads" => GetText("setting_output_downloads"),
-                        _ => GetText("setting_output_same_as_source")
-                    };
-                    using var descBrush = new SolidBrush(Color.FromArgb(130, 130, 130));
-                    g.DrawString($"{GetText("setting_output_title")}: {outPathDesc}", _subFont, descBrush, zoneX + 20, zoneY + 85);
-                }
-
-                bool isClearHovered = _hoveredElement == 19;
-                Color clearBtnBg = isClearHovered ? Color.FromArgb(60, 60, 60) : Color.FromArgb(45, 45, 45);
-                Color clearBtnBorder = isClearHovered ? Color.FromArgb(80, 80, 80) : Color.FromArgb(55, 55, 55);
-                using (var path = GetRoundedRectPath(new RectangleF(650, zoneY + 12, 48, 22), 3))
-                using (var bgBrush = new SolidBrush(clearBtnBg))
-                using (var borderPen = new Pen(clearBtnBorder))
-                {
-                    g.FillPath(bgBrush, path);
-                    g.DrawPath(borderPen, path);
-                }
-                if (_subFont != null)
-                {
-                    Color btnText = isClearHovered ? Color.White : Color.FromArgb(180, 180, 180);
-                    using var textBrush = new SolidBrush(btnText);
-                    string clearText = GetText("convert_clear");
-                    var size = g.MeasureString(clearText, _subFont);
-                    g.DrawString(clearText, _subFont, textBrush, 650 + (48 - size.Width) / 2, zoneY + 12 + (22 - size.Height) / 2);
-                }
-            }
-
-            if (_selectedFiles.Count > 0)
+            int buttonY = 340;
+            if (_selectedFiles.Count > 0 && _convertCommandIndex != -1)
             {
                 bool isBtnHovered = _hoveredElement == 18;
                 Color btnBg = GetSystemColorizationColor();
                 if (isBtnHovered) btnBg = Lighten(btnBg, 0.15f);
 
-                using (var path = GetRoundedRectPath(new RectangleF(zoneX, 340, zoneW, 36), 5))
+                using (var path = GetRoundedRectPath(new RectangleF(zoneX * s, buttonY * s, zoneW * s, 36 * s), 5 * s))
                 using (var bgBrush = new SolidBrush(btnBg))
                 {
                     g.FillPath(bgBrush, path);
@@ -350,7 +360,7 @@ namespace Clickra.UI
                     string btnText = GetText("convert_start");
                     using var textBrush = new SolidBrush(Color.White);
                     var size = g.MeasureString(btnText, _tabFont);
-                    g.DrawString(btnText, _tabFont, textBrush, zoneX + (zoneW - size.Width) / 2, 340 + (36 - size.Height) / 2);
+                    g.DrawString(btnText, _tabFont, textBrush, (zoneX + (zoneW - size.Width / s) / 2) * s, (buttonY + (36 - size.Height / s) / 2) * s);
                 }
             }
         }

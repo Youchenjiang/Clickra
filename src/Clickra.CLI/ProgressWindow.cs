@@ -88,6 +88,9 @@ namespace Clickra.UI
         [DllImport("user32.dll", EntryPoint = "GetWindowLongPtrW", CharSet = CharSet.Unicode)]
         static extern IntPtr GetWindowLongPtr(IntPtr hWnd, int nIndex);
 
+        [DllImport("kernel32.dll", EntryPoint = "GetModuleHandleW", CharSet = CharSet.Unicode)]
+        static extern IntPtr GetModuleHandle(string? lpModuleName);
+
         const uint WS_OVERLAPPED_FIXED = 0x00CF0000 & ~0x00040000u & ~0x00020000u;
         const int DWMWA_DARK_MODE = 20;
         const int CW_USEDEFAULT = unchecked((int)0x80000000);
@@ -185,7 +188,7 @@ namespace Clickra.UI
             {
                 cbSize = (uint)Marshal.SizeOf<WNDCLASSEX>(),
                 lpfnWndProc = Marshal.GetFunctionPointerForDelegate(_wndProcDelegate),
-                hInstance = Marshal.GetHINSTANCE(typeof(ProgressWindow).Module),
+                hInstance = GetModuleHandle(null),
                 hCursor = LoadCursorW(IntPtr.Zero, 32512),
                 hbrBackground = IntPtr.Zero,
                 lpszClassName = hClass
@@ -350,6 +353,7 @@ namespace Clickra.UI
         {
             List<string> currentFiles = new List<string>();
             string cmd = "";
+            var sw = System.Diagnostics.Stopwatch.StartNew();
             try
             {
                 lock (_stateLock)
@@ -415,6 +419,12 @@ namespace Clickra.UI
                         break;
                 }
 
+                sw.Stop();
+                long elapsedMs = sw.ElapsedMilliseconds;
+                string endTime = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
+                string inputs = string.Join(";", currentFiles);
+                string outputs = GetOutputPath(cmd, currentFiles, outputDir);
+
                 lock (_stateLock)
                 {
                     _completed = true;
@@ -423,7 +433,7 @@ namespace Clickra.UI
                 InvalidateRect(hwnd, IntPtr.Zero, true);
 
                 // 完成：寫入持久化日誌並暫留 Success 狀態供 Dashboard 讀取
-                try { ClickraStorage.CompleteActiveRecord(true, ""); } catch { }
+                try { ClickraStorage.CompleteActiveRecord(true, "", endTime, elapsedMs, inputs, outputs); } catch { }
 
                 ShowToastNotification(cmd, currentFiles.Count);
 
@@ -433,6 +443,13 @@ namespace Clickra.UI
             }
             catch (Exception ex)
             {
+                sw.Stop();
+                long elapsedMs = sw.ElapsedMilliseconds;
+                string endTime = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
+                string inputs = string.Join(";", currentFiles);
+                string outputDir = currentFiles.Count > 0 ? ClickraStorage.GetOutputDir(currentFiles[0]) : "";
+                string outputs = currentFiles.Count > 0 ? GetOutputPath(cmd, currentFiles, outputDir) : "";
+
                 lock (_stateLock)
                 {
                     _hasError = true;
@@ -441,11 +458,30 @@ namespace Clickra.UI
                 InvalidateRect(hwnd, IntPtr.Zero, true);
 
                 // 失敗：立即寫入持久化日誌並暫留 Failed 狀態供 Dashboard 讀取
-                try { ClickraStorage.CompleteActiveRecord(false, ex.Message); } catch { }
+                try { ClickraStorage.CompleteActiveRecord(false, ex.Message, endTime, elapsedMs, inputs, outputs); } catch { }
 
                 MessageBox(hwnd, $"處理過程中發生錯誤：\n{ex.Message}", "Clickra — 錯誤", 0x10); // MB_ICONERROR
                 try { ClickraStorage.ClearActiveRecord(); } catch { }
                 PostMessageW(hwnd, 0x0010, IntPtr.Zero, IntPtr.Zero); // WM_CLOSE
+            }
+        }
+
+        private static string GetOutputPath(string cmd, List<string> inputFiles, string outputDir)
+        {
+            switch (cmd)
+            {
+                case "merge-pdf":
+                    return Path.Combine(outputDir, "Merged_PDF.pdf");
+                case "img-merge":
+                    return Path.Combine(outputDir, "Merged_Images.pdf");
+                case "img-stitch":
+                    return Path.Combine(outputDir, "Stitched_Image.png");
+                case "ppt2pdf":
+                case "word2pdf":
+                case "img2pdf":
+                    return string.Join(";", inputFiles.Select(f => Path.Combine(outputDir, Path.GetFileNameWithoutExtension(f) + ".pdf")));
+                default:
+                    return outputDir;
             }
         }
 

@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <resheader name="resmimetype">
+    <value>text/microsoft-resx</value>
+  </resheader>
+  <resheader name="version">
+    <value>2.0</value>
+  </resheader>
+  <resheader name="reader">
+    <value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <resheader name="writer">
+    <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <data name="AppName" xml:space="preserve">
+    <value>Clickra</value>
+  </data>
+  <data name="AppDescription" xml:space="preserve">
+    <value>【系统需求】“演示文稿转PDF”与“文档转PDF”功能需在本机设备安装Microsoft Office (PowerPoint/Word)。此举可确保转换过程维持最高还原度。其余所有功能（PDF合并、图片转换等）皆可原生执行，无需额外外部依赖。</value>
+  </data>
+  <data name="Menu_Ppt2Pdf" xml:space="preserve">
+    <value>演示文稿转 PDF</value>
+  </data>
+  <data name="Menu_Word2Pdf" xml:space="preserve">
+    <value>文档转 PDF (Word)</value>
+  </data>
+  <data name="Menu_MergePdf" xml:space="preserve">
+    <value>PDF 合并</value>
+  </data>
+  <data name="Menu_Img2Pdf" xml:space="preserve">
+    <value>图片转 PDF</value>
+  </data>
+  <data name="Menu_ImgMerge" xml:space="preserve">
+    <value>图片合并成 PDF</value>
+  </data>
+  <data name="Menu_ImgStitch" xml:space="preserve">
+    <value>图片垂直拼接</value>
+  </data>
+</root>

@@ -149,8 +149,25 @@ namespace ClickraShell
             try
             {
                 string dir = GetModuleDir();
-                bool isEn = CultureInfo.CurrentUICulture.Name.StartsWith("en", StringComparison.OrdinalIgnoreCase);
-                string resPath = Path.Combine(dir, "Strings", isEn ? "en-us" : "zh-tw", "Resources.resw");
+                string culture = CultureInfo.CurrentUICulture.Name;
+                
+                string subFolder = "zh-tw"; // Default fallback
+                if (culture.StartsWith("en", StringComparison.OrdinalIgnoreCase))
+                    subFolder = "en-us";
+                else if (culture.Equals("zh-CN", StringComparison.OrdinalIgnoreCase))
+                    subFolder = "zh-cn";
+                else if (culture.StartsWith("ja", StringComparison.OrdinalIgnoreCase))
+                    subFolder = "ja-jp";
+                else if (culture.StartsWith("ko", StringComparison.OrdinalIgnoreCase))
+                    subFolder = "ko-kr";
+                else if (culture.StartsWith("zh", StringComparison.OrdinalIgnoreCase))
+                    subFolder = "zh-tw";
+                
+                string resPath = Path.Combine(dir, "Strings", subFolder, "Resources.resw");
+                if (!File.Exists(resPath))
+                {
+                    resPath = Path.Combine(dir, "Strings", "zh-tw", "Resources.resw");
+                }
                 
                 if (!File.Exists(resPath)) return key;
 

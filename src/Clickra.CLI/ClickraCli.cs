@@ -21,6 +21,7 @@ namespace Clickra
         static void ShowWarning(string msg, string title) =>
             MessageBox(IntPtr.Zero, msg, title, MB_OK | MB_ICONWARNING);
 
+        [STAThread]
         static void Main(string[] args)
         {
             if (args.Length == 0 || args[0] == "-v" || args[0] == "--version")
