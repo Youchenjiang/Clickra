@@ -1,4 +1,4 @@
-# Clickra v3.0.8.0
+# Clickra v3.0.9.0
 
 [![Microsoft Store](https://img.shields.io/badge/Microsoft%20Store-Clickra-blue?style=for-the-badge&logo=microsoft-store)](https://apps.microsoft.com/detail/9NGLBF6P1KLD)
 [![License: Apache 2.0](https://img.shields.io/badge/License-Apache%202.0-blue.svg?style=for-the-badge)](https://opensource.org/licenses/Apache-2.0)
@@ -34,7 +34,8 @@
 | **v3.0.5.0** | 2026/05/13 | **診斷與相容性修復**。強化 PPT 報錯訊息並符合商店披露要求。 |
 | **v3.0.6.0** | 2026/05/15 | **原生儀表板與 Word 轉 PDF**。實作高性能 Win32 儀表板，整合 Word 轉換引擎，並達成 100% NativeAOT 架構。 |
 | **v3.0.7.0** | 2026/05/21 | **動態進度條與完成通知**。實作純 Win32/GDI+ 動態進度視窗，支援 WinUI 3 級別流動光暈動畫、系統主色調連動與原生 Toast 通知。 |
-| **v3.0.8.0** | **當前**   | **轉換歷史紀錄與儀表板優化**。實作本地轉檔歷史紀錄追蹤與原生 Win32 列表 UI，整合快速轉檔分頁，新增多國語系切換 (zh-TW/en-US)，並將 `DashboardForm` 重構拆分為靜態 Partial 類別檔案。 |
+| **v3.0.8.0** | 2026/05/21 | **轉換歷史紀錄與儀表板優化**。實作本地轉檔歷史紀錄追蹤與原生 Win32 列表 UI，整合快速轉檔分頁，新增多國語系切換 (zh-TW/en-US)，並將 `DashboardForm` 重構拆分為靜態 Partial 類別檔案。 |
+| **v3.0.9.0** | **當前**   | **關於分頁、完整多語系與儀表板細項優化**。新增關於分頁（專案說明、協作連結、一鍵 Gmail 診斷回報）。儀表板與右鍵選單完整支援 ja-JP、ko-KR、zh-CN。新增最小化至系統匣、自訂輸出路徑資料夾選取器、可展開歷史紀錄卡片（含計時與輸入輸出路徑）。實作視窗最大化自適應佈局、高 DPI 顯示清晰度修正，以及快速轉檔的「檔案優先」智慧交互流程。動態側邊欄寬度、首次啟動語言字型正規化，以及 NativeAOT 相容性修正（`[STAThread]`、`GetModuleHandle`）。 |
 
 
 

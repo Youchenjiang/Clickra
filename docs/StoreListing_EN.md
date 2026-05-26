@@ -1,6 +1,6 @@
 # Microsoft Store Listing - English (US)
 
-Below is the complete information for you to copy and paste directly into the Microsoft Partner Center, updated for the v3.0.7.0 release.
+Below is the complete information for you to copy and paste directly into the Microsoft Partner Center, updated for the v3.0.9.0 release.
 
 ---
 
@@ -24,9 +24,13 @@ Clickra respects your privacy. All processing is done 100% locally on your machi
 🔗 Open Source on GitHub: https://github.com/Youchenjiang/Clickra
 
 ## What's new in this version
- - Dynamic Progress Window: Introduced pure Win32/GDI+ progress bar with Fluent Design shimmer animations and system accent color integration.
- - Toast Notifications: Automated native Windows notifications upon successful task completion.
- - Eliminated hardcoded version strings across UI and CLI components to improve maintainability.
+ - About Tab: New dedicated About page with project description, open-source collaboration links, and one-click Gmail diagnostic reporting.
+ - Full Multilingual Support: Dashboard and shell context menu now fully localized in Japanese (ja-JP), Korean (ko-KR), and Simplified Chinese (zh-CN), in addition to existing zh-TW and en-US.
+ - Minimize to System Tray: Dashboard window can now minimize to the Windows system tray, with double-click to restore.
+ - Custom Output Folder: Settings page now includes a native folder picker to set any custom default output directory.
+ - Expandable History Cards: Conversion history entries can be expanded to show input/output file paths and precise elapsed time.
+ - Adaptive Maximization Layout & High DPI Support: Fixed black area rendering issues when maximizing, and added crisp UI scaling on high DPI monitors.
+ - Smart File-First Conversion Interaction: Instantly drop or browse files first, and the dashboard will automatically highlight the correct conversion types and disable unsupported ones.
 
 ## Product Features
 *(Max 20, displayed as bullet points)*
