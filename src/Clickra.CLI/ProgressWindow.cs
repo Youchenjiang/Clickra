@@ -75,6 +75,37 @@ namespace Clickra.UI
         [DllImport("user32.dll", CharSet = CharSet.Unicode)] static extern int MessageBox(IntPtr hWnd, string text, string caption, uint type);
         [DllImport("user32.dll")] static extern IntPtr SetTimer(IntPtr hWnd, IntPtr nIDEvent, uint uElapse, IntPtr lpTimerFunc);
         [DllImport("user32.dll")] static extern bool KillTimer(IntPtr hWnd, IntPtr nIDEvent);
+        [DllImport("user32.dll")] static extern bool SetForegroundWindow(IntPtr hWnd);
+        [DllImport("user32.dll")] static extern bool DestroyIcon(IntPtr hIcon);
+        [DllImport("user32.dll", EntryPoint = "DestroyWindow")] static extern bool DestroyWindow(IntPtr hWnd);
+        [DllImport("user32.dll")] static extern IntPtr SetCapture(IntPtr hWnd);
+        [DllImport("user32.dll")] static extern bool ReleaseCapture();
+
+        [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Unicode)]
+        struct NOTIFYICONDATAW
+        {
+            public uint cbSize;
+            public IntPtr hWnd;
+            public uint uID;
+            public uint uFlags;
+            public uint uCallbackMessage;
+            public IntPtr hIcon;
+            [MarshalAs(UnmanagedType.ByValTStr, SizeConst = 128)]
+            public string szTip;
+            public uint dwState;
+            public uint dwStateMask;
+            [MarshalAs(UnmanagedType.ByValTStr, SizeConst = 256)]
+            public string szInfo;
+            public uint uTimeoutOrVersion;
+            [MarshalAs(UnmanagedType.ByValTStr, SizeConst = 64)]
+            public string szInfoTitle;
+            public uint dwInfoFlags;
+            public Guid guidItem;
+            public IntPtr hBalloonIcon;
+        }
+
+        [DllImport("shell32.dll", EntryPoint = "Shell_NotifyIconW", CharSet = CharSet.Unicode)]
+        static extern bool Shell_NotifyIcon(uint dwMessage, ref NOTIFYICONDATAW lpData);
 
         [DllImport("shell32.dll", EntryPoint = "ExtractIconW", CharSet = CharSet.Unicode)] 
         static extern IntPtr ExtractIcon(IntPtr h, string path, int idx);
@@ -134,6 +165,11 @@ namespace Clickra.UI
         private double _currentDispWidth = 0;
         private double _targetWidth = 0;
         private float _shimmerOffset = -120;
+        private float _dpiScale = 1.0f;
+        private float _scrollOffset = 0f;
+        private bool _isDraggingScroll = false;
+        private float _dragStartMouseX = 0f;
+        private float _dragStartOffset = 0f;
 
         // GDI+ 雙雙緩衝與色彩快取
         private Bitmap? _bufferBmp;
@@ -1081,18 +1117,221 @@ try {{
                 {
                     var size = g.MeasureString(pctStr, _pctFont);
                     using var pctBrush = new SolidBrush(Color.FromArgb(180, 180, 180));
-                    g.DrawString(pctStr, _pctFont, pctBrush, 484 - size.Width, 145);
+                    g.DrawString(pctStr, _pctFont, pctBrush, 484 * s - size.Width, 145 * s);
                 }
 
                 if (_tipFont != null)
                 {
                     using var tipBrush = new SolidBrush(Color.FromArgb(100, 100, 100));
-                    g.DrawString("請稍候，正在背景高速處理中...", _tipFont, tipBrush, 36, 220);
+                    g.DrawString("請稍候，正在背景高速處理中...", _tipFont, tipBrush, 36 * s, 220 * s);
+                }
+
+                // Draw "Run in Background" (minimize to tray) icon button in top right
+                {
+                    var btnRect = new RectangleF(456 * s, 36 * s, 28 * s, 28 * s);
+                    using var btnPath = GetRoundedRectPath(btnRect, 4 * s);
+
+                    Color btnBg = _isTrayBtnHovered ? Color.FromArgb(60, 60, 60) : Color.Transparent;
+                    Color btnPenColor = _isTrayBtnHovered ? GetSystemColorizationColor() : Color.FromArgb(160, 160, 160);
+
+                    using var btnBrush = new SolidBrush(btnBg);
+                    g.FillPath(btnBrush, btnPath);
+
+                    if (_isTrayBtnHovered)
+                    {
+                        using var borderPen = new Pen(btnPenColor, 1f * s);
+                        g.DrawPath(borderPen, btnPath);
+                    }
+
+                    // Draw diagonal arrow pointing down-right ↘
+                    using var arrowPen = new Pen(btnPenColor, 2f * s);
+                    float startX = btnRect.X + 8 * s;
+                    float startY = btnRect.Y + 8 * s;
+                    float endX = btnRect.X + 20 * s;
+                    float endY = btnRect.Y + 20 * s;
+                    g.DrawLine(arrowPen, startX, startY, endX, endY);
+                    g.DrawLine(arrowPen, endX, endY, endX - 7 * s, endY);
+                    g.DrawLine(arrowPen, endX, endY, endX, endY - 7 * s);
+
+                    // Draw custom tooltip next to the button when hovered
+                    if (_isTrayBtnHovered && _tipFont != null)
+                    {
+                        string lang = ClickraStorage.GetSetting("Language");
+                        string tooltipText = Localization.T("progress_background", lang);
+                        var tSize = g.MeasureString(tooltipText, _tipFont);
+                        float tx = btnRect.X - tSize.Width - 10 * s;
+                        float ty = btnRect.Y + (btnRect.Height - tSize.Height) / 2;
+
+                        using var tBrush = new SolidBrush(Color.FromArgb(240, 30, 30, 30));
+                        using var tPen = new Pen(Color.FromArgb(80, 80, 80), 1f * s);
+                        using var textBrush = new SolidBrush(Color.FromArgb(220, 220, 220));
+
+                        var tRect = new RectangleF(tx - 6 * s, ty - 4 * s, tSize.Width + 12 * s, tSize.Height + 8 * s);
+                        using var tPath = GetRoundedRectPath(tRect, 4 * s);
+                        g.FillPath(tBrush, tPath);
+                        g.DrawPath(tPen, tPath);
+                        g.DrawString(tooltipText, _tipFont, textBrush, tx, ty);
+                    }
                 }
             }
 
             using var targetG = Graphics.FromHdc(hdc);
-            targetG.DrawImage(_bufferBmp, 0, 0);
+            if (_bufferBmp != null)
+            {
+                targetG.DrawImage(_bufferBmp, 0, 0, _bufferBmp.Width, _bufferBmp.Height);
+            }
+        }
+
+        private static string TruncateProgressMessage(Graphics g, string msg, Font font, float maxLogicalWidth, float scale)
+        {
+            if (string.IsNullOrEmpty(msg)) return "";
+            if (font == null) return msg;
+
+            int colonIdx = msg.IndexOf(": ");
+            if (colonIdx == -1)
+            {
+                return TruncateText(g, msg, font, maxLogicalWidth, scale);
+            }
+
+            string prefix = msg.Substring(0, colonIdx + 2);
+            string rest = msg.Substring(colonIdx + 2);
+
+            string filename = rest;
+            string suffix = "";
+
+            if (rest.EndsWith("..."))
+            {
+                int pIdx = rest.LastIndexOf(" (");
+                if (pIdx != -1 && pIdx < rest.Length - 3)
+                {
+                    filename = rest.Substring(0, pIdx);
+                    suffix = rest.Substring(pIdx);
+                }
+                else
+                {
+                    filename = rest.Substring(0, rest.Length - 3);
+                    suffix = "...";
+                }
+            }
+            else
+            {
+                int pIdx = rest.LastIndexOf(" (");
+                if (pIdx != -1)
+                {
+                    filename = rest.Substring(0, pIdx);
+                    suffix = rest.Substring(pIdx);
+                }
+            }
+
+            float prefixW = g.MeasureString(prefix, font).Width / scale;
+            float suffixW = g.MeasureString(suffix, font).Width / scale;
+            float availableW = maxLogicalWidth - prefixW - suffixW;
+
+            if (availableW <= 20)
+            {
+                return TruncateText(g, msg, font, maxLogicalWidth, scale);
+            }
+
+            string truncatedFile = TruncateFileName(g, filename, font, availableW, scale);
+            return prefix + truncatedFile + suffix;
+        }
+
+        private static string TruncateText(Graphics g, string text, Font font, float maxLogicalWidth, float scale)
+        {
+            if (string.IsNullOrEmpty(text)) return "";
+            float measuredWidth = g.MeasureString(text, font).Width / scale;
+            if (measuredWidth <= maxLogicalWidth) return text;
+
+            string suffix = "...";
+            float suffixWidth = g.MeasureString(suffix, font).Width / scale;
+            if (maxLogicalWidth <= suffixWidth) return "...";
+
+            int low = 0;
+            int high = text.Length - 1;
+            int bestLength = 0;
+
+            while (low <= high)
+            {
+                int mid = (low + high) / 2;
+                string candidate = text.Substring(0, mid) + suffix;
+                float w = g.MeasureString(candidate, font).Width / scale;
+
+                if (w <= maxLogicalWidth)
+                {
+                    bestLength = mid;
+                    low = mid + 1;
+                }
+                else
+                {
+                    high = mid - 1;
+                }
+            }
+
+            return text.Substring(0, bestLength) + suffix;
+        }
+
+        private static string TruncateFileName(Graphics g, string filename, Font font, float maxWidth, float scale)
+        {
+            if (string.IsNullOrEmpty(filename)) return "";
+            if (g.MeasureString(filename, font).Width / scale <= maxWidth) return filename;
+
+            int low = 2;
+            int high = filename.Length - 1;
+            string best = "...";
+
+            int extLen = 0;
+            int dotIdx = filename.LastIndexOf('.');
+            if (dotIdx >= 0)
+            {
+                extLen = filename.Length - dotIdx;
+            }
+
+            int targetRight = extLen + 8;
+
+            while (low <= high)
+            {
+                int mid = (low + high) / 2;
+                
+                int rightLen, leftLen;
+                if (mid > targetRight)
+                {
+                    rightLen = targetRight;
+                    leftLen = mid - rightLen;
+                }
+                else
+                {
+                    rightLen = Math.Min(extLen, mid - 1);
+                    if (rightLen < 0) rightLen = 0;
+                    leftLen = mid - rightLen;
+                }
+
+                string separator = "...";
+                string rightPart = filename.Substring(filename.Length - rightLen);
+                if (rightPart.StartsWith("."))
+                {
+                    separator = "..";
+                }
+                string candidate = filename.Substring(0, leftLen) + separator + rightPart;
+
+                if (g.MeasureString(candidate, font).Width / scale <= maxWidth)
+                {
+                    best = candidate;
+                    low = mid + 1;
+                }
+                else
+                {
+                    high = mid - 1;
+                }
+            }
+
+            if (best == "...")
+            {
+                int left = Math.Max(1, filename.Length - extLen);
+                string suffix = extLen > 0 ? filename.Substring(filename.Length - extLen) : "";
+                best = filename.Substring(0, Math.Min(2, left)) + (suffix.StartsWith(".") ? ".." : "...") + suffix;
+            }
+
+            return best;
         }
     }
 }
