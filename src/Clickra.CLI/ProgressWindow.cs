@@ -732,29 +732,32 @@ namespace Clickra.UI
                 switch (cmd)
                 {
                     case "ppt2pdf":
-                        FileProcessor.ConvertPptToPdf(currentFiles, progressCallback);
+                        FileProcessor.ConvertPptToPdf(currentFiles, progressCallback, _cts.Token);
                         break;
                     case "word2pdf":
-                        FileProcessor.ConvertWordToPdf(currentFiles, progressCallback);
+                        FileProcessor.ConvertWordToPdf(currentFiles, progressCallback, _cts.Token);
                         break;
                     case "merge-pdf":
-                        FileProcessor.MergePdfs(currentFiles, Path.Combine(outputDir, "Merged_PDF.pdf"), progressCallback);
+                        FileProcessor.MergePdfs(currentFiles, Path.Combine(outputDir, "Merged_PDF.pdf"), progressCallback, _cts.Token);
                         break;
                     case "img2pdf":
                         for (int i = 0; i < currentFiles.Count; i++)
                         {
+                            _cts.Token.ThrowIfCancellationRequested();
+                            try { ClickraStorage.SetActiveRecordIndex(i); } catch { }
                             var f = currentFiles[i];
                             string outName = Path.Combine(outputDir, Path.GetFileNameWithoutExtension(f) + ".pdf");
                             progressCallback((i * 100) + 50, currentFiles.Count * 100, $"正在轉換圖片: {Path.GetFileName(f)} ({i + 1}/{currentFiles.Count})...");
-                            FileProcessor.ImagesToPdf(new List<string> { f }, outName, null);
+                            FileProcessor.ImagesToPdf(new List<string> { f }, outName, null, _cts.Token);
                         }
+                        _cts.Token.ThrowIfCancellationRequested();
                         progressCallback(currentFiles.Count * 100, currentFiles.Count * 100, "轉換完成，正在儲存 PDF...");
                         break;
                     case "img-merge":
-                        FileProcessor.ImagesToPdf(currentFiles, Path.Combine(outputDir, "Merged_Images.pdf"), progressCallback);
+                        FileProcessor.ImagesToPdf(currentFiles, Path.Combine(outputDir, "Merged_Images.pdf"), progressCallback, _cts.Token);
                         break;
                     case "img-stitch":
-                        FileProcessor.StitchImages(currentFiles, Path.Combine(outputDir, "Stitched_Image.png"), progressCallback);
+                        FileProcessor.StitchImages(currentFiles, Path.Combine(outputDir, "Stitched_Image.png"), progressCallback, _cts.Token);
                         break;
                 }
 
@@ -789,17 +792,23 @@ namespace Clickra.UI
                 string outputDir = currentFiles.Count > 0 ? ClickraStorage.GetOutputDir(currentFiles[0]) : "";
                 string outputs = currentFiles.Count > 0 ? GetOutputPath(cmd, currentFiles, outputDir) : "";
 
+                bool wasCanceled = _cts.IsCancellationRequested;
+                string errorMsg = wasCanceled ? "User Aborted" : ex.Message;
+
                 lock (_stateLock)
                 {
                     _hasError = true;
-                    _errorMessage = ex.Message;
+                    _errorMessage = errorMsg;
                 }
-                InvalidateRect(hwnd, IntPtr.Zero, true);
+                PostMessageW(hwnd, WM_USER_INVALIDATE, (IntPtr)1, IntPtr.Zero);
 
                 // 失敗：立即寫入持久化日誌並暫留 Failed 狀態供 Dashboard 讀取
-                try { ClickraStorage.CompleteActiveRecord(false, ex.Message, endTime, elapsedMs, inputs, outputs); } catch { }
+                try { ClickraStorage.CompleteActiveRecord(cmd, startTimeStr, false, errorMsg, endTime, elapsedMs, inputs, outputs); } catch { }
 
-                MessageBox(hwnd, $"處理過程中發生錯誤：\n{ex.Message}", "Clickra — 錯誤", 0x10); // MB_ICONERROR
+                if (!wasCanceled)
+                {
+                    MessageBox(hwnd, $"處理過程中發生錯誤：\n{ex.Message}", "Clickra — 錯誤", 0x10); // MB_ICONERROR
+                }
                 try { ClickraStorage.ClearActiveRecord(); } catch { }
                 PostMessageW(hwnd, 0x0010, IntPtr.Zero, IntPtr.Zero); // WM_CLOSE
             }
