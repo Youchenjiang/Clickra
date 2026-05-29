@@ -393,6 +393,7 @@ namespace Clickra.UI
             try { _bgBrush?.Dispose(); _bgBrush = null; } catch { }
             try { _bufferGraphics?.Dispose(); _bufferGraphics = null; } catch { }
             try { _bufferBmp?.Dispose(); _bufferBmp = null; } catch { }
+            try { _cts?.Dispose(); } catch { }
 
             RemoveTrayIcon();
             if (_hIcon != IntPtr.Zero)
@@ -658,6 +659,7 @@ namespace Clickra.UI
 
                             // User confirmed cancellation
                             try { _cts.Cancel(); } catch { }
+                            return IntPtr.Zero; // Wait for background thread to handle cancellation and close the window
                         }
 
                         DestroyWindow(hwnd);

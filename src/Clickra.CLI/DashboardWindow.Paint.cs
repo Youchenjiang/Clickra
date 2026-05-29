@@ -457,7 +457,19 @@ namespace Clickra.UI
                 {
                     using var countBrush = new SolidBrush(Color.FromArgb(200, 200, 200));
                     float fileCountX = tagX + tagW + 16;
-                    string displayText = !string.IsNullOrEmpty(entry.InputPaths) ? Path.GetFileName(entry.InputPaths) : $"{entry.FileCount} {GetText("label_files")}";
+                    string displayText = $"{entry.FileCount} {GetText("label_files")}";
+                    if (!string.IsNullOrEmpty(entry.InputPaths))
+                    {
+                        var paths = entry.InputPaths.Split(';', StringSplitOptions.RemoveEmptyEntries);
+                        if (paths.Length > 1)
+                        {
+                            displayText = $"{Path.GetFileName(paths[0])} + {paths.Length - 1} {GetText("label_files")}";
+                        }
+                        else if (paths.Length == 1)
+                        {
+                            displayText = Path.GetFileName(paths[0]);
+                        }
+                    }
                     float maxW = statusLeftX - 16 - fileCountX;
                     if (maxW > 20)
                     {
