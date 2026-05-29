@@ -150,7 +150,10 @@ namespace Clickra.UI
 
             // Draw double buffer to screen
             using var targetG = Graphics.FromHdc(hdc);
-            targetG.DrawImage(_bufferBmp, 0, 0);
+            if (_bufferBmp != null)
+            {
+                targetG.DrawImage(_bufferBmp, 0, 0, _bufferBmp.Width, _bufferBmp.Height);
+            }
         }
 
         static void DrawTabButton(Graphics g, string icon, string label, int tabIndex, int y, float sidebarW)

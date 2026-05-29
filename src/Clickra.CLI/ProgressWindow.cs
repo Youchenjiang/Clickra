@@ -91,12 +91,33 @@ namespace Clickra.UI
         [DllImport("kernel32.dll", EntryPoint = "GetModuleHandleW", CharSet = CharSet.Unicode)]
         static extern IntPtr GetModuleHandle(string? lpModuleName);
 
-        const uint WS_OVERLAPPED_FIXED = 0x00CF0000 & ~0x00040000u & ~0x00020000u;
+        [DllImport("user32.dll")] static extern uint GetDpiForSystem();
+        [DllImport("user32.dll")] static extern bool SetWindowPos(IntPtr hWnd, IntPtr hWndInsertAfter, int X, int Y, int cx, int cy, uint uFlags);
+
+        const uint WS_OVERLAPPED_FIXED = 0x00CF0000 & ~0x00040000u & ~0x00010000u;
         const int DWMWA_DARK_MODE = 20;
         const int CW_USEDEFAULT = unchecked((int)0x80000000);
 
         delegate IntPtr WndProcDelegate(IntPtr h, uint msg, IntPtr w, IntPtr l);
         static readonly WndProcDelegate _wndProcDelegate = WndProc;
+
+        private CancellationTokenSource _cts = new CancellationTokenSource();
+        private NOTIFYICONDATAW _nid;
+        private bool _trayIconAdded = false;
+        private bool _isTrayBtnHovered = false;
+        private IntPtr _hIcon = IntPtr.Zero;
+
+        private const uint WM_TRAYICON = 0x0400 + 1;
+        private const uint WM_USER_INVALIDATE = 0x0400 + 2;
+        private const uint NIM_ADD = 0;
+        private const uint NIM_MODIFY = 1;
+        private const uint NIM_DELETE = 2;
+        private const uint NIF_MESSAGE = 1;
+        private const uint NIF_ICON = 2;
+        private const uint NIF_TIP = 4;
+        private const int SW_HIDE = 0;
+        private const int SW_SHOW = 5;
+        private const int SW_RESTORE = 9;
 
         private readonly object _stateLock = new object();
 
@@ -131,6 +152,36 @@ namespace Clickra.UI
         private Pen? _borderPen;
         private SolidBrush? _bgBrush;
 
+        private void RecreateScaledFonts()
+        {
+            try { _titleFont?.Dispose(); _titleFont = null; } catch { }
+            try { _subFont?.Dispose(); _subFont = null; } catch { }
+            try { _headerFont?.Dispose(); _headerFont = null; } catch { }
+            try { _msgFont?.Dispose(); _msgFont = null; } catch { }
+            try { _tipFont?.Dispose(); _tipFont = null; } catch { }
+            try { _pctFont?.Dispose(); _pctFont = null; } catch { }
+
+            string lang = ClickraStorage.GetSetting("Language");
+            lang = Localization.NormalizeLanguageCode(lang);
+            string fontName = "Segoe UI";
+            if (lang.StartsWith("zh-TW", StringComparison.OrdinalIgnoreCase) || lang.StartsWith("zh-HK", StringComparison.OrdinalIgnoreCase))
+                fontName = "Microsoft JhengHei UI";
+            else if (lang.StartsWith("zh-CN", StringComparison.OrdinalIgnoreCase) || lang.StartsWith("zh", StringComparison.OrdinalIgnoreCase))
+                fontName = "Microsoft YaHei UI";
+            else if (lang.StartsWith("ja", StringComparison.OrdinalIgnoreCase))
+                fontName = "Yu Gothic UI";
+            else if (lang.StartsWith("ko", StringComparison.OrdinalIgnoreCase))
+                fontName = "Malgun Gothic";
+
+            float s = _dpiScale;
+            _titleFont = new Font("Segoe UI Variable Display", 32f * s, FontStyle.Bold, GraphicsUnit.Pixel);
+            _subFont = new Font(fontName, 14.67f * s, GraphicsUnit.Pixel);
+            _headerFont = new Font(fontName, 21.33f * s, FontStyle.Bold, GraphicsUnit.Pixel);
+            _msgFont = new Font(fontName, 14.67f * s, GraphicsUnit.Pixel);
+            _tipFont = new Font(fontName, 12f * s, GraphicsUnit.Pixel);
+            _pctFont = new Font(fontName, 13.33f * s, FontStyle.Bold, GraphicsUnit.Pixel);
+        }
+
         public static void Show(string command, List<string> files)
         {
             var window = new ProgressWindow();
@@ -158,22 +209,24 @@ namespace Clickra.UI
                 _currentDispWidth = 0;
                 _targetWidth = 0;
                 _shimmerOffset = -120;
+                _scrollOffset = 0f;
             }
 
-            // 初始化 GDI+ 快取物件
-            _titleFont ??= new Font("Segoe UI Variable Display", 24, FontStyle.Bold);
-            _subFont ??= new Font("Segoe UI Variable Display", 11);
-            _headerFont ??= new Font("Segoe UI Variable Display", 16, FontStyle.Bold);
-            _msgFont ??= new Font("Segoe UI Variable Display", 11);
-            _tipFont ??= new Font("Segoe UI Variable Display", 9);
-            _pctFont ??= new Font("Segoe UI Variable Display", 10, FontStyle.Bold);
-            _linePen ??= new Pen(Color.FromArgb(60, 60, 60));
-            _borderPen ??= new Pen(Color.FromArgb(70, 70, 70));
+            uint dpi = 96;
+            try { dpi = GetDpiForSystem(); } catch {}
+            _dpiScale = dpi / 96.0f;
+
+            RecreateScaledFonts();
+            _linePen ??= new Pen(Color.FromArgb(60, 60, 60), 1f * _dpiScale);
+            _borderPen ??= new Pen(Color.FromArgb(70, 70, 70), 1f * _dpiScale);
             _bgBrush ??= new SolidBrush(Color.FromArgb(45, 45, 45));
+
+            int clientW = (int)(520 * _dpiScale);
+            int clientH = (int)(280 * _dpiScale);
 
             if (_bufferBmp == null)
             {
-                _bufferBmp = new Bitmap(520, 280);
+                _bufferBmp = new Bitmap(clientW, clientH);
                 _bufferGraphics = Graphics.FromImage(_bufferBmp);
                 _bufferGraphics.TextRenderingHint = TextRenderingHint.AntiAliasGridFit;
                 _bufferGraphics.SmoothingMode = SmoothingMode.AntiAlias;
@@ -196,7 +249,7 @@ namespace Clickra.UI
 
             RegisterClassEx(ref wc);
 
-            var rect = new RECT { left = 0, top = 0, right = 520, bottom = 280 };
+            var rect = new RECT { left = 0, top = 0, right = clientW, bottom = clientH };
             AdjustWindowRectEx(ref rect, WS_OVERLAPPED_FIXED, false, 0);
             int winW = rect.right - rect.left;
             int winH = rect.bottom - rect.top;
@@ -583,31 +636,38 @@ try {{
                 tot = _total; cur = _current;
             }
 
+            float s = _dpiScale;
+
             if (_titleFont != null)
-                g.DrawString("Clickra", _titleFont, Brushes.White, 36, 28);
+                g.DrawString("Clickra", _titleFont, Brushes.White, 36 * s, 28 * s);
 
             if (_subFont != null)
             {
                 string subText = hasErr ? "作業失敗" : (comp ? "作業完成" : "正在執行作業...");
                 Color subColor = hasErr ? Color.FromArgb(255, 90, 70) : (comp ? Color.FromArgb(100, 220, 100) : Color.FromArgb(160, 160, 160));
                 using var subBrush = new SolidBrush(subColor);
-                g.DrawString(subText, _subFont, subBrush, 36, 72);
+                g.DrawString(subText, _subFont, subBrush, 36 * s, 72 * s);
             }
 
             if (_linePen != null)
-                g.DrawLine(_linePen, 36, 110, 484, 110);
+                g.DrawLine(_linePen, 36 * s, 110 * s, 484 * s, 110 * s);
 
             if (hasErr)
             {
                 if (_headerFont != null)
                 {
                     using var errBrush = new SolidBrush(Color.FromArgb(255, 90, 70));
-                    g.DrawString("❌ 處理失敗", _headerFont, errBrush, 36, 130);
+                    g.DrawString("❌ 處理失敗", _headerFont, errBrush, 36 * s, 130 * s);
                 }
                 if (_msgFont != null)
                 {
                     using var errMsgBrush = new SolidBrush(Color.FromArgb(200, 200, 200));
-                    g.DrawString(errMsg, _msgFont, errMsgBrush, new RectangleF(36, 170, 448, 60));
+                    string displayErrMsg = errMsg;
+                    if (displayErrMsg.Equals("User Aborted", StringComparison.OrdinalIgnoreCase))
+                    {
+                        displayErrMsg = Localization.T("error_user_aborted", ClickraStorage.GetSetting("Language"));
+                    }
+                    g.DrawString(displayErrMsg, _msgFont, errMsgBrush, new RectangleF(36 * s, 170 * s, 448 * s, 60 * s));
                 }
             }
             else if (comp)
@@ -615,33 +675,89 @@ try {{
                 if (_headerFont != null)
                 {
                     using var succBrush = new SolidBrush(Color.FromArgb(100, 220, 100));
-                    g.DrawString("✔ 轉換成功！", _headerFont, succBrush, 36, 130);
+                    g.DrawString("✔ 轉換成功！", _headerFont, succBrush, 36 * s, 130 * s);
                 }
                 if (_msgFont != null)
                 {
                     using var msgBrush = new SolidBrush(Color.FromArgb(220, 220, 220));
-                    g.DrawString(msg, _msgFont, msgBrush, 36, 170);
+                    g.DrawString(msg, _msgFont, msgBrush, 36 * s, 170 * s);
                 }
                 if (_tipFont != null)
                 {
                     using var tipBrush = new SolidBrush(Color.FromArgb(120, 120, 120));
-                    g.DrawString("視窗將於數秒後自動關閉...", _tipFont, tipBrush, 36, 220);
+                    g.DrawString("視窗將於數秒後自動關閉...", _tipFont, tipBrush, 36 * s, 220 * s);
                 }
             }
             else
             {
                 if (_msgFont != null)
-                    g.DrawString(msg, _msgFont, Brushes.White, 36, 130);
+                {
+                    string drawPctStr = tot > 0 ? $"{(cur * 100 / tot)}%" : "";
+                    float logicalPctW = 0;
+                    if (_pctFont != null && tot > 0)
+                    {
+                        logicalPctW = g.MeasureString(drawPctStr, _pctFont).Width / s;
+                    }
+                    float logicalMaxMsgW = 448f;
+                    if (logicalPctW > 0)
+                    {
+                        logicalMaxMsgW = 448f - logicalPctW - 10f;
+                    }
 
-                int barX = 36, barY = 170, barW = 448, barH = 16;
-                using var bgPath = GetRoundedRectPath(new RectangleF(barX, barY, barW, barH), 6);
+                    float fullMsgW = g.MeasureString(msg, _msgFont).Width / s;
+                    float maxLogicalScroll = Math.Max(0f, fullMsgW - logicalMaxMsgW);
+
+                    if (maxLogicalScroll > 0)
+                    {
+                        float currentScroll = 0f;
+                        lock (_stateLock)
+                        {
+                            if (_scrollOffset > maxLogicalScroll) _scrollOffset = maxLogicalScroll;
+                            currentScroll = _scrollOffset;
+                        }
+
+                        var oldClip = g.Clip;
+                        g.SetClip(new RectangleF(36 * s, 120 * s, logicalMaxMsgW * s, 30 * s));
+                        g.DrawString(msg, _msgFont, Brushes.White, 36 * s - currentScroll * s, 130 * s);
+                        g.Clip = oldClip;
+
+                        // Draw scrollbar if scrollable
+                        float scrollbarY = 152;
+                        float thumbW = Math.Max(15f, (logicalMaxMsgW / fullMsgW) * logicalMaxMsgW);
+                        float thumbX = 36f + (currentScroll / fullMsgW) * logicalMaxMsgW;
+                        if (thumbX + thumbW > 36f + logicalMaxMsgW) thumbX = 36f + logicalMaxMsgW - thumbW;
+
+                        using (var trackBrush = new SolidBrush(Color.FromArgb(15, 255, 255, 255)))
+                        {
+                            g.FillRectangle(trackBrush, 36 * s, scrollbarY * s, logicalMaxMsgW * s, 2 * s);
+                        }
+                        using (var thumbBrush = new SolidBrush(Color.FromArgb(80, 255, 255, 255)))
+                        {
+                            g.FillRectangle(thumbBrush, thumbX * s, scrollbarY * s, thumbW * s, 2 * s);
+                        }
+                    }
+                    else
+                    {
+                        lock (_stateLock)
+                        {
+                            _scrollOffset = 0f;
+                 _isDraggingScroll = false;
+                 _dragStartMouseX = 0f;
+                 _dragStartOffset = 0f;
+                        }
+                        g.DrawString(msg, _msgFont, Brushes.White, 36 * s, 130 * s);
+                    }
+                }
+
+                float barX = 36 * s, barY = 170 * s, barW = 448 * s, barH = 16 * s;
+                using var bgPath = GetRoundedRectPath(new RectangleF(barX, barY, barW, barH), 6 * s);
                 if (_bgBrush != null) g.FillPath(_bgBrush, bgPath);
                 if (_borderPen != null) g.DrawPath(_borderPen, bgPath);
 
                 if (dispW > 3)
                 {
-                    var fillRect = new RectangleF(barX, barY, (float)dispW, barH);
-                    using var fillPath = GetRoundedRectPath(fillRect, 6);
+                    var fillRect = new RectangleF(barX, barY, (float)(dispW * s), barH);
+                    using var fillPath = GetRoundedRectPath(fillRect, 6 * s);
                     
                     Color accent = GetSystemColorizationColor();
                     Color accentLight = Lighten(accent, 0.3f);
@@ -651,7 +767,7 @@ try {{
                     var oldClip = g.Clip;
                     g.SetClip(fillPath);
 
-                    var shimmerRect = new RectangleF(shimOff, barY, 120, barH);
+                    var shimmerRect = new RectangleF(shimOff * s, barY, 120 * s, barH);
                     using var shimmerBrush = new LinearGradientBrush(shimmerRect, Color.FromArgb(0, 255, 255, 255), Color.FromArgb(100, 255, 255, 255), LinearGradientMode.Horizontal);
                     var blend = new ColorBlend(3);
                     blend.Colors = new Color[] { Color.FromArgb(0, 255, 255, 255), Color.FromArgb(100, 255, 255, 255), Color.FromArgb(0, 255, 255, 255) };
