@@ -10,16 +10,21 @@ The `scripts/build_msix.ps1` script has been updated to automatically detect thi
 - Version revision number (4th digit) MUST be 0 for Microsoft Store.
 - App must handle zero-argument launch without crashing (handled in `Clickra.CLI/Program.cs`).
 
-## v3.0.8 Technical Context (For AI Handoff)
+## v3.1.0 Technical Context (For AI Handoff)
 - **Architecture**: The entire project (`ClickraShell` and `Clickra.CLI`) is now **100% Native AOT**. Standard WinForms/WPF cannot be used.
 - **UI Rendering**: The Dashboard (`DashboardWindow*.cs`) and Progress Window (`ProgressWindow.cs`) use raw Win32 APIs (`CreateWindowExW`) and GDI+.
   - *Rule 1*: Always use `W` (Unicode) suffixed APIs and `Marshal.StringToHGlobalUni` to prevent MSIX title bar truncation (the "C" bug).
   - *Rule 2*: Do not attempt Mica/Acrylic rendering. We use a solid `#202020` dark background because GDI+ cannot blend with DWM Mica properly.
   - *Rule 3*: ProgressWindow uses `WM_TIMER` (16ms) to drive smooth cubic easing animations and shimmer glow overlays. It dynamically fetches system accent color via `DwmGetColorizationColor`.
+  - *Rule 4*: For fonts on high-DPI screens, always initialize with `GraphicsUnit.Pixel` to prevent double/quadratic scaling (overlapping text), and use language-adaptive font names.
 - **Office Detection in MSIX**: Standard `Type.GetTypeFromProgID` fails inside the MSIX container. You must use direct registry checks (`HKLM\SOFTWARE\Classes\PowerPoint.Application`).
 - **Cross-process Sync & Locking**:
-  - We use file-based IPC (`active.tmp`) instead of in-memory lists to track active jobs across the shell extension process (`explorer.exe`) and CLI process.
-  - Named Mutexes (`Global\Clickra_Language_Mutex`) and file locks are utilized to normalize language and prevent settings race conditions in MSIX.
+  - We use explicit argument passing for command tags and start times (`CompleteActiveRecord` signature in `ClickraStorage.cs` / `ClickraCli.cs`) instead of reading `active.tmp` inside the storage class, resolving concurrency race conditions.
+  - Named Mutexes (`Global\Clickra_Language_Mutex`, `Global\Clickra_Dashboard_Mutex`) and file locks are utilized to normalize language, enforce single-instance dashboard check, and prevent settings race conditions in MSIX.
+- **UI Interactions & Horizontal Scrollbars**:
+  - Minimize-to-tray is supported in the progress window via `WM_SYSCOMMAND` + `SC_MINIMIZE`.
+  - Conversions can be aborted via `WM_CLOSE` and prompt confirmation, terminating spawned PowerShell Office background processes using process tree kill.
+  - Horizontal scrolling is supported in history card details and progress status overflow text using custom-drawn scrollbars, dragging thumb tracking, `WM_MOUSEWHEEL` handling, and GDI+ clipping regions.
 - **Code Layout Restrictions (`ClickraStorage.cs`)**:
   - Avoid moving private helper methods (`WriteActiveFileInternal`/`ReadActiveFileInternal`) above public active record methods. Keep the original method ordering to prevent noisy, massive diff blocks in git history.
 

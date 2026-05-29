@@ -150,7 +150,10 @@ namespace Clickra.UI
 
             // Draw double buffer to screen
             using var targetG = Graphics.FromHdc(hdc);
-            targetG.DrawImage(_bufferBmp, 0, 0);
+            if (_bufferBmp != null)
+            {
+                targetG.DrawImage(_bufferBmp, 0, 0, _bufferBmp.Width, _bufferBmp.Height);
+            }
         }
 
         static void DrawTabButton(Graphics g, string icon, string label, int tabIndex, int y, float sidebarW)
@@ -276,97 +279,115 @@ namespace Clickra.UI
             if (activeEntry.HasValue)
             {
                 var ae = activeEntry.Value;
-                int rowY = startY;
+                var activeFiles = !string.IsNullOrEmpty(ae.InputPaths)
+                    ? ae.InputPaths.Split(new[] { ';' }, StringSplitOptions.RemoveEmptyEntries)
+                    : Array.Empty<string>();
 
-                // 進行中作業背景
-                Color activeBgColor = ae.Status switch
-                {
-                    ConversionStatus.Pending    => Color.FromArgb(38, 38, 48),
-                    ConversionStatus.InProgress => Color.FromArgb(30, 42, 55),
-                    ConversionStatus.Success    => Color.FromArgb(30, 44, 34),
-                    ConversionStatus.Failed     => Color.FromArgb(50, 32, 32),
-                    _                           => Color.FromArgb(36, 36, 36)
-                };
-                Color activeBorderColor = ae.Status switch
-                {
-                    ConversionStatus.Pending    => Color.FromArgb(70, 70, 100),
-                    ConversionStatus.InProgress => Color.FromArgb(0, 120, 212),
-                    ConversionStatus.Success    => Color.FromArgb(50, 160, 80),
-                    ConversionStatus.Failed     => Color.FromArgb(200, 60, 60),
-                    _                           => Color.FromArgb(60, 60, 60)
-                };
+                int activeCount = activeFiles.Length > 0 ? activeFiles.Length : 1;
 
-                using var path = GetRoundedRectPath(new RectangleF(contentX * s, rowY * s, rowW * s, rowH * s), 6 * s);
-                using var rowBg = new SolidBrush(activeBgColor);
-                g.FillPath(rowBg, path);
-                using var borderPen = new Pen(activeBorderColor);
-                g.DrawPath(borderPen, path);
-
-                // 時間與相對排版計算
-                float timeW = 120;
-                if (_bodyFont != null)
+                for (int idxActive = 0; idxActive < activeCount; idxActive++)
                 {
-                    using var timeBrush = new SolidBrush(Color.FromArgb(140, 140, 140));
-                    g.DrawString(ae.Time, _bodyFont, timeBrush, (contentX + 12) * s, (rowY + 13) * s);
-                    timeW = g.MeasureString(ae.Time, _bodyFont).Width / s;
-                }
+                    int rowY = startY;
 
-                // 指令標籤 (動態相對起點)
-                float tagX = contentX + 12 + timeW + 16;
-                float tagW = DrawCommandTag(g, ae.Command, tagX, rowY + 11);
-
-                // 檔案數 (動態相對起點)
-                if (_bodyFont != null)
-                {
-                    using var countBrush = new SolidBrush(Color.FromArgb(200, 200, 200));
-                    float fileCountX = tagX + tagW + 16;
-                    g.DrawString($"{ae.FileCount} {GetText("label_files")}", _bodyFont, countBrush, fileCountX * s, (rowY + 13) * s);
-                }
-
-                // 狀態標籤
-                string statusText;
-                Color statusColor;
-                switch (ae.Status)
-                {
-                    case ConversionStatus.Pending:
-                        statusText = GetText("status_pending");
-                        statusColor = Color.FromArgb(180, 180, 100);
-                        break;
-                    case ConversionStatus.InProgress:
-                        statusText = GetText("status_converting");
-                        statusColor = Color.FromArgb(80, 160, 240);
-                        break;
-                    case ConversionStatus.Success:
-                        statusText = GetText("status_success");
-                        statusColor = Color.FromArgb(100, 220, 100);
-                        break;
-                    case ConversionStatus.Failed:
-                        statusText = GetText("status_failed");
-                        statusColor = Color.FromArgb(255, 90, 70);
-                        break;
-                    default:
-                        statusText = "";
-                        statusColor = Color.Gray;
-                        break;
-                }
-                if (_tagFont != null)
-                {
-                    using var statusBrush = new SolidBrush(statusColor);
-                    g.DrawString(statusText, _tagFont, statusBrush, (contentX + rowW - 150) * s, (rowY + 13) * s);
-                }
-
-                // 錯誤訊息（失敗時）
-                if (ae.Status == ConversionStatus.Failed && !string.IsNullOrEmpty(ae.ErrorMessage))
-                {
-                    if (_subFont != null)
+                    // Determine status for this specific file
+                    ConversionStatus fileStatus = ae.Status;
+                    if (ae.Status == ConversionStatus.InProgress && activeFiles.Length > 1)
                     {
-                        using var errBrush = new SolidBrush(Color.FromArgb(230, 90, 70));
-                        string errText = ae.ErrorMessage.Length > 14 ? ae.ErrorMessage.Substring(0, 14) + "..." : ae.ErrorMessage;
-                        g.DrawString(errText, _subFont, errBrush, (contentX + rowW - 90) * s, (rowY + 14) * s);
+                        if (idxActive < ae.CurrentIndex) fileStatus = ConversionStatus.Success;
+                        else if (idxActive == ae.CurrentIndex) fileStatus = ConversionStatus.InProgress;
+                        else fileStatus = ConversionStatus.Pending;
                     }
-                }
+                    else if (ae.Status == ConversionStatus.Pending && activeFiles.Length > 1)
+                    {
+                        fileStatus = ConversionStatus.Pending;
+                    }
 
-                startY += 52;
+                    // Background color & border color based on fileStatus
+                    Color activeBgColor = fileStatus switch
+                    {
+                        ConversionStatus.Pending    => Color.FromArgb(38, 38, 48),
+                        ConversionStatus.InProgress => Color.FromArgb(30, 42, 55),
+                        ConversionStatus.Success    => Color.FromArgb(30, 44, 34),
+                        ConversionStatus.Failed     => Color.FromArgb(50, 32, 32),
+                        _                           => Color.FromArgb(36, 36, 36)
+                    };
+                    Color activeBorderColor = fileStatus switch
+                    {
+                        ConversionStatus.Pending    => Color.FromArgb(70, 70, 100),
+                        ConversionStatus.InProgress => Color.FromArgb(0, 120, 212),
+                        ConversionStatus.Success    => Color.FromArgb(50, 160, 80),
+                        ConversionStatus.Failed     => Color.FromArgb(200, 60, 60),
+                        _                           => Color.FromArgb(60, 60, 60)
+                    };
+
+                    using (var path = GetRoundedRectPath(new RectangleF(contentX * s, rowY * s, rowW * s, rowH * s), 6 * s))
+                    using (var rowBg = new SolidBrush(activeBgColor))
+                    {
+                        g.FillPath(rowBg, path);
+                        using (var borderPen = new Pen(activeBorderColor))
+                        {
+                            g.DrawPath(borderPen, path);
+                        }
+                    }
+
+                    // Render Time
+                    float timeW = 120;
+                    if (_bodyFont != null)
+                    {
+                        using var timeBrush = new SolidBrush(Color.FromArgb(140, 140, 140));
+                        g.DrawString(ae.Time, _bodyFont, timeBrush, (contentX + 12) * s, (rowY + 13) * s);
+                        timeW = g.MeasureString(ae.Time, _bodyFont).Width / s;
+                    }
+
+                    // Command Tag
+                    float tagX = contentX + 12 + timeW + 16;
+                    float tagW = DrawCommandTag(g, ae.Command, tagX, rowY + 11);
+
+                    // Filename / Display Text
+                    if (_bodyFont != null)
+                    {
+                        using var countBrush = new SolidBrush(Color.FromArgb(200, 200, 200));
+                        float fileCountX = tagX + tagW + 16;
+                        
+                        string displayText = activeFiles.Length > 0
+                            ? Path.GetFileName(activeFiles[idxActive])
+                            : $"{ae.FileCount} {GetText("label_files")}";
+
+                        float maxW = (contentX + rowW - 160) - fileCountX;
+                        if (maxW > 20)
+                        {
+                            displayText = TruncateFileName(g, displayText, _bodyFont, maxW, s);
+                        }
+                        g.DrawString(displayText, _bodyFont, countBrush, fileCountX * s, (rowY + 13) * s);
+                    }
+
+                    // Status Label
+                    string statusText = fileStatus switch
+                    {
+                        ConversionStatus.Pending => GetText("status_pending"),
+                        ConversionStatus.InProgress => GetText("status_converting"),
+                        ConversionStatus.Success => GetText("status_success"),
+                        ConversionStatus.Failed => GetText("status_failed"),
+                        _ => ""
+                    };
+                    Color statusColor = fileStatus switch
+                    {
+                        ConversionStatus.Pending => Color.FromArgb(180, 180, 100),
+                        ConversionStatus.InProgress => Color.FromArgb(80, 160, 240),
+                        ConversionStatus.Success => Color.FromArgb(100, 220, 100),
+                        ConversionStatus.Failed => Color.FromArgb(255, 90, 70),
+                        _ => Color.Gray
+                    };
+
+                    if (_tagFont != null)
+                    {
+                        using var statusBrush = new SolidBrush(statusColor);
+                        g.DrawString(statusText, _tagFont, statusBrush, (contentX + rowW - 150) * s, (rowY + 13) * s);
+                    }
+
+
+                    startY += 52;
+                }
             }
 
             // ——— 顯示持久化歷史紀錄———
@@ -414,32 +435,54 @@ namespace Clickra.UI
                 float tagX = contentX + 12 + timeW + 16;
                 float tagW = DrawCommandTag(g, entry.Command, tagX, currentY + 11);
 
-                // 檔案數 (動態相對起點)
+                // 狀態標籤與時間排版計算
+                Color statusColor = entry.IsSuccess ? Color.FromArgb(100, 220, 100) : Color.FromArgb(255, 90, 70);
+                string statusText = entry.IsSuccess ? GetText("status_success") : (!string.IsNullOrEmpty(entry.ErrorMessage) ? entry.ErrorMessage : GetText("status_failed"));
+                if (!entry.IsSuccess && !string.IsNullOrEmpty(entry.ErrorMessage) && entry.ErrorMessage.Equals("User Aborted", StringComparison.OrdinalIgnoreCase))
+                {
+                    statusText = GetText("error_user_aborted");
+                }
+
+                float statusW = 0;
+                if (_tagFont != null)
+                {
+                    float statusMaxW = 150 - 12;
+                    statusText = TruncateText(g, statusText, _tagFont, statusMaxW, s);
+                    statusW = g.MeasureString(statusText, _tagFont).Width / s;
+                }
+                float statusLeftX = contentX + rowW - 16 - statusW;
+
+                // 檔案名稱 (動態相對起點)
                 if (_bodyFont != null)
                 {
                     using var countBrush = new SolidBrush(Color.FromArgb(200, 200, 200));
                     float fileCountX = tagX + tagW + 16;
-                    g.DrawString($"{entry.FileCount} {GetText("label_files")}", _bodyFont, countBrush, fileCountX * s, (currentY + 13) * s);
+                    string displayText = $"{entry.FileCount} {GetText("label_files")}";
+                    if (!string.IsNullOrEmpty(entry.InputPaths))
+                    {
+                        var paths = entry.InputPaths.Split(';', StringSplitOptions.RemoveEmptyEntries);
+                        if (paths.Length > 1)
+                        {
+                            displayText = $"{Path.GetFileName(paths[0])} + {paths.Length - 1} {GetText("label_files")}";
+                        }
+                        else if (paths.Length == 1)
+                        {
+                            displayText = Path.GetFileName(paths[0]);
+                        }
+                    }
+                    float maxW = statusLeftX - 16 - fileCountX;
+                    if (maxW > 20)
+                    {
+                        displayText = TruncateFileName(g, displayText, _bodyFont, maxW, s);
+                    }
+                    g.DrawString(displayText, _bodyFont, countBrush, fileCountX * s, (currentY + 13) * s);
                 }
 
-                // 狀態標籤
-                Color statusColor = entry.IsSuccess ? Color.FromArgb(100, 220, 100) : Color.FromArgb(255, 90, 70);
-                string statusText = entry.IsSuccess ? GetText("status_success") : GetText("status_failed");
+                // 繪製狀態標籤
                 if (_tagFont != null)
                 {
                     using var statusBrush = new SolidBrush(statusColor);
-                    g.DrawString(statusText, _tagFont, statusBrush, (contentX + rowW - 150) * s, (currentY + 13) * s);
-                }
-
-                // 錯誤訊息（失敗時）
-                if (!entry.IsSuccess && !string.IsNullOrEmpty(entry.ErrorMessage) && !isExpanded)
-                {
-                    if (_subFont != null)
-                    {
-                        using var errBrush = new SolidBrush(Color.FromArgb(230, 90, 70));
-                        string errText = entry.ErrorMessage.Length > 14 ? entry.ErrorMessage.Substring(0, 14) + "..." : entry.ErrorMessage;
-                        g.DrawString(errText, _subFont, errBrush, (contentX + rowW - 90) * s, (currentY + 14) * s);
-                    }
+                    g.DrawString(statusText, _tagFont, statusBrush, (contentX + rowW - 16 - statusW) * s, (currentY + 13) * s);
                 }
 
                 // Render Expanded Details
@@ -459,34 +502,123 @@ namespace Clickra.UI
                         float w1 = g.MeasureString(GetText("history_detail_inputs") + ":", _subFont).Width / s;
                         float w2 = g.MeasureString(GetText("history_detail_outputs") + ":", _subFont).Width / s;
                         float w3 = g.MeasureString(GetText("history_detail_time") + ":", _subFont).Width / s;
-                        float w4 = g.MeasureString(GetText("history_detail_elapsed") + ":", _subFont).Width / s;
+                        float w4 = g.MeasureString(GetText(entry.IsSuccess ? "history_detail_elapsed" : "history_detail_error") + ":", _subFont).Width / s;
                         float maxLabelW = Math.Max(w1, Math.Max(w2, Math.Max(w3, w4)));
                         float valX = contentX + 12 + maxLabelW + 16;
+                        float maxValW = contentX + rowW - 12 - valX;
 
                         // 1. Files / Input Paths
                         g.DrawString(GetText("history_detail_inputs") + ":", _subFont, labelBrush, (contentX + 12) * s, (currentY + 54) * s);
                         string inputsText = entry.InputPaths;
                         if (string.IsNullOrEmpty(inputsText)) inputsText = "N/A";
                         else inputsText = inputsText.Replace(";", ", ");
-                        if (inputsText.Length > 60) inputsText = inputsText.Substring(0, 57) + "...";
-                        g.DrawString(inputsText, _subFont, valBrush, valX * s, (currentY + 54) * s);
+                        
+                        float scrollOffset0 = 0;
+                        DetailScrollOffsets.TryGetValue((i, 0), out scrollOffset0);
+                        var state0 = g.Save();
+                        g.IntersectClip(new RectangleF(valX * s, (currentY + 54) * s, maxValW * s, 20 * s));
+                        g.DrawString(inputsText, _subFont, valBrush, (valX - scrollOffset0) * s, (currentY + 54) * s);
+                        g.Restore(state0);
+
+                        // Draw inputs scrollbar if scrollable
+                        float textW0 = g.MeasureString(inputsText, _subFont).Width / s;
+                        if (textW0 > maxValW)
+                        {
+                            float scrollbarY = currentY + 71;
+                            float thumbW = Math.Max(15f, (maxValW / textW0) * maxValW);
+                            float thumbX = valX + (scrollOffset0 / textW0) * maxValW;
+                            if (thumbX + thumbW > valX + maxValW) thumbX = valX + maxValW - thumbW;
+
+                            using (var trackBrush = new SolidBrush(Color.FromArgb(15, 255, 255, 255)))
+                            {
+                                g.FillRectangle(trackBrush, valX * s, scrollbarY * s, maxValW * s, 2 * s);
+                            }
+                            using (var thumbBrush = new SolidBrush(Color.FromArgb(80, 255, 255, 255)))
+                            {
+                                g.FillRectangle(thumbBrush, thumbX * s, scrollbarY * s, thumbW * s, 2 * s);
+                            }
+                        }
 
                         // 2. Output Path
                         g.DrawString(GetText("history_detail_outputs") + ":", _subFont, labelBrush, (contentX + 12) * s, (currentY + 80) * s);
                         string outputsText = entry.OutputPath;
                         if (string.IsNullOrEmpty(outputsText)) outputsText = "N/A";
-                        if (outputsText.Length > 60) outputsText = outputsText.Substring(0, 57) + "...";
-                        g.DrawString(outputsText, _subFont, valBrush, valX * s, (currentY + 80) * s);
+                        
+                        float scrollOffset1 = 0;
+                        DetailScrollOffsets.TryGetValue((i, 1), out scrollOffset1);
+                        var state1 = g.Save();
+                        g.IntersectClip(new RectangleF(valX * s, (currentY + 80) * s, maxValW * s, 20 * s));
+                        g.DrawString(outputsText, _subFont, valBrush, (valX - scrollOffset1) * s, (currentY + 80) * s);
+                        g.Restore(state1);
+
+                        // Draw outputs scrollbar if scrollable
+                        float textW1 = g.MeasureString(outputsText, _subFont).Width / s;
+                        if (textW1 > maxValW)
+                        {
+                            float scrollbarY = currentY + 97;
+                            float thumbW = Math.Max(15f, (maxValW / textW1) * maxValW);
+                            float thumbX = valX + (scrollOffset1 / textW1) * maxValW;
+                            if (thumbX + thumbW > valX + maxValW) thumbX = valX + maxValW - thumbW;
+
+                            using (var trackBrush = new SolidBrush(Color.FromArgb(15, 255, 255, 255)))
+                            {
+                                g.FillRectangle(trackBrush, valX * s, scrollbarY * s, maxValW * s, 2 * s);
+                            }
+                            using (var thumbBrush = new SolidBrush(Color.FromArgb(80, 255, 255, 255)))
+                            {
+                                g.FillRectangle(thumbBrush, thumbX * s, scrollbarY * s, thumbW * s, 2 * s);
+                            }
+                        }
 
                         // 3. Time Details
                         g.DrawString(GetText("history_detail_time") + ":", _subFont, labelBrush, (contentX + 12) * s, (currentY + 106) * s);
                         string timeText = $"{entry.Time}  →  {(string.IsNullOrEmpty(entry.EndTime) ? entry.Time : entry.EndTime)}";
+                        timeText = TruncateText(g, timeText, _subFont, maxValW, s);
                         g.DrawString(timeText, _subFont, valBrush, valX * s, (currentY + 106) * s);
 
-                        // 4. Elapsed Time
-                        g.DrawString(GetText("history_detail_elapsed") + ":", _subFont, labelBrush, (contentX + 12) * s, (currentY + 132) * s);
-                        string elapsedText = entry.ElapsedMs >= 0 ? $"{(entry.ElapsedMs / 1000.0):F2} s ({entry.ElapsedMs} ms)" : "N/A";
-                        g.DrawString(elapsedText, _subFont, valBrush, valX * s, (currentY + 132) * s);
+                        // 4. Elapsed Time or Error Message
+                        if (entry.IsSuccess)
+                        {
+                            g.DrawString(GetText("history_detail_elapsed") + ":", _subFont, labelBrush, (contentX + 12) * s, (currentY + 132) * s);
+                            string elapsedText = entry.ElapsedMs >= 0 ? $"{(entry.ElapsedMs / 1000.0):F2} s ({entry.ElapsedMs} ms)" : "N/A";
+                            elapsedText = TruncateText(g, elapsedText, _subFont, maxValW, s);
+                            g.DrawString(elapsedText, _subFont, valBrush, valX * s, (currentY + 132) * s);
+                        }
+                        else
+                        {
+                            g.DrawString(GetText("history_detail_error") + ":", _subFont, labelBrush, (contentX + 12) * s, (currentY + 132) * s);
+                            string errorText = !string.IsNullOrEmpty(entry.ErrorMessage) ? entry.ErrorMessage : "N/A";
+                            if (errorText.Equals("User Aborted", StringComparison.OrdinalIgnoreCase))
+                            {
+                                errorText = GetText("error_user_aborted");
+                            }
+                            
+                            float scrollOffset2 = 0;
+                            DetailScrollOffsets.TryGetValue((i, 2), out scrollOffset2);
+                            var state2 = g.Save();
+                            g.IntersectClip(new RectangleF(valX * s, (currentY + 132) * s, maxValW * s, 20 * s));
+                            g.DrawString(errorText, _subFont, valBrush, (valX - scrollOffset2) * s, (currentY + 132) * s);
+                            g.Restore(state2);
+
+                            // Draw error scrollbar if scrollable
+                            float textW2 = g.MeasureString(errorText, _subFont).Width / s;
+                            if (textW2 > maxValW)
+                            {
+                                float scrollbarY = currentY + 149;
+                                float thumbW = Math.Max(15f, (maxValW / textW2) * maxValW);
+                                float thumbX = valX + (scrollOffset2 / textW2) * maxValW;
+                                if (thumbX + thumbW > valX + maxValW) thumbX = valX + maxValW - thumbW;
+
+                                using (var trackBrush = new SolidBrush(Color.FromArgb(15, 255, 255, 255)))
+                                {
+                                    g.FillRectangle(trackBrush, valX * s, scrollbarY * s, maxValW * s, 2 * s);
+                                }
+                                using (var thumbBrush = new SolidBrush(Color.FromArgb(80, 255, 255, 255)))
+                                {
+                                    g.FillRectangle(thumbBrush, thumbX * s, scrollbarY * s, thumbW * s, 2 * s);
+                                }
+                            }
+                        }
                     }
                 }
 
@@ -1159,6 +1291,104 @@ namespace Clickra.UI
         static string GetText(string key)
         {
             return Clickra.Core.Localization.T(key, ClickraStorage.GetSetting("Language"));
+        }
+
+        private static string TruncateText(Graphics g, string text, Font font, float maxLogicalWidth, float scale)
+        {
+            if (string.IsNullOrEmpty(text)) return "";
+            float measuredWidth = g.MeasureString(text, font).Width / scale;
+            if (measuredWidth <= maxLogicalWidth) return text;
+
+            string suffix = "...";
+            float suffixWidth = g.MeasureString(suffix, font).Width / scale;
+            if (maxLogicalWidth <= suffixWidth) return "...";
+
+            int low = 0;
+            int high = text.Length;
+            int bestLength = 0;
+
+            while (low <= high)
+            {
+                int mid = (low + high) / 2;
+                string sub = text.Substring(0, mid) + suffix;
+                float w = g.MeasureString(sub, font).Width / scale;
+                if (w <= maxLogicalWidth)
+                {
+                    bestLength = mid;
+                    low = mid + 1;
+                }
+                else
+                {
+                    high = mid - 1;
+                }
+            }
+
+            return text.Substring(0, bestLength) + suffix;
+        }
+
+        private static string TruncateFileName(Graphics g, string filename, Font font, float maxWidth, float scale)
+        {
+            if (string.IsNullOrEmpty(filename)) return "";
+            if (g.MeasureString(filename, font).Width / scale <= maxWidth) return filename;
+
+            int low = 2;
+            int high = filename.Length - 1;
+            string best = "...";
+
+            int extLen = 0;
+            int dotIdx = filename.LastIndexOf('.');
+            if (dotIdx >= 0)
+            {
+                extLen = filename.Length - dotIdx; // e.g. 5 for ".pptx"
+            }
+
+            int targetRight = extLen + 8; // Keep extension + 8 chars (e.g. " 複製 (2)")
+
+            while (low <= high)
+            {
+                int mid = (low + high) / 2;
+                
+                int rightLen, leftLen;
+                if (mid > targetRight)
+                {
+                    rightLen = targetRight;
+                    leftLen = mid - rightLen;
+                }
+                else
+                {
+                    rightLen = Math.Min(extLen, mid - 1);
+                    if (rightLen < 0) rightLen = 0;
+                    leftLen = mid - rightLen;
+                }
+
+                string separator = "...";
+                string rightPart = filename.Substring(filename.Length - rightLen);
+                if (rightPart.StartsWith("."))
+                {
+                    separator = "..";
+                }
+                string candidate = filename.Substring(0, leftLen) + separator + rightPart;
+
+                if (g.MeasureString(candidate, font).Width / scale <= maxWidth)
+                {
+                    best = candidate;
+                    low = mid + 1;
+                }
+                else
+                {
+                    high = mid - 1;
+                }
+            }
+
+            if (best == "...")
+            {
+                // Fallback: keep first 2 chars + ... + extension
+                int left = Math.Max(1, filename.Length - extLen);
+                string suffix = extLen > 0 ? filename.Substring(filename.Length - extLen) : "";
+                best = filename.Substring(0, Math.Min(2, left)) + (suffix.StartsWith(".") ? ".." : "...") + suffix;
+            }
+
+            return best;
         }
     }
 }

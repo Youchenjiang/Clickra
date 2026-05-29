@@ -21,9 +21,13 @@ namespace Clickra
         static void ShowWarning(string msg, string title) =>
             MessageBox(IntPtr.Zero, msg, title, MB_OK | MB_ICONWARNING);
 
+        [DllImport("user32.dll")]
+        static extern bool SetProcessDpiAwarenessContext(IntPtr value);
+
         [STAThread]
         static void Main(string[] args)
         {
+            try { SetProcessDpiAwarenessContext((IntPtr)(-4)); } catch { }
             if (args.Length == 0 || args[0] == "-v" || args[0] == "--version")
             {
                 var version = Assembly.GetExecutingAssembly().GetName().Version?.ToString(3) ?? "Unknown";
@@ -78,8 +82,7 @@ namespace Clickra
             var files = argList.Skip(1).OrderBy(f => f).ToList();
             string outputDir = ClickraStorage.GetOutputDir(files[0]);
 
-            Console.WriteLine($"Executing {command} with {files.Count} files (Quiet mode: {quiet})...");
-
+            string startTimeStr = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
             try
             {
                 // 登記進行中作業狀態（靜默模式下不顯示進度視窗，但仍需即時狀態）
@@ -142,7 +145,7 @@ namespace Clickra
                 
                 if (quiet)
                 {
-                    try { ClickraStorage.CompleteActiveRecord(true, ""); } catch { }
+                    try { ClickraStorage.CompleteActiveRecord(command, startTimeStr, true, ""); } catch { }
                     System.Threading.Thread.Sleep(1500);
                     try { ClickraStorage.ClearActiveRecord(); } catch { }
                 }
@@ -152,7 +155,7 @@ namespace Clickra
             {
                 if (quiet)
                 {
-                    try { ClickraStorage.CompleteActiveRecord(false, ex.Message); } catch { }
+                    try { ClickraStorage.CompleteActiveRecord(command, startTimeStr, false, ex.Message); } catch { }
                     System.Threading.Thread.Sleep(1500);
                     try { ClickraStorage.ClearActiveRecord(); } catch { }
                 }

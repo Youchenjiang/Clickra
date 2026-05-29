@@ -183,11 +183,11 @@ namespace Clickra.Core
         /// <summary>
         /// 開始追蹤一個新的作業（Pending 狀態），寫入 active.tmp。
         /// </summary>
-        public static void StartActiveRecord(string command, int fileCount)
+        public static void StartActiveRecord(string command, int fileCount, string? inputPaths = null)
         {
             RunWithMutex(() =>
             {
-                WriteActiveFileInternal(command, fileCount, ConversionStatus.Pending, "");
+                WriteActiveFileInternal(command, fileCount, ConversionStatus.Pending, "", null, inputPaths);
             });
         }
 
@@ -201,23 +201,30 @@ namespace Clickra.Core
                 var entry = ReadActiveFileInternal();
                 if (entry.HasValue)
                 {
-                    WriteActiveFileInternal(entry.Value.Command, entry.Value.FileCount, ConversionStatus.InProgress, "");
+                    WriteActiveFileInternal(entry.Value.Command, entry.Value.FileCount, ConversionStatus.InProgress, "", entry.Value.Time, entry.Value.InputPaths);
                 }
             });
         }
 
         /// <summary>
-        /// 完成進行中作業：寫入持久化日誌，並更新 active.tmp 狀態（不立即刪除，保留供 Dashboard 顯示最終狀態）。
+        /// 更新進行中作業的當前處理檔案索引。
         /// </summary>
-        public static void CompleteActiveRecord(bool isSuccess, string errorMsg, string? endTime = null, long elapsedMs = -1, string? inputPaths = null, string? outputPath = null)
+        public static void SetActiveRecordIndex(int index)
         {
             RunWithMutex(() =>
             {
                 var entry = ReadActiveFileInternal();
-                string command = entry?.Command ?? "";
-                int fileCount = entry?.FileCount ?? 0;
-                string startTime = entry?.Time ?? DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
+                if (entry.HasValue)
+                {
+                    WriteActiveFileInternal(entry.Value.Command, entry.Value.FileCount, entry.Value.Status, entry.Value.ErrorMessage, entry.Value.Time, entry.Value.InputPaths, index);
+                }
+            });
+        }
 
+        public static void CompleteActiveRecord(string command, string startTime, bool isSuccess, string errorMsg, string? endTime = null, long elapsedMs = -1, string? inputPaths = null, string? outputPath = null)
+        {
+            RunWithMutex(() =>
+            {
                 lock (FileLock)
                 {
                     try
@@ -226,15 +233,49 @@ namespace Clickra.Core
                         string et = endTime ?? DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
                         string inputs = (inputPaths ?? "").Replace("\r", " ").Replace("\n", " ").Replace("|", " ");
                         string output = (outputPath ?? "").Replace("\r", " ").Replace("\n", " ").Replace("|", " ");
-                        string line = $"{startTime}|{command}|{fileCount}|{(isSuccess ? "Success" : "Failed")}|{cleanErr}|{et}|{elapsedMs}|{inputs}|{output}";
-                        File.AppendAllLines(HistoryFile, new[] { line });
+
+                        var inputList = inputs.Split(new[] { ';' }, StringSplitOptions.RemoveEmptyEntries);
+                        var outputList = output.Split(new[] { ';' }, StringSplitOptions.RemoveEmptyEntries);
+
+                        if (inputList.Length > 0 && outputList.Length == inputList.Length)
+                        {
+                            long elapsedPerFile = elapsedMs >= 0 ? elapsedMs / inputList.Length : -1;
+                            var lines = new List<string>();
+                            for (int i = 0; i < inputList.Length; i++)
+                            {
+                                string singleInput = inputList[i].Trim();
+                                string singleOutput = outputList[i].Trim();
+                                
+                                bool isSingleSuccess = isSuccess;
+                                if (!isSuccess)
+                                {
+                                    try { isSingleSuccess = File.Exists(singleOutput); } catch { isSingleSuccess = false; }
+                                }
+                                
+                                string singleErr = isSingleSuccess ? "" : cleanErr;
+                                string line = $"{startTime}|{command}|1|{(isSingleSuccess ? "Success" : "Failed")}|{singleErr}|{et}|{elapsedPerFile}|{singleInput}|{singleOutput}";
+                                lines.Add(line);
+                            }
+                            File.AppendAllLines(HistoryFile, lines);
+                        }
+                        else
+                        {
+                            string line = $"{startTime}|{command}|1|{(isSuccess ? "Success" : "Failed")}|{cleanErr}|{et}|{elapsedMs}|{inputs}|{output}";
+                            File.AppendAllLines(HistoryFile, new[] { line });
+                        }
                     }
                     catch { }
                 }
 
                 try
                 {
-                    WriteActiveFileInternal(command, fileCount, isSuccess ? ConversionStatus.Success : ConversionStatus.Failed, errorMsg, startTime);
+                    var entry = ReadActiveFileInternal();
+                    int fileCount = entry?.FileCount ?? 0;
+                    if (fileCount == 0 && !string.IsNullOrEmpty(inputPaths))
+                    {
+                        fileCount = inputPaths.Split(new[] { ';' }, StringSplitOptions.RemoveEmptyEntries).Length;
+                    }
+                    WriteActiveFileInternal(command, fileCount, isSuccess ? ConversionStatus.Success : ConversionStatus.Failed, errorMsg, startTime, inputPaths);
                 }
                 catch { }
             });
@@ -267,18 +308,21 @@ namespace Clickra.Core
         }
 
         private static void WriteActiveFileInternal(string command, int fileCount, ConversionStatus status,
-            string errorMsg, string? time = null)
+            string errorMsg, string? time = null, string? inputPaths = null, int currentIndex = 0)
         {
             try
             {
                 string t = time ?? DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
-                string cleanErr = errorMsg.Replace("\r", " ").Replace("\n", " ").Replace("|", " ");
+                string cleanErr = (errorMsg ?? "").Replace("\r", " ").Replace("\n", " ").Replace("|", " ");
+                string cleanInputs = (inputPaths ?? "").Replace("\r", " ").Replace("\n", " ").Replace("|", " ");
                 string content =
                     $"Time={t}\n" +
                     $"Command={command}\n" +
                     $"FileCount={fileCount}\n" +
                     $"Status={status}\n" +
-                    $"ErrorMessage={cleanErr}\n";
+                    $"ErrorMessage={cleanErr}\n" +
+                    $"InputPaths={cleanInputs}\n" +
+                    $"CurrentIndex={currentIndex}\n";
                 File.WriteAllText(ActiveFile + ".tmp", content, System.Text.Encoding.UTF8);
                 File.Move(ActiveFile + ".tmp", ActiveFile, overwrite: true);
             }
@@ -299,6 +343,7 @@ namespace Clickra.Core
                 }
                 if (!dict.ContainsKey("Command")) return null;
                 int.TryParse(dict.GetValueOrDefault("FileCount", "0"), out int fc);
+                int.TryParse(dict.GetValueOrDefault("CurrentIndex", "0"), out int ci);
                 Enum.TryParse(dict.GetValueOrDefault("Status", "Pending"), out ConversionStatus status);
                 return new HistoryEntry
                 {
@@ -306,7 +351,9 @@ namespace Clickra.Core
                     Command = dict.GetValueOrDefault("Command", ""),
                     FileCount = fc,
                     Status = status,
-                    ErrorMessage = dict.GetValueOrDefault("ErrorMessage", "")
+                    ErrorMessage = dict.GetValueOrDefault("ErrorMessage", ""),
+                    InputPaths = dict.GetValueOrDefault("InputPaths", ""),
+                    CurrentIndex = ci
                 };
             }
             catch { return null; }
@@ -328,6 +375,7 @@ namespace Clickra.Core
             public long ElapsedMs { get; set; }
             public string InputPaths { get; set; }
             public string OutputPath { get; set; }
+            public int CurrentIndex { get; set; }
         }
 
         public static List<HistoryEntry> GetHistory(int limit = 50)

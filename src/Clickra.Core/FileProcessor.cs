@@ -2,6 +2,7 @@ using System;
 using System.IO;
 using System.Linq;
 using System.Collections.Generic;
+using System.Threading;
 using PdfSharp.Pdf;
 using PdfSharp.Pdf.IO;
 using PdfSharp.Drawing;
@@ -12,30 +13,36 @@ namespace Clickra.Core
 {
     public static class FileProcessor
     {
-        public static void MergePdfs(List<string> files, string outputPath, Action<int, int, string>? onProgress = null)
+        public static void MergePdfs(List<string> files, string outputPath, Action<int, int, string>? onProgress = null, CancellationToken cancellationToken = default)
         {
             int total = files.Count;
             using var outDoc = new PdfDocument();
             for (int i = 0; i < files.Count; i++)
             {
+                cancellationToken.ThrowIfCancellationRequested();
+                try { ClickraStorage.SetActiveRecordIndex(i); } catch { }
                 var f = files[i];
                 onProgress?.Invoke((i * 100) + 50, total * 100, $"正在合併: {Path.GetFileName(f)} ({i + 1}/{total})...");
                 using var inDoc = PdfReader.Open(f, PdfDocumentOpenMode.Import);
                 for (int j = 0; j < inDoc.PageCount; j++)
                 {
+                    cancellationToken.ThrowIfCancellationRequested();
                     outDoc.AddPage(inDoc.Pages[j]);
                 }
             }
+            cancellationToken.ThrowIfCancellationRequested();
             onProgress?.Invoke(total * 100, total * 100, "合併完成，正在儲存檔案...");
             outDoc.Save(outputPath);
         }
 
-        public static void ImagesToPdf(List<string> files, string outputPath, Action<int, int, string>? onProgress = null)
+        public static void ImagesToPdf(List<string> files, string outputPath, Action<int, int, string>? onProgress = null, CancellationToken cancellationToken = default)
         {
             int total = files.Count;
             using var doc = new PdfDocument();
             for (int i = 0; i < files.Count; i++)
             {
+                cancellationToken.ThrowIfCancellationRequested();
+                try { ClickraStorage.SetActiveRecordIndex(i); } catch { }
                 var f = files[i];
                 onProgress?.Invoke((i * 100) + 50, total * 100, $"正在處理圖片: {Path.GetFileName(f)} ({i + 1}/{total})...");
                 if (!File.Exists(f)) throw new FileNotFoundException("Image file not found", f);
@@ -51,19 +58,22 @@ namespace Clickra.Core
                 using var gfx = XGraphics.FromPdfPage(page);
                 gfx.DrawImage(ximg, 0, 0, page.Width, page.Height);
             }
+            cancellationToken.ThrowIfCancellationRequested();
             onProgress?.Invoke(total * 100, total * 100, "轉換完成，正在儲存 PDF...");
             doc.Save(outputPath);
         }
 
-        public static void StitchImages(List<string> files, string outputPath, Action<int, int, string>? onProgress = null)
+        public static void StitchImages(List<string> files, string outputPath, Action<int, int, string>? onProgress = null, CancellationToken cancellationToken = default)
         {
             int total = files.Count;
             onProgress?.Invoke(10, total * 100, "正在分析圖片尺寸...");
+            cancellationToken.ThrowIfCancellationRequested();
             List<Image> images = new List<Image>();
             try
             {
                 foreach (var f in files)
                 {
+                    cancellationToken.ThrowIfCancellationRequested();
                     images.Add(Image.FromFile(f));
                 }
                 
@@ -77,6 +87,8 @@ namespace Clickra.Core
                 int currentY = 0;
                 for (int i = 0; i < images.Count; i++)
                 {
+                    cancellationToken.ThrowIfCancellationRequested();
+                    try { ClickraStorage.SetActiveRecordIndex(i); } catch { }
                     var img = images[i];
                     onProgress?.Invoke((i * 100) + 50, total * 100, $"正在拼接圖片 ({i + 1}/{total})...");
                     int x = (totalWidth - img.Width) / 2;
@@ -84,6 +96,7 @@ namespace Clickra.Core
                     currentY += img.Height;
                 }
 
+                cancellationToken.ThrowIfCancellationRequested();
                 onProgress?.Invoke(total * 100, total * 100, "拼接完成，正在儲存圖片...");
                 stitched.Save(outputPath, System.Drawing.Imaging.ImageFormat.Png);
             }
@@ -96,11 +109,13 @@ namespace Clickra.Core
             }
         }
 
-        public static void ConvertPptToPdf(List<string> files, Action<int, int, string>? onProgress = null)
+        public static void ConvertPptToPdf(List<string> files, Action<int, int, string>? onProgress = null, CancellationToken cancellationToken = default)
         {
             int total = files.Count;
             for (int i = 0; i < files.Count; i++)
             {
+                cancellationToken.ThrowIfCancellationRequested();
+                try { ClickraStorage.SetActiveRecordIndex(i); } catch { }
                 var filePath = files[i];
                 int fileIndex = i;
                 string fullPath = Path.GetFullPath(filePath);
@@ -142,6 +157,11 @@ try {{
                 using var process = System.Diagnostics.Process.Start(startInfo);
                 if (process != null)
                 {
+                    using var registration = cancellationToken.Register(() =>
+                    {
+                        try { process.Kill(true); } catch { }
+                    });
+
                     process.OutputDataReceived += (s, e) =>
                     {
                         if (!string.IsNullOrEmpty(e.Data) && e.Data.StartsWith("PROGRESS:"))
@@ -165,6 +185,8 @@ try {{
                     string error = process.StandardError.ReadToEnd();
                     process.WaitForExit();
 
+                    cancellationToken.ThrowIfCancellationRequested();
+
                     if (!File.Exists(outputPdfPath))
                     {
                         if (!string.IsNullOrWhiteSpace(error))
@@ -180,11 +202,13 @@ try {{
             }
         }
 
-        public static void ConvertWordToPdf(List<string> files, Action<int, int, string>? onProgress = null)
+        public static void ConvertWordToPdf(List<string> files, Action<int, int, string>? onProgress = null, CancellationToken cancellationToken = default)
         {
             int total = files.Count;
             for (int i = 0; i < files.Count; i++)
             {
+                cancellationToken.ThrowIfCancellationRequested();
+                try { ClickraStorage.SetActiveRecordIndex(i); } catch { }
                 var filePath = files[i];
                 int fileIndex = i;
                 string fullPath = Path.GetFullPath(filePath);
@@ -227,6 +251,11 @@ try {{
                 using var process = System.Diagnostics.Process.Start(startInfo);
                 if (process != null)
                 {
+                    using var registration = cancellationToken.Register(() =>
+                    {
+                        try { process.Kill(true); } catch { }
+                    });
+
                     process.OutputDataReceived += (s, e) =>
                     {
                         if (!string.IsNullOrEmpty(e.Data) && e.Data.StartsWith("PROGRESS:"))
@@ -249,6 +278,8 @@ try {{
                     process.BeginOutputReadLine();
                     string error = process.StandardError.ReadToEnd();
                     process.WaitForExit();
+
+                    cancellationToken.ThrowIfCancellationRequested();
 
                     if (!File.Exists(outputPdfPath))
                     {

@@ -62,8 +62,8 @@ namespace Clickra.UI
         // Extra UI State Variables for v3.0.9
         static float _dpiScale = 1.0f;
         static int _expandedHistoryIndex = -1;
-        static NOTIFYICONDATAW _nid;
-        static bool _trayIconAdded = false;
+        public static readonly Dictionary<(int, int), float> DetailScrollOffsets = new();
+        static System.Threading.Mutex? _mutex;
         static float _aboutBtnY = 365;
         static float _githubBtnY = 240;
         static int _langDropdownY = 390;
@@ -85,6 +85,13 @@ namespace Clickra.UI
         static float _dragStartMouseY = 0;
         static float _dragStartScrollX = 0;
         static float _dragStartScrollY = 0;
+
+        // Detail scrollbar dragging state
+        static bool _isDraggingDetailScroll = false;
+        static int _draggingDetailRowIndex = -1;
+        static int _draggingDetailFieldIndex = -1;
+        static float _dragDetailStartMouseX = 0;
+        static float _dragDetailStartOffset = 0;
 
         static int GetClientWidth(IntPtr hwnd)
         {
@@ -113,6 +120,26 @@ namespace Clickra.UI
             return _sidebarWidth + 30f;
         }
 
+        private static float GetMaxValW(float logW)
+        {
+            float contentX = GetContentX(logW);
+            float virtLogW = Math.Max(760f, logW);
+            float rowW = virtLogW - contentX - 40;
+            
+            float w1, w2, w3, w4;
+            using (var tempBmp = new Bitmap(1, 1))
+            using (var tempG = Graphics.FromImage(tempBmp))
+            {
+                w1 = tempG.MeasureString(GetText("history_detail_inputs") + ":", _subFont).Width / _dpiScale;
+                w2 = tempG.MeasureString(GetText("history_detail_outputs") + ":", _subFont).Width / _dpiScale;
+                w3 = tempG.MeasureString(GetText("history_detail_time") + ":", _subFont).Width / _dpiScale;
+                w4 = tempG.MeasureString(GetText("history_detail_error") + ":", _subFont).Width / _dpiScale;
+            }
+            float maxLabelW = Math.Max(w1, Math.Max(w2, Math.Max(w3, w4)));
+            float valX = contentX + 12 + maxLabelW + 16;
+            return contentX + rowW - 12 - valX;
+        }
+
         static float GetContentHeight(IntPtr hwnd)
         {
             if (_activeTab == 0) // Overview
@@ -126,7 +153,16 @@ namespace Clickra.UI
             if (_activeTab == 2) // History
             {
                 var activeEntry = ClickraStorage.GetActiveEntry();
-                int totalHeight = 90 + (activeEntry.HasValue ? 52 : 0);
+                int activeCount = 0;
+                if (activeEntry.HasValue)
+                {
+                    var ae = activeEntry.Value;
+                    var activeFiles = !string.IsNullOrEmpty(ae.InputPaths)
+                        ? ae.InputPaths.Split(new[] { ';' }, StringSplitOptions.RemoveEmptyEntries)
+                        : Array.Empty<string>();
+                    activeCount = activeFiles.Length > 0 ? activeFiles.Length : 1;
+                }
+                int totalHeight = 90 + activeCount * 52;
                 for (int i = 0; i < _historyEntries.Count; i++)
                 {
                     totalHeight += (i == _expandedHistoryIndex ? 160 : 44) + 8;
@@ -249,30 +285,6 @@ namespace Clickra.UI
             }
         }
 
-        static void SetupTrayIcon(IntPtr hwnd, IntPtr hIcon)
-        {
-            _nid = new NOTIFYICONDATAW();
-            _nid.cbSize = (uint)Marshal.SizeOf<NOTIFYICONDATAW>();
-            _nid.hWnd = hwnd;
-            _nid.uID = 1;
-            _nid.uFlags = NIF_MESSAGE | NIF_ICON | NIF_TIP;
-            _nid.uCallbackMessage = WM_TRAYICON;
-            _nid.hIcon = hIcon;
-            _nid.szTip = "Clickra Dashboard";
-
-            Shell_NotifyIcon(NIM_ADD, ref _nid);
-            _trayIconAdded = true;
-        }
-
-        static void RemoveTrayIcon()
-        {
-            if (_trayIconAdded)
-            {
-                Shell_NotifyIcon(NIM_DELETE, ref _nid);
-                _trayIconAdded = false;
-            }
-        }
-
         static string BrowseForFolder(IntPtr hwndOwner, string title)
         {
             var bi = new BROWSEINFO();
@@ -322,7 +334,17 @@ namespace Clickra.UI
                 float virtLogW = Math.Max(760f, logW);
                 if (adjMouseX >= contentX && adjMouseX < virtLogW - 40)
                 {
-                    int startY = 90 + (ClickraStorage.GetActiveEntry().HasValue ? 52 : 0);
+                    var activeEntry = ClickraStorage.GetActiveEntry();
+                    int activeCount = 0;
+                    if (activeEntry.HasValue)
+                    {
+                        var ae = activeEntry.Value;
+                        var activeFiles = !string.IsNullOrEmpty(ae.InputPaths)
+                            ? ae.InputPaths.Split(new[] { ';' }, StringSplitOptions.RemoveEmptyEntries)
+                            : Array.Empty<string>();
+                        activeCount = activeFiles.Length > 0 ? activeFiles.Length : 1;
+                    }
+                    int startY = 90 + activeCount * 52;
                     int currentY = startY;
                     for (int i = 0; i < _historyEntries.Count; i++)
                     {
@@ -341,6 +363,22 @@ namespace Clickra.UI
 
         public static void Show()
         {
+            bool createdNew;
+            _mutex = new System.Threading.Mutex(true, "Global\\Clickra_Dashboard_Mutex", out createdNew);
+            if (!createdNew)
+            {
+                IntPtr existingHwnd = FindWindow("ClickraWnd", null);
+                if (existingHwnd != IntPtr.Zero)
+                {
+                    ShowWindow(existingHwnd, 5); // SW_SHOW
+                    ShowWindow(existingHwnd, 9); // SW_RESTORE
+                    SetForegroundWindow(existingHwnd);
+                }
+                _mutex.Dispose();
+                _mutex = null;
+                return;
+            }
+
             RefreshHistoryData();
 
             try { SetProcessDpiAwarenessContext((IntPtr)(-4)); } catch {}
@@ -377,6 +415,8 @@ namespace Clickra.UI
             if (hwnd == IntPtr.Zero)
             {
                 MessageBox(IntPtr.Zero, $"CreateWindowEx failed!\nhInstance: {wc.hInstance}\nregResult: {regResult}\nclientW: {clientW}\nclientH: {clientH}\nwinW: {winW}\nwinH: {winH}", "Clickra Diagnostics", 0x10);
+                _mutex.Dispose();
+                _mutex = null;
                 return;
             }
 
@@ -401,8 +441,6 @@ namespace Clickra.UI
                     SendMessageW(hwnd, 0x0080, (IntPtr)1, _hIcon); // ICON_SMALL
                 }
             }
-
-            SetupTrayIcon(hwnd, _hIcon);
 
             RecreateScaledFonts();
             RecreateBuffer(clientW, clientH);
@@ -567,11 +605,6 @@ namespace Clickra.UI
                     {
                         int clientW = GetClientWidth(hwnd);
                         int clientH = GetClientHeight(hwnd);
-                        if (w.ToInt64() == 1) // SIZE_MINIMIZED
-                        {
-                            ShowWindow(hwnd, SW_HIDE);
-                            return IntPtr.Zero;
-                        }
                         float logW = clientW / _dpiScale;
                         float logH = clientH / _dpiScale;
                         float contentH = GetContentHeight(hwnd);
@@ -581,21 +614,6 @@ namespace Clickra.UI
                         _contentScrollY = Math.Max(0, Math.Min(_contentScrollY, maxScrollY));
                         RecreateBuffer(clientW, clientH);
                         InvalidateRect(hwnd, IntPtr.Zero, false);
-                    }
-                    return IntPtr.Zero;
-                case 0x0112: // WM_SYSCOMMAND
-                    if ((w.ToInt64() & 0xFFF0) == SC_MINIMIZE)
-                    {
-                        ShowWindow(hwnd, SW_HIDE);
-                        return IntPtr.Zero;
-                    }
-                    break;
-                case WM_TRAYICON:
-                    if (l.ToInt64() == 0x0203) // WM_LBUTTONDBLCLK
-                    {
-                        ShowWindow(hwnd, SW_SHOW);
-                        ShowWindow(hwnd, SW_RESTORE);
-                        SetForegroundWindow(hwnd);
                     }
                     return IntPtr.Zero;
                 case 0x02E0: // WM_DPICHANGED
@@ -661,6 +679,57 @@ namespace Clickra.UI
                                     float deltaScrollX = (deltaX / trackRange) * scrollRange;
                                     _contentScrollX = Math.Max(0, Math.Min(_dragStartScrollX + deltaScrollX, scrollRange));
                                     InvalidateRect(hwnd, IntPtr.Zero, false);
+                                }
+                            }
+                        }
+                        else if (_isDraggingDetailScroll)
+                        {
+                            if (_draggingDetailRowIndex >= 0 && _draggingDetailRowIndex < _historyEntries.Count)
+                            {
+                                var entry = _historyEntries[_draggingDetailRowIndex];
+                                string textToScroll = "";
+                                if (_draggingDetailFieldIndex == 0)
+                                {
+                                    textToScroll = entry.InputPaths ?? "";
+                                    textToScroll = textToScroll.Replace(";", ", ");
+                                }
+                                else if (_draggingDetailFieldIndex == 1)
+                                {
+                                    textToScroll = entry.OutputPath ?? "";
+                                }
+                                else if (_draggingDetailFieldIndex == 2)
+                                {
+                                    textToScroll = !string.IsNullOrEmpty(entry.ErrorMessage) ? entry.ErrorMessage : "";
+                                    if (textToScroll.Equals("User Aborted", StringComparison.OrdinalIgnoreCase))
+                                    {
+                                        textToScroll = GetText("error_user_aborted");
+                                    }
+                                }
+
+                                if (!string.IsNullOrEmpty(textToScroll))
+                                {
+                                    float textW;
+                                    using (var tempBmp = new Bitmap(1, 1))
+                                    using (var tempG = Graphics.FromImage(tempBmp))
+                                    {
+                                        textW = tempG.MeasureString(textToScroll, _subFont).Width / _dpiScale;
+                                    }
+                                    float maxValW = GetMaxValW(logW);
+                                    float maxScroll = Math.Max(0f, textW - maxValW);
+
+                                    if (maxScroll > 0)
+                                    {
+                                        float thumbW = Math.Max(15f, (maxValW / textW) * maxValW);
+                                        float travelRange = maxValW - thumbW;
+                                        if (travelRange > 0)
+                                        {
+                                            float deltaX = mouseX - _dragDetailStartMouseX;
+                                            float deltaOffset = (deltaX / travelRange) * maxScroll;
+                                            float newOffset = Math.Max(0f, Math.Min(_dragDetailStartOffset + deltaOffset, maxScroll));
+                                            DetailScrollOffsets[(_draggingDetailRowIndex, _draggingDetailFieldIndex)] = newOffset;
+                                            InvalidateRect(hwnd, IntPtr.Zero, false);
+                                        }
+                                    }
                                 }
                             }
                         }
@@ -810,16 +879,40 @@ namespace Clickra.UI
                             float virtLogW = Math.Max(760f, logW);
                             if (adjMouseX >= GetContentX(logW) && adjMouseX < virtLogW - 40)
                             {
-                                int startY = 90 + (ClickraStorage.GetActiveEntry().HasValue ? 52 : 0);
+                                var activeEntry = ClickraStorage.GetActiveEntry();
+                                int activeCount = 0;
+                                if (activeEntry.HasValue)
+                                {
+                                    var ae = activeEntry.Value;
+                                    var activeFiles = !string.IsNullOrEmpty(ae.InputPaths)
+                                        ? ae.InputPaths.Split(new[] { ';' }, StringSplitOptions.RemoveEmptyEntries)
+                                        : Array.Empty<string>();
+                                    activeCount = activeFiles.Length > 0 ? activeFiles.Length : 1;
+                                }
+                                int startY = 90 + activeCount * 52;
                                 int currentY = startY;
                                 int clickedIndex = -1;
+                                bool clickedDetails = false;
+                                int detailFieldIndex = -1;
                                 for (int i = 0; i < _historyEntries.Count; i++)
                                 {
                                     bool isExpanded = (i == _expandedHistoryIndex);
                                     int rowH = isExpanded ? 160 : 44;
                                     if (adjMouseY >= currentY && adjMouseY < currentY + rowH)
                                     {
-                                        clickedIndex = i;
+                                        if (isExpanded && adjMouseY >= currentY + 44)
+                                        {
+                                            clickedDetails = true;
+                                            clickedIndex = i;
+                                            int relY = adjMouseY - currentY;
+                                            if (relY >= 50 && relY < 76) detailFieldIndex = 0;
+                                            else if (relY >= 76 && relY < 102) detailFieldIndex = 1;
+                                            else if (relY >= 128 && relY < 156) detailFieldIndex = 2;
+                                        }
+                                        else
+                                        {
+                                            clickedIndex = i;
+                                        }
                                         break;
                                     }
                                     currentY += rowH + 8;
@@ -827,16 +920,97 @@ namespace Clickra.UI
 
                                 if (clickedIndex != -1)
                                 {
-                                    if (_expandedHistoryIndex == clickedIndex)
+                                    if (clickedDetails)
                                     {
-                                        _expandedHistoryIndex = -1; // Collapse
+                                        if (detailFieldIndex != -1)
+                                        {
+                                            string textToScroll = "";
+                                            if (detailFieldIndex == 0)
+                                            {
+                                                textToScroll = _historyEntries[clickedIndex].InputPaths.Replace(";", ", ");
+                                            }
+                                            else if (detailFieldIndex == 1)
+                                            {
+                                                textToScroll = _historyEntries[clickedIndex].OutputPath;
+                                            }
+                                            else if (detailFieldIndex == 2)
+                                            {
+                                                textToScroll = !string.IsNullOrEmpty(_historyEntries[clickedIndex].ErrorMessage) ? _historyEntries[clickedIndex].ErrorMessage : "";
+                                                if (textToScroll.Equals("User Aborted", StringComparison.OrdinalIgnoreCase))
+                                                {
+                                                    textToScroll = GetText("error_user_aborted");
+                                                }
+                                            }
+
+                                            if (!string.IsNullOrEmpty(textToScroll))
+                                            {
+                                                float textW;
+                                                using (var tempBmp = new Bitmap(1, 1))
+                                                using (var tempG = Graphics.FromImage(tempBmp))
+                                                {
+                                                    textW = tempG.MeasureString(textToScroll, _subFont).Width / _dpiScale;
+                                                }
+                                                float maxValW = GetMaxValW(logW);
+                                                float maxScroll = Math.Max(0f, textW - maxValW);
+
+                                                if (maxScroll > 0)
+                                                {
+                                                    // contentX is already defined in the outer scope
+                                                    float w1, w2, w3, w4;
+                                                    using (var tempBmp = new Bitmap(1, 1))
+                                                    using (var tempG = Graphics.FromImage(tempBmp))
+                                                    {
+                                                        w1 = tempG.MeasureString(GetText("history_detail_inputs") + ":", _subFont).Width / _dpiScale;
+                                                        w2 = tempG.MeasureString(GetText("history_detail_outputs") + ":", _subFont).Width / _dpiScale;
+                                                        w3 = tempG.MeasureString(GetText("history_detail_time") + ":", _subFont).Width / _dpiScale;
+                                                        w4 = tempG.MeasureString(GetText("history_detail_error") + ":", _subFont).Width / _dpiScale;
+                                                    }
+                                                    float maxLabelW = Math.Max(w1, Math.Max(w2, Math.Max(w3, w4)));
+                                                    float valX = contentX + 12 + maxLabelW + 16;
+                                                    float rowWLocal = virtLogW - 40 - contentX;
+
+                                                    if (adjMouseX >= valX && adjMouseX <= contentX + rowWLocal - 12)
+                                                    {
+                                                        float clickX = adjMouseX - valX;
+                                                        float thumbW = Math.Max(15f, (maxValW / textW) * maxValW);
+                                                        float currentOffset = 0;
+                                                        DetailScrollOffsets.TryGetValue((clickedIndex, detailFieldIndex), out currentOffset);
+
+                                                        float thumbX = (currentOffset / textW) * maxValW;
+                                                        if (thumbX + thumbW > maxValW) thumbX = maxValW - thumbW;
+
+                                                        float travelRange = maxValW - thumbW;
+                                                        float relativePos = travelRange > 0 ? (clickX - thumbW / 2f) / travelRange : 0f;
+                                                        float newOffset = Math.Max(0f, Math.Min(relativePos * maxScroll, maxScroll));
+
+                                                        DetailScrollOffsets[(clickedIndex, detailFieldIndex)] = newOffset;
+
+                                                        _isDraggingDetailScroll = true;
+                                                        _draggingDetailRowIndex = clickedIndex;
+                                                        _draggingDetailFieldIndex = detailFieldIndex;
+                                                        _dragDetailStartMouseX = mouseX;
+                                                        _dragDetailStartOffset = newOffset;
+                                                        SetCapture(hwnd);
+                                                        InvalidateRect(hwnd, IntPtr.Zero, false);
+                                                    }
+                                                }
+                                            }
+                                        }
+                                        return IntPtr.Zero;
                                     }
                                     else
                                     {
-                                        _expandedHistoryIndex = clickedIndex; // Expand
+                                        if (_expandedHistoryIndex == clickedIndex)
+                                        {
+                                            _expandedHistoryIndex = -1; // Collapse
+                                        }
+                                        else
+                                        {
+                                            _expandedHistoryIndex = clickedIndex; // Expand
+                                        }
+                                        InvalidateRect(hwnd, IntPtr.Zero, false);
+                                        return IntPtr.Zero;
                                     }
-                                    InvalidateRect(hwnd, IntPtr.Zero, false);
-                                    return IntPtr.Zero;
                                 }
                             }
                         }
@@ -1134,10 +1308,11 @@ namespace Clickra.UI
                     }
                     break;
                 case 0x0202: // WM_LBUTTONUP
-                    if (_isDraggingScrollX || _isDraggingScrollY)
+                    if (_isDraggingScrollX || _isDraggingScrollY || _isDraggingDetailScroll)
                     {
                         _isDraggingScrollX = false;
                         _isDraggingScrollY = false;
+                        _isDraggingDetailScroll = false;
                         ReleaseCapture();
                         InvalidateRect(hwnd, IntPtr.Zero, false);
                     }
@@ -1162,7 +1337,7 @@ namespace Clickra.UI
                                 return (IntPtr)1;
                             }
                         }
-                        if (_hoveredElement != -1 || _langDropdownOpen || IsHoveringHistoryRow(hwnd) || _isDraggingScrollX || _isDraggingScrollY)
+                        if (_hoveredElement != -1 || _langDropdownOpen || IsHoveringHistoryRow(hwnd) || _isDraggingScrollX || _isDraggingScrollY || _isDraggingDetailScroll)
                         {
                             SetCursor(LoadCursorW(IntPtr.Zero, 32649)); // IDC_HAND = 32649
                             return (IntPtr)1; // Handled
@@ -1188,21 +1363,144 @@ namespace Clickra.UI
                         }
                         else
                         {
-                            float logH = LogicalHeight(hwnd);
-                            float contentH = GetContentHeight(hwnd);
-                            if (logH < contentH)
+                            bool handledDetailScroll = false;
+                            if (_activeTab == 2)
                             {
-                                int maxScrollY = (int)contentH - (int)logH;
-                                _contentScrollY = Math.Max(0, Math.Min(_contentScrollY + scrollDir * 20, maxScrollY));
-                                InvalidateRect(hwnd, IntPtr.Zero, false);
+                                int screenX = (short)(l.ToInt64() & 0xFFFF);
+                                int screenY = (short)((l.ToInt64() >> 16) & 0xFFFF);
+                                var pt = new Point(screenX, screenY);
+                                ScreenToClient(hwnd, ref pt);
+                                int mouseX = (int)(pt.X / _dpiScale);
+                                int mouseY = (int)(pt.Y / _dpiScale);
+
+                                float logW = LogicalWidth(hwnd);
+                                float sidebarW = GetSidebarWidth(logW);
+                                int adjMouseX = mouseX >= sidebarW ? (int)(mouseX + _contentScrollX) : mouseX;
+                                int adjMouseY = mouseX >= sidebarW ? (int)(mouseY + _contentScrollY) : mouseY;
+
+                                var activeEntry = ClickraStorage.GetActiveEntry();
+                                int activeCount = 0;
+                                if (activeEntry.HasValue)
+                                {
+                                    var ae = activeEntry.Value;
+                                    var activeFiles = !string.IsNullOrEmpty(ae.InputPaths)
+                                        ? ae.InputPaths.Split(new[] { ';' }, StringSplitOptions.RemoveEmptyEntries)
+                                        : Array.Empty<string>();
+                                    activeCount = activeFiles.Length > 0 ? activeFiles.Length : 1;
+                                }
+                                int startY = 90 + activeCount * 52;
+                                int currentY = startY;
+
+                                for (int i = 0; i < _historyEntries.Count; i++)
+                                {
+                                    bool isExpanded = (i == _expandedHistoryIndex);
+                                    int rowH = isExpanded ? 160 : 44;
+                                    if (isExpanded && adjMouseY >= currentY && adjMouseY < currentY + rowH)
+                                    {
+                                        float contentX = GetContentX(logW);
+                                        int rowW = (int)logW - (int)contentX - 40;
+
+                                        float w1, w2, w3, w4;
+                                        using (var tempBmp = new Bitmap(1, 1))
+                                        using (var tempG = Graphics.FromImage(tempBmp))
+                                        {
+                                            w1 = tempG.MeasureString(GetText("history_detail_inputs") + ":", _subFont).Width / _dpiScale;
+                                            w2 = tempG.MeasureString(GetText("history_detail_outputs") + ":", _subFont).Width / _dpiScale;
+                                            w3 = tempG.MeasureString(GetText("history_detail_time") + ":", _subFont).Width / _dpiScale;
+                                            w4 = tempG.MeasureString(GetText(_historyEntries[i].IsSuccess ? "history_detail_elapsed" : "history_detail_error") + ":", _subFont).Width / _dpiScale;
+                                        }
+                                        float maxLabelW = Math.Max(w1, Math.Max(w2, Math.Max(w3, w4)));
+                                        float valX = contentX + 12 + maxLabelW + 16;
+                                        float maxValW = contentX + rowW - 12 - valX;
+
+                                        if (adjMouseX >= contentX + 12 && adjMouseX < contentX + rowW - 12)
+                                        {
+                                            int fieldIndex = -1;
+                                            string textToScroll = "";
+
+                                            if (adjMouseY >= currentY + 50 && adjMouseY < currentY + 72)
+                                            {
+                                                fieldIndex = 0;
+                                                textToScroll = _historyEntries[i].InputPaths ?? "";
+                                                textToScroll = textToScroll.Replace(";", ", ");
+                                            }
+                                            else if (adjMouseY >= currentY + 76 && adjMouseY < currentY + 98)
+                                            {
+                                                fieldIndex = 1;
+                                                textToScroll = _historyEntries[i].OutputPath ?? "";
+                                            }
+                                            else if (adjMouseY >= currentY + 128 && adjMouseY < currentY + 150)
+                                            {
+                                                fieldIndex = 2;
+                                                textToScroll = _historyEntries[i].IsSuccess
+                                                    ? (_historyEntries[i].ElapsedMs >= 0 ? $"{(_historyEntries[i].ElapsedMs / 1000.0):F2} s ({_historyEntries[i].ElapsedMs} ms)" : "N/A")
+                                                    : (_historyEntries[i].ErrorMessage ?? "");
+                                            }
+
+                                            if (fieldIndex != -1 && !string.IsNullOrEmpty(textToScroll))
+                                            {
+                                                float textW;
+                                                using (var tempBmp = new Bitmap(1, 1))
+                                                using (var tempG = Graphics.FromImage(tempBmp))
+                                                {
+                                                    textW = tempG.MeasureString(textToScroll, _subFont).Width / _dpiScale;
+                                                }
+                                                float maxScroll = Math.Max(0f, textW - maxValW);
+
+                                                if (maxScroll > 0)
+                                                {
+                                                    var key = (i, fieldIndex);
+                                                    float currentOffset = 0;
+                                                    DetailScrollOffsets.TryGetValue(key, out currentOffset);
+                                                    float nextOffset = Math.Max(0f, Math.Min(currentOffset + scrollDir * 30, maxScroll));
+                                                    DetailScrollOffsets[key] = nextOffset;
+                                                    handledDetailScroll = true;
+                                                    InvalidateRect(hwnd, IntPtr.Zero, false);
+                                                }
+                                            }
+                                        }
+                                        break;
+                                    }
+                                    currentY += rowH + 8;
+                                }
+                            }
+
+                            if (!handledDetailScroll)
+                            {
+                                float logH = LogicalHeight(hwnd);
+                                float contentH = GetContentHeight(hwnd);
+                                if (logH < contentH)
+                                {
+                                    int maxScrollY = (int)contentH - (int)logH;
+                                    _contentScrollY = Math.Max(0, Math.Min(_contentScrollY + scrollDir * 20, maxScrollY));
+                                    InvalidateRect(hwnd, IntPtr.Zero, false);
+                                }
                             }
                         }
                     }
                     return IntPtr.Zero;
                 case 0x0002: // WM_DESTROY
-                    KillTimer(hwnd, TIMER_ID_REFRESH);
-                    RemoveTrayIcon();
-                    CleanupResources();
+                    try
+                    {
+                        KillTimer(hwnd, TIMER_ID_REFRESH);
+                        CleanupResources();
+                    }
+                    finally
+                    {
+                        if (_mutex != null)
+                        {
+                            try
+                            {
+                                _mutex.ReleaseMutex();
+                            }
+                            catch { }
+                            finally
+                            {
+                                _mutex.Dispose();
+                                _mutex = null;
+                            }
+                        }
+                    }
                     PostQuitMessage(0);
                     return IntPtr.Zero;
             }
