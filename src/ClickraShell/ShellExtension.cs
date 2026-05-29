@@ -278,6 +278,12 @@ namespace ClickraShell
             var files = GetFiles(psi);
             if (files.Count == 0) return 0;
 
+            if (idx == -1 && files.Count == 1 && Path.GetExtension(files[0]).Equals(".pdf", StringComparison.OrdinalIgnoreCase))
+            {
+                *p = 2; // ECS_HIDDEN
+                return 0;
+            }
+
             // Specific logic for multi-file commands
             bool countOk = idx switch {
                 2 or 5 => files.Count > 1, // Merge PDF (2) and Image Stitch (5) require at least 2 files
