@@ -271,6 +271,7 @@ namespace Clickra.UI
                 var hIcon = ExtractIcon(IntPtr.Zero, exePath, 0);
                 if (hIcon != IntPtr.Zero)
                 {
+                    _hIcon = hIcon;
                     SendMessageW(_hwnd, 0x0080, (IntPtr)0, hIcon); // ICON_BIG
                     SendMessageW(_hwnd, 0x0080, (IntPtr)1, hIcon); // ICON_SMALL
                 }
@@ -291,6 +292,58 @@ namespace Clickra.UI
             Marshal.FreeHGlobal(hClass);
         }
 
+        private void SetupTrayIcon(IntPtr hwnd)
+        {
+            if (_trayIconAdded) return;
+
+            _nid = new NOTIFYICONDATAW();
+            _nid.cbSize = (uint)Marshal.SizeOf<NOTIFYICONDATAW>();
+            _nid.hWnd = hwnd;
+            _nid.uID = 2;
+            _nid.uFlags = NIF_MESSAGE | NIF_ICON | NIF_TIP;
+            _nid.uCallbackMessage = WM_TRAYICON;
+            _nid.hIcon = _hIcon;
+
+            int pct = 0;
+            lock (_stateLock)
+            {
+                if (_total > 0)
+                {
+                    pct = _current * 100 / _total;
+                }
+            }
+            _nid.szTip = $"Clickra - 正在轉換... {pct}%";
+
+            Shell_NotifyIcon(NIM_ADD, ref _nid);
+            _trayIconAdded = true;
+        }
+
+        private void UpdateTrayIconProgress()
+        {
+            if (!_trayIconAdded) return;
+
+            int pct = 0;
+            lock (_stateLock)
+            {
+                if (_total > 0)
+                {
+                    pct = _current * 100 / _total;
+                }
+            }
+            _nid.szTip = $"Clickra - 正在轉換... {pct}%";
+            _nid.uFlags = NIF_TIP;
+            Shell_NotifyIcon(NIM_MODIFY, ref _nid);
+        }
+
+        private void RemoveTrayIcon()
+        {
+            if (_trayIconAdded)
+            {
+                Shell_NotifyIcon(NIM_DELETE, ref _nid);
+                _trayIconAdded = false;
+            }
+        }
+
         private void CleanupResources()
         {
             try { _titleFont?.Dispose(); _titleFont = null; } catch { }
@@ -304,6 +357,13 @@ namespace Clickra.UI
             try { _bgBrush?.Dispose(); _bgBrush = null; } catch { }
             try { _bufferGraphics?.Dispose(); _bufferGraphics = null; } catch { }
             try { _bufferBmp?.Dispose(); _bufferBmp = null; } catch { }
+
+            RemoveTrayIcon();
+            if (_hIcon != IntPtr.Zero)
+            {
+                DestroyIcon(_hIcon);
+                _hIcon = IntPtr.Zero;
+            }
         }
 
         static IntPtr WndProc(IntPtr hwnd, uint msg, IntPtr w, IntPtr l)
@@ -364,6 +424,232 @@ namespace Clickra.UI
         {
             switch (msg)
             {
+                case 0x020A: // WM_MOUSEWHEEL
+                    {
+                        int delta = (short)((w.ToInt64() >> 16) & 0xFFFF);
+                        int scrollDir = delta > 0 ? -1 : 1;
+                        lock (_stateLock)
+                        {
+                            if (!_completed && !_hasError)
+                            {
+                                _scrollOffset += scrollDir * 30;
+                                if (_scrollOffset < 0) _scrollOffset = 0;
+                            }
+                        }
+                        InvalidateRect(hwnd, IntPtr.Zero, false);
+                    }
+                    return IntPtr.Zero;
+                case WM_USER_INVALIDATE:
+                    InvalidateRect(hwnd, IntPtr.Zero, w != IntPtr.Zero);
+                    return IntPtr.Zero;
+                case 0x0200: // WM_MOUSEMOVE
+                    {
+                        int rawX = (short)(l.ToInt64() & 0xFFFF);
+                        int rawY = (short)((l.ToInt64() >> 16) & 0xFFFF);
+                        int mouseX = (int)(rawX / _dpiScale);
+                        int mouseY = (int)(rawY / _dpiScale);
+
+                        lock (_stateLock)
+                        {
+                            if (!_completed && !_hasError)
+                            {
+                                if (_isDraggingScroll)
+                                {
+                                    string statusMsg = _message;
+                                    float logicalPctW = 0;
+                                    string drawPctStr = _total > 0 ? $"{(_current * 100 / _total)}%" : "";
+                                    if (_pctFont != null && _total > 0)
+                                    {
+                                        using var tempBmp = new Bitmap(1, 1);
+                                        using var tempG = Graphics.FromImage(tempBmp);
+                                        logicalPctW = tempG.MeasureString(drawPctStr, _pctFont).Width / _dpiScale;
+                                    }
+                                    float logicalMaxMsgW = 448f;
+                                    if (logicalPctW > 0)
+                                    {
+                                        logicalMaxMsgW = 448f - logicalPctW - 10f;
+                                    }
+
+                                    float fullMsgW = 0f;
+                                    using (var tempBmp = new Bitmap(1, 1))
+                                    using (var tempG = Graphics.FromImage(tempBmp))
+                                    {
+                                        if (_msgFont != null)
+                                        {
+                                            fullMsgW = tempG.MeasureString(statusMsg, _msgFont).Width / _dpiScale;
+                                        }
+                                    }
+
+                                    float maxLogicalScroll = Math.Max(0f, fullMsgW - logicalMaxMsgW);
+                                    if (maxLogicalScroll > 0)
+                                    {
+                                        float thumbW = Math.Max(15f, (logicalMaxMsgW / fullMsgW) * logicalMaxMsgW);
+                                        float travelRange = logicalMaxMsgW - thumbW;
+                                        if (travelRange > 0)
+                                        {
+                                            float deltaX = mouseX - _dragStartMouseX;
+                                            float deltaOffset = (deltaX / travelRange) * maxLogicalScroll;
+                                            _scrollOffset = Math.Max(0f, Math.Min(_dragStartOffset + deltaOffset, maxLogicalScroll));
+                                            InvalidateRect(hwnd, IntPtr.Zero, false);
+                                        }
+                                    }
+                                }
+                                else
+                                {
+                                    bool hovered = (mouseX >= 456 && mouseX <= 484 && mouseY >= 36 && mouseY <= 64);
+                                    if (hovered != _isTrayBtnHovered)
+                                    {
+                                        _isTrayBtnHovered = hovered;
+                                        InvalidateRect(hwnd, IntPtr.Zero, false);
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    return IntPtr.Zero;
+                case 0x0201: // WM_LBUTTONDOWN
+                    {
+                        int rawX = (short)(l.ToInt64() & 0xFFFF);
+                        int rawY = (short)((l.ToInt64() >> 16) & 0xFFFF);
+                        int mouseX = (int)(rawX / _dpiScale);
+                        int mouseY = (int)(rawY / _dpiScale);
+
+                        lock (_stateLock)
+                        {
+                            if (!_completed && !_hasError)
+                            {
+                                if (mouseX >= 456 && mouseX <= 484 && mouseY >= 36 && mouseY <= 64)
+                                {
+                                    SetupTrayIcon(hwnd);
+                                    ShowWindow(hwnd, 0); // SW_HIDE
+                                    _isTrayBtnHovered = false;
+                                    return IntPtr.Zero;
+                                }
+
+                                float logicalPctW = 0;
+                                string drawPctStr = _total > 0 ? $"{(_current * 100 / _total)}%" : "";
+                                if (_pctFont != null && _total > 0)
+                                {
+                                    using var tempBmp = new Bitmap(1, 1);
+                                    using var tempG = Graphics.FromImage(tempBmp);
+                                    logicalPctW = tempG.MeasureString(drawPctStr, _pctFont).Width / _dpiScale;
+                                }
+                                float logicalMaxMsgW = 448f;
+                                if (logicalPctW > 0)
+                                {
+                                    logicalMaxMsgW = 448f - logicalPctW - 10f;
+                                }
+
+                                if (mouseX >= 36 && mouseX <= 36 + logicalMaxMsgW && mouseY >= 148 && mouseY <= 158)
+                                {
+                                    string statusMsg = _message;
+                                    float fullMsgW = 0f;
+                                    using (var tempBmp = new Bitmap(1, 1))
+                                    using (var tempG = Graphics.FromImage(tempBmp))
+                                    {
+                                        if (_msgFont != null)
+                                        {
+                                            fullMsgW = tempG.MeasureString(statusMsg, _msgFont).Width / _dpiScale;
+                                        }
+                                    }
+
+                                    float maxLogicalScroll = Math.Max(0f, fullMsgW - logicalMaxMsgW);
+                                    if (maxLogicalScroll > 0)
+                                    {
+                                        float clickX = mouseX - 36f;
+                                        float thumbW = Math.Max(15f, (logicalMaxMsgW / fullMsgW) * logicalMaxMsgW);
+                                        float thumbX = (_scrollOffset / fullMsgW) * logicalMaxMsgW;
+                                        if (thumbX + thumbW > logicalMaxMsgW) thumbX = logicalMaxMsgW - thumbW;
+
+                                        float travelRange = logicalMaxMsgW - thumbW;
+                                        float relativePos = travelRange > 0 ? (clickX - thumbW / 2f) / travelRange : 0f;
+                                        float newOffset = Math.Max(0f, Math.Min(relativePos * maxLogicalScroll, maxLogicalScroll));
+
+                                        _scrollOffset = newOffset;
+                                        _isDraggingScroll = true;
+                                        _dragStartMouseX = mouseX;
+                                        _dragStartOffset = newOffset;
+                                        SetCapture(hwnd);
+                                        InvalidateRect(hwnd, IntPtr.Zero, false);
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    return IntPtr.Zero;
+                case 0x0202: // WM_LBUTTONUP
+                    {
+                        lock (_stateLock)
+                        {
+                            if (_isDraggingScroll)
+                            {
+                                _isDraggingScroll = false;
+                                ReleaseCapture();
+                                InvalidateRect(hwnd, IntPtr.Zero, false);
+                            }
+                        }
+                    }
+                    return IntPtr.Zero;
+                case WM_TRAYICON:
+                    if (l.ToInt64() == 0x0203) // WM_LBUTTONDBLCLK
+                    {
+                        ShowWindow(hwnd, 5); // SW_SHOW
+                        ShowWindow(hwnd, 9); // SW_RESTORE
+                        SetForegroundWindow(hwnd);
+                        RemoveTrayIcon();
+                    }
+                    return IntPtr.Zero;
+                case 0x0010: // WM_CLOSE
+                    {
+                        bool needsConfirmation = false;
+                        lock (_stateLock)
+                        {
+                            if (!_completed && !_hasError)
+                            {
+                                needsConfirmation = true;
+                            }
+                        }
+
+                        if (needsConfirmation)
+                        {
+                            string text = Localization.T("progress_cancel_confirm", ClickraStorage.GetSetting("Language"));
+                            string caption = "Clickra";
+                            int btn = MessageBox(hwnd, text, caption, 0x24 | 0x30); // MB_YESNO | MB_ICONWARNING | MB_DEFBUTTON2
+                            if (btn != 6) // 6 is IDYES
+                            {
+                                return IntPtr.Zero; // Ignore close
+                            }
+
+                            // User confirmed cancellation
+                            try { _cts.Cancel(); } catch { }
+                        }
+
+                        DestroyWindow(hwnd);
+                    }
+                    return IntPtr.Zero;
+                case 0x02E0: // WM_DPICHANGED
+                    {
+                        uint newDpi = (uint)(w.ToInt64() & 0xFFFF);
+                        _dpiScale = newDpi / 96.0f;
+                        RecreateScaledFonts();
+                        
+                        int clientW = (int)(520 * _dpiScale);
+                        int clientH = (int)(280 * _dpiScale);
+                        
+                        if (_bufferBmp != null)
+                        {
+                            _bufferGraphics?.Dispose();
+                            _bufferBmp?.Dispose();
+                            _bufferBmp = new Bitmap(clientW, clientH);
+                            _bufferGraphics = Graphics.FromImage(_bufferBmp);
+                            _bufferGraphics.TextRenderingHint = TextRenderingHint.AntiAliasGridFit;
+                            _bufferGraphics.SmoothingMode = SmoothingMode.AntiAlias;
+                        }
+
+                        var rect = Marshal.PtrToStructure<RECT>(l);
+                        SetWindowPos(hwnd, IntPtr.Zero, rect.left, rect.top, rect.right - rect.left, rect.bottom - rect.top, 0x0010 | 0x0004);
+                    }
+                    return IntPtr.Zero;
                 case 0x0014: return (IntPtr)1; // WM_ERASEBKGND
                 case 0x0113: // WM_TIMER
                     lock (_stateLock)
@@ -418,7 +704,7 @@ namespace Clickra.UI
                 if (currentFiles == null || currentFiles.Count == 0)
                 {
                     lock (_stateLock) { _completed = true; _message = "無檔案可處理。"; }
-                    InvalidateRect(hwnd, IntPtr.Zero, true);
+                    PostMessageW(hwnd, WM_USER_INVALIDATE, (IntPtr)1, IntPtr.Zero);
                     Thread.Sleep(1000);
                     PostMessageW(hwnd, 0x0010, IntPtr.Zero, IntPtr.Zero); // WM_CLOSE
                     return;
