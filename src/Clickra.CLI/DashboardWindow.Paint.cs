@@ -279,97 +279,115 @@ namespace Clickra.UI
             if (activeEntry.HasValue)
             {
                 var ae = activeEntry.Value;
-                int rowY = startY;
+                var activeFiles = !string.IsNullOrEmpty(ae.InputPaths)
+                    ? ae.InputPaths.Split(new[] { ';' }, StringSplitOptions.RemoveEmptyEntries)
+                    : Array.Empty<string>();
 
-                // 進行中作業背景
-                Color activeBgColor = ae.Status switch
-                {
-                    ConversionStatus.Pending    => Color.FromArgb(38, 38, 48),
-                    ConversionStatus.InProgress => Color.FromArgb(30, 42, 55),
-                    ConversionStatus.Success    => Color.FromArgb(30, 44, 34),
-                    ConversionStatus.Failed     => Color.FromArgb(50, 32, 32),
-                    _                           => Color.FromArgb(36, 36, 36)
-                };
-                Color activeBorderColor = ae.Status switch
-                {
-                    ConversionStatus.Pending    => Color.FromArgb(70, 70, 100),
-                    ConversionStatus.InProgress => Color.FromArgb(0, 120, 212),
-                    ConversionStatus.Success    => Color.FromArgb(50, 160, 80),
-                    ConversionStatus.Failed     => Color.FromArgb(200, 60, 60),
-                    _                           => Color.FromArgb(60, 60, 60)
-                };
+                int activeCount = activeFiles.Length > 0 ? activeFiles.Length : 1;
 
-                using var path = GetRoundedRectPath(new RectangleF(contentX * s, rowY * s, rowW * s, rowH * s), 6 * s);
-                using var rowBg = new SolidBrush(activeBgColor);
-                g.FillPath(rowBg, path);
-                using var borderPen = new Pen(activeBorderColor);
-                g.DrawPath(borderPen, path);
-
-                // 時間與相對排版計算
-                float timeW = 120;
-                if (_bodyFont != null)
+                for (int idxActive = 0; idxActive < activeCount; idxActive++)
                 {
-                    using var timeBrush = new SolidBrush(Color.FromArgb(140, 140, 140));
-                    g.DrawString(ae.Time, _bodyFont, timeBrush, (contentX + 12) * s, (rowY + 13) * s);
-                    timeW = g.MeasureString(ae.Time, _bodyFont).Width / s;
-                }
+                    int rowY = startY;
 
-                // 指令標籤 (動態相對起點)
-                float tagX = contentX + 12 + timeW + 16;
-                float tagW = DrawCommandTag(g, ae.Command, tagX, rowY + 11);
-
-                // 檔案數 (動態相對起點)
-                if (_bodyFont != null)
-                {
-                    using var countBrush = new SolidBrush(Color.FromArgb(200, 200, 200));
-                    float fileCountX = tagX + tagW + 16;
-                    g.DrawString($"{ae.FileCount} {GetText("label_files")}", _bodyFont, countBrush, fileCountX * s, (rowY + 13) * s);
-                }
-
-                // 狀態標籤
-                string statusText;
-                Color statusColor;
-                switch (ae.Status)
-                {
-                    case ConversionStatus.Pending:
-                        statusText = GetText("status_pending");
-                        statusColor = Color.FromArgb(180, 180, 100);
-                        break;
-                    case ConversionStatus.InProgress:
-                        statusText = GetText("status_converting");
-                        statusColor = Color.FromArgb(80, 160, 240);
-                        break;
-                    case ConversionStatus.Success:
-                        statusText = GetText("status_success");
-                        statusColor = Color.FromArgb(100, 220, 100);
-                        break;
-                    case ConversionStatus.Failed:
-                        statusText = GetText("status_failed");
-                        statusColor = Color.FromArgb(255, 90, 70);
-                        break;
-                    default:
-                        statusText = "";
-                        statusColor = Color.Gray;
-                        break;
-                }
-                if (_tagFont != null)
-                {
-                    using var statusBrush = new SolidBrush(statusColor);
-                    g.DrawString(statusText, _tagFont, statusBrush, (contentX + rowW - 150) * s, (rowY + 13) * s);
-                }
-
-                // 錯誤訊息（失敗時）
-                if (ae.Status == ConversionStatus.Failed && !string.IsNullOrEmpty(ae.ErrorMessage))
-                {
-                    if (_subFont != null)
+                    // Determine status for this specific file
+                    ConversionStatus fileStatus = ae.Status;
+                    if (ae.Status == ConversionStatus.InProgress && activeFiles.Length > 1)
                     {
-                        using var errBrush = new SolidBrush(Color.FromArgb(230, 90, 70));
-                        string errText = ae.ErrorMessage.Length > 14 ? ae.ErrorMessage.Substring(0, 14) + "..." : ae.ErrorMessage;
-                        g.DrawString(errText, _subFont, errBrush, (contentX + rowW - 90) * s, (rowY + 14) * s);
+                        if (idxActive < ae.CurrentIndex) fileStatus = ConversionStatus.Success;
+                        else if (idxActive == ae.CurrentIndex) fileStatus = ConversionStatus.InProgress;
+                        else fileStatus = ConversionStatus.Pending;
                     }
-                }
+                    else if (ae.Status == ConversionStatus.Pending && activeFiles.Length > 1)
+                    {
+                        fileStatus = ConversionStatus.Pending;
+                    }
 
-                startY += 52;
+                    // Background color & border color based on fileStatus
+                    Color activeBgColor = fileStatus switch
+                    {
+                        ConversionStatus.Pending    => Color.FromArgb(38, 38, 48),
+                        ConversionStatus.InProgress => Color.FromArgb(30, 42, 55),
+                        ConversionStatus.Success    => Color.FromArgb(30, 44, 34),
+                        ConversionStatus.Failed     => Color.FromArgb(50, 32, 32),
+                        _                           => Color.FromArgb(36, 36, 36)
+                    };
+                    Color activeBorderColor = fileStatus switch
+                    {
+                        ConversionStatus.Pending    => Color.FromArgb(70, 70, 100),
+                        ConversionStatus.InProgress => Color.FromArgb(0, 120, 212),
+                        ConversionStatus.Success    => Color.FromArgb(50, 160, 80),
+                        ConversionStatus.Failed     => Color.FromArgb(200, 60, 60),
+                        _                           => Color.FromArgb(60, 60, 60)
+                    };
+
+                    using (var path = GetRoundedRectPath(new RectangleF(contentX * s, rowY * s, rowW * s, rowH * s), 6 * s))
+                    using (var rowBg = new SolidBrush(activeBgColor))
+                    {
+                        g.FillPath(rowBg, path);
+                        using (var borderPen = new Pen(activeBorderColor))
+                        {
+                            g.DrawPath(borderPen, path);
+                        }
+                    }
+
+                    // Render Time
+                    float timeW = 120;
+                    if (_bodyFont != null)
+                    {
+                        using var timeBrush = new SolidBrush(Color.FromArgb(140, 140, 140));
+                        g.DrawString(ae.Time, _bodyFont, timeBrush, (contentX + 12) * s, (rowY + 13) * s);
+                        timeW = g.MeasureString(ae.Time, _bodyFont).Width / s;
+                    }
+
+                    // Command Tag
+                    float tagX = contentX + 12 + timeW + 16;
+                    float tagW = DrawCommandTag(g, ae.Command, tagX, rowY + 11);
+
+                    // Filename / Display Text
+                    if (_bodyFont != null)
+                    {
+                        using var countBrush = new SolidBrush(Color.FromArgb(200, 200, 200));
+                        float fileCountX = tagX + tagW + 16;
+                        
+                        string displayText = activeFiles.Length > 0
+                            ? Path.GetFileName(activeFiles[idxActive])
+                            : $"{ae.FileCount} {GetText("label_files")}";
+
+                        float maxW = (contentX + rowW - 160) - fileCountX;
+                        if (maxW > 20)
+                        {
+                            displayText = TruncateFileName(g, displayText, _bodyFont, maxW, s);
+                        }
+                        g.DrawString(displayText, _bodyFont, countBrush, fileCountX * s, (rowY + 13) * s);
+                    }
+
+                    // Status Label
+                    string statusText = fileStatus switch
+                    {
+                        ConversionStatus.Pending => GetText("status_pending"),
+                        ConversionStatus.InProgress => GetText("status_converting"),
+                        ConversionStatus.Success => GetText("status_success"),
+                        ConversionStatus.Failed => GetText("status_failed"),
+                        _ => ""
+                    };
+                    Color statusColor = fileStatus switch
+                    {
+                        ConversionStatus.Pending => Color.FromArgb(180, 180, 100),
+                        ConversionStatus.InProgress => Color.FromArgb(80, 160, 240),
+                        ConversionStatus.Success => Color.FromArgb(100, 220, 100),
+                        ConversionStatus.Failed => Color.FromArgb(255, 90, 70),
+                        _ => Color.Gray
+                    };
+
+                    if (_tagFont != null)
+                    {
+                        using var statusBrush = new SolidBrush(statusColor);
+                        g.DrawString(statusText, _tagFont, statusBrush, (contentX + rowW - 150) * s, (rowY + 13) * s);
+                    }
+
+
+                    startY += 52;
+                }
             }
 
             // ——— 顯示持久化歷史紀錄———

@@ -113,6 +113,26 @@ namespace Clickra.UI
             return _sidebarWidth + 30f;
         }
 
+        private static float GetMaxValW(float logW)
+        {
+            float contentX = GetContentX(logW);
+            float virtLogW = Math.Max(760f, logW);
+            float rowW = virtLogW - contentX - 40;
+            
+            float w1, w2, w3, w4;
+            using (var tempBmp = new Bitmap(1, 1))
+            using (var tempG = Graphics.FromImage(tempBmp))
+            {
+                w1 = tempG.MeasureString(GetText("history_detail_inputs") + ":", _subFont).Width / _dpiScale;
+                w2 = tempG.MeasureString(GetText("history_detail_outputs") + ":", _subFont).Width / _dpiScale;
+                w3 = tempG.MeasureString(GetText("history_detail_time") + ":", _subFont).Width / _dpiScale;
+                w4 = tempG.MeasureString(GetText("history_detail_error") + ":", _subFont).Width / _dpiScale;
+            }
+            float maxLabelW = Math.Max(w1, Math.Max(w2, Math.Max(w3, w4)));
+            float valX = contentX + 12 + maxLabelW + 16;
+            return contentX + rowW - 12 - valX;
+        }
+
         static float GetContentHeight(IntPtr hwnd)
         {
             if (_activeTab == 0) // Overview
@@ -126,7 +146,16 @@ namespace Clickra.UI
             if (_activeTab == 2) // History
             {
                 var activeEntry = ClickraStorage.GetActiveEntry();
-                int totalHeight = 90 + (activeEntry.HasValue ? 52 : 0);
+                int activeCount = 0;
+                if (activeEntry.HasValue)
+                {
+                    var ae = activeEntry.Value;
+                    var activeFiles = !string.IsNullOrEmpty(ae.InputPaths)
+                        ? ae.InputPaths.Split(new[] { ';' }, StringSplitOptions.RemoveEmptyEntries)
+                        : Array.Empty<string>();
+                    activeCount = activeFiles.Length > 0 ? activeFiles.Length : 1;
+                }
+                int totalHeight = 90 + activeCount * 52;
                 for (int i = 0; i < _historyEntries.Count; i++)
                 {
                     totalHeight += (i == _expandedHistoryIndex ? 160 : 44) + 8;
@@ -298,7 +327,17 @@ namespace Clickra.UI
                 float virtLogW = Math.Max(760f, logW);
                 if (adjMouseX >= contentX && adjMouseX < virtLogW - 40)
                 {
-                    int startY = 90 + (ClickraStorage.GetActiveEntry().HasValue ? 52 : 0);
+                    var activeEntry = ClickraStorage.GetActiveEntry();
+                    int activeCount = 0;
+                    if (activeEntry.HasValue)
+                    {
+                        var ae = activeEntry.Value;
+                        var activeFiles = !string.IsNullOrEmpty(ae.InputPaths)
+                            ? ae.InputPaths.Split(new[] { ';' }, StringSplitOptions.RemoveEmptyEntries)
+                            : Array.Empty<string>();
+                        activeCount = activeFiles.Length > 0 ? activeFiles.Length : 1;
+                    }
+                    int startY = 90 + activeCount * 52;
                     int currentY = startY;
                     for (int i = 0; i < _historyEntries.Count; i++)
                     {
@@ -782,16 +821,40 @@ namespace Clickra.UI
                             float virtLogW = Math.Max(760f, logW);
                             if (adjMouseX >= GetContentX(logW) && adjMouseX < virtLogW - 40)
                             {
-                                int startY = 90 + (ClickraStorage.GetActiveEntry().HasValue ? 52 : 0);
+                                var activeEntry = ClickraStorage.GetActiveEntry();
+                                int activeCount = 0;
+                                if (activeEntry.HasValue)
+                                {
+                                    var ae = activeEntry.Value;
+                                    var activeFiles = !string.IsNullOrEmpty(ae.InputPaths)
+                                        ? ae.InputPaths.Split(new[] { ';' }, StringSplitOptions.RemoveEmptyEntries)
+                                        : Array.Empty<string>();
+                                    activeCount = activeFiles.Length > 0 ? activeFiles.Length : 1;
+                                }
+                                int startY = 90 + activeCount * 52;
                                 int currentY = startY;
                                 int clickedIndex = -1;
+                                bool clickedDetails = false;
+                                int detailFieldIndex = -1;
                                 for (int i = 0; i < _historyEntries.Count; i++)
                                 {
                                     bool isExpanded = (i == _expandedHistoryIndex);
                                     int rowH = isExpanded ? 160 : 44;
                                     if (adjMouseY >= currentY && adjMouseY < currentY + rowH)
                                     {
-                                        clickedIndex = i;
+                                        if (isExpanded && adjMouseY >= currentY + 44)
+                                        {
+                                            clickedDetails = true;
+                                            clickedIndex = i;
+                                            int relY = adjMouseY - currentY;
+                                            if (relY >= 50 && relY < 76) detailFieldIndex = 0;
+                                            else if (relY >= 76 && relY < 102) detailFieldIndex = 1;
+                                            else if (relY >= 128 && relY < 156) detailFieldIndex = 2;
+                                        }
+                                        else
+                                        {
+                                            clickedIndex = i;
+                                        }
                                         break;
                                     }
                                     currentY += rowH + 8;
