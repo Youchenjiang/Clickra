@@ -47,6 +47,9 @@ namespace Clickra.UI
         [DllImport("user32.dll", EntryPoint = "CreateWindowExW", CharSet = CharSet.Unicode)] 
         static extern IntPtr CreateWindowEx(uint ex, string cls, string name, uint style, int x, int y, int w, int h, IntPtr p, IntPtr m, IntPtr inst, IntPtr par);
         
+        [DllImport("user32.dll", EntryPoint = "FindWindowW", CharSet = CharSet.Unicode)]
+        static extern IntPtr FindWindow(string lpClassName, string? lpWindowName);
+        
         [DllImport("user32.dll", EntryPoint = "SetWindowTextW", CharSet = CharSet.Unicode)] 
         static extern bool SetWindowText(IntPtr h, string text);
 

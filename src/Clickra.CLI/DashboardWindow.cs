@@ -341,6 +341,22 @@ namespace Clickra.UI
 
         public static void Show()
         {
+            bool createdNew;
+            _mutex = new System.Threading.Mutex(true, "Global\\Clickra_Dashboard_Mutex", out createdNew);
+            if (!createdNew)
+            {
+                IntPtr existingHwnd = FindWindow("ClickraWnd", null);
+                if (existingHwnd != IntPtr.Zero)
+                {
+                    ShowWindow(existingHwnd, 5); // SW_SHOW
+                    ShowWindow(existingHwnd, 9); // SW_RESTORE
+                    SetForegroundWindow(existingHwnd);
+                }
+                _mutex.Dispose();
+                _mutex = null;
+                return;
+            }
+
             RefreshHistoryData();
 
             try { SetProcessDpiAwarenessContext((IntPtr)(-4)); } catch {}
@@ -377,6 +393,8 @@ namespace Clickra.UI
             if (hwnd == IntPtr.Zero)
             {
                 MessageBox(IntPtr.Zero, $"CreateWindowEx failed!\nhInstance: {wc.hInstance}\nregResult: {regResult}\nclientW: {clientW}\nclientH: {clientH}\nwinW: {winW}\nwinH: {winH}", "Clickra Diagnostics", 0x10);
+                _mutex.Dispose();
+                _mutex = null;
                 return;
             }
 
