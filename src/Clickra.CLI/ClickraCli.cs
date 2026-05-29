@@ -21,9 +21,13 @@ namespace Clickra
         static void ShowWarning(string msg, string title) =>
             MessageBox(IntPtr.Zero, msg, title, MB_OK | MB_ICONWARNING);
 
+        [DllImport("user32.dll")]
+        static extern bool SetProcessDpiAwarenessContext(IntPtr value);
+
         [STAThread]
         static void Main(string[] args)
         {
+            try { SetProcessDpiAwarenessContext((IntPtr)(-4)); } catch { }
             if (args.Length == 0 || args[0] == "-v" || args[0] == "--version")
             {
                 var version = Assembly.GetExecutingAssembly().GetName().Version?.ToString(3) ?? "Unknown";
