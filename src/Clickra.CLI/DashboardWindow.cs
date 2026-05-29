@@ -62,8 +62,8 @@ namespace Clickra.UI
         // Extra UI State Variables for v3.0.9
         static float _dpiScale = 1.0f;
         static int _expandedHistoryIndex = -1;
-        static NOTIFYICONDATAW _nid;
-        static bool _trayIconAdded = false;
+        public static readonly Dictionary<(int, int), float> DetailScrollOffsets = new();
+        static System.Threading.Mutex? _mutex;
         static float _aboutBtnY = 365;
         static float _githubBtnY = 240;
         static int _langDropdownY = 390;
@@ -249,30 +249,6 @@ namespace Clickra.UI
             }
         }
 
-        static void SetupTrayIcon(IntPtr hwnd, IntPtr hIcon)
-        {
-            _nid = new NOTIFYICONDATAW();
-            _nid.cbSize = (uint)Marshal.SizeOf<NOTIFYICONDATAW>();
-            _nid.hWnd = hwnd;
-            _nid.uID = 1;
-            _nid.uFlags = NIF_MESSAGE | NIF_ICON | NIF_TIP;
-            _nid.uCallbackMessage = WM_TRAYICON;
-            _nid.hIcon = hIcon;
-            _nid.szTip = "Clickra Dashboard";
-
-            Shell_NotifyIcon(NIM_ADD, ref _nid);
-            _trayIconAdded = true;
-        }
-
-        static void RemoveTrayIcon()
-        {
-            if (_trayIconAdded)
-            {
-                Shell_NotifyIcon(NIM_DELETE, ref _nid);
-                _trayIconAdded = false;
-            }
-        }
-
         static string BrowseForFolder(IntPtr hwndOwner, string title)
         {
             var bi = new BROWSEINFO();
@@ -419,8 +395,6 @@ namespace Clickra.UI
                     SendMessageW(hwnd, 0x0080, (IntPtr)1, _hIcon); // ICON_SMALL
                 }
             }
-
-            SetupTrayIcon(hwnd, _hIcon);
 
             RecreateScaledFonts();
             RecreateBuffer(clientW, clientH);
@@ -585,11 +559,6 @@ namespace Clickra.UI
                     {
                         int clientW = GetClientWidth(hwnd);
                         int clientH = GetClientHeight(hwnd);
-                        if (w.ToInt64() == 1) // SIZE_MINIMIZED
-                        {
-                            ShowWindow(hwnd, SW_HIDE);
-                            return IntPtr.Zero;
-                        }
                         float logW = clientW / _dpiScale;
                         float logH = clientH / _dpiScale;
                         float contentH = GetContentHeight(hwnd);
@@ -599,21 +568,6 @@ namespace Clickra.UI
                         _contentScrollY = Math.Max(0, Math.Min(_contentScrollY, maxScrollY));
                         RecreateBuffer(clientW, clientH);
                         InvalidateRect(hwnd, IntPtr.Zero, false);
-                    }
-                    return IntPtr.Zero;
-                case 0x0112: // WM_SYSCOMMAND
-                    if ((w.ToInt64() & 0xFFF0) == SC_MINIMIZE)
-                    {
-                        ShowWindow(hwnd, SW_HIDE);
-                        return IntPtr.Zero;
-                    }
-                    break;
-                case WM_TRAYICON:
-                    if (l.ToInt64() == 0x0203) // WM_LBUTTONDBLCLK
-                    {
-                        ShowWindow(hwnd, SW_SHOW);
-                        ShowWindow(hwnd, SW_RESTORE);
-                        SetForegroundWindow(hwnd);
                     }
                     return IntPtr.Zero;
                 case 0x02E0: // WM_DPICHANGED
