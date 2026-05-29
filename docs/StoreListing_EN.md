@@ -1,6 +1,6 @@
 # Microsoft Store Listing - English (US)
 
-Below is the complete information for you to copy and paste directly into the Microsoft Partner Center, updated for the v3.0.9.0 release.
+Below is the complete information for you to copy and paste directly into the Microsoft Partner Center, updated for the v3.1.0.0 release.
 
 ---
 
@@ -24,13 +24,13 @@ Clickra respects your privacy. All processing is done 100% locally on your machi
 🔗 Open Source on GitHub: https://github.com/Youchenjiang/Clickra
 
 ## What's new in this version
- - About Tab: New dedicated About page with project description, open-source collaboration links, and one-click Gmail diagnostic reporting.
- - Full Multilingual Support: Dashboard and shell context menu now fully localized in Japanese (ja-JP), Korean (ko-KR), and Simplified Chinese (zh-CN), in addition to existing zh-TW and en-US.
- - Minimize to System Tray: Dashboard window can now minimize to the Windows system tray, with double-click to restore.
- - Custom Output Folder: Settings page now includes a native folder picker to set any custom default output directory.
- - Expandable History Cards: Conversion history entries can be expanded to show input/output file paths and precise elapsed time.
- - Adaptive Maximization Layout & High DPI Support: Fixed black area rendering issues when maximizing, and added crisp UI scaling on high DPI monitors.
- - Smart File-First Conversion Interaction: Instantly drop or browse files first, and the dashboard will automatically highlight the correct conversion types and disable unsupported ones.
+ - Single-Instance Dashboard: Added Mutex-based single-instance check to prevent duplicate dashboard window launches.
+ - Progress Minimize-to-Tray: Progress window now supports minimizing to the system tray with real-time percentage updates.
+ - Process Cancellation & Clean-up: Added a cancellation safety warning dialog to terminate active PowerPoint/Word conversion background tasks.
+ - Detailed History Log Partitioning: Multi-file conversion tasks are now split into individual log rows, showing each file separately.
+ - Path Truncation & Horizontal Wheel Scrolling: Support middle-truncating long paths and horizontal mouse wheel scrolling within history cards.
+ - Progress Status Text Scrolling: Support dragging a custom scrollbar and auto-scrolling overflowing status text horizontally.
+ - Optimized Shell Extension Filtering: Automatically hide the Clickra sub-menu when only a single PDF is selected to keep the shell menu clean.
 
 ## Product Features
 *(Max 20, displayed as bullet points)*
