@@ -1480,13 +1480,26 @@ namespace Clickra.UI
                     }
                     return IntPtr.Zero;
                 case 0x0002: // WM_DESTROY
-                    KillTimer(hwnd, TIMER_ID_REFRESH);
-                    CleanupResources();
-                    if (_mutex != null)
+                    try
                     {
-                        try { _mutex.ReleaseMutex(); } catch {}
-                        _mutex.Dispose();
-                        _mutex = null;
+                        KillTimer(hwnd, TIMER_ID_REFRESH);
+                        CleanupResources();
+                    }
+                    finally
+                    {
+                        if (_mutex != null)
+                        {
+                            try
+                            {
+                                _mutex.ReleaseMutex();
+                            }
+                            catch { }
+                            finally
+                            {
+                                _mutex.Dispose();
+                                _mutex = null;
+                            }
+                        }
                     }
                     PostQuitMessage(0);
                     return IntPtr.Zero;

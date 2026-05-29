@@ -240,6 +240,7 @@ namespace Clickra.Core
                         if (inputList.Length > 0 && outputList.Length == inputList.Length)
                         {
                             long elapsedPerFile = elapsedMs >= 0 ? elapsedMs / inputList.Length : -1;
+                            var lines = new List<string>();
                             for (int i = 0; i < inputList.Length; i++)
                             {
                                 string singleInput = inputList[i].Trim();
@@ -253,8 +254,9 @@ namespace Clickra.Core
                                 
                                 string singleErr = isSingleSuccess ? "" : cleanErr;
                                 string line = $"{startTime}|{command}|1|{(isSingleSuccess ? "Success" : "Failed")}|{singleErr}|{et}|{elapsedPerFile}|{singleInput}|{singleOutput}";
-                                File.AppendAllLines(HistoryFile, new[] { line });
+                                lines.Add(line);
                             }
+                            File.AppendAllLines(HistoryFile, lines);
                         }
                         else
                         {
