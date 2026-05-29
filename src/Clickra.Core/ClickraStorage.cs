@@ -183,11 +183,11 @@ namespace Clickra.Core
         /// <summary>
         /// 開始追蹤一個新的作業（Pending 狀態），寫入 active.tmp。
         /// </summary>
-        public static void StartActiveRecord(string command, int fileCount)
+        public static void StartActiveRecord(string command, int fileCount, string? inputPaths = null)
         {
             RunWithMutex(() =>
             {
-                WriteActiveFileInternal(command, fileCount, ConversionStatus.Pending, "");
+                WriteActiveFileInternal(command, fileCount, ConversionStatus.Pending, "", null, inputPaths);
             });
         }
 
@@ -201,23 +201,30 @@ namespace Clickra.Core
                 var entry = ReadActiveFileInternal();
                 if (entry.HasValue)
                 {
-                    WriteActiveFileInternal(entry.Value.Command, entry.Value.FileCount, ConversionStatus.InProgress, "");
+                    WriteActiveFileInternal(entry.Value.Command, entry.Value.FileCount, ConversionStatus.InProgress, "", entry.Value.Time, entry.Value.InputPaths);
                 }
             });
         }
 
         /// <summary>
-        /// 完成進行中作業：寫入持久化日誌，並更新 active.tmp 狀態（不立即刪除，保留供 Dashboard 顯示最終狀態）。
+        /// 更新進行中作業的當前處理檔案索引。
         /// </summary>
-        public static void CompleteActiveRecord(bool isSuccess, string errorMsg, string? endTime = null, long elapsedMs = -1, string? inputPaths = null, string? outputPath = null)
+        public static void SetActiveRecordIndex(int index)
         {
             RunWithMutex(() =>
             {
                 var entry = ReadActiveFileInternal();
-                string command = entry?.Command ?? "";
-                int fileCount = entry?.FileCount ?? 0;
-                string startTime = entry?.Time ?? DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
+                if (entry.HasValue)
+                {
+                    WriteActiveFileInternal(entry.Value.Command, entry.Value.FileCount, entry.Value.Status, entry.Value.ErrorMessage, entry.Value.Time, entry.Value.InputPaths, index);
+                }
+            });
+        }
 
+        public static void CompleteActiveRecord(string command, string startTime, bool isSuccess, string errorMsg, string? endTime = null, long elapsedMs = -1, string? inputPaths = null, string? outputPath = null)
+        {
+            RunWithMutex(() =>
+            {
                 lock (FileLock)
                 {
                     try
@@ -267,18 +274,21 @@ namespace Clickra.Core
         }
 
         private static void WriteActiveFileInternal(string command, int fileCount, ConversionStatus status,
-            string errorMsg, string? time = null)
+            string errorMsg, string? time = null, string? inputPaths = null, int currentIndex = 0)
         {
             try
             {
                 string t = time ?? DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
-                string cleanErr = errorMsg.Replace("\r", " ").Replace("\n", " ").Replace("|", " ");
+                string cleanErr = (errorMsg ?? "").Replace("\r", " ").Replace("\n", " ").Replace("|", " ");
+                string cleanInputs = (inputPaths ?? "").Replace("\r", " ").Replace("\n", " ").Replace("|", " ");
                 string content =
                     $"Time={t}\n" +
                     $"Command={command}\n" +
                     $"FileCount={fileCount}\n" +
                     $"Status={status}\n" +
-                    $"ErrorMessage={cleanErr}\n";
+                    $"ErrorMessage={cleanErr}\n" +
+                    $"InputPaths={cleanInputs}\n" +
+                    $"CurrentIndex={currentIndex}\n";
                 File.WriteAllText(ActiveFile + ".tmp", content, System.Text.Encoding.UTF8);
                 File.Move(ActiveFile + ".tmp", ActiveFile, overwrite: true);
             }

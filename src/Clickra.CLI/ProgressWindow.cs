@@ -690,6 +690,7 @@ namespace Clickra.UI
 
         private void RunProcessing(IntPtr hwnd)
         {
+            string startTimeStr = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
             List<string> currentFiles = new List<string>();
             string cmd = "";
             var sw = System.Diagnostics.Stopwatch.StartNew();
@@ -719,10 +720,12 @@ namespace Clickra.UI
                         _message = msg;
                         if (_total > 0) _targetWidth = 448.0 * _current / _total;
                     }
+                    UpdateTrayIconProgress();
                 };
 
                 // 立即建立 Pending 紀錄，讓 Dashboard 可即時看到
-                try { ClickraStorage.StartActiveRecord(cmd, currentFiles.Count); } catch { }
+                string inputsStr = string.Join(";", currentFiles);
+                try { ClickraStorage.StartActiveRecord(cmd, currentFiles.Count, inputsStr); } catch { }
 
                 string outputDir = ClickraStorage.GetOutputDir(currentFiles[0]);
 
@@ -772,10 +775,10 @@ namespace Clickra.UI
                     _completed = true;
                     _message = "所有作業已順利完成！";
                 }
-                InvalidateRect(hwnd, IntPtr.Zero, true);
+                PostMessageW(hwnd, WM_USER_INVALIDATE, (IntPtr)1, IntPtr.Zero);
 
                 // 完成：寫入持久化日誌並暫留 Success 狀態供 Dashboard 讀取
-                try { ClickraStorage.CompleteActiveRecord(true, "", endTime, elapsedMs, inputs, outputs); } catch { }
+                try { ClickraStorage.CompleteActiveRecord(cmd, startTimeStr, true, "", endTime, elapsedMs, inputs, outputs); } catch { }
 
                 ShowToastNotification(cmd, currentFiles.Count);
 
