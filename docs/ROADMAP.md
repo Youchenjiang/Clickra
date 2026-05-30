@@ -85,7 +85,7 @@
 
 ## 🚀 後續預計里程碑 (Upcoming Milestones)
 - **第一階段**：開發「PDF 一鍵學術與 AI 翻譯工具」（純 C# AOT 相容原生實現，自動識別與保護 LaTeX 公式，支援多種翻譯引擎如 Google/Azure/Gemini 整合，並具備速率限制與併發控制）。
-- **第二階段**：開發「本地免 Office 離線與 Excel 轉檔插件」（整合本地免安裝 LibreOffice 離線轉檔插件，並全面新增微軟與 LibreOffice 的 Excel .xlsx 轉 PDF 支援，具備偏好引擎設定與 Dashboard 內建下載器）。
+- **第二階段**：開發「本地免 Office 離線與 Excel 轉檔插件」（整合本地免安裝 LibreOffice 離線轉檔插件，並全面新增微軟與 LibreOffice 的 Excel (.xlsx/.xls) 轉 PDF 支援，具備偏好引擎設定與 Dashboard 內建下載器）。
 - **第三階段**：開發「文字與編碼工具」（包含編碼轉換與原生 `LCMapStringEx` 簡繁字元互轉）。
 - **第四階段**：開發「批次檔名、資料夾與圖片處理工具」（支援資料夾批次命名、分類、批量建立空資料夾、PNG/JPG 批量轉換與高品質縮圖）以及「資料夾右鍵直接轉換」功能。
 - **第五階段**：開發「PDF 轉 PPTX 與文件工具強化」（包含 PDF 壓縮、PDF 轉圖片，以及並存三種模式的 PDF 轉 PPTX：原樣保真圖片版、拆文字層重建版，以及 Gemini AI 輔助的背景與文字分離修補版）。
