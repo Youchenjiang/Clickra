@@ -36,4 +36,7 @@
   <data name="Menu_ImgStitch" xml:space="preserve">
     <value>이미지 세로로 이어붙이기</value>
   </data>
+  <data name="Menu_TranslatePdf" xml:space="preserve">
+    <value>PDF 일괄 번역</value>
+  </data>
 </root>

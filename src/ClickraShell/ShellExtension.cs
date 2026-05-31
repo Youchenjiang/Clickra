@@ -181,8 +181,8 @@ namespace ClickraShell
 
     internal static class ComMethods
     {
-        private static readonly string[] MenuKeys = { "Menu_Ppt2Pdf", "Menu_Word2Pdf", "Menu_MergePdf", "Menu_Img2Pdf", "Menu_ImgMerge", "Menu_ImgStitch" };
-        private static readonly string[] SubArgs = { "ppt2pdf", "word2pdf", "merge-pdf", "img2pdf", "img-merge", "img-stitch" };
+        private static readonly string[] MenuKeys = { "Menu_Ppt2Pdf", "Menu_Word2Pdf", "Menu_MergePdf", "Menu_Img2Pdf", "Menu_ImgMerge", "Menu_ImgStitch", "Menu_TranslatePdf" };
+        private static readonly string[] SubArgs = { "ppt2pdf", "word2pdf", "merge-pdf", "img2pdf", "img-merge", "img-stitch", "translate-pdf" };
 
         internal static unsafe int CreateObject(IntPtr vt, Guid* riid, IntPtr* ppv, ComObjectType type, int data = -1)
         {
@@ -262,7 +262,7 @@ namespace ClickraShell
                 -1 => new[] { ".ppt", ".pptx", ".doc", ".docx", ".pdf", ".jpg", ".jpeg", ".png", ".bmp", ".gif", ".tiff", ".webp" }.Contains(ext),
                 0 => ext == ".ppt" || ext == ".pptx",
                 1 => ext == ".doc" || ext == ".docx",
-                2 => ext == ".pdf",
+                2 or 6 => ext == ".pdf",
                 3 or 4 or 5 => new[] { ".jpg", ".jpeg", ".png", ".bmp", ".gif", ".tiff", ".webp" }.Contains(ext),
                 _ => false
             };
@@ -277,12 +277,6 @@ namespace ClickraShell
 
             var files = GetFiles(psi);
             if (files.Count == 0) return 0;
-
-            if (idx == -1 && files.Count == 1 && Path.GetExtension(files[0]).Equals(".pdf", StringComparison.OrdinalIgnoreCase))
-            {
-                *p = 2; // ECS_HIDDEN
-                return 0;
-            }
 
             // Specific logic for multi-file commands
             bool countOk = idx switch {
