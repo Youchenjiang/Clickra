@@ -1412,13 +1412,6 @@ namespace Clickra.UI
         {
             float s = _dpiScale;
 
-            // Draw label above the dropdown
-            if (_subFont != null)
-            {
-                using var labelBrush = new SolidBrush(Color.FromArgb(220, 220, 220));
-                g.DrawString(GetText("setting_pdf_lang"), _subFont, labelBrush, contentX * s, (y - 18) * s);
-            }
-
             string currentLang = ClickraStorage.GetSetting("TranslateTargetLang");
             if (string.IsNullOrEmpty(currentLang)) currentLang = "zh-TW";
 
