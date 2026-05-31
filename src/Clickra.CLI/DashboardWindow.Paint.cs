@@ -437,24 +437,18 @@ namespace Clickra.UI
                 float tagX = contentX + 12 + timeW + 16;
                 float tagW = DrawCommandTag(g, entry.Command, tagX, currentY + 11);
 
-                // 狀態標籤與時間排版計算
+                // 狀態標籤與顏色計算
                 Color statusColor = entry.IsSuccess ? Color.FromArgb(100, 220, 100) : Color.FromArgb(255, 90, 70);
-                string statusText = entry.IsSuccess ? GetText("status_success") : (!string.IsNullOrEmpty(entry.ErrorMessage) ? entry.ErrorMessage : GetText("status_failed"));
-                if (!entry.IsSuccess && !string.IsNullOrEmpty(entry.ErrorMessage) && entry.ErrorMessage.Equals("User Aborted", StringComparison.OrdinalIgnoreCase))
-                {
-                    statusText = GetText("error_user_aborted");
-                }
+                string statusText = entry.IsSuccess 
+                    ? GetText("status_success") 
+                    : (entry.ErrorMessage?.Equals("User Aborted", StringComparison.OrdinalIgnoreCase) == true 
+                        ? GetText("error_user_aborted") 
+                        : GetText("status_error"));
 
-                float statusW = 0;
-                if (_tagFont != null)
-                {
-                    float statusMaxW = 150 - 12;
-                    statusText = TruncateText(g, statusText, _tagFont, statusMaxW, s);
-                    statusW = g.MeasureString(statusText, _tagFont).Width / s;
-                }
-                float statusLeftX = contentX + rowW - 16 - statusW;
+                float statusW = _tagFont != null ? g.MeasureString(statusText, _tagFont).Width / s : 50f;
+                float statusX = contentX + rowW - 16 - statusW;
 
-                // 檔案名稱 (動態相對起點)
+                // 檔案名稱：tag 之後到 status 之前的所有空間
                 if (_bodyFont != null)
                 {
                     using var countBrush = new SolidBrush(Color.FromArgb(200, 200, 200));
@@ -472,7 +466,7 @@ namespace Clickra.UI
                             displayText = Path.GetFileName(paths[0]);
                         }
                     }
-                    float maxW = statusLeftX - 16 - fileCountX;
+                    float maxW = statusX - 16 - fileCountX;
                     if (maxW > 20)
                     {
                         displayText = TruncateFileName(g, displayText, _bodyFont, maxW, s);
@@ -480,11 +474,11 @@ namespace Clickra.UI
                     g.DrawString(displayText, _bodyFont, countBrush, fileCountX * s, (currentY + 13) * s);
                 }
 
-                // 繪製狀態標籤
+                // 繪製狀態標籤（靠右）
                 if (_tagFont != null)
                 {
                     using var statusBrush = new SolidBrush(statusColor);
-                    g.DrawString(statusText, _tagFont, statusBrush, (contentX + rowW - 16 - statusW) * s, (currentY + 13) * s);
+                    g.DrawString(statusText, _tagFont, statusBrush, statusX * s, (currentY + 13) * s);
                 }
 
                 // Render Expanded Details
