@@ -1,6 +1,6 @@
 # Microsoft Store Listing - English (US)
 
-Below is the complete information for you to copy and paste directly into the Microsoft Partner Center, updated for the v3.1.0.0 release.
+Below is the complete information for you to copy and paste directly into the Microsoft Partner Center, updated for the v3.2.0.0 release.
 
 ---
 
@@ -24,13 +24,10 @@ Clickra respects your privacy. All processing is done 100% locally on your machi
 🔗 Open Source on GitHub: https://github.com/Youchenjiang/Clickra
 
 ## What's new in this version
- - Single-Instance Dashboard: Added Mutex-based single-instance check to prevent duplicate dashboard window launches.
- - Progress Minimize-to-Tray: Progress window now supports minimizing to the system tray with real-time percentage updates.
- - Process Cancellation & Clean-up: Added a cancellation safety warning dialog to terminate active PowerPoint/Word conversion background tasks.
- - Detailed History Log Partitioning: Multi-file conversion tasks are now split into individual log rows, showing each file separately.
- - Path Truncation & Horizontal Wheel Scrolling: Support middle-truncating long paths and horizontal mouse wheel scrolling within history cards.
- - Progress Status Text Scrolling: Support dragging a custom scrollbar and auto-scrolling overflowing status text horizontally.
- - Optimized Shell Extension Filtering: Automatically hide the Clickra sub-menu when only a single PDF is selected to keep the shell menu clean.
+ - Dashboard History Layout Optimization: Implemented adaptive filename width and right-aligned status text in the history list, resolving text overlapping on high-resolution screens or for long filenames.
+ - Accurate Failure & Cancellation Recording: Improved history logging to correctly record status as "Failed" or "Canceled" (regardless of partial output file generation) when a conversion is aborted or errors out.
+ - Settings Layout Overlap Fix: Removed the redundant target translation language label to completely resolve the text overlapping issue on the settings tab.
+ - Translation Target Language Simplification: Cleaned up the PDF translation target languages dropdown to only expose the primary "Traditional Chinese" option.
 
 ## Product Features
 *(Max 20, displayed as bullet points)*
