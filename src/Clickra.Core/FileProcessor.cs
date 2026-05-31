@@ -3,21 +3,25 @@ using System.IO;
 using System.Linq;
 using System.Collections.Generic;
 using System.Threading;
+using System.Threading.Tasks;
+using System.Text;
 using PdfSharp.Pdf;
 using PdfSharp.Pdf.IO;
+using PdfSharp.Pdf.Advanced;
 using PdfSharp.Drawing;
 #pragma warning disable CA1416 // Validate platform compatibility
 using System.Drawing;
+using UglyToad.PdfPig.DocumentLayoutAnalysis.PageSegmenter;
+using UglyToad.PdfPig.DocumentLayoutAnalysis.WordExtractor;
 
 namespace Clickra.Core
 {
     public static class FileProcessor
     {
         private static readonly System.Text.RegularExpressions.Regex CaptionRegex = new(
-            @"^[ 	]*(listing|figure|fig\.|table|algorithm)\s+(\d+|[ivxlcdm]+)",
+            @"^[ \t]*(listing|figure|fig\.|table|algorithm)\s+(\d+|[ivxlcdm]+)\b",
             System.Text.RegularExpressions.RegexOptions.IgnoreCase | System.Text.RegularExpressions.RegexOptions.Compiled
         );
-
         public static void MergePdfs(List<string> files, string outputPath, Action<int, int, string>? onProgress = null, CancellationToken cancellationToken = default)
         {
             int total = files.Count;
@@ -257,8 +261,6 @@ try {{
                 if (process != null)
                 {
                     using var registration = cancellationToken.Register(() =>
-using UglyToad.PdfPig.DocumentLayoutAnalysis.PageSegmenter;
-using UglyToad.PdfPig.DocumentLayoutAnalysis.WordExtractor;
                     {
                         try { process.Kill(true); } catch { }
                     });
@@ -302,7 +304,461 @@ using UglyToad.PdfPig.DocumentLayoutAnalysis.WordExtractor;
                 }
             }
         }
-    
+
+        public static void TranslatePdf(string inputPath, string outputPath, string targetLang, Action<int, int, string>? onProgress = null, CancellationToken cancellationToken = default)
+        {
+            try { PdfSharp.Fonts.GlobalFontSettings.FontResolver = new ClickraFontResolver(); } catch { }
+            onProgress?.Invoke(10, 100, "正在分析 PDF 版面結構與公式...");
+
+            using var pigDoc = UglyToad.PdfPig.PdfDocument.Open(inputPath);
+            int totalPages = pigDoc.NumberOfPages;
+            var pageParagraphs = new List<List<PdfParagraph>>();
+
+            for (int p = 1; p <= totalPages; p++)
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                var page = pigDoc.GetPage(p);
+                var pageList = new List<PdfParagraph>();
+
+                var words = NearestNeighbourWordExtractor.Instance.GetWords(page.Letters).ToList();
+                if (words.Count == 0)
+                {
+                    pageParagraphs.Add(pageList);
+                    continue;
+                }
+
+                var blocks = DocstrumBoundingBoxes.Instance.GetBlocks(words);
+                foreach (var block in blocks)
+                {
+                    var paragraph = new PdfParagraph(block);
+                    pageList.Add(paragraph);
+                }
+
+                // Pass 1: Mark initial bypassed paragraphs
+                foreach (var para in pageList)
+                {
+                    para.IsBypassed = para.IsCode || para.IsOnlyMath || string.IsNullOrWhiteSpace(para.TextWithPlaceholders) ||
+                                      IsEquationParagraph(para) || IsTableParagraph(para);
+                }
+
+                // Pass 2: Propagate bypass to nearby small/label paragraphs (e.g. annotations inside drawings)
+                bool changed = true;
+                while (changed)
+                {
+                    changed = false;
+                    foreach (var para in pageList)
+                    {
+                        if (para.IsBypassed) continue;
+                        
+                        bool isSmallLabel = para.TextWithPlaceholders.Length <= 20;
+                        if (isSmallLabel)
+                        {
+                            foreach (var other in pageList)
+                            {
+                                if (other == para || !other.IsBypassed) continue;
+                                
+                                bool closeX = (para.X0 <= other.X1 + 30) && (para.X1 >= other.X0 - 30);
+                                bool closeY = (para.Y0 <= other.Y1 + 30) && (para.Y1 >= other.Y0 - 30);
+                                
+                                if (closeX && closeY)
+                                {
+                                    para.IsBypassed = true;
+                                    changed = true;
+                                    break;
+                                }
+                            }
+                        }
+                    }
+                }
+
+                pageParagraphs.Add(pageList);
+            }
+
+            onProgress?.Invoke(30, 100, "正在翻譯文本內容...");
+            var translator = TranslationEngineFactory.Create();
+
+            for (int p = 0; p < totalPages; p++)
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                var paragraphs = pageParagraphs[p];
+                if (paragraphs.Count == 0) continue;
+
+                Console.WriteLine($"[Translate] Page {p + 1} has {paragraphs.Count} paragraphs:");
+                foreach (var para in paragraphs)
+                {
+                    Console.WriteLine($"  Para: [{para.X0:F1}, {para.Y0:F1}, {para.X1:F1}, {para.Y1:F1}] - Direction: {para.TextDirection} - Text: {(para.TextWithPlaceholders.Length > 60 ? para.TextWithPlaceholders.Substring(0, 60) : para.TextWithPlaceholders)}");
+                }
+
+                onProgress?.Invoke(30 + (int)(p * 40.0 / totalPages), 100, $"正在翻譯第 {p + 1}/{totalPages} 頁...");
+
+                var tasks = new List<Task>();
+                foreach (var para in paragraphs)
+                {
+                    if (para.IsBypassed)
+                    {
+                        para.TranslatedText = para.TextWithPlaceholders;
+                        continue;
+                    }
+
+                    tasks.Add(Task.Run(async () =>
+                    {
+                        try
+                        {
+                            string result = await translator.TranslateAsync(para.TextWithPlaceholders, targetLang, cancellationToken);
+                            // If translation returned empty/whitespace, fall back to original text
+                            para.TranslatedText = string.IsNullOrWhiteSpace(result) ? para.TextWithPlaceholders : result;
+                        }
+                        catch
+                        {
+                            para.TranslatedText = para.TextWithPlaceholders;
+                        }
+                    }, cancellationToken));
+                }
+
+                Task.WhenAll(tasks).GetAwaiter().GetResult();
+            }
+
+            onProgress?.Invoke(80, 100, "正在重建 PDF 佈局與公式...");
+            cancellationToken.ThrowIfCancellationRequested();
+
+            using var maskBmp = new System.Drawing.Bitmap(1, 1);
+            using (var maskG = System.Drawing.Graphics.FromImage(maskBmp))
+            {
+                maskG.Clear(System.Drawing.Color.White);
+            }
+            using var ms = new System.IO.MemoryStream();
+            maskBmp.Save(ms, System.Drawing.Imaging.ImageFormat.Png);
+            byte[] maskBytes = ms.ToArray();
+            using var whiteMaskImg = XImage.FromStream(new System.IO.MemoryStream(maskBytes));
+
+            using var finalDoc = PdfReader.Open(inputPath, PdfDocumentOpenMode.Modify);
+
+            string targetFontName = "Microsoft JhengHei";
+            if (targetLang.Equals("zh-CN", StringComparison.OrdinalIgnoreCase))
+            {
+                targetFontName = "Microsoft YaHei";
+            }
+            else if (targetLang.Equals("ja", StringComparison.OrdinalIgnoreCase))
+            {
+                targetFontName = "MS Gothic";
+            }
+            else if (targetLang.Equals("ko", StringComparison.OrdinalIgnoreCase))
+            {
+                targetFontName = "Malgun Gothic";
+            }
+            else if (targetLang.Equals("en", StringComparison.OrdinalIgnoreCase))
+            {
+                targetFontName = "Arial";
+            }
+
+            for (int p = 0; p < totalPages; p++)
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                var page = finalDoc.Pages[p];
+
+                // Clean the page's original English text streams before adding overlays (Disabled to preserve bypassed diagrams/tables)
+                /*
+                try
+                {
+                    StripTextFromPage(page);
+                }
+                catch { }
+                */
+
+                var paragraphs = pageParagraphs[p];
+                if (paragraphs.Count == 0) continue;
+
+                // Ensure the page has /ExtGState with /NormalState to reset overprint and multiply blend modes
+                try
+                {
+                    var extGStatesProp = typeof(PdfResources).GetProperty("ExtGStates", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Public);
+                    if (extGStatesProp != null)
+                    {
+                        var extGStates = extGStatesProp.GetValue(page.Resources) as PdfDictionary;
+                        if (extGStates != null && !extGStates.Elements.ContainsKey("/NormalState"))
+                        {
+                            var normalState = new PdfDictionary();
+                            normalState.Elements["/BM"] = new PdfName("/Normal");
+                            normalState.Elements["/op"] = new PdfBoolean(false);
+                            normalState.Elements["/OP"] = new PdfBoolean(false);
+                            extGStates.Elements["/NormalState"] = normalState;
+                        }
+                    }
+                }
+                catch { }
+
+                using var gfx = XGraphics.FromPdfPage(page);
+                try
+                {
+                    gfx.Internals.ContentStringBuilder.Append(" /NormalState gs ");
+                }
+                catch { }
+
+                foreach (var para in paragraphs)
+                {
+                    double pageHeight = gfx.PageSize.Height;
+                    double paragraphX = para.X0 - 1.5;
+                    double paragraphY = pageHeight - para.Y1 - 1.5;  // TOP of paragraph in PDFsharp coords
+                    double paragraphWidth = para.Width + 3.0;
+                    double paragraphHeight = para.Height + 3.0;
+
+                    if (para.IsBypassed)
+                    {
+                        // Bypassed paragraphs are preserved in original stream, so we don't redraw them.
+                        continue;
+                    }
+
+                    if (string.IsNullOrWhiteSpace(para.TranslatedText)) continue;
+
+                    gfx.DrawImage(whiteMaskImg, paragraphX, paragraphY, paragraphWidth, paragraphHeight);
+
+                    RenderParagraph(gfx, para, targetFontName);
+                }
+            }
+
+            onProgress?.Invoke(95, 100, "正在儲存翻譯後的檔案...");
+            finalDoc.Save(outputPath);
+            finalDoc.Close();
+        }
+
+        private static byte[] StripTextFromContentStream(byte[] contentBytes)
+        {
+            using var ms = new MemoryStream();
+            int i = 0;
+            int len = contentBytes.Length;
+            bool inString = false;
+            bool inHex = false;
+            int escapeCount = 0;
+            bool inText = false;
+
+            while (i < len)
+            {
+                byte b = contentBytes[i];
+
+                if (inString)
+                {
+                    if (b == '\\')
+                    {
+                        escapeCount = (escapeCount + 1) % 2;
+                    }
+                    else if (b == ')' && escapeCount == 0)
+                    {
+                        inString = false;
+                    }
+                    else
+                    {
+                        escapeCount = 0;
+                    }
+
+                    if (!inText) ms.WriteByte(b);
+                    i++;
+                    continue;
+                }
+
+                if (inHex)
+                {
+                    if (b == '>')
+                    {
+                        inHex = false;
+                    }
+                    if (!inText) ms.WriteByte(b);
+                    i++;
+                    continue;
+                }
+
+                if (b == '(')
+                {
+                    inString = true;
+                    escapeCount = 0;
+                    if (!inText) ms.WriteByte(b);
+                    i++;
+                    continue;
+                }
+
+                if (b == '<')
+                {
+                    inHex = true;
+                    if (!inText) ms.WriteByte(b);
+                    i++;
+                    continue;
+                }
+
+                if (b == 'B' && i + 1 < len && contentBytes[i + 1] == 'T' && IsDelimiter(contentBytes, i - 1) && IsDelimiter(contentBytes, i + 2))
+                {
+                    inText = true;
+                    i += 2;
+                    continue;
+                }
+
+                if (b == 'E' && i + 1 < len && contentBytes[i + 1] == 'T' && IsDelimiter(contentBytes, i - 1) && IsDelimiter(contentBytes, i + 2))
+                {
+                    inText = false;
+                    i += 2;
+                    continue;
+                }
+
+                if (!inText)
+                {
+                    ms.WriteByte(b);
+                }
+                i++;
+            }
+
+            return ms.ToArray();
+        }
+
+        private static bool IsDelimiter(byte[] bytes, int index)
+        {
+            if (index < 0 || index >= bytes.Length) return true;
+            byte b = bytes[index];
+            return b == ' ' || b == '\t' || b == '\r' || b == '\n' || b == '/' || b == '[' || b == ']' || b == '<' || b == '>' || b == '(' || b == ')';
+        }
+
+        private static void StripFormXObjects(PdfDictionary dict, HashSet<string> fontsToStrip)
+        {
+            if (dict == null) return;
+            var visited = new HashSet<PdfDictionary>();
+            StripFormXObjectsInternal(dict, visited, fontsToStrip);
+        }
+
+        private static void StripFormXObjectsInternal(PdfDictionary dict, HashSet<PdfDictionary> visited, HashSet<string> fontsToStrip)
+        {
+            if (dict == null || !visited.Add(dict)) return;
+
+            if (dict.Stream != null)
+            {
+                var subtype = dict.Elements["/Subtype"];
+                if (subtype != null && (subtype.ToString() == "/Form" || subtype.ToString() == "Form"))
+                {
+                    byte[] decompressedBytes = dict.Stream.UnfilteredValue;
+                    byte[] cleanBytes = StripSelectedText(decompressedBytes, fontsToStrip);
+                    dict.Stream.Value = cleanBytes;
+                    dict.Elements.Remove("/Filter");
+                }
+            }
+
+            // Copy keys to avoid concurrent modification exception if dict changes (though it shouldn't)
+            var keys = new List<string>();
+            try
+            {
+                foreach (var key in dict.Elements.KeyNames)
+                {
+                    if (key != null)
+                    {
+                        keys.Add(key.ToString());
+                    }
+                }
+            }
+            catch { }
+
+            foreach (var key in keys)
+            {
+                var item = dict.Elements[key];
+                if (item is PdfReference reference)
+                {
+                    item = reference.Value;
+                }
+
+                if (item is PdfDictionary subDict)
+                {
+                    StripFormXObjectsInternal(subDict, visited, fontsToStrip);
+                }
+                else if (item is PdfArray array)
+                {
+                    foreach (var arrayItem in array.Elements)
+                    {
+                        var resolvedItem = arrayItem;
+                        if (resolvedItem is PdfReference arrayRef)
+                        {
+                            resolvedItem = arrayRef.Value;
+                        }
+                        if (resolvedItem is PdfDictionary arrayDict)
+                        {
+                            StripFormXObjectsInternal(arrayDict, visited, fontsToStrip);
+                        }
+                    }
+                }
+            }
+        }
+
+        private static XFont GetMathFont(string originalFontName, double fontSize)
+        {
+            bool isItalic = originalFontName.Contains("Italic", StringComparison.OrdinalIgnoreCase) ||
+                            originalFontName.Contains("CMMI", StringComparison.OrdinalIgnoreCase) ||
+                            originalFontName.Contains("mi", StringComparison.OrdinalIgnoreCase);
+            bool isBold = originalFontName.Contains("Bold", StringComparison.OrdinalIgnoreCase);
+
+            var style = XFontStyleEx.Regular;
+            if (isItalic && isBold) style = XFontStyleEx.BoldItalic;
+            else if (isItalic) style = XFontStyleEx.Italic;
+            else if (isBold) style = XFontStyleEx.Bold;
+
+            string fontName = "Times New Roman";
+            if (originalFontName.Contains("Helvetica", StringComparison.OrdinalIgnoreCase) ||
+                originalFontName.Contains("Arial", StringComparison.OrdinalIgnoreCase) ||
+                originalFontName.Contains("Sans", StringComparison.OrdinalIgnoreCase) ||
+                originalFontName.Contains("SFNSText", StringComparison.OrdinalIgnoreCase))
+            {
+                fontName = "Arial";
+            }
+            else if (originalFontName.Contains("Sym", StringComparison.OrdinalIgnoreCase) ||
+                originalFontName.Contains("Math", StringComparison.OrdinalIgnoreCase) ||
+                originalFontName.Contains("MSAM", StringComparison.OrdinalIgnoreCase) ||
+                originalFontName.Contains("MSBM", StringComparison.OrdinalIgnoreCase) ||
+                originalFontName.Contains("CMSY", StringComparison.OrdinalIgnoreCase))
+            {
+                fontName = "Cambria Math";
+            }
+            else if (originalFontName.Contains("Courier", StringComparison.OrdinalIgnoreCase) ||
+                     originalFontName.Contains("Console", StringComparison.OrdinalIgnoreCase) ||
+                     originalFontName.Contains("Inconsolata", StringComparison.OrdinalIgnoreCase) ||
+                     originalFontName.Contains("Typewriter", StringComparison.OrdinalIgnoreCase) ||
+                     originalFontName.Contains("NimbusMon", StringComparison.OrdinalIgnoreCase) ||
+                     originalFontName.Contains("MonL", StringComparison.OrdinalIgnoreCase) ||
+                     originalFontName.Contains("cmtt", StringComparison.OrdinalIgnoreCase) ||
+                     originalFontName.Contains("ectt", StringComparison.OrdinalIgnoreCase) ||
+                     originalFontName.Contains("sftt", StringComparison.OrdinalIgnoreCase) ||
+                     originalFontName.Contains("Teletype", StringComparison.OrdinalIgnoreCase) ||
+                     originalFontName.Contains("Mono", StringComparison.OrdinalIgnoreCase) ||
+                     originalFontName.Contains("Code", StringComparison.OrdinalIgnoreCase) ||
+                     System.Text.RegularExpressions.Regex.IsMatch(originalFontName, @"tt\d+", System.Text.RegularExpressions.RegexOptions.IgnoreCase))
+            {
+                fontName = "Courier New";
+            }
+
+            return new XFont(fontName, fontSize, style);
+        }
+
+        private static void RenderBypassedParagraph(XGraphics gfx, PdfParagraph para)
+        {
+            double pageHeight = gfx.PageSize.Height;
+            XBrush brush = XBrushes.Black;
+
+            foreach (var letter in para.AllLetters)
+            {
+                if (string.IsNullOrEmpty(letter.Value) || string.IsNullOrWhiteSpace(letter.Value)) continue;
+
+                string fontName = letter.FontName ?? "";
+                string cleanFontName = fontName;
+                int plusIdx = fontName.IndexOf('+');
+                if (plusIdx >= 0 && plusIdx < fontName.Length - 1)
+                {
+                    cleanFontName = fontName.Substring(plusIdx + 1);
+                }
+
+                if (PdfParagraph.MathFontRegex.IsMatch(cleanFontName))
+                {
+                    continue;
+                }
+
+                XFont font = GetMathFont(letter.FontName, letter.FontSize);
+                double x = letter.X;
+                double y = pageHeight - letter.Y;
+
+                gfx.DrawString(letter.Value, font, brush, x, y);
+            }
+        }
+
         private static bool IsMathOrGreekCharacter(char c)
         {
             return (c >= 0x0370 && c <= 0x03FF) ||  // Greek
@@ -356,6 +812,19 @@ using UglyToad.PdfPig.DocumentLayoutAnalysis.WordExtractor;
                    fontName.Contains("Mono", StringComparison.OrdinalIgnoreCase) ||
                    fontName.Contains("Code", StringComparison.OrdinalIgnoreCase) ||
                    System.Text.RegularExpressions.Regex.IsMatch(fontName, @"tt\d+", System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+        }
+
+        private static bool ShouldMergeFormula(MathFormula formula, double averageFontSize)
+        {
+            if (formula.Letters.Count <= 1) return false;
+
+            double minY = formula.Letters.Min(l => l.RelativeY);
+            double maxY = formula.Letters.Max(l => l.RelativeY);
+            double yDiff = maxY - minY;
+
+            if (yDiff > averageFontSize * 0.15) return false;
+
+            return true;
         }
 
         private static bool IsHeadingParagraph(PdfParagraph para)
@@ -486,6 +955,596 @@ using UglyToad.PdfPig.DocumentLayoutAnalysis.WordExtractor;
             }
             catch { }
             return false;
+        }
+
+        private static void StripTextFromPage(PdfPage page)
+        {
+            var resources = page.Elements.GetDictionary("/Resources");
+            if (resources == null) return;
+
+            var fonts = resources.Elements.GetDictionary("/Font");
+            if (fonts == null) return;
+
+            var fontsToStrip = new HashSet<string>();
+            foreach (var key in fonts.Elements.KeyNames)
+            {
+                var fontItem = fonts.Elements[key];
+                if (fontItem is PdfReference reference) fontItem = reference.Value;
+                if (fontItem is PdfDictionary fontDict)
+                {
+                    var baseFont = fontDict.Elements.GetName("/BaseFont");
+                    if (!string.IsNullOrEmpty(baseFont))
+                    {
+                        string cleanFontName = baseFont.Replace("/", "").Trim();
+                        int plusIdx = cleanFontName.IndexOf('+');
+                        if (plusIdx >= 0 && plusIdx < cleanFontName.Length - 1)
+                        {
+                            cleanFontName = cleanFontName.Substring(plusIdx + 1);
+                        }
+
+                        // Check if it is a math or code font
+                        bool isMathOrCode = PdfParagraph.MathFontRegex.IsMatch(cleanFontName);
+                        if (!isMathOrCode)
+                        {
+                            fontsToStrip.Add(key.ToString().TrimStart('/'));
+                        }
+                    }
+                }
+            }
+
+            // Strip Form XObjects on the page to prevent duplicate overlapping text in diagrams
+            StripFormXObjects(resources, fontsToStrip);
+
+            // Now modify the page content stream
+            var contents = page.Contents;
+            for (int i = 0; i < contents.Elements.Count; i++)
+            {
+                var contentObj = contents.Elements[i];
+                if (contentObj is PdfReference reference) contentObj = reference.Value;
+                if (contentObj is PdfDictionary contentDict && contentDict.Stream != null)
+                {
+                    byte[] decompressedBytes = contentDict.Stream.UnfilteredValue;
+                    byte[] cleanBytes = StripSelectedText(decompressedBytes, fontsToStrip);
+                    contentDict.Stream.Value = cleanBytes;
+                    contentDict.Elements.Remove("/Filter");
+                }
+            }
+        }
+
+        private static byte[] StripSelectedText(byte[] contentBytes, HashSet<string> fontsToStrip)
+        {
+            using var ms = new MemoryStream();
+            int i = 0;
+            int len = contentBytes.Length;
+            
+            string currentFontResource = "";
+            bool stripActive = false;
+
+            var tokens = new List<string>();
+
+            while (i < len)
+            {
+                byte b = contentBytes[i];
+
+                if (b == '(')
+                {
+                    int start = i;
+                    i++;
+                    int escapeCount = 0;
+                    while (i < len)
+                    {
+                        byte sb = contentBytes[i];
+                        if (sb == '\\')
+                        {
+                            escapeCount = (escapeCount + 1) % 2;
+                        }
+                        else if (sb == ')' && escapeCount == 0)
+                        {
+                            i++;
+                            break;
+                        }
+                        else
+                        {
+                            escapeCount = 0;
+                        }
+                        i++;
+                    }
+                    int end = i;
+
+                    if (stripActive)
+                    {
+                        ms.WriteByte((byte)'(');
+                        ms.WriteByte((byte)')');
+                    }
+                    else
+                    {
+                        ms.Write(contentBytes, start, end - start);
+                    }
+                    continue;
+                }
+
+                if (b == '<')
+                {
+                    if (i + 1 < len && contentBytes[i + 1] == '<')
+                    {
+                        ms.WriteByte((byte)'<');
+                        ms.WriteByte((byte)'<');
+                        i += 2;
+                        continue;
+                    }
+
+                    int start = i;
+                    i++;
+                    while (i < len && contentBytes[i] != '>')
+                    {
+                        i++;
+                    }
+                    if (i < len) i++;
+                    int end = i;
+
+                    if (stripActive)
+                    {
+                        ms.WriteByte((byte)'<');
+                        ms.WriteByte((byte)'>');
+                    }
+                    else
+                    {
+                        ms.Write(contentBytes, start, end - start);
+                    }
+                    continue;
+                }
+
+                if (IsDelimiter(contentBytes, i))
+                {
+                    ms.WriteByte(b);
+                    i++;
+                    continue;
+                }
+
+                int tokenStart = i;
+                while (i < len && !IsDelimiter(contentBytes, i) && contentBytes[i] != '(' && contentBytes[i] != '<')
+                {
+                    i++;
+                }
+                int tokenLen = i - tokenStart;
+                string token = Encoding.ASCII.GetString(contentBytes, tokenStart, tokenLen);
+                ms.Write(contentBytes, tokenStart, tokenLen);
+
+                tokens.Add(token);
+                if (tokens.Count > 3) tokens.RemoveAt(0);
+
+                if (token == "Tf" && tokens.Count >= 3)
+                {
+                    string fontName = tokens[tokens.Count - 3];
+                    currentFontResource = fontName;
+                    stripActive = fontsToStrip.Contains(fontName.TrimStart('/'));
+                }
+            }
+
+            return ms.ToArray();
+        }
+
+        private static double RenderParagraph(XGraphics gfx, PdfParagraph para, string targetFontName, bool measureOnly = false)
+        {
+            double pageHeight = gfx.PageSize.Height;
+            double paragraphX = para.X0;
+            double paragraphY = pageHeight - para.Y1;
+            double paragraphWidth = para.Width;
+            double paragraphHeight = para.Height;
+
+            string text = (para.TranslatedText ?? "").Replace('∗', '*');
+            text = text.Replace("\u200B", "").Replace("\u200C", "").Replace("\u200D", "").Replace("\uFEFF", "");
+            var tokens = TokenizeTranslatedText(text);
+
+
+            double fontSize = para.AverageFontSize;
+            string fontNameForPara = targetFontName;
+            if (para.IsCode)
+            {
+                fontNameForPara = "Courier New";
+            }
+            XFontStyleEx fontStyle = para.IsBold || IsHeadingParagraph(para) ? XFontStyleEx.Bold : XFontStyleEx.Regular;
+            XFont mainFont = new XFont(fontNameForPara, fontSize, fontStyle);
+            XBrush brush = XBrushes.Black;
+
+            // Handle rotations (90, 180, 270)
+            bool isRotated = false;
+            double layoutWidth = paragraphWidth;
+            XGraphicsState? state = null;
+            string dirStr = para.TextDirection?.ToString() ?? "";
+
+            if (dirStr == "Rotate270")
+            {
+                double startX = para.X0;
+                double startY = pageHeight - para.Y0;
+                state = gfx.Save();
+                gfx.TranslateTransform(startX, startY);
+                gfx.RotateTransform(-90);
+                layoutWidth = para.Height;
+                isRotated = true;
+            }
+            else if (dirStr == "Rotate90")
+            {
+                double startX = para.X1;
+                double startY = pageHeight - para.Y1;
+                state = gfx.Save();
+                gfx.TranslateTransform(startX, startY);
+                gfx.RotateTransform(90);
+                layoutWidth = para.Height;
+                isRotated = true;
+            }
+            else if (dirStr == "Rotate180")
+            {
+                double startX = para.X1;
+                double startY = pageHeight - para.Y0;
+                state = gfx.Save();
+                gfx.TranslateTransform(startX, startY);
+                gfx.RotateTransform(180);
+                layoutWidth = paragraphWidth;
+                isRotated = true;
+            }
+            List<LayoutRow> rows = LayoutParagraph(tokens, mainFont, para.Formulas, layoutWidth, fontSize, para.AverageFontSize, gfx);
+
+            // Compute dynamic line spacing
+            double lineSpacingMultiplier = 1.35; // Default CJK line height
+            if (targetFontName.Contains("Arial", StringComparison.OrdinalIgnoreCase))
+            {
+                lineSpacingMultiplier = 1.2;
+            }
+            double lineHeight = fontSize * lineSpacingMultiplier;
+
+            double limitHeight = isRotated ? para.Width : paragraphHeight;
+            double totalHeight = rows.Count * lineHeight;
+            
+            bool disableScaling = (rows.Count <= 1) || IsHeadingParagraph(para);
+            if (totalHeight > limitHeight && !disableScaling)
+            {
+                double requiredLineSpacingMultiplier = limitHeight / (rows.Count * fontSize);
+                if (requiredLineSpacingMultiplier >= 1.0)
+                {
+                    lineSpacingMultiplier = requiredLineSpacingMultiplier;
+                    lineHeight = fontSize * lineSpacingMultiplier;
+                }
+                else
+                {
+                    lineSpacingMultiplier = 1.0;
+                    double scale = limitHeight / (rows.Count * fontSize);
+                    scale = Math.Max(0.8, scale);
+                    fontSize *= scale;
+                    mainFont = new XFont(fontNameForPara, fontSize, fontStyle);
+                    lineHeight = fontSize * lineSpacingMultiplier;
+                    rows = LayoutParagraph(tokens, mainFont, para.Formulas, layoutWidth, fontSize, para.AverageFontSize, gfx);
+                }
+            }
+
+            // Actual rendered height = number of rows × line height
+            double renderedHeight = rows.Count * lineHeight;
+
+            // In measure-only mode, skip all drawing and just return the height
+            if (measureOnly)
+            {
+                if (state != null) gfx.Restore(state);
+                return renderedHeight;
+            }
+
+            double currentY = isRotated ? fontSize : (paragraphY + fontSize);
+
+            foreach (var row in rows)
+            {
+                double rowWidth = row.Elements.Sum(e => e.Width);
+                double startX = paragraphX;
+                if (isRotated)
+                {
+                    startX = 0;
+                    if (para.Alignment == PdfParagraph.TextAlignment.Center) startX = (layoutWidth - rowWidth) / 2;
+                    else if (para.Alignment == PdfParagraph.TextAlignment.Right) startX = layoutWidth - rowWidth;
+                }
+                else
+                {
+                    if (para.Alignment == PdfParagraph.TextAlignment.Center) startX = paragraphX + (paragraphWidth - rowWidth) / 2;
+                    else if (para.Alignment == PdfParagraph.TextAlignment.Right) startX = paragraphX + (paragraphWidth - rowWidth);
+                }
+
+                double currentX = startX;
+                int idx = 0;
+                while (idx < row.Elements.Count)
+                {
+                    var element = row.Elements[idx];
+                    if (element.IsFormula)
+                    {
+                        var formula = para.Formulas[element.FormulaId];
+                        double scale = fontSize / para.AverageFontSize;
+
+                        bool hasMono = formula.Letters.Any(l => IsMonospaceFont(l.FontName));
+                        double formulaScale = scale;
+                        if (hasMono)
+                        {
+                            formulaScale *= 1.0;
+                        }
+
+                        if (ShouldMergeFormula(formula, para.AverageFontSize))
+                        {
+                            string mergedText = string.Join("", formula.Letters.Select(l => l.Value));
+                            double fSize = formula.Letters[0].FontSize * formulaScale;
+                            
+                            string fontToUse = formula.Letters[0].FontName;
+                            foreach (var l in formula.Letters)
+                            {
+                                if (IsMonospaceFont(l.FontName))
+                                {
+                                    fontToUse = l.FontName;
+                                    break;
+                                }
+                            }
+                            
+                            XFont mathFont = GetMathFont(fontToUse, fSize);
+
+                            double avgY = formula.Letters.Average(l => l.RelativeY);
+                            double my = currentY - avgY * formulaScale + (fontSize * 0.05);
+
+                            gfx.DrawString(mergedText, mathFont, brush, currentX, my);
+                        }
+                        else
+                        {
+                            foreach (var ml in formula.Letters)
+                            {
+                                double fSize = ml.FontSize * formulaScale;
+                                XFont mathFont = GetMathFont(ml.FontName, fSize);
+
+                                double mx = currentX + ml.RelativeX * formulaScale;
+                                // Add a minor alignment offset (0.05 * fontSize) to lower Latin formulas slightly relative to CJK baseline
+                                double my = currentY - ml.RelativeY * formulaScale + (fontSize * 0.05);
+
+                                gfx.DrawString(ml.Value, mathFont, brush, mx, my);
+                            }
+                        }
+                        currentX += element.Width;
+                        idx++;
+                    }
+                    else
+                    {
+                        var sbMerged = new StringBuilder();
+                        double textStartX = currentX;
+                        double textWidth = 0;
+                        while (idx < row.Elements.Count && !row.Elements[idx].IsFormula)
+                        {
+                            var elem = row.Elements[idx];
+                            if (elem.Text.Length == 1 && IsMathOrGreekCharacter(elem.Text[0]))
+                            {
+                                if (sbMerged.Length > 0)
+                                {
+                                    gfx.DrawString(sbMerged.ToString(), mainFont, brush, textStartX, currentY);
+                                    sbMerged.Clear();
+                                }
+                                string mathFontName = targetFontName;
+                                if (targetFontName == "Arial" || targetFontName == "Times New Roman")
+                                {
+                                    mathFontName = "Segoe UI Symbol";
+                                }
+                                XFont mathFont = new XFont(mathFontName, mainFont.Size, mainFont.Style);
+                                gfx.DrawString(elem.Text, mathFont, brush, currentX, currentY);
+                                textStartX = currentX + elem.Width;
+                            }
+                            else
+                            {
+                                sbMerged.Append(elem.Text);
+                            }
+                            textWidth += elem.Width;
+                            currentX += elem.Width;
+                            idx++;
+                        }
+                        if (sbMerged.Length > 0)
+                        {
+                            gfx.DrawString(sbMerged.ToString(), mainFont, brush, textStartX, currentY);
+                        }
+                    }
+                }
+                currentY += lineHeight;
+            }
+
+            if (state != null)
+            {
+                gfx.Restore(state);
+            }
+
+            return renderedHeight;
+        }
+
+        private static List<string> TokenizeTranslatedText(string text)
+        {
+            var list = new List<string>();
+            var sb = new StringBuilder();
+            int i = 0;
+            int len = text.Length;
+            while (i < len)
+            {
+                if (text[i] == '{' && i + 2 < len && text[i + 1] == 'v')
+                {
+                    int j = i;
+                    while (j < len && text[j] != '}') j++;
+                    if (j < len && text[j] == '}')
+                    {
+                        if (sb.Length > 0)
+                        {
+                            list.Add(sb.ToString());
+                            sb.Clear();
+                        }
+                        list.Add(text.Substring(i, j - i + 1));
+                        i = j + 1;
+                        continue;
+                    }
+                }
+
+                char c = text[i];
+                if (IsCjkCharacter(c) || IsMathOrGreekCharacter(c))
+                {
+                    if (sb.Length > 0)
+                    {
+                        list.Add(sb.ToString());
+                        sb.Clear();
+                    }
+                    list.Add(c.ToString());
+                    i++;
+                    continue;
+                }
+
+                if (c == ' ')
+                {
+                    if (sb.Length > 0)
+                    {
+                        list.Add(sb.ToString());
+                        sb.Clear();
+                    }
+                    list.Add(" ");
+                    i++;
+                    continue;
+                }
+
+                sb.Append(c);
+                i++;
+            }
+            if (sb.Length > 0) list.Add(sb.ToString());
+            return list;
+        }
+
+        private static List<LayoutRow> LayoutParagraph(List<string> tokens, XFont font, List<MathFormula> formulas, double maxWidth, double fontSize, double averageFontSize, XGraphics gfx)
+        {
+            var rows = new List<LayoutRow>();
+            var currentRow = new LayoutRow();
+            double currentX = 0;
+
+            foreach (var token in tokens)
+            {
+                bool isFormula = token.StartsWith("{v") && token.EndsWith("}");
+                double width = 0;
+                int formulaId = -1;
+
+                if (isFormula)
+                {
+                    if (int.TryParse(token.Substring(2, token.Length - 3), out formulaId) && formulaId >= 0 && formulaId < formulas.Count)
+                    {
+                        var formula = formulas[formulaId];
+                        double formulaScale = fontSize / averageFontSize;
+                        bool hasMono = formula.Letters.Any(l => IsMonospaceFont(l.FontName));
+                        if (hasMono)
+                        {
+                            formulaScale *= 1.0;
+                        }
+                        width = formula.Width * formulaScale;
+                    }
+                }
+                else
+                {
+                    if (token == " ")
+                    {
+                        width = gfx.MeasureString(" ", font).Width;
+                    }
+                    else if (token.Length == 1 && IsMathOrGreekCharacter(token[0]))
+                    {
+                        string mathFontName = font.FontFamily.Name;
+                        if (font.FontFamily.Name == "Arial" || font.FontFamily.Name == "Times New Roman")
+                        {
+                            mathFontName = "Segoe UI Symbol";
+                        }
+                        XFont mathFont = new XFont(mathFontName, font.Size, font.Style);
+                        width = gfx.MeasureString(token, mathFont).Width;
+                    }
+                    else
+                    {
+                        width = gfx.MeasureString(token, font).Width;
+                    }
+                }
+                
+                if (token.Length == 1 && IsCjkCharacter(token[0]))
+                {
+                    Console.WriteLine($"[Layout] CJK: '{token}', Width: {width:F2}, Size: {font.Size:F2}, MaxWidth: {maxWidth:F2}");
+                }
+
+                // If single token is wider than maxWidth, split at URL-friendly breakpoints
+                if (width > maxWidth && !isFormula && token.Length > 1 && token != " ")
+                {
+                    // Try to split the token at URL/path-friendly characters
+                    var breakChars = new char[] { '/', '-', '.', '_', '=' };
+                    var subTokens = new List<string>();
+                    var sb2 = new System.Text.StringBuilder();
+                    foreach (char ch in token)
+                    {
+                        if (Array.IndexOf(breakChars, ch) >= 0)
+                        {
+                            sb2.Append(ch);
+                            subTokens.Add(sb2.ToString());
+                            sb2.Clear();
+                        }
+                        else
+                        {
+                            sb2.Append(ch);
+                        }
+                    }
+                    if (sb2.Length > 0) subTokens.Add(sb2.ToString());
+
+                    if (subTokens.Count > 1)
+                    {
+                        foreach (var sub in subTokens)
+                        {
+                            double subWidth = gfx.MeasureString(sub, font).Width;
+                            if (currentX + subWidth > maxWidth && currentRow.Elements.Count > 0)
+                            {
+                                rows.Add(currentRow);
+                                currentRow = new LayoutRow();
+                                currentX = 0;
+                            }
+                            currentRow.Elements.Add(new LayoutElement { Text = sub, IsFormula = false, FormulaId = -1, Width = subWidth });
+                            currentX += subWidth;
+                        }
+                        continue;
+                    }
+                }
+
+                if (currentX + width > maxWidth && currentRow.Elements.Count > 0)
+                {
+                    rows.Add(currentRow);
+                    currentRow = new LayoutRow();
+                    currentX = 0;
+                    if (token == " ") continue;
+                }
+
+                currentRow.Elements.Add(new LayoutElement
+                {
+                    Text = token,
+                    IsFormula = isFormula,
+                    FormulaId = formulaId,
+                    Width = width
+                });
+                currentX += width;
+            }
+
+            if (currentRow.Elements.Count > 0)
+            {
+                rows.Add(currentRow);
+            }
+
+            Console.WriteLine($"[Layout] Block Width: {maxWidth:F2}, Rows: {rows.Count}");
+            for (int r = 0; r < rows.Count; r++)
+            {
+                string rText = string.Join("", rows[r].Elements.Select(e => e.Text));
+                double rWidth = rows[r].Elements.Sum(e => e.Width);
+                Console.WriteLine($"  Row {r}: '{rText}' (Width: {rWidth:F2})");
+            }
+
+            return rows;
+        }
+
+        private class LayoutElement
+        {
+            public string Text { get; set; } = "";
+            public bool IsFormula { get; set; }
+            public int FormulaId { get; set; }
+            public double Width { get; set; }
+        }
+
+        private class LayoutRow
+        {
+            public List<LayoutElement> Elements { get; set; } = new List<LayoutElement>();
         }
     }
 
@@ -940,5 +1999,4 @@ using UglyToad.PdfPig.DocumentLayoutAnalysis.WordExtractor;
         public double X { get; set; }
         public double Y { get; set; }
     }
-
 }
