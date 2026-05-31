@@ -19,7 +19,7 @@ namespace Clickra.UI
         // Convert tab state
         static int _convertCommandIndex = 1; // Default: 1 (word2pdf)
         static List<string> _selectedFiles = new List<string>();
-        private static readonly string[] ConvertCommands = { "ppt2pdf", "word2pdf", "merge-pdf", "img2pdf", "img-merge", "img-stitch" };
+        private static readonly string[] ConvertCommands = { "ppt2pdf", "word2pdf", "merge-pdf", "img2pdf", "img-merge", "img-stitch", "translate-pdf" };
         
         // Language Dropdown state
         static bool _langDropdownOpen = false;
@@ -33,6 +33,21 @@ namespace Clickra.UI
             ("ja-JP", "日本語", "Japanese"),
             ("ko-KR", "한국어", "Korean")
         };
+
+        // PDF Translation settings state
+
+        static bool _pdfLangDropdownOpen = false;
+        static int _pdfLangHoveredIndex = 0;
+        private static readonly (string Code, string Name)[] PdfLangs =
+        {
+            ("zh-TW", "繁體中文 (Traditional Chinese)"),
+            ("zh-CN", "简体中文 (Simplified Chinese)"),
+            ("en", "English"),
+            ("ja", "日本語 (Japanese)"),
+            ("ko", "한국어 (Korean)")
+        };
+
+        static int _pdfLangDropdownY = 0;
         
         // History & Statistics Cache
         static List<ClickraStorage.HistoryEntry> _historyEntries = new List<ClickraStorage.HistoryEntry>();
@@ -176,7 +191,7 @@ namespace Clickra.UI
                                 !outputDirMode.Equals("desktop", StringComparison.OrdinalIgnoreCase) &&
                                 !outputDirMode.Equals("downloads", StringComparison.OrdinalIgnoreCase);
                 float langY = isCustom && !string.IsNullOrEmpty(outputDirMode) ? 365 : 340;
-                return langY + 120;
+                return langY + 280;
             }
             if (_activeTab == 4) // About
             {
@@ -521,14 +536,14 @@ namespace Clickra.UI
             if (_activeTab == 1) // Convert
             {
                 int zoneW = (int)logW - (int)contentX - 50;
-                int buttonY = 340;
+                int buttonY = 390;
                 int zoneH = 120;
                 int clearX = (int)logW - 110;
 
                 int availableWidth = (int)logW - (int)contentX - 50;
                 int cardW = (availableWidth - 2 * 12) / 3;
 
-                for (int i = 0; i < 6; i++)
+                for (int i = 0; i < 7; i++)
                 {
                     int col = i % 3;
                     int row = i / 3;
@@ -543,9 +558,9 @@ namespace Clickra.UI
                     }
                 }
 
-                if (_selectedFiles.Count > 0 && x >= clearX && x < clearX + 48 && y >= 107 && y < 107 + 22) return 19; // Clear button
-                if (x >= contentX && x < contentX + zoneW && y >= 95 && y < 95 + zoneH) return 17; // Drag & Drop zone
-                if (_selectedFiles.Count > 0 && _convertCommandIndex != -1 && x >= contentX && x < contentX + zoneW && y >= buttonY && y < buttonY + 36) return 18; // Start button
+                if (_selectedFiles.Count > 0 && x >= clearX && x < clearX + 48 && y >= 107 && y < 107 + 22) return 25; // Clear button
+                if (x >= contentX && x < contentX + zoneW && y >= 95 && y < 95 + zoneH) return 18; // Drag & Drop zone
+                if (_selectedFiles.Count > 0 && _convertCommandIndex != -1 && x >= contentX && x < contentX + zoneW && y >= buttonY && y < buttonY + 36) return 19; // Start button
             }
             else if (_activeTab == 2) // History
             {
@@ -581,6 +596,9 @@ namespace Clickra.UI
 
                 // Language dropdown button
                 if (x >= contentX && x < contentX + 240 && y >= _langDropdownY && y < _langDropdownY + 30) return 10;
+
+                // PDF Translation dropdown buttons
+                if (x >= contentX && x < contentX + 240 && y >= _pdfLangDropdownY && y < _pdfLangDropdownY + 30) return 31;
             }
             else if (_activeTab == 4) // About
             {
@@ -752,6 +770,21 @@ namespace Clickra.UI
                             }
                         }
 
+
+                        if (_pdfLangDropdownOpen)
+                        {
+                            int popupY = _pdfLangDropdownY - 138;
+                            if (adjMouseX >= contentX && adjMouseX <= contentX + 240 && adjMouseY >= popupY + 4 && adjMouseY < _pdfLangDropdownY - 4)
+                            {
+                                int idx = (adjMouseY - (popupY + 4)) / 26;
+                                if (idx >= 0 && idx < PdfLangs.Length && idx != _pdfLangHoveredIndex)
+                                {
+                                    _pdfLangHoveredIndex = idx;
+                                    InvalidateRect(hwnd, IntPtr.Zero, false);
+                                }
+                            }
+                        }
+
                         int prevHovered = _hoveredElement;
                         _hoveredElement = HitTest(hwnd, adjMouseX, adjMouseY);
                         if (_hoveredElement != prevHovered)
@@ -843,6 +876,30 @@ namespace Clickra.UI
 
                         int adjMouseX = mouseX >= sidebarW ? (int)(mouseX + _contentScrollX) : mouseX;
                         int adjMouseY = mouseX >= sidebarW ? (int)(mouseY + _contentScrollY) : mouseY;
+
+
+
+                        if (_pdfLangDropdownOpen)
+                        {
+                            int popupY = _pdfLangDropdownY - 138;
+                            if (adjMouseX >= contentX && adjMouseX <= contentX + 240 && adjMouseY >= popupY && adjMouseY < _pdfLangDropdownY)
+                            {
+                                if (adjMouseY >= popupY + 4 && adjMouseY < _pdfLangDropdownY - 4)
+                                {
+                                    int clickedIdx = (adjMouseY - (popupY + 4)) / 26;
+                                    if (clickedIdx >= 0 && clickedIdx < PdfLangs.Length)
+                                    {
+                                        ClickraStorage.SaveSetting("TranslateTargetLang", PdfLangs[clickedIdx].Code);
+                                    }
+                                }
+                                _pdfLangDropdownOpen = false;
+                                InvalidateRect(hwnd, IntPtr.Zero, false);
+                                return IntPtr.Zero;
+                            }
+                            _pdfLangDropdownOpen = false;
+                            InvalidateRect(hwnd, IntPtr.Zero, false);
+                            return IntPtr.Zero;
+                        }
 
                         if (_langDropdownOpen)
                         {
@@ -1087,12 +1144,18 @@ namespace Clickra.UI
                             }
                             InvalidateRect(hwnd, IntPtr.Zero, false);
                         }
-                        else if (element >= 11 && element <= 16) // Change convert tool
+                        else if (element == 31) // Target language dropdown button
+                        {
+                            _pdfLangDropdownOpen = !_pdfLangDropdownOpen;
+                            _langDropdownOpen = false;
+                            InvalidateRect(hwnd, IntPtr.Zero, false);
+                        }
+                        else if (element >= 11 && element <= 17) // Change convert tool
                         {
                             ChangeConvertCommand(element - 11);
                             InvalidateRect(hwnd, IntPtr.Zero, false);
                         }
-                        else if (element == 17) // Drag & Drop Zone clicked (Browse files)
+                        else if (element == 18) // Drag & Drop Zone clicked (Browse files)
                         {
                             string title = GetText("convert_drag_drop_hint");
                             const string allFilter = "Supported Files (*.doc;*.docx;*.ppt;*.pptx;*.pdf;*.jpg;*.jpeg;*.png;*.bmp;*.gif;*.tiff;*.webp)\0*.doc;*.docx;*.ppt;*.pptx;*.pdf;*.jpg;*.jpeg;*.png;*.bmp;*.gif;*.tiff;*.webp\0All Files (*.*)\0*.*\0\0";
@@ -1102,7 +1165,7 @@ namespace Clickra.UI
                                 _selectedFiles = chosen;
                                 // Auto-select first enabled command for the chosen files
                                 _convertCommandIndex = -1;
-                                for (int i = 0; i < 6; i++)
+                                for (int i = 0; i < 7; i++)
                                 {
                                     if (ValidateConvertFiles(ConvertCommands[i], _selectedFiles, out _))
                                     {
@@ -1113,11 +1176,11 @@ namespace Clickra.UI
                                 InvalidateRect(hwnd, IntPtr.Zero, false);
                             }
                         }
-                        else if (element == 18) // Start conversion button
+                        else if (element == 19) // Start conversion button
                         {
                             RunConversion(hwnd);
                         }
-                        else if (element == 19) // Clear files button
+                        else if (element == 25) // Clear files button
                         {
                             _selectedFiles.Clear();
                             _convertCommandIndex = -1;

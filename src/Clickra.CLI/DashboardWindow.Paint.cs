@@ -657,6 +657,10 @@ namespace Clickra.UI
                     tagBg = Color.FromArgb(216, 59, 1);
                     text = GetText("cmd_stitch_img");
                     break;
+                case "translate-pdf":
+                    tagBg = Color.FromArgb(138, 43, 226);
+                    text = GetText("cmd_translate_pdf");
+                    break;
                 default:
                     tagBg = Color.FromArgb(100, 100, 100);
                     break;
@@ -782,6 +786,21 @@ namespace Clickra.UI
 
             // Draw Dropdown Selector
             DrawLanguageDropdown(g, _langDropdownY, contentX);
+
+            float transY = langY + 110;
+            _pdfLangDropdownY = (int)(transY + 50);
+
+            // PDF Translation title
+            if (_tabFont != null)
+                g.DrawString(GetText("setting_pdf_title"), _tabFont, Brushes.White, contentX * s, transY * s);
+            if (_subFont != null)
+            {
+                using var subBrush = new SolidBrush(Color.FromArgb(140, 140, 140));
+                g.DrawString(GetText("setting_pdf_desc"), _subFont, subBrush, contentX * s, (transY + 22) * s);
+            }
+
+            // Draw Target Lang dropdown selector
+            DrawPdfLangDropdown(g, _pdfLangDropdownY, contentX);
         }
 
         static void DrawToggleSwitch(Graphics g, bool state, bool hovered, int x, int y, int w, int h)
@@ -1390,5 +1409,107 @@ namespace Clickra.UI
 
             return best;
         }
+
+
+
+        static void DrawPdfLangDropdown(Graphics g, int y, float contentX)
+        {
+            float s = _dpiScale;
+
+            // Draw label above the dropdown
+            if (_subFont != null)
+            {
+                using var labelBrush = new SolidBrush(Color.FromArgb(220, 220, 220));
+                g.DrawString(GetText("setting_pdf_lang"), _subFont, labelBrush, contentX * s, (y - 18) * s);
+            }
+
+            string currentLang = ClickraStorage.GetSetting("TranslateTargetLang");
+            if (string.IsNullOrEmpty(currentLang)) currentLang = "zh-TW";
+
+            string displayText = currentLang;
+            foreach (var l in PdfLangs)
+            {
+                if (l.Code.Equals(currentLang, StringComparison.OrdinalIgnoreCase))
+                {
+                    displayText = l.Name;
+                    break;
+                }
+            }
+            
+            bool isHovered = _hoveredElement == 31;
+
+            int x = (int)contentX, w = 240, h = 30;
+
+            Color btnBg = isHovered ? Color.FromArgb(55, 55, 55) : Color.FromArgb(40, 40, 40);
+            Color btnBorder = _pdfLangDropdownOpen ? GetSystemColorizationColor() : (isHovered ? Color.FromArgb(80, 80, 80) : Color.FromArgb(60, 60, 60));
+            Color textColor = Color.FromArgb(220, 220, 220);
+
+            // Draw button base
+            using (var path = GetRoundedRectPath(new RectangleF(x * s, y * s, w * s, h * s), 4 * s))
+            using (var bgBrush = new SolidBrush(btnBg))
+            using (var borderPen = new Pen(btnBorder, _pdfLangDropdownOpen ? 1.5f * s : 1f * s))
+            {
+                g.FillPath(bgBrush, path);
+                g.DrawPath(borderPen, path);
+            }
+
+            // Draw selected lang text
+            if (_subFont != null)
+            {
+                using var textBrush = new SolidBrush(textColor);
+                g.DrawString(displayText, _subFont, textBrush, (x + 10) * s, (y + 7) * s);
+            }
+
+            // Draw Chevron Down icon
+            if (_iconFont != null)
+            {
+                using var iconBrush = new SolidBrush(Color.FromArgb(160, 160, 160));
+                g.DrawString("\uE70D", _iconFont, iconBrush, (x + w - 24) * s, (y + 9) * s);
+            }
+
+            // Draw overlay popup list if open
+            if (_pdfLangDropdownOpen)
+            {
+                int popupH = 138;
+                int popupY = y - popupH;
+
+                using (var path = GetRoundedRectPath(new RectangleF(x * s, popupY * s, w * s, popupH * s), 4 * s))
+                using (var bgBrush = new SolidBrush(Color.FromArgb(28, 28, 28)))
+                using (var borderPen = new Pen(Color.FromArgb(60, 60, 60)))
+                {
+                    g.FillPath(bgBrush, path);
+                    g.DrawPath(borderPen, path);
+                }
+
+                int listStartY = popupY + 4;
+                for (int i = 0; i < PdfLangs.Length; i++)
+                {
+                    var item = PdfLangs[i];
+                    int itemY = listStartY + i * 26;
+                    int itemH = 24;
+
+                    bool isItemHovered = _pdfLangHoveredIndex == i;
+                    Color itemBg = isItemHovered ? GetSystemColorizationColor() : Color.Transparent;
+                    Color itemTextCol = isItemHovered ? Color.White : Color.FromArgb(200, 200, 200);
+
+                    if (isItemHovered)
+                    {
+                        using (var itemPath = GetRoundedRectPath(new RectangleF((x + 4) * s, itemY * s, (w - 8) * s, itemH * s), 3 * s))
+                        using (var itemBgBrush = new SolidBrush(itemBg))
+                        {
+                            g.FillPath(itemBgBrush, itemPath);
+                        }
+                    }
+
+                    if (_subFont != null)
+                    {
+                        using var itemTextBrush = new SolidBrush(itemTextCol);
+                        g.DrawString(item.Name, _subFont, itemTextBrush, (x + 10) * s, (itemY + 5) * s);
+                    }
+                }
+            }
+        }
+
+
     }
 }
