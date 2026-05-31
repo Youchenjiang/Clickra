@@ -102,6 +102,7 @@ namespace Clickra.Core
                     SettingsCache["Notification"] = "true";
                     SettingsCache["OutputDir"] = "source"; // source, desktop, downloads
                     SettingsCache["Language"] = "";
+                    SettingsCache["TranslateTargetLang"] = "zh-TW";
 
                     if (File.Exists(SettingsFile))
                     {
