@@ -20,6 +20,16 @@
   </ItemGroup>
 
   <ItemGroup>
+    <TrimmerRootAssembly Include="UglyToad.PdfPig" />
+    <TrimmerRootAssembly Include="UglyToad.PdfPig.Core" />
+    <TrimmerRootAssembly Include="UglyToad.PdfPig.DocumentLayoutAnalysis" />
+    <TrimmerRootAssembly Include="UglyToad.PdfPig.Fonts" />
+    <TrimmerRootAssembly Include="UglyToad.PdfPig.Package" />
+    <TrimmerRootAssembly Include="UglyToad.PdfPig.Tokenization" />
+    <TrimmerRootAssembly Include="UglyToad.PdfPig.Tokens" />
+  </ItemGroup>
+
+  <ItemGroup>
     <ProjectReference Include="..\Clickra.Core\Clickra.Core.csproj" />
   </ItemGroup>
 

@@ -800,6 +800,25 @@ namespace Clickra.UI
                     case "img-stitch":
                         FileProcessor.StitchImages(currentFiles, Path.Combine(outputDir, "Stitched_Image.png"), progressCallback, _cts.Token);
                         break;
+                    case "translate-pdf":
+                        {
+                            string targetLang = ClickraStorage.GetSetting("TranslateTargetLang");
+                            for (int i = 0; i < currentFiles.Count; i++)
+                            {
+                                _cts.Token.ThrowIfCancellationRequested();
+                                try { ClickraStorage.SetActiveRecordIndex(i); } catch { }
+                                var f = currentFiles[i];
+                                string outName = Path.Combine(outputDir, Path.GetFileNameWithoutExtension(f) + "_translated.pdf");
+                                progressCallback((i * 100) + 10, currentFiles.Count * 100, $"正在翻譯 PDF: {Path.GetFileName(f)} ({i + 1}/{currentFiles.Count})...");
+                                FileProcessor.TranslatePdf(f, outName, targetLang, (curr, tot, msg) => {
+                                    int progressPct = (int)(curr * 80.0 / tot) + 10;
+                                    progressCallback((i * 100) + progressPct, currentFiles.Count * 100, $"[PDF 翻譯] {msg} ({i + 1}/{currentFiles.Count})");
+                                }, _cts.Token);
+                            }
+                            _cts.Token.ThrowIfCancellationRequested();
+                            progressCallback(currentFiles.Count * 100, currentFiles.Count * 100, "翻譯完成，正在儲存 PDF...");
+                        }
+                        break;
                 }
 
                 sw.Stop();
@@ -869,6 +888,8 @@ namespace Clickra.UI
                 case "word2pdf":
                 case "img2pdf":
                     return string.Join(";", inputFiles.Select(f => Path.Combine(outputDir, Path.GetFileNameWithoutExtension(f) + ".pdf")));
+                case "translate-pdf":
+                    return string.Join(";", inputFiles.Select(f => Path.Combine(outputDir, Path.GetFileNameWithoutExtension(f) + "_translated.pdf")));
                 default:
                     return outputDir;
             }
