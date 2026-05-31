@@ -343,7 +343,27 @@ namespace Clickra.UI
                     float tagX = contentX + 12 + timeW + 16;
                     float tagW = DrawCommandTag(g, ae.Command, tagX, rowY + 11);
 
-                    // Filename / Display Text
+                    // Status Label (量測實際寬度，靠右對齊)
+                    string statusText = fileStatus switch
+                    {
+                        ConversionStatus.Pending    => GetText("status_pending"),
+                        ConversionStatus.InProgress => GetText("status_converting"),
+                        ConversionStatus.Success    => GetText("status_success"),
+                        ConversionStatus.Failed     => GetText("status_failed"),
+                        _                           => ""
+                    };
+                    Color statusColor = fileStatus switch
+                    {
+                        ConversionStatus.Pending    => Color.FromArgb(180, 180, 100),
+                        ConversionStatus.InProgress => Color.FromArgb(80, 160, 240),
+                        ConversionStatus.Success    => Color.FromArgb(100, 220, 100),
+                        ConversionStatus.Failed     => Color.FromArgb(255, 90, 70),
+                        _                           => Color.Gray
+                    };
+                    float activeStatusW = _tagFont != null ? g.MeasureString(statusText, _tagFont).Width / s : 50f;
+                    float activeStatusX = contentX + rowW - 16 - activeStatusW;
+
+                    // Filename (tag 之後到 status 之前的所有空間)
                     if (_bodyFont != null)
                     {
                         using var countBrush = new SolidBrush(Color.FromArgb(200, 200, 200));
@@ -353,7 +373,7 @@ namespace Clickra.UI
                             ? Path.GetFileName(activeFiles[idxActive])
                             : $"{ae.FileCount} {GetText("label_files")}";
 
-                        float maxW = (contentX + rowW - 160) - fileCountX;
+                        float maxW = activeStatusX - 16 - fileCountX;
                         if (maxW > 20)
                         {
                             displayText = TruncateFileName(g, displayText, _bodyFont, maxW, s);
@@ -361,28 +381,10 @@ namespace Clickra.UI
                         g.DrawString(displayText, _bodyFont, countBrush, fileCountX * s, (rowY + 13) * s);
                     }
 
-                    // Status Label
-                    string statusText = fileStatus switch
-                    {
-                        ConversionStatus.Pending => GetText("status_pending"),
-                        ConversionStatus.InProgress => GetText("status_converting"),
-                        ConversionStatus.Success => GetText("status_success"),
-                        ConversionStatus.Failed => GetText("status_failed"),
-                        _ => ""
-                    };
-                    Color statusColor = fileStatus switch
-                    {
-                        ConversionStatus.Pending => Color.FromArgb(180, 180, 100),
-                        ConversionStatus.InProgress => Color.FromArgb(80, 160, 240),
-                        ConversionStatus.Success => Color.FromArgb(100, 220, 100),
-                        ConversionStatus.Failed => Color.FromArgb(255, 90, 70),
-                        _ => Color.Gray
-                    };
-
                     if (_tagFont != null)
                     {
                         using var statusBrush = new SolidBrush(statusColor);
-                        g.DrawString(statusText, _tagFont, statusBrush, (contentX + rowW - 150) * s, (rowY + 13) * s);
+                        g.DrawString(statusText, _tagFont, statusBrush, activeStatusX * s, (rowY + 13) * s);
                     }
 
 
