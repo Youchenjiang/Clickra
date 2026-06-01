@@ -155,6 +155,7 @@ namespace Clickra
                         }
                         else ProgressWindow.Show(command, files);
                         break;
+#if DEBUG
                     case "test-layout":
                         {
                             using var pigDoc = UglyToad.PdfPig.PdfDocument.Open(files[0]);
@@ -168,6 +169,7 @@ namespace Clickra
                             }
                         }
                         break;
+#endif
                     default:
                         Console.WriteLine("Unknown command: " + command);
                         break;

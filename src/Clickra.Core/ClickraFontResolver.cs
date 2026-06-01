@@ -29,7 +29,11 @@ namespace Clickra.Core
             {
                 return new FontResolverInfo("msyh" + suffix);
             }
-            if (name.Contains("gothic"))
+            if (name.Contains("malgun"))
+            {
+                return new FontResolverInfo("malgun" + suffix);
+            }
+            if (name.Contains("ms gothic") || name.Contains("msgothic"))
             {
                 return new FontResolverInfo("msgothic" + suffix);
             }
@@ -78,8 +82,8 @@ namespace Clickra.Core
                 catch { }
             }
 
-            // Fallback for msjh / msgothic if the file is missing
-            if (baseFace == "msjh" || baseFace == "msgothic")
+            // Fallback for CJK faces if the file is missing
+            if (baseFace == "msjh" || baseFace == "msgothic" || baseFace == "msyh" || baseFace == "malgun")
             {
                 string systemDir = Environment.GetFolderPath(Environment.SpecialFolder.System);
                 string winFonts = Path.Combine(systemDir, "..", "Fonts");
@@ -123,8 +127,13 @@ namespace Clickra.Core
             string file = baseFace switch
             {
                 "msjh" => "msjh.ttc", // Use standard Windows Microsoft JhengHei TTC
-                "msyh" => "simsunb.ttf", // Use SimSun-Bold (Simplified Chinese TTF)
+                "msyh" => "msyh.ttc", // Use standard Windows Microsoft YaHei TTC
                 "msgothic" => "msgothic.ttc", // Use standard Windows MS Gothic TTC
+                "malgun" => style switch // Malgun Gothic (Korean)
+                {
+                    "b" => "malgunbd.ttf",
+                    _ => "malgun.ttf"
+                },
                 "courier" => style switch
                 {
                     "b" => "courbd.ttf",
@@ -135,10 +144,10 @@ namespace Clickra.Core
                 "seguisym" => "seguisym.ttf",
                 "cambria" => style switch
                 {
-                    "b" => "timesbd.ttf",
-                    "i" => "timesi.ttf",
-                    "bi" => "timesbi.ttf",
-                    _ => "times.ttf"
+                    "b" => "cambriab.ttf",
+                    "i" => "cambriai.ttf",
+                    "bi" => "cambriaz.ttf",
+                    _ => "cambria.ttc"
                 },
                 "times" => style switch
                 {

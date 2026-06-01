@@ -376,6 +376,7 @@ try {{
 
             onProgress?.Invoke(30, 100, "正在翻譯文本內容...");
             var translator = TranslationEngineFactory.Create();
+            object logLock = new object();
 
             for (int p = 0; p < totalPages; p++)
             {
@@ -394,19 +395,7 @@ try {{
                         continue;
                     }
 
-                    tasks.Add(Task.Run(async () =>
-                    {
-                        try
-                        {
-                            string result = await translator.TranslateAsync(para.TextWithPlaceholders, targetLang, cancellationToken);
-                            // If translation returned empty/whitespace, fall back to original text
-                            para.TranslatedText = string.IsNullOrWhiteSpace(result) ? para.TextWithPlaceholders : result;
-                        }
-                        catch
-                        {
-                            para.TranslatedText = para.TextWithPlaceholders;
-                        }
-                    }, cancellationToken));
+                    tasks.Add(TranslateParagraphAsync(translator, para, targetLang, p, inputPath, logLock, cancellationToken));
                 }
 
                 Task.WhenAll(tasks).GetAwaiter().GetResult();
@@ -1527,6 +1516,29 @@ try {{
         {
             public List<LayoutElement> Elements { get; set; } = new List<LayoutElement>();
         }
+
+        private static async Task TranslateParagraphAsync(ITranslationEngine translator, PdfParagraph para, string targetLang, int pageIndex, string inputPath, object logLock, CancellationToken cancellationToken)
+        {
+            try
+            {
+                string result = await translator.TranslateAsync(para.TextWithPlaceholders, targetLang, cancellationToken);
+                para.TranslatedText = string.IsNullOrWhiteSpace(result) ? para.TextWithPlaceholders : result;
+            }
+            catch (Exception ex)
+            {
+                para.TranslatedText = para.TextWithPlaceholders;
+                try
+                {
+                    string logPath = Path.Combine(ClickraStorage.GetDataDir(), "translate_errors.log");
+                    string logLine = $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss}] [File: {Path.GetFileName(inputPath)}] [Page {pageIndex + 1}] Error: {ex.Message} (Paragraph: \"{(para.TextWithPlaceholders.Length > 60 ? para.TextWithPlaceholders.Substring(0, 60) + "..." : para.TextWithPlaceholders)}\"){Environment.NewLine}";
+                    lock (logLock)
+                    {
+                        File.AppendAllText(logPath, logLine);
+                    }
+                }
+                catch { }
+            }
+        }
     }
 
     public class PdfParagraph
@@ -1936,6 +1948,7 @@ try {{
 
             return false;
         }
+
     }
 
     public class MathFormula

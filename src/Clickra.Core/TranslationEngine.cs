@@ -26,7 +26,7 @@ namespace Clickra.Core
     public abstract class BaseTranslator : ITranslationEngine
     {
         public abstract string Name { get; }
-        protected static readonly HttpClient HttpClient = new HttpClient();
+        protected static readonly HttpClient HttpClient = new HttpClient { Timeout = TimeSpan.FromSeconds(20) };
         private static readonly SemaphoreSlim ConcurrencySemaphore = new SemaphoreSlim(5, 5);
 
         public abstract Task<string> TranslateInternalAsync(string text, string targetLanguage, CancellationToken cancellationToken);
@@ -79,7 +79,7 @@ namespace Clickra.Core
 
         public override async Task<string> TranslateInternalAsync(string text, string targetLanguage, CancellationToken cancellationToken)
         {
-            string lang = NormalizeLanguageCode(targetLanguage);
+            string lang = Uri.EscapeDataString(NormalizeLanguageCode(targetLanguage));
             string url = $"https://translate.googleapis.com/translate_a/single?client=gtx&sl=auto&tl={lang}&dt=t";
 
             var content = new FormUrlEncodedContent(new[]
