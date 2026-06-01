@@ -36,4 +36,7 @@
   <data name="Menu_ImgStitch" xml:space="preserve">
     <value>图片垂直拼接</value>
   </data>
+  <data name="Menu_TranslatePdf" xml:space="preserve">
+    <value>PDF 一键翻译</value>
+  </data>
 </root>

@@ -71,6 +71,7 @@ namespace Clickra.UI
                 "ppt2pdf" => new[] { ".ppt", ".pptx" },
                 "word2pdf" => new[] { ".doc", ".docx" },
                 "merge-pdf" => new[] { ".pdf" },
+                "translate-pdf" => new[] { ".pdf" },
                 "img2pdf" or "img-merge" or "img-stitch" => new[] { ".jpg", ".jpeg", ".png", ".bmp", ".gif", ".tiff", ".webp" },
                 _ => Array.Empty<string>()
             };
@@ -112,7 +113,7 @@ namespace Clickra.UI
             }
             else if (extensions.All(ext => ext == ".pdf"))
             {
-                ChangeConvertCommand(2);
+                ChangeConvertCommand(files.Count == 1 ? 6 : 2);
             }
             else if (extensions.All(ext => new[] { ".jpg", ".jpeg", ".png", ".bmp", ".gif", ".tiff", ".webp" }.Contains(ext)))
             {
@@ -175,6 +176,7 @@ namespace Clickra.UI
                 "ppt2pdf" => "PowerPoint Files (*.ppt; *.pptx)\0*.ppt;*.pptx\0All Files (*.*)\0*.*\0\0",
                 "word2pdf" => "Word Files (*.doc; *.docx)\0*.doc;*.docx\0All Files (*.*)\0*.*\0\0",
                 "merge-pdf" => "PDF Files (*.pdf)\0*.pdf\0All Files (*.*)\0*.*\0\0",
+                "translate-pdf" => "PDF Files (*.pdf)\0*.pdf\0All Files (*.*)\0*.*\0\0",
                 _ => "Image Files (*.jpg; *.jpeg; *.png; *.bmp; *.gif; *.tiff; *.webp)\0*.jpg;*.jpeg;*.png;*.bmp;*.gif;*.tiff;*.webp\0All Files (*.*)\0*.*\0\0"
             };
         }
@@ -191,7 +193,7 @@ namespace Clickra.UI
             }
 
             int zoneX = (int)contentX, zoneY = 95, zoneW = (int)logW - (int)contentX - 50, zoneH = 120;
-            bool isZoneHovered = _hoveredElement == 17;
+            bool isZoneHovered = _hoveredElement == 18;
 
             Color zoneBg = isZoneHovered ? Color.FromArgb(42, 42, 42) : Color.FromArgb(34, 34, 34);
             Color zoneBorder = isZoneHovered ? GetSystemColorizationColor() : Color.FromArgb(60, 60, 60);
@@ -260,7 +262,7 @@ namespace Clickra.UI
                 }
 
                 int clearX = (int)logW - 110;
-                bool isClearHovered = _hoveredElement == 19;
+                bool isClearHovered = _hoveredElement == 25;
                 Color clearBtnBg = isClearHovered ? Color.FromArgb(60, 60, 60) : Color.FromArgb(45, 45, 45);
                 Color clearBtnBorder = isClearHovered ? Color.FromArgb(80, 80, 80) : Color.FromArgb(55, 55, 55);
                 using (var path = GetRoundedRectPath(new RectangleF(clearX * s, (zoneY + 12) * s, 48 * s, 22 * s), 3 * s))
@@ -281,7 +283,7 @@ namespace Clickra.UI
             }
 
             int cardW = (zoneW - 2 * 12) / 3;
-            for (int i = 0; i < 6; i++)
+            for (int i = 0; i < 7; i++)
             {
                 int col = i % 3;
                 int row = i / 3;
@@ -330,6 +332,7 @@ namespace Clickra.UI
                     3 => "cmd_img_to_pdf",
                     4 => "cmd_merge_img",
                     5 => "cmd_stitch_img",
+                    6 => "cmd_translate_pdf",
                     _ => ""
                 };
                 string cmdText = GetText(cmdKey);
@@ -342,10 +345,10 @@ namespace Clickra.UI
                 }
             }
 
-            int buttonY = 340;
+            int buttonY = 390;
             if (_selectedFiles.Count > 0 && _convertCommandIndex != -1)
             {
-                bool isBtnHovered = _hoveredElement == 18;
+                bool isBtnHovered = _hoveredElement == 19;
                 Color btnBg = GetSystemColorizationColor();
                 if (isBtnHovered) btnBg = Lighten(btnBg, 0.15f);
 

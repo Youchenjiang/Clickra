@@ -36,4 +36,7 @@
   <data name="Menu_ImgStitch" xml:space="preserve">
     <value>画像を縦に結合</value>
   </data>
+  <data name="Menu_TranslatePdf" xml:space="preserve">
+    <value>PDF 一括翻訳</value>
+  </data>
 </root>

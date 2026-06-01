@@ -36,6 +36,7 @@ namespace Clickra.Core
                 ["status_converting"] = "轉換中",
                 ["status_success"] = "成功",
                 ["status_failed"] = "失敗",
+                ["status_error"] = "錯誤",
                 ["label_files"] = "個檔案",
                 ["setting_lang_title"] = "介面語言",
                 ["setting_lang_desc"] = "選擇 Dashboard 的顯示語言",
@@ -78,7 +79,11 @@ namespace Clickra.Core
                 ["history_detail_error"] = "錯誤訊息",
                 ["error_user_aborted"] = "取消",
                 ["progress_tray_hint"] = "按 — 或工作列圖示可縮至系統匣繼續執行",
-                ["progress_background"] = "縮小至系統匣"
+                ["progress_background"] = "縮小至系統匣",
+                ["setting_pdf_title"] = "PDF 一鍵翻譯",
+                ["setting_pdf_desc"] = "設定 PDF 翻譯目標語言",
+                ["setting_pdf_lang"] = "目標語言 (Target Language)",
+                ["cmd_translate_pdf"] = "PDF 一鍵翻譯"
             },
             ["zh-CN"] = new(StringComparer.OrdinalIgnoreCase)
             {
@@ -109,6 +114,7 @@ namespace Clickra.Core
                 ["status_converting"] = "转换中",
                 ["status_success"] = "成功",
                 ["status_failed"] = "失败",
+                ["status_error"] = "错误",
                 ["label_files"] = "个文件",
                 ["setting_lang_title"] = "界面语言",
                 ["setting_lang_desc"] = "选择 Dashboard 的显示语言",
@@ -151,7 +157,11 @@ namespace Clickra.Core
                 ["history_detail_error"] = "错误信息",
                 ["error_user_aborted"] = "取消",
                 ["progress_tray_hint"] = "按 — 或任务栏图标可最小化到系统托盘继续运行",
-                ["progress_background"] = "最小化到系统托盘"
+                ["progress_background"] = "最小化到系统托盘",
+                ["setting_pdf_title"] = "PDF 翻译",
+                ["setting_pdf_desc"] = "设置 PDF 翻译语言",
+                ["setting_pdf_lang"] = "目标语言",
+                ["cmd_translate_pdf"] = "PDF 翻译"
             },
             ["en-US"] = new(StringComparer.OrdinalIgnoreCase)
             {
@@ -182,6 +192,7 @@ namespace Clickra.Core
                 ["status_converting"] = "Converting",
                 ["status_success"] = "Success",
                 ["status_failed"] = "Failed",
+                ["status_error"] = "Error",
                 ["label_files"] = "files",
                 ["setting_lang_title"] = "Interface Language",
                 ["setting_lang_desc"] = "Select the display language for the Dashboard",
@@ -224,7 +235,11 @@ namespace Clickra.Core
                 ["history_detail_error"] = "Error Message",
                 ["error_user_aborted"] = "Canceled",
                 ["progress_tray_hint"] = "Click — or taskbar icon to minimize to tray",
-                ["progress_background"] = "Minimize to System Tray"
+                ["progress_background"] = "Minimize to System Tray",
+                ["setting_pdf_title"] = "PDF One-Click Translation",
+                ["setting_pdf_desc"] = "Configure target language for translation",
+                ["setting_pdf_lang"] = "Target Language",
+                ["cmd_translate_pdf"] = "PDF Translation"
             },
             ["ja-JP"] = new(StringComparer.OrdinalIgnoreCase)
             {
@@ -257,6 +272,7 @@ namespace Clickra.Core
                 ["status_converting"] = "変換中",
                 ["status_success"] = "成功",
                 ["status_failed"] = "失敗",
+                ["status_error"] = "エラー",
                 ["label_files"] = "個のファイル",
                 ["setting_lang_title"] = "表示言語",
                 ["setting_lang_desc"] = "Dashboard の表示言語を選択します",
@@ -297,7 +313,11 @@ namespace Clickra.Core
                 ["history_detail_error"] = "エラーメッセージ",
                 ["error_user_aborted"] = "キャンセル",
                 ["progress_tray_hint"] = "— またはタスクバーアイコンでトレイに最小化できます",
-                ["progress_background"] = "システムトレイに最小化"
+                ["progress_background"] = "システムトレイに最小化",
+                ["setting_pdf_title"] = "PDF 一括翻訳",
+                ["setting_pdf_desc"] = "翻訳の対象言語を設定します",
+                ["setting_pdf_lang"] = "対象言語 (Target Language)",
+                ["cmd_translate_pdf"] = "PDF 翻訳"
             },
             ["ko-KR"] = new(StringComparer.OrdinalIgnoreCase)
             {
@@ -330,6 +350,7 @@ namespace Clickra.Core
                 ["status_converting"] = "변환 중",
                 ["status_success"] = "성공",
                 ["status_failed"] = "실패",
+                ["status_error"] = "오류",
                 ["label_files"] = "개의 파일",
                 ["setting_lang_title"] = "표시 언어",
                 ["setting_lang_desc"] = "Dashboard 표시 언어를 선택합니다",
@@ -372,7 +393,11 @@ namespace Clickra.Core
                 ["history_detail_error"] = "오류 메시지",
                 ["error_user_aborted"] = "취소됨",
                 ["progress_tray_hint"] = "— 또는 작업 표시줄 아이콘을 클릭하면 트레이로 최소화됩니다",
-                ["progress_background"] = "시스템 트레이로 최소화"
+                ["progress_background"] = "시스템 트레이로 최소화",
+                ["setting_pdf_title"] = "PDF 일괄 번역",
+                ["setting_pdf_desc"] = "번역 대상 언어를 설정합니다",
+                ["setting_pdf_lang"] = "대상 언어 (Target Language)",
+                ["cmd_translate_pdf"] = "PDF 번역"
             }
         };
 

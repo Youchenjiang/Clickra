@@ -343,7 +343,27 @@ namespace Clickra.UI
                     float tagX = contentX + 12 + timeW + 16;
                     float tagW = DrawCommandTag(g, ae.Command, tagX, rowY + 11);
 
-                    // Filename / Display Text
+                    // Status Label (量測實際寬度，靠右對齊)
+                    string statusText = fileStatus switch
+                    {
+                        ConversionStatus.Pending    => GetText("status_pending"),
+                        ConversionStatus.InProgress => GetText("status_converting"),
+                        ConversionStatus.Success    => GetText("status_success"),
+                        ConversionStatus.Failed     => GetText("status_failed"),
+                        _                           => ""
+                    };
+                    Color statusColor = fileStatus switch
+                    {
+                        ConversionStatus.Pending    => Color.FromArgb(180, 180, 100),
+                        ConversionStatus.InProgress => Color.FromArgb(80, 160, 240),
+                        ConversionStatus.Success    => Color.FromArgb(100, 220, 100),
+                        ConversionStatus.Failed     => Color.FromArgb(255, 90, 70),
+                        _                           => Color.Gray
+                    };
+                    float activeStatusW = _tagFont != null ? g.MeasureString(statusText, _tagFont).Width / s : 50f;
+                    float activeStatusX = contentX + rowW - 16 - activeStatusW;
+
+                    // Filename (tag 之後到 status 之前的所有空間)
                     if (_bodyFont != null)
                     {
                         using var countBrush = new SolidBrush(Color.FromArgb(200, 200, 200));
@@ -353,7 +373,7 @@ namespace Clickra.UI
                             ? Path.GetFileName(activeFiles[idxActive])
                             : $"{ae.FileCount} {GetText("label_files")}";
 
-                        float maxW = (contentX + rowW - 160) - fileCountX;
+                        float maxW = activeStatusX - 16 - fileCountX;
                         if (maxW > 20)
                         {
                             displayText = TruncateFileName(g, displayText, _bodyFont, maxW, s);
@@ -361,28 +381,10 @@ namespace Clickra.UI
                         g.DrawString(displayText, _bodyFont, countBrush, fileCountX * s, (rowY + 13) * s);
                     }
 
-                    // Status Label
-                    string statusText = fileStatus switch
-                    {
-                        ConversionStatus.Pending => GetText("status_pending"),
-                        ConversionStatus.InProgress => GetText("status_converting"),
-                        ConversionStatus.Success => GetText("status_success"),
-                        ConversionStatus.Failed => GetText("status_failed"),
-                        _ => ""
-                    };
-                    Color statusColor = fileStatus switch
-                    {
-                        ConversionStatus.Pending => Color.FromArgb(180, 180, 100),
-                        ConversionStatus.InProgress => Color.FromArgb(80, 160, 240),
-                        ConversionStatus.Success => Color.FromArgb(100, 220, 100),
-                        ConversionStatus.Failed => Color.FromArgb(255, 90, 70),
-                        _ => Color.Gray
-                    };
-
                     if (_tagFont != null)
                     {
                         using var statusBrush = new SolidBrush(statusColor);
-                        g.DrawString(statusText, _tagFont, statusBrush, (contentX + rowW - 150) * s, (rowY + 13) * s);
+                        g.DrawString(statusText, _tagFont, statusBrush, activeStatusX * s, (rowY + 13) * s);
                     }
 
 
@@ -435,24 +437,18 @@ namespace Clickra.UI
                 float tagX = contentX + 12 + timeW + 16;
                 float tagW = DrawCommandTag(g, entry.Command, tagX, currentY + 11);
 
-                // 狀態標籤與時間排版計算
+                // 狀態標籤與顏色計算
                 Color statusColor = entry.IsSuccess ? Color.FromArgb(100, 220, 100) : Color.FromArgb(255, 90, 70);
-                string statusText = entry.IsSuccess ? GetText("status_success") : (!string.IsNullOrEmpty(entry.ErrorMessage) ? entry.ErrorMessage : GetText("status_failed"));
-                if (!entry.IsSuccess && !string.IsNullOrEmpty(entry.ErrorMessage) && entry.ErrorMessage.Equals("User Aborted", StringComparison.OrdinalIgnoreCase))
-                {
-                    statusText = GetText("error_user_aborted");
-                }
+                string statusText = entry.IsSuccess 
+                    ? GetText("status_success") 
+                    : (entry.ErrorMessage?.Equals("User Aborted", StringComparison.OrdinalIgnoreCase) == true 
+                        ? GetText("error_user_aborted") 
+                        : GetText("status_error"));
 
-                float statusW = 0;
-                if (_tagFont != null)
-                {
-                    float statusMaxW = 150 - 12;
-                    statusText = TruncateText(g, statusText, _tagFont, statusMaxW, s);
-                    statusW = g.MeasureString(statusText, _tagFont).Width / s;
-                }
-                float statusLeftX = contentX + rowW - 16 - statusW;
+                float statusW = _tagFont != null ? g.MeasureString(statusText, _tagFont).Width / s : 50f;
+                float statusX = contentX + rowW - 16 - statusW;
 
-                // 檔案名稱 (動態相對起點)
+                // 檔案名稱：tag 之後到 status 之前的所有空間
                 if (_bodyFont != null)
                 {
                     using var countBrush = new SolidBrush(Color.FromArgb(200, 200, 200));
@@ -470,7 +466,7 @@ namespace Clickra.UI
                             displayText = Path.GetFileName(paths[0]);
                         }
                     }
-                    float maxW = statusLeftX - 16 - fileCountX;
+                    float maxW = statusX - 16 - fileCountX;
                     if (maxW > 20)
                     {
                         displayText = TruncateFileName(g, displayText, _bodyFont, maxW, s);
@@ -478,11 +474,11 @@ namespace Clickra.UI
                     g.DrawString(displayText, _bodyFont, countBrush, fileCountX * s, (currentY + 13) * s);
                 }
 
-                // 繪製狀態標籤
+                // 繪製狀態標籤（靠右）
                 if (_tagFont != null)
                 {
                     using var statusBrush = new SolidBrush(statusColor);
-                    g.DrawString(statusText, _tagFont, statusBrush, (contentX + rowW - 16 - statusW) * s, (currentY + 13) * s);
+                    g.DrawString(statusText, _tagFont, statusBrush, statusX * s, (currentY + 13) * s);
                 }
 
                 // Render Expanded Details
@@ -657,6 +653,10 @@ namespace Clickra.UI
                     tagBg = Color.FromArgb(216, 59, 1);
                     text = GetText("cmd_stitch_img");
                     break;
+                case "translate-pdf":
+                    tagBg = Color.FromArgb(138, 43, 226);
+                    text = GetText("cmd_translate_pdf");
+                    break;
                 default:
                     tagBg = Color.FromArgb(100, 100, 100);
                     break;
@@ -782,6 +782,21 @@ namespace Clickra.UI
 
             // Draw Dropdown Selector
             DrawLanguageDropdown(g, _langDropdownY, contentX);
+
+            float transY = langY + 110;
+            _pdfLangDropdownY = (int)(transY + 50);
+
+            // PDF Translation title
+            if (_tabFont != null)
+                g.DrawString(GetText("setting_pdf_title"), _tabFont, Brushes.White, contentX * s, transY * s);
+            if (_subFont != null)
+            {
+                using var subBrush = new SolidBrush(Color.FromArgb(140, 140, 140));
+                g.DrawString(GetText("setting_pdf_desc"), _subFont, subBrush, contentX * s, (transY + 22) * s);
+            }
+
+            // Draw Target Lang dropdown selector
+            DrawPdfLangDropdown(g, _pdfLangDropdownY, contentX);
         }
 
         static void DrawToggleSwitch(Graphics g, bool state, bool hovered, int x, int y, int w, int h)
@@ -1390,5 +1405,100 @@ namespace Clickra.UI
 
             return best;
         }
+
+
+
+        static void DrawPdfLangDropdown(Graphics g, int y, float contentX)
+        {
+            float s = _dpiScale;
+
+            string currentLang = ClickraStorage.GetSetting("TranslateTargetLang");
+            if (string.IsNullOrEmpty(currentLang)) currentLang = "zh-TW";
+
+            string displayText = currentLang;
+            foreach (var l in PdfLangs)
+            {
+                if (l.Code.Equals(currentLang, StringComparison.OrdinalIgnoreCase))
+                {
+                    displayText = l.Name;
+                    break;
+                }
+            }
+            
+            bool isHovered = _hoveredElement == 31;
+
+            int x = (int)contentX, w = 240, h = 30;
+
+            Color btnBg = isHovered ? Color.FromArgb(55, 55, 55) : Color.FromArgb(40, 40, 40);
+            Color btnBorder = _pdfLangDropdownOpen ? GetSystemColorizationColor() : (isHovered ? Color.FromArgb(80, 80, 80) : Color.FromArgb(60, 60, 60));
+            Color textColor = Color.FromArgb(220, 220, 220);
+
+            // Draw button base
+            using (var path = GetRoundedRectPath(new RectangleF(x * s, y * s, w * s, h * s), 4 * s))
+            using (var bgBrush = new SolidBrush(btnBg))
+            using (var borderPen = new Pen(btnBorder, _pdfLangDropdownOpen ? 1.5f * s : 1f * s))
+            {
+                g.FillPath(bgBrush, path);
+                g.DrawPath(borderPen, path);
+            }
+
+            // Draw selected lang text
+            if (_subFont != null)
+            {
+                using var textBrush = new SolidBrush(textColor);
+                g.DrawString(displayText, _subFont, textBrush, (x + 10) * s, (y + 7) * s);
+            }
+
+            // Draw Chevron Down icon
+            if (_iconFont != null)
+            {
+                using var iconBrush = new SolidBrush(Color.FromArgb(160, 160, 160));
+                g.DrawString("\uE70D", _iconFont, iconBrush, (x + w - 24) * s, (y + 9) * s);
+            }
+
+            // Draw overlay popup list if open
+            if (_pdfLangDropdownOpen)
+            {
+                int popupH = PdfLangs.Length * 26 + 8;
+                int popupY = y - popupH;
+
+                using (var path = GetRoundedRectPath(new RectangleF(x * s, popupY * s, w * s, popupH * s), 4 * s))
+                using (var bgBrush = new SolidBrush(Color.FromArgb(28, 28, 28)))
+                using (var borderPen = new Pen(Color.FromArgb(60, 60, 60)))
+                {
+                    g.FillPath(bgBrush, path);
+                    g.DrawPath(borderPen, path);
+                }
+
+                int listStartY = popupY + 4;
+                for (int i = 0; i < PdfLangs.Length; i++)
+                {
+                    var item = PdfLangs[i];
+                    int itemY = listStartY + i * 26;
+                    int itemH = 24;
+
+                    bool isItemHovered = _pdfLangHoveredIndex == i;
+                    Color itemBg = isItemHovered ? GetSystemColorizationColor() : Color.Transparent;
+                    Color itemTextCol = isItemHovered ? Color.White : Color.FromArgb(200, 200, 200);
+
+                    if (isItemHovered)
+                    {
+                        using (var itemPath = GetRoundedRectPath(new RectangleF((x + 4) * s, itemY * s, (w - 8) * s, itemH * s), 3 * s))
+                        using (var itemBgBrush = new SolidBrush(itemBg))
+                        {
+                            g.FillPath(itemBgBrush, itemPath);
+                        }
+                    }
+
+                    if (_subFont != null)
+                    {
+                        using var itemTextBrush = new SolidBrush(itemTextCol);
+                        g.DrawString(item.Name, _subFont, itemTextBrush, (x + 10) * s, (itemY + 5) * s);
+                    }
+                }
+            }
+        }
+
+
     }
 }

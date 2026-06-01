@@ -36,4 +36,7 @@
   <data name="Menu_ImgStitch" xml:space="preserve">
     <value>Stitch Images Vertically</value>
   </data>
+  <data name="Menu_TranslatePdf" xml:space="preserve">
+    <value>PDF One-Click Translation</value>
+  </data>
 </root>

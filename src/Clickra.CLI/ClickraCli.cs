@@ -27,6 +27,7 @@ namespace Clickra
         [STAThread]
         static void Main(string[] args)
         {
+            try { PdfSharp.Fonts.GlobalFontSettings.FontResolver = new ClickraFontResolver(); } catch { }
             try { SetProcessDpiAwarenessContext((IntPtr)(-4)); } catch { }
             if (args.Length == 0 || args[0] == "-v" || args[0] == "--version")
             {
@@ -40,7 +41,7 @@ namespace Clickra
 
                 Console.WriteLine($"Clickra v{version} (Modern Shell Edition)");
                 Console.WriteLine("Author: Youchen Jiang");
-                Console.WriteLine("Commands: ppt2pdf, word2pdf, merge-pdf, img2pdf, img-merge, img-stitch, --deploy");
+                Console.WriteLine("Commands: ppt2pdf, word2pdf, merge-pdf, img2pdf, img-merge, img-stitch, translate-pdf, --deploy");
                 return;
             }
 
@@ -138,6 +139,37 @@ namespace Clickra
                         if (quiet) FileProcessor.StitchImages(files, Path.Combine(outputDir, "Stitched_Image.png"), (curr, tot, msg) => Console.WriteLine($"[Progress] {msg}"));
                         else ProgressWindow.Show(command, files);
                         break;
+                    case "translate-pdf":
+                        ValidateExtensions(files, command, quiet, ".pdf");
+                        RequireMinFiles(files, command, 1, quiet);
+                        if (quiet)
+                        {
+                            string targetLang = ClickraStorage.GetSetting("TranslateTargetLang");
+                            for (int i = 0; i < files.Count; i++)
+                            {
+                                var f = files[i];
+                                string outName = Path.Combine(outputDir, Path.GetFileNameWithoutExtension(f) + "_translated.pdf");
+                                Console.WriteLine($"[Progress] 正在翻譯 PDF: {Path.GetFileName(f)} ({i + 1}/{files.Count})...");
+                                FileProcessor.TranslatePdf(f, outName, targetLang, (curr, tot, msg) => Console.WriteLine($"[Progress] {msg}"));
+                            }
+                        }
+                        else ProgressWindow.Show(command, files);
+                        break;
+#if DEBUG
+                    case "test-layout":
+                        {
+                            using var pigDoc = UglyToad.PdfPig.PdfDocument.Open(files[0]);
+                            var page = pigDoc.GetPage(1);
+                            foreach (var letter in page.Letters)
+                            {
+                                if (letter.FontName.Contains("CMSY", StringComparison.OrdinalIgnoreCase))
+                                {
+                                    Console.WriteLine($"Letter: '{letter.Value}', Font: {letter.FontName}, Size: {letter.FontSize}, Bytes: {string.Join(",", System.Text.Encoding.UTF8.GetBytes(letter.Value))}");
+                                }
+                            }
+                        }
+                        break;
+#endif
                     default:
                         Console.WriteLine("Unknown command: " + command);
                         break;

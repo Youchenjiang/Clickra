@@ -1,4 +1,4 @@
-# Clickra v3.1.0.0
+# Clickra v3.2.0.0
 
 [![Microsoft Store](https://img.shields.io/badge/Microsoft%20Store-Clickra-blue?style=for-the-badge&logo=microsoft-store)](https://apps.microsoft.com/detail/9NGLBF6P1KLD)
 [![License: Apache 2.0](https://img.shields.io/badge/License-Apache%202.0-blue.svg?style=for-the-badge)](https://opensource.org/licenses/Apache-2.0)
@@ -36,7 +36,8 @@ Most productivity scripts (PDF merging, image conversion, etc.) are typically wr
 | **v3.0.7.0** | May 21, 2026 | **Dynamic Progress Bar & Toast Notifications**. Implemented pure Win32/GDI+ animated progress window with WinUI 3 style shimmer effects, system accent color integration, and native Windows Toast notifications. |
 | **v3.0.8.0** | May 21, 2026 | **Conversion History & Dashboard Enhancements**. Implemented local conversion history tracking and dynamic Win32 list view, integrated Quick Convert tab, added localized user language switching (zh-TW/en-US), and refactored `DashboardForm` into clean static partial files. |
 | **v3.0.9.0** | May 26, 2026 | **About Tab, Full i18n & Dashboard Enhancements**. Added About tab (project description, collaboration links, one-click Gmail diagnostics). Expanded localization to ja-JP, ko-KR, zh-CN across dashboard and shell context menu. Added minimize-to-system-tray, custom output folder picker, expandable history cards with elapsed time and file paths. Implemented adaptive layout for window maximization, crisp scaling for high DPI displays, and smart "file-first" interaction flow for fast conversions. Dynamic sidebar width, language-aware font normalization on first launch, and NativeAOT compatibility fixes (`[STAThread]`, `GetModuleHandle`). |
-| **v3.1.0.0** | **Current** | **Dashboard Stabilization, Progress Minimize-to-Tray & Horizontal Scrollbar**. Enforced single-instance check, supported progress window minimize to system tray with progress percentage updates, implemented cancellation warning dialog to terminate background conversion processes (PowerPoint/Word), split history logs into individual file rows with middle truncation and horizontal wheel scrolling, and supported horizontal text scrolling with a draggable scrollbar for overflow progress status. |
+| **v3.1.0.0** | May 30, 2026 | **Dashboard Stabilization, Progress Minimize-to-Tray & Horizontal Scrollbar**. Enforced single-instance check, supported progress window minimize to system tray with progress percentage updates, implemented cancellation warning dialog to terminate background conversion processes (PowerPoint/Word), split history logs into individual file rows with middle truncation and horizontal wheel scrolling, and supported horizontal text scrolling with a draggable scrollbar for overflow progress status. |
+| **v3.2.0.0** | **Current** | **Dashboard History Layout Optimization, Target Translation Language Simplification, and Correct Failure Recording**. Implemented adaptive history layout and filename width calculation, added precise "Error/Cancel" status display in history, removed redundant target translation language options, and improved settings panel text layout to eliminate overlap. |
 
 
 ---

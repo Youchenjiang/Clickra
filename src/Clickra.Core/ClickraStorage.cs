@@ -102,6 +102,7 @@ namespace Clickra.Core
                     SettingsCache["Notification"] = "true";
                     SettingsCache["OutputDir"] = "source"; // source, desktop, downloads
                     SettingsCache["Language"] = "";
+                    SettingsCache["TranslateTargetLang"] = "zh-TW";
 
                     if (File.Exists(SettingsFile))
                     {
@@ -237,6 +238,17 @@ namespace Clickra.Core
                         var inputList = inputs.Split(new[] { ';' }, StringSplitOptions.RemoveEmptyEntries);
                         var outputList = output.Split(new[] { ';' }, StringSplitOptions.RemoveEmptyEntries);
 
+                        int currentIndex = 0;
+                        try
+                        {
+                            var activeEntry = ReadActiveFileInternal();
+                            if (activeEntry.HasValue)
+                            {
+                                currentIndex = activeEntry.Value.CurrentIndex;
+                            }
+                        }
+                        catch { }
+
                         if (inputList.Length > 0 && outputList.Length == inputList.Length)
                         {
                             long elapsedPerFile = elapsedMs >= 0 ? elapsedMs / inputList.Length : -1;
@@ -249,7 +261,7 @@ namespace Clickra.Core
                                 bool isSingleSuccess = isSuccess;
                                 if (!isSuccess)
                                 {
-                                    try { isSingleSuccess = File.Exists(singleOutput); } catch { isSingleSuccess = false; }
+                                    isSingleSuccess = i < currentIndex;
                                 }
                                 
                                 string singleErr = isSingleSuccess ? "" : cleanErr;
