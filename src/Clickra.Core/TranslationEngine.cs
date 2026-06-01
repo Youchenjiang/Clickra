@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Net.Http;
 using System.Text;
@@ -79,9 +80,14 @@ namespace Clickra.Core
         public override async Task<string> TranslateInternalAsync(string text, string targetLanguage, CancellationToken cancellationToken)
         {
             string lang = NormalizeLanguageCode(targetLanguage);
-            string url = $"https://translate.googleapis.com/translate_a/single?client=gtx&sl=auto&tl={lang}&dt=t&q={Uri.EscapeDataString(text)}";
+            string url = $"https://translate.googleapis.com/translate_a/single?client=gtx&sl=auto&tl={lang}&dt=t";
 
-            using var response = await HttpClient.GetAsync(url, cancellationToken);
+            var content = new FormUrlEncodedContent(new[]
+            {
+                new KeyValuePair<string, string>("q", text)
+            });
+
+            using var response = await HttpClient.PostAsync(url, content, cancellationToken);
             response.EnsureSuccessStatusCode();
 
             string json = await response.Content.ReadAsStringAsync(cancellationToken);

@@ -159,7 +159,7 @@ namespace Clickra.UI
             }
             if (_activeTab == 1) // Convert
             {
-                return 400;
+                return 450;
             }
             if (_activeTab == 2) // History
             {
@@ -769,7 +769,8 @@ namespace Clickra.UI
 
                         if (_pdfLangDropdownOpen)
                         {
-                            int popupY = _pdfLangDropdownY - 138;
+                            int popupHeight = PdfLangs.Length * 26 + 8;
+                            int popupY = _pdfLangDropdownY - popupHeight;
                             if (adjMouseX >= contentX && adjMouseX <= contentX + 240 && adjMouseY >= popupY + 4 && adjMouseY < _pdfLangDropdownY - 4)
                             {
                                 int idx = (adjMouseY - (popupY + 4)) / 26;
@@ -877,7 +878,8 @@ namespace Clickra.UI
 
                         if (_pdfLangDropdownOpen)
                         {
-                            int popupY = _pdfLangDropdownY - 138;
+                            int popupHeight = PdfLangs.Length * 26 + 8;
+                            int popupY = _pdfLangDropdownY - popupHeight;
                             if (adjMouseX >= contentX && adjMouseX <= contentX + 240 && adjMouseY >= popupY && adjMouseY < _pdfLangDropdownY)
                             {
                                 if (adjMouseY >= popupY + 4 && adjMouseY < _pdfLangDropdownY - 4)

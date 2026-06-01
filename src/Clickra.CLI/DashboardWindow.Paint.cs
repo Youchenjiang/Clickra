@@ -1459,7 +1459,7 @@ namespace Clickra.UI
             // Draw overlay popup list if open
             if (_pdfLangDropdownOpen)
             {
-                int popupH = 138;
+                int popupH = PdfLangs.Length * 26 + 8;
                 int popupY = y - popupH;
 
                 using (var path = GetRoundedRectPath(new RectangleF(x * s, popupY * s, w * s, popupH * s), 4 * s))

@@ -8,11 +8,17 @@ namespace Clickra.Core
     {
         public FontResolverInfo? ResolveTypeface(string familyName, bool isBold, bool isItalic)
         {
-            string name = familyName.ToLowerInvariant().Trim();
             string suffix = "";
             if (isBold && isItalic) suffix = "|bi";
             else if (isBold) suffix = "|b";
             else if (isItalic) suffix = "|i";
+
+            if (string.IsNullOrEmpty(familyName))
+            {
+                return new FontResolverInfo("arial" + suffix);
+            }
+
+            string name = familyName.ToLowerInvariant().Trim();
 
             // Map family names to unique faces
             if (name.Contains("jhenghei") || name.Contains("正黑"))
@@ -72,7 +78,7 @@ namespace Clickra.Core
                 catch { }
             }
 
-            // Fallback for msjh / msgothic if NotoSansTC-VF.ttf is missing
+            // Fallback for msjh / msgothic if the file is missing
             if (baseFace == "msjh" || baseFace == "msgothic")
             {
                 string systemDir = Environment.GetFolderPath(Environment.SpecialFolder.System);
@@ -116,9 +122,9 @@ namespace Clickra.Core
             string winFonts = Path.Combine(systemDir, "..", "Fonts");
             string file = baseFace switch
             {
-                "msjh" => "NotoSansTC-VF.ttf", // Use Google Noto Sans TC (Clean Sans-Serif)
+                "msjh" => "msjh.ttc", // Use standard Windows Microsoft JhengHei TTC
                 "msyh" => "simsunb.ttf", // Use SimSun-Bold (Simplified Chinese TTF)
-                "msgothic" => "NotoSansTC-VF.ttf", // Noto Sans TC contains Japanese Kanji
+                "msgothic" => "msgothic.ttc", // Use standard Windows MS Gothic TTC
                 "courier" => style switch
                 {
                     "b" => "courbd.ttf",

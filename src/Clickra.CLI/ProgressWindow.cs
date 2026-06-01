@@ -811,7 +811,7 @@ namespace Clickra.UI
                                 string outName = Path.Combine(outputDir, Path.GetFileNameWithoutExtension(f) + "_translated.pdf");
                                 progressCallback((i * 100) + 10, currentFiles.Count * 100, $"正在翻譯 PDF: {Path.GetFileName(f)} ({i + 1}/{currentFiles.Count})...");
                                 FileProcessor.TranslatePdf(f, outName, targetLang, (curr, tot, msg) => {
-                                    int progressPct = (int)(curr * 80.0 / tot) + 10;
+                                    int progressPct = tot > 0 ? (int)(curr * 80.0 / tot) + 10 : 10;
                                     progressCallback((i * 100) + progressPct, currentFiles.Count * 100, $"[PDF 翻譯] {msg} ({i + 1}/{currentFiles.Count})");
                                 }, _cts.Token);
                             }

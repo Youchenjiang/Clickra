@@ -383,12 +383,6 @@ try {{
                 var paragraphs = pageParagraphs[p];
                 if (paragraphs.Count == 0) continue;
 
-                Console.WriteLine($"[Translate] Page {p + 1} has {paragraphs.Count} paragraphs:");
-                foreach (var para in paragraphs)
-                {
-                    Console.WriteLine($"  Para: [{para.X0:F1}, {para.Y0:F1}, {para.X1:F1}, {para.Y1:F1}] - Direction: {para.TextDirection} - Text: {(para.TextWithPlaceholders.Length > 60 ? para.TextWithPlaceholders.Substring(0, 60) : para.TextWithPlaceholders)}");
-                }
-
                 onProgress?.Invoke(30 + (int)(p * 40.0 / totalPages), 100, $"正在翻譯第 {p + 1}/{totalPages} 頁...");
 
                 var tasks = new List<Task>();
@@ -1455,11 +1449,6 @@ try {{
                     }
                 }
                 
-                if (token.Length == 1 && IsCjkCharacter(token[0]))
-                {
-                    Console.WriteLine($"[Layout] CJK: '{token}', Width: {width:F2}, Size: {font.Size:F2}, MaxWidth: {maxWidth:F2}");
-                }
-
                 // If single token is wider than maxWidth, split at URL-friendly breakpoints
                 if (width > maxWidth && !isFormula && token.Length > 1 && token != " ")
                 {
@@ -1522,15 +1511,7 @@ try {{
             {
                 rows.Add(currentRow);
             }
-
-            Console.WriteLine($"[Layout] Block Width: {maxWidth:F2}, Rows: {rows.Count}");
-            for (int r = 0; r < rows.Count; r++)
-            {
-                string rText = string.Join("", rows[r].Elements.Select(e => e.Text));
-                double rWidth = rows[r].Elements.Sum(e => e.Width);
-                Console.WriteLine($"  Row {r}: '{rText}' (Width: {rWidth:F2})");
-            }
-
+ 
             return rows;
         }
 
