@@ -409,7 +409,8 @@ try {{
             using var ms = new System.IO.MemoryStream();
             maskBmp.Save(ms, System.Drawing.Imaging.ImageFormat.Png);
             byte[] maskBytes = ms.ToArray();
-            using var whiteMaskImg = XImage.FromStream(new System.IO.MemoryStream(maskBytes));
+            using var maskStream = new System.IO.MemoryStream(maskBytes);
+            using var whiteMaskImg = XImage.FromStream(maskStream);
 
             using var finalDoc = PdfReader.Open(inputPath, PdfDocumentOpenMode.Modify);
 
@@ -1531,7 +1532,7 @@ try {{
                 try
                 {
                     string logPath = Path.Combine(ClickraStorage.GetDataDir(), "translate_errors.log");
-                    string logLine = $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss}] [File: {Path.GetFileName(inputPath)}] [Page {pageIndex + 1}] Error: {ex.Message} (Paragraph: \"{(para.TextWithPlaceholders.Length > 60 ? para.TextWithPlaceholders.Substring(0, 60) + "..." : para.TextWithPlaceholders)}\"){Environment.NewLine}";
+                    string logLine = $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss}] [File: {Path.GetFileName(inputPath)}] [Page {pageIndex + 1}] Error: {ex.Message}{Environment.NewLine}";
                     lock (logLock)
                     {
                         File.AppendAllText(logPath, logLine);
