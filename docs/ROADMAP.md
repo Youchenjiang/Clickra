@@ -72,6 +72,8 @@
 ## 4. 維護、診斷與離線轉檔插件 (Diagnostics & Offline Fallback)
 - [x] **一鍵診斷回報與郵件反饋 (One-click Diagnostic Feedback) [v3.0.9]**:
     - 提供本地 Native AOT 診斷日誌記錄。於 Dashboard 實作一鍵郵件回報功能，自動打包診斷日誌與系統資訊，透過 Gmail 網頁開啟預設撰寫畫面（並支援標準 mailto: 協議連結作為系統預設郵件用戶端之備用方案）。
+- [ ] **多語系一鍵診斷回報信件草稿 (Multi-language Support for Diagnostic Feedback Mail)**:
+    - 依據使用者目前的介面語言，自動撰寫對應語言的 Gmail/mailto 郵件草稿內容與主旨。
 - [ ] **本地免 Office 離線轉檔插件 (Local LibreOffice Fallback Plugin)**:
     - 評估提供本地免安裝、可一鍵下載的輕量化備用轉檔插件（使用 LibreOffice Portable 瘦身版）。當本地未安裝 Microsoft Office 時，引導使用者一鍵下載並解壓縮至 Clickra 目錄下，由主程式以 headless 模式於本地安全轉檔，維持 100% 離線與隱私標準。
 
