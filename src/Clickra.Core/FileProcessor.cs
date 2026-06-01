@@ -18,10 +18,7 @@ namespace Clickra.Core
 {
     public static class FileProcessor
     {
-        private static readonly System.Text.RegularExpressions.Regex CaptionRegex = new(
-            @"^[ \t]*(listing|figure|fig\.|table|algorithm)\s+(\d+|[ivxlcdm]+)\b",
-            System.Text.RegularExpressions.RegexOptions.IgnoreCase | System.Text.RegularExpressions.RegexOptions.Compiled
-        );
+
         public static void MergePdfs(List<string> files, string outputPath, Action<int, int, string>? onProgress = null, CancellationToken cancellationToken = default)
         {
             int total = files.Count;
@@ -1523,6 +1520,10 @@ try {{
             {
                 string result = await translator.TranslateAsync(para.TextWithPlaceholders, targetLang, cancellationToken);
                 para.TranslatedText = string.IsNullOrWhiteSpace(result) ? para.TextWithPlaceholders : result;
+            }
+            catch (OperationCanceledException)
+            {
+                throw;
             }
             catch (Exception ex)
             {

@@ -193,7 +193,7 @@ namespace Clickra.UI
             }
 
             int zoneX = (int)contentX, zoneY = 95, zoneW = (int)logW - (int)contentX - 50, zoneH = 120;
-            bool isZoneHovered = _hoveredElement == 17;
+            bool isZoneHovered = _hoveredElement == 18;
 
             Color zoneBg = isZoneHovered ? Color.FromArgb(42, 42, 42) : Color.FromArgb(34, 34, 34);
             Color zoneBorder = isZoneHovered ? GetSystemColorizationColor() : Color.FromArgb(60, 60, 60);
