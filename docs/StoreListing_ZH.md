@@ -19,7 +19,7 @@ Clickra 是一款專為 Windows 10 與 Windows 11 打造的極速原生右鍵選
 　　圖片轉 PDF：快速將多張圖片封裝為 PDF。
 　　圖片拼接：輕鬆將多張圖片垂直無縫結合。
 
-Clickra 100% 於本機執行，保證隱私安全。立刻體驗閃電般的檔案處理速度！
+Clickra 絕大多數功能（文書轉 PDF、PDF 合併、圖片拼接等）均 100% 於本機執行，確保隱私安全（若使用選用的 PDF 翻譯功能，則會透過安全連線發送文本進行翻譯）。立刻體驗檔案的極速處理！
 
 🔗 開源專案首頁：https://github.com/Youchenjiang/Clickra
 
@@ -38,7 +38,7 @@ Clickra 100% 於本機執行，保證隱私安全。立刻體驗閃電般的檔�
 - 極速 PDF 多檔合併
 - 100% Native AOT 原生編譯，零延遲啟動
 - Windows 11 Fluent Design 介面整合
-- 100% 本機處理，隱私安全無虞
+- 安全本機處理（僅 PDF 翻譯使用選用的雲端翻譯服務）
 
 ---
 ### 補充欄位 (Supplemental Fields)
@@ -50,7 +50,7 @@ Clickra
 Clickra
 
 ## 簡短描述 (Short description)
-Clickra 是一款極速的原生右鍵選單工具，支援文書轉 PDF、PDF 合併與圖片拼接。100% 本機處理，隱私安全，讓您的檔案處理瞬間完成！
+Clickra 是一款極速的原生右鍵選單工具，支援文書轉 PDF、PDF 合併與圖片拼接。安全無虞、高度注重隱私，讓您的檔案處理瞬間完成！
 
 ---
 ### 其他資訊 (Other Information)

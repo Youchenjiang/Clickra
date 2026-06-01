@@ -19,7 +19,7 @@ Core Features:
  - Image to PDF: Quickly wrap images (JPG/PNG/WebP) into PDF documents.
  - Image Stitching: Combine multiple images vertically into a single long-form image.
 
-Clickra respects your privacy. All processing is done 100% locally on your machine. Boost your workflow with Clickra's lightning-fast integrations!
+Clickra respects your privacy. Most processing (Office-to-PDF conversion, PDF merging, image stitching) is done 100% locally on your machine. Note: Using the optional PDF Translation feature securely transmits text to Google Translate for processing. Boost your workflow with Clickra's lightning-fast integrations!
 
 🔗 Open Source on GitHub: https://github.com/Youchenjiang/Clickra
 
@@ -38,7 +38,7 @@ Clickra respects your privacy. All processing is done 100% locally on your machi
  - Fast multi-file PDF merging
  - 100% NativeAOT for zero-latency responsiveness
  - Modern Windows 11 Fluent Design integration
- - 100% Local processing for total privacy
+ - Safe local processing (optional cloud-based PDF Translation)
 
 ---
 ### Supplemental Fields
@@ -50,7 +50,7 @@ Clickra
 Clickra
 
 ## Short description
-Clickra is a high-performance native context menu utility for Office to PDF conversion, PDF merging, and image stitching. 100% local, privacy-safe, and extremely fast!
+Clickra is a high-performance native context menu utility for Office to PDF conversion, PDF merging, and image stitching. Secure, privacy-safe, and extremely fast!
 
 ---
 ### Other Information
