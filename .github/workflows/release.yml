@@ -61,18 +61,55 @@ jobs:
         $cert = New-SelfSignedCertificate -Type Custom -Subject "CN=CBF59877-21AD-4BC4-8F91-FE8DA520A138" -KeyUsage DigitalSignature -FriendlyName "Clickra CI Cert" -CertStoreLocation "Cert:\CurrentUser\My" -TextExtension @("2.5.29.37={text}1.3.6.1.5.5.7.3.3")
         & "${{ env.SDK_BIN }}\signtool.exe" sign /fd SHA256 /a /sha1 $($cert.Thumbprint) Clickra.msix
 
+    - name: Fetch Merged Pull Request Description
+      id: get_pr_desc
+      shell: pwsh
+      env:
+        GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      run: |
+        $commitSha = "${{ github.sha }}"
+        Write-Host "Fetching PR for commit: $commitSha"
+        $prBody = ""
+        try {
+            $pullsJson = gh api "repos/${{ github.repository }}/commits/$commitSha/pulls"
+            $pulls = $pullsJson | ConvertFrom-Json
+            if ($pulls -and $pulls.Count -gt 0) {
+                $prBody = $pulls[0].body
+                Write-Host "Found PR #${($pulls[0].number)}: $($pulls[0].title)"
+            }
+        } catch {}
+        if ([string]::IsNullOrWhiteSpace($prBody)) {
+            Write-Host "No direct PR found for commit. Fetching the last merged PR..."
+            try {
+                $lastPrJson = gh pr list --state merged --limit 1 --json body,number,title
+                $lastPr = $lastPrJson | ConvertFrom-Json
+                if ($lastPr -and $lastPr.Count -gt 0) {
+                    $prBody = $lastPr[0].body
+                    Write-Host "Found last merged PR #${($lastPr[0].number)}: $($lastPr[0].title)"
+                }
+            } catch {}
+        }
+        if ([string]::IsNullOrWhiteSpace($prBody)) {
+            $prBody = "No release notes available."
+        }
+        $delimiter = [guid]::NewGuid().ToString()
+        "pr_body<<$delimiter" >> $env:GITHUB_OUTPUT
+        $prBody >> $env:GITHUB_OUTPUT
+        "$delimiter" >> $env:GITHUB_OUTPUT
+
     - name: Create GitHub Release
       if: startsWith(github.ref, 'refs/tags/v')
       uses: softprops/action-gh-release@v2
       with:
         files: Clickra.msix
         body: |
-          ## 🚀 Clickra Release ${{ github.ref_name }}
-          
+          ${{ steps.get_pr_desc.outputs.pr_body }}
+
+          ---
           ### 📦 Installation
           1. Download the attached `Clickra.msix`.
           2. Double-click to install.
-          
+
           *Note: This package is signed with a CI certificate for automation.*
         draft: false
         prerelease: false
