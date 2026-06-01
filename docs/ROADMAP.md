@@ -49,7 +49,7 @@
         - **模式二：可編輯優先 (Mode 2: Text Reconstruction)**：解析 PDF 文字框、圖片與版面結構重建為 PPTX 各元素，支援 OCR 與字型自訂（參考 `pdf2slides`）。
         - **模式三：AI 簡報修復 (Mode 3: AI Slide Repair)**：利用 Gemini AI 抹除頁面中的文字並修補背景，再藉由原始文字座標疊加可編輯文字層，使背景與文字完全分離（參考 `NBLM2PPTX`，即 *NotebookLM to PPTX* 的內部原型／概念驗證工具）。
 - [ ] **進階 PDF 學術與 AI 工具 (Advanced PDF Academic & AI Utilities)**:
-    - [x] **PDF 學術論文翻譯 (PDF Math Translate)**: 純 C# 原生實現（相容 Native AOT）。自動識別與保護 LaTeX 公式，目前已實作免金鑰 Google 翻譯引擎，具備併發控制與速率限制。
+    - [x] **PDF 學術論文翻譯 (PDF Math Translate) [v3.2.0]**: 純 C# 原生實現（相容 Native AOT）。自動識別與保護 LaTeX 公式，目前已實作免金鑰 Google 翻譯引擎，具備併發控制與速率限制。
     - [ ] **PDF 結構化數據提取 (PDF to Markdown/JSON)**: 使用純 C# AOT 相容庫（如 `PdfPig`）解析 PDF 版面、文字與表格，將其提取為乾淨的 Markdown/JSON 格式，實現 100% 離線提取。
 - [ ] **圖片處理強化**:
     - [ ] **PNG/JPG 批量轉換**: 支援多種常用格式間的快速互轉。
