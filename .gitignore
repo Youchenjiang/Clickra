@@ -10,3 +10,4 @@ packaging/msix/Layout/
 *.pdb
 
 scratch/
+.codebase-memory/
