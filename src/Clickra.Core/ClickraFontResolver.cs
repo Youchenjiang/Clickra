@@ -37,7 +37,7 @@ namespace Clickra.Core
             {
                 return new FontResolverInfo("msgothic" + suffix);
             }
-            if (name.Contains("cambria"))
+            if (name.Contains("cambria") || name.Contains("math"))
             {
                 return new FontResolverInfo("cambria" + suffix);
             }
@@ -45,7 +45,7 @@ namespace Clickra.Core
             {
                 return new FontResolverInfo("times" + suffix);
             }
-            if (name.Contains("segoe ui symbol") || name.Contains("symbol") || name.Contains("math") || name.Contains("cmsy") || name.Contains("msam") || name.Contains("msbm"))
+            if (name.Contains("segoe ui symbol") || name.Contains("symbol") || name.Contains("cmsy") || name.Contains("msam") || name.Contains("msbm"))
             {
                 return new FontResolverInfo("seguisym");
             }
@@ -126,9 +126,9 @@ namespace Clickra.Core
             string winFonts = Path.Combine(systemDir, "..", "Fonts");
             string file = baseFace switch
             {
-                "msjh" => "msjh.ttc", // Use standard Windows Microsoft JhengHei TTC
-                "msyh" => "msyh.ttc", // Use standard Windows Microsoft YaHei TTC
-                "msgothic" => "msgothic.ttc", // Use standard Windows MS Gothic TTC
+                "msjh" => "kaiu.ttf", // Use Traditional Chinese TTF (DFKai-SB) - TTC is not supported by PDFsharp
+                "msyh" => "simsunb.ttf", // Use SimSun-Bold TTF - TTC is not supported by PDFsharp
+                "msgothic" => "kaiu.ttf", // MS Gothic is TTC, fallback to Traditional Chinese TTF (contains kanji)
                 "malgun" => style switch // Malgun Gothic (Korean)
                 {
                     "b" => "malgunbd.ttf",
@@ -147,7 +147,7 @@ namespace Clickra.Core
                     "b" => "cambriab.ttf",
                     "i" => "cambriai.ttf",
                     "bi" => "cambriaz.ttf",
-                    _ => "cambria.ttc"
+                    _ => "times.ttf" // Cambria regular is TTC, fallback to Times New Roman TTF to avoid PDFsharp crash
                 },
                 "times" => style switch
                 {
