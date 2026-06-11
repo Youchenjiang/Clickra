@@ -42,15 +42,29 @@
 - [ ] **文件處理工具**:
     - [x] **Word 轉 PDF (Word to PDF)**: 已完成實作。
     - [ ] **Excel 轉 PDF (Excel to PDF)**: 整合微軟 Excel COM 與 LibreOffice 雙引擎轉檔支援。
-    - [ ] **PDF 壓縮**: 在不大幅損害品質的前提下減小檔案體積。
-    - [ ] **PDF 轉圖片 (PDF to Image)**: 一鍵將 PDF 頁面匯出為高品質 JPG/PNG。
+    - [ ] **PDF 壓縮與最佳化 (PDF Shrinking & Compression)**:
+        - 借鑑 `ghostpdf` 封裝 Ghostscript (pdfwrite) 的思路，評估於本地打包或按需引導下載輕量化 Ghostscript 核心，利用預設多級壓縮比（Screen, eBook, Printer）在本地實現高壓縮率與高保真 PDF 壓縮。
+    - [ ] **PDF 轉圖片 (PDF to Image)**: 一鍵將 PDF 頁面匯出為高品質 JPG/PNG/TIFF，支援自訂 DPI 渲染率、色彩模式與透明背景處理。
     - [ ] **PDF 轉 PPTX (PDF to PPTX)**: 並存/整合三種不同定位之模式，供使用者自選或依 PDF 類型自動推薦：
         - **模式一：原樣保真 (Mode 1: Layout Preservation)**：將每頁 PDF 渲染為圖片並嵌入 PPTX。成功率高、相容性最高，且通常可避免版面跑位，但文字不可編輯；仍可能因 PDF 加密、檔案損毀、不支援字型或渲染失敗等情況而無法完成轉換（參考 `pdf2pptx`）。
-        - **模式二：可編輯優先 (Mode 2: Text Reconstruction)**：解析 PDF 文字框、圖片與版面結構重建為 PPTX 各元素，支援 OCR 與字型自訂（參考 `pdf2slides`）。
+        - **模式二：可編輯優先 (Mode 2: Text Reconstruction)**：解析 PDF 文字框、圖片與版面結構重建為 PPTX 各元素，支援 OCR 與字型自訂（參考 `pdf2slides`）。在此模式下，引入 `opendataloader` 的空間網格定位，精確記錄文字大小、色彩與位置以還原排版。
         - **模式三：AI 簡報修復 (Mode 3: AI Slide Repair)**：利用 Gemini AI 抹除頁面中的文字並修補背景，再藉由原始文字座標疊加可編輯文字層，使背景與文字完全分離（參考 `NBLM2PPTX`，即 *NotebookLM to PPTX* 的內部原型／概念驗證工具）。
+    - [ ] **文件去識別化與隱私防護 (Document De-identification & Redaction)**:
+        - 借鑑 `jt-doc-tools` 的隱私防護與實體擦除設計。支援在本地透過正則表達式配合校驗碼算法（中華民國身分證、統一編號、居留證、信用卡 Luhn 碼等）與 PDF 坐標定位，自動搜尋 PDF 內的敏感資料。
+        - 提供「遮蔽（Redact，以黑條塗黑並物理擦除底層字元串流）」與「遮罩（Mask，以同大小/字型大小/色彩的 * 號覆蓋重建）」雙重模式，確保敏感資料無法透過選取或複製還原。
+        - 提供選用的本地/雲端 AI（Gemini / Ollama）語意檢核，補強 Regex 無法辨識的人名、職稱與特定合約代號。
+        - **隱私安全設計**：敏感資料處理與主流程完全解耦，並在記憶體層級實作 Zeroing memory（安全清零），確保身分證字號等高度敏感資料在轉換完成後不留存於記憶體。
+    - [ ] **智能多圖與掃描件拼合 (Intelligent Scanner Stitching)**:
+        - 借鑑 `jt-doc-tools` 的證件/掃描拼合算法，支援拉入多個掃描影像，自動偵測有內容的區塊（連通域 BFS 與 Y/X 軸對齊合併），進行自適應裁剪。
+        - 實作「背景淨白」功能（僅針對亮度高且飽和度低之中性灰底色進行提亮與漂白，過濾折痕與掃描陰影；完整保留彩色印章、彩色照片及印刷色），並將裁剪出的正反面證件（身分證、健保卡）或數張單據發票一鍵拼合成單張 A4 頁面。
 - [ ] **進階 PDF 學術與 AI 工具 (Advanced PDF Academic & AI Utilities)**:
-    - [x] **PDF 學術論文翻譯 (PDF Math Translate)**: 純 C# 原生實現（相容 Native AOT）。自動識別與保護 LaTeX 公式，目前已實作免金鑰 Google 翻譯引擎，具備併發控制與速率限制。
-    - [ ] **PDF 結構化數據提取 (PDF to Markdown/JSON)**: 使用純 C# AOT 相容庫（如 `PdfPig`）解析 PDF 版面、文字與表格，將其提取為乾淨的 Markdown/JSON 格式，實現 100% 離線提取。
+    - [x] **PDF 學術論文翻譯 (PDF Math Translate) [v3.2.0]**: 純 C# 原生實現（相容 Native AOT）。自動識別與保護 LaTeX 公式，目前已實作免金鑰 Google 翻譯引擎，具備併發控制與速率限制。
+    - [ ] **PDF 雙語對照翻譯模式 (Bilingual/Dual-language Translation)**:
+        - 參考 `PDFMathTranslate` 的雙語對照實現，支援在輸出文件保留原文與譯文對照，提供更靈活的閱讀體驗；並擴充公式保護層（利用特殊字型如 Symbol / Cambria Math 自動辨識）。
+    - [ ] **PDF 結構化數據與混合解析 (PDF to Markdown/JSON with Hybrid Parser)**:
+        - **雙欄/多欄排版與 XY-Cut++ 閱讀順序**: 借鑑 `OpenDataLoader` 的雙欄與多欄解析算法，在本地 C# 解析中實現 XY-Cut 投影分割，確保學術論文與複雜文件在提取為 Markdown 時具備正確的閱讀順序。
+        - **混合解析模式 (Hybrid Local+AI Mode)**: 簡單或純文字頁面直接透過本地快速解析器（如 PDFium / PdfPig）處理，複雜表格、公式與圖表則路由至 Gemini API 等 Vision 端，實現 borderless 表格 HTML 重建與 AI 圖片描述。
+        - **解耦設計**：於核心（`src/Clickra.Core`）設計 `IDocParserStrategy` 等解析策略介面（Strategy Pattern），使不同解析引擎（PDFium、AI Vision、PdfPig）能夠靈活切換與擴充。
 - [ ] **圖片處理強化**:
     - [ ] **PNG/JPG 批量轉換**: 支援多種常用格式間的快速互轉。
     - [ ] **高品質縮圖**: 支援批量調整圖片尺寸並保留細節。
@@ -72,8 +86,16 @@
 ## 4. 維護、診斷與離線轉檔插件 (Diagnostics & Offline Fallback)
 - [x] **一鍵診斷回報與郵件反饋 (One-click Diagnostic Feedback) [v3.0.9]**:
     - 提供本地 Native AOT 診斷日誌記錄。於 Dashboard 實作一鍵郵件回報功能，自動打包診斷日誌與系統資訊，透過 Gmail 網頁開啟預設撰寫畫面（並支援標準 mailto: 協議連結作為系統預設郵件用戶端之備用方案）。
+- [ ] **多語系一鍵診斷回報信件草稿 (Multi-language Support for Diagnostic Feedback Mail)**:
+    - 依據使用者目前的介面語言，自動撰寫對應語言的 Gmail/mailto 郵件草稿內容與主旨。
 - [ ] **本地免 Office 離線轉檔插件 (Local LibreOffice Fallback Plugin)**:
     - 評估提供本地免安裝、可一鍵下載的輕量化備用轉檔插件（使用 LibreOffice Portable 瘦身版）。當本地未安裝 Microsoft Office 時，引導使用者一鍵下載並解壓縮至 Clickra 目錄下，由主程式以 headless 模式於本地安全轉檔，維持 100% 離線與隱私標準。
+
+## 5. PDF 無障礙化與自動標籤 (PDF Accessibility & Auto-Tagging)
+- [ ] **PDF 無障礙結構稽核與 Well-Tagged PDF (WTPDF) 重建**:
+    - 借鑑 `OpenDataLoader` 與 PDF Association 倡導之規範，對輸入 PDF 進行無障礙 Tag 稽核，判定是否已標記結構樹以供讀屏軟體正常閱讀。
+    - 對無標籤的 PDF，實現 100% 本地或 AI 輔助的自動標籤化 (Auto-Tagging)，重建 Headings、List、Table 結構樹，並輸出符合 WTPDF 標準的無障礙 Tagged PDF，協助解決全球無障礙法規合規需求（如 EAA、ADA 508）。
+    - **WTPDF 合規與驗證**：遵循 PDF Association 的 WTPDF 規範，並於核心增加結構驗證模組，提供初步結構合規性稽核報告。
 
 ---
 
@@ -91,6 +113,12 @@
 ## 🚀 後續預計里程碑 (Upcoming Milestones)
 - **第一階段**：開發「本地免 Office 離線與 Excel 轉檔插件」（整合本地免安裝 LibreOffice 離線轉檔插件，並全面新增微軟與 LibreOffice 的 Excel (.xlsx/.xls) 轉 PDF 支援，具備偏好引擎設定與 Dashboard 內建下載器）。
 - **第二階段**：開發「文字與編碼工具」（包含編碼轉換與原生 `LCMapStringEx` 簡繁字元互轉）。
-- **第三階段**：開發「批次檔名、資料夾與圖片處理工具」（支援資料夾批次命名、分類、批量建立空資料夾、PNG/JPG 批量轉換與高品質縮圖）以及「資料夾右鍵直接轉換」功能。
-- **第四階段**：開發「PDF 轉 PPTX 與文件工具強化」（包含 PDF 壓縮、PDF 轉圖片，以及並存三種模式的 PDF 轉 PPTX：原樣保真圖片版、拆文字層重建版，以及 Gemini AI 輔助的背景與文字分離修補版）。
-- **第五階段**：開發「進階 PDF 學術與 AI 工具」（包含基於 `PdfPig` 的 PDF 轉 Markdown/JSON 結構化數據提取，維持 100% 離線且零外部環境依賴）。
+- **第三階段**：開發「批次檔名、資料夾與圖片處理工具」（支援資料夾批次命名、分類、批量建立空資料夾，以及基於 Ghostscript/PDFium 技術的 PNG/JPG 批量轉換與高品質縮圖，並支援資料夾右鍵直接轉換功能）。
+- **第四階段**：開發「PDF 壓縮與轉 PPTX 工具強化」：
+    - PDF 壓縮：引進 Ghostscript (pdfwrite) 的多級降採樣與壓縮引擎。
+    - PDF 轉 PPTX：支援原樣保真、基於空間網格重建可編輯文字之模式，以及基於 Gemini AI 抹除修補之模式。
+- **第五階段**：開發「進階 PDF 學術與 AI 工具」（引進 XY-Cut++ 閱讀順序分析重建多欄排版 Markdown，並支援本地與 AI 混合解析模式：本地快速解析搭配 Gemini 輔助表格與圖表描述提取（於 `src/Clickra.Core` 建立明確的解析策略介面 Strategy Pattern 以便解耦和擴充解析引擎）；另擴充 PDF 雙語對照翻譯與公式特殊字型防護）。
+- **第六階段**：開發「PDF 無障礙化與自動標籤」（支援對 PDF 結構進行無障礙稽核，並結合版面分析自動為未標記的 PDF 重建結構樹樹狀圖，生成符合 Well-Tagged PDF 標準之無障礙 Tagged PDF（遵循 PDF Association 的 WTPDF 規範，並於核心增加結構稽核與驗證模組））。
+- **第七階段**：開發「隱私去識別化與智能掃描拼合工具」：
+    - 去識別化：實作純本地正則加校驗碼的 PII 自動識別、PDF 實體物理抹除 (Redaction) 及同格式/顏色/位置遮罩重寫 (Mask) 引擎，配合本地/雲端 AI 做語意漏抓檢索（將敏感資料處理邏輯與核心處理流程解耦，並實作零記憶體殘留 Zeroing Memory 機制以確保高度敏感的身份證件等資訊安全）。
+    - 掃描拼合：實作連通元件 BFS 卡片偵測與 Y/X 軸對齊合併算法，並支援保守型「背景淨白」（提亮紙張灰黃底色、保護印章與彩色內容），提供一鍵證件與收據 A4 合成。
