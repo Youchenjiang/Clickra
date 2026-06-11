@@ -9,3 +9,4 @@ packaging/msix/Layout/
 *.dll
 *.pdb
 
+scratch/
