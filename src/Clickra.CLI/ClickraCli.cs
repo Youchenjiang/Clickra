@@ -159,13 +159,64 @@ namespace Clickra
                     case "test-layout":
                         {
                             using var pigDoc = UglyToad.PdfPig.PdfDocument.Open(files[0]);
-                            var page = pigDoc.GetPage(1);
-                            foreach (var letter in page.Letters)
+                            var page = pigDoc.GetPage(2);
+                            var words = UglyToad.PdfPig.DocumentLayoutAnalysis.WordExtractor.NearestNeighbourWordExtractor.Instance.GetWords(page.Letters).ToList();
+                            var segmenter = new UglyToad.PdfPig.DocumentLayoutAnalysis.PageSegmenter.DocstrumBoundingBoxes();
+                            bool isTablePage = words.Any(w => w.Text.Equals("Table", StringComparison.OrdinalIgnoreCase) || 
+                                                              w.Text.Equals("表", StringComparison.OrdinalIgnoreCase));
+                            var blocks = FileProcessor.GetMergedBlocks(segmenter.GetBlocks(words), isTablePage);
+                            int blockIdx = 0;
+                            foreach (var block in blocks)
                             {
-                                if (letter.FontName.Contains("CMSY", StringComparison.OrdinalIgnoreCase))
+                                var blockLines = PdfParagraph.MergeHorizontalLines(block.TextLines);
+                                var currentGroup = new List<UglyToad.PdfPig.DocumentLayoutAnalysis.TextLine>();
+                                bool? currentIsMath = null;
+                                foreach (var line in blockLines)
                                 {
-                                    Console.WriteLine($"Letter: '{letter.Value}', Font: {letter.FontName}, Size: {letter.FontSize}, Bytes: {string.Join(",", System.Text.Encoding.UTF8.GetBytes(letter.Value))}");
+                                    bool isMath = PdfParagraph.IsMathLine(line);
+                                    bool startsNew = FileProcessor.StartsNewParagraphOrSection(line.Text);
+
+                                    bool prevLineEndedEarly = false;
+                                    bool prevLineWasHeading = false;
+                                    if (currentGroup.Count > 0)
+                                    {
+                                        var prevLine = currentGroup[currentGroup.Count - 1];
+                                        if (prevLine.BoundingBox.Right < block.Right - 20.0)
+                                        {
+                                            prevLineEndedEarly = true;
+                                        }
+                                        if (FileProcessor.IsHeadingLine(prevLine))
+                                        {
+                                            prevLineWasHeading = true;
+                                        }
+                                    }
+
+                                    // When the previous line is a heading, don't split on prevLineEndedEarly
+                                    bool shouldSplit = startsNew || (prevLineEndedEarly && !prevLineWasHeading) || (prevLineWasHeading && !FileProcessor.IsLineBold(line));
+
+                                    if (currentGroup.Count == 0)
+                                    {
+                                        currentGroup.Add(line);
+                                        currentIsMath = isMath;
+                                    }
+                                    else if (isMath == currentIsMath && !shouldSplit)
+                                    {
+                                        currentGroup.Add(line);
+                                    }
+                                    else
+                                    {
+                                        var paragraph = new PdfParagraph(currentGroup);
+                                        Console.WriteLine($"Block {blockIdx} Para: [{paragraph.X0:F1}, {paragraph.Y0:F1}, {paragraph.X1:F1}, {paragraph.Y1:F1}] '{paragraph.TextWithPlaceholders}'");
+                                        currentGroup = new List<UglyToad.PdfPig.DocumentLayoutAnalysis.TextLine> { line };
+                                        currentIsMath = isMath;
+                                    }
                                 }
+                                if (currentGroup.Count > 0)
+                                {
+                                    var paragraph = new PdfParagraph(currentGroup);
+                                    Console.WriteLine($"Block {blockIdx} Para: [{paragraph.X0:F1}, {paragraph.Y0:F1}, {paragraph.X1:F1}, {paragraph.Y1:F1}] '{paragraph.TextWithPlaceholders}'");
+                                }
+                                blockIdx++;
                             }
                         }
                         break;
