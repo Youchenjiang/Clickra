@@ -417,7 +417,7 @@ try {{
                 foreach (var para in pageList)
                 {
                     para.IsBypassed = para.IsCode || para.IsOnlyMath || string.IsNullOrWhiteSpace(para.TextWithPlaceholders) ||
-                                      IsEquationParagraph(para) || IsTableParagraph(para);
+                                      IsEquationParagraph(para) || IsTableParagraph(para) || OverlapsWithLargeImage(para, page);
                 }
 
                 // Pass 1.1: Bypass author block on page 1
@@ -832,108 +832,6 @@ try {{
             if (index < 0 || index >= bytes.Length) return true;
             byte b = bytes[index];
             return b == ' ' || b == '\t' || b == '\r' || b == '\n' || b == '/' || b == '[' || b == ']' || b == '<' || b == '>' || b == '(' || b == ')';
-        }
-
-        private static void StripFormXObjects(PdfDictionary dict, HashSet<string> fontsToStrip)
-        {
-            if (dict == null) return;
-            var visited = new HashSet<PdfDictionary>();
-            StripFormXObjectsInternal(dict, visited, fontsToStrip);
-        }
-
-        private static void StripFormXObjectsInternal(PdfDictionary dict, HashSet<PdfDictionary> visited, HashSet<string> fontsToStrip)
-        {
-            if (dict == null || !visited.Add(dict)) return;
-
-            if (dict.Stream != null)
-            {
-                var subtype = dict.Elements["/Subtype"];
-                if (subtype != null && (subtype.ToString() == "/Form" || subtype.ToString() == "Form"))
-                {
-                    var localFontsToStrip = new HashSet<string>(fontsToStrip);
-                    var resources = dict.Elements.GetDictionary("/Resources");
-                    if (resources != null)
-                    {
-                        var fonts = resources.Elements.GetDictionary("/Font");
-                        if (fonts != null)
-                        {
-                            localFontsToStrip.Clear();
-                            foreach (var key in fonts.Elements.KeyNames)
-                            {
-                                var fontItem = fonts.Elements[key];
-                                if (fontItem is PdfReference reference) fontItem = reference.Value;
-                                if (fontItem is PdfDictionary fontDict)
-                                {
-                                    var baseFont = fontDict.Elements.GetName("/BaseFont");
-                                    if (!string.IsNullOrEmpty(baseFont))
-                                    {
-                                        string cleanFontName = baseFont.Replace("/", "").Trim();
-                                        int plusIdx = cleanFontName.IndexOf('+');
-                                        if (plusIdx >= 0 && plusIdx < cleanFontName.Length - 1)
-                                        {
-                                            cleanFontName = cleanFontName.Substring(plusIdx + 1);
-                                        }
-
-                                        bool isMathOrCode = PdfParagraph.MathFontRegex.IsMatch(cleanFontName);
-                                        if (!isMathOrCode)
-                                        {
-                                            localFontsToStrip.Add(key.ToString().TrimStart('/'));
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    }
-
-                    byte[] decompressedBytes = dict.Stream.UnfilteredValue;
-                    byte[] cleanBytes = StripSelectedText(decompressedBytes, localFontsToStrip);
-                    dict.Stream.Value = cleanBytes;
-                    dict.Elements.Remove("/Filter");
-                }
-            }
-
-            // Copy keys to avoid concurrent modification exception if dict changes (though it shouldn't)
-            var keys = new List<string>();
-            try
-            {
-                foreach (var key in dict.Elements.KeyNames)
-                {
-                    if (key != null)
-                    {
-                        keys.Add(key.ToString());
-                    }
-                }
-            }
-            catch { }
-
-            foreach (var key in keys)
-            {
-                var item = dict.Elements[key];
-                if (item is PdfReference reference)
-                {
-                    item = reference.Value;
-                }
-
-                if (item is PdfDictionary subDict)
-                {
-                    StripFormXObjectsInternal(subDict, visited, fontsToStrip);
-                }
-                else if (item is PdfArray array)
-                {
-                    foreach (var arrayItem in array.Elements)
-                    {
-                        var resolvedItem = arrayItem;
-                        if (resolvedItem is PdfReference arrayRef)
-                        {
-                            resolvedItem = arrayRef.Value;
-                        }
-                        if (resolvedItem is PdfDictionary arrayDict)
-                        {
-                            StripFormXObjectsInternal(arrayDict, visited, fontsToStrip);
-                        }
-                    }
-                }
-            }
         }
 
         public static bool IsLineBold(UglyToad.PdfPig.DocumentLayoutAnalysis.TextLine line)
@@ -1896,6 +1794,24 @@ try {{
                         }
                     }
                 }
+
+                foreach (var path in pigPage.ExperimentalAccess.Paths)
+                {
+                    var rectOpt = path.GetBoundingRectangle();
+                    if (rectOpt.HasValue)
+                    {
+                        var bounds = rectOpt.Value;
+                        if ((bounds.Width > 80 && bounds.Height > 30) || (bounds.Width > 30 && bounds.Height > 60))
+                        {
+                            bool intersectX = (para.X0 <= bounds.Right) && (para.X1 >= bounds.Left);
+                            bool intersectY = (para.Y0 <= bounds.Top) && (para.Y1 >= bounds.Bottom);
+                            if (intersectX && intersectY)
+                            {
+                                return true;
+                            }
+                        }
+                    }
+                }
             }
             catch { }
             return false;
@@ -1935,9 +1851,6 @@ try {{
                     }
                 }
             }
-
-            // Strip Form XObjects on the page to prevent duplicate overlapping text in diagrams
-            // StripFormXObjects(resources, fontsToStrip);
 
             // Now modify the page content stream
             var contents = page.Contents;
