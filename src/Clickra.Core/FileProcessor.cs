@@ -1370,15 +1370,116 @@ try {{
             public double Right { get; set; }
         }
 
+        private static (UglyToad.PdfPig.DocumentLayoutAnalysis.TextLine? left, UglyToad.PdfPig.DocumentLayoutAnalysis.TextLine? right) SplitLine(UglyToad.PdfPig.DocumentLayoutAnalysis.TextLine line, double center)
+        {
+            if (line.BoundingBox.Left >= center || line.BoundingBox.Right <= center)
+            {
+                return (null, null);
+            }
+
+            var sortedWords = line.Words.OrderBy(w => w.BoundingBox.Left).ToList();
+            if (sortedWords.Count < 2) return (null, null);
+
+            for (int i = 0; i < sortedWords.Count - 1; i++)
+            {
+                var w1 = sortedWords[i];
+                var w2 = sortedWords[i + 1];
+
+                if (w1.BoundingBox.Right < center && w2.BoundingBox.Left > center)
+                {
+                    double gap = w2.BoundingBox.Left - w1.BoundingBox.Right;
+                    if (gap >= 8.0) // gutter threshold
+                    {
+                        var leftWords = sortedWords.Take(i + 1).ToList();
+                        var rightWords = sortedWords.Skip(i + 1).ToList();
+
+                        var leftLine = new UglyToad.PdfPig.DocumentLayoutAnalysis.TextLine(leftWords, " ");
+                        var rightLine = new UglyToad.PdfPig.DocumentLayoutAnalysis.TextLine(rightWords, " ");
+
+                        return (leftLine, rightLine);
+                    }
+                }
+            }
+
+            return (null, null);
+        }
+
         public static List<MergedBlock> GetMergedBlocks(IEnumerable<UglyToad.PdfPig.DocumentLayoutAnalysis.TextBlock> docstrumBlocks, double pageWidth, bool isTablePage = false)
         {
             double maxGap = isTablePage ? 8.0 : 15.0;
             double center = pageWidth / 2.0;
-            var list = docstrumBlocks.Select(b => new MergedBlock
+
+            var initialBlocks = docstrumBlocks.Select(b => new MergedBlock
             {
                 TextLines = b.TextLines.ToList(),
                 Right = b.BoundingBox.Right
             }).ToList();
+
+            var list = new List<MergedBlock>();
+
+            if (!isTablePage)
+            {
+                foreach (var b in initialBlocks)
+                {
+                    var leftLines = new List<UglyToad.PdfPig.DocumentLayoutAnalysis.TextLine>();
+                    var rightLines = new List<UglyToad.PdfPig.DocumentLayoutAnalysis.TextLine>();
+                    bool hasSpanningLine = false;
+
+                    foreach (var line in b.TextLines)
+                    {
+                        if (line.BoundingBox.Left < center && line.BoundingBox.Right > center)
+                        {
+                            var (leftPart, rightPart) = SplitLine(line, center);
+                            if (leftPart != null && rightPart != null)
+                            {
+                                leftLines.Add(leftPart);
+                                rightLines.Add(rightPart);
+                            }
+                            else
+                            {
+                                hasSpanningLine = true;
+                                break;
+                            }
+                        }
+                        else if (line.BoundingBox.Right <= center)
+                        {
+                            leftLines.Add(line);
+                        }
+                        else
+                        {
+                            rightLines.Add(line);
+                        }
+                    }
+
+                    if (hasSpanningLine)
+                    {
+                        list.Add(b);
+                    }
+                    else
+                    {
+                        if (leftLines.Count > 0)
+                        {
+                            list.Add(new MergedBlock
+                            {
+                                TextLines = leftLines,
+                                Right = leftLines.Max(l => l.BoundingBox.Right)
+                            });
+                        }
+                        if (rightLines.Count > 0)
+                        {
+                            list.Add(new MergedBlock
+                            {
+                                TextLines = rightLines,
+                                Right = rightLines.Max(l => l.BoundingBox.Right)
+                            });
+                        }
+                    }
+                }
+            }
+            else
+            {
+                list = initialBlocks;
+            }
 
             bool mergedAny = true;
             while (mergedAny)
