@@ -80,7 +80,7 @@ namespace Clickra
             }
 
             string command = argList[0].ToLowerInvariant();
-            var files = argList.Skip(1).OrderBy(f => f).ToList();
+            var files = argList.Skip(1).Where(f => !int.TryParse(f, out _)).OrderBy(f => f).ToList();
             string outputDir = ClickraStorage.GetOutputDir(files[0]);
 
             string startTimeStr = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
@@ -159,12 +159,18 @@ namespace Clickra
                     case "test-layout":
                         {
                             using var pigDoc = UglyToad.PdfPig.PdfDocument.Open(files[0]);
-                            var page = pigDoc.GetPage(2);
+                            int pageNum = 6;
+                            var pageArg = argList.Skip(1).FirstOrDefault(a => int.TryParse(a, out _));
+                            if (pageArg != null && int.TryParse(pageArg, out int p))
+                            {
+                                pageNum = p;
+                            }
+                            var page = pigDoc.GetPage(pageNum);
                             var words = UglyToad.PdfPig.DocumentLayoutAnalysis.WordExtractor.NearestNeighbourWordExtractor.Instance.GetWords(page.Letters).ToList();
                             var segmenter = new UglyToad.PdfPig.DocumentLayoutAnalysis.PageSegmenter.DocstrumBoundingBoxes();
                             bool isTablePage = words.Any(w => w.Text.Equals("Table", StringComparison.OrdinalIgnoreCase) || 
                                                               w.Text.Equals("表", StringComparison.OrdinalIgnoreCase));
-                            var blocks = FileProcessor.GetMergedBlocks(segmenter.GetBlocks(words), isTablePage);
+                            var blocks = FileProcessor.GetMergedBlocks(segmenter.GetBlocks(words), page.Width, isTablePage);
                             int blockIdx = 0;
                             foreach (var block in blocks)
                             {
@@ -206,7 +212,20 @@ namespace Clickra
                                     else
                                     {
                                         var paragraph = new PdfParagraph(currentGroup);
-                                        Console.WriteLine($"Block {blockIdx} Para: [{paragraph.X0:F1}, {paragraph.Y0:F1}, {paragraph.X1:F1}, {paragraph.Y1:F1}] '{paragraph.TextWithPlaceholders}'");
+                                        Console.WriteLine($"Block {blockIdx} Para: [{paragraph.X0:F1}, {paragraph.Y0:F1}, {paragraph.X1:F1}, {paragraph.Y1:F1}] avgFontSize: {paragraph.AverageFontSize:F2} '{paragraph.TextWithPlaceholders}'");
+                                        foreach (var l in currentGroup)
+                                        {
+                                            foreach (var w in l.Words)
+                                            {
+                                                foreach (var let in w.Letters)
+                                                {
+                                                    if (paragraph.TextWithPlaceholders.Contains("Constraints") || paragraph.TextWithPlaceholders.Contains("Payloads"))
+                                                    {
+                                                        Console.WriteLine($"  Letter: '{let.Value}' Font: '{let.FontName}' FontSize: {let.FontSize:F2} PointSize: {let.PointSize:F2}");
+                                                    }
+                                                }
+                                            }
+                                        }
                                         currentGroup = new List<UglyToad.PdfPig.DocumentLayoutAnalysis.TextLine> { line };
                                         currentIsMath = isMath;
                                     }
@@ -214,7 +233,20 @@ namespace Clickra
                                 if (currentGroup.Count > 0)
                                 {
                                     var paragraph = new PdfParagraph(currentGroup);
-                                    Console.WriteLine($"Block {blockIdx} Para: [{paragraph.X0:F1}, {paragraph.Y0:F1}, {paragraph.X1:F1}, {paragraph.Y1:F1}] '{paragraph.TextWithPlaceholders}'");
+                                    Console.WriteLine($"Block {blockIdx} Para: [{paragraph.X0:F1}, {paragraph.Y0:F1}, {paragraph.X1:F1}, {paragraph.Y1:F1}] avgFontSize: {paragraph.AverageFontSize:F2} '{paragraph.TextWithPlaceholders}'");
+                                    foreach (var l in currentGroup)
+                                    {
+                                        foreach (var w in l.Words)
+                                        {
+                                            foreach (var let in w.Letters)
+                                            {
+                                                if (paragraph.TextWithPlaceholders.Contains("Constraints") || paragraph.TextWithPlaceholders.Contains("Payloads"))
+                                                {
+                                                    Console.WriteLine($"  Letter: '{let.Value}' Font: '{let.FontName}' FontSize: {let.FontSize:F2} PointSize: {let.PointSize:F2}");
+                                                }
+                                            }
+                                        }
+                                    }
                                 }
                                 blockIdx++;
                             }

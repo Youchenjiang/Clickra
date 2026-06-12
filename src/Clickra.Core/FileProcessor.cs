@@ -327,12 +327,20 @@ try {{
                 var segmenter = new DocstrumBoundingBoxes();
                 bool isTablePage = words.Any(w => w.Text.Equals("Table", StringComparison.OrdinalIgnoreCase) || 
                                                   w.Text.Equals("表", StringComparison.OrdinalIgnoreCase));
-                var blocks = GetMergedBlocks(segmenter.GetBlocks(words), isTablePage);
+                var blocks = GetMergedBlocks(segmenter.GetBlocks(words), page.Width, isTablePage);
                 foreach (var block in blocks)
                 {
                     var blockLines = PdfParagraph.MergeHorizontalLines(block.TextLines);
                     var currentGroup = new List<UglyToad.PdfPig.DocumentLayoutAnalysis.TextLine>();
                     bool? currentIsMath = null;
+
+                    double minX = block.TextLines.Count > 0 ? block.TextLines.Min(l => l.BoundingBox.Left) : 0;
+                    double maxX = block.TextLines.Count > 0 ? block.TextLines.Max(l => l.BoundingBox.Right) : 0;
+                    double blockWidth = maxX - minX;
+
+                    bool isTableBlock = blockLines.Count >= 2 && 
+                                        (isTablePage || blockWidth < 150.0) && 
+                                        (blockLines.Average(l => l.Words.Count) <= 3.5);
 
                     foreach (var line in blockLines)
                     {
@@ -354,9 +362,13 @@ try {{
                             }
                         }
 
+                        bool prevLineHasGap = isTablePage && currentGroup.Count > 0 && HasColumnGap(currentGroup[currentGroup.Count - 1]);
+                        bool currLineHasGap = isTablePage && HasColumnGap(line);
+                        bool forceSplit = isTableBlock && currentGroup.Count > 0;
+
                         // When the previous line is a heading, don't split on prevLineEndedEarly
                         // (headings naturally end early; e.g., '2.1 Text Representation and Modality' + 'Alignment')
-                        bool shouldSplit = startsNew || (prevLineEndedEarly && !prevLineWasHeading) || (prevLineWasHeading && !IsLineBold(line));
+                        bool shouldSplit = startsNew || (prevLineEndedEarly && !prevLineWasHeading) || (prevLineWasHeading && !IsLineBold(line)) || prevLineHasGap || currLineHasGap || forceSplit;
 
                         if (currentGroup.Count == 0)
                         {
@@ -414,8 +426,8 @@ try {{
                     foreach (var para in pageList)
                     {
                         string txt = para.TextWithPlaceholders.Trim();
-                        if (txt.Equals("ABSTRACT", StringComparison.OrdinalIgnoreCase) ||
-                            txt.Equals("摘要", StringComparison.OrdinalIgnoreCase))
+                        if (txt.StartsWith("ABSTRACT", StringComparison.OrdinalIgnoreCase) ||
+                            txt.StartsWith("摘要", StringComparison.OrdinalIgnoreCase))
                         {
                             abstractY0 = para.Y0;
                             break;
@@ -444,6 +456,7 @@ try {{
                     foreach (var para in pageList)
                     {
                         if (para.IsBypassed) continue;
+                        if (para.IsTable) continue; // Prevent table/diagram cells from being bypassed by proximity
                         
                         bool isSmallLabel = para.TextWithPlaceholders.Length <= 20 && !IsHeadingParagraph(para);
                         if (isSmallLabel)
@@ -467,6 +480,7 @@ try {{
                 }
 
                 MergeVerticallyAdjacentParagraphs(pageList);
+
 
                 pageParagraphs.Add(pageList);
             }
@@ -601,17 +615,13 @@ try {{
 
                 // Check if the page has tables (if so, we use white masks to preserve the original tables)
                 bool pageHasTable = paragraphs.Any(para => para.IsTable);
-                Console.WriteLine($"[DEBUG] Page {p + 1}: pageHasTable = {pageHasTable}, Paragraphs Count = {paragraphs.Count}, Table Paragraphs = {paragraphs.Count(para => para.IsTable)}");
 
-                if (!pageHasTable)
+                // Clean the page's original English text streams before adding overlays
+                try
                 {
-                    // Clean the page's original English text streams before adding overlays
-                    try
-                    {
-                        StripTextFromPage(page);
-                    }
-                    catch { }
+                    StripTextFromPage(page);
                 }
+                catch { }
 
                 // Ensure the page has /ExtGState with /NormalState to reset overprint and multiply blend modes
                 try
@@ -650,6 +660,7 @@ try {{
                 foreach (var para in paragraphs)
                 {
                     if (para.IsBypassed) continue;
+                    if (para.IsTable) continue; // Skip table cells/diagram boxes to avoid erasing lines
                     if (string.IsNullOrWhiteSpace(para.TranslatedText)) continue;
 
                     double pageHeight = gfx.PageSize.Height;
@@ -666,8 +677,6 @@ try {{
                 {
                     if (para.IsBypassed)
                     {
-                        if (pageHasTable) continue; // If pageHasTable is true, original text is preserved, no need to redraw
-                        
                         // Skip math equations and code blocks as their fonts were not stripped
                         if (para.IsCode || para.IsOnlyMath || IsEquationParagraph(para)) continue;
 
@@ -1018,6 +1027,19 @@ try {{
                     translatedText = translatedText.Replace("字元", "角色");
                     translatedText = translatedText.Replace("字符", "角色");
                 }
+
+                // LLM -> 大型語言模型 / 大型语言模型
+                if (originalText.Contains("LLM", StringComparison.OrdinalIgnoreCase))
+                {
+                    translatedText = translatedText.Replace("法學碩士", isTraditional ? "大型語言模型" : "大型语言模型");
+                    translatedText = translatedText.Replace("法学硕士", isTraditional ? "大型語言模型" : "大型语言模型");
+                }
+
+                // sink -> 接收端 / 接收器
+                if (originalText.Contains("sink", StringComparison.OrdinalIgnoreCase))
+                {
+                    translatedText = translatedText.Replace("水槽", isTraditional ? "接收端" : "接收器");
+                }
             }
 
             // 3. Remove stray formula-bracket artifacts like '):(Equation (1))' or '):' that appear
@@ -1268,9 +1290,10 @@ try {{
             public double Right { get; set; }
         }
 
-        public static List<MergedBlock> GetMergedBlocks(IEnumerable<UglyToad.PdfPig.DocumentLayoutAnalysis.TextBlock> docstrumBlocks, bool isTablePage = false)
+        public static List<MergedBlock> GetMergedBlocks(IEnumerable<UglyToad.PdfPig.DocumentLayoutAnalysis.TextBlock> docstrumBlocks, double pageWidth, bool isTablePage = false)
         {
             double maxGap = isTablePage ? 8.0 : 15.0;
+            double center = pageWidth / 2.0;
             var list = docstrumBlocks.Select(b => new MergedBlock
             {
                 TextLines = b.TextLines.ToList(),
@@ -1303,7 +1326,13 @@ try {{
                                     ? l2.BoundingBox.Left - l1.BoundingBox.Right
                                     : l1.BoundingBox.Left - l2.BoundingBox.Right;
 
-                                if (gap >= -5.0 && gap <= maxGap)
+                                double c1 = (l1.BoundingBox.Left + l1.BoundingBox.Right) / 2.0;
+                                double c2 = (l2.BoundingBox.Left + l2.BoundingBox.Right) / 2.0;
+                                bool isL1Left = c1 < center;
+                                bool isL2Left = c2 < center;
+                                double allowedGap = (isL1Left != isL2Left) ? 5.0 : maxGap;
+
+                                if (gap >= -5.0 && gap <= allowedGap)
                                 {
                                     canMerge = true;
                                     break;
@@ -1651,7 +1680,6 @@ try {{
                         // Increased word count limit to 150 to allow long cell descriptions (like work division) to be bypassed
                         if (words.Length <= 150)
                         {
-                            para.IsBypassed = true;
                             para.IsTable = true;
                         }
                     }
@@ -2358,6 +2386,18 @@ try {{
         {
             public List<LayoutElement> Elements { get; set; } = new List<LayoutElement>();
         }
+
+        private static bool HasColumnGap(UglyToad.PdfPig.DocumentLayoutAnalysis.TextLine line, double minGap = 20.0)
+        {
+            if (line == null || line.Words.Count <= 1) return false;
+            var sortedWords = line.Words.OrderBy(w => w.BoundingBox.Left).ToList();
+            for (int i = 0; i < sortedWords.Count - 1; i++)
+            {
+                double gap = sortedWords[i + 1].BoundingBox.Left - sortedWords[i].BoundingBox.Right;
+                if (gap >= minGap) return true;
+            }
+            return false;
+        }
     }
 
     public class PdfParagraph
@@ -2522,7 +2562,7 @@ try {{
                 {
                     foreach (var letter in word.Letters)
                     {
-                        totalFontSize += letter.FontSize;
+                        totalFontSize += letter.PointSize;
                         letterCount++;
 
                         totalCount++;
@@ -2548,7 +2588,7 @@ try {{
                         {
                             Value = letter.Value ?? "",
                             FontName = letter.FontName ?? "Times New Roman",
-                            FontSize = letter.FontSize,
+                            FontSize = letter.PointSize,
                             X = letter.Location.X,
                             Y = letter.Location.Y
                         });
@@ -2822,7 +2862,7 @@ try {{
                 }
 
                 // Subscript/Superscript ratios (ONLY if the word is a math/code word!)
-                if (isMathWord && letter.FontSize < AverageFontSize * 0.79) return true;
+                if (isMathWord && letter.PointSize < AverageFontSize * 0.79) return true;
             }
 
             return false;
@@ -3001,7 +3041,6 @@ try {{
             this.IsOnlyMath = this.Formulas.Count == 1 && this.TextWithPlaceholders.Trim() == "{v0}";
             this.IsCode = this.IsCode || other.IsCode;
         }
-
     }
 
     public class MathFormula
@@ -3022,7 +3061,7 @@ try {{
                 {
                     Value = (l.Value ?? "").Replace('∗', '*'),
                     FontName = l.FontName ?? "Times New Roman",
-                    FontSize = l.FontSize,
+                    FontSize = l.PointSize,
                     RelativeX = l.Location.X - minX,
                     RelativeY = l.Location.Y - letters[0].Location.Y
                 });
