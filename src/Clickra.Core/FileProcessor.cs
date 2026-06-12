@@ -834,6 +834,7 @@ try {{
             return b == ' ' || b == '\t' || b == '\r' || b == '\n' || b == '/' || b == '[' || b == ']' || b == '<' || b == '>' || b == '(' || b == ')';
         }
 
+
         public static bool IsLineBold(UglyToad.PdfPig.DocumentLayoutAnalysis.TextLine line)
         {
             if (line == null || line.Words == null || line.Words.Count == 0) return false;
