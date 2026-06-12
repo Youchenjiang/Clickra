@@ -8,6 +8,7 @@ using System.Text;
 using PdfSharp.Pdf;
 using PdfSharp.Pdf.IO;
 using PdfSharp.Pdf.Advanced;
+using PdfSharp.Pdf.Annotations;
 using PdfSharp.Drawing;
 #pragma warning disable CA1416 // Validate platform compatibility
 using System.Drawing;
@@ -612,6 +613,50 @@ try {{
 
                 var paragraphs = pageParagraphs[p];
                 if (paragraphs.Count == 0) continue;
+
+                // Map annotations to paragraphs
+                try
+                {
+                    for (int i = 0; i < page.Annotations.Count; i++)
+                    {
+                        var annot = page.Annotations[i];
+                        var rect = annot.Rectangle;
+                        
+                        var paraOverlaps = new Dictionary<PdfParagraph, List<PdfLetter>>();
+                        foreach (var para in paragraphs)
+                        {
+                            var overlapping = para.AllLetters
+                                .Where(l => l.Left >= rect.X1 - 2.5 && l.Right <= rect.X2 + 2.5 &&
+                                            l.Bottom >= rect.Y1 - 2.5 && l.Top <= rect.Y2 + 2.5)
+                                .OrderBy(l => l.X)
+                                .ToList();
+                            if (overlapping.Count > 0)
+                            {
+                                paraOverlaps[para] = overlapping;
+                            }
+                        }
+                        
+                        if (paraOverlaps.Count > 0)
+                        {
+                            var bestPair = paraOverlaps.OrderByDescending(kv => kv.Value.Count).First();
+                            var bestPara = bestPair.Key;
+                            var overlappingLetters = bestPair.Value;
+                            
+                            string searchText = string.Join("", overlappingLetters.Select(l => l.Value)).Trim();
+                            if (!string.IsNullOrEmpty(searchText))
+                            {
+                                int occurrenceIdx = GetOccurrenceIndex(bestPara.AllLetters, overlappingLetters, searchText);
+                                bestPara.Annotations.Add(new ParagraphAnnotationInfo
+                                {
+                                    PdfAnnotation = annot,
+                                    Text = searchText,
+                                    OccurrenceIndex = occurrenceIdx
+                                });
+                            }
+                        }
+                    }
+                }
+                catch { }
 
                 // Check if the page has tables (if so, we use white masks to preserve the original tables)
                 bool pageHasTable = paragraphs.Any(para => para.IsTable);
@@ -1791,7 +1836,7 @@ try {{
             }
 
             // Strip Form XObjects on the page to prevent duplicate overlapping text in diagrams
-            StripFormXObjects(resources, fontsToStrip);
+            // StripFormXObjects(resources, fontsToStrip);
 
             // Now modify the page content stream
             var contents = page.Contents;
@@ -1934,7 +1979,6 @@ try {{
             text = text.Replace("\u200B", "").Replace("\u200C", "").Replace("\u200D", "").Replace("\uFEFF", "");
             var tokens = TokenizeTranslatedText(text);
 
-
             double fontSize = para.AverageFontSize;
             string fontNameForPara = targetFontName;
             if (para.IsCode)
@@ -2076,6 +2120,7 @@ try {{
             }
 
             double currentY = isRotated ? fontSize : (paragraphY + fontSize);
+            var renderedChars = new List<RenderedChar>();
 
             foreach (var row in rows)
             {
@@ -2130,7 +2175,24 @@ try {{
                             double avgY = formula.Letters.Average(l => l.RelativeY);
                             double my = currentY - avgY * formulaScale - (fontSize * 0.15);
 
-                            gfx.DrawString(NormalizeMathValue(mergedText.Normalize(NormalizationForm.FormKD)), mathFont, brush, currentX, my);
+                            string normText = NormalizeMathValue(mergedText.Normalize(NormalizationForm.FormKD));
+                            gfx.DrawString(normText, mathFont, brush, currentX, my);
+                            
+                            double offset = 0;
+                            for (int cIdx = 0; cIdx < normText.Length; cIdx++)
+                            {
+                                char ch = normText[cIdx];
+                                double mChW = gfx.MeasureString(ch.ToString(), mathFont).Width;
+                                renderedChars.Add(new RenderedChar
+                                {
+                                    Character = ch,
+                                    Left = currentX + offset,
+                                    Right = currentX + offset + mChW,
+                                    Bottom = pageHeight - my - fSize * 0.15,
+                                    Top = pageHeight - my + fSize * 0.85
+                                });
+                                offset += mChW;
+                            }
                         }
                         else
                         {
@@ -2150,6 +2212,22 @@ try {{
                                 }
 
                                 gfx.DrawString(drawVal, mathFont, brush, mx, my);
+                                
+                                double offset = 0;
+                                for (int cIdx = 0; cIdx < drawVal.Length; cIdx++)
+                                {
+                                    char ch = drawVal[cIdx];
+                                    double mlChW = gfx.MeasureString(ch.ToString(), mathFont).Width;
+                                    renderedChars.Add(new RenderedChar
+                                    {
+                                        Character = ch,
+                                        Left = mx + offset,
+                                        Right = mx + offset + mlChW,
+                                        Bottom = pageHeight - my - fSize * 0.15,
+                                        Top = pageHeight - my + fSize * 0.85
+                                    });
+                                    offset += mlChW;
+                                }
                             }
                         }
                         currentX += element.Width;
@@ -2167,7 +2245,24 @@ try {{
                             {
                                 if (sbMerged.Length > 0)
                                 {
-                                    gfx.DrawString(NormalizeMathValue(sbMerged.ToString().Normalize(NormalizationForm.FormKD)), mainFont, brush, textStartX, currentY);
+                                    string normText = NormalizeMathValue(sbMerged.ToString().Normalize(NormalizationForm.FormKD));
+                                    gfx.DrawString(normText, mainFont, brush, textStartX, currentY);
+                                    
+                                    double offset = 0;
+                                    for (int cIdx = 0; cIdx < normText.Length; cIdx++)
+                                    {
+                                        char ch = normText[cIdx];
+                                        double tChW = gfx.MeasureString(ch.ToString(), mainFont).Width;
+                                        renderedChars.Add(new RenderedChar
+                                        {
+                                            Character = ch,
+                                            Left = textStartX + offset,
+                                            Right = textStartX + offset + tChW,
+                                            Bottom = pageHeight - currentY - fontSize * 0.15,
+                                            Top = pageHeight - currentY + fontSize * 0.85
+                                        });
+                                        offset += tChW;
+                                    }
                                     sbMerged.Clear();
                                 }
                                 char c = elem.Text[0];
@@ -2181,7 +2276,19 @@ try {{
                                     fallbackFontName = "Segoe UI Symbol";
                                 }
                                 XFont fallbackFont = new XFont(fallbackFontName, mainFont.Size, mainFont.Style);
-                                gfx.DrawString(NormalizeMathValue(elem.Text.Normalize(NormalizationForm.FormKD)), fallbackFont, brush, currentX, currentY);
+                                string normChar = NormalizeMathValue(elem.Text.Normalize(NormalizationForm.FormKD));
+                                gfx.DrawString(normChar, fallbackFont, brush, currentX, currentY);
+                                
+                                double fChW = gfx.MeasureString(normChar, fallbackFont).Width;
+                                renderedChars.Add(new RenderedChar
+                                {
+                                    Character = normChar[0],
+                                    Left = currentX,
+                                    Right = currentX + fChW,
+                                    Bottom = pageHeight - currentY - fontSize * 0.15,
+                                    Top = pageHeight - currentY + fontSize * 0.85
+                                });
+                                
                                 textStartX = currentX + elem.Width;
                             }
                             else
@@ -2194,7 +2301,24 @@ try {{
                         }
                         if (sbMerged.Length > 0)
                         {
-                            gfx.DrawString(NormalizeMathValue(sbMerged.ToString().Normalize(NormalizationForm.FormKD)), mainFont, brush, textStartX, currentY);
+                            string normText = NormalizeMathValue(sbMerged.ToString().Normalize(NormalizationForm.FormKD));
+                            gfx.DrawString(normText, mainFont, brush, textStartX, currentY);
+                            
+                            double offset = 0;
+                            for (int cIdx = 0; cIdx < normText.Length; cIdx++)
+                            {
+                                char ch = normText[cIdx];
+                                double eChW = gfx.MeasureString(ch.ToString(), mainFont).Width;
+                                renderedChars.Add(new RenderedChar
+                                {
+                                    Character = ch,
+                                    Left = textStartX + offset,
+                                    Right = textStartX + offset + eChW,
+                                    Bottom = pageHeight - currentY - fontSize * 0.15,
+                                    Top = pageHeight - currentY + fontSize * 0.85
+                                });
+                                offset += eChW;
+                            }
                         }
                     }
                 }
@@ -2204,6 +2328,34 @@ try {{
             if (state != null)
             {
                 gfx.Restore(state);
+            }
+
+            // Align annotations
+            if (!isRotated && para.Annotations.Count > 0 && renderedChars.Count > 0)
+            {
+                foreach (var annotInfo in para.Annotations)
+                {
+                    try
+                    {
+                        var matched = FindAnnotationCharacters(renderedChars, annotInfo.Text, annotInfo.OccurrenceIndex);
+                        if (matched != null && matched.Count > 0)
+                        {
+                            double minLeft = matched.Min(rc => rc.Left);
+                            double maxRight = matched.Max(rc => rc.Right);
+                            double minBottom = matched.Min(rc => rc.Bottom);
+                            double maxTop = matched.Max(rc => rc.Top);
+
+                            double paddingX = 1.0;
+                            double paddingY = 1.5;
+
+                            annotInfo.PdfAnnotation.Rectangle = new PdfRectangle(
+                                new XPoint(minLeft - paddingX, minBottom - paddingY),
+                                new XPoint(maxRight + paddingX, maxTop + paddingY)
+                            );
+                        }
+                    }
+                    catch { }
+                }
             }
 
             return renderedHeight;
@@ -2433,6 +2585,116 @@ try {{
             }
             return false;
         }
+
+        private static bool CharEqualsNormalized(char c1, char c2)
+        {
+            if (c1 == c2) return true;
+            if (char.ToLowerInvariant(c1) == char.ToLowerInvariant(c2)) return true;
+            if ((c1 == '-' || c1 == '–' || c1 == '—') && (c2 == '-' || c2 == '–' || c2 == '—')) return true;
+            return false;
+        }
+
+        private static int GetOccurrenceIndex(List<PdfLetter> allLetters, List<PdfLetter> targetLetters, string searchText)
+        {
+            if (allLetters == null || targetLetters == null || string.IsNullOrEmpty(searchText)) return 0;
+            
+            var occurrences = new List<int>();
+            for (int i = 0; i <= allLetters.Count - searchText.Length; i++)
+            {
+                bool match = true;
+                for (int j = 0; j < searchText.Length; j++)
+                {
+                    if (allLetters[i + j].Value.Length == 0 || !CharEqualsNormalized(allLetters[i + j].Value[0], searchText[j]))
+                    {
+                        match = false;
+                        break;
+                    }
+                }
+                if (match)
+                {
+                    occurrences.Add(i);
+                }
+            }
+            
+            if (occurrences.Count <= 1) return 0;
+            
+            double targetAvgIndex = targetLetters.Average(tl => allLetters.IndexOf(tl));
+            int bestIdx = 0;
+            double minDist = double.MaxValue;
+            for (int k = 0; k < occurrences.Count; k++)
+            {
+                double occurrenceAvgIndex = occurrences[k] + (searchText.Length - 1) / 2.0;
+                double dist = Math.Abs(occurrenceAvgIndex - targetAvgIndex);
+                if (dist < minDist)
+                {
+                    minDist = dist;
+                    bestIdx = k;
+                }
+            }
+            return bestIdx;
+        }
+
+        private static List<RenderedChar> FindAnnotationCharacters(List<RenderedChar> renderedChars, string searchText, int occurrenceIdx)
+        {
+            string cleanSearch = new string(searchText.Where(c => !char.IsWhiteSpace(c)).ToArray());
+            if (cleanSearch.Length == 0) return null;
+
+            var cleanRendered = renderedChars.Where(rc => !char.IsWhiteSpace(rc.Character)).ToList();
+            
+            var occurrences = new List<List<RenderedChar>>();
+            for (int i = 0; i <= cleanRendered.Count - cleanSearch.Length; i++)
+            {
+                bool match = true;
+                for (int j = 0; j < cleanSearch.Length; j++)
+                {
+                    if (!CharEqualsNormalized(cleanRendered[i + j].Character, cleanSearch[j]))
+                    {
+                        match = false;
+                        break;
+                    }
+                }
+                if (match)
+                {
+                    occurrences.Add(cleanRendered.GetRange(i, cleanSearch.Length));
+                }
+            }
+
+            if (occurrences.Count > 0)
+            {
+                int index = Math.Min(occurrenceIdx, occurrences.Count - 1);
+                return occurrences[index];
+            }
+
+            // Fallback: search for numbers/roman numerals
+            var numbers = new string(cleanSearch.Where(c => char.IsDigit(c) || "IVXLCDMivxlcdm".Contains(c)).ToArray());
+            if (numbers.Length > 0)
+            {
+                var numOccurrences = new List<List<RenderedChar>>();
+                for (int i = 0; i <= cleanRendered.Count - numbers.Length; i++)
+                {
+                    bool match = true;
+                    for (int j = 0; j < numbers.Length; j++)
+                    {
+                        if (!CharEqualsNormalized(cleanRendered[i + j].Character, numbers[j]))
+                        {
+                            match = false;
+                            break;
+                        }
+                    }
+                    if (match)
+                    {
+                        numOccurrences.Add(cleanRendered.GetRange(i, numbers.Length));
+                    }
+                }
+                if (numOccurrences.Count > 0)
+                {
+                    int index = Math.Min(occurrenceIdx, numOccurrences.Count - 1);
+                    return numOccurrences[index];
+                }
+            }
+
+            return null;
+        }
     }
 
     public class PdfParagraph
@@ -2472,6 +2734,7 @@ try {{
         public object TextDirection { get; set; } = "Rotate0";
         public TextAlignment Alignment { get; set; } = TextAlignment.Left;
         public List<PdfLetter> AllLetters { get; set; } = new List<PdfLetter>();
+        public List<ParagraphAnnotationInfo> Annotations { get; set; } = new();
 
         public double Width => X1 - X0;
         public double Height => Y1 - Y0;
@@ -2625,7 +2888,11 @@ try {{
                             FontName = letter.FontName ?? "Times New Roman",
                             FontSize = letter.PointSize,
                             X = letter.Location.X,
-                            Y = letter.Location.Y
+                            Y = letter.Location.Y,
+                            Left = letter.GlyphRectangle.Left,
+                            Bottom = letter.GlyphRectangle.Bottom,
+                            Right = letter.GlyphRectangle.Right,
+                            Top = letter.GlyphRectangle.Top
                         });
                     }
                 }
@@ -3121,5 +3388,25 @@ try {{
         public double FontSize { get; set; }
         public double X { get; set; }
         public double Y { get; set; }
+        public double Left { get; set; }
+        public double Bottom { get; set; }
+        public double Right { get; set; }
+        public double Top { get; set; }
+    }
+
+    public class ParagraphAnnotationInfo
+    {
+        public PdfAnnotation PdfAnnotation { get; set; } = null!;
+        public string Text { get; set; } = "";
+        public int OccurrenceIndex { get; set; }
+    }
+
+    public class RenderedChar
+    {
+        public char Character { get; set; }
+        public double Left { get; set; }
+        public double Right { get; set; }
+        public double Bottom { get; set; }
+        public double Top { get; set; }
     }
 }
