@@ -805,8 +805,43 @@ try {{
                 var subtype = dict.Elements["/Subtype"];
                 if (subtype != null && (subtype.ToString() == "/Form" || subtype.ToString() == "Form"))
                 {
+                    var localFontsToStrip = new HashSet<string>(fontsToStrip);
+                    var resources = dict.Elements.GetDictionary("/Resources");
+                    if (resources != null)
+                    {
+                        var fonts = resources.Elements.GetDictionary("/Font");
+                        if (fonts != null)
+                        {
+                            localFontsToStrip.Clear();
+                            foreach (var key in fonts.Elements.KeyNames)
+                            {
+                                var fontItem = fonts.Elements[key];
+                                if (fontItem is PdfReference reference) fontItem = reference.Value;
+                                if (fontItem is PdfDictionary fontDict)
+                                {
+                                    var baseFont = fontDict.Elements.GetName("/BaseFont");
+                                    if (!string.IsNullOrEmpty(baseFont))
+                                    {
+                                        string cleanFontName = baseFont.Replace("/", "").Trim();
+                                        int plusIdx = cleanFontName.IndexOf('+');
+                                        if (plusIdx >= 0 && plusIdx < cleanFontName.Length - 1)
+                                        {
+                                            cleanFontName = cleanFontName.Substring(plusIdx + 1);
+                                        }
+
+                                        bool isMathOrCode = PdfParagraph.MathFontRegex.IsMatch(cleanFontName);
+                                        if (!isMathOrCode)
+                                        {
+                                            localFontsToStrip.Add(key.ToString().TrimStart('/'));
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+
                     byte[] decompressedBytes = dict.Stream.UnfilteredValue;
-                    byte[] cleanBytes = StripSelectedText(decompressedBytes, fontsToStrip);
+                    byte[] cleanBytes = StripSelectedText(decompressedBytes, localFontsToStrip);
                     dict.Stream.Value = cleanBytes;
                     dict.Elements.Remove("/Filter");
                 }
