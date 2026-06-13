@@ -2201,7 +2201,21 @@ try {{
             double currentY = isRotated ? fontSize : (paragraphY + fontSize);
             var renderedChars = new List<RenderedChar>();
 
+            // Clip to paragraph bounding box to prevent translated text from overflowing
+            // into adjacent paragraphs or columns when Chinese text is longer than English.
+            XGraphicsState? clipState = null;
+            if (!isRotated)
+            {
+                clipState = gfx.Save();
+                double clipX = paragraphX - 1.5;
+                double clipY = paragraphY - 1.5;
+                double clipW = paragraphWidth + 3.0;
+                double clipH = paragraphHeight + 3.0;
+                gfx.IntersectClip(new XRect(clipX, clipY, clipW, clipH));
+            }
+
             foreach (var row in rows)
+
             {
                 double rowWidth = row.Elements.Sum(e => e.Width);
                 double startX = paragraphX;
@@ -2402,6 +2416,12 @@ try {{
                     }
                 }
                 currentY += lineHeight;
+            }
+
+            // Restore clipping state
+            if (clipState != null)
+            {
+                gfx.Restore(clipState);
             }
 
             if (state != null)
