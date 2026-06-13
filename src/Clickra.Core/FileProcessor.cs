@@ -429,24 +429,41 @@ try {{
 
 
                 // Pass 1.1: Bypass author block on page 1
+                // The author block sits between the title and the abstract.
+                // We find the title bottom (largest font paragraph near top) and the abstract top,
+                // then bypass anything in between that looks like author info (small font, narrow width).
                 if (p == 1)
                 {
                     double abstractY0 = -1;
+                    double titleY1 = -1;
+
+                    // Find largest-font paragraph (title) near the top of the page
+                    var titlePara = pageList
+                        .Where(para => para.Y1 < page.Height * 0.5)
+                        .OrderByDescending(para => para.AverageFontSize)
+                        .FirstOrDefault();
+                    if (titlePara != null)
+                        titleY1 = titlePara.Y1;
+
+                    // Find the abstract heading
                     foreach (var para in pageList)
                     {
                         string txt = para.TextWithPlaceholders.Trim();
                         if (txt.StartsWith("ABSTRACT", StringComparison.OrdinalIgnoreCase) ||
-                            txt.StartsWith("摘要", StringComparison.OrdinalIgnoreCase))
+                            txt.StartsWith("摘要", StringComparison.OrdinalIgnoreCase) ||
+                            txt.StartsWith("Abstract", StringComparison.Ordinal))
                         {
                             abstractY0 = para.Y0;
                             break;
                         }
                     }
-                    if (abstractY0 > 0)
+
+                    // Bypass author block: paragraphs between title bottom and abstract top
+                    if (titleY1 > 0 && abstractY0 > titleY1)
                     {
                         foreach (var para in pageList)
                         {
-                            if (para.Y0 > abstractY0 && para.AverageFontSize < 15.0)
+                            if (para.Y0 >= titleY1 && para.Y1 <= abstractY0 && para.AverageFontSize < 15.0)
                             {
                                 para.IsBypassed = true;
                             }
