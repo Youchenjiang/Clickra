@@ -416,8 +416,12 @@ try {{
                 // Pass 1: Mark initial bypassed paragraphs
                 foreach (var para in pageList)
                 {
+                    if (OverlapsWithLargeImage(para, page))
+                    {
+                        para.IsDiagram = true;
+                    }
                     para.IsBypassed = para.IsCode || para.IsOnlyMath || string.IsNullOrWhiteSpace(para.TextWithPlaceholders) ||
-                                      IsEquationParagraph(para) || IsTableParagraph(para) || OverlapsWithLargeImage(para, page);
+                                      IsEquationParagraph(para) || IsTableParagraph(para) || para.IsDiagram;
                 }
 
                 // Pass 1.1: Bypass author block on page 1
@@ -472,6 +476,10 @@ try {{
                                 if (closeX && closeY)
                                 {
                                     para.IsBypassed = true;
+                                    if (other.IsDiagram)
+                                    {
+                                        para.IsDiagram = true;
+                                    }
                                     changed = true;
                                     break;
                                 }
@@ -722,8 +730,8 @@ try {{
                 {
                     if (para.IsBypassed)
                     {
-                        // Skip math equations and code blocks as their fonts were not stripped
-                        if (para.IsCode || para.IsOnlyMath || IsEquationParagraph(para)) continue;
+                        // Skip diagrams, math equations and code blocks as their fonts were not stripped
+                        if (para.IsDiagram || para.IsCode || para.IsOnlyMath || IsEquationParagraph(para)) continue;
 
                         // Redraw table cells, headings, and other text in English
                         RenderParagraph(gfx, para, targetFontName);
@@ -2744,6 +2752,7 @@ try {{
         public bool IsBold { get; set; }
         public bool IsItalic { get; set; }
         public bool IsTable { get; set; }
+        public bool IsDiagram { get; set; }
         public bool brk { get; set; } // Paragraph line-break marker
         public List<MathFormula> Formulas { get; set; } = new List<MathFormula>();
         public object TextDirection { get; set; } = "Rotate0";
@@ -3357,6 +3366,7 @@ try {{
             this.IsBold = this.IsBold || other.IsBold;
             this.IsOnlyMath = this.Formulas.Count == 1 && this.TextWithPlaceholders.Trim() == "{v0}";
             this.IsCode = this.IsCode || other.IsCode;
+            this.IsDiagram = this.IsDiagram || other.IsDiagram;
         }
     }
 
