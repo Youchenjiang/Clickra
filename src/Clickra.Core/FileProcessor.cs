@@ -424,7 +424,7 @@ try {{
                         para.IsDiagram = true;
                     }
                     para.IsBypassed = para.IsCode || para.IsOnlyMath || string.IsNullOrWhiteSpace(para.TextWithPlaceholders) ||
-                                      IsEquationParagraph(para) || IsTableParagraph(para) || para.IsDiagram;
+                                      IsEquationParagraph(para) || IsTableParagraph(para) || para.IsDiagram || para.IsTable;
                 }
 
                 // Pass 1.1: Bypass author block on page 1
