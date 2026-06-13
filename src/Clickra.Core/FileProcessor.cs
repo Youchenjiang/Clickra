@@ -413,10 +413,13 @@ try {{
                     }
                 }
 
+                // Pass 0.5: Mark table paragraphs geometrically
+                MarkTableParagraphs(pageList, page.Width);
+
                 // Pass 1: Mark initial bypassed paragraphs
                 foreach (var para in pageList)
                 {
-                    if (OverlapsWithLargeImage(para, page))
+                    if (!para.IsTable && OverlapsWithLargeImage(para, page))
                     {
                         para.IsDiagram = true;
                     }
@@ -449,9 +452,6 @@ try {{
                         }
                     }
                 }
-
-                // Pass 1.5: Mark table paragraphs geometrically
-                MarkTableParagraphs(pageList, page.Width);
 
                 // Pass 2: Propagate bypass to nearby small/label paragraphs (e.g. annotations inside drawings)
                 bool changed = true;
@@ -489,7 +489,6 @@ try {{
                 }
 
                 MergeVerticallyAdjacentParagraphs(pageList);
-
 
                 pageParagraphs.Add(pageList);
             }
@@ -1810,6 +1809,12 @@ try {{
                     if (rectOpt.HasValue)
                     {
                         var bounds = rectOpt.Value;
+                        // Skip page-wide/page-tall background or border paths (e.g. 612x792 page background)
+                        if (bounds.Width > pigPage.Width * 0.9 || bounds.Height > pigPage.Height * 0.9)
+                        {
+                            continue;
+                        }
+
                         if ((bounds.Width > 80 && bounds.Height > 30) || (bounds.Width > 30 && bounds.Height > 60))
                         {
                             bool intersectX = (para.X0 <= bounds.Right) && (para.X1 >= bounds.Left);
