@@ -106,8 +106,10 @@
 *   **處理**：直接標記避讓，保留原始程式碼結構。
 
 ### D. 第一頁作者與機構資訊 (First Page Author Block)
-*   **特徵**：位於第一頁，且在 `ABSTRACT`（或 `摘要`）字樣上方，且平均字型大小 $< 15.0\text{ pt}$ 的所有段落。
+*   **特徵**：位於第一頁，且在**最大字型段落（標題）底部（`titleY1`）到 `ABSTRACT`（或 `摘要`）標題頂部（`abstractY0`）之間**，且平均字型大小 $< 15.0\text{ pt}$ 的所有段落。
 *   **處理**：標記為 `IsBypassed = true`，避免將人名或學校機構名稱翻譯成中文造成排版錯亂。
+*   **⚠️ 歷史陷阱**：曾誤用 `para.Y0 > abstractY0` 作為條件，結果把 Abstract **之後**的所有小字體段落全部 bypass，導致 Abstract 正文、Index Terms、簡介（Introduction）等整頁正文都未翻譯。**正確條件為 `para.Y0 >= titleY1 && para.Y1 <= abstractY0`**，只 bypass 標題與 Abstract 之間的作者欄區域，嚴禁延伸到 Abstract 之後。
+
 
 ### E. 表格與數據 (Tables & Data)
 *   **特徵**：經 `MarkTableParagraphs` 幾何分群判定為表格單元格。
