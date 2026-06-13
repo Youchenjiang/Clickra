@@ -414,7 +414,7 @@ try {{
                 }
 
                 // Pass 0.5: Mark table paragraphs geometrically
-                MarkTableParagraphs(pageList, page.Width);
+                MarkTableParagraphs(pageList, page.Width, isTablePage);
 
                 // Pass 1: Mark initial bypassed paragraphs
                 foreach (var para in pageList)
@@ -426,6 +426,7 @@ try {{
                     para.IsBypassed = para.IsCode || para.IsOnlyMath || string.IsNullOrWhiteSpace(para.TextWithPlaceholders) ||
                                       IsEquationParagraph(para) || IsTableParagraph(para) || para.IsDiagram || para.IsTable;
                 }
+
 
                 // Pass 1.1: Bypass author block on page 1
                 if (p == 1)
@@ -668,12 +669,15 @@ try {{
                 // Check if the page has tables (if so, we use white masks to preserve the original tables)
                 bool pageHasTable = paragraphs.Any(para => para.IsTable);
 
-                // Clean the page's original English text streams before adding overlays
-                try
+                if (!pageHasTable)
                 {
-                    StripTextFromPage(page);
+                    // Clean the page's original English text streams before adding overlays
+                    try
+                    {
+                        StripTextFromPage(page);
+                    }
+                    catch { }
                 }
-                catch { }
 
                 // Ensure the page has /ExtGState with /NormalState to reset overprint and multiply blend modes
                 try
@@ -729,6 +733,8 @@ try {{
                 {
                     if (para.IsBypassed)
                     {
+                        if (pageHasTable) continue;
+
                         // Skip diagrams, math equations and code blocks as their fonts were not stripped
                         if (para.IsDiagram || para.IsCode || para.IsOnlyMath || IsEquationParagraph(para)) continue;
 
@@ -1571,7 +1577,7 @@ try {{
             return false;
         }
 
-        private static void MarkTableParagraphs(List<PdfParagraph> pageList, double pageWidth)
+        private static void MarkTableParagraphs(List<PdfParagraph> pageList, double pageWidth, bool isTablePage)
         {
             var candidates = new List<PdfParagraph>();
             foreach (var para in pageList)
@@ -1621,9 +1627,9 @@ try {{
                 }
 
                 string[] allWords = txt.Split(new char[] { ' ', '\t', '\n', '\r' }, StringSplitOptions.RemoveEmptyEntries);
-                if (allWords.Length > 10) continue;
+                if (allWords.Length > 50) continue;
 
-                if (para.Width < pageWidth * 0.45 && para.Height < 60)
+                if (para.Width < pageWidth * 0.45 && para.Height < 120)
                 {
                     int rowAlignedCount = 0;
                     int colAlignedCount = 0;
@@ -1647,14 +1653,42 @@ try {{
                         }
                     }
 
-                    if (rowAlignedCount >= 1 && colAlignedCount >= 1)
+                    bool colAlignedOk = (colAlignedCount >= 1) || isTablePage;
+                    if (rowAlignedCount >= 1 && colAlignedOk)
                     {
                         candidates.Add(para);
                     }
                 }
             }
 
-            if (candidates.Count < 4) return;
+            // Filter candidates to keep only those that have a horizontal neighbor
+            var filteredCandidates = new List<PdfParagraph>();
+            foreach (var cand in candidates)
+            {
+                bool hasNeighbor = false;
+                foreach (var other in candidates)
+                {
+                    if (other == cand) continue;
+                    double overlapY = Math.Min(cand.Y1, other.Y1) - Math.Max(cand.Y0, other.Y0);
+                    double minH = Math.Min(cand.Height, other.Height);
+                    if (overlapY > minH * 0.5)
+                    {
+                        double overlapX = Math.Min(cand.X1, other.X1) - Math.Max(cand.X0, other.X0);
+                        if (overlapX <= 0)
+                        {
+                            hasNeighbor = true;
+                            break;
+                        }
+                    }
+                }
+                if (hasNeighbor)
+                {
+                    filteredCandidates.Add(cand);
+                }
+            }
+            candidates = filteredCandidates;
+
+            if (candidates.Count < 2) return;
 
             var groups = new List<List<PdfParagraph>>();
             foreach (var cand in candidates)
@@ -1705,7 +1739,7 @@ try {{
 
             foreach (var group in groups)
             {
-                if (group.Count < 4) continue;
+                if (group.Count < 2) continue;
 
                 // Enforce that a table group must have at least one pair of horizontally adjacent cells
                 bool hasHorizontalPair = false;
