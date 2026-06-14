@@ -350,6 +350,7 @@ try {{
 
                         bool prevLineEndedEarly = false;
                         bool prevLineWasHeading = false;
+                        bool isVerticalGapLarge = false;
                         if (currentGroup.Count > 0)
                         {
                             var prevLine = currentGroup[currentGroup.Count - 1];
@@ -361,6 +362,13 @@ try {{
                             {
                                 prevLineWasHeading = true;
                             }
+                            
+                            // Prevent DocStrum from mistakenly merging paragraphs across a large vertical gap (e.g. over 15 pt)
+                            double gapY = prevLine.BoundingBox.Bottom - line.BoundingBox.Top;
+                            if (gapY > 15.0)
+                            {
+                                isVerticalGapLarge = true;
+                            }
                         }
 
                         bool prevLineHasGap = isTablePage && currentGroup.Count > 0 && HasColumnGap(currentGroup[currentGroup.Count - 1]);
@@ -369,7 +377,7 @@ try {{
 
                         // When the previous line is a heading, don't split on prevLineEndedEarly
                         // (headings naturally end early; e.g., '2.1 Text Representation and Modality' + 'Alignment')
-                        bool shouldSplit = startsNew || (prevLineEndedEarly && !prevLineWasHeading) || (prevLineWasHeading && !IsLineBold(line)) || prevLineHasGap || currLineHasGap || forceSplit;
+                        bool shouldSplit = startsNew || isVerticalGapLarge || (prevLineEndedEarly && !prevLineWasHeading) || (prevLineWasHeading && !IsLineBold(line)) || prevLineHasGap || currLineHasGap || forceSplit;
 
                         if (currentGroup.Count == 0)
                         {

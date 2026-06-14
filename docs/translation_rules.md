@@ -78,6 +78,9 @@
     *   段落開頭為特殊圖表標題，如 `Table`, `Figure`, `Fig`, `表`, `圖`, `RQ1` 等。
     *   文字為 "Keywords"、"Keyword"、"關鍵字"、"关键字"。
 
+### E. 區塊內部垂直空隙拆分 (Intra-Block Large Gap Splitting)
+*   **規則**：在同一個 Block 的文字行（TextLines）序列中，相鄰兩行 `L1`（上一行）與 `L2`（下一行）如果垂直淨空隙（`L1.Bottom - L2.Top`）大於 **$15.0\text{ pt}$**，則表示 DocStrum 發生跨區塊誤合併，必須在該處強制拆分，不得併入同一個段落。
+
 ---
 
 ## 2. 🛑 避讓規則：絕對不可翻譯與修改的內容 (Hard Bypass Rules)
