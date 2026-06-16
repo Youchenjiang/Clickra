@@ -27,7 +27,7 @@ namespace Clickra
         [STAThread]
         static void Main(string[] args)
         {
-            try { PdfSharp.Fonts.GlobalFontSettings.FontResolver = new ClickraFontResolver(); } catch { }
+            try { PdfSharpCore.Fonts.GlobalFontSettings.FontResolver = new ClickraFontResolver(); } catch { }
             try { SetProcessDpiAwarenessContext((IntPtr)(-4)); } catch { }
             if (args.Length == 0 || args[0] == "-v" || args[0] == "--version")
             {
@@ -41,7 +41,7 @@ namespace Clickra
 
                 Console.WriteLine($"Clickra v{version} (Modern Shell Edition)");
                 Console.WriteLine("Author: Youchen Jiang");
-                Console.WriteLine("Commands: ppt2pdf, word2pdf, merge-pdf, img2pdf, img-merge, img-stitch, translate-pdf, --deploy");
+                Console.WriteLine("Commands: ppt2pdf, word2pdf, merge-pdf, img2pdf, img-merge, img-stitch, translate-pdf, decrypt-pdf, --deploy");
                 return;
             }
 
@@ -151,6 +151,52 @@ namespace Clickra
                                 string outName = Path.Combine(outputDir, Path.GetFileNameWithoutExtension(f) + "_translated.pdf");
                                 Console.WriteLine($"[Progress] 正在翻譯 PDF: {Path.GetFileName(f)} ({i + 1}/{files.Count})...");
                                 FileProcessor.TranslatePdf(f, outName, targetLang, (curr, tot, msg) => Console.WriteLine($"[Progress] {msg}"));
+                            }
+                        }
+                        else ProgressWindow.Show(command, files);
+                        break;
+                    case "decrypt-pdf":
+                        ValidateExtensions(files, command, quiet, ".pdf");
+                        RequireMinFiles(files, command, 1, quiet);
+                        if (quiet)
+                        {
+                            for (int i = 0; i < files.Count; i++)
+                            {
+                                var f = files[i];
+                                string outName = Path.Combine(outputDir, Path.GetFileNameWithoutExtension(f) + "_decrypted.pdf");
+                                Console.WriteLine($"[Progress] 正在移除密碼: {Path.GetFileName(f)} ({i + 1}/{files.Count})...");
+
+                                string currentPassword = "";
+                                bool success = false;
+                                bool isRetry = false;
+                                while (!success)
+                                {
+                                    try
+                                    {
+                                        FileProcessor.DecryptPdf(f, outName, currentPassword, (curr, tot, msg) => Console.WriteLine($"[Progress] {msg}"));
+                                        success = true;
+                                    }
+                                    catch (Exception ex)
+                                    {
+                                        bool isPasswordError = ex.GetType().Name == "PdfReaderException" &&
+                                                               ex.Message.Contains("password", StringComparison.OrdinalIgnoreCase);
+
+                                        if (isPasswordError)
+                                        {
+                                            string? input = PasswordPrompt.Prompt(IntPtr.Zero, f, isRetry);
+                                            if (input == null)
+                                            {
+                                                throw new OperationCanceledException("使用者已取消輸入密碼。");
+                                            }
+                                            currentPassword = input;
+                                            isRetry = true;
+                                        }
+                                        else
+                                        {
+                                            throw;
+                                        }
+                                    }
+                                }
                             }
                         }
                         else ProgressWindow.Show(command, files);

@@ -819,6 +819,54 @@ namespace Clickra.UI
                             progressCallback(currentFiles.Count * 100, currentFiles.Count * 100, "翻譯完成，正在儲存 PDF...");
                         }
                         break;
+                    case "decrypt-pdf":
+                        for (int i = 0; i < currentFiles.Count; i++)
+                        {
+                            _cts.Token.ThrowIfCancellationRequested();
+                            try { ClickraStorage.SetActiveRecordIndex(i); } catch { }
+                            var f = currentFiles[i];
+                            string outName = Path.Combine(outputDir, Path.GetFileNameWithoutExtension(f) + "_decrypted.pdf");
+                            progressCallback((i * 100) + 10, currentFiles.Count * 100, $"正在去除密碼: {Path.GetFileName(f)} ({i + 1}/{currentFiles.Count})...");
+
+                            string currentPassword = "";
+                            bool success = false;
+                            bool isRetry = false;
+                            while (!success)
+                            {
+                                _cts.Token.ThrowIfCancellationRequested();
+                                try
+                                {
+                                    FileProcessor.DecryptPdf(f, outName, currentPassword, (curr, tot, msg) => {
+                                        int progressPct = tot > 0 ? (int)(curr * 80.0 / tot) + 10 : 10;
+                                        progressCallback((i * 100) + progressPct, currentFiles.Count * 100, $"[去除密碼] {msg} ({i + 1}/{currentFiles.Count})");
+                                    }, _cts.Token);
+                                    success = true;
+                                }
+                                catch (Exception ex)
+                                {
+                                    bool isPasswordError = ex.GetType().Name == "PdfReaderException" &&
+                                                           ex.Message.Contains("password", StringComparison.OrdinalIgnoreCase);
+
+                                    if (isPasswordError)
+                                    {
+                                        string? input = PasswordPrompt.Prompt(hwnd, f, isRetry);
+                                        if (input == null)
+                                        {
+                                            throw new OperationCanceledException("使用者已取消輸入密碼。");
+                                        }
+                                        currentPassword = input;
+                                        isRetry = true;
+                                    }
+                                    else
+                                    {
+                                        throw;
+                                    }
+                                }
+                            }
+                        }
+                        _cts.Token.ThrowIfCancellationRequested();
+                        progressCallback(currentFiles.Count * 100, currentFiles.Count * 100, "密碼去除完成，正在儲存 PDF...");
+                        break;
                 }
 
                 sw.Stop();
@@ -890,6 +938,8 @@ namespace Clickra.UI
                     return string.Join(";", inputFiles.Select(f => Path.Combine(outputDir, Path.GetFileNameWithoutExtension(f) + ".pdf")));
                 case "translate-pdf":
                     return string.Join(";", inputFiles.Select(f => Path.Combine(outputDir, Path.GetFileNameWithoutExtension(f) + "_translated.pdf")));
+                case "decrypt-pdf":
+                    return string.Join(";", inputFiles.Select(f => Path.Combine(outputDir, Path.GetFileNameWithoutExtension(f) + "_decrypted.pdf")));
                 default:
                     return outputDir;
             }
