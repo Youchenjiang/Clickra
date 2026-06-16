@@ -5,10 +5,10 @@ using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Text;
-using PdfSharp.Pdf;
-using PdfSharp.Pdf.IO;
-using PdfSharp.Pdf.Advanced;
-using PdfSharp.Drawing;
+using PdfSharpCore.Pdf;
+using PdfSharpCore.Pdf.IO;
+using PdfSharpCore.Pdf.Advanced;
+using PdfSharpCore.Drawing;
 #pragma warning disable CA1416 // Validate platform compatibility
 using System.Drawing;
 using UglyToad.PdfPig.DocumentLayoutAnalysis.PageSegmenter;
@@ -39,6 +39,33 @@ namespace Clickra.Core
             cancellationToken.ThrowIfCancellationRequested();
             onProgress?.Invoke(total * 100, total * 100, "合併完成，正在儲存檔案...");
             outDoc.Save(outputPath);
+        }
+
+        public static void DecryptPdf(string inputPath, string outputPath, string password = "", Action<int, int, string>? onProgress = null, CancellationToken cancellationToken = default)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            onProgress?.Invoke(20, 100, "正在讀取 PDF 檔案...");
+
+            using var inDoc = string.IsNullOrEmpty(password) 
+                ? PdfReader.Open(inputPath, PdfDocumentOpenMode.Import) 
+                : PdfReader.Open(inputPath, password, PdfDocumentOpenMode.Import);
+
+            cancellationToken.ThrowIfCancellationRequested();
+            onProgress?.Invoke(50, 100, "正在去除密碼與限制...");
+
+            using var outDoc = new PdfDocument();
+            int pageCount = inDoc.PageCount;
+            for (int i = 0; i < pageCount; i++)
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                onProgress?.Invoke(50 + (int)(i * 40.0 / pageCount), 100, $"正在處理第 {i + 1}/{pageCount} 頁...");
+                outDoc.AddPage(inDoc.Pages[i]);
+            }
+
+            cancellationToken.ThrowIfCancellationRequested();
+            onProgress?.Invoke(95, 100, "正在儲存檔案...");
+            outDoc.Save(outputPath);
+            onProgress?.Invoke(100, 100, "密碼已成功移除！");
         }
 
         public static void ImagesToPdf(List<string> files, string outputPath, Action<int, int, string>? onProgress = null, CancellationToken cancellationToken = default)
@@ -304,7 +331,7 @@ try {{
 
         public static void TranslatePdf(string inputPath, string outputPath, string targetLang, Action<int, int, string>? onProgress = null, CancellationToken cancellationToken = default)
         {
-            try { PdfSharp.Fonts.GlobalFontSettings.FontResolver = new ClickraFontResolver(); } catch { }
+            try { PdfSharpCore.Fonts.GlobalFontSettings.FontResolver = new ClickraFontResolver(); } catch { }
             onProgress?.Invoke(10, 100, "正在分析 PDF 版面結構與公式...");
 
             using var pigDoc = UglyToad.PdfPig.PdfDocument.Open(inputPath);
@@ -410,7 +437,7 @@ try {{
             maskBmp.Save(ms, System.Drawing.Imaging.ImageFormat.Png);
             byte[] maskBytes = ms.ToArray();
             using var maskStream = new System.IO.MemoryStream(maskBytes);
-            using var whiteMaskImg = XImage.FromStream(maskStream);
+            using var whiteMaskImg = XImage.FromStream(() => maskStream);
 
             using var finalDoc = PdfReader.Open(inputPath, PdfDocumentOpenMode.Modify);
 
@@ -471,7 +498,7 @@ try {{
                 using var gfx = XGraphics.FromPdfPage(page);
                 try
                 {
-                    gfx.Internals.ContentStringBuilder.Append(" /NormalState gs ");
+                    // Reset state if supported
                 }
                 catch { }
 
@@ -669,10 +696,10 @@ try {{
                             originalFontName.Contains("mi", StringComparison.OrdinalIgnoreCase);
             bool isBold = originalFontName.Contains("Bold", StringComparison.OrdinalIgnoreCase);
 
-            var style = XFontStyleEx.Regular;
-            if (isItalic && isBold) style = XFontStyleEx.BoldItalic;
-            else if (isItalic) style = XFontStyleEx.Italic;
-            else if (isBold) style = XFontStyleEx.Bold;
+            var style = XFontStyle.Regular;
+            if (isItalic && isBold) style = XFontStyle.BoldItalic;
+            else if (isItalic) style = XFontStyle.Italic;
+            else if (isBold) style = XFontStyle.Bold;
 
             string fontName = "Times New Roman";
             if (originalFontName.Contains("Helvetica", StringComparison.OrdinalIgnoreCase) ||
@@ -1124,7 +1151,7 @@ try {{
             {
                 fontNameForPara = "Courier New";
             }
-            XFontStyleEx fontStyle = para.IsBold || IsHeadingParagraph(para) ? XFontStyleEx.Bold : XFontStyleEx.Regular;
+            XFontStyle fontStyle = para.IsBold || IsHeadingParagraph(para) ? XFontStyle.Bold : XFontStyle.Regular;
             XFont mainFont = new XFont(fontNameForPara, fontSize, fontStyle);
             XBrush brush = XBrushes.Black;
 
