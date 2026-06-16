@@ -39,4 +39,7 @@
   <data name="Menu_TranslatePdf" xml:space="preserve">
     <value>PDF 一键翻译</value>
   </data>
+  <data name="Menu_DecryptPdf" xml:space="preserve">
+    <value>去除 PDF 密码</value>
+  </data>
 </root>
