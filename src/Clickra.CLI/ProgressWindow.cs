@@ -619,7 +619,7 @@ namespace Clickra.UI
                             PostMessageW(hwnd, WM_USER_HIDE_PASSWORD_INPUT, IntPtr.Zero, IntPtr.Zero);
                             _passwordEvent.Set();
                         }
-                        else if (id == 1002) // Cancel button
+                        else if (id == 1002 || id == 2) // Cancel button
                         {
                             _inputPassword = null;
                             _passwordCancelled = true;
@@ -1102,6 +1102,10 @@ namespace Clickra.UI
                 // 失敗：立即寫入持久化日誌並暫留 Failed 狀態供 Dashboard 讀取
                 try { ClickraStorage.CompleteActiveRecord(cmd, startTimeStr, false, errorMsg, endTime, elapsedMs, inputs, outputs); } catch { }
 
+                if (!wasCanceled)
+                {
+                    MessageBox(hwnd, $"處理過程中發生錯誤：\n{ex.Message}", "Clickra — 錯誤", 0x10); // MB_ICONERROR
+                }
                 try { ClickraStorage.ClearActiveRecord(); } catch { }
                 PostMessageW(hwnd, 0x0010, IntPtr.Zero, IntPtr.Zero); // WM_CLOSE
             }
