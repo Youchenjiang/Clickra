@@ -178,7 +178,7 @@ namespace Clickra
                                     }
                                     catch (Exception ex)
                                     {
-                                        bool isPasswordError = ex.GetType().Name == "PdfReaderException" &&
+                                        bool isPasswordError = ex is PdfSharpCore.Pdf.IO.PdfReaderException &&
                                                                ex.Message.Contains("password", StringComparison.OrdinalIgnoreCase);
 
                                         if (isPasswordError)

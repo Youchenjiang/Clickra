@@ -130,6 +130,9 @@ namespace Clickra.UI
         [DllImport("user32.dll")] static extern IntPtr GetParent(IntPtr hWnd);
         [DllImport("user32.dll", EntryPoint = "CallWindowProcW", CharSet = CharSet.Unicode)]
         static extern IntPtr CallWindowProc(IntPtr lpPrevWndFunc, IntPtr hWnd, uint Msg, IntPtr wParam, IntPtr lParam);
+        [DllImport("user32.dll", CharSet = CharSet.Unicode)] static extern IntPtr GetProp(IntPtr hWnd, string lpString);
+        [DllImport("user32.dll", CharSet = CharSet.Unicode)] static extern bool SetProp(IntPtr hWnd, string lpString, IntPtr hData);
+        [DllImport("user32.dll", CharSet = CharSet.Unicode)] static extern IntPtr RemoveProp(IntPtr hWnd, string lpString);
         [DllImport("gdi32.dll")] static extern IntPtr CreateSolidBrush(uint crColor);
         [DllImport("gdi32.dll")] static extern bool DeleteObject(IntPtr hObject);
         [DllImport("gdi32.dll", EntryPoint = "SetTextColor")] static extern uint SetTextColor(IntPtr hdc, uint crColor);
@@ -176,13 +179,12 @@ namespace Clickra.UI
         private readonly AutoResetEvent _passwordEvent = new AutoResetEvent(false);
         private string? _inputPassword = null;
         private bool _passwordCancelled = false;
-        private bool _isPromptingPassword = false;
+        private volatile bool _isPromptingPassword = false;
         private string _passwordPromptFilename = "";
         private bool _passwordPromptIsRetry = false;
         private IntPtr _hwndEdit = IntPtr.Zero;
         private IntPtr _hwndBtnOk = IntPtr.Zero;
         private IntPtr _hwndBtnCancel = IntPtr.Zero;
-        private static IntPtr _originalEditProc = IntPtr.Zero;
         private static IntPtr _editBgBrush = IntPtr.Zero;
         private static IntPtr _darkBrush = IntPtr.Zero;
         private static IntPtr _hFont = IntPtr.Zero;
@@ -442,6 +444,7 @@ namespace Clickra.UI
 
             if (_darkBrush != IntPtr.Zero) { DeleteObject(_darkBrush); _darkBrush = IntPtr.Zero; }
             if (_editBgBrush != IntPtr.Zero) { DeleteObject(_editBgBrush); _editBgBrush = IntPtr.Zero; }
+            if (_hFont != IntPtr.Zero) { DeleteObject(_hFont); _hFont = IntPtr.Zero; }
 
             RemoveTrayIcon();
             if (_hIcon != IntPtr.Zero)
@@ -508,6 +511,7 @@ namespace Clickra.UI
         [System.Runtime.InteropServices.UnmanagedCallersOnly(CallConvs = new[] { typeof(System.Runtime.CompilerServices.CallConvStdcall) })]
         private static unsafe IntPtr EditSubclassProc(IntPtr hwnd, uint msg, IntPtr w, IntPtr l)
         {
+            IntPtr oldProc = GetProp(hwnd, "ClickraOldWndProc");
             if (msg == 0x0100) // WM_KEYDOWN
             {
                 int key = w.ToInt32();
@@ -524,7 +528,11 @@ namespace Clickra.UI
                     return IntPtr.Zero;
                 }
             }
-            return CallWindowProc(_originalEditProc, hwnd, msg, w, l);
+            if (msg == 0x0002) // WM_DESTROY
+            {
+                RemoveProp(hwnd, "ClickraOldWndProc");
+            }
+            return oldProc != IntPtr.Zero ? CallWindowProc(oldProc, hwnd, msg, w, l) : DefWindowProcW(hwnd, msg, w, l);
         }
 
         private unsafe IntPtr InstanceWndProc(IntPtr hwnd, uint msg, IntPtr w, IntPtr l)
@@ -559,7 +567,8 @@ namespace Clickra.UI
                         SendMessageW(_hwndBtnCancel, 0x0030, _hFont, (IntPtr)1);
 
                         // Subclass EDIT control for Enter/Esc VKs
-                        _originalEditProc = GetWindowLongPtr(_hwndEdit, -4); // GWL_WNDPROC = -4
+                        IntPtr originalEditProc = GetWindowLongPtr(_hwndEdit, -4); // GWL_WNDPROC = -4
+                        SetProp(_hwndEdit, "ClickraOldWndProc", originalEditProc);
                         SetWindowLongPtr(_hwndEdit, -4, (IntPtr)(delegate* unmanaged[Stdcall]<IntPtr, uint, IntPtr, IntPtr, IntPtr>)&EditSubclassProc);
 
                         SetFocus(_hwndEdit);
@@ -574,10 +583,11 @@ namespace Clickra.UI
                     {
                         if (_hwndEdit != IntPtr.Zero)
                         {
-                            if (_originalEditProc != IntPtr.Zero)
+                            IntPtr oldProc = GetProp(_hwndEdit, "ClickraOldWndProc");
+                            if (oldProc != IntPtr.Zero)
                             {
-                                SetWindowLongPtr(_hwndEdit, -4, _originalEditProc);
-                                _originalEditProc = IntPtr.Zero;
+                                SetWindowLongPtr(_hwndEdit, -4, oldProc);
+                                RemoveProp(_hwndEdit, "ClickraOldWndProc");
                             }
                             DestroyWindow(_hwndEdit);
                             _hwndEdit = IntPtr.Zero;
@@ -1011,7 +1021,7 @@ namespace Clickra.UI
                                 }
                                 catch (Exception ex)
                                 {
-                                    bool isPasswordError = ex.GetType().Name == "PdfReaderException" &&
+                                    bool isPasswordError = ex is PdfSharpCore.Pdf.IO.PdfReaderException &&
                                                            ex.Message.Contains("password", StringComparison.OrdinalIgnoreCase);
 
                                     if (isPasswordError)
@@ -1089,7 +1099,7 @@ namespace Clickra.UI
                 string outputDir = currentFiles.Count > 0 ? ClickraStorage.GetOutputDir(currentFiles[0]) : "";
                 string outputs = currentFiles.Count > 0 ? GetOutputPath(cmd, currentFiles, outputDir) : "";
 
-                bool wasCanceled = _cts.IsCancellationRequested;
+                bool wasCanceled = _cts.IsCancellationRequested || ex is OperationCanceledException;
                 string errorMsg = wasCanceled ? "User Aborted" : ex.Message;
 
                 lock (_stateLock)

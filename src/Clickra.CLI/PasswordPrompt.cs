@@ -107,6 +107,13 @@ namespace Clickra.UI
         [DllImport("kernel32.dll", EntryPoint = "GetModuleHandleW", CharSet = CharSet.Unicode)]
         private static extern IntPtr GetModuleHandle(string? lpModuleName);
 
+        [DllImport("user32.dll", CharSet = CharSet.Unicode)]
+        private static extern IntPtr GetProp(IntPtr hWnd, string lpString);
+        [DllImport("user32.dll", CharSet = CharSet.Unicode)]
+        private static extern bool SetProp(IntPtr hWnd, string lpString, IntPtr hData);
+        [DllImport("user32.dll", CharSet = CharSet.Unicode)]
+        private static extern IntPtr RemoveProp(IntPtr hWnd, string lpString);
+
         [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Unicode)]
         struct WNDCLASSEX
         {
@@ -136,7 +143,6 @@ namespace Clickra.UI
         private static bool _classRegistered = false;
         private static IntPtr _darkBrush = IntPtr.Zero;
         private static IntPtr _editBgBrush = IntPtr.Zero;
-        private static IntPtr _originalEditProc = IntPtr.Zero;
 
         private static string? _resultPassword = null;
         private static bool _cancelled = true;
@@ -206,6 +212,7 @@ namespace Clickra.UI
         [UnmanagedCallersOnly(CallConvs = new[] { typeof(CallConvStdcall) })]
         private static unsafe IntPtr EditSubclassProc(IntPtr hwnd, uint msg, IntPtr w, IntPtr l)
         {
+            IntPtr oldProc = GetProp(hwnd, "ClickraOldWndProc");
             if (msg == 0x0100) // WM_KEYDOWN
             {
                 int key = w.ToInt32();
@@ -222,7 +229,11 @@ namespace Clickra.UI
                     return IntPtr.Zero;
                 }
             }
-            return CallWindowProcW(_originalEditProc, hwnd, msg, w, l);
+            if (msg == 0x0002) // WM_DESTROY
+            {
+                RemoveProp(hwnd, "ClickraOldWndProc");
+            }
+            return oldProc != IntPtr.Zero ? CallWindowProcW(oldProc, hwnd, msg, w, l) : DefWindowProcW(hwnd, msg, w, l);
         }
 
         public static unsafe string? Prompt(IntPtr hwndParent, string filename, bool isRetry)
@@ -313,7 +324,8 @@ namespace Clickra.UI
             SendMessage(hwndBtnCancel, 0x0030, _hFont, (IntPtr)1);
 
             // Subclass EDIT control for Enter/Esc VKs
-            _originalEditProc = GetWindowLongPtr(hwndEdit, -4);
+            IntPtr originalEditProc = GetWindowLongPtr(hwndEdit, -4);
+            SetProp(hwndEdit, "ClickraOldWndProc", originalEditProc);
             SetWindowLongPtr(hwndEdit, -4, (IntPtr)(delegate* unmanaged[Stdcall]<IntPtr, uint, IntPtr, IntPtr, IntPtr>)&EditSubclassProc);
 
             if (hwndParent != IntPtr.Zero)
@@ -337,6 +349,10 @@ namespace Clickra.UI
                 EnableWindow(hwndParent, true);
                 SetWindowPos(hwndParent, IntPtr.Zero, 0, 0, 0, 0, 0x0002 | 0x0001 | 0x0040); // SWP_NOMOVE | SWP_NOSIZE | SWP_SHOWWINDOW
             }
+
+            if (_darkBrush != IntPtr.Zero) { DeleteObject(_darkBrush); _darkBrush = IntPtr.Zero; }
+            if (_editBgBrush != IntPtr.Zero) { DeleteObject(_editBgBrush); _editBgBrush = IntPtr.Zero; }
+            if (_hFont != IntPtr.Zero) { DeleteObject(_hFont); _hFont = IntPtr.Zero; }
 
             return _cancelled ? null : _resultPassword;
         }
