@@ -111,8 +111,7 @@ if (Test-Path $pfxPath) {
     Write-Host "🖋️  Signing Package using PFX..." -ForegroundColor Gray
     & "signtool.exe" sign /fd SHA256 /a /f $pfxPath /p "1234" $msixPath
 } else {
-    # Check if matching dev certificate exists in the CurrentUser Personal store
-    $cert = Get-ChildItem Cert:\CurrentUser\My | Where-Object Subject -like "*$publisher*" | Select-Object -First 1
+
     if ($cert) {
         Write-Host "🖋️  Signing Package using certificate from Local Store: $publisher" -ForegroundColor Gray
         & "signtool.exe" sign /fd SHA256 /a /sha1 $cert.Thumbprint $msixPath
