@@ -17,7 +17,7 @@ foreach ($rootPath in $kitsRoots) {
         # Get all version directories (e.g., 10.0.xxxxx.0) and sort descending to use the newest version
         $sortedDirs = Get-ChildItem -Path $rootPath -Directory | 
                       Where-Object { $_.Name -like "10.*" } | 
-                      Sort-Object Name -Descending
+                      Sort-Object { [version]$_.Name } -Descending
         
         foreach ($dir in $sortedDirs) {
             $candidatePath = Join-Path $dir.FullName "x64"
