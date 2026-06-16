@@ -362,6 +362,11 @@ namespace Clickra.UI
 
             while (GetMessage(out var msg, IntPtr.Zero, 0, 0))
             {
+                if (_isPromptingPassword && IsDialogMessageW(_hwnd, ref msg))
+                {
+                    continue;
+                }
+                TranslateMessage(ref msg);
                 DispatchMessage(ref msg);
             }
 
