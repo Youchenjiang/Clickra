@@ -50,6 +50,12 @@ namespace Clickra.Core
                 ? PdfReader.Open(inputPath, PdfDocumentOpenMode.Import) 
                 : PdfReader.Open(inputPath, password, PdfDocumentOpenMode.Import);
 
+            if (inDoc.SecurityHandler.Elements.Count == 0)
+            {
+                string lang = ClickraStorage.GetSetting("Language");
+                throw new InvalidOperationException(Localization.T("pdf_not_encrypted", lang));
+            }
+
             cancellationToken.ThrowIfCancellationRequested();
             onProgress?.Invoke(50, 100, "正在去除密碼與限制...");
 

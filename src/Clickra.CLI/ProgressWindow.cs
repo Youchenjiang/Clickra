@@ -125,6 +125,18 @@ namespace Clickra.UI
         [DllImport("user32.dll")] static extern uint GetDpiForSystem();
         [DllImport("user32.dll")] static extern bool SetWindowPos(IntPtr hWnd, IntPtr hWndInsertAfter, int X, int Y, int cx, int cy, uint uFlags);
 
+        [DllImport("user32.dll")] static extern IntPtr GetParent(IntPtr hWnd);
+        [DllImport("user32.dll", EntryPoint = "CallWindowProcW", CharSet = CharSet.Unicode)]
+        static extern IntPtr CallWindowProc(IntPtr lpPrevWndFunc, IntPtr hWnd, uint Msg, IntPtr wParam, IntPtr lParam);
+        [DllImport("gdi32.dll")] static extern IntPtr CreateSolidBrush(uint crColor);
+        [DllImport("gdi32.dll")] static extern bool DeleteObject(IntPtr hObject);
+        [DllImport("gdi32.dll", EntryPoint = "SetTextColor")] static extern uint SetTextColor(IntPtr hdc, uint crColor);
+        [DllImport("gdi32.dll", EntryPoint = "SetBkColor")] static extern uint SetBkColor(IntPtr hdc, uint crColor);
+        [DllImport("user32.dll")] static extern IntPtr GetDlgItem(IntPtr hDlg, int nIDDlgItem);
+        [DllImport("user32.dll")] static extern IntPtr SetFocus(IntPtr hWnd);
+        [DllImport("user32.dll", CharSet = CharSet.Unicode)] static extern int GetWindowTextW(IntPtr hWnd, System.Text.StringBuilder lpString, int nMaxCount);
+        [DllImport("gdi32.dll", CharSet = CharSet.Unicode)] static extern IntPtr CreateFontW(int cHeight, int cWidth, int cEscapement, int cOrientation, int cWeight, uint bItalic, uint bUnderline, uint bStrikeOut, uint iCharSet, uint iOutPrecision, uint iClipPrecision, uint iQuality, uint iPitchAndFamily, string pszFaceName);
+
         const uint WS_OVERLAPPED_FIXED = 0x00CF0000 & ~0x00040000u & ~0x00010000u;
         const int DWMWA_DARK_MODE = 20;
         const int CW_USEDEFAULT = unchecked((int)0x80000000);
@@ -140,6 +152,9 @@ namespace Clickra.UI
 
         private const uint WM_TRAYICON = 0x0400 + 1;
         private const uint WM_USER_INVALIDATE = 0x0400 + 2;
+        private const uint WM_USER_SHOW_PASSWORD_INPUT = 0x0400 + 3;
+        private const uint WM_USER_HIDE_PASSWORD_INPUT = 0x0400 + 4;
+
         private const uint NIM_ADD = 0;
         private const uint NIM_MODIFY = 1;
         private const uint NIM_DELETE = 2;
@@ -149,6 +164,25 @@ namespace Clickra.UI
         private const int SW_HIDE = 0;
         private const int SW_SHOW = 5;
         private const int SW_RESTORE = 9;
+
+        private const uint WS_CHILD = 0x40000000;
+        private const uint WS_VISIBLE = 0x10000000;
+        private const uint WS_BORDER = 0x00800000;
+        private const uint WS_TABSTOP = 0x00010000;
+
+        private readonly AutoResetEvent _passwordEvent = new AutoResetEvent(false);
+        private string? _inputPassword = null;
+        private bool _passwordCancelled = false;
+        private bool _isPromptingPassword = false;
+        private string _passwordPromptFilename = "";
+        private bool _passwordPromptIsRetry = false;
+        private IntPtr _hwndEdit = IntPtr.Zero;
+        private IntPtr _hwndBtnOk = IntPtr.Zero;
+        private IntPtr _hwndBtnCancel = IntPtr.Zero;
+        private static IntPtr _originalEditProc = IntPtr.Zero;
+        private static IntPtr _editBgBrush = IntPtr.Zero;
+        private static IntPtr _darkBrush = IntPtr.Zero;
+        private static IntPtr _hFont = IntPtr.Zero;
 
         private readonly object _stateLock = new object();
 
@@ -251,6 +285,9 @@ namespace Clickra.UI
             uint dpi = 96;
             try { dpi = GetDpiForSystem(); } catch {}
             _dpiScale = dpi / 96.0f;
+
+            if (_darkBrush == IntPtr.Zero) _darkBrush = CreateSolidBrush(0x00202020);
+            if (_editBgBrush == IntPtr.Zero) _editBgBrush = CreateSolidBrush(0x002D2D2D);
 
             RecreateScaledFonts();
             _linePen ??= new Pen(Color.FromArgb(60, 60, 60), 1f * _dpiScale);
@@ -395,6 +432,9 @@ namespace Clickra.UI
             try { _bufferBmp?.Dispose(); _bufferBmp = null; } catch { }
             try { _cts?.Dispose(); } catch { }
 
+            if (_darkBrush != IntPtr.Zero) { DeleteObject(_darkBrush); _darkBrush = IntPtr.Zero; }
+            if (_editBgBrush != IntPtr.Zero) { DeleteObject(_editBgBrush); _editBgBrush = IntPtr.Zero; }
+
             RemoveTrayIcon();
             if (_hIcon != IntPtr.Zero)
             {
@@ -457,10 +497,126 @@ namespace Clickra.UI
             return result;
         }
 
-        private IntPtr InstanceWndProc(IntPtr hwnd, uint msg, IntPtr w, IntPtr l)
+        [System.Runtime.InteropServices.UnmanagedCallersOnly(CallConvs = new[] { typeof(System.Runtime.CompilerServices.CallConvStdcall) })]
+        private static unsafe IntPtr EditSubclassProc(IntPtr hwnd, uint msg, IntPtr w, IntPtr l)
+        {
+            if (msg == 0x0100) // WM_KEYDOWN
+            {
+                int key = w.ToInt32();
+                if (key == 0x0D) // VK_RETURN
+                {
+                    IntPtr parent = GetParent(hwnd);
+                    PostMessageW(parent, 0x0111, (IntPtr)1001, IntPtr.Zero); // WM_COMMAND, ID = 1001 (OK)
+                    return IntPtr.Zero;
+                }
+                if (key == 0x1B) // VK_ESCAPE
+                {
+                    IntPtr parent = GetParent(hwnd);
+                    PostMessageW(parent, 0x0111, (IntPtr)1002, IntPtr.Zero); // WM_COMMAND, ID = 1002 (Cancel)
+                    return IntPtr.Zero;
+                }
+            }
+            return CallWindowProc(_originalEditProc, hwnd, msg, w, l);
+        }
+
+        private unsafe IntPtr InstanceWndProc(IntPtr hwnd, uint msg, IntPtr w, IntPtr l)
         {
             switch (msg)
             {
+                case WM_USER_SHOW_PASSWORD_INPUT:
+                    {
+                        if (_hwndEdit != IntPtr.Zero) return IntPtr.Zero;
+
+                        float scale = _dpiScale;
+                        string lang = ClickraStorage.GetSetting("Language");
+                        string normLang = Localization.NormalizeLanguageCode(lang);
+                        string fontName = "Segoe UI";
+                        if (normLang.StartsWith("zh-TW")) fontName = "Microsoft JhengHei UI";
+                        else if (normLang.StartsWith("zh-CN")) fontName = "Microsoft YaHei UI";
+                        else if (normLang.StartsWith("ja")) fontName = "Yu Gothic UI";
+                        else if (normLang.StartsWith("ko")) fontName = "Malgun Gothic";
+
+                        if (_hFont == IntPtr.Zero)
+                        {
+                            _hFont = CreateFontW((int)(14.5 * scale), 0, 0, 0, 400, 0, 0, 0, 1, 0, 0, 0, 0, fontName);
+                        }
+
+                        IntPtr hInstance = GetModuleHandle(null);
+                        _hwndEdit = CreateWindowEx(0, "EDIT", "", WS_CHILD | WS_VISIBLE | WS_BORDER | WS_TABSTOP | 0x0020 | 0x0080, (int)(36 * scale), (int)(165 * scale), (int)(448 * scale), (int)(28 * scale), hwnd, (IntPtr)101, hInstance, IntPtr.Zero);
+                        _hwndBtnOk = CreateWindowEx(0, "BUTTON", Localization.T("dialog_ok", lang), WS_CHILD | WS_VISIBLE | WS_TABSTOP | 0x00000001, (int)(280 * scale), (int)(210 * scale), (int)(90 * scale), (int)(30 * scale), hwnd, (IntPtr)1001, hInstance, IntPtr.Zero);
+                        _hwndBtnCancel = CreateWindowEx(0, "BUTTON", Localization.T("dialog_cancel", lang), WS_CHILD | WS_VISIBLE | WS_TABSTOP, (int)(394 * scale), (int)(210 * scale), (int)(90 * scale), (int)(30 * scale), hwnd, (IntPtr)1002, hInstance, IntPtr.Zero);
+
+                        SendMessageW(_hwndEdit, 0x0030, _hFont, (IntPtr)1); // WM_SETFONT = 0x0030
+                        SendMessageW(_hwndBtnOk, 0x0030, _hFont, (IntPtr)1);
+                        SendMessageW(_hwndBtnCancel, 0x0030, _hFont, (IntPtr)1);
+
+                        // Subclass EDIT control for Enter/Esc VKs
+                        _originalEditProc = GetWindowLongPtr(_hwndEdit, -4); // GWL_WNDPROC = -4
+                        SetWindowLongPtr(_hwndEdit, -4, (IntPtr)(delegate* unmanaged[Stdcall]<IntPtr, uint, IntPtr, IntPtr, IntPtr>)&EditSubclassProc);
+
+                        SetFocus(_hwndEdit);
+                        InvalidateRect(hwnd, IntPtr.Zero, false);
+                    }
+                    return IntPtr.Zero;
+
+                case WM_USER_HIDE_PASSWORD_INPUT:
+                    {
+                        if (_hwndEdit != IntPtr.Zero)
+                        {
+                            if (_originalEditProc != IntPtr.Zero)
+                            {
+                                SetWindowLongPtr(_hwndEdit, -4, _originalEditProc);
+                                _originalEditProc = IntPtr.Zero;
+                            }
+                            DestroyWindow(_hwndEdit);
+                            _hwndEdit = IntPtr.Zero;
+                        }
+                        if (_hwndBtnOk != IntPtr.Zero)
+                        {
+                            DestroyWindow(_hwndBtnOk);
+                            _hwndBtnOk = IntPtr.Zero;
+                        }
+                        if (_hwndBtnCancel != IntPtr.Zero)
+                        {
+                            DestroyWindow(_hwndBtnCancel);
+                            _hwndBtnCancel = IntPtr.Zero;
+                        }
+                        InvalidateRect(hwnd, IntPtr.Zero, false);
+                    }
+                    return IntPtr.Zero;
+
+                case 0x0133: // WM_CTLCOLOREDIT
+                    {
+                        IntPtr editHdc = w;
+                        SetTextColor(editHdc, 0x00FFFFFF); // White
+                        SetBkColor(editHdc, 0x002D2D2D); // Edit bg (45, 45, 45)
+                        return _editBgBrush;
+                    }
+
+                case 0x0111: // WM_COMMAND
+                    {
+                        int id = (int)w.ToInt64() & 0xFFFF;
+                        if (id == 1001) // OK button
+                        {
+                            if (_hwndEdit != IntPtr.Zero)
+                            {
+                                var sb = new System.Text.StringBuilder(260);
+                                GetWindowTextW(_hwndEdit, sb, 260);
+                                _inputPassword = sb.ToString();
+                            }
+                            _passwordCancelled = false;
+                            PostMessageW(hwnd, WM_USER_HIDE_PASSWORD_INPUT, IntPtr.Zero, IntPtr.Zero);
+                            _passwordEvent.Set();
+                        }
+                        else if (id == 1002) // Cancel button
+                        {
+                            _inputPassword = null;
+                            _passwordCancelled = true;
+                            PostMessageW(hwnd, WM_USER_HIDE_PASSWORD_INPUT, IntPtr.Zero, IntPtr.Zero);
+                            _passwordEvent.Set();
+                        }
+                    }
+                    return IntPtr.Zero;
                 case 0x020A: // WM_MOUSEWHEEL
                     {
                         int delta = (short)((w.ToInt64() >> 16) & 0xFFFF);
@@ -849,12 +1005,34 @@ namespace Clickra.UI
 
                                     if (isPasswordError)
                                     {
-                                        string? input = PasswordPrompt.Prompt(hwnd, f, isRetry);
-                                        if (input == null)
+                                        lock (_stateLock)
+                                        {
+                                            _isPromptingPassword = true;
+                                            _passwordPromptFilename = f;
+                                            _passwordPromptIsRetry = isRetry;
+                                            _inputPassword = null;
+                                            _passwordCancelled = false;
+                                        }
+
+                                        PostMessageW(hwnd, WM_USER_SHOW_PASSWORD_INPUT, IntPtr.Zero, IntPtr.Zero);
+
+                                        _passwordEvent.WaitOne();
+
+                                        bool cancelled;
+                                        string? input;
+                                        lock (_stateLock)
+                                        {
+                                            cancelled = _passwordCancelled;
+                                            input = _inputPassword;
+                                            _isPromptingPassword = false;
+                                        }
+
+                                        if (cancelled)
                                         {
                                             throw new OperationCanceledException("使用者已取消輸入密碼。");
                                         }
-                                        currentPassword = input;
+
+                                        currentPassword = input ?? "";
                                         isRetry = true;
                                     }
                                     else
@@ -913,10 +1091,6 @@ namespace Clickra.UI
                 // 失敗：立即寫入持久化日誌並暫留 Failed 狀態供 Dashboard 讀取
                 try { ClickraStorage.CompleteActiveRecord(cmd, startTimeStr, false, errorMsg, endTime, elapsedMs, inputs, outputs); } catch { }
 
-                if (!wasCanceled)
-                {
-                    MessageBox(hwnd, $"處理過程中發生錯誤：\n{ex.Message}", "Clickra — 錯誤", 0x10); // MB_ICONERROR
-                }
                 try { ClickraStorage.ClearActiveRecord(); } catch { }
                 PostMessageW(hwnd, 0x0010, IntPtr.Zero, IntPtr.Zero); // WM_CLOSE
             }
@@ -1032,7 +1206,7 @@ try {{
             var g = _bufferGraphics;
             g.Clear(Color.FromArgb(32, 32, 32));
 
-            bool hasErr, comp; string msg, errMsg, pctStr;
+            bool hasErr, comp, isPrompting; string msg, errMsg, pctStr, promptFile; bool isRetry;
             double dispW; float shimOff; int tot, cur;
 
             lock (_stateLock)
@@ -1041,6 +1215,9 @@ try {{
                 msg = _message; errMsg = _errorMessage;
                 dispW = _currentDispWidth; shimOff = _shimmerOffset;
                 tot = _total; cur = _current;
+                isPrompting = _isPromptingPassword;
+                promptFile = _passwordPromptFilename;
+                isRetry = _passwordPromptIsRetry;
             }
 
             float s = _dpiScale;
@@ -1050,7 +1227,8 @@ try {{
 
             if (_subFont != null)
             {
-                string subText = hasErr ? "作業失敗" : (comp ? "作業完成" : "正在執行作業...");
+                string lang = ClickraStorage.GetSetting("Language");
+                string subText = hasErr ? "作業失敗" : (comp ? "作業完成" : (isPrompting ? Localization.T("pdf_password_title", lang) : "正在執行作業..."));
                 Color subColor = hasErr ? Color.FromArgb(255, 90, 70) : (comp ? Color.FromArgb(100, 220, 100) : Color.FromArgb(160, 160, 160));
                 using var subBrush = new SolidBrush(subColor);
                 g.DrawString(subText, _subFont, subBrush, 36 * s, 72 * s);
@@ -1093,6 +1271,20 @@ try {{
                 {
                     using var tipBrush = new SolidBrush(Color.FromArgb(120, 120, 120));
                     g.DrawString("視窗將於數秒後自動關閉...", _tipFont, tipBrush, 36 * s, 220 * s);
+                }
+            }
+            else if (isPrompting)
+            {
+                if (_msgFont != null)
+                {
+                    string lang = ClickraStorage.GetSetting("Language");
+                    string promptFormat = isRetry 
+                        ? Localization.T("pdf_password_retry", lang) 
+                        : Localization.T("pdf_password_prompt", lang);
+                    string promptText = string.Format(promptFormat, Path.GetFileName(promptFile));
+
+                    using var promptBrush = new SolidBrush(Color.FromArgb(220, 220, 220));
+                    g.DrawString(promptText, _msgFont, promptBrush, new RectangleF(36 * s, 130 * s, 448 * s, 32 * s));
                 }
             }
             else
@@ -1148,9 +1340,9 @@ try {{
                         lock (_stateLock)
                         {
                             _scrollOffset = 0f;
-                 _isDraggingScroll = false;
-                 _dragStartMouseX = 0f;
-                 _dragStartOffset = 0f;
+                            _isDraggingScroll = false;
+                            _dragStartMouseX = 0f;
+                            _dragStartOffset = 0f;
                         }
                         g.DrawString(msg, _msgFont, Brushes.White, 36 * s, 130 * s);
                     }

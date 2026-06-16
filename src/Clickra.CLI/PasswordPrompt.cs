@@ -250,7 +250,7 @@ namespace Clickra.UI
                     lpfnWndProc = (IntPtr)(delegate* unmanaged[Stdcall]<IntPtr, uint, IntPtr, IntPtr, IntPtr>)&WndProc,
                     hInstance = hInstance,
                     hCursor = LoadCursorW(IntPtr.Zero, 32512), // IDC_ARROW = 32512
-                    hbrBackground = IntPtr.Zero,
+                    hbrBackground = _darkBrush,
                     lpszClassName = Marshal.StringToHGlobalUni(className)
                 };
                 RegisterClassEx(ref wc);
@@ -304,8 +304,8 @@ namespace Clickra.UI
             // Create controls
             IntPtr hwndStatic = CreateWindowEx(0, "STATIC", cleanPrompt, WS_CHILD | WS_VISIBLE, (int)(20 * scale), (int)(20 * scale), (int)(360 * scale), (int)(40 * scale), hwndDlg, IntPtr.Zero, hInstance, IntPtr.Zero);
             IntPtr hwndEdit = CreateWindowEx(0, "EDIT", "", WS_CHILD | WS_VISIBLE | WS_BORDER | WS_TABSTOP | 0x0020 | 0x0080, (int)(20 * scale), (int)(65 * scale), (int)(360 * scale), (int)(26 * scale), hwndDlg, (IntPtr)101, hInstance, IntPtr.Zero);
-            IntPtr hwndBtnOk = CreateWindowEx(0, "BUTTON", Localization.T("convert_start", lang), WS_CHILD | WS_VISIBLE | WS_TABSTOP | 0x00000001, (int)(180 * scale), (int)(110 * scale), (int)(90 * scale), (int)(30 * scale), hwndDlg, (IntPtr)1, hInstance, IntPtr.Zero);
-            IntPtr hwndBtnCancel = CreateWindowEx(0, "BUTTON", Localization.T("convert_clear", lang), WS_CHILD | WS_VISIBLE | WS_TABSTOP, (int)(290 * scale), (int)(110 * scale), (int)(90 * scale), (int)(30 * scale), hwndDlg, (IntPtr)2, hInstance, IntPtr.Zero);
+            IntPtr hwndBtnOk = CreateWindowEx(0, "BUTTON", Localization.T("dialog_ok", lang), WS_CHILD | WS_VISIBLE | WS_TABSTOP | 0x00000001, (int)(180 * scale), (int)(110 * scale), (int)(90 * scale), (int)(30 * scale), hwndDlg, (IntPtr)1, hInstance, IntPtr.Zero);
+            IntPtr hwndBtnCancel = CreateWindowEx(0, "BUTTON", Localization.T("dialog_cancel", lang), WS_CHILD | WS_VISIBLE | WS_TABSTOP, (int)(290 * scale), (int)(110 * scale), (int)(90 * scale), (int)(30 * scale), hwndDlg, (IntPtr)2, hInstance, IntPtr.Zero);
 
             SendMessage(hwndStatic, 0x0030, _hFont, (IntPtr)1);
             SendMessage(hwndEdit, 0x0030, _hFont, (IntPtr)1);
