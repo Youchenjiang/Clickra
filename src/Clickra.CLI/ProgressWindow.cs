@@ -1051,7 +1051,7 @@ namespace Clickra.UI
 
                                         if (cancelled)
                                         {
-                                            throw new OperationCanceledException("使用者已取消輸入密碼。");
+                                            throw new OperationCanceledException(Localization.T("error_user_aborted", ClickraStorage.GetSetting("Language")));
                                         }
 
                                         currentPassword = input ?? "";

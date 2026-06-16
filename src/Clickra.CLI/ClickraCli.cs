@@ -183,7 +183,7 @@ namespace Clickra
 
                                         if (isPasswordError)
                                         {
-                                            throw new InvalidOperationException("密碼錯誤或未提供密碼（靜默模式下無法手動輸入密碼）。");
+                                            throw new InvalidOperationException(Localization.T("error_pdf_password_quiet", ClickraStorage.GetSetting("Language")));
                                         }
                                         else
                                         {
