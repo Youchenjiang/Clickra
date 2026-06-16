@@ -836,6 +836,7 @@ namespace Clickra.UI
 
                             // User confirmed cancellation
                             try { _cts.Cancel(); } catch { }
+                            _passwordEvent.Set(); // Wake up background thread if blocked on password prompt
                             return IntPtr.Zero; // Wait for background thread to handle cancellation and close the window
                         }
 

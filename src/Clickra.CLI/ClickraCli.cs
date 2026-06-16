@@ -183,13 +183,7 @@ namespace Clickra
 
                                         if (isPasswordError)
                                         {
-                                            string? input = PasswordPrompt.Prompt(IntPtr.Zero, f, isRetry);
-                                            if (input == null)
-                                            {
-                                                throw new OperationCanceledException("使用者已取消輸入密碼。");
-                                            }
-                                            currentPassword = input;
-                                            isRetry = true;
+                                            throw new InvalidOperationException("密碼錯誤或未提供密碼（靜默模式下無法手動輸入密碼）。");
                                         }
                                         else
                                         {

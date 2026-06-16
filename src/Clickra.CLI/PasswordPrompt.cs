@@ -146,7 +146,6 @@ namespace Clickra.UI
 
         private static string? _resultPassword = null;
         private static bool _cancelled = true;
-        private static IntPtr _hFont = IntPtr.Zero;
 
         private const uint WS_CHILD = 0x40000000;
         private const uint WS_VISIBLE = 0x10000000;
@@ -295,6 +294,10 @@ namespace Clickra.UI
             _cancelled = true;
 
             IntPtr hwndDlg = CreateWindowEx(0, className, title, 0x00C00000 | 0x00080000, x, y, winW, winH, hwndParent, IntPtr.Zero, hInstance, IntPtr.Zero);
+            if (hwndDlg == IntPtr.Zero)
+            {
+                return null;
+            }
 
             int dark = 1;
             DwmSetWindowAttribute(hwndDlg, 20, ref dark, sizeof(int)); // DWMWA_USE_IMMERSIVE_DARK_MODE = 20
@@ -307,10 +310,7 @@ namespace Clickra.UI
             else if (normLang.StartsWith("ja")) fontName = "Yu Gothic UI";
             else if (normLang.StartsWith("ko")) fontName = "Malgun Gothic";
 
-            if (_hFont == IntPtr.Zero)
-            {
-                _hFont = CreateFontW((int)(14.5 * scale), 0, 0, 0, 400, 0, 0, 0, 1, 0, 0, 0, 0, fontName);
-            }
+            IntPtr hFont = CreateFontW((int)(14.5 * scale), 0, 0, 0, 400, 0, 0, 0, 1, 0, 0, 0, 0, fontName);
 
             // Create controls
             IntPtr hwndStatic = CreateWindowEx(0, "STATIC", cleanPrompt, WS_CHILD | WS_VISIBLE, (int)(20 * scale), (int)(20 * scale), (int)(360 * scale), (int)(40 * scale), hwndDlg, IntPtr.Zero, hInstance, IntPtr.Zero);
@@ -318,10 +318,10 @@ namespace Clickra.UI
             IntPtr hwndBtnOk = CreateWindowEx(0, "BUTTON", Localization.T("dialog_ok", lang), WS_CHILD | WS_VISIBLE | WS_TABSTOP | 0x00000001, (int)(180 * scale), (int)(110 * scale), (int)(90 * scale), (int)(30 * scale), hwndDlg, (IntPtr)1, hInstance, IntPtr.Zero);
             IntPtr hwndBtnCancel = CreateWindowEx(0, "BUTTON", Localization.T("dialog_cancel", lang), WS_CHILD | WS_VISIBLE | WS_TABSTOP, (int)(290 * scale), (int)(110 * scale), (int)(90 * scale), (int)(30 * scale), hwndDlg, (IntPtr)2, hInstance, IntPtr.Zero);
 
-            SendMessage(hwndStatic, 0x0030, _hFont, (IntPtr)1);
-            SendMessage(hwndEdit, 0x0030, _hFont, (IntPtr)1);
-            SendMessage(hwndBtnOk, 0x0030, _hFont, (IntPtr)1);
-            SendMessage(hwndBtnCancel, 0x0030, _hFont, (IntPtr)1);
+            SendMessage(hwndStatic, 0x0030, hFont, (IntPtr)1);
+            SendMessage(hwndEdit, 0x0030, hFont, (IntPtr)1);
+            SendMessage(hwndBtnOk, 0x0030, hFont, (IntPtr)1);
+            SendMessage(hwndBtnCancel, 0x0030, hFont, (IntPtr)1);
 
             // Subclass EDIT control for Enter/Esc VKs
             IntPtr originalEditProc = GetWindowLongPtr(hwndEdit, -4);
@@ -333,26 +333,31 @@ namespace Clickra.UI
                 EnableWindow(hwndParent, false);
             }
 
-            ShowWindow(hwndDlg, 5); // SW_SHOW = 5
-            UpdateWindow(hwndDlg);
-            SetFocus(hwndEdit);
-
-            MSG msg;
-            while (GetMessage(out msg, IntPtr.Zero, 0, 0))
+            try
             {
-                TranslateMessage(ref msg);
-                DispatchMessage(ref msg);
-            }
+                ShowWindow(hwndDlg, 5); // SW_SHOW = 5
+                UpdateWindow(hwndDlg);
+                SetFocus(hwndEdit);
 
-            if (hwndParent != IntPtr.Zero)
+                MSG msg;
+                while (GetMessage(out msg, IntPtr.Zero, 0, 0))
+                {
+                    TranslateMessage(ref msg);
+                    DispatchMessage(ref msg);
+                }
+            }
+            finally
             {
-                EnableWindow(hwndParent, true);
-                SetWindowPos(hwndParent, IntPtr.Zero, 0, 0, 0, 0, 0x0002 | 0x0001 | 0x0040); // SWP_NOMOVE | SWP_NOSIZE | SWP_SHOWWINDOW
-            }
+                if (hwndParent != IntPtr.Zero)
+                {
+                    EnableWindow(hwndParent, true);
+                    SetWindowPos(hwndParent, IntPtr.Zero, 0, 0, 0, 0, 0x0002 | 0x0001 | 0x0040); // SWP_NOMOVE | SWP_NOSIZE | SWP_SHOWWINDOW
+                }
 
-            if (_darkBrush != IntPtr.Zero) { DeleteObject(_darkBrush); _darkBrush = IntPtr.Zero; }
-            if (_editBgBrush != IntPtr.Zero) { DeleteObject(_editBgBrush); _editBgBrush = IntPtr.Zero; }
-            if (_hFont != IntPtr.Zero) { DeleteObject(_hFont); _hFont = IntPtr.Zero; }
+                if (_darkBrush != IntPtr.Zero) { DeleteObject(_darkBrush); _darkBrush = IntPtr.Zero; }
+                if (_editBgBrush != IntPtr.Zero) { DeleteObject(_editBgBrush); _editBgBrush = IntPtr.Zero; }
+                if (hFont != IntPtr.Zero) { DeleteObject(hFont); }
+            }
 
             return _cancelled ? null : _resultPassword;
         }
