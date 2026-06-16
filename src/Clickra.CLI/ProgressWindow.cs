@@ -62,7 +62,7 @@ namespace Clickra.UI
         static extern bool SetWindowText(IntPtr h, string text);
 
         [DllImport("user32.dll")] static extern bool ShowWindow(IntPtr h, int n);
-        [DllImport("user32.dll")] static extern bool GetMessage(out MSG m, IntPtr h, uint f, uint l);
+        [DllImport("user32.dll")] static extern int GetMessage(out MSG m, IntPtr h, uint f, uint l);
         [DllImport("user32.dll")] static extern bool TranslateMessage(ref MSG m);
         [DllImport("user32.dll", EntryPoint = "IsDialogMessageW")] static extern bool IsDialogMessageW(IntPtr hDlg, ref MSG lpMsg);
         [DllImport("user32.dll")] static extern IntPtr DispatchMessage(ref MSG m);
@@ -362,8 +362,10 @@ namespace Clickra.UI
             bgThread.IsBackground = true;
             bgThread.Start();
 
-            while (GetMessage(out var msg, IntPtr.Zero, 0, 0))
+            int status;
+            while ((status = GetMessage(out var msg, IntPtr.Zero, 0, 0)) != 0)
             {
+                if (status == -1) break;
                 if (_isPromptingPassword && IsDialogMessageW(_hwnd, ref msg))
                 {
                     continue;
@@ -429,6 +431,10 @@ namespace Clickra.UI
 
         private void CleanupResources()
         {
+            if (_hwndEdit != IntPtr.Zero) { DestroyWindow(_hwndEdit); _hwndEdit = IntPtr.Zero; }
+            if (_hwndBtnOk != IntPtr.Zero) { DestroyWindow(_hwndBtnOk); _hwndBtnOk = IntPtr.Zero; }
+            if (_hwndBtnCancel != IntPtr.Zero) { DestroyWindow(_hwndBtnCancel); _hwndBtnCancel = IntPtr.Zero; }
+
             try { _titleFont?.Dispose(); _titleFont = null; } catch { }
             try { _subFont?.Dispose(); _subFont = null; } catch { }
             try { _headerFont?.Dispose(); _headerFont = null; } catch { }
