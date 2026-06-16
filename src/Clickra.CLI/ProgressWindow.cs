@@ -63,6 +63,8 @@ namespace Clickra.UI
 
         [DllImport("user32.dll")] static extern bool ShowWindow(IntPtr h, int n);
         [DllImport("user32.dll")] static extern bool GetMessage(out MSG m, IntPtr h, uint f, uint l);
+        [DllImport("user32.dll")] static extern bool TranslateMessage(ref MSG m);
+        [DllImport("user32.dll", EntryPoint = "IsDialogMessageW")] static extern bool IsDialogMessageW(IntPtr hDlg, ref MSG lpMsg);
         [DllImport("user32.dll")] static extern IntPtr DispatchMessage(ref MSG m);
         [DllImport("user32.dll")] static extern IntPtr DefWindowProcW(IntPtr h, uint msg, IntPtr w, IntPtr l);
         [DllImport("user32.dll")] static extern IntPtr BeginPaint(IntPtr h, out PAINTSTRUCT p);
@@ -848,7 +850,7 @@ namespace Clickra.UI
                 case 0x0113: // WM_TIMER
                     lock (_stateLock)
                     {
-                        if (!_completed && !_hasError)
+                        if (!_completed && !_hasError && !_isPromptingPassword)
                         {
                             if (_currentDispWidth < _targetWidth)
                             {
@@ -1441,6 +1443,12 @@ try {{
             }
 
             using var targetG = Graphics.FromHdc(hdc);
+            if (isPrompting)
+            {
+                targetG.ExcludeClip(new Rectangle((int)(36 * s - 1), (int)(165 * s - 1), (int)(448 * s + 2), (int)(28 * s + 2)));
+                targetG.ExcludeClip(new Rectangle((int)(280 * s - 1), (int)(210 * s - 1), (int)(90 * s + 2), (int)(30 * s + 2)));
+                targetG.ExcludeClip(new Rectangle((int)(394 * s - 1), (int)(210 * s - 1), (int)(90 * s + 2), (int)(30 * s + 2)));
+            }
             if (_bufferBmp != null)
             {
                 targetG.DrawImage(_bufferBmp, 0, 0, _bufferBmp.Width, _bufferBmp.Height);
