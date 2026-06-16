@@ -80,18 +80,45 @@ if (Test-Path $msixPath) { Remove-Item $msixPath }
 # 6. Signing (Optional)
 $pfxPath = "$packagingDir/ClickraDev.pfx"
 
+# Read publisher from AppxManifest.xml to ensure certificate matches identity
+[xml]$manifest = Get-Content "$packagingDir/AppxManifest.xml"
+$publisher = $manifest.Package.Identity.Publisher
+
+if (Test-Path $pfxPath) {
+    try {
+        $certObj = [System.Security.Cryptography.X509Certificates.X509Certificate2]::new($pfxPath, "1234")
+        $pfxSubject = $certObj.Subject
+        $certObj.Dispose()
+
+        if ($pfxSubject -ne $publisher) {
+            Write-Host "⚠️  PFX subject ($pfxSubject) does not match AppxManifest publisher ($publisher)." -ForegroundColor Yellow
+            Write-Host "🔄 Re-generating matching certificate using create_dev_cert.ps1..." -ForegroundColor Gray
+            & powershell.exe -NoProfile -ExecutionPolicy Bypass -File "$root/scripts/setup/create_dev_cert.ps1"
+        }
+    } catch {
+        Write-Warning "⚠️  Failed to inspect or validate PFX subject: $_"
+    }
+} else {
+    # Check if matching dev certificate exists in the CurrentUser Personal store
+    $cert = Get-ChildItem Cert:\CurrentUser\My | Where-Object Subject -like "*$publisher*" | Select-Object -First 1
+    if (-not $cert) {
+        Write-Host "🔄 Local PFX not found and no matching certificate in store. Generating matching certificate using create_dev_cert.ps1..." -ForegroundColor Gray
+        & powershell.exe -NoProfile -ExecutionPolicy Bypass -File "$root/scripts/setup/create_dev_cert.ps1"
+    }
+}
+
 if (Test-Path $pfxPath) {
     Write-Host "🖋️  Signing Package using PFX..." -ForegroundColor Gray
     & "signtool.exe" sign /fd SHA256 /a /f $pfxPath /p "1234" $msixPath
 } else {
     # Check if matching dev certificate exists in the CurrentUser Personal store
-    $cert = Get-ChildItem Cert:\CurrentUser\My | Where-Object Subject -like "*CN=CBF59877-21AD-4BC4-8F91-FE8DA520A138*" | Select-Object -First 1
+    $cert = Get-ChildItem Cert:\CurrentUser\My | Where-Object Subject -like "*$publisher*" | Select-Object -First 1
     if ($cert) {
-        Write-Host "🖋️  Signing Package using certificate from Local Store: CN=CBF59877-21AD-4BC4-8F91-FE8DA520A138" -ForegroundColor Gray
+        Write-Host "🖋️  Signing Package using certificate from Local Store: $publisher" -ForegroundColor Gray
         & "signtool.exe" sign /fd SHA256 /a /sha1 $cert.Thumbprint $msixPath
     } else {
         Write-Host "⚠️  No PFX found at $pfxPath and no matching certificate in local store. Package is unsigned." -ForegroundColor Yellow
-        Write-Host "   To sign, create a cert with: New-SelfSignedCertificate -Type Custom -Subject 'CN=CBF59877-21AD-4BC4-8F91-FE8DA520A138' -KeyUsage DigitalSignature -FriendlyName 'Clickra Dev' -CertStoreLocation 'Cert:\CurrentUser\My' -TextExtension @('2.5.29.37={text}1.3.6.1.5.5.7.3.3')" -ForegroundColor Gray
+        Write-Host "   To sign, create a cert with: New-SelfSignedCertificate -Type Custom -Subject '$publisher' -KeyUsage DigitalSignature -FriendlyName 'Clickra Dev' -CertStoreLocation 'Cert:\CurrentUser\My' -TextExtension @('2.5.29.37={text}1.3.6.1.5.5.7.3.3')" -ForegroundColor Gray
     }
 }
 

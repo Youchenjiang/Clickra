@@ -59,6 +59,8 @@ The project provides built-in PowerShell scripts for automated version bumping a
     ```powershell
     powershell -File scripts/build_msix.ps1
     ```
+    > [!NOTE]
+    > **Automated Certificate Validation**: The packaging script automatically checks whether the local `ClickraDev.pfx` matches the Publisher identity defined in `AppxManifest.xml` (e.g. `CN=CBF59877-21AD-4BC4-8F91-FE8DA520A138`). If it detects a mismatch or if the certificate is missing, it will automatically call `scripts/setup/create_dev_cert.ps1` to regenerate a matching certificate. You do not need to manually manage local development PFX certs.
 
 ## How to Add New Features
 1.  **Core Logic**: Add new command handling in `src/Clickra.CLI/Program.cs`.
