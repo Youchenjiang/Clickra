@@ -502,11 +502,6 @@ try {{
                 catch { }
 
                 using var gfx = XGraphics.FromPdfPage(page);
-                try
-                {
-                    // Reset state if supported
-                }
-                catch { }
 
                 foreach (var para in paragraphs)
                 {

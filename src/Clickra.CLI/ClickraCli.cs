@@ -166,29 +166,22 @@ namespace Clickra
                                 string outName = Path.Combine(outputDir, Path.GetFileNameWithoutExtension(f) + "_decrypted.pdf");
                                 Console.WriteLine($"[Progress] 正在移除密碼: {Path.GetFileName(f)} ({i + 1}/{files.Count})...");
 
-                                string currentPassword = "";
-                                bool success = false;
-                                bool isRetry = false;
-                                while (!success)
+                                try
                                 {
-                                    try
-                                    {
-                                        FileProcessor.DecryptPdf(f, outName, currentPassword, (curr, tot, msg) => Console.WriteLine($"[Progress] {msg}"));
-                                        success = true;
-                                    }
-                                    catch (Exception ex)
-                                    {
-                                        bool isPasswordError = ex is PdfSharpCore.Pdf.IO.PdfReaderException &&
-                                                               ex.Message.Contains("password", StringComparison.OrdinalIgnoreCase);
+                                    FileProcessor.DecryptPdf(f, outName, "", (curr, tot, msg) => Console.WriteLine($"[Progress] {msg}"));
+                                }
+                                catch (Exception ex)
+                                {
+                                    bool isPasswordError = ex is PdfSharpCore.Pdf.IO.PdfReaderException &&
+                                                           ex.Message.Contains("password", StringComparison.OrdinalIgnoreCase);
 
-                                        if (isPasswordError)
-                                        {
-                                            throw new InvalidOperationException(Localization.T("error_pdf_password_quiet", ClickraStorage.GetSetting("Language")));
-                                        }
-                                        else
-                                        {
-                                            throw;
-                                        }
+                                    if (isPasswordError)
+                                    {
+                                        throw new InvalidOperationException(Localization.T("error_pdf_password_quiet", ClickraStorage.GetSetting("Language")));
+                                    }
+                                    else
+                                    {
+                                        throw;
                                     }
                                 }
                             }

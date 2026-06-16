@@ -348,6 +348,11 @@ namespace Clickra.UI
             }
             finally
             {
+                if (hwndDlg != IntPtr.Zero)
+                {
+                    DestroyWindow(hwndDlg);
+                }
+
                 if (hwndParent != IntPtr.Zero)
                 {
                     EnableWindow(hwndParent, true);

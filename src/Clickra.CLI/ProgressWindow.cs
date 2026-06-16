@@ -185,9 +185,9 @@ namespace Clickra.UI
         private IntPtr _hwndEdit = IntPtr.Zero;
         private IntPtr _hwndBtnOk = IntPtr.Zero;
         private IntPtr _hwndBtnCancel = IntPtr.Zero;
-        private static IntPtr _editBgBrush = IntPtr.Zero;
-        private static IntPtr _darkBrush = IntPtr.Zero;
-        private static IntPtr _hFont = IntPtr.Zero;
+        private IntPtr _editBgBrush = IntPtr.Zero;
+        private IntPtr _darkBrush = IntPtr.Zero;
+        private IntPtr _hFont = IntPtr.Zero;
 
         private readonly object _stateLock = new object();
 
@@ -619,20 +619,28 @@ namespace Clickra.UI
                         int id = (int)w.ToInt64() & 0xFFFF;
                         if (id == 1001) // OK button
                         {
+                            string? pwd = null;
                             if (_hwndEdit != IntPtr.Zero)
                             {
                                 var sb = new System.Text.StringBuilder(260);
                                 GetWindowTextW(_hwndEdit, sb, 260);
-                                _inputPassword = sb.ToString();
+                                pwd = sb.ToString();
                             }
-                            _passwordCancelled = false;
+                            lock (_stateLock)
+                            {
+                                _inputPassword = pwd;
+                                _passwordCancelled = false;
+                            }
                             PostMessageW(hwnd, WM_USER_HIDE_PASSWORD_INPUT, IntPtr.Zero, IntPtr.Zero);
                             _passwordEvent.Set();
                         }
                         else if (id == 1002 || id == 2) // Cancel button
                         {
-                            _inputPassword = null;
-                            _passwordCancelled = true;
+                            lock (_stateLock)
+                            {
+                                _inputPassword = null;
+                                _passwordCancelled = true;
+                            }
                             PostMessageW(hwnd, WM_USER_HIDE_PASSWORD_INPUT, IntPtr.Zero, IntPtr.Zero);
                             _passwordEvent.Set();
                         }
@@ -836,6 +844,10 @@ namespace Clickra.UI
 
                             // User confirmed cancellation
                             try { _cts.Cancel(); } catch { }
+                            lock (_stateLock)
+                            {
+                                _passwordCancelled = true;
+                            }
                             _passwordEvent.Set(); // Wake up background thread if blocked on password prompt
                             return IntPtr.Zero; // Wait for background thread to handle cancellation and close the window
                         }
