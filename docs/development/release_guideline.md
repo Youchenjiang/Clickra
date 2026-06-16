@@ -87,3 +87,13 @@ $$\text{Version} = \text{Major} . \text{Minor} . \text{Patch} . \mathbf{0}$$
     2.  **精準「錯誤/取消」狀態判定**：將轉換失敗與使用者主動取消（打叉/關閉進度視窗）之狀態精準區分，解決了使用者中途取消卻被記錄為成功的 bug。
     3.  **目標語系簡化**：移除多餘且暫不可用的 PDF 翻譯目標語言，僅保留下拉式選單及「繁體中文」選項，提升易用性。
 *   **決策理由**：本版本精簡了翻譯語系與重構狀態判定邏輯，並對歷史紀錄排版進行了細緻調整，依據使用者需求將版本號遞增為次版本號 `3.2.0.0`。
+
+### 5.3 v3.3.0.0 升級說明 (次版本號變更)
+*   **發布日期**：2026/06/17
+*   **變更背景**：此版本新增了 `decrypt-pdf` 全新功能模組，並對進度視窗的 UI 架構進行了子系統級重構：
+    1.  **PDF 密碼解除功能 (decrypt-pdf)**：新增右鍵選單一鍵對 PDF 去除密碼保護，整合 PdfSharpCore 讀取並重寫為無密碼 PDF 的完整流程，並具備加密狀態預檢（未加密檔案直接提示錯誤而不進入密碼輸入流程）。
+    2.  **進度視窗內嵌式密碼輸入子系統**：全新設計的跨執行緒 UI 機制，透過 `PostMessageW(WM_USER_SHOW_PASSWORD_INPUT)` 通知 UI 執行緒動態建立 `ES_PASSWORD` Edit 控制項與 OK/Cancel 按鈕，避免彈出式對話框干擾。
+    3.  **閃爍修復（WS_CLIPCHILDREN）**：在父視窗加上 `WS_CLIPCHILDREN` 旗標，防止 GDI+ 的 `Paint()` 覆蓋繪製子控制項導致閃爍。
+    4.  **輸入修復（TranslateMessage + IsDialogMessageW）**：修正主訊息迴圈中 `TranslateMessage` 與 `IsDialogMessageW` 的呼叫順序，確保 `WM_CHAR` 能正確產生使文字可輸入，同時支援 Enter 確認、Esc 取消的熱鍵行為。
+    5.  **bump_version.ps1 UTF-8 無 BOM 修正**：所有腳本的檔案讀寫改用 `[System.IO.File]` API 搭配 `New-Object System.Text.UTF8Encoding($false)`，消除 PowerShell 5.1 預設 ANSI 與 `[System.Text.Encoding]::UTF8` 隱式 BOM 對 Markdown/XML 文件造成的字元污染問題。
+*   **決策理由**：`decrypt-pdf` 是全新的文件處理功能模組，且進度視窗的密碼輸入架構屬於子系統級的新設計，已超出單純 UI 修補的範疇，依規範遞增為次版本號 `3.3.0.0`。

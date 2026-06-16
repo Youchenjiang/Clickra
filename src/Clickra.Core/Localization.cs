@@ -83,7 +83,15 @@ namespace Clickra.Core
                 ["setting_pdf_title"] = "PDF 一鍵翻譯",
                 ["setting_pdf_desc"] = "設定 PDF 翻譯目標語言",
                 ["setting_pdf_lang"] = "目標語言 (Target Language)",
-                ["cmd_translate_pdf"] = "PDF 一鍵翻譯"
+                ["cmd_translate_pdf"] = "PDF 一鍵翻譯",
+                ["cmd_decrypt_pdf"] = "去除 PDF 密碼",
+                ["pdf_password_title"] = "輸入 PDF 密碼",
+                ["pdf_password_prompt"] = "「{0}」受密碼保護，請輸入開啟密碼：",
+                ["pdf_password_retry"] = "密碼錯誤。請重新輸入「{0}」的密碼：",
+                ["error_pdf_password_quiet"] = "密碼錯誤或未提供密碼（靜默模式下無法手動輸入密碼）。",
+                ["pdf_not_encrypted"] = "此檔案未加密，無須解除密碼。",
+                ["dialog_ok"] = "確定",
+                ["dialog_cancel"] = "取消"
             },
             ["zh-CN"] = new(StringComparer.OrdinalIgnoreCase)
             {
@@ -161,7 +169,15 @@ namespace Clickra.Core
                 ["setting_pdf_title"] = "PDF 翻译",
                 ["setting_pdf_desc"] = "设置 PDF 翻译语言",
                 ["setting_pdf_lang"] = "目标语言",
-                ["cmd_translate_pdf"] = "PDF 翻译"
+                ["cmd_translate_pdf"] = "PDF 翻译",
+                ["cmd_decrypt_pdf"] = "去除 PDF 密码",
+                ["pdf_password_title"] = "输入 PDF 密码",
+                ["pdf_password_prompt"] = "「{0}」受密码保护，请输入打开密码：",
+                ["pdf_password_retry"] = "密码错误。请重新输入「{0}」的密码：",
+                ["error_pdf_password_quiet"] = "密码错误或未提供密码（静默模式下无法手动输入密码）。",
+                ["pdf_not_encrypted"] = "此文件未加密，无需解除密码。",
+                ["dialog_ok"] = "确定",
+                ["dialog_cancel"] = "取消"
             },
             ["en-US"] = new(StringComparer.OrdinalIgnoreCase)
             {
@@ -239,7 +255,15 @@ namespace Clickra.Core
                 ["setting_pdf_title"] = "PDF One-Click Translation",
                 ["setting_pdf_desc"] = "Configure target language for translation",
                 ["setting_pdf_lang"] = "Target Language",
-                ["cmd_translate_pdf"] = "PDF Translation"
+                ["cmd_translate_pdf"] = "PDF Translation",
+                ["cmd_decrypt_pdf"] = "Remove PDF Password",
+                ["pdf_password_title"] = "Enter PDF Password",
+                ["pdf_password_prompt"] = "\"{0}\" is password protected. Enter open password:",
+                ["pdf_password_retry"] = "Incorrect password. Re-enter password for \"{0}\":",
+                ["error_pdf_password_quiet"] = "Incorrect or missing password (cannot prompt for password in quiet mode).",
+                ["pdf_not_encrypted"] = "This file is not encrypted; no decryption needed.",
+                ["dialog_ok"] = "OK",
+                ["dialog_cancel"] = "Cancel"
             },
             ["ja-JP"] = new(StringComparer.OrdinalIgnoreCase)
             {
@@ -317,7 +341,15 @@ namespace Clickra.Core
                 ["setting_pdf_title"] = "PDF 一括翻訳",
                 ["setting_pdf_desc"] = "翻訳の対象言語を設定します",
                 ["setting_pdf_lang"] = "対象言語 (Target Language)",
-                ["cmd_translate_pdf"] = "PDF 翻訳"
+                ["cmd_translate_pdf"] = "PDF 翻訳",
+                ["cmd_decrypt_pdf"] = "PDF パスワード解除",
+                ["pdf_password_title"] = "PDF パスワード入力",
+                ["pdf_password_prompt"] = "「{0}」はパスワードで保護されています。パスワードを入力してください：",
+                ["pdf_password_retry"] = "パスワードが正しくありません。もう一度入力してください：「{0}」",
+                ["error_pdf_password_quiet"] = "パスワードが正しくないか入力されていません（サイレントモードではパスワードを入力できません）。",
+                ["pdf_not_encrypted"] = "このファイルは暗号化されていません。パスワード解除は不要です。",
+                ["dialog_ok"] = "確定",
+                ["dialog_cancel"] = "キャンセル"
             },
             ["ko-KR"] = new(StringComparer.OrdinalIgnoreCase)
             {
@@ -397,7 +429,15 @@ namespace Clickra.Core
                 ["setting_pdf_title"] = "PDF 일괄 번역",
                 ["setting_pdf_desc"] = "번역 대상 언어를 설정합니다",
                 ["setting_pdf_lang"] = "대상 언어 (Target Language)",
-                ["cmd_translate_pdf"] = "PDF 번역"
+                ["cmd_translate_pdf"] = "PDF 번역",
+                ["cmd_decrypt_pdf"] = "PDF 비밀번호 제거",
+                ["pdf_password_title"] = "PDF 비밀번호 입력",
+                ["pdf_password_prompt"] = "「{0}」 파일이 비밀번호로 보호되어 있습니다. 비밀번호를 입력하십시오:",
+                ["pdf_password_retry"] = "비밀번호가 잘못되었습니다. 다시 입력하십시오:「{0}」",
+                ["error_pdf_password_quiet"] = "비밀번호가 잘못되었거나 누락되었습니다 (조용한 모드에서는 비밀번호를 입력할 수 없습니다).",
+                ["pdf_not_encrypted"] = "이 파일은 암호화되어 있지 않아 비밀번호를 제거할 필요가 없습니다.",
+                ["dialog_ok"] = "확인",
+                ["dialog_cancel"] = "취소"
             }
         };
 

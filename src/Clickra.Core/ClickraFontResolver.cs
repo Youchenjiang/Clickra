@@ -1,11 +1,13 @@
 using System;
 using System.IO;
-using PdfSharp.Fonts;
+using PdfSharpCore.Fonts;
 
 namespace Clickra.Core
 {
     public class ClickraFontResolver : IFontResolver
     {
+        public string DefaultFontName => "Arial";
+
         public FontResolverInfo? ResolveTypeface(string familyName, bool isBold, bool isItalic)
         {
             string suffix = "";

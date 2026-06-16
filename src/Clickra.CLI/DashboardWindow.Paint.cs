@@ -657,6 +657,10 @@ namespace Clickra.UI
                     tagBg = Color.FromArgb(138, 43, 226);
                     text = GetText("cmd_translate_pdf");
                     break;
+                case "decrypt-pdf":
+                    tagBg = Color.FromArgb(0, 150, 136);
+                    text = GetText("cmd_decrypt_pdf");
+                    break;
                 default:
                     tagBg = Color.FromArgb(100, 100, 100);
                     break;

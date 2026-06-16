@@ -72,6 +72,7 @@ namespace Clickra.UI
                 "word2pdf" => new[] { ".doc", ".docx" },
                 "merge-pdf" => new[] { ".pdf" },
                 "translate-pdf" => new[] { ".pdf" },
+                "decrypt-pdf" => new[] { ".pdf" },
                 "img2pdf" or "img-merge" or "img-stitch" => new[] { ".jpg", ".jpeg", ".png", ".bmp", ".gif", ".tiff", ".webp" },
                 _ => Array.Empty<string>()
             };
@@ -177,6 +178,7 @@ namespace Clickra.UI
                 "word2pdf" => "Word Files (*.doc; *.docx)\0*.doc;*.docx\0All Files (*.*)\0*.*\0\0",
                 "merge-pdf" => "PDF Files (*.pdf)\0*.pdf\0All Files (*.*)\0*.*\0\0",
                 "translate-pdf" => "PDF Files (*.pdf)\0*.pdf\0All Files (*.*)\0*.*\0\0",
+                "decrypt-pdf" => "PDF Files (*.pdf)\0*.pdf\0All Files (*.*)\0*.*\0\0",
                 _ => "Image Files (*.jpg; *.jpeg; *.png; *.bmp; *.gif; *.tiff; *.webp)\0*.jpg;*.jpeg;*.png;*.bmp;*.gif;*.tiff;*.webp\0All Files (*.*)\0*.*\0\0"
             };
         }
@@ -283,7 +285,7 @@ namespace Clickra.UI
             }
 
             int cardW = (zoneW - 2 * 12) / 3;
-            for (int i = 0; i < 7; i++)
+            for (int i = 0; i < 8; i++)
             {
                 int col = i % 3;
                 int row = i / 3;
@@ -292,7 +294,7 @@ namespace Clickra.UI
                 int cardH = 40;
 
                 bool isSelected = _convertCommandIndex == i;
-                bool isHovered = _hoveredElement == (11 + i);
+                bool isHovered = _hoveredElement == (50 + i);
                 bool isEnabled = ValidateConvertFiles(ConvertCommands[i], _selectedFiles, out _);
 
                 Color cardBg;
@@ -333,6 +335,7 @@ namespace Clickra.UI
                     4 => "cmd_merge_img",
                     5 => "cmd_stitch_img",
                     6 => "cmd_translate_pdf",
+                    7 => "cmd_decrypt_pdf",
                     _ => ""
                 };
                 string cmdText = GetText(cmdKey);
