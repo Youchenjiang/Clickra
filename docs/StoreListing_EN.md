@@ -1,6 +1,6 @@
 # Microsoft Store Listing - English (US)
 
-Below is the complete information for you to copy and paste directly into the Microsoft Partner Center, updated for the v3.2.0.0 release.
+Below is the complete information for you to copy and paste directly into the Microsoft Partner Center, updated for the v3.3.0.0 release.
 
 ---
 
@@ -15,6 +15,7 @@ Clickra is the ultimate high-performance, native context menu productivity suite
 Core Features:
  - Native Dashboard: A sleek dark-themed interface to monitor your system's Office installation status in real-time.
  - Office to PDF: High-quality, silent conversion for Word (.doc/.docx) and PowerPoint (.ppt/.pptx) files.
+ - PDF Password Decryption: Decrypt password-protected PDF files directly from the context menu.
  - Instant PDF Merging: Select multiple PDF files and merge them instantly from the right-click menu.
  - Image to PDF: Quickly wrap images (JPG/PNG/WebP) into PDF documents.
  - Image Stitching: Combine multiple images vertically into a single long-form image.
@@ -24,15 +25,17 @@ Clickra respects your privacy. Most processing (Office-to-PDF conversion, PDF me
 🔗 Open Source on GitHub: https://github.com/Youchenjiang/Clickra
 
 ## What's new in this version
- - Dashboard History Layout Optimization: Implemented adaptive filename width and right-aligned status text in the history list, resolving text overlapping on high-resolution screens or for long filenames.
- - Accurate Failure & Cancellation Recording: Improved history logging to correctly record status as "Failed" or "Canceled" (regardless of partial output file generation) when a conversion is aborted or errors out.
- - Settings Layout Overlap Fix: Removed the redundant target translation language label to completely resolve the text overlapping issue on the settings tab.
- - Translation Target Language Simplification: Cleaned up the PDF translation target languages dropdown to only expose the primary "Traditional Chinese" option.
+ - PDF Password Decryption: Added a new feature to remove passwords from protected PDFs directly via the right-click context menu.
+ - Inline Password Input Field: Integrated a native, non-flickering text input field with OK/Cancel buttons directly inside the progress window to eliminate intrusive popup modal dialogs.
+ - Shortcut Keys Support: Supported pressing Enter to submit and Esc to cancel password inputs, streamlining the keyboard workflow.
+ - Encryption Pre-check: Added an automatic encryption check that notifies the user and prevents prompt requests on files that are not password-protected.
 
 ## Product Features
 *(Max 20, displayed as bullet points)*
  - Native Dashboard for Office status monitoring
  - One-click Word/PPT to PDF conversion (Requires Office)
+ - One-click PDF password removal
+ - Inline secure password input within the progress window
  - Batch Image to PDF conversion (JPG/PNG/WebP)
  - Seamless vertical image stitching
  - Fast multi-file PDF merging
@@ -50,7 +53,7 @@ Clickra
 Clickra
 
 ## Short description
-Clickra is a high-performance native context menu utility for Office to PDF conversion, PDF merging, and image stitching. Secure, privacy-safe, and extremely fast!
+Clickra is a high-performance native context menu utility for Office to PDF conversion, PDF decryption, PDF merging, and image stitching. Secure, privacy-safe, and extremely fast!
 
 ---
 ### Other Information
@@ -59,6 +62,7 @@ Clickra is a high-performance native context menu utility for Office to PDF conv
 *(Max 7)*
  - Context Menu
  - PDF Merge
+ - PDF Decrypt
  - PPT to PDF
  - Word to PDF
  - Image to PDF
