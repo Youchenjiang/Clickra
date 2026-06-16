@@ -50,7 +50,7 @@ namespace Clickra.Core
                 ? PdfReader.Open(inputPath, PdfDocumentOpenMode.Import) 
                 : PdfReader.Open(inputPath, password, PdfDocumentOpenMode.Import);
 
-            if (inDoc.SecurityHandler.Elements.Count == 0)
+            if (inDoc.SecurityHandler == null || inDoc.SecurityHandler.Elements.Count == 0)
             {
                 string lang = ClickraStorage.GetSetting("Language");
                 throw new InvalidOperationException(Localization.T("pdf_not_encrypted", lang));
