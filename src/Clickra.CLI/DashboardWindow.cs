@@ -19,7 +19,7 @@ namespace Clickra.UI
         // Convert tab state
         static int _convertCommandIndex = 1; // Default: 1 (word2pdf)
         static List<string> _selectedFiles = new List<string>();
-        private static readonly string[] ConvertCommands = { "ppt2pdf", "word2pdf", "merge-pdf", "img2pdf", "img-merge", "img-stitch", "translate-pdf" };
+        private static readonly string[] ConvertCommands = { "ppt2pdf", "word2pdf", "merge-pdf", "img2pdf", "img-merge", "img-stitch", "translate-pdf", "decrypt-pdf" };
         
         // Language Dropdown state
         static bool _langDropdownOpen = false;
@@ -539,7 +539,7 @@ namespace Clickra.UI
                 int availableWidth = (int)logW - (int)contentX - 50;
                 int cardW = (availableWidth - 2 * 12) / 3;
 
-                for (int i = 0; i < 7; i++)
+                for (int i = 0; i < 8; i++)
                 {
                     int col = i % 3;
                     int row = i / 3;
@@ -549,7 +549,7 @@ namespace Clickra.UI
                     {
                         if (ValidateConvertFiles(ConvertCommands[i], _selectedFiles, out _))
                         {
-                            return 11 + i;
+                            return 50 + i;
                         }
                     }
                 }
@@ -1148,9 +1148,9 @@ namespace Clickra.UI
                             _langDropdownOpen = false;
                             InvalidateRect(hwnd, IntPtr.Zero, false);
                         }
-                        else if (element >= 11 && element <= 17) // Change convert tool
+                        else if (element >= 50 && element <= 57) // Change convert tool
                         {
-                            ChangeConvertCommand(element - 11);
+                            ChangeConvertCommand(element - 50);
                             InvalidateRect(hwnd, IntPtr.Zero, false);
                         }
                         else if (element == 18) // Drag & Drop Zone clicked (Browse files)
@@ -1163,7 +1163,7 @@ namespace Clickra.UI
                                 _selectedFiles = chosen;
                                 // Auto-select first enabled command for the chosen files
                                 _convertCommandIndex = -1;
-                                for (int i = 0; i < 7; i++)
+                                for (int i = 0; i < 8; i++)
                                 {
                                     if (ValidateConvertFiles(ConvertCommands[i], _selectedFiles, out _))
                                     {
