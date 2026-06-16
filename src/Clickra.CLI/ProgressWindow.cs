@@ -139,7 +139,7 @@ namespace Clickra.UI
         [DllImport("user32.dll", CharSet = CharSet.Unicode)] static extern int GetWindowTextW(IntPtr hWnd, System.Text.StringBuilder lpString, int nMaxCount);
         [DllImport("gdi32.dll", CharSet = CharSet.Unicode)] static extern IntPtr CreateFontW(int cHeight, int cWidth, int cEscapement, int cOrientation, int cWeight, uint bItalic, uint bUnderline, uint bStrikeOut, uint iCharSet, uint iOutPrecision, uint iClipPrecision, uint iQuality, uint iPitchAndFamily, string pszFaceName);
 
-        const uint WS_OVERLAPPED_FIXED = 0x00CF0000 & ~0x00040000u & ~0x00010000u;
+        const uint WS_OVERLAPPED_FIXED = (0x00CF0000 | 0x02000000) & ~0x00040000u & ~0x00010000u;
         const int DWMWA_DARK_MODE = 20;
         const int CW_USEDEFAULT = unchecked((int)0x80000000);
 
@@ -167,6 +167,7 @@ namespace Clickra.UI
         private const int SW_SHOW = 5;
         private const int SW_RESTORE = 9;
 
+        private const uint WS_CLIPCHILDREN = 0x02000000;
         private const uint WS_CHILD = 0x40000000;
         private const uint WS_VISIBLE = 0x10000000;
         private const uint WS_BORDER = 0x00800000;
@@ -557,7 +558,10 @@ namespace Clickra.UI
                         SetWindowLongPtr(_hwndEdit, -4, (IntPtr)(delegate* unmanaged[Stdcall]<IntPtr, uint, IntPtr, IntPtr, IntPtr>)&EditSubclassProc);
 
                         SetFocus(_hwndEdit);
-                        InvalidateRect(hwnd, IntPtr.Zero, false);
+                        InvalidateRect(hwnd, IntPtr.Zero, true);
+                        InvalidateRect(_hwndEdit, IntPtr.Zero, true);
+                        InvalidateRect(_hwndBtnOk, IntPtr.Zero, true);
+                        InvalidateRect(_hwndBtnCancel, IntPtr.Zero, true);
                     }
                     return IntPtr.Zero;
 
