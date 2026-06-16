@@ -6,11 +6,33 @@ $packagingDir = "$root/packaging/msix"
 $layoutDir = "$packagingDir/Layout"
 $publishDir = "$root/publish"
 
-# Add Windows SDK tools to PATH
-$sdkPath = "C:\Windows Kits\10\bin\10.0.26100.0\x64"
-if (Test-Path $sdkPath) {
-    $env:Path = "$sdkPath;$env:Path"
-    Write-Host "🛠️  Using Windows SDK tools from: $sdkPath" -ForegroundColor Gray
+# Add Windows SDK tools to PATH (dynamically locate the newest version)
+$kitsRoots = @(
+    "C:\Program Files (x86)\Windows Kits\10\bin",
+    "C:\Windows Kits\10\bin"
+)
+$foundSdk = $false
+foreach ($rootPath in $kitsRoots) {
+    if (Test-Path $rootPath) {
+        # Get all version directories (e.g., 10.0.xxxxx.0) and sort descending to use the newest version
+        $sortedDirs = Get-ChildItem -Path $rootPath -Directory | 
+                      Where-Object { $_.Name -like "10.*" } | 
+                      Sort-Object Name -Descending
+        
+        foreach ($dir in $sortedDirs) {
+            $candidatePath = Join-Path $dir.FullName "x64"
+            if (Test-Path "$candidatePath\makepri.exe") {
+                $env:Path = "$candidatePath;$env:Path"
+                Write-Host "🛠️  Dynamically discovered Windows SDK tools from: $candidatePath" -ForegroundColor Gray
+                $foundSdk = $true
+                break
+            }
+        }
+    }
+    if ($foundSdk) { break }
+}
+if (-not $foundSdk) {
+    Write-Warning "⚠️  Could not locate Windows SDK tools path (makepri.exe, makeappx.exe)."
 }
 
 Write-Host "🏗️  Starting Clickra MSIX Build..." -ForegroundColor Cyan
@@ -56,15 +78,21 @@ if (Test-Path $msixPath) { Remove-Item $msixPath }
 & "makeappx.exe" pack /d "$layoutDir" /p $msixPath /o
 
 # 6. Signing (Optional)
-$certPath = "$packagingDir/ClickraDev.cer"
 $pfxPath = "$packagingDir/ClickraDev.pfx"
 
 if (Test-Path $pfxPath) {
-    Write-Host "🖋️  Signing Package..." -ForegroundColor Gray
+    Write-Host "🖋️  Signing Package using PFX..." -ForegroundColor Gray
     & "signtool.exe" sign /fd SHA256 /a /f $pfxPath /p "1234" $msixPath
 } else {
-    Write-Host "⚠️  No PFX found at $pfxPath. Package is unsigned." -ForegroundColor Yellow
-    Write-Host "   To sign, create a cert with: New-SelfSignedCertificate -Type Custom -Subject 'CN=CBF59877-21AD-4BC4-8F91-FE8DA520A138' -KeyUsage DigitalSignature -FriendlyName 'Clickra Dev' -CertStoreLocation 'Cert:\CurrentUser\My' -TextExtension @('2.5.29.37={text}1.3.6.1.5.5.7.3.3')" -ForegroundColor Gray
+    # Check if matching dev certificate exists in the CurrentUser Personal store
+    $cert = Get-ChildItem Cert:\CurrentUser\My | Where-Object Subject -like "*CN=CBF59877-21AD-4BC4-8F91-FE8DA520A138*" | Select-Object -First 1
+    if ($cert) {
+        Write-Host "🖋️  Signing Package using certificate from Local Store: CN=CBF59877-21AD-4BC4-8F91-FE8DA520A138" -ForegroundColor Gray
+        & "signtool.exe" sign /fd SHA256 /a /sha1 $cert.Thumbprint $msixPath
+    } else {
+        Write-Host "⚠️  No PFX found at $pfxPath and no matching certificate in local store. Package is unsigned." -ForegroundColor Yellow
+        Write-Host "   To sign, create a cert with: New-SelfSignedCertificate -Type Custom -Subject 'CN=CBF59877-21AD-4BC4-8F91-FE8DA520A138' -KeyUsage DigitalSignature -FriendlyName 'Clickra Dev' -CertStoreLocation 'Cert:\CurrentUser\My' -TextExtension @('2.5.29.37={text}1.3.6.1.5.5.7.3.3')" -ForegroundColor Gray
+    }
 }
 
 Write-Host "`n✅ Clickra MSIX Build Complete: $msixPath" -ForegroundColor Green
