@@ -99,19 +99,19 @@ jobs:
 
     - name: Create GitHub Release
       if: startsWith(github.ref, 'refs/tags/v')
-      uses: softprops/action-gh-release@v2
-      with:
-        files: Clickra.msix
-        body: |
-          ${{ steps.get_pr_desc.outputs.pr_body }}
-
-          ---
-          ### 📦 Installation
-          1. Download the attached `Clickra.msix`.
-          2. Double-click to install.
-
-          *Note: This package is signed with a CI certificate for automation.*
-        draft: false
-        prerelease: false
+      shell: bash
       env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      run: |
+        cat << 'EOF' > release_notes.md
+        ${{ steps.get_pr_desc.outputs.pr_body }}
+
+        ---
+        ### 📦 Installation
+        1. Download the attached `Clickra.msix`.
+        2. Double-click to install.
+
+        *Note: This package is signed with a CI certificate for automation.*
+        EOF
+        
+        gh release create "${{ github.ref_name }}" Clickra.msix --title "${{ github.ref_name }}" --notes-file release_notes.md
