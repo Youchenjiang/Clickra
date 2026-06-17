@@ -96,4 +96,4 @@ $$\text{Version} = \text{Major} . \text{Minor} . \text{Patch} . \mathbf{0}$$
     3.  **閃爍修復（WS_CLIPCHILDREN）**：在父視窗加上 `WS_CLIPCHILDREN` 旗標，防止 GDI+ 的 `Paint()` 覆蓋繪製子控制項導致閃爍。
     4.  **輸入修復（TranslateMessage + IsDialogMessageW）**：修正主訊息迴圈中 `TranslateMessage` 與 `IsDialogMessageW` 的呼叫順序，確保 `WM_CHAR` 能正確產生使文字可輸入，同時支援 Enter 確認、Esc 取消的熱鍵行為。
     5.  **bump_version.ps1 UTF-8 無 BOM 修正**：所有腳本的檔案讀寫改用 `[System.IO.File]` API 搭配 `New-Object System.Text.UTF8Encoding($false)`，消除 PowerShell 5.1 預設 ANSI 與 `[System.Text.Encoding]::UTF8` 隱式 BOM 對 Markdown/XML 文件造成的字元污染問題。
-*   **決策理由**：`decrypt-pdf` 是全新的文件處理功能模組，且進度視窗的密碼輸入架構屬於子系統級的新設計，已超出單純 UI 修補的範疇，依規範遞增為次版本號 `3.3.1.0`。
+*   **決策理由**：`decrypt-pdf` 是全新的文件處理功能模組，且進度視窗的密碼輸入架構屬於子系統級的新設計，已超出單純 UI 修補的範疇，依規範遞增為次版本號 `3.3.0.0`（因 CI 問題實際發布為 `3.3.1.0`）。
