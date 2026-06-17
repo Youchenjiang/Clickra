@@ -42,48 +42,8 @@ namespace Clickra.Core
 
         public static void StitchImages(List<string> files, string outputPath, Action<int, int, string>? onProgress = null, CancellationToken cancellationToken = default)
         {
-            int total = files.Count;
-            onProgress?.Invoke(10, total * 100, "正在分析圖片尺寸...");
-            cancellationToken.ThrowIfCancellationRequested();
-            List<Image> images = new List<Image>();
-            try
-            {
-                foreach (var f in files)
-                {
-                    cancellationToken.ThrowIfCancellationRequested();
-                    images.Add(Image.FromFile(f));
-                }
-                
-                int totalWidth = images.Max(img => img.Width);
-                int totalHeight = images.Sum(img => img.Height);
-
-                using var stitched = new Bitmap(totalWidth, totalHeight);
-                using var gfx = Graphics.FromImage(stitched);
-                gfx.Clear(Color.White);
-
-                int currentY = 0;
-                for (int i = 0; i < images.Count; i++)
-                {
-                    cancellationToken.ThrowIfCancellationRequested();
-                    try { ClickraStorage.SetActiveRecordIndex(i); } catch { }
-                    var img = images[i];
-                    onProgress?.Invoke((i * 100) + 50, total * 100, $"正在拼接圖片 ({i + 1}/{total})...");
-                    int x = (totalWidth - img.Width) / 2;
-                    gfx.DrawImage(img, x, currentY, img.Width, img.Height);
-                    currentY += img.Height;
-                }
-
-                cancellationToken.ThrowIfCancellationRequested();
-                onProgress?.Invoke(total * 100, total * 100, "拼接完成，正在儲存圖片...");
-                stitched.Save(outputPath, System.Drawing.Imaging.ImageFormat.Png);
-            }
-            finally
-            {
-                foreach (var img in images)
-                {
-                    try { img?.Dispose(); } catch { }
-                }
-            }
+            var processor = new ImageStitchProcessor();
+            processor.Process(files, outputPath, null, onProgress, cancellationToken);
         }
 
         public static void ConvertPptToPdf(List<string> files, Action<int, int, string>? onProgress = null, CancellationToken cancellationToken = default)
