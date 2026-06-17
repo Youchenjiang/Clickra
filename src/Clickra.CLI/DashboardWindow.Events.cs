@@ -61,7 +61,7 @@ namespace Clickra.UI
                         {
                             float deltaY = mouseY - _dragStartMouseY;
                             float contentH = GetContentHeight(hwnd);
-                            float trackY = 4;
+
                             float trackH = logH - 8;
                             if (logW < 760) trackH = logH - 16;
                             float thumbH = Math.Max(20f, (logH / contentH) * trackH);
@@ -125,7 +125,7 @@ namespace Clickra.UI
                                     using (var tempBmp = new Bitmap(1, 1))
                                     using (var tempG = Graphics.FromImage(tempBmp))
                                     {
-                                        textW = tempG.MeasureString(textToScroll, _subFont).Width / _dpiScale;
+                                        textW = tempG.MeasureString(textToScroll, _subFont!).Width / _dpiScale;
                                     }
                                     float maxValW = GetMaxValW(logW);
                                     float maxScroll = Math.Max(0f, textW - maxValW);
@@ -402,7 +402,7 @@ namespace Clickra.UI
                                                 using (var tempBmp = new Bitmap(1, 1))
                                                 using (var tempG = Graphics.FromImage(tempBmp))
                                                 {
-                                                    textW = tempG.MeasureString(textToScroll, _subFont).Width / _dpiScale;
+                                                    textW = tempG.MeasureString(textToScroll, _subFont!).Width / _dpiScale;
                                                 }
                                                 float maxValW = GetMaxValW(logW);
                                                 float maxScroll = Math.Max(0f, textW - maxValW);
@@ -414,10 +414,10 @@ namespace Clickra.UI
                                                     using (var tempBmp = new Bitmap(1, 1))
                                                     using (var tempG = Graphics.FromImage(tempBmp))
                                                     {
-                                                        w1 = tempG.MeasureString(GetText("history_detail_inputs") + ":", _subFont).Width / _dpiScale;
-                                                        w2 = tempG.MeasureString(GetText("history_detail_outputs") + ":", _subFont).Width / _dpiScale;
-                                                        w3 = tempG.MeasureString(GetText("history_detail_time") + ":", _subFont).Width / _dpiScale;
-                                                        w4 = tempG.MeasureString(GetText("history_detail_error") + ":", _subFont).Width / _dpiScale;
+                                                        w1 = tempG.MeasureString(GetText("history_detail_inputs") + ":", _subFont!).Width / _dpiScale;
+                                                        w2 = tempG.MeasureString(GetText("history_detail_outputs") + ":", _subFont!).Width / _dpiScale;
+                                                        w3 = tempG.MeasureString(GetText("history_detail_time") + ":", _subFont!).Width / _dpiScale;
+                                                        w4 = tempG.MeasureString(GetText("history_detail_error") + ":", _subFont!).Width / _dpiScale;
                                                     }
                                                     float maxLabelW = Math.Max(w1, Math.Max(w2, Math.Max(w3, w4)));
                                                     float valX = contentX + 12 + maxLabelW + 16;
@@ -477,7 +477,7 @@ namespace Clickra.UI
                             {
                                 RefreshHistoryData();
                             }
-                            _historyScrollOffset = 0;
+
                             _langScrollOffset = 0;
                             _contentScrollX = 0;
                             _contentScrollY = 0;
@@ -864,10 +864,10 @@ namespace Clickra.UI
                                         using (var tempBmp = new Bitmap(1, 1))
                                         using (var tempG = Graphics.FromImage(tempBmp))
                                         {
-                                            w1 = tempG.MeasureString(GetText("history_detail_inputs") + ":", _subFont).Width / _dpiScale;
-                                            w2 = tempG.MeasureString(GetText("history_detail_outputs") + ":", _subFont).Width / _dpiScale;
-                                            w3 = tempG.MeasureString(GetText("history_detail_time") + ":", _subFont).Width / _dpiScale;
-                                            w4 = tempG.MeasureString(GetText(_historyEntries[i].IsSuccess ? "history_detail_elapsed" : "history_detail_error") + ":", _subFont).Width / _dpiScale;
+                                            w1 = tempG.MeasureString(GetText("history_detail_inputs") + ":", _subFont!).Width / _dpiScale;
+                                            w2 = tempG.MeasureString(GetText("history_detail_outputs") + ":", _subFont!).Width / _dpiScale;
+                                            w3 = tempG.MeasureString(GetText("history_detail_time") + ":", _subFont!).Width / _dpiScale;
+                                            w4 = tempG.MeasureString(GetText(_historyEntries[i].IsSuccess ? "history_detail_elapsed" : "history_detail_error") + ":", _subFont!).Width / _dpiScale;
                                         }
                                         float maxLabelW = Math.Max(w1, Math.Max(w2, Math.Max(w3, w4)));
                                         float valX = contentX + 12 + maxLabelW + 16;
@@ -903,7 +903,7 @@ namespace Clickra.UI
                                                 using (var tempBmp = new Bitmap(1, 1))
                                                 using (var tempG = Graphics.FromImage(tempBmp))
                                                 {
-                                                    textW = tempG.MeasureString(textToScroll, _subFont).Width / _dpiScale;
+                                                    textW = tempG.MeasureString(textToScroll, _subFont!).Width / _dpiScale;
                                                 }
                                                 float maxScroll = Math.Max(0f, textW - maxValW);
 

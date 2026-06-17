@@ -50,10 +50,10 @@ namespace Clickra.UI
             using (var tempBmp = new Bitmap(1, 1))
             using (var tempG = Graphics.FromImage(tempBmp))
             {
-                w1 = tempG.MeasureString(GetText("history_detail_inputs") + ":", _subFont).Width / _dpiScale;
-                w2 = tempG.MeasureString(GetText("history_detail_outputs") + ":", _subFont).Width / _dpiScale;
-                w3 = tempG.MeasureString(GetText("history_detail_time") + ":", _subFont).Width / _dpiScale;
-                w4 = tempG.MeasureString(GetText("history_detail_error") + ":", _subFont).Width / _dpiScale;
+                w1 = tempG.MeasureString(GetText("history_detail_inputs") + ":", _subFont!).Width / _dpiScale;
+                w2 = tempG.MeasureString(GetText("history_detail_outputs") + ":", _subFont!).Width / _dpiScale;
+                w3 = tempG.MeasureString(GetText("history_detail_time") + ":", _subFont!).Width / _dpiScale;
+                w4 = tempG.MeasureString(GetText("history_detail_error") + ":", _subFont!).Width / _dpiScale;
             }
             float maxLabelW = Math.Max(w1, Math.Max(w2, Math.Max(w3, w4)));
             float valX = contentX + 12 + maxLabelW + 16;

@@ -43,7 +43,7 @@ namespace Clickra.UI
         
         // History & Statistics Cache
         static List<ClickraStorage.HistoryEntry> _historyEntries = new List<ClickraStorage.HistoryEntry>();
-        static int _historyScrollOffset = 0;
+
         static int _langScrollOffset = 0;
         static int _statTotal = 0;
         static int _statSuccess = 0;
