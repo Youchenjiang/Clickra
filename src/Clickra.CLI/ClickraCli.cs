@@ -27,7 +27,7 @@ namespace Clickra
         [STAThread]
         static void Main(string[] args)
         {
-            try { PdfSharpCore.Fonts.GlobalFontSettings.FontResolver = new ClickraFontResolver(); } catch { }
+            try { PdfSharp.Fonts.GlobalFontSettings.FontResolver = new ClickraFontResolver(); } catch { }
             try { SetProcessDpiAwarenessContext((IntPtr)(-4)); } catch { }
             if (args.Length == 0 || args[0] == "-v" || args[0] == "--version")
             {
@@ -172,7 +172,7 @@ namespace Clickra
                                 }
                                 catch (Exception ex)
                                 {
-                                    bool isPasswordError = ex is PdfSharpCore.Pdf.IO.PdfReaderException &&
+                                    bool isPasswordError = ex is PdfSharp.Pdf.IO.PdfReaderException &&
                                                            ex.Message.Contains("password", StringComparison.OrdinalIgnoreCase);
 
                                     if (isPasswordError)

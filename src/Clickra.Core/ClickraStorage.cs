@@ -287,7 +287,7 @@ namespace Clickra.Core
                     {
                         fileCount = inputPaths.Split(new[] { ';' }, StringSplitOptions.RemoveEmptyEntries).Length;
                     }
-                    WriteActiveFileInternal(command, fileCount, isSuccess ? ConversionStatus.Success : ConversionStatus.Failed, errorMsg, startTime, inputPaths);
+                    WriteActiveFileInternal(command, fileCount, isSuccess ? ConversionStatus.Success : ConversionStatus.Failed, errorMsg ?? "", startTime, inputPaths);
                 }
                 catch { }
             });
