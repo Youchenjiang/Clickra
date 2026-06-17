@@ -9,6 +9,7 @@ namespace Clickra.UI
 {
     public static partial class DashboardWindow
     {
+        static readonly WndProcDelegate _wndProc = WndProc;
         static IntPtr WndProc(IntPtr hwnd, uint msg, IntPtr w, IntPtr l)
         {
             switch (msg)

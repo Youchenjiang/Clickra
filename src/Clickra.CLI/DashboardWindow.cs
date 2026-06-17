@@ -7,6 +7,7 @@ using System.Drawing.Text;
 using System.Drawing.Drawing2D;
 using System.Collections.Generic;
 using Clickra.Core;
+using static Clickra.UI.Native.Win32;
 
 namespace Clickra.UI
 {
@@ -369,7 +370,7 @@ namespace Clickra.UI
             // 每 250ms 刷新一次歷史資料（供即時轉換狀態顯示）
             SetTimer(hwnd, TIMER_ID_REFRESH, 250, IntPtr.Zero);
 
-            while (GetMessage(out var msg, IntPtr.Zero, 0, 0))
+            while (GetMessage(out var msg, IntPtr.Zero, 0, 0) > 0)
             {
                 TranslateMessage(ref msg);
                 DispatchMessage(ref msg);

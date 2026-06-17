@@ -7,6 +7,8 @@ using System.Collections.Generic;
 using System.Runtime.InteropServices;
 using Clickra.Core;
 
+using static Clickra.UI.Native.Win32;
+
 namespace Clickra.UI
 {
     public static partial class DashboardWindow
