@@ -28,35 +28,10 @@ namespace Clickra.Core
 
         public static void DecryptPdf(string inputPath, string outputPath, string password = "", Action<int, int, string>? onProgress = null, CancellationToken cancellationToken = default)
         {
-            cancellationToken.ThrowIfCancellationRequested();
-            onProgress?.Invoke(20, 100, "正在讀取 PDF 檔案...");
-
-            using var inDoc = string.IsNullOrEmpty(password) 
-                ? PdfReader.Open(inputPath, PdfDocumentOpenMode.Import) 
-                : PdfReader.Open(inputPath, password, PdfDocumentOpenMode.Import);
-
-            if (inDoc.SecurityHandler == null || inDoc.SecurityHandler.Elements.Count == 0)
-            {
-                string lang = ClickraStorage.GetSetting("Language");
-                throw new InvalidOperationException(Localization.T("pdf_not_encrypted", lang));
-            }
-
-            cancellationToken.ThrowIfCancellationRequested();
-            onProgress?.Invoke(50, 100, "正在去除密碼與限制...");
-
-            using var outDoc = new PdfDocument();
-            int pageCount = inDoc.PageCount;
-            for (int i = 0; i < pageCount; i++)
-            {
-                cancellationToken.ThrowIfCancellationRequested();
-                onProgress?.Invoke(50 + (int)(i * 40.0 / pageCount), 100, $"正在處理第 {i + 1}/{pageCount} 頁...");
-                outDoc.AddPage(inDoc.Pages[i]);
-            }
-
-            cancellationToken.ThrowIfCancellationRequested();
-            onProgress?.Invoke(95, 100, "正在儲存檔案...");
-            outDoc.Save(outputPath);
-            onProgress?.Invoke(100, 100, "密碼已成功移除！");
+            var processor = new PdfDecryptProcessor();
+            var options = new Dictionary<string, object>();
+            if (!string.IsNullOrEmpty(password)) options["password"] = password;
+            processor.Process(new List<string> { inputPath }, outputPath, options, onProgress, cancellationToken);
         }
 
         public static void ImagesToPdf(List<string> files, string outputPath, Action<int, int, string>? onProgress = null, CancellationToken cancellationToken = default)
