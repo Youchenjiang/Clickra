@@ -18,8 +18,8 @@ namespace Clickra.Core.Processors
                 password = pwdStr;
             }
 
-            int progressBase = fileIndex * 100;
-            int totalProgressMax = totalFiles * 100;
+            int progressBase = ProcessorHelper.GetProgressBase(fileIndex);
+            int totalProgressMax = ProcessorHelper.GetProgressMax(totalFiles);
 
             onProgress?.Invoke(progressBase + 20, totalProgressMax, "正在讀取 PDF 檔案...");
 
