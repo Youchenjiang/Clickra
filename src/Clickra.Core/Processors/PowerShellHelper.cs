@@ -4,7 +4,7 @@ using System.Threading;
 
 namespace Clickra.Core.Processors
 {
-    public static class PowerShellInteropHelper
+    public static class PowerShellHelper
     {
         public static void ExportOfficeToPdf(
             string appType,
