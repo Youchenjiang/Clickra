@@ -22,6 +22,10 @@ namespace Clickra.Core.Processors
             OnAllFilesProcessed(outputPath, total, onProgress, cancellationToken);
         }
 
+        protected static int GetProgressBase(int fileIndex) => fileIndex * 100;
+
+        protected static int GetProgressMax(int totalFiles) => totalFiles * 100;
+
         protected abstract void ProcessFile(string filePath, int fileIndex, int totalFiles, Dictionary<string, object>? options, Action<int, int, string>? onProgress, CancellationToken cancellationToken);
 
         protected virtual void OnAllFilesProcessed(string? outputPath, int totalFiles, Action<int, int, string>? onProgress, CancellationToken cancellationToken) { }
