@@ -65,11 +65,9 @@ namespace Clickra.UI
         private float _dragStartMouseX = 0f;
         private float _dragStartOffset = 0f;
 
-        // GDI+ 雙雙緩衝與色彩快取
+        // GDI+ 雙緩衝
         private Bitmap? _bufferBmp;
         private Graphics? _bufferGraphics;
-        private Color _cachedColorizationColor = Color.FromArgb(255, 0, 120, 212);
-        private bool _hasCachedColorizationColor = false;
 
         // GDI+ 快取字型與筆刷
         private Font? _titleFont;
@@ -164,8 +162,6 @@ namespace Clickra.UI
                 _bufferGraphics.TextRenderingHint = TextRenderingHint.AntiAliasGridFit;
                 _bufferGraphics.SmoothingMode = SmoothingMode.AntiAlias;
             }
-
-            _hasCachedColorizationColor = false;
 
             string className = "ClickraProgressWnd";
             IntPtr hClass = Marshal.StringToHGlobalUni(className);

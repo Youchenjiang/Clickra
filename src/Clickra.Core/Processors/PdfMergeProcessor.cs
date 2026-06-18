@@ -12,7 +12,7 @@ namespace Clickra.Core.Processors
         private PdfDocument? _outDoc;
         private string? _outputPath;
 
-        public void Process(List<string> files, string? outputPath, Dictionary<string, object>? options = null, Action<int, int, string>? onProgress = null, CancellationToken cancellationToken = default)
+        public new void Process(List<string> files, string? outputPath, Dictionary<string, object>? options = null, Action<int, int, string>? onProgress = null, CancellationToken cancellationToken = default)
         {
             if (string.IsNullOrEmpty(outputPath)) throw new ArgumentException("Output path is required for PDF merge.");
             _outputPath = outputPath;

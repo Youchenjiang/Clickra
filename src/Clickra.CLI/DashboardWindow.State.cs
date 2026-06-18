@@ -52,8 +52,6 @@ namespace Clickra.UI
         // Double Buffering & Colors
         static Bitmap? _bufferBmp;
         static Graphics? _bufferGraphics;
-        static Color _cachedColorizationColor = Color.FromArgb(255, 0, 120, 212);
-        static bool _hasCachedColorizationColor = false;
 
         // Fonts
         static Font? _titleFont;
