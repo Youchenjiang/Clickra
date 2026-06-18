@@ -88,7 +88,8 @@ To keep the main documentation clean and accessible, Clickra's documentation is 
 
 ```text
 Clickra/
-├── README.md (or README.zh-TW.md)  # Root Entry (Product Intro, Install, Features, Version History)
+├── README.md (or README.zh-TW.md)  # Root Entry (Product Intro, Install, Features)
+├── CHANGELOG.md                    # Version History (all releases)
 ├── PRIVACY.md                      # Privacy Policy (for Windows Store compliance)
 ├── LOCAL_BUILD_NOTES.md            # Developer Guidelines (Setup, compilation, packaging, and Git workflow)
 └── docs/
