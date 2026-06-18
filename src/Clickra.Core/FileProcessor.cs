@@ -788,7 +788,7 @@ try {{
                                 string rawResult = string.IsNullOrWhiteSpace(results[i]) 
                                     ? paragraphsToTranslate[i].TextWithPlaceholders 
                                     : results[i];
-                                paragraphsToTranslate[i].TranslatedText = PostProcessTranslation(
+                                paragraphsToTranslate[i].TranslatedText = PostProcessor.Process(
                                     paragraphsToTranslate[i].TextWithPlaceholders,
                                     rawResult,
                                     targetLang
@@ -819,7 +819,7 @@ try {{
                             {
                                 string result = translator.TranslateAsync(para.TextWithPlaceholders, targetLang, cancellationToken).GetAwaiter().GetResult();
                                 string rawResult = string.IsNullOrWhiteSpace(result) ? para.TextWithPlaceholders : result;
-                                para.TranslatedText = PostProcessTranslation(
+                                para.TranslatedText = PostProcessor.Process(
                                     para.TextWithPlaceholders,
                                     rawResult,
                                     targetLang
