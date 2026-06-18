@@ -28,9 +28,6 @@ namespace Clickra.UI
         private bool _isTrayBtnHovered = false;
         private IntPtr _hIcon = IntPtr.Zero;
 
-        private const uint WM_USER_SHOW_PASSWORD_INPUT = 0x0400 + 3;
-        private const uint WM_USER_HIDE_PASSWORD_INPUT = 0x0400 + 4;
-
         private readonly AutoResetEvent _passwordEvent = new AutoResetEvent(false);
         private string? _inputPassword = null;
         private bool _passwordCancelled = false;

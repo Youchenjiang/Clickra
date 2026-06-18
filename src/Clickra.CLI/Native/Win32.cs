@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Runtime.InteropServices;
 using System.Drawing;
 using System.Text;
@@ -118,6 +118,7 @@ namespace Clickra.UI.Native
         public const uint WS_VISIBLE = 0x10000000;
         public const uint WS_BORDER = 0x00800000;
         public const uint WS_TABSTOP = 0x00010000;
+        public const int IDC_HAND = 32649;
 
         public delegate IntPtr WndProcDelegate(IntPtr h, uint msg, IntPtr w, IntPtr l);
         public static readonly IntPtr TIMER_ID_REFRESH = (IntPtr)1001;

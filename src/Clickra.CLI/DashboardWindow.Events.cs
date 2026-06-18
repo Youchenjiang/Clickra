@@ -336,13 +336,13 @@ namespace Clickra.UI
                              if ((showV && mouseX >= logW - 8 && mouseX < logW) ||
                                  (showH && mouseY >= logH - 8 && mouseY < logH && mouseX >= GetSidebarWidth(logW)))
                             {
-                                SetCursor(LoadCursorW(IntPtr.Zero, 32649)); // IDC_HAND = 32649
+                                SetCursor(LoadCursorW(IntPtr.Zero, IDC_HAND));
                                 return (IntPtr)1;
                             }
                         }
                         if (_hoveredElement != -1 || _langDropdownOpen || IsHoveringHistoryRow(hwnd) || _isDraggingScrollX || _isDraggingScrollY || _isDraggingDetailScroll)
                         {
-                            SetCursor(LoadCursorW(IntPtr.Zero, 32649)); // IDC_HAND = 32649
+                            SetCursor(LoadCursorW(IntPtr.Zero, IDC_HAND));
                             return (IntPtr)1; // Handled
                         }
                     }
