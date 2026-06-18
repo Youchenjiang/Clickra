@@ -48,7 +48,7 @@ namespace Clickra.Core.Processors
         {
             cancellationToken.ThrowIfCancellationRequested();
             onProgress?.Invoke(totalFiles * 100, totalFiles * 100, "轉換完成，正在儲存 PDF...");
-            _doc!.Save(outputPath);
+            _doc!.Save(outputPath!);
         }
     }
 }

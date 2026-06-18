@@ -64,7 +64,7 @@ namespace Clickra.Core.Processors
         {
             cancellationToken.ThrowIfCancellationRequested();
             onProgress?.Invoke(totalFiles * 100, totalFiles * 100, "拼接完成，正在儲存圖片...");
-            _stitched!.Save(outputPath, System.Drawing.Imaging.ImageFormat.Png);
+            _stitched!.Save(outputPath!, System.Drawing.Imaging.ImageFormat.Png);
         }
     }
 }

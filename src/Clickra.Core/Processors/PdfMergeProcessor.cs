@@ -42,7 +42,7 @@ namespace Clickra.Core.Processors
         {
             cancellationToken.ThrowIfCancellationRequested();
             onProgress?.Invoke(totalFiles * 100, totalFiles * 100, "合併完成，正在儲存檔案...");
-            _outDoc!.Save(outputPath);
+            _outDoc!.Save(outputPath!);
         }
     }
 }
