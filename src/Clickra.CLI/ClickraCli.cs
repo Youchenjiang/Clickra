@@ -149,11 +149,25 @@ namespace Clickra
                             {
                                 var f = files[i];
                                 string outName = Path.Combine(outputDir, Path.GetFileNameWithoutExtension(f) + "_translated.pdf");
+                                string dbgLog = Path.Combine(outputDir, Path.GetFileNameWithoutExtension(f) + "_renderdbg.log");
+                                ClickraDebug.Clear();
                                 Console.WriteLine($"[Progress] 正在翻譯 PDF: {Path.GetFileName(f)} ({i + 1}/{files.Count})...");
                                 FileProcessor.TranslatePdf(f, outName, targetLang, (curr, tot, msg) => Console.WriteLine($"[Progress] {msg}"));
+                                ClickraDebug.SaveTo(dbgLog);
+                                Console.WriteLine($"[Debug] Render log: {dbgLog} ({ClickraDebug.Lines.Count} entries)");
                             }
                         }
                         else ProgressWindow.Show(command, files);
+                        break;
+                    case "dump-layout":
+                        ValidateExtensions(files, command, quiet, ".pdf");
+                        RequireMinFiles(files, command, 1, quiet);
+                        {
+                            int pageNum = 11;
+                            var pageArg = argList.Skip(1).FirstOrDefault(a => int.TryParse(a, out _));
+                            if (pageArg != null && int.TryParse(pageArg, out int p)) pageNum = p;
+                            Console.Write(FileProcessor.DumpPageParagraphDiagnostics(files[0], pageNum));
+                        }
                         break;
 #if DEBUG
                     case "test-layout":
@@ -197,7 +211,6 @@ namespace Clickra
                                         }
                                     }
 
-                                    // When the previous line is a heading, don't split on prevLineEndedEarly
                                     bool shouldSplit = startsNew || (prevLineEndedEarly && !prevLineWasHeading) || (prevLineWasHeading && !FileProcessor.IsLineBold(line));
 
                                     if (currentGroup.Count == 0)
@@ -213,19 +226,6 @@ namespace Clickra
                                     {
                                         var paragraph = new PdfParagraph(currentGroup);
                                         Console.WriteLine($"Block {blockIdx} Para: [{paragraph.X0:F1}, {paragraph.Y0:F1}, {paragraph.X1:F1}, {paragraph.Y1:F1}] avgFontSize: {paragraph.AverageFontSize:F2} '{paragraph.TextWithPlaceholders}'");
-                                        foreach (var l in currentGroup)
-                                        {
-                                            foreach (var w in l.Words)
-                                            {
-                                                foreach (var let in w.Letters)
-                                                {
-                                                    if (paragraph.TextWithPlaceholders.Contains("Constraints") || paragraph.TextWithPlaceholders.Contains("Payloads"))
-                                                    {
-                                                        Console.WriteLine($"  Letter: '{let.Value}' Font: '{let.FontName}' FontSize: {let.FontSize:F2} PointSize: {let.PointSize:F2}");
-                                                    }
-                                                }
-                                            }
-                                        }
                                         currentGroup = new List<UglyToad.PdfPig.DocumentLayoutAnalysis.TextLine> { line };
                                         currentIsMath = isMath;
                                     }
@@ -234,19 +234,6 @@ namespace Clickra
                                 {
                                     var paragraph = new PdfParagraph(currentGroup);
                                     Console.WriteLine($"Block {blockIdx} Para: [{paragraph.X0:F1}, {paragraph.Y0:F1}, {paragraph.X1:F1}, {paragraph.Y1:F1}] avgFontSize: {paragraph.AverageFontSize:F2} '{paragraph.TextWithPlaceholders}'");
-                                    foreach (var l in currentGroup)
-                                    {
-                                        foreach (var w in l.Words)
-                                        {
-                                            foreach (var let in w.Letters)
-                                            {
-                                                if (paragraph.TextWithPlaceholders.Contains("Constraints") || paragraph.TextWithPlaceholders.Contains("Payloads"))
-                                                {
-                                                    Console.WriteLine($"  Letter: '{let.Value}' Font: '{let.FontName}' FontSize: {let.FontSize:F2} PointSize: {let.PointSize:F2}");
-                                                }
-                                            }
-                                        }
-                                    }
                                 }
                                 blockIdx++;
                             }

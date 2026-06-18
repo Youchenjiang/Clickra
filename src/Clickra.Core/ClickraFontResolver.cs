@@ -21,6 +21,10 @@ namespace Clickra.Core
             string name = familyName.ToLowerInvariant().Trim();
 
             // Map family names to unique faces
+            if (name.Contains("dfkai") || name.Contains("kaiu") || name.Contains("標楷") || name.Contains("标楷"))
+            {
+                return new FontResolverInfo("dfkai-sb" + suffix);
+            }
             if (name.Contains("jhenghei") || name.Contains("正黑"))
             {
                 return new FontResolverInfo("msjh" + suffix);
@@ -83,7 +87,7 @@ namespace Clickra.Core
             }
 
             // Fallback for CJK faces if the file is missing
-            if (baseFace == "msjh" || baseFace == "msgothic" || baseFace == "msyh" || baseFace == "malgun")
+            if (baseFace == "dfkai-sb" || baseFace == "msjh" || baseFace == "msgothic" || baseFace == "msyh" || baseFace == "malgun")
             {
                 string systemDir = Environment.GetFolderPath(Environment.SpecialFolder.System);
                 string winFonts = Path.Combine(systemDir, "..", "Fonts");
@@ -126,8 +130,19 @@ namespace Clickra.Core
             string winFonts = Path.Combine(systemDir, "..", "Fonts");
             string file = baseFace switch
             {
-                "msjh" => "kaiu.ttf", // Use Traditional Chinese TTF (DFKai-SB) - TTC is not supported by PDFsharp
-                "msyh" => "simsunb.ttf", // Use SimSun-Bold TTF - TTC is not supported by PDFsharp
+                "dfkai-sb" => "kaiu.ttf", // Always kaiu.ttf; simsunb.ttf embeds as SimSun-ExtB with broken CJK cmap
+                "msjh" => style switch // TTC not supported by PDFsharp; bold uses simsunb to avoid simulated-bold corruption
+                {
+                    "b" => "simsunb.ttf",
+                    "bi" => "simsunb.ttf",
+                    _ => "kaiu.ttf"
+                },
+                "msyh" => style switch
+                {
+                    "b" => "simsunb.ttf",
+                    "bi" => "simsunb.ttf",
+                    _ => "kaiu.ttf"
+                },
                 "msgothic" => "kaiu.ttf", // MS Gothic is TTC, fallback to Traditional Chinese TTF (contains kanji)
                 "malgun" => style switch // Malgun Gothic (Korean)
                 {
