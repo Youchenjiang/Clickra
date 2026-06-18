@@ -2,6 +2,13 @@
 
 All notable changes to Clickra will be documented in this file.
 
+## [v3.3.2.0] - 2026-06-19
+
+- **Dependency Updates**: Updated PDFsharp 6.1.1 → 6.2.4, PdfPig 0.1.8 → 0.1.14, System.Drawing.Common 10.0.8 → 10.0.9
+- **Build Script Fixes**: Fixed CHANGELOG rotation regex in bump_version.ps1, removed invalid /q flag from build_msix.ps1
+- **Naming Conventions**: Renamed LogicalWidth/Height → GetLogicalWidth/Height, PowerShellInteropHelper → PowerShellHelper, ProcessorHelper → ProgressCalculator
+- **Code Quality**: Replaced magic numbers with named constants (IDC_HAND), fixed null reference warnings
+
 ## [v3.3.1.0] - 2026-06-18
 
 - **Architecture Refactoring**: Comprehensive codebase refactoring for improved maintainability

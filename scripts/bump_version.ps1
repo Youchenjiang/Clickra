@@ -102,10 +102,12 @@ foreach ($f in $readmeFiles) {
                 if (Test-Path $changelogPath) {
                     $changelog = [System.IO.File]::ReadAllText("$root/$changelogPath", [System.Text.Encoding]::UTF8)
                     $oldEntry = "`n## [$oldVersion] - $oldDate`n`n- $oldDesc`n"
-                    # 只在第一個 ## [vX.X.X] 標題後插入
-                    $firstVersionHeader = $changelog -match '(?m)^## \[v[\d\.]+\]'
-                    if ($firstVersionHeader) {
-                        $changelog = $changelog -replace '(?m)^(## \[v[\d\.]+\][^\n]*\n)', "`$1$oldEntry", 1
+                    # 找到第一個 ## [vX.X.X] 標題的位置，插入在其後
+                    $firstVersionIdx = $changelog.IndexOf("## [v")
+                    if ($firstVersionIdx -ge 0) {
+                        # 找到標題結束的位置（換行之後）
+                        $afterNewline = $changelog.IndexOf("`n", $firstVersionIdx) + 1
+                        $changelog = $changelog.Insert($afterNewline, $oldEntry)
                     }
                     [System.IO.File]::WriteAllText("$root/$changelogPath", $changelog, $utf8NoBOM)
                     Write-Host "[Doc] Moved $oldVersion from README to CHANGELOG" -ForegroundColor Gray

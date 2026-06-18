@@ -1,4 +1,4 @@
-# Clickra v3.3.1.0
+# Clickra v3.3.2.0
 
 [![Microsoft Store](https://img.shields.io/badge/Microsoft%20Store-Clickra-blue?style=for-the-badge&logo=microsoft-store)](https://apps.microsoft.com/detail/9NGLBF6P1KLD)
 [![License: Apache 2.0](https://img.shields.io/badge/License-Apache%202.0-blue.svg?style=for-the-badge)](https://opensource.org/licenses/Apache-2.0)
@@ -24,9 +24,9 @@
 
 | 版本       | 日期       | 關鍵里程碑                                                             |
 | :--------- | :--------- | :--------------------------------------------------------------------- |
+| **v3.3.2.0** | 2026/06/19 | **依賴更新與建構修正**。更新 NuGet 套件、修正 CHANGELOG 旋轉、清理建構腳本輸出。 |
 | **v3.3.1.0** | 2026/06/18 | **架構重構**。全面性程式碼庫重構，提升可維護性。 |
 | **v3.3.0.0** | 2026/06/10 | **PDF 去除密碼與內嵌密碼輸入**。新增高效能 PDF 密碼解除功能。 |
-| **v3.2.0.0** | 2026/05/31 | **儀表板歷史排版優化**。實作歷史紀錄排版自適應與檔名寬度自適應。 |
 
 [檢視完整版本歷史](CHANGELOG.md)
 

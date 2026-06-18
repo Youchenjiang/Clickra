@@ -74,7 +74,7 @@ Write-Host "[Build] Compiling Resource Index (PRI)..." -ForegroundColor Gray
 Write-Host "[Build] Creating MSIX Package..." -ForegroundColor Gray
 $msixPath = "$root/Clickra.msix"
 if (Test-Path $msixPath) { Remove-Item $msixPath }
-& "makeappx.exe" pack /d "$layoutDir" /p $msixPath /o /q
+& "makeappx.exe" pack /d "$layoutDir" /p $msixPath /o
 
 # 6. Signing (Optional)
 $pfxPath = "$packagingDir/ClickraDev.pfx"

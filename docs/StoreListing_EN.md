@@ -1,6 +1,6 @@
 # Microsoft Store Listing - English (US)
 
-Below is the complete information for you to copy and paste directly into the Microsoft Partner Center, updated for the v3.3.0.0 release.
+Below is the complete information for you to copy and paste directly into the Microsoft Partner Center, updated for the v3.3.2.0 release.
 
 ---
 
