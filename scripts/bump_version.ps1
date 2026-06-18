@@ -68,6 +68,17 @@ foreach ($f in $readmeFiles) {
     }
 }
 
+# 5. 更新 CHANGELOG.md (在 [vX.X.X.0] 之前插入新版本)
+$changelogPath = "CHANGELOG.md"
+if (Test-Path $changelogPath) {
+    $changelog = [System.IO.File]::ReadAllText("$root/$changelogPath", [System.Text.Encoding]::UTF8)
+    $date = Get-Date -Format "yyyy-MM-dd"
+    $newEntry = "`n## [v$newVersion] - $date`n`n- **TODO**: Add changelog entry here`n"
+    $changelog = $changelog -replace '(?m)^# Changelog\r?\n', "# Changelog`n$newEntry"
+    [System.IO.File]::WriteAllText("$root/$changelogPath", $changelog, $utf8NoBOM)
+    Write-Host "[Doc] Updated CHANGELOG.md with new version entry" -ForegroundColor Gray
+}
+
 Write-Host "[Success] All files synced successfully!" -ForegroundColor Green
 
 if ($Build) {

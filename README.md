@@ -24,21 +24,11 @@ Most productivity scripts (PDF merging, image conversion, etc.) are typically wr
 
 | Version | Release Date | Key Milestone |
 | :--- | :--- | :--- |
-| **v1.0.0** | Dec 07, 2025 | Initial release (Python-based legacy). |
-| **v2.0.0** | Apr 21, 2026 | Shift to C# CLI with interactive installer. |
-| **v3.0.0** | Apr 24, 2026 | **NativeAOT Shell Extension**. Full Win11 modern menu support with Asset Embedding. |
-| **v3.0.1** | Apr 25, 2026 | Logic Decoupling & Dev Guidelines. Split image processing and introduced AI-driven automation. |
-| **v3.0.2**   | May 05, 2026 | **Cross-version Stability Release**. Fixed Win10/11 compatibility and installer errors. |
-| **v3.0.3.0** | May 07, 2026 | **Store Compliance**. Fixed version revision number requirements. |
-| **v3.0.4.0** | May 11, 2026 | **Critical Shell Fix**. Resolved Windows 11 context menu visibility issues (Store Policy 10.1.2.10) by supporting system-specific IIDs and synchronizing CLSID across manifests. |
-| **v3.0.5.0** | May 13, 2026 | **Diagnostic & Compatibility Fix**. Improved PPT conversion error handling and Store compliance. |
-| **v3.0.6.0** | May 15, 2026 | **Native Dashboard & Word-to-PDF**. Implemented high-performance Win32 dashboard and added Microsoft Word conversion engine. Achieved 100% NativeAOT project structure. |
-| **v3.0.7.0** | May 21, 2026 | **Dynamic Progress Bar & Toast Notifications**. Implemented pure Win32/GDI+ animated progress window with WinUI 3 style shimmer effects, system accent color integration, and native Windows Toast notifications. |
-| **v3.0.8.0** | May 21, 2026 | **Conversion History & Dashboard Enhancements**. Implemented local conversion history tracking and dynamic Win32 list view, integrated Quick Convert tab, added localized user language switching (zh-TW/en-US), and refactored `DashboardForm` into clean static partial files. |
-| **v3.0.9.0** | May 26, 2026 | **About Tab, Full i18n & Dashboard Enhancements**. Added About tab (project description, collaboration links, one-click Gmail diagnostics). Expanded localization to ja-JP, ko-KR, zh-CN across dashboard and shell context menu. Added minimize-to-system-tray, custom output folder picker, expandable history cards with elapsed time and file paths. Implemented adaptive layout for window maximization, crisp scaling for high DPI displays, and smart "file-first" interaction flow for fast conversions. Dynamic sidebar width, language-aware font normalization on first launch, and NativeAOT compatibility fixes (`[STAThread]`, `GetModuleHandle`). |
-| **v3.1.0.0** | May 30, 2026 | **Dashboard Stabilization, Progress Minimize-to-Tray & Horizontal Scrollbar**. Enforced single-instance check, supported progress window minimize to system tray with progress percentage updates, implemented cancellation warning dialog to terminate background conversion processes (PowerPoint/Word), split history logs into individual file rows with middle truncation and horizontal wheel scrolling, and supported horizontal text scrolling with a draggable scrollbar for overflow progress status. |
-| **v3.2.0.0** | May 31, 2026 | **Dashboard History Layout Optimization, Target Translation Language Simplification, and Correct Failure Recording**. Implemented adaptive history layout and filename width calculation, added precise "Error/Cancel" status display in history, removed redundant target translation language options, and improved settings panel text layout to eliminate overlap. |
-| **v3.3.0.0** | **Current** | **PDF Decryption & Inline Password Input**. Added high-performance PDF password removal feature, allowing users to decrypt protected PDFs directly from the context menu. Implemented a non-flickering, inline password input field directly inside the progress window to eliminate intrusive popup modal dialogs, and protected unencrypted files from redundant decryption prompts. |
+| **v3.3.1.0** | Jun 18, 2026 | **Architecture Refactoring**. Comprehensive codebase refactoring for improved maintainability. |
+| **v3.3.0.0** | Jun 10, 2026 | **PDF Decryption & Inline Password Input**. Added high-performance PDF password removal feature. |
+| **v3.2.0.0** | May 31, 2026 | **Dashboard History Layout Optimization**. Adaptive history layout and filename width calculation. |
+
+[View Full Changelog](CHANGELOG.md)
 
 
 ---
