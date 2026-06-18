@@ -246,7 +246,7 @@ namespace Clickra.UI
                 ScreenToClient(hwnd, ref pt);
                 int mouseX = (int)(pt.X / _dpiScale);
                 int mouseY = (int)(pt.Y / _dpiScale);
-                float logW = LogicalWidth(hwnd);
+                float logW = GetLogicalWidth(hwnd);
                 float sidebarW = GetSidebarWidth(logW);
                 float contentX = GetContentX(logW);
                 int adjMouseX = mouseX >= sidebarW ? (int)(mouseX + _contentScrollX) : mouseX;
@@ -420,8 +420,8 @@ namespace Clickra.UI
 
         static int HitTest(IntPtr hwnd, int x, int y)
         {
-            float rawLogW = LogicalWidth(hwnd);
-            float rawLogH = LogicalHeight(hwnd);
+            float rawLogW = GetLogicalWidth(hwnd);
+            float rawLogH = GetLogicalHeight(hwnd);
             float logW = Math.Max(760f, rawLogW);
             float logH = Math.Max(460f, rawLogH);
 
