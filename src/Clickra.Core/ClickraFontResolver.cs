@@ -1,6 +1,7 @@
 using System;
 using System.IO;
-using PdfSharpCore.Fonts;
+using System.Reflection;
+using PdfSharp.Fonts;
 
 namespace Clickra.Core
 {

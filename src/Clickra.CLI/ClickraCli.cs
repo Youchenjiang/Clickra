@@ -11,7 +11,7 @@ using Clickra.UI;
 
 namespace Clickra
 {
-    class ClickraCli
+    partial class ClickraCli
     {
         // Native Win32 MessageBox — zero WinForms dependency, keeps exe tiny
         [DllImport("user32.dll", CharSet = CharSet.Unicode)]
@@ -27,7 +27,7 @@ namespace Clickra
         [STAThread]
         static void Main(string[] args)
         {
-            try { PdfSharpCore.Fonts.GlobalFontSettings.FontResolver = new ClickraFontResolver(); } catch { }
+            try { PdfSharp.Fonts.GlobalFontSettings.FontResolver = new ClickraFontResolver(); } catch { }
             try { SetProcessDpiAwarenessContext((IntPtr)(-4)); } catch { }
             if (args.Length == 0 || args[0] == "-v" || args[0] == "--version")
             {
@@ -121,7 +121,7 @@ namespace Clickra
                                 var f = files[i];
                                 string outName = Path.Combine(outputDir, Path.GetFileNameWithoutExtension(f) + ".pdf");
                                 Console.WriteLine($"[Progress] 正在轉換圖片: {Path.GetFileName(f)} ({i + 1}/{files.Count})...");
-                                FileProcessor.ImagesToPdf(new List<string> { f }, outName, null);
+                                FileProcessor.ConvertImagesToPdf(new List<string> { f }, outName, null);
                             }
                             Console.WriteLine("[Progress] 轉換完成，正在儲存 PDF...");
                         }
@@ -130,7 +130,7 @@ namespace Clickra
                     case "img-merge":
                         ValidateExtensions(files, command, quiet, ".jpg", ".jpeg", ".png", ".bmp", ".gif", ".tiff", ".webp");
                         RequireMinFiles(files, command, 2, quiet);
-                        if (quiet) FileProcessor.ImagesToPdf(files, Path.Combine(outputDir, "Merged_Images.pdf"), (curr, tot, msg) => Console.WriteLine($"[Progress] {msg}"));
+                        if (quiet) FileProcessor.ConvertImagesToPdf(files, Path.Combine(outputDir, "Merged_Images.pdf"), (curr, tot, msg) => Console.WriteLine($"[Progress] {msg}"));
                         else ProgressWindow.Show(command, files);
                         break;
                     case "img-stitch":
@@ -172,7 +172,7 @@ namespace Clickra
                                 }
                                 catch (Exception ex)
                                 {
-                                    bool isPasswordError = ex is PdfSharpCore.Pdf.IO.PdfReaderException &&
+                                    bool isPasswordError = ex is PdfSharp.Pdf.IO.PdfReaderException &&
                                                            ex.Message.Contains("password", StringComparison.OrdinalIgnoreCase);
 
                                     if (isPasswordError)
@@ -195,7 +195,7 @@ namespace Clickra
                             var page = pigDoc.GetPage(1);
                             foreach (var letter in page.Letters)
                             {
-                                if (letter.FontName.Contains("CMSY", StringComparison.OrdinalIgnoreCase))
+                                if (letter.FontName?.Contains("CMSY", StringComparison.OrdinalIgnoreCase) == true)
                                 {
                                     Console.WriteLine($"Letter: '{letter.Value}', Font: {letter.FontName}, Size: {letter.FontSize}, Bytes: {string.Join(",", System.Text.Encoding.UTF8.GetBytes(letter.Value))}");
                                 }
@@ -260,63 +260,6 @@ namespace Clickra
                 if (!quiet) ShowWarning(msg, "Clickra — 檔案數量不足");
                 Environment.Exit(1);
             }
-        }
-
-
-        static void DeployAssets(string targetDir)
-        {
-            if (!Directory.Exists(targetDir)) Directory.CreateDirectory(targetDir);
-
-            var assembly = Assembly.GetExecutingAssembly();
-            var resources = new Dictionary<string, string>
-            {
-                { "Clickra.Resources.AppxManifest.xml", "AppxManifest.xml" },
-                { "Clickra.Resources.app.png", "app.png" },
-                { "Clickra.Resources.Clickra.exe.manifest", "Clickra.exe.manifest" },
-                { "Clickra.Resources.ClickraShell.dll.manifest", "ClickraShell.dll.manifest" },
-                { "Clickra.Resources.ClickraShell.dll", "ClickraShell.dll" }
-            };
-
-            foreach (var res in resources)
-            {
-                string targetPath = Path.Combine(targetDir, res.Value);
-                Console.WriteLine($"Deploying {res.Value}...");
-
-                try
-                {
-                    WriteResourceToFile(assembly, res.Key, targetPath);
-                }
-                catch (IOException)
-                {
-                    // 檔案鎖定處理邏輯：如果被佔用，嘗試改名備份
-                    string timestamp = DateTime.Now.ToString("yyyyMMdd_HHmmss");
-                    string backupPath = targetPath + ".old_" + timestamp;
-                    try
-                    {
-                        Console.WriteLine($"[Warning] File {res.Value} is locked. Renaming to bypass lock...");
-                        File.Move(targetPath, backupPath);
-                        WriteResourceToFile(assembly, res.Key, targetPath);
-                        Console.WriteLine("Successfully deployed via rename-bypass.");
-                    }
-                    catch (Exception ex)
-                    {
-                        Console.WriteLine($"[Error] Critical failure deploying {res.Value}: {ex.Message}");
-                    }
-                }
-                catch (Exception ex)
-                {
-                    Console.WriteLine($"[Error] Failed to deploy {res.Value}: {ex.Message}");
-                }
-            }
-            Console.WriteLine("Deployment completed.");
-        }
-
-        static void WriteResourceToFile(Assembly assembly, string resourceName, string targetPath)
-        {
-            using var stream = assembly.GetManifestResourceStream(resourceName);
-            if (stream == null) throw new Exception($"Resource {resourceName} not found.");
-            using var fileStream = File.Create(targetPath);
-            stream.CopyTo(fileStream);
         }
     }
 }

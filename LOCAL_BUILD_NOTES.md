@@ -10,15 +10,15 @@ The `scripts/build_msix.ps1` script has been updated to automatically detect thi
 - Version revision number (4th digit) MUST be 0 for Microsoft Store.
 - App must handle zero-argument launch without crashing (handled in `Clickra.CLI/Program.cs`).
 
-## v3.2.0 Technical Context (For AI Handoff)
+## Technical Context (For AI Handoff)
 - **Architecture**: The entire project (`ClickraShell` and `Clickra.CLI`) is now **100% Native AOT**. Standard WinForms/WPF cannot be used.
 - **UI Rendering**: The Dashboard (`DashboardWindow*.cs`) and Progress Window (`ProgressWindow.cs`) use raw Win32 APIs (`CreateWindowExW`) and GDI+.
   - *Rule 1*: Always use `W` (Unicode) suffixed APIs and `Marshal.StringToHGlobalUni` to prevent MSIX title bar truncation (the "C" bug).
   - *Rule 2*: Do not attempt Mica/Acrylic rendering. We use a solid `#202020` dark background because GDI+ cannot blend with DWM Mica properly.
   - *Rule 3*: ProgressWindow uses `WM_TIMER` (16ms) to drive smooth cubic easing animations and shimmer glow overlays. It dynamically fetches system accent color via `DwmGetColorizationColor`.
   - *Rule 4*: For fonts on high-DPI screens, always initialize with `GraphicsUnit.Pixel` to prevent double/quadratic scaling (overlapping text), and use language-adaptive font names.
-  - *Rule 5 (v3.2.0)*: The history record table layout dynamically calculates column widths (Adaptive layout) and uses custom-drawn text truncation to prevent column contents from overlapping.
-- **Translation Languages (v3.2.0)**:
+  - *Rule 5*: The history record table layout dynamically calculates column widths (Adaptive layout) and uses custom-drawn text truncation to prevent column contents from overlapping.
+- **Translation Languages**:
   - Redundant translation targets (English, Japanese, Korean, Simplified Chinese) have been removed from the Settings panel. Only the active dropdown and the functional "Traditional Chinese" (繁體中文) option are retained.
 - **Office Detection in MSIX**: Standard `Type.GetTypeFromProgID` fails inside the MSIX container. You must use direct registry checks (`HKLM\SOFTWARE\Classes\PowerPoint.Application`).
 - **Cross-process Sync & Locking**:
@@ -31,7 +31,7 @@ The `scripts/build_msix.ps1` script has been updated to automatically detect thi
 - **Code Layout Restrictions (`ClickraStorage.cs`)**:
   - Avoid moving private helper methods (`WriteActiveFileInternal`/`ReadActiveFileInternal`) above public active record methods. Keep the original method ordering to prevent noisy, massive diff blocks in git history.
 
-## v3.3.0 Technical Context (For AI Handoff)
+## Inline Password Input Technical Context
 - **Inline Password Input (decrypt-pdf)**:
   - The password prompt for `decrypt-pdf` is rendered **inline** inside the `ProgressWindow` Win32 window — **not** as a separate dialog. Child `EDIT` (with `ES_PASSWORD`) and `BUTTON` controls are created via `CreateWindowExW` directly on `_hwnd`.
   - `WS_CLIPCHILDREN` is set on the parent window to prevent GDI+ paint calls from overwriting the child controls and causing flickering.
