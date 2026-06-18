@@ -7,6 +7,27 @@ namespace Clickra.UI
 {
     internal static class UIHelper
     {
+        public static readonly Color BgDark = Color.FromArgb(32, 32, 32);
+        public static readonly Color BgCard = Color.FromArgb(40, 40, 40);
+        public static readonly Color BgPopup = Color.FromArgb(28, 28, 28);
+        public static readonly Color BgButton = Color.FromArgb(50, 50, 50);
+        public static readonly Color BgButtonHover = Color.FromArgb(55, 55, 55);
+        public static readonly Color BgButtonActive = Color.FromArgb(36, 36, 36);
+
+        public static readonly Color BorderDefault = Color.FromArgb(60, 60, 60);
+        public static readonly Color BorderHover = Color.FromArgb(80, 80, 80);
+        public static readonly Color BorderLight = Color.FromArgb(48, 48, 48);
+        public static readonly Color BorderCard = Color.FromArgb(55, 55, 55);
+
+        public static readonly Color TextPrimary = Color.FromArgb(220, 220, 220);
+        public static readonly Color TextSecondary = Color.FromArgb(200, 200, 200);
+        public static readonly Color TextMuted = Color.FromArgb(160, 160, 160);
+        public static readonly Color TextDim = Color.FromArgb(140, 140, 140);
+        public static readonly Color TextDark = Color.FromArgb(80, 80, 80);
+
+        public static readonly Color AccentGreen = Color.FromArgb(100, 220, 100);
+        public static readonly Color AccentRed = Color.FromArgb(255, 90, 70);
+
         public static GraphicsPath GetRoundedRectPath(RectangleF rect, float radius)
         {
             var path = new GraphicsPath();

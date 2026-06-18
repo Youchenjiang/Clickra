@@ -200,9 +200,9 @@ namespace Clickra.UI
             bool isZoneHovered = _hoveredElement == 18;
 
             Color zoneBg = isZoneHovered ? Color.FromArgb(42, 42, 42) : Color.FromArgb(34, 34, 34);
-            Color zoneBorder = isZoneHovered ? GetSystemColorizationColor() : Color.FromArgb(60, 60, 60);
+            Color zoneBorder = isZoneHovered ? UIHelper.GetSystemColorizationColor() : Color.FromArgb(60, 60, 60);
 
-            using (var path = GetRoundedRectPath(new RectangleF(zoneX * s, zoneY * s, zoneW * s, zoneH * s), 6 * s))
+            using (var path = UIHelper.GetRoundedRectPath(new RectangleF(zoneX * s, zoneY * s, zoneW * s, zoneH * s), 6 * s))
             using (var bgBrush = new SolidBrush(zoneBg))
             using (var borderPen = new Pen(zoneBorder, 1.5f * s))
             {
@@ -269,7 +269,7 @@ namespace Clickra.UI
                 bool isClearHovered = _hoveredElement == 25;
                 Color clearBtnBg = isClearHovered ? Color.FromArgb(60, 60, 60) : Color.FromArgb(45, 45, 45);
                 Color clearBtnBorder = isClearHovered ? Color.FromArgb(80, 80, 80) : Color.FromArgb(55, 55, 55);
-                using (var path = GetRoundedRectPath(new RectangleF(clearX * s, (zoneY + 12) * s, 48 * s, 22 * s), 3 * s))
+                using (var path = UIHelper.GetRoundedRectPath(new RectangleF(clearX * s, (zoneY + 12) * s, 48 * s, 22 * s), 3 * s))
                 using (var bgBrush = new SolidBrush(clearBtnBg))
                 using (var borderPen = new Pen(clearBtnBorder))
                 {
@@ -312,7 +312,7 @@ namespace Clickra.UI
                 else if (isSelected)
                 {
                     cardBg = Color.FromArgb(45, 45, 55);
-                    cardBorder = GetSystemColorizationColor();
+                    cardBorder = UIHelper.GetSystemColorizationColor();
                     textColor = Color.White;
                 }
                 else
@@ -322,7 +322,7 @@ namespace Clickra.UI
                     textColor = isHovered ? Color.White : Color.FromArgb(200, 200, 200);
                 }
 
-                using var path = GetRoundedRectPath(new RectangleF(cardX * s, cardY * s, cardW * s, cardH * s), 5 * s);
+                using var path = UIHelper.GetRoundedRectPath(new RectangleF(cardX * s, cardY * s, cardW * s, cardH * s), 5 * s);
                 using var bgBrush = new SolidBrush(cardBg);
                 using var borderPen = new Pen(cardBorder, isSelected ? 1.5f * s : 1f * s);
                 g.FillPath(bgBrush, path);
@@ -354,10 +354,10 @@ namespace Clickra.UI
             if (_selectedFiles.Count > 0 && _convertCommandIndex != -1)
             {
                 bool isBtnHovered = _hoveredElement == 19;
-                Color btnBg = GetSystemColorizationColor();
-                if (isBtnHovered) btnBg = Lighten(btnBg, 0.15f);
+                Color btnBg = UIHelper.GetSystemColorizationColor();
+                if (isBtnHovered) btnBg = UIHelper.Lighten(btnBg, 0.15f);
 
-                using (var path = GetRoundedRectPath(new RectangleF(zoneX * s, buttonY * s, zoneW * s, 36 * s), 5 * s))
+                using (var path = UIHelper.GetRoundedRectPath(new RectangleF(zoneX * s, buttonY * s, zoneW * s, 36 * s), 5 * s))
                 using (var bgBrush = new SolidBrush(btnBg))
                 {
                     g.FillPath(bgBrush, path);

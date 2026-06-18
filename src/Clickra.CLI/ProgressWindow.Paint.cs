@@ -19,10 +19,6 @@ namespace Clickra.UI
     /// </summary>
     public partial class ProgressWindow
     {
-        private Color GetSystemColorizationColor() => UIHelper.GetSystemColorizationColor();
-        private Color Lighten(Color c, float amount) => UIHelper.Lighten(c, amount);
-        private GraphicsPath GetRoundedRectPath(RectangleF rect, float radius) => UIHelper.GetRoundedRectPath(rect, radius);
-
         private void Paint(IntPtr hdc)
         {
             if (_bufferBmp == null || _bufferGraphics == null) return;
@@ -165,17 +161,17 @@ namespace Clickra.UI
                 }
 
                 float barX = 36 * s, barY = 170 * s, barW = 448 * s, barH = 16 * s;
-                using var bgPath = GetRoundedRectPath(new RectangleF(barX, barY, barW, barH), 6 * s);
+                using var bgPath = UIHelper.GetRoundedRectPath(new RectangleF(barX, barY, barW, barH), 6 * s);
                 if (_bgBrush != null) g.FillPath(_bgBrush, bgPath);
                 if (_borderPen != null) g.DrawPath(_borderPen, bgPath);
 
                 if (dispW > 3)
                 {
                     var fillRect = new RectangleF(barX, barY, (float)(dispW * s), barH);
-                    using var fillPath = GetRoundedRectPath(fillRect, 6 * s);
+                    using var fillPath = UIHelper.GetRoundedRectPath(fillRect, 6 * s);
                     
-                    Color accent = GetSystemColorizationColor();
-                    Color accentLight = Lighten(accent, 0.3f);
+                    Color accent = UIHelper.GetSystemColorizationColor();
+                    Color accentLight = UIHelper.Lighten(accent, 0.3f);
                     using var gradBrush = new LinearGradientBrush(fillRect, accent, accentLight, LinearGradientMode.Horizontal);
                     g.FillPath(gradBrush, fillPath);
 
@@ -210,10 +206,10 @@ namespace Clickra.UI
                 // Draw "Run in Background" (minimize to tray) icon button in top right
                 {
                     var btnRect = new RectangleF(456 * s, 36 * s, 28 * s, 28 * s);
-                    using var btnPath = GetRoundedRectPath(btnRect, 4 * s);
+                    using var btnPath = UIHelper.GetRoundedRectPath(btnRect, 4 * s);
 
                     Color btnBg = _isTrayBtnHovered ? Color.FromArgb(60, 60, 60) : Color.Transparent;
-                    Color btnPenColor = _isTrayBtnHovered ? GetSystemColorizationColor() : Color.FromArgb(160, 160, 160);
+                    Color btnPenColor = _isTrayBtnHovered ? UIHelper.GetSystemColorizationColor() : Color.FromArgb(160, 160, 160);
 
                     using var btnBrush = new SolidBrush(btnBg);
                     g.FillPath(btnBrush, btnPath);
@@ -248,7 +244,7 @@ namespace Clickra.UI
                         using var textBrush = new SolidBrush(Color.FromArgb(220, 220, 220));
 
                         var tRect = new RectangleF(tx - 6 * s, ty - 4 * s, tSize.Width + 12 * s, tSize.Height + 8 * s);
-                        using var tPath = GetRoundedRectPath(tRect, 4 * s);
+                        using var tPath = UIHelper.GetRoundedRectPath(tRect, 4 * s);
                         g.FillPath(tBrush, tPath);
                         g.DrawPath(tPen, tPath);
                         g.DrawString(tooltipText, _tipFont, textBrush, tx, ty);
@@ -277,7 +273,7 @@ namespace Clickra.UI
             int colonIdx = msg.IndexOf(": ");
             if (colonIdx == -1)
             {
-                return TruncateText(g, msg, font, maxLogicalWidth, scale);
+                return UIHelper.TruncateText(g, msg, font, maxLogicalWidth, scale);
             }
 
             string prefix = msg.Substring(0, colonIdx + 2);
@@ -316,17 +312,11 @@ namespace Clickra.UI
 
             if (availableW <= 20)
             {
-                return TruncateText(g, msg, font, maxLogicalWidth, scale);
+                return UIHelper.TruncateText(g, msg, font, maxLogicalWidth, scale);
             }
 
-            string truncatedFile = TruncateFileName(g, filename, font, availableW, scale);
+            string truncatedFile = UIHelper.TruncateFileName(g, filename, font, availableW, scale);
             return prefix + truncatedFile + suffix;
         }
-
-        private static string TruncateText(Graphics g, string text, Font font, float maxLogicalWidth, float scale)
-            => UIHelper.TruncateText(g, text, font, maxLogicalWidth, scale);
-
-        private static string TruncateFileName(Graphics g, string filename, Font font, float maxWidth, float scale)
-            => UIHelper.TruncateFileName(g, filename, font, maxWidth, scale);
     }
 }

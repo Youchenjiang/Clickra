@@ -120,7 +120,7 @@ namespace Clickra.UI
                     g.FillRectangle(sbTrackBrush, trackX * s, trackY * s, trackW * s, trackH * s);
                 }
                 using (var sbThumbBrush = new SolidBrush(Color.FromArgb(100, 100, 100)))
-                using (var thumbPath = GetRoundedRectPath(new RectangleF(trackX * s, thumbY * s, trackW * s, thumbH * s), 2.5f * s))
+                using (var thumbPath = UIHelper.GetRoundedRectPath(new RectangleF(trackX * s, thumbY * s, trackW * s, thumbH * s), 2.5f * s))
                 {
                     g.FillPath(sbThumbBrush, thumbPath);
                 }
@@ -143,7 +143,7 @@ namespace Clickra.UI
                         g.FillRectangle(sbTrackBrush, trackX * s, trackY * s, trackW_sb * s, trackH * s);
                     }
                     using (var sbThumbBrush = new SolidBrush(Color.FromArgb(100, 100, 100)))
-                    using (var thumbPath = GetRoundedRectPath(new RectangleF(thumbX * s, trackY * s, thumbW * s, trackH * s), 2.5f * s))
+                    using (var thumbPath = UIHelper.GetRoundedRectPath(new RectangleF(thumbX * s, trackY * s, thumbW * s, trackH * s), 2.5f * s))
                     {
                         g.FillPath(sbThumbBrush, thumbPath);
                     }
@@ -171,7 +171,7 @@ namespace Clickra.UI
             if (isActive)
             {
                 // Accent left border
-                using var accentBrush = new SolidBrush(GetSystemColorizationColor());
+                using var accentBrush = new SolidBrush(UIHelper.GetSystemColorizationColor());
                 g.FillRectangle(accentBrush, 0, scaledY + 4 * s, 4 * s, 32 * s);
 
                 // Subtle background for active tab
@@ -252,7 +252,7 @@ namespace Clickra.UI
             float clearX = logW - 130;
             using (var btnBgBrush = new SolidBrush(btnBg))
             using (var btnBorderPen = new Pen(btnBorder))
-            using (var path = GetRoundedRectPath(new RectangleF(clearX * s, 38 * s, 90 * s, 28 * s), 4 * s))
+            using (var path = UIHelper.GetRoundedRectPath(new RectangleF(clearX * s, 38 * s, 90 * s, 28 * s), 4 * s))
             {
                 g.FillPath(btnBgBrush, path);
                 g.DrawPath(btnBorderPen, path);
@@ -322,7 +322,7 @@ namespace Clickra.UI
                         _                           => Color.FromArgb(60, 60, 60)
                     };
 
-                    using (var path = GetRoundedRectPath(new RectangleF(contentX * s, rowY * s, rowW * s, rowH * s), 6 * s))
+                    using (var path = UIHelper.GetRoundedRectPath(new RectangleF(contentX * s, rowY * s, rowW * s, rowH * s), 6 * s))
                     using (var rowBg = new SolidBrush(activeBgColor))
                     {
                         g.FillPath(rowBg, path);
@@ -378,7 +378,7 @@ namespace Clickra.UI
                         float maxW = activeStatusX - 16 - fileCountX;
                         if (maxW > 20)
                         {
-                            displayText = TruncateFileName(g, displayText, _bodyFont, maxW, s);
+                            displayText = UIHelper.TruncateFileName(g, displayText, _bodyFont, maxW, s);
                         }
                         g.DrawString(displayText, _bodyFont, countBrush, fileCountX * s, (rowY + 13) * s);
                     }
@@ -419,7 +419,7 @@ namespace Clickra.UI
                     continue;
                 }
 
-                using var path = GetRoundedRectPath(new RectangleF(contentX * s, currentY * s, rowW * s, currentH * s), 6 * s);
+                using var path = UIHelper.GetRoundedRectPath(new RectangleF(contentX * s, currentY * s, rowW * s, currentH * s), 6 * s);
                 using var rowBg = new SolidBrush(Color.FromArgb(36, 36, 36));
                 g.FillPath(rowBg, path);
 
@@ -471,7 +471,7 @@ namespace Clickra.UI
                     float maxW = statusX - 16 - fileCountX;
                     if (maxW > 20)
                     {
-                        displayText = TruncateFileName(g, displayText, _bodyFont, maxW, s);
+                        displayText = UIHelper.TruncateFileName(g, displayText, _bodyFont, maxW, s);
                     }
                     g.DrawString(displayText, _bodyFont, countBrush, fileCountX * s, (currentY + 13) * s);
                 }
@@ -555,7 +555,7 @@ namespace Clickra.UI
                         // 3. Time Details
                         g.DrawString(GetText("history_detail_time") + ":", _subFont, labelBrush, (contentX + 12) * s, (currentY + 106) * s);
                         string timeText = $"{entry.Time}  →  {(string.IsNullOrEmpty(entry.EndTime) ? entry.Time : entry.EndTime)}";
-                        timeText = TruncateText(g, timeText, _subFont, maxValW, s);
+                        timeText = UIHelper.TruncateText(g, timeText, _subFont, maxValW, s);
                         g.DrawString(timeText, _subFont, valBrush, valX * s, (currentY + 106) * s);
 
                         // 4. Elapsed Time or Error Message
@@ -563,7 +563,7 @@ namespace Clickra.UI
                         {
                             g.DrawString(GetText("history_detail_elapsed") + ":", _subFont, labelBrush, (contentX + 12) * s, (currentY + 132) * s);
                             string elapsedText = entry.ElapsedMs >= 0 ? $"{(entry.ElapsedMs / 1000.0):F2} s ({entry.ElapsedMs} ms)" : "N/A";
-                            elapsedText = TruncateText(g, elapsedText, _subFont, maxValW, s);
+                            elapsedText = UIHelper.TruncateText(g, elapsedText, _subFont, maxValW, s);
                             g.DrawString(elapsedText, _subFont, valBrush, valX * s, (currentY + 132) * s);
                         }
                         else
@@ -651,7 +651,7 @@ namespace Clickra.UI
             }
             float w = Math.Max(82f, textW + 16f);
             int h = 22;
-            using var path = GetRoundedRectPath(new RectangleF(x * s, y * s, w * s, h * s), 4 * s);
+            using var path = UIHelper.GetRoundedRectPath(new RectangleF(x * s, y * s, w * s, h * s), 4 * s);
             using var brush = new SolidBrush(tagBg);
             g.FillPath(brush, path);
 
@@ -785,13 +785,13 @@ namespace Clickra.UI
         {
             float s = _dpiScale;
             // Track
-            Color trackColor = state ? GetSystemColorizationColor() : Color.FromArgb(60, 60, 60);
+            Color trackColor = state ? UIHelper.GetSystemColorizationColor() : Color.FromArgb(60, 60, 60);
             if (hovered)
             {
-                trackColor = state ? Lighten(trackColor, 0.15f) : Color.FromArgb(80, 80, 80);
+                trackColor = state ? UIHelper.Lighten(trackColor, 0.15f) : Color.FromArgb(80, 80, 80);
             }
             using var trackBrush = new SolidBrush(trackColor);
-            using var path = GetRoundedRectPath(new RectangleF(x * s, y * s, w * s, h * s), (h / 2f) * s);
+            using var path = UIHelper.GetRoundedRectPath(new RectangleF(x * s, y * s, w * s, h * s), (h / 2f) * s);
             g.FillPath(trackBrush, path);
 
             // Thumb
@@ -812,8 +812,8 @@ namespace Clickra.UI
 
             if (selected)
             {
-                btnBg = GetSystemColorizationColor();
-                if (isHovered) btnBg = Lighten(btnBg, 0.15f);
+                btnBg = UIHelper.GetSystemColorizationColor();
+                if (isHovered) btnBg = UIHelper.Lighten(btnBg, 0.15f);
                 btnBorder = btnBg;
                 textColor = Color.White;
             }
@@ -825,7 +825,7 @@ namespace Clickra.UI
             }
 
             int h = 30;
-            using var path = GetRoundedRectPath(new RectangleF(x * s, y * s, w * s, h * s), 4 * s);
+            using var path = UIHelper.GetRoundedRectPath(new RectangleF(x * s, y * s, w * s, h * s), 4 * s);
             using var bgBrush = new SolidBrush(btnBg);
             g.FillPath(bgBrush, path);
 
@@ -863,7 +863,7 @@ namespace Clickra.UI
         {
             float s = _dpiScale;
             int h = 70;
-            using var path = GetRoundedRectPath(new RectangleF(x * s, y * s, w * s, h * s), 6 * s);
+            using var path = UIHelper.GetRoundedRectPath(new RectangleF(x * s, y * s, w * s, h * s), 6 * s);
             using var cardBg = new SolidBrush(Color.FromArgb(40, 40, 40));
             g.FillPath(cardBg, path);
 
@@ -952,7 +952,7 @@ namespace Clickra.UI
             Color gitBtnBorder = isGitBtnHovered ? Color.FromArgb(90, 90, 90) : Color.FromArgb(70, 70, 70);
             using (var btnBgBrush = new SolidBrush(gitBtnBg))
             using (var btnBorderPen = new Pen(gitBtnBorder))
-            using (var path = GetRoundedRectPath(new RectangleF(contentX * s, _githubBtnY * s, wGit * s, 32 * s), 4 * s))
+            using (var path = UIHelper.GetRoundedRectPath(new RectangleF(contentX * s, _githubBtnY * s, wGit * s, 32 * s), 4 * s))
             {
                 g.FillPath(btnBgBrush, path);
                 g.DrawPath(btnBorderPen, path);
@@ -1016,7 +1016,7 @@ namespace Clickra.UI
             Color gmailBtnBorder = isGmailBtnHovered ? Color.FromArgb(90, 90, 90) : Color.FromArgb(70, 70, 70);
             using (var btnBgBrush = new SolidBrush(gmailBtnBg))
             using (var btnBorderPen = new Pen(gmailBtnBorder))
-            using (var path = GetRoundedRectPath(new RectangleF(contentX * s, _aboutBtnY * s, wGmail * s, 32 * s), 4 * s))
+            using (var path = UIHelper.GetRoundedRectPath(new RectangleF(contentX * s, _aboutBtnY * s, wGmail * s, 32 * s), 4 * s))
             {
                 g.FillPath(btnBgBrush, path);
                 g.DrawPath(btnBorderPen, path);
@@ -1049,10 +1049,6 @@ namespace Clickra.UI
             }
         }
 
-        static GraphicsPath GetRoundedRectPath(RectangleF rect, float radius) => UIHelper.GetRoundedRectPath(rect, radius);
-        static Color GetSystemColorizationColor() => UIHelper.GetSystemColorizationColor();
-        static Color Lighten(Color c, float amount) => UIHelper.Lighten(c, amount);
-
         static bool IsOfficeInstalled(string app)
         {
             string progId = app == "PowerPoint" ? "PowerPoint.Application" : "Word.Application";
@@ -1082,11 +1078,11 @@ namespace Clickra.UI
             int x = (int)contentX, w = 240, h = 30;
 
             Color btnBg = isHovered ? Color.FromArgb(55, 55, 55) : Color.FromArgb(40, 40, 40);
-            Color btnBorder = _langDropdownOpen ? GetSystemColorizationColor() : (isHovered ? Color.FromArgb(80, 80, 80) : Color.FromArgb(60, 60, 60));
+            Color btnBorder = _langDropdownOpen ? UIHelper.GetSystemColorizationColor() : (isHovered ? Color.FromArgb(80, 80, 80) : Color.FromArgb(60, 60, 60));
             Color textColor = Color.FromArgb(220, 220, 220);
 
             // Draw button base
-            using (var path = GetRoundedRectPath(new RectangleF(x * s, y * s, w * s, h * s), 4 * s))
+            using (var path = UIHelper.GetRoundedRectPath(new RectangleF(x * s, y * s, w * s, h * s), 4 * s))
             using (var bgBrush = new SolidBrush(btnBg))
             using (var borderPen = new Pen(btnBorder, _langDropdownOpen ? 1.5f * s : 1f * s))
             {
@@ -1115,7 +1111,7 @@ namespace Clickra.UI
                 int popupY = y - popupH; // 210
 
                 // Container path
-                using (var path = GetRoundedRectPath(new RectangleF(x * s, popupY * s, w * s, popupH * s), 4 * s))
+                using (var path = UIHelper.GetRoundedRectPath(new RectangleF(x * s, popupY * s, w * s, popupH * s), 4 * s))
                 using (var bgBrush = new SolidBrush(Color.FromArgb(28, 28, 28)))
                 using (var borderPen = new Pen(Color.FromArgb(60, 60, 60)))
                 {
@@ -1125,7 +1121,7 @@ namespace Clickra.UI
 
                 // Search input box: y = 216
                 int searchX = x + 6, searchY = popupY + 6, searchW = w - 12, searchH = 26;
-                using (var searchPath = GetRoundedRectPath(new RectangleF(searchX * s, searchY * s, searchW * s, searchH * s), 4 * s))
+                using (var searchPath = UIHelper.GetRoundedRectPath(new RectangleF(searchX * s, searchY * s, searchW * s, searchH * s), 4 * s))
                 using (var searchBg = new SolidBrush(Color.FromArgb(45, 45, 45)))
                 using (var searchBorder = new Pen(Color.FromArgb(75, 75, 75)))
                 {
@@ -1183,12 +1179,12 @@ namespace Clickra.UI
                     int itemH = 24;
 
                     bool isItemHovered = _langHoveredIndex == itemIdx;
-                    Color itemBg = isItemHovered ? GetSystemColorizationColor() : Color.Transparent;
+                    Color itemBg = isItemHovered ? UIHelper.GetSystemColorizationColor() : Color.Transparent;
                     Color itemTextCol = isItemHovered ? Color.White : Color.FromArgb(200, 200, 200);
 
                     if (isItemHovered)
                     {
-                        using (var itemPath = GetRoundedRectPath(new RectangleF((x + 4) * s, itemY * s, (w - 8) * s, itemH * s), 3 * s))
+                        using (var itemPath = UIHelper.GetRoundedRectPath(new RectangleF((x + 4) * s, itemY * s, (w - 8) * s, itemH * s), 3 * s))
                         using (var itemBgBrush = new SolidBrush(itemBg))
                         {
                             g.FillPath(itemBgBrush, itemPath);
@@ -1218,7 +1214,7 @@ namespace Clickra.UI
                     float thumbY = trackY + ((float)_langScrollOffset / (filtered.Count - maxVisible)) * (trackH - thumbH);
                     using (var sbThumbBrush = new SolidBrush(Color.FromArgb(100, 100, 100)))
                     {
-                        using (var thumbPath = GetRoundedRectPath(new RectangleF(trackX * s, thumbY * s, trackW * s, thumbH * s), 2 * s))
+                        using (var thumbPath = UIHelper.GetRoundedRectPath(new RectangleF(trackX * s, thumbY * s, trackW * s, thumbH * s), 2 * s))
                         {
                             g.FillPath(sbThumbBrush, thumbPath);
                         }
@@ -1251,12 +1247,6 @@ namespace Clickra.UI
             return Clickra.Core.Localization.T(key, ClickraStorage.GetSetting("Language"));
         }
 
-        private static string TruncateText(Graphics g, string text, Font font, float maxLogicalWidth, float scale)
-            => UIHelper.TruncateText(g, text, font, maxLogicalWidth, scale);
-
-        private static string TruncateFileName(Graphics g, string filename, Font font, float maxWidth, float scale)
-            => UIHelper.TruncateFileName(g, filename, font, maxWidth, scale);
-
 
 
         static void DrawPdfLangDropdown(Graphics g, int y, float contentX)
@@ -1281,11 +1271,11 @@ namespace Clickra.UI
             int x = (int)contentX, w = 240, h = 30;
 
             Color btnBg = isHovered ? Color.FromArgb(55, 55, 55) : Color.FromArgb(40, 40, 40);
-            Color btnBorder = _pdfLangDropdownOpen ? GetSystemColorizationColor() : (isHovered ? Color.FromArgb(80, 80, 80) : Color.FromArgb(60, 60, 60));
+            Color btnBorder = _pdfLangDropdownOpen ? UIHelper.GetSystemColorizationColor() : (isHovered ? Color.FromArgb(80, 80, 80) : Color.FromArgb(60, 60, 60));
             Color textColor = Color.FromArgb(220, 220, 220);
 
             // Draw button base
-            using (var path = GetRoundedRectPath(new RectangleF(x * s, y * s, w * s, h * s), 4 * s))
+            using (var path = UIHelper.GetRoundedRectPath(new RectangleF(x * s, y * s, w * s, h * s), 4 * s))
             using (var bgBrush = new SolidBrush(btnBg))
             using (var borderPen = new Pen(btnBorder, _pdfLangDropdownOpen ? 1.5f * s : 1f * s))
             {
@@ -1313,7 +1303,7 @@ namespace Clickra.UI
                 int popupH = PdfLangs.Length * 26 + 8;
                 int popupY = y - popupH;
 
-                using (var path = GetRoundedRectPath(new RectangleF(x * s, popupY * s, w * s, popupH * s), 4 * s))
+                using (var path = UIHelper.GetRoundedRectPath(new RectangleF(x * s, popupY * s, w * s, popupH * s), 4 * s))
                 using (var bgBrush = new SolidBrush(Color.FromArgb(28, 28, 28)))
                 using (var borderPen = new Pen(Color.FromArgb(60, 60, 60)))
                 {
@@ -1329,12 +1319,12 @@ namespace Clickra.UI
                     int itemH = 24;
 
                     bool isItemHovered = _pdfLangHoveredIndex == i;
-                    Color itemBg = isItemHovered ? GetSystemColorizationColor() : Color.Transparent;
+                    Color itemBg = isItemHovered ? UIHelper.GetSystemColorizationColor() : Color.Transparent;
                     Color itemTextCol = isItemHovered ? Color.White : Color.FromArgb(200, 200, 200);
 
                     if (isItemHovered)
                     {
-                        using (var itemPath = GetRoundedRectPath(new RectangleF((x + 4) * s, itemY * s, (w - 8) * s, itemH * s), 3 * s))
+                        using (var itemPath = UIHelper.GetRoundedRectPath(new RectangleF((x + 4) * s, itemY * s, (w - 8) * s, itemH * s), 3 * s))
                         using (var itemBgBrush = new SolidBrush(itemBg))
                         {
                             g.FillPath(itemBgBrush, itemPath);
