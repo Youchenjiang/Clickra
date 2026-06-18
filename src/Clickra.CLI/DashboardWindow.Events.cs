@@ -403,16 +403,16 @@ namespace Clickra.UI
                                         float contentX = GetContentX(logW);
                                         int rowW = (int)logW - (int)contentX - 40;
 
-                                        float w1, w2, w3, w4;
+                                        float inputLabelW, outputLabelW, timeLabelW, errorLabelW;
                                         using (var tempBmp = new Bitmap(1, 1))
                                         using (var tempG = Graphics.FromImage(tempBmp))
                                         {
-                                            w1 = tempG.MeasureString(GetText("history_detail_inputs") + ":", _subFont!).Width / _dpiScale;
-                                            w2 = tempG.MeasureString(GetText("history_detail_outputs") + ":", _subFont!).Width / _dpiScale;
-                                            w3 = tempG.MeasureString(GetText("history_detail_time") + ":", _subFont!).Width / _dpiScale;
-                                            w4 = tempG.MeasureString(GetText(_historyEntries[i].IsSuccess ? "history_detail_elapsed" : "history_detail_error") + ":", _subFont!).Width / _dpiScale;
+                                            inputLabelW = tempG.MeasureString(GetText("history_detail_inputs") + ":", _subFont!).Width / _dpiScale;
+                                            outputLabelW = tempG.MeasureString(GetText("history_detail_outputs") + ":", _subFont!).Width / _dpiScale;
+                                            timeLabelW = tempG.MeasureString(GetText("history_detail_time") + ":", _subFont!).Width / _dpiScale;
+                                            errorLabelW = tempG.MeasureString(GetText(_historyEntries[i].IsSuccess ? "history_detail_elapsed" : "history_detail_error") + ":", _subFont!).Width / _dpiScale;
                                         }
-                                        float maxLabelW = Math.Max(w1, Math.Max(w2, Math.Max(w3, w4)));
+                                        float maxLabelW = Math.Max(inputLabelW, Math.Max(outputLabelW, Math.Max(timeLabelW, errorLabelW)));
                                         float valX = contentX + 12 + maxLabelW + 16;
                                         float maxValW = contentX + rowW - 12 - valX;
 
