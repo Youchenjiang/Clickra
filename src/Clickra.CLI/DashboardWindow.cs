@@ -27,8 +27,8 @@ namespace Clickra.UI
             return 460;
         }
 
-        static float LogicalWidth(IntPtr hwnd) => GetClientWidth(hwnd) / _dpiScale;
-        static float LogicalHeight(IntPtr hwnd) => GetClientHeight(hwnd) / _dpiScale;
+        static float GetLogicalWidth(IntPtr hwnd) => GetClientWidth(hwnd) / _dpiScale;
+        static float GetLogicalHeight(IntPtr hwnd) => GetClientHeight(hwnd) / _dpiScale;
 
         public static float GetSidebarWidth(float logW)
         {

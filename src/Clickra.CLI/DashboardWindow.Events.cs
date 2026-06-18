@@ -52,8 +52,8 @@ namespace Clickra.UI
                         int mouseX = (int)(rawX / _dpiScale);
                         int mouseY = (int)(rawY / _dpiScale);
 
-                        float logW = LogicalWidth(hwnd);
-                        float logH = LogicalHeight(hwnd);
+                        float logW = GetLogicalWidth(hwnd);
+                        float logH = GetLogicalHeight(hwnd);
                         float sidebarW = GetSidebarWidth(logW);
                         float contentX = GetContentX(logW);
                         
@@ -328,8 +328,8 @@ namespace Clickra.UI
                             ScreenToClient(hwnd, ref pt);
                             int mouseX = (int)(pt.X / _dpiScale);
                             int mouseY = (int)(pt.Y / _dpiScale);
-                            float logW = LogicalWidth(hwnd);
-                            float logH = LogicalHeight(hwnd);
+                            float logW = GetLogicalWidth(hwnd);
+                            float logH = GetLogicalHeight(hwnd);
                             float contentH = GetContentHeight(hwnd);
                             bool showV = logH < contentH;
                             bool showH = logW < 760;
@@ -376,7 +376,7 @@ namespace Clickra.UI
                                 int mouseX = (int)(pt.X / _dpiScale);
                                 int mouseY = (int)(pt.Y / _dpiScale);
 
-                                float logW = LogicalWidth(hwnd);
+                                float logW = GetLogicalWidth(hwnd);
                                 float sidebarW = GetSidebarWidth(logW);
                                 int adjMouseX = mouseX >= sidebarW ? (int)(mouseX + _contentScrollX) : mouseX;
                                 int adjMouseY = mouseX >= sidebarW ? (int)(mouseY + _contentScrollY) : mouseY;
@@ -470,7 +470,7 @@ namespace Clickra.UI
 
                             if (!handledDetailScroll)
                             {
-                                float logH = LogicalHeight(hwnd);
+                                float logH = GetLogicalHeight(hwnd);
                                 float contentH = GetContentHeight(hwnd);
                                 if (logH < contentH)
                                 {

@@ -20,8 +20,8 @@ namespace Clickra.UI
             g.Clear(Color.FromArgb(32, 32, 32));
             g.SmoothingMode = SmoothingMode.AntiAlias;
 
-            float logW = LogicalWidth(hwnd);
-            float logH = LogicalHeight(hwnd);
+            float logW = GetLogicalWidth(hwnd);
+            float logH = GetLogicalHeight(hwnd);
             float s = _dpiScale;
 
             float sidebarW = GetSidebarWidth(logW);

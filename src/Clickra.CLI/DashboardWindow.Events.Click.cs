@@ -17,8 +17,8 @@ namespace Clickra.UI
             int mouseX = (int)(rawX / _dpiScale);
             int mouseY = (int)(rawY / _dpiScale);
 
-            float logW = LogicalWidth(hwnd);
-            float logH = LogicalHeight(hwnd);
+            float logW = GetLogicalWidth(hwnd);
+            float logH = GetLogicalHeight(hwnd);
             float contentH = GetContentHeight(hwnd);
             bool showV = logH < contentH;
             bool showH = logW < 760;
