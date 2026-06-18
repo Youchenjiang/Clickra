@@ -121,7 +121,7 @@ namespace Clickra
                                 var f = files[i];
                                 string outName = Path.Combine(outputDir, Path.GetFileNameWithoutExtension(f) + ".pdf");
                                 Console.WriteLine($"[Progress] 正在轉換圖片: {Path.GetFileName(f)} ({i + 1}/{files.Count})...");
-                                FileProcessor.ImagesToPdf(new List<string> { f }, outName, null);
+                                FileProcessor.ConvertImagesToPdf(new List<string> { f }, outName, null);
                             }
                             Console.WriteLine("[Progress] 轉換完成，正在儲存 PDF...");
                         }
@@ -130,7 +130,7 @@ namespace Clickra
                     case "img-merge":
                         ValidateExtensions(files, command, quiet, ".jpg", ".jpeg", ".png", ".bmp", ".gif", ".tiff", ".webp");
                         RequireMinFiles(files, command, 2, quiet);
-                        if (quiet) FileProcessor.ImagesToPdf(files, Path.Combine(outputDir, "Merged_Images.pdf"), (curr, tot, msg) => Console.WriteLine($"[Progress] {msg}"));
+                        if (quiet) FileProcessor.ConvertImagesToPdf(files, Path.Combine(outputDir, "Merged_Images.pdf"), (curr, tot, msg) => Console.WriteLine($"[Progress] {msg}"));
                         else ProgressWindow.Show(command, files);
                         break;
                     case "img-stitch":

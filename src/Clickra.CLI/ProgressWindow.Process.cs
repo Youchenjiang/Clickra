@@ -74,13 +74,13 @@ namespace Clickra.UI
                             var f = currentFiles[i];
                             string outName = Path.Combine(outputDir, Path.GetFileNameWithoutExtension(f) + ".pdf");
                             progressCallback((i * 100) + 50, currentFiles.Count * 100, $"正在轉換圖片: {Path.GetFileName(f)} ({i + 1}/{currentFiles.Count})...");
-                            FileProcessor.ImagesToPdf(new List<string> { f }, outName, null, _cts.Token);
+                            FileProcessor.ConvertImagesToPdf(new List<string> { f }, outName, null, _cts.Token);
                         }
                         _cts.Token.ThrowIfCancellationRequested();
                         progressCallback(currentFiles.Count * 100, currentFiles.Count * 100, "轉換完成，正在儲存 PDF...");
                         break;
                     case "img-merge":
-                        FileProcessor.ImagesToPdf(currentFiles, Path.Combine(outputDir, "Merged_Images.pdf"), progressCallback, _cts.Token);
+                        FileProcessor.ConvertImagesToPdf(currentFiles, Path.Combine(outputDir, "Merged_Images.pdf"), progressCallback, _cts.Token);
                         break;
                     case "img-stitch":
                         FileProcessor.StitchImages(currentFiles, Path.Combine(outputDir, "Stitched_Image.png"), progressCallback, _cts.Token);
