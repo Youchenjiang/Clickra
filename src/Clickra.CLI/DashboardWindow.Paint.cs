@@ -526,15 +526,7 @@ namespace Clickra.UI
                             float thumbW = Math.Max(15f, (maxValW / textW0) * maxValW);
                             float thumbX = valX + (scrollOffset0 / textW0) * maxValW;
                             if (thumbX + thumbW > valX + maxValW) thumbX = valX + maxValW - thumbW;
-
-                            using (var trackBrush = new SolidBrush(Color.FromArgb(15, 255, 255, 255)))
-                            {
-                                g.FillRectangle(trackBrush, valX * s, scrollbarY * s, maxValW * s, 2 * s);
-                            }
-                            using (var thumbBrush = new SolidBrush(Color.FromArgb(80, 255, 255, 255)))
-                            {
-                                g.FillRectangle(thumbBrush, thumbX * s, scrollbarY * s, thumbW * s, 2 * s);
-                            }
+                            UIHelper.DrawHorizontalScrollbar(g, valX, scrollbarY, maxValW, thumbX, thumbW, s);
                         }
 
                         // 2. Output Path
@@ -557,15 +549,7 @@ namespace Clickra.UI
                             float thumbW = Math.Max(15f, (maxValW / textW1) * maxValW);
                             float thumbX = valX + (scrollOffset1 / textW1) * maxValW;
                             if (thumbX + thumbW > valX + maxValW) thumbX = valX + maxValW - thumbW;
-
-                            using (var trackBrush = new SolidBrush(Color.FromArgb(15, 255, 255, 255)))
-                            {
-                                g.FillRectangle(trackBrush, valX * s, scrollbarY * s, maxValW * s, 2 * s);
-                            }
-                            using (var thumbBrush = new SolidBrush(Color.FromArgb(80, 255, 255, 255)))
-                            {
-                                g.FillRectangle(thumbBrush, thumbX * s, scrollbarY * s, thumbW * s, 2 * s);
-                            }
+                            UIHelper.DrawHorizontalScrollbar(g, valX, scrollbarY, maxValW, thumbX, thumbW, s);
                         }
 
                         // 3. Time Details
@@ -606,15 +590,7 @@ namespace Clickra.UI
                                 float thumbW = Math.Max(15f, (maxValW / textW2) * maxValW);
                                 float thumbX = valX + (scrollOffset2 / textW2) * maxValW;
                                 if (thumbX + thumbW > valX + maxValW) thumbX = valX + maxValW - thumbW;
-
-                                using (var trackBrush = new SolidBrush(Color.FromArgb(15, 255, 255, 255)))
-                                {
-                                    g.FillRectangle(trackBrush, valX * s, scrollbarY * s, maxValW * s, 2 * s);
-                                }
-                                using (var thumbBrush = new SolidBrush(Color.FromArgb(80, 255, 255, 255)))
-                                {
-                                    g.FillRectangle(thumbBrush, thumbX * s, scrollbarY * s, thumbW * s, 2 * s);
-                                }
+                                UIHelper.DrawHorizontalScrollbar(g, valX, scrollbarY, maxValW, thumbX, thumbW, s);
                             }
                         }
                     }
