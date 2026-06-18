@@ -1,20 +1,10 @@
-using System.Runtime.InteropServices;
-using System.Diagnostics;
-using System.IO;
+using System;
 using System.Text;
+using System.IO;
+using System.Diagnostics;
+using System.Runtime.InteropServices;
 using System.Runtime.CompilerServices;
-using System.Globalization;
-using System.Xml.Linq;
-
-// Win32 API for dynamic DLL path resolution
-internal static partial class Kernel32
-{
-    [DllImport("kernel32.dll", CharSet = CharSet.Unicode)]
-    public static extern bool GetModuleHandleExW(uint dwFlags, IntPtr lpModuleName, out IntPtr phModule);
-
-    [DllImport("kernel32.dll", CharSet = CharSet.Unicode)]
-    public static unsafe extern uint GetModuleFileNameW(IntPtr hModule, char* lpFilename, uint nSize);
-}
+using System.Collections.Generic;
 
 namespace ClickraShell
 {
@@ -31,158 +21,10 @@ namespace ClickraShell
         public IntPtr ShellItems;
     }
 
-    internal static class Guids
-    {
-        public static readonly Guid Clsid = new("B17A34D2-55E0-4D6F-8D1F-7A6E9C2B30A1");
-        public static readonly Guid IID_IUnknown = new("00000000-0000-0000-C000-000000000046");
-        public static readonly Guid IID_IClassFactory = new("00000001-0000-0000-C000-000000000046");
-        
-        // IExplorerCommand IIDs (including compatibility variations found in logs)
-        public static readonly Guid IID_IExplorerCommand = new("a08ce4d0-fa25-44ab-b57c-c7b3c3ef1cf0");
-        public static readonly Guid IID_IExplorerCommand_Compat = new("a08ce4d0-fa25-44ab-b57c-c7b1c323e0b9");
-        
-        // IEnumExplorerCommand IIDs (including compatibility variations found in logs)
-        public static readonly Guid IID_IEnumExplorerCommand = new("c5740441-fa60-492d-944c-354313f8c7b6");
-        public static readonly Guid IID_IEnumExplorerCommand_Compat = new("a88826f8-186f-4987-aade-ea0cef8fbfe8");
-        
-        public static readonly Guid IID_IObjectWithSelection = new("b196b287-bab4-101a-b69c-00aa00341d07");
-    }
-
-    public class Exporter
-    {
-        private static IntPtr _factoryVt = IntPtr.Zero;
-        private static IntPtr _commandVt = IntPtr.Zero;
-        private static IntPtr _selectionVt = IntPtr.Zero;
-        private static IntPtr _enumVt = IntPtr.Zero;
-
-        [UnmanagedCallersOnly(EntryPoint = "DllGetClassObject", CallConvs = new[] { typeof(CallConvStdcall) })]
-        public static unsafe int DllGetClassObject(Guid* rclsid, Guid* riid, IntPtr* ppv)
-        {
-            *ppv = IntPtr.Zero;
-            if (*rclsid != Guids.Clsid) return -2147221231; // CLASS_E_CLASSNOTAVAILABLE
-            
-            if (_factoryVt == IntPtr.Zero) _factoryVt = CreateVTable(5, new IntPtr[] {
-                (IntPtr)(delegate* unmanaged[Stdcall]<IntPtr, Guid*, IntPtr*, int>)&ComMethods.PrimaryQI,
-                (IntPtr)(delegate* unmanaged[Stdcall]<IntPtr, uint>)&ComMethods.PrimaryAddRef,
-                (IntPtr)(delegate* unmanaged[Stdcall]<IntPtr, uint>)&ComMethods.PrimaryRelease,
-                (IntPtr)(delegate* unmanaged[Stdcall]<IntPtr, IntPtr, Guid*, IntPtr*, int>)&ComMethods.CreateInstance,
-                (IntPtr)(delegate* unmanaged[Stdcall]<IntPtr, int, int>)&ComMethods.LockServer
-            });
-            return ComMethods.CreateObject(_factoryVt, riid, ppv, ComObjectType.Factory);
-        }
-
-        [UnmanagedCallersOnly(EntryPoint = "DllCanUnloadNow", CallConvs = new[] { typeof(CallConvStdcall) })]
-        public static int DllCanUnloadNow() => 0;
-
-        public static unsafe IntPtr GetCommandVt()
-        {
-            if (_commandVt == IntPtr.Zero) _commandVt = CreateVTable(11, new IntPtr[] {
-                (IntPtr)(delegate* unmanaged[Stdcall]<IntPtr, Guid*, IntPtr*, int>)&ComMethods.PrimaryQI,
-                (IntPtr)(delegate* unmanaged[Stdcall]<IntPtr, uint>)&ComMethods.PrimaryAddRef,
-                (IntPtr)(delegate* unmanaged[Stdcall]<IntPtr, uint>)&ComMethods.PrimaryRelease,
-                (IntPtr)(delegate* unmanaged[Stdcall]<IntPtr, IntPtr, IntPtr*, int>)&ComMethods.GetTitle,
-                (IntPtr)(delegate* unmanaged[Stdcall]<IntPtr, IntPtr, IntPtr*, int>)&ComMethods.GetIcon,
-                (IntPtr)(delegate* unmanaged[Stdcall]<IntPtr, IntPtr, IntPtr*, int>)&ComMethods.GetToolTip,
-                (IntPtr)(delegate* unmanaged[Stdcall]<IntPtr, Guid*, int>)&ComMethods.GetCanonicalName,
-                (IntPtr)(delegate* unmanaged[Stdcall]<IntPtr, IntPtr, int, uint*, int>)&ComMethods.GetState,
-                (IntPtr)(delegate* unmanaged[Stdcall]<IntPtr, IntPtr, IntPtr, int>)&ComMethods.Invoke,
-                (IntPtr)(delegate* unmanaged[Stdcall]<IntPtr, uint*, int>)&ComMethods.GetFlags,
-                (IntPtr)(delegate* unmanaged[Stdcall]<IntPtr, IntPtr*, int>)&ComMethods.EnumSubCommands
-            });
-            return _commandVt;
-        }
-
-        public static unsafe IntPtr GetSelectionVt()
-        {
-            if (_selectionVt == IntPtr.Zero) _selectionVt = CreateVTable(5, new IntPtr[] {
-                (IntPtr)(delegate* unmanaged[Stdcall]<IntPtr, Guid*, IntPtr*, int>)&ComMethods.SelectionQI,
-                (IntPtr)(delegate* unmanaged[Stdcall]<IntPtr, uint>)&ComMethods.SelectionAddRef,
-                (IntPtr)(delegate* unmanaged[Stdcall]<IntPtr, uint>)&ComMethods.SelectionRelease,
-                (IntPtr)(delegate* unmanaged[Stdcall]<IntPtr, IntPtr, int>)&ComMethods.SetSelection,
-                (IntPtr)(delegate* unmanaged[Stdcall]<IntPtr, Guid*, IntPtr*, int>)&ComMethods.GetSelection
-            });
-            return _selectionVt;
-        }
-
-        public static unsafe IntPtr GetEnumVt()
-        {
-            if (_enumVt == IntPtr.Zero) _enumVt = CreateVTable(7, new IntPtr[] {
-                (IntPtr)(delegate* unmanaged[Stdcall]<IntPtr, Guid*, IntPtr*, int>)&ComMethods.PrimaryQI,
-                (IntPtr)(delegate* unmanaged[Stdcall]<IntPtr, uint>)&ComMethods.PrimaryAddRef,
-                (IntPtr)(delegate* unmanaged[Stdcall]<IntPtr, uint>)&ComMethods.PrimaryRelease,
-                (IntPtr)(delegate* unmanaged[Stdcall]<IntPtr, uint, IntPtr*, uint*, int>)&ComMethods.EnumNext,
-                (IntPtr)(delegate* unmanaged[Stdcall]<IntPtr, uint, int>)&ComMethods.EnumSkip,
-                (IntPtr)(delegate* unmanaged[Stdcall]<IntPtr, int>)&ComMethods.EnumReset,
-                (IntPtr)(delegate* unmanaged[Stdcall]<IntPtr, IntPtr*, int>)&ComMethods.EnumClone
-            });
-            return _enumVt;
-        }
-
-        private static unsafe IntPtr CreateVTable(int size, IntPtr[] methods)
-        {
-            IntPtr vtable = Marshal.AllocCoTaskMem(IntPtr.Size * size);
-            var vt = (IntPtr*)vtable;
-            for (int i = 0; i < size; i++) vt[i] = methods[i];
-            return vtable;
-        }
-    }
-
-    internal static class ShellUtils
-    {
-        public static unsafe string GetModuleDir()
-        {
-            IntPtr fnPtr = (IntPtr)(delegate* unmanaged[Stdcall]<IntPtr, uint>)&ComMethods.PrimaryAddRef;
-            if (Kernel32.GetModuleHandleExW(6, fnPtr, out IntPtr hModule))
-            {
-                unsafe
-                {
-                    char* buf = stackalloc char[260];
-                    uint len = Kernel32.GetModuleFileNameW(hModule, buf, 260);
-                    if (len > 0) return Path.GetDirectoryName(new string(buf, 0, (int)len)) ?? string.Empty;
-                }
-            }
-            return string.Empty;
-        }
-
-        public static string GetString(string key)
-        {
-            try
-            {
-                string dir = GetModuleDir();
-                string culture = CultureInfo.CurrentUICulture.Name;
-                
-                string subFolder = "zh-tw"; // Default fallback
-                if (culture.StartsWith("en", StringComparison.OrdinalIgnoreCase))
-                    subFolder = "en-us";
-                else if (culture.Equals("zh-CN", StringComparison.OrdinalIgnoreCase))
-                    subFolder = "zh-cn";
-                else if (culture.StartsWith("ja", StringComparison.OrdinalIgnoreCase))
-                    subFolder = "ja-jp";
-                else if (culture.StartsWith("ko", StringComparison.OrdinalIgnoreCase))
-                    subFolder = "ko-kr";
-                else if (culture.StartsWith("zh", StringComparison.OrdinalIgnoreCase))
-                    subFolder = "zh-tw";
-                
-                string resPath = Path.Combine(dir, "Strings", subFolder, "Resources.resw");
-                if (!File.Exists(resPath))
-                {
-                    resPath = Path.Combine(dir, "Strings", "zh-tw", "Resources.resw");
-                }
-                
-                if (!File.Exists(resPath)) return key;
-
-                var doc = XDocument.Load(resPath);
-                var data = doc.Root?.Elements("data").FirstOrDefault(e => e.Attribute("name")?.Value == key);
-                return data?.Element("value")?.Value ?? key;
-            }
-            catch { return key; }
-        }
-    }
-
     internal static class ComMethods
     {
-        private static readonly string[] MenuKeys = { "Menu_Ppt2Pdf", "Menu_Word2Pdf", "Menu_MergePdf", "Menu_Img2Pdf", "Menu_ImgMerge", "Menu_ImgStitch", "Menu_TranslatePdf" };
-        private static readonly string[] SubArgs = { "ppt2pdf", "word2pdf", "merge-pdf", "img2pdf", "img-merge", "img-stitch", "translate-pdf" };
+        private static readonly string[] MenuKeys = { "Menu_Ppt2Pdf", "Menu_Word2Pdf", "Menu_MergePdf", "Menu_Img2Pdf", "Menu_ImgMerge", "Menu_ImgStitch", "Menu_TranslatePdf", "Menu_DecryptPdf" };
+        private static readonly string[] SubArgs = { "ppt2pdf", "word2pdf", "merge-pdf", "img2pdf", "img-merge", "img-stitch", "translate-pdf", "decrypt-pdf" };
 
         internal static unsafe int CreateObject(IntPtr vt, Guid* riid, IntPtr* ppv, ComObjectType type, int data = -1)
         {
@@ -251,7 +93,7 @@ namespace ClickraShell
 
         [UnmanagedCallersOnly(CallConvs = new[] { typeof(CallConvStdcall) })] public static unsafe int GetToolTip(IntPtr _this, IntPtr psi, IntPtr* p) { *p = IntPtr.Zero; return 0; }
         [UnmanagedCallersOnly(CallConvs = new[] { typeof(CallConvStdcall) })] public static unsafe int GetCanonicalName(IntPtr _this, Guid* p) { *p = Guid.Empty; return 0; }
-        
+
         private static bool IsSupported(string path, int idx)
         {
             string ext = Path.GetExtension(path).ToLowerInvariant();
@@ -262,7 +104,7 @@ namespace ClickraShell
                 -1 => new[] { ".ppt", ".pptx", ".doc", ".docx", ".pdf", ".jpg", ".jpeg", ".png", ".bmp", ".gif", ".tiff", ".webp" }.Contains(ext),
                 0 => ext == ".ppt" || ext == ".pptx",
                 1 => ext == ".doc" || ext == ".docx",
-                2 or 6 => ext == ".pdf",
+                2 or 6 or 7 => ext == ".pdf",
                 3 or 4 or 5 => new[] { ".jpg", ".jpeg", ".png", ".bmp", ".gif", ".tiff", ".webp" }.Contains(ext),
                 _ => false
             };
@@ -323,7 +165,7 @@ namespace ClickraShell
         }
 
         [UnmanagedCallersOnly(CallConvs = new[] { typeof(CallConvStdcall) })] public static unsafe int GetFlags(IntPtr _this, uint* p) { *p = (uint)(((UniversalObject*)_this)->Data == -1 ? 1 : 0); return 0; }
-        
+
         [UnmanagedCallersOnly(CallConvs = new[] { typeof(CallConvStdcall) })]
         public static unsafe int EnumSubCommands(IntPtr _this, IntPtr* ppEnum)
         {
@@ -338,7 +180,7 @@ namespace ClickraShell
         {
             int idx = ((UniversalObject*)_this)->Data;
             if (idx == -1) return 0;
-            
+
             StringBuilder sb = new StringBuilder();
             sb.Append(SubArgs[idx]);
             var files = GetFiles(psi);

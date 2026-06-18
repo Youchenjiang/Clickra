@@ -6,14 +6,35 @@ $packagingDir = "$root/packaging/msix"
 $layoutDir = "$packagingDir/Layout"
 $publishDir = "$root/publish"
 
-# Add Windows SDK tools to PATH
-$sdkPath = "C:\Windows Kits\10\bin\10.0.26100.0\x64"
-if (Test-Path $sdkPath) {
-    $env:Path = "$sdkPath;$env:Path"
-    Write-Host "🛠️  Using Windows SDK tools from: $sdkPath" -ForegroundColor Gray
+# Add Windows SDK tools to PATH (dynamically locate the newest version)
+$kitsRoots = @(
+    "C:\Program Files (x86)\Windows Kits\10\bin",
+    "C:\Windows Kits\10\bin"
+)
+$foundSdk = $false
+foreach ($rootPath in $kitsRoots) {
+    if (Test-Path $rootPath) {
+        $sortedDirs = Get-ChildItem -Path $rootPath -Directory | 
+                      Where-Object { $_.Name -like "10.*" } | 
+                      Sort-Object { [version]$_.Name } -Descending
+        
+        foreach ($dir in $sortedDirs) {
+            $candidatePath = Join-Path $dir.FullName "x64"
+            if (Test-Path "$candidatePath\makepri.exe") {
+                $env:Path = "$candidatePath;$env:Path"
+                Write-Host "[SDK] Found Windows SDK: $candidatePath" -ForegroundColor Gray
+                $foundSdk = $true
+                break
+            }
+        }
+    }
+    if ($foundSdk) { break }
+}
+if (-not $foundSdk) {
+    Write-Warning "[SDK] Could not locate Windows SDK tools path."
 }
 
-Write-Host "🏗️  Starting Clickra MSIX Build..." -ForegroundColor Cyan
+Write-Host "[Build] Starting Clickra MSIX Build..." -ForegroundColor Cyan
 
 # 1. Clean up
 if (Test-Path $layoutDir) { Remove-Item -Recurse -Force $layoutDir }
@@ -21,12 +42,12 @@ if (Test-Path $publishDir) { Remove-Item -Recurse -Force $publishDir }
 New-Item -ItemType Directory -Path $layoutDir | Out-Null
 
 # 2. Build Binaries (NativeAOT)
-Write-Host "📦 Publishing CLI and Shell Extension..." -ForegroundColor Gray
+Write-Host "[Build] Publishing CLI and Shell Extension..." -ForegroundColor Gray
 dotnet publish src/Clickra.CLI/Clickra.csproj -c Release -r win-x64 -o "$publishDir/cli" --self-contained true
 dotnet publish src/ClickraShell/ClickraShell.csproj -c Release -r win-x64 -o "$publishDir/shell" --self-contained true
 
 # 3. Assemble Layout
-Write-Host "📂 Assembling Layout..." -ForegroundColor Gray
+Write-Host "[Build] Assembling Layout..." -ForegroundColor Gray
 Copy-Item "$packagingDir/AppxManifest.xml" "$layoutDir/"
 Copy-Item -Recurse "$packagingDir/Assets" "$layoutDir/"
 Copy-Item -Recurse "$packagingDir/Strings" "$layoutDir/"
@@ -45,26 +66,54 @@ if (Test-Path "src/resources/app.ico") {
 }
 
 # 4. Compile Resources (MakePri)
-Write-Host "📑 Compiling Resource Index (PRI)..." -ForegroundColor Gray
+Write-Host "[Build] Compiling Resource Index (PRI)..." -ForegroundColor Gray
 & "makepri.exe" createconfig /cf "$layoutDir/priconfig.xml" /dq zh-TW /pv 10.0.0 /o
 & "makepri.exe" new /pr "$layoutDir" /cf "$layoutDir/priconfig.xml" /of "$layoutDir/resources.pri" /o
 
 # 5. Create Appx Package
-Write-Host "📦 Creating MSIX Package..." -ForegroundColor Gray
+Write-Host "[Build] Creating MSIX Package..." -ForegroundColor Gray
 $msixPath = "$root/Clickra.msix"
 if (Test-Path $msixPath) { Remove-Item $msixPath }
 & "makeappx.exe" pack /d "$layoutDir" /p $msixPath /o
 
 # 6. Signing (Optional)
-$certPath = "$packagingDir/ClickraDev.cer"
 $pfxPath = "$packagingDir/ClickraDev.pfx"
 
+# Read publisher from AppxManifest.xml to ensure certificate matches identity
+[xml]$manifest = Get-Content "$packagingDir/AppxManifest.xml"
+$publisher = $manifest.Package.Identity.Publisher
+
 if (Test-Path $pfxPath) {
-    Write-Host "🖋️  Signing Package..." -ForegroundColor Gray
-    & "signtool.exe" sign /fd SHA256 /a /f $pfxPath /p "1234" $msixPath
+    try {
+        $certObj = [System.Security.Cryptography.X509Certificates.X509Certificate2]::new($pfxPath, "1234")
+        $pfxSubject = $certObj.Subject
+        $certObj.Dispose()
+
+        if ($pfxSubject -ne $publisher) {
+            Write-Host "[Sign] PFX subject mismatch, regenerating certificate..." -ForegroundColor Yellow
+            & powershell.exe -NoProfile -ExecutionPolicy Bypass -File "$root/scripts/setup/create_dev_cert.ps1"
+        }
+    } catch {
+        Write-Warning "[Sign] Failed to validate PFX: $_"
+    }
 } else {
-    Write-Host "⚠️  No PFX found at $pfxPath. Package is unsigned." -ForegroundColor Yellow
-    Write-Host "   To sign, create a cert with: New-SelfSignedCertificate -Type Custom -Subject 'CN=CBF59877-21AD-4BC4-8F91-FE8DA520A138' -KeyUsage DigitalSignature -FriendlyName 'Clickra Dev' -CertStoreLocation 'Cert:\CurrentUser\My' -TextExtension @('2.5.29.37={text}1.3.6.1.5.5.7.3.3')" -ForegroundColor Gray
+    $cert = Get-ChildItem Cert:\CurrentUser\My | Where-Object Subject -like "*$publisher*" | Select-Object -First 1
+    if (-not $cert) {
+        Write-Host "[Sign] No certificate found, generating..." -ForegroundColor Gray
+        & powershell.exe -NoProfile -ExecutionPolicy Bypass -File "$root/scripts/setup/create_dev_cert.ps1"
+    }
 }
 
-Write-Host "`n✅ Clickra MSIX Build Complete: $msixPath" -ForegroundColor Green
+if (Test-Path $pfxPath) {
+    Write-Host "[Sign] Signing with PFX..." -ForegroundColor Gray
+    & "signtool.exe" sign /fd SHA256 /a /f $pfxPath /p "1234" $msixPath
+} else {
+    if ($cert) {
+        Write-Host "[Sign] Signing with certificate from store..." -ForegroundColor Gray
+        & "signtool.exe" sign /fd SHA256 /a /sha1 $cert.Thumbprint $msixPath
+    } else {
+        Write-Warning "[Sign] No certificate found. Package is unsigned."
+    }
+}
+
+Write-Host "`n[Done] Clickra MSIX Build Complete: $msixPath" -ForegroundColor Green

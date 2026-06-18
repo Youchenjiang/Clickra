@@ -11,7 +11,7 @@ using Clickra.UI;
 
 namespace Clickra
 {
-    class ClickraCli
+    partial class ClickraCli
     {
         // Native Win32 MessageBox — zero WinForms dependency, keeps exe tiny
         [DllImport("user32.dll", CharSet = CharSet.Unicode)]
@@ -41,7 +41,7 @@ namespace Clickra
 
                 Console.WriteLine($"Clickra v{version} (Modern Shell Edition)");
                 Console.WriteLine("Author: Youchen Jiang");
-                Console.WriteLine("Commands: ppt2pdf, word2pdf, merge-pdf, img2pdf, img-merge, img-stitch, translate-pdf, --deploy");
+                Console.WriteLine("Commands: ppt2pdf, word2pdf, merge-pdf, img2pdf, img-merge, img-stitch, translate-pdf, decrypt-pdf, --deploy");
                 return;
             }
 
@@ -121,7 +121,7 @@ namespace Clickra
                                 var f = files[i];
                                 string outName = Path.Combine(outputDir, Path.GetFileNameWithoutExtension(f) + ".pdf");
                                 Console.WriteLine($"[Progress] 正在轉換圖片: {Path.GetFileName(f)} ({i + 1}/{files.Count})...");
-                                FileProcessor.ImagesToPdf(new List<string> { f }, outName, null);
+                                FileProcessor.ConvertImagesToPdf(new List<string> { f }, outName, null);
                             }
                             Console.WriteLine("[Progress] 轉換完成，正在儲存 PDF...");
                         }
@@ -130,7 +130,7 @@ namespace Clickra
                     case "img-merge":
                         ValidateExtensions(files, command, quiet, ".jpg", ".jpeg", ".png", ".bmp", ".gif", ".tiff", ".webp");
                         RequireMinFiles(files, command, 2, quiet);
-                        if (quiet) FileProcessor.ImagesToPdf(files, Path.Combine(outputDir, "Merged_Images.pdf"), (curr, tot, msg) => Console.WriteLine($"[Progress] {msg}"));
+                        if (quiet) FileProcessor.ConvertImagesToPdf(files, Path.Combine(outputDir, "Merged_Images.pdf"), (curr, tot, msg) => Console.WriteLine($"[Progress] {msg}"));
                         else ProgressWindow.Show(command, files);
                         break;
                     case "img-stitch":
@@ -159,15 +159,38 @@ namespace Clickra
                         }
                         else ProgressWindow.Show(command, files);
                         break;
-                    case "dump-layout":
+                    case "decrypt-pdf":
                         ValidateExtensions(files, command, quiet, ".pdf");
                         RequireMinFiles(files, command, 1, quiet);
+                        if (quiet)
                         {
-                            int pageNum = 11;
-                            var pageArg = argList.Skip(1).FirstOrDefault(a => int.TryParse(a, out _));
-                            if (pageArg != null && int.TryParse(pageArg, out int p)) pageNum = p;
-                            Console.Write(FileProcessor.DumpPageParagraphDiagnostics(files[0], pageNum));
+                            for (int i = 0; i < files.Count; i++)
+                            {
+                                var f = files[i];
+                                string outName = Path.Combine(outputDir, Path.GetFileNameWithoutExtension(f) + "_decrypted.pdf");
+                                Console.WriteLine($"[Progress] 正在移除密碼: {Path.GetFileName(f)} ({i + 1}/{files.Count})...");
+
+                                try
+                                {
+                                    FileProcessor.DecryptPdf(f, outName, "", (curr, tot, msg) => Console.WriteLine($"[Progress] {msg}"));
+                                }
+                                catch (Exception ex)
+                                {
+                                    bool isPasswordError = ex is PdfSharp.Pdf.IO.PdfReaderException &&
+                                                           ex.Message.Contains("password", StringComparison.OrdinalIgnoreCase);
+
+                                    if (isPasswordError)
+                                    {
+                                        throw new InvalidOperationException(Localization.T("error_pdf_password_quiet", ClickraStorage.GetSetting("Language")));
+                                    }
+                                    else
+                                    {
+                                        throw;
+                                    }
+                                }
+                            }
                         }
+                        else ProgressWindow.Show(command, files);
                         break;
 #if DEBUG
                     case "test-layout":
@@ -297,63 +320,6 @@ namespace Clickra
                 if (!quiet) ShowWarning(msg, "Clickra — 檔案數量不足");
                 Environment.Exit(1);
             }
-        }
-
-
-        static void DeployAssets(string targetDir)
-        {
-            if (!Directory.Exists(targetDir)) Directory.CreateDirectory(targetDir);
-
-            var assembly = Assembly.GetExecutingAssembly();
-            var resources = new Dictionary<string, string>
-            {
-                { "Clickra.Resources.AppxManifest.xml", "AppxManifest.xml" },
-                { "Clickra.Resources.app.png", "app.png" },
-                { "Clickra.Resources.Clickra.exe.manifest", "Clickra.exe.manifest" },
-                { "Clickra.Resources.ClickraShell.dll.manifest", "ClickraShell.dll.manifest" },
-                { "Clickra.Resources.ClickraShell.dll", "ClickraShell.dll" }
-            };
-
-            foreach (var res in resources)
-            {
-                string targetPath = Path.Combine(targetDir, res.Value);
-                Console.WriteLine($"Deploying {res.Value}...");
-
-                try
-                {
-                    WriteResourceToFile(assembly, res.Key, targetPath);
-                }
-                catch (IOException)
-                {
-                    // 檔案鎖定處理邏輯：如果被佔用，嘗試改名備份
-                    string timestamp = DateTime.Now.ToString("yyyyMMdd_HHmmss");
-                    string backupPath = targetPath + ".old_" + timestamp;
-                    try
-                    {
-                        Console.WriteLine($"[Warning] File {res.Value} is locked. Renaming to bypass lock...");
-                        File.Move(targetPath, backupPath);
-                        WriteResourceToFile(assembly, res.Key, targetPath);
-                        Console.WriteLine("Successfully deployed via rename-bypass.");
-                    }
-                    catch (Exception ex)
-                    {
-                        Console.WriteLine($"[Error] Critical failure deploying {res.Value}: {ex.Message}");
-                    }
-                }
-                catch (Exception ex)
-                {
-                    Console.WriteLine($"[Error] Failed to deploy {res.Value}: {ex.Message}");
-                }
-            }
-            Console.WriteLine("Deployment completed.");
-        }
-
-        static void WriteResourceToFile(Assembly assembly, string resourceName, string targetPath)
-        {
-            using var stream = assembly.GetManifestResourceStream(resourceName);
-            if (stream == null) throw new Exception($"Resource {resourceName} not found.");
-            using var fileStream = File.Create(targetPath);
-            stream.CopyTo(fileStream);
         }
     }
 }

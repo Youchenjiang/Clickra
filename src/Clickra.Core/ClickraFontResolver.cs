@@ -1,11 +1,14 @@
 using System;
 using System.IO;
+using System.Reflection;
 using PdfSharp.Fonts;
 
 namespace Clickra.Core
 {
     public class ClickraFontResolver : IFontResolver
     {
+        public string DefaultFontName => "Arial";
+
         public FontResolverInfo? ResolveTypeface(string familyName, bool isBold, bool isItalic)
         {
             string suffix = "";
@@ -21,10 +24,6 @@ namespace Clickra.Core
             string name = familyName.ToLowerInvariant().Trim();
 
             // Map family names to unique faces
-            if (name.Contains("dfkai") || name.Contains("kaiu") || name.Contains("標楷") || name.Contains("标楷"))
-            {
-                return new FontResolverInfo("dfkai-sb" + suffix);
-            }
             if (name.Contains("jhenghei") || name.Contains("正黑"))
             {
                 return new FontResolverInfo("msjh" + suffix);
@@ -41,7 +40,7 @@ namespace Clickra.Core
             {
                 return new FontResolverInfo("msgothic" + suffix);
             }
-            if (name.Contains("cambria") || name.Contains("math"))
+            if (name.Contains("cambria"))
             {
                 return new FontResolverInfo("cambria" + suffix);
             }
@@ -49,7 +48,7 @@ namespace Clickra.Core
             {
                 return new FontResolverInfo("times" + suffix);
             }
-            if (name.Contains("segoe ui symbol") || name.Contains("symbol") || name.Contains("cmsy") || name.Contains("msam") || name.Contains("msbm"))
+            if (name.Contains("segoe ui symbol") || name.Contains("symbol") || name.Contains("math") || name.Contains("cmsy") || name.Contains("msam") || name.Contains("msbm"))
             {
                 return new FontResolverInfo("seguisym");
             }
@@ -87,7 +86,7 @@ namespace Clickra.Core
             }
 
             // Fallback for CJK faces if the file is missing
-            if (baseFace == "dfkai-sb" || baseFace == "msjh" || baseFace == "msgothic" || baseFace == "msyh" || baseFace == "malgun")
+            if (baseFace == "msjh" || baseFace == "msgothic" || baseFace == "msyh" || baseFace == "malgun")
             {
                 string systemDir = Environment.GetFolderPath(Environment.SpecialFolder.System);
                 string winFonts = Path.Combine(systemDir, "..", "Fonts");
@@ -130,20 +129,9 @@ namespace Clickra.Core
             string winFonts = Path.Combine(systemDir, "..", "Fonts");
             string file = baseFace switch
             {
-                "dfkai-sb" => "kaiu.ttf", // Always kaiu.ttf; simsunb.ttf embeds as SimSun-ExtB with broken CJK cmap
-                "msjh" => style switch // TTC not supported by PDFsharp; bold uses simsunb to avoid simulated-bold corruption
-                {
-                    "b" => "simsunb.ttf",
-                    "bi" => "simsunb.ttf",
-                    _ => "kaiu.ttf"
-                },
-                "msyh" => style switch
-                {
-                    "b" => "simsunb.ttf",
-                    "bi" => "simsunb.ttf",
-                    _ => "kaiu.ttf"
-                },
-                "msgothic" => "kaiu.ttf", // MS Gothic is TTC, fallback to Traditional Chinese TTF (contains kanji)
+                "msjh" => "msjh.ttc", // Use standard Windows Microsoft JhengHei TTC
+                "msyh" => "msyh.ttc", // Use standard Windows Microsoft YaHei TTC
+                "msgothic" => "msgothic.ttc", // Use standard Windows MS Gothic TTC
                 "malgun" => style switch // Malgun Gothic (Korean)
                 {
                     "b" => "malgunbd.ttf",
@@ -162,7 +150,7 @@ namespace Clickra.Core
                     "b" => "cambriab.ttf",
                     "i" => "cambriai.ttf",
                     "bi" => "cambriaz.ttf",
-                    _ => "times.ttf" // Cambria regular is TTC, fallback to Times New Roman TTF to avoid PDFsharp crash
+                    _ => "cambria.ttc"
                 },
                 "times" => style switch
                 {

@@ -3,7 +3,7 @@
 ## 1. Git 完整性
 - **禁止 Nuke-and-Pave**：嚴禁刪除舊檔案再新增同名檔案。改名必須使用 `git mv`。
 - **原子化提交**：一個 Commit 只做一件事。更名與邏輯修改必須分開。
-- **版本號同步**：每次修改功能或 UI 後，必須執行 `powershell -File scripts/bump_version.ps1 -Build` 增加 Patch（第 3 碼，且第四碼 Revision 保持為 0）、同步版本號（含 README 與 MSIX AppxManifest.xml）並自動重新編譯產物，以確保 Windows 11 選單快取刷新且內外版本一致，同時符合微軟商店的版號規範。
+- **版本號同步**：每次修改功能或 UI 後，必須執行 `powershell -File scripts/bump_version.ps1 -Build` 增加 Patch（第 3 碼，且第四碼 Revision 保持為 0）、同步版本號（含 README、README.zh-TW.md、CHANGELOG.md 與 MSIX AppxManifest.xml）並自動重新編譯產物，以確保 Windows 11 選單快取刷新且內外版本一致，同時符合微軟商店的版號規範。
 - **Commit 審核**：在執行 Commit 之前，必須執行 `git status` 確認沒有暫存 test 垃圾。
 - **Tag 規範**：在正式對外發布或商店提交、並將版本號整理為 `X.Y.Z.0` 後，必須在本機建立對應的 Git Tag（格式為 `vX.Y.Z.0`）。禁止直接 push 到 `main`、`release` 等受保護分支；`feature/*`、`hotfix/*` 等工作分支可推送到遠端以建立 Pull Request。若需推送 Tag，可使用 `git push origin vX.Y.Z.0`。
 
@@ -13,6 +13,21 @@
 - **動態路徑**：在 Shell Extension 中存取外部資源（如圖標、執行檔）時，必須使用 `ShellUtils` 獲取執行期路徑，嚴禁假設檔案位於 `%LocalAppData%`。
 - **本地驗證**：修改 CLI 邏輯後，必須手動執行 `./Clickra.exe [command]` 並檢查輸出檔案。修改封裝邏輯後，須執行 `scripts/build_msix.ps1` 檢查 `Layout` 結構。
 
-## 3. 溝通協議
+## 3. 命名規範
+- **方法命名**：遵循 verb-noun 模式，如 `GetLogicalWidth`、`ProcessFile`、`ValidateExtensions`。
+- **屬性命名**：使用 PascalCase，如 `_dpiScale`、`_activeTab`。
+- **常數命名**：Win32 常數統一放在 `Native/Win32.cs`，使用 PascalCase，如 `IDC_HAND`、`WS_CLIPCHILDREN`。
+- **色彩常數**：統一放在 `UIHelper.cs`，使用語意化命名，如 `BgCard`、`BorderDefault`、`TextPrimary`。
+- **檔案命名**：Partial class 使用 `ClassName.Part.cs` 格式，如 `DashboardWindow.Paint.cs`。
+- **避免單字元變數**：在長方法中使用描述性名稱，如 `inputLabelW` 而非 `w1`。
+
+## 4. 架構規則
+- **三層架構**：`Clickra.CLI`（UI 層）→ `Clickra.Core`（核心邏輯）→ `ClickraShell`（Windows 整合）。
+- **Partial Class 拆分**：大檔案按功能拆分，每個 partial class 檔案職責單一。
+- **Processor 繼承**：單一檔案處理繼承 `SingleFileProcessorBase`，多檔案處理繼承 `MultiFileProcessorBase`。
+- **UI 工具方法**：共用的 UI 繪圖方法統一放在 `UIHelper.cs`。
+- **Win32 互動**：所有 P/Invoke 聲明統一放在 `Native/Win32.cs`。
+
+## 5. 溝通協議
 - **禁止自主 Push**：除非使用者明確下達 `/auto_commit` 或 `git push` 指令，否則禁止推送。
 - **Diff 摘要**：在結束 turn 之前，若有變動，必須簡述受影響的檔案與變動行數。

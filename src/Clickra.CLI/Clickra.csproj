@@ -2,7 +2,7 @@
 
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
-    <TargetFramework>net10.0</TargetFramework>
+    <TargetFramework>net10.0-windows</TargetFramework>
     <ApplicationIcon>../resources/app.ico</ApplicationIcon>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
@@ -12,11 +12,12 @@
     <PublishAot>true</PublishAot>
     <OptimizationPreference>Speed</OptimizationPreference>
     <CopyOutputSymbolsToPublishDirectory>false</CopyOutputSymbolsToPublishDirectory>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="PDFsharp" Version="6.2.4" />
-    <PackageReference Include="System.Drawing.Common" Version="10.0.8" />
+    <PackageReference Include="PdfSharp" Version="6.2.4" />
+    <PackageReference Include="System.Drawing.Common" Version="10.0.9" />
   </ItemGroup>
 
   <ItemGroup>

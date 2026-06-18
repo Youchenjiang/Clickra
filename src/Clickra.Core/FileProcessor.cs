@@ -14,199 +14,42 @@ using PdfSharp.Drawing;
 using System.Drawing;
 using UglyToad.PdfPig.DocumentLayoutAnalysis.PageSegmenter;
 using UglyToad.PdfPig.DocumentLayoutAnalysis.WordExtractor;
+using Clickra.Core.Processors;
 
 namespace Clickra.Core
 {
     public static class FileProcessor
     {
-
         public static void MergePdfs(List<string> files, string outputPath, Action<int, int, string>? onProgress = null, CancellationToken cancellationToken = default)
         {
-            int total = files.Count;
-            using var outDoc = new PdfDocument();
-            for (int i = 0; i < files.Count; i++)
-            {
-                cancellationToken.ThrowIfCancellationRequested();
-                try { ClickraStorage.SetActiveRecordIndex(i); } catch { }
-                var f = files[i];
-                onProgress?.Invoke((i * 100) + 50, total * 100, $"正在合併: {Path.GetFileName(f)} ({i + 1}/{total})...");
-                using var inDoc = PdfReader.Open(f, PdfDocumentOpenMode.Import);
-                for (int j = 0; j < inDoc.PageCount; j++)
-                {
-                    cancellationToken.ThrowIfCancellationRequested();
-                    outDoc.AddPage(inDoc.Pages[j]);
-                }
-            }
-            cancellationToken.ThrowIfCancellationRequested();
-            onProgress?.Invoke(total * 100, total * 100, "合併完成，正在儲存檔案...");
-            outDoc.Save(outputPath);
+            var processor = new PdfMergeProcessor();
+            processor.Process(files, outputPath, null, onProgress, cancellationToken);
         }
 
-        public static void ImagesToPdf(List<string> files, string outputPath, Action<int, int, string>? onProgress = null, CancellationToken cancellationToken = default)
+        public static void DecryptPdf(string inputPath, string outputPath, string password = "", Action<int, int, string>? onProgress = null, CancellationToken cancellationToken = default)
         {
-            int total = files.Count;
-            using var doc = new PdfDocument();
-            for (int i = 0; i < files.Count; i++)
-            {
-                cancellationToken.ThrowIfCancellationRequested();
-                try { ClickraStorage.SetActiveRecordIndex(i); } catch { }
-                var f = files[i];
-                onProgress?.Invoke((i * 100) + 50, total * 100, $"正在處理圖片: {Path.GetFileName(f)} ({i + 1}/{total})...");
-                if (!File.Exists(f)) throw new FileNotFoundException("Image file not found", f);
-                using var ximg = XImage.FromFile(f);
-                var page = doc.AddPage();
-                
-                double resolutionX = ximg.HorizontalResolution > 0 ? ximg.HorizontalResolution : 72.0;
-                double resolutionY = ximg.VerticalResolution > 0 ? ximg.VerticalResolution : 72.0;
-                
-                page.Width = ximg.PixelWidth * 72.0 / resolutionX;
-                page.Height = ximg.PixelHeight * 72.0 / resolutionY;
+            var processor = new PdfDecryptProcessor();
+            var options = new Dictionary<string, object>();
+            if (!string.IsNullOrEmpty(password)) options["password"] = password;
+            processor.Process(new List<string> { inputPath }, outputPath, options, onProgress, cancellationToken);
+        }
 
-                using var gfx = XGraphics.FromPdfPage(page);
-                gfx.DrawImage(ximg, 0, 0, page.Width, page.Height);
-            }
-            cancellationToken.ThrowIfCancellationRequested();
-            onProgress?.Invoke(total * 100, total * 100, "轉換完成，正在儲存 PDF...");
-            doc.Save(outputPath);
+        public static void ConvertImagesToPdf(List<string> files, string outputPath, Action<int, int, string>? onProgress = null, CancellationToken cancellationToken = default)
+        {
+            var processor = new ImageToPdfProcessor();
+            processor.Process(files, outputPath, null, onProgress, cancellationToken);
         }
 
         public static void StitchImages(List<string> files, string outputPath, Action<int, int, string>? onProgress = null, CancellationToken cancellationToken = default)
         {
-            int total = files.Count;
-            onProgress?.Invoke(10, total * 100, "正在分析圖片尺寸...");
-            cancellationToken.ThrowIfCancellationRequested();
-            List<Image> images = new List<Image>();
-            try
-            {
-                foreach (var f in files)
-                {
-                    cancellationToken.ThrowIfCancellationRequested();
-                    images.Add(Image.FromFile(f));
-                }
-                
-                int totalWidth = images.Max(img => img.Width);
-                int totalHeight = images.Sum(img => img.Height);
-
-                using var stitched = new Bitmap(totalWidth, totalHeight);
-                using var gfx = Graphics.FromImage(stitched);
-                gfx.Clear(Color.White);
-
-                int currentY = 0;
-                for (int i = 0; i < images.Count; i++)
-                {
-                    cancellationToken.ThrowIfCancellationRequested();
-                    try { ClickraStorage.SetActiveRecordIndex(i); } catch { }
-                    var img = images[i];
-                    onProgress?.Invoke((i * 100) + 50, total * 100, $"正在拼接圖片 ({i + 1}/{total})...");
-                    int x = (totalWidth - img.Width) / 2;
-                    gfx.DrawImage(img, x, currentY, img.Width, img.Height);
-                    currentY += img.Height;
-                }
-
-                cancellationToken.ThrowIfCancellationRequested();
-                onProgress?.Invoke(total * 100, total * 100, "拼接完成，正在儲存圖片...");
-                stitched.Save(outputPath, System.Drawing.Imaging.ImageFormat.Png);
-            }
-            finally
-            {
-                foreach (var img in images)
-                {
-                    try { img?.Dispose(); } catch { }
-                }
-            }
+            var processor = new ImageStitchProcessor();
+            processor.Process(files, outputPath, null, onProgress, cancellationToken);
         }
 
         public static void ConvertPptToPdf(List<string> files, Action<int, int, string>? onProgress = null, CancellationToken cancellationToken = default)
         {
-            int total = files.Count;
-            for (int i = 0; i < files.Count; i++)
-            {
-                cancellationToken.ThrowIfCancellationRequested();
-                try { ClickraStorage.SetActiveRecordIndex(i); } catch { }
-                var filePath = files[i];
-                int fileIndex = i;
-                string fullPath = Path.GetFullPath(filePath);
-                string outDir = ClickraStorage.GetOutputDir(fullPath);
-                string outputPdfPath = Path.Combine(outDir, Path.GetFileNameWithoutExtension(filePath) + ".pdf");
-                onProgress?.Invoke((fileIndex * 100) + 10, total * 100, $"正在準備轉換 PowerPoint: {Path.GetFileName(filePath)}...");
-
-                string psScript = $@"
-$ErrorActionPreference = 'Stop'
-try {{
-    Write-Host 'PROGRESS:20'
-    $ppt = New-Object -ComObject PowerPoint.Application
-    try {{
-        Write-Host 'PROGRESS:50'
-        $pres = $ppt.Presentations.Open('{fullPath.Replace("'", "''")}', -1, 0, 0)
-        Write-Host 'PROGRESS:80'
-        $pres.SaveAs('{outputPdfPath.Replace("'", "''")}', 32)
-        $pres.Close()
-        Write-Host 'PROGRESS:100'
-    }} finally {{
-        $ppt.Quit()
-        [System.Runtime.InteropServices.Marshal]::ReleaseComObject($ppt) | Out-Null
-    }}
-}} catch {{
-    Write-Error $_.Exception.Message
-    exit 1
-}}";
-
-                var startInfo = new System.Diagnostics.ProcessStartInfo
-                {
-                    FileName = "powershell.exe",
-                    Arguments = $"-NoProfile -ExecutionPolicy Bypass -Command \"{psScript}\"",
-                    UseShellExecute = false,
-                    RedirectStandardOutput = true,
-                    RedirectStandardError = true,
-                    CreateNoWindow = true
-                };
-
-                using var process = System.Diagnostics.Process.Start(startInfo);
-                if (process != null)
-                {
-                    using var registration = cancellationToken.Register(() =>
-                    {
-                        try { process.Kill(true); } catch { }
-                    });
-
-                    process.OutputDataReceived += (s, e) =>
-                    {
-                        if (!string.IsNullOrEmpty(e.Data) && e.Data.StartsWith("PROGRESS:"))
-                        {
-                            if (int.TryParse(e.Data.Substring(9), out int subProg))
-                            {
-                                int currentProgress = (fileIndex * 100) + subProg;
-                                string statusMsg = subProg switch
-                                {
-                                    20 => $"正在啟動 PowerPoint 引擎 ({fileIndex + 1}/{files.Count})...",
-                                    50 => $"正在讀取簡報: {Path.GetFileName(filePath)}...",
-                                    80 => $"正在匯出 PDF: {Path.GetFileName(filePath)}...",
-                                    100 => $"已完成轉換: {Path.GetFileName(filePath)}",
-                                    _ => $"正在轉換 PowerPoint: {Path.GetFileName(filePath)}..."
-                                };
-                                onProgress?.Invoke(currentProgress, total * 100, statusMsg);
-                            }
-                        }
-                    };
-                    process.BeginOutputReadLine();
-                    string error = process.StandardError.ReadToEnd();
-                    process.WaitForExit();
-
-                    cancellationToken.ThrowIfCancellationRequested();
-
-                    if (!File.Exists(outputPdfPath))
-                    {
-                        if (!string.IsNullOrWhiteSpace(error))
-                        {
-                            if (error.Contains("0x80040154") || error.Contains("New-Object"))
-                                throw new Exception("Microsoft PowerPoint is not installed. This feature requires Microsoft PowerPoint to be installed on your system.");
-                            else
-                                throw new Exception($"PowerPoint conversion failed: {error.Trim()}");
-                        }
-                        throw new Exception("PowerPoint conversion failed with unknown error.");
-                    }
-                }
-            }
+            var processor = new PptToPdfProcessor();
+            processor.Process(files, null, null, onProgress, cancellationToken);
         }
 
         public static void ConvertWordToPdf(List<string> files, Action<int, int, string>? onProgress = null, CancellationToken cancellationToken = default)

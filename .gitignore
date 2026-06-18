@@ -11,3 +11,11 @@ packaging/msix/Layout/
 
 scratch/
 .codebase-memory/
+test_pdfs/
+tmp/
+__pycache__/
+# Local PDF translation/debug artifacts generated from ad-hoc runs.
+/*.log
+/*_renderdbg.log
+/*_translated.pdf
+/*_p*.pdf
