@@ -195,7 +195,7 @@ namespace Clickra
                             var page = pigDoc.GetPage(1);
                             foreach (var letter in page.Letters)
                             {
-                                if (letter.FontName.Contains("CMSY", StringComparison.OrdinalIgnoreCase))
+                                if (letter.FontName?.Contains("CMSY", StringComparison.OrdinalIgnoreCase) == true)
                                 {
                                     Console.WriteLine($"Letter: '{letter.Value}', Font: {letter.FontName}, Size: {letter.FontSize}, Bytes: {string.Join(",", System.Text.Encoding.UTF8.GetBytes(letter.Value))}");
                                 }

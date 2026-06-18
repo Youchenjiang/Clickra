@@ -637,9 +637,9 @@ namespace Clickra.Core.Processors
             {
                 foreach (var img in pigPage.GetImages())
                 {
-                    if (img.Bounds.Width > 80 && img.Bounds.Height > 80)
+                    if (img.BoundingBox.Width > 80 && img.BoundingBox.Height > 80)
                     {
-                        var bounds = img.Bounds;
+                        var bounds = img.BoundingBox;
                         bool intersectX = (para.X0 <= bounds.Right) && (para.X1 >= bounds.Left);
                         bool intersectY = (para.Y0 <= bounds.Top) && (para.Y1 >= bounds.Bottom);
                         if (intersectX && intersectY)
@@ -1689,7 +1689,7 @@ namespace Clickra.Core.Processors
                     RelativeY = l.Location.Y - letters[0].Location.Y
                 });
             }
-            Width = letters.Max(l => l.GlyphRectangle.Right) - minX;
+            Width = letters.Max(l => l.BoundingBox.Right) - minX;
         }
     }
 
