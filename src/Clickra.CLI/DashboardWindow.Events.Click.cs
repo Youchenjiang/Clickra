@@ -198,7 +198,7 @@ namespace Clickra.UI
                                 string textToScroll = "";
                                 if (detailFieldIndex == 0)
                                 {
-                                    textToScroll = _historyEntries[clickedIndex].InputPaths.Replace(";", ", ");
+                                    textToScroll = (_historyEntries[clickedIndex].InputPaths ?? "").Replace(";", ", ");
                                 }
                                 else if (detailFieldIndex == 1)
                                 {

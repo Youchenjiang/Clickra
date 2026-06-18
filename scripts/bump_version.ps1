@@ -89,9 +89,9 @@ foreach ($f in $readmeFiles) {
         # 如果有3筆以上，把第3筆移到 CHANGELOG
         if ($rowCount -ge 3 -and $tableStart -ge 0) {
             $thirdRow = $lines[$tableStart + 2]
-            if ($thirdRow -match '\*\*(v[\d\.]+)\*\*\s*\|\s*(\d{4}/\d{2}/\d{2})\s*\|\s*(.+?)\s*\|') {
+            if ($thirdRow -match '\*\*(v[\d\.]+)\*\*\s*\|\s*([^|]+?)\s*\|\s*(.+?)\s*\|') {
                 $oldVersion = $Matches[1]
-                $oldDate = $Matches[2] -replace '/', '-'
+                $oldDate = (Get-Date $Matches[2].Trim()).ToString("yyyy-MM-dd")
                 $oldDesc = $Matches[3].Trim()
 
                 # 移除 README 中的第三筆

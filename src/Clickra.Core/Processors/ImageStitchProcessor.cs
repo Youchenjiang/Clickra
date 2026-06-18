@@ -18,6 +18,7 @@ namespace Clickra.Core.Processors
 
         public new void Process(List<string> files, string? outputPath, Dictionary<string, object>? options = null, Action<int, int, string>? onProgress = null, CancellationToken cancellationToken = default)
         {
+            if (files == null || files.Count == 0) throw new ArgumentException("The files list cannot be null or empty.", nameof(files));
             if (string.IsNullOrEmpty(outputPath)) throw new ArgumentException("Output path is required for image stitching.");
 
             onProgress?.Invoke(10, files.Count * 100, "正在分析圖片尺寸...");
