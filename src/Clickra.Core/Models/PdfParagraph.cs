@@ -1,6 +1,7 @@
 using System.Text;
 using System.Text.RegularExpressions;
 using Clickra.Core;
+using Clickra.Core.Processors;
 using UglyToad.PdfPig.Content;
 using UglyToad.PdfPig.DocumentLayoutAnalysis;
 
@@ -172,7 +173,7 @@ namespace Clickra.Core.Models
                         letterCount++;
 
                         totalCount++;
-                        if (FileProcessor.IsSourceFontBold(letter.FontName))
+                        if (FontUtilities.IsSourceFontBold(letter.FontName))
                         {
                             boldCount++;
                         }

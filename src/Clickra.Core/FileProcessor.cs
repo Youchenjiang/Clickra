@@ -477,7 +477,7 @@ try {{
                         // When the previous line is a heading, don't split on prevLineEndedEarly
                         // (headings naturally end early; e.g., '2.1 Text Representation and Modality' + 'Alignment')
                         bool shouldSplit = startsNew || isVerticalGapLarge || crossColumnSplit ||
-                            (prevLineEndedEarly && !prevLineWasHeading) || (prevLineWasHeading && !IsLineBold(line)) ||
+                            (prevLineEndedEarly && !prevLineWasHeading) || (prevLineWasHeading && !FontUtilities.IsLineBold(line)) ||
                             prevLineHasGap || currLineHasGap || forceSplit;
 
                         if (currentGroup.Count == 0)
@@ -1348,147 +1348,6 @@ try {{
         }
 
 
-        /// <summary>
-        /// LaTeX NimbusRom "Medi"/"MediItal" is medium weight body text (e.g. IEEE Abstract), not bold.
-        /// </summary>
-        public static bool IsLaTeXMediumFont(string? fontName)
-        {
-            return !string.IsNullOrEmpty(fontName) &&
-                   fontName.Contains("Medi", StringComparison.OrdinalIgnoreCase);
-        }
-
-        public static bool IsSourceFontBold(string? fontName)
-        {
-            if (string.IsNullOrEmpty(fontName) || IsLaTeXMediumFont(fontName)) return false;
-            return fontName.Contains("Bold", StringComparison.OrdinalIgnoreCase) ||
-                   fontName.Contains("bx", StringComparison.OrdinalIgnoreCase) ||
-                   fontName.Contains("bf", StringComparison.OrdinalIgnoreCase);
-        }
-
-        private static bool IsCjkTranslationFont(string fontName)
-        {
-            return fontName.Contains("DFKai", StringComparison.OrdinalIgnoreCase) ||
-                   fontName.Contains("kaiu", StringComparison.OrdinalIgnoreCase) ||
-                   fontName.Contains("Malgun", StringComparison.OrdinalIgnoreCase) ||
-                   fontName.Contains("JhengHei", StringComparison.OrdinalIgnoreCase) ||
-                   fontName.Contains("Microsoft JhengHei", StringComparison.OrdinalIgnoreCase) ||
-                   fontName.Contains("Microsoft YaHei", StringComparison.OrdinalIgnoreCase) ||
-                   fontName.Contains("MS Gothic", StringComparison.OrdinalIgnoreCase);
-        }
-
-        public static bool IsLineBold(UglyToad.PdfPig.DocumentLayoutAnalysis.TextLine line)
-        {
-            if (line == null || line.Words == null || line.Words.Count == 0) return false;
-            int totalCount = 0;
-            int boldCount = 0;
-            foreach (var word in line.Words)
-            {
-                foreach (var letter in word.Letters)
-                {
-                    totalCount++;
-                    if (IsSourceFontBold(letter.FontName))
-                    {
-                        boldCount++;
-                    }
-                }
-            }
-            return totalCount > 0 && ((double)boldCount / totalCount) > 0.5;
-        }
-
-        public static string NormalizeMathValue(string val)
-        {
-            if (string.IsNullOrEmpty(val)) return val;
-            var sb = new StringBuilder();
-            for (int i = 0; i < val.Length; i++)
-            {
-                int cp = val[i];
-                if (i < val.Length - 1 && char.IsHighSurrogate(val[i]) && char.IsLowSurrogate(val[i + 1]))
-                {
-                    cp = char.ConvertToUtf32(val[i], val[i + 1]);
-                    i++;
-                }
-
-                // Some embedded math fonts decode missing glyphs as NUL or other
-                // C0 control characters. They are not printable formula content
-                // and otherwise become replacement glyphs / overlapping garbage.
-                if (cp < 0x20 || cp == 0x7F)
-                {
-                    continue;
-                }
-
-                // Map Plane 1 Mathematical Alphanumeric Symbols to ASCII
-                if (cp >= 0x1D400 && cp <= 0x1D7FF)
-                {
-                    // Bold
-                    if (cp >= 0x1D400 && cp <= 0x1D419) sb.Append((char)('A' + (cp - 0x1D400)));
-                    else if (cp >= 0x1D41A && cp <= 0x1D433) sb.Append((char)('a' + (cp - 0x1D41A)));
-                    // Italic
-                    else if (cp >= 0x1D434 && cp <= 0x1D44D) sb.Append((char)('A' + (cp - 0x1D434)));
-                    else if (cp >= 0x1D44E && cp <= 0x1D467) sb.Append((char)('a' + (cp - 0x1D44E)));
-                    // Bold Italic
-                    else if (cp >= 0x1D468 && cp <= 0x1D481) sb.Append((char)('A' + (cp - 0x1D468)));
-                    else if (cp >= 0x1D482 && cp <= 0x1D49B) sb.Append((char)('a' + (cp - 0x1D482)));
-                    // Script
-                    else if (cp >= 0x1D49C && cp <= 0x1D4B5) sb.Append((char)('A' + (cp - 0x1D49C)));
-                    else if (cp >= 0x1D4B6 && cp <= 0x1D4CF) sb.Append((char)('a' + (cp - 0x1D4B6)));
-                    // Bold Script
-                    else if (cp >= 0x1D4D0 && cp <= 0x1D4E9) sb.Append((char)('A' + (cp - 0x1D4D0)));
-                    else if (cp >= 0x1D4EA && cp <= 0x1D503) sb.Append((char)('a' + (cp - 0x1D4EA)));
-                    // Fraktur
-                    else if (cp >= 0x1D504 && cp <= 0x1D51D) sb.Append((char)('A' + (cp - 0x1D504)));
-                    else if (cp >= 0x1D51E && cp <= 0x1D537) sb.Append((char)('a' + (cp - 0x1D51E)));
-                    // Double-struck
-                    else if (cp >= 0x1D538 && cp <= 0x1D551) sb.Append((char)('A' + (cp - 0x1D538)));
-                    else if (cp >= 0x1D552 && cp <= 0x1D56B) sb.Append((char)('a' + (cp - 0x1D552)));
-                    // Bold Fraktur
-                    else if (cp >= 0x1D56C && cp <= 0x1D585) sb.Append((char)('A' + (cp - 0x1D56C)));
-                    else if (cp >= 0x1D586 && cp <= 0x1D59F) sb.Append((char)('a' + (cp - 0x1D586)));
-                    // Sans-serif
-                    else if (cp >= 0x1D5A0 && cp <= 0x1D5B9) sb.Append((char)('A' + (cp - 0x1D5A0)));
-                    else if (cp >= 0x1D5BA && cp <= 0x1D5D3) sb.Append((char)('a' + (cp - 0x1D5BA)));
-                    // Sans-serif Bold
-                    else if (cp >= 0x1D5D4 && cp <= 0x1D5ED) sb.Append((char)('A' + (cp - 0x1D5D4)));
-                    else if (cp >= 0x1D5EE && cp <= 0x1D607) sb.Append((char)('a' + (cp - 0x1D5EE)));
-                    // Sans-serif Italic
-                    else if (cp >= 0x1D608 && cp <= 0x1D621) sb.Append((char)('A' + (cp - 0x1D608)));
-                    else if (cp >= 0x1D622 && cp <= 0x1D63B) sb.Append((char)('a' + (cp - 0x1D622)));
-                    // Sans-serif Bold Italic
-                    else if (cp >= 0x1D63C && cp <= 0x1D655) sb.Append((char)('A' + (cp - 0x1D63C)));
-                    else if (cp >= 0x1D656 && cp <= 0x1D66F) sb.Append((char)('a' + (cp - 0x1D656)));
-                    // Monospace
-                    else if (cp >= 0x1D670 && cp <= 0x1D689) sb.Append((char)('A' + (cp - 0x1D670)));
-                    else if (cp >= 0x1D68A && cp <= 0x1D6A3) sb.Append((char)('a' + (cp - 0x1D68A)));
-                    // Math Bold Greek
-                    else if (cp >= 0x1D6A8 && cp <= 0x1D6C0) sb.Append((char)(0x0391 + (cp - 0x1D6A8)));
-                    else if (cp >= 0x1D6C2 && cp <= 0x1D6DA) sb.Append((char)(0x03B1 + (cp - 0x1D6C2)));
-                    // Math Italic Greek
-                    else if (cp >= 0x1D6E2 && cp <= 0x1D6FA) sb.Append((char)(0x0391 + (cp - 0x1D6E2)));
-                    else if (cp >= 0x1D6FC && cp <= 0x1D714) sb.Append((char)(0x03B1 + (cp - 0x1D6FC)));
-                    // Math Bold Italic Greek
-                    else if (cp >= 0x1D71C && cp <= 0x1D734) sb.Append((char)(0x0391 + (cp - 0x1D71C)));
-                    else if (cp >= 0x1D736 && cp <= 0x1D74E) sb.Append((char)(0x03B1 + (cp - 0x1D736)));
-                    // Math Sans-serif Bold Greek
-                    else if (cp >= 0x1D756 && cp <= 0x1D76E) sb.Append((char)(0x0391 + (cp - 0x1D756)));
-                    else if (cp >= 0x1D770 && cp <= 0x1D788) sb.Append((char)(0x03B1 + (cp - 0x1D770)));
-                    // Math Sans-serif Bold Italic Greek
-                    else if (cp >= 0x1D790 && cp <= 0x1D7A8) sb.Append((char)(0x0391 + (cp - 0x1D790)));
-                    else if (cp >= 0x1D7AA && cp <= 0x1D7C2) sb.Append((char)(0x03B1 + (cp - 0x1D7AA)));
-                    // Math Digits
-                    else if (cp >= 0x1D7CE && cp <= 0x1D7D7) sb.Append((char)('0' + (cp - 0x1D7CE)));
-                    else if (cp >= 0x1D7D8 && cp <= 0x1D7E1) sb.Append((char)('0' + (cp - 0x1D7D8)));
-                    else if (cp >= 0x1D7E2 && cp <= 0x1D7EB) sb.Append((char)('0' + (cp - 0x1D7E2)));
-                    else if (cp >= 0x1D7EC && cp <= 0x1D7F5) sb.Append((char)('0' + (cp - 0x1D7EC)));
-                    else if (cp >= 0x1D7F6 && cp <= 0x1D7FF) sb.Append((char)('0' + (cp - 0x1D7F6)));
-                    else sb.Append(char.ConvertFromUtf32(cp));
-                }
-                else
-                {
-                    sb.Append(char.ConvertFromUtf32(cp));
-                }
-            }
-            return sb.ToString();
-        }
-
         public static string PostProcessTranslation(string originalText, string translatedText, string targetLang)
         {
             if (string.IsNullOrEmpty(translatedText)) return translatedText;
@@ -2085,54 +1944,6 @@ try {{
             return overlapX >= minSharedWidth;
         }
 
-        private static XFont GetMathFont(string originalFontName, double fontSize)
-        {
-            bool isItalic = originalFontName.Contains("Italic", StringComparison.OrdinalIgnoreCase) ||
-                            originalFontName.Contains("CMMI", StringComparison.OrdinalIgnoreCase) ||
-                            originalFontName.Contains("mi", StringComparison.OrdinalIgnoreCase);
-            bool isBold = originalFontName.Contains("Bold", StringComparison.OrdinalIgnoreCase);
-
-            var style = XFontStyleEx.Regular;
-            if (isItalic && isBold) style = XFontStyleEx.BoldItalic;
-            else if (isItalic) style = XFontStyleEx.Italic;
-            else if (isBold) style = XFontStyleEx.Bold;
-
-            string fontName = "Times New Roman";
-            if (originalFontName.Contains("Helvetica", StringComparison.OrdinalIgnoreCase) ||
-                originalFontName.Contains("Arial", StringComparison.OrdinalIgnoreCase) ||
-                originalFontName.Contains("Sans", StringComparison.OrdinalIgnoreCase) ||
-                originalFontName.Contains("SFNSText", StringComparison.OrdinalIgnoreCase))
-            {
-                fontName = "Arial";
-            }
-            else if (originalFontName.Contains("Sym", StringComparison.OrdinalIgnoreCase) ||
-                originalFontName.Contains("Math", StringComparison.OrdinalIgnoreCase) ||
-                originalFontName.Contains("MSAM", StringComparison.OrdinalIgnoreCase) ||
-                originalFontName.Contains("MSBM", StringComparison.OrdinalIgnoreCase) ||
-                originalFontName.Contains("CMSY", StringComparison.OrdinalIgnoreCase))
-            {
-                fontName = "Cambria Math";
-            }
-            else if (originalFontName.Contains("Courier", StringComparison.OrdinalIgnoreCase) ||
-                     originalFontName.Contains("Console", StringComparison.OrdinalIgnoreCase) ||
-                     originalFontName.Contains("Inconsolata", StringComparison.OrdinalIgnoreCase) ||
-                     originalFontName.Contains("Typewriter", StringComparison.OrdinalIgnoreCase) ||
-                     originalFontName.Contains("NimbusMon", StringComparison.OrdinalIgnoreCase) ||
-                     originalFontName.Contains("MonL", StringComparison.OrdinalIgnoreCase) ||
-                     originalFontName.Contains("cmtt", StringComparison.OrdinalIgnoreCase) ||
-                     originalFontName.Contains("ectt", StringComparison.OrdinalIgnoreCase) ||
-                     originalFontName.Contains("sftt", StringComparison.OrdinalIgnoreCase) ||
-                     originalFontName.Contains("Teletype", StringComparison.OrdinalIgnoreCase) ||
-                     originalFontName.Contains("Mono", StringComparison.OrdinalIgnoreCase) ||
-                     originalFontName.Contains("Code", StringComparison.OrdinalIgnoreCase) ||
-                     System.Text.RegularExpressions.Regex.IsMatch(originalFontName, @"tt\d+", System.Text.RegularExpressions.RegexOptions.IgnoreCase))
-            {
-                fontName = "Courier New";
-            }
-
-            return new XFont(fontName, fontSize, style);
-        }
-
         private static void RenderBypassedParagraph(XGraphics gfx, PdfParagraph para, string targetFontName)
         {
             double pageHeight = gfx.PageSize.Height;
@@ -2155,18 +1966,18 @@ try {{
 
                 double fontSize = para.IsTable ? tableFontSize : letter.FontSize;
                 XFont font;
-                if (letter.Value.Any(IsCjkCharacter))
+                if (letter.Value.Any(FontUtilities.IsCjkCharacter))
                 {
                     font = new XFont(targetFontName, fontSize, XFontStyleEx.Regular);
                 }
                 else
                 {
-                    font = GetMathFont(letter.FontName, fontSize);
+                    font = FontUtilities.GetMathFont(letter.FontName, fontSize);
                 }
 
-                string drawVal = NormalizeMathValue(letter.Value.Normalize(NormalizationForm.FormKD));
+                string drawVal = FontUtilities.NormalizeMathValue(letter.Value.Normalize(NormalizationForm.FormKD));
                 if (drawVal.Length == 1 &&
-                    (IsMathOrGreekCharacter(drawVal[0]) || drawVal[0] == '*' || drawVal[0] == '†' || drawVal[0] == '‡'))
+                    (FontUtilities.IsMathOrGreekCharacter(drawVal[0]) || drawVal[0] == '*' || drawVal[0] == '†' || drawVal[0] == '‡'))
                 {
                     font = new XFont("Segoe UI Symbol", fontSize, font.Style);
                 }
@@ -2255,10 +2066,10 @@ try {{
                 foreach (var ml in formula.Letters)
                 {
                     double fSize = ml.FontSize;
-                    XFont mathFont = GetMathFont(ml.FontName, fSize);
-                    string drawVal = NormalizeMathValue(ml.Value.Normalize(NormalizationForm.FormKD));
+                    XFont mathFont = FontUtilities.GetMathFont(ml.FontName, fSize);
+                    string drawVal = FontUtilities.NormalizeMathValue(ml.Value.Normalize(NormalizationForm.FormKD));
                     if (drawVal.Length == 1 &&
-                        (IsMathOrGreekCharacter(drawVal[0]) || drawVal[0] == '*' || drawVal[0] == '†' || drawVal[0] == '‡'))
+                        (FontUtilities.IsMathOrGreekCharacter(drawVal[0]) || drawVal[0] == '*' || drawVal[0] == '†' || drawVal[0] == '‡'))
                     {
                         mathFont = new XFont("Segoe UI Symbol", fSize, mathFont.Style);
                     }
@@ -2274,10 +2085,10 @@ try {{
                 var ml = formula.Letters[j];
                 var letter = para.AllLetters[startIdx + j];
                 double fSize = ml.FontSize;
-                XFont mathFont = GetMathFont(ml.FontName, fSize);
-                string drawVal = NormalizeMathValue(ml.Value.Normalize(NormalizationForm.FormKD));
+                XFont mathFont = FontUtilities.GetMathFont(ml.FontName, fSize);
+                string drawVal = FontUtilities.NormalizeMathValue(ml.Value.Normalize(NormalizationForm.FormKD));
                 if (drawVal.Length == 1 &&
-                    (IsMathOrGreekCharacter(drawVal[0]) || drawVal[0] == '*' || drawVal[0] == '†' || drawVal[0] == '‡'))
+                    (FontUtilities.IsMathOrGreekCharacter(drawVal[0]) || drawVal[0] == '*' || drawVal[0] == '†' || drawVal[0] == '‡'))
                 {
                     mathFont = new XFont("Segoe UI Symbol", fSize, mathFont.Style);
                 }
@@ -2285,503 +2096,6 @@ try {{
                 double y = pageHeight - letter.Y;
                 gfx.DrawString(drawVal, mathFont, brush, x, y);
             }
-        }
-
-        private static bool IsMathOrGreekCharacter(char c)
-        {
-            return (c >= 0x0370 && c <= 0x03FF) ||  // Greek
-                   (c >= 0x1F00 && c <= 0x1FFF) ||  // Greek Extended
-                   (c >= 0x2200 && c <= 0x22FF) ||  // Math Operators
-                   (c >= 0x2100 && c <= 0x214F) ||  // Letterlike Symbols (like ℓ, ℒ)
-                   (c >= 0x2190 && c <= 0x21FF) ||  // Arrows
-                   (c >= 0x27C0 && c <= 0x27EF) ||  // Misc Math Symbols A
-                   (c >= 0x2980 && c <= 0x29FF) ||  // Misc Math Symbols B
-                   (c >= 0x2900 && c <= 0x297F) ||  // Supp Arrows B
-                   (c >= 0x27F0 && c <= 0x27FF) ||  // Supp Arrows A
-                   c == '×' || c == '÷' || c == '±' || c == '∓' || c == '∗';
-        }
-
-        private static bool IsLatinExtendedOrSymbol(char c)
-        {
-            if (c >= 0x0080 && c <= 0x024F) return true;
-            return IsMathOrGreekCharacter(c);
-        }
-
-        private static bool IsCjkCharacter(char c)
-        {
-            return (c >= 0x4E00 && c <= 0x9FFF) || // CJK Unified Ideographs
-                   (c >= 0x3400 && c <= 0x4DBF) || // CJK Unified Ideographs Extension A
-                   (c >= 0x3000 && c <= 0x303F) || // CJK Symbols and Punctuation
-                   (c >= 0x3040 && c <= 0x30FF) || // Hiragana & Katakana
-                   (c >= 0x3100 && c <= 0x312F) || // Bopomofo
-                   (c >= 0xAC00 && c <= 0xD7AF) || // Hangul Syllables
-                   (c >= 0x1100 && c <= 0x11FF) || // Hangul Jamo
-                   c == '，' || c == '。' || c == '、' || c == '；' || c == '：' || c == '？' || c == '！';
-        }
-
-        private static string GetCleanFontName(string fontName)
-        {
-            if (string.IsNullOrEmpty(fontName)) return "";
-            int plusIdx = fontName.IndexOf('+');
-            if (plusIdx >= 0 && plusIdx < fontName.Length - 1)
-            {
-                return fontName.Substring(plusIdx + 1);
-            }
-            return fontName;
-        }
-
-        private static bool IsMonospaceFont(string fontName)
-        {
-            if (string.IsNullOrEmpty(fontName)) return false;
-            return fontName.Contains("Courier", StringComparison.OrdinalIgnoreCase) ||
-                   fontName.Contains("Console", StringComparison.OrdinalIgnoreCase) ||
-                   fontName.Contains("Inconsolata", StringComparison.OrdinalIgnoreCase) ||
-                   fontName.Contains("Typewriter", StringComparison.OrdinalIgnoreCase) ||
-                   fontName.Contains("NimbusMon", StringComparison.OrdinalIgnoreCase) ||
-                   fontName.Contains("MonL", StringComparison.OrdinalIgnoreCase) ||
-                   fontName.Contains("cmtt", StringComparison.OrdinalIgnoreCase) ||
-                   fontName.Contains("ectt", StringComparison.OrdinalIgnoreCase) ||
-                   fontName.Contains("sftt", StringComparison.OrdinalIgnoreCase) ||
-                   fontName.Contains("Teletype", StringComparison.OrdinalIgnoreCase) ||
-                   fontName.Contains("Mono", StringComparison.OrdinalIgnoreCase) ||
-                   fontName.Contains("Code", StringComparison.OrdinalIgnoreCase) ||
-                   System.Text.RegularExpressions.Regex.IsMatch(fontName, @"tt\d+", System.Text.RegularExpressions.RegexOptions.IgnoreCase);
-        }
-
-        private static bool ShouldMergeFormula(MathFormula formula, double averageFontSize)
-        {
-            if (formula.Letters.Count <= 1) return false;
-
-            // If the formula contains any math or Greek characters, don't merge it so they can be drawn with custom fonts
-            foreach (var l in formula.Letters)
-            {
-                if (l.Value.Length == 1 && IsMathOrGreekCharacter(l.Value[0]))
-                {
-                    return false;
-                }
-            }
-
-            double minY = formula.Letters.Min(l => l.RelativeY);
-            double maxY = formula.Letters.Max(l => l.RelativeY);
-            double yDiff = maxY - minY;
-
-            if (yDiff > averageFontSize * 0.15) return false;
-
-            return true;
-        }
-
-        public static bool StartsNewParagraphOrSection(string text)
-        {
-            string trimmed = text.Trim();
-            if (string.IsNullOrEmpty(trimmed)) return false;
-
-            if (trimmed.Equals("Keywords", StringComparison.OrdinalIgnoreCase) ||
-                trimmed.Equals("Keyword", StringComparison.OrdinalIgnoreCase) ||
-                trimmed.Equals("關鍵字", StringComparison.OrdinalIgnoreCase) ||
-                trimmed.Equals("关键字", StringComparison.OrdinalIgnoreCase))
-            {
-                return true;
-            }
-
-            // Matches "[1]", "1.", "1)", "a.", "a)", "•", "-", "*"
-            if (System.Text.RegularExpressions.Regex.IsMatch(trimmed, @"^(?:\[\d+\]|\d+[\.\)]|[a-zA-Z][\.\)]|[•\-\*])(?:\s|$)")) return true;
-
-            // Check if it's a section header
-            if (System.Text.RegularExpressions.Regex.IsMatch(trimmed, @"^\d{1,2}(?:\.\d{1,2}){0,4}\.?(?:\s+[^a-z]|$)")) return true;
-            if (trimmed.Length < 30 && trimmed.Any(char.IsLetter) && trimmed.All(c => !char.IsLower(c))) return true;
-
-            // Check for Table/Figure/RQ captions/headings to prevent them from merging with nearby text blocks
-            if (System.Text.RegularExpressions.Regex.IsMatch(trimmed, @"^(?:Table|Figure|Fig|表|圖|RQ\d+)\b", System.Text.RegularExpressions.RegexOptions.IgnoreCase)) return true;
-
-            return false;
-        }
-
-        public static bool IsHeadingLine(UglyToad.PdfPig.DocumentLayoutAnalysis.TextLine line)
-        {
-            string txt = line.Text.Trim();
-            if (string.IsNullOrEmpty(txt)) return false;
-
-            // Section numbering like "1. Introduction" or "3.4.1 Projection before Fusion" or "3.2.1 資料收集"
-            if (System.Text.RegularExpressions.Regex.IsMatch(txt, @"^\d{1,2}(?:\.\d{1,2}){0,4}\.?(?:\s+[^a-z]|$)")) return true;
-
-            // Lettered subsections like "A. Background" or "C. Case Studies"
-            if (System.Text.RegularExpressions.Regex.IsMatch(txt, @"^[A-Z]\.\s+")) return true;
-
-            // Appendix subsections like "B.3 Benchmark Coverage"
-            if (System.Text.RegularExpressions.Regex.IsMatch(txt, @"^[A-Z]\.\d+\s")) return true;
-
-            // Uppercase section headers like "REFERENCES", "ABSTRACT", "APPENDIX"
-            if (txt.Length < 30 && txt.Any(char.IsLetter) && txt.All(c => !char.IsLower(c)))
-            {
-                if (txt.Length <= 6 && !txt.Contains(' ') &&
-                    txt.All(c => char.IsUpper(c) || char.IsDigit(c) || c == '&'))
-                {
-                    return false;
-                }
-                return true;
-            }
-
-            return false;
-        }
-
-        public class MergedBlock
-        {
-            public List<UglyToad.PdfPig.DocumentLayoutAnalysis.TextLine> TextLines { get; set; } = new();
-            public double Right { get; set; }
-        }
-
-        private static (UglyToad.PdfPig.DocumentLayoutAnalysis.TextLine? left, UglyToad.PdfPig.DocumentLayoutAnalysis.TextLine? right) SplitLine(UglyToad.PdfPig.DocumentLayoutAnalysis.TextLine line, double center)
-        {
-            if (line.BoundingBox.Left >= center || line.BoundingBox.Right <= center)
-            {
-                return (null, null);
-            }
-
-            var sortedWords = line.Words.OrderBy(w => w.BoundingBox.Left).ToList();
-            if (sortedWords.Count < 2) return (null, null);
-
-            for (int i = 0; i < sortedWords.Count - 1; i++)
-            {
-                var w1 = sortedWords[i];
-                var w2 = sortedWords[i + 1];
-
-                if (w1.BoundingBox.Right < center && w2.BoundingBox.Left > center)
-                {
-                    double gap = w2.BoundingBox.Left - w1.BoundingBox.Right;
-                    if (gap >= 8.0) // gutter threshold
-                    {
-                        var leftWords = sortedWords.Take(i + 1).ToList();
-                        var rightWords = sortedWords.Skip(i + 1).ToList();
-
-                        var leftLine = new UglyToad.PdfPig.DocumentLayoutAnalysis.TextLine(leftWords, " ");
-                        var rightLine = new UglyToad.PdfPig.DocumentLayoutAnalysis.TextLine(rightWords, " ");
-
-                        return (leftLine, rightLine);
-                    }
-                }
-            }
-
-            return (null, null);
-        }
-
-        public static List<MergedBlock> GetMergedBlocks(IEnumerable<UglyToad.PdfPig.DocumentLayoutAnalysis.TextBlock> docstrumBlocks, double pageWidth, bool isTablePage = false)
-        {
-            double maxGap = isTablePage ? 8.0 : 15.0;
-            double center = pageWidth / 2.0;
-
-            var initialBlocks = docstrumBlocks.Select(b => new MergedBlock
-            {
-                TextLines = b.TextLines.ToList(),
-                Right = b.BoundingBox.Right
-            }).ToList();
-
-            var list = new List<MergedBlock>();
-
-            // Always split Docstrum blocks at the page center. Skipping this on table pages
-            // merges left-column tables with right-column body text into full-width paragraphs.
-            foreach (var b in initialBlocks)
-            {
-                var leftLines = new List<UglyToad.PdfPig.DocumentLayoutAnalysis.TextLine>();
-                var rightLines = new List<UglyToad.PdfPig.DocumentLayoutAnalysis.TextLine>();
-                bool hasSpanningLine = false;
-
-                foreach (var line in b.TextLines)
-                {
-                    if (line.BoundingBox.Left < center && line.BoundingBox.Right > center)
-                    {
-                        var (leftPart, rightPart) = SplitLine(line, center);
-                        if (leftPart != null && rightPart != null)
-                        {
-                            leftLines.Add(leftPart);
-                            rightLines.Add(rightPart);
-                        }
-                        else
-                        {
-                            hasSpanningLine = true;
-                            break;
-                        }
-                    }
-                    else if (line.BoundingBox.Right <= center)
-                    {
-                        leftLines.Add(line);
-                    }
-                    else
-                    {
-                        rightLines.Add(line);
-                    }
-                }
-
-                if (hasSpanningLine)
-                {
-                    list.Add(b);
-                }
-                else
-                {
-                    if (leftLines.Count > 0)
-                    {
-                        list.Add(new MergedBlock
-                        {
-                            TextLines = leftLines,
-                            Right = leftLines.Max(l => l.BoundingBox.Right)
-                        });
-                    }
-                    if (rightLines.Count > 0)
-                    {
-                        list.Add(new MergedBlock
-                        {
-                            TextLines = rightLines,
-                            Right = rightLines.Max(l => l.BoundingBox.Right)
-                        });
-                    }
-                }
-            }
-
-            bool mergedAny = true;
-            while (mergedAny)
-            {
-                mergedAny = false;
-                for (int i = 0; i < list.Count; i++)
-                {
-                    var b1 = list[i];
-                    for (int j = i + 1; j < list.Count; j++)
-                    {
-                        var b2 = list[j];
-
-                        // Never merge blocks from different columns
-                        double b1Center = b1.TextLines.Average(l => (l.BoundingBox.Left + l.BoundingBox.Right) / 2.0);
-                        double b2Center = b2.TextLines.Average(l => (l.BoundingBox.Left + l.BoundingBox.Right) / 2.0);
-                        if ((b1Center < center) != (b2Center < center)) continue;
-
-                        // Check if they should be merged horizontally
-                        bool canMerge = false;
-                        foreach (var l1 in b1.TextLines)
-                        {
-                            foreach (var l2 in b2.TextLines)
-                            {
-                                double verticalOverlap = Math.Min(l1.BoundingBox.Top, l2.BoundingBox.Top) - Math.Max(l1.BoundingBox.Bottom, l2.BoundingBox.Bottom);
-                                double minHeight = Math.Min(l1.BoundingBox.Height, l2.BoundingBox.Height);
-                                if (minHeight <= 0 || verticalOverlap / minHeight <= 0.5) continue;
-
-                                // Check gap between their horizontal boundaries
-                                double gap = l1.BoundingBox.Left < l2.BoundingBox.Left
-                                    ? l2.BoundingBox.Left - l1.BoundingBox.Right
-                                    : l1.BoundingBox.Left - l2.BoundingBox.Right;
-
-                                double c1 = (l1.BoundingBox.Left + l1.BoundingBox.Right) / 2.0;
-                                double c2 = (l2.BoundingBox.Left + l2.BoundingBox.Right) / 2.0;
-                                bool isL1Left = c1 < center;
-                                bool isL2Left = c2 < center;
-                                double allowedGap = (isL1Left != isL2Left) ? 5.0 : maxGap;
-
-                                if (gap >= -5.0 && gap <= allowedGap)
-                                {
-                                    canMerge = true;
-                                    break;
-                                }
-                            }
-                            if (canMerge) break;
-                        }
-
-                        if (canMerge)
-                        {
-                            // Merge b2 into b1
-                            b1.TextLines.AddRange(b2.TextLines);
-                            b1.Right = Math.Max(b1.Right, b2.Right);
-
-                            list.RemoveAt(j);
-                            mergedAny = true;
-                            break;
-                        }
-                    }
-                    if (mergedAny) break;
-                }
-            }
-
-            return list;
-        }
-
-        private static void MergeVerticallyAdjacentParagraphs(List<PdfParagraph> paragraphs)
-        {
-            if (paragraphs.Count <= 1) return;
-
-            bool mergedAny = true;
-            while (mergedAny)
-            {
-                mergedAny = false;
-                // Sort by Y1 descending (top to bottom on the page)
-                var sorted = paragraphs.OrderByDescending(p => p.Y1).ToList();
-
-                for (int i = 0; i < sorted.Count - 1; i++)
-                {
-                    var p1 = sorted[i];
-                    if (p1.IsBypassed || string.IsNullOrWhiteSpace(p1.TextWithPlaceholders)) continue;
-
-                    // If p1 is a heading, do not merge anything into it
-                    if (IsHeadingParagraph(p1)) continue;
-
-                    // If p1 ends with sentence-ending punctuation, do not merge subsequent paragraphs
-                    string clean1 = p1.TextWithPlaceholders.Trim();
-                    if (clean1.EndsWith(".") || clean1.EndsWith("?") || clean1.EndsWith("!") || clean1.EndsWith(":") || 
-                        clean1.EndsWith("。") || clean1.EndsWith("」") || clean1.EndsWith("\""))
-                    {
-                        continue;
-                    }
-
-                    for (int j = i + 1; j < sorted.Count; j++)
-                    {
-                        var p2 = sorted[j];
-                        if (p2.IsBypassed || string.IsNullOrWhiteSpace(p2.TextWithPlaceholders)) continue;
-
-                        // Check same column / horizontal overlap > 60%
-                        double minWidth = Math.Min(p1.Width, p2.Width);
-                        if (minWidth <= 0) continue;
-
-                        double overlap = Math.Min(p1.X1, p2.X1) - Math.Max(p1.X0, p2.X0);
-                        if (overlap / minWidth <= 0.6) continue;
-
-                        // Check vertical gap
-                        double gap = p1.Y0 - p2.Y1;
-
-                        // Allow a vertical gap of up to 6 pt (tightened from 14 pt to prevent paragraph merging)
-                        if (gap > 6 || gap < -10) continue;
-
-                        // Ensure p2 does not start a new list item, reference, or heading
-                        if (StartsNewParagraphOrSection(p2.TextWithPlaceholders)) continue;
-
-                        // Only merge reference/list multi-line items; never merge ordinary body paragraphs
-                        bool isP1RefOrList = IsReferenceParagraph(p1) || StartsNewParagraphOrSection(p1.TextWithPlaceholders);
-                        bool isP2RefOrList = IsReferenceParagraph(p2) || StartsNewParagraphOrSection(p2.TextWithPlaceholders);
-                        if (!isP1RefOrList && !isP2RefOrList) continue;
-
-                        // Merge p2 into p1
-                        p1.MergeWith(p2);
-
-                        // Remove p2 from the lists
-                        paragraphs.Remove(p2);
-                        mergedAny = true;
-                        break;
-                    }
-                    if (mergedAny) break;
-                }
-            }
-        }
-
-        private static bool IsHeadingParagraph(PdfParagraph para)
-        {
-            string txt = para.TextWithPlaceholders.Trim();
-            if (string.IsNullOrEmpty(txt)) return false;
-
-            if (txt.Equals("Keywords", StringComparison.OrdinalIgnoreCase) ||
-                txt.Equals("Keyword", StringComparison.OrdinalIgnoreCase) ||
-                txt.Equals("關鍵字", StringComparison.OrdinalIgnoreCase) ||
-                txt.Equals("关键字", StringComparison.OrdinalIgnoreCase))
-            {
-                return true;
-            }
-
-            // Section numbering like "1. Introduction" or "3.4.1 Projection before Fusion" or "3.2.1 資料收集"
-            if (System.Text.RegularExpressions.Regex.IsMatch(txt, @"^\d{1,2}(?:\.\d{1,2}){0,4}\.?(?:\s+[^a-z]|$)")) return true;
-
-            // Lettered subsections like "A. Background" or "C. Case Studies"
-            if (System.Text.RegularExpressions.Regex.IsMatch(txt, @"^[A-Z]\.\s+")) return true;
-
-            // Appendix subsections like "B.3 Benchmark Coverage"
-            if (System.Text.RegularExpressions.Regex.IsMatch(txt, @"^[A-Z]\.\d+\s")) return true;
-
-            // Uppercase section headers like "REFERENCES", "ABSTRACT", "APPENDIX"
-            if (txt.Length < 30 && txt.Any(char.IsLetter) && txt.All(c => !char.IsLower(c)))
-            {
-                if (txt.Length <= 6 && !txt.Contains(' ') &&
-                    txt.All(c => char.IsUpper(c) || char.IsDigit(c) || c == '&'))
-                {
-                    return false;
-                }
-                return true;
-            }
-
-            return false;
-        }
-
-        /// <summary>Appendix headings (A Prompts, B., B.1, B.2, B.3) must never be gray-prompt content.</summary>
-        private static bool IsAppendixSectionHeading(PdfParagraph para)
-        {
-            string txt = para.TextWithPlaceholders.Trim();
-            if (string.IsNullOrEmpty(txt)) return false;
-            if (System.Text.RegularExpressions.Regex.IsMatch(txt, @"^Appendix\s+[A-Z]", System.Text.RegularExpressions.RegexOptions.IgnoreCase))
-                return true;
-            if (System.Text.RegularExpressions.Regex.IsMatch(txt, @"^[A-Z]\s+Prompts\b", System.Text.RegularExpressions.RegexOptions.IgnoreCase))
-                return true;
-            if (System.Text.RegularExpressions.Regex.IsMatch(txt, @"^[A-Z]\.\d*\s", System.Text.RegularExpressions.RegexOptions.IgnoreCase))
-                return true;
-            return txt.Length < 80 &&
-                   System.Text.RegularExpressions.Regex.IsMatch(txt, @"^[A-Z]\.\s+", System.Text.RegularExpressions.RegexOptions.IgnoreCase);
-        }
-
-        private static readonly System.Text.RegularExpressions.Regex ReferencesSectionNumberedHeadingRegex = new(
-            @"^(\d{1,2})\.\s*(?:REFERENCES?|BIBLIOGRAPHY|參考文獻)\s*\.?\s*$",
-            System.Text.RegularExpressions.RegexOptions.IgnoreCase | System.Text.RegularExpressions.RegexOptions.Compiled);
-
-        private static bool IsReferencesSectionHeadingText(string txt)
-        {
-            if (string.IsNullOrWhiteSpace(txt)) return false;
-            txt = txt.Trim();
-
-            // Numbered headings like "9. REFERENCE" — case-insensitive on the keyword.
-            if (ReferencesSectionNumberedHeadingRegex.IsMatch(txt)) return true;
-
-            // Unnumbered headings: case-insensitive match (e.g. ACM "References" on p13).
-            // IsReferencesSectionHeading excludes IsTable to avoid table column labels like "reference".
-            return txt.Equals("REFERENCES", StringComparison.OrdinalIgnoreCase) ||
-                   txt.Equals("REFERENCE", StringComparison.OrdinalIgnoreCase) ||
-                   txt.Equals("BIBLIOGRAPHY", StringComparison.OrdinalIgnoreCase) ||
-                   txt.Equals("參考文獻", StringComparison.Ordinal);
-        }
-
-        private static bool IsReferencesSectionHeading(PdfParagraph para)
-        {
-            if (para.IsTable) return false;
-            return IsReferencesSectionHeadingText(para.TextWithPlaceholders.Trim());
-        }
-
-        private static bool IsReferencesSectionTerminator(PdfParagraph para)
-        {
-            string txt = para.TextWithPlaceholders.Trim();
-            if (string.IsNullOrEmpty(txt)) return false;
-            if (IsReferencesSectionHeading(para)) return false;
-            if (IsReferenceParagraph(para)) return false;
-
-            if (txt.Contains("WORK DIVISION", StringComparison.OrdinalIgnoreCase)) return true;
-            if (txt.Equals("APPENDIX", StringComparison.OrdinalIgnoreCase)) return true;
-            if (txt.Contains("ACKNOWLEDGMENT", StringComparison.OrdinalIgnoreCase) ||
-                txt.Contains("ACKNOWLEDGEMENT", StringComparison.OrdinalIgnoreCase))
-                return true;
-
-            // Numbered major sections (e.g. "10. WORK DIVISION", "7. DATA AND CODE AVAILABILITY")
-            if (System.Text.RegularExpressions.Regex.IsMatch(txt, @"^\d{1,2}\.\s+[A-Za-z\u4e00-\u9fff]"))
-                return true;
-
-            // ACM-style appendix after references (e.g. PentestAgent p13 "A Prompts", "B.1", "C ...")
-            if (System.Text.RegularExpressions.Regex.IsMatch(txt, @"^Appendix\s+[A-Z]", System.Text.RegularExpressions.RegexOptions.IgnoreCase))
-                return true;
-            if (System.Text.RegularExpressions.Regex.IsMatch(txt, @"^[A-Z]\s+Prompts\b", System.Text.RegularExpressions.RegexOptions.IgnoreCase))
-                return true;
-            if (System.Text.RegularExpressions.Regex.IsMatch(txt, @"^[A-Z]\.\d+\s", System.Text.RegularExpressions.RegexOptions.IgnoreCase))
-                return true;
-            if (txt.Length < 40 && System.Text.RegularExpressions.Regex.IsMatch(txt, @"^[A-Z]\.\s+[A-Za-z\u4e00-\u9fff]", System.Text.RegularExpressions.RegexOptions.IgnoreCase))
-                return true;
-
-            return false;
-        }
-
-        private static List<PdfParagraph> GetPageReadingOrder(List<PdfParagraph> pageList, double pageWidth)
-        {
-            double center = pageWidth / 2.0;
-            var left = pageList.Where(p => p.X0 + p.Width / 2 < center).OrderByDescending(p => p.Y1).ToList();
-            var right = pageList.Where(p => p.X0 + p.Width / 2 >= center).OrderByDescending(p => p.Y1).ToList();
-            var result = new List<PdfParagraph>(left.Count + right.Count);
-            result.AddRange(left);
-            result.AddRange(right);
-            return result;
         }
 
         /// <summary>
@@ -5442,7 +4756,7 @@ try {{
             }
             else if (para.IsBypassed)
             {
-                if (text.Any(IsCjkCharacter))
+                if (text.Any(FontUtilities.IsCjkCharacter))
                 {
                     fontNameForPara = targetFontName;
                 }
@@ -5464,7 +4778,7 @@ try {{
             XFontStyleEx fontStyle = XFontStyleEx.Regular;
             // Translated CJK must use regular kaiu.ttf; bold/italic from source (e.g. NimbusRom Medi) maps to
             // simsunb.ttf via ClickraFontResolver and produces SimSun-ExtB garbled overlays.
-            if (!para.IsBypassed && !para.IsCode && IsCjkTranslationFont(fontNameForPara))
+            if (!para.IsBypassed && !para.IsCode && FontUtilities.IsCjkTranslationFont(fontNameForPara))
             {
                 fontStyle = XFontStyleEx.Regular;
             }
@@ -5622,14 +4936,14 @@ try {{
                         var formula = para.Formulas[element.FormulaId];
                         double scale = fontSize / para.AverageFontSize;
 
-                        bool hasMono = formula.Letters.Any(l => IsMonospaceFont(l.FontName));
+                        bool hasMono = formula.Letters.Any(l => FontUtilities.IsMonospaceFont(l.FontName));
                         double formulaScale = scale;
                         if (hasMono)
                         {
                             formulaScale *= 1.0;
                         }
 
-                        if (ShouldMergeFormula(formula, para.AverageFontSize))
+                        if (FontUtilities.ShouldMergeFormula(formula, para.AverageFontSize))
                         {
                             string mergedText = string.Join("", formula.Letters.Select(l => l.Value));
                             double fSize = formula.Letters[0].FontSize * formulaScale;
@@ -5637,19 +4951,19 @@ try {{
                             string fontToUse = formula.Letters[0].FontName;
                             foreach (var l in formula.Letters)
                             {
-                                if (IsMonospaceFont(l.FontName))
+                                if (FontUtilities.IsMonospaceFont(l.FontName))
                                 {
                                     fontToUse = l.FontName;
                                     break;
                                 }
                             }
                             
-                            XFont mathFont = GetMathFont(fontToUse, fSize);
+                            XFont mathFont = FontUtilities.GetMathFont(fontToUse, fSize);
 
                             double avgY = formula.Letters.Average(l => l.RelativeY);
                             double my = currentY - avgY * formulaScale - (fontSize * 0.15);
 
-                            string normText = NormalizeMathValue(mergedText.Normalize(NormalizationForm.FormKD));
+                            string normText = FontUtilities.NormalizeMathValue(mergedText.Normalize(NormalizationForm.FormKD));
                             gfx.DrawString(normText, mathFont, brush, currentX, my);
                             
                             double offset = 0;
@@ -5673,14 +4987,14 @@ try {{
                             foreach (var ml in formula.Letters)
                             {
                                 double fSize = ml.FontSize * formulaScale;
-                                XFont mathFont = GetMathFont(ml.FontName, fSize);
+                                XFont mathFont = FontUtilities.GetMathFont(ml.FontName, fSize);
 
                                 double mx = currentX + ml.RelativeX * formulaScale;
                                 // Align math letter baseline with CJK baseline by shifting up slightly instead of down
                                 double my = currentY - ml.RelativeY * formulaScale - (fontSize * 0.15);
 
-                                string drawVal = NormalizeMathValue(ml.Value.Normalize(NormalizationForm.FormKD));
-                                if (drawVal.Length == 1 && IsMathOrGreekCharacter(drawVal[0]))
+                                string drawVal = FontUtilities.NormalizeMathValue(ml.Value.Normalize(NormalizationForm.FormKD));
+                                if (drawVal.Length == 1 && FontUtilities.IsMathOrGreekCharacter(drawVal[0]))
                                 {
                                     mathFont = new XFont("Segoe UI Symbol", fSize, mathFont.Style);
                                 }
@@ -5710,7 +5024,7 @@ try {{
                     else if (element.IsFormula)
                     {
                         // Defensive: LayoutParagraph should demote invalid {vN}, but render as text if not.
-                        string normText = NormalizeMathValue(element.Text.Normalize(NormalizationForm.FormKD));
+                        string normText = FontUtilities.NormalizeMathValue(element.Text.Normalize(NormalizationForm.FormKD));
                         gfx.DrawString(normText, mainFont, brush, currentX, currentY);
                         double offset = 0;
                         for (int cIdx = 0; cIdx < normText.Length; cIdx++)
@@ -5738,11 +5052,11 @@ try {{
                         while (idx < row.Elements.Count && !row.Elements[idx].IsFormula)
                         {
                             var elem = row.Elements[idx];
-                            if (elem.Text.Length == 1 && IsLatinExtendedOrSymbol(elem.Text[0]))
+                            if (elem.Text.Length == 1 && FontUtilities.IsLatinExtendedOrSymbol(elem.Text[0]))
                             {
                                 if (sbMerged.Length > 0)
                                 {
-                                    string normText = NormalizeMathValue(sbMerged.ToString().Normalize(NormalizationForm.FormKD));
+                                    string normText = FontUtilities.NormalizeMathValue(sbMerged.ToString().Normalize(NormalizationForm.FormKD));
                                     gfx.DrawString(normText, mainFont, brush, textStartX, currentY);
                                     
                                     double offset = 0;
@@ -5773,7 +5087,7 @@ try {{
                                     fallbackFontName = "Segoe UI Symbol";
                                 }
                                 XFont fallbackFont = new XFont(fallbackFontName, mainFont.Size, mainFont.Style);
-                                string normChar = NormalizeMathValue(elem.Text.Normalize(NormalizationForm.FormKD));
+                                string normChar = FontUtilities.NormalizeMathValue(elem.Text.Normalize(NormalizationForm.FormKD));
                                 gfx.DrawString(normChar, fallbackFont, brush, currentX, currentY);
                                 
                                 double fChW = gfx.MeasureString(normChar, fallbackFont).Width;
@@ -5798,7 +5112,7 @@ try {{
                         }
                         if (sbMerged.Length > 0)
                         {
-                            string normText = NormalizeMathValue(sbMerged.ToString().Normalize(NormalizationForm.FormKD));
+                            string normText = FontUtilities.NormalizeMathValue(sbMerged.ToString().Normalize(NormalizationForm.FormKD));
                             gfx.DrawString(normText, mainFont, brush, textStartX, currentY);
                             
                             double offset = 0;
@@ -5887,7 +5201,7 @@ try {{
                 if (!text.Contains(placeholder, StringComparison.Ordinal))
                     continue;
 
-                string literal = NormalizeMathValue(
+                string literal = FontUtilities.NormalizeMathValue(
                     string.Concat(formulas[formulaId].Letters.Select(letter => letter.Value))
                         .Normalize(NormalizationForm.FormKD));
                 if (literal.Length < 3)
@@ -5962,7 +5276,7 @@ try {{
                     continue;
                 }
 
-                if (IsCjkCharacter(c) || IsLatinExtendedOrSymbol(c))
+                if (FontUtilities.IsCjkCharacter(c) || FontUtilities.IsLatinExtendedOrSymbol(c))
                 {
                     if (sb.Length > 0)
                     {
@@ -6019,7 +5333,7 @@ try {{
                     {
                         var formula = formulas[formulaId];
                         double formulaScale = fontSize / averageFontSize;
-                        bool hasMono = formula.Letters.Any(l => IsMonospaceFont(l.FontName));
+                        bool hasMono = formula.Letters.Any(l => FontUtilities.IsMonospaceFont(l.FontName));
                         if (hasMono)
                         {
                             formulaScale *= 1.0;
@@ -6031,7 +5345,7 @@ try {{
                         // Placeholder {vN} without a matching formula (e.g. CCS/footnote body text) — render as text.
                         isFormula = false;
                         formulaId = -1;
-                        width = gfx.MeasureString(NormalizeMathValue(token), font).Width;
+                        width = gfx.MeasureString(FontUtilities.NormalizeMathValue(token), font).Width;
                     }
                 }
                 else
@@ -6040,7 +5354,7 @@ try {{
                     {
                         width = gfx.MeasureString(" ", font).Width;
                     }
-                    else if (token.Length == 1 && IsLatinExtendedOrSymbol(token[0]))
+                    else if (token.Length == 1 && FontUtilities.IsLatinExtendedOrSymbol(token[0]))
                     {
                         char c = token[0];
                         string fontName;
@@ -6053,11 +5367,11 @@ try {{
                             fontName = "Segoe UI Symbol";
                         }
                         XFont fallbackFont = new XFont(fontName, font.Size, font.Style);
-                        width = gfx.MeasureString(NormalizeMathValue(token), fallbackFont).Width;
+                        width = gfx.MeasureString(FontUtilities.NormalizeMathValue(token), fallbackFont).Width;
                     }
                     else
                     {
-                        width = gfx.MeasureString(NormalizeMathValue(token), font).Width;
+                        width = gfx.MeasureString(FontUtilities.NormalizeMathValue(token), font).Width;
                     }
                 }
                 
@@ -6087,7 +5401,7 @@ try {{
                     {
                         foreach (var sub in subTokens)
                         {
-                            double subWidth = gfx.MeasureString(NormalizeMathValue(sub), font).Width;
+                            double subWidth = gfx.MeasureString(FontUtilities.NormalizeMathValue(sub), font).Width;
                             if (currentX + subWidth > maxWidth && currentRow.Elements.Count > 0)
                             {
                                 rows.Add(currentRow);
@@ -6934,6 +6248,420 @@ try {{
             }
 
             return result.Count > 0 ? result : null;
+        }
+
+        public static bool StartsNewParagraphOrSection(string text)
+        {
+            string trimmed = text.Trim();
+            if (string.IsNullOrEmpty(trimmed)) return false;
+
+            if (trimmed.Equals("Keywords", StringComparison.OrdinalIgnoreCase) ||
+                trimmed.Equals("Keyword", StringComparison.OrdinalIgnoreCase) ||
+                trimmed.Equals("關鍵字", StringComparison.OrdinalIgnoreCase) ||
+                trimmed.Equals("关键字", StringComparison.OrdinalIgnoreCase))
+            {
+                return true;
+            }
+
+            // Matches "[1]", "1.", "1)", "a.", "a)", "•", "-", "*"
+            if (System.Text.RegularExpressions.Regex.IsMatch(trimmed, @"^(?:\[\d+\]|\d+[\.\)]|[a-zA-Z][\.\)]|[•\-\*])(?:\s|$)")) return true;
+
+            // Check if it's a section header
+            if (System.Text.RegularExpressions.Regex.IsMatch(trimmed, @"^\d{1,2}(?:\.\d{1,2}){0,4}\.?(?:\s+[^a-z]|$)")) return true;
+            if (trimmed.Length < 30 && trimmed.Any(char.IsLetter) && trimmed.All(c => !char.IsLower(c))) return true;
+
+            // Check for Table/Figure/RQ captions/headings to prevent them from merging with nearby text blocks
+            if (System.Text.RegularExpressions.Regex.IsMatch(trimmed, @"^(?:Table|Figure|Fig|表|圖|RQ\d+)\b", System.Text.RegularExpressions.RegexOptions.IgnoreCase)) return true;
+
+            return false;
+        }
+
+        public static bool IsHeadingLine(UglyToad.PdfPig.DocumentLayoutAnalysis.TextLine line)
+        {
+            string txt = line.Text.Trim();
+            if (string.IsNullOrEmpty(txt)) return false;
+
+            // Section numbering like "1. Introduction" or "3.4.1 Projection before Fusion" or "3.2.1 資料收集"
+            if (System.Text.RegularExpressions.Regex.IsMatch(txt, @"^\d{1,2}(?:\.\d{1,2}){0,4}\.?(?:\s+[^a-z]|$)")) return true;
+
+            // Lettered subsections like "A. Background" or "C. Case Studies"
+            if (System.Text.RegularExpressions.Regex.IsMatch(txt, @"^[A-Z]\.\s+")) return true;
+
+            // Appendix subsections like "B.3 Benchmark Coverage"
+            if (System.Text.RegularExpressions.Regex.IsMatch(txt, @"^[A-Z]\.\d+\s")) return true;
+
+            // Uppercase section headers like "REFERENCES", "ABSTRACT", "APPENDIX"
+            if (txt.Length < 30 && txt.Any(char.IsLetter) && txt.All(c => !char.IsLower(c)))
+            {
+                if (txt.Length <= 6 && !txt.Contains(' ') &&
+                    txt.All(c => char.IsUpper(c) || char.IsDigit(c) || c == '&'))
+                {
+                    return false;
+                }
+                return true;
+            }
+
+            return false;
+        }
+
+        public class MergedBlock
+        {
+            public List<UglyToad.PdfPig.DocumentLayoutAnalysis.TextLine> TextLines { get; set; } = new();
+            public double Right { get; set; }
+        }
+
+        private static (UglyToad.PdfPig.DocumentLayoutAnalysis.TextLine? left, UglyToad.PdfPig.DocumentLayoutAnalysis.TextLine? right) SplitLine(UglyToad.PdfPig.DocumentLayoutAnalysis.TextLine line, double center)
+        {
+            if (line.BoundingBox.Left >= center || line.BoundingBox.Right <= center)
+            {
+                return (null, null);
+            }
+
+            var sortedWords = line.Words.OrderBy(w => w.BoundingBox.Left).ToList();
+            if (sortedWords.Count < 2) return (null, null);
+
+            for (int i = 0; i < sortedWords.Count - 1; i++)
+            {
+                var w1 = sortedWords[i];
+                var w2 = sortedWords[i + 1];
+
+                if (w1.BoundingBox.Right < center && w2.BoundingBox.Left > center)
+                {
+                    double gap = w2.BoundingBox.Left - w1.BoundingBox.Right;
+                    if (gap >= 8.0) // gutter threshold
+                    {
+                        var leftWords = sortedWords.Take(i + 1).ToList();
+                        var rightWords = sortedWords.Skip(i + 1).ToList();
+
+                        var leftLine = new UglyToad.PdfPig.DocumentLayoutAnalysis.TextLine(leftWords, " ");
+                        var rightLine = new UglyToad.PdfPig.DocumentLayoutAnalysis.TextLine(rightWords, " ");
+
+                        return (leftLine, rightLine);
+                    }
+                }
+            }
+
+            return (null, null);
+        }
+
+        public static List<MergedBlock> GetMergedBlocks(IEnumerable<UglyToad.PdfPig.DocumentLayoutAnalysis.TextBlock> docstrumBlocks, double pageWidth, bool isTablePage = false)
+        {
+            double maxGap = isTablePage ? 8.0 : 15.0;
+            double center = pageWidth / 2.0;
+
+            var initialBlocks = docstrumBlocks.Select(b => new MergedBlock
+            {
+                TextLines = b.TextLines.ToList(),
+                Right = b.BoundingBox.Right
+            }).ToList();
+
+            var list = new List<MergedBlock>();
+
+            // Always split Docstrum blocks at the page center. Skipping this on table pages
+            // merges left-column tables with right-column body text into full-width paragraphs.
+            foreach (var b in initialBlocks)
+            {
+                var leftLines = new List<UglyToad.PdfPig.DocumentLayoutAnalysis.TextLine>();
+                var rightLines = new List<UglyToad.PdfPig.DocumentLayoutAnalysis.TextLine>();
+                bool hasSpanningLine = false;
+
+                foreach (var line in b.TextLines)
+                {
+                    if (line.BoundingBox.Left < center && line.BoundingBox.Right > center)
+                    {
+                        var (leftPart, rightPart) = SplitLine(line, center);
+                        if (leftPart != null && rightPart != null)
+                        {
+                            leftLines.Add(leftPart);
+                            rightLines.Add(rightPart);
+                        }
+                        else
+                        {
+                            hasSpanningLine = true;
+                            break;
+                        }
+                    }
+                    else if (line.BoundingBox.Right <= center)
+                    {
+                        leftLines.Add(line);
+                    }
+                    else
+                    {
+                        rightLines.Add(line);
+                    }
+                }
+
+                if (hasSpanningLine)
+                {
+                    list.Add(b);
+                }
+                else
+                {
+                    if (leftLines.Count > 0)
+                    {
+                        list.Add(new MergedBlock
+                        {
+                            TextLines = leftLines,
+                            Right = leftLines.Max(l => l.BoundingBox.Right)
+                        });
+                    }
+                    if (rightLines.Count > 0)
+                    {
+                        list.Add(new MergedBlock
+                        {
+                            TextLines = rightLines,
+                            Right = rightLines.Max(l => l.BoundingBox.Right)
+                        });
+                    }
+                }
+            }
+
+            bool mergedAny = true;
+            while (mergedAny)
+            {
+                mergedAny = false;
+                for (int i = 0; i < list.Count; i++)
+                {
+                    var b1 = list[i];
+                    for (int j = i + 1; j < list.Count; j++)
+                    {
+                        var b2 = list[j];
+
+                        // Never merge blocks from different columns
+                        double b1Center = b1.TextLines.Average(l => (l.BoundingBox.Left + l.BoundingBox.Right) / 2.0);
+                        double b2Center = b2.TextLines.Average(l => (l.BoundingBox.Left + l.BoundingBox.Right) / 2.0);
+                        if ((b1Center < center) != (b2Center < center)) continue;
+
+                        // Check if they should be merged horizontally
+                        bool canMerge = false;
+                        foreach (var l1 in b1.TextLines)
+                        {
+                            foreach (var l2 in b2.TextLines)
+                            {
+                                double verticalOverlap = Math.Min(l1.BoundingBox.Top, l2.BoundingBox.Top) - Math.Max(l1.BoundingBox.Bottom, l2.BoundingBox.Bottom);
+                                double minHeight = Math.Min(l1.BoundingBox.Height, l2.BoundingBox.Height);
+                                if (minHeight <= 0 || verticalOverlap / minHeight <= 0.5) continue;
+
+                                // Check gap between their horizontal boundaries
+                                double gap = l1.BoundingBox.Left < l2.BoundingBox.Left
+                                    ? l2.BoundingBox.Left - l1.BoundingBox.Right
+                                    : l1.BoundingBox.Left - l2.BoundingBox.Right;
+
+                                double c1 = (l1.BoundingBox.Left + l1.BoundingBox.Right) / 2.0;
+                                double c2 = (l2.BoundingBox.Left + l2.BoundingBox.Right) / 2.0;
+                                bool isL1Left = c1 < center;
+                                bool isL2Left = c2 < center;
+                                double allowedGap = (isL1Left != isL2Left) ? 5.0 : maxGap;
+
+                                if (gap >= -5.0 && gap <= allowedGap)
+                                {
+                                    canMerge = true;
+                                    break;
+                                }
+                            }
+                            if (canMerge) break;
+                        }
+
+                        if (canMerge)
+                        {
+                            // Merge b2 into b1
+                            b1.TextLines.AddRange(b2.TextLines);
+                            b1.Right = Math.Max(b1.Right, b2.Right);
+
+                            list.RemoveAt(j);
+                            mergedAny = true;
+                            break;
+                        }
+                    }
+                    if (mergedAny) break;
+                }
+            }
+
+            return list;
+        }
+
+        private static void MergeVerticallyAdjacentParagraphs(List<PdfParagraph> paragraphs)
+        {
+            if (paragraphs.Count <= 1) return;
+
+            bool mergedAny = true;
+            while (mergedAny)
+            {
+                mergedAny = false;
+                // Sort by Y1 descending (top to bottom on the page)
+                var sorted = paragraphs.OrderByDescending(p => p.Y1).ToList();
+
+                for (int i = 0; i < sorted.Count - 1; i++)
+                {
+                    var p1 = sorted[i];
+                    if (p1.IsBypassed || string.IsNullOrWhiteSpace(p1.TextWithPlaceholders)) continue;
+
+                    // If p1 is a heading, do not merge anything into it
+                    if (IsHeadingParagraph(p1)) continue;
+
+                    // If p1 ends with sentence-ending punctuation, do not merge subsequent paragraphs
+                    string clean1 = p1.TextWithPlaceholders.Trim();
+                    if (clean1.EndsWith(".") || clean1.EndsWith("?") || clean1.EndsWith("!") || clean1.EndsWith(":") || 
+                        clean1.EndsWith("。") || clean1.EndsWith("」") || clean1.EndsWith("\""))
+                    {
+                        continue;
+                    }
+
+                    for (int j = i + 1; j < sorted.Count; j++)
+                    {
+                        var p2 = sorted[j];
+                        if (p2.IsBypassed || string.IsNullOrWhiteSpace(p2.TextWithPlaceholders)) continue;
+
+                        // Check same column / horizontal overlap > 60%
+                        double minWidth = Math.Min(p1.Width, p2.Width);
+                        if (minWidth <= 0) continue;
+
+                        double overlap = Math.Min(p1.X1, p2.X1) - Math.Max(p1.X0, p2.X0);
+                        if (overlap / minWidth <= 0.6) continue;
+
+                        // Check vertical gap
+                        double gap = p1.Y0 - p2.Y1;
+
+                        // Allow a vertical gap of up to 6 pt (tightened from 14 pt to prevent paragraph merging)
+                        if (gap > 6 || gap < -10) continue;
+
+                        // Ensure p2 does not start a new list item, reference, or heading
+                        if (StartsNewParagraphOrSection(p2.TextWithPlaceholders)) continue;
+
+                        // Only merge reference/list multi-line items; never merge ordinary body paragraphs
+                        bool isP1RefOrList = IsReferenceParagraph(p1) || StartsNewParagraphOrSection(p1.TextWithPlaceholders);
+                        bool isP2RefOrList = IsReferenceParagraph(p2) || StartsNewParagraphOrSection(p2.TextWithPlaceholders);
+                        if (!isP1RefOrList && !isP2RefOrList) continue;
+
+                        // Merge p2 into p1
+                        p1.MergeWith(p2);
+
+                        // Remove p2 from the lists
+                        paragraphs.Remove(p2);
+                        mergedAny = true;
+                        break;
+                    }
+                    if (mergedAny) break;
+                }
+            }
+        }
+
+        private static bool IsHeadingParagraph(PdfParagraph para)
+        {
+            string txt = para.TextWithPlaceholders.Trim();
+            if (string.IsNullOrEmpty(txt)) return false;
+
+            if (txt.Equals("Keywords", StringComparison.OrdinalIgnoreCase) ||
+                txt.Equals("Keyword", StringComparison.OrdinalIgnoreCase) ||
+                txt.Equals("關鍵字", StringComparison.OrdinalIgnoreCase) ||
+                txt.Equals("关键字", StringComparison.OrdinalIgnoreCase))
+            {
+                return true;
+            }
+
+            // Section numbering like "1. Introduction" or "3.4.1 Projection before Fusion" or "3.2.1 資料收集"
+            if (System.Text.RegularExpressions.Regex.IsMatch(txt, @"^\d{1,2}(?:\.\d{1,2}){0,4}\.?(?:\s+[^a-z]|$)")) return true;
+
+            // Lettered subsections like "A. Background" or "C. Case Studies"
+            if (System.Text.RegularExpressions.Regex.IsMatch(txt, @"^[A-Z]\.\s+")) return true;
+
+            // Appendix subsections like "B.3 Benchmark Coverage"
+            if (System.Text.RegularExpressions.Regex.IsMatch(txt, @"^[A-Z]\.\d+\s")) return true;
+
+            // Uppercase section headers like "REFERENCES", "ABSTRACT", "APPENDIX"
+            if (txt.Length < 30 && txt.Any(char.IsLetter) && txt.All(c => !char.IsLower(c)))
+            {
+                if (txt.Length <= 6 && !txt.Contains(' ') &&
+                    txt.All(c => char.IsUpper(c) || char.IsDigit(c) || c == '&'))
+                {
+                    return false;
+                }
+                return true;
+            }
+
+            return false;
+        }
+
+        /// <summary>Appendix headings (A Prompts, B., B.1, B.2, B.3) must never be gray-prompt content.</summary>
+        private static bool IsAppendixSectionHeading(PdfParagraph para)
+        {
+            string txt = para.TextWithPlaceholders.Trim();
+            if (string.IsNullOrEmpty(txt)) return false;
+            if (System.Text.RegularExpressions.Regex.IsMatch(txt, @"^Appendix\s+[A-Z]", System.Text.RegularExpressions.RegexOptions.IgnoreCase))
+                return true;
+            if (System.Text.RegularExpressions.Regex.IsMatch(txt, @"^[A-Z]\s+Prompts\b", System.Text.RegularExpressions.RegexOptions.IgnoreCase))
+                return true;
+            if (System.Text.RegularExpressions.Regex.IsMatch(txt, @"^[A-Z]\.\d*\s", System.Text.RegularExpressions.RegexOptions.IgnoreCase))
+                return true;
+            return txt.Length < 80 &&
+                   System.Text.RegularExpressions.Regex.IsMatch(txt, @"^[A-Z]\.\s+", System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+        }
+
+        private static readonly System.Text.RegularExpressions.Regex ReferencesSectionNumberedHeadingRegex = new(
+            @"^(\d{1,2})\.\s*(?:REFERENCES?|BIBLIOGRAPHY|參考文獻)\s*\.?\s*$",
+            System.Text.RegularExpressions.RegexOptions.IgnoreCase | System.Text.RegularExpressions.RegexOptions.Compiled);
+
+        private static bool IsReferencesSectionHeadingText(string txt)
+        {
+            if (string.IsNullOrWhiteSpace(txt)) return false;
+            txt = txt.Trim();
+
+            // Numbered headings like "9. REFERENCE" — case-insensitive on the keyword.
+            if (ReferencesSectionNumberedHeadingRegex.IsMatch(txt)) return true;
+
+            // Unnumbered headings: case-insensitive match (e.g. ACM "References" on p13).
+            // IsReferencesSectionHeading excludes IsTable to avoid table column labels like "reference".
+            return txt.Equals("REFERENCES", StringComparison.OrdinalIgnoreCase) ||
+                   txt.Equals("REFERENCE", StringComparison.OrdinalIgnoreCase) ||
+                   txt.Equals("BIBLIOGRAPHY", StringComparison.OrdinalIgnoreCase) ||
+                   txt.Equals("參考文獻", StringComparison.Ordinal);
+        }
+
+        private static bool IsReferencesSectionHeading(PdfParagraph para)
+        {
+            if (para.IsTable) return false;
+            return IsReferencesSectionHeadingText(para.TextWithPlaceholders.Trim());
+        }
+
+        private static bool IsReferencesSectionTerminator(PdfParagraph para)
+        {
+            string txt = para.TextWithPlaceholders.Trim();
+            if (string.IsNullOrEmpty(txt)) return false;
+            if (IsReferencesSectionHeading(para)) return false;
+            if (IsReferenceParagraph(para)) return false;
+
+            if (txt.Contains("WORK DIVISION", StringComparison.OrdinalIgnoreCase)) return true;
+            if (txt.Equals("APPENDIX", StringComparison.OrdinalIgnoreCase)) return true;
+            if (txt.Contains("ACKNOWLEDGMENT", StringComparison.OrdinalIgnoreCase) ||
+                txt.Contains("ACKNOWLEDGEMENT", StringComparison.OrdinalIgnoreCase))
+                return true;
+
+            // Numbered major sections (e.g. "10. WORK DIVISION", "7. DATA AND CODE AVAILABILITY")
+            if (System.Text.RegularExpressions.Regex.IsMatch(txt, @"^\d{1,2}\.\s+[A-Za-z\u4e00-\u9fff]"))
+                return true;
+
+            // ACM-style appendix after references (e.g. PentestAgent p13 "A Prompts", "B.1", "C ...")
+            if (System.Text.RegularExpressions.Regex.IsMatch(txt, @"^Appendix\s+[A-Z]", System.Text.RegularExpressions.RegexOptions.IgnoreCase))
+                return true;
+            if (System.Text.RegularExpressions.Regex.IsMatch(txt, @"^[A-Z]\s+Prompts\b", System.Text.RegularExpressions.RegexOptions.IgnoreCase))
+                return true;
+            if (System.Text.RegularExpressions.Regex.IsMatch(txt, @"^[A-Z]\.\d+\s", System.Text.RegularExpressions.RegexOptions.IgnoreCase))
+                return true;
+            if (txt.Length < 40 && System.Text.RegularExpressions.Regex.IsMatch(txt, @"^[A-Z]\.\s+[A-Za-z\u4e00-\u9fff]", System.Text.RegularExpressions.RegexOptions.IgnoreCase))
+                return true;
+
+            return false;
+        }
+
+        private static List<PdfParagraph> GetPageReadingOrder(List<PdfParagraph> pageList, double pageWidth)
+        {
+            double center = pageWidth / 2.0;
+            var left = pageList.Where(p => p.X0 + p.Width / 2 < center).OrderByDescending(p => p.Y1).ToList();
+            var right = pageList.Where(p => p.X0 + p.Width / 2 >= center).OrderByDescending(p => p.Y1).ToList();
+            var result = new List<PdfParagraph>(left.Count + right.Count);
+            result.AddRange(left);
+            result.AddRange(right);
+            return result;
         }
     }
 
