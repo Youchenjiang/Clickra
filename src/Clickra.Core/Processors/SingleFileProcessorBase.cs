@@ -25,13 +25,13 @@ namespace Clickra.Core.Processors
                 // Otherwise calculate a sensible default output path.
                 string targetOutputPath = (files.Count == 1 && !string.IsNullOrEmpty(outputPath)) 
                     ? outputPath 
-                    : Path.Combine(outDir, Path.GetFileNameWithoutExtension(filePath) + GetDefaultOutputExtension());
+                    : Path.Combine(outDir, Path.GetFileNameWithoutExtension(filePath) + GetOutputSuffix());
 
                 ProcessSingleFile(fullPath, targetOutputPath, i, total, options, onProgress, cancellationToken);
             }
         }
 
-        protected abstract string GetDefaultOutputExtension();
+        protected abstract string GetOutputSuffix();
 
         protected abstract void ProcessSingleFile(string fullPath, string targetOutputPath, int fileIndex, int totalFiles, Dictionary<string, object>? options, Action<int, int, string>? onProgress, CancellationToken cancellationToken);
     }

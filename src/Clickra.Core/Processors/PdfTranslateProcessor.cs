@@ -18,7 +18,7 @@ namespace Clickra.Core.Processors
 {
     public class PdfTranslateProcessor : SingleFileProcessorBase
     {
-        protected override string GetDefaultOutputExtension() => "_translated.pdf";
+        protected override string GetOutputSuffix() => "_translated.pdf";
 
         protected override void ProcessSingleFile(string fullPath, string targetOutputPath, int fileIndex, int totalFiles, Dictionary<string, object>? options, Action<int, int, string>? onProgress, CancellationToken cancellationToken)
         {
