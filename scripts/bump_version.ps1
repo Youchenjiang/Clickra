@@ -98,12 +98,15 @@ foreach ($f in $readmeFiles) {
                 $lines = $lines[0..($tableStart + 1)] + $lines[($tableStart + 3)..($lines.Count - 1)]
                 $content = $lines -join "`n"
 
-                # 將舊版本加入 CHANGELOG
+                # 將舊版本加入 CHANGELOG（插入到第一個版本標題之後）
                 if (Test-Path $changelogPath) {
                     $changelog = [System.IO.File]::ReadAllText("$root/$changelogPath", [System.Text.Encoding]::UTF8)
                     $oldEntry = "`n## [$oldVersion] - $oldDate`n`n- $oldDesc`n"
-                    # 插入到第二個 ## 之後（第一個是新版本）
-                    $changelog = $changelog -replace '(?m)(## \[v[\d\.]+\][^\n]*\n(?:[^\n]*\n)*?\n)', "`$1$oldEntry"
+                    # 只在第一個 ## [vX.X.X] 標題後插入
+                    $firstVersionHeader = $changelog -match '(?m)^## \[v[\d\.]+\]'
+                    if ($firstVersionHeader) {
+                        $changelog = $changelog -replace '(?m)^(## \[v[\d\.]+\][^\n]*\n)', "`$1$oldEntry", 1
+                    }
                     [System.IO.File]::WriteAllText("$root/$changelogPath", $changelog, $utf8NoBOM)
                     Write-Host "[Doc] Moved $oldVersion from README to CHANGELOG" -ForegroundColor Gray
                 }
