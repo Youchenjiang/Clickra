@@ -13,6 +13,21 @@
 - **動態路徑**：在 Shell Extension 中存取外部資源（如圖標、執行檔）時，必須使用 `ShellUtils` 獲取執行期路徑，嚴禁假設檔案位於 `%LocalAppData%`。
 - **本地驗證**：修改 CLI 邏輯後，必須手動執行 `./Clickra.exe [command]` 並檢查輸出檔案。修改封裝邏輯後，須執行 `scripts/build_msix.ps1` 檢查 `Layout` 結構。
 
-## 3. 溝通協議
+## 3. 命名規範
+- **方法命名**：遵循 verb-noun 模式，如 `GetLogicalWidth`、`ProcessFile`、`ValidateExtensions`。
+- **屬性命名**：使用 PascalCase，如 `_dpiScale`、`_activeTab`。
+- **常數命名**：Win32 常數統一放在 `Native/Win32.cs`，使用 PascalCase，如 `IDC_HAND`、`WS_CLIPCHILDREN`。
+- **色彩常數**：統一放在 `UIHelper.cs`，使用語意化命名，如 `BgCard`、`BorderDefault`、`TextPrimary`。
+- **檔案命名**：Partial class 使用 `ClassName.Part.cs` 格式，如 `DashboardWindow.Paint.cs`。
+- **避免單字元變數**：在長方法中使用描述性名稱，如 `inputLabelW` 而非 `w1`。
+
+## 4. 架構規則
+- **三層架構**：`Clickra.CLI`（UI 層）→ `Clickra.Core`（核心邏輯）→ `ClickraShell`（Windows 整合）。
+- **Partial Class 拆分**：大檔案按功能拆分，每個 partial class 檔案職責單一。
+- **Processor 繼承**：單一檔案處理繼承 `SingleFileProcessorBase`，多檔案處理繼承 `MultiFileProcessorBase`。
+- **UI 工具方法**：共用的 UI 繪圖方法統一放在 `UIHelper.cs`。
+- **Win32 互動**：所有 P/Invoke 聲明統一放在 `Native/Win32.cs`。
+
+## 5. 溝通協議
 - **禁止自主 Push**：除非使用者明確下達 `/auto_commit` 或 `git push` 指令，否則禁止推送。
 - **Diff 摘要**：在結束 turn 之前，若有變動，必須簡述受影響的檔案與變動行數。

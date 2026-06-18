@@ -139,6 +139,40 @@ Because the extension runs inside `explorer.exe`, any stack imbalance (like a mi
 
 ---
 
+## 🏗️ Architecture
+
+Clickra follows a clean three-layer architecture:
+
+```text
+src/
+├── Clickra.CLI/              # UI Layer (Win32/GDI+ Dashboard & Progress)
+│   ├── DashboardWindow.*.cs      (6 partial classes: State, Events, Paint, etc.)
+│   ├── ProgressWindow.*.cs       (5 partial classes: Controls, Paint, Process, Tray)
+│   ├── ClickraCli.*.cs           (Entry point & deployment)
+│   ├── Native/Win32.cs           (P/Invoke declarations)
+│   └── UIHelper.cs               (Shared UI utilities)
+├── Clickra.Core/             # Core Logic (Processors & Storage)
+│   ├── Processors/               (Base classes + 8 Processor implementations)
+│   ├── ClickraStorage.*.cs       (Settings, History, ActiveRecord)
+│   ├── FileProcessor.cs          (Public API facade)
+│   ├── Localization.cs           (i18n support)
+│   └── TranslationEngine.cs      (PDF translation)
+└── ClickraShell/             # Windows Shell Integration
+    ├── ComMethods.cs             (COM interface implementations)
+    ├── Exporter.cs               (VTable creation)
+    ├── Guids.cs                  (COM interface GUIDs)
+    ├── Kernel32.cs               (Win32 API declarations)
+    └── ShellUtils.cs             (Module path & string resources)
+```
+
+### Key Design Patterns
+- **Partial Classes**: Large files split by responsibility (e.g., `DashboardWindow.Paint.cs`, `DashboardWindow.Events.cs`)
+- **Template Method**: `SingleFileProcessorBase` and `MultiFileProcessorBase` provide common loop/cancellation patterns
+- **Facade Pattern**: `FileProcessor` exposes a simplified public API over internal processors
+- **Shared Utilities**: `UIHelper` contains reusable drawing methods (scrollbars, dropdowns, rounded rects)
+
+---
+
 ## 📄 License
 This project is licensed under the **Apache License 2.0**.
 Core components use **PDFsharp** (MIT License).
