@@ -8,54 +8,63 @@ using System.Drawing;
 
 namespace Clickra.Core.Processors
 {
-    public class ImageStitchProcessor : IFileProcessor
+    public class ImageStitchProcessor : MultiFileProcessorBase
     {
+        private List<Image> _images = new List<Image>();
+        private Bitmap? _stitched;
+        private Graphics? _gfx;
+        private int _currentY = 0;
+        private int _totalWidth = 0;
+
         public void Process(List<string> files, string? outputPath, Dictionary<string, object>? options = null, Action<int, int, string>? onProgress = null, CancellationToken cancellationToken = default)
         {
             if (string.IsNullOrEmpty(outputPath)) throw new ArgumentException("Output path is required for image stitching.");
 
-            int total = files.Count;
-            onProgress?.Invoke(10, total * 100, "正在分析圖片尺寸...");
+            onProgress?.Invoke(10, files.Count * 100, "正在分析圖片尺寸...");
             cancellationToken.ThrowIfCancellationRequested();
-            List<Image> images = new List<Image>();
+
             try
             {
                 foreach (var f in files)
                 {
                     cancellationToken.ThrowIfCancellationRequested();
-                    images.Add(Image.FromFile(f));
-                }
-                
-                int totalWidth = images.Max(img => img.Width);
-                int totalHeight = images.Sum(img => img.Height);
-
-                using var stitched = new Bitmap(totalWidth, totalHeight);
-                using var gfx = Graphics.FromImage(stitched);
-                gfx.Clear(Color.White);
-
-                int currentY = 0;
-                for (int i = 0; i < images.Count; i++)
-                {
-                    cancellationToken.ThrowIfCancellationRequested();
-                    try { ClickraStorage.SetActiveRecordIndex(i); } catch { }
-                    var img = images[i];
-                    onProgress?.Invoke((i * 100) + 50, total * 100, $"正在拼接圖片 ({i + 1}/{total})...");
-                    int x = (totalWidth - img.Width) / 2;
-                    gfx.DrawImage(img, x, currentY, img.Width, img.Height);
-                    currentY += img.Height;
+                    _images.Add(Image.FromFile(f));
                 }
 
-                cancellationToken.ThrowIfCancellationRequested();
-                onProgress?.Invoke(total * 100, total * 100, "拼接完成，正在儲存圖片...");
-                stitched.Save(outputPath, System.Drawing.Imaging.ImageFormat.Png);
+                _totalWidth = _images.Max(img => img.Width);
+                int totalHeight = _images.Sum(img => img.Height);
+
+                _stitched = new Bitmap(_totalWidth, totalHeight);
+                _gfx = Graphics.FromImage(_stitched);
+                _gfx.Clear(Color.White);
+
+                base.Process(files, outputPath, options, onProgress, cancellationToken);
             }
             finally
             {
-                foreach (var img in images)
+                _gfx?.Dispose();
+                _stitched?.Dispose();
+                foreach (var img in _images)
                 {
                     try { img?.Dispose(); } catch { }
                 }
             }
+        }
+
+        protected override void ProcessFile(string filePath, int fileIndex, int totalFiles, Dictionary<string, object>? options, Action<int, int, string>? onProgress, CancellationToken cancellationToken)
+        {
+            var img = _images[fileIndex];
+            onProgress?.Invoke((fileIndex * 100) + 50, totalFiles * 100, $"正在拼接圖片 ({fileIndex + 1}/{totalFiles})...");
+            int x = (_totalWidth - img.Width) / 2;
+            _gfx!.DrawImage(img, x, _currentY, img.Width, img.Height);
+            _currentY += img.Height;
+        }
+
+        protected override void OnAllFilesProcessed(string? outputPath, int totalFiles, Action<int, int, string>? onProgress, CancellationToken cancellationToken)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            onProgress?.Invoke(totalFiles * 100, totalFiles * 100, "拼接完成，正在儲存圖片...");
+            _stitched!.Save(outputPath, System.Drawing.Imaging.ImageFormat.Png);
         }
     }
 }
