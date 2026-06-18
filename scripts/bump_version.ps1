@@ -56,19 +56,7 @@ foreach ($mPath in $manifestPaths) {
     }
 }
 
-# 4. 更新 README 檔案
-$readmeFiles = @("README.md", "README.zh-TW.md")
-foreach ($f in $readmeFiles) {
-    if (Test-Path $f) {
-        $content = [System.IO.File]::ReadAllText("$root/$f", [System.Text.Encoding]::UTF8)
-        # 更新標題 (# Clickra vX.X.X.X) - 僅替換第一行
-        $content = $content -replace '(?m)^# Clickra v[\d\.]+', "# Clickra v$newVersion"
-        [System.IO.File]::WriteAllText("$root/$f", $content, $utf8NoBOM)
-        Write-Host "[Doc] Synced README: $f" -ForegroundColor Gray
-    }
-}
-
-# 5. 更新 CHANGELOG.md (在 [vX.X.X.0] 之前插入新版本)
+# 4. 更新 CHANGELOG.md（在現有內容頂部插入新版本）
 $changelogPath = "CHANGELOG.md"
 if (Test-Path $changelogPath) {
     $changelog = [System.IO.File]::ReadAllText("$root/$changelogPath", [System.Text.Encoding]::UTF8)
@@ -77,6 +65,54 @@ if (Test-Path $changelogPath) {
     $changelog = $changelog -replace '(?m)^# Changelog\r?\n', "# Changelog`n$newEntry"
     [System.IO.File]::WriteAllText("$root/$changelogPath", $changelog, $utf8NoBOM)
     Write-Host "[Doc] Updated CHANGELOG.md with new version entry" -ForegroundColor Gray
+}
+
+# 5. 更新 README 檔案（旋轉版本：第3筆移到 CHANGELOG，保留最新3筆）
+$readmeFiles = @("README.md", "README.zh-TW.md")
+foreach ($f in $readmeFiles) {
+    if (Test-Path $f) {
+        $content = [System.IO.File]::ReadAllText("$root/$f", [System.Text.Encoding]::UTF8)
+        # 更新標題 (# Clickra vX.X.X.X)
+        $content = $content -replace '(?m)^# Clickra v[\d\.]+', "# Clickra v$newVersion"
+
+        # 找到版本表格中的資料行（排除標題和分隔線）
+        $lines = $content -split "`n"
+        $tableStart = -1
+        $rowCount = 0
+        for ($i = 0; $i -lt $lines.Count; $i++) {
+            if ($lines[$i] -match '^\| \*\*v[\d\.]+\*\*') {
+                if ($tableStart -eq -1) { $tableStart = $i }
+                $rowCount++
+            }
+        }
+
+        # 如果有3筆以上，把第3筆移到 CHANGELOG
+        if ($rowCount -ge 3 -and $tableStart -ge 0) {
+            $thirdRow = $lines[$tableStart + 2]
+            if ($thirdRow -match '\*\*(v[\d\.]+)\*\*\s*\|\s*(\d{4}/\d{2}/\d{2})\s*\|\s*(.+?)\s*\|') {
+                $oldVersion = $Matches[1]
+                $oldDate = $Matches[2] -replace '/', '-'
+                $oldDesc = $Matches[3].Trim()
+
+                # 移除 README 中的第三筆
+                $lines = $lines[0..($tableStart + 1)] + $lines[($tableStart + 3)..($lines.Count - 1)]
+                $content = $lines -join "`n"
+
+                # 將舊版本加入 CHANGELOG
+                if (Test-Path $changelogPath) {
+                    $changelog = [System.IO.File]::ReadAllText("$root/$changelogPath", [System.Text.Encoding]::UTF8)
+                    $oldEntry = "`n## [$oldVersion] - $oldDate`n`n- $oldDesc`n"
+                    # 插入到第二個 ## 之後（第一個是新版本）
+                    $changelog = $changelog -replace '(?m)(## \[v[\d\.]+\][^\n]*\n(?:[^\n]*\n)*?\n)', "`$1$oldEntry"
+                    [System.IO.File]::WriteAllText("$root/$changelogPath", $changelog, $utf8NoBOM)
+                    Write-Host "[Doc] Moved $oldVersion from README to CHANGELOG" -ForegroundColor Gray
+                }
+            }
+        }
+
+        [System.IO.File]::WriteAllText("$root/$f", $content, $utf8NoBOM)
+        Write-Host "[Doc] Synced README: $f" -ForegroundColor Gray
+    }
 }
 
 Write-Host "[Success] All files synced successfully!" -ForegroundColor Green
