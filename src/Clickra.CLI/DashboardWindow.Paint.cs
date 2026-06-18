@@ -1077,32 +1077,7 @@ namespace Clickra.UI
 
             int x = (int)contentX, w = 240, h = 30;
 
-            Color btnBg = isHovered ? Color.FromArgb(55, 55, 55) : Color.FromArgb(40, 40, 40);
-            Color btnBorder = _langDropdownOpen ? UIHelper.GetSystemColorizationColor() : (isHovered ? Color.FromArgb(80, 80, 80) : Color.FromArgb(60, 60, 60));
-            Color textColor = Color.FromArgb(220, 220, 220);
-
-            // Draw button base
-            using (var path = UIHelper.GetRoundedRectPath(new RectangleF(x * s, y * s, w * s, h * s), 4 * s))
-            using (var bgBrush = new SolidBrush(btnBg))
-            using (var borderPen = new Pen(btnBorder, _langDropdownOpen ? 1.5f * s : 1f * s))
-            {
-                g.FillPath(bgBrush, path);
-                g.DrawPath(borderPen, path);
-            }
-
-            // Draw selected language text
-            if (_subFont != null)
-            {
-                using var textBrush = new SolidBrush(textColor);
-                g.DrawString(displayText, _subFont, textBrush, (x + 10) * s, (y + 7) * s);
-            }
-
-            // Draw Chevron Down icon
-            if (_iconFont != null)
-            {
-                using var iconBrush = new SolidBrush(Color.FromArgb(160, 160, 160));
-                g.DrawString("\uE70D", _iconFont, iconBrush, (x + w - 24) * s, (y + 9) * s);
-            }
+            UIHelper.DrawDropdownButton(g, x, y, w, h, displayText, _langDropdownOpen, isHovered, _subFont, _iconFont, s);
 
             // Draw overlay popup list if open
             if (_langDropdownOpen)
@@ -1110,14 +1085,7 @@ namespace Clickra.UI
                 int popupH = 180;
                 int popupY = y - popupH; // 210
 
-                // Container path
-                using (var path = UIHelper.GetRoundedRectPath(new RectangleF(x * s, popupY * s, w * s, popupH * s), 4 * s))
-                using (var bgBrush = new SolidBrush(Color.FromArgb(28, 28, 28)))
-                using (var borderPen = new Pen(Color.FromArgb(60, 60, 60)))
-                {
-                    g.FillPath(bgBrush, path);
-                    g.DrawPath(borderPen, path);
-                }
+                UIHelper.DrawDropdownPopup(g, x, popupY, w, popupH, s);
 
                 // Search input box: y = 216
                 int searchX = x + 6, searchY = popupY + 6, searchW = w - 12, searchH = 26;
@@ -1179,23 +1147,7 @@ namespace Clickra.UI
                     int itemH = 24;
 
                     bool isItemHovered = _langHoveredIndex == itemIdx;
-                    Color itemBg = isItemHovered ? UIHelper.GetSystemColorizationColor() : Color.Transparent;
-                    Color itemTextCol = isItemHovered ? Color.White : Color.FromArgb(200, 200, 200);
-
-                    if (isItemHovered)
-                    {
-                        using (var itemPath = UIHelper.GetRoundedRectPath(new RectangleF((x + 4) * s, itemY * s, (w - 8) * s, itemH * s), 3 * s))
-                        using (var itemBgBrush = new SolidBrush(itemBg))
-                        {
-                            g.FillPath(itemBgBrush, itemPath);
-                        }
-                    }
-
-                    if (_subFont != null)
-                    {
-                        using var itemTextBrush = new SolidBrush(itemTextCol);
-                        g.DrawString($"{item.NativeName} ({item.EnglishName})", _subFont, itemTextBrush, (x + 10) * s, (itemY + 5) * s);
-                    }
+                    UIHelper.DrawDropdownItem(g, x, itemY, w, itemH, $"{item.NativeName} ({item.EnglishName})", isItemHovered, _subFont, s);
                 }
 
                 // Draw scrollbar for Language Dropdown
@@ -1270,32 +1222,7 @@ namespace Clickra.UI
 
             int x = (int)contentX, w = 240, h = 30;
 
-            Color btnBg = isHovered ? Color.FromArgb(55, 55, 55) : Color.FromArgb(40, 40, 40);
-            Color btnBorder = _pdfLangDropdownOpen ? UIHelper.GetSystemColorizationColor() : (isHovered ? Color.FromArgb(80, 80, 80) : Color.FromArgb(60, 60, 60));
-            Color textColor = Color.FromArgb(220, 220, 220);
-
-            // Draw button base
-            using (var path = UIHelper.GetRoundedRectPath(new RectangleF(x * s, y * s, w * s, h * s), 4 * s))
-            using (var bgBrush = new SolidBrush(btnBg))
-            using (var borderPen = new Pen(btnBorder, _pdfLangDropdownOpen ? 1.5f * s : 1f * s))
-            {
-                g.FillPath(bgBrush, path);
-                g.DrawPath(borderPen, path);
-            }
-
-            // Draw selected lang text
-            if (_subFont != null)
-            {
-                using var textBrush = new SolidBrush(textColor);
-                g.DrawString(displayText, _subFont, textBrush, (x + 10) * s, (y + 7) * s);
-            }
-
-            // Draw Chevron Down icon
-            if (_iconFont != null)
-            {
-                using var iconBrush = new SolidBrush(Color.FromArgb(160, 160, 160));
-                g.DrawString("\uE70D", _iconFont, iconBrush, (x + w - 24) * s, (y + 9) * s);
-            }
+            UIHelper.DrawDropdownButton(g, x, y, w, h, displayText, _pdfLangDropdownOpen, isHovered, _subFont, _iconFont, s);
 
             // Draw overlay popup list if open
             if (_pdfLangDropdownOpen)
@@ -1303,13 +1230,7 @@ namespace Clickra.UI
                 int popupH = PdfLangs.Length * 26 + 8;
                 int popupY = y - popupH;
 
-                using (var path = UIHelper.GetRoundedRectPath(new RectangleF(x * s, popupY * s, w * s, popupH * s), 4 * s))
-                using (var bgBrush = new SolidBrush(Color.FromArgb(28, 28, 28)))
-                using (var borderPen = new Pen(Color.FromArgb(60, 60, 60)))
-                {
-                    g.FillPath(bgBrush, path);
-                    g.DrawPath(borderPen, path);
-                }
+                UIHelper.DrawDropdownPopup(g, x, popupY, w, popupH, s);
 
                 int listStartY = popupY + 4;
                 for (int i = 0; i < PdfLangs.Length; i++)
@@ -1319,23 +1240,7 @@ namespace Clickra.UI
                     int itemH = 24;
 
                     bool isItemHovered = _pdfLangHoveredIndex == i;
-                    Color itemBg = isItemHovered ? UIHelper.GetSystemColorizationColor() : Color.Transparent;
-                    Color itemTextCol = isItemHovered ? Color.White : Color.FromArgb(200, 200, 200);
-
-                    if (isItemHovered)
-                    {
-                        using (var itemPath = UIHelper.GetRoundedRectPath(new RectangleF((x + 4) * s, itemY * s, (w - 8) * s, itemH * s), 3 * s))
-                        using (var itemBgBrush = new SolidBrush(itemBg))
-                        {
-                            g.FillPath(itemBgBrush, itemPath);
-                        }
-                    }
-
-                    if (_subFont != null)
-                    {
-                        using var itemTextBrush = new SolidBrush(itemTextCol);
-                        g.DrawString(item.Name, _subFont, itemTextBrush, (x + 10) * s, (itemY + 5) * s);
-                    }
+                    UIHelper.DrawDropdownItem(g, x, itemY, w, itemH, item.Name, isItemHovered, _subFont, s);
                 }
             }
         }

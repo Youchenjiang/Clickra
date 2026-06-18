@@ -28,6 +28,62 @@ namespace Clickra.UI
         public static readonly Color AccentGreen = Color.FromArgb(100, 220, 100);
         public static readonly Color AccentRed = Color.FromArgb(255, 90, 70);
 
+        public static void DrawDropdownButton(Graphics g, int x, int y, int w, int h, string displayText, bool isOpen, bool isHovered, Font? textFont, Font? iconFont, float scale)
+        {
+            Color btnBg = isHovered ? BgButtonHover : BgCard;
+            Color btnBorder = isOpen ? GetSystemColorizationColor() : (isHovered ? BorderHover : BorderDefault);
+
+            using (var path = GetRoundedRectPath(new RectangleF(x * scale, y * scale, w * scale, h * scale), 4 * scale))
+            using (var bgBrush = new SolidBrush(btnBg))
+            using (var borderPen = new Pen(btnBorder, isOpen ? 1.5f * scale : 1f * scale))
+            {
+                g.FillPath(bgBrush, path);
+                g.DrawPath(borderPen, path);
+            }
+
+            if (textFont != null)
+            {
+                using var textBrush = new SolidBrush(TextPrimary);
+                g.DrawString(displayText, textFont, textBrush, (x + 10) * scale, (y + 7) * scale);
+            }
+
+            if (iconFont != null)
+            {
+                using var iconBrush = new SolidBrush(TextMuted);
+                g.DrawString("\uE70D", iconFont, iconBrush, (x + w - 24) * scale, (y + 9) * scale);
+            }
+        }
+
+        public static void DrawDropdownPopup(Graphics g, int x, int y, int w, int h, float scale)
+        {
+            using (var path = GetRoundedRectPath(new RectangleF(x * scale, y * scale, w * scale, h * scale), 4 * scale))
+            using (var bgBrush = new SolidBrush(BgPopup))
+            using (var borderPen = new Pen(BorderDefault))
+            {
+                g.FillPath(bgBrush, path);
+                g.DrawPath(borderPen, path);
+            }
+        }
+
+        public static void DrawDropdownItem(Graphics g, int x, int y, int w, int h, string text, bool isHovered, Font? font, float scale)
+        {
+            if (isHovered)
+            {
+                using (var itemPath = GetRoundedRectPath(new RectangleF((x + 4) * scale, y * scale, (w - 8) * scale, h * scale), 3 * scale))
+                using (var itemBgBrush = new SolidBrush(GetSystemColorizationColor()))
+                {
+                    g.FillPath(itemBgBrush, itemPath);
+                }
+            }
+
+            if (font != null)
+            {
+                Color itemTextCol = isHovered ? Color.White : TextSecondary;
+                using var itemTextBrush = new SolidBrush(itemTextCol);
+                g.DrawString(text, font, itemTextBrush, (x + 10) * scale, (y + 5) * scale);
+            }
+        }
+
         public static GraphicsPath GetRoundedRectPath(RectangleF rect, float radius)
         {
             var path = new GraphicsPath();
