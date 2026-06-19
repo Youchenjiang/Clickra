@@ -7,6 +7,8 @@ using System.Reflection;
 using System.Runtime.InteropServices;
 using System.Runtime.InteropServices.Marshalling;
 using Clickra.Core;
+using Clickra.Core.Models;
+using Clickra.Core.Processors;
 using Clickra.UI;
 
 namespace Clickra
@@ -80,7 +82,16 @@ namespace Clickra
             }
 
             string command = argList[0].ToLowerInvariant();
-            var files = argList.Skip(1).Where(f => !int.TryParse(f, out _)).OrderBy(f => f).ToList();
+            var files = ExpandDirectoryArguments(
+                    command,
+                    argList.Skip(1).Where(f => !int.TryParse(f, out _)))
+                .OrderBy(f => f)
+                .ToList();
+            if (files.Count == 0)
+            {
+                Console.WriteLine($"[錯誤] 指令「{command}」找不到可處理的檔案。");
+                return;
+            }
             string outputDir = ClickraStorage.GetOutputDir(files[0]);
 
             string startTimeStr = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
@@ -234,7 +245,7 @@ namespace Clickra
                                         }
                                     }
 
-                                    bool shouldSplit = startsNew || (prevLineEndedEarly && !prevLineWasHeading) || (prevLineWasHeading && !FileProcessor.IsLineBold(line));
+                                    bool shouldSplit = startsNew || (prevLineEndedEarly && !prevLineWasHeading) || (prevLineWasHeading && !FontUtilities.IsLineBold(line));
 
                                     if (currentGroup.Count == 0)
                                     {
@@ -309,6 +320,33 @@ namespace Clickra
                 if (!quiet) ShowWarning(msg, "Clickra — 格式錯誤");
                 Environment.Exit(1);
             }
+        }
+
+        static List<string> ExpandDirectoryArguments(string command, IEnumerable<string> inputs)
+        {
+            var allowed = command switch
+            {
+                "ppt2pdf" => new[] { ".pptx", ".ppt" },
+                "word2pdf" => new[] { ".docx", ".doc" },
+                "merge-pdf" or "translate-pdf" or "decrypt-pdf" => new[] { ".pdf" },
+                "img2pdf" or "img-merge" or "img-stitch" => new[] { ".jpg", ".jpeg", ".png", ".bmp", ".gif", ".tiff", ".webp" },
+                _ => Array.Empty<string>()
+            };
+
+            var expanded = new List<string>();
+            foreach (var input in inputs)
+            {
+                if (Directory.Exists(input) && allowed.Length > 0)
+                {
+                    expanded.AddRange(Directory.EnumerateFiles(input)
+                        .Where(file => allowed.Contains(Path.GetExtension(file).ToLowerInvariant())));
+                }
+                else
+                {
+                    expanded.Add(input);
+                }
+            }
+            return expanded;
         }
 
         static void RequireMinFiles(List<string> files, string command, int min, bool quiet)
