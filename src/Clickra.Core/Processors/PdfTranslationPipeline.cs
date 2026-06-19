@@ -600,7 +600,7 @@ namespace Clickra.Core.Processors
                             searchText = PdfAnnotationTextMatcher.NormalizeAnnotationSearchText(searchText);
                             if (!string.IsNullOrEmpty(searchText))
                             {
-                                int occurrenceIdx = GetOccurrenceIndex(bestPara.AllLetters, overlappingLetters, searchText);
+                                int occurrenceIdx = PdfAnnotationOccurrenceMatcher.GetOccurrenceIndex(bestPara.AllLetters, overlappingLetters, searchText);
                                 int firstLetterIdx = bestPara.AllLetters.IndexOf(overlappingLetters[0]);
                                 int lastLetterIdx = bestPara.AllLetters.IndexOf(overlappingLetters[^1]);
                                 double relCenterX = bestPara.Width > 0 ? (annotCenterX - bestPara.X0) / bestPara.Width : 0.5;
@@ -4193,54 +4193,6 @@ namespace Clickra.Core.Processors
             double center = pageWidth / 2.0;
             double lineCenter = (line.BoundingBox.Left + line.BoundingBox.Right) / 2.0;
             return lineCenter < center;
-        }
-
-        private static bool CharEqualsNormalized(char c1, char c2)
-        {
-            if (c1 == c2) return true;
-            if (char.ToLowerInvariant(c1) == char.ToLowerInvariant(c2)) return true;
-            if ((c1 == '-' || c1 == '–' || c1 == '—') && (c2 == '-' || c2 == '–' || c2 == '—')) return true;
-            return false;
-        }
-
-        private static int GetOccurrenceIndex(List<PdfLetter> allLetters, List<PdfLetter> targetLetters, string searchText)
-        {
-            if (allLetters == null || targetLetters == null || string.IsNullOrEmpty(searchText)) return 0;
-            
-            var occurrences = new List<int>();
-            for (int i = 0; i <= allLetters.Count - searchText.Length; i++)
-            {
-                bool match = true;
-                for (int j = 0; j < searchText.Length; j++)
-                {
-                    if (allLetters[i + j].Value.Length == 0 || !CharEqualsNormalized(allLetters[i + j].Value[0], searchText[j]))
-                    {
-                        match = false;
-                        break;
-                    }
-                }
-                if (match)
-                {
-                    occurrences.Add(i);
-                }
-            }
-            
-            if (occurrences.Count <= 1) return 0;
-            
-            double targetAvgIndex = targetLetters.Average(tl => allLetters.IndexOf(tl));
-            int bestIdx = 0;
-            double minDist = double.MaxValue;
-            for (int k = 0; k < occurrences.Count; k++)
-            {
-                double occurrenceAvgIndex = occurrences[k] + (searchText.Length - 1) / 2.0;
-                double dist = Math.Abs(occurrenceAvgIndex - targetAvgIndex);
-                if (dist < minDist)
-                {
-                    minDist = dist;
-                    bestIdx = k;
-                }
-            }
-            return bestIdx;
         }
 
         private static void MergeVerticallyAdjacentParagraphs(List<PdfParagraph> paragraphs)
