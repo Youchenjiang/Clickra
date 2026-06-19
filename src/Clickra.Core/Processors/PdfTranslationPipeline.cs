@@ -39,7 +39,8 @@ namespace Clickra.Core.Processors
         private static PdfTranslationDiagnosticsDependencies CreateDiagnosticsDependencies() => new()
         {
             BuildPageParagraphs = BuildPageParagraphs,
-            ApplyReferencesSectionBypass = ApplyReferencesSectionBypass,
+            ApplyReferencesSectionBypass = (pages, widths) =>
+                PdfReferenceSectionBypasser.Apply(pages, widths, GetPageReadingOrder),
             BuildTableMaskRegions = PdfTableMaskPlanner.BuildTableMaskRegions,
             BuildProcessedDiagramMaskRegions = BuildProcessedDiagramMaskRegions,
             GetEffectiveDiagramMaskRegions = GetEffectiveDiagramMaskRegions,
@@ -421,7 +422,7 @@ namespace Clickra.Core.Processors
                 pageParagraphs.Add(BuildPageParagraphs(page));
             }
 
-            ApplyReferencesSectionBypass(pageParagraphs, pageWidths);
+            PdfReferenceSectionBypasser.Apply(pageParagraphs, pageWidths, GetPageReadingOrder);
 
             onProgress?.Invoke(30, 100, "正在翻譯文本內容...");
             var translator = TranslationEngineFactory.Create();
@@ -1275,39 +1276,6 @@ namespace Clickra.Core.Processors
             if (paraRight && regionLeft) return false;
             double overlapX = Math.Min(paraX1, region.X1) - Math.Max(paraX0, region.X0);
             return overlapX >= minSharedWidth;
-        }
-
-        /// <summary>
-        /// Marks bibliography entries as bypassed from the REFERENCES heading through the next major section.
-        /// Heading itself remains translatable (e.g. REFERENCES → 參考文獻).
-        /// </summary>
-        private static void ApplyReferencesSectionBypass(List<List<PdfParagraph>> allPages, double[] pageWidths)
-        {
-            bool inSection = false;
-
-            for (int p = 0; p < allPages.Count; p++)
-            {
-                double pageWidth = p < pageWidths.Length ? pageWidths[p] : 595.0;
-                foreach (var para in GetPageReadingOrder(allPages[p], pageWidth))
-                {
-                    if (ReferenceSectionDetector.IsHeading(para))
-                    {
-                        inSection = true;
-                        continue;
-                    }
-
-                    if (inSection && ReferenceSectionDetector.IsTerminator(para))
-                    {
-                        inSection = false;
-                        continue;
-                    }
-
-                    if (inSection && !para.IsTable)
-                    {
-                        para.IsBypassed = true;
-                    }
-                }
-            }
         }
 
         private static bool IsEquationParagraph(PdfParagraph para)
