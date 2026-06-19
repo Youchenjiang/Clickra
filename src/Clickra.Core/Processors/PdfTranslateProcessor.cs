@@ -48,7 +48,7 @@ namespace Clickra.Core.Processors
         public static bool IsHeadingLine(UglyToad.PdfPig.DocumentLayoutAnalysis.TextLine line) =>
             PdfTranslationPipeline.IsHeadingLine(line);
 
-        public static List<PdfTranslationPipeline.MergedBlock> GetMergedBlocks(
+        public static List<PdfParagraphBlockMerger.MergedBlock> GetMergedBlocks(
             IEnumerable<UglyToad.PdfPig.DocumentLayoutAnalysis.TextBlock> docstrumBlocks,
             double pageWidth,
             bool isTablePage = false) =>
