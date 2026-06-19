@@ -40,7 +40,7 @@ namespace Clickra.Core.Processors
         {
             BuildPageParagraphs = BuildPageParagraphs,
             ApplyReferencesSectionBypass = (pages, widths) =>
-                PdfReferenceSectionBypasser.Apply(pages, widths, GetPageReadingOrder),
+                PdfReferenceSectionBypasser.Apply(pages, widths, PdfPageReadingOrder.GetPageReadingOrder),
             BuildTableMaskRegions = PdfTableMaskPlanner.BuildTableMaskRegions,
             BuildProcessedDiagramMaskRegions = BuildProcessedDiagramMaskRegions,
             GetEffectiveDiagramMaskRegions = GetEffectiveDiagramMaskRegions,
@@ -115,8 +115,8 @@ namespace Clickra.Core.Processors
                         bool prevLineHasGap = isTablePage && currentGroup.Count > 0 && PdfTextLineGeometry.HasColumnGap(currentGroup[currentGroup.Count - 1]);
                         bool currLineHasGap = isTablePage && PdfTextLineGeometry.HasColumnGap(line);
                         bool crossColumnSplit = currentGroup.Count > 0 &&
-                            IsLineInLeftColumn(currentGroup[currentGroup.Count - 1], page.Width) !=
-                            IsLineInLeftColumn(line, page.Width);
+                            PdfPageReadingOrder.IsLineInLeftColumn(currentGroup[currentGroup.Count - 1], page.Width) !=
+                            PdfPageReadingOrder.IsLineInLeftColumn(line, page.Width);
                         bool forceSplit = isTableBlock && currentGroup.Count > 0;
 
                         // When the previous line is a heading, don't split on prevLineEndedEarly
@@ -422,7 +422,7 @@ namespace Clickra.Core.Processors
                 pageParagraphs.Add(BuildPageParagraphs(page));
             }
 
-            PdfReferenceSectionBypasser.Apply(pageParagraphs, pageWidths, GetPageReadingOrder);
+            PdfReferenceSectionBypasser.Apply(pageParagraphs, pageWidths, PdfPageReadingOrder.GetPageReadingOrder);
 
             onProgress?.Invoke(30, 100, "正在翻譯文本內容...");
             var translator = TranslationEngineFactory.Create();
@@ -3924,23 +3924,6 @@ namespace Clickra.Core.Processors
             return renderedHeight;
         }
 
-        private static bool IsLineInLeftColumn(UglyToad.PdfPig.DocumentLayoutAnalysis.TextLine line, double pageWidth)
-        {
-            double center = pageWidth / 2.0;
-            double lineCenter = (line.BoundingBox.Left + line.BoundingBox.Right) / 2.0;
-            return lineCenter < center;
-        }
-
-        private static List<PdfParagraph> GetPageReadingOrder(List<PdfParagraph> pageList, double pageWidth)
-        {
-            double center = pageWidth / 2.0;
-            var left = pageList.Where(p => p.X0 + p.Width / 2 < center).OrderByDescending(p => p.Y1).ToList();
-            var right = pageList.Where(p => p.X0 + p.Width / 2 >= center).OrderByDescending(p => p.Y1).ToList();
-            var result = new List<PdfParagraph>(left.Count + right.Count);
-            result.AddRange(left);
-            result.AddRange(right);
-            return result;
-        }
     }
 }
 
