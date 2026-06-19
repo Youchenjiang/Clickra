@@ -764,14 +764,24 @@ namespace Clickra.Core.Processors
                 HashSet<string> strippedBaseFonts;
                 try
                 {
-                    var translatableFonts = CollectTranslatableFontBaseNames(paragraphs);
-                    var mustStripFonts = CollectTranslatableFontBaseNames(paragraphs.Where(para =>
+                    var translatableFonts = PdfFontStripper.CollectTranslatableFontBaseNames(paragraphs);
+                    var mustStripFonts = PdfFontStripper.CollectTranslatableFontBaseNames(paragraphs.Where(para =>
                         !para.IsBypassed && !para.IsGrayPromptContent && !IsGrayPromptCodeParagraph(para)));
-                    var protectedOnlyFonts = CollectFontsUsedOnlyInProtectedRegions(
-                        paragraphs, effectiveGrayMaskRegions, p, pageHeightPts);
+                    var protectedOnlyFonts = PdfFontStripper.CollectFontsUsedOnlyInProtectedRegions(
+                        paragraphs,
+                        effectiveGrayMaskRegions,
+                        p,
+                        pageHeightPts,
+                        new ProtectedNoStripPredicates
+                        {
+                            IsGrayPromptCodeParagraph = IsGrayPromptCodeParagraph,
+                            ParagraphCenterInsideAnyRegion = ParagraphCenterInsideAnyRegion,
+                            IsParagraphInsideGrayShadedRegion = IsParagraphInsideGrayShadedRegion,
+                            IsLikelyChartLabel = IsLikelyChartLabel
+                        });
                     protectedOnlyFonts.ExceptWith(mustStripFonts);
                     translatableFonts.ExceptWith(protectedOnlyFonts);
-                    strippedBaseFonts = StripTextFromPage(page, translatableFonts);
+                    strippedBaseFonts = PdfFontStripper.StripTextFromPage(page, translatableFonts);
                 }
                 catch
                 {
@@ -918,7 +928,7 @@ namespace Clickra.Core.Processors
                 {
                     if (para.IsBypassed)
                     {
-                        if (!ParagraphUsesStrippedFont(para, strippedBaseFonts)) continue;
+                        if (!PdfFontStripper.ParagraphUsesStrippedFont(para, strippedBaseFonts)) continue;
                         RenderBypassedParagraph(gfx, para, targetFontName);
                     }
                     else
@@ -4024,270 +4034,6 @@ namespace Clickra.Core.Processors
                 if (cx >= region.X0 && cx <= region.X1 && cy >= region.Y0 && cy <= region.Y1) return true;
             }
             return false;
-        }
-
-        private static string CleanPdfBaseFontName(string? baseFont)
-        {
-            if (string.IsNullOrEmpty(baseFont)) return "";
-            string cleanFontName = baseFont.Replace("/", "").Trim();
-            int plusIdx = cleanFontName.IndexOf('+');
-            if (plusIdx >= 0 && plusIdx < cleanFontName.Length - 1)
-            {
-                cleanFontName = cleanFontName.Substring(plusIdx + 1);
-            }
-            return cleanFontName;
-        }
-
-        /// <summary>BaseFont names used by paragraphs that receive translation overlay (non-bypassed).</summary>
-        private static HashSet<string> CollectTranslatableFontBaseNames(IEnumerable<PdfParagraph> paragraphs)
-        {
-            var names = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-            foreach (var para in paragraphs)
-            {
-                if (para.IsBypassed) continue;
-                foreach (var letter in para.AllLetters)
-                {
-                    string cleanFontName = CleanPdfBaseFontName(letter.FontName);
-                    if (string.IsNullOrEmpty(cleanFontName)) continue;
-                    if (PdfParagraph.MathFontRegex.IsMatch(cleanFontName)) continue;
-                    names.Add(cleanFontName);
-                }
-            }
-
-            return names;
-        }
-
-        /// <summary>Fonts whose glyphs appear only inside gray shaded boxes or page-1 author band — never strip.</summary>
-        private static HashSet<string> CollectFontsUsedOnlyInProtectedRegions(
-            IEnumerable<PdfParagraph> paragraphs,
-            IReadOnlyList<TableMaskRegion> grayRegions,
-            int pageIndex,
-            double pageHeight)
-        {
-            var fontHasUnprotectedUse = new Dictionary<string, bool>(StringComparer.OrdinalIgnoreCase);
-            var pageList = paragraphs as List<PdfParagraph> ?? paragraphs.ToList();
-
-            foreach (var para in pageList)
-            {
-                bool inProtected = IsParagraphInProtectedNoStripZone(para, grayRegions, pageIndex, pageHeight, pageList);
-                foreach (var letter in para.AllLetters)
-                {
-                    string cleanFontName = CleanPdfBaseFontName(letter.FontName);
-                    if (string.IsNullOrEmpty(cleanFontName)) continue;
-                    if (PdfParagraph.MathFontRegex.IsMatch(cleanFontName)) continue;
-                    if (!inProtected)
-                        fontHasUnprotectedUse[cleanFontName] = true;
-                    else if (!fontHasUnprotectedUse.ContainsKey(cleanFontName))
-                        fontHasUnprotectedUse[cleanFontName] = false;
-                }
-            }
-
-            var onlyProtected = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-            foreach (var kv in fontHasUnprotectedUse)
-            {
-                if (!kv.Value) onlyProtected.Add(kv.Key);
-            }
-            return onlyProtected;
-        }
-
-        private static bool IsParagraphInProtectedNoStripZone(
-            PdfParagraph para,
-            IReadOnlyList<TableMaskRegion> grayRegions,
-            int pageIndex,
-            double pageHeight,
-            List<PdfParagraph> pageList)
-        {
-            if (pageIndex == 0 && PageOneLayoutClassifier.IsAuthorBlockParagraph(para, pageList, pageHeight))
-                return true;
-            if (para.IsGrayPromptContent || IsGrayPromptCodeParagraph(para))
-            {
-                if (grayRegions.Count == 0) return true;
-                return ParagraphCenterInsideAnyRegion(para, grayRegions) ||
-                       IsParagraphInsideGrayShadedRegion(para, grayRegions);
-            }
-            if (para.IsBypassed && (para.IsDiagram || para.IsCode || IsLikelyChartLabel(para)))
-            {
-                if (grayRegions.Count == 0) return para.IsDiagram || para.IsCode;
-                return ParagraphCenterInsideAnyRegion(para, grayRegions) ||
-                       IsParagraphInsideGrayShadedRegion(para, grayRegions);
-            }
-            return false;
-        }
-
-        private static bool ParagraphUsesStrippedFont(PdfParagraph para, HashSet<string> strippedBaseFonts)
-        {
-            if (strippedBaseFonts.Count == 0) return false;
-            foreach (var letter in para.AllLetters)
-            {
-                string cleanFontName = CleanPdfBaseFontName(letter.FontName);
-                if (!string.IsNullOrEmpty(cleanFontName) && strippedBaseFonts.Contains(cleanFontName))
-                {
-                    return true;
-                }
-            }
-            return false;
-        }
-
-        private static HashSet<string> StripTextFromPage(PdfPage page, IReadOnlyCollection<string> translatableBaseFontNames)
-        {
-            var strippedBaseFonts = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-            var resources = page.Elements.GetDictionary("/Resources");
-            if (resources == null) return strippedBaseFonts;
-
-            var fonts = resources.Elements.GetDictionary("/Font");
-            if (fonts == null) return strippedBaseFonts;
-
-            var fontsToStrip = new HashSet<string>();
-            foreach (var key in fonts.Elements.KeyNames)
-            {
-                var fontItem = fonts.Elements[key];
-                if (fontItem is PdfReference reference) fontItem = reference.Value;
-                if (fontItem is PdfDictionary fontDict)
-                {
-                    var baseFont = fontDict.Elements.GetName("/BaseFont");
-                    if (!string.IsNullOrEmpty(baseFont))
-                    {
-                        string cleanFontName = CleanPdfBaseFontName(baseFont);
-                        bool isMathOrCode = PdfParagraph.MathFontRegex.IsMatch(cleanFontName);
-                        if (!isMathOrCode && translatableBaseFontNames.Contains(cleanFontName))
-                        {
-                            fontsToStrip.Add(key.ToString().TrimStart('/'));
-                            strippedBaseFonts.Add(cleanFontName);
-                        }
-                    }
-                }
-            }
-
-            if (fontsToStrip.Count == 0) return strippedBaseFonts;
-
-            var contents = page.Contents;
-            for (int i = 0; i < contents.Elements.Count; i++)
-            {
-                var contentObj = contents.Elements[i];
-                if (contentObj is PdfReference reference) contentObj = reference.Value;
-                if (contentObj is PdfDictionary contentDict && contentDict.Stream != null)
-                {
-                    byte[] decompressedBytes = contentDict.Stream.UnfilteredValue;
-                    byte[] cleanBytes = StripSelectedText(decompressedBytes, fontsToStrip);
-                    contentDict.Stream.Value = cleanBytes;
-                    contentDict.Elements.Remove("/Filter");
-                }
-            }
-
-            return strippedBaseFonts;
-        }
-
-        private static byte[] StripSelectedText(byte[] contentBytes, HashSet<string> fontsToStrip)
-        {
-            using var ms = new MemoryStream();
-            int i = 0;
-            int len = contentBytes.Length;
-            
-            string currentFontResource = "";
-            bool stripActive = false;
-
-            var tokens = new List<string>();
-
-            while (i < len)
-            {
-                byte b = contentBytes[i];
-
-                if (b == '(')
-                {
-                    int start = i;
-                    i++;
-                    int escapeCount = 0;
-                    while (i < len)
-                    {
-                        byte sb = contentBytes[i];
-                        if (sb == '\\')
-                        {
-                            escapeCount = (escapeCount + 1) % 2;
-                        }
-                        else if (sb == ')' && escapeCount == 0)
-                        {
-                            i++;
-                            break;
-                        }
-                        else
-                        {
-                            escapeCount = 0;
-                        }
-                        i++;
-                    }
-                    int end = i;
-
-                    if (stripActive)
-                    {
-                        ms.WriteByte((byte)'(');
-                        ms.WriteByte((byte)')');
-                    }
-                    else
-                    {
-                        ms.Write(contentBytes, start, end - start);
-                    }
-                    continue;
-                }
-
-                if (b == '<')
-                {
-                    if (i + 1 < len && contentBytes[i + 1] == '<')
-                    {
-                        ms.WriteByte((byte)'<');
-                        ms.WriteByte((byte)'<');
-                        i += 2;
-                        continue;
-                    }
-
-                    int start = i;
-                    i++;
-                    while (i < len && contentBytes[i] != '>')
-                    {
-                        i++;
-                    }
-                    if (i < len) i++;
-                    int end = i;
-
-                    if (stripActive)
-                    {
-                        ms.WriteByte((byte)'<');
-                        ms.WriteByte((byte)'>');
-                    }
-                    else
-                    {
-                        ms.Write(contentBytes, start, end - start);
-                    }
-                    continue;
-                }
-
-                if (IsDelimiter(contentBytes, i))
-                {
-                    ms.WriteByte(b);
-                    i++;
-                    continue;
-                }
-
-                int tokenStart = i;
-                while (i < len && !IsDelimiter(contentBytes, i) && contentBytes[i] != '(' && contentBytes[i] != '<')
-                {
-                    i++;
-                }
-                int tokenLen = i - tokenStart;
-                string token = Encoding.ASCII.GetString(contentBytes, tokenStart, tokenLen);
-                ms.Write(contentBytes, tokenStart, tokenLen);
-
-                tokens.Add(token);
-                if (tokens.Count > 3) tokens.RemoveAt(0);
-
-                if (token == "Tf" && tokens.Count >= 3)
-                {
-                    string fontName = tokens[tokens.Count - 3];
-                    currentFontResource = fontName;
-                    stripActive = fontsToStrip.Contains(fontName.TrimStart('/'));
-                }
-            }
-
-            return ms.ToArray();
         }
 
         private static double RenderParagraph(XGraphics gfx, PdfParagraph para, string targetFontName, bool measureOnly = false)
