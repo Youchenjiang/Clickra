@@ -169,7 +169,18 @@ namespace Clickra.Core.Processors
                 fontName = "Courier New";
             }
 
-            return new XFont(fontName, fontSize, style);
+            try
+            {
+                return new XFont(fontName, fontSize, style);
+            }
+            catch
+            {
+                // Some embedded/subset math fonts request a style that the active
+                // resolver cannot provide. Keep PDF reconstruction alive with a
+                // broadly available regular face.
+                try { return new XFont(fontName, fontSize, XFontStyleEx.Regular); }
+                catch { return new XFont("Arial", fontSize, XFontStyleEx.Regular); }
+            }
         }
 
         public static bool IsMathOrGreekCharacter(char c)

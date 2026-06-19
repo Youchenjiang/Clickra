@@ -182,6 +182,7 @@ try {{
             var rawDiagramMaskRegions = BuildProcessedDiagramMaskRegions(page, pageList);
             var diagramMaskRegions = GetEffectiveDiagramMaskRegions(
                 rawDiagramMaskRegions, tableMaskRegions, pageList);
+            var figureClipRegions = GetFigureClipRegions(pageList, diagramMaskRegions, page.Width);
             var grayShadedRegions = GetGrayPromptShadedRegions(diagramMaskRegions, page.Width, pageList);
             var effectiveGrayRegions = BuildEffectiveGrayMaskRegions(
                 page, diagramMaskRegions, pageList, page.Width);
@@ -233,6 +234,7 @@ try {{
                 TableCount = tableParas.Count,
                 TableMaskRegions = tableMaskRegions.Select(ToDiagnosticsRegion).ToList(),
                 DiagramMaskRegions = diagramMaskRegions.Select(ToDiagnosticsRegion).ToList(),
+                FigureClipRegions = figureClipRegions.Select(ToDiagnosticsRegion).ToList(),
                 GrayPromptShadedRegions = grayShadedRegions.Select(ToDiagnosticsRegion).ToList(),
                 EffectiveGrayMaskRegions = effectiveGrayRegions.Select(ToDiagnosticsRegion).ToList(),
                 Paragraphs = paragraphs
@@ -259,6 +261,15 @@ try {{
                 for (int ri = 0; ri < diagnostics.DiagramMaskRegions.Count; ri++)
                 {
                     var r = diagnostics.DiagramMaskRegions[ri];
+                    sb.AppendLine($"  [{ri}] X=[{r.X0:F1},{r.X1:F1}] Y=[{r.Y0:F1},{r.Y1:F1}]");
+                }
+            }
+            if (diagnostics.FigureClipRegions.Count > 0)
+            {
+                sb.AppendLine($"FigureClipRegions: count={diagnostics.FigureClipRegions.Count}");
+                for (int ri = 0; ri < diagnostics.FigureClipRegions.Count; ri++)
+                {
+                    var r = diagnostics.FigureClipRegions[ri];
                     sb.AppendLine($"  [{ri}] X=[{r.X0:F1},{r.X1:F1}] Y=[{r.Y0:F1},{r.Y1:F1}]");
                 }
             }
@@ -597,6 +608,7 @@ try {{
                 ReclassifyAppendixFeatureTableText(pageList, page.Width);
                 ReclassifyTableMisclassifiedProse(pageList, page.Width);
                 MarkCompactAcademicTableBodies(pageList, page.Width);
+                MarkSplitPromptPerformanceTable(pageList);
                 var tableMaskForDiagram = BuildTableMaskRegions(
                     pageList.Where(p => p.IsTable).ToList(), page.Width);
                 var effectiveDiagramRegions = GetEffectiveDiagramMaskRegions(
@@ -606,6 +618,7 @@ try {{
                 ReclassifyStandaloneChartLabelsAsDiagram(pageList);
                 FinalizeDiagramFigureLabels(pageList, effectiveDiagramRegions, page.Height);
                 MarkWorkflowFigureLabelsAboveCaption(pageList, page.Height);
+                MarkCodeFigureContentAboveCaption(pageList, page.Width, page.Height);
                 ClearDiagramFlagOnFigureCaptions(pageList);
                 ClearDiagramFlagOnSectionHeadings(pageList);
                 ReclassifyCalloutFindingsText(pageList);
@@ -670,6 +683,7 @@ try {{
                 ClearDiagramFlagOnRunningHeaders(pageList, page.Height);
                 ClearDiagramFlagOnTranslatableProse(pageList, effectiveDiagramRegions);
                 MarkWorkflowFigureLabelsAboveCaption(pageList, page.Height);
+                MarkCodeFigureContentAboveCaption(pageList, page.Width, page.Height);
                 ClearDiagramFlagOnFigureCaptions(pageList);
                 ClearDiagramFlagOnSectionHeadings(pageList);
                 MarkWorkflowBannerTextInDiagramRegions(pageList, effectiveDiagramRegions, page.Height);
@@ -695,6 +709,7 @@ try {{
                 ReclassifyWorkDivisionTableText(pageList, page.Width);
                 ReclassifyAppendixFeatureTableText(pageList, page.Width);
                 MarkCompactAcademicTableBodies(pageList, page.Width);
+                MarkSplitPromptPerformanceTable(pageList);
                 if (!workDivisionPage)
                 {
                     MarkAllParagraphsByGrayGeometry(pageList, effectiveGrayRegions, page.Height);
@@ -707,12 +722,28 @@ try {{
                 }
                 ReclassifyAppendixFeatureTableText(pageList, page.Width);
                 MarkWorkflowFigureLabelsAboveCaption(pageList, page.Height);
+                MarkCodeFigureContentAboveCaption(pageList, page.Width, page.Height);
+                if (!workDivisionPage)
+                {
+                    MarkAllParagraphsByGrayGeometry(pageList, grayPromptShadedRegions, page.Height);
+                    RestoreGrayPromptContinuations(pageList);
+                    FinalizeGrayPromptContentFlags(pageList);
+                }
 
                 if (page.Number == 1)
                     ApplyPageOneAuthorBlockFlags(pageList, page.Height);
 
                 foreach (var para in pageList)
                 {
+                    string finalText = para.TextWithPlaceholders.Trim();
+                    if (finalText.Equals("EX-", StringComparison.OrdinalIgnoreCase) ||
+                        System.Text.RegularExpressions.Regex.IsMatch(
+                            finalText, @"^AMPLE\}?$", System.Text.RegularExpressions.RegexOptions.IgnoreCase) ||
+                        finalText.Contains("OUTPUT FORMAT", StringComparison.OrdinalIgnoreCase))
+                    {
+                        MarkAsGrayPromptContent(para);
+                    }
+
                     if (page.Number == 1 && IsPageOneAuthorBlockParagraph(para, pageList, page.Height))
                     {
                         para.IsBypassed = true;
@@ -1877,8 +1908,12 @@ try {{
                     double regionCenter = (region.X0 + region.X1) / 2.0;
                     bool regionRightCol = regionCenter >= center - 20;
                     if (regionRightCol != rightCol) continue;
-                    if (region.Y1 > para.Y0 + 8 || region.Y1 < para.Y0 - 200) continue;
-                    if (!tightDiagram.HasValue || region.Y1 > tightDiagram.Value.Y1)
+                    // PdfPig coordinates grow upward. A conventional figure sits above its
+                    // caption, so compare the figure's lower edge with the caption's upper edge.
+                    // Using region.Y1 against caption.Y0 rejects the real figure and creates a
+                    // fallback clip below the caption, truncating masks for nearby inline math.
+                    if (region.Y0 < para.Y1 - 8 || region.Y0 > para.Y1 + 200) continue;
+                    if (!tightDiagram.HasValue || region.Y0 < tightDiagram.Value.Y0)
                     {
                         tightDiagram = region;
                     }
@@ -2721,6 +2756,52 @@ try {{
             }
         }
 
+        /// <summary>
+        /// Preserve TOGLL's split TABLE I: the model/accuracy grid and the
+        /// Prompt Details grid form one table across both columns. The caption
+        /// remains translatable, while headers, prompt definitions, and values
+        /// retain their original PDF drawing and fonts.
+        /// </summary>
+        private static void MarkSplitPromptPerformanceTable(List<PdfParagraph> pageList)
+        {
+            bool hasCaption = pageList.Any(para =>
+                para.TextWithPlaceholders.Trim().Equals(
+                    "TABLE I", StringComparison.OrdinalIgnoreCase));
+            var codeHeader = pageList.FirstOrDefault(para =>
+                para.TextWithPlaceholders.Contains(
+                    "Code LLM", StringComparison.OrdinalIgnoreCase));
+            var promptHeader = pageList.FirstOrDefault(para =>
+                para.TextWithPlaceholders.Contains(
+                    "Prompt Details", StringComparison.OrdinalIgnoreCase));
+            var bottomAnchors = pageList.Where(para =>
+            {
+                string text = para.TextWithPlaceholders.Trim();
+                return text.StartsWith("Avg:", StringComparison.OrdinalIgnoreCase) ||
+                       text.StartsWith("P6:", StringComparison.OrdinalIgnoreCase);
+            }).ToList();
+
+            if (!hasCaption || codeHeader == null || promptHeader == null ||
+                bottomAnchors.Count == 0)
+            {
+                return;
+            }
+
+            double tableTop = Math.Max(codeHeader.Y1, promptHeader.Y1) + 8.0;
+            double tableBottom = bottomAnchors.Min(para => para.Y0) - 5.0;
+
+            foreach (var para in pageList)
+            {
+                if (para.Y1 > tableTop || para.Y0 < tableBottom) continue;
+                if (IsFigureTableCaptionParagraph(para)) continue;
+
+                para.IsDiagram = false;
+                para.IsGrayPromptContent = false;
+                para.IsCode = false;
+                para.IsTable = true;
+                para.IsBypassed = true;
+            }
+        }
+
         private static bool IsTableParagraph(PdfParagraph para)
         {
             string txt = para.TextWithPlaceholders.Trim();
@@ -3012,8 +3093,11 @@ try {{
         {
             // Tier 1: unconditional bypass for micro-glyphs (legend patches, dot ticks, etc.)
             if (para.Height < 5.0 && para.Width < 8.0) return true;
-            // Tier 2: tiny glyphs with numeric/single-letter content
-            if (para.Height >= 7.5 || para.Width >= 14.0) return false;
+            // Tier 2: tiny glyphs with numeric/single-letter content. Some ACM bar charts
+            // render tick labels at ~7.6pt high and ~6.8pt wide (PentestAgent Fig. 7);
+            // if these are translated/masked, the mask expands to the whole column and
+            // erases the bars behind them.
+            if (para.Height > 8.2 || para.Width > 20.0) return false;
             string txt = para.TextWithPlaceholders.Trim();
             if (string.IsNullOrEmpty(txt)) return false;
             // Pure integer or decimal (e.g. "0", "100", "3.5")
@@ -3029,6 +3113,12 @@ try {{
             if (string.IsNullOrEmpty(txt)) return false;
             if (System.Text.RegularExpressions.Regex.IsMatch(txt,
                     @"^(?:Compeletion|Completion)\s+Level\s*\(\s*%\s*\)$",
+                    System.Text.RegularExpressions.RegexOptions.IgnoreCase))
+            {
+                return true;
+            }
+            if (System.Text.RegularExpressions.Regex.IsMatch(txt,
+                    @"^Success\s+Rate\s*\(\s*%\s*\)(?:\s+\d+)?$",
                     System.Text.RegularExpressions.RegexOptions.IgnoreCase))
             {
                 return true;
@@ -3079,7 +3169,7 @@ try {{
             {
                 string t = p.TextWithPlaceholders.Trim();
                 return System.Text.RegularExpressions.Regex.IsMatch(t,
-                    @"^Figure\s+\d+:.*(?:Completion level|overhead|Backbone|difficulty levels)",
+                    @"^Figure\s+\d+:.*(?:Success rate|Completion level|overhead|Backbone|difficulty levels)",
                     System.Text.RegularExpressions.RegexOptions.IgnoreCase);
             });
             if (!pageHasBarChart) return;
@@ -3238,6 +3328,59 @@ try {{
             }
         }
 
+        /// <summary>
+        /// Preserve selectable source code inside narrow, right-column figures.
+        /// TOGLL Figures 4 and 5 use a caption below a code screenshot whose
+        /// width is too small for the full-width workflow-figure heuristic.
+        /// </summary>
+        private static void MarkCodeFigureContentAboveCaption(
+            List<PdfParagraph> pageList,
+            double pageWidth,
+            double pageHeight)
+        {
+            foreach (var caption in pageList.Where(IsFigureTableCaptionParagraph))
+            {
+                string text = caption.TextWithPlaceholders.Trim();
+                if (!System.Text.RegularExpressions.Regex.IsMatch(
+                        text, @"^Fig\.\s*[45]\b",
+                        System.Text.RegularExpressions.RegexOptions.IgnoreCase))
+                {
+                    continue;
+                }
+
+                double captionCenter = caption.X0 + caption.Width / 2;
+                if (captionCenter < pageWidth / 2) continue;
+
+                double bandBottom = caption.Y1 + 4;
+                double bandTop = Math.Min(pageHeight - 20, caption.Y1 + 260);
+                var candidates = pageList.Where(para =>
+                    !ReferenceEquals(para, caption) &&
+                    para.X0 >= pageWidth / 2 - 12 &&
+                    para.Y0 >= bandBottom &&
+                    para.Y1 <= bandTop)
+                    .ToList();
+
+                bool hasCodeAnchor = candidates.Any(para =>
+                {
+                    string candidateText = para.TextWithPlaceholders;
+                    return candidateText.Contains("public ", StringComparison.Ordinal) ||
+                           candidateText.Contains("assert", StringComparison.Ordinal) ||
+                           candidateText.Contains("//TOGLL", StringComparison.OrdinalIgnoreCase) ||
+                           candidateText.Contains("//EvoSuite", StringComparison.OrdinalIgnoreCase) ||
+                           candidateText.Contains("//Ground Truth", StringComparison.OrdinalIgnoreCase);
+                });
+                if (!hasCodeAnchor) continue;
+
+                foreach (var para in candidates)
+                {
+                    para.IsDiagram = true;
+                    para.IsTable = false;
+                    para.IsGrayPromptContent = false;
+                    para.IsBypassed = true;
+                }
+            }
+        }
+
         private static void ClearDiagramFlagOnFigureCaptions(List<PdfParagraph> pageList)
         {
             foreach (var para in pageList)
@@ -3365,23 +3508,19 @@ try {{
                 // Section body like "2) Loss of Context:" — not a prompt list item inside gray boxes.
                 if (para.Height > 28 || para.Width > 250) return false;
                 if (txt.Contains(" of ", StringComparison.OrdinalIgnoreCase)) return false;
-                System.Console.WriteLine($"DEBUG CONTINUATION: '{txt.Substring(0, Math.Min(20, txt.Length))}' matched Regex ^\\d+\\)");
                 return true;
             }
             if (System.Text.RegularExpressions.Regex.IsMatch(txt, @"^\(\d+\)"))
             {
-                System.Console.WriteLine($"DEBUG CONTINUATION: '{txt.Substring(0, Math.Min(20, txt.Length))}' matched Regex ^\\(\\d+\\)");
                 return true;
             }
             if (System.Text.RegularExpressions.Regex.IsMatch(txt, @"^AMPLE\}?$", System.Text.RegularExpressions.RegexOptions.IgnoreCase))
             {
-                System.Console.WriteLine($"DEBUG CONTINUATION: '{txt.Substring(0, Math.Min(20, txt.Length))}' matched Regex ^AMPLE\\}}?$");
                 return true;
             }
             if (txt.StartsWith("LLM:", StringComparison.OrdinalIgnoreCase) ||
                 txt.StartsWith("User:", StringComparison.OrdinalIgnoreCase))
             {
-                System.Console.WriteLine($"DEBUG CONTINUATION: '{txt.Substring(0, Math.Min(20, txt.Length))}' matched LLM:/User:");
                 return true;
             }
             if (txt.StartsWith("You ", StringComparison.OrdinalIgnoreCase) ||
@@ -3397,7 +3536,6 @@ try {{
                 txt.StartsWith("You should ", StringComparison.OrdinalIgnoreCase) ||
                 txt.StartsWith("When the results", StringComparison.OrdinalIgnoreCase))
             {
-                System.Console.WriteLine($"DEBUG CONTINUATION: '{txt.Substring(0, Math.Min(20, txt.Length))}' matched You/Analyze/etc.");
                 return true;
             }
             if (txt.Contains("JSON format", StringComparison.OrdinalIgnoreCase) ||
@@ -3405,7 +3543,6 @@ try {{
                 txt.Contains("OUTPUT FORMAT", StringComparison.OrdinalIgnoreCase) ||
                 txt.Contains("{FORMAT", StringComparison.OrdinalIgnoreCase))
             {
-                System.Console.WriteLine($"DEBUG CONTINUATION MATCHED: '{txt}'");
                 return true;
             }
             if (anchor == null) return false;
@@ -3416,14 +3553,12 @@ try {{
                 para.Height <= 22 && txt.Length <= 160 &&
                 !IsTranslatableBodyProse(para) && !IsTranslatableCalloutProse(para))
             {
-                System.Console.WriteLine($"DEBUG CONTINUATION: '{txt.Substring(0, Math.Min(20, txt.Length))}' matched anchor gap <= 32");
                 return true;
             }
             // Hyphenated prompt lines split across PDF text blocks (e.g. "EX-" / "AMPLE}").
             if (gap >= -2 && gap <= 18 && minWidth > 0 && overlap / minWidth >= 0.55 &&
                 para.Height <= 14 && txt.Length <= 16)
             {
-                System.Console.WriteLine($"DEBUG CONTINUATION: '{txt.Substring(0, Math.Min(20, txt.Length))}' matched hyphenated gap <= 18");
                 return true;
             }
             return false;
@@ -3649,34 +3784,14 @@ try {{
             {
                 bool hasGrayPrompt = pageList.Any(p =>
                 {
-                    bool match = (p.IsGrayPromptContent || IsGrayPromptCodeParagraph(p)) &&
-                                 ParagraphCenterInsideAnyRegion(p, new[] { region });
-                    if (match)
-                    {
-                        System.Console.WriteLine($"DEBUG MATCH: Region X=[{region.X0:F1},{region.X1:F1}] Y=[{region.Y0:F1},{region.Y1:F1}] matched by '{p.TextWithPlaceholders.Substring(0, System.Math.Min(30, p.TextWithPlaceholders.Length))}' (IsGray={p.IsGrayPromptContent}, IsCode={IsGrayPromptCodeParagraph(p)})");
-                    }
-                    return match;
+                    return (p.IsGrayPromptContent || IsGrayPromptCodeParagraph(p)) &&
+                           ParagraphCenterInsideAnyRegion(p, new[] { region });
                 });
                 if (hasGrayPrompt)
                 {
                     filtered.Add(region);
                     continue;
                 }
-
-                System.Console.WriteLine($"DEBUG FILTER: Region X=[{region.X0:F1},{region.X1:F1}] Y=[{region.Y0:F1},{region.Y1:F1}]");
-                foreach (var p in pageList)
-                {
-                    bool cond1 = !p.IsBypassed;
-                    bool cond2 = !p.IsGrayPromptContent;
-                    bool cond3 = !IsGrayPromptCodeParagraph(p);
-                    bool cond4 = IsTranslatableBodyProse(p) || IsHeadingParagraph(p) || IsTranslatableCalloutProse(p);
-                    bool cond5 = ParagraphCenterInsideAnyRegion(p, new[] { region });
-                    if (cond5)
-                    {
-                        System.Console.WriteLine($"  para '{p.TextWithPlaceholders.Substring(0, System.Math.Min(40, p.TextWithPlaceholders.Length))}' cond1={cond1} cond2={cond2} cond3={cond3} cond4={cond4} cond5={cond5}");
-                    }
-                }
-
                 bool overlapsBodyProse = pageList.Any(p =>
                     !p.IsBypassed &&
                     !p.IsGrayPromptContent &&
@@ -3861,9 +3976,18 @@ try {{
                 if (IsRunningHeaderOrFooter(para, pageHeight)) continue;
                 if (IsFigureTableCaptionParagraph(para)) continue;
                 if (IsHeadingParagraph(para) || IsAppendixSectionHeading(para)) continue;
+                bool insideGray = ParagraphCenterInsideAnyRegion(para, expanded) ||
+                    IsParagraphInsideGrayShadedRegion(para, grayRegions);
+                if (IsParagraphInsideAnchoredGrayPromptRegion(para, grayRegions, pageList))
+                {
+                    MarkAsGrayPromptContent(para);
+                    continue;
+                }
                 if (IsTranslatableBodyProse(para) || IsTranslatableCalloutProse(para)) continue;
-                if (ParagraphCenterInsideAnyRegion(para, expanded) ||
-                    IsParagraphInsideGrayShadedRegion(para, grayRegions))
+                if (insideGray &&
+                    (IsGrayPromptBoxParagraph(para) ||
+                     IsGrayPromptSubheading(para) ||
+                     IsGrayPromptBoxContinuationParagraph(para, null)))
                 {
                     MarkAsGrayPromptContent(para);
                 }
@@ -4003,6 +4127,30 @@ try {{
             return ParagraphLetterOverlapRatio(para, expanded) >= 0.5;
         }
 
+        private static bool IsParagraphInsideAnchoredGrayPromptRegion(
+            PdfParagraph para,
+            IReadOnlyList<TableMaskRegion> grayRegions,
+            IReadOnlyList<PdfParagraph> pageList)
+        {
+            if (grayRegions.Count == 0) return false;
+            foreach (var region in ExpandGrayShadedRegions(grayRegions, 8.0))
+            {
+                if (!ParagraphCenterInsideAnyRegion(para, new[] { region }) &&
+                    ParagraphLetterOverlapRatio(para, new[] { region }) < 0.5)
+                {
+                    continue;
+                }
+
+                bool hasPromptAnchor = pageList.Any(anchor =>
+                    anchor != para &&
+                    (IsGrayPromptBoxParagraph(anchor) || IsGrayPromptSubheading(anchor)) &&
+                    ParagraphCenterInsideAnyRegion(anchor, new[] { region }) &&
+                    SharesGrayPromptColumn(anchor, para));
+                if (hasPromptAnchor) return true;
+            }
+            return false;
+        }
+
         private static void MarkGrayPromptContentInShadedRegions(
             List<PdfParagraph> pageList, IReadOnlyList<TableMaskRegion> grayRegions)
         {
@@ -4018,6 +4166,11 @@ try {{
 
                 if (IsParagraphInsideGrayShadedRegion(para, grayRegions))
                 {
+                    if (IsParagraphInsideAnchoredGrayPromptRegion(para, grayRegions, pageList))
+                    {
+                        MarkAsGrayPromptContent(para);
+                        continue;
+                    }
                     if (IsTranslatableBodyProse(para) || IsTranslatableCalloutProse(para)) continue;
                     if (System.Text.RegularExpressions.Regex.IsMatch(txt, @"^\d+\)\s+[A-Za-z]") &&
                         !IsGrayPromptBoxContinuationParagraph(para, null))
@@ -4071,8 +4224,13 @@ try {{
                 if (txt.StartsWith("You should", StringComparison.OrdinalIgnoreCase) ||
                     txt.StartsWith("Use Nmap", StringComparison.OrdinalIgnoreCase) ||
                     txt.StartsWith("Use your ", StringComparison.OrdinalIgnoreCase) ||
+                    txt.StartsWith("LLM:", StringComparison.OrdinalIgnoreCase) ||
+                    txt.StartsWith("User:", StringComparison.OrdinalIgnoreCase) ||
+                    txt.StartsWith("{Information", StringComparison.OrdinalIgnoreCase) ||
                     txt.StartsWith("You're", StringComparison.OrdinalIgnoreCase) ||
-                    txt.StartsWith("You\u2019re", StringComparison.OrdinalIgnoreCase))
+                    txt.StartsWith("You\u2019re", StringComparison.OrdinalIgnoreCase) ||
+                    txt.Equals("EX-", StringComparison.OrdinalIgnoreCase) ||
+                    txt.EndsWith("AMPLE}", StringComparison.OrdinalIgnoreCase))
                 {
                     continue;
                 }
@@ -4180,8 +4338,15 @@ try {{
                 if (txt.EndsWith("AMPLE}", StringComparison.OrdinalIgnoreCase) ||
                     txt.Equals("EX-", StringComparison.OrdinalIgnoreCase))
                 {
-                    if (HasNearbyGrayPromptAbove(para, pageList, 65))
-                        MarkAsGrayPromptContent(para);
+                    MarkAsGrayPromptContent(para);
+                    continue;
+                }
+                if ((txt.StartsWith("LLM:", StringComparison.OrdinalIgnoreCase) ||
+                     txt.StartsWith("User:", StringComparison.OrdinalIgnoreCase) ||
+                     txt.StartsWith("{Information", StringComparison.OrdinalIgnoreCase)) &&
+                    HasNearbyGrayPromptTitleAbove(para, pageList, 140))
+                {
+                    MarkAsGrayPromptContent(para);
                     continue;
                 }
                 if (!IsGrayPromptBoxContinuationParagraph(para, null)) continue;
@@ -4189,6 +4354,19 @@ try {{
                 if (IsFigureTableCaptionParagraph(para) || IsHeadingParagraph(para)) continue;
                 MarkAsGrayPromptContent(para);
             }
+        }
+
+        private static bool HasNearbyGrayPromptTitleAbove(
+            PdfParagraph para, List<PdfParagraph> pageList, double maxGap)
+        {
+            foreach (var other in pageList)
+            {
+                if (!IsGrayPromptBoxParagraph(other)) continue;
+                if (!SharesGrayPromptColumn(para, other)) continue;
+                double gap = other.Y0 - para.Y1;
+                if (gap >= -2 && gap <= maxGap) return true;
+            }
+            return false;
         }
 
         /// <summary>Gray prompt boxes bypass as code, never as diagram; no Pass 1 white masks.</summary>
@@ -6619,8 +6797,15 @@ try {{
 
         private static bool IsReferencesSectionHeading(PdfParagraph para)
         {
-            if (para.IsTable) return false;
-            return IsReferencesSectionHeadingText(para.TextWithPlaceholders.Trim());
+            if (para.IsTable || para.IsCode || para.IsGrayPromptContent || para.IsDiagram) return false;
+            if (!IsReferencesSectionHeadingText(para.TextWithPlaceholders.Trim())) return false;
+
+            // A lone "reference" also appears as a small field/cell label in figures and
+            // result tables. Require section-heading geometry so it cannot start a
+            // cross-page bibliography bypass from inside compact academic content.
+            return para.AverageFontSize >= 8.0 ||
+                   para.Width >= 70.0 ||
+                   para.Height >= 10.0;
         }
 
         private static bool IsReferencesSectionTerminator(PdfParagraph para)
