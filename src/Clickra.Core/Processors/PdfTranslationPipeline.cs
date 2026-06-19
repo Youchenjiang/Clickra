@@ -252,12 +252,12 @@ namespace Clickra.Core.Processors
                     pageList.Where(p => p.IsTable).ToList(), page.Width);
                 var effectiveDiagramRegions = PdfDiagramRegionGeometry.GetEffectiveDiagramMaskRegions(
                     diagramRegions, tableMaskForDiagram, pageList);
-                MarkDiagramFigureLabels(pageList, page, effectiveDiagramRegions);
+                PdfDiagramLabelMarker.MarkDiagramFigureLabels(pageList, page, effectiveDiagramRegions);
                 PdfDiagramFlagCleaner.ReclassifyChartLabelsMisclassifiedAsTable(pageList, effectiveDiagramRegions);
-                ReclassifyStandaloneChartLabelsAsDiagram(pageList);
-                FinalizeDiagramFigureLabels(pageList, effectiveDiagramRegions, page.Height);
-                MarkWorkflowFigureLabelsAboveCaption(pageList, page.Height);
-                MarkCodeFigureContentAboveCaption(pageList, page.Width, page.Height);
+                PdfDiagramLabelMarker.ReclassifyStandaloneChartLabelsAsDiagram(pageList);
+                PdfDiagramLabelMarker.FinalizeDiagramFigureLabels(pageList, effectiveDiagramRegions, page.Height);
+                PdfDiagramLabelMarker.MarkWorkflowFigureLabelsAboveCaption(pageList, page.Height);
+                PdfDiagramLabelMarker.MarkCodeFigureContentAboveCaption(pageList, page.Width, page.Height);
                 PdfDiagramFlagCleaner.ClearDiagramFlagOnFigureCaptions(pageList);
                 PdfDiagramFlagCleaner.ClearDiagramFlagOnSectionHeadings(pageList);
                 PdfDiagramFlagCleaner.ReclassifyCalloutFindingsText(pageList);
@@ -321,11 +321,11 @@ namespace Clickra.Core.Processors
 
                 PdfDiagramFlagCleaner.ClearDiagramFlagOnRunningHeaders(pageList, page.Height);
                 PdfDiagramFlagCleaner.ClearDiagramFlagOnTranslatableProse(pageList, effectiveDiagramRegions);
-                MarkWorkflowFigureLabelsAboveCaption(pageList, page.Height);
-                MarkCodeFigureContentAboveCaption(pageList, page.Width, page.Height);
+                PdfDiagramLabelMarker.MarkWorkflowFigureLabelsAboveCaption(pageList, page.Height);
+                PdfDiagramLabelMarker.MarkCodeFigureContentAboveCaption(pageList, page.Width, page.Height);
                 PdfDiagramFlagCleaner.ClearDiagramFlagOnFigureCaptions(pageList);
                 PdfDiagramFlagCleaner.ClearDiagramFlagOnSectionHeadings(pageList);
-                MarkWorkflowBannerTextInDiagramRegions(pageList, effectiveDiagramRegions, page.Height);
+                PdfDiagramLabelMarker.MarkWorkflowBannerTextInDiagramRegions(pageList, effectiveDiagramRegions, page.Height, IsGrayPromptCodeParagraph);
                 bool workDivisionPage = pageList.Any(p =>
                     p.TextWithPlaceholders.Trim().Contains("WORK DIVISION", StringComparison.OrdinalIgnoreCase));
                 var grayPromptShadedRegions = workDivisionPage
@@ -365,8 +365,8 @@ namespace Clickra.Core.Processors
                     FinalizeGrayPromptContentFlags(pageList);
                 }
                 PdfTableClassifier.ReclassifyAppendixFeatureTableText(pageList, page.Width);
-                MarkWorkflowFigureLabelsAboveCaption(pageList, page.Height);
-                MarkCodeFigureContentAboveCaption(pageList, page.Width, page.Height);
+                PdfDiagramLabelMarker.MarkWorkflowFigureLabelsAboveCaption(pageList, page.Height);
+                PdfDiagramLabelMarker.MarkCodeFigureContentAboveCaption(pageList, page.Width, page.Height);
                 if (!workDivisionPage)
                 {
                     MarkAllParagraphsByGrayGeometry(pageList, grayPromptShadedRegions, page.Height);
@@ -1159,225 +1159,6 @@ namespace Clickra.Core.Processors
                 .ToList();
         }
 
-
-        /// <summary>Bar-chart axis labels on pages without vector diagram bounds (PentestAgent p10/p11).</summary>
-        private static void ReclassifyStandaloneChartLabelsAsDiagram(List<PdfParagraph> pageList)
-        {
-            bool pageHasBarChart = pageList.Any(p =>
-            {
-                string t = p.TextWithPlaceholders.Trim();
-                return System.Text.RegularExpressions.Regex.IsMatch(t,
-                    @"^Figure\s+\d+:.*(?:Success rate|Completion level|overhead|Backbone|difficulty levels)",
-                    System.Text.RegularExpressions.RegexOptions.IgnoreCase);
-            });
-            if (!pageHasBarChart) return;
-
-            foreach (var para in pageList)
-            {
-                if (PdfParagraphRoleClassifier.IsFigureTableCaptionParagraph(para)) continue;
-                if (PdfParagraphRoleClassifier.IsTranslatableBodyProse(para) || PdfParagraphRoleClassifier.IsTranslatableCalloutProse(para)) continue;
-                if (PdfChartLabelClassifier.IsLikelyChartLabel(para) || PdfChartLabelClassifier.IsLikelyBarChartAxisLabel(para))
-                {
-                    para.IsTable = false;
-                    para.IsDiagram = true;
-                    continue;
-                }
-                string txt = para.TextWithPlaceholders.Trim();
-                if (System.Text.RegularExpressions.Regex.IsMatch(txt, @"^\d+$") &&
-                    para.Height <= 14 && para.Width <= 20)
-                {
-                    para.IsTable = false;
-                    para.IsDiagram = true;
-                }
-            }
-        }
-
-        private static bool IsLongBodyProse(PdfParagraph para) => PdfParagraphRoleClassifier.IsTranslatableBodyProse(para);
-
-        /// <summary>
-        /// Mark selectable chart labels whose letters overlap large vector/image bounds
-        /// but were missed by paragraph-bbox intersection alone.
-        /// </summary>
-        private static void MarkDiagramFigureLabels(
-            List<PdfParagraph> pageList,
-            UglyToad.PdfPig.Content.Page pigPage,
-            IReadOnlyList<TableMaskRegion> diagramRegions)
-        {
-            if (diagramRegions.Count == 0) return;
-            foreach (var para in pageList)
-            {
-                if (para.IsTable && !para.IsDiagram) continue;
-                if (PdfParagraphRoleClassifier.IsRunningHeaderOrFooter(para, pigPage.Height)) continue;
-                if (PdfParagraphRoleClassifier.IsFigureTableCaptionParagraph(para)) continue;
-                if (PdfParagraphRoleClassifier.IsTranslatableCalloutProse(para)) continue;
-                if (PdfParagraphSemanticClassifier.IsHeadingParagraph(para)) continue;
-
-                double letterRatio = PdfDiagramRegionGeometry.ParagraphLetterOverlapRatio(para, diagramRegions);
-                bool bboxHits = PdfDiagramMaskBuilder.OverlapsWithLargeImage(para, pigPage);
-                bool regionHits = PdfDiagramRegionGeometry.OverlapsAnyRegion(para, diagramRegions);
-                if (letterRatio >= 0.35 || (bboxHits && PdfChartLabelClassifier.IsLikelyChartLabel(para)) ||
-                    (letterRatio >= 0.2 && PdfChartLabelClassifier.IsLikelyChartLabel(para)) ||
-                    (regionHits && PdfChartLabelClassifier.IsLikelyChartLabel(para)))
-                {
-                    para.IsDiagram = true;
-                    para.IsTable = false;
-                }
-            }
-        }
-
-        /// <summary>Last pass: any short text inside diagram mask regions becomes a figure label.</summary>
-        private static void FinalizeDiagramFigureLabels(
-            List<PdfParagraph> pageList,
-            IReadOnlyList<TableMaskRegion> diagramRegions,
-            double pageHeight)
-        {
-            if (diagramRegions.Count == 0) return;
-            foreach (var para in pageList)
-            {
-                if (para.IsTable) continue;
-                if (PdfParagraphRoleClassifier.IsRunningHeaderOrFooter(para, pageHeight)) continue;
-                if (PdfParagraphRoleClassifier.IsFigureTableCaptionParagraph(para)) continue;
-                if (PdfParagraphRoleClassifier.IsTranslatableCalloutProse(para)) continue;
-                if (PdfParagraphSemanticClassifier.IsHeadingParagraph(para)) continue;
-                if (!PdfDiagramRegionGeometry.OverlapsAnyRegion(para, diagramRegions)) continue;
-                if (para.Height > 50) continue;
-                string txt = para.TextWithPlaceholders.Trim();
-                double letterRatio = PdfDiagramRegionGeometry.ParagraphLetterOverlapRatio(para, diagramRegions);
-                if (PdfParagraphRoleClassifier.IsTranslatableBodyProse(para) && letterRatio < 0.35) continue;
-                if (txt.Length > 140)
-                {
-                    if (letterRatio < 0.45 || PdfParagraphRoleClassifier.IsTranslatableBodyProse(para)) continue;
-                }
-                if (!PdfChartLabelClassifier.IsLikelyChartLabel(para) &&
-                    letterRatio < 0.2 &&
-                    !(para.Height <= 20 && txt.Length <= 120 && txt.IndexOf('.') < 0))
-                {
-                    continue;
-                }
-
-                para.IsDiagram = true;
-                para.IsTable = false;
-            }
-        }
-
-        /// <summary>Workflow figure banner lines (PentestAgent p5 Fig.1 headers) inside diagram masks.</summary>
-        private static void MarkWorkflowBannerTextInDiagramRegions(
-            List<PdfParagraph> pageList,
-            IReadOnlyList<TableMaskRegion> diagramRegions,
-            double pageHeight)
-        {
-            if (diagramRegions.Count == 0) return;
-            foreach (var para in pageList)
-            {
-                if (para.IsCode || para.IsGrayPromptContent || IsGrayPromptCodeParagraph(para)) continue;
-                if (para.IsTable) continue;
-                if (PdfParagraphRoleClassifier.IsRunningHeaderOrFooter(para, pageHeight)) continue;
-                if (PdfParagraphRoleClassifier.IsFigureTableCaptionParagraph(para) || PdfParagraphSemanticClassifier.IsHeadingParagraph(para)) continue;
-                if (PdfParagraphRoleClassifier.IsTranslatableBodyProse(para) || PdfParagraphRoleClassifier.IsTranslatableCalloutProse(para)) continue;
-                if (!PdfDiagramRegionGeometry.OverlapsAnyRegion(para, diagramRegions)) continue;
-                string txt = para.TextWithPlaceholders.Trim();
-                if (para.Height > 24 || txt.Length > 220) continue;
-                double letterRatio = PdfDiagramRegionGeometry.ParagraphLetterOverlapRatio(para, diagramRegions);
-                if (para.Height <= 22 && letterRatio >= 0.08)
-                {
-                    para.IsDiagram = true;
-                    para.IsTable = false;
-                    continue;
-                }
-                if (PdfChartLabelClassifier.IsLikelyChartLabel(para) || letterRatio >= 0.15)
-                {
-                    para.IsDiagram = true;
-                    para.IsTable = false;
-                }
-            }
-        }
-
-        /// <summary>
-        /// Preserve selectable labels in a full-width workflow figure immediately
-        /// above its caption. Some PDFs draw each box independently, so vector
-        /// region clustering never yields one enclosing diagram rectangle.
-        /// </summary>
-        private static void MarkWorkflowFigureLabelsAboveCaption(
-            List<PdfParagraph> pageList,
-            double pageHeight)
-        {
-            foreach (var caption in pageList.Where(PdfParagraphRoleClassifier.IsFigureTableCaptionParagraph))
-            {
-                if (caption.Width < 300) continue;
-
-                double bandBottom = caption.Y1 + 8;
-                double bandTop = Math.Min(pageHeight - 30, caption.Y1 + 105);
-                var candidates = pageList.Where(para =>
-                    !ReferenceEquals(para, caption) &&
-                    para.Y0 >= bandBottom &&
-                    para.Y1 <= bandTop &&
-                    para.Height <= 35)
-                    .ToList();
-
-                // Require several independent labels so a normal figure caption
-                // below prose cannot accidentally protect unrelated body text.
-                if (candidates.Count < 4) continue;
-                foreach (var para in candidates)
-                {
-                    para.IsDiagram = true;
-                    para.IsTable = false;
-                    para.IsBypassed = true;
-                }
-            }
-        }
-
-        /// <summary>
-        /// Preserve selectable source code inside narrow, right-column figures.
-        /// TOGLL Figures 4 and 5 use a caption below a code screenshot whose
-        /// width is too small for the full-width workflow-figure heuristic.
-        /// </summary>
-        private static void MarkCodeFigureContentAboveCaption(
-            List<PdfParagraph> pageList,
-            double pageWidth,
-            double pageHeight)
-        {
-            foreach (var caption in pageList.Where(PdfParagraphRoleClassifier.IsFigureTableCaptionParagraph))
-            {
-                string text = caption.TextWithPlaceholders.Trim();
-                if (!System.Text.RegularExpressions.Regex.IsMatch(
-                        text, @"^Fig\.\s*[45]\b",
-                        System.Text.RegularExpressions.RegexOptions.IgnoreCase))
-                {
-                    continue;
-                }
-
-                double captionCenter = caption.X0 + caption.Width / 2;
-                if (captionCenter < pageWidth / 2) continue;
-
-                double bandBottom = caption.Y1 + 4;
-                double bandTop = Math.Min(pageHeight - 20, caption.Y1 + 260);
-                var candidates = pageList.Where(para =>
-                    !ReferenceEquals(para, caption) &&
-                    para.X0 >= pageWidth / 2 - 12 &&
-                    para.Y0 >= bandBottom &&
-                    para.Y1 <= bandTop)
-                    .ToList();
-
-                bool hasCodeAnchor = candidates.Any(para =>
-                {
-                    string candidateText = para.TextWithPlaceholders;
-                    return candidateText.Contains("public ", StringComparison.Ordinal) ||
-                           candidateText.Contains("assert", StringComparison.Ordinal) ||
-                           candidateText.Contains("//TOGLL", StringComparison.OrdinalIgnoreCase) ||
-                           candidateText.Contains("//EvoSuite", StringComparison.OrdinalIgnoreCase) ||
-                           candidateText.Contains("//Ground Truth", StringComparison.OrdinalIgnoreCase);
-                });
-                if (!hasCodeAnchor) continue;
-
-                foreach (var para in candidates)
-                {
-                    para.IsDiagram = true;
-                    para.IsTable = false;
-                    para.IsGrayPromptContent = false;
-                    para.IsBypassed = true;
-                }
-            }
-        }
 
         private static bool IsSectionIntroProse(PdfParagraph para)
         {
