@@ -123,10 +123,10 @@ runner.Run("Final project appendix feature tables stay bypassed", () =>
 runner.Run("Final project p1 translated title clip follows rendered CJK height", () =>
 {
     var method = typeof(PdfTranslateProcessor).Assembly
-        .GetType("Clickra.Core.Processors.PdfTranslationPipeline")
+        .GetType("Clickra.Core.Processors.PageOneLayoutClassifier")
         ?.GetMethod(
-        "GetPageOneTitleClipBottom",
-        System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static);
+        "GetTitleClipBottom",
+        System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Static);
     Assert.True(method != null, "Expected page-one title clip helper.");
 
     const double clipTop = 56.2;
