@@ -112,8 +112,8 @@ namespace Clickra.Core.Processors
                             }
                         }
 
-                        bool prevLineHasGap = isTablePage && currentGroup.Count > 0 && HasColumnGap(currentGroup[currentGroup.Count - 1]);
-                        bool currLineHasGap = isTablePage && HasColumnGap(line);
+                        bool prevLineHasGap = isTablePage && currentGroup.Count > 0 && PdfTextLineGeometry.HasColumnGap(currentGroup[currentGroup.Count - 1]);
+                        bool currLineHasGap = isTablePage && PdfTextLineGeometry.HasColumnGap(line);
                         bool crossColumnSplit = currentGroup.Count > 0 &&
                             IsLineInLeftColumn(currentGroup[currentGroup.Count - 1], page.Width) !=
                             IsLineInLeftColumn(line, page.Width);
@@ -4174,18 +4174,6 @@ namespace Clickra.Core.Processors
             }
  
             return rows;
-        }
-
-        private static bool HasColumnGap(UglyToad.PdfPig.DocumentLayoutAnalysis.TextLine line, double minGap = 20.0)
-        {
-            if (line == null || line.Words.Count <= 1) return false;
-            var sortedWords = line.Words.OrderBy(w => w.BoundingBox.Left).ToList();
-            for (int i = 0; i < sortedWords.Count - 1; i++)
-            {
-                double gap = sortedWords[i + 1].BoundingBox.Left - sortedWords[i].BoundingBox.Right;
-                if (gap >= minGap) return true;
-            }
-            return false;
         }
 
         private static bool IsLineInLeftColumn(UglyToad.PdfPig.DocumentLayoutAnalysis.TextLine line, double pageWidth)
