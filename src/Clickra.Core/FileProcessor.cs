@@ -31,6 +31,12 @@ namespace Clickra.Core
         public static void ConvertWordToPdf(List<string> files, Action<int, int, string>? onProgress = null, CancellationToken cancellationToken = default) =>
             new WordToPdfProcessor().Process(files, null, null, onProgress, cancellationToken);
 
+        public static void ConvertExcelToPdf(List<string> files, Action<int, int, string>? onProgress = null, CancellationToken cancellationToken = default)
+        {
+            var processor = new ExcelToPdfProcessor();
+            processor.Process(files, null, null, onProgress, cancellationToken);
+        }
+
         public static void TranslatePdf(string inputPath, string outputPath, string targetLang, Action<int, int, string>? onProgress = null, CancellationToken cancellationToken = default)
         {
             var processor = new PdfTranslateProcessor();
