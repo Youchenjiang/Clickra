@@ -15,6 +15,8 @@ namespace Clickra
 {
     partial class ClickraCli
     {
+        private static int _lastProgressLineLength;
+
         // Native Win32 MessageBox — zero WinForms dependency, keeps exe tiny
         [DllImport("user32.dll", CharSet = CharSet.Unicode)]
         static extern int MessageBox(IntPtr hWnd, string text, string caption, uint type);
@@ -26,9 +28,15 @@ namespace Clickra
         [DllImport("user32.dll")]
         static extern bool SetProcessDpiAwarenessContext(IntPtr value);
 
+        [DllImport("kernel32.dll", SetLastError = true)]
+        static extern bool AttachConsole(int dwProcessId);
+
+        const int ATTACH_PARENT_PROCESS = -1;
+
         [STAThread]
         static void Main(string[] args)
         {
+            AttachParentConsoleForCli(args);
             try { PdfSharp.Fonts.GlobalFontSettings.FontResolver = new ClickraFontResolver(); } catch { }
             try { SetProcessDpiAwarenessContext((IntPtr)(-4)); } catch { }
             if (args.Length == 0 || args[0] == "-v" || args[0] == "--version")
@@ -168,8 +176,11 @@ namespace Clickra
                                 string outName = Path.Combine(outputDir, Path.GetFileNameWithoutExtension(f) + "_translated.pdf");
                                 string dbgLog = Path.Combine(outputDir, Path.GetFileNameWithoutExtension(f) + "_renderdbg.log");
                                 ClickraDebug.Clear();
-                                Console.WriteLine($"[Progress] 正在翻譯 PDF: {Path.GetFileName(f)} ({i + 1}/{files.Count})...");
-                                FileProcessor.TranslatePdf(f, outName, targetLang, (curr, tot, msg) => Console.WriteLine($"[Progress] {msg}"));
+                                Console.WriteLine($"[Progress] 開始翻譯 PDF: {Path.GetFileName(f)} ({i + 1}/{files.Count})");
+                                WriteConsoleProgress(0, 100, $"正在翻譯 PDF: {Path.GetFileName(f)} ({i + 1}/{files.Count})...");
+                                FileProcessor.TranslatePdf(f, outName, targetLang, WriteConsoleProgress);
+                                WriteConsoleProgress(100, 100, $"完成翻譯 PDF: {Path.GetFileName(f)} ({i + 1}/{files.Count})");
+                                FinishConsoleProgressLine();
                                 ClickraDebug.SaveTo(dbgLog);
                                 Console.WriteLine($"[Debug] Render log: {dbgLog} ({ClickraDebug.Lines.Count} entries)");
                             }
@@ -353,6 +364,55 @@ namespace Clickra
                 }
             }
             return expanded;
+        }
+
+        static void AttachParentConsoleForCli(string[] args)
+        {
+            if (args.Length == 0) return;
+
+            try
+            {
+                AttachConsole(ATTACH_PARENT_PROCESS);
+                Console.SetOut(new StreamWriter(Console.OpenStandardOutput()) { AutoFlush = true });
+                Console.SetError(new StreamWriter(Console.OpenStandardError()) { AutoFlush = true });
+            }
+            catch { }
+        }
+
+        static void WriteConsoleProgress(int current, int total, string message)
+        {
+            total = Math.Max(1, total);
+            current = Math.Clamp(current, 0, total);
+
+            int percent = (int)Math.Round(current * 100.0 / total);
+            const int width = 28;
+            int filled = Math.Clamp((int)Math.Round(width * percent / 100.0), 0, width);
+            string bar = new string('#', filled) + new string('-', width - filled);
+            string line = $"[Progress] [{bar}] {percent,3}% {message}";
+
+            try
+            {
+                int consoleWidth = Console.WindowWidth;
+                if (consoleWidth > 0 && line.Length >= consoleWidth)
+                {
+                    line = line[..Math.Max(0, consoleWidth - 1)];
+                }
+            }
+            catch { }
+
+            int padLength = Math.Max(_lastProgressLineLength, line.Length);
+            Console.Write("\r" + line.PadRight(padLength));
+            Console.Out.Flush();
+            _lastProgressLineLength = line.Length;
+        }
+
+        static void FinishConsoleProgressLine()
+        {
+            if (_lastProgressLineLength > 0)
+            {
+                Console.WriteLine();
+                _lastProgressLineLength = 0;
+            }
         }
 
         static string? ExtractOptionValue(List<string> args, params string[] optionNames)
