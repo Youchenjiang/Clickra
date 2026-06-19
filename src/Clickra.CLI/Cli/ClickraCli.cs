@@ -122,6 +122,11 @@ namespace Clickra
                         if (quiet) FileProcessor.ConvertWordToPdf(files, (curr, tot, msg) => Console.WriteLine($"[Progress] {msg}"));
                         else ProgressWindow.Show(command, files);
                         break;
+                    case "excel2pdf":
+                        ValidateExtensions(files, command, quiet, ".xlsx", ".xls");
+                        if (quiet) FileProcessor.ConvertExcelToPdf(files, (curr, tot, msg) => Console.WriteLine($"[Progress] {msg}"));
+                        else ProgressWindow.Show(command, files);
+                        break;
                     case "merge-pdf":
                         ValidateExtensions(files, command, quiet, ".pdf");
                         RequireMinFiles(files, command, 2, quiet);
