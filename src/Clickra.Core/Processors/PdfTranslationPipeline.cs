@@ -43,7 +43,7 @@ namespace Clickra.Core.Processors
                 PdfReferenceSectionBypasser.Apply(pages, widths, PdfPageReadingOrder.GetPageReadingOrder),
             BuildTableMaskRegions = PdfTableMaskPlanner.BuildTableMaskRegions,
             BuildProcessedDiagramMaskRegions = PdfDiagramMaskBuilder.BuildProcessedDiagramMaskRegions,
-            GetEffectiveDiagramMaskRegions = GetEffectiveDiagramMaskRegions,
+            GetEffectiveDiagramMaskRegions = PdfDiagramRegionGeometry.GetEffectiveDiagramMaskRegions,
             GetFigureClipRegions = GetFigureClipRegions,
             GetGrayPromptShadedRegions = GetGrayPromptShadedRegions,
             BuildEffectiveGrayMaskRegions = BuildEffectiveGrayMaskRegions,
@@ -250,7 +250,7 @@ namespace Clickra.Core.Processors
                 PdfTableClassifier.MarkSplitPromptPerformanceTable(pageList, PdfParagraphRoleClassifier.IsFigureTableCaptionParagraph);
                 var tableMaskForDiagram = PdfTableMaskPlanner.BuildTableMaskRegions(
                     pageList.Where(p => p.IsTable).ToList(), page.Width);
-                var effectiveDiagramRegions = GetEffectiveDiagramMaskRegions(
+                var effectiveDiagramRegions = PdfDiagramRegionGeometry.GetEffectiveDiagramMaskRegions(
                     diagramRegions, tableMaskForDiagram, pageList);
                 MarkDiagramFigureLabels(pageList, page, effectiveDiagramRegions);
                 ReclassifyChartLabelsMisclassifiedAsTable(pageList, effectiveDiagramRegions);
@@ -643,7 +643,7 @@ namespace Clickra.Core.Processors
                 var tableMaskRegions = (pageHasTable && p != 0)
                     ? PdfTableMaskPlanner.BuildTableMaskRegions(paragraphs.Where(para => para.IsTable).ToList(), pageWidthPts, excludeAuthorFromTableMask)
                     : new List<TableMaskRegion>();
-                var diagramMaskRegions = GetEffectiveDiagramMaskRegions(
+                var diagramMaskRegions = PdfDiagramRegionGeometry.GetEffectiveDiagramMaskRegions(
                     rawDiagramMaskRegions, tableMaskRegions, paragraphs);
                 bool workDivisionPage = paragraphs.Any(para =>
                     para.TextWithPlaceholders.Trim().Contains("WORK DIVISION", StringComparison.OrdinalIgnoreCase));
@@ -1172,52 +1172,6 @@ namespace Clickra.Core.Processors
             }
         }
 
-        private static double ParagraphLetterOverlapRatio(PdfParagraph para, IReadOnlyList<TableMaskRegion> regions)
-        {
-            if (para.AllLetters.Count == 0 || regions.Count == 0) return 0;
-            int hit = 0;
-            foreach (var letter in para.AllLetters)
-            {
-                foreach (var region in regions)
-                {
-                    if (letter.X >= region.X0 && letter.X <= region.X1 &&
-                        letter.Y >= region.Y0 && letter.Y <= region.Y1)
-                    {
-                        hit++;
-                        break;
-                    }
-                }
-            }
-            return (double)hit / para.AllLetters.Count;
-        }
-
-        /// <summary>When vector/image bounds are missing, infer diagram masks from large table bboxes on figure pages.</summary>
-        private static List<TableMaskRegion> GetEffectiveDiagramMaskRegions(
-            IReadOnlyList<TableMaskRegion> diagramRegions,
-            IReadOnlyList<TableMaskRegion> tableMaskRegions,
-            IReadOnlyList<PdfParagraph> pageList)
-        {
-            if (diagramRegions.Count > 0)
-            {
-                return new List<TableMaskRegion>(diagramRegions);
-            }
-
-            if (tableMaskRegions.Count == 0) return new List<TableMaskRegion>();
-
-            bool hasFigureContent = pageList.Any(p =>
-            {
-                string t = p.TextWithPlaceholders.Trim();
-                return t.StartsWith("Figure", StringComparison.OrdinalIgnoreCase) ||
-                       t.StartsWith("Fig.", StringComparison.OrdinalIgnoreCase) ||
-                       t.StartsWith("Fig ", StringComparison.OrdinalIgnoreCase);
-            });
-            if (!hasFigureContent) return new List<TableMaskRegion>();
-
-            return tableMaskRegions
-                .Where(r => (r.X1 - r.X0) > 100 && (r.Y1 - r.Y0) > 60)
-                .ToList();
-        }
-
         /// <summary>Bar-chart axis labels on pages without vector diagram bounds (PentestAgent p10/p11).</summary>
         private static void ReclassifyStandaloneChartLabelsAsDiagram(List<PdfParagraph> pageList)
         {
@@ -1270,9 +1224,9 @@ namespace Clickra.Core.Processors
                 if (PdfParagraphRoleClassifier.IsTranslatableCalloutProse(para)) continue;
                 if (PdfParagraphSemanticClassifier.IsHeadingParagraph(para)) continue;
 
-                double letterRatio = ParagraphLetterOverlapRatio(para, diagramRegions);
+                double letterRatio = PdfDiagramRegionGeometry.ParagraphLetterOverlapRatio(para, diagramRegions);
                 bool bboxHits = PdfDiagramMaskBuilder.OverlapsWithLargeImage(para, pigPage);
-                bool regionHits = OverlapsAnyRegion(para, diagramRegions);
+                bool regionHits = PdfDiagramRegionGeometry.OverlapsAnyRegion(para, diagramRegions);
                 if (letterRatio >= 0.35 || (bboxHits && PdfChartLabelClassifier.IsLikelyChartLabel(para)) ||
                     (letterRatio >= 0.2 && PdfChartLabelClassifier.IsLikelyChartLabel(para)) ||
                     (regionHits && PdfChartLabelClassifier.IsLikelyChartLabel(para)))
@@ -1297,10 +1251,10 @@ namespace Clickra.Core.Processors
                 if (PdfParagraphRoleClassifier.IsFigureTableCaptionParagraph(para)) continue;
                 if (PdfParagraphRoleClassifier.IsTranslatableCalloutProse(para)) continue;
                 if (PdfParagraphSemanticClassifier.IsHeadingParagraph(para)) continue;
-                if (!OverlapsAnyRegion(para, diagramRegions)) continue;
+                if (!PdfDiagramRegionGeometry.OverlapsAnyRegion(para, diagramRegions)) continue;
                 if (para.Height > 50) continue;
                 string txt = para.TextWithPlaceholders.Trim();
-                double letterRatio = ParagraphLetterOverlapRatio(para, diagramRegions);
+                double letterRatio = PdfDiagramRegionGeometry.ParagraphLetterOverlapRatio(para, diagramRegions);
                 if (PdfParagraphRoleClassifier.IsTranslatableBodyProse(para) && letterRatio < 0.35) continue;
                 if (txt.Length > 140)
                 {
@@ -1332,10 +1286,10 @@ namespace Clickra.Core.Processors
                 if (PdfParagraphRoleClassifier.IsRunningHeaderOrFooter(para, pageHeight)) continue;
                 if (PdfParagraphRoleClassifier.IsFigureTableCaptionParagraph(para) || PdfParagraphSemanticClassifier.IsHeadingParagraph(para)) continue;
                 if (PdfParagraphRoleClassifier.IsTranslatableBodyProse(para) || PdfParagraphRoleClassifier.IsTranslatableCalloutProse(para)) continue;
-                if (!OverlapsAnyRegion(para, diagramRegions)) continue;
+                if (!PdfDiagramRegionGeometry.OverlapsAnyRegion(para, diagramRegions)) continue;
                 string txt = para.TextWithPlaceholders.Trim();
                 if (para.Height > 24 || txt.Length > 220) continue;
-                double letterRatio = ParagraphLetterOverlapRatio(para, diagramRegions);
+                double letterRatio = PdfDiagramRegionGeometry.ParagraphLetterOverlapRatio(para, diagramRegions);
                 if (para.Height <= 22 && letterRatio >= 0.08)
                 {
                     para.IsDiagram = true;
@@ -1477,7 +1431,7 @@ namespace Clickra.Core.Processors
                 // prose-like (lowercase words, colons, periods). If its letters
                 // materially overlap the detected diagram geometry, keep the
                 // original label instead of masking and reflowing it as body text.
-                if (ParagraphLetterOverlapRatio(para, diagramRegions) >= 0.15)
+                if (PdfDiagramRegionGeometry.ParagraphLetterOverlapRatio(para, diagramRegions) >= 0.15)
                 {
                     continue;
                 }
@@ -2180,7 +2134,7 @@ namespace Clickra.Core.Processors
             if (grayRegions.Count == 0) return false;
             var expanded = ExpandGrayShadedRegions(grayRegions);
             if (ParagraphCenterInsideAnyRegion(para, expanded)) return true;
-            return ParagraphLetterOverlapRatio(para, expanded) >= 0.5;
+            return PdfDiagramRegionGeometry.ParagraphLetterOverlapRatio(para, expanded) >= 0.5;
         }
 
         private static bool IsParagraphInsideAnchoredGrayPromptRegion(
@@ -2192,7 +2146,7 @@ namespace Clickra.Core.Processors
             foreach (var region in ExpandGrayShadedRegions(grayRegions, 8.0))
             {
                 if (!ParagraphCenterInsideAnyRegion(para, new[] { region }) &&
-                    ParagraphLetterOverlapRatio(para, new[] { region }) < 0.5)
+                    PdfDiagramRegionGeometry.ParagraphLetterOverlapRatio(para, new[] { region }) < 0.5)
                 {
                     continue;
                 }
@@ -2544,7 +2498,7 @@ namespace Clickra.Core.Processors
                 return false;
             }
 
-            double letterRatio = ParagraphLetterOverlapRatio(para, protectRegions);
+            double letterRatio = PdfDiagramRegionGeometry.ParagraphLetterOverlapRatio(para, protectRegions);
             if (letterRatio >= 0.4) return true;
 
             if (PdfChartLabelClassifier.IsLikelyChartLabel(para))
@@ -2608,8 +2562,8 @@ namespace Clickra.Core.Processors
                 if (!para.IsTable) continue;
                 if (PdfParagraphRoleClassifier.IsFigureTableCaptionParagraph(para)) continue;
 
-                double letterRatio = ParagraphLetterOverlapRatio(para, diagramRegions);
-                bool inDiagram = letterRatio >= 0.25 || OverlapsAnyRegion(para, diagramRegions);
+                double letterRatio = PdfDiagramRegionGeometry.ParagraphLetterOverlapRatio(para, diagramRegions);
+                bool inDiagram = letterRatio >= 0.25 || PdfDiagramRegionGeometry.OverlapsAnyRegion(para, diagramRegions);
                 if (!inDiagram) continue;
 
                 if (PdfChartLabelClassifier.IsLikelyChartLabel(para) || para.Height <= 60 || letterRatio >= 0.4)
@@ -2618,20 +2572,6 @@ namespace Clickra.Core.Processors
                     para.IsDiagram = true;
                 }
             }
-        }
-
-        private static bool OverlapsAnyRegion(PdfParagraph para, IReadOnlyList<TableMaskRegion> regions)
-        {
-            double cx = para.X0 + para.Width / 2;
-            double cy = para.Y0 + para.Height / 2;
-            foreach (var region in regions)
-            {
-                bool intersectX = para.X0 <= region.X1 && para.X1 >= region.X0;
-                bool intersectY = para.Y0 <= region.Y1 && para.Y1 >= region.Y0;
-                if (intersectX && intersectY) return true;
-                if (cx >= region.X0 && cx <= region.X1 && cy >= region.Y0 && cy <= region.Y1) return true;
-            }
-            return false;
         }
 
         private static double RenderParagraph(XGraphics gfx, PdfParagraph para, string targetFontName, bool measureOnly = false)
