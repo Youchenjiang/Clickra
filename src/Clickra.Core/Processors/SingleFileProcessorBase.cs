@@ -19,6 +19,12 @@ namespace Clickra.Core.Processors
                 
                 var filePath = files[i];
                 string fullPath = Path.GetFullPath(filePath);
+                if (!File.Exists(fullPath))
+                {
+                    onProgress?.Invoke(i + 1, total, $"跳過已不存在的檔案: {Path.GetFileName(filePath)}");
+                    continue;
+                }
+
                 string outDir = ClickraStorage.GetOutputDir(fullPath);
                 
                 // If outputPath parameter is provided and this is the first (and only) file, use it.

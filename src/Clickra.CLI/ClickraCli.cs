@@ -173,16 +173,35 @@ namespace Clickra
                             for (int i = 0; i < files.Count; i++)
                             {
                                 var f = files[i];
+                                if (!File.Exists(f))
+                                {
+                                    Console.WriteLine($"[Warning] 跳過已不存在的 PDF: {f} ({i + 1}/{files.Count})");
+                                    continue;
+                                }
+
                                 string outName = Path.Combine(outputDir, Path.GetFileNameWithoutExtension(f) + "_translated.pdf");
                                 string dbgLog = Path.Combine(outputDir, Path.GetFileNameWithoutExtension(f) + "_renderdbg.log");
                                 ClickraDebug.Clear();
                                 Console.WriteLine($"[Progress] 開始翻譯 PDF: {Path.GetFileName(f)} ({i + 1}/{files.Count})");
                                 WriteConsoleProgress(0, 100, $"正在翻譯 PDF: {Path.GetFileName(f)} ({i + 1}/{files.Count})...");
-                                FileProcessor.TranslatePdf(f, outName, targetLang, WriteConsoleProgress);
-                                WriteConsoleProgress(100, 100, $"完成翻譯 PDF: {Path.GetFileName(f)} ({i + 1}/{files.Count})");
-                                FinishConsoleProgressLine();
-                                ClickraDebug.SaveTo(dbgLog);
-                                Console.WriteLine($"[Debug] Render log: {dbgLog} ({ClickraDebug.Lines.Count} entries)");
+                                try
+                                {
+                                    FileProcessor.TranslatePdf(f, outName, targetLang, WriteConsoleProgress);
+                                    WriteConsoleProgress(100, 100, $"完成翻譯 PDF: {Path.GetFileName(f)} ({i + 1}/{files.Count})");
+                                    FinishConsoleProgressLine();
+                                    ClickraDebug.SaveTo(dbgLog);
+                                    Console.WriteLine($"[Debug] Render log: {dbgLog} ({ClickraDebug.Lines.Count} entries)");
+                                }
+                                catch (FileNotFoundException)
+                                {
+                                    FinishConsoleProgressLine();
+                                    Console.WriteLine($"[Warning] 翻譯期間檔案消失，已跳過: {f}");
+                                }
+                                catch (DirectoryNotFoundException)
+                                {
+                                    FinishConsoleProgressLine();
+                                    Console.WriteLine($"[Warning] 翻譯期間資料夾消失，已跳過: {f}");
+                                }
                             }
                         }
                         else ProgressWindow.Show(command, files);
