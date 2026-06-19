@@ -189,7 +189,7 @@ namespace Clickra.Core.Processors
 
                 var segmenter = new DocstrumBoundingBoxes();
                 bool isTablePage = words.Any(w => IsTableCaptionWord(w, words));
-                var blocks = GetMergedBlocks(segmenter.GetBlocks(words), page.Width, isTablePage);
+                var blocks = PdfParagraphBlockMerger.GetMergedBlocks(segmenter.GetBlocks(words), page.Width, isTablePage);
                 foreach (var block in blocks)
                 {
                     var blockLines = PdfParagraph.MergeHorizontalLines(block.TextLines);
@@ -209,7 +209,7 @@ namespace Clickra.Core.Processors
                     foreach (var line in blockLines)
                     {
                         bool isMath = PdfParagraph.IsMathLine(line);
-                        bool startsNew = StartsNewParagraphOrSection(line.Text);
+                        bool startsNew = PdfParagraphBlockMerger.StartsNewParagraphOrSection(line.Text);
 
                         bool prevLineEndedEarly = false;
                         bool prevLineWasHeading = false;
@@ -221,7 +221,7 @@ namespace Clickra.Core.Processors
                             {
                                 prevLineEndedEarly = true;
                             }
-                            if (IsHeadingLine(prevLine))
+                            if (PdfParagraphBlockMerger.IsHeadingLine(prevLine))
                             {
                                 prevLineWasHeading = true;
                             }
@@ -3952,7 +3952,7 @@ namespace Clickra.Core.Processors
 
             string text = (para.TranslatedText ?? "").Replace('∗', '*');
             text = text.Replace("\u200B", "").Replace("\u200C", "").Replace("\u200D", "").Replace("\uFEFF", "");
-            text = RemoveDuplicateFormulaLiterals(text, para.Formulas);
+            text = FormulaLiteralCleaner.RemoveDuplicateFormulaLiterals(text, para.Formulas);
             var tokens = TokenizeTranslatedText(text);
 
             double fontSize = para.AverageFontSize;
@@ -4396,9 +4396,6 @@ namespace Clickra.Core.Processors
             return renderedHeight;
         }
 
-        public static string RemoveDuplicateFormulaLiterals(
-            string text, IReadOnlyList<MathFormula> formulas) =>
-            FormulaLiteralCleaner.RemoveDuplicateFormulaLiterals(text, formulas);
         private static List<string> TokenizeTranslatedText(string text)
         {
             var list = new List<string>();
@@ -5415,17 +5412,6 @@ namespace Clickra.Core.Processors
             return result.Count > 0 ? result : null;
         }
 
-        public static bool StartsNewParagraphOrSection(string text) =>
-            PdfParagraphBlockMerger.StartsNewParagraphOrSection(text);
-
-        public static bool IsHeadingLine(UglyToad.PdfPig.DocumentLayoutAnalysis.TextLine line) =>
-            PdfParagraphBlockMerger.IsHeadingLine(line);
-
-        public static List<PdfParagraphBlockMerger.MergedBlock> GetMergedBlocks(
-            IEnumerable<UglyToad.PdfPig.DocumentLayoutAnalysis.TextBlock> docstrumBlocks,
-            double pageWidth,
-            bool isTablePage = false) =>
-            PdfParagraphBlockMerger.GetMergedBlocks(docstrumBlocks, pageWidth, isTablePage);
         private static void MergeVerticallyAdjacentParagraphs(List<PdfParagraph> paragraphs)
         {
             if (paragraphs.Count <= 1) return;
@@ -5472,11 +5458,11 @@ namespace Clickra.Core.Processors
                         if (gap > 6 || gap < -10) continue;
 
                         // Ensure p2 does not start a new list item, reference, or heading
-                        if (StartsNewParagraphOrSection(p2.TextWithPlaceholders)) continue;
+                        if (PdfParagraphBlockMerger.StartsNewParagraphOrSection(p2.TextWithPlaceholders)) continue;
 
                         // Only merge reference/list multi-line items; never merge ordinary body paragraphs
-                        bool isP1RefOrList = ReferenceSectionDetector.IsReferenceParagraph(p1) || StartsNewParagraphOrSection(p1.TextWithPlaceholders);
-                        bool isP2RefOrList = ReferenceSectionDetector.IsReferenceParagraph(p2) || StartsNewParagraphOrSection(p2.TextWithPlaceholders);
+                        bool isP1RefOrList = ReferenceSectionDetector.IsReferenceParagraph(p1) || PdfParagraphBlockMerger.StartsNewParagraphOrSection(p1.TextWithPlaceholders);
+                        bool isP2RefOrList = ReferenceSectionDetector.IsReferenceParagraph(p2) || PdfParagraphBlockMerger.StartsNewParagraphOrSection(p2.TextWithPlaceholders);
                         if (!isP1RefOrList && !isP2RefOrList) continue;
 
                         // Merge p2 into p1

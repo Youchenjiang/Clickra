@@ -40,18 +40,18 @@ namespace Clickra.Core.Processors
             PdfTranslationPipeline.PostProcessTranslation(originalText, translatedText, targetLang);
 
         public static string RemoveDuplicateFormulaLiterals(string text, IReadOnlyList<MathFormula> formulas) =>
-            PdfTranslationPipeline.RemoveDuplicateFormulaLiterals(text, formulas);
+            FormulaLiteralCleaner.RemoveDuplicateFormulaLiterals(text, formulas);
 
         public static bool StartsNewParagraphOrSection(string text) =>
-            PdfTranslationPipeline.StartsNewParagraphOrSection(text);
+            PdfParagraphBlockMerger.StartsNewParagraphOrSection(text);
 
         public static bool IsHeadingLine(UglyToad.PdfPig.DocumentLayoutAnalysis.TextLine line) =>
-            PdfTranslationPipeline.IsHeadingLine(line);
+            PdfParagraphBlockMerger.IsHeadingLine(line);
 
         public static List<PdfParagraphBlockMerger.MergedBlock> GetMergedBlocks(
             IEnumerable<UglyToad.PdfPig.DocumentLayoutAnalysis.TextBlock> docstrumBlocks,
             double pageWidth,
             bool isTablePage = false) =>
-            PdfTranslationPipeline.GetMergedBlocks(docstrumBlocks, pageWidth, isTablePage);
+            PdfParagraphBlockMerger.GetMergedBlocks(docstrumBlocks, pageWidth, isTablePage);
     }
 }
