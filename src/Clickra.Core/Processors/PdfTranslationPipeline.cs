@@ -1252,135 +1252,8 @@ namespace Clickra.Core.Processors
         }
 
 
-        public static string PostProcessTranslation(string originalText, string translatedText, string targetLang)
-        {
-            if (string.IsNullOrEmpty(translatedText)) return translatedText;
-
-            // 1. Restore email addresses
-            try
-            {
-                var emailRegex = new System.Text.RegularExpressions.Regex(@"[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}");
-                var originalEmails = emailRegex.Matches(originalText).Cast<System.Text.RegularExpressions.Match>().Select(m => m.Value).ToList();
-                if (originalEmails.Count > 0)
-                {
-                    var transEmailRegex = new System.Text.RegularExpressions.Regex(
-                        @"[a-zA-Z0-9._%+-]+\s*@\s*[a-zA-Z0-9.-]+(?:\s*\.\s*[a-zA-Z]{2,})+");
-                    var transMatches = transEmailRegex.Matches(translatedText).Cast<System.Text.RegularExpressions.Match>().ToList();
-                    for (int i = 0; i < Math.Min(originalEmails.Count, transMatches.Count); i++)
-                    {
-                        int index = translatedText.IndexOf(transMatches[i].Value);
-                        if (index >= 0)
-                        {
-                            translatedText = translatedText.Remove(index, transMatches[i].Value.Length).Insert(index, originalEmails[i]);
-                        }
-                    }
-                }
-            }
-            catch { }
-
-            // 2. Terminology replacements
-            if (targetLang.StartsWith("zh", StringComparison.OrdinalIgnoreCase))
-            {
-                bool isTraditional = !targetLang.Equals("zh-CN", StringComparison.OrdinalIgnoreCase);
-
-                // ABSTRACT / Abstract -> 摘要
-                if (originalText.Trim().Equals("ABSTRACT", StringComparison.OrdinalIgnoreCase))
-                {
-                    translatedText = "摘要";
-                }
-                else
-                {
-                    translatedText = translatedText.Replace("抽象", "摘要");
-                }
-
-                // REFERENCES / BIBLIOGRAPHY section heading -> 參考文獻 (entries stay English via bypass)
-                if (IsReferencesSectionHeadingText(originalText.Trim()))
-                {
-                    var headingMatch = ReferencesSectionNumberedHeadingRegex.Match(originalText.Trim());
-                    string prefix = headingMatch.Success
-                        ? $"{headingMatch.Groups[1].Value}. "
-                        : "";
-                    translatedText = prefix + (isTraditional ? "參考文獻" : "参考文献");
-                }
-
-                // titles -> 作品
-                if (originalText.Contains("title", StringComparison.OrdinalIgnoreCase) && !originalText.Contains("entitle", StringComparison.OrdinalIgnoreCase))
-                {
-                    translatedText = translatedText.Replace("標題", isTraditional ? "作品" : "作品");
-                    translatedText = translatedText.Replace("标题", "作品");
-                }
-
-                // features -> 特徵
-                if (originalText.Contains("features", StringComparison.OrdinalIgnoreCase) || originalText.Contains("feature", StringComparison.OrdinalIgnoreCase))
-                {
-                    translatedText = translatedText.Replace("功能", isTraditional ? "特徵" : "特征");
-                    translatedText = translatedText.Replace("特性", isTraditional ? "特徵" : "特征");
-                }
-
-                // character -> 角色
-                if (originalText.Contains("character", StringComparison.OrdinalIgnoreCase))
-                {
-                    translatedText = translatedText.Replace("字元", "角色");
-                    translatedText = translatedText.Replace("字符", "角色");
-                }
-
-                // LLM -> 大型語言模型 / 大型语言模型
-                if (originalText.Contains("LLM", StringComparison.OrdinalIgnoreCase))
-                {
-                    translatedText = translatedText.Replace("法學碩士", isTraditional ? "大型語言模型" : "大型语言模型");
-                    translatedText = translatedText.Replace("法学硕士", isTraditional ? "大型語言模型" : "大型语言模型");
-                }
-
-                // sink -> 接收端 / 接收器
-                if (originalText.Contains("sink", StringComparison.OrdinalIgnoreCase))
-                {
-                    translatedText = translatedText.Replace("水槽", isTraditional ? "接收端" : "接收器");
-                }
-            }
-
-            // 3. Remove stray formula-bracket artifacts like '):(Equation (1))' or '):' that appear
-            //    when the formula extractor incorrectly consumed the opening '(' of a parenthetical phrase,
-            //    leaving only the closing ')' in the text string.
-            try
-            {
-                // If the ENTIRE text is a stray artifact (e.g. "InfoNCE):(Equation (1))")
-                // detect: word-part + ')' + ':' + '(' + ... + ')'
-                var fullArtifactRegex = new System.Text.RegularExpressions.Regex(
-                    @"^(.+?)\)\s*:\s*\(.+\)\s*$",
-                    System.Text.RegularExpressions.RegexOptions.Singleline);
-                var fullMatch = fullArtifactRegex.Match(translatedText.Trim());
-                if (fullMatch.Success)
-                {
-                    // Keep only the part before the stray ')'
-                    translatedText = fullMatch.Groups[1].Value.Trim();
-                }
-                else
-                {
-                    // Partial: remove trailing '):(something)' from otherwise normal text
-                    var trailingArtifact = new System.Text.RegularExpressions.Regex(
-                        @"\)\s*:\s*\(.+\)\s*$",
-                        System.Text.RegularExpressions.RegexOptions.Singleline);
-                    translatedText = trailingArtifact.Replace(translatedText, "").Trim();
-                }
-
-                // Also remove orphan '):(...)' that starts the string
-                var leadingArtifact = new System.Text.RegularExpressions.Regex(
-                    @"^\)\s*:\s*",
-                    System.Text.RegularExpressions.RegexOptions.None);
-                translatedText = leadingArtifact.Replace(translatedText, "").Trim();
-            }
-            catch { }
-
-            // 4. Convert Simplified Chinese to Traditional when target is zh-TW/zh-HK
-            if (targetLang.StartsWith("zh", StringComparison.OrdinalIgnoreCase) &&
-                !targetLang.Equals("zh-CN", StringComparison.OrdinalIgnoreCase))
-            {
-                translatedText = ChineseTextConverter.SimplifiedToTraditional(translatedText);
-            }
-
-            return translatedText;
-        }
-
+        public static string PostProcessTranslation(string originalText, string translatedText, string targetLang) =>
+            TranslationPostProcessor.PostProcessTranslation(originalText, translatedText, targetLang);
         private readonly struct TableMaskRegion
         {
             public double X0 { get; }
@@ -2019,13 +1892,13 @@ namespace Clickra.Core.Processors
                 double pageWidth = p < pageWidths.Length ? pageWidths[p] : 595.0;
                 foreach (var para in GetPageReadingOrder(allPages[p], pageWidth))
                 {
-                    if (IsReferencesSectionHeading(para))
+                    if (ReferenceSectionDetector.IsHeading(para))
                     {
                         inSection = true;
                         continue;
                     }
 
-                    if (inSection && IsReferencesSectionTerminator(para))
+                    if (inSection && ReferenceSectionDetector.IsTerminator(para))
                     {
                         inSection = false;
                         continue;
@@ -2037,15 +1910,6 @@ namespace Clickra.Core.Processors
                     }
                 }
             }
-        }
-
-        private static bool IsReferenceParagraph(PdfParagraph para)
-        {
-            string txt = para.TextWithPlaceholders.Trim();
-            return System.Text.RegularExpressions.Regex.IsMatch(txt, @"^\[\d+\]") ||
-                   txt.Contains("http", StringComparison.OrdinalIgnoreCase) ||
-                   txt.Contains("doi:", StringComparison.OrdinalIgnoreCase) ||
-                   txt.Contains("www.", StringComparison.OrdinalIgnoreCase);
         }
 
         private static bool IsEquationParagraph(PdfParagraph para)
@@ -4905,7 +4769,7 @@ namespace Clickra.Core.Processors
             {
                 lineSpacingMultiplier = 1.2;
             }
-            if (IsReferenceParagraph(para))
+            if (ReferenceSectionDetector.IsReferenceParagraph(para))
             {
                 lineSpacingMultiplier = 1.15;
             }
@@ -6319,8 +6183,8 @@ namespace Clickra.Core.Processors
                         if (StartsNewParagraphOrSection(p2.TextWithPlaceholders)) continue;
 
                         // Only merge reference/list multi-line items; never merge ordinary body paragraphs
-                        bool isP1RefOrList = IsReferenceParagraph(p1) || StartsNewParagraphOrSection(p1.TextWithPlaceholders);
-                        bool isP2RefOrList = IsReferenceParagraph(p2) || StartsNewParagraphOrSection(p2.TextWithPlaceholders);
+                        bool isP1RefOrList = ReferenceSectionDetector.IsReferenceParagraph(p1) || StartsNewParagraphOrSection(p1.TextWithPlaceholders);
+                        bool isP2RefOrList = ReferenceSectionDetector.IsReferenceParagraph(p2) || StartsNewParagraphOrSection(p2.TextWithPlaceholders);
                         if (!isP1RefOrList && !isP2RefOrList) continue;
 
                         // Merge p2 into p1
@@ -6385,69 +6249,6 @@ namespace Clickra.Core.Processors
                 return true;
             return txt.Length < 80 &&
                    System.Text.RegularExpressions.Regex.IsMatch(txt, @"^[A-Z]\.\s+", System.Text.RegularExpressions.RegexOptions.IgnoreCase);
-        }
-
-        private static readonly System.Text.RegularExpressions.Regex ReferencesSectionNumberedHeadingRegex = new(
-            @"^(\d{1,2})\.\s*(?:REFERENCES?|BIBLIOGRAPHY|參考文獻)\s*\.?\s*$",
-            System.Text.RegularExpressions.RegexOptions.IgnoreCase | System.Text.RegularExpressions.RegexOptions.Compiled);
-
-        private static bool IsReferencesSectionHeadingText(string txt)
-        {
-            if (string.IsNullOrWhiteSpace(txt)) return false;
-            txt = txt.Trim();
-
-            // Numbered headings like "9. REFERENCE" — case-insensitive on the keyword.
-            if (ReferencesSectionNumberedHeadingRegex.IsMatch(txt)) return true;
-
-            // Unnumbered headings: case-insensitive match (e.g. ACM "References" on p13).
-            // IsReferencesSectionHeading excludes IsTable to avoid table column labels like "reference".
-            return txt.Equals("REFERENCES", StringComparison.OrdinalIgnoreCase) ||
-                   txt.Equals("REFERENCE", StringComparison.OrdinalIgnoreCase) ||
-                   txt.Equals("BIBLIOGRAPHY", StringComparison.OrdinalIgnoreCase) ||
-                   txt.Equals("參考文獻", StringComparison.Ordinal);
-        }
-
-        private static bool IsReferencesSectionHeading(PdfParagraph para)
-        {
-            if (para.IsTable || para.IsCode || para.IsGrayPromptContent || para.IsDiagram) return false;
-            if (!IsReferencesSectionHeadingText(para.TextWithPlaceholders.Trim())) return false;
-
-            // A lone "reference" also appears as a small field/cell label in figures and
-            // result tables. Require section-heading geometry so it cannot start a
-            // cross-page bibliography bypass from inside compact academic content.
-            return para.AverageFontSize >= 8.0 ||
-                   para.Width >= 70.0 ||
-                   para.Height >= 10.0;
-        }
-
-        private static bool IsReferencesSectionTerminator(PdfParagraph para)
-        {
-            string txt = para.TextWithPlaceholders.Trim();
-            if (string.IsNullOrEmpty(txt)) return false;
-            if (IsReferencesSectionHeading(para)) return false;
-            if (IsReferenceParagraph(para)) return false;
-
-            if (txt.Contains("WORK DIVISION", StringComparison.OrdinalIgnoreCase)) return true;
-            if (txt.Equals("APPENDIX", StringComparison.OrdinalIgnoreCase)) return true;
-            if (txt.Contains("ACKNOWLEDGMENT", StringComparison.OrdinalIgnoreCase) ||
-                txt.Contains("ACKNOWLEDGEMENT", StringComparison.OrdinalIgnoreCase))
-                return true;
-
-            // Numbered major sections (e.g. "10. WORK DIVISION", "7. DATA AND CODE AVAILABILITY")
-            if (System.Text.RegularExpressions.Regex.IsMatch(txt, @"^\d{1,2}\.\s+[A-Za-z\u4e00-\u9fff]"))
-                return true;
-
-            // ACM-style appendix after references (e.g. PentestAgent p13 "A Prompts", "B.1", "C ...")
-            if (System.Text.RegularExpressions.Regex.IsMatch(txt, @"^Appendix\s+[A-Z]", System.Text.RegularExpressions.RegexOptions.IgnoreCase))
-                return true;
-            if (System.Text.RegularExpressions.Regex.IsMatch(txt, @"^[A-Z]\s+Prompts\b", System.Text.RegularExpressions.RegexOptions.IgnoreCase))
-                return true;
-            if (System.Text.RegularExpressions.Regex.IsMatch(txt, @"^[A-Z]\.\d+\s", System.Text.RegularExpressions.RegexOptions.IgnoreCase))
-                return true;
-            if (txt.Length < 40 && System.Text.RegularExpressions.Regex.IsMatch(txt, @"^[A-Z]\.\s+[A-Za-z\u4e00-\u9fff]", System.Text.RegularExpressions.RegexOptions.IgnoreCase))
-                return true;
-
-            return false;
         }
 
         private static List<PdfParagraph> GetPageReadingOrder(List<PdfParagraph> pageList, double pageWidth)
