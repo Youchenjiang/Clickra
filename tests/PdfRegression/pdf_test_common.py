@@ -4,7 +4,7 @@ from __future__ import annotations
 from pathlib import Path
 
 
-ROOT = Path(__file__).resolve().parents[1]
+ROOT = Path(__file__).resolve().parents[2]
 TEST_PDFS = ROOT / "test_pdfs"
 SOURCE_DIR = TEST_PDFS / "source"
 TRANSLATED_DIR = TEST_PDFS / "translated"
@@ -29,3 +29,4 @@ def require_file(path: Path, failures: list[str], label: str) -> bool:
         return True
     failures.append(f"{label}: missing file: {path}")
     return False
+

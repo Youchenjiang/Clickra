@@ -9,8 +9,8 @@ review pages. Those heuristics are useful for triage, but intentionally not the
 default release gate because PDF drawing geometry can be noisy.
 
 Run:
-    python tests/test_translation_render_review.py
-    python tests/test_translation_render_review.py --strict
+    python tests/PdfRegression/test_translation_render_review.py
+    python tests/PdfRegression/test_translation_render_review.py --strict
 """
 from __future__ import annotations
 
@@ -24,7 +24,7 @@ import fitz
 from PIL import Image, ImageDraw, ImageFont
 
 
-ROOT = Path(__file__).resolve().parents[1]
+ROOT = Path(__file__).resolve().parents[2]
 TEST_PDFS = ROOT / "test_pdfs"
 DEFAULT_TRANSLATED_DIR = TEST_PDFS / "translated"
 REVIEW_DIR = ROOT / "tmp" / "pdfs" / "render_review"
@@ -319,3 +319,4 @@ def main() -> int:
 
 if __name__ == "__main__":
     sys.exit(main())
+

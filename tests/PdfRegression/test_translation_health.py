@@ -5,7 +5,7 @@ heuristics. It trusts the generated health JSON for hard failures and reports
 page-level warnings separately so noisy layout guesses do not become release
 blockers.
 
-Run: python tests/test_translation_health.py
+Run: python tests/PdfRegression/test_translation_health.py
 """
 from __future__ import annotations
 
@@ -19,7 +19,7 @@ from pdf_test_common import DIAGNOSTIC_DIR, ROOT, SOURCE_DIR, SOURCE_MAP, TRANSL
 
 
 PDFS = SOURCE_MAP
-EXPECTATIONS_PATH = ROOT / "tests" / "translation_baseline_expectations.json"
+EXPECTATIONS_PATH = ROOT / "tests" / "PdfRegression" / "translation_baseline_expectations.json"
 
 
 def translated_name(source_name: str) -> str:
@@ -142,3 +142,4 @@ def main() -> int:
 
 if __name__ == "__main__":
     sys.exit(main())
+

@@ -1,7 +1,7 @@
 """Integration tests for Clickra translation rules.
 
 Verifies that translated PDFs comply with translation_rules.md §2 bypass rules.
-Run: python tests/test_translation_rules.py
+Run: python tests/PdfRegression/test_translation_rules.py
 """
 import fitz
 import re
@@ -318,3 +318,4 @@ if __name__ == "__main__":
             print(f"  - {e}")
     print("=" * 60)
     sys.exit(1 if failed else 0)
+

@@ -7,7 +7,7 @@ from pathlib import Path
 from opencc import OpenCC
 
 
-ROOT = Path(__file__).resolve().parents[1]
+ROOT = Path(__file__).resolve().parents[2]
 SCRIPTS = ROOT / "scratch" / "scripts"
 sys.path.insert(0, str(SCRIPTS))
 
@@ -46,3 +46,4 @@ def main() -> int:
 
 if __name__ == "__main__":
     sys.exit(main())
+
