@@ -235,7 +235,7 @@ namespace Clickra.Core.Processors
                 }
 
                 var diagramRegions = PdfDiagramMaskBuilder.BuildProcessedDiagramMaskRegions(page, pageList);
-                ClearDiagramFlagOnRunningHeaders(pageList, page.Height);
+                PdfDiagramFlagCleaner.ClearDiagramFlagOnRunningHeaders(pageList, page.Height);
 
                 // Table grid strokes overlap cell text and falsely mark it as diagram; keep as table for redraw.
                 PdfTableClassifier.ReclassifyWorkDivisionTableText(pageList, page.Width);
@@ -253,14 +253,14 @@ namespace Clickra.Core.Processors
                 var effectiveDiagramRegions = PdfDiagramRegionGeometry.GetEffectiveDiagramMaskRegions(
                     diagramRegions, tableMaskForDiagram, pageList);
                 MarkDiagramFigureLabels(pageList, page, effectiveDiagramRegions);
-                ReclassifyChartLabelsMisclassifiedAsTable(pageList, effectiveDiagramRegions);
+                PdfDiagramFlagCleaner.ReclassifyChartLabelsMisclassifiedAsTable(pageList, effectiveDiagramRegions);
                 ReclassifyStandaloneChartLabelsAsDiagram(pageList);
                 FinalizeDiagramFigureLabels(pageList, effectiveDiagramRegions, page.Height);
                 MarkWorkflowFigureLabelsAboveCaption(pageList, page.Height);
                 MarkCodeFigureContentAboveCaption(pageList, page.Width, page.Height);
-                ClearDiagramFlagOnFigureCaptions(pageList);
-                ClearDiagramFlagOnSectionHeadings(pageList);
-                ReclassifyCalloutFindingsText(pageList);
+                PdfDiagramFlagCleaner.ClearDiagramFlagOnFigureCaptions(pageList);
+                PdfDiagramFlagCleaner.ClearDiagramFlagOnSectionHeadings(pageList);
+                PdfDiagramFlagCleaner.ReclassifyCalloutFindingsText(pageList);
                 PdfTableClassifier.ReclassifyWorkDivisionTableText(pageList, page.Width);
                 PdfTableClassifier.ReclassifyAppendixFeatureTableText(pageList, page.Width);
 
@@ -319,12 +319,12 @@ namespace Clickra.Core.Processors
                     }
                 }
 
-                ClearDiagramFlagOnRunningHeaders(pageList, page.Height);
-                ClearDiagramFlagOnTranslatableProse(pageList, effectiveDiagramRegions);
+                PdfDiagramFlagCleaner.ClearDiagramFlagOnRunningHeaders(pageList, page.Height);
+                PdfDiagramFlagCleaner.ClearDiagramFlagOnTranslatableProse(pageList, effectiveDiagramRegions);
                 MarkWorkflowFigureLabelsAboveCaption(pageList, page.Height);
                 MarkCodeFigureContentAboveCaption(pageList, page.Width, page.Height);
-                ClearDiagramFlagOnFigureCaptions(pageList);
-                ClearDiagramFlagOnSectionHeadings(pageList);
+                PdfDiagramFlagCleaner.ClearDiagramFlagOnFigureCaptions(pageList);
+                PdfDiagramFlagCleaner.ClearDiagramFlagOnSectionHeadings(pageList);
                 MarkWorkflowBannerTextInDiagramRegions(pageList, effectiveDiagramRegions, page.Height);
                 bool workDivisionPage = pageList.Any(p =>
                     p.TextWithPlaceholders.Trim().Contains("WORK DIVISION", StringComparison.OrdinalIgnoreCase));
@@ -1160,18 +1160,6 @@ namespace Clickra.Core.Processors
         }
 
 
-        private static void ReclassifyCalloutFindingsText(List<PdfParagraph> pageList)
-        {
-            foreach (var para in pageList)
-            {
-                if (!para.IsDiagram) continue;
-                if (PdfParagraphRoleClassifier.IsTranslatableCalloutProse(para))
-                {
-                    para.IsDiagram = false;
-                }
-            }
-        }
-
         /// <summary>Bar-chart axis labels on pages without vector diagram bounds (PentestAgent p10/p11).</summary>
         private static void ReclassifyStandaloneChartLabelsAsDiagram(List<PdfParagraph> pageList)
         {
@@ -1387,75 +1375,6 @@ namespace Clickra.Core.Processors
                     para.IsTable = false;
                     para.IsGrayPromptContent = false;
                     para.IsBypassed = true;
-                }
-            }
-        }
-
-        private static void ClearDiagramFlagOnFigureCaptions(List<PdfParagraph> pageList)
-        {
-            foreach (var para in pageList)
-            {
-                if (!PdfParagraphRoleClassifier.IsFigureTableCaptionParagraph(para)) continue;
-                para.IsDiagram = false;
-                para.IsTable = false;
-                if (!para.IsCode)
-                {
-                    para.IsBypassed = false;
-                }
-            }
-        }
-
-        private static void ClearDiagramFlagOnSectionHeadings(List<PdfParagraph> pageList)
-        {
-            foreach (var para in pageList)
-            {
-                if (!para.IsDiagram) continue;
-                if (!PdfParagraphSemanticClassifier.IsHeadingParagraph(para) && !PdfParagraphSemanticClassifier.IsAppendixSectionHeading(para)) continue;
-                para.IsDiagram = false;
-                if (!para.IsTable && !para.IsCode)
-                {
-                    para.IsBypassed = false;
-                }
-            }
-        }
-
-        private static void ClearDiagramFlagOnTranslatableProse(
-            List<PdfParagraph> pageList,
-            IReadOnlyList<TableMaskRegion> diagramRegions)
-        {
-            foreach (var para in pageList)
-            {
-                if (!para.IsDiagram) continue;
-
-                // Selectable text embedded in a vector workflow diagram can look
-                // prose-like (lowercase words, colons, periods). If its letters
-                // materially overlap the detected diagram geometry, keep the
-                // original label instead of masking and reflowing it as body text.
-                if (PdfDiagramRegionGeometry.ParagraphLetterOverlapRatio(para, diagramRegions) >= 0.15)
-                {
-                    continue;
-                }
-
-                bool shouldClear = false;
-                if (PdfParagraphRoleClassifier.IsTranslatableBodyProse(para) || PdfParagraphRoleClassifier.IsTranslatableCalloutProse(para))
-                {
-                    shouldClear = true;
-                }
-                else
-                {
-                    string txt = para.TextWithPlaceholders.Trim();
-                    if (para.Width >= 120 && txt.Any(char.IsLower) &&
-                        (txt.IndexOf('.') >= 0 || txt.Contains("{v")))
-                    {
-                        shouldClear = true;
-                    }
-                }
-
-                if (!shouldClear) continue;
-                para.IsDiagram = false;
-                if (!para.IsTable && !para.IsCode)
-                {
-                    para.IsBypassed = false;
                 }
             }
         }
@@ -2537,41 +2456,6 @@ namespace Clickra.Core.Processors
             }
 
             return false;
-        }
-
-        private static void ClearDiagramFlagOnRunningHeaders(List<PdfParagraph> pageList, double pageHeight)
-        {
-            foreach (var para in pageList)
-            {
-                if (!PdfParagraphRoleClassifier.IsRunningHeaderOrFooter(para, pageHeight)) continue;
-                para.IsDiagram = false;
-                para.IsBypassed = para.IsCode || para.IsOnlyMath ||
-                                  string.IsNullOrWhiteSpace(para.TextWithPlaceholders) ||
-                                  PdfParagraphSemanticClassifier.IsEquationParagraph(para) || PdfTableParagraphClassifier.IsTableParagraph(para) || para.IsTable;
-            }
-        }
-
-        /// <summary>Bar-chart legend/axis labels misclassified as table cells on chart-heavy pages.</summary>
-        private static void ReclassifyChartLabelsMisclassifiedAsTable(
-            List<PdfParagraph> pageList,
-            IReadOnlyList<TableMaskRegion> diagramRegions)
-        {
-            if (diagramRegions.Count == 0) return;
-            foreach (var para in pageList)
-            {
-                if (!para.IsTable) continue;
-                if (PdfParagraphRoleClassifier.IsFigureTableCaptionParagraph(para)) continue;
-
-                double letterRatio = PdfDiagramRegionGeometry.ParagraphLetterOverlapRatio(para, diagramRegions);
-                bool inDiagram = letterRatio >= 0.25 || PdfDiagramRegionGeometry.OverlapsAnyRegion(para, diagramRegions);
-                if (!inDiagram) continue;
-
-                if (PdfChartLabelClassifier.IsLikelyChartLabel(para) || para.Height <= 60 || letterRatio >= 0.4)
-                {
-                    para.IsTable = false;
-                    para.IsDiagram = true;
-                }
-            }
         }
 
         private static double RenderParagraph(XGraphics gfx, PdfParagraph para, string targetFontName, bool measureOnly = false)
