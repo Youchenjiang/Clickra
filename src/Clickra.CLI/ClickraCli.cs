@@ -218,7 +218,7 @@ namespace Clickra
                             var segmenter = new UglyToad.PdfPig.DocumentLayoutAnalysis.PageSegmenter.DocstrumBoundingBoxes();
                             bool isTablePage = words.Any(w => w.Text.Equals("Table", StringComparison.OrdinalIgnoreCase) || 
                                                               w.Text.Equals("表", StringComparison.OrdinalIgnoreCase));
-                            var blocks = FileProcessor.GetMergedBlocks(segmenter.GetBlocks(words), page.Width, isTablePage);
+                            var blocks = PdfTranslateProcessor.GetMergedBlocks(segmenter.GetBlocks(words), page.Width, isTablePage);
                             int blockIdx = 0;
                             foreach (var block in blocks)
                             {
@@ -228,7 +228,7 @@ namespace Clickra
                                 foreach (var line in blockLines)
                                 {
                                     bool isMath = PdfParagraph.IsMathLine(line);
-                                    bool startsNew = FileProcessor.StartsNewParagraphOrSection(line.Text);
+                                    bool startsNew = PdfTranslateProcessor.StartsNewParagraphOrSection(line.Text);
 
                                     bool prevLineEndedEarly = false;
                                     bool prevLineWasHeading = false;
@@ -239,7 +239,7 @@ namespace Clickra
                                         {
                                             prevLineEndedEarly = true;
                                         }
-                                        if (FileProcessor.IsHeadingLine(prevLine))
+                                        if (PdfTranslateProcessor.IsHeadingLine(prevLine))
                                         {
                                             prevLineWasHeading = true;
                                         }

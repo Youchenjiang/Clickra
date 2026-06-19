@@ -122,7 +122,9 @@ runner.Run("Final project appendix feature tables stay bypassed", () =>
 
 runner.Run("Final project p1 translated title clip follows rendered CJK height", () =>
 {
-    var method = typeof(FileProcessor).GetMethod(
+    var method = typeof(PdfTranslateProcessor).Assembly
+        .GetType("Clickra.Core.Processors.PdfTranslationPipeline")
+        ?.GetMethod(
         "GetPageOneTitleClipBottom",
         System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static);
     Assert.True(method != null, "Expected page-one title clip helper.");
@@ -241,7 +243,9 @@ runner.Run("Pentest p9 Figure 7 bar chart stays inside the original figure", () 
 
 runner.Run("Pentest Figure 7 success-rate axis label is chart protected", () =>
 {
-    var method = typeof(FileProcessor).GetMethod(
+    var method = typeof(PdfTranslateProcessor).Assembly
+        .GetType("Clickra.Core.Processors.PdfTranslationPipeline")
+        ?.GetMethod(
         "IsLikelyBarChartAxisLabel",
         System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static);
     Assert.True(method != null, "Expected bar-chart axis label helper.");
@@ -363,14 +367,14 @@ runner.Run("PostProcessTranslation fixes zh-TW terminology", () =>
 {
     Assert.Equal(
         "大型語言模型的接收端會保留 user@example.com",
-        FileProcessor.PostProcessTranslation(
+        PdfTranslateProcessor.PostProcessTranslation(
             "The LLM sink keeps user@example.com",
             "法學碩士的水槽會保留 user @ example . com",
             "zh-TW"));
 
     Assert.Equal(
         "參考文獻",
-        FileProcessor.PostProcessTranslation("REFERENCES", "引用", "zh-TW"));
+        PdfTranslateProcessor.PostProcessTranslation("REFERENCES", "引用", "zh-TW"));
 });
 
 runner.Run("Formula literals are not rendered twice beside placeholders", () =>
@@ -388,19 +392,19 @@ runner.Run("Formula literals are not rendered twice beside placeholders", () =>
 
     Assert.Equal(
         "runtime features such as {v0} are difficult",
-        FileProcessor.RemoveDuplicateFormulaLiterals(
+        PdfTranslateProcessor.RemoveDuplicateFormulaLiterals(
             "runtime features such as eval() {v0} are difficult",
             new List<MathFormula> { formula }));
 
     Assert.Equal(
         "runtime features such as eval() are difficult",
-        FileProcessor.RemoveDuplicateFormulaLiterals(
+        PdfTranslateProcessor.RemoveDuplicateFormulaLiterals(
             "runtime features such as eval() are difficult",
             new List<MathFormula> { formula }));
 
     Assert.Equal(
         "eval() is named earlier; runtime features such as {v0} are difficult",
-        FileProcessor.RemoveDuplicateFormulaLiterals(
+        PdfTranslateProcessor.RemoveDuplicateFormulaLiterals(
             "eval() is named earlier; runtime features such as eval() {v0} are difficult",
             new List<MathFormula> { formula }));
 });
@@ -535,7 +539,7 @@ static TranslationPageDiagnostics Diagnostics(string sourceFile, int page)
 {
     var path = RepoRoot() / "test_pdfs" / "source" / sourceFile;
     Assert.True(File.Exists(path.Value), $"Missing test PDF: {path}");
-    return FileProcessor.AnalyzePageParagraphDiagnostics(path.ToString(), page);
+    return PdfTranslateProcessor.AnalyzePageParagraphDiagnostics(path.ToString(), page);
 }
 
 static PdfParagraph UninitializedParagraph(string text, double width, double height)
