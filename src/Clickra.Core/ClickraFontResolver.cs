@@ -24,13 +24,20 @@ namespace Clickra.Core
             string name = familyName.ToLowerInvariant().Trim();
 
             // Map family names to unique faces
+            if (name.Contains("dfkai") || name.Contains("kaiu") ||
+                name.Contains("標楷") || name.Contains("标楷"))
+            {
+                // CJK translation output must always use the real regular KaiU face.
+                // Simulated bold/italic and Latin fallbacks produce missing glyph boxes.
+                return new FontResolverInfo("kaiu");
+            }
             if (name.Contains("jhenghei") || name.Contains("正黑"))
             {
-                return new FontResolverInfo("msjh" + suffix);
+                return new FontResolverInfo("kaiu");
             }
             if (name.Contains("yahei") || name.Contains("雅黑"))
             {
-                return new FontResolverInfo("msyh" + suffix);
+                return new FontResolverInfo("kaiu");
             }
             if (name.Contains("malgun"))
             {
@@ -86,7 +93,8 @@ namespace Clickra.Core
             }
 
             // Fallback for CJK faces if the file is missing
-            if (baseFace == "msjh" || baseFace == "msgothic" || baseFace == "msyh" || baseFace == "malgun")
+            if (baseFace == "kaiu" || baseFace == "msjh" || baseFace == "msgothic" ||
+                baseFace == "msyh" || baseFace == "malgun")
             {
                 string systemDir = Environment.GetFolderPath(Environment.SpecialFolder.System);
                 string winFonts = Path.Combine(systemDir, "..", "Fonts");
@@ -129,6 +137,7 @@ namespace Clickra.Core
             string winFonts = Path.Combine(systemDir, "..", "Fonts");
             string file = baseFace switch
             {
+                "kaiu" => "kaiu.ttf",
                 "msjh" => "msjh.ttc", // Use standard Windows Microsoft JhengHei TTC
                 "msyh" => "msyh.ttc", // Use standard Windows Microsoft YaHei TTC
                 "msgothic" => "msgothic.ttc", // Use standard Windows MS Gothic TTC
