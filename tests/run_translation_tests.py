@@ -78,7 +78,15 @@ def main() -> int:
     )
     args = parser.parse_args()
 
-    test_dll = ROOT / "tests" / "Clickra.Core.Tests" / "bin" / "Debug" / "net10.0" / "Clickra.Core.Tests.dll"
+    test_dll = (
+        ROOT
+        / "tests"
+        / "Clickra.Core.Tests"
+        / "bin"
+        / "Debug"
+        / "net10.0-windows"
+        / "Clickra.Core.Tests.dll"
+    )
     if not test_dll.is_file():
         print(f"FAIL: native test binary missing: {test_dll}")
         return 1
@@ -92,6 +100,11 @@ def main() -> int:
             "Native translation contracts",
             ["dotnet", str(test_dll)],
             env,
+        ),
+        (
+            "Generate translation health",
+            [sys.executable, "tests/generate_translation_health.py"],
+            None,
         ),
         (
             "Translation health",

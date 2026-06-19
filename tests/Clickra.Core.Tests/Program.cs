@@ -1,4 +1,6 @@
 using Clickra.Core;
+using Clickra.Core.Models;
+using Clickra.Core.Processors;
 
 var runner = new TestRunner();
 
@@ -18,6 +20,62 @@ runner.Run("Pentest p14 gray prompt boxes stay bypassed", () =>
     AssertParagraph(page, "Exploit Suggestion Prompt", p =>
         p.IsGrayPromptContent && p.IsCode && p.IsBypassed && !p.IsDiagram && !p.IsTable);
     AssertParagraph(page, "Execution Information Query Prompt", p =>
+        p.IsGrayPromptContent && p.IsCode && p.IsBypassed && !p.IsDiagram && !p.IsTable);
+
+    foreach (var text in new[]
+    {
+        "List ALL CVE numbers",
+        "What effect does the exploit have",
+        "Make the selections by checking whether",
+        "Based on the known information",
+        "You should always respond in valid JSON format",
+        "OUTPUT FORMAT EXAMPLE"
+    })
+    {
+        AssertParagraph(page, text, p =>
+            p.IsGrayPromptContent && p.IsCode && p.IsBypassed && !p.IsDiagram && !p.IsTable);
+    }
+});
+
+runner.Run("Pentest p7 gray prompt body stays bypassed", () =>
+{
+    var page = Diagnostics("PentestAgent_Agent Pentest.pdf", 7);
+
+    AssertParagraph(page, "Potential Attack Surface Analysis Prompt", p =>
+        p.IsGrayPromptContent && p.IsCode && p.IsBypassed && !p.IsDiagram && !p.IsTable);
+    foreach (var text in new[]
+    {
+        "Generate a concise summary",
+        "Provide information that can be used",
+        "You should always respond in valid JSON format",
+        "OUTPUT FORMAT EX-",
+        "AMPLE}"
+    })
+    {
+        AssertParagraph(page, text, p =>
+            p.IsGrayPromptContent && p.IsCode && p.IsBypassed && !p.IsDiagram && !p.IsTable);
+    }
+});
+
+runner.Run("Pentest p4 gray example boxes stay bypassed", () =>
+{
+    var page = Diagnostics("PentestAgent_Agent Pentest.pdf", 4);
+
+    foreach (var text in new[]
+    {
+        "Repetition of Tasks Example",
+        "Use Nmap to perform",
+        "Nmap scan results",
+        "Loss of Context Example",
+        "Information collection steps",
+        "The target OS is Linux",
+        "How do I execute this exploit"
+    })
+    {
+        AssertParagraph(page, text, p =>
+            p.IsGrayPromptContent && p.IsCode && p.IsBypassed && !p.IsDiagram && !p.IsTable);
+    }
+    AssertAllParagraphs(page, "Use Nmap to perform", p =>
         p.IsGrayPromptContent && p.IsCode && p.IsBypassed && !p.IsDiagram && !p.IsTable);
 });
 
@@ -79,6 +137,39 @@ runner.Run("Final project p1 translated title clip follows rendered CJK height",
         $"Expected title clip to contain the measured height, got {clipBottom - clipTop:F1}.");
 });
 
+runner.Run("Final project p9 table reference labels do not bypass later result pages", () =>
+{
+    var page9 = Diagnostics("114423046_final_project.pdf", 9);
+    AssertParagraph(page9, "structures from existing studies", p =>
+        !p.IsBypassed && !p.IsTable && !p.IsDiagram && !p.IsGrayPromptContent);
+
+    var page10 = Diagnostics("114423046_final_project.pdf", 10);
+    AssertParagraph(page10, "This experiment studies which parts of CARMA matter", p =>
+        !p.IsBypassed && !p.IsTable && !p.IsDiagram && !p.IsGrayPromptContent);
+
+    var page11 = Diagnostics("114423046_final_project.pdf", 11);
+    AssertParagraph(page11, "We adopt the Run02 checkpoint", p =>
+        !p.IsBypassed && !p.IsTable && !p.IsDiagram && !p.IsGrayPromptContent);
+
+    var page12 = Diagnostics("114423046_final_project.pdf", 12);
+    AssertParagraph(page12, "What changes between titles", p =>
+        !p.IsBypassed && !p.IsTable && !p.IsDiagram && !p.IsGrayPromptContent);
+});
+
+runner.Run("CJK translation font resolves to embedded KaiU glyphs", () =>
+{
+    var resolver = new ClickraFontResolver();
+    foreach (var family in new[] { "DFKai-SB", "DFKai", "kaiu" })
+    {
+        var face = resolver.ResolveTypeface(family, isBold: true, isItalic: true);
+        Assert.True(face != null && face.FaceName == "kaiu",
+            $"Expected {family} to resolve to kaiu, got {face?.FaceName ?? "<null>"}.");
+        var bytes = resolver.GetFont(face!.FaceName);
+        Assert.True(bytes != null && bytes.Length > 1_000_000,
+            $"Expected an embedded KaiU font payload for {family}.");
+    }
+});
+
 runner.Run("TOGLL p8 RQ4 body prose is translatable outside tables", () =>
 {
     var page = Diagnostics("TOGLL_Oracle Generation.pdf", 8);
@@ -87,6 +178,118 @@ runner.Run("TOGLL p8 RQ4 body prose is translatable outside tables", () =>
         !p.IsTable && !p.IsBypassed && !p.IsDiagram && !p.IsGrayPromptContent && p.IsBodyProse);
     AssertParagraph(page, "RQ3 Finding", p =>
         !p.IsTable && !p.IsBypassed && !p.IsDiagram && !p.IsGrayPromptContent);
+});
+
+runner.Run("TOGLL p5 Table I grids and prompt details stay bypassed", () =>
+{
+    var page = Diagnostics("TOGLL_Oracle Generation.pdf", 5);
+
+    foreach (var text in new[]
+    {
+        "Code LLM",
+        "CodeGPT-110M",
+        "CodeParrot-110M",
+        "Avg:",
+        "Prompt Details",
+        "P1: prefix",
+        "P4: prefix + [sep] + doc. + [sep] + mutsig",
+        "P6: prefix + [sep] + doc. + [sep] + mut"
+    })
+    {
+        AssertParagraph(page, text, p =>
+            p.IsTable && p.IsBypassed && !p.IsDiagram && !p.IsGrayPromptContent);
+    }
+
+    AssertParagraph(page, "TEST ORACLE GENERATION PERFORMANCE", p =>
+        !p.IsTable && !p.IsBypassed && !p.IsDiagram && !p.IsGrayPromptContent);
+});
+
+runner.Run("TOGLL p4 Figure 2 clip stays above equation 1 explanation", () =>
+{
+    var page = Diagnostics("TOGLL_Oracle Generation.pdf", 4);
+    var explanation = page.Paragraphs.Single(p =>
+        p.Text.Contains("number of total test prefixes", StringComparison.OrdinalIgnoreCase));
+
+    Assert.True(page.FigureClipRegions.Count > 0, "Expected a clip region for Figure 2.");
+    Assert.True(page.FigureClipRegions.All(region =>
+            region.Y0 >= explanation.Y1 ||
+            region.Y1 <= explanation.Y0 ||
+            region.X1 <= explanation.X0 ||
+            region.X0 >= explanation.X1),
+        $"Figure 2 clip must not overlap equation 1 explanation at " +
+        $"[{explanation.X0:F1},{explanation.Y0:F1},{explanation.X1:F1},{explanation.Y1:F1}].");
+});
+
+runner.Run("Pentest p9 Figure 7 bar chart stays inside the original figure", () =>
+{
+    var page = Diagnostics("PentestAgent_Agent Pentest.pdf", 9);
+
+    foreach (var text in new[]
+    {
+        "Success Rate (%)",
+        "GPT-4",
+        "GPT-3.5",
+        "Models"
+    })
+    {
+        AssertParagraph(page, text, p => p.IsBypassed);
+    }
+
+    AssertParagraph(page, "Success rate on penetration testing tasks", p =>
+        !p.IsDiagram && !p.IsBypassed && !p.IsTable);
+});
+
+runner.Run("Pentest Figure 7 success-rate axis label is chart protected", () =>
+{
+    var method = typeof(FileProcessor).GetMethod(
+        "IsLikelyBarChartAxisLabel",
+        System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static);
+    Assert.True(method != null, "Expected bar-chart axis label helper.");
+
+    var axis = UninitializedParagraph("Success Rate (%) 60", width: 55, height: 35);
+    Assert.True((bool)method!.Invoke(null, new object[] { axis })!,
+        "Expected merged Success Rate (%) y-axis label to be treated as a chart label.");
+});
+
+runner.Run("TOGLL p8 Figure 4 source code stays inside the original figure", () =>
+{
+    var page = Diagnostics("TOGLL_Oracle Generation.pdf", 8);
+    foreach (var text in new[]
+    {
+        "public void test3",
+        "assertSame(oA1, oA0)",
+        "public void test9",
+        "assertEquals((-119.4)",
+        "public void test14",
+        "Ground Truth"
+    })
+    {
+        AssertParagraph(page, text, p =>
+            p.IsDiagram && p.IsBypassed && !p.IsTable && !p.IsGrayPromptContent);
+    }
+    AssertParagraph(page, "Diverse yet correct test oracles", p =>
+        !p.IsDiagram && !p.IsBypassed && !p.IsTable);
+});
+
+runner.Run("TOGLL p9 Figure 5 source code stays inside the original figure", () =>
+{
+    var page = Diagnostics("TOGLL_Oracle Generation.pdf", 9);
+    foreach (var text in new[]
+    {
+        "calculatePrintedLength",
+        "public void test327",
+        "l0.getVariant",
+        "public Rad toRad",
+        "Null Return",
+        "public void test13",
+        "angle_Rad1"
+    })
+    {
+        AssertParagraph(page, text, p =>
+            p.IsDiagram && p.IsBypassed && !p.IsTable && !p.IsGrayPromptContent);
+    }
+    AssertParagraph(page, "TOGLL generated assertions detecting unique mutants", p =>
+        !p.IsDiagram && !p.IsBypassed && !p.IsTable);
 });
 
 runner.Run("SemTaint p8 short multi-token equations stay bypassed", () =>
@@ -206,7 +409,7 @@ runner.Run("Math normalization removes non-printing font artifacts", () =>
 {
     Assert.Equal(
         "λ̸t",
-        FileProcessor.NormalizeMathValue("\0λ\u0001\u000C\u0338t"));
+        FontUtilities.NormalizeMathValue("\0λ\u0001\u000C\u0338t"));
 });
 
 runner.Run("Identity translation engine is opt-in for layout tests", () =>
@@ -335,6 +538,18 @@ static TranslationPageDiagnostics Diagnostics(string sourceFile, int page)
     return FileProcessor.AnalyzePageParagraphDiagnostics(path.ToString(), page);
 }
 
+static PdfParagraph UninitializedParagraph(string text, double width, double height)
+{
+    var paragraph = (PdfParagraph)System.Runtime.Serialization.FormatterServices
+        .GetUninitializedObject(typeof(PdfParagraph));
+    paragraph.TextWithPlaceholders = text;
+    paragraph.X0 = 0;
+    paragraph.Y0 = 0;
+    paragraph.X1 = width;
+    paragraph.Y1 = height;
+    return paragraph;
+}
+
 static PathInfo RepoRoot()
 {
     var dir = new DirectoryInfo(AppContext.BaseDirectory);
@@ -366,9 +581,25 @@ static void AssertParagraph(
         string.Join("\n", matches.Select(Describe)));
 }
 
+static void AssertAllParagraphs(
+    TranslationPageDiagnostics page,
+    string text,
+    Func<TranslationParagraphDiagnostics, bool> predicate)
+{
+    var matches = page.Paragraphs
+        .Where(p => p.Text.Contains(text, StringComparison.OrdinalIgnoreCase))
+        .ToList();
+
+    Assert.True(matches.Count > 0, $"Could not find paragraph containing '{text}' on page {page.PageNumber}.");
+    Assert.True(matches.All(predicate),
+        $"Not all paragraphs containing '{text}' satisfied predicate. Matches:\n" +
+        string.Join("\n", matches.Select(Describe)));
+}
+
 static string Describe(TranslationParagraphDiagnostics p) =>
     $"  [{p.Index}] bypass={p.IsBypassed} table={p.IsTable} code={p.IsCode} " +
     $"diagram={p.IsDiagram} gray={p.IsGrayPromptContent} body={p.IsBodyProse} " +
+    $"bbox=[{p.X0:F1},{p.Y0:F1},{p.X1:F1},{p.Y1:F1}] " +
     $"text='{Short(p.Text)}'";
 
 static string Short(string value)
