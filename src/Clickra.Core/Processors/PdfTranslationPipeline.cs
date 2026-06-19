@@ -1147,22 +1147,6 @@ namespace Clickra.Core.Processors
 
         public static string PostProcessTranslation(string originalText, string translatedText, string targetLang) =>
             TranslationPostProcessor.PostProcessTranslation(originalText, translatedText, targetLang);
-        private readonly struct TableMaskRegion
-        {
-            public double X0 { get; }
-            public double Y0 { get; }
-            public double X1 { get; }
-            public double Y1 { get; }
-
-            public TableMaskRegion(double x0, double y0, double x1, double y1)
-            {
-                X0 = x0;
-                Y0 = y0;
-                X1 = x1;
-                Y1 = y1;
-            }
-        }
-
         private static TranslationRegionDiagnostics ToDiagnosticsRegion(TableMaskRegion region) => new()
         {
             X0 = region.X0,
