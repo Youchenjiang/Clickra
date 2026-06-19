@@ -72,6 +72,7 @@ namespace Clickra.UI
             {
                 "ppt2pdf" => new[] { ".ppt", ".pptx" },
                 "word2pdf" => new[] { ".doc", ".docx" },
+                "excel2pdf" => new[] { ".xlsx", ".xls" },
                 "merge-pdf" => new[] { ".pdf" },
                 "translate-pdf" => new[] { ".pdf" },
                 "decrypt-pdf" => new[] { ".pdf" },
@@ -178,6 +179,7 @@ namespace Clickra.UI
             {
                 "ppt2pdf" => "PowerPoint Files (*.ppt; *.pptx)\0*.ppt;*.pptx\0All Files (*.*)\0*.*\0\0",
                 "word2pdf" => "Word Files (*.doc; *.docx)\0*.doc;*.docx\0All Files (*.*)\0*.*\0\0",
+                "excel2pdf" => "Excel Files (*.xlsx; *.xls)\0*.xlsx;*.xls\0All Files (*.*)\0*.*\0\0",
                 "merge-pdf" => "PDF Files (*.pdf)\0*.pdf\0All Files (*.*)\0*.*\0\0",
                 "translate-pdf" => "PDF Files (*.pdf)\0*.pdf\0All Files (*.*)\0*.*\0\0",
                 "decrypt-pdf" => "PDF Files (*.pdf)\0*.pdf\0All Files (*.*)\0*.*\0\0",
@@ -332,12 +334,13 @@ namespace Clickra.UI
                 {
                     0 => "cmd_ppt_to_pdf",
                     1 => "cmd_word_to_pdf",
-                    2 => "cmd_merge_pdf",
-                    3 => "cmd_img_to_pdf",
-                    4 => "cmd_merge_img",
-                    5 => "cmd_stitch_img",
-                    6 => "cmd_translate_pdf",
-                    7 => "cmd_decrypt_pdf",
+                    2 => "cmd_excel_to_pdf",
+                    3 => "cmd_merge_pdf",
+                    4 => "cmd_img_to_pdf",
+                    5 => "cmd_merge_img",
+                    6 => "cmd_stitch_img",
+                    7 => "cmd_translate_pdf",
+                    8 => "cmd_decrypt_pdf",
                     _ => ""
                 };
                 string cmdText = GetText(cmdKey);

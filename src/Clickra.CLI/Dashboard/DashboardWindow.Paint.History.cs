@@ -386,6 +386,10 @@ namespace Clickra.UI
                     tagBg = Color.FromArgb(0, 120, 212);
                     text = GetText("cmd_word_to_pdf");
                     break;
+                case "excel2pdf":
+                    tagBg = Color.FromArgb(16, 124, 65);
+                    text = GetText("cmd_excel_to_pdf");
+                    break;
                 case "ppt2pdf":
                     tagBg = Color.FromArgb(180, 50, 30);
                     text = GetText("cmd_ppt_to_pdf");
