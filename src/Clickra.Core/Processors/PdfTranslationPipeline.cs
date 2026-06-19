@@ -578,7 +578,7 @@ namespace Clickra.Core.Processors
                 {
                     try
                     {
-                        var results = TranslatePageBatches(
+                        var results = PdfTranslationBatchRunner.TranslatePageBatches(
                             translator,
                             textsToTranslate,
                             targetLang,
@@ -624,7 +624,7 @@ namespace Clickra.Core.Processors
                             try
                             {
                                 onProgress?.Invoke(
-                                    GetTranslationProgress(p, totalPages, i, paragraphsToTranslate.Count),
+                                    PdfTranslationBatchRunner.GetTranslationProgress(p, totalPages, i, paragraphsToTranslate.Count),
                                     100,
                                     $"第 {p + 1}/{totalPages} 頁批次翻譯失敗，正在逐段重試 {i + 1}/{paragraphsToTranslate.Count}...");
                                 string result = translator.TranslateAsync(para.TextWithPlaceholders, targetLang, cancellationToken).GetAwaiter().GetResult();
@@ -1004,77 +1004,6 @@ namespace Clickra.Core.Processors
             onProgress?.Invoke(95, 100, "正在儲存翻譯後的檔案...");
             finalDoc.Save(outputPath);
             finalDoc.Close();
-        }
-
-        private static List<string> TranslatePageBatches(
-            ITranslationEngine translator,
-            List<string> textsToTranslate,
-            string targetLang,
-            int pageIndex,
-            int totalPages,
-            Action<int, int, string>? onProgress,
-            CancellationToken cancellationToken)
-        {
-            var results = new List<string>(textsToTranslate.Count);
-            var chunks = BuildTranslationChunks(textsToTranslate, maxItems: 24, maxChars: 6000).ToList();
-            int translatedCount = 0;
-
-            for (int chunkIndex = 0; chunkIndex < chunks.Count; chunkIndex++)
-            {
-                cancellationToken.ThrowIfCancellationRequested();
-                var chunk = chunks[chunkIndex];
-                onProgress?.Invoke(
-                    GetTranslationProgress(pageIndex, totalPages, chunkIndex, chunks.Count),
-                    100,
-                    $"正在翻譯第 {pageIndex + 1}/{totalPages} 頁，批次 {chunkIndex + 1}/{chunks.Count}（段落 {translatedCount + 1}-{translatedCount + chunk.Count}/{textsToTranslate.Count}）...");
-
-                var chunkResults = translator.TranslateBatchAsync(chunk, targetLang, cancellationToken).GetAwaiter().GetResult();
-                if (chunkResults.Count != chunk.Count)
-                {
-                    throw new Exception("Mismatched batch translation results count.");
-                }
-
-                results.AddRange(chunkResults);
-                translatedCount += chunk.Count;
-            }
-
-            return results;
-        }
-
-        private static IEnumerable<List<string>> BuildTranslationChunks(List<string> texts, int maxItems, int maxChars)
-        {
-            var chunk = new List<string>();
-            int charCount = 0;
-
-            foreach (var text in texts)
-            {
-                string safeText = text ?? string.Empty;
-                bool wouldExceedItems = chunk.Count >= maxItems;
-                bool wouldExceedChars = chunk.Count > 0 && charCount + safeText.Length > maxChars;
-
-                if (wouldExceedItems || wouldExceedChars)
-                {
-                    yield return chunk;
-                    chunk = new List<string>();
-                    charCount = 0;
-                }
-
-                chunk.Add(safeText);
-                charCount += safeText.Length;
-            }
-
-            if (chunk.Count > 0)
-            {
-                yield return chunk;
-            }
-        }
-
-        private static int GetTranslationProgress(int pageIndex, int totalPages, int unitIndex, int unitCount)
-        {
-            totalPages = Math.Max(1, totalPages);
-            unitCount = Math.Max(1, unitCount);
-            double pageFraction = Math.Clamp(unitIndex / (double)unitCount, 0.0, 1.0);
-            return 30 + (int)(((pageIndex + pageFraction) * 40.0) / totalPages);
         }
 
         private static bool IsTableCaptionWord(UglyToad.PdfPig.Content.Word w, List<UglyToad.PdfPig.Content.Word> words)
