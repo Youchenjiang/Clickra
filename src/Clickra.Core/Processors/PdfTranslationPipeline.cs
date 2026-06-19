@@ -4053,7 +4053,7 @@ namespace Clickra.Core.Processors
                 layoutWidth = paragraphWidth;
                 isRotated = true;
             }
-            List<LayoutRow> rows = LayoutParagraph(tokens, mainFont, para.Formulas, layoutWidth, fontSize, para.AverageFontSize, gfx);
+            List<PdfLayoutRow> rows = LayoutParagraph(tokens, mainFont, para.Formulas, layoutWidth, fontSize, para.AverageFontSize, gfx);
 
             // Compute dynamic line spacing
             double lineSpacingMultiplier = 1.35; // Default CJK line height
@@ -4469,10 +4469,10 @@ namespace Clickra.Core.Processors
             return list;
         }
 
-        private static List<LayoutRow> LayoutParagraph(List<string> tokens, XFont font, List<MathFormula> formulas, double maxWidth, double fontSize, double averageFontSize, XGraphics gfx)
+        private static List<PdfLayoutRow> LayoutParagraph(List<string> tokens, XFont font, List<MathFormula> formulas, double maxWidth, double fontSize, double averageFontSize, XGraphics gfx)
         {
-            var rows = new List<LayoutRow>();
-            var currentRow = new LayoutRow();
+            var rows = new List<PdfLayoutRow>();
+            var currentRow = new PdfLayoutRow();
             double currentX = 0;
 
             foreach (var token in tokens)
@@ -4480,7 +4480,7 @@ namespace Clickra.Core.Processors
                 if (token == "\n")
                 {
                     rows.Add(currentRow);
-                    currentRow = new LayoutRow();
+                    currentRow = new PdfLayoutRow();
                     currentX = 0;
                     continue;
                 }
@@ -4567,10 +4567,10 @@ namespace Clickra.Core.Processors
                             if (currentX + subWidth > maxWidth && currentRow.Elements.Count > 0)
                             {
                                 rows.Add(currentRow);
-                                currentRow = new LayoutRow();
+                                currentRow = new PdfLayoutRow();
                                 currentX = 0;
                             }
-                            currentRow.Elements.Add(new LayoutElement { Text = sub, IsFormula = false, FormulaId = -1, Width = subWidth });
+                            currentRow.Elements.Add(new PdfLayoutElement { Text = sub, IsFormula = false, FormulaId = -1, Width = subWidth });
                             currentX += subWidth;
                         }
                         continue;
@@ -4580,12 +4580,12 @@ namespace Clickra.Core.Processors
                 if (currentX + width > maxWidth && currentRow.Elements.Count > 0)
                 {
                     rows.Add(currentRow);
-                    currentRow = new LayoutRow();
+                    currentRow = new PdfLayoutRow();
                     currentX = 0;
                     if (token == " ") continue;
                 }
 
-                currentRow.Elements.Add(new LayoutElement
+                currentRow.Elements.Add(new PdfLayoutElement
                 {
                     Text = token,
                     IsFormula = isFormula,
@@ -4601,19 +4601,6 @@ namespace Clickra.Core.Processors
             }
  
             return rows;
-        }
-
-        private class LayoutElement
-        {
-            public string Text { get; set; } = "";
-            public bool IsFormula { get; set; }
-            public int FormulaId { get; set; }
-            public double Width { get; set; }
-        }
-
-        private class LayoutRow
-        {
-            public List<LayoutElement> Elements { get; set; } = new List<LayoutElement>();
         }
 
         private static bool HasColumnGap(UglyToad.PdfPig.DocumentLayoutAnalysis.TextLine line, double minGap = 20.0)
@@ -5541,3 +5528,4 @@ namespace Clickra.Core.Processors
         }
     }
 }
+
