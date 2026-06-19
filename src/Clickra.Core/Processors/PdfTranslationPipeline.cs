@@ -44,11 +44,11 @@ namespace Clickra.Core.Processors
             var tableParas = pageList.Where(p => p.IsTable).ToList();
             Func<PdfParagraph, bool>? excludeAuthorFromTableMask = null;
             if (pageNum == 1 &&
-                TryGetPageOneAuthorBand(pageList, page.Height, out double titleBottom, out double abstractTop, out var titlePara) &&
+                PageOneLayoutClassifier.TryGetAuthorBand(pageList, page.Height, out double titleBottom, out double abstractTop, out var titlePara) &&
                 titlePara != null)
             {
                 excludeAuthorFromTableMask = para =>
-                    IsInPageOneAuthorBand(para, titleBottom, abstractTop, titlePara);
+                    PageOneLayoutClassifier.IsInAuthorBand(para, titleBottom, abstractTop, titlePara);
             }
 
             var tableMaskRegions = BuildTableMaskRegions(tableParas, page.Width, excludeAuthorFromTableMask);
@@ -177,123 +177,6 @@ namespace Clickra.Core.Processors
             return sb.ToString();
         }
 
-        private static PdfParagraph? FindPageTitleParagraph(List<PdfParagraph> pageList, double pageHeight)
-        {
-            return pageList
-                .Where(para => para.Y1 > pageHeight * 0.85)
-                .OrderByDescending(para => para.Y1)
-                .ThenByDescending(para => para.AverageFontSize)
-                .FirstOrDefault();
-        }
-
-        private static bool TryGetPageOneAuthorBand(
-            List<PdfParagraph> pageList, double pageHeight,
-            out double titleBottom, out double abstractTop, out PdfParagraph? titlePara)
-        {
-            titleBottom = abstractTop = -1;
-            titlePara = FindPageTitleParagraph(pageList, pageHeight);
-            if (titlePara != null)
-                titleBottom = titlePara.Y0;
-
-            foreach (var p in pageList)
-            {
-                string txt = p.TextWithPlaceholders.TrimStart('\n', '\r', ' ', '\t');
-                if (txt.StartsWith("ABSTRACT", StringComparison.OrdinalIgnoreCase) ||
-                    txt.StartsWith("摘要", StringComparison.OrdinalIgnoreCase) ||
-                    txt.StartsWith("Abstract", StringComparison.Ordinal))
-                {
-                    abstractTop = p.Y1;
-                    break;
-                }
-            }
-
-            bool result = titlePara != null && titleBottom > 0 && abstractTop > 0 && titleBottom > abstractTop;
-            return result;
-        }
-
-        /// <summary>Subtitle merged into title (e.g. "with LLMs") — not part of the author grid.</summary>
-        private static bool IsTitleSubtitleCandidate(PdfParagraph para, PdfParagraph titlePara)
-        {
-            double gap = titlePara.Y0 - para.Y1;
-            if (gap < -2 || gap > 25) return false;
-            int wordCount = para.TextWithPlaceholders.Trim()
-                .Split(new char[] { ' ', '\t', '\n', '\r' }, StringSplitOptions.RemoveEmptyEntries).Length;
-            if (wordCount < 1 || wordCount > 8) return false;
-            double titleCenterX = titlePara.X0 + titlePara.Width / 2;
-            double paraCenterX = para.X0 + para.Width / 2;
-            return Math.Abs(paraCenterX - titleCenterX) <= titlePara.Width * 0.25 &&
-                   para.Width <= titlePara.Width * 0.5;
-        }
-
-        private static bool IsInPageOneAuthorBand(
-            PdfParagraph para, double titleBottom, double abstractTop, PdfParagraph titlePara)
-        {
-            if (para.AverageFontSize >= 15.0) return false;
-            if (para.Y0 < abstractTop || para.Y1 > titleBottom) return false;
-            return true;
-        }
-
-        private static bool IsPageOneAuthorBlockParagraph(
-            PdfParagraph para, List<PdfParagraph> pageList, double pageHeight)
-        {
-            if (!TryGetPageOneAuthorBand(pageList, pageHeight, out double titleBottom, out double abstractTop, out var titlePara) ||
-                titlePara == null)
-            {
-                return false;
-            }
-
-            return IsInPageOneAuthorBand(para, titleBottom, abstractTop, titlePara);
-        }
-
-        private static double GetPageOneTitleClipBottom(
-            double clipTop, double originalClipBottom, double measuredHeight)
-        {
-            // CJK glyphs commonly need a taller line box than the source Latin title.
-            // Clipping to the original bbox cuts off the translated title even though
-            // RenderParagraph has already measured the larger line height.
-            return Math.Max(originalClipBottom, clipTop + measuredHeight + 3.0);
-        }
-
-        private static void ApplyPageOneAuthorBlockFlags(List<PdfParagraph> pageList, double pageHeight)
-        {
-            if (!TryGetPageOneAuthorBand(pageList, pageHeight, out double titleBottom, out double abstractTop, out var titlePara) ||
-                titlePara == null)
-            {
-                Console.Error.WriteLine($"[AUTHOR] p1 TryGetPageOneAuthorBand FAILED titleBottom={titleBottom} abstractTop={abstractTop} titlePara={titlePara != null}");
-                return;
-            }
-            foreach (var para in pageList)
-            {
-                if (!IsInPageOneAuthorBand(para, titleBottom, abstractTop, titlePara)) continue;
-                para.IsBypassed = true;
-                para.IsTable = false;
-                para.IsDiagram = false;
-                para.IsCode = false;
-                para.IsGrayPromptContent = false;
-            }
-        }
-
-        private static void MergePageTitleWithSubtitle(List<PdfParagraph> pageList, double pageHeight)
-        {
-            var titlePara = FindPageTitleParagraph(pageList, pageHeight);
-            if (titlePara == null) return;
-
-            PdfParagraph? subtitlePara = null;
-            foreach (var para in pageList)
-            {
-                if (para == titlePara) continue;
-                if (!IsTitleSubtitleCandidate(para, titlePara)) continue;
-                if (subtitlePara == null || para.Y1 > subtitlePara.Y1)
-                    subtitlePara = para;
-            }
-
-            if (subtitlePara != null)
-            {
-                titlePara.MergeWith(subtitlePara);
-                pageList.Remove(subtitlePara);
-            }
-        }
-
         private static List<PdfParagraph> BuildPageParagraphs(UglyToad.PdfPig.Content.Page page)
         {
             var pageList = new List<PdfParagraph>();
@@ -407,7 +290,7 @@ namespace Clickra.Core.Processors
                 }
 
                 if (page.Number == 1)
-                    MergePageTitleWithSubtitle(pageList, page.Height);
+                    PageOneLayoutClassifier.MergeTitleWithSubtitle(pageList, page.Height);
 
                 // Pass 0.5: Mark table paragraphs geometrically
                 MarkTableParagraphs(pageList, page.Width, page.Height, isTablePage);
@@ -522,7 +405,7 @@ namespace Clickra.Core.Processors
                     {
                         if (para.IsBypassed) continue;
                         if (para.IsTable) continue;
-                        if (page.Number == 1 && IsPageOneAuthorBlockParagraph(para, pageList, page.Height)) continue;
+                        if (page.Number == 1 && PageOneLayoutClassifier.IsAuthorBlockParagraph(para, pageList, page.Height)) continue;
                         if (para.IsCode) continue;
                         if (IsRunningHeaderOrFooter(para, page.Height)) continue;
                         if (IsFigureTableCaptionParagraph(para)) continue;
@@ -614,7 +497,7 @@ namespace Clickra.Core.Processors
                 }
 
                 if (page.Number == 1)
-                    ApplyPageOneAuthorBlockFlags(pageList, page.Height);
+                    PageOneLayoutClassifier.ApplyAuthorBlockFlags(pageList, page.Height);
 
                 foreach (var para in pageList)
                 {
@@ -627,7 +510,7 @@ namespace Clickra.Core.Processors
                         MarkAsGrayPromptContent(para);
                     }
 
-                    if (page.Number == 1 && IsPageOneAuthorBlockParagraph(para, pageList, page.Height))
+                    if (page.Number == 1 && PageOneLayoutClassifier.IsAuthorBlockParagraph(para, pageList, page.Height))
                     {
                         para.IsBypassed = true;
                         continue;
@@ -861,11 +744,11 @@ namespace Clickra.Core.Processors
 
                 Func<PdfParagraph, bool>? excludeAuthorFromTableMask = null;
                 if (p == 0 &&
-                    TryGetPageOneAuthorBand(paragraphs, pageHeightPts, out double authorTitleBottom, out double authorAbstractTop, out var authorTitlePara) &&
+                    PageOneLayoutClassifier.TryGetAuthorBand(paragraphs, pageHeightPts, out double authorTitleBottom, out double authorAbstractTop, out var authorTitlePara) &&
                     authorTitlePara != null)
                 {
                     excludeAuthorFromTableMask = para =>
-                        IsInPageOneAuthorBand(para, authorTitleBottom, authorAbstractTop, authorTitlePara);
+                        PageOneLayoutClassifier.IsInAuthorBand(para, authorTitleBottom, authorAbstractTop, authorTitlePara);
                 }
                 var tableMaskRegions = (pageHasTable && p != 0)
                     ? BuildTableMaskRegions(paragraphs.Where(para => para.IsTable).ToList(), pageWidthPts, excludeAuthorFromTableMask)
@@ -922,15 +805,15 @@ namespace Clickra.Core.Processors
                 catch { }
 
                 // Pass 1: Draw white masks ONLY for translated paragraphs
-                var pageOneTitlePara = p == 0 ? FindPageTitleParagraph(paragraphs, pageHeightPts) : null;
+                var pageOneTitlePara = p == 0 ? PageOneLayoutClassifier.FindTitleParagraph(paragraphs, pageHeightPts) : null;
                 double pageOneTitleBottom = 0, pageOneAbstractTop = 0;
                 bool hasPageOneAuthorBand = p == 0 &&
-                    TryGetPageOneAuthorBand(paragraphs, pageHeightPts, out pageOneTitleBottom, out pageOneAbstractTop, out _);
+                    PageOneLayoutClassifier.TryGetAuthorBand(paragraphs, pageHeightPts, out pageOneTitleBottom, out pageOneAbstractTop, out _);
 
                 foreach (var para in paragraphs)
                 {
                     if (para.IsBypassed) continue;
-                    if (p == 0 && IsPageOneAuthorBlockParagraph(para, paragraphs, pageHeightPts)) continue;
+                    if (p == 0 && PageOneLayoutClassifier.IsAuthorBlockParagraph(para, paragraphs, pageHeightPts)) continue;
                     if (para.IsGrayPromptContent) continue;
                     if (IsGrayPromptCodeParagraph(para)) continue;
                     if ((para.IsGrayPromptContent || IsGrayPromptCodeParagraph(para)) &&
@@ -1049,7 +932,7 @@ namespace Clickra.Core.Processors
                             continue;
                         }
 
-                        if (p == 0 && IsPageOneAuthorBlockParagraph(para, paragraphs, pageHeightPts))
+                        if (p == 0 && PageOneLayoutClassifier.IsAuthorBlockParagraph(para, paragraphs, pageHeightPts))
                         {
                             continue;
                         }
@@ -1076,7 +959,7 @@ namespace Clickra.Core.Processors
                             authorClipState = gfx.Save();
                             double clipTop = gfx.PageSize.Height - pageOneTitlePara.Y1 - 1.5;
                             double originalClipBottom = gfx.PageSize.Height - pageOneTitlePara.Y0 + 1.5;
-                            double clipBottom = GetPageOneTitleClipBottom(
+                            double clipBottom = PageOneLayoutClassifier.GetTitleClipBottom(
                                 clipTop, originalClipBottom, measuredHeight);
                             gfx.IntersectClip(new XRect(
                                 0, clipTop, gfx.PageSize.Width, Math.Max(1, clipBottom - clipTop)));
@@ -1970,7 +1853,7 @@ namespace Clickra.Core.Processors
         private static void MarkTableParagraphs(
             List<PdfParagraph> pageList, double pageWidth, double pageHeight, bool isTablePage)
         {
-            bool hasAuthorBand = TryGetPageOneAuthorBand(
+            bool hasAuthorBand = PageOneLayoutClassifier.TryGetAuthorBand(
                 pageList, pageHeight, out double authorTitleBottom, out double authorAbstractTop, out var authorTitlePara);
             var candidates = new List<PdfParagraph>();
             foreach (var para in pageList)
@@ -2196,7 +2079,7 @@ namespace Clickra.Core.Processors
                     if (centerX >= minX && centerX <= maxX && centerY >= minY && centerY <= maxY)
                     {
                         if (hasAuthorBand && authorTitlePara != null &&
-                            IsInPageOneAuthorBand(para, authorTitleBottom, authorAbstractTop, authorTitlePara))
+                            PageOneLayoutClassifier.IsInAuthorBand(para, authorTitleBottom, authorAbstractTop, authorTitlePara))
                         {
                             continue;
                         }
@@ -4230,7 +4113,7 @@ namespace Clickra.Core.Processors
             double pageHeight,
             List<PdfParagraph> pageList)
         {
-            if (pageIndex == 0 && IsPageOneAuthorBlockParagraph(para, pageList, pageHeight))
+            if (pageIndex == 0 && PageOneLayoutClassifier.IsAuthorBlockParagraph(para, pageList, pageHeight))
                 return true;
             if (para.IsGrayPromptContent || IsGrayPromptCodeParagraph(para))
             {
