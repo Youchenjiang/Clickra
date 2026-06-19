@@ -66,7 +66,7 @@ namespace Clickra.Core.Processors
                 }
 
                 var segmenter = new DocstrumBoundingBoxes();
-                bool isTablePage = words.Any(w => IsTableCaptionWord(w, words));
+                bool isTablePage = words.Any(w => PdfTableParagraphClassifier.IsTableCaptionWord(w, words));
                 var blocks = PdfParagraphBlockMerger.GetMergedBlocks(segmenter.GetBlocks(words), page.Width, isTablePage);
                 foreach (var block in blocks)
                 {
@@ -267,7 +267,7 @@ namespace Clickra.Core.Processors
                 foreach (var para in pageList)
                 {
                     para.IsBypassed = para.IsBypassed || para.IsCode || para.IsOnlyMath || string.IsNullOrWhiteSpace(para.TextWithPlaceholders) ||
-                                      PdfParagraphSemanticClassifier.IsEquationParagraph(para) || IsTableParagraph(para) || para.IsDiagram || para.IsTable;
+                                      PdfParagraphSemanticClassifier.IsEquationParagraph(para) || PdfTableParagraphClassifier.IsTableParagraph(para) || para.IsDiagram || para.IsTable;
                 }
 
 
@@ -397,7 +397,7 @@ namespace Clickra.Core.Processors
                     // only recalculate when it is currently false.
                     para.IsBypassed = para.IsBypassed ||
                                       para.IsCode || para.IsOnlyMath || string.IsNullOrWhiteSpace(para.TextWithPlaceholders) ||
-                                      PdfParagraphSemanticClassifier.IsEquationParagraph(para) || IsTableParagraph(para) || para.IsDiagram || para.IsTable ||
+                                      PdfParagraphSemanticClassifier.IsEquationParagraph(para) || PdfTableParagraphClassifier.IsTableParagraph(para) || para.IsDiagram || para.IsTable ||
                                       PdfChartLabelClassifier.IsChartTickGlyph(para);
                 }
 
@@ -882,73 +882,6 @@ namespace Clickra.Core.Processors
             onProgress?.Invoke(95, 100, "正在儲存翻譯後的檔案...");
             finalDoc.Save(outputPath);
             finalDoc.Close();
-        }
-
-        private static bool IsTableCaptionWord(UglyToad.PdfPig.Content.Word w, List<UglyToad.PdfPig.Content.Word> words)
-        {
-            if (w.Text.Equals("表", StringComparison.OrdinalIgnoreCase))
-            {
-                // Geometric check for "表"
-                double centerY = w.BoundingBox.Centroid.Y;
-                double lineTolerance = w.BoundingBox.Height * 0.5;
-                foreach (var other in words)
-                {
-                    if (other == w) continue;
-                    if (Math.Abs(other.BoundingBox.Centroid.Y - centerY) < lineTolerance && other.BoundingBox.Right < w.BoundingBox.Left)
-                    {
-                        return false;
-                    }
-                }
-                return true;
-            }
-
-            if (w.Text.Equals("Table", StringComparison.OrdinalIgnoreCase))
-            {
-                double centerY = w.BoundingBox.Centroid.Y;
-                double lineTolerance = w.BoundingBox.Height * 0.5;
-
-                // 1. Check if there is any word to the left on the same line
-                foreach (var other in words)
-                {
-                    if (other == w) continue;
-                    if (Math.Abs(other.BoundingBox.Centroid.Y - centerY) < lineTolerance && other.BoundingBox.Right < w.BoundingBox.Left)
-                    {
-                        return false;
-                    }
-                }
-
-                // 2. Check preceding words in reading order (if they are close textually or temporally)
-                int idx = words.IndexOf(w);
-                if (idx > 0)
-                {
-                    var prevWord = words[idx - 1];
-                    string prevText = prevWord.Text.Trim().ToLowerInvariant();
-                    if (Math.Abs(prevWord.BoundingBox.Centroid.Y - centerY) < lineTolerance * 3.0)
-                    {
-                        var preps = new System.Collections.Generic.HashSet<string> {
-                            "in", "see", "shown", "of", "and", "or", "from", "on", "with", "below", "above", "shows", "depicts", "illustrates", "to", "for", "at", "using", "the"
-                        };
-                        if (preps.Contains(prevText))
-                        {
-                            return false;
-                        }
-
-                        if (idx > 1)
-                        {
-                            var prev2Word = words[idx - 2];
-                            string prev2Text = prev2Word.Text.Trim().ToLowerInvariant();
-                            if (preps.Contains(prev2Text))
-                            {
-                                return false;
-                            }
-                        }
-                    }
-                }
-
-                return true;
-            }
-
-            return false;
         }
 
         public static string PostProcessTranslation(string originalText, string translatedText, string targetLang) =>
@@ -1623,20 +1556,6 @@ namespace Clickra.Core.Processors
             }
         }
 
-        private static bool IsTableParagraph(PdfParagraph para)
-        {
-            string txt = para.TextWithPlaceholders.Trim();
-            if (string.IsNullOrWhiteSpace(txt)) return true;
-
-            // Section number fragments (e.g. "2", "2.1") are not table data.
-            if (System.Text.RegularExpressions.Regex.IsMatch(txt, @"^\d{1,2}(?:\.\d{1,2})?$"))
-                return false;
-
-            int letterCount = txt.Count(char.IsLetter);
-            if (letterCount == 0) return true;
-
-            return false;
-        }
 
         private static bool OverlapsWithLargeImage(PdfParagraph para, UglyToad.PdfPig.Content.Page pigPage)
         {
@@ -3278,7 +3197,7 @@ namespace Clickra.Core.Processors
                 para.IsDiagram = false;
                 para.IsBypassed = para.IsCode || para.IsOnlyMath ||
                                   string.IsNullOrWhiteSpace(para.TextWithPlaceholders) ||
-                                  PdfParagraphSemanticClassifier.IsEquationParagraph(para) || IsTableParagraph(para) || para.IsTable;
+                                  PdfParagraphSemanticClassifier.IsEquationParagraph(para) || PdfTableParagraphClassifier.IsTableParagraph(para) || para.IsTable;
             }
         }
 
