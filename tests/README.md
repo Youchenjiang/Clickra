@@ -22,6 +22,15 @@ Maintainers or CI jobs that expect fixtures can enforce them:
 python tests\PdfRegression\run_translation_tests.py --require-fixtures
 ```
 
+To regenerate translated baselines from every PDF in `test_pdfs/source`:
+
+```powershell
+dotnet run --no-restore --project src\Clickra.CLI\Clickra.csproj -- translate-pdf --no-ui --out-dir test_pdfs\translated test_pdfs\source
+```
+
+`--out-dir`, `-o`, and `--out` are equivalent. The output directory is created
+when it does not exist.
+
 Useful optional PDF regression layers:
 
 ```powershell

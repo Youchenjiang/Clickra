@@ -71,12 +71,14 @@ namespace Clickra
                 quiet = false;
                 argList.Remove("--show-ui");
             }
+            string? outputDirOverride = ExtractOptionValue(argList, "--out-dir", "-o", "--out");
 
             if (argList.Count < 2)
             {
                 Console.WriteLine("Usage: Clickra <command> [options] <file...>");
                 Console.WriteLine("Options: --quiet / --no-ui  (Run in background without GUI)");
                 Console.WriteLine("         --show-ui          (Force show progress window)");
+                Console.WriteLine("         --out-dir <dir> / -o <dir> / --out <dir>  (Write outputs to directory)");
                 Console.WriteLine("Deployment: Clickra --deploy <target_dir>");
                 return;
             }
@@ -92,7 +94,11 @@ namespace Clickra
                 Console.WriteLine($"[錯誤] 指令「{command}」找不到可處理的檔案。");
                 return;
             }
-            string outputDir = ClickraStorage.GetOutputDir(files[0]);
+            string outputDir = string.IsNullOrWhiteSpace(outputDirOverride)
+                ? ClickraStorage.GetOutputDir(files[0])
+                : Path.GetFullPath(outputDirOverride);
+            if (!Directory.Exists(outputDir))
+                Directory.CreateDirectory(outputDir);
 
             string startTimeStr = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
             try
@@ -347,6 +353,41 @@ namespace Clickra
                 }
             }
             return expanded;
+        }
+
+        static string? ExtractOptionValue(List<string> args, params string[] optionNames)
+        {
+            for (int i = 0; i < args.Count; i++)
+            {
+                string arg = args[i];
+                foreach (var optionName in optionNames)
+                {
+                    if (arg.Equals(optionName, StringComparison.OrdinalIgnoreCase))
+                    {
+                        if (i + 1 >= args.Count)
+                        {
+                            Console.WriteLine($"[錯誤] 參數「{optionName}」需要指定資料夾。");
+                            args.RemoveAt(i);
+                            return null;
+                        }
+
+                        string value = args[i + 1];
+                        args.RemoveAt(i + 1);
+                        args.RemoveAt(i);
+                        return value;
+                    }
+
+                    string prefix = optionName + "=";
+                    if (arg.StartsWith(prefix, StringComparison.OrdinalIgnoreCase))
+                    {
+                        string value = arg.Substring(prefix.Length);
+                        args.RemoveAt(i);
+                        return value;
+                    }
+                }
+            }
+
+            return null;
         }
 
         static void RequireMinFiles(List<string> files, string command, int min, bool quiet)
