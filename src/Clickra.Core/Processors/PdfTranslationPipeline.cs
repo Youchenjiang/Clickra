@@ -49,7 +49,7 @@ namespace Clickra.Core.Processors
             BuildEffectiveGrayMaskRegions = BuildEffectiveGrayMaskRegions,
             IsTranslatableBodyProse = IsTranslatableBodyProse,
             IsTranslatableCalloutProse = IsTranslatableCalloutProse,
-            IsHeadingParagraph = IsHeadingParagraph,
+            IsHeadingParagraph = PdfParagraphSemanticClassifier.IsHeadingParagraph,
             ParagraphOverlapsAnyTableMask = (x0, y0, x1, y1, regions) =>
                 PdfTableMaskPlanner.ParagraphOverlapsAnyTableMask(x0, y0, x1, y1, regions),
             ShouldProtectDiagramRegionFromParagraph = ShouldProtectDiagramRegionFromParagraph
@@ -222,7 +222,7 @@ namespace Clickra.Core.Processors
                     if (para.IsCode) continue;
                     if (!para.IsTable && OverlapsWithLargeImage(para, page))
                     {
-                        if (IsHeadingParagraph(para) || IsTranslatableBodyProse(para) ||
+                        if (PdfParagraphSemanticClassifier.IsHeadingParagraph(para) || IsTranslatableBodyProse(para) ||
                             IsTranslatableCalloutProse(para) || IsFigureTableCaptionParagraph(para))
                         {
                             continue;
@@ -245,8 +245,8 @@ namespace Clickra.Core.Processors
                     pageList,
                     page.Width,
                     IsFigureTableCaptionParagraph,
-                    IsHeadingParagraph,
-                    IsAppendixSectionHeading);
+                    PdfParagraphSemanticClassifier.IsHeadingParagraph,
+                    PdfParagraphSemanticClassifier.IsAppendixSectionHeading);
                 PdfTableClassifier.MarkSplitPromptPerformanceTable(pageList, IsFigureTableCaptionParagraph);
                 var tableMaskForDiagram = PdfTableMaskPlanner.BuildTableMaskRegions(
                     pageList.Where(p => p.IsTable).ToList(), page.Width);
@@ -267,7 +267,7 @@ namespace Clickra.Core.Processors
                 foreach (var para in pageList)
                 {
                     para.IsBypassed = para.IsBypassed || para.IsCode || para.IsOnlyMath || string.IsNullOrWhiteSpace(para.TextWithPlaceholders) ||
-                                      IsEquationParagraph(para) || IsTableParagraph(para) || para.IsDiagram || para.IsTable;
+                                      PdfParagraphSemanticClassifier.IsEquationParagraph(para) || IsTableParagraph(para) || para.IsDiagram || para.IsTable;
                 }
 
 
@@ -291,7 +291,7 @@ namespace Clickra.Core.Processors
                         if (IsTranslatableCalloutProse(para)) continue;
 
                         bool isSmallLabel = para.TextWithPlaceholders.Length <= diagramLabelMaxLen &&
-                                            !IsHeadingParagraph(para) && IsLikelyChartLabel(para);
+                                            !PdfParagraphSemanticClassifier.IsHeadingParagraph(para) && IsLikelyChartLabel(para);
                         if (isSmallLabel)
                         {
                             foreach (var other in pageList)
@@ -344,15 +344,15 @@ namespace Clickra.Core.Processors
                 }
                 ClearMisclassifiedCodeFlags(pageList);
 
-                PdfParagraphPostProcessor.MergeVerticallyAdjacentParagraphs(pageList, IsHeadingParagraph);
+                PdfParagraphPostProcessor.MergeVerticallyAdjacentParagraphs(pageList, PdfParagraphSemanticClassifier.IsHeadingParagraph);
                 PdfTableClassifier.ReclassifyWorkDivisionTableText(pageList, page.Width);
                 PdfTableClassifier.ReclassifyAppendixFeatureTableText(pageList, page.Width);
                 PdfTableClassifier.MarkCompactAcademicTableBodies(
                     pageList,
                     page.Width,
                     IsFigureTableCaptionParagraph,
-                    IsHeadingParagraph,
-                    IsAppendixSectionHeading);
+                    PdfParagraphSemanticClassifier.IsHeadingParagraph,
+                    PdfParagraphSemanticClassifier.IsAppendixSectionHeading);
                 PdfTableClassifier.MarkSplitPromptPerformanceTable(pageList, IsFigureTableCaptionParagraph);
                 if (!workDivisionPage)
                 {
@@ -397,7 +397,7 @@ namespace Clickra.Core.Processors
                     // only recalculate when it is currently false.
                     para.IsBypassed = para.IsBypassed ||
                                       para.IsCode || para.IsOnlyMath || string.IsNullOrWhiteSpace(para.TextWithPlaceholders) ||
-                                      IsEquationParagraph(para) || IsTableParagraph(para) || para.IsDiagram || para.IsTable ||
+                                      PdfParagraphSemanticClassifier.IsEquationParagraph(para) || IsTableParagraph(para) || para.IsDiagram || para.IsTable ||
                                       IsChartTickGlyph(para);
                 }
 
@@ -468,8 +468,8 @@ namespace Clickra.Core.Processors
                         {
                             for (int i = 0; i < results.Count; i++)
                             {
-                                string rawResult = string.IsNullOrWhiteSpace(results[i]) 
-                                    ? paragraphsToTranslate[i].TextWithPlaceholders 
+                                string rawResult = string.IsNullOrWhiteSpace(results[i])
+                                    ? paragraphsToTranslate[i].TextWithPlaceholders
                                     : results[i];
                                 paragraphsToTranslate[i].TranslatedText = PostProcessor.Process(
                                     paragraphsToTranslate[i].TextWithPlaceholders,
@@ -571,7 +571,7 @@ namespace Clickra.Core.Processors
                     {
                         var annot = page.Annotations[i];
                         var rect = annot.Rectangle;
-                        
+
                         var paraOverlaps = new Dictionary<PdfParagraph, List<PdfLetter>>();
                         foreach (var para in paragraphs)
                         {
@@ -585,7 +585,7 @@ namespace Clickra.Core.Processors
                                 paraOverlaps[para] = overlapping;
                             }
                         }
-                        
+
                         if (paraOverlaps.Count > 0)
                         {
                             double annotCenterX = (rect.X1 + rect.X2) / 2.0;
@@ -595,7 +595,7 @@ namespace Clickra.Core.Processors
                                 .First();
                             var bestPara = bestPair.Key;
                             var overlappingLetters = bestPair.Value;
-                            
+
                             string searchText = string.Join("", overlappingLetters.Select(l => l.Value)).Trim();
                             searchText = PdfAnnotationTextMatcher.NormalizeAnnotationSearchText(searchText);
                             if (!string.IsNullOrEmpty(searchText))
@@ -733,7 +733,7 @@ namespace Clickra.Core.Processors
 
                     if (ShouldProtectDiagramRegionFromParagraph(para, diagramMaskRegions, paragraphs, gfx.PageSize.Width) &&
                         !IsTranslatableBodyProse(para) && !IsTranslatableCalloutProse(para) &&
-                        !IsHeadingParagraph(para) && !IsAppendixSectionHeading(para))
+                        !PdfParagraphSemanticClassifier.IsHeadingParagraph(para) && !PdfParagraphSemanticClassifier.IsAppendixSectionHeading(para))
                     {
                         continue;
                     }
@@ -845,7 +845,7 @@ namespace Clickra.Core.Processors
 
                         if (ShouldProtectDiagramRegionFromParagraph(para, diagramMaskRegions, paragraphs, gfx.PageSize.Width) &&
                             !IsTranslatableBodyProse(para) && !IsTranslatableCalloutProse(para) &&
-                            !IsHeadingParagraph(para) && !IsAppendixSectionHeading(para))
+                            !PdfParagraphSemanticClassifier.IsHeadingParagraph(para) && !PdfParagraphSemanticClassifier.IsAppendixSectionHeading(para))
                         {
                             continue;
                         }
@@ -925,14 +925,14 @@ namespace Clickra.Core.Processors
                     string prevText = prevWord.Text.Trim().ToLowerInvariant();
                     if (Math.Abs(prevWord.BoundingBox.Centroid.Y - centerY) < lineTolerance * 3.0)
                     {
-                        var preps = new System.Collections.Generic.HashSet<string> { 
-                            "in", "see", "shown", "of", "and", "or", "from", "on", "with", "below", "above", "shows", "depicts", "illustrates", "to", "for", "at", "using", "the" 
+                        var preps = new System.Collections.Generic.HashSet<string> {
+                            "in", "see", "shown", "of", "and", "or", "from", "on", "with", "below", "above", "shows", "depicts", "illustrates", "to", "for", "at", "using", "the"
                         };
                         if (preps.Contains(prevText))
                         {
                             return false;
                         }
-                        
+
                         if (idx > 1)
                         {
                             var prev2Word = words[idx - 2];
@@ -1053,7 +1053,7 @@ namespace Clickra.Core.Processors
             bool insideGray = ParagraphCenterInsideAnyRegion(para, effectiveGrayMaskRegions) ||
                               IsParagraphInsideGrayShadedRegion(para, effectiveGrayMaskRegions);
             if (IsTranslatableBodyProse(para) || IsTranslatableCalloutProse(para) ||
-                IsHeadingParagraph(para) || IsAppendixSectionHeading(para))
+                PdfParagraphSemanticClassifier.IsHeadingParagraph(para) || PdfParagraphSemanticClassifier.IsAppendixSectionHeading(para))
             {
                 // Only gray-prompt paragraphs skip overlay; spurious vector gray boxes
                 // (e.g. PentestAgent p4 right-column EffectiveGrayMaskRegion) must not
@@ -1110,14 +1110,14 @@ namespace Clickra.Core.Processors
             double pageWidth)
         {
             if (IsTranslatableBodyProse(para) || IsTranslatableCalloutProse(para) ||
-                IsHeadingParagraph(para) || IsAppendixSectionHeading(para))
+                PdfParagraphSemanticClassifier.IsHeadingParagraph(para) || PdfParagraphSemanticClassifier.IsAppendixSectionHeading(para))
             {
                 return null;
             }
             var clipRegions = GetFigureClipRegions(pageParagraphs, diagramMaskRegions, pageWidth);
             if (clipRegions.Count == 0) return null;
             if (!IsTranslatableBodyProse(para) && !IsTranslatableCalloutProse(para)) return null;
-            if (IsHeadingParagraph(para) || IsAppendixSectionHeading(para)) return null;
+            if (PdfParagraphSemanticClassifier.IsHeadingParagraph(para) || PdfParagraphSemanticClassifier.IsAppendixSectionHeading(para)) return null;
 
             const double clearance = 2.0;
             double center = pageWidth / 2.0;
@@ -1278,51 +1278,6 @@ namespace Clickra.Core.Processors
             return overlapX >= minSharedWidth;
         }
 
-        private static bool IsEquationParagraph(PdfParagraph para)
-        {
-            string txt = para.TextWithPlaceholders.Trim();
-            if (string.IsNullOrEmpty(txt)) return false;
-
-            // Matches (1), (2), (3), etc. at the end
-            if (System.Text.RegularExpressions.Regex.IsMatch(txt, @"\(\d+\)\s*$")) return true;
-
-            // Matches patterns like x : A -> B
-            if (System.Text.RegularExpressions.Regex.IsMatch(txt, @"^[a-zA-Z0-9_\{\}\s]+:.*(⇀|→|→|↦|⇒|⊆|∈)")) return true;
-
-            // Density based check: if the text has math formulas/variables placeholders
-            // and contains common math operator characters
-            int formulaTokensCount = para.Formulas.Count;
-            if (formulaTokensCount > 0)
-            {
-                // Check if the non-placeholder part contains mostly math operators or is very short
-                string stripped = System.Text.RegularExpressions.Regex.Replace(txt, @"\{v\d+\}", "").Trim();
-                if (string.IsNullOrEmpty(stripped)) return true;
-
-                int letters = stripped.Count(char.IsLetter);
-                int operators = stripped.Count(c => "=+-*/()[]{}<>,.:;|\\&!_^⇀→∈∧↓⟨⟩⊆×Σ∗↑↓⇀".Contains(c));
-                int wordCount = stripped.Split(
-                    new[] { ' ', '\t', '\r', '\n' },
-                    StringSplitOptions.RemoveEmptyEntries).Length;
-
-                // Short display equations can retain identifier fragments such
-                // as "raw", "QL", and "s.t." around several formula tokens.
-                // Translating them as prose linearizes independently positioned
-                // glyphs and creates overlapping formulas (SemTaint p8 eq. 10).
-                if (formulaTokensCount >= 2 && wordCount <= 5 && para.Height <= 18)
-                {
-                    return true;
-                }
-                 
-                // If the stripped text contains mostly math operators/punctuation rather than English words
-                if (letters < 3 || (double)operators / (letters + operators) > 0.4)
-                {
-                    return true;
-                }
-            }
-
-            return false;
-        }
-
         private static void MarkTableParagraphs(
             List<PdfParagraph> pageList, double pageWidth, double pageHeight, bool isTablePage)
         {
@@ -1343,7 +1298,7 @@ namespace Clickra.Core.Processors
                     continue;
                 }
 
-                if (IsEquationParagraph(para)) continue;
+                if (PdfParagraphSemanticClassifier.IsEquationParagraph(para)) continue;
 
                 // Exclude citations, references, and links from becoming table candidates
                 if (txt.StartsWith("[") ||
@@ -1906,7 +1861,7 @@ namespace Clickra.Core.Processors
                 return true;
             }
 
-            if (IsHeadingParagraph(para)) return true;
+            if (PdfParagraphSemanticClassifier.IsHeadingParagraph(para)) return true;
             return IsTranslatableBodyProse(para);
         }
 
@@ -2078,7 +2033,7 @@ namespace Clickra.Core.Processors
                 if (IsRunningHeaderOrFooter(para, pigPage.Height)) continue;
                 if (IsFigureTableCaptionParagraph(para)) continue;
                 if (IsTranslatableCalloutProse(para)) continue;
-                if (IsHeadingParagraph(para)) continue;
+                if (PdfParagraphSemanticClassifier.IsHeadingParagraph(para)) continue;
 
                 double letterRatio = ParagraphLetterOverlapRatio(para, diagramRegions);
                 bool bboxHits = OverlapsWithLargeImage(para, pigPage);
@@ -2106,7 +2061,7 @@ namespace Clickra.Core.Processors
                 if (IsRunningHeaderOrFooter(para, pageHeight)) continue;
                 if (IsFigureTableCaptionParagraph(para)) continue;
                 if (IsTranslatableCalloutProse(para)) continue;
-                if (IsHeadingParagraph(para)) continue;
+                if (PdfParagraphSemanticClassifier.IsHeadingParagraph(para)) continue;
                 if (!OverlapsAnyRegion(para, diagramRegions)) continue;
                 if (para.Height > 50) continue;
                 string txt = para.TextWithPlaceholders.Trim();
@@ -2140,7 +2095,7 @@ namespace Clickra.Core.Processors
                 if (para.IsCode || para.IsGrayPromptContent || IsGrayPromptCodeParagraph(para)) continue;
                 if (para.IsTable) continue;
                 if (IsRunningHeaderOrFooter(para, pageHeight)) continue;
-                if (IsFigureTableCaptionParagraph(para) || IsHeadingParagraph(para)) continue;
+                if (IsFigureTableCaptionParagraph(para) || PdfParagraphSemanticClassifier.IsHeadingParagraph(para)) continue;
                 if (IsTranslatableBodyProse(para) || IsTranslatableCalloutProse(para)) continue;
                 if (!OverlapsAnyRegion(para, diagramRegions)) continue;
                 string txt = para.TextWithPlaceholders.Trim();
@@ -2266,7 +2221,7 @@ namespace Clickra.Core.Processors
             foreach (var para in pageList)
             {
                 if (!para.IsDiagram) continue;
-                if (!IsHeadingParagraph(para) && !IsAppendixSectionHeading(para)) continue;
+                if (!PdfParagraphSemanticClassifier.IsHeadingParagraph(para) && !PdfParagraphSemanticClassifier.IsAppendixSectionHeading(para)) continue;
                 para.IsDiagram = false;
                 if (!para.IsTable && !para.IsCode)
                 {
@@ -2363,7 +2318,7 @@ namespace Clickra.Core.Processors
         private static bool IsGrayPromptBoxContinuationParagraph(PdfParagraph para, PdfParagraph? anchor)
         {
             if (IsTranslatableBodyProse(para) || IsTranslatableCalloutProse(para) ||
-                IsHeadingParagraph(para) || IsAppendixSectionHeading(para))
+                PdfParagraphSemanticClassifier.IsHeadingParagraph(para) || PdfParagraphSemanticClassifier.IsAppendixSectionHeading(para))
             {
                 return false;
             }
@@ -2528,7 +2483,7 @@ namespace Clickra.Core.Processors
                 }
 
                 string txt = para.TextWithPlaceholders.Trim();
-                if (IsHeadingParagraph(para) ||
+                if (PdfParagraphSemanticClassifier.IsHeadingParagraph(para) ||
                     (IsFigureTableCaptionParagraph(para) && SharesGrayPromptColumn(para, anchor)) ||
                     System.Text.RegularExpressions.Regex.IsMatch(txt, @"^\d+\.\d+\s") ||
                     System.Text.RegularExpressions.Regex.IsMatch(txt, @"^[A-Z]\.\d+\s"))
@@ -2662,7 +2617,7 @@ namespace Clickra.Core.Processors
                     !p.IsBypassed &&
                     !p.IsGrayPromptContent &&
                     !IsGrayPromptCodeParagraph(p) &&
-                    (IsTranslatableBodyProse(p) || IsHeadingParagraph(p) || IsTranslatableCalloutProse(p)) &&
+                    (IsTranslatableBodyProse(p) || PdfParagraphSemanticClassifier.IsHeadingParagraph(p) || IsTranslatableCalloutProse(p)) &&
                     ParagraphCenterInsideAnyRegion(p, new[] { region }));
                 if (!overlapsBodyProse)
                     filtered.Add(region);
@@ -2841,7 +2796,7 @@ namespace Clickra.Core.Processors
             {
                 if (IsRunningHeaderOrFooter(para, pageHeight)) continue;
                 if (IsFigureTableCaptionParagraph(para)) continue;
-                if (IsHeadingParagraph(para) || IsAppendixSectionHeading(para)) continue;
+                if (PdfParagraphSemanticClassifier.IsHeadingParagraph(para) || PdfParagraphSemanticClassifier.IsAppendixSectionHeading(para)) continue;
                 bool insideGray = ParagraphCenterInsideAnyRegion(para, expanded) ||
                     IsParagraphInsideGrayShadedRegion(para, grayRegions);
                 if (IsParagraphInsideAnchoredGrayPromptRegion(para, grayRegions, pageList))
@@ -3025,7 +2980,7 @@ namespace Clickra.Core.Processors
             {
                 if (para.IsTable) continue;
                 if (IsFigureTableCaptionParagraph(para)) continue;
-                if (IsHeadingParagraph(para) || IsAppendixSectionHeading(para)) continue;
+                if (PdfParagraphSemanticClassifier.IsHeadingParagraph(para) || PdfParagraphSemanticClassifier.IsAppendixSectionHeading(para)) continue;
                 if (IsGrayPromptSubheading(para)) continue;
                 string txt = para.TextWithPlaceholders.Trim();
                 if (System.Text.RegularExpressions.Regex.IsMatch(txt, @"^\d+\.\d+\s")) continue;
@@ -3142,13 +3097,13 @@ namespace Clickra.Core.Processors
                 }
                 if (grayRegions.Count > 0 && IsParagraphInsideGrayShadedRegion(para, grayRegions)) continue;
                 if (HasNearbyGrayPromptAbove(para, pageList)) continue;
-                if (IsHeadingParagraph(para))
+                if (PdfParagraphSemanticClassifier.IsHeadingParagraph(para))
                 {
                     para.IsGrayPromptContent = false;
                     para.IsCode = false;
                     continue;
                 }
-                if (IsAppendixSectionHeading(para))
+                if (PdfParagraphSemanticClassifier.IsAppendixSectionHeading(para))
                 {
                     para.IsGrayPromptContent = false;
                     para.IsCode = false;
@@ -3217,7 +3172,7 @@ namespace Clickra.Core.Processors
                 }
                 if (!IsGrayPromptBoxContinuationParagraph(para, null)) continue;
                 if (!HasNearbyGrayPromptAbove(para, pageList, 65)) continue;
-                if (IsFigureTableCaptionParagraph(para) || IsHeadingParagraph(para)) continue;
+                if (IsFigureTableCaptionParagraph(para) || PdfParagraphSemanticClassifier.IsHeadingParagraph(para)) continue;
                 MarkAsGrayPromptContent(para);
             }
         }
@@ -3240,7 +3195,7 @@ namespace Clickra.Core.Processors
         {
             foreach (var para in pageList)
             {
-                if (IsHeadingParagraph(para) || IsAppendixSectionHeading(para))
+                if (PdfParagraphSemanticClassifier.IsHeadingParagraph(para) || PdfParagraphSemanticClassifier.IsAppendixSectionHeading(para))
                 {
                     para.IsGrayPromptContent = false;
                     if (!IsGrayPromptBoxParagraph(para) && !IsGrayPromptSubheading(para))
@@ -3264,7 +3219,7 @@ namespace Clickra.Core.Processors
         {
             if (para.IsGrayPromptContent) return true;
             if (IsTranslatableBodyProse(para) || IsTranslatableCalloutProse(para) ||
-                IsHeadingParagraph(para) || IsAppendixSectionHeading(para))
+                PdfParagraphSemanticClassifier.IsHeadingParagraph(para) || PdfParagraphSemanticClassifier.IsAppendixSectionHeading(para))
             {
                 return false;
             }
@@ -3279,8 +3234,8 @@ namespace Clickra.Core.Processors
         {
             if (!para.IsCode) return false;
             if (IsGrayPromptCodeParagraph(para)) return false;
-            if (IsTranslatableBodyProse(para) || IsTranslatableCalloutProse(para) || IsHeadingParagraph(para) ||
-                IsAppendixSectionHeading(para))
+            if (IsTranslatableBodyProse(para) || IsTranslatableCalloutProse(para) || PdfParagraphSemanticClassifier.IsHeadingParagraph(para) ||
+                PdfParagraphSemanticClassifier.IsAppendixSectionHeading(para))
             {
                 return true;
             }
@@ -3409,7 +3364,7 @@ namespace Clickra.Core.Processors
             if (IsGrayPromptBoxParagraph(para)) return false;
             // Body prose, callouts, and section headings always receive Pass 1 mask + Pass 2 overlay.
             if (IsTranslatableBodyProse(para) || IsTranslatableCalloutProse(para) ||
-                IsHeadingParagraph(para) || IsAppendixSectionHeading(para))
+                PdfParagraphSemanticClassifier.IsHeadingParagraph(para) || PdfParagraphSemanticClassifier.IsAppendixSectionHeading(para))
             {
                 return false;
             }
@@ -3474,7 +3429,7 @@ namespace Clickra.Core.Processors
                 para.IsDiagram = false;
                 para.IsBypassed = para.IsCode || para.IsOnlyMath ||
                                   string.IsNullOrWhiteSpace(para.TextWithPlaceholders) ||
-                                  IsEquationParagraph(para) || IsTableParagraph(para) || para.IsTable;
+                                  PdfParagraphSemanticClassifier.IsEquationParagraph(para) || IsTableParagraph(para) || para.IsTable;
             }
         }
 
@@ -3562,7 +3517,7 @@ namespace Clickra.Core.Processors
             {
                 fontStyle = XFontStyleEx.Regular;
             }
-            else if (para.IsBold || IsHeadingParagraph(para))
+            else if (para.IsBold || PdfParagraphSemanticClassifier.IsHeadingParagraph(para))
             {
                 fontStyle = para.IsItalic ? XFontStyleEx.BoldItalic : XFontStyleEx.Bold;
             }
@@ -3576,11 +3531,11 @@ namespace Clickra.Core.Processors
             // Handle rotations (90, 180, 270)
             bool isRotated = false;
             double layoutWidth = paragraphWidth;
-            if (!isRotated && IsHeadingParagraph(para))
+            if (!isRotated && PdfParagraphSemanticClassifier.IsHeadingParagraph(para))
             {
                 double pageCenter = gfx.PageSize.Width / 2.0;
                 double maxBoundary = gfx.PageSize.Width - 54.0; // Default right margin
-                
+
                 // If it's in the left column, limit expansion to the middle of the page
                 if (para.OriginalX1 <= pageCenter + 10.0)
                 {
@@ -3642,8 +3597,8 @@ namespace Clickra.Core.Processors
 
             double limitHeight = isRotated ? para.Width : paragraphHeight;
             double totalHeight = rows.Count * lineHeight;
-            
-            bool disableScaling = (rows.Count <= 1) || IsHeadingParagraph(para);
+
+            bool disableScaling = (rows.Count <= 1) || PdfParagraphSemanticClassifier.IsHeadingParagraph(para);
             if (totalHeight > limitHeight && !disableScaling)
             {
                 double requiredLineSpacingMultiplier = limitHeight / (rows.Count * fontSize);
@@ -3727,7 +3682,7 @@ namespace Clickra.Core.Processors
                         {
                             string mergedText = string.Join("", formula.Letters.Select(l => l.Value));
                             double fSize = formula.Letters[0].FontSize * formulaScale;
-                            
+
                             string fontToUse = formula.Letters[0].FontName;
                             foreach (var l in formula.Letters)
                             {
@@ -3737,7 +3692,7 @@ namespace Clickra.Core.Processors
                                     break;
                                 }
                             }
-                            
+
                             XFont mathFont = FontUtilities.GetMathFont(fontToUse, fSize);
 
                             double avgY = formula.Letters.Average(l => l.RelativeY);
@@ -3745,7 +3700,7 @@ namespace Clickra.Core.Processors
 
                             string normText = FontUtilities.NormalizeMathValue(mergedText.Normalize(NormalizationForm.FormKD));
                             gfx.DrawString(normText, mathFont, brush, currentX, my);
-                            
+
                             double offset = 0;
                             for (int cIdx = 0; cIdx < normText.Length; cIdx++)
                             {
@@ -3780,7 +3735,7 @@ namespace Clickra.Core.Processors
                                 }
 
                                 gfx.DrawString(drawVal, mathFont, brush, mx, my);
-                                
+
                                 double offset = 0;
                                 for (int cIdx = 0; cIdx < drawVal.Length; cIdx++)
                                 {
@@ -3838,7 +3793,7 @@ namespace Clickra.Core.Processors
                                 {
                                     string normText = FontUtilities.NormalizeMathValue(sbMerged.ToString().Normalize(NormalizationForm.FormKD));
                                     gfx.DrawString(normText, mainFont, brush, textStartX, currentY);
-                                    
+
                                     double offset = 0;
                                     for (int cIdx = 0; cIdx < normText.Length; cIdx++)
                                     {
@@ -3869,7 +3824,7 @@ namespace Clickra.Core.Processors
                                 XFont fallbackFont = new XFont(fallbackFontName, mainFont.Size, mainFont.Style);
                                 string normChar = FontUtilities.NormalizeMathValue(elem.Text.Normalize(NormalizationForm.FormKD));
                                 gfx.DrawString(normChar, fallbackFont, brush, currentX, currentY);
-                                
+
                                 double fChW = gfx.MeasureString(normChar, fallbackFont).Width;
                                 renderedChars.Add(new RenderedChar
                                 {
@@ -3879,7 +3834,7 @@ namespace Clickra.Core.Processors
                                     Bottom = pageHeight - currentY - fontSize * 0.15,
                                     Top = pageHeight - currentY + fontSize * 0.85
                                 });
-                                
+
                                 textStartX = currentX + elem.Width;
                             }
                             else
@@ -3894,7 +3849,7 @@ namespace Clickra.Core.Processors
                         {
                             string normText = FontUtilities.NormalizeMathValue(sbMerged.ToString().Normalize(NormalizationForm.FormKD));
                             gfx.DrawString(normText, mainFont, brush, textStartX, currentY);
-                            
+
                             double offset = 0;
                             for (int cIdx = 0; cIdx < normText.Length; cIdx++)
                             {
@@ -3974,57 +3929,6 @@ namespace Clickra.Core.Processors
             double center = pageWidth / 2.0;
             double lineCenter = (line.BoundingBox.Left + line.BoundingBox.Right) / 2.0;
             return lineCenter < center;
-        }
-
-        private static bool IsHeadingParagraph(PdfParagraph para)
-        {
-            string txt = para.TextWithPlaceholders.Trim();
-            if (string.IsNullOrEmpty(txt)) return false;
-
-            if (txt.Equals("Keywords", StringComparison.OrdinalIgnoreCase) ||
-                txt.Equals("Keyword", StringComparison.OrdinalIgnoreCase) ||
-                txt.Equals("關鍵字", StringComparison.OrdinalIgnoreCase) ||
-                txt.Equals("关键字", StringComparison.OrdinalIgnoreCase))
-            {
-                return true;
-            }
-
-            // Section numbering like "1. Introduction" or "3.4.1 Projection before Fusion" or "3.2.1 資料收集"
-            if (System.Text.RegularExpressions.Regex.IsMatch(txt, @"^\d{1,2}(?:\.\d{1,2}){0,4}\.?(?:\s+[^a-z]|$)")) return true;
-
-            // Lettered subsections like "A. Background" or "C. Case Studies"
-            if (System.Text.RegularExpressions.Regex.IsMatch(txt, @"^[A-Z]\.\s+")) return true;
-
-            // Appendix subsections like "B.3 Benchmark Coverage"
-            if (System.Text.RegularExpressions.Regex.IsMatch(txt, @"^[A-Z]\.\d+\s")) return true;
-
-            // Uppercase section headers like "REFERENCES", "ABSTRACT", "APPENDIX"
-            if (txt.Length < 30 && txt.Any(char.IsLetter) && txt.All(c => !char.IsLower(c)))
-            {
-                if (txt.Length <= 6 && !txt.Contains(' ') &&
-                    txt.All(c => char.IsUpper(c) || char.IsDigit(c) || c == '&'))
-                {
-                    return false;
-                }
-                return true;
-            }
-
-            return false;
-        }
-
-        /// <summary>Appendix headings (A Prompts, B., B.1, B.2, B.3) must never be gray-prompt content.</summary>
-        private static bool IsAppendixSectionHeading(PdfParagraph para)
-        {
-            string txt = para.TextWithPlaceholders.Trim();
-            if (string.IsNullOrEmpty(txt)) return false;
-            if (System.Text.RegularExpressions.Regex.IsMatch(txt, @"^Appendix\s+[A-Z]", System.Text.RegularExpressions.RegexOptions.IgnoreCase))
-                return true;
-            if (System.Text.RegularExpressions.Regex.IsMatch(txt, @"^[A-Z]\s+Prompts\b", System.Text.RegularExpressions.RegexOptions.IgnoreCase))
-                return true;
-            if (System.Text.RegularExpressions.Regex.IsMatch(txt, @"^[A-Z]\.\d*\s", System.Text.RegularExpressions.RegexOptions.IgnoreCase))
-                return true;
-            return txt.Length < 80 &&
-                   System.Text.RegularExpressions.Regex.IsMatch(txt, @"^[A-Z]\.\s+", System.Text.RegularExpressions.RegexOptions.IgnoreCase);
         }
 
         private static List<PdfParagraph> GetPageReadingOrder(List<PdfParagraph> pageList, double pageWidth)
