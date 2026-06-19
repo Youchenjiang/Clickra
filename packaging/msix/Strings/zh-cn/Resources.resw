@@ -22,7 +22,10 @@
     <value>演示文稿转 PDF</value>
   </data>
   <data name="Menu_Word2Pdf" xml:space="preserve">
-    <value>文档转 PDF (Word)</value>
+    <value>文件转 PDF (Word)</value>
+  </data>
+  <data name="Menu_Excel2Pdf" xml:space="preserve">
+    <value>表格转 PDF (Excel)</value>
   </data>
   <data name="Menu_MergePdf" xml:space="preserve">
     <value>PDF 合并</value>
