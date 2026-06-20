@@ -25,7 +25,7 @@ namespace Clickra.Core.Models
                     RelativeY = l.Location.Y - letters[0].Location.Y
                 });
             }
-            Width = letters.Max(l => l.GlyphRectangle.Right) - minX;
+            Width = letters.Max(l => l.BoundingBox.Right) - minX;
         }
     }
 }
