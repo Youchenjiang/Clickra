@@ -1,9 +1,9 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Reflection;
 using Clickra.Core.Models;
 using UglyToad.PdfPig.Content;
+using UglyToad.PdfPig.Graphics;
 using UglyToad.PdfPig.Graphics.Colors;
 
 namespace Clickra.Core.Processors
@@ -138,20 +138,10 @@ namespace Clickra.Core.Processors
             return result;
         }
 
-        public static bool TryGetPathGrayFill(object path, out double r, out double g, out double b)
+        public static bool TryGetPathGrayFill(PdfPath path, out double r, out double g, out double b)
         {
             r = g = b = 0;
-            try
-            {
-                var props = path.GetType().GetProperty("Fill",
-                    BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
-                if (props?.GetValue(path) is IColor fill)
-                {
-                    return TryExtractRgb(fill, out r, out g, out b);
-                }
-            }
-            catch { }
-            return false;
+            return path.IsFilled && path.FillColor != null && TryExtractRgb(path.FillColor, out r, out g, out b);
         }
 
         public static bool TryExtractRgb(IColor color, out double r, out double g, out double b)
@@ -162,12 +152,6 @@ namespace Clickra.Core.Processors
                 if (color is RGBColor rgb)
                 {
                     r = rgb.R; g = rgb.G; b = rgb.B;
-                    return true;
-                }
-                var rgbProp = color.GetType().GetProperty("RGB");
-                if (rgbProp?.GetValue(color) is RGBColor nested)
-                {
-                    r = nested.R; g = nested.G; b = nested.B;
                     return true;
                 }
             }
