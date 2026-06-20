@@ -124,11 +124,6 @@ internal static class PdfOverlayMaskPlanner
         double renderedHeight,
         double pageWidth)
     {
-        if (PdfParagraphRoleClassifier.IsTranslatableBodyProse(para) || PdfParagraphRoleClassifier.IsTranslatableCalloutProse(para) ||
-            PdfParagraphSemanticClassifier.IsHeadingParagraph(para) || PdfParagraphSemanticClassifier.IsAppendixSectionHeading(para))
-        {
-            return null;
-        }
         var clipRegions = GetFigureClipRegions(pageParagraphs, diagramMaskRegions, pageWidth);
         if (clipRegions.Count == 0) return null;
         if (!PdfParagraphRoleClassifier.IsTranslatableBodyProse(para) && !PdfParagraphRoleClassifier.IsTranslatableCalloutProse(para)) return null;
