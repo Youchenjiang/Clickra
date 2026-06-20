@@ -544,7 +544,7 @@ static TranslationPageDiagnostics Diagnostics(string sourceFile, int page)
 
 static PdfParagraph UninitializedParagraph(string text, double width, double height)
 {
-    var paragraph = (PdfParagraph)System.Runtime.Serialization.FormatterServices
+    var paragraph = (PdfParagraph)System.Runtime.CompilerServices.RuntimeHelpers
         .GetUninitializedObject(typeof(PdfParagraph));
     paragraph.TextWithPlaceholders = text;
     paragraph.X0 = 0;
