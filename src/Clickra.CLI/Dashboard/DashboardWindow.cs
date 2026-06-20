@@ -129,15 +129,16 @@ namespace Clickra.UI
 
             string lang = ClickraStorage.GetSetting("Language");
             string fontName = LocalizedUiFontSelector.GetTextFontName(lang);
+            float s = _dpiScale;
 
-            _titleFont = new Font(fontName, 16 * _dpiScale, FontStyle.Bold);
-            _subFont = new Font(fontName, 8 * _dpiScale);
-            _tabFont = new Font(fontName, 9 * _dpiScale);
-            _contentTitleFont = new Font(fontName, 14 * _dpiScale, FontStyle.Bold);
-            _sectionFont = new Font(fontName, 10 * _dpiScale, FontStyle.Bold);
-            _bodyFont = new Font(fontName, 8.5f * _dpiScale);
-            _tagFont = new Font(fontName, 7.5f * _dpiScale, FontStyle.Bold);
-            _iconFont = new Font("Segoe MDL2 Assets", 10 * _dpiScale);
+            _titleFont = new Font(fontName, 24f * s, FontStyle.Bold, GraphicsUnit.Pixel);
+            _subFont = new Font(fontName, 13f * s, GraphicsUnit.Pixel);
+            _tabFont = new Font(fontName, 14f * s, GraphicsUnit.Pixel);
+            _contentTitleFont = new Font(fontName, 22f * s, FontStyle.Bold, GraphicsUnit.Pixel);
+            _sectionFont = new Font(fontName, 15f * s, FontStyle.Bold, GraphicsUnit.Pixel);
+            _bodyFont = new Font(fontName, 13.5f * s, GraphicsUnit.Pixel);
+            _tagFont = new Font(fontName, 12f * s, FontStyle.Bold, GraphicsUnit.Pixel);
+            _iconFont = new Font("Segoe MDL2 Assets", 14f * s, GraphicsUnit.Pixel);
 
             // Measure the tab button text widths to determine sidebar width dynamically
             float maxLabelW = 0;
