@@ -52,7 +52,7 @@ namespace Clickra.Core.Processors
                     diagrams,
                     paragraphs,
                     pageWidth,
-                    ParagraphCenterInsideAnyRegion),
+                    PdfGrayPromptGeometry.ParagraphCenterInsideAnyRegion),
             IsTranslatableBodyProse = PdfParagraphRoleClassifier.IsTranslatableBodyProse,
             IsTranslatableCalloutProse = PdfParagraphRoleClassifier.IsTranslatableCalloutProse,
             IsHeadingParagraph = PdfParagraphSemanticClassifier.IsHeadingParagraph,
@@ -340,7 +340,7 @@ namespace Clickra.Core.Processors
                 var effectiveGrayRegions = workDivisionPage
                     ? new List<TableMaskRegion>()
                     : PdfGrayPromptRegionBuilder.BuildEffectiveGrayMaskRegions(
-                        page, effectiveDiagramRegions, pageList, page.Width, ParagraphCenterInsideAnyRegion);
+                        page, effectiveDiagramRegions, pageList, page.Width, PdfGrayPromptGeometry.ParagraphCenterInsideAnyRegion);
                 if (!workDivisionPage)
                 {
                     // Geometry-first: mark by vector gray boxes before any heuristic clearing.
@@ -656,7 +656,7 @@ namespace Clickra.Core.Processors
                 var effectiveGrayMaskRegions = workDivisionPage
                     ? new List<TableMaskRegion>()
                     : PdfGrayPromptRegionBuilder.BuildEffectiveGrayMaskRegions(
-                        pigPage, diagramMaskRegions, paragraphs, pageWidthPts, ParagraphCenterInsideAnyRegion);
+                        pigPage, diagramMaskRegions, paragraphs, pageWidthPts, PdfGrayPromptGeometry.ParagraphCenterInsideAnyRegion);
 
                 HashSet<string> strippedBaseFonts;
                 try
@@ -672,8 +672,8 @@ namespace Clickra.Core.Processors
                         new ProtectedNoStripPredicates
                         {
                             IsGrayPromptCodeParagraph = PdfGrayPromptClassifier.IsGrayPromptCodeParagraph,
-                            ParagraphCenterInsideAnyRegion = ParagraphCenterInsideAnyRegion,
-                            IsParagraphInsideGrayShadedRegion = IsParagraphInsideGrayShadedRegion,
+                            ParagraphCenterInsideAnyRegion = PdfGrayPromptGeometry.ParagraphCenterInsideAnyRegion,
+                            IsParagraphInsideGrayShadedRegion = PdfGrayPromptGeometry.IsParagraphInsideGrayShadedRegion,
                             IsLikelyChartLabel = PdfChartLabelClassifier.IsLikelyChartLabel
                         });
                     protectedOnlyFonts.ExceptWith(mustStripFonts);
@@ -781,7 +781,7 @@ namespace Clickra.Core.Processors
                     }
 
                     if (effectiveGrayMaskRegions.Count > 0 &&
-                        MaskRectIntersectsAnyGrayRegion(
+                        PdfGrayPromptGeometry.MaskRectIntersectsAnyGrayRegion(
                             maskPdfX0, maskPdfY0, maskPdfX1, maskPdfY1,
                             effectiveGrayMaskRegions) &&
                         (para.IsGrayPromptContent || PdfGrayPromptClassifier.IsGrayPromptCodeParagraph(para)) &&
@@ -803,7 +803,7 @@ namespace Clickra.Core.Processors
                     if (maskPdfY0 >= maskPdfY1 - 0.5) continue;
 
                     if (hasPageOneAuthorBand &&
-                        MaskRectOverlapsPageOneAuthorBand(
+                        PdfGrayPromptGeometry.MaskRectOverlapsPageOneAuthorBand(
                             maskPdfX0, maskPdfY0, maskPdfX1, maskPdfY1,
                             pageOneTitleBottom, pageOneAbstractTop))
                     {
@@ -954,8 +954,8 @@ namespace Clickra.Core.Processors
             PdfParagraph para, IReadOnlyList<TableMaskRegion> effectiveGrayMaskRegions)
         {
             if (effectiveGrayMaskRegions.Count == 0) return false;
-            bool insideGray = ParagraphCenterInsideAnyRegion(para, effectiveGrayMaskRegions) ||
-                              IsParagraphInsideGrayShadedRegion(para, effectiveGrayMaskRegions);
+            bool insideGray = PdfGrayPromptGeometry.ParagraphCenterInsideAnyRegion(para, effectiveGrayMaskRegions) ||
+                              PdfGrayPromptGeometry.IsParagraphInsideGrayShadedRegion(para, effectiveGrayMaskRegions);
             if (PdfParagraphRoleClassifier.IsTranslatableBodyProse(para) || PdfParagraphRoleClassifier.IsTranslatableCalloutProse(para) ||
                 PdfParagraphSemanticClassifier.IsHeadingParagraph(para) || PdfParagraphSemanticClassifier.IsAppendixSectionHeading(para))
             {
@@ -1223,7 +1223,7 @@ namespace Clickra.Core.Processors
 
                 if (grayShadedRegions.Count > 0 &&
                     (PdfParagraphRoleClassifier.IsTranslatableBodyProse(para) || PdfParagraphRoleClassifier.IsTranslatableCalloutProse(para)) &&
-                    !IsParagraphInsideGrayShadedRegion(para, grayShadedRegions))
+                    !PdfGrayPromptGeometry.IsParagraphInsideGrayShadedRegion(para, grayShadedRegions))
                 {
                     inGrayPromptBlock = false;
                     anchor = null;
@@ -1250,7 +1250,7 @@ namespace Clickra.Core.Processors
                         continue;
                     }
                     if (grayShadedRegions.Count > 0 &&
-                        IsParagraphInsideGrayShadedRegion(para, grayShadedRegions))
+                        PdfGrayPromptGeometry.IsParagraphInsideGrayShadedRegion(para, grayShadedRegions))
                     {
                         MarkAsGrayPromptContent(para);
                         anchor = para;
@@ -1285,9 +1285,9 @@ namespace Clickra.Core.Processors
                 if (PdfParagraphRoleClassifier.IsRunningHeaderOrFooter(para, pageHeight)) continue;
                 if (PdfParagraphRoleClassifier.IsFigureTableCaptionParagraph(para)) continue;
                 if (PdfParagraphSemanticClassifier.IsHeadingParagraph(para) || PdfParagraphSemanticClassifier.IsAppendixSectionHeading(para)) continue;
-                bool insideGray = ParagraphCenterInsideAnyRegion(para, expanded) ||
-                    IsParagraphInsideGrayShadedRegion(para, grayRegions);
-                if (IsParagraphInsideAnchoredGrayPromptRegion(para, grayRegions, pageList))
+                bool insideGray = PdfGrayPromptGeometry.ParagraphCenterInsideAnyRegion(para, expanded) ||
+                    PdfGrayPromptGeometry.IsParagraphInsideGrayShadedRegion(para, grayRegions);
+                if (PdfGrayPromptGeometry.IsParagraphInsideAnchoredGrayPromptRegion(para, grayRegions, pageList))
                 {
                     MarkAsGrayPromptContent(para);
                     continue;
@@ -1303,131 +1303,6 @@ namespace Clickra.Core.Processors
             }
         }
 
-        /// <summary>Strict geometry test: any mask pixel overlap with gray box blocks Pass 1 white paint.</summary>
-        private static bool MaskRectIntersectsAnyGrayRegion(
-            double maskX0, double maskY0, double maskX1, double maskY1,
-            IReadOnlyList<TableMaskRegion> grayRegions)
-        {
-            if (grayRegions.Count == 0) return false;
-            foreach (var region in PdfGrayPromptRegionBuilder.ExpandGrayShadedRegions(grayRegions, 16.0))
-            {
-                double overlapX = Math.Min(maskX1, region.X1) - Math.Max(maskX0, region.X0);
-                double overlapY = Math.Min(maskY1, region.Y1) - Math.Max(maskY0, region.Y0);
-                if (overlapX > 0.5 && overlapY > 0.5)
-                {
-                    return true;
-                }
-            }
-            return false;
-        }
-
-        private static bool MaskRectOverlapsPageOneAuthorBand(
-            double maskX0, double maskY0, double maskX1, double maskY1,
-            double titleBottom, double abstractTop)
-        {
-            if (titleBottom <= abstractTop) return false;
-            double overlapY = Math.Min(maskY1, titleBottom) - Math.Max(maskY0, abstractTop);
-            return overlapY > 0.5;
-        }
-
-        private static bool MaskRectOverlapsGrayRegions(
-            double maskX0, double maskY0, double maskX1, double maskY1,
-            IReadOnlyList<TableMaskRegion> grayRegions,
-            double pageWidth = 0)
-        {
-            if (grayRegions.Count == 0) return false;
-            var expanded = PdfGrayPromptRegionBuilder.ExpandGrayShadedRegions(grayRegions, 2.0);
-            foreach (var region in expanded)
-            {
-                if (pageWidth > 0 &&
-                    !PdfMaskGeometry.ParagraphSharesColumnWithRegion(maskX0, maskX1, region, pageWidth, 8.0))
-                {
-                    continue;
-                }
-                double overlapX = Math.Min(maskX1, region.X1) - Math.Max(maskX0, region.X0);
-                double overlapY = Math.Min(maskY1, region.Y1) - Math.Max(maskY0, region.Y0);
-                if (overlapX > 0.5 && overlapY > 0.5)
-                {
-                    return true;
-                }
-            }
-            return false;
-        }
-
-        /// <summary>Clip or reject a mask rect so it cannot paint over gray prompt shaded areas.</summary>
-        private static bool TryClipMaskBelowGrayRegions(
-            ref double maskX0, ref double maskY0, ref double maskX1, ref double maskY1,
-            IReadOnlyList<TableMaskRegion> grayRegions, double pageWidth)
-        {
-            if (grayRegions.Count == 0) return maskY1 > maskY0 + 0.5;
-            const double clearance = 4.0;
-            foreach (var region in grayRegions.OrderBy(r => r.Y0))
-            {
-                double overlapX = Math.Min(maskX1, region.X1) - Math.Max(maskX0, region.X0);
-                if (overlapX < 8.0) continue;
-
-                if (maskY0 >= region.Y0 - 0.5 && maskY1 <= region.Y1 + 0.5)
-                {
-                    return false;
-                }
-
-                if (maskY1 > region.Y0 + 0.5 && maskY0 < region.Y1)
-                {
-                    maskY1 = Math.Min(maskY1, region.Y0 - clearance);
-                }
-            }
-            return maskY1 > maskY0 + 0.5;
-        }
-
-        private static bool ParagraphCenterInsideAnyRegion(
-            PdfParagraph para, IReadOnlyList<TableMaskRegion> regions)
-        {
-            double cx = para.X0 + para.Width / 2;
-            double cy = para.Y0 + para.Height / 2;
-            foreach (var region in regions)
-            {
-                if (cx >= region.X0 && cx <= region.X1 && cy >= region.Y0 && cy <= region.Y1)
-                {
-                    return true;
-                }
-            }
-            return false;
-        }
-
-        /// <summary>Paragraph center or majority of letters inside shaded gray box only.</summary>
-        private static bool IsParagraphInsideGrayShadedRegion(
-            PdfParagraph para, IReadOnlyList<TableMaskRegion> grayRegions)
-        {
-            if (grayRegions.Count == 0) return false;
-            var expanded = PdfGrayPromptRegionBuilder.ExpandGrayShadedRegions(grayRegions);
-            if (ParagraphCenterInsideAnyRegion(para, expanded)) return true;
-            return PdfDiagramRegionGeometry.ParagraphLetterOverlapRatio(para, expanded) >= 0.5;
-        }
-
-        private static bool IsParagraphInsideAnchoredGrayPromptRegion(
-            PdfParagraph para,
-            IReadOnlyList<TableMaskRegion> grayRegions,
-            IReadOnlyList<PdfParagraph> pageList)
-        {
-            if (grayRegions.Count == 0) return false;
-            foreach (var region in PdfGrayPromptRegionBuilder.ExpandGrayShadedRegions(grayRegions, 8.0))
-            {
-                if (!ParagraphCenterInsideAnyRegion(para, new[] { region }) &&
-                    PdfDiagramRegionGeometry.ParagraphLetterOverlapRatio(para, new[] { region }) < 0.5)
-                {
-                    continue;
-                }
-
-                bool hasPromptAnchor = pageList.Any(anchor =>
-                    anchor != para &&
-                    (PdfGrayPromptClassifier.IsGrayPromptBoxParagraph(anchor) || PdfGrayPromptClassifier.IsGrayPromptSubheading(anchor)) &&
-                    ParagraphCenterInsideAnyRegion(anchor, new[] { region }) &&
-                    PdfGrayPromptClassifier.SharesGrayPromptColumn(anchor, para));
-                if (hasPromptAnchor) return true;
-            }
-            return false;
-        }
-
         private static void MarkGrayPromptContentInShadedRegions(
             List<PdfParagraph> pageList, IReadOnlyList<TableMaskRegion> grayRegions)
         {
@@ -1441,9 +1316,9 @@ namespace Clickra.Core.Processors
                 string txt = para.TextWithPlaceholders.Trim();
                 if (System.Text.RegularExpressions.Regex.IsMatch(txt, @"^\d+\.\d+\s")) continue;
 
-                if (IsParagraphInsideGrayShadedRegion(para, grayRegions))
+                if (PdfGrayPromptGeometry.IsParagraphInsideGrayShadedRegion(para, grayRegions))
                 {
-                    if (IsParagraphInsideAnchoredGrayPromptRegion(para, grayRegions, pageList))
+                    if (PdfGrayPromptGeometry.IsParagraphInsideAnchoredGrayPromptRegion(para, grayRegions, pageList))
                     {
                         MarkAsGrayPromptContent(para);
                         continue;
@@ -1469,14 +1344,14 @@ namespace Clickra.Core.Processors
                 if (PdfParagraphRoleClassifier.IsTranslatableBodyProse(para) || PdfParagraphRoleClassifier.IsTranslatableCalloutProse(para)) continue;
 
                 if (PdfGrayPromptClassifier.IsGrayPromptSubheading(para) &&
-                    IsParagraphInsideGrayShadedRegion(para, grayRegions))
+                    PdfGrayPromptGeometry.IsParagraphInsideGrayShadedRegion(para, grayRegions))
                 {
                     MarkAsGrayPromptContent(para);
                     continue;
                 }
 
                 if (PdfGrayPromptClassifier.IsGrayPromptBoxContinuationParagraph(para, null) &&
-                    IsParagraphInsideGrayShadedRegion(para, grayRegions))
+                    PdfGrayPromptGeometry.IsParagraphInsideGrayShadedRegion(para, grayRegions))
                 {
                     MarkAsGrayPromptContent(para);
                 }
@@ -1536,7 +1411,7 @@ namespace Clickra.Core.Processors
                     }
                 }
                 if (grayRegions.Count > 0 &&
-                    !IsParagraphInsideGrayShadedRegion(para, grayRegions) &&
+                    !PdfGrayPromptGeometry.IsParagraphInsideGrayShadedRegion(para, grayRegions) &&
                     !PdfGrayPromptClassifier.IsGrayPromptBoxContinuationParagraph(para, null) &&
                     !PdfGrayPromptClassifier.IsGrayPromptSubheading(para))
                 {
@@ -1551,7 +1426,7 @@ namespace Clickra.Core.Processors
                         continue;
                     }
                 }
-                if (grayRegions.Count > 0 && IsParagraphInsideGrayShadedRegion(para, grayRegions)) continue;
+                if (grayRegions.Count > 0 && PdfGrayPromptGeometry.IsParagraphInsideGrayShadedRegion(para, grayRegions)) continue;
                 if (PdfGrayPromptClassifier.HasNearbyGrayPromptAbove(para, pageList)) continue;
                 if (PdfParagraphSemanticClassifier.IsHeadingParagraph(para))
                 {
@@ -1584,7 +1459,7 @@ namespace Clickra.Core.Processors
                     continue;
                 }
                 if (PdfGrayPromptClassifier.IsGrayPromptSubheading(para)) continue;
-                if (grayRegions.Count > 0 && IsParagraphInsideGrayShadedRegion(para, grayRegions)) continue;
+                if (grayRegions.Count > 0 && PdfGrayPromptGeometry.IsParagraphInsideGrayShadedRegion(para, grayRegions)) continue;
                 if (PdfGrayPromptClassifier.HasNearbyGrayPromptAbove(para, pageList)) continue;
                 if (PdfGrayPromptClassifier.IsGrayPromptBoxContinuationParagraph(para, null) &&
                     grayRegions.Count > 0 &&
@@ -1596,7 +1471,7 @@ namespace Clickra.Core.Processors
                 }
                 if (PdfGrayPromptClassifier.IsGrayPromptBoxContinuationParagraph(para, null) &&
                     grayRegions.Count > 0 &&
-                    IsParagraphInsideGrayShadedRegion(para, grayRegions))
+                    PdfGrayPromptGeometry.IsParagraphInsideGrayShadedRegion(para, grayRegions))
                 {
                     continue;
                 }
