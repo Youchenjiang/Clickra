@@ -9,7 +9,16 @@ namespace Clickra.Core.Processors
     {
         public static int GetOccurrenceIndex(List<PdfLetter> allLetters, List<PdfLetter> targetLetters, string searchText)
         {
-            if (allLetters == null || targetLetters == null || string.IsNullOrEmpty(searchText)) return 0;
+            ArgumentNullException.ThrowIfNull(allLetters);
+            ArgumentNullException.ThrowIfNull(targetLetters);
+            if (targetLetters.Count == 0)
+            {
+                throw new ArgumentException("Target letters cannot be empty.", nameof(targetLetters));
+            }
+            if (string.IsNullOrEmpty(searchText))
+            {
+                throw new ArgumentException("Search text cannot be null or empty.", nameof(searchText));
+            }
 
             var occurrences = new List<int>();
             for (int i = 0; i <= allLetters.Count - searchText.Length; i++)

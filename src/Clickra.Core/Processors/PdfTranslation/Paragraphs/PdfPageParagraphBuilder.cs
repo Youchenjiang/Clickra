@@ -8,6 +8,8 @@ internal static class PdfPageParagraphBuilder
 {
     public static List<PdfParagraph> BuildPageParagraphs(UglyToad.PdfPig.Content.Page page)
     {
+        ArgumentNullException.ThrowIfNull(page);
+
         var pageList = new List<PdfParagraph>();
 
         var words = NearestNeighbourWordExtractor.Instance.GetWords(page.Letters).ToList();

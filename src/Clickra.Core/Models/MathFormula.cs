@@ -10,6 +10,12 @@ namespace Clickra.Core.Models
 
         public MathFormula(int id, List<UglyToad.PdfPig.Content.Letter> letters)
         {
+            ArgumentNullException.ThrowIfNull(letters);
+            if (letters.Count == 0)
+            {
+                throw new ArgumentException("Letters cannot be empty.", nameof(letters));
+            }
+
             Id = id;
             double minX = letters.Min(l => l.Location.X);
             foreach (var l in letters)
