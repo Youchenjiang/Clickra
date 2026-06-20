@@ -1,6 +1,7 @@
+using Clickra.Core.Models;
 using UglyToad.PdfPig.DocumentLayoutAnalysis;
 
-namespace Clickra.Core.Models
+namespace Clickra.Core.Processors
 {
     internal static class PdfTextLineMerger
     {

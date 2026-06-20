@@ -1,8 +1,9 @@
+using Clickra.Core.Models;
 using System.Text.RegularExpressions;
 using UglyToad.PdfPig.Content;
 using UglyToad.PdfPig.DocumentLayoutAnalysis;
 
-namespace Clickra.Core.Models
+namespace Clickra.Core.Processors
 {
     internal sealed class PdfParagraphLayoutAnalysis
     {
