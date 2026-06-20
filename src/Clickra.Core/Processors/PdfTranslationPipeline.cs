@@ -45,8 +45,14 @@ namespace Clickra.Core.Processors
             BuildProcessedDiagramMaskRegions = PdfDiagramMaskBuilder.BuildProcessedDiagramMaskRegions,
             GetEffectiveDiagramMaskRegions = PdfDiagramRegionGeometry.GetEffectiveDiagramMaskRegions,
             GetFigureClipRegions = GetFigureClipRegions,
-            GetGrayPromptShadedRegions = GetGrayPromptShadedRegions,
-            BuildEffectiveGrayMaskRegions = BuildEffectiveGrayMaskRegions,
+            GetGrayPromptShadedRegions = PdfGrayPromptRegionBuilder.GetGrayPromptShadedRegions,
+            BuildEffectiveGrayMaskRegions = (page, diagrams, paragraphs, pageWidth) =>
+                PdfGrayPromptRegionBuilder.BuildEffectiveGrayMaskRegions(
+                    page,
+                    diagrams,
+                    paragraphs,
+                    pageWidth,
+                    ParagraphCenterInsideAnyRegion),
             IsTranslatableBodyProse = PdfParagraphRoleClassifier.IsTranslatableBodyProse,
             IsTranslatableCalloutProse = PdfParagraphRoleClassifier.IsTranslatableCalloutProse,
             IsHeadingParagraph = PdfParagraphSemanticClassifier.IsHeadingParagraph,
@@ -330,11 +336,11 @@ namespace Clickra.Core.Processors
                     p.TextWithPlaceholders.Trim().Contains("WORK DIVISION", StringComparison.OrdinalIgnoreCase));
                 var grayPromptShadedRegions = workDivisionPage
                     ? new List<TableMaskRegion>()
-                    : GetGrayPromptShadedRegions(effectiveDiagramRegions, page.Width, pageList);
+                    : PdfGrayPromptRegionBuilder.GetGrayPromptShadedRegions(effectiveDiagramRegions, page.Width, pageList);
                 var effectiveGrayRegions = workDivisionPage
                     ? new List<TableMaskRegion>()
-                    : BuildEffectiveGrayMaskRegions(
-                        page, effectiveDiagramRegions, pageList, page.Width);
+                    : PdfGrayPromptRegionBuilder.BuildEffectiveGrayMaskRegions(
+                        page, effectiveDiagramRegions, pageList, page.Width, ParagraphCenterInsideAnyRegion);
                 if (!workDivisionPage)
                 {
                     // Geometry-first: mark by vector gray boxes before any heuristic clearing.
@@ -649,7 +655,8 @@ namespace Clickra.Core.Processors
                     para.TextWithPlaceholders.Trim().Contains("WORK DIVISION", StringComparison.OrdinalIgnoreCase));
                 var effectiveGrayMaskRegions = workDivisionPage
                     ? new List<TableMaskRegion>()
-                    : BuildEffectiveGrayMaskRegions(pigPage, diagramMaskRegions, paragraphs, pageWidthPts);
+                    : PdfGrayPromptRegionBuilder.BuildEffectiveGrayMaskRegions(
+                        pigPage, diagramMaskRegions, paragraphs, pageWidthPts, ParagraphCenterInsideAnyRegion);
 
                 HashSet<string> strippedBaseFonts;
                 try
@@ -962,7 +969,7 @@ namespace Clickra.Core.Processors
             if (insideGray) return true;
             return PdfTableMaskPlanner.ParagraphOverlapsAnyTableMask(
                 para.X0, para.Y0, para.X1, para.Y1,
-                ExpandGrayShadedRegions(effectiveGrayMaskRegions), 8.0, 2.0);
+                PdfGrayPromptRegionBuilder.ExpandGrayShadedRegions(effectiveGrayMaskRegions), 8.0, 2.0);
         }
 
         /// <summary>
@@ -1267,272 +1274,12 @@ namespace Clickra.Core.Processors
             para.IsTable = false;
         }
 
-        /// <summary>Shaded vector rects that wrap gray System Message / Prompt / Example boxes (either column).</summary>
-        private static List<TableMaskRegion> GetGrayPromptShadedRegions(
-            IReadOnlyList<TableMaskRegion> diagramRegions, double pageWidth,
-            IReadOnlyList<PdfParagraph>? pageList = null)
-        {
-            if (diagramRegions.Count == 0) return new List<TableMaskRegion>();
-            if (pageList != null && pageList.Any(p =>
-                    p.TextWithPlaceholders.Trim().Contains("WORK DIVISION", StringComparison.OrdinalIgnoreCase)))
-            {
-                return new List<TableMaskRegion>();
-            }
-            double center = pageWidth / 2.0;
-            double maxColWidth = pageWidth * 0.52;
-            var result = new List<TableMaskRegion>();
-            foreach (var r in diagramRegions)
-            {
-                double w = r.X1 - r.X0;
-                double h = r.Y1 - r.Y0;
-                if (h < 70 || h > 320) continue;
-
-                if (w >= 180 && w <= maxColWidth)
-                {
-                    double regionCenter = (r.X0 + r.X1) / 2.0;
-                    if (regionCenter < center + 8 || regionCenter > center - 8)
-                    {
-                        result.Add(r);
-                    }
-                    continue;
-                }
-
-                // Merged workflow + gray-box paths (e.g. PentestAgent p6): split by column.
-                if (w > maxColWidth)
-                {
-                    var left = new TableMaskRegion(r.X0, r.Y0, Math.Min(r.X1, center - 5), r.Y1);
-                    var right = new TableMaskRegion(Math.Max(r.X0, center + 5), r.Y0, r.X1, r.Y1);
-                    foreach (var part in new[] { left, right })
-                    {
-                        double pw = part.X1 - part.X0;
-                        if (pw >= 180 && pw <= maxColWidth && (part.Y1 - part.Y0) >= 70)
-                        {
-                            result.Add(part);
-                        }
-                    }
-                }
-            }
-            return result;
-        }
-
-        /// <summary>Union of vector gray boxes, gray path fills, and clustered gray-prompt paragraph bboxes.</summary>
-        private static List<TableMaskRegion> BuildEffectiveGrayMaskRegions(
-            UglyToad.PdfPig.Content.Page pigPage,
-            IReadOnlyList<TableMaskRegion> diagramMaskRegions,
-            IReadOnlyList<PdfParagraph> pageList,
-            double pageWidth)
-        {
-            if (pageList.Any(p =>
-                    p.TextWithPlaceholders.Trim().Contains("WORK DIVISION", StringComparison.OrdinalIgnoreCase)))
-            {
-                return new List<TableMaskRegion>();
-            }
-
-            var combined = new List<TableMaskRegion>();
-            combined.AddRange(GetGrayPromptShadedRegions(diagramMaskRegions, pageWidth, pageList));
-            combined.AddRange(GetGrayVectorFillRegions(pigPage));
-            combined.AddRange(BuildGrayPromptBoxUnionRegions(pageList, pageWidth));
-            combined = MergeOverlappingGrayRegions(combined, pageWidth);
-            return FilterSpuriousEffectiveGrayRegions(combined, pageList);
-        }
-
-        /// <summary>Drop vector gray boxes that sit on translatable body prose without any gray-prompt paragraph inside.</summary>
-        private static List<TableMaskRegion> FilterSpuriousEffectiveGrayRegions(
-            List<TableMaskRegion> regions, IReadOnlyList<PdfParagraph> pageList)
-        {
-            if (regions.Count == 0) return regions;
-            var filtered = new List<TableMaskRegion>();
-            foreach (var region in regions)
-            {
-                bool hasGrayPrompt = pageList.Any(p =>
-                {
-                    return (p.IsGrayPromptContent || PdfGrayPromptClassifier.IsGrayPromptCodeParagraph(p)) &&
-                           ParagraphCenterInsideAnyRegion(p, new[] { region });
-                });
-                if (hasGrayPrompt)
-                {
-                    filtered.Add(region);
-                    continue;
-                }
-                bool overlapsBodyProse = pageList.Any(p =>
-                    !p.IsBypassed &&
-                    !p.IsGrayPromptContent &&
-                    !PdfGrayPromptClassifier.IsGrayPromptCodeParagraph(p) &&
-                    (PdfParagraphRoleClassifier.IsTranslatableBodyProse(p) || PdfParagraphSemanticClassifier.IsHeadingParagraph(p) || PdfParagraphRoleClassifier.IsTranslatableCalloutProse(p)) &&
-                    ParagraphCenterInsideAnyRegion(p, new[] { region }));
-                if (!overlapsBodyProse)
-                    filtered.Add(region);
-            }
-            return filtered;
-        }
-
-        /// <summary>Detect light-gray filled vector rectangles (prompt box backgrounds).</summary>
-        private static List<TableMaskRegion> GetGrayVectorFillRegions(UglyToad.PdfPig.Content.Page pigPage)
-        {
-            var result = new List<TableMaskRegion>();
-            try
-            {
-                foreach (var path in pigPage.ExperimentalAccess.Paths)
-                {
-                    var rectOpt = path.GetBoundingRectangle();
-                    if (!rectOpt.HasValue) continue;
-                    var b = rectOpt.Value;
-                    if (b.Width < 50 || b.Height < 20) continue;
-                    if (b.Width > pigPage.Width * 0.92 || b.Height > pigPage.Height * 0.92) continue;
-
-                    bool grayFill = TryGetPathGrayFill(path, out double r, out double g, out double blue) &&
-                                    IsLightGrayRgb(r, g, blue);
-                    if (!grayFill) continue;
-                    result.Add(new TableMaskRegion(b.Left, b.Bottom, b.Right, b.Top));
-                }
-            }
-            catch { }
-            return result;
-        }
-
-        private static bool TryGetPathGrayFill(object path, out double r, out double g, out double b)
-        {
-            r = g = b = 0;
-            try
-            {
-                var props = path.GetType().GetProperty("Fill",
-                    System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.NonPublic);
-                if (props?.GetValue(path) is UglyToad.PdfPig.Graphics.Colors.IColor fill)
-                {
-                    return TryExtractRgb(fill, out r, out g, out b);
-                }
-            }
-            catch { }
-            return false;
-        }
-
-        private static bool TryExtractRgb(UglyToad.PdfPig.Graphics.Colors.IColor color, out double r, out double g, out double b)
-        {
-            r = g = b = 0;
-            try
-            {
-                if (color is UglyToad.PdfPig.Graphics.Colors.RGBColor rgb)
-                {
-                    r = rgb.R; g = rgb.G; b = rgb.B;
-                    return true;
-                }
-                var rgbProp = color.GetType().GetProperty("RGB");
-                if (rgbProp?.GetValue(color) is UglyToad.PdfPig.Graphics.Colors.RGBColor nested)
-                {
-                    r = nested.R; g = nested.G; b = nested.B;
-                    return true;
-                }
-            }
-            catch { }
-            return false;
-        }
-
-        private static bool IsLightGrayRgb(double r, double g, double b)
-        {
-            if (r > 1.5) { r /= 255.0; g /= 255.0; b /= 255.0; }
-            return r >= 0.68 && r <= 0.96 && g >= 0.68 && g <= 0.96 && b >= 0.68 && b <= 0.98 &&
-                   Math.Abs(r - g) < 0.1 && Math.Abs(g - b) < 0.1;
-        }
-
-        /// <summary>Merge flagged gray-prompt paragraphs into contiguous box bboxes per column.</summary>
-        private static List<TableMaskRegion> BuildGrayPromptBoxUnionRegions(
-            IReadOnlyList<PdfParagraph> paragraphs, double pageWidth, double pad = 6.0)
-        {
-            double center = pageWidth / 2.0;
-            var grayParas = paragraphs
-                .Where(p => p.IsGrayPromptContent || PdfGrayPromptClassifier.IsGrayPromptCodeParagraph(p))
-                .ToList();
-            if (grayParas.Count == 0) return new List<TableMaskRegion>();
-
-            var result = new List<TableMaskRegion>();
-            foreach (bool leftCol in new[] { true, false })
-            {
-                var colParas = grayParas
-                    .Where(p => leftCol
-                        ? (p.X0 + p.X1) / 2.0 < center - 5
-                        : (p.X0 + p.X1) / 2.0 > center + 5)
-                    .OrderByDescending(p => p.Y1)
-                    .ToList();
-                if (colParas.Count == 0) continue;
-
-                var cluster = new List<PdfParagraph> { colParas[0] };
-                for (int i = 1; i < colParas.Count; i++)
-                {
-                    var prev = cluster[^1];
-                    var curr = colParas[i];
-                    double gap = prev.Y0 - curr.Y1;
-                    if (gap > 55)
-                    {
-                        result.Add(UnionParagraphBboxes(cluster, 4.0));
-                        cluster = new List<PdfParagraph>();
-                    }
-                    cluster.Add(curr);
-                }
-                if (cluster.Count > 0)
-                    result.Add(UnionParagraphBboxes(cluster, 4.0));
-            }
-            return result;
-        }
-
-        private static TableMaskRegion UnionParagraphBboxes(IReadOnlyList<PdfParagraph> paras, double pad)
-        {
-            return new TableMaskRegion(
-                paras.Min(p => p.X0) - pad,
-                paras.Min(p => p.Y0) - pad,
-                paras.Max(p => p.X1) + pad,
-                paras.Max(p => p.Y1) + pad);
-        }
-
-        private static List<TableMaskRegion> MergeOverlappingGrayRegions(List<TableMaskRegion> rawBounds, double pageWidth = 0)
-        {
-            if (rawBounds.Count <= 1) return rawBounds;
-            var merged = new List<TableMaskRegion>();
-            var used = new bool[rawBounds.Count];
-            double center = pageWidth / 2.0;
-            for (int i = 0; i < rawBounds.Count; i++)
-            {
-                if (used[i]) continue;
-                var r = rawBounds[i];
-                double x0 = r.X0, y0 = r.Y0, x1 = r.X1, y1 = r.Y1;
-                bool rLeftCol = pageWidth <= 0 || (r.X0 + r.X1) / 2.0 < center - 5;
-                used[i] = true;
-                bool changed = true;
-                while (changed)
-                {
-                    changed = false;
-                    for (int j = 0; j < rawBounds.Count; j++)
-                    {
-                        if (used[j]) continue;
-                        var o = rawBounds[j];
-                        if (pageWidth > 0)
-                        {
-                            bool oLeftCol = (o.X0 + o.X1) / 2.0 < center - 5;
-                            if (rLeftCol != oLeftCol) continue;
-                        }
-                        bool closeX = o.X0 <= x1 + 12 && o.X1 >= x0 - 12;
-                        bool closeY = o.Y0 <= y1 + 12 && o.Y1 >= y0 - 12;
-                        if (closeX && closeY)
-                        {
-                            x0 = Math.Min(x0, o.X0);
-                            y0 = Math.Min(y0, o.Y0);
-                            x1 = Math.Max(x1, o.X1);
-                            y1 = Math.Max(y1, o.Y1);
-                            used[j] = true;
-                            changed = true;
-                        }
-                    }
-                }
-                merged.Add(new TableMaskRegion(x0, y0, x1, y1));
-            }
-            return merged;
-        }
-
         /// <summary>Force gray-prompt bypass for any paragraph whose center lies inside gray geometry.</summary>
         private static void MarkAllParagraphsByGrayGeometry(
             List<PdfParagraph> pageList, IReadOnlyList<TableMaskRegion> grayRegions, double pageHeight)
         {
             if (grayRegions.Count == 0) return;
-            var expanded = ExpandGrayShadedRegions(grayRegions, 2.0);
+            var expanded = PdfGrayPromptRegionBuilder.ExpandGrayShadedRegions(grayRegions, 2.0);
             foreach (var para in pageList)
             {
                 if (PdfParagraphRoleClassifier.IsRunningHeaderOrFooter(para, pageHeight)) continue;
@@ -1562,7 +1309,7 @@ namespace Clickra.Core.Processors
             IReadOnlyList<TableMaskRegion> grayRegions)
         {
             if (grayRegions.Count == 0) return false;
-            foreach (var region in ExpandGrayShadedRegions(grayRegions, 16.0))
+            foreach (var region in PdfGrayPromptRegionBuilder.ExpandGrayShadedRegions(grayRegions, 16.0))
             {
                 double overlapX = Math.Min(maskX1, region.X1) - Math.Max(maskX0, region.X0);
                 double overlapY = Math.Min(maskY1, region.Y1) - Math.Max(maskY0, region.Y0);
@@ -1583,45 +1330,13 @@ namespace Clickra.Core.Processors
             return overlapY > 0.5;
         }
 
-        private static List<TableMaskRegion> ExpandGrayShadedRegions(
-            IReadOnlyList<TableMaskRegion> grayRegions, double inset = 3.0)
-        {
-            return grayRegions
-                .Select(r => new TableMaskRegion(r.X0 - inset, r.Y0 - inset, r.X1 + inset, r.Y1 + inset))
-                .ToList();
-        }
-
-        /// <summary>Union bbox of flagged gray-prompt paragraphs (covers p7 workflow pages without vector gray rects).</summary>
-        private static List<TableMaskRegion> BuildGrayPromptParagraphMaskRegions(
-            IReadOnlyList<PdfParagraph> paragraphs, double pad = 2.0)
-        {
-            var regions = new List<TableMaskRegion>();
-            foreach (var para in paragraphs)
-            {
-                if (!para.IsGrayPromptContent && !PdfGrayPromptClassifier.IsGrayPromptCodeParagraph(para)) continue;
-                regions.Add(new TableMaskRegion(
-                    para.X0 - pad, para.Y0 - pad, para.X1 + pad, para.Y1 + pad));
-            }
-            return regions;
-        }
-
-        private static List<TableMaskRegion> CombineGrayMaskRegions(
-            IReadOnlyList<TableMaskRegion> shadedRegions,
-            IReadOnlyList<TableMaskRegion> paragraphRegions)
-        {
-            var combined = new List<TableMaskRegion>();
-            if (shadedRegions.Count > 0) combined.AddRange(shadedRegions);
-            if (paragraphRegions.Count > 0) combined.AddRange(paragraphRegions);
-            return combined;
-        }
-
         private static bool MaskRectOverlapsGrayRegions(
             double maskX0, double maskY0, double maskX1, double maskY1,
             IReadOnlyList<TableMaskRegion> grayRegions,
             double pageWidth = 0)
         {
             if (grayRegions.Count == 0) return false;
-            var expanded = ExpandGrayShadedRegions(grayRegions, 2.0);
+            var expanded = PdfGrayPromptRegionBuilder.ExpandGrayShadedRegions(grayRegions, 2.0);
             foreach (var region in expanded)
             {
                 if (pageWidth > 0 &&
@@ -1684,7 +1399,7 @@ namespace Clickra.Core.Processors
             PdfParagraph para, IReadOnlyList<TableMaskRegion> grayRegions)
         {
             if (grayRegions.Count == 0) return false;
-            var expanded = ExpandGrayShadedRegions(grayRegions);
+            var expanded = PdfGrayPromptRegionBuilder.ExpandGrayShadedRegions(grayRegions);
             if (ParagraphCenterInsideAnyRegion(para, expanded)) return true;
             return PdfDiagramRegionGeometry.ParagraphLetterOverlapRatio(para, expanded) >= 0.5;
         }
@@ -1695,7 +1410,7 @@ namespace Clickra.Core.Processors
             IReadOnlyList<PdfParagraph> pageList)
         {
             if (grayRegions.Count == 0) return false;
-            foreach (var region in ExpandGrayShadedRegions(grayRegions, 8.0))
+            foreach (var region in PdfGrayPromptRegionBuilder.ExpandGrayShadedRegions(grayRegions, 8.0))
             {
                 if (!ParagraphCenterInsideAnyRegion(para, new[] { region }) &&
                     PdfDiagramRegionGeometry.ParagraphLetterOverlapRatio(para, new[] { region }) < 0.5)
@@ -1744,7 +1459,7 @@ namespace Clickra.Core.Processors
                 }
 
                 bool overlapsGray = PdfTableMaskPlanner.ParagraphOverlapsAnyTableMask(
-                    para.X0, para.Y0, para.X1, para.Y1, ExpandGrayShadedRegions(grayRegions), 15.0, 3.0);
+                    para.X0, para.Y0, para.X1, para.Y1, PdfGrayPromptRegionBuilder.ExpandGrayShadedRegions(grayRegions), 15.0, 3.0);
                 if (overlapsGray && PdfGrayPromptClassifier.IsGrayPromptBoxContinuationParagraph(para, null))
                 {
                     MarkAsGrayPromptContent(para);
@@ -1875,7 +1590,7 @@ namespace Clickra.Core.Processors
                     grayRegions.Count > 0 &&
                     PdfTableMaskPlanner.ParagraphOverlapsAnyTableMask(
                         para.X0, para.Y0, para.X1, para.Y1,
-                        ExpandGrayShadedRegions(grayRegions), 15.0, 3.0))
+                        PdfGrayPromptRegionBuilder.ExpandGrayShadedRegions(grayRegions), 15.0, 3.0))
                 {
                     continue;
                 }
