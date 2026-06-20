@@ -7,17 +7,26 @@ namespace Clickra.Core
     internal static partial class ChineseTextConverter
     {
         private static readonly Dictionary<string, string> SimpToTrad;
+        private static readonly Dictionary<char, string> SimpCharToTrad;
 
         static ChineseTextConverter()
         {
             SimpToTrad = new Dictionary<string, string>(3910);
+            SimpCharToTrad = new Dictionary<char, string>(3910);
             var pairs = BuildPairs();
             for (int i = 0; i < pairs.Length; i += 2)
             {
                 string simp = pairs[i];
                 string trad = pairs[i + 1];
                 if (!SimpToTrad.ContainsKey(simp))
+                {
                     SimpToTrad[simp] = trad;
+                }
+
+                if (simp.Length == 1 && !SimpCharToTrad.ContainsKey(simp[0]))
+                {
+                    SimpCharToTrad[simp[0]] = trad;
+                }
             }
         }
 
@@ -39,8 +48,7 @@ namespace Clickra.Core
                 }
                 else
                 {
-                    string key = c.ToString();
-                    if (SimpToTrad.TryGetValue(key, out string? trad))
+                    if (SimpCharToTrad.TryGetValue(c, out string? trad))
                         sb.Append(trad);
                     else
                         sb.Append(c);
