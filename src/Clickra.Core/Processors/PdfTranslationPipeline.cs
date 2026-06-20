@@ -1,19 +1,6 @@
 using System;
-using System.IO;
-using System.Linq;
 using System.Collections.Generic;
 using System.Threading;
-using System.Threading.Tasks;
-using System.Text;
-using PdfSharp.Pdf;
-using PdfSharp.Pdf.IO;
-using PdfSharp.Pdf.Advanced;
-using PdfSharp.Pdf.Annotations;
-using PdfSharp.Drawing;
-#pragma warning disable CA1416 // Validate platform compatibility
-using System.Drawing;
-using UglyToad.PdfPig.DocumentLayoutAnalysis.PageSegmenter;
-using UglyToad.PdfPig.DocumentLayoutAnalysis.WordExtractor;
 using Clickra.Core.Models;
 
 namespace Clickra.Core.Processors
