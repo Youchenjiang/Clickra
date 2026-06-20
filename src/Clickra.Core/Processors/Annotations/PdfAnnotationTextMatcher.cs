@@ -28,7 +28,7 @@ namespace Clickra.Core.Processors
             return score;
         }
 
-        public static List<RenderedChar> FindAnnotationCharacters(
+        public static List<RenderedChar>? FindAnnotationCharacters(
             List<RenderedChar> renderedChars,
             string searchText,
             int occurrenceIdx,
@@ -622,7 +622,7 @@ namespace Clickra.Core.Processors
             return true;
         }
 
-        private static List<RenderedChar> PickOccurrenceBySpatialPosition(
+        private static List<RenderedChar>? PickOccurrenceBySpatialPosition(
             List<RenderedChar> cleanRendered,
             List<List<RenderedChar>> occurrences,
             double targetPdfX,
@@ -675,7 +675,7 @@ namespace Clickra.Core.Processors
             return Math.Sqrt(dx * dx + dy * dy);
         }
 
-        private static List<RenderedChar> MapRenderedCharsBySpatialPosition(
+        private static List<RenderedChar>? MapRenderedCharsBySpatialPosition(
             List<RenderedChar> cleanRendered,
             double targetPdfX,
             double targetPdfY,
