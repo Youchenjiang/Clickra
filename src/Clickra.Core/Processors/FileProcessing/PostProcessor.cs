@@ -9,6 +9,17 @@ namespace Clickra.Core.Processors
         private static readonly Regex ReferencesSectionNumberedHeadingRegex =
             new(@"^(\d{1,2})\.\s*(?:REFERENCES?|BIBLIOGRAPHY|參考文獻)\s*\.?\s*$",
                 RegexOptions.Compiled);
+        private static readonly Regex EmailRegex =
+            new(@"[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}", RegexOptions.Compiled);
+        private static readonly Regex TranslatedEmailRegex =
+            new(@"[a-zA-Z0-9._%+-]+\s*@\s*[a-zA-Z0-9.-]+(?:\s*\.\s*[a-zA-Z]{2,})+",
+                RegexOptions.Compiled);
+        private static readonly Regex FullFormulaArtifactRegex =
+            new(@"^(.+?)\)\s*:\s*\(.+\)\s*$", RegexOptions.Singleline | RegexOptions.Compiled);
+        private static readonly Regex TrailingFormulaArtifactRegex =
+            new(@"\)\s*:\s*\(.+\)\s*$", RegexOptions.Singleline | RegexOptions.Compiled);
+        private static readonly Regex LeadingFormulaArtifactRegex =
+            new(@"^\)\s*:\s*", RegexOptions.Compiled);
 
         public static string Process(string originalText, string translatedText, string targetLang)
         {
@@ -37,12 +48,10 @@ namespace Clickra.Core.Processors
         {
             try
             {
-                var emailRegex = new Regex(@"[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}");
-                var originalEmails = emailRegex.Matches(originalText).Cast<Match>().Select(m => m.Value).ToList();
+                var originalEmails = EmailRegex.Matches(originalText).Cast<Match>().Select(m => m.Value).ToList();
                 if (originalEmails.Count > 0)
                 {
-                    var transEmailRegex = new Regex(@"[a-zA-Z0-9._%+-]+\s*@\s*[a-zA-Z0-9.-]+(?:\s*\.\s*[a-zA-Z]{2,})+");
-                    var transMatches = transEmailRegex.Matches(translatedText).Cast<Match>().ToList();
+                    var transMatches = TranslatedEmailRegex.Matches(translatedText).Cast<Match>().ToList();
                     for (int i = 0; i < Math.Min(originalEmails.Count, transMatches.Count); i++)
                     {
                         int index = translatedText.IndexOf(transMatches[i].Value);
@@ -113,20 +122,17 @@ namespace Clickra.Core.Processors
         {
             try
             {
-                var fullArtifactRegex = new Regex(@"^(.+?)\)\s*:\s*\(.+\)\s*$", RegexOptions.Singleline);
-                var fullMatch = fullArtifactRegex.Match(translatedText.Trim());
+                var fullMatch = FullFormulaArtifactRegex.Match(translatedText.Trim());
                 if (fullMatch.Success)
                 {
                     translatedText = fullMatch.Groups[1].Value.Trim();
                 }
                 else
                 {
-                    var trailingArtifact = new Regex(@"\)\s*:\s*\(.+\)\s*$", RegexOptions.Singleline);
-                    translatedText = trailingArtifact.Replace(translatedText, "").Trim();
+                    translatedText = TrailingFormulaArtifactRegex.Replace(translatedText, "").Trim();
                 }
 
-                var leadingArtifact = new Regex(@"^\)\s*:\s*");
-                translatedText = leadingArtifact.Replace(translatedText, "").Trim();
+                translatedText = LeadingFormulaArtifactRegex.Replace(translatedText, "").Trim();
             }
             catch { }
             return translatedText;
