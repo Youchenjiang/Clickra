@@ -214,7 +214,7 @@ namespace Clickra.Core.Processors
                 // Pass 1: Mark initial bypassed paragraphs (short figure labels only)
                 foreach (var para in pageList)
                 {
-                    if (IsGrayPromptBoxParagraph(para) || IsGrayPromptSubheading(para))
+                    if (PdfGrayPromptClassifier.IsGrayPromptBoxParagraph(para) || PdfGrayPromptClassifier.IsGrayPromptSubheading(para))
                     {
                         MarkAsGrayPromptContent(para);
                         continue;
@@ -325,7 +325,7 @@ namespace Clickra.Core.Processors
                 PdfDiagramLabelMarker.MarkCodeFigureContentAboveCaption(pageList, page.Width, page.Height);
                 PdfDiagramFlagCleaner.ClearDiagramFlagOnFigureCaptions(pageList);
                 PdfDiagramFlagCleaner.ClearDiagramFlagOnSectionHeadings(pageList);
-                PdfDiagramLabelMarker.MarkWorkflowBannerTextInDiagramRegions(pageList, effectiveDiagramRegions, page.Height, IsGrayPromptCodeParagraph);
+                PdfDiagramLabelMarker.MarkWorkflowBannerTextInDiagramRegions(pageList, effectiveDiagramRegions, page.Height, PdfGrayPromptClassifier.IsGrayPromptCodeParagraph);
                 bool workDivisionPage = pageList.Any(p =>
                     p.TextWithPlaceholders.Trim().Contains("WORK DIVISION", StringComparison.OrdinalIgnoreCase));
                 var grayPromptShadedRegions = workDivisionPage
@@ -656,7 +656,7 @@ namespace Clickra.Core.Processors
                 {
                     var translatableFonts = PdfFontStripper.CollectTranslatableFontBaseNames(paragraphs);
                     var mustStripFonts = PdfFontStripper.CollectTranslatableFontBaseNames(paragraphs.Where(para =>
-                        !para.IsBypassed && !para.IsGrayPromptContent && !IsGrayPromptCodeParagraph(para)));
+                        !para.IsBypassed && !para.IsGrayPromptContent && !PdfGrayPromptClassifier.IsGrayPromptCodeParagraph(para)));
                     var protectedOnlyFonts = PdfFontStripper.CollectFontsUsedOnlyInProtectedRegions(
                         paragraphs,
                         effectiveGrayMaskRegions,
@@ -664,7 +664,7 @@ namespace Clickra.Core.Processors
                         pageHeightPts,
                         new ProtectedNoStripPredicates
                         {
-                            IsGrayPromptCodeParagraph = IsGrayPromptCodeParagraph,
+                            IsGrayPromptCodeParagraph = PdfGrayPromptClassifier.IsGrayPromptCodeParagraph,
                             ParagraphCenterInsideAnyRegion = ParagraphCenterInsideAnyRegion,
                             IsParagraphInsideGrayShadedRegion = IsParagraphInsideGrayShadedRegion,
                             IsLikelyChartLabel = PdfChartLabelClassifier.IsLikelyChartLabel
@@ -715,8 +715,8 @@ namespace Clickra.Core.Processors
                     if (para.IsBypassed) continue;
                     if (p == 0 && PageOneLayoutClassifier.IsAuthorBlockParagraph(para, paragraphs, pageHeightPts)) continue;
                     if (para.IsGrayPromptContent) continue;
-                    if (IsGrayPromptCodeParagraph(para)) continue;
-                    if ((para.IsGrayPromptContent || IsGrayPromptCodeParagraph(para)) &&
+                    if (PdfGrayPromptClassifier.IsGrayPromptCodeParagraph(para)) continue;
+                    if ((para.IsGrayPromptContent || PdfGrayPromptClassifier.IsGrayPromptCodeParagraph(para)) &&
                         effectiveGrayMaskRegions.Count > 0 &&
                         ShouldSuppressOverlayForGrayGeometry(para, effectiveGrayMaskRegions))
                     {
@@ -777,7 +777,7 @@ namespace Clickra.Core.Processors
                         MaskRectIntersectsAnyGrayRegion(
                             maskPdfX0, maskPdfY0, maskPdfX1, maskPdfY1,
                             effectiveGrayMaskRegions) &&
-                        (para.IsGrayPromptContent || IsGrayPromptCodeParagraph(para)) &&
+                        (para.IsGrayPromptContent || PdfGrayPromptClassifier.IsGrayPromptCodeParagraph(para)) &&
                         ShouldSuppressOverlayForGrayGeometry(para, effectiveGrayMaskRegions))
                     {
                         continue;
@@ -825,7 +825,7 @@ namespace Clickra.Core.Processors
                     {
                         if (string.IsNullOrWhiteSpace(para.TranslatedText)) continue;
 
-                        if ((para.IsGrayPromptContent || IsGrayPromptCodeParagraph(para)) &&
+                        if ((para.IsGrayPromptContent || PdfGrayPromptClassifier.IsGrayPromptCodeParagraph(para)) &&
                             effectiveGrayMaskRegions.Count > 0 &&
                             ShouldSuppressOverlayForGrayGeometry(para, effectiveGrayMaskRegions))
                         {
@@ -955,7 +955,7 @@ namespace Clickra.Core.Processors
                 // Only gray-prompt paragraphs skip overlay; spurious vector gray boxes
                 // (e.g. PentestAgent p4 right-column EffectiveGrayMaskRegion) must not
                 // strip-and-skip translatable §2.3 body prose.
-                if (para.IsGrayPromptContent || IsGrayPromptCodeParagraph(para))
+                if (para.IsGrayPromptContent || PdfGrayPromptClassifier.IsGrayPromptCodeParagraph(para))
                     return insideGray;
                 return false;
             }
@@ -1160,154 +1160,6 @@ namespace Clickra.Core.Processors
         }
 
 
-        private static bool IsSectionIntroProse(PdfParagraph para)
-        {
-            string txt = para.TextWithPlaceholders.Trim();
-            return txt.StartsWith("The following", StringComparison.OrdinalIgnoreCase) ||
-                   txt.StartsWith("From our", StringComparison.OrdinalIgnoreCase) ||
-                   txt.StartsWith("In this section", StringComparison.OrdinalIgnoreCase) ||
-                   txt.StartsWith("After obtaining", StringComparison.OrdinalIgnoreCase);
-        }
-
-        private static bool IsGrayPromptBoxParagraph(PdfParagraph para)
-        {
-            string txt = para.TextWithPlaceholders.Trim();
-            if (string.IsNullOrWhiteSpace(txt)) return false;
-            if (!IsGrayPromptBoxTitleParagraph(para)) return false;
-            if (txt.Contains("(Simplified)", StringComparison.OrdinalIgnoreCase)) return true;
-            if (System.Text.RegularExpressions.Regex.IsMatch(txt, @"\bPrompt\s*(?:\(Simplified\))?\s*$", System.Text.RegularExpressions.RegexOptions.IgnoreCase))
-            {
-                return true;
-            }
-            if (System.Text.RegularExpressions.Regex.IsMatch(txt, @"\bExample\s*$", System.Text.RegularExpressions.RegexOptions.IgnoreCase))
-            {
-                return true;
-            }
-            if (System.Text.RegularExpressions.Regex.IsMatch(txt,
-                    @"(?:^|\b)(?:Prompt\s+for|System Message|Role-?play|\bCoT\b|Structured Output\b|Analysis Prompt\b)",
-                    System.Text.RegularExpressions.RegexOptions.IgnoreCase))
-            {
-                return true;
-            }
-            if (txt.Contains("JSON format", StringComparison.OrdinalIgnoreCase) ||
-                txt.Contains("FORMAT SPEC", StringComparison.OrdinalIgnoreCase) ||
-                txt.Contains("OUTPUT FORMAT", StringComparison.OrdinalIgnoreCase))
-            {
-                return true;
-            }
-            return false;
-        }
-
-        /// <summary>Gray prompt titles are single-line box headers, not body prose ending in "prompt".</summary>
-        private static bool IsGrayPromptBoxTitleParagraph(PdfParagraph para)
-        {
-            return para.Height <= 22 && para.Width <= 280;
-        }
-
-        private static bool IsGrayPromptBoxContinuationParagraph(PdfParagraph para, PdfParagraph? anchor)
-        {
-            if (PdfParagraphRoleClassifier.IsTranslatableBodyProse(para) || PdfParagraphRoleClassifier.IsTranslatableCalloutProse(para) ||
-                PdfParagraphSemanticClassifier.IsHeadingParagraph(para) || PdfParagraphSemanticClassifier.IsAppendixSectionHeading(para))
-            {
-                return false;
-            }
-            string txt = para.TextWithPlaceholders.Trim();
-            if (string.IsNullOrWhiteSpace(txt)) return false;
-            if (System.Text.RegularExpressions.Regex.IsMatch(txt, @"^\d+\)"))
-            {
-                // Section body like "2) Loss of Context:" — not a prompt list item inside gray boxes.
-                if (para.Height > 28 || para.Width > 250) return false;
-                if (txt.Contains(" of ", StringComparison.OrdinalIgnoreCase)) return false;
-                return true;
-            }
-            if (System.Text.RegularExpressions.Regex.IsMatch(txt, @"^\(\d+\)"))
-            {
-                return true;
-            }
-            if (System.Text.RegularExpressions.Regex.IsMatch(txt, @"^AMPLE\}?$", System.Text.RegularExpressions.RegexOptions.IgnoreCase))
-            {
-                return true;
-            }
-            if (txt.StartsWith("LLM:", StringComparison.OrdinalIgnoreCase) ||
-                txt.StartsWith("User:", StringComparison.OrdinalIgnoreCase))
-            {
-                return true;
-            }
-            if (txt.StartsWith("You ", StringComparison.OrdinalIgnoreCase) ||
-                txt.StartsWith("You\u2019re ", StringComparison.OrdinalIgnoreCase) ||
-                txt.StartsWith("You're ", StringComparison.OrdinalIgnoreCase) ||
-                txt.StartsWith("Analyze ", StringComparison.OrdinalIgnoreCase) ||
-                txt.StartsWith("Use your ", StringComparison.OrdinalIgnoreCase) ||
-                txt.StartsWith("For example", StringComparison.OrdinalIgnoreCase) ||
-                txt.StartsWith("Generate a ", StringComparison.OrdinalIgnoreCase) ||
-                txt.StartsWith("Your next task", StringComparison.OrdinalIgnoreCase) ||
-                txt.StartsWith("You should use ", StringComparison.OrdinalIgnoreCase) ||
-                txt.StartsWith("You should always ", StringComparison.OrdinalIgnoreCase) ||
-                txt.StartsWith("You should ", StringComparison.OrdinalIgnoreCase) ||
-                txt.StartsWith("When the results", StringComparison.OrdinalIgnoreCase))
-            {
-                return true;
-            }
-            if (txt.Contains("JSON format", StringComparison.OrdinalIgnoreCase) ||
-                txt.Contains("FORMAT SPEC", StringComparison.OrdinalIgnoreCase) ||
-                txt.Contains("OUTPUT FORMAT", StringComparison.OrdinalIgnoreCase) ||
-                txt.Contains("{FORMAT", StringComparison.OrdinalIgnoreCase))
-            {
-                return true;
-            }
-            if (anchor == null) return false;
-            double gap = anchor.Y1 - para.Y1;
-            double overlap = Math.Min(para.X1, anchor.X1) - Math.Max(para.X0, anchor.X0);
-            double minWidth = Math.Min(para.Width, anchor.Width);
-            if (gap >= -2 && gap <= 32 && minWidth > 0 && overlap / minWidth >= 0.55 &&
-                para.Height <= 22 && txt.Length <= 160 &&
-                !PdfParagraphRoleClassifier.IsTranslatableBodyProse(para) && !PdfParagraphRoleClassifier.IsTranslatableCalloutProse(para))
-            {
-                return true;
-            }
-            // Hyphenated prompt lines split across PDF text blocks (e.g. "EX-" / "AMPLE}").
-            if (gap >= -2 && gap <= 18 && minWidth > 0 && overlap / minWidth >= 0.55 &&
-                para.Height <= 14 && txt.Length <= 16)
-            {
-                return true;
-            }
-            return false;
-        }
-
-        private static bool IsGrayPromptSubheading(PdfParagraph para)
-        {
-            if (para.Height > 20) return false;
-            string txt = para.TextWithPlaceholders.Trim();
-            if (txt.Length > 48) return false;
-            return txt.Equals("RAG", StringComparison.OrdinalIgnoreCase) ||
-                   txt.Equals("CoT", StringComparison.OrdinalIgnoreCase) ||
-                   txt.Equals("Role-play", StringComparison.OrdinalIgnoreCase) ||
-                   txt.Equals("Self-reflection", StringComparison.OrdinalIgnoreCase) ||
-                   txt.StartsWith("Structured Output", StringComparison.OrdinalIgnoreCase) ||
-                   txt.StartsWith("GPT-4", StringComparison.OrdinalIgnoreCase) ||
-                   txt.StartsWith("User:", StringComparison.OrdinalIgnoreCase);
-        }
-
-        private static bool HasNearbyGrayPromptAbove(
-            PdfParagraph para, List<PdfParagraph> pageList, double maxGap = 55)
-        {
-            foreach (var other in pageList)
-            {
-                if (!other.IsGrayPromptContent) continue;
-                if (!SharesGrayPromptColumn(para, other)) continue;
-                double gap = other.Y0 - para.Y1;
-                if (gap >= -2 && gap <= maxGap) return true;
-            }
-            return false;
-        }
-
-        private static bool SharesGrayPromptColumn(PdfParagraph a, PdfParagraph b)
-        {
-            double overlap = Math.Min(a.X1, b.X1) - Math.Max(a.X0, b.X0);
-            double minWidth = Math.Min(a.Width, b.Width);
-            return minWidth > 0 && overlap / minWidth >= 0.45;
-        }
-
         /// <summary>
         /// Gray prompt / system-message boxes are treated like code: bypass, keep English, no strip.
         /// </summary>
@@ -1318,9 +1170,9 @@ namespace Clickra.Core.Processors
             PdfParagraph? anchor = null;
             foreach (var para in pageList.OrderByDescending(p => p.Y1))
             {
-                if (IsGrayPromptBoxParagraph(para))
+                if (PdfGrayPromptClassifier.IsGrayPromptBoxParagraph(para))
                 {
-                    if (inGrayPromptBlock && anchor != null && SharesGrayPromptColumn(para, anchor))
+                    if (inGrayPromptBlock && anchor != null && PdfGrayPromptClassifier.SharesGrayPromptColumn(para, anchor))
                     {
                         MarkAsGrayPromptContent(para);
                         anchor = para;
@@ -1335,7 +1187,7 @@ namespace Clickra.Core.Processors
 
                 if (!inGrayPromptBlock || anchor == null) continue;
 
-                if (!SharesGrayPromptColumn(para, anchor)) continue;
+                if (!PdfGrayPromptClassifier.SharesGrayPromptColumn(para, anchor)) continue;
 
                 // Descending-Y iteration: only extend block to paragraphs below the anchor.
                 if (para.Y1 >= anchor.Y1 - 1) continue;
@@ -1348,14 +1200,14 @@ namespace Clickra.Core.Processors
                     continue;
                 }
 
-                if (IsGrayPromptSubheading(para))
+                if (PdfGrayPromptClassifier.IsGrayPromptSubheading(para))
                 {
                     MarkAsGrayPromptContent(para);
                     anchor = para;
                     continue;
                 }
 
-                if (IsGrayPromptBoxContinuationParagraph(para, anchor))
+                if (PdfGrayPromptClassifier.IsGrayPromptBoxContinuationParagraph(para, anchor))
                 {
                     MarkAsGrayPromptContent(para);
                     anchor = para;
@@ -1373,7 +1225,7 @@ namespace Clickra.Core.Processors
 
                 string txt = para.TextWithPlaceholders.Trim();
                 if (PdfParagraphSemanticClassifier.IsHeadingParagraph(para) ||
-                    (PdfParagraphRoleClassifier.IsFigureTableCaptionParagraph(para) && SharesGrayPromptColumn(para, anchor)) ||
+                    (PdfParagraphRoleClassifier.IsFigureTableCaptionParagraph(para) && PdfGrayPromptClassifier.SharesGrayPromptColumn(para, anchor)) ||
                     System.Text.RegularExpressions.Regex.IsMatch(txt, @"^\d+\.\d+\s") ||
                     System.Text.RegularExpressions.Regex.IsMatch(txt, @"^[A-Z]\.\d+\s"))
                 {
@@ -1384,7 +1236,7 @@ namespace Clickra.Core.Processors
 
                 if (PdfParagraphRoleClassifier.IsTranslatableBodyProse(para) || PdfParagraphRoleClassifier.IsTranslatableCalloutProse(para))
                 {
-                    if (IsSectionIntroProse(para))
+                    if (PdfGrayPromptClassifier.IsSectionIntroProse(para))
                     {
                         inGrayPromptBlock = false;
                         anchor = null;
@@ -1494,7 +1346,7 @@ namespace Clickra.Core.Processors
             {
                 bool hasGrayPrompt = pageList.Any(p =>
                 {
-                    return (p.IsGrayPromptContent || IsGrayPromptCodeParagraph(p)) &&
+                    return (p.IsGrayPromptContent || PdfGrayPromptClassifier.IsGrayPromptCodeParagraph(p)) &&
                            ParagraphCenterInsideAnyRegion(p, new[] { region });
                 });
                 if (hasGrayPrompt)
@@ -1505,7 +1357,7 @@ namespace Clickra.Core.Processors
                 bool overlapsBodyProse = pageList.Any(p =>
                     !p.IsBypassed &&
                     !p.IsGrayPromptContent &&
-                    !IsGrayPromptCodeParagraph(p) &&
+                    !PdfGrayPromptClassifier.IsGrayPromptCodeParagraph(p) &&
                     (PdfParagraphRoleClassifier.IsTranslatableBodyProse(p) || PdfParagraphSemanticClassifier.IsHeadingParagraph(p) || PdfParagraphRoleClassifier.IsTranslatableCalloutProse(p)) &&
                     ParagraphCenterInsideAnyRegion(p, new[] { region }));
                 if (!overlapsBodyProse)
@@ -1588,7 +1440,7 @@ namespace Clickra.Core.Processors
         {
             double center = pageWidth / 2.0;
             var grayParas = paragraphs
-                .Where(p => p.IsGrayPromptContent || IsGrayPromptCodeParagraph(p))
+                .Where(p => p.IsGrayPromptContent || PdfGrayPromptClassifier.IsGrayPromptCodeParagraph(p))
                 .ToList();
             if (grayParas.Count == 0) return new List<TableMaskRegion>();
 
@@ -1695,9 +1547,9 @@ namespace Clickra.Core.Processors
                 }
                 if (PdfParagraphRoleClassifier.IsTranslatableBodyProse(para) || PdfParagraphRoleClassifier.IsTranslatableCalloutProse(para)) continue;
                 if (insideGray &&
-                    (IsGrayPromptBoxParagraph(para) ||
-                     IsGrayPromptSubheading(para) ||
-                     IsGrayPromptBoxContinuationParagraph(para, null)))
+                    (PdfGrayPromptClassifier.IsGrayPromptBoxParagraph(para) ||
+                     PdfGrayPromptClassifier.IsGrayPromptSubheading(para) ||
+                     PdfGrayPromptClassifier.IsGrayPromptBoxContinuationParagraph(para, null)))
                 {
                     MarkAsGrayPromptContent(para);
                 }
@@ -1746,7 +1598,7 @@ namespace Clickra.Core.Processors
             var regions = new List<TableMaskRegion>();
             foreach (var para in paragraphs)
             {
-                if (!para.IsGrayPromptContent && !IsGrayPromptCodeParagraph(para)) continue;
+                if (!para.IsGrayPromptContent && !PdfGrayPromptClassifier.IsGrayPromptCodeParagraph(para)) continue;
                 regions.Add(new TableMaskRegion(
                     para.X0 - pad, para.Y0 - pad, para.X1 + pad, para.Y1 + pad));
             }
@@ -1853,9 +1705,9 @@ namespace Clickra.Core.Processors
 
                 bool hasPromptAnchor = pageList.Any(anchor =>
                     anchor != para &&
-                    (IsGrayPromptBoxParagraph(anchor) || IsGrayPromptSubheading(anchor)) &&
+                    (PdfGrayPromptClassifier.IsGrayPromptBoxParagraph(anchor) || PdfGrayPromptClassifier.IsGrayPromptSubheading(anchor)) &&
                     ParagraphCenterInsideAnyRegion(anchor, new[] { region }) &&
-                    SharesGrayPromptColumn(anchor, para));
+                    PdfGrayPromptClassifier.SharesGrayPromptColumn(anchor, para));
                 if (hasPromptAnchor) return true;
             }
             return false;
@@ -1870,7 +1722,7 @@ namespace Clickra.Core.Processors
                 if (para.IsTable) continue;
                 if (PdfParagraphRoleClassifier.IsFigureTableCaptionParagraph(para)) continue;
                 if (PdfParagraphSemanticClassifier.IsHeadingParagraph(para) || PdfParagraphSemanticClassifier.IsAppendixSectionHeading(para)) continue;
-                if (IsGrayPromptSubheading(para)) continue;
+                if (PdfGrayPromptClassifier.IsGrayPromptSubheading(para)) continue;
                 string txt = para.TextWithPlaceholders.Trim();
                 if (System.Text.RegularExpressions.Regex.IsMatch(txt, @"^\d+\.\d+\s")) continue;
 
@@ -1883,7 +1735,7 @@ namespace Clickra.Core.Processors
                     }
                     if (PdfParagraphRoleClassifier.IsTranslatableBodyProse(para) || PdfParagraphRoleClassifier.IsTranslatableCalloutProse(para)) continue;
                     if (System.Text.RegularExpressions.Regex.IsMatch(txt, @"^\d+\)\s+[A-Za-z]") &&
-                        !IsGrayPromptBoxContinuationParagraph(para, null))
+                        !PdfGrayPromptClassifier.IsGrayPromptBoxContinuationParagraph(para, null))
                     {
                         continue;
                     }
@@ -1893,7 +1745,7 @@ namespace Clickra.Core.Processors
 
                 bool overlapsGray = PdfTableMaskPlanner.ParagraphOverlapsAnyTableMask(
                     para.X0, para.Y0, para.X1, para.Y1, ExpandGrayShadedRegions(grayRegions), 15.0, 3.0);
-                if (overlapsGray && IsGrayPromptBoxContinuationParagraph(para, null))
+                if (overlapsGray && PdfGrayPromptClassifier.IsGrayPromptBoxContinuationParagraph(para, null))
                 {
                     MarkAsGrayPromptContent(para);
                     continue;
@@ -1901,14 +1753,14 @@ namespace Clickra.Core.Processors
 
                 if (PdfParagraphRoleClassifier.IsTranslatableBodyProse(para) || PdfParagraphRoleClassifier.IsTranslatableCalloutProse(para)) continue;
 
-                if (IsGrayPromptSubheading(para) &&
+                if (PdfGrayPromptClassifier.IsGrayPromptSubheading(para) &&
                     IsParagraphInsideGrayShadedRegion(para, grayRegions))
                 {
                     MarkAsGrayPromptContent(para);
                     continue;
                 }
 
-                if (IsGrayPromptBoxContinuationParagraph(para, null) &&
+                if (PdfGrayPromptClassifier.IsGrayPromptBoxContinuationParagraph(para, null) &&
                     IsParagraphInsideGrayShadedRegion(para, grayRegions))
                 {
                     MarkAsGrayPromptContent(para);
@@ -1929,7 +1781,7 @@ namespace Clickra.Core.Processors
             {
                 if (para.Y1 >= shadedBottom - 6) continue;
                 if ((para.X0 + para.X1) / 2.0 >= center - 8) continue;
-                if (IsGrayPromptSubheading(para)) continue;
+                if (PdfGrayPromptClassifier.IsGrayPromptSubheading(para)) continue;
                 string txt = para.TextWithPlaceholders.Trim();
                 if (txt.StartsWith("You should", StringComparison.OrdinalIgnoreCase) ||
                     txt.StartsWith("Use Nmap", StringComparison.OrdinalIgnoreCase) ||
@@ -1955,13 +1807,13 @@ namespace Clickra.Core.Processors
             foreach (var para in pageList)
             {
                 if (!para.IsGrayPromptContent) continue;
-                if (IsGrayPromptBoxParagraph(para)) continue;
+                if (PdfGrayPromptClassifier.IsGrayPromptBoxParagraph(para)) continue;
                 if (grayRegions.Count > 0)
                 {
                     double shadedBottom = grayRegions.Min(r => r.Y0);
                     if (para.Y1 < shadedBottom - 8 &&
-                        !IsGrayPromptBoxContinuationParagraph(para, null) &&
-                        !IsGrayPromptSubheading(para))
+                        !PdfGrayPromptClassifier.IsGrayPromptBoxContinuationParagraph(para, null) &&
+                        !PdfGrayPromptClassifier.IsGrayPromptSubheading(para))
                     {
                         para.IsGrayPromptContent = false;
                         para.IsCode = false;
@@ -1970,8 +1822,8 @@ namespace Clickra.Core.Processors
                 }
                 if (grayRegions.Count > 0 &&
                     !IsParagraphInsideGrayShadedRegion(para, grayRegions) &&
-                    !IsGrayPromptBoxContinuationParagraph(para, null) &&
-                    !IsGrayPromptSubheading(para))
+                    !PdfGrayPromptClassifier.IsGrayPromptBoxContinuationParagraph(para, null) &&
+                    !PdfGrayPromptClassifier.IsGrayPromptSubheading(para))
                 {
                     string txt = para.TextWithPlaceholders.Trim();
                     int wordCount = txt.Split(new char[] { ' ', '\t', '\n', '\r' }, StringSplitOptions.RemoveEmptyEntries).Length;
@@ -1985,7 +1837,7 @@ namespace Clickra.Core.Processors
                     }
                 }
                 if (grayRegions.Count > 0 && IsParagraphInsideGrayShadedRegion(para, grayRegions)) continue;
-                if (HasNearbyGrayPromptAbove(para, pageList)) continue;
+                if (PdfGrayPromptClassifier.HasNearbyGrayPromptAbove(para, pageList)) continue;
                 if (PdfParagraphSemanticClassifier.IsHeadingParagraph(para))
                 {
                     para.IsGrayPromptContent = false;
@@ -2008,18 +1860,18 @@ namespace Clickra.Core.Processors
             foreach (var para in pageList)
             {
                 if (!para.IsGrayPromptContent && !para.IsCode) continue;
-                if (IsGrayPromptBoxParagraph(para)) continue;
+                if (PdfGrayPromptClassifier.IsGrayPromptBoxParagraph(para)) continue;
                 if (!PdfParagraphRoleClassifier.IsTranslatableBodyProse(para) && !PdfParagraphRoleClassifier.IsTranslatableCalloutProse(para)) continue;
-                if (IsSectionIntroProse(para))
+                if (PdfGrayPromptClassifier.IsSectionIntroProse(para))
                 {
                     para.IsGrayPromptContent = false;
                     para.IsCode = false;
                     continue;
                 }
-                if (IsGrayPromptSubheading(para)) continue;
+                if (PdfGrayPromptClassifier.IsGrayPromptSubheading(para)) continue;
                 if (grayRegions.Count > 0 && IsParagraphInsideGrayShadedRegion(para, grayRegions)) continue;
-                if (HasNearbyGrayPromptAbove(para, pageList)) continue;
-                if (IsGrayPromptBoxContinuationParagraph(para, null) &&
+                if (PdfGrayPromptClassifier.HasNearbyGrayPromptAbove(para, pageList)) continue;
+                if (PdfGrayPromptClassifier.IsGrayPromptBoxContinuationParagraph(para, null) &&
                     grayRegions.Count > 0 &&
                     PdfTableMaskPlanner.ParagraphOverlapsAnyTableMask(
                         para.X0, para.Y0, para.X1, para.Y1,
@@ -2027,7 +1879,7 @@ namespace Clickra.Core.Processors
                 {
                     continue;
                 }
-                if (IsGrayPromptBoxContinuationParagraph(para, null) &&
+                if (PdfGrayPromptClassifier.IsGrayPromptBoxContinuationParagraph(para, null) &&
                     grayRegions.Count > 0 &&
                     IsParagraphInsideGrayShadedRegion(para, grayRegions))
                 {
@@ -2059,8 +1911,8 @@ namespace Clickra.Core.Processors
                     MarkAsGrayPromptContent(para);
                     continue;
                 }
-                if (!IsGrayPromptBoxContinuationParagraph(para, null)) continue;
-                if (!HasNearbyGrayPromptAbove(para, pageList, 65)) continue;
+                if (!PdfGrayPromptClassifier.IsGrayPromptBoxContinuationParagraph(para, null)) continue;
+                if (!PdfGrayPromptClassifier.HasNearbyGrayPromptAbove(para, pageList, 65)) continue;
                 if (PdfParagraphRoleClassifier.IsFigureTableCaptionParagraph(para) || PdfParagraphSemanticClassifier.IsHeadingParagraph(para)) continue;
                 MarkAsGrayPromptContent(para);
             }
@@ -2071,8 +1923,8 @@ namespace Clickra.Core.Processors
         {
             foreach (var other in pageList)
             {
-                if (!IsGrayPromptBoxParagraph(other)) continue;
-                if (!SharesGrayPromptColumn(para, other)) continue;
+                if (!PdfGrayPromptClassifier.IsGrayPromptBoxParagraph(other)) continue;
+                if (!PdfGrayPromptClassifier.SharesGrayPromptColumn(para, other)) continue;
                 double gap = other.Y0 - para.Y1;
                 if (gap >= -2 && gap <= maxGap) return true;
             }
@@ -2087,14 +1939,14 @@ namespace Clickra.Core.Processors
                 if (PdfParagraphSemanticClassifier.IsHeadingParagraph(para) || PdfParagraphSemanticClassifier.IsAppendixSectionHeading(para))
                 {
                     para.IsGrayPromptContent = false;
-                    if (!IsGrayPromptBoxParagraph(para) && !IsGrayPromptSubheading(para))
+                    if (!PdfGrayPromptClassifier.IsGrayPromptBoxParagraph(para) && !PdfGrayPromptClassifier.IsGrayPromptSubheading(para))
                     {
                         para.IsCode = false;
                     }
                     continue;
                 }
 
-                if (IsGrayPromptBoxParagraph(para) || IsGrayPromptSubheading(para))
+                if (PdfGrayPromptClassifier.IsGrayPromptBoxParagraph(para) || PdfGrayPromptClassifier.IsGrayPromptSubheading(para))
                     para.IsDiagram = false;
 
                 if (!para.IsGrayPromptContent) continue;
@@ -2102,40 +1954,6 @@ namespace Clickra.Core.Processors
                 para.IsDiagram = false;
                 para.IsTable = false;
             }
-        }
-
-        private static bool IsGrayPromptCodeParagraph(PdfParagraph para)
-        {
-            if (para.IsGrayPromptContent) return true;
-            if (PdfParagraphRoleClassifier.IsTranslatableBodyProse(para) || PdfParagraphRoleClassifier.IsTranslatableCalloutProse(para) ||
-                PdfParagraphSemanticClassifier.IsHeadingParagraph(para) || PdfParagraphSemanticClassifier.IsAppendixSectionHeading(para))
-            {
-                return false;
-            }
-            if (IsGrayPromptBoxParagraph(para) || IsGrayPromptSubheading(para))
-            {
-                return true;
-            }
-            return IsGrayPromptBoxContinuationParagraph(para, null);
-        }
-
-        private static bool IsMisclassifiedPromptCode(PdfParagraph para)
-        {
-            if (!para.IsCode) return false;
-            if (IsGrayPromptCodeParagraph(para)) return false;
-            if (PdfParagraphRoleClassifier.IsTranslatableBodyProse(para) || PdfParagraphRoleClassifier.IsTranslatableCalloutProse(para) || PdfParagraphSemanticClassifier.IsHeadingParagraph(para) ||
-                PdfParagraphSemanticClassifier.IsAppendixSectionHeading(para))
-            {
-                return true;
-            }
-            string txt = para.TextWithPlaceholders.Trim();
-            int wordCount = txt.Split(new char[] { ' ', '\t', '\n', '\r' }, StringSplitOptions.RemoveEmptyEntries).Length;
-            if (wordCount >= 8 && para.Width > 80 && txt.IndexOf('.') >= 0) return true;
-            if (wordCount >= 6 && para.Height >= 14 && txt.IndexOf('.') >= 0 && txt.Any(char.IsLower))
-            {
-                return true;
-            }
-            return false;
         }
 
         /// <summary>
@@ -2146,18 +1964,18 @@ namespace Clickra.Core.Processors
             foreach (var para in pageList)
             {
                 if (!para.IsCode) continue;
-                if (IsMisclassifiedPromptCode(para))
+                if (PdfGrayPromptClassifier.IsMisclassifiedPromptCode(para))
                 {
                     if (para.IsGrayPromptContent) continue;
                     para.IsCode = false;
                     continue;
                 }
-                if (para.IsDiagram && !IsGrayPromptCodeParagraph(para))
+                if (para.IsDiagram && !PdfGrayPromptClassifier.IsGrayPromptCodeParagraph(para))
                 {
                     para.IsCode = false;
                     continue;
                 }
-                if (PdfChartLabelClassifier.IsLikelyChartLabel(para) && !IsGrayPromptCodeParagraph(para))
+                if (PdfChartLabelClassifier.IsLikelyChartLabel(para) && !PdfGrayPromptClassifier.IsGrayPromptCodeParagraph(para))
                 {
                     para.IsCode = false;
                 }
@@ -2177,9 +1995,9 @@ namespace Clickra.Core.Processors
                 : diagramMaskRegions;
             if (protectRegions.Count == 0) return false;
             if (para.IsDiagram) return true;
-            if (para.IsCode && IsGrayPromptCodeParagraph(para)) return true;
+            if (para.IsCode && PdfGrayPromptClassifier.IsGrayPromptCodeParagraph(para)) return true;
             if (PdfParagraphRoleClassifier.IsFigureTableCaptionParagraph(para)) return false;
-            if (IsGrayPromptBoxParagraph(para)) return false;
+            if (PdfGrayPromptClassifier.IsGrayPromptBoxParagraph(para)) return false;
             // Body prose, callouts, and section headings always receive Pass 1 mask + Pass 2 overlay.
             if (PdfParagraphRoleClassifier.IsTranslatableBodyProse(para) || PdfParagraphRoleClassifier.IsTranslatableCalloutProse(para) ||
                 PdfParagraphSemanticClassifier.IsHeadingParagraph(para) || PdfParagraphSemanticClassifier.IsAppendixSectionHeading(para))
