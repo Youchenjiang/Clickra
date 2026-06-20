@@ -186,7 +186,7 @@ internal static class PdfTranslatedPdfRebuilder
                 using var gfx = XGraphics.FromPdfPage(page);
                 try
                 {
-                    gfx.Internals.ContentStringBuilder.Append(" /NormalState gs ");
+                    gfx.Internals.ContentStringBuilder?.Append(" /NormalState gs ");
                 }
                 catch { }
 
