@@ -194,6 +194,11 @@ namespace Clickra
                                     FinishConsoleProgressLine();
                                     Console.WriteLine($"[Warning] 翻譯期間資料夾消失，已跳過: {f}");
                                 }
+                                catch (Exception ex)
+                                {
+                                    FinishConsoleProgressLine();
+                                    Console.WriteLine($"[Error] 翻譯檔案時發生未預期的錯誤，已跳過: {f}. 錯誤訊息: {ex.Message}");
+                                }
                             }
                         }
                         else ProgressWindow.Show(command, files);
