@@ -2,6 +2,17 @@
 
 All notable changes to Clickra will be documented in this file.
 
+## [v3.3.3.0] - 2026-06-21
+
+- **PDF Translation Pipeline Modularization**: Decomposed monolithic `FileProcessor` (2000+ lines) into 80+ dedicated classes organized by domain (paragraphs, tables, diagrams, gray prompts, annotations, rendering, translation)
+- **Layout Analysis Improvements**: Enhanced table detection, diagram region bypass, paragraph role/semantic classification, and page reading order extraction
+- **Translation Rule Documentation**: Added comprehensive translation rules specification (`docs/translation_rules.md`) covering layout analysis, bypass logic, translation correction, and rendering rules
+- **PDF Translation Diagnostics**: Added reusable diagnostic scripts for analyzing translation quality, mask coverage, and rendering correctness
+- **CLI Batch Progress**: Added real-time PDF translation progress display and explicit output directory support
+- **Simplified-Traditional Chinese Converter**: Integrated 7800+ character mapping pairs for simplified-to-traditional Chinese conversion
+- **Test Infrastructure**: Added C# integration test suites and Python PDF regression testing framework
+- **Font Resolver Enhancement**: Rewrote `ClickraFontResolver` with improved CJK and math symbol mapping
+
 ## [v3.3.2.0] - 2026-06-19
 
 - **Dependency Updates**: Updated PDFsharp 6.1.1 → 6.2.4, PdfPig 0.1.8 → 0.1.14, System.Drawing.Common 10.0.8 → 10.0.9
