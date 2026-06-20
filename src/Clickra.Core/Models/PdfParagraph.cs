@@ -195,10 +195,10 @@ namespace Clickra.Core.Models
                             FontSize = letter.PointSize,
                             X = letter.Location.X,
                             Y = letter.Location.Y,
-                            Left = letter.GlyphRectangle.Left,
-                            Bottom = letter.GlyphRectangle.Bottom,
-                            Right = letter.GlyphRectangle.Right,
-                            Top = letter.GlyphRectangle.Top
+                            Left = letter.BoundingBox.Left,
+                            Bottom = letter.BoundingBox.Bottom,
+                            Right = letter.BoundingBox.Right,
+                            Top = letter.BoundingBox.Top
                         });
                     }
                 }

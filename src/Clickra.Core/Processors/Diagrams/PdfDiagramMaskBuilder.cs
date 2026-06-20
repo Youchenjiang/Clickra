@@ -72,14 +72,14 @@ namespace Clickra.Core.Processors
             {
                 foreach (var img in pigPage.GetImages())
                 {
-                    if (img.Bounds.Width > 80 && img.Bounds.Height > 80)
+                    if (img.BoundingBox.Width > 80 && img.BoundingBox.Height > 80)
                     {
-                        var b = img.Bounds;
+                        var b = img.BoundingBox;
                         bounds.Add(new TableMaskRegion(b.Left, b.Bottom, b.Right, b.Top));
                     }
                 }
 
-                foreach (var path in pigPage.ExperimentalAccess.Paths)
+                foreach (var path in pigPage.Paths)
                 {
                     var rectOpt = path.GetBoundingRectangle();
                     if (!rectOpt.HasValue) continue;

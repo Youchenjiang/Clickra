@@ -120,7 +120,7 @@ namespace Clickra.Core.Processors
             var result = new List<TableMaskRegion>();
             try
             {
-                foreach (var path in pigPage.ExperimentalAccess.Paths)
+                foreach (var path in pigPage.Paths)
                 {
                     var rectOpt = path.GetBoundingRectangle();
                     if (!rectOpt.HasValue) continue;
