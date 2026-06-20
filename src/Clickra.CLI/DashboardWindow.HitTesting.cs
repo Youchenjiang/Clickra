@@ -1,0 +1,157 @@
+using System;
+using System.Drawing;
+using Clickra.Core;
+
+using static Clickra.UI.Native.Win32;
+
+namespace Clickra.UI
+{
+    public static partial class DashboardWindow
+    {
+        static bool IsHoveringHistoryRow(IntPtr hwnd)
+        {
+            if (_activeTab != 2) return false;
+            var pt = new Point();
+            if (GetCursorPos(out pt))
+            {
+                ScreenToClient(hwnd, ref pt);
+                int mouseX = (int)(pt.X / _dpiScale);
+                int mouseY = (int)(pt.Y / _dpiScale);
+                float logW = GetLogicalWidth(hwnd);
+                float sidebarW = GetSidebarWidth(logW);
+                float contentX = GetContentX(logW);
+                int adjMouseX = mouseX >= sidebarW ? (int)(mouseX + _contentScrollX) : mouseX;
+                int adjMouseY = mouseX >= sidebarW ? (int)(mouseY + _contentScrollY) : mouseY;
+                float virtLogW = Math.Max(760f, logW);
+                if (adjMouseX >= contentX && adjMouseX < virtLogW - 40)
+                {
+                    var activeEntry = ClickraStorage.GetActiveEntry();
+                    int activeCount = 0;
+                    if (activeEntry.HasValue)
+                    {
+                        var ae = activeEntry.Value;
+                        var activeFiles = !string.IsNullOrEmpty(ae.InputPaths)
+                            ? ae.InputPaths.Split(new[] { ';' }, StringSplitOptions.RemoveEmptyEntries)
+                            : Array.Empty<string>();
+                        activeCount = activeFiles.Length > 0 ? activeFiles.Length : 1;
+                    }
+                    int startY = 90 + activeCount * 52;
+                    int currentY = startY;
+                    for (int i = 0; i < _historyEntries.Count; i++)
+                    {
+                        bool isExpanded = (i == _expandedHistoryIndex);
+                        int rowH = isExpanded ? 160 : 44;
+                        if (adjMouseY >= currentY && adjMouseY < currentY + rowH)
+                        {
+                            return true;
+                        }
+                        currentY += rowH + 8;
+                    }
+                }
+            }
+            return false;
+        }
+
+        static int HitTest(IntPtr hwnd, int x, int y)
+        {
+            float rawLogW = GetLogicalWidth(hwnd);
+            float rawLogH = GetLogicalHeight(hwnd);
+            float logW = Math.Max(760f, rawLogW);
+            float logH = Math.Max(460f, rawLogH);
+
+            float sidebarW = GetSidebarWidth(logW);
+            float contentX = GetContentX(logW);
+
+            // Sidebar tabs (always active)
+            if (x >= 0 && x < sidebarW)
+            {
+                if (y >= 120 && y < 160) return 0;
+                if (y >= 168 && y < 208) return 1;
+                if (y >= 216 && y < 256) return 2;
+                if (y >= 264 && y < 304) return 3;
+                if (y >= 312 && y < 352) return 4;
+            }
+
+            if (_activeTab == 1) // Convert
+            {
+                int zoneW = (int)logW - (int)contentX - 50;
+                int buttonY = 390;
+                int zoneH = 120;
+                int clearX = (int)logW - 110;
+
+                int availableWidth = (int)logW - (int)contentX - 50;
+                int cardW = (availableWidth - 2 * 12) / 3;
+
+                for (int i = 0; i < 8; i++)
+                {
+                    int col = i % 3;
+                    int row = i / 3;
+                    int cardX = (int)contentX + col * (cardW + 12);
+                    int cardY = 230 + row * 50;
+                    if (x >= cardX && x < cardX + cardW && y >= cardY && y < cardY + 40)
+                    {
+                        if (ValidateConvertFiles(ConvertCommands[i], _selectedFiles, out _))
+                        {
+                            return 50 + i;
+                        }
+                    }
+                }
+
+                if (_selectedFiles.Count > 0 && x >= clearX && x < clearX + 48 && y >= 107 && y < 107 + 22) return 25; // Clear button
+                if (x >= contentX && x < contentX + zoneW && y >= 95 && y < 95 + zoneH) return 18; // Drag & Drop zone
+                if (_selectedFiles.Count > 0 && _convertCommandIndex != -1 && x >= contentX && x < contentX + zoneW && y >= buttonY && y < buttonY + 36) return 19; // Start button
+            }
+            else if (_activeTab == 2) // History
+            {
+                // Clear history button
+                int clearX = (int)logW - 130;
+                if (x >= clearX && x < clearX + 90 && y >= 38 && y < 66) return 22;
+            }
+            else if (_activeTab == 3) // Settings
+            {
+                int rightToggleX = (int)logW - 100;
+
+                // Quiet Mode toggle
+                if (x >= rightToggleX && x < rightToggleX + 44 && y >= 105 && y < 127) return 5;
+                // Notification toggle
+                if (x >= rightToggleX && x < rightToggleX + 44 && y >= 175 && y < 197) return 6;
+
+                // OutputDir buttons
+                float wSource = _wSource;
+                float wDesktop = _wDesktop;
+                float wDownloads = _wDownloads;
+                float wCustom = _wCustom;
+
+                float margin = 10f;
+                float xSource = contentX;
+                float xDesktop = xSource + wSource + margin;
+                float xDownloads = xDesktop + wDesktop + margin;
+                float xCustom = xDownloads + wDownloads + margin;
+
+                if (x >= xSource && x < xSource + wSource && y >= 290 && y < 320) return 7;
+                if (x >= xDesktop && x < xDesktop + wDesktop && y >= 290 && y < 320) return 8;
+                if (x >= xDownloads && x < xDownloads + wDownloads && y >= 290 && y < 320) return 9;
+                if (x >= xCustom && x < xCustom + wCustom && y >= 290 && y < 320) return 20;
+
+                // Language dropdown button
+                if (x >= contentX && x < contentX + 240 && y >= _langDropdownY && y < _langDropdownY + 30) return 10;
+
+                // PDF Translation dropdown buttons
+                if (x >= contentX && x < contentX + 240 && y >= _pdfLangDropdownY && y < _pdfLangDropdownY + 30) return 31;
+            }
+            else if (_activeTab == 4) // About
+            {
+                float wGit = _wGit;
+                float wGmail = _wGmail;
+
+                // GitHub Button: x from contentX to contentX + wGit
+                if (x >= contentX && x < contentX + wGit && y >= _githubBtnY && y < _githubBtnY + 32) return 23;
+
+                // Gmail button: x from contentX to contentX + wGmail
+                if (x >= contentX && x < contentX + wGmail && y >= _aboutBtnY && y < _aboutBtnY + 32) return 24;
+            }
+
+            return -1;
+        }
+    }
+}

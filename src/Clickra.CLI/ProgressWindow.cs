@@ -87,16 +87,7 @@ namespace Clickra.UI
             try { _pctFont?.Dispose(); _pctFont = null; } catch { }
 
             string lang = ClickraStorage.GetSetting("Language");
-            lang = Localization.NormalizeLanguageCode(lang);
-            string fontName = "Segoe UI";
-            if (lang.StartsWith("zh-TW", StringComparison.OrdinalIgnoreCase) || lang.StartsWith("zh-HK", StringComparison.OrdinalIgnoreCase))
-                fontName = "Microsoft JhengHei UI";
-            else if (lang.StartsWith("zh-CN", StringComparison.OrdinalIgnoreCase) || lang.StartsWith("zh", StringComparison.OrdinalIgnoreCase))
-                fontName = "Microsoft YaHei UI";
-            else if (lang.StartsWith("ja", StringComparison.OrdinalIgnoreCase))
-                fontName = "Yu Gothic UI";
-            else if (lang.StartsWith("ko", StringComparison.OrdinalIgnoreCase))
-                fontName = "Malgun Gothic";
+            string fontName = LocalizedUiFontSelector.GetTextFontName(lang);
 
             float s = _dpiScale;
             _titleFont = new Font("Segoe UI Variable Display", 32f * s, FontStyle.Bold, GraphicsUnit.Pixel);
