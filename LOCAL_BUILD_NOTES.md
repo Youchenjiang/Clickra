@@ -164,6 +164,45 @@ To keep the `main` branch stable, direct pushes to `main` are prohibited. All ch
 *   **Merge Rules**: Once development is done, push your branch and open a PR. Merge into `main` after review.
 *   **Git Tags & Releases**: When releasing a new version, create a tag locally with the format `vX.Y.Z.0`. Push the tag directly using `git push origin vX.Y.Z.0`. Direct branch pushes to the remote main/release branches are strictly prohibited.
 
+### Pull Request Convention
+
+**Title** — follow Conventional Commits, keep under 50 chars:
+
+```
+<type>(<scope>): <description>
+```
+
+- For release PRs, include version: `feat(pdf): v3.4.0.0 - Excel to PDF conversion`
+- Scope = primary area changed (`pdf`, `cli`, `shell`, `ui`, `i18n`, `build`, `docs`), not always `release`
+- Always English, no mixed languages
+
+**Description** — required for every PR, even 1-line fixes. Structure by PR size:
+
+| Size | Files | Structure |
+|------|-------|-----------|
+| Small | <10 | `## Summary` (1-2 sentences) + numbered list |
+| Medium | 10-50 | `## Summary` + `## Key Changes` (bullets grouped by area) |
+| Large | 50+ | `## Overview` + `## Key Changes` (numbered sections with subsections) + `## Verification` |
+
+**Section rules**:
+
+| Section | Rules |
+|---------|-------|
+| `## Summary` / `## Overview` | 1-2 sentences: what changed + why. No file names. |
+| `## Key Changes` | Group by area (Core / CLI / UI / Docs). Use `*` bullets with technical detail (API names, file names) for significant changes. |
+| `## Verification` | Checklist `[x]` format. Describe how changes were verified (build, manual QA, etc.) |
+| `## Notes` | Optional. Add when there's a non-obvious decision the reviewer should know. |
+
+**Language**: Always English, consistent with title.
+
+**What to avoid** (from past mistakes):
+- Empty body (PR #1, #3)
+- Title over 50 chars (PR #6 was 46)
+- Mixed Chinese/English (PR #2)
+- Using `####` for top-level sections (PR #10)
+- Scope always `release` regardless of content (PR #12)
+- Marketing language like "Key Achievements" (PR #4, use "Key Changes" instead)
+
 ### Commit Message Convention
 
 This project follows [Conventional Commits](https://www.conventionalcommits.org/). Every commit message must use the format:
