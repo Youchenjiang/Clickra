@@ -2,6 +2,14 @@
 
 All notable changes to Clickra will be documented in this file.
 
+## [v3.4.0.0] - 2026-06-21
+
+- **Excel to PDF Conversion**: Added new right-click context menu command to convert Excel spreadsheets (.xlsx/.xls) to PDF using Microsoft Excel COM automation
+- **Shell Extension Integration**: Added Excel to PDF menu item with localized labels in 5 languages (en, zh-TW, zh-CN, ja, ko)
+- **Dashboard UI**: Added Excel conversion card with drag-and-drop auto-detection and Excel engine status indicator in Overview tab
+- **CLI Support**: Added `excel2pdf` command with directory expansion and progress display
+- **Developer Documentation**: Added 18-step checklist for adding new conversion commands and Conventional Commits guide
+
 ## [v3.3.3.0] - 2026-06-21
 
 - **PDF Translation Pipeline Modularization**: Decomposed monolithic `FileProcessor` (2000+ lines) into 80+ dedicated classes organized by domain (paragraphs, tables, diagrams, gray prompts, annotations, rendering, translation)

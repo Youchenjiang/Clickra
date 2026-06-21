@@ -46,7 +46,7 @@
     - [x] **Word 轉 PDF (Word to PDF)**: 已完成實作。
     - [x] **PDF 去除密碼 (Remove PDF Password) [v3.3.0]**:
         - 支援右鍵選單一鍵去除 PDF 密碼保護。 (已完成)
-    - [ ] **Excel 轉 PDF (Excel to PDF)**: 整合微軟 Excel COM 與 LibreOffice 雙引擎轉檔支援。
+    - [x] **Excel 轉 PDF (Excel to PDF)**: 整合微軟 Excel COM 與 LibreOffice 雙引擎轉檔支援。 (已完成)
     - [ ] **PDF 壓縮與最佳化 (PDF Shrinking & Compression)**:
         - 借鑑 `ghostpdf` 封裝 Ghostscript (pdfwrite) 的思路，評估於本地打包或按需引導下載輕量化 Ghostscript 核心，利用預設多級壓縮比（Screen, eBook, Printer）在本地實現高壓縮率與高保真 PDF 壓縮。
     - [ ] **PDF 轉圖片 (PDF to Image)**: 一鍵將 PDF 頁面匯出為高品質 JPG/PNG/TIFF，支援自訂 DPI 渲染率、色彩模式與透明背景處理。
@@ -106,6 +106,7 @@
 ---
 
 ## 🏁 近期已達成項目 (Recently Accomplished)
+- [x] **v3.4.0.0 Excel 轉 PDF 功能** (2026/06/21)：新增右鍵選單 Excel 轉 PDF 功能，整合 Shell Extension 在地化選單、Dashboard 轉檔卡片與拖放自動偵測、CLI `excel2pdf` 指令及 Overview 頁 Excel 引擎狀態顯示。
 - [x] **v3.3.3.0 PDF 翻譯管線模組化重構與佈局分析增強** (2026/06/21)：將 PDF 翻譯核心引擎拆解為 80+ 個獨立模組（段落、表格、圖表、灰階提示、標註、渲染、翻譯），增強表格偵測、圖表避讓與段落分類邏輯，新增簡繁中文轉換器、翻譯規則文件與 PDF 診斷工具集，完善批次翻譯進度顯示與輸出路徑自訂功能。
 - [x] **v3.0.5.0 商店發布與合規性通過** (2026/05/13)：成功通過微軟商店認證與合規審核。
 - [x] **v3.0.6.0 儀表板與 AOT 轉型** (2026/05/15)：完成 Native UI 儀表板，支援 Office 偵測。
