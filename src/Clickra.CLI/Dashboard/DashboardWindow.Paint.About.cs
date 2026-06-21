@@ -181,7 +181,12 @@ namespace Clickra.UI
 
         static bool IsOfficeInstalled(string app)
         {
-            string progId = app == "PowerPoint" ? "PowerPoint.Application" : "Word.Application";
+            string progId = app switch
+            {
+                "PowerPoint" => "PowerPoint.Application",
+                "Excel" => "Excel.Application",
+                _ => "Word.Application"
+            };
             try
             {
                 using var key = Registry.LocalMachine.OpenSubKey($@"SOFTWARE\Classes\{progId}");

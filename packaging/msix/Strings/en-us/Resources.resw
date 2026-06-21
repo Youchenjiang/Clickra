@@ -27,6 +27,9 @@
   <data name="Menu_Word2Pdf" xml:space="preserve">
     <value>Word to PDF</value>
   </data>
+  <data name="Menu_Excel2Pdf" xml:space="preserve">
+    <value>Excel to PDF</value>
+  </data>
   <data name="Menu_Img2Pdf" xml:space="preserve">
     <value>Image to PDF</value>
   </data>

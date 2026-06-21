@@ -63,6 +63,9 @@ namespace Clickra.UI
                     case "word2pdf":
                         FileProcessor.ConvertWordToPdf(currentFiles, progressCallback, _cts.Token);
                         break;
+                    case "excel2pdf":
+                        FileProcessor.ConvertExcelToPdf(currentFiles, progressCallback, _cts.Token);
+                        break;
                     case "merge-pdf":
                         FileProcessor.MergePdfs(currentFiles, Path.Combine(outputDir, "Merged_PDF.pdf"), progressCallback, _cts.Token);
                         break;
@@ -241,6 +244,7 @@ namespace Clickra.UI
                     return Path.Combine(outputDir, "Stitched_Image.png");
                 case "ppt2pdf":
                 case "word2pdf":
+                case "excel2pdf":
                 case "img2pdf":
                     return string.Join(";", inputFiles.Select(f => Path.Combine(outputDir, Path.GetFileNameWithoutExtension(f) + ".pdf")));
                 case "translate-pdf":

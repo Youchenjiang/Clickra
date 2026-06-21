@@ -22,7 +22,10 @@
     <value>PPT를 PDF로 변환</value>
   </data>
   <data name="Menu_Word2Pdf" xml:space="preserve">
-    <value>Word를 PDF로 변환</value>
+    <value>Word → PDF 변환</value>
+  </data>
+  <data name="Menu_Excel2Pdf" xml:space="preserve">
+    <value>Excel → PDF 변환</value>
   </data>
   <data name="Menu_MergePdf" xml:space="preserve">
     <value>PDF 병합</value>

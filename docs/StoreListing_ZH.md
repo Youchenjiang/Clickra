@@ -1,6 +1,6 @@
 # Microsoft Store 清單 - 中文 (台灣)
 
-以下是供您直接複製貼上至 Microsoft 合作夥伴中心 (Partner Center) 的完整欄位資訊，已更新至 v3.3.3.0 的最新狀態。
+以下是供您直接複製貼上至 Microsoft 合作夥伴中心 (Partner Center) 的完整欄位資訊，已更新至 v3.4.0.0 的最新狀態。
 
 ---
 
@@ -25,11 +25,10 @@ Clickra 絕大多數功能（文書轉 PDF、PDF 合併、圖片拼接等）均 
 🔗 開源專案首頁：https://github.com/Youchenjiang/Clickra
 
 ## 此版本的新增功能 (What's new in this version)
-- PDF 翻譯管線模組化重構：將核心翻譯引擎拆解為 80+ 個獨立模組，大幅提升穩定性與可維護性。
-- 佈局偵測增強：改進表格、圖表與段落分類邏輯，提升 PDF 翻譯排版精準度。
-- 批次翻譯進度顯示：新增即時翻譯進度顯示，支援自訂輸出目錄。
-- 簡繁中文轉換：整合 7800+ 組簡體轉繁體字元映射，自動進行簡繁轉換。
-- 翻譯規則文件化：新增完整的翻譯避讓與佈局分析技術規範文件。
+- Excel 轉 PDF 功能：新增右鍵選單對 Excel 試算表 (.xlsx/.xls) 進行一鍵轉換為 PDF。
+- Dashboard 整合：新增 Excel 轉檔卡片，支援拖放自動偵測與 Overview 頁 Excel 引擎狀態顯示。
+- CLI 支援：新增 `excel2pdf` 指令，支援目錄展開、進度顯示與歷史記錄。
+- Shell Extension：新增 Excel 轉 PDF 右鍵選單項目，支援 5 種語言在地化。
 
 ## 產品功能 (Product Features)
 *(最多 20 個，以項目符號顯示)*

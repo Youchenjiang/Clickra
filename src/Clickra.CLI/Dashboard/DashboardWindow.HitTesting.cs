@@ -82,7 +82,7 @@ namespace Clickra.UI
                 int availableWidth = (int)logW - (int)contentX - 50;
                 int cardW = (availableWidth - 2 * 12) / 3;
 
-                for (int i = 0; i < 8; i++)
+                for (int i = 0; i < ConvertCommands.Length; i++)
                 {
                     int col = i % 3;
                     int row = i / 3;

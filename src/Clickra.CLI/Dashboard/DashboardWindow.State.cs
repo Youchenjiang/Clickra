@@ -15,7 +15,7 @@ namespace Clickra.UI
         // Convert tab state
         static int _convertCommandIndex = 1; // Default: 1 (word2pdf)
         static List<string> _selectedFiles = new List<string>();
-        private static readonly string[] ConvertCommands = { "ppt2pdf", "word2pdf", "merge-pdf", "img2pdf", "img-merge", "img-stitch", "translate-pdf", "decrypt-pdf" };
+        private static readonly string[] ConvertCommands = { "ppt2pdf", "word2pdf", "excel2pdf", "merge-pdf", "img2pdf", "img-merge", "img-stitch", "translate-pdf", "decrypt-pdf" };
         
         // Language Dropdown state
         static bool _langDropdownOpen = false;

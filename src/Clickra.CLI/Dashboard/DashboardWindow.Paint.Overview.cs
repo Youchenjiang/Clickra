@@ -32,20 +32,21 @@ namespace Clickra.UI
             DrawEngineRow(g, GetText("engine_pdf"), true, (int)contentX, 125);
             DrawEngineRow(g, GetText("engine_ppt"), IsOfficeInstalled("PowerPoint"), (int)contentX, 165);
             DrawEngineRow(g, GetText("engine_word"), IsOfficeInstalled("Word"), (int)contentX, 205);
+            DrawEngineRow(g, GetText("engine_excel"), IsOfficeInstalled("Excel"), (int)contentX, 245);
 
             // Statistics
             if (_sectionFont != null)
-                g.DrawString(GetText("overview_stats"), _sectionFont, Brushes.White, contentX * s, 260 * s);
+                g.DrawString(GetText("overview_stats"), _sectionFont, Brushes.White, contentX * s, 280 * s);
 
             // Draw Cards
-            DrawStatCard(g, GetText("overview_stat_total"), _statTotal.ToString(), Color.FromArgb(200, 200, 200), (int)contentX, 290, 140);
-            DrawStatCard(g, GetText("overview_stat_success"), _statSuccess.ToString(), Color.FromArgb(100, 220, 100), (int)contentX + 160, 290, 140);
-            DrawStatCard(g, GetText("overview_stat_failed"), _statFailed.ToString(), Color.FromArgb(255, 90, 70), (int)contentX + 320, 290, 140);
+            DrawStatCard(g, GetText("overview_stat_total"), _statTotal.ToString(), Color.FromArgb(200, 200, 200), (int)contentX, 310, 140);
+            DrawStatCard(g, GetText("overview_stat_success"), _statSuccess.ToString(), Color.FromArgb(100, 220, 100), (int)contentX + 160, 310, 140);
+            DrawStatCard(g, GetText("overview_stat_failed"), _statFailed.ToString(), Color.FromArgb(255, 90, 70), (int)contentX + 320, 310, 140);
             
             if (_subFont != null)
             {
                 using var tipBrush = new SolidBrush(Color.FromArgb(100, 100, 100));
-                var rect = new RectangleF(contentX * s, 380 * s, (logW - contentX - 40) * s, 45 * s);
+                var rect = new RectangleF(contentX * s, 400 * s, (logW - contentX - 40) * s, 45 * s);
                 g.DrawString(GetText("overview_tip"), _subFont, tipBrush, rect);
             }
         }

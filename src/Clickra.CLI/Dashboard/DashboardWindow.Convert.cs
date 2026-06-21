@@ -72,6 +72,7 @@ namespace Clickra.UI
             {
                 "ppt2pdf" => new[] { ".ppt", ".pptx" },
                 "word2pdf" => new[] { ".doc", ".docx" },
+                "excel2pdf" => new[] { ".xlsx", ".xls" },
                 "merge-pdf" => new[] { ".pdf" },
                 "translate-pdf" => new[] { ".pdf" },
                 "decrypt-pdf" => new[] { ".pdf" },
@@ -114,13 +115,17 @@ namespace Clickra.UI
             {
                 ChangeConvertCommand(1);
             }
+            else if (extensions.All(ext => ext == ".xlsx" || ext == ".xls"))
+            {
+                ChangeConvertCommand(2);
+            }
             else if (extensions.All(ext => ext == ".pdf"))
             {
-                ChangeConvertCommand(files.Count == 1 ? 6 : 2);
+                ChangeConvertCommand(files.Count == 1 ? 7 : 3);
             }
             else if (extensions.All(ext => new[] { ".jpg", ".jpeg", ".png", ".bmp", ".gif", ".tiff", ".webp" }.Contains(ext)))
             {
-                ChangeConvertCommand(files.Count > 1 ? 4 : 3);
+                ChangeConvertCommand(files.Count > 1 ? 5 : 4);
             }
 
             _selectedFiles = files;
@@ -178,6 +183,7 @@ namespace Clickra.UI
             {
                 "ppt2pdf" => "PowerPoint Files (*.ppt; *.pptx)\0*.ppt;*.pptx\0All Files (*.*)\0*.*\0\0",
                 "word2pdf" => "Word Files (*.doc; *.docx)\0*.doc;*.docx\0All Files (*.*)\0*.*\0\0",
+                "excel2pdf" => "Excel Files (*.xlsx; *.xls)\0*.xlsx;*.xls\0All Files (*.*)\0*.*\0\0",
                 "merge-pdf" => "PDF Files (*.pdf)\0*.pdf\0All Files (*.*)\0*.*\0\0",
                 "translate-pdf" => "PDF Files (*.pdf)\0*.pdf\0All Files (*.*)\0*.*\0\0",
                 "decrypt-pdf" => "PDF Files (*.pdf)\0*.pdf\0All Files (*.*)\0*.*\0\0",
@@ -287,7 +293,7 @@ namespace Clickra.UI
             }
 
             int cardW = (zoneW - 2 * 12) / 3;
-            for (int i = 0; i < 8; i++)
+            for (int i = 0; i < ConvertCommands.Length; i++)
             {
                 int col = i % 3;
                 int row = i / 3;
@@ -332,12 +338,13 @@ namespace Clickra.UI
                 {
                     0 => "cmd_ppt_to_pdf",
                     1 => "cmd_word_to_pdf",
-                    2 => "cmd_merge_pdf",
-                    3 => "cmd_img_to_pdf",
-                    4 => "cmd_merge_img",
-                    5 => "cmd_stitch_img",
-                    6 => "cmd_translate_pdf",
-                    7 => "cmd_decrypt_pdf",
+                    2 => "cmd_excel_to_pdf",
+                    3 => "cmd_merge_pdf",
+                    4 => "cmd_img_to_pdf",
+                    5 => "cmd_merge_img",
+                    6 => "cmd_stitch_img",
+                    7 => "cmd_translate_pdf",
+                    8 => "cmd_decrypt_pdf",
                     _ => ""
                 };
                 string cmdText = GetText(cmdKey);

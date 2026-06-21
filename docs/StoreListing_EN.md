@@ -1,6 +1,6 @@
 # Microsoft Store Listing - English (US)
 
-Below is the complete information for you to copy and paste directly into the Microsoft Partner Center, updated for the v3.3.3.0 release.
+Below is the complete information for you to copy and paste directly into the Microsoft Partner Center, updated for the v3.4.0.0 release.
 
 ---
 
@@ -25,11 +25,10 @@ Clickra respects your privacy. Most processing (Office-to-PDF conversion, PDF me
 🔗 Open Source on GitHub: https://github.com/Youchenjiang/Clickra
 
 ## What's new in this version
- - PDF Translation Pipeline Overhaul: Decomposed the core translation engine into 80+ modular components for improved reliability and maintainability.
- - Enhanced Layout Detection: Improved table, diagram, and paragraph classification for more accurate PDF translation rendering.
- - Batch Translation Progress: Added real-time progress display during PDF translation with support for custom output directories.
- - Simplified-Traditional Chinese Conversion: Integrated automatic simplified-to-traditional Chinese conversion with 7800+ character mappings.
- - Translation Rules Documentation: Added comprehensive technical specification for translation bypass and layout analysis rules.
+ - Excel to PDF Conversion: Added a new right-click context menu command to convert Excel spreadsheets (.xlsx/.xls) to high-quality PDF files.
+ - Dashboard Integration: Added Excel conversion card with drag-and-drop support and Excel engine status indicator in the Overview tab.
+ - CLI Support: Added `excel2pdf` command with directory expansion, progress display, and history logging.
+ - Shell Extension: Added localized Excel to PDF menu item in 5 languages (English, Traditional Chinese, Simplified Chinese, Japanese, Korean).
 
 ## Product Features
 *(Max 20, displayed as bullet points)*

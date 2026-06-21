@@ -43,7 +43,7 @@ namespace Clickra
 
                 Console.WriteLine($"Clickra v{version} (Modern Shell Edition)");
                 Console.WriteLine("Author: Youchen Jiang");
-                Console.WriteLine("Commands: ppt2pdf, word2pdf, merge-pdf, img2pdf, img-merge, img-stitch, translate-pdf, decrypt-pdf, --deploy");
+                Console.WriteLine("Commands: ppt2pdf, word2pdf, excel2pdf, merge-pdf, img2pdf, img-merge, img-stitch, translate-pdf, decrypt-pdf, --deploy");
                 return;
             }
 
@@ -120,6 +120,11 @@ namespace Clickra
                     case "word2pdf":
                         ValidateExtensions(files, command, quiet, ".docx", ".doc");
                         if (quiet) FileProcessor.ConvertWordToPdf(files, (curr, tot, msg) => Console.WriteLine($"[Progress] {msg}"));
+                        else ProgressWindow.Show(command, files);
+                        break;
+                    case "excel2pdf":
+                        ValidateExtensions(files, command, quiet, ".xlsx", ".xls");
+                        if (quiet) FileProcessor.ConvertExcelToPdf(files, (curr, tot, msg) => Console.WriteLine($"[Progress] {msg}"));
                         else ProgressWindow.Show(command, files);
                         break;
                     case "merge-pdf":

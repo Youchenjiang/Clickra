@@ -62,6 +62,36 @@ try {{
     exit 1
 }}";
             }
+            else if (appType == "Excel")
+            {
+                psScript = $@"
+$ErrorActionPreference = 'Stop'
+try {{
+    Write-Host 'PROGRESS:20'
+    $excel = New-Object -ComObject Excel.Application
+    $excel.Visible = $false
+    $excel.DisplayAlerts = $false
+    try {{
+        Write-Host 'PROGRESS:50'
+        $wb = $excel.Workbooks.Open('{fullPath.Replace("'", "''")}')
+        try {{
+            Write-Host 'PROGRESS:80'
+            # xlTypePDF = 0
+            $wb.ExportAsFixedFormat(0, '{outputPdfPath.Replace("'", "''")}')
+        }} finally {{
+            $wb.Close($false)
+            [System.Runtime.InteropServices.Marshal]::ReleaseComObject($wb) | Out-Null
+        }}
+        Write-Host 'PROGRESS:100'
+    }} finally {{
+        $excel.Quit()
+        [System.Runtime.InteropServices.Marshal]::ReleaseComObject($excel) | Out-Null
+    }}
+}} catch {{
+    Write-Error $_.Exception.Message
+    exit 1
+}}";
+            }
             else
             {
                 throw new NotSupportedException($"Office application {appType} is not supported.");
