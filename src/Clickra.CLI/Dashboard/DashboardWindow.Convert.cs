@@ -115,6 +115,10 @@ namespace Clickra.UI
             {
                 ChangeConvertCommand(1);
             }
+            else if (extensions.All(ext => ext == ".xlsx" || ext == ".xls"))
+            {
+                ChangeConvertCommand(2);
+            }
             else if (extensions.All(ext => ext == ".pdf"))
             {
                 ChangeConvertCommand(files.Count == 1 ? 6 : 2);
