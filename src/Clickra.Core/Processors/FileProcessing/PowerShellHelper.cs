@@ -74,10 +74,14 @@ try {{
     try {{
         Write-Host 'PROGRESS:50'
         $wb = $excel.Workbooks.Open('{fullPath.Replace("'", "''")}')
-        Write-Host 'PROGRESS:80'
-        # xlTypePDF = 0
-        $wb.ExportAsFixedFormat(0, '{outputPdfPath.Replace("'", "''")}')
-        $wb.Close($false)
+        try {{
+            Write-Host 'PROGRESS:80'
+            # xlTypePDF = 0
+            $wb.ExportAsFixedFormat(0, '{outputPdfPath.Replace("'", "''")}')
+        }} finally {{
+            $wb.Close($false)
+            [System.Runtime.InteropServices.Marshal]::ReleaseComObject($wb) | Out-Null
+        }}
         Write-Host 'PROGRESS:100'
     }} finally {{
         $excel.Quit()

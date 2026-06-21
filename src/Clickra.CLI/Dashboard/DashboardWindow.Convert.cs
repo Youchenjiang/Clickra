@@ -121,11 +121,11 @@ namespace Clickra.UI
             }
             else if (extensions.All(ext => ext == ".pdf"))
             {
-                ChangeConvertCommand(files.Count == 1 ? 6 : 2);
+                ChangeConvertCommand(files.Count == 1 ? 7 : 3);
             }
             else if (extensions.All(ext => new[] { ".jpg", ".jpeg", ".png", ".bmp", ".gif", ".tiff", ".webp" }.Contains(ext)))
             {
-                ChangeConvertCommand(files.Count > 1 ? 4 : 3);
+                ChangeConvertCommand(files.Count > 1 ? 5 : 4);
             }
 
             _selectedFiles = files;
@@ -293,7 +293,7 @@ namespace Clickra.UI
             }
 
             int cardW = (zoneW - 2 * 12) / 3;
-            for (int i = 0; i < 8; i++)
+            for (int i = 0; i < ConvertCommands.Length; i++)
             {
                 int col = i % 3;
                 int row = i / 3;
