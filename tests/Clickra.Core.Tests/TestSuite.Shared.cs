@@ -1,0 +1,140 @@
+using Clickra.Core.Models;
+using Clickra.Core.Processors;
+
+static partial class TestSuite
+{
+    private static TranslationPageDiagnostics Diagnostics(string sourceFile, int page)
+    {
+        var path = RepoRoot() / "test_pdfs" / "source" / sourceFile;
+        Assert.True(File.Exists(path.Value), $"Missing test PDF: {path}");
+        return PdfTranslateProcessor.AnalyzePageParagraphDiagnostics(path.ToString(), page);
+    }
+
+    private static PdfParagraph UninitializedParagraph(string text, double width, double height)
+    {
+        var paragraph = (PdfParagraph)System.Runtime.CompilerServices.RuntimeHelpers
+            .GetUninitializedObject(typeof(PdfParagraph));
+        paragraph.TextWithPlaceholders = text;
+        paragraph.X0 = 0;
+        paragraph.Y0 = 0;
+        paragraph.X1 = width;
+        paragraph.Y1 = height;
+        return paragraph;
+    }
+
+    private static void AssertParagraph(
+        TranslationPageDiagnostics page,
+        string text,
+        Func<TranslationParagraphDiagnostics, bool> predicate)
+    {
+        var matches = page.Paragraphs
+            .Where(p => p.Text.Contains(text, StringComparison.OrdinalIgnoreCase))
+            .ToList();
+
+        Assert.True(matches.Count > 0, $"Could not find paragraph containing '{text}' on page {page.PageNumber}.");
+        Assert.True(matches.Any(predicate),
+            $"Paragraph containing '{text}' did not satisfy predicate. Matches:\n" +
+            string.Join("\n", matches.Select(Describe)));
+    }
+
+    private static void AssertAllParagraphs(
+        TranslationPageDiagnostics page,
+        string text,
+        Func<TranslationParagraphDiagnostics, bool> predicate)
+    {
+        var matches = page.Paragraphs
+            .Where(p => p.Text.Contains(text, StringComparison.OrdinalIgnoreCase))
+            .ToList();
+
+        Assert.True(matches.Count > 0, $"Could not find paragraph containing '{text}' on page {page.PageNumber}.");
+        Assert.True(matches.All(predicate),
+            $"Not all paragraphs containing '{text}' satisfied predicate. Matches:\n" +
+            string.Join("\n", matches.Select(Describe)));
+    }
+
+    private static PathInfo RepoRoot()
+    {
+        var dir = new DirectoryInfo(AppContext.BaseDirectory);
+        while (dir != null)
+        {
+            if (Directory.Exists(Path.Combine(dir.FullName, "test_pdfs", "source")) &&
+                Directory.Exists(Path.Combine(dir.FullName, "src", "Clickra.Core")))
+            {
+                return new PathInfo(dir.FullName);
+            }
+            dir = dir.Parent;
+        }
+
+        throw new InvalidOperationException("Could not locate Clickra repo root.");
+    }
+
+    private static string Describe(TranslationParagraphDiagnostics p) =>
+        $"  [{p.Index}] bypass={p.IsBypassed} table={p.IsTable} code={p.IsCode} " +
+        $"diagram={p.IsDiagram} gray={p.IsGrayPromptContent} body={p.IsBodyProse} " +
+        $"bbox=[{p.X0:F1},{p.Y0:F1},{p.X1:F1},{p.Y1:F1}] " +
+        $"text='{Short(p.Text)}'";
+
+    private static string Short(string value)
+    {
+        value = value.Replace("\r", " ").Replace("\n", " ").Trim();
+        return value.Length <= 120 ? value : value[..120] + "...";
+    }
+}
+
+sealed class PathInfo(string value)
+{
+    public static PathInfo operator /(PathInfo left, string right) =>
+        new(Path.Combine(left.Value, right));
+
+    public string Value { get; } = value;
+    public override string ToString() => Value;
+}
+
+sealed class TestRunner
+{
+    public int Failures { get; private set; }
+
+    public void Run(string name, Action test)
+    {
+        try
+        {
+            test();
+            Console.WriteLine($"PASS {name}");
+        }
+        catch (Exception ex)
+        {
+            Failures++;
+            Console.WriteLine($"FAIL {name}");
+            Console.WriteLine(ex.Message);
+        }
+    }
+}
+
+static class Assert
+{
+    public static void True(bool condition, string message)
+    {
+        if (!condition)
+            throw new InvalidOperationException(message);
+    }
+
+    public static void Equal(string expected, string actual)
+    {
+        if (!string.Equals(expected, actual, StringComparison.Ordinal))
+            throw new InvalidOperationException($"Expected '{expected}', got '{actual}'.");
+    }
+
+    public static T Throws<T>(Action action) where T : Exception
+    {
+        try
+        {
+            action();
+        }
+        catch (T ex)
+        {
+            return ex;
+        }
+
+        throw new InvalidOperationException($"Expected {typeof(T).Name}.");
+    }
+}

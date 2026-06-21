@@ -23,7 +23,6 @@
   <ItemGroup>
     <TrimmerRootAssembly Include="UglyToad.PdfPig" />
     <TrimmerRootAssembly Include="UglyToad.PdfPig.Core" />
-    <TrimmerRootAssembly Include="UglyToad.PdfPig.DocumentLayoutAnalysis" />
     <TrimmerRootAssembly Include="UglyToad.PdfPig.Fonts" />
     <TrimmerRootAssembly Include="UglyToad.PdfPig.Package" />
     <TrimmerRootAssembly Include="UglyToad.PdfPig.Tokenization" />

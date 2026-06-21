@@ -1,6 +1,6 @@
 # Microsoft Store Listing - English (US)
 
-Below is the complete information for you to copy and paste directly into the Microsoft Partner Center, updated for the v3.3.2.0 release.
+Below is the complete information for you to copy and paste directly into the Microsoft Partner Center, updated for the v3.3.3.0 release.
 
 ---
 
@@ -25,10 +25,11 @@ Clickra respects your privacy. Most processing (Office-to-PDF conversion, PDF me
 🔗 Open Source on GitHub: https://github.com/Youchenjiang/Clickra
 
 ## What's new in this version
- - PDF Password Decryption: Added a new feature to remove passwords from protected PDFs directly via the right-click context menu.
- - Inline Password Input Field: Integrated a native, non-flickering text input field with OK/Cancel buttons directly inside the progress window to eliminate intrusive popup modal dialogs.
- - Shortcut Keys Support: Supported pressing Enter to submit and Esc to cancel password inputs, streamlining the keyboard workflow.
- - Encryption Pre-check: Added an automatic encryption check that notifies the user and prevents prompt requests on files that are not password-protected.
+ - PDF Translation Pipeline Overhaul: Decomposed the core translation engine into 80+ modular components for improved reliability and maintainability.
+ - Enhanced Layout Detection: Improved table, diagram, and paragraph classification for more accurate PDF translation rendering.
+ - Batch Translation Progress: Added real-time progress display during PDF translation with support for custom output directories.
+ - Simplified-Traditional Chinese Conversion: Integrated automatic simplified-to-traditional Chinese conversion with 7800+ character mappings.
+ - Translation Rules Documentation: Added comprehensive technical specification for translation bypass and layout analysis rules.
 
 ## Product Features
 *(Max 20, displayed as bullet points)*

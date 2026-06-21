@@ -1,4 +1,4 @@
-# Clickra v3.3.2.0
+# Clickra v3.3.3.0
 
 [![Microsoft Store](https://img.shields.io/badge/Microsoft%20Store-Clickra-blue?style=for-the-badge&logo=microsoft-store)](https://apps.microsoft.com/detail/9NGLBF6P1KLD)
 [![License: Apache 2.0](https://img.shields.io/badge/License-Apache%202.0-blue.svg?style=for-the-badge)](https://opensource.org/licenses/Apache-2.0)
@@ -24,9 +24,9 @@ Most productivity scripts (PDF merging, image conversion, etc.) are typically wr
 
 | Version | Release Date | Key Milestone |
 | :--- | :--- | :--- |
+| **v3.3.3.0** | Jun 21, 2026 | **PDF Translation Pipeline Modularization**. Decomposed core engine into 80+ classes, enhanced layout analysis, added Chinese converter and diagnostics. |
 | **v3.3.2.0** | Jun 19, 2026 | **Dependency Updates & Build Fixes**. Updated NuGet packages, fixed CHANGELOG rotation, cleaned build script output. |
 | **v3.3.1.0** | Jun 18, 2026 | **Architecture Refactoring**. Comprehensive codebase refactoring for improved maintainability. |
-| **v3.3.0.0** | Jun 10, 2026 | **PDF Decryption & Inline Password Input**. Added high-performance PDF password removal feature. |
 
 [View Full Changelog](CHANGELOG.md)
 

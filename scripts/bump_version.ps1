@@ -115,6 +115,22 @@ foreach ($f in $readmeFiles) {
             }
         }
 
+        # 插入新版本行到表格頂部（標題和分隔線之後）
+        $lines = $content -split "`n"
+        $tableStart = -1
+        for ($i = 0; $i -lt $lines.Count; $i++) {
+            if ($lines[$i] -match '^\| \*\*v[\d\.]+\*\*') {
+                if ($tableStart -eq -1) { $tableStart = $i }
+                break
+            }
+        }
+        if ($tableStart -ge 0) {
+            $date = Get-Date -Format "yyyy/MM/dd"
+            $newRow = "| **v$newVersion** | $date | **TODO**: Add milestone description here. |"
+            $lines = $lines[0..($tableStart - 1)] + @($newRow) + $lines[$tableStart..($lines.Count - 1)]
+            $content = $lines -join "`n"
+        }
+
         [System.IO.File]::WriteAllText("$root/$f", $content, $utf8NoBOM)
         Write-Host "[Doc] Synced README: $f" -ForegroundColor Gray
     }

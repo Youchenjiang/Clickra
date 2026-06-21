@@ -1,0 +1,22 @@
+{
+  "2407": {
+    "max_tofu": 0,
+    "max_simplified": 0,
+    "allowed_bad_pages": []
+  },
+  "pentest": {
+    "max_tofu": 0,
+    "max_simplified": 0,
+    "allowed_bad_pages": []
+  },
+  "togll": {
+    "max_tofu": 0,
+    "max_simplified": 0,
+    "allowed_bad_pages": []
+  },
+  "final": {
+    "max_tofu": 0,
+    "max_simplified": 0,
+    "allowed_bad_pages": []
+  }
+}
