@@ -377,7 +377,7 @@ namespace Clickra.UI
                 {
                     _selectedFiles = chosen;
                     _convertCommandIndex = -1;
-                    for (int i = 0; i < 8; i++)
+                    for (int i = 0; i < ConvertCommands.Length; i++)
                     {
                         if (ValidateConvertFiles(ConvertCommands[i], _selectedFiles, out _))
                         {
