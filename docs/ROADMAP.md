@@ -47,6 +47,10 @@
     - [x] **PDF 去除密碼 (Remove PDF Password) [v3.3.0]**:
         - 支援右鍵選單一鍵去除 PDF 密碼保護。 (已完成)
     - [x] **Excel 轉 PDF (Excel to PDF)**: 整合微軟 Excel COM 與 LibreOffice 雙引擎轉檔支援。 (已完成)
+    - [x] **LibreOffice 離線 Office 轉檔引擎 (LibreOffice Offline Office Engine) [v3.5.0]**:
+        - 支援 Auto / Microsoft Office / LibreOffice 三種 Office 轉檔引擎模式，讓未安裝 Microsoft Office 的使用者可透過本機 LibreOffice 進行 Word、Excel 與 PowerPoint 轉 PDF。
+        - 內建 LibreOffice 下載 manifest、官方 MSI 下載、SHA256 驗證、背景安裝/移除、版本比對與重啟需求狀態處理。
+        - 轉檔頁改為依 Office、PDF、圖片三組呈現九個主要功能，降低使用者尋找功能時的掃描成本。
     - [ ] **PDF 壓縮與最佳化 (PDF Shrinking & Compression)**:
         - 借鑑 `ghostpdf` 封裝 Ghostscript (pdfwrite) 的思路，評估於本地打包或按需引導下載輕量化 Ghostscript 核心，利用預設多級壓縮比（Screen, eBook, Printer）在本地實現高壓縮率與高保真 PDF 壓縮。
     - [ ] **PDF 轉圖片 (PDF to Image)**: 一鍵將 PDF 頁面匯出為高品質 JPG/PNG/TIFF，支援自訂 DPI 渲染率、色彩模式與透明背景處理。
@@ -94,8 +98,14 @@
     - 提供本地 Native AOT 診斷日誌記錄。於 Dashboard 實作一鍵郵件回報功能，自動打包診斷日誌與系統資訊，透過 Gmail 網頁開啟預設撰寫畫面（並支援標準 mailto: 協議連結作為系統預設郵件用戶端之備用方案）。
 - [ ] **多語系一鍵診斷回報信件草稿 (Multi-language Support for Diagnostic Feedback Mail)**:
     - 依據使用者目前的介面語言，自動撰寫對應語言的 Gmail/mailto 郵件草稿內容與主旨。
-- [ ] **本地免 Office 離線轉檔插件 (Local LibreOffice Fallback Plugin)**:
-    - 評估提供本地免安裝、可一鍵下載的輕量化備用轉檔插件（使用 LibreOffice Portable 瘦身版）。當本地未安裝 Microsoft Office 時，引導使用者一鍵下載並解壓縮至 Clickra 目錄下，由主程式以 headless 模式於本地安全轉檔，維持 100% 離線與隱私標準。
+- [x] **本地免 Office 離線轉檔引擎 (Local LibreOffice Fallback Engine) [v3.5.0]**:
+    - 已改採 LibreOffice 官方 MSI 作為免費備援引擎來源，並由 Clickra 以內建 manifest 管理下載 URL、版本與 SHA256，避免使用者自行尋找安裝檔或手動指定 `soffice.exe`。
+    - 已加入 Auto / Microsoft Office / LibreOffice 引擎選擇、安裝狀態提示、版本相同時避免重複重裝、以及解除安裝後的 pending restart 狀態顯示。
+- [ ] **LibreOffice 遠端 manifest 與宣傳頁整合 (Remote Manifest & Website Integration)**:
+    - 在 Clickra 宣傳頁與 GitHub Pages 架構完成後，將 LibreOffice manifest 從純內建資料擴充為可更新的遠端 manifest，讓新版本 LibreOffice 發佈時可不必等待 Clickra 主程式更新。
+    - 增加 manifest 簽章或 checksum metadata 防護，確保遠端資料來源可驗證且可回退到內建 manifest。
+- [ ] **LibreOffice 安裝維護體驗強化 (LibreOffice Setup Maintenance UX)**:
+    - 補強下載中斷續傳、代理/企業網路提示、安裝取消復原、以及 Windows Installer pending restart 場景的更細緻狀態說明。
 
 ## 5. PDF 無障礙化與自動標籤 (PDF Accessibility & Auto-Tagging)
 - [ ] **PDF 無障礙結構稽核與 Well-Tagged PDF (WTPDF) 重建**:
@@ -106,6 +116,7 @@
 ---
 
 ## 🏁 近期已達成項目 (Recently Accomplished)
+- [x] **v3.5.0.0 LibreOffice 離線 Office 轉檔引擎** (2026/06/29)：新增 Auto / Microsoft Office / LibreOffice 引擎選擇，內建 LibreOffice 官方 MSI manifest、SHA256 驗證、背景安裝/移除與版本比對；未安裝 Microsoft Office 時可透過 LibreOffice 在本機完成 Word、Excel、PowerPoint 轉 PDF；並將轉檔頁九個功能依 Office、PDF、圖片分組，提升尋找效率。
 - [x] **v3.4.0.0 Excel 轉 PDF 功能** (2026/06/21)：新增右鍵選單 Excel 轉 PDF 功能，整合 Shell Extension 在地化選單、Dashboard 轉檔卡片與拖放自動偵測、CLI `excel2pdf` 指令及 Overview 頁 Excel 引擎狀態顯示。
 - [x] **v3.3.3.0 PDF 翻譯管線模組化重構與佈局分析增強** (2026/06/21)：將 PDF 翻譯核心引擎拆解為 80+ 個獨立模組（段落、表格、圖表、灰階提示、標註、渲染、翻譯），增強表格偵測、圖表避讓與段落分類邏輯，新增簡繁中文轉換器、翻譯規則文件與 PDF 診斷工具集，完善批次翻譯進度顯示與輸出路徑自訂功能。
 - [x] **v3.0.5.0 商店發布與合規性通過** (2026/05/13)：成功通過微軟商店認證與合規審核。
@@ -121,7 +132,7 @@
 - [x] **v3.3.0.0 PDF 去除密碼與進度視窗內嵌密碼輸入功能** (2026/06/17)：新增右鍵選單 PDF 去除密碼功能；於進度視窗中整合無閃爍的原生內嵌 Edit 密碼輸入框及 OK/Cancel 控制項，修復視窗繪製與輸入衝突，並支援 Enter 與 Esc 熱鍵操作；提供加密狀態預檢機制以防止誤導提示。
 
 ## 🚀 後續預計里程碑 (Upcoming Milestones)
-- **第一階段**：開發「本地免 Office 離線與 Excel 轉檔插件」（整合本地免安裝 LibreOffice 離線轉檔插件，並全面新增微軟與 LibreOffice 的 Excel (.xlsx/.xls) 轉 PDF 支援，具備偏好引擎設定與 Dashboard 內建下載器）。
+- **第一階段**：收尾「LibreOffice 離線引擎 QA 與發佈準備」（Windows 10/11 無 Office、已有 Microsoft Office、已有 LibreOffice、下載網站連線失敗、解除安裝 pending restart 等情境測試；完成商店文案、版本文件與 release artifact 驗證）。
 - **第二階段**：開發「文字與編碼工具」（包含編碼轉換與原生 `LCMapStringEx` 簡繁字元互轉）。
 - **第三階段**：開發「批次檔名、資料夾與圖片處理工具」（支援資料夾批次命名、分類、批量建立空資料夾，以及基於 Ghostscript/PDFium 技術的 PNG/JPG 批量轉換與高品質縮圖，並支援資料夾右鍵直接轉換功能）。
 - **第四階段**：開發「PDF 壓縮與轉 PPTX 工具強化」：
