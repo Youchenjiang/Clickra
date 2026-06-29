@@ -11,6 +11,10 @@ using Microsoft.Win32;
 
 namespace Clickra.Core.Processors
 {
+    public sealed record LibreOfficeEngineManifest(
+        int Schema,
+        LibreOfficeEnginePackage LibreOffice);
+
     public sealed record LibreOfficeEnginePackage(
         string Version,
         string Edition,
@@ -25,14 +29,18 @@ namespace Clickra.Core.Processors
 
     public static class LibreOfficeEngineInstaller
     {
-        public static readonly LibreOfficeEnginePackage RecommendedPackage = new(
-            Version: "26.2.4",
-            Edition: "Windows x86-64 MSI",
-            DownloadPageUrl: "https://download.documentfoundation.org/libreoffice/stable/26.2.4/win/x86_64/LibreOffice_26.2.4_Win_x86-64.msi.mirrorlist",
-            DirectDownloadUrl: "https://download.documentfoundation.org/libreoffice/stable/26.2.4/win/x86_64/LibreOffice_26.2.4_Win_x86-64.msi",
-            Sha256: "202f26cda071c5aa4996a5a28412fddceb3891dceb0366982c62650456c0730f",
-            DownloadBytes: 372539392L,
-            License: "MPL-2.0");
+        public static readonly LibreOfficeEngineManifest BuiltInManifest = new(
+            Schema: 1,
+            LibreOffice: new LibreOfficeEnginePackage(
+                Version: "26.2.4",
+                Edition: "Windows x86-64 MSI",
+                DownloadPageUrl: "https://download.documentfoundation.org/libreoffice/stable/26.2.4/win/x86_64/LibreOffice_26.2.4_Win_x86-64.msi.mirrorlist",
+                DirectDownloadUrl: "https://download.documentfoundation.org/libreoffice/stable/26.2.4/win/x86_64/LibreOffice_26.2.4_Win_x86-64.msi",
+                Sha256: "202f26cda071c5aa4996a5a28412fddceb3891dceb0366982c62650456c0730f",
+                DownloadBytes: 372539392L,
+                License: "MPL-2.0"));
+
+        public static LibreOfficeEnginePackage RecommendedPackage => BuiltInManifest.LibreOffice;
 
         private static readonly HttpClient HttpClient = new()
         {

@@ -48,6 +48,17 @@ before any download starts. Clickra downloads to a unique temporary file,
 verifies SHA256, launches `msiexec` with explicit user consent, resolves the
 system `soffice.exe`, and saves the path only after health validation.
 
+## Manifest Policy
+
+Clickra currently uses a built-in LibreOffice manifest as the source of truth
+for version, download URL, package size, SHA256, and license. The built-in
+manifest is updated only when Clickra ships a new version.
+
+A remote manifest, such as one hosted on GitHub Pages, is intentionally out of
+scope for the first managed installer. It should be designed later together
+with the Clickra public website, update messaging, and optional manifest
+signature verification.
+
 PortableApps `.paf.exe` is not acceptable for automated setup in Clickra. Local
 testing showed that common silent installer arguments can still show installer
 UI, and a copied extracted tree can fail native LibreOffice startup checks.

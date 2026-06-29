@@ -7,7 +7,9 @@ static partial class TestSuite
     {
         runner.Run("LibreOffice engine package uses official Windows MSI metadata", () =>
         {
-            var package = LibreOfficeEngineInstaller.RecommendedPackage;
+            var manifest = LibreOfficeEngineInstaller.BuiltInManifest;
+            var package = manifest.LibreOffice;
+            Assert.Equal(1, manifest.Schema);
             Assert.Equal("26.2.4", package.Version);
             Assert.Equal("Windows x86-64 MSI", package.Edition);
             Assert.Equal("MPL-2.0", package.License);
