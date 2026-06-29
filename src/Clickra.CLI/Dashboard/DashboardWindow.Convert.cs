@@ -157,8 +157,7 @@ namespace Clickra.UI
             }
 
             if (RequiresOfficeEngine(cmd) &&
-                ClickraStorage.GetSetting("OfficeEngine").Equals("libreoffice", StringComparison.OrdinalIgnoreCase) &&
-                string.IsNullOrWhiteSpace(LibreOfficeHelper.GetResolvedExecutablePath()))
+                !HasAvailableOfficeEngine(cmd))
             {
                 MessageBox(hwnd, Localization.T("error_libreoffice_not_ready", ClickraStorage.GetSetting("Language")), "Clickra", 0x30);
                 return;
@@ -190,6 +189,28 @@ namespace Clickra.UI
             cmd.Equals("ppt2pdf", StringComparison.OrdinalIgnoreCase) ||
             cmd.Equals("word2pdf", StringComparison.OrdinalIgnoreCase) ||
             cmd.Equals("excel2pdf", StringComparison.OrdinalIgnoreCase);
+
+        static bool HasAvailableOfficeEngine(string cmd)
+        {
+            string engine = ClickraStorage.GetSetting("OfficeEngine");
+            bool libreOfficeReady = !string.IsNullOrWhiteSpace(LibreOfficeHelper.GetResolvedExecutablePath());
+
+            if (engine.Equals("libreoffice", StringComparison.OrdinalIgnoreCase))
+                return libreOfficeReady;
+
+            string app = cmd switch
+            {
+                "ppt2pdf" => "PowerPoint",
+                "word2pdf" => "Word",
+                "excel2pdf" => "Excel",
+                _ => ""
+            };
+            bool microsoftReady = !string.IsNullOrWhiteSpace(app) && IsOfficeInstalled(app);
+
+            return engine.Equals("microsoft", StringComparison.OrdinalIgnoreCase)
+                ? microsoftReady
+                : microsoftReady || libreOfficeReady;
+        }
 
         static string GetFilterForCommand(string cmd)
         {

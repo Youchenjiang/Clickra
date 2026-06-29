@@ -27,6 +27,17 @@ namespace Clickra.Core.Processors
                 return;
             }
 
+            if (!engine.Equals("microsoft", StringComparison.OrdinalIgnoreCase) &&
+                LibreOfficeHelper.CanConvert(appType) &&
+                !IsMicrosoftOfficeReady(appType))
+            {
+                if (string.IsNullOrWhiteSpace(LibreOfficeHelper.GetResolvedExecutablePath()))
+                    throw new Exception(Localization.T("error_libreoffice_not_ready", ClickraStorage.GetSetting("Language")));
+
+                LibreOfficeHelper.ExportToPdf(appType, fullPath, outputPdfPath, fileIndex, totalFiles, onProgress, cancellationToken);
+                return;
+            }
+
             try
             {
                 ExportMicrosoftOfficeToPdf(appType, fullPath, outputPdfPath, fileIndex, totalFiles, onProgress, cancellationToken);
@@ -42,6 +53,26 @@ namespace Clickra.Core.Processors
                     totalFiles * 100,
                     $"Microsoft {appType} 轉換失敗，正在改用 LibreOffice: {Path.GetFileName(fullPath)}...");
                 LibreOfficeHelper.ExportToPdf(appType, fullPath, outputPdfPath, fileIndex, totalFiles, onProgress, cancellationToken);
+            }
+        }
+
+        private static bool IsMicrosoftOfficeReady(string appType)
+        {
+            try
+            {
+                Type? type = appType switch
+                {
+                    "Word" => Type.GetTypeFromProgID("Word.Application"),
+                    "Excel" => Type.GetTypeFromProgID("Excel.Application"),
+                    "PowerPoint" => Type.GetTypeFromProgID("PowerPoint.Application"),
+                    _ => null
+                };
+
+                return type != null;
+            }
+            catch
+            {
+                return false;
             }
         }
 
