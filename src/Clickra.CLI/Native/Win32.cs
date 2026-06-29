@@ -102,6 +102,7 @@ namespace Clickra.UI.Native
         public const uint WM_USER_INVALIDATE = 0x0400 + 2;
         public const uint WM_USER_SHOW_PASSWORD_INPUT = 0x0400 + 3;
         public const uint WM_USER_HIDE_PASSWORD_INPUT = 0x0400 + 4;
+        public const uint WM_USER_DASHBOARD_ACTION = 0x0400 + 5;
         public const uint NIM_ADD = 0;
         public const uint NIM_MODIFY = 1;
         public const uint NIM_DELETE = 2;

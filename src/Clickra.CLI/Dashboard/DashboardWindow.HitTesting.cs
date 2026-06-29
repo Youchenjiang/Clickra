@@ -1,6 +1,7 @@
 using System;
 using System.Drawing;
 using Clickra.Core;
+using Clickra.Core.Processors;
 
 using static Clickra.UI.Native.Win32;
 
@@ -79,16 +80,20 @@ namespace Clickra.UI
                 int zoneH = 120;
                 int clearX = (int)logW - 110;
 
-                int availableWidth = (int)logW - (int)contentX - 50;
-                int cardW = (availableWidth - 2 * 12) / 3;
+                int groupGap = 14;
+                int groupW = (zoneW - 2 * groupGap) / 3;
+                int groupTop = 230;
+                int headerH = 24;
+                int cardH = 38;
+                int cardGap = 8;
 
                 for (int i = 0; i < ConvertCommands.Length; i++)
                 {
-                    int col = i % 3;
-                    int row = i / 3;
-                    int cardX = (int)contentX + col * (cardW + 12);
-                    int cardY = 230 + row * 50;
-                    if (x >= cardX && x < cardX + cardW && y >= cardY && y < cardY + 40)
+                    int group = i / 3;
+                    int local = i % 3;
+                    int cardX = (int)contentX + group * (groupW + groupGap);
+                    int cardY = groupTop + headerH + local * (cardH + cardGap);
+                    if (x >= cardX && x < cardX + groupW && y >= cardY && y < cardY + cardH)
                     {
                         if (ValidateConvertFiles(ConvertCommands[i], _selectedFiles, out _))
                         {
@@ -109,29 +114,13 @@ namespace Clickra.UI
             }
             else if (_activeTab == 3) // Settings
             {
-                int rightToggleX = (int)logW - 100;
-
-                // Quiet Mode toggle
-                if (x >= rightToggleX && x < rightToggleX + 44 && y >= 105 && y < 127) return 5;
-                // Notification toggle
-                if (x >= rightToggleX && x < rightToggleX + 44 && y >= 175 && y < 197) return 6;
-
-                // OutputDir buttons
-                float wSource = _wSource;
-                float wDesktop = _wDesktop;
-                float wDownloads = _wDownloads;
-                float wCustom = _wCustom;
-
-                float margin = 10f;
-                float xSource = contentX;
-                float xDesktop = xSource + wSource + margin;
-                float xDownloads = xDesktop + wDesktop + margin;
-                float xCustom = xDownloads + wDownloads + margin;
-
-                if (x >= xSource && x < xSource + wSource && y >= 290 && y < 320) return 7;
-                if (x >= xDesktop && x < xDesktop + wDesktop && y >= 290 && y < 320) return 8;
-                if (x >= xDownloads && x < xDownloads + wDownloads && y >= 290 && y < 320) return 9;
-                if (x >= xCustom && x < xCustom + wCustom && y >= 290 && y < 320) return 20;
+                foreach (var item in _settingsHitRects)
+                {
+                    if (item.Value.Contains(x, y))
+                    {
+                        return item.Key;
+                    }
+                }
 
                 // Language dropdown button
                 if (x >= contentX && x < contentX + 240 && y >= _langDropdownY && y < _langDropdownY + 30) return 10;

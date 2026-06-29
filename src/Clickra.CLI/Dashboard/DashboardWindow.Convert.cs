@@ -6,6 +6,7 @@ using System.Drawing.Drawing2D;
 using System.Collections.Generic;
 using System.Runtime.InteropServices;
 using Clickra.Core;
+using Clickra.Core.Processors;
 
 using static Clickra.UI.Native.Win32;
 
@@ -155,6 +156,20 @@ namespace Clickra.UI
                 return;
             }
 
+            if (RequiresOfficeEngine(cmd) &&
+                !HasAvailableOfficeEngine(cmd))
+            {
+                string language = ClickraStorage.GetSetting("Language");
+                string engine = ClickraStorage.GetSetting("OfficeEngine");
+                string errorKey = engine.Equals("libreoffice", StringComparison.OrdinalIgnoreCase)
+                    ? "error_libreoffice_not_ready"
+                    : engine.Equals("microsoft", StringComparison.OrdinalIgnoreCase)
+                        ? "error_microsoftoffice_not_ready"
+                        : "setting_engine_none_available";
+                MessageBox(hwnd, Localization.T(errorKey, language), "Clickra", 0x30);
+                return;
+            }
+
             var filesCopy = new List<string>(_selectedFiles);
             var thread = new System.Threading.Thread(() =>
             {
@@ -177,6 +192,33 @@ namespace Clickra.UI
             InvalidateRect(hwnd, IntPtr.Zero, false);
         }
 
+        static bool RequiresOfficeEngine(string cmd) =>
+            cmd.Equals("ppt2pdf", StringComparison.OrdinalIgnoreCase) ||
+            cmd.Equals("word2pdf", StringComparison.OrdinalIgnoreCase) ||
+            cmd.Equals("excel2pdf", StringComparison.OrdinalIgnoreCase);
+
+        static bool HasAvailableOfficeEngine(string cmd)
+        {
+            string engine = ClickraStorage.GetSetting("OfficeEngine");
+            bool libreOfficeReady = !string.IsNullOrWhiteSpace(LibreOfficeHelper.GetResolvedExecutablePath());
+
+            if (engine.Equals("libreoffice", StringComparison.OrdinalIgnoreCase))
+                return libreOfficeReady;
+
+            string app = cmd switch
+            {
+                "ppt2pdf" => "PowerPoint",
+                "word2pdf" => "Word",
+                "excel2pdf" => "Excel",
+                _ => ""
+            };
+            bool microsoftReady = !string.IsNullOrWhiteSpace(app) && IsOfficeInstalled(app);
+
+            return engine.Equals("microsoft", StringComparison.OrdinalIgnoreCase)
+                ? microsoftReady
+                : microsoftReady || libreOfficeReady;
+        }
+
         static string GetFilterForCommand(string cmd)
         {
             return cmd switch
@@ -188,6 +230,34 @@ namespace Clickra.UI
                 "translate-pdf" => "PDF Files (*.pdf)\0*.pdf\0All Files (*.*)\0*.*\0\0",
                 "decrypt-pdf" => "PDF Files (*.pdf)\0*.pdf\0All Files (*.*)\0*.*\0\0",
                 _ => "Image Files (*.jpg; *.jpeg; *.png; *.bmp; *.gif; *.tiff; *.webp)\0*.jpg;*.jpeg;*.png;*.bmp;*.gif;*.tiff;*.webp\0All Files (*.*)\0*.*\0\0"
+            };
+        }
+
+        static string GetCommandTextKey(string cmd)
+        {
+            return cmd switch
+            {
+                "word2pdf" => "cmd_word_to_pdf",
+                "excel2pdf" => "cmd_excel_to_pdf",
+                "ppt2pdf" => "cmd_ppt_to_pdf",
+                "merge-pdf" => "cmd_merge_pdf",
+                "translate-pdf" => "cmd_translate_pdf",
+                "decrypt-pdf" => "cmd_decrypt_pdf",
+                "img2pdf" => "cmd_img_to_pdf",
+                "img-merge" => "cmd_merge_img",
+                "img-stitch" => "cmd_stitch_img",
+                _ => ""
+            };
+        }
+
+        static string GetCommandGroupKey(int groupIndex)
+        {
+            return groupIndex switch
+            {
+                0 => "convert_group_office",
+                1 => "convert_group_pdf",
+                2 => "convert_group_image",
+                _ => ""
             };
         }
 
@@ -292,68 +362,69 @@ namespace Clickra.UI
                 }
             }
 
-            int cardW = (zoneW - 2 * 12) / 3;
-            for (int i = 0; i < ConvertCommands.Length; i++)
+            int groupGap = 14;
+            int groupW = (zoneW - 2 * groupGap) / 3;
+            int groupTop = 230;
+            int headerH = 24;
+            int cardH = 38;
+            int cardGap = 8;
+            for (int group = 0; group < 3; group++)
             {
-                int col = i % 3;
-                int row = i / 3;
-                int cardX = (int)contentX + col * (cardW + 12);
-                int cardY = 230 + row * 50;
-                int cardH = 40;
-
-                bool isSelected = _convertCommandIndex == i;
-                bool isHovered = _hoveredElement == (50 + i);
-                bool isEnabled = ValidateConvertFiles(ConvertCommands[i], _selectedFiles, out _);
-
-                Color cardBg;
-                Color cardBorder;
-                Color textColor;
-
-                if (!isEnabled)
+                int groupX = zoneX + group * (groupW + groupGap);
+                if (_subFont != null)
                 {
-                    cardBg = Color.FromArgb(28, 28, 28);
-                    cardBorder = Color.FromArgb(36, 36, 36);
-                    textColor = Color.FromArgb(80, 80, 80);
-                }
-                else if (isSelected)
-                {
-                    cardBg = Color.FromArgb(45, 45, 55);
-                    cardBorder = UIHelper.GetSystemColorizationColor();
-                    textColor = Color.White;
-                }
-                else
-                {
-                    cardBg = isHovered ? Color.FromArgb(50, 50, 50) : Color.FromArgb(36, 36, 36);
-                    cardBorder = isHovered ? Color.FromArgb(80, 80, 80) : Color.FromArgb(48, 48, 48);
-                    textColor = isHovered ? Color.White : Color.FromArgb(200, 200, 200);
+                    using var headerBrush = new SolidBrush(Color.FromArgb(170, 170, 170));
+                    g.DrawString(GetText(GetCommandGroupKey(group)), _subFont, headerBrush, groupX * s, groupTop * s);
                 }
 
-                using var path = UIHelper.GetRoundedRectPath(new RectangleF(cardX * s, cardY * s, cardW * s, cardH * s), 5 * s);
-                using var bgBrush = new SolidBrush(cardBg);
-                using var borderPen = new Pen(cardBorder, isSelected ? 1.5f * s : 1f * s);
-                g.FillPath(bgBrush, path);
-                g.DrawPath(borderPen, path);
+                for (int local = 0; local < 3; local++)
+                {
+                    int i = group * 3 + local;
+                    int cardX = groupX;
+                    int cardY = groupTop + headerH + local * (cardH + cardGap);
+                    int cardW = groupW;
 
-                string cmdKey = i switch
-                {
-                    0 => "cmd_ppt_to_pdf",
-                    1 => "cmd_word_to_pdf",
-                    2 => "cmd_excel_to_pdf",
-                    3 => "cmd_merge_pdf",
-                    4 => "cmd_img_to_pdf",
-                    5 => "cmd_merge_img",
-                    6 => "cmd_stitch_img",
-                    7 => "cmd_translate_pdf",
-                    8 => "cmd_decrypt_pdf",
-                    _ => ""
-                };
-                string cmdText = GetText(cmdKey);
-                
-                if (_tabFont != null)
-                {
-                    using var textBrush = new SolidBrush(textColor);
-                    var size = g.MeasureString(cmdText, _tabFont);
-                    g.DrawString(cmdText, _tabFont, textBrush, (cardX + (cardW - size.Width / s) / 2) * s, (cardY + (cardH - size.Height / s) / 2) * s);
+                    bool isSelected = _convertCommandIndex == i;
+                    bool isHovered = _hoveredElement == (50 + i);
+                    bool isEnabled = ValidateConvertFiles(ConvertCommands[i], _selectedFiles, out _);
+
+                    Color cardBg;
+                    Color cardBorder;
+                    Color textColor;
+
+                    if (!isEnabled)
+                    {
+                        cardBg = Color.FromArgb(28, 28, 28);
+                        cardBorder = Color.FromArgb(36, 36, 36);
+                        textColor = Color.FromArgb(80, 80, 80);
+                    }
+                    else if (isSelected)
+                    {
+                        cardBg = Color.FromArgb(45, 45, 55);
+                        cardBorder = UIHelper.GetSystemColorizationColor();
+                        textColor = Color.White;
+                    }
+                    else
+                    {
+                        cardBg = isHovered ? Color.FromArgb(50, 50, 50) : Color.FromArgb(36, 36, 36);
+                        cardBorder = isHovered ? Color.FromArgb(80, 80, 80) : Color.FromArgb(48, 48, 48);
+                        textColor = isHovered ? Color.White : Color.FromArgb(200, 200, 200);
+                    }
+
+                    using var path = UIHelper.GetRoundedRectPath(new RectangleF(cardX * s, cardY * s, cardW * s, cardH * s), 5 * s);
+                    using var bgBrush = new SolidBrush(cardBg);
+                    using var borderPen = new Pen(cardBorder, isSelected ? 1.5f * s : 1f * s);
+                    g.FillPath(bgBrush, path);
+                    g.DrawPath(borderPen, path);
+
+                    string cmdText = GetText(GetCommandTextKey(ConvertCommands[i]));
+
+                    if (_tabFont != null)
+                    {
+                        using var textBrush = new SolidBrush(textColor);
+                        var size = g.MeasureString(cmdText, _tabFont);
+                        g.DrawString(cmdText, _tabFont, textBrush, (cardX + (cardW - size.Width / s) / 2) * s, (cardY + (cardH - size.Height / s) / 2) * s);
+                    }
                 }
             }
 

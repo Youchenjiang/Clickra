@@ -1,4 +1,4 @@
-# Clickra v3.4.0.0
+# Clickra v3.5.0.0
 
 [![Microsoft Store](https://img.shields.io/badge/Microsoft%20Store-Clickra-blue?style=for-the-badge&logo=microsoft-store)](https://apps.microsoft.com/detail/9NGLBF6P1KLD)
 [![License: Apache 2.0](https://img.shields.io/badge/License-Apache%202.0-blue.svg?style=for-the-badge)](https://opensource.org/licenses/Apache-2.0)
@@ -24,9 +24,9 @@ Most productivity scripts (PDF merging, image conversion, etc.) are typically wr
 
 | Version | Release Date | Key Milestone |
 | :--- | :--- | :--- |
+| **v3.5.0.0** | Jun 29, 2026 | **LibreOffice Offline Engine**. Added managed LibreOffice fallback for Office-to-PDF conversion, Office engine selection, and grouped Convert tools. |
 | **v3.4.0.0** | Jun 21, 2026 | **Excel to PDF Conversion**. Added right-click Excel to PDF with Shell Extension, Dashboard UI, and CLI support. |
 | **v3.3.3.0** | Jun 21, 2026 | **PDF Translation Pipeline Modularization**. Decomposed core engine into 80+ classes, enhanced layout analysis, added Chinese converter and diagnostics. |
-| **v3.3.2.0** | Jun 19, 2026 | **Dependency Updates & Build Fixes**. Updated NuGet packages, fixed CHANGELOG rotation, cleaned build script output. |
 
 [View Full Changelog](CHANGELOG.md)
 
@@ -40,12 +40,12 @@ Commands are elegantly tucked away in the `Clickra` sub-menu, keeping your prima
 
 ### 2. 📊 Native Dashboard
 *   **Feature**: A high-performance, dark-themed dashboard to monitor system compatibility.
-*   **Status Detection**: Real-time detection of PDF Engine, Microsoft Word, and PowerPoint status.
+*   **Status Detection**: Real-time detection of the PDF engine and Office conversion engine readiness.
 *   **AOT Power**: Pure Win32 implementation ensures zero startup lag.
 
-### 3. 📄 Word & PPT to PDF
-*   **Feature**: Silently exports Office documents to high-quality PDFs in the background.
-*   **Requirement**: Microsoft Office (Word/PowerPoint) must be installed locally.
+### 3. 📄 Office to PDF
+*   **Feature**: Silently exports Word, Excel, and PowerPoint documents to high-quality PDFs in the background.
+*   **Engine Choice**: Supports Auto, Microsoft Office, and LibreOffice modes. LibreOffice can be downloaded and managed from Clickra as a free local fallback when Microsoft Office is not available.
 
 ### 4. 🔗 PDF Merge
 *   **Feature**: Merges selected PDF files into a single document based on filename order.

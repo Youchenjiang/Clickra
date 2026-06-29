@@ -103,6 +103,8 @@ namespace Clickra.Core
                     SettingsCache["OutputDir"] = "source"; // source, desktop, downloads
                     SettingsCache["Language"] = "";
                     SettingsCache["TranslateTargetLang"] = "zh-TW";
+                    SettingsCache["OfficeEngine"] = "auto"; // auto, microsoft, libreoffice
+                    SettingsCache["LibreOfficePath"] = "";
 
                     if (File.Exists(SettingsFile))
                     {

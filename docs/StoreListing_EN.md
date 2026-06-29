@@ -1,6 +1,6 @@
 # Microsoft Store Listing - English (US)
 
-Below is the complete information for you to copy and paste directly into the Microsoft Partner Center, updated for the v3.4.0.0 release.
+Below is the complete information for you to copy and paste directly into the Microsoft Partner Center, updated for the v3.5.0.0 release.
 
 ---
 
@@ -8,13 +8,14 @@ Below is the complete information for you to copy and paste directly into the Mi
 Clickra
 
 ## Description
-[System Requirements] The "Convert Document to PDF" feature requires Microsoft Word or PowerPoint to be installed on the local device.
+[System Requirements] The "Convert Document to PDF" feature can use Microsoft Office when installed, or LibreOffice as a free local fallback that can be downloaded and managed from Clickra.
 
 Clickra is the ultimate high-performance, native context menu productivity suite for Windows 10 and Windows 11. Designed to seamlessly integrate into your native File Explorer context menu, Clickra provides instant access to essential file operations without the need to open heavy, bloated software.
 
 Core Features:
- - Native Dashboard: A sleek dark-themed interface to monitor your system's Office installation status in real-time.
- - Office to PDF: High-quality, silent conversion for Word (.doc/.docx) and PowerPoint (.ppt/.pptx) files.
+ - Native Dashboard: A sleek dark-themed interface to monitor PDF and Office conversion engine status in real-time.
+ - Office to PDF: High-quality, silent conversion for Word (.doc/.docx), Excel (.xls/.xlsx), and PowerPoint (.ppt/.pptx) files.
+ - LibreOffice Fallback: Download and manage LibreOffice from Clickra as a free local conversion engine when Microsoft Office is unavailable.
  - PDF Password Decryption: Decrypt password-protected PDF files directly from the context menu.
  - Instant PDF Merging: Select multiple PDF files and merge them instantly from the right-click menu.
  - Image to PDF: Quickly wrap images (JPG/PNG/WebP) into PDF documents.
@@ -25,15 +26,16 @@ Clickra respects your privacy. Most processing (Office-to-PDF conversion, PDF me
 🔗 Open Source on GitHub: https://github.com/Youchenjiang/Clickra
 
 ## What's new in this version
- - Excel to PDF Conversion: Added a new right-click context menu command to convert Excel spreadsheets (.xlsx/.xls) to high-quality PDF files.
- - Dashboard Integration: Added Excel conversion card with drag-and-drop support and Excel engine status indicator in the Overview tab.
- - CLI Support: Added `excel2pdf` command with directory expansion, progress display, and history logging.
- - Shell Extension: Added localized Excel to PDF menu item in 5 languages (English, Traditional Chinese, Simplified Chinese, Japanese, Korean).
+ - LibreOffice Offline Engine: Added Auto, Microsoft Office, and LibreOffice modes for Word, Excel, and PowerPoint to PDF conversion.
+ - Managed LibreOffice Setup: Added built-in manifest metadata, official MSI download, SHA256 verification, installation, removal, and restart-aware status handling.
+ - No-Office Fallback: Users without Microsoft Office can convert Office documents locally through LibreOffice.
+ - Convert Tool Groups: Reorganized the Convert tab into Office, PDF, and Image groups for faster feature discovery.
 
 ## Product Features
 *(Max 20, displayed as bullet points)*
- - Native Dashboard for Office status monitoring
- - One-click Word/PPT to PDF conversion (Requires Office)
+ - Native Dashboard for PDF and Office engine monitoring
+ - One-click Word/Excel/PPT to PDF conversion
+ - Optional LibreOffice fallback when Microsoft Office is unavailable
  - One-click PDF password removal
  - Inline secure password input within the progress window
  - Batch Image to PDF conversion (JPG/PNG/WebP)
@@ -53,7 +55,7 @@ Clickra
 Clickra
 
 ## Short description
-Clickra is a high-performance native context menu utility for Office to PDF conversion, PDF decryption, PDF merging, and image stitching. Secure, privacy-safe, and extremely fast!
+Clickra is a high-performance native context menu utility for Office to PDF conversion, PDF decryption, PDF merging, and image stitching. Secure, local-first, and extremely fast!
 
 ---
 ### Other Information
@@ -65,8 +67,8 @@ Clickra is a high-performance native context menu utility for Office to PDF conv
  - PDF Decrypt
  - PPT to PDF
  - Word to PDF
+ - Excel to PDF
  - Image to PDF
- - Image Stitch
 
 ## Copyright and trademark info
 © 2026 Youchen Jiang. All rights reserved.

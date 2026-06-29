@@ -4,6 +4,7 @@ using System.Drawing;
 using System.IO;
 using System.Runtime.InteropServices;
 using Clickra.Core;
+using Clickra.Core.Processors;
 using static Clickra.UI.Native.Win32;
 
 namespace Clickra.UI
@@ -346,6 +347,266 @@ namespace Clickra.UI
                     InvalidateRect(hwnd, IntPtr.Zero, false);
                 }
             }
+            else if (element == 32)
+            {
+                ClickraStorage.SaveSetting("OfficeEngine", "auto");
+                InvalidateRect(hwnd, IntPtr.Zero, false);
+            }
+            else if (element == 33)
+            {
+                ClickraStorage.SaveSetting("OfficeEngine", "microsoft");
+                InvalidateRect(hwnd, IntPtr.Zero, false);
+            }
+            else if (element == 34)
+            {
+                ClickraStorage.SaveSetting("OfficeEngine", "libreoffice");
+                ClickraStorage.SaveSetting("LibreOfficePath", "");
+                InvalidateRect(hwnd, IntPtr.Zero, false);
+            }
+            else if (element == 35)
+            {
+                const string sofficeFilter = "LibreOffice soffice.exe\0soffice.exe\0Executable Files (*.exe)\0*.exe\0All Files (*.*)\0*.*\0\0";
+                var chosen = OpenFiles(hwnd, sofficeFilter, GetText("setting_libreoffice_browse_title"));
+                if (chosen.Count > 0)
+                {
+                    string candidate = chosen[0];
+                    if (Path.GetFileName(candidate).Equals("soffice.exe", StringComparison.OrdinalIgnoreCase))
+                    {
+                        if (LibreOfficeHelper.LooksLikeLibreOfficeExecutable(candidate))
+                        {
+                            ClickraStorage.SaveSetting("LibreOfficePath", candidate);
+                            ClickraStorage.SaveSetting("LibreOfficeRemovalPendingRestart", "false");
+                            MessageBox(hwnd, string.Format(GetText("setting_libreoffice_validated"), Path.GetDirectoryName(candidate)), "Clickra", 0x40);
+                        }
+                        else
+                        {
+                            MessageBox(hwnd, GetText("setting_libreoffice_validation_failed"), "Clickra", 0x30);
+                        }
+                    }
+                    else
+                    {
+                        MessageBox(hwnd, GetText("setting_libreoffice_invalid"), "Clickra", 0x30);
+                    }
+                    InvalidateRect(hwnd, IntPtr.Zero, false);
+                }
+            }
+            else if (element == 36)
+            {
+                lock (_libreOfficeDownloadLock)
+                {
+                    if (_libreOfficeDownloadInProgress)
+                    {
+                        MessageBox(hwnd, GetText("setting_libreoffice_download_in_progress"), "Clickra", 0x40);
+                        return;
+                    }
+                }
+
+                bool removalPendingRestart = ClickraStorage.GetSetting("LibreOfficeRemovalPendingRestart").Equals("true", StringComparison.OrdinalIgnoreCase);
+                var package = LibreOfficeEngineInstaller.RecommendedPackage;
+                string installedVersion = LibreOfficeEngineInstaller.GetInstalledSystemVersion();
+                if (!removalPendingRestart &&
+                    !string.IsNullOrWhiteSpace(installedVersion) &&
+                    LibreOfficeEngineInstaller.IsRecommendedVersionInstalled())
+                {
+                    string resolvedPath = LibreOfficeEngineInstaller.ResolveSystemSofficePath();
+                    if (!string.IsNullOrWhiteSpace(resolvedPath))
+                    {
+                        ClickraStorage.SaveSetting("LibreOfficePath", resolvedPath);
+                    }
+
+                    MessageBox(
+                        hwnd,
+                        string.Format(GetText("setting_libreoffice_already_current"), installedVersion),
+                        "Clickra",
+                        0x40);
+                    InvalidateRect(hwnd, IntPtr.Zero, false);
+                    return;
+                }
+
+                string prompt = string.Format(
+                    GetText("setting_libreoffice_download_prompt"),
+                    package.Version,
+                    package.Edition,
+                    FormatBytes(package.DownloadBytes),
+                    LibreOfficeEngineInstaller.GetDefaultInstallRoot(),
+                    package.Sha256);
+
+                if (MessageBox(hwnd, prompt, "Clickra", 0x41) == 1)
+                {
+                    lock (_libreOfficeDownloadLock)
+                    {
+                        _libreOfficeDownloadInProgress = true;
+                        _libreOfficeDownloadProgress = 0;
+                        _libreOfficeDownloadStatus = removalPendingRestart
+                            ? GetText("setting_libreoffice_reinstall_starting")
+                            : GetText("setting_libreoffice_download_starting");
+                    }
+                    InvalidateRect(hwnd, IntPtr.Zero, false);
+
+                    var thread = new System.Threading.Thread(() =>
+                    {
+                        try
+                        {
+                            string downloadDir = Path.Combine(ClickraStorage.GetDataDir(), "downloads");
+                            var progress = new Progress<int>(percent =>
+                            {
+                                int displayPercent = Math.Min(80, Math.Max(1, percent * 80 / 100));
+                                PostDashboardAction(hwnd, () =>
+                                {
+                                    SetLibreOfficeSetupStatus(
+                                        displayPercent,
+                                        percent >= 100
+                                            ? GetText("setting_libreoffice_verifying")
+                                            : string.Format(GetText("setting_libreoffice_download_progress"), percent));
+                                });
+                            });
+                            string installerPath = LibreOfficeEngineInstaller.DownloadAndVerifyAsync(
+                                    package,
+                                    downloadDir,
+                                    progress,
+                                    System.Threading.CancellationToken.None)
+                                .GetAwaiter()
+                                .GetResult();
+
+                            PostDashboardAction(hwnd, () =>
+                            {
+                                SetLibreOfficeSetupStatus(85, GetText("setting_libreoffice_installing"));
+                            });
+
+                            LibreOfficeInstallResult installResult = LibreOfficeEngineInstaller.InstallMsiPackageAsync(
+                                    installerPath,
+                                    System.Threading.CancellationToken.None)
+                                .GetAwaiter()
+                                .GetResult();
+
+                            string sofficePath = installResult.SofficePath;
+                            if (!installResult.RestartRequired && !LibreOfficeHelper.LooksLikeLibreOfficeExecutable(sofficePath))
+                                throw new Exception(GetText("setting_libreoffice_validation_failed"));
+
+                            PostDashboardAction(hwnd, () =>
+                            {
+                                SetLibreOfficeSetupStatus(95, GetText("setting_libreoffice_installing"));
+                            });
+
+                            if (!string.IsNullOrWhiteSpace(sofficePath))
+                                ClickraStorage.SaveSetting("LibreOfficePath", sofficePath);
+                            ClickraStorage.SaveSetting("LibreOfficeInstalledByClickra", "true");
+                            ClickraStorage.SaveSetting("LibreOfficeRemovalPendingRestart", "false");
+
+                            PostDashboardAction(hwnd, () =>
+                            {
+                                MessageBox(
+                                    hwnd,
+                                    string.Format(
+                                        GetText(installResult.RestartRequired
+                                            ? "setting_libreoffice_install_restart_required"
+                                            : "setting_libreoffice_download_ready"),
+                                        string.IsNullOrWhiteSpace(sofficePath) ? LibreOfficeEngineInstaller.GetDefaultInstallRoot() : sofficePath),
+                                    "Clickra",
+                                    0x40);
+                            });
+                        }
+                        catch (Exception ex)
+                        {
+                            ClickraStorage.SaveSetting("LibreOfficePath", "");
+                            PostDashboardAction(hwnd, () =>
+                            {
+                                MessageBox(
+                                    hwnd,
+                                    string.Format(GetText("setting_libreoffice_download_failed"), ex.Message),
+                                    "Clickra",
+                                    0x10);
+                            });
+                        }
+                        finally
+                        {
+                            PostDashboardAction(hwnd, () =>
+                            {
+                                FinishLibreOfficeSetupStatus();
+                            });
+                        }
+                    });
+                    thread.SetApartmentState(System.Threading.ApartmentState.STA);
+                    thread.IsBackground = true;
+                    thread.Start();
+                }
+            }
+            else if (element == 38)
+            {
+                lock (_libreOfficeDownloadLock)
+                {
+                    if (_libreOfficeDownloadInProgress)
+                    {
+                        MessageBox(hwnd, GetText("setting_libreoffice_download_in_progress"), "Clickra", 0x40);
+                        return;
+                    }
+                }
+
+                if (ClickraStorage.GetSetting("LibreOfficeRemovalPendingRestart").Equals("true", StringComparison.OrdinalIgnoreCase))
+                {
+                    MessageBox(hwnd, GetText("setting_libreoffice_removal_pending"), "Clickra", 0x40);
+                    return;
+                }
+
+                if (MessageBox(hwnd, GetText("setting_libreoffice_uninstall_confirm"), "Clickra", 0x31) == 1)
+                {
+                    lock (_libreOfficeDownloadLock)
+                    {
+                        _libreOfficeDownloadInProgress = true;
+                        _libreOfficeDownloadProgress = 60;
+                        _libreOfficeDownloadStatus = GetText("setting_libreoffice_uninstalling");
+                    }
+                    InvalidateRect(hwnd, IntPtr.Zero, false);
+
+                    var thread = new System.Threading.Thread(() =>
+                    {
+                        try
+                        {
+                            LibreOfficeUninstallResult uninstallResult = LibreOfficeEngineInstaller.UninstallSystemLibreOfficeAsync(
+                                    System.Threading.CancellationToken.None)
+                                .GetAwaiter()
+                                .GetResult();
+
+                            ClickraStorage.SaveSetting("LibreOfficePath", "");
+                            ClickraStorage.SaveSetting("LibreOfficeInstalledByClickra", "false");
+                            ClickraStorage.SaveSetting("LibreOfficeRemovalPendingRestart", uninstallResult.RestartRequired ? "true" : "false");
+                            ClickraStorage.SaveSetting("OfficeEngine", "auto");
+
+                            PostDashboardAction(hwnd, () =>
+                            {
+                                MessageBox(
+                                    hwnd,
+                                    GetText(uninstallResult.RestartRequired
+                                        ? "setting_libreoffice_uninstall_restart_required"
+                                        : "setting_libreoffice_uninstall_ready"),
+                                    "Clickra",
+                                    0x40);
+                            });
+                        }
+                        catch (Exception ex)
+                        {
+                            PostDashboardAction(hwnd, () =>
+                            {
+                                MessageBox(
+                                    hwnd,
+                                    string.Format(GetText("setting_libreoffice_uninstall_failed"), ex.Message),
+                                    "Clickra",
+                                    0x10);
+                            });
+                        }
+                        finally
+                        {
+                            PostDashboardAction(hwnd, () =>
+                            {
+                                FinishLibreOfficeSetupStatus();
+                            });
+                        }
+                    });
+                    thread.SetApartmentState(System.Threading.ApartmentState.STA);
+                    thread.IsBackground = true;
+                    thread.Start();
+                }
+            }
             else if (element == 10)
             {
                 _langDropdownOpen = !_langDropdownOpen;
@@ -458,6 +719,37 @@ namespace Clickra.UI
                 {
                     MessageBox(hwnd, $"Cannot start feedback: {ex.Message}", "Clickra", 0x10);
                 }
+            }
+        }
+
+        static string FormatBytes(long bytes)
+        {
+            const double mb = 1024d * 1024d;
+            return $"{bytes / mb:F0} MB";
+        }
+
+        static void PostDashboardAction(IntPtr hwnd, Action action)
+        {
+            _uiActions.Enqueue(action);
+            PostMessageW(hwnd, WM_USER_DASHBOARD_ACTION, IntPtr.Zero, IntPtr.Zero);
+        }
+
+        static void SetLibreOfficeSetupStatus(int progress, string status)
+        {
+            lock (_libreOfficeDownloadLock)
+            {
+                _libreOfficeDownloadProgress = progress;
+                _libreOfficeDownloadStatus = status;
+            }
+        }
+
+        static void FinishLibreOfficeSetupStatus()
+        {
+            lock (_libreOfficeDownloadLock)
+            {
+                _libreOfficeDownloadInProgress = false;
+                _libreOfficeDownloadProgress = 0;
+                _libreOfficeDownloadStatus = "";
             }
         }
     }

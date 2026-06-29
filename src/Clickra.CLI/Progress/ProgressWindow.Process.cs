@@ -225,7 +225,12 @@ namespace Clickra.UI
 
                 if (!wasCanceled)
                 {
-                    MessageBox(hwnd, $"處理過程中發生錯誤：\n{ex.Message}", "Clickra — 錯誤", 0x10); // MB_ICONERROR
+                    string lang = ClickraStorage.GetSetting("Language");
+                    MessageBox(
+                        hwnd,
+                        string.Format(Localization.T("error_processing_failed", lang), ex.Message),
+                        $"Clickra — {Localization.T("status_error", lang)}",
+                        0x10); // MB_ICONERROR
                 }
                 try { ClickraStorage.ClearActiveRecord(); } catch { }
                 PostMessageW(hwnd, 0x0010, IntPtr.Zero, IntPtr.Zero); // WM_CLOSE
