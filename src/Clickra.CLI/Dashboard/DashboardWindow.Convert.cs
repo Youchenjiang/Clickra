@@ -6,6 +6,7 @@ using System.Drawing.Drawing2D;
 using System.Collections.Generic;
 using System.Runtime.InteropServices;
 using Clickra.Core;
+using Clickra.Core.Processors;
 
 using static Clickra.UI.Native.Win32;
 
@@ -155,6 +156,14 @@ namespace Clickra.UI
                 return;
             }
 
+            if (RequiresOfficeEngine(cmd) &&
+                ClickraStorage.GetSetting("OfficeEngine").Equals("libreoffice", StringComparison.OrdinalIgnoreCase) &&
+                string.IsNullOrWhiteSpace(LibreOfficeHelper.GetResolvedExecutablePath()))
+            {
+                MessageBox(hwnd, Localization.T("error_libreoffice_not_ready", ClickraStorage.GetSetting("Language")), "Clickra", 0x30);
+                return;
+            }
+
             var filesCopy = new List<string>(_selectedFiles);
             var thread = new System.Threading.Thread(() =>
             {
@@ -176,6 +185,11 @@ namespace Clickra.UI
             RefreshHistoryData();
             InvalidateRect(hwnd, IntPtr.Zero, false);
         }
+
+        static bool RequiresOfficeEngine(string cmd) =>
+            cmd.Equals("ppt2pdf", StringComparison.OrdinalIgnoreCase) ||
+            cmd.Equals("word2pdf", StringComparison.OrdinalIgnoreCase) ||
+            cmd.Equals("excel2pdf", StringComparison.OrdinalIgnoreCase);
 
         static string GetFilterForCommand(string cmd)
         {
