@@ -3,6 +3,7 @@ using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Net.Http;
+using System.Net.Sockets;
 using System.Security.Cryptography;
 using System.Text.RegularExpressions;
 using System.Threading;
@@ -422,24 +423,43 @@ namespace Clickra.Core.Processors
                 return targetPath;
             }
 
-            using var response = await HttpClient.GetAsync(package.DirectDownloadUrl, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
-            response.EnsureSuccessStatusCode();
-
-            await using (var source = await response.Content.ReadAsStreamAsync(cancellationToken))
-            await using (var destination = File.Create(tempPath))
+            HttpResponseMessage response;
+            try
             {
-                byte[] buffer = new byte[1024 * 128];
-                long totalRead = 0;
-                long expectedBytes = response.Content.Headers.ContentLength ?? package.DownloadBytes;
-                int read;
-                while ((read = await source.ReadAsync(buffer, cancellationToken)) > 0)
+                response = await HttpClient.GetAsync(package.DirectDownloadUrl, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
+                response.EnsureSuccessStatusCode();
+            }
+            catch (HttpRequestException ex) when (IsNetworkNameResolutionFailure(ex))
+            {
+                throw new InvalidOperationException(
+                    "Unable to resolve the LibreOffice download server. Check the network, DNS, proxy, or virtual machine internet settings, then try again.",
+                    ex);
+            }
+            catch (HttpRequestException ex)
+            {
+                throw new InvalidOperationException(
+                    $"Unable to connect to the LibreOffice download server. Check the network, proxy, or firewall settings, then try again. Details: {ex.Message}",
+                    ex);
+            }
+
+            using (response)
+            {
+                await using (var source = await response.Content.ReadAsStreamAsync(cancellationToken))
+                await using (var destination = File.Create(tempPath))
                 {
-                    await destination.WriteAsync(buffer.AsMemory(0, read), cancellationToken);
-                    totalRead += read;
-                    if (expectedBytes > 0)
+                    byte[] buffer = new byte[1024 * 128];
+                    long totalRead = 0;
+                    long expectedBytes = response.Content.Headers.ContentLength ?? package.DownloadBytes;
+                    int read;
+                    while ((read = await source.ReadAsync(buffer, cancellationToken)) > 0)
                     {
-                        int percent = (int)Math.Min(99, Math.Max(1, totalRead * 100 / expectedBytes));
-                        progress?.Report(percent);
+                        await destination.WriteAsync(buffer.AsMemory(0, read), cancellationToken);
+                        totalRead += read;
+                        if (expectedBytes > 0)
+                        {
+                            int percent = (int)Math.Min(99, Math.Max(1, totalRead * 100 / expectedBytes));
+                            progress?.Report(percent);
+                        }
                     }
                 }
             }
@@ -455,6 +475,18 @@ namespace Clickra.Core.Processors
             File.Move(tempPath, targetPath);
             progress?.Report(100);
             return targetPath;
+        }
+
+        private static bool IsNetworkNameResolutionFailure(Exception ex)
+        {
+            for (Exception? current = ex; current != null; current = current.InnerException)
+            {
+                if (current is SocketException socketException &&
+                    socketException.SocketErrorCode == SocketError.HostNotFound)
+                    return true;
+            }
+
+            return false;
         }
     }
 }
