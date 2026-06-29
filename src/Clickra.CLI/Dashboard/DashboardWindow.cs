@@ -64,7 +64,7 @@ namespace Clickra.UI
         {
             if (_activeTab == 0) // Overview
             {
-                return 440;
+                return _overviewContentHeight;
             }
             if (_activeTab == 1) // Convert
             {
