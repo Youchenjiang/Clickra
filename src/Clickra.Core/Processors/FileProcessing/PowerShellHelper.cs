@@ -48,10 +48,14 @@ namespace Clickra.Core.Processors
                 if (string.IsNullOrWhiteSpace(LibreOfficeHelper.GetResolvedExecutablePath()))
                     throw;
 
+                string language = ClickraStorage.GetSetting("Language");
                 onProgress?.Invoke(
                     fileIndex * 100,
                     totalFiles * 100,
-                    $"Microsoft {appType} 轉換失敗，正在改用 LibreOffice: {Path.GetFileName(fullPath)}...");
+                    string.Format(
+                        Localization.T("status_office_fallback_to_libreoffice", language),
+                        appType,
+                        Path.GetFileName(fullPath)));
                 LibreOfficeHelper.ExportToPdf(appType, fullPath, outputPdfPath, fileIndex, totalFiles, onProgress, cancellationToken);
             }
         }
@@ -248,6 +252,10 @@ try {{
         private const uint SemFailCriticalErrors = 0x0001;
         private const uint SemNoGpFaultErrorBox = 0x0002;
         private const uint SemNoOpenFileErrorBox = 0x8000;
+        private static readonly object ResolveCacheLock = new();
+        private static DateTime _resolvedExecutableCachedAt = DateTime.MinValue;
+        private static string _resolvedExecutableCacheKey = "";
+        private static string _resolvedExecutableCacheValue = "";
 
         [DllImport("kernel32.dll")]
         private static extern uint SetErrorMode(uint uMode);
@@ -274,10 +282,38 @@ try {{
 
         public static string GetResolvedExecutablePath()
         {
-            if (ClickraStorage.GetSetting("LibreOfficeRemovalPendingRestart").Equals("true", StringComparison.OrdinalIgnoreCase))
+            string removalPending = ClickraStorage.GetSetting("LibreOfficeRemovalPendingRestart");
+            string configuredPath = ClickraStorage.GetSetting("LibreOfficePath");
+            string envPath = Environment.GetEnvironmentVariable("CLICKRA_LIBREOFFICE_PATH") ?? "";
+            string cacheKey = $"{removalPending}|{configuredPath}|{envPath}";
+
+            lock (ResolveCacheLock)
+            {
+                if (cacheKey == _resolvedExecutableCacheKey &&
+                    DateTime.UtcNow - _resolvedExecutableCachedAt < TimeSpan.FromSeconds(2))
+                {
+                    return _resolvedExecutableCacheValue;
+                }
+            }
+
+            string resolved = ResolveExecutablePathUncached(removalPending, configuredPath);
+
+            lock (ResolveCacheLock)
+            {
+                _resolvedExecutableCacheKey = cacheKey;
+                _resolvedExecutableCacheValue = resolved;
+                _resolvedExecutableCachedAt = DateTime.UtcNow;
+            }
+
+            return resolved;
+        }
+
+        private static string ResolveExecutablePathUncached(string removalPending, string configuredPath)
+        {
+            if (removalPending.Equals("true", StringComparison.OrdinalIgnoreCase))
                 return "";
 
-            if (!TryResolveExecutable(ClickraStorage.GetSetting("LibreOfficePath"), out string executablePath))
+            if (!TryResolveExecutable(configuredPath, out string executablePath))
                 return "";
 
             return executablePath;
@@ -366,7 +402,10 @@ try {{
                 onProgress?.Invoke(
                     fileIndex * 100 + 20,
                     totalFiles * 100,
-                    $"正在啟動 LibreOffice 引擎 ({fileIndex + 1}/{totalFiles})...");
+                    string.Format(
+                        Localization.T("status_libreoffice_starting", ClickraStorage.GetSetting("Language")),
+                        fileIndex + 1,
+                        totalFiles));
 
                 var startInfo = new ProcessStartInfo
                 {
@@ -417,7 +456,9 @@ try {{
                 onProgress?.Invoke(
                     fileIndex * 100 + 60,
                     totalFiles * 100,
-                    $"正在使用 LibreOffice 匯出 PDF: {Path.GetFileName(fullPath)}...");
+                    string.Format(
+                        Localization.T("status_libreoffice_exporting", ClickraStorage.GetSetting("Language")),
+                        Path.GetFileName(fullPath)));
 
                 process.WaitForExit();
                 cancellationToken.ThrowIfCancellationRequested();
@@ -445,7 +486,9 @@ try {{
                 onProgress?.Invoke(
                     fileIndex * 100 + 100,
                     totalFiles * 100,
-                    $"已完成 LibreOffice 轉換: {Path.GetFileName(fullPath)}");
+                    string.Format(
+                        Localization.T("status_libreoffice_completed", ClickraStorage.GetSetting("Language")),
+                        Path.GetFileName(fullPath)));
             }
             finally
             {

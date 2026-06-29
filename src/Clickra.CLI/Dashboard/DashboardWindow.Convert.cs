@@ -159,7 +159,14 @@ namespace Clickra.UI
             if (RequiresOfficeEngine(cmd) &&
                 !HasAvailableOfficeEngine(cmd))
             {
-                MessageBox(hwnd, Localization.T("error_libreoffice_not_ready", ClickraStorage.GetSetting("Language")), "Clickra", 0x30);
+                string language = ClickraStorage.GetSetting("Language");
+                string engine = ClickraStorage.GetSetting("OfficeEngine");
+                string errorKey = engine.Equals("libreoffice", StringComparison.OrdinalIgnoreCase)
+                    ? "error_libreoffice_not_ready"
+                    : engine.Equals("microsoft", StringComparison.OrdinalIgnoreCase)
+                        ? "error_microsoftoffice_not_ready"
+                        : "setting_engine_none_available";
+                MessageBox(hwnd, Localization.T(errorKey, language), "Clickra", 0x30);
                 return;
             }
 
