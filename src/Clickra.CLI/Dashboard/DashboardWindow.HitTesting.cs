@@ -80,16 +80,20 @@ namespace Clickra.UI
                 int zoneH = 120;
                 int clearX = (int)logW - 110;
 
-                int availableWidth = (int)logW - (int)contentX - 50;
-                int cardW = (availableWidth - 2 * 12) / 3;
+                int groupGap = 14;
+                int groupW = (zoneW - 2 * groupGap) / 3;
+                int groupTop = 230;
+                int headerH = 24;
+                int cardH = 38;
+                int cardGap = 8;
 
                 for (int i = 0; i < ConvertCommands.Length; i++)
                 {
-                    int col = i % 3;
-                    int row = i / 3;
-                    int cardX = (int)contentX + col * (cardW + 12);
-                    int cardY = 230 + row * 50;
-                    if (x >= cardX && x < cardX + cardW && y >= cardY && y < cardY + 40)
+                    int group = i / 3;
+                    int local = i % 3;
+                    int cardX = (int)contentX + group * (groupW + groupGap);
+                    int cardY = groupTop + headerH + local * (cardH + cardGap);
+                    if (x >= cardX && x < cardX + groupW && y >= cardY && y < cardY + cardH)
                     {
                         if (ValidateConvertFiles(ConvertCommands[i], _selectedFiles, out _))
                         {

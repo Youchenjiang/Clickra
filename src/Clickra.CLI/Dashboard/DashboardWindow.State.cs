@@ -13,9 +13,14 @@ namespace Clickra.UI
         static int _hoveredElement = -1; // IDs of hovered elements
         
         // Convert tab state
-        static int _convertCommandIndex = 1; // Default: 1 (word2pdf)
+        static int _convertCommandIndex = 0; // Default: Word to PDF
         static List<string> _selectedFiles = new List<string>();
-        private static readonly string[] ConvertCommands = { "ppt2pdf", "word2pdf", "excel2pdf", "merge-pdf", "img2pdf", "img-merge", "img-stitch", "translate-pdf", "decrypt-pdf" };
+        private static readonly string[] ConvertCommands =
+        {
+            "word2pdf", "excel2pdf", "ppt2pdf",
+            "merge-pdf", "translate-pdf", "decrypt-pdf",
+            "img2pdf", "img-merge", "img-stitch"
+        };
         
         // Language Dropdown state
         static bool _langDropdownOpen = false;
