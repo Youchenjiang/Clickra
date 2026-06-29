@@ -6,6 +6,7 @@ using System.Drawing.Drawing2D;
 using System.Collections.Generic;
 using Microsoft.Win32;
 using Clickra.Core;
+using Clickra.Core.Processors;
 
 using static Clickra.UI.Native.Win32;
 
@@ -16,7 +17,32 @@ namespace Clickra.UI
         static void DrawSettingsTab(Graphics g, float logW, float logH, float contentX)
         {
             float s = _dpiScale;
-            // Title
+            _settingsHitRects.Clear();
+
+            void AddHitRect(int elementId, float x, float y, float w, float h)
+            {
+                _settingsHitRects[elementId] = new RectangleF(x, y, w, h);
+            }
+
+            void DrawSectionHeader(string titleKey, string descKey, float y)
+            {
+                if (_tabFont != null)
+                    g.DrawString(GetText(titleKey), _tabFont, Brushes.White, contentX * s, y * s);
+                if (_subFont != null)
+                {
+                    using var subBrush = new SolidBrush(Color.FromArgb(140, 140, 140));
+                    g.DrawString(GetText(descKey), _subFont, subBrush, contentX * s, (y + 22) * s);
+                }
+            }
+
+            void DrawToggleSection(string titleKey, string descKey, bool state, int elementId, float y)
+            {
+                DrawSectionHeader(titleKey, descKey, y);
+                int toggleX = (int)logW - 100;
+                DrawToggleSwitch(g, state, _hoveredElement == elementId, toggleX, (int)(y + 5), 44, 22);
+                AddHitRect(elementId, toggleX, y + 5, 44, 22);
+            }
+
             if (_contentTitleFont != null)
                 g.DrawString(GetText("tab_settings"), _contentTitleFont, Brushes.White, contentX * s, 30 * s);
 
@@ -25,38 +51,18 @@ namespace Clickra.UI
                 g.DrawLine(divPen, contentX * s, 75 * s, (logW - 40) * s, 75 * s);
             }
 
-            // Quiet mode setting
+            float y = 100f;
+            float margin = 10f;
+
             bool quietMode = ClickraStorage.GetSetting("QuietMode").Equals("true", StringComparison.OrdinalIgnoreCase);
-            bool isQuietHovered = _hoveredElement == 5;
-            if (_tabFont != null)
-                g.DrawString(GetText("setting_silent_title"), _tabFont, Brushes.White, contentX * s, 100 * s);
-            if (_subFont != null)
-            {
-                using var subBrush = new SolidBrush(Color.FromArgb(140, 140, 140));
-                g.DrawString(GetText("setting_silent_desc"), _subFont, subBrush, contentX * s, 122 * s);
-            }
-            DrawToggleSwitch(g, quietMode, isQuietHovered, (int)logW - 100, 105, 44, 22);
+            DrawToggleSection("setting_silent_title", "setting_silent_desc", quietMode, 5, y);
+            y += 70f;
 
-            // Notification setting
             bool notification = ClickraStorage.GetSetting("Notification").Equals("true", StringComparison.OrdinalIgnoreCase);
-            bool isNotifHovered = _hoveredElement == 6;
-            if (_tabFont != null)
-                g.DrawString(GetText("setting_notify_title"), _tabFont, Brushes.White, contentX * s, 170 * s);
-            if (_subFont != null)
-            {
-                using var subBrush = new SolidBrush(Color.FromArgb(140, 140, 140));
-                g.DrawString(GetText("setting_notify_desc"), _subFont, subBrush, contentX * s, 192 * s);
-            }
-            DrawToggleSwitch(g, notification, isNotifHovered, (int)logW - 100, 175, 44, 22);
+            DrawToggleSection("setting_notify_title", "setting_notify_desc", notification, 6, y);
+            y += 70f;
 
-            // Output path setting
-            if (_tabFont != null)
-                g.DrawString(GetText("setting_output_title"), _tabFont, Brushes.White, contentX * s, 240 * s);
-            if (_subFont != null)
-            {
-                using var subBrush = new SolidBrush(Color.FromArgb(140, 140, 140));
-                g.DrawString(GetText("setting_output_desc"), _subFont, subBrush, contentX * s, 262 * s);
-            }
+            DrawSectionHeader("setting_output_title", "setting_output_desc", y);
 
             string outputDirMode = ClickraStorage.GetSetting("OutputDir");
             bool isSource = outputDirMode.Equals("source", StringComparison.OrdinalIgnoreCase);
@@ -74,18 +80,22 @@ namespace Clickra.UI
             float wDownloads = _wDownloads;
             float wCustom = _wCustom;
 
-            float margin = 10f;
             float xSource = contentX;
             float xDesktop = xSource + wSource + margin;
             float xDownloads = xDesktop + wDesktop + margin;
             float xCustom = xDownloads + wDownloads + margin;
+            float buttonY = y + 50f;
 
-            DrawOutputDirButton(g, textSource, isSource, 7, (int)xSource, 290, (int)wSource);
-            DrawOutputDirButton(g, textDesktop, isDesktop, 8, (int)xDesktop, 290, (int)wDesktop);
-            DrawOutputDirButton(g, textDownloads, isDownloads, 9, (int)xDownloads, 290, (int)wDownloads);
-            DrawOutputDirButton(g, textCustom, isCustom, 20, (int)xCustom, 290, (int)wCustom);
+            DrawOutputDirButton(g, textSource, isSource, 7, (int)xSource, (int)buttonY, (int)wSource);
+            DrawOutputDirButton(g, textDesktop, isDesktop, 8, (int)xDesktop, (int)buttonY, (int)wDesktop);
+            DrawOutputDirButton(g, textDownloads, isDownloads, 9, (int)xDownloads, (int)buttonY, (int)wDownloads);
+            DrawOutputDirButton(g, textCustom, isCustom, 20, (int)xCustom, (int)buttonY, (int)wCustom);
+            AddHitRect(7, xSource, buttonY, wSource, 30);
+            AddHitRect(8, xDesktop, buttonY, wDesktop, 30);
+            AddHitRect(9, xDownloads, buttonY, wDownloads, 30);
+            AddHitRect(20, xCustom, buttonY, wCustom, 30);
 
-            float langY = 340;
+            y += 88f;
             if (isCustom && !string.IsNullOrEmpty(outputDirMode))
             {
                 if (_subFont != null)
@@ -96,39 +106,218 @@ namespace Clickra.UI
                     {
                         displayText = "..." + displayText.Substring(displayText.Length - 57);
                     }
-                    g.DrawString($"{GetText("setting_output_selected_path")}: {displayText}", _subFont, pathBrush, contentX * s, 328 * s);
+                    g.DrawString($"{GetText("setting_output_selected_path")}: {displayText}", _subFont, pathBrush, contentX * s, y * s);
                 }
-                langY = 365;
+                y += 24f;
             }
 
-            _langDropdownY = (int)(langY + 50);
+            DrawSectionHeader("setting_engine_title", "setting_engine_desc", y);
 
-            // Language setting UI block
-            if (_tabFont != null)
-                g.DrawString(GetText("setting_lang_title"), _tabFont, Brushes.White, contentX * s, langY * s);
+            string engineMode = ClickraStorage.GetSetting("OfficeEngine");
+            bool isAutoEngine = string.IsNullOrEmpty(engineMode) || engineMode.Equals("auto", StringComparison.OrdinalIgnoreCase);
+            bool isMicrosoftEngine = engineMode.Equals("microsoft", StringComparison.OrdinalIgnoreCase);
+            bool isLibreOfficeEngine = engineMode.Equals("libreoffice", StringComparison.OrdinalIgnoreCase);
+
+            float xEngineAuto = contentX;
+            float xEngineMicrosoft = xEngineAuto + _wEngineAuto + margin;
+            float xEngineLibreOffice = xEngineMicrosoft + _wEngineMicrosoft + margin;
+            float engineButtonY = y + 50f;
+
+            DrawOutputDirButton(g, GetText("setting_engine_auto"), isAutoEngine, 32, (int)xEngineAuto, (int)engineButtonY, (int)_wEngineAuto);
+            DrawOutputDirButton(g, GetText("setting_engine_microsoft"), isMicrosoftEngine, 33, (int)xEngineMicrosoft, (int)engineButtonY, (int)_wEngineMicrosoft);
+            DrawOutputDirButton(g, GetText("setting_engine_libreoffice"), isLibreOfficeEngine, 34, (int)xEngineLibreOffice, (int)engineButtonY, (int)_wEngineLibreOffice);
+            AddHitRect(32, xEngineAuto, engineButtonY, _wEngineAuto, 30);
+            AddHitRect(33, xEngineMicrosoft, engineButtonY, _wEngineMicrosoft, 30);
+            AddHitRect(34, xEngineLibreOffice, engineButtonY, _wEngineLibreOffice, 30);
+
+            y += 88f;
+            bool isLibreOfficeSetupRunning;
+            int downloadProgress;
+            string downloadStatus;
+            lock (_libreOfficeDownloadLock)
+            {
+                isLibreOfficeSetupRunning = _libreOfficeDownloadInProgress;
+                downloadProgress = _libreOfficeDownloadProgress;
+                downloadStatus = _libreOfficeDownloadStatus;
+            }
+            string resolvedLibreOffice = isLibreOfficeSetupRunning ? "" : LibreOfficeHelper.GetResolvedExecutablePath();
+            bool removalPendingRestart = ClickraStorage.GetSetting("LibreOfficeRemovalPendingRestart").Equals("true", StringComparison.OrdinalIgnoreCase);
+            bool libreOfficeReady = !string.IsNullOrEmpty(resolvedLibreOffice);
+            bool officeReady = IsOfficeInstalled("Word") && IsOfficeInstalled("Excel") && IsOfficeInstalled("PowerPoint");
+
             if (_subFont != null)
             {
-                using var subBrush = new SolidBrush(Color.FromArgb(140, 140, 140));
-                g.DrawString(GetText("setting_lang_desc"), _subFont, subBrush, contentX * s, (langY + 22) * s);
+                Color statusColor;
+                string statusText;
+
+                if (isMicrosoftEngine)
+                {
+                    statusColor = officeReady ? Color.FromArgb(100, 220, 100) : Color.FromArgb(255, 90, 70);
+                    statusText = GetText(officeReady ? "setting_microsoft_ready" : "setting_microsoft_missing");
+                }
+                else if (isAutoEngine)
+                {
+                    if (officeReady)
+                    {
+                        statusColor = Color.FromArgb(100, 220, 100);
+                        statusText = string.Format(GetText("setting_engine_auto_using"), GetText("setting_engine_microsoft"));
+                    }
+                    else if (libreOfficeReady)
+                    {
+                        statusColor = Color.FromArgb(100, 220, 100);
+                        statusText = string.Format(GetText("setting_engine_auto_using"), GetText("setting_engine_libreoffice"));
+                    }
+                    else
+                    {
+                        statusColor = Color.FromArgb(255, 90, 70);
+                        statusText = GetText("setting_engine_none_available");
+                    }
+                }
+                else
+                {
+                    statusColor = isLibreOfficeSetupRunning
+                        ? Color.FromArgb(190, 190, 190)
+                        : removalPendingRestart
+                            ? Color.FromArgb(255, 190, 90)
+                        : libreOfficeReady
+                            ? Color.FromArgb(100, 220, 100)
+                            : Color.FromArgb(255, 90, 70);
+                    statusText = isLibreOfficeSetupRunning
+                        ? downloadStatus
+                        : removalPendingRestart
+                            ? GetText("setting_libreoffice_removal_pending")
+                        : libreOfficeReady
+                        ? $"{GetText("setting_libreoffice_ready")}: {ShortPath(resolvedLibreOffice, 62)}"
+                        : GetText("setting_libreoffice_missing");
+                }
+
+                if (!(isLibreOfficeEngine && isLibreOfficeSetupRunning))
+                {
+                    using var statusBrush = new SolidBrush(statusColor);
+                    g.DrawString(statusText, _subFont, statusBrush, contentX * s, y * s);
+                }
             }
 
-            // Draw Dropdown Selector
+            if (isLibreOfficeEngine)
+            {
+                y += 28f;
+                if (isLibreOfficeSetupRunning)
+                {
+                    DrawDownloadProgress(g, downloadStatus, downloadProgress, (int)contentX, (int)y, 360);
+                    y += 42f;
+                }
+                else if (removalPendingRestart)
+                {
+                    DrawOutputDirButton(
+                        g,
+                        GetText("setting_libreoffice_reinstall"),
+                        false,
+                        36,
+                        (int)contentX,
+                        (int)y,
+                        (int)_wLibreOfficeDownload);
+                    AddHitRect(36, contentX, y, _wLibreOfficeDownload, 30);
+
+                    float browseX = contentX + _wLibreOfficeDownload + margin;
+                    DrawOutputDirButton(
+                        g,
+                        GetText("setting_libreoffice_browse"),
+                        false,
+                        35,
+                        (int)browseX,
+                        (int)y,
+                        (int)_wLibreOfficeBrowse);
+                    AddHitRect(35, browseX, y, _wLibreOfficeBrowse, 30);
+                    y += 55f;
+                }
+                else if (libreOfficeReady)
+                {
+                    DrawOutputDirButton(
+                        g,
+                        GetText("setting_libreoffice_update"),
+                        false,
+                        36,
+                        (int)contentX,
+                        (int)y,
+                        (int)_wLibreOfficeDownload);
+                    AddHitRect(36, contentX, y, _wLibreOfficeDownload, 30);
+
+                    float uninstallX = contentX + _wLibreOfficeDownload + margin;
+                    DrawOutputDirButton(
+                        g,
+                        GetText("setting_libreoffice_uninstall"),
+                        false,
+                        38,
+                        (int)uninstallX,
+                        (int)y,
+                        (int)_wLibreOfficeUninstall);
+                    AddHitRect(38, uninstallX, y, _wLibreOfficeUninstall, 30);
+                    y += 55f;
+                }
+                else
+                {
+                    DrawOutputDirButton(
+                        g,
+                        GetText("setting_libreoffice_download"),
+                        false,
+                        36,
+                        (int)contentX,
+                        (int)y,
+                        (int)_wLibreOfficeDownload);
+                    AddHitRect(36, contentX, y, _wLibreOfficeDownload, 30);
+
+                    float browseX = contentX + _wLibreOfficeDownload + margin;
+                    DrawOutputDirButton(
+                        g,
+                        GetText("setting_libreoffice_browse"),
+                        false,
+                        35,
+                        (int)browseX,
+                        (int)y,
+                        (int)_wLibreOfficeBrowse);
+                    AddHitRect(35, browseX, y, _wLibreOfficeBrowse, 30);
+                    y += 55f;
+                }
+            }
+            else
+            {
+                y += 32f;
+            }
+
+            DrawSectionHeader("setting_lang_title", "setting_lang_desc", y);
+            _langDropdownY = (int)(y + 50);
+
             DrawLanguageDropdown(g, _langDropdownY, contentX);
+            AddHitRect(10, contentX, _langDropdownY, 240, 30);
 
-            float transY = langY + 110;
-            _pdfLangDropdownY = (int)(transY + 50);
+            y += 110f;
+            DrawSectionHeader("setting_pdf_title", "setting_pdf_desc", y);
+            _pdfLangDropdownY = (int)(y + 50);
 
-            // PDF Translation title
-            if (_tabFont != null)
-                g.DrawString(GetText("setting_pdf_title"), _tabFont, Brushes.White, contentX * s, transY * s);
-            if (_subFont != null)
-            {
-                using var subBrush = new SolidBrush(Color.FromArgb(140, 140, 140));
-                g.DrawString(GetText("setting_pdf_desc"), _subFont, subBrush, contentX * s, (transY + 22) * s);
-            }
-
-            // Draw Target Lang dropdown selector
             DrawPdfLangDropdown(g, _pdfLangDropdownY, contentX);
+            AddHitRect(31, contentX, _pdfLangDropdownY, 240, 30);
+            _settingsContentHeight = Math.Max(460f, y + 100f);
+        }
+
+        static void DrawDownloadProgress(Graphics g, string status, int progress, int x, int y, int w)
+        {
+            float s = _dpiScale;
+            int barH = 8;
+            using var bgPath = UIHelper.GetRoundedRectPath(new RectangleF(x * s, y * s, w * s, barH * s), 4 * s);
+            using var bgBrush = new SolidBrush(Color.FromArgb(45, 45, 45));
+            g.FillPath(bgBrush, bgPath);
+
+            int fillW = Math.Max(4, (int)(w * Math.Max(0, Math.Min(100, progress)) / 100f));
+            using var fillPath = UIHelper.GetRoundedRectPath(new RectangleF(x * s, y * s, fillW * s, barH * s), 4 * s);
+            using var fillBrush = new SolidBrush(UIHelper.GetSystemColorizationColor());
+            g.FillPath(fillBrush, fillPath);
+        }
+
+        static string ShortPath(string value, int maxLength)
+        {
+            if (value.Length <= maxLength)
+                return value;
+            return "..." + value.Substring(value.Length - maxLength + 3);
         }
 
         static void DrawToggleSwitch(Graphics g, bool state, bool hovered, int x, int y, int w, int h)

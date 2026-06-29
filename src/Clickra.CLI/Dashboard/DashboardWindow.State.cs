@@ -78,8 +78,20 @@ namespace Clickra.UI
         static float _wDesktop = 65f;
         static float _wDownloads = 80f;
         static float _wCustom = 100f;
+        static float _wEngineAuto = 80f;
+        static float _wEngineMicrosoft = 125f;
+        static float _wEngineLibreOffice = 110f;
+        static float _wLibreOfficeBrowse = 120f;
+        static float _wLibreOfficeDownload = 125f;
+        static float _wLibreOfficeUninstall = 125f;
         static float _wGit = 160f;
         static float _wGmail = 160f;
+        static readonly Dictionary<int, RectangleF> _settingsHitRects = new();
+        static float _settingsContentHeight = 740f;
+        static readonly object _libreOfficeDownloadLock = new();
+        static bool _libreOfficeDownloadInProgress = false;
+        static int _libreOfficeDownloadProgress = 0;
+        static string _libreOfficeDownloadStatus = "";
 
         // Content Area Scroll State
         static float _contentScrollX = 0;

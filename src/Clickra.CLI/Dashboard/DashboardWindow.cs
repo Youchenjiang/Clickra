@@ -91,12 +91,7 @@ namespace Clickra.UI
             }
             if (_activeTab == 3) // Settings
             {
-                string outputDirMode = ClickraStorage.GetSetting("OutputDir");
-                bool isCustom = !outputDirMode.Equals("source", StringComparison.OrdinalIgnoreCase) &&
-                                !outputDirMode.Equals("desktop", StringComparison.OrdinalIgnoreCase) &&
-                                !outputDirMode.Equals("downloads", StringComparison.OrdinalIgnoreCase);
-                float langY = isCustom && !string.IsNullOrEmpty(outputDirMode) ? 365 : 340;
-                return langY + 280;
+                return Math.Max(460f, _settingsContentHeight);
             }
             if (_activeTab == 4) // About
             {
@@ -175,6 +170,18 @@ namespace Clickra.UI
                     _wDesktop = Math.Max(65f, tempG.MeasureString(textDesktop, _subFont).Width / _dpiScale + 20f);
                     _wDownloads = Math.Max(80f, tempG.MeasureString(textDownloads, _subFont).Width / _dpiScale + 20f);
                     _wCustom = Math.Max(100f, tempG.MeasureString(textCustom, _subFont).Width / _dpiScale + 20f);
+                    _wEngineAuto = Math.Max(80f, tempG.MeasureString(GetText("setting_engine_auto"), _subFont).Width / _dpiScale + 20f);
+                    _wEngineMicrosoft = Math.Max(125f, tempG.MeasureString(GetText("setting_engine_microsoft"), _subFont).Width / _dpiScale + 20f);
+                    _wEngineLibreOffice = Math.Max(110f, tempG.MeasureString(GetText("setting_engine_libreoffice"), _subFont).Width / _dpiScale + 20f);
+                    _wLibreOfficeBrowse = Math.Max(120f, tempG.MeasureString(GetText("setting_libreoffice_browse"), _subFont).Width / _dpiScale + 20f);
+                    _wLibreOfficeDownload = Math.Max(
+                        125f,
+                        Math.Max(
+                            Math.Max(
+                                tempG.MeasureString(GetText("setting_libreoffice_download"), _subFont).Width,
+                                tempG.MeasureString(GetText("setting_libreoffice_update"), _subFont).Width),
+                            tempG.MeasureString(GetText("setting_libreoffice_reinstall"), _subFont).Width) / _dpiScale + 20f);
+                    _wLibreOfficeUninstall = Math.Max(125f, tempG.MeasureString(GetText("setting_libreoffice_uninstall"), _subFont).Width / _dpiScale + 20f);
 
                     string textGit = GetText("about_btn_github");
                     string textGmail = GetText("about_btn_gmail");

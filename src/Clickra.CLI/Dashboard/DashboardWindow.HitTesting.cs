@@ -1,6 +1,7 @@
 using System;
 using System.Drawing;
 using Clickra.Core;
+using Clickra.Core.Processors;
 
 using static Clickra.UI.Native.Win32;
 
@@ -109,29 +110,21 @@ namespace Clickra.UI
             }
             else if (_activeTab == 3) // Settings
             {
-                int rightToggleX = (int)logW - 100;
-
-                // Quiet Mode toggle
-                if (x >= rightToggleX && x < rightToggleX + 44 && y >= 105 && y < 127) return 5;
-                // Notification toggle
-                if (x >= rightToggleX && x < rightToggleX + 44 && y >= 175 && y < 197) return 6;
-
-                // OutputDir buttons
-                float wSource = _wSource;
-                float wDesktop = _wDesktop;
-                float wDownloads = _wDownloads;
-                float wCustom = _wCustom;
-
-                float margin = 10f;
-                float xSource = contentX;
-                float xDesktop = xSource + wSource + margin;
-                float xDownloads = xDesktop + wDesktop + margin;
-                float xCustom = xDownloads + wDownloads + margin;
-
-                if (x >= xSource && x < xSource + wSource && y >= 290 && y < 320) return 7;
-                if (x >= xDesktop && x < xDesktop + wDesktop && y >= 290 && y < 320) return 8;
-                if (x >= xDownloads && x < xDownloads + wDownloads && y >= 290 && y < 320) return 9;
-                if (x >= xCustom && x < xCustom + wCustom && y >= 290 && y < 320) return 20;
+                foreach (var item in _settingsHitRects)
+                {
+                    if (item.Value.Contains(x, y))
+                    {
+                        if (item.Key == 35 || item.Key == 36 || item.Key == 38)
+                        {
+                            lock (_libreOfficeDownloadLock)
+                            {
+                                if (_libreOfficeDownloadInProgress)
+                                    return -1;
+                            }
+                        }
+                        return item.Key;
+                    }
+                }
 
                 // Language dropdown button
                 if (x >= contentX && x < contentX + 240 && y >= _langDropdownY && y < _langDropdownY + 30) return 10;
