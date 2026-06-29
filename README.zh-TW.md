@@ -1,4 +1,4 @@
-# Clickra v3.4.0.0
+# Clickra v3.5.0.0
 
 [![Microsoft Store](https://img.shields.io/badge/Microsoft%20Store-Clickra-blue?style=for-the-badge&logo=microsoft-store)](https://apps.microsoft.com/detail/9NGLBF6P1KLD)
 [![License: Apache 2.0](https://img.shields.io/badge/License-Apache%202.0-blue.svg?style=for-the-badge)](https://opensource.org/licenses/Apache-2.0)
@@ -24,9 +24,9 @@
 
 | 版本       | 日期       | 關鍵里程碑                                                             |
 | :--------- | :--------- | :--------------------------------------------------------------------- |
+| **v3.5.0.0** | 2026/06/29 | **LibreOffice 離線引擎**。新增 Word/Excel/PPT 轉 PDF 的 LibreOffice 備援、Office 引擎選擇與分組式轉檔工具。 |
 | **v3.4.0.0** | 2026/06/21 | **Excel 轉 PDF**。新增右鍵選單 Excel 轉 PDF，整合 Shell Extension、Dashboard 與 CLI。 |
 | **v3.3.3.0** | 2026/06/21 | **PDF 翻譯管線模組化重構**。核心引擎拆解為 80+ 個模組，增強佈局分析，新增簡繁轉換與診斷工具。 |
-| **v3.3.2.0** | 2026/06/19 | **依賴更新與建構修正**。更新 NuGet 套件、修正 CHANGELOG 旋轉、清理建構腳本輸出。 |
 
 [檢視完整版本歷史](CHANGELOG.md)
 
@@ -41,11 +41,11 @@
 
 ### 2. 📊 原生儀表板 (Native Dashboard)
 *   **功能**：採用高效能 Win32 原生開發的深色模式儀表板。
-*   **特色**：即時偵測 PDF 引擎、Microsoft Word 與 PowerPoint 的安裝狀態。
+*   **特色**：即時偵測 PDF 引擎與 Office 轉檔引擎狀態。
 
-### 3. 📄 文書轉 PDF (Word & PPT to PDF)
-*   **功能**：在背景靜默呼叫 Office 引擎進行高品質轉檔。
-*   **需求**：此功能需本地安裝對應的 Microsoft Office 軟體。
+### 3. 📄 文書轉 PDF (Office to PDF)
+*   **功能**：在背景靜默將 Word、Excel 與 PowerPoint 文件轉為高品質 PDF。
+*   **引擎選擇**：支援自動、Microsoft Office 與 LibreOffice 三種模式。若未安裝 Microsoft Office，可由 Clickra 下載並管理 LibreOffice 作為免費本機備援引擎。
 
 ### 4. 🔗 PDF 合併 (PDF Merge)
 *   **功能**：將選取的多份 PDF 依照檔名順序合併為單一檔案。

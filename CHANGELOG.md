@@ -2,6 +2,14 @@
 
 All notable changes to Clickra will be documented in this file.
 
+## [v3.5.0.0] - 2026-06-29
+
+- **LibreOffice Offline Office Engine**: Added Auto, Microsoft Office, and LibreOffice engine modes for Word, Excel, and PowerPoint to PDF conversion.
+- **Managed LibreOffice Setup**: Added built-in manifest metadata, official MSI download, SHA256 verification, version matching, background installation, quiet removal, and restart-aware status handling.
+- **No-Office Fallback**: Allows users without Microsoft Office to run Office-to-PDF conversion locally through LibreOffice while preserving local processing.
+- **Dashboard Settings**: Added Office engine controls, LibreOffice status messaging, clearer download/network failures, and simplified overview engine status.
+- **Convert Tool Groups**: Reorganized the Convert tab into Office, PDF, and Image groups so the nine main actions are easier to scan.
+
 ## [v3.4.0.0] - 2026-06-21
 
 - **Excel to PDF Conversion**: Added new right-click context menu command to convert Excel spreadsheets (.xlsx/.xls) to PDF using Microsoft Excel COM automation
