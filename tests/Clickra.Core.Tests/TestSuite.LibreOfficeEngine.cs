@@ -1,4 +1,5 @@
 using System.Text;
+using Clickra.Core;
 using Clickra.Core.Processors;
 
 static partial class TestSuite
@@ -97,6 +98,109 @@ static partial class TestSuite
             }
         });
 
+        runner.Run("LibreOffice helper validates console launcher layout", () =>
+        {
+            string root = Path.Combine(Path.GetTempPath(), $"clickra-lo-com-layout-{Guid.NewGuid():N}");
+            string programDir = Path.Combine(root, "program");
+            string soffice = Path.Combine(programDir, "soffice.com");
+            try
+            {
+                CreateLibreOfficeProgramLayout(programDir, "soffice.com");
+
+                Assert.True(LibreOfficeHelper.LooksLikeLibreOfficeExecutable(soffice), "Expected complete soffice.com layout to validate.");
+            }
+            finally
+            {
+                try { if (Directory.Exists(root)) Directory.Delete(root, recursive: true); } catch { }
+            }
+        });
+
+        runner.Run("LibreOffice helper resolves configured executable paths", () =>
+        {
+            string root = Path.Combine(Path.GetTempPath(), $"clickra-lo-configured-exe-{Guid.NewGuid():N}");
+            string programDir = Path.Combine(root, "program");
+            string soffice = Path.Combine(programDir, "soffice.exe");
+            try
+            {
+                CreateLibreOfficeProgramLayout(programDir);
+
+                Assert.True(LibreOfficeHelper.TryResolveExecutable(soffice, out string resolved), "Expected configured executable to resolve.");
+                Assert.Equal(soffice, resolved);
+            }
+            finally
+            {
+                try { if (Directory.Exists(root)) Directory.Delete(root, recursive: true); } catch { }
+            }
+        });
+
+        runner.Run("LibreOffice helper resolves configured install directories", () =>
+        {
+            string root = Path.Combine(Path.GetTempPath(), $"clickra-lo-configured-dir-{Guid.NewGuid():N}");
+            string programDir = Path.Combine(root, "program");
+            string soffice = Path.Combine(programDir, "soffice.exe");
+            try
+            {
+                CreateLibreOfficeProgramLayout(programDir);
+
+                Assert.True(LibreOfficeHelper.TryResolveExecutable(root, out string resolved), "Expected configured install root to resolve.");
+                Assert.Equal(soffice, resolved);
+            }
+            finally
+            {
+                try { if (Directory.Exists(root)) Directory.Delete(root, recursive: true); } catch { }
+            }
+        });
+
+        runner.Run("LibreOffice helper falls back to environment path", () =>
+        {
+            string? oldEnv = Environment.GetEnvironmentVariable("CLICKRA_LIBREOFFICE_PATH");
+            string root = Path.Combine(Path.GetTempPath(), $"clickra-lo-env-dir-{Guid.NewGuid():N}");
+            string programDir = Path.Combine(root, "program");
+            string soffice = Path.Combine(programDir, "soffice.exe");
+            try
+            {
+                CreateLibreOfficeProgramLayout(programDir);
+                Environment.SetEnvironmentVariable("CLICKRA_LIBREOFFICE_PATH", root);
+
+                Assert.True(LibreOfficeHelper.TryResolveExecutable(null, out string resolved), "Expected environment install root to resolve.");
+                Assert.Equal(soffice, resolved);
+            }
+            finally
+            {
+                Environment.SetEnvironmentVariable("CLICKRA_LIBREOFFICE_PATH", oldEnv);
+                try { if (Directory.Exists(root)) Directory.Delete(root, recursive: true); } catch { }
+            }
+        });
+
+        runner.Run("LibreOffice helper hides executable while removal is pending restart", () =>
+        {
+            string oldPath = ClickraStorage.GetSetting("LibreOfficePath");
+            string oldPending = ClickraStorage.GetSetting("LibreOfficeRemovalPendingRestart");
+            string? oldEnv = Environment.GetEnvironmentVariable("CLICKRA_LIBREOFFICE_PATH");
+            string root = Path.Combine(Path.GetTempPath(), $"clickra-lo-pending-{Guid.NewGuid():N}");
+            string programDir = Path.Combine(root, "program");
+            string soffice = Path.Combine(programDir, "soffice.exe");
+            try
+            {
+                CreateLibreOfficeProgramLayout(programDir);
+                Environment.SetEnvironmentVariable("CLICKRA_LIBREOFFICE_PATH", "");
+                ClickraStorage.SaveSetting("LibreOfficePath", soffice);
+                ClickraStorage.SaveSetting("LibreOfficeRemovalPendingRestart", "true");
+
+                Assert.Equal("", LibreOfficeHelper.GetResolvedExecutablePath());
+
+                ClickraStorage.SaveSetting("LibreOfficeRemovalPendingRestart", "false");
+                Assert.Equal(soffice, LibreOfficeHelper.GetResolvedExecutablePath());
+            }
+            finally
+            {
+                Environment.SetEnvironmentVariable("CLICKRA_LIBREOFFICE_PATH", oldEnv);
+                ClickraStorage.SaveSetting("LibreOfficePath", oldPath);
+                ClickraStorage.SaveSetting("LibreOfficeRemovalPendingRestart", oldPending);
+                try { if (Directory.Exists(root)) Directory.Delete(root, recursive: true); } catch { }
+            }
+        });
+
         runner.Run("LibreOffice helper supports only Office document engines", () =>
         {
             Assert.True(LibreOfficeHelper.CanConvert("Word"), "Expected Word to be supported.");
@@ -112,7 +216,18 @@ static partial class TestSuite
                     0,
                     1,
                     null,
-                    CancellationToken.None));
+                CancellationToken.None));
         });
+    }
+
+    private static void CreateLibreOfficeProgramLayout(string programDir, string launcherName = "soffice.exe")
+    {
+        Directory.CreateDirectory(programDir);
+        File.WriteAllText(Path.Combine(programDir, launcherName), "launcher");
+        File.WriteAllText(Path.Combine(programDir, "soffice.bin"), "bin");
+        File.WriteAllText(Path.Combine(programDir, "mergedlo.dll"), "dll");
+        File.WriteAllText(Path.Combine(programDir, "sal3.dll"), "dll");
+        File.WriteAllText(Path.Combine(programDir, "cppu3.dll"), "dll");
+        File.WriteAllText(Path.Combine(programDir, "cppuhelper3MSC.dll"), "dll");
     }
 }
