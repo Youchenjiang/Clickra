@@ -9,7 +9,7 @@ static partial class TestSuite
         {
             var manifest = LibreOfficeEngineInstaller.BuiltInManifest;
             var package = manifest.LibreOffice;
-            Assert.Equal(1, manifest.Schema);
+            Assert.True(manifest.Schema == 1, "Expected manifest schema 1.");
             Assert.Equal("26.2.4", package.Version);
             Assert.Equal("Windows x86-64 MSI", package.Edition);
             Assert.Equal("MPL-2.0", package.License);
@@ -20,6 +20,8 @@ static partial class TestSuite
         runner.Run("LibreOffice engine installer rejects non-ASCII paths", () =>
         {
             Assert.True(LibreOfficeEngineInstaller.IsAsciiPath(@"C:\ProgramData\Clickra\Engines\LibreOffice"), "Expected ASCII path to be accepted.");
+            Assert.True(LibreOfficeEngineInstaller.IsAsciiPath(string.Empty), "Expected empty paths to be ASCII.");
+            Assert.True(LibreOfficeEngineInstaller.IsAsciiPath(@"C:\Program Files (x86)\LibreOffice"), "Expected ASCII punctuation to be accepted.");
             Assert.True(!LibreOfficeEngineInstaller.IsAsciiPath(@"C:\使用者\Clickra\Engines\LibreOffice"), "Expected non-ASCII path to be rejected.");
         });
 
@@ -45,6 +47,8 @@ static partial class TestSuite
                 string hash = LibreOfficeEngineInstaller.ComputeSha256(tempFile);
                 Assert.True(LibreOfficeEngineInstaller.VerifySha256(tempFile, hash), "Expected matching hash to verify.");
                 Assert.True(!LibreOfficeEngineInstaller.VerifySha256(tempFile, new string('0', 64)), "Expected wrong hash to fail.");
+                Assert.True(!LibreOfficeEngineInstaller.VerifySha256(tempFile, string.Empty), "Expected empty hash to fail.");
+                Assert.True(!LibreOfficeEngineInstaller.VerifySha256(tempFile, "   "), "Expected whitespace hash to fail.");
             }
             finally
             {
@@ -66,6 +70,49 @@ static partial class TestSuite
             {
                 try { if (Directory.Exists(root)) Directory.Delete(root, recursive: true); } catch { }
             }
+        });
+
+        runner.Run("LibreOffice helper validates complete executable layout", () =>
+        {
+            string root = Path.Combine(Path.GetTempPath(), $"clickra-lo-layout-{Guid.NewGuid():N}");
+            string programDir = Path.Combine(root, "program");
+            string soffice = Path.Combine(programDir, "soffice.exe");
+            try
+            {
+                Directory.CreateDirectory(programDir);
+                File.WriteAllText(soffice, "launcher");
+                File.WriteAllText(Path.Combine(programDir, "soffice.bin"), "bin");
+                File.WriteAllText(Path.Combine(programDir, "mergedlo.dll"), "dll");
+                File.WriteAllText(Path.Combine(programDir, "sal3.dll"), "dll");
+                File.WriteAllText(Path.Combine(programDir, "cppu3.dll"), "dll");
+                File.WriteAllText(Path.Combine(programDir, "cppuhelper3MSC.dll"), "dll");
+
+                Assert.True(LibreOfficeHelper.LooksLikeLibreOfficeExecutable(soffice), "Expected complete LibreOffice layout to validate.");
+                File.Delete(Path.Combine(programDir, "sal3.dll"));
+                Assert.True(!LibreOfficeHelper.LooksLikeLibreOfficeExecutable(soffice), "Expected incomplete LibreOffice layout to fail validation.");
+            }
+            finally
+            {
+                try { if (Directory.Exists(root)) Directory.Delete(root, recursive: true); } catch { }
+            }
+        });
+
+        runner.Run("LibreOffice helper supports only Office document engines", () =>
+        {
+            Assert.True(LibreOfficeHelper.CanConvert("Word"), "Expected Word to be supported.");
+            Assert.True(LibreOfficeHelper.CanConvert("Excel"), "Expected Excel to be supported.");
+            Assert.True(LibreOfficeHelper.CanConvert("PowerPoint"), "Expected PowerPoint to be supported.");
+            Assert.True(!LibreOfficeHelper.CanConvert("Pdf"), "Expected PDF to be unsupported.");
+
+            Assert.Throws<NotSupportedException>(() =>
+                LibreOfficeHelper.ExportToPdf(
+                    "Pdf",
+                    "input.pdf",
+                    "output.pdf",
+                    0,
+                    1,
+                    null,
+                    CancellationToken.None));
         });
     }
 }
