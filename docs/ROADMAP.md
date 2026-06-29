@@ -106,6 +106,9 @@
     - 增加 manifest 簽章或 checksum metadata 防護，確保遠端資料來源可驗證且可回退到內建 manifest。
 - [ ] **LibreOffice 安裝維護體驗強化 (LibreOffice Setup Maintenance UX)**:
     - 補強下載中斷續傳、代理/企業網路提示、安裝取消復原、以及 Windows Installer pending restart 場景的更細緻狀態說明。
+- [ ] **Office 轉檔引擎抽象化與整合測試 (Office Engine Abstraction & Integration Tests)**:
+    - 將 `PowerShellHelper.ExportOfficeToPdf` 目前直接讀取設定、呼叫 Microsoft Office COM 與 LibreOffice process 的流程抽出可測試的 engine resolver/strategy。
+    - 補上 Auto / Microsoft Office / LibreOffice 模式、Microsoft Office 失敗後 LibreOffice fallback、無可用引擎、pending restart 與使用者指定引擎等整合測試，避免只能靠實機手測驗證。
 
 ## 5. PDF 無障礙化與自動標籤 (PDF Accessibility & Auto-Tagging)
 - [ ] **PDF 無障礙結構稽核與 Well-Tagged PDF (WTPDF) 重建**:
@@ -132,7 +135,7 @@
 - [x] **v3.3.0.0 PDF 去除密碼與進度視窗內嵌密碼輸入功能** (2026/06/17)：新增右鍵選單 PDF 去除密碼功能；於進度視窗中整合無閃爍的原生內嵌 Edit 密碼輸入框及 OK/Cancel 控制項，修復視窗繪製與輸入衝突，並支援 Enter 與 Esc 熱鍵操作；提供加密狀態預檢機制以防止誤導提示。
 
 ## 🚀 後續預計里程碑 (Upcoming Milestones)
-- **第一階段**：收尾「LibreOffice 離線引擎 QA 與發佈準備」（Windows 10/11 無 Office、已有 Microsoft Office、已有 LibreOffice、下載網站連線失敗、解除安裝 pending restart 等情境測試；完成商店文案、版本文件與 release artifact 驗證）。
+- **第一階段**：收尾「LibreOffice 離線引擎 QA 與發佈準備」（Windows 10/11 無 Office、已有 Microsoft Office、已有 LibreOffice、下載網站連線失敗、解除安裝 pending restart 等情境測試；完成商店文案、版本文件與 release artifact 驗證；後續抽出 Office engine resolver/strategy 並補齊引擎選擇與 fallback 整合測試）。
 - **第二階段**：開發「文字與編碼工具」（包含編碼轉換與原生 `LCMapStringEx` 簡繁字元互轉）。
 - **第三階段**：開發「批次檔名、資料夾與圖片處理工具」（支援資料夾批次命名、分類、批量建立空資料夾，以及基於 Ghostscript/PDFium 技術的 PNG/JPG 批量轉換與高品質縮圖，並支援資料夾右鍵直接轉換功能）。
 - **第四階段**：開發「PDF 壓縮與轉 PPTX 工具強化」：
