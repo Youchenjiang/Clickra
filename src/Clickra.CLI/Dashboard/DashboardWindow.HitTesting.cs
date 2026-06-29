@@ -118,14 +118,6 @@ namespace Clickra.UI
                 {
                     if (item.Value.Contains(x, y))
                     {
-                        if (item.Key == 35 || item.Key == 36 || item.Key == 38)
-                        {
-                            lock (_libreOfficeDownloadLock)
-                            {
-                                if (_libreOfficeDownloadInProgress)
-                                    return -1;
-                            }
-                        }
                         return item.Key;
                     }
                 }

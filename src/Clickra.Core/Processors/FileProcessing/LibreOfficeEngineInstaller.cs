@@ -147,7 +147,15 @@ namespace Clickra.Core.Processors
             using var process = Process.Start(startInfo)
                 ?? throw new InvalidOperationException("Unable to start the LibreOffice installer.");
 
-            await process.WaitForExitAsync(cancellationToken);
+            try
+            {
+                await process.WaitForExitAsync(cancellationToken);
+            }
+            catch (OperationCanceledException)
+            {
+                TryKillProcessTree(process);
+                throw;
+            }
 
             bool restartRequired = process.ExitCode is 3010 or 1641;
             if (restartRequired)
@@ -193,8 +201,14 @@ namespace Clickra.Core.Processors
             {
                 await process.WaitForExitAsync(timeoutCts.Token);
             }
+            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+            {
+                TryKillProcessTree(process);
+                throw;
+            }
             catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
             {
+                TryKillProcessTree(process);
                 throw new TimeoutException("LibreOffice uninstaller did not finish within 10 minutes.");
             }
 
@@ -423,58 +437,68 @@ namespace Clickra.Core.Processors
                 return targetPath;
             }
 
-            HttpResponseMessage response;
             try
             {
-                response = await HttpClient.GetAsync(package.DirectDownloadUrl, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
-                response.EnsureSuccessStatusCode();
-            }
-            catch (HttpRequestException ex) when (IsNetworkNameResolutionFailure(ex))
-            {
-                throw new InvalidOperationException(
-                    "Unable to resolve the LibreOffice download server. Check the network, DNS, proxy, or virtual machine internet settings, then try again.",
-                    ex);
-            }
-            catch (HttpRequestException ex)
-            {
-                throw new InvalidOperationException(
-                    $"Unable to connect to the LibreOffice download server. Check the network, proxy, or firewall settings, then try again. Details: {ex.Message}",
-                    ex);
-            }
-
-            using (response)
-            {
-                await using (var source = await response.Content.ReadAsStreamAsync(cancellationToken))
-                await using (var destination = File.Create(tempPath))
+                HttpResponseMessage response;
+                try
                 {
-                    byte[] buffer = new byte[1024 * 128];
-                    long totalRead = 0;
-                    long expectedBytes = response.Content.Headers.ContentLength ?? package.DownloadBytes;
-                    int read;
-                    while ((read = await source.ReadAsync(buffer, cancellationToken)) > 0)
+                    response = await HttpClient.GetAsync(package.DirectDownloadUrl, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
+                    response.EnsureSuccessStatusCode();
+                }
+                catch (HttpRequestException ex) when (IsNetworkNameResolutionFailure(ex))
+                {
+                    throw new InvalidOperationException(
+                        "Unable to resolve the LibreOffice download server. Check the network, DNS, proxy, or virtual machine internet settings, then try again.",
+                        ex);
+                }
+                catch (HttpRequestException ex)
+                {
+                    throw new InvalidOperationException(
+                        $"Unable to connect to the LibreOffice download server. Check the network, proxy, or firewall settings, then try again. Details: {ex.Message}",
+                        ex);
+                }
+
+                using (response)
+                {
+                    await using (var source = await response.Content.ReadAsStreamAsync(cancellationToken))
+                    await using (var destination = File.Create(tempPath))
                     {
-                        await destination.WriteAsync(buffer.AsMemory(0, read), cancellationToken);
-                        totalRead += read;
-                        if (expectedBytes > 0)
+                        byte[] buffer = new byte[1024 * 128];
+                        long totalRead = 0;
+                        long expectedBytes = response.Content.Headers.ContentLength ?? package.DownloadBytes;
+                        int read;
+                        while ((read = await source.ReadAsync(buffer, cancellationToken)) > 0)
                         {
-                            int percent = (int)Math.Min(99, Math.Max(1, totalRead * 100 / expectedBytes));
-                            progress?.Report(percent);
+                            await destination.WriteAsync(buffer.AsMemory(0, read), cancellationToken);
+                            totalRead += read;
+                            if (expectedBytes > 0)
+                            {
+                                int percent = (int)Math.Min(99, Math.Max(1, totalRead * 100 / expectedBytes));
+                                progress?.Report(percent);
+                            }
                         }
                     }
                 }
-            }
 
-            if (!VerifySha256(tempPath, package.Sha256))
+                if (!VerifySha256(tempPath, package.Sha256))
+                {
+                    try { File.Delete(tempPath); } catch { }
+                    throw new InvalidOperationException("Downloaded LibreOffice package failed SHA256 verification.");
+                }
+
+                if (File.Exists(targetPath))
+                    File.Delete(targetPath);
+                File.Move(tempPath, targetPath);
+                progress?.Report(100);
+                return targetPath;
+            }
+            finally
             {
-                try { File.Delete(tempPath); } catch { }
-                throw new InvalidOperationException("Downloaded LibreOffice package failed SHA256 verification.");
+                if (File.Exists(tempPath))
+                {
+                    try { File.Delete(tempPath); } catch { }
+                }
             }
-
-            if (File.Exists(targetPath))
-                File.Delete(targetPath);
-            File.Move(tempPath, targetPath);
-            progress?.Report(100);
-            return targetPath;
         }
 
         private static bool IsNetworkNameResolutionFailure(Exception ex)
@@ -487,6 +511,16 @@ namespace Clickra.Core.Processors
             }
 
             return false;
+        }
+
+        private static void TryKillProcessTree(Process process)
+        {
+            try
+            {
+                if (!process.HasExited)
+                    process.Kill(entireProcessTree: true);
+            }
+            catch { }
         }
     }
 }

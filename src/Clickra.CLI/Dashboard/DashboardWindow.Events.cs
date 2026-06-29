@@ -14,6 +14,13 @@ namespace Clickra.UI
         {
             switch (msg)
             {
+                case WM_USER_DASHBOARD_ACTION:
+                    while (_uiActions.TryDequeue(out var action))
+                    {
+                        try { action(); } catch { }
+                    }
+                    InvalidateRect(hwnd, IntPtr.Zero, false);
+                    return IntPtr.Zero;
                 case 0x0005: // WM_SIZE
                     {
                         int clientW = GetClientWidth(hwnd);

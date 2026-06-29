@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Collections.Concurrent;
 using System.Drawing;
 using Clickra.Core;
 using static Clickra.UI.Native.Win32;
@@ -98,6 +99,7 @@ namespace Clickra.UI
         static bool _libreOfficeDownloadInProgress = false;
         static int _libreOfficeDownloadProgress = 0;
         static string _libreOfficeDownloadStatus = "";
+        static readonly ConcurrentQueue<Action> _uiActions = new();
 
         // Content Area Scroll State
         static float _contentScrollX = 0;
