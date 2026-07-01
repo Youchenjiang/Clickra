@@ -170,8 +170,8 @@ static partial class TestSuite
                         {
                             int w = dict.Elements.GetInteger("/Width");
                             int h = dict.Elements.GetInteger("/Height");
-                            Assert.True(w < 500, $"Expected image width to be downsampled from 500, but got: {w}");
-                            Assert.True(h < 500, $"Expected image height to be downsampled from 500, but got: {h}");
+                            Assert.True(w < 1000, $"Expected image width to be downsampled from 1000, but got: {w}");
+                            Assert.True(h < 1000, $"Expected image height to be downsampled from 1000, but got: {h}");
                             foundImage = true;
                         }
                     }
@@ -248,10 +248,14 @@ static partial class TestSuite
         page.Width = XUnit.FromPoint(300);
         page.Height = XUnit.FromPoint(300);
 
-        using var bmp = new System.Drawing.Bitmap(500, 500);
-        using (var g = System.Drawing.Graphics.FromImage(bmp))
+        using var bmp = new System.Drawing.Bitmap(1000, 1000);
+        var random = new Random(42);
+        for (int x = 0; x < 1000; x++)
         {
-            g.Clear(System.Drawing.Color.Red);
+            for (int y = 0; y < 1000; y++)
+            {
+                bmp.SetPixel(x, y, System.Drawing.Color.FromArgb(random.Next(256), random.Next(256), random.Next(256)));
+            }
         }
 
         using var ms = new MemoryStream();

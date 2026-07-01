@@ -325,6 +325,10 @@ namespace Clickra.Core.Processors
                         if (w <= 0 || h <= 0)
                             continue;
 
+                        // Skip downsampling for low-resolution (< 300,000 pixels) or already small (< 100 KB) images to preserve text/diagram legibility
+                        if (w * h < 300000 || imgDict.Stream.Value.Length < 100 * 1024)
+                            continue;
+
                         UglyToad.PdfPig.Content.IPdfImage? matchedPigImage = null;
                         foreach (var pigImg in pigImages)
                         {
