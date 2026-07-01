@@ -145,6 +145,45 @@ static partial class TestSuite
                 TryDelete(output);
             }
         });
+
+        runner.Run("PDF compression downsamples high-DPI images", () =>
+        {
+            string input = Path.Combine(Path.GetTempPath(), $"clickra-compress-highdpi-{Guid.NewGuid():N}.pdf");
+            string output = Path.Combine(Path.GetTempPath(), $"clickra-compress-highdpi-{Guid.NewGuid():N}_compressed.pdf");
+            try
+            {
+                CreatePdfWithHighResImage(input);
+                new PdfCompressionProcessor().Process(
+                    new List<string> { input },
+                    output,
+                    new Dictionary<string, object> { { "level", "small" } });
+
+                Assert.True(File.Exists(output), "Expected output file to exist.");
+
+                using (var doc = PdfSharp.Pdf.IO.PdfReader.Open(output, PdfSharp.Pdf.IO.PdfDocumentOpenMode.Import))
+                {
+                    var objects = doc.Internals.GetAllObjects();
+                    bool foundImage = false;
+                    foreach (var obj in objects)
+                    {
+                        if (obj is PdfDictionary dict && dict.Elements.GetName("/Subtype") == "/Image")
+                        {
+                            int w = dict.Elements.GetInteger("/Width");
+                            int h = dict.Elements.GetInteger("/Height");
+                            Assert.True(w < 500, $"Expected image width to be downsampled from 500, but got: {w}");
+                            Assert.True(h < 500, $"Expected image height to be downsampled from 500, but got: {h}");
+                            foundImage = true;
+                        }
+                    }
+                    Assert.True(foundImage, "Expected to find compressed image in output PDF.");
+                }
+            }
+            finally
+            {
+                TryDelete(input);
+                TryDelete(output);
+            }
+        });
     }
 
     private static void CreateSamplePdf(string path)
@@ -199,6 +238,33 @@ static partial class TestSuite
         page.Resources.Elements["/Font"] = fonts;
         SetPageContent(page, Encoding.ASCII.GetBytes("BT /F1 12 Tf 20 260 Td (A) Tj /F2 12 Tf 20 240 Td (B) Tj ET"));
 
+        document.Save(path);
+    }
+
+    private static void CreatePdfWithHighResImage(string path)
+    {
+        using var document = new PdfDocument();
+        var page = document.AddPage();
+        page.Width = XUnit.FromPoint(300);
+        page.Height = XUnit.FromPoint(300);
+
+        using var bmp = new System.Drawing.Bitmap(500, 500);
+        using (var g = System.Drawing.Graphics.FromImage(bmp))
+        {
+            g.Clear(System.Drawing.Color.Red);
+        }
+
+        using var ms = new MemoryStream();
+        bmp.Save(ms, System.Drawing.Imaging.ImageFormat.Png);
+        ms.Position = 0;
+
+        using (var gfx = XGraphics.FromPdfPage(page))
+        {
+            using (var ximg = XImage.FromStream(ms))
+            {
+                gfx.DrawImage(ximg, 10, 10, 30, 30);
+            }
+        }
         document.Save(path);
     }
 
