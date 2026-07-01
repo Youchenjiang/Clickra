@@ -259,7 +259,7 @@ namespace Clickra.Core.Processors
         {
             double targetDpi = level switch
             {
-                PdfCompressionLevel.Small => 96.0,
+                PdfCompressionLevel.Small => 120.0,
                 PdfCompressionLevel.Balanced => 150.0,
                 PdfCompressionLevel.HighQuality => 300.0,
                 _ => 150.0
@@ -270,7 +270,7 @@ namespace Clickra.Core.Processors
 
             int jpegQuality = level switch
             {
-                PdfCompressionLevel.Small => 65,
+                PdfCompressionLevel.Small => 75,
                 PdfCompressionLevel.Balanced => 80,
                 _ => 85
             };
