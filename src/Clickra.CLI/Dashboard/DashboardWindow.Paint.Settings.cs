@@ -296,7 +296,32 @@ namespace Clickra.UI
 
             DrawPdfLangDropdown(g, _pdfLangDropdownY, contentX);
             AddHitRect(31, contentX, _pdfLangDropdownY, 240, 30);
-            _settingsContentHeight = Math.Max(460f, y + 100f);
+
+            y += 95f;
+            DrawSectionHeader("setting_pdf_compress_title", "setting_pdf_compress_desc", y);
+            y += 48f;
+
+            // Compact slider: one level maps to both DPI + JPEG quality
+            bool isChinese = GetText("setting_engine_auto") == "自動";
+            int compressLevel = GetPdfCompressLevel();
+            float sliderW = 300f;
+            _pdfSliderTrackX = contentX;
+            _pdfSliderTrackW = sliderW;
+            DrawCompressSlider(g, contentX, y, sliderW, compressLevel, isChinese);
+            AddHitRect(83, contentX - 10, y - 4, sliderW + 20, 62);
+            y += 72f;
+
+            // Strip Fonts Toggle
+            bool stripFonts = ClickraStorage.GetSetting("PdfCompressStripFonts").Equals("true", StringComparison.OrdinalIgnoreCase);
+            DrawToggleSection("setting_pdf_compress_strip_fonts", "", stripFonts, 81, y);
+            y += 44f;
+
+            // Minify Content Toggle
+            bool minifyContent = ClickraStorage.GetSetting("PdfCompressMinifyContent").Equals("true", StringComparison.OrdinalIgnoreCase);
+            DrawToggleSection("setting_pdf_compress_minify_content", "", minifyContent, 82, y);
+            y += 44f;
+
+            _settingsContentHeight = Math.Max(460f, y + 80f);
         }
 
         static void DrawDownloadProgress(Graphics g, string status, int progress, int x, int y, int w)
@@ -419,6 +444,117 @@ namespace Clickra.UI
             {
                 using var valBrush = new SolidBrush(valColor);
                 g.DrawString(val, _sectionFont, valBrush, (x + 12) * s, (y + 32) * s);
+            }
+        }
+        static void DrawSubGroupLabel(Graphics g, string text, float x, float y)
+        {
+            float s = _dpiScale;
+            if (_subFont == null) return;
+
+            // Measure text width for pill background
+            var textSize = g.MeasureString(text, _subFont);
+            float pillW = textSize.Width / s + 18f;
+            float pillH = 22f;
+
+            using var pillPath = UIHelper.GetRoundedRectPath(
+                new RectangleF(x * s, y * s, pillW * s, pillH * s), 4 * s);
+            using var pillBrush = new SolidBrush(Color.FromArgb(50, 50, 50));
+            g.FillPath(pillBrush, pillPath);
+
+            using var borderPen = new Pen(Color.FromArgb(70, 70, 70));
+            g.DrawPath(borderPen, pillPath);
+
+            Color accentColor = UIHelper.GetSystemColorizationColor();
+            using var textBrush = new SolidBrush(accentColor);
+            g.DrawString(text, _subFont, textBrush, (x + 9) * s, (y + (pillH - textSize.Height / s) / 2f) * s);
+        }
+
+        static int GetPdfCompressLevel()
+        {
+            string levelStr = ClickraStorage.GetSetting("PdfCompressImageLevel");
+            if (int.TryParse(levelStr, out int lvl) && lvl >= 0 && lvl <= 3)
+                return lvl;
+            // Backward compat: derive from DPI setting
+            return ClickraStorage.GetSetting("PdfCompressTargetDpi") switch {
+                "300" => 3,
+                "150" => 2,
+                "0" => 0,
+                _ => 1  // default: 120 DPI = level 1 (小檔)
+            };
+        }
+
+        static void DrawCompressSlider(Graphics g, float x, float y, float w, int level, bool isChinese)
+        {
+            float s = _dpiScale;
+            const int stops = 4;
+            float trackY = y + 18f;   // guidance labels occupy top 18px
+            float trackH = 5f;
+            Color accent = UIHelper.GetSystemColorizationColor();
+
+            // Guidance labels: ← 體積最小 ... 品質最高 →
+            if (_subFont != null)
+            {
+                string leftLabel  = isChinese ? "← 體積最小" : "← Smaller";
+                string rightLabel = isChinese ? "品質最高 →" : "Higher Quality →";
+                using var dimBrush = new SolidBrush(Color.FromArgb(110, 110, 110));
+                g.DrawString(leftLabel, _subFont, dimBrush, x * s, y * s);
+                var rSize = g.MeasureString(rightLabel, _subFont);
+                g.DrawString(rightLabel, _subFont, dimBrush,
+                    (x + w - rSize.Width / s) * s, y * s);
+            }
+
+            // Track background
+            using var bgPath = UIHelper.GetRoundedRectPath(
+                new RectangleF(x * s, trackY * s, w * s, trackH * s), (trackH / 2f) * s);
+            using var bgBrush = new SolidBrush(Color.FromArgb(55, 55, 55));
+            g.FillPath(bgBrush, bgPath);
+
+            // Filled portion (left of active stop)
+            float thumbX = x + (float)level / (stops - 1) * w;
+            float fillW = thumbX - x;
+            if (fillW > 0.5f)
+            {
+                using var fillPath = UIHelper.GetRoundedRectPath(
+                    new RectangleF(x * s, trackY * s, fillW * s, trackH * s), (trackH / 2f) * s);
+                using var fillBrush = new SolidBrush(accent);
+                g.FillPath(fillBrush, fillPath);
+            }
+
+            // Stop dots + labels below
+            string[] stopLabels = isChinese
+                ? new[] { "極小", "小檔", "標準", "高品質" }
+                : new[] { "Min", "Small", "Std", "High" };
+
+            for (int i = 0; i < stops; i++)
+            {
+                float sx = x + (float)i / (stops - 1) * w;
+                bool active = (i == level);
+
+                // Dot
+                float dotR = active ? 7.5f : 3.5f;
+                Color dotColor = i <= level ? accent : Color.FromArgb(65, 65, 65);
+                if (active)
+                {
+                    // White ring around active thumb
+                    using var ringBrush = new SolidBrush(Color.FromArgb(200, 200, 200));
+                    g.FillEllipse(ringBrush,
+                        (sx - dotR - 2f) * s, (trackY + trackH / 2f - dotR - 2f) * s,
+                        (dotR + 2f) * 2f * s, (dotR + 2f) * 2f * s);
+                }
+                using var dotBrush = new SolidBrush(dotColor);
+                g.FillEllipse(dotBrush,
+                    (sx - dotR) * s, (trackY + trackH / 2f - dotR) * s,
+                    dotR * 2f * s, dotR * 2f * s);
+
+                // Label
+                if (_subFont != null)
+                {
+                    using var lBrush = new SolidBrush(active ? Color.White : Color.FromArgb(95, 95, 95));
+                    var lSize = g.MeasureString(stopLabels[i], _subFont);
+                    g.DrawString(stopLabels[i], _subFont, lBrush,
+                        (sx - lSize.Width / s / 2f) * s,
+                        (trackY + trackH / 2f + dotR + 5f) * s);
+                }
             }
         }
     }

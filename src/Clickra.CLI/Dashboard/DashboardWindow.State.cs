@@ -119,6 +119,11 @@ namespace Clickra.UI
         static float _dragDetailStartMouseX = 0;
         static float _dragDetailStartOffset = 0;
 
+        // PDF Compress Slider state
+        static float _pdfSliderTrackX = 0;
+        static float _pdfSliderTrackW = 300;
+        static bool _isDraggingPdfSlider = false;
+
 
     }
 }

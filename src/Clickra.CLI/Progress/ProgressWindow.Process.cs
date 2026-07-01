@@ -78,7 +78,24 @@ namespace Clickra.UI
                             var f = currentFiles[i];
                             string outName = Path.Combine(outputDir, Path.GetFileNameWithoutExtension(f) + "_compressed.pdf");
                             progressCallback((i * 100) + 10, currentFiles.Count * 100, $"正在壓縮 PDF: {Path.GetFileName(f)} ({i + 1}/{currentFiles.Count})...");
-                            FileProcessor.CompressPdf(f, outName, "balanced", (curr, tot, msg) => {
+                            string dpiStr = ClickraStorage.GetSetting("PdfCompressTargetDpi");
+                            if (string.IsNullOrEmpty(dpiStr)) dpiStr = "120";
+                            string qualityStr = ClickraStorage.GetSetting("PdfCompressJpegQuality");
+                            if (string.IsNullOrEmpty(qualityStr)) qualityStr = "75";
+                            string stripStr = ClickraStorage.GetSetting("PdfCompressStripFonts");
+                            if (string.IsNullOrEmpty(stripStr)) stripStr = "true";
+                            string minifyStr = ClickraStorage.GetSetting("PdfCompressMinifyContent");
+                            if (string.IsNullOrEmpty(minifyStr)) minifyStr = "true";
+
+                            var pdfOptions = new Dictionary<string, object>
+                            {
+                                { "target_dpi", int.Parse(dpiStr) },
+                                { "jpeg_quality", int.Parse(qualityStr) },
+                                { "strip_fonts", stripStr.Equals("true", StringComparison.OrdinalIgnoreCase) },
+                                { "minify_content", minifyStr.Equals("true", StringComparison.OrdinalIgnoreCase) }
+                            };
+
+                            FileProcessor.CompressPdf(f, outName, pdfOptions, (curr, tot, msg) => {
                                 int progressPct = tot > 0 ? (int)(curr * 80.0 / tot) + 10 : 10;
                                 if (curr >= tot && !string.IsNullOrWhiteSpace(msg))
                                     compressionSummary = msg;
