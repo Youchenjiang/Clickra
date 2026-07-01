@@ -1,5 +1,6 @@
 using System;
 using System.Drawing;
+using System.Linq;
 using Clickra.Core;
 using Clickra.Core.Processors;
 
@@ -76,7 +77,6 @@ namespace Clickra.UI
             if (_activeTab == 1) // Convert
             {
                 int zoneW = (int)logW - (int)contentX - 50;
-                int buttonY = 390;
                 int zoneH = 120;
                 int clearX = (int)logW - 110;
 
@@ -86,19 +86,23 @@ namespace Clickra.UI
                 int headerH = 24;
                 int cardH = 38;
                 int cardGap = 8;
+                int buttonY = groupTop + headerH + ConvertCommandGroupSizes.Max() * (cardH + cardGap) + 16;
 
-                for (int i = 0; i < ConvertCommands.Length; i++)
+                int commandIndex = 0;
+                for (int group = 0; group < ConvertCommandGroupSizes.Length; group++)
                 {
-                    int group = i / 3;
-                    int local = i % 3;
-                    int cardX = (int)contentX + group * (groupW + groupGap);
-                    int cardY = groupTop + headerH + local * (cardH + cardGap);
-                    if (x >= cardX && x < cardX + groupW && y >= cardY && y < cardY + cardH)
+                    for (int local = 0; local < ConvertCommandGroupSizes[group]; local++)
                     {
-                        if (ValidateConvertFiles(ConvertCommands[i], _selectedFiles, out _))
+                        int cardX = (int)contentX + group * (groupW + groupGap);
+                        int cardY = groupTop + headerH + local * (cardH + cardGap);
+                        if (x >= cardX && x < cardX + groupW && y >= cardY && y < cardY + cardH)
                         {
-                            return 50 + i;
+                            if (ValidateConvertFiles(ConvertCommands[commandIndex], _selectedFiles, out _))
+                            {
+                                return 50 + commandIndex;
+                            }
                         }
+                        commandIndex++;
                     }
                 }
 

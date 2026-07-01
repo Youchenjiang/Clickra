@@ -19,9 +19,10 @@ namespace Clickra.UI
         private static readonly string[] ConvertCommands =
         {
             "word2pdf", "excel2pdf", "ppt2pdf",
-            "merge-pdf", "translate-pdf", "decrypt-pdf",
+            "merge-pdf", "compress-pdf", "translate-pdf", "decrypt-pdf",
             "img2pdf", "img-merge", "img-stitch"
         };
+        private static readonly int[] ConvertCommandGroupSizes = { 3, 4, 3 };
         
         // Language Dropdown state
         static bool _langDropdownOpen = false;
