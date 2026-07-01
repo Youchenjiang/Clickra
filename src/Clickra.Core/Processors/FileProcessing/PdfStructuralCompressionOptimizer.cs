@@ -26,7 +26,10 @@ namespace Clickra.Core.Processors
             DeduplicateEmbeddedFontStreams(document);
 
             if (level == PdfCompressionLevel.Small)
+            {
                 RemoveDisposableMetadata(document);
+                UnembedLargeFonts(document);
+            }
 
             if (!string.IsNullOrEmpty(inputPath) && File.Exists(inputPath))
             {
@@ -522,6 +525,34 @@ namespace Clickra.Core.Processors
                     return codec;
             }
             return null;
+        }
+
+        private static void UnembedLargeFonts(PdfDocument document)
+        {
+            var objects = document.Internals.GetAllObjects();
+            foreach (var obj in objects)
+            {
+                if (obj is not PdfDictionary dict)
+                    continue;
+
+                if (dict.Elements.GetName("/Type") != "/FontDescriptor")
+                    continue;
+
+                string[] fontFileKeys = { "/FontFile", "/FontFile2", "/FontFile3" };
+                foreach (string key in fontFileKeys)
+                {
+                    PdfReference? fontFileRef = dict.Elements.GetReference(key);
+                    if (fontFileRef != null && fontFileRef.Value is PdfDictionary fontFileDict && fontFileDict.Stream != null)
+                    {
+                        int streamLen = fontFileDict.Stream.Value.Length;
+                        if (streamLen > 100 * 1024)
+                        {
+                            dict.Elements.Remove(key);
+                            document.Internals.RemoveObject(fontFileRef.Value);
+                        }
+                    }
+                }
+            }
         }
 
         private readonly record struct FontFileUsage(PdfDictionary Owner, string Key, PdfReference Reference);
