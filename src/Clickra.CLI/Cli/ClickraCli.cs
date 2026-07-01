@@ -43,7 +43,7 @@ namespace Clickra
 
                 Console.WriteLine($"Clickra v{version} (Modern Shell Edition)");
                 Console.WriteLine("Author: Youchen Jiang");
-                Console.WriteLine("Commands: ppt2pdf, word2pdf, excel2pdf, merge-pdf, img2pdf, img-merge, img-stitch, translate-pdf, decrypt-pdf, --deploy");
+                Console.WriteLine("Commands: ppt2pdf, word2pdf, excel2pdf, merge-pdf, compress-pdf, img2pdf, img-merge, img-stitch, translate-pdf, decrypt-pdf, --deploy");
                 return;
             }
 
@@ -72,6 +72,7 @@ namespace Clickra
                 argList.Remove("--show-ui");
             }
             string? outputDirOverride = ExtractOptionValue(argList, "--out-dir", "-o", "--out");
+            string compressionLevel = ExtractOptionValue(argList, "--level", "--compression-level") ?? "balanced";
 
             if (argList.Count < 2)
             {
@@ -79,6 +80,7 @@ namespace Clickra
                 Console.WriteLine("Options: --quiet / --no-ui  (Run in background without GUI)");
                 Console.WriteLine("         --show-ui          (Force show progress window)");
                 Console.WriteLine("         --out-dir <dir> / -o <dir> / --out <dir>  (Write outputs to directory)");
+                Console.WriteLine("         --level <small|balanced|high>  (PDF compression level)");
                 Console.WriteLine("Deployment: Clickra --deploy <target_dir>");
                 return;
             }
@@ -131,6 +133,21 @@ namespace Clickra
                         ValidateExtensions(files, command, quiet, ".pdf");
                         RequireMinFiles(files, command, 2, quiet);
                         if (quiet) FileProcessor.MergePdfs(files, Path.Combine(outputDir, "Merged_PDF.pdf"), (curr, tot, msg) => Console.WriteLine($"[Progress] {msg}"));
+                        else ProgressWindow.Show(command, files);
+                        break;
+                    case "compress-pdf":
+                        ValidateExtensions(files, command, quiet, ".pdf");
+                        RequireMinFiles(files, command, 1, quiet);
+                        if (quiet)
+                        {
+                            for (int i = 0; i < files.Count; i++)
+                            {
+                                var f = files[i];
+                                string outName = Path.Combine(outputDir, Path.GetFileNameWithoutExtension(f) + "_compressed.pdf");
+                                Console.WriteLine($"[Progress] 正在壓縮 PDF: {Path.GetFileName(f)} ({i + 1}/{files.Count})...");
+                                FileProcessor.CompressPdf(f, outName, compressionLevel, (curr, tot, msg) => Console.WriteLine($"[Progress] {msg}"));
+                            }
+                        }
                         else ProgressWindow.Show(command, files);
                         break;
                     case "img2pdf":
