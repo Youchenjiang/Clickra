@@ -82,6 +82,21 @@ static partial class TestSuite
                 TryDelete(output);
             }
         });
+
+        runner.Run("PDF compression formats size reduction summary", () =>
+        {
+            string summary = NativePdfCompressionEngine.FormatCompressionSummary(5_308_416, 5_138_022);
+
+            Assert.True(summary.Contains("5.06 MB -> 4.9 MB"), $"Expected before and after sizes in summary, got: {summary}");
+            Assert.True(summary.Contains("減少 3.2%"), $"Expected reduction percentage in summary, got: {summary}");
+        });
+
+        runner.Run("PDF compression explains unchanged output size", () =>
+        {
+            string summary = NativePdfCompressionEngine.FormatCompressionSummary(1024, 1200);
+
+            Assert.True(summary.Contains("檔案大小未明顯下降"), $"Expected unchanged-size explanation, got: {summary}");
+        });
     }
 
     private static void CreateSamplePdf(string path)
