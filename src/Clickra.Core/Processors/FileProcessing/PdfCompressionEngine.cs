@@ -102,7 +102,11 @@ namespace Clickra.Core.Processors
                 }
 
                 cancellationToken.ThrowIfCancellationRequested();
-                onProgress?.Invoke(90, 100, "正在重新封裝 PDF...");
+                onProgress?.Invoke(88, 100, "正在最佳化文字與字型資料...");
+                PdfStructuralCompressionOptimizer.Optimize(output, level);
+
+                cancellationToken.ThrowIfCancellationRequested();
+                onProgress?.Invoke(93, 100, "正在重新封裝 PDF...");
                 output.Save(tempOutput);
 
                 if (!File.Exists(tempOutput) || new FileInfo(tempOutput).Length <= 0)
