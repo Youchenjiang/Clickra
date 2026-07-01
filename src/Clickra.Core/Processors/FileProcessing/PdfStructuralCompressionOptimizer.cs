@@ -20,25 +20,38 @@ namespace Clickra.Core.Processors
             "/LZWDecode"
         };
 
-        public static void Optimize(PdfDocument document, PdfCompressionLevel level, string? inputPath = null)
+        public static void Optimize(PdfDocument document, PdfCompressionSettings settings, string? inputPath = null)
         {
-            MinifyPageContentStreams(document);
-            DeduplicateEmbeddedFontStreams(document);
+            if (settings.MinifyContent)
+            {
+                MinifyPageContentStreams(document);
+            }
 
-            if (level == PdfCompressionLevel.Small)
+            if (settings.DeduplicateFonts)
+            {
+                DeduplicateEmbeddedFontStreams(document);
+            }
+
+            if (settings.StripFonts)
             {
                 RemoveDisposableMetadata(document);
                 UnembedLargeFonts(document);
             }
 
-            if (!string.IsNullOrEmpty(inputPath) && File.Exists(inputPath))
+            if (settings.TargetDpi > 0 && !string.IsNullOrEmpty(inputPath) && File.Exists(inputPath))
             {
                 try
                 {
-                    DownsampleAndRecompressImages(document, level, inputPath);
+                    DownsampleAndRecompressImages(document, settings.TargetDpi, settings.JpegQuality, inputPath);
                 }
                 catch { }
             }
+        }
+
+        public static void Optimize(PdfDocument document, PdfCompressionLevel level, string? inputPath = null)
+        {
+            var settings = PdfCompressionSettings.Parse(new Dictionary<string, object> { { "level", level.ToString().ToLowerInvariant() } });
+            Optimize(document, settings, inputPath);
         }
 
         private static void MinifyPageContentStreams(PdfDocument document)
@@ -255,25 +268,10 @@ namespace Clickra.Core.Processors
             yield return "__unsupported__";
         }
 
-        private static void DownsampleAndRecompressImages(PdfDocument document, PdfCompressionLevel level, string inputPath)
+        private static void DownsampleAndRecompressImages(PdfDocument document, double targetDpi, int jpegQuality, string inputPath)
         {
-            double targetDpi = level switch
-            {
-                PdfCompressionLevel.Small => 120.0,
-                PdfCompressionLevel.Balanced => 150.0,
-                PdfCompressionLevel.HighQuality => 300.0,
-                _ => 150.0
-            };
-
-            if (level == PdfCompressionLevel.HighQuality)
+            if (targetDpi <= 0)
                 return;
-
-            int jpegQuality = level switch
-            {
-                PdfCompressionLevel.Small => 75,
-                PdfCompressionLevel.Balanced => 80,
-                _ => 85
-            };
 
             UglyToad.PdfPig.PdfDocument? pigDoc = null;
             try

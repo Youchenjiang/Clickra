@@ -29,24 +29,13 @@ namespace Clickra.Core.Processors
             Action<int, int, string>? onProgress,
             CancellationToken cancellationToken)
         {
-            string levelValue = "";
-            if (options != null &&
-                options.TryGetValue("level", out var levelObj) &&
-                levelObj is string levelStr)
-            {
-                levelValue = levelStr;
-            }
-
-            if (!PdfCompressionOptions.TryParseLevel(levelValue, out PdfCompressionLevel level))
-                throw new ArgumentException($"Unsupported PDF compression level: {levelValue}", nameof(options));
-
             int progressBase = ProgressCalculator.GetProgressBase(fileIndex);
             int totalProgressMax = ProgressCalculator.GetProgressMax(totalFiles);
 
             _engine.Compress(
                 fullPath,
                 targetOutputPath,
-                level,
+                options,
                 (curr, tot, msg) =>
                 {
                     int progressPct = tot > 0 ? (int)(curr * 100.0 / tot) : curr;

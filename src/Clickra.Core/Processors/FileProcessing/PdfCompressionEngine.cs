@@ -13,12 +13,81 @@ namespace Clickra.Core.Processors
         HighQuality
     }
 
+    public class PdfCompressionSettings
+    {
+        public PdfCompressionLevel Level { get; set; } = PdfCompressionLevel.Balanced;
+        public bool MinifyContent { get; set; } = true;
+        public bool DeduplicateFonts { get; set; } = true;
+        public bool StripFonts { get; set; } = false;
+        public int TargetDpi { get; set; } = 150; // 0 means no downsampling
+        public int JpegQuality { get; set; } = 80;
+
+        public static PdfCompressionSettings Parse(Dictionary<string, object>? options)
+        {
+            var settings = new PdfCompressionSettings();
+            if (options == null)
+                return settings;
+
+            // 1. Level parsing
+            string levelValue = "balanced";
+            if (options.TryGetValue("level", out var levelObj) && levelObj != null)
+            {
+                levelValue = levelObj.ToString();
+            }
+            if (!PdfCompressionOptions.TryParseLevel(levelValue, out PdfCompressionLevel parsedLevel))
+            {
+                throw new ArgumentException($"Unsupported PDF compression level: {levelValue}");
+            }
+
+            settings.Level = parsedLevel;
+            switch (parsedLevel)
+            {
+                case PdfCompressionLevel.Small:
+                    settings.MinifyContent = true;
+                    settings.DeduplicateFonts = true;
+                    settings.StripFonts = true;
+                    settings.TargetDpi = 120;
+                    settings.JpegQuality = 75;
+                    break;
+                case PdfCompressionLevel.Balanced:
+                    settings.MinifyContent = true;
+                    settings.DeduplicateFonts = true;
+                    settings.StripFonts = false;
+                    settings.TargetDpi = 150;
+                    settings.JpegQuality = 80;
+                    break;
+                case PdfCompressionLevel.HighQuality:
+                    settings.MinifyContent = true;
+                    settings.DeduplicateFonts = true;
+                    settings.StripFonts = false;
+                    settings.TargetDpi = 0; // 0 means skip downsampling
+                    settings.JpegQuality = 85;
+                    break;
+            }
+
+            // 2. Individual custom options overrides
+            if (options.TryGetValue("strip_fonts", out var sf) && sf != null)
+                settings.StripFonts = sf.ToString().Equals("true", StringComparison.OrdinalIgnoreCase);
+
+            if (options.TryGetValue("minify_content", out var mc) && mc != null)
+                settings.MinifyContent = mc.ToString().Equals("true", StringComparison.OrdinalIgnoreCase);
+
+            if (options.TryGetValue("target_dpi", out var dpi) && dpi != null && int.TryParse(dpi.ToString(), out int d))
+                settings.TargetDpi = d;
+
+            if (options.TryGetValue("jpeg_quality", out var jq) && jq != null && int.TryParse(jq.ToString(), out int q))
+                settings.JpegQuality = q;
+
+            return settings;
+        }
+    }
+
     public interface IPdfCompressionEngine
     {
         void Compress(
             string inputPath,
             string outputPath,
-            PdfCompressionLevel level,
+            Dictionary<string, object>? options,
             Action<int, int, string>? onProgress = null,
             CancellationToken cancellationToken = default);
     }
@@ -64,7 +133,7 @@ namespace Clickra.Core.Processors
         public void Compress(
             string inputPath,
             string outputPath,
-            PdfCompressionLevel level,
+            Dictionary<string, object>? options,
             Action<int, int, string>? onProgress = null,
             CancellationToken cancellationToken = default)
         {
@@ -85,11 +154,13 @@ namespace Clickra.Core.Processors
 
             try
             {
+                var settings = PdfCompressionSettings.Parse(options);
+
                 onProgress?.Invoke(15, 100, "正在讀取 PDF...");
                 using var source = PdfReader.Open(inputPath, PdfDocumentOpenMode.Import);
                 using var output = new PdfDocument();
 
-                CopyDocumentInfo(source, output, level);
+                CopyDocumentInfo(source, output, settings.Level);
 
                 int pageCount = source.PageCount;
                 for (int i = 0; i < pageCount; i++)
@@ -103,7 +174,7 @@ namespace Clickra.Core.Processors
 
                 cancellationToken.ThrowIfCancellationRequested();
                 onProgress?.Invoke(88, 100, "正在最佳化文字與字型資料...");
-                PdfStructuralCompressionOptimizer.Optimize(output, level, inputPath);
+                PdfStructuralCompressionOptimizer.Optimize(output, settings, inputPath);
 
                 cancellationToken.ThrowIfCancellationRequested();
                 onProgress?.Invoke(93, 100, "正在重新封裝 PDF...");

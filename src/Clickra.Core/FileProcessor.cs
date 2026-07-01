@@ -26,6 +26,12 @@ namespace Clickra.Core
             processor.Process(new List<string> { inputPath }, outputPath, options, onProgress, cancellationToken);
         }
 
+        public static void CompressPdf(string inputPath, string outputPath, Dictionary<string, object> options, Action<int, int, string>? onProgress = null, CancellationToken cancellationToken = default)
+        {
+            var processor = new PdfCompressionProcessor();
+            processor.Process(new List<string> { inputPath }, outputPath, options, onProgress, cancellationToken);
+        }
+
         public static void ConvertImagesToPdf(List<string> files, string outputPath, Action<int, int, string>? onProgress = null, CancellationToken cancellationToken = default) =>
             new ImageToPdfProcessor().Process(files, outputPath, null, onProgress, cancellationToken);
 

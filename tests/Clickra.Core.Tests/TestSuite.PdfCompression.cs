@@ -327,13 +327,14 @@ static partial class TestSuite
         public void Compress(
             string inputPath,
             string outputPath,
-            PdfCompressionLevel level,
+            Dictionary<string, object>? options,
             Action<int, int, string>? onProgress = null,
             CancellationToken cancellationToken = default)
         {
             InputPath = inputPath;
             OutputPath = outputPath;
-            Level = level;
+            var settings = PdfCompressionSettings.Parse(options);
+            Level = settings.Level;
         }
     }
 }
