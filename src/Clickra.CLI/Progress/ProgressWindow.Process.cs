@@ -69,6 +69,22 @@ namespace Clickra.UI
                     case "merge-pdf":
                         FileProcessor.MergePdfs(currentFiles, Path.Combine(outputDir, "Merged_PDF.pdf"), progressCallback, _cts.Token);
                         break;
+                    case "compress-pdf":
+                        for (int i = 0; i < currentFiles.Count; i++)
+                        {
+                            _cts.Token.ThrowIfCancellationRequested();
+                            try { ClickraStorage.SetActiveRecordIndex(i); } catch { }
+                            var f = currentFiles[i];
+                            string outName = Path.Combine(outputDir, Path.GetFileNameWithoutExtension(f) + "_compressed.pdf");
+                            progressCallback((i * 100) + 10, currentFiles.Count * 100, $"正在壓縮 PDF: {Path.GetFileName(f)} ({i + 1}/{currentFiles.Count})...");
+                            FileProcessor.CompressPdf(f, outName, "balanced", (curr, tot, msg) => {
+                                int progressPct = tot > 0 ? (int)(curr * 80.0 / tot) + 10 : 10;
+                                progressCallback((i * 100) + progressPct, currentFiles.Count * 100, $"[PDF 壓縮] {msg} ({i + 1}/{currentFiles.Count})");
+                            }, _cts.Token);
+                        }
+                        _cts.Token.ThrowIfCancellationRequested();
+                        progressCallback(currentFiles.Count * 100, currentFiles.Count * 100, "PDF 壓縮完成。");
+                        break;
                     case "img2pdf":
                         for (int i = 0; i < currentFiles.Count; i++)
                         {
@@ -256,6 +272,8 @@ namespace Clickra.UI
                     return string.Join(";", inputFiles.Select(f => Path.Combine(outputDir, Path.GetFileNameWithoutExtension(f) + "_translated.pdf")));
                 case "decrypt-pdf":
                     return string.Join(";", inputFiles.Select(f => Path.Combine(outputDir, Path.GetFileNameWithoutExtension(f) + "_decrypted.pdf")));
+                case "compress-pdf":
+                    return string.Join(";", inputFiles.Select(f => Path.Combine(outputDir, Path.GetFileNameWithoutExtension(f) + "_compressed.pdf")));
                 default:
                     return outputDir;
             }
