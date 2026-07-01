@@ -70,6 +70,7 @@ namespace Clickra.UI
                         FileProcessor.MergePdfs(currentFiles, Path.Combine(outputDir, "Merged_PDF.pdf"), progressCallback, _cts.Token);
                         break;
                     case "compress-pdf":
+                        string compressionSummary = "";
                         for (int i = 0; i < currentFiles.Count; i++)
                         {
                             _cts.Token.ThrowIfCancellationRequested();
@@ -79,11 +80,14 @@ namespace Clickra.UI
                             progressCallback((i * 100) + 10, currentFiles.Count * 100, $"正在壓縮 PDF: {Path.GetFileName(f)} ({i + 1}/{currentFiles.Count})...");
                             FileProcessor.CompressPdf(f, outName, "balanced", (curr, tot, msg) => {
                                 int progressPct = tot > 0 ? (int)(curr * 80.0 / tot) + 10 : 10;
+                                if (curr >= tot && !string.IsNullOrWhiteSpace(msg))
+                                    compressionSummary = msg;
                                 progressCallback((i * 100) + progressPct, currentFiles.Count * 100, $"[PDF 壓縮] {msg} ({i + 1}/{currentFiles.Count})");
                             }, _cts.Token);
                         }
                         _cts.Token.ThrowIfCancellationRequested();
-                        progressCallback(currentFiles.Count * 100, currentFiles.Count * 100, "PDF 壓縮完成。");
+                        progressCallback(currentFiles.Count * 100, currentFiles.Count * 100,
+                            string.IsNullOrWhiteSpace(compressionSummary) ? "PDF 壓縮完成。" : compressionSummary);
                         break;
                     case "img2pdf":
                         for (int i = 0; i < currentFiles.Count; i++)
@@ -204,7 +208,8 @@ namespace Clickra.UI
                 lock (_stateLock)
                 {
                     _completed = true;
-                    _message = "所有作業已順利完成！";
+                    if (cmd != "compress-pdf")
+                        _message = "所有作業已順利完成！";
                 }
                 PostMessageW(hwnd, WM_USER_INVALIDATE, (IntPtr)1, IntPtr.Zero);
 
