@@ -51,8 +51,8 @@
         - 支援 Auto / Microsoft Office / LibreOffice 三種 Office 轉檔引擎模式，讓未安裝 Microsoft Office 的使用者可透過本機 LibreOffice 進行 Word、Excel 與 PowerPoint 轉 PDF。
         - 內建 LibreOffice 下載 manifest、官方 MSI 下載、SHA256 驗證、背景安裝/移除、版本比對與重啟需求狀態處理。
         - 轉檔頁改為依 Office、PDF、圖片三組呈現九個主要功能，降低使用者尋找功能時的掃描成本。
-    - [ ] **PDF 壓縮與最佳化 (PDF Shrinking & Compression)**:
-        - 借鑑 `ghostpdf` 封裝 Ghostscript (pdfwrite) 的思路，評估於本地打包或按需引導下載輕量化 Ghostscript 核心，利用預設多級壓縮比（Screen, eBook, Printer）在本地實現高壓縮率與高保真 PDF 壓縮。
+    - [x] **PDF 壓縮與最佳化 (PDF Shrinking & Compression) [v3.6.0]**:
+        - 實作以內建 PDFsharp 與 GDI+ 為基礎的優化引擎，支援多級壓縮設定（極小、小檔、標準、高品質），自動精簡文字流、字型去重、大字型剝離與圖片高品質雙立方降解析，並在設定頁面實作 4 停靠點的橫向拉條 UI 與 Toggles。
     - [ ] **PDF 轉圖片 (PDF to Image)**: 一鍵將 PDF 頁面匯出為高品質 JPG/PNG/TIFF，支援自訂 DPI 渲染率、色彩模式與透明背景處理。
     - [ ] **PDF 轉 PPTX (PDF to PPTX)**: 並存/整合三種不同定位之模式，供使用者自選或依 PDF 類型自動推薦：
         - **模式一：原樣保真 (Mode 1: Layout Preservation)**：將每頁 PDF 渲染為圖片並嵌入 PPTX。成功率高、相容性最高，且通常可避免版面跑位，但文字不可編輯；仍可能因 PDF 加密、檔案損毀、不支援字型或渲染失敗等情況而無法完成轉換（參考 `pdf2pptx`）。

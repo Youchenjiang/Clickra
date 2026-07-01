@@ -1,4 +1,4 @@
-# Clickra v3.5.0.0
+# Clickra v3.6.0.0
 
 [![Microsoft Store](https://img.shields.io/badge/Microsoft%20Store-Clickra-blue?style=for-the-badge&logo=microsoft-store)](https://apps.microsoft.com/detail/9NGLBF6P1KLD)
 [![License: Apache 2.0](https://img.shields.io/badge/License-Apache%202.0-blue.svg?style=for-the-badge)](https://opensource.org/licenses/Apache-2.0)
@@ -24,9 +24,8 @@ Most productivity scripts (PDF merging, image conversion, etc.) are typically wr
 
 | Version | Release Date | Key Milestone |
 | :--- | :--- | :--- |
+| **v3.6.0.0** | 2026/07/02 | **PDF Compression & Settings Slider**. Added native PDFsharp and GDI+ compression, skip downsampling for small images, large font unembedding, and a compact 4-stop horizontal settings slider UI. |
 | **v3.5.0.0** | Jun 29, 2026 | **LibreOffice Offline Engine**. Added managed LibreOffice fallback for Office-to-PDF conversion, Office engine selection, and grouped Convert tools. |
-| **v3.4.0.0** | Jun 21, 2026 | **Excel to PDF Conversion**. Added right-click Excel to PDF with Shell Extension, Dashboard UI, and CLI support. |
-| **v3.3.3.0** | Jun 21, 2026 | **PDF Translation Pipeline Modularization**. Decomposed core engine into 80+ classes, enhanced layout analysis, added Chinese converter and diagnostics. |
 
 [View Full Changelog](CHANGELOG.md)
 
@@ -67,6 +66,11 @@ Commands are elegantly tucked away in the `Clickra` sub-menu, keeping your prima
 *   **Feature**: Removes passwords from protected PDF documents directly from the right-click menu.
 *   **Aesthetics**: Implemented a modern, non-flickering inline password input box directly within the GDI+ progress window, offering a native, seamless flow without modal dialog popups.
 *   **Safety**: Validates PDF encryption status first to prevent decrypting unencrypted files.
+
+### 9. 📄 PDF Compression
+*   **Feature**: Compresses PDF files locally using a high-fidelity native engine, reducing file size through content stream minification, font deduplication, and image downsampling.
+*   **UI Settings**: A compact, space-saving 4-stop horizontal slider (Min, Small, Std, High) to control DPI and JPEG quality parameters instantly.
+*   **Clever Logic**: Automatically bypasses low-resolution or small images to keep drawings and charts sharp.
 
 
 ---
