@@ -315,13 +315,16 @@ namespace Clickra.Core.Processors
                         if (r?.Value is not PdfDictionary imgDict || imgDict.Elements.GetName("/Subtype") != "/Image")
                             continue;
 
+                        if (imgDict.Stream == null || imgDict.Stream.Value == null)
+                            continue;
+
                         int w = imgDict.Elements.GetInteger("/Width");
                         int h = imgDict.Elements.GetInteger("/Height");
                         if (w <= 0 || h <= 0)
                             continue;
 
                         // Skip downsampling for low-resolution (< 300,000 pixels) or already small (< 100 KB) images to preserve text/diagram legibility
-                        if (w * h < 300000 || imgDict.Stream.Value.Length < 100 * 1024)
+                        if ((long)w * h < 300000 || imgDict.Stream.Value.Length < 100 * 1024)
                             continue;
 
                         UglyToad.PdfPig.Content.IPdfImage? matchedPigImage = null;
@@ -521,8 +524,11 @@ namespace Clickra.Core.Processors
                 .FirstOrDefault(codec => codec.FormatID == format.Guid);
         }
 
+
+
         private static void UnembedLargeFonts(PdfDocument document)
         {
+            var referenceCounts = CountReferences(document);
             var objects = document.Internals.GetAllObjects();
             foreach (var obj in objects)
             {
@@ -542,7 +548,12 @@ namespace Clickra.Core.Processors
                         if (streamLen > 100 * 1024)
                         {
                             dict.Elements.Remove(key);
-                            document.Internals.RemoveObject(fontFileRef.Value);
+                            
+                            referenceCounts.TryGetValue(fontFileRef, out int count);
+                            if (count <= 1 && fontFileRef.Value != null)
+                            {
+                                document.Internals.RemoveObject(fontFileRef.Value);
+                            }
                         }
                     }
                 }
