@@ -155,11 +155,11 @@ namespace Clickra.UI
                         }
                         else if (_isDraggingPdfSlider)
                         {
-                            // Drag on compress slider: real-time snap
+                            // Drag on compress slider: real-time snap with equal 25% interval widths
                             float sliderMouseX = mouseX >= sidebarW ? mouseX + _contentScrollX : mouseX;
                             float relX = sliderMouseX - _pdfSliderTrackX;
                             float fraction = Math.Max(0f, Math.Min(1f, relX / _pdfSliderTrackW));
-                            int newLevel = (int)Math.Round(fraction * 3);
+                            int newLevel = (int)Math.Max(0, Math.Min(3, Math.Floor(fraction * 4)));
                             string current = ClickraStorage.GetSetting("PdfCompressImageLevel");
                             if (current != newLevel.ToString())
                             {

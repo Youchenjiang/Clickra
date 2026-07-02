@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Security.Cryptography;
 using PdfSharp.Pdf;
 using PdfSharp.Pdf.Advanced;
@@ -40,11 +41,7 @@ namespace Clickra.Core.Processors
 
             if (settings.TargetDpi > 0 && !string.IsNullOrEmpty(inputPath) && File.Exists(inputPath))
             {
-                try
-                {
-                    DownsampleAndRecompressImages(document, settings.TargetDpi, settings.JpegQuality, inputPath);
-                }
-                catch { }
+                DownsampleAndRecompressImages(document, settings.TargetDpi, settings.JpegQuality, inputPath);
             }
         }
 
@@ -520,13 +517,8 @@ namespace Clickra.Core.Processors
 
         private static System.Drawing.Imaging.ImageCodecInfo? GetEncoder(System.Drawing.Imaging.ImageFormat format)
         {
-            var codecs = System.Drawing.Imaging.ImageCodecInfo.GetImageDecoders();
-            foreach (var codec in codecs)
-            {
-                if (codec.FormatID == format.Guid)
-                    return codec;
-            }
-            return null;
+            return System.Drawing.Imaging.ImageCodecInfo.GetImageDecoders()
+                .FirstOrDefault(codec => codec.FormatID == format.Guid);
         }
 
         private static void UnembedLargeFonts(PdfDocument document)

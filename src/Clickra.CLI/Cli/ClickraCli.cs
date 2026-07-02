@@ -72,6 +72,7 @@ namespace Clickra
                 argList.Remove("--show-ui");
             }
             string? outputDirOverride = ExtractOptionValue(argList, "--out-dir", "-o", "--out");
+            bool hasCliLevel = argList.Contains("--level") || argList.Contains("--compression-level");
             string compressionLevel = ExtractOptionValue(argList, "--level", "--compression-level") ?? "balanced";
 
             if (argList.Count < 2)
@@ -140,12 +141,40 @@ namespace Clickra
                         RequireMinFiles(files, command, 1, quiet);
                         if (quiet)
                         {
+                            Dictionary<string, object>? pdfOptions = null;
+                            if (!hasCliLevel)
+                            {
+                                string dpiStr = ClickraStorage.GetSetting("PdfCompressTargetDpi");
+                                if (string.IsNullOrEmpty(dpiStr)) dpiStr = "120";
+                                string qualityStr = ClickraStorage.GetSetting("PdfCompressJpegQuality");
+                                if (string.IsNullOrEmpty(qualityStr)) qualityStr = "75";
+                                string stripStr = ClickraStorage.GetSetting("PdfCompressStripFonts");
+                                if (string.IsNullOrEmpty(stripStr)) stripStr = "true";
+                                string minifyStr = ClickraStorage.GetSetting("PdfCompressMinifyContent");
+                                if (string.IsNullOrEmpty(minifyStr)) minifyStr = "true";
+
+                                pdfOptions = new Dictionary<string, object>
+                                {
+                                    { "target_dpi", int.Parse(dpiStr) },
+                                    { "jpeg_quality", int.Parse(qualityStr) },
+                                    { "strip_fonts", stripStr.Equals("true", StringComparison.OrdinalIgnoreCase) },
+                                    { "minify_content", minifyStr.Equals("true", StringComparison.OrdinalIgnoreCase) }
+                                };
+                            }
+
                             for (int i = 0; i < files.Count; i++)
                             {
                                 var f = files[i];
                                 string outName = Path.Combine(outputDir, Path.GetFileNameWithoutExtension(f) + "_compressed.pdf");
                                 Console.WriteLine($"[Progress] 正在壓縮 PDF: {Path.GetFileName(f)} ({i + 1}/{files.Count})...");
-                                FileProcessor.CompressPdf(f, outName, compressionLevel, (curr, tot, msg) => Console.WriteLine($"[Progress] {msg}"));
+                                if (pdfOptions != null)
+                                {
+                                    FileProcessor.CompressPdf(f, outName, pdfOptions, (curr, tot, msg) => Console.WriteLine($"[Progress] {msg}"));
+                                }
+                                else
+                                {
+                                    FileProcessor.CompressPdf(f, outName, compressionLevel, (curr, tot, msg) => Console.WriteLine($"[Progress] {msg}"));
+                                }
                             }
                         }
                         else ProgressWindow.Show(command, files);
