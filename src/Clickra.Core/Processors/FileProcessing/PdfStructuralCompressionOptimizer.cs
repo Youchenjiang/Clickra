@@ -528,7 +528,6 @@ namespace Clickra.Core.Processors
 
         private static void UnembedLargeFonts(PdfDocument document)
         {
-            var referenceCounts = CountReferences(document);
             var objects = document.Internals.GetAllObjects();
             foreach (var obj in objects)
             {
@@ -548,9 +547,11 @@ namespace Clickra.Core.Processors
                         if (streamLen > 100 * 1024)
                         {
                             dict.Elements.Remove(key);
-                            
-                            referenceCounts.TryGetValue(fontFileRef, out int count);
-                            if (count <= 1 && fontFileRef.Value != null)
+
+                            // Recount after each removal so shared streams are only deleted when truly unreferenced
+                            var currentCounts = CountReferences(document);
+                            currentCounts.TryGetValue(fontFileRef, out int count);
+                            if (count <= 0 && fontFileRef.Value != null)
                             {
                                 document.Internals.RemoveObject(fontFileRef.Value);
                             }
