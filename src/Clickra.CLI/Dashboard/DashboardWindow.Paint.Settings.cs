@@ -302,12 +302,11 @@ namespace Clickra.UI
             y += 48f;
 
             // Compact slider: one level maps to both DPI + JPEG quality
-            bool isChinese = GetText("setting_engine_auto") == "自動";
             int compressLevel = GetPdfCompressLevel();
             float sliderW = 300f;
             _pdfSliderTrackX = contentX;
             _pdfSliderTrackW = sliderW;
-            DrawCompressSlider(g, contentX, y, sliderW, compressLevel, isChinese);
+            DrawCompressSlider(g, contentX, y, sliderW, compressLevel);
             AddHitRect(83, contentX - 10, y - 4, sliderW + 20, 62);
             y += 72f;
 
@@ -317,7 +316,7 @@ namespace Clickra.UI
             y += 44f;
 
             // Minify Content Toggle
-            bool minifyContent = ClickraStorage.GetSetting("PdfCompressMinifyContent").Equals("true", StringComparison.OrdinalIgnoreCase);
+            bool minifyContent = !ClickraStorage.GetSetting("PdfCompressMinifyContent").Equals("false", StringComparison.OrdinalIgnoreCase);
             DrawToggleSection("setting_pdf_compress_minify_content", "", minifyContent, 82, y);
             y += 44f;
 
@@ -483,7 +482,7 @@ namespace Clickra.UI
             };
         }
 
-        static void DrawCompressSlider(Graphics g, float x, float y, float w, int level, bool isChinese)
+        static void DrawCompressSlider(Graphics g, float x, float y, float w, int level)
         {
             float s = _dpiScale;
             const int stops = 4;
@@ -491,11 +490,11 @@ namespace Clickra.UI
             float trackH = 5f;
             Color accent = UIHelper.GetSystemColorizationColor();
 
-            // Guidance labels: ← 體積最小 ... 品質最高 →
+            // Guidance labels from localization
             if (_subFont != null)
             {
-                string leftLabel  = isChinese ? "← 體積最小" : "← Smaller";
-                string rightLabel = isChinese ? "品質最高 →" : "Higher Quality →";
+                string leftLabel  = GetText("setting_pdf_compress_smaller");
+                string rightLabel = GetText("setting_pdf_compress_higher");
                 using var dimBrush = new SolidBrush(Color.FromArgb(110, 110, 110));
                 g.DrawString(leftLabel, _subFont, dimBrush, x * s, y * s);
                 var rSize = g.MeasureString(rightLabel, _subFont);
@@ -520,10 +519,14 @@ namespace Clickra.UI
                 g.FillPath(fillBrush, fillPath);
             }
 
-            // Stop dots + labels below
-            string[] stopLabels = isChinese
-                ? new[] { "極小", "小檔", "標準", "高品質" }
-                : new[] { "Min", "Small", "Std", "High" };
+            // Stop dots + labels below from localization
+            string[] stopLabels = new[]
+            {
+                GetText("setting_pdf_compress_level_min"),
+                GetText("setting_pdf_compress_level_small"),
+                GetText("setting_pdf_compress_level_std"),
+                GetText("setting_pdf_compress_level_high")
+            };
 
             for (int i = 0; i < stops; i++)
             {

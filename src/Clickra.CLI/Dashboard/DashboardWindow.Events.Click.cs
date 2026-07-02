@@ -642,7 +642,7 @@ namespace Clickra.UI
             }
             else if (element == 82)
             {
-                bool current = ClickraStorage.GetSetting("PdfCompressMinifyContent").Equals("true", StringComparison.OrdinalIgnoreCase);
+                bool current = !ClickraStorage.GetSetting("PdfCompressMinifyContent").Equals("false", StringComparison.OrdinalIgnoreCase);
                 ClickraStorage.SaveSetting("PdfCompressMinifyContent", current ? "false" : "true");
                 InvalidateRect(hwnd, IntPtr.Zero, false);
             }
