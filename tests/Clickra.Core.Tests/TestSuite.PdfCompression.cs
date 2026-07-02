@@ -248,14 +248,24 @@ static partial class TestSuite
         page.Width = XUnit.FromPoint(300);
         page.Height = XUnit.FromPoint(300);
 
-        using var bmp = new System.Drawing.Bitmap(1000, 1000);
-        var random = new Random(42);
-        for (int x = 0; x < 1000; x++)
+        using var bmp = new System.Drawing.Bitmap(1000, 1000, System.Drawing.Imaging.PixelFormat.Format32bppArgb);
+        var rng = new Random(42);
+        var bmpData = bmp.LockBits(
+            new System.Drawing.Rectangle(0, 0, bmp.Width, bmp.Height),
+            System.Drawing.Imaging.ImageLockMode.WriteOnly,
+            System.Drawing.Imaging.PixelFormat.Format32bppArgb);
+        try
         {
-            for (int y = 0; y < 1000; y++)
-            {
-                bmp.SetPixel(x, y, System.Drawing.Color.FromArgb(random.Next(256), random.Next(256), random.Next(256)));
-            }
+            int bytes = Math.Abs(bmpData.Stride) * bmp.Height;
+            byte[] buffer = new byte[bytes];
+            rng.NextBytes(buffer);
+            // Force full opacity so the image is non-trivial for the compressor
+            for (int i = 3; i < bytes; i += 4) buffer[i] = 255;
+            System.Runtime.InteropServices.Marshal.Copy(buffer, 0, bmpData.Scan0, bytes);
+        }
+        finally
+        {
+            bmp.UnlockBits(bmpData);
         }
 
         using var ms = new MemoryStream();
