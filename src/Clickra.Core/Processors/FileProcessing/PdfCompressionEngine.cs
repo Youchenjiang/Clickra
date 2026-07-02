@@ -67,10 +67,10 @@ namespace Clickra.Core.Processors
 
             // 2. Individual custom options overrides
             if (options.TryGetValue("strip_fonts", out var sf) && sf != null)
-                settings.StripFonts = sf.ToString().Equals("true", StringComparison.OrdinalIgnoreCase);
+                settings.StripFonts = (sf?.ToString() ?? string.Empty).Equals("true", StringComparison.OrdinalIgnoreCase);
 
             if (options.TryGetValue("minify_content", out var mc) && mc != null)
-                settings.MinifyContent = mc.ToString().Equals("true", StringComparison.OrdinalIgnoreCase);
+                settings.MinifyContent = (mc?.ToString() ?? string.Empty).Equals("true", StringComparison.OrdinalIgnoreCase);
             if (options.TryGetValue("target_dpi", out var dpi) && dpi != null && int.TryParse(dpi.ToString(), out int d))
                 settings.TargetDpi = Math.Max(0, d);
 
