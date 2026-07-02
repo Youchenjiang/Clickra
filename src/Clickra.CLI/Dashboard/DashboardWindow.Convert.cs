@@ -104,6 +104,11 @@ namespace Clickra.UI
             return true;
         }
 
+        static int GetCommandIndex(string cmd)
+        {
+            return Array.IndexOf(ConvertCommands, cmd);
+        }
+
         static void HandleDroppedFiles(List<string> files)
         {
             var extensions = files.Select(f => Path.GetExtension(f).ToLowerInvariant()).Distinct().ToList();
@@ -111,23 +116,23 @@ namespace Clickra.UI
 
             if (extensions.All(ext => ext == ".ppt" || ext == ".pptx"))
             {
-                ChangeConvertCommand(2);
+                ChangeConvertCommand(GetCommandIndex("ppt2pdf"));
             }
             else if (extensions.All(ext => ext == ".doc" || ext == ".docx"))
             {
-                ChangeConvertCommand(0);
+                ChangeConvertCommand(GetCommandIndex("word2pdf"));
             }
             else if (extensions.All(ext => ext == ".xlsx" || ext == ".xls"))
             {
-                ChangeConvertCommand(1);
+                ChangeConvertCommand(GetCommandIndex("excel2pdf"));
             }
             else if (extensions.All(ext => ext == ".pdf"))
             {
-                ChangeConvertCommand(files.Count == 1 ? 4 : 3);
+                ChangeConvertCommand(files.Count == 1 ? GetCommandIndex("compress-pdf") : GetCommandIndex("merge-pdf"));
             }
             else if (extensions.All(ext => new[] { ".jpg", ".jpeg", ".png", ".bmp", ".gif", ".tiff", ".webp" }.Contains(ext)))
             {
-                ChangeConvertCommand(files.Count > 1 ? 8 : 7);
+                ChangeConvertCommand(files.Count > 1 ? GetCommandIndex("img-merge") : GetCommandIndex("img2pdf"));
             }
 
             _selectedFiles = files;
