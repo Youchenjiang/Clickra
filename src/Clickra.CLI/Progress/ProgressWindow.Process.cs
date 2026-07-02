@@ -80,7 +80,7 @@ namespace Clickra.UI
                             progressCallback((i * 100) + 10, currentFiles.Count * 100, $"正在壓縮 PDF: {Path.GetFileName(f)} ({i + 1}/{currentFiles.Count})...");
                             string qualityStr = ClickraStorage.GetSetting("PdfCompressJpegQuality");
                             if (string.IsNullOrEmpty(qualityStr)) qualityStr = "75";
-                            string dpiStr = ClickraStorage.GetSetting("PdfCompressDpi");
+                            string dpiStr = ClickraStorage.GetSetting("PdfCompressTargetDpi");
                             if (string.IsNullOrEmpty(dpiStr)) dpiStr = "150";
                             if (!int.TryParse(dpiStr, out int dpi)) dpi = 150;
                             string stripStr = ClickraStorage.GetSetting("PdfCompressStripFonts");
