@@ -149,7 +149,7 @@ namespace Clickra
                                 string qualityStr = ClickraStorage.GetSetting("PdfCompressJpegQuality");
                                 if (string.IsNullOrEmpty(qualityStr)) qualityStr = "75";
                                 string stripStr = ClickraStorage.GetSetting("PdfCompressStripFonts");
-                                if (string.IsNullOrEmpty(stripStr)) stripStr = "true";
+                                if (string.IsNullOrEmpty(stripStr)) stripStr = "false";
                                 string minifyStr = ClickraStorage.GetSetting("PdfCompressMinifyContent");
                                 if (string.IsNullOrEmpty(minifyStr)) minifyStr = "true";
 
