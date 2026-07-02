@@ -78,19 +78,23 @@ namespace Clickra.UI
                             var f = currentFiles[i];
                             string outName = Path.Combine(outputDir, Path.GetFileNameWithoutExtension(f) + "_compressed.pdf");
                             progressCallback((i * 100) + 10, currentFiles.Count * 100, $"正在壓縮 PDF: {Path.GetFileName(f)} ({i + 1}/{currentFiles.Count})...");
-                            string dpiStr = ClickraStorage.GetSetting("PdfCompressTargetDpi");
-                            if (string.IsNullOrEmpty(dpiStr)) dpiStr = "120";
                             string qualityStr = ClickraStorage.GetSetting("PdfCompressJpegQuality");
                             if (string.IsNullOrEmpty(qualityStr)) qualityStr = "75";
+                            string dpiStr = ClickraStorage.GetSetting("PdfCompressDpi");
+                            if (string.IsNullOrEmpty(dpiStr)) dpiStr = "150";
+                            if (!int.TryParse(dpiStr, out int dpi)) dpi = 150;
                             string stripStr = ClickraStorage.GetSetting("PdfCompressStripFonts");
-                            if (string.IsNullOrEmpty(stripStr)) stripStr = "true";
+                            if (string.IsNullOrEmpty(stripStr)) stripStr = "false";
+
                             string minifyStr = ClickraStorage.GetSetting("PdfCompressMinifyContent");
                             if (string.IsNullOrEmpty(minifyStr)) minifyStr = "true";
 
+                            if (!int.TryParse(qualityStr, out int quality)) quality = 75;
+
                             var pdfOptions = new Dictionary<string, object>
                             {
-                                { "target_dpi", int.Parse(dpiStr) },
-                                { "jpeg_quality", int.Parse(qualityStr) },
+                                { "target_dpi", dpi },
+                                { "jpeg_quality", quality },
                                 { "strip_fonts", stripStr.Equals("true", StringComparison.OrdinalIgnoreCase) },
                                 { "minify_content", minifyStr.Equals("true", StringComparison.OrdinalIgnoreCase) }
                             };

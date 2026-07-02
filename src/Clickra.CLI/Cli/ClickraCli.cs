@@ -153,10 +153,13 @@ namespace Clickra
                                 string minifyStr = ClickraStorage.GetSetting("PdfCompressMinifyContent");
                                 if (string.IsNullOrEmpty(minifyStr)) minifyStr = "true";
 
+                                if (!int.TryParse(dpiStr, out int dpi)) dpi = 120;
+                                if (!int.TryParse(qualityStr, out int quality)) quality = 75;
+
                                 pdfOptions = new Dictionary<string, object>
                                 {
-                                    { "target_dpi", int.Parse(dpiStr) },
-                                    { "jpeg_quality", int.Parse(qualityStr) },
+                                    { "target_dpi", dpi },
+                                    { "jpeg_quality", quality },
                                     { "strip_fonts", stripStr.Equals("true", StringComparison.OrdinalIgnoreCase) },
                                     { "minify_content", minifyStr.Equals("true", StringComparison.OrdinalIgnoreCase) }
                                 };
