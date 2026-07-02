@@ -32,7 +32,7 @@ namespace Clickra.Core.Processors
             string levelValue = "balanced";
             if (options.TryGetValue("level", out var levelObj) && levelObj != null)
             {
-                levelValue = levelObj.ToString();
+                levelValue = levelObj.ToString() ?? levelValue;
             }
             if (!PdfCompressionOptions.TryParseLevel(levelValue, out PdfCompressionLevel parsedLevel))
             {
