@@ -155,7 +155,13 @@ namespace Clickra.Core
                 ["error_pdf_password_quiet"] = "密碼錯誤或未提供密碼（靜默模式下無法手動輸入密碼）。",
                 ["pdf_not_encrypted"] = "此檔案未加密，無須解除密碼。",
                 ["dialog_ok"] = "確定",
-                ["dialog_cancel"] = "取消"
+                ["dialog_cancel"] = "取消",
+                ["setting_pdf_compress_smaller"] = "← 體積最小",
+                ["setting_pdf_compress_higher"] = "品質最高 →",
+                ["setting_pdf_compress_level_min"] = "極小",
+                ["setting_pdf_compress_level_small"] = "小檔",
+                ["setting_pdf_compress_level_std"] = "標準",
+                ["setting_pdf_compress_level_high"] = "高品質"
             },
             ["zh-CN"] = new(StringComparer.OrdinalIgnoreCase)
             {
@@ -305,7 +311,13 @@ namespace Clickra.Core
                 ["error_pdf_password_quiet"] = "密码错误或未提供密码（静默模式下无法手动输入密码）。",
                 ["pdf_not_encrypted"] = "此文件未加密，无需解除密码。",
                 ["dialog_ok"] = "确定",
-                ["dialog_cancel"] = "取消"
+                ["dialog_cancel"] = "取消",
+                ["setting_pdf_compress_smaller"] = "← 体积最小",
+                ["setting_pdf_compress_higher"] = "质量最高 →",
+                ["setting_pdf_compress_level_min"] = "极小",
+                ["setting_pdf_compress_level_small"] = "小档",
+                ["setting_pdf_compress_level_std"] = "标准",
+                ["setting_pdf_compress_level_high"] = "高质量"
             },
             ["en-US"] = new(StringComparer.OrdinalIgnoreCase)
             {
@@ -455,7 +467,13 @@ namespace Clickra.Core
                 ["error_pdf_password_quiet"] = "Incorrect or missing password (cannot prompt for password in quiet mode).",
                 ["pdf_not_encrypted"] = "This file is not encrypted; no decryption needed.",
                 ["dialog_ok"] = "OK",
-                ["dialog_cancel"] = "Cancel"
+                ["dialog_cancel"] = "Cancel",
+                ["setting_pdf_compress_smaller"] = "← Smaller",
+                ["setting_pdf_compress_higher"] = "Higher Quality →",
+                ["setting_pdf_compress_level_min"] = "Min",
+                ["setting_pdf_compress_level_small"] = "Small",
+                ["setting_pdf_compress_level_std"] = "Std",
+                ["setting_pdf_compress_level_high"] = "High"
             },
             ["ja-JP"] = new(StringComparer.OrdinalIgnoreCase)
             {
@@ -597,7 +615,13 @@ namespace Clickra.Core
                 ["error_pdf_password_quiet"] = "パスワードが正しくないか入力されていません（サイレントモードではパスワードを入力できません）。",
                 ["pdf_not_encrypted"] = "このファイルは暗号化されていません。パスワード解除は不要です。",
                 ["dialog_ok"] = "確定",
-                ["dialog_cancel"] = "キャンセル"
+                ["dialog_cancel"] = "キャンセル",
+                ["setting_pdf_compress_smaller"] = "← 最小サイズ",
+                ["setting_pdf_compress_higher"] = "最高品質 →",
+                ["setting_pdf_compress_level_min"] = "最小",
+                ["setting_pdf_compress_level_small"] = "小",
+                ["setting_pdf_compress_level_std"] = "標準",
+                ["setting_pdf_compress_level_high"] = "高品質"
             },
             ["ko-KR"] = new(StringComparer.OrdinalIgnoreCase)
             {
@@ -741,7 +765,13 @@ namespace Clickra.Core
                 ["error_pdf_password_quiet"] = "비밀번호가 잘못되었거나 누락되었습니다 (조용한 모드에서는 비밀번호를 입력할 수 없습니다).",
                 ["pdf_not_encrypted"] = "이 파일은 암호화되어 있지 않아 비밀번호를 제거할 필요가 없습니다.",
                 ["dialog_ok"] = "확인",
-                ["dialog_cancel"] = "취소"
+                ["dialog_cancel"] = "취소",
+                ["setting_pdf_compress_smaller"] = "← 최소 크기",
+                ["setting_pdf_compress_higher"] = "최고 품질 →",
+                ["setting_pdf_compress_level_min"] = "최소",
+                ["setting_pdf_compress_level_small"] = "소형",
+                ["setting_pdf_compress_level_std"] = "표준",
+                ["setting_pdf_compress_level_high"] = "고품질"
             }
         };
 

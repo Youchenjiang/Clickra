@@ -71,12 +71,11 @@ namespace Clickra.Core.Processors
 
             if (options.TryGetValue("minify_content", out var mc) && mc != null)
                 settings.MinifyContent = mc.ToString().Equals("true", StringComparison.OrdinalIgnoreCase);
-
             if (options.TryGetValue("target_dpi", out var dpi) && dpi != null && int.TryParse(dpi.ToString(), out int d))
-                settings.TargetDpi = d;
+                settings.TargetDpi = Math.Max(0, d);
 
             if (options.TryGetValue("jpeg_quality", out var jq) && jq != null && int.TryParse(jq.ToString(), out int q))
-                settings.JpegQuality = q;
+                settings.JpegQuality = Math.Max(1, Math.Min(100, q));
 
             return settings;
         }
@@ -231,7 +230,8 @@ namespace Clickra.Core.Processors
                 return $"PDF 已接近最佳化：{before} -> {after}，檔案大小未明顯下降。";
 
             double savedPercent = savedBytes * 100.0 / inputBytes;
-            return $"PDF 最佳化完成：{before} -> {after}，減少 {savedPercent:0.0}%。";
+            string percentStr = savedPercent.ToString("0.0", System.Globalization.CultureInfo.InvariantCulture);
+            return $"PDF 最佳化完成：{before} -> {after}，減少 {percentStr}%。";
         }
 
         private static string FormatFileSize(long bytes)
@@ -246,9 +246,11 @@ namespace Clickra.Core.Processors
                 unitIndex++;
             }
 
-            return unitIndex == 0
-                ? $"{value:0} {units[unitIndex]}"
-                : $"{value:0.##} {units[unitIndex]}";
+            string valueStr = unitIndex == 0
+                ? value.ToString("0", System.Globalization.CultureInfo.InvariantCulture)
+                : value.ToString("0.##", System.Globalization.CultureInfo.InvariantCulture);
+
+            return $"{valueStr} {units[unitIndex]}";
         }
     }
 }
