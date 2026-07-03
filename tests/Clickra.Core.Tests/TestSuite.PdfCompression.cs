@@ -4,10 +4,12 @@ using PdfSharp.Pdf;
 using PdfSharp.Pdf.Advanced;
 using System.Text;
 
+// NOSONAR: TestSuite is intentionally in the global namespace to match top-level Program.cs partial class usage
 static partial class TestSuite
 {
     public static void RegisterPdfCompressionTests(TestRunner runner)
     {
+        const string LevelKey = "level";
         runner.Run("PDF compression parses user-facing level aliases", () =>
         {
             Assert.True(PdfCompressionOptions.TryParseLevel("", out var defaultLevel), "Expected empty level to use default.");
@@ -27,7 +29,7 @@ static partial class TestSuite
             {
                 CreateSamplePdf(input);
                 var processor = new PdfCompressionProcessor();
-                var options = new Dictionary<string, object> { { "level", "lossless" } };
+                var options = new Dictionary<string, object> { { LevelKey, "lossless" } };
 
                 Assert.Throws<ArgumentException>(() =>
                     processor.Process(new List<string> { input }, output, options));
@@ -47,7 +49,7 @@ static partial class TestSuite
             {
                 CreateSamplePdf(input);
                 var processor = new PdfCompressionProcessor();
-                var options = new Dictionary<string, object> { { "level", "small" } };
+                var options = new Dictionary<string, object> { { LevelKey, "small" } };
 
                 processor.Process(new List<string> { input }, output, options);
 
@@ -70,7 +72,7 @@ static partial class TestSuite
                 CreateSamplePdf(input);
                 var engine = new RecordingPdfCompressionEngine();
                 var processor = new PdfCompressionProcessor(engine);
-                var options = new Dictionary<string, object> { { "level", "high" } };
+                var options = new Dictionary<string, object> { { LevelKey, "high" } };
 
                 processor.Process(new List<string> { input }, output, options);
 
@@ -110,7 +112,7 @@ static partial class TestSuite
                 new PdfCompressionProcessor().Process(
                     new List<string> { input },
                     output,
-                    new Dictionary<string, object> { { "level", "balanced" } });
+                    new Dictionary<string, object> { { LevelKey, "balanced" } });
 
                 long inputBytes = new FileInfo(input).Length;
                 long outputBytes = new FileInfo(output).Length;
@@ -133,7 +135,7 @@ static partial class TestSuite
                 new PdfCompressionProcessor().Process(
                     new List<string> { input },
                     output,
-                    new Dictionary<string, object> { { "level", "balanced" } });
+                    new Dictionary<string, object> { { LevelKey, "balanced" } });
 
                 long inputBytes = new FileInfo(input).Length;
                 long outputBytes = new FileInfo(output).Length;
@@ -156,27 +158,25 @@ static partial class TestSuite
                 new PdfCompressionProcessor().Process(
                     new List<string> { input },
                     output,
-                    new Dictionary<string, object> { { "level", "small" } });
+                    new Dictionary<string, object> { { LevelKey, "small" } });
 
                 Assert.True(File.Exists(output), "Expected output file to exist.");
 
-                using (var doc = PdfSharp.Pdf.IO.PdfReader.Open(output, PdfSharp.Pdf.IO.PdfDocumentOpenMode.Import))
+                using var doc = PdfSharp.Pdf.IO.PdfReader.Open(output, PdfSharp.Pdf.IO.PdfDocumentOpenMode.Import);
+                var objects = doc.Internals.GetAllObjects();
+                bool foundImage = false;
+                foreach (var obj in objects)
                 {
-                    var objects = doc.Internals.GetAllObjects();
-                    bool foundImage = false;
-                    foreach (var obj in objects)
+                    if (obj is PdfDictionary dict && dict.Elements.GetName("/Subtype") == "/Image")
                     {
-                        if (obj is PdfDictionary dict && dict.Elements.GetName("/Subtype") == "/Image")
-                        {
-                            int w = dict.Elements.GetInteger("/Width");
-                            int h = dict.Elements.GetInteger("/Height");
-                            Assert.True(w < 1000, $"Expected image width to be downsampled from 1000, but got: {w}");
-                            Assert.True(h < 1000, $"Expected image height to be downsampled from 1000, but got: {h}");
-                            foundImage = true;
-                        }
+                        int w = dict.Elements.GetInteger("/Width");
+                        int h = dict.Elements.GetInteger("/Height");
+                        Assert.True(w < 1000, $"Expected image width to be downsampled from 1000, but got: {w}");
+                        Assert.True(h < 1000, $"Expected image height to be downsampled from 1000, but got: {h}");
+                        foundImage = true;
                     }
-                    Assert.True(foundImage, "Expected to find compressed image in output PDF.");
                 }
+                Assert.True(foundImage, "Expected to find compressed image in output PDF.");
             }
             finally
             {
@@ -272,13 +272,9 @@ static partial class TestSuite
         bmp.Save(ms, System.Drawing.Imaging.ImageFormat.Png);
         ms.Position = 0;
 
-        using (var gfx = XGraphics.FromPdfPage(page))
-        {
-            using (var ximg = XImage.FromStream(ms))
-            {
-                gfx.DrawImage(ximg, 10, 10, 30, 30);
-            }
-        }
+        using var gfx = XGraphics.FromPdfPage(page);
+        using var ximg = XImage.FromStream(ms);
+        gfx.DrawImage(ximg, 10, 10, 30, 30);
         document.Save(path);
     }
 
@@ -325,7 +321,8 @@ static partial class TestSuite
 
     private static void TryDelete(string path)
     {
-        try { if (File.Exists(path)) File.Delete(path); } catch { }
+        try { if (File.Exists(path)) File.Delete(path); }
+        catch { /* Best-effort cleanup; ignore file access errors */ }
     }
 
     private sealed class RecordingPdfCompressionEngine : IPdfCompressionEngine
