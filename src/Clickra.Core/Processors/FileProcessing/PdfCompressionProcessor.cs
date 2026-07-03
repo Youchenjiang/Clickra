@@ -2,10 +2,10 @@ using System;
 using System.Collections.Generic;
 using System.Threading;
 
-namespace Clickra.Core.Processors
+namespace Clickra.Core.Processors;
+
+public class PdfCompressionProcessor : SingleFileProcessorBase
 {
-    public class PdfCompressionProcessor : SingleFileProcessorBase
-    {
         private readonly IPdfCompressionEngine _engine;
 
         public PdfCompressionProcessor()
@@ -44,4 +44,3 @@ namespace Clickra.Core.Processors
                 cancellationToken);
         }
     }
-}
