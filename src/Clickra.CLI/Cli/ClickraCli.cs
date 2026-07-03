@@ -29,29 +29,44 @@ namespace Clickra
         static void Main(string[] args)
         {
             AttachParentConsoleForCli(args);
+            InitializeCli();
+
+            if (args.Length == 0)
+            {
+                DashboardWindow.Show();
+                return;
+            }
+
+            var commandHandlers = new Dictionary<string, Action<string[]>>
+            {
+                { "-v", _ => PrintVersion() },
+                { "--version", _ => PrintVersion() },
+                { "--deploy", a => { if (a.Length >= 2) DeployAssets(a[1]); } }
+            };
+
+            var key = args[0].ToLowerInvariant();
+            if (commandHandlers.TryGetValue(key, out var handler))
+            {
+                handler(args);
+                return;
+            }
+        }
+
+        private static void InitializeCli()
+        {
             try { PdfSharp.Fonts.GlobalFontSettings.FontResolver = new ClickraFontResolver(); } catch { }
             try { SetProcessDpiAwarenessContext((IntPtr)(-4)); } catch { }
-            if (args.Length == 0 || args[0] == "-v" || args[0] == "--version")
-            {
-                var version = Assembly.GetExecutingAssembly().GetName().Version?.ToString(3) ?? "Unknown";
-                
-                if (args.Length == 0)
-                {
-                    DashboardWindow.Show();
-                    return;
-                }
+        }
 
-                Console.WriteLine($"Clickra v{version} (Modern Shell Edition)");
-                Console.WriteLine("Author: Youchen Jiang");
-                Console.WriteLine("Commands: ppt2pdf, word2pdf, excel2pdf, merge-pdf, compress-pdf, img2pdf, img-merge, img-stitch, translate-pdf, decrypt-pdf, --deploy");
-                return;
-            }
-
-            if (args[0].ToLowerInvariant() == "--deploy" && args.Length >= 2)
-            {
-                DeployAssets(args[1]);
-                return;
-            }
+        private static void PrintVersion()
+        {
+            var version = Assembly.GetExecutingAssembly().GetName().Version?.ToString(3) ?? "Unknown";
+            Console.WriteLine($"Clickra v{version} (Modern Shell Edition)");
+            Console.WriteLine("Author: Youchen Jiang");
+            Console.WriteLine("Commands: ppt2pdf, word2pdf, excel2pdf, merge-pdf, compress-pdf, img2pdf, img-merge, img-stitch, translate-pdf, decrypt-pdf, --deploy");
+        }
+    }
+}
 
             bool quietByDefault = ClickraStorage.GetSetting("QuietMode").Equals("true", StringComparison.OrdinalIgnoreCase);
             bool quiet = quietByDefault;

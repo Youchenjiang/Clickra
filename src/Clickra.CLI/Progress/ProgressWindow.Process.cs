@@ -14,26 +14,11 @@ namespace Clickra.UI
         private void RunProcessing(IntPtr hwnd)
         {
             string startTimeStr = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
-            List<string> currentFiles = new List<string>();
-            string cmd = "";
+            var (currentFiles, cmd) = GetCurrentState();
+            if (ProcessEmptyFiles(hwnd, currentFiles)) return;
             var sw = System.Diagnostics.Stopwatch.StartNew();
             try
             {
-                lock (_stateLock)
-                {
-                    currentFiles = _files;
-                    cmd = _command;
-                }
-
-                if (currentFiles == null || currentFiles.Count == 0)
-                {
-                    lock (_stateLock) { _completed = true; _message = "無檔案可處理。"; }
-                    PostMessageW(hwnd, WM_USER_INVALIDATE, (IntPtr)1, IntPtr.Zero);
-                    Thread.Sleep(1000);
-                    PostMessageW(hwnd, 0x0010, IntPtr.Zero, IntPtr.Zero); // WM_CLOSE
-                    return;
-                }
-
                 Action<int, int, string> progressCallback = (curr, tot, msg) =>
                 {
                     lock (_stateLock)

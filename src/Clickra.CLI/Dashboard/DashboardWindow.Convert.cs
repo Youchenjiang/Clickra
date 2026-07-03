@@ -274,6 +274,12 @@ namespace Clickra.UI
 
         static void DrawConvertTab(Graphics g, float logW, float logH, float contentX)
         {
+            DrawConvertTabHeader(g, logW, contentX);
+            DrawConvertTabZone(g, logW, contentX);
+        }
+
+        static void DrawConvertTabHeader(Graphics g, float logW, float contentX)
+        {
             float s = _dpiScale;
             if (_contentTitleFont != null)
                 g.DrawString(GetText("tab_convert"), _contentTitleFont, Brushes.White, contentX * s, 30 * s);
@@ -282,7 +288,11 @@ namespace Clickra.UI
             {
                 g.DrawLine(divPen, contentX * s, 75 * s, (logW - 40) * s, 75 * s);
             }
+        }
 
+        static void DrawConvertTabZone(Graphics g, float logW, float contentX)
+        {
+            float s = _dpiScale;
             int zoneX = (int)contentX, zoneY = 95, zoneW = (int)logW - (int)contentX - 50, zoneH = 120;
             bool isZoneHovered = _hoveredElement == 18;
 
@@ -297,6 +307,7 @@ namespace Clickra.UI
                 g.FillPath(bgBrush, path);
                 g.DrawPath(borderPen, path);
             }
+        }
 
             if (_selectedFiles.Count == 0)
             {

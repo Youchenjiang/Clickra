@@ -6,31 +6,33 @@ using PdfSharp.Pdf;
 using PdfSharp.Pdf.Advanced;
 using System.Text;
 
-static partial class TestSuite
+namespace Clickra.Core.Tests
 {
-    public static void RegisterPdfCompressionTests(TestRunner runner)
+    static partial class TestSuite
     {
-        const string LevelKey = "level";
-        runner.Run("PDF compression parses user-facing level aliases", () =>
+        public static void RegisterPdfCompressionTests(TestRunner runner)
         {
-            Assert.True(PdfCompressionOptions.TryParseLevel("", out var defaultLevel), "Expected empty level to use default.");
-            Assert.True(defaultLevel == PdfCompressionLevel.Balanced, "Expected empty level to map to balanced.");
-            Assert.True(PdfCompressionOptions.TryParseLevel("screen", out var small), "Expected screen alias to parse.");
-            Assert.True(small == PdfCompressionLevel.Small, "Expected screen alias to map to small.");
-            Assert.True(PdfCompressionOptions.TryParseLevel("printer", out var highQuality), "Expected printer alias to parse.");
-            Assert.True(highQuality == PdfCompressionLevel.HighQuality, "Expected printer alias to map to high quality.");
-            Assert.True(!PdfCompressionOptions.TryParseLevel("lossless", out _), "Expected unknown level to fail.");
-        });
-
-        runner.Run("PDF compression rejects unsupported level options", () =>
-        {
-            string input = Path.Combine(Path.GetTempPath(), $"clickra-compress-{Guid.NewGuid():N}.pdf");
-            string output = Path.Combine(Path.GetTempPath(), $"clickra-compress-{Guid.NewGuid():N}_compressed.pdf");
-            try
+            const string LevelKey = "level";
+            runner.Run("PDF compression parses user-facing level aliases", () =>
             {
-                CreateSamplePdf(input);
-                var processor = new PdfCompressionProcessor();
-                var options = new Dictionary<string, object> { { LevelKey, "lossless" } };
+                Assert.True(PdfCompressionOptions.TryParseLevel("", out var defaultLevel), "Expected empty level to use default.");
+                Assert.True(defaultLevel == PdfCompressionLevel.Balanced, "Expected empty level to map to balanced.");
+                Assert.True(PdfCompressionOptions.TryParseLevel("screen", out var small), "Expected screen alias to parse.");
+                Assert.True(small == PdfCompressionLevel.Small, "Expected screen alias to map to small.");
+                Assert.True(PdfCompressionOptions.TryParseLevel("printer", out var highQuality), "Expected printer alias to parse.");
+                Assert.True(highQuality == PdfCompressionLevel.HighQuality, "Expected printer alias to map to high quality.");
+                Assert.True(!PdfCompressionOptions.TryParseLevel("lossless", out _), "Expected unknown level to fail.");
+            });
+
+            runner.Run("PDF compression rejects unsupported level options", () =>
+            {
+                string input = Path.Combine(Path.GetTempPath(), $"clickra-compress-{Guid.NewGuid():N}.pdf");
+                string output = Path.Combine(Path.GetTempPath(), $"clickra-compress-{Guid.NewGuid():N}_compressed.pdf");
+                try
+                {
+                    CreateSamplePdf(input);
+                    var processor = new PdfCompressionProcessor();
+                    var options = new Dictionary<string, object> { { LevelKey, "lossless" } };
 
                 Assert.Throws<ArgumentException>(() =>
                     processor.Process(new List<string> { input }, output, options));

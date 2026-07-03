@@ -4,32 +4,7 @@ using System.Threading;
 using PdfSharp.Pdf;
 using PdfSharp.Pdf.IO;
 
-namespace Clickra.Core.Processors
-{
-    public enum PdfCompressionLevel
-    {
-        Small,
-        Balanced,
-        HighQuality
-    }
-
-    public class PdfCompressionSettings
-    {
-        public PdfCompressionLevel Level { get; set; } = PdfCompressionLevel.Balanced;
-        public bool MinifyContent { get; set; } = true;
-        public bool DeduplicateFonts { get; set; } = true;
-        public bool StripFonts { get; set; } = false;
-        public int TargetDpi { get; set; } = 150; // 0 means no downsampling
-        public int JpegQuality { get; set; } = 80;
-
-        public static PdfCompressionSettings Parse(Dictionary<string, object>? options)
-        {
-            var settings = new PdfCompressionSettings();
-            if (options == null)
-                return settings;
-
-            // 1. Level parsing
-            string levelValue = "balanced";
+namespace Clickra.Core.Processors;
             if (options.TryGetValue("level", out var levelObj) && levelObj != null)
             {
                 levelValue = levelObj.ToString() ?? levelValue;
@@ -62,6 +37,9 @@ namespace Clickra.Core.Processors
                     settings.StripFonts = false;
                     settings.TargetDpi = 0; // 0 means skip downsampling
                     settings.JpegQuality = 85;
+                    break;
+                default:
+                    throw new ArgumentException("Encountered unexpected value.");
                     break;
             }
 

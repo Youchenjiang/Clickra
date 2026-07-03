@@ -54,6 +54,28 @@ namespace Clickra.UI
             return false;
         }
 
+        private static readonly (int Start, int End, int TabIndex)[] SidebarTabRanges = new[]
+        {
+            (120, 160, 0),
+            (168, 208, 1),
+            (216, 256, 2),
+            (264, 304, 3),
+            (312, 352, 4)
+        };
+
+        private static int? HitSidebarTab(int x, int y, float sidebarW)
+        {
+            if (x >= 0 && x < sidebarW)
+            {
+                foreach (var range in SidebarTabRanges)
+                {
+                    if (y >= range.Start && y < range.End)
+                        return range.TabIndex;
+                }
+            }
+            return null;
+        }
+
         static int HitTest(IntPtr hwnd, int x, int y)
         {
             float rawLogW = GetLogicalWidth(hwnd);
@@ -65,13 +87,10 @@ namespace Clickra.UI
             float contentX = GetContentX(logW);
 
             // Sidebar tabs (always active)
-            if (x >= 0 && x < sidebarW)
+            var sidebarTab = HitSidebarTab(x, y, sidebarW);
+            if (sidebarTab.HasValue)
             {
-                if (y >= 120 && y < 160) return 0;
-                if (y >= 168 && y < 208) return 1;
-                if (y >= 216 && y < 256) return 2;
-                if (y >= 264 && y < 304) return 3;
-                if (y >= 312 && y < 352) return 4;
+                return sidebarTab.Value;
             }
 
             if (_activeTab == 1) // Convert

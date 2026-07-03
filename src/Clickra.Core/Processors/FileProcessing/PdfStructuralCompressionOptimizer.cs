@@ -675,7 +675,7 @@ internal static class PdfStructuralCompressionOptimizer
             return index;
         }
 
-        private static void ProcessToken(byte[] contentBytes, Stream output, ref int i, byte current, ref byte previousSignificant)
+        private static void ProcessToken(byte[] contentBytes, Stream output, byte current, ref int i, ref byte previousSignificant)
         {
             if (current == (byte)'(')
             {
