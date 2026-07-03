@@ -21,17 +21,20 @@ namespace Clickra.Core.Processors
             "/LZWDecode"
         };
 
+        // PDF dictionary key constants
+        private const string KeyFilter = "/Filter";
+        private const string KeyDecodeParms = "/DecodeParms";
+        private const string KeyWidth = "/Width";
+        private const string KeyHeight = "/Height";
+        private const string KeyDecompressAlias = "/DP";
+
         public static void Optimize(PdfDocument document, PdfCompressionSettings settings, string? inputPath = null)
         {
             if (settings.MinifyContent)
-            {
                 MinifyPageContentStreams(document);
-            }
 
             if (settings.DeduplicateFonts)
-            {
                 DeduplicateEmbeddedFontStreams(document);
-            }
 
             if (settings.StripFonts)
             {
@@ -40,9 +43,7 @@ namespace Clickra.Core.Processors
             }
 
             if (settings.TargetDpi > 0 && !string.IsNullOrEmpty(inputPath) && File.Exists(inputPath))
-            {
                 DownsampleAndRecompressImages(document, settings.TargetDpi, settings.JpegQuality, inputPath);
-            }
         }
 
         public static void Optimize(PdfDocument document, PdfCompressionLevel level, string? inputPath = null)
@@ -57,34 +58,38 @@ namespace Clickra.Core.Processors
             foreach (PdfPage page in document.Pages)
             {
                 foreach (PdfDictionary content in GetPageContentStreams(page))
-                {
-                    if (content.Stream == null || !CanRewriteStream(content))
-                        continue;
-
-                    byte[] originalBytes = content.Stream.Value;
-                    byte[] decodedBytes;
-                    try
-                    {
-                        decodedBytes = content.Stream.UnfilteredValue;
-                    }
-                    catch
-                    {
-                        continue;
-                    }
-
-                    if (!PdfContentStreamMinifier.TryMinify(decodedBytes, out byte[] minifiedBytes))
-                        continue;
-
-                    byte[] encodedBytes = flate.Encode(minifiedBytes, PdfFlateEncodeMode.BestCompression);
-                    if (encodedBytes.Length + 16 >= originalBytes.Length)
-                        continue;
-
-                    content.Stream.Value = encodedBytes;
-                    content.Elements.SetName("/Filter", "/FlateDecode");
-                    content.Elements.Remove("/DecodeParms");
-                    content.Elements.Remove("/DP");
-                }
+                    TryMinifyContentStream(content, flate);
             }
+        }
+
+        private static void TryMinifyContentStream(PdfDictionary content, FlateDecode flate)
+        {
+            if (content.Stream == null || !CanRewriteStream(content))
+                return;
+
+            byte[] originalBytes = content.Stream.Value;
+            byte[] decodedBytes;
+            try
+            {
+                decodedBytes = content.Stream.UnfilteredValue;
+            }
+            catch
+            {
+                // Stream may use unsupported filters; skip silently
+                return;
+            }
+
+            if (!PdfContentStreamMinifier.TryMinify(decodedBytes, out byte[] minifiedBytes))
+                return;
+
+            byte[] encodedBytes = flate.Encode(minifiedBytes, PdfFlateEncodeMode.BestCompression);
+            if (encodedBytes.Length + 16 >= originalBytes.Length)
+                return;
+
+            content.Stream.Value = encodedBytes;
+            content.Elements.SetName(KeyFilter, "/FlateDecode");
+            content.Elements.Remove(KeyDecodeParms);
+            content.Elements.Remove(KeyDecompressAlias);
         }
 
         private static IEnumerable<PdfDictionary> GetPageContentStreams(PdfPage page)
@@ -105,6 +110,20 @@ namespace Clickra.Core.Processors
             if (usages.Count < 2)
                 return;
 
+            var duplicateReferences = BuildCanonicalFontMap(usages);
+            if (duplicateReferences.Count == 0)
+                return;
+
+            Dictionary<PdfReference, int> referenceCounts = CountReferences(document);
+            foreach (PdfReference duplicateReference in duplicateReferences)
+            {
+                if (!referenceCounts.ContainsKey(duplicateReference) && duplicateReference.Value != null)
+                    document.Internals.RemoveObject(duplicateReference.Value);
+            }
+        }
+
+        private static HashSet<PdfReference> BuildCanonicalFontMap(List<FontFileUsage> usages)
+        {
             var canonicalByHash = new Dictionary<string, PdfReference>(StringComparer.Ordinal);
             var duplicateReferences = new HashSet<PdfReference>();
 
@@ -120,6 +139,7 @@ namespace Clickra.Core.Processors
                 }
                 catch
                 {
+                    // Stream may use unsupported filter; skip deduplication for this entry
                     continue;
                 }
 
@@ -137,15 +157,7 @@ namespace Clickra.Core.Processors
                 duplicateReferences.Add(usage.Reference);
             }
 
-            if (duplicateReferences.Count == 0)
-                return;
-
-            Dictionary<PdfReference, int> referenceCounts = CountReferences(document);
-            foreach (PdfReference duplicateReference in duplicateReferences)
-            {
-                if (!referenceCounts.ContainsKey(duplicateReference) && duplicateReference.Value != null)
-                    document.Internals.RemoveObject(duplicateReference.Value);
-            }
+            return duplicateReferences;
         }
 
         private static List<FontFileUsage> CollectFontFileUsages(PdfDocument document)
@@ -206,7 +218,6 @@ namespace Clickra.Core.Processors
         private static void RemoveDisposableMetadata(PdfDocument document)
         {
             RemoveOptionalMetadata(document.Internals.Catalog);
-
             foreach (PdfPage page in document.Pages)
                 RemoveOptionalMetadata(page);
         }
@@ -220,23 +231,17 @@ namespace Clickra.Core.Processors
 
         private static bool CanRewriteStream(PdfDictionary dictionary)
         {
-            if (dictionary.Elements.ContainsKey("/DecodeParms") || dictionary.Elements.ContainsKey("/DP"))
+            if (dictionary.Elements.ContainsKey(KeyDecodeParms) || dictionary.Elements.ContainsKey(KeyDecompressAlias))
                 return false;
             if (dictionary.Elements.ContainsKey("/F") || dictionary.Elements.ContainsKey("/FFilter"))
                 return false;
 
-            foreach (string filterName in GetFilterNames(dictionary))
-            {
-                if (!RewritableFilters.Contains(filterName))
-                    return false;
-            }
-
-            return true;
+            return GetFilterNames(dictionary).All(f => RewritableFilters.Contains(f));
         }
 
         private static IEnumerable<string> GetFilterNames(PdfDictionary dictionary)
         {
-            PdfItem? filter = dictionary.Elements["/Filter"];
+            PdfItem? filter = dictionary.Elements[KeyFilter];
             if (filter == null)
             {
                 yield return "";
@@ -253,10 +258,9 @@ namespace Clickra.Core.Processors
             {
                 for (int i = 0; i < array.Elements.Count; i++)
                 {
-                    if (array.Elements[i] is PdfName arrayName)
-                        yield return arrayName.Value;
-                    else
-                        yield return "__unsupported__";
+                    yield return array.Elements[i] is PdfName arrayName
+                        ? arrayName.Value
+                        : "__unsupported__";
                 }
 
                 yield break;
@@ -264,6 +268,8 @@ namespace Clickra.Core.Processors
 
             yield return "__unsupported__";
         }
+
+        // ─── Image Downsampling ───────────────────────────────────────────────────
 
         private static void DownsampleAndRecompressImages(PdfDocument document, double targetDpi, int jpegQuality, string inputPath)
         {
@@ -273,15 +279,10 @@ namespace Clickra.Core.Processors
             UglyToad.PdfPig.PdfDocument? pigDoc = null;
             try
             {
-                pigDoc = UglyToad.PdfPig.PdfDocument.Open(inputPath);
-            }
-            catch
-            {
-                return;
-            }
+                pigDoc = OpenPigDocument(inputPath);
+                if (pigDoc == null)
+                    return;
 
-            try
-            {
                 for (int pageIdx = 0; pageIdx < document.Pages.Count; pageIdx++)
                 {
                     PdfPage page = document.Pages[pageIdx];
@@ -289,220 +290,275 @@ namespace Clickra.Core.Processors
                     if (pigPageNum > pigDoc.NumberOfPages)
                         continue;
 
-                    UglyToad.PdfPig.Content.Page pigPage;
-                    List<UglyToad.PdfPig.Content.IPdfImage> pigImages;
-                    try
-                    {
-                        pigPage = pigDoc.GetPage(pigPageNum);
-                        pigImages = pigPage.GetImages().ToList();
-                    }
-                    catch
-                    {
+                    if (!TryGetPigPageImages(pigDoc, pigPageNum, out var pigImages))
                         continue;
-                    }
 
                     if (pigImages.Count == 0)
                         continue;
 
-                    PdfDictionary? resources = page.Elements.GetDictionary("/Resources");
-                    PdfDictionary? xobjects = resources?.Elements.GetDictionary("/XObject");
-                    if (xobjects == null)
-                        continue;
-
-                    foreach (PdfName name in xobjects.Elements.KeyNames)
-                    {
-                        PdfReference? r = xobjects.Elements.GetReference(name.Value);
-                        if (r?.Value is not PdfDictionary imgDict || imgDict.Elements.GetName("/Subtype") != "/Image")
-                            continue;
-
-                        if (imgDict.Stream == null || imgDict.Stream.Value == null)
-                            continue;
-
-                        int w = imgDict.Elements.GetInteger("/Width");
-                        int h = imgDict.Elements.GetInteger("/Height");
-                        if (w <= 0 || h <= 0)
-                            continue;
-
-                        // Skip downsampling for low-resolution (< 300,000 pixels) or already small (< 100 KB) images to preserve text/diagram legibility
-                        if ((long)w * h < 300000 || imgDict.Stream.Value.Length < 100 * 1024)
-                            continue;
-
-                        UglyToad.PdfPig.Content.IPdfImage? matchedPigImage = null;
-                        foreach (var pigImg in pigImages)
-                        {
-                            if (pigImg.WidthInSamples == w && pigImg.HeightInSamples == h)
-                            {
-                                matchedPigImage = pigImg;
-                                break;
-                            }
-                        }
-
-                        if (matchedPigImage == null)
-                        {
-                            foreach (var pigImg in pigImages)
-                            {
-                                if (Math.Abs(pigImg.WidthInSamples - w) <= 2 && Math.Abs(pigImg.HeightInSamples - h) <= 2)
-                                {
-                                    matchedPigImage = pigImg;
-                                    break;
-                                }
-                            }
-                        }
-
-                        if (matchedPigImage == null)
-                            continue;
-
-                        double wPt = matchedPigImage.BoundingBox.Width;
-                        double hPt = matchedPigImage.BoundingBox.Height;
-                        if (wPt <= 0 || hPt <= 0)
-                            continue;
-
-                        double dpiX = (w / wPt) * 72.0;
-                        double dpiY = (h / hPt) * 72.0;
-                        double effDpi = Math.Max(dpiX, dpiY);
-
-                        if (effDpi <= targetDpi)
-                            continue;
-
-                        double scale = targetDpi / effDpi;
-                        int targetW = (int)Math.Max(1, Math.Round(w * scale));
-                        int targetH = (int)Math.Max(1, Math.Round(h * scale));
-
-                        if (targetW >= w || targetH >= h)
-                            continue;
-
-                        if (!matchedPigImage.TryGetPng(out byte[]? pngBytes) || pngBytes == null)
-                            continue;
-
-                        try
-                        {
-                            using var msInput = new MemoryStream(pngBytes);
-                            using var originalBmp = new System.Drawing.Bitmap(msInput);
-
-                            using var resizedBmp = new System.Drawing.Bitmap(targetW, targetH);
-                            using (var g = System.Drawing.Graphics.FromImage(resizedBmp))
-                            {
-                                g.InterpolationMode = System.Drawing.Drawing2D.InterpolationMode.HighQualityBicubic;
-                                g.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.HighQuality;
-                                g.PixelOffsetMode = System.Drawing.Drawing2D.PixelOffsetMode.HighQuality;
-                                g.DrawImage(originalBmp, 0, 0, targetW, targetH);
-                            }
-
-                            PdfReference? smaskRef = imgDict.Elements.GetReference("/SMask");
-                            if (smaskRef != null && smaskRef.Value is PdfDictionary smaskDict)
-                            {
-                                byte[] rgbBytes = new byte[targetW * targetH * 3];
-                                byte[] alphaBytes = new byte[targetW * targetH];
-
-                                var rect = new System.Drawing.Rectangle(0, 0, targetW, targetH);
-                                var bmpData = resizedBmp.LockBits(rect, System.Drawing.Imaging.ImageLockMode.ReadOnly, System.Drawing.Imaging.PixelFormat.Format32bppArgb);
-                                int bytesCount = bmpData.Stride * targetH;
-                                byte[] argbValues = new byte[bytesCount];
-                                System.Runtime.InteropServices.Marshal.Copy(bmpData.Scan0, argbValues, 0, bytesCount);
-                                resizedBmp.UnlockBits(bmpData);
-
-                                int rgbIndex = 0;
-                                int alphaIndex = 0;
-                                for (int y = 0; y < targetH; y++)
-                                {
-                                    int rowOffset = y * bmpData.Stride;
-                                    for (int x = 0; x < targetW; x++)
-                                    {
-                                        int pixelOffset = rowOffset + (x * 4);
-                                        byte blue = argbValues[pixelOffset];
-                                        byte green = argbValues[pixelOffset + 1];
-                                        byte red = argbValues[pixelOffset + 2];
-                                        byte alpha = argbValues[pixelOffset + 3];
-
-                                        rgbBytes[rgbIndex++] = red;
-                                        rgbBytes[rgbIndex++] = green;
-                                        rgbBytes[rgbIndex++] = blue;
-
-                                        alphaBytes[alphaIndex++] = alpha;
-                                    }
-                                }
-
-                                using (var rgbBmp = new System.Drawing.Bitmap(targetW, targetH, System.Drawing.Imaging.PixelFormat.Format24bppRgb))
-                                {
-                                    var rgbRect = new System.Drawing.Rectangle(0, 0, targetW, targetH);
-                                    var rgbBmpData = rgbBmp.LockBits(rgbRect, System.Drawing.Imaging.ImageLockMode.WriteOnly, System.Drawing.Imaging.PixelFormat.Format24bppRgb);
-                                    int rgbStride = rgbBmpData.Stride;
-                                    byte[] rgbValues = new byte[rgbStride * targetH];
-
-                                    int rgbValIndex = 0;
-                                    for (int y = 0; y < targetH; y++)
-                                    {
-                                        int rowOffset = y * rgbStride;
-                                        for (int x = 0; x < targetW; x++)
-                                        {
-                                            int pixelOffset = rowOffset + (x * 3);
-                                            rgbValues[pixelOffset] = rgbBytes[rgbValIndex + 2];     // B
-                                            rgbValues[pixelOffset + 1] = rgbBytes[rgbValIndex + 1]; // G
-                                            rgbValues[pixelOffset + 2] = rgbBytes[rgbValIndex];     // R
-                                            rgbValIndex += 3;
-                                        }
-                                    }
-
-                                    System.Runtime.InteropServices.Marshal.Copy(rgbValues, 0, rgbBmpData.Scan0, rgbValues.Length);
-                                    rgbBmp.UnlockBits(rgbBmpData);
-
-                                    using var msJpg = new MemoryStream();
-                                    SaveJpegWithQuality(rgbBmp, msJpg, jpegQuality);
-                                    byte[] newJpgBytes = msJpg.ToArray();
-
-                                    if (newJpgBytes.Length < imgDict.Stream.Value.Length)
-                                    {
-                                        imgDict.Stream.Value = newJpgBytes;
-                                        imgDict.Elements.SetInteger("/Width", targetW);
-                                        imgDict.Elements.SetInteger("/Height", targetH);
-                                        imgDict.Elements.SetName("/Filter", "/DCTDecode");
-                                        imgDict.Elements.Remove("/DecodeParms");
-                                        imgDict.Elements.Remove("/DP");
-                                    }
-                                }
-
-                                var flate = new FlateDecode();
-                                byte[] encodedMask = flate.Encode(alphaBytes, PdfFlateEncodeMode.BestCompression);
-                                if (encodedMask.Length < smaskDict.Stream.Value.Length)
-                                {
-                                    smaskDict.Stream.Value = encodedMask;
-                                    smaskDict.Elements.SetInteger("/Width", targetW);
-                                    smaskDict.Elements.SetInteger("/Height", targetH);
-                                    smaskDict.Elements.SetName("/Filter", "/FlateDecode");
-                                    smaskDict.Elements.SetName("/ColorSpace", "/DeviceGray");
-                                    smaskDict.Elements.SetInteger("/BitsPerComponent", 8);
-                                    smaskDict.Elements.Remove("/DecodeParms");
-                                    smaskDict.Elements.Remove("/DP");
-                                }
-                            }
-                            else
-                            {
-                                using var msJpg = new MemoryStream();
-                                SaveJpegWithQuality(resizedBmp, msJpg, jpegQuality);
-                                byte[] newJpgBytes = msJpg.ToArray();
-
-                                if (newJpgBytes.Length < imgDict.Stream.Value.Length)
-                                {
-                                    imgDict.Stream.Value = newJpgBytes;
-                                    imgDict.Elements.SetInteger("/Width", targetW);
-                                    imgDict.Elements.SetInteger("/Height", targetH);
-                                    imgDict.Elements.SetName("/Filter", "/DCTDecode");
-                                    imgDict.Elements.Remove("/DecodeParms");
-                                    imgDict.Elements.Remove("/DP");
-                                }
-                            }
-                        }
-                        catch (Exception ex)
-                        {
-                            Console.WriteLine($"[Warning] Failed to compress image {name.Value}: {ex.Message}");
-                        }
-                    }
+                    ProcessPageImages(document, page, pigImages, targetDpi, jpegQuality);
                 }
             }
             finally
             {
                 pigDoc?.Dispose();
             }
+        }
+
+        private static UglyToad.PdfPig.PdfDocument? OpenPigDocument(string inputPath)
+        {
+            try
+            {
+                return UglyToad.PdfPig.PdfDocument.Open(inputPath);
+            }
+            catch
+            {
+                // Cannot open with PdfPig; skip image downsampling
+                return null;
+            }
+        }
+
+        private static bool TryGetPigPageImages(UglyToad.PdfPig.PdfDocument pigDoc, int pigPageNum,
+            out List<UglyToad.PdfPig.Content.IPdfImage> pigImages)
+        {
+            try
+            {
+                var pigPage = pigDoc.GetPage(pigPageNum);
+                pigImages = pigPage.GetImages().ToList();
+                return true;
+            }
+            catch
+            {
+                // Page may be corrupt or use unsupported features; skip
+                pigImages = new List<UglyToad.PdfPig.Content.IPdfImage>();
+                return false;
+            }
+        }
+
+        private static void ProcessPageImages(PdfDocument document, PdfPage page,
+            List<UglyToad.PdfPig.Content.IPdfImage> pigImages, double targetDpi, int jpegQuality)
+        {
+            PdfDictionary? resources = page.Elements.GetDictionary("/Resources");
+            PdfDictionary? xobjects = resources?.Elements.GetDictionary("/XObject");
+            if (xobjects == null)
+                return;
+
+            foreach (string xName in xobjects.Elements.KeyNames.Select(n => n.Value))
+            {
+                PdfReference? r = xobjects.Elements.GetReference(xName);
+                if (r?.Value is not PdfDictionary imgDict || imgDict.Elements.GetName("/Subtype") != "/Image")
+                    continue;
+
+                TryDownsampleImage(document, imgDict, pigImages, targetDpi, jpegQuality, xName);
+            }
+        }
+
+        private static void TryDownsampleImage(PdfDocument document, PdfDictionary imgDict,
+            List<UglyToad.PdfPig.Content.IPdfImage> pigImages, double targetDpi, int jpegQuality, string xName)
+        {
+            if (imgDict.Stream == null || imgDict.Stream.Value == null)
+                return;
+
+            int w = imgDict.Elements.GetInteger(KeyWidth);
+            int h = imgDict.Elements.GetInteger(KeyHeight);
+            if (w <= 0 || h <= 0)
+                return;
+
+            // Skip low-resolution or already-small images to preserve legibility
+            if ((long)w * h < 300000 || imgDict.Stream.Value.Length < 100 * 1024)
+                return;
+
+            var matchedPigImage = FindMatchingPigImage(pigImages, w, h);
+            if (matchedPigImage == null)
+                return;
+
+            if (!ComputeDownsampleTarget(matchedPigImage, w, h, targetDpi, out int targetW, out int targetH))
+                return;
+
+            if (!matchedPigImage.TryGetPng(out byte[]? pngBytes) || pngBytes == null)
+                return;
+
+            try
+            {
+                ApplyDownsample(document, imgDict, pngBytes, w, h, targetW, targetH, jpegQuality);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[Warning] Failed to compress image {xName}: {ex.Message}");
+            }
+        }
+
+        private static UglyToad.PdfPig.Content.IPdfImage? FindMatchingPigImage(
+            List<UglyToad.PdfPig.Content.IPdfImage> pigImages, int w, int h)
+        {
+            // Exact match first
+            var exact = pigImages.FirstOrDefault(p => p.WidthInSamples == w && p.HeightInSamples == h);
+            if (exact != null)
+                return exact;
+
+            // Near match (±2 px tolerance for sub-pixel rounding)
+            return pigImages.FirstOrDefault(p =>
+                Math.Abs(p.WidthInSamples - w) <= 2 && Math.Abs(p.HeightInSamples - h) <= 2);
+        }
+
+        private static bool ComputeDownsampleTarget(
+            UglyToad.PdfPig.Content.IPdfImage pigImage, int w, int h, double targetDpi,
+            out int targetW, out int targetH)
+        {
+            targetW = 0;
+            targetH = 0;
+
+            double wPt = pigImage.BoundingBox.Width;
+            double hPt = pigImage.BoundingBox.Height;
+            if (wPt <= 0 || hPt <= 0)
+                return false;
+
+            double dpiX = (w / wPt) * 72.0;
+            double dpiY = (h / hPt) * 72.0;
+            double effDpi = Math.Max(dpiX, dpiY);
+
+            if (effDpi <= targetDpi)
+                return false;
+
+            double scale = targetDpi / effDpi;
+            targetW = (int)Math.Max(1, Math.Round(w * scale));
+            targetH = (int)Math.Max(1, Math.Round(h * scale));
+
+            return targetW < w && targetH < h;
+        }
+
+        private static void ApplyDownsample(PdfDocument document, PdfDictionary imgDict,
+            byte[] pngBytes, int w, int h, int targetW, int targetH, int jpegQuality)
+        {
+            using var msInput = new MemoryStream(pngBytes);
+            using var originalBmp = new System.Drawing.Bitmap(msInput);
+            using var resizedBmp = new System.Drawing.Bitmap(targetW, targetH);
+
+            using (var g = System.Drawing.Graphics.FromImage(resizedBmp))
+            {
+                g.InterpolationMode = System.Drawing.Drawing2D.InterpolationMode.HighQualityBicubic;
+                g.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.HighQuality;
+                g.PixelOffsetMode = System.Drawing.Drawing2D.PixelOffsetMode.HighQuality;
+                g.DrawImage(originalBmp, 0, 0, targetW, targetH);
+            }
+
+            PdfReference? smaskRef = imgDict.Elements.GetReference("/SMask");
+            if (smaskRef != null && smaskRef.Value is PdfDictionary smaskDict)
+                RewriteImageWithAlpha(document, imgDict, smaskDict, resizedBmp, targetW, targetH, jpegQuality);
+            else
+                RewriteImageSimple(imgDict, resizedBmp, targetW, targetH, jpegQuality);
+        }
+
+        private static void RewriteImageWithAlpha(PdfDocument document, PdfDictionary imgDict,
+            PdfDictionary smaskDict, System.Drawing.Bitmap resizedBmp,
+            int targetW, int targetH, int jpegQuality)
+        {
+            SplitArgbChannels(resizedBmp, targetW, targetH, out byte[] rgbBytes, out byte[] alphaBytes);
+
+            using var rgbBmp = BuildRgbBitmap(rgbBytes, targetW, targetH);
+            using var msJpg = new MemoryStream();
+            SaveJpegWithQuality(rgbBmp, msJpg, jpegQuality);
+            byte[] newJpgBytes = msJpg.ToArray();
+
+            if (newJpgBytes.Length < imgDict.Stream.Value.Length)
+            {
+                imgDict.Stream.Value = newJpgBytes;
+                imgDict.Elements.SetInteger(KeyWidth, targetW);
+                imgDict.Elements.SetInteger(KeyHeight, targetH);
+                imgDict.Elements.SetName(KeyFilter, "/DCTDecode");
+                imgDict.Elements.Remove(KeyDecodeParms);
+                imgDict.Elements.Remove(KeyDecompressAlias);
+            }
+
+            var flate = new FlateDecode();
+            byte[] encodedMask = flate.Encode(alphaBytes, PdfFlateEncodeMode.BestCompression);
+            if (encodedMask.Length < smaskDict.Stream.Value.Length)
+            {
+                smaskDict.Stream.Value = encodedMask;
+                smaskDict.Elements.SetInteger(KeyWidth, targetW);
+                smaskDict.Elements.SetInteger(KeyHeight, targetH);
+                smaskDict.Elements.SetName(KeyFilter, "/FlateDecode");
+                smaskDict.Elements.SetName("/ColorSpace", "/DeviceGray");
+                smaskDict.Elements.SetInteger("/BitsPerComponent", 8);
+                smaskDict.Elements.Remove(KeyDecodeParms);
+                smaskDict.Elements.Remove(KeyDecompressAlias);
+            }
+        }
+
+        private static void RewriteImageSimple(PdfDictionary imgDict,
+            System.Drawing.Bitmap resizedBmp, int targetW, int targetH, int jpegQuality)
+        {
+            using var msJpg = new MemoryStream();
+            SaveJpegWithQuality(resizedBmp, msJpg, jpegQuality);
+            byte[] newJpgBytes = msJpg.ToArray();
+
+            if (newJpgBytes.Length < imgDict.Stream.Value.Length)
+            {
+                imgDict.Stream.Value = newJpgBytes;
+                imgDict.Elements.SetInteger(KeyWidth, targetW);
+                imgDict.Elements.SetInteger(KeyHeight, targetH);
+                imgDict.Elements.SetName(KeyFilter, "/DCTDecode");
+                imgDict.Elements.Remove(KeyDecodeParms);
+                imgDict.Elements.Remove(KeyDecompressAlias);
+            }
+        }
+
+        private static void SplitArgbChannels(System.Drawing.Bitmap bmp, int targetW, int targetH,
+            out byte[] rgbBytes, out byte[] alphaBytes)
+        {
+            rgbBytes = new byte[targetW * targetH * 3];
+            alphaBytes = new byte[targetW * targetH];
+
+            var rect = new System.Drawing.Rectangle(0, 0, targetW, targetH);
+            var bmpData = bmp.LockBits(rect, System.Drawing.Imaging.ImageLockMode.ReadOnly,
+                System.Drawing.Imaging.PixelFormat.Format32bppArgb);
+            int bytesCount = bmpData.Stride * targetH;
+            byte[] argbValues = new byte[bytesCount];
+            System.Runtime.InteropServices.Marshal.Copy(bmpData.Scan0, argbValues, 0, bytesCount);
+            bmp.UnlockBits(bmpData);
+
+            int rgbIndex = 0;
+            int alphaIndex = 0;
+            for (int y = 0; y < targetH; y++)
+            {
+                int rowOffset = y * bmpData.Stride;
+                for (int x = 0; x < targetW; x++)
+                {
+                    int pixelOffset = rowOffset + (x * 4);
+                    rgbBytes[rgbIndex++] = argbValues[pixelOffset + 2]; // R
+                    rgbBytes[rgbIndex++] = argbValues[pixelOffset + 1]; // G
+                    rgbBytes[rgbIndex++] = argbValues[pixelOffset];     // B
+                    alphaBytes[alphaIndex++] = argbValues[pixelOffset + 3];
+                }
+            }
+        }
+
+        private static System.Drawing.Bitmap BuildRgbBitmap(byte[] rgbBytes, int targetW, int targetH)
+        {
+            var rgbBmp = new System.Drawing.Bitmap(targetW, targetH, System.Drawing.Imaging.PixelFormat.Format24bppRgb);
+            var rgbRect = new System.Drawing.Rectangle(0, 0, targetW, targetH);
+            var rgbBmpData = rgbBmp.LockBits(rgbRect, System.Drawing.Imaging.ImageLockMode.WriteOnly,
+                System.Drawing.Imaging.PixelFormat.Format24bppRgb);
+            int rgbStride = rgbBmpData.Stride;
+            byte[] rgbValues = new byte[rgbStride * targetH];
+
+            int srcIndex = 0;
+            for (int y = 0; y < targetH; y++)
+            {
+                int rowOffset = y * rgbStride;
+                for (int x = 0; x < targetW; x++)
+                {
+                    int pixelOffset = rowOffset + (x * 3);
+                    rgbValues[pixelOffset]     = rgbBytes[srcIndex + 2]; // B
+                    rgbValues[pixelOffset + 1] = rgbBytes[srcIndex + 1]; // G
+                    rgbValues[pixelOffset + 2] = rgbBytes[srcIndex];     // R
+                    srcIndex += 3;
+                }
+            }
+
+            System.Runtime.InteropServices.Marshal.Copy(rgbValues, 0, rgbBmpData.Scan0, rgbValues.Length);
+            rgbBmp.UnlockBits(rgbBmpData);
+            return rgbBmp;
         }
 
         private static void SaveJpegWithQuality(System.Drawing.Image img, Stream stream, int quality)
@@ -514,7 +570,8 @@ namespace Clickra.Core.Processors
                 return;
             }
             var encoderParameters = new System.Drawing.Imaging.EncoderParameters(1);
-            encoderParameters.Param[0] = new System.Drawing.Imaging.EncoderParameter(System.Drawing.Imaging.Encoder.Quality, quality);
+            encoderParameters.Param[0] = new System.Drawing.Imaging.EncoderParameter(
+                System.Drawing.Imaging.Encoder.Quality, quality);
             img.Save(stream, encoder, encoderParameters);
         }
 
@@ -524,7 +581,7 @@ namespace Clickra.Core.Processors
                 .FirstOrDefault(codec => codec.FormatID == format.Guid);
         }
 
-
+        // ─── Font Unembedding ─────────────────────────────────────────────────────
 
         private static void UnembedLargeFonts(PdfDocument document)
         {
@@ -537,28 +594,31 @@ namespace Clickra.Core.Processors
                 if (dict.Elements.GetName("/Type") != "/FontDescriptor")
                     continue;
 
-                string[] fontFileKeys = { "/FontFile", "/FontFile2", "/FontFile3" };
-                foreach (string key in fontFileKeys)
-                {
-                    PdfReference? fontFileRef = dict.Elements.GetReference(key);
-                    if (fontFileRef != null && fontFileRef.Value is PdfDictionary fontFileDict && fontFileDict.Stream != null)
-                    {
-                        int streamLen = fontFileDict.Stream.Value.Length;
-                        if (streamLen > 100 * 1024)
-                        {
-                            dict.Elements.Remove(key);
-
-                            // Recount after each removal so shared streams are only deleted when truly unreferenced
-                            var currentCounts = CountReferences(document);
-                            currentCounts.TryGetValue(fontFileRef, out int count);
-                            if (count <= 0 && fontFileRef.Value != null)
-                            {
-                                document.Internals.RemoveObject(fontFileRef.Value);
-                            }
-                        }
-                    }
-                }
+                foreach (string key in FontFileKeys)
+                    TryRemoveFontFileIfLarge(document, dict, key);
             }
+        }
+
+        private static void TryRemoveFontFileIfLarge(PdfDocument document, PdfDictionary dict, string key)
+        {
+            PdfReference? fontFileRef = dict.Elements.GetReference(key);
+            if (fontFileRef == null)
+                return;
+
+            if (fontFileRef.Value is not PdfDictionary fontFileDict || fontFileDict.Stream == null)
+                return;
+
+            int streamLen = fontFileDict.Stream.Value.Length;
+            if (streamLen <= 100 * 1024)
+                return;
+
+            dict.Elements.Remove(key);
+
+            // Recount after each removal so shared streams are only deleted when truly unreferenced
+            var currentCounts = CountReferences(document);
+            currentCounts.TryGetValue(fontFileRef, out int count);
+            if (count <= 0 && fontFileRef.Value != null)
+                document.Internals.RemoveObject(fontFileRef.Value);
         }
 
         private readonly record struct FontFileUsage(PdfDictionary Owner, string Key, PdfReference Reference);
@@ -587,13 +647,12 @@ namespace Clickra.Core.Processors
                     continue;
                 }
 
-                if (current == (byte)'%')
-                {
-                    while (i < contentBytes.Length && contentBytes[i] != (byte)'\n' && contentBytes[i] != (byte)'\r')
-                        i++;
-                    pendingSpace = output.Length > 0;
+                i = SkipCommentIfNeeded(contentBytes, i, current, ref pendingSpace, output.Length);
+                if (contentBytes[i < contentBytes.Length ? i : i - 1] == (byte)'%' && i > 0 && contentBytes[i - 1] != (byte)'%')
                     continue;
-                }
+
+                if (current == (byte)'%')
+                    continue;
 
                 if (NeedsSpace(previousSignificant, current, pendingSpace))
                     output.WriteByte((byte)' ');
@@ -623,6 +682,17 @@ namespace Clickra.Core.Processors
 
             minifiedBytes = output.ToArray();
             return true;
+        }
+
+        private static int SkipCommentIfNeeded(byte[] bytes, int i, byte current, ref bool pendingSpace, long outputLength)
+        {
+            if (current != (byte)'%')
+                return i;
+
+            while (i < bytes.Length && bytes[i] != (byte)'\n' && bytes[i] != (byte)'\r')
+                i++;
+            pendingSpace = outputLength > 0;
+            return i;
         }
 
         private static bool ContainsInlineImage(byte[] bytes)
@@ -698,23 +768,16 @@ namespace Clickra.Core.Processors
                    IsRegularTokenByte(current);
         }
 
-        private static bool IsRegularTokenByte(byte value)
-        {
-            return !IsWhiteSpace(value) && !IsDelimiter(value);
-        }
+        private static bool IsRegularTokenByte(byte value) => !IsWhiteSpace(value) && !IsDelimiter(value);
 
         private static bool IsWhiteSpace(byte value)
-        {
-            return value == 0 || value == 9 || value == 10 || value == 12 || value == 13 || value == 32;
-        }
+            => value == 0 || value == 9 || value == 10 || value == 12 || value == 13 || value == 32;
 
         private static bool IsDelimiter(byte value)
-        {
-            return value == (byte)'(' || value == (byte)')' ||
-                   value == (byte)'<' || value == (byte)'>' ||
-                   value == (byte)'[' || value == (byte)']' ||
-                   value == (byte)'{' || value == (byte)'}' ||
-                   value == (byte)'/' || value == (byte)'%';
-        }
+            => value == (byte)'(' || value == (byte)')' ||
+               value == (byte)'<' || value == (byte)'>' ||
+               value == (byte)'[' || value == (byte)']' ||
+               value == (byte)'{' || value == (byte)'}' ||
+               value == (byte)'/' || value == (byte)'%';
     }
 }
