@@ -66,15 +66,16 @@ namespace Clickra.Core.Processors
             }
 
             // 2. Individual custom options overrides
-            if (options.TryGetValue("strip_fonts", out var sf) && sf != null)
+            if (options.TryGetValue("strip_fonts", out var sf))
                 settings.StripFonts = (sf?.ToString() ?? string.Empty).Equals("true", StringComparison.OrdinalIgnoreCase);
 
-            if (options.TryGetValue("minify_content", out var mc) && mc != null)
+            if (options.TryGetValue("minify_content", out var mc))
                 settings.MinifyContent = (mc?.ToString() ?? string.Empty).Equals("true", StringComparison.OrdinalIgnoreCase);
-            if (options.TryGetValue("target_dpi", out var dpi) && dpi != null && int.TryParse(dpi.ToString(), out int d))
+
+            if (options.TryGetValue("target_dpi", out var dpi) && int.TryParse(dpi?.ToString(), out int d))
                 settings.TargetDpi = Math.Max(0, d);
 
-            if (options.TryGetValue("jpeg_quality", out var jq) && jq != null && int.TryParse(jq.ToString(), out int q))
+            if (options.TryGetValue("jpeg_quality", out var jq) && int.TryParse(jq?.ToString(), out int q))
                 settings.JpegQuality = Math.Max(1, Math.Min(100, q));
 
             return settings;
@@ -194,7 +195,10 @@ namespace Clickra.Core.Processors
                     if (!string.IsNullOrEmpty(tempDir) && Directory.Exists(tempDir))
                         Directory.Delete(tempDir, recursive: true);
                 }
-                catch { }
+                catch
+                {
+                    // Best-effort cleanup; ignore errors deleting temp directory
+                }
             }
         }
 
