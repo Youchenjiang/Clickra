@@ -7,10 +7,10 @@ using PdfSharp.Pdf;
 using PdfSharp.Pdf.Advanced;
 using PdfSharp.Pdf.Filters;
 
-namespace Clickra.Core.Processors
+namespace Clickra.Core.Processors;
+
+internal static class PdfStructuralCompressionOptimizer
 {
-    internal static class PdfStructuralCompressionOptimizer
-    {
         private static readonly string[] FontFileKeys = { "/FontFile", "/FontFile2", "/FontFile3" };
         private static readonly HashSet<string> RewritableFilters = new(StringComparer.Ordinal)
         {
@@ -68,7 +68,7 @@ namespace Clickra.Core.Processors
                 return;
 
             byte[] originalBytes = content.Stream.Value;
-            byte[] decodedBytes;
+            byte[] decodedBytes = Array.Empty<byte>();
             try
             {
                 decodedBytes = content.Stream.UnfilteredValue;
@@ -132,7 +132,7 @@ namespace Clickra.Core.Processors
                 if (usage.Reference.Value is not PdfDictionary fontFile || fontFile.Stream == null)
                     continue;
 
-                byte[] bytes;
+                byte[] bytes = Array.Empty<byte>();
                 try
                 {
                     bytes = fontFile.Stream.UnfilteredValue;
@@ -236,7 +236,7 @@ namespace Clickra.Core.Processors
             if (dictionary.Elements.ContainsKey("/F") || dictionary.Elements.ContainsKey("/FFilter"))
                 return false;
 
-            return GetFilterNames(dictionary).All(f => RewritableFilters.Contains(f));
+            return GetFilterNames(dictionary).All(RewritableFilters.Contains);
         }
 
         private static IEnumerable<string> GetFilterNames(PdfDictionary dictionary)
@@ -349,11 +349,11 @@ namespace Clickra.Core.Processors
                 if (r?.Value is not PdfDictionary imgDict || imgDict.Elements.GetName("/Subtype") != "/Image")
                     continue;
 
-                TryDownsampleImage(document, imgDict, pigImages, targetDpi, jpegQuality, xName);
+                TryDownsampleImage(imgDict, pigImages, targetDpi, jpegQuality, xName);
             }
         }
 
-        private static void TryDownsampleImage(PdfDocument document, PdfDictionary imgDict,
+        private static void TryDownsampleImage(PdfDictionary imgDict,
             List<UglyToad.PdfPig.Content.IPdfImage> pigImages, double targetDpi, int jpegQuality, string xName)
         {
             if (imgDict.Stream == null || imgDict.Stream.Value == null)
@@ -375,12 +375,12 @@ namespace Clickra.Core.Processors
             if (!ComputeDownsampleTarget(matchedPigImage, w, h, targetDpi, out int targetW, out int targetH))
                 return;
 
-            if (!matchedPigImage.TryGetPng(out byte[]? pngBytes) || pngBytes == null)
+            if (!matchedPigImage.TryGetPng(out byte[]? pngBytes))
                 return;
 
             try
             {
-                ApplyDownsample(document, imgDict, pngBytes, w, h, targetW, targetH, jpegQuality);
+                ApplyDownsample(imgDict, pngBytes!, targetW, targetH, jpegQuality);
             }
             catch (Exception ex)
             {
@@ -427,8 +427,8 @@ namespace Clickra.Core.Processors
             return targetW < w && targetH < h;
         }
 
-        private static void ApplyDownsample(PdfDocument document, PdfDictionary imgDict,
-            byte[] pngBytes, int w, int h, int targetW, int targetH, int jpegQuality)
+        private static void ApplyDownsample(PdfDictionary imgDict,
+            byte[] pngBytes, int targetW, int targetH, int jpegQuality)
         {
             using var msInput = new MemoryStream(pngBytes);
             using var originalBmp = new System.Drawing.Bitmap(msInput);
@@ -444,12 +444,12 @@ namespace Clickra.Core.Processors
 
             PdfReference? smaskRef = imgDict.Elements.GetReference("/SMask");
             if (smaskRef != null && smaskRef.Value is PdfDictionary smaskDict)
-                RewriteImageWithAlpha(document, imgDict, smaskDict, resizedBmp, targetW, targetH, jpegQuality);
+                RewriteImageWithAlpha(imgDict, smaskDict, resizedBmp, targetW, targetH, jpegQuality);
             else
                 RewriteImageSimple(imgDict, resizedBmp, targetW, targetH, jpegQuality);
         }
 
-        private static void RewriteImageWithAlpha(PdfDocument document, PdfDictionary imgDict,
+        private static void RewriteImageWithAlpha(PdfDictionary imgDict,
             PdfDictionary smaskDict, System.Drawing.Bitmap resizedBmp,
             int targetW, int targetH, int jpegQuality)
         {
@@ -647,34 +647,18 @@ namespace Clickra.Core.Processors
                     continue;
                 }
 
-                i = SkipCommentIfNeeded(contentBytes, i, current, ref pendingSpace, output.Length);
-                if (contentBytes[i < contentBytes.Length ? i : i - 1] == (byte)'%' && i > 0 && contentBytes[i - 1] != (byte)'%')
-                    continue;
-
                 if (current == (byte)'%')
+                {
+                    i = SkipComment(contentBytes, i);
+                    pendingSpace = output.Length > 0;
                     continue;
+                }
 
                 if (NeedsSpace(previousSignificant, current, pendingSpace))
                     output.WriteByte((byte)' ');
                 pendingSpace = false;
 
-                if (current == (byte)'(')
-                {
-                    CopyLiteralString(contentBytes, output, ref i);
-                    previousSignificant = (byte)')';
-                    continue;
-                }
-
-                if (current == (byte)'<' && (i + 1 >= contentBytes.Length || contentBytes[i + 1] != (byte)'<'))
-                {
-                    CopyHexString(contentBytes, output, ref i);
-                    previousSignificant = (byte)'>';
-                    continue;
-                }
-
-                output.WriteByte(current);
-                previousSignificant = current;
-                i++;
+                ProcessToken(contentBytes, output, ref i, current, ref previousSignificant);
             }
 
             if (output.Length >= contentBytes.Length)
@@ -684,15 +668,31 @@ namespace Clickra.Core.Processors
             return true;
         }
 
-        private static int SkipCommentIfNeeded(byte[] bytes, int i, byte current, ref bool pendingSpace, long outputLength)
+        private static int SkipComment(byte[] bytes, int index)
         {
-            if (current != (byte)'%')
-                return i;
+            while (index < bytes.Length && bytes[index] != (byte)'\n' && bytes[index] != (byte)'\r')
+                index++;
+            return index;
+        }
 
-            while (i < bytes.Length && bytes[i] != (byte)'\n' && bytes[i] != (byte)'\r')
+        private static void ProcessToken(byte[] contentBytes, Stream output, ref int i, byte current, ref byte previousSignificant)
+        {
+            if (current == (byte)'(')
+            {
+                CopyLiteralString(contentBytes, output, ref i);
+                previousSignificant = (byte)')';
+            }
+            else if (current == (byte)'<' && (i + 1 >= contentBytes.Length || contentBytes[i + 1] != (byte)'<'))
+            {
+                CopyHexString(contentBytes, output, ref i);
+                previousSignificant = (byte)'>';
+            }
+            else
+            {
+                output.WriteByte(current);
+                previousSignificant = current;
                 i++;
-            pendingSpace = outputLength > 0;
-            return i;
+            }
         }
 
         private static bool ContainsInlineImage(byte[] bytes)
@@ -780,4 +780,3 @@ namespace Clickra.Core.Processors
                value == (byte)'{' || value == (byte)'}' ||
                value == (byte)'/' || value == (byte)'%';
     }
-}
