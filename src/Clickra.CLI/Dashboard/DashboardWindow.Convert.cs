@@ -14,6 +14,9 @@ namespace Clickra.UI
 {
     public static partial class DashboardWindow
     {
+        private const string CmdCompressPdf = "compress-pdf";
+        private const string CmdImgMerge = "img-merge";
+        private const string FilterPdfFiles = "PDF Files (*.pdf)\0*.pdf\0All Files (*.*)\0*.*\0\0";
         static List<string> OpenFiles(IntPtr hwndOwner, string filter, string title)
         {
             var files = new List<string>();
@@ -75,10 +78,10 @@ namespace Clickra.UI
                 "word2pdf" => new[] { ".doc", ".docx" },
                 "excel2pdf" => new[] { ".xlsx", ".xls" },
                 "merge-pdf" => new[] { ".pdf" },
-                "compress-pdf" => new[] { ".pdf" },
+                CmdCompressPdf => new[] { ".pdf" },
                 "translate-pdf" => new[] { ".pdf" },
                 "decrypt-pdf" => new[] { ".pdf" },
-                "img2pdf" or "img-merge" or "img-stitch" => new[] { ".jpg", ".jpeg", ".png", ".bmp", ".gif", ".tiff", ".webp" },
+                "img2pdf" or CmdImgMerge or "img-stitch" => new[] { ".jpg", ".jpeg", ".png", ".bmp", ".gif", ".tiff", ".webp" },
                 _ => Array.Empty<string>()
             };
 
@@ -91,7 +94,7 @@ namespace Clickra.UI
 
             int minFiles = cmd switch
             {
-                "merge-pdf" or "img-merge" or "img-stitch" => 2,
+                "merge-pdf" or CmdImgMerge or "img-stitch" => 2,
                 _ => 1
             };
 
@@ -232,10 +235,10 @@ namespace Clickra.UI
                 "ppt2pdf" => "PowerPoint Files (*.ppt; *.pptx)\0*.ppt;*.pptx\0All Files (*.*)\0*.*\0\0",
                 "word2pdf" => "Word Files (*.doc; *.docx)\0*.doc;*.docx\0All Files (*.*)\0*.*\0\0",
                 "excel2pdf" => "Excel Files (*.xlsx; *.xls)\0*.xlsx;*.xls\0All Files (*.*)\0*.*\0\0",
-                "merge-pdf" => "PDF Files (*.pdf)\0*.pdf\0All Files (*.*)\0*.*\0\0",
-                "compress-pdf" => "PDF Files (*.pdf)\0*.pdf\0All Files (*.*)\0*.*\0\0",
-                "translate-pdf" => "PDF Files (*.pdf)\0*.pdf\0All Files (*.*)\0*.*\0\0",
-                "decrypt-pdf" => "PDF Files (*.pdf)\0*.pdf\0All Files (*.*)\0*.*\0\0",
+                "merge-pdf" => FilterPdfFiles,
+                CmdCompressPdf => FilterPdfFiles,
+                "translate-pdf" => FilterPdfFiles,
+                "decrypt-pdf" => FilterPdfFiles,
                 _ => "Image Files (*.jpg; *.jpeg; *.png; *.bmp; *.gif; *.tiff; *.webp)\0*.jpg;*.jpeg;*.png;*.bmp;*.gif;*.tiff;*.webp\0All Files (*.*)\0*.*\0\0"
             };
         }

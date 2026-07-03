@@ -95,12 +95,10 @@ namespace Clickra.UI
                     {
                         int cardX = (int)contentX + group * (groupW + groupGap);
                         int cardY = groupTop + headerH + local * (cardH + cardGap);
-                        if (x >= cardX && x < cardX + groupW && y >= cardY && y < cardY + cardH)
+                        if (x >= cardX && x < cardX + groupW && y >= cardY && y < cardY + cardH
+                            && ValidateConvertFiles(ConvertCommands[commandIndex], _selectedFiles, out _))
                         {
-                            if (ValidateConvertFiles(ConvertCommands[commandIndex], _selectedFiles, out _))
-                            {
-                                return 50 + commandIndex;
-                            }
+                            return 50 + commandIndex;
                         }
                         commandIndex++;
                     }
