@@ -5,6 +5,16 @@ namespace Clickra.Core
 {
     public static class Localization
     {
+        // Localization key constants — defined once to eliminate SonarCloud S1192 duplication warnings
+        private const string KeyDialogCancel = "dialog_cancel";
+        private const string KeyCmdCompressPdf = "cmd_compress_pdf";
+        private const string KeySettingPdfCompressSmaller = "setting_pdf_compress_smaller";
+        private const string KeySettingPdfCompressHigher = "setting_pdf_compress_higher";
+        private const string KeySettingPdfCompressLevelMin = "setting_pdf_compress_level_min";
+        private const string KeySettingPdfCompressLevelSmall = "setting_pdf_compress_level_small";
+        private const string KeySettingPdfCompressLevelStd = "setting_pdf_compress_level_std";
+        private const string KeySettingPdfCompressLevelHigh = "setting_pdf_compress_level_high";
+
         private static readonly Dictionary<string, Dictionary<string, string>> Translations = new(StringComparer.OrdinalIgnoreCase)
         {
             ["zh-TW"] = new(StringComparer.OrdinalIgnoreCase)
@@ -94,7 +104,7 @@ namespace Clickra.Core
                 ["cmd_excel_to_pdf"] = "Excel → PDF",
                 ["cmd_ppt_to_pdf"] = "PPT → PDF",
                 ["cmd_merge_pdf"] = "合併 PDF",
-                ["cmd_compress_pdf"] = "壓縮 PDF",
+                [KeyCmdCompressPdf] = "壓縮 PDF",
                 ["cmd_img_to_pdf"] = "圖片 → PDF",
                 ["cmd_merge_img"] = "圖片合併",
                 ["cmd_stitch_img"] = "圖片拼接",
@@ -155,13 +165,13 @@ namespace Clickra.Core
                 ["error_pdf_password_quiet"] = "密碼錯誤或未提供密碼（靜默模式下無法手動輸入密碼）。",
                 ["pdf_not_encrypted"] = "此檔案未加密，無須解除密碼。",
                 ["dialog_ok"] = "確定",
-                ["dialog_cancel"] = "取消",
-                ["setting_pdf_compress_smaller"] = "← 體積最小",
-                ["setting_pdf_compress_higher"] = "品質最高 →",
-                ["setting_pdf_compress_level_min"] = "極小",
-                ["setting_pdf_compress_level_small"] = "小檔",
-                ["setting_pdf_compress_level_std"] = "標準",
-                ["setting_pdf_compress_level_high"] = "高品質"
+                [KeyDialogCancel] = "取消",
+                [KeySettingPdfCompressSmaller] = "← 體積最小",
+                [KeySettingPdfCompressHigher] = "品質最高 →",
+                [KeySettingPdfCompressLevelMin] = "極小",
+                [KeySettingPdfCompressLevelSmall] = "小檔",
+                [KeySettingPdfCompressLevelStd] = "標準",
+                [KeySettingPdfCompressLevelHigh] = "高品質"
             },
             ["zh-CN"] = new(StringComparer.OrdinalIgnoreCase)
             {
@@ -250,7 +260,7 @@ namespace Clickra.Core
                 ["cmd_excel_to_pdf"] = "Excel → PDF",
                 ["cmd_ppt_to_pdf"] = "PPT → PDF",
                 ["cmd_merge_pdf"] = "合并 PDF",
-                ["cmd_compress_pdf"] = "压缩 PDF",
+                [KeyCmdCompressPdf] = "压缩 PDF",
                 ["cmd_img_to_pdf"] = "图片 → PDF",
                 ["cmd_merge_img"] = "图片合并",
                 ["cmd_stitch_img"] = "图片拼接",
@@ -311,13 +321,13 @@ namespace Clickra.Core
                 ["error_pdf_password_quiet"] = "密码错误或未提供密码（静默模式下无法手动输入密码）。",
                 ["pdf_not_encrypted"] = "此文件未加密，无需解除密码。",
                 ["dialog_ok"] = "确定",
-                ["dialog_cancel"] = "取消",
-                ["setting_pdf_compress_smaller"] = "← 体积最小",
-                ["setting_pdf_compress_higher"] = "质量最高 →",
-                ["setting_pdf_compress_level_min"] = "极小",
-                ["setting_pdf_compress_level_small"] = "小档",
-                ["setting_pdf_compress_level_std"] = "标准",
-                ["setting_pdf_compress_level_high"] = "高质量"
+                [KeyDialogCancel] = "取消",
+                [KeySettingPdfCompressSmaller] = "← 体积最小",
+                [KeySettingPdfCompressHigher] = "质量最高 →",
+                [KeySettingPdfCompressLevelMin] = "极小",
+                [KeySettingPdfCompressLevelSmall] = "小档",
+                [KeySettingPdfCompressLevelStd] = "标准",
+                [KeySettingPdfCompressLevelHigh] = "高质量"
             },
             ["en-US"] = new(StringComparer.OrdinalIgnoreCase)
             {
@@ -406,7 +416,7 @@ namespace Clickra.Core
                 ["cmd_excel_to_pdf"] = "Excel → PDF",
                 ["cmd_ppt_to_pdf"] = "PPT → PDF",
                 ["cmd_merge_pdf"] = "Merge PDF",
-                ["cmd_compress_pdf"] = "Compress PDF",
+                [KeyCmdCompressPdf] = "Compress PDF",
                 ["cmd_img_to_pdf"] = "Image → PDF",
                 ["cmd_merge_img"] = "Merge Images",
                 ["cmd_stitch_img"] = "Stitch Images",
@@ -467,13 +477,13 @@ namespace Clickra.Core
                 ["error_pdf_password_quiet"] = "Incorrect or missing password (cannot prompt for password in quiet mode).",
                 ["pdf_not_encrypted"] = "This file is not encrypted; no decryption needed.",
                 ["dialog_ok"] = "OK",
-                ["dialog_cancel"] = "Cancel",
-                ["setting_pdf_compress_smaller"] = "← Smaller",
-                ["setting_pdf_compress_higher"] = "Higher Quality →",
-                ["setting_pdf_compress_level_min"] = "Min",
-                ["setting_pdf_compress_level_small"] = "Small",
-                ["setting_pdf_compress_level_std"] = "Std",
-                ["setting_pdf_compress_level_high"] = "High"
+                [KeyDialogCancel] = "Cancel",
+                [KeySettingPdfCompressSmaller] = "← Smaller",
+                [KeySettingPdfCompressHigher] = "Higher Quality →",
+                [KeySettingPdfCompressLevelMin] = "Min",
+                [KeySettingPdfCompressLevelSmall] = "Small",
+                [KeySettingPdfCompressLevelStd] = "Std",
+                [KeySettingPdfCompressLevelHigh] = "High"
             },
             ["ja-JP"] = new(StringComparer.OrdinalIgnoreCase)
             {
@@ -564,7 +574,7 @@ namespace Clickra.Core
                 ["cmd_excel_to_pdf"] = "Excel → PDF",
                 ["cmd_ppt_to_pdf"] = "PPT → PDF",
                 ["cmd_merge_pdf"] = "PDF 結合",
-                ["cmd_compress_pdf"] = "PDF 圧縮",
+                [KeyCmdCompressPdf] = "PDF 圧縮",
                 ["cmd_img_to_pdf"] = "画像 → PDF",
                 ["cmd_merge_img"] = "画像結合",
                 ["cmd_stitch_img"] = "画像結合 (縦/横)",
@@ -615,13 +625,13 @@ namespace Clickra.Core
                 ["error_pdf_password_quiet"] = "パスワードが正しくないか入力されていません（サイレントモードではパスワードを入力できません）。",
                 ["pdf_not_encrypted"] = "このファイルは暗号化されていません。パスワード解除は不要です。",
                 ["dialog_ok"] = "確定",
-                ["dialog_cancel"] = "キャンセル",
-                ["setting_pdf_compress_smaller"] = "← 最小サイズ",
-                ["setting_pdf_compress_higher"] = "最高品質 →",
-                ["setting_pdf_compress_level_min"] = "最小",
-                ["setting_pdf_compress_level_small"] = "小",
-                ["setting_pdf_compress_level_std"] = "標準",
-                ["setting_pdf_compress_level_high"] = "高品質"
+                [KeyDialogCancel] = "キャンセル",
+                [KeySettingPdfCompressSmaller] = "← 最小サイズ",
+                [KeySettingPdfCompressHigher] = "最高品質 →",
+                [KeySettingPdfCompressLevelMin] = "最小",
+                [KeySettingPdfCompressLevelSmall] = "小",
+                [KeySettingPdfCompressLevelStd] = "標準",
+                [KeySettingPdfCompressLevelHigh] = "高品質"
             },
             ["ko-KR"] = new(StringComparer.OrdinalIgnoreCase)
             {
@@ -712,7 +722,7 @@ namespace Clickra.Core
                 ["cmd_excel_to_pdf"] = "Excel → PDF",
                 ["cmd_ppt_to_pdf"] = "PPT → PDF",
                 ["cmd_merge_pdf"] = "PDF 병합",
-                ["cmd_compress_pdf"] = "PDF 압축",
+                [KeyCmdCompressPdf] = "PDF 압축",
                 ["cmd_img_to_pdf"] = "이미지 → PDF",
                 ["cmd_merge_img"] = "이미지 병합",
                 ["cmd_stitch_img"] = "이미지 이어붙이기",
@@ -765,13 +775,13 @@ namespace Clickra.Core
                 ["error_pdf_password_quiet"] = "비밀번호가 잘못되었거나 누락되었습니다 (조용한 모드에서는 비밀번호를 입력할 수 없습니다).",
                 ["pdf_not_encrypted"] = "이 파일은 암호화되어 있지 않아 비밀번호를 제거할 필요가 없습니다.",
                 ["dialog_ok"] = "확인",
-                ["dialog_cancel"] = "취소",
-                ["setting_pdf_compress_smaller"] = "← 최소 크기",
-                ["setting_pdf_compress_higher"] = "최고 품질 →",
-                ["setting_pdf_compress_level_min"] = "최소",
-                ["setting_pdf_compress_level_small"] = "소형",
-                ["setting_pdf_compress_level_std"] = "표준",
-                ["setting_pdf_compress_level_high"] = "고품질"
+                [KeyDialogCancel] = "취소",
+                [KeySettingPdfCompressSmaller] = "← 최소 크기",
+                [KeySettingPdfCompressHigher] = "최고 품질 →",
+                [KeySettingPdfCompressLevelMin] = "최소",
+                [KeySettingPdfCompressLevelSmall] = "소형",
+                [KeySettingPdfCompressLevelStd] = "표준",
+                [KeySettingPdfCompressLevelHigh] = "고품질"
             }
         };
 
