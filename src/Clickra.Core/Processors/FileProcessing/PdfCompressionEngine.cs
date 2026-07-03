@@ -168,7 +168,7 @@ namespace Clickra.Core.Processors
                     cancellationToken.ThrowIfCancellationRequested();
                     output.AddPage(source.Pages[i]);
 
-                    int progress = pageCount > 0 ? 20 + (int)((i + 1) * 65.0 / pageCount) : 85;
+                    int progress = 20 + (int)((i + 1) * 65.0 / pageCount);
                     onProgress?.Invoke(progress, 100, $"正在最佳化第 {i + 1}/{pageCount} 頁...");
                 }
 
