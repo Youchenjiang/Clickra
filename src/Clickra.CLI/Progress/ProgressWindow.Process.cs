@@ -74,7 +74,7 @@ namespace Clickra.UI
                         for (int i = 0; i < currentFiles.Count; i++)
                         {
                             _cts.Token.ThrowIfCancellationRequested();
-                            try { ClickraStorage.SetActiveRecordIndex(i); } catch { }
+                            try { ClickraStorage.SetActiveRecordIndex(i); } catch { /* Non-critical UI state; ignore if storage unavailable */ }
                             var f = currentFiles[i];
                             string outName = Path.Combine(outputDir, Path.GetFileNameWithoutExtension(f) + "_compressed.pdf");
                             progressCallback((i * 100) + 10, currentFiles.Count * 100, $"正在壓縮 PDF: {Path.GetFileName(f)} ({i + 1}/{currentFiles.Count})...");
