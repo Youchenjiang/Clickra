@@ -119,8 +119,11 @@ namespace Clickra.Core.Models
             {
                 otherText = Regex.Replace(otherText, @"\{v(\d+)\}", m =>
                 {
-                    int oldId = int.Parse(m.Groups[1].Value);
-                    return $"{{v{oldId + formulaIdOffset}}}";
+                    if (int.TryParse(m.Groups[1].Value, out int oldId))
+                    {
+                        return $"{{v{oldId + formulaIdOffset}}}";
+                    }
+                    return m.Value;
                 });
             }
 

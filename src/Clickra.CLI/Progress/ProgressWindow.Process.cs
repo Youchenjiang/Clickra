@@ -69,6 +69,47 @@ namespace Clickra.UI
                     case "merge-pdf":
                         FileProcessor.MergePdfs(currentFiles, Path.Combine(outputDir, "Merged_PDF.pdf"), progressCallback, _cts.Token);
                         break;
+                    case "compress-pdf":
+                        string compressionSummary = "";
+                        for (int i = 0; i < currentFiles.Count; i++)
+                        {
+                            _cts.Token.ThrowIfCancellationRequested();
+                            try { ClickraStorage.SetActiveRecordIndex(i); } catch { /* Non-critical UI state; ignore if storage unavailable */ }
+                            var f = currentFiles[i];
+                            string outName = Path.Combine(outputDir, Path.GetFileNameWithoutExtension(f) + "_compressed.pdf");
+                            progressCallback((i * 100) + 10, currentFiles.Count * 100, $"正在壓縮 PDF: {Path.GetFileName(f)} ({i + 1}/{currentFiles.Count})...");
+                            string qualityStr = ClickraStorage.GetSetting("PdfCompressJpegQuality");
+                            if (string.IsNullOrEmpty(qualityStr)) qualityStr = "75";
+                            string dpiStr = ClickraStorage.GetSetting("PdfCompressTargetDpi");
+                            if (string.IsNullOrEmpty(dpiStr)) dpiStr = "150";
+                            if (!int.TryParse(dpiStr, out int dpi)) dpi = 150;
+                            string stripStr = ClickraStorage.GetSetting("PdfCompressStripFonts");
+                            if (string.IsNullOrEmpty(stripStr)) stripStr = "false";
+
+                            string minifyStr = ClickraStorage.GetSetting("PdfCompressMinifyContent");
+                            if (string.IsNullOrEmpty(minifyStr)) minifyStr = "true";
+
+                            if (!int.TryParse(qualityStr, out int quality)) quality = 75;
+
+                            var pdfOptions = new Dictionary<string, object>
+                            {
+                                { "target_dpi", dpi },
+                                { "jpeg_quality", quality },
+                                { "strip_fonts", stripStr.Equals("true", StringComparison.OrdinalIgnoreCase) },
+                                { "minify_content", minifyStr.Equals("true", StringComparison.OrdinalIgnoreCase) }
+                            };
+
+                            FileProcessor.CompressPdf(f, outName, pdfOptions, (curr, tot, msg) => {
+                                int progressPct = tot > 0 ? (int)(curr * 80.0 / tot) + 10 : 10;
+                                if (curr >= tot && !string.IsNullOrWhiteSpace(msg))
+                                    compressionSummary = msg;
+                                progressCallback((i * 100) + progressPct, currentFiles.Count * 100, $"[PDF 壓縮] {msg} ({i + 1}/{currentFiles.Count})");
+                            }, _cts.Token);
+                        }
+                        _cts.Token.ThrowIfCancellationRequested();
+                        progressCallback(currentFiles.Count * 100, currentFiles.Count * 100,
+                            string.IsNullOrWhiteSpace(compressionSummary) ? "PDF 壓縮完成。" : compressionSummary);
+                        break;
                     case "img2pdf":
                         for (int i = 0; i < currentFiles.Count; i++)
                         {
@@ -188,7 +229,8 @@ namespace Clickra.UI
                 lock (_stateLock)
                 {
                     _completed = true;
-                    _message = "所有作業已順利完成！";
+                    if (cmd != "compress-pdf")
+                        _message = "所有作業已順利完成！";
                 }
                 PostMessageW(hwnd, WM_USER_INVALIDATE, (IntPtr)1, IntPtr.Zero);
 
@@ -256,6 +298,8 @@ namespace Clickra.UI
                     return string.Join(";", inputFiles.Select(f => Path.Combine(outputDir, Path.GetFileNameWithoutExtension(f) + "_translated.pdf")));
                 case "decrypt-pdf":
                     return string.Join(";", inputFiles.Select(f => Path.Combine(outputDir, Path.GetFileNameWithoutExtension(f) + "_decrypted.pdf")));
+                case "compress-pdf":
+                    return string.Join(";", inputFiles.Select(f => Path.Combine(outputDir, Path.GetFileNameWithoutExtension(f) + "_compressed.pdf")));
                 default:
                     return outputDir;
             }

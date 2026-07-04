@@ -398,6 +398,10 @@ namespace Clickra.UI
                     tagBg = Color.FromArgb(16, 124, 65);
                     text = GetText("cmd_merge_pdf");
                     break;
+                case "compress-pdf":
+                    tagBg = Color.FromArgb(0, 120, 120);
+                    text = GetText("cmd_compress_pdf");
+                    break;
                 case "img2pdf":
                     tagBg = Color.FromArgb(100, 60, 180);
                     text = GetText("cmd_img_to_pdf");

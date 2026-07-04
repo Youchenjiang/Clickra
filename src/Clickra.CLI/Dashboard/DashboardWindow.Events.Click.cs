@@ -624,6 +624,28 @@ namespace Clickra.UI
                 _langDropdownOpen = false;
                 InvalidateRect(hwnd, IntPtr.Zero, false);
             }
+            else if (element == 83)
+            {
+                // PDF compress slider clicked — snap to nearest of 4 stops via equal-width segments + enable drag
+                float relX = adjMouseX - _pdfSliderTrackX;
+                float fraction = Math.Max(0f, Math.Min(1f, relX / _pdfSliderTrackW));
+                int newLevel = (int)Math.Max(0, Math.Min(3, Math.Round(fraction * 3, MidpointRounding.AwayFromZero)));
+                ApplyPdfCompressLevel(hwnd, newLevel);
+                _isDraggingPdfSlider = true;
+                SetCapture(hwnd);
+            }
+            else if (element == 81)
+            {
+                bool current = ClickraStorage.GetSetting("PdfCompressStripFonts").Equals("true", StringComparison.OrdinalIgnoreCase);
+                ClickraStorage.SaveSetting("PdfCompressStripFonts", current ? "false" : "true");
+                InvalidateRect(hwnd, IntPtr.Zero, false);
+            }
+            else if (element == 82)
+            {
+                bool current = !ClickraStorage.GetSetting("PdfCompressMinifyContent").Equals("false", StringComparison.OrdinalIgnoreCase);
+                ClickraStorage.SaveSetting("PdfCompressMinifyContent", current ? "false" : "true");
+                InvalidateRect(hwnd, IntPtr.Zero, false);
+            }
             else if (element >= 50 && element <= 57)
             {
                 ChangeConvertCommand(element - 50);
@@ -694,7 +716,7 @@ namespace Clickra.UI
                         });
                     }
 
-                    var ver = System.Reflection.Assembly.GetExecutingAssembly().GetName().Version;
+                    var ver = typeof(DashboardWindow).Assembly.GetName().Version;
                     string verStr = ver != null ? $"{ver.Major}.{ver.Minor}.{ver.Build}" : "Unknown";
                     string timeStr = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
                     string subject = Uri.EscapeDataString("Clickra Diagnostics Report");
@@ -726,6 +748,21 @@ namespace Clickra.UI
         {
             const double mb = 1024d * 1024d;
             return $"{bytes / mb:F0} MB";
+        }
+
+        static void ApplyPdfCompressLevel(IntPtr hwnd, int level)
+        {
+            var (dpi, quality) = level switch
+            {
+                0 => ("120", "65"),
+                1 => ("120", "75"),
+                2 => ("150", "80"),
+                _ => ("300", "85")
+            };
+            ClickraStorage.SaveSetting("PdfCompressImageLevel", level.ToString());
+            ClickraStorage.SaveSetting("PdfCompressTargetDpi", dpi);
+            ClickraStorage.SaveSetting("PdfCompressJpegQuality", quality);
+            InvalidateRect(hwnd, IntPtr.Zero, false);
         }
 
         static void PostDashboardAction(IntPtr hwnd, Action action)

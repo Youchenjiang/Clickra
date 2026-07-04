@@ -2,6 +2,14 @@
 
 All notable changes to Clickra will be documented in this file.
 
+## [v3.6.0.0] - 2026-07-02
+
+- **PDF 壓縮與最佳化 (PDF Compression & Shrinking)**：實作內建的 PDF 壓縮處理核心，不依賴任何外部工具。
+- **結構化優化引擎 (Structural PDF Optimizer)**：支援重複嵌入字型去重、頁面 Stream 註解與空白簡化、大字型剝離（Unembedding）等結構化精簡。
+- **GDI+ 圖片降樣式與編碼 (Native Image Downsampling)**：使用 GDI+ 進行圖片的高品質雙立方（Bicubic）降樣式與 JPEG 編碼重壓縮，並對低解析或小圖片自動跳過壓縮以維持圖表清晰度。
+- **Dashboard 設定頁 Slider 拉條 UI**：實作一個緊湊、4 停靠點的橫向 Slider UI，一鍵連動 DPI 與品質設定，省下設定頁面 60% 垂直空間。
+- **測試與重組**：補齊 PDF 壓縮自訂參數的單元測試，並重構 Git 提交歷史為乾淨、原子、無過渡期垃圾的原子提交。
+
 ## [v3.5.0.0] - 2026-06-29
 
 - **LibreOffice Offline Office Engine**: Added Auto, Microsoft Office, and LibreOffice engine modes for Word, Excel, and PowerPoint to PDF conversion.

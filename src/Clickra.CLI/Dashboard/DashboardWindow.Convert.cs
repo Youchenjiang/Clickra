@@ -14,6 +14,9 @@ namespace Clickra.UI
 {
     public static partial class DashboardWindow
     {
+        private const string CmdCompressPdf = "compress-pdf";
+        private const string CmdImgMerge = "img-merge";
+        private const string FilterPdfFiles = "PDF Files (*.pdf)\0*.pdf\0All Files (*.*)\0*.*\0\0";
         static List<string> OpenFiles(IntPtr hwndOwner, string filter, string title)
         {
             var files = new List<string>();
@@ -75,9 +78,10 @@ namespace Clickra.UI
                 "word2pdf" => new[] { ".doc", ".docx" },
                 "excel2pdf" => new[] { ".xlsx", ".xls" },
                 "merge-pdf" => new[] { ".pdf" },
+                CmdCompressPdf => new[] { ".pdf" },
                 "translate-pdf" => new[] { ".pdf" },
                 "decrypt-pdf" => new[] { ".pdf" },
-                "img2pdf" or "img-merge" or "img-stitch" => new[] { ".jpg", ".jpeg", ".png", ".bmp", ".gif", ".tiff", ".webp" },
+                "img2pdf" or CmdImgMerge or "img-stitch" => new[] { ".jpg", ".jpeg", ".png", ".bmp", ".gif", ".tiff", ".webp" },
                 _ => Array.Empty<string>()
             };
 
@@ -90,7 +94,7 @@ namespace Clickra.UI
 
             int minFiles = cmd switch
             {
-                "merge-pdf" or "img-merge" or "img-stitch" => 2,
+                "merge-pdf" or CmdImgMerge or "img-stitch" => 2,
                 _ => 1
             };
 
@@ -103,6 +107,11 @@ namespace Clickra.UI
             return true;
         }
 
+        static int GetCommandIndex(string cmd)
+        {
+            return Array.IndexOf(ConvertCommands, cmd);
+        }
+
         static void HandleDroppedFiles(List<string> files)
         {
             var extensions = files.Select(f => Path.GetExtension(f).ToLowerInvariant()).Distinct().ToList();
@@ -110,23 +119,23 @@ namespace Clickra.UI
 
             if (extensions.All(ext => ext == ".ppt" || ext == ".pptx"))
             {
-                ChangeConvertCommand(0);
+                ChangeConvertCommand(GetCommandIndex("ppt2pdf"));
             }
             else if (extensions.All(ext => ext == ".doc" || ext == ".docx"))
             {
-                ChangeConvertCommand(1);
+                ChangeConvertCommand(GetCommandIndex("word2pdf"));
             }
             else if (extensions.All(ext => ext == ".xlsx" || ext == ".xls"))
             {
-                ChangeConvertCommand(2);
+                ChangeConvertCommand(GetCommandIndex("excel2pdf"));
             }
             else if (extensions.All(ext => ext == ".pdf"))
             {
-                ChangeConvertCommand(files.Count == 1 ? 7 : 3);
+                ChangeConvertCommand(files.Count == 1 ? GetCommandIndex("compress-pdf") : GetCommandIndex("merge-pdf"));
             }
             else if (extensions.All(ext => new[] { ".jpg", ".jpeg", ".png", ".bmp", ".gif", ".tiff", ".webp" }.Contains(ext)))
             {
-                ChangeConvertCommand(files.Count > 1 ? 5 : 4);
+                ChangeConvertCommand(files.Count > 1 ? GetCommandIndex("img-merge") : GetCommandIndex("img2pdf"));
             }
 
             _selectedFiles = files;
@@ -226,9 +235,10 @@ namespace Clickra.UI
                 "ppt2pdf" => "PowerPoint Files (*.ppt; *.pptx)\0*.ppt;*.pptx\0All Files (*.*)\0*.*\0\0",
                 "word2pdf" => "Word Files (*.doc; *.docx)\0*.doc;*.docx\0All Files (*.*)\0*.*\0\0",
                 "excel2pdf" => "Excel Files (*.xlsx; *.xls)\0*.xlsx;*.xls\0All Files (*.*)\0*.*\0\0",
-                "merge-pdf" => "PDF Files (*.pdf)\0*.pdf\0All Files (*.*)\0*.*\0\0",
-                "translate-pdf" => "PDF Files (*.pdf)\0*.pdf\0All Files (*.*)\0*.*\0\0",
-                "decrypt-pdf" => "PDF Files (*.pdf)\0*.pdf\0All Files (*.*)\0*.*\0\0",
+                "merge-pdf" => FilterPdfFiles,
+                CmdCompressPdf => FilterPdfFiles,
+                "translate-pdf" => FilterPdfFiles,
+                "decrypt-pdf" => FilterPdfFiles,
                 _ => "Image Files (*.jpg; *.jpeg; *.png; *.bmp; *.gif; *.tiff; *.webp)\0*.jpg;*.jpeg;*.png;*.bmp;*.gif;*.tiff;*.webp\0All Files (*.*)\0*.*\0\0"
             };
         }
@@ -241,6 +251,7 @@ namespace Clickra.UI
                 "excel2pdf" => "cmd_excel_to_pdf",
                 "ppt2pdf" => "cmd_ppt_to_pdf",
                 "merge-pdf" => "cmd_merge_pdf",
+                "compress-pdf" => "cmd_compress_pdf",
                 "translate-pdf" => "cmd_translate_pdf",
                 "decrypt-pdf" => "cmd_decrypt_pdf",
                 "img2pdf" => "cmd_img_to_pdf",
@@ -377,9 +388,13 @@ namespace Clickra.UI
                     g.DrawString(GetText(GetCommandGroupKey(group)), _subFont, headerBrush, groupX * s, groupTop * s);
                 }
 
-                for (int local = 0; local < 3; local++)
+                int commandStart = 0;
+                for (int before = 0; before < group; before++)
+                    commandStart += ConvertCommandGroupSizes[before];
+
+                for (int local = 0; local < ConvertCommandGroupSizes[group]; local++)
                 {
-                    int i = group * 3 + local;
+                    int i = commandStart + local;
                     int cardX = groupX;
                     int cardY = groupTop + headerH + local * (cardH + cardGap);
                     int cardW = groupW;
@@ -428,7 +443,8 @@ namespace Clickra.UI
                 }
             }
 
-            int buttonY = 390;
+            int maxCommandRows = ConvertCommandGroupSizes.Max();
+            int buttonY = groupTop + headerH + maxCommandRows * (cardH + cardGap) + 16;
             if (_selectedFiles.Count > 0 && _convertCommandIndex != -1)
             {
                 bool isBtnHovered = _hoveredElement == 19;

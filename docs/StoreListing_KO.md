@@ -1,6 +1,6 @@
 # Microsoft Store Listing - Korean (Korea)
 
-Microsoft Partner Center에 바로 복사해 넣을 수 있는 v3.5.0.0용 스토어 등록 정보입니다.
+Microsoft Partner Center에 바로 복사해 넣을 수 있는 v3.6.0.0용 스토어 등록 정보입니다.
 
 ---
 
@@ -16,26 +16,29 @@ Clickra는 Windows 10 및 Windows 11용 고성능 네이티브 우클릭 메뉴 
  - 네이티브 대시보드: PDF 및 Office 변환 엔진 상태를 실시간으로 확인하는 다크 테마 화면.
  - Office to PDF: Word (.doc/.docx), Excel (.xls/.xlsx), PowerPoint (.ppt/.pptx) 파일을 고품질 PDF로 조용히 변환.
  - LibreOffice 대체 엔진: Microsoft Office가 없는 환경에서도 Clickra에서 LibreOffice를 내려받아 로컬 변환 엔진으로 사용.
+ - PDF 로컬 압축: C#/GDI+ 엔진을 활용하여 중복 폰트 제거, 스트림 간소화, 저해상도 이미지 압축 우회 등으로 화질 저하를 방지하며 PDF를 로컬에서 강력하게 압축.
  - PDF 암호 제거: 암호로 보호된 PDF를 우클릭 메뉴에서 복호화하고 암호 없는 PDF를 생성.
  - PDF 병합: 여러 PDF를 선택해 빠르게 하나의 파일로 병합.
  - 이미지 to PDF: JPG/PNG/WebP 이미지를 PDF 문서로 변환.
  - 이미지 세로 병합: 여러 이미지를 하나의 긴 이미지로 결합.
 
-Clickra는 개인정보 보호를 중요하게 생각합니다. Office to PDF, PDF 병합, 이미지 병합 등 대부분의 작업은 로컬 PC에서 처리됩니다. 선택 기능인 PDF 번역을 사용할 때만 텍스트가 보안 연결을 통해 Google Translate로 전송됩니다.
+Clickra는 개인정보 보호를 중요하게 생각합니다. Office to PDF, PDF 압축, PDF 병합, 이미지 병합 등 대부분의 작업은 로컬 PC에서 처리됩니다. 선택 기능인 PDF 번역을 사용할 때만 텍스트가 보안 연결을 통해 Google Translate로 전송됩니다.
 
 🔗 Open Source on GitHub: https://github.com/Youchenjiang/Clickra
 
 ## What's new in this version
- - LibreOffice 오프라인 엔진: Word, Excel, PowerPoint를 PDF로 변환할 때 Auto, Microsoft Office, LibreOffice 모드를 추가했습니다.
- - LibreOffice 관리형 설치: 내장 manifest, 공식 MSI 다운로드, SHA256 검증, 설치, 제거, 재시작 필요 상태 처리를 추가했습니다.
- - Office 없는 환경 지원: Microsoft Office가 없어도 LibreOffice를 통해 Office 문서를 로컬에서 PDF로 변환할 수 있습니다.
- - 변환 도구 그룹화: Convert 탭을 Office, PDF, Image 그룹으로 정리해 9개 주요 기능을 더 쉽게 찾을 수 있게 했습니다.
+ - PDF 로컬 압축: 외부 의존성 없이 내장 C#/GDI+ 엔진으로 PDF를 로컬에서 직접 압축하는 기능을 추가했습니다.
+ - 구조 최적화: 콘텐츠 스트림 간소화, 폰트 중복 제거, 폰트 언임베드(Unembed)로 파일 크기를 줄였습니다.
+ - 고품질 다운샘플링: Bicubic 방식을 적용하여 고화질 이미지 크기를 줄이고, 작은 이미지는 뭉개지지 않도록 자동 패스합니다.
+ - 설정 슬라이더 UI: 설정 탭에 가로형 4단계 슬라이더(최소, 소형, 표준, 고품질)를 도입해 UI 수직 공간을 크게 절약했습니다.
 
 ## Product Features
 *(Max 20, displayed as bullet points)*
  - PDF 및 Office 엔진 상태를 확인하는 네이티브 대시보드
  - Word/Excel/PPT to PDF 원클릭 변환
  - Microsoft Office가 없을 때 LibreOffice 대체 엔진 지원
+ - 로컬 PDF 압축 및 최적화 지원
+ - 4단계 가로형 설정 슬라이더로 PDF 압축 레벨 직관적 조절
  - PDF 암호 원클릭 제거
  - 진행 창 안의 안전한 암호 입력
  - JPG/PNG/WebP 이미지 일괄 PDF 변환

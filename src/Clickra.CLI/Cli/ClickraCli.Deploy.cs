@@ -18,7 +18,7 @@ namespace Clickra
         {
             if (!Directory.Exists(targetDir)) Directory.CreateDirectory(targetDir);
 
-            var assembly = Assembly.GetExecutingAssembly();
+            var assembly = typeof(ClickraCli).Assembly;
             var resources = new Dictionary<string, string>
             {
                 { "Clickra.Resources.AppxManifest.xml", "AppxManifest.xml" },

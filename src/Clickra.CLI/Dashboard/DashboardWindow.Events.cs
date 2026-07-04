@@ -153,6 +153,19 @@ namespace Clickra.UI
                                 }
                             }
                         }
+                        else if (_isDraggingPdfSlider)
+                        {
+                            // Drag on compress slider: real-time snap with equal 25% interval widths
+                            float sliderMouseX = mouseX >= sidebarW ? mouseX + _contentScrollX : mouseX;
+                            float relX = sliderMouseX - _pdfSliderTrackX;
+                            float fraction = Math.Max(0f, Math.Min(1f, relX / _pdfSliderTrackW));
+                            int newLevel = (int)Math.Max(0, Math.Min(3, Math.Floor(fraction * 4)));
+                            string current = ClickraStorage.GetSetting("PdfCompressImageLevel");
+                            if (current != newLevel.ToString())
+                            {
+                                ApplyPdfCompressLevel(hwnd, newLevel);
+                            }
+                        }
 
                         int adjMouseX = mouseX >= sidebarW ? (int)(mouseX + _contentScrollX) : mouseX;
                         int adjMouseY = mouseX >= sidebarW ? (int)(mouseY + _contentScrollY) : mouseY;
@@ -318,11 +331,12 @@ namespace Clickra.UI
                     }
                     break;
                 case 0x0202: // WM_LBUTTONUP
-                    if (_isDraggingScrollX || _isDraggingScrollY || _isDraggingDetailScroll)
+                    if (_isDraggingScrollX || _isDraggingScrollY || _isDraggingDetailScroll || _isDraggingPdfSlider)
                     {
                         _isDraggingScrollX = false;
                         _isDraggingScrollY = false;
                         _isDraggingDetailScroll = false;
+                        _isDraggingPdfSlider = false;
                         ReleaseCapture();
                         InvalidateRect(hwnd, IntPtr.Zero, false);
                     }

@@ -30,6 +30,9 @@
   <data name="Menu_MergePdf" xml:space="preserve">
     <value>PDF 合併</value>
   </data>
+  <data name="Menu_CompressPdf" xml:space="preserve">
+    <value>壓縮 PDF</value>
+  </data>
   <data name="Menu_Img2Pdf" xml:space="preserve">
     <value>圖片轉 PDF</value>
   </data>
