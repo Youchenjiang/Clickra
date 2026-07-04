@@ -97,6 +97,13 @@
     - 已完成 `src/Clickra.UI` 與 `src/Clickra.Core` 的解耦與 AOT 轉型。
 - [ ] **檔案命名整理**:
     - 統一整理專案內的檔案命名規範，消除歷史遺留的不一致命名。
+- [ ] **降低 CLI 與 GUI 視窗事件的圈複雜度 (Complexity Reduction) [技術債]**:
+    - **視窗訊息路由器 (WndProc Router)**：重構 `DashboardWindow.Events.cs` 的 `WndProc` (當前複雜度 137)，將龐大的 `switch` 拆分為單純的訊息路由，將特定 Win32 訊息指派至專屬的事件方法中處理。
+    - **命令模式拆分 (Command Pattern)**：重構 `DashboardWindow.Events.Click.cs` 的 `HandleLButtonDown` (當前複雜度 130)，將點擊區域偵測與具體功能執行解耦，使每個轉檔功能封裝為獨立的 Command 物件。
+    - **CLI 入口點精簡**：重構 `ClickraCli.cs` 的 `Main` (當前複雜度 89)，將參數解析與 Dashboard 啟動移至獨立的啟動類別。
+- [ ] **測試套件架構標準化與命名空間升級 [技術債]**:
+    - **命名空間整合**：將 `TestSuite` 改為位於標準命名空間中（例如 `Clickra.Core.Tests`），解決全域命名空間污染（CS-W1061）。
+    - **升級測試框架**：後續規劃將自建的 `TestRunner` 升級為業界標準的單元測試框架（如 xUnit 或 NUnit），以利於在 CI 流程中整合覆蓋率分析。
 
 ## 4. 維護、診斷與離線轉檔插件 (Diagnostics & Offline Fallback)
 - [x] **一鍵診斷回報與郵件反饋 (One-click Diagnostic Feedback) [v3.0.9]**:
