@@ -4,13 +4,19 @@ using Clickra.Core.Processors;
 using PdfSharp.Drawing;
 using PdfSharp.Pdf;
 using PdfSharp.Pdf.Advanced;
+using System;
+using System.Collections.Generic;
+using System.IO;
+using System.Linq;
 using System.Text;
+using System.Threading;
 
 static partial class TestSuite
 {
     public static void RegisterPdfCompressionTests(TestRunner runner)
     {
         const string LevelKey = "level";
+
         runner.Run("PDF compression parses user-facing level aliases", () =>
         {
             Assert.True(PdfCompressionOptions.TryParseLevel("", out var defaultLevel), "Expected empty level to use default.");
@@ -22,71 +28,41 @@ static partial class TestSuite
             Assert.True(!PdfCompressionOptions.TryParseLevel("lossless", out _), "Expected unknown level to fail.");
         });
 
-        runner.Run("PDF compression rejects unsupported level options", () =>
+        runner.Run("PDF compression rejects unsupported level options", () => RunWithTempFiles((input, output) =>
         {
-            string input = Path.Combine(Path.GetTempPath(), $"clickra-compress-{Guid.NewGuid():N}.pdf");
-            string output = Path.Combine(Path.GetTempPath(), $"clickra-compress-{Guid.NewGuid():N}_compressed.pdf");
-            try
-            {
-                CreateSamplePdf(input);
-                var processor = new PdfCompressionProcessor();
-                var options = new Dictionary<string, object> { { LevelKey, "lossless" } };
+            CreateSamplePdf(input);
+            var processor = new PdfCompressionProcessor();
+            var options = new Dictionary<string, object> { { LevelKey, "lossless" } };
 
-                Assert.Throws<ArgumentException>(() =>
-                    processor.Process(new List<string> { input }, output, options));
-            }
-            finally
-            {
-                TryDelete(input);
-                TryDelete(output);
-            }
-        });
+            Assert.Throws<ArgumentException>(() =>
+                processor.Process(new List<string> { input }, output, options));
+        }));
 
-        runner.Run("PDF compression writes optimized PDF without external tools", () =>
+        runner.Run("PDF compression writes optimized PDF without external tools", () => RunWithTempFiles((input, output) =>
         {
-            string input = Path.Combine(Path.GetTempPath(), $"clickra-compress-{Guid.NewGuid():N}.pdf");
-            string output = Path.Combine(Path.GetTempPath(), $"clickra-compress-{Guid.NewGuid():N}_compressed.pdf");
-            try
-            {
-                CreateSamplePdf(input);
-                var processor = new PdfCompressionProcessor();
-                var options = new Dictionary<string, object> { { LevelKey, "small" } };
+            CreateSamplePdf(input);
+            var processor = new PdfCompressionProcessor();
+            var options = new Dictionary<string, object> { { LevelKey, "small" } };
 
-                processor.Process(new List<string> { input }, output, options);
+            processor.Process(new List<string> { input }, output, options);
 
-                Assert.True(File.Exists(output), "Expected optimized PDF to be written.");
-                Assert.True(new FileInfo(output).Length > 0, "Expected optimized PDF to be non-empty.");
-            }
-            finally
-            {
-                TryDelete(input);
-                TryDelete(output);
-            }
-        });
+            Assert.True(File.Exists(output), "Expected optimized PDF to be written.");
+            Assert.True(new FileInfo(output).Length > 0, "Expected optimized PDF to be non-empty.");
+        }));
 
-        runner.Run("PDF compression processor delegates selected level to engine", () =>
+        runner.Run("PDF compression processor delegates selected level to engine", () => RunWithTempFiles((input, output) =>
         {
-            string input = Path.Combine(Path.GetTempPath(), $"clickra-compress-{Guid.NewGuid():N}.pdf");
-            string output = Path.Combine(Path.GetTempPath(), $"clickra-compress-{Guid.NewGuid():N}_compressed.pdf");
-            try
-            {
-                CreateSamplePdf(input);
-                var engine = new RecordingPdfCompressionEngine();
-                var processor = new PdfCompressionProcessor(engine);
-                var options = new Dictionary<string, object> { { LevelKey, "high" } };
+            CreateSamplePdf(input);
+            var engine = new RecordingPdfCompressionEngine();
+            var processor = new PdfCompressionProcessor(engine);
+            var options = new Dictionary<string, object> { { LevelKey, "high" } };
 
-                processor.Process(new List<string> { input }, output, options);
+            processor.Process(new List<string> { input }, output, options);
 
-                Assert.True(engine.Level == PdfCompressionLevel.HighQuality, "Expected high level to be delegated to engine.");
-                Assert.Equal(input, engine.InputPath);
-                Assert.Equal(output, engine.OutputPath);
-            }
-            finally
-            {
-                TryDelete(input);
-                TryDelete(output);
-            }
-        });
+            Assert.True(engine.Level == PdfCompressionLevel.HighQuality, "Expected high level to be delegated to engine.");
+            Assert.Equal(input, engine.InputPath);
+            Assert.Equal(output, engine.OutputPath);
+        }));
 
         runner.Run("PDF compression formats size reduction summary", () =>
         {
@@ -103,88 +79,73 @@ static partial class TestSuite
             Assert.True(summary.Contains("檔案大小未明顯下降"), $"Expected unchanged-size explanation, got: {summary}");
         });
 
-        runner.Run("PDF compression minifies verbose page content streams", () =>
+        runner.Run("PDF compression minifies verbose page content streams", () => RunWithTempFiles((input, output) =>
         {
-            string input = Path.Combine(Path.GetTempPath(), $"clickra-compress-{Guid.NewGuid():N}.pdf");
-            string output = Path.Combine(Path.GetTempPath(), $"clickra-compress-{Guid.NewGuid():N}_compressed.pdf");
-            try
-            {
-                CreateVerboseContentPdf(input);
-                new PdfCompressionProcessor().Process(
-                    new List<string> { input },
-                    output,
-                    new Dictionary<string, object> { { LevelKey, "balanced" } });
+            CreateVerboseContentPdf(input);
+            new PdfCompressionProcessor().Process(
+                new List<string> { input },
+                output,
+                new Dictionary<string, object> { { LevelKey, "balanced" } });
 
-                long inputBytes = new FileInfo(input).Length;
-                long outputBytes = new FileInfo(output).Length;
-                Assert.True(outputBytes < inputBytes, $"Expected content stream minification to reduce size. Input: {inputBytes}, output: {outputBytes}.");
-            }
-            finally
-            {
-                TryDelete(input);
-                TryDelete(output);
-            }
-        });
+            long inputBytes = new FileInfo(input).Length;
+            long outputBytes = new FileInfo(output).Length;
+            Assert.True(outputBytes < inputBytes, $"Expected content stream minification to reduce size. Input: {inputBytes}, output: {outputBytes}.");
+        }));
 
-        runner.Run("PDF compression deduplicates repeated embedded font streams", () =>
+        runner.Run("PDF compression deduplicates repeated embedded font streams", () => RunWithTempFiles((input, output) =>
         {
-            string input = Path.Combine(Path.GetTempPath(), $"clickra-compress-{Guid.NewGuid():N}.pdf");
-            string output = Path.Combine(Path.GetTempPath(), $"clickra-compress-{Guid.NewGuid():N}_compressed.pdf");
-            try
-            {
-                CreatePdfWithDuplicateFontStreams(input);
-                new PdfCompressionProcessor().Process(
-                    new List<string> { input },
-                    output,
-                    new Dictionary<string, object> { { LevelKey, "balanced" } });
+            CreatePdfWithDuplicateFontStreams(input);
+            new PdfCompressionProcessor().Process(
+                new List<string> { input },
+                output,
+                new Dictionary<string, object> { { LevelKey, "balanced" } });
 
-                long inputBytes = new FileInfo(input).Length;
-                long outputBytes = new FileInfo(output).Length;
-                Assert.True(outputBytes < inputBytes, $"Expected duplicate font streams to be deduplicated. Input: {inputBytes}, output: {outputBytes}.");
-            }
-            finally
-            {
-                TryDelete(input);
-                TryDelete(output);
-            }
-        });
+            long inputBytes = new FileInfo(input).Length;
+            long outputBytes = new FileInfo(output).Length;
+            Assert.True(outputBytes < inputBytes, $"Expected duplicate font streams to be deduplicated. Input: {inputBytes}, output: {outputBytes}.");
+        }));
 
-        runner.Run("PDF compression downsamples high-DPI images", () =>
+        runner.Run("PDF compression downsamples high-DPI images", () => RunWithTempFiles((input, output) =>
         {
-            string input = Path.Combine(Path.GetTempPath(), $"clickra-compress-highdpi-{Guid.NewGuid():N}.pdf");
-            string output = Path.Combine(Path.GetTempPath(), $"clickra-compress-highdpi-{Guid.NewGuid():N}_compressed.pdf");
-            try
+            CreatePdfWithHighResImage(input);
+            new PdfCompressionProcessor().Process(
+                new List<string> { input },
+                output,
+                new Dictionary<string, object> { { LevelKey, "small" } });
+
+            Assert.True(File.Exists(output), "Expected output file to exist.");
+
+            using var doc = PdfSharp.Pdf.IO.PdfReader.Open(output, PdfSharp.Pdf.IO.PdfDocumentOpenMode.Import);
+            var objects = doc.Internals.GetAllObjects();
+            bool foundImage = false;
+            foreach (var obj in objects)
             {
-                CreatePdfWithHighResImage(input);
-                new PdfCompressionProcessor().Process(
-                    new List<string> { input },
-                    output,
-                    new Dictionary<string, object> { { LevelKey, "small" } });
-
-                Assert.True(File.Exists(output), "Expected output file to exist.");
-
-                using var doc = PdfSharp.Pdf.IO.PdfReader.Open(output, PdfSharp.Pdf.IO.PdfDocumentOpenMode.Import);
-                var objects = doc.Internals.GetAllObjects();
-                bool foundImage = false;
-                foreach (var obj in objects)
+                if (obj is PdfDictionary dict && dict.Elements.GetName("/Subtype") == "/Image")
                 {
-                    if (obj is PdfDictionary dict && dict.Elements.GetName("/Subtype") == "/Image")
-                    {
-                        int w = dict.Elements.GetInteger("/Width");
-                        int h = dict.Elements.GetInteger("/Height");
-                        Assert.True(w < 1000, $"Expected image width to be downsampled from 1000, but got: {w}");
-                        Assert.True(h < 1000, $"Expected image height to be downsampled from 1000, but got: {h}");
-                        foundImage = true;
-                    }
+                    int w = dict.Elements.GetInteger("/Width");
+                    int h = dict.Elements.GetInteger("/Height");
+                    Assert.True(w < 1000, $"Expected image width to be downsampled from 1000, but got: {w}");
+                    Assert.True(h < 1000, $"Expected image height to be downsampled from 1000, but got: {h}");
+                    foundImage = true;
                 }
-                Assert.True(foundImage, "Expected to find compressed image in output PDF.");
             }
-            finally
-            {
-                TryDelete(input);
-                TryDelete(output);
-            }
-        });
+            Assert.True(foundImage, "Expected to find compressed image in output PDF.");
+        }));
+    }
+
+    private static void RunWithTempFiles(Action<string, string> testAction)
+    {
+        string input = Path.Combine(Path.GetTempPath(), $"clickra-compress-{Guid.NewGuid():N}.pdf");
+        string output = Path.Combine(Path.GetTempPath(), $"clickra-compress-{Guid.NewGuid():N}_compressed.pdf");
+        try
+        {
+            testAction(input, output);
+        }
+        finally
+        {
+            TryDelete(input);
+            TryDelete(output);
+        }
     }
 
     private static void CreateSamplePdf(string path)
@@ -250,7 +211,6 @@ static partial class TestSuite
         page.Height = XUnit.FromPoint(300);
 
         using var bmp = new System.Drawing.Bitmap(1000, 1000, System.Drawing.Imaging.PixelFormat.Format32bppArgb);
-        var rng = new Random(42);
         var bmpData = bmp.LockBits(
             new System.Drawing.Rectangle(0, 0, bmp.Width, bmp.Height),
             System.Drawing.Imaging.ImageLockMode.WriteOnly,
@@ -259,9 +219,13 @@ static partial class TestSuite
         {
             int bytes = Math.Abs(bmpData.Stride) * bmp.Height;
             byte[] buffer = new byte[bytes];
-            rng.NextBytes(buffer);
-            // Force full opacity so the image is non-trivial for the compressor
-            for (int i = 3; i < bytes; i += 4) buffer[i] = 255;
+            for (int i = 0; i < bytes; i += 4)
+            {
+                buffer[i] = (byte)(i & 0xFF);
+                buffer[i + 1] = (byte)((i >> 8) & 0xFF);
+                buffer[i + 2] = (byte)((i >> 16) & 0xFF);
+                buffer[i + 3] = 255;
+            }
             System.Runtime.InteropServices.Marshal.Copy(buffer, 0, bmpData.Scan0, bytes);
         }
         finally

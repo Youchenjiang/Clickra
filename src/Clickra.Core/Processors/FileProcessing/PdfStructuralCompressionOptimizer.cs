@@ -68,16 +68,9 @@ internal static class PdfStructuralCompressionOptimizer
                 return;
 
             byte[] originalBytes = content.Stream.Value;
-            byte[] decodedBytes;
-            try
-            {
-                decodedBytes = content.Stream.UnfilteredValue;
-            }
-            catch
-            {
-                // Stream may use unsupported filters; skip silently
+            byte[] decodedBytes = GetUnfilteredValueSafe(content.Stream);
+            if (decodedBytes.Length == 0)
                 return;
-            }
 
             if (!PdfContentStreamMinifier.TryMinify(decodedBytes, out byte[] minifiedBytes))
                 return;
@@ -132,16 +125,9 @@ internal static class PdfStructuralCompressionOptimizer
                 if (usage.Reference.Value is not PdfDictionary fontFile || fontFile.Stream == null)
                     continue;
 
-                byte[] bytes;
-                try
-                {
-                    bytes = fontFile.Stream.UnfilteredValue;
-                }
-                catch
-                {
-                    // Stream may use unsupported filter; skip deduplication for this entry
+                byte[] bytes = GetUnfilteredValueSafe(fontFile.Stream);
+                if (bytes.Length == 0)
                     continue;
-                }
 
                 string hash = Convert.ToHexString(SHA256.HashData(bytes));
                 if (!canonicalByHash.TryGetValue(hash, out PdfReference? canonicalReference))
@@ -158,6 +144,20 @@ internal static class PdfStructuralCompressionOptimizer
             }
 
             return duplicateReferences;
+        }
+
+        private static byte[] GetUnfilteredValueSafe(PdfDictionary.PdfStream? stream)
+        {
+            if (stream == null)
+                return Array.Empty<byte>();
+            try
+            {
+                return stream.UnfilteredValue;
+            }
+            catch
+            {
+                return Array.Empty<byte>();
+            }
         }
 
         private static List<FontFileUsage> CollectFontFileUsages(PdfDocument document)
