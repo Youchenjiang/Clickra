@@ -5,16 +5,6 @@ namespace Clickra.Core
 {
     public static class Localization
     {
-        // Localization key constants — defined once to eliminate SonarCloud S1192 duplication warnings
-        private const string KeyDialogCancel = "dialog_cancel";
-        private const string KeyCmdCompressPdf = "cmd_compress_pdf";
-        private const string KeySettingPdfCompressSmaller = "setting_pdf_compress_smaller";
-        private const string KeySettingPdfCompressHigher = "setting_pdf_compress_higher";
-        private const string KeySettingPdfCompressLevelMin = "setting_pdf_compress_level_min";
-        private const string KeySettingPdfCompressLevelSmall = "setting_pdf_compress_level_small";
-        private const string KeySettingPdfCompressLevelStd = "setting_pdf_compress_level_std";
-        private const string KeySettingPdfCompressLevelHigh = "setting_pdf_compress_level_high";
-
         private static readonly Dictionary<string, Dictionary<string, string>> Translations = new(StringComparer.OrdinalIgnoreCase)
         {
             ["zh-TW"] = new(StringComparer.OrdinalIgnoreCase)
@@ -104,7 +94,6 @@ namespace Clickra.Core
                 ["cmd_excel_to_pdf"] = "Excel → PDF",
                 ["cmd_ppt_to_pdf"] = "PPT → PDF",
                 ["cmd_merge_pdf"] = "合併 PDF",
-                [KeyCmdCompressPdf] = "壓縮 PDF",
                 ["cmd_img_to_pdf"] = "圖片 → PDF",
                 ["cmd_merge_img"] = "圖片合併",
                 ["cmd_stitch_img"] = "圖片拼接",
@@ -149,14 +138,6 @@ namespace Clickra.Core
                 ["setting_pdf_title"] = "PDF 一鍵翻譯",
                 ["setting_pdf_desc"] = "設定 PDF 翻譯目標語言",
                 ["setting_pdf_lang"] = "目標語言 (Target Language)",
-                ["setting_pdf_compress_title"] = "PDF 壓縮設定",
-                ["setting_pdf_compress_desc"] = "自訂 PDF 壓縮的字型、圖片解析度與向量結構簡化方式",
-                ["setting_pdf_compress_group_image"] = "圖片壓縮",
-                ["setting_pdf_compress_group_other"] = "其他優化",
-                ["setting_pdf_compress_dpi"] = "目標解析度 (DPI)",
-                ["setting_pdf_compress_quality"] = "JPEG 品質",
-                ["setting_pdf_compress_strip_fonts"] = "剝離嵌入字型以極致壓縮",
-                ["setting_pdf_compress_minify_content"] = "簡化向量圖形與排版結構",
                 ["cmd_translate_pdf"] = "PDF 一鍵翻譯",
                 ["cmd_decrypt_pdf"] = "去除 PDF 密碼",
                 ["pdf_password_title"] = "輸入 PDF 密碼",
@@ -165,13 +146,7 @@ namespace Clickra.Core
                 ["error_pdf_password_quiet"] = "密碼錯誤或未提供密碼（靜默模式下無法手動輸入密碼）。",
                 ["pdf_not_encrypted"] = "此檔案未加密，無須解除密碼。",
                 ["dialog_ok"] = "確定",
-                [KeyDialogCancel] = "取消",
-                [KeySettingPdfCompressSmaller] = "← 體積最小",
-                [KeySettingPdfCompressHigher] = "品質最高 →",
-                [KeySettingPdfCompressLevelMin] = "極小",
-                [KeySettingPdfCompressLevelSmall] = "小檔",
-                [KeySettingPdfCompressLevelStd] = "標準",
-                [KeySettingPdfCompressLevelHigh] = "高品質"
+                ["dialog_cancel"] = "取消"
             },
             ["zh-CN"] = new(StringComparer.OrdinalIgnoreCase)
             {
@@ -260,7 +235,6 @@ namespace Clickra.Core
                 ["cmd_excel_to_pdf"] = "Excel → PDF",
                 ["cmd_ppt_to_pdf"] = "PPT → PDF",
                 ["cmd_merge_pdf"] = "合并 PDF",
-                [KeyCmdCompressPdf] = "压缩 PDF",
                 ["cmd_img_to_pdf"] = "图片 → PDF",
                 ["cmd_merge_img"] = "图片合并",
                 ["cmd_stitch_img"] = "图片拼接",
@@ -305,14 +279,6 @@ namespace Clickra.Core
                 ["setting_pdf_title"] = "PDF 翻译",
                 ["setting_pdf_desc"] = "设置 PDF 翻译语言",
                 ["setting_pdf_lang"] = "目标语言",
-                ["setting_pdf_compress_title"] = "PDF 压缩设置",
-                ["setting_pdf_compress_desc"] = "自定义 PDF 压缩的字体、图片分辨率与矢量结构简化方式",
-                ["setting_pdf_compress_group_image"] = "图片压缩",
-                ["setting_pdf_compress_group_other"] = "其他优化",
-                ["setting_pdf_compress_dpi"] = "目标分辨率 (DPI)",
-                ["setting_pdf_compress_quality"] = "JPEG 质量",
-                ["setting_pdf_compress_strip_fonts"] = "剥离嵌入字体以极致压缩",
-                ["setting_pdf_compress_minify_content"] = "简化矢量图形与排版结构",
                 ["cmd_translate_pdf"] = "PDF 翻译",
                 ["cmd_decrypt_pdf"] = "去除 PDF 密码",
                 ["pdf_password_title"] = "输入 PDF 密码",
@@ -321,13 +287,7 @@ namespace Clickra.Core
                 ["error_pdf_password_quiet"] = "密码错误或未提供密码（静默模式下无法手动输入密码）。",
                 ["pdf_not_encrypted"] = "此文件未加密，无需解除密码。",
                 ["dialog_ok"] = "确定",
-                [KeyDialogCancel] = "取消",
-                [KeySettingPdfCompressSmaller] = "← 体积最小",
-                [KeySettingPdfCompressHigher] = "质量最高 →",
-                [KeySettingPdfCompressLevelMin] = "极小",
-                [KeySettingPdfCompressLevelSmall] = "小档",
-                [KeySettingPdfCompressLevelStd] = "标准",
-                [KeySettingPdfCompressLevelHigh] = "高质量"
+                ["dialog_cancel"] = "取消"
             },
             ["en-US"] = new(StringComparer.OrdinalIgnoreCase)
             {
@@ -416,7 +376,6 @@ namespace Clickra.Core
                 ["cmd_excel_to_pdf"] = "Excel → PDF",
                 ["cmd_ppt_to_pdf"] = "PPT → PDF",
                 ["cmd_merge_pdf"] = "Merge PDF",
-                [KeyCmdCompressPdf] = "Compress PDF",
                 ["cmd_img_to_pdf"] = "Image → PDF",
                 ["cmd_merge_img"] = "Merge Images",
                 ["cmd_stitch_img"] = "Stitch Images",
@@ -458,17 +417,9 @@ namespace Clickra.Core
                 ["status_libreoffice_starting"] = "Starting LibreOffice engine ({0}/{1})...",
                 ["status_libreoffice_exporting"] = "Exporting PDF with LibreOffice: {0}...",
                 ["status_libreoffice_completed"] = "LibreOffice conversion completed: {0}",
-                ["setting_pdf_title"] = "PDF Translation Target Language",
-                ["setting_pdf_desc"] = "Set the default output language for PDF translation",
+                ["setting_pdf_title"] = "PDF One-Click Translation",
+                ["setting_pdf_desc"] = "Configure target language for translation",
                 ["setting_pdf_lang"] = "Target Language",
-                ["setting_pdf_compress_title"] = "PDF Compression Settings",
-                ["setting_pdf_compress_desc"] = "Customize font embedding, image resolution, and vector structure options",
-                ["setting_pdf_compress_group_image"] = "Image Compression",
-                ["setting_pdf_compress_group_other"] = "Other Optimization",
-                ["setting_pdf_compress_dpi"] = "Target DPI",
-                ["setting_pdf_compress_quality"] = "JPEG Quality",
-                ["setting_pdf_compress_strip_fonts"] = "Strip Embedded Fonts for Maximum Compression",
-                ["setting_pdf_compress_minify_content"] = "Minify Vector Graphics & Content Streams",
                 ["cmd_translate_pdf"] = "PDF Translation",
                 ["cmd_decrypt_pdf"] = "Remove PDF Password",
                 ["pdf_password_title"] = "Enter PDF Password",
@@ -477,13 +428,7 @@ namespace Clickra.Core
                 ["error_pdf_password_quiet"] = "Incorrect or missing password (cannot prompt for password in quiet mode).",
                 ["pdf_not_encrypted"] = "This file is not encrypted; no decryption needed.",
                 ["dialog_ok"] = "OK",
-                [KeyDialogCancel] = "Cancel",
-                [KeySettingPdfCompressSmaller] = "← Smaller",
-                [KeySettingPdfCompressHigher] = "Higher Quality →",
-                [KeySettingPdfCompressLevelMin] = "Min",
-                [KeySettingPdfCompressLevelSmall] = "Small",
-                [KeySettingPdfCompressLevelStd] = "Std",
-                [KeySettingPdfCompressLevelHigh] = "High"
+                ["dialog_cancel"] = "Cancel"
             },
             ["ja-JP"] = new(StringComparer.OrdinalIgnoreCase)
             {
@@ -574,7 +519,6 @@ namespace Clickra.Core
                 ["cmd_excel_to_pdf"] = "Excel → PDF",
                 ["cmd_ppt_to_pdf"] = "PPT → PDF",
                 ["cmd_merge_pdf"] = "PDF 結合",
-                [KeyCmdCompressPdf] = "PDF 圧縮",
                 ["cmd_img_to_pdf"] = "画像 → PDF",
                 ["cmd_merge_img"] = "画像結合",
                 ["cmd_stitch_img"] = "画像結合 (縦/横)",
@@ -625,13 +569,7 @@ namespace Clickra.Core
                 ["error_pdf_password_quiet"] = "パスワードが正しくないか入力されていません（サイレントモードではパスワードを入力できません）。",
                 ["pdf_not_encrypted"] = "このファイルは暗号化されていません。パスワード解除は不要です。",
                 ["dialog_ok"] = "確定",
-                [KeyDialogCancel] = "キャンセル",
-                [KeySettingPdfCompressSmaller] = "← 最小サイズ",
-                [KeySettingPdfCompressHigher] = "最高品質 →",
-                [KeySettingPdfCompressLevelMin] = "最小",
-                [KeySettingPdfCompressLevelSmall] = "小",
-                [KeySettingPdfCompressLevelStd] = "標準",
-                [KeySettingPdfCompressLevelHigh] = "高品質"
+                ["dialog_cancel"] = "キャンセル"
             },
             ["ko-KR"] = new(StringComparer.OrdinalIgnoreCase)
             {
@@ -722,7 +660,6 @@ namespace Clickra.Core
                 ["cmd_excel_to_pdf"] = "Excel → PDF",
                 ["cmd_ppt_to_pdf"] = "PPT → PDF",
                 ["cmd_merge_pdf"] = "PDF 병합",
-                [KeyCmdCompressPdf] = "PDF 압축",
                 ["cmd_img_to_pdf"] = "이미지 → PDF",
                 ["cmd_merge_img"] = "이미지 병합",
                 ["cmd_stitch_img"] = "이미지 이어붙이기",
@@ -775,13 +712,7 @@ namespace Clickra.Core
                 ["error_pdf_password_quiet"] = "비밀번호가 잘못되었거나 누락되었습니다 (조용한 모드에서는 비밀번호를 입력할 수 없습니다).",
                 ["pdf_not_encrypted"] = "이 파일은 암호화되어 있지 않아 비밀번호를 제거할 필요가 없습니다.",
                 ["dialog_ok"] = "확인",
-                [KeyDialogCancel] = "취소",
-                [KeySettingPdfCompressSmaller] = "← 최소 크기",
-                [KeySettingPdfCompressHigher] = "최고 품질 →",
-                [KeySettingPdfCompressLevelMin] = "최소",
-                [KeySettingPdfCompressLevelSmall] = "소형",
-                [KeySettingPdfCompressLevelStd] = "표준",
-                [KeySettingPdfCompressLevelHigh] = "고품질"
+                ["dialog_cancel"] = "취소"
             }
         };
 
@@ -819,6 +750,123 @@ namespace Clickra.Core
 
             // Fallback: If not found anywhere, return the key as-is
             return key;
+        }
+
+        static Localization()
+        {
+            RegisterCompressionTranslations();
+        }
+
+        private static void RegisterCompressionTranslations()
+        {
+            // Register cmd_compress_pdf
+            Translations["zh-TW"]["cmd_compress_pdf"] = "壓縮 PDF";
+            Translations["zh-CN"]["cmd_compress_pdf"] = "压缩 PDF";
+            Translations["en-US"]["cmd_compress_pdf"] = "Compress PDF";
+            Translations["ja-JP"]["cmd_compress_pdf"] = "PDF 圧縮";
+            Translations["ko-KR"]["cmd_compress_pdf"] = "PDF 압축";
+
+            AddCompressDetails("zh-TW", 
+                "PDF 壓縮設定",
+                "自訂 PDF 壓縮的字型、圖片解析度與向量結構簡化方式",
+                "圖片壓縮",
+                "其他優化",
+                "目標解析度 (DPI)",
+                "JPEG 質量",
+                "剝離嵌入字型以極致壓縮",
+                "簡化向量圖形與排版結構",
+                "← 體積最小",
+                "質量最高 →",
+                "極小",
+                "小檔",
+                "標準",
+                "高品質");
+
+            AddCompressDetails("zh-CN",
+                "PDF 压缩设置",
+                "自定义 PDF 压缩的字体、图片分辨率与矢量结构简化方式",
+                "图片压缩",
+                "其他优化",
+                "目标分辨率 (DPI)",
+                "JPEG 质量",
+                "剥离嵌入字体以极致压缩",
+                "简化矢量图形与排版结构",
+                "← 体积最小",
+                "质量最高 →",
+                "极小",
+                "小档",
+                "标准",
+                "高质量");
+
+            AddCompressDetails("en-US",
+                "PDF Compression Settings",
+                "Customize font embedding, image resolution, and vector structure options",
+                "Image Compression",
+                "Other Optimization",
+                "Target DPI",
+                "JPEG Quality",
+                "Strip Embedded Fonts for Maximum Compression",
+                "Minify Vector Graphics & Content Streams",
+                "← Smaller",
+                "Higher Quality →",
+                "Min",
+                "Small",
+                "Std",
+                "High");
+
+            AddCompressDetails("ja-JP",
+                "PDF 圧縮設定",
+                "フォントの埋め込み、画像の解像度、ベクター構造の最適化をカスタマイズします",
+                "画像圧縮",
+                "その他の最適化",
+                "目標解像度 (DPI)",
+                "JPEG 画質",
+                "フォントの埋め込みを解除して極限圧縮",
+                "ベクターグラフィックスとコンテンツストリームの簡素化",
+                "← 最小サイズ",
+                "最高品質 →",
+                "最小",
+                "小",
+                "標準",
+                "高品質");
+
+            AddCompressDetails("ko-KR",
+                "PDF 압축 설정",
+                "글꼴 포함, 이미지 해상도 및 벡터 구조 최적화 옵션을 사용자 정의합니다",
+                "이미지 압축",
+                "기타 최적화",
+                "대상 해상도 (DPI)",
+                "JPEG 화질",
+                "글꼴 포함을 해제하여 극대 압축",
+                "벡터 그래픽 및 콘텐츠 스트림 단순화",
+                "← 최소 크기",
+                "최고 품질 →",
+                "최소",
+                "소형",
+                "표준",
+                "고품질");
+        }
+
+        private static void AddCompressDetails(
+            string lang, string title, string desc, string groupImg, string groupOther,
+            string dpi, string quality, string strip, string minify,
+            string smaller, string higher, string min, string small, string std, string high)
+        {
+            var dict = Translations[lang];
+            dict["setting_pdf_compress_title"] = title;
+            dict["setting_pdf_compress_desc"] = desc;
+            dict["setting_pdf_compress_group_image"] = groupImg;
+            dict["setting_pdf_compress_group_other"] = groupOther;
+            dict["setting_pdf_compress_dpi"] = dpi;
+            dict["setting_pdf_compress_quality"] = quality;
+            dict["setting_pdf_compress_strip_fonts"] = strip;
+            dict["setting_pdf_compress_minify_content"] = minify;
+            dict["setting_pdf_compress_smaller"] = smaller;
+            dict["setting_pdf_compress_higher"] = higher;
+            dict["setting_pdf_compress_level_min"] = min;
+            dict["setting_pdf_compress_level_small"] = small;
+            dict["setting_pdf_compress_level_std"] = std;
+            dict["setting_pdf_compress_level_high"] = high;
         }
     }
 }
