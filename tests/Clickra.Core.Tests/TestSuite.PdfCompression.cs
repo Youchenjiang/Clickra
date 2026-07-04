@@ -6,7 +6,6 @@ using PdfSharp.Pdf;
 using PdfSharp.Pdf.Advanced;
 using System.Text;
 
-namespace Clickra.Core.Tests;
 static partial class TestSuite
 {
     public static void RegisterPdfCompressionTests(TestRunner runner)
@@ -31,7 +30,7 @@ static partial class TestSuite
             {
                 CreateSamplePdf(input);
                 var processor = new PdfCompressionProcessor();
-                    var options = new Dictionary<string, object> { { LevelKey, "lossless" } };
+                var options = new Dictionary<string, object> { { LevelKey, "lossless" } };
 
                 Assert.Throws<ArgumentException>(() =>
                     processor.Process(new List<string> { input }, output, options));

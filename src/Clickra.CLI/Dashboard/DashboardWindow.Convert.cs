@@ -274,37 +274,29 @@ namespace Clickra.UI
 
         static void DrawConvertTab(Graphics g, float logW, float logH, float contentX)
         {
-            DrawConvertTabHeader(g, logW, contentX);
-            DrawConvertTabZone(g, logW, contentX);
-        }
-
-        static void DrawConvertTabHeader(Graphics g, float logW, float contentX)
-        {
             float s = _dpiScale;
             if (_contentTitleFont != null)
                 g.DrawString(GetText("tab_convert"), _contentTitleFont, Brushes.White, contentX * s, 30 * s);
 
-            using var divPen = new Pen(Color.FromArgb(48, 48, 48));
-            g.DrawLine(divPen, contentX * s, 75 * s, (logW - 40) * s, 75 * s);
-        }
+            using (var divPen = new Pen(Color.FromArgb(48, 48, 48)))
+            {
+                g.DrawLine(divPen, contentX * s, 75 * s, (logW - 40) * s, 75 * s);
+            }
 
-        static void DrawConvertTabZone(Graphics g, float logW, float contentX)
-        {
-            float s = _dpiScale;
             int zoneX = (int)contentX, zoneY = 95, zoneW = (int)logW - (int)contentX - 50, zoneH = 120;
             bool isZoneHovered = _hoveredElement == 18;
 
             Color zoneBg = isZoneHovered ? Color.FromArgb(42, 42, 42) : Color.FromArgb(34, 34, 34);
             Color zoneBorder = isZoneHovered ? UIHelper.GetSystemColorizationColor() : Color.FromArgb(60, 60, 60);
 
-            using var path = UIHelper.GetRoundedRectPath(new RectangleF(zoneX * s, zoneY * s, zoneW * s, zoneH * s), 6 * s);
-            using var bgBrush = new SolidBrush(zoneBg);
-            using var borderPen = new Pen(zoneBorder, 1.5f * s);
-
-            borderPen.DashStyle = DashStyle.Dash;
-            g.FillPath(bgBrush, path);
-            g.DrawPath(borderPen, path);
-        }
+            using (var path = UIHelper.GetRoundedRectPath(new RectangleF(zoneX * s, zoneY * s, zoneW * s, zoneH * s), 6 * s))
+            using (var bgBrush = new SolidBrush(zoneBg))
+            using (var borderPen = new Pen(zoneBorder, 1.5f * s))
+            {
+                borderPen.DashStyle = DashStyle.Dash;
+                g.FillPath(bgBrush, path);
+                g.DrawPath(borderPen, path);
+            }
 
             if (_selectedFiles.Count == 0)
             {

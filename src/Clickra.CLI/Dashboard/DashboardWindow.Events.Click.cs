@@ -13,60 +13,30 @@ namespace Clickra.UI
     {
         static void HandleLButtonDown(IntPtr hwnd, IntPtr w, IntPtr l)
         {
-            var (mouseX, mouseY) = GetScaledMouseCoordinates(l);
+            int rawX = (short)(l.ToInt64() & 0xFFFF);
+            int rawY = (short)((l.ToInt64() >> 16) & 0xFFFF);
+            int mouseX = (int)(rawX / _dpiScale);
+            int mouseY = (int)(rawY / _dpiScale);
+
             float logW = GetLogicalWidth(hwnd);
             float logH = GetLogicalHeight(hwnd);
             float contentH = GetContentHeight(hwnd);
             bool showV = logH < contentH;
             bool showH = logW < 760;
+            float sidebarW = GetSidebarWidth(logW);
+            float contentX = GetContentX(logW);
 
-            if (showV && IsOnVerticalScrollbar(mouseX, logW))
+            if (showV && mouseX >= logW - 8 && mouseX < logW)
             {
-                var track = GetVerticalTrack(logH, showH);
-                var thumb = GetVerticalThumb(track, logH, contentH);
+                float trackY = 4;
+                float trackH = logH - 8;
+                if (showH) trackH = logH - 16;
+                float thumbH = Math.Max(20f, (logH / contentH) * trackH);
+                float thumbY = trackY + (_contentScrollY / (contentH - logH)) * (trackH - thumbH);
 
-                if (IsPointWithin(mouseY, track.Y, track.Height) && IsPointWithin(mouseY, thumb.Y, thumb.Height))
+                if (mouseY >= trackY && mouseY < trackY + trackH)
                 {
-                    // existing click handling logic for thumb goes here
-                }
-            }
-        }
-
-        private static (int X, int Y) GetScaledMouseCoordinates(IntPtr l)
-        {
-            int rawX = (short)(l.ToInt64() & 0xFFFF);
-            int rawY = (short)((l.ToInt64() >> 16) & 0xFFFF);
-            int mouseX = (int)(rawX / _dpiScale);
-            int mouseY = (int)(rawY / _dpiScale);
-            return (mouseX, mouseY);
-        }
-
-        private static bool IsOnVerticalScrollbar(int mouseX, float logW)
-        {
-            const float ScrollbarWidth = 8f;
-            return mouseX >= logW - ScrollbarWidth && mouseX < logW;
-        }
-
-        private static (float Y, float Height) GetVerticalTrack(float logH, bool showH)
-        {
-            float trackY = 4f;
-            float trackHeight = logH - (showH ? 16f : 8f);
-            return (trackY, trackHeight);
-        }
-
-        private static (float Y, float Height) GetVerticalThumb((float Y, float Height) track, float logH, float contentH)
-        {
-            float thumbHeight = Math.Max(20f, (logH / contentH) * track.Height);
-            float thumbY = track.Y + (_contentScrollY / (contentH - logH)) * (track.Height - thumbHeight);
-            return (thumbY, thumbHeight);
-        }
-
-        private static bool IsPointWithin(int point, float start, float length)
-        {
-            return point >= start && point < start + length;
-        }
-    }
-}
+                    if (mouseY >= thumbY && mouseY < thumbY + thumbH)
                     {
                         _isDraggingScrollY = true;
                         _dragStartMouseY = mouseY;

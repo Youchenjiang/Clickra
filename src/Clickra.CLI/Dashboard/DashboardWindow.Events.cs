@@ -9,52 +9,33 @@ namespace Clickra.UI
 {
     public static partial class DashboardWindow
     {
-        private delegate IntPtr MessageHandler(IntPtr hwnd, IntPtr wParam, IntPtr lParam);
-
-        private static readonly Dictionary<uint, MessageHandler> _messageHandlers = new Dictionary<uint, MessageHandler>
-        {
-            { WM_USER_DASHBOARD_ACTION, HandleDashboardAction },
-            { WM_SIZE, HandleSize }
-        };
-
         static readonly WndProcDelegate _wndProc = WndProc;
-
-        static IntPtr WndProc(IntPtr hwnd, uint msg, IntPtr wParam, IntPtr lParam)
+        static IntPtr WndProc(IntPtr hwnd, uint msg, IntPtr w, IntPtr l)
         {
-            if (_messageHandlers.TryGetValue(msg, out var handler))
+            switch (msg)
             {
-                return handler(hwnd, wParam, lParam);
-            }
-            return DefWindowProc(hwnd, msg, wParam, lParam);
-        }
-
-        private static IntPtr HandleDashboardAction(IntPtr hwnd, IntPtr wParam, IntPtr lParam)
-        {
-            while (_uiActions.TryDequeue(out var action))
-            {
-                try { action(); } catch { }
-            }
-            InvalidateRect(hwnd, IntPtr.Zero, false);
-            return IntPtr.Zero;
-        }
-
-        private static IntPtr HandleSize(IntPtr hwnd, IntPtr wParam, IntPtr lParam)
-        {
-            int clientW = GetClientWidth(hwnd);
-            int clientH = GetClientHeight(hwnd);
-            float logW = clientW / _dpiScale;
-            float logH = clientH / _dpiScale;
-            float contentH = GetContentHeight(hwnd);
-            int maxScrollX = Math.Max(0, 760 - (int)logW);
-            int maxScrollY = Math.Max(0, (int)contentH - (int)logH);
-            _contentScrollX = Math.Max(0, Math.Min(_contentScrollX, maxScrollX));
-            _contentScrollY = Math.Max(0, Math.Min(_contentScrollY, maxScrollY));
-            RecreateBuffer(clientW, clientH);
-            InvalidateRect(hwnd, IntPtr.Zero, false);
-            return IntPtr.Zero;
-        }
-    }
-}
+                case WM_USER_DASHBOARD_ACTION:
+                    while (_uiActions.TryDequeue(out var action))
+                    {
+                        try { action(); } catch { }
+                    }
+                    InvalidateRect(hwnd, IntPtr.Zero, false);
+                    return IntPtr.Zero;
+                case 0x0005: // WM_SIZE
+                    {
+                        int clientW = GetClientWidth(hwnd);
+                        int clientH = GetClientHeight(hwnd);
+                        float logW = clientW / _dpiScale;
+                        float logH = clientH / _dpiScale;
+                        float contentH = GetContentHeight(hwnd);
+                        int maxScrollX = Math.Max(0, 760 - (int)logW);
+                        int maxScrollY = Math.Max(0, (int)contentH - (int)logH);
+                        _contentScrollX = Math.Max(0, Math.Min(_contentScrollX, maxScrollX));
+                        _contentScrollY = Math.Max(0, Math.Min(_contentScrollY, maxScrollY));
+                        RecreateBuffer(clientW, clientH);
+                        InvalidateRect(hwnd, IntPtr.Zero, false);
+                    }
+                    return IntPtr.Zero;
                 case 0x02E0: // WM_DPICHANGED
                     {
                         uint newDpi = (uint)(w.ToInt64() & 0xFFFF);
@@ -81,11 +62,6 @@ namespace Clickra.UI
                         float logW = GetLogicalWidth(hwnd);
                         float logH = GetLogicalHeight(hwnd);
                         float sidebarW = GetSidebarWidth(logW);
-                    }
-                    return IntPtr.Zero;
-                default:
-                    throw new ArgumentException("Encountered unexpected value.");
-                    break;
                         float contentX = GetContentX(logW);
                         
                         if (_isDraggingScrollY)

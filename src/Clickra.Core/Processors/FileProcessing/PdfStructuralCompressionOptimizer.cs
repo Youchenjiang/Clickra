@@ -658,7 +658,7 @@ internal static class PdfStructuralCompressionOptimizer
                     output.WriteByte((byte)' ');
                 pendingSpace = false;
 
-                ProcessToken(contentBytes, output, ref i, current, ref previousSignificant);
+                ProcessToken(contentBytes, output, current, ref i, ref previousSignificant);
             }
 
             if (output.Length >= contentBytes.Length)

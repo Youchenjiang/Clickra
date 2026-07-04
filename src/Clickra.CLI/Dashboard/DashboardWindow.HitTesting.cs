@@ -54,56 +54,7 @@ namespace Clickra.UI
             return false;
         }
 
-        private static readonly (int Start, int End, int TabIndex)[] SidebarTabRanges = {
-            (120, 160, 0),
-            (168, 208, 1),
-            (216, 256, 2),
-            (264, 304, 3),
-            (312, 352, 4)
-        };
-
-        private static int? HitSidebarTab(int x, int y, float sidebarW)
-        {
-            if (x >= 0 && x < sidebarW)
-            {
-                foreach (var range in SidebarTabRanges)
-                {
-                    if (y >= range.Start && y < range.End)
-                        return range.TabIndex;
-                }
-            }
-            return null;
-        }
-
         static int HitTest(IntPtr hwnd, int x, int y)
-        {
-            var layout = GetLayout(hwnd);
-
-            var sidebarTab = HitSidebarTab(x, y, layout.sidebarWidth);
-            if (sidebarTab.HasValue)
-            {
-                return sidebarTab.Value;
-            }
-
-            switch (_activeTab)
-            {
-                case 1:
-                    return HitConvertZone(x, y, layout);
-                // TODO: handle other tabs
-                default:
-                    return -1;
-            }
-        }
-
-        private struct LayoutInfo
-        {
-            public float logicalWidth;
-            public float logicalHeight;
-            public float sidebarWidth;
-            public float contentX;
-        }
-
-        private static LayoutInfo GetLayout(IntPtr hwnd)
         {
             float rawLogW = GetLogicalWidth(hwnd);
             float rawLogH = GetLogicalHeight(hwnd);
@@ -113,29 +64,25 @@ namespace Clickra.UI
             float sidebarW = GetSidebarWidth(logW);
             float contentX = GetContentX(logW);
 
-            return new LayoutInfo
+            // Sidebar tabs (always active)
+            if (x >= 0 && x < sidebarW)
             {
-                logicalWidth = logW,
-                logicalHeight = logH,
-                sidebarWidth = sidebarW,
-                contentX = contentX
-            };
-        }
+                if (y >= 120 && y < 160) return 0;
+                if (y >= 168 && y < 208) return 1;
+                if (y >= 216 && y < 256) return 2;
+                if (y >= 264 && y < 304) return 3;
+                if (y >= 312 && y < 352) return 4;
+            }
 
-        private static int HitConvertZone(int x, int y, LayoutInfo layout)
-        {
-            int zoneW = (int)layout.logicalWidth - (int)layout.contentX - 50;
-            int zoneH = 120;
-            int clearX = (int)layout.logicalWidth - 110;
+            if (_activeTab == 1) // Convert
+            {
+                int zoneW = (int)logW - (int)contentX - 50;
+                int zoneH = 120;
+                int clearX = (int)logW - 110;
 
-            int groupGap = 14;
-            int groupW = (zoneW - 2 * groupGap) / 3;
-            int groupTop = 230;
-
-            // Additional hit logic for convert zone can be refactored into helper methods
-
-            return -1;
-        }
+                int groupGap = 14;
+                int groupW = (zoneW - 2 * groupGap) / 3;
+                int groupTop = 230;
                 int headerH = 24;
                 int cardH = 38;
                 int cardGap = 8;

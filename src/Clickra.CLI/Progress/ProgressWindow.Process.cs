@@ -14,12 +14,43 @@ namespace Clickra.UI
         private void RunProcessing(IntPtr hwnd)
         {
             string startTimeStr = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
-            var (currentFiles, cmd) = GetCurrentState();
-            if (ProcessEmptyFiles(hwnd, currentFiles)) return;
+            List<string> currentFiles = new List<string>();
+            string cmd = "";
             var sw = System.Diagnostics.Stopwatch.StartNew();
-            Action<int, int, string> progressCallback = CreateProgressCallback();
-            InitializeStorageRecord(cmd, currentFiles);
-            string outputDir = ClickraStorage.GetOutputDir(currentFiles[0]);
+            try
+            {
+                lock (_stateLock)
+                {
+                    currentFiles = _files;
+                    cmd = _command;
+                }
+
+                if (currentFiles == null || currentFiles.Count == 0)
+                {
+                    lock (_stateLock) { _completed = true; _message = "無檔案可處理。"; }
+                    PostMessageW(hwnd, WM_USER_INVALIDATE, (IntPtr)1, IntPtr.Zero);
+                    Thread.Sleep(1000);
+                    PostMessageW(hwnd, 0x0010, IntPtr.Zero, IntPtr.Zero); // WM_CLOSE
+                    return;
+                }
+
+                Action<int, int, string> progressCallback = (curr, tot, msg) =>
+                {
+                    lock (_stateLock)
+                    {
+                        _current = curr;
+                        if (tot > 0) _total = tot;
+                        _message = msg;
+                        if (_total > 0) _targetWidth = 448.0 * _current / _total;
+                    }
+                    UpdateTrayIconProgress();
+                };
+
+                // 立即建立 Pending 紀錄，讓 Dashboard 可即時看到
+                string inputsStr = string.Join(";", currentFiles);
+                try { ClickraStorage.StartActiveRecord(cmd, currentFiles.Count, inputsStr); } catch { }
+
+                string outputDir = ClickraStorage.GetOutputDir(currentFiles[0]);
 
                 // 開始實際處理，切換為 InProgress
                 try { ClickraStorage.SetActiveRecordInProgress(); } catch { }
