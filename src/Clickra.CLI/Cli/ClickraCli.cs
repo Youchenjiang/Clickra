@@ -60,7 +60,7 @@ namespace Clickra
 
         private static void PrintVersion()
         {
-            var version = Assembly.GetExecutingAssembly().GetName().Version?.ToString(3) ?? "Unknown";
+            var version = typeof(ClickraCli).Assembly.GetName().Version?.ToString(3) ?? "Unknown";
             Console.WriteLine($"Clickra v{version} (Modern Shell Edition)");
             Console.WriteLine("Author: Youchen Jiang");
             Console.WriteLine("Commands: ppt2pdf, word2pdf, excel2pdf, merge-pdf, compress-pdf, img2pdf, img-merge, img-stitch, translate-pdf, decrypt-pdf, --deploy");

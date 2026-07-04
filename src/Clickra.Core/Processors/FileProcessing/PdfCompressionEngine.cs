@@ -70,68 +70,70 @@ namespace Clickra.Core.Processors;
             CancellationToken cancellationToken = default);
     }
 
-    public static class PdfCompressionOptions
+    namespace Clickra.Core.Processors.FileProcessing
     {
-        public static bool TryParseLevel(string? value, out PdfCompressionLevel level)
+        public static class PdfCompressionOptions
         {
-            level = PdfCompressionLevel.Balanced;
-            if (string.IsNullOrWhiteSpace(value))
-                return true;
-
-            switch (value.Trim().ToLowerInvariant())
+            public static bool TryParseLevel(string? value, out PdfCompressionLevel level)
             {
-                case "small":
-                case "screen":
-                case "compact":
-                case "小檔":
-                case "小文件":
-                    level = PdfCompressionLevel.Small;
+                level = PdfCompressionLevel.Balanced;
+                if (string.IsNullOrWhiteSpace(value))
                     return true;
-                case "balanced":
-                case "ebook":
-                case "平衡":
-                    level = PdfCompressionLevel.Balanced;
-                    return true;
-                case "high":
-                case "highquality":
-                case "high-quality":
-                case "printer":
-                case "quality":
-                case "高品質":
-                    level = PdfCompressionLevel.HighQuality;
-                    return true;
-                default:
-                    return false;
+
+                switch (value.Trim().ToLowerInvariant())
+                {
+                    case "small":
+                    case "screen":
+                    case "compact":
+                    case "小檔":
+                    case "小文件":
+                        level = PdfCompressionLevel.Small;
+                        return true;
+                    case "balanced":
+                    case "ebook":
+                    case "平衡":
+                        level = PdfCompressionLevel.Balanced;
+                        return true;
+                    case "high":
+                    case "highquality":
+                    case "high-quality":
+                    case "printer":
+                    case "quality":
+                    case "高品質":
+                        level = PdfCompressionLevel.HighQuality;
+                        return true;
+                    default:
+                        return false;
+                }
             }
         }
-    }
 
-    public sealed class NativePdfCompressionEngine : IPdfCompressionEngine
-    {
-        public void Compress(
-            string inputPath,
-            string outputPath,
-            Dictionary<string, object>? options,
-            Action<int, int, string>? onProgress = null,
-            CancellationToken cancellationToken = default)
+        public sealed class NativePdfCompressionEngine : IPdfCompressionEngine
         {
-            if (!File.Exists(inputPath))
-                throw new FileNotFoundException("Input PDF file was not found.", inputPath);
-
-            long inputBytes = new FileInfo(inputPath).Length;
-            string? outputDir = Path.GetDirectoryName(outputPath);
-            if (!string.IsNullOrEmpty(outputDir))
-                Directory.CreateDirectory(outputDir);
-
-            string tempOutput = Path.Combine(
-                Path.GetTempPath(),
-                "ClickraPdfCompression",
-                Guid.NewGuid().ToString("N"),
-                Path.GetFileName(outputPath));
-            Directory.CreateDirectory(Path.GetDirectoryName(tempOutput)!);
-
-            try
+            public void Compress(
+                string inputPath,
+                string outputPath,
+                Dictionary<string, object>? options,
+                Action<int, int, string>? onProgress = null,
+                CancellationToken cancellationToken = default)
             {
+                if (!File.Exists(inputPath))
+                    throw new FileNotFoundException("Input PDF file was not found.", inputPath);
+
+                long inputBytes = new FileInfo(inputPath).Length;
+                string? outputDir = Path.GetDirectoryName(outputPath);
+                if (!string.IsNullOrEmpty(outputDir))
+                    Directory.CreateDirectory(outputDir);
+
+                string tempOutput = Path.Combine(
+                    Path.GetTempPath(),
+                    "ClickraPdfCompression",
+                    Guid.NewGuid().ToString("N"),
+                    Path.GetFileName(outputPath));
+                Directory.CreateDirectory(Path.GetDirectoryName(tempOutput)!);
+
+                try
+                {
                 var settings = PdfCompressionSettings.Parse(options);
 
                 onProgress?.Invoke(15, 100, "正在讀取 PDF...");

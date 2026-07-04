@@ -81,6 +81,11 @@ namespace Clickra.UI
                         float logW = GetLogicalWidth(hwnd);
                         float logH = GetLogicalHeight(hwnd);
                         float sidebarW = GetSidebarWidth(logW);
+                    }
+                    return IntPtr.Zero;
+                default:
+                    throw new ArgumentException("Encountered unexpected value.");
+                    break;
                         float contentX = GetContentX(logW);
                         
                         if (_isDraggingScrollY)

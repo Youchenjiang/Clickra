@@ -17,25 +17,9 @@ namespace Clickra.UI
             var (currentFiles, cmd) = GetCurrentState();
             if (ProcessEmptyFiles(hwnd, currentFiles)) return;
             var sw = System.Diagnostics.Stopwatch.StartNew();
-            try
-            {
-                Action<int, int, string> progressCallback = (curr, tot, msg) =>
-                {
-                    lock (_stateLock)
-                    {
-                        _current = curr;
-                        if (tot > 0) _total = tot;
-                        _message = msg;
-                        if (_total > 0) _targetWidth = 448.0 * _current / _total;
-                    }
-                    UpdateTrayIconProgress();
-                };
-
-                // 立即建立 Pending 紀錄，讓 Dashboard 可即時看到
-                string inputsStr = string.Join(";", currentFiles);
-                try { ClickraStorage.StartActiveRecord(cmd, currentFiles.Count, inputsStr); } catch { }
-
-                string outputDir = ClickraStorage.GetOutputDir(currentFiles[0]);
+            Action<int, int, string> progressCallback = CreateProgressCallback();
+            InitializeStorageRecord(cmd, currentFiles);
+            string outputDir = ClickraStorage.GetOutputDir(currentFiles[0]);
 
                 // 開始實際處理，切換為 InProgress
                 try { ClickraStorage.SetActiveRecordInProgress(); } catch { }

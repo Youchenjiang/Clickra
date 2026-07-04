@@ -19,20 +19,15 @@ namespace Clickra.UI
             float contentH = GetContentHeight(hwnd);
             bool showV = logH < contentH;
             bool showH = logW < 760;
-            float sidebarW = GetSidebarWidth(logW);
-            float contentX = GetContentX(logW);
 
             if (showV && IsOnVerticalScrollbar(mouseX, logW))
             {
                 var track = GetVerticalTrack(logH, showH);
                 var thumb = GetVerticalThumb(track, logH, contentH);
 
-                if (IsPointWithin(mouseY, track.Y, track.Height))
+                if (IsPointWithin(mouseY, track.Y, track.Height) && IsPointWithin(mouseY, thumb.Y, thumb.Height))
                 {
-                    if (IsPointWithin(mouseY, thumb.Y, thumb.Height))
-                    {
-                        // existing click handling logic for thumb goes here
-                    }
+                    // existing click handling logic for thumb goes here
                 }
             }
         }
