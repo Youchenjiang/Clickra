@@ -145,7 +145,7 @@ namespace Clickra
                             if (!hasCliLevel)
                             {
                                 string dpiStr = ClickraStorage.GetSetting("PdfCompressTargetDpi");
-                                if (string.IsNullOrEmpty(dpiStr)) dpiStr = "120";
+                                if (string.IsNullOrEmpty(dpiStr)) dpiStr = "150";
                                 string qualityStr = ClickraStorage.GetSetting("PdfCompressJpegQuality");
                                 if (string.IsNullOrEmpty(qualityStr)) qualityStr = "75";
                                 string stripStr = ClickraStorage.GetSetting("PdfCompressStripFonts");
@@ -153,7 +153,7 @@ namespace Clickra
                                 string minifyStr = ClickraStorage.GetSetting("PdfCompressMinifyContent");
                                 if (string.IsNullOrEmpty(minifyStr)) minifyStr = "true";
 
-                                if (!int.TryParse(dpiStr, out int dpi)) dpi = 120;
+                                if (!int.TryParse(dpiStr, out int dpi)) dpi = 150;
                                 if (!int.TryParse(qualityStr, out int quality)) quality = 75;
 
                                 pdfOptions = new Dictionary<string, object>

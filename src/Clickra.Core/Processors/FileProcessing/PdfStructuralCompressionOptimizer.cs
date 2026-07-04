@@ -391,14 +391,20 @@ internal static class PdfStructuralCompressionOptimizer
         private static UglyToad.PdfPig.Content.IPdfImage? FindMatchingPigImage(
             List<UglyToad.PdfPig.Content.IPdfImage> pigImages, int w, int h)
         {
-            // Exact match first
-            var exact = pigImages.FirstOrDefault(p => p.WidthInSamples == w && p.HeightInSamples == h);
-            if (exact != null)
-                return exact;
+            // Exact match candidates
+            var exactMatches = pigImages.Where(p => p.WidthInSamples == w && p.HeightInSamples == h).ToList();
+            if (exactMatches.Count == 1)
+                return exactMatches[0];
+            if (exactMatches.Count > 1)
+                return null; // Ambiguous: skip to prevent image corruption/swapping
 
-            // Near match (±2 px tolerance for sub-pixel rounding)
-            return pigImages.FirstOrDefault(p =>
-                Math.Abs(p.WidthInSamples - w) <= 2 && Math.Abs(p.HeightInSamples - h) <= 2);
+            // Near match candidates (±2 px tolerance for sub-pixel rounding)
+            var nearMatches = pigImages.Where(p =>
+                Math.Abs(p.WidthInSamples - w) <= 2 && Math.Abs(p.HeightInSamples - h) <= 2).ToList();
+            if (nearMatches.Count == 1)
+                return nearMatches[0];
+
+            return null; // Ambiguous or not found
         }
 
         private static bool ComputeDownsampleTarget(

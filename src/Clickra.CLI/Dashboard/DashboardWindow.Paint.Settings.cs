@@ -477,7 +477,7 @@ namespace Clickra.UI
             return ClickraStorage.GetSetting("PdfCompressTargetDpi") switch {
                 "300" => 3,
                 "150" => 2,
-                "0" => 0,
+                "0" => 3,
                 _ => 1  // default: 120 DPI = level 1 (小檔)
             };
         }
