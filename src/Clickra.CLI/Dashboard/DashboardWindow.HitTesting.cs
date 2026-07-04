@@ -57,9 +57,7 @@ namespace Clickra.UI
         static int HitTest(IntPtr hwnd, int x, int y)
         {
             float rawLogW = GetLogicalWidth(hwnd);
-            float rawLogH = GetLogicalHeight(hwnd);
             float logW = Math.Max(760f, rawLogW);
-            float logH = Math.Max(460f, rawLogH);
 
             float sidebarW = GetSidebarWidth(logW);
             float contentX = GetContentX(logW);

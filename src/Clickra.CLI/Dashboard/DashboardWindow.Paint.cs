@@ -55,7 +55,7 @@ namespace Clickra.UI
             // Draw Version Number in bottom-left of sidebar
             if (_subFont != null)
             {
-                var ver = System.Reflection.Assembly.GetExecutingAssembly().GetName().Version;
+                var ver = typeof(DashboardWindow).Assembly.GetName().Version;
                 string verStr = ver != null ? $"{ver.Major}.{ver.Minor}.{ver.Build}" : "Unknown";
                 using var verBrush = new SolidBrush(Color.FromArgb(120, 120, 120));
                 g.DrawString($"v{verStr}", _subFont, verBrush, 24 * s, (logH - 24) * s);

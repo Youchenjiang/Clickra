@@ -33,7 +33,7 @@ namespace Clickra
             try { SetProcessDpiAwarenessContext((IntPtr)(-4)); } catch { }
             if (args.Length == 0 || args[0] == "-v" || args[0] == "--version")
             {
-                var version = Assembly.GetExecutingAssembly().GetName().Version?.ToString(3) ?? "Unknown";
+                var version = typeof(ClickraCli).Assembly.GetName().Version?.ToString(3) ?? "Unknown";
                 
                 if (args.Length == 0)
                 {

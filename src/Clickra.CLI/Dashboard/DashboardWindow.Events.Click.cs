@@ -716,7 +716,7 @@ namespace Clickra.UI
                         });
                     }
 
-                    var ver = System.Reflection.Assembly.GetExecutingAssembly().GetName().Version;
+                    var ver = typeof(DashboardWindow).Assembly.GetName().Version;
                     string verStr = ver != null ? $"{ver.Major}.{ver.Minor}.{ver.Build}" : "Unknown";
                     string timeStr = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
                     string subject = Uri.EscapeDataString("Clickra Diagnostics Report");
