@@ -68,7 +68,7 @@ internal static class PdfStructuralCompressionOptimizer
                 return;
 
             byte[] originalBytes = content.Stream.Value;
-            byte[] decodedBytes = Array.Empty<byte>();
+            byte[] decodedBytes;
             try
             {
                 decodedBytes = content.Stream.UnfilteredValue;
@@ -132,7 +132,7 @@ internal static class PdfStructuralCompressionOptimizer
                 if (usage.Reference.Value is not PdfDictionary fontFile || fontFile.Stream == null)
                     continue;
 
-                byte[] bytes = Array.Empty<byte>();
+                byte[] bytes;
                 try
                 {
                     bytes = fontFile.Stream.UnfilteredValue;
@@ -296,7 +296,7 @@ internal static class PdfStructuralCompressionOptimizer
                     if (pigImages.Count == 0)
                         continue;
 
-                    ProcessPageImages(document, page, pigImages, targetDpi, jpegQuality);
+                    ProcessPageImages(page, pigImages, targetDpi, jpegQuality);
                 }
             }
             finally
@@ -335,7 +335,7 @@ internal static class PdfStructuralCompressionOptimizer
             }
         }
 
-        private static void ProcessPageImages(PdfDocument document, PdfPage page,
+        private static void ProcessPageImages(PdfPage page,
             List<UglyToad.PdfPig.Content.IPdfImage> pigImages, double targetDpi, int jpegQuality)
         {
             PdfDictionary? resources = page.Elements.GetDictionary("/Resources");
