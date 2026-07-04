@@ -5,9 +5,16 @@ namespace Clickra.Core
 {
     public static class Localization
     {
+        private const string LangTw = "zh-TW";
+        private const string LangCn = "zh-CN";
+        private const string LangEn = "en-US";
+        private const string LangJa = "ja-JP";
+        private const string LangKo = "ko-KR";
+        private const string KeyCmdCompressPdf = "cmd_compress_pdf";
+
         private static readonly Dictionary<string, Dictionary<string, string>> Translations = new(StringComparer.OrdinalIgnoreCase)
         {
-            ["zh-TW"] = new(StringComparer.OrdinalIgnoreCase)
+            [LangTw] = new(StringComparer.OrdinalIgnoreCase)
             {
                 ["tab_status"] = "狀態",
                 ["tab_history"] = "歷史",
@@ -148,7 +155,7 @@ namespace Clickra.Core
                 ["dialog_ok"] = "確定",
                 ["dialog_cancel"] = "取消"
             },
-            ["zh-CN"] = new(StringComparer.OrdinalIgnoreCase)
+            [LangCn] = new(StringComparer.OrdinalIgnoreCase)
             {
                 ["tab_status"] = "状态",
                 ["tab_history"] = "历史",
@@ -289,7 +296,7 @@ namespace Clickra.Core
                 ["dialog_ok"] = "确定",
                 ["dialog_cancel"] = "取消"
             },
-            ["en-US"] = new(StringComparer.OrdinalIgnoreCase)
+            [LangEn] = new(StringComparer.OrdinalIgnoreCase)
             {
                 ["tab_status"] = "Status",
                 ["tab_history"] = "History",
@@ -430,7 +437,7 @@ namespace Clickra.Core
                 ["dialog_ok"] = "OK",
                 ["dialog_cancel"] = "Cancel"
             },
-            ["ja-JP"] = new(StringComparer.OrdinalIgnoreCase)
+            [LangJa] = new(StringComparer.OrdinalIgnoreCase)
             {
                 ["tab_status"] = "状態",
                 ["tab_history"] = "履歴",
@@ -571,7 +578,7 @@ namespace Clickra.Core
                 ["dialog_ok"] = "確定",
                 ["dialog_cancel"] = "キャンセル"
             },
-            ["ko-KR"] = new(StringComparer.OrdinalIgnoreCase)
+            [LangKo] = new(StringComparer.OrdinalIgnoreCase)
             {
                 ["tab_status"] = "상태",
                 ["tab_history"] = "기록",
@@ -723,13 +730,13 @@ namespace Clickra.Core
                 langCode = System.Globalization.CultureInfo.CurrentUICulture.Name;
             }
 
-            if (langCode.StartsWith("en", StringComparison.OrdinalIgnoreCase)) return "en-US";
-            if (langCode.Equals("zh-CN", StringComparison.OrdinalIgnoreCase)) return "zh-CN";
-            if (langCode.StartsWith("ja", StringComparison.OrdinalIgnoreCase)) return "ja-JP";
-            if (langCode.StartsWith("ko", StringComparison.OrdinalIgnoreCase)) return "ko-KR";
-            if (langCode.StartsWith("zh", StringComparison.OrdinalIgnoreCase)) return "zh-TW";
+            if (langCode.StartsWith("en", StringComparison.OrdinalIgnoreCase)) return LangEn;
+            if (langCode.Equals(LangCn, StringComparison.OrdinalIgnoreCase)) return LangCn;
+            if (langCode.StartsWith("ja", StringComparison.OrdinalIgnoreCase)) return LangJa;
+            if (langCode.StartsWith("ko", StringComparison.OrdinalIgnoreCase)) return LangKo;
+            if (langCode.StartsWith("zh", StringComparison.OrdinalIgnoreCase)) return LangTw;
 
-            return "zh-TW";
+            return LangTw;
         }
 
         public static string T(string key, string langCode)
@@ -743,7 +750,7 @@ namespace Clickra.Core
             }
 
             // Fallback: If not found in target language, try Traditional Chinese (zh-TW)
-            if (targetKey != "zh-TW" && Translations.TryGetValue("zh-TW", out var twDict) && twDict.TryGetValue(key, out var twTranslated))
+            if (targetKey != LangTw && Translations.TryGetValue(LangTw, out var twDict) && twDict.TryGetValue(key, out var twTranslated))
             {
                 return twTranslated;
             }
@@ -760,113 +767,44 @@ namespace Clickra.Core
         private static void RegisterCompressionTranslations()
         {
             // Register cmd_compress_pdf
-            Translations["zh-TW"]["cmd_compress_pdf"] = "壓縮 PDF";
-            Translations["zh-CN"]["cmd_compress_pdf"] = "压缩 PDF";
-            Translations["en-US"]["cmd_compress_pdf"] = "Compress PDF";
-            Translations["ja-JP"]["cmd_compress_pdf"] = "PDF 圧縮";
-            Translations["ko-KR"]["cmd_compress_pdf"] = "PDF 압축";
+            Translations[LangTw][KeyCmdCompressPdf] = "壓縮 PDF";
+            Translations[LangCn][KeyCmdCompressPdf] = "压缩 PDF";
+            Translations[LangEn][KeyCmdCompressPdf] = "Compress PDF";
+            Translations[LangJa][KeyCmdCompressPdf] = "PDF 圧縮";
+            Translations[LangKo][KeyCmdCompressPdf] = "PDF 압축";
 
-            AddCompressDetails("zh-TW", 
-                "PDF 壓縮設定",
-                "自訂 PDF 壓縮的字型、圖片解析度與向量結構簡化方式",
-                "圖片壓縮",
-                "其他優化",
-                "目標解析度 (DPI)",
-                "JPEG 質量",
-                "剝離嵌入字型以極致壓縮",
-                "簡化向量圖形與排版結構",
-                "← 體積最小",
-                "質量最高 →",
-                "極小",
-                "小檔",
-                "標準",
-                "高品質");
+            var data = new[]
+            {
+                new[] { LangTw, "PDF 壓縮設定", "自訂 PDF 壓縮的字型、圖片解析度與向量結構簡化方式", "圖片壓縮", "其他優化", "目標解析度 (DPI)", "JPEG 質量", "剝離嵌入字型以極致壓縮", "簡化向量圖形與排版結構", "← 體積最小", "質量最高 →", "極小", "小檔", "標準", "高品質" },
+                new[] { LangCn, "PDF 压缩设置", "自定义 PDF 压缩的字体、图片分辨率与矢量结构简化方式", "图片压缩", "其他优化", "目标分辨率 (DPI)", "JPEG 质量", "剥离嵌入字体以极致压缩", "简化矢量图形与排版结构", "← 体积最小", "质量最高 →", "极小", "小档", "标准", "高质量" },
+                new[] { LangEn, "PDF Compression Settings", "Customize font embedding, image resolution, and vector structure options", "Image Compression", "Other Optimization", "Target DPI", "JPEG Quality", "Strip Embedded Fonts for Maximum Compression", "Minify Vector Graphics & Content Streams", "← Smaller", "Higher Quality →", "Min", "Small", "Std", "High" },
+                new[] { LangJa, "PDF 圧縮設定", "フォントの埋め込み、画像の解像度、ベクター構造の最適化をカスタマイズします", "画像圧縮", "その他の最適化", "目標解像度 (DPI)", "JPEG 画質", "フォントの埋め込みを解除して極限圧縮", "ベクターグラフィックスとコンテンツストリームの簡素化", "← 最小サイズ", "最高品質 →", "最小", "小", "標準", "高品質" },
+                new[] { LangKo, "PDF 압축 설정", "글꼴 포함, 이미지 해상도 및 벡터 구조 최적화 옵션을 사용자 정의합니다", "이미지 압축", "기타 최적화", "대상 해상도 (DPI)", "JPEG 화질", "글꼴 포함을 해제하여 극대 압축", "벡터 그래픽 및 콘텐츠 스트림 단순화", "← 최소 크기", "최고 품질 →", "최소", "소형", "표준", "고품질" }
+            };
 
-            AddCompressDetails("zh-CN",
-                "PDF 压缩设置",
-                "自定义 PDF 压缩的字体、图片分辨率与矢量结构简化方式",
-                "图片压缩",
-                "其他优化",
-                "目标分辨率 (DPI)",
-                "JPEG 质量",
-                "剥离嵌入字体以极致压缩",
-                "简化矢量图形与排版结构",
-                "← 体积最小",
-                "质量最高 →",
-                "极小",
-                "小档",
-                "标准",
-                "高质量");
-
-            AddCompressDetails("en-US",
-                "PDF Compression Settings",
-                "Customize font embedding, image resolution, and vector structure options",
-                "Image Compression",
-                "Other Optimization",
-                "Target DPI",
-                "JPEG Quality",
-                "Strip Embedded Fonts for Maximum Compression",
-                "Minify Vector Graphics & Content Streams",
-                "← Smaller",
-                "Higher Quality →",
-                "Min",
-                "Small",
-                "Std",
-                "High");
-
-            AddCompressDetails("ja-JP",
-                "PDF 圧縮設定",
-                "フォントの埋め込み、画像の解像度、ベクター構造の最適化をカスタマイズします",
-                "画像圧縮",
-                "その他の最適化",
-                "目標解像度 (DPI)",
-                "JPEG 画質",
-                "フォントの埋め込みを解除して極限圧縮",
-                "ベクターグラフィックスとコンテンツストリームの簡素化",
-                "← 最小サイズ",
-                "最高品質 →",
-                "最小",
-                "小",
-                "標準",
-                "高品質");
-
-            AddCompressDetails("ko-KR",
-                "PDF 압축 설정",
-                "글꼴 포함, 이미지 해상도 및 벡터 구조 최적화 옵션을 사용자 정의합니다",
-                "이미지 압축",
-                "기타 최적화",
-                "대상 해상도 (DPI)",
-                "JPEG 화질",
-                "글꼴 포함을 해제하여 극대 압축",
-                "벡터 그래픽 및 콘텐츠 스트림 단순화",
-                "← 최소 크기",
-                "최고 품질 →",
-                "최소",
-                "소형",
-                "표준",
-                "고품질");
+            foreach (var row in data)
+            {
+                AddCompressDetails(row[0], row);
+            }
         }
 
-        private static void AddCompressDetails(
-            string lang, string title, string desc, string groupImg, string groupOther,
-            string dpi, string quality, string strip, string minify,
-            string smaller, string higher, string min, string small, string std, string high)
+        private static void AddCompressDetails(string lang, string[] values)
         {
             var dict = Translations[lang];
-            dict["setting_pdf_compress_title"] = title;
-            dict["setting_pdf_compress_desc"] = desc;
-            dict["setting_pdf_compress_group_image"] = groupImg;
-            dict["setting_pdf_compress_group_other"] = groupOther;
-            dict["setting_pdf_compress_dpi"] = dpi;
-            dict["setting_pdf_compress_quality"] = quality;
-            dict["setting_pdf_compress_strip_fonts"] = strip;
-            dict["setting_pdf_compress_minify_content"] = minify;
-            dict["setting_pdf_compress_smaller"] = smaller;
-            dict["setting_pdf_compress_higher"] = higher;
-            dict["setting_pdf_compress_level_min"] = min;
-            dict["setting_pdf_compress_level_small"] = small;
-            dict["setting_pdf_compress_level_std"] = std;
-            dict["setting_pdf_compress_level_high"] = high;
+            dict["setting_pdf_compress_title"] = values[1];
+            dict["setting_pdf_compress_desc"] = values[2];
+            dict["setting_pdf_compress_group_image"] = values[3];
+            dict["setting_pdf_compress_group_other"] = values[4];
+            dict["setting_pdf_compress_dpi"] = values[5];
+            dict["setting_pdf_compress_quality"] = values[6];
+            dict["setting_pdf_compress_strip_fonts"] = values[7];
+            dict["setting_pdf_compress_minify_content"] = values[8];
+            dict["setting_pdf_compress_smaller"] = values[9];
+            dict["setting_pdf_compress_higher"] = values[10];
+            dict["setting_pdf_compress_level_min"] = values[11];
+            dict["setting_pdf_compress_level_small"] = values[12];
+            dict["setting_pdf_compress_level_std"] = values[13];
+            dict["setting_pdf_compress_level_high"] = values[14];
         }
     }
 }
