@@ -29,13 +29,6 @@ internal class MyMemoryTranslator : ITranslationEngine
         {
             if (File.Exists(path)) return path;
         }
-        try
-        {
-            using var proc = Process.Start(new ProcessStartInfo("where", "node") { RedirectStandardOutput = true, CreateNoWindow = true, UseShellExecute = false });
-            string? result = proc?.StandardOutput.ReadToEnd().Trim();
-            if (!string.IsNullOrEmpty(result) && File.Exists(result)) return result;
-        }
-        catch { }
         return null;
     }
 
