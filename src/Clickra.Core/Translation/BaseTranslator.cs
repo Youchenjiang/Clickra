@@ -3,58 +3,57 @@ using System.Net.Http;
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace Clickra.Core
+namespace Clickra.Core;
+
+internal abstract class BaseTranslator : ITranslationEngine
 {
-    internal abstract class BaseTranslator : ITranslationEngine
+    public abstract string Name { get; }
+    protected static readonly HttpClient HttpClient = new() { Timeout = TimeSpan.FromSeconds(20) };
+    private static readonly SemaphoreSlim ConcurrencySemaphore = new(1, 1);
+    private static readonly Random Rnd = new();
+
+    public abstract Task<string> TranslateInternalAsync(string text, string targetLanguage, CancellationToken cancellationToken);
+    public abstract Task<List<string>> TranslateBatchAsync(List<string> texts, string targetLanguage, CancellationToken cancellationToken);
+
+    public async Task<string> TranslateAsync(string text, string targetLanguage, CancellationToken cancellationToken)
     {
-        public abstract string Name { get; }
-        protected static readonly HttpClient HttpClient = new() { Timeout = TimeSpan.FromSeconds(20) };
-        private static readonly SemaphoreSlim ConcurrencySemaphore = new(1, 1);
-        private static readonly Random Rnd = new();
+        if (string.IsNullOrWhiteSpace(text)) return text;
 
-        public abstract Task<string> TranslateInternalAsync(string text, string targetLanguage, CancellationToken cancellationToken);
-        public abstract Task<List<string>> TranslateBatchAsync(List<string> texts, string targetLanguage, CancellationToken cancellationToken);
-
-        public async Task<string> TranslateAsync(string text, string targetLanguage, CancellationToken cancellationToken)
+        int retries = 5;
+        int delayMs = 1500;
+        while (true)
         {
-            if (string.IsNullOrWhiteSpace(text)) return text;
-
-            int retries = 5;
-            int delayMs = 1500;
-            while (true)
+            await ConcurrencySemaphore.WaitAsync(cancellationToken);
+            try
             {
-                await ConcurrencySemaphore.WaitAsync(cancellationToken);
-                try
-                {
-                    int sleepMs = Rnd.Next(150, 400);
-                    await Task.Delay(sleepMs, cancellationToken);
+                int sleepMs = Rnd.Next(150, 400);
+                await Task.Delay(sleepMs, cancellationToken);
 
-                    string result = await TranslateInternalAsync(text, targetLanguage, cancellationToken);
-                    return string.IsNullOrWhiteSpace(result) ? text : result;
-                }
-                catch (Exception) when (retries > 0 && !cancellationToken.IsCancellationRequested)
-                {
-                    retries--;
-                }
-                finally
-                {
-                    ConcurrencySemaphore.Release();
-                }
-
-                await Task.Delay(delayMs, cancellationToken);
-                delayMs *= 2;
+                string result = await TranslateInternalAsync(text, targetLanguage, cancellationToken);
+                return string.IsNullOrWhiteSpace(result) ? text : result;
             }
-        }
-
-        protected string NormalizeLanguageCode(string code)
-        {
-            code = code.ToLowerInvariant();
-            return code switch
+            catch (Exception) when (retries > 0 && !cancellationToken.IsCancellationRequested)
             {
-                "zh-tw" => "zh-TW",
-                "zh-cn" => "zh-CN",
-                _ => code
-            };
+                retries--;
+            }
+            finally
+            {
+                ConcurrencySemaphore.Release();
+            }
+
+            await Task.Delay(delayMs, cancellationToken);
+            delayMs *= 2;
         }
+    }
+
+    protected string NormalizeLanguageCode(string code)
+    {
+        code = code.ToLowerInvariant();
+        return code switch
+        {
+            "zh-tw" => "zh-TW",
+            "zh-cn" => "zh-CN",
+            _ => code
+        };
     }
 }
