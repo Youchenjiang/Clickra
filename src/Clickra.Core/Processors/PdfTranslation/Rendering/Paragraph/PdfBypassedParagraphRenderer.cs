@@ -62,6 +62,27 @@ namespace Clickra.Core.Processors
             return $"{letter.X:F2}|{letter.Y:F2}|{letter.Value}";
         }
 
+        internal static int FindFormulaSubsequence(IReadOnlyList<PdfLetter> allLetters, IReadOnlyList<MathLetter> formulaLetters)
+        {
+            int formulaLength = formulaLetters.Count;
+            if (formulaLength == 0) return -1;
+
+            for (int i = 0; i <= allLetters.Count - formulaLength; i++)
+            {
+                bool match = true;
+                for (int j = 0; j < formulaLength; j++)
+                {
+                    if (allLetters[i + j].Value != formulaLetters[j].Value)
+                    {
+                        match = false;
+                        break;
+                    }
+                }
+                if (match) return i;
+            }
+            return -1;
+        }
+
         private static HashSet<string> BuildFormulaLetterKeys(PdfParagraph para)
         {
             var keys = new HashSet<string>(StringComparer.Ordinal);
@@ -69,26 +90,14 @@ namespace Clickra.Core.Processors
 
             foreach (var formula in para.Formulas)
             {
-                string needle = string.Concat(formula.Letters.Select(l => l.Value));
-                if (needle.Length == 0) continue;
-
-                for (int i = 0; i <= para.AllLetters.Count - needle.Length; i++)
+                int startIdx = FindFormulaSubsequence(para.AllLetters, formula.Letters);
+                if (startIdx >= 0)
                 {
-                    bool match = true;
-                    for (int j = 0; j < needle.Length; j++)
+                    int formulaLength = formula.Letters.Count;
+                    for (int j = 0; j < formulaLength; j++)
                     {
-                        if (para.AllLetters[i + j].Value != formula.Letters[j].Value)
-                        {
-                            match = false;
-                            break;
-                        }
+                        keys.Add(FormulaLetterKey(para.AllLetters[startIdx + j]));
                     }
-                    if (!match) continue;
-                    for (int j = 0; j < needle.Length; j++)
-                    {
-                        keys.Add(FormulaLetterKey(para.AllLetters[i + j]));
-                    }
-                    break;
                 }
             }
             return keys;
@@ -97,26 +106,9 @@ namespace Clickra.Core.Processors
         private static void RenderBypassedFormula(
             XGraphics gfx, PdfParagraph para, MathFormula formula, double pageHeight, XBrush brush)
         {
-            if (formula.Letters.Count == 0) return;
-            string needle = string.Concat(formula.Letters.Select(l => l.Value));
-            int startIdx = -1;
-            for (int i = 0; i <= para.AllLetters.Count - needle.Length; i++)
-            {
-                bool match = true;
-                for (int j = 0; j < needle.Length; j++)
-                {
-                    if (para.AllLetters[i + j].Value != formula.Letters[j].Value)
-                    {
-                        match = false;
-                        break;
-                    }
-                }
-                if (match)
-                {
-                    startIdx = i;
-                    break;
-                }
-            }
+            int formulaLength = formula.Letters.Count;
+            if (formulaLength == 0) return;
+            int startIdx = FindFormulaSubsequence(para.AllLetters, formula.Letters);
 
             if (startIdx < 0)
             {

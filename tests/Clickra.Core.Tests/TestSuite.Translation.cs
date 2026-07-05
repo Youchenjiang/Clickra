@@ -172,6 +172,33 @@ static partial class TestSuite
                 "Fallback must not run after caller cancellation.");
         });
 
+        runner.Run("PdfBypassedParagraphRenderer handles ligatures correctly without crashing", () =>
+        {
+            var allLetters = new List<PdfLetter>
+            {
+                new PdfLetter { Value = "f", X = 10, Y = 10 },
+                new PdfLetter { Value = "i", X = 20, Y = 10 },
+                new PdfLetter { Value = "n", X = 30, Y = 10 },
+                new PdfLetter { Value = "d", X = 40, Y = 10 }
+            };
+
+            var formulaLetters = new List<MathLetter>
+            {
+                new MathLetter { Value = "fi", X = 10, Y = 10 }
+            };
+
+            int index = PdfBypassedParagraphRenderer.FindFormulaSubsequence(allLetters, formulaLetters);
+            Assert.True(index == -1, $"Expected -1, got {index}");
+
+            var formulaLettersMatching = new List<MathLetter>
+            {
+                new MathLetter { Value = "f", X = 10, Y = 10 },
+                new MathLetter { Value = "i", X = 20, Y = 10 }
+            };
+            int indexMatching = PdfBypassedParagraphRenderer.FindFormulaSubsequence(allLetters, formulaLettersMatching);
+            Assert.True(indexMatching == 0, $"Expected 0, got {indexMatching}");
+        });
+
         if (string.Equals(Environment.GetEnvironmentVariable("CLICKRA_RUN_TRANSLATION_SMOKE"), "1", StringComparison.Ordinal))
         {
             runner.Run("MyMemory translator smoke test", () =>
