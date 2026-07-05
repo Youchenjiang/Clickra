@@ -26,7 +26,7 @@ Most productivity scripts (PDF merging, image conversion, etc.) are typically wr
 | :--- | :--- | :--- |
 | **v3.6.1.0** | 2026/07/05 | **PDF Translation Crash Fix**. Resolved IndexOutOfRangeException in PDF translation pipeline when parsing mathematical formulas containing font ligatures. |
 | **v3.6.0.0** | 2026/07/02 | **PDF Compression & Settings Slider**. Added native PDFsharp and GDI+ compression, skip downsampling for small images, large font unembedding, and a compact 4-stop horizontal settings slider UI. |
-| **v3.5.0.0** | Jun 29, 2026 | **LibreOffice Offline Engine**. Added managed LibreOffice fallback for Office-to-PDF conversion, Office engine selection, and grouped Convert tools. |
+| **v3.5.0.0** | 2026/06/29 | **LibreOffice Offline Engine**. Added managed LibreOffice fallback for Office-to-PDF conversion, Office engine selection, and grouped Convert tools. |
 
 [View Full Changelog](CHANGELOG.md)
 
