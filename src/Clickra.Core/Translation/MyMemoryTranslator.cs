@@ -125,8 +125,10 @@ req.setTimeout(20000, () => { req.destroy(); process.exit(5); });
             try { process.Kill(true); } catch { }
         });
 
-        string output = await process.StandardOutput.ReadToEndAsync(cancellationToken);
-        string error = await process.StandardError.ReadToEndAsync(cancellationToken);
+        var outputTask = process.StandardOutput.ReadToEndAsync(cancellationToken);
+        var errorTask = process.StandardError.ReadToEndAsync(cancellationToken);
+        string output = await outputTask;
+        string error = await errorTask;
         await process.WaitForExitAsync(cancellationToken);
 
         if (process.ExitCode != 0 || string.IsNullOrWhiteSpace(output))
