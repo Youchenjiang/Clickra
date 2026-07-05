@@ -197,13 +197,7 @@ namespace Clickra.Core
     public class MyMemoryTranslator : ITranslationEngine
     {
         private static int _nodeTransportRequired;
-        private static readonly HttpClient HttpClient = new HttpClient(new SocketsHttpHandler
-        {
-            SslOptions = new SslClientAuthenticationOptions
-            {
-                EnabledSslProtocols = SslProtocols.Tls12 | SslProtocols.Tls13
-            }
-        })
+        private static readonly HttpClient HttpClient = new HttpClient()
         {
             Timeout = TimeSpan.FromSeconds(8)
         };
