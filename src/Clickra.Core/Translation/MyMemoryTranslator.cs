@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Linq;
 using System.Net.Http;
 using System.Text.Json;
 using System.Threading;
@@ -25,11 +26,7 @@ internal class MyMemoryTranslator : ITranslationEngine
             Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Programs", "nodejs", "node.exe"),
             Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFilesX86), "nodejs", "node.exe"),
         };
-        foreach (var path in knownPaths)
-        {
-            if (File.Exists(path)) return path;
-        }
-        return null;
+        return knownPaths.FirstOrDefault(File.Exists);
     }
 
     public string Name => "mymemory";
@@ -69,7 +66,7 @@ internal class MyMemoryTranslator : ITranslationEngine
         }
     }
 
-    private async Task<string> TranslateInternalAsync(string text, string targetLanguage, CancellationToken cancellationToken)
+    private static async Task<string> TranslateInternalAsync(string text, string targetLanguage, CancellationToken cancellationToken)
     {
         string langPair = Uri.EscapeDataString($"en|{NormalizeLanguageCode(targetLanguage)}");
         string query = Uri.EscapeDataString(text);
@@ -141,7 +138,7 @@ req.setTimeout(20000, () => { req.destroy(); process.exit(5); });
 
         using var registration = cancellationToken.Register(() =>
         {
-            try { process.Kill(true); } catch { }
+            try { process.Kill(true); } catch { /* Process may have already exited */ }
         });
 
         var outputTask = process.StandardOutput.ReadToEndAsync(cancellationToken);

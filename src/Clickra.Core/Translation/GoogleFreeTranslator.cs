@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Net.Http;
 using System.Text.Json;
 using System.Threading;
@@ -56,12 +57,7 @@ internal class GoogleFreeTranslator : BaseTranslator
                 string lang = Uri.EscapeDataString(NormalizeLanguageCode(targetLanguage));
                 string url = $"https://translate.google.com/translate_a/t?client=at&sl=auto&tl={lang}";
 
-                var list = new List<KeyValuePair<string, string>>();
-                foreach (var text in texts)
-                {
-                    list.Add(new KeyValuePair<string, string>("q", text));
-                }
-
+                var list = texts.Select(t => new KeyValuePair<string, string>("q", t)).ToList();
                 var content = new FormUrlEncodedContent(list);
                 using var request = new HttpRequestMessage(HttpMethod.Post, url);
                 request.Content = content;
@@ -74,24 +70,7 @@ internal class GoogleFreeTranslator : BaseTranslator
                 using var doc = JsonDocument.Parse(json);
                 var root = doc.RootElement;
 
-                if (root.ValueKind == JsonValueKind.Array)
-                {
-                    var results = new List<string>();
-                    foreach (var element in root.EnumerateArray())
-                    {
-                        if (element.ValueKind == JsonValueKind.Array && element.GetArrayLength() > 0)
-                        {
-                            var translated = element[0].GetString();
-                            results.Add(translated ?? "");
-                        }
-                        else
-                        {
-                            results.Add("");
-                        }
-                    }
-                    return results;
-                }
-                throw new InvalidOperationException("Unexpected response format from Google Mobile Translate.");
+                return ParseBatchResponse(root);
             }
             catch (Exception) when (retries > 0 && !cancellationToken.IsCancellationRequested)
             {
@@ -100,5 +79,20 @@ internal class GoogleFreeTranslator : BaseTranslator
                 delayMs *= 2;
             }
         }
+    }
+
+    private static List<string> ParseBatchResponse(JsonElement root)
+    {
+        if (root.ValueKind != JsonValueKind.Array)
+            throw new InvalidOperationException("Unexpected response format from Google Mobile Translate.");
+
+        var results = new List<string>();
+        foreach (var element in root.EnumerateArray())
+        {
+            results.Add(element.ValueKind == JsonValueKind.Array && element.GetArrayLength() > 0
+                ? element[0].GetString() ?? ""
+                : "");
+        }
+        return results;
     }
 }

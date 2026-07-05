@@ -38,7 +38,7 @@ internal class FallbackTranslator : ITranslationEngine
         foreach (var chunk in BuildChunks(texts, maxItems: 24, maxChars: 6000))
         {
             cancellationToken.ThrowIfCancellationRequested();
-            List<string> translated = new();
+            List<string> translated;
             try
             {
                 translated = await _primary.TranslateBatchAsync(chunk, targetLanguage, cancellationToken);
@@ -47,7 +47,7 @@ internal class FallbackTranslator : ITranslationEngine
             }
             catch (Exception ex) when (!cancellationToken.IsCancellationRequested)
             {
-                Console.Error.WriteLine(
+                await Console.Error.WriteLineAsync(
                     $"[Translate] {_primary.Name} batch failed ({ex.Message}); falling back to {_fallback.Name}.");
                 translated = await _fallback.TranslateBatchAsync(chunk, targetLanguage, cancellationToken);
                 if (translated.Count != chunk.Count)

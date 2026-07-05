@@ -46,7 +46,7 @@ internal abstract class BaseTranslator : ITranslationEngine
         }
     }
 
-    protected string NormalizeLanguageCode(string code) => LanguageCodeHelper.Normalize(code);
+    protected static string NormalizeLanguageCode(string code) => LanguageCodeHelper.Normalize(code);
 }
 
 internal static class LanguageCodeHelper
