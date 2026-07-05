@@ -69,13 +69,13 @@ namespace Clickra.Core.Processors
 
             foreach (var formula in para.Formulas)
             {
-                string needle = string.Concat(formula.Letters.Select(l => l.Value));
-                if (needle.Length == 0) continue;
+                int needleCount = formula.Letters.Count;
+                if (needleCount == 0) continue;
 
-                for (int i = 0; i <= para.AllLetters.Count - needle.Length; i++)
+                for (int i = 0; i <= para.AllLetters.Count - needleCount; i++)
                 {
                     bool match = true;
-                    for (int j = 0; j < needle.Length; j++)
+                    for (int j = 0; j < needleCount; j++)
                     {
                         if (para.AllLetters[i + j].Value != formula.Letters[j].Value)
                         {
@@ -84,7 +84,7 @@ namespace Clickra.Core.Processors
                         }
                     }
                     if (!match) continue;
-                    for (int j = 0; j < needle.Length; j++)
+                    for (int j = 0; j < needleCount; j++)
                     {
                         keys.Add(FormulaLetterKey(para.AllLetters[i + j]));
                     }
@@ -97,13 +97,13 @@ namespace Clickra.Core.Processors
         private static void RenderBypassedFormula(
             XGraphics gfx, PdfParagraph para, MathFormula formula, double pageHeight, XBrush brush)
         {
-            if (formula.Letters.Count == 0) return;
-            string needle = string.Concat(formula.Letters.Select(l => l.Value));
+            int needleCount = formula.Letters.Count;
+            if (needleCount == 0) return;
             int startIdx = -1;
-            for (int i = 0; i <= para.AllLetters.Count - needle.Length; i++)
+            for (int i = 0; i <= para.AllLetters.Count - needleCount; i++)
             {
                 bool match = true;
-                for (int j = 0; j < needle.Length; j++)
+                for (int j = 0; j < needleCount; j++)
                 {
                     if (para.AllLetters[i + j].Value != formula.Letters[j].Value)
                     {
