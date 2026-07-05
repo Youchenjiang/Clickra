@@ -11,10 +11,33 @@ namespace Clickra.Core;
 internal class MyMemoryTranslator : ITranslationEngine
 {
     private static int _nodeTransportRequired;
+    private static readonly string? _nodePath = ResolveNodePath();
     private static readonly HttpClient HttpClient = new()
     {
         Timeout = TimeSpan.FromSeconds(8)
     };
+
+    private static string? ResolveNodePath()
+    {
+        string[] knownPaths = new[]
+        {
+            Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles), "nodejs", "node.exe"),
+            Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Programs", "nodejs", "node.exe"),
+            Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFilesX86), "nodejs", "node.exe"),
+        };
+        foreach (var path in knownPaths)
+        {
+            if (File.Exists(path)) return path;
+        }
+        try
+        {
+            using var proc = Process.Start(new ProcessStartInfo("where", "node") { RedirectStandardOutput = true, CreateNoWindow = true, UseShellExecute = false });
+            string? result = proc?.StandardOutput.ReadToEnd().Trim();
+            if (!string.IsNullOrEmpty(result) && File.Exists(result)) return result;
+        }
+        catch { }
+        return null;
+    }
 
     public string Name => "mymemory";
 
@@ -22,7 +45,10 @@ internal class MyMemoryTranslator : ITranslationEngine
     {
         if (string.IsNullOrWhiteSpace(text)) return text;
         if (Volatile.Read(ref _nodeTransportRequired) == 1)
+        {
+            if (_nodePath == null) throw new InvalidOperationException("Node.js is not installed. Cannot use MyMemory Node fallback.");
             return await TranslateWithNodeAsync(text, targetLanguage, cancellationToken);
+        }
 
         int retries = 2;
         int delayMs = 1000;
@@ -101,7 +127,7 @@ req.on('error', () => process.exit(4));
 req.setTimeout(20000, () => { req.destroy(); process.exit(5); });
 ";
         using var process = new Process();
-        process.StartInfo.FileName = "node";
+        process.StartInfo.FileName = _nodePath!;
         process.StartInfo.UseShellExecute = false;
         process.StartInfo.RedirectStandardOutput = true;
         process.StartInfo.RedirectStandardError = true;
