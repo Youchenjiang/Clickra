@@ -46,14 +46,21 @@ internal abstract class BaseTranslator : ITranslationEngine
         }
     }
 
-    protected string NormalizeLanguageCode(string code)
-    {
-        code = code.ToLowerInvariant();
-        return code switch
-        {
-            "zh-tw" => "zh-TW",
-            "zh-cn" => "zh-CN",
-            _ => code
-        };
+        protected string NormalizeLanguageCode(string code) => LanguageCodeHelper.Normalize(code);
     }
+
+    internal static class LanguageCodeHelper
+    {
+        public static string Normalize(string code)
+        {
+            code = code.ToLowerInvariant();
+            return code switch
+            {
+                "zh-tw" => "zh-TW",
+                "zh-cn" => "zh-CN",
+                _ => code
+            };
+        }
+    }
+}
 }

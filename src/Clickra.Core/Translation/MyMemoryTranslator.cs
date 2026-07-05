@@ -150,14 +150,5 @@ req.setTimeout(20000, () => { req.destroy(); process.exit(5); });
         return results;
     }
 
-    private static string NormalizeLanguageCode(string code)
-    {
-        code = code.ToLowerInvariant();
-        return code switch
-        {
-            "zh-tw" => "zh-TW",
-            "zh-cn" => "zh-CN",
-            _ => code
-        };
-    }
+    private static string NormalizeLanguageCode(string code) => LanguageCodeHelper.Normalize(code);
 }
