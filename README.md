@@ -1,4 +1,4 @@
-# Clickra v3.6.0.0
+# Clickra v3.6.1.0
 
 [![Microsoft Store](https://img.shields.io/badge/Microsoft%20Store-Clickra-blue?style=for-the-badge&logo=microsoft-store)](https://apps.microsoft.com/detail/9NGLBF6P1KLD)
 [![License: Apache 2.0](https://img.shields.io/badge/License-Apache%202.0-blue.svg?style=for-the-badge)](https://opensource.org/licenses/Apache-2.0)
@@ -24,6 +24,7 @@ Most productivity scripts (PDF merging, image conversion, etc.) are typically wr
 
 | Version | Release Date | Key Milestone |
 | :--- | :--- | :--- |
+| **v3.6.1.0** | 2026/07/05 | **PDF Translation Crash Fix**. Resolved IndexOutOfRangeException in PDF translation pipeline when parsing mathematical formulas containing font ligatures. |
 | **v3.6.0.0** | 2026/07/02 | **PDF Compression & Settings Slider**. Added native PDFsharp and GDI+ compression, skip downsampling for small images, large font unembedding, and a compact 4-stop horizontal settings slider UI. |
 | **v3.5.0.0** | Jun 29, 2026 | **LibreOffice Offline Engine**. Added managed LibreOffice fallback for Office-to-PDF conversion, Office engine selection, and grouped Convert tools. |
 

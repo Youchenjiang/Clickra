@@ -2,6 +2,10 @@
 
 All notable changes to Clickra will be documented in this file.
 
+## [v3.6.1.0] - 2026-07-05
+
+- **PDF 翻譯崩潰修復 (PDF Translation Crash Fix)**：修正了 `PdfBypassedParagraphRenderer` 中在處理具有多字元配對（如 PDF 字元合字 ligatures「fi」等）的數學公式字元序列時，因使用 Concatenated Needle 長度做為 `formula.Letters` 陣列索引而導致的 `IndexOutOfRangeException` 崩潰問題。現在改為依據 `formula.Letters` 物件列表的實際長度進行準確的逐一元素比對。
+
 ## [v3.6.0.0] - 2026-07-02
 
 - **PDF 壓縮與最佳化 (PDF Compression & Shrinking)**：實作內建的 PDF 壓縮處理核心，不依賴任何外部工具。
