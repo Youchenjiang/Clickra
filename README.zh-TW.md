@@ -1,4 +1,4 @@
-# Clickra v3.6.1.0
+# Clickra v3.6.2.0
 
 [![Microsoft Store](https://img.shields.io/badge/Microsoft%20Store-Clickra-blue?style=for-the-badge&logo=microsoft-store)](https://apps.microsoft.com/detail/9NGLBF6P1KLD)
 [![License: Apache 2.0](https://img.shields.io/badge/License-Apache%202.0-blue.svg?style=for-the-badge)](https://opensource.org/licenses/Apache-2.0)
@@ -24,9 +24,9 @@
 
 | 版本       | 日期       | 關鍵里程碑                                                             |
 | :--------- | :--------- | :--------------------------------------------------------------------- |
+| **v3.6.2.0** | 2026/07/05 | **SSL/TLS 憑證驗證加強**。移除了 MyMemory 翻譯 API 中非安全的憑證校驗繞過，還原並啟用系統預設 TLS 1.2/1.3 憑證驗證。 |
 | **v3.6.1.0** | 2026/07/05 | **PDF 翻譯崩潰修復**。解決 PDF 翻譯管線中，處理包含合字 (ligatures) 的數學公式字元時拋出 IndexOutOfRangeException 導致失敗的問題。 |
 | **v3.6.0.0** | 2026/07/02 | **PDF 壓縮與設定拉條**。新增內建 PDFsharp 與 GDI+ 壓縮、小圖跳過優化、大字型剝離與 4 停靠點橫向設定拉條 UI。 |
-| **v3.5.0.0** | 2026/06/29 | **LibreOffice 離線引擎**。新增 Word/Excel/PPT 轉 PDF 的 LibreOffice 備援、Office 引擎選擇與分組式轉檔工具。 |
 
 [檢視完整版本歷史](CHANGELOG.md)
 

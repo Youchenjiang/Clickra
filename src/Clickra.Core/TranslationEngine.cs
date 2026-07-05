@@ -201,8 +201,7 @@ namespace Clickra.Core
         {
             SslOptions = new SslClientAuthenticationOptions
             {
-                EnabledSslProtocols = SslProtocols.Tls12,
-                RemoteCertificateValidationCallback = (_, _, _, _) => true
+                EnabledSslProtocols = SslProtocols.Tls12 | SslProtocols.Tls13
             }
         })
         {

@@ -2,6 +2,10 @@
 
 All notable changes to Clickra will be documented in this file.
 
+## [v3.6.2.0] - 2026-07-05
+
+- **SSL/TLS 憑證校驗安全加強 (SSL/TLS Certificate Verification)**：修復了 `MyMemoryTranslator` 的 `HttpClient` 中繞過 SSL/TLS 憑證驗證的安全漏洞。移除了非安全的 `RemoteCertificateValidationCallback`，啟用預設的系統安全證書驗證以防範中間人 (MITM) 攻擊，並將支援的連線協議擴充為 `Tls12` 與 `Tls13`。
+
 ## [v3.6.1.0] - 2026-07-05
 
 - **PDF 翻譯崩潰修復 (PDF Translation Crash Fix)**：修正了 `PdfBypassedParagraphRenderer` 中在處理具有多字元配對（如 PDF 字元合字 ligatures「fi」等）的數學公式字元序列時，因使用 Concatenated Needle 長度做為 `formula.Letters` 陣列索引而導致的 `IndexOutOfRangeException` 崩潰問題。現在改為依據 `formula.Letters` 物件列表的實際長度進行準確的逐一元素比對。

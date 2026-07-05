@@ -131,6 +131,7 @@
 ---
 
 ## 🏁 近期已達成項目 (Recently Accomplished)
+- [x] **v3.6.2.0 SSL/TLS 憑證驗證安全加強** (2026/07/05)：修復了 MyMemory 翻譯 API 連線中繞過憑證驗證的安全漏洞。移除了非安全的 `RemoteCertificateValidationCallback` 委派以重啟系統預設證書校驗防範 MITM，並使連線協議相容 TLS 1.2 與 TLS 1.3。
 - [x] **v3.6.1.0 PDF 翻譯合字越界崩潰修正** (2026/07/05)：修正了學術論文 PDF 翻譯管線中，當公式出現合字（如 "fi" 等在 PdfPig 中為單個 letters 物件但有多字元 Value）時，因錯誤使用拼接後的字元長度作為 `formula.Letters` 陣列索引導致的 `IndexOutOfRangeException` 崩潰問題。改為直接基於 `formula.Letters.Count` 進行子序列元素比對，並以 `2602.08146v2.pdf` 驗證修復。
 - [x] **v3.5.0.0 LibreOffice 離線 Office 轉檔引擎** (2026/06/29)：新增 Auto / Microsoft Office / LibreOffice 引擎選擇，內建 LibreOffice 官方 MSI manifest、SHA256 驗證、背景安裝/移除與版本比對；未安裝 Microsoft Office 時可透過 LibreOffice 在本機完成 Word、Excel、PowerPoint 轉 PDF；並將轉檔頁九個功能依 Office、PDF、圖片分組，提升尋找效率。
 - [x] **v3.4.0.0 Excel 轉 PDF 功能** (2026/06/21)：新增右鍵選單 Excel 轉 PDF 功能，整合 Shell Extension 在地化選單、Dashboard 轉檔卡片與拖放自動偵測、CLI `excel2pdf` 指令及 Overview 頁 Excel 引擎狀態顯示。
