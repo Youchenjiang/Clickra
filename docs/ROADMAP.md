@@ -131,6 +131,7 @@
 ---
 
 ## 🏁 近期已達成項目 (Recently Accomplished)
+- [x] **v3.6.1.0 PDF 翻譯合字越界崩潰修正** (2026/07/05)：修正了學術論文 PDF 翻譯管線中，當公式出現合字（如 "fi" 等在 PdfPig 中為單個 letters 物件但有多字元 Value）時，因錯誤使用拼接後的字元長度作為 `formula.Letters` 陣列索引導致的 `IndexOutOfRangeException` 崩潰問題。改為直接基於 `formula.Letters.Count` 進行子序列元素比對，並以 `2602.08146v2.pdf` 驗證修復。
 - [x] **v3.5.0.0 LibreOffice 離線 Office 轉檔引擎** (2026/06/29)：新增 Auto / Microsoft Office / LibreOffice 引擎選擇，內建 LibreOffice 官方 MSI manifest、SHA256 驗證、背景安裝/移除與版本比對；未安裝 Microsoft Office 時可透過 LibreOffice 在本機完成 Word、Excel、PowerPoint 轉 PDF；並將轉檔頁九個功能依 Office、PDF、圖片分組，提升尋找效率。
 - [x] **v3.4.0.0 Excel 轉 PDF 功能** (2026/06/21)：新增右鍵選單 Excel 轉 PDF 功能，整合 Shell Extension 在地化選單、Dashboard 轉檔卡片與拖放自動偵測、CLI `excel2pdf` 指令及 Overview 頁 Excel 引擎狀態顯示。
 - [x] **v3.3.3.0 PDF 翻譯管線模組化重構與佈局分析增強** (2026/06/21)：將 PDF 翻譯核心引擎拆解為 80+ 個獨立模組（段落、表格、圖表、灰階提示、標註、渲染、翻譯），增強表格偵測、圖表避讓與段落分類邏輯，新增簡繁中文轉換器、翻譯規則文件與 PDF 診斷工具集，完善批次翻譯進度顯示與輸出路徑自訂功能。
