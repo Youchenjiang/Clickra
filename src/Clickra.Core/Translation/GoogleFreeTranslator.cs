@@ -40,7 +40,7 @@ internal class GoogleFreeTranslator : BaseTranslator
                 return first[0].GetString() ?? text;
             }
         }
-        throw new Exception("Unexpected response format from Google Mobile Translate.");
+        throw new InvalidOperationException("Unexpected response format from Google Mobile Translate.");
     }
 
     public override async Task<List<string>> TranslateBatchAsync(List<string> texts, string targetLanguage, CancellationToken cancellationToken)
@@ -91,7 +91,7 @@ internal class GoogleFreeTranslator : BaseTranslator
                     }
                     return results;
                 }
-                throw new Exception("Unexpected response format from Google Mobile Translate.");
+                throw new InvalidOperationException("Unexpected response format from Google Mobile Translate.");
             }
             catch (Exception) when (retries > 0 && !cancellationToken.IsCancellationRequested)
             {

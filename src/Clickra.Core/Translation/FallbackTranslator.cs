@@ -43,7 +43,7 @@ internal class FallbackTranslator : ITranslationEngine
             {
                 translated = await _primary.TranslateBatchAsync(chunk, targetLanguage, cancellationToken);
                 if (translated.Count != chunk.Count)
-                    throw new Exception($"{_primary.Name} returned {translated.Count}/{chunk.Count} results.");
+                    throw new InvalidOperationException($"{_primary.Name} returned {translated.Count}/{chunk.Count} results.");
             }
             catch (Exception ex) when (!cancellationToken.IsCancellationRequested)
             {
@@ -51,14 +51,14 @@ internal class FallbackTranslator : ITranslationEngine
                     $"[Translate] {_primary.Name} batch failed ({ex.Message}); falling back to {_fallback.Name}.");
                 translated = await _fallback.TranslateBatchAsync(chunk, targetLanguage, cancellationToken);
                 if (translated.Count != chunk.Count)
-                    throw new Exception($"{_fallback.Name} returned {translated.Count}/{chunk.Count} results.");
+                    throw new InvalidOperationException($"{_fallback.Name} returned {translated.Count}/{chunk.Count} results.");
             }
 
             results.AddRange(translated);
         }
 
         if (results.Count != texts.Count)
-            throw new Exception($"{Name} returned {results.Count}/{texts.Count} total results.");
+            throw new InvalidOperationException($"{Name} returned {results.Count}/{texts.Count} total results.");
 
         return results;
     }

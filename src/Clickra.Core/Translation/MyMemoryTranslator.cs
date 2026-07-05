@@ -71,7 +71,7 @@ internal class MyMemoryTranslator : ITranslationEngine
             return translatedText.GetString() ?? text;
         }
 
-        throw new Exception("Invalid MyMemory response structure.");
+        throw new InvalidOperationException("Invalid MyMemory response structure.");
     }
 
     private static async Task<string> TranslateWithNodeAsync(string text, string targetLanguage, CancellationToken cancellationToken)
@@ -117,7 +117,7 @@ req.setTimeout(20000, () => { req.destroy(); process.exit(5); });
         }
         catch (Exception ex)
         {
-            throw new Exception("Node.js MyMemory fallback is unavailable.", ex);
+            throw new InvalidOperationException("Node.js MyMemory fallback is unavailable.", ex);
         }
 
         using var registration = cancellationToken.Register(() =>
@@ -130,7 +130,7 @@ req.setTimeout(20000, () => { req.destroy(); process.exit(5); });
         await process.WaitForExitAsync(cancellationToken);
 
         if (process.ExitCode != 0 || string.IsNullOrWhiteSpace(output))
-            throw new Exception($"Node.js MyMemory fallback failed: {process.ExitCode} {error}");
+            throw new InvalidOperationException($"Node.js MyMemory fallback failed: {process.ExitCode} {error}");
 
         return output;
     }
