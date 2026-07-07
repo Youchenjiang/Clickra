@@ -22,8 +22,10 @@ internal class GoogleFreeTranslator : BaseTranslator
             new KeyValuePair<string, string>("q", text)
         });
 
-        using var request = new HttpRequestMessage(HttpMethod.Post, url);
-        request.Content = content;
+        using var request = new HttpRequestMessage(HttpMethod.Post, url)
+        {
+            Content = content
+        };
         request.Headers.UserAgent.ParseAdd("AndroidTranslate/5.3.0.RC02.130758309-53000263 5.1 phone TRANSLATE_MOBILE_APPLICATION");
 
         using var response = await HttpClient.SendAsync(request, cancellationToken);
@@ -59,8 +61,10 @@ internal class GoogleFreeTranslator : BaseTranslator
 
                 var list = texts.Select(t => new KeyValuePair<string, string>("q", t)).ToList();
                 var content = new FormUrlEncodedContent(list);
-                using var request = new HttpRequestMessage(HttpMethod.Post, url);
-                request.Content = content;
+                using var request = new HttpRequestMessage(HttpMethod.Post, url)
+                {
+                    Content = content
+                };
                 request.Headers.UserAgent.ParseAdd("AndroidTranslate/5.3.0.RC02.130758309-53000263 5.1 phone TRANSLATE_MOBILE_APPLICATION");
 
                 using var response = await HttpClient.SendAsync(request, cancellationToken);

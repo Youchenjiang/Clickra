@@ -38,7 +38,7 @@ internal class FallbackTranslator : ITranslationEngine
         foreach (var chunk in BuildChunks(texts, maxItems: 24, maxChars: 6000))
         {
             cancellationToken.ThrowIfCancellationRequested();
-            List<string> translated;
+            List<string>? translated = null;
             try
             {
                 translated = await _primary.TranslateBatchAsync(chunk, targetLanguage, cancellationToken);

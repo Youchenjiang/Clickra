@@ -136,7 +136,7 @@ req.setTimeout(20000, () => { req.destroy(); process.exit(5); });
         {
             process.Start();
         }
-        catch (Exception ex)
+        catch (Exception ex) // skipcq: CS-R1008, CS-W1100
         {
             throw new InvalidOperationException("Node.js MyMemory fallback is unavailable.", ex);
         }
