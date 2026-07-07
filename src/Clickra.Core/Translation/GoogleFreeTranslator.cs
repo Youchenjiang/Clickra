@@ -72,7 +72,7 @@ internal class GoogleFreeTranslator : BaseTranslator
 
                 return ParseBatchResponse(root);
             }
-            catch (Exception) when (retries > 0 && !cancellationToken.IsCancellationRequested)
+            catch (Exception) when (retries > 0 && !cancellationToken.IsCancellationRequested) // skipcq: CS-R1008
             {
                 retries--;
                 await Task.Delay(delayMs, cancellationToken);

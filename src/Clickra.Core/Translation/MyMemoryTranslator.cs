@@ -48,14 +48,14 @@ internal class MyMemoryTranslator : ITranslationEngine
             {
                 return await TranslateInternalAsync(text, targetLanguage, cancellationToken);
             }
-            catch (Exception) when (!cancellationToken.IsCancellationRequested)
+            catch (Exception) when (!cancellationToken.IsCancellationRequested) // skipcq: CS-R1008
             {
                 Interlocked.Exchange(ref _nodeTransportRequired, 1);
                 try
                 {
                     return await TranslateWithNodeAsync(text, targetLanguage, cancellationToken);
                 }
-                catch when (retries > 0 && !cancellationToken.IsCancellationRequested)
+                catch when (retries > 0 && !cancellationToken.IsCancellationRequested) // skipcq: CS-R1008
                 {
                     retries--;
                 }
@@ -116,12 +116,17 @@ const req = https.get(url, res => {
 req.on('error', () => process.exit(4));
 req.setTimeout(20000, () => { req.destroy(); process.exit(5); });
 ";
-        using var process = new Process();
-        process.StartInfo.FileName = _nodePath!;
-        process.StartInfo.UseShellExecute = false;
-        process.StartInfo.RedirectStandardOutput = true;
-        process.StartInfo.RedirectStandardError = true;
-        process.StartInfo.CreateNoWindow = true;
+        using var process = new Process
+        {
+            StartInfo = new ProcessStartInfo
+            {
+                FileName = _nodePath!,
+                UseShellExecute = false,
+                RedirectStandardOutput = true,
+                RedirectStandardError = true,
+                CreateNoWindow = true
+            }
+        };
         process.StartInfo.ArgumentList.Add("-e");
         process.StartInfo.ArgumentList.Add(script);
         process.StartInfo.ArgumentList.Add(text);

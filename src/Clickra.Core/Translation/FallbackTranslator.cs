@@ -24,7 +24,7 @@ internal class FallbackTranslator : ITranslationEngine
         {
             return await _primary.TranslateAsync(text, targetLanguage, cancellationToken);
         }
-        catch when (!cancellationToken.IsCancellationRequested)
+        catch when (!cancellationToken.IsCancellationRequested) // skipcq: CS-R1008
         {
             return await _fallback.TranslateAsync(text, targetLanguage, cancellationToken);
         }
@@ -45,7 +45,7 @@ internal class FallbackTranslator : ITranslationEngine
                 if (translated.Count != chunk.Count)
                     throw new InvalidOperationException($"{_primary.Name} returned {translated.Count}/{chunk.Count} results.");
             }
-            catch (Exception ex) when (!cancellationToken.IsCancellationRequested)
+            catch (Exception ex) when (!cancellationToken.IsCancellationRequested) // skipcq: CS-R1008
             {
                 await Console.Error.WriteLineAsync(
                     $"[Translate] {_primary.Name} batch failed ({ex.Message}); falling back to {_fallback.Name}.");

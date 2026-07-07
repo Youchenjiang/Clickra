@@ -32,7 +32,7 @@ internal abstract class BaseTranslator : ITranslationEngine
                 string result = await TranslateInternalAsync(text, targetLanguage, cancellationToken);
                 return string.IsNullOrWhiteSpace(result) ? text : result;
             }
-            catch (Exception) when (retries > 0 && !cancellationToken.IsCancellationRequested)
+            catch (Exception) when (retries > 0 && !cancellationToken.IsCancellationRequested) // skipcq: CS-R1008
             {
                 retries--;
             }
