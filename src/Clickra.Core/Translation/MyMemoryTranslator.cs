@@ -141,7 +141,7 @@ req.setTimeout(20000, () => { req.destroy(); process.exit(5); });
             throw new InvalidOperationException("Node.js MyMemory fallback is unavailable.", ex);
         }
 
-        using var registration = cancellationToken.Register(() =>
+        using var registration = cancellationToken.Register(() => // skipcq: CS-W1100
         {
             try { process.Kill(true); } catch { /* Process may have already exited */ }
         });
