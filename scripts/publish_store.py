@@ -151,37 +151,58 @@ def save_section(parsed, section, content_lines):
     else:
         parsed[section] = content
 
+def add_missing_zh_cn(listings):
+    existing_langs = [l.lower() for l in listings.keys()]
+    if 'zh-cn' in existing_langs:
+        return
+        
+    print("Adding zh-cn listing to metadata Listings...")
+    template_lang = next((k for k in listings if k.lower() == 'zh-tw'), list(listings.keys())[0])
+    new_listing = copy.deepcopy(listings[template_lang])
+    base = new_listing.get('BaseListing') or new_listing.get('baseListing')
+    if base:
+        base['Title'] = 'Clickra'
+        base['ShortDescription'] = ''
+        base['Description'] = ''
+        base['ReleaseNotes'] = ''
+        base['Features'] = []
+        base['Keywords'] = []
+    listings['zh-cn'] = new_listing
+
+def match_parsed_lang(lang, parsed_listings):
+    for k in parsed_listings:
+        if k.lower() == lang.lower() or (k.lower() == 'en' and lang.lower().startswith('en')):
+            return k
+    return None
+
+def update_single_listing(base_listing, new_data):
+    key_map = {
+        'Description': 'description',
+        'ReleaseNotes': 'releaseNotes',
+        'Features': 'features',
+        'ShortDescription': 'shortDescription',
+        'Keywords': 'keywords'
+    }
+    for json_key, parsed_key in key_map.items():
+        if parsed_key in new_data and new_data[parsed_key]:
+            if json_key in base_listing:
+                base_listing[json_key] = new_data[parsed_key]
+            elif json_key.lower() in base_listing:
+                base_listing[json_key.lower()] = new_data[parsed_key]
+            else:
+                base_listing[json_key] = new_data[parsed_key]
+
 def update_metadata(metadata, parsed_listings):
-    updated_count = 0
     listings = metadata.get('Listings') or metadata.get('listings')
     if not listings or not isinstance(listings, dict):
         print("Error: Could not find Listings dictionary in metadata.")
         return 0
         
-    # Check if zh-cn is missing, and if so add it
-    existing_langs = [l.lower() for l in listings.keys()]
-    if 'zh-cn' not in existing_langs:
-        print("Adding zh-cn listing to metadata Listings...")
-        template_lang = next((k for k in listings if k.lower() == 'zh-tw'), list(listings.keys())[0])
-        new_listing = copy.deepcopy(listings[template_lang])
-        base = new_listing.get('BaseListing') or new_listing.get('baseListing')
-        if base:
-            base['Title'] = 'Clickra'
-            base['ShortDescription'] = ''
-            base['Description'] = ''
-            base['ReleaseNotes'] = ''
-            base['Features'] = []
-            base['Keywords'] = []
-        listings['zh-cn'] = new_listing
-
+    add_missing_zh_cn(listings)
+    
+    updated_count = 0
     for lang, listing_container in listings.items():
-        matched_lang = None
-        for k in parsed_listings:
-            # Match locales (e.g. en-us and en match 'en'; zh-tw matches 'zh-tw')
-            if k.lower() == lang.lower() or (k.lower() == 'en' and lang.lower().startswith('en')):
-                matched_lang = k
-                break
-        
+        matched_lang = match_parsed_lang(lang, parsed_listings)
         if not matched_lang:
             continue
             
@@ -189,25 +210,7 @@ def update_metadata(metadata, parsed_listings):
         if not base_listing or not isinstance(base_listing, dict):
             continue
             
-        new_data = parsed_listings[matched_lang]
-        
-        key_map = {
-            'Description': 'description',
-            'ReleaseNotes': 'releaseNotes',
-            'Features': 'features',
-            'ShortDescription': 'shortDescription',
-            'Keywords': 'keywords'
-        }
-        
-        for json_key, parsed_key in key_map.items():
-            if parsed_key in new_data and new_data[parsed_key]:
-                if json_key in base_listing:
-                    base_listing[json_key] = new_data[parsed_key]
-                elif json_key.lower() in base_listing:
-                    base_listing[json_key.lower()] = new_data[parsed_key]
-                else:
-                    base_listing[json_key] = new_data[parsed_key]
-                    
+        update_single_listing(base_listing, parsed_listings[matched_lang])
         updated_count += 1
         print(f"Successfully updated metadata listing fields for: {lang}")
         
@@ -228,12 +231,7 @@ def find_msstore_cli():
             
     return None
 
-def main():
-    script_dir = os.path.dirname(os.path.abspath(__file__))
-    repo_root = os.path.dirname(script_dir)
-    config_path = os.path.join(script_dir, "local_store_config.json")
-    
-    # 1. Load config
+def load_store_config(config_path):
     if not os.path.exists(config_path):
         print(f"Error: Config file not found at {config_path}")
         sys.exit(1)
@@ -252,14 +250,9 @@ def main():
         print("Error: Missing credentials or paths in config file.")
         sys.exit(1)
         
-    # 2. Find msstore CLI
-    msstore_bin = find_msstore_cli()
-    if not msstore_bin:
-        print("Error: Microsoft Store Developer CLI (msstore.exe) not found.")
-        sys.exit(1)
-    print(f"Found msstore CLI: {msstore_bin}")
-    
-    # 3. Configure credentials
+    return t_id, c_id, c_sec, s_id, p_id, m_path
+
+def run_reconfigure(msstore_bin, t_id, s_id, c_id, c_sec):
     print("Configuring Microsoft Store Developer CLI credentials...")
     cmd_config = [
         msstore_bin, "reconfigure",
@@ -274,8 +267,8 @@ def main():
         print(res.stderr or res.stdout)
         sys.exit(1)
     print("Credentials configured successfully.")
-    
-    # 4. Get current metadata
+
+def fetch_partner_metadata(msstore_bin, p_id):
     print("Retrieving current app metadata from Partner Center...")
     cmd_get = [msstore_bin, "submission", "get", p_id]
     res_get = subprocess.run(cmd_get, capture_output=True, text=True, encoding='utf-8')
@@ -285,18 +278,16 @@ def main():
         sys.exit(1)
         
     raw_json = res_get.stdout
-    
-    # Sanitize and load JSON
     print("Sanitizing and parsing metadata JSON...")
     try:
         sanitized = sanitize_json_content(raw_json)
-        metadata = json.loads(sanitized)
+        return json.loads(sanitized)
     except Exception as e:
         print("Failed to parse metadata JSON:")
         print(e)
         sys.exit(1)
-        
-    # 5. Parse markdown files
+
+def parse_all_listings(repo_root):
     print("Syncing app metadata from docs/StoreListing_*.md files...")
     parsed_listings = {}
     docs_dir = os.path.join(repo_root, 'docs')
@@ -309,15 +300,10 @@ def main():
     if not parsed_listings:
         print("Error: No markdown store listing files were parsed.")
         sys.exit(1)
-        
-    # 6. Update metadata
-    updated = update_metadata(metadata, parsed_listings)
-    print(f"Updated {updated} language listings in the metadata object.")
-    
-    # 7. Minify JSON string
+    return parsed_listings
+
+def upload_partner_metadata(msstore_bin, p_id, metadata):
     minified_json = json.dumps(metadata, ensure_ascii=False, separators=(',', ':'))
-    
-    # 8. Upload updated metadata
     print("Uploading updated metadata to Partner Center...")
     cmd_update = [msstore_bin, "submission", "updateMetadata", p_id, minified_json, "-v"]
     res_up = subprocess.run(cmd_update, capture_output=True, text=True, encoding='utf-8')
@@ -326,8 +312,8 @@ def main():
         print(res_up.stderr or res_up.stdout)
         sys.exit(1)
     print("Successfully uploaded metadata to Partner Center.")
-    
-    # 9. Publish package
+
+def publish_msix_package(msstore_bin, m_path, p_id):
     print("Uploading MSIX package and submitting to Microsoft Store...")
     cmd_pub = [msstore_bin, "publish", m_path, "-id", p_id]
     res_pub = subprocess.run(cmd_pub, capture_output=True, text=True, encoding='utf-8')
@@ -337,6 +323,31 @@ def main():
         print(res_pub.stderr)
         sys.exit(1)
     print("SUCCESS: Clickra package successfully uploaded and submitted to Microsoft Store!")
+
+def main():
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+    repo_root = os.path.dirname(script_dir)
+    config_path = os.path.join(script_dir, "local_store_config.json")
+    
+    t_id, c_id, c_sec, s_id, p_id, m_path = load_store_config(config_path)
+    
+    msstore_bin = find_msstore_cli()
+    if not msstore_bin:
+        print("Error: Microsoft Store Developer CLI (msstore.exe) not found.")
+        sys.exit(1)
+    print(f"Found msstore CLI: {msstore_bin}")
+    
+    run_reconfigure(msstore_bin, t_id, s_id, c_id, c_sec)
+    
+    metadata = fetch_partner_metadata(msstore_bin, p_id)
+    
+    parsed_listings = parse_all_listings(repo_root)
+    
+    update_metadata(metadata, parsed_listings)
+    
+    upload_partner_metadata(msstore_bin, p_id, metadata)
+    
+    publish_msix_package(msstore_bin, m_path, p_id)
 
 if __name__ == '__main__':
     main()
