@@ -98,19 +98,28 @@ foreach ($f in $readmeFiles) {
                 $lines = $lines[0..($tableStart + 1)] + $lines[($tableStart + 3)..($lines.Count - 1)]
                 $content = $lines -join "`n"
 
-                # 將舊版本加入 CHANGELOG（插入到第一個版本標題之後）
+                # 將舊版本加入 CHANGELOG（若不存在，則插入到第二個版本標題之前）
                 if (Test-Path $changelogPath) {
                     $changelog = [System.IO.File]::ReadAllText("$root/$changelogPath", [System.Text.Encoding]::UTF8)
-                    $oldEntry = "`n## [$oldVersion] - $oldDate`n`n- $oldDesc`n"
-                    # 找到第一個 ## [vX.X.X] 標題的位置，插入在其後
-                    $firstVersionIdx = $changelog.IndexOf("## [v")
-                    if ($firstVersionIdx -ge 0) {
-                        # 找到標題結束的位置（換行之後）
-                        $afterNewline = $changelog.IndexOf("`n", $firstVersionIdx) + 1
-                        $changelog = $changelog.Insert($afterNewline, $oldEntry)
+                    $escapedVersion = [regex]::Escape($oldVersion)
+                    if ($changelog -notmatch "##\s*\[?v?${escapedVersion}\]?") {
+                        $oldEntry = "`n## [$oldVersion] - $oldDate`n`n- $oldDesc`n"
+                        # 找到第二個 ## [vX.X.X] 標題的位置，插入在該標題之前
+                        $firstIdx = $changelog.IndexOf("## [v")
+                        $secondIdx = -1
+                        if ($firstIdx -ge 0) {
+                            $secondIdx = $changelog.IndexOf("## [v", $firstIdx + 5)
+                        }
+                        if ($secondIdx -ge 0) {
+                            $changelog = $changelog.Insert($secondIdx, $oldEntry)
+                        } else {
+                            $changelog = $changelog + $oldEntry
+                        }
+                        [System.IO.File]::WriteAllText("$root/$changelogPath", $changelog, $utf8NoBOM)
+                        Write-Host "[Doc] Moved $oldVersion from README to CHANGELOG" -ForegroundColor Gray
+                    } else {
+                        Write-Host "[Doc] Version $oldVersion already exists in CHANGELOG, skipping rotation" -ForegroundColor Gray
                     }
-                    [System.IO.File]::WriteAllText("$root/$changelogPath", $changelog, $utf8NoBOM)
-                    Write-Host "[Doc] Moved $oldVersion from README to CHANGELOG" -ForegroundColor Gray
                 }
             }
         }

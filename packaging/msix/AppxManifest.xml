@@ -13,7 +13,7 @@
   <Identity
     Name="g1014308.Clickra"
     Publisher="CN=CBF59877-21AD-4BC4-8F91-FE8DA520A138"
-    Version="3.6.2.0" />
+    Version="3.6.3.0" />
 
   <Properties>
     <DisplayName>ms-resource:AppName</DisplayName>
@@ -28,6 +28,9 @@
   <Resources>
     <Resource Language="zh-TW" />
     <Resource Language="en-US" />
+    <Resource Language="ja-JP" />
+    <Resource Language="ko-KR" />
+    <Resource Language="zh-CN" />
   </Resources>
 
   <Applications>

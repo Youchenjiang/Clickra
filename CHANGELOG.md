@@ -2,6 +2,13 @@
 
 All notable changes to Clickra will be documented in this file.
 
+## [v3.6.3.0] - 2026-07-09
+
+- **CI/CD 自動化發布與多國語言支援 (CI/CD Release Automation & Multi-language Support)**：
+  1. 補全並整合繁體中文、英文、日語、韓語、簡體中文 5 國語言的原生 MSIX 套件資源封裝。
+  2. 新增 GitHub Actions 提交規範檢查（Conventional Commits 驗證）。
+  3. 將 Microsoft Store 上架流程整合至 GitHub Actions CI/CD 自動化發布管線。
+
 ## [v3.6.2.0] - 2026-07-05
 
 - **SSL/TLS 憑證校驗安全加強 (SSL/TLS Certificate Verification)**：修復了 `MyMemoryTranslator` 的 `HttpClient` 中繞過 SSL/TLS 憑證驗證的安全漏洞。移除了非安全的 `RemoteCertificateValidationCallback`，啟用預設的系統安全證書驗證以防範中間人 (MITM) 攻擊，並將支援的連線協議擴充為 `Tls12` 與 `Tls13`。
