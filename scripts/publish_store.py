@@ -261,7 +261,7 @@ def run_reconfigure(msstore_bin, t_id, s_id, c_id, c_sec):
         "--clientId", c_id,
         "--clientSecret", c_sec
     ]
-    res = subprocess.run(cmd_config, capture_output=True, text=True, encoding='utf-8')  # nosec
+    res = subprocess.run(cmd_config, capture_output=True, text=True, encoding='utf-8', check=False)  # nosec
     if res.returncode != 0:
         print("Error configuring credentials:")
         print(res.stderr or res.stdout)
@@ -271,7 +271,7 @@ def run_reconfigure(msstore_bin, t_id, s_id, c_id, c_sec):
 def fetch_partner_metadata(msstore_bin, p_id):
     print("Retrieving current app metadata from Partner Center...")
     cmd_get = [msstore_bin, "submission", "get", p_id]
-    res_get = subprocess.run(cmd_get, capture_output=True, text=True, encoding='utf-8')  # nosec
+    res_get = subprocess.run(cmd_get, capture_output=True, text=True, encoding='utf-8', check=False)  # nosec
     if res_get.returncode != 0:
         print("Error retrieving submission:")
         print(res_get.stderr)
@@ -306,7 +306,7 @@ def upload_partner_metadata(msstore_bin, p_id, metadata):
     minified_json = json.dumps(metadata, ensure_ascii=False, separators=(',', ':'))
     print("Uploading updated metadata to Partner Center...")
     cmd_update = [msstore_bin, "submission", "updateMetadata", p_id, minified_json, "-v"]
-    res_up = subprocess.run(cmd_update, capture_output=True, text=True, encoding='utf-8')  # nosec
+    res_up = subprocess.run(cmd_update, capture_output=True, text=True, encoding='utf-8', check=False)  # nosec
     if res_up.returncode != 0:
         print("Error uploading metadata:")
         print(res_up.stderr or res_up.stdout)
@@ -316,7 +316,7 @@ def upload_partner_metadata(msstore_bin, p_id, metadata):
 def publish_msix_package(msstore_bin, m_path, p_id):
     print("Uploading MSIX package and submitting to Microsoft Store...")
     cmd_pub = [msstore_bin, "publish", m_path, "-id", p_id]
-    res_pub = subprocess.run(cmd_pub, capture_output=True, text=True, encoding='utf-8')  # nosec
+    res_pub = subprocess.run(cmd_pub, capture_output=True, text=True, encoding='utf-8', check=False)  # nosec
     print(res_pub.stdout)
     if res_pub.returncode != 0:
         print("Error publishing package:")
