@@ -4,6 +4,7 @@ import json
 import re
 import subprocess
 import shutil
+import copy
 
 # Mapping from listing markdown file suffix to Microsoft Store language locale code
 LOCALE_MAP = {
@@ -21,6 +22,7 @@ def sanitize_json_content(content):
     1. Line wrapping at 80 characters inside string literals.
     2. Splitting unicode escape sequences (\uXXXX) across newlines.
     """
+    content = content.replace('\r\n', '\n')
     output = []
     in_string = False
     escaped = False
@@ -160,15 +162,16 @@ def update_metadata(metadata, parsed_listings):
     existing_langs = [l.lower() for l in listings.keys()]
     if 'zh-cn' not in existing_langs:
         print("Adding zh-cn listing to metadata Listings...")
-        template_lang = 'zh-tw'
-        if template_lang not in listings:
-            template_lang = list(listings.keys())[0]
-            
-        import copy
+        template_lang = next((k for k in listings if k.lower() == 'zh-tw'), list(listings.keys())[0])
         new_listing = copy.deepcopy(listings[template_lang])
-        base_listing = new_listing.get('BaseListing') or new_listing.get('baseListing')
-        if base_listing:
-            base_listing['Title'] = 'Clickra'
+        base = new_listing.get('BaseListing') or new_listing.get('baseListing')
+        if base:
+            base['Title'] = 'Clickra'
+            base['ShortDescription'] = ''
+            base['Description'] = ''
+            base['ReleaseNotes'] = ''
+            base['Features'] = []
+            base['Keywords'] = []
         listings['zh-cn'] = new_listing
 
     for lang, listing_container in listings.items():
@@ -238,14 +241,14 @@ def main():
     with open(config_path, 'r', encoding='utf-8-sig') as f:
         config = json.load(f)
         
-    tenant_id = config.get("TenantId")
-    client_id = config.get("ClientId")
-    client_secret = config.get("ClientSecret")
-    seller_id = config.get("SellerId")
-    product_id = config.get("ProductId")
-    msix_path = config.get("MsixPath")
+    t_id = config.get("TenantId") or config.get("tenantId")
+    c_id = config.get("ClientId") or config.get("clientId")
+    c_sec = config.get("ClientSecret") or config.get("clientSecret")
+    s_id = config.get("SellerId") or config.get("sellerId")
+    p_id = config.get("ProductId") or config.get("productId")
+    m_path = config.get("MsixPath") or config.get("msixPath")
     
-    if not all([tenant_id, client_id, client_secret, seller_id, product_id, msix_path]):
+    if not all([t_id, c_id, c_sec, s_id, p_id, m_path]):
         print("Error: Missing credentials or paths in config file.")
         sys.exit(1)
         
@@ -260,12 +263,12 @@ def main():
     print("Configuring Microsoft Store Developer CLI credentials...")
     cmd_config = [
         msstore_bin, "reconfigure",
-        "--tenantId", tenant_id,
-        "--sellerId", seller_id,
-        "--clientId", client_id,
-        "--clientSecret", client_secret
+        "--tenantId", t_id,
+        "--sellerId", s_id,
+        "--clientId", c_id,
+        "--clientSecret", c_sec
     ]
-    res = subprocess.run(cmd_config, capture_output=True, text=True)
+    res = subprocess.run(cmd_config, capture_output=True, text=True, encoding='utf-8')
     if res.returncode != 0:
         print("Error configuring credentials:")
         print(res.stderr or res.stdout)
@@ -274,7 +277,7 @@ def main():
     
     # 4. Get current metadata
     print("Retrieving current app metadata from Partner Center...")
-    cmd_get = [msstore_bin, "submission", "get", product_id]
+    cmd_get = [msstore_bin, "submission", "get", p_id]
     res_get = subprocess.run(cmd_get, capture_output=True, text=True, encoding='utf-8')
     if res_get.returncode != 0:
         print("Error retrieving submission:")
@@ -316,7 +319,7 @@ def main():
     
     # 8. Upload updated metadata
     print("Uploading updated metadata to Partner Center...")
-    cmd_update = [msstore_bin, "submission", "updateMetadata", product_id, minified_json, "-v"]
+    cmd_update = [msstore_bin, "submission", "updateMetadata", p_id, minified_json, "-v"]
     res_up = subprocess.run(cmd_update, capture_output=True, text=True, encoding='utf-8')
     if res_up.returncode != 0:
         print("Error uploading metadata:")
@@ -326,8 +329,8 @@ def main():
     
     # 9. Publish package
     print("Uploading MSIX package and submitting to Microsoft Store...")
-    cmd_pub = [msstore_bin, "publish", msix_path, "-id", product_id]
-    res_pub = subprocess.run(cmd_pub, capture_output=True, text=True)
+    cmd_pub = [msstore_bin, "publish", m_path, "-id", p_id]
+    res_pub = subprocess.run(cmd_pub, capture_output=True, text=True, encoding='utf-8')
     print(res_pub.stdout)
     if res_pub.returncode != 0:
         print("Error publishing package:")

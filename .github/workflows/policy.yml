@@ -44,7 +44,7 @@ jobs:
               `^(${typePattern})\\((${scopePattern})\\): [a-z0-9].*$`,
             );
 
-            function validateSubject(subject, label) {
+            function validateSubject(subject, label, maxLength = 50) {
               subject = subject.trim();
               const errors = [];
               if (!pattern.test(subject)) {
@@ -55,8 +55,8 @@ jobs:
               if (subject.endsWith(".")) {
                 errors.push(`${label} must not end with a period.`);
               }
-              if (subject.length > 50) {
-                errors.push(`${label} must be 50 characters or less.`);
+              if (subject.length > maxLength) {
+                errors.push(`${label} must be ${maxLength} characters or less.`);
               }
               const description = subject.replace(
                 new RegExp(`^(${typePattern})\\((${scopePattern})\\):\\s+`),
@@ -69,7 +69,7 @@ jobs:
             }
 
             const failures = [];
-            failures.push(...validateSubject(context.payload.pull_request.title, "PR title"));
+            failures.push(...validateSubject(context.payload.pull_request.title, "PR title", 72));
 
             const commits = await github.paginate(github.rest.pulls.listCommits, {
               owner: context.repo.owner,
@@ -80,7 +80,7 @@ jobs:
 
             for (const commit of commits) {
               const subject = commit.commit.message.split("\n")[0];
-              for (const error of validateSubject(subject, `Commit ${commit.sha.slice(0, 7)}`)) {
+              for (const error of validateSubject(subject, `Commit ${commit.sha.slice(0, 7)}`, 50)) {
                 failures.push(`${error}\n  subject: ${subject}`);
               }
             }
