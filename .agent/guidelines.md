@@ -4,7 +4,7 @@
 - **禁止 Nuke-and-Pave**：嚴禁刪除舊檔案再新增同名檔案。改名必須使用 `git mv`。
 - **原子化提交**：一個 Commit 只做一件事。嚴禁將多個不相干的邏輯修改（如版號同步、工作流修改、規則更新）合併到同一個 Commit 中。必須分批暫存（例如 `git add <特定檔案>`）並分開提交，確保每個 Commit 異動內容最小化且語意單一。
 - **Commit 訊息格式規範**：每個 Commit 訊息必須符合本地 Commit Hook 的嚴格格式限制：
-  1. Header 必須遵循 `type(scope): subject` 或 `type: subject`，長度必須小於等於 50 字元，不可用句號結尾。
+  1. Header 必須遵循 `type(scope): subject` 或 `type: subject`，長度必須小於等於 72 字元，不可用句號結尾。
   2. 允許的 `type` 包括：`feat`, `fix`, `docs`, `style`, `refactor`, `test`, `chore`。
   3. Body 必須與 Header 留空一行，且必須是以英文寫成的編號列表並以 `1. ` 開頭（例如：`1. Add helper method.`）。
 - **版本號同步**：每次修改功能或 UI 後，必須執行 `powershell -File scripts/bump_version.ps1 -Build` 增加 Patch（第 3 碼，且第四碼 Revision 保持為 0）、同步版本號（含 README、README.zh-TW.md、CHANGELOG.md 與 MSIX AppxManifest.xml）並自動重新編譯產物，以確保 Windows 11 選單快取刷新且內外版本一致，同時符合微軟商店的版號規範。

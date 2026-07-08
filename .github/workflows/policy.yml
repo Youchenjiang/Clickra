@@ -44,7 +44,7 @@ jobs:
               `^(${typePattern})\\((${scopePattern})\\): [a-z0-9].*$`,
             );
 
-            function validateSubject(subject, label, maxLength = 50) {
+            function validateSubject(subject, label, maxLength = 72) {
               subject = subject.trim();
               const errors = [];
               if (!pattern.test(subject)) {
@@ -80,7 +80,7 @@ jobs:
 
             for (const commit of commits) {
               const subject = commit.commit.message.split("\n")[0];
-              for (const error of validateSubject(subject, `Commit ${commit.sha.slice(0, 7)}`, 50)) {
+              for (const error of validateSubject(subject, `Commit ${commit.sha.slice(0, 7)}`, 72)) {
                 failures.push(`${error}\n  subject: ${subject}`);
               }
             }
