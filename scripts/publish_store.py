@@ -270,7 +270,8 @@ def delete_pending_submission(msstore_bin, p_id):
         print("Successfully cleared pending submission.")
     else:
         # Ignore errors if there was no pending submission to delete
-        print("No active pending submission found or failed to delete (this is normal if clean).")
+        err_details = res_del.stderr or res_del.stdout
+        print(f"Warning: Could not delete pending submission (this is normal if clean). Details: {err_details}")
 
 def fetch_partner_metadata(msstore_bin, p_id):
     print("Retrieving current app metadata from Partner Center...")
@@ -317,16 +318,33 @@ def upload_partner_metadata(msstore_bin, p_id, metadata):
         sys.exit(1)
     print("Successfully uploaded metadata to Partner Center.")
 
-def publish_msix_package(msstore_bin, m_path, p_id):
-    print("Uploading MSIX package and submitting to Microsoft Store...")
+def publish_msix_package(msstore_bin, m_path, p_id, no_commit=False):
+    if no_commit:
+        print("Uploading MSIX package (no commit) to Microsoft Store...")
+    else:
+        print("Uploading MSIX package and submitting to Microsoft Store...")
     cmd_pub = [msstore_bin, "publish", m_path, "-id", p_id]
+    if no_commit:
+        cmd_pub.append("--noCommit")
     res_pub = subprocess.run(cmd_pub, capture_output=True, text=True, encoding='utf-8', check=False)  # nosec
     print(res_pub.stdout)
     if res_pub.returncode != 0:
         print("Error publishing package:")
-        print(res_pub.stderr)
+        print(res_pub.stderr or res_pub.stdout)
         sys.exit(1)
-    print("SUCCESS: Clickra package successfully uploaded and submitted to Microsoft Store!")
+    if not no_commit:
+        print("SUCCESS: Clickra package successfully uploaded and submitted to Microsoft Store!")
+
+def commit_submission(msstore_bin, p_id):
+    print("Committing the submission to Microsoft Store...")
+    cmd_commit = [msstore_bin, "submission", "publish", p_id]
+    res_commit = subprocess.run(cmd_commit, capture_output=True, text=True, encoding='utf-8', check=False)  # nosec
+    print(res_commit.stdout)
+    if res_commit.returncode != 0:
+        print("Error committing submission:")
+        print(res_commit.stderr or res_commit.stdout)
+        sys.exit(1)
+    print("SUCCESS: Clickra package successfully uploaded, updated, and committed to Microsoft Store!")
 
 def main():
     script_dir = os.path.dirname(os.path.abspath(__file__))
@@ -343,17 +361,26 @@ def main():
     
     run_reconfigure(msstore_bin, t_id, s_id, c_id, c_sec)
     
+    # 1. Clear any failed/pending submission first to ensure clean state
     delete_pending_submission(msstore_bin, p_id)
     
+    # 2. Upload MSIX package but do not commit it yet (creates the new draft submission)
+    publish_msix_package(msstore_bin, m_path, p_id, no_commit=True)
+    
+    # 3. Retrieve the newly created draft submission metadata
     metadata = fetch_partner_metadata(msstore_bin, p_id)
     
+    # 4. Parse localization listings
     parsed_listings = parse_all_listings(repo_root)
     
+    # 5. Merge listing changes
     update_metadata(metadata, parsed_listings)
     
+    # 6. Upload updated metadata to the draft submission
     upload_partner_metadata(msstore_bin, p_id, metadata)
     
-    publish_msix_package(msstore_bin, m_path, p_id)
+    # 7. Finally, commit the submission
+    commit_submission(msstore_bin, p_id)
 
 if __name__ == '__main__':
     main()
