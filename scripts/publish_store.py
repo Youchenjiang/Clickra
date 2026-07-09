@@ -323,6 +323,10 @@ def fetch_partner_metadata(msstore_bin, p_id):
             res_get.stdout and 
             "💥 Error!" not in res_get.stdout and 
             "💥 Error!" not in (res_get.stderr or "")):
+            if res_get.stdout:
+                print(f"STDOUT:\n{res_get.stdout}")
+            if res_get.stderr:
+                print(f"STDERR:\n{res_get.stderr}")
             raw_json = res_get.stdout
             print("Sanitizing and parsing metadata JSON...")
             try:
@@ -370,7 +374,7 @@ def upload_partner_metadata(msstore_bin, p_id, metadata):
     for attempt in range(1, max_up_retries + 1):
         print(f"Upload metadata attempt {attempt}/{max_up_retries}...")
         res_up = run_command(cmd_update)
-        if res_up.returncode == 0 and "💥 Error!" not in (res_up.stderr or "") and "💥 Error!" not in (res_up.stdout or ""):
+        if res_up.returncode == 0:
             if res_up.stdout:
                 print(f"STDOUT:\n{res_up.stdout}")
             if res_up.stderr:
