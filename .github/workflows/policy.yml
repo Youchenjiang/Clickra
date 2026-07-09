@@ -1,0 +1,90 @@
+name: Repository Policy
+
+on:
+  pull_request:
+    types: [opened, edited, synchronize, reopened, ready_for_review]
+
+permissions:
+  contents: read
+  pull-requests: read
+
+jobs:
+  conventional-policy:
+    name: PR and commit policy
+    runs-on: ubuntu-latest
+    steps:
+      - name: Validate PR title and commit subjects
+        uses: actions/github-script@v8
+        with:
+          script: |
+            const allowedTypes = [
+              "feat",
+              "fix",
+              "refactor",
+              "docs",
+              "test",
+              "chore",
+              "style",
+              "perf",
+              "security",
+            ];
+            const allowedScopes = [
+              "cli",
+              "core",
+              "shell",
+              "msix",
+              "docs",
+              "ci",
+              "deps",
+              "store",
+            ];
+            const typePattern = allowedTypes.join("|");
+            const scopePattern = allowedScopes.join("|");
+            const pattern = new RegExp(
+              `^(${typePattern})\\((${scopePattern})\\): [a-z0-9].*$`,
+            );
+
+            function validateSubject(subject, label, maxLength = 72) {
+              subject = subject.trim();
+              const errors = [];
+              if (!pattern.test(subject)) {
+                errors.push(
+                  `${label} must match <type>(<scope>): <description> with an allowed type/scope.`,
+                );
+              }
+              if (subject.endsWith(".")) {
+                errors.push(`${label} must not end with a period.`);
+              }
+              if (subject.length > maxLength) {
+                errors.push(`${label} must be ${maxLength} characters or less.`);
+              }
+              const description = subject.replace(
+                new RegExp(`^(${typePattern})\\((${scopePattern})\\):\\s+`),
+                "",
+              );
+              if (/^(update|misc|stuff|changes|fix bug|bug fix)$/i.test(description)) {
+                errors.push(`${label} description is too vague.`);
+              }
+              return errors;
+            }
+
+            const failures = [];
+            failures.push(...validateSubject(context.payload.pull_request.title, "PR title", 72));
+
+            const commits = await github.paginate(github.rest.pulls.listCommits, {
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              pull_number: context.payload.pull_request.number,
+              per_page: 100,
+            });
+
+            for (const commit of commits) {
+              const subject = commit.commit.message.split("\n")[0];
+              for (const error of validateSubject(subject, `Commit ${commit.sha.slice(0, 7)}`, 72)) {
+                failures.push(`${error}\n  subject: ${subject}`);
+              }
+            }
+
+            if (failures.length > 0) {
+              core.setFailed(failures.join("\n\n"));
+            }

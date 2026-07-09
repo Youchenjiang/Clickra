@@ -2,10 +2,20 @@
 
 ## 1. Git 完整性
 - **禁止 Nuke-and-Pave**：嚴禁刪除舊檔案再新增同名檔案。改名必須使用 `git mv`。
-- **原子化提交**：一個 Commit 只做一件事。更名與邏輯修改必須分開。
+- **原子化提交**：一個 Commit 只做一件事。嚴禁將多個不相干的邏輯修改（如版號同步、工作流修改、規則更新）合併到同一個 Commit 中。必須分批暫存（例如 `git add <特定檔案>`）並分開提交，確保每個 Commit 異動內容最小化且語意單一。
+- **Commit 訊息格式規範**：每個 Commit 訊息必須符合本地 Commit Hook 的嚴格格式限制：
+  1. Header 必須遵循 `type(scope): subject` 或 `type: subject`，長度必須小於等於 72 字元，不可用句號結尾。
+  2. 允許的 `type` 包括：`feat`, `fix`, `docs`, `style`, `refactor`, `test`, `chore`。
+  3. Body 必須與 Header 留空一行，且必須是以英文寫成的編號列表並以 `1. ` 開頭（例如：`1. Add helper method.`）。
 - **版本號同步**：每次修改功能或 UI 後，必須執行 `powershell -File scripts/bump_version.ps1 -Build` 增加 Patch（第 3 碼，且第四碼 Revision 保持為 0）、同步版本號（含 README、README.zh-TW.md、CHANGELOG.md 與 MSIX AppxManifest.xml）並自動重新編譯產物，以確保 Windows 11 選單快取刷新且內外版本一致，同時符合微軟商店的版號規範。
 - **Commit 審核**：在執行 Commit 之前，必須執行 `git status` 確認沒有暫存 test 垃圾。
-- **Tag 規範**：在正式對外發布或商店提交、並將版本號整理為 `X.Y.Z.0` 後，必須在本機建立對應的 Git Tag（格式為 `vX.Y.Z.0`）。禁止直接 push 到 `main`、`release` 等受保護分支；`feature/*`、`hotfix/*` 等工作分支可推送到遠端以建立 Pull Request。若需推送 Tag，可使用 `git push origin vX.Y.Z.0`。
+- **Tag 規範與發布順序**：在正式對外發布或商店提交時，必須嚴格遵守以下 Git Flow 順序：
+  1. 在 `feature/*` 或 `hotfix/*` 工作分支上完成開發並提交（Commit）。
+  2. 將工作分支推送到遠端，在 GitHub 上建立 Pull Request，成功合併（Merge）入 `main`。
+  3. 切換回本地 `main` 分支並拉取最新代碼（`git checkout main && git pull`）。
+  4. 在合併後的最新 `main` 分支節點上，建立對應的 Git Tag（格式為 `vX.Y.Z.0`）。
+  5. 嚴禁直接 push 到 `main`、`release` 等受保護分支；若需推送 Tag，使用 `git push origin vX.Y.Z.0`。
+- **分支命名規範**：嚴禁在 Git 分支名稱中包含版本號（如 `vX.Y.Z` 或 `vX.Y.Z.0`），以避免與 Git Tag 混淆，且不符合一般專案的開發常規。分支名稱必須使用 `feature/*` 或 `hotfix/*` 前綴，並配上純描述性的功能名稱（例如 `hotfix/ci-store-release-automation`）。
 
 ## 2. 代碼穩定性
 - **增量修改 (Incremental Only)**：優先保留原始代碼結構。若要「重構」，必須先在對話中向使用者說明重構理由與覆蓋範圍。

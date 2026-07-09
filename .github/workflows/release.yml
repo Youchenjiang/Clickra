@@ -113,5 +113,35 @@ jobs:
 
         *Note: This package is signed with a CI certificate for automation.*
         EOF
-        
         gh release create "${{ github.ref_name }}" Clickra.msix --title "${{ github.ref_name }}" --notes-file release_notes.md
+
+    - name: Install MSStore CLI
+      run: dotnet tool install -g Microsoft.Store.DeveloperCLI
+
+    - name: Create MSStore Config
+      shell: pwsh
+      env:
+        STORE_TENANT_ID: ${{ secrets.STORE_TENANT_ID }}
+        STORE_CLIENT_ID: ${{ secrets.STORE_CLIENT_ID }}
+        STORE_CLIENT_SECRET: ${{ secrets.STORE_CLIENT_SECRET }}
+        STORE_SELLER_ID: ${{ secrets.STORE_SELLER_ID }}
+        STORE_PRODUCT_ID: ${{ secrets.STORE_PRODUCT_ID }}
+      run: |
+        $config = @{
+            TenantId = $env:STORE_TENANT_ID
+            ClientId = $env:STORE_CLIENT_ID
+            ClientSecret = $env:STORE_CLIENT_SECRET
+            SellerId = $env:STORE_SELLER_ID
+            ProductId = $env:STORE_PRODUCT_ID
+            MsixPath = "Clickra.msix"
+        }
+        $config | ConvertTo-Json | Out-File -FilePath scripts/local_store_config.json -Encoding utf8
+
+
+    - name: Setup Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.12'
+
+    - name: Publish to Microsoft Store
+      run: python scripts/publish_store.py
