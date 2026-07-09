@@ -277,12 +277,14 @@ def run_reconfigure(msstore_bin, t_id, s_id, c_id, c_sec):
 
 def delete_pending_submission(msstore_bin, p_id):
     print("Checking and deleting any pending/failed submissions to ensure clean state...")
-    cmd_del = [msstore_bin, "submission", "delete", p_id]
+    cmd_del = [msstore_bin, "submission", "delete", p_id, "--no-confirm"]
     res_del = run_command(cmd_del)
     if res_del.returncode == 0:
         if res_del.stdout:
             print(f"STDOUT:\n{res_del.stdout}")
         print("Successfully cleared pending/failed submission.")
+        print("Waiting 20 seconds for Partner Center to complete deletion...")
+        time.sleep(20)
     else:
         err_details = (res_del.stderr or res_del.stdout or "").strip().replace('\n', ' ')
         print(f"Warning: Could not delete pending submission (this is normal if clean). Details: {err_details}")
