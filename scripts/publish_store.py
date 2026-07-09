@@ -5,6 +5,7 @@ import re
 import subprocess
 import shutil
 import copy
+import time
 
 if hasattr(sys.stdout, 'reconfigure'):
     sys.stdout.reconfigure(encoding='utf-8')
@@ -338,13 +339,27 @@ def publish_msix_package(msstore_bin, m_path, p_id, no_commit=False):
 def commit_submission(msstore_bin, p_id):
     print("Committing the submission to Microsoft Store...")
     cmd_commit = [msstore_bin, "submission", "publish", p_id]
-    res_commit = subprocess.run(cmd_commit, capture_output=True, text=True, encoding='utf-8', check=False)  # nosec
-    print(res_commit.stdout)
-    if res_commit.returncode != 0:
-        print("Error committing submission:")
-        print(res_commit.stderr or res_commit.stdout)
-        sys.exit(1)
-    print("SUCCESS: Clickra package successfully uploaded, updated, and committed to Microsoft Store!")
+    
+    max_retries = 12  # 12 * 30 seconds = 6 minutes max wait
+    retry_delay = 30
+    
+    for attempt in range(1, max_retries + 1):
+        print(f"Commit attempt {attempt}/{max_retries}...")
+        res_commit = subprocess.run(cmd_commit, capture_output=True, text=True, encoding='utf-8', check=False)  # nosec
+        if res_commit.returncode == 0:
+            print(res_commit.stdout)
+            print("SUCCESS: Clickra package successfully uploaded, updated, and committed to Microsoft Store!")
+            return
+            
+        err_out = res_commit.stderr or res_commit.stdout
+        print(f"Commit attempt failed. Details:\n{err_out}")
+        
+        if attempt < max_retries:
+            print(f"Waiting {retry_delay} seconds before retrying...")
+            time.sleep(retry_delay)
+            
+    print("Error: Failed to commit submission after maximum retries.")
+    sys.exit(1)
 
 def main():
     script_dir = os.path.dirname(os.path.abspath(__file__))
