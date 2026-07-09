@@ -5,11 +5,17 @@ import re
 import subprocess
 import shutil
 import copy
+import time
+import random
 
 if hasattr(sys.stdout, 'reconfigure'):
     sys.stdout.reconfigure(encoding='utf-8')
 if hasattr(sys.stderr, 'reconfigure'):
     sys.stderr.reconfigure(encoding='utf-8')
+
+MAX_RETRIES = 12
+RETRY_BASE_DELAY = 30
+RETRY_JITTER = 5
 
 # Mapping from listing markdown file suffix to Microsoft Store language locale code
 LOCALE_MAP = {
@@ -338,13 +344,28 @@ def publish_msix_package(msstore_bin, m_path, p_id, no_commit=False):
 def commit_submission(msstore_bin, p_id):
     print("Committing the submission to Microsoft Store...")
     cmd_commit = [msstore_bin, "submission", "publish", p_id]
-    res_commit = subprocess.run(cmd_commit, capture_output=True, text=True, encoding='utf-8', check=False)  # nosec
-    print(res_commit.stdout)
-    if res_commit.returncode != 0:
-        print("Error committing submission:")
-        print(res_commit.stderr or res_commit.stdout)
-        sys.exit(1)
-    print("SUCCESS: Clickra package successfully uploaded, updated, and committed to Microsoft Store!")
+    
+    for attempt in range(1, MAX_RETRIES + 1):
+        print(f"Commit attempt {attempt}/{MAX_RETRIES}...")
+        res_commit = subprocess.run(cmd_commit, capture_output=True, text=True, encoding='utf-8', check=False)  # nosec
+        if res_commit.returncode == 0:
+            print(res_commit.stdout)
+            print("SUCCESS: Clickra package successfully uploaded, updated, and committed to Microsoft Store!")
+            return
+            
+        print("Commit attempt failed. Details:")
+        if res_commit.stdout:
+            print(f"STDOUT:\n{res_commit.stdout}")
+        if res_commit.stderr:
+            print(f"STDERR:\n{res_commit.stderr}")
+        
+        if attempt < MAX_RETRIES:
+            sleep_time = RETRY_BASE_DELAY + random.uniform(0, RETRY_JITTER)
+            print(f"Waiting {sleep_time:.2f} seconds before retrying...")
+            time.sleep(sleep_time)
+            
+    print("Error: Failed to commit submission after maximum retries.")
+    sys.exit(1)
 
 def main():
     script_dir = os.path.dirname(os.path.abspath(__file__))
