@@ -262,6 +262,16 @@ def run_reconfigure(msstore_bin, t_id, s_id, c_id, c_sec):
         sys.exit(1)
     print("Credentials configured successfully.")
 
+def delete_pending_submission(msstore_bin, p_id):
+    print("Checking and deleting any pending/failed submissions to ensure clean state...")
+    cmd_del = [msstore_bin, "submission", "delete", p_id, "--no-confirm"]
+    res_del = subprocess.run(cmd_del, capture_output=True, text=True, encoding='utf-8', check=False)  # nosec
+    if res_del.returncode == 0:
+        print("Successfully cleared pending submission.")
+    else:
+        # Ignore errors if there was no pending submission to delete
+        print("No active pending submission found or failed to delete (this is normal if clean).")
+
 def fetch_partner_metadata(msstore_bin, p_id):
     print("Retrieving current app metadata from Partner Center...")
     cmd_get = [msstore_bin, "submission", "get", p_id]
@@ -332,6 +342,8 @@ def main():
     print(f"Found msstore CLI: {msstore_bin}")
     
     run_reconfigure(msstore_bin, t_id, s_id, c_id, c_sec)
+    
+    delete_pending_submission(msstore_bin, p_id)
     
     metadata = fetch_partner_metadata(msstore_bin, p_id)
     
