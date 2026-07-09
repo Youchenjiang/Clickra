@@ -6,6 +6,11 @@ import subprocess
 import shutil
 import copy
 
+if hasattr(sys.stdout, 'reconfigure'):
+    sys.stdout.reconfigure(encoding='utf-8')
+if hasattr(sys.stderr, 'reconfigure'):
+    sys.stderr.reconfigure(encoding='utf-8')
+
 # Mapping from listing markdown file suffix to Microsoft Store language locale code
 LOCALE_MAP = {
     'ZH': 'zh-tw',       # StoreListing_ZH.md -> zh-tw
