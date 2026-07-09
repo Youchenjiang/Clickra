@@ -35,6 +35,10 @@ jobs:
         Copy-Item "./publish/shell/ClickraShell.dll" "./msix_layout/"
         Copy-Item "./packaging/msix/AppxManifest.xml" "./msix_layout/"
         Copy-Item "./packaging/msix/Assets/*" "./msix_layout/Assets/" -Recurse
+        if (-not (Test-Path "./packaging/msix/Strings")) {
+            throw "Required resource folder 'packaging/msix/Strings' not found."
+        }
+        Copy-Item "./packaging/msix/Strings" "./msix_layout/Strings" -Recurse
         Copy-Item "./src/resources/app.ico" "./msix_layout/app.ico"
         # Also ensure app.png exists for modern menu
         Copy-Item "./packaging/msix/Assets/StoreLogo.png" "./msix_layout/app.png"
@@ -116,7 +120,7 @@ jobs:
         gh release create "${{ github.ref_name }}" Clickra.msix --title "${{ github.ref_name }}" --notes-file release_notes.md
 
     - name: Setup Microsoft Store Developer CLI
-      uses: microsoft/microsoft-store-apppublisher@v1
+      uses: microsoft/microsoft-store-apppublisher@b76227f539d68e6465f79bbbc82ed92f61081aa4 # v1.3
 
     - name: Create MSStore Config
       shell: pwsh
