@@ -120,7 +120,7 @@ jobs:
         gh release create "${{ github.ref_name }}" Clickra.msix --title "${{ github.ref_name }}" --notes-file release_notes.md
 
     - name: Setup Microsoft Store Developer CLI
-      uses: microsoft/microsoft-store-apppublisher@v1
+      uses: microsoft/microsoft-store-apppublisher@b76227f539d68e6465f79bbbc82ed92f61081aa4 # v1.3
 
     - name: Create MSStore Config
       shell: pwsh
