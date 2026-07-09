@@ -351,8 +351,11 @@ def commit_submission(msstore_bin, p_id):
             print("SUCCESS: Clickra package successfully uploaded, updated, and committed to Microsoft Store!")
             return
             
-        err_out = res_commit.stderr or res_commit.stdout
-        print(f"Commit attempt failed. Details:\n{err_out}")
+        print("Commit attempt failed. Details:")
+        if res_commit.stdout:
+            print(f"STDOUT:\n{res_commit.stdout}")
+        if res_commit.stderr:
+            print(f"STDERR:\n{res_commit.stderr}")
         
         if attempt < max_retries:
             print(f"Waiting {retry_delay} seconds before retrying...")
