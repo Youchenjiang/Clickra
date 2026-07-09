@@ -318,7 +318,10 @@ def upload_partner_metadata(msstore_bin, p_id, metadata):
     print("Successfully uploaded metadata to Partner Center.")
 
 def publish_msix_package(msstore_bin, m_path, p_id, no_commit=False):
-    print("Uploading MSIX package and submitting to Microsoft Store...")
+    if no_commit:
+        print("Uploading MSIX package (no commit) to Microsoft Store...")
+    else:
+        print("Uploading MSIX package and submitting to Microsoft Store...")
     cmd_pub = [msstore_bin, "publish", m_path, "-id", p_id]
     if no_commit:
         cmd_pub.append("--noCommit")
@@ -326,7 +329,7 @@ def publish_msix_package(msstore_bin, m_path, p_id, no_commit=False):
     print(res_pub.stdout)
     if res_pub.returncode != 0:
         print("Error publishing package:")
-        print(res_pub.stderr)
+        print(res_pub.stderr or res_pub.stdout)
         sys.exit(1)
     if not no_commit:
         print("SUCCESS: Clickra package successfully uploaded and submitted to Microsoft Store!")
@@ -338,7 +341,7 @@ def commit_submission(msstore_bin, p_id):
     print(res_commit.stdout)
     if res_commit.returncode != 0:
         print("Error committing submission:")
-        print(res_commit.stderr)
+        print(res_commit.stderr or res_commit.stdout)
         sys.exit(1)
     print("SUCCESS: Clickra package successfully uploaded, updated, and committed to Microsoft Store!")
 
