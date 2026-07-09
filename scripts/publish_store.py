@@ -6,11 +6,16 @@ import subprocess
 import shutil
 import copy
 import time
+import random
 
 if hasattr(sys.stdout, 'reconfigure'):
     sys.stdout.reconfigure(encoding='utf-8')
 if hasattr(sys.stderr, 'reconfigure'):
     sys.stderr.reconfigure(encoding='utf-8')
+
+MAX_RETRIES = 12
+RETRY_BASE_DELAY = 30
+RETRY_JITTER = 5
 
 # Mapping from listing markdown file suffix to Microsoft Store language locale code
 LOCALE_MAP = {
@@ -340,11 +345,8 @@ def commit_submission(msstore_bin, p_id):
     print("Committing the submission to Microsoft Store...")
     cmd_commit = [msstore_bin, "submission", "publish", p_id]
     
-    max_retries = 12  # 12 * 30 seconds = 6 minutes max wait
-    retry_delay = 30
-    
-    for attempt in range(1, max_retries + 1):
-        print(f"Commit attempt {attempt}/{max_retries}...")
+    for attempt in range(1, MAX_RETRIES + 1):
+        print(f"Commit attempt {attempt}/{MAX_RETRIES}...")
         res_commit = subprocess.run(cmd_commit, capture_output=True, text=True, encoding='utf-8', check=False)  # nosec
         if res_commit.returncode == 0:
             print(res_commit.stdout)
@@ -357,9 +359,10 @@ def commit_submission(msstore_bin, p_id):
         if res_commit.stderr:
             print(f"STDERR:\n{res_commit.stderr}")
         
-        if attempt < max_retries:
-            print(f"Waiting {retry_delay} seconds before retrying...")
-            time.sleep(retry_delay)
+        if attempt < MAX_RETRIES:
+            sleep_time = RETRY_BASE_DELAY + random.uniform(0, RETRY_JITTER)
+            print(f"Waiting {sleep_time:.2f} seconds before retrying...")
+            time.sleep(sleep_time)
             
     print("Error: Failed to commit submission after maximum retries.")
     sys.exit(1)
