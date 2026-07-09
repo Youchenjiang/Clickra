@@ -16,6 +16,7 @@ if hasattr(sys.stderr, 'reconfigure'):
 MAX_RETRIES = 12
 RETRY_BASE_DELAY = 30
 RETRY_JITTER = 5
+MSSTORE_ERROR_MARKER = "💥 Error!"  # Sentinel string emitted by msstore-cli on failure
 
 # Mapping from listing markdown file suffix to Microsoft Store language locale code
 LOCALE_MAP = {
@@ -310,35 +311,27 @@ def delete_pending_submission(msstore_bin, p_id):
     print("Checking and deleting any pending/failed submissions to ensure clean state...")
     cmd_del = [msstore_bin, "submission", "delete", p_id, "--no-confirm"]
 
-    last_err_details = None
-    max_del_retries = 3
-    for attempt in range(1, max_del_retries + 1):
-        print(f"Delete pending submission attempt {attempt}/{max_del_retries}...")
-        res_del = run_command(cmd_del)
-        if res_del.returncode == 0 and "💥 Error!" not in (res_del.stderr or "") and "💥 Error!" not in (res_del.stdout or ""):
-            if res_del.stdout:
-                print(f"STDOUT:\n{res_del.stdout}")
-            print("Successfully cleared pending/failed submission.")
-            print("Waiting 20 seconds for Partner Center to complete deletion...")
-            time.sleep(20)
-            return
+    def success_check(res):
+        combined = (res.stdout or "") + (res.stderr or "")
+        if "No pending submission found" in combined:
+            return True
+        return res.returncode == 0 and MSSTORE_ERROR_MARKER not in combined
 
-        err_details = (res_del.stderr or res_del.stdout or "").strip().replace('\n', ' ')
-        if "No pending submission found" in err_details:
-            print("No pending submission found. Clean state verified.")
-            return
-
-        last_err_details = err_details
-        print(f"Delete attempt {attempt}/{max_del_retries} failed. Details: {err_details}")
-        if attempt < max_del_retries:
-            sleep_time = 10
-            print(f"Waiting {sleep_time} seconds before retrying delete...")
-            time.sleep(sleep_time)
-
-    if last_err_details:
-        print(f"Warning: Could not delete pending submission (this is normal if clean). Last error: {last_err_details}")
-    else:
+    res = _retry_command(cmd_del, max_retries=3, sleep_time=10,
+                         label="Delete pending submission", success_check=success_check)
+    if res is None:
         print("Warning: Could not delete pending submission (this is normal if clean).")
+        return
+
+    combined = (res.stdout or "") + (res.stderr or "")
+    if "No pending submission found" in combined:
+        print("No pending submission found. Clean state verified.")
+    else:
+        if res.stdout:
+            print(f"STDOUT:\n{res.stdout}")
+        print("Successfully cleared pending/failed submission.")
+        print("Waiting 20 seconds for Partner Center to complete deletion...")
+        time.sleep(20)
 
 def fetch_partner_metadata(msstore_bin, p_id):
     print("Retrieving current app metadata from Partner Center...")
@@ -347,8 +340,8 @@ def fetch_partner_metadata(msstore_bin, p_id):
     def success_check(res):
         return (res.returncode == 0 and
                 res.stdout and
-                "💥 Error!" not in res.stdout and
-                "💥 Error!" not in (res.stderr or ""))
+                MSSTORE_ERROR_MARKER not in res.stdout and
+                MSSTORE_ERROR_MARKER not in (res.stderr or ""))
 
     res = _retry_command(cmd_get, max_retries=8, sleep_time=15,
                          label="Fetch metadata", success_check=success_check)
@@ -411,8 +404,8 @@ def publish_msix_package(msstore_bin, m_path, p_id, no_commit=False):
 
     def success_check(res):
         return (res.returncode == 0 and
-                "💥 Error!" not in (res.stderr or "") and
-                "💥 Error!" not in (res.stdout or ""))
+                MSSTORE_ERROR_MARKER not in (res.stderr or "") and
+                MSSTORE_ERROR_MARKER not in (res.stdout or ""))
 
     def before_retry():
         # Delete any half-created/pending state before retrying
