@@ -32,44 +32,49 @@ def sanitize_json_content(content):
     while i < n:
         char = content[i]
         
-        if in_string:
-            if escaped:
-                # If we have a backslash followed by a newline, skip the newline
-                if char in ['\r', '\n']:
-                    i += 1
-                    escaped = False
-                    continue
-                else:
-                    output.append(char)
-                    escaped = False
-            else:
-                if char == '\\':
-                    escaped = True
-                    output.append(char)
-                elif char == '"':
-                    in_string = False
-                    output.append(char)
-                elif char in ['\r', '\n']:
-                    # Check if we are in the middle of a split unicode escape (e.g. \u... \n ... XXXX)
-                    last_chars = "".join(output[-5:])
-                    if re.search(r'\\u[0-9a-fA-F]{0,3}$', last_chars):
-                        # This is a split unicode escape sequence. Skip the newline to join it.
-                        i += 1
-                        continue
-                    else:
-                        # Raw newline in string: replace with literal '\n' characters
-                        output.append('\\n')
-                else:
-                    output.append(char)
-        else:
+        if not in_string:
             if char == '"':
                 in_string = True
+            output.append(char)
+            i += 1
+            continue
+            
+        if escaped:
+            if char not in ['\r', '\n']:
                 output.append(char)
+            escaped = False
+            i += 1
+            continue
+            
+        if char == '\\':
+            escaped = True
+            output.append(char)
+        elif char == '"':
+            in_string = False
+            output.append(char)
+        elif char in ['\r', '\n']:
+            # Check if we are in the middle of a split unicode escape (e.g. \u... \n ... XXXX)
+            last_chars = "".join(output[-5:])
+            if re.search(r'\\u[0-9a-fA-F]{0,3}$', last_chars):
+                pass
             else:
-                output.append(char)
+                output.append('\\n')
+        else:
+            output.append(char)
         i += 1
         
     return "".join(output)
+
+def match_section_name(header):
+    if 'description' in header:
+        return 'shortDescription' if 'short' in header else 'description'
+    if 'new' in header or 'release' in header:
+        return 'releaseNotes'
+    if 'features' in header:
+        return 'features'
+    if 'keywords' in header:
+        return 'keywords'
+    return None
 
 def parse_markdown_listing(file_path):
     """
@@ -105,20 +110,7 @@ def parse_markdown_listing(file_path):
             
             # Identify new section by English keywords
             header = stripped[3:].lower()
-            if 'description' in header:
-                if 'short' in header:
-                    current_section = 'shortDescription'
-                else:
-                    current_section = 'description'
-            elif 'new' in header or 'release' in header:
-                current_section = 'releaseNotes'
-            elif 'features' in header:
-                current_section = 'features'
-            elif 'keywords' in header:
-                current_section = 'keywords'
-            else:
-                current_section = None
-            
+            current_section = match_section_name(header)
             section_content = []
         else:
             if current_section:
@@ -157,7 +149,7 @@ def add_missing_zh_cn(listings):
         return
         
     print("Adding zh-cn listing to metadata Listings...")
-    template_lang = next((k for k in listings if k.lower() == 'zh-tw'), list(listings.keys())[0])
+    template_lang = next((k for k in listings if k.lower() == 'zh-tw'), next(iter(listings)))
     new_listing = copy.deepcopy(listings[template_lang])
     base = new_listing.get('BaseListing') or new_listing.get('baseListing')
     if base:
