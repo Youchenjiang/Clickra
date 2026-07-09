@@ -35,6 +35,9 @@ jobs:
         Copy-Item "./publish/shell/ClickraShell.dll" "./msix_layout/"
         Copy-Item "./packaging/msix/AppxManifest.xml" "./msix_layout/"
         Copy-Item "./packaging/msix/Assets/*" "./msix_layout/Assets/" -Recurse
+        if (-not (Test-Path "./packaging/msix/Strings")) {
+            throw "Required resource folder 'packaging/msix/Strings' not found."
+        }
         Copy-Item "./packaging/msix/Strings" "./msix_layout/Strings" -Recurse
         Copy-Item "./src/resources/app.ico" "./msix_layout/app.ico"
         # Also ensure app.png exists for modern menu
