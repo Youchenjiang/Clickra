@@ -256,6 +256,37 @@ def run_command(cmd):
     res = subprocess.run(cmd, capture_output=True, text=True, encoding='utf-8', errors='replace', check=False)  # nosec
     return res
 
+def _retry_command(cmd, max_retries, sleep_time, label, success_check=None, before_retry=None):
+    """
+    Execute cmd with retry logic.
+    Returns the successful CompletedProcess result, or None if all attempts failed.
+
+    Args:
+        cmd: Command list to execute.
+        max_retries: Maximum number of attempts.
+        sleep_time: Seconds to wait between retries.
+        label: Human-readable label for log messages.
+        success_check: Optional callable(res) -> bool. Defaults to returncode == 0.
+        before_retry: Optional callable() called before each retry (e.g., cleanup).
+    """
+    for attempt in range(1, max_retries + 1):
+        print(f"{label} attempt {attempt}/{max_retries}...")
+        res = run_command(cmd)
+        is_success = success_check(res) if success_check else res.returncode == 0
+        if is_success:
+            return res
+        print(f"{label} attempt {attempt}/{max_retries} failed.")
+        if res.stdout:
+            print(f"STDOUT:\n{res.stdout}")
+        if res.stderr:
+            print(f"STDERR:\n{res.stderr}")
+        if attempt < max_retries:
+            if before_retry:
+                before_retry()
+            print(f"Waiting {sleep_time} seconds before retrying...")
+            time.sleep(sleep_time)
+    return None
+
 def run_reconfigure(msstore_bin, t_id, s_id, c_id, c_sec):
     print("Configuring Microsoft Store Developer CLI credentials...")
     cmd_config = [
@@ -278,7 +309,7 @@ def run_reconfigure(msstore_bin, t_id, s_id, c_id, c_sec):
 def delete_pending_submission(msstore_bin, p_id):
     print("Checking and deleting any pending/failed submissions to ensure clean state...")
     cmd_del = [msstore_bin, "submission", "delete", p_id, "--no-confirm"]
-    
+
     last_err_details = None
     max_del_retries = 3
     for attempt in range(1, max_del_retries + 1):
@@ -291,19 +322,19 @@ def delete_pending_submission(msstore_bin, p_id):
             print("Waiting 20 seconds for Partner Center to complete deletion...")
             time.sleep(20)
             return
-            
+
         err_details = (res_del.stderr or res_del.stdout or "").strip().replace('\n', ' ')
         if "No pending submission found" in err_details:
             print("No pending submission found. Clean state verified.")
             return
-            
+
         last_err_details = err_details
         print(f"Delete attempt {attempt}/{max_del_retries} failed. Details: {err_details}")
         if attempt < max_del_retries:
             sleep_time = 10
             print(f"Waiting {sleep_time} seconds before retrying delete...")
             time.sleep(sleep_time)
-            
+
     if last_err_details:
         print(f"Warning: Could not delete pending submission (this is normal if clean). Last error: {last_err_details}")
     else:
@@ -312,43 +343,31 @@ def delete_pending_submission(msstore_bin, p_id):
 def fetch_partner_metadata(msstore_bin, p_id):
     print("Retrieving current app metadata from Partner Center...")
     cmd_get = [msstore_bin, "submission", "get", p_id]
-    
-    max_get_retries = 8
-    for attempt in range(1, max_get_retries + 1):
-        print(f"Fetch metadata attempt {attempt}/{max_get_retries}...")
-        res_get = run_command(cmd_get)
-        
-        # Check if successful and output contains valid JSON (non-empty/not error)
-        if (res_get.returncode == 0 and 
-            res_get.stdout and 
-            "💥 Error!" not in res_get.stdout and 
-            "💥 Error!" not in (res_get.stderr or "")):
-            if res_get.stdout:
-                print(f"STDOUT:\n{res_get.stdout}")
-            if res_get.stderr:
-                print(f"STDERR:\n{res_get.stderr}")
-            raw_json = res_get.stdout
-            print("Sanitizing and parsing metadata JSON...")
-            try:
-                sanitized = sanitize_json_content(raw_json)
-                return json.loads(sanitized)
-            except Exception as e:
-                print("Failed to parse metadata JSON:")
-                print(e)
-                
-        print("Fetch attempt failed. Details:")
-        if res_get.stdout:
-            print(f"STDOUT:\n{res_get.stdout}")
-        if res_get.stderr:
-            print(f"STDERR:\n{res_get.stderr}")
-            
-        if attempt < max_get_retries:
-            sleep_time = 15
-            print(f"Waiting {sleep_time} seconds before retrying fetch...")
-            time.sleep(sleep_time)
-            
-    print("Error: Failed to retrieve submission after maximum retries.")
-    sys.exit(1)
+
+    def success_check(res):
+        return (res.returncode == 0 and
+                res.stdout and
+                "💥 Error!" not in res.stdout and
+                "💥 Error!" not in (res.stderr or ""))
+
+    res = _retry_command(cmd_get, max_retries=8, sleep_time=15,
+                         label="Fetch metadata", success_check=success_check)
+    if res is None:
+        print("Error: Failed to retrieve submission after maximum retries.")
+        sys.exit(1)
+
+    if res.stdout:
+        print(f"STDOUT:\n{res.stdout}")
+    if res.stderr:
+        print(f"STDERR:\n{res.stderr}")
+    print("Sanitizing and parsing metadata JSON...")
+    try:
+        sanitized = sanitize_json_content(res.stdout)
+        return json.loads(sanitized)
+    except Exception as e:
+        print("Failed to parse metadata JSON:")
+        print(e)
+        sys.exit(1)
 
 def parse_all_listings(repo_root):
     print("Syncing app metadata from docs/StoreListing_*.md files...")
@@ -369,32 +388,17 @@ def upload_partner_metadata(msstore_bin, p_id, metadata):
     minified_json = json.dumps(metadata, ensure_ascii=False, separators=(',', ':'))
     print("Uploading updated metadata to Partner Center...")
     cmd_update = [msstore_bin, "submission", "updateMetadata", p_id, minified_json, "-v"]
-    
-    max_up_retries = 5
-    for attempt in range(1, max_up_retries + 1):
-        print(f"Upload metadata attempt {attempt}/{max_up_retries}...")
-        res_up = run_command(cmd_update)
-        if res_up.returncode == 0:
-            if res_up.stdout:
-                print(f"STDOUT:\n{res_up.stdout}")
-            if res_up.stderr:
-                print(f"STDERR:\n{res_up.stderr}")
-            print("Successfully uploaded metadata to Partner Center.")
-            return
-            
-        print("Upload attempt failed. Details:")
-        if res_up.stdout:
-            print(f"STDOUT:\n{res_up.stdout}")
-        if res_up.stderr:
-            print(f"STDERR:\n{res_up.stderr}")
-            
-        if attempt < max_up_retries:
-            sleep_time = 15
-            print(f"Waiting {sleep_time} seconds before retrying upload...")
-            time.sleep(sleep_time)
-            
-    print("Error: Failed to upload metadata after maximum retries.")
-    sys.exit(1)
+
+    res = _retry_command(cmd_update, max_retries=5, sleep_time=15, label="Upload metadata")
+    if res is None:
+        print("Error: Failed to upload metadata after maximum retries.")
+        sys.exit(1)
+
+    if res.stdout:
+        print(f"STDOUT:\n{res.stdout}")
+    if res.stderr:
+        print(f"STDERR:\n{res.stderr}")
+    print("Successfully uploaded metadata to Partner Center.")
 
 def publish_msix_package(msstore_bin, m_path, p_id, no_commit=False):
     if no_commit:
@@ -404,62 +408,40 @@ def publish_msix_package(msstore_bin, m_path, p_id, no_commit=False):
     cmd_pub = [msstore_bin, "publish", m_path, "-id", p_id]
     if no_commit:
         cmd_pub.append("--noCommit")
-        
-    max_pub_retries = 3
-    for attempt in range(1, max_pub_retries + 1):
-        print(f"Publish package attempt {attempt}/{max_pub_retries}...")
-        res_pub = run_command(cmd_pub)
-        if res_pub.stdout:
-            print(f"STDOUT:\n{res_pub.stdout}")
-        if res_pub.stderr:
-            print(f"STDERR:\n{res_pub.stderr}")
-            
-        has_error = (res_pub.returncode != 0 or 
-                     (res_pub.stderr and "💥 Error!" in res_pub.stderr) or 
-                     (res_pub.stdout and "💥 Error!" in res_pub.stdout))
-                     
-        if not has_error:
-            if not no_commit:
-                print("SUCCESS: Clickra package successfully uploaded and submitted to Microsoft Store!")
-            return
-            
-        print(f"Publish package attempt {attempt}/{max_pub_retries} failed.")
-        if attempt < max_pub_retries:
-            sleep_time = 30
-            print(f"Waiting {sleep_time} seconds and clearing state before retrying publish...")
-            time.sleep(sleep_time)
-            # Delete any half-created/pending state and wait 20s
-            delete_pending_submission(msstore_bin, p_id)
-            
-    print("Error publishing package.")
-    sys.exit(1)
+
+    def success_check(res):
+        return (res.returncode == 0 and
+                "💥 Error!" not in (res.stderr or "") and
+                "💥 Error!" not in (res.stdout or ""))
+
+    def before_retry():
+        # Delete any half-created/pending state before retrying
+        delete_pending_submission(msstore_bin, p_id)
+
+    res = _retry_command(cmd_pub, max_retries=3, sleep_time=30,
+                         label="Publish package",
+                         success_check=success_check, before_retry=before_retry)
+    if res is None:
+        print("Error publishing package.")
+        sys.exit(1)
+
+    if not no_commit:
+        print("SUCCESS: Clickra package successfully uploaded and submitted to Microsoft Store!")
 
 def commit_submission(msstore_bin, p_id):
     print("Committing the submission to Microsoft Store...")
     cmd_commit = [msstore_bin, "submission", "publish", p_id]
-    
-    for attempt in range(1, MAX_RETRIES + 1):
-        print(f"Commit attempt {attempt}/{MAX_RETRIES}...")
-        res_commit = run_command(cmd_commit)
-        if res_commit.returncode == 0:
-            if res_commit.stdout:
-                print(f"STDOUT:\n{res_commit.stdout}")
-            print("SUCCESS: Clickra package successfully uploaded, updated, and committed to Microsoft Store!")
-            return
-            
-        print("Commit attempt failed. Details:")
-        if res_commit.stdout:
-            print(f"STDOUT:\n{res_commit.stdout}")
-        if res_commit.stderr:
-            print(f"STDERR:\n{res_commit.stderr}")
-        
-        if attempt < MAX_RETRIES:
-            sleep_time = RETRY_BASE_DELAY + random.uniform(0, RETRY_JITTER)
-            print(f"Waiting {sleep_time:.2f} seconds before retrying...")
-            time.sleep(sleep_time)
-            
-    print("Error: Failed to commit submission after maximum retries.")
-    sys.exit(1)
+
+    sleep_time = RETRY_BASE_DELAY + random.uniform(0, RETRY_JITTER)
+    res = _retry_command(cmd_commit, max_retries=MAX_RETRIES, sleep_time=sleep_time,
+                         label="Commit submission")
+    if res is None:
+        print("Error: Failed to commit submission after maximum retries.")
+        sys.exit(1)
+
+    if res.stdout:
+        print(f"STDOUT:\n{res.stdout}")
+    print("SUCCESS: Clickra package successfully uploaded, updated, and committed to Microsoft Store!")
 
 def main():
     script_dir = os.path.dirname(os.path.abspath(__file__))
