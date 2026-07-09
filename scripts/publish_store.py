@@ -270,7 +270,8 @@ def delete_pending_submission(msstore_bin, p_id):
         print("Successfully cleared pending submission.")
     else:
         # Ignore errors if there was no pending submission to delete
-        print("No active pending submission found or failed to delete (this is normal if clean).")
+        err_details = res_del.stderr or res_del.stdout
+        print(f"Warning: Could not delete pending submission (this is normal if clean). Details: {err_details}")
 
 def fetch_partner_metadata(msstore_bin, p_id):
     print("Retrieving current app metadata from Partner Center...")
