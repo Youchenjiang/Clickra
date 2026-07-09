@@ -115,8 +115,8 @@ jobs:
         EOF
         gh release create "${{ github.ref_name }}" Clickra.msix --title "${{ github.ref_name }}" --notes-file release_notes.md
 
-    - name: Install MSStore CLI
-      run: dotnet tool install -g Microsoft.Store.DeveloperCLI
+    - name: Setup Microsoft Store Developer CLI
+      uses: microsoft/microsoft-store-apppublisher@v1
 
     - name: Create MSStore Config
       shell: pwsh
