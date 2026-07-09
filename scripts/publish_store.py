@@ -252,6 +252,10 @@ def load_store_config(config_path):
         
     return t_id, c_id, c_sec, s_id, p_id, m_path
 
+def run_command(cmd):
+    res = subprocess.run(cmd, capture_output=True, text=True, encoding='utf-8', check=False)  # nosec
+    return res
+
 def run_reconfigure(msstore_bin, t_id, s_id, c_id, c_sec):
     print("Configuring Microsoft Store Developer CLI credentials...")
     cmd_config = [
@@ -261,7 +265,7 @@ def run_reconfigure(msstore_bin, t_id, s_id, c_id, c_sec):
         "--clientId", c_id,
         "--clientSecret", c_sec
     ]
-    res = subprocess.run(cmd_config, capture_output=True, text=True, encoding='utf-8', check=False)  # nosec
+    res = run_command(cmd_config)
     if res.returncode != 0:
         print("Error configuring credentials:")
         print(res.stderr or res.stdout)
@@ -271,21 +275,26 @@ def run_reconfigure(msstore_bin, t_id, s_id, c_id, c_sec):
 def delete_pending_submission(msstore_bin, p_id):
     print("Checking and deleting any pending/failed submissions to ensure clean state...")
     cmd_del = [msstore_bin, "submission", "delete", p_id, "--no-confirm"]
-    res_del = subprocess.run(cmd_del, capture_output=True, text=True, encoding='utf-8', check=False)  # nosec
+    res_del = run_command(cmd_del)
+    if res_del.stdout:
+        print(f"STDOUT:\n{res_del.stdout}")
+    if res_del.stderr:
+        print(f"STDERR:\n{res_del.stderr}")
     if res_del.returncode == 0:
-        print("Successfully cleared pending submission.")
+        print("Successfully cleared pending/failed submission.")
     else:
-        # Ignore errors if there was no pending submission to delete
-        err_details = res_del.stderr or res_del.stdout
-        print(f"Warning: Could not delete pending submission (this is normal if clean). Details: {err_details}")
+        print("Warning: Could not delete pending submission (this is normal if clean).")
 
 def fetch_partner_metadata(msstore_bin, p_id):
     print("Retrieving current app metadata from Partner Center...")
     cmd_get = [msstore_bin, "submission", "get", p_id]
-    res_get = subprocess.run(cmd_get, capture_output=True, text=True, encoding='utf-8', check=False)  # nosec
+    res_get = run_command(cmd_get)
+    if res_get.stdout:
+        print(f"STDOUT:\n{res_get.stdout}")
+    if res_get.stderr:
+        print(f"STDERR:\n{res_get.stderr}")
     if res_get.returncode != 0:
-        print("Error retrieving submission:")
-        print(res_get.stderr)
+        print("Error retrieving submission.")
         sys.exit(1)
         
     raw_json = res_get.stdout
@@ -317,10 +326,13 @@ def upload_partner_metadata(msstore_bin, p_id, metadata):
     minified_json = json.dumps(metadata, ensure_ascii=False, separators=(',', ':'))
     print("Uploading updated metadata to Partner Center...")
     cmd_update = [msstore_bin, "submission", "updateMetadata", p_id, minified_json, "-v"]
-    res_up = subprocess.run(cmd_update, capture_output=True, text=True, encoding='utf-8', check=False)  # nosec
+    res_up = run_command(cmd_update)
+    if res_up.stdout:
+        print(f"STDOUT:\n{res_up.stdout}")
+    if res_up.stderr:
+        print(f"STDERR:\n{res_up.stderr}")
     if res_up.returncode != 0:
-        print("Error uploading metadata:")
-        print(res_up.stderr or res_up.stdout)
+        print("Error uploading metadata.")
         sys.exit(1)
     print("Successfully uploaded metadata to Partner Center.")
 
@@ -332,11 +344,13 @@ def publish_msix_package(msstore_bin, m_path, p_id, no_commit=False):
     cmd_pub = [msstore_bin, "publish", m_path, "-id", p_id]
     if no_commit:
         cmd_pub.append("--noCommit")
-    res_pub = subprocess.run(cmd_pub, capture_output=True, text=True, encoding='utf-8', check=False)  # nosec
-    print(res_pub.stdout)
-    if res_pub.returncode != 0:
-        print("Error publishing package:")
-        print(res_pub.stderr or res_pub.stdout)
+    res_pub = run_command(cmd_pub)
+    if res_pub.stdout:
+        print(f"STDOUT:\n{res_pub.stdout}")
+    if res_pub.stderr:
+        print(f"STDERR:\n{res_pub.stderr}")
+    if res_pub.returncode != 0 or (res_pub.stderr and "Error!" in res_pub.stderr):
+        print("Error publishing package.")
         sys.exit(1)
     if not no_commit:
         print("SUCCESS: Clickra package successfully uploaded and submitted to Microsoft Store!")
@@ -347,9 +361,10 @@ def commit_submission(msstore_bin, p_id):
     
     for attempt in range(1, MAX_RETRIES + 1):
         print(f"Commit attempt {attempt}/{MAX_RETRIES}...")
-        res_commit = subprocess.run(cmd_commit, capture_output=True, text=True, encoding='utf-8', check=False)  # nosec
+        res_commit = run_command(cmd_commit)
         if res_commit.returncode == 0:
-            print(res_commit.stdout)
+            if res_commit.stdout:
+                print(f"STDOUT:\n{res_commit.stdout}")
             print("SUCCESS: Clickra package successfully uploaded, updated, and committed to Microsoft Store!")
             return
             
@@ -374,6 +389,9 @@ def main():
     
     t_id, c_id, c_sec, s_id, p_id, m_path = load_store_config(config_path)
     
+    if not os.path.isabs(m_path):
+        m_path = os.path.abspath(os.path.join(repo_root, m_path))
+        
     msstore_bin = find_msstore_cli()
     if not msstore_bin:
         print("Error: Microsoft Store Developer CLI (msstore.exe) not found.")
