@@ -4,10 +4,10 @@
 
 ---
 
-## 产品名称 (Product Name)
+## Product Name
 Clickra
 
-## 说明 (Description)
+## Description
 【系统要求】“文档转 PDF”功能可使用本机 Microsoft Office；如果未安装 Office，也可由 Clickra 下载并管理 LibreOffice 作为免费的本机备用引擎。
 
 Clickra 是一款面向 Windows 10 与 Windows 11 的高速原生右键菜单工具集。它可以无缝集成到文件资源管理器的右键菜单中，无需打开笨重的软件，就能快速完成常用文件处理。
@@ -26,13 +26,13 @@ Clickra 尊重您的隐私。大多数处理流程（文档转 PDF、PDF 压缩�
 
 🔗 开源项目主页：https://github.com/Youchenjiang/Clickra
 
-## 此版本的新增功能 (What's new in this version)
+## What's new in this version
 - PDF 本机压缩：采用内置处理核心，不依赖外部工具。
 - 结构化优化：支持 Stream 简化、字体去重、大字体剥离以减少 PDF 体积。
 - 图片高质量 downsampling：以双立方高质量缩减大图，自动跳过小图防模糊。
 - 设置页拉条 UI：新增 4 段横向拉条 Slider (极小、小档、标准、高质量)，省下设置界面空间。
 
-## 产品功能 (Product Features)
+## Product Features
 *(最多 20 个，以项目符号显示)*
 - 原生仪表板监测 PDF 与 Office 引擎状态
 - 支持 Word/Excel/PPT 一键转 PDF
@@ -51,19 +51,19 @@ Clickra 尊重您的隐私。大多数处理流程（文档转 PDF、PDF 压缩�
 ---
 ### 补充字段 (Supplemental Fields)
 
-## 简短标题 (Short title)
+## Short title
 Clickra
 
-## 语音标题 (Voice title)
+## Voice title
 Clickra
 
-## 简短描述 (Short description)
+## Short description
 Clickra 是一款高速原生右键菜单工具，支持文档转 PDF、PDF 去除密码、PDF 合并与图片拼接。安全、优先本机处理，而且非常快速。
 
 ---
-### 其他信息 (Other Information)
+### Other Information
 
-## 关键词 (Keywords)
+## Keywords
 *(最多 7 个)*
 - 右键菜单
 - PDF合并
@@ -73,5 +73,5 @@ Clickra 是一款高速原生右键菜单工具，支持文档转 PDF、PDF 去�
 - Excel转PDF
 - 图片转PDF
 
-## 著作权与商标信息 (Copyright and trademark info)
+## Copyright and trademark info
 © 2026 Youchen Jiang. All rights reserved.

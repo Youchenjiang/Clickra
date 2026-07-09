@@ -103,18 +103,18 @@ def parse_markdown_listing(file_path):
             if current_section:
                 save_section(parsed, current_section, section_content)
             
-            # Identify new section
+            # Identify new section by English keywords
             header = stripped[3:].lower()
-            if '說明' in header or 'description' in header:
-                if '簡短' in header or 'short' in header:
+            if 'description' in header:
+                if 'short' in header:
                     current_section = 'shortDescription'
                 else:
                     current_section = 'description'
-            elif '新增功能' in header or "what's new" in header:
+            elif 'new' in header or 'release' in header:
                 current_section = 'releaseNotes'
-            elif '功能' in header or 'features' in header:
+            elif 'features' in header:
                 current_section = 'features'
-            elif '關鍵字' in header or 'keywords' in header:
+            elif 'keywords' in header:
                 current_section = 'keywords'
             else:
                 current_section = None
