@@ -22,7 +22,7 @@ MSSTORE_ERROR_MARKER = "💥 Error!"  # Sentinel string emitted by msstore-cli o
 LOCALE_MAP = {
     'ZH': 'zh-tw',       # StoreListing_ZH.md -> zh-tw
     'ZH-CN': 'zh-cn',    # StoreListing_ZH-CN.md -> zh-cn
-    'EN': 'en',          # StoreListing_EN.md -> en
+    'EN': 'en-us',       # StoreListing_EN.md -> en-us
     'JA': 'ja-jp',       # StoreListing_JA.md -> ja-jp
     'KO': 'ko-kr'        # StoreListing_KO.md -> ko-kr
 }
