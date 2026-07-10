@@ -172,7 +172,11 @@ def add_missing_zh_cn(listings):
 
 def match_parsed_lang(lang, parsed_listings):
     for k in parsed_listings:
-        if k.lower() == lang.lower() or (k.lower() == 'en' and lang.lower().startswith('en')):
+        # Exact match
+        if k.lower() == lang.lower():
+            return k
+        # Robust English matching (e.g., match 'en-us' locally to 'en' on the store, or vice versa)
+        if k.lower().startswith('en') and lang.lower().startswith('en'):
             return k
     return None
 
@@ -253,7 +257,71 @@ def load_store_config(config_path):
         
     return t_id, c_id, c_sec, s_id, p_id, m_path
 
+DRY_RUN = False
+DRY_RUN_ATTEMPTS = {}
+
+def handle_dry_run(cmd):
+    cmd_str = " ".join(cmd)
+    print(f"[DRY-RUN] Executing mock command: {cmd_str}")
+    
+    # 1. reconfigure
+    if "reconfigure" in cmd:
+        return subprocess.CompletedProcess(cmd, 0, "Reconfigured successfully.", "")
+        
+    # 2. submission delete
+    if "submission" in cmd and "delete" in cmd:
+        return subprocess.CompletedProcess(cmd, 0, "No pending submission found. Clean state verified.", "")
+        
+    # 3. publish package
+    if "publish" in cmd and "-id" in cmd:
+        attempt = DRY_RUN_ATTEMPTS.get("publish", 1)
+        DRY_RUN_ATTEMPTS["publish"] = attempt + 1
+        if attempt == 1:
+            print("[DRY-RUN] Simulating transient 500 error for package publish...")
+            return subprocess.CompletedProcess(cmd, 1, "", "💥 Error! Could not retrieve your application.")
+        return subprocess.CompletedProcess(cmd, 0, "✅ Ok! Found the app!\nSUCCESS: Clickra package successfully uploaded!", "")
+        
+    # 4. submission get
+    if "submission" in cmd and "get" in cmd:
+        fake_metadata = {
+            "Id": "1152921505701393896",
+            "Listings": {
+                "zh-tw": {
+                    "Title": "Clickra (Traditional Chinese)",
+                    "ShortDescription": "Desc TW"
+                },
+                "en-us": {
+                    "Title": "Clickra (English)",
+                    "ShortDescription": "Desc US"
+                }
+            },
+            "ApplicationPackages": [
+                {
+                    "FileName": "Clickra.msix",
+                    "FileStatus": "PendingUpload"
+                }
+            ]
+        }
+        return subprocess.CompletedProcess(cmd, 0, json.dumps(fake_metadata), "")
+        
+    # 5. submission updateMetadata
+    if "submission" in cmd and "updateMetadata" in cmd:
+        attempt = DRY_RUN_ATTEMPTS.get("updateMetadata", 1)
+        DRY_RUN_ATTEMPTS["updateMetadata"] = attempt + 1
+        if attempt == 1:
+            print("[DRY-RUN] Simulating 504 Gateway Timeout for updateMetadata...")
+            return subprocess.CompletedProcess(cmd, 0, "1", "504 Gateway Timeout 💥 Error!")
+        return subprocess.CompletedProcess(cmd, 0, "Successfully updated metadata", "")
+        
+    # 6. submission publish (commit)
+    if "submission" in cmd and "publish" in cmd:
+        return subprocess.CompletedProcess(cmd, 0, "SUCCESS: clickra published", "")
+        
+    return subprocess.CompletedProcess(cmd, 0, "Mock Success", "")
+
 def run_command(cmd):
+    if DRY_RUN:
+        return handle_dry_run(cmd)
     res = subprocess.run(cmd, capture_output=True, text=True, encoding='utf-8', errors='replace', check=False)  # nosec
     return res
 
@@ -448,6 +516,13 @@ def commit_submission(msstore_bin, p_id):
     print("SUCCESS: Clickra package successfully uploaded, updated, and committed to Microsoft Store!")
 
 def main():
+    global DRY_RUN
+    if "--dry-run" in sys.argv:
+        DRY_RUN = True
+        print("==================================================")
+        print("          RUNNING IN DRY-RUN MODE                 ")
+        print("==================================================")
+
     script_dir = os.path.dirname(os.path.abspath(__file__))
     repo_root = os.path.dirname(script_dir)
     config_path = os.path.join(script_dir, "local_store_config.json")
@@ -457,7 +532,7 @@ def main():
     if not os.path.isabs(m_path):
         m_path = os.path.abspath(os.path.join(repo_root, m_path))
         
-    if not os.path.isfile(m_path):
+    if not DRY_RUN and not os.path.isfile(m_path):
         print(f"Error: Microsoft Store package path does not exist: {m_path}")
         sys.exit(1)
         
