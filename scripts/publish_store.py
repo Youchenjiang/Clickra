@@ -382,7 +382,13 @@ def upload_partner_metadata(msstore_bin, p_id, metadata):
     print("Uploading updated metadata to Partner Center...")
     cmd_update = [msstore_bin, "submission", "updateMetadata", p_id, minified_json, "-v"]
 
-    res = _retry_command(cmd_update, max_retries=5, sleep_time=15, label="Upload metadata")
+    def success_check(res):
+        return (res.returncode == 0 and
+                MSSTORE_ERROR_MARKER not in (res.stderr or "") and
+                MSSTORE_ERROR_MARKER not in (res.stdout or ""))
+
+    res = _retry_command(cmd_update, max_retries=5, sleep_time=15,
+                         label="Upload metadata", success_check=success_check)
     if res is None:
         print("Error: Failed to upload metadata after maximum retries.")
         sys.exit(1)
@@ -425,9 +431,14 @@ def commit_submission(msstore_bin, p_id):
     print("Committing the submission to Microsoft Store...")
     cmd_commit = [msstore_bin, "submission", "publish", p_id]
 
+    def success_check(res):
+        return (res.returncode == 0 and
+                MSSTORE_ERROR_MARKER not in (res.stderr or "") and
+                MSSTORE_ERROR_MARKER not in (res.stdout or ""))
+
     sleep_time = RETRY_BASE_DELAY + random.uniform(0, RETRY_JITTER)
     res = _retry_command(cmd_commit, max_retries=MAX_RETRIES, sleep_time=sleep_time,
-                         label="Commit submission")
+                         label="Commit submission", success_check=success_check)
     if res is None:
         print("Error: Failed to commit submission after maximum retries.")
         sys.exit(1)
