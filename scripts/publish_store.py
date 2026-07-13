@@ -283,7 +283,6 @@ def update_metadata(metadata, parsed_listings):
         return 0
         
     # Inject zh-cn listing template if missing
-    import copy
     add_missing_zh_cn(listings)
     
     updated_count = 0
