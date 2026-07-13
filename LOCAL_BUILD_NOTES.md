@@ -315,3 +315,91 @@ feat(dashboard): add Excel engine status row to overview tab
 | Delete file with no replacement | 1 commit: `refactor(core): remove unused X` |
 | Add new feature with 3 files | 1 commit if same concern: `feat(excel): add Excel to PDF support` |
 | Add feature + fix unrelated bug | 2 commits: one `feat`, one `fix` |
+
+---
+
+## Partner Center API — Known Behaviors & Gotchas
+
+These notes were discovered through extensive testing of `scripts/publish_store.py`
+against the Microsoft Store Submission API (`manage.devcenter.microsoft.com`).
+
+### Authentication
+- OAuth2 client_credentials flow with resource `https://manage.devcenter.microsoft.com`.
+- Token TTL is ~60 min; the script acquires once per run.
+
+### Submission Lifecycle (Status Flow)
+```
+(POST) → Draft → PendingCommit → CommitStarted → PreProcessing → Certification → Published
+                                                                   ↘ CommitFailed
+```
+- **CommitStarted ≠ submitted.** It only means the backend *started* processing the
+  commit.  The script MUST poll until `PreProcessing` / `Certification` / `Published`
+  to confirm real acceptance.  Checking for `CommitStarted` alone is a false positive.
+- The API returns `202` with `{"status":"CommitStarted"}` immediately — this is async.
+- Typical processing time: 15–30 minutes.  The post-commit verification loop runs
+  9 checks × 20 s = 3 min; it may time out before the backend finishes, which is
+  normal and not a failure.
+
+### Creating a Submission (POST)
+- `POST /v1.0/my/applications/{productId}/submissions` with **empty body** (`b''`).
+  - Using `b'{}'` causes HTTP 400: *"The size of Listings must be 1 or more"*.
+- The response clones the last *published* version's listings and packages.
+- Returns `fileUploadUrl` (Azure Blob SAS URL) for the ZIP upload.
+- **409 Conflict** means a pending submission already exists — delete it first.
+
+### Uploading the Package (PUT to SAS URL)
+- Upload a single ZIP containing: MSIX + screenshots + any other assets.
+- All files go to the root of the ZIP (no subdirectories).
+- Response: `201 Created`.
+
+### Updating Metadata (PUT)
+- `PUT /v1.0/my/applications/{productId}/submissions/{submissionId}` with the full
+  submission JSON.
+- **Key casing**: The API returns **camelCase** keys (`releaseNotes`, `baseListing`,
+  `images`), NOT PascalCase (`ReleaseNotes`, `BaseListing`, `Images`).  The script
+  must match camelCase when reading/writing to avoid creating duplicate keys.
+- PUT response `200` means accepted; does not guarantee persistence — the commit
+  may still reject changes.
+
+### Package References (`applicationPackages`)
+- The cloned submission has one package with `fileStatus: "Uploaded"` and a real `id`.
+- The API **requires** keeping existing package entries.  You must:
+  1. Copy each existing package, set `fileStatus: "PendingDelete"` (preserve `id`).
+  2. Append a new entry: `{fileName: "Clickra.msix", fileStatus: "PendingUpload"}`.
+- Omitting old entries → HTTP 400: *"Please keep all file entries for existing packages."*
+- During commit, the backend removes the old package and processes the new one.
+  Both entries may temporarily coexist with the same filename — this is normal.
+
+### Screenshot / Image References (`images` in `baseListing`)
+- **Key behavior**: The API **silently ignores** `PendingDelete` on screenshots that
+  have `fileStatus: "Uploaded"` from a previous published submission.  You cannot
+  replace or delete them via the API.
+- **Working strategy**: Keep all existing images untouched and **append** new
+  `PendingUpload` screenshots.  The backend uploads the new ones and gives them real
+  IDs.  Old screenshots remain alongside.
+- **Cleanup**: Old/redundant screenshots must be removed manually in the Partner
+  Center UI.
+- Screenshot requirements: `.png` format, ≤ 50 MB, recommended ≥ 1366×768 pixels.
+  Smaller sizes (e.g. 1140×733) are accepted but not ideal.
+
+### `zh-cn` Listing
+- The cloned submission may not include a `zh-cn` listing.
+- The script creates one via `add_missing_zh_cn()` (deep-copied from `zh-tw` with
+  cleared content).  This works because the new listing has no pre-existing screenshots,
+  so the API accepts `PendingUpload` entries without conflict.
+
+### Retry / Timeout
+- Microsoft's ingestion gateway is slow and unreliable.  GET requests frequently
+  time out (504) or take 60–180 seconds.
+- The `api_request()` helper uses exponential backoff (5 retries, starting at 15 s).
+- For critical calls (GET submission, PUT metadata), a minimum timeout of 180 s
+  is recommended.
+- DELETE also times out frequently; retry with 15 s intervals.
+
+### Error Patterns
+| HTTP Code | Meaning | Action |
+|-----------|---------|--------|
+| 400 | Bad request (missing listings, missing package IDs, etc.) | Fix the JSON payload |
+| 409 | Conflict — pending submission exists | Delete existing submission first |
+| 504 | Gateway timeout | Retry after 15–30 s |
+| 202 | Accepted (commit started) | Normal — poll for final status |
