@@ -246,12 +246,20 @@ def update_single_listing(base_listing, new_data):
             val = new_data[parsed_key]
             if parsed_key == 'keywords':
                 val = val[:7] # Force strict API limit
+
+            # The Partner Center API returns camelCase keys (e.g. 'releaseNotes')
+            # but may also use PascalCase ('ReleaseNotes'). Check all variants
+            # to find the existing key and update in-place.
+            camel_key = json_key[0].lower() + json_key[1:]  # 'releaseNotes'
             if json_key in base_listing:
                 base_listing[json_key] = val
+            elif camel_key in base_listing:
+                base_listing[camel_key] = val
             elif json_key.lower() in base_listing:
                 base_listing[json_key.lower()] = val
             else:
-                base_listing[json_key] = val
+                # Key doesn't exist yet — write with camelCase (API convention)
+                base_listing[camel_key] = val
 
 def parse_all_listings(repo_root):
     print("Syncing app metadata from docs/StoreListing_*.md files...")
@@ -413,20 +421,24 @@ def update_submission_manifest_refs(metadata, msix_path, repo_root):
     # Update package references
     packages = metadata.get('applicationPackages', []) or metadata.get('ApplicationPackages', [])
     msix_name = os.path.basename(msix_path)
-    
-    # We mark old packages as PendingDelete, and add the new one as PendingUpload
+
+    # Microsoft Store API REQUIRES keeping existing package entries.
+    # Mark all existing packages as PendingDelete (preserve their full fields + IDs),
+    # then add a single new PendingUpload entry for our new package.
     new_packages = []
     for pkg in packages:
-        # Mark all existing ones for deletion
-        pkg['fileStatus'] = 'PendingDelete'
-        new_packages.append(pkg)
-        
+        # Preserve the entire original entry (including 'id', 'fileId', etc.)
+        # and set fileStatus to PendingDelete
+        pkg_copy = dict(pkg)
+        pkg_copy['fileStatus'] = 'PendingDelete'
+        new_packages.append(pkg_copy)
+
     # Append our new package
     new_packages.append({
         'fileName': msix_name,
-        'fileStatus': 'PendingUpload'
+        'fileStatus': 'PendingUpload',
     })
-    
+
     if 'ApplicationPackages' in metadata:
         metadata['ApplicationPackages'] = new_packages
     else:
@@ -438,7 +450,7 @@ def update_submission_manifest_refs(metadata, msix_path, repo_root):
     if os.path.isdir(image_dir):
         existing_images = {f: v for f, v in IMAGE_FILE_MAP.items()
                            if os.path.exists(os.path.join(image_dir, f))}
-                           
+
     lang_new_imgs = {}
     for filename, (lang, img_type) in existing_images.items():
         # Handle 'tw' mapping to 'zh-tw'
@@ -448,34 +460,38 @@ def update_submission_manifest_refs(metadata, msix_path, repo_root):
             'fileStatus': 'PendingUpload',
             'imageType': img_type
         })
-        
+
     listings = metadata.get('listings') or metadata.get('Listings') or {}
     for lang, listing_container in listings.items():
         base = listing_container.get('baseListing') or listing_container.get('BaseListing') or {}
-        # Keep non-Screenshot images (like store logos), replace screenshots
+
+        # Strategy: keep ALL existing images untouched and APPEND new PendingUpload
+        # screenshots.  The Partner Center API silently ignores PendingDelete on
+        # screenshots that were Uploaded in a previous published submission, so we
+        # cannot replace them.  Instead we add our new screenshots alongside the old
+        # ones; the old ones can be cleaned up manually in Partner Center if needed.
         existing_imgs = base.get('images') or base.get('Images') or []
-        kept = [img for img in existing_imgs if img.get('imageType') != 'Screenshot' and img.get('ImageType') != 'Screenshot']
-        
-        # Add new screenshots
+
         # If 'en-us', fallback to 'en' screenshots
         search_lang = 'en' if lang.lower() == 'en-us' else lang
         new_screenshots = lang_new_imgs.get(search_lang, [])
-        base['images'] = kept + new_screenshots
-        print(f"  [{lang}] kept {len(kept)} logo(s), referenced {len(new_screenshots)} new screenshot(s)")
+        if new_screenshots:
+            base['images'] = existing_imgs + new_screenshots
+            print(f"  [{lang}] kept {len(existing_imgs)} existing image(s), "
+                  f"added {len(new_screenshots)} new screenshot(s)")
+        else:
+            print(f"  [{lang}] kept {len(existing_imgs)} existing image(s)")
 
 def wait_for_preprocessing(token, p_id, submission_id):
-    print("\nVerifying submission is ready to commit...")
+    print("\nWaiting for package upload to be acknowledged by Microsoft...")
     if DRY_RUN:
         return True
-        
+
     sub_url = f'https://manage.devcenter.microsoft.com/v1.0/my/applications/{p_id}/submissions/{submission_id}'
-    
-    # Per MS documentation, package validation happens AFTER commit, not before.
-    # PendingCommit status means the submission is ready to be committed.
-    # We just need to verify no validation errors exist before committing.
-    max_checks = 5
+
+    max_checks = 10
     check_interval = 15
-    
+
     for check in range(1, max_checks + 1):
         print(f"Checking submission state ({check}/{max_checks})...")
         sub = api_request(sub_url, token, retries=3)
@@ -483,31 +499,39 @@ def wait_for_preprocessing(token, p_id, submission_id):
             print("  Failed to query submission details. Retrying...")
             time.sleep(check_interval)
             continue
-            
+
         status = sub.get('status') or sub.get('Status')
         sd = sub.get('statusDetails') or sub.get('StatusDetails') or {}
         errors = sd.get('errors') or sd.get('Errors') or []
-        
+
         print(f"  Submission Status: {status}")
-        
+
         if errors:
             print("\n❌ Microsoft Store Validation Errors detected:")
             for err in errors:
                 print(f"  Code: {err.get('code')} - Message: {err.get('details') or err.get('message')}")
             return False
-            
+
         if status == 'CommitFailed':
             print("❌ Submission entered CommitFailed status.")
             return False
-        
-        # PendingCommit = ready to be committed (package upload acknowledged)
+
+        # PendingCommit = package upload acknowledged, ready to commit
         if status == 'PendingCommit':
+            # Double-check: verify packages are actually uploaded
+            packages = sub.get('applicationPackages') or sub.get('ApplicationPackages') or []
+            for pkg in packages:
+                file_status = pkg.get('fileStatus') or pkg.get('FileStatus') or ''
+                val_status = pkg.get('validationStatus') or pkg.get('ValidationStatus') or ''
+                print(f"  Package: {pkg.get('fileName')} | fileStatus={file_status} | validationStatus={val_status}")
+                if val_status and val_status not in ('Pending', 'Passed', ''):
+                    print(f"  ⚠️ Unexpected validation status: {val_status}")
+
             print("✅ Submission is in PendingCommit state. Proceeding to commit.")
             return True
-            
+
         time.sleep(check_interval)
-        
-    # Even if we couldn't confirm state, try committing anyway
+
     print("Warning: Could not confirm PendingCommit status. Attempting commit anyway...")
     return True
 
@@ -627,27 +651,43 @@ def main():
         print("\n❌ Failed to commit submission draft.")
         sys.exit(1)
         
-    # 10. Post-commit verification loop (up to 3 minutes) to confirm status goes to CommitStarted
-    print("\nVerifying final state after commit (waiting for Microsoft scheduler to confirm status)...")
+    # 10. Post-commit verification loop (up to 3 minutes)
+    # CommitStarted = async processing started, NOT success.
+    # Must wait for PreProcessing or Certification to confirm real acceptance.
+    print("\nVerifying final state after commit (waiting for Microsoft backend)...")
     sub_url = f'https://manage.devcenter.microsoft.com/v1.0/my/applications/{p_id}/submissions/{submission_id}'
     state_confirmed = False
-    
-    for check in range(1, 7):
-        print(f"Checking post-commit status ({check}/6)...")
+
+    for check in range(1, 10):
+        print(f"Checking post-commit status ({check}/9)...")
         sub_info = api_request(sub_url, token, retries=3, delay=10)
         if sub_info:
             status = sub_info.get('status') or sub_info.get('Status')
             print(f"  Current Status: {status}")
-            if status in ('CommitStarted', 'PreProcessing', 'Certification'):
-                print("✅ Confirmed: Microsoft Store backend has transitioned the submission to: " + status)
+
+            if status in ('PreProcessing', 'Certification', 'Published'):
+                print("✅ Confirmed: submission accepted by Microsoft Store backend: " + status)
                 state_confirmed = True
                 break
+
+            if status == 'CommitFailed':
+                sd = sub_info.get('statusDetails') or sub_info.get('StatusDetails') or {}
+                errors = sd.get('errors') or sd.get('Errors') or []
+                print("❌ Submission commit FAILED:")
+                for err in errors:
+                    print(f"  Code: {err.get('code')} - Message: {err.get('details') or err.get('message')}")
+                break
+
         time.sleep(20)
-        
-    if not state_confirmed:
-        print("Warning: Microsoft Store scheduler is processing slowly. Submission is queued, please check Partner Center UI in 15-30 minutes.")
-        
-    print("\n🎉 SUCCESS: Submission was successfully verified, uploaded, and committed to certification!")
+
+    if state_confirmed:
+        print("\n🎉 SUCCESS: Submission accepted by Microsoft Store for certification!")
+    else:
+        if not state_confirmed:
+            print("\n❌ Submission did NOT reach a confirmed state. Possible causes:")
+            print("  - Package validation may have failed (check Partner Center)")
+            print("  - Microsoft backend may still be processing (check in 15-30 min)")
+        sys.exit(1)
 
 if __name__ == '__main__':
     main()
