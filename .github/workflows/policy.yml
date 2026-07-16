@@ -50,7 +50,7 @@ jobs:
               const errors = [];
               if (!pattern.test(subject)) {
                 errors.push(
-                  `${label} must match <type>(<scope>): <description> with an allowed type/scope.`,
+                  `${label} must match <type>(<scope>): <description> or <type>: <description> with an allowed type/scope.`,
                 );
               }
               if (subject.endsWith(".")) {
