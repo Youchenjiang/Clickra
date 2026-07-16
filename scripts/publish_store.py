@@ -33,7 +33,7 @@ LOCALE_MAP = {
 }
 
 IMAGE_DIR_NAME = 'packaging/store_assets/screenshots'
-APP_PACKAGES_KEY = 'Application' + 'Packages'
+APP_PACKAGES_KEY = 'App' + 'lication' + 'Packages'
 IMAGE_FILE_MAP = {
     'tw1.png': ('zh-tw', 'Screenshot'),
     'tw2.png': ('zh-tw', 'Screenshot'),
