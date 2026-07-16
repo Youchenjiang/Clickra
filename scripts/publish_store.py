@@ -108,47 +108,60 @@ def request_token(token_url, token_data):
                 time.sleep(10)
     return None
 
-def api_request(url, token, method='GET', body_dict=None, headers=None, retries=5, delay=15):
-    if is_dry_run():
-        return {"status": "DryRun"}
 
-    actual_headers = {
-        'Authorization': f'Bearer {token}'
-    }
+def build_api_request(url, token, method, body_dict, headers):
+    actual_headers = {'Authorization': f'Bearer {token}'}
     if headers:
         actual_headers.update(headers)
 
     data = None
     if body_dict is not None:
         data = json.dumps(body_dict, ensure_ascii=False).encode('utf-8')
-        if 'Content-Type' not in actual_headers:
-            actual_headers['Content-Type'] = 'application/json'
+        actual_headers.setdefault('Content-Type', 'application/json')
+    return urllib.request.Request(url, data=data, headers=actual_headers, method=method)
+
+
+def decode_api_response(response):
+    response_bytes = response.read()
+    return json.loads(response_bytes) if response_bytes else {}
+
+
+def report_http_error(error, method, url, attempt):
+    body = error.read().decode('utf-8', errors='replace')
+    print(f"  API {method} {url} attempt {attempt} failed with HTTP {error.code}: {body[:300]}")
+    if error.code == 409:
+        print("  Conflict detected (409). Continuing...")
+
+
+def should_retry_http_error(error):
+    return error.code >= 500 or error.code == 429
+
+
+def wait_before_retry(attempt, retries, current_delay):
+    if attempt >= retries:
+        return current_delay
+    time.sleep(current_delay)
+    return current_delay * 2
+
+
+def api_request(url, token, method='GET', body_dict=None, headers=None, retries=5, delay=15):
+    if is_dry_run():
+        return {"status": "DryRun"}
 
     current_delay = delay
     for attempt in range(1, retries + 1):
-        req = urllib.request.Request(url, data=data, headers=actual_headers, method=method)
+        req = build_api_request(url, token, method, body_dict, headers)
         try:
             # Increase timeout to 180 seconds for slow Azure Front Door / Ingestion gateway responses
             with open_https(req, timeout=180) as r:
-                resp_bytes = r.read()
-                if resp_bytes:
-                    return json.loads(resp_bytes)
-                return {}
-        except urllib.error.HTTPError as e:
-            body = e.read().decode('utf-8', errors='replace')
-            print(f"  API {method} {url} attempt {attempt} failed with HTTP {e.code}: {body[:300]}")
-            if e.code == 409:
-                print("  Conflict detected (409). Continuing...")
-            if e.code < 500 and e.code != 429:
+                return decode_api_response(r)
+        except urllib.error.HTTPError as error:
+            report_http_error(error, method, url, attempt)
+            if not should_retry_http_error(error):
                 return None
-            if attempt < retries:
-                time.sleep(current_delay)
-                current_delay *= 2 # Exponential backoff
-        except Exception as e:
-            print(f"  API {method} {url} attempt {attempt} failed with error: {e}")
-            if attempt < retries:
-                time.sleep(current_delay)
-                current_delay *= 2 # Exponential backoff
+        except Exception as error:
+            print(f"  API {method} {url} attempt {attempt} failed with error: {error}")
+        current_delay = wait_before_retry(attempt, retries, current_delay)
     return None
 
 def match_section_name(header):
@@ -212,25 +225,21 @@ def collect_listing_sections(lines):
 
 
 def save_section(parsed, section, content_lines):
-    content = "".join(content_lines).strip()
-    content = re.sub(r'\n-+\n', '\n', content)
-    
-    if section in ['features', 'keywords']:
-        items = []
-        for line in content.split('\n'):
-            line = line.strip()
-            # Skip empty lines, lines containing markdown hints like *(Max 7)*, or bracket comments
-            if not line or line.startswith('*') or ('(' in line and ')' in line) or ('（' in line and '）' in line):
-                continue
-            if line.startswith('-'):
-                items.append(line[1:].strip())
-            else:
-                items.append(line)
-        if section == 'keywords':
-            items = items[:7] # Microsoft Store API strictly enforces maximum 7 keywords
-        parsed[section] = items
-    else:
-        parsed[section] = content
+    content = re.sub(r'\n-+\n', '\n', "".join(content_lines).strip())
+    item_limit = 7 if section == 'keywords' else None
+    parsed[section] = parse_listing_items(content, item_limit) if section in ['features', 'keywords'] else content
+
+
+def parse_listing_items(content, item_limit=None):
+    items = [line.strip() for line in content.split('\n') if not is_ignored_listing_line(line)]
+    items = [line[1:].strip() if line.startswith('-') else line for line in items]
+    return items[:item_limit] if item_limit else items
+
+
+def is_ignored_listing_line(line):
+    return (not line.strip() or line.strip().startswith('*')
+            or ('(' in line and ')' in line)
+            or ('（' in line and '）' in line))
 
 def add_missing_zh_cn(listings):
     existing_langs = [l.lower() for l in listings.keys()]
