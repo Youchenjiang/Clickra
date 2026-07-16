@@ -39,7 +39,6 @@ jobs:
             throw "Required resource folder 'packaging/msix/Strings' not found."
         }
         Copy-Item "./packaging/msix/Strings" "./msix_layout/Strings" -Recurse
-        Copy-Item "./packaging/msix/Layout/priconfig.xml" "./msix_layout/priconfig.xml"
         Copy-Item "./src/resources/app.ico" "./msix_layout/app.ico"
         # Also ensure app.png exists for modern menu
         Copy-Item "./packaging/msix/Assets/StoreLogo.png" "./msix_layout/app.png"
