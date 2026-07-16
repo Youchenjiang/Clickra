@@ -46,7 +46,14 @@ IMAGE_FILE_MAP = {
     'cn2.png': ('zh-cn', 'Screenshot'),
 }
 
-DRY_RUN = False
+def open_https(request, timeout):
+    target = request.full_url if isinstance(request, urllib.request.Request) else request
+    if urllib.parse.urlparse(target).scheme.lower() != 'https':
+        raise ValueError(f'Only HTTPS URLs are allowed: {target}')
+    return urllib.request.urlopen(request, timeout=timeout)
+
+def is_dry_run():
+    return '--dry-run' in sys.argv
 
 def load_store_config(config_path):
     if not os.path.exists(config_path):
@@ -62,16 +69,16 @@ def load_store_config(config_path):
     s_id = config.get("SellerId") or config.get("sellerId")
     p_id = config.get("ProductId") or config.get("productId")
     m_path = config.get("MsixPath") or config.get("msixPath")
-    
+
     if not all([t_id, c_id, c_sec, s_id, p_id, m_path]):
         print("Error: Missing credentials or paths in config file.")
         sys.exit(1)
-        
-    return t_id, c_id, c_sec, s_id, p_id, m_path
+
+    return t_id, c_id, c_sec, p_id, m_path
 
 def get_token(t_id, c_id, c_sec):
     print("Acquiring Microsoft Store Access Token...")
-    if DRY_RUN:
+    if is_dry_run():
         return "MOCK_TOKEN"
     token_url = f'https://login.microsoftonline.com/{t_id}/oauth2/token'
     token_data = urllib.parse.urlencode({
@@ -80,29 +87,36 @@ def get_token(t_id, c_id, c_sec):
         'client_secret': c_sec,
         'resource': 'https://manage.devcenter.microsoft.com'
     }).encode()
-    
-    for attempt in range(1, 4):
-        try:
-            req = urllib.request.Request(token_url, data=token_data)
-            with urllib.request.urlopen(req, timeout=30) as r:
-                return json.loads(r.read())['access_token']
-        except Exception as e:
-            print(f"  Token attempt {attempt} failed: {e}")
-            if attempt < 3:
-                time.sleep(10)
+
+    token = request_token(token_url, token_data)
+    if token:
+        return token
     print("ERROR: Failed to acquire Access Token.")
     sys.exit(1)
 
+
+def request_token(token_url, token_data):
+    for attempt in range(1, 4):
+        try:
+            req = urllib.request.Request(token_url, data=token_data)
+            with open_https(req, timeout=30) as response:
+                return json.load(response)['access_token']
+        except Exception as error:
+            print(f"  Token attempt {attempt} failed: {error}")
+            if attempt < 3:
+                time.sleep(10)
+    return None
+
 def api_request(url, token, method='GET', body_dict=None, headers=None, retries=5, delay=15):
-    if DRY_RUN:
+    if is_dry_run():
         return {"status": "DryRun"}
-        
+
     actual_headers = {
         'Authorization': f'Bearer {token}'
     }
     if headers:
         actual_headers.update(headers)
-        
+
     data = None
     if body_dict is not None:
         data = json.dumps(body_dict, ensure_ascii=False).encode('utf-8')
@@ -114,7 +128,7 @@ def api_request(url, token, method='GET', body_dict=None, headers=None, retries=
         req = urllib.request.Request(url, data=data, headers=actual_headers, method=method)
         try:
             # Increase timeout to 180 seconds for slow Azure Front Door / Ingestion gateway responses
-            with urllib.request.urlopen(req, timeout=180) as r:
+            with open_https(req, timeout=180) as r:
                 resp_bytes = r.read()
                 if resp_bytes:
                     return json.loads(resp_bytes)
@@ -155,6 +169,10 @@ def parse_markdown_listing(file_path):
     with open(file_path, 'r', encoding='utf-8') as f:
         lines = f.readlines()
 
+    return parse_listing_lines(lines)
+
+
+def parse_listing_lines(lines):
     parsed = {
         'description': '',
         'releaseNotes': '',
@@ -163,25 +181,32 @@ def parse_markdown_listing(file_path):
         'keywords': []
     }
 
+    for section, content in collect_listing_sections(lines).items():
+        save_section(parsed, section, content)
+
+    return parsed
+
+
+def collect_listing_sections(lines):
+    sections = {}
     current_section = None
     section_content = []
 
     for line in lines:
-        stripped = line.strip()
-        if line.startswith('## '):
-            if current_section:
-                save_section(parsed, current_section, section_content)
-            header = stripped[3:].lower()
-            current_section = match_section_name(header)
-            section_content = []
-        else:
+        if not line.startswith('## '):
             if current_section:
                 section_content.append(line)
+            continue
+
+        if current_section:
+            sections[current_section] = section_content
+        current_section = match_section_name(line.strip()[3:].lower())
+        section_content = []
 
     if current_section:
-        save_section(parsed, current_section, section_content)
+        sections[current_section] = section_content
+    return sections
 
-    return parsed
 
 def save_section(parsed, section, content_lines):
     content = "".join(content_lines).strip()
@@ -287,26 +312,33 @@ def update_metadata(metadata, parsed_listings):
     
     updated_count = 0
     for lang, listing_container in listings.items():
-        matched_lang = match_parsed_lang(lang, parsed_listings)
-        base_listing = listing_container.get('BaseListing') or listing_container.get('baseListing')
-        if not base_listing or not isinstance(base_listing, dict):
-            continue
-            
-        if matched_lang:
-            update_single_listing(base_listing, parsed_listings[matched_lang])
+        if update_listing_metadata(lang, listing_container, parsed_listings):
             updated_count += 1
-            print(f"Successfully updated metadata listing fields for: {lang}")
-            
-        # Hard constraint check for ALL listings (including unmodified or cloned ones)
-        for kw_key in ['Keywords', 'keywords']:
-            if kw_key in base_listing and isinstance(base_listing[kw_key], list):
-                base_listing[kw_key] = base_listing[kw_key][:7]
-                
     return updated_count
+
+
+def update_listing_metadata(lang, listing_container, parsed_listings):
+    matched_lang = match_parsed_lang(lang, parsed_listings)
+    base_listing = listing_container.get('BaseListing') or listing_container.get('baseListing')
+    if not base_listing or not isinstance(base_listing, dict):
+        return False
+
+    if matched_lang:
+        update_single_listing(base_listing, parsed_listings[matched_lang])
+        print(f"Successfully updated metadata listing fields for: {lang}")
+
+    limit_listing_keywords(base_listing)
+    return matched_lang is not None
+
+
+def limit_listing_keywords(base_listing):
+    for keyword_key in ['Keywords', 'keywords']:
+        if keyword_key in base_listing and isinstance(base_listing[keyword_key], list):
+            base_listing[keyword_key] = base_listing[keyword_key][:7]
 
 def delete_pending_submission_via_api(token, p_id):
     print("Checking and deleting any pending submissions to ensure clean state...")
-    if DRY_RUN:
+    if is_dry_run():
         return
         
     app_url = f'https://manage.devcenter.microsoft.com/v1.0/my/applications/{p_id}'
@@ -328,7 +360,7 @@ def delete_pending_submission_via_api(token, p_id):
     for attempt in range(1, 4):
         req = urllib.request.Request(del_url, headers={'Authorization': f'Bearer {token}'}, method='DELETE')
         try:
-            with urllib.request.urlopen(req, timeout=60) as r:
+            with open_https(req, timeout=60) as r:
                 if r.status in (200, 204):
                     print("✅ Pending submission deleted successfully.")
                     time.sleep(15) # Wait for deletion propagation
@@ -341,7 +373,7 @@ def delete_pending_submission_via_api(token, p_id):
 
 def create_new_submission(token, p_id):
     print("Creating a new submission draft...")
-    if DRY_RUN:
+    if is_dry_run():
         return {"id": "MOCK_SUBMISSION", "fileUploadUrl": "MOCK_URL", "listings": {}}
     url = f'https://manage.devcenter.microsoft.com/v1.0/my/applications/{p_id}/submissions'
     
@@ -355,8 +387,8 @@ def create_new_submission(token, p_id):
     for attempt in range(1, max_attempts + 1):
         try:
             print(f"  Attempt {attempt}/{max_attempts} to create submission...")
-            with urllib.request.urlopen(req, timeout=120) as r:
-                res = json.loads(r.read())
+            with open_https(req, timeout=120) as r:
+                res = json.load(r)
                 print(f"✅ Submission draft created: {res.get('id')}")
                 return res
         except Exception as e:
@@ -369,33 +401,41 @@ def create_new_submission(token, p_id):
 
 def build_and_upload_archive(file_upload_url, msix_path, repo_root):
     print("\nPreparing package ZIP archive (MSIX + screenshots) for upload...")
-    if DRY_RUN:
+    if is_dry_run():
         return
-        
+
     image_dir = os.path.join(repo_root, IMAGE_DIR_NAME)
-    
-    # Locate all screenshots locally
-    existing_images = {}
-    if os.path.isdir(image_dir):
-        existing_images = {f: v for f, v in IMAGE_FILE_MAP.items()
-                           if os.path.exists(os.path.join(image_dir, f))}
-                           
+    screenshot_files = find_screenshot_files(image_dir)
+    zip_data = create_package_archive(msix_path, image_dir, screenshot_files)
+    print(f"Total ZIP Archive Size: {len(zip_data)} bytes")
+    upload_package_archive(file_upload_url, zip_data)
+
+
+def find_screenshot_files(image_dir):
+    if not os.path.isdir(image_dir):
+        return {}
+    return {
+        filename: metadata
+        for filename, metadata in IMAGE_FILE_MAP.items()
+        if os.path.exists(os.path.join(image_dir, filename))
+    }
+
+
+def create_package_archive(msix_path, image_dir, screenshot_files):
     zip_buf = io.BytesIO()
     with zipfile.ZipFile(zip_buf, 'w', zipfile.ZIP_DEFLATED) as zf:
-        # 1. Add MSIX package
         msix_name = os.path.basename(msix_path)
         zf.write(msix_path, msix_name)
         print(f"  Added MSIX package: {msix_name}")
-        
-        # 2. Add Screenshots
-        for filename in existing_images:
+
+        for filename in screenshot_files:
             filepath = os.path.join(image_dir, filename)
             zf.write(filepath, filename)
             print(f"  Added Screenshot: {filename}")
-            
-    zip_data = zip_buf.getvalue()
-    print(f"Total ZIP Archive Size: {len(zip_data)} bytes")
+    return zip_buf.getvalue()
 
+
+def upload_package_archive(file_upload_url, zip_data):
     print("Uploading ZIP archive to Azure Blob Storage...")
     sas_req = urllib.request.Request(
         file_upload_url,
@@ -407,136 +447,121 @@ def build_and_upload_archive(file_upload_url, msix_path, repo_root):
         },
         method='PUT'
     )
-    
+
     try:
-        with urllib.request.urlopen(sas_req, timeout=180) as r:
-            print(f"✅ ZIP Upload completed. Response code: {r.status} {r.reason}")
-    except Exception as e:
-        print(f"ERROR uploading ZIP to Azure: {e}")
+        with open_https(sas_req, timeout=180) as response:
+            print(f"✅ ZIP Upload completed. Response code: {response.status} {response.reason}")
+    except Exception as error:
+        print(f"ERROR uploading ZIP to Azure: {error}")
         sys.exit(1)
 
-def update_submission_manifest_refs(metadata, msix_path, repo_root):
-    print("Updating file references in submission JSON...")
-    # Update package references
+def update_package_refs(metadata, msix_name):
     packages = metadata.get('applicationPackages', []) or metadata.get('ApplicationPackages', [])
-    msix_name = os.path.basename(msix_path)
+    new_packages = [dict(pkg, fileStatus='PendingDelete') for pkg in packages]
+    new_packages.append({'fileName': msix_name, 'fileStatus': 'PendingUpload'})
+    package_key = 'ApplicationPackages' if 'ApplicationPackages' in metadata else 'applicationPackages'
+    metadata[package_key] = new_packages
 
-    # Microsoft Store API REQUIRES keeping existing package entries.
-    # Mark all existing packages as PendingDelete (preserve their full fields + IDs),
-    # then add a single new PendingUpload entry for our new package.
-    new_packages = []
-    for pkg in packages:
-        # Preserve the entire original entry (including 'id', 'fileId', etc.)
-        # and set fileStatus to PendingDelete
-        pkg_copy = dict(pkg)
-        pkg_copy['fileStatus'] = 'PendingDelete'
-        new_packages.append(pkg_copy)
-
-    # Append our new package
-    new_packages.append({
-        'fileName': msix_name,
-        'fileStatus': 'PendingUpload',
-    })
-
-    if 'ApplicationPackages' in metadata:
-        metadata['ApplicationPackages'] = new_packages
-    else:
-        metadata['applicationPackages'] = new_packages
-        
-    # Update image references for listings
+def collect_image_uploads(repo_root):
     image_dir = os.path.join(repo_root, IMAGE_DIR_NAME)
-    existing_images = {}
-    if os.path.isdir(image_dir):
-        existing_images = {f: v for f, v in IMAGE_FILE_MAP.items()
-                           if os.path.exists(os.path.join(image_dir, f))}
+    if not os.path.isdir(image_dir):
+        return {}
 
-    lang_new_imgs = {}
-    for filename, (lang, img_type) in existing_images.items():
-        # Handle 'tw' mapping to 'zh-tw'
-        target_lang = 'zh-tw' if lang == 'tw' else lang
-        lang_new_imgs.setdefault(target_lang, []).append({
-            'fileName': filename,
-            'fileStatus': 'PendingUpload',
-            'imageType': img_type
-        })
+    uploads = {}
+    for filename, (lang, img_type) in IMAGE_FILE_MAP.items():
+        if os.path.exists(os.path.join(image_dir, filename)):
+            target_lang = 'zh-tw' if lang == 'tw' else lang
+            uploads.setdefault(target_lang, []).append({
+                'fileName': filename,
+                'fileStatus': 'PendingUpload',
+                'imageType': img_type
+            })
+    return uploads
 
+def update_listing_image_refs(metadata, image_uploads):
     listings = metadata.get('listings') or metadata.get('Listings') or {}
     for lang, listing_container in listings.items():
         base = listing_container.get('baseListing') or listing_container.get('BaseListing') or {}
-
-        # Strategy: keep ALL existing images untouched and APPEND new PendingUpload
-        # screenshots.  The Partner Center API silently ignores PendingDelete on
-        # screenshots that were Uploaded in a previous published submission, so we
-        # cannot replace them.  Instead we add our new screenshots alongside the old
-        # ones; the old ones can be cleaned up manually in Partner Center if needed.
-        existing_imgs = base.get('images') or base.get('Images') or []
-
-        # If 'en-us', fallback to 'en' screenshots
+        existing_images = base.get('images') or base.get('Images') or []
         search_lang = 'en' if lang.lower() == 'en-us' else lang
-        new_screenshots = lang_new_imgs.get(search_lang, [])
+        new_screenshots = image_uploads.get(search_lang, [])
         if new_screenshots:
-            base['images'] = existing_imgs + new_screenshots
-            print(f"  [{lang}] kept {len(existing_imgs)} existing image(s), "
-                  f"added {len(new_screenshots)} new screenshot(s)")
-        else:
-            print(f"  [{lang}] kept {len(existing_imgs)} existing image(s)")
+            base['images'] = existing_images + new_screenshots
+        print(f"  [{lang}] kept {len(existing_images)} existing image(s), "
+              f"added {len(new_screenshots)} new screenshot(s)")
+
+def update_submission_manifest_refs(metadata, msix_path, repo_root):
+    print("Updating file references in submission JSON...")
+    update_package_refs(metadata, os.path.basename(msix_path))
+    update_listing_image_refs(metadata, collect_image_uploads(repo_root))
+
+
+def sanitize_keywords_recursive(obj):
+    if isinstance(obj, dict):
+        for key in obj:
+            if key.lower() == 'keywords' and isinstance(obj[key], list):
+                if len(obj[key]) > 7:
+                    print(f"  [SANITIZE] Truncating '{key}' from {len(obj[key])} to 7 items")
+                    obj[key] = obj[key][:7]
+            else:
+                sanitize_keywords_recursive(obj[key])
+    elif isinstance(obj, list):
+        for item in obj:
+            sanitize_keywords_recursive(item)
+
+
+def report_submission_errors(submission):
+    details = submission.get('statusDetails') or submission.get('StatusDetails') or {}
+    errors = details.get('errors') or details.get('Errors') or []
+    if not errors:
+        return False
+
+    print("\n❌ Microsoft Store Validation Errors detected:")
+    for error in errors:
+        message = error.get('details') or error.get('message')
+        print(f"  Code: {error.get('code')} - Message: {message}")
+    return True
+
+def report_uploaded_packages(submission):
+    packages = submission.get('applicationPackages') or submission.get('ApplicationPackages') or []
+    for package in packages:
+        file_status = package.get('fileStatus') or package.get('FileStatus') or ''
+        validation = package.get('validationStatus') or package.get('ValidationStatus') or ''
+        print(f"  Package: {package.get('fileName')} | fileStatus={file_status} | validationStatus={validation}")
+        if validation and validation not in ('Pending', 'Passed', ''):
+            print(f"  ⚠️ Unexpected validation status: {validation}")
 
 def wait_for_preprocessing(token, p_id, submission_id):
     print("\nWaiting for package upload to be acknowledged by Microsoft...")
-    if DRY_RUN:
+    if is_dry_run():
         return True
 
     sub_url = f'https://manage.devcenter.microsoft.com/v1.0/my/applications/{p_id}/submissions/{submission_id}'
-
-    max_checks = 10
-    check_interval = 15
-
-    for check in range(1, max_checks + 1):
-        print(f"Checking submission state ({check}/{max_checks})...")
-        sub = api_request(sub_url, token, retries=3)
-        if not sub:
+    for check in range(1, 11):
+        print(f"Checking submission state ({check}/10)...")
+        submission = api_request(sub_url, token, retries=3)
+        if not submission:
             print("  Failed to query submission details. Retrying...")
-            time.sleep(check_interval)
+            time.sleep(15)
             continue
 
-        status = sub.get('status') or sub.get('Status')
-        sd = sub.get('statusDetails') or sub.get('StatusDetails') or {}
-        errors = sd.get('errors') or sd.get('Errors') or []
-
+        status = submission.get('status') or submission.get('Status')
         print(f"  Submission Status: {status}")
-
-        if errors:
-            print("\n❌ Microsoft Store Validation Errors detected:")
-            for err in errors:
-                print(f"  Code: {err.get('code')} - Message: {err.get('details') or err.get('message')}")
+        if report_submission_errors(submission) or status == 'CommitFailed':
+            print("❌ Submission validation failed.")
             return False
-
-        if status == 'CommitFailed':
-            print("❌ Submission entered CommitFailed status.")
-            return False
-
-        # PendingCommit = package upload acknowledged, ready to commit
         if status == 'PendingCommit':
-            # Double-check: verify packages are actually uploaded
-            packages = sub.get('applicationPackages') or sub.get('ApplicationPackages') or []
-            for pkg in packages:
-                file_status = pkg.get('fileStatus') or pkg.get('FileStatus') or ''
-                val_status = pkg.get('validationStatus') or pkg.get('ValidationStatus') or ''
-                print(f"  Package: {pkg.get('fileName')} | fileStatus={file_status} | validationStatus={val_status}")
-                if val_status and val_status not in ('Pending', 'Passed', ''):
-                    print(f"  ⚠️ Unexpected validation status: {val_status}")
-
+            report_uploaded_packages(submission)
             print("✅ Submission is in PendingCommit state. Proceeding to commit.")
             return True
-
-        time.sleep(check_interval)
+        time.sleep(15)
 
     print("Warning: Could not confirm PendingCommit status. Attempting commit anyway...")
     return True
 
 def commit_submission_via_api(token, p_id, submission_id):
     print("\nCommitting submission to Microsoft Store...")
-    if DRY_RUN:
+    if is_dry_run():
         print("[DRY-RUN] Committed submission successfully.")
         return True
         
@@ -553,7 +578,7 @@ def commit_submission_via_api(token, p_id, submission_id):
     
     try:
         # Increase timeout to 180 seconds to survive heavy asynchronous commits
-        with urllib.request.urlopen(req, timeout=180) as r:
+        with open_https(req, timeout=180) as r:
             res_body = r.read().decode('utf-8', errors='replace')
             print(f"Commit response ({r.status}): {res_body}")
             if r.status in (200, 202):
@@ -567,10 +592,68 @@ def commit_submission_via_api(token, p_id, submission_id):
         
     return False
 
+def update_submission_metadata(submission, token, p_id, submission_id, repo_root, msix_path):
+    update_metadata(submission, parse_all_listings(repo_root))
+    update_submission_manifest_refs(submission, msix_path, repo_root)
+    sanitize_keywords_recursive(submission)
+    sub_url = f'https://manage.devcenter.microsoft.com/v1.0/my/applications/{p_id}/submissions/{submission_id}'
+    print("\nUploading final merged metadata to Microsoft Store...")
+    if not api_request(sub_url, token, method='PUT', body_dict=submission):
+        print("ERROR: Failed to update submission metadata.")
+        sys.exit(1)
+    print("Metadata updated successfully.")
+
+def report_commit_failure(submission):
+    details = submission.get('statusDetails') or submission.get('StatusDetails') or {}
+    errors = details.get('errors') or details.get('Errors') or []
+    print("❌ Submission commit FAILED:")
+    for error in errors:
+        message = error.get('details') or error.get('message')
+        print(f"  Code: {error.get('code')} - Message: {message}")
+
+def verify_commit_status(token, p_id, submission_id):
+    print("\nVerifying final state after commit (waiting for Microsoft backend)...")
+    if is_dry_run():
+        print("[DRY-RUN] Skipping post-commit polling.")
+        return True
+
+    sub_url = f'https://manage.devcenter.microsoft.com/v1.0/my/applications/{p_id}/submissions/{submission_id}'
+    for check in range(1, 10):
+        print(f"Checking post-commit status ({check}/9)...")
+        submission = api_request(sub_url, token, retries=3, delay=10)
+        if submission:
+            status = submission.get('status') or submission.get('Status')
+            print(f"  Current Status: {status}")
+            if status in ('PreProcessing', 'Certification', 'Published'):
+                print("✅ Confirmed: submission accepted by Microsoft Store backend: " + status)
+                return True
+            if status == 'CommitFailed':
+                report_commit_failure(submission)
+                return False
+        time.sleep(20)
+    return False
+
+def run_submission_flow(repo_root, token, p_id, msix_path):
+    delete_pending_submission_via_api(token, p_id)
+    submission = create_new_submission(token, p_id)
+    submission_id = submission['id']
+    build_and_upload_archive(submission['fileUploadUrl'], msix_path, repo_root)
+    update_submission_metadata(submission, token, p_id, submission_id, repo_root, msix_path)
+    if not wait_for_preprocessing(token, p_id, submission_id):
+        print("\n❌ Package processing validation failed. Deleting failed submission draft...")
+        delete_pending_submission_via_api(token, p_id)
+        sys.exit(1)
+    if not commit_submission_via_api(token, p_id, submission_id):
+        print("\n❌ Failed to commit submission draft.")
+        sys.exit(1)
+    if verify_commit_status(token, p_id, submission_id):
+        print("\n🎉 SUCCESS: Submission accepted by Microsoft Store for certification!")
+        return
+    print("\n❌ Submission did NOT reach a confirmed state. Check Partner Center.")
+    sys.exit(1)
+
 def main():
-    global DRY_RUN
-    if "--dry-run" in sys.argv:
-        DRY_RUN = True
+    if is_dry_run():
         print("==================================================")
         print("          RUNNING IN DRY-RUN MODE                 ")
         print("==================================================")
@@ -578,112 +661,17 @@ def main():
     script_dir = os.path.dirname(os.path.abspath(__file__))
     repo_root = os.path.dirname(script_dir)
     config_path = os.path.join(script_dir, "local_store_config.json")
-    
-    t_id, c_id, c_sec, s_id, p_id, m_path = load_store_config(config_path)
-    
+
+    t_id, c_id, c_sec, p_id, m_path = load_store_config(config_path)
+
     if not os.path.isabs(m_path):
         m_path = os.path.abspath(os.path.join(repo_root, m_path))
-        
-    if not DRY_RUN and not os.path.isfile(m_path):
+
+    if not is_dry_run() and not os.path.isfile(m_path):
         print(f"Error: Microsoft Store package path does not exist: {m_path}")
         sys.exit(1)
-        
-    token = get_token(t_id, c_id, c_sec)
-    
-    # 1. Clear any failed/pending submission first to ensure clean state
-    delete_pending_submission_via_api(token, p_id)
-    
-    # 2. Create new submission draft (clones the last published submission)
-    submission = create_new_submission(token, p_id)
-    submission_id = submission['id']
-    file_upload_url = submission['fileUploadUrl']
-    
-    # 3. Build ZIP package with MSIX and screenshots, and upload to Azure Blob SAS URL
-    build_and_upload_archive(file_upload_url, m_path, repo_root)
-    
-    # 4. Parse local Markdown store listing files
-    parsed_listings = parse_all_listings(repo_root)
-    
-    # 5. Merge local listing fields into current submission metadata
-    update_metadata(submission, parsed_listings)
-    
-    # 6. Update file references in submission JSON
-    update_submission_manifest_refs(submission, m_path, repo_root)
-    
-    # 7. Final global sanitization pass: recursively enforce ≤7 keywords everywhere in JSON
-    def sanitize_keywords_recursive(obj):
-        if isinstance(obj, dict):
-            for k in list(obj.keys()):
-                if k.lower() == 'keywords' and isinstance(obj[k], list):
-                    if len(obj[k]) > 7:
-                        print(f"  [SANITIZE] Truncating '{k}' from {len(obj[k])} to 7 items")
-                        obj[k] = obj[k][:7]
-                else:
-                    sanitize_keywords_recursive(obj[k])
-        elif isinstance(obj, list):
-            for item in obj:
-                sanitize_keywords_recursive(item)
-    sanitize_keywords_recursive(submission)
 
-    # Upload updated metadata back to Microsoft Store
-    sub_url = f'https://manage.devcenter.microsoft.com/v1.0/my/applications/{p_id}/submissions/{submission_id}'
-    print("\nUploading final merged metadata to Microsoft Store...")
-    put_res = api_request(sub_url, token, method='PUT', body_dict=submission)
-    if not put_res:
-        print("ERROR: Failed to update submission metadata.")
-        sys.exit(1)
-    print("Metadata updated successfully.")
-    
-    # 8. Wait for package preprocessing (FileStatus of package goes from PendingUpload to Uploaded)
-    success = wait_for_preprocessing(token, p_id, submission_id)
-    if not success:
-        print("\n❌ Package processing validation failed. Deleting failed submission draft...")
-        delete_pending_submission_via_api(token, p_id)
-        sys.exit(1)
-        
-    # 9. Finally, commit the submission to submit for certification
-    commit_success = commit_submission_via_api(token, p_id, submission_id)
-    if not commit_success:
-        print("\n❌ Failed to commit submission draft.")
-        sys.exit(1)
-        
-    # 10. Post-commit verification loop (up to 3 minutes)
-    # CommitStarted = async processing started, NOT success.
-    # Must wait for PreProcessing or Certification to confirm real acceptance.
-    print("\nVerifying final state after commit (waiting for Microsoft backend)...")
-    sub_url = f'https://manage.devcenter.microsoft.com/v1.0/my/applications/{p_id}/submissions/{submission_id}'
-    state_confirmed = False
-
-    for check in range(1, 10):
-        print(f"Checking post-commit status ({check}/9)...")
-        sub_info = api_request(sub_url, token, retries=3, delay=10)
-        if sub_info:
-            status = sub_info.get('status') or sub_info.get('Status')
-            print(f"  Current Status: {status}")
-
-            if status in ('PreProcessing', 'Certification', 'Published'):
-                print("✅ Confirmed: submission accepted by Microsoft Store backend: " + status)
-                state_confirmed = True
-                break
-
-            if status == 'CommitFailed':
-                sd = sub_info.get('statusDetails') or sub_info.get('StatusDetails') or {}
-                errors = sd.get('errors') or sd.get('Errors') or []
-                print("❌ Submission commit FAILED:")
-                for err in errors:
-                    print(f"  Code: {err.get('code')} - Message: {err.get('details') or err.get('message')}")
-                break
-
-        time.sleep(20)
-
-    if state_confirmed:
-        print("\n🎉 SUCCESS: Submission accepted by Microsoft Store for certification!")
-    else:
-        if not state_confirmed:
-            print("\n❌ Submission did NOT reach a confirmed state. Possible causes:")
-            print("  - Package validation may have failed (check Partner Center)")
-            print("  - Microsoft backend may still be processing (check in 15-30 min)")
-        sys.exit(1)
+    run_submission_flow(repo_root, get_token(t_id, c_id, c_sec), p_id, m_path)
 
 if __name__ == '__main__':
     main()
