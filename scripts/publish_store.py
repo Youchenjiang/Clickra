@@ -542,14 +542,11 @@ def commit_submission_via_api(token, p_id, submission_id):
         
     commit_url = f'https://manage.devcenter.microsoft.com/v1.0/my/applications/{p_id}/submissions/{submission_id}/commit'
     
-    # POST empty body to commit
+    # Microsoft Store submission API requires no request body for commit.
     req = urllib.request.Request(
         commit_url,
-        data=b'{}',
         headers={
             'Authorization': f'Bearer {token}',
-            'Content-Type': 'application/json',
-            'Content-Length': '2'
         },
         method='POST'
     )
