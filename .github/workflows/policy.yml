@@ -37,11 +37,12 @@ jobs:
               "ci",
               "deps",
               "store",
+              "agent",
             ];
             const typePattern = allowedTypes.join("|");
             const scopePattern = allowedScopes.join("|");
             const pattern = new RegExp(
-              `^(${typePattern})\\((${scopePattern})\\): [a-z0-9].*$`,
+              `^(${typePattern})(?:\\((${scopePattern})\\))?: [a-z0-9].*$`,
             );
 
             function validateSubject(subject, label, maxLength = 72) {
@@ -49,7 +50,7 @@ jobs:
               const errors = [];
               if (!pattern.test(subject)) {
                 errors.push(
-                  `${label} must match <type>(<scope>): <description> with an allowed type/scope.`,
+                  `${label} must match <type>(<scope>): <description> or <type>: <description> with an allowed type/scope.`,
                 );
               }
               if (subject.endsWith(".")) {
@@ -59,7 +60,7 @@ jobs:
                 errors.push(`${label} must be ${maxLength} characters or less.`);
               }
               const description = subject.replace(
-                new RegExp(`^(${typePattern})\\((${scopePattern})\\):\\s+`),
+                new RegExp(`^(${typePattern})(?:\\((${scopePattern})\\))?:\\s+`),
                 "",
               );
               if (/^(update|misc|stuff|changes|fix bug|bug fix)$/i.test(description)) {

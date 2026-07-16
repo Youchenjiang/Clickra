@@ -3,12 +3,14 @@
 ## 1. Git 完整性
 - **禁止 Nuke-and-Pave**：嚴禁刪除舊檔案再新增同名檔案。改名必須使用 `git mv`。
 - **原子化提交**：一個 Commit 只做一件事。嚴禁將多個不相干的邏輯修改（如版號同步、工作流修改、規則更新）合併到同一個 Commit 中。必須分批暫存（例如 `git add <特定檔案>`）並分開提交，確保每個 Commit 異動內容最小化且語意單一。
-- **Commit 訊息格式規範**：每個 Commit 訊息必須符合本地 Commit Hook 的嚴格格式限制：
-  1. Header 必須遵循 `type(scope): subject` 或 `type: subject`，長度必須小於等於 72 字元，不可用句號結尾。
-  2. 允許的 `type` 包括：`feat`, `fix`, `docs`, `style`, `refactor`, `test`, `chore`。
-  3. Body 必須與 Header 留空一行，且必須是以英文寫成的編號列表並以 `1. ` 開頭（例如：`1. Add helper method.`）。
+- **Commit 訊息格式規範**：每個 Commit 訊息必須符合本地 Commit Hook 與 CI policy 的格式限制：
+  1. Header 必須遵循 `type(scope): subject` 或 `type: subject`，長度必須小於等於 72 字元，不可用句號結尾；若使用 scope，必須使用 allowlist 中有意義的範圍。
+  2. 允許的 `type` 包括：`feat`, `fix`, `refactor`, `docs`, `test`, `chore`, `style`, `perf`, `security`。
+  3. 允許的 `scope` 包括：`cli`, `core`, `shell`, `msix`, `docs`, `ci`, `deps`, `store`, `agent`。
+  4. Body 必須與 Header 留空一行，且必須是以英文寫成的編號列表並以 `1. ` 開頭（例如：`1. Add helper method.`）。
 - **版本號同步**：每次修改功能或 UI 後，必須執行 `powershell -File scripts/bump_version.ps1 -Build` 增加 Patch（第 3 碼，且第四碼 Revision 保持為 0）、同步版本號（含 README、README.zh-TW.md、CHANGELOG.md 與 MSIX AppxManifest.xml）並自動重新編譯產物，以確保 Windows 11 選單快取刷新且內外版本一致，同時符合微軟商店的版號規範。
 - **Commit 審核**：在執行 Commit 之前，必須執行 `git status` 確認沒有暫存 test 垃圾。
+- **PR 描述格式**：PR body 與 commit body 是兩套不同規則；必須使用 `.github/pull_request_template.md`，依變更檔案數量選擇 Summary/Key Changes/Verification 結構，不得只貼 commit 的編號列表。
 - **Tag 規範與發布順序**：在正式對外發布或商店提交時，必須嚴格遵守以下 Git Flow 順序：
   1. 在 `feature/*` 或 `hotfix/*` 工作分支上完成開發並提交（Commit）。
   2. 將工作分支推送到遠端，在 GitHub 上建立 Pull Request，成功合併（Merge）入 `main`。
@@ -41,3 +43,12 @@
 ## 5. 溝通協議
 - **禁止自主 Push**：除非使用者明確下達 `/auto_commit` 或 `git push` 指令，否則禁止推送。
 - **Diff 摘要**：在結束 turn 之前，若有變動，必須簡述受影響的檔案與變動行數。
+
+## 6. 問題解決策略
+遇到錯誤、阻礙或反覆失敗時：
+- **禁止暴力嘗試**：不要在不理解系統的情況下反覆換方法嘗試。每一次失敗的隨機嘗試都不會讓你更接近答案。
+- **先觀察機制**：停下來，讀錯誤訊息、讀相關原始碼、讀文件。理解它**為什麼**失敗，再動手修。
+- **歸一化問題**：把問題縮到最小的可驗證單元。例如：先用最簡單的輸入測試 API 有沒有回應，確認基本機制能運作後，再處理完整需求。
+- **自我覺察**：問自己「我是在解決問題，還是在嘗試各種隨機解法？」前者有觀察，後者只有試驗。
+
+詳細方法論見：[Method-List/resources/agent-rules/normalize-construct-scale.md](../Method-List/resources/agent-rules/normalize-construct-scale.md)

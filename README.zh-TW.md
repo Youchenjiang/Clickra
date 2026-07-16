@@ -3,7 +3,7 @@
 [![Microsoft Store](https://img.shields.io/badge/Microsoft%20Store-Clickra-blue?style=for-the-badge&logo=microsoft-store)](https://apps.microsoft.com/detail/9NGLBF6P1KLD)
 [![License: Apache 2.0](https://img.shields.io/badge/License-Apache%202.0-blue.svg?style=for-the-badge)](https://opensource.org/licenses/Apache-2.0)
 
-這是一個專為 Windows 11 設計的高性能原生右鍵選單工具套件。採用 C# NativeAOT 技術開發，徹底取代啟動緩慢的 Python 腳本，提供毫秒級的即時響應。
+這是一個支援 Windows 10 與 Windows 11 的高性能原生右鍵選單工具套件。採用 C# NativeAOT 技術開發，徹底取代啟動緩慢的 Python 腳本，提供毫秒級的即時響應。
 
 [English Version (英文版)](README.md)
 
@@ -36,8 +36,8 @@
 
 ## ✨ 核心功能
 
-### 1. 📂 現代化子選單 (Windows 11 Only)
-所有功能皆優雅地收納在 `Clickra` 子選單中，避免佔用一級選單空間，保持桌面簡潔。
+### 1. 📂 現代化子選單 (Windows 10/11)
+在 Windows 11 中，所有功能皆優雅地收納在 `Clickra` 現代化子選單；Windows 10 則使用相容的傳統右鍵選單整合。
 
 ### 2. 📊 原生儀表板 (Native Dashboard)
 *   **功能**：採用高效能 Win32 原生開發的深色模式儀表板。
@@ -102,8 +102,8 @@ Clickra/
     ├── StoreListing_*.md           # 微軟商店文案與描述資訊
     └── development/
         ├── release_guideline.md    # 版本號管理規範與商店上線檢查清單
-        ├── shell_extension_best_practices.md # Native COM 與 Shell Extension 開發規範
-        └── shell_diagnostic_guide.md         # Shell 擴充故障診斷與偵錯日誌
+        ├── shell_extension_best_practices.md # COM、NativeAOT、記憶體與封裝不變量
+        └── shell_diagnostic_guide.md         # Shell 擴充日誌與 Explorer 診斷
 ```
 
 ### 文件導覽連結
@@ -115,8 +115,8 @@ Clickra/
     *   [LOCAL_BUILD_NOTES.md](LOCAL_BUILD_NOTES.md) — 包含詳細的本地端編譯步驟、自動化打包腳本、功能擴充方法，以及開發分支合併規則。
 *   **進階開發與發布專題**：
     *   [版本管理與發布規範](docs/development/release_guideline.md) — 定義四位數版本限制、發布時需更新之檔案清單與 Git Tag 規定。
-    *   [Shell 擴充開發最佳實踐](docs/development/shell_extension_best_practices.md) — COM 生命週期、NativeAOT 記憶體管理與 Sparse Package 測試注意事項。
-    *   [Shell 擴充故障診斷與偵錯](docs/development/shell_diagnostic_guide.md) — 如何透過輕量日誌捕獲 `QueryInterface` 失敗的 IID 以及 COM 加載異常。
+    *   [Shell 擴充開發最佳實踐](docs/development/shell_extension_best_practices.md) — COM 介面、NativeAOT 記憶體規則與 Sparse Package/MSIX 封裝不變量。
+    *   [Shell 擴充故障診斷與偵錯](docs/development/shell_diagnostic_guide.md) — 安全日誌、HRESULT 分流與 Explorer 分階段診斷流程。
 
 ---
 

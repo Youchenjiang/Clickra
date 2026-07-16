@@ -166,14 +166,20 @@ To keep the `main` branch stable, direct pushes to `main` are prohibited. All ch
 
 ### Pull Request Convention
 
-**Title** — follow Conventional Commits, keep under 50 chars:
+Use the canonical [pull request template](.github/pull_request_template.md).
+The template is authoritative for PR body structure; commit body rules do not
+replace it.
+
+**Title** — follow Conventional Commits, keep at or under 72 chars:
 
 ```
 <type>(<scope>): <description>
+or
+<type>: <description>
 ```
 
-- For release PRs, include version: `feat(pdf): v3.4.0.0 - Excel to PDF conversion`
-- Scope = primary area changed (`pdf`, `cli`, `shell`, `ui`, `i18n`, `build`, `docs`), not always `release`
+- For release PRs, include version: `feat(cli): v3.4.0.0 - Excel to PDF conversion`
+- Scope is optional. When present, it must be one of `cli`, `core`, `shell`, `msix`, `docs`, `ci`, `deps`, `store`, or `agent`.
 - Always English, no mixed languages
 
 **Description** — required for every PR, even 1-line fixes. Structure by PR size:
@@ -223,29 +229,31 @@ This project follows [Conventional Commits](https://www.conventionalcommits.org/
 | `chore` | Build scripts, CI/CD, dependency updates, version bumps |
 | `style` | Formatting, whitespace, no logic change |
 | `perf` | Performance improvement |
+| `security` | Security hardening or vulnerability fixes |
 
-**Scope** (optional but recommended):
+**Scope** (optional; use it when it adds useful context):
 
 | Scope | Area |
 |-------|------|
-| `core` | `Clickra.Core` (processors, storage, localization) |
 | `cli` | `Clickra.CLI` (dashboard, progress window, CLI args) |
-| `pdf` | PDF translation pipeline specifically |
+| `core` | `Clickra.Core` (processors, storage, localization) |
 | `shell` | `ClickraShell` (Windows context menu, COM) |
-| `ui` | Dashboard/Progress window rendering |
-| `font` | Font resolver and font utilities |
-| `i18n` | Localization keys and resources |
-| `build` | Build scripts, MSIX packaging |
-| `release` | Version bumps, changelog, store listings |
-| `tests` | Test suites and test infrastructure |
+| `msix` | MSIX packaging and manifests |
+| `docs` | Documentation and project guidance |
+| `ci` | GitHub Actions and automation |
+| `deps` | Dependency updates |
+| `store` | Microsoft Store metadata and publishing |
+| `agent` | AI-agent instructions and project automation skills |
 
 **Examples**:
 ```
-feat(excel): add Excel to PDF conversion processor
+feat(core): add Excel to PDF conversion processor
 fix(shell): correct GetState index offset after inserting excel2pdf
-refactor(pdf): extract paragraph analysis helpers
-docs(roadmap): update v3.3.3.0 milestones
+refactor(core): extract paragraph analysis helpers
+docs: update v3.3.3.0 milestones
 chore(deps): update NuGet packages to latest versions
+docs: update cross-cutting project guidance
+docs(agent): update AI-agent instructions
 ```
 
 **Rules**:
@@ -315,3 +323,154 @@ feat(dashboard): add Excel engine status row to overview tab
 | Delete file with no replacement | 1 commit: `refactor(core): remove unused X` |
 | Add new feature with 3 files | 1 commit if same concern: `feat(excel): add Excel to PDF support` |
 | Add feature + fix unrelated bug | 2 commits: one `feat`, one `fix` |
+
+---
+
+## Partner Center API — Known Behaviors & Gotchas
+
+These notes were discovered through extensive testing of `scripts/publish_store.py`
+against the Microsoft Store Submission API (`manage.devcenter.microsoft.com`).
+
+### Authentication
+- OAuth2 client_credentials flow with resource `https://manage.devcenter.microsoft.com`.
+- Token TTL is ~60 min; the script acquires once per run.
+
+### Submission Lifecycle (Status Flow)
+```
+(POST) → Draft → PendingCommit → CommitStarted → PreProcessing → Certification → Published
+                                                                   ↘ CommitFailed
+```
+- **CommitStarted ≠ submitted.** It only means the backend *started* processing the
+  commit.  The script MUST poll until `PreProcessing` / `Certification` / `Published`
+  to confirm real acceptance.  Checking for `CommitStarted` alone is a false positive.
+- The API returns `202` with `{"status":"CommitStarted"}` immediately — this is async.
+- Typical processing time: 15–30 minutes.  The post-commit verification loop runs
+  9 checks × 20 s = 3 min; it may time out before the backend finishes, which is
+  normal and not a failure.
+
+### Creating a Submission (POST)
+- `POST /v1.0/my/applications/{productId}/submissions` with **empty body** (`b''`).
+  - Using `b'{}'` causes HTTP 400: *"The size of Listings must be 1 or more"*.
+- The response clones the last *published* version's listings and packages.
+- Returns `fileUploadUrl` (Azure Blob SAS URL) for the ZIP upload.
+- **409 Conflict** means a pending submission already exists — delete it first.
+
+### Uploading the Package (PUT to SAS URL)
+- Upload a single ZIP containing: MSIX + screenshots + any other assets.
+- All files go to the root of the ZIP (no subdirectories).
+- Response: `201 Created`.
+
+### Updating Metadata (PUT)
+- `PUT /v1.0/my/applications/{productId}/submissions/{submissionId}` with the full
+  submission JSON.
+- **Key casing**: The API returns **camelCase** keys (`releaseNotes`, `baseListing`,
+  `images`), NOT PascalCase (`ReleaseNotes`, `BaseListing`, `Images`).  The script
+  must match camelCase when reading/writing to avoid creating duplicate keys.
+- PUT response `200` means accepted; does not guarantee persistence — the commit
+  may still reject changes.
+
+### Package References (`applicationPackages`)
+- The cloned submission has one package with `fileStatus: "Uploaded"` and a real `id`.
+- The API **requires** keeping existing package entries.  You must:
+  1. Copy each existing package, set `fileStatus: "PendingDelete"` (preserve `id`).
+  2. Append a new entry: `{fileName: "Clickra.msix", fileStatus: "PendingUpload"}`.
+- Omitting old entries → HTTP 400: *"Please keep all file entries for existing packages."*
+- During commit, the backend removes the old package and processes the new one.
+  Both entries may temporarily coexist with the same filename — this is normal.
+
+### Screenshot / Image References (`images` in `baseListing`)
+- **Key behavior**: The API **silently ignores** `PendingDelete` on screenshots that
+  have `fileStatus: "Uploaded"` from a previous published submission.  You cannot
+  replace or delete them via the API.
+- **Working strategy**: Keep all existing images untouched and **append** new
+  `PendingUpload` screenshots.  The backend uploads the new ones and gives them real
+  IDs.  Old screenshots remain alongside.
+- **Cleanup**: Old/redundant screenshots must be removed manually in the Partner
+  Center UI.
+- Screenshot requirements: `.png` format, ≤ 50 MB, recommended ≥ 1366×768 pixels.
+  Smaller sizes (e.g. 1140×733) are accepted but not ideal.
+
+### `zh-cn` Listing
+- The cloned submission may not include a `zh-cn` listing.
+- The script creates one via `add_missing_zh_cn()` (deep-copied from `zh-tw` with
+  cleared content).  This works because the new listing has no pre-existing screenshots,
+  so the API accepts `PendingUpload` entries without conflict.
+
+### Retry / Timeout
+- Microsoft's ingestion gateway is slow and unreliable.  GET requests frequently
+  time out (504) or take 60–180 seconds.
+- The `api_request()` helper uses exponential backoff (5 retries, starting at 15 s).
+- For critical calls (GET submission, PUT metadata), a minimum timeout of 180 s
+  is recommended.
+- DELETE also times out frequently; retry with 15 s intervals.
+
+### Error Patterns
+| HTTP Code | Meaning | Action |
+|-----------|---------|--------|
+| 400 | Bad request (missing listings, missing package IDs, etc.) | Fix the JSON payload |
+| 409 | Conflict — pending submission exists | Delete existing submission first |
+| 504 | Gateway timeout | Retry after 15–30 s |
+| 202 | Accepted (commit started) | Normal — poll for final status |
+
+## Windows 11 Context-Menu Development Workflow
+
+The shell extension is a NativeAOT shared library loaded by Explorer. The
+runtime path is:
+
+```text
+Explorer selection
+  -> Sparse Package/MSIX identity
+  -> ClickraShell.dll
+  -> DllGetClassObject / ClassFactory
+  -> IExplorerCommand and IEnumExplorerCommand
+  -> Clickra.CLI command arguments
+```
+
+When changing the context menu, keep these project boundaries in mind:
+
+- `src/ClickraShell` owns COM identity, vtables, selection handling, and menu
+  command routing.
+- `src/Clickra.CLI` owns the command implementation and progress/dashboard
+  execution.
+- `src/resources/AppxManifest.xml` and `packaging/msix/AppxManifest.xml` must
+  agree on identity, CLSID, version, and supported Windows versions.
+- `packaging/msix/Strings/*/Resources.resw` contains the five localized menu
+  labels; update all locales when adding a command.
+
+### Build and package verification
+
+For a fast compile check:
+
+```powershell
+dotnet build src\Clickra.CLI\Clickra.csproj -c Release
+```
+
+For a shell or packaging change, use the full pipeline:
+
+```powershell
+powershell -File scripts\build_msix.ps1
+```
+
+The script publishes both NativeAOT projects, assembles the MSIX layout,
+compiles the PRI resources, creates `Clickra.msix`, and signs it when a
+matching development certificate is available. Test the sparse/development
+path and the final MSIX path separately, then restart Explorer after each
+reinstall.
+
+### Context-menu change checklist
+
+1. Add the command key and CLI argument at the same index in
+   `src/ClickraShell/ComMethods.cs`.
+2. Update `IsSupported()` and `GetState()` for shifted command indices.
+3. Add the command to CLI routing, directory expansion, progress processing,
+   output-path selection, and history labels.
+4. Add all five localized resource strings.
+5. Build the shell DLL and CLI, install the package, and verify submenu
+   enumeration plus one real invocation.
+6. If Explorer never calls the DLL, follow the staged checks in
+   [`docs/development/shell_diagnostic_guide.md`](docs/development/shell_diagnostic_guide.md)
+   before changing COM code.
+
+Do not use a legacy HKCU registry-verb installer as a substitute for the
+Sparse Package/MSIX path. Such scripts do not exercise the same Explorer
+integration used by the shipped application.
