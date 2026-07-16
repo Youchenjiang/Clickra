@@ -527,6 +527,26 @@ def report_uploaded_packages(submission):
         if validation and validation not in ('Pending', 'Passed', ''):
             print(f"  ⚠️ Unexpected validation status: {validation}")
 
+
+def check_preprocessing_submission(token, sub_url, check):
+    print(f"Checking submission state ({check}/10)...")
+    submission = api_request(sub_url, token, retries=3)
+    if not submission:
+        print("  Failed to query submission details. Retrying...")
+        return 'retry'
+
+    status = submission.get('status') or submission.get('Status')
+    print(f"  Submission Status: {status}")
+    if report_submission_errors(submission) or status == 'CommitFailed':
+        print("❌ Submission validation failed.")
+        return 'failed'
+    if status == 'PendingCommit':
+        report_uploaded_packages(submission)
+        print("✅ Submission is in PendingCommit state. Proceeding to commit.")
+        return 'ready'
+    return 'retry'
+
+
 def wait_for_preprocessing(token, p_id, submission_id):
     print("\nWaiting for package upload to be acknowledged by Microsoft...")
     if is_dry_run():
@@ -534,21 +554,10 @@ def wait_for_preprocessing(token, p_id, submission_id):
 
     sub_url = f'https://manage.devcenter.microsoft.com/v1.0/my/applications/{p_id}/submissions/{submission_id}'
     for check in range(1, 11):
-        print(f"Checking submission state ({check}/10)...")
-        submission = api_request(sub_url, token, retries=3)
-        if not submission:
-            print("  Failed to query submission details. Retrying...")
-            time.sleep(15)
-            continue
-
-        status = submission.get('status') or submission.get('Status')
-        print(f"  Submission Status: {status}")
-        if report_submission_errors(submission) or status == 'CommitFailed':
-            print("❌ Submission validation failed.")
+        result = check_preprocessing_submission(token, sub_url, check)
+        if result == 'failed':
             return False
-        if status == 'PendingCommit':
-            report_uploaded_packages(submission)
-            print("✅ Submission is in PendingCommit state. Proceeding to commit.")
+        if result == 'ready':
             return True
         time.sleep(15)
 
