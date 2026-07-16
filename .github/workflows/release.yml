@@ -39,6 +39,7 @@ jobs:
             throw "Required resource folder 'packaging/msix/Strings' not found."
         }
         Copy-Item "./packaging/msix/Strings" "./msix_layout/Strings" -Recurse
+        Copy-Item "./packaging/msix/Layout/priconfig.xml" "./msix_layout/priconfig.xml"
         Copy-Item "./src/resources/app.ico" "./msix_layout/app.ico"
         # Also ensure app.png exists for modern menu
         Copy-Item "./packaging/msix/Assets/StoreLogo.png" "./msix_layout/app.png"
@@ -52,6 +53,15 @@ jobs:
         $sdkBin = Join-Path $kitPath $latestVersion.Name "x64"
         echo "SDK_BIN=$sdkBin" >> $env:GITHUB_ENV
         Write-Host "Found SDK tools at: $sdkBin"
+
+    - name: Compile PRI Resource Index
+      shell: pwsh
+      run: |
+        & "${{ env.SDK_BIN }}\makepri.exe" createconfig /cf ./msix_layout/priconfig.xml /dq zh-TW /pv 10.0.0 /o
+        & "${{ env.SDK_BIN }}\makepri.exe" new /pr ./msix_layout /cf ./msix_layout/priconfig.xml /of ./msix_layout/resources.pri /o
+        if (-not (Test-Path "./msix_layout/resources.pri")) {
+            throw "Resource index resources.pri was not generated."
+        }
 
     - name: Create MSIX Package
       shell: pwsh
