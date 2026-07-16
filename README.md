@@ -3,7 +3,7 @@
 [![Microsoft Store](https://img.shields.io/badge/Microsoft%20Store-Clickra-blue?style=for-the-badge&logo=microsoft-store)](https://apps.microsoft.com/detail/9NGLBF6P1KLD)
 [![License: Apache 2.0](https://img.shields.io/badge/License-Apache%202.0-blue.svg?style=for-the-badge)](https://opensource.org/licenses/Apache-2.0)
 
-A high-performance, native context menu utility suite for Windows 11. Powered by C# NativeAOT, it provides sub-millisecond responsiveness, replacing slow Python scripts with a truly native user experience.
+A high-performance, native context menu utility suite for Windows 10 and Windows 11. Powered by C# NativeAOT, it provides sub-millisecond responsiveness, replacing slow Python scripts with a truly native user experience.
 
 [閱讀中文版 (Read in Traditional Chinese)](README.zh-TW.md)
 
@@ -35,8 +35,8 @@ Most productivity scripts (PDF merging, image conversion, etc.) are typically wr
 
 ## ✨ Core Features
 
-### 1. 📂 Modern Sub-menu (Windows 11 Only)
-Commands are elegantly tucked away in the `Clickra` sub-menu, keeping your primary context menu clean and uncluttered.
+### 1. 📂 Modern Sub-menu (Windows 10/11)
+On Windows 11, commands appear in the modern `Clickra` sub-menu. Windows 10 uses the compatible classic context-menu integration.
 
 ### 2. 📊 Native Dashboard
 *   **Feature**: A high-performance, dark-themed dashboard to monitor system compatibility.
@@ -102,8 +102,8 @@ Clickra/
     ├── StoreListing_*.md           # Store Metadata & Product Descriptions
     └── development/
         ├── release_guideline.md    # Versioning constraints & release checklists
-        ├── shell_extension_best_practices.md # Native COM & Shell Extension development rules
-        └── shell_diagnostic_guide.md         # Shell extension debugging & registry diagnostics
+        ├── shell_extension_best_practices.md # COM, NativeAOT, memory, and package invariants
+        └── shell_diagnostic_guide.md         # Shell extension logging and Explorer diagnostics
 ```
 
 ### Document Navigation Links
@@ -115,8 +115,8 @@ Clickra/
     *   [LOCAL_BUILD_NOTES.md](LOCAL_BUILD_NOTES.md) — Local development compilation, packaging scripts, adding new features, and development Git workflows.
 *   **Specialized Development Guides**:
     *   [Release & Versioning Guidelines](docs/development/release_guideline.md) — 4-digit version constraints, version update files list, and MSIX store publishing checklist.
-    *   [Shell Extension Best Practices](docs/development/shell_extension_best_practices.md) — COM interface guidelines, NativeAOT integration, and registration practices.
-    *   [Shell Extension Diagnostics & Debugging](docs/development/shell_diagnostic_guide.md) — Debug logging implementation and troubleshooting missing registry/menu commands.
+    *   [Shell Extension Best Practices](docs/development/shell_extension_best_practices.md) — COM interfaces, NativeAOT memory rules, and Sparse Package/MSIX invariants.
+    *   [Shell Extension Diagnostics & Debugging](docs/development/shell_diagnostic_guide.md) — Fail-safe logging, HRESULT triage, and staged Explorer troubleshooting.
 
 ---
 

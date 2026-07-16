@@ -37,6 +37,10 @@ All commit messages must follow the structured format:
 1. <Numbered detail 1 in English>
 2. <Numbered detail 2 in English>
 ```
+
+The authoritative scope/type allowlist for pull-request validation is
+maintained in `.github/workflows/policy.yml`; keep local examples aligned with
+that workflow.
 Example:
 ```
 fix(store): resolve keywords limit validation bug

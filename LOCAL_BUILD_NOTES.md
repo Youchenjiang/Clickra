@@ -166,14 +166,14 @@ To keep the `main` branch stable, direct pushes to `main` are prohibited. All ch
 
 ### Pull Request Convention
 
-**Title** — follow Conventional Commits, keep under 50 chars:
+**Title** — follow Conventional Commits, keep at or under 72 chars:
 
 ```
 <type>(<scope>): <description>
 ```
 
-- For release PRs, include version: `feat(pdf): v3.4.0.0 - Excel to PDF conversion`
-- Scope = primary area changed (`pdf`, `cli`, `shell`, `ui`, `i18n`, `build`, `docs`), not always `release`
+- For release PRs, include version: `feat(cli): v3.4.0.0 - Excel to PDF conversion`
+- Scope is required and must be one of `cli`, `core`, `shell`, `msix`, `docs`, `ci`, `deps`, or `store`.
 - Always English, no mixed languages
 
 **Description** — required for every PR, even 1-line fixes. Structure by PR size:
@@ -223,28 +223,27 @@ This project follows [Conventional Commits](https://www.conventionalcommits.org/
 | `chore` | Build scripts, CI/CD, dependency updates, version bumps |
 | `style` | Formatting, whitespace, no logic change |
 | `perf` | Performance improvement |
+| `security` | Security hardening or vulnerability fixes |
 
-**Scope** (optional but recommended):
+**Scope** (required by CI):
 
 | Scope | Area |
 |-------|------|
-| `core` | `Clickra.Core` (processors, storage, localization) |
 | `cli` | `Clickra.CLI` (dashboard, progress window, CLI args) |
-| `pdf` | PDF translation pipeline specifically |
+| `core` | `Clickra.Core` (processors, storage, localization) |
 | `shell` | `ClickraShell` (Windows context menu, COM) |
-| `ui` | Dashboard/Progress window rendering |
-| `font` | Font resolver and font utilities |
-| `i18n` | Localization keys and resources |
-| `build` | Build scripts, MSIX packaging |
-| `release` | Version bumps, changelog, store listings |
-| `tests` | Test suites and test infrastructure |
+| `msix` | MSIX packaging and manifests |
+| `docs` | Documentation and project guidance |
+| `ci` | GitHub Actions and automation |
+| `deps` | Dependency updates |
+| `store` | Microsoft Store metadata and publishing |
 
 **Examples**:
 ```
-feat(excel): add Excel to PDF conversion processor
+feat(core): add Excel to PDF conversion processor
 fix(shell): correct GetState index offset after inserting excel2pdf
-refactor(pdf): extract paragraph analysis helpers
-docs(roadmap): update v3.3.3.0 milestones
+refactor(core): extract paragraph analysis helpers
+docs(docs): update v3.3.3.0 milestones
 chore(deps): update NuGet packages to latest versions
 ```
 
@@ -403,3 +402,66 @@ against the Microsoft Store Submission API (`manage.devcenter.microsoft.com`).
 | 409 | Conflict — pending submission exists | Delete existing submission first |
 | 504 | Gateway timeout | Retry after 15–30 s |
 | 202 | Accepted (commit started) | Normal — poll for final status |
+
+## Windows 11 Context-Menu Development Workflow
+
+The shell extension is a NativeAOT shared library loaded by Explorer. The
+runtime path is:
+
+```text
+Explorer selection
+  -> Sparse Package/MSIX identity
+  -> ClickraShell.dll
+  -> DllGetClassObject / ClassFactory
+  -> IExplorerCommand and IEnumExplorerCommand
+  -> Clickra.CLI command arguments
+```
+
+When changing the context menu, keep these project boundaries in mind:
+
+- `src/ClickraShell` owns COM identity, vtables, selection handling, and menu
+  command routing.
+- `src/Clickra.CLI` owns the command implementation and progress/dashboard
+  execution.
+- `src/resources/AppxManifest.xml` and `packaging/msix/AppxManifest.xml` must
+  agree on identity, CLSID, version, and supported Windows versions.
+- `packaging/msix/Strings/*/Resources.resw` contains the five localized menu
+  labels; update all locales when adding a command.
+
+### Build and package verification
+
+For a fast compile check:
+
+```powershell
+dotnet build src\Clickra.CLI\Clickra.csproj -c Release
+```
+
+For a shell or packaging change, use the full pipeline:
+
+```powershell
+powershell -File scripts\build_msix.ps1
+```
+
+The script publishes both NativeAOT projects, assembles the MSIX layout,
+compiles the PRI resources, creates `Clickra.msix`, and signs it when a
+matching development certificate is available. Test the sparse/development
+path and the final MSIX path separately, then restart Explorer after each
+reinstall.
+
+### Context-menu change checklist
+
+1. Add the command key and CLI argument at the same index in
+   `src/ClickraShell/ComMethods.cs`.
+2. Update `IsSupported()` and `GetState()` for shifted command indices.
+3. Add the command to CLI routing, directory expansion, progress processing,
+   output-path selection, and history labels.
+4. Add all five localized resource strings.
+5. Build the shell DLL and CLI, install the package, and verify submenu
+   enumeration plus one real invocation.
+6. If Explorer never calls the DLL, follow the staged checks in
+   [`docs/development/shell_diagnostic_guide.md`](docs/development/shell_diagnostic_guide.md)
+   before changing COM code.
+
+Do not use a legacy HKCU registry-verb installer as a substitute for the
+Sparse Package/MSIX path. Such scripts do not exercise the same Explorer
+integration used by the shipped application.

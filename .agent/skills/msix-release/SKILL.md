@@ -12,11 +12,9 @@ Bump version, build MSIX package, and fix known script issues for Clickra releas
 
 ## Version Convention
 
-- **patch** = PDF module fixes/refactoring
+- **patch** = fixes, layout improvements, CI/store resubmission repairs, and other changes to existing modules
 - **minor** = new features
 - **major** = breaking changes
-
-User explicitly chose 3.3.3.0 over 3.4.0.0 because "這次不是都還是在修之前的pdf 模組嗎".
 
 ## Procedure
 
@@ -25,7 +23,7 @@ All commands run from the Clickra project root: `C:\Users\g1014308\Documents\Git
 ### Step 1: Version bump
 
 ```powershell
-powershell -File scripts/bump_version.ps1 -Build -BumpType patch
+powershell -File scripts/bump_version.ps1 -Build -Type patch
 ```
 
 This updates:
@@ -34,6 +32,7 @@ This updates:
 - `CHANGELOG.md`
 - `README.md`
 - `README.zh-TW.md`
+- `docs/ROADMAP.md` (milestone/version status, when applicable)
 
 ### Step 2: Fix CHANGELOG.md (REQUIRED)
 
@@ -81,7 +80,7 @@ Ensure 0 errors, 0 warnings.
 
 ## Tag and Release Order
 
-Per `Clickra/.agent/guidelines.md` §1:
+Per `.agent/guidelines.md` §1:
 
 1. Complete development on feature/hotfix branch
 2. Push branch, create PR, merge into `main`
@@ -92,6 +91,6 @@ Per `Clickra/.agent/guidelines.md` §1:
 
 ## Reference
 
-- Version bump issues documented in `MEMORY-clickra-history.md` §37-41
-- MSIX build pipeline: `MEMORY-clickra-history.md` §38
-- Tag/release convention: `Clickra/.agent/guidelines.md` §1
+- Version bump issues: `LOCAL_BUILD_NOTES.md` → Automated Packaging & Versioning Scripts
+- MSIX build pipeline: `LOCAL_BUILD_NOTES.md` → Automated Packaging & Versioning Scripts
+- Tag/release convention: `docs/development/release_guideline.md`
