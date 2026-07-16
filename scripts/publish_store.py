@@ -51,7 +51,7 @@ def open_https(request, timeout):
     target = request.full_url if isinstance(request, urllib.request.Request) else request
     if not target.lower().startswith('https://'):
         raise ValueError(f'Only HTTPS URLs are allowed: {target}')
-    return urllib.request.urlopen(request, timeout=timeout)
+    return urllib.request.urlopen(request, timeout=timeout)  # skipcq: BAN-B310
 
 def is_dry_run():
     return '--dry-run' in sys.argv
@@ -139,6 +139,8 @@ def api_request(url, token, method='GET', body_dict=None, headers=None, retries=
             print(f"  API {method} {url} attempt {attempt} failed with HTTP {e.code}: {body[:300]}")
             if e.code == 409:
                 print("  Conflict detected (409). Continuing...")
+            if e.code < 500 and e.code != 429:
+                return None
             if attempt < retries:
                 time.sleep(current_delay)
                 current_delay *= 2 # Exponential backoff
@@ -245,6 +247,8 @@ def add_missing_zh_cn(listings):
         base['Description'] = ''
         base['ReleaseNotes'] = ''
         base['Features'] = []
+        base.pop('Images', None)
+        base.pop('images', None)
         # Clear BOTH casing variants to prevent duplicate keywords keys from deepcopy
         base.pop('Keywords', None)
         base.pop('keywords', None)
@@ -273,19 +277,10 @@ def update_single_listing(base_listing, new_data):
             if parsed_key == 'keywords':
                 val = val[:7] # Force strict API limit
 
-            # The Partner Center API returns camelCase keys (e.g. 'releaseNotes')
-            # but may also use PascalCase ('ReleaseNotes'). Check all variants
-            # to find the existing key and update in-place.
             camel_key = json_key[0].lower() + json_key[1:]  # 'releaseNotes'
-            if json_key in base_listing:
-                base_listing[json_key] = val
-            elif camel_key in base_listing:
-                base_listing[camel_key] = val
-            elif json_key.lower() in base_listing:
-                base_listing[json_key.lower()] = val
-            else:
-                # Key doesn't exist yet — write with camelCase (API convention)
-                base_listing[camel_key] = val
+            for key in (json_key, json_key.lower(), camel_key):
+                base_listing.pop(key, None)
+            base_listing[camel_key] = val
 
 def parse_all_listings(repo_root):
     print("Syncing app metadata from docs/StoreListing_*.md files...")
@@ -377,28 +372,19 @@ def create_new_submission(token, p_id):
     if is_dry_run():
         return {"id": "MOCK_SUBMISSION", "fileUploadUrl": "MOCK_URL", "listings": {}}
     url = f'https://manage.devcenter.microsoft.com/v1.0/my/applications/{p_id}/submissions'
-    
-    req = urllib.request.Request(url, data=b'', headers={
-        'Authorization': f'Bearer {token}',
-        'Content-Type': 'application/json',
-        'Content-Length': '0'
-    }, method='POST')
-    
-    max_attempts = 5
-    for attempt in range(1, max_attempts + 1):
-        try:
-            print(f"  Attempt {attempt}/{max_attempts} to create submission...")
-            with open_https(req, timeout=120) as r:
-                res = json.load(r)
-                print(f"✅ Submission draft created: {res.get('id')}")
-                return res
-        except Exception as e:
-            print(f"  Attempt {attempt} failed: {e}")
-            if attempt < max_attempts:
-                print("  Waiting 20 seconds before retry...")
-                time.sleep(20)
-    print("Failed to create submission after maximum attempts.")
-    sys.exit(1)
+    result = api_request(
+        url,
+        token,
+        method='POST',
+        headers={'Content-Length': '0'},
+        retries=5,
+        delay=20,
+    )
+    if not result:
+        print("Failed to create submission after maximum attempts.")
+        sys.exit(1)
+    print(f"✅ Submission draft created: {result.get('id')}")
+    return result
 
 def build_and_upload_archive(file_upload_url, msix_path, repo_root):
     print("\nPreparing package ZIP archive (MSIX + screenshots) for upload...")
@@ -565,33 +551,19 @@ def commit_submission_via_api(token, p_id, submission_id):
     if is_dry_run():
         print("[DRY-RUN] Committed submission successfully.")
         return True
-        
+
     commit_url = f'https://manage.devcenter.microsoft.com/v1.0/my/applications/{p_id}/submissions/{submission_id}/commit'
-    
-    # Microsoft Store submission API requires no request body for commit.
-    req = urllib.request.Request(
+    result = api_request(
         commit_url,
-        headers={
-            'Authorization': f'Bearer {token}',
-        },
-        method='POST'
+        token,
+        method='POST',
+        headers={'Content-Length': '0'},
     )
-    
-    try:
-        # Increase timeout to 180 seconds to survive heavy asynchronous commits
-        with open_https(req, timeout=180) as r:
-            res_body = r.read().decode('utf-8', errors='replace')
-            print(f"Commit response ({r.status}): {res_body}")
-            if r.status in (200, 202):
-                print("✅ Submission successfully committed for certification!")
-                return True
-    except urllib.error.HTTPError as e:
-        body = e.read().decode('utf-8', errors='replace')
-        print(f"Commit failed with HTTP {e.code}: {body}")
-    except Exception as e:
-        print(f"Commit failed: {e}")
-        
-    return False
+    if result is None:
+        print("Commit failed.")
+        return False
+    print("✅ Submission successfully committed for certification!")
+    return True
 
 def update_submission_metadata(submission, token, p_id, submission_id, repo_root, msix_path):
     update_metadata(submission, parse_all_listings(repo_root))
