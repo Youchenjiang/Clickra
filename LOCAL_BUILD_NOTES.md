@@ -170,10 +170,12 @@ To keep the `main` branch stable, direct pushes to `main` are prohibited. All ch
 
 ```
 <type>(<scope>): <description>
+or
+<type>: <description>
 ```
 
 - For release PRs, include version: `feat(cli): v3.4.0.0 - Excel to PDF conversion`
-- Scope is required and must be one of `cli`, `core`, `shell`, `msix`, `docs`, `ci`, `deps`, or `store`.
+- Scope is optional. When present, it must be one of `cli`, `core`, `shell`, `msix`, `docs`, `ci`, `deps`, `store`, or `agent`.
 - Always English, no mixed languages
 
 **Description** — required for every PR, even 1-line fixes. Structure by PR size:
@@ -225,7 +227,7 @@ This project follows [Conventional Commits](https://www.conventionalcommits.org/
 | `perf` | Performance improvement |
 | `security` | Security hardening or vulnerability fixes |
 
-**Scope** (required by CI):
+**Scope** (optional; use it when it adds useful context):
 
 | Scope | Area |
 |-------|------|
@@ -237,14 +239,17 @@ This project follows [Conventional Commits](https://www.conventionalcommits.org/
 | `ci` | GitHub Actions and automation |
 | `deps` | Dependency updates |
 | `store` | Microsoft Store metadata and publishing |
+| `agent` | AI-agent instructions and project automation skills |
 
 **Examples**:
 ```
 feat(core): add Excel to PDF conversion processor
 fix(shell): correct GetState index offset after inserting excel2pdf
 refactor(core): extract paragraph analysis helpers
-docs(docs): update v3.3.3.0 milestones
+docs: update v3.3.3.0 milestones
 chore(deps): update NuGet packages to latest versions
+docs: update cross-cutting project guidance
+docs(agent): update AI-agent instructions
 ```
 
 **Rules**:

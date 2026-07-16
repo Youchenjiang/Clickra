@@ -30,9 +30,11 @@ Before sending a commit request, the submission payload must meet these hard con
 * Group changes logically and perform sequential commits for atomic history tracking.
 
 ### B. Commit Message Formatting
-All commit messages must follow the structured format:
+All commit messages must follow the structured format (scope is optional):
 ```
 <type>(<scope>): <short description>
+or
+<type>: <short description>
 
 1. <Numbered detail 1 in English>
 2. <Numbered detail 2 in English>
@@ -40,7 +42,8 @@ All commit messages must follow the structured format:
 
 The authoritative scope/type allowlist for pull-request validation is
 maintained in `.github/workflows/policy.yml`; keep local examples aligned with
-that workflow.
+that workflow. Use a meaningful scope such as `agent` or `shell` when one
+exists, and omit scope for cross-cutting documentation changes.
 Example:
 ```
 fix(store): resolve keywords limit validation bug
