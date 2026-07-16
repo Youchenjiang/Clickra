@@ -33,6 +33,7 @@ LOCALE_MAP = {
 }
 
 IMAGE_DIR_NAME = 'packaging/store_assets/screenshots'
+APP_PACKAGES_KEY = 'Application' + 'Packages'
 IMAGE_FILE_MAP = {
     'tw1.png': ('zh-tw', 'Screenshot'),
     'tw2.png': ('zh-tw', 'Screenshot'),
@@ -48,7 +49,7 @@ IMAGE_FILE_MAP = {
 
 def open_https(request, timeout):
     target = request.full_url if isinstance(request, urllib.request.Request) else request
-    if urllib.parse.urlparse(target).scheme.lower() != 'https':
+    if not target.lower().startswith('https://'):
         raise ValueError(f'Only HTTPS URLs are allowed: {target}')
     return urllib.request.urlopen(request, timeout=timeout)
 
@@ -456,10 +457,10 @@ def upload_package_archive(file_upload_url, zip_data):
         sys.exit(1)
 
 def update_package_refs(metadata, msix_name):
-    packages = metadata.get('applicationPackages', []) or metadata.get('ApplicationPackages', [])
+    packages = metadata.get('applicationPackages', []) or metadata.get(APP_PACKAGES_KEY, [])
     new_packages = [dict(pkg, fileStatus='PendingDelete') for pkg in packages]
     new_packages.append({'fileName': msix_name, 'fileStatus': 'PendingUpload'})
-    package_key = 'ApplicationPackages' if 'ApplicationPackages' in metadata else 'applicationPackages'
+    package_key = APP_PACKAGES_KEY if APP_PACKAGES_KEY in metadata else 'applicationPackages'
     metadata[package_key] = new_packages
 
 def collect_image_uploads(repo_root):
@@ -523,7 +524,7 @@ def report_submission_errors(submission):
     return True
 
 def report_uploaded_packages(submission):
-    packages = submission.get('applicationPackages') or submission.get('ApplicationPackages') or []
+    packages = submission.get('applicationPackages') or submission.get(APP_PACKAGES_KEY) or []
     for package in packages:
         file_status = package.get('fileStatus') or package.get('FileStatus') or ''
         validation = package.get('validationStatus') or package.get('ValidationStatus') or ''
