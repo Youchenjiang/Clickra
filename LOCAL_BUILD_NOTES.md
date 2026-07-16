@@ -166,6 +166,10 @@ To keep the `main` branch stable, direct pushes to `main` are prohibited. All ch
 
 ### Pull Request Convention
 
+Use the canonical [pull request template](.github/pull_request_template.md).
+The template is authoritative for PR body structure; commit body rules do not
+replace it.
+
 **Title** — follow Conventional Commits, keep at or under 72 chars:
 
 ```

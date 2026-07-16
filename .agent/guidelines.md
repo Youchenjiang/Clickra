@@ -10,6 +10,7 @@
   4. Body 必須與 Header 留空一行，且必須是以英文寫成的編號列表並以 `1. ` 開頭（例如：`1. Add helper method.`）。
 - **版本號同步**：每次修改功能或 UI 後，必須執行 `powershell -File scripts/bump_version.ps1 -Build` 增加 Patch（第 3 碼，且第四碼 Revision 保持為 0）、同步版本號（含 README、README.zh-TW.md、CHANGELOG.md 與 MSIX AppxManifest.xml）並自動重新編譯產物，以確保 Windows 11 選單快取刷新且內外版本一致，同時符合微軟商店的版號規範。
 - **Commit 審核**：在執行 Commit 之前，必須執行 `git status` 確認沒有暫存 test 垃圾。
+- **PR 描述格式**：PR body 與 commit body 是兩套不同規則；必須使用 `.github/pull_request_template.md`，依變更檔案數量選擇 Summary/Key Changes/Verification 結構，不得只貼 commit 的編號列表。
 - **Tag 規範與發布順序**：在正式對外發布或商店提交時，必須嚴格遵守以下 Git Flow 順序：
   1. 在 `feature/*` 或 `hotfix/*` 工作分支上完成開發並提交（Commit）。
   2. 將工作分支推送到遠端，在 GitHub 上建立 Pull Request，成功合併（Merge）入 `main`。

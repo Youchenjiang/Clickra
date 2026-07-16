@@ -51,3 +51,18 @@ fix(store): resolve keywords limit validation bug
 1. Strip both 'Keywords' and 'keywords' properties from listing objects.
 2. Limit the array size to 7 items recursively.
 ```
+
+### C. Pull Request Description Formatting
+Pull request descriptions are separate from commit bodies. The canonical template
+is `.github/pull_request_template.md`; use it and remove its instructions before
+submitting. Keep the description in English and choose the structure by changed
+file count:
+
+* Fewer than 10 files: `## Summary` (1-2 sentences) plus a numbered list.
+* 10-50 files: `## Summary`, `## Key Changes`, and `## Verification`.
+* More than 50 files: `## Overview`, `## Key Changes` with numbered sections,
+  and `## Verification`.
+
+`Summary` or `Overview` explains what changed and why; it is not a list of file
+names. `Key Changes` groups technical details by area. `Verification` uses a
+`[x]`/`[ ]` checklist and must state what was and was not tested.
