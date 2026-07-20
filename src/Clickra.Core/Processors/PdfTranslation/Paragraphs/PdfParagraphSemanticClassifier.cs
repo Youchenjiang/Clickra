@@ -56,6 +56,8 @@ namespace Clickra.Core.Processors
         {
             string txt = para.TextWithPlaceholders.Trim();
             if (string.IsNullOrEmpty(txt)) return false;
+            if (txt.All(c => char.IsDigit(c) || char.IsPunctuation(c) || char.IsWhiteSpace(c)))
+                return false;
 
             if (txt.Equals("Keywords", StringComparison.OrdinalIgnoreCase) ||
                 txt.Equals("Keyword", StringComparison.OrdinalIgnoreCase) ||
@@ -66,13 +68,40 @@ namespace Clickra.Core.Processors
             }
 
             // Section numbering like "1. Introduction" or "3.4.1 Projection before Fusion" or "3.2.1 資料收集"
-            if (Regex.IsMatch(txt, @"^\d{1,2}(?:\.\d{1,2}){0,4}\.?(?:\s+[^a-z]|$)")) return true;
+            if (Regex.IsMatch(txt, @"^\d{1,2}(?:\.\d{1,2}){0,4}\.?(?:\s+)(?=[A-Za-z\u3400-\u9FFF])")) return true;
 
             // Lettered subsections like "A. Background" or "C. Case Studies"
             if (Regex.IsMatch(txt, @"^[A-Z]\.\s+")) return true;
 
             // Appendix subsections like "B.3 Benchmark Coverage"
             if (Regex.IsMatch(txt, @"^[A-Z]\.\d+\s")) return true;
+
+            // Roman-numbered sections are common in IEEE/ACM papers (for
+            // example "I. INTRODUCTION").  PdfPig often reports these as a
+            // single left-aligned line, so the numbering is the stable
+            // semantic signal rather than the extracted alignment.
+            if (Regex.IsMatch(txt, @"^(?:[IVXLCDM]{1,6})\.\s+", RegexOptions.IgnoreCase)) return true;
+
+            // Short label-style headings are frequently extracted without their
+            // original bold/centering metadata (for example, "The main
+            // contributions of this work include:", "Naturalness:").  A
+            // sentence ending in a colon and containing only a small number of
+            // words is a heading/list introducer, not body prose.
+            int labelWordCount = txt.Split(
+                new[] { ' ', '\t', '\r', '\n' },
+                StringSplitOptions.RemoveEmptyEntries).Length;
+            if (txt.Length <= 80 && labelWordCount <= 12 &&
+                txt.EndsWith(":", StringComparison.Ordinal) &&
+                Regex.IsMatch(txt, @"^[A-Za-z][A-Za-z0-9 .,()'&/+-]*:$"))
+                return true;
+
+            // A small, conservative vocabulary covers unnumbered section
+            // headings that occur in the regression corpus.  Requiring a
+            // short line avoids promoting ordinary prose that happens to
+            // mention one of these words.
+            if (txt.Length <= 36 &&
+                Regex.IsMatch(txt, @"^(?:Introduction|Background|Motivation|Methodology|Methods|Results|Discussion|Conclusion|Conclusions|Related Work|Acknowledg(?:e)?ments|References|摘要|引言|結論)$", RegexOptions.IgnoreCase))
+                return true;
 
             // Uppercase section headers like "REFERENCES", "ABSTRACT", "APPENDIX"
             if (txt.Length < 30 && txt.Any(char.IsLetter) && txt.All(c => !char.IsLower(c)))
