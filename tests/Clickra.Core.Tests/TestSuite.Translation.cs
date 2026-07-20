@@ -71,6 +71,8 @@ static partial class TestSuite
             Assert.Equal(
                 "λ̸t",
                 FontUtilities.NormalizeMathValue("\0λ\u0001\u000C\u0338t"));
+            Assert.Equal("1", FontUtilities.NormalizeMathValue("1⃝"));
+            Assert.Equal("Pasareanu", FontUtilities.NormalizeMathValue("P˘as˘areanu"));
         });
 
         runner.Run("Identity translation engine is opt-in for layout tests", () =>
@@ -86,6 +88,29 @@ static partial class TestSuite
                     translator.TranslateAsync("Keep layout text unchanged.", "zh-TW", CancellationToken.None)
                         .GetAwaiter()
                         .GetResult());
+            }
+            finally
+            {
+                Environment.SetEnvironmentVariable("CLICKRA_TRANSLATION_ENGINE", oldValue);
+            }
+        });
+
+        runner.Run("Synthetic CJK engine preserves placeholders for layout tests", () =>
+        {
+            var oldValue = Environment.GetEnvironmentVariable("CLICKRA_TRANSLATION_ENGINE");
+            try
+            {
+                Environment.SetEnvironmentVariable("CLICKRA_TRANSLATION_ENGINE", "synthetic-cjk");
+                var translator = TranslationEngineFactory.Create();
+                Assert.Equal("synthetic-cjk", translator.Name);
+                string translated = translator.TranslateAsync(
+                        "runtime features {v0}.",
+                        "zh-TW",
+                        CancellationToken.None)
+                    .GetAwaiter()
+                    .GetResult();
+                Assert.True(translated.Contains("{v0}", StringComparison.Ordinal), "Formula placeholder was changed.");
+                Assert.True(translated.Contains('測'), "Synthetic CJK output did not contain a CJK glyph.");
             }
             finally
             {
@@ -172,6 +197,57 @@ static partial class TestSuite
                 "Fallback must not run after caller cancellation.");
         });
 
+        runner.Run("PDF batch runner splits failed batches and recovers each paragraph", () =>
+        {
+            var translator = new BatchOnlyFailingTranslationEngine();
+            var source = Enumerable.Range(0, 7).Select(i => $"paragraph-{i}").ToList();
+
+            var results = PdfTranslationBatchRunner.TranslatePageBatches(
+                translator,
+                source,
+                "zh-TW",
+                pageIndex: 0,
+                totalPages: 1,
+                onProgress: null,
+                cancellationToken: CancellationToken.None);
+
+            Assert.True(source.Count == results.Count, $"Expected {source.Count} results, got {results.Count}.");
+            Assert.True(
+                results.All(result => result.StartsWith("recovered:", StringComparison.Ordinal)),
+                "Every paragraph should recover through the single-item path.");
+            Assert.True(translator.BatchAttempts > 1, "The failed batch should have been split recursively.");
+        });
+
+        runner.Run("PDF batch runner bounds a hung provider call", () =>
+        {
+            var oldTimeout = Environment.GetEnvironmentVariable("CLICKRA_TRANSLATION_PROVIDER_TIMEOUT_SECONDS");
+            try
+            {
+                Environment.SetEnvironmentVariable("CLICKRA_TRANSLATION_PROVIDER_TIMEOUT_SECONDS", "1");
+                var translator = new HangingTranslationEngine();
+
+                var ex = Assert.Throws<Exception>(() =>
+                {
+                    PdfTranslationBatchRunner.TranslatePageBatches(
+                        translator,
+                        new List<string> { "hung" },
+                        "zh-TW",
+                        pageIndex: 0,
+                        totalPages: 1,
+                        onProgress: null,
+                        cancellationToken: CancellationToken.None);
+                });
+
+                Assert.True(
+                    ex.Message.Contains("Unable to translate page 1", StringComparison.Ordinal),
+                    $"Unexpected timeout recovery error: {ex.Message}");
+            }
+            finally
+            {
+                Environment.SetEnvironmentVariable("CLICKRA_TRANSLATION_PROVIDER_TIMEOUT_SECONDS", oldTimeout);
+            }
+        });
+
         runner.Run("PdfBypassedParagraphRenderer handles ligatures correctly without crashing", () =>
         {
             var allLetters = new List<PdfLetter>
@@ -246,5 +322,43 @@ sealed class RecordingTranslationEngine(
         if (dropLastBatchResult && results.Count > 0)
             results.RemoveAt(results.Count - 1);
         return Task.FromResult(results);
+    }
+}
+
+sealed class BatchOnlyFailingTranslationEngine : ITranslationEngine
+{
+    public string Name => "batch-failing";
+    public int BatchAttempts { get; private set; }
+
+    public Task<string> TranslateAsync(string text, string targetLanguage, CancellationToken cancellationToken) =>
+        Task.FromResult($"recovered:{text}");
+
+    public Task<List<string>> TranslateBatchAsync(
+        List<string> texts,
+        string targetLanguage,
+        CancellationToken cancellationToken)
+    {
+        BatchAttempts++;
+        throw new InvalidOperationException("forced batch failure");
+    }
+}
+
+sealed class HangingTranslationEngine : ITranslationEngine
+{
+    public string Name => "hanging";
+
+    public async Task<string> TranslateAsync(string text, string targetLanguage, CancellationToken cancellationToken)
+    {
+        await Task.Delay(Timeout.InfiniteTimeSpan, cancellationToken);
+        return text;
+    }
+
+    public async Task<List<string>> TranslateBatchAsync(
+        List<string> texts,
+        string targetLanguage,
+        CancellationToken cancellationToken)
+    {
+        await Task.Delay(Timeout.InfiniteTimeSpan, cancellationToken);
+        return texts;
     }
 }

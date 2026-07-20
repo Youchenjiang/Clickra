@@ -94,7 +94,19 @@ def main() -> int:
         action="store_true",
         help="fail instead of skipping when test_pdfs fixtures are missing",
     )
+    parser.add_argument(
+        "--aster-e2e",
+        action="store_true",
+        help="run the local ASTER fixture gate without requiring test_pdfs fixtures",
+    )
     args = parser.parse_args()
+
+    if args.aster_e2e:
+        return 0 if run(
+            "ASTER PDF E2E",
+            [sys.executable, "tests/PdfRegression/test_aster_e2e.py", "--engine", "synthetic-cjk"],
+            None,
+        ) else 1
 
     missing = missing_pdf_fixtures()
     if missing:
