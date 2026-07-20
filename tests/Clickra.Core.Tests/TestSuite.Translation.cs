@@ -71,8 +71,49 @@ static partial class TestSuite
             Assert.Equal(
                 "λ̸t",
                 FontUtilities.NormalizeMathValue("\0λ\u0001\u000C\u0338t"));
-            Assert.Equal("1", FontUtilities.NormalizeMathValue("1⃝"));
+            Assert.Equal("①", FontUtilities.NormalizeMathValue("1⃝"));
             Assert.Equal("Pasareanu", FontUtilities.NormalizeMathValue("P˘as˘areanu"));
+        });
+
+        runner.Run("Math normalization preserves circled figure markers", () =>
+        {
+            Assert.Equal(
+                "①、②、③",
+                FontUtilities.NormalizeMathValue("1⃝、2⃝、3⃝"));
+            Assert.True(
+                PdfParagraphLayoutEngine.TokenizeTranslatedText("①、②、③").Contains("①"),
+                "Circled marker should remain an inline symbol token.");
+            Assert.Equal("①、②、③", FontUtilities.NormalizeRenderValue("①、②、③"));
+        });
+
+        runner.Run("Caption marker formulas are restored inline", () =>
+        {
+            var formulas = Enumerable.Range(0, 3)
+                .Select(id => new MathFormula
+                {
+                    Id = id,
+                    Letters = new List<MathLetter> { new() { Value = "⃝" } }
+                })
+                .ToList();
+            Assert.Equal(
+                "Fig. 3: Overview. ①, ②, ③ represent prompts.",
+                PdfParagraphMarkerNormalizer.Normalize(
+                    "Fig. 3: Overview. {v0}, 1 {v1}, 2 {v2}3 represent prompts.",
+                    formulas));
+        });
+
+        runner.Run("Provider cannot downgrade circled caption markers", () =>
+        {
+            Assert.Equal(
+                "圖 3：ASTER 概述。①、②、③ 表示提示。",
+                PdfParagraphMarkerNormalizer.RestoreTranslatedMarkers(
+                    "圖 3：ASTER 概述。①、②、③ 表示提示。",
+                    "圖 3：ASTER 概述。1、2、3 表示提示。"));
+            Assert.Equal(
+                "圖 3:ASTER 概述。 ①、②、③  代表測試產生、測試修復和覆蓋範圍增強提示。",
+                PdfParagraphMarkerNormalizer.RestoreTranslatedMarkers(
+                    "圖 3: Overview of ASTER. ①, ②, ③ represent test-generation, test-repair, and coverage-augmentation prompts.",
+                    "圖 3:ASTER 概述。 1 、2 、3  代表測試產生、測試修復和覆蓋範圍增強提示。"));
         });
 
         runner.Run("Identity translation engine is opt-in for layout tests", () =>
