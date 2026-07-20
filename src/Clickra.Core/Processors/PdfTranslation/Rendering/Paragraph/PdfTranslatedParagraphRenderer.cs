@@ -1,4 +1,5 @@
 using System.Text;
+using System.Text.RegularExpressions;
 using Clickra.Core.Models;
 using PdfSharp.Drawing;
 using PdfSharp.Pdf;
@@ -8,12 +9,13 @@ namespace Clickra.Core.Processors;
 
 internal static class PdfTranslatedParagraphRenderer
 {
-        public static double RenderParagraph(
+    public static double RenderParagraph(
             XGraphics gfx,
             PdfParagraph para,
             string targetFontName,
             bool measureOnly = false,
-            Action<PdfParagraphRenderMetrics>? metricsSink = null)
+            Action<PdfParagraphRenderMetrics>? metricsSink = null,
+            Action<IReadOnlyList<RenderedChar>>? renderedCharsSink = null)
         {
             double pageHeight = gfx.PageSize.Height;
             double paragraphX = para.X0;
@@ -30,7 +32,42 @@ internal static class PdfTranslatedParagraphRenderer
             text = FormulaLiteralCleaner.RemoveDuplicateFormulaLiterals(text, para.Formulas);
             var tokens = PdfParagraphLayoutEngine.TokenizeTranslatedText(text);
 
-            double fontSize = para.AverageFontSize;
+            // The layout planner captures the source semantic role before any
+            // translation/reflow.  Use that role as authoritative so a heading
+            // whose translated text no longer matches the source heuristic can
+            // never fall back to body sizing.
+            bool isHeading = para.IsPageTitle ||
+                para.SemanticRole is PdfParagraphSemanticRole.PageTitle or
+                    PdfParagraphSemanticRole.AbstractHeading or
+                    PdfParagraphSemanticRole.SectionHeading or
+                    PdfParagraphSemanticRole.SubsectionHeading ||
+                PdfParagraphSemanticClassifier.IsHeadingParagraph(para);
+            // MergeTitleWithSubtitle combines the title and its smaller subtitle into
+            // one paragraph.  AverageFontSize would therefore make the translated
+            // heading smaller than body text.  Headings retain the largest source
+            // glyph size and may reflow vertically instead of shrinking away.
+            double sourceHeadingFontSize = para.SourceVisualFontSize > 0
+                ? para.SourceVisualFontSize
+                : (para.AllLetters.Count == 0
+                    ? para.AverageFontSize
+                    : para.AllLetters.Max(letter => letter.FontSize));
+            // A paragraph can contain a short label line followed by body text.
+            // Its arithmetic average can then be far below the source reading
+            // size (the page 414 contributions label was rendered at ~4.7pt).
+            // Keep prose at no less than 80% of the largest source glyph. This
+            // is a floor; code and bypass regions retain their own renderer.
+            double sourceBodyFontFloor = sourceHeadingFontSize > 0
+                ? sourceHeadingFontSize * 0.80
+                : para.AverageFontSize;
+            double fontSize = isHeading
+                ? Math.Max(para.AverageFontSize, sourceHeadingFontSize)
+                : Math.Max(para.AverageFontSize, sourceBodyFontFloor);
+            if (!isHeading && para.LayoutFontSizeOverride > 0)
+                // A continuation override may only carry a paragraph toward
+                // its neighbouring source typography; it must never reapply
+                // a tiny extractor size (ASTER page 11: 5.1pt) to a 9.96pt
+                // body line. Keep the documented 80% floor as a hard guard.
+                fontSize = Math.Max(para.LayoutFontSizeOverride, sourceBodyFontFloor);
             string fontNameForPara = targetFontName;
             if (para.IsCode)
             {
@@ -58,13 +95,13 @@ internal static class PdfTranslatedParagraphRenderer
                 }
             }
             XFontStyleEx fontStyle = XFontStyleEx.Regular;
-            // Translated CJK must use regular kaiu.ttf; bold/italic from source (e.g. NimbusRom Medi) maps to
-            // simsunb.ttf via ClickraFontResolver and produces SimSun-ExtB garbled overlays.
+            // Translated CJK uses the stable regular KaiU face. Bold is drawn
+            // with a tiny second stroke below, avoiding unsupported CJK faces.
             if (!para.IsBypassed && !para.IsCode && FontUtilities.IsCjkTranslationFont(fontNameForPara))
             {
                 fontStyle = XFontStyleEx.Regular;
             }
-            else if (para.IsBold || PdfParagraphSemanticClassifier.IsHeadingParagraph(para))
+            else if (para.IsBold)
             {
                 fontStyle = para.IsItalic ? XFontStyleEx.BoldItalic : XFontStyleEx.Bold;
             }
@@ -74,14 +111,38 @@ internal static class PdfTranslatedParagraphRenderer
             }
             XFont mainFont = new XFont(fontNameForPara, fontSize, fontStyle);
             XBrush brush = XBrushes.Black;
+            // Heading role controls size/alignment, not weight.  Weight must
+            // come from the source glyph runs; otherwise italic-only labels
+            // such as "A. Research Questions" become falsely bold.
+            bool inlineBold = para.IsBold;
 
+            XFont GetInlineFont(bool bold)
+            {
+                if (FontUtilities.IsCjkTranslationFont(fontNameForPara))
+                    return mainFont;
+
+                XFontStyleEx style = bold
+                    ? (para.IsItalic ? XFontStyleEx.BoldItalic : XFontStyleEx.Bold)
+                    : (para.IsItalic ? XFontStyleEx.Italic : XFontStyleEx.Regular);
+                return new XFont(fontNameForPara, fontSize, style);
+            }
+
+            bool UseSyntheticBold(bool bold) =>
+                !para.IsBypassed && !para.IsCode &&
+                FontUtilities.IsCjkTranslationFont(fontNameForPara) && bold;
             // Handle rotations (90, 180, 270)
             bool isRotated = false;
-            double layoutWidth = paragraphWidth;
-            if (!isRotated && PdfParagraphSemanticClassifier.IsHeadingParagraph(para))
+            // PdfPig can emit a one-glyph marker with a bbox narrower than the
+            // glyph itself.  Give such markers a minimal measurable box rather
+            // than reporting a false overflow (there is no adjacent prose to
+            // collide with).
+            double layoutWidth = Math.Max(paragraphWidth, 24.0);
+            if (!isRotated && isHeading)
             {
                 double pageCenter = gfx.PageSize.Width / 2.0;
-                double maxBoundary = gfx.PageSize.Width - 54.0; // Default right margin
+                double maxBoundary = para.IsPageTitle
+                    ? gfx.PageSize.Width + 30.0
+                    : gfx.PageSize.Width - 54.0; // Default right margin
 
                 // If it's in the left column, limit expansion to the middle of the page
                 if (para.OriginalX1 <= pageCenter + 10.0)
@@ -93,6 +154,14 @@ internal static class PdfTranslatedParagraphRenderer
                 if (remainingWidth > layoutWidth)
                 {
                     layoutWidth = remainingWidth;
+                }
+                if (para.IsPageTitle)
+                {
+                    // A translated title may be substantially wider than the
+                    // Latin source.  Give the line breaker the full title band;
+                    // the draw pass applies horizontal fitting while retaining
+                    // the source vertical font size.
+                    layoutWidth = Math.Max(layoutWidth, gfx.PageSize.Width * 1.5);
                 }
             }
             XGraphicsState? state = null;
@@ -130,6 +199,12 @@ internal static class PdfTranslatedParagraphRenderer
             }
             // Compute dynamic line spacing
             double lineSpacingMultiplier = 1.35; // Default CJK line height
+            if (isHeading)
+            {
+                // Keep the source heading font size but use a compact line box;
+                // translated title groups must not consume the fixed author band.
+                lineSpacingMultiplier = 1.0;
+            }
             if (targetFontName.Contains("Arial", StringComparison.OrdinalIgnoreCase))
             {
                 lineSpacingMultiplier = 1.2;
@@ -138,9 +213,37 @@ internal static class PdfTranslatedParagraphRenderer
             {
                 lineSpacingMultiplier = 1.15;
             }
-            double lineHeight = fontSize * lineSpacingMultiplier;
-
             double limitHeight = isRotated ? para.Width : paragraphHeight;
+            bool bodyProse = PdfParagraphRoleClassifier.IsTranslatableBodyProse(para) ||
+                             PdfParagraphRoleClassifier.IsTranslatableCalloutProse(para);
+            // Only a one-line/continuation box with an implausibly short source
+            // height may grow naturally. Multi-line body paragraphs still use
+            // their measured box and the normal 80% reflow floor.
+            // PdfPig reports a single source line's glyph box without its
+            // ascender/descender leading (ASTER page 11 is ~6.8pt for a
+            // 9.96pt line). Treat that as a natural one-line body box using
+            // the captured visual size; otherwise the height loop shrinks the
+            // first header/acknowledgement line to 5.1pt merely to fit the
+            // extractor bbox.
+            double sourceLineBox = Math.Max(para.SourceLineHeight, sourceHeadingFontSize);
+            bool ordinarySingleLine = !isRotated && !para.IsBypassed &&
+                !para.IsTable && !para.IsDiagram && !para.IsCode &&
+                !para.IsGrayPromptContent && para.Width > 100;
+            bool allowNaturalBodyHeight = !isRotated &&
+                (bodyProse || ordinarySingleLine) &&
+                para.Height <= Math.Max(sourceLineBox * 1.5, 8.0) &&
+                (para.Width > 100 ||
+                 Regex.IsMatch(para.TextWithPlaceholders.Trim(), @"^[a-z][A-Za-z\s,'\-]{2,}[.!?]?$") );
+            // When the source glyph box is shorter than the captured visual
+            // font, preserve the font size but use a compact line box. This
+            // keeps split acknowledgement/header fragments within the source
+            // band without shrinking them to the extractor's 5pt height.
+            bool sourceGlyphBoxUnderreports = !isRotated && !para.IsBypassed &&
+                sourceHeadingFontSize > 0 && para.SourceLineHeight > 0 &&
+                para.SourceLineHeight < sourceHeadingFontSize * 0.95;
+            if ((ordinarySingleLine && para.Height < sourceHeadingFontSize) || sourceGlyphBoxUnderreports)
+                lineSpacingMultiplier = 1.0;
+            double lineHeight = fontSize * lineSpacingMultiplier;
             List<PdfLayoutRow> rows = new();
             double renderedHeight = 0;
             double maxRowWidth = 0;
@@ -158,8 +261,17 @@ internal static class PdfTranslatedParagraphRenderer
                     : rows.Max(row => row.Elements.Sum(element => element.Width));
 
                 bool fitsWidth = maxRowWidth <= layoutWidth + 0.5;
-                bool fitsHeight = renderedHeight <= limitHeight + 0.5;
+                // A heading is allowed to consume its natural line height.  The
+                // mask is extended upward for the extra height; shrinking a
+                // heading to fit the old one-line box breaks hierarchy.
+                // Body paragraphs must not shrink merely because PdfPig gave a
+                // final source line an undersized glyph box. Their natural line
+                // height is valid; masks/layout planning handle the extra space.
+                bool fitsHeight = isHeading || allowNaturalBodyHeight || renderedHeight <= limitHeight + 0.5;
                 if (fitsWidth && fitsHeight) break;
+                // Heading hierarchy is a hard constraint. A heading that does
+                // not fit must be handled by the layout planner or fail closed.
+                if (isHeading) break;
 
                 double scale = 0.94;
                 if (!fitsWidth && maxRowWidth > 0)
@@ -167,7 +279,7 @@ internal static class PdfTranslatedParagraphRenderer
                 if (!fitsHeight && renderedHeight > 0)
                     scale = Math.Min(scale, limitHeight / renderedHeight);
 
-                scale = Math.Clamp(scale, 0.65, 0.94);
+                scale = Math.Clamp(scale, 0.80, 0.94);
                 double nextFontSize = fontSize * scale;
                 if (nextFontSize >= fontSize - 0.01) break;
 
@@ -179,14 +291,27 @@ internal static class PdfTranslatedParagraphRenderer
             // Actual rendered height = number of rows × line height
             renderedHeight = rows.Count * lineHeight;
             bool horizontalOverflow = maxRowWidth > layoutWidth + 0.5;
-            bool verticalOverflow = renderedHeight > limitHeight + 0.5;
+            double effectiveLimitHeight = isHeading || allowNaturalBodyHeight
+                ? Math.Max(limitHeight, renderedHeight)
+                : limitHeight;
+            bool verticalOverflow = renderedHeight > effectiveLimitHeight + 0.5;
+            if (paragraphWidth < 5.0)
+            {
+                // A sub-5pt marker is an isolated PDF extraction artifact, not
+                // a prose column.  Do not turn its glyph bbox quantization into
+                // a document-level overflow failure.
+                horizontalOverflow = false;
+                verticalOverflow = false;
+            }
             metricsSink?.Invoke(new PdfParagraphRenderMetrics(
                 layoutWidth,
                 maxRowWidth,
                 renderedHeight,
-                limitHeight,
+                effectiveLimitHeight,
                 horizontalOverflow,
-                verticalOverflow));
+                verticalOverflow,
+                fontSize,
+                sourceHeadingFontSize));
 
             // In measure-only mode, skip all drawing and just return the height
             if (measureOnly)
@@ -197,18 +322,19 @@ internal static class PdfTranslatedParagraphRenderer
 
             double currentY = isRotated ? fontSize : (paragraphY + fontSize);
             var renderedChars = new List<RenderedChar>();
-
-            // Clip to prevent horizontal overflow into adjacent columns; vertical clip uses rendered height
-            // so multi-line translations are not cut when Chinese text needs more rows than the original English.
-            XGraphicsState? clipState = null;
-            if (!isRotated)
+            XGraphicsState? headingScaleState = null;
+            if (!isRotated && para.IsPageTitle && maxRowWidth > 0)
             {
-                clipState = gfx.Save();
-                double clipX = paragraphX - 1.5;
-                double clipY = paragraphY - 1.5;
-                double clipW = layoutWidth + 3.0;
-                double clipH = Math.Max(paragraphHeight, renderedHeight) + lineHeight * 0.4 + 4.0;
-                gfx.IntersectClip(new XRect(clipX, clipY, clipW, clipH));
+                double availableTitleWidth = gfx.PageSize.Width - 72.0;
+                double horizontalScale = Math.Min(1.0, availableTitleWidth / maxRowWidth);
+                if (horizontalScale < 0.999)
+                {
+                    double anchor = (para.OriginalX0 + para.OriginalX1) / 2.0;
+                    headingScaleState = gfx.Save();
+                    gfx.TranslateTransform(anchor, 0);
+                    gfx.ScaleTransform(horizontalScale, 1.0);
+                    gfx.TranslateTransform(-anchor, 0);
+                }
             }
 
             foreach (var row in rows)
@@ -224,8 +350,21 @@ internal static class PdfTranslatedParagraphRenderer
                 }
                 else
                 {
-                    if (para.Alignment == PdfParagraph.TextAlignment.Center) startX = paragraphX + (paragraphWidth - rowWidth) / 2;
-                    else if (para.Alignment == PdfParagraph.TextAlignment.Right) startX = paragraphX + (paragraphWidth - rowWidth);
+                    PdfParagraph.TextAlignment alignment = isHeading
+                        ? InferHeadingAlignment(para, gfx.PageSize.Width)
+                        : para.Alignment;
+                    if (alignment == PdfParagraph.TextAlignment.Center)
+                    {
+                        double anchorCenter = isHeading
+                            ? (para.OriginalX0 + para.OriginalX1) / 2.0
+                            : paragraphX + paragraphWidth / 2.0;
+                        startX = anchorCenter - rowWidth / 2.0;
+                    }
+                    else if (alignment == PdfParagraph.TextAlignment.Right)
+                    {
+                        double anchorRight = isHeading ? para.OriginalX1 : paragraphX + paragraphWidth;
+                        startX = anchorRight - rowWidth;
+                    }
                 }
 
                 double currentX = startX;
@@ -233,6 +372,12 @@ internal static class PdfTranslatedParagraphRenderer
                 while (idx < row.Elements.Count)
                 {
                     var element = row.Elements[idx];
+                    if (element.IsStyleMarker)
+                    {
+                        inlineBold = element.StyleBold;
+                        idx++;
+                        continue;
+                    }
                     if (element.IsFormula && element.FormulaId >= 0 && element.FormulaId < para.Formulas.Count)
                     {
                         var formula = para.Formulas[element.FormulaId];
@@ -265,7 +410,7 @@ internal static class PdfTranslatedParagraphRenderer
                             double avgY = formula.Letters.Average(l => l.RelativeY);
                             double my = currentY - avgY * formulaScale - (fontSize * 0.15);
 
-                            string normText = FontUtilities.NormalizeMathValue(mergedText.Normalize(NormalizationForm.FormKD));
+                            string normText = FontUtilities.NormalizeRenderValue(mergedText);
                             gfx.DrawString(normText, mathFont, brush, currentX, my);
 
                             double offset = 0;
@@ -295,7 +440,7 @@ internal static class PdfTranslatedParagraphRenderer
                                 // Align math letter baseline with CJK baseline by shifting up slightly instead of down
                                 double my = currentY - ml.RelativeY * formulaScale - (fontSize * 0.15);
 
-                                string drawVal = FontUtilities.NormalizeMathValue(ml.Value.Normalize(NormalizationForm.FormKD));
+                                string drawVal = FontUtilities.NormalizeRenderValue(ml.Value);
                                 if (drawVal.Length == 1 && FontUtilities.IsMathOrGreekCharacter(drawVal[0]))
                                 {
                                     mathFont = new XFont("Segoe UI Symbol", fSize, mathFont.Style);
@@ -326,8 +471,8 @@ internal static class PdfTranslatedParagraphRenderer
                     else if (element.IsFormula)
                     {
                         // Defensive: LayoutParagraph should demote invalid {vN}, but render as text if not.
-                        string normText = FontUtilities.NormalizeMathValue(element.Text.Normalize(NormalizationForm.FormKD));
-                        gfx.DrawString(normText, mainFont, brush, currentX, currentY);
+                        string normText = FontUtilities.NormalizeRenderValue(element.Text);
+                        DrawText(gfx, normText, GetInlineFont(inlineBold), brush, currentX, currentY, UseSyntheticBold(inlineBold));
                         double offset = 0;
                         for (int cIdx = 0; cIdx < normText.Length; cIdx++)
                         {
@@ -351,15 +496,15 @@ internal static class PdfTranslatedParagraphRenderer
                         var sbMerged = new StringBuilder();
                         double textStartX = currentX;
                         double textWidth = 0;
-                        while (idx < row.Elements.Count && !row.Elements[idx].IsFormula)
+                        while (idx < row.Elements.Count && !row.Elements[idx].IsFormula && !row.Elements[idx].IsStyleMarker)
                         {
                             var elem = row.Elements[idx];
                             if (elem.Text.Length == 1 && FontUtilities.IsLatinExtendedOrSymbol(elem.Text[0]))
                             {
                                 if (sbMerged.Length > 0)
                                 {
-                                    string normText = FontUtilities.NormalizeMathValue(sbMerged.ToString().Normalize(NormalizationForm.FormKD));
-                                    gfx.DrawString(normText, mainFont, brush, textStartX, currentY);
+                                    string normText = FontUtilities.NormalizeRenderValue(sbMerged.ToString());
+                                    DrawText(gfx, normText, GetInlineFont(inlineBold), brush, textStartX, currentY, UseSyntheticBold(inlineBold));
 
                                     double offset = 0;
                                     for (int cIdx = 0; cIdx < normText.Length; cIdx++)
@@ -388,8 +533,11 @@ internal static class PdfTranslatedParagraphRenderer
                                 {
                                     fallbackFontName = "Segoe UI Symbol";
                                 }
-                                XFont fallbackFont = new XFont(fallbackFontName, mainFont.Size, mainFont.Style);
-                                string normChar = FontUtilities.NormalizeMathValue(elem.Text.Normalize(NormalizationForm.FormKD));
+                                XFont fallbackFont = new XFont(fallbackFontName, mainFont.Size,
+                                    inlineBold
+                                        ? (para.IsItalic ? XFontStyleEx.BoldItalic : XFontStyleEx.Bold)
+                                        : (para.IsItalic ? XFontStyleEx.Italic : XFontStyleEx.Regular));
+                                string normChar = FontUtilities.NormalizeRenderValue(elem.Text);
                                 gfx.DrawString(normChar, fallbackFont, brush, currentX, currentY);
 
                                 double fChW = gfx.MeasureString(normChar, fallbackFont).Width;
@@ -414,8 +562,8 @@ internal static class PdfTranslatedParagraphRenderer
                         }
                         if (sbMerged.Length > 0)
                         {
-                            string normText = FontUtilities.NormalizeMathValue(sbMerged.ToString().Normalize(NormalizationForm.FormKD));
-                            gfx.DrawString(normText, mainFont, brush, textStartX, currentY);
+                            string normText = FontUtilities.NormalizeRenderValue(sbMerged.ToString());
+                            DrawText(gfx, normText, GetInlineFont(inlineBold), brush, textStartX, currentY, UseSyntheticBold(inlineBold));
 
                             double offset = 0;
                             for (int cIdx = 0; cIdx < normText.Length; cIdx++)
@@ -438,16 +586,15 @@ internal static class PdfTranslatedParagraphRenderer
                 currentY += lineHeight;
             }
 
-            // Restore clipping state
-            if (clipState != null)
-            {
-                gfx.Restore(clipState);
-            }
+            if (headingScaleState != null)
+                gfx.Restore(headingScaleState);
 
             if (state != null)
             {
                 gfx.Restore(state);
             }
+
+            renderedCharsSink?.Invoke(renderedChars);
 
             // Align annotations
             if (!isRotated && para.Annotations.Count > 0 && renderedChars.Count > 0)
@@ -466,7 +613,8 @@ internal static class PdfTranslatedParagraphRenderer
                             para.X0,
                             para.Y0,
                             para.Width,
-                            para.Height);
+                            para.Height,
+                            annotInfo.FigureOccurrenceIndex);
                         if (matched != null && matched.Count > 0)
                         {
                             double minLeft = matched.Min(rc => rc.Left);
@@ -491,6 +639,55 @@ internal static class PdfTranslatedParagraphRenderer
             return renderedHeight;
         }
 
+        private static void DrawText(
+            XGraphics gfx,
+            string text,
+            XFont font,
+            XBrush brush,
+            double x,
+            double y,
+            bool syntheticBold)
+        {
+            gfx.DrawString(text, font, brush, x, y);
+            // A 0.18pt offset gives KaiU a stable visual bold weight while
+            // preserving every CJK glyph. The source paragraph remains one
+            // logical run; the duplicate stroke is only a drawing operation.
+            if (syntheticBold)
+                gfx.DrawString(text, font, brush, x + 0.18, y);
+        }
+
+
+        private static PdfParagraph.TextAlignment InferHeadingAlignment(PdfParagraph para, double pageWidth)
+        {
+            if (para.Alignment != PdfParagraph.TextAlignment.Left)
+                return para.Alignment;
+
+            double sourceCenter = (para.OriginalX0 + para.OriginalX1) / 2.0;
+            double pageCenter = pageWidth / 2.0;
+            if (Math.Abs(sourceCenter - pageCenter) <= 18.0)
+                return PdfParagraph.TextAlignment.Center;
+
+            // A heading that spans almost an entire column is left aligned even
+            // when its geometric center happens to equal the column center.
+            // This is common for "A. Research Questions: ..." lines: treating
+            // the column midpoint as a centered anchor shifts the translated
+            // (shorter) line into the middle of the column.
+            if (!para.IsPageTitle && para.Width >= pageWidth * 0.34)
+                return PdfParagraph.TextAlignment.Left;
+
+            // Two-column papers commonly place centered subsection headings at
+            // roughly 29.5% and 70.5% of the page width.  The source geometry is
+            // the reliable anchor; the extracted line often has no side gaps and
+            // is therefore misclassified as left-aligned.
+            double columnOffset = pageWidth * 0.205;
+            double columnCenter = sourceCenter < pageCenter
+                ? pageCenter - columnOffset
+                : pageCenter + columnOffset;
+            return Math.Abs(sourceCenter - columnCenter) <= 18.0
+                ? PdfParagraph.TextAlignment.Center
+                : PdfParagraph.TextAlignment.Left;
+        }
+
 }
 
 internal readonly record struct PdfParagraphRenderMetrics(
@@ -499,4 +696,6 @@ internal readonly record struct PdfParagraphRenderMetrics(
     double RenderedHeight,
     double HeightLimit,
     bool HorizontalOverflow,
-    bool VerticalOverflow);
+    bool VerticalOverflow,
+    double EffectiveFontSize,
+    double SourceFontSize);

@@ -17,7 +17,14 @@ namespace Clickra.Core.Processors
 
         public static bool IsSourceFontBold(string? fontName)
         {
-            if (string.IsNullOrEmpty(fontName) || IsLaTeXMediumFont(fontName)) return false;
+            if (string.IsNullOrEmpty(fontName)) return false;
+            // IEEE PDFs commonly encode bold Nimbus text as
+            // "NimbusRomNo9L-Medi" rather than using the word Bold.  Do not
+            // classify other TeX medium/math faces this way.
+            if (fontName.Contains("NimbusRom", StringComparison.OrdinalIgnoreCase) &&
+                fontName.Contains("Medi", StringComparison.OrdinalIgnoreCase))
+                return true;
+            if (IsLaTeXMediumFont(fontName)) return false;
             return fontName.Contains("Bold", StringComparison.OrdinalIgnoreCase) ||
                    fontName.Contains("bx", StringComparison.OrdinalIgnoreCase) ||
                    fontName.Contains("bf", StringComparison.OrdinalIgnoreCase);
@@ -71,12 +78,23 @@ namespace Clickra.Core.Processors
                     continue;
                 }
 
-                // PDF math fonts commonly encode an enclosing circle as the
-                // combining mark U+20DD. PdfSharp/Cambria Math can emit that
-                // glyph with a null-tofu mapping; the preceding digit remains
-                // readable, so drop this non-essential decoration.
+                // PDF math fonts commonly encode circled markers as a digit
+                // followed by the combining mark U+20DD (for example
+                // `1⃝, 2⃝, 3⃝`). Dropping the mark turns a figure caption's
+                // semantic markers into bare digits and can leave the source
+                // marker painted underneath the translated caption. Convert
+                // the common one-digit form to a Unicode circled digit so it
+                // remains an inline glyph during reflow.
                 if (cp == 0x20DD)
                 {
+                    if (sb.Length > 0 && sb[^1] is >= '1' and <= '9')
+                    {
+                        sb[^1] = (char)(0x2460 + (sb[^1] - '1'));
+                    }
+                    else if (sb.Length > 0 && sb[^1] == '0')
+                    {
+                        sb[^1] = '\u24EA';
+                    }
                     continue;
                 }
 
@@ -141,12 +159,43 @@ namespace Clickra.Core.Processors
             return sb.ToString();
         }
 
+        /// <summary>
+        /// Applies compatibility normalization while preserving Unicode
+        /// circled caption markers. FormKD expands ①/②/③ into bare digits,
+        /// which would destroy restored figure-caption semantics at render time.
+        /// </summary>
+        public static string NormalizeRenderValue(string val)
+        {
+            if (string.IsNullOrEmpty(val)) return val;
+
+            var sb = new StringBuilder(val.Length);
+            int segmentStart = 0;
+            for (int i = 0; i < val.Length; i++)
+            {
+                char c = val[i];
+                if (!IsCircledCaptionMarker(c)) continue;
+
+                if (i > segmentStart)
+                    sb.Append(val.Substring(segmentStart, i - segmentStart).Normalize(NormalizationForm.FormKD));
+                sb.Append(c);
+                segmentStart = i + 1;
+            }
+
+            if (segmentStart < val.Length)
+                sb.Append(val.Substring(segmentStart).Normalize(NormalizationForm.FormKD));
+
+            return NormalizeMathValue(sb.ToString());
+        }
+
+        public static bool IsCircledCaptionMarker(char c) =>
+            c is >= '\u2460' and <= '\u2473' or '\u24EA';
+
         public static XFont GetMathFont(string originalFontName, double fontSize)
         {
             bool isItalic = originalFontName.Contains("Italic", StringComparison.OrdinalIgnoreCase) ||
                             originalFontName.Contains("CMMI", StringComparison.OrdinalIgnoreCase) ||
                             originalFontName.Contains("mi", StringComparison.OrdinalIgnoreCase);
-            bool isBold = originalFontName.Contains("Bold", StringComparison.OrdinalIgnoreCase);
+            bool isBold = IsSourceFontBold(originalFontName);
 
             var style = XFontStyleEx.Regular;
             if (isItalic && isBold) style = XFontStyleEx.BoldItalic;
@@ -217,6 +266,7 @@ namespace Clickra.Core.Processors
         public static bool IsLatinExtendedOrSymbol(char c)
         {
             if (c >= 0x0080 && c <= 0x024F) return true;
+            if (c is >= '\u2460' and <= '\u2473' or '\u24EA') return true;
             return IsMathOrGreekCharacter(c);
         }
 
