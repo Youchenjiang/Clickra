@@ -4,6 +4,7 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import re
 import subprocess
 import sys
 import time
@@ -41,6 +42,42 @@ def _aster_abstract_residuals(pdf_path: Path) -> list[str]:
         "time-consuming activity",
     )
     return [phrase for phrase in source_phrases if phrase in abstract_text]
+
+
+def _aster_author_email_is_intact(pdf_path: Path) -> bool:
+    with fitz.open(pdf_path) as document:
+        page = document[0]
+        author_text = "\n".join(
+            block[4]
+            for block in page.get_text("blocks")
+            if block[0] < 500 and block[1] < 225 and block[3] > 200
+        )
+    compact = re.sub(r"\s+", "", author_text).casefold()
+    expected = "{1rangeet.pan,3rkrsn}@ibm.com,{4pavuluri,5sinhas}@us.ibm.com,2mkim754@gatech.edu"
+    return expected in compact
+
+
+def _aster_title_anchor_is_preserved(pdf_path: Path) -> tuple[float, float]:
+    """Return source/output title center drift and output title height."""
+    with fitz.open(SOURCE) as source_doc, fitz.open(pdf_path) as output_doc:
+        source_blocks = [
+            b for b in source_doc[0].get_text("blocks")
+            if b[1] < 170 and b[4].strip().startswith("ASTER:")
+        ]
+        output_blocks = [
+            b for b in output_doc[0].get_text("blocks")
+            # Exclude the running header above the paper title. Synthetic-CJK
+            # stress translation can legitimately translate that header too;
+            # it must not be mistaken for the title anchor under test.
+            if 80 <= b[1] < 180 and any("測" in ch for ch in b[4])
+        ]
+    if not source_blocks or not output_blocks:
+        return 999.0, 0.0
+    source = source_blocks[0]
+    output = max(output_blocks, key=lambda b: b[2] - b[0])
+    source_center = (source[0] + source[2]) / 2
+    output_center = (output[0] + output[2]) / 2
+    return abs(source_center - output_center), output[3] - output[1]
 
 
 def main() -> int:
@@ -107,6 +144,12 @@ def main() -> int:
         failures.append(f"guard clip entries: {health.get('GuardClipEntries')}")
     if health.get("TranslationFailures"):
         failures.append(f"translation failures: {health['TranslationFailures']}")
+    if health.get("HeadingCount", 0) <= 0:
+        failures.append("health report did not record any headings")
+    if health.get("MinimumHeadingFontRatio", 0) < 1.0:
+        failures.append(f"heading font ratio below source: {health.get('MinimumHeadingFontRatio')}")
+    if health.get("MaximumAlignmentAnchorShift", 0) > 1.5:
+        failures.append(f"heading anchor drift: {health.get('MaximumAlignmentAnchorShift')}")
     if diagnostic.get("total_tofu", 0) != 0:
         failures.append(f"PDF diagnostic tofu/NUL count: {diagnostic.get('total_tofu')}")
     if diagnostic.get("total_simp", 0) != 0:
@@ -115,6 +158,11 @@ def main() -> int:
         residuals = _aster_abstract_residuals(output_pdf)
         if residuals:
             failures.append(f"ASTER page 1 abstract retains source text: {residuals}")
+        if not _aster_author_email_is_intact(output_pdf):
+            failures.append("ASTER page 1 author/email band was altered or redrawn incorrectly")
+        drift, _ = _aster_title_anchor_is_preserved(output_pdf)
+        if drift > 1.5:
+            failures.append(f"ASTER page 1 title center drift: {drift:.2f}pt")
 
     render_log = output_dir / "ASTER _renderdbg.log"
     if render_log.exists() and "clipped=true" in render_log.read_text(encoding="utf-8").casefold():
