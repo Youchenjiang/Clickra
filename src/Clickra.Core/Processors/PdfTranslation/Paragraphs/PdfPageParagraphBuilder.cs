@@ -131,6 +131,10 @@ internal static class PdfPageParagraphBuilder
         {
             if (!para.IsTable) continue;
             string txt = para.TextWithPlaceholders.Trim();
+            if (PdfTableMisclassifiedProseCleanup.IsLikelyTableHeader(para, txt))
+            {
+                continue;
+            }
             int wordCount = txt.Split(new char[] { ' ', '\t', '\n', '\r' }, StringSplitOptions.RemoveEmptyEntries).Length;
             if (para.Height > 35 && wordCount > 20)
             {
@@ -296,6 +300,13 @@ internal static class PdfPageParagraphBuilder
         PdfGrayPromptMarker.ClearMisclassifiedCodeFlags(pageList);
 
         PdfParagraphPostProcessor.MergeVerticallyAdjacentParagraphs(pageList, PdfParagraphSemanticClassifier.IsHeadingParagraph);
+        // Docstrum may split wrapped ordinary prose at a short right edge.
+        // Rejoin only tight, same-column line fragments before translation so
+        // one visual paragraph receives one typography/reflow decision.
+        PdfParagraphPostProcessor.MergeWrappedLineFragments(
+            pageList,
+            PdfParagraphSemanticClassifier.IsHeadingParagraph,
+            page.Height);
         PdfTableClassifier.ReclassifyWorkDivisionTableText(pageList, page.Width);
         PdfTableClassifier.ReclassifyAppendixFeatureTableText(pageList, page.Width);
         PdfTableClassifier.MarkCompactAcademicTableBodies(
@@ -344,13 +355,38 @@ internal static class PdfPageParagraphBuilder
                 para.IsBypassed = true;
                 continue;
             }
+            // A lower-case, full-column continuation can be marked bypassed by
+            // an earlier diagram/reference heuristic even though it is body
+            // prose. Restore translation eligibility before the final bypass
+            // calculation; protected table/code/diagram/gray regions remain
+            // excluded. This prevents source-only tail lines at page bottoms.
+            string leadingContinuation = finalText.TrimStart();
+            if (para.IsBypassed &&
+                PdfParagraphRoleClassifier.IsTranslatableBodyProse(para) &&
+                !ReferenceSectionDetector.IsReferenceParagraph(para) &&
+                !para.IsTable && !para.IsDiagram && !para.IsCode && !para.IsGrayPromptContent &&
+                leadingContinuation.Length > 0 && char.IsLower(leadingContinuation[0]))
+            {
+                para.IsBypassed = false;
+            }
             // Preserve IsBypassed=true set by proximity propagation (Pass 2 above);
             // only recalculate when it is currently false.
+            bool preserveProseContinuation =
+                PdfParagraphRoleClassifier.IsTranslatableBodyProse(para) &&
+                !ReferenceSectionDetector.IsReferenceParagraph(para) &&
+                !para.IsTable && !para.IsDiagram && !para.IsCode && !para.IsGrayPromptContent &&
+                leadingContinuation.Length > 0 && char.IsLower(leadingContinuation[0]);
             para.IsBypassed = para.IsBypassed ||
                               para.IsCode || para.IsOnlyMath || string.IsNullOrWhiteSpace(para.TextWithPlaceholders) ||
-                              PdfParagraphSemanticClassifier.IsEquationParagraph(para) || PdfTableParagraphClassifier.IsTableParagraph(para) || para.IsDiagram || para.IsTable ||
+                              (!preserveProseContinuation && PdfParagraphSemanticClassifier.IsEquationParagraph(para)) || PdfTableParagraphClassifier.IsTableParagraph(para) || para.IsDiagram || para.IsTable ||
                               PdfChartLabelClassifier.IsChartTickGlyph(para);
         }
+
+        // This is the final invariant pass: no later classifier may turn a
+        // short selectable workflow label back into a translatable paragraph.
+        // Doing it immediately before returning the page list prevents white
+        // masks from erasing labels in vector figures such as ASTER Figure 3.
+        PdfDiagramLabelMarker.FinalizeShortFigureLabels(pageList, effectiveDiagramRegions);
 
         return pageList;
     }

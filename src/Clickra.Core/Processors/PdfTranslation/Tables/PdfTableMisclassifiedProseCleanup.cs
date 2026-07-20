@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Text.RegularExpressions;
 using Clickra.Core.Models;
 
@@ -16,6 +17,13 @@ namespace Clickra.Core.Processors
                 if (!para.IsTable) continue;
                 string txt = para.TextWithPlaceholders.Trim();
                 if (string.IsNullOrEmpty(txt)) continue;
+
+                // Bold compact rows immediately below TABLE captions are table
+                // headers, even when DocStrum grouped several cells together.
+                // Never demote them to prose: doing so translates/reflows the
+                // row and changes the table geometry.
+                if (IsLikelyTableHeader(para, txt))
+                    continue;
 
                 if (PdfSpecialTableRegionClassifier.IsWorkDivisionTableParagraph(para, workDivisionCaption, pageWidth))
                     continue;
@@ -72,6 +80,19 @@ namespace Clickra.Core.Processors
                    txt.Equals("Small", StringComparison.OrdinalIgnoreCase) ||
                    txt.Equals("No", StringComparison.OrdinalIgnoreCase) ||
                    txt.StartsWith("Unknown", StringComparison.OrdinalIgnoreCase);
+        }
+
+        internal static bool IsLikelyTableHeader(PdfParagraph para, string? text = null)
+        {
+            if (!para.IsBold || para.Height > 16 || para.AverageFontSize > 8.5) return false;
+            string txt = (text ?? para.TextWithPlaceholders).Trim();
+            if (string.IsNullOrEmpty(txt)) return false;
+            string[] markers =
+            {
+                "Model Name", "Provider", "Update Date", "Model Size", "License", "Data Type",
+                "Dataset", "Classes/Modules", "Methods", "NCLOC"
+            };
+            return markers.Any(marker => txt.Contains(marker, StringComparison.OrdinalIgnoreCase));
         }
     }
 }

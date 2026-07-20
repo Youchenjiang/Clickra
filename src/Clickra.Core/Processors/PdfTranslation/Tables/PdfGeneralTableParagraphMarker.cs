@@ -321,55 +321,55 @@ namespace Clickra.Core.Processors
 
         private static void MarkTableRegionByCaption(List<PdfParagraph> pageList, double pageWidth)
         {
-            PdfParagraph? caption = null;
-            foreach (var para in pageList)
+            // A page can contain one table in each column.  The old code used
+            // only the first caption, so the other column's header row escaped
+            // table classification and was translated/reflowed as prose.
+            var captions = pageList.Where(para => Regex.IsMatch(
+                    para.TextWithPlaceholders.Trim(),
+                    @"^(?:TABLE|Table)\s+[IVXLCDM\d]+",
+                    RegexOptions.IgnoreCase))
+                .ToList();
+            if (captions.Count == 0) return;
+
+            foreach (var caption in captions)
             {
-                string txt = para.TextWithPlaceholders.Trim();
-                if (Regex.IsMatch(
-                        txt, @"^(?:TABLE|Table)\s+[IVXLCDM\d]+", RegexOptions.IgnoreCase))
+                double captionCenterX = caption.X0 + caption.Width / 2;
+                bool captionOnLeft = captionCenterX < pageWidth / 2;
+                double prevBottom = caption.Y0;
+
+                foreach (var para in pageList.OrderByDescending(p => p.Y1))
                 {
-                    caption = para;
-                    break;
+                    if (para == caption) continue;
+
+                    double paraCenterX = para.X0 + para.Width / 2;
+                    if ((paraCenterX < pageWidth / 2) != captionOnLeft) continue;
+                    if (para.Y1 > caption.Y0 + 5) continue;
+
+                    double gap = prevBottom - para.Y1;
+                    if (gap > 28) break;
+
+                    string txt = para.TextWithPlaceholders.Trim();
+                    if (txt.StartsWith("Listing", StringComparison.OrdinalIgnoreCase) ||
+                        txt.StartsWith("Figure", StringComparison.OrdinalIgnoreCase) ||
+                        txt.StartsWith("Fig", StringComparison.OrdinalIgnoreCase))
+                    {
+                        break;
+                    }
+
+                    if (Regex.IsMatch(txt, @"^[IVXLC]+\.\s"))
+                    {
+                        break;
+                    }
+
+                    if (para.Height > 30 && para.Width > pageWidth * 0.35 &&
+                        txt.Split(new char[] { ' ', '\t', '\n', '\r' }, StringSplitOptions.RemoveEmptyEntries).Length > 25)
+                    {
+                        break;
+                    }
+
+                    para.IsTable = true;
+                    prevBottom = para.Y0;
                 }
-            }
-            if (caption == null) return;
-
-            double captionCenterX = caption.X0 + caption.Width / 2;
-            bool captionOnLeft = captionCenterX < pageWidth / 2;
-            double prevBottom = caption.Y0;
-
-            foreach (var para in pageList.OrderByDescending(p => p.Y1))
-            {
-                if (para == caption) continue;
-
-                double paraCenterX = para.X0 + para.Width / 2;
-                if ((paraCenterX < pageWidth / 2) != captionOnLeft) continue;
-                if (para.Y1 > caption.Y0 + 5) continue;
-
-                double gap = prevBottom - para.Y1;
-                if (gap > 28) break;
-
-                string txt = para.TextWithPlaceholders.Trim();
-                if (txt.StartsWith("Listing", StringComparison.OrdinalIgnoreCase) ||
-                    txt.StartsWith("Figure", StringComparison.OrdinalIgnoreCase) ||
-                    txt.StartsWith("Fig", StringComparison.OrdinalIgnoreCase))
-                {
-                    break;
-                }
-
-                if (Regex.IsMatch(txt, @"^[IVXLC]+\.\s"))
-                {
-                    break;
-                }
-
-                if (para.Height > 30 && para.Width > pageWidth * 0.35 &&
-                    txt.Split(new char[] { ' ', '\t', '\n', '\r' }, StringSplitOptions.RemoveEmptyEntries).Length > 25)
-                {
-                    break;
-                }
-
-                para.IsTable = true;
-                prevBottom = para.Y0;
             }
         }
 

@@ -64,7 +64,12 @@ namespace Clickra.Core.Processors
                 // prose-like (lowercase words, colons, periods). If its letters
                 // materially overlap the detected diagram geometry, keep the
                 // original label instead of masking and reflowing it as body text.
-                if (PdfDiagramRegionGeometry.ParagraphLetterOverlapRatio(para, diagramRegions) >= 0.15)
+                double letterRatio = PdfDiagramRegionGeometry.ParagraphLetterOverlapRatio(para, diagramRegions);
+                string text = para.TextWithPlaceholders.Trim();
+                int wordCount = text.Split(new[] { ' ', '\t', '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries).Length;
+                bool shortFigureLabel = PdfDiagramRegionGeometry.OverlapsAnyRegion(para, diagramRegions) &&
+                                        para.Height <= 22 && text.Length <= 80 && wordCount <= 6;
+                if (letterRatio >= 0.15 || shortFigureLabel)
                 {
                     continue;
                 }
@@ -77,7 +82,7 @@ namespace Clickra.Core.Processors
                 }
                 else
                 {
-                    string txt = para.TextWithPlaceholders.Trim();
+                    string txt = text;
                     if (para.Width >= 120 && txt.Any(char.IsLower) &&
                         (txt.IndexOf('.') >= 0 || txt.Contains("{v")))
                     {

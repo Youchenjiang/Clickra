@@ -16,7 +16,7 @@ namespace Clickra.Core.Processors
             {
                 string t = p.TextWithPlaceholders.Trim();
                 return Regex.IsMatch(t,
-                    @"^Figure\s+\d+:.*(?:Success rate|Completion level|overhead|Backbone|difficulty levels)",
+                    @"^(?:Figure|Fig\.)\s+\d+\s*[:.].*(?:Success rate|Completion level|overhead|Backbone|difficulty levels|line,?\s+branch,?.*method|coverage achieved)",
                     RegexOptions.IgnoreCase);
             });
             if (!pageHasBarChart) return;
@@ -58,12 +58,15 @@ namespace Clickra.Core.Processors
                 if (para.IsTable && !para.IsDiagram) continue;
                 if (PdfParagraphRoleClassifier.IsRunningHeaderOrFooter(para, pigPage.Height)) continue;
                 if (PdfParagraphRoleClassifier.IsFigureTableCaptionParagraph(para)) continue;
-                if (PdfParagraphRoleClassifier.IsTranslatableCalloutProse(para)) continue;
+                if (PdfGrayPromptClassifier.IsGrayPromptBoxParagraph(para) ||
+                    PdfGrayPromptClassifier.IsGrayPromptSubheading(para)) continue;
                 if (PdfParagraphSemanticClassifier.IsHeadingParagraph(para)) continue;
 
                 double letterRatio = PdfDiagramRegionGeometry.ParagraphLetterOverlapRatio(para, diagramRegions);
                 bool bboxHits = PdfDiagramMaskBuilder.OverlapsWithLargeImage(para, pigPage);
                 bool regionHits = PdfDiagramRegionGeometry.OverlapsAnyRegion(para, diagramRegions);
+                if (PdfParagraphRoleClassifier.IsTranslatableCalloutProse(para) &&
+                    !IsShortFigureLabel(para, regionHits)) continue;
                 if (letterRatio >= 0.35 || (bboxHits && PdfChartLabelClassifier.IsLikelyChartLabel(para)) ||
                     (letterRatio >= 0.2 && PdfChartLabelClassifier.IsLikelyChartLabel(para)) ||
                     (regionHits && PdfChartLabelClassifier.IsLikelyChartLabel(para)))
@@ -86,12 +89,15 @@ namespace Clickra.Core.Processors
                 if (para.IsTable) continue;
                 if (PdfParagraphRoleClassifier.IsRunningHeaderOrFooter(para, pageHeight)) continue;
                 if (PdfParagraphRoleClassifier.IsFigureTableCaptionParagraph(para)) continue;
-                if (PdfParagraphRoleClassifier.IsTranslatableCalloutProse(para)) continue;
+                if (PdfGrayPromptClassifier.IsGrayPromptBoxParagraph(para) ||
+                    PdfGrayPromptClassifier.IsGrayPromptSubheading(para)) continue;
                 if (PdfParagraphSemanticClassifier.IsHeadingParagraph(para)) continue;
                 if (!PdfDiagramRegionGeometry.OverlapsAnyRegion(para, diagramRegions)) continue;
-                if (para.Height > 50) continue;
                 string txt = para.TextWithPlaceholders.Trim();
                 double letterRatio = PdfDiagramRegionGeometry.ParagraphLetterOverlapRatio(para, diagramRegions);
+                if (para.Height > 50) continue;
+                if (PdfParagraphRoleClassifier.IsTranslatableCalloutProse(para) &&
+                    !IsShortFigureLabel(para, true)) continue;
                 if (PdfParagraphRoleClassifier.IsTranslatableBodyProse(para) && letterRatio < 0.35) continue;
                 if (txt.Length > 140)
                 {
@@ -105,6 +111,38 @@ namespace Clickra.Core.Processors
                 }
 
                 para.IsDiagram = true;
+                para.IsTable = false;
+            }
+        }
+
+        private static bool IsShortFigureLabel(PdfParagraph para, bool insideDiagramRegion)
+        {
+            string text = para.TextWithPlaceholders.Trim();
+            int wordCount = text.Split(new[] { ' ', '\t', '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries).Length;
+            double height = Math.Max(0, para.Y1 - para.Y0);
+            return insideDiagramRegion && height <= 22 && text.Length <= 80 && wordCount <= 6;
+        }
+
+        /// <summary>
+        /// Re-apply the immutable workflow-label rule after later cleanup passes.
+        /// Some cleanup passes intentionally clear diagram flags from prose-like
+        /// paragraphs; short selectable labels inside the figure must not be
+        /// cleared, otherwise Pass 1 masks erase the original diagram text.
+        /// </summary>
+        public static void FinalizeShortFigureLabels(
+            List<PdfParagraph> pageList,
+            IReadOnlyList<TableMaskRegion> diagramRegions)
+        {
+            if (diagramRegions.Count == 0) return;
+            foreach (var para in pageList)
+            {
+                bool intersects = diagramRegions.Any(region =>
+                    para.X0 <= region.X1 && para.X1 >= region.X0 &&
+                    para.Y0 <= region.Y1 && para.Y1 >= region.Y0);
+                if (!IsShortFigureLabel(para, intersects)) continue;
+
+                para.IsDiagram = true;
+                para.IsBypassed = true;
                 para.IsTable = false;
             }
         }

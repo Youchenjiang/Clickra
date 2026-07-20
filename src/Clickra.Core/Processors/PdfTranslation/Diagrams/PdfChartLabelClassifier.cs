@@ -10,6 +10,16 @@ namespace Clickra.Core.Processors
         {
             string txt = para.TextWithPlaceholders.Trim();
             if (string.IsNullOrEmpty(txt)) return false;
+            // ACM charts often extract all subfigure labels into one line,
+            // e.g. "(e) CargoTracker (f) PetClinic (g) DayTrader (h) App X".
+            // This is figure artwork, not translatable prose.
+            if (Regex.IsMatch(
+                    txt,
+                    @"^\([a-h]\)\s+\S+(?:\s+\S+){0,2}(?:\s+\([a-h]\)\s+\S+(?:\s+\S+){0,2})+$",
+                    RegexOptions.IgnoreCase))
+            {
+                return true;
+            }
             int wordCount = txt.Split(new char[] { ' ', '\t', '\n', '\r' }, StringSplitOptions.RemoveEmptyEntries).Length;
             if (wordCount <= 4 && para.Height <= 22 && txt.IndexOf('.') < 0) return true;
             if (para.Height <= 14 && txt.Length <= 8) return true;

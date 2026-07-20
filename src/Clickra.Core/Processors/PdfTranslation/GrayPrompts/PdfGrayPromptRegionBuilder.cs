@@ -30,6 +30,18 @@ namespace Clickra.Core.Processors
                 double h = r.Y1 - r.Y0;
                 if (h < 70 || h > 320) continue;
 
+                // A diagram bounding box is not evidence of a gray prompt.
+                // Workflow figures (for example ASTER Figure 3) often have
+                // the same column-sized geometry.  Only treat it as a shaded
+                // prompt region when a prompt title is actually present; real
+                // gray fills are detected separately by GetGrayVectorFillRegions.
+                if (pageList == null || !pageList.Any(p =>
+                        PdfGrayPromptClassifier.IsGrayPromptBoxParagraph(p) &&
+                        PdfGrayPromptGeometry.ParagraphCenterInsideAnyRegion(p, new[] { r })))
+                {
+                    continue;
+                }
+
                 if (w >= 180 && w <= maxColWidth)
                 {
                     double regionCenter = (r.X0 + r.X1) / 2.0;
