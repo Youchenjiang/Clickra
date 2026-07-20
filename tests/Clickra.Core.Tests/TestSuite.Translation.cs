@@ -313,6 +313,216 @@ static partial class TestSuite
             }
         });
 
+        runner.Run("Heading classifier recognizes Roman sections but not equation numbers", () =>
+        {
+            var heading = new PdfParagraph(Array.Empty<UglyToad.PdfPig.DocumentLayoutAnalysis.TextLine>())
+            {
+                TextWithPlaceholders = "I. INTRODUCTION"
+            };
+            var equationNumber = new PdfParagraph(Array.Empty<UglyToad.PdfPig.DocumentLayoutAnalysis.TextLine>())
+            {
+                TextWithPlaceholders = "2"
+            };
+
+            Assert.True(PdfParagraphSemanticClassifier.IsHeadingParagraph(heading),
+                "Roman-numbered section should be treated as a heading.");
+            Assert.True(!PdfParagraphSemanticClassifier.IsHeadingParagraph(equationNumber),
+                "Standalone equation number must not become a heading.");
+        });
+
+        runner.Run("Heading classifier preserves short colon labels", () =>
+        {
+            var label = new PdfParagraph(Array.Empty<UglyToad.PdfPig.DocumentLayoutAnalysis.TextLine>())
+            {
+                TextWithPlaceholders = "The main contributions of this work include:"
+            };
+            Assert.True(PdfParagraphSemanticClassifier.IsHeadingParagraph(label),
+                "A short colon label should retain heading typography.");
+        });
+
+        runner.Run("Lower-case wide continuation remains translatable prose", () =>
+        {
+            var continuation = new PdfParagraph(Array.Empty<UglyToad.PdfPig.DocumentLayoutAnalysis.TextLine>())
+            {
+                TextWithPlaceholders = "of test assertions, (3) meaningfulness of test sequences, (4)",
+                X0 = 314,
+                X1 = 545,
+                Y0 = 102,
+                Y1 = 109
+            };
+            Assert.True(PdfParagraphRoleClassifier.IsTranslatableBodyProse(continuation),
+                "A wide lower-case continuation must not be treated as a bypass fragment.");
+        });
+
+        runner.Run("Reference section bypasses every continuation line", () =>
+        {
+            var heading = new PdfParagraph(Array.Empty<UglyToad.PdfPig.DocumentLayoutAnalysis.TextLine>())
+            {
+                TextWithPlaceholders = "REFERENCES",
+                AverageFontSize = 9.96,
+                X0 = 150,
+                X1 = 220,
+                Y0 = 500,
+                Y1 = 512
+            };
+            var entry = new PdfParagraph(Array.Empty<UglyToad.PdfPig.DocumentLayoutAnalysis.TextLine>())
+            {
+                TextWithPlaceholders = "[25] N. Alshahwan, J. Chheda, and E. Wang, Automated unit improvement",
+                X0 = 60,
+                X1 = 300,
+                Y0 = 450,
+                Y1 = 460
+            };
+            var continuation = new PdfParagraph(Array.Empty<UglyToad.PdfPig.DocumentLayoutAnalysis.TextLine>())
+            {
+                TextWithPlaceholders = "using large language models for testing, in the proceedings.",
+                X0 = 60,
+                X1 = 300,
+                Y0 = 438,
+                Y1 = 448
+            };
+            var pages = new List<List<PdfParagraph>> { new() { heading, entry, continuation } };
+
+            PdfReferenceSectionBypasser.Apply(
+                pages,
+                new[] { 612d },
+                (paragraphs, _) => paragraphs);
+
+            Assert.True(entry.IsBypassed, "Numbered bibliography entry must bypass translation.");
+            Assert.True(continuation.IsBypassed, "Bibliography continuation line must also bypass translation.");
+        });
+
+        runner.Run("Short research questions remain full-size prose", () =>
+        {
+            var question = new PdfParagraph(Array.Empty<UglyToad.PdfPig.DocumentLayoutAnalysis.TextLine>())
+            {
+                TextWithPlaceholders = "RQ3: How natural are ASTER-generated tests?",
+                X0 = 314,
+                X1 = 545,
+                Y0 = 563,
+                Y1 = 570
+            };
+            Assert.True(PdfParagraphRoleClassifier.IsTranslatableCalloutProse(question),
+                "RQ3 must not be treated as a tiny fixed-height label.");
+        });
+
+        runner.Run("Narrow lower-case continuation remains full-size prose", () =>
+        {
+            var continuation = new PdfParagraph(Array.Empty<UglyToad.PdfPig.DocumentLayoutAnalysis.TextLine>())
+            {
+                TextWithPlaceholders = "search questions.",
+                X0 = 65,
+                X1 = 128,
+                Y0 = 93,
+                Y1 = 100
+            };
+            Assert.True(PdfParagraphRoleClassifier.IsTranslatableCalloutProse(continuation),
+                "A narrow lower-case continuation must not be shrunk to its extraction box.");
+        });
+
+        runner.Run("Finding callouts preserve their fixed container geometry", () =>
+        {
+            var finding = new PdfParagraph(Array.Empty<UglyToad.PdfPig.DocumentLayoutAnalysis.TextLine>())
+            {
+                TextWithPlaceholders = "Finding 5: Developers prefer ASTER-generated tests.",
+                X0 = 67.6,
+                X1 = 292.4,
+                Y0 = 330.1,
+                Y1 = 380.5
+            };
+            Assert.True(PdfParagraphRoleClassifier.IsFindingCallout(finding),
+                "Singular numbered Finding callouts must be classified explicitly.");
+            Assert.True(PdfParagraphRoleClassifier.IsTranslatableCalloutProse(finding),
+                "Finding callouts remain translatable prose.");
+
+            double x0 = finding.X0;
+            double x1 = finding.X1;
+            PdfMaskGeometry.ExpandMaskToColumnWidth(ref x0, ref x1, finding, 612);
+            Assert.True(Math.Abs(finding.X0 - x0) < 0.001, "Finding mask must not expand left to the column edge.");
+            Assert.True(Math.Abs(finding.X1 - x1) < 0.001, "Finding mask must not expand right to the column edge.");
+        });
+
+        runner.Run("Paragraph source visual font size survives title grouping", () =>
+        {
+            var title = new PdfParagraph(Array.Empty<UglyToad.PdfPig.DocumentLayoutAnalysis.TextLine>())
+            {
+                TextWithPlaceholders = "Main title",
+                IsPageTitle = true,
+                SourceVisualFontSize = 18,
+                AverageFontSize = 11
+            };
+            Assert.True(Math.Abs(title.SourceVisualFontSize - 18d) < 0.001,
+                "Source visual font size was not retained.");
+            Assert.True(title.IsPageTitle, "Title role was not retained in the source snapshot.");
+        });
+
+        runner.Run("Page-one wrapped title lines share the title role", () =>
+        {
+            var title = new PdfParagraph(Array.Empty<UglyToad.PdfPig.DocumentLayoutAnalysis.TextLine>())
+            {
+                TextWithPlaceholders = "ASTER: Natural and Multi-language Unit Test",
+                X0 = 76.1, X1 = 535.9, Y0 = 720.8, Y1 = 737.1,
+                AverageFontSize = 23.91, SourceVisualFontSize = 23.91
+            };
+            var generation = new PdfParagraph(Array.Empty<UglyToad.PdfPig.DocumentLayoutAnalysis.TextLine>())
+            {
+                TextWithPlaceholders = "Generation",
+                X0 = 193.4, X1 = 299.6, Y0 = 692.9, Y1 = 709.2,
+                AverageFontSize = 23.91, SourceVisualFontSize = 23.91
+            };
+            var withLlms = new PdfParagraph(Array.Empty<UglyToad.PdfPig.DocumentLayoutAnalysis.TextLine>())
+            {
+                TextWithPlaceholders = "with LLMs",
+                X0 = 308.0, X1 = 418.6, Y0 = 692.9, Y1 = 709.2,
+                AverageFontSize = 23.91, SourceVisualFontSize = 23.91
+            };
+            var page = new List<PdfParagraph> { title, generation, withLlms };
+
+            PageOneLayoutClassifier.MergeTitleWithSubtitle(page, 792);
+
+            Assert.True(page.Count == 2, "Wrapped title continuation lines should form one title paragraph.");
+            Assert.True(title.IsPageTitle, "The first title line lost its page-title role.");
+            Assert.True(page[1].IsPageTitle, "The wrapped title continuation lost its page-title role.");
+            Assert.True(page[1].TextWithPlaceholders.Contains("Generation", StringComparison.Ordinal) &&
+                        page[1].TextWithPlaceholders.Contains("with LLMs", StringComparison.Ordinal),
+                "The wrapped title continuation was not coalesced.");
+        });
+
+        runner.Run("Inline bold markers preserve Nimbus medium source runs", () =>
+        {
+            Assert.True(
+                FontUtilities.IsSourceFontBold("ANFUWD+NimbusRomNo9L-Medi"),
+                "Nimbus medium face used for IEEE bold text was not recognized.");
+
+            var tokens = PdfParagraphLayoutEngine.TokenizeTranslatedText("{b}Code coverage:{/b} body");
+            Assert.True(tokens.Contains("{b}") && tokens.Contains("{/b}"),
+                "Inline bold markers were not preserved by the layout tokenizer.");
+            Assert.Equal(
+                "{b}程式碼覆蓋率:{/b} body",
+                PostProcessor.Process("{b}Code coverage:{/b} body", "{b}程式碼覆蓋率:{/b} body", "zh-TW"));
+        });
+
+        runner.Run("Academic table headers stay bypassed and bold", () =>
+        {
+            var header = new PdfParagraph(Array.Empty<UglyToad.PdfPig.DocumentLayoutAnalysis.TextLine>())
+            {
+                TextWithPlaceholders = "Model Name Provider Update Date Model Size",
+                IsBold = true,
+                IsTable = true,
+                AverageFontSize = 5.74,
+                Y0 = 698.5,
+                Y1 = 702.5,
+                X0 = 77.7,
+                X1 = 204.2
+            };
+
+            PdfTableMisclassifiedProseCleanup.Reclassify(new List<PdfParagraph> { header }, 612);
+            Assert.True(header.IsTable, "A bold compact table header was demoted to prose.");
+            Assert.True(
+                PdfTableMisclassifiedProseCleanup.IsLikelyTableHeader(header),
+                "The table-header guard did not recognize the source header row.");
+        });
+
         runner.Run("PDF batch runner splits failed batches and recovers each paragraph", () =>
         {
             var translator = new BatchOnlyFailingTranslationEngine();
