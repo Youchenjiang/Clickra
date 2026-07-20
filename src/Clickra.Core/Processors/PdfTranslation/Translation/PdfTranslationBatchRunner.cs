@@ -2,11 +2,26 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
+using System.Threading.Tasks;
 
 namespace Clickra.Core.Processors
 {
     internal static class PdfTranslationBatchRunner
     {
+        private static TimeSpan ProviderCallTimeout
+        {
+            get
+            {
+                if (int.TryParse(
+                    Environment.GetEnvironmentVariable("CLICKRA_TRANSLATION_PROVIDER_TIMEOUT_SECONDS"),
+                    out int seconds) && seconds > 0)
+                {
+                    return TimeSpan.FromSeconds(Math.Clamp(seconds, 1, 120));
+                }
+                return TimeSpan.FromSeconds(30);
+            }
+        }
+
         public static List<string> TranslatePageBatches(
             ITranslationEngine translator,
             List<string> textsToTranslate,
@@ -29,17 +44,106 @@ namespace Clickra.Core.Processors
                     100,
                     $"正在翻譯第 {pageIndex + 1}/{totalPages} 頁，批次 {chunkIndex + 1}/{chunks.Count}（段落 {translatedCount + 1}-{translatedCount + chunk.Count}/{textsToTranslate.Count}）...");
 
-                var chunkResults = translator.TranslateBatchAsync(chunk, targetLang, cancellationToken).GetAwaiter().GetResult();
-                if (chunkResults.Count != chunk.Count)
-                {
-                    throw new Exception("Mismatched batch translation results count.");
-                }
+                var chunkResults = TranslateChunkWithRecovery(
+                    translator,
+                    chunk,
+                    targetLang,
+                    pageIndex,
+                    chunkIndex,
+                    cancellationToken);
 
                 results.AddRange(chunkResults);
                 translatedCount += chunk.Count;
             }
 
             return results;
+        }
+
+        private static List<string> TranslateChunkWithRecovery(
+            ITranslationEngine translator,
+            List<string> chunk,
+            string targetLang,
+            int pageIndex,
+            int chunkIndex,
+            CancellationToken cancellationToken)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+
+            try
+            {
+                var translated = RunWithTimeout(
+                    token => translator.TranslateBatchAsync(chunk, targetLang, token),
+                    cancellationToken);
+                if (translated.Count != chunk.Count)
+                {
+                    throw new InvalidOperationException(
+                        $"{translator.Name} returned {translated.Count}/{chunk.Count} results.");
+                }
+                return translated;
+            }
+            catch (Exception ex) when (!cancellationToken.IsCancellationRequested)
+            {
+                Console.Error.WriteLine(
+                    $"[Translate] page {pageIndex + 1}, batch {chunkIndex + 1} failed; " +
+                    $"splitting for recovery: {ex.Message}");
+            }
+
+            if (chunk.Count > 1)
+            {
+                int midpoint = chunk.Count / 2;
+                var left = TranslateChunkWithRecovery(
+                    translator,
+                    chunk.GetRange(0, midpoint),
+                    targetLang,
+                    pageIndex,
+                    chunkIndex,
+                    cancellationToken);
+                var right = TranslateChunkWithRecovery(
+                    translator,
+                    chunk.GetRange(midpoint, chunk.Count - midpoint),
+                    targetLang,
+                    pageIndex,
+                    chunkIndex,
+                    cancellationToken);
+                left.AddRange(right);
+                return left;
+            }
+
+            string sourceText = chunk.Count == 0 ? string.Empty : chunk[0];
+            try
+            {
+                string translated = RunWithTimeout(
+                    token => translator.TranslateAsync(sourceText, targetLang, token),
+                    cancellationToken);
+                if (string.IsNullOrWhiteSpace(translated))
+                {
+                    throw new InvalidOperationException("Translator returned an empty result.");
+                }
+                return new List<string> { translated };
+            }
+            catch (Exception ex) when (!cancellationToken.IsCancellationRequested)
+            {
+                throw new InvalidOperationException(
+                    $"Unable to translate page {pageIndex + 1} paragraph after batch splitting and provider fallback.",
+                    ex);
+            }
+        }
+
+        private static T RunWithTimeout<T>(
+            Func<CancellationToken, Task<T>> operation,
+            CancellationToken cancellationToken)
+        {
+            using var timeoutCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+            timeoutCts.CancelAfter(ProviderCallTimeout);
+            try
+            {
+                return operation(timeoutCts.Token).WaitAsync(timeoutCts.Token).GetAwaiter().GetResult();
+            }
+            catch (OperationCanceledException) when (
+                !cancellationToken.IsCancellationRequested && timeoutCts.IsCancellationRequested)
+            {
+                throw new TimeoutException($"Translation provider call exceeded {ProviderCallTimeout.TotalSeconds:0}s.");
+            }
         }
 
         public static int GetTranslationProgress(int pageIndex, int totalPages, int unitIndex, int unitCount)

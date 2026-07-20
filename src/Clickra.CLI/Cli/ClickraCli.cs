@@ -216,6 +216,7 @@ namespace Clickra
                         if (quiet)
                         {
                             string targetLang = ClickraStorage.GetSetting("TranslateTargetLang");
+                            bool translationFailed = false;
                             for (int i = 0; i < files.Count; i++)
                             {
                                 var f = files[i];
@@ -227,6 +228,7 @@ namespace Clickra
 
                                 string outName = Path.Combine(outputDir, Path.GetFileNameWithoutExtension(f) + "_translated.pdf");
                                 string dbgLog = Path.Combine(outputDir, Path.GetFileNameWithoutExtension(f) + "_renderdbg.log");
+                                string healthReport = Path.Combine(outputDir, Path.GetFileNameWithoutExtension(f) + "_translated_health.json");
                                 ClickraDebug.Clear();
                                 Console.WriteLine($"[Progress] 開始翻譯 PDF: {Path.GetFileName(f)} ({i + 1}/{files.Count})");
                                 WriteConsoleProgress(0, 100, $"正在翻譯 PDF: {Path.GetFileName(f)} ({i + 1}/{files.Count})...");
@@ -240,20 +242,26 @@ namespace Clickra
                                 }
                                 catch (FileNotFoundException)
                                 {
+                                    translationFailed = true;
                                     FinishConsoleProgressLine();
                                     Console.WriteLine($"[Warning] 翻譯期間檔案消失，已跳過: {f}");
                                 }
                                 catch (DirectoryNotFoundException)
                                 {
+                                    translationFailed = true;
                                     FinishConsoleProgressLine();
                                     Console.WriteLine($"[Warning] 翻譯期間資料夾消失，已跳過: {f}");
                                 }
                                 catch (Exception ex)
                                 {
+                                    translationFailed = true;
                                     FinishConsoleProgressLine();
-                                    Console.WriteLine($"[Error] 翻譯檔案時發生未預期的錯誤，已跳過: {f}. 錯誤訊息: {ex.Message}");
+                                    ClickraDebug.SaveTo(dbgLog);
+                                    Console.WriteLine($"[Error] 翻譯檔案未完成: {f}. 錯誤訊息: {ex.Message}");
+                                    Console.WriteLine($"[Debug] Health report: {healthReport}");
                                 }
                             }
+                            if (translationFailed) Environment.ExitCode = 1;
                         }
                         else ProgressWindow.Show(command, files);
                         break;

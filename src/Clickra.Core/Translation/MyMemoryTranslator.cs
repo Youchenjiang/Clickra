@@ -11,7 +11,6 @@ namespace Clickra.Core;
 
 internal class MyMemoryTranslator : ITranslationEngine
 {
-    private static int _nodeTransportRequired;
     private static readonly string? _nodePath = ResolveNodePath();
     private static readonly HttpClient HttpClient = new()
     {
@@ -34,35 +33,43 @@ internal class MyMemoryTranslator : ITranslationEngine
     public async Task<string> TranslateAsync(string text, string targetLanguage, CancellationToken cancellationToken)
     {
         if (string.IsNullOrWhiteSpace(text)) return text;
-        if (Volatile.Read(ref _nodeTransportRequired) == 1)
-        {
-            if (_nodePath == null) throw new InvalidOperationException("Node.js is not installed. Cannot use MyMemory Node fallback.");
-            return await TranslateWithNodeAsync(text, targetLanguage, cancellationToken);
-        }
 
         int retries = 2;
-        int delayMs = 1000;
+        int delayMs = 500;
         while (true)
         {
             try
             {
                 return await TranslateInternalAsync(text, targetLanguage, cancellationToken);
             }
-            catch (Exception) when (!cancellationToken.IsCancellationRequested) // skipcq: CS-R1008
+            catch (Exception httpException) when (!cancellationToken.IsCancellationRequested) // skipcq: CS-R1008
             {
-                Interlocked.Exchange(ref _nodeTransportRequired, 1);
-                try
+                // Node is an optional per-request fallback. Never permanently latch
+                // the translator into Node mode after one transient HTTP failure:
+                // that made every later request fail on machines without Node.js.
+                if (_nodePath != null)
                 {
-                    return await TranslateWithNodeAsync(text, targetLanguage, cancellationToken);
+                    try
+                    {
+                        return await TranslateWithNodeAsync(text, targetLanguage, cancellationToken);
+                    }
+                    catch (Exception nodeException) when (!cancellationToken.IsCancellationRequested) // skipcq: CS-R1008
+                    {
+                        httpException = new AggregateException(httpException, nodeException);
+                    }
                 }
-                catch when (retries > 0 && !cancellationToken.IsCancellationRequested) // skipcq: CS-R1008
+
+                if (retries <= 0)
                 {
-                    retries--;
+                    throw new InvalidOperationException(
+                        "MyMemory HTTP translation failed after bounded retries.",
+                        httpException);
                 }
+                retries--;
             }
 
             await Task.Delay(delayMs, cancellationToken);
-            delayMs *= 2;
+            delayMs = Math.Min(delayMs * 2, 3000);
         }
     }
 

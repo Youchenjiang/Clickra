@@ -12,6 +12,10 @@ public static class TranslationEngineFactory
         {
             return new IdentityTranslator();
         }
+        if (string.Equals(engine, "synthetic-cjk", StringComparison.OrdinalIgnoreCase))
+        {
+            return new SyntheticCjkTranslator();
+        }
         if (string.Equals(engine, "google", StringComparison.OrdinalIgnoreCase) ||
             string.Equals(engine, "google-free", StringComparison.OrdinalIgnoreCase))
         {

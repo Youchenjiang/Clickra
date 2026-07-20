@@ -4,7 +4,7 @@ namespace Clickra.Core.Processors;
 
 internal static class PdfParagraphTranslationStage
 {
-    public static void TranslatePages(
+    public static PdfTranslationStageReport TranslatePages(
         IReadOnlyList<List<PdfParagraph>> pageParagraphs,
         string inputPath,
         string targetLang,
@@ -12,6 +12,7 @@ internal static class PdfParagraphTranslationStage
         CancellationToken cancellationToken)
     {
         var translator = TranslationEngineFactory.Create();
+        var report = new PdfTranslationStageReport { Provider = translator.Name };
         object logLock = new object();
         int totalPages = pageParagraphs.Count;
 
@@ -31,6 +32,7 @@ internal static class PdfParagraphTranslationStage
                 if (para.IsBypassed)
                 {
                     para.TranslatedText = para.TextWithPlaceholders;
+                    report.BypassedParagraphs++;
                 }
                 else
                 {
@@ -63,6 +65,7 @@ internal static class PdfParagraphTranslationStage
                                 rawResult,
                                 targetLang
                             );
+                            report.TranslatedParagraphs++;
                         }
                     }
                     else
@@ -72,34 +75,16 @@ internal static class PdfParagraphTranslationStage
                 }
                 catch (Exception ex)
                 {
-                    LogTranslationError(inputPath, p, $"Batch translation failed, falling back to sequential. Error: {ex.Message}", logLock);
-
-                    for (int i = 0; i < paragraphsToTranslate.Count; i++)
-                    {
-                        var para = paragraphsToTranslate[i];
-                        try
-                        {
-                            onProgress?.Invoke(
-                                PdfTranslationBatchRunner.GetTranslationProgress(p, totalPages, i, paragraphsToTranslate.Count),
-                                100,
-                                $"第 {p + 1}/{totalPages} 頁批次翻譯失敗，正在逐段重試 {i + 1}/{paragraphsToTranslate.Count}...");
-                            string result = translator.TranslateAsync(para.TextWithPlaceholders, targetLang, cancellationToken).GetAwaiter().GetResult();
-                            string rawResult = string.IsNullOrWhiteSpace(result) ? para.TextWithPlaceholders : result;
-                            para.TranslatedText = PostProcessor.Process(
-                                para.TextWithPlaceholders,
-                                rawResult,
-                                targetLang
-                            );
-                        }
-                        catch (Exception exSub)
-                        {
-                            para.TranslatedText = para.TextWithPlaceholders;
-                            LogTranslationError(inputPath, p, $"Sequential fallback error: {exSub.Message}", logLock);
-                        }
-                    }
+                    LogTranslationError(inputPath, p, $"Translation recovery exhausted. Error: {ex.Message}", logLock);
+                    report.Failures.Add($"page {p + 1}: {ex.Message}");
+                    throw new InvalidOperationException(
+                        $"PDF translation failed on page {p + 1}; automatic batch splitting and provider fallback were exhausted.",
+                        ex);
                 }
             }
         }
+
+        return report;
     }
 
     private static void LogTranslationError(string inputPath, int pageIndex, string message, object logLock)
@@ -115,4 +100,12 @@ internal static class PdfParagraphTranslationStage
         }
         catch { }
     }
+}
+
+internal sealed class PdfTranslationStageReport
+{
+    public string Provider { get; init; } = string.Empty;
+    public int TranslatedParagraphs { get; set; }
+    public int BypassedParagraphs { get; set; }
+    public List<string> Failures { get; } = new();
 }
