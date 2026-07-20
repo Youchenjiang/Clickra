@@ -51,6 +51,7 @@ graph TD
 ### C. 版面合併與排序
 - **垂直合併**：`MergeVerticallyAdjacentParagraphs` 將頁面上的段落由上至下排序。若同一個欄位內（水平重疊率 > 60%）的兩個段落垂直間距 ≤ 6 pt，且**至少一方為參考文獻或清單項目**，則透過 `p1.MergeWith(p2)` 進行合併。一般正文段落永不合併。
 - **StartsNewParagraphOrSection**：作為守門條件，防止在下一個段落是新的清單項目、參考文獻或標題時進行錯誤合併。
+- **換行碎片例外**：`MergeWrappedLineFragments` 僅處理同欄、同左錨點、相近字級且垂直間距 -1 至 8 pt 的普通可譯碎片；圖說、標題、表格、程式碼、公式、灰框、參考文獻與新段落起始一律停止。這不是通用正文合併。
 
 ### D. 翻譯客戶端
 - **Google 行動翻譯 API**：在 `TranslationEngine.cs` 中實作。透過在一次 POST 請求中傳遞多個 `q` 參數來進行批次翻譯（`TranslateBatchAsync`），並包含自動重試與單段落循序翻譯的降級機制。
@@ -59,12 +60,13 @@ graph TD
 - **雙階段繪製（Two-Pass Drawing）**：
   - Pass 1：先在原始英文文本邊界上繪製實心白色矩形（`XBrushes.White`）。
   - Pass 2：在遮罩上方渲染翻譯後的文本。這可防止白色背景遮罩意外覆蓋相鄰已繪製的文字。
+  - **固定向量容器例外**：Findings／研究結果圓角框是「可翻譯文字 + 固定背景與邊線」容器。其遮罩不得擴展到整欄或覆蓋框線；若需要清除原文，必須保留至少 1 pt 邊界，或先依來源幾何重繪底色與圓角邊框，再繪製譯文。
 - **正常混合狀態**：將 `/NormalState gs` 附加至頁面的 ExtGStates 中，以重設疊印（Overprint）或混合模式問題。
 - **公式還原**：
   - 提取階段抽離的公式會以 `{v0}`, `{v1}` 等預留位置表示。
   - 渲染時，`TokenizeTranslatedText` 會將文本拆回普通字詞與預留位置。
   - 預留位置字元會藉由在其精確相對位置上，使用 `Segoe UI Symbol` 或數學字型重新繪製原始字元（`MathLetter`）來還原。
-- **動態文本縮放**：若翻譯後的文本版面高度超出原始邊界框高度，重新 reflow 並逐步縮小字型（最低 0.65），並以 health metrics 回報仍未適配的段落。
+- **動態文本縮放**：一般多行正文可在 80% 下限內 reflow；單行／續行不得因來源 bbox 過矮而縮成小字，改沿用同欄正文有效字級。若自然行高撞到固定區則 fail closed。
 - **段落裁切（Clip）**：禁止以圖表/欄位的外層 `IntersectClip` 靜默截斷譯文；renderer 內部只保護自身段落邊界，任何 overflow 都使 health gate 失敗。
 
 ---
@@ -98,7 +100,7 @@ graph TD
 
 - `AdjustParagraphLayout` 已移除空方法與呼叫（原為無作用佔位）。
 - 嚴禁呼叫 `StripFormXObjects`（死碼，會破壞向量圖表）。
-- `ClickraFontResolver`：`msjh`/`dfkai-sb` 粗體映射至 `simsunb.ttf`，避免 simulated bold 亂碼。
+- `ClickraFontResolver`：CJK 翻譯固定使用 `kaiu.ttf`；來源粗體範圍以 inline markers 傳遞，renderer 以 0.18 pt 二次描繪保留字重，避免 TTC/SimSun-ExtB 亂碼。
 
 ---
 
@@ -110,17 +112,47 @@ graph TD
 - 子標題如 `3.1 ...` 有粗體
 - 雙欄正文各自獨立翻譯，無跨欄溢出
 - 表格/圖表區域未被白遮罩破壞
+- Figure/Fig. 圖說可翻譯，但其增高遮罩必須在圖表底邊前停止，不得擦除圖表底部向量線
+- Findings 5/6 等可翻譯圓角框的底色與四邊邊線完整保留
 ## v3.6.4 reliability and layout gate
 
 The PDF pipeline now treats translation as a recoverable operation: failed batches
 are recursively split, then retried per paragraph through the configured provider
-fallback chain. Provider calls are bounded to 30 seconds and the document is
-bounded to 10 minutes. A failed paragraph is reported rather than silently copied
-back into a successful-looking output.
+fallback chain. Each provider call has its own 30-second budget, while the
+two-provider chain has a separate default 75-second budget (overridable by the
+translation timeout settings) so a primary retry cannot
+cancel the fallback prematurely. The document is bounded to 10 minutes. A failed
+paragraph is reported rather than silently copied back into a successful-looking
+output.
 
 Rebuilds are written to a `.partial` path and renamed only after page-count and
 layout health checks pass. Paragraph rendering reflows and scales translated text
 before drawing; broad diagram/column guard clips are disabled because they silently
 delete translated lines. Diagram protection is handled by mask geometry, and both
 `GuardClipEntries` and actual horizontal/vertical overflow are hard health failures.
-Each run emits a `*_health.json` report for automation and regression review.
+The planner records measured anchor drift and reports fixed-region collisions
+from layout exceptions instead of hard-coding zero. Each run emits a
+`*_health.json` report for automation and regression review.
+
+### v3.6.4 heading layout planning
+
+Before masks are drawn, `PdfTranslationLayoutPlanner` captures each paragraph's
+source role, visual font size, line height, column, and left/center/right anchor.
+Page titles and section headings retain that source font size; a merged title /
+subtitle group uses the main title size rather than an average. Single-line
+headings use the captured geometric anchor instead of the extracted text-box
+alignment.
+
+If a heading gains height, only translatable body paragraphs below it in the
+same column may move. Author metadata, figures, tables, code, formulas, gray
+prompts, references, and running headers/footers are fixed obstacles. A fixed
+region or page-bottom collision raises a layout planning failure before the
+`.partial` PDF can be renamed. No cross-column, whole-page, cross-page, or clip
+based hiding is permitted. The health report records heading counts, heading
+font ratios, anchor offsets, shifted paragraphs, fixed collisions, bottom
+overflow, and the failure reason.
+
+The release gate for 3.6.4 is ASTER (12 pages) plus the four maintained PDF
+fixtures: page count unchanged, no tofu/overflow/clipping, all translatable
+paragraphs translated, heading font ratio not below 1.0, anchor drift no more
+than 1.5 pt, and no suspicious mask overlap.

@@ -5,9 +5,15 @@
 ## 0.1 翻譯復原與輸出完整性（v3.6.4）
 
 *   批次翻譯失敗時，必須依序執行批次拆分、逐段請求與另一個 provider fallback；不得直接把原文標記為成功譯文。
-*   每次 provider 請求最多 30 秒，整份文件最多 10 分鐘。呼叫端取消必須立即停止，逾時則記錄 provider、頁碼與段落資訊。
+*   每個 provider 請求各自最多 30 秒；fallback chain 預設有獨立 75 秒上限（可由 `CLICKRA_TRANSLATION_*` timeout 設定覆寫），不能讓 primary 的重試吃掉 fallback 的時間。整份文件最多 10 分鐘。呼叫端取消必須立即停止，逾時則記錄 provider、頁碼與段落資訊。
 *   只有所有可用復原路徑都失敗時才回報翻譯失敗；失敗執行不得留下可被誤認為完成的 PDF。輸出先寫入 `.partial`，完成頁數與 layout health gate 後才改名為正式檔案。
 *   每次執行在輸出目錄產生 `*_health.json`，至少包含頁數、成功/避讓段落數、provider、guard clip 數、實際 overflow 數與失敗原因。
+
+### 0.2 審核檔案規則
+
+*   交給使用者審核的檔案，必須是實際翻譯 provider 產出的目標語言 PDF。
+*   `identity`、`synthetic-cjk`、英文原文、版面診斷重建檔與其他測試引擎只能用於內部測試，不得作為翻譯成果或審核檔案。
+*   若實際 provider 尚未成功完成，必須明確回報「尚無可審核翻譯檔」，不得以測試引擎輸出代替。
 
 ---
 
@@ -85,6 +91,11 @@
 *   **同規則亦適用於**：同一 Block 的 `TextLines` 序列中，相鄰兩行 `L1`（上一行）與 `L2`（下一行）若垂直淨空隙（`L1.Bottom - L2.Top`）大於 **$15.0\text{ pt}$**，亦必須在該處強制拆分。
 *   **目的**：防止 Docstrum 將跨區塊（如標題與正文、段落與圖表說明）的遠距行誤合併為同一段落。
 
+### C.2 視覺換行片段合併 (Wrapped-line Fragment Merge)
+*   `MergeWrappedLineFragments` 是上述「一般正文段落永不合併」的窄例外：它只合併同一視覺欄位中、同一左錨點附近、來源字級相近且垂直相鄰的碎片。
+*   兩段必須都是可翻譯、非標題、非圖說/表格/程式碼/公式/灰框/參考文獻，垂直間距須落在 **$-1\text{ pt}$ 到 $8\text{ pt}$**，且後段不得觸發新段落或章節起始標記。
+*   這不是跨段落的通用合併；句末標點、清單編號、章節標題、欄位切換或保護區域都會停止合併。目的只是把 PDF 擷取器拆開的同一行/同一段視覺片段還原，避免續行被獨立翻譯或縮成小字。
+
 ### D. 新段落/章節起始標記 (Paragraph Start Detection)
 *   以下特徵代表新段落或獨立區塊的起點，必須與前文斷開：
     *   段落開頭符合清單或編號格式，例如 `[1]`, `1.`, `1)`, `a.`, `a)`, `•`, `-`, `*`。
@@ -109,19 +120,23 @@
 ### A. 向量圖表與點陣圖 (Diagrams & Images) - ❗️ 最優先保護
 *   **點陣圖片**：任何寬度 > 80 且高度 > 80 的點陣圖（`Image XObjects`）。
 *   **向量圖表**：由線條、路徑組成的向量繪圖（`page.ExperimentalAccess.Paths`）。
-    *   **幾何判定**：任何單個路徑的包圍盒（Bounding Box）滿足 **(寬度 > 80 且 高度 > 30)** 或 **(寬度 > 30 且 高度 > 60)** 時，該包圍盒區域即視為圖表區。合併後形成 `DiagramMaskRegions`，用於 Pass 1/2 跳過譯文遮罩與覆蓋。
+    *   **幾何判定**：先收集包圍盒大於 **$4\times4\text{ pt}$** 的向量路徑，再以叢集規則保留真正的圖形區（單一路徑須達 **$80\times30$** 或 **$30\times60$**；多路徑叢集須達最少 3 條且合併區域達相同尺度）。過小、全頁背景與細線框不形成 `DiagramMaskRegions`。
     *   **避讓對象**：
         1. 任何與圖表區幾何交集的段落。
         2. **可選取圖表文字層（Figure labels）**：柱狀圖/折線圖的軸刻度、圖例（`GPT-4`、`Models`、`Completion Level (%)`）、子圖標題 `(a)…` 等常為 PDF **文字層**（可選取），與向量路徑重疊。`MarkDiagramFigureLabels` + `FinalizeDiagramFigureLabels` 依字元/段落與 `DiagramMaskRegions` 重疊標記 `IsDiagram = true`；`ReclassifyChartLabelsMisclassifiedAsTable` 將誤標為 `IsTable` 的圖例改回圖表。
-        3. **鄰近度傳播避讓**：頁面含圖表時，**僅** `IsLikelyChartLabel` 短標籤（≤4 詞、高度 ≤22 pt，或 `(a)` / 軸刻度等明確型態），若與已避讓圖表段落距離在 $30\text{ pt}$ 以內，自動設為 `IsBypassed = true` 且 `IsDiagram = true`。
-        4. **頁首頁尾排除**：`ClearDiagramFlagOnRunningHeaders` 清除頂部/底部 running header/footer 的 `IsDiagram`，避免誤判。
+        3. **Workflow 短標籤優先**：段落幾何與 `DiagramMaskRegions` 相交、字高 ≤ 22 pt 且 ≤ 6 詞的短標籤，即使一般 callout heuristic 將其視為可翻譯，也必須標記 `IsDiagram = true`、`IsBypassed = true`。最後的頁面分類 invariant 會再次套用此規則，防止後續 cleanup 把標籤改回可翻譯而造成白色遮罩。長段落仍維持翻譯；明確 gray Prompt 標題／子標題優先走 gray Prompt 規則。這裡使用段落與圖形區的幾何相交，不依賴不穩定的字元重疊比例。
+        4. **鄰近度傳播避讓**：頁面含圖表時，**僅** `IsLikelyChartLabel` 短標籤（≤4 詞、高度 ≤22 pt，或 `(a)` / 軸刻度等明確型態），若與已避讓圖表段落距離在 $30\text{ pt}$ 以內，自動設為 `IsBypassed = true` 且 `IsDiagram = true`。
+        5. **頁首頁尾排除**：`ClearDiagramFlagOnRunningHeaders` 清除頂部/底部 running header/footer 的 `IsDiagram`，避免誤判。
     *   **選擇性 Strip（Selective Font Strip）**：`StripTextFromPage` **僅**剝除可譯段落（`IsBypassed = false`）所使用的 PDF 字型資源；圖表/workflow 標籤、表格儲存格（若未共用可譯字型）、程式碼、灰色 Prompt 框、數學公式、參考文獻、作者欄所用字型**保留**於原始 PDF 串流。Pass 2 中 `RenderBypassedParagraph` **僅**在該段落字型已被 strip 時才重繪；`IsDiagram` 標籤預設不重畫，維持原始英文單層清晰文字。
+    *   **圖表與灰色 Prompt 必須分離**：`DiagramMaskRegions` 只代表圖形幾何，不能直接推論為灰色 Prompt。只有同一幾何區內存在明確 Prompt 標題，或頁面實際存在淺灰填色向量框時，才可建立 `EffectiveGrayMaskRegions`。圖表區不得因尺寸相似而套用白色 Prompt 遮罩。
     *   **內容串流狀態不可重設**：PDF page 的 `/Contents` 可能是多個連續串流，且可在 `TJ`/`Tj` 文字執行中切開；`StripTextFromPage` 必須跨串流延續目前 `Tf` 字型狀態，否則只會清除第一段而留下後續幽靈原文（ASTER p1 摘要回歸案例）。
     *   **Pass 1/2 遮罩與 overlay**：`ShouldProtectDiagramRegionFromParagraph` 僅保護 `IsDiagram` 短標籤與圖表 bbox 內標籤；`IsTranslatableBodyProse`、章節標題、多句正文**一律**仍執行 Pass 1 白色遮罩與 Pass 2 中文 overlay。雙欄頁左欄正文不得因 gutter 與右欄 Figure 遮罩輕微重疊而 skipRender。
+    *   **圖說遮罩邊界（硬性）**：`Figure` / `Fig.` 圖說可以翻譯，但白色遮罩的垂直範圍固定在來源圖說 bbox（只允許向下保留足夠 padding 清除多行原文），不得因譯文變高而向上侵入圖表。一般正文遮罩的上緣仍由 `ClampMaskTopBelowDiagrams` 截在圖表底邊之下；圖表四邊線與內容必須保留。
     *   **無損核心限制**：嚴禁解壓縮、修改或剝除 `/Form` XObjects 與 `/Image` XObjects 內部 content stream 的任何內容。
     *   **⚠️ 表格網格線誤判例外**：表格的向量框線/網格線（`page.ExperimentalAccess.Paths`）可能滿足圖表幾何門檻，使 `OverlapsWithLargeImage` 將儲存格文字標為 `IsDiagram = true`。圖表段落**不**參與 Pass 2 譯文重繪；若頁面同時執行 `StripTextFromPage`，儲存格英文會被剝除且無法補回，造成 Work description 等欄位整段消失。見 §2.E `ReclassifyWorkDivisionTableText`。
     *   **`ReclassifyTableMisclassifiedProse`（表格 bbox 內正文誤判清除）**：比較表 bbox 向下/向外擴張時，可能誤標貢獻 bullet（`•`）、「To sum up…」導言、表格腳註續行（`and attack techniques…`）、章節標題（如 `Background and Related Work`）為 `IsTable`。驗證基準：`PentestAgent_Agent Pentest.pdf` p2 的 Table 1 儲存格應 `table=True`，貢獻 bullet 與腳註應 `bypass=False`。
-    *   **⚠️ 圓角標註框（Findings callout）誤判例外**：研究問題摘要框（如 `RQ2 Findings:`、`RQ3 Finding:`）的圓角向量路徑會觸發 `OverlapsWithLargeImage`，使框內長段落被標為 `IsDiagram = true`；strip 後 Pass 2 跳過圖表區重繪，造成框內譯文整段空白。見 `ReclassifyCalloutFindingsText` + **`IsTranslatableCalloutProse`**：符合 Findings、階段標記句型（`Intelligence Gathering:` 等章節正文）、章節標題（`IsHeadingParagraph`）或多句正文（`IsTranslatableBodyProse`）的段落改回可翻譯（`IsDiagram = false`）。**圖表軸/圖例/workflow 短標籤**（`IsLikelyChartLabel`）仍 bypass 並 letter-perfect 重繪英文。驗證基準：`TOGLL_Oracle Generation.pdf` p7/p8 Findings 框應有中文譯文；`PentestAgent_Agent Pentest.pdf` p5 §3.1 正文應可譯、Figure 2/3 workflow 短標籤仍為英文。
+    *   **⚠️ 圓角標註框（Findings callout）誤判例外**：研究問題摘要框（如 `RQ2 Findings:`、`RQ3 Finding:`）的圓角向量路徑會觸發 `OverlapsWithLargeImage`，使框內長段落被標為 `IsDiagram = true`；strip 後 Pass 2 跳過圖表區重繪，造成框內譯文整段空白。見 `ReclassifyCalloutFindingsText` + **`IsTranslatableCalloutProse`**：符合 Finding/Findings、階段標記句型（`Intelligence Gathering:` 等章節正文）、章節標題（`IsHeadingParagraph`）或多句正文（`IsTranslatableBodyProse`）的段落改回可翻譯（`IsDiagram = false`）。**圖表軸/圖例/workflow 短標籤**（`IsLikelyChartLabel`）仍 bypass 並 letter-perfect 重繪英文。驗證基準：`TOGLL_Oracle Generation.pdf` p7/p8 Findings 框應有中文譯文；`PentestAgent_Agent Pentest.pdf` p5 §3.1 正文應可譯、Figure 2/3 workflow 短標籤仍為英文。
+    *   **Findings 框線與底色保留（硬性）**：可翻譯的 `Finding` / `Findings` 圓角框屬於「可翻譯文字 + 固定向量容器」，不是一般欄正文。Pass 1 不得將遮罩擴展到整欄，也不得覆蓋框線、圓角或底色；遮罩必須限制在框內文字繪製區，並保留四周至少 1 pt 的邊界。若必須重建背景，必須以來源框的幾何與填色重繪後再畫譯文。健康檢查與視覺回歸須驗證框線四邊仍存在；不得只以 `clipped` / `overflow` 為通過條件。
     *   **⚠️ 圖表遮罩 skipRender 誤殺正文（PentestAgent p5 §3.1）**：舊邏輯對任何與 `DiagramMaskRegions` 幾何交集（20×3 pt）的段落一律跳過 Pass 1 遮罩與 Pass 2 譯文渲染。雙欄頁左欄正文 bbox 底部常與右欄 Figure 2 遮罩在 gutter 處輕微重疊，導致「3.1 System Overview」正文 strip 後整段空白。修正：**`ShouldProtectDiagramRegionFromParagraph`** + **`ShrinkDiagramMaskRegionsBottomGutter`** 僅在 `IsDiagram`、字元重疊比 ≥ 0.4、或短標籤中心落在圖表區時才 skip；`IsTranslatableBodyProse` / 章節標題 / 多句正文一律仍渲染譯文。鄰近度傳播僅限 `IsLikelyChartLabel` 短標籤。
 
 ### B. 獨立與行內數學公式 (Math Formulas & Equations)
@@ -194,7 +209,7 @@
 ### A. 限流與雙軌翻譯機制 (Rate Limiting & Fallback)
 *   **併發控制**：使用 `SemaphoreSlim(1, 1)` 強制單一執行緒進行翻譯請求，並在鎖定內加入 $150\text{ms}$ 至 $400\text{ms}$ 的隨機延遲。
 *   **批次翻譯 (Batch Translate)**：優先調用 `TranslateBatchAsync` 進行整頁批次翻譯，減少 HTTP 請求往返。
-*   **復原流程**：若批次翻譯因網絡或 API 限流失敗，先將批次拆半，再對最小批次逐段呼叫；每層都可使用另一個 provider fallback。每次請求有 30 秒上限，避免整頁卡死。
+*   **復原流程**：若批次翻譯因網絡或 API 限流失敗，先將批次拆半，再對最小批次逐段呼叫；每層都可使用另一個 provider fallback。每個 provider 有獨立 30 秒上限，fallback chain 預設 75 秒，避免 primary 重試時提前取消 fallback。
 *   **完整性**：逐段復原仍失敗時，必須中止該次輸出並產生 health report；嚴禁以原文靜默填補失敗段落後宣稱翻譯完成。
 
 ### B. 術語後處理修正 (Terminology replacements) - `PostProcessTranslation`
@@ -217,9 +232,16 @@
 
 ### 4.0 零裁切排版門檻（v3.6.4）
 
-*   翻譯段落必須先量測並 reflow；若行寬或高度超出可用欄位，逐步縮小字型（下限 65%）並重新排版。
+*   翻譯段落必須先量測並 reflow；一般正文的字型縮放下限統一為 **80%**。標題不適用縮放策略。
 *   `guardClip` 必須為 0；圖表/欄位保護改由遮罩邊界與段落 reflow 完成，不得用外層 `IntersectClip` 靜默刪除譯文。health report 的 `GuardClipEntries` 與 `OverflowEntries` 都必須為 0。
 *   實際 overflow、頁數變更或健康檢查失敗時，不得提交正式輸出檔案。
+
+### 4.0.A 標題階層、字級與幾何錨點（硬性規則）
+*   `PageTitle`、摘要標題、章節／子章節標題必須保留來源的視覺字級；輸出標題不得小於來源，也不得因主標題與副標題合併而使用平均字級。合併群組一律採主標題字級。
+*   標題的來源中心點、左錨點或右錨點必須保留；單行文字框不得單獨用來推斷置中。health report 必須記錄錨點偏移，發布門檻為 **≤ 1.5 pt**。
+*   標題增加行數時，只能推移同一欄、位於標題下方的可翻譯正文。作者欄、圖表、表格、程式碼、公式、灰色 prompt、參考文獻與頁首頁尾均為固定障礙，不得跨欄、整頁或跨頁重排。
+*   若同欄推移會撞到固定障礙或頁底，layout planning 必須失敗並寫入 `LayoutFailureReason`；不得輸出半成品或以 clip 隱藏溢出。
+*   每次執行的 JSON health report 必須包含標題數、來源／輸出字級比例、錨點偏移、推移段落數、固定區碰撞與底部溢位。
 
 翻譯後的中文文字必須使用 PDFsharp 的 `XGraphics` 重新繪製，並嚴格遵循字型與佈局對齊規範。
 
@@ -227,33 +249,35 @@
 *   **限制**：PDFsharp 不支援 TrueType Collection (`.ttc`) 字型。
 *   **硬性映射表**：
     *   標楷體 (`dfkai-sb`, `dfkai`, `kaiu`) $\rightarrow$ **一律**載入 `kaiu.ttf`（含 `b`/`bi`）。**嚴禁**對 CJK 翻譯使用 `simsunb.ttf`（PDF 嵌入為 SimSun-ExtB，CJK cmap 損壞導致亂碼）。
-    *   微軟正黑體 (`msjh`, `jhenghei`) $\rightarrow$ 常規樣式載入 `kaiu.ttf`；粗體/粗斜體 (`b`/`bi`) 載入 `simsunb.ttf`（僅非 CJK 情境；CJK 譯文強制 `Regular` 樣式）。
-    *   微軟雅黑體 (`msyh`, `yahei`) $\rightarrow$ 常規 `kaiu.ttf`；粗體/粗斜體 `simsunb.ttf`（同上，CJK 譯文不走粗體路徑）。
+    *   微軟正黑體 (`msjh`, `jhenghei`) $\rightarrow$ 常規樣式載入 `kaiu.ttf`；CJK 譯文粗體不切換 `simsunb.ttf`，由 renderer 以同字型二次描繪保留字重。
+    *   微軟雅黑體 (`msyh`, `yahei`) $\rightarrow$ 常規 `kaiu.ttf`；CJK 譯文同樣使用 renderer 的二次描繪，不走不相容的粗體路徑。
     *   日文字型 (`msgothic`) $\rightarrow$ 載入實體檔 `kaiu.ttf` (以標楷體替代日文漢字)。
     *   韓文字型 (`malgun`) $\rightarrow$ 載入實體檔 `malgun.ttf` (若無則使用標楷體)。
     *   Cambria / Math 字型 $\rightarrow$ `times.ttf` (Times New Roman，避開 Cambria 預設 TTC 崩潰)。
     *   等寬字型 $\rightarrow$ `cour.ttf` (Courier New)。
 *   **字型缺字 Fallback**：若渲染特定 Unicode 字元或數學運算子遇到缺字，`ClickraFontResolver` 必須能回退至 `Segoe UI Symbol` (`seguisym.ttf`)。
 *   **來源字型粗體判定**（`IsSourceFontBold` / `IsLaTeXMediumFont`）：
-    *   `IsLaTeXMediumFont`：字型名稱含 `Medi`（如 `NimbusRomNo9L-Medi`）為 **medium 字重，非粗體**。
-    *   `IsSourceFontBold`：僅當**非** LaTeX Medium 且名稱含 `Bold`、`bx`、`bf` 時才視為粗體。
+    *   IEEE 的 Nimbus `NimbusRomNo9L-Medi` 是實際粗體 face，必須視為粗體；其他 TeX medium/math face 仍不視為粗體。
+    *   粗體範圍以 `{b}` / `{/b}` inline markers 隨翻譯傳遞，禁止只用整段 `IsBold` 推測。
     *   `IsLineBold`：一行中超過 50% 字元為粗體時，該行視為粗體行。
-*   **CJK 譯文字重強制 Regular**（`IsCjkTranslationFont`）：非 bypass、非程式碼的 CJK 譯文段落（標楷體、微軟正黑、雅黑、Malgun、MS Gothic 等）在 `RenderParagraph` 中**強制** `XFontStyleEx.Regular`，不因來源 `Medi` 誤判或 `IsBold` 而走 `Bold` 路徑，避免 `ClickraFontResolver` 映射至 `simsunb.ttf` 產生 SimSun-ExtB 亂碼疊字。
+*   **CJK 譯文字重保留**（`IsCjkTranslationFont`）：非 bypass、非程式碼的 CJK 譯文使用 `kaiu.ttf` 常規字型；來源粗體／標題以 0.18 pt 同字型二次描繪保留視覺字重，禁止切換不相容的 CJK bold TTC/ExtB。
 
 ### B. 動態字體縮放與行高 (Font Scaling & Spacing)
 *   **行高乘數 (Line Spacing)**：
     *   預設中文字型為 **$1.35$** 倍字型大小。
     *   Arial 字型為 **$1.2$** 倍。
     *   參考文獻段落（References）為 **$1.15$** 倍。
-*   **字體與佈局收縮**：
+    *   若來源段落的 bbox 明顯低估實際 glyph 行高，普通正文可使用 **$1.0$** 倍行距以保留來源字級；這是來源測量修正，不是任意縮小文字。
+    *   **字體與佈局收縮（僅一般正文）**：
     *   若翻譯後中文字數增加，導致總渲染高度大於原始段落包圍盒高度：
         1. 優先壓縮行高倍數（計算 `limitHeight / (rows * fontSize)`），最低可壓縮至 **$1.0$** 倍。
-        2. 若壓縮行高後高度依然超出，則對字型大小（FontSize）進行縮放，縮放比例最低限制為 **$0.8$**。
+        2. 若壓縮行高後高度依然超出，則對字型大小（FontSize）進行縮放，縮放比例最低限制為 **$0.8$**；標題禁止使用此步驟，必須交由同欄推移或失敗。
 
 ### C. 段落裁切策略 (Paragraph Clipping)
 *   **禁止外層 guard clip**：不得在圖表或雙欄交界以 `IntersectClip` 截斷翻譯段落；這會讓流程表面成功、實際遺失下半段文字。
 *   **唯一允許的段落 clip**：renderer 內部可用 `layoutWidth` 與 `Math.Max(paragraphHeight, renderedHeight)` 保護自身繪製邊界，但只要產生 overflow 就必須讓 health gate 失敗。
 *   **原則**：優先透過 reflow、行高/字型縮放與遮罩幾何邊界解決碰撞；`GuardClipEntries` 與 `OverflowEntries` 均須為 0。
+*   **正文續行**：不得因單行來源 bbox 過矮而把段尾縮到 80% 以下或縮成小字；續行沿用同欄正文有效字級。若自然行高撞到頁尾、表格或其他固定區，必須失敗，不得輸出。
 
 ### D. 遮罩與擦除規範 (Masking Rules)
 *   **Pass 1 白色遮罩**：對需翻譯且非 bypass、非 `IsTable` 的段落，於原始段落座標外擴 **$1.5\text{ pt}$**（`maskPad`）繪製白色矩形，擦除英文本文。
@@ -317,6 +341,7 @@
 ### D. 已知限制 (Known Limitations)
 *   **羅馬數字章節引用**（如 `II-A`）：當譯文以中文替換原文後，重繪字元序列可能不再包含 `II-A` 字面，導致連結包圍盒偏移或失效。此類引用目前僅能盡力以空間位置對齊，無法保證 100% 命中。
 *   **程式碼清單內連結**：若註解正確掛載於 bypass 程式碼段落，保留原始英文座標；若誤掛至譯文段落則可能錯位。
+*   **外部 URL 的來源條件**：流程只會保留並校正輸入 PDF 已存在的 `/Link` + `/URI` annotation；頁面上看得到的純文字 URL 若來源沒有 annotation，不會被誤宣稱為可點擊連結。ASTER 的 `ASTER .pdf` 是無 annotation 的翻譯來源；需要驗證外部連結保留時，必須使用含連結 annotation 的 `ASTER- .pdf` fixture。
 
 ---
 
@@ -325,16 +350,18 @@
 | 陷阱 | 症狀 | 正確做法 |
 | :--- | :--- | :--- |
 | 作者區塊 Y 軸 | Abstract 正文整段未翻譯 | `para.Y0 >= abstractTop && para.Y1 <= titleBottom` |
-| SimSun-ExtB | CJK 譯文亂碼疊字 | `Medi` 非粗體；CJK 譯文強制 `Regular`，禁走 `simsunb.ttf` |
+| SimSun-ExtB | CJK 譯文亂碼疊字 | CJK 譯文固定 `kaiu.ttf`；粗體／標題以 0.18 pt 二次描繪保留字重，禁走不相容 `simsunb.ttf` |
 | 表格頁未切欄 | 全頁寬段落遮蓋整張表 | `GetMergedBlocks` 表格頁仍執行中央線切分 |
 | 遮罩向下延伸 | 表格頂部框線被白塊抹除 | 譯文較高時遮罩僅向上延伸 + `ClampMaskBottomAboveTables` |
 | 全頁表格遮罩 bbox | 表格頁正文譯文全部消失 | `BuildTableMaskRegions` 叢集式區域，非單一全頁 bbox |
 | 表格頁不 strip | 幽靈英文殘留於向量框線上 | 表格頁執行 `StripTextFromPage`，Pass 2 重繪 bypass 儲存格 |
 | 表格網格誤判為圖表 | WORK DIVISION 等表格 Work description 欄譯後整段消失 | 表格向量框線觸發 `OverlapsWithLargeImage` → `IsDiagram`；頁面 strip 後圖表區不重繪。`ReclassifyWorkDivisionTableText` 將標題下儲存格改回 `IsTable`（p14 `tableCount` 5→36） |
 | Findings 框誤判為圖表 | RQ2/RQ3 Findings 框內譯文空白 | 圓角向量路徑觸發 `IsDiagram`。`IsTranslatableCalloutProse` + `ReclassifyCalloutFindingsText` 改回可譯 |
+| Findings 框線被白遮罩擦除 | 翻譯後 Finding 5/6 只剩文字，左右或上下邊線消失 | `IsFindingCallout` 禁止整欄 mask expansion；保留來源圓角框的底色與四邊邊線，並以框線存在性做視覺回歸 |
+| 圖說遮罩擦除圖表底線 | 翻譯後圖四等圖表只剩左右底線，中間底邊消失 | 圖說仍可翻譯，但白色遮罩必須套用 `ClampMaskTopBelowDiagrams`，禁止向上侵入圖表向量區 |
 | 灰色 Prompt 框誤譯 | p7/p8 灰色框被翻成中文；p3/p6 框內白遮罩 | Plan A：`IsGrayPromptContent` 整框 bypass；Pass 1 跳過灰框；`letterRatio >= 0.5` 硬邊界；`FinalizeGrayPromptContentFlags` 防 diagram 覆寫；`… Example` 標題觸發 |
 | 圖表遮罩 skipRender 誤殺正文 | PentestAgent p5 §3.1 正文 strip 後整段消失 | gutter 交集 + 誤標 `IsCode` 導致 strip 後不重繪。`ShouldProtectDiagramRegionFromParagraph` 排除 figure caption；正文 `IsCode` 清除後正常渲染譯文 |
-| 標題副標題被作者 bypass | p1「with LLMs」等副標殘留英文 | 副標緊貼主標題下方（gap ≤ 45 pt、≤ 8 字）須排除作者區 bypass |
+| 標題副標題被作者 bypass | p1「with LLMs」等副標殘留英文 | 副標緊貼主標題下方（gap ≤ 25 pt、≤ 8 字）須排除作者區 bypass |
 | 表格頁正文誤標 IsTable | RQ 導言段落英文幽靈疊於譯文下 | Pass 0.55：`Width > 38% 頁寬 && wordCount > 10` 清除 `IsTable` |
 | 參考文獻半譯 | `[2]`–`[16]` 書目中英混雜、作者名被譯成中文 | `ApplyReferencesSectionBypass`：區塊內條目全 bypass；僅 `REFERENCES` / `9. REFERENCE` 等標題可譯為「參考文獻」。雙欄頁須用 `GetPageReadingOrder` 正確切換至 `10. WORK DIVISION` |
 | 表格 Reference 欄誤觸發 bypass | 表格頁正文未譯、書目區異常全 bypass | `IsReferencesSectionHeading` 排除 `IsTable`；無編號標題大小寫不敏感（`References` / `REFERENCES` 皆可） |
