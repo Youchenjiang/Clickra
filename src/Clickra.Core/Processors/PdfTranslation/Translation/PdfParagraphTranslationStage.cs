@@ -37,7 +37,9 @@ internal static class PdfParagraphTranslationStage
                 else
                 {
                     paragraphsToTranslate.Add(para);
-                    textsToTranslate.Add(para.TextWithPlaceholders);
+                    textsToTranslate.Add(string.IsNullOrWhiteSpace(para.TranslationTextWithStyles)
+                        ? para.TextWithPlaceholders
+                        : para.TranslationTextWithStyles);
                 }
             }
 
@@ -57,12 +59,31 @@ internal static class PdfParagraphTranslationStage
                     {
                         for (int i = 0; i < results.Count; i++)
                         {
-                            string rawResult = string.IsNullOrWhiteSpace(results[i])
-                                ? paragraphsToTranslate[i].TextWithPlaceholders
-                                : results[i];
+                            if (string.IsNullOrWhiteSpace(results[i]))
+                            {
+                                throw new InvalidOperationException(
+                                    $"Translation provider returned an empty result for paragraph {i + 1} on page {p + 1}.");
+                            }
+
+                            // A blank provider response is a hard failure. Never
+                            // substitute source text here: doing so creates a PDF
+                            // that looks complete while silently leaving one
+                            // paragraph untranslated.
+                            string rawResult = results[i];
+                            string styledSource = paragraphsToTranslate[i].TranslationTextWithStyles;
+                            if (styledSource.Contains("{b}", StringComparison.Ordinal) &&
+                                (!rawResult.Contains("{b}", StringComparison.Ordinal) ||
+                                 !rawResult.Contains("{/b}", StringComparison.Ordinal)))
+                            {
+                                throw new InvalidOperationException(
+                                    $"Translation provider dropped inline bold markers for paragraph {i + 1} on page {p + 1}.");
+                            }
+                            string restoredMarkers = PdfParagraphMarkerNormalizer.RestoreTranslatedMarkers(
+                                paragraphsToTranslate[i].TextWithPlaceholders,
+                                rawResult);
                             paragraphsToTranslate[i].TranslatedText = PostProcessor.Process(
                                 paragraphsToTranslate[i].TextWithPlaceholders,
-                                rawResult,
+                                restoredMarkers,
                                 targetLang
                             );
                             report.TranslatedParagraphs++;

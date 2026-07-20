@@ -8,20 +8,6 @@ namespace Clickra.Core.Processors
 {
     internal static class PdfTranslationBatchRunner
     {
-        private static TimeSpan ProviderCallTimeout
-        {
-            get
-            {
-                if (int.TryParse(
-                    Environment.GetEnvironmentVariable("CLICKRA_TRANSLATION_PROVIDER_TIMEOUT_SECONDS"),
-                    out int seconds) && seconds > 0)
-                {
-                    return TimeSpan.FromSeconds(Math.Clamp(seconds, 1, 120));
-                }
-                return TimeSpan.FromSeconds(30);
-            }
-        }
-
         public static List<string> TranslatePageBatches(
             ITranslationEngine translator,
             List<string> textsToTranslate,
@@ -73,7 +59,10 @@ namespace Clickra.Core.Processors
             {
                 var translated = RunWithTimeout(
                     token => translator.TranslateBatchAsync(chunk, targetLang, token),
-                    cancellationToken);
+                    cancellationToken,
+                    translator is FallbackTranslator
+                        ? TranslationTimeouts.ChainCallTimeout
+                        : TranslationTimeouts.ProviderCallTimeout);
                 if (translated.Count != chunk.Count)
                 {
                     throw new InvalidOperationException(
@@ -114,7 +103,10 @@ namespace Clickra.Core.Processors
             {
                 string translated = RunWithTimeout(
                     token => translator.TranslateAsync(sourceText, targetLang, token),
-                    cancellationToken);
+                    cancellationToken,
+                    translator is FallbackTranslator
+                        ? TranslationTimeouts.ChainCallTimeout
+                        : TranslationTimeouts.ProviderCallTimeout);
                 if (string.IsNullOrWhiteSpace(translated))
                 {
                     throw new InvalidOperationException("Translator returned an empty result.");
@@ -131,10 +123,11 @@ namespace Clickra.Core.Processors
 
         private static T RunWithTimeout<T>(
             Func<CancellationToken, Task<T>> operation,
-            CancellationToken cancellationToken)
+            CancellationToken cancellationToken,
+            TimeSpan timeout)
         {
             using var timeoutCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
-            timeoutCts.CancelAfter(ProviderCallTimeout);
+            timeoutCts.CancelAfter(timeout);
             try
             {
                 return operation(timeoutCts.Token).WaitAsync(timeoutCts.Token).GetAwaiter().GetResult();
@@ -142,7 +135,7 @@ namespace Clickra.Core.Processors
             catch (OperationCanceledException) when (
                 !cancellationToken.IsCancellationRequested && timeoutCts.IsCancellationRequested)
             {
-                throw new TimeoutException($"Translation provider call exceeded {ProviderCallTimeout.TotalSeconds:0}s.");
+                throw new TimeoutException($"Translation provider chain call exceeded {timeout.TotalSeconds:0}s.");
             }
         }
 
