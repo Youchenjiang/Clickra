@@ -4,6 +4,18 @@ using UglyToad.PdfPig.DocumentLayoutAnalysis;
 
 namespace Clickra.Core.Models
 {
+    public enum PdfParagraphSemanticRole
+    {
+        Unknown,
+        PageTitle,
+        AbstractHeading,
+        SectionHeading,
+        SubsectionHeading,
+        FigureCaption,
+        Body,
+        Protected
+    }
+
     public class PdfParagraph
     {
         public enum TextAlignment
@@ -20,6 +32,8 @@ namespace Clickra.Core.Models
         );
 
         public string TextWithPlaceholders { get; set; } = "";
+        /// <summary>Source text annotated with inline style markers for translation.</summary>
+        public string TranslationTextWithStyles { get; set; } = "";
         public string TranslatedText { get; set; } = "";
         public double X0 { get; set; }
         public double Y0 { get; set; }
@@ -39,6 +53,15 @@ namespace Clickra.Core.Models
         public bool IsDiagram { get; set; }
         /// <summary>Paragraph belongs to a gray System Message / Prompt box; keep English.</summary>
         public bool IsGrayPromptContent { get; set; }
+        public bool IsPageTitle { get; set; }
+        /// <summary>Semantic role captured from the source before translation.</summary>
+        public PdfParagraphSemanticRole SemanticRole { get; set; }
+        /// <summary>Largest source glyph size; unlike AverageFontSize this survives title groups.</summary>
+        public double SourceVisualFontSize { get; set; }
+        public double SourceLineHeight { get; set; }
+        /// <summary>Planner-provided effective font size for a continuation line.</summary>
+        public double LayoutFontSizeOverride { get; set; }
+        public string TranslationGroupId { get; set; } = string.Empty;
         public bool brk { get; set; }
         public List<MathFormula> Formulas { get; set; } = new List<MathFormula>();
         public object TextDirection { get; set; } = "Rotate0";
@@ -78,6 +101,7 @@ namespace Clickra.Core.Models
         private void ApplyAnalysis(PdfParagraphAnalysis analysis)
         {
             TextWithPlaceholders = analysis.TextWithPlaceholders;
+            TranslationTextWithStyles = analysis.TranslationTextWithStyles;
             AverageFontSize = analysis.AverageFontSize;
             IsBold = analysis.IsBold;
             IsItalic = analysis.IsItalic;
@@ -86,6 +110,8 @@ namespace Clickra.Core.Models
             brk = analysis.HasLineBreak;
             Formulas = analysis.Formulas;
             AllLetters = analysis.AllLetters;
+            SourceVisualFontSize = AllLetters.Count == 0 ? AverageFontSize : AllLetters.Max(l => l.FontSize);
+            SourceLineHeight = AllLetters.Count == 0 ? 0 : AllLetters.Max(l => l.Top - l.Bottom);
         }
 
         public static bool IsMathLine(UglyToad.PdfPig.DocumentLayoutAnalysis.TextLine line)
@@ -136,6 +162,14 @@ namespace Clickra.Core.Models
                 this.TextWithPlaceholders = this.TextWithPlaceholders + " " + otherText;
             }
 
+            string otherStyled = string.IsNullOrWhiteSpace(other.TranslationTextWithStyles)
+                ? otherText
+                : other.TranslationTextWithStyles;
+            if (string.IsNullOrWhiteSpace(this.TranslationTextWithStyles))
+                this.TranslationTextWithStyles = otherStyled;
+            else
+                this.TranslationTextWithStyles = this.TranslationTextWithStyles + " " + otherStyled;
+
             this.AllLetters.AddRange(other.AllLetters);
 
             this.X0 = Math.Min(this.X0, other.X0);
@@ -151,6 +185,8 @@ namespace Clickra.Core.Models
             if (this.AllLetters.Count > 0)
             {
                 this.AverageFontSize = this.AllLetters.Average(l => l.FontSize);
+                this.SourceVisualFontSize = this.AllLetters.Max(l => l.FontSize);
+                this.SourceLineHeight = this.AllLetters.Max(l => l.Top - l.Bottom);
             }
 
             this.brk = true;

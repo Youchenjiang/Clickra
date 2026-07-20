@@ -17,6 +17,20 @@ namespace Clickra.Core.Processors
             int len = text.Length;
             while (i < len)
             {
+                if (text.AsSpan(i).StartsWith("{b}"))
+                {
+                    if (sb.Length > 0) { list.Add(sb.ToString()); sb.Clear(); }
+                    list.Add("{b}");
+                    i += 3;
+                    continue;
+                }
+                if (text.AsSpan(i).StartsWith("{/b}"))
+                {
+                    if (sb.Length > 0) { list.Add(sb.ToString()); sb.Clear(); }
+                    list.Add("{/b}");
+                    i += 4;
+                    continue;
+                }
                 if (text[i] == '{' && i + 2 < len && text[i + 1] == 'v')
                 {
                     int j = i;
@@ -95,6 +109,18 @@ namespace Clickra.Core.Processors
                     rows.Add(currentRow);
                     currentRow = new PdfLayoutRow();
                     currentX = 0;
+                    continue;
+                }
+
+                if (token is "{b}" or "{/b}")
+                {
+                    currentRow.Elements.Add(new PdfLayoutElement
+                    {
+                        Text = token,
+                        IsStyleMarker = true,
+                        StyleBold = token == "{b}",
+                        Width = 0
+                    });
                     continue;
                 }
 

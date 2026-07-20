@@ -4,6 +4,8 @@ namespace Clickra.Core.Processors
     {
         public string Text { get; set; } = "";
         public bool IsFormula { get; set; }
+        public bool IsStyleMarker { get; set; }
+        public bool StyleBold { get; set; }
         public int FormulaId { get; set; }
         public double Width { get; set; }
     }
