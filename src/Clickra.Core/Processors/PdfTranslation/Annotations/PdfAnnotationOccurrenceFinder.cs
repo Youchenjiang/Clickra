@@ -84,14 +84,25 @@ namespace Clickra.Core.Processors
             for (int i = 0; i < cleanRendered.Count; i++)
             {
                 char c = cleanRendered[i].Character;
-                if (c != '圖' && c != '图') continue;
-
-                int digitStart = i + 1;
-                while (digitStart < cleanRendered.Count &&
-                       (cleanRendered[digitStart].Character == ':' ||
-                        cleanRendered[digitStart].Character == '：'))
+                int digitStart;
+                if (c == '圖' || c == '图')
                 {
-                    digitStart++;
+                    digitStart = i + 1;
+                    while (digitStart < cleanRendered.Count &&
+                           (cleanRendered[digitStart].Character == ':' ||
+                            cleanRendered[digitStart].Character == '：'))
+                    {
+                        digitStart++;
+                    }
+                }
+                else if (IsEnglishFigurePrefix(cleanRendered, i, out digitStart))
+                {
+                    // `Fig. 2`, `Figure 2(c)` and their translated `圖2`
+                    // forms share the same exact-number span below.
+                }
+                else
+                {
+                    continue;
                 }
 
                 if (digitStart + digits.Length > cleanRendered.Count) continue;
@@ -113,10 +124,46 @@ namespace Clickra.Core.Processors
                     end++;
                 }
 
-                occurrences.Add(cleanRendered.GetRange(i, end - i));
+                // The source PDF link rectangle normally covers the figure
+                // number only (for example the `2` in `Fig. 2(c)`), not the
+                // translated label prefix. Returning the prefix here made a
+                // tiny source link expand to the whole `圖 2` label after
+                // translation and also made reflowed references look like
+                // paragraph-wide links. Keep the exact digit/suffix span.
+                occurrences.Add(cleanRendered.GetRange(digitStart, end - digitStart));
             }
 
             return occurrences;
+        }
+
+        private static bool IsEnglishFigurePrefix(
+            List<RenderedChar> chars,
+            int start,
+            out int digitStart)
+        {
+            digitStart = start;
+            if (start + 2 >= chars.Count ||
+                chars[start].Character != 'F' ||
+                char.ToLowerInvariant(chars[start + 1].Character) != 'i' ||
+                char.ToLowerInvariant(chars[start + 2].Character) != 'g')
+            {
+                return false;
+            }
+
+            int cursor = start + 3;
+            if (cursor < chars.Count && chars[cursor].Character == 'u')
+            {
+                if (cursor + 2 >= chars.Count ||
+                    char.ToLowerInvariant(chars[cursor + 1].Character) != 'r' ||
+                    char.ToLowerInvariant(chars[cursor + 2].Character) != 'e')
+                {
+                    return false;
+                }
+                cursor += 3;
+            }
+            if (cursor < chars.Count && chars[cursor].Character == '.') cursor++;
+            digitStart = cursor;
+            return digitStart < chars.Count && char.IsDigit(chars[digitStart].Character);
         }
 
         public static List<List<RenderedChar>> FindTextOccurrences(List<RenderedChar> cleanRendered, string cleanSearch)

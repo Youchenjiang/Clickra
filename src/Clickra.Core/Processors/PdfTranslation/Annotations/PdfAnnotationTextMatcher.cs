@@ -30,7 +30,8 @@ namespace Clickra.Core.Processors
             double paraX0,
             double paraY0,
             double paraWidth,
-            double paraHeight)
+            double paraHeight,
+            int figureOccurrenceIdx = -1)
         {
             if (renderedChars == null || renderedChars.Count == 0) return null;
 
@@ -49,7 +50,9 @@ namespace Clickra.Core.Processors
                 if (figureOccurrences.Count > 0)
                 {
                     return PdfAnnotationSpatialMatcher.PickOccurrenceBySpatialPosition(
-                        figureOccurrences, targetPdfX, targetPdfY, occurrenceIdx, preferVerticalAlignment: true);
+                        figureOccurrences, targetPdfX, targetPdfY,
+                        figureOccurrenceIdx >= 0 ? figureOccurrenceIdx : occurrenceIdx,
+                        preferVerticalAlignment: true);
                 }
 
                 if (figureDigits.Length == 1)
@@ -59,7 +62,9 @@ namespace Clickra.Core.Processors
                     if (looseFigure.Count > 0)
                     {
                         return PdfAnnotationSpatialMatcher.PickOccurrenceBySpatialPosition(
-                            looseFigure, targetPdfX, targetPdfY, occurrenceIdx, preferVerticalAlignment: true);
+                            looseFigure, targetPdfX, targetPdfY,
+                            figureOccurrenceIdx >= 0 ? figureOccurrenceIdx : occurrenceIdx,
+                            preferVerticalAlignment: true);
                     }
 
                     var digitOccurrences = PdfAnnotationOccurrenceFinder.FindTextOccurrences(cleanRendered, figureDigits);

@@ -7,6 +7,8 @@ namespace Clickra.Core.Models
         public PdfAnnotation PdfAnnotation { get; set; } = null!;
         public string Text { get; set; } = "";
         public int OccurrenceIndex { get; set; }
+        /// <summary>Ordinal among figure references in the source paragraph.</summary>
+        public int FigureOccurrenceIndex { get; set; } = -1;
         public int FirstLetterIndex { get; set; }
         public int LastLetterIndex { get; set; }
         public int TotalLetterCount { get; set; }
