@@ -37,6 +37,10 @@ If an authorized operation fails and fixing it requires a new branch, code chang
 
 If the user objects to or revokes an action, stop immediately. Do not “clean up” by reverting, deleting, cancelling, or force-pushing anything unless the user separately authorizes that exact cleanup.
 
+## 0.1 PDF Translation Review Artifact Rule
+
+When asking the user to review a PDF translation, provide only a PDF produced by the actual configured translation provider in the target language. `identity`, `synthetic-cjk`, English source PDFs, layout-only diagnostics, and other test-engine outputs are internal fixtures only and must never be presented as reviewable translation results. If the real provider has not completed successfully, state that no reviewable translated PDF is available yet.
+
 ## 1. Microsoft Store Ingestion API Lifecycle & State Definitions
 
 Microsoft Ingestion API operations are heavily asynchronous. Do NOT trust transient HTTP response success codes or simple status string outputs without validating the actual states inside Microsoft Partner Center.
