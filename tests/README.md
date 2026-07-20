@@ -33,6 +33,19 @@ when it does not exist.
 
 Useful optional PDF regression layers:
 
+The ASTER fixtures have different purposes: `ASTER .pdf` intentionally has no
+annotations, while `ASTER- .pdf` contains the publisher hyperlinks.  To verify
+that a translated linked fixture retains every URI destination (rectangles may
+move when text reflows), run:
+
+```powershell
+python tests\PdfRegression\test_pdf_links.py `
+  --translated "tmp\pdfs\aster-google-full-release-candidate\ASTER- _translated.pdf"
+```
+
+Running without `--translated` still checks that the two source fixtures are
+not accidentally treated as interchangeable.
+
 ```powershell
 # Full 16-page pipeline without network variability
 python tests\PdfRegression\run_translation_tests.py --identity-e2e
