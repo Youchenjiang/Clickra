@@ -15,6 +15,13 @@ public sealed class PdfTranslationHealthReport
     public int RenderEntries { get; init; }
     public int GuardClipEntries { get; init; }
     public int OverflowEntries { get; init; }
+    public int HeadingCount { get; init; }
+    public double MinimumHeadingFontRatio { get; init; } = 1.0;
+    public double MaximumAlignmentAnchorShift { get; init; }
+    public int ShiftedParagraphCount { get; init; }
+    public int FixedRegionCollisionCount { get; init; }
+    public int BottomOverflowCount { get; init; }
+    public string LayoutFailureReason { get; init; } = string.Empty;
     public IReadOnlyList<string> TranslationFailures { get; init; } = Array.Empty<string>();
     public bool Succeeded { get; init; }
     public DateTimeOffset CompletedAtUtc { get; init; } = DateTimeOffset.UtcNow;
@@ -38,6 +45,13 @@ public sealed class PdfTranslationHealthReport
         writer.WriteNumber(nameof(RenderEntries), RenderEntries);
         writer.WriteNumber(nameof(GuardClipEntries), GuardClipEntries);
         writer.WriteNumber(nameof(OverflowEntries), OverflowEntries);
+        writer.WriteNumber(nameof(HeadingCount), HeadingCount);
+        writer.WriteNumber(nameof(MinimumHeadingFontRatio), MinimumHeadingFontRatio);
+        writer.WriteNumber(nameof(MaximumAlignmentAnchorShift), MaximumAlignmentAnchorShift);
+        writer.WriteNumber(nameof(ShiftedParagraphCount), ShiftedParagraphCount);
+        writer.WriteNumber(nameof(FixedRegionCollisionCount), FixedRegionCollisionCount);
+        writer.WriteNumber(nameof(BottomOverflowCount), BottomOverflowCount);
+        writer.WriteString(nameof(LayoutFailureReason), LayoutFailureReason);
         writer.WriteStartArray(nameof(TranslationFailures));
         foreach (string failure in TranslationFailures)
             writer.WriteStringValue(failure);

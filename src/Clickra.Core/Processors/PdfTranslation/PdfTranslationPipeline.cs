@@ -61,6 +61,7 @@ namespace Clickra.Core.Processors
                 Path.GetDirectoryName(finalOutputPath) ?? ".",
                 Path.GetFileNameWithoutExtension(finalOutputPath) + "_health.json");
             PdfTranslationStageReport? stageReport = null;
+            PdfTranslationLayoutSummary? layoutSummary = null;
             string providerName = string.Empty;
             int sourcePages = 0;
 
@@ -93,7 +94,7 @@ namespace Clickra.Core.Processors
                     pageParagraphs, inputPath, targetLang, onProgress, operationToken);
 
                 if (File.Exists(partialOutputPath)) File.Delete(partialOutputPath);
-                PdfTranslatedPdfRebuilder.Rebuild(
+                layoutSummary = PdfTranslatedPdfRebuilder.Rebuild(
                     inputPath,
                     partialOutputPath,
                     targetLang,
@@ -134,6 +135,12 @@ namespace Clickra.Core.Processors
                     RenderEntries = renderEntries,
                     GuardClipEntries = guardClipEntries,
                     OverflowEntries = overflowEntries,
+                    HeadingCount = layoutSummary.HeadingCount,
+                    MinimumHeadingFontRatio = layoutSummary.MinimumHeadingFontRatio,
+                    MaximumAlignmentAnchorShift = layoutSummary.MaximumAlignmentAnchorShift,
+                    ShiftedParagraphCount = layoutSummary.ShiftedParagraphCount,
+                    FixedRegionCollisionCount = layoutSummary.FixedCollisionCount,
+                    BottomOverflowCount = layoutSummary.BottomOverflowCount,
                     TranslationFailures = stageReport.Failures,
                     Succeeded = true
                 };
@@ -143,12 +150,26 @@ namespace Clickra.Core.Processors
             catch (OperationCanceledException ex) when (!cancellationToken.IsCancellationRequested)
             {
                 WriteFailureHealthReport(healthPath, inputPath, finalOutputPath, sourcePages, stageReport,
-                    providerName, "Translation operation exceeded the 10-minute document deadline.");
+                    providerName, "Translation operation exceeded the 10-minute document deadline.", layoutSummary);
                 throw new TimeoutException("PDF translation exceeded the 10-minute document deadline.", ex);
             }
             catch (Exception ex)
             {
-                WriteFailureHealthReport(healthPath, inputPath, finalOutputPath, sourcePages, stageReport, providerName, ex.Message);
+                // Keep the full stack in the health report so a deterministic
+                // layout failure can be fixed from the artifact without asking
+                // the user to reproduce it under a debugger.
+                var planningFailure = ex as PdfLayoutPlanningException;
+                WriteFailureHealthReport(
+                    healthPath,
+                    inputPath,
+                    finalOutputPath,
+                    sourcePages,
+                    stageReport,
+                    providerName,
+                    ex.ToString(),
+                    layoutSummary,
+                    planningFailure?.FixedCollisionCount,
+                    planningFailure?.BottomOverflowCount);
                 throw;
             }
             finally
@@ -167,7 +188,10 @@ namespace Clickra.Core.Processors
             int sourcePages,
             PdfTranslationStageReport? stageReport,
             string providerName,
-            string error)
+            string error,
+            PdfTranslationLayoutSummary? layoutSummary = null,
+            int? fixedCollisionCount = null,
+            int? bottomOverflowCount = null)
         {
             try
             {
@@ -184,6 +208,13 @@ namespace Clickra.Core.Processors
                     RenderEntries = debugLines.Count(line => line.Contains(" RENDER ", StringComparison.Ordinal)),
                     GuardClipEntries = debugLines.Count(line => line.Contains("guardClip=true", StringComparison.OrdinalIgnoreCase)),
                     OverflowEntries = debugLines.Count(line => line.Contains("overflow=true", StringComparison.OrdinalIgnoreCase)),
+                    HeadingCount = layoutSummary?.HeadingCount ?? 0,
+                    MinimumHeadingFontRatio = layoutSummary?.MinimumHeadingFontRatio ?? 1.0,
+                    MaximumAlignmentAnchorShift = layoutSummary?.MaximumAlignmentAnchorShift ?? 0,
+                    ShiftedParagraphCount = layoutSummary?.ShiftedParagraphCount ?? 0,
+                    FixedRegionCollisionCount = layoutSummary?.FixedCollisionCount ?? fixedCollisionCount ?? 0,
+                    BottomOverflowCount = layoutSummary?.BottomOverflowCount ?? bottomOverflowCount ?? 0,
+                    LayoutFailureReason = error,
                     TranslationFailures = new[] { error },
                     Succeeded = false
                 }.Save(healthPath);
