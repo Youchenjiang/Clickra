@@ -218,6 +218,31 @@ static partial class TestSuite
                 $"Unexpected exception: {ex.Message}");
         });
 
+        runner.Run("Fallback translator rejects unchanged CJK provider output", () =>
+        {
+            var primary = new UnchangedTranslationEngine("primary");
+            var fallback = new RecordingTranslationEngine("fallback");
+            var translator = new FallbackTranslator(primary, fallback);
+            const string source = "ASTER: Natural and Multi-language Unit Test Generation with LLMs";
+
+            string result = translator.TranslateAsync(source, "zh-TW", CancellationToken.None)
+                .GetAwaiter()
+                .GetResult();
+
+            Assert.Equal($"fallback:{source}", result);
+            Assert.True(primary.SingleAttempts == 1, "Primary provider should be attempted once.");
+            Assert.True(fallback.SingleAttempts == 1, "Fallback provider should handle unchanged output.");
+
+            var batch = translator.TranslateBatchAsync(
+                    new List<string> { source },
+                    "zh-TW",
+                    CancellationToken.None)
+                .GetAwaiter()
+                .GetResult();
+            Assert.Equal($"fallback:{source}", batch.Single());
+            Assert.True(fallback.BatchSizes.Count == 1, "Fallback provider should handle unchanged batch output.");
+        });
+
         runner.Run("Fallback translator propagates caller cancellation without fallback", () =>
         {
             using var cts = new CancellationTokenSource();
@@ -343,9 +368,11 @@ sealed class RecordingTranslationEngine(
 {
     public string Name { get; } = name;
     public List<int> BatchSizes { get; } = new();
+    public int SingleAttempts { get; private set; }
 
     public Task<string> TranslateAsync(string text, string targetLanguage, CancellationToken cancellationToken)
     {
+        SingleAttempts++;
         if (failOnMarker != null && text.Contains(failOnMarker, StringComparison.Ordinal))
             throw new InvalidOperationException("forced failure");
         return Task.FromResult($"{Name}:{text}");
@@ -364,6 +391,24 @@ sealed class RecordingTranslationEngine(
             results.RemoveAt(results.Count - 1);
         return Task.FromResult(results);
     }
+}
+
+sealed class UnchangedTranslationEngine(string name) : ITranslationEngine
+{
+    public string Name { get; } = name;
+    public int SingleAttempts { get; private set; }
+
+    public Task<string> TranslateAsync(string text, string targetLanguage, CancellationToken cancellationToken)
+    {
+        SingleAttempts++;
+        return Task.FromResult(text);
+    }
+
+    public Task<List<string>> TranslateBatchAsync(
+        List<string> texts,
+        string targetLanguage,
+        CancellationToken cancellationToken) =>
+        Task.FromResult(texts.ToList());
 }
 
 sealed class BatchOnlyFailingTranslationEngine : ITranslationEngine
