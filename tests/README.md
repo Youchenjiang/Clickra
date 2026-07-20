@@ -42,6 +42,9 @@ python tests\PdfRegression\run_translation_tests.py --provider-smoke --real-e2e
 
 # Geometry heuristics that are useful for triage but have known false positives
 python tests\PdfRegression\run_translation_tests.py --strict-render --legacy-diagnostics
+
+# Local ASTER fixture with deterministic CJK layout stress translation
+python tests\PdfRegression\run_translation_tests.py --aster-e2e
 ```
 
 `tests/PdfRegression/translation_baseline_expectations.json` records existing

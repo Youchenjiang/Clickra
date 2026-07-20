@@ -2,6 +2,13 @@
 
 本文件匯整並定義了 Clickra PDF 翻譯模組的所有核心規則與硬性規範。包含「版面分析」、「避讓邏輯」、「翻譯與術語修正」、「渲染排版」及「超連結校正」五大範疇，為後續維護與開發提供唯一標準。
 
+## 0.1 翻譯復原與輸出完整性（v3.6.4）
+
+*   批次翻譯失敗時，必須依序執行批次拆分、逐段請求與另一個 provider fallback；不得直接把原文標記為成功譯文。
+*   每次 provider 請求最多 30 秒，整份文件最多 10 分鐘。呼叫端取消必須立即停止，逾時則記錄 provider、頁碼與段落資訊。
+*   只有所有可用復原路徑都失敗時才回報翻譯失敗；失敗執行不得留下可被誤認為完成的 PDF。輸出先寫入 `.partial`，完成頁數與 layout health gate 後才改名為正式檔案。
+*   每次執行在輸出目錄產生 `*_health.json`，至少包含頁數、成功/避讓段落數、provider、guard clip 數、實際 overflow 數與失敗原因。
+
 ---
 
 ## 📂 規則一覽與架構圖
@@ -109,6 +116,7 @@
         3. **鄰近度傳播避讓**：頁面含圖表時，**僅** `IsLikelyChartLabel` 短標籤（≤4 詞、高度 ≤22 pt，或 `(a)` / 軸刻度等明確型態），若與已避讓圖表段落距離在 $30\text{ pt}$ 以內，自動設為 `IsBypassed = true` 且 `IsDiagram = true`。
         4. **頁首頁尾排除**：`ClearDiagramFlagOnRunningHeaders` 清除頂部/底部 running header/footer 的 `IsDiagram`，避免誤判。
     *   **選擇性 Strip（Selective Font Strip）**：`StripTextFromPage` **僅**剝除可譯段落（`IsBypassed = false`）所使用的 PDF 字型資源；圖表/workflow 標籤、表格儲存格（若未共用可譯字型）、程式碼、灰色 Prompt 框、數學公式、參考文獻、作者欄所用字型**保留**於原始 PDF 串流。Pass 2 中 `RenderBypassedParagraph` **僅**在該段落字型已被 strip 時才重繪；`IsDiagram` 標籤預設不重畫，維持原始英文單層清晰文字。
+    *   **內容串流狀態不可重設**：PDF page 的 `/Contents` 可能是多個連續串流，且可在 `TJ`/`Tj` 文字執行中切開；`StripTextFromPage` 必須跨串流延續目前 `Tf` 字型狀態，否則只會清除第一段而留下後續幽靈原文（ASTER p1 摘要回歸案例）。
     *   **Pass 1/2 遮罩與 overlay**：`ShouldProtectDiagramRegionFromParagraph` 僅保護 `IsDiagram` 短標籤與圖表 bbox 內標籤；`IsTranslatableBodyProse`、章節標題、多句正文**一律**仍執行 Pass 1 白色遮罩與 Pass 2 中文 overlay。雙欄頁左欄正文不得因 gutter 與右欄 Figure 遮罩輕微重疊而 skipRender。
     *   **無損核心限制**：嚴禁解壓縮、修改或剝除 `/Form` XObjects 與 `/Image` XObjects 內部 content stream 的任何內容。
     *   **⚠️ 表格網格線誤判例外**：表格的向量框線/網格線（`page.ExperimentalAccess.Paths`）可能滿足圖表幾何門檻，使 `OverlapsWithLargeImage` 將儲存格文字標為 `IsDiagram = true`。圖表段落**不**參與 Pass 2 譯文重繪；若頁面同時執行 `StripTextFromPage`，儲存格英文會被剝除且無法補回，造成 Work description 等欄位整段消失。見 §2.E `ReclassifyWorkDivisionTableText`。
@@ -186,7 +194,8 @@
 ### A. 限流與雙軌翻譯機制 (Rate Limiting & Fallback)
 *   **併發控制**：使用 `SemaphoreSlim(1, 1)` 強制單一執行緒進行翻譯請求，並在鎖定內加入 $150\text{ms}$ 至 $400\text{ms}$ 的隨機延遲。
 *   **批次翻譯 (Batch Translate)**：優先調用 `TranslateBatchAsync` 進行整頁批次翻譯，減少 HTTP 請求往返。
-*   **單條降級 (Sequential Fallback)**：若批次翻譯因網絡或 API 限流失敗，記錄錯誤日誌並自動降級為 `TranslateAsync` 逐句翻譯，並採用指數型退避延遲（初始 $1500\text{ ms}$，每次失敗乘以 2，最多重試 5 次）。
+*   **復原流程**：若批次翻譯因網絡或 API 限流失敗，先將批次拆半，再對最小批次逐段呼叫；每層都可使用另一個 provider fallback。每次請求有 30 秒上限，避免整頁卡死。
+*   **完整性**：逐段復原仍失敗時，必須中止該次輸出並產生 health report；嚴禁以原文靜默填補失敗段落後宣稱翻譯完成。
 
 ### B. 術語後處理修正 (Terminology replacements) - `PostProcessTranslation`
 翻譯完成後，必須對譯文進行以下字串比對替換（僅適用於 `zh-TW` / `zh-CN`）：
@@ -205,6 +214,12 @@
 ---
 
 ## 4. 🎨 渲染與繪製排版規則 (Rendering & Typography Rules)
+
+### 4.0 零裁切排版門檻（v3.6.4）
+
+*   翻譯段落必須先量測並 reflow；若行寬或高度超出可用欄位，逐步縮小字型（下限 65%）並重新排版。
+*   `guardClip` 必須為 0；圖表/欄位保護改由遮罩邊界與段落 reflow 完成，不得用外層 `IntersectClip` 靜默刪除譯文。health report 的 `GuardClipEntries` 與 `OverflowEntries` 都必須為 0。
+*   實際 overflow、頁數變更或健康檢查失敗時，不得提交正式輸出檔案。
 
 翻譯後的中文文字必須使用 PDFsharp 的 `XGraphics` 重新繪製，並嚴格遵循字型與佈局對齊規範。
 
@@ -236,10 +251,9 @@
         2. 若壓縮行高後高度依然超出，則對字型大小（FontSize）進行縮放，縮放比例最低限制為 **$0.8$**。
 
 ### C. 段落裁切策略 (Paragraph Clipping)
-*   **時機**：`IntersectClip` 必須在字型縮放與 `renderedHeight` 計算**之後**才設定，不可在縮放前以原始英文高度裁切。
-*   **水平裁切**：`clipW = layoutWidth + 3.0 pt`，防止譯文溢出至相鄰欄位（雙欄論文）。
-*   **垂直裁切**：`clipH = Math.Max(paragraphHeight, renderedHeight) + 3.0 pt`，以實際渲染高度為準，避免多行中文譯文被切半。
-*   **原則**：優先透過行高/字型縮放（最低 0.8）適應原始包圍盒，**不得**以固定原始高度硬切譯文。
+*   **禁止外層 guard clip**：不得在圖表或雙欄交界以 `IntersectClip` 截斷翻譯段落；這會讓流程表面成功、實際遺失下半段文字。
+*   **唯一允許的段落 clip**：renderer 內部可用 `layoutWidth` 與 `Math.Max(paragraphHeight, renderedHeight)` 保護自身繪製邊界，但只要產生 overflow 就必須讓 health gate 失敗。
+*   **原則**：優先透過 reflow、行高/字型縮放與遮罩幾何邊界解決碰撞；`GuardClipEntries` 與 `OverflowEntries` 均須為 0。
 
 ### D. 遮罩與擦除規範 (Masking Rules)
 *   **Pass 1 白色遮罩**：對需翻譯且非 bypass、非 `IsTable` 的段落，於原始段落座標外擴 **$1.5\text{ pt}$**（`maskPad`）繪製白色矩形，擦除英文本文。

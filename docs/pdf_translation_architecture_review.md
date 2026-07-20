@@ -64,8 +64,8 @@ graph TD
   - 提取階段抽離的公式會以 `{v0}`, `{v1}` 等預留位置表示。
   - 渲染時，`TokenizeTranslatedText` 會將文本拆回普通字詞與預留位置。
   - 預留位置字元會藉由在其精確相對位置上，使用 `Segoe UI Symbol` 或數學字型重新繪製原始字元（`MathLetter`）來還原。
-- **動態文本縮放**：若翻譯後的文本版面高度超出原始邊界框高度，優先壓縮行高，再縮小字型（最低 0.8）。
-- **段落裁切（Clip）**：`IntersectClip` 在縮放與 `renderedHeight` 計算後設定。水平以 `layoutWidth` 防雙欄溢出；垂直以 `Math.Max(paragraphHeight, renderedHeight)` 防譯文被切半。
+- **動態文本縮放**：若翻譯後的文本版面高度超出原始邊界框高度，重新 reflow 並逐步縮小字型（最低 0.65），並以 health metrics 回報仍未適配的段落。
+- **段落裁切（Clip）**：禁止以圖表/欄位的外層 `IntersectClip` 靜默截斷譯文；renderer 內部只保護自身段落邊界，任何 overflow 都使 health gate 失敗。
 
 ---
 
@@ -85,8 +85,8 @@ graph TD
 - **修復**：放寬為 `^\d{1,2}(?:\.\d{1,2}){0,4}\.?(?:\s+[^a-z]|$)`，支援可選尾點與小寫開頭子標題。
 
 ### ✅ Bug C：譯文垂直裁切（已修復）
-- **原問題**：`IntersectClip` 在縮放前以原始英文 `paragraphHeight` 裁切，多行中文譯文下半段被切掉。
-- **修復**：clip 移至縮放/`renderedHeight` 計算後；`clipH = Math.Max(paragraphHeight, renderedHeight) + 3 pt`；水平 `clipW = layoutWidth + 3 pt`。
+- **原問題**：diagram/雙欄保護的外層 `IntersectClip` 會在流程成功時靜默刪除多行中文譯文。
+- **修復**：移除外層 guard clip，改由段落 reflow、縮放與遮罩幾何處理；`GuardClipEntries` 必須為 0，renderer 的 overflow 也會阻止正式輸出。
 
 ### ✅ Bug D：第一頁 Author Block bypass 條件錯誤（已修復）
 - **原問題**：誤用 `para.Y0 > abstractY0` 或顛倒的 Y 軸條件，導致 Abstract 正文被整段跳過。
@@ -110,3 +110,17 @@ graph TD
 - 子標題如 `3.1 ...` 有粗體
 - 雙欄正文各自獨立翻譯，無跨欄溢出
 - 表格/圖表區域未被白遮罩破壞
+## v3.6.4 reliability and layout gate
+
+The PDF pipeline now treats translation as a recoverable operation: failed batches
+are recursively split, then retried per paragraph through the configured provider
+fallback chain. Provider calls are bounded to 30 seconds and the document is
+bounded to 10 minutes. A failed paragraph is reported rather than silently copied
+back into a successful-looking output.
+
+Rebuilds are written to a `.partial` path and renamed only after page-count and
+layout health checks pass. Paragraph rendering reflows and scales translated text
+before drawing; broad diagram/column guard clips are disabled because they silently
+delete translated lines. Diagram protection is handled by mask geometry, and both
+`GuardClipEntries` and actual horizontal/vertical overflow are hard health failures.
+Each run emits a `*_health.json` report for automation and regression review.
