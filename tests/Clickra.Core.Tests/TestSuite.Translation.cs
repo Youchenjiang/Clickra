@@ -263,6 +263,56 @@ static partial class TestSuite
                 "Fallback must not run after caller cancellation.");
         });
 
+        runner.Run("Fallback translator gives each provider an independent deadline", () =>
+        {
+            var oldTimeout = Environment.GetEnvironmentVariable("CLICKRA_TRANSLATION_PROVIDER_TIMEOUT_SECONDS");
+            try
+            {
+                Environment.SetEnvironmentVariable("CLICKRA_TRANSLATION_PROVIDER_TIMEOUT_SECONDS", "1");
+                var primary = new DelayedTranslationEngine("slow-primary", delayMilliseconds: 1500);
+                var fallback = new RecordingTranslationEngine("fallback");
+                var translator = new FallbackTranslator(primary, fallback);
+
+                var result = translator.TranslateBatchAsync(
+                        new List<string> { "deadline test" },
+                        "zh-TW",
+                        CancellationToken.None)
+                    .GetAwaiter()
+                    .GetResult();
+
+                Assert.Equal("fallback:deadline test", result.Single());
+                Assert.True(primary.BatchAttempts == 1, "Primary provider should be attempted once.");
+                Assert.True(fallback.BatchSizes.Count == 1, "Fallback should run after primary timeout.");
+            }
+            finally
+            {
+                Environment.SetEnvironmentVariable("CLICKRA_TRANSLATION_PROVIDER_TIMEOUT_SECONDS", oldTimeout);
+            }
+        });
+
+        runner.Run("Fallback translator fails closed when both provider deadlines expire", () =>
+        {
+            var oldTimeout = Environment.GetEnvironmentVariable("CLICKRA_TRANSLATION_PROVIDER_TIMEOUT_SECONDS");
+            try
+            {
+                Environment.SetEnvironmentVariable("CLICKRA_TRANSLATION_PROVIDER_TIMEOUT_SECONDS", "1");
+                var translator = new FallbackTranslator(
+                    new DelayedTranslationEngine("slow-primary", delayMilliseconds: 1500),
+                    new DelayedTranslationEngine("slow-fallback", delayMilliseconds: 1500));
+
+                Assert.Throws<TimeoutException>(() => translator.TranslateBatchAsync(
+                        new List<string> { "deadline test" },
+                        "zh-TW",
+                        CancellationToken.None)
+                    .GetAwaiter()
+                    .GetResult());
+            }
+            finally
+            {
+                Environment.SetEnvironmentVariable("CLICKRA_TRANSLATION_PROVIDER_TIMEOUT_SECONDS", oldTimeout);
+            }
+        });
+
         runner.Run("PDF batch runner splits failed batches and recovers each paragraph", () =>
         {
             var translator = new BatchOnlyFailingTranslationEngine();
@@ -446,5 +496,27 @@ sealed class HangingTranslationEngine : ITranslationEngine
     {
         await Task.Delay(Timeout.InfiniteTimeSpan, cancellationToken);
         return texts;
+    }
+}
+
+sealed class DelayedTranslationEngine(string name, int delayMilliseconds) : ITranslationEngine
+{
+    public string Name { get; } = name;
+    public int BatchAttempts { get; private set; }
+
+    public async Task<string> TranslateAsync(string text, string targetLanguage, CancellationToken cancellationToken)
+    {
+        await Task.Delay(delayMilliseconds, cancellationToken);
+        return $"{Name}:{text}";
+    }
+
+    public async Task<List<string>> TranslateBatchAsync(
+        List<string> texts,
+        string targetLanguage,
+        CancellationToken cancellationToken)
+    {
+        BatchAttempts++;
+        await Task.Delay(delayMilliseconds, cancellationToken);
+        return texts.Select(text => $"{Name}:{text}").ToList();
     }
 }
