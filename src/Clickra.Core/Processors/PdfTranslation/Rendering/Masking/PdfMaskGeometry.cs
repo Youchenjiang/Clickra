@@ -27,6 +27,10 @@ namespace Clickra.Core.Processors
         public static void ExpandMaskToColumnWidth(
             ref double maskX0, ref double maskX1, PdfParagraph para, double pageWidth)
         {
+            // Findings callouts are fixed vector containers. Expanding their
+            // text mask to the whole column erases the source fill and border.
+            if (PdfParagraphRoleClassifier.IsFindingCallout(para)) return;
+
             if (!PdfParagraphRoleClassifier.IsTranslatableBodyProse(para) &&
                 !PdfParagraphRoleClassifier.IsTranslatableCalloutProse(para))
             {

@@ -71,6 +71,27 @@ namespace Clickra.Core.Processors
             return onlyProtected;
         }
 
+        public static HashSet<string> CollectFontsUsedByPageOneAuthorBlock(
+            IEnumerable<PdfParagraph> paragraphs,
+            double pageHeight)
+        {
+            var pageList = paragraphs as List<PdfParagraph> ?? paragraphs.ToList();
+            var names = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            foreach (var para in pageList)
+            {
+                if (!PageOneLayoutClassifier.IsAuthorBlockParagraph(para, pageList, pageHeight))
+                    continue;
+                foreach (var letter in para.AllLetters)
+                {
+                    string cleanFontName = CleanPdfBaseFontName(letter.FontName);
+                    if (string.IsNullOrEmpty(cleanFontName)) continue;
+                    if (PdfParagraph.MathFontRegex.IsMatch(cleanFontName)) continue;
+                    names.Add(cleanFontName);
+                }
+            }
+            return names;
+        }
+
         public static bool ParagraphUsesStrippedFont(PdfParagraph para, HashSet<string> strippedBaseFonts)
         {
             if (strippedBaseFonts.Count == 0) return false;
