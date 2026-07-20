@@ -71,6 +71,23 @@ namespace Clickra.Core.Processors
                     continue;
                 }
 
+                // PDF math fonts commonly encode an enclosing circle as the
+                // combining mark U+20DD. PdfSharp/Cambria Math can emit that
+                // glyph with a null-tofu mapping; the preceding digit remains
+                // readable, so drop this non-essential decoration.
+                if (cp == 0x20DD)
+                {
+                    continue;
+                }
+
+                // Some extracted reference names contain U+02D8 BREVE as a
+                // font-encoding artifact (for example P˘as˘areanu). DFKai-SB
+                // cannot encode it and emits a NUL glyph, so drop the artifact.
+                if (cp == 0x02D8)
+                {
+                    continue;
+                }
+
                 if (cp >= 0x1D400 && cp <= 0x1D7FF)
                 {
                     if (cp >= 0x1D400 && cp <= 0x1D419) sb.Append((char)('A' + (cp - 0x1D400)));

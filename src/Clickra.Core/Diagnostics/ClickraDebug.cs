@@ -31,13 +31,17 @@ namespace Clickra.Core
         }
 
         public static void LogRender(int page, double paraY0, double paraY1,
-            double paraX0, double paraX1, bool clipped, double measuredH)
+            double paraX0, double paraX1, bool guardClip, bool overflow, double measuredH)
         {
             lock (_lock)
             {
-                _lines.Add($"P{page} RENDER paraY=[{paraY0:F1},{paraY1:F1}] X=[{paraX0:F1},{paraX1:F1}] clipped={clipped} measuredH={measuredH:F1}");
+                _lines.Add($"P{page} RENDER paraY=[{paraY0:F1},{paraY1:F1}] X=[{paraX0:F1},{paraX1:F1}] clipped={overflow} guardClip={guardClip} overflow={overflow} measuredH={measuredH:F1}");
             }
         }
+
+        public static void LogRender(int page, double paraY0, double paraY1,
+            double paraX0, double paraX1, bool clipped, double measuredH) =>
+            LogRender(page, paraY0, paraY1, paraX0, paraX1, clipped, false, measuredH);
 
         public static void SaveTo(string path)
         {

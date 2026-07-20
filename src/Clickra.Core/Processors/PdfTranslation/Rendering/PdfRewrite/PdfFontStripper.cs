@@ -118,6 +118,14 @@ namespace Clickra.Core.Processors
 
             if (fontsToStrip.Count == 0) return strippedBaseFonts;
 
+            // A PDF page may store one logical content stream in an array of
+            // separate streams.  The array can split in the middle of a text
+            // run (ASTER page 1 does this immediately after the abstract's
+            // first line), so the active font must survive the stream
+            // boundary.  Resetting it for every stream leaves the remainder
+            // of that run visible after the translated text is drawn.
+            bool stripActive = false;
+            var tokens = new List<string>();
             var contents = page.Contents;
             for (int i = 0; i < contents.Elements.Count; i++)
             {
@@ -126,7 +134,8 @@ namespace Clickra.Core.Processors
                 if (contentObj is PdfDictionary contentDict && contentDict.Stream != null)
                 {
                     byte[] decompressedBytes = contentDict.Stream.UnfilteredValue;
-                    byte[] cleanBytes = StripSelectedText(decompressedBytes, fontsToStrip);
+                    byte[] cleanBytes = StripSelectedText(
+                        decompressedBytes, fontsToStrip, tokens, ref stripActive);
                     contentDict.Stream.Value = cleanBytes;
                     contentDict.Elements.Remove("/Filter");
                 }
@@ -172,14 +181,15 @@ namespace Clickra.Core.Processors
             return false;
         }
 
-        private static byte[] StripSelectedText(byte[] contentBytes, HashSet<string> fontsToStrip)
+        private static byte[] StripSelectedText(
+            byte[] contentBytes,
+            HashSet<string> fontsToStrip,
+            List<string> tokens,
+            ref bool stripActive)
         {
             using var ms = new MemoryStream();
             int i = 0;
             int len = contentBytes.Length;
-
-            bool stripActive = false;
-            var tokens = new List<string>();
 
             while (i < len)
             {

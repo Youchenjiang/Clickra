@@ -336,9 +336,19 @@ internal static class PdfTranslatedPdfRebuilder
                             continue;
                         }
 
-                        double measuredHeight = PdfTranslatedParagraphRenderer.RenderParagraph(gfx, para, targetFontName, measureOnly: true);
-                        var clipState = PdfOverlayMaskPlanner.BeginClipRenderAboveDiagramBelow(
-                            gfx, para, gfx.PageSize.Height, diagramMaskRegions, paragraphs, measuredHeight, gfx.PageSize.Width);
+                        PdfParagraphRenderMetrics renderMetrics = default;
+                        double measuredHeight = PdfTranslatedParagraphRenderer.RenderParagraph(
+                            gfx,
+                            para,
+                            targetFontName,
+                            measureOnly: true,
+                            metricsSink: metrics => renderMetrics = metrics);
+                        // Do not hide translated body text with a broad figure/column clip.
+                        // The renderer already reflows to the paragraph bounds; the old
+                        // guard clip made the output appear successful while silently
+                        // deleting the lower lines of translated paragraphs. White masks
+                        // remain bounded by diagram geometry in Pass 1.
+                        XGraphicsState? clipState = null;
                         XGraphicsState? authorClipState = null;
                         if (p == 0 && pageOneTitlePara != null && para == pageOneTitlePara && hasPageOneAuthorBand)
                         {
@@ -352,8 +362,15 @@ internal static class PdfTranslatedPdfRebuilder
                         }
                         try
                         {
-                            ClickraDebug.LogRender(p + 1, para.Y0, para.Y1, para.X0, para.X1,
-                                clipState != null, measuredHeight);
+                            ClickraDebug.LogRender(
+                                p + 1,
+                                para.Y0,
+                                para.Y1,
+                                para.X0,
+                                para.X1,
+                                guardClip: clipState != null,
+                                overflow: renderMetrics.HorizontalOverflow || renderMetrics.VerticalOverflow,
+                                measuredH: measuredHeight);
                             PdfTranslatedParagraphRenderer.RenderParagraph(gfx, para, targetFontName);
                         }
                         finally

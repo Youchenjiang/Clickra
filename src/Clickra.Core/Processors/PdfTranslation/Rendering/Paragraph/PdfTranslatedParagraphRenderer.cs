@@ -8,7 +8,12 @@ namespace Clickra.Core.Processors;
 
 internal static class PdfTranslatedParagraphRenderer
 {
-        public static double RenderParagraph(XGraphics gfx, PdfParagraph para, string targetFontName, bool measureOnly = false)
+        public static double RenderParagraph(
+            XGraphics gfx,
+            PdfParagraph para,
+            string targetFontName,
+            bool measureOnly = false,
+            Action<PdfParagraphRenderMetrics>? metricsSink = null)
         {
             double pageHeight = gfx.PageSize.Height;
             double paragraphX = para.X0;
@@ -18,6 +23,10 @@ internal static class PdfTranslatedParagraphRenderer
 
             string text = (para.TranslatedText ?? "").Replace('∗', '*');
             text = text.Replace("\u200B", "").Replace("\u200C", "").Replace("\u200D", "").Replace("\uFEFF", "");
+            // Providers can preserve control characters from PDF font encodings.
+            // Remove them before tokenization; otherwise PdfSharp writes NUL glyphs
+            // into the rebuilt content stream and the result renders as tofu boxes.
+            text = FontUtilities.NormalizeMathValue(text);
             text = FormulaLiteralCleaner.RemoveDuplicateFormulaLiterals(text, para.Formulas);
             var tokens = PdfParagraphLayoutEngine.TokenizeTranslatedText(text);
 
@@ -119,8 +128,6 @@ internal static class PdfTranslatedParagraphRenderer
                 layoutWidth = paragraphWidth;
                 isRotated = true;
             }
-            List<PdfLayoutRow> rows = PdfParagraphLayoutEngine.LayoutParagraph(tokens, mainFont, para.Formulas, layoutWidth, fontSize, para.AverageFontSize, gfx);
-
             // Compute dynamic line spacing
             double lineSpacingMultiplier = 1.35; // Default CJK line height
             if (targetFontName.Contains("Arial", StringComparison.OrdinalIgnoreCase))
@@ -134,30 +141,52 @@ internal static class PdfTranslatedParagraphRenderer
             double lineHeight = fontSize * lineSpacingMultiplier;
 
             double limitHeight = isRotated ? para.Width : paragraphHeight;
-            double totalHeight = rows.Count * lineHeight;
+            List<PdfLayoutRow> rows = new();
+            double renderedHeight = 0;
+            double maxRowWidth = 0;
 
-            bool disableScaling = (rows.Count <= 1) || PdfParagraphSemanticClassifier.IsHeadingParagraph(para);
-            if (totalHeight > limitHeight && !disableScaling)
+            // Translated CJK can require more rows than the source paragraph. Reflow and
+            // reduce the font gradually, including headings, until both dimensions fit.
+            // The lower bound preserves legibility while avoiding the old clip-and-hide path.
+            for (int attempt = 0; attempt < 6; attempt++)
             {
-                double requiredLineSpacingMultiplier = limitHeight / (rows.Count * fontSize);
-                if (requiredLineSpacingMultiplier >= 1.0)
-                {
-                    lineSpacingMultiplier = requiredLineSpacingMultiplier;
-                    lineHeight = fontSize * lineSpacingMultiplier;
-                }
-                else
-                {
-                    double scale = limitHeight / totalHeight;
-                    scale = Math.Max(0.8, scale);
-                    fontSize *= scale;
-                    mainFont = new XFont(fontNameForPara, fontSize, fontStyle);
-                    lineHeight = fontSize * lineSpacingMultiplier;
-                    rows = PdfParagraphLayoutEngine.LayoutParagraph(tokens, mainFont, para.Formulas, layoutWidth, fontSize, para.AverageFontSize, gfx);
-                }
+                rows = PdfParagraphLayoutEngine.LayoutParagraph(
+                    tokens, mainFont, para.Formulas, layoutWidth, fontSize, para.AverageFontSize, gfx);
+                renderedHeight = rows.Count * lineHeight;
+                maxRowWidth = rows.Count == 0
+                    ? 0
+                    : rows.Max(row => row.Elements.Sum(element => element.Width));
+
+                bool fitsWidth = maxRowWidth <= layoutWidth + 0.5;
+                bool fitsHeight = renderedHeight <= limitHeight + 0.5;
+                if (fitsWidth && fitsHeight) break;
+
+                double scale = 0.94;
+                if (!fitsWidth && maxRowWidth > 0)
+                    scale = Math.Min(scale, layoutWidth / maxRowWidth);
+                if (!fitsHeight && renderedHeight > 0)
+                    scale = Math.Min(scale, limitHeight / renderedHeight);
+
+                scale = Math.Clamp(scale, 0.65, 0.94);
+                double nextFontSize = fontSize * scale;
+                if (nextFontSize >= fontSize - 0.01) break;
+
+                fontSize = nextFontSize;
+                mainFont = new XFont(fontNameForPara, fontSize, fontStyle);
+                lineHeight = fontSize * lineSpacingMultiplier;
             }
 
             // Actual rendered height = number of rows × line height
-            double renderedHeight = rows.Count * lineHeight;
+            renderedHeight = rows.Count * lineHeight;
+            bool horizontalOverflow = maxRowWidth > layoutWidth + 0.5;
+            bool verticalOverflow = renderedHeight > limitHeight + 0.5;
+            metricsSink?.Invoke(new PdfParagraphRenderMetrics(
+                layoutWidth,
+                maxRowWidth,
+                renderedHeight,
+                limitHeight,
+                horizontalOverflow,
+                verticalOverflow));
 
             // In measure-only mode, skip all drawing and just return the height
             if (measureOnly)
@@ -463,3 +492,11 @@ internal static class PdfTranslatedParagraphRenderer
         }
 
 }
+
+internal readonly record struct PdfParagraphRenderMetrics(
+    double LayoutWidth,
+    double MaxRowWidth,
+    double RenderedHeight,
+    double HeightLimit,
+    bool HorizontalOverflow,
+    bool VerticalOverflow);
