@@ -8,7 +8,7 @@ namespace Clickra.Core.Processors;
 
 internal static class PdfTranslatedPdfRebuilder
 {
-    public static void Rebuild(
+    public static PdfTranslationLayoutSummary Rebuild(
         string inputPath,
         string outputPath,
         string targetLang,
@@ -17,7 +17,9 @@ internal static class PdfTranslatedPdfRebuilder
         Action<int, int, string>? onProgress,
         CancellationToken cancellationToken)
     {
-        int totalPages = pageParagraphs.Count;            onProgress?.Invoke(80, 100, "正在重建 PDF 佈局與公式...");
+        int totalPages = pageParagraphs.Count;
+        var layoutSummary = new PdfTranslationLayoutSummary();
+        onProgress?.Invoke(80, 100, "正在重建 PDF 佈局與公式...");
             cancellationToken.ThrowIfCancellationRequested();
 
 
@@ -83,11 +85,30 @@ internal static class PdfTranslatedPdfRebuilder
 
                             string searchText = string.Join("", overlappingLetters.Select(l => l.Value)).Trim();
                             searchText = PdfAnnotationTextMatcher.NormalizeAnnotationSearchText(searchText);
+                            if (!searchText.Any(char.IsDigit))
+                            {
+                                double centerX = (rect.X1 + rect.X2) / 2.0;
+                                double centerY = (rect.Y1 + rect.Y2) / 2.0;
+                                var nearbyDigit = bestPara.AllLetters
+                                    .Where(letter => letter.Value.Length == 1 && char.IsDigit(letter.Value[0]))
+                                    .OrderBy(letter =>
+                                    {
+                                        double dx = ((letter.Left + letter.Right) / 2.0) - centerX;
+                                        double dy = ((letter.Bottom + letter.Top) / 2.0) - centerY;
+                                        return dx * dx + dy * dy;
+                                    })
+                                    .FirstOrDefault();
+                                if (nearbyDigit != null)
+                                {
+                                    searchText = nearbyDigit.Value;
+                                }
+                            }
                             if (!string.IsNullOrEmpty(searchText))
                             {
                                 int occurrenceIdx = PdfAnnotationOccurrenceMatcher.GetOccurrenceIndex(bestPara.AllLetters, overlappingLetters, searchText);
                                 int firstLetterIdx = bestPara.AllLetters.IndexOf(overlappingLetters[0]);
                                 int lastLetterIdx = bestPara.AllLetters.IndexOf(overlappingLetters[^1]);
+                                int figureOccurrenceIdx = PdfAnnotationOccurrenceMatcher.GetFigureReferenceIndex(bestPara.AllLetters, firstLetterIdx);
                                 double relCenterX = bestPara.Width > 0 ? (annotCenterX - bestPara.X0) / bestPara.Width : 0.5;
                                 double relCenterY = bestPara.Height > 0 ? (annotCenterY - bestPara.Y0) / bestPara.Height : 0.5;
                                 double relWidth = bestPara.Width > 0 ? (rect.X2 - rect.X1) / bestPara.Width : 0.05;
@@ -96,6 +117,7 @@ internal static class PdfTranslatedPdfRebuilder
                                     PdfAnnotation = annot,
                                     Text = searchText,
                                     OccurrenceIndex = occurrenceIdx,
+                                    FigureOccurrenceIndex = figureOccurrenceIdx,
                                     FirstLetterIndex = firstLetterIdx,
                                     LastLetterIndex = lastLetterIdx,
                                     TotalLetterCount = bestPara.AllLetters.Count,
@@ -115,6 +137,7 @@ internal static class PdfTranslatedPdfRebuilder
                 var pigPage = pigDoc.GetPage(p + 1);
                 double pageWidthPts = pigPage.Width;
                 double pageHeightPts = pigPage.Height;
+                var vectorMarkers = PdfVectorMarkerRenderer.Detect(pigPage, paragraphs);
                 var rawDiagramMaskRegions = PdfDiagramMaskBuilder.BuildProcessedDiagramMaskRegions(pigPage, paragraphs);
 
                 Func<PdfParagraph, bool>? excludeAuthorFromTableMask = null;
@@ -156,6 +179,12 @@ internal static class PdfTranslatedPdfRebuilder
                             IsLikelyChartLabel = PdfChartLabelClassifier.IsLikelyChartLabel
                         });
                     protectedOnlyFonts.ExceptWith(mustStripFonts);
+                    if (p == 0)
+                    {
+                        protectedOnlyFonts.UnionWith(
+                            PdfFontStripper.CollectFontsUsedByPageOneAuthorBlock(
+                                paragraphs, pageHeightPts));
+                    }
                     translatableFonts.ExceptWith(protectedOnlyFonts);
                     strippedBaseFonts = PdfFontStripper.StripTextFromPage(page, translatableFonts);
                 }
@@ -183,12 +212,40 @@ internal static class PdfTranslatedPdfRebuilder
                 }
                 catch { }
 
-                using var gfx = XGraphics.FromPdfPage(page);
+                // Append masks and translated overlays above the existing page
+                // content. The implicit PdfSharp mode can prepend content,
+                // leaving a failed-to-strip source line visible on top of the
+                // corrected overlay (ASTER page 11 header/acknowledgements).
+                using var gfx = XGraphics.FromPdfPage(page, XGraphicsPdfPageOptions.Append);
                 try
                 {
                     gfx.Internals.ContentStringBuilder?.Append(" /NormalState gs ");
                 }
                 catch { }
+
+                // Capture source typography and apply the only supported
+                // vertical reflow before masking or drawing.  All later passes
+                // consume the effective paragraph coordinates, while
+                // OriginalX*/OriginalY* remain the source anchors.
+                var layoutPlan = PdfTranslationLayoutPlanner.BuildAndApply(
+                    gfx, paragraphs, targetFontName, pageWidthPts, pageHeightPts);
+                layoutSummary.HeadingCount += layoutPlan.HeadingCount;
+                layoutSummary.ShiftedParagraphCount += layoutPlan.ShiftedParagraphCount;
+                layoutSummary.FixedCollisionCount += layoutPlan.FixedCollisionCount;
+                layoutSummary.BottomOverflowCount += layoutPlan.BottomOverflowCount;
+                layoutSummary.MaximumAlignmentAnchorShift = Math.Max(
+                    layoutSummary.MaximumAlignmentAnchorShift,
+                    layoutPlan.MaximumAlignmentAnchorShift);
+                if (layoutPlan.Snapshots.Count > 0)
+                {
+                    layoutSummary.MinimumHeadingFontRatio = Math.Min(
+                        layoutSummary.MinimumHeadingFontRatio,
+                        layoutPlan.Snapshots
+                            .Where(s => s.Role is PdfParagraphSemanticRole.PageTitle or PdfParagraphSemanticRole.AbstractHeading or PdfParagraphSemanticRole.SectionHeading or PdfParagraphSemanticRole.SubsectionHeading)
+                            .Select(s => s.FontRatio)
+                            .DefaultIfEmpty(1.0)
+                            .Min());
+                }
 
                 // Pass 1: Draw white masks ONLY for translated paragraphs
                 var pageOneTitlePara = p == 0 ? PageOneLayoutClassifier.FindTitleParagraph(paragraphs, pageHeightPts) : null;
@@ -225,18 +282,60 @@ internal static class PdfTranslatedPdfRebuilder
                     }
 
                     double pageHeight = gfx.PageSize.Height;
+                    bool isFigureCaption = PdfParagraphRoleClassifier.IsFigureTableCaptionParagraph(para);
+                    bool isFindingCallout = PdfParagraphRoleClassifier.IsFindingCallout(para);
                     PdfMaskGeometry.GetParagraphPaintBounds(para, out double maskX0, out double maskY0, out double maskX1, out double maskY1);
+                    // Caption marker formulas can carry a bogus absolute Y
+                    // extent from PdfPig (their relative glyph offset is not a
+                    // page coordinate). For captions, the source paragraph
+                    // bbox is the authoritative paint region; otherwise the
+                    // union can invert the mask and leave the original circles
+                    // visible over the translated caption.
+                    if (isFigureCaption)
+                    {
+                        maskX0 = Math.Min(para.OriginalX0, para.X0);
+                        maskY0 = Math.Min(para.OriginalY0, para.Y0);
+                        maskX1 = Math.Max(para.OriginalX1, para.X1);
+                        maskY1 = Math.Max(para.OriginalY1, para.Y1);
+                    }
+
+                    if (isFindingCallout)
+                    {
+                        // Replace the source callout surface as one unit. A
+                        // normal white text mask would erase the light-blue
+                        // fill and rounded border before the translated text
+                        // is drawn in Pass 2.
+                        DrawFindingCalloutSurface(gfx, para, pageHeight);
+                        continue;
+                    }
 
                     double renderedHeight = PdfTranslatedParagraphRenderer.RenderParagraph(gfx, para, targetFontName, measureOnly: true);
                     double bboxHeight = maskY1 - maskY0;
 
-                    const double maskPad = 2.5;
+                    const double maskPad = 1.5;
                     // White masks hide original text only; when translation is taller, grow upward
                     // instead of downward so masks from upper paragraphs cannot erase table borders.
                     double maskPdfX0 = maskX0 - maskPad;
                     double maskPdfX1 = maskX1 + maskPad;
-                    double maskPdfY0 = maskY0 - maskPad;
-                    double maskPdfY1 = maskY1 + maskPad + Math.Max(0.0, renderedHeight - bboxHeight);
+                    double maskPdfY0;
+                    double maskPdfY1;
+                    if (isFigureCaption)
+                    {
+                        // Captions must erase the source caption, but must not
+                        // grow into the diagram above. Their source bbox is the
+                        // authoritative paint region; translated height is not
+                        // allowed to enlarge the caption mask vertically.
+                        const double captionMaskPad = 1.0;
+                        // Keep the normal lower padding so descenders from a
+                        // wrapped source caption are fully erased.
+                        maskPdfY0 = maskY0 - maskPad;
+                        maskPdfY1 = maskY1 + captionMaskPad;
+                    }
+                    else
+                    {
+                        maskPdfY0 = maskY0 - maskPad;
+                        maskPdfY1 = maskY1 + maskPad + Math.Max(0.0, renderedHeight - bboxHeight);
+                    }
                     PdfMaskGeometry.ExpandMaskToColumnWidth(ref maskPdfX0, ref maskPdfX1, para, gfx.PageSize.Width);
 
                     // Title mask strictly clipped to title paragraph bbox (never into author band).
@@ -246,13 +345,16 @@ internal static class PdfTranslatedPdfRebuilder
                         maskPdfY0 = Math.Max(maskPdfY0, pageOneTitlePara.Y0 - maskPad);
                     }
 
-                    if (tableMaskRegions.Count > 0)
+                    if (tableMaskRegions.Count > 0 && !isFigureCaption)
                     {
                         maskPdfY0 = PdfTableMaskPlanner.ClampMaskBottomAboveTables(
                             maskPdfX0, maskPdfY0, maskPdfX1, maskPdfY1, tableMaskRegions);
                     }
 
-                    if (diagramMaskRegions.Count > 0)
+                    // Figure captions use their source-height mask above. Other
+                    // translated paragraphs may grow upward, so clamp those
+                    // masks below the diagram region.
+                    if (diagramMaskRegions.Count > 0 && !isFigureCaption)
                     {
                         var clipRegions = PdfOverlayMaskPlanner.GetFigureClipRegions(paragraphs, diagramMaskRegions, gfx.PageSize.Width);
                         maskPdfY1 = PdfOverlayMaskPlanner.ClampMaskTopBelowDiagrams(
@@ -281,7 +383,9 @@ internal static class PdfTranslatedPdfRebuilder
 
                     if (maskPdfY0 >= maskPdfY1 - 0.5) continue;
 
-                    if (hasPageOneAuthorBand &&
+                    bool isPageOneHeading = p == 0 &&
+                        (para == pageOneTitlePara || PdfParagraphSemanticClassifier.IsHeadingParagraph(para));
+                    if (hasPageOneAuthorBand && !isPageOneHeading &&
                         PdfGrayPromptGeometry.MaskRectOverlapsPageOneAuthorBand(
                             maskPdfX0, maskPdfY0, maskPdfX1, maskPdfY1,
                             pageOneTitleBottom, pageOneAbstractTop))
@@ -299,7 +403,11 @@ internal static class PdfTranslatedPdfRebuilder
                     gfx.DrawRectangle(XBrushes.White, paragraphX, paragraphY, paragraphWidth, paragraphHeight);
                 }
 
+                if (vectorMarkers.Count > 0)
+                    PdfVectorMarkerRenderer.EraseSource(gfx, vectorMarkers);
+
                 // Pass 2: Render all paragraphs (translated overlays and selectively redrawn bypassed text)
+                var renderedCharsByParagraph = new Dictionary<PdfParagraph, List<RenderedChar>>();
                 foreach (var para in paragraphs)
                 {
                     if (para.IsBypassed)
@@ -310,6 +418,13 @@ internal static class PdfTranslatedPdfRebuilder
                     else
                     {
                         if (string.IsNullOrWhiteSpace(para.TranslatedText)) continue;
+
+                        // Page-one title paragraphs are rendered once by the
+                        // final source scrub below. Skipping them here avoids
+                        // duplicate translated title text in the PDF content
+                        // stream while retaining the normal two-pass flow for
+                        // every other paragraph.
+                        if (p == 0 && para.IsPageTitle) continue;
 
                         if ((para.IsGrayPromptContent || PdfGrayPromptClassifier.IsGrayPromptCodeParagraph(para)) &&
                             effectiveGrayMaskRegions.Count > 0 &&
@@ -348,18 +463,11 @@ internal static class PdfTranslatedPdfRebuilder
                         // guard clip made the output appear successful while silently
                         // deleting the lower lines of translated paragraphs. White masks
                         // remain bounded by diagram geometry in Pass 1.
+                        // Outer clipping is intentionally disabled. Layout
+                        // planning must resolve collisions before rendering;
+                        // an IntersectClip here would hide missing lines while
+                        // still producing a seemingly successful PDF.
                         XGraphicsState? clipState = null;
-                        XGraphicsState? authorClipState = null;
-                        if (p == 0 && pageOneTitlePara != null && para == pageOneTitlePara && hasPageOneAuthorBand)
-                        {
-                            authorClipState = gfx.Save();
-                            double clipTop = gfx.PageSize.Height - pageOneTitlePara.Y1 - 1.5;
-                            double originalClipBottom = gfx.PageSize.Height - pageOneTitlePara.Y0 + 1.5;
-                            double clipBottom = PageOneLayoutClassifier.GetTitleClipBottom(
-                                clipTop, originalClipBottom, measuredHeight);
-                            gfx.IntersectClip(new XRect(
-                                0, clipTop, gfx.PageSize.Width, Math.Max(1, clipBottom - clipTop)));
-                        }
                         try
                         {
                             ClickraDebug.LogRender(
@@ -371,19 +479,99 @@ internal static class PdfTranslatedPdfRebuilder
                                 guardClip: clipState != null,
                                 overflow: renderMetrics.HorizontalOverflow || renderMetrics.VerticalOverflow,
                                 measuredH: measuredHeight);
-                            PdfTranslatedParagraphRenderer.RenderParagraph(gfx, para, targetFontName);
+                            PdfTranslatedParagraphRenderer.RenderParagraph(
+                                gfx,
+                                para,
+                                targetFontName,
+                                renderedCharsSink: chars => renderedCharsByParagraph[para] = chars.ToList());
                         }
                         finally
                         {
-                            if (authorClipState != null) gfx.Restore(authorClipState);
                             if (clipState != null) gfx.Restore(clipState);
                         }
                     }
                 }
+
+                // Restore inline numbered vector markers after all paragraph
+                // masks and translated text have been painted. These markers
+                // are source paths, not text, so the normal font stripper and
+                // paragraph renderer cannot preserve them by themselves.
+                if (vectorMarkers.Count > 0)
+                    PdfVectorMarkerRenderer.Render(gfx, vectorMarkers, renderedCharsByParagraph);
+
+                // Page-one title fonts are often shared with the protected
+                // author block, so font stripping cannot safely remove the
+                // source title glyphs from the original content stream.  Do a
+                // final title-only scrub after all overlays have been drawn,
+                // then redraw the translated title once.  This guarantees the
+                // source wrapped title cannot remain visible over the CJK
+                // translation while keeping the author block untouched.
+                if (p == 0)
+                    RedrawPageOneTitleAfterSourceScrub(gfx, paragraphs, targetFontName);
             }
 
             onProgress?.Invoke(95, 100, "正在儲存翻譯後的檔案...");
             finalDoc.Save(outputPath);
             finalDoc.Close();
+            return layoutSummary;
+    }
+
+    private static void DrawFindingCalloutSurface(XGraphics gfx, PdfParagraph para, double pageHeight)
+    {
+        const double padding = 3.2;
+        const double radius = 4.0;
+        double x0 = Math.Min(para.OriginalX0, para.X0) - padding;
+        // PdfPig's text bbox leaves a larger descender gap on multi-line
+        // callouts (ASTER Finding 5) than on one-line boxes (Finding 6).
+        // Scale the lower inset with the source height so the source border is
+        // fully covered without making short boxes taller than their original.
+        double bottomPadding = Math.Max(padding, para.Height * 0.10);
+        double y0 = Math.Min(para.OriginalY0, para.Y0) - bottomPadding;
+        double x1 = Math.Max(para.OriginalX1, para.X1) + padding;
+        double y1 = Math.Max(para.OriginalY1, para.Y1) + padding;
+
+        var fill = new XSolidBrush(XColor.FromArgb(229, 247, 253));
+        var border = new XPen(XColors.Black, 0.75);
+        gfx.DrawRoundedRectangle(
+            border,
+            fill,
+            x0,
+            pageHeight - y1,
+            Math.Max(1, x1 - x0),
+            Math.Max(1, y1 - y0),
+            radius,
+            radius);
+    }
+
+    private static void RedrawPageOneTitleAfterSourceScrub(
+        XGraphics gfx,
+        IReadOnlyList<PdfParagraph> paragraphs,
+        string targetFontName)
+    {
+        var titleParagraphs = paragraphs
+            .Where(para => para.IsPageTitle && !string.IsNullOrWhiteSpace(para.TranslatedText))
+            .ToList();
+        if (titleParagraphs.Count == 0) return;
+
+        const double padding = 2.5;
+        double pageHeight = gfx.PageSize.Height;
+        foreach (var para in titleParagraphs)
+        {
+            double x0 = Math.Min(para.OriginalX0, para.X0) - padding;
+            double y0 = Math.Min(para.OriginalY0, para.Y0) - padding;
+            double x1 = Math.Max(para.OriginalX1, para.X1) + padding;
+            double y1 = Math.Max(para.OriginalY1, para.Y1) + padding;
+            if (x1 <= x0 || y1 <= y0) continue;
+
+            gfx.DrawRectangle(
+                XBrushes.White,
+                x0,
+                pageHeight - y1,
+                x1 - x0,
+                y1 - y0);
+        }
+
+        foreach (var para in titleParagraphs)
+            PdfTranslatedParagraphRenderer.RenderParagraph(gfx, para, targetFontName);
     }
 }
