@@ -35,6 +35,27 @@ static partial class TestSuite
             Assert.Equal(
                 "參考文獻",
                 PdfTranslateProcessor.PostProcessTranslation("REFERENCES", "引用", "zh-TW"));
+
+            Assert.Equal(
+                "使用大型語言模型生成",
+                PdfTranslateProcessor.PostProcessTranslation(
+                    "Generation with LLMs",
+                    "大型語言模型一代",
+                    "zh-TW"));
+
+            Assert.Equal(
+                "使用大型语言模型生成",
+                PdfTranslateProcessor.PostProcessTranslation(
+                    "Generation using an LLM",
+                    "法学硕士的一代",
+                    "zh-CN"));
+
+            Assert.Equal(
+                "自動測試生成",
+                PdfTranslateProcessor.PostProcessTranslation(
+                    "automated test generation",
+                    "自動測試一代",
+                    "zh-TW"));
         });
 
         runner.Run("Formula literals are not rendered twice beside placeholders", () =>
