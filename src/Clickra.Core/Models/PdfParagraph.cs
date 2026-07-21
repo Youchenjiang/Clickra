@@ -61,6 +61,8 @@ namespace Clickra.Core.Models
         public double SourceLineHeight { get; set; }
         /// <summary>Planner-provided effective font size for a continuation line.</summary>
         public double LayoutFontSizeOverride { get; set; }
+        /// <summary>Planner-provided leading for vertically balanced translated prose.</summary>
+        public double LayoutLineSpacingMultiplierOverride { get; set; }
         public string TranslationGroupId { get; set; } = string.Empty;
         public bool brk { get; set; }
         public List<MathFormula> Formulas { get; set; } = new List<MathFormula>();

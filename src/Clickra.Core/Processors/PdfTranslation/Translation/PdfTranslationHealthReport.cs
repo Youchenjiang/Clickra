@@ -5,6 +5,10 @@ namespace Clickra.Core.Processors;
 
 public sealed class PdfTranslationHealthReport
 {
+    public const double MinimumAllowedBodyFontRatio = 0.80;
+    public const double MaximumAllowedBodyFontRatio = 1.15;
+    public const double MaximumAllowedBodyLineSpacingMultiplier = 1.50;
+    public const double MaximumAllowedFlowRegionResidualWhitespace = 18.0;
     public string InputPath { get; init; } = string.Empty;
     public string OutputPath { get; init; } = string.Empty;
     public string Provider { get; init; } = string.Empty;
@@ -18,6 +22,11 @@ public sealed class PdfTranslationHealthReport
     public int HeadingCount { get; init; }
     public double MinimumHeadingFontRatio { get; init; } = 1.0;
     public double MaximumAlignmentAnchorShift { get; init; }
+    public double MinimumBodyFontRatio { get; init; } = 1.0;
+    public double MaximumBodyFontRatio { get; init; } = 1.0;
+    public double MaximumBodyLineSpacingMultiplier { get; init; }
+    public double MaximumInterParagraphGap { get; init; }
+    public double MaximumFlowRegionResidualWhitespace { get; init; }
     public int ShiftedParagraphCount { get; init; }
     public int FixedRegionCollisionCount { get; init; }
     public int BottomOverflowCount { get; init; }
@@ -27,7 +36,13 @@ public sealed class PdfTranslationHealthReport
     public DateTimeOffset CompletedAtUtc { get; init; } = DateTimeOffset.UtcNow;
 
     [JsonIgnore]
-    public bool HasLayoutDefects => GuardClipEntries > 0 || OverflowEntries > 0;
+    public bool HasLayoutDefects =>
+        GuardClipEntries > 0 ||
+        OverflowEntries > 0 ||
+        MinimumBodyFontRatio < MinimumAllowedBodyFontRatio - 0.01 ||
+        MaximumBodyFontRatio > MaximumAllowedBodyFontRatio + 0.01 ||
+        MaximumBodyLineSpacingMultiplier > MaximumAllowedBodyLineSpacingMultiplier + 0.01 ||
+        MaximumFlowRegionResidualWhitespace > MaximumAllowedFlowRegionResidualWhitespace;
 
     public void Save(string path)
     {
@@ -48,6 +63,11 @@ public sealed class PdfTranslationHealthReport
         writer.WriteNumber(nameof(HeadingCount), HeadingCount);
         writer.WriteNumber(nameof(MinimumHeadingFontRatio), MinimumHeadingFontRatio);
         writer.WriteNumber(nameof(MaximumAlignmentAnchorShift), MaximumAlignmentAnchorShift);
+        writer.WriteNumber(nameof(MinimumBodyFontRatio), MinimumBodyFontRatio);
+        writer.WriteNumber(nameof(MaximumBodyFontRatio), MaximumBodyFontRatio);
+        writer.WriteNumber(nameof(MaximumBodyLineSpacingMultiplier), MaximumBodyLineSpacingMultiplier);
+        writer.WriteNumber(nameof(MaximumInterParagraphGap), MaximumInterParagraphGap);
+        writer.WriteNumber(nameof(MaximumFlowRegionResidualWhitespace), MaximumFlowRegionResidualWhitespace);
         writer.WriteNumber(nameof(ShiftedParagraphCount), ShiftedParagraphCount);
         writer.WriteNumber(nameof(FixedRegionCollisionCount), FixedRegionCollisionCount);
         writer.WriteNumber(nameof(BottomOverflowCount), BottomOverflowCount);

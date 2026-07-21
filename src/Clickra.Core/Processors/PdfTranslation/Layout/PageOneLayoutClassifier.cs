@@ -12,11 +12,13 @@ namespace Clickra.Core.Processors
             return pageList
                 .Where(para => para.Y1 > pageHeight * 0.85)
                 // A wrapped paper title can be split into lines with unreliable
-                // extracted font averages. Prefer the widest top-band paragraph
-                // as the title anchor; this keeps a narrow continuation such as
-                // "Generation" from becoming the page title by mistake.
-                .OrderByDescending(para => para.Width)
-                .ThenByDescending(para => para.AverageFontSize)
+                // geometry, while a publication running header can be wider
+                // than the title. Prefer the largest source visual type, then
+                // use width to select the first line over a narrow continuation.
+                .OrderByDescending(para => para.SourceVisualFontSize > 0
+                    ? para.SourceVisualFontSize
+                    : para.AverageFontSize)
+                .ThenByDescending(para => para.Width)
                 .ThenByDescending(para => para.Y1)
                 .FirstOrDefault();
         }

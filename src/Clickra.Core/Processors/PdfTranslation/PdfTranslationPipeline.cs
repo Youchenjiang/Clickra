@@ -122,6 +122,14 @@ namespace Clickra.Core.Processors
                     throw new InvalidOperationException($"PDF layout still has {overflowEntries} overflowing paragraph(s).");
                 if (guardClipEntries > 0)
                     throw new InvalidOperationException($"PDF layout still uses {guardClipEntries} guard clip(s); translated text must be reflowed instead of clipped.");
+                if (layoutSummary.MinimumBodyFontRatio < PdfTranslationHealthReport.MinimumAllowedBodyFontRatio - 0.01)
+                    throw new InvalidOperationException($"PDF body font ratio fell to {layoutSummary.MinimumBodyFontRatio:F3}; the minimum is {PdfTranslationHealthReport.MinimumAllowedBodyFontRatio:F2}.");
+                if (layoutSummary.MaximumBodyFontRatio > PdfTranslationHealthReport.MaximumAllowedBodyFontRatio + 0.01)
+                    throw new InvalidOperationException($"PDF body font ratio grew to {layoutSummary.MaximumBodyFontRatio:F3}; the maximum is {PdfTranslationHealthReport.MaximumAllowedBodyFontRatio:F2}.");
+                if (layoutSummary.MaximumBodyLineSpacingMultiplier > PdfTranslationHealthReport.MaximumAllowedBodyLineSpacingMultiplier + 0.01)
+                    throw new InvalidOperationException($"PDF body line spacing grew to {layoutSummary.MaximumBodyLineSpacingMultiplier:F3}; the maximum is {PdfTranslationHealthReport.MaximumAllowedBodyLineSpacingMultiplier:F2}.");
+                if (layoutSummary.MaximumFlowRegionResidualWhitespace > PdfTranslationHealthReport.MaximumAllowedFlowRegionResidualWhitespace)
+                    throw new InvalidOperationException($"PDF flow region retained {layoutSummary.MaximumFlowRegionResidualWhitespace:F1}pt of undistributed whitespace; the maximum is {PdfTranslationHealthReport.MaximumAllowedFlowRegionResidualWhitespace:F1}pt.");
 
                 var healthReport = new PdfTranslationHealthReport
                 {
@@ -138,6 +146,11 @@ namespace Clickra.Core.Processors
                     HeadingCount = layoutSummary.HeadingCount,
                     MinimumHeadingFontRatio = layoutSummary.MinimumHeadingFontRatio,
                     MaximumAlignmentAnchorShift = layoutSummary.MaximumAlignmentAnchorShift,
+                    MinimumBodyFontRatio = layoutSummary.MinimumBodyFontRatio,
+                    MaximumBodyFontRatio = layoutSummary.MaximumBodyFontRatio,
+                    MaximumBodyLineSpacingMultiplier = layoutSummary.MaximumBodyLineSpacingMultiplier,
+                    MaximumInterParagraphGap = layoutSummary.MaximumInterParagraphGap,
+                    MaximumFlowRegionResidualWhitespace = layoutSummary.MaximumFlowRegionResidualWhitespace,
                     ShiftedParagraphCount = layoutSummary.ShiftedParagraphCount,
                     FixedRegionCollisionCount = layoutSummary.FixedCollisionCount,
                     BottomOverflowCount = layoutSummary.BottomOverflowCount,
@@ -211,6 +224,11 @@ namespace Clickra.Core.Processors
                     HeadingCount = layoutSummary?.HeadingCount ?? 0,
                     MinimumHeadingFontRatio = layoutSummary?.MinimumHeadingFontRatio ?? 1.0,
                     MaximumAlignmentAnchorShift = layoutSummary?.MaximumAlignmentAnchorShift ?? 0,
+                    MinimumBodyFontRatio = layoutSummary?.MinimumBodyFontRatio ?? 1.0,
+                    MaximumBodyFontRatio = layoutSummary?.MaximumBodyFontRatio ?? 1.0,
+                    MaximumBodyLineSpacingMultiplier = layoutSummary?.MaximumBodyLineSpacingMultiplier ?? 0,
+                    MaximumInterParagraphGap = layoutSummary?.MaximumInterParagraphGap ?? 0,
+                    MaximumFlowRegionResidualWhitespace = layoutSummary?.MaximumFlowRegionResidualWhitespace ?? 0,
                     ShiftedParagraphCount = layoutSummary?.ShiftedParagraphCount ?? 0,
                     FixedRegionCollisionCount = layoutSummary?.FixedCollisionCount ?? fixedCollisionCount ?? 0,
                     BottomOverflowCount = layoutSummary?.BottomOverflowCount ?? bottomOverflowCount ?? 0,

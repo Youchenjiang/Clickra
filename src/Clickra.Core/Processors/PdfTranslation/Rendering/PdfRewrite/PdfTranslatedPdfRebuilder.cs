@@ -228,7 +228,12 @@ internal static class PdfTranslatedPdfRebuilder
                 // consume the effective paragraph coordinates, while
                 // OriginalX*/OriginalY* remain the source anchors.
                 var layoutPlan = PdfTranslationLayoutPlanner.BuildAndApply(
-                    gfx, paragraphs, targetFontName, pageWidthPts, pageHeightPts);
+                    gfx,
+                    paragraphs,
+                    targetFontName,
+                    pageWidthPts,
+                    pageHeightPts,
+                    tableMaskRegions.Concat(diagramMaskRegions).ToList());
                 layoutSummary.HeadingCount += layoutPlan.HeadingCount;
                 layoutSummary.ShiftedParagraphCount += layoutPlan.ShiftedParagraphCount;
                 layoutSummary.FixedCollisionCount += layoutPlan.FixedCollisionCount;
@@ -236,6 +241,30 @@ internal static class PdfTranslatedPdfRebuilder
                 layoutSummary.MaximumAlignmentAnchorShift = Math.Max(
                     layoutSummary.MaximumAlignmentAnchorShift,
                     layoutPlan.MaximumAlignmentAnchorShift);
+                int previousBodyCount = layoutSummary.BodyParagraphCount;
+                int pageBodyCount = layoutPlan.Snapshots.Count(s =>
+                    s.Role == PdfParagraphSemanticRole.Body &&
+                    !string.IsNullOrWhiteSpace(s.Paragraph.TranslatedText) &&
+                    s.Paragraph.TranslatedText.Any(FontUtilities.IsCjkCharacter));
+                if (pageBodyCount > 0)
+                {
+                    layoutSummary.MinimumBodyFontRatio = previousBodyCount == 0
+                        ? layoutPlan.MinimumBodyFontRatio
+                        : Math.Min(layoutSummary.MinimumBodyFontRatio, layoutPlan.MinimumBodyFontRatio);
+                    layoutSummary.MaximumBodyFontRatio = Math.Max(
+                        layoutSummary.MaximumBodyFontRatio,
+                        layoutPlan.MaximumBodyFontRatio);
+                    layoutSummary.BodyParagraphCount += pageBodyCount;
+                }
+                layoutSummary.MaximumBodyLineSpacingMultiplier = Math.Max(
+                    layoutSummary.MaximumBodyLineSpacingMultiplier,
+                    layoutPlan.MaximumBodyLineSpacingMultiplier);
+                layoutSummary.MaximumInterParagraphGap = Math.Max(
+                    layoutSummary.MaximumInterParagraphGap,
+                    layoutPlan.MaximumInterParagraphGap);
+                layoutSummary.MaximumFlowRegionResidualWhitespace = Math.Max(
+                    layoutSummary.MaximumFlowRegionResidualWhitespace,
+                    layoutPlan.MaximumFlowRegionResidualWhitespace);
                 if (layoutPlan.Snapshots.Count > 0)
                 {
                     layoutSummary.MinimumHeadingFontRatio = Math.Min(
@@ -424,7 +453,9 @@ internal static class PdfTranslatedPdfRebuilder
                         // duplicate translated title text in the PDF content
                         // stream while retaining the normal two-pass flow for
                         // every other paragraph.
-                        if (p == 0 && para.IsPageTitle) continue;
+                        if (p == 0 &&
+                            (para.IsPageTitle || para.SemanticRole == PdfParagraphSemanticRole.PageTitle))
+                            continue;
 
                         if ((para.IsGrayPromptContent || PdfGrayPromptClassifier.IsGrayPromptCodeParagraph(para)) &&
                             effectiveGrayMaskRegions.Count > 0 &&
@@ -441,6 +472,9 @@ internal static class PdfTranslatedPdfRebuilder
                         if (pageHasTable && tableMaskRegions.Count > 0 &&
                             PdfTableMaskPlanner.ParagraphOverlapsAnyTableMask(para.X0, para.Y0, para.X1, para.Y1, tableMaskRegions))
                         {
+                            ClickraDebug.LogRenderSkip(
+                                p + 1, "table-overlap", para.Y0, para.Y1,
+                                para.OriginalY0, para.OriginalY1, para.TextWithPlaceholders);
                             continue;
                         }
 
@@ -448,6 +482,9 @@ internal static class PdfTranslatedPdfRebuilder
                             !PdfParagraphRoleClassifier.IsTranslatableBodyProse(para) && !PdfParagraphRoleClassifier.IsTranslatableCalloutProse(para) &&
                             !PdfParagraphSemanticClassifier.IsHeadingParagraph(para) && !PdfParagraphSemanticClassifier.IsAppendixSectionHeading(para))
                         {
+                            ClickraDebug.LogRenderSkip(
+                                p + 1, "diagram-overlap", para.Y0, para.Y1,
+                                para.OriginalY0, para.OriginalY1, para.TextWithPlaceholders);
                             continue;
                         }
 
@@ -477,8 +514,10 @@ internal static class PdfTranslatedPdfRebuilder
                                 para.X0,
                                 para.X1,
                                 guardClip: clipState != null,
-                                overflow: renderMetrics.HorizontalOverflow || renderMetrics.VerticalOverflow,
-                                measuredH: measuredHeight);
+                                horizontalOverflow: renderMetrics.HorizontalOverflow,
+                                verticalOverflow: renderMetrics.VerticalOverflow,
+                                measuredH: measuredHeight,
+                                text: para.TextWithPlaceholders);
                             PdfTranslatedParagraphRenderer.RenderParagraph(
                                 gfx,
                                 para,
@@ -549,7 +588,9 @@ internal static class PdfTranslatedPdfRebuilder
         string targetFontName)
     {
         var titleParagraphs = paragraphs
-            .Where(para => para.IsPageTitle && !string.IsNullOrWhiteSpace(para.TranslatedText))
+            .Where(para =>
+                (para.IsPageTitle || para.SemanticRole == PdfParagraphSemanticRole.PageTitle) &&
+                !string.IsNullOrWhiteSpace(para.TranslatedText))
             .ToList();
         if (titleParagraphs.Count == 0) return;
 

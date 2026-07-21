@@ -36,7 +36,9 @@ internal static class PdfTranslatedParagraphRenderer
             // translation/reflow.  Use that role as authoritative so a heading
             // whose translated text no longer matches the source heuristic can
             // never fall back to body sizing.
-            bool isHeading = para.IsPageTitle ||
+            bool isPageTitle = para.IsPageTitle ||
+                para.SemanticRole == PdfParagraphSemanticRole.PageTitle;
+            bool isHeading = isPageTitle ||
                 para.SemanticRole is PdfParagraphSemanticRole.PageTitle or
                     PdfParagraphSemanticRole.AbstractHeading or
                     PdfParagraphSemanticRole.SectionHeading or
@@ -140,7 +142,7 @@ internal static class PdfTranslatedParagraphRenderer
             if (!isRotated && isHeading)
             {
                 double pageCenter = gfx.PageSize.Width / 2.0;
-                double maxBoundary = para.IsPageTitle
+                double maxBoundary = isPageTitle
                     ? gfx.PageSize.Width + 30.0
                     : gfx.PageSize.Width - 54.0; // Default right margin
 
@@ -155,7 +157,7 @@ internal static class PdfTranslatedParagraphRenderer
                 {
                     layoutWidth = remainingWidth;
                 }
-                if (para.IsPageTitle)
+                if (isPageTitle)
                 {
                     // A translated title may be substantially wider than the
                     // Latin source.  Give the line breaker the full title band;
@@ -216,6 +218,11 @@ internal static class PdfTranslatedParagraphRenderer
             double limitHeight = isRotated ? para.Width : paragraphHeight;
             bool bodyProse = PdfParagraphRoleClassifier.IsTranslatableBodyProse(para) ||
                              PdfParagraphRoleClassifier.IsTranslatableCalloutProse(para);
+            bool flowableBody = !isRotated && !para.IsBypassed &&
+                !para.IsTable && !para.IsDiagram && !para.IsCode &&
+                !para.IsGrayPromptContent &&
+                para.SemanticRole == PdfParagraphSemanticRole.Body &&
+                text.Any(FontUtilities.IsCjkCharacter);
             // Only a one-line/continuation box with an implausibly short source
             // height may grow naturally. Multi-line body paragraphs still use
             // their measured box and the normal 80% reflow floor.
@@ -243,6 +250,12 @@ internal static class PdfTranslatedParagraphRenderer
                 para.SourceLineHeight < sourceHeadingFontSize * 0.95;
             if ((ordinarySingleLine && para.Height < sourceHeadingFontSize) || sourceGlyphBoxUnderreports)
                 lineSpacingMultiplier = 1.0;
+            // The layout planner applies bounded vertical justification after
+            // source glyph-box normalization. Applying this earlier would let
+            // the compact single-line fallback silently overwrite the planned
+            // leading and leave large residual holes in otherwise flowable text.
+            if (!isHeading && para.LayoutLineSpacingMultiplierOverride > 0)
+                lineSpacingMultiplier = para.LayoutLineSpacingMultiplierOverride;
             double lineHeight = fontSize * lineSpacingMultiplier;
             List<PdfLayoutRow> rows = new();
             double renderedHeight = 0;
@@ -267,7 +280,8 @@ internal static class PdfTranslatedParagraphRenderer
                 // Body paragraphs must not shrink merely because PdfPig gave a
                 // final source line an undersized glyph box. Their natural line
                 // height is valid; masks/layout planning handle the extra space.
-                bool fitsHeight = isHeading || allowNaturalBodyHeight || renderedHeight <= limitHeight + 0.5;
+                bool fitsHeight = isHeading || allowNaturalBodyHeight || flowableBody ||
+                    renderedHeight <= limitHeight + 0.5;
                 if (fitsWidth && fitsHeight) break;
                 // Heading hierarchy is a hard constraint. A heading that does
                 // not fit must be handled by the layout planner or fail closed.
@@ -280,7 +294,10 @@ internal static class PdfTranslatedParagraphRenderer
                     scale = Math.Min(scale, limitHeight / renderedHeight);
 
                 scale = Math.Clamp(scale, 0.80, 0.94);
+                double minimumFontSize = Math.Max(sourceBodyFontFloor, para.AverageFontSize * 0.80);
                 double nextFontSize = fontSize * scale;
+                if (flowableBody)
+                    nextFontSize = Math.Max(minimumFontSize, nextFontSize);
                 if (nextFontSize >= fontSize - 0.01) break;
 
                 fontSize = nextFontSize;
@@ -311,7 +328,9 @@ internal static class PdfTranslatedParagraphRenderer
                 horizontalOverflow,
                 verticalOverflow,
                 fontSize,
-                sourceHeadingFontSize));
+                sourceHeadingFontSize,
+                rows.Count,
+                lineSpacingMultiplier));
 
             // In measure-only mode, skip all drawing and just return the height
             if (measureOnly)
@@ -323,13 +342,13 @@ internal static class PdfTranslatedParagraphRenderer
             double currentY = isRotated ? fontSize : (paragraphY + fontSize);
             var renderedChars = new List<RenderedChar>();
             XGraphicsState? headingScaleState = null;
-            if (!isRotated && para.IsPageTitle && maxRowWidth > 0)
+            if (!isRotated && isPageTitle && maxRowWidth > 0)
             {
                 double availableTitleWidth = gfx.PageSize.Width - 72.0;
                 double horizontalScale = Math.Min(1.0, availableTitleWidth / maxRowWidth);
                 if (horizontalScale < 0.999)
                 {
-                    double anchor = (para.OriginalX0 + para.OriginalX1) / 2.0;
+                    double anchor = (para.X0 + para.X1) / 2.0;
                     headingScaleState = gfx.Save();
                     gfx.TranslateTransform(anchor, 0);
                     gfx.ScaleTransform(horizontalScale, 1.0);
@@ -355,9 +374,11 @@ internal static class PdfTranslatedParagraphRenderer
                         : para.Alignment;
                     if (alignment == PdfParagraph.TextAlignment.Center)
                     {
-                        double anchorCenter = isHeading
-                            ? (para.OriginalX0 + para.OriginalX1) / 2.0
-                            : paragraphX + paragraphWidth / 2.0;
+                        double anchorCenter = isPageTitle
+                            ? (para.X0 + para.X1) / 2.0
+                            : isHeading
+                                ? (para.OriginalX0 + para.OriginalX1) / 2.0
+                                : paragraphX + paragraphWidth / 2.0;
                         startX = anchorCenter - rowWidth / 2.0;
                     }
                     else if (alignment == PdfParagraph.TextAlignment.Right)
@@ -366,6 +387,9 @@ internal static class PdfTranslatedParagraphRenderer
                         startX = anchorRight - rowWidth;
                     }
                 }
+
+                if (isPageTitle)
+                    ClickraDebug.LogTitleRow((para.X0 + para.X1) / 2.0, startX, rowWidth, text);
 
                 double currentX = startX;
                 int idx = 0;
@@ -659,11 +683,17 @@ internal static class PdfTranslatedParagraphRenderer
 
         private static PdfParagraph.TextAlignment InferHeadingAlignment(PdfParagraph para, double pageWidth)
         {
+            double pageCenter = pageWidth / 2.0;
+            double currentVisualCenter = (para.X0 + para.X1) / 2.0;
+            bool isPageTitle = para.IsPageTitle ||
+                para.SemanticRole == PdfParagraphSemanticRole.PageTitle;
+            if (isPageTitle && Math.Abs(currentVisualCenter - pageCenter) <= 24.0)
+                return PdfParagraph.TextAlignment.Center;
+
             if (para.Alignment != PdfParagraph.TextAlignment.Left)
                 return para.Alignment;
 
             double sourceCenter = (para.OriginalX0 + para.OriginalX1) / 2.0;
-            double pageCenter = pageWidth / 2.0;
             if (Math.Abs(sourceCenter - pageCenter) <= 18.0)
                 return PdfParagraph.TextAlignment.Center;
 
@@ -672,7 +702,7 @@ internal static class PdfTranslatedParagraphRenderer
             // This is common for "A. Research Questions: ..." lines: treating
             // the column midpoint as a centered anchor shifts the translated
             // (shorter) line into the middle of the column.
-            if (!para.IsPageTitle && para.Width >= pageWidth * 0.34)
+            if (!isPageTitle && para.Width >= pageWidth * 0.34)
                 return PdfParagraph.TextAlignment.Left;
 
             // Two-column papers commonly place centered subsection headings at
@@ -698,4 +728,6 @@ internal readonly record struct PdfParagraphRenderMetrics(
     bool HorizontalOverflow,
     bool VerticalOverflow,
     double EffectiveFontSize,
-    double SourceFontSize);
+    double SourceFontSize,
+    int LineCount,
+    double LineSpacingMultiplier);
