@@ -222,6 +222,7 @@
     *   原始英文包含 `character` $\rightarrow$ 將「字元/字符」替換為**角色**（在非代碼本文語境中）。
     *   原始英文包含 `title`（且不含 `entitle`） $\rightarrow$ 將「標題/标题」替換為**作品**。
     *   原始英文包含 `features` 或 `feature` $\rightarrow$ 將「功能/特性」替換為**特徵**（繁體）/ **特征**（簡體）。
+    *   原始英文具有 `test generation` 語境時，`generation` 必須翻為**生成**，不得保留「一代／世代」；被版面拆開的標題續行 `Generation with/using LLM(s)` 必須正規化為**使用大型語言模型生成**，不得依賴前一段文字才能取得正確術語。
     *   獨立的 "ABSTRACT" $\rightarrow$ 翻譯為 "摘要"。
 3.  **公式殘留符號清除**：
     *   清除公式提取器誤讀導致的 dangling 符號（如結尾或開頭殘留的 `):(Equation (1))` 或 `):`）。
