@@ -25,12 +25,14 @@ namespace Clickra.Core.Processors
                     if (ReferenceSectionDetector.IsHeading(para))
                     {
                         inSection = true;
+                        ClickraDebug.LogReferenceState(p + 1, "start", para.TextWithPlaceholders);
                         continue;
                     }
 
                     if (inSection && ReferenceSectionDetector.IsTerminator(para))
                     {
                         inSection = false;
+                        ClickraDebug.LogReferenceState(p + 1, "stop", para.TextWithPlaceholders);
                         continue;
                     }
 

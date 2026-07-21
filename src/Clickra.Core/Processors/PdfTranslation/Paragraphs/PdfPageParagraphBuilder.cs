@@ -342,6 +342,14 @@ internal static class PdfPageParagraphBuilder
         foreach (var para in pageList)
         {
             string finalText = para.TextWithPlaceholders.Trim();
+            bool isPublicationMetadata = page.Number == 1 &&
+                finalText.Contains("DOI", StringComparison.OrdinalIgnoreCase) &&
+                (finalText.Contains("IEEE", StringComparison.OrdinalIgnoreCase) ||
+                 finalText.Contains('©'));
+            bool isTinyFixedLabel = para.AverageFontSize > 0 &&
+                para.AverageFontSize <= 6.0 && para.Width <= 40.0 &&
+                para.Height <= 8.0 &&
+                finalText.Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries).Length <= 2;
             if (finalText.Equals("EX-", StringComparison.OrdinalIgnoreCase) ||
                 System.Text.RegularExpressions.Regex.IsMatch(
                     finalText, @"^AMPLE\}?$", System.Text.RegularExpressions.RegexOptions.IgnoreCase) ||
@@ -379,7 +387,8 @@ internal static class PdfPageParagraphBuilder
             para.IsBypassed = para.IsBypassed ||
                               para.IsCode || para.IsOnlyMath || string.IsNullOrWhiteSpace(para.TextWithPlaceholders) ||
                               (!preserveProseContinuation && PdfParagraphSemanticClassifier.IsEquationParagraph(para)) || PdfTableParagraphClassifier.IsTableParagraph(para) || para.IsDiagram || para.IsTable ||
-                              PdfChartLabelClassifier.IsChartTickGlyph(para);
+                              PdfChartLabelClassifier.IsChartTickGlyph(para) ||
+                              isPublicationMetadata || isTinyFixedLabel;
         }
 
         // This is the final invariant pass: no later classifier may turn a
