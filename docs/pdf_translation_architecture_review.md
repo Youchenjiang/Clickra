@@ -42,7 +42,7 @@ graph TD
   - `IsMathLine` 會檢查字元的字型名稱是否符合數學字型前綴（例如 `CMMI`, `CMSY`）以及 Unicode 範圍。
   - `IsEquationParagraph` 會繞過看起來像數學公式或結尾帶有方程式索引（如 `(1)`）的段落。
 - **程式碼區塊**：若段落字型為等寬字型（如 Courier, Console, Inconsolata），則會判定為程式碼並繞過。
-- **第一頁作者區塊**：以 `titleY1`（最大字型標題底部）與 `abstractY0`（ABSTRACT 頂部）界定 bypass 區間，條件為 `para.Y0 >= abstractY0 && para.Y1 <= titleY1`（PDFPig Y 軸向上）。
+- **第一頁作者區塊**：top-band 候選先依來源視覺字級、再依寬度選出真正論文標題，避免較寬的出版頁首取代標題；以 `titleBottom = titlePara.Y0` 與 `abstractTop = abstractPara.Y1` 界定 bypass 區間，條件為 `para.Y0 >= abstractTop && para.Y1 <= titleBottom`（PDFPig Y 軸向上）。
 - **表格（幾何表格識別）**：
   - `IsTableCaptionWord` 判定頁面是否為表格頁（排除引言中的 "Table"/"表"）。
   - `IsTableParagraph` 會檢查關鍵字密度與高密度數字/短標記（Numeric/Short tokens）。
@@ -67,6 +67,7 @@ graph TD
   - 渲染時，`TokenizeTranslatedText` 會將文本拆回普通字詞與預留位置。
   - 預留位置字元會藉由在其精確相對位置上，使用 `Segoe UI Symbol` 或數學字型重新繪製原始字元（`MathLetter`）來還原。
 - **動態文本縮放**：一般多行正文可在 80% 下限內 reflow；單行／續行不得因來源 bbox 過矮而縮成小字，改沿用同欄正文有效字級。若自然行高撞到固定區則 fail closed。
+- **同欄垂直平衡**：CJK 正文以自然高度進入 layout planning，在表格、圖表、程式碼、公式、灰框、作者區、文獻與頁界所切出的 flow region 內共同調整。正文比例限制為 80%–115%、行距倍率不超過 1.50，未分配空白不超過 18 pt；不跨欄、不跨頁，且遮罩／連結／診斷沿用調整後座標。
 - **段落裁切（Clip）**：禁止以圖表/欄位的外層 `IntersectClip` 靜默截斷譯文；renderer 內部只保護自身段落邊界，任何 overflow 都使 health gate 失敗。
 
 ---

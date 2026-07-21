@@ -188,9 +188,10 @@
 ### F. 參考文獻區塊 (REFERENCES / BIBLIOGRAPHY Section)
 *   **標題辨識**（`IsReferencesSectionHeadingText` / `IsReferencesSectionHeading`）：
     *   帶章節編號：`^(\d{1,2})\.\s*(?:REFERENCES?|BIBLIOGRAPHY|參考文獻)\s*\.?\s*$`（**大小寫不敏感**），如 `9. REFERENCE`、`9. REFERENCES`。
-    *   無編號標題：`REFERENCES`、`REFERENCE`、`BIBLIOGRAPHY` 以 **大小寫不敏感** 匹配（如 ACM 論文 p13 的 `References`）；`參考文獻` 仍為精確匹配。表格欄位標籤由 `IsReferencesSectionHeading` 的 `IsTable` 排除，而非靠大小寫區分。
-    *   `IsReferencesSectionHeading` 若 `para.IsTable == true` 則回傳 `false`，避免表格「Reference」欄觸發整頁書目 bypass。
-*   **區塊範圍**：自標題段落之後，至下一個主要章節為止（跨頁延續）。終止條件包含 `APPENDIX`、`Appendix A`、`A Prompts` 等附錄字母章節（`^[A-Z]\s+Prompts`、`^[A-Z]\.\d+`、`^[A-Z]\.\s+`）、`WORK DIVISION`、`ACKNOWLEDGMENT` / `ACKNOWLEDGEMENT`，以及 `10.` 等編號章節標題（如 `10. WORK DIVISION`）。**附錄章節標題與說明正文可譯**；**灰色 prompt 框**依 §2.C **`MarkGrayPromptBoxesAsCode` bypass 英文**；workflow 圖表短標籤（`IsLikelyChartLabel`）與表格儲存格 bypass。
+    *   無編號標題：`REFERENCES`、`REFERENCE`、`BIBLIOGRAPHY` 以 **大小寫不敏感** 匹配（如 ACM 論文 p13 的 `References`）；`參考文獻` 仍為精確匹配。
+    *   單數 `REFERENCE` 若位於 table/diagram 仍回傳 `false`，避免欄位標籤觸發整頁書目 bypass；明確的複數 `REFERENCES`／`BIBLIOGRAPHY` 或編號標題可在符合來源章節標題幾何時恢復先前的 table/diagram 誤分類。
+*   **區塊範圍**：自標題段落之後，至下一個主要章節為止（跨頁延續）。終止段落必須先具有來源章節標題幾何，才可再以 `APPENDIX`、`Appendix A`、`A Prompts`、`A.1`、`WORK DIVISION`、`ACKNOWLEDGMENT` / `ACKNOWLEDGEMENT` 或 `10.` 等文字模式判定；不得只因作者續行以 `A. Name` 開頭，或文獻題名含有 `Appendix`，便中止 bypass。**附錄章節標題與說明正文可譯**；**灰色 prompt 框**依 §2.C **`MarkGrayPromptBoxesAsCode` bypass 英文**；workflow 圖表短標籤（`IsLikelyChartLabel`）與表格儲存格 bypass。
+*   **標題誤分類恢復**：明確的複數 `REFERENCES`、`BIBLIOGRAPHY` 或編號文獻標題，即使先被向量幾何誤標為 table/diagram，仍須啟動文獻 bypass；圖表或表格中的單數 `Reference` 欄位不得啟動。
 *   **終止排除**：`IsReferencesSectionTerminator` 對 `IsReferenceParagraph`（`[N]` 開頭、含 `http` / `doi:` / `www.`）回傳 `false`，避免書目條目被誤判為下一章節。
 *   **閱讀順序**：雙欄頁面以左欄由上而下、再右欄由上而下（`GetPageReadingOrder`）判定區塊邊界，避免雙欄交錯誤判。
 *   **處理**：
@@ -238,10 +239,17 @@
 
 ### 4.0.A 標題階層、字級與幾何錨點（硬性規則）
 *   `PageTitle`、摘要標題、章節／子章節標題必須保留來源的視覺字級；輸出標題不得小於來源，也不得因主標題與副標題合併而使用平均字級。合併群組一律採主標題字級。
+*   第一頁主標題候選以來源視覺字級優先、同級再比較寬度；不得單憑最寬 top-band 段落選擇，否則出版頁首會取代真正論文標題。主標題續行須共用同一 `PageTitle` 角色與中心錨點，作者區由正確標題底部到摘要頂部界定。
 *   標題的來源中心點、左錨點或右錨點必須保留；單行文字框不得單獨用來推斷置中。health report 必須記錄錨點偏移，發布門檻為 **≤ 1.5 pt**。
 *   標題增加行數時，只能推移同一欄、位於標題下方的可翻譯正文。作者欄、圖表、表格、程式碼、公式、灰色 prompt、參考文獻與頁首頁尾均為固定障礙，不得跨欄、整頁或跨頁重排。
 *   若同欄推移會撞到固定障礙或頁底，layout planning 必須失敗並寫入 `LayoutFailureReason`；不得輸出半成品或以 clip 隱藏溢出。
 *   每次執行的 JSON health report 必須包含標題數、來源／輸出字級比例、錨點偏移、推移段落數、固定區碰撞與底部溢位。
+
+### 4.0.B 同欄正文垂直平衡（硬性規則）
+*   CJK 正文先以來源閱讀字級量測自然高度，再由 layout planning 在相鄰固定障礙之間進行同欄平衡；不得把每段強行縮回來源段落 bbox，也不得把所有剩餘空白集中到欄位底端。
+*   同一 flow region 的正文字級比例必須落在 **80%–115%**，行距倍率不得超過 **1.50**；段間距以來源間距為基礎作有界調整。表格、圖表、程式碼、公式、灰色 prompt、作者區、文獻與旋轉文字是固定邊界，不參與平衡。
+*   平衡後每個 flow region 未分配空白不得超過 **18 pt**。health report 必須記錄 `MinimumBodyFontRatio`、`MaximumBodyFontRatio`、`MaximumBodyLineSpacingMultiplier`、`MaximumInterParagraphGap` 與 `MaximumFlowRegionResidualWhitespace`；任一超限即 fail closed。
+*   僅允許同欄、同頁調整，不跨欄、不跨頁；遮罩、譯文、連結與診斷座標必須使用同一份調整後幾何。
 
 翻譯後的中文文字必須使用 PDFsharp 的 `XGraphics` 重新繪製，並嚴格遵循字型與佈局對齊規範。
 
