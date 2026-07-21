@@ -1,6 +1,9 @@
 using Clickra.Core;
 using Clickra.Core.Models;
 using Clickra.Core.Processors;
+using PdfSharp.Drawing;
+using PdfSharp.Fonts;
+using PdfSharp.Pdf;
 
 static partial class TestSuite
 {
@@ -152,6 +155,9 @@ static partial class TestSuite
                     .GetResult();
                 Assert.True(translated.Contains("{v0}", StringComparison.Ordinal), "Formula placeholder was changed.");
                 Assert.True(translated.Contains('測'), "Synthetic CJK output did not contain a CJK glyph.");
+                Assert.True(
+                    translated.Length < "runtime features {v0}.".Length,
+                    "Synthetic CJK output did not model the higher information density of CJK text.");
             }
             finally
             {
@@ -392,6 +398,51 @@ static partial class TestSuite
             Assert.True(continuation.IsBypassed, "Bibliography continuation line must also bypass translation.");
         });
 
+        runner.Run("Reference author initials do not terminate bibliography bypass", () =>
+        {
+            var authorContinuation = new PdfParagraph(Array.Empty<UglyToad.PdfPig.DocumentLayoutAnalysis.TextLine>())
+            {
+                TextWithPlaceholders = "A. Panichella and G. Fraser",
+                AverageFontSize = 9.96,
+                X0 = 314,
+                X1 = 545,
+                Y0 = 650,
+                Y1 = 657
+            };
+
+            Assert.True(!ReferenceSectionDetector.IsTerminator(authorContinuation),
+                "An author-initial continuation must not end the reference section.");
+        });
+
+        runner.Run("References heading survives diagram misclassification", () =>
+        {
+            var bibliographyHeading = new PdfParagraph(Array.Empty<UglyToad.PdfPig.DocumentLayoutAnalysis.TextLine>())
+            {
+                TextWithPlaceholders = "REFERENCES",
+                AverageFontSize = 7.514,
+                X0 = 150,
+                X1 = 201,
+                Y0 = 500,
+                Y1 = 506,
+                IsDiagram = true
+            };
+            var tableField = new PdfParagraph(Array.Empty<UglyToad.PdfPig.DocumentLayoutAnalysis.TextLine>())
+            {
+                TextWithPlaceholders = "Reference",
+                AverageFontSize = 9.96,
+                X0 = 150,
+                X1 = 222,
+                Y0 = 500,
+                Y1 = 510,
+                IsTable = true
+            };
+
+            Assert.True(ReferenceSectionDetector.IsHeading(bibliographyHeading),
+                "An unambiguous REFERENCES heading must start bibliography bypass despite a diagram flag.");
+            Assert.True(!ReferenceSectionDetector.IsHeading(tableField),
+                "A singular table field named Reference must not start bibliography bypass.");
+        });
+
         runner.Run("Short research questions remain full-size prose", () =>
         {
             var question = new PdfParagraph(Array.Empty<UglyToad.PdfPig.DocumentLayoutAnalysis.TextLine>())
@@ -456,24 +507,124 @@ static partial class TestSuite
             Assert.True(title.IsPageTitle, "Title role was not retained in the source snapshot.");
         });
 
+        runner.Run("Flowable translated body measures at source size before vertical balancing", () =>
+        {
+            try { GlobalFontSettings.FontResolver = new ClickraFontResolver(); } catch { }
+            using var document = new PdfDocument();
+            var page = document.AddPage();
+            page.Width = XUnit.FromPoint(612);
+            page.Height = XUnit.FromPoint(792);
+            using var gfx = XGraphics.FromPdfPage(page);
+            var paragraph = new PdfParagraph(Array.Empty<UglyToad.PdfPig.DocumentLayoutAnalysis.TextLine>())
+            {
+                TextWithPlaceholders = "A deliberately long body paragraph",
+                TranslatedText = string.Concat(Enumerable.Repeat("這是一段用來驗證正文自然重排高度的翻譯文字。", 12)),
+                SemanticRole = PdfParagraphSemanticRole.Body,
+                X0 = 49,
+                X1 = 300,
+                Y0 = 500,
+                Y1 = 520,
+                AverageFontSize = 9.0,
+                SourceVisualFontSize = 9.0,
+                SourceLineHeight = 9.0
+            };
+
+            PdfParagraphRenderMetrics metrics = default;
+            PdfTranslatedParagraphRenderer.RenderParagraph(
+                gfx,
+                paragraph,
+                "DFKai-SB",
+                measureOnly: true,
+                metricsSink: value => metrics = value);
+
+            Assert.True(metrics.LineCount > 2,
+                "The fixture must wrap to multiple translated lines.");
+            Assert.True(metrics.RenderedHeight > paragraph.Height,
+                "Flowable body text must report its natural height instead of shrinking into the source box.");
+            Assert.True(metrics.EffectiveFontSize >= paragraph.AverageFontSize - 0.01,
+                "Space planning must not begin from a body font smaller than the source reading size.");
+        });
+
+        runner.Run("Vertical balancing treats spatial table masks as fixed boundaries", () =>
+        {
+            try { GlobalFontSettings.FontResolver = new ClickraFontResolver(); } catch { }
+            using var document = new PdfDocument();
+            var page = document.AddPage();
+            page.Width = XUnit.FromPoint(612);
+            page.Height = XUnit.FromPoint(792);
+            using var gfx = XGraphics.FromPdfPage(page);
+
+            var unclassifiedTableText = LayoutParagraph(
+                "Q1. Current Professional Role Open Q2. Years of experience",
+                "問卷表格內容",
+                320, 610, 550, 700,
+                5.1);
+            var firstBody = LayoutParagraph(
+                "Developer-written tests were compared in an anonymous survey.",
+                string.Concat(Enumerable.Repeat("開發人員撰寫的測試會在匿名問卷中進行比較。", 18)),
+                312, 310, 563, 580);
+            var secondBody = LayoutParagraph(
+                "The survey received responses from several software roles.",
+                string.Concat(Enumerable.Repeat("調查收到來自不同軟體職務的回覆。", 12)),
+                312, 76, 563, 298);
+            var protectedTable = new TableMaskRegion(310, 590, 565, 730);
+
+            PdfTranslationLayoutPlanner.BuildAndApply(
+                gfx,
+                new[] { unclassifiedTableText, firstBody, secondBody },
+                "DFKai-SB",
+                612,
+                792,
+                new[] { protectedTable });
+
+            Assert.True(firstBody.Y1 <= firstBody.OriginalY1 + 0.01,
+                "Body text below a table must not be pulled upward into the protected table region.");
+            Assert.True(!PdfTableMaskPlanner.ParagraphOverlapsAnyTableMask(
+                    firstBody.X0, firstBody.Y0, firstBody.X1, firstBody.Y1, new[] { protectedTable }),
+                "Balanced body geometry must remain outside the table mask.");
+        });
+
+        runner.Run("Translation health rejects fragmented flow whitespace", () =>
+        {
+            var acceptable = new PdfTranslationHealthReport
+            {
+                MinimumBodyFontRatio = 0.80,
+                MaximumBodyFontRatio = 1.15,
+                MaximumBodyLineSpacingMultiplier = 1.50,
+                MaximumFlowRegionResidualWhitespace = 18.0
+            };
+            var fragmented = new PdfTranslationHealthReport
+            {
+                MinimumBodyFontRatio = 0.80,
+                MaximumBodyFontRatio = 1.15,
+                MaximumBodyLineSpacingMultiplier = 1.50,
+                MaximumFlowRegionResidualWhitespace = 18.1
+            };
+
+            Assert.True(!acceptable.HasLayoutDefects,
+                "Typography exactly on the documented limits should pass the health gate.");
+            Assert.True(fragmented.HasLayoutDefects,
+                "A flow region with excessive undistributed whitespace must fail the health gate.");
+        });
+
         runner.Run("Page-one wrapped title lines share the title role", () =>
         {
             var title = new PdfParagraph(Array.Empty<UglyToad.PdfPig.DocumentLayoutAnalysis.TextLine>())
             {
                 TextWithPlaceholders = "ASTER: Natural and Multi-language Unit Test",
-                X0 = 76.1, X1 = 535.9, Y0 = 720.8, Y1 = 737.1,
+                X0 = 89.9, X1 = 512.9, Y0 = 667.4, Y1 = 682.4,
                 AverageFontSize = 23.91, SourceVisualFontSize = 23.91
             };
             var generation = new PdfParagraph(Array.Empty<UglyToad.PdfPig.DocumentLayoutAnalysis.TextLine>())
             {
                 TextWithPlaceholders = "Generation",
-                X0 = 193.4, X1 = 299.6, Y0 = 692.9, Y1 = 709.2,
+                X0 = 197.8, X1 = 299.6, Y0 = 639.1, Y1 = 656.7,
                 AverageFontSize = 23.91, SourceVisualFontSize = 23.91
             };
             var withLlms = new PdfParagraph(Array.Empty<UglyToad.PdfPig.DocumentLayoutAnalysis.TextLine>())
             {
                 TextWithPlaceholders = "with LLMs",
-                X0 = 308.0, X1 = 418.6, Y0 = 692.9, Y1 = 709.2,
+                X0 = 308.0, X1 = 405.0, Y0 = 639.1, Y1 = 656.7,
                 AverageFontSize = 23.91, SourceVisualFontSize = 23.91
             };
             var page = new List<PdfParagraph> { title, generation, withLlms };
@@ -486,6 +637,29 @@ static partial class TestSuite
             Assert.True(page[1].TextWithPlaceholders.Contains("Generation", StringComparison.Ordinal) &&
                         page[1].TextWithPlaceholders.Contains("with LLMs", StringComparison.Ordinal),
                 "The wrapped title continuation was not coalesced.");
+        });
+
+        runner.Run("Page-one running header cannot replace the paper title", () =>
+        {
+            var runningHeader = new PdfParagraph(Array.Empty<UglyToad.PdfPig.DocumentLayoutAnalysis.TextLine>())
+            {
+                TextWithPlaceholders = "2025 IEEE/ACM International Conference on Software Engineering",
+                X0 = 62, X1 = 550, Y0 = 762, Y1 = 769,
+                AverageFontSize = 5.2
+            };
+            var paperTitle = new PdfParagraph(Array.Empty<UglyToad.PdfPig.DocumentLayoutAnalysis.TextLine>())
+            {
+                TextWithPlaceholders = "ASTER: Natural and Multi-language Unit Test",
+                X0 = 90, X1 = 513, Y0 = 667, Y1 = 682,
+                AverageFontSize = 18
+            };
+
+            Assert.True(
+                ReferenceEquals(
+                    paperTitle,
+                    PageOneLayoutClassifier.FindTitleParagraph(
+                        new List<PdfParagraph> { runningHeader, paperTitle }, 792)),
+                "The publication running header was selected as the page title.");
         });
 
         runner.Run("Inline bold markers preserve Nimbus medium source runs", () =>

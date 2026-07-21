@@ -4,8 +4,8 @@ namespace Clickra.Core;
 
 /// <summary>
 /// Deterministic CJK stress engine used only by PDF layout regression tests.
-/// It preserves formula placeholders and punctuation while expanding Latin words
-/// into representative CJK glyphs.
+/// It preserves formula placeholders and punctuation while mapping Latin words
+/// to a representative CJK information density.
 /// </summary>
 internal sealed class SyntheticCjkTranslator : ITranslationEngine
 {
@@ -29,7 +29,7 @@ internal sealed class SyntheticCjkTranslator : ITranslationEngine
     private static string Translate(string text)
     {
         if (string.IsNullOrEmpty(text)) return text;
-        var builder = new StringBuilder(text.Length * 2);
+        var builder = new StringBuilder(text.Length);
         for (int index = 0; index < text.Length; index++)
         {
             if (text[index] == '{')
@@ -44,7 +44,25 @@ internal sealed class SyntheticCjkTranslator : ITranslationEngine
             }
 
             char value = text[index];
-            builder.Append(char.IsLetterOrDigit(value) ? '測' : value);
+            if (!char.IsLetterOrDigit(value))
+            {
+                builder.Append(value);
+                continue;
+            }
+
+            int runStart = index;
+            while (index + 1 < text.Length && char.IsLetterOrDigit(text[index + 1]))
+            {
+                index++;
+            }
+
+            int runLength = index - runStart + 1;
+            // Chinese translations normally encode a Latin word in materially
+            // fewer glyphs. One CJK glyph per three Latin letters keeps this
+            // deterministic fixture stressful without making it wider than a
+            // plausible translation solely because CJK glyphs are full-width.
+            int cjkGlyphCount = Math.Max(1, (runLength + 2) / 3);
+            builder.Append('測', cjkGlyphCount);
         }
         return builder.ToString();
     }
