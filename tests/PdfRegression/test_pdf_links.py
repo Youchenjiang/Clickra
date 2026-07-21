@@ -33,6 +33,26 @@ def _external_uris(page: fitz.Page) -> Counter[str]:
     )
 
 
+def _internal_destinations(page: fitz.Page) -> Counter[tuple[str, int, float, float]]:
+    """Return named citation targets without depending on movable link rectangles."""
+    destinations: Counter[tuple[str, int, float, float]] = Counter()
+    for link in page.get_links():
+        if link.get("kind") != fitz.LINK_NAMED:
+            continue
+        target = link.get("to")
+        if target is None:
+            continue
+        destinations[
+            (
+                link.get("nameddest", ""),
+                int(link.get("page", -1)),
+                round(float(target.x), 3),
+                round(float(target.y), 3),
+            )
+        ] += 1
+    return destinations
+
+
 def _annotation_counts(path: Path) -> list[int]:
     with fitz.open(path) as document:
         return [len(page.get_links()) for page in document]
@@ -54,6 +74,24 @@ def check_links(source: Path, translated: Path) -> list[str]:
                     f"page {page_number} URI destinations changed: "
                     f"expected {dict(expected)}, got {dict(actual)}"
                 )
+
+            expected_internal = _internal_destinations(source_page)
+            actual_internal = _internal_destinations(output_page)
+            if expected_internal != actual_internal:
+                failures.append(
+                    f"page {page_number} internal destinations changed: "
+                    f"expected {sum(expected_internal.values())}, "
+                    f"got {sum(actual_internal.values())}"
+                )
+
+            for link in output_page.get_links():
+                if link.get("kind") != fitz.LINK_NAMED:
+                    continue
+                if not output_page.get_text("words", clip=link["from"]):
+                    failures.append(
+                        f"page {page_number} internal link rectangle no longer covers text: "
+                        f"{link.get('nameddest', '<unnamed>')}"
+                    )
     return failures
 
 
@@ -101,9 +139,12 @@ def main() -> int:
 
     with fitz.open(args.translated) as output_doc:
         uri_count = sum(sum(_external_uris(page).values()) for page in output_doc)
+        internal_count = sum(
+            sum(_internal_destinations(page).values()) for page in output_doc
+        )
     print(
-        "PASS: translated ASTER preserved all per-page external URI destinations "
-        f"({uri_count} links)"
+        "PASS: translated ASTER preserved all link destinations "
+        f"(external={uri_count}, internal={internal_count})"
     )
     return 0
 
