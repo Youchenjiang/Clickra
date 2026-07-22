@@ -161,8 +161,18 @@ def main() -> int:
             None,
         ),
         (
+            "Layout occupancy heuristic contracts",
+            [sys.executable, "tests/PdfRegression/test_layout_occupancy_heuristics.py"],
+            None,
+        ),
+        (
             "Translation output quality",
             [sys.executable, "tests/PdfRegression/test_translation_output_quality.py"],
+            None,
+        ),
+        (
+            "Source/translated layout occupancy",
+            [sys.executable, "tests/PdfRegression/test_translation_layout_occupancy.py"],
             None,
         ),
         (

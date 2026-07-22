@@ -24,6 +24,7 @@ CLI = ROOT / "src" / "Clickra.CLI" / "bin" / "Debug" / "net10.0-windows" / "Clic
 DIAGNOSTICS = ROOT / "tools" / "pdf-diagnostics"
 sys.path.insert(0, str(DIAGNOSTICS))
 from pdf_health import health_report  # noqa: E402
+from layout_occupancy import compare_pdf_layout_occupancy  # noqa: E402
 
 
 def _aster_abstract_residuals(pdf_path: Path) -> list[str]:
@@ -173,6 +174,13 @@ def main() -> int:
     missing_table_rows = _aster_table_iii_missing_rows(output_pdf)
     if missing_table_rows:
         failures.append(f"ASTER page 8 Table III lost or translated rows: {missing_table_rows}")
+    layout_report = compare_pdf_layout_occupancy(SOURCE, output_pdf)
+    layout_report_path = output_dir / "ASTER _layout_occupancy.json"
+    layout_report_path.write_text(
+        json.dumps(layout_report, ensure_ascii=False, indent=2),
+        encoding="utf-8",
+    )
+    failures.extend(f"layout occupancy: {item}" for item in layout_report["failures"])
     if args.engine != "identity":
         residuals = _aster_abstract_residuals(output_pdf)
         if residuals:
