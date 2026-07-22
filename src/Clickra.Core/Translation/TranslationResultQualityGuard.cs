@@ -11,13 +11,13 @@ namespace Clickra.Core;
 internal static class TranslationResultQualityGuard
 {
     private static readonly Regex BoldMarkerRegex = new(
-        @"\{/?b\}", RegexOptions.IgnoreCase | RegexOptions.Compiled);
+        @"\{/?b\}", RegexOptions.IgnoreCase | RegexOptions.Compiled, TimeSpan.FromSeconds(1));
     private static readonly Regex BrokenBoldMarkerRegex = new(
         @"(?:/\s*b\s*[{}]|[{}]\s*/\s*b(?!\s*\})|[{}]\s*b\s*[{}])",
-        RegexOptions.IgnoreCase | RegexOptions.Compiled);
+        RegexOptions.IgnoreCase | RegexOptions.Compiled, TimeSpan.FromSeconds(1));
     private static readonly Regex EnglishConnectorRunRegex = new(
         @"\b(?:a|an|the|and|or|but|as|well|of|to|in|on|for|with|by|from|that|this|is|are|was|were)(?:\s+(?:a|an|the|and|or|but|as|well|of|to|in|on|for|with|by|from|that|this|is|are|was|were)){2,}\b",
-        RegexOptions.IgnoreCase | RegexOptions.Compiled);
+        RegexOptions.IgnoreCase | RegexOptions.Compiled, TimeSpan.FromSeconds(1));
 
     public static string? FindProblem(string source, string translated, string targetLanguage)
     {
@@ -28,10 +28,7 @@ internal static class TranslationResultQualityGuard
 
         string withoutValidMarkers = BoldMarkerRegex.Replace(translated, "");
         if (BrokenBoldMarkerRegex.IsMatch(withoutValidMarkers))
-            return "malformed inline bold marker debris remained in the translation";
-
-        if (!IsCjkTarget(targetLanguage) || !ContainsCjk(translated))
-            return null;
+            return "broken or incomplete bold marker tags found";
 
         if (ContainsTripledSequence(translated))
             return "a long phrase was repeated three times";
@@ -45,9 +42,9 @@ internal static class TranslationResultQualityGuard
     private static bool ContainsTripledSequence(string value)
     {
         var compact = new StringBuilder(value.Length);
-        foreach (char character in BoldMarkerRegex.Replace(value, ""))
+        foreach (char character in BoldMarkerRegex.Replace(value, "").Where(char.IsLetterOrDigit))
         {
-            if (char.IsLetterOrDigit(character)) compact.Append(char.ToLowerInvariant(character));
+            compact.Append(char.ToLowerInvariant(character));
         }
 
         string text = compact.ToString();

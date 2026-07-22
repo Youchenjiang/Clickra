@@ -100,7 +100,7 @@ namespace Clickra.Core.Processors
             // short line avoids promoting ordinary prose that happens to
             // mention one of these words.
             if (txt.Length <= 36 &&
-                Regex.IsMatch(txt, @"^(?:Introduction|Background|Motivation|Methodology|Methods|Results|Discussion|Conclusion|Conclusions|Related Work|Acknowledg(?:e)?ments|References|摘要|引言|結論)$", RegexOptions.IgnoreCase))
+                Regex.IsMatch(txt, @"^(?:Introduction|Background|Motivation|Methodology|Methods|Results|Discussion|Conclusion|Conclusions|Related Work|Acknowledg(?:e)?ments|References|摘要|引言|結論)$", RegexOptions.IgnoreCase, TimeSpan.FromSeconds(1)))
                 return true;
 
             // Uppercase section headers like "REFERENCES", "ABSTRACT", "APPENDIX"

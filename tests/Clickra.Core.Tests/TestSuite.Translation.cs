@@ -530,7 +530,7 @@ static partial class TestSuite
 
         runner.Run("Flowable translated body measures at source size before vertical balancing", () =>
         {
-            try { GlobalFontSettings.FontResolver = new ClickraFontResolver(); } catch { }
+            try { GlobalFontSettings.FontResolver = new ClickraFontResolver(); } catch (InvalidOperationException) { /* FontResolver already initialized */ }
             using var document = new PdfDocument();
             var page = document.AddPage();
             page.Width = XUnit.FromPoint(612);
@@ -568,7 +568,7 @@ static partial class TestSuite
 
         runner.Run("Vertical balancing treats spatial table masks as fixed boundaries", () =>
         {
-            try { GlobalFontSettings.FontResolver = new ClickraFontResolver(); } catch { }
+            try { GlobalFontSettings.FontResolver = new ClickraFontResolver(); } catch (InvalidOperationException) { /* FontResolver already initialized */ }
             using var document = new PdfDocument();
             var page = document.AddPage();
             page.Width = XUnit.FromPoint(612);

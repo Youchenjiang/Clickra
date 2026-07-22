@@ -43,6 +43,10 @@ namespace Clickra.Core
             }
         }
 
+        public static void LogRender(int page, double paraY0, double paraY1,
+            double paraX0, double paraX1, bool clipped, double measuredH) =>
+            LogRender(page, paraY0, paraY1, paraX0, paraX1, false, clipped, false, measuredH, string.Empty);
+
         public static void LogRenderSkip(
             int page,
             string reason,
@@ -80,9 +84,6 @@ namespace Clickra.Core
             }
         }
 
-        public static void LogRender(int page, double paraY0, double paraY1,
-            double paraX0, double paraX1, bool clipped, double measuredH) =>
-            LogRender(page, paraY0, paraY1, paraX0, paraX1, false, clipped, false, measuredH, string.Empty);
 
         public static void SaveTo(string path)
         {

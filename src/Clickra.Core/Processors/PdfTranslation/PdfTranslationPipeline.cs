@@ -189,7 +189,7 @@ namespace Clickra.Core.Processors
             {
                 if (File.Exists(partialOutputPath))
                 {
-                    try { File.Delete(partialOutputPath); } catch { }
+                    try { File.Delete(partialOutputPath); } catch (IOException) { /* Ignore transient cleanup error */ }
                 }
             }
         }

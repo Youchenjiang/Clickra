@@ -179,7 +179,7 @@ internal class FallbackTranslator : ITranslationEngine
             return false;
 
         string normalizedTranslation = NormalizeForComparison(translated).ToLowerInvariant();
-        var sourceWords = Regex.Matches(source, @"[A-Za-z]{2,}")
+        var sourceWords = Regex.Matches(source, @"[A-Za-z]{2,}", RegexOptions.None, TimeSpan.FromSeconds(1))
             .Select(match => match.Value.ToLowerInvariant())
             .ToList();
         if (sourceWords.Count < 5) return false;

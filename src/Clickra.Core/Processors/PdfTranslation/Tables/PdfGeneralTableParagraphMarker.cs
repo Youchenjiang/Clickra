@@ -334,7 +334,8 @@ namespace Clickra.Core.Processors
             var captions = pageList.Where(para => Regex.IsMatch(
                     para.TextWithPlaceholders.Trim(),
                     @"^(?:TABLE|Table)\s+[IVXLCDM\d]+",
-                    RegexOptions.IgnoreCase))
+                    RegexOptions.IgnoreCase,
+                    TimeSpan.FromSeconds(1)))
                 .ToList();
             if (captions.Count == 0) return;
 

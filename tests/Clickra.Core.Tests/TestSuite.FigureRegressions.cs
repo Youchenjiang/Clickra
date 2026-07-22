@@ -5,6 +5,12 @@ static partial class TestSuite
 {
     public static void RegisterFigureRegressionTests(TestRunner runner)
     {
+        RegisterFigureLinkTests(runner);
+        RegisterFigureLabelTests(runner);
+    }
+
+    private static void RegisterFigureLinkTests(TestRunner runner)
+    {
         runner.Run("Figure link matching keeps only the linked number span", () =>
         {
             var chars = "Fig. 2(c)".Select((character, index) => new RenderedChar
@@ -58,6 +64,10 @@ static partial class TestSuite
                 PdfAnnotationOccurrenceMatcher.GetFigureReferenceIndex(letters, secondDigit) == 1,
                 "The second repeated figure reference should receive ordinal 1.");
         });
+    }
+
+    private static void RegisterFigureLabelTests(TestRunner runner)
+    {
 
         runner.Run("Figure caption masks stop below diagram borders", () =>
         {

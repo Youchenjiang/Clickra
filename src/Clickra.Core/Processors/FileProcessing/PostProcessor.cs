@@ -17,23 +17,23 @@ namespace Clickra.Core.Processors
         private static readonly Regex FullFormulaArtifactRegex =
             new(@"^(.+?)\)\s*:\s*\(.+\)\s*$", RegexOptions.Singleline | RegexOptions.Compiled);
         private static readonly Regex TrailingFormulaArtifactRegex =
-            new(@"\)\s*:\s*\(.+\)\s*$", RegexOptions.Singleline | RegexOptions.Compiled);
+            new(@"\)\s*:\s*\(.+\)\s*$", RegexOptions.Singleline | RegexOptions.Compiled, TimeSpan.FromSeconds(1));
         private static readonly Regex LeadingFormulaArtifactRegex =
-            new(@"^\)\s*:\s*", RegexOptions.Compiled);
+            new(@"^\)\s*:\s*", RegexOptions.Compiled, TimeSpan.FromSeconds(1));
         private static readonly Regex TestGenerationSourceRegex =
             new(@"\b(?:unit\s+)?tests?(?:\s+case)?\s+generation\b",
-                RegexOptions.IgnoreCase | RegexOptions.Compiled);
+                RegexOptions.IgnoreCase | RegexOptions.Compiled, TimeSpan.FromSeconds(1));
         private static readonly Regex LlmGenerationContinuationRegex =
             new(@"^\s*generation\s+(?:with|using)\s+(?:an?\s+)?llms?\s*[.!?]?\s*$",
-                RegexOptions.IgnoreCase | RegexOptions.Compiled);
+                RegexOptions.IgnoreCase | RegexOptions.Compiled, TimeSpan.FromSeconds(1));
         private static readonly Regex CjkInternalWhitespaceRegex =
-            new(@"(?<=[\u3400-\u9fff])\s+(?=[\u3400-\u9fff])", RegexOptions.Compiled);
+            new(@"(?<=[\u3400-\u9fff])\s+(?=[\u3400-\u9fff])", RegexOptions.Compiled, TimeSpan.FromSeconds(1));
         private static readonly Regex CjkBeforePunctuationWhitespaceRegex =
-            new(@"(?<=[\u3400-\u9fff])\s+(?=[，。！？；：、）】》])", RegexOptions.Compiled);
+            new(@"(?<=[\u3400-\u9fff])\s+(?=[，。！？；：、）】》])", RegexOptions.Compiled, TimeSpan.FromSeconds(1));
         private static readonly Regex CjkAfterOpeningPunctuationWhitespaceRegex =
-            new(@"(?<=[（【《])\s+(?=[\u3400-\u9fff])", RegexOptions.Compiled);
+            new(@"(?<=[（【《])\s+(?=[\u3400-\u9fff])", RegexOptions.Compiled, TimeSpan.FromSeconds(1));
         private static readonly Regex AbstractDashRegex =
-            new(@"^\s*(?:摘要|抽象)\s*[-–—:：]\s*", RegexOptions.Compiled);
+            new(@"^\s*(?:摘要|抽象)\s*[-–—:：]\s*", RegexOptions.Compiled, TimeSpan.FromSeconds(1));
 
         public static string Process(string originalText, string translatedText, string targetLang)
         {

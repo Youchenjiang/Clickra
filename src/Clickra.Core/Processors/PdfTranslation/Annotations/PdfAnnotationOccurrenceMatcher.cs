@@ -66,7 +66,7 @@ namespace Clickra.Core.Processors
             {
                 if (allLetters[i].Value.Length == 0 || !char.IsDigit(allLetters[i].Value[0])) continue;
                 string prefix = string.Concat(allLetters.Take(i).Select(letter => letter.Value));
-                if (Regex.IsMatch(prefix, @"(?:Fig(?:ure)?\.?)[\s\u00A0]*$", RegexOptions.IgnoreCase))
+                if (Regex.IsMatch(prefix, @"(?:Fig(?:ure)?\.?)[\s\u00A0]*$", RegexOptions.IgnoreCase, TimeSpan.FromSeconds(1)))
                 {
                     if (i == targetLetterIndex) return ordinal;
                     ordinal++;
