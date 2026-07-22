@@ -605,6 +605,45 @@ static partial class TestSuite
                 "Balanced body geometry must remain outside the table mask.");
         });
 
+        runner.Run("Vertical balancing ignores incidental fixed-region overlap", () =>
+        {
+            try { GlobalFontSettings.FontResolver = new ClickraFontResolver(); } catch { }
+            using var document = new PdfDocument();
+            var page = document.AddPage();
+            page.Width = XUnit.FromPoint(612);
+            page.Height = XUnit.FromPoint(792);
+            using var gfx = XGraphics.FromPdfPage(page);
+
+            var bodyAboveCallout = LayoutParagraph(
+                string.Join(' ', Enumerable.Repeat("translated body prose", 45)),
+                string.Concat(Enumerable.Repeat("這是需要在固定標註框上方平衡的翻譯正文。", 9)),
+                312, 332, 563, 518,
+                9.96);
+            var callout = LayoutParagraph(
+                "Finding 6: The generated tests use meaningful names.",
+                "發現六：產生的測試使用有意義的名稱。",
+                315, 293, 560, 324,
+                9.96);
+            var calloutRegion = new TableMaskRegion(311, 284, 567, 355);
+
+            var plan = PdfTranslationLayoutPlanner.BuildAndApply(
+                gfx,
+                new[] { bodyAboveCallout, callout },
+                "DFKai-SB",
+                612,
+                792,
+                new[] { calloutRegion });
+
+            var bodySnapshot = plan.Snapshots.Single(s => s.Paragraph == bodyAboveCallout);
+            Assert.True(bodyAboveCallout.Y1 < bodyAboveCallout.OriginalY1 - 0.5 ||
+                        bodyAboveCallout.LayoutLineSpacingMultiplierOverride > 0,
+                "A body paragraph that only grazes a fixed callout region must still participate in balancing.");
+            Assert.True(bodyAboveCallout.Y1 - bodySnapshot.MeasuredHeight >= calloutRegion.Y1 - 0.5,
+                "Balanced body text must remain above the fixed callout region.");
+            Assert.True(plan.IsSuccessful,
+                "Incidental protected-region overlap must not create a layout defect.");
+        });
+
         runner.Run("Translation health rejects fragmented flow whitespace", () =>
         {
             var acceptable = new PdfTranslationHealthReport
