@@ -15,7 +15,11 @@ from pypdf import PdfReader
 
 
 ROOT = Path(__file__).resolve().parents[2]
-SOURCE = ROOT / "ASTER .pdf"
+SOURCE_CANDIDATES = (
+    ROOT / "ASTER .pdf",
+    ROOT / "test_pdfs" / "source" / "ASTER .pdf",
+)
+SOURCE = next((path for path in SOURCE_CANDIDATES if path.is_file()), SOURCE_CANDIDATES[0])
 CLI = ROOT / "src" / "Clickra.CLI" / "bin" / "Debug" / "net10.0-windows" / "Clickra.dll"
 DIAGNOSTICS = ROOT / "tools" / "pdf-diagnostics"
 sys.path.insert(0, str(DIAGNOSTICS))

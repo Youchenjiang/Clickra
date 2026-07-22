@@ -20,8 +20,15 @@ import fitz
 
 
 ROOT = Path(__file__).resolve().parents[2]
-LINKED_SOURCE = ROOT / "ASTER- .pdf"
-UNLINKED_SOURCE = ROOT / "ASTER .pdf"
+
+
+def _fixture(name: str) -> Path:
+    candidates = (ROOT / name, ROOT / "test_pdfs" / "source" / name)
+    return next((path for path in candidates if path.is_file()), candidates[0])
+
+
+LINKED_SOURCE = _fixture("ASTER- .pdf")
+UNLINKED_SOURCE = _fixture("ASTER .pdf")
 
 
 def _external_uris(page: fitz.Page) -> Counter[str]:
