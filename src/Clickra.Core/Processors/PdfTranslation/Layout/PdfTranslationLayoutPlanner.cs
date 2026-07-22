@@ -82,6 +82,7 @@ internal static class PdfTranslationLayoutPlanner
     private const double MinimumBodyFontScale = 0.80;
     private const double MaximumBodyFontScale = 1.15;
     private const double MaximumBodyLineSpacing = 1.50;
+    private const double ProtectedRegionOverlapRatio = 0.20;
 
     public static PdfTranslationLayoutPlan BuildAndApply(
         XGraphics gfx,
@@ -400,9 +401,15 @@ internal static class PdfTranslationLayoutPlanner
                 if (run.Count == 0) continue;
 
                 double regionTop = run[0].Paragraph.Y1;
+                double protectedBoundaryTop = FindAdjacentProtectedBoundaryTop(
+                    run,
+                    protectedRegions,
+                    regionTop);
                 double regionBottom = Math.Max(
                     PageBottomMargin,
-                    run[^1].Paragraph.OriginalY0);
+                    Math.Max(
+                        run[^1].Paragraph.OriginalY0,
+                        protectedBoundaryTop > 0 ? protectedBoundaryTop + Gap : 0));
                 double availableHeight = regionTop - regionBottom;
                 if (availableHeight <= 0) continue;
 
@@ -491,6 +498,38 @@ internal static class PdfTranslationLayoutPlanner
         return shifted;
     }
 
+    private static double FindAdjacentProtectedBoundaryTop(
+        IReadOnlyList<PdfParagraphLayoutSnapshot> run,
+        IReadOnlyList<TableMaskRegion> protectedRegions,
+        double regionTop)
+    {
+        if (run.Count == 0 || protectedRegions.Count == 0) return 0;
+
+        var last = run[^1].Paragraph;
+        double paragraphWidth = Math.Max(0, last.OriginalX1 - last.OriginalX0);
+        if (paragraphWidth <= 0) return 0;
+
+        // A detected vector/table region can be padded a few points into the
+        // source paragraph above it. Treat a region touching the last flow
+        // paragraph (or within one generous paragraph gap below it) as the
+        // hard lower boundary, while ignoring unrelated regions farther down.
+        double minimumRelevantTop = last.OriginalY0 - 36.0;
+        return protectedRegions
+            .Where(region =>
+            {
+                if (region.Y1 > regionTop + 0.5 || region.Y1 < minimumRelevantTop)
+                    return false;
+                double overlapWidth = Math.Max(
+                    0,
+                    Math.Min(last.OriginalX1, region.X1) -
+                    Math.Max(last.OriginalX0, region.X0));
+                return overlapWidth / paragraphWidth >= ProtectedRegionOverlapRatio;
+            })
+            .Select(region => region.Y1)
+            .DefaultIfEmpty(0)
+            .Max();
+    }
+
     private static IReadOnlyList<List<PdfParagraphLayoutSnapshot>> BuildBodyFlowRuns(
         IReadOnlyList<PdfParagraphLayoutSnapshot> flowable,
         IReadOnlyList<PdfParagraphLayoutSnapshot> allSnapshots,
@@ -552,14 +591,36 @@ internal static class PdfTranslationLayoutPlanner
 
     private static bool OverlapsProtectedRegion(
         PdfParagraph paragraph,
-        IReadOnlyList<TableMaskRegion> protectedRegions) =>
-        protectedRegions.Count > 0 &&
-        PdfTableMaskPlanner.ParagraphOverlapsAnyTableMask(
-            paragraph.OriginalX0,
-            paragraph.OriginalY0,
-            paragraph.OriginalX1,
-            paragraph.OriginalY1,
-            protectedRegions);
+        IReadOnlyList<TableMaskRegion> protectedRegions)
+    {
+        if (protectedRegions.Count == 0) return false;
+
+        double paragraphWidth = Math.Max(0, paragraph.OriginalX1 - paragraph.OriginalX0);
+        double paragraphHeight = Math.Max(0, paragraph.OriginalY1 - paragraph.OriginalY0);
+        double paragraphArea = paragraphWidth * paragraphHeight;
+        if (paragraphArea <= 0) return false;
+
+        double centerX = (paragraph.OriginalX0 + paragraph.OriginalX1) / 2.0;
+        double centerY = (paragraph.OriginalY0 + paragraph.OriginalY1) / 2.0;
+        foreach (var region in protectedRegions)
+        {
+            double overlapWidth = Math.Max(
+                0,
+                Math.Min(paragraph.OriginalX1, region.X1) -
+                Math.Max(paragraph.OriginalX0, region.X0));
+            double overlapHeight = Math.Max(
+                0,
+                Math.Min(paragraph.OriginalY1, region.Y1) -
+                Math.Max(paragraph.OriginalY0, region.Y0));
+            double overlapRatio = overlapWidth * overlapHeight / paragraphArea;
+            bool centerInside = centerX >= region.X0 && centerX <= region.X1 &&
+                                centerY >= region.Y0 && centerY <= region.Y1;
+            if (centerInside || overlapRatio >= ProtectedRegionOverlapRatio)
+                return true;
+        }
+
+        return false;
+    }
 
     private static double FindLargestFittingFontScale(
         XGraphics gfx,
