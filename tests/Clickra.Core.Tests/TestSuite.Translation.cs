@@ -644,6 +644,146 @@ static partial class TestSuite
                 "Incidental protected-region overlap must not create a layout defect.");
         });
 
+        runner.Run("Spatial table masks bypass thin merged table rows", () =>
+        {
+            var thinTableRow = LayoutParagraph(
+                "Q6. Prior experience with automated test generation MCQ",
+                "具有自動測試產生經驗",
+                367.3, 693.7, 517.3, 697.2,
+                5.1);
+            var bodyBelowTable = LayoutParagraph(
+                "The survey received responses from several software roles.",
+                "調查收到來自不同軟體職務的回覆。",
+                312, 302, 563, 584);
+            var caption = LayoutParagraph(
+                "TABLE III: Two groups of survey questions.",
+                "表 III：兩組調查問題。",
+                345.5, 748.6, 529.5, 755.4,
+                7.5);
+            caption.SemanticRole = PdfParagraphSemanticRole.FigureCaption;
+            var tableRegion = new TableMaskRegion(310, 590, 565, 730);
+
+            int marked = PdfTableMaskPlanner.MarkParagraphsInsideTableMasks(
+                new List<PdfParagraph> { thinTableRow, bodyBelowTable, caption },
+                new[] { tableRegion },
+                PdfParagraphRoleClassifier.IsFigureTableCaptionParagraph);
+
+            Assert.True(marked == 1, $"Expected one promoted table row, got {marked}.");
+            Assert.True(thinTableRow.IsTable && thinTableRow.IsBypassed,
+                "A thin row centered inside the table mask must bypass translation.");
+            Assert.True(!bodyBelowTable.IsTable && !bodyBelowTable.IsBypassed,
+                "Body prose below the table must remain translatable.");
+            Assert.True(!caption.IsTable && !caption.IsBypassed,
+                "The table caption must remain translatable.");
+        });
+
+        runner.Run("Spatial table promotion expands until table rows stabilize", () =>
+        {
+            var headerLeft = LayoutParagraph("Type", "", 330, 700, 380, 710, 6);
+            var headerRight = LayoutParagraph("Format", "", 500, 700, 550, 710, 6);
+            headerLeft.IsTable = true;
+            headerRight.IsTable = true;
+            var firstBridge = LayoutParagraph("Q5. Level of expertise", "", 360, 688, 520, 696, 6);
+            var secondBridge = LayoutParagraph("Q6. Prior experience", "", 360, 676, 520, 684, 6);
+
+            int marked = PdfTableMaskPlanner.MarkParagraphsInsideTableMasksUntilStable(
+                new List<PdfParagraph> { headerLeft, headerRight, firstBridge, secondBridge },
+                612);
+
+            Assert.True(marked == 2, $"Expected two promoted bridge rows, got {marked}.");
+            Assert.True(firstBridge.IsTable && secondBridge.IsTable,
+                "Each newly promoted short row must extend the table region for the next row.");
+        });
+
+        runner.Run("Spatial table promotion fills narrow aligned mask gaps", () =>
+        {
+            var topLeft = LayoutParagraph("Type", "", 345, 700, 380, 710, 6);
+            var topRight = LayoutParagraph("Format", "", 500, 700, 530, 710, 6);
+            var bottomLeft = LayoutParagraph("Q10", "", 345, 640, 380, 650, 6);
+            var bottomRight = LayoutParagraph("Likert", "", 500, 640, 530, 650, 6);
+            foreach (var seed in new[] { topLeft, topRight, bottomLeft, bottomRight })
+                seed.IsTable = true;
+            var gapRow = LayoutParagraph(
+                "Q7. Prior experience with automated test generation",
+                "",
+                367, 668, 519, 686,
+                6);
+
+            int marked = PdfTableMaskPlanner.MarkParagraphsInsideTableMasksUntilStable(
+                new List<PdfParagraph> { topLeft, topRight, bottomLeft, bottomRight, gapRow },
+                612);
+
+            Assert.True(marked == 1, $"Expected the aligned gap row to be promoted, got {marked}.");
+            Assert.True(gapRow.IsTable && gapRow.IsBypassed,
+                "A row in a narrow gap between aligned table masks must bypass translation.");
+        });
+
+        runner.Run("Tall narrow table blocks survive prose cleanup", () =>
+        {
+            var mergedTableRows = LayoutParagraph(
+                string.Join(' ', Enumerable.Repeat("survey question", 30)),
+                "",
+                365, 567, 508, 629,
+                6);
+            var fullColumnProse = LayoutParagraph(
+                string.Join(' ', Enumerable.Repeat("survey prose", 30)),
+                "",
+                314, 329, 546, 555,
+                9);
+
+            Assert.True(!PdfTableMisclassifiedProseCleanup.IsTallFullColumnProse(
+                    mergedTableRows, 60, 612),
+                "A tall narrow block beneath a table caption must remain a table block.");
+            Assert.True(PdfTableMisclassifiedProseCleanup.IsTallFullColumnProse(
+                    fullColumnProse, 60, 612),
+                "Tall full-column prose must still be cleared from table classification.");
+        });
+
+        runner.Run("Table captions classify merged sections without a word-level page hint", () =>
+        {
+            var caption = LayoutParagraph(
+                "TABLE III: Survey Questions",
+                "表 III：調查問題",
+                345, 712, 515, 719,
+                7.5);
+            var mergedRows = LayoutParagraph(
+                "Q1 Current Professional Role Open Q2 Years of experience MCQ Q3 Programming languages MCQ",
+                "",
+                365, 635, 508, 700,
+                6);
+            var secondSection = LayoutParagraph(
+                "Q10 I understand what this test case is doing Likert Q11 I understand the assertions Likert",
+                "",
+                365, 550, 504, 605.5,
+                6);
+            var shortFinalSection = LayoutParagraph(
+                "Q17 Test sequence is understandable Likert Q18 Values are appropriate Likert Q19 Overall quality Likert",
+                "",
+                365, 525, 504, 544,
+                6);
+            var bodyBelow = LayoutParagraph(
+                "We selected these questions to characterize the survey participants.",
+                "我們選擇這些問題來描述調查參與者。",
+                314, 400, 548, 470,
+                9);
+            var paragraphs = new List<PdfParagraph> { caption, mergedRows, secondSection, shortFinalSection, bodyBelow };
+
+            PdfTableClassifier.MarkTableParagraphs(paragraphs, 612, 792, isTablePage: false);
+            PdfTableClassifier.ReclassifyTableMisclassifiedProse(paragraphs, 612);
+            PdfTableClassifier.MarkCaptionDelimitedTableRegions(paragraphs, 612);
+
+            Assert.True(mergedRows.IsTable,
+                "A merged table body directly below its caption must be classified even when it is the only table candidate.");
+            Assert.True(secondSection.IsTable,
+                "A table section separated by a nominal 30-point band must remain inside the caption-delimited table.");
+            Assert.True(shortFinalSection.IsTable,
+                "A short final table section demoted by prose cleanup must be restored by the final caption pass.");
+            Assert.True(!caption.IsTable,
+                "The caption remains translatable and must not be classified as table content.");
+            Assert.True(!bodyBelow.IsTable,
+                "Prose separated from the table by a large gap must remain translatable.");
+        });
+
         runner.Run("Translation health rejects fragmented flow whitespace", () =>
         {
             var acceptable = new PdfTranslationHealthReport
