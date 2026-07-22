@@ -5,6 +5,7 @@
 ## 0.1 翻譯復原與輸出完整性（v3.6.4）
 
 *   批次翻譯失敗時，必須依序執行批次拆分、逐段請求與另一個 provider fallback；不得直接把原文標記為成功譯文。
+*   Provider 回傳必須保留與來源完全相同且順序正確的 `{b}` / `{/b}` 標記序列；破損標記、長片語連續重複三次或目標為 CJK 時殘留連續英文連接詞，均視為翻譯失敗並觸發 fallback。兩個 provider 都失敗時不得輸出 PDF。
 *   每個 provider 請求各自最多 30 秒；fallback chain 預設有獨立 75 秒上限（可由 `CLICKRA_TRANSLATION_*` timeout 設定覆寫），不能讓 primary 的重試吃掉 fallback 的時間。整份文件最多 10 分鐘。呼叫端取消必須立即停止，逾時則記錄 provider、頁碼與段落資訊。
 *   只有所有可用復原路徑都失敗時才回報翻譯失敗；失敗執行不得留下可被誤認為完成的 PDF。輸出先寫入 `.partial`，完成頁數與 layout health gate 後才改名為正式檔案。
 *   每次執行在輸出目錄產生 `*_health.json`，至少包含頁數、成功/避讓段落數、provider、guard clip 數、實際 overflow 數與失敗原因。
@@ -269,9 +270,10 @@
 *   **字型缺字 Fallback**：若渲染特定 Unicode 字元或數學運算子遇到缺字，`ClickraFontResolver` 必須能回退至 `Segoe UI Symbol` (`seguisym.ttf`)。
 *   **來源字型粗體判定**（`IsSourceFontBold` / `IsLaTeXMediumFont`）：
     *   IEEE 的 Nimbus `NimbusRomNo9L-Medi` 是實際粗體 face，必須視為粗體；其他 TeX medium/math face 仍不視為粗體。
-    *   粗體範圍以 `{b}` / `{/b}` inline markers 隨翻譯傳遞，禁止只用整段 `IsBold` 推測。
+    *   混合字重段落的粗體範圍以 `{b}` / `{/b}` inline markers 隨翻譯傳遞，禁止只用整段 `IsBold` 推測；但來源字元全部為粗體時，整段 `IsBold` 已是完整資訊，禁止再按 PDF 擷取行反覆加入標記。相鄰的 `{/b} {b}` 必須合併，避免 provider 因標記碎片破壞內容。
     *   `IsLineBold`：一行中超過 50% 字元為粗體時，該行視為粗體行。
 *   **CJK 譯文字重保留**（`IsCjkTranslationFont`）：非 bypass、非程式碼的 CJK 譯文使用 `kaiu.ttf` 常規字型；來源粗體／標題以 0.18 pt 同字型二次描繪保留視覺字重，禁止切換不相容的 CJK bold TTC/ExtB。
+*   中文後處理必須移除 provider 插入於相鄰漢字及中文標點前後的詞元空格；`Abstract—` 的譯文開頭無論 provider 回傳冒號或其他破折號，一律正規化為「摘要—」。
 
 ### B. 動態字體縮放與行高 (Font Scaling & Spacing)
 *   **行高乘數 (Line Spacing)**：

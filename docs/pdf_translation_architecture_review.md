@@ -102,7 +102,7 @@ graph TD
 
 - `AdjustParagraphLayout` 已移除空方法與呼叫（原為無作用佔位）。
 - 嚴禁呼叫 `StripFormXObjects`（死碼，會破壞向量圖表）。
-- `ClickraFontResolver`：CJK 翻譯固定使用 `kaiu.ttf`；來源粗體範圍以 inline markers 傳遞，renderer 以 0.18 pt 二次描繪保留字重，避免 TTC/SimSun-ExtB 亂碼。
+- `ClickraFontResolver`：CJK 翻譯固定使用 `kaiu.ttf`；混合字重段落以 inline markers 傳遞來源粗體範圍，整段粗體則只使用段落字重，避免逐行標記污染 provider 輸入；renderer 以 0.18 pt 二次描繪保留字重，避免 TTC/SimSun-ExtB 亂碼。
 
 ---
 
