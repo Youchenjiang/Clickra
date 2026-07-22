@@ -134,7 +134,10 @@ namespace Clickra.Core.Processors
             CloseStyledBold(styled, ref styledBoldOpen);
 
             string textWithPlaceholders = PdfParagraphMarkerNormalizer.Normalize(sb.ToString(), formulas);
-            string translationTextWithStyles = PdfParagraphMarkerNormalizer.Normalize(styled.ToString(), formulas);
+            string translationTextWithStyles = PdfParagraphMarkerNormalizer.NormalizeStyleRuns(
+                textWithPlaceholders,
+                PdfParagraphMarkerNormalizer.Normalize(styled.ToString(), formulas),
+                totalCount > 0 && boldCount == totalCount);
             return new PdfParagraphAnalysis
             {
                 TextWithPlaceholders = textWithPlaceholders,
@@ -237,6 +240,26 @@ namespace Clickra.Core.Processors
         private static readonly Regex CircledMarkerSequence = new(
             @"\{v(?<a>\d+)\}\s*,\s*(?<d1>\d{1,2})\s+\{v(?<b>\d+)\}\s*,\s*(?<d2>\d{1,2})\s+\{v(?<c>\d+)\}(?<d3>\d{1,2})",
             RegexOptions.Compiled);
+        private static readonly Regex AdjacentBoldRuns = new(
+            @"\{/b\}\s+\{b\}",
+            RegexOptions.Compiled);
+
+        /// <summary>
+        /// Avoid sending one bold marker pair per extracted PDF line. Providers
+        /// can reorder or corrupt dozens of marker pairs and thereby damage the
+        /// translation itself. A uniformly bold paragraph already carries its
+        /// weight in <see cref="PdfParagraph.IsBold"/>, so it needs no inline
+        /// markers. Adjacent bold runs in mixed paragraphs are coalesced.
+        /// </summary>
+        public static string NormalizeStyleRuns(
+            string plainText,
+            string styledText,
+            bool isUniformlyBold)
+        {
+            if (isUniformlyBold) return plainText;
+            if (string.IsNullOrEmpty(styledText)) return styledText;
+            return AdjacentBoldRuns.Replace(styledText, " ");
+        }
 
         public static string Normalize(string text, IReadOnlyList<MathFormula> formulas)
         {

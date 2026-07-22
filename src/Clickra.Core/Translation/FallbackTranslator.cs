@@ -126,6 +126,14 @@ internal class FallbackTranslator : ITranslationEngine
         if (LooksPartiallyUntranslated(source, translated, targetLanguage))
             throw new InvalidOperationException(
                 $"{providerName} returned an untranslated source fragment{location}: {Preview(source)}");
+
+        string? qualityProblem = TranslationResultQualityGuard.FindProblem(
+            source,
+            translated,
+            targetLanguage);
+        if (qualityProblem != null)
+            throw new InvalidOperationException(
+                $"{providerName} returned an unsafe translation{location}: {qualityProblem}.");
     }
 
     private static bool LooksUntranslated(string source, string translated, string targetLanguage)

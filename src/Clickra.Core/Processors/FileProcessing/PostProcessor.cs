@@ -26,6 +26,14 @@ namespace Clickra.Core.Processors
         private static readonly Regex LlmGenerationContinuationRegex =
             new(@"^\s*generation\s+(?:with|using)\s+(?:an?\s+)?llms?\s*[.!?]?\s*$",
                 RegexOptions.IgnoreCase | RegexOptions.Compiled);
+        private static readonly Regex CjkInternalWhitespaceRegex =
+            new(@"(?<=[\u3400-\u9fff])\s+(?=[\u3400-\u9fff])", RegexOptions.Compiled);
+        private static readonly Regex CjkBeforePunctuationWhitespaceRegex =
+            new(@"(?<=[\u3400-\u9fff])\s+(?=[，。！？；：、）】》])", RegexOptions.Compiled);
+        private static readonly Regex CjkAfterOpeningPunctuationWhitespaceRegex =
+            new(@"(?<=[（【《])\s+(?=[\u3400-\u9fff])", RegexOptions.Compiled);
+        private static readonly Regex AbstractDashRegex =
+            new(@"^\s*(?:摘要|抽象)\s*[-–—:：]\s*", RegexOptions.Compiled);
 
         public static string Process(string originalText, string translatedText, string targetLang)
         {
@@ -47,6 +55,20 @@ namespace Clickra.Core.Processors
                 translatedText = ChineseTextConverter.SimplifiedToTraditional(translatedText);
             }
 
+            if (targetLang.StartsWith("zh", StringComparison.OrdinalIgnoreCase))
+            {
+                translatedText = NormalizeChineseTypography(translatedText);
+            }
+
+            return translatedText;
+        }
+
+        private static string NormalizeChineseTypography(string translatedText)
+        {
+            translatedText = AbstractDashRegex.Replace(translatedText, "摘要—");
+            translatedText = CjkInternalWhitespaceRegex.Replace(translatedText, "");
+            translatedText = CjkBeforePunctuationWhitespaceRegex.Replace(translatedText, "");
+            translatedText = CjkAfterOpeningPunctuationWhitespaceRegex.Replace(translatedText, "");
             return translatedText;
         }
 

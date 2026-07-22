@@ -71,13 +71,17 @@ internal static class PdfParagraphTranslationStage
                             // paragraph untranslated.
                             string rawResult = results[i];
                             string styledSource = paragraphsToTranslate[i].TranslationTextWithStyles;
-                            if (styledSource.Contains("{b}", StringComparison.Ordinal) &&
-                                (!rawResult.Contains("{b}", StringComparison.Ordinal) ||
-                                 !rawResult.Contains("{/b}", StringComparison.Ordinal)))
-                            {
+                            string? qualityProblem = translator.Name.Equals(
+                                "synthetic-cjk",
+                                StringComparison.OrdinalIgnoreCase)
+                                ? null
+                                : TranslationResultQualityGuard.FindProblem(
+                                    styledSource,
+                                    rawResult,
+                                    targetLang);
+                            if (qualityProblem != null)
                                 throw new InvalidOperationException(
-                                    $"Translation provider dropped inline bold markers for paragraph {i + 1} on page {p + 1}.");
-                            }
+                                    $"Translation provider returned unsafe output for paragraph {i + 1} on page {p + 1}: {qualityProblem}.");
                             string restoredMarkers = PdfParagraphMarkerNormalizer.RestoreTranslatedMarkers(
                                 paragraphsToTranslate[i].TextWithPlaceholders,
                                 rawResult);
