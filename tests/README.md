@@ -11,6 +11,13 @@ PDF regression checks live under `tests/PdfRegression`. They require local
 `test_pdfs/` fixtures, which are intentionally ignored by git because the PDFs
 are large.
 
+The offline suite compares every translated fixture with its source rendering.
+It checks each page column for newly introduced blank bands, excessive growth
+in total large-gap space, lost visual occupancy, and columns that end much
+earlier than the source. The comparison uses rendered ink occupancy rather
+than literal pixel equality, so translated glyph shapes do not count as layout
+regressions.
+
 ```powershell
 python tests\PdfRegression\run_translation_tests.py
 ```
@@ -45,6 +52,10 @@ python tests\PdfRegression\test_pdf_links.py `
 
 Running without `--translated` still checks that the two source fixtures are
 not accidentally treated as interchangeable.
+
+ASTER may live either at the repository root or under `test_pdfs/source`. Its
+E2E gate also runs the source/translated layout-occupancy comparison and writes
+`ASTER _layout_occupancy.json` beside the generated PDF.
 
 ```powershell
 # Full 16-page pipeline without network variability
