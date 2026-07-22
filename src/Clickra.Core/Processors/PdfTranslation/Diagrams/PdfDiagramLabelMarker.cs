@@ -117,10 +117,12 @@ namespace Clickra.Core.Processors
 
         private static bool IsShortFigureLabel(PdfParagraph para, bool insideDiagramRegion)
         {
+            if (!insideDiagramRegion) return false;
+            if (PdfParagraphRoleClassifier.IsTranslatableBodyProse(para)) return false;
             string text = para.TextWithPlaceholders.Trim();
             int wordCount = text.Split(new[] { ' ', '\t', '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries).Length;
             double height = Math.Max(0, para.Y1 - para.Y0);
-            return insideDiagramRegion && height <= 22 && text.Length <= 80 && wordCount <= 6;
+            return height <= 22 && text.Length <= 80 && wordCount <= 6;
         }
 
         /// <summary>

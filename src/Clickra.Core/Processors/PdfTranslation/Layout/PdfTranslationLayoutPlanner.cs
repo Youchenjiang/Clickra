@@ -636,7 +636,12 @@ internal static class PdfTranslationLayoutPlanner
         {
             double candidate = (low + high) / 2.0;
             ApplyFontScaleAndMeasure(gfx, run, baseFonts, targetFontName, candidate);
-            if (run.Sum(s => s.MeasuredHeight) <= contentBudget + 0.5)
+            double totalHeight = run.Sum(s => s.MeasuredHeight);
+            if (Math.Abs(totalHeight - contentBudget) <= 0.5)
+            {
+                return candidate;
+            }
+            if (totalHeight <= contentBudget + 0.5)
             {
                 best = candidate;
                 low = candidate;
