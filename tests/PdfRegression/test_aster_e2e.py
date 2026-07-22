@@ -84,6 +84,18 @@ def _aster_title_anchor_is_preserved(pdf_path: Path) -> tuple[float, float]:
     return abs(source_center - output_center), output[3] - output[1]
 
 
+def _aster_table_iii_missing_rows(pdf_path: Path) -> list[int]:
+    """Return survey row numbers lost or translated inside page 8 Table III."""
+    with fitz.open(pdf_path) as document:
+        table_text = "\n".join(
+            block[4]
+            for block in document[7].get_text("blocks")
+            if block[0] >= 300 and block[1] < 220
+        )
+    rows = {int(value) for value in re.findall(r"\bQ(\d+)\.", table_text)}
+    return [number for number in range(1, 20) if number not in rows]
+
+
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--engine", choices=("identity", "synthetic-cjk"), default="identity")
@@ -158,6 +170,9 @@ def main() -> int:
         failures.append(f"PDF diagnostic tofu/NUL count: {diagnostic.get('total_tofu')}")
     if diagnostic.get("total_simp", 0) != 0:
         failures.append(f"PDF diagnostic simplified-character count: {diagnostic.get('total_simp')}")
+    missing_table_rows = _aster_table_iii_missing_rows(output_pdf)
+    if missing_table_rows:
+        failures.append(f"ASTER page 8 Table III lost or translated rows: {missing_table_rows}")
     if args.engine != "identity":
         residuals = _aster_abstract_residuals(output_pdf)
         if residuals:
