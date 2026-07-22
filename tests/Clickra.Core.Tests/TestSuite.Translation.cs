@@ -876,6 +876,54 @@ static partial class TestSuite
                 PostProcessor.Process("{b}Code coverage:{/b} body", "{b}程式碼覆蓋率:{/b} body", "zh-TW"));
         });
 
+        runner.Run("Uniform bold PDF paragraphs do not send per-line style markers", () =>
+        {
+            Assert.Equal(
+                "Abstract—first line second line",
+                PdfParagraphMarkerNormalizer.NormalizeStyleRuns(
+                    "Abstract—first line second line",
+                    "{b}Abstract—first line{/b} {b}second line{/b}",
+                    isUniformlyBold: true));
+            Assert.Equal(
+                "{b}label one label two{/b} body",
+                PdfParagraphMarkerNormalizer.NormalizeStyleRuns(
+                    "label one label two body",
+                    "{b}label one{/b} {b}label two{/b} body",
+                    isUniformlyBold: false));
+        });
+
+        runner.Run("Translation guard rejects corrupted markers and tripled phrases", () =>
+        {
+            Assert.True(
+                TranslationResultQualityGuard.FindProblem(
+                    "{b}Important{/b} body",
+                    "{b}重要}/b}正文",
+                    "zh-TW") != null,
+                "A corrupted closing bold marker must fail closed.");
+            Assert.True(
+                TranslationResultQualityGuard.FindProblem(
+                    "Despite this effort, usable tools remain scarce.",
+                    "儘管付出了這樣的努力，儘管付出了這樣的努力，儘管付出了這樣的努力。",
+                    "zh-TW") != null,
+                "A tripled provider phrase must fail closed.");
+            Assert.True(
+                TranslationResultQualityGuard.FindProblem(
+                    "We evaluate standard and enterprise Java applications.",
+                    "我們評估標準 as well as a 大型基準。",
+                    "zh-TW") != null,
+                "An English connective run in CJK output must fail closed.");
+        });
+
+        runner.Run("Chinese post-processing removes provider token spacing", () =>
+        {
+            Assert.Equal(
+                "摘要—實作自動化單元測試是一項重要但耗時的活動。",
+                PostProcessor.Process(
+                    "Abstract—Implementing automated unit tests is important.",
+                    "摘要：實作 自動化 單元 測試 是 一項 重要 但 耗時 的 活動 。",
+                    "zh-TW"));
+        });
+
         runner.Run("Academic table headers stay bypassed and bold", () =>
         {
             var header = new PdfParagraph(Array.Empty<UglyToad.PdfPig.DocumentLayoutAnalysis.TextLine>())
