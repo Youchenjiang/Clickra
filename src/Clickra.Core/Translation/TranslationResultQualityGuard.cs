@@ -30,6 +30,9 @@ internal static class TranslationResultQualityGuard
         if (BrokenBoldMarkerRegex.IsMatch(withoutValidMarkers))
             return "broken or incomplete bold marker tags found";
 
+        if (!IsCjkTarget(targetLanguage) || !ContainsCjk(translated))
+            return null;
+
         if (ContainsTripledSequence(translated))
             return "a long phrase was repeated three times";
 
