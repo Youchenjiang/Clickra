@@ -8,6 +8,14 @@ namespace Clickra.Core.Processors
 {
     internal static class PdfTableMisclassifiedProseCleanup
     {
+        public static bool IsTallFullColumnProse(
+            PdfParagraph paragraph,
+            int wordCount,
+            double pageWidth) =>
+            paragraph.Height > 35 &&
+            wordCount > 20 &&
+            paragraph.Width > pageWidth * 0.35;
+
         public static void Reclassify(List<PdfParagraph> pageList, double pageWidth)
         {
             PdfParagraph? workDivisionCaption = PdfSpecialTableRegionClassifier.FindWorkDivisionCaption(pageList);

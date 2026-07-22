@@ -136,7 +136,10 @@ internal static class PdfPageParagraphBuilder
                 continue;
             }
             int wordCount = txt.Split(new char[] { ' ', '\t', '\n', '\r' }, StringSplitOptions.RemoveEmptyEntries).Length;
-            if (para.Height > 35 && wordCount > 20)
+            if (PdfTableMisclassifiedProseCleanup.IsTallFullColumnProse(
+                    para,
+                    wordCount,
+                    page.Width))
             {
                 para.IsTable = false;
             }
@@ -316,6 +319,14 @@ internal static class PdfPageParagraphBuilder
             PdfParagraphSemanticClassifier.IsHeadingParagraph,
             PdfParagraphSemanticClassifier.IsAppendixSectionHeading);
         PdfTableClassifier.MarkSplitPromptPerformanceTable(pageList, PdfParagraphRoleClassifier.IsFigureTableCaptionParagraph);
+        // Re-apply only the strong caption-delimited rule after paragraph
+        // merging and prose cleanup. A short final table section can otherwise
+        // be demoted as prose even though it remains inside the same table.
+        PdfTableClassifier.MarkCaptionDelimitedTableRegions(pageList, page.Width);
+        PdfTableMaskPlanner.MarkParagraphsInsideTableMasksUntilStable(
+            pageList,
+            page.Width,
+            PdfParagraphRoleClassifier.IsFigureTableCaptionParagraph);
         if (!workDivisionPage)
         {
             PdfGrayPromptMarker.MarkAllParagraphsByGrayGeometry(pageList, effectiveGrayRegions, page.Height);

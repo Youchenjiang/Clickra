@@ -90,6 +90,93 @@ namespace Clickra.Core.Processors
             return false;
         }
 
+        public static int MarkParagraphsInsideTableMasks(
+            List<PdfParagraph> paragraphs,
+            IReadOnlyList<TableMaskRegion> regions,
+            Func<PdfParagraph, bool>? excludeParagraph = null)
+        {
+            int markedCount = 0;
+            foreach (var paragraph in paragraphs)
+            {
+                if (paragraph.IsTable || excludeParagraph?.Invoke(paragraph) == true)
+                    continue;
+
+                double centerX = (paragraph.X0 + paragraph.X1) / 2.0;
+                double centerY = (paragraph.Y0 + paragraph.Y1) / 2.0;
+                bool centerInsideTable = regions.Any(region =>
+                    centerX >= region.X0 && centerX <= region.X1 &&
+                    centerY >= region.Y0 && centerY <= region.Y1);
+                if (!centerInsideTable) continue;
+
+                paragraph.IsTable = true;
+                paragraph.IsDiagram = false;
+                paragraph.IsBypassed = true;
+                markedCount++;
+            }
+            return markedCount;
+        }
+
+        public static int MarkParagraphsInsideTableMasksUntilStable(
+            List<PdfParagraph> paragraphs,
+            double pageWidth,
+            Func<PdfParagraph, bool>? excludeParagraph = null)
+        {
+            int totalMarked = 0;
+            while (true)
+            {
+                var regions = BuildTableMaskRegions(
+                    paragraphs.Where(paragraph => paragraph.IsTable).ToList(),
+                    pageWidth,
+                    excludeParagraph);
+                regions = MergeVerticallyAdjacentTableMasks(regions);
+                int marked = MarkParagraphsInsideTableMasks(
+                    paragraphs,
+                    regions,
+                    excludeParagraph);
+                totalMarked += marked;
+                if (marked == 0) return totalMarked;
+            }
+        }
+
+        private static List<TableMaskRegion> MergeVerticallyAdjacentTableMasks(
+            IReadOnlyList<TableMaskRegion> regions)
+        {
+            var merged = regions.ToList();
+            bool changed = true;
+            while (changed)
+            {
+                changed = false;
+                for (int firstIndex = 0; firstIndex < merged.Count && !changed; firstIndex++)
+                {
+                    for (int secondIndex = firstIndex + 1; secondIndex < merged.Count; secondIndex++)
+                    {
+                        var first = merged[firstIndex];
+                        var second = merged[secondIndex];
+                        double overlapX = Math.Min(first.X1, second.X1) - Math.Max(first.X0, second.X0);
+                        double narrowerWidth = Math.Min(first.X1 - first.X0, second.X1 - second.X0);
+                        if (overlapX < narrowerWidth * 0.80) continue;
+
+                        double verticalGap = first.Y1 < second.Y0
+                            ? second.Y0 - first.Y1
+                            : second.Y1 < first.Y0
+                                ? first.Y0 - second.Y1
+                                : 0;
+                        if (verticalGap > 30.0) continue;
+
+                        merged[firstIndex] = new TableMaskRegion(
+                            Math.Min(first.X0, second.X0),
+                            Math.Min(first.Y0, second.Y0),
+                            Math.Max(first.X1, second.X1),
+                            Math.Max(first.Y1, second.Y1));
+                        merged.RemoveAt(secondIndex);
+                        changed = true;
+                        break;
+                    }
+                }
+            }
+            return merged;
+        }
+
         public static bool ParagraphOverlapsTableMask(
             double paraX0, double paraY0, double paraX1, double paraY1,
             double tableMaskX0, double tableMaskY0, double tableMaskX1, double tableMaskY1,

@@ -19,18 +19,22 @@ namespace Clickra.Core.Processors
             var candidates = CollectCandidates(pageList, pageWidth, isTablePage);
 
             candidates = KeepCandidatesWithTableNeighbors(candidates, isTablePage);
-            if (candidates.Count < 2) return;
+            if (candidates.Count >= 2)
+            {
+                MarkGroupedCandidates(
+                    pageList,
+                    pageWidth,
+                    candidates,
+                    isTablePage,
+                    hasAuthorBand,
+                    authorTitleBottom,
+                    authorAbstractTop,
+                    authorTitlePara);
+            }
 
-            MarkGroupedCandidates(
-                pageList,
-                pageWidth,
-                candidates,
-                isTablePage,
-                hasAuthorBand,
-                authorTitleBottom,
-                authorAbstractTop,
-                authorTitlePara);
-
+            // Caption-delimited tables do not require multiple independently
+            // segmented cell candidates. Some PDFs merge the entire table body
+            // into one or two narrow text blocks, so this pass must always run.
             MarkMergedTableBlocks(pageList, pageWidth, isTablePage);
         }
 
@@ -296,30 +300,33 @@ namespace Clickra.Core.Processors
             double pageWidth,
             bool isTablePage)
         {
-            if (!isTablePage) return;
-
-            foreach (var para in pageList)
+            if (isTablePage)
             {
-                if (para.IsTable) continue;
-                string txt = para.TextWithPlaceholders.Trim();
-                if (string.IsNullOrEmpty(txt)) continue;
-                if (IsFigureOrTableCaptionLike(txt)) continue;
-
-                if (para.Height >= 35 && para.Height < 120 && para.Width > 80 && para.Width < pageWidth * 0.45)
+                foreach (var para in pageList)
                 {
-                    int digitGroups = Regex.Matches(txt, @"\b\d+\b").Count;
-                    int wordCount = txt.Split(new char[] { ' ', '\t', '\n', '\r' }, StringSplitOptions.RemoveEmptyEntries).Length;
-                    if (digitGroups >= 4 && wordCount <= 18)
+                    if (para.IsTable) continue;
+                    string txt = para.TextWithPlaceholders.Trim();
+                    if (string.IsNullOrEmpty(txt)) continue;
+                    if (IsFigureOrTableCaptionLike(txt)) continue;
+
+                    if (para.Height >= 35 && para.Height < 120 && para.Width > 80 && para.Width < pageWidth * 0.45)
                     {
-                        para.IsTable = true;
+                        int digitGroups = Regex.Matches(txt, @"\b\d+\b").Count;
+                        int wordCount = txt.Split(new char[] { ' ', '\t', '\n', '\r' }, StringSplitOptions.RemoveEmptyEntries).Length;
+                        if (digitGroups >= 4 && wordCount <= 18)
+                        {
+                            para.IsTable = true;
+                        }
                     }
                 }
             }
 
+            // Paragraph-level caption recognition is more reliable than the
+            // word-level isTablePage hint for PDFs with unusual text runs.
             MarkTableRegionByCaption(pageList, pageWidth);
         }
 
-        private static void MarkTableRegionByCaption(List<PdfParagraph> pageList, double pageWidth)
+        public static void MarkTableRegionByCaption(List<PdfParagraph> pageList, double pageWidth)
         {
             // A page can contain one table in each column.  The old code used
             // only the first caption, so the other column's header row escaped
@@ -346,7 +353,10 @@ namespace Clickra.Core.Processors
                     if (para.Y1 > caption.Y0 + 5) continue;
 
                     double gap = prevBottom - para.Y1;
-                    if (gap > 28) break;
+                    // Allow the small separator band between table sections.
+                    // Pdf coordinates extracted from nominally 28 pt gaps can
+                    // differ by fractions of a point across equivalent files.
+                    if (gap > 30) break;
 
                     string txt = para.TextWithPlaceholders.Trim();
                     if (txt.StartsWith("Listing", StringComparison.OrdinalIgnoreCase) ||
