@@ -249,8 +249,10 @@
 ### 4.0.B 同欄正文垂直平衡（硬性規則）
 *   CJK 正文先以來源閱讀字級量測自然高度，再由 layout planning 在相鄰固定障礙之間進行同欄平衡；不得把每段強行縮回來源段落 bbox，也不得把所有剩餘空白集中到欄位底端。
 *   同一 flow region 的正文字級比例必須落在 **80%–115%**，行距倍率不得超過 **1.50**；段間距以來源間距為基礎作有界調整。表格、圖表、程式碼、公式、灰色 prompt、作者區、文獻與旋轉文字是固定邊界，不參與平衡。
+*   正文僅擦到固定區域的外擴偵測框時，不得整段排除於平衡之外；只有正文中心落入固定區域或重疊面積達 20% 才視為受保護。固定區域本身仍不得移動或被正文侵入。
 *   平衡後每個 flow region 未分配空白不得超過 **18 pt**。health report 必須記錄 `MinimumBodyFontRatio`、`MaximumBodyFontRatio`、`MaximumBodyLineSpacingMultiplier`、`MaximumInterParagraphGap` 與 `MaximumFlowRegionResidualWhitespace`；任一超限即 fail closed。
 *   僅允許同欄、同頁調整，不跨欄、不跨頁；遮罩、譯文、連結與診斷座標必須使用同一份調整後幾何。
+*   發布回歸必須渲染來源與譯文的每一頁，分左右欄比較可見墨水佔用；新增的大型空白帶、總大型空白顯著增加、欄位佔用率驟降或欄尾明顯提前，任一項成立即失敗。不得以字元數、頁數或排版器內部 health report 取代最終 PDF 的 source-vs-output 驗證。
 
 翻譯後的中文文字必須使用 PDFsharp 的 `XGraphics` 重新繪製，並嚴格遵循字型與佈局對齊規範。
 
