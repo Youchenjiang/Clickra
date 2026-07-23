@@ -161,9 +161,9 @@ namespace Clickra.Core.Processors
                 return false;
 
             string upperText = upper.TextWithPlaceholders.Trim();
-            if (upperText.EndsWith(".") || upperText.EndsWith("?") || upperText.EndsWith("!") ||
-                upperText.EndsWith(":") || upperText.EndsWith("。") || upperText.EndsWith("」") ||
-                upperText.EndsWith("\""))
+            if (upperText.EndsWith('.') || upperText.EndsWith('?') || upperText.EndsWith('!') ||
+                upperText.EndsWith(':') || upperText.EndsWith('。') || upperText.EndsWith('」') ||
+                upperText.EndsWith('"'))
                 return false;
 
             return true;
