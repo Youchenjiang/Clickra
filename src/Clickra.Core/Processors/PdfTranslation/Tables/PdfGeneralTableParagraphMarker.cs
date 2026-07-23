@@ -312,7 +312,7 @@ namespace Clickra.Core.Processors
                     if (para.Height >= 35 && para.Height < 120 && para.Width > 80 && para.Width < pageWidth * 0.45)
                     {
                         int digitGroups = Regex.Matches(txt, @"\b\d+\b").Count;
-                        int wordCount = txt.Split(new char[] { ' ', '\t', '\n', '\r' }, StringSplitOptions.RemoveEmptyEntries).Length;
+                        int wordCount = txt.Split([' ', '\t', '\n', '\r'], StringSplitOptions.RemoveEmptyEntries).Length;
                         if (digitGroups >= 4 && wordCount <= 18)
                         {
                             para.IsTable = true;
@@ -373,7 +373,7 @@ namespace Clickra.Core.Processors
                     }
 
                     if (para.Height > 30 && para.Width > pageWidth * 0.35 &&
-                        txt.Split(new char[] { ' ', '\t', '\n', '\r' }, StringSplitOptions.RemoveEmptyEntries).Length > 25)
+                        txt.Split([' ', '\t', '\n', '\r'], StringSplitOptions.RemoveEmptyEntries).Length > 25)
                     {
                         break;
                     }

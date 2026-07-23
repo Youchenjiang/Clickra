@@ -85,7 +85,7 @@ internal static class PdfTranslatedPdfRebuilder
 
                             string searchText = string.Join("", overlappingLetters.Select(l => l.Value)).Trim();
                             searchText = PdfAnnotationTextMatcher.NormalizeAnnotationSearchText(searchText);
-                            if (!searchText.Any(char.IsDigit))
+                            if (searchText.All(c => !char.IsDigit(c)))
                             {
                                 double centerX = (rect.X1 + rect.X2) / 2.0;
                                 double centerY = (rect.Y1 + rect.Y2) / 2.0;

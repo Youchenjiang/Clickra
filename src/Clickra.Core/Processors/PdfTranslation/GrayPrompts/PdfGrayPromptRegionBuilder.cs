@@ -35,9 +35,9 @@ namespace Clickra.Core.Processors
                 // the same column-sized geometry.  Only treat it as a shaded
                 // prompt region when a prompt title is actually present; real
                 // gray fills are detected separately by GetGrayVectorFillRegions.
-                if (pageList == null || !pageList.Any(p =>
-                        PdfGrayPromptClassifier.IsGrayPromptBoxParagraph(p) &&
-                        PdfGrayPromptGeometry.ParagraphCenterInsideAnyRegion(p, new[] { r })))
+                if (pageList == null || pageList.All(p =>
+                        !PdfGrayPromptClassifier.IsGrayPromptBoxParagraph(p) ||
+                        !PdfGrayPromptGeometry.ParagraphCenterInsideAnyRegion(p, new[] { r })))
                 {
                     continue;
                 }

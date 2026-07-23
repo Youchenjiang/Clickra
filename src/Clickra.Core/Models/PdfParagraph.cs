@@ -167,10 +167,9 @@ namespace Clickra.Core.Models
             string otherStyled = string.IsNullOrWhiteSpace(other.TranslationTextWithStyles)
                 ? otherText
                 : other.TranslationTextWithStyles;
-            if (string.IsNullOrWhiteSpace(this.TranslationTextWithStyles))
-                this.TranslationTextWithStyles = otherStyled;
-            else
-                this.TranslationTextWithStyles = this.TranslationTextWithStyles + " " + otherStyled;
+            this.TranslationTextWithStyles = string.IsNullOrWhiteSpace(this.TranslationTextWithStyles)
+                ? otherStyled
+                : $"{this.TranslationTextWithStyles} {otherStyled}";
 
             this.AllLetters.AddRange(other.AllLetters);
 
