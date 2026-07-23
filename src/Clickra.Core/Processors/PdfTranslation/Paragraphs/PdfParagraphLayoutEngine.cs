@@ -106,10 +106,10 @@ namespace Clickra.Core.Processors
 
                 MeasureTokenWidth(token, font, formulas, fontSize, averageFontSize, gfx, out bool isFormula, out int formulaId, out double width);
 
-                if (width > maxWidth && !isFormula && token.Length > 1 && token != " ")
+                if (width > maxWidth && !isFormula && token.Length > 1 && token != " " &&
+                    TrySplitOverlongToken(token, font, maxWidth, gfx, ref currentRow, ref rows, ref currentX))
                 {
-                    if (TrySplitOverlongToken(token, font, maxWidth, gfx, ref currentRow, ref rows, ref currentX))
-                        continue;
+                    continue;
                 }
 
                 if (currentX + width > maxWidth && currentRow.Elements.Count > 0)
@@ -174,10 +174,16 @@ namespace Clickra.Core.Processors
                 else if (token.Length == 1 && FontUtilities.IsLatinExtendedOrSymbol(token[0]))
                 {
                     char c = token[0];
-                    string fontName = (c >= 0x0080 && c <= 0x024F)
-                        ? (font.FontFamily.Name.Contains("Courier") ? "Courier New" : "Arial")
-                        : "Segoe UI Symbol";
-                    XFont fallbackFont = new XFont(fontName, font.Size, font.Style);
+                    string fontName;
+                    if (c >= 0x0080 && c <= 0x024F)
+                    {
+                        fontName = font.FontFamily.Name.Contains("Courier") ? "Courier New" : "Arial";
+                    }
+                    else
+                    {
+                        fontName = "Segoe UI Symbol";
+                    }
+                    XFont fallbackFont = new(fontName, font.Size, font.Style);
                     width = gfx.MeasureString(FontUtilities.NormalizeMathValue(token), fallbackFont).Width;
                 }
                 else
@@ -196,7 +202,7 @@ namespace Clickra.Core.Processors
             ref List<PdfLayoutRow> rows,
             ref double currentX)
         {
-            var breakChars = new char[] { '/', '-', '.', '_', '=' };
+            char[] breakChars = ['/', '-', '.', '_', '='];
             var subTokens = new List<string>();
             var sb2 = new StringBuilder();
             foreach (char ch in token)
