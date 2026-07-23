@@ -24,20 +24,38 @@ namespace Clickra.Core.Processors
     {
         public static PdfParagraphAnalysis Analyze(IReadOnlyList<TextLine> lines)
         {
-            var sb = new StringBuilder();
-            var formulas = new List<MathFormula>();
-            var allLetters = new List<PdfLetter>();
-            var currentFormula = new List<Letter>();
-            var styled = new StringBuilder();
-            bool styledBoldOpen = false;
-            int bracketsCount = 0;
+            var (averageFontSize, boldCount, italicCount, totalCount, allLetters) = ComputeFontStats(lines);
+            var (sb, styled, formulas, hasLineBreak) = ProcessTextLines(lines, averageFontSize);
 
+            string textWithPlaceholders = PdfParagraphMarkerNormalizer.Normalize(sb.ToString(), formulas);
+            string translationTextWithStyles = PdfParagraphMarkerNormalizer.NormalizeStyleRuns(
+                textWithPlaceholders,
+                PdfParagraphMarkerNormalizer.Normalize(styled.ToString(), formulas),
+                totalCount > 0 && boldCount == totalCount);
+            return new PdfParagraphAnalysis
+            {
+                TextWithPlaceholders = textWithPlaceholders,
+                TranslationTextWithStyles = translationTextWithStyles,
+                AverageFontSize = averageFontSize,
+                IsBold = totalCount > 0 && ((double)boldCount / totalCount) > 0.5,
+                IsItalic = totalCount > 0 && ((double)italicCount / totalCount) > 0.5,
+                IsOnlyMath = formulas.Count == 1 && textWithPlaceholders.Trim() == "{v0}",
+                IsCode = PdfParagraphCodeClassifier.IsCodeBlock(textWithPlaceholders) ||
+                         PdfParagraphCodeClassifier.IsMonospaceBlock(lines),
+                HasLineBreak = hasLineBreak,
+                Formulas = formulas,
+                AllLetters = allLetters
+            };
+        }
+
+        private static (double averageFontSize, int boldCount, int italicCount, int totalCount, List<PdfLetter> allLetters) ComputeFontStats(IReadOnlyList<TextLine> lines)
+        {
             double totalFontSize = 0;
             int letterCount = 0;
-
             int boldCount = 0;
             int italicCount = 0;
             int totalCount = 0;
+            var allLetters = new List<PdfLetter>();
 
             foreach (var line in lines)
             {
@@ -47,23 +65,26 @@ namespace Clickra.Core.Processors
                     {
                         totalFontSize += letter.PointSize;
                         letterCount++;
-
                         totalCount++;
-                        if (FontUtilities.IsSourceFontBold(letter.FontName))
-                        {
-                            boldCount++;
-                        }
-                        if (IsItalicFont(letter.FontName))
-                        {
-                            italicCount++;
-                        }
-
+                        if (FontUtilities.IsSourceFontBold(letter.FontName)) boldCount++;
+                        if (IsItalicFont(letter.FontName)) italicCount++;
                         allLetters.Add(CreatePdfLetter(letter));
                     }
                 }
             }
 
             double averageFontSize = letterCount > 0 ? totalFontSize / letterCount : 10;
+            return (averageFontSize, boldCount, italicCount, totalCount, allLetters);
+        }
+
+        private static (StringBuilder sb, StringBuilder styled, List<MathFormula> formulas, bool hasLineBreak) ProcessTextLines(IReadOnlyList<TextLine> lines, double averageFontSize)
+        {
+            var sb = new StringBuilder();
+            var formulas = new List<MathFormula>();
+            var currentFormula = new List<Letter>();
+            var styled = new StringBuilder();
+            bool styledBoldOpen = false;
+            int bracketsCount = 0;
             bool hasLineBreak = false;
 
             for (int lineIdx = 0; lineIdx < lines.Count; lineIdx++)
@@ -133,25 +154,7 @@ namespace Clickra.Core.Processors
                 styled.Append($"{{v{formulas.Count - 1}}}");
             CloseStyledBold(styled, ref styledBoldOpen);
 
-            string textWithPlaceholders = PdfParagraphMarkerNormalizer.Normalize(sb.ToString(), formulas);
-            string translationTextWithStyles = PdfParagraphMarkerNormalizer.NormalizeStyleRuns(
-                textWithPlaceholders,
-                PdfParagraphMarkerNormalizer.Normalize(styled.ToString(), formulas),
-                totalCount > 0 && boldCount == totalCount);
-            return new PdfParagraphAnalysis
-            {
-                TextWithPlaceholders = textWithPlaceholders,
-                TranslationTextWithStyles = translationTextWithStyles,
-                AverageFontSize = averageFontSize,
-                IsBold = totalCount > 0 && ((double)boldCount / totalCount) > 0.5,
-                IsItalic = totalCount > 0 && ((double)italicCount / totalCount) > 0.5,
-                IsOnlyMath = formulas.Count == 1 && textWithPlaceholders.Trim() == "{v0}",
-                IsCode = PdfParagraphCodeClassifier.IsCodeBlock(textWithPlaceholders) ||
-                         PdfParagraphCodeClassifier.IsMonospaceBlock(lines),
-                HasLineBreak = hasLineBreak,
-                Formulas = formulas,
-                AllLetters = allLetters
-            };
+            return (sb, styled, formulas, hasLineBreak);
         }
 
         private static PdfLetter CreatePdfLetter(Letter letter)
