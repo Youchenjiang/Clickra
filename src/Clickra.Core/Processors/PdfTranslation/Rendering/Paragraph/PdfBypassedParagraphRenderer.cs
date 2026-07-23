@@ -30,18 +30,9 @@ namespace Clickra.Core.Processors
                 if (formulaLetterKeys.Contains(FormulaLetterKey(letter))) continue;
 
                 double fontSize = para.IsTable ? tableFontSize : letter.FontSize;
-                XFont font;
-                if (letter.Value.Any(FontUtilities.IsCjkCharacter))
-                {
-                    // Keep the source weight even for bypassed CJK/table glyphs.
-                    // KaiU has no reliable bold face in the resolver, so the
-                    // second stroke below supplies a deterministic synthetic bold.
-                    font = new XFont(targetFontName, fontSize, XFontStyleEx.Regular);
-                }
-                else
-                {
-                    font = FontUtilities.GetMathFont(letter.FontName, fontSize);
-                }
+                XFont font = letter.Value.Any(FontUtilities.IsCjkCharacter)
+                    ? new XFont(targetFontName, fontSize, XFontStyleEx.Regular)
+                    : FontUtilities.GetMathFont(letter.FontName, fontSize);
 
                 string drawVal = FontUtilities.NormalizeRenderValue(letter.Value);
                 if (drawVal.Length == 1 &&
