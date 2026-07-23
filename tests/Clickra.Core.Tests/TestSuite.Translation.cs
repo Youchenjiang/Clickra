@@ -6,6 +6,7 @@ using System.Threading.Tasks;
 using Clickra.Core;
 using Clickra.Core.Models;
 using Clickra.Core.Processors;
+using Clickra.Core.Tests;
 using PdfSharp.Drawing;
 using PdfSharp.Fonts;
 using PdfSharp.Pdf;
@@ -1044,112 +1045,115 @@ static partial class TestSuite
     }
 }
 
-file sealed class RecordingTranslationEngine(
-    string name,
-    string? failOnMarker = null,
-    bool dropLastBatchResult = false) : ITranslationEngine
+namespace Clickra.Core.Tests
 {
-    public string Name { get; } = name;
-    public List<int> BatchSizes { get; } = new();
-    public int SingleAttempts { get; private set; }
-
-    public Task<string> TranslateAsync(string text, string targetLanguage, CancellationToken cancellationToken)
+    internal sealed class RecordingTranslationEngine(
+        string name,
+        string? failOnMarker = null,
+        bool dropLastBatchResult = false) : ITranslationEngine
     {
-        SingleAttempts++;
-        if (failOnMarker != null && text.Contains(failOnMarker, StringComparison.Ordinal))
-            throw new InvalidOperationException("forced failure");
-        return Task.FromResult($"{Name}:{text}");
+        public string Name { get; } = name;
+        public List<int> BatchSizes { get; } = new();
+        public int SingleAttempts { get; private set; }
+
+        public Task<string> TranslateAsync(string text, string targetLanguage, CancellationToken cancellationToken)
+        {
+            SingleAttempts++;
+            if (failOnMarker != null && text.Contains(failOnMarker, StringComparison.Ordinal))
+                throw new InvalidOperationException("forced failure");
+            return Task.FromResult($"{Name}:{text}");
+        }
+
+        public Task<List<string>> TranslateBatchAsync(
+            List<string> texts,
+            string targetLanguage,
+            CancellationToken cancellationToken)
+        {
+            BatchSizes.Add(texts.Count);
+            if (failOnMarker != null && texts.Any(text => text.Contains(failOnMarker, StringComparison.Ordinal)))
+                throw new InvalidOperationException("forced failure");
+            var results = texts.Select(text => $"{Name}:{text}").ToList();
+            if (dropLastBatchResult && results.Count > 0)
+                results.RemoveAt(results.Count - 1);
+            return Task.FromResult(results);
+        }
     }
 
-    public Task<List<string>> TranslateBatchAsync(
-        List<string> texts,
-        string targetLanguage,
-        CancellationToken cancellationToken)
+    internal sealed class UnchangedTranslationEngine(string name) : ITranslationEngine
     {
-        BatchSizes.Add(texts.Count);
-        if (failOnMarker != null && texts.Any(text => text.Contains(failOnMarker, StringComparison.Ordinal)))
-            throw new InvalidOperationException("forced failure");
-        var results = texts.Select(text => $"{Name}:{text}").ToList();
-        if (dropLastBatchResult && results.Count > 0)
-            results.RemoveAt(results.Count - 1);
-        return Task.FromResult(results);
-    }
-}
+        public string Name { get; } = name;
+        public int SingleAttempts { get; private set; }
 
-file sealed class UnchangedTranslationEngine(string name) : ITranslationEngine
-{
-    public string Name { get; } = name;
-    public int SingleAttempts { get; private set; }
+        public Task<string> TranslateAsync(string text, string targetLanguage, CancellationToken cancellationToken)
+        {
+            SingleAttempts++;
+            return Task.FromResult(text);
+        }
 
-    public Task<string> TranslateAsync(string text, string targetLanguage, CancellationToken cancellationToken)
-    {
-        SingleAttempts++;
-        return Task.FromResult(text);
+        public Task<List<string>> TranslateBatchAsync(
+            List<string> texts,
+            string targetLanguage,
+            CancellationToken cancellationToken) =>
+            Task.FromResult(texts.ToList());
     }
 
-    public Task<List<string>> TranslateBatchAsync(
-        List<string> texts,
-        string targetLanguage,
-        CancellationToken cancellationToken) =>
-        Task.FromResult(texts.ToList());
-}
-
-file sealed class BatchOnlyFailingTranslationEngine : ITranslationEngine
-{
-    public string Name => "batch-failing";
-    public int BatchAttempts { get; private set; }
-
-    public Task<string> TranslateAsync(string text, string targetLanguage, CancellationToken cancellationToken) =>
-        Task.FromResult($"recovered:{text}");
-
-    public Task<List<string>> TranslateBatchAsync(
-        List<string> texts,
-        string targetLanguage,
-        CancellationToken cancellationToken)
+    internal sealed class BatchOnlyFailingTranslationEngine : ITranslationEngine
     {
-        BatchAttempts++;
-        throw new InvalidOperationException("forced batch failure");
-    }
-}
+        public string Name => "batch-failing";
+        public int BatchAttempts { get; private set; }
 
-file sealed class HangingTranslationEngine : ITranslationEngine
-{
-    public string Name => "hanging";
+        public Task<string> TranslateAsync(string text, string targetLanguage, CancellationToken cancellationToken) =>
+            Task.FromResult($"recovered:{text}");
 
-    public async Task<string> TranslateAsync(string text, string targetLanguage, CancellationToken cancellationToken)
-    {
-        await Task.Delay(Timeout.InfiniteTimeSpan, cancellationToken);
-        return text;
+        public Task<List<string>> TranslateBatchAsync(
+            List<string> texts,
+            string targetLanguage,
+            CancellationToken cancellationToken)
+        {
+            BatchAttempts++;
+            throw new InvalidOperationException("forced batch failure");
+        }
     }
 
-    public async Task<List<string>> TranslateBatchAsync(
-        List<string> texts,
-        string targetLanguage,
-        CancellationToken cancellationToken)
+    internal sealed class HangingTranslationEngine : ITranslationEngine
     {
-        await Task.Delay(Timeout.InfiniteTimeSpan, cancellationToken);
-        return texts;
+        public string Name => "hanging";
+
+        public async Task<string> TranslateAsync(string text, string targetLanguage, CancellationToken cancellationToken)
+        {
+            await Task.Delay(Timeout.InfiniteTimeSpan, cancellationToken);
+            return text;
+        }
+
+        public async Task<List<string>> TranslateBatchAsync(
+            List<string> texts,
+            string targetLanguage,
+            CancellationToken cancellationToken)
+        {
+            await Task.Delay(Timeout.InfiniteTimeSpan, cancellationToken);
+            return texts;
+        }
     }
-}
 
-file sealed class DelayedTranslationEngine(string name, int delayMilliseconds) : ITranslationEngine
-{
-    public string Name { get; } = name;
-    public int BatchAttempts { get; private set; }
-
-    public async Task<string> TranslateAsync(string text, string targetLanguage, CancellationToken cancellationToken)
+    internal sealed class DelayedTranslationEngine(string name, int delayMilliseconds) : ITranslationEngine
     {
-        await Task.Delay(delayMilliseconds, cancellationToken);
-        return $"{Name}:{text}";
-    }
+        public string Name { get; } = name;
+        public int BatchAttempts { get; private set; }
 
-    public async Task<List<string>> TranslateBatchAsync(
-        List<string> texts,
-        string targetLanguage,
-        CancellationToken cancellationToken)
-    {
-        BatchAttempts++;
-        await Task.Delay(delayMilliseconds, cancellationToken);
-        return texts.Select(text => $"{Name}:{text}").ToList();
+        public async Task<string> TranslateAsync(string text, string targetLanguage, CancellationToken cancellationToken)
+        {
+            await Task.Delay(delayMilliseconds, cancellationToken);
+            return $"{Name}:{text}";
+        }
+
+        public async Task<List<string>> TranslateBatchAsync(
+            List<string> texts,
+            string targetLanguage,
+            CancellationToken cancellationToken)
+        {
+            BatchAttempts++;
+            await Task.Delay(delayMilliseconds, cancellationToken);
+            return texts.Select(text => $"{Name}:{text}").ToList();
+        }
     }
 }
