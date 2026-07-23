@@ -82,16 +82,23 @@ def _detect_excess_blank_space(
     output_runs: list[tuple[int, int]],
     points_per_row: float,
     thresholds: OccupancyThresholds,
-) -> list[dict]:
-    def large_gap_total(runs: list[tuple[int, int]]) -> float:
-        return sum(
-            (end - start) * points_per_row
-            for start, end in runs
-            if (end - start) * points_per_row >= thresholds.minimum_large_gap_points
-        )
+def _large_gap_total(
+    runs: list[tuple[int, int]],
+    points_per_row: float,
+    thresholds: OccupancyThresholds,
+) -> float:
+    return sum(
+        (end - start) * points_per_row
+        for start, end in runs
+        if (end - start) * points_per_row >= thresholds.minimum_large_gap_points
+    )
 
-    source_large_gap = large_gap_total(source_runs)
-    output_large_gap = large_gap_total(output_runs)
+
+def _detect_excess_blank_space(
+    source_large_gap: float,
+    output_large_gap: float,
+    thresholds: OccupancyThresholds,
+) -> list[dict]:
     added_large_gap = output_large_gap - source_large_gap
     if (
         added_large_gap > thresholds.maximum_added_large_gap_points
@@ -127,8 +134,11 @@ def compare_region_rows(
     source_runs = _blank_runs(source)
     output_runs = _blank_runs(output)
 
+    source_large_gap = _large_gap_total(source_runs, points_per_row, thresholds)
+    output_large_gap = _large_gap_total(output_runs, points_per_row, thresholds)
+
     issues = _detect_new_blank_bands(source, output_runs, points_per_row, thresholds)
-    issues.extend(_detect_excess_blank_space(source_runs, output_runs, points_per_row, thresholds))
+    issues.extend(_detect_excess_blank_space(source_large_gap, output_large_gap, thresholds))
 
     source_ratio = float(source.mean())
     output_ratio = float(output.mean())
