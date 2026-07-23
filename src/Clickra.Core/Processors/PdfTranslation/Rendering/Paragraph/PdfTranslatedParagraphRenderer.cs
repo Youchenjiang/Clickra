@@ -66,47 +66,8 @@ internal static class PdfTranslatedParagraphRenderer
                 // a tiny extractor size (ASTER page 11: 5.1pt) to a 9.96pt
                 // body line. Keep the documented 80% floor as a hard guard.
                 fontSize = Math.Max(para.LayoutFontSizeOverride, sourceBodyFontFloor);
-            string fontNameForPara = targetFontName;
-            if (para.IsCode)
-            {
-                fontNameForPara = "Courier New";
-            }
-            else if (para.IsBypassed)
-            {
-                if (text.Any(FontUtilities.IsCjkCharacter))
-                {
-                    fontNameForPara = targetFontName;
-                }
-                else
-                {
-                    fontNameForPara = "Times New Roman";
-                    if (para.AllLetters.Count > 0)
-                    {
-                        string fn = para.AllLetters[0].FontName.ToLowerInvariant();
-                        if (fn.Contains("times") || fn.Contains("serif") || fn.Contains("liberation"))
-                            fontNameForPara = "Times New Roman";
-                        else if (fn.Contains("arial") || fn.Contains("helvetica") || fn.Contains("sans"))
-                            fontNameForPara = "Arial";
-                        else if (fn.Contains("courier") || fn.Contains("mono") || fn.Contains("consolas"))
-                            fontNameForPara = "Courier New";
-                    }
-                }
-            }
-            XFontStyleEx fontStyle = XFontStyleEx.Regular;
-            // Translated CJK uses the stable regular KaiU face. Bold is drawn
-            // with a tiny second stroke below, avoiding unsupported CJK faces.
-            if (!para.IsBypassed && !para.IsCode && FontUtilities.IsCjkTranslationFont(fontNameForPara))
-            {
-                fontStyle = XFontStyleEx.Regular;
-            }
-            else if (para.IsBold)
-            {
-                fontStyle = para.IsItalic ? XFontStyleEx.BoldItalic : XFontStyleEx.Bold;
-            }
-            else
-            {
-                fontStyle = para.IsItalic ? XFontStyleEx.Italic : XFontStyleEx.Regular;
-            }
+            
+            DetermineFontNameAndStyle(para, targetFontName, text, out string fontNameForPara, out XFontStyleEx fontStyle);
             XFont mainFont = new(fontNameForPara, fontSize, fontStyle);
             XBrush brush = XBrushes.Black;
             // Heading role controls size/alignment, not weight.  Weight must
@@ -720,7 +681,6 @@ internal static class PdfTranslatedParagraphRenderer
                 ? para.AverageFontSize
                 : para.AllLetters.Max(letter => letter.FontSize);
         }
-
         private static double CalculateAnchorCenter(PdfParagraph para, bool isPageTitle, bool isHeading, double paragraphX, double paragraphWidth)
         {
             if (isPageTitle)
@@ -728,6 +688,60 @@ internal static class PdfTranslatedParagraphRenderer
             if (isHeading)
                 return (para.OriginalX0 + para.OriginalX1) / 2.0;
             return paragraphX + paragraphWidth / 2.0;
+        }
+
+        private static double CalculateFontSize(PdfParagraph para, bool isHeading, double sourceHeadingFontSize, double sourceBodyFontFloor)
+        {
+            double fontSize = isHeading
+                ? Math.Max(para.AverageFontSize, sourceHeadingFontSize)
+                : Math.Max(para.AverageFontSize, sourceBodyFontFloor);
+            if (!isHeading && para.LayoutFontSizeOverride > 0)
+                fontSize = Math.Max(para.LayoutFontSizeOverride, sourceBodyFontFloor);
+            return fontSize;
+        }
+
+        private static void DetermineFontNameAndStyle(PdfParagraph para, string targetFontName, string text, out string fontNameForPara, out XFontStyleEx fontStyle)
+        {
+            fontNameForPara = targetFontName;
+            if (para.IsCode)
+            {
+                fontNameForPara = "Courier New";
+            }
+            else if (para.IsBypassed)
+            {
+                if (text.Any(FontUtilities.IsCjkCharacter))
+                {
+                    fontNameForPara = targetFontName;
+                }
+                else
+                {
+                    fontNameForPara = "Times New Roman";
+                    if (para.AllLetters.Count > 0)
+                    {
+                        string fn = para.AllLetters[0].FontName.ToLowerInvariant();
+                        if (fn.Contains("times") || fn.Contains("serif") || fn.Contains("liberation"))
+                            fontNameForPara = "Times New Roman";
+                        else if (fn.Contains("arial") || fn.Contains("helvetica") || fn.Contains("sans"))
+                            fontNameForPara = "Arial";
+                        else if (fn.Contains("courier") || fn.Contains("mono") || fn.Contains("consolas"))
+                            fontNameForPara = "Courier New";
+                    }
+                }
+            }
+
+            fontStyle = XFontStyleEx.Regular;
+            if (!para.IsBypassed && !para.IsCode && FontUtilities.IsCjkTranslationFont(fontNameForPara))
+            {
+                fontStyle = XFontStyleEx.Regular;
+            }
+            else if (para.IsBold)
+            {
+                fontStyle = para.IsItalic ? XFontStyleEx.BoldItalic : XFontStyleEx.Bold;
+            }
+            else
+            {
+                fontStyle = para.IsItalic ? XFontStyleEx.Italic : XFontStyleEx.Regular;
+            }
         }
     }
 
