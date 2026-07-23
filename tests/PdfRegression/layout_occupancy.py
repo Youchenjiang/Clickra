@@ -77,11 +77,7 @@ def _detect_new_blank_bands(
     return issues
 
 
-def _detect_excess_blank_space(
-    source_runs: list[tuple[int, int]],
-    output_runs: list[tuple[int, int]],
-    points_per_row: float,
-    thresholds: OccupancyThresholds,
+
 def _large_gap_total(
     runs: list[tuple[int, int]],
     points_per_row: float,
