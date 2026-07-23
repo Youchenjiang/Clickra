@@ -62,6 +62,23 @@ def run(name: str, command: list[str], env: dict[str, str] | None = None) -> boo
     return True
 
 
+def _check_fixtures(args: argparse.Namespace) -> int | None:
+    missing = missing_pdf_fixtures()
+    if not missing:
+        return None
+    print("SKIP: PDF regression fixtures are not available.")
+    print("Expected fixture roots:")
+    print(f"  - {SOURCE_DIR.relative_to(ROOT)}")
+    print(f"  - {TRANSLATED_DIR.relative_to(ROOT)}")
+    print("Missing examples:")
+    for path in missing[:8]:
+        print(f"  - {path}")
+    if len(missing) > 8:
+        print(f"  - ... and {len(missing) - 8} more")
+    print("Provide fixtures locally, or run with --require-fixtures to enforce them.")
+    return 1 if args.require_fixtures else 0
+
+
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument(
@@ -108,19 +125,9 @@ def main() -> int:
             None,
         ) else 1
 
-    missing = missing_pdf_fixtures()
-    if missing:
-        print("SKIP: PDF regression fixtures are not available.")
-        print("Expected fixture roots:")
-        print(f"  - {SOURCE_DIR.relative_to(ROOT)}")
-        print(f"  - {TRANSLATED_DIR.relative_to(ROOT)}")
-        print("Missing examples:")
-        for path in missing[:8]:
-            print(f"  - {path}")
-        if len(missing) > 8:
-            print(f"  - ... and {len(missing) - 8} more")
-        print("Provide fixtures locally, or run with --require-fixtures to enforce them.")
-        return 1 if args.require_fixtures else 0
+    fixture_res = _check_fixtures(args)
+    if fixture_res is not None:
+        return fixture_res
 
     test_dll = (
         ROOT

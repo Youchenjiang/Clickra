@@ -52,22 +52,13 @@ def _blank_runs(rows: np.ndarray) -> list[tuple[int, int]]:
     return runs
 
 
-def compare_region_rows(
-    source_rows: np.ndarray,
-    output_rows: np.ndarray,
+def _detect_new_blank_bands(
+    source: np.ndarray,
+    output_runs: list[tuple[int, int]],
     points_per_row: float,
-    thresholds: OccupancyThresholds = DEFAULT_THRESHOLDS,
-) -> tuple[list[dict], dict]:
-    """Compare two boolean row-occupancy profiles for one page column."""
-    if source_rows.shape != output_rows.shape:
-        raise ValueError("Source and output occupancy rows must have equal shapes.")
-
-    source = _dilate_rows(source_rows)
-    output = _dilate_rows(output_rows)
-    source_runs = _blank_runs(source)
-    output_runs = _blank_runs(output)
-    issues: list[dict] = []
-
+    thresholds: OccupancyThresholds,
+) -> list[dict]:
+    issues = []
     for start, end in output_runs:
         length_points = (end - start) * points_per_row
         if length_points < thresholds.minimum_new_gap_points:
@@ -83,7 +74,15 @@ def compare_region_rows(
                     "source_occupied_ratio": round(source_occupancy, 3),
                 }
             )
+    return issues
 
+
+def _detect_excess_blank_space(
+    source_runs: list[tuple[int, int]],
+    output_runs: list[tuple[int, int]],
+    points_per_row: float,
+    thresholds: OccupancyThresholds,
+) -> list[dict]:
     def large_gap_total(runs: list[tuple[int, int]]) -> float:
         return sum(
             (end - start) * points_per_row
@@ -102,14 +101,34 @@ def compare_region_rows(
             source_large_gap * thresholds.maximum_large_gap_growth_ratio,
         )
     ):
-        issues.append(
+        return [
             {
                 "kind": "excess_blank_space",
                 "source_large_gap_points": round(source_large_gap, 1),
                 "output_large_gap_points": round(output_large_gap, 1),
                 "added_points": round(added_large_gap, 1),
             }
-        )
+        ]
+    return []
+
+
+def compare_region_rows(
+    source_rows: np.ndarray,
+    output_rows: np.ndarray,
+    points_per_row: float,
+    thresholds: OccupancyThresholds = DEFAULT_THRESHOLDS,
+) -> tuple[list[dict], dict]:
+    """Compare two boolean row-occupancy profiles for one page column."""
+    if source_rows.shape != output_rows.shape:
+        raise ValueError("Source and output occupancy rows must have equal shapes.")
+
+    source = _dilate_rows(source_rows)
+    output = _dilate_rows(output_rows)
+    source_runs = _blank_runs(source)
+    output_runs = _blank_runs(output)
+
+    issues = _detect_new_blank_bands(source, output_runs, points_per_row, thresholds)
+    issues.extend(_detect_excess_blank_space(source_runs, output_runs, points_per_row, thresholds))
 
     source_ratio = float(source.mean())
     output_ratio = float(output.mean())

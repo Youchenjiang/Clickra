@@ -97,6 +97,70 @@ def _aster_table_iii_missing_rows(pdf_path: Path) -> list[int]:
     return [number for number in range(1, 20) if number not in rows]
 
 
+def _evaluate_aster_results(
+    output_pdf: Path,
+    health_path: Path,
+    output_dir: Path,
+    engine: str,
+) -> list[str]:
+    health = json.loads(health_path.read_text(encoding="utf-8"))
+    with output_pdf.open("rb") as stream:
+        pages = len(PdfReader(stream).pages)
+    diagnostic = health_report(
+        output_pdf,
+        output_dir / "ASTER _pdf_health.json",
+    )
+
+    failures: list[str] = []
+    if pages != 12:
+        failures.append(f"page count changed: {pages}")
+    if not health.get("Succeeded"):
+        failures.append("health report is not successful")
+    if health.get("OutputPages") != 12:
+        failures.append(f"health output pages: {health.get('OutputPages')}")
+    if health.get("OverflowEntries", 0) != 0:
+        failures.append(f"layout overflow entries: {health.get('OverflowEntries')}")
+    if health.get("GuardClipEntries", 0) != 0:
+        failures.append(f"guard clip entries: {health.get('GuardClipEntries')}")
+    if health.get("TranslationFailures"):
+        failures.append(f"translation failures: {health['TranslationFailures']}")
+    if health.get("HeadingCount", 0) <= 0:
+        failures.append("health report did not record any headings")
+    if health.get("MinimumHeadingFontRatio", 0) < 1.0:
+        failures.append(f"heading font ratio below source: {health.get('MinimumHeadingFontRatio')}")
+    if health.get("MaximumAlignmentAnchorShift", 0) > 1.5:
+        failures.append(f"heading anchor drift: {health.get('MaximumAlignmentAnchorShift')}")
+    if diagnostic.get("total_tofu", 0) != 0:
+        failures.append(f"PDF diagnostic tofu/NUL count: {diagnostic.get('total_tofu')}")
+    if diagnostic.get("total_simp", 0) != 0:
+        failures.append(f"PDF diagnostic simplified-character count: {diagnostic.get('total_simp')}")
+    missing_table_rows = _aster_table_iii_missing_rows(output_pdf)
+    if missing_table_rows:
+        failures.append(f"ASTER page 8 Table III lost or translated rows: {missing_table_rows}")
+    layout_report = compare_pdf_layout_occupancy(SOURCE, output_pdf)
+    layout_report_path = output_dir / "ASTER _layout_occupancy.json"
+    layout_report_path.write_text(
+        json.dumps(layout_report, ensure_ascii=False, indent=2),
+        encoding="utf-8",
+    )
+    failures.extend(f"layout occupancy: {item}" for item in layout_report["failures"])
+    if engine != "identity":
+        residuals = _aster_abstract_residuals(output_pdf)
+        if residuals:
+            failures.append(f"ASTER page 1 abstract retains source text: {residuals}")
+        if not _aster_author_email_is_intact(output_pdf):
+            failures.append("ASTER page 1 author/email band was altered or redrawn incorrectly")
+        drift, _ = _aster_title_anchor_is_preserved(output_pdf)
+        if drift > 1.5:
+            failures.append(f"ASTER page 1 title center drift: {drift:.2f}pt")
+
+    render_log = output_dir / "ASTER _renderdbg.log"
+    if render_log.exists() and "clipped=true" in render_log.read_text(encoding="utf-8").casefold():
+        failures.append("render debug still reports clipped=true")
+
+    return failures
+
+
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--engine", choices=("identity", "synthetic-cjk"), default="identity")
@@ -140,61 +204,7 @@ def main() -> int:
         print("FAIL: ASTER output or health report was not created")
         return 1
 
-    health = json.loads(health_path.read_text(encoding="utf-8"))
-    with output_pdf.open("rb") as stream:
-        pages = len(PdfReader(stream).pages)
-    diagnostic = health_report(
-        output_pdf,
-        output_dir / "ASTER _pdf_health.json",
-    )
-
-    failures: list[str] = []
-    if pages != 12:
-        failures.append(f"page count changed: {pages}")
-    if not health.get("Succeeded"):
-        failures.append("health report is not successful")
-    if health.get("OutputPages") != 12:
-        failures.append(f"health output pages: {health.get('OutputPages')}")
-    if health.get("OverflowEntries", 0) != 0:
-        failures.append(f"layout overflow entries: {health.get('OverflowEntries')}")
-    if health.get("GuardClipEntries", 0) != 0:
-        failures.append(f"guard clip entries: {health.get('GuardClipEntries')}")
-    if health.get("TranslationFailures"):
-        failures.append(f"translation failures: {health['TranslationFailures']}")
-    if health.get("HeadingCount", 0) <= 0:
-        failures.append("health report did not record any headings")
-    if health.get("MinimumHeadingFontRatio", 0) < 1.0:
-        failures.append(f"heading font ratio below source: {health.get('MinimumHeadingFontRatio')}")
-    if health.get("MaximumAlignmentAnchorShift", 0) > 1.5:
-        failures.append(f"heading anchor drift: {health.get('MaximumAlignmentAnchorShift')}")
-    if diagnostic.get("total_tofu", 0) != 0:
-        failures.append(f"PDF diagnostic tofu/NUL count: {diagnostic.get('total_tofu')}")
-    if diagnostic.get("total_simp", 0) != 0:
-        failures.append(f"PDF diagnostic simplified-character count: {diagnostic.get('total_simp')}")
-    missing_table_rows = _aster_table_iii_missing_rows(output_pdf)
-    if missing_table_rows:
-        failures.append(f"ASTER page 8 Table III lost or translated rows: {missing_table_rows}")
-    layout_report = compare_pdf_layout_occupancy(SOURCE, output_pdf)
-    layout_report_path = output_dir / "ASTER _layout_occupancy.json"
-    layout_report_path.write_text(
-        json.dumps(layout_report, ensure_ascii=False, indent=2),
-        encoding="utf-8",
-    )
-    failures.extend(f"layout occupancy: {item}" for item in layout_report["failures"])
-    if args.engine != "identity":
-        residuals = _aster_abstract_residuals(output_pdf)
-        if residuals:
-            failures.append(f"ASTER page 1 abstract retains source text: {residuals}")
-        if not _aster_author_email_is_intact(output_pdf):
-            failures.append("ASTER page 1 author/email band was altered or redrawn incorrectly")
-        drift, _ = _aster_title_anchor_is_preserved(output_pdf)
-        if drift > 1.5:
-            failures.append(f"ASTER page 1 title center drift: {drift:.2f}pt")
-
-    render_log = output_dir / "ASTER _renderdbg.log"
-    if render_log.exists() and "clipped=true" in render_log.read_text(encoding="utf-8").casefold():
-        failures.append("render debug still reports clipped=true")
-
+    failures = _evaluate_aster_results(output_pdf, health_path, output_dir, args.engine)
     if failures:
         for failure in failures:
             print(f"FAIL: {failure}")
