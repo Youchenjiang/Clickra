@@ -6,7 +6,6 @@ using System.Threading.Tasks;
 using Clickra.Core;
 using Clickra.Core.Models;
 using Clickra.Core.Processors;
-using Clickra.Core.Tests;
 using PdfSharp.Drawing;
 using PdfSharp.Fonts;
 using PdfSharp.Pdf;
@@ -1043,11 +1042,8 @@ static partial class TestSuite
             });
         }
     }
-}
 
-namespace Clickra.Core.Tests
-{
-    internal sealed class RecordingTranslationEngine(
+    private sealed class RecordingTranslationEngine(
         string name,
         string? failOnMarker = null,
         bool dropLastBatchResult = false) : ITranslationEngine
@@ -1060,7 +1056,7 @@ namespace Clickra.Core.Tests
         {
             SingleAttempts++;
             if (failOnMarker != null && text.Contains(failOnMarker, StringComparison.Ordinal))
-                throw new InvalidOperationException("forced failure");
+                throw new InvalidOperationException($"Engine '{Name}' triggered on '{text}'.");
             return Task.FromResult($"{Name}:{text}");
         }
 
@@ -1071,7 +1067,7 @@ namespace Clickra.Core.Tests
         {
             BatchSizes.Add(texts.Count);
             if (failOnMarker != null && texts.Any(text => text.Contains(failOnMarker, StringComparison.Ordinal)))
-                throw new InvalidOperationException("forced failure");
+                throw new InvalidOperationException($"Engine '{Name}' triggered in batch.");
             var results = texts.Select(text => $"{Name}:{text}").ToList();
             if (dropLastBatchResult && results.Count > 0)
                 results.RemoveAt(results.Count - 1);
@@ -1079,7 +1075,7 @@ namespace Clickra.Core.Tests
         }
     }
 
-    internal sealed class UnchangedTranslationEngine(string name) : ITranslationEngine
+    private sealed class UnchangedTranslationEngine(string name) : ITranslationEngine
     {
         public string Name { get; } = name;
         public int SingleAttempts { get; private set; }
@@ -1097,7 +1093,7 @@ namespace Clickra.Core.Tests
             Task.FromResult(texts.ToList());
     }
 
-    internal sealed class BatchOnlyFailingTranslationEngine : ITranslationEngine
+    private sealed class BatchOnlyFailingTranslationEngine : ITranslationEngine
     {
         public string Name => "batch-failing";
         public int BatchAttempts { get; private set; }
@@ -1115,7 +1111,7 @@ namespace Clickra.Core.Tests
         }
     }
 
-    internal sealed class HangingTranslationEngine : ITranslationEngine
+    private sealed class HangingTranslationEngine : ITranslationEngine
     {
         public string Name => "hanging";
 
