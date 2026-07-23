@@ -141,44 +141,7 @@ namespace Clickra
                         RequireMinFiles(files, command, 1, quiet);
                         if (quiet)
                         {
-                            Dictionary<string, object>? pdfOptions = null;
-                            if (!hasCliLevel)
-                            {
-                                string dpiStr = ClickraStorage.GetSetting("PdfCompressTargetDpi");
-                                if (string.IsNullOrEmpty(dpiStr)) dpiStr = "150";
-                                string qualityStr = ClickraStorage.GetSetting("PdfCompressJpegQuality");
-                                if (string.IsNullOrEmpty(qualityStr)) qualityStr = "75";
-                                string stripStr = ClickraStorage.GetSetting("PdfCompressStripFonts");
-                                if (string.IsNullOrEmpty(stripStr)) stripStr = "false";
-                                string minifyStr = ClickraStorage.GetSetting("PdfCompressMinifyContent");
-                                if (string.IsNullOrEmpty(minifyStr)) minifyStr = "true";
-
-                                if (!int.TryParse(dpiStr, out int dpi)) dpi = 150;
-                                if (!int.TryParse(qualityStr, out int quality)) quality = 75;
-
-                                pdfOptions = new Dictionary<string, object>
-                                {
-                                    { "target_dpi", dpi },
-                                    { "jpeg_quality", quality },
-                                    { "strip_fonts", stripStr.Equals("true", StringComparison.OrdinalIgnoreCase) },
-                                    { "minify_content", minifyStr.Equals("true", StringComparison.OrdinalIgnoreCase) }
-                                };
-                            }
-
-                            for (int i = 0; i < files.Count; i++)
-                            {
-                                var f = files[i];
-                                string outName = Path.Combine(outputDir, Path.GetFileNameWithoutExtension(f) + "_compressed.pdf");
-                                Console.WriteLine($"[Progress] 正在壓縮 PDF: {Path.GetFileName(f)} ({i + 1}/{files.Count})...");
-                                if (pdfOptions != null)
-                                {
-                                    FileProcessor.CompressPdf(f, outName, pdfOptions, (curr, tot, msg) => Console.WriteLine($"[Progress] {msg}"));
-                                }
-                                else
-                                {
-                                    FileProcessor.CompressPdf(f, outName, compressionLevel, (curr, tot, msg) => Console.WriteLine($"[Progress] {msg}"));
-                                }
-                            }
+                            HandleCompressPdfQuiet(files, outputDir, hasCliLevel, compressionLevel);
                         }
                         else ProgressWindow.Show(command, files);
                         break;
@@ -215,53 +178,7 @@ namespace Clickra
                         RequireMinFiles(files, command, 1, quiet);
                         if (quiet)
                         {
-                            string targetLang = ClickraStorage.GetSetting("TranslateTargetLang");
-                            bool translationFailed = false;
-                            for (int i = 0; i < files.Count; i++)
-                            {
-                                var f = files[i];
-                                if (!File.Exists(f))
-                                {
-                                    Console.WriteLine($"[Warning] 跳過已不存在的 PDF: {f} ({i + 1}/{files.Count})");
-                                    continue;
-                                }
-
-                                string outName = Path.Combine(outputDir, Path.GetFileNameWithoutExtension(f) + "_translated.pdf");
-                                string dbgLog = Path.Combine(outputDir, Path.GetFileNameWithoutExtension(f) + "_renderdbg.log");
-                                string healthReport = Path.Combine(outputDir, Path.GetFileNameWithoutExtension(f) + "_translated_health.json");
-                                ClickraDebug.Clear();
-                                Console.WriteLine($"[Progress] 開始翻譯 PDF: {Path.GetFileName(f)} ({i + 1}/{files.Count})");
-                                WriteConsoleProgress(0, 100, $"正在翻譯 PDF: {Path.GetFileName(f)} ({i + 1}/{files.Count})...");
-                                try
-                                {
-                                    FileProcessor.TranslatePdf(f, outName, targetLang, WriteConsoleProgress);
-                                    WriteConsoleProgress(100, 100, $"完成翻譯 PDF: {Path.GetFileName(f)} ({i + 1}/{files.Count})");
-                                    FinishConsoleProgressLine();
-                                    ClickraDebug.SaveTo(dbgLog);
-                                    Console.WriteLine($"[Debug] Render log: {dbgLog} ({ClickraDebug.Lines.Count} entries)");
-                                }
-                                catch (FileNotFoundException)
-                                {
-                                    translationFailed = true;
-                                    FinishConsoleProgressLine();
-                                    Console.WriteLine($"[Warning] 翻譯期間檔案消失，已跳過: {f}");
-                                }
-                                catch (DirectoryNotFoundException)
-                                {
-                                    translationFailed = true;
-                                    FinishConsoleProgressLine();
-                                    Console.WriteLine($"[Warning] 翻譯期間資料夾消失，已跳過: {f}");
-                                }
-                                catch (Exception ex)
-                                {
-                                    translationFailed = true;
-                                    FinishConsoleProgressLine();
-                                    ClickraDebug.SaveTo(dbgLog);
-                                    Console.WriteLine($"[Error] 翻譯檔案未完成: {f}. 錯誤訊息: {ex.Message}");
-                                    Console.WriteLine($"[Debug] Health report: {healthReport}");
-                                }
-                            }
-                            if (translationFailed) Environment.ExitCode = 1;
+                            HandleTranslatePdfQuiet(files, outputDir);
                         }
                         else ProgressWindow.Show(command, files);
                         break;
@@ -400,5 +317,97 @@ namespace Clickra
             }
         }
 
+        private static void HandleCompressPdfQuiet(List<string> files, string outputDir, bool hasCliLevel, string compressionLevel)
+        {
+            Dictionary<string, object>? pdfOptions = null;
+            if (!hasCliLevel)
+            {
+                string dpiStr = ClickraStorage.GetSetting("PdfCompressTargetDpi");
+                if (string.IsNullOrEmpty(dpiStr)) dpiStr = "150";
+                string qualityStr = ClickraStorage.GetSetting("PdfCompressJpegQuality");
+                if (string.IsNullOrEmpty(qualityStr)) qualityStr = "75";
+                string stripStr = ClickraStorage.GetSetting("PdfCompressStripFonts");
+                if (string.IsNullOrEmpty(stripStr)) stripStr = "false";
+                string minifyStr = ClickraStorage.GetSetting("PdfCompressMinifyContent");
+                if (string.IsNullOrEmpty(minifyStr)) minifyStr = "true";
+
+                if (!int.TryParse(dpiStr, out int dpi)) dpi = 150;
+                if (!int.TryParse(qualityStr, out int quality)) quality = 75;
+
+                pdfOptions = new Dictionary<string, object>
+                {
+                    { "target_dpi", dpi },
+                    { "jpeg_quality", quality },
+                    { "strip_fonts", stripStr.Equals("true", StringComparison.OrdinalIgnoreCase) },
+                    { "minify_content", minifyStr.Equals("true", StringComparison.OrdinalIgnoreCase) }
+                };
+            }
+
+            for (int i = 0; i < files.Count; i++)
+            {
+                var f = files[i];
+                string outName = Path.Combine(outputDir, Path.GetFileNameWithoutExtension(f) + "_compressed.pdf");
+                Console.WriteLine($"[Progress] 正在壓縮 PDF: {Path.GetFileName(f)} ({i + 1}/{files.Count})...");
+                if (pdfOptions != null)
+                {
+                    FileProcessor.CompressPdf(f, outName, pdfOptions, (curr, tot, msg) => Console.WriteLine($"[Progress] {msg}"));
+                }
+                else
+                {
+                    FileProcessor.CompressPdf(f, outName, compressionLevel, (curr, tot, msg) => Console.WriteLine($"[Progress] {msg}"));
+                }
+            }
+        }
+
+        private static void HandleTranslatePdfQuiet(List<string> files, string outputDir)
+        {
+            string targetLang = ClickraStorage.GetSetting("TranslateTargetLang");
+            bool translationFailed = false;
+            for (int i = 0; i < files.Count; i++)
+            {
+                var f = files[i];
+                if (!File.Exists(f))
+                {
+                    Console.WriteLine($"[Warning] 跳過已不存在的 PDF: {f} ({i + 1}/{files.Count})");
+                    continue;
+                }
+
+                string outName = Path.Combine(outputDir, Path.GetFileNameWithoutExtension(f) + "_translated.pdf");
+                string dbgLog = Path.Combine(outputDir, Path.GetFileNameWithoutExtension(f) + "_renderdbg.log");
+                string healthReport = Path.Combine(outputDir, Path.GetFileNameWithoutExtension(f) + "_translated_health.json");
+                ClickraDebug.Clear();
+                Console.WriteLine($"[Progress] 開始翻譯 PDF: {Path.GetFileName(f)} ({i + 1}/{files.Count})");
+                WriteConsoleProgress(0, 100, $"正在翻譯 PDF: {Path.GetFileName(f)} ({i + 1}/{files.Count})...");
+                try
+                {
+                    FileProcessor.TranslatePdf(f, outName, targetLang, WriteConsoleProgress);
+                    WriteConsoleProgress(100, 100, $"完成翻譯 PDF: {Path.GetFileName(f)} ({i + 1}/{files.Count})");
+                    FinishConsoleProgressLine();
+                    ClickraDebug.SaveTo(dbgLog);
+                    Console.WriteLine($"[Debug] Render log: {dbgLog} ({ClickraDebug.Lines.Count} entries)");
+                }
+                catch (FileNotFoundException)
+                {
+                    translationFailed = true;
+                    FinishConsoleProgressLine();
+                    Console.WriteLine($"[Warning] 翻譯期間檔案消失，已跳過: {f}");
+                }
+                catch (DirectoryNotFoundException)
+                {
+                    translationFailed = true;
+                    FinishConsoleProgressLine();
+                    Console.WriteLine($"[Warning] 翻譯期間資料夾消失，已跳過: {f}");
+                }
+                catch (Exception ex)
+                {
+                    translationFailed = true;
+                    FinishConsoleProgressLine();
+                    ClickraDebug.SaveTo(dbgLog);
+                    Console.WriteLine($"[Error] 翻譯檔案未完成: {f}. 錯誤訊息: {ex.Message}");
+                    Console.WriteLine($"[Debug] Health report: {healthReport}");
+                }
+            }
+            if (translationFailed) Environment.ExitCode = 1;
+        }
     }
 }
