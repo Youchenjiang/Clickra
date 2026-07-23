@@ -32,47 +32,12 @@ internal static class PdfTranslatedParagraphRenderer
             text = FormulaLiteralCleaner.RemoveDuplicateFormulaLiterals(text, para.Formulas);
             var tokens = PdfParagraphLayoutEngine.TokenizeTranslatedText(text);
 
-            // The layout planner captures the source semantic role before any
-            // translation/reflow.  Use that role as authoritative so a heading
-            // whose translated text no longer matches the source heuristic can
-            // never fall back to body sizing.
-            bool isPageTitle = para.IsPageTitle ||
-                para.SemanticRole == PdfParagraphSemanticRole.PageTitle;
-            bool isHeading = isPageTitle ||
-                para.SemanticRole is PdfParagraphSemanticRole.PageTitle or
-                    PdfParagraphSemanticRole.AbstractHeading or
-                    PdfParagraphSemanticRole.SectionHeading or
-                    PdfParagraphSemanticRole.SubsectionHeading ||
-                PdfParagraphSemanticClassifier.IsHeadingParagraph(para);
-            // MergeTitleWithSubtitle combines the title and its smaller subtitle into
-            // one paragraph.  AverageFontSize would therefore make the translated
-            // heading smaller than body text.  Headings retain the largest source
-            // glyph size and may reflow vertically instead of shrinking away.
-            double sourceHeadingFontSize = GetSourceHeadingFontSize(para);
-            // A paragraph can contain a short label line followed by body text.
-            // Its arithmetic average can then be far below the source reading
-            // size (the page 414 contributions label was rendered at ~4.7pt).
-            // Keep prose at no less than 80% of the largest source glyph. This
-            // is a floor; code and bypass regions retain their own renderer.
-            double sourceBodyFontFloor = sourceHeadingFontSize > 0
-                ? sourceHeadingFontSize * 0.80
-                : para.AverageFontSize;
-            double fontSize = isHeading
-                ? Math.Max(para.AverageFontSize, sourceHeadingFontSize)
-                : Math.Max(para.AverageFontSize, sourceBodyFontFloor);
-            if (!isHeading && para.LayoutFontSizeOverride > 0)
-                // A continuation override may only carry a paragraph toward
-                // its neighbouring source typography; it must never reapply
-                // a tiny extractor size (ASTER page 11: 5.1pt) to a 9.96pt
-                // body line. Keep the documented 80% floor as a hard guard.
-                fontSize = Math.Max(para.LayoutFontSizeOverride, sourceBodyFontFloor);
-            
+            IsHeadingRole(para, out bool isPageTitle, out bool isHeading);
+            double fontSize = CalculateFontSize(para, isHeading, out double sourceHeadingFontSize, out double sourceBodyFontFloor);
+
             DetermineFontNameAndStyle(para, targetFontName, text, out string fontNameForPara, out XFontStyleEx fontStyle);
             XFont mainFont = new(fontNameForPara, fontSize, fontStyle);
             XBrush brush = XBrushes.Black;
-            // Heading role controls size/alignment, not weight.  Weight must
-            // come from the source glyph runs; otherwise italic-only labels
-            // such as "A. Research Questions" become falsely bold.
             bool inlineBold = para.IsBold;
 
             XFont GetInlineFont(bool bold)
@@ -87,74 +52,21 @@ internal static class PdfTranslatedParagraphRenderer
             bool UseSyntheticBold(bool bold) =>
                 !para.IsBypassed && !para.IsCode &&
                 FontUtilities.IsCjkTranslationFont(fontNameForPara) && bold;
-            // Handle rotations (90, 180, 270)
+
             bool isRotated = false;
-            // PdfPig can emit a one-glyph marker with a bbox narrower than the
-            // glyph itself.  Give such markers a minimal measurable box rather
-            // than reporting a false overflow (there is no adjacent prose to
-            // collide with).
             double layoutWidth = ComputeLayoutWidth(
                 gfx, para, isHeading, isPageTitle, paragraphX, paragraphWidth);
             XGraphicsState? state = ApplyRotationTransform(
                 gfx, para, paragraphWidth, ref layoutWidth, ref isRotated);
-            // Compute dynamic line spacing
-            double lineSpacingMultiplier = 1.35; // Default CJK line height
-            if (isHeading)
-            {
-                // Keep the source heading font size but use a compact line box;
-                // translated title groups must not consume the fixed author band.
-                lineSpacingMultiplier = 1.0;
-            }
-            if (targetFontName.Contains("Arial", StringComparison.OrdinalIgnoreCase))
-            {
-                lineSpacingMultiplier = 1.2;
-            }
-            if (ReferenceSectionDetector.IsReferenceParagraph(para))
-            {
-                lineSpacingMultiplier = 1.15;
-            }
-            double limitHeight = isRotated ? para.Width : paragraphHeight;
-            bool bodyProse = PdfParagraphRoleClassifier.IsTranslatableBodyProse(para) ||
-                             PdfParagraphRoleClassifier.IsTranslatableCalloutProse(para);
-            bool flowableBody = !isRotated && !para.IsBypassed &&
-                !para.IsTable && !para.IsDiagram && !para.IsCode &&
-                !para.IsGrayPromptContent &&
-                para.SemanticRole == PdfParagraphSemanticRole.Body &&
-                text.Any(FontUtilities.IsCjkCharacter);
-            // Only a one-line/continuation box with an implausibly short source
-            // height may grow naturally. Multi-line body paragraphs still use
-            // their measured box and the normal 80% reflow floor.
-            // PdfPig reports a single source line's glyph box without its
-            // ascender/descender leading (ASTER page 11 is ~6.8pt for a
-            // 9.96pt line). Treat that as a natural one-line body box using
-            // the captured visual size; otherwise the height loop shrinks the
-            // first header/acknowledgement line to 5.1pt merely to fit the
-            // extractor bbox.
-            double sourceLineBox = Math.Max(para.SourceLineHeight, sourceHeadingFontSize);
-            bool ordinarySingleLine = !isRotated && !para.IsBypassed &&
-                !para.IsTable && !para.IsDiagram && !para.IsCode &&
-                !para.IsGrayPromptContent && para.Width > 100;
-            bool allowNaturalBodyHeight = !isRotated &&
-                (bodyProse || ordinarySingleLine) &&
-                para.Height <= Math.Max(sourceLineBox * 1.5, 8.0) &&
-                (para.Width > 100 ||
-                 Regex.IsMatch(para.TextWithPlaceholders.Trim(), @"^[a-z][A-Za-z\s,'\-]{2,}[.!?]?$", RegexOptions.None, TimeSpan.FromSeconds(1)) );
-            // When the source glyph box is shorter than the captured visual
-            // font, preserve the font size but use a compact line box. This
-            // keeps split acknowledgement/header fragments within the source
-            // band without shrinking them to the extractor's 5pt height.
-            bool sourceGlyphBoxUnderreports = !isRotated && !para.IsBypassed &&
-                sourceHeadingFontSize > 0 && para.SourceLineHeight > 0 &&
-                para.SourceLineHeight < sourceHeadingFontSize * 0.95;
-            if ((ordinarySingleLine && para.Height < sourceHeadingFontSize) || sourceGlyphBoxUnderreports)
-                lineSpacingMultiplier = 1.0;
-            // The layout planner applies bounded vertical justification after
-            // source glyph-box normalization. Applying this earlier would let
-            // the compact single-line fallback silently overwrite the planned
-            // leading and leave large residual holes in otherwise flowable text.
+
+            double lineSpacingMultiplier = CalculateLineSpacingMultiplier(
+                para, text, isHeading, isRotated, targetFontName, sourceHeadingFontSize, paragraphHeight,
+                out bool allowNaturalBodyHeight, out bool flowableBody);
+            
             if (!isHeading && para.LayoutLineSpacingMultiplierOverride > 0)
                 lineSpacingMultiplier = para.LayoutLineSpacingMultiplierOverride;
             double lineHeight = fontSize * lineSpacingMultiplier;
+            double limitHeight = isRotated ? para.Width : paragraphHeight;
 
             RunFontShrinkLoop(
                 tokens, para.Formulas, gfx, fontNameForPara, fontStyle,
@@ -231,6 +143,85 @@ internal static class PdfTranslatedParagraphRenderer
                 AlignAnnotations(para, renderedChars);
 
             return renderedHeight;
+        }
+
+        private static void IsHeadingRole(PdfParagraph para, out bool isPageTitle, out bool isHeading)
+        {
+            isPageTitle = para.IsPageTitle || para.SemanticRole == PdfParagraphSemanticRole.PageTitle;
+            isHeading = isPageTitle ||
+                para.SemanticRole is PdfParagraphSemanticRole.PageTitle or
+                    PdfParagraphSemanticRole.AbstractHeading or
+                    PdfParagraphSemanticRole.SectionHeading or
+                    PdfParagraphSemanticRole.SubsectionHeading ||
+                PdfParagraphSemanticClassifier.IsHeadingParagraph(para);
+        }
+
+        private static double CalculateFontSize(
+            PdfParagraph para,
+            bool isHeading,
+            out double sourceHeadingFontSize,
+            out double sourceBodyFontFloor)
+        {
+            sourceHeadingFontSize = GetSourceHeadingFontSize(para);
+            sourceBodyFontFloor = sourceHeadingFontSize > 0
+                ? sourceHeadingFontSize * 0.80
+                : para.AverageFontSize;
+            double fontSize = isHeading
+                ? Math.Max(para.AverageFontSize, sourceHeadingFontSize)
+                : Math.Max(para.AverageFontSize, sourceBodyFontFloor);
+            if (!isHeading && para.LayoutFontSizeOverride > 0)
+                fontSize = Math.Max(para.LayoutFontSizeOverride, sourceBodyFontFloor);
+            return fontSize;
+        }
+
+        private static double CalculateLineSpacingMultiplier(
+            PdfParagraph para,
+            string text,
+            bool isHeading,
+            bool isRotated,
+            string targetFontName,
+            double sourceHeadingFontSize,
+            double paragraphHeight,
+            out bool allowNaturalBodyHeight,
+            out bool flowableBody)
+        {
+            double lineSpacingMultiplier = 1.35;
+            if (isHeading) lineSpacingMultiplier = 1.0;
+            if (targetFontName.Contains("Arial", StringComparison.OrdinalIgnoreCase)) lineSpacingMultiplier = 1.2;
+            if (ReferenceSectionDetector.IsReferenceParagraph(para)) lineSpacingMultiplier = 1.15;
+
+            bool bodyProse = PdfParagraphRoleClassifier.IsTranslatableBodyProse(para) ||
+                             PdfParagraphRoleClassifier.IsTranslatableCalloutProse(para);
+            flowableBody = !isRotated && !para.IsBypassed &&
+                !para.IsTable && !para.IsDiagram && !para.IsCode &&
+                !para.IsGrayPromptContent &&
+                para.SemanticRole == PdfParagraphSemanticRole.Body &&
+                text.Any(FontUtilities.IsCjkCharacter);
+
+            double sourceLineBox = Math.Max(para.SourceLineHeight, sourceHeadingFontSize);
+            bool ordinarySingleLine = !isRotated && !para.IsBypassed &&
+                !para.IsTable && !para.IsDiagram && !para.IsCode &&
+                !para.IsGrayPromptContent && para.Width > 100;
+            allowNaturalBodyHeight = !isRotated &&
+                (bodyProse || ordinarySingleLine) &&
+                para.Height <= Math.Max(sourceLineBox * 1.5, 8.0) &&
+                (para.Width > 100 ||
+                 Regex.IsMatch(para.TextWithPlaceholders.Trim(), @"^[a-z][A-Za-z\s,'\-]{2,}[.!?]?$", RegexOptions.None, TimeSpan.FromSeconds(1)));
+
+            bool sourceGlyphBoxUnderreports = !isRotated && !para.IsBypassed &&
+                sourceHeadingFontSize > 0 && para.SourceLineHeight > 0 &&
+                para.SourceLineHeight < sourceHeadingFontSize * 0.95;
+            if ((ordinarySingleLine && para.Height < sourceHeadingFontSize) || sourceGlyphBoxUnderreports)
+                lineSpacingMultiplier = 1.0;
+
+            return lineSpacingMultiplier;
+        }
+
+        private static string ResolveFallbackFontName(char c, string mainFontName)
+        {
+            if (c >= 0x0080 && c <= 0x024F)
+                return mainFontName.Contains("Courier") ? "Courier New" : "Arial";
+            return "Segoe UI Symbol";
         }
 
         private static double ComputeLayoutWidth(
@@ -382,7 +373,7 @@ internal static class PdfTranslatedParagraphRenderer
                         para.Width,
                         para.Height,
                         annotInfo.FigureOccurrenceIndex);
-                    if (matched != null && matched.Count > 0)
+                    if (matched?.Count > 0)
                     {
                         double paddingX = 1.0;
                         double paddingY = 1.5;
@@ -644,9 +635,7 @@ internal static class PdfTranslatedParagraphRenderer
                             brush, fontSize, textStartX, currentY, pageHeight, inlineBold, renderedChars);
                         sbMerged.Clear();
                     }
-                    string fallbackFontName = elem.Text[0] >= 0x0080 && elem.Text[0] <= 0x024F
-                        ? (mainFont.FontFamily.Name.Contains("Courier") ? "Courier New" : "Arial")
-                        : "Segoe UI Symbol";
+                    string fallbackFontName = ResolveFallbackFontName(elem.Text[0], mainFont.FontFamily.Name);
                     XFont fallbackFont = new(fallbackFontName, mainFont.Size, ResolveFontStyle(inlineBold, para.IsItalic));
                     string normChar = FontUtilities.NormalizeRenderValue(elem.Text);
                     gfx.DrawString(normChar, fallbackFont, brush, currentX, currentY);
