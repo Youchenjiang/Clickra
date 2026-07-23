@@ -107,7 +107,7 @@ internal static class PdfTranslatedParagraphRenderer
             {
                 fontStyle = para.IsItalic ? XFontStyleEx.Italic : XFontStyleEx.Regular;
             }
-            XFont mainFont = new XFont(fontNameForPara, fontSize, fontStyle);
+            XFont mainFont = new(fontNameForPara, fontSize, fontStyle);
             XBrush brush = XBrushes.Black;
             // Heading role controls size/alignment, not weight.  Weight must
             // come from the source glyph runs; otherwise italic-only labels
@@ -547,7 +547,7 @@ internal static class PdfTranslatedParagraphRenderer
                                 {
                                     fallbackFontName = "Segoe UI Symbol";
                                 }
-                                XFont fallbackFont = new XFont(fallbackFontName, mainFont.Size, ResolveFontStyle(inlineBold, para.IsItalic));
+                                XFont fallbackFont = new(fallbackFontName, mainFont.Size, ResolveFontStyle(inlineBold, para.IsItalic));
                                 string normChar = FontUtilities.NormalizeRenderValue(elem.Text);
                                 gfx.DrawString(normChar, fallbackFont, brush, currentX, currentY);
 
