@@ -30,7 +30,8 @@ internal sealed class SyntheticCjkTranslator : ITranslationEngine
     {
         if (string.IsNullOrEmpty(text)) return text;
         var builder = new StringBuilder(text.Length);
-        for (int index = 0; index < text.Length; index++)
+        int index = 0;
+        while (index < text.Length)
         {
             if (text[index] == '{')
             {
@@ -38,7 +39,7 @@ internal sealed class SyntheticCjkTranslator : ITranslationEngine
                 if (end >= index)
                 {
                     builder.Append(text, index, end - index + 1);
-                    index = end;
+                    index = end + 1;
                     continue;
                 }
             }
@@ -47,16 +48,17 @@ internal sealed class SyntheticCjkTranslator : ITranslationEngine
             if (!char.IsLetterOrDigit(value))
             {
                 builder.Append(value);
+                index++;
                 continue;
             }
 
             int runStart = index;
-            while (index + 1 < text.Length && char.IsLetterOrDigit(text[index + 1]))
+            while (index < text.Length && char.IsLetterOrDigit(text[index]))
             {
                 index++;
             }
 
-            int runLength = index - runStart + 1;
+            int runLength = index - runStart;
             // Chinese translations normally encode a Latin word in materially
             // fewer glyphs. One CJK glyph per three Latin letters keeps this
             // deterministic fixture stressful without making it wider than a
