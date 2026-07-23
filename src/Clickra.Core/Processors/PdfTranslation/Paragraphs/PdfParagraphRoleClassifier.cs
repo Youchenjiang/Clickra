@@ -57,7 +57,7 @@ namespace Clickra.Core.Processors
             // are still prose. Without this classification their one-line
             // source bbox becomes a hard height limit and the renderer can
             // shrink the translated text to roughly half-size.
-            if (para.Width > 100 && Regex.IsMatch(txt, @"^RQ\d+\s*:", RegexOptions.IgnoreCase))
+            if (para.Width > 100 && Regex.IsMatch(txt, @"^RQ\d+\s*:", RegexOptions.IgnoreCase, TimeSpan.FromSeconds(1)))
                 return true;
 
             // Narrow lower-case continuation lines (for example the second
@@ -65,7 +65,7 @@ namespace Clickra.Core.Processors
             // not labels. Keep their source typography instead of fitting the
             // translation into a 6pt extraction box.
             if (para.Width > 20 && para.Height <= 20 &&
-                Regex.IsMatch(txt, @"^[a-z][A-Za-z\s,'\-]{2,}[.!?]?$"))
+                Regex.IsMatch(txt, @"^[a-z][A-Za-z\s,'\-]{2,}[.!?]?$", RegexOptions.None, TimeSpan.FromSeconds(1)))
                 return true;
 
             // RQ findings callout boxes (TOGLL p7/p8, ASTER p421). Keep the
@@ -78,7 +78,7 @@ namespace Clickra.Core.Processors
             // Stage-marker body paragraphs inside workflow pages (section body, not diagram labels).
             if (Regex.IsMatch(txt,
                     @"^(?:Intelligence Gathering|Vulnerability Analysis|Exploitation|Knowledge (?:Acquisition|Extraction)):",
-                    RegexOptions.IgnoreCase))
+                    RegexOptions.IgnoreCase, TimeSpan.FromSeconds(1)))
             {
                 return true;
             }
@@ -93,7 +93,7 @@ namespace Clickra.Core.Processors
             return Regex.IsMatch(
                 txt,
                 @"^(?:RQ\d+\s+)?Findings?\s*\d*\s*:",
-                RegexOptions.IgnoreCase);
+                RegexOptions.IgnoreCase, TimeSpan.FromSeconds(1));
         }
     }
 }

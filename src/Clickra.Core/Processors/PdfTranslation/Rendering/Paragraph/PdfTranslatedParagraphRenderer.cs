@@ -234,7 +234,7 @@ internal static class PdfTranslatedParagraphRenderer
                 (bodyProse || ordinarySingleLine) &&
                 para.Height <= Math.Max(sourceLineBox * 1.5, 8.0) &&
                 (para.Width > 100 ||
-                 Regex.IsMatch(para.TextWithPlaceholders.Trim(), @"^[a-z][A-Za-z\s,'\-]{2,}[.!?]?$") );
+                 Regex.IsMatch(para.TextWithPlaceholders.Trim(), @"^[a-z][A-Za-z\s,'\-]{2,}[.!?]?$", RegexOptions.None, TimeSpan.FromSeconds(1)) );
             // When the source glyph box is shorter than the captured visual
             // font, preserve the font size but use a compact line box. This
             // keeps split acknowledgement/header fragments within the source

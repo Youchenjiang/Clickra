@@ -146,8 +146,8 @@ internal class FallbackTranslator : ITranslationEngine
         // prose and must not trigger a fallback request (which can turn a
         // valid document into a provider-rate-limit failure).
         string label = source.Trim();
-        if (Regex.IsMatch(label, @"^[A-Za-z]+(?:-[A-Za-z0-9]+)+$") ||
-            Regex.IsMatch(label, @"^[A-Z][a-z]+[A-Z][A-Za-z0-9]*$"))
+        if (Regex.IsMatch(label, @"^[A-Za-z]+(?:-[A-Za-z0-9]+)+$", RegexOptions.None, TimeSpan.FromSeconds(1)) ||
+            Regex.IsMatch(label, @"^[A-Z][a-z]+[A-Z][A-Za-z0-9]*$", RegexOptions.None, TimeSpan.FromSeconds(1)))
             return false;
 
         string normalizedSource = NormalizeForComparison(source);
@@ -155,12 +155,7 @@ internal class FallbackTranslator : ITranslationEngine
         if (normalizedSource.Length < 8 || !string.Equals(normalizedSource, normalizedTranslation, StringComparison.OrdinalIgnoreCase))
             return false;
 
-        int latinLetters = 0;
-        foreach (char value in normalizedSource)
-        {
-            if (value is >= 'A' and <= 'Z' or >= 'a' and <= 'z')
-                latinLetters++;
-        }
+        int latinLetters = normalizedSource.Count(value => value is >= 'A' and <= 'Z' or >= 'a' and <= 'z');
 
         return latinLetters >= 8;
     }

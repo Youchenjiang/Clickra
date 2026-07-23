@@ -243,10 +243,12 @@ namespace Clickra.Core.Processors
     {
         private static readonly Regex CircledMarkerSequence = new(
             @"\{v(?<a>\d+)\}\s*,\s*(?<d1>\d{1,2})\s+\{v(?<b>\d+)\}\s*,\s*(?<d2>\d{1,2})\s+\{v(?<c>\d+)\}(?<d3>\d{1,2})",
-            RegexOptions.Compiled);
+            RegexOptions.Compiled,
+            TimeSpan.FromSeconds(1));
         private static readonly Regex AdjacentBoldRuns = new(
             @"\{/b\}\s+\{b\}",
-            RegexOptions.Compiled);
+            RegexOptions.Compiled,
+            TimeSpan.FromSeconds(1));
 
         /// <summary>
         /// Avoid sending one bold marker pair per extracted PDF line. Providers
@@ -306,7 +308,7 @@ namespace Clickra.Core.Processors
 
             string markerSequence = string.Join("\\s*[,，、;；]\\s*", sourceMarkers.Select(marker =>
                 Regex.Escape(CircledNumberValue(marker))));
-            var sequence = new Regex($"(?<!\\d){markerSequence}(?!\\d)", RegexOptions.Compiled);
+            var sequence = new Regex($"(?<!\\d){markerSequence}(?!\\d)", RegexOptions.Compiled, TimeSpan.FromSeconds(1));
             return sequence.Replace(translated, _ => string.Join("、", sourceMarkers), 1);
         }
 
