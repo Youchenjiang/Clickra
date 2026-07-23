@@ -100,7 +100,7 @@ internal class MyMemoryTranslator : ITranslationEngine
 
     private static string NormalizeLanguageCode(string code) => LanguageCodeHelper.Normalize(code);
 
-    private sealed class TranslationRateLimitException : Exception
+    public sealed class TranslationRateLimitException : Exception
     {
         public TranslationRateLimitException(TimeSpan retryAfter)
             : base($"MyMemory rate limited the request; retry after {retryAfter.TotalSeconds:0}s.")

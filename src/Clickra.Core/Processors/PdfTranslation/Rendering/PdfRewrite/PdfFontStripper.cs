@@ -9,7 +9,7 @@ using PdfSharp.Pdf.Advanced;
 
 namespace Clickra.Core.Processors
 {
-    public sealed class ProtectedNoStripPredicates
+    internal sealed class ProtectedNoStripPredicates
     {
         public required Func<PdfParagraph, bool> IsGrayPromptCodeParagraph { get; init; }
         public required Func<PdfParagraph, IReadOnlyList<TableMaskRegion>, bool> ParagraphCenterInsideAnyRegion { get; init; }
@@ -17,7 +17,7 @@ namespace Clickra.Core.Processors
         public required Func<PdfParagraph, bool> IsLikelyChartLabel { get; init; }
     }
 
-    public static class PdfFontStripper
+    internal static class PdfFontStripper
     {
         public static HashSet<string> CollectTranslatableFontBaseNames(IEnumerable<PdfParagraph> paragraphs)
         {
