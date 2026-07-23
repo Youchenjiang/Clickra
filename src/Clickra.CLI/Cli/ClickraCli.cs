@@ -56,204 +56,10 @@ namespace Clickra
             string outputDir = string.IsNullOrWhiteSpace(outputDirOverride)
                 ? ClickraStorage.GetOutputDir(files[0])
                 : Path.GetFullPath(outputDirOverride);
-            if (!Directory.Exists(outputDir))
-                Directory.CreateDirectory(outputDir);
-
             string startTimeStr = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
             try
             {
-                // 登記進行中作業狀態（靜默模式下不顯示進度視窗，但仍需即時狀態）
-                if (quiet)
-                {
-                    try { ClickraStorage.StartActiveRecord(command, files.Count); } catch { }
-                    try { ClickraStorage.SetActiveRecordInProgress(); } catch { }
-                }
-
-                switch (command)
-                {
-                    case "ppt2pdf":
-                        ValidateExtensions(files, command, quiet, ".pptx", ".ppt");
-                        if (quiet) FileProcessor.ConvertPptToPdf(files, (curr, tot, msg) => Console.WriteLine($"[Progress] {msg}"));
-                        else ProgressWindow.Show(command, files);
-                        break;
-                    case "word2pdf":
-                        ValidateExtensions(files, command, quiet, ".docx", ".doc");
-                        if (quiet) FileProcessor.ConvertWordToPdf(files, (curr, tot, msg) => Console.WriteLine($"[Progress] {msg}"));
-                        else ProgressWindow.Show(command, files);
-                        break;
-                    case "excel2pdf":
-                        ValidateExtensions(files, command, quiet, ".xlsx", ".xls");
-                        if (quiet) FileProcessor.ConvertExcelToPdf(files, (curr, tot, msg) => Console.WriteLine($"[Progress] {msg}"));
-                        else ProgressWindow.Show(command, files);
-                        break;
-                    case "merge-pdf":
-                        ValidateExtensions(files, command, quiet, ".pdf");
-                        RequireMinFiles(files, command, 2, quiet);
-                        if (quiet) FileProcessor.MergePdfs(files, Path.Combine(outputDir, "Merged_PDF.pdf"), (curr, tot, msg) => Console.WriteLine($"[Progress] {msg}"));
-                        else ProgressWindow.Show(command, files);
-                        break;
-                    case "compress-pdf":
-                        ValidateExtensions(files, command, quiet, ".pdf");
-                        RequireMinFiles(files, command, 1, quiet);
-                        if (quiet)
-                        {
-                            HandleCompressPdfQuiet(files, outputDir, hasCliLevel, compressionLevel);
-                        }
-                        else ProgressWindow.Show(command, files);
-                        break;
-                    case "img2pdf":
-                        ValidateExtensions(files, command, quiet, ".jpg", ".jpeg", ".png", ".bmp", ".gif", ".tiff", ".webp");
-                        RequireMinFiles(files, command, 1, quiet);
-                        if (quiet)
-                        {
-                            for (int i = 0; i < files.Count; i++)
-                            {
-                                var f = files[i];
-                                string outName = Path.Combine(outputDir, Path.GetFileNameWithoutExtension(f) + ".pdf");
-                                Console.WriteLine($"[Progress] 正在轉換圖片: {Path.GetFileName(f)} ({i + 1}/{files.Count})...");
-                                FileProcessor.ConvertImagesToPdf(new List<string> { f }, outName, null);
-                            }
-                            Console.WriteLine("[Progress] 轉換完成，正在儲存 PDF...");
-                        }
-                        else ProgressWindow.Show(command, files);
-                        break;
-                    case "img-merge":
-                        ValidateExtensions(files, command, quiet, ".jpg", ".jpeg", ".png", ".bmp", ".gif", ".tiff", ".webp");
-                        RequireMinFiles(files, command, 2, quiet);
-                        if (quiet) FileProcessor.ConvertImagesToPdf(files, Path.Combine(outputDir, "Merged_Images.pdf"), (curr, tot, msg) => Console.WriteLine($"[Progress] {msg}"));
-                        else ProgressWindow.Show(command, files);
-                        break;
-                    case "img-stitch":
-                        ValidateExtensions(files, command, quiet, ".jpg", ".jpeg", ".png", ".bmp", ".gif", ".tiff", ".webp");
-                        RequireMinFiles(files, command, 2, quiet);
-                        if (quiet) FileProcessor.StitchImages(files, Path.Combine(outputDir, "Stitched_Image.png"), (curr, tot, msg) => Console.WriteLine($"[Progress] {msg}"));
-                        else ProgressWindow.Show(command, files);
-                        break;
-                    case "translate-pdf":
-                        ValidateExtensions(files, command, quiet, ".pdf");
-                        RequireMinFiles(files, command, 1, quiet);
-                        if (quiet)
-                        {
-                            HandleTranslatePdfQuiet(files, outputDir);
-                        }
-                        else ProgressWindow.Show(command, files);
-                        break;
-                    case "decrypt-pdf":
-                        ValidateExtensions(files, command, quiet, ".pdf");
-                        RequireMinFiles(files, command, 1, quiet);
-                        if (quiet)
-                        {
-                            for (int i = 0; i < files.Count; i++)
-                            {
-                                var f = files[i];
-                                string outName = Path.Combine(outputDir, Path.GetFileNameWithoutExtension(f) + "_decrypted.pdf");
-                                Console.WriteLine($"[Progress] 正在移除密碼: {Path.GetFileName(f)} ({i + 1}/{files.Count})...");
-
-                                try
-                                {
-                                    FileProcessor.DecryptPdf(f, outName, "", (curr, tot, msg) => Console.WriteLine($"[Progress] {msg}"));
-                                }
-                                catch (Exception ex)
-                                {
-                                    bool isPasswordError = ex is PdfSharp.Pdf.IO.PdfReaderException &&
-                                                           ex.Message.Contains("password", StringComparison.OrdinalIgnoreCase);
-
-                                    if (isPasswordError)
-                                    {
-                                        throw new InvalidOperationException(Localization.T("error_pdf_password_quiet", ClickraStorage.GetSetting("Language")));
-                                    }
-                                    else
-                                    {
-                                        throw;
-                                    }
-                                }
-                            }
-                        }
-                        else ProgressWindow.Show(command, files);
-                        break;
-#if DEBUG
-                    case "test-layout":
-                        {
-                            using var pigDoc = UglyToad.PdfPig.PdfDocument.Open(files[0]);
-                            int pageNum = 6;
-                            var pageArg = argList.Skip(1).FirstOrDefault(a => int.TryParse(a, out _));
-                            if (pageArg != null && int.TryParse(pageArg, out int p))
-                            {
-                                pageNum = p;
-                            }
-                            var page = pigDoc.GetPage(pageNum);
-                            var words = UglyToad.PdfPig.DocumentLayoutAnalysis.WordExtractor.NearestNeighbourWordExtractor.Instance.GetWords(page.Letters).ToList();
-                            var segmenter = new UglyToad.PdfPig.DocumentLayoutAnalysis.PageSegmenter.DocstrumBoundingBoxes();
-                            bool isTablePage = words.Any(w => w.Text.Equals("Table", StringComparison.OrdinalIgnoreCase) || 
-                                                              w.Text.Equals("表", StringComparison.OrdinalIgnoreCase));
-                            var blocks = PdfTranslateProcessor.GetMergedBlocks(segmenter.GetBlocks(words), page.Width, isTablePage);
-                            int blockIdx = 0;
-                            foreach (var block in blocks)
-                            {
-                                var blockLines = PdfParagraph.MergeHorizontalLines(block.TextLines);
-                                var currentGroup = new List<UglyToad.PdfPig.DocumentLayoutAnalysis.TextLine>();
-                                bool? currentIsMath = null;
-                                foreach (var line in blockLines)
-                                {
-                                    bool isMath = PdfParagraph.IsMathLine(line);
-                                    bool startsNew = PdfTranslateProcessor.StartsNewParagraphOrSection(line.Text);
-
-                                    bool prevLineEndedEarly = false;
-                                    bool prevLineWasHeading = false;
-                                    if (currentGroup.Count > 0)
-                                    {
-                                        var prevLine = currentGroup[currentGroup.Count - 1];
-                                        if (prevLine.BoundingBox.Right < block.Right - 20.0)
-                                        {
-                                            prevLineEndedEarly = true;
-                                        }
-                                        if (PdfTranslateProcessor.IsHeadingLine(prevLine))
-                                        {
-                                            prevLineWasHeading = true;
-                                        }
-                                    }
-
-                                    bool shouldSplit = startsNew || (prevLineEndedEarly && !prevLineWasHeading) || (prevLineWasHeading && !FontUtilities.IsLineBold(line));
-
-                                    if (currentGroup.Count == 0)
-                                    {
-                                        currentGroup.Add(line);
-                                        currentIsMath = isMath;
-                                    }
-                                    else if (isMath == currentIsMath && !shouldSplit)
-                                    {
-                                        currentGroup.Add(line);
-                                    }
-                                    else
-                                    {
-                                        var paragraph = new PdfParagraph(currentGroup);
-                                        Console.WriteLine($"Block {blockIdx} Para: [{paragraph.X0:F1}, {paragraph.Y0:F1}, {paragraph.X1:F1}, {paragraph.Y1:F1}] avgFontSize: {paragraph.AverageFontSize:F2} '{paragraph.TextWithPlaceholders}'");
-                                        currentGroup = new List<UglyToad.PdfPig.DocumentLayoutAnalysis.TextLine> { line };
-                                        currentIsMath = isMath;
-                                    }
-                                }
-                                if (currentGroup.Count > 0)
-                                {
-                                    var paragraph = new PdfParagraph(currentGroup);
-                                    Console.WriteLine($"Block {blockIdx} Para: [{paragraph.X0:F1}, {paragraph.Y0:F1}, {paragraph.X1:F1}, {paragraph.Y1:F1}] avgFontSize: {paragraph.AverageFontSize:F2} '{paragraph.TextWithPlaceholders}'");
-                                }
-                                blockIdx++;
-                            }
-                        }
-                        break;
-#endif
-                    default:
-                        Console.WriteLine("Unknown command: " + command);
-                        break;
-                }
-                
-                if (quiet)
-                {
-                    try { ClickraStorage.CompleteActiveRecord(command, startTimeStr, true, ""); } catch { }
-                    System.Threading.Thread.Sleep(1500);
-                    try { ClickraStorage.ClearActiveRecord(); } catch { }
-                }
-                Console.WriteLine("Operation completed successfully.");
+                DispatchCommandSwitch(command, files, quiet, outputDir, hasCliLevel, compressionLevel, argList);
             }
             catch (Exception ex)
             {
@@ -413,6 +219,123 @@ namespace Clickra
             Console.WriteLine("         --out-dir <dir> / -o <dir> / --out <dir>  (Write outputs to directory)");
             Console.WriteLine("         --level <small|balanced|high>  (PDF compression level)");
             Console.WriteLine("Deployment: Clickra --deploy <target_dir>");
+        }
+
+        private static void DispatchCommandSwitch(
+            string command,
+            List<string> files,
+            bool quiet,
+            string outputDir,
+            bool hasCliLevel,
+            string compressionLevel,
+            List<string> argList)
+        {
+            switch (command)
+            {
+                case "ppt2pdf":
+                    ValidateExtensions(files, command, quiet, ".pptx", ".ppt");
+                    if (quiet) FileProcessor.ConvertPptToPdf(files, (curr, tot, msg) => Console.WriteLine($"[Progress] {msg}"));
+                    else ProgressWindow.Show(command, files);
+                    break;
+                case "word2pdf":
+                    ValidateExtensions(files, command, quiet, ".docx", ".doc");
+                    if (quiet) FileProcessor.ConvertWordToPdf(files, (curr, tot, msg) => Console.WriteLine($"[Progress] {msg}"));
+                    else ProgressWindow.Show(command, files);
+                    break;
+                case "excel2pdf":
+                    ValidateExtensions(files, command, quiet, ".xlsx", ".xls");
+                    if (quiet) FileProcessor.ConvertExcelToPdf(files, (curr, tot, msg) => Console.WriteLine($"[Progress] {msg}"));
+                    else ProgressWindow.Show(command, files);
+                    break;
+                case "merge-pdf":
+                    ValidateExtensions(files, command, quiet, ".pdf");
+                    RequireMinFiles(files, command, 2, quiet);
+                    if (quiet) FileProcessor.MergePdfs(files, Path.Combine(outputDir, "Merged_PDF.pdf"), (curr, tot, msg) => Console.WriteLine($"[Progress] {msg}"));
+                    else ProgressWindow.Show(command, files);
+                    break;
+                case "compress-pdf":
+                    ValidateExtensions(files, command, quiet, ".pdf");
+                    RequireMinFiles(files, command, 1, quiet);
+                    if (quiet)
+                    {
+                        HandleCompressPdfQuiet(files, outputDir, hasCliLevel, compressionLevel);
+                    }
+                    else ProgressWindow.Show(command, files);
+                    break;
+                case "img2pdf":
+                    ValidateExtensions(files, command, quiet, ".jpg", ".jpeg", ".png", ".bmp", ".gif", ".tiff", ".webp");
+                    RequireMinFiles(files, command, 1, quiet);
+                    if (quiet)
+                    {
+                        for (int i = 0; i < files.Count; i++)
+                        {
+                            var f = files[i];
+                            string outName = Path.Combine(outputDir, Path.GetFileNameWithoutExtension(f) + ".pdf");
+                            Console.WriteLine($"[Progress] 正在轉換圖片: {Path.GetFileName(f)} ({i + 1}/{files.Count})...");
+                            FileProcessor.ConvertImagesToPdf(new List<string> { f }, outName, null);
+                        }
+                        Console.WriteLine("[Progress] 轉換完成，正在儲存 PDF...");
+                    }
+                    else ProgressWindow.Show(command, files);
+                    break;
+                case "img-merge":
+                    ValidateExtensions(files, command, quiet, ".jpg", ".jpeg", ".png", ".bmp", ".gif", ".tiff", ".webp");
+                    RequireMinFiles(files, command, 2, quiet);
+                    if (quiet) FileProcessor.ConvertImagesToPdf(files, Path.Combine(outputDir, "Merged_Images.pdf"), (curr, tot, msg) => Console.WriteLine($"[Progress] {msg}"));
+                    else ProgressWindow.Show(command, files);
+                    break;
+                case "img-stitch":
+                    ValidateExtensions(files, command, quiet, ".jpg", ".jpeg", ".png", ".bmp", ".gif", ".tiff", ".webp");
+                    RequireMinFiles(files, command, 2, quiet);
+                    if (quiet) FileProcessor.StitchImages(files, Path.Combine(outputDir, "Stitched_Image.png"), (curr, tot, msg) => Console.WriteLine($"[Progress] {msg}"));
+                    else ProgressWindow.Show(command, files);
+                    break;
+                case "translate-pdf":
+                    ValidateExtensions(files, command, quiet, ".pdf");
+                    RequireMinFiles(files, command, 1, quiet);
+                    if (quiet)
+                    {
+                        HandleTranslatePdfQuiet(files, outputDir);
+                    }
+                    else ProgressWindow.Show(command, files);
+                    break;
+                case "decrypt-pdf":
+                    ValidateExtensions(files, command, quiet, ".pdf");
+                    RequireMinFiles(files, command, 1, quiet);
+                    if (quiet)
+                    {
+                        for (int i = 0; i < files.Count; i++)
+                        {
+                            var f = files[i];
+                            string outName = Path.Combine(outputDir, Path.GetFileNameWithoutExtension(f) + "_decrypted.pdf");
+                            Console.WriteLine($"[Progress] 正在移除密碼: {Path.GetFileName(f)} ({i + 1}/{files.Count})...");
+
+                            try
+                            {
+                                FileProcessor.DecryptPdf(f, outName, "", (curr, tot, msg) => Console.WriteLine($"[Progress] {msg}"));
+                            }
+                            catch (Exception ex)
+                            {
+                                bool isPasswordError = ex is PdfSharp.Pdf.IO.PdfReaderException &&
+                                                       ex.Message.Contains("password", StringComparison.OrdinalIgnoreCase);
+
+                                if (isPasswordError)
+                                {
+                                    throw new InvalidOperationException(Localization.T("error_pdf_password_quiet", ClickraStorage.GetSetting("Language")));
+                                }
+                                else
+                                {
+                                    throw;
+                                }
+                            }
+                        }
+                    }
+                    else ProgressWindow.Show(command, files);
+                    break;
+                default:
+                    Console.WriteLine($"[錯誤] 未知指令: {command}");
+                    break;
+            }
         }
     }
 }
