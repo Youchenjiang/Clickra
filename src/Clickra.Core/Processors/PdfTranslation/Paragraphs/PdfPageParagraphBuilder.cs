@@ -201,6 +201,30 @@ internal static class PdfPageParagraphBuilder
         }
     }
 
+    private static bool IsPublicationMetadata(string finalText, int pageNumber)
+        => pageNumber == 1 &&
+           finalText.Contains("DOI", StringComparison.OrdinalIgnoreCase) &&
+           (finalText.Contains("IEEE", StringComparison.OrdinalIgnoreCase) || finalText.Contains('©'));
+
+    private static bool IsTinyFixedLabel(PdfParagraph para, string finalText)
+        => para.AverageFontSize > 0 &&
+           para.AverageFontSize <= 6.0 &&
+           para.Width <= 40.0 &&
+           para.Height <= 8.0 &&
+           finalText.Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries).Length <= 2;
+
+    private static bool IsGrayPromptKeyword(string finalText)
+        => finalText.Equals("EX-", StringComparison.OrdinalIgnoreCase) ||
+           System.Text.RegularExpressions.Regex.IsMatch(
+               finalText, @"^AMPLE\}?$", System.Text.RegularExpressions.RegexOptions.IgnoreCase) ||
+           finalText.Contains("OUTPUT FORMAT", StringComparison.OrdinalIgnoreCase);
+
+    private static bool IsLowerCaseProseContinuation(PdfParagraph para, string leadingContinuation)
+        => PdfParagraphRoleClassifier.IsTranslatableBodyProse(para) &&
+           !ReferenceSectionDetector.IsReferenceParagraph(para) &&
+           !para.IsTable && !para.IsDiagram && !para.IsCode && !para.IsGrayPromptContent &&
+           leadingContinuation.Length > 0 && char.IsLower(leadingContinuation[0]);
+
     private static void FinalizeParagraphBypassFlags(List<PdfParagraph> pageList, UglyToad.PdfPig.Content.Page page)
     {
         if (page.Number == 1)
@@ -209,53 +233,36 @@ internal static class PdfPageParagraphBuilder
         foreach (var para in pageList)
         {
             string finalText = para.TextWithPlaceholders.Trim();
-            bool isPublicationMetadata = page.Number == 1 &&
-                finalText.Contains("DOI", StringComparison.OrdinalIgnoreCase) &&
-                (finalText.Contains("IEEE", StringComparison.OrdinalIgnoreCase) ||
-                 finalText.Contains('©'));
-            bool isTinyFixedLabel = para.AverageFontSize > 0 &&
-                para.AverageFontSize <= 6.0 && para.Width <= 40.0 &&
-                para.Height <= 8.0 &&
-                finalText.Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries).Length <= 2;
-            if (finalText.Equals("EX-", StringComparison.OrdinalIgnoreCase) ||
-                System.Text.RegularExpressions.Regex.IsMatch(
-                    finalText, @"^AMPLE\}?$", System.Text.RegularExpressions.RegexOptions.IgnoreCase) ||
-                finalText.Contains("OUTPUT FORMAT", StringComparison.OrdinalIgnoreCase))
-            {
+
+            if (IsGrayPromptKeyword(finalText))
                 PdfGrayPromptMarker.MarkAsGrayPromptContent(para);
-            }
 
             if (page.Number == 1 && PageOneLayoutClassifier.IsAuthorBlockParagraph(para, pageList, page.Height))
             {
                 para.IsBypassed = true;
                 continue;
             }
+
             // A lower-case, full-column continuation can be marked bypassed by
             // an earlier diagram/reference heuristic even though it is body
             // prose. Restore translation eligibility before the final bypass
             // calculation; protected table/code/diagram/gray regions remain
             // excluded. This prevents source-only tail lines at page bottoms.
             string leadingContinuation = finalText.TrimStart();
-            if (para.IsBypassed &&
-                PdfParagraphRoleClassifier.IsTranslatableBodyProse(para) &&
-                !ReferenceSectionDetector.IsReferenceParagraph(para) &&
-                !para.IsTable && !para.IsDiagram && !para.IsCode && !para.IsGrayPromptContent &&
-                leadingContinuation.Length > 0 && char.IsLower(leadingContinuation[0]))
-            {
+            if (para.IsBypassed && IsLowerCaseProseContinuation(para, leadingContinuation))
                 para.IsBypassed = false;
-            }
+
             // Preserve IsBypassed=true set by proximity propagation (Pass 2 above);
             // only recalculate when it is currently false.
-            bool preserveProseContinuation =
-                PdfParagraphRoleClassifier.IsTranslatableBodyProse(para) &&
-                !ReferenceSectionDetector.IsReferenceParagraph(para) &&
-                !para.IsTable && !para.IsDiagram && !para.IsCode && !para.IsGrayPromptContent &&
-                leadingContinuation.Length > 0 && char.IsLower(leadingContinuation[0]);
+            bool preserveProseContinuation = IsLowerCaseProseContinuation(para, leadingContinuation);
+            bool pubMeta = IsPublicationMetadata(finalText, page.Number);
+            bool tinyLabel = IsTinyFixedLabel(para, finalText);
             para.IsBypassed = para.IsBypassed ||
                               para.IsCode || para.IsOnlyMath || string.IsNullOrWhiteSpace(para.TextWithPlaceholders) ||
-                              (!preserveProseContinuation && PdfParagraphSemanticClassifier.IsEquationParagraph(para)) || PdfTableParagraphClassifier.IsTableParagraph(para) || para.IsDiagram || para.IsTable ||
+                              (!preserveProseContinuation && PdfParagraphSemanticClassifier.IsEquationParagraph(para)) ||
+                              PdfTableParagraphClassifier.IsTableParagraph(para) || para.IsDiagram || para.IsTable ||
                               PdfChartLabelClassifier.IsChartTickGlyph(para) ||
-                              isPublicationMetadata || isTinyFixedLabel;
+                              pubMeta || tinyLabel;
         }
     }
 
@@ -427,12 +434,9 @@ internal static class PdfPageParagraphBuilder
 
                 bool isSmallLabel = para.TextWithPlaceholders.Length <= diagramLabelMaxLen &&
                                     !PdfParagraphSemanticClassifier.IsHeadingParagraph(para) && PdfChartLabelClassifier.IsLikelyChartLabel(para);
-                if (isSmallLabel)
+                if (isSmallLabel && TryPropagateBypassForLabel(para, pageList, page.Height))
                 {
-                    if (TryPropagateBypassForLabel(para, pageList, page.Height))
-                    {
-                        changed = true;
-                    }
+                    changed = true;
                 }
             }
         }
