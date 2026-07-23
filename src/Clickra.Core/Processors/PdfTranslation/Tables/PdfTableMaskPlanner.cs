@@ -156,11 +156,7 @@ namespace Clickra.Core.Processors
                         double narrowerWidth = Math.Min(first.X1 - first.X0, second.X1 - second.X0);
                         if (overlapX < narrowerWidth * 0.80) continue;
 
-                        double verticalGap = first.Y1 < second.Y0
-                            ? second.Y0 - first.Y1
-                            : second.Y1 < first.Y0
-                                ? first.Y0 - second.Y1
-                                : 0;
+                        double verticalGap = CalculateVerticalGap(first, second);
                         if (verticalGap > 30.0) continue;
 
                         merged[firstIndex] = new TableMaskRegion(
@@ -214,6 +210,13 @@ namespace Clickra.Core.Processors
                 }
             }
             return clampedY0;
+        }
+
+        private static double CalculateVerticalGap(TableMaskRegion first, TableMaskRegion second)
+        {
+            if (first.Y1 < second.Y0) return second.Y0 - first.Y1;
+            if (second.Y1 < first.Y0) return first.Y0 - second.Y1;
+            return 0;
         }
     }
 }

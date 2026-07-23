@@ -96,9 +96,7 @@ internal static class PdfTranslationLayoutPlanner
         {
             Paragraph = p,
             Role = AssignRole(p),
-            SourceFontSize = p.SourceVisualFontSize > 0
-                ? p.SourceVisualFontSize
-                : (p.AllLetters.Count == 0 ? p.AverageFontSize : p.AllLetters.Max(l => l.FontSize)),
+            SourceFontSize = CalculateSourceFontSize(p),
             SourceLineHeight = p.SourceLineHeight > 0 ? p.SourceLineHeight : p.Height,
             SourceCenterX = (p.OriginalX0 + p.OriginalX1) / 2.0,
             SourceLeftAnchor = p.OriginalX0,
@@ -805,6 +803,13 @@ internal static class PdfTranslationLayoutPlanner
         double center = (para.OriginalX0 + para.OriginalX1) / 2.0;
         if (para.OriginalX0 < pageWidth * 0.18 && para.OriginalX1 > pageWidth * 0.82) return -1;
         return center < pageWidth / 2.0 ? 0 : 1;
+    }
+
+    private static double CalculateSourceFontSize(PdfParagraph p)
+    {
+        if (p.SourceVisualFontSize > 0)
+            return p.SourceVisualFontSize;
+        return p.AllLetters.Count == 0 ? p.AverageFontSize : p.AllLetters.Max(l => l.FontSize);
     }
 
     private static string Preview(string value)

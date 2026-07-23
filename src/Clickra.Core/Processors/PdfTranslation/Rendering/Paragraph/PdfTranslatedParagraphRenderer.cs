@@ -48,11 +48,7 @@ internal static class PdfTranslatedParagraphRenderer
             // one paragraph.  AverageFontSize would therefore make the translated
             // heading smaller than body text.  Headings retain the largest source
             // glyph size and may reflow vertically instead of shrinking away.
-            double sourceHeadingFontSize = para.SourceVisualFontSize > 0
-                ? para.SourceVisualFontSize
-                : (para.AllLetters.Count == 0
-                    ? para.AverageFontSize
-                    : para.AllLetters.Max(letter => letter.FontSize));
+            double sourceHeadingFontSize = GetSourceHeadingFontSize(para);
             // A paragraph can contain a short label line followed by body text.
             // Its arithmetic average can then be far below the source reading
             // size (the page 414 contributions label was rendered at ~4.7pt).
@@ -123,9 +119,7 @@ internal static class PdfTranslatedParagraphRenderer
                 if (FontUtilities.IsCjkTranslationFont(fontNameForPara))
                     return mainFont;
 
-                XFontStyleEx style = bold
-                    ? (para.IsItalic ? XFontStyleEx.BoldItalic : XFontStyleEx.Bold)
-                    : (para.IsItalic ? XFontStyleEx.Italic : XFontStyleEx.Regular);
+                XFontStyleEx style = ResolveFontStyle(bold, para.IsItalic);
                 return new XFont(fontNameForPara, fontSize, style);
             }
 
@@ -374,11 +368,7 @@ internal static class PdfTranslatedParagraphRenderer
                         : para.Alignment;
                     if (alignment == PdfParagraph.TextAlignment.Center)
                     {
-                        double anchorCenter = isPageTitle
-                            ? (para.X0 + para.X1) / 2.0
-                            : isHeading
-                                ? (para.OriginalX0 + para.OriginalX1) / 2.0
-                                : paragraphX + paragraphWidth / 2.0;
+                        double anchorCenter = CalculateAnchorCenter(para, isPageTitle, isHeading, paragraphX, paragraphWidth);
                         startX = anchorCenter - rowWidth / 2.0;
                     }
                     else if (alignment == PdfParagraph.TextAlignment.Right)
@@ -557,10 +547,7 @@ internal static class PdfTranslatedParagraphRenderer
                                 {
                                     fallbackFontName = "Segoe UI Symbol";
                                 }
-                                XFont fallbackFont = new XFont(fallbackFontName, mainFont.Size,
-                                    inlineBold
-                                        ? (para.IsItalic ? XFontStyleEx.BoldItalic : XFontStyleEx.Bold)
-                                        : (para.IsItalic ? XFontStyleEx.Italic : XFontStyleEx.Regular));
+                                XFont fallbackFont = new XFont(fallbackFontName, mainFont.Size, ResolveFontStyle(inlineBold, para.IsItalic));
                                 string normChar = FontUtilities.NormalizeRenderValue(elem.Text);
                                 gfx.DrawString(normChar, fallbackFont, brush, currentX, currentY);
 
@@ -718,7 +705,31 @@ internal static class PdfTranslatedParagraphRenderer
                 : PdfParagraph.TextAlignment.Left;
         }
 
-}
+        private static XFontStyleEx ResolveFontStyle(bool bold, bool italic)
+        {
+            if (bold)
+                return italic ? XFontStyleEx.BoldItalic : XFontStyleEx.Bold;
+            return italic ? XFontStyleEx.Italic : XFontStyleEx.Regular;
+        }
+
+        private static double GetSourceHeadingFontSize(PdfParagraph para)
+        {
+            if (para.SourceVisualFontSize > 0)
+                return para.SourceVisualFontSize;
+            return para.AllLetters.Count == 0
+                ? para.AverageFontSize
+                : para.AllLetters.Max(letter => letter.FontSize);
+        }
+
+        private static double CalculateAnchorCenter(PdfParagraph para, bool isPageTitle, bool isHeading, double paragraphX, double paragraphWidth)
+        {
+            if (isPageTitle)
+                return (para.X0 + para.X1) / 2.0;
+            if (isHeading)
+                return (para.OriginalX0 + para.OriginalX1) / 2.0;
+            return paragraphX + paragraphWidth / 2.0;
+        }
+    }
 
 internal readonly record struct PdfParagraphRenderMetrics(
     double LayoutWidth,

@@ -160,11 +160,7 @@ namespace Clickra.Core.Processors
             double dy = letter.EndBaseLine.Y - letter.StartBaseLine.Y;
             double angle = Math.Atan2(dy, dx) * 180 / Math.PI;
             if (angle < 0) angle += 360;
-            double rotation = angle >= 45 && angle < 135
-                ? -90
-                : angle >= 135 && angle < 225
-                    ? 180
-                    : angle >= 225 && angle < 315 ? 90 : 0;
+            double rotation = CalculateLetterRotation(angle);
 
             return new PdfLetter
             {
@@ -180,6 +176,14 @@ namespace Clickra.Core.Processors
                 Rotation = rotation,
                 IsBold = FontUtilities.IsSourceFontBold(letter.FontName)
             };
+        }
+
+        private static double CalculateLetterRotation(double angle)
+        {
+            if (angle is >= 45 and < 135) return -90;
+            if (angle is >= 135 and < 225) return 180;
+            if (angle is >= 225 and < 315) return 90;
+            return 0;
         }
 
         private static bool IsItalicFont(string? fontName) =>
@@ -323,6 +327,7 @@ namespace Clickra.Core.Processors
             string value = string.Concat(formulas[id].Letters.Select(letter => letter.Value));
             return value.Contains('\u20DD', StringComparison.Ordinal);
         }
+
 
         private static string ToCircledDigit(string value)
         {
