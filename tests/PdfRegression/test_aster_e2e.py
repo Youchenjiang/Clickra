@@ -97,20 +97,7 @@ def _aster_table_iii_missing_rows(pdf_path: Path) -> list[int]:
     return [number for number in range(1, 20) if number not in rows]
 
 
-def _evaluate_aster_results(
-    output_pdf: Path,
-    health_path: Path,
-    output_dir: Path,
-    engine: str,
-) -> list[str]:
-    health = json.loads(health_path.read_text(encoding="utf-8"))
-    with output_pdf.open("rb") as stream:
-        pages = len(PdfReader(stream).pages)
-    diagnostic = health_report(
-        output_pdf,
-        output_dir / "ASTER _pdf_health.json",
-    )
-
+def _check_health_and_diagnostics(health: dict, diagnostic: dict, pages: int) -> list[str]:
     failures: list[str] = []
     if pages != 12:
         failures.append(f"page count changed: {pages}")
@@ -134,6 +121,11 @@ def _evaluate_aster_results(
         failures.append(f"PDF diagnostic tofu/NUL count: {diagnostic.get('total_tofu')}")
     if diagnostic.get("total_simp", 0) != 0:
         failures.append(f"PDF diagnostic simplified-character count: {diagnostic.get('total_simp')}")
+    return failures
+
+
+def _check_content_and_layout(output_pdf: Path, output_dir: Path, engine: str) -> list[str]:
+    failures: list[str] = []
     missing_table_rows = _aster_table_iii_missing_rows(output_pdf)
     if missing_table_rows:
         failures.append(f"ASTER page 8 Table III lost or translated rows: {missing_table_rows}")
@@ -157,7 +149,25 @@ def _evaluate_aster_results(
     render_log = output_dir / "ASTER _renderdbg.log"
     if render_log.exists() and "clipped=true" in render_log.read_text(encoding="utf-8").casefold():
         failures.append("render debug still reports clipped=true")
+    return failures
 
+
+def _evaluate_aster_results(
+    output_pdf: Path,
+    health_path: Path,
+    output_dir: Path,
+    engine: str,
+) -> list[str]:
+    health = json.loads(health_path.read_text(encoding="utf-8"))
+    with output_pdf.open("rb") as stream:
+        pages = len(PdfReader(stream).pages)
+    diagnostic = health_report(
+        output_pdf,
+        output_dir / "ASTER _pdf_health.json",
+    )
+
+    failures = _check_health_and_diagnostics(health, diagnostic, pages)
+    failures.extend(_check_content_and_layout(output_pdf, output_dir, engine))
     return failures
 
 
