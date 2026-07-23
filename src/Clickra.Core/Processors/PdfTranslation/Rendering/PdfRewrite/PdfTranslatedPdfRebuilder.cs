@@ -172,17 +172,13 @@ internal static class PdfTranslatedPdfRebuilder
         try
         {
             var extGStatesProp = typeof(PdfResources).GetProperty("ExtGStates", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Public);
-            if (extGStatesProp != null)
+            if (extGStatesProp?.GetValue(page.Resources) is PdfDictionary extGStates && !extGStates.Elements.ContainsKey("/NormalState"))
             {
-                var extGStates = extGStatesProp.GetValue(page.Resources) as PdfDictionary;
-                if (extGStates != null && !extGStates.Elements.ContainsKey("/NormalState"))
-                {
-                    var normalState = new PdfDictionary();
-                    normalState.Elements["/BM"] = new PdfName("/Normal");
-                    normalState.Elements["/op"] = new PdfBoolean(false);
-                    normalState.Elements["/OP"] = new PdfBoolean(false);
-                    extGStates.Elements["/NormalState"] = normalState;
-                }
+                var normalState = new PdfDictionary();
+                normalState.Elements["/BM"] = new PdfName("/Normal");
+                normalState.Elements["/op"] = new PdfBoolean(false);
+                normalState.Elements["/OP"] = new PdfBoolean(false);
+                extGStates.Elements["/NormalState"] = normalState;
             }
         }
         catch { }
@@ -312,17 +308,17 @@ internal static class PdfTranslatedPdfRebuilder
     }
 
     private static void ApplyRegionClamping(
-        ref double maskPdfX0,
-        ref double maskPdfY0,
-        ref double maskPdfX1,
-        ref double maskPdfY1,
         PdfParagraph para,
         bool isFigureCaption,
         List<TableMaskRegion> tableMaskRegions,
         List<TableMaskRegion> diagramMaskRegions,
         List<PdfParagraph> paragraphs,
         PdfParagraph? pageOneTitlePara,
-        double pageWidth)
+        double pageWidth,
+        ref double maskPdfX0,
+        ref double maskPdfY0,
+        ref double maskPdfX1,
+        ref double maskPdfY1)
     {
         const double maskPad = 1.5;
         PdfMaskGeometry.ExpandMaskToColumnWidth(ref maskPdfX0, ref maskPdfX1, para, pageWidth);
@@ -369,7 +365,7 @@ internal static class PdfTranslatedPdfRebuilder
         maskPdfX0 = maskX0 - maskPad;
         maskPdfX1 = maskX1 + maskPad;
         ComputeBaseMaskY(isFigureCaption, renderedHeight, maskY0, maskY1, out maskPdfY0, out maskPdfY1);
-        ApplyRegionClamping(ref maskPdfX0, ref maskPdfY0, ref maskPdfX1, ref maskPdfY1, para, isFigureCaption, tableMaskRegions, diagramMaskRegions, paragraphs, pageOneTitlePara, pageWidth);
+        ApplyRegionClamping(para, isFigureCaption, tableMaskRegions, diagramMaskRegions, paragraphs, pageOneTitlePara, pageWidth, ref maskPdfX0, ref maskPdfY0, ref maskPdfX1, ref maskPdfY1);
     }
 
     private static bool IsGrayGeometryIntersected(
