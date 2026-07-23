@@ -86,33 +86,45 @@ namespace Clickra.Core.Processors
             if (diagramRegions.Count == 0) return;
             foreach (var para in pageList)
             {
-                if (para.IsTable) continue;
-                if (PdfParagraphRoleClassifier.IsRunningHeaderOrFooter(para, pageHeight)) continue;
-                if (PdfParagraphRoleClassifier.IsFigureTableCaptionParagraph(para)) continue;
-                if (PdfGrayPromptClassifier.IsGrayPromptBoxParagraph(para) ||
-                    PdfGrayPromptClassifier.IsGrayPromptSubheading(para)) continue;
-                if (PdfParagraphSemanticClassifier.IsHeadingParagraph(para)) continue;
-                if (!PdfDiagramRegionGeometry.OverlapsAnyRegion(para, diagramRegions)) continue;
-                string txt = para.TextWithPlaceholders.Trim();
-                double letterRatio = PdfDiagramRegionGeometry.ParagraphLetterOverlapRatio(para, diagramRegions);
-                if (para.Height > 50) continue;
-                if (PdfParagraphRoleClassifier.IsTranslatableCalloutProse(para) &&
-                    !IsShortFigureLabel(para, true)) continue;
-                if (PdfParagraphRoleClassifier.IsTranslatableBodyProse(para) && letterRatio < 0.35) continue;
-                if (txt.Length > 140)
+                if (ShouldMarkAsDiagramFigureLabel(para, diagramRegions, pageHeight))
                 {
-                    if (letterRatio < 0.45 || PdfParagraphRoleClassifier.IsTranslatableBodyProse(para)) continue;
+                    para.IsDiagram = true;
+                    para.IsTable = false;
                 }
-                if (!PdfChartLabelClassifier.IsLikelyChartLabel(para) &&
-                    letterRatio < 0.2 &&
-                    !(para.Height <= 20 && txt.Length <= 120 && txt.IndexOf('.') < 0))
-                {
-                    continue;
-                }
-
-                para.IsDiagram = true;
-                para.IsTable = false;
             }
+        }
+
+        private static bool ShouldMarkAsDiagramFigureLabel(
+            PdfParagraph para,
+            IReadOnlyList<TableMaskRegion> diagramRegions,
+            double pageHeight)
+        {
+            if (para.IsTable) return false;
+            if (PdfParagraphRoleClassifier.IsRunningHeaderOrFooter(para, pageHeight)) return false;
+            if (PdfParagraphRoleClassifier.IsFigureTableCaptionParagraph(para)) return false;
+            if (PdfGrayPromptClassifier.IsGrayPromptBoxParagraph(para) ||
+                PdfGrayPromptClassifier.IsGrayPromptSubheading(para)) return false;
+            if (PdfParagraphSemanticClassifier.IsHeadingParagraph(para)) return false;
+            if (!PdfDiagramRegionGeometry.OverlapsAnyRegion(para, diagramRegions)) return false;
+
+            if (para.Height > 50) return false;
+            if (PdfParagraphRoleClassifier.IsTranslatableCalloutProse(para) &&
+                !IsShortFigureLabel(para, true)) return false;
+
+            string txt = para.TextWithPlaceholders.Trim();
+            double letterRatio = PdfDiagramRegionGeometry.ParagraphLetterOverlapRatio(para, diagramRegions);
+
+            if (PdfParagraphRoleClassifier.IsTranslatableBodyProse(para) && letterRatio < 0.35) return false;
+            if (txt.Length > 140 && (letterRatio < 0.45 || PdfParagraphRoleClassifier.IsTranslatableBodyProse(para))) return false;
+
+            if (!PdfChartLabelClassifier.IsLikelyChartLabel(para) &&
+                letterRatio < 0.2 &&
+                !(para.Height <= 20 && txt.Length <= 120 && txt.IndexOf('.') < 0))
+            {
+                return false;
+            }
+
+            return true;
         }
 
         private static bool IsShortFigureLabel(PdfParagraph para, bool insideDiagramRegion)
