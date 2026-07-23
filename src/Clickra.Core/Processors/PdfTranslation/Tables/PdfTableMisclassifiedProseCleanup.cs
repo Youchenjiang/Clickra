@@ -26,58 +26,39 @@ namespace Clickra.Core.Processors
                 string txt = para.TextWithPlaceholders.Trim();
                 if (string.IsNullOrEmpty(txt)) continue;
 
-                // Bold compact rows immediately below TABLE captions are table
-                // headers, even when DocStrum grouped several cells together.
-                // Never demote them to prose: doing so translates/reflows the
-                // row and changes the table geometry.
-                if (IsLikelyTableHeader(para, txt))
-                    continue;
-
-                if (PdfSpecialTableRegionClassifier.IsWorkDivisionTableParagraph(para, workDivisionCaption, pageWidth))
-                    continue;
-                if (PdfSpecialTableRegionClassifier.IsAppendixFeatureTableParagraph(para, appendixTableCaption, pageWidth))
-                    continue;
-
-                if (txt.StartsWith("•") || txt.StartsWith("·") ||
-                    txt.StartsWith("To sum up", StringComparison.OrdinalIgnoreCase))
+                if (ShouldDemoteTableToProse(para, txt, workDivisionCaption, appendixTableCaption, pageWidth))
                 {
                     para.IsTable = false;
-                    continue;
-                }
-
-                if (txt.StartsWith("and ", StringComparison.OrdinalIgnoreCase) && para.Height <= 20)
-                {
-                    para.IsTable = false;
-                    continue;
-                }
-
-                if (Regex.IsMatch(txt, @"^\d+\s+[A-Za-z]") && para.Height <= 25 && para.Width > 120)
-                {
-                    para.IsTable = false;
-                    continue;
-                }
-
-                if (Regex.IsMatch(txt, @"^\d{1,2}(?:\.\d{1,2})?$"))
-                {
-                    para.IsTable = false;
-                    continue;
-                }
-
-                int wordCount = txt.Split(new char[] { ' ', '\t', '\n', '\r' }, StringSplitOptions.RemoveEmptyEntries).Length;
-                if (wordCount >= 2 && para.Height <= 25 && !IsLikelyTableCellValue(txt))
-                {
-                    if (para.Width > 90 && (wordCount >= 3 || txt.Length > 18))
-                    {
-                        para.IsTable = false;
-                        continue;
-                    }
-
-                    if (char.IsLower(txt[0]))
-                    {
-                        para.IsTable = false;
-                    }
                 }
             }
+        }
+
+        private static bool ShouldDemoteTableToProse(
+            PdfParagraph para,
+            string txt,
+            PdfParagraph? workDivisionCaption,
+            PdfParagraph? appendixTableCaption,
+            double pageWidth)
+        {
+            if (IsLikelyTableHeader(para, txt)) return false;
+            if (PdfSpecialTableRegionClassifier.IsWorkDivisionTableParagraph(para, workDivisionCaption, pageWidth)) return false;
+            if (PdfSpecialTableRegionClassifier.IsAppendixFeatureTableParagraph(para, appendixTableCaption, pageWidth)) return false;
+
+            if (txt.StartsWith("•") || txt.StartsWith("·") ||
+                txt.StartsWith("To sum up", StringComparison.OrdinalIgnoreCase)) return true;
+
+            if (txt.StartsWith("and ", StringComparison.OrdinalIgnoreCase) && para.Height <= 20) return true;
+            if (Regex.IsMatch(txt, @"^\d+\s+[A-Za-z]", RegexOptions.None, TimeSpan.FromSeconds(1)) && para.Height <= 25 && para.Width > 120) return true;
+            if (Regex.IsMatch(txt, @"^\d{1,2}(?:\.\d{1,2})?$", RegexOptions.None, TimeSpan.FromSeconds(1))) return true;
+
+            int wordCount = txt.Split([' ', '\t', '\n', '\r'], StringSplitOptions.RemoveEmptyEntries).Length;
+            if (wordCount >= 2 && para.Height <= 25 && !IsLikelyTableCellValue(txt))
+            {
+                if (para.Width > 90 && (wordCount >= 3 || txt.Length > 18)) return true;
+                if (char.IsLower(txt[0])) return true;
+            }
+
+            return IsTallFullColumnProse(para, wordCount, pageWidth);
         }
 
         private static bool IsLikelyTableCellValue(string txt)
