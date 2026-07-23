@@ -13,10 +13,10 @@ namespace Clickra.Core.Processors
             if (string.IsNullOrEmpty(txt)) return false;
 
             // Matches (1), (2), (3), etc. at the end
-            if (Regex.IsMatch(txt, @"\(\d+\)\s*$")) return true;
+            if (Regex.IsMatch(txt, @"\(\d+\)\s*$", RegexOptions.None, TimeSpan.FromSeconds(1))) return true;
 
             // Matches patterns like x : A -> B
-            if (Regex.IsMatch(txt, @"^[a-zA-Z0-9_\{\}\s]+:.*(⇀|→|→|↦|⇒|⊆|∈)")) return true;
+            if (Regex.IsMatch(txt, @"^[a-zA-Z0-9_\{\}\s]+:.*(⇀|→|→|↦|⇒|⊆|∈)", RegexOptions.None, TimeSpan.FromSeconds(1))) return true;
 
             // Density based check: if the text has math formulas/variables placeholders
             // and contains common math operator characters
@@ -24,7 +24,7 @@ namespace Clickra.Core.Processors
             if (formulaTokensCount > 0)
             {
                 // Check if the non-placeholder part contains mostly math operators or is very short
-                string stripped = Regex.Replace(txt, @"\{v\d+\}", "").Trim();
+                string stripped = Regex.Replace(txt, @"\{v\d+\}", "", RegexOptions.None, TimeSpan.FromSeconds(1)).Trim();
                 if (string.IsNullOrEmpty(stripped)) return true;
 
                 int letters = stripped.Count(char.IsLetter);
@@ -67,21 +67,29 @@ namespace Clickra.Core.Processors
                 return true;
             }
 
+            return IsNumberedHeadingPattern(txt) || IsSpecialHeadingPattern(txt);
+        }
+
+        private static bool IsNumberedHeadingPattern(string txt)
+        {
             // Section numbering like "1. Introduction" or "3.4.1 Projection before Fusion" or "3.2.1 資料收集"
-            if (Regex.IsMatch(txt, @"^\d{1,2}(?:\.\d{1,2}){0,4}\.?(?:\s+)(?=[A-Za-z\u3400-\u9FFF])")) return true;
+            if (Regex.IsMatch(txt, @"^\d{1,2}(?:\.\d{1,2}){0,4}\.?(?:\s+)(?=[A-Za-z\u3400-\u9FFF])", RegexOptions.None, TimeSpan.FromSeconds(1))) return true;
 
             // Lettered subsections like "A. Background" or "C. Case Studies"
-            if (Regex.IsMatch(txt, @"^[A-Z]\.\s+")) return true;
+            if (Regex.IsMatch(txt, @"^[A-Z]\.\s+", RegexOptions.None, TimeSpan.FromSeconds(1))) return true;
 
             // Appendix subsections like "B.3 Benchmark Coverage"
-            if (Regex.IsMatch(txt, @"^[A-Z]\.\d+\s")) return true;
+            if (Regex.IsMatch(txt, @"^[A-Z]\.\d+\s", RegexOptions.None, TimeSpan.FromSeconds(1))) return true;
 
             // Roman-numbered sections are common in IEEE/ACM papers (for
             // example "I. INTRODUCTION").  PdfPig often reports these as a
             // single left-aligned line, so the numbering is the stable
             // semantic signal rather than the extracted alignment.
-            if (Regex.IsMatch(txt, @"^(?:[IVXLCDM]{1,6})\.\s+", RegexOptions.IgnoreCase)) return true;
+            return Regex.IsMatch(txt, @"^(?:[IVXLCDM]{1,6})\.\s+", RegexOptions.IgnoreCase, TimeSpan.FromSeconds(1));
+        }
 
+        private static bool IsSpecialHeadingPattern(string txt)
+        {
             // Short label-style headings are frequently extracted without their
             // original bold/centering metadata (for example, "The main
             // contributions of this work include:", "Naturalness:").  A
@@ -92,7 +100,7 @@ namespace Clickra.Core.Processors
                 StringSplitOptions.RemoveEmptyEntries).Length;
             if (txt.Length <= 80 && labelWordCount <= 12 &&
                 txt.EndsWith(":", StringComparison.Ordinal) &&
-                Regex.IsMatch(txt, @"^[A-Za-z][A-Za-z0-9 .,()'&/+-]*:$"))
+                Regex.IsMatch(txt, @"^[A-Za-z][A-Za-z0-9 .,()'&/+-]*:$", RegexOptions.None, TimeSpan.FromSeconds(1)))
                 return true;
 
             // A small, conservative vocabulary covers unnumbered section
@@ -122,14 +130,14 @@ namespace Clickra.Core.Processors
         {
             string txt = para.TextWithPlaceholders.Trim();
             if (string.IsNullOrEmpty(txt)) return false;
-            if (Regex.IsMatch(txt, @"^Appendix\s+[A-Z]", RegexOptions.IgnoreCase))
+            if (Regex.IsMatch(txt, @"^Appendix\s+[A-Z]", RegexOptions.IgnoreCase, TimeSpan.FromSeconds(1)))
                 return true;
-            if (Regex.IsMatch(txt, @"^[A-Z]\s+Prompts\b", RegexOptions.IgnoreCase))
+            if (Regex.IsMatch(txt, @"^[A-Z]\s+Prompts\b", RegexOptions.IgnoreCase, TimeSpan.FromSeconds(1)))
                 return true;
-            if (Regex.IsMatch(txt, @"^[A-Z]\.\d*\s", RegexOptions.IgnoreCase))
+            if (Regex.IsMatch(txt, @"^[A-Z]\.\d*\s", RegexOptions.IgnoreCase, TimeSpan.FromSeconds(1)))
                 return true;
             return txt.Length < 80 &&
-                   Regex.IsMatch(txt, @"^[A-Z]\.\s+", RegexOptions.IgnoreCase);
+                   Regex.IsMatch(txt, @"^[A-Z]\.\s+", RegexOptions.IgnoreCase, TimeSpan.FromSeconds(1));
         }
     }
 }
