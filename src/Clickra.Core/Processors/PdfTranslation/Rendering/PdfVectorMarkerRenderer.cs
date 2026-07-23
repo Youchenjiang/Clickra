@@ -83,7 +83,7 @@ internal static class PdfVectorMarkerRenderer
                 continue;
             }
 
-            GetRgb(path.FillColor, out double red, out double green, out double blue);
+            ExtractRgbComponents(path.FillColor, out double red, out double green, out double blue);
             markers.Add(new PdfVectorMarker
             {
                 Paragraph = digit.para,
@@ -132,10 +132,10 @@ internal static class PdfVectorMarkerRenderer
                     -1,
                     preferVerticalAlignment: true)
                 : null;
-            double centerX = matched != null && matched.Count > 0
+            double centerX = matched?.Count > 0
                 ? matched.Average(c => (c.Left + c.Right) / 2.0)
                 : (marker.X0 + marker.X1) / 2.0;
-            double centerY = matched != null && matched.Count > 0
+            double centerY = matched?.Count > 0
                 ? matched.Average(c => (c.Bottom + c.Top) / 2.0)
                 : (marker.Y0 + marker.Y1) / 2.0;
             double radiusX = (marker.X1 - marker.X0) / 2.0;
@@ -157,7 +157,7 @@ internal static class PdfVectorMarkerRenderer
         }
     }
 
-    private static void GetRgb(IColor? color, out double red, out double green, out double blue)
+    private static void ExtractRgbComponents(IColor? color, out double red, out double green, out double blue)
     {
         switch (color)
         {

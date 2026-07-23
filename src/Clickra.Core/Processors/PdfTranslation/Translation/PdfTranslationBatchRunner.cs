@@ -59,10 +59,10 @@ namespace Clickra.Core.Processors
             {
                 var translated = RunWithTimeout(
                     token => translator.TranslateBatchAsync(chunk, targetLang, token),
-                    cancellationToken,
                     translator is FallbackTranslator
                         ? TranslationTimeouts.ChainCallTimeout
-                        : TranslationTimeouts.ProviderCallTimeout);
+                        : TranslationTimeouts.ProviderCallTimeout,
+                    cancellationToken);
                 if (translated.Count != chunk.Count)
                 {
                     throw new InvalidOperationException(
@@ -103,10 +103,10 @@ namespace Clickra.Core.Processors
             {
                 string translated = RunWithTimeout(
                     token => translator.TranslateAsync(sourceText, targetLang, token),
-                    cancellationToken,
                     translator is FallbackTranslator
                         ? TranslationTimeouts.ChainCallTimeout
-                        : TranslationTimeouts.ProviderCallTimeout);
+                        : TranslationTimeouts.ProviderCallTimeout,
+                    cancellationToken);
                 if (string.IsNullOrWhiteSpace(translated))
                 {
                     throw new InvalidOperationException("Translator returned an empty result.");
@@ -123,8 +123,8 @@ namespace Clickra.Core.Processors
 
         private static T RunWithTimeout<T>(
             Func<CancellationToken, Task<T>> operation,
-            CancellationToken cancellationToken,
-            TimeSpan timeout)
+            TimeSpan timeout,
+            CancellationToken cancellationToken)
         {
             using var timeoutCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
             timeoutCts.CancelAfter(timeout);
