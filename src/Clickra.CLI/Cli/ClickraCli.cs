@@ -56,7 +56,7 @@ namespace Clickra
             string outputDir = string.IsNullOrWhiteSpace(outputDirOverride)
                 ? ClickraStorage.GetOutputDir(files[0])
                 : Path.GetFullPath(outputDirOverride);
-            string startTimeStr = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
+            string startTimeStr = DateTime.UtcNow.ToString("yyyy-MM-dd HH:mm:ss");
             try
             {
                 DispatchCommandSwitch(command, files, quiet, outputDir, hasCliLevel, compressionLevel, argList);
@@ -230,38 +230,80 @@ namespace Clickra
             string compressionLevel,
             List<string> argList)
         {
+            if (DispatchOfficeCommand(command, files, quiet)) return;
+            if (DispatchPdfCommand(command, files, quiet, outputDir, hasCliLevel, compressionLevel)) return;
+            if (DispatchImageCommand(command, files, quiet, outputDir)) return;
+
+            Console.WriteLine($"[錯誤] 未知指令: {command}");
+        }
+
+        private static bool DispatchOfficeCommand(string command, List<string> files, bool quiet)
+        {
             switch (command)
             {
                 case "ppt2pdf":
                     ValidateExtensions(files, command, quiet, ".pptx", ".ppt");
                     if (quiet) FileProcessor.ConvertPptToPdf(files, (curr, tot, msg) => Console.WriteLine($"[Progress] {msg}"));
                     else ProgressWindow.Show(command, files);
-                    break;
+                    return true;
                 case "word2pdf":
                     ValidateExtensions(files, command, quiet, ".docx", ".doc");
                     if (quiet) FileProcessor.ConvertWordToPdf(files, (curr, tot, msg) => Console.WriteLine($"[Progress] {msg}"));
                     else ProgressWindow.Show(command, files);
-                    break;
+                    return true;
                 case "excel2pdf":
                     ValidateExtensions(files, command, quiet, ".xlsx", ".xls");
                     if (quiet) FileProcessor.ConvertExcelToPdf(files, (curr, tot, msg) => Console.WriteLine($"[Progress] {msg}"));
                     else ProgressWindow.Show(command, files);
-                    break;
+                    return true;
+                default:
+                    return false;
+            }
+        }
+
+        private static bool DispatchPdfCommand(
+            string command,
+            List<string> files,
+            bool quiet,
+            string outputDir,
+            bool hasCliLevel,
+            string compressionLevel)
+        {
+            switch (command)
+            {
                 case "merge-pdf":
                     ValidateExtensions(files, command, quiet, ".pdf");
                     RequireMinFiles(files, command, 2, quiet);
                     if (quiet) FileProcessor.MergePdfs(files, Path.Combine(outputDir, "Merged_PDF.pdf"), (curr, tot, msg) => Console.WriteLine($"[Progress] {msg}"));
                     else ProgressWindow.Show(command, files);
-                    break;
+                    return true;
                 case "compress-pdf":
                     ValidateExtensions(files, command, quiet, ".pdf");
                     RequireMinFiles(files, command, 1, quiet);
-                    if (quiet)
-                    {
-                        HandleCompressPdfQuiet(files, outputDir, hasCliLevel, compressionLevel);
-                    }
+                    if (quiet) HandleCompressPdfQuiet(files, outputDir, hasCliLevel, compressionLevel);
                     else ProgressWindow.Show(command, files);
-                    break;
+                    return true;
+                case "translate-pdf":
+                    ValidateExtensions(files, command, quiet, ".pdf");
+                    RequireMinFiles(files, command, 1, quiet);
+                    if (quiet) HandleTranslatePdfQuiet(files, outputDir);
+                    else ProgressWindow.Show(command, files);
+                    return true;
+                case "decrypt-pdf":
+                    ValidateExtensions(files, command, quiet, ".pdf");
+                    RequireMinFiles(files, command, 1, quiet);
+                    if (quiet) HandleDecryptPdfQuiet(files, outputDir);
+                    else ProgressWindow.Show(command, files);
+                    return true;
+                default:
+                    return false;
+            }
+        }
+
+        private static bool DispatchImageCommand(string command, List<string> files, bool quiet, string outputDir)
+        {
+            switch (command)
+            {
                 case "img2pdf":
                     ValidateExtensions(files, command, quiet, ".jpg", ".jpeg", ".png", ".bmp", ".gif", ".tiff", ".webp");
                     RequireMinFiles(files, command, 1, quiet);
@@ -277,64 +319,50 @@ namespace Clickra
                         Console.WriteLine("[Progress] 轉換完成，正在儲存 PDF...");
                     }
                     else ProgressWindow.Show(command, files);
-                    break;
+                    return true;
                 case "img-merge":
                     ValidateExtensions(files, command, quiet, ".jpg", ".jpeg", ".png", ".bmp", ".gif", ".tiff", ".webp");
                     RequireMinFiles(files, command, 2, quiet);
                     if (quiet) FileProcessor.ConvertImagesToPdf(files, Path.Combine(outputDir, "Merged_Images.pdf"), (curr, tot, msg) => Console.WriteLine($"[Progress] {msg}"));
                     else ProgressWindow.Show(command, files);
-                    break;
+                    return true;
                 case "img-stitch":
                     ValidateExtensions(files, command, quiet, ".jpg", ".jpeg", ".png", ".bmp", ".gif", ".tiff", ".webp");
                     RequireMinFiles(files, command, 2, quiet);
                     if (quiet) FileProcessor.StitchImages(files, Path.Combine(outputDir, "Stitched_Image.png"), (curr, tot, msg) => Console.WriteLine($"[Progress] {msg}"));
                     else ProgressWindow.Show(command, files);
-                    break;
-                case "translate-pdf":
-                    ValidateExtensions(files, command, quiet, ".pdf");
-                    RequireMinFiles(files, command, 1, quiet);
-                    if (quiet)
-                    {
-                        HandleTranslatePdfQuiet(files, outputDir);
-                    }
-                    else ProgressWindow.Show(command, files);
-                    break;
-                case "decrypt-pdf":
-                    ValidateExtensions(files, command, quiet, ".pdf");
-                    RequireMinFiles(files, command, 1, quiet);
-                    if (quiet)
-                    {
-                        for (int i = 0; i < files.Count; i++)
-                        {
-                            var f = files[i];
-                            string outName = Path.Combine(outputDir, Path.GetFileNameWithoutExtension(f) + "_decrypted.pdf");
-                            Console.WriteLine($"[Progress] 正在移除密碼: {Path.GetFileName(f)} ({i + 1}/{files.Count})...");
-
-                            try
-                            {
-                                FileProcessor.DecryptPdf(f, outName, "", (curr, tot, msg) => Console.WriteLine($"[Progress] {msg}"));
-                            }
-                            catch (Exception ex)
-                            {
-                                bool isPasswordError = ex is PdfSharp.Pdf.IO.PdfReaderException &&
-                                                       ex.Message.Contains("password", StringComparison.OrdinalIgnoreCase);
-
-                                if (isPasswordError)
-                                {
-                                    throw new InvalidOperationException(Localization.T("error_pdf_password_quiet", ClickraStorage.GetSetting("Language")));
-                                }
-                                else
-                                {
-                                    throw;
-                                }
-                            }
-                        }
-                    }
-                    else ProgressWindow.Show(command, files);
-                    break;
+                    return true;
                 default:
-                    Console.WriteLine($"[錯誤] 未知指令: {command}");
-                    break;
+                    return false;
+            }
+        }
+
+        private static void HandleDecryptPdfQuiet(List<string> files, string outputDir)
+        {
+            for (int i = 0; i < files.Count; i++)
+            {
+                var f = files[i];
+                string outName = Path.Combine(outputDir, Path.GetFileNameWithoutExtension(f) + "_decrypted.pdf");
+                Console.WriteLine($"[Progress] 正在移除密碼: {Path.GetFileName(f)} ({i + 1}/{files.Count})...");
+
+                try
+                {
+                    FileProcessor.DecryptPdf(f, outName, "", (curr, tot, msg) => Console.WriteLine($"[Progress] {msg}"));
+                }
+                catch (Exception ex)
+                {
+                    bool isPasswordError = ex is PdfSharp.Pdf.IO.PdfReaderException &&
+                                           ex.Message.Contains("password", StringComparison.OrdinalIgnoreCase);
+
+                    if (isPasswordError)
+                    {
+                        throw new InvalidOperationException(Localization.T("error_pdf_password_quiet", ClickraStorage.GetSetting("Language")));
+                    }
+                    else
+                    {
+                        throw;
+                    }
+                }
             }
         }
     }
