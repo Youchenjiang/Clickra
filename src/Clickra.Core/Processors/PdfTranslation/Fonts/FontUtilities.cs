@@ -78,13 +78,6 @@ namespace Clickra.Core.Processors
                     continue;
                 }
 
-                // PDF math fonts commonly encode circled markers as a digit
-                // followed by the combining mark U+20DD (for example
-                // `1⃝, 2⃝, 3⃝`). Dropping the mark turns a figure caption's
-                // semantic markers into bare digits and can leave the source
-                // marker painted underneath the translated caption. Convert
-                // the common one-digit form to a Unicode circled digit so it
-                // remains an inline glyph during reflow.
                 if (cp == 0x20DD)
                 {
                     if (sb.Length > 0 && sb[^1] is >= '1' and <= '9')
@@ -98,9 +91,6 @@ namespace Clickra.Core.Processors
                     continue;
                 }
 
-                // Some extracted reference names contain U+02D8 BREVE as a
-                // font-encoding artifact (for example P˘as˘areanu). DFKai-SB
-                // cannot encode it and emits a NUL glyph, so drop the artifact.
                 if (cp == 0x02D8)
                 {
                     continue;
@@ -108,48 +98,7 @@ namespace Clickra.Core.Processors
 
                 if (cp >= 0x1D400 && cp <= 0x1D7FF)
                 {
-                    if (cp >= 0x1D400 && cp <= 0x1D419) sb.Append((char)('A' + (cp - 0x1D400)));
-                    else if (cp >= 0x1D41A && cp <= 0x1D433) sb.Append((char)('a' + (cp - 0x1D41A)));
-                    else if (cp >= 0x1D434 && cp <= 0x1D44D) sb.Append((char)('A' + (cp - 0x1D434)));
-                    else if (cp >= 0x1D44E && cp <= 0x1D467) sb.Append((char)('a' + (cp - 0x1D44E)));
-                    else if (cp >= 0x1D468 && cp <= 0x1D481) sb.Append((char)('A' + (cp - 0x1D468)));
-                    else if (cp >= 0x1D482 && cp <= 0x1D49B) sb.Append((char)('a' + (cp - 0x1D482)));
-                    else if (cp >= 0x1D49C && cp <= 0x1D4B5) sb.Append((char)('A' + (cp - 0x1D49C)));
-                    else if (cp >= 0x1D4B6 && cp <= 0x1D4CF) sb.Append((char)('a' + (cp - 0x1D4B6)));
-                    else if (cp >= 0x1D4D0 && cp <= 0x1D4E9) sb.Append((char)('A' + (cp - 0x1D4D0)));
-                    else if (cp >= 0x1D4EA && cp <= 0x1D503) sb.Append((char)('a' + (cp - 0x1D4EA)));
-                    else if (cp >= 0x1D504 && cp <= 0x1D51D) sb.Append((char)('A' + (cp - 0x1D504)));
-                    else if (cp >= 0x1D51E && cp <= 0x1D537) sb.Append((char)('a' + (cp - 0x1D51E)));
-                    else if (cp >= 0x1D538 && cp <= 0x1D551) sb.Append((char)('A' + (cp - 0x1D538)));
-                    else if (cp >= 0x1D552 && cp <= 0x1D56B) sb.Append((char)('a' + (cp - 0x1D552)));
-                    else if (cp >= 0x1D56C && cp <= 0x1D585) sb.Append((char)('A' + (cp - 0x1D56C)));
-                    else if (cp >= 0x1D586 && cp <= 0x1D59F) sb.Append((char)('a' + (cp - 0x1D586)));
-                    else if (cp >= 0x1D5A0 && cp <= 0x1D5B9) sb.Append((char)('A' + (cp - 0x1D5A0)));
-                    else if (cp >= 0x1D5BA && cp <= 0x1D5D3) sb.Append((char)('a' + (cp - 0x1D5BA)));
-                    else if (cp >= 0x1D5D4 && cp <= 0x1D5ED) sb.Append((char)('A' + (cp - 0x1D5D4)));
-                    else if (cp >= 0x1D5EE && cp <= 0x1D607) sb.Append((char)('a' + (cp - 0x1D5EE)));
-                    else if (cp >= 0x1D608 && cp <= 0x1D621) sb.Append((char)('A' + (cp - 0x1D608)));
-                    else if (cp >= 0x1D622 && cp <= 0x1D63B) sb.Append((char)('a' + (cp - 0x1D622)));
-                    else if (cp >= 0x1D63C && cp <= 0x1D655) sb.Append((char)('A' + (cp - 0x1D63C)));
-                    else if (cp >= 0x1D656 && cp <= 0x1D66F) sb.Append((char)('a' + (cp - 0x1D656)));
-                    else if (cp >= 0x1D670 && cp <= 0x1D689) sb.Append((char)('A' + (cp - 0x1D670)));
-                    else if (cp >= 0x1D68A && cp <= 0x1D6A3) sb.Append((char)('a' + (cp - 0x1D68A)));
-                    else if (cp >= 0x1D6A8 && cp <= 0x1D6C0) sb.Append((char)(0x0391 + (cp - 0x1D6A8)));
-                    else if (cp >= 0x1D6C2 && cp <= 0x1D6DA) sb.Append((char)(0x03B1 + (cp - 0x1D6C2)));
-                    else if (cp >= 0x1D6E2 && cp <= 0x1D6FA) sb.Append((char)(0x0391 + (cp - 0x1D6E2)));
-                    else if (cp >= 0x1D6FC && cp <= 0x1D714) sb.Append((char)(0x03B1 + (cp - 0x1D6FC)));
-                    else if (cp >= 0x1D71C && cp <= 0x1D734) sb.Append((char)(0x0391 + (cp - 0x1D71C)));
-                    else if (cp >= 0x1D736 && cp <= 0x1D74E) sb.Append((char)(0x03B1 + (cp - 0x1D736)));
-                    else if (cp >= 0x1D756 && cp <= 0x1D76E) sb.Append((char)(0x0391 + (cp - 0x1D756)));
-                    else if (cp >= 0x1D770 && cp <= 0x1D788) sb.Append((char)(0x03B1 + (cp - 0x1D770)));
-                    else if (cp >= 0x1D790 && cp <= 0x1D7A8) sb.Append((char)(0x0391 + (cp - 0x1D790)));
-                    else if (cp >= 0x1D7AA && cp <= 0x1D7C2) sb.Append((char)(0x03B1 + (cp - 0x1D7AA)));
-                    else if (cp >= 0x1D7CE && cp <= 0x1D7D7) sb.Append((char)('0' + (cp - 0x1D7CE)));
-                    else if (cp >= 0x1D7D8 && cp <= 0x1D7E1) sb.Append((char)('0' + (cp - 0x1D7D8)));
-                    else if (cp >= 0x1D7E2 && cp <= 0x1D7EB) sb.Append((char)('0' + (cp - 0x1D7E2)));
-                    else if (cp >= 0x1D7EC && cp <= 0x1D7F5) sb.Append((char)('0' + (cp - 0x1D7EC)));
-                    else if (cp >= 0x1D7F6 && cp <= 0x1D7FF) sb.Append((char)('0' + (cp - 0x1D7F6)));
-                    else sb.Append(char.ConvertFromUtf32(cp));
+                    sb.Append(NormalizeMathCodePoint(cp));
                 }
                 else
                 {
@@ -157,6 +106,41 @@ namespace Clickra.Core.Processors
                 }
             }
             return sb.ToString();
+        }
+
+        private static string NormalizeMathCodePoint(int cp)
+        {
+            int[] latinUpper = [0x1D400, 0x1D434, 0x1D468, 0x1D49C, 0x1D4D0, 0x1D504, 0x1D538, 0x1D56C, 0x1D5A0, 0x1D5D4, 0x1D608, 0x1D63C, 0x1D670];
+            foreach (int start in latinUpper)
+            {
+                if (cp >= start && cp <= start + 25) return ((char)('A' + (cp - start))).ToString();
+            }
+
+            int[] latinLower = [0x1D41A, 0x1D44E, 0x1D482, 0x1D4B6, 0x1D4EA, 0x1D51E, 0x1D552, 0x1D586, 0x1D5BA, 0x1D5EE, 0x1D622, 0x1D656, 0x1D68A];
+            foreach (int start in latinLower)
+            {
+                if (cp >= start && cp <= start + 25) return ((char)('a' + (cp - start))).ToString();
+            }
+
+            int[] greekUpper = [0x1D6A8, 0x1D6E2, 0x1D71C, 0x1D756, 0x1D790];
+            foreach (int start in greekUpper)
+            {
+                if (cp >= start && cp <= start + 24) return ((char)(0x0391 + (cp - start))).ToString();
+            }
+
+            int[] greekLower = [0x1D6C2, 0x1D6FC, 0x1D736, 0x1D770, 0x1D7AA];
+            foreach (int start in greekLower)
+            {
+                if (cp >= start && cp <= start + 24) return ((char)(0x03B1 + (cp - start))).ToString();
+            }
+
+            int[] digits = [0x1D7CE, 0x1D7D8, 0x1D7E2, 0x1D7EC, 0x1D7F6];
+            foreach (int start in digits)
+            {
+                if (cp >= start && cp <= start + 9) return ((char)('0' + (cp - start))).ToString();
+            }
+
+            return char.ConvertFromUtf32(cp);
         }
 
         /// <summary>
