@@ -26,21 +26,7 @@ internal static class PdfPageParagraphBuilder
             ProcessBlockLines(block, page, isTablePage, pageList);
         }
 
-        // Pass 0: Sanitize TextWithPlaceholders — remove stray '):(...)' bracket artifacts
-        // These appear when AnalyzeLines absorbs the opening '(' of a parenthetical phrase
-        // into a formula token, leaving a dangling '):(label)' in the text.
-        // e.g. "{v0}):(Equation (1))" -> "{v0}"   or   "InfoNCE):(Equation (1))" -> "InfoNCE"
-        foreach (var para in pageList)
-        {
-            if (string.IsNullOrWhiteSpace(para.TextWithPlaceholders)) continue;
-            string twp = para.TextWithPlaceholders.Trim();
-            // Find first occurrence of "):(" — a stray closing paren followed by colon+open
-            int artifactIdx = twp.IndexOf("):(", System.StringComparison.Ordinal);
-            if (artifactIdx > 0)
-            {
-                para.TextWithPlaceholders = twp.Substring(0, artifactIdx).TrimEnd();
-            }
-        }
+        SanitizeTextPlaceholders(pageList);
 
         if (page.Number == 1)
             PageOneLayoutClassifier.MergeTitleWithSubtitle(pageList, page.Height);
@@ -49,49 +35,7 @@ internal static class PdfPageParagraphBuilder
         PdfTableClassifier.MarkTableParagraphs(pageList, page.Width, page.Height, isTablePage);
 
         // Pass 0.55: Clear false-positive table marks on body paragraphs
-        foreach (var para in pageList)
-        {
-            if (!para.IsTable) continue;
-            string txt = para.TextWithPlaceholders.Trim();
-            if (PdfTableMisclassifiedProseCleanup.IsLikelyTableHeader(para, txt))
-            {
-                continue;
-            }
-            int wordCount = txt.Split(new char[] { ' ', '\t', '\n', '\r' }, StringSplitOptions.RemoveEmptyEntries).Length;
-            if (PdfTableMisclassifiedProseCleanup.IsTallFullColumnProse(
-                    para,
-                    wordCount,
-                    page.Width))
-            {
-                para.IsTable = false;
-            }
-            else if (System.Text.RegularExpressions.Regex.IsMatch(txt, @"^[A-Z]\.\s"))
-            {
-                para.IsTable = false;
-            }
-            else if (para.Width > page.Width * 0.38 && wordCount > 10)
-            {
-                // Full-column prose on table pages (e.g. RQ4 intro) is not a table cell.
-                para.IsTable = false;
-            }
-            else if (txt.StartsWith("•") || txt.StartsWith("·") ||
-                     txt.StartsWith("To sum up", StringComparison.OrdinalIgnoreCase))
-            {
-                // Contribution bullets/headings near comparison tables (e.g. PentestAgent p2).
-                para.IsTable = false;
-            }
-            else if (txt.StartsWith("and ", StringComparison.OrdinalIgnoreCase) && wordCount > 3 && para.Height <= 20)
-            {
-                // Table footnote continuation lines.
-                para.IsTable = false;
-            }
-            else if (System.Text.RegularExpressions.Regex.IsMatch(txt, @"^\d+\s+[A-Za-z]") &&
-                     para.Height <= 25 && para.Width > 120)
-            {
-                // Numbered footnote body (e.g. "1 AutoAttacker and PentestGPT solely rely...").
-                para.IsTable = false;
-            }
-        }
+        CleanupTableProseClassifications(pageList, page.Width);
 
         // Pass 1: Mark initial bypassed paragraphs (short figure labels only)
         foreach (var para in pageList)
@@ -153,51 +97,7 @@ internal static class PdfPageParagraphBuilder
         }
 
         // Pass 2: Propagate bypass to nearby small/label paragraphs (e.g. annotations inside drawings)
-        bool pageHasDiagramLabels = pageList.Any(p => p.IsDiagram);
-        int diagramLabelMaxLen = pageHasDiagramLabels ? 80 : 20;
-        bool changed = true;
-        while (changed)
-        {
-            changed = false;
-            foreach (var para in pageList)
-            {
-                if (para.IsBypassed) continue;
-                if (para.IsTable) continue;
-                if (page.Number == 1 && PageOneLayoutClassifier.IsAuthorBlockParagraph(para, pageList, page.Height)) continue;
-                if (para.IsCode) continue;
-                if (PdfParagraphRoleClassifier.IsRunningHeaderOrFooter(para, page.Height)) continue;
-                if (PdfParagraphRoleClassifier.IsFigureTableCaptionParagraph(para)) continue;
-                if (PdfParagraphRoleClassifier.IsTranslatableBodyProse(para)) continue;
-                if (PdfParagraphRoleClassifier.IsTranslatableCalloutProse(para)) continue;
-
-                bool isSmallLabel = para.TextWithPlaceholders.Length <= diagramLabelMaxLen &&
-                                    !PdfParagraphSemanticClassifier.IsHeadingParagraph(para) && PdfChartLabelClassifier.IsLikelyChartLabel(para);
-                if (isSmallLabel)
-                {
-                    foreach (var other in pageList)
-                    {
-                        if (other == para || !other.IsBypassed) continue;
-                        if (other.IsTable && !other.IsDiagram) continue;
-                        if (PdfParagraphRoleClassifier.IsRunningHeaderOrFooter(other, page.Height)) continue;
-
-                        bool closeX = (para.X0 <= other.X1 + 30) && (para.X1 >= other.X0 - 30);
-                        bool closeY = (para.Y0 <= other.Y1 + 30) && (para.Y1 >= other.Y0 - 30);
-
-                        if (closeX && closeY)
-                        {
-                            para.IsBypassed = true;
-                            if (other.IsDiagram)
-                            {
-                                para.IsDiagram = true;
-                                para.IsTable = false;
-                            }
-                            changed = true;
-                            break;
-                        }
-                    }
-                }
-            }
-        }
+        PropagateBypassToNearbyLabels(pageList, page);
 
         PdfDiagramFlagCleaner.ClearDiagramFlagOnRunningHeaders(pageList, page.Height);
         PdfDiagramFlagCleaner.ClearDiagramFlagOnTranslatableProse(pageList, effectiveDiagramRegions);
@@ -414,6 +314,107 @@ internal static class PdfPageParagraphBuilder
         {
             var paragraph = new PdfParagraph(currentGroup);
             pageList.Add(paragraph);
+        }
+    }
+
+    private static void SanitizeTextPlaceholders(List<PdfParagraph> pageList)
+    {
+        foreach (var para in pageList)
+        {
+            if (string.IsNullOrWhiteSpace(para.TextWithPlaceholders)) continue;
+            string twp = para.TextWithPlaceholders.Trim();
+            int artifactIdx = twp.IndexOf("):(", System.StringComparison.Ordinal);
+            if (artifactIdx > 0)
+            {
+                para.TextWithPlaceholders = twp.Substring(0, artifactIdx).TrimEnd();
+            }
+        }
+    }
+
+    private static void CleanupTableProseClassifications(List<PdfParagraph> pageList, double pageWidth)
+    {
+        foreach (var para in pageList)
+        {
+            if (!para.IsTable) continue;
+            string txt = para.TextWithPlaceholders.Trim();
+            if (PdfTableMisclassifiedProseCleanup.IsLikelyTableHeader(para, txt))
+            {
+                continue;
+            }
+            int wordCount = txt.Split(new char[] { ' ', '\t', '\n', '\r' }, StringSplitOptions.RemoveEmptyEntries).Length;
+            if (PdfTableMisclassifiedProseCleanup.IsTallFullColumnProse(para, wordCount, pageWidth))
+            {
+                para.IsTable = false;
+            }
+            else if (System.Text.RegularExpressions.Regex.IsMatch(txt, @"^[A-Z]\.\s"))
+            {
+                para.IsTable = false;
+            }
+            else if (para.Width > pageWidth * 0.38 && wordCount > 10)
+            {
+                para.IsTable = false;
+            }
+            else if (txt.StartsWith("•") || txt.StartsWith("·") ||
+                     txt.StartsWith("To sum up", StringComparison.OrdinalIgnoreCase))
+            {
+                para.IsTable = false;
+            }
+            else if (txt.StartsWith("and ", StringComparison.OrdinalIgnoreCase) && wordCount > 3 && para.Height <= 20)
+            {
+                para.IsTable = false;
+            }
+            else if (System.Text.RegularExpressions.Regex.IsMatch(txt, @"^\d+\s+[A-Za-z]") &&
+                     para.Height <= 25 && para.Width > 120)
+            {
+                para.IsTable = false;
+            }
+        }
+    }
+
+    private static void PropagateBypassToNearbyLabels(List<PdfParagraph> pageList, UglyToad.PdfPig.Content.Page page)
+    {
+        bool pageHasDiagramLabels = pageList.Any(p => p.IsDiagram);
+        int diagramLabelMaxLen = pageHasDiagramLabels ? 80 : 20;
+        bool changed = true;
+        while (changed)
+        {
+            changed = false;
+            foreach (var para in pageList)
+            {
+                if (para.IsBypassed || para.IsTable || para.IsCode) continue;
+                if (page.Number == 1 && PageOneLayoutClassifier.IsAuthorBlockParagraph(para, pageList, page.Height)) continue;
+                if (PdfParagraphRoleClassifier.IsRunningHeaderOrFooter(para, page.Height)) continue;
+                if (PdfParagraphRoleClassifier.IsFigureTableCaptionParagraph(para)) continue;
+                if (PdfParagraphRoleClassifier.IsTranslatableBodyProse(para)) continue;
+                if (PdfParagraphRoleClassifier.IsTranslatableCalloutProse(para)) continue;
+
+                bool isSmallLabel = para.TextWithPlaceholders.Length <= diagramLabelMaxLen &&
+                                    !PdfParagraphSemanticClassifier.IsHeadingParagraph(para) && PdfChartLabelClassifier.IsLikelyChartLabel(para);
+                if (isSmallLabel)
+                {
+                    foreach (var other in pageList)
+                    {
+                        if (other == para || !other.IsBypassed) continue;
+                        if (other.IsTable && !other.IsDiagram) continue;
+                        if (PdfParagraphRoleClassifier.IsRunningHeaderOrFooter(other, page.Height)) continue;
+
+                        bool closeX = (para.X0 <= other.X1 + 30) && (para.X1 >= other.X0 - 30);
+                        bool closeY = (para.Y0 <= other.Y1 + 30) && (para.Y1 >= other.Y0 - 30);
+
+                        if (closeX && closeY)
+                        {
+                            para.IsBypassed = true;
+                            if (other.IsDiagram)
+                            {
+                                para.IsDiagram = true;
+                                para.IsTable = false;
+                            }
+                            changed = true;
+                            break;
+                        }
+                    }
+                }
+            }
         }
     }
 }
