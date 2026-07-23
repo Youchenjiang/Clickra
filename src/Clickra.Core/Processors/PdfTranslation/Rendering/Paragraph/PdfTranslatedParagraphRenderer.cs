@@ -93,67 +93,10 @@ internal static class PdfTranslatedParagraphRenderer
             // glyph itself.  Give such markers a minimal measurable box rather
             // than reporting a false overflow (there is no adjacent prose to
             // collide with).
-            double layoutWidth = Math.Max(paragraphWidth, 24.0);
-            if (!isRotated && isHeading)
-            {
-                double pageCenter = gfx.PageSize.Width / 2.0;
-                double maxBoundary = isPageTitle
-                    ? gfx.PageSize.Width + 30.0
-                    : gfx.PageSize.Width - 54.0; // Default right margin
-
-                // If it's in the left column, limit expansion to the middle of the page
-                if (para.OriginalX1 <= pageCenter + 10.0)
-                {
-                    maxBoundary = pageCenter - 10.0;
-                }
-
-                double remainingWidth = maxBoundary - paragraphX;
-                if (remainingWidth > layoutWidth)
-                {
-                    layoutWidth = remainingWidth;
-                }
-                if (isPageTitle)
-                {
-                    // A translated title may be substantially wider than the
-                    // Latin source.  Give the line breaker the full title band;
-                    // the draw pass applies horizontal fitting while retaining
-                    // the source vertical font size.
-                    layoutWidth = Math.Max(layoutWidth, gfx.PageSize.Width * 1.5);
-                }
-            }
-            XGraphicsState? state = null;
-            string dirStr = para.TextDirection?.ToString() ?? "";
-
-            if (dirStr == "Rotate270")
-            {
-                double startX = para.X0;
-                double startY = pageHeight - para.Y0;
-                state = gfx.Save();
-                gfx.TranslateTransform(startX, startY);
-                gfx.RotateTransform(-90);
-                layoutWidth = para.Height;
-                isRotated = true;
-            }
-            else if (dirStr == "Rotate90")
-            {
-                double startX = para.X1;
-                double startY = pageHeight - para.Y1;
-                state = gfx.Save();
-                gfx.TranslateTransform(startX, startY);
-                gfx.RotateTransform(90);
-                layoutWidth = para.Height;
-                isRotated = true;
-            }
-            else if (dirStr == "Rotate180")
-            {
-                double startX = para.X1;
-                double startY = pageHeight - para.Y0;
-                state = gfx.Save();
-                gfx.TranslateTransform(startX, startY);
-                gfx.RotateTransform(180);
-                layoutWidth = paragraphWidth;
-                isRotated = true;
-            }
+            double layoutWidth = ComputeLayoutWidth(
+                gfx, para, isHeading, isPageTitle, paragraphX, paragraphWidth);
+            XGraphicsState? state = ApplyRotationTransform(
+                gfx, para, paragraphX, paragraphY, paragraphWidth, ref layoutWidth, ref isRotated);
             // Compute dynamic line spacing
             double lineSpacingMultiplier = 1.35; // Default CJK line height
             if (isHeading)
@@ -212,53 +155,13 @@ internal static class PdfTranslatedParagraphRenderer
             if (!isHeading && para.LayoutLineSpacingMultiplierOverride > 0)
                 lineSpacingMultiplier = para.LayoutLineSpacingMultiplierOverride;
             double lineHeight = fontSize * lineSpacingMultiplier;
-            List<PdfLayoutRow> rows = new();
-            double renderedHeight = 0;
-            double maxRowWidth = 0;
 
-            // Translated CJK can require more rows than the source paragraph. Reflow and
-            // reduce the font gradually, including headings, until both dimensions fit.
-            // The lower bound preserves legibility while avoiding the old clip-and-hide path.
-            for (int attempt = 0; attempt < 6; attempt++)
-            {
-                rows = PdfParagraphLayoutEngine.LayoutParagraph(
-                    tokens, mainFont, para.Formulas, layoutWidth, fontSize, para.AverageFontSize, gfx);
-                renderedHeight = rows.Count * lineHeight;
-                maxRowWidth = rows.Count == 0
-                    ? 0
-                    : rows.Max(row => row.Elements.Sum(element => element.Width));
-
-                bool fitsWidth = maxRowWidth <= layoutWidth + 0.5;
-                // A heading is allowed to consume its natural line height.  The
-                // mask is extended upward for the extra height; shrinking a
-                // heading to fit the old one-line box breaks hierarchy.
-                // Body paragraphs must not shrink merely because PdfPig gave a
-                // final source line an undersized glyph box. Their natural line
-                // height is valid; masks/layout planning handle the extra space.
-                bool fitsHeight = isHeading || allowNaturalBodyHeight || flowableBody ||
-                    renderedHeight <= limitHeight + 0.5;
-                if (fitsWidth && fitsHeight) break;
-                // Heading hierarchy is a hard constraint. A heading that does
-                // not fit must be handled by the layout planner or fail closed.
-                if (isHeading) break;
-
-                double scale = 0.94;
-                if (!fitsWidth && maxRowWidth > 0)
-                    scale = Math.Min(scale, layoutWidth / maxRowWidth);
-                if (!fitsHeight && renderedHeight > 0)
-                    scale = Math.Min(scale, limitHeight / renderedHeight);
-
-                scale = Math.Clamp(scale, 0.80, 0.94);
-                double minimumFontSize = Math.Max(sourceBodyFontFloor, para.AverageFontSize * 0.80);
-                double nextFontSize = fontSize * scale;
-                if (flowableBody)
-                    nextFontSize = Math.Max(minimumFontSize, nextFontSize);
-                if (nextFontSize >= fontSize - 0.01) break;
-
-                fontSize = nextFontSize;
-                mainFont = new XFont(fontNameForPara, fontSize, fontStyle);
-                lineHeight = fontSize * lineSpacingMultiplier;
-            }
+            RunFontShrinkLoop(
+                tokens, para.Formulas, gfx, fontNameForPara, fontStyle,
+                layoutWidth, limitHeight, isHeading, allowNaturalBodyHeight, flowableBody, sourceBodyFontFloor,
+                para.AverageFontSize,
+                ref fontSize, ref mainFont, ref lineHeight, ref lineSpacingMultiplier,
+                out List<PdfLayoutRow> rows, out double renderedHeight, out double maxRowWidth);
 
             // Actual rendered height = number of rows × line height
             renderedHeight = rows.Count * lineHeight;
@@ -319,53 +222,180 @@ internal static class PdfTranslatedParagraphRenderer
                 gfx.Restore(headingScaleState);
 
             if (state != null)
-            {
                 gfx.Restore(state);
-            }
 
             renderedCharsSink?.Invoke(renderedChars);
 
             // Align annotations
-            if (!isRotated && para.Annotations.Count > 0 && renderedChars.Count > 0)
-            {
-                foreach (var annotInfo in para.Annotations)
-                {
-                    try
-                    {
-                        var matched = PdfAnnotationTextMatcher.FindAnnotationCharacters(
-                            renderedChars,
-                            annotInfo.Text,
-                            annotInfo.OccurrenceIndex,
-                            annotInfo.RelCenterX,
-                            annotInfo.RelCenterY,
-                            annotInfo.RelWidth,
-                            para.X0,
-                            para.Y0,
-                            para.Width,
-                            para.Height,
-                            annotInfo.FigureOccurrenceIndex);
-                        if (matched != null && matched.Count > 0)
-                        {
-                            double minLeft = matched.Min(rc => rc.Left);
-                            double maxRight = matched.Max(rc => rc.Right);
-                            double minBottom = matched.Min(rc => rc.Bottom);
-                            double maxTop = matched.Max(rc => rc.Top);
-
-                            double paddingX = 1.0;
-                            double paddingY = 1.5;
-
-                            annotInfo.PdfAnnotation.Rectangle = new PdfRectangle(
-                                new XPoint(minLeft - paddingX, minBottom - paddingY),
-                                new XPoint(maxRight + paddingX, maxTop + paddingY)
-                            );
-                        }
-                        // else: keep original annotation rect (avoid bad spatial fallback)
-                    }
-                    catch { }
-                }
-            }
+            if (!isRotated)
+                AlignAnnotations(para, renderedChars);
 
             return renderedHeight;
+        }
+
+        private static double ComputeLayoutWidth(
+            XGraphics gfx,
+            PdfParagraph para,
+            bool isHeading,
+            bool isPageTitle,
+            double paragraphX,
+            double paragraphWidth)
+        {
+            double layoutWidth = Math.Max(paragraphWidth, 24.0);
+            if (!isHeading) return layoutWidth;
+
+            double pageCenter = gfx.PageSize.Width / 2.0;
+            double maxBoundary = isPageTitle
+                ? gfx.PageSize.Width + 30.0
+                : gfx.PageSize.Width - 54.0;
+
+            if (para.OriginalX1 <= pageCenter + 10.0)
+                maxBoundary = pageCenter - 10.0;
+
+            double remainingWidth = maxBoundary - paragraphX;
+            if (remainingWidth > layoutWidth)
+                layoutWidth = remainingWidth;
+
+            if (isPageTitle)
+                layoutWidth = Math.Max(layoutWidth, gfx.PageSize.Width * 1.5);
+
+            return layoutWidth;
+        }
+
+        private static XGraphicsState? ApplyRotationTransform(
+            XGraphics gfx,
+            PdfParagraph para,
+            double paragraphX,
+            double paragraphY,
+            double paragraphWidth,
+            ref double layoutWidth,
+            ref bool isRotated)
+        {
+            string dirStr = para.TextDirection?.ToString() ?? "";
+            double pageHeight = gfx.PageSize.Height;
+            if (dirStr == "Rotate270")
+            {
+                var state = gfx.Save();
+                gfx.TranslateTransform(para.X0, pageHeight - para.Y0);
+                gfx.RotateTransform(-90);
+                layoutWidth = para.Height;
+                isRotated = true;
+                return state;
+            }
+            if (dirStr == "Rotate90")
+            {
+                var state = gfx.Save();
+                gfx.TranslateTransform(para.X1, pageHeight - para.Y1);
+                gfx.RotateTransform(90);
+                layoutWidth = para.Height;
+                isRotated = true;
+                return state;
+            }
+            if (dirStr == "Rotate180")
+            {
+                var state = gfx.Save();
+                gfx.TranslateTransform(para.X1, pageHeight - para.Y0);
+                gfx.RotateTransform(180);
+                layoutWidth = paragraphWidth;
+                isRotated = true;
+                return state;
+            }
+            return null;
+        }
+
+        private static void RunFontShrinkLoop(
+            List<string> tokens,
+            List<MathFormula> formulas,
+            XGraphics gfx,
+            string fontNameForPara,
+            XFontStyleEx fontStyle,
+            double layoutWidth,
+            double limitHeight,
+            bool isHeading,
+            bool allowNaturalBodyHeight,
+            bool flowableBody,
+            double sourceBodyFontFloor,
+            double averageFontSize,
+            ref double fontSize,
+            ref XFont mainFont,
+            ref double lineHeight,
+            ref double lineSpacingMultiplier,
+            out List<PdfLayoutRow> rows,
+            out double renderedHeight,
+            out double maxRowWidth)
+        {
+            rows = new();
+            renderedHeight = 0;
+            maxRowWidth = 0;
+
+            // Translated CJK can require more rows than the source paragraph. Reflow and
+            // reduce the font gradually, including headings, until both dimensions fit.
+            // The lower bound preserves legibility while avoiding the old clip-and-hide path.
+            for (int attempt = 0; attempt < 6; attempt++)
+            {
+                rows = PdfParagraphLayoutEngine.LayoutParagraph(
+                    tokens, mainFont, formulas, layoutWidth, fontSize, averageFontSize, gfx);
+                renderedHeight = rows.Count * lineHeight;
+                maxRowWidth = rows.Count == 0
+                    ? 0
+                    : rows.Max(row => row.Elements.Sum(element => element.Width));
+
+                bool fitsWidth = maxRowWidth <= layoutWidth + 0.5;
+                bool fitsHeight = isHeading || allowNaturalBodyHeight || flowableBody ||
+                    renderedHeight <= limitHeight + 0.5;
+                if (fitsWidth && fitsHeight) break;
+                if (isHeading) break;
+
+                double scale = 0.94;
+                if (!fitsWidth && maxRowWidth > 0)
+                    scale = Math.Min(scale, layoutWidth / maxRowWidth);
+                if (!fitsHeight && renderedHeight > 0)
+                    scale = Math.Min(scale, limitHeight / renderedHeight);
+
+                scale = Math.Clamp(scale, 0.80, 0.94);
+                double minimumFontSize = Math.Max(sourceBodyFontFloor, fontSize * 0.80);
+                double nextFontSize = fontSize * scale;
+                if (flowableBody)
+                    nextFontSize = Math.Max(minimumFontSize, nextFontSize);
+                if (nextFontSize >= fontSize - 0.01) break;
+
+                fontSize = nextFontSize;
+                mainFont = new XFont(fontNameForPara, fontSize, fontStyle);
+                lineHeight = fontSize * lineSpacingMultiplier;
+            }
+        }
+
+        private static void AlignAnnotations(PdfParagraph para, List<RenderedChar> renderedChars)
+        {
+            if (para.Annotations.Count == 0 || renderedChars.Count == 0) return;
+            foreach (var annotInfo in para.Annotations)
+            {
+                try
+                {
+                    var matched = PdfAnnotationTextMatcher.FindAnnotationCharacters(
+                        renderedChars,
+                        annotInfo.Text,
+                        annotInfo.OccurrenceIndex,
+                        annotInfo.RelCenterX,
+                        annotInfo.RelCenterY,
+                        annotInfo.RelWidth,
+                        para.X0,
+                        para.Y0,
+                        para.Width,
+                        para.Height,
+                        annotInfo.FigureOccurrenceIndex);
+                    if (matched != null && matched.Count > 0)
+                    {
+                        double paddingX = 1.0;
+                        double paddingY = 1.5;
+                        annotInfo.PdfAnnotation.Rectangle = new PdfRectangle(
+                            new XPoint(matched.Min(rc => rc.Left) - paddingX, matched.Min(rc => rc.Bottom) - paddingY),
+                            new XPoint(matched.Max(rc => rc.Right) + paddingX, matched.Max(rc => rc.Top) + paddingY));
+                    }
+                    // else: keep original annotation rect (avoid bad spatial fallback)
+                }
+                catch { }
+            }
         }
 
         private static void RenderParagraphRows(
@@ -435,205 +465,248 @@ internal static class PdfTranslatedParagraphRenderer
                     }
                     if (element.IsFormula && element.FormulaId >= 0 && element.FormulaId < para.Formulas.Count)
                     {
-                        var formula = para.Formulas[element.FormulaId];
-                        double scale = fontSize / para.AverageFontSize;
-
-                        bool hasMono = formula.Letters.Any(l => FontUtilities.IsMonospaceFont(l.FontName));
-                        double formulaScale = scale;
-                        if (hasMono)
-                        {
-                            formulaScale *= 1.0;
-                        }
-
-                        if (FontUtilities.ShouldMergeFormula(formula, para.AverageFontSize))
-                        {
-                            string mergedText = string.Join("", formula.Letters.Select(l => l.Value));
-                            double fSize = formula.Letters[0].FontSize * formulaScale;
-
-                            string fontToUse = formula.Letters[0].FontName;
-                            foreach (var l in formula.Letters)
-                            {
-                                if (FontUtilities.IsMonospaceFont(l.FontName))
-                                {
-                                    fontToUse = l.FontName;
-                                    break;
-                                }
-                            }
-
-                            XFont mathFont = FontUtilities.GetMathFont(fontToUse, fSize);
-
-                            double avgY = formula.Letters.Average(l => l.RelativeY);
-                            double my = currentY - avgY * formulaScale - (fontSize * 0.15);
-
-                            string normText = FontUtilities.NormalizeRenderValue(mergedText);
-                            gfx.DrawString(normText, mathFont, brush, currentX, my);
-
-                            double offset = 0;
-                            for (int cIdx = 0; cIdx < normText.Length; cIdx++)
-                            {
-                                char ch = normText[cIdx];
-                                double mChW = gfx.MeasureString(ch.ToString(), mathFont).Width;
-                                renderedChars.Add(new RenderedChar
-                                {
-                                    Character = ch,
-                                    Left = currentX + offset,
-                                    Right = currentX + offset + mChW,
-                                    Bottom = pageHeight - my - fSize * 0.15,
-                                    Top = pageHeight - my + fSize * 0.85
-                                });
-                                offset += mChW;
-                            }
-                        }
-                        else
-                        {
-                            foreach (var ml in formula.Letters)
-                            {
-                                double fSize = ml.FontSize * formulaScale;
-                                XFont mathFont = FontUtilities.GetMathFont(ml.FontName, fSize);
-
-                                double mx = currentX + ml.RelativeX * formulaScale;
-                                double my = currentY - ml.RelativeY * formulaScale - (fontSize * 0.15);
-
-                                string drawVal = FontUtilities.NormalizeRenderValue(ml.Value);
-                                if (drawVal.Length == 1 && FontUtilities.IsMathOrGreekCharacter(drawVal[0]))
-                                {
-                                    mathFont = new XFont("Segoe UI Symbol", fSize, mathFont.Style);
-                                }
-
-                                gfx.DrawString(drawVal, mathFont, brush, mx, my);
-
-                                double offset = 0;
-                                for (int cIdx = 0; cIdx < drawVal.Length; cIdx++)
-                                {
-                                    char ch = drawVal[cIdx];
-                                    double mlChW = gfx.MeasureString(ch.ToString(), mathFont).Width;
-                                    renderedChars.Add(new RenderedChar
-                                    {
-                                        Character = ch,
-                                        Left = mx + offset,
-                                        Right = mx + offset + mlChW,
-                                        Bottom = pageHeight - my - fSize * 0.15,
-                                        Top = pageHeight - my + fSize * 0.85
-                                    });
-                                    offset += mlChW;
-                                }
-                            }
-                        }
+                        RenderFormulaElement(
+                            gfx, element, para, brush, fontSize, currentX, currentY, pageHeight, renderedChars);
                         currentX += element.Width;
                         idx++;
                     }
                     else if (element.IsFormula)
                     {
-                        string normText = FontUtilities.NormalizeRenderValue(element.Text);
-                        DrawText(gfx, normText, GetInlineFont(inlineBold), brush, currentX, currentY, UseSyntheticBold(inlineBold));
-                        double offset = 0;
-                        for (int cIdx = 0; cIdx < normText.Length; cIdx++)
-                        {
-                            char ch = normText[cIdx];
-                            double tChW = gfx.MeasureString(ch.ToString(), mainFont).Width;
-                            renderedChars.Add(new RenderedChar
-                            {
-                                Character = ch,
-                                Left = currentX + offset,
-                                Right = currentX + offset + tChW,
-                                Bottom = pageHeight - currentY - fontSize * 0.15,
-                                Top = pageHeight - currentY + fontSize * 0.85
-                            });
-                            offset += tChW;
-                        }
+                        RenderFallbackFormulaText(
+                            gfx, element, GetInlineFont, UseSyntheticBold, mainFont, brush,
+                            fontSize, currentX, currentY, pageHeight, inlineBold, renderedChars);
                         currentX += element.Width;
                         idx++;
                     }
                     else
                     {
-                        var sbMerged = new StringBuilder();
-                        double textStartX = currentX;
-                        double textWidth = 0;
-                        while (idx < row.Elements.Count && !row.Elements[idx].IsFormula && !row.Elements[idx].IsStyleMarker)
-                        {
-                            var elem = row.Elements[idx];
-                            if (elem.Text.Length == 1 && FontUtilities.IsLatinExtendedOrSymbol(elem.Text[0]))
-                            {
-                                if (sbMerged.Length > 0)
-                                {
-                                    string normText = FontUtilities.NormalizeRenderValue(sbMerged.ToString());
-                                    DrawText(gfx, normText, GetInlineFont(inlineBold), brush, textStartX, currentY, UseSyntheticBold(inlineBold));
-
-                                    double offset = 0;
-                                    for (int cIdx = 0; cIdx < normText.Length; cIdx++)
-                                    {
-                                        char ch = normText[cIdx];
-                                        double tChW = gfx.MeasureString(ch.ToString(), mainFont).Width;
-                                        renderedChars.Add(new RenderedChar
-                                        {
-                                            Character = ch,
-                                            Left = textStartX + offset,
-                                            Right = textStartX + offset + tChW,
-                                            Bottom = pageHeight - currentY - fontSize * 0.15,
-                                            Top = pageHeight - currentY + fontSize * 0.85
-                                        });
-                                        offset += tChW;
-                                    }
-                                    sbMerged.Clear();
-                                }
-                                char c = elem.Text[0];
-                                string fallbackFontName;
-                                if (c >= 0x0080 && c <= 0x024F)
-                                {
-                                    fallbackFontName = mainFont.FontFamily.Name.Contains("Courier") ? "Courier New" : "Arial";
-                                }
-                                else
-                                {
-                                    fallbackFontName = "Segoe UI Symbol";
-                                }
-                                XFont fallbackFont = new(fallbackFontName, mainFont.Size, ResolveFontStyle(inlineBold, para.IsItalic));
-                                string normChar = FontUtilities.NormalizeRenderValue(elem.Text);
-                                gfx.DrawString(normChar, fallbackFont, brush, currentX, currentY);
-
-                                double fChW = gfx.MeasureString(normChar, fallbackFont).Width;
-                                renderedChars.Add(new RenderedChar
-                                {
-                                    Character = normChar[0],
-                                    Left = currentX,
-                                    Right = currentX + fChW,
-                                    Bottom = pageHeight - currentY - fontSize * 0.15,
-                                    Top = pageHeight - currentY + fontSize * 0.85
-                                });
-
-                                textStartX = currentX + elem.Width;
-                            }
-                            else
-                            {
-                                sbMerged.Append(elem.Text);
-                            }
-                            textWidth += elem.Width;
-                            currentX += elem.Width;
-                            idx++;
-                        }
-                        if (sbMerged.Length > 0)
-                        {
-                            string normText = FontUtilities.NormalizeRenderValue(sbMerged.ToString());
-                            DrawText(gfx, normText, GetInlineFont(inlineBold), brush, textStartX, currentY, UseSyntheticBold(inlineBold));
-
-                            double offset = 0;
-                            for (int cIdx = 0; cIdx < normText.Length; cIdx++)
-                            {
-                                char ch = normText[cIdx];
-                                double eChW = gfx.MeasureString(ch.ToString(), mainFont).Width;
-                                renderedChars.Add(new RenderedChar
-                                {
-                                    Character = ch,
-                                    Left = textStartX + offset,
-                                    Right = textStartX + offset + eChW,
-                                    Bottom = pageHeight - currentY - fontSize * 0.15,
-                                    Top = pageHeight - currentY + fontSize * 0.85
-                                });
-                                offset += eChW;
-                            }
-                        }
+                        currentX = RenderTextRun(
+                            gfx, row, para, mainFont, brush, GetInlineFont, UseSyntheticBold,
+                            fontSize, currentX, currentY, pageHeight, inlineBold, renderedChars, ref idx);
                     }
                 }
                 currentY += lineHeight;
+            }
+        }
+
+        private static void RenderFormulaElement(
+            XGraphics gfx,
+            PdfLayoutElement element,
+            PdfParagraph para,
+            XBrush brush,
+            double fontSize,
+            double currentX,
+            double currentY,
+            double pageHeight,
+            List<RenderedChar> renderedChars)
+        {
+            var formula = para.Formulas[element.FormulaId];
+            double scale = para.AverageFontSize > 0 ? fontSize / para.AverageFontSize : 1.0;
+            bool hasMono = formula.Letters.Any(l => FontUtilities.IsMonospaceFont(l.FontName));
+            double formulaScale = hasMono ? scale : scale;
+
+            if (FontUtilities.ShouldMergeFormula(formula, para.AverageFontSize))
+                RenderFormulaMerged(gfx, formula, brush, fontSize, formulaScale, currentX, currentY, pageHeight, renderedChars);
+            else
+                RenderFormulaLetters(gfx, formula, brush, fontSize, formulaScale, currentX, currentY, pageHeight, renderedChars);
+        }
+
+        private static void RenderFormulaMerged(
+            XGraphics gfx,
+            MathFormula formula,
+            XBrush brush,
+            double fontSize,
+            double formulaScale,
+            double currentX,
+            double currentY,
+            double pageHeight,
+            List<RenderedChar> renderedChars)
+        {
+            string mergedText = string.Join("", formula.Letters.Select(l => l.Value));
+            double fSize = formula.Letters[0].FontSize * formulaScale;
+            string fontToUse = formula.Letters.FirstOrDefault(l => FontUtilities.IsMonospaceFont(l.FontName))?.FontName
+                ?? formula.Letters[0].FontName;
+            XFont mathFont = FontUtilities.GetMathFont(fontToUse, fSize);
+            double avgY = formula.Letters.Average(l => l.RelativeY);
+            double my = currentY - avgY * formulaScale - (fontSize * 0.15);
+            string normText = FontUtilities.NormalizeRenderValue(mergedText);
+            gfx.DrawString(normText, mathFont, brush, currentX, my);
+            double offset = 0;
+            foreach (char ch in normText)
+            {
+                double mChW = gfx.MeasureString(ch.ToString(), mathFont).Width;
+                renderedChars.Add(new RenderedChar
+                {
+                    Character = ch,
+                    Left = currentX + offset,
+                    Right = currentX + offset + mChW,
+                    Bottom = pageHeight - my - fSize * 0.15,
+                    Top = pageHeight - my + fSize * 0.85
+                });
+                offset += mChW;
+            }
+        }
+
+        private static void RenderFormulaLetters(
+            XGraphics gfx,
+            MathFormula formula,
+            XBrush brush,
+            double fontSize,
+            double formulaScale,
+            double currentX,
+            double currentY,
+            double pageHeight,
+            List<RenderedChar> renderedChars)
+        {
+            foreach (var ml in formula.Letters)
+            {
+                double fSize = ml.FontSize * formulaScale;
+                XFont mathFont = FontUtilities.GetMathFont(ml.FontName, fSize);
+                double mx = currentX + ml.RelativeX * formulaScale;
+                double my = currentY - ml.RelativeY * formulaScale - (fontSize * 0.15);
+                string drawVal = FontUtilities.NormalizeRenderValue(ml.Value);
+                if (drawVal.Length == 1 && FontUtilities.IsMathOrGreekCharacter(drawVal[0]))
+                    mathFont = new XFont("Segoe UI Symbol", fSize, mathFont.Style);
+                gfx.DrawString(drawVal, mathFont, brush, mx, my);
+                double offset = 0;
+                foreach (char ch in drawVal)
+                {
+                    double mlChW = gfx.MeasureString(ch.ToString(), mathFont).Width;
+                    renderedChars.Add(new RenderedChar
+                    {
+                        Character = ch,
+                        Left = mx + offset,
+                        Right = mx + offset + mlChW,
+                        Bottom = pageHeight - my - fSize * 0.15,
+                        Top = pageHeight - my + fSize * 0.85
+                    });
+                    offset += mlChW;
+                }
+            }
+        }
+
+        private static void RenderFallbackFormulaText(
+            XGraphics gfx,
+            PdfLayoutElement element,
+            Func<bool, XFont> GetInlineFont,
+            Func<bool, bool> UseSyntheticBold,
+            XFont mainFont,
+            XBrush brush,
+            double fontSize,
+            double currentX,
+            double currentY,
+            double pageHeight,
+            bool inlineBold,
+            List<RenderedChar> renderedChars)
+        {
+            string normText = FontUtilities.NormalizeRenderValue(element.Text);
+            DrawText(gfx, normText, GetInlineFont(inlineBold), brush, currentX, currentY, UseSyntheticBold(inlineBold));
+            double offset = 0;
+            foreach (char ch in normText)
+            {
+                double tChW = gfx.MeasureString(ch.ToString(), mainFont).Width;
+                renderedChars.Add(new RenderedChar
+                {
+                    Character = ch,
+                    Left = currentX + offset,
+                    Right = currentX + offset + tChW,
+                    Bottom = pageHeight - currentY - fontSize * 0.15,
+                    Top = pageHeight - currentY + fontSize * 0.85
+                });
+                offset += tChW;
+            }
+        }
+
+        private static double RenderTextRun(
+            XGraphics gfx,
+            PdfLayoutRow row,
+            PdfParagraph para,
+            XFont mainFont,
+            XBrush brush,
+            Func<bool, XFont> GetInlineFont,
+            Func<bool, bool> UseSyntheticBold,
+            double fontSize,
+            double currentX,
+            double currentY,
+            double pageHeight,
+            bool inlineBold,
+            List<RenderedChar> renderedChars,
+            ref int idx)
+        {
+            var sbMerged = new StringBuilder();
+            double textStartX = currentX;
+            while (idx < row.Elements.Count && !row.Elements[idx].IsFormula && !row.Elements[idx].IsStyleMarker)
+            {
+                var elem = row.Elements[idx];
+                if (elem.Text.Length == 1 && FontUtilities.IsLatinExtendedOrSymbol(elem.Text[0]))
+                {
+                    if (sbMerged.Length > 0)
+                    {
+                        FlushTextBuffer(gfx, sbMerged, mainFont, GetInlineFont, UseSyntheticBold,
+                            brush, fontSize, textStartX, currentY, pageHeight, inlineBold, renderedChars);
+                        sbMerged.Clear();
+                    }
+                    string fallbackFontName = elem.Text[0] >= 0x0080 && elem.Text[0] <= 0x024F
+                        ? (mainFont.FontFamily.Name.Contains("Courier") ? "Courier New" : "Arial")
+                        : "Segoe UI Symbol";
+                    XFont fallbackFont = new(fallbackFontName, mainFont.Size, ResolveFontStyle(inlineBold, para.IsItalic));
+                    string normChar = FontUtilities.NormalizeRenderValue(elem.Text);
+                    gfx.DrawString(normChar, fallbackFont, brush, currentX, currentY);
+                    double fChW = gfx.MeasureString(normChar, fallbackFont).Width;
+                    renderedChars.Add(new RenderedChar
+                    {
+                        Character = normChar[0],
+                        Left = currentX,
+                        Right = currentX + fChW,
+                        Bottom = pageHeight - currentY - fontSize * 0.15,
+                        Top = pageHeight - currentY + fontSize * 0.85
+                    });
+                    textStartX = currentX + elem.Width;
+                }
+                else
+                {
+                    sbMerged.Append(elem.Text);
+                }
+                currentX += elem.Width;
+                idx++;
+            }
+            if (sbMerged.Length > 0)
+            {
+                FlushTextBuffer(gfx, sbMerged, mainFont, GetInlineFont, UseSyntheticBold,
+                    brush, fontSize, textStartX, currentY, pageHeight, inlineBold, renderedChars);
+            }
+            return currentX;
+        }
+
+        private static void FlushTextBuffer(
+            XGraphics gfx,
+            StringBuilder sbMerged,
+            XFont mainFont,
+            Func<bool, XFont> GetInlineFont,
+            Func<bool, bool> UseSyntheticBold,
+            XBrush brush,
+            double fontSize,
+            double textStartX,
+            double currentY,
+            double pageHeight,
+            bool inlineBold,
+            List<RenderedChar> renderedChars)
+        {
+            string normText = FontUtilities.NormalizeRenderValue(sbMerged.ToString());
+            DrawText(gfx, normText, GetInlineFont(inlineBold), brush, textStartX, currentY, UseSyntheticBold(inlineBold));
+            double offset = 0;
+            foreach (char ch in normText)
+            {
+                double tChW = gfx.MeasureString(ch.ToString(), mainFont).Width;
+                renderedChars.Add(new RenderedChar
+                {
+                    Character = ch,
+                    Left = textStartX + offset,
+                    Right = textStartX + offset + tChW,
+                    Bottom = pageHeight - currentY - fontSize * 0.15,
+                    Top = pageHeight - currentY + fontSize * 0.85
+                });
+                offset += tChW;
             }
         }
 
