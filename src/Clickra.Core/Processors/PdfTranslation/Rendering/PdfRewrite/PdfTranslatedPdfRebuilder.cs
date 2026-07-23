@@ -346,8 +346,8 @@ internal static class PdfTranslatedPdfRebuilder
                     // instead of downward so masks from upper paragraphs cannot erase table borders.
                     double maskPdfX0 = maskX0 - maskPad;
                     double maskPdfX1 = maskX1 + maskPad;
-                    double maskPdfY0;
-                    double maskPdfY1;
+                    double maskPdfY0 = 0.0;
+                    double maskPdfY1 = 0.0;
                     if (isFigureCaption)
                     {
                         // Captions must erase the source caption, but must not

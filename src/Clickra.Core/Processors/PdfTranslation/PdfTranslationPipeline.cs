@@ -103,7 +103,7 @@ namespace Clickra.Core.Processors
                     onProgress,
                     operationToken);
 
-                int outputPages;
+                int outputPages = 0;
                 using (var rebuiltDoc = PdfReader.Open(partialOutputPath, PdfDocumentOpenMode.Import))
                 {
                     outputPages = rebuiltDoc.PageCount;
