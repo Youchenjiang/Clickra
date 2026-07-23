@@ -6,6 +6,8 @@ namespace Clickra.Core.Processors;
 
 internal static class PdfPageParagraphBuilder
 {
+    private static readonly char[] WhitespaceSeparators = [' ', '\t', '\n', '\r'];
+
     public static List<PdfParagraph> BuildPageParagraphs(UglyToad.PdfPig.Content.Page page)
     {
         ArgumentNullException.ThrowIfNull(page);
@@ -38,6 +40,27 @@ internal static class PdfPageParagraphBuilder
         CleanupTableProseClassifications(pageList, page.Width);
 
         // Pass 1: Mark initial bypassed paragraphs (short figure labels only)
+        MarkInitialDiagramParagraphs(pageList, page);
+
+        var effectiveDiagramRegions = ClassifyDiagramAndGrayRegions(pageList, page);
+
+        // Pass 2: Propagate bypass to nearby small/label paragraphs (e.g. annotations inside drawings)
+        PropagateBypassToNearbyLabels(pageList, page);
+
+        PostProcessDiagramAndGrayFlags(pageList, page, effectiveDiagramRegions);
+        FinalizeParagraphBypassFlags(pageList, page);
+
+        // This is the final invariant pass: no later classifier may turn a
+        // short selectable workflow label back into a translatable paragraph.
+        // Doing it immediately before returning the page list prevents white
+        // masks from erasing labels in vector figures such as ASTER Figure 3.
+        PdfDiagramLabelMarker.FinalizeShortFigureLabels(pageList, effectiveDiagramRegions);
+
+        return pageList;
+    }
+
+    private static void MarkInitialDiagramParagraphs(List<PdfParagraph> pageList, UglyToad.PdfPig.Content.Page page)
+    {
         foreach (var para in pageList)
         {
             if (PdfGrayPromptClassifier.IsGrayPromptBoxParagraph(para) || PdfGrayPromptClassifier.IsGrayPromptSubheading(para))
@@ -59,7 +82,10 @@ internal static class PdfPageParagraphBuilder
                 }
             }
         }
+    }
 
+    private static List<TableMaskRegion> ClassifyDiagramAndGrayRegions(List<PdfParagraph> pageList, UglyToad.PdfPig.Content.Page page)
+    {
         var diagramRegions = PdfDiagramMaskBuilder.BuildProcessedDiagramMaskRegions(page, pageList);
         PdfDiagramFlagCleaner.ClearDiagramFlagOnRunningHeaders(pageList, page.Height);
 
@@ -96,9 +122,14 @@ internal static class PdfPageParagraphBuilder
                               PdfParagraphSemanticClassifier.IsEquationParagraph(para) || PdfTableParagraphClassifier.IsTableParagraph(para) || para.IsDiagram || para.IsTable;
         }
 
-        // Pass 2: Propagate bypass to nearby small/label paragraphs (e.g. annotations inside drawings)
-        PropagateBypassToNearbyLabels(pageList, page);
+        return effectiveDiagramRegions;
+    }
 
+    private static void PostProcessDiagramAndGrayFlags(
+        List<PdfParagraph> pageList,
+        UglyToad.PdfPig.Content.Page page,
+        List<TableMaskRegion> effectiveDiagramRegions)
+    {
         PdfDiagramFlagCleaner.ClearDiagramFlagOnRunningHeaders(pageList, page.Height);
         PdfDiagramFlagCleaner.ClearDiagramFlagOnTranslatableProse(pageList, effectiveDiagramRegions);
         PdfDiagramLabelMarker.MarkWorkflowFigureLabelsAboveCaption(pageList, page.Height);
@@ -168,7 +199,10 @@ internal static class PdfPageParagraphBuilder
             PdfGrayPromptMarker.RestoreGrayPromptContinuations(pageList);
             PdfGrayPromptMarker.FinalizeGrayPromptContentFlags(pageList);
         }
+    }
 
+    private static void FinalizeParagraphBypassFlags(List<PdfParagraph> pageList, UglyToad.PdfPig.Content.Page page)
+    {
         if (page.Number == 1)
             PageOneLayoutClassifier.ApplyAuthorBlockFlags(pageList, page.Height);
 
@@ -223,14 +257,6 @@ internal static class PdfPageParagraphBuilder
                               PdfChartLabelClassifier.IsChartTickGlyph(para) ||
                               isPublicationMetadata || isTinyFixedLabel;
         }
-
-        // This is the final invariant pass: no later classifier may turn a
-        // short selectable workflow label back into a translatable paragraph.
-        // Doing it immediately before returning the page list prevents white
-        // masks from erasing labels in vector figures such as ASTER Figure 3.
-        PdfDiagramLabelMarker.FinalizeShortFigureLabels(pageList, effectiveDiagramRegions);
-
-        return pageList;
     }
 
     private static void ProcessBlockLines(
@@ -256,40 +282,7 @@ internal static class PdfPageParagraphBuilder
         foreach (var line in blockLines)
         {
             bool isMath = PdfParagraph.IsMathLine(line);
-            bool startsNew = PdfParagraphBlockMerger.StartsNewParagraphOrSection(line.Text);
-
-            bool prevLineEndedEarly = false;
-            bool prevLineWasHeading = false;
-            bool isVerticalGapLarge = false;
-            if (currentGroup.Count > 0)
-            {
-                var prevLine = currentGroup[currentGroup.Count - 1];
-                if (prevLine.BoundingBox.Right < block.Right - 20.0)
-                {
-                    prevLineEndedEarly = true;
-                }
-                if (PdfParagraphBlockMerger.IsHeadingLine(prevLine))
-                {
-                    prevLineWasHeading = true;
-                }
-
-                double gapY = prevLine.BoundingBox.Bottom - line.BoundingBox.Top;
-                if (gapY > 15.0)
-                {
-                    isVerticalGapLarge = true;
-                }
-            }
-
-            bool prevLineHasGap = isTablePage && currentGroup.Count > 0 && PdfTextLineGeometry.HasColumnGap(currentGroup[currentGroup.Count - 1]);
-            bool currLineHasGap = isTablePage && PdfTextLineGeometry.HasColumnGap(line);
-            bool crossColumnSplit = currentGroup.Count > 0 &&
-                PdfPageReadingOrder.IsLineInLeftColumn(currentGroup[currentGroup.Count - 1], page.Width) !=
-                PdfPageReadingOrder.IsLineInLeftColumn(line, page.Width);
-            bool forceSplit = isTableBlock && currentGroup.Count > 0;
-
-            bool shouldSplit = startsNew || isVerticalGapLarge || crossColumnSplit ||
-                (prevLineEndedEarly && !prevLineWasHeading) || (prevLineWasHeading && !FontUtilities.IsLineBold(line)) ||
-                prevLineHasGap || currLineHasGap || forceSplit;
+            bool shouldSplit = ShouldSplitBlockLine(line, block, page, isTablePage, isTableBlock, currentGroup);
 
             if (currentGroup.Count == 0)
             {
@@ -317,6 +310,50 @@ internal static class PdfPageParagraphBuilder
         }
     }
 
+    private static bool ShouldSplitBlockLine(
+        UglyToad.PdfPig.DocumentLayoutAnalysis.TextLine line,
+        PdfParagraphBlockMerger.MergedBlock block,
+        UglyToad.PdfPig.Content.Page page,
+        bool isTablePage,
+        bool isTableBlock,
+        List<UglyToad.PdfPig.DocumentLayoutAnalysis.TextLine> currentGroup)
+    {
+        bool startsNew = PdfParagraphBlockMerger.StartsNewParagraphOrSection(line.Text);
+
+        bool prevLineEndedEarly = false;
+        bool prevLineWasHeading = false;
+        bool isVerticalGapLarge = false;
+        if (currentGroup.Count > 0)
+        {
+            var prevLine = currentGroup[currentGroup.Count - 1];
+            if (prevLine.BoundingBox.Right < block.Right - 20.0)
+            {
+                prevLineEndedEarly = true;
+            }
+            if (PdfParagraphBlockMerger.IsHeadingLine(prevLine))
+            {
+                prevLineWasHeading = true;
+            }
+
+            double gapY = prevLine.BoundingBox.Bottom - line.BoundingBox.Top;
+            if (gapY > 15.0)
+            {
+                isVerticalGapLarge = true;
+            }
+        }
+
+        bool prevLineHasGap = isTablePage && currentGroup.Count > 0 && PdfTextLineGeometry.HasColumnGap(currentGroup[currentGroup.Count - 1]);
+        bool currLineHasGap = isTablePage && PdfTextLineGeometry.HasColumnGap(line);
+        bool crossColumnSplit = currentGroup.Count > 0 &&
+            PdfPageReadingOrder.IsLineInLeftColumn(currentGroup[currentGroup.Count - 1], page.Width) !=
+            PdfPageReadingOrder.IsLineInLeftColumn(line, page.Width);
+        bool forceSplit = isTableBlock && currentGroup.Count > 0;
+
+        return startsNew || isVerticalGapLarge || crossColumnSplit ||
+            (prevLineEndedEarly && !prevLineWasHeading) || (prevLineWasHeading && !FontUtilities.IsLineBold(line)) ||
+            prevLineHasGap || currLineHasGap || forceSplit;
+    }
+
     private static void SanitizeTextPlaceholders(List<PdfParagraph> pageList)
     {
         foreach (var para in pageList)
@@ -341,7 +378,7 @@ internal static class PdfPageParagraphBuilder
             {
                 continue;
             }
-            int wordCount = txt.Split(new char[] { ' ', '\t', '\n', '\r' }, StringSplitOptions.RemoveEmptyEntries).Length;
+            int wordCount = txt.Split(WhitespaceSeparators, StringSplitOptions.RemoveEmptyEntries).Length;
             if (PdfTableMisclassifiedProseCleanup.IsTallFullColumnProse(para, wordCount, pageWidth))
             {
                 para.IsTable = false;
@@ -392,29 +429,37 @@ internal static class PdfPageParagraphBuilder
                                     !PdfParagraphSemanticClassifier.IsHeadingParagraph(para) && PdfChartLabelClassifier.IsLikelyChartLabel(para);
                 if (isSmallLabel)
                 {
-                    foreach (var other in pageList)
+                    if (TryPropagateBypassForLabel(para, pageList, page.Height))
                     {
-                        if (other == para || !other.IsBypassed) continue;
-                        if (other.IsTable && !other.IsDiagram) continue;
-                        if (PdfParagraphRoleClassifier.IsRunningHeaderOrFooter(other, page.Height)) continue;
-
-                        bool closeX = (para.X0 <= other.X1 + 30) && (para.X1 >= other.X0 - 30);
-                        bool closeY = (para.Y0 <= other.Y1 + 30) && (para.Y1 >= other.Y0 - 30);
-
-                        if (closeX && closeY)
-                        {
-                            para.IsBypassed = true;
-                            if (other.IsDiagram)
-                            {
-                                para.IsDiagram = true;
-                                para.IsTable = false;
-                            }
-                            changed = true;
-                            break;
-                        }
+                        changed = true;
                     }
                 }
             }
         }
+    }
+
+    private static bool TryPropagateBypassForLabel(PdfParagraph para, List<PdfParagraph> pageList, double pageHeight)
+    {
+        foreach (var other in pageList)
+        {
+            if (other == para || !other.IsBypassed) continue;
+            if (other.IsTable && !other.IsDiagram) continue;
+            if (PdfParagraphRoleClassifier.IsRunningHeaderOrFooter(other, pageHeight)) continue;
+
+            bool closeX = (para.X0 <= other.X1 + 30) && (para.X1 >= other.X0 - 30);
+            bool closeY = (para.Y0 <= other.Y1 + 30) && (para.Y1 >= other.Y0 - 30);
+
+            if (closeX && closeY)
+            {
+                para.IsBypassed = true;
+                if (other.IsDiagram)
+                {
+                    para.IsDiagram = true;
+                    para.IsTable = false;
+                }
+                return true;
+            }
+        }
+        return false;
     }
 }
