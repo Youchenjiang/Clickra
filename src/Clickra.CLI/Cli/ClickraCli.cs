@@ -31,58 +31,14 @@ namespace Clickra
             AttachParentConsoleForCli(args);
             try { PdfSharp.Fonts.GlobalFontSettings.FontResolver = new ClickraFontResolver(); } catch { }
             try { SetProcessDpiAwarenessContext((IntPtr)(-4)); } catch { }
-            if (args.Length == 0 || args[0] == "-v" || args[0] == "--version")
-            {
-                var version = typeof(ClickraCli).Assembly.GetName().Version?.ToString(3) ?? "Unknown";
-                
-                if (args.Length == 0)
-                {
-                    DashboardWindow.Show();
-                    return;
-                }
+            if (HandleVersionOrDeploy(args)) return;
 
-                Console.WriteLine($"Clickra v{version} (Modern Shell Edition)");
-                Console.WriteLine("Author: Youchen Jiang");
-                Console.WriteLine("Commands: ppt2pdf, word2pdf, excel2pdf, merge-pdf, compress-pdf, img2pdf, img-merge, img-stitch, translate-pdf, decrypt-pdf, --deploy");
-                return;
-            }
-
-            if (args[0].ToLowerInvariant() == "--deploy" && args.Length >= 2)
-            {
-                DeployAssets(args[1]);
-                return;
-            }
-
-            bool quietByDefault = ClickraStorage.GetSetting("QuietMode").Equals("true", StringComparison.OrdinalIgnoreCase);
-            bool quiet = quietByDefault;
             var argList = args.ToList();
-            if (argList.Contains("--quiet"))
-            {
-                quiet = true;
-                argList.Remove("--quiet");
-            }
-            if (argList.Contains("--no-ui"))
-            {
-                quiet = true;
-                argList.Remove("--no-ui");
-            }
-            if (argList.Contains("--show-ui"))
-            {
-                quiet = false;
-                argList.Remove("--show-ui");
-            }
-            string? outputDirOverride = ExtractOptionValue(argList, "--out-dir", "-o", "--out");
-            bool hasCliLevel = argList.Contains("--level") || argList.Contains("--compression-level");
-            string compressionLevel = ExtractOptionValue(argList, "--level", "--compression-level") ?? "balanced";
+            ParseOptions(argList, out bool quiet, out string? outputDirOverride, out bool hasCliLevel, out string compressionLevel);
 
             if (argList.Count < 2)
             {
-                Console.WriteLine("Usage: Clickra <command> [options] <file...>");
-                Console.WriteLine("Options: --quiet / --no-ui  (Run in background without GUI)");
-                Console.WriteLine("         --show-ui          (Force show progress window)");
-                Console.WriteLine("         --out-dir <dir> / -o <dir> / --out <dir>  (Write outputs to directory)");
-                Console.WriteLine("         --level <small|balanced|high>  (PDF compression level)");
-                Console.WriteLine("Deployment: Clickra --deploy <target_dir>");
+                PrintUsage();
                 return;
             }
 
@@ -408,6 +364,55 @@ namespace Clickra
                 }
             }
             if (translationFailed) Environment.ExitCode = 1;
+        }
+
+        private static bool HandleVersionOrDeploy(string[] args)
+        {
+            if (args.Length == 0 || args[0] == "-v" || args[0] == "--version")
+            {
+                var version = typeof(ClickraCli).Assembly.GetName().Version?.ToString(3) ?? "Unknown";
+                if (args.Length == 0)
+                {
+                    DashboardWindow.Show();
+                    return true;
+                }
+
+                Console.WriteLine($"Clickra v{version} (Modern Shell Edition)");
+                Console.WriteLine("Author: Youchen Jiang");
+                Console.WriteLine("Commands: ppt2pdf, word2pdf, excel2pdf, merge-pdf, compress-pdf, img2pdf, img-merge, img-stitch, translate-pdf, decrypt-pdf, --deploy");
+                return true;
+            }
+
+            if (args[0].Equals("--deploy", StringComparison.OrdinalIgnoreCase) && args.Length >= 2)
+            {
+                DeployAssets(args[1]);
+                return true;
+            }
+
+            return false;
+        }
+
+        private static void ParseOptions(List<string> argList, out bool quiet, out string? outputDirOverride, out bool hasCliLevel, out string compressionLevel)
+        {
+            bool quietByDefault = ClickraStorage.GetSetting("QuietMode").Equals("true", StringComparison.OrdinalIgnoreCase);
+            quiet = quietByDefault;
+            if (argList.Contains("--quiet")) { quiet = true; argList.Remove("--quiet"); }
+            if (argList.Contains("--no-ui")) { quiet = true; argList.Remove("--no-ui"); }
+            if (argList.Contains("--show-ui")) { quiet = false; argList.Remove("--show-ui"); }
+
+            outputDirOverride = ExtractOptionValue(argList, "--out-dir", "-o", "--out");
+            hasCliLevel = argList.Contains("--level") || argList.Contains("--compression-level");
+            compressionLevel = ExtractOptionValue(argList, "--level", "--compression-level") ?? "balanced";
+        }
+
+        private static void PrintUsage()
+        {
+            Console.WriteLine("Usage: Clickra <command> [options] <file...>");
+            Console.WriteLine("Options: --quiet / --no-ui  (Run in background without GUI)");
+            Console.WriteLine("         --show-ui          (Force show progress window)");
+            Console.WriteLine("         --out-dir <dir> / -o <dir> / --out <dir>  (Write outputs to directory)");
+            Console.WriteLine("         --level <small|balanced|high>  (PDF compression level)");
+            Console.WriteLine("Deployment: Clickra --deploy <target_dir>");
         }
     }
 }
