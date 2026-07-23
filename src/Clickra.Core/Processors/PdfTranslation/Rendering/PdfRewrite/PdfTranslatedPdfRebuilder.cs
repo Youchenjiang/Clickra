@@ -552,7 +552,7 @@ internal static class PdfTranslatedPdfRebuilder
                     var overlapping = para.AllLetters
                         .Where(l => l.Right >= rect.X1 - 2.5 && l.Left <= rect.X2 + 2.5 &&
                                     l.Top >= rect.Y1 - 2.5 && l.Bottom <= rect.Y2 + 2.5)
-                        .OrderBy(l => para.AllLetters.IndexOf(l))
+                        .OrderBy(para.AllLetters.IndexOf)
                         .ToList();
                     if (overlapping.Count > 0)
                     {
