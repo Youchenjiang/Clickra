@@ -120,26 +120,44 @@ namespace Clickra.Core.Processors
             Func<PdfParagraph, bool> isHeadingParagraph,
             double pageHeight)
         {
+            if (IsProtectedOrHeading(upper, lower, isHeadingParagraph))
+                return false;
+
+            if (!HasMatchingColumnAndTypography(upper, lower, pageHeight))
+                return false;
+
+            double gap = upper.Y0 - lower.Y1;
+            if (gap < -1.0 || gap > 8.0)
+                return false;
+
+            string upperText = upper.TextWithPlaceholders.Trim();
+            return !upperText.EndsWith('.') && !upperText.EndsWith('?') && !upperText.EndsWith('!') &&
+                   !upperText.EndsWith(':') && !upperText.EndsWith('。') && !upperText.EndsWith('」') &&
+                   !upperText.EndsWith('"');
+        }
+
+        private static bool IsProtectedOrHeading(PdfParagraph upper, PdfParagraph lower, Func<PdfParagraph, bool> isHeadingParagraph)
+        {
             if (upper.IsBypassed || lower.IsBypassed || upper.IsTable || lower.IsTable ||
                 upper.IsDiagram || lower.IsDiagram || upper.IsCode || lower.IsCode ||
                 upper.IsGrayPromptContent || lower.IsGrayPromptContent ||
                 string.IsNullOrWhiteSpace(upper.TextWithPlaceholders) ||
                 string.IsNullOrWhiteSpace(lower.TextWithPlaceholders))
-                return false;
+                return true;
 
-            if (isHeadingParagraph(upper) || isHeadingParagraph(lower) ||
-                PdfParagraphRoleClassifier.IsFigureTableCaptionParagraph(upper) ||
-                PdfParagraphRoleClassifier.IsFigureTableCaptionParagraph(lower) ||
-                PdfParagraphBlockMerger.StartsNewParagraphOrSection(upper.TextWithPlaceholders) ||
-                PdfParagraphBlockMerger.StartsNewParagraphOrSection(lower.TextWithPlaceholders))
-                return false;
+            return isHeadingParagraph(upper) || isHeadingParagraph(lower) ||
+                   PdfParagraphRoleClassifier.IsFigureTableCaptionParagraph(upper) ||
+                   PdfParagraphRoleClassifier.IsFigureTableCaptionParagraph(lower) ||
+                   PdfParagraphBlockMerger.StartsNewParagraphOrSection(upper.TextWithPlaceholders) ||
+                   PdfParagraphBlockMerger.StartsNewParagraphOrSection(lower.TextWithPlaceholders);
+        }
 
+        private static bool HasMatchingColumnAndTypography(PdfParagraph upper, PdfParagraph lower, double pageHeight)
+        {
             if (PdfParagraphRoleClassifier.IsRunningHeaderOrFooter(upper, pageHeight) !=
                 PdfParagraphRoleClassifier.IsRunningHeaderOrFooter(lower, pageHeight))
                 return false;
 
-            // Same visual column and left edge; a wrapped line can have a
-            // shorter right edge but should not jump across a gutter.
             double centerUpper = (upper.X0 + upper.X1) / 2.0;
             double centerLower = (lower.X0 + lower.X1) / 2.0;
             if (Math.Abs(upper.X0 - lower.X0) > 12.0 ||
@@ -148,25 +166,7 @@ namespace Clickra.Core.Processors
 
             double upperFont = upper.SourceVisualFontSize > 0 ? upper.SourceVisualFontSize : upper.AverageFontSize;
             double lowerFont = lower.SourceVisualFontSize > 0 ? lower.SourceVisualFontSize : lower.AverageFontSize;
-            if (upperFont <= 0 || lowerFont <= 0 || Math.Abs(upperFont - lowerFont) > 0.75)
-                return false;
-
-            // Only a wrapped-line gap is eligible.  PdfPig's line boxes can
-            // leave several points between glyph boxes even when the source
-            // PDF has one text block (the ASTER acknowledgement is 5 such
-            // lines). Separate body paragraphs normally have a larger gap
-            // and/or sentence punctuation.
-            double gap = upper.Y0 - lower.Y1;
-            if (gap < -1.0 || gap > 8.0)
-                return false;
-
-            string upperText = upper.TextWithPlaceholders.Trim();
-            if (upperText.EndsWith('.') || upperText.EndsWith('?') || upperText.EndsWith('!') ||
-                upperText.EndsWith(':') || upperText.EndsWith('。') || upperText.EndsWith('」') ||
-                upperText.EndsWith('"'))
-                return false;
-
-            return true;
+            return upperFont > 0 && lowerFont > 0 && Math.Abs(upperFont - lowerFont) <= 0.75;
         }
     }
 }
