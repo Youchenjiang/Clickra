@@ -310,9 +310,89 @@ internal static class PdfTranslatedParagraphRenderer
                     gfx.TranslateTransform(-anchor, 0);
                 }
             }
+            RenderParagraphRows(
+                gfx, rows, para, text, mainFont, brush, GetInlineFont, UseSyntheticBold,
+                paragraphX, paragraphY, paragraphWidth, layoutWidth, lineHeight, fontSize,
+                isHeading, isPageTitle, isRotated, currentY, inlineBold, renderedChars);
 
+            if (headingScaleState != null)
+                gfx.Restore(headingScaleState);
+
+            if (state != null)
+            {
+                gfx.Restore(state);
+            }
+
+            renderedCharsSink?.Invoke(renderedChars);
+
+            // Align annotations
+            if (!isRotated && para.Annotations.Count > 0 && renderedChars.Count > 0)
+            {
+                foreach (var annotInfo in para.Annotations)
+                {
+                    try
+                    {
+                        var matched = PdfAnnotationTextMatcher.FindAnnotationCharacters(
+                            renderedChars,
+                            annotInfo.Text,
+                            annotInfo.OccurrenceIndex,
+                            annotInfo.RelCenterX,
+                            annotInfo.RelCenterY,
+                            annotInfo.RelWidth,
+                            para.X0,
+                            para.Y0,
+                            para.Width,
+                            para.Height,
+                            annotInfo.FigureOccurrenceIndex);
+                        if (matched != null && matched.Count > 0)
+                        {
+                            double minLeft = matched.Min(rc => rc.Left);
+                            double maxRight = matched.Max(rc => rc.Right);
+                            double minBottom = matched.Min(rc => rc.Bottom);
+                            double maxTop = matched.Max(rc => rc.Top);
+
+                            double paddingX = 1.0;
+                            double paddingY = 1.5;
+
+                            annotInfo.PdfAnnotation.Rectangle = new PdfRectangle(
+                                new XPoint(minLeft - paddingX, minBottom - paddingY),
+                                new XPoint(maxRight + paddingX, maxTop + paddingY)
+                            );
+                        }
+                        // else: keep original annotation rect (avoid bad spatial fallback)
+                    }
+                    catch { }
+                }
+            }
+
+            return renderedHeight;
+        }
+
+        private static void RenderParagraphRows(
+            XGraphics gfx,
+            List<PdfLayoutRow> rows,
+            PdfParagraph para,
+            string text,
+            XFont mainFont,
+            XBrush brush,
+            Func<bool, XFont> GetInlineFont,
+            Func<bool, bool> UseSyntheticBold,
+            double paragraphX,
+            double paragraphY,
+            double paragraphWidth,
+            double layoutWidth,
+            double lineHeight,
+            double fontSize,
+            bool isHeading,
+            bool isPageTitle,
+            bool isRotated,
+            double initialY,
+            bool inlineBold,
+            List<RenderedChar> renderedChars)
+        {
+            double currentY = initialY;
+            double pageHeight = gfx.PageSize.Height;
             foreach (var row in rows)
-
             {
                 double rowWidth = row.Elements.Sum(e => e.Width);
                 double startX = paragraphX;
@@ -412,7 +492,6 @@ internal static class PdfTranslatedParagraphRenderer
                                 XFont mathFont = FontUtilities.GetMathFont(ml.FontName, fSize);
 
                                 double mx = currentX + ml.RelativeX * formulaScale;
-                                // Align math letter baseline with CJK baseline by shifting up slightly instead of down
                                 double my = currentY - ml.RelativeY * formulaScale - (fontSize * 0.15);
 
                                 string drawVal = FontUtilities.NormalizeRenderValue(ml.Value);
@@ -445,7 +524,6 @@ internal static class PdfTranslatedParagraphRenderer
                     }
                     else if (element.IsFormula)
                     {
-                        // Defensive: LayoutParagraph should demote invalid {vN}, but render as text if not.
                         string normText = FontUtilities.NormalizeRenderValue(element.Text);
                         DrawText(gfx, normText, GetInlineFont(inlineBold), brush, currentX, currentY, UseSyntheticBold(inlineBold));
                         double offset = 0;
@@ -557,58 +635,6 @@ internal static class PdfTranslatedParagraphRenderer
                 }
                 currentY += lineHeight;
             }
-
-            if (headingScaleState != null)
-                gfx.Restore(headingScaleState);
-
-            if (state != null)
-            {
-                gfx.Restore(state);
-            }
-
-            renderedCharsSink?.Invoke(renderedChars);
-
-            // Align annotations
-            if (!isRotated && para.Annotations.Count > 0 && renderedChars.Count > 0)
-            {
-                foreach (var annotInfo in para.Annotations)
-                {
-                    try
-                    {
-                        var matched = PdfAnnotationTextMatcher.FindAnnotationCharacters(
-                            renderedChars,
-                            annotInfo.Text,
-                            annotInfo.OccurrenceIndex,
-                            annotInfo.RelCenterX,
-                            annotInfo.RelCenterY,
-                            annotInfo.RelWidth,
-                            para.X0,
-                            para.Y0,
-                            para.Width,
-                            para.Height,
-                            annotInfo.FigureOccurrenceIndex);
-                        if (matched != null && matched.Count > 0)
-                        {
-                            double minLeft = matched.Min(rc => rc.Left);
-                            double maxRight = matched.Max(rc => rc.Right);
-                            double minBottom = matched.Min(rc => rc.Bottom);
-                            double maxTop = matched.Max(rc => rc.Top);
-
-                            double paddingX = 1.0;
-                            double paddingY = 1.5;
-
-                            annotInfo.PdfAnnotation.Rectangle = new PdfRectangle(
-                                new XPoint(minLeft - paddingX, minBottom - paddingY),
-                                new XPoint(maxRight + paddingX, maxTop + paddingY)
-                            );
-                        }
-                        // else: keep original annotation rect (avoid bad spatial fallback)
-                    }
-                    catch { }
-                }
-            }
-
-            return renderedHeight;
         }
 
         private static void DrawText(
