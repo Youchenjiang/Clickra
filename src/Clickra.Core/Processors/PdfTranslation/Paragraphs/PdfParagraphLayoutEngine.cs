@@ -17,7 +17,7 @@ namespace Clickra.Core.Processors
             int len = text.Length;
             while (i < len)
             {
-                if (TryTokenizeSpecialTag(text, ref i, len, list, sb))
+                if (TryTokenizeSpecialTag(text, len, list, sb, ref i))
                     continue;
 
                 char c = text[i];
@@ -45,7 +45,7 @@ namespace Clickra.Core.Processors
             return list;
         }
 
-        private static bool TryTokenizeSpecialTag(string text, ref int i, int len, List<string> list, StringBuilder sb)
+        private static bool TryTokenizeSpecialTag(string text, int len, List<string> list, StringBuilder sb, ref int i)
         {
             if (text.AsSpan(i).StartsWith("{b}"))
             {
@@ -104,96 +104,12 @@ namespace Clickra.Core.Processors
                     continue;
                 }
 
-                bool isFormula = token.StartsWith("{v") && token.EndsWith("}");
-                double width = 0;
-                int formulaId = -1;
+                MeasureTokenWidth(token, font, formulas, fontSize, averageFontSize, gfx, out bool isFormula, out int formulaId, out double width);
 
-                if (isFormula)
-                {
-                    if (int.TryParse(token.Substring(2, token.Length - 3), out formulaId) && formulaId >= 0 && formulaId < formulas.Count)
-                    {
-                        var formula = formulas[formulaId];
-                        double formulaScale = fontSize / averageFontSize;
-                        bool hasMono = formula.Letters.Any(l => FontUtilities.IsMonospaceFont(l.FontName));
-                        if (hasMono)
-                        {
-                            formulaScale *= 1.0;
-                        }
-                        width = formula.Width * formulaScale;
-                    }
-                    else
-                    {
-                        // Placeholder {vN} without a matching formula (e.g. CCS/footnote body text) — render as text.
-                        isFormula = false;
-                        formulaId = -1;
-                        width = gfx.MeasureString(FontUtilities.NormalizeMathValue(token), font).Width;
-                    }
-                }
-                else
-                {
-                    if (token == " ")
-                    {
-                        width = gfx.MeasureString(" ", font).Width;
-                    }
-                    else if (token.Length == 1 && FontUtilities.IsLatinExtendedOrSymbol(token[0]))
-                    {
-                        char c = token[0];
-                        string fontName;
-                        if (c >= 0x0080 && c <= 0x024F)
-                        {
-                            fontName = font.FontFamily.Name.Contains("Courier") ? "Courier New" : "Arial";
-                        }
-                        else
-                        {
-                            fontName = "Segoe UI Symbol";
-                        }
-                        XFont fallbackFont = new XFont(fontName, font.Size, font.Style);
-                        width = gfx.MeasureString(FontUtilities.NormalizeMathValue(token), fallbackFont).Width;
-                    }
-                    else
-                    {
-                        width = gfx.MeasureString(FontUtilities.NormalizeMathValue(token), font).Width;
-                    }
-                }
-
-                // If single token is wider than maxWidth, split at URL-friendly breakpoints
                 if (width > maxWidth && !isFormula && token.Length > 1 && token != " ")
                 {
-                    // Try to split the token at URL/path-friendly characters
-                    var breakChars = new char[] { '/', '-', '.', '_', '=' };
-                    var subTokens = new List<string>();
-                    var sb2 = new StringBuilder();
-                    foreach (char ch in token)
-                    {
-                        if (Array.IndexOf(breakChars, ch) >= 0)
-                        {
-                            sb2.Append(ch);
-                            subTokens.Add(sb2.ToString());
-                            sb2.Clear();
-                        }
-                        else
-                        {
-                            sb2.Append(ch);
-                        }
-                    }
-                    if (sb2.Length > 0) subTokens.Add(sb2.ToString());
-
-                    if (subTokens.Count > 1)
-                    {
-                        foreach (var sub in subTokens)
-                        {
-                            double subWidth = gfx.MeasureString(FontUtilities.NormalizeMathValue(sub), font).Width;
-                            if (currentX + subWidth > maxWidth && currentRow.Elements.Count > 0)
-                            {
-                                rows.Add(currentRow);
-                                currentRow = new PdfLayoutRow();
-                                currentX = 0;
-                            }
-                            currentRow.Elements.Add(new PdfLayoutElement { Text = sub, IsFormula = false, FormulaId = -1, Width = subWidth });
-                            currentX += subWidth;
-                        }
+                    if (TrySplitOverlongToken(token, font, maxWidth, gfx, ref currentRow, ref rows, ref currentX))
                         continue;
-                    }
                 }
 
                 if (currentX + width > maxWidth && currentRow.Elements.Count > 0)
@@ -214,12 +130,107 @@ namespace Clickra.Core.Processors
                 currentX += width;
             }
 
-            if (currentRow.Elements.Count > 0)
-            {
-                rows.Add(currentRow);
-            }
+            if (currentRow.Elements.Count > 0) rows.Add(currentRow);
 
             return rows;
+        }
+
+        private static void MeasureTokenWidth(
+            string token,
+            XFont font,
+            List<MathFormula> formulas,
+            double fontSize,
+            double averageFontSize,
+            XGraphics gfx,
+            out bool isFormula,
+            out int formulaId,
+            out double width)
+        {
+            isFormula = token.StartsWith("{v") && token.EndsWith("}");
+            width = 0;
+            formulaId = -1;
+
+            if (isFormula)
+            {
+                if (int.TryParse(token.Substring(2, token.Length - 3), out formulaId) && formulaId >= 0 && formulaId < formulas.Count)
+                {
+                    var formula = formulas[formulaId];
+                    double formulaScale = fontSize / averageFontSize;
+                    width = formula.Width * formulaScale;
+                }
+                else
+                {
+                    isFormula = false;
+                    formulaId = -1;
+                    width = gfx.MeasureString(FontUtilities.NormalizeMathValue(token), font).Width;
+                }
+            }
+            else
+            {
+                if (token == " ")
+                {
+                    width = gfx.MeasureString(" ", font).Width;
+                }
+                else if (token.Length == 1 && FontUtilities.IsLatinExtendedOrSymbol(token[0]))
+                {
+                    char c = token[0];
+                    string fontName = (c >= 0x0080 && c <= 0x024F)
+                        ? (font.FontFamily.Name.Contains("Courier") ? "Courier New" : "Arial")
+                        : "Segoe UI Symbol";
+                    XFont fallbackFont = new XFont(fontName, font.Size, font.Style);
+                    width = gfx.MeasureString(FontUtilities.NormalizeMathValue(token), fallbackFont).Width;
+                }
+                else
+                {
+                    width = gfx.MeasureString(FontUtilities.NormalizeMathValue(token), font).Width;
+                }
+            }
+        }
+
+        private static bool TrySplitOverlongToken(
+            string token,
+            XFont font,
+            double maxWidth,
+            XGraphics gfx,
+            ref PdfLayoutRow currentRow,
+            ref List<PdfLayoutRow> rows,
+            ref double currentX)
+        {
+            var breakChars = new char[] { '/', '-', '.', '_', '=' };
+            var subTokens = new List<string>();
+            var sb2 = new StringBuilder();
+            foreach (char ch in token)
+            {
+                if (Array.IndexOf(breakChars, ch) >= 0)
+                {
+                    sb2.Append(ch);
+                    subTokens.Add(sb2.ToString());
+                    sb2.Clear();
+                }
+                else
+                {
+                    sb2.Append(ch);
+                }
+            }
+            if (sb2.Length > 0) subTokens.Add(sb2.ToString());
+
+            if (subTokens.Count > 1)
+            {
+                foreach (var sub in subTokens)
+                {
+                    double subWidth = gfx.MeasureString(FontUtilities.NormalizeMathValue(sub), font).Width;
+                    if (currentX + subWidth > maxWidth && currentRow.Elements.Count > 0)
+                    {
+                        rows.Add(currentRow);
+                        currentRow = new PdfLayoutRow();
+                        currentX = 0;
+                    }
+                    currentRow.Elements.Add(new PdfLayoutElement { Text = sub, IsFormula = false, FormulaId = -1, Width = subWidth });
+                    currentX += subWidth;
+                }
+                return true;
+            }
+            return false;
         }
     }
 }
