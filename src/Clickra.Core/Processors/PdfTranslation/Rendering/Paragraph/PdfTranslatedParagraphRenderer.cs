@@ -96,7 +96,7 @@ internal static class PdfTranslatedParagraphRenderer
             double layoutWidth = ComputeLayoutWidth(
                 gfx, para, isHeading, isPageTitle, paragraphX, paragraphWidth);
             XGraphicsState? state = ApplyRotationTransform(
-                gfx, para, paragraphX, paragraphY, paragraphWidth, ref layoutWidth, ref isRotated);
+                gfx, para, paragraphWidth, ref layoutWidth, ref isRotated);
             // Compute dynamic line spacing
             double lineSpacingMultiplier = 1.35; // Default CJK line height
             if (isHeading)
@@ -265,8 +265,6 @@ internal static class PdfTranslatedParagraphRenderer
         private static XGraphicsState? ApplyRotationTransform(
             XGraphics gfx,
             PdfParagraph para,
-            double paragraphX,
-            double paragraphY,
             double paragraphWidth,
             ref double layoutWidth,
             ref bool isRotated)
@@ -503,7 +501,7 @@ internal static class PdfTranslatedParagraphRenderer
             var formula = para.Formulas[element.FormulaId];
             double scale = para.AverageFontSize > 0 ? fontSize / para.AverageFontSize : 1.0;
             bool hasMono = formula.Letters.Any(l => FontUtilities.IsMonospaceFont(l.FontName));
-            double formulaScale = hasMono ? scale : scale;
+            double formulaScale = scale;
 
             if (FontUtilities.ShouldMergeFormula(formula, para.AverageFontSize))
                 RenderFormulaMerged(gfx, formula, brush, fontSize, formulaScale, currentX, currentY, pageHeight, renderedChars);

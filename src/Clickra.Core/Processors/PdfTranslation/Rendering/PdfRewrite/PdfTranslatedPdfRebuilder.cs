@@ -351,7 +351,6 @@ internal static class PdfTranslatedPdfRebuilder
         double renderedHeight,
         List<TableMaskRegion> tableMaskRegions,
         List<TableMaskRegion> diagramMaskRegions,
-        List<TableMaskRegion> effectiveGrayMaskRegions,
         List<PdfParagraph> paragraphs,
         PdfParagraph? pageOneTitlePara,
         double pageWidth,
@@ -413,7 +412,7 @@ internal static class PdfTranslatedPdfRebuilder
             double renderedHeight = PdfTranslatedParagraphRenderer.RenderParagraph(gfx, para, targetFontName, measureOnly: true);
 
             ComputeMaskBounds(para, isFigureCaption, renderedHeight,
-                tableMaskRegions, diagramMaskRegions, effectiveGrayMaskRegions, paragraphs, pageOneTitlePara, pageWidth,
+                tableMaskRegions, diagramMaskRegions, paragraphs, pageOneTitlePara, pageWidth,
                 out double maskPdfX0, out double maskPdfY0, out double maskPdfX1, out double maskPdfY1);
 
             if (IsGrayGeometryIntersected(maskPdfX0, maskPdfY0, maskPdfX1, maskPdfY1, para, effectiveGrayMaskRegions))
@@ -484,24 +483,16 @@ internal static class PdfTranslatedPdfRebuilder
                 gfx, para, targetFontName, measureOnly: true,
                 metricsSink: metrics => renderMetrics = metrics);
 
-            XGraphicsState? clipState = null;
-            try
-            {
-                ClickraDebug.LogRender(
-                    pageIndex + 1, para.Y0, para.Y1, para.X0, para.X1,
-                    guardClip: clipState != null,
-                    horizontalOverflow: renderMetrics.HorizontalOverflow,
-                    verticalOverflow: renderMetrics.VerticalOverflow,
-                    measuredH: measuredHeight,
-                    text: para.TextWithPlaceholders);
-                PdfTranslatedParagraphRenderer.RenderParagraph(
-                    gfx, para, targetFontName,
-                    renderedCharsSink: chars => renderedCharsByParagraph[para] = chars.ToList());
-            }
-            finally
-            {
-                if (clipState != null) gfx.Restore(clipState);
-            }
+            ClickraDebug.LogRender(
+                pageIndex + 1, para.Y0, para.Y1, para.X0, para.X1,
+                guardClip: false,
+                horizontalOverflow: renderMetrics.HorizontalOverflow,
+                verticalOverflow: renderMetrics.VerticalOverflow,
+                measuredH: measuredHeight,
+                text: para.TextWithPlaceholders);
+            PdfTranslatedParagraphRenderer.RenderParagraph(
+                gfx, para, targetFontName,
+                renderedCharsSink: chars => renderedCharsByParagraph[para] = chars.ToList());
         }
         return renderedCharsByParagraph;
     }
