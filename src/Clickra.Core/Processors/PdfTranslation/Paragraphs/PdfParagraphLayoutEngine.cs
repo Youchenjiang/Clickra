@@ -17,74 +17,23 @@ namespace Clickra.Core.Processors
             int len = text.Length;
             while (i < len)
             {
-                if (text.AsSpan(i).StartsWith("{b}"))
-                {
-                    if (sb.Length > 0) { list.Add(sb.ToString()); sb.Clear(); }
-                    list.Add("{b}");
-                    i += 3;
+                if (TryTokenizeSpecialTag(text, ref i, len, list, sb))
                     continue;
-                }
-                if (text.AsSpan(i).StartsWith("{/b}"))
-                {
-                    if (sb.Length > 0) { list.Add(sb.ToString()); sb.Clear(); }
-                    list.Add("{/b}");
-                    i += 4;
-                    continue;
-                }
-                if (text[i] == '{' && i + 2 < len && text[i + 1] == 'v')
-                {
-                    int j = i;
-                    while (j < len && text[j] != '}') j++;
-                    if (j < len && text[j] == '}')
-                    {
-                        if (sb.Length > 0)
-                        {
-                            list.Add(sb.ToString());
-                            sb.Clear();
-                        }
-                        list.Add(text.Substring(i, j - i + 1));
-                        i = j + 1;
-                        continue;
-                    }
-                }
 
                 char c = text[i];
                 if (c == '\n' || c == '\r')
                 {
-                    if (sb.Length > 0)
-                    {
-                        list.Add(sb.ToString());
-                        sb.Clear();
-                    }
+                    if (sb.Length > 0) { list.Add(sb.ToString()); sb.Clear(); }
                     list.Add("\n");
-                    if (c == '\r' && i + 1 < len && text[i + 1] == '\n')
-                    {
-                        i++;
-                    }
+                    if (c == '\r' && i + 1 < len && text[i + 1] == '\n') i++;
                     i++;
                     continue;
                 }
 
-                if (FontUtilities.IsCjkCharacter(c) || FontUtilities.IsLatinExtendedOrSymbol(c))
+                if (FontUtilities.IsCjkCharacter(c) || FontUtilities.IsLatinExtendedOrSymbol(c) || c == ' ')
                 {
-                    if (sb.Length > 0)
-                    {
-                        list.Add(sb.ToString());
-                        sb.Clear();
-                    }
+                    if (sb.Length > 0) { list.Add(sb.ToString()); sb.Clear(); }
                     list.Add(c.ToString());
-                    i++;
-                    continue;
-                }
-
-                if (c == ' ')
-                {
-                    if (sb.Length > 0)
-                    {
-                        list.Add(sb.ToString());
-                        sb.Clear();
-                    }
-                    list.Add(" ");
                     i++;
                     continue;
                 }
@@ -94,6 +43,37 @@ namespace Clickra.Core.Processors
             }
             if (sb.Length > 0) list.Add(sb.ToString());
             return list;
+        }
+
+        private static bool TryTokenizeSpecialTag(string text, ref int i, int len, List<string> list, StringBuilder sb)
+        {
+            if (text.AsSpan(i).StartsWith("{b}"))
+            {
+                if (sb.Length > 0) { list.Add(sb.ToString()); sb.Clear(); }
+                list.Add("{b}");
+                i += 3;
+                return true;
+            }
+            if (text.AsSpan(i).StartsWith("{/b}"))
+            {
+                if (sb.Length > 0) { list.Add(sb.ToString()); sb.Clear(); }
+                list.Add("{/b}");
+                i += 4;
+                return true;
+            }
+            if (text[i] == '{' && i + 2 < len && text[i + 1] == 'v')
+            {
+                int j = i;
+                while (j < len && text[j] != '}') j++;
+                if (j < len && text[j] == '}')
+                {
+                    if (sb.Length > 0) { list.Add(sb.ToString()); sb.Clear(); }
+                    list.Add(text.Substring(i, j - i + 1));
+                    i = j + 1;
+                    return true;
+                }
+            }
+            return false;
         }
 
         public static List<PdfLayoutRow> LayoutParagraph(List<string> tokens, XFont font, List<MathFormula> formulas, double maxWidth, double fontSize, double averageFontSize, XGraphics gfx)
