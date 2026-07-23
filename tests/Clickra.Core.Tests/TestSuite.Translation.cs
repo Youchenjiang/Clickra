@@ -1,3 +1,8 @@
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading;
+using System.Threading.Tasks;
 using Clickra.Core;
 using Clickra.Core.Models;
 using Clickra.Core.Processors;
@@ -915,14 +920,12 @@ static partial class TestSuite
         });
 
         runner.Run("Chinese post-processing removes provider token spacing", () =>
-        {
             Assert.Equal(
                 "摘要—實作自動化單元測試是一項重要但耗時的活動。",
                 PostProcessor.Process(
                     "Abstract—Implementing automated unit tests is important.",
                     "摘要：實作 自動化 單元 測試 是 一項 重要 但 耗時 的 活動 。",
-                    "zh-TW"));
-        });
+                    "zh-TW")));
 
         runner.Run("Academic table headers stay bypassed and bold", () =>
         {
@@ -975,7 +978,6 @@ static partial class TestSuite
                 var translator = new HangingTranslationEngine();
 
                 var ex = Assert.Throws<Exception>(() =>
-                {
                     PdfTranslationBatchRunner.TranslatePageBatches(
                         translator,
                         new List<string> { "hung" },
@@ -983,8 +985,7 @@ static partial class TestSuite
                         pageIndex: 0,
                         totalPages: 1,
                         onProgress: null,
-                        cancellationToken: CancellationToken.None);
-                });
+                        cancellationToken: CancellationToken.None));
 
                 Assert.True(
                     ex.Message.Contains("Unable to translate page 1", StringComparison.Ordinal),
@@ -1043,7 +1044,7 @@ static partial class TestSuite
     }
 }
 
-sealed class RecordingTranslationEngine(
+file sealed class RecordingTranslationEngine(
     string name,
     string? failOnMarker = null,
     bool dropLastBatchResult = false) : ITranslationEngine
@@ -1075,7 +1076,7 @@ sealed class RecordingTranslationEngine(
     }
 }
 
-sealed class UnchangedTranslationEngine(string name) : ITranslationEngine
+file sealed class UnchangedTranslationEngine(string name) : ITranslationEngine
 {
     public string Name { get; } = name;
     public int SingleAttempts { get; private set; }
@@ -1093,7 +1094,7 @@ sealed class UnchangedTranslationEngine(string name) : ITranslationEngine
         Task.FromResult(texts.ToList());
 }
 
-sealed class BatchOnlyFailingTranslationEngine : ITranslationEngine
+file sealed class BatchOnlyFailingTranslationEngine : ITranslationEngine
 {
     public string Name => "batch-failing";
     public int BatchAttempts { get; private set; }
@@ -1111,7 +1112,7 @@ sealed class BatchOnlyFailingTranslationEngine : ITranslationEngine
     }
 }
 
-sealed class HangingTranslationEngine : ITranslationEngine
+file sealed class HangingTranslationEngine : ITranslationEngine
 {
     public string Name => "hanging";
 
@@ -1131,7 +1132,7 @@ sealed class HangingTranslationEngine : ITranslationEngine
     }
 }
 
-sealed class DelayedTranslationEngine(string name, int delayMilliseconds) : ITranslationEngine
+file sealed class DelayedTranslationEngine(string name, int delayMilliseconds) : ITranslationEngine
 {
     public string Name { get; } = name;
     public int BatchAttempts { get; private set; }
