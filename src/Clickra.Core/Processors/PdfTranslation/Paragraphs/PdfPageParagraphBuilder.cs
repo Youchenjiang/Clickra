@@ -23,85 +23,7 @@ internal static class PdfPageParagraphBuilder
         var blocks = PdfParagraphBlockMerger.GetMergedBlocks(segmenter.GetBlocks(words), page.Width, isTablePage);
         foreach (var block in blocks)
         {
-            var blockLines = PdfParagraph.MergeHorizontalLines(block.TextLines);
-            var currentGroup = new List<UglyToad.PdfPig.DocumentLayoutAnalysis.TextLine>();
-            bool? currentIsMath = null;
-
-            double minX = block.TextLines.Count > 0 ? block.TextLines.Min(l => l.BoundingBox.Left) : 0;
-            double maxX = block.TextLines.Count > 0 ? block.TextLines.Max(l => l.BoundingBox.Right) : 0;
-            double blockWidth = maxX - minX;
-
-            bool isTableBlock = blockLines.Count >= 2 &&
-                                (isTablePage || blockWidth < 150.0) &&
-                                (blockLines.Average(l => l.Words.Count) <= 3.5 ||
-                                 (isTablePage && blockWidth < page.Width * 0.45 &&
-                                  blockLines.Max(l => l.Words.Count) <= 8));
-
-            foreach (var line in blockLines)
-            {
-                bool isMath = PdfParagraph.IsMathLine(line);
-                bool startsNew = PdfParagraphBlockMerger.StartsNewParagraphOrSection(line.Text);
-
-                bool prevLineEndedEarly = false;
-                bool prevLineWasHeading = false;
-                bool isVerticalGapLarge = false;
-                if (currentGroup.Count > 0)
-                {
-                    var prevLine = currentGroup[currentGroup.Count - 1];
-                    if (prevLine.BoundingBox.Right < block.Right - 20.0)
-                    {
-                        prevLineEndedEarly = true;
-                    }
-                    if (PdfParagraphBlockMerger.IsHeadingLine(prevLine))
-                    {
-                        prevLineWasHeading = true;
-                    }
-
-                    // Prevent DocStrum from mistakenly merging paragraphs across a large vertical gap (e.g. over 15 pt)
-                    double gapY = prevLine.BoundingBox.Bottom - line.BoundingBox.Top;
-                    if (gapY > 15.0)
-                    {
-                        isVerticalGapLarge = true;
-                    }
-                }
-
-                bool prevLineHasGap = isTablePage && currentGroup.Count > 0 && PdfTextLineGeometry.HasColumnGap(currentGroup[currentGroup.Count - 1]);
-                bool currLineHasGap = isTablePage && PdfTextLineGeometry.HasColumnGap(line);
-                bool crossColumnSplit = currentGroup.Count > 0 &&
-                    PdfPageReadingOrder.IsLineInLeftColumn(currentGroup[currentGroup.Count - 1], page.Width) !=
-                    PdfPageReadingOrder.IsLineInLeftColumn(line, page.Width);
-                bool forceSplit = isTableBlock && currentGroup.Count > 0;
-
-                // When the previous line is a heading, don't split on prevLineEndedEarly
-                // (headings naturally end early; e.g., '2.1 Text Representation and Modality' + 'Alignment')
-                bool shouldSplit = startsNew || isVerticalGapLarge || crossColumnSplit ||
-                    (prevLineEndedEarly && !prevLineWasHeading) || (prevLineWasHeading && !FontUtilities.IsLineBold(line)) ||
-                    prevLineHasGap || currLineHasGap || forceSplit;
-
-                if (currentGroup.Count == 0)
-                {
-                    currentGroup.Add(line);
-                    currentIsMath = isMath;
-                }
-                else if (isMath == currentIsMath && !shouldSplit)
-                {
-                    currentGroup.Add(line);
-                }
-                else
-                {
-                    var paragraph = new PdfParagraph(currentGroup);
-                    pageList.Add(paragraph);
-
-                    currentGroup = new List<UglyToad.PdfPig.DocumentLayoutAnalysis.TextLine> { line };
-                    currentIsMath = isMath;
-                }
-            }
-
-            if (currentGroup.Count > 0)
-            {
-                var paragraph = new PdfParagraph(currentGroup);
-                pageList.Add(paragraph);
-            }
+            ProcessBlockLines(block, page, isTablePage, pageList);
         }
 
         // Pass 0: Sanitize TextWithPlaceholders — remove stray '):(...)' bracket artifacts
@@ -409,5 +331,89 @@ internal static class PdfPageParagraphBuilder
         PdfDiagramLabelMarker.FinalizeShortFigureLabels(pageList, effectiveDiagramRegions);
 
         return pageList;
+    }
+
+    private static void ProcessBlockLines(
+        PdfParagraphBlockMerger.MergedBlock block,
+        UglyToad.PdfPig.Content.Page page,
+        bool isTablePage,
+        List<PdfParagraph> pageList)
+    {
+        var blockLines = PdfParagraph.MergeHorizontalLines(block.TextLines);
+        var currentGroup = new List<UglyToad.PdfPig.DocumentLayoutAnalysis.TextLine>();
+        bool? currentIsMath = null;
+
+        double minX = block.TextLines.Count > 0 ? block.TextLines.Min(l => l.BoundingBox.Left) : 0;
+        double maxX = block.TextLines.Count > 0 ? block.TextLines.Max(l => l.BoundingBox.Right) : 0;
+        double blockWidth = maxX - minX;
+
+        bool isTableBlock = blockLines.Count >= 2 &&
+                            (isTablePage || blockWidth < 150.0) &&
+                            (blockLines.Average(l => l.Words.Count) <= 3.5 ||
+                             (isTablePage && blockWidth < page.Width * 0.45 &&
+                              blockLines.Max(l => l.Words.Count) <= 8));
+
+        foreach (var line in blockLines)
+        {
+            bool isMath = PdfParagraph.IsMathLine(line);
+            bool startsNew = PdfParagraphBlockMerger.StartsNewParagraphOrSection(line.Text);
+
+            bool prevLineEndedEarly = false;
+            bool prevLineWasHeading = false;
+            bool isVerticalGapLarge = false;
+            if (currentGroup.Count > 0)
+            {
+                var prevLine = currentGroup[currentGroup.Count - 1];
+                if (prevLine.BoundingBox.Right < block.Right - 20.0)
+                {
+                    prevLineEndedEarly = true;
+                }
+                if (PdfParagraphBlockMerger.IsHeadingLine(prevLine))
+                {
+                    prevLineWasHeading = true;
+                }
+
+                double gapY = prevLine.BoundingBox.Bottom - line.BoundingBox.Top;
+                if (gapY > 15.0)
+                {
+                    isVerticalGapLarge = true;
+                }
+            }
+
+            bool prevLineHasGap = isTablePage && currentGroup.Count > 0 && PdfTextLineGeometry.HasColumnGap(currentGroup[currentGroup.Count - 1]);
+            bool currLineHasGap = isTablePage && PdfTextLineGeometry.HasColumnGap(line);
+            bool crossColumnSplit = currentGroup.Count > 0 &&
+                PdfPageReadingOrder.IsLineInLeftColumn(currentGroup[currentGroup.Count - 1], page.Width) !=
+                PdfPageReadingOrder.IsLineInLeftColumn(line, page.Width);
+            bool forceSplit = isTableBlock && currentGroup.Count > 0;
+
+            bool shouldSplit = startsNew || isVerticalGapLarge || crossColumnSplit ||
+                (prevLineEndedEarly && !prevLineWasHeading) || (prevLineWasHeading && !FontUtilities.IsLineBold(line)) ||
+                prevLineHasGap || currLineHasGap || forceSplit;
+
+            if (currentGroup.Count == 0)
+            {
+                currentGroup.Add(line);
+                currentIsMath = isMath;
+            }
+            else if (isMath == currentIsMath && !shouldSplit)
+            {
+                currentGroup.Add(line);
+            }
+            else
+            {
+                var paragraph = new PdfParagraph(currentGroup);
+                pageList.Add(paragraph);
+
+                currentGroup = new List<UglyToad.PdfPig.DocumentLayoutAnalysis.TextLine> { line };
+                currentIsMath = isMath;
+            }
+        }
+
+        if (currentGroup.Count > 0)
+        {
+            var paragraph = new PdfParagraph(currentGroup);
+            pageList.Add(paragraph);
+        }
     }
 }
