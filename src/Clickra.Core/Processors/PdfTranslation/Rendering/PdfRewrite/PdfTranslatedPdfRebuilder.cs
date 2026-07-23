@@ -20,116 +20,19 @@ internal static class PdfTranslatedPdfRebuilder
         int totalPages = pageParagraphs.Count;
         var layoutSummary = new PdfTranslationLayoutSummary();
         onProgress?.Invoke(80, 100, "正在重建 PDF 佈局與公式...");
+        cancellationToken.ThrowIfCancellationRequested();
+
+        using var finalDoc = PdfReader.Open(inputPath, PdfDocumentOpenMode.Modify);
+        string targetFontName = GetTargetFontName(targetLang);
+
+        for (int p = 0; p < totalPages; p++)
+        {
             cancellationToken.ThrowIfCancellationRequested();
+            var page = finalDoc.Pages[p];
+            var paragraphs = pageParagraphs[p];
+            if (paragraphs.Count == 0) continue;
 
-
-            using var finalDoc = PdfReader.Open(inputPath, PdfDocumentOpenMode.Modify);
-
-            string targetFontName = "DFKai-SB";
-            if (targetLang.Equals("zh-CN", StringComparison.OrdinalIgnoreCase))
-            {
-                targetFontName = "DFKai-SB";
-            }
-            else if (targetLang.Equals("ja", StringComparison.OrdinalIgnoreCase))
-            {
-                targetFontName = "DFKai-SB";
-            }
-            else if (targetLang.Equals("ko", StringComparison.OrdinalIgnoreCase))
-            {
-                targetFontName = "Malgun Gothic";
-            }
-            else if (targetLang.Equals("en", StringComparison.OrdinalIgnoreCase))
-            {
-                targetFontName = "Arial";
-            }
-
-            for (int p = 0; p < totalPages; p++)
-            {
-                cancellationToken.ThrowIfCancellationRequested();
-                var page = finalDoc.Pages[p];
-
-                var paragraphs = pageParagraphs[p];
-                if (paragraphs.Count == 0) continue;
-
-                // Map annotations to paragraphs
-                try
-                {
-                    for (int i = 0; i < page.Annotations.Count; i++)
-                    {
-                        var annot = page.Annotations[i];
-                        var rect = annot.Rectangle;
-
-                        var paraOverlaps = new Dictionary<PdfParagraph, List<PdfLetter>>();
-                        foreach (var para in paragraphs)
-                        {
-                            var overlapping = para.AllLetters
-                                .Where(l => l.Right >= rect.X1 - 2.5 && l.Left <= rect.X2 + 2.5 &&
-                                            l.Top >= rect.Y1 - 2.5 && l.Bottom <= rect.Y2 + 2.5)
-                                .OrderBy(l => para.AllLetters.IndexOf(l))
-                                .ToList();
-                            if (overlapping.Count > 0)
-                            {
-                                paraOverlaps[para] = overlapping;
-                            }
-                        }
-
-                        if (paraOverlaps.Count > 0)
-                        {
-                            double annotCenterX = (rect.X1 + rect.X2) / 2.0;
-                            double annotCenterY = (rect.Y1 + rect.Y2) / 2.0;
-                            var bestPair = paraOverlaps
-                                .OrderByDescending(kv => PdfAnnotationTextMatcher.ScoreAnnotationParagraph(kv.Key, kv.Value, annotCenterX, annotCenterY))
-                                .First();
-                            var bestPara = bestPair.Key;
-                            var overlappingLetters = bestPair.Value;
-
-                            string searchText = string.Join("", overlappingLetters.Select(l => l.Value)).Trim();
-                            searchText = PdfAnnotationTextMatcher.NormalizeAnnotationSearchText(searchText);
-                            if (searchText.All(c => !char.IsDigit(c)))
-                            {
-                                double centerX = (rect.X1 + rect.X2) / 2.0;
-                                double centerY = (rect.Y1 + rect.Y2) / 2.0;
-                                var nearbyDigit = bestPara.AllLetters
-                                    .Where(letter => letter.Value.Length == 1 && char.IsDigit(letter.Value[0]))
-                                    .OrderBy(letter =>
-                                    {
-                                        double dx = ((letter.Left + letter.Right) / 2.0) - centerX;
-                                        double dy = ((letter.Bottom + letter.Top) / 2.0) - centerY;
-                                        return dx * dx + dy * dy;
-                                    })
-                                    .FirstOrDefault();
-                                if (nearbyDigit != null)
-                                {
-                                    searchText = nearbyDigit.Value;
-                                }
-                            }
-                            if (!string.IsNullOrEmpty(searchText))
-                            {
-                                int occurrenceIdx = PdfAnnotationOccurrenceMatcher.GetOccurrenceIndex(bestPara.AllLetters, overlappingLetters, searchText);
-                                int firstLetterIdx = bestPara.AllLetters.IndexOf(overlappingLetters[0]);
-                                int lastLetterIdx = bestPara.AllLetters.IndexOf(overlappingLetters[^1]);
-                                int figureOccurrenceIdx = PdfAnnotationOccurrenceMatcher.GetFigureReferenceIndex(bestPara.AllLetters, firstLetterIdx);
-                                double relCenterX = bestPara.Width > 0 ? (annotCenterX - bestPara.X0) / bestPara.Width : 0.5;
-                                double relCenterY = bestPara.Height > 0 ? (annotCenterY - bestPara.Y0) / bestPara.Height : 0.5;
-                                double relWidth = bestPara.Width > 0 ? (rect.X2 - rect.X1) / bestPara.Width : 0.05;
-                                bestPara.Annotations.Add(new ParagraphAnnotationInfo
-                                {
-                                    PdfAnnotation = annot,
-                                    Text = searchText,
-                                    OccurrenceIndex = occurrenceIdx,
-                                    FigureOccurrenceIndex = figureOccurrenceIdx,
-                                    FirstLetterIndex = firstLetterIdx,
-                                    LastLetterIndex = lastLetterIdx,
-                                    TotalLetterCount = bestPara.AllLetters.Count,
-                                    RelCenterX = relCenterX,
-                                    RelCenterY = relCenterY,
-                                    RelWidth = relWidth
-                                });
-                            }
-                        }
-                    }
-                }
-                catch { }
+            MapAnnotationsToParagraphs(page, paragraphs);
 
                 // Table pages skip white masks over table regions but still strip text streams;
                 // bypassed table cells are redrawn in Pass 2 after stripping.
@@ -614,5 +517,105 @@ internal static class PdfTranslatedPdfRebuilder
 
         foreach (var para in titleParagraphs)
             PdfTranslatedParagraphRenderer.RenderParagraph(gfx, para, targetFontName);
+    }
+
+    private static string GetTargetFontName(string targetLang)
+    {
+        if (targetLang.Equals("zh-CN", StringComparison.OrdinalIgnoreCase) ||
+            targetLang.Equals("ja", StringComparison.OrdinalIgnoreCase))
+        {
+            return "DFKai-SB";
+        }
+        if (targetLang.Equals("ko", StringComparison.OrdinalIgnoreCase))
+        {
+            return "Malgun Gothic";
+        }
+        if (targetLang.Equals("en", StringComparison.OrdinalIgnoreCase))
+        {
+            return "Arial";
+        }
+        return "DFKai-SB";
+    }
+
+    private static void MapAnnotationsToParagraphs(PdfPage page, List<PdfParagraph> paragraphs)
+    {
+        try
+        {
+            for (int i = 0; i < page.Annotations.Count; i++)
+            {
+                var annot = page.Annotations[i];
+                var rect = annot.Rectangle;
+
+                var paraOverlaps = new Dictionary<PdfParagraph, List<PdfLetter>>();
+                foreach (var para in paragraphs)
+                {
+                    var overlapping = para.AllLetters
+                        .Where(l => l.Right >= rect.X1 - 2.5 && l.Left <= rect.X2 + 2.5 &&
+                                    l.Top >= rect.Y1 - 2.5 && l.Bottom <= rect.Y2 + 2.5)
+                        .OrderBy(l => para.AllLetters.IndexOf(l))
+                        .ToList();
+                    if (overlapping.Count > 0)
+                    {
+                        paraOverlaps[para] = overlapping;
+                    }
+                }
+
+                if (paraOverlaps.Count > 0)
+                {
+                    double annotCenterX = (rect.X1 + rect.X2) / 2.0;
+                    double annotCenterY = (rect.Y1 + rect.Y2) / 2.0;
+                    var bestPair = paraOverlaps
+                        .OrderByDescending(kv => PdfAnnotationTextMatcher.ScoreAnnotationParagraph(kv.Key, kv.Value, annotCenterX, annotCenterY))
+                        .First();
+                    var bestPara = bestPair.Key;
+                    var overlappingLetters = bestPair.Value;
+
+                    string searchText = string.Join("", overlappingLetters.Select(l => l.Value)).Trim();
+                    searchText = PdfAnnotationTextMatcher.NormalizeAnnotationSearchText(searchText);
+                    if (searchText.All(c => !char.IsDigit(c)))
+                    {
+                        double centerX = (rect.X1 + rect.X2) / 2.0;
+                        double centerY = (rect.Y1 + rect.Y2) / 2.0;
+                        var nearbyDigit = bestPara.AllLetters
+                            .Where(letter => letter.Value.Length == 1 && char.IsDigit(letter.Value[0]))
+                            .OrderBy(letter =>
+                            {
+                                double dx = ((letter.Left + letter.Right) / 2.0) - centerX;
+                                double dy = ((letter.Bottom + letter.Top) / 2.0) - centerY;
+                                return dx * dx + dy * dy;
+                            })
+                            .FirstOrDefault();
+                        if (nearbyDigit != null)
+                        {
+                            searchText = nearbyDigit.Value;
+                        }
+                    }
+                    if (!string.IsNullOrEmpty(searchText))
+                    {
+                        int occurrenceIdx = PdfAnnotationOccurrenceMatcher.GetOccurrenceIndex(bestPara.AllLetters, overlappingLetters, searchText);
+                        int firstLetterIdx = bestPara.AllLetters.IndexOf(overlappingLetters[0]);
+                        int lastLetterIdx = bestPara.AllLetters.IndexOf(overlappingLetters[^1]);
+                        int figureOccurrenceIdx = PdfAnnotationOccurrenceMatcher.GetFigureReferenceIndex(bestPara.AllLetters, firstLetterIdx);
+                        double relCenterX = bestPara.Width > 0 ? (annotCenterX - bestPara.X0) / bestPara.Width : 0.5;
+                        double relCenterY = bestPara.Height > 0 ? (annotCenterY - bestPara.Y0) / bestPara.Height : 0.5;
+                        double relWidth = bestPara.Width > 0 ? (rect.X2 - rect.X1) / bestPara.Width : 0.05;
+                        bestPara.Annotations.Add(new ParagraphAnnotationInfo
+                        {
+                            PdfAnnotation = annot,
+                            Text = searchText,
+                            OccurrenceIndex = occurrenceIdx,
+                            FigureOccurrenceIndex = figureOccurrenceIdx,
+                            FirstLetterIndex = firstLetterIdx,
+                            LastLetterIndex = lastLetterIdx,
+                            TotalLetterCount = bestPara.AllLetters.Count,
+                            RelCenterX = relCenterX,
+                            RelCenterY = relCenterY,
+                            RelWidth = relWidth
+                        });
+                    }
+                }
+            }
+        }
+        catch { }
     }
 }
