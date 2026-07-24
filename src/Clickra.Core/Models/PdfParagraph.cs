@@ -144,14 +144,9 @@ namespace Clickra.Core.Models
 
             string otherText = AdjustOtherTextFormulaIds(other.TextWithPlaceholders, formulaIdOffset);
 
-            if (string.IsNullOrWhiteSpace(this.TextWithPlaceholders))
-            {
-                this.TextWithPlaceholders = otherText;
-            }
-            else
-            {
-                this.TextWithPlaceholders = this.TextWithPlaceholders + " " + otherText;
-            }
+            this.TextWithPlaceholders = string.IsNullOrWhiteSpace(this.TextWithPlaceholders)
+                ? otherText
+                : this.TextWithPlaceholders + " " + otherText;
 
             string otherStyled = string.IsNullOrWhiteSpace(other.TranslationTextWithStyles)
                 ? otherText
