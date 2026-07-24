@@ -232,7 +232,7 @@ namespace Clickra.Core.Processors
                     Succeeded = false
                 }.Save(cfg.HealthPath);
             }
-            catch (Exception)
+            catch (IOException)
             {
                 // Ignore non-fatal diagnostic report write errors
             }
