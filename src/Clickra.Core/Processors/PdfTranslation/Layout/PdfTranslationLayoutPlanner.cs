@@ -121,12 +121,22 @@ internal static class PdfTranslationLayoutPlanner
         int propagatedContinuations = PropagateContinuationFontSize(snapshots, pageWidth);
         int shifted = propagatedContinuations + ShiftHeadingObstacles(snapshots, pageHeight);
 
-        // A translated single-line paragraph can legitimately grow to two
-        // lines when its source glyph box omitted leading (the acknowledgement
-        // names on ASTER p.11 are the concrete case). Resolve the actual
-        // rendered-height overlap against the next same-column fragment; using
-        // only source-height delta is insufficient when the source box is much
-        // shorter than its visual line spacing.
+        shifted += ReflowSingleLineExpansions(snapshots, pageHeight);
+        shifted += GuardColumnBottomOverflows(snapshots, pageHeight);
+
+        shifted += BalanceBodyFlow(
+            new BodyFlowBalanceOptions(gfx, snapshots, targetFontName, pageWidth, pageHeight, protectedRegions ?? Array.Empty<TableMaskRegion>()),
+            out double maximumInterParagraphGap,
+            out double maximumFlowRegionResidualWhitespace);
+
+        ValidateNoBottomOverflow(snapshots, pageHeight, protectedRegions);
+
+        return BuildPlanResult(snapshots, shifted, pageHeight, protectedRegions, maximumInterParagraphGap, maximumFlowRegionResidualWhitespace);
+    }
+
+    private static int ReflowSingleLineExpansions(List<PdfParagraphLayoutSnapshot> snapshots, double pageHeight)
+    {
+        int shifted = 0;
         foreach (var expanding in snapshots
                      .Where(s => !IsHeading(s.Role) &&
                                  !string.IsNullOrWhiteSpace(s.Paragraph.TranslatedText))
@@ -155,11 +165,12 @@ internal static class PdfTranslationLayoutPlanner
             candidate.ShiftY += delta;
             shifted++;
         }
+        return shifted;
+    }
 
-        // Final geometric guard: compare the actual rendered bottom of each
-        // translated fragment with the next fragment in the same column. This
-        // catches split paragraphs whose source boxes overlap after reflow;
-        // it is deliberately limited to movable translated text.
+    private static int GuardColumnBottomOverflows(List<PdfParagraphLayoutSnapshot> snapshots, double pageHeight)
+    {
+        int shifted = 0;
         foreach (var columnGroup in snapshots.GroupBy(s => s.Column))
         {
             PdfParagraphLayoutSnapshot? previous = null;
@@ -167,14 +178,10 @@ internal static class PdfTranslationLayoutPlanner
             {
                 if (!IsReflowShiftable(current.Paragraph, pageHeight))
                 {
-                    // Headings and protected regions are hard layout
-                    // boundaries. Never carry a paragraph's extra height
-                    // across a references/section heading.
                     previous = null;
                     continue;
                 }
-                if (!IsShortNaturalExpansion(current))
-                    continue;
+                if (!IsShortNaturalExpansion(current)) continue;
 
                 if (previous != null)
                 {
@@ -193,32 +200,41 @@ internal static class PdfTranslationLayoutPlanner
                 previous = current;
             }
         }
+        return shifted;
+    }
 
-        shifted += BalanceBodyFlow(
-            new BodyFlowBalanceOptions(gfx, snapshots, targetFontName, pageWidth, pageHeight, protectedRegions ?? Array.Empty<TableMaskRegion>()),
-            out double maximumInterParagraphGap,
-            out double maximumFlowRegionResidualWhitespace);
-
+    private static void ValidateNoBottomOverflow(
+        List<PdfParagraphLayoutSnapshot> snapshots,
+        double pageHeight,
+        IReadOnlyList<TableMaskRegion>? protectedRegions)
+    {
         var bottomOverflowParagraphs = snapshots
             .Where(s => IsReflowShiftable(s.Paragraph, pageHeight) &&
                         s.Paragraph.Y0 < PageBottomMargin - 0.5 &&
                         s.Paragraph.OriginalY0 >= PageBottomMargin - 0.5)
             .ToList();
-        int bottomOverflow = bottomOverflowParagraphs.Count;
-        if (bottomOverflow > 0)
-        {
-            string details = string.Join(", ", bottomOverflowParagraphs
-                .Take(3).Select(s =>
-                    $"'{Preview(s.Paragraph.TextWithPlaceholders)}' role={s.Role} " +
-                    $"y=[{s.Paragraph.Y0:F1},{s.Paragraph.Y1:F1}] " +
-                    $"original=[{s.Paragraph.OriginalY0:F1},{s.Paragraph.OriginalY1:F1}] " +
-                    $"measured={s.MeasuredHeight:F1} shift={s.ShiftY:F1} " +
-                    $"cjk={HasCjkTranslation(s.Paragraph)} protected={OverlapsProtectedRegion(s.Paragraph, protectedRegions ?? Array.Empty<TableMaskRegion>())}"));
-            throw new PdfLayoutPlanningException(
-                $"{bottomOverflow} paragraph(s) moved below the page bottom: {details}",
-                bottomOverflowCount: bottomOverflow);
-        }
+        if (bottomOverflowParagraphs.Count == 0) return;
 
+        string details = string.Join(", ", bottomOverflowParagraphs
+            .Take(3).Select(s =>
+                $"'{Preview(s.Paragraph.TextWithPlaceholders)}' role={s.Role} " +
+                $"y=[{s.Paragraph.Y0:F1},{s.Paragraph.Y1:F1}] " +
+                $"original=[{s.Paragraph.OriginalY0:F1},{s.Paragraph.OriginalY1:F1}] " +
+                $"measured={s.MeasuredHeight:F1} shift={s.ShiftY:F1} " +
+                $"cjk={HasCjkTranslation(s.Paragraph)} protected={OverlapsProtectedRegion(s.Paragraph, protectedRegions ?? Array.Empty<TableMaskRegion>())}"));
+        throw new PdfLayoutPlanningException(
+            $"{bottomOverflowParagraphs.Count} paragraph(s) moved below the page bottom: {details}",
+            bottomOverflowCount: bottomOverflowParagraphs.Count);
+    }
+
+    private static PdfTranslationLayoutPlan BuildPlanResult(
+        List<PdfParagraphLayoutSnapshot> snapshots,
+        int shifted,
+        double pageHeight,
+        IReadOnlyList<TableMaskRegion>? protectedRegions,
+        double maximumInterParagraphGap,
+        double maximumFlowRegionResidualWhitespace)
+    {
         double maximumAlignmentAnchorShift = snapshots
             .Where(s => IsHeading(s.Role))
             .Select(s => Math.Max(
@@ -244,7 +260,7 @@ internal static class PdfTranslationLayoutPlanner
             HeadingCount = snapshots.Count(s => IsHeading(s.Role)),
             ShiftedParagraphCount = shifted,
             FixedCollisionCount = 0,
-            BottomOverflowCount = bottomOverflow,
+            BottomOverflowCount = 0,
             MaximumAlignmentAnchorShift = maximumAlignmentAnchorShift,
             MinimumBodyFontRatio = bodySnapshots.Select(s => s.FontRatio).DefaultIfEmpty(1.0).Min(),
             MaximumBodyFontRatio = bodySnapshots.Select(s => s.FontRatio).DefaultIfEmpty(1.0).Max(),
@@ -352,101 +368,141 @@ internal static class PdfTranslationLayoutPlanner
             {
                 if (run.Count == 0) continue;
 
-                double regionTop = run[0].Paragraph.Y1;
-                double protectedBoundaryTop = FindAdjacentProtectedBoundaryTop(
-                    run,
-                    options.ProtectedRegions,
-                    regionTop);
-                double regionBottom = Math.Max(
-                    PageBottomMargin,
-                    Math.Max(
-                        run[^1].Paragraph.OriginalY0,
-                        protectedBoundaryTop > 0 ? protectedBoundaryTop + Gap : 0));
-                double availableHeight = regionTop - regionBottom;
-                if (availableHeight <= 0) continue;
+                shifted += BalanceSingleFlowRun(
+                    options, run,
+                    out double runMaxGap, out double runResidual);
+                maximumInterParagraphGap = Math.Max(maximumInterParagraphGap, runMaxGap);
+                maximumFlowRegionResidualWhitespace = Math.Max(maximumFlowRegionResidualWhitespace, runResidual);
+            }
+        }
+        return shifted;
+    }
 
-                var baseGaps = new List<double>();
-                for (int i = 1; i < run.Count; i++)
+    private static int BalanceSingleFlowRun(
+        BodyFlowBalanceOptions options,
+        List<PdfParagraphLayoutSnapshot> run,
+        out double maximumInterParagraphGap,
+        out double maximumFlowRegionResidualWhitespace)
+    {
+        int shifted = 0;
+        maximumInterParagraphGap = 0;
+        maximumFlowRegionResidualWhitespace = 0;
+
+        double regionTop = run[0].Paragraph.Y1;
+        double protectedBoundaryTop = FindAdjacentProtectedBoundaryTop(run, options.ProtectedRegions, regionTop);
+        double regionBottom = Math.Max(
+            PageBottomMargin,
+            Math.Max(
+                run[^1].Paragraph.OriginalY0,
+                protectedBoundaryTop > 0 ? protectedBoundaryTop + Gap : 0));
+        double availableHeight = regionTop - regionBottom;
+        if (availableHeight <= 0) return 0;
+
+        var baseGaps = ComputeBaseGaps(run);
+        double gapHeight = baseGaps.Sum();
+        double contentBudget = availableHeight - gapHeight;
+        if (contentBudget <= 0) return 0;
+
+        var baseFonts = run.ToDictionary(
+            snapshot => snapshot,
+            snapshot => Math.Max(snapshot.OutputFontSize, snapshot.SourceFontSize * MinimumBodyFontScale));
+        double selectedScale = FindLargestFittingFontScale(options.Gfx, run, baseFonts, options.TargetFontName, contentBudget);
+        ApplyFontScaleAndMeasure(options.Gfx, run, baseFonts, options.TargetFontName, selectedScale);
+
+        shifted += IncreaseLeadingToFit(run, options, contentBudget, gapHeight);
+
+        RedistributeGaps(run, baseGaps, availableHeight);
+
+        double usedHeight = run.Sum(s => s.MeasuredHeight) + baseGaps.Sum();
+        double residual = Math.Max(0, availableHeight - usedHeight);
+        maximumInterParagraphGap = baseGaps.DefaultIfEmpty(0).Max();
+        maximumFlowRegionResidualWhitespace = residual;
+
+        shifted += PositionRunParagraphs(run, regionTop, residual, baseGaps);
+        return shifted;
+    }
+
+    private static List<double> ComputeBaseGaps(List<PdfParagraphLayoutSnapshot> run)
+    {
+        var baseGaps = new List<double>();
+        for (int i = 1; i < run.Count; i++)
+        {
+            double sourceGap = run[i - 1].Paragraph.OriginalY0 - run[i].Paragraph.OriginalY1;
+            double typicalLine = Math.Max(run[i - 1].SourceLineHeight, run[i - 1].SourceFontSize);
+            baseGaps.Add(Math.Clamp(sourceGap, Gap, Math.Max(Gap, typicalLine * 0.85)));
+        }
+        return baseGaps;
+    }
+
+    private static int IncreaseLeadingToFit(
+        List<PdfParagraphLayoutSnapshot> run,
+        BodyFlowBalanceOptions options,
+        double contentBudget,
+        double gapHeight)
+    {
+        int shifted = 0;
+        double remaining = Math.Max(0, contentBudget - run.Sum(s => s.MeasuredHeight));
+        double lineUnits = run.Sum(s => s.OutputFontSize * Math.Max(0, s.LineCount));
+        if (remaining > 0.5 && lineUnits > 0)
+        {
+            double leadingIncrease = Math.Min(
+                remaining / lineUnits,
+                run.Min(s => Math.Max(0, MaximumBodyLineSpacing - s.LineSpacingMultiplier)));
+            if (leadingIncrease > 0.001)
+            {
+                foreach (var snapshot in run)
                 {
-                    double sourceGap = run[i - 1].Paragraph.OriginalY0 - run[i].Paragraph.OriginalY1;
-                    double typicalLine = Math.Max(run[i - 1].SourceLineHeight, run[i - 1].SourceFontSize);
-                    baseGaps.Add(Math.Clamp(sourceGap, Gap, Math.Max(Gap, typicalLine * 0.85)));
-                }
-
-                double gapHeight = baseGaps.Sum();
-                double contentBudget = availableHeight - gapHeight;
-                if (contentBudget <= 0) continue;
-
-                var baseFonts = run.ToDictionary(
-                    snapshot => snapshot,
-                    snapshot => Math.Max(snapshot.OutputFontSize, snapshot.SourceFontSize * MinimumBodyFontScale));
-                double selectedScale = FindLargestFittingFontScale(
-                    options.Gfx,
-                    run,
-                    baseFonts,
-                    options.TargetFontName,
-                    contentBudget);
-                ApplyFontScaleAndMeasure(options.Gfx, run, baseFonts, options.TargetFontName, selectedScale);
-
-                double remaining = Math.Max(0, contentBudget - run.Sum(s => s.MeasuredHeight));
-                double lineUnits = run.Sum(s => s.OutputFontSize * Math.Max(0, s.LineCount));
-                if (remaining > 0.5 && lineUnits > 0)
-                {
-                    double leadingIncrease = Math.Min(
-                        remaining / lineUnits,
-                        run.Min(s => Math.Max(0, MaximumBodyLineSpacing - s.LineSpacingMultiplier)));
-                    if (leadingIncrease > 0.001)
-                    {
-                        foreach (var snapshot in run)
-                        {
-                            snapshot.Paragraph.LayoutLineSpacingMultiplierOverride =
-                                snapshot.LineSpacingMultiplier + leadingIncrease;
-                            MeasureSnapshot(options.Gfx, snapshot, options.TargetFontName);
-                        }
-                    }
-                }
-
-                remaining = Math.Max(0, availableHeight - run.Sum(s => s.MeasuredHeight) - gapHeight);
-                if (remaining > 0.5 && baseGaps.Count > 0)
-                {
-                    double perGap = remaining / baseGaps.Count;
-                    for (int i = 0; i < baseGaps.Count; i++)
-                    {
-                        double maximumGap = Math.Max(
-                            Gap,
-                            Math.Max(run[i].SourceLineHeight, run[i].SourceFontSize) * 1.15);
-                        double addition = Math.Min(perGap, maximumGap - baseGaps[i]);
-                        if (addition > 0) baseGaps[i] += addition;
-                    }
-                }
-
-                double usedHeight = run.Sum(s => s.MeasuredHeight) + baseGaps.Sum();
-                double residual = Math.Max(0, availableHeight - usedHeight);
-                maximumInterParagraphGap = Math.Max(
-                    maximumInterParagraphGap,
-                    baseGaps.DefaultIfEmpty(0).Max());
-                maximumFlowRegionResidualWhitespace = Math.Max(
-                    maximumFlowRegionResidualWhitespace,
-                    residual);
-                double cursor = regionTop - residual / 2.0;
-                for (int i = 0; i < run.Count; i++)
-                {
-                    var snapshot = run[i];
-                    double newY1 = cursor;
-                    double newY0 = newY1 - snapshot.MeasuredHeight;
-                    double delta = newY1 - snapshot.Paragraph.Y1;
-                    if (Math.Abs(delta) > 0.5)
-                    {
-                        snapshot.ShiftY += delta;
-                        shifted++;
-                    }
-                    snapshot.Paragraph.Y1 = newY1;
-                    snapshot.Paragraph.Y0 = newY0;
-                    cursor = newY0 - (i < baseGaps.Count ? baseGaps[i] : 0);
+                    snapshot.Paragraph.LayoutLineSpacingMultiplierOverride =
+                        snapshot.LineSpacingMultiplier + leadingIncrease;
+                    MeasureSnapshot(options.Gfx, snapshot, options.TargetFontName);
                 }
             }
         }
+        return shifted;
+    }
 
+    private static void RedistributeGaps(
+        List<PdfParagraphLayoutSnapshot> run,
+        List<double> baseGaps,
+        double availableHeight)
+    {
+        double remaining = Math.Max(0, availableHeight - run.Sum(s => s.MeasuredHeight) - baseGaps.Sum());
+        if (remaining <= 0.5 || baseGaps.Count == 0) return;
+
+        double perGap = remaining / baseGaps.Count;
+        for (int i = 0; i < baseGaps.Count; i++)
+        {
+            double maximumGap = Math.Max(
+                Gap,
+                Math.Max(run[i].SourceLineHeight, run[i].SourceFontSize) * 1.15);
+            double addition = Math.Min(perGap, maximumGap - baseGaps[i]);
+            if (addition > 0) baseGaps[i] += addition;
+        }
+    }
+
+    private static int PositionRunParagraphs(
+        List<PdfParagraphLayoutSnapshot> run,
+        double regionTop,
+        double residual,
+        List<double> baseGaps)
+    {
+        int shifted = 0;
+        double cursor = regionTop - residual / 2.0;
+        for (int i = 0; i < run.Count; i++)
+        {
+            var snapshot = run[i];
+            double newY1 = cursor;
+            double newY0 = newY1 - snapshot.MeasuredHeight;
+            double delta = newY1 - snapshot.Paragraph.Y1;
+            if (Math.Abs(delta) > 0.5)
+            {
+                snapshot.ShiftY += delta;
+                shifted++;
+            }
+            snapshot.Paragraph.Y1 = newY1;
+            snapshot.Paragraph.Y0 = newY0;
+            cursor = newY0 - (i < baseGaps.Count ? baseGaps[i] : 0);
+        }
         return shifted;
     }
 
