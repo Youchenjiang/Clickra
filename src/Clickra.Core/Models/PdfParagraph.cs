@@ -142,18 +142,7 @@ namespace Clickra.Core.Models
                 this.Formulas.Add(newFormula);
             }
 
-            string otherText = other.TextWithPlaceholders;
-            if (formulaIdOffset > 0)
-            {
-                otherText = Regex.Replace(otherText, @"\{v(\d+)\}", m =>
-                {
-                    if (int.TryParse(m.Groups[1].Value, out int oldId))
-                    {
-                        return $"{{v{oldId + formulaIdOffset}}}";
-                    }
-                    return m.Value;
-                });
-            }
+            string otherText = AdjustOtherTextFormulaIds(other.TextWithPlaceholders, formulaIdOffset);
 
             if (string.IsNullOrWhiteSpace(this.TextWithPlaceholders))
             {
@@ -196,6 +185,18 @@ namespace Clickra.Core.Models
             this.IsCode = this.IsCode || other.IsCode;
             this.IsDiagram = this.IsDiagram || other.IsDiagram;
             this.IsGrayPromptContent = this.IsGrayPromptContent || other.IsGrayPromptContent;
+        }
+        private static string AdjustOtherTextFormulaIds(string text, int offset)
+        {
+            if (offset <= 0) return text;
+            return Regex.Replace(text, @"\{v(\d+)\}", m =>
+            {
+                if (int.TryParse(m.Groups[1].Value, out int oldId))
+                {
+                    return $"{{v{oldId + offset}}}";
+                }
+                return m.Value;
+            });
         }
     }
 }

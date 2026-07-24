@@ -4,7 +4,7 @@ namespace Clickra.Core.Models
 {
     public class ParagraphAnnotationInfo
     {
-        public PdfAnnotation PdfAnnotation { get; set; } = null!;
+        public PdfAnnotation PdfAnnotation { get; set; } = default!;
         public string Text { get; set; } = "";
         public int OccurrenceIndex { get; set; }
         /// <summary>Ordinal among figure references in the source paragraph.</summary>

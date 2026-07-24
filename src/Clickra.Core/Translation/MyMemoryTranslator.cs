@@ -102,6 +102,21 @@ internal class MyMemoryTranslator : ITranslationEngine
 
     public sealed class TranslationRateLimitException : Exception
     {
+        public TranslationRateLimitException()
+            : base("MyMemory rate limited the request.")
+        {
+        }
+
+        public TranslationRateLimitException(string message)
+            : base(message)
+        {
+        }
+
+        public TranslationRateLimitException(string message, Exception innerException)
+            : base(message, innerException)
+        {
+        }
+
         public TranslationRateLimitException(TimeSpan retryAfter)
             : base($"MyMemory rate limited the request; retry after {retryAfter.TotalSeconds:0}s.")
         {
