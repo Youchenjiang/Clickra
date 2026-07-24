@@ -8,5 +8,6 @@ TestSuite.RegisterPdfLayoutRegressionTests(runner);
 TestSuite.RegisterTranslationTests(runner);
 TestSuite.RegisterLibreOfficeEngineTests(runner);
 TestSuite.RegisterPdfCompressionTests(runner);
+TestSuite.RegisterPdfSplitTests(runner);
 
 return runner.Failures == 0 ? 0 : 1;
