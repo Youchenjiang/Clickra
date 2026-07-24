@@ -195,12 +195,7 @@ internal static class PdfTranslationLayoutPlanner
         }
 
         shifted += BalanceBodyFlow(
-            gfx,
-            snapshots,
-            targetFontName,
-            pageWidth,
-            pageHeight,
-            protectedRegions ?? Array.Empty<TableMaskRegion>(),
+            new BodyFlowBalanceOptions(gfx, snapshots, targetFontName, pageWidth, pageHeight, protectedRegions ?? Array.Empty<TableMaskRegion>()),
             out double maximumInterParagraphGap,
             out double maximumFlowRegionResidualWhitespace);
 
@@ -327,13 +322,16 @@ internal static class PdfTranslationLayoutPlanner
                snapshot.MeasuredHeight <= sourceLineBox * 4.0;
     }
 
+    private record BodyFlowBalanceOptions(
+        XGraphics Gfx,
+        List<PdfParagraphLayoutSnapshot> Snapshots,
+        string TargetFontName,
+        double PageWidth,
+        double PageHeight,
+        IReadOnlyList<TableMaskRegion> ProtectedRegions);
+
     private static int BalanceBodyFlow(
-        XGraphics gfx,
-        List<PdfParagraphLayoutSnapshot> snapshots,
-        string targetFontName,
-        double pageWidth,
-        double pageHeight,
-        IReadOnlyList<TableMaskRegion> protectedRegions,
+        BodyFlowBalanceOptions options,
         out double maximumInterParagraphGap,
         out double maximumFlowRegionResidualWhitespace)
     {
@@ -342,78 +340,14 @@ internal static class PdfTranslationLayoutPlanner
         maximumFlowRegionResidualWhitespace = 0;
         foreach (int column in new[] { 0, 1 })
         {
-            var flowable = snapshots
+            var flowable = options.Snapshots
                 .Where(s => s.Column == column &&
-                            IsReflowShiftable(s.Paragraph, pageHeight) &&
+                            IsReflowShiftable(s.Paragraph, options.PageHeight) &&
                             HasCjkTranslation(s.Paragraph) &&
-                            !OverlapsProtectedRegion(s.Paragraph, protectedRegions))
+                            !OverlapsProtectedRegion(s.Paragraph, options.ProtectedRegions))
                 .OrderByDescending(s => s.Paragraph.OriginalY1)
                 .ToList();
             foreach (var run in BuildBodyFlowRuns(
-                         flowable, snapshots, column, pageWidth, protectedRegions))
-            {
-                if (run.Count == 0) continue;
-
-                double regionTop = run[0].Paragraph.Y1;
-                double protectedBoundaryTop = FindAdjacentProtectedBoundaryTop(
-                    run,
-                    protectedRegions,
-                    regionTop);
-                double regionBottom = Math.Max(
-                    PageBottomMargin,
-                    Math.Max(
-                        run[^1].Paragraph.OriginalY0,
-                        protectedBoundaryTop > 0 ? protectedBoundaryTop + Gap : 0));
-                double availableHeight = regionTop - regionBottom;
-                if (availableHeight <= 0) continue;
-
-                var baseGaps = new List<double>();
-                for (int i = 1; i < run.Count; i++)
-                {
-                    double sourceGap = run[i - 1].Paragraph.OriginalY0 - run[i].Paragraph.OriginalY1;
-                    double typicalLine = Math.Max(run[i - 1].SourceLineHeight, run[i - 1].SourceFontSize);
-                    baseGaps.Add(Math.Clamp(sourceGap, Gap, Math.Max(Gap, typicalLine * 0.85)));
-                }
-
-                double gapHeight = baseGaps.Sum();
-                double contentBudget = availableHeight - gapHeight;
-                if (contentBudget <= 0) continue;
-
-                var baseFonts = run.ToDictionary(
-                    snapshot => snapshot,
-                    snapshot => Math.Max(snapshot.OutputFontSize, snapshot.SourceFontSize * MinimumBodyFontScale));
-                double selectedScale = FindLargestFittingFontScale(
-                    gfx,
-                    run,
-                    baseFonts,
-                    targetFontName,
-                    contentBudget);
-                ApplyFontScaleAndMeasure(gfx, run, baseFonts, targetFontName, selectedScale);
-
-                double remaining = Math.Max(0, contentBudget - run.Sum(s => s.MeasuredHeight));
-                double lineUnits = run.Sum(s => s.OutputFontSize * Math.Max(0, s.LineCount));
-                if (remaining > 0.5 && lineUnits > 0)
-                {
-                    double leadingIncrease = Math.Min(
-                        remaining / lineUnits,
-                        run.Min(s => Math.Max(0, MaximumBodyLineSpacing - s.LineSpacingMultiplier)));
-                    if (leadingIncrease > 0.001)
-                    {
-                        foreach (var snapshot in run)
-                        {
-                            snapshot.Paragraph.LayoutLineSpacingMultiplierOverride =
-                                snapshot.LineSpacingMultiplier + leadingIncrease;
-                            MeasureSnapshot(gfx, snapshot, targetFontName);
-                        }
-                    }
-                }
-
-                remaining = Math.Max(0, availableHeight - run.Sum(s => s.MeasuredHeight) - gapHeight);
-                if (remaining > 0.5 && baseGaps.Count > 0)
-                {
-                    double perGap = remaining / baseGaps.Count;
-                    for (int i = 0; i < baseGaps.Count; i++)
-                    {
                         double maximumGap = Math.Max(
                             Gap,
                             Math.Max(run[i].SourceLineHeight, run[i].SourceFontSize) * 1.15);
