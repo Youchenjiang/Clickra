@@ -128,12 +128,14 @@ namespace Clickra.Core.Processors
             return true;
         }
 
+        private static readonly char[] LabelSeparators = [' ', '\t', '\r', '\n'];
+
         private static bool IsShortFigureLabel(PdfParagraph para, bool insideDiagramRegion)
         {
             if (!insideDiagramRegion) return false;
             if (PdfParagraphRoleClassifier.IsTranslatableBodyProse(para)) return false;
             string text = para.TextWithPlaceholders.Trim();
-            int wordCount = text.Split(new[] { ' ', '\t', '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries).Length;
+            int wordCount = text.Split(LabelSeparators, StringSplitOptions.RemoveEmptyEntries).Length;
             double height = Math.Max(0, para.Y1 - para.Y0);
             return height <= 22 && text.Length <= 80 && wordCount <= 6;
         }

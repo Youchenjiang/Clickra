@@ -188,7 +188,7 @@ namespace Clickra.Core.Models
         }
         private static string AdjustOtherTextFormulaIds(string text, int offset)
         {
-            if (offset <= 0) return text;
+            if (string.IsNullOrEmpty(text) || offset <= 0) return text ?? string.Empty;
             return Regex.Replace(text, @"\{v(\d+)\}", m =>
             {
                 if (int.TryParse(m.Groups[1].Value, out int oldId))

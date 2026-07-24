@@ -390,6 +390,7 @@ internal static class PdfPageParagraphBuilder
 
     private static bool ShouldUnmarkTableProse(PdfParagraph para, string txt, double pageWidth)
     {
+        if (string.IsNullOrWhiteSpace(txt)) return false;
         if (PdfTableMisclassifiedProseCleanup.IsLikelyTableHeader(para, txt)) return false;
         int wordCount = txt.Split(WhitespaceSeparators, StringSplitOptions.RemoveEmptyEntries).Length;
         if (PdfTableMisclassifiedProseCleanup.IsTallFullColumnProse(para, wordCount, pageWidth)) return true;
