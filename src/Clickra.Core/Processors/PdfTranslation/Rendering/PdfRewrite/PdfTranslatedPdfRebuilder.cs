@@ -79,12 +79,14 @@ internal static class PdfTranslatedPdfRebuilder
         ApplyLayoutPlanning(gfx, paragraphs, targetFontName, pageWidthPts, pageHeightPts, tableMaskRegions, diagramMaskRegions, layoutSummary);
 
         var pageOneTitlePara = pageIndex == 0 ? PageOneLayoutClassifier.FindTitleParagraph(paragraphs, pageHeightPts) : null;
-        DrawParagraphMasks(gfx, pageIndex, paragraphs, tableMaskRegions, diagramMaskRegions, effectiveGrayMaskRegions, pageOneTitlePara, targetFontName);
+        DrawParagraphMasks(new PageMaskDrawOptions(
+            gfx, pageIndex, paragraphs, tableMaskRegions, diagramMaskRegions, effectiveGrayMaskRegions, pageOneTitlePara, targetFontName));
 
         if (vectorMarkers.Count > 0)
             PdfVectorMarkerRenderer.EraseSource(gfx, vectorMarkers);
 
-        var renderedCharsByParagraph = DrawTranslatedOverlays(gfx, pageIndex, paragraphs, tableMaskRegions, diagramMaskRegions, effectiveGrayMaskRegions, pageHasTable, strippedBaseFonts, targetFontName);
+        var renderedCharsByParagraph = DrawTranslatedOverlays(new OverlayDrawOptions(
+            gfx, pageIndex, paragraphs, tableMaskRegions, diagramMaskRegions, effectiveGrayMaskRegions, pageHasTable, strippedBaseFonts, targetFontName));
 
         if (vectorMarkers.Count > 0)
             PdfVectorMarkerRenderer.Render(gfx, vectorMarkers, renderedCharsByParagraph);
@@ -379,39 +381,41 @@ internal static class PdfTranslatedPdfRebuilder
             PdfOverlayMaskPlanner.ShouldSuppressOverlayForGrayGeometry(para, effectiveGrayMaskRegions);
     }
 
-    private static void DrawParagraphMasks(
-        XGraphics gfx,
-        int pageIndex,
-        List<PdfParagraph> paragraphs,
-        List<TableMaskRegion> tableMaskRegions,
-        List<TableMaskRegion> diagramMaskRegions,
-        List<TableMaskRegion> effectiveGrayMaskRegions,
-        PdfParagraph? pageOneTitlePara,
-        string targetFontName)
+    private readonly record struct PageMaskDrawOptions(
+        XGraphics Gfx,
+        int PageIndex,
+        List<PdfParagraph> Paragraphs,
+        List<TableMaskRegion> TableMaskRegions,
+        List<TableMaskRegion> DiagramMaskRegions,
+        List<TableMaskRegion> EffectiveGrayMaskRegions,
+        PdfParagraph? PageOneTitlePara,
+        string TargetFontName);
+
+    private static void DrawParagraphMasks(PageMaskDrawOptions opts)
     {
-        double pageHeightPts = gfx.PageSize.Height;
-        double pageWidth = gfx.PageSize.Width;
-        foreach (var para in paragraphs)
+        double pageHeightPts = opts.Gfx.PageSize.Height;
+        double pageWidth = opts.Gfx.PageSize.Width;
+        foreach (var para in opts.Paragraphs)
         {
-            if (ShouldSkipMaskForParagraph(para, pageIndex, paragraphs, pageHeightPts,
-                    tableMaskRegions, diagramMaskRegions, effectiveGrayMaskRegions, pageWidth))
+            if (ShouldSkipMaskForParagraph(para, opts.PageIndex, opts.Paragraphs, pageHeightPts,
+                    opts.TableMaskRegions, opts.DiagramMaskRegions, opts.EffectiveGrayMaskRegions, pageWidth))
                 continue;
 
-            double pageHeight = gfx.PageSize.Height;
+            double pageHeight = opts.Gfx.PageSize.Height;
             bool isFigureCaption = PdfParagraphRoleClassifier.IsFigureTableCaptionParagraph(para);
             if (PdfParagraphRoleClassifier.IsFindingCallout(para))
             {
-                DrawFindingCalloutSurface(gfx, para, pageHeight);
+                DrawFindingCalloutSurface(opts.Gfx, para, pageHeight);
                 continue;
             }
 
-            double renderedHeight = PdfTranslatedParagraphRenderer.RenderParagraph(gfx, para, targetFontName, measureOnly: true);
+            double renderedHeight = PdfTranslatedParagraphRenderer.RenderParagraph(opts.Gfx, para, opts.TargetFontName, measureOnly: true);
 
             ComputeMaskBounds(para, isFigureCaption, renderedHeight,
-                tableMaskRegions, diagramMaskRegions, paragraphs, pageOneTitlePara, pageWidth,
+                opts.TableMaskRegions, opts.DiagramMaskRegions, opts.Paragraphs, opts.PageOneTitlePara, pageWidth,
                 out double maskPdfX0, out double maskPdfY0, out double maskPdfX1, out double maskPdfY1);
 
-            if (IsGrayGeometryIntersected(maskPdfX0, maskPdfY0, maskPdfX1, maskPdfY1, para, effectiveGrayMaskRegions))
+            if (IsGrayGeometryIntersected(maskPdfX0, maskPdfY0, maskPdfX1, maskPdfY1, para, opts.EffectiveGrayMaskRegions))
                 continue;
 
             double paragraphX = maskPdfX0;
@@ -419,8 +423,57 @@ internal static class PdfTranslatedPdfRebuilder
             double paragraphWidth = maskPdfX1 - maskPdfX0;
             double paragraphHeight = maskPdfY1 - maskPdfY0;
 
-            gfx.DrawRectangle(XBrushes.White, paragraphX, paragraphY, paragraphWidth, paragraphHeight);
+            opts.Gfx.DrawRectangle(XBrushes.White, paragraphX, paragraphY, paragraphWidth, paragraphHeight);
         }
+    }
+
+    private readonly record struct OverlayDrawOptions(
+        XGraphics Gfx,
+        int PageIndex,
+        List<PdfParagraph> Paragraphs,
+        List<TableMaskRegion> TableMaskRegions,
+        List<TableMaskRegion> DiagramMaskRegions,
+        List<TableMaskRegion> EffectiveGrayMaskRegions,
+        bool PageHasTable,
+        HashSet<string> StrippedBaseFonts,
+        string TargetFontName);
+
+    private static Dictionary<PdfParagraph, List<RenderedChar>> DrawTranslatedOverlays(OverlayDrawOptions opts)
+    {
+        double pageHeightPts = opts.Gfx.PageSize.Height;
+        double pageWidth = opts.Gfx.PageSize.Width;
+        var renderedCharsByParagraph = new Dictionary<PdfParagraph, List<RenderedChar>>();
+        foreach (var para in opts.Paragraphs)
+        {
+            if (ShouldSkipOverlayForParagraph(para, opts.PageIndex, opts.Paragraphs, pageHeightPts,
+                    opts.TableMaskRegions, opts.DiagramMaskRegions, opts.EffectiveGrayMaskRegions,
+                    opts.PageHasTable, pageWidth, out bool isBypassed))
+                continue;
+
+            if (isBypassed)
+            {
+                if (!PdfFontStripper.ParagraphUsesStrippedFont(para, opts.StrippedBaseFonts)) continue;
+                PdfBypassedParagraphRenderer.Render(opts.Gfx, para, opts.TargetFontName);
+                continue;
+            }
+
+            PdfParagraphRenderMetrics renderMetrics = default;
+            double measuredHeight = PdfTranslatedParagraphRenderer.RenderParagraph(
+                opts.Gfx, para, opts.TargetFontName, measureOnly: true,
+                metricsSink: metrics => renderMetrics = metrics);
+
+            ClickraDebug.LogRender(
+                opts.PageIndex + 1, para.Y0, para.Y1, para.X0, para.X1,
+                guardClip: false,
+                horizontalOverflow: renderMetrics.HorizontalOverflow,
+                verticalOverflow: renderMetrics.VerticalOverflow,
+                measuredH: measuredHeight,
+                text: para.TextWithPlaceholders);
+            PdfTranslatedParagraphRenderer.RenderParagraph(
+                opts.Gfx, para, opts.TargetFontName,
+                renderedCharsSink: chars => renderedCharsByParagraph[para] = chars.ToList());
+        }
+        return renderedCharsByParagraph;
     }
 
     private static bool ShouldSkipOverlayForParagraph(
@@ -444,53 +497,6 @@ internal static class PdfTranslatedPdfRebuilder
         if (pageHasTable && tableMaskRegions.Count > 0 && PdfTableMaskPlanner.ParagraphOverlapsAnyTableMask(para.X0, para.Y0, para.X1, para.Y1, tableMaskRegions)) return true;
         if (IsProtectedMaskRegion(para, paragraphs, diagramMaskRegions, pageWidth)) return true;
         return false;
-    }
-
-    private static Dictionary<PdfParagraph, List<RenderedChar>> DrawTranslatedOverlays(
-        XGraphics gfx,
-        int pageIndex,
-        List<PdfParagraph> paragraphs,
-        List<TableMaskRegion> tableMaskRegions,
-        List<TableMaskRegion> diagramMaskRegions,
-        List<TableMaskRegion> effectiveGrayMaskRegions,
-        bool pageHasTable,
-        HashSet<string> strippedBaseFonts,
-        string targetFontName)
-    {
-        double pageHeightPts = gfx.PageSize.Height;
-        double pageWidth = gfx.PageSize.Width;
-        var renderedCharsByParagraph = new Dictionary<PdfParagraph, List<RenderedChar>>();
-        foreach (var para in paragraphs)
-        {
-            if (ShouldSkipOverlayForParagraph(para, pageIndex, paragraphs, pageHeightPts,
-                    tableMaskRegions, diagramMaskRegions, effectiveGrayMaskRegions,
-                    pageHasTable, pageWidth, out bool isBypassed))
-                continue;
-
-            if (isBypassed)
-            {
-                if (!PdfFontStripper.ParagraphUsesStrippedFont(para, strippedBaseFonts)) continue;
-                PdfBypassedParagraphRenderer.Render(gfx, para, targetFontName);
-                continue;
-            }
-
-            PdfParagraphRenderMetrics renderMetrics = default;
-            double measuredHeight = PdfTranslatedParagraphRenderer.RenderParagraph(
-                gfx, para, targetFontName, measureOnly: true,
-                metricsSink: metrics => renderMetrics = metrics);
-
-            ClickraDebug.LogRender(
-                pageIndex + 1, para.Y0, para.Y1, para.X0, para.X1,
-                guardClip: false,
-                horizontalOverflow: renderMetrics.HorizontalOverflow,
-                verticalOverflow: renderMetrics.VerticalOverflow,
-                measuredH: measuredHeight,
-                text: para.TextWithPlaceholders);
-            PdfTranslatedParagraphRenderer.RenderParagraph(
-                gfx, para, targetFontName,
-                renderedCharsSink: chars => renderedCharsByParagraph[para] = chars.ToList());
-        }
-        return renderedCharsByParagraph;
     }
 
     private static void DrawFindingCalloutSurface(XGraphics gfx, PdfParagraph para, double pageHeight)
