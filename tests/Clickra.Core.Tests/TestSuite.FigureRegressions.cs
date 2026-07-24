@@ -177,7 +177,7 @@ static partial class TestSuite
             Assert.True(method != null, "Expected bar-chart axis label helper.");
 
             var axis = UninitializedParagraph("Success Rate (%) 60", width: 55, height: 35);
-            Assert.True((bool)method.Invoke(null, new object[] { axis })!,
+            Assert.True(method != null && (bool)method.Invoke(null, new object[] { axis })!,
                 "Expected merged Success Rate (%) y-axis label to be treated as a chart label.");
         });
 
