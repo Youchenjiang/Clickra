@@ -47,6 +47,12 @@ namespace Clickra.Core.Processors
 
         private static bool TryTokenizeSpecialTag(string text, int len, List<string> list, StringBuilder sb, ref int i)
         {
+            if (TryTokenizeBoldTag(text, list, sb, ref i)) return true;
+            return TryTokenizeVariableTag(text, len, list, sb, ref i);
+        }
+
+        private static bool TryTokenizeBoldTag(string text, List<string> list, StringBuilder sb, ref int i)
+        {
             if (text.AsSpan(i).StartsWith("{b}"))
             {
                 if (sb.Length > 0) { list.Add(sb.ToString()); sb.Clear(); }
@@ -61,11 +67,15 @@ namespace Clickra.Core.Processors
                 i += 4;
                 return true;
             }
+            return false;
+        }
+
+        private static bool TryTokenizeVariableTag(string text, int len, List<string> list, StringBuilder sb, ref int i)
+        {
             if (text[i] == '{' && i + 2 < len && text[i + 1] == 'v')
             {
-                int j = i;
-                while (j < len && text[j] != '}') j++;
-                if (j < len && text[j] == '}')
+                int j = text.IndexOf('}', i);
+                if (j != -1)
                 {
                     if (sb.Length > 0) { list.Add(sb.ToString()); sb.Clear(); }
                     list.Add(text.Substring(i, j - i + 1));
@@ -73,6 +83,8 @@ namespace Clickra.Core.Processors
                     return true;
                 }
             }
+            return false;
+        }
             return false;
         }
 
@@ -104,7 +116,10 @@ namespace Clickra.Core.Processors
                     continue;
                 }
 
-                MeasureTokenWidth(token, font, formulas, fontSize, averageFontSize, gfx, out bool isFormula, out int formulaId, out double width);
+                var measured = MeasureTokenWidth(new TokenMeasureOptions(token, font, formulas, fontSize, averageFontSize, gfx));
+                bool isFormula = measured.IsFormula;
+                int formulaId = measured.FormulaId;
+                double width = measured.Width;
 
                 if (width > maxWidth && !isFormula && token.Length > 1 && token != " " &&
                     TrySplitOverlongToken(token, font, maxWidth, gfx, ref currentRow, ref rows, ref currentX))
@@ -135,62 +150,49 @@ namespace Clickra.Core.Processors
             return rows;
         }
 
-        private static void MeasureTokenWidth(
-            string token,
-            XFont font,
-            List<MathFormula> formulas,
-            double fontSize,
-            double averageFontSize,
-            XGraphics gfx,
-            out bool isFormula,
-            out int formulaId,
-            out double width)
-        {
-            isFormula = token.StartsWith("{v") && token.EndsWith('}');
-            width = 0;
-            formulaId = -1;
+        private readonly record struct TokenMeasureOptions(
+            string Token,
+            XFont Font,
+            List<MathFormula> Formulas,
+            double FontSize,
+            double AverageFontSize,
+            XGraphics Gfx);
 
+        private readonly record struct MeasuredTokenInfo(
+            bool IsFormula,
+            int FormulaId,
+            double Width);
+
+        private static MeasuredTokenInfo MeasureTokenWidth(TokenMeasureOptions opts)
+        {
+            bool isFormula = opts.Token.StartsWith("{v") && opts.Token.EndsWith('}');
             if (isFormula)
             {
-                if (int.TryParse(token.Substring(2, token.Length - 3), out formulaId) && formulaId >= 0 && formulaId < formulas.Count)
+                if (int.TryParse(opts.Token.Substring(2, opts.Token.Length - 3), out int formulaId) && formulaId >= 0 && formulaId < opts.Formulas.Count)
                 {
-                    var formula = formulas[formulaId];
-                    double formulaScale = fontSize / averageFontSize;
-                    width = formula.Width * formulaScale;
+                    var formula = opts.Formulas[formulaId];
+                    double formulaScale = opts.FontSize / opts.AverageFontSize;
+                    return new MeasuredTokenInfo(true, formulaId, formula.Width * formulaScale);
                 }
-                else
-                {
-                    isFormula = false;
-                    formulaId = -1;
-                    width = gfx.MeasureString(FontUtilities.NormalizeMathValue(token), font).Width;
-                }
+                return new MeasuredTokenInfo(false, -1, opts.Gfx.MeasureString(FontUtilities.NormalizeMathValue(opts.Token), opts.Font).Width);
             }
-            else
+
+            if (opts.Token == " ")
             {
-                if (token == " ")
-                {
-                    width = gfx.MeasureString(" ", font).Width;
-                }
-                else if (token.Length == 1 && FontUtilities.IsLatinExtendedOrSymbol(token[0]))
-                {
-                    char c = token[0];
-                    string fontName;
-                    if (c >= 0x0080 && c <= 0x024F)
-                    {
-                        fontName = font.FontFamily.Name.Contains("Courier") ? "Courier New" : "Arial";
-                    }
-                    else
-                    {
-                        fontName = "Segoe UI Symbol";
-                    }
-                    XFont fallbackFont = new(fontName, font.Size, font.Style);
-                    width = gfx.MeasureString(FontUtilities.NormalizeMathValue(token), fallbackFont).Width;
-                }
-                else
-                {
-                    width = gfx.MeasureString(FontUtilities.NormalizeMathValue(token), font).Width;
-                }
+                return new MeasuredTokenInfo(false, -1, opts.Gfx.MeasureString(" ", opts.Font).Width);
             }
+
+            if (opts.Token.Length == 1 && FontUtilities.IsLatinExtendedOrSymbol(opts.Token[0]))
+            {
+                char c = opts.Token[0];
+                string fontName = (c >= 0x0080 && c <= 0x024F)
+                    ? (opts.Font.FontFamily.Name.Contains("Courier") ? "Courier New" : "Arial")
+                    : "Segoe UI Symbol";
+                XFont fallbackFont = new(fontName, opts.Font.Size, opts.Font.Style);
+                return new MeasuredTokenInfo(false, -1, opts.Gfx.MeasureString(FontUtilities.NormalizeMathValue(opts.Token), fallbackFont).Width);
+            }
+
+            return new MeasuredTokenInfo(false, -1, opts.Gfx.MeasureString(FontUtilities.NormalizeMathValue(opts.Token), opts.Font).Width);
         }
 
         private static bool TrySplitOverlongToken(
