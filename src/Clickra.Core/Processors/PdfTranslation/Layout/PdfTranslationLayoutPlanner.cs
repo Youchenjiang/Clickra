@@ -322,7 +322,7 @@ internal static class PdfTranslationLayoutPlanner
                snapshot.MeasuredHeight <= sourceLineBox * 4.0;
     }
 
-    private record BodyFlowBalanceOptions(
+    private sealed record BodyFlowBalanceOptions(
         XGraphics Gfx,
         List<PdfParagraphLayoutSnapshot> Snapshots,
         string TargetFontName,
@@ -348,6 +348,70 @@ internal static class PdfTranslationLayoutPlanner
                 .OrderByDescending(s => s.Paragraph.OriginalY1)
                 .ToList();
             foreach (var run in BuildBodyFlowRuns(
+                         flowable, options.Snapshots, column, options.PageWidth, options.ProtectedRegions))
+            {
+                if (run.Count == 0) continue;
+
+                double regionTop = run[0].Paragraph.Y1;
+                double protectedBoundaryTop = FindAdjacentProtectedBoundaryTop(
+                    run,
+                    options.ProtectedRegions,
+                    regionTop);
+                double regionBottom = Math.Max(
+                    PageBottomMargin,
+                    Math.Max(
+                        run[^1].Paragraph.OriginalY0,
+                        protectedBoundaryTop > 0 ? protectedBoundaryTop + Gap : 0));
+                double availableHeight = regionTop - regionBottom;
+                if (availableHeight <= 0) continue;
+
+                var baseGaps = new List<double>();
+                for (int i = 1; i < run.Count; i++)
+                {
+                    double sourceGap = run[i - 1].Paragraph.OriginalY0 - run[i].Paragraph.OriginalY1;
+                    double typicalLine = Math.Max(run[i - 1].SourceLineHeight, run[i - 1].SourceFontSize);
+                    baseGaps.Add(Math.Clamp(sourceGap, Gap, Math.Max(Gap, typicalLine * 0.85)));
+                }
+
+                double gapHeight = baseGaps.Sum();
+                double contentBudget = availableHeight - gapHeight;
+                if (contentBudget <= 0) continue;
+
+                var baseFonts = run.ToDictionary(
+                    snapshot => snapshot,
+                    snapshot => Math.Max(snapshot.OutputFontSize, snapshot.SourceFontSize * MinimumBodyFontScale));
+                double selectedScale = FindLargestFittingFontScale(
+                    options.Gfx,
+                    run,
+                    baseFonts,
+                    options.TargetFontName,
+                    contentBudget);
+                ApplyFontScaleAndMeasure(options.Gfx, run, baseFonts, options.TargetFontName, selectedScale);
+
+                double remaining = Math.Max(0, contentBudget - run.Sum(s => s.MeasuredHeight));
+                double lineUnits = run.Sum(s => s.OutputFontSize * Math.Max(0, s.LineCount));
+                if (remaining > 0.5 && lineUnits > 0)
+                {
+                    double leadingIncrease = Math.Min(
+                        remaining / lineUnits,
+                        run.Min(s => Math.Max(0, MaximumBodyLineSpacing - s.LineSpacingMultiplier)));
+                    if (leadingIncrease > 0.001)
+                    {
+                        foreach (var snapshot in run)
+                        {
+                            snapshot.Paragraph.LayoutLineSpacingMultiplierOverride =
+                                snapshot.LineSpacingMultiplier + leadingIncrease;
+                            MeasureSnapshot(options.Gfx, snapshot, options.TargetFontName);
+                        }
+                    }
+                }
+
+                remaining = Math.Max(0, availableHeight - run.Sum(s => s.MeasuredHeight) - gapHeight);
+                if (remaining > 0.5 && baseGaps.Count > 0)
+                {
+                    double perGap = remaining / baseGaps.Count;
+                    for (int i = 0; i < baseGaps.Count; i++)
+                    {
                         double maximumGap = Math.Max(
                             Gap,
                             Math.Max(run[i].SourceLineHeight, run[i].SourceFontSize) * 1.15);
