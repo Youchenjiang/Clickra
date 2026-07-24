@@ -52,36 +52,10 @@ internal static class PdfVectorMarkerRenderer
         {
             if (!path.IsFilled || path.IsClipping) continue;
             var bounds = path.GetBoundingRectangle();
-            if (bounds == null) continue;
+            if (bounds == null || !IsValidBounds(bounds.Value)) continue;
 
-            double width = bounds.Value.Right - bounds.Value.Left;
-            double height = bounds.Value.Top - bounds.Value.Bottom;
-            if (width < 5.0 || width > 15.0 || height < 5.0 || height > 15.0) continue;
-            if (Math.Abs(width - height) > 2.0) continue;
-
-            var digit = paragraphs
-                .SelectMany(para => para.AllLetters.Select(letter => (para, letter)))
-                .Where(item => item.letter.Value.Length == 1 && char.IsDigit(item.letter.Value[0]))
-                .Where(item => item.letter.X >= bounds.Value.Left - 1.5 && item.letter.X <= bounds.Value.Right + 1.5 &&
-                               item.letter.Y >= bounds.Value.Bottom - 1.5 && item.letter.Y <= bounds.Value.Top + 1.5)
-                .OrderBy(item => Math.Abs((item.letter.X + item.letter.Right) / 2.0 -
-                                          (bounds.Value.Left + bounds.Value.Right) / 2.0))
-                .ThenBy(item => Math.Abs((item.letter.Y + item.letter.Top) / 2.0 -
-                                         (bounds.Value.Bottom + bounds.Value.Top) / 2.0))
-                .FirstOrDefault();
-            if (digit.para == null)
-            {
-                continue;
-            }
-            // Diagram/image labels are fixed source artwork. Only inline
-            // markers belonging to a translatable prose paragraph may be
-            // erased and reflowed; bypassed/table/diagram regions must remain
-            // byte-for-byte visually unchanged.
-            if (digit.para.IsBypassed || digit.para.IsDiagram || digit.para.IsTable ||
-                digit.para.IsGrayPromptContent)
-            {
-                continue;
-            }
+            var digit = FindMatchingDigit(bounds.Value, paragraphs);
+            if (digit.para == null || IsProtectedParagraph(digit.para)) continue;
 
             ExtractRgbComponents(path.FillColor, out double red, out double green, out double blue);
             markers.Add(new PdfVectorMarker
@@ -97,8 +71,34 @@ internal static class PdfVectorMarkerRenderer
                 Blue = blue
             });
         }
-
         return markers;
+    }
+
+    private static bool IsValidBounds(UglyToad.PdfPig.Core.PdfRectangle bounds)
+    {
+        double width = bounds.Right - bounds.Left;
+        double height = bounds.Top - bounds.Bottom;
+        return width >= 5.0 && width <= 15.0 && height >= 5.0 && height <= 15.0 &&
+               Math.Abs(width - height) <= 2.0;
+    }
+
+    private static bool IsProtectedParagraph(PdfParagraph para) =>
+        para.IsBypassed || para.IsDiagram || para.IsTable || para.IsGrayPromptContent;
+
+    private static (PdfParagraph para, PdfLetter letter) FindMatchingDigit(
+        UglyToad.PdfPig.Core.PdfRectangle bounds,
+        IReadOnlyList<PdfParagraph> paragraphs)
+    {
+        return paragraphs
+            .SelectMany(para => para.AllLetters.Select(letter => (para, letter)))
+            .Where(item => item.letter.Value.Length == 1 && char.IsDigit(item.letter.Value[0]))
+            .Where(item => item.letter.X >= bounds.Left - 1.5 && item.letter.X <= bounds.Right + 1.5 &&
+                           item.letter.Y >= bounds.Bottom - 1.5 && item.letter.Y <= bounds.Top + 1.5)
+            .OrderBy(item => Math.Abs((item.letter.X + item.letter.Right) / 2.0 -
+                                      (bounds.Left + bounds.Right) / 2.0))
+            .ThenBy(item => Math.Abs((item.letter.Y + item.letter.Top) / 2.0 -
+                                     (bounds.Bottom + bounds.Top) / 2.0))
+            .FirstOrDefault();
     }
 
     public static void Render(
