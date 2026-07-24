@@ -111,33 +111,7 @@ internal static class PdfVectorMarkerRenderer
         {
             if (!renderedCharsByParagraph.TryGetValue(marker.Paragraph, out var renderedChars)) continue;
 
-            double relCenterX = marker.Paragraph.Width > 0
-                ? ((marker.X0 + marker.X1) / 2.0 - marker.Paragraph.X0) / marker.Paragraph.Width
-                : 0.5;
-            double relCenterY = marker.Paragraph.Height > 0
-                ? ((marker.Y0 + marker.Y1) / 2.0 - marker.Paragraph.Y0) / marker.Paragraph.Height
-                : 0.5;
-            var cleanRendered = renderedChars.Where(character => !char.IsWhiteSpace(character.Character)).ToList();
-            var occurrences = PdfAnnotationOccurrenceFinder.FindTextOccurrences(
-                cleanRendered, marker.Character.ToString());
-            var matched = occurrences.Count > 0
-                ? PdfAnnotationSpatialMatcher.PickOccurrenceBySpatialPosition(
-                    occurrences,
-                    marker.Paragraph.X0 + relCenterX * marker.Paragraph.Width,
-                    marker.Paragraph.Y0 + relCenterY * marker.Paragraph.Height,
-                    // Marker digits are ordinary inline numbers and may also
-                    // occur in figure/citation references. Their source
-                    // occurrence ordinal is not stable after reflow; the
-                    // source geometric anchor is the reliable discriminator.
-                    -1,
-                    preferVerticalAlignment: true)
-                : null;
-            double centerX = matched?.Count > 0
-                ? matched.Average(c => (c.Left + c.Right) / 2.0)
-                : (marker.X0 + marker.X1) / 2.0;
-            double centerY = matched?.Count > 0
-                ? matched.Average(c => (c.Bottom + c.Top) / 2.0)
-                : (marker.Y0 + marker.Y1) / 2.0;
+            var (centerX, centerY) = CalculateMarkerCenter(marker, renderedChars);
             double radiusX = (marker.X1 - marker.X0) / 2.0;
             double radiusY = (marker.Y1 - marker.Y0) / 2.0;
             var fill = XColor.FromArgb(
@@ -155,6 +129,35 @@ internal static class PdfVectorMarkerRenderer
             gfx.DrawString(marker.Character.ToString(), font, XBrushes.White,
                 centerX - textWidth / 2.0, baseline);
         }
+    }
+
+    private static (double CenterX, double CenterY) CalculateMarkerCenter(
+        PdfVectorMarker marker, List<RenderedChar> renderedChars)
+    {
+        double relCenterX = marker.Paragraph.Width > 0
+            ? ((marker.X0 + marker.X1) / 2.0 - marker.Paragraph.X0) / marker.Paragraph.Width
+            : 0.5;
+        double relCenterY = marker.Paragraph.Height > 0
+            ? ((marker.Y0 + marker.Y1) / 2.0 - marker.Paragraph.Y0) / marker.Paragraph.Height
+            : 0.5;
+        var cleanRendered = renderedChars.Where(character => !char.IsWhiteSpace(character.Character)).ToList();
+        var occurrences = PdfAnnotationOccurrenceFinder.FindTextOccurrences(
+            cleanRendered, marker.Character.ToString());
+        var matched = occurrences.Count > 0
+            ? PdfAnnotationSpatialMatcher.PickOccurrenceBySpatialPosition(
+                occurrences,
+                marker.Paragraph.X0 + relCenterX * marker.Paragraph.Width,
+                marker.Paragraph.Y0 + relCenterY * marker.Paragraph.Height,
+                -1,
+                preferVerticalAlignment: true)
+            : null;
+        double centerX = matched?.Count > 0
+            ? matched.Average(c => (c.Left + c.Right) / 2.0)
+            : (marker.X0 + marker.X1) / 2.0;
+        double centerY = matched?.Count > 0
+            ? matched.Average(c => (c.Bottom + c.Top) / 2.0)
+            : (marker.Y0 + marker.Y1) / 2.0;
+        return (centerX, centerY);
     }
 
     private static void ExtractRgbComponents(IColor? color, out double red, out double green, out double blue)
