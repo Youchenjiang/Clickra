@@ -56,5 +56,12 @@ namespace Clickra.Core
             var options = new Dictionary<string, object> { { "targetLang", targetLang } };
             processor.Process(new List<string> { inputPath }, outputPath, options, onProgress, cancellationToken);
         }
+
+        public static void SplitPdf(string inputPath, string outputPath, string pages = "all", Action<int, int, string>? onProgress = null, CancellationToken cancellationToken = default)
+        {
+            var processor = new PdfSplitProcessor();
+            var options = new Dictionary<string, object> { { "pages", pages } };
+            processor.Process(new List<string> { inputPath }, outputPath, options, onProgress, cancellationToken);
+        }
     }
 }
