@@ -83,7 +83,7 @@ internal static class PdfTranslatedParagraphRenderer
             double maxRowWidth = shrinkResult.MaxRowWidth;
             double renderedHeight = rows.Count * lineHeight;
 
-            ComputeOverflow(new OverflowInput(layoutWidth, limitHeight, paragraphWidth, isHeading, allowNaturalBodyHeight,
+            ComputeOverflow(new OverflowInput(layoutWidth, limitHeight, paragraphWidth, isHeading, allowNaturalBodyHeight, flowableBody,
                     maxRowWidth, renderedHeight), out bool horizontalOverflow, out bool verticalOverflow, out double effectiveLimitHeight);
             metricsSink?.Invoke(new PdfParagraphRenderMetrics(
                 layoutWidth,
@@ -183,7 +183,11 @@ internal static class PdfTranslatedParagraphRenderer
             }
 
             bool isStandardProse = IsStandardProseParagraph(para, isRotated);
-            bool flowableBody = isStandardProse && para.SemanticRole == PdfParagraphSemanticRole.Body && text.Any(FontUtilities.IsCjkCharacter);
+            bool flowableBody = isStandardProse &&
+                (para.SemanticRole == PdfParagraphSemanticRole.Body ||
+                 PdfParagraphRoleClassifier.IsTranslatableBodyProse(para) ||
+                 PdfParagraphRoleClassifier.IsTranslatableCalloutProse(para)) &&
+                text.Any(FontUtilities.IsCjkCharacter);
             bool allowNaturalBodyHeight = CheckAllowNaturalBodyHeight(para, isRotated, isStandardProse, sourceHeadingFontSize);
 
             bool ordinarySingleLine = isStandardProse && para.Width > 100;
@@ -379,14 +383,14 @@ internal static class PdfTranslatedParagraphRenderer
 
         private readonly record struct OverflowInput(
             double LayoutWidth, double LimitHeight, double ParagraphWidth,
-            bool IsHeading, bool AllowNaturalBodyHeight,
+            bool IsHeading, bool AllowNaturalBodyHeight, bool FlowableBody,
             double MaxRowWidth, double RenderedHeight);
         private static void ComputeOverflow(
             OverflowInput input,
             out bool horizontalOverflow, out bool verticalOverflow, out double effectiveLimitHeight)
         {
             horizontalOverflow = input.MaxRowWidth > input.LayoutWidth + 0.5;
-            effectiveLimitHeight = input.IsHeading || input.AllowNaturalBodyHeight
+            effectiveLimitHeight = input.IsHeading || input.AllowNaturalBodyHeight || input.FlowableBody
                 ? Math.Max(input.LimitHeight, input.RenderedHeight)
                 : input.LimitHeight;
             verticalOverflow = input.RenderedHeight > effectiveLimitHeight + 0.5;
