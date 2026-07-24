@@ -207,9 +207,19 @@ internal static class PdfTranslatedParagraphRenderer
             out bool allowNaturalBodyHeight,
             out bool flowableBody)
         {
-            double lineSpacingMultiplier = isHeading ? 1.0 :
-                (targetFontName.Contains("Arial", StringComparison.OrdinalIgnoreCase) ? 1.2 :
-                (ReferenceSectionDetector.IsReferenceParagraph(para) ? 1.15 : 1.35));
+            double lineSpacingMultiplier = 1.35;
+            if (isHeading)
+            {
+                lineSpacingMultiplier = 1.0;
+            }
+            else if (targetFontName.Contains("Arial", StringComparison.OrdinalIgnoreCase))
+            {
+                lineSpacingMultiplier = 1.2;
+            }
+            else if (ReferenceSectionDetector.IsReferenceParagraph(para))
+            {
+                lineSpacingMultiplier = 1.15;
+            }
 
             bool isStandardProse = IsStandardProseParagraph(para, isRotated);
             flowableBody = isStandardProse && para.SemanticRole == PdfParagraphSemanticRole.Body && text.Any(FontUtilities.IsCjkCharacter);
