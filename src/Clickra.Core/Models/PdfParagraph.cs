@@ -196,7 +196,7 @@ namespace Clickra.Core.Models
                     return $"{{v{oldId + offset}}}";
                 }
                 return m.Value;
-            });
+            }, RegexOptions.None, TimeSpan.FromSeconds(1));
         }
     }
 }

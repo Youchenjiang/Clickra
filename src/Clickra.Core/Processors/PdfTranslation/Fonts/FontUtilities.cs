@@ -127,11 +127,14 @@ namespace Clickra.Core.Processors
 
         private static bool TryMapMathRange(int cp, int[] starts, int maxOffset, char baseChar, [System.Diagnostics.CodeAnalysis.NotNullWhen(true)] out string? mapped)
         {
-            int start = starts.FirstOrDefault(s => cp >= s && cp <= s + maxOffset);
-            if (start > 0)
+            for (int i = 0; i < starts.Length; i++)
             {
-                mapped = ((char)(baseChar + (cp - start))).ToString();
-                return true;
+                int start = starts[i];
+                if (cp >= start && cp <= start + maxOffset)
+                {
+                    mapped = ((char)(baseChar + (cp - start))).ToString();
+                    return true;
+                }
             }
             mapped = null;
             return false;
