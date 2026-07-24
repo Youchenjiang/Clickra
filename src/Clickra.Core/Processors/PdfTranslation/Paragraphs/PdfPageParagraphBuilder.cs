@@ -224,7 +224,7 @@ internal static class PdfPageParagraphBuilder
     private static bool IsGrayPromptKeyword(string finalText)
         => finalText.Equals("EX-", StringComparison.OrdinalIgnoreCase) ||
            System.Text.RegularExpressions.Regex.IsMatch(
-               finalText, @"^AMPLE\}?$", System.Text.RegularExpressions.RegexOptions.IgnoreCase) ||
+               finalText, @"^AMPLE\}?$", System.Text.RegularExpressions.RegexOptions.IgnoreCase, TimeSpan.FromSeconds(1)) ||
            finalText.Contains("OUTPUT FORMAT", StringComparison.OrdinalIgnoreCase);
 
     private static bool IsLowerCaseProseContinuation(PdfParagraph para, string leadingContinuation)
@@ -432,8 +432,7 @@ internal static class PdfPageParagraphBuilder
         if (page.Number == 1 && PageOneLayoutClassifier.IsAuthorBlockParagraph(para, pageList, page.Height)) return true;
         if (PdfParagraphRoleClassifier.IsRunningHeaderOrFooter(para, page.Height)) return true;
         if (PdfParagraphRoleClassifier.IsFigureTableCaptionParagraph(para)) return true;
-        if (PdfParagraphRoleClassifier.IsTranslatableBodyProse(para)) return true;
-        if (PdfParagraphRoleClassifier.IsTranslatableCalloutProse(para)) return true;
+        if (PdfParagraphRoleClassifier.IsTranslatableBodyProse(para) || PdfParagraphRoleClassifier.IsTranslatableCalloutProse(para)) return true;
 
         bool isSmallLabel = para.TextWithPlaceholders.Length <= diagramLabelMaxLen &&
                             !PdfParagraphSemanticClassifier.IsHeadingParagraph(para) &&
