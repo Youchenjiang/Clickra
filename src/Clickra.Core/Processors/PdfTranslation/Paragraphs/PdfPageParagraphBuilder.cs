@@ -396,7 +396,7 @@ internal static class PdfPageParagraphBuilder
         if (PdfTableMisclassifiedProseCleanup.IsTallFullColumnProse(para, wordCount, pageWidth)) return true;
         if (System.Text.RegularExpressions.Regex.IsMatch(txt, @"^[A-Z]\.\s", System.Text.RegularExpressions.RegexOptions.None, TimeSpan.FromSeconds(1))) return true;
         if (para.Width > pageWidth * 0.38 && wordCount > 10) return true;
-        if (txt.StartsWith("•") || txt.StartsWith("·") || txt.StartsWith("To sum up", StringComparison.OrdinalIgnoreCase)) return true;
+        if (txt.StartsWith('•') || txt.StartsWith('·') || txt.StartsWith("To sum up", StringComparison.OrdinalIgnoreCase)) return true;
         if (txt.StartsWith("and ", StringComparison.OrdinalIgnoreCase) && wordCount > 3 && para.Height <= 20) return true;
         return System.Text.RegularExpressions.Regex.IsMatch(txt, @"^\d+\s+[A-Za-z]", System.Text.RegularExpressions.RegexOptions.None, TimeSpan.FromSeconds(1)) && para.Height <= 25 && para.Width > 120;
     }

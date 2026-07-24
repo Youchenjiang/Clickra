@@ -93,40 +93,7 @@ namespace Clickra.Core.Processors
                 for (int wordIdx = 0; wordIdx < line.Words.Count; wordIdx++)
                 {
                     var word = line.Words[wordIdx];
-                    bool isMathWord = PdfParagraphMathClassifier.IsMathWord(word);
-                    for (int letterIdx = 0; letterIdx < word.Letters.Count; letterIdx++)
-                    {
-                        var letter = word.Letters[letterIdx];
-                        bool curV = PdfParagraphMathClassifier.IsMathCharacter(letter, isMathWord, averageFontSize);
-                        if (!curV)
-                        {
-                            if (currentFormula.Count > 0 && letter.Value == "(")
-                            {
-                                curV = true;
-                                bracketsCount++;
-                            }
-                            else if (bracketsCount > 0 && letter.Value == ")")
-                            {
-                                curV = true;
-                                bracketsCount--;
-                            }
-                        }
-
-                        if (curV)
-                        {
-                            CloseStyledBold(styled, ref styledBoldOpen);
-                            currentFormula.Add(letter);
-                        }
-                        else
-                        {
-                            int formulaCountBefore = formulas.Count;
-                            FlushFormula(sb, formulas, currentFormula, ref bracketsCount);
-                            if (formulas.Count > formulaCountBefore)
-                                styled.Append($"{{v{formulas.Count - 1}}}");
-                            AppendStyledText(styled, letter.Value, FontUtilities.IsSourceFontBold(letter.FontName), ref styledBoldOpen);
-                            sb.Append(letter.Value);
-                        }
-                    }
+                    ProcessWordLetters(word, averageFontSize, sb, styled, formulas, currentFormula, ref styledBoldOpen, ref bracketsCount);
 
                     if (wordIdx < line.Words.Count - 1 && currentFormula.Count == 0)
                     {
@@ -137,13 +104,6 @@ namespace Clickra.Core.Processors
 
                 if (lineIdx < lines.Count - 1)
                 {
-                    int formulaCountBefore = formulas.Count;
-                    FlushFormula(sb, formulas, currentFormula, ref bracketsCount);
-                    CloseStyledBold(styled, ref styledBoldOpen);
-                    if (formulas.Count > formulaCountBefore)
-                        styled.Append($"{{v{formulas.Count - 1}}}");
-                    sb.Append(" ");
-                    styled.Append(' ');
                     hasLineBreak = true;
                 }
             }
