@@ -59,9 +59,11 @@ internal static class PdfTranslatedParagraphRenderer
             XGraphicsState? state = ApplyRotationTransform(
                 gfx, para, paragraphWidth, ref layoutWidth, ref isRotated);
 
-            double lineSpacingMultiplier = CalculateLineSpacingMultiplier(
-                para, text, isHeading, isRotated, targetFontName, sourceHeadingFontSize,
-                out bool allowNaturalBodyHeight, out bool flowableBody);
+            var lineSpacingResult = CalculateLineSpacingMultiplier(
+                para, text, isHeading, isRotated, targetFontName, sourceHeadingFontSize);
+            double lineSpacingMultiplier = lineSpacingResult.Multiplier;
+            bool allowNaturalBodyHeight = lineSpacingResult.AllowNaturalBodyHeight;
+            bool flowableBody = lineSpacingResult.FlowableBody;
             
             if (!isHeading && para.LayoutLineSpacingMultiplierOverride > 0)
                 lineSpacingMultiplier = para.LayoutLineSpacingMultiplierOverride;
@@ -76,8 +78,8 @@ internal static class PdfTranslatedParagraphRenderer
                 out List<PdfLayoutRow> rows, out double renderedHeight, out double maxRowWidth);
 
             renderedHeight = rows.Count * lineHeight;
-            ComputeOverflow(layoutWidth, limitHeight, paragraphWidth, isHeading, allowNaturalBodyHeight,
-                maxRowWidth, renderedHeight, out bool horizontalOverflow, out bool verticalOverflow, out double effectiveLimitHeight);
+            ComputeOverflow(new OverflowInput(layoutWidth, limitHeight, paragraphWidth, isHeading, allowNaturalBodyHeight,
+                    maxRowWidth, renderedHeight), out bool horizontalOverflow, out bool verticalOverflow, out double effectiveLimitHeight);
             metricsSink?.Invoke(new PdfParagraphRenderMetrics(
                 layoutWidth,
                 maxRowWidth,
@@ -166,15 +168,14 @@ internal static class PdfTranslatedParagraphRenderer
                  Regex.IsMatch(para.TextWithPlaceholders.Trim(), @"^[a-z][A-Za-z\s,'\-]{2,}[.!?]?$", RegexOptions.None, TimeSpan.FromSeconds(1)));
         }
 
-        private static double CalculateLineSpacingMultiplier(
+        private readonly record struct LineSpacingResult(double Multiplier, bool AllowNaturalBodyHeight, bool FlowableBody);
+        private static LineSpacingResult CalculateLineSpacingMultiplier(
             PdfParagraph para,
             string text,
             bool isHeading,
             bool isRotated,
             string targetFontName,
-            double sourceHeadingFontSize,
-            out bool allowNaturalBodyHeight,
-            out bool flowableBody)
+            double sourceHeadingFontSize)
         {
             double lineSpacingMultiplier = 1.35;
             if (isHeading)
@@ -191,8 +192,8 @@ internal static class PdfTranslatedParagraphRenderer
             }
 
             bool isStandardProse = IsStandardProseParagraph(para, isRotated);
-            flowableBody = isStandardProse && para.SemanticRole == PdfParagraphSemanticRole.Body && text.Any(FontUtilities.IsCjkCharacter);
-            allowNaturalBodyHeight = CheckAllowNaturalBodyHeight(para, isRotated, isStandardProse, sourceHeadingFontSize);
+            bool flowableBody = isStandardProse && para.SemanticRole == PdfParagraphSemanticRole.Body && text.Any(FontUtilities.IsCjkCharacter);
+            bool allowNaturalBodyHeight = CheckAllowNaturalBodyHeight(para, isRotated, isStandardProse, sourceHeadingFontSize);
 
             bool ordinarySingleLine = isStandardProse && para.Width > 100;
             bool sourceGlyphBoxUnderreports = isStandardProse &&
@@ -202,7 +203,7 @@ internal static class PdfTranslatedParagraphRenderer
             if ((ordinarySingleLine && para.Height < sourceHeadingFontSize) || sourceGlyphBoxUnderreports)
                 lineSpacingMultiplier = 1.0;
 
-            return lineSpacingMultiplier;
+            return new LineSpacingResult(lineSpacingMultiplier, allowNaturalBodyHeight, flowableBody);
         }
 
         private static string ResolveFallbackFontName(char c, string mainFontName)
@@ -341,18 +342,20 @@ internal static class PdfTranslatedParagraphRenderer
             }
         }
 
+        private readonly record struct OverflowInput(
+            double LayoutWidth, double LimitHeight, double ParagraphWidth,
+            bool IsHeading, bool AllowNaturalBodyHeight,
+            double MaxRowWidth, double RenderedHeight);
         private static void ComputeOverflow(
-            double layoutWidth, double limitHeight, double paragraphWidth,
-            bool isHeading, bool allowNaturalBodyHeight,
-            double maxRowWidth, double renderedHeight,
+            OverflowInput input,
             out bool horizontalOverflow, out bool verticalOverflow, out double effectiveLimitHeight)
         {
-            horizontalOverflow = maxRowWidth > layoutWidth + 0.5;
-            effectiveLimitHeight = isHeading || allowNaturalBodyHeight
-                ? Math.Max(limitHeight, renderedHeight)
-                : limitHeight;
-            verticalOverflow = renderedHeight > effectiveLimitHeight + 0.5;
-            if (paragraphWidth < 5.0)
+            horizontalOverflow = input.MaxRowWidth > input.LayoutWidth + 0.5;
+            effectiveLimitHeight = input.IsHeading || input.AllowNaturalBodyHeight
+                ? Math.Max(input.LimitHeight, input.RenderedHeight)
+                : input.LimitHeight;
+            verticalOverflow = input.RenderedHeight > effectiveLimitHeight + 0.5;
+            if (input.ParagraphWidth < 5.0)
             {
                 horizontalOverflow = false;
                 verticalOverflow = false;
@@ -474,7 +477,7 @@ internal static class PdfTranslatedParagraphRenderer
             return opts.ParagraphX;
         }
 
-        private static double RenderRowElements(
+        private static void RenderRowElements(
             ParagraphRowRenderOptions opts,
             PdfLayoutRow row,
             double currentX,
@@ -508,7 +511,6 @@ internal static class PdfTranslatedParagraphRenderer
                     currentX = RenderTextRun(textCtx, row, opts.Para, currentX, inlineBold, ref idx);
                 }
             }
-            return currentX;
         }
 
         private static void RenderFormulaElement(
