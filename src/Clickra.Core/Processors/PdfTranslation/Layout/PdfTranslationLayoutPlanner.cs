@@ -92,6 +92,30 @@ internal static class PdfTranslationLayoutPlanner
         double pageHeight,
         IReadOnlyList<TableMaskRegion>? protectedRegions = null)
     {
+        var snapshots = InitializeSnapshots(paragraphs, pageWidth, gfx, targetFontName);
+
+        int propagatedContinuations = PropagateContinuationFontSize(snapshots, pageWidth);
+        int shifted = propagatedContinuations + ShiftHeadingObstacles(snapshots, pageHeight);
+
+        shifted += ReflowSingleLineExpansions(snapshots, pageHeight);
+        shifted += GuardColumnBottomOverflows(snapshots, pageHeight);
+
+        shifted += BalanceBodyFlow(
+            new BodyFlowBalanceOptions(gfx, snapshots, targetFontName, pageWidth, pageHeight, protectedRegions ?? Array.Empty<TableMaskRegion>()),
+            out double maximumInterParagraphGap,
+            out double maximumFlowRegionResidualWhitespace);
+
+        ValidateNoBottomOverflow(snapshots, pageHeight, protectedRegions);
+
+        return BuildPlanResult(snapshots, shifted, pageHeight, protectedRegions, maximumInterParagraphGap, maximumFlowRegionResidualWhitespace);
+    }
+
+    private static List<PdfParagraphLayoutSnapshot> InitializeSnapshots(
+        IReadOnlyList<PdfParagraph> paragraphs,
+        double pageWidth,
+        XGraphics gfx,
+        string targetFontName)
+    {
         var snapshots = paragraphs.Select(p => new PdfParagraphLayoutSnapshot
         {
             Paragraph = p,
@@ -115,23 +139,9 @@ internal static class PdfTranslationLayoutPlanner
                 : string.Empty;
             snapshot.OutputFontSize = snapshot.SourceFontSize;
             MeasureSnapshot(gfx, snapshot, targetFontName);
-
         }
 
-        int propagatedContinuations = PropagateContinuationFontSize(snapshots, pageWidth);
-        int shifted = propagatedContinuations + ShiftHeadingObstacles(snapshots, pageHeight);
-
-        shifted += ReflowSingleLineExpansions(snapshots, pageHeight);
-        shifted += GuardColumnBottomOverflows(snapshots, pageHeight);
-
-        shifted += BalanceBodyFlow(
-            new BodyFlowBalanceOptions(gfx, snapshots, targetFontName, pageWidth, pageHeight, protectedRegions ?? Array.Empty<TableMaskRegion>()),
-            out double maximumInterParagraphGap,
-            out double maximumFlowRegionResidualWhitespace);
-
-        ValidateNoBottomOverflow(snapshots, pageHeight, protectedRegions);
-
-        return BuildPlanResult(snapshots, shifted, pageHeight, protectedRegions, maximumInterParagraphGap, maximumFlowRegionResidualWhitespace);
+        return snapshots;
     }
 
     private static int ReflowSingleLineExpansions(List<PdfParagraphLayoutSnapshot> snapshots, double pageHeight)
@@ -658,16 +668,19 @@ internal static class PdfTranslationLayoutPlanner
     {
         double low = MinimumBodyFontScale;
         double high = MaximumBodyFontScale;
+
+        ApplyFontScaleAndMeasure(gfx, run, baseFonts, targetFontName, high);
+        if (run.Sum(s => s.MeasuredHeight) <= contentBudget + 0.5)
+        {
+            return high;
+        }
+
         double best = low;
         for (int attempt = 0; attempt < 8; attempt++)
         {
             double candidate = (low + high) / 2.0;
             ApplyFontScaleAndMeasure(gfx, run, baseFonts, targetFontName, candidate);
             double totalHeight = run.Sum(s => s.MeasuredHeight);
-            if (Math.Abs(totalHeight - contentBudget) <= 0.5)
-            {
-                return candidate;
-            }
             if (totalHeight <= contentBudget + 0.5)
             {
                 best = candidate;
