@@ -186,33 +186,40 @@ internal static class PdfTranslationLayoutPlanner
     {
         int shifted = 0;
         foreach (var columnGroup in snapshots.GroupBy(s => s.Column))
-        {
-            PdfParagraphLayoutSnapshot? previous = null;
-            foreach (var current in columnGroup.OrderByDescending(s => s.Paragraph.OriginalY0))
-            {
-                if (!IsReflowShiftable(current.Paragraph, pageHeight))
-                {
-                    previous = null;
-                    continue;
-                }
-                if (!IsShortNaturalExpansion(current)) continue;
+            shifted += GuardSingleColumnBottomOverflows(columnGroup, pageHeight);
+        return shifted;
+    }
 
-                if (previous != null)
-                {
-                    double previousBottom = previous.Paragraph.Y0 -
-                        Math.Max(previous.MeasuredHeight, previous.Paragraph.Height);
-                    double targetY1 = previousBottom - Gap;
-                    double delta = targetY1 - current.Paragraph.Y1;
-                    if (delta < -0.5)
-                    {
-                        current.Paragraph.Y0 += delta;
-                        current.Paragraph.Y1 += delta;
-                        current.ShiftY += delta;
-                        shifted++;
-                    }
-                }
-                previous = current;
+    private static int GuardSingleColumnBottomOverflows(
+        IGrouping<int, PdfParagraphLayoutSnapshot> columnGroup,
+        double pageHeight)
+    {
+        int shifted = 0;
+        PdfParagraphLayoutSnapshot? previous = null;
+        foreach (var current in columnGroup.OrderByDescending(s => s.Paragraph.OriginalY0))
+        {
+            if (!IsReflowShiftable(current.Paragraph, pageHeight))
+            {
+                previous = null;
+                continue;
             }
+            if (!IsShortNaturalExpansion(current)) continue;
+
+            if (previous != null)
+            {
+                double previousBottom = previous.Paragraph.Y0 -
+                    Math.Max(previous.MeasuredHeight, previous.Paragraph.Height);
+                double targetY1 = previousBottom - Gap;
+                double delta = targetY1 - current.Paragraph.Y1;
+                if (delta < -0.5)
+                {
+                    current.Paragraph.Y0 += delta;
+                    current.Paragraph.Y1 += delta;
+                    current.ShiftY += delta;
+                    shifted++;
+                }
+            }
+            previous = current;
         }
         return shifted;
     }
