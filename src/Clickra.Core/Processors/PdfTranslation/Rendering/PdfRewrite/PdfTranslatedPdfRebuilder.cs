@@ -462,13 +462,13 @@ internal static class PdfTranslatedPdfRebuilder
                 opts.Gfx, para, opts.TargetFontName, measureOnly: true,
                 metricsSink: metrics => renderMetrics = metrics);
 
-            ClickraDebug.LogRender(
+            ClickraDebug.LogRender(new RenderDebugInfo(
                 opts.PageIndex + 1, para.Y0, para.Y1, para.X0, para.X1,
-                guardClip: false,
-                horizontalOverflow: renderMetrics.HorizontalOverflow,
-                verticalOverflow: renderMetrics.VerticalOverflow,
-                measuredH: measuredHeight,
-                text: para.TextWithPlaceholders);
+                false,
+                renderMetrics.HorizontalOverflow,
+                renderMetrics.VerticalOverflow,
+                measuredHeight,
+                para.TextWithPlaceholders));
             PdfTranslatedParagraphRenderer.RenderParagraph(
                 opts.Gfx, para, opts.TargetFontName,
                 renderedCharsSink: chars => renderedCharsByParagraph[para] = chars.ToList());
