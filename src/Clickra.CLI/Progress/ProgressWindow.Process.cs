@@ -148,6 +148,22 @@ namespace Clickra.UI
                             progressCallback(currentFiles.Count * 100, currentFiles.Count * 100, "翻譯完成，正在儲存 PDF...");
                         }
                         break;
+                    case "split-pdf":
+                        for (int i = 0; i < currentFiles.Count; i++)
+                        {
+                            _cts.Token.ThrowIfCancellationRequested();
+                            try { ClickraStorage.SetActiveRecordIndex(i); } catch { }
+                            var f = currentFiles[i];
+                            string outName = Path.Combine(outputDir, Path.GetFileNameWithoutExtension(f) + "_split.pdf");
+                            progressCallback((i * 100) + 10, currentFiles.Count * 100, $"正在分割 PDF: {Path.GetFileName(f)} ({i + 1}/{currentFiles.Count})...");
+                            FileProcessor.SplitPdf(f, outName, "all", (curr, tot, msg) => {
+                                int progressPct = tot > 0 ? (int)(curr * 80.0 / tot) + 10 : 10;
+                                progressCallback((i * 100) + progressPct, currentFiles.Count * 100, $"[PDF 分割] {msg} ({i + 1}/{currentFiles.Count})");
+                            }, _cts.Token);
+                        }
+                        _cts.Token.ThrowIfCancellationRequested();
+                        progressCallback(currentFiles.Count * 100, currentFiles.Count * 100, "PDF 分割完成。");
+                        break;
                     case "decrypt-pdf":
                         for (int i = 0; i < currentFiles.Count; i++)
                         {

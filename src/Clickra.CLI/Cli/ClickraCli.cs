@@ -34,7 +34,7 @@ namespace Clickra
             if (HandleVersionOrDeploy(args)) return;
 
             var argList = args.ToList();
-            ParseOptions(argList, out bool quiet, out string? outputDirOverride, out bool hasCliLevel, out string compressionLevel);
+            ParseOptions(argList, out bool quiet, out string? outputDirOverride, out bool hasCliLevel, out string compressionLevel, out string pagesOption);
 
             if (argList.Count < 2)
             {
@@ -59,7 +59,7 @@ namespace Clickra
             string startTimeStr = DateTime.UtcNow.ToString("yyyy-MM-dd HH:mm:ss");
             try
             {
-                DispatchCommandSwitch(command, files, quiet, outputDir, hasCliLevel, compressionLevel);
+                DispatchCommandSwitch(command, files, quiet, outputDir, hasCliLevel, compressionLevel, pagesOption);
             }
             catch (Exception ex)
             {
@@ -199,7 +199,7 @@ namespace Clickra
             return false;
         }
 
-        private static void ParseOptions(List<string> argList, out bool quiet, out string? outputDirOverride, out bool hasCliLevel, out string compressionLevel)
+        private static void ParseOptions(List<string> argList, out bool quiet, out string? outputDirOverride, out bool hasCliLevel, out string compressionLevel, out string pagesOption)
         {
             bool quietByDefault = ClickraStorage.GetSetting("QuietMode").Equals("true", StringComparison.OrdinalIgnoreCase);
             quiet = quietByDefault;
@@ -210,6 +210,7 @@ namespace Clickra
             outputDirOverride = ExtractOptionValue(argList, "--out-dir", "-o", "--out");
             hasCliLevel = argList.Contains("--level") || argList.Contains("--compression-level");
             compressionLevel = ExtractOptionValue(argList, "--level", "--compression-level") ?? "balanced";
+            pagesOption = ExtractOptionValue(argList, "--pages", "-p") ?? "all";
         }
 
         private static void PrintUsage()
@@ -228,10 +229,11 @@ namespace Clickra
             bool quiet,
             string outputDir,
             bool hasCliLevel,
-            string compressionLevel)
+            string compressionLevel,
+            string pagesOption)
         {
             if (DispatchOfficeCommand(command, files, quiet)) return;
-            if (DispatchPdfCommand(command, files, quiet, outputDir, hasCliLevel, compressionLevel)) return;
+            if (DispatchPdfCommand(command, files, quiet, outputDir, hasCliLevel, compressionLevel, pagesOption)) return;
             if (DispatchImageCommand(command, files, quiet, outputDir)) return;
 
             Console.WriteLine($"[錯誤] 未知指令: {command}");
@@ -267,7 +269,8 @@ namespace Clickra
             bool quiet,
             string outputDir,
             bool hasCliLevel,
-            string compressionLevel)
+            string compressionLevel,
+            string pagesOption)
         {
             switch (command)
             {
@@ -281,6 +284,21 @@ namespace Clickra
                     ValidateExtensions(files, command, quiet, ".pdf");
                     RequireMinFiles(files, command, 1, quiet);
                     if (quiet) HandleCompressPdfQuiet(files, outputDir, hasCliLevel, compressionLevel);
+                    else ProgressWindow.Show(command, files);
+                    return true;
+                case "split-pdf":
+                    ValidateExtensions(files, command, quiet, ".pdf");
+                    RequireMinFiles(files, command, 1, quiet);
+                    if (quiet)
+                    {
+                        for (int i = 0; i < files.Count; i++)
+                        {
+                            var f = files[i];
+                            string outName = Path.Combine(outputDir, Path.GetFileNameWithoutExtension(f) + "_split.pdf");
+                            Console.WriteLine($"[Progress] 正在分割 PDF: {Path.GetFileName(f)} ({i + 1}/{files.Count})...");
+                            FileProcessor.SplitPdf(f, outName, pagesOption, (curr, tot, msg) => Console.WriteLine($"[Progress] {msg}"));
+                        }
+                    }
                     else ProgressWindow.Show(command, files);
                     return true;
                 case "translate-pdf":

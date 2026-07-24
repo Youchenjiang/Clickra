@@ -39,7 +39,7 @@ namespace Clickra
                 "ppt2pdf" => new[] { ".pptx", ".ppt" },
                 "word2pdf" => new[] { ".docx", ".doc" },
                 "excel2pdf" => new[] { ".xlsx", ".xls" },
-                "merge-pdf" or "translate-pdf" or "decrypt-pdf" or "compress-pdf" => new[] { ".pdf" },
+                "merge-pdf" or "translate-pdf" or "decrypt-pdf" or "compress-pdf" or "split-pdf" => new[] { ".pdf" },
                 "img2pdf" or "img-merge" or "img-stitch" => new[] { ".jpg", ".jpeg", ".png", ".bmp", ".gif", ".tiff", ".webp" },
                 _ => Array.Empty<string>()
             };
