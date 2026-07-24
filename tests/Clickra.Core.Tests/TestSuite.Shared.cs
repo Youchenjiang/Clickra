@@ -52,7 +52,7 @@ static partial class TestSuite
             (nameof(PdfParagraph.OriginalY1), y1)
         })
         {
-            typeof(PdfParagraph).GetProperty(name)!.SetValue(paragraph, value);
+            typeof(PdfParagraph).GetProperty(name)?.SetValue(paragraph, value);
         }
         return paragraph;
     }
