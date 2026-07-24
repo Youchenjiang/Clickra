@@ -174,6 +174,28 @@ internal static class PdfTranslatedParagraphRenderer
             return fontSize;
         }
 
+        private static bool IsStandardProseParagraph(PdfParagraph para, bool isRotated)
+        {
+            return !isRotated && !para.IsBypassed && !para.IsTable && !para.IsDiagram && !para.IsCode && !para.IsGrayPromptContent;
+        }
+
+        private static bool CheckAllowNaturalBodyHeight(
+            PdfParagraph para,
+            bool isRotated,
+            bool isStandardProse,
+            double sourceHeadingFontSize)
+        {
+            if (isRotated || !isStandardProse) return false;
+            bool bodyProse = PdfParagraphRoleClassifier.IsTranslatableBodyProse(para) ||
+                             PdfParagraphRoleClassifier.IsTranslatableCalloutProse(para);
+            bool ordinarySingleLine = para.Width > 100;
+            double sourceLineBox = Math.Max(para.SourceLineHeight, sourceHeadingFontSize);
+            return (bodyProse || ordinarySingleLine) &&
+                para.Height <= Math.Max(sourceLineBox * 1.5, 8.0) &&
+                (para.Width > 100 ||
+                 Regex.IsMatch(para.TextWithPlaceholders.Trim(), @"^[a-z][A-Za-z\s,'\-]{2,}[.!?]?$", RegexOptions.None, TimeSpan.FromSeconds(1)));
+        }
+
         private static double CalculateLineSpacingMultiplier(
             PdfParagraph para,
             string text,
@@ -185,32 +207,19 @@ internal static class PdfTranslatedParagraphRenderer
             out bool allowNaturalBodyHeight,
             out bool flowableBody)
         {
-            double lineSpacingMultiplier = 1.35;
-            if (isHeading) lineSpacingMultiplier = 1.0;
-            if (targetFontName.Contains("Arial", StringComparison.OrdinalIgnoreCase)) lineSpacingMultiplier = 1.2;
-            if (ReferenceSectionDetector.IsReferenceParagraph(para)) lineSpacingMultiplier = 1.15;
+            double lineSpacingMultiplier = isHeading ? 1.0 :
+                (targetFontName.Contains("Arial", StringComparison.OrdinalIgnoreCase) ? 1.2 :
+                (ReferenceSectionDetector.IsReferenceParagraph(para) ? 1.15 : 1.35));
 
-            bool bodyProse = PdfParagraphRoleClassifier.IsTranslatableBodyProse(para) ||
-                             PdfParagraphRoleClassifier.IsTranslatableCalloutProse(para);
-            flowableBody = !isRotated && !para.IsBypassed &&
-                !para.IsTable && !para.IsDiagram && !para.IsCode &&
-                !para.IsGrayPromptContent &&
-                para.SemanticRole == PdfParagraphSemanticRole.Body &&
-                text.Any(FontUtilities.IsCjkCharacter);
+            bool isStandardProse = IsStandardProseParagraph(para, isRotated);
+            flowableBody = isStandardProse && para.SemanticRole == PdfParagraphSemanticRole.Body && text.Any(FontUtilities.IsCjkCharacter);
+            allowNaturalBodyHeight = CheckAllowNaturalBodyHeight(para, isRotated, isStandardProse, sourceHeadingFontSize);
 
-            double sourceLineBox = Math.Max(para.SourceLineHeight, sourceHeadingFontSize);
-            bool ordinarySingleLine = !isRotated && !para.IsBypassed &&
-                !para.IsTable && !para.IsDiagram && !para.IsCode &&
-                !para.IsGrayPromptContent && para.Width > 100;
-            allowNaturalBodyHeight = !isRotated &&
-                (bodyProse || ordinarySingleLine) &&
-                para.Height <= Math.Max(sourceLineBox * 1.5, 8.0) &&
-                (para.Width > 100 ||
-                 Regex.IsMatch(para.TextWithPlaceholders.Trim(), @"^[a-z][A-Za-z\s,'\-]{2,}[.!?]?$", RegexOptions.None, TimeSpan.FromSeconds(1)));
-
-            bool sourceGlyphBoxUnderreports = !isRotated && !para.IsBypassed &&
+            bool ordinarySingleLine = isStandardProse && para.Width > 100;
+            bool sourceGlyphBoxUnderreports = isStandardProse &&
                 sourceHeadingFontSize > 0 && para.SourceLineHeight > 0 &&
                 para.SourceLineHeight < sourceHeadingFontSize * 0.95;
+
             if ((ordinarySingleLine && para.Height < sourceHeadingFontSize) || sourceGlyphBoxUnderreports)
                 lineSpacingMultiplier = 1.0;
 
@@ -489,9 +498,7 @@ internal static class PdfTranslatedParagraphRenderer
             double pageHeight,
             List<RenderedChar> renderedChars)
         {
-            var formula = para.Formulas[element.FormulaId];
             double scale = para.AverageFontSize > 0 ? fontSize / para.AverageFontSize : 1.0;
-            bool hasMono = formula.Letters.Any(l => FontUtilities.IsMonospaceFont(l.FontName));
             double formulaScale = scale;
 
             if (FontUtilities.ShouldMergeFormula(formula, para.AverageFontSize))
