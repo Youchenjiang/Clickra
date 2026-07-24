@@ -85,8 +85,6 @@ namespace Clickra.Core.Processors
             }
             return false;
         }
-            return false;
-        }
 
         public static List<PdfLayoutRow> LayoutParagraph(List<string> tokens, XFont font, List<MathFormula> formulas, double maxWidth, double fontSize, double averageFontSize, XGraphics gfx)
         {
