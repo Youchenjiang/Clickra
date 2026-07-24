@@ -305,7 +305,7 @@ internal static class PdfPageParagraphBuilder
 
     private readonly record struct LineGroupContext(
         PdfParagraphBlockMerger.MergedBlock Block,
-        UglyToad.PdfPig.Content.Page Page,
+        UglyToad.PdfPig.Content.Page PigPage,
         bool IsTablePage,
         bool IsTableBlock);
 
@@ -374,7 +374,7 @@ internal static class PdfPageParagraphBuilder
         List<PdfParagraph> pageList)
     {
         bool isMath = PdfParagraph.IsMathLine(line);
-        bool shouldSplit = ShouldSplitBlockLine(line, ctx.Block, ctx.Page, ctx.IsTablePage, ctx.IsTableBlock, currentGroup);
+        bool shouldSplit = ShouldSplitBlockLine(line, ctx.Block, ctx.PigPage, ctx.IsTablePage, ctx.IsTableBlock, currentGroup);
 
         if (currentGroup.Count == 0)
             return (new List<UglyToad.PdfPig.DocumentLayoutAnalysis.TextLine> { line }, isMath);
