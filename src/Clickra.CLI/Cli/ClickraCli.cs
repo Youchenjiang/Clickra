@@ -307,17 +307,7 @@ namespace Clickra
                 case "img2pdf":
                     ValidateExtensions(files, command, quiet, ".jpg", ".jpeg", ".png", ".bmp", ".gif", ".tiff", ".webp");
                     RequireMinFiles(files, command, 1, quiet);
-                    if (quiet)
-                    {
-                        for (int i = 0; i < files.Count; i++)
-                        {
-                            var f = files[i];
-                            string outName = Path.Combine(outputDir, Path.GetFileNameWithoutExtension(f) + ".pdf");
-                            Console.WriteLine($"[Progress] 正在轉換圖片: {Path.GetFileName(f)} ({i + 1}/{files.Count})...");
-                            FileProcessor.ConvertImagesToPdf(new List<string> { f }, outName, null);
-                        }
-                        Console.WriteLine("[Progress] 轉換完成，正在儲存 PDF...");
-                    }
+                    if (quiet) HandleImg2PdfQuiet(files, outputDir);
                     else ProgressWindow.Show(command, files);
                     return true;
                 case "img-merge":
@@ -335,6 +325,18 @@ namespace Clickra
                 default:
                     return false;
             }
+        }
+
+        private static void HandleImg2PdfQuiet(List<string> files, string outputDir)
+        {
+            for (int i = 0; i < files.Count; i++)
+            {
+                var f = files[i];
+                string outName = Path.Combine(outputDir, Path.GetFileNameWithoutExtension(f) + ".pdf");
+                Console.WriteLine($"[Progress] 正在轉換圖片: {Path.GetFileName(f)} ({i + 1}/{files.Count})...");
+                FileProcessor.ConvertImagesToPdf(new List<string> { f }, outName, null);
+            }
+            Console.WriteLine("[Progress] 轉換完成，正在儲存 PDF...");
         }
 
         private static void HandleDecryptPdfQuiet(List<string> files, string outputDir)
