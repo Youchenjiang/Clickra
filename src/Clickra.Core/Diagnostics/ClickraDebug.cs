@@ -30,22 +30,20 @@ namespace Clickra.Core
             }
         }
 
-        public static void LogRender(int page, double paraY0, double paraY1,
-            double paraX0, double paraX1, bool guardClip, bool horizontalOverflow,
-            bool verticalOverflow, double measuredH, string text)
+        public static void LogRender(RenderDebugInfo info)
         {
-            string preview = text.Replace('\r', ' ').Replace('\n', ' ').Trim();
+            string preview = info.Text.Replace('\r', ' ').Replace('\n', ' ').Trim();
             if (preview.Length > 72) preview = preview[..72] + "…";
-            bool overflow = horizontalOverflow || verticalOverflow;
+            bool overflow = info.HorizontalOverflow || info.VerticalOverflow;
             lock (_lock)
             {
-                _lines.Add($"P{page} RENDER paraY=[{paraY0:F1},{paraY1:F1}] X=[{paraX0:F1},{paraX1:F1}] clipped={overflow} guardClip={guardClip} overflow={overflow} horizontalOverflow={horizontalOverflow} verticalOverflow={verticalOverflow} measuredH={measuredH:F1} text={preview}");
+                _lines.Add($"P{info.Page} RENDER paraY=[{info.ParaY0:F1},{info.ParaY1:F1}] X=[{info.ParaX0:F1},{info.ParaX1:F1}] clipped={overflow} guardClip={info.GuardClip} overflow={overflow} horizontalOverflow={info.HorizontalOverflow} verticalOverflow={info.VerticalOverflow} measuredH={info.MeasuredH:F1} text={preview}");
             }
         }
 
         public static void LogRender(int page, double paraY0, double paraY1,
             double paraX0, double paraX1, bool clipped, double measuredH) =>
-            LogRender(page, paraY0, paraY1, paraX0, paraX1, false, clipped, false, measuredH, string.Empty);
+            LogRender(new RenderDebugInfo(page, paraY0, paraY1, paraX0, paraX1, false, clipped, false, measuredH, string.Empty));
 
         public static void LogRenderSkip(
             int page,
@@ -104,4 +102,16 @@ namespace Clickra.Core
             }
         }
     }
+
+    public readonly record struct RenderDebugInfo(
+        int Page,
+        double ParaY0,
+        double ParaY1,
+        double ParaX0,
+        double ParaX1,
+        bool GuardClip,
+        bool HorizontalOverflow,
+        bool VerticalOverflow,
+        double MeasuredH,
+        string Text);
 }

@@ -71,17 +71,21 @@ internal static class PdfPageParagraphBuilder
             if (para.IsCode) continue;
             if (!para.IsTable && PdfDiagramMaskBuilder.OverlapsWithLargeImage(para, page))
             {
-                if (PdfParagraphSemanticClassifier.IsHeadingParagraph(para) || PdfParagraphRoleClassifier.IsTranslatableBodyProse(para) ||
-                    PdfParagraphRoleClassifier.IsTranslatableCalloutProse(para) || PdfParagraphRoleClassifier.IsFigureTableCaptionParagraph(para))
-                {
-                    continue;
-                }
+                if (IsProtectedProseParagraph(para)) continue;
                 if (PdfChartLabelClassifier.IsLikelyChartLabel(para) || para.TextWithPlaceholders.Trim().Length <= 80)
                 {
                     para.IsDiagram = true;
                 }
             }
         }
+    }
+
+    private static bool IsProtectedProseParagraph(PdfParagraph para)
+    {
+        return PdfParagraphSemanticClassifier.IsHeadingParagraph(para) ||
+               PdfParagraphRoleClassifier.IsTranslatableBodyProse(para) ||
+               PdfParagraphRoleClassifier.IsTranslatableCalloutProse(para) ||
+               PdfParagraphRoleClassifier.IsFigureTableCaptionParagraph(para);
     }
 
     private static List<TableMaskRegion> ClassifyDiagramAndGrayRegions(List<PdfParagraph> pageList, UglyToad.PdfPig.Content.Page page)
@@ -411,16 +415,9 @@ internal static class PdfPageParagraphBuilder
             changed = false;
             foreach (var para in pageList)
             {
-                if (para.IsBypassed || para.IsTable || para.IsCode) continue;
-                if (page.Number == 1 && PageOneLayoutClassifier.IsAuthorBlockParagraph(para, pageList, page.Height)) continue;
-                if (PdfParagraphRoleClassifier.IsRunningHeaderOrFooter(para, page.Height)) continue;
-                if (PdfParagraphRoleClassifier.IsFigureTableCaptionParagraph(para)) continue;
-                if (PdfParagraphRoleClassifier.IsTranslatableBodyProse(para)) continue;
-                if (PdfParagraphRoleClassifier.IsTranslatableCalloutProse(para)) continue;
+                if (ShouldSkipBypassPropagation(para, pageList, page, diagramLabelMaxLen)) continue;
 
-                bool isSmallLabel = para.TextWithPlaceholders.Length <= diagramLabelMaxLen &&
-                                    !PdfParagraphSemanticClassifier.IsHeadingParagraph(para) && PdfChartLabelClassifier.IsLikelyChartLabel(para);
-                if (isSmallLabel && TryPropagateBypassForLabel(para, pageList, page.Height))
+                if (TryPropagateBypassForLabel(para, pageList, page.Height))
                 {
                     changed = true;
                 }
@@ -428,18 +425,30 @@ internal static class PdfPageParagraphBuilder
         }
     }
 
+    private static bool ShouldSkipBypassPropagation(
+        PdfParagraph para,
+        List<PdfParagraph> pageList,
+        UglyToad.PdfPig.Content.Page page,
+        int diagramLabelMaxLen)
+    {
+        if (para.IsBypassed || para.IsTable || para.IsCode) return true;
+        if (page.Number == 1 && PageOneLayoutClassifier.IsAuthorBlockParagraph(para, pageList, page.Height)) return true;
+        if (PdfParagraphRoleClassifier.IsRunningHeaderOrFooter(para, page.Height)) return true;
+        if (PdfParagraphRoleClassifier.IsFigureTableCaptionParagraph(para)) return true;
+        if (PdfParagraphRoleClassifier.IsTranslatableBodyProse(para)) return true;
+        if (PdfParagraphRoleClassifier.IsTranslatableCalloutProse(para)) return true;
+
+        bool isSmallLabel = para.TextWithPlaceholders.Length <= diagramLabelMaxLen &&
+                            !PdfParagraphSemanticClassifier.IsHeadingParagraph(para) &&
+                            PdfChartLabelClassifier.IsLikelyChartLabel(para);
+        return !isSmallLabel;
+    }
+
     private static bool TryPropagateBypassForLabel(PdfParagraph para, List<PdfParagraph> pageList, double pageHeight)
     {
         foreach (var other in pageList)
         {
-            if (other == para || !other.IsBypassed) continue;
-            if (other.IsTable && !other.IsDiagram) continue;
-            if (PdfParagraphRoleClassifier.IsRunningHeaderOrFooter(other, pageHeight)) continue;
-
-            bool closeX = (para.X0 <= other.X1 + 30) && (para.X1 >= other.X0 - 30);
-            bool closeY = (para.Y0 <= other.Y1 + 30) && (para.Y1 >= other.Y0 - 30);
-
-            if (closeX && closeY)
+            if (IsEligibleBypassAnchor(para, other, pageHeight))
             {
                 para.IsBypassed = true;
                 if (other.IsDiagram)
@@ -451,5 +460,16 @@ internal static class PdfPageParagraphBuilder
             }
         }
         return false;
+    }
+
+    private static bool IsEligibleBypassAnchor(PdfParagraph para, PdfParagraph other, double pageHeight)
+    {
+        if (other == para || !other.IsBypassed) return false;
+        if (other.IsTable && !other.IsDiagram) return false;
+        if (PdfParagraphRoleClassifier.IsRunningHeaderOrFooter(other, pageHeight)) return false;
+
+        bool closeX = (para.X0 <= other.X1 + 30) && (para.X1 >= other.X0 - 30);
+        bool closeY = (para.Y0 <= other.Y1 + 30) && (para.Y1 >= other.Y0 - 30);
+        return closeX && closeY;
     }
 }
