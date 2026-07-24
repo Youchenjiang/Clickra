@@ -253,6 +253,12 @@ static partial class TestSuite
 
     private static void RegisterEngineAndProcessorTests(TestRunner runner)
     {
+        RegisterFallbackEngineTests(runner);
+        RegisterProcessorAndPipelineTests(runner);
+    }
+
+    private static void RegisterFallbackEngineTests(TestRunner runner)
+    {
         runner.Run("Fallback translator chunks batches and retries only failed chunks", () =>
         {
             var primary = new RecordingTranslationEngine(PrimaryEngineName, failOnMarker: "FAIL");
@@ -386,7 +392,10 @@ static partial class TestSuite
                 Environment.SetEnvironmentVariable(ProviderTimeoutEnvVar, oldTimeout);
             }
         });
+    }
 
+    private static void RegisterProcessorAndPipelineTests(TestRunner runner)
+    {
         runner.Run("Heading classifier recognizes Roman sections but not equation numbers", () =>
         {
             var heading = new PdfParagraph(Array.Empty<UglyToad.PdfPig.DocumentLayoutAnalysis.TextLine>())
