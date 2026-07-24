@@ -307,7 +307,7 @@ internal static class PdfPageParagraphBuilder
         PdfParagraphBlockMerger.MergedBlock Block,
         UglyToad.PdfPig.Content.Page PigPage,
         bool IsTablePage,
-        bool IsTableBlock);
+        bool HasTableBlock);
 
     private static bool ShouldSplitBlockLine(
         UglyToad.PdfPig.DocumentLayoutAnalysis.TextLine line,
@@ -374,7 +374,7 @@ internal static class PdfPageParagraphBuilder
         List<PdfParagraph> pageList)
     {
         bool isMath = PdfParagraph.IsMathLine(line);
-        bool shouldSplit = ShouldSplitBlockLine(line, ctx.Block, ctx.PigPage, ctx.IsTablePage, ctx.IsTableBlock, currentGroup);
+        bool shouldSplit = ShouldSplitBlockLine(line, ctx.Block, ctx.PigPage, ctx.IsTablePage, ctx.HasTableBlock, currentGroup);
 
         if (currentGroup.Count == 0)
             return (new List<UglyToad.PdfPig.DocumentLayoutAnalysis.TextLine> { line }, isMath);
