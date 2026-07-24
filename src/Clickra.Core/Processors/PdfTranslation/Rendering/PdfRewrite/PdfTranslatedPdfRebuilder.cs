@@ -2,6 +2,7 @@ using Clickra.Core.Models;
 using PdfSharp.Drawing;
 using PdfSharp.Pdf;
 using PdfSharp.Pdf.Advanced;
+using PdfSharp.Pdf.Annotations;
 using PdfSharp.Pdf.IO;
 
 namespace Clickra.Core.Processors;
@@ -76,7 +77,7 @@ internal static class PdfTranslatedPdfRebuilder
         }
         catch { }
 
-        ApplyLayoutPlanning(gfx, paragraphs, targetFontName, pageWidthPts, pageHeightPts, tableMaskRegions, diagramMaskRegions, layoutSummary);
+        ApplyLayoutPlanning(new LayoutPlanningOptions(gfx, paragraphs, targetFontName, pageWidthPts, pageHeightPts, tableMaskRegions, diagramMaskRegions, layoutSummary));
 
         var pageOneTitlePara = pageIndex == 0 ? PageOneLayoutClassifier.FindTitleParagraph(paragraphs, pageHeightPts) : null;
         DrawParagraphMasks(new PageMaskDrawOptions(
@@ -186,58 +187,60 @@ internal static class PdfTranslatedPdfRebuilder
         catch { }
     }
 
-    private static void ApplyLayoutPlanning(
-        XGraphics gfx,
-        List<PdfParagraph> paragraphs,
-        string targetFontName,
-        double pageWidthPts,
-        double pageHeightPts,
-        List<TableMaskRegion> tableMaskRegions,
-        List<TableMaskRegion> diagramMaskRegions,
-        PdfTranslationLayoutSummary layoutSummary)
+    private sealed record LayoutPlanningOptions(
+        XGraphics Gfx,
+        List<PdfParagraph> Paragraphs,
+        string TargetFontName,
+        double PageWidthPts,
+        double PageHeightPts,
+        List<TableMaskRegion> TableMaskRegions,
+        List<TableMaskRegion> DiagramMaskRegions,
+        PdfTranslationLayoutSummary LayoutSummary);
+
+    private static void ApplyLayoutPlanning(LayoutPlanningOptions opts)
     {
         var layoutPlan = PdfTranslationLayoutPlanner.BuildAndApply(
-            gfx,
-            paragraphs,
-            targetFontName,
-            pageWidthPts,
-            pageHeightPts,
-            tableMaskRegions.Concat(diagramMaskRegions).ToList());
-        layoutSummary.HeadingCount += layoutPlan.HeadingCount;
-        layoutSummary.ShiftedParagraphCount += layoutPlan.ShiftedParagraphCount;
-        layoutSummary.FixedCollisionCount += layoutPlan.FixedCollisionCount;
-        layoutSummary.BottomOverflowCount += layoutPlan.BottomOverflowCount;
-        layoutSummary.MaximumAlignmentAnchorShift = Math.Max(
-            layoutSummary.MaximumAlignmentAnchorShift,
+            opts.Gfx,
+            opts.Paragraphs,
+            opts.TargetFontName,
+            opts.PageWidthPts,
+            opts.PageHeightPts,
+            opts.TableMaskRegions.Concat(opts.DiagramMaskRegions).ToList());
+        opts.LayoutSummary.HeadingCount += layoutPlan.HeadingCount;
+        opts.LayoutSummary.ShiftedParagraphCount += layoutPlan.ShiftedParagraphCount;
+        opts.LayoutSummary.FixedCollisionCount += layoutPlan.FixedCollisionCount;
+        opts.LayoutSummary.BottomOverflowCount += layoutPlan.BottomOverflowCount;
+        opts.LayoutSummary.MaximumAlignmentAnchorShift = Math.Max(
+            opts.LayoutSummary.MaximumAlignmentAnchorShift,
             layoutPlan.MaximumAlignmentAnchorShift);
-        int previousBodyCount = layoutSummary.BodyParagraphCount;
+        int previousBodyCount = opts.LayoutSummary.BodyParagraphCount;
         int pageBodyCount = layoutPlan.Snapshots.Count(s =>
             s.Role == PdfParagraphSemanticRole.Body &&
             !string.IsNullOrWhiteSpace(s.Paragraph.TranslatedText) &&
             s.Paragraph.TranslatedText.Any(FontUtilities.IsCjkCharacter));
         if (pageBodyCount > 0)
         {
-            layoutSummary.MinimumBodyFontRatio = previousBodyCount == 0
+            opts.LayoutSummary.MinimumBodyFontRatio = previousBodyCount == 0
                 ? layoutPlan.MinimumBodyFontRatio
-                : Math.Min(layoutSummary.MinimumBodyFontRatio, layoutPlan.MinimumBodyFontRatio);
-            layoutSummary.MaximumBodyFontRatio = Math.Max(
-                layoutSummary.MaximumBodyFontRatio,
+                : Math.Min(opts.LayoutSummary.MinimumBodyFontRatio, layoutPlan.MinimumBodyFontRatio);
+            opts.LayoutSummary.MaximumBodyFontRatio = Math.Max(
+                opts.LayoutSummary.MaximumBodyFontRatio,
                 layoutPlan.MaximumBodyFontRatio);
-            layoutSummary.BodyParagraphCount += pageBodyCount;
+            opts.LayoutSummary.BodyParagraphCount += pageBodyCount;
         }
-        layoutSummary.MaximumBodyLineSpacingMultiplier = Math.Max(
-            layoutSummary.MaximumBodyLineSpacingMultiplier,
+        opts.LayoutSummary.MaximumBodyLineSpacingMultiplier = Math.Max(
+            opts.LayoutSummary.MaximumBodyLineSpacingMultiplier,
             layoutPlan.MaximumBodyLineSpacingMultiplier);
-        layoutSummary.MaximumInterParagraphGap = Math.Max(
-            layoutSummary.MaximumInterParagraphGap,
+        opts.LayoutSummary.MaximumInterParagraphGap = Math.Max(
+            opts.LayoutSummary.MaximumInterParagraphGap,
             layoutPlan.MaximumInterParagraphGap);
-        layoutSummary.MaximumFlowRegionResidualWhitespace = Math.Max(
-            layoutSummary.MaximumFlowRegionResidualWhitespace,
+        opts.LayoutSummary.MaximumFlowRegionResidualWhitespace = Math.Max(
+            opts.LayoutSummary.MaximumFlowRegionResidualWhitespace,
             layoutPlan.MaximumFlowRegionResidualWhitespace);
         if (layoutPlan.Snapshots.Count > 0)
         {
-            layoutSummary.MinimumHeadingFontRatio = Math.Min(
-                layoutSummary.MinimumHeadingFontRatio,
+            opts.LayoutSummary.MinimumHeadingFontRatio = Math.Min(
+                opts.LayoutSummary.MinimumHeadingFontRatio,
                 layoutPlan.Snapshots
                     .Where(s => s.Role is PdfParagraphSemanticRole.PageTitle or PdfParagraphSemanticRole.AbstractHeading or PdfParagraphSemanticRole.SectionHeading or PdfParagraphSemanticRole.SubsectionHeading)
                     .Select(s => s.FontRatio)
@@ -268,21 +271,23 @@ internal static class PdfTranslatedPdfRebuilder
             PdfOverlayMaskPlanner.ShouldSuppressOverlayForGrayGeometry(para, effectiveGrayMaskRegions);
     }
 
-    private static bool ShouldSkipMaskForParagraph(
-        PdfParagraph para,
-        int pageIndex,
-        List<PdfParagraph> paragraphs,
-        double pageHeightPts,
-        List<TableMaskRegion> tableMaskRegions,
-        List<TableMaskRegion> diagramMaskRegions,
-        List<TableMaskRegion> effectiveGrayMaskRegions,
-        double pageWidth)
+    private sealed record ParagraphMaskQuery(
+        PdfParagraph Para,
+        int PageIndex,
+        List<PdfParagraph> Paragraphs,
+        double PageHeightPts,
+        List<TableMaskRegion> TableMaskRegions,
+        List<TableMaskRegion> DiagramMaskRegions,
+        List<TableMaskRegion> EffectiveGrayMaskRegions,
+        double PageWidth);
+
+    private static bool ShouldSkipMaskForParagraph(ParagraphMaskQuery query)
     {
-        if (para.IsBypassed || para.IsTable || string.IsNullOrWhiteSpace(para.TranslatedText)) return true;
-        if (pageIndex == 0 && PageOneLayoutClassifier.IsAuthorBlockParagraph(para, paragraphs, pageHeightPts)) return true;
-        if (IsGrayPromptSuppressed(para, effectiveGrayMaskRegions)) return true;
-        if (tableMaskRegions.Count > 0 && PdfTableMaskPlanner.ParagraphOverlapsAnyTableMask(para.X0, para.Y0, para.X1, para.Y1, tableMaskRegions)) return true;
-        if (IsProtectedMaskRegion(para, paragraphs, diagramMaskRegions, pageWidth)) return true;
+        if (query.Para.IsBypassed || query.Para.IsTable || string.IsNullOrWhiteSpace(query.Para.TranslatedText)) return true;
+        if (query.PageIndex == 0 && PageOneLayoutClassifier.IsAuthorBlockParagraph(query.Para, query.Paragraphs, query.PageHeightPts)) return true;
+        if (IsGrayPromptSuppressed(query.Para, query.EffectiveGrayMaskRegions)) return true;
+        if (query.TableMaskRegions.Count > 0 && PdfTableMaskPlanner.ParagraphOverlapsAnyTableMask(query.Para.X0, query.Para.Y0, query.Para.X1, query.Para.Y1, query.TableMaskRegions)) return true;
+        if (IsProtectedMaskRegion(query.Para, query.Paragraphs, query.DiagramMaskRegions, query.PageWidth)) return true;
         return false;
     }
 
@@ -309,65 +314,62 @@ internal static class PdfTranslatedPdfRebuilder
         }
     }
 
+    private sealed record MaskBoundsContext(
+        PdfParagraph Para,
+        bool IsFigureCaption,
+        double RenderedHeight,
+        List<TableMaskRegion> TableMaskRegions,
+        List<TableMaskRegion> DiagramMaskRegions,
+        List<PdfParagraph> Paragraphs,
+        PdfParagraph? PageOneTitlePara,
+        double PageWidth);
+
     private static void ApplyRegionClamping(
-        PdfParagraph para,
-        bool isFigureCaption,
-        List<TableMaskRegion> tableMaskRegions,
-        List<TableMaskRegion> diagramMaskRegions,
-        List<PdfParagraph> paragraphs,
-        PdfParagraph? pageOneTitlePara,
-        double pageWidth,
+        MaskBoundsContext ctx,
         ref double maskPdfX0,
         ref double maskPdfY0,
         ref double maskPdfX1,
         ref double maskPdfY1)
     {
         const double maskPad = 1.5;
-        PdfMaskGeometry.ExpandMaskToColumnWidth(ref maskPdfX0, ref maskPdfX1, para, pageWidth);
+        PdfMaskGeometry.ExpandMaskToColumnWidth(ref maskPdfX0, ref maskPdfX1, ctx.Para, ctx.PageWidth);
 
-        if (pageOneTitlePara != null && para == pageOneTitlePara)
+        if (ctx.PageOneTitlePara != null && ctx.Para == ctx.PageOneTitlePara)
         {
-            maskPdfY1 = Math.Min(maskPdfY1, pageOneTitlePara.Y1 + maskPad);
-            maskPdfY0 = Math.Max(maskPdfY0, pageOneTitlePara.Y0 - maskPad);
+            maskPdfY1 = Math.Min(maskPdfY1, ctx.PageOneTitlePara.Y1 + maskPad);
+            maskPdfY0 = Math.Max(maskPdfY0, ctx.PageOneTitlePara.Y0 - maskPad);
         }
 
-        if (tableMaskRegions.Count > 0 && !isFigureCaption)
+        if (ctx.TableMaskRegions.Count > 0 && !ctx.IsFigureCaption)
             maskPdfY0 = PdfTableMaskPlanner.ClampMaskBottomAboveTables(
-                maskPdfX0, maskPdfY0, maskPdfX1, maskPdfY1, tableMaskRegions);
+                maskPdfX0, maskPdfY0, maskPdfX1, maskPdfY1, ctx.TableMaskRegions);
 
-        if (diagramMaskRegions.Count > 0 && !isFigureCaption)
+        if (ctx.DiagramMaskRegions.Count > 0 && !ctx.IsFigureCaption)
         {
-            var clipRegions = PdfOverlayMaskPlanner.GetFigureClipRegions(paragraphs, diagramMaskRegions, pageWidth);
+            var clipRegions = PdfOverlayMaskPlanner.GetFigureClipRegions(ctx.Paragraphs, ctx.DiagramMaskRegions, ctx.PageWidth);
             maskPdfY1 = PdfOverlayMaskPlanner.ClampMaskTopBelowDiagrams(
-                maskPdfX0, maskPdfY0, maskPdfX1, maskPdfY1, clipRegions, pageWidth);
+                maskPdfX0, maskPdfY0, maskPdfX1, maskPdfY1, clipRegions, ctx.PageWidth);
         }
     }
 
     private static void ComputeMaskBounds(
-        PdfParagraph para,
-        bool isFigureCaption,
-        double renderedHeight,
-        List<TableMaskRegion> tableMaskRegions,
-        List<TableMaskRegion> diagramMaskRegions,
-        List<PdfParagraph> paragraphs,
-        PdfParagraph? pageOneTitlePara,
-        double pageWidth,
+        MaskBoundsContext ctx,
         out double maskPdfX0, out double maskPdfY0, out double maskPdfX1, out double maskPdfY1)
     {
         const double maskPad = 1.5;
-        PdfMaskGeometry.GetParagraphPaintBounds(para, out double maskX0, out double maskY0, out double maskX1, out double maskY1);
-        if (isFigureCaption)
+        PdfMaskGeometry.GetParagraphPaintBounds(ctx.Para, out double maskX0, out double maskY0, out double maskX1, out double maskY1);
+        if (ctx.IsFigureCaption)
         {
-            maskX0 = Math.Min(para.OriginalX0, para.X0);
-            maskY0 = Math.Min(para.OriginalY0, para.Y0);
-            maskX1 = Math.Max(para.OriginalX1, para.X1);
-            maskY1 = Math.Max(para.OriginalY1, para.Y1);
+            maskX0 = Math.Min(ctx.Para.OriginalX0, ctx.Para.X0);
+            maskY0 = Math.Min(ctx.Para.OriginalY0, ctx.Para.Y0);
+            maskX1 = Math.Max(ctx.Para.OriginalX1, ctx.Para.X1);
+            maskY1 = Math.Max(ctx.Para.OriginalY1, ctx.Para.Y1);
         }
 
         maskPdfX0 = maskX0 - maskPad;
         maskPdfX1 = maskX1 + maskPad;
-        ComputeBaseMaskY(isFigureCaption, renderedHeight, maskY0, maskY1, out maskPdfY0, out maskPdfY1);
-        ApplyRegionClamping(para, isFigureCaption, tableMaskRegions, diagramMaskRegions, paragraphs, pageOneTitlePara, pageWidth, ref maskPdfX0, ref maskPdfY0, ref maskPdfX1, ref maskPdfY1);
+        ComputeBaseMaskY(ctx.IsFigureCaption, ctx.RenderedHeight, maskY0, maskY1, out maskPdfY0, out maskPdfY1);
+        ApplyRegionClamping(ctx, ref maskPdfX0, ref maskPdfY0, ref maskPdfX1, ref maskPdfY1);
     }
 
     private static bool IsGrayGeometryIntersected(
@@ -397,8 +399,8 @@ internal static class PdfTranslatedPdfRebuilder
         double pageWidth = opts.Gfx.PageSize.Width;
         foreach (var para in opts.Paragraphs)
         {
-            if (ShouldSkipMaskForParagraph(para, opts.PageIndex, opts.Paragraphs, pageHeightPts,
-                    opts.TableMaskRegions, opts.DiagramMaskRegions, opts.EffectiveGrayMaskRegions, pageWidth))
+            var query = new ParagraphMaskQuery(para, opts.PageIndex, opts.Paragraphs, pageHeightPts, opts.TableMaskRegions, opts.DiagramMaskRegions, opts.EffectiveGrayMaskRegions, pageWidth);
+            if (ShouldSkipMaskForParagraph(query))
                 continue;
 
             double pageHeight = opts.Gfx.PageSize.Height;
@@ -411,9 +413,8 @@ internal static class PdfTranslatedPdfRebuilder
 
             double renderedHeight = PdfTranslatedParagraphRenderer.RenderParagraph(opts.Gfx, para, opts.TargetFontName, measureOnly: true);
 
-            ComputeMaskBounds(para, isFigureCaption, renderedHeight,
-                opts.TableMaskRegions, opts.DiagramMaskRegions, opts.Paragraphs, opts.PageOneTitlePara, pageWidth,
-                out double maskPdfX0, out double maskPdfY0, out double maskPdfX1, out double maskPdfY1);
+            var boundsCtx = new MaskBoundsContext(para, isFigureCaption, renderedHeight, opts.TableMaskRegions, opts.DiagramMaskRegions, opts.Paragraphs, opts.PageOneTitlePara, pageWidth);
+            ComputeMaskBounds(boundsCtx, out double maskPdfX0, out double maskPdfY0, out double maskPdfX1, out double maskPdfY1);
 
             if (IsGrayGeometryIntersected(maskPdfX0, maskPdfY0, maskPdfX1, maskPdfY1, para, opts.EffectiveGrayMaskRegions))
                 continue;
@@ -445,9 +446,10 @@ internal static class PdfTranslatedPdfRebuilder
         var renderedCharsByParagraph = new Dictionary<PdfParagraph, List<RenderedChar>>();
         foreach (var para in opts.Paragraphs)
         {
-            if (ShouldSkipOverlayForParagraph(para, opts.PageIndex, opts.Paragraphs, pageHeightPts,
-                    opts.TableMaskRegions, opts.DiagramMaskRegions, opts.EffectiveGrayMaskRegions,
-                    opts.PageHasTable, pageWidth, out bool isBypassed))
+            var query = new OverlayQueryOptions(para, opts.PageIndex, opts.Paragraphs, pageHeightPts,
+                opts.TableMaskRegions, opts.DiagramMaskRegions, opts.EffectiveGrayMaskRegions,
+                opts.PageHasTable, pageWidth);
+            if (ShouldSkipOverlayForParagraph(query, out bool isBypassed))
                 continue;
 
             if (isBypassed)
@@ -476,54 +478,69 @@ internal static class PdfTranslatedPdfRebuilder
         return renderedCharsByParagraph;
     }
 
-    private static bool ShouldSkipOverlayForParagraph(
-        PdfParagraph para,
-        int pageIndex,
-        List<PdfParagraph> paragraphs,
-        double pageHeightPts,
-        List<TableMaskRegion> tableMaskRegions,
-        List<TableMaskRegion> diagramMaskRegions,
-        List<TableMaskRegion> effectiveGrayMaskRegions,
-        bool pageHasTable,
-        double pageWidth,
-        out bool isBypassed)
+    private sealed record OverlayQueryOptions(
+        PdfParagraph Para,
+        int PageIndex,
+        List<PdfParagraph> Paragraphs,
+        double PageHeightPts,
+        List<TableMaskRegion> TableMaskRegions,
+        List<TableMaskRegion> DiagramMaskRegions,
+        List<TableMaskRegion> EffectiveGrayMaskRegions,
+        bool PageHasTable,
+        double PageWidth);
+
+    private static bool ShouldSkipOverlayForParagraph(OverlayQueryOptions query, out bool isBypassed)
     {
-        isBypassed = para.IsBypassed;
+        isBypassed = query.Para.IsBypassed;
         if (isBypassed) return false; // caller handles bypassed separately
 
-        if (string.IsNullOrWhiteSpace(para.TranslatedText)) return true;
-        if (pageIndex == 0 && (para.IsPageTitle || para.SemanticRole == PdfParagraphSemanticRole.PageTitle || PageOneLayoutClassifier.IsAuthorBlockParagraph(para, paragraphs, pageHeightPts))) return true;
-        if (IsGrayPromptSuppressed(para, effectiveGrayMaskRegions)) return true;
-        if (pageHasTable && tableMaskRegions.Count > 0 && PdfTableMaskPlanner.ParagraphOverlapsAnyTableMask(para.X0, para.Y0, para.X1, para.Y1, tableMaskRegions)) return true;
-        if (IsProtectedMaskRegion(para, paragraphs, diagramMaskRegions, pageWidth)) return true;
+        if (string.IsNullOrWhiteSpace(query.Para.TranslatedText)) return true;
+        if (query.PageIndex == 0 && (query.Para.IsPageTitle || query.Para.SemanticRole == PdfParagraphSemanticRole.PageTitle || PageOneLayoutClassifier.IsAuthorBlockParagraph(query.Para, query.Paragraphs, query.PageHeightPts))) return true;
+        if (IsGrayPromptSuppressed(query.Para, query.EffectiveGrayMaskRegions)) return true;
+        if (query.PageHasTable && query.TableMaskRegions.Count > 0 && PdfTableMaskPlanner.ParagraphOverlapsAnyTableMask(query.Para.X0, query.Para.Y0, query.Para.X1, query.Para.Y1, query.TableMaskRegions)) return true;
+        if (IsProtectedMaskRegion(query.Para, query.Paragraphs, query.DiagramMaskRegions, query.PageWidth)) return true;
         return false;
     }
 
     private static void DrawFindingCalloutSurface(XGraphics gfx, PdfParagraph para, double pageHeight)
     {
         const double padding = 3.2;
-        const double radius = 4.0;
         double x0 = Math.Min(para.OriginalX0, para.X0) - padding;
-        // PdfPig's text bbox leaves a larger descender gap on multi-line
-        // callouts (ASTER Finding 5) than on one-line boxes (Finding 6).
-        // Scale the lower inset with the source height so the source border is
-        // fully covered without making short boxes taller than their original.
         double bottomPadding = Math.Max(padding, para.Height * 0.10);
         double y0 = Math.Min(para.OriginalY0, para.Y0) - bottomPadding;
         double x1 = Math.Max(para.OriginalX1, para.X1) + padding;
         double y1 = Math.Max(para.OriginalY1, para.Y1) + padding;
 
         var fill = new XSolidBrush(XColor.FromArgb(229, 247, 253));
-        var border = new XPen(XColors.Black, 0.75);
-        gfx.DrawRoundedRectangle(
-            border,
-            fill,
-            x0,
-            pageHeight - y1,
-            Math.Max(1, x1 - x0),
-            Math.Max(1, y1 - y0),
-            radius,
-            radius);
+        double width = x1 - x0;
+        double height = y1 - y0;
+        double yGfx = pageHeight - y1;
+        gfx.DrawRectangle(fill, x0, yGfx, width, height);
+
+        var borderPen = new XPen(XColor.FromArgb(1, 87, 155), 1.5);
+        gfx.DrawLine(borderPen, x0, yGfx, x0, yGfx + height);
+    }
+
+    private static string MapTargetFontName(string targetLang)
+    {
+        if (targetLang.Equals("zh-CN", StringComparison.OrdinalIgnoreCase) ||
+            targetLang.Equals("zh-Hans", StringComparison.OrdinalIgnoreCase))
+        {
+            return "SimSun";
+        }
+        if (targetLang.Equals("ja", StringComparison.OrdinalIgnoreCase))
+        {
+            return "MS Mincho";
+        }
+        if (targetLang.Equals("ko", StringComparison.OrdinalIgnoreCase))
+        {
+            return "Malgun Gothic";
+        }
+        if (targetLang.Equals("en", StringComparison.OrdinalIgnoreCase))
+        {
+            return "Arial";
+        }
+        return "DFKai-SB";
     }
 
     private static void RedrawPageOneTitleAfterSourceScrub(
@@ -562,20 +579,7 @@ internal static class PdfTranslatedPdfRebuilder
 
     private static string GetTargetFontName(string targetLang)
     {
-        if (targetLang.Equals("zh-CN", StringComparison.OrdinalIgnoreCase) ||
-            targetLang.Equals("ja", StringComparison.OrdinalIgnoreCase))
-        {
-            return "DFKai-SB";
-        }
-        if (targetLang.Equals("ko", StringComparison.OrdinalIgnoreCase))
-        {
-            return "Malgun Gothic";
-        }
-        if (targetLang.Equals("en", StringComparison.OrdinalIgnoreCase))
-        {
-            return "Arial";
-        }
-        return "DFKai-SB";
+        return MapTargetFontName(targetLang);
     }
 
     private static void MapAnnotationsToParagraphs(PdfPage page, List<PdfParagraph> paragraphs)
@@ -584,79 +588,112 @@ internal static class PdfTranslatedPdfRebuilder
         {
             for (int i = 0; i < page.Annotations.Count; i++)
             {
-                var annot = page.Annotations[i];
-                var rect = annot.Rectangle;
-
-                var paraOverlaps = new Dictionary<PdfParagraph, List<PdfLetter>>();
-                foreach (var para in paragraphs)
-                {
-                    var overlapping = para.AllLetters
-                        .Where(l => l.Right >= rect.X1 - 2.5 && l.Left <= rect.X2 + 2.5 &&
-                                    l.Top >= rect.Y1 - 2.5 && l.Bottom <= rect.Y2 + 2.5)
-                        .OrderBy(para.AllLetters.IndexOf)
-                        .ToList();
-                    if (overlapping.Count > 0)
-                    {
-                        paraOverlaps[para] = overlapping;
-                    }
-                }
-
-                if (paraOverlaps.Count > 0)
-                {
-                    double annotCenterX = (rect.X1 + rect.X2) / 2.0;
-                    double annotCenterY = (rect.Y1 + rect.Y2) / 2.0;
-                    var bestPair = paraOverlaps
-                        .OrderByDescending(kv => PdfAnnotationTextMatcher.ScoreAnnotationParagraph(kv.Key, kv.Value, annotCenterX, annotCenterY))
-                        .First();
-                    var bestPara = bestPair.Key;
-                    var overlappingLetters = bestPair.Value;
-
-                    string searchText = string.Join("", overlappingLetters.Select(l => l.Value)).Trim();
-                    searchText = PdfAnnotationTextMatcher.NormalizeAnnotationSearchText(searchText);
-                    if (searchText.All(c => !char.IsDigit(c)))
-                    {
-                        double centerX = (rect.X1 + rect.X2) / 2.0;
-                        double centerY = (rect.Y1 + rect.Y2) / 2.0;
-                        var nearbyDigit = bestPara.AllLetters
-                            .Where(letter => letter.Value.Length == 1 && char.IsDigit(letter.Value[0]))
-                            .OrderBy(letter =>
-                            {
-                                double dx = ((letter.Left + letter.Right) / 2.0) - centerX;
-                                double dy = ((letter.Bottom + letter.Top) / 2.0) - centerY;
-                                return dx * dx + dy * dy;
-                            })
-                            .FirstOrDefault();
-                        if (nearbyDigit != null)
-                        {
-                            searchText = nearbyDigit.Value;
-                        }
-                    }
-                    if (!string.IsNullOrEmpty(searchText))
-                    {
-                        int occurrenceIdx = PdfAnnotationOccurrenceMatcher.GetOccurrenceIndex(bestPara.AllLetters, overlappingLetters, searchText);
-                        int firstLetterIdx = bestPara.AllLetters.IndexOf(overlappingLetters[0]);
-                        int lastLetterIdx = bestPara.AllLetters.IndexOf(overlappingLetters[^1]);
-                        int figureOccurrenceIdx = PdfAnnotationOccurrenceMatcher.GetFigureReferenceIndex(bestPara.AllLetters, firstLetterIdx);
-                        double relCenterX = bestPara.Width > 0 ? (annotCenterX - bestPara.X0) / bestPara.Width : 0.5;
-                        double relCenterY = bestPara.Height > 0 ? (annotCenterY - bestPara.Y0) / bestPara.Height : 0.5;
-                        double relWidth = bestPara.Width > 0 ? (rect.X2 - rect.X1) / bestPara.Width : 0.05;
-                        bestPara.Annotations.Add(new ParagraphAnnotationInfo
-                        {
-                            PdfAnnotation = annot,
-                            Text = searchText,
-                            OccurrenceIndex = occurrenceIdx,
-                            FigureOccurrenceIndex = figureOccurrenceIdx,
-                            FirstLetterIndex = firstLetterIdx,
-                            LastLetterIndex = lastLetterIdx,
-                            TotalLetterCount = bestPara.AllLetters.Count,
-                            RelCenterX = relCenterX,
-                            RelCenterY = relCenterY,
-                            RelWidth = relWidth
-                        });
-                    }
-                }
+                MapSingleAnnotationToParagraphs(page.Annotations[i], paragraphs);
             }
         }
         catch { }
+    }
+
+    private static void MapSingleAnnotationToParagraphs(PdfAnnotation annot, List<PdfParagraph> paragraphs)
+    {
+        var rect = annot.Rectangle;
+        var paraOverlaps = FindOverlappingLettersForAnnotation(rect, paragraphs);
+        if (paraOverlaps.Count == 0) return;
+
+        double annotCenterX = (rect.X1 + rect.X2) / 2.0;
+        double annotCenterY = (rect.Y1 + rect.Y2) / 2.0;
+        var bestPair = paraOverlaps
+            .OrderByDescending(kv => PdfAnnotationTextMatcher.ScoreAnnotationParagraph(kv.Key, kv.Value, annotCenterX, annotCenterY))
+            .First();
+        var bestPara = bestPair.Key;
+        var overlappingLetters = bestPair.Value;
+
+        string searchText = ExtractAnnotationSearchText(bestPara, overlappingLetters, rect);
+        if (string.IsNullOrEmpty(searchText)) return;
+
+        AttachAnnotationInfo(new AnnotationMappingContext(bestPara, annot, rect, overlappingLetters, annotCenterX, annotCenterY), searchText);
+    }
+
+    private static Dictionary<PdfParagraph, List<PdfLetter>> FindOverlappingLettersForAnnotation(
+        PdfRectangle rect,
+        List<PdfParagraph> paragraphs)
+    {
+        var paraOverlaps = new Dictionary<PdfParagraph, List<PdfLetter>>();
+        foreach (var para in paragraphs)
+        {
+            var overlapping = para.AllLetters
+                .Where(l => l.Right >= rect.X1 - 2.5 && l.Left <= rect.X2 + 2.5 &&
+                            l.Top >= rect.Y1 - 2.5 && l.Bottom <= rect.Y2 + 2.5)
+                .OrderBy(para.AllLetters.IndexOf)
+                .ToList();
+            if (overlapping.Count > 0)
+            {
+                paraOverlaps[para] = overlapping;
+            }
+        }
+        return paraOverlaps;
+    }
+
+    private static string ExtractAnnotationSearchText(
+        PdfParagraph bestPara,
+        List<PdfLetter> overlappingLetters,
+        PdfRectangle rect)
+    {
+        string searchText = string.Join("", overlappingLetters.Select(l => l.Value)).Trim();
+        searchText = PdfAnnotationTextMatcher.NormalizeAnnotationSearchText(searchText);
+        if (searchText.All(c => !char.IsDigit(c)))
+        {
+            var nearbyDigit = FindNearbyDigitLetter(bestPara, rect);
+            if (nearbyDigit != null)
+                searchText = nearbyDigit.Value;
+        }
+        return searchText;
+    }
+
+    private static PdfLetter? FindNearbyDigitLetter(PdfParagraph para, PdfRectangle rect)
+    {
+        double centerX = (rect.X1 + rect.X2) / 2.0;
+        double centerY = (rect.Y1 + rect.Y2) / 2.0;
+        return para.AllLetters
+            .Where(letter => letter.Value.Length == 1 && char.IsDigit(letter.Value[0]))
+            .OrderBy(letter =>
+            {
+                double dx = ((letter.Left + letter.Right) / 2.0) - centerX;
+                double dy = ((letter.Bottom + letter.Top) / 2.0) - centerY;
+                return dx * dx + dy * dy;
+            })
+            .FirstOrDefault();
+    }
+
+    private sealed record AnnotationMappingContext(
+        PdfParagraph BestPara,
+        PdfAnnotation Annotation,
+        PdfRectangle Rect,
+        List<PdfLetter> OverlappingLetters,
+        double CenterX,
+        double CenterY);
+
+    private static void AttachAnnotationInfo(AnnotationMappingContext ctx, string searchText)
+    {
+        int occurrenceIdx = PdfAnnotationOccurrenceMatcher.GetOccurrenceIndex(ctx.BestPara.AllLetters, ctx.OverlappingLetters, searchText);
+        int firstLetterIdx = ctx.BestPara.AllLetters.IndexOf(ctx.OverlappingLetters[0]);
+        int lastLetterIdx = ctx.BestPara.AllLetters.IndexOf(ctx.OverlappingLetters[^1]);
+        int figureOccurrenceIdx = PdfAnnotationOccurrenceMatcher.GetFigureReferenceIndex(ctx.BestPara.AllLetters, firstLetterIdx);
+        double relCenterX = ctx.BestPara.Width > 0 ? (ctx.CenterX - ctx.BestPara.X0) / ctx.BestPara.Width : 0.5;
+        double relCenterY = ctx.BestPara.Height > 0 ? (ctx.CenterY - ctx.BestPara.Y0) / ctx.BestPara.Height : 0.5;
+        double relWidth = ctx.BestPara.Width > 0 ? (ctx.Rect.X2 - ctx.Rect.X1) / ctx.BestPara.Width : 0.05;
+        ctx.BestPara.Annotations.Add(new ParagraphAnnotationInfo
+        {
+            PdfAnnotation = ctx.Annotation,
+            Text = searchText,
+            OccurrenceIndex = occurrenceIdx,
+            FigureOccurrenceIndex = figureOccurrenceIdx,
+            FirstLetterIndex = firstLetterIdx,
+            LastLetterIndex = lastLetterIdx,
+            TotalLetterCount = ctx.BestPara.AllLetters.Count,
+            RelCenterX = relCenterX,
+            RelCenterY = relCenterY,
+            RelWidth = relWidth
+        });
     }
 }
