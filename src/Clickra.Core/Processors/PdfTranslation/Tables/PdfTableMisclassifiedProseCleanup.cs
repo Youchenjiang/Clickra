@@ -44,12 +44,7 @@ namespace Clickra.Core.Processors
             if (PdfSpecialTableRegionClassifier.IsWorkDivisionTableParagraph(para, workDivisionCaption, pageWidth)) return false;
             if (PdfSpecialTableRegionClassifier.IsAppendixFeatureTableParagraph(para, appendixTableCaption, pageWidth)) return false;
 
-            if (txt.StartsWith("•") || txt.StartsWith("·") ||
-                txt.StartsWith("To sum up", StringComparison.OrdinalIgnoreCase)) return true;
-
-            if (txt.StartsWith("and ", StringComparison.OrdinalIgnoreCase) && para.Height <= 20) return true;
-            if (Regex.IsMatch(txt, @"^\d+\s+[A-Za-z]", RegexOptions.None, TimeSpan.FromSeconds(1)) && para.Height <= 25 && para.Width > 120) return true;
-            if (Regex.IsMatch(txt, @"^\d{1,2}(?:\.\d{1,2})?$", RegexOptions.None, TimeSpan.FromSeconds(1))) return true;
+            if (IsProseTextPattern(para, txt)) return true;
 
             int wordCount = txt.Split([' ', '\t', '\n', '\r'], StringSplitOptions.RemoveEmptyEntries).Length;
             if (wordCount >= 2 && para.Height <= 25 && !IsLikelyTableCellValue(txt))
@@ -59,6 +54,18 @@ namespace Clickra.Core.Processors
             }
 
             return IsTallFullColumnProse(para, wordCount, pageWidth);
+        }
+
+        private static bool IsProseTextPattern(PdfParagraph para, string txt)
+        {
+            if (txt.StartsWith("•") || txt.StartsWith("·") ||
+                txt.StartsWith("To sum up", StringComparison.OrdinalIgnoreCase)) return true;
+
+            if (txt.StartsWith("and ", StringComparison.OrdinalIgnoreCase) && para.Height <= 20) return true;
+            if (Regex.IsMatch(txt, @"^\d+\s+[A-Za-z]", RegexOptions.None, TimeSpan.FromSeconds(1)) && para.Height <= 25 && para.Width > 120) return true;
+            if (Regex.IsMatch(txt, @"^\d{1,2}(?:\.\d{1,2})?$", RegexOptions.None, TimeSpan.FromSeconds(1))) return true;
+
+            return false;
         }
 
         private static bool IsLikelyTableCellValue(string txt)
