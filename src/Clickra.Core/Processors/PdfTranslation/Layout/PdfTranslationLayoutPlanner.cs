@@ -460,7 +460,6 @@ internal static class PdfTranslationLayoutPlanner
         BodyFlowBalanceOptions options,
         double contentBudget)
     {
-        int shifted = 0;
         double remaining = Math.Max(0, contentBudget - run.Sum(s => s.MeasuredHeight));
         double lineUnits = run.Sum(s => s.OutputFontSize * Math.Max(0, s.LineCount));
         if (remaining > 0.5 && lineUnits > 0)
@@ -478,7 +477,7 @@ internal static class PdfTranslationLayoutPlanner
                 }
             }
         }
-        return shifted;
+        return 0;
     }
 
     private static void RedistributeGaps(
