@@ -290,9 +290,10 @@ internal static class PdfPageParagraphBuilder
 
         bool isTableBlock = IsTableBlock(blockLines, isTablePage, blockWidth, page.Width);
 
+        var groupCtx = new LineGroupContext(block, page, isTablePage, isTableBlock);
         foreach (var line in blockLines)
         {
-            (currentGroup, currentIsMath) = AddLineToCurrentGroup(line, currentGroup, currentIsMath, block, page, isTablePage, isTableBlock, pageList);
+            (currentGroup, currentIsMath) = AddLineToCurrentGroup(line, currentGroup, currentIsMath, groupCtx, pageList);
         }
 
         if (currentGroup.Count > 0)
@@ -301,6 +302,12 @@ internal static class PdfPageParagraphBuilder
             pageList.Add(paragraph);
         }
     }
+
+    private readonly record struct LineGroupContext(
+        PdfParagraphBlockMerger.MergedBlock Block,
+        UglyToad.PdfPig.Content.Page Page,
+        bool IsTablePage,
+        bool IsTableBlock);
 
     private static bool ShouldSplitBlockLine(
         UglyToad.PdfPig.DocumentLayoutAnalysis.TextLine line,
@@ -363,14 +370,11 @@ internal static class PdfPageParagraphBuilder
         UglyToad.PdfPig.DocumentLayoutAnalysis.TextLine line,
         List<UglyToad.PdfPig.DocumentLayoutAnalysis.TextLine> currentGroup,
         bool? currentIsMath,
-        PdfParagraphBlockMerger.MergedBlock block,
-        UglyToad.PdfPig.Content.Page page,
-        bool isTablePage,
-        bool isTableBlock,
+        LineGroupContext ctx,
         List<PdfParagraph> pageList)
     {
         bool isMath = PdfParagraph.IsMathLine(line);
-        bool shouldSplit = ShouldSplitBlockLine(line, block, page, isTablePage, isTableBlock, currentGroup);
+        bool shouldSplit = ShouldSplitBlockLine(line, ctx.Block, ctx.Page, ctx.IsTablePage, ctx.IsTableBlock, currentGroup);
 
         if (currentGroup.Count == 0)
             return (new List<UglyToad.PdfPig.DocumentLayoutAnalysis.TextLine> { line }, isMath);
