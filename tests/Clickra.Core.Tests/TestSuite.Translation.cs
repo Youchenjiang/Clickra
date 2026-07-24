@@ -13,6 +13,9 @@ using PdfSharp.Pdf;
 static partial class TestSuite
 {
     private const string DfKaiSbFontName = "DFKai-SB";
+    private const string CircledNumbersText = "①、②、③";
+    private const string PrimaryEngineName = "primary";
+    private const string FallbackEngineName = "fallback";
     private const string ProviderTimeoutEnvVar = "CLICKRA_TRANSLATION_PROVIDER_TIMEOUT_SECONDS";
 
     public static void RegisterTranslationTests(TestRunner runner)
@@ -25,7 +28,7 @@ static partial class TestSuite
                 var face = resolver.ResolveTypeface(family, isBold: true, isItalic: true);
                 Assert.True(face != null && face.FaceName == "kaiu",
                     $"Expected {family} to resolve to kaiu, got {face?.FaceName ?? "<null>"}.");
-                var bytes = resolver.GetFont(face!.FaceName);
+                var bytes = resolver.GetFont(face.FaceName);
                 Assert.True(bytes != null && bytes.Length > 1_000_000,
                     $"Expected an embedded KaiU font payload for {family}.");
             }
@@ -110,12 +113,12 @@ static partial class TestSuite
         runner.Run("Math normalization preserves circled figure markers", () =>
         {
             Assert.Equal(
-                "①、②、③",
+                CircledNumbersText,
                 FontUtilities.NormalizeMathValue("1⃝、2⃝、3⃝"));
             Assert.True(
-                PdfParagraphLayoutEngine.TokenizeTranslatedText("①、②、③").Contains("①"),
+                PdfParagraphLayoutEngine.TokenizeTranslatedText(CircledNumbersText).Contains("①"),
                 "Circled marker should remain an inline symbol token.");
-            Assert.Equal("①、②、③", FontUtilities.NormalizeRenderValue("①、②、③"));
+            Assert.Equal(CircledNumbersText, FontUtilities.NormalizeRenderValue(CircledNumbersText));
         });
 
         runner.Run("Caption marker formulas are restored inline", () =>
@@ -216,8 +219,8 @@ static partial class TestSuite
 
         runner.Run("Fallback translator chunks batches and retries only failed chunks", () =>
         {
-            var primary = new RecordingTranslationEngine("primary", failOnMarker: "FAIL");
-            var fallback = new RecordingTranslationEngine("fallback");
+            var primary = new RecordingTranslationEngine(PrimaryEngineName, failOnMarker: "FAIL");
+            var fallback = new RecordingTranslationEngine(FallbackEngineName);
             var translator = new FallbackTranslator(primary, fallback);
             var texts = Enumerable.Range(0, 30)
                 .Select(i => i == 25 ? "FAIL " + new string('x', 280) : $"item-{i} " + new string('x', 280))
@@ -237,8 +240,8 @@ static partial class TestSuite
 
         runner.Run("Fallback translator rejects incomplete fallback batches", () =>
         {
-            var primary = new RecordingTranslationEngine("primary", failOnMarker: "FAIL");
-            var fallback = new RecordingTranslationEngine("fallback", dropLastBatchResult: true);
+            var primary = new RecordingTranslationEngine(PrimaryEngineName, failOnMarker: "FAIL");
+            var fallback = new RecordingTranslationEngine(FallbackEngineName, dropLastBatchResult: true);
             var translator = new FallbackTranslator(primary, fallback);
 
             var ex = Assert.Throws<Exception>(() =>
@@ -255,8 +258,8 @@ static partial class TestSuite
 
         runner.Run("Fallback translator rejects unchanged CJK provider output", () =>
         {
-            var primary = new UnchangedTranslationEngine("primary");
-            var fallback = new RecordingTranslationEngine("fallback");
+            var primary = new UnchangedTranslationEngine(PrimaryEngineName);
+            var fallback = new RecordingTranslationEngine(FallbackEngineName);
             var translator = new FallbackTranslator(primary, fallback);
             const string source = "ASTER: Natural and Multi-language Unit Test Generation with LLMs";
 
@@ -282,8 +285,8 @@ static partial class TestSuite
         {
             using var cts = new CancellationTokenSource();
             cts.Cancel();
-            var primary = new RecordingTranslationEngine("primary");
-            var fallback = new RecordingTranslationEngine("fallback");
+            var primary = new RecordingTranslationEngine(PrimaryEngineName);
+            var fallback = new RecordingTranslationEngine(FallbackEngineName);
             var translator = new FallbackTranslator(primary, fallback);
 
             Assert.Throws<OperationCanceledException>(() =>
@@ -305,7 +308,7 @@ static partial class TestSuite
             {
                 Environment.SetEnvironmentVariable(ProviderTimeoutEnvVar, "1");
                 var primary = new DelayedTranslationEngine("slow-primary", delayMilliseconds: 1500);
-                var fallback = new RecordingTranslationEngine("fallback");
+                var fallback = new RecordingTranslationEngine(FallbackEngineName);
                 var translator = new FallbackTranslator(primary, fallback);
 
                 var result = translator.TranslateBatchAsync(
