@@ -183,9 +183,15 @@ namespace Clickra.Core.Processors
             if (opts.Token.Length == 1 && FontUtilities.IsLatinExtendedOrSymbol(opts.Token[0]))
             {
                 char c = opts.Token[0];
-                string fontName = (c >= 0x0080 && c <= 0x024F)
-                    ? (opts.Font.FontFamily.Name.Contains("Courier") ? "Courier New" : "Arial")
-                    : "Segoe UI Symbol";
+                string fontName;
+                if (c >= 0x0080 && c <= 0x024F)
+                {
+                    fontName = opts.Font.FontFamily.Name.Contains("Courier") ? "Courier New" : "Arial";
+                }
+                else
+                {
+                    fontName = "Segoe UI Symbol";
+                }
                 XFont fallbackFont = new(fontName, opts.Font.Size, opts.Font.Style);
                 return new MeasuredTokenInfo(false, -1, opts.Gfx.MeasureString(FontUtilities.NormalizeMathValue(opts.Token), fallbackFont).Width);
             }
