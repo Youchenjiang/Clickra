@@ -387,6 +387,24 @@ internal static class PdfTranslatedParagraphRenderer
             }
         }
 
+        private readonly record struct FormulaRenderContext(
+            XGraphics Gfx,
+            PdfParagraph Para,
+            XBrush Brush,
+            double FontSize,
+            double PageHeight,
+            List<RenderedChar> RenderedChars);
+
+        private readonly record struct TextRenderContext(
+            XGraphics Gfx,
+            XFont MainFont,
+            XBrush Brush,
+            Func<bool, XFont> GetInlineFont,
+            Func<bool, bool> UseSyntheticBold,
+            double FontSize,
+            double CurrentY,
+            double PageHeight,
+            List<RenderedChar> RenderedChars);
         private readonly record struct ParagraphRowRenderOptions(
             XGraphics Gfx,
             List<PdfLayoutRow> Rows,
@@ -416,93 +434,99 @@ internal static class PdfTranslatedParagraphRenderer
             foreach (var row in opts.Rows)
             {
                 double rowWidth = row.Elements.Sum(e => e.Width);
-                double startX = opts.ParagraphX;
-                if (opts.IsRotated)
-                {
-                    startX = 0;
-                    if (opts.Para.Alignment == PdfParagraph.TextAlignment.Center) startX = (opts.LayoutWidth - rowWidth) / 2;
-                    else if (opts.Para.Alignment == PdfParagraph.TextAlignment.Right) startX = opts.LayoutWidth - rowWidth;
-                }
-                else
-                {
-                    PdfParagraph.TextAlignment alignment = opts.IsHeading
-                        ? InferHeadingAlignment(opts.Para, opts.Gfx.PageSize.Width)
-                        : opts.Para.Alignment;
-                    if (alignment == PdfParagraph.TextAlignment.Center)
-                    {
-                        double anchorCenter = CalculateAnchorCenter(opts.Para, opts.IsPageTitle, opts.IsHeading, opts.ParagraphX, opts.ParagraphWidth);
-                        startX = anchorCenter - rowWidth / 2.0;
-                    }
-                    else if (alignment == PdfParagraph.TextAlignment.Right)
-                    {
-                        double anchorRight = opts.IsHeading ? opts.Para.OriginalX1 : opts.ParagraphX + opts.ParagraphWidth;
-                        startX = anchorRight - rowWidth;
-                    }
-                }
+                double startX = ComputeRowStartX(opts, rowWidth);
 
                 if (opts.IsPageTitle)
                     ClickraDebug.LogTitleRow((opts.Para.X0 + opts.Para.X1) / 2.0, startX, rowWidth, opts.Text);
 
-                double currentX = startX;
-                int idx = 0;
-                while (idx < row.Elements.Count)
-                {
-                    var element = row.Elements[idx];
-                    if (element.IsStyleMarker)
-                    {
-                        inlineBold = element.StyleBold;
-                        idx++;
-                    }
-                    else if (element.IsFormula)
-                    {
-                        if (element.FormulaId >= 0 && element.FormulaId < opts.Para.Formulas.Count)
-                        {
-                            RenderFormulaElement(opts.Gfx, opts.Para.Formulas[element.FormulaId], opts.Para, opts.Brush,
-                                opts.FontSize, currentX, currentY, pageHeight, opts.RenderedChars);
-                        }
-                        currentX += element.Width;
-                        idx++;
-                    }
-                    else
-                    {
-                        currentX = RenderTextRun(opts.Gfx, row, opts.Para, opts.MainFont, opts.Brush, opts.GetInlineFont,
-                            opts.UseSyntheticBold, opts.FontSize, currentX, currentY, pageHeight, inlineBold, opts.RenderedChars, ref idx);
-                    }
-                }
+                double currentX = RenderRowElements(opts, row, startX, currentY, pageHeight, ref inlineBold);
                 currentY += opts.LineHeight;
             }
         }
 
-        private static void RenderFormulaElement(
-            XGraphics gfx,
-            MathFormula formula,
-            PdfParagraph para,
-            XBrush brush,
-            double fontSize,
+        private static double ComputeRowStartX(ParagraphRowRenderOptions opts, double rowWidth)
+        {
+            if (opts.IsRotated)
+            {
+                if (opts.Para.Alignment == PdfParagraph.TextAlignment.Center) return (opts.LayoutWidth - rowWidth) / 2;
+                if (opts.Para.Alignment == PdfParagraph.TextAlignment.Right) return opts.LayoutWidth - rowWidth;
+                return 0;
+            }
+
+            PdfParagraph.TextAlignment alignment = opts.IsHeading
+                ? InferHeadingAlignment(opts.Para, opts.Gfx.PageSize.Width)
+                : opts.Para.Alignment;
+
+            if (alignment == PdfParagraph.TextAlignment.Center)
+            {
+                double anchorCenter = CalculateAnchorCenter(opts.Para, opts.IsPageTitle, opts.IsHeading, opts.ParagraphX, opts.ParagraphWidth);
+                return anchorCenter - rowWidth / 2.0;
+            }
+            if (alignment == PdfParagraph.TextAlignment.Right)
+            {
+                double anchorRight = opts.IsHeading ? opts.Para.OriginalX1 : opts.ParagraphX + opts.ParagraphWidth;
+                return anchorRight - rowWidth;
+            }
+            return opts.ParagraphX;
+        }
+
+        private static double RenderRowElements(
+            ParagraphRowRenderOptions opts,
+            PdfLayoutRow row,
             double currentX,
             double currentY,
             double pageHeight,
-            List<RenderedChar> renderedChars)
+            ref bool inlineBold)
         {
-            double scale = para.AverageFontSize > 0 ? fontSize / para.AverageFontSize : 1.0;
-            double formulaScale = scale;
+            int idx = 0;
+            while (idx < row.Elements.Count)
+            {
+                var element = row.Elements[idx];
+                if (element.IsStyleMarker)
+                {
+                    inlineBold = element.StyleBold;
+                    idx++;
+                }
+                else if (element.IsFormula)
+                {
+                    if (element.FormulaId >= 0 && element.FormulaId < opts.Para.Formulas.Count)
+                    {
+                        var ctx = new FormulaRenderContext(opts.Gfx, opts.Para, opts.Brush, opts.FontSize, pageHeight, opts.RenderedChars);
+                        RenderFormulaElement(ctx, opts.Para.Formulas[element.FormulaId], currentX, currentY);
+                    }
+                    currentX += element.Width;
+                    idx++;
+                }
+                else
+                {
+                    var textCtx = new TextRenderContext(opts.Gfx, opts.MainFont, opts.Brush, opts.GetInlineFont,
+                        opts.UseSyntheticBold, opts.FontSize, currentY, pageHeight, opts.RenderedChars);
+                    currentX = RenderTextRun(textCtx, row, opts.Para, currentX, inlineBold, ref idx);
+                }
+            }
+            return currentX;
+        }
 
-            if (FontUtilities.ShouldMergeFormula(formula, para.AverageFontSize))
-                RenderFormulaMerged(gfx, formula, brush, fontSize, formulaScale, currentX, currentY, pageHeight, renderedChars);
+        private static void RenderFormulaElement(
+            FormulaRenderContext ctx,
+            MathFormula formula,
+            double currentX,
+            double currentY)
+        {
+            double scale = ctx.Para.AverageFontSize > 0 ? ctx.FontSize / ctx.Para.AverageFontSize : 1.0;
+
+            if (FontUtilities.ShouldMergeFormula(formula, ctx.Para.AverageFontSize))
+                RenderFormulaMerged(ctx, formula, scale, currentX, currentY);
             else
-                RenderFormulaLetters(gfx, formula, brush, fontSize, formulaScale, currentX, currentY, pageHeight, renderedChars);
+                RenderFormulaLetters(ctx, formula, scale, currentX, currentY);
         }
 
         private static void RenderFormulaMerged(
-            XGraphics gfx,
+            FormulaRenderContext ctx,
             MathFormula formula,
-            XBrush brush,
-            double fontSize,
             double formulaScale,
             double currentX,
-            double currentY,
-            double pageHeight,
-            List<RenderedChar> renderedChars)
+            double currentY)
         {
             string mergedText = string.Join("", formula.Letters.Select(l => l.Value));
             double fSize = formula.Letters[0].FontSize * formulaScale;
@@ -510,57 +534,53 @@ internal static class PdfTranslatedParagraphRenderer
                 ?? formula.Letters[0].FontName;
             XFont mathFont = FontUtilities.GetMathFont(fontToUse, fSize);
             double avgY = formula.Letters.Average(l => l.RelativeY);
-            double my = currentY - avgY * formulaScale - (fontSize * 0.15);
+            double my = currentY - avgY * formulaScale - (ctx.FontSize * 0.15);
             string normText = FontUtilities.NormalizeRenderValue(mergedText);
-            gfx.DrawString(normText, mathFont, brush, currentX, my);
+            ctx.Gfx.DrawString(normText, mathFont, ctx.Brush, currentX, my);
             double offset = 0;
             foreach (char ch in normText)
             {
-                double mChW = gfx.MeasureString(ch.ToString(), mathFont).Width;
-                renderedChars.Add(new RenderedChar
+                double mChW = ctx.Gfx.MeasureString(ch.ToString(), mathFont).Width;
+                ctx.RenderedChars.Add(new RenderedChar
                 {
                     Character = ch,
                     Left = currentX + offset,
                     Right = currentX + offset + mChW,
-                    Bottom = pageHeight - my - fSize * 0.15,
-                    Top = pageHeight - my + fSize * 0.85
+                    Bottom = ctx.PageHeight - my - fSize * 0.15,
+                    Top = ctx.PageHeight - my + fSize * 0.85
                 });
                 offset += mChW;
             }
         }
 
         private static void RenderFormulaLetters(
-            XGraphics gfx,
+            FormulaRenderContext ctx,
             MathFormula formula,
-            XBrush brush,
-            double fontSize,
             double formulaScale,
             double currentX,
-            double currentY,
-            double pageHeight,
-            List<RenderedChar> renderedChars)
+            double currentY)
         {
             foreach (var ml in formula.Letters)
             {
                 double fSize = ml.FontSize * formulaScale;
                 XFont mathFont = FontUtilities.GetMathFont(ml.FontName, fSize);
                 double mx = currentX + ml.RelativeX * formulaScale;
-                double my = currentY - ml.RelativeY * formulaScale - (fontSize * 0.15);
+                double my = currentY - ml.RelativeY * formulaScale - (ctx.FontSize * 0.15);
                 string drawVal = FontUtilities.NormalizeRenderValue(ml.Value);
                 if (drawVal.Length == 1 && FontUtilities.IsMathOrGreekCharacter(drawVal[0]))
                     mathFont = new XFont("Segoe UI Symbol", fSize, mathFont.Style);
-                gfx.DrawString(drawVal, mathFont, brush, mx, my);
+                ctx.Gfx.DrawString(drawVal, mathFont, ctx.Brush, mx, my);
                 double offset = 0;
                 foreach (char ch in drawVal)
                 {
-                    double mlChW = gfx.MeasureString(ch.ToString(), mathFont).Width;
-                    renderedChars.Add(new RenderedChar
+                    double mlChW = ctx.Gfx.MeasureString(ch.ToString(), mathFont).Width;
+                    ctx.RenderedChars.Add(new RenderedChar
                     {
                         Character = ch,
                         Left = mx + offset,
                         Right = mx + offset + mlChW,
-                        Bottom = pageHeight - my - fSize * 0.15,
-                        Top = pageHeight - my + fSize * 0.85
+                        Bottom = ctx.PageHeight - my - fSize * 0.15,
+                        Top = ctx.PageHeight - my + fSize * 0.85
                     });
                     offset += mlChW;
                 }
@@ -568,51 +588,35 @@ internal static class PdfTranslatedParagraphRenderer
         }
 
         private static void RenderFallbackFormulaText(
-            XGraphics gfx,
+            TextRenderContext ctx,
             PdfLayoutElement element,
-            Func<bool, XFont> GetInlineFont,
-            Func<bool, bool> UseSyntheticBold,
-            XFont mainFont,
-            XBrush brush,
-            double fontSize,
             double currentX,
-            double currentY,
-            double pageHeight,
-            bool inlineBold,
-            List<RenderedChar> renderedChars)
+            bool inlineBold)
         {
             string normText = FontUtilities.NormalizeRenderValue(element.Text);
-            DrawText(gfx, normText, GetInlineFont(inlineBold), brush, currentX, currentY, UseSyntheticBold(inlineBold));
+            DrawText(ctx.Gfx, normText, ctx.GetInlineFont(inlineBold), ctx.Brush, currentX, ctx.CurrentY, ctx.UseSyntheticBold(inlineBold));
             double offset = 0;
             foreach (char ch in normText)
             {
-                double tChW = gfx.MeasureString(ch.ToString(), mainFont).Width;
-                renderedChars.Add(new RenderedChar
+                double tChW = ctx.Gfx.MeasureString(ch.ToString(), ctx.MainFont).Width;
+                ctx.RenderedChars.Add(new RenderedChar
                 {
                     Character = ch,
                     Left = currentX + offset,
                     Right = currentX + offset + tChW,
-                    Bottom = pageHeight - currentY - fontSize * 0.15,
-                    Top = pageHeight - currentY + fontSize * 0.85
+                    Bottom = ctx.PageHeight - ctx.CurrentY - ctx.FontSize * 0.15,
+                    Top = ctx.PageHeight - ctx.CurrentY + ctx.FontSize * 0.85
                 });
                 offset += tChW;
             }
         }
 
         private static double RenderTextRun(
-            XGraphics gfx,
+            TextRenderContext ctx,
             PdfLayoutRow row,
             PdfParagraph para,
-            XFont mainFont,
-            XBrush brush,
-            Func<bool, XFont> GetInlineFont,
-            Func<bool, bool> UseSyntheticBold,
-            double fontSize,
             double currentX,
-            double currentY,
-            double pageHeight,
             bool inlineBold,
-            List<RenderedChar> renderedChars,
             ref int idx)
         {
             var sbMerged = new StringBuilder();
@@ -624,22 +628,21 @@ internal static class PdfTranslatedParagraphRenderer
                 {
                     if (sbMerged.Length > 0)
                     {
-                        FlushTextBuffer(gfx, sbMerged, mainFont, GetInlineFont, UseSyntheticBold,
-                            brush, fontSize, textStartX, currentY, pageHeight, inlineBold, renderedChars);
+                        FlushTextBuffer(ctx, sbMerged, textStartX, inlineBold);
                         sbMerged.Clear();
                     }
-                    string fallbackFontName = ResolveFallbackFontName(elem.Text[0], mainFont.FontFamily.Name);
-                    XFont fallbackFont = new(fallbackFontName, mainFont.Size, ResolveFontStyle(inlineBold, para.IsItalic));
+                    string fallbackFontName = ResolveFallbackFontName(elem.Text[0], ctx.MainFont.FontFamily.Name);
+                    XFont fallbackFont = new(fallbackFontName, ctx.MainFont.Size, ResolveFontStyle(inlineBold, para.IsItalic));
                     string normChar = FontUtilities.NormalizeRenderValue(elem.Text);
-                    gfx.DrawString(normChar, fallbackFont, brush, currentX, currentY);
-                    double fChW = gfx.MeasureString(normChar, fallbackFont).Width;
-                    renderedChars.Add(new RenderedChar
+                    ctx.Gfx.DrawString(normChar, fallbackFont, ctx.Brush, currentX, ctx.CurrentY);
+                    double fChW = ctx.Gfx.MeasureString(normChar, fallbackFont).Width;
+                    ctx.RenderedChars.Add(new RenderedChar
                     {
                         Character = normChar[0],
                         Left = currentX,
                         Right = currentX + fChW,
-                        Bottom = pageHeight - currentY - fontSize * 0.15,
-                        Top = pageHeight - currentY + fontSize * 0.85
+                        Bottom = ctx.PageHeight - ctx.CurrentY - ctx.FontSize * 0.15,
+                        Top = ctx.PageHeight - ctx.CurrentY + ctx.FontSize * 0.85
                     });
                     textStartX = currentX + elem.Width;
                 }
@@ -652,39 +655,30 @@ internal static class PdfTranslatedParagraphRenderer
             }
             if (sbMerged.Length > 0)
             {
-                FlushTextBuffer(gfx, sbMerged, mainFont, GetInlineFont, UseSyntheticBold,
-                    brush, fontSize, textStartX, currentY, pageHeight, inlineBold, renderedChars);
+                FlushTextBuffer(ctx, sbMerged, textStartX, inlineBold);
             }
             return currentX;
         }
 
         private static void FlushTextBuffer(
-            XGraphics gfx,
+            TextRenderContext ctx,
             StringBuilder sbMerged,
-            XFont mainFont,
-            Func<bool, XFont> GetInlineFont,
-            Func<bool, bool> UseSyntheticBold,
-            XBrush brush,
-            double fontSize,
             double textStartX,
-            double currentY,
-            double pageHeight,
-            bool inlineBold,
-            List<RenderedChar> renderedChars)
+            bool inlineBold)
         {
             string normText = FontUtilities.NormalizeRenderValue(sbMerged.ToString());
-            DrawText(gfx, normText, GetInlineFont(inlineBold), brush, textStartX, currentY, UseSyntheticBold(inlineBold));
+            DrawText(ctx.Gfx, normText, ctx.GetInlineFont(inlineBold), ctx.Brush, textStartX, ctx.CurrentY, ctx.UseSyntheticBold(inlineBold));
             double offset = 0;
             foreach (char ch in normText)
             {
-                double tChW = gfx.MeasureString(ch.ToString(), mainFont).Width;
-                renderedChars.Add(new RenderedChar
+                double tChW = ctx.Gfx.MeasureString(ch.ToString(), ctx.MainFont).Width;
+                ctx.RenderedChars.Add(new RenderedChar
                 {
                     Character = ch,
                     Left = textStartX + offset,
                     Right = textStartX + offset + tChW,
-                    Bottom = pageHeight - currentY - fontSize * 0.15,
-                    Top = pageHeight - currentY + fontSize * 0.85
+                    Bottom = ctx.PageHeight - ctx.CurrentY - ctx.FontSize * 0.15,
+                    Top = ctx.PageHeight - ctx.CurrentY + ctx.FontSize * 0.85
                 });
                 offset += tChW;
             }
