@@ -126,29 +126,29 @@ namespace Clickra.Core.Processors
             foreach (var cand in candidates)
             {
                 bool isRowStyle = isTablePage && cand.Height < 35 && cand.Width > 80;
-                bool hasNeighbor = false;
-                foreach (var other in candidates)
-                {
-                    if (other == cand) continue;
-                    double overlapY = Math.Min(cand.Y1, other.Y1) - Math.Max(cand.Y0, other.Y0);
-                    double minH = Math.Min(cand.Height, other.Height);
-                    if (overlapY > minH * 0.1)
-                    {
-                        double overlapX = Math.Min(cand.X1, other.X1) - Math.Max(cand.X0, other.X0);
-                        if (overlapX <= 0)
-                        {
-                            hasNeighbor = true;
-                            break;
-                        }
-                    }
-                }
-                if (hasNeighbor || isRowStyle)
+                if (isRowStyle || HasTableNeighbor(cand, candidates))
                 {
                     filteredCandidates.Add(cand);
                 }
             }
 
             return filteredCandidates;
+        }
+
+        private static bool HasTableNeighbor(PdfParagraph cand, List<PdfParagraph> candidates)
+        {
+            foreach (var other in candidates)
+            {
+                if (other == cand) continue;
+                double overlapY = Math.Min(cand.Y1, other.Y1) - Math.Max(cand.Y0, other.Y0);
+                double minH = Math.Min(cand.Height, other.Height);
+                if (overlapY > minH * 0.1)
+                {
+                    double overlapX = Math.Min(cand.X1, other.X1) - Math.Max(cand.X0, other.X0);
+                    if (overlapX <= 0) return true;
+                }
+            }
+            return false;
         }
 
         private static void MarkGroupedCandidates(
