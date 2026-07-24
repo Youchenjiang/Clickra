@@ -146,7 +146,7 @@ namespace Clickra.Core.Processors
             out int formulaId,
             out double width)
         {
-            isFormula = token.StartsWith("{v") && token.EndsWith("}");
+            isFormula = token.StartsWith("{v") && token.EndsWith('}');
             width = 0;
             formulaId = -1;
 

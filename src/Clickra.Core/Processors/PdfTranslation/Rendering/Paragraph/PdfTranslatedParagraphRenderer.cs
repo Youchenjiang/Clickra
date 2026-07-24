@@ -60,7 +60,7 @@ internal static class PdfTranslatedParagraphRenderer
                 gfx, para, paragraphWidth, ref layoutWidth, ref isRotated);
 
             double lineSpacingMultiplier = CalculateLineSpacingMultiplier(
-                para, text, isHeading, isRotated, targetFontName, sourceHeadingFontSize, paragraphHeight,
+                para, text, isHeading, isRotated, targetFontName, sourceHeadingFontSize,
                 out bool allowNaturalBodyHeight, out bool flowableBody);
             
             if (!isHeading && para.LayoutLineSpacingMultiplierOverride > 0)
@@ -127,7 +127,7 @@ internal static class PdfTranslatedParagraphRenderer
             }
             RenderParagraphRows(
                 gfx, rows, para, text, mainFont, brush, GetInlineFont, UseSyntheticBold,
-                paragraphX, paragraphY, paragraphWidth, layoutWidth, lineHeight, fontSize,
+                paragraphX, paragraphWidth, layoutWidth, lineHeight, fontSize,
                 isHeading, isPageTitle, isRotated, currentY, inlineBold, renderedChars);
 
             if (headingScaleState != null)
@@ -203,7 +203,6 @@ internal static class PdfTranslatedParagraphRenderer
             bool isRotated,
             string targetFontName,
             double sourceHeadingFontSize,
-            double paragraphHeight,
             out bool allowNaturalBodyHeight,
             out bool flowableBody)
         {
@@ -416,7 +415,6 @@ internal static class PdfTranslatedParagraphRenderer
             Func<bool, XFont> GetInlineFont,
             Func<bool, bool> UseSyntheticBold,
             double paragraphX,
-            double paragraphY,
             double paragraphWidth,
             double layoutWidth,
             double lineHeight,
@@ -474,7 +472,7 @@ internal static class PdfTranslatedParagraphRenderer
                     if (element.IsFormula && element.FormulaId >= 0 && element.FormulaId < para.Formulas.Count)
                     {
                         RenderFormulaElement(
-                            gfx, element, para, brush, fontSize, currentX, currentY, pageHeight, renderedChars);
+                            gfx, para, brush, fontSize, currentX, currentY, pageHeight, renderedChars);
                         currentX += element.Width;
                         idx++;
                     }
@@ -499,7 +497,6 @@ internal static class PdfTranslatedParagraphRenderer
 
         private static void RenderFormulaElement(
             XGraphics gfx,
-            PdfLayoutElement element,
             PdfParagraph para,
             XBrush brush,
             double fontSize,

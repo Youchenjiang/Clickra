@@ -111,36 +111,30 @@ namespace Clickra.Core.Processors
         private static string NormalizeMathCodePoint(int cp)
         {
             int[] latinUpper = [0x1D400, 0x1D434, 0x1D468, 0x1D49C, 0x1D4D0, 0x1D504, 0x1D538, 0x1D56C, 0x1D5A0, 0x1D5D4, 0x1D608, 0x1D63C, 0x1D670];
-            foreach (int start in latinUpper)
-            {
-                if (cp >= start && cp <= start + 25) return ((char)('A' + (cp - start))).ToString();
-            }
-
             int[] latinLower = [0x1D41A, 0x1D44E, 0x1D482, 0x1D4B6, 0x1D4EA, 0x1D51E, 0x1D552, 0x1D586, 0x1D5BA, 0x1D5EE, 0x1D622, 0x1D656, 0x1D68A];
-            foreach (int start in latinLower)
-            {
-                if (cp >= start && cp <= start + 25) return ((char)('a' + (cp - start))).ToString();
-            }
-
             int[] greekUpper = [0x1D6A8, 0x1D6E2, 0x1D71C, 0x1D756, 0x1D790];
-            foreach (int start in greekUpper)
-            {
-                if (cp >= start && cp <= start + 24) return ((char)(0x0391 + (cp - start))).ToString();
-            }
-
             int[] greekLower = [0x1D6C2, 0x1D6FC, 0x1D736, 0x1D770, 0x1D7AA];
-            foreach (int start in greekLower)
-            {
-                if (cp >= start && cp <= start + 24) return ((char)(0x03B1 + (cp - start))).ToString();
-            }
-
             int[] digits = [0x1D7CE, 0x1D7D8, 0x1D7E2, 0x1D7EC, 0x1D7F6];
-            foreach (int start in digits)
-            {
-                if (cp >= start && cp <= start + 9) return ((char)('0' + (cp - start))).ToString();
-            }
+
+            if (TryMapMathRange(cp, latinUpper, 25, 'A', out string? mapped)) return mapped;
+            if (TryMapMathRange(cp, latinLower, 25, 'a', out mapped)) return mapped;
+            if (TryMapMathRange(cp, greekUpper, 24, (char)0x0391, out mapped)) return mapped;
+            if (TryMapMathRange(cp, greekLower, 24, (char)0x03B1, out mapped)) return mapped;
+            if (TryMapMathRange(cp, digits, 9, '0', out mapped)) return mapped;
 
             return char.ConvertFromUtf32(cp);
+        }
+
+        private static bool TryMapMathRange(int cp, int[] starts, int maxOffset, char baseChar, [System.Diagnostics.CodeAnalysis.NotNullWhen(true)] out string? mapped)
+        {
+            int start = starts.FirstOrDefault(s => cp >= s && cp <= s + maxOffset);
+            if (start > 0)
+            {
+                mapped = ((char)(baseChar + (cp - start))).ToString();
+                return true;
+            }
+            mapped = null;
+            return false;
         }
 
         /// <summary>

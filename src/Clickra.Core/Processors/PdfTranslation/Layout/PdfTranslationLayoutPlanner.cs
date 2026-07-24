@@ -505,7 +505,7 @@ internal static class PdfTranslationLayoutPlanner
             bool boundary = previous != null &&
                 (sourceGap > gapLimit || HasFixedBoundaryBetween(
                     previous, snapshot, allSnapshots, column, pageWidth, protectedRegions));
-            if (boundary && current.Count > 0)
+            if (boundary)
             {
                 runs.Add(current);
                 current = new List<PdfParagraphLayoutSnapshot>();
@@ -781,40 +781,44 @@ internal static class PdfTranslationLayoutPlanner
                      .Where(s => IsHeading(s.Role) && !string.IsNullOrWhiteSpace(s.Paragraph.TranslatedText))
                      .OrderByDescending(s => s.Paragraph.OriginalY1))
         {
-            double extra = Math.Max(0, heading.MeasuredHeight - heading.Paragraph.Height);
-            if (extra <= 1.0) continue;
-            if (heading.Role == PdfParagraphSemanticRole.PageTitle) continue;
+            shifted += ShiftSingleHeadingObstacle(heading, snapshots, pageHeight);
+        }
+        return shifted;
+    }
 
-            var sameColumn = heading.Column < 0
-                ? snapshots.ToList()
-                : snapshots.Where(s => s.Column == heading.Column).ToList();
-            var fixedObstacles = sameColumn
-                .Where(s => s.Paragraph != heading.Paragraph &&
-                            (IsFixedObstacle(s.Paragraph) || IsHeading(s.Role)) &&
-                            s.Paragraph.OriginalY1 < heading.Paragraph.OriginalY0)
-                .OrderByDescending(s => s.Paragraph.OriginalY1)
-                .ToList();
-            double obstacleTop = fixedObstacles.Count > 0
-                ? fixedObstacles[0].Paragraph.OriginalY1
-                : PageBottomMargin;
-            double available = heading.Paragraph.OriginalY0 - obstacleTop - Gap;
-            if (extra > available + 0.5)
-            {
-                string reason = $"Heading '{Preview(heading.Paragraph.TextWithPlaceholders)}' needs {extra:F1}pt but only {Math.Max(0, available):F1}pt is available before a fixed region/page bottom.";
-                throw new PdfLayoutPlanningException(reason, fixedCollisionCount: 1);
-            }
+    private static int ShiftSingleHeadingObstacle(PdfParagraphLayoutSnapshot heading, List<PdfParagraphLayoutSnapshot> snapshots, double pageHeight)
+    {
+        double extra = Math.Max(0, heading.MeasuredHeight - heading.Paragraph.Height);
+        if (extra <= 1.0 || heading.Role == PdfParagraphSemanticRole.PageTitle) return 0;
 
-            foreach (var candidate in sameColumn
-                         .Where(s => s.Paragraph != heading.Paragraph &&
-                                     s.Paragraph.OriginalY1 < heading.Paragraph.OriginalY0 &&
-                                     s.Paragraph.OriginalY0 >= obstacleTop - 0.5 &&
-                                     IsShiftable(s.Paragraph, pageHeight)))
-            {
-                candidate.Paragraph.Y0 -= extra;
-                candidate.Paragraph.Y1 -= extra;
-                candidate.ShiftY -= extra;
-                shifted++;
-            }
+        var sameColumn = heading.Column < 0
+            ? snapshots.ToList()
+            : snapshots.Where(s => s.Column == heading.Column).ToList();
+        var fixedObstacles = sameColumn
+            .Where(s => s.Paragraph != heading.Paragraph &&
+                        (IsFixedObstacle(s.Paragraph) || IsHeading(s.Role)) &&
+                        s.Paragraph.OriginalY1 < heading.Paragraph.OriginalY0)
+            .OrderByDescending(s => s.Paragraph.OriginalY1)
+            .ToList();
+        double obstacleTop = fixedObstacles.Count > 0 ? fixedObstacles[0].Paragraph.OriginalY1 : PageBottomMargin;
+        double available = heading.Paragraph.OriginalY0 - obstacleTop - Gap;
+        if (extra > available + 0.5)
+        {
+            string reason = $"Heading '{Preview(heading.Paragraph.TextWithPlaceholders)}' needs {extra:F1}pt but only {Math.Max(0, available):F1}pt is available before a fixed region/page bottom.";
+            throw new PdfLayoutPlanningException(reason, fixedCollisionCount: 1);
+        }
+
+        int shifted = 0;
+        foreach (var candidate in sameColumn
+                     .Where(s => s.Paragraph != heading.Paragraph &&
+                                 s.Paragraph.OriginalY1 < heading.Paragraph.OriginalY0 &&
+                                 s.Paragraph.OriginalY0 >= obstacleTop - 0.5 &&
+                                 IsShiftable(s.Paragraph, pageHeight)))
+        {
+            candidate.Paragraph.Y0 -= extra;
+            candidate.Paragraph.Y1 -= extra;
+            candidate.ShiftY -= extra;
+            shifted++;
         }
         return shifted;
     }
