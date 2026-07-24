@@ -182,9 +182,7 @@ static partial class TestSuite
         });
 
         runner.Run("TOGLL p8 Figure 4 source code stays inside the original figure", () =>
-        {
-            var page = Diagnostics("TOGLL_Oracle Generation.pdf", 8);
-            foreach (var text in new[]
+            VerifyTogllFigureSourceCode(8, new[]
             {
                 "public void test3",
                 "assertSame(oA1, oA0)",
@@ -192,19 +190,10 @@ static partial class TestSuite
                 "assertEquals((-119.4)",
                 "public void test14",
                 "Ground Truth"
-            })
-            {
-                AssertParagraph(page, text, p =>
-                    p.IsDiagram && p.IsBypassed && !p.IsTable && !p.IsGrayPromptContent);
-            }
-            AssertParagraph(page, "Diverse yet correct test oracles", p =>
-                !p.IsDiagram && !p.IsBypassed && !p.IsTable);
-        });
+            }, "Diverse yet correct test oracles"));
 
         runner.Run("TOGLL p9 Figure 5 source code stays inside the original figure", () =>
-        {
-            var page = Diagnostics("TOGLL_Oracle Generation.pdf", 9);
-            foreach (var text in new[]
+            VerifyTogllFigureSourceCode(9, new[]
             {
                 "calculatePrintedLength",
                 "public void test327",
@@ -213,13 +202,18 @@ static partial class TestSuite
                 "Null Return",
                 "public void test13",
                 "angle_Rad1"
-            })
-            {
-                AssertParagraph(page, text, p =>
-                    p.IsDiagram && p.IsBypassed && !p.IsTable && !p.IsGrayPromptContent);
-            }
-            AssertParagraph(page, "TOGLL generated assertions detecting unique mutants", p =>
-                !p.IsDiagram && !p.IsBypassed && !p.IsTable);
-        });
+            }, "TOGLL generated assertions detecting unique mutants"));
+    }
+
+    private static void VerifyTogllFigureSourceCode(int pageNum, string[] expectedDiagramTexts, string captionText)
+    {
+        var page = Diagnostics("TOGLL_Oracle Generation.pdf", pageNum);
+        foreach (var text in expectedDiagramTexts)
+        {
+            AssertParagraph(page, text, p =>
+                p.IsDiagram && p.IsBypassed && !p.IsTable && !p.IsGrayPromptContent);
+        }
+        AssertParagraph(page, captionText, p =>
+            !p.IsDiagram && !p.IsBypassed && !p.IsTable);
     }
 }
