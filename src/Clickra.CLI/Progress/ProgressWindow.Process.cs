@@ -149,14 +149,55 @@ namespace Clickra.UI
                         }
                         break;
                     case "split-pdf":
+                        string pagesOption = "prompt";
+                        var cliArgs = Environment.GetCommandLineArgs();
+                        for (int a = 0; a < cliArgs.Length - 1; a++)
+                        {
+                            if (cliArgs[a].Equals("--pages", StringComparison.OrdinalIgnoreCase) || cliArgs[a].Equals("-p", StringComparison.OrdinalIgnoreCase))
+                            {
+                                pagesOption = cliArgs[a + 1];
+                                break;
+                            }
+                        }
+
                         for (int i = 0; i < currentFiles.Count; i++)
                         {
                             _cts.Token.ThrowIfCancellationRequested();
                             try { ClickraStorage.SetActiveRecordIndex(i); } catch { }
                             var f = currentFiles[i];
                             string outName = Path.Combine(outputDir, Path.GetFileNameWithoutExtension(f) + "_split.pdf");
+
+                            string targetPages = pagesOption;
+                            if (string.IsNullOrEmpty(targetPages) || targetPages.Equals("prompt", StringComparison.OrdinalIgnoreCase))
+                            {
+                                lock (_stateLock)
+                                {
+                                    _isPromptingPassword = true;
+                                    _passwordPromptFilename = f;
+                                    _passwordPromptIsRetry = false;
+                                    _inputPassword = null;
+                                    _passwordCancelled = false;
+                                }
+
+                                PostMessageW(hwnd, WM_USER_SHOW_PASSWORD_INPUT, IntPtr.Zero, IntPtr.Zero);
+                                _passwordEvent.WaitOne();
+
+                                bool cancelled;
+                                lock (_stateLock)
+                                {
+                                    cancelled = _passwordCancelled;
+                                    targetPages = string.IsNullOrWhiteSpace(_inputPassword) ? "all" : _inputPassword.Trim();
+                                    _isPromptingPassword = false;
+                                }
+
+                                if (cancelled)
+                                {
+                                    throw new OperationCanceledException("使用者已取消頁碼範圍輸入。");
+                                }
+                            }
+
                             progressCallback((i * 100) + 10, currentFiles.Count * 100, $"正在分割 PDF: {Path.GetFileName(f)} ({i + 1}/{currentFiles.Count})...");
-                            FileProcessor.SplitPdf(f, outName, "all", (curr, tot, msg) => {
+                            FileProcessor.SplitPdf(f, outName, targetPages, (curr, tot, msg) => {
                                 int progressPct = tot > 0 ? (int)(curr * 80.0 / tot) + 10 : 10;
                                 progressCallback((i * 100) + progressPct, currentFiles.Count * 100, $"[PDF 分割] {msg} ({i + 1}/{currentFiles.Count})");
                             }, _cts.Token);
