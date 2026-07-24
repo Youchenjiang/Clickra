@@ -125,10 +125,10 @@ internal static class PdfTranslatedParagraphRenderer
                     gfx.TranslateTransform(-anchor, 0);
                 }
             }
-            RenderParagraphRows(
+            RenderParagraphRows(new ParagraphRowRenderOptions(
                 gfx, rows, para, text, mainFont, brush, GetInlineFont, UseSyntheticBold,
                 paragraphX, paragraphWidth, layoutWidth, lineHeight, fontSize,
-                isHeading, isPageTitle, isRotated, currentY, inlineBold, renderedChars);
+                isHeading, isPageTitle, isRotated, currentY, inlineBold, renderedChars));
 
             if (headingScaleState != null)
                 gfx.Restore(headingScaleState);
@@ -385,60 +385,62 @@ internal static class PdfTranslatedParagraphRenderer
                 }
                 catch { }
             }
-        }
 
-        private static void RenderParagraphRows(
-            XGraphics gfx,
-            List<PdfLayoutRow> rows,
-            PdfParagraph para,
-            string text,
-            XFont mainFont,
-            XBrush brush,
+            private readonly record struct ParagraphRowRenderOptions(
+            XGraphics Gfx,
+            List<PdfLayoutRow> Rows,
+            PdfParagraph Para,
+            string Text,
+            XFont MainFont,
+            XBrush Brush,
             Func<bool, XFont> GetInlineFont,
             Func<bool, bool> UseSyntheticBold,
-            double paragraphX,
-            double paragraphWidth,
-            double layoutWidth,
-            double lineHeight,
-            double fontSize,
-            bool isHeading,
-            bool isPageTitle,
-            bool isRotated,
-            double initialY,
-            bool inlineBold,
-            List<RenderedChar> renderedChars)
+            double ParagraphX,
+            double ParagraphWidth,
+            double LayoutWidth,
+            double LineHeight,
+            double FontSize,
+            bool IsHeading,
+            bool IsPageTitle,
+            bool IsRotated,
+            double InitialY,
+            bool InlineBold,
+            List<RenderedChar> RenderedChars);
+
+        private static void RenderParagraphRows(ParagraphRowRenderOptions opts)
         {
-            double currentY = initialY;
-            double pageHeight = gfx.PageSize.Height;
-            foreach (var row in rows)
+            double currentY = opts.InitialY;
+            double pageHeight = opts.Gfx.PageSize.Height;
+            bool inlineBold = opts.InlineBold;
+            foreach (var row in opts.Rows)
             {
                 double rowWidth = row.Elements.Sum(e => e.Width);
-                double startX = paragraphX;
-                if (isRotated)
+                double startX = opts.ParagraphX;
+                if (opts.IsRotated)
                 {
                     startX = 0;
-                    if (para.Alignment == PdfParagraph.TextAlignment.Center) startX = (layoutWidth - rowWidth) / 2;
-                    else if (para.Alignment == PdfParagraph.TextAlignment.Right) startX = layoutWidth - rowWidth;
+                    if (opts.Para.Alignment == PdfParagraph.TextAlignment.Center) startX = (opts.LayoutWidth - rowWidth) / 2;
+                    else if (opts.Para.Alignment == PdfParagraph.TextAlignment.Right) startX = opts.LayoutWidth - rowWidth;
                 }
                 else
                 {
-                    PdfParagraph.TextAlignment alignment = isHeading
-                        ? InferHeadingAlignment(para, gfx.PageSize.Width)
-                        : para.Alignment;
+                    PdfParagraph.TextAlignment alignment = opts.IsHeading
+                        ? InferHeadingAlignment(opts.Para, opts.Gfx.PageSize.Width)
+                        : opts.Para.Alignment;
                     if (alignment == PdfParagraph.TextAlignment.Center)
                     {
-                        double anchorCenter = CalculateAnchorCenter(para, isPageTitle, isHeading, paragraphX, paragraphWidth);
+                        double anchorCenter = CalculateAnchorCenter(opts.Para, opts.IsPageTitle, opts.IsHeading, opts.ParagraphX, opts.ParagraphWidth);
                         startX = anchorCenter - rowWidth / 2.0;
                     }
                     else if (alignment == PdfParagraph.TextAlignment.Right)
                     {
-                        double anchorRight = isHeading ? para.OriginalX1 : paragraphX + paragraphWidth;
+                        double anchorRight = opts.IsHeading ? opts.Para.OriginalX1 : opts.ParagraphX + opts.ParagraphWidth;
                         startX = anchorRight - rowWidth;
                     }
                 }
 
-                if (isPageTitle)
-                    ClickraDebug.LogTitleRow((para.X0 + para.X1) / 2.0, startX, rowWidth, text);
+                if (opts.IsPageTitle)
+                    ClickraDebug.LogTitleRow((opts.Para.X0 + opts.Para.X1) / 2.0, startX, rowWidth, opts.Text);
 
                 double currentX = startX;
                 int idx = 0;
@@ -449,36 +451,30 @@ internal static class PdfTranslatedParagraphRenderer
                     {
                         inlineBold = element.StyleBold;
                         idx++;
-                        continue;
-                    }
-                    if (element.IsFormula && element.FormulaId >= 0 && element.FormulaId < para.Formulas.Count)
-                    {
-                        RenderFormulaElement(
-                            gfx, para, brush, fontSize, currentX, currentY, pageHeight, renderedChars);
-                        currentX += element.Width;
-                        idx++;
                     }
                     else if (element.IsFormula)
                     {
-                        RenderFallbackFormulaText(
-                            gfx, element, GetInlineFont, UseSyntheticBold, mainFont, brush,
-                            fontSize, currentX, currentY, pageHeight, inlineBold, renderedChars);
+                        if (element.FormulaId >= 0 && element.FormulaId < opts.Para.Formulas.Count)
+                        {
+                            RenderFormulaElement(opts.Gfx, opts.Para.Formulas[element.FormulaId], opts.Para, opts.Brush,
+                                opts.FontSize, currentX, currentY, pageHeight, opts.RenderedChars);
+                        }
                         currentX += element.Width;
                         idx++;
                     }
                     else
                     {
-                        currentX = RenderTextRun(
-                            gfx, row, para, mainFont, brush, GetInlineFont, UseSyntheticBold,
-                            fontSize, currentX, currentY, pageHeight, inlineBold, renderedChars, ref idx);
+                        currentX = RenderTextRun(opts.Gfx, row, opts.Para, opts.MainFont, opts.Brush, opts.GetInlineFont,
+                            opts.UseSyntheticBold, opts.FontSize, currentX, currentY, pageHeight, inlineBold, opts.RenderedChars, ref idx);
                     }
                 }
-                currentY += lineHeight;
+                currentY += opts.LineHeight;
             }
         }
 
         private static void RenderFormulaElement(
             XGraphics gfx,
+            MathFormula formula,
             PdfParagraph para,
             XBrush brush,
             double fontSize,
