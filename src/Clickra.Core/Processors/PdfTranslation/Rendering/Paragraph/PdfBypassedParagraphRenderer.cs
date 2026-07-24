@@ -47,7 +47,7 @@ namespace Clickra.Core.Processors
                 if (rotation == 0)
                 {
                     gfx.DrawString(drawVal, font, brush, x, y);
-                    DrawSyntheticBold(gfx, drawVal, font, brush, x, y, letter.IsBold, letter.Value.Any(FontUtilities.IsCjkCharacter));
+                    DrawSyntheticBold(new SyntheticBoldDrawOptions(gfx, drawVal, font, brush, x, y, letter.IsBold, letter.Value.Any(FontUtilities.IsCjkCharacter)));
                 }
                 else
                 {
@@ -59,7 +59,7 @@ namespace Clickra.Core.Processors
                     gfx.TranslateTransform(x, y);
                     gfx.RotateTransform(rotation);
                     gfx.DrawString(drawVal, font, brush, 0, 0);
-                    DrawSyntheticBold(gfx, drawVal, font, brush, 0, 0, letter.IsBold, letter.Value.Any(FontUtilities.IsCjkCharacter));
+                    DrawSyntheticBold(new SyntheticBoldDrawOptions(gfx, drawVal, font, brush, 0, 0, letter.IsBold, letter.Value.Any(FontUtilities.IsCjkCharacter)));
                     gfx.Restore(state);
                 }
             }
@@ -77,21 +77,23 @@ namespace Clickra.Core.Processors
             }
         }
 
-        private static void DrawSyntheticBold(
-            XGraphics gfx,
-            string text,
-            XFont font,
-            XBrush brush,
-            double x,
-            double y,
-            bool sourceBold,
-            bool cjk)
+        private readonly record struct SyntheticBoldDrawOptions(
+            XGraphics Gfx,
+            string Text,
+            XFont Font,
+            XBrush Brush,
+            double X,
+            double Y,
+            bool SourceBold,
+            bool Cjk);
+
+        private static void DrawSyntheticBold(SyntheticBoldDrawOptions opts)
         {
             // Latin/math source faces use an actual bold XFont. CJK fallback
             // faces are regular-only; duplicate only those glyphs to preserve
             // the source weight without changing their metrics.
-            if (!sourceBold || !cjk) return;
-            gfx.DrawString(text, font, brush, x + 0.18, y);
+            if (!opts.SourceBold || !opts.Cjk) return;
+            opts.Gfx.DrawString(opts.Text, opts.Font, opts.Brush, opts.X + 0.18, opts.Y);
         }
 
         private static string FormulaLetterKey(PdfLetter letter)
