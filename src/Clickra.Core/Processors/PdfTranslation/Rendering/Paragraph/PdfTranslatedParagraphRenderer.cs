@@ -385,8 +385,9 @@ internal static class PdfTranslatedParagraphRenderer
                 }
                 catch { }
             }
+        }
 
-            private readonly record struct ParagraphRowRenderOptions(
+        private readonly record struct ParagraphRowRenderOptions(
             XGraphics Gfx,
             List<PdfLayoutRow> Rows,
             PdfParagraph Para,
