@@ -28,9 +28,12 @@ static partial class TestSuite
                 var face = resolver.ResolveTypeface(family, isBold: true, isItalic: true);
                 Assert.True(face != null && face.FaceName == "kaiu",
                     $"Expected {family} to resolve to kaiu, got {face?.FaceName ?? "<null>"}.");
-                var bytes = resolver.GetFont(face.FaceName);
-                Assert.True(bytes != null && bytes.Length > 1_000_000,
-                    $"Expected an embedded KaiU font payload for {family}.");
+                if (face != null)
+                {
+                    var bytes = resolver.GetFont(face.FaceName);
+                    Assert.True(bytes != null && bytes.Length > 1_000_000,
+                        $"Expected an embedded KaiU font payload for {family}.");
+                }
             }
         });
 
