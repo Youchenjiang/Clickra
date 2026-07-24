@@ -162,8 +162,9 @@ namespace Clickra.Core.Processors
             }
             catch (OperationCanceledException ex) when (!cancellationToken.IsCancellationRequested)
             {
-                WriteFailureHealthReport(healthPath, inputPath, finalOutputPath, sourcePages, stageReport,
-                    providerName, "Translation operation exceeded the 10-minute document deadline.", layoutSummary);
+                WriteFailureHealthReport(new FailureHealthReportConfig(
+                    healthPath, inputPath, finalOutputPath, sourcePages, stageReport, providerName,
+                    "Translation operation exceeded the 10-minute document deadline.", layoutSummary));
                 throw new TimeoutException("PDF translation exceeded the 10-minute document deadline.", ex);
             }
             catch (Exception ex)
@@ -172,17 +173,9 @@ namespace Clickra.Core.Processors
                 // layout failure can be fixed from the artifact without asking
                 // the user to reproduce it under a debugger.
                 var planningFailure = ex as PdfLayoutPlanningException;
-                WriteFailureHealthReport(
-                    healthPath,
-                    inputPath,
-                    finalOutputPath,
-                    sourcePages,
-                    stageReport,
-                    providerName,
-                    ex.ToString(),
-                    layoutSummary,
-                    planningFailure?.FixedCollisionCount,
-                    planningFailure?.BottomOverflowCount);
+                WriteFailureHealthReport(new FailureHealthReportConfig(
+                    healthPath, inputPath, finalOutputPath, sourcePages, stageReport, providerName,
+                    ex.ToString(), layoutSummary, planningFailure?.FixedCollisionCount, planningFailure?.BottomOverflowCount));
                 throw;
             }
             finally
@@ -194,50 +187,55 @@ namespace Clickra.Core.Processors
             }
         }
 
-        private static void WriteFailureHealthReport(
-            string healthPath,
-            string inputPath,
-            string outputPath,
-            int sourcePages,
-            PdfTranslationStageReport? stageReport,
-            string providerName,
-            string error,
-            PdfTranslationLayoutSummary? layoutSummary = null,
-            int? fixedCollisionCount = null,
-            int? bottomOverflowCount = null)
+        private readonly record struct FailureHealthReportConfig(
+            string HealthPath,
+            string InputPath,
+            string OutputPath,
+            int SourcePages,
+            PdfTranslationStageReport? StageReport,
+            string ProviderName,
+            string Error,
+            PdfTranslationLayoutSummary? LayoutSummary = null,
+            int? FixedCollisionCount = null,
+            int? BottomOverflowCount = null);
+
+        private static void WriteFailureHealthReport(FailureHealthReportConfig cfg)
         {
             try
             {
                 var debugLines = ClickraDebug.Lines;
                 new PdfTranslationHealthReport
                 {
-                    InputPath = Path.GetFullPath(inputPath),
-                    OutputPath = outputPath,
-                    Provider = stageReport?.Provider ?? providerName,
-                    SourcePages = sourcePages,
+                    InputPath = Path.GetFullPath(cfg.InputPath),
+                    OutputPath = cfg.OutputPath,
+                    Provider = cfg.StageReport?.Provider ?? cfg.ProviderName,
+                    SourcePages = cfg.SourcePages,
                     OutputPages = 0,
-                    TranslatedParagraphs = stageReport?.TranslatedParagraphs ?? 0,
-                    BypassedParagraphs = stageReport?.BypassedParagraphs ?? 0,
+                    TranslatedParagraphs = cfg.StageReport?.TranslatedParagraphs ?? 0,
+                    BypassedParagraphs = cfg.StageReport?.BypassedParagraphs ?? 0,
                     RenderEntries = debugLines.Count(line => line.Contains(" RENDER ", StringComparison.Ordinal)),
                     GuardClipEntries = debugLines.Count(line => line.Contains("guardClip=true", StringComparison.OrdinalIgnoreCase)),
                     OverflowEntries = debugLines.Count(line => line.Contains("overflow=true", StringComparison.OrdinalIgnoreCase)),
-                    HeadingCount = layoutSummary?.HeadingCount ?? 0,
-                    MinimumHeadingFontRatio = layoutSummary?.MinimumHeadingFontRatio ?? 1.0,
-                    MaximumAlignmentAnchorShift = layoutSummary?.MaximumAlignmentAnchorShift ?? 0,
-                    MinimumBodyFontRatio = layoutSummary?.MinimumBodyFontRatio ?? 1.0,
-                    MaximumBodyFontRatio = layoutSummary?.MaximumBodyFontRatio ?? 1.0,
-                    MaximumBodyLineSpacingMultiplier = layoutSummary?.MaximumBodyLineSpacingMultiplier ?? 0,
-                    MaximumInterParagraphGap = layoutSummary?.MaximumInterParagraphGap ?? 0,
-                    MaximumFlowRegionResidualWhitespace = layoutSummary?.MaximumFlowRegionResidualWhitespace ?? 0,
-                    ShiftedParagraphCount = layoutSummary?.ShiftedParagraphCount ?? 0,
-                    FixedRegionCollisionCount = layoutSummary?.FixedCollisionCount ?? fixedCollisionCount ?? 0,
-                    BottomOverflowCount = layoutSummary?.BottomOverflowCount ?? bottomOverflowCount ?? 0,
-                    LayoutFailureReason = error,
-                    TranslationFailures = new[] { error },
+                    HeadingCount = cfg.LayoutSummary?.HeadingCount ?? 0,
+                    MinimumHeadingFontRatio = cfg.LayoutSummary?.MinimumHeadingFontRatio ?? 1.0,
+                    MaximumAlignmentAnchorShift = cfg.LayoutSummary?.MaximumAlignmentAnchorShift ?? 0,
+                    MinimumBodyFontRatio = cfg.LayoutSummary?.MinimumBodyFontRatio ?? 1.0,
+                    MaximumBodyFontRatio = cfg.LayoutSummary?.MaximumBodyFontRatio ?? 1.0,
+                    MaximumBodyLineSpacingMultiplier = cfg.LayoutSummary?.MaximumBodyLineSpacingMultiplier ?? 0,
+                    MaximumInterParagraphGap = cfg.LayoutSummary?.MaximumInterParagraphGap ?? 0,
+                    MaximumFlowRegionResidualWhitespace = cfg.LayoutSummary?.MaximumFlowRegionResidualWhitespace ?? 0,
+                    ShiftedParagraphCount = cfg.LayoutSummary?.ShiftedParagraphCount ?? 0,
+                    FixedRegionCollisionCount = cfg.LayoutSummary?.FixedCollisionCount ?? cfg.FixedCollisionCount ?? 0,
+                    BottomOverflowCount = cfg.LayoutSummary?.BottomOverflowCount ?? cfg.BottomOverflowCount ?? 0,
+                    LayoutFailureReason = cfg.Error,
+                    TranslationFailures = new[] { cfg.Error },
                     Succeeded = false
-                }.Save(healthPath);
+                }.Save(cfg.HealthPath);
             }
-            catch { }
+            catch (Exception)
+            {
+                // Ignore non-fatal diagnostic report write errors
+            }
         }
 
         public static string PostProcessTranslation(string originalText, string translatedText, string targetLang) =>
