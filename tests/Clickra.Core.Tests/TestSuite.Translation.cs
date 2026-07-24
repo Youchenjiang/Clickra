@@ -12,6 +12,9 @@ using PdfSharp.Pdf;
 
 static partial class TestSuite
 {
+    private const string DfKaiSbFontName = "DFKai-SB";
+    private const string ProviderTimeoutEnvVar = "CLICKRA_TRANSLATION_PROVIDER_TIMEOUT_SECONDS";
+
     public static void RegisterTranslationTests(TestRunner runner)
     {
         runner.Run("CJK translation font resolves to embedded KaiU glyphs", () =>
@@ -297,10 +300,10 @@ static partial class TestSuite
 
         runner.Run("Fallback translator gives each provider an independent deadline", () =>
         {
-            var oldTimeout = Environment.GetEnvironmentVariable("CLICKRA_TRANSLATION_PROVIDER_TIMEOUT_SECONDS");
+            var oldTimeout = Environment.GetEnvironmentVariable(ProviderTimeoutEnvVar);
             try
             {
-                Environment.SetEnvironmentVariable("CLICKRA_TRANSLATION_PROVIDER_TIMEOUT_SECONDS", "1");
+                Environment.SetEnvironmentVariable(ProviderTimeoutEnvVar, "1");
                 var primary = new DelayedTranslationEngine("slow-primary", delayMilliseconds: 1500);
                 var fallback = new RecordingTranslationEngine("fallback");
                 var translator = new FallbackTranslator(primary, fallback);
@@ -318,16 +321,16 @@ static partial class TestSuite
             }
             finally
             {
-                Environment.SetEnvironmentVariable("CLICKRA_TRANSLATION_PROVIDER_TIMEOUT_SECONDS", oldTimeout);
+                Environment.SetEnvironmentVariable(ProviderTimeoutEnvVar, oldTimeout);
             }
         });
 
         runner.Run("Fallback translator fails closed when both provider deadlines expire", () =>
         {
-            var oldTimeout = Environment.GetEnvironmentVariable("CLICKRA_TRANSLATION_PROVIDER_TIMEOUT_SECONDS");
+            var oldTimeout = Environment.GetEnvironmentVariable(ProviderTimeoutEnvVar);
             try
             {
-                Environment.SetEnvironmentVariable("CLICKRA_TRANSLATION_PROVIDER_TIMEOUT_SECONDS", "1");
+                Environment.SetEnvironmentVariable(ProviderTimeoutEnvVar, "1");
                 var translator = new FallbackTranslator(
                     new DelayedTranslationEngine("slow-primary", delayMilliseconds: 1500),
                     new DelayedTranslationEngine("slow-fallback", delayMilliseconds: 1500));
@@ -341,7 +344,7 @@ static partial class TestSuite
             }
             finally
             {
-                Environment.SetEnvironmentVariable("CLICKRA_TRANSLATION_PROVIDER_TIMEOUT_SECONDS", oldTimeout);
+                Environment.SetEnvironmentVariable(ProviderTimeoutEnvVar, oldTimeout);
             }
         });
 
@@ -559,7 +562,7 @@ static partial class TestSuite
             PdfTranslatedParagraphRenderer.RenderParagraph(
                 gfx,
                 paragraph,
-                "DFKai-SB",
+                DfKaiSbFontName,
                 measureOnly: true,
                 metricsSink: value => metrics = value);
 
@@ -598,7 +601,7 @@ static partial class TestSuite
             PdfTranslationLayoutPlanner.BuildAndApply(
                 gfx,
                 new[] { unclassifiedTableText, firstBody, secondBody },
-                "DFKai-SB",
+                DfKaiSbFontName,
                 612,
                 792,
                 new[] { protectedTable });
@@ -634,7 +637,7 @@ static partial class TestSuite
             var plan = PdfTranslationLayoutPlanner.BuildAndApply(
                 gfx,
                 new[] { bodyAboveCallout, callout },
-                "DFKai-SB",
+                DfKaiSbFontName,
                 612,
                 792,
                 new[] { calloutRegion });
@@ -971,10 +974,10 @@ static partial class TestSuite
 
         runner.Run("PDF batch runner bounds a hung provider call", () =>
         {
-            var oldTimeout = Environment.GetEnvironmentVariable("CLICKRA_TRANSLATION_PROVIDER_TIMEOUT_SECONDS");
+            var oldTimeout = Environment.GetEnvironmentVariable(ProviderTimeoutEnvVar);
             try
             {
-                Environment.SetEnvironmentVariable("CLICKRA_TRANSLATION_PROVIDER_TIMEOUT_SECONDS", "1");
+                Environment.SetEnvironmentVariable(ProviderTimeoutEnvVar, "1");
                 var translator = new HangingTranslationEngine();
 
                 var ex = Assert.Throws<Exception>(() =>
@@ -993,7 +996,7 @@ static partial class TestSuite
             }
             finally
             {
-                Environment.SetEnvironmentVariable("CLICKRA_TRANSLATION_PROVIDER_TIMEOUT_SECONDS", oldTimeout);
+                Environment.SetEnvironmentVariable(ProviderTimeoutEnvVar, oldTimeout);
             }
         });
 
