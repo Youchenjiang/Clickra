@@ -142,18 +142,9 @@ internal static class PdfTranslationLayoutPlanner
                                  !string.IsNullOrWhiteSpace(s.Paragraph.TranslatedText))
                      .OrderByDescending(s => s.Paragraph.OriginalY1))
         {
-            double extra = Math.Max(0, expanding.MeasuredHeight - expanding.Paragraph.Height);
-            double sourceLineBox = Math.Max(expanding.Paragraph.SourceLineHeight, expanding.SourceFontSize);
-            if (extra <= 1.0 || expanding.Paragraph.Height > Math.Max(sourceLineBox * 1.5, 8.0) ||
-                expanding.MeasuredHeight > sourceLineBox * 2.5) continue;
+            if (ShouldSkipExpansion(expanding)) continue;
 
-            var candidate = snapshots
-                .Where(s => s.Column == expanding.Column &&
-                            s.Paragraph != expanding.Paragraph &&
-                            s.Paragraph.OriginalY1 < expanding.Paragraph.OriginalY0 &&
-                            IsReflowShiftable(s.Paragraph, pageHeight))
-                .OrderByDescending(s => s.Paragraph.OriginalY1)
-                .FirstOrDefault();
+            var candidate = FindExpansionCandidate(expanding, snapshots, pageHeight);
             if (candidate == null) continue;
 
             double targetY1 = expanding.Paragraph.Y0 - expanding.MeasuredHeight - Gap;
@@ -166,6 +157,29 @@ internal static class PdfTranslationLayoutPlanner
             shifted++;
         }
         return shifted;
+    }
+
+    private static bool ShouldSkipExpansion(PdfParagraphLayoutSnapshot expanding)
+    {
+        double extra = Math.Max(0, expanding.MeasuredHeight - expanding.Paragraph.Height);
+        double sourceLineBox = Math.Max(expanding.Paragraph.SourceLineHeight, expanding.SourceFontSize);
+        return extra <= 1.0 ||
+               expanding.Paragraph.Height > Math.Max(sourceLineBox * 1.5, 8.0) ||
+               expanding.MeasuredHeight > sourceLineBox * 2.5;
+    }
+
+    private static PdfParagraphLayoutSnapshot? FindExpansionCandidate(
+        PdfParagraphLayoutSnapshot expanding,
+        List<PdfParagraphLayoutSnapshot> snapshots,
+        double pageHeight)
+    {
+        return snapshots
+            .Where(s => s.Column == expanding.Column &&
+                        s.Paragraph != expanding.Paragraph &&
+                        s.Paragraph.OriginalY1 < expanding.Paragraph.OriginalY0 &&
+                        IsReflowShiftable(s.Paragraph, pageHeight))
+            .OrderByDescending(s => s.Paragraph.OriginalY1)
+            .FirstOrDefault();
     }
 
     private static int GuardColumnBottomOverflows(List<PdfParagraphLayoutSnapshot> snapshots, double pageHeight)

@@ -69,27 +69,15 @@ internal static class PdfTranslatedParagraphRenderer
             double limitHeight = isRotated ? para.Width : paragraphHeight;
 
             RunFontShrinkLoop(
-                tokens, para.Formulas, gfx, fontNameForPara, fontStyle,
-                layoutWidth, limitHeight, isHeading, allowNaturalBodyHeight, flowableBody, sourceBodyFontFloor,
-                para.AverageFontSize,
+                new FontShrinkInput(tokens, para.Formulas, gfx, fontNameForPara, fontStyle,
+                    layoutWidth, limitHeight, isHeading, allowNaturalBodyHeight, flowableBody, sourceBodyFontFloor,
+                    para.AverageFontSize),
                 ref fontSize, ref mainFont, ref lineHeight, ref lineSpacingMultiplier,
                 out List<PdfLayoutRow> rows, out double renderedHeight, out double maxRowWidth);
 
-            // Actual rendered height = number of rows × line height
             renderedHeight = rows.Count * lineHeight;
-            bool horizontalOverflow = maxRowWidth > layoutWidth + 0.5;
-            double effectiveLimitHeight = isHeading || allowNaturalBodyHeight
-                ? Math.Max(limitHeight, renderedHeight)
-                : limitHeight;
-            bool verticalOverflow = renderedHeight > effectiveLimitHeight + 0.5;
-            if (paragraphWidth < 5.0)
-            {
-                // A sub-5pt marker is an isolated PDF extraction artifact, not
-                // a prose column.  Do not turn its glyph bbox quantization into
-                // a document-level overflow failure.
-                horizontalOverflow = false;
-                verticalOverflow = false;
-            }
+            ComputeOverflow(layoutWidth, limitHeight, paragraphWidth, isHeading, allowNaturalBodyHeight,
+                maxRowWidth, renderedHeight, out bool horizontalOverflow, out bool verticalOverflow, out double effectiveLimitHeight);
             metricsSink?.Invoke(new PdfParagraphRenderMetrics(
                 layoutWidth,
                 maxRowWidth,
@@ -292,19 +280,21 @@ internal static class PdfTranslatedParagraphRenderer
             return null;
         }
 
+        private readonly record struct FontShrinkInput(
+            List<string> Tokens,
+            List<MathFormula> Formulas,
+            XGraphics Gfx,
+            string FontName,
+            XFontStyleEx FontStyle,
+            double LayoutWidth,
+            double LimitHeight,
+            bool IsHeading,
+            bool AllowNaturalBodyHeight,
+            bool FlowableBody,
+            double SourceBodyFontFloor,
+            double AverageFontSize);
         private static void RunFontShrinkLoop(
-            List<string> tokens,
-            List<MathFormula> formulas,
-            XGraphics gfx,
-            string fontNameForPara,
-            XFontStyleEx fontStyle,
-            double layoutWidth,
-            double limitHeight,
-            bool isHeading,
-            bool allowNaturalBodyHeight,
-            bool flowableBody,
-            double sourceBodyFontFloor,
-            double averageFontSize,
+            FontShrinkInput input,
             ref double fontSize,
             ref XFont mainFont,
             ref double lineHeight,
@@ -317,43 +307,57 @@ internal static class PdfTranslatedParagraphRenderer
             renderedHeight = 0;
             maxRowWidth = 0;
 
-            // Translated CJK can require more rows than the source paragraph. Reflow and
-            // reduce the font gradually, including headings, until both dimensions fit.
-            // The lower bound preserves legibility while avoiding the old clip-and-hide path.
             for (int attempt = 0; attempt < 6; attempt++)
             {
                 rows = PdfParagraphLayoutEngine.LayoutParagraph(
-                    tokens, mainFont, formulas, layoutWidth, fontSize, averageFontSize, gfx);
+                    input.Tokens, mainFont, input.Formulas, input.LayoutWidth, fontSize, input.AverageFontSize, input.Gfx);
                 renderedHeight = rows.Count * lineHeight;
                 maxRowWidth = rows.Count == 0
                     ? 0
                     : rows.Max(row => row.Elements.Sum(element => element.Width));
 
-                bool fitsWidth = maxRowWidth <= layoutWidth + 0.5;
-                bool fitsHeight = isHeading || allowNaturalBodyHeight || flowableBody ||
-                    renderedHeight <= limitHeight + 0.5;
+                bool fitsWidth = maxRowWidth <= input.LayoutWidth + 0.5;
+                bool fitsHeight = input.IsHeading || input.AllowNaturalBodyHeight || input.FlowableBody ||
+                    renderedHeight <= input.LimitHeight + 0.5;
                 if (fitsWidth && fitsHeight) break;
-                if (isHeading) break;
+                if (input.IsHeading) break;
 
                 double scale = 0.94;
                 if (!fitsWidth && maxRowWidth > 0)
-                    scale = Math.Min(scale, layoutWidth / maxRowWidth);
+                    scale = Math.Min(scale, input.LayoutWidth / maxRowWidth);
                 if (!fitsHeight && renderedHeight > 0)
-                    scale = Math.Min(scale, limitHeight / renderedHeight);
+                    scale = Math.Min(scale, input.LimitHeight / renderedHeight);
 
                 scale = Math.Clamp(scale, 0.80, 0.94);
-                double minimumFontSize = Math.Max(sourceBodyFontFloor, fontSize * 0.80);
+                double minimumFontSize = Math.Max(input.SourceBodyFontFloor, fontSize * 0.80);
                 double nextFontSize = fontSize * scale;
-                if (flowableBody)
+                if (input.FlowableBody)
                     nextFontSize = Math.Max(minimumFontSize, nextFontSize);
                 if (nextFontSize >= fontSize - 0.01) break;
 
                 fontSize = nextFontSize;
-                mainFont = new XFont(fontNameForPara, fontSize, fontStyle);
+                mainFont = new XFont(input.FontName, fontSize, input.FontStyle);
                 lineHeight = fontSize * lineSpacingMultiplier;
             }
         }
 
+        private static void ComputeOverflow(
+            double layoutWidth, double limitHeight, double paragraphWidth,
+            bool isHeading, bool allowNaturalBodyHeight,
+            double maxRowWidth, double renderedHeight,
+            out bool horizontalOverflow, out bool verticalOverflow, out double effectiveLimitHeight)
+        {
+            horizontalOverflow = maxRowWidth > layoutWidth + 0.5;
+            effectiveLimitHeight = isHeading || allowNaturalBodyHeight
+                ? Math.Max(limitHeight, renderedHeight)
+                : limitHeight;
+            verticalOverflow = renderedHeight > effectiveLimitHeight + 0.5;
+            if (paragraphWidth < 5.0)
+            {
+                horizontalOverflow = false;
+                verticalOverflow = false;
+            }
+        }
         private static void AlignAnnotations(PdfParagraph para, List<RenderedChar> renderedChars)
         {
             if (para.Annotations.Count == 0 || renderedChars.Count == 0) return;
