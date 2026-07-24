@@ -156,24 +156,6 @@ internal static class PdfTranslatedParagraphRenderer
                 PdfParagraphSemanticClassifier.IsHeadingParagraph(para);
         }
 
-        private static double CalculateFontSize(
-            PdfParagraph para,
-            bool isHeading,
-            out double sourceHeadingFontSize,
-            out double sourceBodyFontFloor)
-        {
-            sourceHeadingFontSize = GetSourceHeadingFontSize(para);
-            sourceBodyFontFloor = sourceHeadingFontSize > 0
-                ? sourceHeadingFontSize * 0.80
-                : para.AverageFontSize;
-            double fontSize = isHeading
-                ? Math.Max(para.AverageFontSize, sourceHeadingFontSize)
-                : Math.Max(para.AverageFontSize, sourceBodyFontFloor);
-            if (!isHeading && para.LayoutFontSizeOverride > 0)
-                fontSize = Math.Max(para.LayoutFontSizeOverride, sourceBodyFontFloor);
-            return fontSize;
-        }
-
         private static bool IsStandardProseParagraph(PdfParagraph para, bool isRotated)
         {
             return !isRotated && !para.IsBypassed && !para.IsTable && !para.IsDiagram && !para.IsCode && !para.IsGrayPromptContent;
@@ -800,6 +782,19 @@ internal static class PdfTranslatedParagraphRenderer
             return fontSize;
         }
 
+        private static double CalculateFontSize(
+            PdfParagraph para,
+            bool isHeading,
+            out double sourceHeadingFontSize,
+            out double sourceBodyFontFloor)
+        {
+            sourceHeadingFontSize = GetSourceHeadingFontSize(para);
+            sourceBodyFontFloor = sourceHeadingFontSize > 0
+                ? sourceHeadingFontSize * 0.80
+                : para.AverageFontSize;
+            return CalculateFontSize(para, isHeading, sourceHeadingFontSize, sourceBodyFontFloor);
+        }
+
         private static void DetermineFontNameAndStyle(PdfParagraph para, string targetFontName, string text, out string fontNameForPara, out XFontStyleEx fontStyle)
         {
             fontNameForPara = targetFontName;
@@ -809,24 +804,7 @@ internal static class PdfTranslatedParagraphRenderer
             }
             else if (para.IsBypassed)
             {
-                if (text.Any(FontUtilities.IsCjkCharacter))
-                {
-                    fontNameForPara = targetFontName;
-                }
-                else
-                {
-                    fontNameForPara = "Times New Roman";
-                    if (para.AllLetters.Count > 0)
-                    {
-                        string fn = para.AllLetters[0].FontName.ToLowerInvariant();
-                        if (fn.Contains("times") || fn.Contains("serif") || fn.Contains("liberation"))
-                            fontNameForPara = "Times New Roman";
-                        else if (fn.Contains("arial") || fn.Contains("helvetica") || fn.Contains("sans"))
-                            fontNameForPara = "Arial";
-                        else if (fn.Contains("courier") || fn.Contains("mono") || fn.Contains("consolas"))
-                            fontNameForPara = "Courier New";
-                    }
-                }
+                fontNameForPara = ResolveBypassedFontName(para, targetFontName, text);
             }
 
             fontStyle = XFontStyleEx.Regular;
@@ -838,10 +816,29 @@ internal static class PdfTranslatedParagraphRenderer
             {
                 fontStyle = para.IsItalic ? XFontStyleEx.BoldItalic : XFontStyleEx.Bold;
             }
-            else
+            else if (para.IsItalic)
             {
-                fontStyle = para.IsItalic ? XFontStyleEx.Italic : XFontStyleEx.Regular;
+                fontStyle = XFontStyleEx.Italic;
             }
+        }
+
+        private static string ResolveBypassedFontName(PdfParagraph para, string targetFontName, string text)
+        {
+            if (text.Any(FontUtilities.IsCjkCharacter))
+                return targetFontName;
+
+            if (para.AllLetters.Count == 0)
+                return "Times New Roman";
+
+            string fn = para.AllLetters[0].FontName.ToLowerInvariant();
+            if (fn.Contains("times") || fn.Contains("serif") || fn.Contains("liberation"))
+                return "Times New Roman";
+            if (fn.Contains("arial") || fn.Contains("helvetica") || fn.Contains("sans"))
+                return "Arial";
+            if (fn.Contains("courier") || fn.Contains("mono") || fn.Contains("consolas"))
+                return "Courier New";
+
+            return "Times New Roman";
         }
     }
 
