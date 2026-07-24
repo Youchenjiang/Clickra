@@ -304,33 +304,33 @@ namespace Clickra.Core.Processors
             {
                 foreach (var para in pageList)
                 {
-                    if (para.IsTable) continue;
-                    string txt = para.TextWithPlaceholders.Trim();
-                    if (string.IsNullOrEmpty(txt)) continue;
-                    if (IsFigureOrTableCaptionLike(txt)) continue;
-
-                    if (para.Height >= 35 && para.Height < 120 && para.Width > 80 && para.Width < pageWidth * 0.45)
+                    if (IsDigitDenseTableCandidate(para, pageWidth))
                     {
-                        int digitGroups = Regex.Matches(txt, @"\b\d+\b").Count;
-                        int wordCount = txt.Split([' ', '\t', '\n', '\r'], StringSplitOptions.RemoveEmptyEntries).Length;
-                        if (digitGroups >= 4 && wordCount <= 18)
-                        {
-                            para.IsTable = true;
-                        }
+                        para.IsTable = true;
                     }
                 }
             }
 
-            // Paragraph-level caption recognition is more reliable than the
-            // word-level isTablePage hint for PDFs with unusual text runs.
             MarkTableRegionByCaption(pageList, pageWidth);
+        }
+
+        private static bool IsDigitDenseTableCandidate(PdfParagraph para, double pageWidth)
+        {
+            if (para.IsTable) return false;
+            string txt = para.TextWithPlaceholders.Trim();
+            if (string.IsNullOrEmpty(txt) || IsFigureOrTableCaptionLike(txt)) return false;
+
+            if (para.Height >= 35 && para.Height < 120 && para.Width > 80 && para.Width < pageWidth * 0.45)
+            {
+                int digitGroups = Regex.Matches(txt, @"\b\d+\b").Count;
+                int wordCount = txt.Split([' ', '\t', '\n', '\r'], StringSplitOptions.RemoveEmptyEntries).Length;
+                return digitGroups >= 4 && wordCount <= 18;
+            }
+            return false;
         }
 
         public static void MarkTableRegionByCaption(List<PdfParagraph> pageList, double pageWidth)
         {
-            // A page can contain one table in each column.  The old code used
-            // only the first caption, so the other column's header row escaped
-            // table classification and was translated/reflowed as prose.
             var captions = pageList.Where(para => Regex.IsMatch(
                     para.TextWithPlaceholders.Trim(),
                     @"^(?:TABLE|Table)\s+[IVXLCDM\d]+",
@@ -341,48 +341,62 @@ namespace Clickra.Core.Processors
 
             foreach (var caption in captions)
             {
-                double captionCenterX = caption.X0 + caption.Width / 2;
-                bool captionOnLeft = captionCenterX < pageWidth / 2;
-                double prevBottom = caption.Y0;
-
-                foreach (var para in pageList.OrderByDescending(p => p.Y1))
-                {
-                    if (para == caption) continue;
-
-                    double paraCenterX = para.X0 + para.Width / 2;
-                    if ((paraCenterX < pageWidth / 2) != captionOnLeft) continue;
-                    if (para.Y1 > caption.Y0 + 5) continue;
-
-                    double gap = prevBottom - para.Y1;
-                    // Allow the small separator band between table sections.
-                    // Pdf coordinates extracted from nominally 28 pt gaps can
-                    // differ by fractions of a point across equivalent files.
-                    if (gap > 30) break;
-
-                    string txt = para.TextWithPlaceholders.Trim();
-                    if (txt.StartsWith("Listing", StringComparison.OrdinalIgnoreCase) ||
-                        txt.StartsWith("Figure", StringComparison.OrdinalIgnoreCase) ||
-                        txt.StartsWith("Fig", StringComparison.OrdinalIgnoreCase))
-                    {
-                        break;
-                    }
-
-                    if (Regex.IsMatch(txt, @"^[IVXLC]+\.\s"))
-                    {
-                        break;
-                    }
-
-                    if (para.Height > 30 && para.Width > pageWidth * 0.35 &&
-                        txt.Split([' ', '\t', '\n', '\r'], StringSplitOptions.RemoveEmptyEntries).Length > 25)
-                    {
-                        break;
-                    }
-
-                    para.IsTable = true;
-                    prevBottom = para.Y0;
-                }
+                ProcessCaptionTableRegion(caption, pageList, pageWidth);
             }
         }
+
+        private static void ProcessCaptionTableRegion(PdfParagraph caption, List<PdfParagraph> pageList, double pageWidth)
+        {
+            double captionCenterX = caption.X0 + caption.Width / 2;
+            bool captionOnLeft = captionCenterX < pageWidth / 2;
+            double prevBottom = caption.Y0;
+
+            foreach (var para in pageList.OrderByDescending(p => p.Y1))
+            {
+                if (!IsCandidateForCaptionRegion(para, caption, captionOnLeft, pageWidth, prevBottom))
+                    break;
+
+                string txt = para.TextWithPlaceholders.Trim();
+                if (ShouldStopTableRegionScanning(para, txt, pageWidth))
+                    break;
+
+                para.IsTable = true;
+                prevBottom = para.Y0;
+            }
+        }
+
+        private static bool IsCandidateForCaptionRegion(
+            PdfParagraph para,
+            PdfParagraph caption,
+            bool captionOnLeft,
+            double pageWidth,
+            double prevBottom)
+        {
+            if (para == caption) return false;
+
+            double paraCenterX = para.X0 + para.Width / 2;
+            if ((paraCenterX < pageWidth / 2) != captionOnLeft) return false;
+            if (para.Y1 > caption.Y0 + 5) return false;
+
+            double gap = prevBottom - para.Y1;
+            return gap <= 30;
+        }
+
+        private static bool ShouldStopTableRegionScanning(PdfParagraph para, string txt, double pageWidth)
+        {
+            if (IsCaptionOrSectionBreak(txt)) return true;
+            if (Regex.IsMatch(txt, @"^[IVXLC]+\.\s")) return true;
+            return IsLargeProseParagraph(para, txt, pageWidth);
+        }
+
+        private static bool IsCaptionOrSectionBreak(string txt) =>
+            txt.StartsWith("Listing", StringComparison.OrdinalIgnoreCase) ||
+            txt.StartsWith("Figure", StringComparison.OrdinalIgnoreCase) ||
+            txt.StartsWith("Fig", StringComparison.OrdinalIgnoreCase);
+
+        private static bool IsLargeProseParagraph(PdfParagraph para, string txt, double pageWidth) =>
+            para.Height > 30 && para.Width > pageWidth * 0.35 &&
+            txt.Split([' ', '\t', '\n', '\r'], StringSplitOptions.RemoveEmptyEntries).Length > 25;
 
         private static bool IsFigureOrTableCaptionLike(string txt)
         {
