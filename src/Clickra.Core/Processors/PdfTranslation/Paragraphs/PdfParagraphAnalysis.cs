@@ -79,12 +79,7 @@ namespace Clickra.Core.Processors
 
         private static (StringBuilder sb, StringBuilder styled, List<MathFormula> formulas, bool hasLineBreak) ProcessTextLines(IReadOnlyList<TextLine> lines, double averageFontSize)
         {
-            var sb = new StringBuilder();
-            var formulas = new List<MathFormula>();
-            var currentFormula = new List<Letter>();
-            var styled = new StringBuilder();
-            bool styledBoldOpen = false;
-            int bracketsCount = 0;
+            var ctx = new WordProcessingContext();
             bool hasLineBreak = false;
 
             for (int lineIdx = 0; lineIdx < lines.Count; lineIdx++)
@@ -93,12 +88,12 @@ namespace Clickra.Core.Processors
                 for (int wordIdx = 0; wordIdx < line.Words.Count; wordIdx++)
                 {
                     var word = line.Words[wordIdx];
-                    ProcessWordLetters(word, averageFontSize, sb, styled, formulas, currentFormula, ref styledBoldOpen, ref bracketsCount);
+                    ProcessWordLetters(word, averageFontSize, ctx);
 
                     if (wordIdx < line.Words.Count - 1)
                     {
-                        sb.Append(' ');
-                        AppendStyledText(styled, " ", false, ref styledBoldOpen);
+                        ctx.Sb.Append(' ');
+                        AppendStyledText(ctx.Styled, " ", false, ref ctx.StyledBoldOpen);
                     }
                 }
 
@@ -108,24 +103,26 @@ namespace Clickra.Core.Processors
                 }
             }
 
-            int finalFormulaCountBefore = formulas.Count;
-            FlushFormula(sb, formulas, currentFormula, ref bracketsCount);
-            if (formulas.Count > finalFormulaCountBefore)
-                styled.Append($"{{v{formulas.Count - 1}}}");
-            CloseStyledBold(styled, ref styledBoldOpen);
+            int finalFormulaCountBefore = ctx.Formulas.Count;
+            FlushFormula(ctx.Sb, ctx.Formulas, ctx.CurrentFormula, ref ctx.BracketsCount);
+            if (ctx.Formulas.Count > finalFormulaCountBefore)
+                ctx.Styled.Append($"{{v{ctx.Formulas.Count - 1}}}");
+            CloseStyledBold(ctx.Styled, ref ctx.StyledBoldOpen);
 
-            return (sb, styled, formulas, hasLineBreak);
+            return (ctx.Sb, ctx.Styled, ctx.Formulas, hasLineBreak);
         }
 
-        private static void ProcessWordLetters(
-            Word word,
-            double averageFontSize,
-            StringBuilder sb,
-            StringBuilder styled,
-            List<MathFormula> formulas,
-            List<Letter> currentFormula,
-            ref bool styledBoldOpen,
-            ref int bracketsCount)
+        private sealed class WordProcessingContext
+        {
+            public StringBuilder Sb { get; } = new();
+            public StringBuilder Styled { get; } = new();
+            public List<MathFormula> Formulas { get; } = new();
+            public List<Letter> CurrentFormula { get; } = new();
+            public bool StyledBoldOpen;
+            public int BracketsCount;
+        }
+
+        private static void ProcessWordLetters(Word word, double averageFontSize, WordProcessingContext ctx)
         {
             bool isMathWord = PdfParagraphMathClassifier.IsMathWord(word);
             for (int letterIdx = 0; letterIdx < word.Letters.Count; letterIdx++)
@@ -134,31 +131,31 @@ namespace Clickra.Core.Processors
                 bool curV = PdfParagraphMathClassifier.IsMathCharacter(letter, isMathWord, averageFontSize);
                 if (!curV)
                 {
-                    if (currentFormula.Count > 0 && letter.Value == "(")
+                    if (ctx.CurrentFormula.Count > 0 && letter.Value == "(")
                     {
                         curV = true;
-                        bracketsCount++;
+                        ctx.BracketsCount++;
                     }
-                    else if (bracketsCount > 0 && letter.Value == ")")
+                    else if (ctx.BracketsCount > 0 && letter.Value == ")")
                     {
                         curV = true;
-                        bracketsCount--;
+                        ctx.BracketsCount--;
                     }
                 }
 
                 if (curV)
                 {
-                    CloseStyledBold(styled, ref styledBoldOpen);
-                    currentFormula.Add(letter);
+                    CloseStyledBold(ctx.Styled, ref ctx.StyledBoldOpen);
+                    ctx.CurrentFormula.Add(letter);
                 }
                 else
                 {
-                    int formulaCountBefore = formulas.Count;
-                    FlushFormula(sb, formulas, currentFormula, ref bracketsCount);
-                    if (formulas.Count > formulaCountBefore)
-                        styled.Append($"{{v{formulas.Count - 1}}}");
-                    AppendStyledText(styled, letter.Value, FontUtilities.IsSourceFontBold(letter.FontName), ref styledBoldOpen);
-                    sb.Append(letter.Value);
+                    int formulaCountBefore = ctx.Formulas.Count;
+                    FlushFormula(ctx.Sb, ctx.Formulas, ctx.CurrentFormula, ref ctx.BracketsCount);
+                    if (ctx.Formulas.Count > formulaCountBefore)
+                        ctx.Styled.Append($"{{v{ctx.Formulas.Count - 1}}}");
+                    AppendStyledText(ctx.Styled, letter.Value, FontUtilities.IsSourceFontBold(letter.FontName), ref ctx.StyledBoldOpen);
+                    ctx.Sb.Append(letter.Value);
                 }
             }
         }
