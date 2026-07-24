@@ -19,8 +19,8 @@ internal abstract class BaseTranslator : ITranslationEngine
     {
         if (string.IsNullOrWhiteSpace(text)) return text;
 
-        int retries = 5;
-        int delayMs = 1500;
+        int retries = 2;
+        int delayMs = 750;
         while (true)
         {
             await ConcurrencySemaphore.WaitAsync(cancellationToken);
@@ -41,8 +41,8 @@ internal abstract class BaseTranslator : ITranslationEngine
                 ConcurrencySemaphore.Release();
             }
 
-            await Task.Delay(delayMs, cancellationToken);
-            delayMs *= 2;
+            await Task.Delay(Math.Min(delayMs, 3000), cancellationToken);
+            delayMs = Math.Min(delayMs * 2, 3000);
         }
     }
 

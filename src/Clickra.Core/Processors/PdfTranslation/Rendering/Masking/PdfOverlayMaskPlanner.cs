@@ -124,71 +124,10 @@ internal static class PdfOverlayMaskPlanner
         double renderedHeight,
         double pageWidth)
     {
-        var clipRegions = GetFigureClipRegions(pageParagraphs, diagramMaskRegions, pageWidth);
-        if (clipRegions.Count == 0) return null;
-        if (!PdfParagraphRoleClassifier.IsTranslatableBodyProse(para) && !PdfParagraphRoleClassifier.IsTranslatableCalloutProse(para)) return null;
-        if (PdfParagraphSemanticClassifier.IsHeadingParagraph(para) || PdfParagraphSemanticClassifier.IsAppendixSectionHeading(para)) return null;
-
-        const double clearance = 2.0;
-        double center = pageWidth / 2.0;
-        double paraCenterX = para.X0 + para.Width / 2.0;
-        bool paraLeftCol = paraCenterX < center - 8;
-        bool paraRightCol = paraCenterX > center + 8;
-        double renderedBottomPigY = para.Y0 - Math.Max(0.0, renderedHeight - para.Height);
-        double clipPdfTop = pageHeight - para.Y1 - 1.5;
-        double clipPdfBottom = pageHeight - renderedBottomPigY + 1.5;
-        double clipPdfLeft = para.X0 - 1.5;
-        double clipPdfRight = para.X1 + 1.5;
-        bool needClip = false;
-
-        foreach (var region in clipRegions)
-        {
-            double regionCenterX = (region.X0 + region.X1) / 2.0;
-            bool regionLeftCol = regionCenterX < center - 8;
-            bool regionRightCol = regionCenterX > center + 8;
-            double overlapY = Math.Min(para.Y1, region.Y1) - Math.Max(para.Y0, region.Y0);
-            if (overlapY <= 0) continue;
-
-            if (paraLeftCol && regionRightCol)
-            {
-                double maxRight = center - 10;
-                if (clipPdfRight > maxRight)
-                {
-                    clipPdfRight = maxRight;
-                    needClip = true;
-                }
-                continue;
-            }
-
-            if (paraRightCol && regionLeftCol)
-            {
-                double minLeft = center + 10;
-                if (clipPdfLeft < minLeft)
-                {
-                    clipPdfLeft = minLeft;
-                    needClip = true;
-                }
-                continue;
-            }
-
-            double overlapX = Math.Min(para.X1, region.X1) - Math.Max(para.X0, region.X0);
-            if (overlapX < 20) continue;
-            double paraHeight = Math.Max(8.0, para.Y1 - para.Y0);
-            if (overlapY < Math.Min(18.0, paraHeight * 0.2)) continue;
-            if (renderedBottomPigY >= region.Y1 + clearance) continue;
-
-            double figureTopPdf = pageHeight - region.Y1 - clearance;
-            if (clipPdfBottom > figureTopPdf)
-            {
-                clipPdfBottom = figureTopPdf;
-                needClip = true;
-            }
-        }
-
-        if (!needClip || clipPdfBottom <= clipPdfTop + 1) return null;
-        var state = gfx.Save();
-        gfx.IntersectClip(new XRect(clipPdfLeft, clipPdfTop, clipPdfRight - clipPdfLeft, clipPdfBottom - clipPdfTop));
-        return state;
+        // Retained as a compatibility shim for older callers. The old implementation
+        // applied a broad IntersectClip and silently removed translated lines. New
+        // rendering uses reflow plus mask geometry and must never enter this path.
+        return null;
     }
 
     /// <summary>Tight figure bounds from captions and diagram labels for body-text clip/mask.</summary>

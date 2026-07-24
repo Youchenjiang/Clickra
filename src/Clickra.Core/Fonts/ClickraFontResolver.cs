@@ -27,8 +27,9 @@ namespace Clickra.Core
             if (name.Contains("dfkai") || name.Contains("kaiu") ||
                 name.Contains("標楷") || name.Contains("标楷"))
             {
-                // CJK translation output must always use the real regular KaiU face.
-                // Simulated bold/italic and Latin fallbacks produce missing glyph boxes.
+                // CJK translation output must use the real regular KaiU face.
+                // Bold is simulated by the renderer so no unsupported CJK
+                // bold face (or tofu-producing fallback) is embedded.
                 return new FontResolverInfo("kaiu");
             }
             if (name.Contains("jhenghei") || name.Contains("正黑"))

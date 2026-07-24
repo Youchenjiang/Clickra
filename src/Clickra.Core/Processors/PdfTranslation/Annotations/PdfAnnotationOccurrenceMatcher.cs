@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Text.RegularExpressions;
 using Clickra.Core.Models;
 
 namespace Clickra.Core.Processors
@@ -54,6 +55,25 @@ namespace Clickra.Core.Processors
                 }
             }
             return bestIdx;
+        }
+
+        public static int GetFigureReferenceIndex(IReadOnlyList<PdfLetter> allLetters, int targetLetterIndex)
+        {
+            if (targetLetterIndex < 0 || allLetters.Count == 0) return -1;
+
+            int ordinal = 0;
+            for (int i = 0; i <= Math.Min(targetLetterIndex, allLetters.Count - 1); i++)
+            {
+                if (allLetters[i].Value.Length == 0 || !char.IsDigit(allLetters[i].Value[0])) continue;
+                string prefix = string.Concat(allLetters.Take(i).Select(letter => letter.Value));
+                if (Regex.IsMatch(prefix, @"(?:Fig(?:ure)?\.?)[\s\u00A0]*$", RegexOptions.IgnoreCase, TimeSpan.FromSeconds(1)))
+                {
+                    if (i == targetLetterIndex) return ordinal;
+                    ordinal++;
+                }
+            }
+
+            return -1;
         }
 
         private static bool CharEqualsNormalized(char c1, char c2)

@@ -32,8 +32,20 @@ namespace Clickra.Core.Processors
 
         public static bool IsHeading(PdfParagraph para)
         {
-            if (para.IsTable || para.IsCode || para.IsGrayPromptContent || para.IsDiagram) return false;
-            if (!IsHeadingText(para.TextWithPlaceholders.Trim())) return false;
+            string text = para.TextWithPlaceholders.Trim();
+            if (!IsHeadingText(text)) return false;
+            if (para.IsCode || para.IsGrayPromptContent) return false;
+
+            bool unambiguousBibliographyHeading =
+                text.Equals("REFERENCES", StringComparison.OrdinalIgnoreCase) ||
+                text.Equals("BIBLIOGRAPHY", StringComparison.OrdinalIgnoreCase) ||
+                NumberedHeadingRegex.IsMatch(text);
+            if ((para.IsTable || para.IsDiagram) && !unambiguousBibliographyHeading)
+                return false;
+
+            if (unambiguousBibliographyHeading &&
+                PdfParagraphSemanticClassifier.IsHeadingParagraph(para))
+                return true;
 
             // A lone "reference" also appears as a small field/cell label in figures and
             // result tables. Require section-heading geometry so it cannot start a
@@ -59,6 +71,11 @@ namespace Clickra.Core.Processors
             if (IsHeading(para)) return false;
             if (IsReferenceParagraph(para)) return false;
 
+            // Words such as "Appendix" and numbered phrases also occur inside
+            // bibliography titles. Only a paragraph with source heading
+            // geometry may terminate the cross-page reference section.
+            if (!PdfParagraphSemanticClassifier.IsHeadingParagraph(para)) return false;
+
             if (txt.Contains("WORK DIVISION", StringComparison.OrdinalIgnoreCase)) return true;
             if (txt.Equals("APPENDIX", StringComparison.OrdinalIgnoreCase)) return true;
             if (txt.Contains("ACKNOWLEDGMENT", StringComparison.OrdinalIgnoreCase) ||
@@ -74,8 +91,9 @@ namespace Clickra.Core.Processors
                 return true;
             if (Regex.IsMatch(txt, @"^[A-Z]\.\d+\s", RegexOptions.IgnoreCase))
                 return true;
-            if (txt.Length < 40 && Regex.IsMatch(txt, @"^[A-Z]\.\s+[A-Za-z\u4e00-\u9fff]", RegexOptions.IgnoreCase))
-                return true;
+            // Do not terminate on a bare "A. Name" line. Bibliography entries
+            // and wrapped author lists commonly begin that way; treating it as
+            // a section heading silently re-enables translation mid-reference.
 
             return false;
         }

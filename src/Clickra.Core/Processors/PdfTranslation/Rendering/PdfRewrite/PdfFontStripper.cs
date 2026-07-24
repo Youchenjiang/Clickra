@@ -9,7 +9,7 @@ using PdfSharp.Pdf.Advanced;
 
 namespace Clickra.Core.Processors
 {
-    public sealed class ProtectedNoStripPredicates
+    internal sealed class ProtectedNoStripPredicates
     {
         public required Func<PdfParagraph, bool> IsGrayPromptCodeParagraph { get; init; }
         public required Func<PdfParagraph, IReadOnlyList<TableMaskRegion>, bool> ParagraphCenterInsideAnyRegion { get; init; }
@@ -17,7 +17,7 @@ namespace Clickra.Core.Processors
         public required Func<PdfParagraph, bool> IsLikelyChartLabel { get; init; }
     }
 
-    public static class PdfFontStripper
+    internal static class PdfFontStripper
     {
         public static HashSet<string> CollectTranslatableFontBaseNames(IEnumerable<PdfParagraph> paragraphs)
         {
@@ -71,6 +71,27 @@ namespace Clickra.Core.Processors
             return onlyProtected;
         }
 
+        public static HashSet<string> CollectFontsUsedByPageOneAuthorBlock(
+            IEnumerable<PdfParagraph> paragraphs,
+            double pageHeight)
+        {
+            var pageList = paragraphs as List<PdfParagraph> ?? paragraphs.ToList();
+            var names = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            foreach (var para in pageList)
+            {
+                if (!PageOneLayoutClassifier.IsAuthorBlockParagraph(para, pageList, pageHeight))
+                    continue;
+                foreach (var letter in para.AllLetters)
+                {
+                    string cleanFontName = CleanPdfBaseFontName(letter.FontName);
+                    if (string.IsNullOrEmpty(cleanFontName)) continue;
+                    if (PdfParagraph.MathFontRegex.IsMatch(cleanFontName)) continue;
+                    names.Add(cleanFontName);
+                }
+            }
+            return names;
+        }
+
         public static bool ParagraphUsesStrippedFont(PdfParagraph para, HashSet<string> strippedBaseFonts)
         {
             if (strippedBaseFonts.Count == 0) return false;
@@ -118,6 +139,14 @@ namespace Clickra.Core.Processors
 
             if (fontsToStrip.Count == 0) return strippedBaseFonts;
 
+            // A PDF page may store one logical content stream in an array of
+            // separate streams.  The array can split in the middle of a text
+            // run (ASTER page 1 does this immediately after the abstract's
+            // first line), so the active font must survive the stream
+            // boundary.  Resetting it for every stream leaves the remainder
+            // of that run visible after the translated text is drawn.
+            bool stripActive = false;
+            var tokens = new List<string>();
             var contents = page.Contents;
             for (int i = 0; i < contents.Elements.Count; i++)
             {
@@ -126,7 +155,8 @@ namespace Clickra.Core.Processors
                 if (contentObj is PdfDictionary contentDict && contentDict.Stream != null)
                 {
                     byte[] decompressedBytes = contentDict.Stream.UnfilteredValue;
-                    byte[] cleanBytes = StripSelectedText(decompressedBytes, fontsToStrip);
+                    byte[] cleanBytes = StripSelectedText(
+                        decompressedBytes, fontsToStrip, tokens, ref stripActive);
                     contentDict.Stream.Value = cleanBytes;
                     contentDict.Elements.Remove("/Filter");
                 }
@@ -172,14 +202,15 @@ namespace Clickra.Core.Processors
             return false;
         }
 
-        private static byte[] StripSelectedText(byte[] contentBytes, HashSet<string> fontsToStrip)
+        private static byte[] StripSelectedText(
+            byte[] contentBytes,
+            HashSet<string> fontsToStrip,
+            List<string> tokens,
+            ref bool stripActive)
         {
             using var ms = new MemoryStream();
             int i = 0;
             int len = contentBytes.Length;
-
-            bool stripActive = false;
-            var tokens = new List<string>();
 
             while (i < len)
             {
@@ -187,34 +218,7 @@ namespace Clickra.Core.Processors
 
                 if (b == '(')
                 {
-                    int start = i;
-                    i++;
-                    int escapeCount = 0;
-                    while (i < len)
-                    {
-                        byte sb = contentBytes[i];
-                        if (sb == '\\')
-                            escapeCount = (escapeCount + 1) % 2;
-                        else if (sb == ')' && escapeCount == 0)
-                        {
-                            i++;
-                            break;
-                        }
-                        else
-                            escapeCount = 0;
-                        i++;
-                    }
-                    int end = i;
-
-                    if (stripActive)
-                    {
-                        ms.WriteByte((byte)'(');
-                        ms.WriteByte((byte)')');
-                    }
-                    else
-                    {
-                        ms.Write(contentBytes, start, end - start);
-                    }
+                    ProcessParenthesisString(contentBytes, len, stripActive, ms, ref i);
                     continue;
                 }
 
@@ -228,21 +232,7 @@ namespace Clickra.Core.Processors
                         continue;
                     }
 
-                    int start = i;
-                    i++;
-                    while (i < len && contentBytes[i] != '>') i++;
-                    if (i < len) i++;
-                    int end = i;
-
-                    if (stripActive)
-                    {
-                        ms.WriteByte((byte)'<');
-                        ms.WriteByte((byte)'>');
-                    }
-                    else
-                    {
-                        ms.Write(contentBytes, start, end - start);
-                    }
+                    ProcessAngleString(contentBytes, len, stripActive, ms, ref i);
                     continue;
                 }
 
@@ -253,26 +243,89 @@ namespace Clickra.Core.Processors
                     continue;
                 }
 
-                int tokenStart = i;
-                while (i < len && !IsDelimiter(contentBytes, i) && contentBytes[i] != '(' && contentBytes[i] != '<')
-                {
-                    i++;
-                }
-                int tokenLen = i - tokenStart;
-                string token = Encoding.ASCII.GetString(contentBytes, tokenStart, tokenLen);
-                ms.Write(contentBytes, tokenStart, tokenLen);
-
-                tokens.Add(token);
-                if (tokens.Count > 3) tokens.RemoveAt(0);
-
-                if (token == "Tf" && tokens.Count >= 3)
-                {
-                    string fontName = tokens[tokens.Count - 3];
-                    stripActive = fontsToStrip.Contains(fontName.TrimStart('/'));
-                }
+                ProcessOperatorToken(contentBytes, len, fontsToStrip, tokens, ms, ref i, ref stripActive);
             }
 
             return ms.ToArray();
+        }
+
+        private static void ProcessParenthesisString(byte[] contentBytes, int len, bool stripActive, MemoryStream ms, ref int i)
+        {
+            int start = i;
+            i++;
+            int escapeCount = 0;
+            while (i < len)
+            {
+                byte sb = contentBytes[i];
+                if (sb == '\\')
+                    escapeCount = (escapeCount + 1) % 2;
+                else if (sb == ')' && escapeCount == 0)
+                {
+                    i++;
+                    break;
+                }
+                else
+                    escapeCount = 0;
+                i++;
+            }
+            int end = i;
+
+            if (stripActive)
+            {
+                ms.WriteByte((byte)'(');
+                ms.WriteByte((byte)')');
+            }
+            else
+            {
+                ms.Write(contentBytes, start, end - start);
+            }
+        }
+
+        private static void ProcessAngleString(byte[] contentBytes, int len, bool stripActive, MemoryStream ms, ref int i)
+        {
+            int start = i;
+            i++;
+            while (i < len && contentBytes[i] != '>') i++;
+            if (i < len) i++;
+            int end = i;
+
+            if (stripActive)
+            {
+                ms.WriteByte((byte)'<');
+                ms.WriteByte((byte)'>');
+            }
+            else
+            {
+                ms.Write(contentBytes, start, end - start);
+            }
+        }
+
+        private static void ProcessOperatorToken(
+            byte[] contentBytes,
+            int len,
+            HashSet<string> fontsToStrip,
+            List<string> tokens,
+            MemoryStream ms,
+            ref int i,
+            ref bool stripActive)
+        {
+            int tokenStart = i;
+            while (i < len && !IsDelimiter(contentBytes, i) && contentBytes[i] != '(' && contentBytes[i] != '<')
+            {
+                i++;
+            }
+            int tokenLen = i - tokenStart;
+            string token = Encoding.ASCII.GetString(contentBytes, tokenStart, tokenLen);
+            ms.Write(contentBytes, tokenStart, tokenLen);
+
+            tokens.Add(token);
+            if (tokens.Count > 3) tokens.RemoveAt(0);
+
+            if (token == "Tf" && tokens.Count >= 3)
+            {
+                string fontName = tokens[tokens.Count - 3];
+                stripActive = fontsToStrip.Contains(fontName.TrimStart('/'));
+            }
         }
 
         private static bool IsDelimiter(byte[] bytes, int index)

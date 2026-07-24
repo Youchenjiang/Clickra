@@ -131,6 +131,7 @@
 ---
 
 ## 🏁 近期已達成項目 (Recently Accomplished)
+- [x] **v3.6.4.0 PDF 翻譯可靠性與版面穩定化** (2026/07/22)：加入有界限的純 .NET provider fallback、異常輸出品質 guard、暫存檔原子發布及 health gate；保存標題階層、字級、對齊、粗體、合併／窄欄表格、圖說與內外部連結，並以 ASTER 的摘要、Table III 及來源對譯文逐欄渲染占用比較作為發布回歸門檻。
 - [x] **v3.6.2.0 SSL/TLS 憑證驗證安全加強** (2026/07/05)：修復了 MyMemory 翻譯 API 連線中繞過憑證驗證的安全漏洞。移除了非安全的 `RemoteCertificateValidationCallback` 委派以重啟系統預設證書校驗防範 MITM，並使連線協議相容 TLS 1.2 與 TLS 1.3。
 - [x] **v3.6.1.0 PDF 翻譯合字越界崩潰修正** (2026/07/05)：修正了學術論文 PDF 翻譯管線中，當公式出現合字（如 "fi" 等在 PdfPig 中為單個 letters 物件但有多字元 Value）時，因錯誤使用拼接後的字元長度作為 `formula.Letters` 陣列索引導致的 `IndexOutOfRangeException` 崩潰問題。改為直接基於 `formula.Letters.Count` 進行子序列元素比對，並以 `2602.08146v2.pdf` 驗證修復。
 - [x] **v3.5.0.0 LibreOffice 離線 Office 轉檔引擎** (2026/06/29)：新增 Auto / Microsoft Office / LibreOffice 引擎選擇，內建 LibreOffice 官方 MSI manifest、SHA256 驗證、背景安裝/移除與版本比對；未安裝 Microsoft Office 時可透過 LibreOffice 在本機完成 Word、Excel、PowerPoint 轉 PDF；並將轉檔頁九個功能依 Office、PDF、圖片分組，提升尋找效率。

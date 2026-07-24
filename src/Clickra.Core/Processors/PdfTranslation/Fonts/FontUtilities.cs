@@ -17,7 +17,14 @@ namespace Clickra.Core.Processors
 
         public static bool IsSourceFontBold(string? fontName)
         {
-            if (string.IsNullOrEmpty(fontName) || IsLaTeXMediumFont(fontName)) return false;
+            if (string.IsNullOrEmpty(fontName)) return false;
+            // IEEE PDFs commonly encode bold Nimbus text as
+            // "NimbusRomNo9L-Medi" rather than using the word Bold.  Do not
+            // classify other TeX medium/math faces this way.
+            if (fontName.Contains("NimbusRom", StringComparison.OrdinalIgnoreCase) &&
+                fontName.Contains("Medi", StringComparison.OrdinalIgnoreCase))
+                return true;
+            if (IsLaTeXMediumFont(fontName)) return false;
             return fontName.Contains("Bold", StringComparison.OrdinalIgnoreCase) ||
                    fontName.Contains("bx", StringComparison.OrdinalIgnoreCase) ||
                    fontName.Contains("bf", StringComparison.OrdinalIgnoreCase);
@@ -71,50 +78,27 @@ namespace Clickra.Core.Processors
                     continue;
                 }
 
+                if (cp == 0x20DD)
+                {
+                    if (sb.Length > 0 && sb[^1] is >= '1' and <= '9')
+                    {
+                        sb[^1] = (char)(0x2460 + (sb[^1] - '1'));
+                    }
+                    else if (sb.Length > 0 && sb[^1] == '0')
+                    {
+                        sb[^1] = '\u24EA';
+                    }
+                    continue;
+                }
+
+                if (cp == 0x02D8)
+                {
+                    continue;
+                }
+
                 if (cp >= 0x1D400 && cp <= 0x1D7FF)
                 {
-                    if (cp >= 0x1D400 && cp <= 0x1D419) sb.Append((char)('A' + (cp - 0x1D400)));
-                    else if (cp >= 0x1D41A && cp <= 0x1D433) sb.Append((char)('a' + (cp - 0x1D41A)));
-                    else if (cp >= 0x1D434 && cp <= 0x1D44D) sb.Append((char)('A' + (cp - 0x1D434)));
-                    else if (cp >= 0x1D44E && cp <= 0x1D467) sb.Append((char)('a' + (cp - 0x1D44E)));
-                    else if (cp >= 0x1D468 && cp <= 0x1D481) sb.Append((char)('A' + (cp - 0x1D468)));
-                    else if (cp >= 0x1D482 && cp <= 0x1D49B) sb.Append((char)('a' + (cp - 0x1D482)));
-                    else if (cp >= 0x1D49C && cp <= 0x1D4B5) sb.Append((char)('A' + (cp - 0x1D49C)));
-                    else if (cp >= 0x1D4B6 && cp <= 0x1D4CF) sb.Append((char)('a' + (cp - 0x1D4B6)));
-                    else if (cp >= 0x1D4D0 && cp <= 0x1D4E9) sb.Append((char)('A' + (cp - 0x1D4D0)));
-                    else if (cp >= 0x1D4EA && cp <= 0x1D503) sb.Append((char)('a' + (cp - 0x1D4EA)));
-                    else if (cp >= 0x1D504 && cp <= 0x1D51D) sb.Append((char)('A' + (cp - 0x1D504)));
-                    else if (cp >= 0x1D51E && cp <= 0x1D537) sb.Append((char)('a' + (cp - 0x1D51E)));
-                    else if (cp >= 0x1D538 && cp <= 0x1D551) sb.Append((char)('A' + (cp - 0x1D538)));
-                    else if (cp >= 0x1D552 && cp <= 0x1D56B) sb.Append((char)('a' + (cp - 0x1D552)));
-                    else if (cp >= 0x1D56C && cp <= 0x1D585) sb.Append((char)('A' + (cp - 0x1D56C)));
-                    else if (cp >= 0x1D586 && cp <= 0x1D59F) sb.Append((char)('a' + (cp - 0x1D586)));
-                    else if (cp >= 0x1D5A0 && cp <= 0x1D5B9) sb.Append((char)('A' + (cp - 0x1D5A0)));
-                    else if (cp >= 0x1D5BA && cp <= 0x1D5D3) sb.Append((char)('a' + (cp - 0x1D5BA)));
-                    else if (cp >= 0x1D5D4 && cp <= 0x1D5ED) sb.Append((char)('A' + (cp - 0x1D5D4)));
-                    else if (cp >= 0x1D5EE && cp <= 0x1D607) sb.Append((char)('a' + (cp - 0x1D5EE)));
-                    else if (cp >= 0x1D608 && cp <= 0x1D621) sb.Append((char)('A' + (cp - 0x1D608)));
-                    else if (cp >= 0x1D622 && cp <= 0x1D63B) sb.Append((char)('a' + (cp - 0x1D622)));
-                    else if (cp >= 0x1D63C && cp <= 0x1D655) sb.Append((char)('A' + (cp - 0x1D63C)));
-                    else if (cp >= 0x1D656 && cp <= 0x1D66F) sb.Append((char)('a' + (cp - 0x1D656)));
-                    else if (cp >= 0x1D670 && cp <= 0x1D689) sb.Append((char)('A' + (cp - 0x1D670)));
-                    else if (cp >= 0x1D68A && cp <= 0x1D6A3) sb.Append((char)('a' + (cp - 0x1D68A)));
-                    else if (cp >= 0x1D6A8 && cp <= 0x1D6C0) sb.Append((char)(0x0391 + (cp - 0x1D6A8)));
-                    else if (cp >= 0x1D6C2 && cp <= 0x1D6DA) sb.Append((char)(0x03B1 + (cp - 0x1D6C2)));
-                    else if (cp >= 0x1D6E2 && cp <= 0x1D6FA) sb.Append((char)(0x0391 + (cp - 0x1D6E2)));
-                    else if (cp >= 0x1D6FC && cp <= 0x1D714) sb.Append((char)(0x03B1 + (cp - 0x1D6FC)));
-                    else if (cp >= 0x1D71C && cp <= 0x1D734) sb.Append((char)(0x0391 + (cp - 0x1D71C)));
-                    else if (cp >= 0x1D736 && cp <= 0x1D74E) sb.Append((char)(0x03B1 + (cp - 0x1D736)));
-                    else if (cp >= 0x1D756 && cp <= 0x1D76E) sb.Append((char)(0x0391 + (cp - 0x1D756)));
-                    else if (cp >= 0x1D770 && cp <= 0x1D788) sb.Append((char)(0x03B1 + (cp - 0x1D770)));
-                    else if (cp >= 0x1D790 && cp <= 0x1D7A8) sb.Append((char)(0x0391 + (cp - 0x1D790)));
-                    else if (cp >= 0x1D7AA && cp <= 0x1D7C2) sb.Append((char)(0x03B1 + (cp - 0x1D7AA)));
-                    else if (cp >= 0x1D7CE && cp <= 0x1D7D7) sb.Append((char)('0' + (cp - 0x1D7CE)));
-                    else if (cp >= 0x1D7D8 && cp <= 0x1D7E1) sb.Append((char)('0' + (cp - 0x1D7D8)));
-                    else if (cp >= 0x1D7E2 && cp <= 0x1D7EB) sb.Append((char)('0' + (cp - 0x1D7E2)));
-                    else if (cp >= 0x1D7EC && cp <= 0x1D7F5) sb.Append((char)('0' + (cp - 0x1D7EC)));
-                    else if (cp >= 0x1D7F6 && cp <= 0x1D7FF) sb.Append((char)('0' + (cp - 0x1D7F6)));
-                    else sb.Append(char.ConvertFromUtf32(cp));
+                    sb.Append(NormalizeMathCodePoint(cp));
                 }
                 else
                 {
@@ -124,12 +108,80 @@ namespace Clickra.Core.Processors
             return sb.ToString();
         }
 
+        private static string NormalizeMathCodePoint(int cp)
+        {
+            int[] latinUpper = [0x1D400, 0x1D434, 0x1D468, 0x1D49C, 0x1D4D0, 0x1D504, 0x1D538, 0x1D56C, 0x1D5A0, 0x1D5D4, 0x1D608, 0x1D63C, 0x1D670];
+            int[] latinLower = [0x1D41A, 0x1D44E, 0x1D482, 0x1D4B6, 0x1D4EA, 0x1D51E, 0x1D552, 0x1D586, 0x1D5BA, 0x1D5EE, 0x1D622, 0x1D656, 0x1D68A];
+            int[] greekUpper = [0x1D6A8, 0x1D6E2, 0x1D71C, 0x1D756, 0x1D790];
+            int[] greekLower = [0x1D6C2, 0x1D6FC, 0x1D736, 0x1D770, 0x1D7AA];
+            int[] digits = [0x1D7CE, 0x1D7D8, 0x1D7E2, 0x1D7EC, 0x1D7F6];
+
+            if (TryMapMathRange(cp, latinUpper, 25, 'A', out string? mapped)) return mapped;
+            if (TryMapMathRange(cp, latinLower, 25, 'a', out mapped)) return mapped;
+            if (TryMapMathRange(cp, greekUpper, 24, (char)0x0391, out mapped)) return mapped;
+            if (TryMapMathRange(cp, greekLower, 24, (char)0x03B1, out mapped)) return mapped;
+            if (TryMapMathRange(cp, digits, 9, '0', out mapped)) return mapped;
+
+            return char.ConvertFromUtf32(cp);
+        }
+
+        private static bool TryMapMathRange(int cp, int[] starts, int maxOffset, char baseChar, [System.Diagnostics.CodeAnalysis.NotNullWhen(true)] out string? mapped)
+        {
+            if (starts == null || starts.Length == 0)
+            {
+                mapped = null;
+                return false;
+            }
+            for (int i = 0; i < starts.Length; i++)
+            {
+                int start = starts[i];
+                if (cp >= start && cp <= start + maxOffset)
+                {
+                    mapped = ((char)(baseChar + (cp - start))).ToString();
+                    return true;
+                }
+            }
+            mapped = null;
+            return false;
+        }
+
+        /// <summary>
+        /// Applies compatibility normalization while preserving Unicode
+        /// circled caption markers. FormKD expands ①/②/③ into bare digits,
+        /// which would destroy restored figure-caption semantics at render time.
+        /// </summary>
+        public static string NormalizeRenderValue(string val)
+        {
+            if (string.IsNullOrEmpty(val)) return val;
+
+            var sb = new StringBuilder(val.Length);
+            int segmentStart = 0;
+            for (int i = 0; i < val.Length; i++)
+            {
+                char c = val[i];
+                if (!IsCircledCaptionMarker(c)) continue;
+
+                if (i > segmentStart)
+                    sb.Append(val.Substring(segmentStart, i - segmentStart).Normalize(NormalizationForm.FormKD));
+                sb.Append(c);
+                segmentStart = i + 1;
+            }
+
+            if (segmentStart < val.Length)
+                sb.Append(val.Substring(segmentStart).Normalize(NormalizationForm.FormKD));
+
+            return NormalizeMathValue(sb.ToString());
+        }
+
+        public static bool IsCircledCaptionMarker(char c) =>
+            c is >= '\u2460' and <= '\u2473' or '\u24EA';
+
         public static XFont GetMathFont(string originalFontName, double fontSize)
         {
             bool isItalic = originalFontName.Contains("Italic", StringComparison.OrdinalIgnoreCase) ||
                             originalFontName.Contains("CMMI", StringComparison.OrdinalIgnoreCase) ||
                             originalFontName.Contains("mi", StringComparison.OrdinalIgnoreCase);
-            bool isBold = originalFontName.Contains("Bold", StringComparison.OrdinalIgnoreCase);
+            bool isBold = IsSourceFontBold(originalFontName);
 
             var style = XFontStyleEx.Regular;
             if (isItalic && isBold) style = XFontStyleEx.BoldItalic;
@@ -200,6 +252,7 @@ namespace Clickra.Core.Processors
         public static bool IsLatinExtendedOrSymbol(char c)
         {
             if (c >= 0x0080 && c <= 0x024F) return true;
+            if (c is >= '\u2460' and <= '\u2473' or '\u24EA') return true;
             return IsMathOrGreekCharacter(c);
         }
 

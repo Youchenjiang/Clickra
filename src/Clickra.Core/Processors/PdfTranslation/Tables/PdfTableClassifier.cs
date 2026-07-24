@@ -22,6 +22,13 @@ namespace Clickra.Core.Processors
             PdfGeneralTableParagraphMarker.Mark(pageList, pageWidth, pageHeight, isTablePage);
         }
 
+        public static void MarkCaptionDelimitedTableRegions(
+            List<PdfParagraph> pageList,
+            double pageWidth)
+        {
+            PdfGeneralTableParagraphMarker.MarkTableRegionByCaption(pageList, pageWidth);
+        }
+
         public static void ReclassifyAppendixFeatureTableText(List<PdfParagraph> pageList, double pageWidth)
         {
             PdfSpecialTableRegionClassifier.ReclassifyAppendixFeatureTableText(pageList, pageWidth);

@@ -1,4 +1,4 @@
-# Clickra v3.6.3.0
+# Clickra v3.6.4.0
 
 [![Microsoft Store](https://img.shields.io/badge/Microsoft%20Store-Clickra-blue?style=for-the-badge&logo=microsoft-store)](https://apps.microsoft.com/detail/9NGLBF6P1KLD)
 [![License: Apache 2.0](https://img.shields.io/badge/License-Apache%202.0-blue.svg?style=for-the-badge)](https://opensource.org/licenses/Apache-2.0)
@@ -24,9 +24,9 @@
 
 | 版本       | 日期       | 關鍵里程碑                                                             |
 | :--------- | :--------- | :--------------------------------------------------------------------- |
+| **v3.6.4.0** | 2026/07/22 | **可靠且理解版面的 PDF 翻譯**。加入有界限的純 .NET provider fallback、異常輸出 guard 與原子輸出門檻；保存標題階層、字型樣式、合併表格、固定圖形、圖說及連結；加入來源／譯文渲染占用比較與 deterministic ASTER 回歸測試。 |
 | **v3.6.3.0** | 2026/07/09 | **CI/CD 自動化發布與多國語言支援**。新增 GitHub Actions 提交規範檢查、將 Windows 商店上架流程整合至 CI/CD 自動化管線，並為應用程式安裝包與商店頁面完整補全繁中、英文、日文、韓文與簡中 5 國語系原生支援。 |
 | **v3.6.2.0** | 2026/07/05 | **SSL/TLS 憑證驗證加強**。移除了 MyMemory 翻譯 API 中非安全的憑證校驗繞過，還原並啟用系統預設 TLS 1.2/1.3 憑證驗證。 |
-| **v3.6.1.0** | 2026/07/05 | **PDF 翻譯崩潰修復**。解決 PDF 翻譯管線中，處理包含合字 (ligatures) 的數學公式字元時拋出 IndexOutOfRangeException 導致失敗的問題。 |
 
 [檢視完整版本歷史](CHANGELOG.md)
 

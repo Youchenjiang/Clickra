@@ -1,5 +1,13 @@
 # Changelog
 
+## [v3.6.4.0] - 2026-07-22
+
+- **PDF 翻譯可靠性 (PDF Translation Reliability)**：限制文件、provider 與 fallback 的 deadline 和重試範圍；以純 .NET MyMemory 請求、批次拆分及 provider fallback 復原可恢復的失敗。未翻譯原文、破損粗體標記、重複片語與異常英文殘留均會觸發 fallback，且只在翻譯與 health gate 全部通過後原子發布輸出。
+- **來源排版與文字結構保存 (Source Layout and Text Structure Preservation)**：保存標題階層、來源字級、對齊錨點、續行、混合／整段粗體、旋轉文字及圖說標記；新增同欄 layout planning、CJK reflow 與固定區邊界平衡，避免段尾縮字、標題漂移、裁切、底部溢位及異常欄位空白。
+- **固定內容與繪圖保護 (Protected Content and Drawing Preservation)**：保護圖表、合併／窄欄表格、程式碼、公式、灰色 prompt、作者資訊與參考文獻等 bypass 區域，並重建向量標記、邊框、遮罩及 overlay，避免翻譯覆蓋、Table III 列遺失或原始圖形受損。
+- **PDF 連結保存 (PDF Link Preservation)**：依 annotation occurrence 重建內部引用與外部超連結，避免重複文字造成錯誤配對或遺失連結。
+- **診斷與回歸門檻 (Diagnostics and Regression Gates)**：擴充 PDF layout health report，加入來源對譯文的逐頁逐欄渲染占用比較，並以 ASTER 標題、摘要、Table III、圖說、受保護區域、連結、provider fallback 及輸出品質檢查作為 deterministic regression gates。
+
 All notable changes to Clickra will be documented in this file.
 
 ## [v3.6.3.0] - 2026-07-09

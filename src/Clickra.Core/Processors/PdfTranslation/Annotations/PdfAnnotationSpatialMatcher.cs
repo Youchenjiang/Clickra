@@ -44,11 +44,16 @@ namespace Clickra.Core.Processors
                 }
             }
 
-            if (occurrenceIdx > 0 && occurrenceIdx < occurrences.Count)
+            // Translation can change line breaks enough that the original
+            // geometric anchor is no longer close to the matching text. When
+            // the source occurrence ordinal is known, it is the stable
+            // identity of a citation/figure reference and must win over a
+            // stale spatial distance.
+            if (occurrenceIdx >= 0 && occurrenceIdx < occurrences.Count)
             {
-                double idxDist = GetOccurrenceCenterDistance(
+                double occurrenceDist = GetOccurrenceCenterDistance(
                     occurrences[occurrenceIdx], targetPdfX, targetPdfY, preferVerticalAlignment);
-                if (idxDist <= minDist * 1.5 + 2.0)
+                if (occurrenceDist <= minDist * 2.0)
                 {
                     bestIdx = occurrenceIdx;
                 }

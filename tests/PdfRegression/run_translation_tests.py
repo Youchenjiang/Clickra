@@ -62,6 +62,23 @@ def run(name: str, command: list[str], env: dict[str, str] | None = None) -> boo
     return True
 
 
+def _check_fixtures(args: argparse.Namespace) -> int | None:
+    missing = missing_pdf_fixtures()
+    if not missing:
+        return None
+    print("SKIP: PDF regression fixtures are not available.")
+    print("Expected fixture roots:")
+    print(f"  - {SOURCE_DIR.relative_to(ROOT)}")
+    print(f"  - {TRANSLATED_DIR.relative_to(ROOT)}")
+    print("Missing examples:")
+    for path in missing[:8]:
+        print(f"  - {path}")
+    if len(missing) > 8:
+        print(f"  - ... and {len(missing) - 8} more")
+    print("Provide fixtures locally, or run with --require-fixtures to enforce them.")
+    return 1 if args.require_fixtures else 0
+
+
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument(
@@ -94,21 +111,23 @@ def main() -> int:
         action="store_true",
         help="fail instead of skipping when test_pdfs fixtures are missing",
     )
+    parser.add_argument(
+        "--aster-e2e",
+        action="store_true",
+        help="run the local ASTER fixture gate without requiring test_pdfs fixtures",
+    )
     args = parser.parse_args()
 
-    missing = missing_pdf_fixtures()
-    if missing:
-        print("SKIP: PDF regression fixtures are not available.")
-        print("Expected fixture roots:")
-        print(f"  - {SOURCE_DIR.relative_to(ROOT)}")
-        print(f"  - {TRANSLATED_DIR.relative_to(ROOT)}")
-        print("Missing examples:")
-        for path in missing[:8]:
-            print(f"  - {path}")
-        if len(missing) > 8:
-            print(f"  - ... and {len(missing) - 8} more")
-        print("Provide fixtures locally, or run with --require-fixtures to enforce them.")
-        return 1 if args.require_fixtures else 0
+    if args.aster_e2e:
+        return 0 if run(
+            "ASTER PDF E2E",
+            [sys.executable, "tests/PdfRegression/test_aster_e2e.py", "--engine", "synthetic-cjk"],
+            None,
+        ) else 1
+
+    fixture_res = _check_fixtures(args)
+    if fixture_res is not None:
+        return fixture_res
 
     test_dll = (
         ROOT
@@ -149,8 +168,18 @@ def main() -> int:
             None,
         ),
         (
+            "Layout occupancy heuristic contracts",
+            [sys.executable, "tests/PdfRegression/test_layout_occupancy_heuristics.py"],
+            None,
+        ),
+        (
             "Translation output quality",
             [sys.executable, "tests/PdfRegression/test_translation_output_quality.py"],
+            None,
+        ),
+        (
+            "Source/translated layout occupancy",
+            [sys.executable, "tests/PdfRegression/test_translation_layout_occupancy.py"],
             None,
         ),
         (

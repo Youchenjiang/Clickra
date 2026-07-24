@@ -15,6 +15,14 @@ namespace Clickra.Core.Processors
             XBrush brush = XBrushes.Black;
             double tableFontSize = para.AverageFontSize > 0 ? para.AverageFontSize : 10;
             var formulaLetterKeys = BuildFormulaLetterKeys(para);
+            string direction = para.TextDirection?.ToString() ?? "Rotate0";
+            double paragraphRotation = direction switch
+            {
+                "Rotate90" => 90,
+                "Rotate180" => 180,
+                "Rotate270" => -90,
+                _ => 0
+            };
 
             foreach (var letter in para.AllLetters)
             {
@@ -22,17 +30,11 @@ namespace Clickra.Core.Processors
                 if (formulaLetterKeys.Contains(FormulaLetterKey(letter))) continue;
 
                 double fontSize = para.IsTable ? tableFontSize : letter.FontSize;
-                XFont font;
-                if (letter.Value.Any(FontUtilities.IsCjkCharacter))
-                {
-                    font = new XFont(targetFontName, fontSize, XFontStyleEx.Regular);
-                }
-                else
-                {
-                    font = FontUtilities.GetMathFont(letter.FontName, fontSize);
-                }
+                XFont font = letter.Value.Any(FontUtilities.IsCjkCharacter)
+                    ? new XFont(targetFontName, fontSize, XFontStyleEx.Regular)
+                    : FontUtilities.GetMathFont(letter.FontName, fontSize);
 
-                string drawVal = FontUtilities.NormalizeMathValue(letter.Value.Normalize(NormalizationForm.FormKD));
+                string drawVal = FontUtilities.NormalizeRenderValue(letter.Value);
                 if (drawVal.Length == 1 &&
                     (FontUtilities.IsMathOrGreekCharacter(drawVal[0]) || drawVal[0] == '*' || drawVal[0] == '†' || drawVal[0] == '‡'))
                 {
@@ -41,7 +43,25 @@ namespace Clickra.Core.Processors
 
                 double x = letter.X;
                 double y = pageHeight - letter.Y;
-                gfx.DrawString(drawVal, font, brush, x, y);
+                double rotation = Math.Abs(letter.Rotation) > 0.1 ? letter.Rotation : paragraphRotation;
+                if (rotation == 0)
+                {
+                    gfx.DrawString(drawVal, font, brush, x, y);
+                    DrawSyntheticBold(new SyntheticBoldDrawOptions(gfx, drawVal, font, brush, x, y, letter.IsBold, letter.Value.Any(FontUtilities.IsCjkCharacter)));
+                }
+                else
+                {
+                    // PdfPig reports rotated table labels as individual glyph
+                    // positions. Draw each glyph around its source baseline;
+                    // otherwise Java SE/EE labels become upright stacked text
+                    // and appear to move outside their table cells.
+                    var state = gfx.Save();
+                    gfx.TranslateTransform(x, y);
+                    gfx.RotateTransform(rotation);
+                    gfx.DrawString(drawVal, font, brush, 0, 0);
+                    DrawSyntheticBold(new SyntheticBoldDrawOptions(gfx, drawVal, font, brush, 0, 0, letter.IsBold, letter.Value.Any(FontUtilities.IsCjkCharacter)));
+                    gfx.Restore(state);
+                }
             }
 
             // AllLetters is the authoritative source-positioned glyph stream
@@ -55,6 +75,25 @@ namespace Clickra.Core.Processors
                     RenderBypassedFormula(gfx, para, formula, pageHeight, brush);
                 }
             }
+        }
+
+        private readonly record struct SyntheticBoldDrawOptions(
+            XGraphics Gfx,
+            string Text,
+            XFont Font,
+            XBrush Brush,
+            double X,
+            double Y,
+            bool SourceBold,
+            bool Cjk);
+
+        private static void DrawSyntheticBold(SyntheticBoldDrawOptions opts)
+        {
+            // Latin/math source faces use an actual bold XFont. CJK fallback
+            // faces are regular-only; duplicate only those glyphs to preserve
+            // the source weight without changing their metrics.
+            if (!opts.SourceBold || !opts.Cjk) return;
+            opts.Gfx.DrawString(opts.Text, opts.Font, opts.Brush, opts.X + 0.18, opts.Y);
         }
 
         private static string FormulaLetterKey(PdfLetter letter)
@@ -116,7 +155,7 @@ namespace Clickra.Core.Processors
                 {
                     double fSize = ml.FontSize;
                     XFont mathFont = FontUtilities.GetMathFont(ml.FontName, fSize);
-                    string drawVal = FontUtilities.NormalizeMathValue(ml.Value.Normalize(NormalizationForm.FormKD));
+                    string drawVal = FontUtilities.NormalizeRenderValue(ml.Value);
                     if (drawVal.Length == 1 &&
                         (FontUtilities.IsMathOrGreekCharacter(drawVal[0]) || drawVal[0] == '*' || drawVal[0] == '†' || drawVal[0] == '‡'))
                     {
@@ -135,7 +174,7 @@ namespace Clickra.Core.Processors
                 var letter = para.AllLetters[startIdx + j];
                 double fSize = ml.FontSize;
                 XFont mathFont = FontUtilities.GetMathFont(ml.FontName, fSize);
-                string drawVal = FontUtilities.NormalizeMathValue(ml.Value.Normalize(NormalizationForm.FormKD));
+                string drawVal = FontUtilities.NormalizeRenderValue(ml.Value);
                 if (drawVal.Length == 1 &&
                     (FontUtilities.IsMathOrGreekCharacter(drawVal[0]) || drawVal[0] == '*' || drawVal[0] == '†' || drawVal[0] == '‡'))
                 {

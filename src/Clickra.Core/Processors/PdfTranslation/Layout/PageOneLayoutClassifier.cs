@@ -11,8 +11,15 @@ namespace Clickra.Core.Processors
         {
             return pageList
                 .Where(para => para.Y1 > pageHeight * 0.85)
-                .OrderByDescending(para => para.Y1)
-                .ThenByDescending(para => para.AverageFontSize)
+                // A wrapped paper title can be split into lines with unreliable
+                // geometry, while a publication running header can be wider
+                // than the title. Prefer the largest source visual type, then
+                // use width to select the first line over a narrow continuation.
+                .OrderByDescending(para => para.SourceVisualFontSize > 0
+                    ? para.SourceVisualFontSize
+                    : para.AverageFontSize)
+                .ThenByDescending(para => para.Width)
+                .ThenByDescending(para => para.Y1)
                 .FirstOrDefault();
         }
 
@@ -93,20 +100,33 @@ namespace Clickra.Core.Processors
         {
             var titlePara = FindTitleParagraph(pageList, pageHeight);
             if (titlePara == null) return;
+            titlePara.IsPageTitle = true;
 
-            PdfParagraph? subtitlePara = null;
-            foreach (var para in pageList)
-            {
-                if (para == titlePara) continue;
-                if (!IsTitleSubtitleCandidate(para, titlePara)) continue;
-                if (subtitlePara == null || para.Y1 > subtitlePara.Y1)
-                    subtitlePara = para;
-            }
+            // The PDF extractor can split a wrapped paper title into several
+            // same-sized line paragraphs (ASTER's second line is split into
+            // "Generation" and "with LLMs").  The old implementation merged
+            // only one candidate into the title, leaving the other line as a
+            // normal paragraph.  That produced mixed font sizes and allowed
+            // source glyphs to remain over the translated title.  Keep the
+            // first line as the page-title anchor and coalesce every
+            // continuation line into one equally-sized title paragraph.
+            var continuationLines = pageList
+                .Where(para => para != titlePara && IsTitleSubtitleCandidate(para, titlePara))
+                .OrderByDescending(para => para.Y1)
+                .ThenBy(para => para.X0)
+                .ToList();
 
-            if (subtitlePara != null)
+            foreach (var continuation in continuationLines)
+                continuation.IsPageTitle = true;
+
+            if (continuationLines.Count > 1)
             {
-                titlePara.MergeWith(subtitlePara);
-                pageList.Remove(subtitlePara);
+                var continuationAnchor = continuationLines[0];
+                foreach (var continuation in continuationLines.Skip(1))
+                {
+                    continuationAnchor.MergeWith(continuation);
+                    pageList.Remove(continuation);
+                }
             }
         }
 

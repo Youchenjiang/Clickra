@@ -19,18 +19,22 @@ namespace Clickra.Core.Processors
             var candidates = CollectCandidates(pageList, pageWidth, isTablePage);
 
             candidates = KeepCandidatesWithTableNeighbors(candidates, isTablePage);
-            if (candidates.Count < 2) return;
+            if (candidates.Count >= 2)
+            {
+                MarkGroupedCandidates(
+                    pageList,
+                    pageWidth,
+                    candidates,
+                    isTablePage,
+                    hasAuthorBand,
+                    authorTitleBottom,
+                    authorAbstractTop,
+                    authorTitlePara);
+            }
 
-            MarkGroupedCandidates(
-                pageList,
-                pageWidth,
-                candidates,
-                isTablePage,
-                hasAuthorBand,
-                authorTitleBottom,
-                authorAbstractTop,
-                authorTitlePara);
-
+            // Caption-delimited tables do not require multiple independently
+            // segmented cell candidates. Some PDFs merge the entire table body
+            // into one or two narrow text blocks, so this pass must always run.
             MarkMergedTableBlocks(pageList, pageWidth, isTablePage);
         }
 
@@ -122,29 +126,29 @@ namespace Clickra.Core.Processors
             foreach (var cand in candidates)
             {
                 bool isRowStyle = isTablePage && cand.Height < 35 && cand.Width > 80;
-                bool hasNeighbor = false;
-                foreach (var other in candidates)
-                {
-                    if (other == cand) continue;
-                    double overlapY = Math.Min(cand.Y1, other.Y1) - Math.Max(cand.Y0, other.Y0);
-                    double minH = Math.Min(cand.Height, other.Height);
-                    if (overlapY > minH * 0.1)
-                    {
-                        double overlapX = Math.Min(cand.X1, other.X1) - Math.Max(cand.X0, other.X0);
-                        if (overlapX <= 0)
-                        {
-                            hasNeighbor = true;
-                            break;
-                        }
-                    }
-                }
-                if (hasNeighbor || isRowStyle)
+                if (isRowStyle || HasTableNeighbor(cand, candidates))
                 {
                     filteredCandidates.Add(cand);
                 }
             }
 
             return filteredCandidates;
+        }
+
+        private static bool HasTableNeighbor(PdfParagraph cand, List<PdfParagraph> candidates)
+        {
+            foreach (var other in candidates)
+            {
+                if (other == cand) continue;
+                double overlapY = Math.Min(cand.Y1, other.Y1) - Math.Max(cand.Y0, other.Y0);
+                double minH = Math.Min(cand.Height, other.Height);
+                if (overlapY > minH * 0.1)
+                {
+                    double overlapX = Math.Min(cand.X1, other.X1) - Math.Max(cand.X0, other.X0);
+                    if (overlapX <= 0) return true;
+                }
+            }
+            return false;
         }
 
         private static void MarkGroupedCandidates(
@@ -296,82 +300,99 @@ namespace Clickra.Core.Processors
             double pageWidth,
             bool isTablePage)
         {
-            if (!isTablePage) return;
-
-            foreach (var para in pageList)
+            if (isTablePage)
             {
-                if (para.IsTable) continue;
-                string txt = para.TextWithPlaceholders.Trim();
-                if (string.IsNullOrEmpty(txt)) continue;
-                if (IsFigureOrTableCaptionLike(txt)) continue;
-
-                if (para.Height >= 35 && para.Height < 120 && para.Width > 80 && para.Width < pageWidth * 0.45)
-                {
-                    int digitGroups = Regex.Matches(txt, @"\b\d+\b").Count;
-                    int wordCount = txt.Split(new char[] { ' ', '\t', '\n', '\r' }, StringSplitOptions.RemoveEmptyEntries).Length;
-                    if (digitGroups >= 4 && wordCount <= 18)
-                    {
-                        para.IsTable = true;
-                    }
-                }
+                pageList.Where(para => IsDigitDenseTableCandidate(para, pageWidth))
+                    .ToList()
+                    .ForEach(para => para.IsTable = true);
             }
 
             MarkTableRegionByCaption(pageList, pageWidth);
         }
 
-        private static void MarkTableRegionByCaption(List<PdfParagraph> pageList, double pageWidth)
+        private static bool IsDigitDenseTableCandidate(PdfParagraph para, double pageWidth)
         {
-            PdfParagraph? caption = null;
-            foreach (var para in pageList)
-            {
-                string txt = para.TextWithPlaceholders.Trim();
-                if (Regex.IsMatch(
-                        txt, @"^(?:TABLE|Table)\s+[IVXLCDM\d]+", RegexOptions.IgnoreCase))
-                {
-                    caption = para;
-                    break;
-                }
-            }
-            if (caption == null) return;
+            if (para.IsTable) return false;
+            string txt = para.TextWithPlaceholders.Trim();
+            if (string.IsNullOrEmpty(txt) || IsFigureOrTableCaptionLike(txt)) return false;
 
+            if (para.Height >= 35 && para.Height < 120 && para.Width > 80 && para.Width < pageWidth * 0.45)
+            {
+                int digitGroups = Regex.Matches(txt, @"\b\d+\b").Count;
+                int wordCount = txt.Split([' ', '\t', '\n', '\r'], StringSplitOptions.RemoveEmptyEntries).Length;
+                return digitGroups >= 4 && wordCount <= 18;
+            }
+            return false;
+        }
+
+        public static void MarkTableRegionByCaption(List<PdfParagraph> pageList, double pageWidth)
+        {
+            var captions = pageList.Where(para => Regex.IsMatch(
+                    para.TextWithPlaceholders.Trim(),
+                    @"^(?:TABLE|Table)\s+[IVXLCDM\d]+",
+                    RegexOptions.IgnoreCase,
+                    TimeSpan.FromSeconds(1)))
+                .ToList();
+            if (captions.Count == 0) return;
+
+            foreach (var caption in captions)
+            {
+                ProcessCaptionTableRegion(caption, pageList, pageWidth);
+            }
+        }
+
+        private static void ProcessCaptionTableRegion(PdfParagraph caption, List<PdfParagraph> pageList, double pageWidth)
+        {
             double captionCenterX = caption.X0 + caption.Width / 2;
             bool captionOnLeft = captionCenterX < pageWidth / 2;
             double prevBottom = caption.Y0;
 
             foreach (var para in pageList.OrderByDescending(p => p.Y1))
             {
-                if (para == caption) continue;
-
-                double paraCenterX = para.X0 + para.Width / 2;
-                if ((paraCenterX < pageWidth / 2) != captionOnLeft) continue;
-                if (para.Y1 > caption.Y0 + 5) continue;
-
-                double gap = prevBottom - para.Y1;
-                if (gap > 28) break;
+                if (!IsCandidateForCaptionRegion(para, caption, captionOnLeft, pageWidth, prevBottom))
+                    break;
 
                 string txt = para.TextWithPlaceholders.Trim();
-                if (txt.StartsWith("Listing", StringComparison.OrdinalIgnoreCase) ||
-                    txt.StartsWith("Figure", StringComparison.OrdinalIgnoreCase) ||
-                    txt.StartsWith("Fig", StringComparison.OrdinalIgnoreCase))
-                {
+                if (ShouldStopTableRegionScanning(para, txt, pageWidth))
                     break;
-                }
-
-                if (Regex.IsMatch(txt, @"^[IVXLC]+\.\s"))
-                {
-                    break;
-                }
-
-                if (para.Height > 30 && para.Width > pageWidth * 0.35 &&
-                    txt.Split(new char[] { ' ', '\t', '\n', '\r' }, StringSplitOptions.RemoveEmptyEntries).Length > 25)
-                {
-                    break;
-                }
 
                 para.IsTable = true;
                 prevBottom = para.Y0;
             }
         }
+
+        private static bool IsCandidateForCaptionRegion(
+            PdfParagraph para,
+            PdfParagraph caption,
+            bool captionOnLeft,
+            double pageWidth,
+            double prevBottom)
+        {
+            if (para == caption) return false;
+
+            double paraCenterX = para.X0 + para.Width / 2;
+            if ((paraCenterX < pageWidth / 2) != captionOnLeft) return false;
+            if (para.Y1 > caption.Y0 + 5) return false;
+
+            double gap = prevBottom - para.Y1;
+            return gap <= 30;
+        }
+
+        private static bool ShouldStopTableRegionScanning(PdfParagraph para, string txt, double pageWidth)
+        {
+            if (IsCaptionOrSectionBreak(txt)) return true;
+            if (Regex.IsMatch(txt, @"^[IVXLC]+\.\s", RegexOptions.None, TimeSpan.FromSeconds(1))) return true;
+            return IsLargeProseParagraph(para, txt, pageWidth);
+        }
+
+        private static bool IsCaptionOrSectionBreak(string txt) =>
+            txt.StartsWith("Listing", StringComparison.OrdinalIgnoreCase) ||
+            txt.StartsWith("Figure", StringComparison.OrdinalIgnoreCase) ||
+            txt.StartsWith("Fig", StringComparison.OrdinalIgnoreCase);
+
+        private static bool IsLargeProseParagraph(PdfParagraph para, string txt, double pageWidth) =>
+            para.Height > 30 && para.Width > pageWidth * 0.35 &&
+            txt.Split([' ', '\t', '\n', '\r'], StringSplitOptions.RemoveEmptyEntries).Length > 25;
 
         private static bool IsFigureOrTableCaptionLike(string txt)
         {

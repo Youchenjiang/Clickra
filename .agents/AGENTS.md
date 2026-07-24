@@ -2,6 +2,45 @@
 
 This document contains critical project-specific rules and guidelines for building, packaging, and publishing Clickra to the Microsoft Store. These rules must be strictly followed by all AI agents.
 
+## 0. Mandatory Authorization Gate for External Actions
+
+This is a hard safety boundary for every agent and every conversation.
+
+### Default permissions
+
+* Read-only inspection is allowed by default.
+* Local edits are allowed only when the user requested the change. Local edits do not authorize commits, branch operations, or remote operations.
+* Any operation that changes GitHub, Git history, a remote branch/tag, a workflow run, a release, or Microsoft Partner Center requires explicit authorization for that exact operation in the current conversation.
+
+### Actions that require separate explicit authorization
+
+Treat each item below as a separate operation. Do not infer permission for one item from permission for another:
+
+* create, switch to, rename, or delete a branch;
+* commit, push, force-push, create, move, or delete a tag;
+* create, edit, comment on, resolve threads in, merge, close, or delete a pull request;
+* create, edit, delete, rerun, dispatch, or cancel a GitHub Actions workflow or release;
+* submit, commit, delete, or otherwise mutate Microsoft Store / Partner Center state.
+
+For example, “force-push tag `v3.6.3.0`” authorizes only that exact tag operation. It does not authorize opening a branch, opening or merging a PR, changing the workflow, deleting a release, or submitting to the Store.
+
+### Preflight and escalation rule
+
+Before any external action, the agent must:
+
+1. Quote or summarize the user authorization and list the exact operation(s) it covers.
+2. Check the current target (repository, branch, tag, PR, workflow, or release).
+3. Stop and ask if the next required operation is not explicitly covered.
+4. Execute one authorized mutation at a time and report its result before considering another mutation.
+
+If an authorized operation fails and fixing it requires a new branch, code change, PR, merge, workflow change, release change, or Store submission, stop and report the evidence. Do not expand the authorization to unblock the task.
+
+If the user objects to or revokes an action, stop immediately. Do not “clean up” by reverting, deleting, cancelling, or force-pushing anything unless the user separately authorizes that exact cleanup.
+
+## 0.1 PDF Translation Review Artifact Rule
+
+When asking the user to review a PDF translation, provide only a PDF produced by the actual configured translation provider in the target language. `identity`, `synthetic-cjk`, English source PDFs, layout-only diagnostics, and other test-engine outputs are internal fixtures only and must never be presented as reviewable translation results. If the real provider has not completed successfully, state that no reviewable translated PDF is available yet.
+
 ## 1. Microsoft Store Ingestion API Lifecycle & State Definitions
 
 Microsoft Ingestion API operations are heavily asynchronous. Do NOT trust transient HTTP response success codes or simple status string outputs without validating the actual states inside Microsoft Partner Center.

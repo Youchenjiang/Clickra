@@ -4,6 +4,18 @@ using UglyToad.PdfPig.DocumentLayoutAnalysis;
 
 namespace Clickra.Core.Models
 {
+    public enum PdfParagraphSemanticRole
+    {
+        Unknown,
+        PageTitle,
+        AbstractHeading,
+        SectionHeading,
+        SubsectionHeading,
+        FigureCaption,
+        Body,
+        Protected
+    }
+
     public class PdfParagraph
     {
         public enum TextAlignment
@@ -20,6 +32,8 @@ namespace Clickra.Core.Models
         );
 
         public string TextWithPlaceholders { get; set; } = "";
+        /// <summary>Source text annotated with inline style markers for translation.</summary>
+        public string TranslationTextWithStyles { get; set; } = "";
         public string TranslatedText { get; set; } = "";
         public double X0 { get; set; }
         public double Y0 { get; set; }
@@ -39,6 +53,17 @@ namespace Clickra.Core.Models
         public bool IsDiagram { get; set; }
         /// <summary>Paragraph belongs to a gray System Message / Prompt box; keep English.</summary>
         public bool IsGrayPromptContent { get; set; }
+        public bool IsPageTitle { get; set; }
+        /// <summary>Semantic role captured from the source before translation.</summary>
+        public PdfParagraphSemanticRole SemanticRole { get; set; }
+        /// <summary>Largest source glyph size; unlike AverageFontSize this survives title groups.</summary>
+        public double SourceVisualFontSize { get; set; }
+        public double SourceLineHeight { get; set; }
+        /// <summary>Planner-provided effective font size for a continuation line.</summary>
+        public double LayoutFontSizeOverride { get; set; }
+        /// <summary>Planner-provided leading for vertically balanced translated prose.</summary>
+        public double LayoutLineSpacingMultiplierOverride { get; set; }
+        public string TranslationGroupId { get; set; } = string.Empty;
         public bool brk { get; set; }
         public List<MathFormula> Formulas { get; set; } = new List<MathFormula>();
         public object TextDirection { get; set; } = "Rotate0";
@@ -78,6 +103,7 @@ namespace Clickra.Core.Models
         private void ApplyAnalysis(PdfParagraphAnalysis analysis)
         {
             TextWithPlaceholders = analysis.TextWithPlaceholders;
+            TranslationTextWithStyles = analysis.TranslationTextWithStyles;
             AverageFontSize = analysis.AverageFontSize;
             IsBold = analysis.IsBold;
             IsItalic = analysis.IsItalic;
@@ -86,6 +112,8 @@ namespace Clickra.Core.Models
             brk = analysis.HasLineBreak;
             Formulas = analysis.Formulas;
             AllLetters = analysis.AllLetters;
+            SourceVisualFontSize = AllLetters.Count == 0 ? AverageFontSize : AllLetters.Max(l => l.FontSize);
+            SourceLineHeight = AllLetters.Count == 0 ? 0 : AllLetters.Max(l => l.Top - l.Bottom);
         }
 
         public static bool IsMathLine(UglyToad.PdfPig.DocumentLayoutAnalysis.TextLine line)
@@ -114,27 +142,18 @@ namespace Clickra.Core.Models
                 this.Formulas.Add(newFormula);
             }
 
-            string otherText = other.TextWithPlaceholders;
-            if (formulaIdOffset > 0)
-            {
-                otherText = Regex.Replace(otherText, @"\{v(\d+)\}", m =>
-                {
-                    if (int.TryParse(m.Groups[1].Value, out int oldId))
-                    {
-                        return $"{{v{oldId + formulaIdOffset}}}";
-                    }
-                    return m.Value;
-                });
-            }
+            string otherText = AdjustOtherTextFormulaIds(other.TextWithPlaceholders, formulaIdOffset);
 
-            if (string.IsNullOrWhiteSpace(this.TextWithPlaceholders))
-            {
-                this.TextWithPlaceholders = otherText;
-            }
-            else
-            {
-                this.TextWithPlaceholders = this.TextWithPlaceholders + " " + otherText;
-            }
+            this.TextWithPlaceholders = string.IsNullOrWhiteSpace(this.TextWithPlaceholders)
+                ? otherText
+                : this.TextWithPlaceholders + " " + otherText;
+
+            string otherStyled = string.IsNullOrWhiteSpace(other.TranslationTextWithStyles)
+                ? otherText
+                : other.TranslationTextWithStyles;
+            this.TranslationTextWithStyles = string.IsNullOrWhiteSpace(this.TranslationTextWithStyles)
+                ? otherStyled
+                : $"{this.TranslationTextWithStyles} {otherStyled}";
 
             this.AllLetters.AddRange(other.AllLetters);
 
@@ -151,6 +170,8 @@ namespace Clickra.Core.Models
             if (this.AllLetters.Count > 0)
             {
                 this.AverageFontSize = this.AllLetters.Average(l => l.FontSize);
+                this.SourceVisualFontSize = this.AllLetters.Max(l => l.FontSize);
+                this.SourceLineHeight = this.AllLetters.Max(l => l.Top - l.Bottom);
             }
 
             this.brk = true;
@@ -159,6 +180,18 @@ namespace Clickra.Core.Models
             this.IsCode = this.IsCode || other.IsCode;
             this.IsDiagram = this.IsDiagram || other.IsDiagram;
             this.IsGrayPromptContent = this.IsGrayPromptContent || other.IsGrayPromptContent;
+        }
+        private static string AdjustOtherTextFormulaIds(string text, int offset)
+        {
+            if (string.IsNullOrEmpty(text) || offset <= 0) return text ?? string.Empty;
+            return Regex.Replace(text, @"\{v(\d+)\}", m =>
+            {
+                if (int.TryParse(m.Groups[1].Value, out int oldId))
+                {
+                    return $"{{v{oldId + offset}}}";
+                }
+                return m.Value;
+            }, RegexOptions.None, TimeSpan.FromSeconds(1));
         }
     }
 }

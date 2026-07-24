@@ -164,6 +164,12 @@ To keep the `main` branch stable, direct pushes to `main` are prohibited. All ch
 *   **Merge Rules**: Once development is done, push your branch and open a PR. Merge into `main` after review.
 *   **Git Tags & Releases**: When releasing a new version, create a tag locally with the format `vX.Y.Z.0`. Push the tag directly using `git push origin vX.Y.Z.0`. Direct branch pushes to the remote main/release branches are strictly prohibited.
 
+### AI Agent Authorization Gate
+
+The workflow rules above do not grant an agent permission to perform the workflow autonomously. Every external state change requires explicit, operation-specific authorization from the user in the current conversation. This includes branch creation or switching, commits, pushes and force-pushes, tag changes, PR creation or merge, review-thread resolution, release changes, workflow dispatch/rerun/cancel, and Microsoft Store submissions.
+
+Authorization is not transitive: authorization to push a tag does not authorize creating a branch, opening or merging a PR, changing the workflow, deleting a release, or submitting to Partner Center. If an authorized operation fails and a new operation is needed, stop and ask. After the user objects or revokes permission, stop all mutations; do not perform automatic rollback or cleanup.
+
 ### Pull Request Convention
 
 Use the canonical [pull request template](.github/pull_request_template.md).

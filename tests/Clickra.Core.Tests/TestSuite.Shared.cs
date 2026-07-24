@@ -22,6 +22,41 @@ static partial class TestSuite
         return paragraph;
     }
 
+    private static PdfParagraph LayoutParagraph(
+        string source,
+        string translated,
+        double x0,
+        double y0,
+        double x1,
+        double y1,
+        double fontSize = 10)
+    {
+        var paragraph = new PdfParagraph(Array.Empty<UglyToad.PdfPig.DocumentLayoutAnalysis.TextLine>())
+        {
+            TextWithPlaceholders = source,
+            TranslatedText = translated,
+            X0 = x0,
+            Y0 = y0,
+            X1 = x1,
+            Y1 = y1,
+            AverageFontSize = fontSize,
+            SourceVisualFontSize = fontSize,
+            SourceLineHeight = fontSize,
+            SemanticRole = PdfParagraphSemanticRole.Body
+        };
+        foreach (var (name, value) in new[]
+        {
+            (nameof(PdfParagraph.OriginalX0), x0),
+            (nameof(PdfParagraph.OriginalY0), y0),
+            (nameof(PdfParagraph.OriginalX1), x1),
+            (nameof(PdfParagraph.OriginalY1), y1)
+        })
+        {
+            typeof(PdfParagraph).GetProperty(name)?.SetValue(paragraph, value);
+        }
+        return paragraph;
+    }
+
     private static void AssertParagraph(
         TranslationPageDiagnostics page,
         string text,

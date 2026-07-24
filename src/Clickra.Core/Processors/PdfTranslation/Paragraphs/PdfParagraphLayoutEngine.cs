@@ -17,60 +17,23 @@ namespace Clickra.Core.Processors
             int len = text.Length;
             while (i < len)
             {
-                if (text[i] == '{' && i + 2 < len && text[i + 1] == 'v')
-                {
-                    int j = i;
-                    while (j < len && text[j] != '}') j++;
-                    if (j < len && text[j] == '}')
-                    {
-                        if (sb.Length > 0)
-                        {
-                            list.Add(sb.ToString());
-                            sb.Clear();
-                        }
-                        list.Add(text.Substring(i, j - i + 1));
-                        i = j + 1;
-                        continue;
-                    }
-                }
+                if (TryTokenizeSpecialTag(text, len, list, sb, ref i))
+                    continue;
 
                 char c = text[i];
                 if (c == '\n' || c == '\r')
                 {
-                    if (sb.Length > 0)
-                    {
-                        list.Add(sb.ToString());
-                        sb.Clear();
-                    }
+                    if (sb.Length > 0) { list.Add(sb.ToString()); sb.Clear(); }
                     list.Add("\n");
-                    if (c == '\r' && i + 1 < len && text[i + 1] == '\n')
-                    {
-                        i++;
-                    }
+                    if (c == '\r' && i + 1 < len && text[i + 1] == '\n') i++;
                     i++;
                     continue;
                 }
 
-                if (FontUtilities.IsCjkCharacter(c) || FontUtilities.IsLatinExtendedOrSymbol(c))
+                if (FontUtilities.IsCjkCharacter(c) || FontUtilities.IsLatinExtendedOrSymbol(c) || c == ' ')
                 {
-                    if (sb.Length > 0)
-                    {
-                        list.Add(sb.ToString());
-                        sb.Clear();
-                    }
+                    if (sb.Length > 0) { list.Add(sb.ToString()); sb.Clear(); }
                     list.Add(c.ToString());
-                    i++;
-                    continue;
-                }
-
-                if (c == ' ')
-                {
-                    if (sb.Length > 0)
-                    {
-                        list.Add(sb.ToString());
-                        sb.Clear();
-                    }
-                    list.Add(" ");
                     i++;
                     continue;
                 }
@@ -80,6 +43,47 @@ namespace Clickra.Core.Processors
             }
             if (sb.Length > 0) list.Add(sb.ToString());
             return list;
+        }
+
+        private static bool TryTokenizeSpecialTag(string text, int len, List<string> list, StringBuilder sb, ref int i)
+        {
+            if (TryTokenizeBoldTag(text, list, sb, ref i)) return true;
+            return TryTokenizeVariableTag(text, len, list, sb, ref i);
+        }
+
+        private static bool TryTokenizeBoldTag(string text, List<string> list, StringBuilder sb, ref int i)
+        {
+            if (text.AsSpan(i).StartsWith("{b}"))
+            {
+                if (sb.Length > 0) { list.Add(sb.ToString()); sb.Clear(); }
+                list.Add("{b}");
+                i += 3;
+                return true;
+            }
+            if (text.AsSpan(i).StartsWith("{/b}"))
+            {
+                if (sb.Length > 0) { list.Add(sb.ToString()); sb.Clear(); }
+                list.Add("{/b}");
+                i += 4;
+                return true;
+            }
+            return false;
+        }
+
+        private static bool TryTokenizeVariableTag(string text, int len, List<string> list, StringBuilder sb, ref int i)
+        {
+            if (text[i] == '{' && i + 2 < len && text[i + 1] == 'v')
+            {
+                int j = text.IndexOf('}', i);
+                if (j != -1)
+                {
+                    if (sb.Length > 0) { list.Add(sb.ToString()); sb.Clear(); }
+                    list.Add(text.Substring(i, j - i + 1));
+                    i = j + 1;
+                    return true;
+                }
+            }
+            return false;
         }
 
         public static List<PdfLayoutRow> LayoutParagraph(List<string> tokens, XFont font, List<MathFormula> formulas, double maxWidth, double fontSize, double averageFontSize, XGraphics gfx)
@@ -98,96 +102,27 @@ namespace Clickra.Core.Processors
                     continue;
                 }
 
-                bool isFormula = token.StartsWith("{v") && token.EndsWith("}");
-                double width = 0;
-                int formulaId = -1;
-
-                if (isFormula)
+                if (token is "{b}" or "{/b}")
                 {
-                    if (int.TryParse(token.Substring(2, token.Length - 3), out formulaId) && formulaId >= 0 && formulaId < formulas.Count)
+                    currentRow.Elements.Add(new PdfLayoutElement
                     {
-                        var formula = formulas[formulaId];
-                        double formulaScale = fontSize / averageFontSize;
-                        bool hasMono = formula.Letters.Any(l => FontUtilities.IsMonospaceFont(l.FontName));
-                        if (hasMono)
-                        {
-                            formulaScale *= 1.0;
-                        }
-                        width = formula.Width * formulaScale;
-                    }
-                    else
-                    {
-                        // Placeholder {vN} without a matching formula (e.g. CCS/footnote body text) — render as text.
-                        isFormula = false;
-                        formulaId = -1;
-                        width = gfx.MeasureString(FontUtilities.NormalizeMathValue(token), font).Width;
-                    }
-                }
-                else
-                {
-                    if (token == " ")
-                    {
-                        width = gfx.MeasureString(" ", font).Width;
-                    }
-                    else if (token.Length == 1 && FontUtilities.IsLatinExtendedOrSymbol(token[0]))
-                    {
-                        char c = token[0];
-                        string fontName;
-                        if (c >= 0x0080 && c <= 0x024F)
-                        {
-                            fontName = font.FontFamily.Name.Contains("Courier") ? "Courier New" : "Arial";
-                        }
-                        else
-                        {
-                            fontName = "Segoe UI Symbol";
-                        }
-                        XFont fallbackFont = new XFont(fontName, font.Size, font.Style);
-                        width = gfx.MeasureString(FontUtilities.NormalizeMathValue(token), fallbackFont).Width;
-                    }
-                    else
-                    {
-                        width = gfx.MeasureString(FontUtilities.NormalizeMathValue(token), font).Width;
-                    }
+                        Text = token,
+                        IsStyleMarker = true,
+                        StyleBold = token == "{b}",
+                        Width = 0
+                    });
+                    continue;
                 }
 
-                // If single token is wider than maxWidth, split at URL-friendly breakpoints
-                if (width > maxWidth && !isFormula && token.Length > 1 && token != " ")
-                {
-                    // Try to split the token at URL/path-friendly characters
-                    var breakChars = new char[] { '/', '-', '.', '_', '=' };
-                    var subTokens = new List<string>();
-                    var sb2 = new StringBuilder();
-                    foreach (char ch in token)
-                    {
-                        if (Array.IndexOf(breakChars, ch) >= 0)
-                        {
-                            sb2.Append(ch);
-                            subTokens.Add(sb2.ToString());
-                            sb2.Clear();
-                        }
-                        else
-                        {
-                            sb2.Append(ch);
-                        }
-                    }
-                    if (sb2.Length > 0) subTokens.Add(sb2.ToString());
+                var measured = MeasureTokenWidth(new TokenMeasureOptions(token, font, formulas, fontSize, averageFontSize, gfx));
+                bool isFormula = measured.IsFormula;
+                int formulaId = measured.FormulaId;
+                double width = measured.Width;
 
-                    if (subTokens.Count > 1)
-                    {
-                        foreach (var sub in subTokens)
-                        {
-                            double subWidth = gfx.MeasureString(FontUtilities.NormalizeMathValue(sub), font).Width;
-                            if (currentX + subWidth > maxWidth && currentRow.Elements.Count > 0)
-                            {
-                                rows.Add(currentRow);
-                                currentRow = new PdfLayoutRow();
-                                currentX = 0;
-                            }
-                            currentRow.Elements.Add(new PdfLayoutElement { Text = sub, IsFormula = false, FormulaId = -1, Width = subWidth });
-                            currentX += subWidth;
-                        }
-                        continue;
-                    }
+                if (width > maxWidth && !isFormula && token.Length > 1 && token != " " &&
+                    TrySplitOverlongToken(token, font, maxWidth, gfx, ref currentRow, ref rows, ref currentX))
+                {
+                    continue;
                 }
 
                 if (currentX + width > maxWidth && currentRow.Elements.Count > 0)
@@ -208,12 +143,106 @@ namespace Clickra.Core.Processors
                 currentX += width;
             }
 
-            if (currentRow.Elements.Count > 0)
-            {
-                rows.Add(currentRow);
-            }
+            if (currentRow.Elements.Count > 0) rows.Add(currentRow);
 
             return rows;
+        }
+
+        private readonly record struct TokenMeasureOptions(
+            string Token,
+            XFont Font,
+            List<MathFormula> Formulas,
+            double FontSize,
+            double AverageFontSize,
+            XGraphics Gfx);
+
+        private readonly record struct MeasuredTokenInfo(
+            bool IsFormula,
+            int FormulaId,
+            double Width);
+
+        private static MeasuredTokenInfo MeasureTokenWidth(TokenMeasureOptions opts)
+        {
+            bool isFormula = opts.Token.StartsWith("{v") && opts.Token.EndsWith('}');
+            if (isFormula)
+            {
+                if (int.TryParse(opts.Token.Substring(2, opts.Token.Length - 3), out int formulaId) && formulaId >= 0 && formulaId < opts.Formulas.Count)
+                {
+                    var formula = opts.Formulas[formulaId];
+                    double formulaScale = opts.FontSize / opts.AverageFontSize;
+                    return new MeasuredTokenInfo(true, formulaId, formula.Width * formulaScale);
+                }
+                return new MeasuredTokenInfo(false, -1, opts.Gfx.MeasureString(FontUtilities.NormalizeMathValue(opts.Token), opts.Font).Width);
+            }
+
+            if (opts.Token == " ")
+            {
+                return new MeasuredTokenInfo(false, -1, opts.Gfx.MeasureString(" ", opts.Font).Width);
+            }
+
+            if (opts.Token.Length == 1 && FontUtilities.IsLatinExtendedOrSymbol(opts.Token[0]))
+            {
+                char c = opts.Token[0];
+                string fontName;
+                if (c >= 0x0080 && c <= 0x024F)
+                {
+                    fontName = opts.Font.FontFamily.Name.Contains("Courier") ? "Courier New" : "Arial";
+                }
+                else
+                {
+                    fontName = "Segoe UI Symbol";
+                }
+                XFont fallbackFont = new(fontName, opts.Font.Size, opts.Font.Style);
+                return new MeasuredTokenInfo(false, -1, opts.Gfx.MeasureString(FontUtilities.NormalizeMathValue(opts.Token), fallbackFont).Width);
+            }
+
+            return new MeasuredTokenInfo(false, -1, opts.Gfx.MeasureString(FontUtilities.NormalizeMathValue(opts.Token), opts.Font).Width);
+        }
+
+        private static bool TrySplitOverlongToken(
+            string token,
+            XFont font,
+            double maxWidth,
+            XGraphics gfx,
+            ref PdfLayoutRow currentRow,
+            ref List<PdfLayoutRow> rows,
+            ref double currentX)
+        {
+            char[] breakChars = ['/', '-', '.', '_', '='];
+            var subTokens = new List<string>();
+            var sb2 = new StringBuilder();
+            foreach (char ch in token)
+            {
+                if (Array.IndexOf(breakChars, ch) >= 0)
+                {
+                    sb2.Append(ch);
+                    subTokens.Add(sb2.ToString());
+                    sb2.Clear();
+                }
+                else
+                {
+                    sb2.Append(ch);
+                }
+            }
+            if (sb2.Length > 0) subTokens.Add(sb2.ToString());
+
+            if (subTokens.Count > 1)
+            {
+                foreach (var sub in subTokens)
+                {
+                    double subWidth = gfx.MeasureString(FontUtilities.NormalizeMathValue(sub), font).Width;
+                    if (currentX + subWidth > maxWidth && currentRow.Elements.Count > 0)
+                    {
+                        rows.Add(currentRow);
+                        currentRow = new PdfLayoutRow();
+                        currentX = 0;
+                    }
+                    currentRow.Elements.Add(new PdfLayoutElement { Text = sub, IsFormula = false, FormulaId = -1, Width = subWidth });
+                    currentX += subWidth;
+                }
+                return true;
+            }
+            return false;
         }
     }
 }
