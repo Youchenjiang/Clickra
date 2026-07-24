@@ -621,7 +621,7 @@ static partial class TestSuite
 
         runner.Run("Vertical balancing ignores incidental fixed-region overlap", () =>
         {
-            try { GlobalFontSettings.FontResolver = new ClickraFontResolver(); } catch (Exception) { /* Font resolver already initialized */ }
+            try { GlobalFontSettings.FontResolver = new ClickraFontResolver(); } catch (InvalidOperationException) { /* Font resolver already initialized */ }
             using var document = new PdfDocument();
             var page = document.AddPage();
             page.Width = XUnit.FromPoint(612);
