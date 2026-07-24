@@ -48,4 +48,7 @@
   <data name="Menu_DecryptPdf" xml:space="preserve">
     <value>PDF パスワード解除</value>
   </data>
+  <data name="Menu_SplitPdf" xml:space="preserve">
+    <value>PDF 分割</value>
+  </data>
 </root>

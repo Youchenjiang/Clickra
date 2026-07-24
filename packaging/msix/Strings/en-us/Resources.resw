@@ -48,4 +48,7 @@
   <data name="Menu_DecryptPdf" xml:space="preserve">
     <value>Remove PDF Password</value>
   </data>
+  <data name="Menu_SplitPdf" xml:space="preserve">
+    <value>Split PDF</value>
+  </data>
 </root>
