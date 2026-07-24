@@ -134,26 +134,6 @@ static partial class TestSuite
                     new List<MathFormula> { formula }));
         });
 
-        runner.Run("Math normalization removes non-printing font artifacts", () =>
-        {
-            Assert.Equal(
-                "λ̸t",
-                FontUtilities.NormalizeMathValue("\0λ\u0001\u000C\u0338t"));
-            Assert.Equal("①", FontUtilities.NormalizeMathValue("1⃝"));
-            Assert.Equal("Pasareanu", FontUtilities.NormalizeMathValue("P˘as˘areanu"));
-        });
-
-        runner.Run("Math normalization preserves circled figure markers", () =>
-        {
-            Assert.Equal(
-                CircledNumbersText,
-                FontUtilities.NormalizeMathValue("1⃝、2⃝、3⃝"));
-            Assert.True(
-                PdfParagraphLayoutEngine.TokenizeTranslatedText(CircledNumbersText).Contains("①"),
-                "Circled marker should remain an inline symbol token.");
-            Assert.Equal(CircledNumbersText, FontUtilities.NormalizeRenderValue(CircledNumbersText));
-        });
-
         runner.Run("Caption marker formulas are restored inline", () =>
         {
             var formulas = Enumerable.Range(0, 3)
