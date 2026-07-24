@@ -69,15 +69,20 @@ internal static class PdfTranslatedParagraphRenderer
                 lineSpacingMultiplier = para.LayoutLineSpacingMultiplierOverride;
             double lineHeight = fontSize * lineSpacingMultiplier;
             double limitHeight = isRotated ? para.Width : paragraphHeight;
-
-            RunFontShrinkLoop(
+            var fontState = new FontMetricsState(fontSize, mainFont, lineHeight, lineSpacingMultiplier);
+            var shrinkResult = RunFontShrinkLoop(
                 new FontShrinkInput(tokens, para.Formulas, gfx, fontNameForPara, fontStyle,
                     layoutWidth, limitHeight, isHeading, allowNaturalBodyHeight, flowableBody, sourceBodyFontFloor,
                     para.AverageFontSize),
-                ref fontSize, ref mainFont, ref lineHeight, ref lineSpacingMultiplier,
-                out List<PdfLayoutRow> rows, out double renderedHeight, out double maxRowWidth);
+                fontState);
 
-            renderedHeight = rows.Count * lineHeight;
+            fontSize = shrinkResult.FontSize;
+            mainFont = shrinkResult.MainFont;
+            lineHeight = shrinkResult.LineHeight;
+            var rows = shrinkResult.Rows;
+            double maxRowWidth = shrinkResult.MaxRowWidth;
+            double renderedHeight = rows.Count * lineHeight;
+
             ComputeOverflow(new OverflowInput(layoutWidth, limitHeight, paragraphWidth, isHeading, allowNaturalBodyHeight,
                     maxRowWidth, renderedHeight), out bool horizontalOverflow, out bool verticalOverflow, out double effectiveLimitHeight);
             metricsSink?.Invoke(new PdfParagraphRenderMetrics(
@@ -92,7 +97,6 @@ internal static class PdfTranslatedParagraphRenderer
                 rows.Count,
                 lineSpacingMultiplier));
 
-            // In measure-only mode, skip all drawing and just return the height
             if (measureOnly)
             {
                 if (state != null) gfx.Restore(state);
@@ -101,20 +105,7 @@ internal static class PdfTranslatedParagraphRenderer
 
             double currentY = isRotated ? fontSize : (paragraphY + fontSize);
             var renderedChars = new List<RenderedChar>();
-            XGraphicsState? headingScaleState = null;
-            if (!isRotated && isPageTitle && maxRowWidth > 0)
-            {
-                double availableTitleWidth = gfx.PageSize.Width - 72.0;
-                double horizontalScale = Math.Min(1.0, availableTitleWidth / maxRowWidth);
-                if (horizontalScale < 0.999)
-                {
-                    double anchor = (para.X0 + para.X1) / 2.0;
-                    headingScaleState = gfx.Save();
-                    gfx.TranslateTransform(anchor, 0);
-                    gfx.ScaleTransform(horizontalScale, 1.0);
-                    gfx.TranslateTransform(-anchor, 0);
-                }
-            }
+            XGraphicsState? headingScaleState = ApplyHeadingTitleScaleTransform(gfx, isRotated, isPageTitle, maxRowWidth, para);
             RenderParagraphRows(new ParagraphRowRenderOptions(
                 gfx, rows, para, text, mainFont, brush, GetInlineFont, UseSyntheticBold,
                 paragraphX, paragraphWidth, layoutWidth, lineHeight, fontSize,
@@ -281,6 +272,39 @@ internal static class PdfTranslatedParagraphRenderer
             return null;
         }
 
+        private static XGraphicsState? ApplyHeadingTitleScaleTransform(
+            XGraphics gfx, bool isRotated, bool isPageTitle, double maxRowWidth, PdfParagraph para)
+        {
+            if (isRotated || !isPageTitle || maxRowWidth <= 0) return null;
+
+            double availableTitleWidth = gfx.PageSize.Width - 72.0;
+            double horizontalScale = Math.Min(1.0, availableTitleWidth / maxRowWidth);
+            if (horizontalScale >= 0.999) return null;
+
+            double anchor = (para.X0 + para.X1) / 2.0;
+            var headingScaleState = gfx.Save();
+            gfx.TranslateTransform(anchor, 0);
+            gfx.ScaleTransform(horizontalScale, 1.0);
+            gfx.TranslateTransform(-anchor, 0);
+            return headingScaleState;
+        }
+
+        private sealed class FontMetricsState(double fontSize, XFont mainFont, double lineHeight, double lineSpacingMultiplier)
+        {
+            public double FontSize { get; set; } = fontSize;
+            public XFont MainFont { get; set; } = mainFont;
+            public double LineHeight { get; set; } = lineHeight;
+            public double LineSpacingMultiplier { get; } = lineSpacingMultiplier;
+        }
+
+        private sealed record FontShrinkResult(
+            double FontSize,
+            XFont MainFont,
+            double LineHeight,
+            List<PdfLayoutRow> Rows,
+            double RenderedHeight,
+            double MaxRowWidth);
+
         private readonly record struct FontShrinkInput(
             List<string> Tokens,
             List<MathFormula> Formulas,
@@ -294,52 +318,63 @@ internal static class PdfTranslatedParagraphRenderer
             bool FlowableBody,
             double SourceBodyFontFloor,
             double AverageFontSize);
-        private static void RunFontShrinkLoop(
-            FontShrinkInput input,
-            ref double fontSize,
-            ref XFont mainFont,
-            ref double lineHeight,
-            ref double lineSpacingMultiplier,
-            out List<PdfLayoutRow> rows,
-            out double renderedHeight,
-            out double maxRowWidth)
+
+        private static FontShrinkResult RunFontShrinkLoop(FontShrinkInput input, FontMetricsState state)
         {
-            rows = new();
-            renderedHeight = 0;
-            maxRowWidth = 0;
+            List<PdfLayoutRow> rows = new();
+            double renderedHeight = 0;
+            double maxRowWidth = 0;
 
             for (int attempt = 0; attempt < 6; attempt++)
             {
                 rows = PdfParagraphLayoutEngine.LayoutParagraph(
-                    input.Tokens, mainFont, input.Formulas, input.LayoutWidth, fontSize, input.AverageFontSize, input.Gfx);
-                renderedHeight = rows.Count * lineHeight;
+                    input.Tokens, state.MainFont, input.Formulas, input.LayoutWidth, state.FontSize, input.AverageFontSize, input.Gfx);
+                renderedHeight = rows.Count * state.LineHeight;
                 maxRowWidth = rows.Count == 0
                     ? 0
                     : rows.Max(row => row.Elements.Sum(element => element.Width));
 
-                bool fitsWidth = maxRowWidth <= input.LayoutWidth + 0.5;
-                bool fitsHeight = input.IsHeading || input.AllowNaturalBodyHeight || input.FlowableBody ||
-                    renderedHeight <= input.LimitHeight + 0.5;
-                if (fitsWidth && fitsHeight) break;
-                if (input.IsHeading) break;
+                if (ShouldStopFontShrinking(input, maxRowWidth, renderedHeight)) break;
 
-                double scale = 0.94;
-                if (!fitsWidth && maxRowWidth > 0)
-                    scale = Math.Min(scale, input.LayoutWidth / maxRowWidth);
-                if (!fitsHeight && renderedHeight > 0)
-                    scale = Math.Min(scale, input.LimitHeight / renderedHeight);
+                if (!TryCalculateNextFontSize(input, state.FontSize, maxRowWidth, renderedHeight, out double nextFontSize))
+                    break;
 
-                scale = Math.Clamp(scale, 0.80, 0.94);
-                double minimumFontSize = Math.Max(input.SourceBodyFontFloor, fontSize * 0.80);
-                double nextFontSize = fontSize * scale;
-                if (input.FlowableBody)
-                    nextFontSize = Math.Max(minimumFontSize, nextFontSize);
-                if (nextFontSize >= fontSize - 0.01) break;
-
-                fontSize = nextFontSize;
-                mainFont = new XFont(input.FontName, fontSize, input.FontStyle);
-                lineHeight = fontSize * lineSpacingMultiplier;
+                state.FontSize = nextFontSize;
+                state.MainFont = new XFont(input.FontName, state.FontSize, input.FontStyle);
+                state.LineHeight = state.FontSize * state.LineSpacingMultiplier;
             }
+
+            return new FontShrinkResult(state.FontSize, state.MainFont, state.LineHeight, rows, renderedHeight, maxRowWidth);
+        }
+
+        private static bool ShouldStopFontShrinking(FontShrinkInput input, double maxRowWidth, double renderedHeight)
+        {
+            bool fitsWidth = maxRowWidth <= input.LayoutWidth + 0.5;
+            bool fitsHeight = input.IsHeading || input.AllowNaturalBodyHeight || input.FlowableBody ||
+                renderedHeight <= input.LimitHeight + 0.5;
+            return (fitsWidth && fitsHeight) || input.IsHeading;
+        }
+
+        private static bool TryCalculateNextFontSize(
+            FontShrinkInput input, double currentFontSize, double maxRowWidth, double renderedHeight, out double nextFontSize)
+        {
+            double scale = 0.94;
+            bool fitsWidth = maxRowWidth <= input.LayoutWidth + 0.5;
+            bool fitsHeight = input.IsHeading || input.AllowNaturalBodyHeight || input.FlowableBody ||
+                renderedHeight <= input.LimitHeight + 0.5;
+
+            if (!fitsWidth && maxRowWidth > 0)
+                scale = Math.Min(scale, input.LayoutWidth / maxRowWidth);
+            if (!fitsHeight && renderedHeight > 0)
+                scale = Math.Min(scale, input.LimitHeight / renderedHeight);
+
+            scale = Math.Clamp(scale, 0.80, 0.94);
+            double minimumFontSize = Math.Max(input.SourceBodyFontFloor, currentFontSize * 0.80);
+            nextFontSize = currentFontSize * scale;
+            if (input.FlowableBody)
+                nextFontSize = Math.Max(minimumFontSize, nextFontSize);
+
+            return nextFontSize < currentFontSize - 0.01;
         }
 
         private readonly record struct OverflowInput(
