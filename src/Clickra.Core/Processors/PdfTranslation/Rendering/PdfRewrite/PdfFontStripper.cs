@@ -218,7 +218,7 @@ namespace Clickra.Core.Processors
 
                 if (b == '(')
                 {
-                    ProcessParenthesisString(contentBytes, ref i, len, stripActive, ms);
+                    ProcessParenthesisString(contentBytes, len, stripActive, ms, ref i);
                     continue;
                 }
 
@@ -232,7 +232,7 @@ namespace Clickra.Core.Processors
                         continue;
                     }
 
-                    ProcessAngleString(contentBytes, ref i, len, stripActive, ms);
+                    ProcessAngleString(contentBytes, len, stripActive, ms, ref i);
                     continue;
                 }
 
@@ -243,13 +243,13 @@ namespace Clickra.Core.Processors
                     continue;
                 }
 
-                ProcessOperatorToken(contentBytes, ref i, len, fontsToStrip, tokens, ms, ref stripActive);
+                ProcessOperatorToken(contentBytes, len, fontsToStrip, tokens, ms, ref i, ref stripActive);
             }
 
             return ms.ToArray();
         }
 
-        private static void ProcessParenthesisString(byte[] contentBytes, ref int i, int len, bool stripActive, MemoryStream ms)
+        private static void ProcessParenthesisString(byte[] contentBytes, int len, bool stripActive, MemoryStream ms, ref int i)
         {
             int start = i;
             i++;
@@ -281,7 +281,7 @@ namespace Clickra.Core.Processors
             }
         }
 
-        private static void ProcessAngleString(byte[] contentBytes, ref int i, int len, bool stripActive, MemoryStream ms)
+        private static void ProcessAngleString(byte[] contentBytes, int len, bool stripActive, MemoryStream ms, ref int i)
         {
             int start = i;
             i++;
@@ -302,11 +302,11 @@ namespace Clickra.Core.Processors
 
         private static void ProcessOperatorToken(
             byte[] contentBytes,
-            ref int i,
             int len,
             HashSet<string> fontsToStrip,
             List<string> tokens,
             MemoryStream ms,
+            ref int i,
             ref bool stripActive)
         {
             int tokenStart = i;
