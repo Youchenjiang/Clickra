@@ -218,34 +218,7 @@ namespace Clickra.Core.Processors
 
                 if (b == '(')
                 {
-                    int start = i;
-                    i++;
-                    int escapeCount = 0;
-                    while (i < len)
-                    {
-                        byte sb = contentBytes[i];
-                        if (sb == '\\')
-                            escapeCount = (escapeCount + 1) % 2;
-                        else if (sb == ')' && escapeCount == 0)
-                        {
-                            i++;
-                            break;
-                        }
-                        else
-                            escapeCount = 0;
-                        i++;
-                    }
-                    int end = i;
-
-                    if (stripActive)
-                    {
-                        ms.WriteByte((byte)'(');
-                        ms.WriteByte((byte)')');
-                    }
-                    else
-                    {
-                        ms.Write(contentBytes, start, end - start);
-                    }
+                    ProcessParenthesisString(contentBytes, ref i, len, stripActive, ms);
                     continue;
                 }
 
@@ -259,21 +232,7 @@ namespace Clickra.Core.Processors
                         continue;
                     }
 
-                    int start = i;
-                    i++;
-                    while (i < len && contentBytes[i] != '>') i++;
-                    if (i < len) i++;
-                    int end = i;
-
-                    if (stripActive)
-                    {
-                        ms.WriteByte((byte)'<');
-                        ms.WriteByte((byte)'>');
-                    }
-                    else
-                    {
-                        ms.Write(contentBytes, start, end - start);
-                    }
+                    ProcessAngleString(contentBytes, ref i, len, stripActive, ms);
                     continue;
                 }
 
@@ -284,26 +243,89 @@ namespace Clickra.Core.Processors
                     continue;
                 }
 
-                int tokenStart = i;
-                while (i < len && !IsDelimiter(contentBytes, i) && contentBytes[i] != '(' && contentBytes[i] != '<')
-                {
-                    i++;
-                }
-                int tokenLen = i - tokenStart;
-                string token = Encoding.ASCII.GetString(contentBytes, tokenStart, tokenLen);
-                ms.Write(contentBytes, tokenStart, tokenLen);
-
-                tokens.Add(token);
-                if (tokens.Count > 3) tokens.RemoveAt(0);
-
-                if (token == "Tf" && tokens.Count >= 3)
-                {
-                    string fontName = tokens[tokens.Count - 3];
-                    stripActive = fontsToStrip.Contains(fontName.TrimStart('/'));
-                }
+                ProcessOperatorToken(contentBytes, ref i, len, fontsToStrip, tokens, ms, ref stripActive);
             }
 
             return ms.ToArray();
+        }
+
+        private static void ProcessParenthesisString(byte[] contentBytes, ref int i, int len, bool stripActive, MemoryStream ms)
+        {
+            int start = i;
+            i++;
+            int escapeCount = 0;
+            while (i < len)
+            {
+                byte sb = contentBytes[i];
+                if (sb == '\\')
+                    escapeCount = (escapeCount + 1) % 2;
+                else if (sb == ')' && escapeCount == 0)
+                {
+                    i++;
+                    break;
+                }
+                else
+                    escapeCount = 0;
+                i++;
+            }
+            int end = i;
+
+            if (stripActive)
+            {
+                ms.WriteByte((byte)'(');
+                ms.WriteByte((byte)')');
+            }
+            else
+            {
+                ms.Write(contentBytes, start, end - start);
+            }
+        }
+
+        private static void ProcessAngleString(byte[] contentBytes, ref int i, int len, bool stripActive, MemoryStream ms)
+        {
+            int start = i;
+            i++;
+            while (i < len && contentBytes[i] != '>') i++;
+            if (i < len) i++;
+            int end = i;
+
+            if (stripActive)
+            {
+                ms.WriteByte((byte)'<');
+                ms.WriteByte((byte)'>');
+            }
+            else
+            {
+                ms.Write(contentBytes, start, end - start);
+            }
+        }
+
+        private static void ProcessOperatorToken(
+            byte[] contentBytes,
+            ref int i,
+            int len,
+            HashSet<string> fontsToStrip,
+            List<string> tokens,
+            MemoryStream ms,
+            ref bool stripActive)
+        {
+            int tokenStart = i;
+            while (i < len && !IsDelimiter(contentBytes, i) && contentBytes[i] != '(' && contentBytes[i] != '<')
+            {
+                i++;
+            }
+            int tokenLen = i - tokenStart;
+            string token = Encoding.ASCII.GetString(contentBytes, tokenStart, tokenLen);
+            ms.Write(contentBytes, tokenStart, tokenLen);
+
+            tokens.Add(token);
+            if (tokens.Count > 3) tokens.RemoveAt(0);
+
+            if (token == "Tf" && tokens.Count >= 3)
+            {
+                string fontName = tokens[tokens.Count - 3];
+                stripActive = fontsToStrip.Contains(fontName.TrimStart('/'));
+            }
         }
 
         private static bool IsDelimiter(byte[] bytes, int index)
