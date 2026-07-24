@@ -59,7 +59,7 @@ namespace Clickra
             string startTimeStr = DateTime.UtcNow.ToString("yyyy-MM-dd HH:mm:ss");
             try
             {
-                DispatchCommandSwitch(command, files, quiet, outputDir, hasCliLevel, compressionLevel, argList);
+                DispatchCommandSwitch(command, files, quiet, outputDir, hasCliLevel, compressionLevel);
             }
             catch (Exception ex)
             {
@@ -79,31 +79,32 @@ namespace Clickra
             }
         }
 
+        private static Dictionary<string, object> BuildDefaultPdfOptions()
+        {
+            string dpiStr = ClickraStorage.GetSetting("PdfCompressTargetDpi");
+            if (string.IsNullOrEmpty(dpiStr)) dpiStr = "150";
+            string qualityStr = ClickraStorage.GetSetting("PdfCompressJpegQuality");
+            if (string.IsNullOrEmpty(qualityStr)) qualityStr = "75";
+            string stripStr = ClickraStorage.GetSetting("PdfCompressStripFonts");
+            if (string.IsNullOrEmpty(stripStr)) stripStr = "false";
+            string minifyStr = ClickraStorage.GetSetting("PdfCompressMinifyContent");
+            if (string.IsNullOrEmpty(minifyStr)) minifyStr = "true";
+
+            if (!int.TryParse(dpiStr, out int dpi)) dpi = 150;
+            if (!int.TryParse(qualityStr, out int quality)) quality = 75;
+
+            return new Dictionary<string, object>
+            {
+                { "target_dpi", dpi },
+                { "jpeg_quality", quality },
+                { "strip_fonts", stripStr.Equals("true", StringComparison.OrdinalIgnoreCase) },
+                { "minify_content", minifyStr.Equals("true", StringComparison.OrdinalIgnoreCase) }
+            };
+        }
+
         private static void HandleCompressPdfQuiet(List<string> files, string outputDir, bool hasCliLevel, string compressionLevel)
         {
-            Dictionary<string, object>? pdfOptions = null;
-            if (!hasCliLevel)
-            {
-                string dpiStr = ClickraStorage.GetSetting("PdfCompressTargetDpi");
-                if (string.IsNullOrEmpty(dpiStr)) dpiStr = "150";
-                string qualityStr = ClickraStorage.GetSetting("PdfCompressJpegQuality");
-                if (string.IsNullOrEmpty(qualityStr)) qualityStr = "75";
-                string stripStr = ClickraStorage.GetSetting("PdfCompressStripFonts");
-                if (string.IsNullOrEmpty(stripStr)) stripStr = "false";
-                string minifyStr = ClickraStorage.GetSetting("PdfCompressMinifyContent");
-                if (string.IsNullOrEmpty(minifyStr)) minifyStr = "true";
-
-                if (!int.TryParse(dpiStr, out int dpi)) dpi = 150;
-                if (!int.TryParse(qualityStr, out int quality)) quality = 75;
-
-                pdfOptions = new Dictionary<string, object>
-                {
-                    { "target_dpi", dpi },
-                    { "jpeg_quality", quality },
-                    { "strip_fonts", stripStr.Equals("true", StringComparison.OrdinalIgnoreCase) },
-                    { "minify_content", minifyStr.Equals("true", StringComparison.OrdinalIgnoreCase) }
-                };
-            }
+            Dictionary<string, object>? pdfOptions = hasCliLevel ? null : BuildDefaultPdfOptions();
 
             for (int i = 0; i < files.Count; i++)
             {
@@ -227,8 +228,7 @@ namespace Clickra
             bool quiet,
             string outputDir,
             bool hasCliLevel,
-            string compressionLevel,
-            List<string> argList)
+            string compressionLevel)
         {
             if (DispatchOfficeCommand(command, files, quiet)) return;
             if (DispatchPdfCommand(command, files, quiet, outputDir, hasCliLevel, compressionLevel)) return;
