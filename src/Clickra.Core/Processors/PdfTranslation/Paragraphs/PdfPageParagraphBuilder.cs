@@ -288,34 +288,11 @@ internal static class PdfPageParagraphBuilder
         double maxX = block.TextLines.Count > 0 ? block.TextLines.Max(l => l.BoundingBox.Right) : 0;
         double blockWidth = maxX - minX;
 
-        bool isTableBlock = blockLines.Count >= 2 &&
-                            (isTablePage || blockWidth < 150.0) &&
-                            (blockLines.Average(l => l.Words.Count) <= 3.5 ||
-                             (isTablePage && blockWidth < page.Width * 0.45 &&
-                              blockLines.Max(l => l.Words.Count) <= 8));
+        bool isTableBlock = IsTableBlock(blockLines, isTablePage, blockWidth, page.Width);
 
         foreach (var line in blockLines)
         {
-            bool isMath = PdfParagraph.IsMathLine(line);
-            bool shouldSplit = ShouldSplitBlockLine(line, block, page, isTablePage, isTableBlock, currentGroup);
-
-            if (currentGroup.Count == 0)
-            {
-                currentGroup.Add(line);
-                currentIsMath = isMath;
-            }
-            else if (isMath == currentIsMath && !shouldSplit)
-            {
-                currentGroup.Add(line);
-            }
-            else
-            {
-                var paragraph = new PdfParagraph(currentGroup);
-                pageList.Add(paragraph);
-
-                currentGroup = new List<UglyToad.PdfPig.DocumentLayoutAnalysis.TextLine> { line };
-                currentIsMath = isMath;
-            }
+            (currentGroup, currentIsMath) = AddLineToCurrentGroup(line, currentGroup, currentIsMath, block, page, isTablePage, isTableBlock, pageList);
         }
 
         if (currentGroup.Count > 0)
@@ -367,6 +344,45 @@ internal static class PdfPageParagraphBuilder
         return startsNew || isVerticalGapLarge || crossColumnSplit ||
             (prevLineEndedEarly && !prevLineWasHeading) || (prevLineWasHeading && !FontUtilities.IsLineBold(line)) ||
             prevLineHasGap || currLineHasGap || forceSplit;
+    }
+
+    private static bool IsTableBlock(
+        IReadOnlyList<UglyToad.PdfPig.DocumentLayoutAnalysis.TextLine> blockLines,
+        bool isTablePage,
+        double blockWidth,
+        double pageWidth)
+    {
+        return blockLines.Count >= 2 &&
+               (isTablePage || blockWidth < 150.0) &&
+               (blockLines.Average(l => l.Words.Count) <= 3.5 ||
+                (isTablePage && blockWidth < pageWidth * 0.45 &&
+                 blockLines.Max(l => l.Words.Count) <= 8));
+    }
+
+    private static (List<UglyToad.PdfPig.DocumentLayoutAnalysis.TextLine> Group, bool? IsMath) AddLineToCurrentGroup(
+        UglyToad.PdfPig.DocumentLayoutAnalysis.TextLine line,
+        List<UglyToad.PdfPig.DocumentLayoutAnalysis.TextLine> currentGroup,
+        bool? currentIsMath,
+        PdfParagraphBlockMerger.MergedBlock block,
+        UglyToad.PdfPig.Content.Page page,
+        bool isTablePage,
+        bool isTableBlock,
+        List<PdfParagraph> pageList)
+    {
+        bool isMath = PdfParagraph.IsMathLine(line);
+        bool shouldSplit = ShouldSplitBlockLine(line, block, page, isTablePage, isTableBlock, currentGroup);
+
+        if (currentGroup.Count == 0)
+            return (new List<UglyToad.PdfPig.DocumentLayoutAnalysis.TextLine> { line }, isMath);
+
+        if (isMath == currentIsMath && !shouldSplit)
+        {
+            currentGroup.Add(line);
+            return (currentGroup, currentIsMath);
+        }
+
+        pageList.Add(new PdfParagraph(currentGroup));
+        return (new List<UglyToad.PdfPig.DocumentLayoutAnalysis.TextLine> { line }, isMath);
     }
 
     private static void SanitizeTextPlaceholders(List<PdfParagraph> pageList)
