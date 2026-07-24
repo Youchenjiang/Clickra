@@ -51,7 +51,12 @@ namespace Clickra.Core.Processors
             // stale spatial distance.
             if (occurrenceIdx >= 0 && occurrenceIdx < occurrences.Count)
             {
-                bestIdx = occurrenceIdx;
+                double occurrenceDist = GetOccurrenceCenterDistance(
+                    occurrences[occurrenceIdx], targetPdfX, targetPdfY, preferVerticalAlignment);
+                if (occurrenceDist <= minDist * 2.0)
+                {
+                    bestIdx = occurrenceIdx;
+                }
             }
 
             return occurrences[bestIdx];
