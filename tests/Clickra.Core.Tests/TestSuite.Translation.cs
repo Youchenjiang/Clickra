@@ -396,6 +396,12 @@ static partial class TestSuite
 
     private static void RegisterProcessorAndPipelineTests(TestRunner runner)
     {
+        RegisterClassifierTests(runner);
+        RegisterLayoutAndMaskPipelineTests(runner);
+    }
+
+    private static void RegisterClassifierTests(TestRunner runner)
+    {
         runner.Run("Heading classifier recognizes Roman sections but not equation numbers", () =>
         {
             var heading = new PdfParagraph(Array.Empty<UglyToad.PdfPig.DocumentLayoutAnalysis.TextLine>())
@@ -621,7 +627,10 @@ static partial class TestSuite
             Assert.True(metrics.EffectiveFontSize >= paragraph.AverageFontSize - 0.01,
                 "Space planning must not begin from a body font smaller than the source reading size.");
         });
+    }
 
+    private static void RegisterLayoutAndMaskPipelineTests(TestRunner runner)
+    {
         runner.Run("Vertical balancing treats spatial table masks as fixed boundaries", () =>
         {
             try { GlobalFontSettings.FontResolver = new ClickraFontResolver(); } catch (InvalidOperationException) { /* FontResolver already initialized */ }
