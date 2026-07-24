@@ -20,6 +20,13 @@ static partial class TestSuite
 
     public static void RegisterTranslationTests(TestRunner runner)
     {
+        RegisterFontAndNormalizationTests(runner);
+        RegisterPostProcessAndTextTests(runner);
+        RegisterEngineAndProcessorTests(runner);
+    }
+
+    private static void RegisterFontAndNormalizationTests(TestRunner runner)
+    {
         runner.Run("CJK translation font resolves to embedded KaiU glyphs", () =>
         {
             var resolver = new ClickraFontResolver();
@@ -37,6 +44,29 @@ static partial class TestSuite
             }
         });
 
+        runner.Run("Math normalization removes non-printing font artifacts", () =>
+        {
+            Assert.Equal(
+                "λ̸t",
+                FontUtilities.NormalizeMathValue("\0λ\u0001\u000C\u0338t"));
+            Assert.Equal("①", FontUtilities.NormalizeMathValue("1⃝"));
+            Assert.Equal("Pasareanu", FontUtilities.NormalizeMathValue("P˘as˘areanu"));
+        });
+
+        runner.Run("Math normalization preserves circled figure markers", () =>
+        {
+            Assert.Equal(
+                CircledNumbersText,
+                FontUtilities.NormalizeMathValue("1⃝、2⃝、3⃝"));
+            Assert.True(
+                PdfParagraphLayoutEngine.TokenizeTranslatedText(CircledNumbersText).Contains("①"),
+                "Circled marker should remain an inline symbol token.");
+            Assert.Equal(CircledNumbersText, FontUtilities.NormalizeRenderValue(CircledNumbersText));
+        });
+    }
+
+    private static void RegisterPostProcessAndTextTests(TestRunner runner)
+    {
         runner.Run("PostProcessTranslation fixes zh-TW terminology", () =>
         {
             Assert.Equal(
@@ -219,7 +249,10 @@ static partial class TestSuite
                 Environment.SetEnvironmentVariable("CLICKRA_TRANSLATION_ENGINE", oldValue);
             }
         });
+    }
 
+    private static void RegisterEngineAndProcessorTests(TestRunner runner)
+    {
         runner.Run("Fallback translator chunks batches and retries only failed chunks", () =>
         {
             var primary = new RecordingTranslationEngine(PrimaryEngineName, failOnMarker: "FAIL");
