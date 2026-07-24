@@ -119,9 +119,16 @@ namespace Clickra.Core.Processors
                 if (!match) continue;
 
                 int end = digitStart + digits.Length;
-                if (includeClosingParen && end < cleanRendered.Count && cleanRendered[end].Character == ')')
+                if (includeClosingParen)
                 {
-                    end++;
+                    for (int j = end; j < cleanRendered.Count; j++)
+                    {
+                        if (cleanRendered[j].Character == ')')
+                        {
+                            end = j + 1;
+                            break;
+                        }
+                    }
                 }
 
                 // The source PDF link rectangle normally covers the figure
