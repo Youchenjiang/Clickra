@@ -62,22 +62,26 @@ internal static class PdfPageParagraphBuilder
     private static void MarkInitialDiagramParagraphs(List<PdfParagraph> pageList, UglyToad.PdfPig.Content.Page page)
     {
         foreach (var para in pageList)
+            ClassifySingleParagraph(para, page);
+    }
+
+    private static void ClassifySingleParagraph(PdfParagraph para, UglyToad.PdfPig.Content.Page page)
+    {
+        if (PdfGrayPromptClassifier.IsGrayPromptBoxParagraph(para) || PdfGrayPromptClassifier.IsGrayPromptSubheading(para))
         {
-            if (PdfGrayPromptClassifier.IsGrayPromptBoxParagraph(para) || PdfGrayPromptClassifier.IsGrayPromptSubheading(para))
-            {
-                PdfGrayPromptMarker.MarkAsGrayPromptContent(para);
-                continue;
-            }
-            if (para.IsCode) continue;
-            if (!para.IsTable && PdfDiagramMaskBuilder.OverlapsWithLargeImage(para, page))
-            {
-                if (IsProtectedProseParagraph(para)) continue;
-                if (PdfChartLabelClassifier.IsLikelyChartLabel(para) || para.TextWithPlaceholders.Trim().Length <= 80)
-                {
-                    para.IsDiagram = true;
-                }
-            }
+            PdfGrayPromptMarker.MarkAsGrayPromptContent(para);
+            return;
         }
+        if (para.IsCode) return;
+        if (ShouldMarkInitialDiagram(para, page))
+            para.IsDiagram = true;
+    }
+
+    private static bool ShouldMarkInitialDiagram(PdfParagraph para, UglyToad.PdfPig.Content.Page page)
+    {
+        if (para.IsTable || !PdfDiagramMaskBuilder.OverlapsWithLargeImage(para, page)) return false;
+        if (IsProtectedProseParagraph(para)) return false;
+        return PdfChartLabelClassifier.IsLikelyChartLabel(para) || para.TextWithPlaceholders.Trim().Length <= 80;
     }
 
     private static bool IsProtectedProseParagraph(PdfParagraph para)
@@ -412,16 +416,9 @@ internal static class PdfPageParagraphBuilder
         bool changed = true;
         while (changed)
         {
-            changed = false;
-            foreach (var para in pageList)
-            {
-                if (ShouldSkipBypassPropagation(para, pageList, page, diagramLabelMaxLen)) continue;
-
-                if (TryPropagateBypassForLabel(para, pageList, page.Height))
-                {
-                    changed = true;
-                }
-            }
+            changed = pageList
+                .Where(para => !ShouldSkipBypassPropagation(para, pageList, page, diagramLabelMaxLen))
+                .Any(para => TryPropagateBypassForLabel(para, pageList, page.Height));
         }
     }
 
@@ -446,20 +443,16 @@ internal static class PdfPageParagraphBuilder
 
     private static bool TryPropagateBypassForLabel(PdfParagraph para, List<PdfParagraph> pageList, double pageHeight)
     {
-        foreach (var other in pageList)
+        var anchor = pageList.FirstOrDefault(other => IsEligibleBypassAnchor(para, other, pageHeight));
+        if (anchor == null) return false;
+
+        para.IsBypassed = true;
+        if (anchor.IsDiagram)
         {
-            if (IsEligibleBypassAnchor(para, other, pageHeight))
-            {
-                para.IsBypassed = true;
-                if (other.IsDiagram)
-                {
-                    para.IsDiagram = true;
-                    para.IsTable = false;
-                }
-                return true;
-            }
+            para.IsDiagram = true;
+            para.IsTable = false;
         }
-        return false;
+        return true;
     }
 
     private static bool IsEligibleBypassAnchor(PdfParagraph para, PdfParagraph other, double pageHeight)
