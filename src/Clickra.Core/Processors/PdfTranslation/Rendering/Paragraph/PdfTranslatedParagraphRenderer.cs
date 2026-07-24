@@ -439,7 +439,7 @@ internal static class PdfTranslatedParagraphRenderer
                 if (opts.IsPageTitle)
                     ClickraDebug.LogTitleRow((opts.Para.X0 + opts.Para.X1) / 2.0, startX, rowWidth, opts.Text);
 
-                double currentX = RenderRowElements(opts, row, startX, currentY, pageHeight, ref inlineBold);
+                RenderRowElements(opts, row, startX, currentY, pageHeight, ref inlineBold);
                 currentY += opts.LineHeight;
             }
         }

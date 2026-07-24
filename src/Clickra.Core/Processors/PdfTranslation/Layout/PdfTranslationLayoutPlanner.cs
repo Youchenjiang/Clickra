@@ -409,7 +409,7 @@ internal static class PdfTranslationLayoutPlanner
         double selectedScale = FindLargestFittingFontScale(options.Gfx, run, baseFonts, options.TargetFontName, contentBudget);
         ApplyFontScaleAndMeasure(options.Gfx, run, baseFonts, options.TargetFontName, selectedScale);
 
-        shifted += IncreaseLeadingToFit(run, options, contentBudget, gapHeight);
+        shifted += IncreaseLeadingToFit(run, options, contentBudget);
 
         RedistributeGaps(run, baseGaps, availableHeight);
 
@@ -437,8 +437,7 @@ internal static class PdfTranslationLayoutPlanner
     private static int IncreaseLeadingToFit(
         List<PdfParagraphLayoutSnapshot> run,
         BodyFlowBalanceOptions options,
-        double contentBudget,
-        double gapHeight)
+        double contentBudget)
     {
         int shifted = 0;
         double remaining = Math.Max(0, contentBudget - run.Sum(s => s.MeasuredHeight));
