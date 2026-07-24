@@ -631,6 +631,12 @@ static partial class TestSuite
 
     private static void RegisterLayoutAndMaskPipelineTests(TestRunner runner)
     {
+        RegisterLayoutBalancingTests(runner);
+        RegisterMaskAndOverlayPipelineTests(runner);
+    }
+
+    private static void RegisterLayoutBalancingTests(TestRunner runner)
+    {
         runner.Run("Vertical balancing treats spatial table masks as fixed boundaries", () =>
         {
             try { GlobalFontSettings.FontResolver = new ClickraFontResolver(); } catch (InvalidOperationException) { /* FontResolver already initialized */ }
@@ -782,7 +788,10 @@ static partial class TestSuite
             Assert.True(gapRow.IsTable && gapRow.IsBypassed,
                 "A row in a narrow gap between aligned table masks must bypass translation.");
         });
+    }
 
+    private static void RegisterMaskAndOverlayPipelineTests(TestRunner runner)
+    {
         runner.Run("Tall narrow table blocks survive prose cleanup", () =>
         {
             var mergedTableRows = LayoutParagraph(
