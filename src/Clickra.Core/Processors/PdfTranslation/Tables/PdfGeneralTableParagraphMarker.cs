@@ -302,13 +302,9 @@ namespace Clickra.Core.Processors
         {
             if (isTablePage)
             {
-                foreach (var para in pageList)
-                {
-                    if (IsDigitDenseTableCandidate(para, pageWidth))
-                    {
-                        para.IsTable = true;
-                    }
-                }
+                pageList.Where(para => IsDigitDenseTableCandidate(para, pageWidth))
+                    .ToList()
+                    .ForEach(para => para.IsTable = true);
             }
 
             MarkTableRegionByCaption(pageList, pageWidth);
@@ -385,7 +381,7 @@ namespace Clickra.Core.Processors
         private static bool ShouldStopTableRegionScanning(PdfParagraph para, string txt, double pageWidth)
         {
             if (IsCaptionOrSectionBreak(txt)) return true;
-            if (Regex.IsMatch(txt, @"^[IVXLC]+\.\s")) return true;
+            if (Regex.IsMatch(txt, @"^[IVXLC]+\.\s", RegexOptions.None, TimeSpan.FromSeconds(1))) return true;
             return IsLargeProseParagraph(para, txt, pageWidth);
         }
 
