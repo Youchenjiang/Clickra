@@ -95,9 +95,9 @@ namespace Clickra.Core.Processors
                     var word = line.Words[wordIdx];
                     ProcessWordLetters(word, averageFontSize, sb, styled, formulas, currentFormula, ref styledBoldOpen, ref bracketsCount);
 
-                    if (wordIdx < line.Words.Count - 1 && currentFormula.Count == 0)
+                    if (wordIdx < line.Words.Count - 1)
                     {
-                        sb.Append(" ");
+                        sb.Append(' ');
                         AppendStyledText(styled, " ", false, ref styledBoldOpen);
                     }
                 }
@@ -115,6 +115,52 @@ namespace Clickra.Core.Processors
             CloseStyledBold(styled, ref styledBoldOpen);
 
             return (sb, styled, formulas, hasLineBreak);
+        }
+
+        private static void ProcessWordLetters(
+            Word word,
+            double averageFontSize,
+            StringBuilder sb,
+            StringBuilder styled,
+            List<MathFormula> formulas,
+            List<Letter> currentFormula,
+            ref bool styledBoldOpen,
+            ref int bracketsCount)
+        {
+            bool isMathWord = PdfParagraphMathClassifier.IsMathWord(word);
+            for (int letterIdx = 0; letterIdx < word.Letters.Count; letterIdx++)
+            {
+                var letter = word.Letters[letterIdx];
+                bool curV = PdfParagraphMathClassifier.IsMathCharacter(letter, isMathWord, averageFontSize);
+                if (!curV)
+                {
+                    if (currentFormula.Count > 0 && letter.Value == "(")
+                    {
+                        curV = true;
+                        bracketsCount++;
+                    }
+                    else if (bracketsCount > 0 && letter.Value == ")")
+                    {
+                        curV = true;
+                        bracketsCount--;
+                    }
+                }
+
+                if (curV)
+                {
+                    CloseStyledBold(styled, ref styledBoldOpen);
+                    currentFormula.Add(letter);
+                }
+                else
+                {
+                    int formulaCountBefore = formulas.Count;
+                    FlushFormula(sb, formulas, currentFormula, ref bracketsCount);
+                    if (formulas.Count > formulaCountBefore)
+                        styled.Append($"{{v{formulas.Count - 1}}}");
+                    AppendStyledText(styled, letter.Value, FontUtilities.IsSourceFontBold(letter.FontName), ref styledBoldOpen);
+                    sb.Append(letter.Value);
+                }
+            }
         }
 
         private static PdfLetter CreatePdfLetter(Letter letter)
