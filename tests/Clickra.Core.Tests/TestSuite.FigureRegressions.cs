@@ -92,17 +92,10 @@ static partial class TestSuite
 
         runner.Run("A diagram mask alone is not a gray prompt region", () =>
         {
-            var diagram = new List<TableMaskRegion>
-            {
-                new(310.5, 642.9, 549.4, 725.8)
-            };
-            var labels = new List<PdfParagraph>
-            {
-                UninitializedParagraph("Identify test scope", 42, 5),
-                UninitializedParagraph("Mocking fields", 34, 5)
-            };
-            labels[0].X0 = 350; labels[0].X1 = 392; labels[0].Y0 = 690; labels[0].Y1 = 695;
-            labels[1].X0 = 450; labels[1].X1 = 484; labels[1].Y0 = 680; labels[1].Y1 = 685;
+            var (diagram, labels) = CreateDiagramTestFixture(
+                new TableMaskRegion(310.5, 642.9, 549.4, 725.8),
+                ("Identify test scope", 42, 5, 350, 392, 690, 695),
+                ("Mocking fields", 34, 5, 450, 484, 680, 685));
 
             var shaded = PdfGrayPromptRegionBuilder.GetGrayPromptShadedRegions(diagram, 612, labels);
             Assert.True(shaded.Count == 0,
@@ -111,17 +104,10 @@ static partial class TestSuite
 
         runner.Run("Short workflow labels remain bypassed after diagram cleanup", () =>
         {
-            var diagram = new List<TableMaskRegion>
-            {
-                new(310, 640, 550, 726)
-            };
-            var labels = new List<PdfParagraph>
-            {
-                UninitializedParagraph("for private", 24, 4),
-                UninitializedParagraph("mocking types", 30, 4)
-            };
-            labels[0].X0 = 414; labels[0].X1 = 438; labels[0].Y0 = 698; labels[0].Y1 = 702;
-            labels[1].X0 = 503; labels[1].X1 = 532; labels[1].Y0 = 700; labels[1].Y1 = 704;
+            var (diagram, labels) = CreateDiagramTestFixture(
+                new TableMaskRegion(310, 640, 550, 726),
+                ("for private", 24, 4, 414, 438, 698, 702),
+                ("mocking types", 30, 4, 503, 532, 700, 704));
 
             PdfDiagramLabelMarker.FinalizeShortFigureLabels(labels, diagram);
 
@@ -203,6 +189,22 @@ static partial class TestSuite
                 "public void test13",
                 "angle_Rad1"
             }, "TOGLL generated assertions detecting unique mutants"));
+    }
+
+    private static (List<TableMaskRegion> Diagram, List<PdfParagraph> Labels) CreateDiagramTestFixture(
+        TableMaskRegion mask,
+        (string Text, double W, double H, double X0, double X1, double Y0, double Y1) l1,
+        (string Text, double W, double H, double X0, double X1, double Y0, double Y1) l2)
+    {
+        var diagram = new List<TableMaskRegion> { mask };
+        var labels = new List<PdfParagraph>
+        {
+            UninitializedParagraph(l1.Text, l1.W, l1.H),
+            UninitializedParagraph(l2.Text, l2.W, l2.H)
+        };
+        labels[0].X0 = l1.X0; labels[0].X1 = l1.X1; labels[0].Y0 = l1.Y0; labels[0].Y1 = l1.Y1;
+        labels[1].X0 = l2.X0; labels[1].X1 = l2.X1; labels[1].Y0 = l2.Y0; labels[1].Y1 = l2.Y1;
+        return (diagram, labels);
     }
 
     private static void VerifyTogllFigureSourceCode(int pageNum, string[] expectedDiagramTexts, string captionText)
