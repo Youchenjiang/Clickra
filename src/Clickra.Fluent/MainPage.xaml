@@ -153,10 +153,96 @@
                 </StackPanel>
             </ScrollViewer>
 
-            <!-- Settings Panel (placeholder) -->
-            <Grid x:Name="SettingsPanel" Visibility="Collapsed">
-                <TextBlock Text="Settings" FontSize="20" FontWeight="SemiBold" Margin="24,24,0,0"/>
-            </Grid>
+            <!-- Settings Panel -->
+            <ScrollViewer x:Name="SettingsPanel" VerticalScrollBarVisibility="Auto" Visibility="Collapsed">
+                <StackPanel Spacing="16" Margin="24,24,24,24">
+                    <TextBlock Text="Settings" FontSize="28" FontWeight="Bold"/>
+                    
+                    <!-- Output Directory -->
+                    <Grid Background="{ThemeResource CardBackgroundFillColorDefaultBrush}" 
+                          CornerRadius="8" Padding="16,12">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="Auto"/>
+                        </Grid.ColumnDefinitions>
+                        <StackPanel Grid.Column="0">
+                            <TextBlock Text="Output Directory" FontSize="14" FontWeight="SemiBold"/>
+                            <ComboBox x:Name="OutputDirCombo" Margin="0,8,0,0" MinWidth="200">
+                                <ComboBoxItem Content="Same as source" IsSelected="True"/>
+                                <ComboBoxItem Content="Desktop"/>
+                                <ComboBoxItem Content="Downloads"/>
+                                <ComboBoxItem Content="Custom..."/>
+                            </ComboBox>
+                        </StackPanel>
+                    </Grid>
+
+                    <!-- Office Engine -->
+                    <Grid Background="{ThemeResource CardBackgroundFillColorDefaultBrush}" 
+                          CornerRadius="8" Padding="16,12">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="Auto"/>
+                        </Grid.ColumnDefinitions>
+                        <StackPanel Grid.Column="0">
+                            <TextBlock Text="Office Engine" FontSize="14" FontWeight="SemiBold"/>
+                            <ComboBox x:Name="EngineCombo" Margin="0,8,0,0" MinWidth="200">
+                                <ComboBoxItem Content="Auto" IsSelected="True"/>
+                                <ComboBoxItem Content="Microsoft Office"/>
+                                <ComboBoxItem Content="LibreOffice"/>
+                            </ComboBox>
+                        </StackPanel>
+                    </Grid>
+
+                    <!-- Language -->
+                    <Grid Background="{ThemeResource CardBackgroundFillColorDefaultBrush}" 
+                          CornerRadius="8" Padding="16,12">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="Auto"/>
+                        </Grid.ColumnDefinitions>
+                        <StackPanel Grid.Column="0">
+                            <TextBlock Text="Language" FontSize="14" FontWeight="SemiBold"/>
+                            <ComboBox x:Name="LanguageCombo" Margin="0,8,0,0" MinWidth="200">
+                                <ComboBoxItem Content="Traditional Chinese (zh-TW)" IsSelected="True"/>
+                                <ComboBoxItem Content="Simplified Chinese (zh-CN)"/>
+                                <ComboBoxItem Content="English (en-US)"/>
+                                <ComboBoxItem Content="Japanese (ja-JP)"/>
+                                <ComboBoxItem Content="Korean (ko-KR)"/>
+                            </ComboBox>
+                        </StackPanel>
+                    </Grid>
+
+                    <!-- Quiet Mode Toggle -->
+                    <Grid Background="{ThemeResource CardBackgroundFillColorDefaultBrush}" 
+                          CornerRadius="8" Padding="16,12">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="Auto"/>
+                        </Grid.ColumnDefinitions>
+                        <StackPanel Grid.Column="0">
+                            <TextBlock Text="Quiet Mode" FontSize="14" FontWeight="SemiBold"/>
+                            <TextBlock Text="Process files without showing UI" FontSize="13" 
+                                       Foreground="{ThemeResource TextFillColorSecondaryBrush}" Margin="0,2,0,0"/>
+                        </StackPanel>
+                        <ToggleSwitch Grid.Column="1" x:Name="QuietModeToggle" Margin="8,0,0,0"/>
+                    </Grid>
+
+                    <!-- Notification Toggle -->
+                    <Grid Background="{ThemeResource CardBackgroundFillColorDefaultBrush}" 
+                          CornerRadius="8" Padding="16,12">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="Auto"/>
+                        </Grid.ColumnDefinitions>
+                        <StackPanel Grid.Column="0">
+                            <TextBlock Text="Notifications" FontSize="14" FontWeight="SemiBold"/>
+                            <TextBlock Text="Show toast notifications when conversion completes" FontSize="13" 
+                                       Foreground="{ThemeResource TextFillColorSecondaryBrush}" Margin="0,2,0,0"/>
+                        </StackPanel>
+                        <ToggleSwitch Grid.Column="1" x:Name="NotificationToggle" IsOn="True" Margin="8,0,0,0"/>
+                    </Grid>
+                </StackPanel>
+            </ScrollViewer>
 
             <!-- About Panel (placeholder) -->
             <Grid x:Name="AboutPanel" Visibility="Collapsed">
