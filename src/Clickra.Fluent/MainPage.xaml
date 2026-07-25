@@ -141,10 +141,17 @@
                 </StackPanel>
             </ScrollViewer>
 
-            <!-- History Panel (placeholder) -->
-            <Grid x:Name="HistoryPanel" Visibility="Collapsed">
-                <TextBlock Text="History" FontSize="20" FontWeight="SemiBold" Margin="24,24,0,0"/>
-            </Grid>
+            <!-- History Panel -->
+            <ScrollViewer x:Name="HistoryPanel" VerticalScrollBarVisibility="Auto" Visibility="Collapsed">
+                <StackPanel Spacing="24" Margin="24,24,24,24">
+                    <TextBlock Text="History" FontSize="20" FontWeight="SemiBold"/>
+                    <Grid Background="{ThemeResource CardBackgroundFillColorDefaultBrush}" 
+                          CornerRadius="8" Padding="24">
+                        <TextBlock Text="No conversion history yet." 
+                                   FontSize="14" Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
+                    </Grid>
+                </StackPanel>
+            </ScrollViewer>
 
             <!-- Settings Panel (placeholder) -->
             <Grid x:Name="SettingsPanel" Visibility="Collapsed">
