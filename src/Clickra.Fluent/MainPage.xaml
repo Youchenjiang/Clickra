@@ -244,10 +244,35 @@
                 </StackPanel>
             </ScrollViewer>
 
-            <!-- About Panel (placeholder) -->
-            <Grid x:Name="AboutPanel" Visibility="Collapsed">
-                <TextBlock Text="About" FontSize="20" FontWeight="SemiBold" Margin="24,24,0,0"/>
-            </Grid>
+            <!-- About Panel -->
+            <ScrollViewer x:Name="AboutPanel" VerticalScrollBarVisibility="Auto" Visibility="Collapsed">
+                <StackPanel Spacing="24" Margin="24,24,24,24">
+                    <TextBlock Text="About" FontSize="20" FontWeight="SemiBold"/>
+                    
+                    <Grid Background="{ThemeResource CardBackgroundFillColorDefaultBrush}" 
+                          CornerRadius="8" Padding="24">
+                        <StackPanel Spacing="8">
+                            <TextBlock Text="Clickra" FontSize="28" FontWeight="Bold" Foreground="{ThemeResource TextFillColorPrimaryBrush}"/>
+                            <TextBlock Text="Version 3.6.4" FontSize="14" Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
+                            <TextBlock Text="Clickra is a modern Windows utility that adds powerful file conversion tools to your right-click context menu."
+                                       FontSize="14" Foreground="{ThemeResource TextFillColorSecondaryBrush}" 
+                                       TextWrapping="Wrap" Margin="0,8,0,0"/>
+                        </StackPanel>
+                    </Grid>
+
+                    <Grid Background="{ThemeResource CardBackgroundFillColorDefaultBrush}" 
+                          CornerRadius="8" Padding="16,12">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto"/>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="Auto"/>
+                        </Grid.ColumnDefinitions>
+                        <FontIcon Grid.Column="0" Glyph="&#xE71B;" Margin="0,0,12,0" VerticalAlignment="Center"/>
+                        <TextBlock Grid.Column="1" Text="View on GitHub" FontSize="14" VerticalAlignment="Center"/>
+                        <FontIcon Grid.Column="2" Glyph="&#xE8A7;" Foreground="{ThemeResource TextFillColorSecondaryBrush}" VerticalAlignment="Center"/>
+                    </Grid>
+                </StackPanel>
+            </ScrollViewer>
         </Grid>
     </NavigationView>
 </Page>
