@@ -126,10 +126,20 @@
                 </StackPanel>
             </ScrollViewer>
 
-            <!-- Convert Panel (placeholder) -->
-            <Grid x:Name="ConvertPanel" Visibility="Collapsed">
-                <TextBlock Text="Convert" FontSize="20" FontWeight="SemiBold" Margin="24,24,0,0"/>
-            </Grid>
+            <!-- Convert Panel -->
+            <ScrollViewer x:Name="ConvertPanel" VerticalScrollBarVisibility="Auto" Visibility="Collapsed">
+                <StackPanel Spacing="24" Margin="24,24,24,24">
+                    <TextBlock Text="Convert" FontSize="20" FontWeight="SemiBold"/>
+                    <Grid Background="{ThemeResource CardBackgroundFillColorDefaultBrush}" 
+                          CornerRadius="8" Padding="24">
+                        <StackPanel Spacing="16">
+                            <TextBlock Text="Drag and drop files here, or click to browse." 
+                                       FontSize="14" Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
+                            <Button Content="Browse Files" Style="{StaticResource AccentButtonStyle}" HorizontalAlignment="Left"/>
+                        </StackPanel>
+                    </Grid>
+                </StackPanel>
+            </ScrollViewer>
 
             <!-- History Panel (placeholder) -->
             <Grid x:Name="HistoryPanel" Visibility="Collapsed">
