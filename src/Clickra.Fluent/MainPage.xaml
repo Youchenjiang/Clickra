@@ -74,15 +74,41 @@
                         </StackPanel>
                     </Grid>
                     <Grid Background="{ThemeResource CardBackgroundFillColorDefaultBrush}" CornerRadius="8" Padding="16">
-                        <StackPanel Spacing="10">
+                        <StackPanel Spacing="12">
                             <TextBlock Text="Conversion Command" FontSize="14" FontWeight="SemiBold"/>
                             <TextBlock x:Name="CommandStatusText" Text="Choose a command" FontSize="13" Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
-                            <TextBlock Text="Office" FontSize="12" FontWeight="SemiBold" Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
-                            <StackPanel Orientation="Horizontal" Spacing="8"><Button Content="Word to PDF" Tag="word2pdf" x:Name="BtnWord2Pdf"/><Button Content="Excel to PDF" Tag="excel2pdf" x:Name="BtnExcel2Pdf"/><Button Content="PPT to PDF" Tag="ppt2pdf" x:Name="BtnPpt2Pdf"/></StackPanel>
-                            <TextBlock Text="PDF" FontSize="12" FontWeight="SemiBold" Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
-                            <StackPanel Orientation="Horizontal" Spacing="8"><Button Content="Merge" Tag="merge-pdf" x:Name="BtnMergePdf"/><Button Content="Compress" Tag="compress-pdf" x:Name="BtnCompressPdf"/><Button Content="Translate" Tag="translate-pdf" x:Name="BtnTranslatePdf"/><Button Content="Decrypt" Tag="decrypt-pdf" x:Name="BtnDecryptPdf"/></StackPanel>
-                            <TextBlock Text="Image" FontSize="12" FontWeight="SemiBold" Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
-                            <StackPanel Orientation="Horizontal" Spacing="8"><Button Content="Image to PDF" Tag="img2pdf" x:Name="BtnImg2Pdf"/><Button Content="Merge" Tag="img-merge" x:Name="BtnImgMerge"/><Button Content="Stitch" Tag="img-stitch" x:Name="BtnImgStitch"/></StackPanel>
+                            <Grid ColumnSpacing="16" RowSpacing="12">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="*"/>
+                                </Grid.ColumnDefinitions>
+                                <StackPanel Grid.Column="0" Spacing="8">
+                                    <TextBlock Text="Office" FontSize="12" FontWeight="SemiBold" Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
+                                    <StackPanel Orientation="Horizontal" Spacing="8">
+                                        <Button Content="Word to PDF" Tag="word2pdf" x:Name="BtnWord2Pdf"/>
+                                        <Button Content="Excel to PDF" Tag="excel2pdf" x:Name="BtnExcel2Pdf"/>
+                                        <Button Content="PPT to PDF" Tag="ppt2pdf" x:Name="BtnPpt2Pdf"/>
+                                    </StackPanel>
+                                </StackPanel>
+                                <StackPanel Grid.Column="1" Spacing="8">
+                                    <TextBlock Text="PDF" FontSize="12" FontWeight="SemiBold" Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
+                                    <StackPanel Orientation="Horizontal" Spacing="8">
+                                        <Button Content="Merge" Tag="merge-pdf" x:Name="BtnMergePdf"/>
+                                        <Button Content="Compress" Tag="compress-pdf" x:Name="BtnCompressPdf"/>
+                                        <Button Content="Translate" Tag="translate-pdf" x:Name="BtnTranslatePdf"/>
+                                        <Button Content="Decrypt" Tag="decrypt-pdf" x:Name="BtnDecryptPdf"/>
+                                    </StackPanel>
+                                </StackPanel>
+                                <StackPanel Grid.Column="2" Spacing="8">
+                                    <TextBlock Text="Image" FontSize="12" FontWeight="SemiBold" Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
+                                    <StackPanel Orientation="Horizontal" Spacing="8">
+                                        <Button Content="Image to PDF" Tag="img2pdf" x:Name="BtnImg2Pdf"/>
+                                        <Button Content="Merge" Tag="img-merge" x:Name="BtnImgMerge"/>
+                                        <Button Content="Stitch" Tag="img-stitch" x:Name="BtnImgStitch"/>
+                                    </StackPanel>
+                                </StackPanel>
+                            </Grid>
                         </StackPanel>
                     </Grid>
                     <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Spacing="8">
@@ -117,13 +143,23 @@
             <ScrollViewer x:Name="SettingsPanel" VerticalScrollBarVisibility="Auto" Visibility="Collapsed">
                 <StackPanel Spacing="16" Margin="24,16,24,24">
                     <TextBlock Text="Settings" FontSize="28" FontWeight="Bold"/>
-                    <Grid Background="{ThemeResource CardBackgroundFillColorDefaultBrush}" CornerRadius="8" Padding="16"><StackPanel Spacing="8"><TextBlock Text="Output Directory" FontSize="14" FontWeight="SemiBold"/><TextBlock Text="Choose where converted files are saved" FontSize="12" Foreground="{ThemeResource TextFillColorSecondaryBrush}"/><ComboBox x:Name="OutputDirCombo" MinWidth="200" SelectedIndex="0"><ComboBoxItem Content="Same as source"/><ComboBoxItem Content="Desktop"/><ComboBoxItem Content="Downloads"/><ComboBoxItem Content="Custom..."/></ComboBox></StackPanel></Grid>
-                    <Grid Background="{ThemeResource CardBackgroundFillColorDefaultBrush}" CornerRadius="8" Padding="16"><StackPanel Spacing="8"><TextBlock Text="Office Engine" FontSize="14" FontWeight="SemiBold"/><TextBlock Text="Select engine for Office conversion" FontSize="12" Foreground="{ThemeResource TextFillColorSecondaryBrush}"/><ComboBox x:Name="EngineCombo" MinWidth="200" SelectedIndex="0"><ComboBoxItem Content="Auto"/><ComboBoxItem Content="Microsoft Office"/><ComboBoxItem Content="LibreOffice"/></ComboBox></StackPanel></Grid>
-                    <Grid Background="{ThemeResource CardBackgroundFillColorDefaultBrush}" CornerRadius="8" Padding="16"><StackPanel Spacing="8"><TextBlock Text="Language" FontSize="14" FontWeight="SemiBold"/><ComboBox x:Name="LanguageCombo" MinWidth="200" SelectedIndex="0"><ComboBoxItem Content="繁體中文 (zh-TW)"/><ComboBoxItem Content="简体中文 (zh-CN)"/><ComboBoxItem Content="English (en-US)"/><ComboBoxItem Content="日本語 (ja-JP)"/><ComboBoxItem Content="한국어 (ko-KR)"/></ComboBox></StackPanel></Grid>
-                    <Grid Background="{ThemeResource CardBackgroundFillColorDefaultBrush}" CornerRadius="8" Padding="16"><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions><StackPanel Grid.Column="0" Spacing="4"><TextBlock Text="Quiet Mode" FontSize="14" FontWeight="SemiBold"/><TextBlock Text="Process files without showing UI" FontSize="12" Foreground="{ThemeResource TextFillColorSecondaryBrush}"/></StackPanel><ToggleSwitch Grid.Column="1" x:Name="QuietModeToggle" Margin="16,0,0,0" VerticalAlignment="Center"/></Grid>
-                    <Grid Background="{ThemeResource CardBackgroundFillColorDefaultBrush}" CornerRadius="8" Padding="16"><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions><StackPanel Grid.Column="0" Spacing="4"><TextBlock Text="Notifications" FontSize="14" FontWeight="SemiBold"/><TextBlock Text="Show toast when conversion completes" FontSize="12" Foreground="{ThemeResource TextFillColorSecondaryBrush}"/></StackPanel><ToggleSwitch Grid.Column="1" x:Name="NotificationToggle" IsOn="True" Margin="16,0,0,0" VerticalAlignment="Center"/></Grid>
-                    <Grid Background="{ThemeResource CardBackgroundFillColorDefaultBrush}" CornerRadius="8" Padding="16"><StackPanel Spacing="8"><TextBlock Text="PDF Translation Target" FontSize="14" FontWeight="SemiBold"/><ComboBox x:Name="PdfLangCombo" MinWidth="200" SelectedIndex="0"><ComboBoxItem Content="繁體中文 (zh-TW)"/><ComboBoxItem Content="English (en)"/><ComboBoxItem Content="简体中文 (zh-CN)"/><ComboBoxItem Content="日本語 (ja)"/><ComboBoxItem Content="한국어 (ko)"/></ComboBox></StackPanel></Grid>
-                    <Grid Background="{ThemeResource CardBackgroundFillColorDefaultBrush}" CornerRadius="8" Padding="16"><StackPanel Spacing="10"><TextBlock Text="PDF Compression" FontSize="14" FontWeight="SemiBold"/><Grid><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions><Slider x:Name="CompressionSlider" Grid.Column="0" Minimum="0" Maximum="3" Value="1"/><TextBlock x:Name="CompressionLabel" Grid.Column="1" Text="Standard" VerticalAlignment="Center" Margin="12,0,0,0"/></Grid><Grid><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions><TextBlock Grid.Column="0" Text="Strip Fonts" VerticalAlignment="Center"/><ToggleSwitch Grid.Column="1" x:Name="StripFontsToggle" Margin="16,0,0,0"/></Grid><Grid><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions><TextBlock Grid.Column="0" Text="Minify Content" VerticalAlignment="Center"/><ToggleSwitch Grid.Column="1" x:Name="MinifyContentToggle" IsOn="True" Margin="16,0,0,0"/></Grid></StackPanel></Grid>
+                    <Grid ColumnSpacing="16" RowSpacing="16">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
+                        </Grid.RowDefinitions>
+                        <Grid Grid.Row="0" Grid.Column="0" Background="{ThemeResource CardBackgroundFillColorDefaultBrush}" CornerRadius="8" Padding="16"><StackPanel Spacing="8"><TextBlock Text="Output Directory" FontSize="14" FontWeight="SemiBold"/><TextBlock Text="Choose where converted files are saved" FontSize="12" Foreground="{ThemeResource TextFillColorSecondaryBrush}"/><ComboBox x:Name="OutputDirCombo" MinWidth="240" SelectedIndex="0"><ComboBoxItem Content="Same as source"/><ComboBoxItem Content="Desktop"/><ComboBoxItem Content="Downloads"/><ComboBoxItem Content="Custom..."/></ComboBox></StackPanel></Grid>
+                        <Grid Grid.Row="0" Grid.Column="1" Background="{ThemeResource CardBackgroundFillColorDefaultBrush}" CornerRadius="8" Padding="16"><StackPanel Spacing="8"><TextBlock Text="Office Engine" FontSize="14" FontWeight="SemiBold"/><TextBlock Text="Select engine for Office conversion" FontSize="12" Foreground="{ThemeResource TextFillColorSecondaryBrush}"/><ComboBox x:Name="EngineCombo" MinWidth="240" SelectedIndex="0"><ComboBoxItem Content="Auto"/><ComboBoxItem Content="Microsoft Office"/><ComboBoxItem Content="LibreOffice"/></ComboBox></StackPanel></Grid>
+                        <Grid Grid.Row="1" Grid.Column="0" Background="{ThemeResource CardBackgroundFillColorDefaultBrush}" CornerRadius="8" Padding="16"><StackPanel Spacing="8"><TextBlock Text="Language" FontSize="14" FontWeight="SemiBold"/><ComboBox x:Name="LanguageCombo" MinWidth="240" SelectedIndex="0"><ComboBoxItem Content="繁體中文 (zh-TW)"/><ComboBoxItem Content="简体中文 (zh-CN)"/><ComboBoxItem Content="English (en-US)"/><ComboBoxItem Content="日本語 (ja-JP)"/><ComboBoxItem Content="한국어 (ko-KR)"/></ComboBox></StackPanel></Grid>
+                        <Grid Grid.Row="1" Grid.Column="1" Background="{ThemeResource CardBackgroundFillColorDefaultBrush}" CornerRadius="8" Padding="16"><StackPanel Spacing="8"><TextBlock Text="PDF Translation Target" FontSize="14" FontWeight="SemiBold"/><ComboBox x:Name="PdfLangCombo" MinWidth="240" SelectedIndex="0"><ComboBoxItem Content="繁體中文 (zh-TW)"/><ComboBoxItem Content="English (en)"/><ComboBoxItem Content="简体中文 (zh-CN)"/><ComboBoxItem Content="日本語 (ja)"/><ComboBoxItem Content="한국어 (ko)"/></ComboBox></StackPanel></Grid>
+                        <Grid Grid.Row="2" Grid.Column="0" Background="{ThemeResource CardBackgroundFillColorDefaultBrush}" CornerRadius="8" Padding="16"><StackPanel Spacing="12"><Grid><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions><StackPanel Spacing="4"><TextBlock Text="Quiet Mode" FontSize="14" FontWeight="SemiBold"/><TextBlock Text="Process files without showing UI" FontSize="12" Foreground="{ThemeResource TextFillColorSecondaryBrush}"/></StackPanel><ToggleSwitch Grid.Column="1" x:Name="QuietModeToggle" Margin="16,0,0,0" VerticalAlignment="Center"/></Grid><Grid><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions><StackPanel Spacing="4"><TextBlock Text="Notifications" FontSize="14" FontWeight="SemiBold"/><TextBlock Text="Show toast when conversion completes" FontSize="12" Foreground="{ThemeResource TextFillColorSecondaryBrush}"/></StackPanel><ToggleSwitch Grid.Column="1" x:Name="NotificationToggle" IsOn="True" Margin="16,0,0,0" VerticalAlignment="Center"/></Grid></StackPanel></Grid>
+                        <Grid Grid.Row="2" Grid.Column="1" Background="{ThemeResource CardBackgroundFillColorDefaultBrush}" CornerRadius="8" Padding="16"><StackPanel Spacing="10"><TextBlock Text="PDF Compression" FontSize="14" FontWeight="SemiBold"/><Grid><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions><Slider x:Name="CompressionSlider" Grid.Column="0" Minimum="0" Maximum="3" Value="1"/><TextBlock x:Name="CompressionLabel" Grid.Column="1" Text="Standard" VerticalAlignment="Center" Margin="12,0,0,0"/></Grid><Grid><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions><TextBlock Grid.Column="0" Text="Strip Fonts" VerticalAlignment="Center"/><ToggleSwitch Grid.Column="1" x:Name="StripFontsToggle" Margin="16,0,0,0"/></Grid><Grid><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions><TextBlock Grid.Column="0" Text="Minify Content" VerticalAlignment="Center"/><ToggleSwitch Grid.Column="1" x:Name="MinifyContentToggle" IsOn="True" Margin="16,0,0,0"/></Grid></StackPanel></Grid>
+                    </Grid>
                 </StackPanel>
             </ScrollViewer>
 

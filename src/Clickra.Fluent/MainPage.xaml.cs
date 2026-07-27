@@ -1,7 +1,9 @@
 using Clickra.Core;
+using Microsoft.UI;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Input;
+using Microsoft.UI.Xaml.Media;
 using System.Diagnostics;
 using Windows.ApplicationModel.DataTransfer;
 using Windows.Storage;
@@ -361,11 +363,48 @@ public sealed partial class MainPage : Page
         HistoryListContainer.Children.Clear();
         foreach (var entry in history)
         {
-            HistoryListContainer.Children.Add(new TextBlock
+            var row = new Grid
             {
-                Text = $"{entry.Time}  {CommandLabel(entry.Command)}  {(entry.IsSuccess ? "Success" : "Failed")}",
-                TextWrapping = TextWrapping.Wrap,
-                FontSize = 13
+                ColumnSpacing = 12
+            };
+            row.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+            row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+            row.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+
+            var status = new Border
+            {
+                Width = 8,
+                Height = 8,
+                CornerRadius = new CornerRadius(4),
+                Background = new SolidColorBrush(entry.IsSuccess ? Colors.LimeGreen : Colors.IndianRed),
+                VerticalAlignment = VerticalAlignment.Center
+            };
+
+            var title = new StackPanel { Spacing = 2 };
+            title.Children.Add(new TextBlock { Text = CommandLabel(entry.Command), FontSize = 14, FontWeight = Microsoft.UI.Text.FontWeights.SemiBold });
+            title.Children.Add(new TextBlock { Text = entry.Time, FontSize = 12, Foreground = (Brush)Application.Current.Resources["TextFillColorSecondaryBrush"] });
+
+            var result = new TextBlock
+            {
+                Text = entry.IsSuccess ? "Success" : "Failed",
+                FontSize = 13,
+                Foreground = new SolidColorBrush(entry.IsSuccess ? Colors.LimeGreen : Colors.IndianRed),
+                VerticalAlignment = VerticalAlignment.Center
+            };
+
+            Grid.SetColumn(status, 0);
+            Grid.SetColumn(title, 1);
+            Grid.SetColumn(result, 2);
+            row.Children.Add(status);
+            row.Children.Add(title);
+            row.Children.Add(result);
+
+            HistoryListContainer.Children.Add(new Border
+            {
+                Background = (Brush)Application.Current.Resources["CardBackgroundFillColorDefaultBrush"],
+                CornerRadius = new CornerRadius(8),
+                Padding = new Thickness(14, 10, 14, 10),
+                Child = row
             });
         }
     }
