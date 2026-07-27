@@ -1,4 +1,5 @@
-﻿using Microsoft.UI.Xaml;
+using Microsoft.UI.Xaml;
+using System.IO;
 
 namespace Clickra_Fluent;
 
@@ -9,7 +10,9 @@ public sealed partial class MainWindow : Window
         InitializeComponent();
         ExtendsContentIntoTitleBar = true;
         SetTitleBar(AppTitleBar);
-        AppWindow.SetIcon("Assets/AppIcon.png");
+        string iconPath = Path.Combine(AppContext.BaseDirectory, "app.ico");
+        if (File.Exists(iconPath))
+            AppWindow.SetIcon(iconPath);
         RootFrame.Navigate(typeof(MainPage));
     }
 }
