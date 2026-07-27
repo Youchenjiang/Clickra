@@ -32,6 +32,8 @@ public sealed partial class MainPage : Page
         StartButton.Click += async (_, _) => await StartConversionAsync();
         CancelButton.Click += (_, _) => _cts?.Cancel();
         ClearHistoryButton.Click += (_, _) => { ClickraStorage.ClearHistory(); RefreshHistory(); };
+        OpenConvertButton.Click += (_, _) => SelectNavItem("Convert");
+        ViewHistoryButton.Click += (_, _) => SelectNavItem("History");
         HookCommandButtons();
         LoadSettings();
         RefreshFiles();
@@ -56,6 +58,19 @@ public sealed partial class MainPage : Page
         SettingsPanel.Visibility = name == "Settings" ? Visibility.Visible : Visibility.Collapsed;
         AboutPanel.Visibility = name == "About" ? Visibility.Visible : Visibility.Collapsed;
         if (name is "History" or "Overview") RefreshHistory();
+    }
+
+    private void SelectNavItem(string tag)
+    {
+        foreach (var item in NavView.MenuItems.OfType<NavigationViewItem>())
+        {
+            if (item.Tag is string itemTag && itemTag == tag)
+            {
+                NavView.SelectedItem = item;
+                ShowPanel(tag);
+                return;
+            }
+        }
     }
 
     private void HookCommandButtons()

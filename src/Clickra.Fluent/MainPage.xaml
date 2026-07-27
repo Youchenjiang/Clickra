@@ -1,4 +1,4 @@
-﻿<?xml version="1.0" encoding="utf-8" ?>
+<?xml version="1.0" encoding="utf-8" ?>
 <Page
     x:Class="Clickra_Fluent.MainPage"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
@@ -6,172 +6,378 @@
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     mc:Ignorable="d"
-    FontFamily="Segoe UI Variable Display">
+    FontFamily="Segoe UI Variable">
 
-    <NavigationView x:Name="NavView" PaneDisplayMode="Top" IsSettingsVisible="False" IsBackButtonVisible="Collapsed" IsTitleBarAutoPaddingEnabled="False" Background="Transparent" SelectionChanged="NavView_SelectionChanged">
-        <NavigationView.MenuItems>
-            <NavigationViewItem Content="Overview" Tag="Overview" IsSelected="True"><NavigationViewItem.Icon><FontIcon Glyph="&#xE80F;"/></NavigationViewItem.Icon></NavigationViewItem>
-            <NavigationViewItem Content="Convert" Tag="Convert"><NavigationViewItem.Icon><FontIcon Glyph="&#xE8B7;"/></NavigationViewItem.Icon></NavigationViewItem>
-            <NavigationViewItem Content="History" Tag="History"><NavigationViewItem.Icon><FontIcon Glyph="&#xE81C;"/></NavigationViewItem.Icon></NavigationViewItem>
-            <NavigationViewItem Content="Settings" Tag="Settings"><NavigationViewItem.Icon><FontIcon Glyph="&#xE713;"/></NavigationViewItem.Icon></NavigationViewItem>
-            <NavigationViewItem Content="About" Tag="About"><NavigationViewItem.Icon><FontIcon Glyph="&#xE946;"/></NavigationViewItem.Icon></NavigationViewItem>
-        </NavigationView.MenuItems>
-        <Grid>
+    <Grid RowSpacing="0">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+        </Grid.RowDefinitions>
+
+        <NavigationView
+            x:Name="NavView"
+            Grid.Row="0"
+            PaneDisplayMode="Top"
+            IsSettingsVisible="False"
+            IsBackButtonVisible="Collapsed"
+            IsTitleBarAutoPaddingEnabled="False"
+            Background="{ThemeResource LayerOnAcrylicFillColorDefaultBrush}"
+            SelectionChanged="NavView_SelectionChanged">
+            <NavigationView.MenuItems>
+                <NavigationViewItem Content="Overview" Tag="Overview" IsSelected="True">
+                    <NavigationViewItem.Icon><FontIcon Glyph="&#xE80F;"/></NavigationViewItem.Icon>
+                </NavigationViewItem>
+                <NavigationViewItem Content="Convert" Tag="Convert">
+                    <NavigationViewItem.Icon><FontIcon Glyph="&#xE8B7;"/></NavigationViewItem.Icon>
+                </NavigationViewItem>
+                <NavigationViewItem Content="History" Tag="History">
+                    <NavigationViewItem.Icon><FontIcon Glyph="&#xE81C;"/></NavigationViewItem.Icon>
+                </NavigationViewItem>
+                <NavigationViewItem Content="Settings" Tag="Settings">
+                    <NavigationViewItem.Icon><FontIcon Glyph="&#xE713;"/></NavigationViewItem.Icon>
+                </NavigationViewItem>
+                <NavigationViewItem Content="About" Tag="About">
+                    <NavigationViewItem.Icon><FontIcon Glyph="&#xE946;"/></NavigationViewItem.Icon>
+                </NavigationViewItem>
+            </NavigationView.MenuItems>
+        </NavigationView>
+
+        <Grid Grid.Row="1">
             <ScrollViewer x:Name="OverviewPanel" VerticalScrollBarVisibility="Auto">
-                <StackPanel Spacing="16" Margin="24,16,24,24">
-                    <TextBlock Text="Overview" FontSize="28" FontWeight="SemiBold"/>
-                    <Grid Background="{ThemeResource CardBackgroundFillColorDefaultBrush}" CornerRadius="8" Padding="16">
-                        <StackPanel Spacing="10">
-                            <TextBlock Text="Engine Status" FontSize="14" FontWeight="SemiBold"/>
-                            <Grid><Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
-                                <Ellipse Grid.Column="0" Width="8" Height="8" Fill="{ThemeResource SystemFillColorSuccessBrush}" VerticalAlignment="Center"/>
-                                <TextBlock Grid.Column="1" Text="PDF Processing" Margin="12,0,0,0" VerticalAlignment="Center"/>
-                                <TextBlock Grid.Column="2" Text="Ready" Foreground="{ThemeResource TextFillColorSecondaryBrush}" VerticalAlignment="Center"/>
-                            </Grid>
-                            <Grid><Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
-                                <Ellipse Grid.Column="0" Width="8" Height="8" Fill="{ThemeResource SystemFillColorSuccessBrush}" VerticalAlignment="Center"/>
-                                <TextBlock Grid.Column="1" Text="Office Conversion" Margin="12,0,0,0" VerticalAlignment="Center"/>
-                                <TextBlock Grid.Column="2" Text="Ready" Foreground="{ThemeResource TextFillColorSecondaryBrush}" VerticalAlignment="Center"/>
-                            </Grid>
-                        </StackPanel>
+                <StackPanel Spacing="18" Margin="36,28,36,32">
+                    <Grid ColumnSpacing="20">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="2*"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+                        <Grid Background="{ThemeResource CardBackgroundFillColorDefaultBrush}" CornerRadius="8" Padding="24">
+                            <StackPanel Spacing="12">
+                                <TextBlock Text="Clickra" FontSize="36" FontWeight="SemiBold"/>
+                                <TextBlock Text="File conversion workspace" FontSize="16" Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
+                                <Grid ColumnSpacing="10" Margin="0,8,0,0">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="Auto"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                    </Grid.ColumnDefinitions>
+                                    <Button x:Name="OpenConvertButton" Content="Open Convert" Padding="18,10"/>
+                                    <Button x:Name="ViewHistoryButton" Grid.Column="1" Content="View History" Padding="18,10"/>
+                                </Grid>
+                            </StackPanel>
+                        </Grid>
+                        <Grid Grid.Column="1" Background="{ThemeResource CardBackgroundFillColorDefaultBrush}" CornerRadius="8" Padding="20">
+                            <StackPanel Spacing="12">
+                                <TextBlock Text="Status" FontSize="15" FontWeight="SemiBold"/>
+                                <Grid ColumnSpacing="10">
+                                    <Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+                                    <Ellipse Width="8" Height="8" Fill="{ThemeResource SystemFillColorSuccessBrush}" VerticalAlignment="Center"/>
+                                    <TextBlock Grid.Column="1" Text="PDF tools" Margin="2,0,0,0"/>
+                                    <TextBlock Grid.Column="2" Text="Ready" Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
+                                </Grid>
+                                <Grid ColumnSpacing="10">
+                                    <Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+                                    <Ellipse Width="8" Height="8" Fill="{ThemeResource SystemFillColorSuccessBrush}" VerticalAlignment="Center"/>
+                                    <TextBlock Grid.Column="1" Text="Office tools" Margin="2,0,0,0"/>
+                                    <TextBlock Grid.Column="2" Text="Ready" Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
+                                </Grid>
+                            </StackPanel>
+                        </Grid>
                     </Grid>
-                    <Grid Background="{ThemeResource CardBackgroundFillColorDefaultBrush}" CornerRadius="8" Padding="16">
-                        <StackPanel Spacing="10">
-                            <TextBlock Text="Statistics" FontSize="14" FontWeight="SemiBold"/>
-                            <Grid><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
-                                <StackPanel Grid.Column="0" HorizontalAlignment="Center"><TextBlock Text="Total" FontSize="12" Foreground="{ThemeResource TextFillColorSecondaryBrush}" HorizontalAlignment="Center"/><TextBlock x:Name="StatTotal" Text="0" FontSize="24" FontWeight="SemiBold" HorizontalAlignment="Center"/></StackPanel>
-                                <Border Grid.Column="1" Width="1" Background="{ThemeResource CardStrokeColorDefaultBrush}" Margin="0,4"/>
-                                <StackPanel Grid.Column="2" HorizontalAlignment="Center"><TextBlock Text="Success" FontSize="12" Foreground="{ThemeResource TextFillColorSecondaryBrush}" HorizontalAlignment="Center"/><TextBlock x:Name="StatSuccess" Text="0" FontSize="24" FontWeight="SemiBold" Foreground="{ThemeResource SystemFillColorSuccessBrush}" HorizontalAlignment="Center"/></StackPanel>
-                                <Border Grid.Column="3" Width="1" Background="{ThemeResource CardStrokeColorDefaultBrush}" Margin="0,4"/>
-                                <StackPanel Grid.Column="4" HorizontalAlignment="Center"><TextBlock Text="Failed" FontSize="12" Foreground="{ThemeResource TextFillColorSecondaryBrush}" HorizontalAlignment="Center"/><TextBlock x:Name="StatFailed" Text="0" FontSize="24" FontWeight="SemiBold" Foreground="{ThemeResource SystemFillColorCriticalBrush}" HorizontalAlignment="Center"/></StackPanel>
-                            </Grid>
-                        </StackPanel>
+
+                    <Grid ColumnSpacing="16">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+                        <Grid Background="{ThemeResource CardBackgroundFillColorDefaultBrush}" CornerRadius="8" Padding="20">
+                            <StackPanel Spacing="4">
+                                <TextBlock Text="Total jobs" FontSize="13" Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
+                                <TextBlock x:Name="StatTotal" Text="0" FontSize="32" FontWeight="SemiBold"/>
+                            </StackPanel>
+                        </Grid>
+                        <Grid Grid.Column="1" Background="{ThemeResource CardBackgroundFillColorDefaultBrush}" CornerRadius="8" Padding="20">
+                            <StackPanel Spacing="4">
+                                <TextBlock Text="Success" FontSize="13" Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
+                                <TextBlock x:Name="StatSuccess" Text="0" FontSize="32" FontWeight="SemiBold" Foreground="{ThemeResource SystemFillColorSuccessBrush}"/>
+                            </StackPanel>
+                        </Grid>
+                        <Grid Grid.Column="2" Background="{ThemeResource CardBackgroundFillColorDefaultBrush}" CornerRadius="8" Padding="20">
+                            <StackPanel Spacing="4">
+                                <TextBlock Text="Failed" FontSize="13" Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
+                                <TextBlock x:Name="StatFailed" Text="0" FontSize="32" FontWeight="SemiBold" Foreground="{ThemeResource SystemFillColorCriticalBrush}"/>
+                            </StackPanel>
+                        </Grid>
                     </Grid>
-                    <Grid Background="{ThemeResource CardBackgroundFillColorDefaultBrush}" CornerRadius="8" Padding="16">
-                        <StackPanel Spacing="8"><TextBlock Text="Quick Tip" FontSize="14" FontWeight="SemiBold"/><TextBlock Text="Right-click any file in Explorer to access Clickra's conversion tools directly from the context menu." FontSize="13" Foreground="{ThemeResource TextFillColorSecondaryBrush}" TextWrapping="Wrap"/></StackPanel>
+
+                    <Grid Background="{ThemeResource CardBackgroundFillColorDefaultBrush}" CornerRadius="8" Padding="18">
+                        <Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+                        <FontIcon Glyph="&#xE946;" FontSize="22" Foreground="{ThemeResource TextFillColorSecondaryBrush}" VerticalAlignment="Center"/>
+                        <StackPanel Grid.Column="1" Spacing="2" Margin="14,0,0,0">
+                            <TextBlock Text="Explorer integration stays available" FontSize="14" FontWeight="SemiBold"/>
+                            <TextBlock Text="Right-click files in Explorer for the context menu, or use Convert here for a full Fluent progress view." FontSize="13" Foreground="{ThemeResource TextFillColorSecondaryBrush}" TextWrapping="Wrap"/>
+                        </StackPanel>
                     </Grid>
                 </StackPanel>
             </ScrollViewer>
 
             <ScrollViewer x:Name="ConvertPanel" VerticalScrollBarVisibility="Auto" Visibility="Collapsed">
-                <StackPanel Spacing="16" Margin="24,16,24,24">
-                    <TextBlock Text="Convert" FontSize="28" FontWeight="SemiBold"/>
-                    <Grid Background="{ThemeResource CardBackgroundFillColorDefaultBrush}" CornerRadius="8" Padding="24" x:Name="DropZone" AllowDrop="True">
-                        <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="8">
-                            <FontIcon Glyph="&#xE896;" FontSize="48" HorizontalAlignment="Center" Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
-                            <TextBlock Text="Drag and drop files here" FontSize="14" FontWeight="SemiBold" HorizontalAlignment="Center"/>
-                            <TextBlock Text="or click to browse" FontSize="13" Foreground="{ThemeResource TextFillColorSecondaryBrush}" HorizontalAlignment="Center"/>
-                            <TextBlock Text="PDF, Word, Excel, PowerPoint, Images" FontSize="12" Foreground="{ThemeResource TextFillColorTertiaryBrush}" HorizontalAlignment="Center"/>
-                        </StackPanel>
-                    </Grid>
-                    <Grid Background="{ThemeResource CardBackgroundFillColorDefaultBrush}" CornerRadius="8" Padding="16">
-                        <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
-                        <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
-                        <TextBlock Grid.Row="0" Grid.Column="0" Text="Selected Files" FontSize="14" FontWeight="SemiBold"/>
-                        <Button Grid.Row="0" Grid.Column="1" Content="Clear" x:Name="ClearFilesButton"/>
-                        <StackPanel x:Name="FileListContainer" Grid.Row="1" Spacing="4" Margin="0,8,0,0">
-                            <TextBlock x:Name="EmptyFileMessage" Text="No files selected" FontSize="13" Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
-                        </StackPanel>
-                    </Grid>
-                    <Grid Background="{ThemeResource CardBackgroundFillColorDefaultBrush}" CornerRadius="8" Padding="16">
-                        <StackPanel Spacing="12">
-                            <TextBlock Text="Conversion Command" FontSize="14" FontWeight="SemiBold"/>
-                            <TextBlock x:Name="CommandStatusText" Text="Choose a command" FontSize="13" Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
-                            <Grid ColumnSpacing="16" RowSpacing="12">
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="*"/>
-                                    <ColumnDefinition Width="*"/>
-                                    <ColumnDefinition Width="*"/>
-                                </Grid.ColumnDefinitions>
-                                <StackPanel Grid.Column="0" Spacing="8">
-                                    <TextBlock Text="Office" FontSize="12" FontWeight="SemiBold" Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
-                                    <StackPanel Orientation="Horizontal" Spacing="8">
-                                        <Button Content="Word to PDF" Tag="word2pdf" x:Name="BtnWord2Pdf"/>
-                                        <Button Content="Excel to PDF" Tag="excel2pdf" x:Name="BtnExcel2Pdf"/>
-                                        <Button Content="PPT to PDF" Tag="ppt2pdf" x:Name="BtnPpt2Pdf"/>
-                                    </StackPanel>
+                <StackPanel Spacing="18" Margin="36,28,36,32">
+                    <Grid ColumnSpacing="20">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="1.15*"/>
+                            <ColumnDefinition Width="0.85*"/>
+                        </Grid.ColumnDefinitions>
+                        <StackPanel Spacing="18">
+                            <TextBlock Text="Convert" FontSize="34" FontWeight="SemiBold"/>
+                            <Grid x:Name="DropZone" AllowDrop="True" Background="{ThemeResource CardBackgroundFillColorDefaultBrush}" CornerRadius="8" Padding="28" MinHeight="210">
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="*"/>
+                                    <RowDefinition Height="Auto"/>
+                                </Grid.RowDefinitions>
+                                <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="10">
+                                    <FontIcon Glyph="&#xE896;" FontSize="52" Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}"/>
+                                    <TextBlock Text="Drop files here" FontSize="20" FontWeight="SemiBold" HorizontalAlignment="Center"/>
+                                    <TextBlock Text="Click this area to browse" FontSize="14" Foreground="{ThemeResource TextFillColorSecondaryBrush}" HorizontalAlignment="Center"/>
+                                    <TextBlock Text="PDF, Office documents, and images" FontSize="12" Foreground="{ThemeResource TextFillColorTertiaryBrush}" HorizontalAlignment="Center"/>
                                 </StackPanel>
-                                <StackPanel Grid.Column="1" Spacing="8">
-                                    <TextBlock Text="PDF" FontSize="12" FontWeight="SemiBold" Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
-                                    <StackPanel Orientation="Horizontal" Spacing="8">
-                                        <Button Content="Merge" Tag="merge-pdf" x:Name="BtnMergePdf"/>
-                                        <Button Content="Compress" Tag="compress-pdf" x:Name="BtnCompressPdf"/>
-                                        <Button Content="Translate" Tag="translate-pdf" x:Name="BtnTranslatePdf"/>
-                                        <Button Content="Decrypt" Tag="decrypt-pdf" x:Name="BtnDecryptPdf"/>
-                                    </StackPanel>
+                            </Grid>
+
+                            <Grid Background="{ThemeResource CardBackgroundFillColorDefaultBrush}" CornerRadius="8" Padding="18">
+                                <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
+                                <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+                                <StackPanel>
+                                    <TextBlock Text="Selected files" FontSize="15" FontWeight="SemiBold"/>
+                                    <TextBlock Text="Files are validated against the selected command." FontSize="12" Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
                                 </StackPanel>
-                                <StackPanel Grid.Column="2" Spacing="8">
-                                    <TextBlock Text="Image" FontSize="12" FontWeight="SemiBold" Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
-                                    <StackPanel Orientation="Horizontal" Spacing="8">
-                                        <Button Content="Image to PDF" Tag="img2pdf" x:Name="BtnImg2Pdf"/>
-                                        <Button Content="Merge" Tag="img-merge" x:Name="BtnImgMerge"/>
-                                        <Button Content="Stitch" Tag="img-stitch" x:Name="BtnImgStitch"/>
-                                    </StackPanel>
+                                <Button Grid.Column="1" x:Name="ClearFilesButton" Content="Clear" Padding="16,8"/>
+                                <StackPanel x:Name="FileListContainer" Grid.Row="1" Grid.ColumnSpan="2" Spacing="6" Margin="0,14,0,0">
+                                    <TextBlock x:Name="EmptyFileMessage" Text="No files selected" FontSize="13" Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
                                 </StackPanel>
                             </Grid>
                         </StackPanel>
-                    </Grid>
-                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Spacing="8">
-                        <Button x:Name="CancelButton" Content="Cancel" Visibility="Collapsed" Padding="20,12"/>
-                        <Button x:Name="StartButton" Content="Start Conversion" Style="{StaticResource AccentButtonStyle}" Visibility="Collapsed" Padding="24,12"/>
-                    </StackPanel>
-                    <Grid x:Name="ConversionProgressSection" Background="{ThemeResource CardBackgroundFillColorDefaultBrush}" CornerRadius="8" Padding="16" Visibility="Collapsed">
-                        <StackPanel Spacing="8">
-                            <TextBlock x:Name="ConversionProgressText" Text="Ready" FontSize="13"/>
-                            <ProgressBar x:Name="ConversionProgressBar" Minimum="0" Maximum="100"/>
+
+                        <StackPanel Grid.Column="1" Spacing="14">
+                            <Grid Background="{ThemeResource CardBackgroundFillColorDefaultBrush}" CornerRadius="8" Padding="18">
+                                <StackPanel Spacing="14">
+                                    <StackPanel Spacing="2">
+                                        <TextBlock Text="Command" FontSize="15" FontWeight="SemiBold"/>
+                                        <TextBlock x:Name="CommandStatusText" Text="Choose a command" FontSize="12" Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
+                                    </StackPanel>
+                                    <StackPanel Spacing="8">
+                                        <TextBlock Text="Office" FontSize="12" FontWeight="SemiBold" Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
+                                        <Grid ColumnSpacing="8">
+                                            <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="*"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+                                            <Button x:Name="BtnWord2Pdf" Content="Word" Tag="word2pdf"/>
+                                            <Button x:Name="BtnExcel2Pdf" Grid.Column="1" Content="Excel" Tag="excel2pdf"/>
+                                            <Button x:Name="BtnPpt2Pdf" Grid.Column="2" Content="PPT" Tag="ppt2pdf"/>
+                                        </Grid>
+                                    </StackPanel>
+                                    <StackPanel Spacing="8">
+                                        <TextBlock Text="PDF" FontSize="12" FontWeight="SemiBold" Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
+                                        <Grid ColumnSpacing="8" RowSpacing="8">
+                                            <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+                                            <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
+                                            <Button x:Name="BtnMergePdf" Content="Merge" Tag="merge-pdf"/>
+                                            <Button x:Name="BtnCompressPdf" Grid.Column="1" Content="Compress" Tag="compress-pdf"/>
+                                            <Button x:Name="BtnTranslatePdf" Grid.Row="1" Content="Translate" Tag="translate-pdf"/>
+                                            <Button x:Name="BtnDecryptPdf" Grid.Row="1" Grid.Column="1" Content="Decrypt" Tag="decrypt-pdf"/>
+                                        </Grid>
+                                    </StackPanel>
+                                    <StackPanel Spacing="8">
+                                        <TextBlock Text="Image" FontSize="12" FontWeight="SemiBold" Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
+                                        <Grid ColumnSpacing="8">
+                                            <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="*"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+                                            <Button x:Name="BtnImg2Pdf" Content="PDF" Tag="img2pdf"/>
+                                            <Button x:Name="BtnImgMerge" Grid.Column="1" Content="Merge" Tag="img-merge"/>
+                                            <Button x:Name="BtnImgStitch" Grid.Column="2" Content="Stitch" Tag="img-stitch"/>
+                                        </Grid>
+                                    </StackPanel>
+                                </StackPanel>
+                            </Grid>
+
+                            <Grid Background="{ThemeResource CardBackgroundFillColorDefaultBrush}" CornerRadius="8" Padding="18">
+                                <StackPanel Spacing="12">
+                                    <TextBlock Text="Run" FontSize="15" FontWeight="SemiBold"/>
+                                    <Grid ColumnSpacing="8">
+                                        <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+                                        <Button x:Name="StartButton" Content="Start conversion" Style="{StaticResource AccentButtonStyle}" Visibility="Collapsed" Padding="18,10"/>
+                                        <Button x:Name="CancelButton" Grid.Column="1" Content="Cancel" Visibility="Collapsed" Padding="16,10"/>
+                                    </Grid>
+                                    <Grid x:Name="ConversionProgressSection" Visibility="Collapsed">
+                                        <StackPanel Spacing="8">
+                                            <TextBlock x:Name="ConversionProgressText" Text="Ready" FontSize="13" Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
+                                            <ProgressBar x:Name="ConversionProgressBar" Minimum="0" Maximum="100"/>
+                                        </StackPanel>
+                                    </Grid>
+                                </StackPanel>
+                            </Grid>
                         </StackPanel>
                     </Grid>
                 </StackPanel>
             </ScrollViewer>
 
             <ScrollViewer x:Name="HistoryPanel" VerticalScrollBarVisibility="Auto" Visibility="Collapsed">
-                <StackPanel Spacing="16" Margin="24,16,24,24">
-                    <Grid><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
-                        <TextBlock Text="History" FontSize="28" FontWeight="SemiBold"/>
-                        <Button Grid.Column="1" Content="Clear" x:Name="ClearHistoryButton" VerticalAlignment="Center"/>
+                <StackPanel Spacing="18" Margin="36,28,36,32">
+                    <Grid>
+                        <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+                        <StackPanel Spacing="4">
+                            <TextBlock Text="History" FontSize="34" FontWeight="SemiBold"/>
+                            <TextBlock Text="Recent conversion results" FontSize="14" Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
+                        </StackPanel>
+                        <Button Grid.Column="1" x:Name="ClearHistoryButton" Content="Clear" VerticalAlignment="Center" Padding="18,10"/>
                     </Grid>
-                    <Grid x:Name="ActiveJobSection" Background="{ThemeResource CardBackgroundFillColorDefaultBrush}" CornerRadius="8" Padding="16" Visibility="Collapsed">
-                        <StackPanel Spacing="8"><TextBlock Text="Active Job" FontSize="14" FontWeight="SemiBold"/><TextBlock x:Name="ActiveJobText" Text="Converting..." FontSize="13"/><ProgressBar x:Name="ActiveJobProgress" IsIndeterminate="True"/></StackPanel>
+                    <Grid x:Name="ActiveJobSection" Background="{ThemeResource CardBackgroundFillColorDefaultBrush}" CornerRadius="8" Padding="18" Visibility="Collapsed">
+                        <StackPanel Spacing="8">
+                            <TextBlock Text="Active job" FontSize="15" FontWeight="SemiBold"/>
+                            <TextBlock x:Name="ActiveJobText" Text="Converting..." FontSize="13"/>
+                            <ProgressBar x:Name="ActiveJobProgress" IsIndeterminate="True"/>
+                        </StackPanel>
                     </Grid>
-                    <Grid x:Name="EmptyHistoryState" Background="{ThemeResource CardBackgroundFillColorDefaultBrush}" CornerRadius="8" Padding="24">
-                        <TextBlock Text="No conversion history yet." FontSize="14" Foreground="{ThemeResource TextFillColorSecondaryBrush}" HorizontalAlignment="Center"/>
+                    <Grid x:Name="EmptyHistoryState" Background="{ThemeResource CardBackgroundFillColorDefaultBrush}" CornerRadius="8" Padding="28">
+                        <StackPanel HorizontalAlignment="Center" Spacing="8">
+                            <FontIcon Glyph="&#xE81C;" FontSize="36" Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
+                            <TextBlock Text="No conversion history yet." FontSize="14" Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
+                        </StackPanel>
                     </Grid>
                     <StackPanel x:Name="HistoryListContainer" Spacing="8"/>
                 </StackPanel>
             </ScrollViewer>
 
             <ScrollViewer x:Name="SettingsPanel" VerticalScrollBarVisibility="Auto" Visibility="Collapsed">
-                <StackPanel Spacing="16" Margin="24,16,24,24">
-                    <TextBlock Text="Settings" FontSize="28" FontWeight="Bold"/>
+                <StackPanel Spacing="18" Margin="36,28,36,32">
+                    <StackPanel Spacing="4">
+                        <TextBlock Text="Settings" FontSize="34" FontWeight="SemiBold"/>
+                        <TextBlock Text="Defaults used by the dashboard and Explorer commands" FontSize="14" Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
+                    </StackPanel>
                     <Grid ColumnSpacing="16" RowSpacing="16">
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="*"/>
-                            <ColumnDefinition Width="*"/>
-                        </Grid.ColumnDefinitions>
-                        <Grid.RowDefinitions>
-                            <RowDefinition Height="Auto"/>
-                            <RowDefinition Height="Auto"/>
-                            <RowDefinition Height="Auto"/>
-                        </Grid.RowDefinitions>
-                        <Grid Grid.Row="0" Grid.Column="0" Background="{ThemeResource CardBackgroundFillColorDefaultBrush}" CornerRadius="8" Padding="16"><StackPanel Spacing="8"><TextBlock Text="Output Directory" FontSize="14" FontWeight="SemiBold"/><TextBlock Text="Choose where converted files are saved" FontSize="12" Foreground="{ThemeResource TextFillColorSecondaryBrush}"/><ComboBox x:Name="OutputDirCombo" MinWidth="240" SelectedIndex="0"><ComboBoxItem Content="Same as source"/><ComboBoxItem Content="Desktop"/><ComboBoxItem Content="Downloads"/><ComboBoxItem Content="Custom..."/></ComboBox></StackPanel></Grid>
-                        <Grid Grid.Row="0" Grid.Column="1" Background="{ThemeResource CardBackgroundFillColorDefaultBrush}" CornerRadius="8" Padding="16"><StackPanel Spacing="8"><TextBlock Text="Office Engine" FontSize="14" FontWeight="SemiBold"/><TextBlock Text="Select engine for Office conversion" FontSize="12" Foreground="{ThemeResource TextFillColorSecondaryBrush}"/><ComboBox x:Name="EngineCombo" MinWidth="240" SelectedIndex="0"><ComboBoxItem Content="Auto"/><ComboBoxItem Content="Microsoft Office"/><ComboBoxItem Content="LibreOffice"/></ComboBox></StackPanel></Grid>
-                        <Grid Grid.Row="1" Grid.Column="0" Background="{ThemeResource CardBackgroundFillColorDefaultBrush}" CornerRadius="8" Padding="16"><StackPanel Spacing="8"><TextBlock Text="Language" FontSize="14" FontWeight="SemiBold"/><ComboBox x:Name="LanguageCombo" MinWidth="240" SelectedIndex="0"><ComboBoxItem Content="繁體中文 (zh-TW)"/><ComboBoxItem Content="简体中文 (zh-CN)"/><ComboBoxItem Content="English (en-US)"/><ComboBoxItem Content="日本語 (ja-JP)"/><ComboBoxItem Content="한국어 (ko-KR)"/></ComboBox></StackPanel></Grid>
-                        <Grid Grid.Row="1" Grid.Column="1" Background="{ThemeResource CardBackgroundFillColorDefaultBrush}" CornerRadius="8" Padding="16"><StackPanel Spacing="8"><TextBlock Text="PDF Translation Target" FontSize="14" FontWeight="SemiBold"/><ComboBox x:Name="PdfLangCombo" MinWidth="240" SelectedIndex="0"><ComboBoxItem Content="繁體中文 (zh-TW)"/><ComboBoxItem Content="English (en)"/><ComboBoxItem Content="简体中文 (zh-CN)"/><ComboBoxItem Content="日本語 (ja)"/><ComboBoxItem Content="한국어 (ko)"/></ComboBox></StackPanel></Grid>
-                        <Grid Grid.Row="2" Grid.Column="0" Background="{ThemeResource CardBackgroundFillColorDefaultBrush}" CornerRadius="8" Padding="16"><StackPanel Spacing="12"><Grid><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions><StackPanel Spacing="4"><TextBlock Text="Quiet Mode" FontSize="14" FontWeight="SemiBold"/><TextBlock Text="Process files without showing UI" FontSize="12" Foreground="{ThemeResource TextFillColorSecondaryBrush}"/></StackPanel><ToggleSwitch Grid.Column="1" x:Name="QuietModeToggle" Margin="16,0,0,0" VerticalAlignment="Center"/></Grid><Grid><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions><StackPanel Spacing="4"><TextBlock Text="Notifications" FontSize="14" FontWeight="SemiBold"/><TextBlock Text="Show toast when conversion completes" FontSize="12" Foreground="{ThemeResource TextFillColorSecondaryBrush}"/></StackPanel><ToggleSwitch Grid.Column="1" x:Name="NotificationToggle" IsOn="True" Margin="16,0,0,0" VerticalAlignment="Center"/></Grid></StackPanel></Grid>
-                        <Grid Grid.Row="2" Grid.Column="1" Background="{ThemeResource CardBackgroundFillColorDefaultBrush}" CornerRadius="8" Padding="16"><StackPanel Spacing="10"><TextBlock Text="PDF Compression" FontSize="14" FontWeight="SemiBold"/><Grid><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions><Slider x:Name="CompressionSlider" Grid.Column="0" Minimum="0" Maximum="3" Value="1"/><TextBlock x:Name="CompressionLabel" Grid.Column="1" Text="Standard" VerticalAlignment="Center" Margin="12,0,0,0"/></Grid><Grid><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions><TextBlock Grid.Column="0" Text="Strip Fonts" VerticalAlignment="Center"/><ToggleSwitch Grid.Column="1" x:Name="StripFontsToggle" Margin="16,0,0,0"/></Grid><Grid><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions><TextBlock Grid.Column="0" Text="Minify Content" VerticalAlignment="Center"/><ToggleSwitch Grid.Column="1" x:Name="MinifyContentToggle" IsOn="True" Margin="16,0,0,0"/></Grid></StackPanel></Grid>
+                        <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+                        <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
+                        <Grid Background="{ThemeResource CardBackgroundFillColorDefaultBrush}" CornerRadius="8" Padding="18">
+                            <StackPanel Spacing="8">
+                                <TextBlock Text="Output directory" FontSize="15" FontWeight="SemiBold"/>
+                                <TextBlock Text="Where converted files are saved" FontSize="12" Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
+                                <ComboBox x:Name="OutputDirCombo" MinWidth="260" SelectedIndex="0">
+                                    <ComboBoxItem Content="Same as source"/>
+                                    <ComboBoxItem Content="Desktop"/>
+                                    <ComboBoxItem Content="Downloads"/>
+                                    <ComboBoxItem Content="Custom..."/>
+                                </ComboBox>
+                            </StackPanel>
+                        </Grid>
+                        <Grid Grid.Column="1" Background="{ThemeResource CardBackgroundFillColorDefaultBrush}" CornerRadius="8" Padding="18">
+                            <StackPanel Spacing="8">
+                                <TextBlock Text="Office engine" FontSize="15" FontWeight="SemiBold"/>
+                                <TextBlock Text="Engine used for Office conversion" FontSize="12" Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
+                                <ComboBox x:Name="EngineCombo" MinWidth="260" SelectedIndex="0">
+                                    <ComboBoxItem Content="Auto"/>
+                                    <ComboBoxItem Content="Microsoft Office"/>
+                                    <ComboBoxItem Content="LibreOffice"/>
+                                </ComboBox>
+                            </StackPanel>
+                        </Grid>
+                        <Grid Grid.Row="1" Background="{ThemeResource CardBackgroundFillColorDefaultBrush}" CornerRadius="8" Padding="18">
+                            <StackPanel Spacing="8">
+                                <TextBlock Text="Language" FontSize="15" FontWeight="SemiBold"/>
+                                <ComboBox x:Name="LanguageCombo" MinWidth="260" SelectedIndex="0">
+                                    <ComboBoxItem Content="繁體中文 (zh-TW)"/>
+                                    <ComboBoxItem Content="简体中文 (zh-CN)"/>
+                                    <ComboBoxItem Content="English (en-US)"/>
+                                    <ComboBoxItem Content="日本語 (ja-JP)"/>
+                                    <ComboBoxItem Content="한국어 (ko-KR)"/>
+                                </ComboBox>
+                            </StackPanel>
+                        </Grid>
+                        <Grid Grid.Row="1" Grid.Column="1" Background="{ThemeResource CardBackgroundFillColorDefaultBrush}" CornerRadius="8" Padding="18">
+                            <StackPanel Spacing="8">
+                                <TextBlock Text="PDF translation target" FontSize="15" FontWeight="SemiBold"/>
+                                <ComboBox x:Name="PdfLangCombo" MinWidth="260" SelectedIndex="0">
+                                    <ComboBoxItem Content="繁體中文 (zh-TW)"/>
+                                    <ComboBoxItem Content="English (en)"/>
+                                    <ComboBoxItem Content="简体中文 (zh-CN)"/>
+                                    <ComboBoxItem Content="日本語 (ja)"/>
+                                    <ComboBoxItem Content="한국어 (ko)"/>
+                                </ComboBox>
+                            </StackPanel>
+                        </Grid>
+                        <Grid Grid.Row="2" Background="{ThemeResource CardBackgroundFillColorDefaultBrush}" CornerRadius="8" Padding="18">
+                            <StackPanel Spacing="14">
+                                <TextBlock Text="Behavior" FontSize="15" FontWeight="SemiBold"/>
+                                <Grid ColumnSpacing="16">
+                                    <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+                                    <StackPanel Spacing="2">
+                                        <TextBlock Text="Quiet mode"/>
+                                        <TextBlock Text="Process files without showing UI" FontSize="12" Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
+                                    </StackPanel>
+                                    <ToggleSwitch x:Name="QuietModeToggle" Grid.Column="1" VerticalAlignment="Center"/>
+                                </Grid>
+                                <Grid ColumnSpacing="16">
+                                    <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+                                    <StackPanel Spacing="2">
+                                        <TextBlock Text="Notifications"/>
+                                        <TextBlock Text="Show toast when conversion completes" FontSize="12" Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
+                                    </StackPanel>
+                                    <ToggleSwitch x:Name="NotificationToggle" Grid.Column="1" IsOn="True" VerticalAlignment="Center"/>
+                                </Grid>
+                            </StackPanel>
+                        </Grid>
+                        <Grid Grid.Row="2" Grid.Column="1" Background="{ThemeResource CardBackgroundFillColorDefaultBrush}" CornerRadius="8" Padding="18">
+                            <StackPanel Spacing="12">
+                                <TextBlock Text="PDF compression" FontSize="15" FontWeight="SemiBold"/>
+                                <Grid ColumnSpacing="12">
+                                    <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+                                    <Slider x:Name="CompressionSlider" Minimum="0" Maximum="3" Value="1"/>
+                                    <TextBlock x:Name="CompressionLabel" Grid.Column="1" Text="Standard" VerticalAlignment="Center"/>
+                                </Grid>
+                                <Grid ColumnSpacing="16">
+                                    <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+                                    <TextBlock Text="Strip fonts" VerticalAlignment="Center"/>
+                                    <ToggleSwitch x:Name="StripFontsToggle" Grid.Column="1"/>
+                                </Grid>
+                                <Grid ColumnSpacing="16">
+                                    <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+                                    <TextBlock Text="Minify content" VerticalAlignment="Center"/>
+                                    <ToggleSwitch x:Name="MinifyContentToggle" Grid.Column="1" IsOn="True"/>
+                                </Grid>
+                            </StackPanel>
+                        </Grid>
                     </Grid>
                 </StackPanel>
             </ScrollViewer>
 
             <ScrollViewer x:Name="AboutPanel" VerticalScrollBarVisibility="Auto" Visibility="Collapsed">
-                <StackPanel Spacing="16" Margin="24,16,24,24">
-                    <TextBlock Text="About" FontSize="28" FontWeight="Bold"/>
-                    <Grid Background="{ThemeResource CardBackgroundFillColorDefaultBrush}" CornerRadius="8" Padding="20"><Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions><FontIcon Grid.Column="0" Glyph="&#xE946;" FontSize="48" Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}" VerticalAlignment="Center" Margin="0,0,20,0"/><StackPanel Grid.Column="1" Spacing="4" VerticalAlignment="Center"><TextBlock Text="Clickra" FontSize="22" FontWeight="Bold"/><TextBlock Text="Version 3.6.4" FontSize="13" Foreground="{ThemeResource TextFillColorSecondaryBrush}"/><TextBlock Text="A modern Windows utility that adds powerful file conversion tools to your right-click context menu." FontSize="14" TextWrapping="Wrap" Foreground="{ThemeResource TextFillColorSecondaryBrush}"/></StackPanel></Grid>
-                    <Grid Background="{ThemeResource CardBackgroundFillColorDefaultBrush}" CornerRadius="8" Padding="16"><Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions><FontIcon Grid.Column="0" Glyph="&#xE71B;" VerticalAlignment="Center" Margin="0,0,12,0"/><TextBlock Grid.Column="1" Text="View on GitHub" VerticalAlignment="Center"/><FontIcon Grid.Column="2" Glyph="&#xE8A7;" Foreground="{ThemeResource TextFillColorSecondaryBrush}" VerticalAlignment="Center"/></Grid>
-                    <Grid Background="{ThemeResource CardBackgroundFillColorDefaultBrush}" CornerRadius="8" Padding="16"><StackPanel Spacing="10"><TextBlock Text="Diagnostics" FontSize="14" FontWeight="SemiBold"/><Grid><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions><StackPanel Grid.Column="0" Spacing="4"><TextBlock Text="Platform" FontSize="12" Foreground="{ThemeResource TextFillColorSecondaryBrush}"/><TextBlock Text="Windows 11" FontSize="13"/></StackPanel><StackPanel Grid.Column="1" Spacing="4"><TextBlock Text="Framework" FontSize="12" Foreground="{ThemeResource TextFillColorSecondaryBrush}"/><TextBlock Text="WinUI 3" FontSize="13"/></StackPanel></Grid></StackPanel></Grid>
+                <StackPanel Spacing="18" Margin="36,28,36,32">
+                    <Grid Background="{ThemeResource CardBackgroundFillColorDefaultBrush}" CornerRadius="8" Padding="28">
+                        <Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+                        <Image Width="72" Height="72" Source="ms-appx:///Assets/AppIcon.png" VerticalAlignment="Center"/>
+                        <StackPanel Grid.Column="1" Spacing="8" Margin="22,0,0,0" VerticalAlignment="Center">
+                            <TextBlock Text="Clickra" FontSize="34" FontWeight="SemiBold"/>
+                            <TextBlock Text="Version 3.6.4" FontSize="14" Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
+                            <TextBlock Text="A Fluent file conversion workspace for Windows." FontSize="15" Foreground="{ThemeResource TextFillColorSecondaryBrush}" TextWrapping="Wrap"/>
+                        </StackPanel>
+                    </Grid>
+                    <Grid ColumnSpacing="16">
+                        <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+                        <Grid Background="{ThemeResource CardBackgroundFillColorDefaultBrush}" CornerRadius="8" Padding="18">
+                            <Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+                            <FontIcon Glyph="&#xE71B;" VerticalAlignment="Center" Margin="0,0,12,0"/>
+                            <TextBlock Grid.Column="1" Text="View on GitHub" VerticalAlignment="Center"/>
+                            <FontIcon Grid.Column="2" Glyph="&#xE8A7;" Foreground="{ThemeResource TextFillColorSecondaryBrush}" VerticalAlignment="Center"/>
+                        </Grid>
+                        <Grid Grid.Column="1" Background="{ThemeResource CardBackgroundFillColorDefaultBrush}" CornerRadius="8" Padding="18">
+                            <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+                            <StackPanel Spacing="4">
+                                <TextBlock Text="Platform" FontSize="12" Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
+                                <TextBlock Text="Windows 11"/>
+                            </StackPanel>
+                            <StackPanel Grid.Column="1" Spacing="4">
+                                <TextBlock Text="Framework" FontSize="12" Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
+                                <TextBlock Text="WinUI 3"/>
+                            </StackPanel>
+                        </Grid>
+                    </Grid>
                     <TextBlock Text="© 2026 Clickra" FontSize="12" HorizontalAlignment="Center" Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
                 </StackPanel>
             </ScrollViewer>
         </Grid>
-    </NavigationView>
+    </Grid>
 </Page>
