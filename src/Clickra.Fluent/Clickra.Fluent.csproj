@@ -19,8 +19,9 @@
     <WindowsAppSDKSelfContained Condition="'$(Configuration)' == 'Debug'">true</WindowsAppSDKSelfContained>
   </PropertyGroup>
   <ItemGroup>
-    <Content Include="Assets\AppIcon.png" />
-    <Content Include="Assets\AppIcon.ico" />
+    <Content Include="Assets\AppIcon.png" CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="Assets\AppIcon.ico" CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="..\resources\app.ico" Link="app.ico" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
   <ItemGroup>
     <Manifest Include="$(ApplicationManifest)" />

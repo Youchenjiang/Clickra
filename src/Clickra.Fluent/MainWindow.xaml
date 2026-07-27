@@ -18,7 +18,7 @@
         </Grid.RowDefinitions>
         <TitleBar x:Name="AppTitleBar" Title="Clickra">
             <TitleBar.IconSource>
-                <ImageIconSource ImageSource="Assets/AppIcon.png" />
+                <ImageIconSource ImageSource="ms-appx:///Assets/AppIcon.png" />
             </TitleBar.IconSource>
         </TitleBar>
         <Frame x:Name="RootFrame" Grid.Row="1" />
