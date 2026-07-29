@@ -85,7 +85,7 @@ public sealed partial class MainPage : Page
         var narrow = ActualWidth < 1000;
 
         SetTwoPaneLayout(OverviewSidePane, OverviewMainColumn, OverviewSideColumn, 1.4, 0.85, narrow);
-        SetTwoPaneLayout(ConvertSidePane, ConvertMainColumn, ConvertSideColumn, 1.15, 0.85, narrow);
+        SetTwoPaneLayout(ConvertSidePane, ConvertMainColumn, ConvertSideColumn, 1, 1, narrow);
         ApplyHistoryResponsiveLayout(narrow);
         ApplySettingsResponsiveLayout(narrow);
         ApplyAboutResponsiveLayout(narrow);

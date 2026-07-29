@@ -205,30 +205,30 @@
                                     <StackPanel Spacing="8">
                                         <TextBlock x:Name="OfficeCommandLabel" Text="Office" FontSize="12" FontWeight="SemiBold" Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
                                         <Grid ColumnSpacing="8">
-                                            <Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="Auto"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
-                                            <Button x:Name="BtnWord2Pdf" Content="Word" Tag="word2pdf"/>
-                                            <Button x:Name="BtnExcel2Pdf" Grid.Column="1" Content="Excel" Tag="excel2pdf"/>
-                                            <Button x:Name="BtnPpt2Pdf" Grid.Column="2" Content="PPT" Tag="ppt2pdf"/>
+                                            <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="*"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+                                            <Button x:Name="BtnWord2Pdf" Content="Word" Tag="word2pdf" HorizontalAlignment="Stretch"/>
+                                            <Button x:Name="BtnExcel2Pdf" Grid.Column="1" Content="Excel" Tag="excel2pdf" HorizontalAlignment="Stretch"/>
+                                            <Button x:Name="BtnPpt2Pdf" Grid.Column="2" Content="PPT" Tag="ppt2pdf" HorizontalAlignment="Stretch"/>
                                         </Grid>
                                     </StackPanel>
                                     <StackPanel Spacing="8">
                                         <TextBlock x:Name="PdfCommandLabel" Text="PDF" FontSize="12" FontWeight="SemiBold" Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
                                         <Grid ColumnSpacing="8" RowSpacing="8">
-                                            <Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+                                            <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
                                             <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
-                                            <Button x:Name="BtnMergePdf" Content="合併 PDF" Tag="merge-pdf"/>
-                                            <Button x:Name="BtnCompressPdf" Grid.Column="1" Content="壓縮 PDF" Tag="compress-pdf"/>
-                                            <Button x:Name="BtnTranslatePdf" Grid.Row="1" Content="PDF 一鍵翻譯" Tag="translate-pdf"/>
-                                            <Button x:Name="BtnDecryptPdf" Grid.Row="1" Grid.Column="1" Content="去除 PDF 密碼" Tag="decrypt-pdf"/>
+                                            <Button x:Name="BtnMergePdf" Content="合併 PDF" Tag="merge-pdf" HorizontalAlignment="Stretch"/>
+                                            <Button x:Name="BtnCompressPdf" Grid.Column="1" Content="壓縮 PDF" Tag="compress-pdf" HorizontalAlignment="Stretch"/>
+                                            <Button x:Name="BtnTranslatePdf" Grid.Row="1" Content="PDF 一鍵翻譯" Tag="translate-pdf" HorizontalAlignment="Stretch"/>
+                                            <Button x:Name="BtnDecryptPdf" Grid.Row="1" Grid.Column="1" Content="去除 PDF 密碼" Tag="decrypt-pdf" HorizontalAlignment="Stretch"/>
                                         </Grid>
                                     </StackPanel>
                                     <StackPanel Spacing="8">
                                         <TextBlock x:Name="ImageCommandLabel" Text="圖片" FontSize="12" FontWeight="SemiBold" Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
                                         <Grid ColumnSpacing="8">
-                                            <Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="Auto"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
-                                            <Button x:Name="BtnImg2Pdf" Content="PDF" Tag="img2pdf"/>
-                                            <Button x:Name="BtnImgMerge" Grid.Column="1" Content="圖片合併" Tag="img-merge"/>
-                                            <Button x:Name="BtnImgStitch" Grid.Column="2" Content="圖片拼接" Tag="img-stitch"/>
+                                            <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="*"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+                                            <Button x:Name="BtnImg2Pdf" Content="PDF" Tag="img2pdf" HorizontalAlignment="Stretch"/>
+                                            <Button x:Name="BtnImgMerge" Grid.Column="1" Content="圖片合併" Tag="img-merge" HorizontalAlignment="Stretch"/>
+                                            <Button x:Name="BtnImgStitch" Grid.Column="2" Content="圖片拼接" Tag="img-stitch" HorizontalAlignment="Stretch"/>
                                         </Grid>
                                     </StackPanel>
                                 </StackPanel>
