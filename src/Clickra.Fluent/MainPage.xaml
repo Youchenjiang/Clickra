@@ -24,19 +24,19 @@
             Background="{ThemeResource LayerOnAcrylicFillColorDefaultBrush}"
             SelectionChanged="NavView_SelectionChanged">
             <NavigationView.MenuItems>
-                <NavigationViewItem Content="Overview" Tag="Overview" IsSelected="True">
+                <NavigationViewItem x:Name="NavOverviewItem" Content="總覽" Tag="Overview" IsSelected="True">
                     <NavigationViewItem.Icon><FontIcon Glyph="&#xE80F;"/></NavigationViewItem.Icon>
                 </NavigationViewItem>
-                <NavigationViewItem Content="Convert" Tag="Convert">
+                <NavigationViewItem x:Name="NavConvertItem" Content="轉檔" Tag="Convert">
                     <NavigationViewItem.Icon><FontIcon Glyph="&#xE8B7;"/></NavigationViewItem.Icon>
                 </NavigationViewItem>
-                <NavigationViewItem Content="History" Tag="History">
+                <NavigationViewItem x:Name="NavHistoryItem" Content="歷史" Tag="History">
                     <NavigationViewItem.Icon><FontIcon Glyph="&#xE81C;"/></NavigationViewItem.Icon>
                 </NavigationViewItem>
-                <NavigationViewItem Content="Settings" Tag="Settings">
+                <NavigationViewItem x:Name="NavSettingsItem" Content="設定" Tag="Settings">
                     <NavigationViewItem.Icon><FontIcon Glyph="&#xE713;"/></NavigationViewItem.Icon>
                 </NavigationViewItem>
-                <NavigationViewItem Content="About" Tag="About">
+                <NavigationViewItem x:Name="NavAboutItem" Content="關於" Tag="About">
                     <NavigationViewItem.Icon><FontIcon Glyph="&#xE946;"/></NavigationViewItem.Icon>
                 </NavigationViewItem>
             </NavigationView.MenuItems>
@@ -44,152 +44,191 @@
 
         <Grid Grid.Row="1">
             <ScrollViewer x:Name="OverviewPanel" VerticalScrollBarVisibility="Auto">
-                <StackPanel Spacing="18" Margin="36,28,36,32">
-                    <Grid ColumnSpacing="20">
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="2*"/>
-                            <ColumnDefinition Width="*"/>
-                        </Grid.ColumnDefinitions>
-                        <Grid Background="{ThemeResource CardBackgroundFillColorDefaultBrush}" CornerRadius="8" Padding="24">
-                            <StackPanel Spacing="12">
-                                <TextBlock Text="Clickra" FontSize="36" FontWeight="SemiBold"/>
-                                <TextBlock Text="File conversion workspace" FontSize="16" Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
-                                <Grid ColumnSpacing="10" Margin="0,8,0,0">
+                <Grid x:Name="OverviewLayout" Margin="36,22,36,26" ColumnSpacing="14" RowSpacing="12">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                    </Grid.RowDefinitions>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition x:Name="OverviewMainColumn" Width="1.4*"/>
+                        <ColumnDefinition x:Name="OverviewSideColumn" Width="0.85*"/>
+                    </Grid.ColumnDefinitions>
+
+                    <StackPanel Spacing="12">
+                        <Grid Background="{ThemeResource CardBackgroundFillColorDefaultBrush}" CornerRadius="8" Padding="20" MinHeight="148">
+                            <StackPanel Spacing="8" VerticalAlignment="Center">
+                                <TextBlock x:Name="OverviewConvertTitle" Text="轉換檔案" FontSize="30" FontWeight="SemiBold"/>
+                                <TextBlock x:Name="OverviewConvertSubtitle" Text="PDF、Office 與圖片工具集中在同一個工作區。" FontSize="14" Foreground="{ThemeResource TextFillColorSecondaryBrush}" TextWrapping="Wrap"/>
+                                <Grid ColumnSpacing="10" Margin="0,2,0,0">
                                     <Grid.ColumnDefinitions>
                                         <ColumnDefinition Width="Auto"/>
                                         <ColumnDefinition Width="Auto"/>
                                     </Grid.ColumnDefinitions>
-                                    <Button x:Name="OpenConvertButton" Content="Open Convert" Padding="18,10"/>
-                                    <Button x:Name="ViewHistoryButton" Grid.Column="1" Content="View History" Padding="18,10"/>
+                                    <Button x:Name="OpenConvertButton" Content="選擇檔案" Padding="16,8"/>
+                                    <Button x:Name="ViewHistoryButton" Grid.Column="1" Content="近期作業" Padding="16,8"/>
                                 </Grid>
                             </StackPanel>
                         </Grid>
-                        <Grid Grid.Column="1" Background="{ThemeResource CardBackgroundFillColorDefaultBrush}" CornerRadius="8" Padding="20">
-                            <StackPanel Spacing="12">
-                                <TextBlock Text="Status" FontSize="15" FontWeight="SemiBold"/>
-                                <Grid ColumnSpacing="10">
-                                    <Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
-                                    <Ellipse Width="8" Height="8" Fill="{ThemeResource SystemFillColorSuccessBrush}" VerticalAlignment="Center"/>
-                                    <TextBlock Grid.Column="1" Text="PDF tools" Margin="2,0,0,0"/>
-                                    <TextBlock Grid.Column="2" Text="Ready" Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
-                                </Grid>
-                                <Grid ColumnSpacing="10">
-                                    <Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
-                                    <Ellipse Width="8" Height="8" Fill="{ThemeResource SystemFillColorSuccessBrush}" VerticalAlignment="Center"/>
-                                    <TextBlock Grid.Column="1" Text="Office tools" Margin="2,0,0,0"/>
-                                    <TextBlock Grid.Column="2" Text="Ready" Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
-                                </Grid>
-                            </StackPanel>
-                        </Grid>
-                    </Grid>
 
-                    <Grid ColumnSpacing="16">
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="*"/>
-                            <ColumnDefinition Width="*"/>
-                            <ColumnDefinition Width="*"/>
-                        </Grid.ColumnDefinitions>
-                        <Grid Background="{ThemeResource CardBackgroundFillColorDefaultBrush}" CornerRadius="8" Padding="20">
-                            <StackPanel Spacing="4">
-                                <TextBlock Text="Total jobs" FontSize="13" Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
-                                <TextBlock x:Name="StatTotal" Text="0" FontSize="32" FontWeight="SemiBold"/>
+                        <Grid Background="{ThemeResource CardBackgroundFillColorDefaultBrush}" CornerRadius="8" Padding="16">
+                            <StackPanel Spacing="8">
+                                <TextBlock x:Name="OverviewRecentTitle" Text="近期活動" FontSize="18" FontWeight="SemiBold"/>
+                                <TextBlock x:Name="OverviewNoHistoryText" Text="尚無轉換紀錄。" FontSize="13" Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
+                                <StackPanel x:Name="OverviewRecentContainer" Spacing="8"/>
                             </StackPanel>
                         </Grid>
-                        <Grid Grid.Column="1" Background="{ThemeResource CardBackgroundFillColorDefaultBrush}" CornerRadius="8" Padding="20">
-                            <StackPanel Spacing="4">
-                                <TextBlock Text="Success" FontSize="13" Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
-                                <TextBlock x:Name="StatSuccess" Text="0" FontSize="32" FontWeight="SemiBold" Foreground="{ThemeResource SystemFillColorSuccessBrush}"/>
-                            </StackPanel>
-                        </Grid>
-                        <Grid Grid.Column="2" Background="{ThemeResource CardBackgroundFillColorDefaultBrush}" CornerRadius="8" Padding="20">
-                            <StackPanel Spacing="4">
-                                <TextBlock Text="Failed" FontSize="13" Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
-                                <TextBlock x:Name="StatFailed" Text="0" FontSize="32" FontWeight="SemiBold" Foreground="{ThemeResource SystemFillColorCriticalBrush}"/>
-                            </StackPanel>
-                        </Grid>
-                    </Grid>
+                    </StackPanel>
 
-                    <Grid Background="{ThemeResource CardBackgroundFillColorDefaultBrush}" CornerRadius="8" Padding="18">
-                        <Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
-                        <FontIcon Glyph="&#xE946;" FontSize="22" Foreground="{ThemeResource TextFillColorSecondaryBrush}" VerticalAlignment="Center"/>
-                        <StackPanel Grid.Column="1" Spacing="2" Margin="14,0,0,0">
-                            <TextBlock Text="Explorer integration stays available" FontSize="14" FontWeight="SemiBold"/>
-                            <TextBlock Text="Right-click files in Explorer for the context menu, or use Convert here for a full Fluent progress view." FontSize="13" Foreground="{ThemeResource TextFillColorSecondaryBrush}" TextWrapping="Wrap"/>
-                        </StackPanel>
-                    </Grid>
-                </StackPanel>
+                    <StackPanel x:Name="OverviewSidePane" Grid.Column="1" Spacing="12">
+                        <Grid Background="{ThemeResource CardBackgroundFillColorDefaultBrush}" CornerRadius="8" Padding="16">
+                            <StackPanel Spacing="10" VerticalAlignment="Center">
+                                <TextBlock x:Name="OverviewActivityTitle" Text="活動摘要" FontSize="14" FontWeight="SemiBold"/>
+                                <Grid x:Name="OverviewStatsGrid" ColumnSpacing="8">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="*"/>
+                                    </Grid.ColumnDefinitions>
+                                    <StackPanel Spacing="2">
+                                        <TextBlock x:Name="OverviewTotalLabel" Text="總計" FontSize="12" Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
+                                        <TextBlock x:Name="StatTotal" Text="0" FontSize="22" FontWeight="SemiBold"/>
+                                    </StackPanel>
+                                    <StackPanel Grid.Column="1" Spacing="2">
+                                        <TextBlock x:Name="OverviewOkLabel" Text="成功" FontSize="12" Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
+                                        <TextBlock x:Name="StatSuccess" Text="0" FontSize="22" FontWeight="SemiBold" Foreground="{ThemeResource SystemFillColorSuccessBrush}"/>
+                                    </StackPanel>
+                                    <StackPanel Grid.Column="2" Spacing="2">
+                                        <TextBlock x:Name="OverviewFailLabel" Text="失敗" FontSize="12" Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
+                                        <TextBlock x:Name="StatFailed" Text="0" FontSize="22" FontWeight="SemiBold" Foreground="{ThemeResource SystemFillColorCriticalBrush}"/>
+                                    </StackPanel>
+                                </Grid>
+                                <Grid ColumnSpacing="12">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="Auto"/>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                    </Grid.ColumnDefinitions>
+                                    <Ellipse Width="7" Height="7" Fill="{ThemeResource SystemFillColorSuccessBrush}" VerticalAlignment="Center"/>
+                                    <TextBlock x:Name="OverviewToolsLabel" Grid.Column="1" Text="PDF 與 Office 工具" FontSize="13" Margin="2,0,0,0"/>
+                                    <TextBlock x:Name="OverviewToolsReady" Grid.Column="2" Text="準備就緒" FontSize="13" Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
+                                </Grid>
+                                <Grid ColumnSpacing="12">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="Auto"/>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                    </Grid.ColumnDefinitions>
+                                    <Ellipse Width="7" Height="7" Fill="{ThemeResource SystemFillColorSuccessBrush}" VerticalAlignment="Center"/>
+                                    <TextBlock x:Name="OverviewExplorerLabel" Grid.Column="1" Text="檔案總管選單" FontSize="13" Margin="2,0,0,0"/>
+                                    <TextBlock x:Name="OverviewExplorerReady" Grid.Column="2" Text="可用" FontSize="13" Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
+                                </Grid>
+                            </StackPanel>
+                        </Grid>
+
+                        <Grid Background="{ThemeResource CardBackgroundFillColorDefaultBrush}" CornerRadius="8" Padding="14">
+                            <Grid ColumnSpacing="12">
+                                <Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+                                <FontIcon Glyph="&#xEA90;" FontSize="22" Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}" VerticalAlignment="Top"/>
+                                <StackPanel Grid.Column="1" Spacing="4">
+                                    <TextBlock x:Name="OverviewPdfTitle" Text="PDF" FontSize="16" FontWeight="SemiBold"/>
+                                    <TextBlock x:Name="OverviewPdfDesc" Text="合併、壓縮、翻譯、解密。" FontSize="12" Foreground="{ThemeResource TextFillColorSecondaryBrush}" TextWrapping="Wrap"/>
+                                </StackPanel>
+                            </Grid>
+                        </Grid>
+                        <Grid Background="{ThemeResource CardBackgroundFillColorDefaultBrush}" CornerRadius="8" Padding="14">
+                            <Grid ColumnSpacing="12">
+                                <Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+                                <FontIcon Glyph="&#xE8A5;" FontSize="22" Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}" VerticalAlignment="Top"/>
+                                <StackPanel Grid.Column="1" Spacing="4">
+                                    <TextBlock x:Name="OverviewOfficeTitle" Text="Office" FontSize="16" FontWeight="SemiBold"/>
+                                    <TextBlock x:Name="OverviewOfficeDesc" Text="Word、Excel、PowerPoint 轉 PDF。" FontSize="12" Foreground="{ThemeResource TextFillColorSecondaryBrush}" TextWrapping="Wrap"/>
+                                </StackPanel>
+                            </Grid>
+                        </Grid>
+                        <Grid Background="{ThemeResource CardBackgroundFillColorDefaultBrush}" CornerRadius="8" Padding="14">
+                            <Grid ColumnSpacing="12">
+                                <Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+                                <FontIcon Glyph="&#xEB9F;" FontSize="22" Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}" VerticalAlignment="Top"/>
+                                <StackPanel Grid.Column="1" Spacing="4">
+                                    <TextBlock x:Name="OverviewImagesTitle" Text="圖片" FontSize="16" FontWeight="SemiBold"/>
+                                    <TextBlock x:Name="OverviewImagesDesc" Text="建立 PDF、合併、拼接。" FontSize="12" Foreground="{ThemeResource TextFillColorSecondaryBrush}" TextWrapping="Wrap"/>
+                                </StackPanel>
+                            </Grid>
+                        </Grid>
+                    </StackPanel>
+                </Grid>
             </ScrollViewer>
 
             <ScrollViewer x:Name="ConvertPanel" VerticalScrollBarVisibility="Auto" Visibility="Collapsed">
                 <StackPanel Spacing="18" Margin="36,28,36,32">
-                    <Grid ColumnSpacing="20">
+                    <Grid x:Name="ConvertLayout" ColumnSpacing="20" RowSpacing="18">
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
+                        </Grid.RowDefinitions>
                         <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="1.15*"/>
-                            <ColumnDefinition Width="0.85*"/>
+                            <ColumnDefinition x:Name="ConvertMainColumn" Width="1.15*"/>
+                            <ColumnDefinition x:Name="ConvertSideColumn" Width="0.85*"/>
                         </Grid.ColumnDefinitions>
                         <StackPanel Spacing="18">
-                            <TextBlock Text="Convert" FontSize="34" FontWeight="SemiBold"/>
-                            <Grid x:Name="DropZone" AllowDrop="True" Background="{ThemeResource CardBackgroundFillColorDefaultBrush}" CornerRadius="8" Padding="28" MinHeight="210">
-                                <Grid.RowDefinitions>
-                                    <RowDefinition Height="*"/>
-                                    <RowDefinition Height="Auto"/>
-                                </Grid.RowDefinitions>
+                            <TextBlock x:Name="ConvertTitle" Text="轉檔" FontSize="34" FontWeight="SemiBold"/>
+                            <Border x:Name="DropZone" AllowDrop="True" Background="{ThemeResource CardBackgroundFillColorDefaultBrush}" BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" BorderThickness="1" CornerRadius="8" Padding="28" MinHeight="210">
                                 <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="10">
-                                    <FontIcon Glyph="&#xE896;" FontSize="52" Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}"/>
-                                    <TextBlock Text="Drop files here" FontSize="20" FontWeight="SemiBold" HorizontalAlignment="Center"/>
-                                    <TextBlock Text="Click this area to browse" FontSize="14" Foreground="{ThemeResource TextFillColorSecondaryBrush}" HorizontalAlignment="Center"/>
-                                    <TextBlock Text="PDF, Office documents, and images" FontSize="12" Foreground="{ThemeResource TextFillColorTertiaryBrush}" HorizontalAlignment="Center"/>
+                                    <FontIcon x:Name="DropZoneIcon" Glyph="&#xE896;" FontSize="52" Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}"/>
+                                    <TextBlock x:Name="DropZoneTitle" Text="拖放檔案到這裡" FontSize="20" FontWeight="SemiBold" HorizontalAlignment="Center"/>
+                                    <TextBlock x:Name="DropZoneBrowseText" Text="點擊此區域選取檔案" FontSize="14" Foreground="{ThemeResource TextFillColorSecondaryBrush}" HorizontalAlignment="Center"/>
+                                    <TextBlock x:Name="DropZoneTypesText" Text="PDF、Office 文件與圖片" FontSize="12" Foreground="{ThemeResource TextFillColorTertiaryBrush}" HorizontalAlignment="Center"/>
                                 </StackPanel>
-                            </Grid>
+                            </Border>
 
                             <Grid Background="{ThemeResource CardBackgroundFillColorDefaultBrush}" CornerRadius="8" Padding="18">
                                 <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
                                 <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
                                 <StackPanel>
-                                    <TextBlock Text="Selected files" FontSize="15" FontWeight="SemiBold"/>
-                                    <TextBlock Text="Files are validated against the selected command." FontSize="12" Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
+                                    <TextBlock x:Name="SelectedFilesTitle" Text="已選取檔案" FontSize="15" FontWeight="SemiBold"/>
+                                    <TextBlock x:Name="SelectedFilesDesc" Text="檔案會依照目前命令驗證。" FontSize="12" Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
                                 </StackPanel>
-                                <Button Grid.Column="1" x:Name="ClearFilesButton" Content="Clear" Padding="16,8"/>
+                                <Button Grid.Column="1" x:Name="ClearFilesButton" Content="清除" Padding="16,8"/>
                                 <StackPanel x:Name="FileListContainer" Grid.Row="1" Grid.ColumnSpan="2" Spacing="6" Margin="0,14,0,0">
-                                    <TextBlock x:Name="EmptyFileMessage" Text="No files selected" FontSize="13" Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
+                                    <TextBlock x:Name="EmptyFileMessage" Text="未選取檔案" FontSize="13" Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
                                 </StackPanel>
                             </Grid>
                         </StackPanel>
 
-                        <StackPanel Grid.Column="1" Spacing="14">
+                        <StackPanel x:Name="ConvertSidePane" Grid.Column="1" Spacing="14">
                             <Grid Background="{ThemeResource CardBackgroundFillColorDefaultBrush}" CornerRadius="8" Padding="18">
                                 <StackPanel Spacing="14">
                                     <StackPanel Spacing="2">
-                                        <TextBlock Text="Command" FontSize="15" FontWeight="SemiBold"/>
-                                        <TextBlock x:Name="CommandStatusText" Text="Choose a command" FontSize="12" Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
+                                        <TextBlock x:Name="CommandTitle" Text="命令" FontSize="15" FontWeight="SemiBold"/>
+                                        <TextBlock x:Name="CommandStatusText" Text="選擇命令" FontSize="12" Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
                                     </StackPanel>
                                     <StackPanel Spacing="8">
-                                        <TextBlock Text="Office" FontSize="12" FontWeight="SemiBold" Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
+                                        <TextBlock x:Name="OfficeCommandLabel" Text="Office" FontSize="12" FontWeight="SemiBold" Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
                                         <Grid ColumnSpacing="8">
-                                            <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="*"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+                                            <Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="Auto"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
                                             <Button x:Name="BtnWord2Pdf" Content="Word" Tag="word2pdf"/>
                                             <Button x:Name="BtnExcel2Pdf" Grid.Column="1" Content="Excel" Tag="excel2pdf"/>
                                             <Button x:Name="BtnPpt2Pdf" Grid.Column="2" Content="PPT" Tag="ppt2pdf"/>
                                         </Grid>
                                     </StackPanel>
                                     <StackPanel Spacing="8">
-                                        <TextBlock Text="PDF" FontSize="12" FontWeight="SemiBold" Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
+                                        <TextBlock x:Name="PdfCommandLabel" Text="PDF" FontSize="12" FontWeight="SemiBold" Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
                                         <Grid ColumnSpacing="8" RowSpacing="8">
-                                            <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+                                            <Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
                                             <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
-                                            <Button x:Name="BtnMergePdf" Content="Merge" Tag="merge-pdf"/>
-                                            <Button x:Name="BtnCompressPdf" Grid.Column="1" Content="Compress" Tag="compress-pdf"/>
-                                            <Button x:Name="BtnTranslatePdf" Grid.Row="1" Content="Translate" Tag="translate-pdf"/>
-                                            <Button x:Name="BtnDecryptPdf" Grid.Row="1" Grid.Column="1" Content="Decrypt" Tag="decrypt-pdf"/>
+                                            <Button x:Name="BtnMergePdf" Content="合併 PDF" Tag="merge-pdf"/>
+                                            <Button x:Name="BtnCompressPdf" Grid.Column="1" Content="壓縮 PDF" Tag="compress-pdf"/>
+                                            <Button x:Name="BtnTranslatePdf" Grid.Row="1" Content="PDF 一鍵翻譯" Tag="translate-pdf"/>
+                                            <Button x:Name="BtnDecryptPdf" Grid.Row="1" Grid.Column="1" Content="去除 PDF 密碼" Tag="decrypt-pdf"/>
                                         </Grid>
                                     </StackPanel>
                                     <StackPanel Spacing="8">
-                                        <TextBlock Text="Image" FontSize="12" FontWeight="SemiBold" Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
+                                        <TextBlock x:Name="ImageCommandLabel" Text="圖片" FontSize="12" FontWeight="SemiBold" Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
                                         <Grid ColumnSpacing="8">
-                                            <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="*"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+                                            <Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="Auto"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
                                             <Button x:Name="BtnImg2Pdf" Content="PDF" Tag="img2pdf"/>
-                                            <Button x:Name="BtnImgMerge" Grid.Column="1" Content="Merge" Tag="img-merge"/>
-                                            <Button x:Name="BtnImgStitch" Grid.Column="2" Content="Stitch" Tag="img-stitch"/>
+                                            <Button x:Name="BtnImgMerge" Grid.Column="1" Content="圖片合併" Tag="img-merge"/>
+                                            <Button x:Name="BtnImgStitch" Grid.Column="2" Content="圖片拼接" Tag="img-stitch"/>
                                         </Grid>
                                     </StackPanel>
                                 </StackPanel>
@@ -197,15 +236,15 @@
 
                             <Grid Background="{ThemeResource CardBackgroundFillColorDefaultBrush}" CornerRadius="8" Padding="18">
                                 <StackPanel Spacing="12">
-                                    <TextBlock Text="Run" FontSize="15" FontWeight="SemiBold"/>
+                                    <TextBlock x:Name="RunTitle" Text="執行" FontSize="15" FontWeight="SemiBold"/>
                                     <Grid ColumnSpacing="8">
                                         <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
-                                        <Button x:Name="StartButton" Content="Start conversion" Style="{StaticResource AccentButtonStyle}" Visibility="Collapsed" Padding="18,10"/>
-                                        <Button x:Name="CancelButton" Grid.Column="1" Content="Cancel" Visibility="Collapsed" Padding="16,10"/>
+                                        <Button x:Name="StartButton" Content="開始轉換" Style="{StaticResource AccentButtonStyle}" Visibility="Collapsed" Padding="18,10"/>
+                                        <Button x:Name="CancelButton" Grid.Column="1" Content="取消" Visibility="Collapsed" Padding="16,10"/>
                                     </Grid>
                                     <Grid x:Name="ConversionProgressSection" Visibility="Collapsed">
                                         <StackPanel Spacing="8">
-                                            <TextBlock x:Name="ConversionProgressText" Text="Ready" FontSize="13" Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
+                                            <TextBlock x:Name="ConversionProgressText" Text="準備就緒" FontSize="13" Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
                                             <ProgressBar x:Name="ConversionProgressBar" Minimum="0" Maximum="100"/>
                                         </StackPanel>
                                     </Grid>
@@ -217,67 +256,118 @@
             </ScrollViewer>
 
             <ScrollViewer x:Name="HistoryPanel" VerticalScrollBarVisibility="Auto" Visibility="Collapsed">
-                <StackPanel Spacing="18" Margin="36,28,36,32">
+            <Grid x:Name="HistoryLayout" Margin="36,28,36,32" ColumnSpacing="20" RowSpacing="14">
+                <Grid.RowDefinitions>
+                    <RowDefinition x:Name="HistoryTopRow" Height="*"/>
+                    <RowDefinition x:Name="HistoryDetailRow" Height="0"/>
+                </Grid.RowDefinitions>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition x:Name="HistoryListColumn" Width="430"/>
+                    <ColumnDefinition x:Name="HistoryDetailColumn" Width="*"/>
+                </Grid.ColumnDefinitions>
+
+                <Grid x:Name="HistoryListPane" RowSpacing="14">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="*"/>
+                    </Grid.RowDefinitions>
+
                     <Grid>
                         <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
                         <StackPanel Spacing="4">
-                            <TextBlock Text="History" FontSize="34" FontWeight="SemiBold"/>
-                            <TextBlock Text="Recent conversion results" FontSize="14" Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
+                            <TextBlock x:Name="HistoryTitle" Text="歷史" FontSize="34" FontWeight="SemiBold"/>
+                            <TextBlock x:Name="HistorySubtitle" Text="近期轉換結果" FontSize="14" Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
                         </StackPanel>
-                        <Button Grid.Column="1" x:Name="ClearHistoryButton" Content="Clear" VerticalAlignment="Center" Padding="18,10"/>
+                        <Button Grid.Column="1" x:Name="ClearHistoryButton" Content="清除" VerticalAlignment="Center" Padding="18,10"/>
                     </Grid>
-                    <Grid x:Name="ActiveJobSection" Background="{ThemeResource CardBackgroundFillColorDefaultBrush}" CornerRadius="8" Padding="18" Visibility="Collapsed">
+
+                    <Grid Grid.Row="1" Background="{ThemeResource CardBackgroundFillColorDefaultBrush}" CornerRadius="8" Padding="16" ColumnSpacing="14">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+                        <StackPanel Spacing="2">
+                            <TextBlock x:Name="HistoryTotalText" Text="0" FontSize="22" FontWeight="SemiBold"/>
+                            <TextBlock x:Name="HistoryTotalLabel" Text="總計" FontSize="12" Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
+                        </StackPanel>
+                        <StackPanel Grid.Column="1" Spacing="2">
+                            <TextBlock x:Name="HistorySuccessText" Text="0" FontSize="22" FontWeight="SemiBold" Foreground="#39D353"/>
+                            <TextBlock x:Name="HistorySuccessLabel" Text="成功" FontSize="12" Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
+                        </StackPanel>
+                        <StackPanel Grid.Column="2" Spacing="2">
+                            <TextBlock x:Name="HistoryFailedText" Text="0" FontSize="22" FontWeight="SemiBold" Foreground="#FF6B6B"/>
+                            <TextBlock x:Name="HistoryFailedLabel" Text="失敗" FontSize="12" Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
+                        </StackPanel>
+                    </Grid>
+
+                    <Grid Grid.Row="2" x:Name="ActiveJobSection" Background="{ThemeResource CardBackgroundFillColorDefaultBrush}" CornerRadius="8" Padding="18" Visibility="Collapsed">
                         <StackPanel Spacing="8">
-                            <TextBlock Text="Active job" FontSize="15" FontWeight="SemiBold"/>
-                            <TextBlock x:Name="ActiveJobText" Text="Converting..." FontSize="13"/>
+                            <TextBlock x:Name="ActiveJobTitle" Text="執行" FontSize="15" FontWeight="SemiBold"/>
+                            <TextBlock x:Name="ActiveJobText" Text="轉換中..." FontSize="13"/>
                             <ProgressBar x:Name="ActiveJobProgress" IsIndeterminate="True"/>
                         </StackPanel>
                     </Grid>
-                    <Grid x:Name="EmptyHistoryState" Background="{ThemeResource CardBackgroundFillColorDefaultBrush}" CornerRadius="8" Padding="28">
+
+                    <Grid Grid.Row="3" x:Name="EmptyHistoryState" Background="{ThemeResource CardBackgroundFillColorDefaultBrush}" CornerRadius="8" Padding="28">
                         <StackPanel HorizontalAlignment="Center" Spacing="8">
                             <FontIcon Glyph="&#xE81C;" FontSize="36" Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
-                            <TextBlock Text="No conversion history yet." FontSize="14" Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
+                            <TextBlock x:Name="EmptyHistoryText" Text="尚無轉換紀錄。" FontSize="14" Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
                         </StackPanel>
                     </Grid>
-                    <StackPanel x:Name="HistoryListContainer" Spacing="8"/>
-                </StackPanel>
+
+                    <ScrollViewer x:Name="HistoryListScrollViewer" Grid.Row="4" VerticalScrollBarVisibility="Auto">
+                        <StackPanel x:Name="HistoryListContainer" Spacing="8" HorizontalAlignment="Stretch"/>
+                    </ScrollViewer>
+                </Grid>
+
+                <Grid Grid.Column="1" x:Name="HistoryDetailPanel" Background="{ThemeResource CardBackgroundFillColorDefaultBrush}" CornerRadius="8" Padding="22">
+                    <ScrollViewer VerticalScrollBarVisibility="Auto">
+                        <StackPanel x:Name="HistoryDetailContainer" Spacing="14"/>
+                    </ScrollViewer>
+                </Grid>
+            </Grid>
             </ScrollViewer>
 
             <ScrollViewer x:Name="SettingsPanel" VerticalScrollBarVisibility="Auto" Visibility="Collapsed">
                 <StackPanel Spacing="18" Margin="36,28,36,32">
                     <StackPanel Spacing="4">
-                        <TextBlock Text="Settings" FontSize="34" FontWeight="SemiBold"/>
-                        <TextBlock Text="Defaults used by the dashboard and Explorer commands" FontSize="14" Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
+                        <TextBlock x:Name="SettingsTitle" Text="設定" FontSize="34" FontWeight="SemiBold"/>
+                        <TextBlock x:Name="SettingsSubtitle" Text="使用者介面與檔案總管命令的預設值" FontSize="14" Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
                     </StackPanel>
-                    <Grid ColumnSpacing="16" RowSpacing="16">
+                    <Grid x:Name="SettingsLayout" ColumnSpacing="16" RowSpacing="16">
                         <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
-                        <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
+                        <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
                         <Grid Background="{ThemeResource CardBackgroundFillColorDefaultBrush}" CornerRadius="8" Padding="18">
                             <StackPanel Spacing="8">
-                                <TextBlock Text="Output directory" FontSize="15" FontWeight="SemiBold"/>
-                                <TextBlock Text="Where converted files are saved" FontSize="12" Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
+                                <TextBlock x:Name="OutputDirTitle" Text="輸出資料夾" FontSize="15" FontWeight="SemiBold"/>
+                                <TextBlock x:Name="OutputDirDesc" Text="轉換後檔案的儲存位置" FontSize="12" Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
                                 <ComboBox x:Name="OutputDirCombo" MinWidth="260" SelectedIndex="0">
-                                    <ComboBoxItem Content="Same as source"/>
-                                    <ComboBoxItem Content="Desktop"/>
-                                    <ComboBoxItem Content="Downloads"/>
-                                    <ComboBoxItem Content="Custom..."/>
+                                    <ComboBoxItem x:Name="OutputDirSourceItem" Content="與來源相同"/>
+                                    <ComboBoxItem x:Name="OutputDirDesktopItem" Content="桌面"/>
+                                    <ComboBoxItem x:Name="OutputDirDownloadsItem" Content="下載"/>
+                                    <ComboBoxItem x:Name="OutputDirCustomItem" Content="自訂..."/>
                                 </ComboBox>
                             </StackPanel>
                         </Grid>
                         <Grid Grid.Column="1" Background="{ThemeResource CardBackgroundFillColorDefaultBrush}" CornerRadius="8" Padding="18">
                             <StackPanel Spacing="8">
-                                <TextBlock Text="Office engine" FontSize="15" FontWeight="SemiBold"/>
-                                <TextBlock Text="Engine used for Office conversion" FontSize="12" Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
+                                <TextBlock x:Name="OfficeEngineTitle" Text="Office 引擎" FontSize="15" FontWeight="SemiBold"/>
+                                <TextBlock x:Name="OfficeEngineDesc" Text="Office 轉檔使用的引擎" FontSize="12" Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
                                 <ComboBox x:Name="EngineCombo" MinWidth="260" SelectedIndex="0">
-                                    <ComboBoxItem Content="Auto"/>
-                                    <ComboBoxItem Content="Microsoft Office"/>
-                                    <ComboBoxItem Content="LibreOffice"/>
+                                    <ComboBoxItem x:Name="EngineAutoItem" Content="自動"/>
+                                    <ComboBoxItem x:Name="EngineMicrosoftItem" Content="Microsoft Office"/>
+                                    <ComboBoxItem x:Name="EngineLibreOfficeItem" Content="LibreOffice"/>
                                 </ComboBox>
                             </StackPanel>
                         </Grid>
                         <Grid Grid.Row="1" Background="{ThemeResource CardBackgroundFillColorDefaultBrush}" CornerRadius="8" Padding="18">
                             <StackPanel Spacing="8">
-                                <TextBlock Text="Language" FontSize="15" FontWeight="SemiBold"/>
+                                <TextBlock x:Name="LanguageTitle" Text="預設語言" FontSize="15" FontWeight="SemiBold"/>
+                                <TextBlock x:Name="LanguageDesc" Text="用於介面、檔案總管命令與處理訊息。" FontSize="12" Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
                                 <ComboBox x:Name="LanguageCombo" MinWidth="260" SelectedIndex="0">
                                     <ComboBoxItem Content="繁體中文 (zh-TW)"/>
                                     <ComboBoxItem Content="简体中文 (zh-CN)"/>
@@ -289,7 +379,7 @@
                         </Grid>
                         <Grid Grid.Row="1" Grid.Column="1" Background="{ThemeResource CardBackgroundFillColorDefaultBrush}" CornerRadius="8" Padding="18">
                             <StackPanel Spacing="8">
-                                <TextBlock Text="PDF translation target" FontSize="15" FontWeight="SemiBold"/>
+                                <TextBlock x:Name="PdfTargetTitle" Text="PDF 翻譯目標" FontSize="15" FontWeight="SemiBold"/>
                                 <ComboBox x:Name="PdfLangCombo" MinWidth="260" SelectedIndex="0">
                                     <ComboBoxItem Content="繁體中文 (zh-TW)"/>
                                     <ComboBoxItem Content="English (en)"/>
@@ -301,20 +391,20 @@
                         </Grid>
                         <Grid Grid.Row="2" Background="{ThemeResource CardBackgroundFillColorDefaultBrush}" CornerRadius="8" Padding="18">
                             <StackPanel Spacing="14">
-                                <TextBlock Text="Behavior" FontSize="15" FontWeight="SemiBold"/>
+                                <TextBlock x:Name="BehaviorTitle" Text="行為" FontSize="15" FontWeight="SemiBold"/>
                                 <Grid ColumnSpacing="16">
                                     <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
                                     <StackPanel Spacing="2">
-                                        <TextBlock Text="Quiet mode"/>
-                                        <TextBlock Text="Process files without showing UI" FontSize="12" Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
+                                        <TextBlock x:Name="QuietModeTitle" Text="靜默模式"/>
+                                        <TextBlock x:Name="QuietModeDesc" Text="檔案總管命令預設使用；此視窗仍會顯示。" FontSize="12" Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
                                     </StackPanel>
                                     <ToggleSwitch x:Name="QuietModeToggle" Grid.Column="1" VerticalAlignment="Center"/>
                                 </Grid>
                                 <Grid ColumnSpacing="16">
                                     <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
                                     <StackPanel Spacing="2">
-                                        <TextBlock Text="Notifications"/>
-                                        <TextBlock Text="Show toast when conversion completes" FontSize="12" Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
+                                        <TextBlock x:Name="NotificationTitle" Text="通知"/>
+                                        <TextBlock x:Name="NotificationDesc" Text="轉換完成時顯示通知" FontSize="12" Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
                                     </StackPanel>
                                     <ToggleSwitch x:Name="NotificationToggle" Grid.Column="1" IsOn="True" VerticalAlignment="Center"/>
                                 </Grid>
@@ -322,21 +412,39 @@
                         </Grid>
                         <Grid Grid.Row="2" Grid.Column="1" Background="{ThemeResource CardBackgroundFillColorDefaultBrush}" CornerRadius="8" Padding="18">
                             <StackPanel Spacing="12">
-                                <TextBlock Text="PDF compression" FontSize="15" FontWeight="SemiBold"/>
+                                <TextBlock x:Name="PdfCompressionTitle" Text="PDF 壓縮" FontSize="15" FontWeight="SemiBold"/>
                                 <Grid ColumnSpacing="12">
                                     <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
                                     <Slider x:Name="CompressionSlider" Minimum="0" Maximum="3" Value="1"/>
-                                    <TextBlock x:Name="CompressionLabel" Grid.Column="1" Text="Standard" VerticalAlignment="Center"/>
+                                    <TextBlock x:Name="CompressionLabel" Grid.Column="1" Text="標準" VerticalAlignment="Center"/>
                                 </Grid>
                                 <Grid ColumnSpacing="16">
                                     <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
-                                    <TextBlock Text="Strip fonts" VerticalAlignment="Center"/>
+                                    <TextBlock x:Name="StripFontsTitle" Text="移除嵌入字型" VerticalAlignment="Center"/>
                                     <ToggleSwitch x:Name="StripFontsToggle" Grid.Column="1"/>
                                 </Grid>
                                 <Grid ColumnSpacing="16">
                                     <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
-                                    <TextBlock Text="Minify content" VerticalAlignment="Center"/>
+                                    <TextBlock x:Name="MinifyContentTitle" Text="最佳化 PDF 結構" VerticalAlignment="Center"/>
                                     <ToggleSwitch x:Name="MinifyContentToggle" Grid.Column="1" IsOn="True"/>
+                                </Grid>
+                            </StackPanel>
+                        </Grid>
+                        <Grid Grid.Row="3" Grid.ColumnSpan="2" Background="{ThemeResource CardBackgroundFillColorDefaultBrush}" CornerRadius="8" Padding="18">
+                            <StackPanel Spacing="12">
+                                <TextBlock Text="LibreOffice" FontSize="15" FontWeight="SemiBold"/>
+                                <TextBlock x:Name="LibreOfficeStatusText" Text="LibreOffice 尚未設定" FontSize="13" Foreground="{ThemeResource TextFillColorSecondaryBrush}" TextWrapping="Wrap"/>
+                                <TextBlock x:Name="LibreOfficePathText" Text="" FontSize="12" Foreground="{ThemeResource TextFillColorTertiaryBrush}" TextWrapping="Wrap"/>
+                                <ProgressBar x:Name="LibreOfficeSetupProgress" Minimum="0" Maximum="100" Visibility="Collapsed"/>
+                                <Grid x:Name="LibreOfficeButtonRow" ColumnSpacing="10">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="Auto"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                    </Grid.ColumnDefinitions>
+                                    <Button x:Name="LibreOfficeBrowseButton" Content="手動指定位置" Padding="14,8"/>
+                                    <Button x:Name="LibreOfficeDownloadButton" Grid.Column="1" Content="取得 LibreOffice" Padding="14,8"/>
+                                    <Button x:Name="LibreOfficeUninstallButton" Grid.Column="2" Content="移除 LibreOffice" Padding="14,8"/>
                                 </Grid>
                             </StackPanel>
                         </Grid>
@@ -352,26 +460,44 @@
                         <StackPanel Grid.Column="1" Spacing="8" Margin="22,0,0,0" VerticalAlignment="Center">
                             <TextBlock Text="Clickra" FontSize="34" FontWeight="SemiBold"/>
                             <TextBlock Text="Version 3.6.4" FontSize="14" Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
-                            <TextBlock Text="A Fluent file conversion workspace for Windows." FontSize="15" Foreground="{ThemeResource TextFillColorSecondaryBrush}" TextWrapping="Wrap"/>
+                            <TextBlock x:Name="AboutDescription" Text="Clickra 是 Windows 上快速、輕量的檔案轉換工作區。" FontSize="15" Foreground="{ThemeResource TextFillColorSecondaryBrush}" TextWrapping="Wrap"/>
                         </StackPanel>
                     </Grid>
-                    <Grid ColumnSpacing="16">
+                    <Grid x:Name="AboutLayout" ColumnSpacing="16" RowSpacing="16">
                         <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+                        <Button x:Name="GitHubButton" Padding="0" HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch">
                         <Grid Background="{ThemeResource CardBackgroundFillColorDefaultBrush}" CornerRadius="8" Padding="18">
                             <Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
                             <FontIcon Glyph="&#xE71B;" VerticalAlignment="Center" Margin="0,0,12,0"/>
-                            <TextBlock Grid.Column="1" Text="View on GitHub" VerticalAlignment="Center"/>
+                            <TextBlock x:Name="GitHubText" Grid.Column="1" Text="在 GitHub 檢視" VerticalAlignment="Center"/>
                             <FontIcon Grid.Column="2" Glyph="&#xE8A7;" Foreground="{ThemeResource TextFillColorSecondaryBrush}" VerticalAlignment="Center"/>
                         </Grid>
-                        <Grid Grid.Column="1" Background="{ThemeResource CardBackgroundFillColorDefaultBrush}" CornerRadius="8" Padding="18">
+                        </Button>
+                        <Button x:Name="OpenDataDirButton" Grid.Column="1" Padding="0" HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch">
+                        <Grid Background="{ThemeResource CardBackgroundFillColorDefaultBrush}" CornerRadius="8" Padding="18">
+                            <Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+                            <FontIcon Glyph="&#xE838;" VerticalAlignment="Center" Margin="0,0,12,0"/>
+                            <TextBlock x:Name="OpenDataDirText" Grid.Column="1" Text="檢視日誌資料夾" VerticalAlignment="Center"/>
+                            <FontIcon Grid.Column="2" Glyph="&#xE8A7;" Foreground="{ThemeResource TextFillColorSecondaryBrush}" VerticalAlignment="Center"/>
+                        </Grid>
+                        </Button>
+                        <Button x:Name="GmailButton" Grid.Row="1" Padding="0" HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch">
+                        <Grid Background="{ThemeResource CardBackgroundFillColorDefaultBrush}" CornerRadius="8" Padding="18">
+                            <Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+                            <FontIcon Glyph="&#xE715;" VerticalAlignment="Center" Margin="0,0,12,0"/>
+                            <TextBlock x:Name="GmailText" Grid.Column="1" Text="Gmail 回報" VerticalAlignment="Center"/>
+                            <FontIcon Grid.Column="2" Glyph="&#xE8A7;" Foreground="{ThemeResource TextFillColorSecondaryBrush}" VerticalAlignment="Center"/>
+                        </Grid>
+                        </Button>
+                        <Grid Grid.Row="1" Grid.Column="1" Background="{ThemeResource CardBackgroundFillColorDefaultBrush}" CornerRadius="8" Padding="18">
                             <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
                             <StackPanel Spacing="4">
-                                <TextBlock Text="Platform" FontSize="12" Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
+                                <TextBlock x:Name="PlatformLabel" Text="平台" FontSize="12" Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
                                 <TextBlock Text="Windows 11"/>
                             </StackPanel>
                             <StackPanel Grid.Column="1" Spacing="4">
-                                <TextBlock Text="Framework" FontSize="12" Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
-                                <TextBlock Text="WinUI 3"/>
+                                <TextBlock x:Name="AppModelLabel" Text="應用程式模型" FontSize="12" Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
+                                <TextBlock Text="Desktop"/>
                             </StackPanel>
                         </Grid>
                     </Grid>
