@@ -168,14 +168,14 @@ try {{
             }
             else
             {
-                throw new NotSupportedException($"Office application {appType} is not supported.");
+                throw new NotSupportedException(string.Format(Localization.T("error_office_unsupported", ClickraStorage.GetSetting("Language")), appType));
             }
 
             RunOfficeInteropScript(psScript, fileIndex, totalFiles, fullPath, appType, onProgress, cancellationToken);
             
             if (!File.Exists(outputPdfPath))
             {
-                throw new Exception($"{appType} conversion failed: Output PDF file was not created.");
+                throw new Exception(string.Format(Localization.T("error_office_output_missing", ClickraStorage.GetSetting("Language")), appType));
             }
         }
 
@@ -198,51 +198,64 @@ try {{
                 CreateNoWindow = true
             };
 
-            using var process = System.Diagnostics.Process.Start(startInfo);
-            if (process != null)
+            using var process = System.Diagnostics.Process.Start(startInfo)
+                ?? throw new Exception(string.Format(Localization.T("error_office_powershell_start", ClickraStorage.GetSetting("Language")), appName));
+
+            using var registration = cancellationToken.Register(() =>
             {
-                using var registration = cancellationToken.Register(() =>
-                {
-                    try { process.Kill(true); } catch { }
-                });
+                try { process.Kill(true); } catch { }
+            });
 
-                process.OutputDataReceived += (s, e) =>
+            var error = new StringBuilder();
+            process.OutputDataReceived += (s, e) =>
+            {
+                if (!string.IsNullOrEmpty(e.Data) && e.Data.StartsWith("PROGRESS:"))
                 {
-                    if (!string.IsNullOrEmpty(e.Data) && e.Data.StartsWith("PROGRESS:"))
+                    if (int.TryParse(e.Data.Substring(9), out int subProg))
                     {
-                        if (int.TryParse(e.Data.Substring(9), out int subProg))
+                        string language = ClickraStorage.GetSetting("Language");
+                        string fileName = Path.GetFileName(filePath);
+                        int currentProgress = (fileIndex * 100) + subProg;
+                        string statusMsg = subProg switch
                         {
-                            int currentProgress = (fileIndex * 100) + subProg;
-                            string statusMsg = subProg switch
-                            {
-                                20 => $"正在啟動 {appName} 引擎 ({fileIndex + 1}/{totalFiles})...",
-                                50 => $"正在讀取文件: {Path.GetFileName(filePath)}...",
-                                80 => $"正在匯出 PDF: {Path.GetFileName(filePath)}...",
-                                100 => $"已完成轉換: {Path.GetFileName(filePath)}",
-                                _ => $"正在轉換 {appName}: {Path.GetFileName(filePath)}..."
-                            };
-                            onProgress?.Invoke(currentProgress, totalFiles * 100, statusMsg);
-                        }
+                            20 => string.Format(Localization.T("status_office_starting", language), appName, fileIndex + 1, totalFiles),
+                            50 => string.Format(Localization.T("status_office_reading", language), fileName),
+                            80 => string.Format(Localization.T("status_office_exporting", language), fileName),
+                            100 => string.Format(Localization.T("status_office_completed", language), fileName),
+                            _ => string.Format(Localization.T("status_office_converting", language), appName, fileName)
+                        };
+                        onProgress?.Invoke(currentProgress, totalFiles * 100, statusMsg);
                     }
-                };
-                process.BeginOutputReadLine();
-                string error = process.StandardError.ReadToEnd();
-                process.WaitForExit();
-
-                cancellationToken.ThrowIfCancellationRequested();
-
-                if (!string.IsNullOrWhiteSpace(error) && process.ExitCode != 0)
-                {
-                    if (error.Contains("0x80040154") || error.Contains("New-Object"))
-                        throw new Exception($"Microsoft {appName} is not installed. This feature requires Microsoft {appName} to be installed on your system.");
-                    else
-                        throw new Exception($"{appName} conversion failed: {error.Trim()}");
                 }
-                
-                if (process.ExitCode != 0)
-                {
-                    throw new Exception($"{appName} conversion failed with exit code {process.ExitCode}.");
-                }
+            };
+            process.ErrorDataReceived += (_, e) =>
+            {
+                if (!string.IsNullOrWhiteSpace(e.Data))
+                    error.AppendLine(e.Data);
+            };
+            process.BeginOutputReadLine();
+            process.BeginErrorReadLine();
+
+            if (!process.WaitForExit(TimeSpan.FromMinutes(2)))
+            {
+                try { process.Kill(true); } catch { }
+                throw new TimeoutException(string.Format(Localization.T("error_office_timeout", ClickraStorage.GetSetting("Language")), appName));
+            }
+
+            cancellationToken.ThrowIfCancellationRequested();
+
+            string errorText = error.ToString();
+            if (!string.IsNullOrWhiteSpace(errorText) && process.ExitCode != 0)
+            {
+                if (errorText.Contains("0x80040154") || errorText.Contains("New-Object"))
+                    throw new Exception(string.Format(Localization.T("error_office_not_installed", ClickraStorage.GetSetting("Language")), appName));
+                else
+                    throw new Exception(string.Format(Localization.T("error_office_failed", ClickraStorage.GetSetting("Language")), appName, errorText.Trim()));
+            }
+
+            if (process.ExitCode != 0)
+            {
+                throw new Exception(string.Format(Localization.T("error_office_exit_code", ClickraStorage.GetSetting("Language")), appName, process.ExitCode));
             }
         }
     }
@@ -375,7 +388,7 @@ try {{
             CancellationToken cancellationToken)
         {
             if (!CanConvert(appType))
-                throw new NotSupportedException($"LibreOffice conversion does not support {appType}.");
+                throw new NotSupportedException(string.Format(Localization.T("error_libreoffice_unsupported", ClickraStorage.GetSetting("Language")), appType));
 
             if (ClickraStorage.GetSetting("LibreOfficeRemovalPendingRestart").Equals("true", StringComparison.OrdinalIgnoreCase))
             {
@@ -433,7 +446,7 @@ try {{
                 uint previousErrorMode = SetErrorMode(SemFailCriticalErrors | SemNoGpFaultErrorBox | SemNoOpenFileErrorBox);
                 using var process = StartProcessAndRestoreErrorMode(startInfo, previousErrorMode);
                 if (process == null)
-                    throw new Exception("LibreOffice conversion failed: unable to start process.");
+                    throw new Exception(Localization.T("error_libreoffice_start", ClickraStorage.GetSetting("Language")));
 
                 using var registration = cancellationToken.Register(() =>
                 {
@@ -460,20 +473,24 @@ try {{
                         Localization.T("status_libreoffice_exporting", ClickraStorage.GetSetting("Language")),
                         Path.GetFileName(fullPath)));
 
-                process.WaitForExit();
+                if (!process.WaitForExit(TimeSpan.FromMinutes(2)))
+                {
+                    try { process.Kill(true); } catch { }
+                    throw new TimeoutException(Localization.T("error_libreoffice_timeout", ClickraStorage.GetSetting("Language")));
+                }
                 cancellationToken.ThrowIfCancellationRequested();
 
                 if (process.ExitCode != 0)
                 {
                     string details = error.Length > 0 ? error.ToString().Trim() : output.ToString().Trim();
-                    throw new Exception($"LibreOffice conversion failed with exit code {process.ExitCode} ({FormatLibreOfficeExitCode(process.ExitCode)}): {details}");
+                    throw new Exception(string.Format(Localization.T("error_libreoffice_exit_code", ClickraStorage.GetSetting("Language")), process.ExitCode, FormatLibreOfficeExitCode(process.ExitCode), details));
                 }
 
                 string convertedPath = Path.Combine(tempDir, Path.GetFileNameWithoutExtension(fullPath) + ".pdf");
                 if (!File.Exists(convertedPath))
                 {
                     string details = error.Length > 0 ? error.ToString().Trim() : output.ToString().Trim();
-                    throw new Exception($"LibreOffice conversion failed: Output PDF file was not created. {details}");
+                    throw new Exception(string.Format(Localization.T("error_libreoffice_output_missing", ClickraStorage.GetSetting("Language")), details));
                 }
 
                 string? outputDir = Path.GetDirectoryName(outputPdfPath);

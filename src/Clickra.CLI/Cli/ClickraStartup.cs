@@ -121,6 +121,15 @@ internal static class ClickraStartup
     /// returns true when one of them consumed the invocation.</summary>
     private static bool HandleVersionOrDeploy(string[] args)
     {
+        if (args.Any(arg =>
+                arg.Equals("--help", StringComparison.OrdinalIgnoreCase) ||
+                arg.Equals("-h", StringComparison.OrdinalIgnoreCase) ||
+                arg.Equals("help", StringComparison.OrdinalIgnoreCase)))
+        {
+            PrintUsage();
+            return true;
+        }
+
         if (args.Length == 0 || args[0] == "-v" || args[0] == "--version")
         {
             var version = typeof(ClickraCli).Assembly.GetName().Version?.ToString(3) ?? "Unknown";
