@@ -209,6 +209,7 @@ public sealed partial class MainPage : Page
 
     private async void DropZone_Tapped(object sender, TappedRoutedEventArgs e)
     {
+        if (_isRunning) return;
         var picker = new FileOpenPicker();
         foreach (var extension in GetAllowedExtensions(_selectedCommand))
             picker.FileTypeFilter.Add(extension);
@@ -223,12 +224,13 @@ public sealed partial class MainPage : Page
 
     private void DropZone_DragOver(object sender, DragEventArgs e)
     {
-        e.AcceptedOperation = DataPackageOperation.Copy;
-        SetDropZoneHot(true);
+        e.AcceptedOperation = _isRunning ? DataPackageOperation.None : DataPackageOperation.Copy;
+        SetDropZoneHot(!_isRunning);
     }
 
     private async void DropZone_Drop(object sender, DragEventArgs e)
     {
+        if (_isRunning) return;
         if (!e.DataView.Contains(StandardDataFormats.StorageItems)) return;
         var items = await e.DataView.GetStorageItemsAsync();
         AddFiles(items.OfType<StorageFile>().Select(f => f.Path));
@@ -283,6 +285,7 @@ public sealed partial class MainPage : Page
             }
         }
         UpdateCommandAvailability();
+        UpdateStartState();
     }
 
     private void UpdateStartState()
@@ -294,6 +297,7 @@ public sealed partial class MainPage : Page
             ? Visibility.Visible
             : Visibility.Collapsed;
         CancelButton.Visibility = _isRunning ? Visibility.Visible : Visibility.Collapsed;
+        UpdateInteractiveState();
     }
 
     private void UpdateCommandAvailability()
@@ -301,7 +305,7 @@ public sealed partial class MainPage : Page
         foreach (var pair in _commandButtons)
         {
             bool compatible = IsCommandCompatibleWithSelectedFiles(pair.Key);
-            pair.Value.IsEnabled = compatible;
+            pair.Value.IsEnabled = !_isRunning && compatible;
             pair.Value.Style = compatible && pair.Key.Equals(_selectedCommand, StringComparison.OrdinalIgnoreCase)
                 ? (Style)Application.Current.Resources["AccentButtonStyle"]
                 : null;
@@ -312,8 +316,14 @@ public sealed partial class MainPage : Page
             _selectedCommand = null;
             CommandStatusText.Text = L("fluent_choose_command");
         }
+    }
 
-        UpdateStartState();
+    private void UpdateInteractiveState()
+    {
+        DropZone.AllowDrop = !_isRunning;
+        DropZone.Opacity = _isRunning ? 0.55 : 1.0;
+        ClearFilesButton.IsEnabled = !_isRunning && _selectedFiles.Count > 0;
+        UpdateCommandAvailability();
     }
 
     private bool IsCommandCompatibleWithSelectedFiles(string command)
