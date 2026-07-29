@@ -1,4 +1,4 @@
-<Project Sdk="Microsoft.NET.Sdk">
+﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
     <TargetFramework>net10.0-windows</TargetFramework>
@@ -12,7 +12,7 @@
     <ApplicationManifest>../resources/ClickraShell.dll.manifest</ApplicationManifest>
     <DebugType>none</DebugType>
     <CopyOutputSymbolsToPublishDirectory>false</CopyOutputSymbolsToPublishDirectory>
-    <!-- NativeAOT for Sub-menu support -->
+    <OptimizationPreference>Size</OptimizationPreference>
   </PropertyGroup>
 
 </Project>
