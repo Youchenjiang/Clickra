@@ -290,12 +290,11 @@ public sealed partial class MainPage : Page
 
     private void UpdateStartState()
     {
-        StartButton.Visibility = !_isRunning &&
-                                 _selectedFiles.Count > 0 &&
-                                 _selectedCommand is not null &&
-                                 IsCommandCompatibleWithSelectedFiles(_selectedCommand)
-            ? Visibility.Visible
-            : Visibility.Collapsed;
+        bool canStart = _selectedFiles.Count > 0 &&
+                        _selectedCommand is not null &&
+                        IsCommandCompatibleWithSelectedFiles(_selectedCommand);
+        StartButton.Visibility = _isRunning ? Visibility.Collapsed : Visibility.Visible;
+        StartButton.IsEnabled = canStart;
         CancelButton.Visibility = _isRunning ? Visibility.Visible : Visibility.Collapsed;
         UpdateInteractiveState();
     }

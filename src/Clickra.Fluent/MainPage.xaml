@@ -161,6 +161,7 @@
 
             <ScrollViewer x:Name="ConvertPanel" VerticalScrollBarVisibility="Auto" Visibility="Collapsed">
                 <StackPanel Spacing="18" Margin="36,28,36,32">
+                    <TextBlock x:Name="ConvertTitle" Text="轉檔" FontSize="34" FontWeight="SemiBold"/>
                     <Grid x:Name="ConvertLayout" ColumnSpacing="20" RowSpacing="18">
                         <Grid.RowDefinitions>
                             <RowDefinition Height="Auto"/>
@@ -171,7 +172,6 @@
                             <ColumnDefinition x:Name="ConvertSideColumn" Width="0.85*"/>
                         </Grid.ColumnDefinitions>
                         <StackPanel Spacing="18">
-                            <TextBlock x:Name="ConvertTitle" Text="轉檔" FontSize="34" FontWeight="SemiBold"/>
                             <Border x:Name="DropZone" AllowDrop="True" Background="{ThemeResource CardBackgroundFillColorDefaultBrush}" BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" BorderThickness="1" CornerRadius="8" Padding="28" MinHeight="210">
                                 <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="10">
                                     <FontIcon x:Name="DropZoneIcon" Glyph="&#xE896;" FontSize="52" Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}"/>
@@ -238,9 +238,8 @@
                                 <StackPanel Spacing="12">
                                     <TextBlock x:Name="RunTitle" Text="執行" FontSize="15" FontWeight="SemiBold"/>
                                     <Grid ColumnSpacing="8">
-                                        <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
-                                        <Button x:Name="StartButton" Content="開始轉換" Style="{StaticResource AccentButtonStyle}" Visibility="Collapsed" Padding="18,10"/>
-                                        <Button x:Name="CancelButton" Grid.Column="1" Content="取消" Visibility="Collapsed" Padding="16,10"/>
+                                        <Button x:Name="StartButton" Content="開始轉換" Style="{StaticResource AccentButtonStyle}" IsEnabled="False" Padding="18,10"/>
+                                        <Button x:Name="CancelButton" Content="取消" Visibility="Collapsed" Padding="18,10"/>
                                     </Grid>
                                     <Grid x:Name="ConversionProgressSection" Visibility="Collapsed">
                                         <StackPanel Spacing="8">
