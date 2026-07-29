@@ -106,14 +106,17 @@ public sealed partial class MainPage : Page
 
     private void ApplyHistoryResponsiveLayout(bool narrow)
     {
+        double availableHeight = Math.Max(360, ActualHeight - 118);
         HistoryListColumn.Width = narrow ? new GridLength(1, GridUnitType.Star) : new GridLength(430);
         HistoryDetailColumn.Width = narrow ? new GridLength(0) : new GridLength(1, GridUnitType.Star);
         HistoryTopRow.Height = narrow ? GridLength.Auto : new GridLength(1, GridUnitType.Star);
         HistoryDetailRow.Height = narrow ? GridLength.Auto : new GridLength(0);
         HistoryListScrollViewer.VerticalScrollBarVisibility = ScrollBarVisibility.Auto;
         HistoryListScrollViewer.MaxHeight = narrow ? 360 : double.PositiveInfinity;
-        HistoryPanel.VerticalScrollBarVisibility = ScrollBarVisibility.Auto;
-        HistoryLayout.MinHeight = narrow ? 0 : Math.Max(0, ActualHeight - 86);
+        HistoryDetailScrollViewer.VerticalScrollBarVisibility = ScrollBarVisibility.Auto;
+        HistoryPanel.VerticalScrollBarVisibility = narrow ? ScrollBarVisibility.Auto : ScrollBarVisibility.Disabled;
+        HistoryLayout.Height = narrow ? double.NaN : availableHeight;
+        HistoryLayout.MinHeight = 0;
 
         Grid.SetColumn(HistoryDetailPanel, narrow ? 0 : 1);
         Grid.SetRow(HistoryDetailPanel, narrow ? 1 : 0);

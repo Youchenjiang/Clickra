@@ -325,7 +325,7 @@
                 </Grid>
 
                 <Grid Grid.Column="1" x:Name="HistoryDetailPanel" Background="{ThemeResource CardBackgroundFillColorDefaultBrush}" CornerRadius="8" Padding="22">
-                    <ScrollViewer VerticalScrollBarVisibility="Auto">
+                    <ScrollViewer x:Name="HistoryDetailScrollViewer" VerticalScrollBarVisibility="Auto">
                         <StackPanel x:Name="HistoryDetailContainer" Spacing="14"/>
                     </ScrollViewer>
                 </Grid>
