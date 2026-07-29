@@ -32,6 +32,10 @@ namespace Clickra.Core.Processors
                 textWithPlaceholders,
                 PdfParagraphMarkerNormalizer.Normalize(styled.ToString(), formulas),
                 totalCount > 0 && boldCount == totalCount);
+            bool isCode = PdfParagraphCodeClassifier.IsCodeBlock(textWithPlaceholders) ||
+                          PdfParagraphCodeClassifier.IsMonospaceBlock(lines);
+            if (isCode && LooksLikeLongProse(textWithPlaceholders, allLetters))
+                isCode = false;
             return new PdfParagraphAnalysis
             {
                 TextWithPlaceholders = textWithPlaceholders,
@@ -40,12 +44,23 @@ namespace Clickra.Core.Processors
                 IsBold = totalCount > 0 && ((double)boldCount / totalCount) > 0.5,
                 IsItalic = totalCount > 0 && ((double)italicCount / totalCount) > 0.5,
                 IsOnlyMath = formulas.Count == 1 && textWithPlaceholders.Trim() == "{v0}",
-                IsCode = PdfParagraphCodeClassifier.IsCodeBlock(textWithPlaceholders) ||
-                         PdfParagraphCodeClassifier.IsMonospaceBlock(lines),
+                IsCode = isCode,
                 HasLineBreak = hasLineBreak,
                 Formulas = formulas,
                 AllLetters = allLetters
             };
+        }
+
+        private static bool LooksLikeLongProse(string text, IReadOnlyList<PdfLetter> letters)
+        {
+            string plain = Regex.Replace(text.Trim(), @"\{v\d+\}", "", RegexOptions.None, TimeSpan.FromSeconds(1));
+            int wordCount = Regex.Matches(plain, @"\b[A-Za-z][A-Za-z-]*\b", RegexOptions.None, TimeSpan.FromSeconds(1)).Count;
+            if (wordCount < 18 || !plain.Any(char.IsLower)) return false;
+            if (Regex.IsMatch(plain, @"\b(?:public|private|class|void|return|assert|try|catch|if|else)\b",
+                    RegexOptions.IgnoreCase, TimeSpan.FromSeconds(1))) return false;
+
+            double width = letters.Count == 0 ? 0 : letters.Max(l => l.Right) - letters.Min(l => l.Left);
+            return width > 100 && (plain.Contains('.') || plain.Contains(':') || plain.Contains(';'));
         }
 
         private static (double averageFontSize, int boldCount, int italicCount, int totalCount, List<PdfLetter> allLetters) ComputeFontStats(IReadOnlyList<TextLine> lines)

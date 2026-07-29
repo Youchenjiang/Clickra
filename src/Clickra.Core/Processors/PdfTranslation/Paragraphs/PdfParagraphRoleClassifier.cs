@@ -39,6 +39,10 @@ namespace Clickra.Core.Processors
             int wordCount = txt.Split(new char[] { ' ', '\t', '\n', '\r' }, StringSplitOptions.RemoveEmptyEntries).Length;
             if (wordCount >= 12 && para.Height >= 25 && txt.IndexOf('.') >= 0) return true;
             if (wordCount >= 10 && para.Width > 100 && txt.IndexOf('.') >= 0) return true;
+            if (wordCount >= 18 && para.Width > 100 && txt.Any(char.IsLower) &&
+                (txt.Contains(':') || txt.Contains(';'))) return true;
+            if (wordCount >= 6 && para.Width > 100 &&
+                Regex.IsMatch(txt, @"^[-–]\s+[a-z]", RegexOptions.None, TimeSpan.FromSeconds(1))) return true;
             // A line cut at a page/column boundary can be a perfectly valid
             // continuation even when it has fewer than ten words and no final
             // period (ASTER p.417: "of test assertions, ..."). Treat a wide

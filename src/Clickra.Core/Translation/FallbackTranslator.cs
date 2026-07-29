@@ -149,6 +149,10 @@ internal class FallbackTranslator : ITranslationEngine
         if (Regex.IsMatch(label, @"^[A-Za-z]+(?:-[A-Za-z0-9]+)+$", RegexOptions.None, TimeSpan.FromSeconds(1)) ||
             Regex.IsMatch(label, @"^[A-Z][a-z]+[A-Z][A-Za-z0-9]*$", RegexOptions.None, TimeSpan.FromSeconds(1)))
             return false;
+        if (IsNonTranslatableReference(label))
+            return false;
+        if (IsCodeLikeSnippet(label))
+            return false;
 
         string normalizedSource = NormalizeForComparison(source);
         string normalizedTranslation = NormalizeForComparison(translated);
@@ -159,6 +163,20 @@ internal class FallbackTranslator : ITranslationEngine
 
         return latinLetters >= 8;
     }
+
+    private static bool IsNonTranslatableReference(string value)
+    {
+        string[] tokens = value.Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries);
+        return tokens.Length > 0 && tokens.All(token =>
+            Regex.IsMatch(token, @"^(?:ACM|IEEE|ISBN|ISSN|DOI)$", RegexOptions.IgnoreCase, TimeSpan.FromSeconds(1)) ||
+            Regex.IsMatch(token, @"^\d+[\).]?$", RegexOptions.None, TimeSpan.FromSeconds(1)) ||
+            Regex.IsMatch(token, @"^[\d-]+(?:/\d+)*$", RegexOptions.None, TimeSpan.FromSeconds(1)) ||
+            Regex.IsMatch(token, @"^(?:https?://|www\.|doi:|10\.)\S+$", RegexOptions.IgnoreCase, TimeSpan.FromSeconds(1)));
+    }
+
+    private static bool IsCodeLikeSnippet(string value) =>
+        Regex.IsMatch(value, @"\b(?:return|if|else|for|while|None|null|true|false)\b", RegexOptions.None, TimeSpan.FromSeconds(1)) &&
+        Regex.IsMatch(value, @"[()[\]{}_=.;]|\b[A-Za-z_][A-Za-z0-9_]*\.[A-Za-z_][A-Za-z0-9_]*\b", RegexOptions.None, TimeSpan.FromSeconds(1));
 
     /// <summary>
     /// Reject a mixed result where the provider translated most of a paragraph

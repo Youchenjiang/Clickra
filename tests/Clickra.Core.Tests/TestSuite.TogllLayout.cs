@@ -53,5 +53,29 @@ static partial class TestSuite
                 $"Figure 2 clip must not overlap equation 1 explanation at " +
                 $"[{explanation.X0:F1},{explanation.Y0:F1},{explanation.X1:F1},{explanation.Y1:F1}].");
         });
+
+        runner.Run("TOGLL p3 prompt 5 remains translatable prose", () =>
+        {
+            var page = Diagnostics("TOGLL_Oracle Generation.pdf", 3);
+
+            AssertParagraph(page, "Prompt 5 (P5) includes the code for the entire MUT", p =>
+                !p.IsBypassed && !p.IsCode && !p.IsDiagram && p.IsBodyProse);
+        });
+
+        runner.Run("TOGLL p4 TOGA baseline paragraph remains translatable prose", () =>
+        {
+            var page = Diagnostics("TOGLL_Oracle Generation.pdf", 4);
+
+            AssertParagraph(page, "We selected TOGA as our baseline method", p =>
+                !p.IsBypassed && !p.IsCode && !p.IsDiagram && p.IsBodyProse);
+        });
+
+        runner.Run("TOGLL p9 finding continuation remains translatable prose", () =>
+        {
+            var page = Diagnostics("TOGLL_Oracle Generation.pdf", 9);
+
+            AssertParagraph(page, "thereby establishing a new SOTA", p =>
+                !p.IsBypassed && !p.IsCode && !p.IsDiagram && p.IsBodyProse);
+        });
     }
 }

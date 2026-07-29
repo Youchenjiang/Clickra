@@ -52,6 +52,8 @@ namespace Clickra.Core.Processors
             if (lineNumRegex.Matches(text).Count >= 2) return true;
 
             string textWithoutPlaceholders = Regex.Replace(text, @"\{v\d+\}", "");
+            if (IsAlgorithmPseudoCodeLine(textWithoutPlaceholders)) return true;
+
             bool containsBrace = textWithoutPlaceholders.Contains("{") || textWithoutPlaceholders.Contains("}");
             if (!containsBrace) return false;
 
@@ -68,6 +70,23 @@ namespace Clickra.Core.Processors
             int proseMatches = proseWordsRegex.Matches(textWithoutPlaceholders).Count;
 
             return keywordMatches >= 3 && proseMatches <= 1;
+        }
+
+        internal static bool IsAlgorithmPseudoCodeLine(string text)
+        {
+            text = Regex.Replace(text, @"\{v\d+\}", " = ", RegexOptions.None, TimeSpan.FromSeconds(1));
+
+            if (Regex.IsMatch(text, @"^\s*(?:Algorithm\s+\d+|Procedure\b|Input:|Output:|Step\s+\d+|/\*)", RegexOptions.IgnoreCase, TimeSpan.FromSeconds(1)))
+                return true;
+
+            int wordCount = Regex.Matches(text, @"\b[A-Za-z][A-Za-z-]*\b", RegexOptions.None, TimeSpan.FromSeconds(1)).Count;
+            if (wordCount >= 18 && text.Contains('.'))
+                return false;
+
+            int operatorCount = Regex.Matches(text, @"←|==|!=|<=|>=|:=|=|\[[^\]]*\]|\([^)]*\)|\.[A-Za-z_]\w*", RegexOptions.None, TimeSpan.FromSeconds(1)).Count;
+            int keywordCount = Regex.Matches(text, @"\b(?:return|if|then|else|for|while|do|None|null|true|false|append|parse|get_child)\b", RegexOptions.IgnoreCase, TimeSpan.FromSeconds(1)).Count;
+            int identifierCount = Regex.Matches(text, @"\b(?:ast|macro|macro_op|macro_node|args_node|child|operator|params?|temp_var|temp_count|oracle|input_oracle)\b", RegexOptions.IgnoreCase, TimeSpan.FromSeconds(1)).Count;
+            return operatorCount >= 1 && (keywordCount >= 1 || identifierCount >= 2);
         }
     }
 }
