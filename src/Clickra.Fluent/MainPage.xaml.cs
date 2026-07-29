@@ -256,13 +256,9 @@ public sealed partial class MainPage : Page
 
     private void SelectCommand(string command)
     {
+        if (!IsCommandCompatibleWithSelectedFiles(command)) return;
         _selectedCommand = command;
-        foreach (var pair in _commandButtons)
-        {
-            pair.Value.Style = pair.Key.Equals(command, StringComparison.OrdinalIgnoreCase)
-                ? (Style)Application.Current.Resources["AccentButtonStyle"]
-                : null;
-        }
+        UpdateCommandAvailability();
         CommandStatusText.Text = string.Format(L("fluent_selected_command"), CommandLabel(command));
         UpdateStartState();
     }
@@ -286,13 +282,47 @@ public sealed partial class MainPage : Page
                 });
             }
         }
-        UpdateStartState();
+        UpdateCommandAvailability();
     }
 
     private void UpdateStartState()
     {
-        StartButton.Visibility = !_isRunning && _selectedFiles.Count > 0 && _selectedCommand is not null ? Visibility.Visible : Visibility.Collapsed;
+        StartButton.Visibility = !_isRunning &&
+                                 _selectedFiles.Count > 0 &&
+                                 _selectedCommand is not null &&
+                                 IsCommandCompatibleWithSelectedFiles(_selectedCommand)
+            ? Visibility.Visible
+            : Visibility.Collapsed;
         CancelButton.Visibility = _isRunning ? Visibility.Visible : Visibility.Collapsed;
+    }
+
+    private void UpdateCommandAvailability()
+    {
+        foreach (var pair in _commandButtons)
+        {
+            bool compatible = IsCommandCompatibleWithSelectedFiles(pair.Key);
+            pair.Value.IsEnabled = compatible;
+            pair.Value.Style = compatible && pair.Key.Equals(_selectedCommand, StringComparison.OrdinalIgnoreCase)
+                ? (Style)Application.Current.Resources["AccentButtonStyle"]
+                : null;
+        }
+
+        if (_selectedCommand is not null && !IsCommandCompatibleWithSelectedFiles(_selectedCommand))
+        {
+            _selectedCommand = null;
+            CommandStatusText.Text = L("fluent_choose_command");
+        }
+
+        UpdateStartState();
+    }
+
+    private bool IsCommandCompatibleWithSelectedFiles(string command)
+    {
+        if (_selectedFiles.Count == 0) return true;
+        int minFiles = command is "merge-pdf" or "img-merge" or "img-stitch" ? 2 : 1;
+        if (_selectedFiles.Count < minFiles) return false;
+        string[] extensions = GetAllowedExtensions(command);
+        return _selectedFiles.All(f => extensions.Contains(Path.GetExtension(f), StringComparer.OrdinalIgnoreCase));
     }
 
     private async Task StartConversionAsync()
