@@ -20,7 +20,8 @@ internal static class PdfTranslatedPdfRebuilder
     {
         int totalPages = pageParagraphs.Count;
         var layoutSummary = new PdfTranslationLayoutSummary();
-        onProgress?.Invoke(80, 100, "正在重建 PDF 佈局與公式...");
+        string language = ClickraStorage.GetSetting("Language");
+        onProgress?.Invoke(80, 100, Localization.T("pdf_progress_rebuilding", language));
         cancellationToken.ThrowIfCancellationRequested();
 
         using var finalDoc = PdfReader.Open(inputPath, PdfDocumentOpenMode.Modify);
@@ -38,7 +39,7 @@ internal static class PdfTranslatedPdfRebuilder
                 cancellationToken);
         }
 
-        onProgress?.Invoke(95, 100, "正在儲存翻譯後的檔案...");
+        onProgress?.Invoke(95, 100, Localization.T("pdf_progress_saving", language));
         finalDoc.Save(outputPath);
         finalDoc.Close();
         return layoutSummary;

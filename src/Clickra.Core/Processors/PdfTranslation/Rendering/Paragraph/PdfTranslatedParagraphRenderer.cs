@@ -799,6 +799,17 @@ internal static class PdfTranslatedParagraphRenderer
                 ? para.AverageFontSize
                 : para.AllLetters.Max(letter => letter.FontSize);
         }
+
+        private static double GetSourceBodyFontSize(PdfParagraph para)
+        {
+            if (para.AverageFontSize > 0)
+                return para.AverageFontSize;
+            if (para.SourceVisualFontSize > 0)
+                return para.SourceVisualFontSize;
+            return para.AllLetters.Count == 0
+                ? 0
+                : para.AllLetters.Average(letter => letter.FontSize);
+        }
         private static double CalculateAnchorCenter(PdfParagraph para, bool isPageTitle, bool isHeading, double paragraphX, double paragraphWidth)
         {
             if (isPageTitle)
@@ -825,8 +836,9 @@ internal static class PdfTranslatedParagraphRenderer
             out double sourceBodyFontFloor)
         {
             sourceHeadingFontSize = GetSourceHeadingFontSize(para);
-            sourceBodyFontFloor = sourceHeadingFontSize > 0
-                ? sourceHeadingFontSize * 0.80
+            double sourceBodyFontSize = GetSourceBodyFontSize(para);
+            sourceBodyFontFloor = sourceBodyFontSize > 0
+                ? sourceBodyFontSize * 0.80
                 : para.AverageFontSize;
             return CalculateFontSize(para, isHeading, sourceHeadingFontSize, sourceBodyFontFloor);
         }
