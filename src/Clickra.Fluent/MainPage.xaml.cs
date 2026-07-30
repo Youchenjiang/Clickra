@@ -5,7 +5,9 @@ using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Input;
 using Microsoft.UI.Xaml.Media;
+using Microsoft.UI.Xaml.Navigation;
 using System.Diagnostics;
+using System.Text;
 using Windows.ApplicationModel.DataTransfer;
 using Windows.Storage;
 using Windows.Storage.Pickers;
@@ -22,6 +24,8 @@ public sealed partial class MainPage : Page
     private bool _loadingSettings;
     private bool _isRunning;
     private bool _libreOfficeSetupInProgress;
+    private bool _startupCommandHandled;
+    private string _startupArguments = "";
     private string? _selectedCommand;
     private List<ClickraStorage.HistoryEntry> _historyEntries = new();
     private int _selectedHistoryIndex = -1;
@@ -29,7 +33,11 @@ public sealed partial class MainPage : Page
     public MainPage()
     {
         InitializeComponent();
-        Loaded += (_, _) => ApplyResponsiveLayout();
+        Loaded += async (_, _) =>
+        {
+            ApplyResponsiveLayout();
+            await RunStartupCommandAsync();
+        };
         SizeChanged += (_, _) => ApplyResponsiveLayout();
         NavView.SelectionChanged += NavView_SelectionChanged;
         DropZone.Tapped += DropZone_Tapped;
@@ -59,6 +67,14 @@ public sealed partial class MainPage : Page
         ShowPanel("Overview");
     }
 
+    protected override void OnNavigatedTo(NavigationEventArgs e)
+    {
+        if (e.Parameter is string args)
+        {
+            _startupArguments = args;
+        }
+    }
+
     private string L(string key) => Localization.T(key, ClickraStorage.GetSetting("Language"));
 
     private void NavView_SelectionChanged(NavigationView sender, NavigationViewSelectionChangedEventArgs args)
@@ -85,7 +101,7 @@ public sealed partial class MainPage : Page
         var narrow = ActualWidth < 1000;
 
         SetTwoPaneLayout(OverviewSidePane, OverviewMainColumn, OverviewSideColumn, 1.4, 0.85, narrow);
-        SetTwoPaneLayout(ConvertSidePane, ConvertMainColumn, ConvertSideColumn, 1, 1, narrow);
+        ApplyConvertResponsiveLayout(narrow);
         ApplyHistoryResponsiveLayout(narrow);
         ApplySettingsResponsiveLayout(narrow);
         ApplyAboutResponsiveLayout(narrow);
@@ -102,6 +118,17 @@ public sealed partial class MainPage : Page
 
         Grid.SetColumn(sidePane, narrow ? 0 : 1);
         Grid.SetRow(sidePane, narrow ? 1 : 0);
+    }
+
+    private void ApplyConvertResponsiveLayout(bool narrow)
+    {
+        ConvertMainColumn.Width = new GridLength(1, GridUnitType.Star);
+        ConvertSideColumn.Width = narrow ? new GridLength(0) : new GridLength(1, GridUnitType.Star);
+
+        Grid.SetColumn(ConvertCommandCard, narrow ? 0 : 1);
+        Grid.SetRow(ConvertCommandCard, narrow ? 2 : 0);
+        Grid.SetColumn(ConvertRunCard, narrow ? 0 : 1);
+        Grid.SetRow(ConvertRunCard, narrow ? 3 : 1);
     }
 
     private void ApplyHistoryResponsiveLayout(bool narrow)
@@ -256,6 +283,69 @@ public sealed partial class MainPage : Page
         RefreshFiles();
     }
 
+    private async Task RunStartupCommandAsync()
+    {
+        if (_startupCommandHandled) return;
+        _startupCommandHandled = true;
+
+        var args = SplitCommandLine(_startupArguments);
+        if (args.Count < 2 || !IsKnownCommand(args[0])) return;
+
+        SelectNavItem("Convert");
+        string command = args[0];
+        AddFiles(ExpandDirectoryArguments(command, args.Skip(1)));
+        SelectCommand(command);
+        await StartConversionAsync();
+    }
+
+    private static List<string> SplitCommandLine(string value)
+    {
+        var args = new List<string>();
+        var current = new StringBuilder();
+        bool inQuote = false;
+
+        foreach (char ch in value)
+        {
+            if (ch == '"')
+            {
+                inQuote = !inQuote;
+                continue;
+            }
+
+            if (char.IsWhiteSpace(ch) && !inQuote)
+            {
+                if (current.Length > 0)
+                {
+                    args.Add(current.ToString());
+                    current.Clear();
+                }
+                continue;
+            }
+
+            current.Append(ch);
+        }
+
+        if (current.Length > 0) args.Add(current.ToString());
+        return args;
+    }
+
+    private static IEnumerable<string> ExpandDirectoryArguments(string command, IEnumerable<string> inputs)
+    {
+        string[] allowed = GetAllowedExtensions(command);
+        foreach (var input in inputs)
+        {
+            if (Directory.Exists(input))
+            {
+                foreach (var file in Directory.EnumerateFiles(input).Where(file => allowed.Contains(Path.GetExtension(file), StringComparer.OrdinalIgnoreCase)))
+                    yield return file;
+            }
+            else
+            {
+                yield return input;
+            }
+        }
+    }
+
     private void SelectCommand(string command)
     {
         if (!IsCommandCompatibleWithSelectedFiles(command)) return;
@@ -342,7 +432,7 @@ public sealed partial class MainPage : Page
             await ShowErrorAsync(error);
             return;
         }
-        if (!HasAvailableOfficeEngine(_selectedCommand, out error))
+        if (!OfficeEnginePreflight.TryValidate(_selectedCommand, L, out error))
         {
             await ShowErrorAsync(error);
             return;
@@ -485,6 +575,8 @@ public sealed partial class MainPage : Page
         return true;
     }
 
+    private static bool IsKnownCommand(string command) => GetAllowedExtensions(command).Length > 0;
+
     private static string[] GetAllowedExtensions(string? command) => command switch
     {
         "ppt2pdf" => new[] { ".ppt", ".pptx" },
@@ -494,36 +586,6 @@ public sealed partial class MainPage : Page
         "img2pdf" or "img-merge" or "img-stitch" => new[] { ".jpg", ".jpeg", ".png", ".bmp", ".gif", ".tiff", ".webp" },
         _ => new[] { ".pdf", ".ppt", ".pptx", ".doc", ".docx", ".xls", ".xlsx", ".jpg", ".jpeg", ".png", ".bmp", ".gif", ".tiff", ".webp" }
     };
-
-    private bool HasAvailableOfficeEngine(string command, out string error)
-    {
-        error = "";
-        string app = command switch
-        {
-            "ppt2pdf" => "PowerPoint",
-            "word2pdf" => "Word",
-            "excel2pdf" => "Excel",
-            _ => ""
-        };
-        if (string.IsNullOrWhiteSpace(app)) return true;
-
-        string engine = ClickraStorage.GetSetting("OfficeEngine");
-        bool libreOfficeReady = !string.IsNullOrWhiteSpace(LibreOfficeHelper.GetResolvedExecutablePath());
-        bool microsoftReady = IsOfficeInstalled(app);
-        bool ready = engine.Equals("libreoffice", StringComparison.OrdinalIgnoreCase)
-            ? libreOfficeReady
-            : engine.Equals("microsoft", StringComparison.OrdinalIgnoreCase)
-                ? microsoftReady
-                : microsoftReady || libreOfficeReady;
-        if (ready) return true;
-
-        error = L(engine.Equals("libreoffice", StringComparison.OrdinalIgnoreCase)
-            ? "error_libreoffice_not_ready"
-            : engine.Equals("microsoft", StringComparison.OrdinalIgnoreCase)
-                ? "error_microsoftoffice_not_ready"
-                : "setting_engine_none_available");
-        return false;
-    }
 
     private List<string> EstimateOutputs(string command, List<string> files)
     {
@@ -1223,17 +1285,6 @@ public sealed partial class MainPage : Page
             _libreOfficeSetupInProgress = false;
             RefreshLibreOfficeStatus();
         }
-    }
-
-    private static bool IsOfficeInstalled(string app)
-    {
-        string progId = app switch
-        {
-            "PowerPoint" => "PowerPoint.Application",
-            "Excel" => "Excel.Application",
-            _ => "Word.Application"
-        };
-        return Type.GetTypeFromProgID(progId) != null;
     }
 
     private async Task OpenUriAsync(string uri)

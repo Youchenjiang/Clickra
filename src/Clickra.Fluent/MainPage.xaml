@@ -166,90 +166,88 @@
                         <Grid.RowDefinitions>
                             <RowDefinition Height="Auto"/>
                             <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
                         </Grid.RowDefinitions>
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition x:Name="ConvertMainColumn" Width="1.15*"/>
                             <ColumnDefinition x:Name="ConvertSideColumn" Width="0.85*"/>
                         </Grid.ColumnDefinitions>
-                        <StackPanel Spacing="18">
-                            <Border x:Name="DropZone" AllowDrop="True" Background="{ThemeResource CardBackgroundFillColorDefaultBrush}" BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" BorderThickness="1" CornerRadius="8" Padding="28" MinHeight="210">
-                                <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="10">
-                                    <FontIcon x:Name="DropZoneIcon" Glyph="&#xE896;" FontSize="52" Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}"/>
-                                    <TextBlock x:Name="DropZoneTitle" Text="拖放檔案到這裡" FontSize="20" FontWeight="SemiBold" HorizontalAlignment="Center"/>
-                                    <TextBlock x:Name="DropZoneBrowseText" Text="點擊此區域選取檔案" FontSize="14" Foreground="{ThemeResource TextFillColorSecondaryBrush}" HorizontalAlignment="Center"/>
-                                    <TextBlock x:Name="DropZoneTypesText" Text="PDF、Office 文件與圖片" FontSize="12" Foreground="{ThemeResource TextFillColorTertiaryBrush}" HorizontalAlignment="Center"/>
-                                </StackPanel>
-                            </Border>
+                        <Border x:Name="DropZone" AllowDrop="True" Background="{ThemeResource CardBackgroundFillColorDefaultBrush}" BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" BorderThickness="1" CornerRadius="8" Padding="28" MinHeight="210">
+                            <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="10">
+                                <FontIcon x:Name="DropZoneIcon" Glyph="&#xE896;" FontSize="52" Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}"/>
+                                <TextBlock x:Name="DropZoneTitle" Text="拖放檔案到這裡" FontSize="20" FontWeight="SemiBold" HorizontalAlignment="Center"/>
+                                <TextBlock x:Name="DropZoneBrowseText" Text="點擊此區域選取檔案" FontSize="14" Foreground="{ThemeResource TextFillColorSecondaryBrush}" HorizontalAlignment="Center"/>
+                                <TextBlock x:Name="DropZoneTypesText" Text="PDF、Office 文件與圖片" FontSize="12" Foreground="{ThemeResource TextFillColorTertiaryBrush}" HorizontalAlignment="Center"/>
+                            </StackPanel>
+                        </Border>
 
-                            <Grid Background="{ThemeResource CardBackgroundFillColorDefaultBrush}" CornerRadius="8" Padding="18">
-                                <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
-                                <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
-                                <StackPanel>
-                                    <TextBlock x:Name="SelectedFilesTitle" Text="已選取檔案" FontSize="15" FontWeight="SemiBold"/>
-                                    <TextBlock x:Name="SelectedFilesDesc" Text="檔案會依照目前命令驗證。" FontSize="12" Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
-                                </StackPanel>
-                                <Button Grid.Column="1" x:Name="ClearFilesButton" Content="清除" Padding="16,8"/>
-                                <StackPanel x:Name="FileListContainer" Grid.Row="1" Grid.ColumnSpan="2" Spacing="6" Margin="0,14,0,0">
-                                    <TextBlock x:Name="EmptyFileMessage" Text="未選取檔案" FontSize="13" Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
-                                </StackPanel>
-                            </Grid>
-                        </StackPanel>
+                        <Grid Grid.Row="1" Background="{ThemeResource CardBackgroundFillColorDefaultBrush}" CornerRadius="8" Padding="18">
+                            <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
+                            <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+                            <StackPanel>
+                                <TextBlock x:Name="SelectedFilesTitle" Text="已選取檔案" FontSize="15" FontWeight="SemiBold"/>
+                                <TextBlock x:Name="SelectedFilesDesc" Text="檔案會依照目前命令驗證。" FontSize="12" Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
+                            </StackPanel>
+                            <Button Grid.Column="1" x:Name="ClearFilesButton" Content="清除" Padding="16,8"/>
+                            <StackPanel x:Name="FileListContainer" Grid.Row="1" Grid.ColumnSpan="2" Spacing="6" Margin="0,14,0,0">
+                                <TextBlock x:Name="EmptyFileMessage" Text="未選取檔案" FontSize="13" Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
+                            </StackPanel>
+                        </Grid>
 
-                        <StackPanel x:Name="ConvertSidePane" Grid.Column="1" Spacing="14">
-                            <Grid Background="{ThemeResource CardBackgroundFillColorDefaultBrush}" CornerRadius="8" Padding="18">
-                                <StackPanel Spacing="14">
-                                    <StackPanel Spacing="2">
-                                        <TextBlock x:Name="CommandTitle" Text="命令" FontSize="15" FontWeight="SemiBold"/>
-                                        <TextBlock x:Name="CommandStatusText" Text="選擇命令" FontSize="12" Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
-                                    </StackPanel>
-                                    <StackPanel Spacing="8">
-                                        <TextBlock x:Name="OfficeCommandLabel" Text="Office" FontSize="12" FontWeight="SemiBold" Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
-                                        <Grid ColumnSpacing="8">
-                                            <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="*"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
-                                            <Button x:Name="BtnWord2Pdf" Content="Word" Tag="word2pdf" HorizontalAlignment="Stretch"/>
-                                            <Button x:Name="BtnExcel2Pdf" Grid.Column="1" Content="Excel" Tag="excel2pdf" HorizontalAlignment="Stretch"/>
-                                            <Button x:Name="BtnPpt2Pdf" Grid.Column="2" Content="PPT" Tag="ppt2pdf" HorizontalAlignment="Stretch"/>
-                                        </Grid>
-                                    </StackPanel>
-                                    <StackPanel Spacing="8">
-                                        <TextBlock x:Name="PdfCommandLabel" Text="PDF" FontSize="12" FontWeight="SemiBold" Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
-                                        <Grid ColumnSpacing="8" RowSpacing="8">
-                                            <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
-                                            <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
-                                            <Button x:Name="BtnMergePdf" Content="合併 PDF" Tag="merge-pdf" HorizontalAlignment="Stretch"/>
-                                            <Button x:Name="BtnCompressPdf" Grid.Column="1" Content="壓縮 PDF" Tag="compress-pdf" HorizontalAlignment="Stretch"/>
-                                            <Button x:Name="BtnTranslatePdf" Grid.Row="1" Content="PDF 一鍵翻譯" Tag="translate-pdf" HorizontalAlignment="Stretch"/>
-                                            <Button x:Name="BtnDecryptPdf" Grid.Row="1" Grid.Column="1" Content="去除 PDF 密碼" Tag="decrypt-pdf" HorizontalAlignment="Stretch"/>
-                                        </Grid>
-                                    </StackPanel>
-                                    <StackPanel Spacing="8">
-                                        <TextBlock x:Name="ImageCommandLabel" Text="圖片" FontSize="12" FontWeight="SemiBold" Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
-                                        <Grid ColumnSpacing="8">
-                                            <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="*"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
-                                            <Button x:Name="BtnImg2Pdf" Content="PDF" Tag="img2pdf" HorizontalAlignment="Stretch"/>
-                                            <Button x:Name="BtnImgMerge" Grid.Column="1" Content="圖片合併" Tag="img-merge" HorizontalAlignment="Stretch"/>
-                                            <Button x:Name="BtnImgStitch" Grid.Column="2" Content="圖片拼接" Tag="img-stitch" HorizontalAlignment="Stretch"/>
-                                        </Grid>
-                                    </StackPanel>
+                        <Grid x:Name="ConvertCommandCard" Grid.Column="1" Background="{ThemeResource CardBackgroundFillColorDefaultBrush}" CornerRadius="8" Padding="18">
+                            <StackPanel Spacing="14">
+                                <StackPanel Spacing="2">
+                                    <TextBlock x:Name="CommandTitle" Text="命令" FontSize="15" FontWeight="SemiBold"/>
+                                    <TextBlock x:Name="CommandStatusText" Text="選擇命令" FontSize="12" Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
                                 </StackPanel>
-                            </Grid>
-
-                            <Grid Background="{ThemeResource CardBackgroundFillColorDefaultBrush}" CornerRadius="8" Padding="18">
-                                <StackPanel Spacing="12">
-                                    <TextBlock x:Name="RunTitle" Text="執行" FontSize="15" FontWeight="SemiBold"/>
+                                <StackPanel Spacing="8">
+                                    <TextBlock x:Name="OfficeCommandLabel" Text="Office" FontSize="12" FontWeight="SemiBold" Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
                                     <Grid ColumnSpacing="8">
-                                        <Button x:Name="StartButton" Content="開始轉換" Style="{StaticResource AccentButtonStyle}" IsEnabled="False" Padding="18,10"/>
-                                        <Button x:Name="CancelButton" Content="取消" Visibility="Collapsed" Padding="18,10"/>
-                                    </Grid>
-                                    <Grid x:Name="ConversionProgressSection" Visibility="Collapsed">
-                                        <StackPanel Spacing="8">
-                                            <TextBlock x:Name="ConversionProgressText" Text="準備就緒" FontSize="13" Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
-                                            <ProgressBar x:Name="ConversionProgressBar" Minimum="0" Maximum="100"/>
-                                        </StackPanel>
+                                        <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="*"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+                                        <Button x:Name="BtnWord2Pdf" Content="Word" Tag="word2pdf" HorizontalAlignment="Stretch"/>
+                                        <Button x:Name="BtnExcel2Pdf" Grid.Column="1" Content="Excel" Tag="excel2pdf" HorizontalAlignment="Stretch"/>
+                                        <Button x:Name="BtnPpt2Pdf" Grid.Column="2" Content="PPT" Tag="ppt2pdf" HorizontalAlignment="Stretch"/>
                                     </Grid>
                                 </StackPanel>
-                            </Grid>
-                        </StackPanel>
+                                <StackPanel Spacing="8">
+                                    <TextBlock x:Name="PdfCommandLabel" Text="PDF" FontSize="12" FontWeight="SemiBold" Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
+                                    <Grid ColumnSpacing="8" RowSpacing="8">
+                                        <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+                                        <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
+                                        <Button x:Name="BtnMergePdf" Content="合併 PDF" Tag="merge-pdf" HorizontalAlignment="Stretch"/>
+                                        <Button x:Name="BtnCompressPdf" Grid.Column="1" Content="壓縮 PDF" Tag="compress-pdf" HorizontalAlignment="Stretch"/>
+                                        <Button x:Name="BtnTranslatePdf" Grid.Row="1" Content="PDF 一鍵翻譯" Tag="translate-pdf" HorizontalAlignment="Stretch"/>
+                                        <Button x:Name="BtnDecryptPdf" Grid.Row="1" Grid.Column="1" Content="去除 PDF 密碼" Tag="decrypt-pdf" HorizontalAlignment="Stretch"/>
+                                    </Grid>
+                                </StackPanel>
+                                <StackPanel Spacing="8">
+                                    <TextBlock x:Name="ImageCommandLabel" Text="圖片" FontSize="12" FontWeight="SemiBold" Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
+                                    <Grid ColumnSpacing="8">
+                                        <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="*"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+                                        <Button x:Name="BtnImg2Pdf" Content="PDF" Tag="img2pdf" HorizontalAlignment="Stretch"/>
+                                        <Button x:Name="BtnImgMerge" Grid.Column="1" Content="圖片合併" Tag="img-merge" HorizontalAlignment="Stretch"/>
+                                        <Button x:Name="BtnImgStitch" Grid.Column="2" Content="圖片拼接" Tag="img-stitch" HorizontalAlignment="Stretch"/>
+                                    </Grid>
+                                </StackPanel>
+                            </StackPanel>
+                        </Grid>
+
+                        <Grid x:Name="ConvertRunCard" Grid.Row="1" Grid.Column="1" Background="{ThemeResource CardBackgroundFillColorDefaultBrush}" CornerRadius="8" Padding="18">
+                            <StackPanel Spacing="12">
+                                <TextBlock x:Name="RunTitle" Text="執行" FontSize="15" FontWeight="SemiBold"/>
+                                <Grid ColumnSpacing="8">
+                                    <Button x:Name="StartButton" Content="開始轉換" Style="{StaticResource AccentButtonStyle}" IsEnabled="False" Padding="18,10"/>
+                                    <Button x:Name="CancelButton" Content="取消" Visibility="Collapsed" Padding="18,10"/>
+                                </Grid>
+                                <Grid x:Name="ConversionProgressSection" Visibility="Collapsed">
+                                    <StackPanel Spacing="8">
+                                        <TextBlock x:Name="ConversionProgressText" Text="準備就緒" FontSize="13" Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
+                                        <ProgressBar x:Name="ConversionProgressBar" Minimum="0" Maximum="100"/>
+                                    </StackPanel>
+                                </Grid>
+                            </StackPanel>
+                        </Grid>
                     </Grid>
                 </StackPanel>
             </ScrollViewer>
