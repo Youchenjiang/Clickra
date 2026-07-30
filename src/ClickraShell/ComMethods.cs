@@ -215,7 +215,9 @@ namespace ClickraShell
             var files = GetFiles(psi);
             foreach (var f in files) sb.Append(" \"").Append(f).Append("\"");
 
-            string app = Path.Combine(ShellUtils.GetModuleDir(), "Clickra.exe");
+            string moduleDir = ShellUtils.GetModuleDir();
+            string app = Path.Combine(moduleDir, "Clickra.Fluent.exe");
+            if (!File.Exists(app)) app = Path.Combine(moduleDir, "Clickra.exe");
             if (File.Exists(app)) Process.Start(new ProcessStartInfo(app, sb.ToString()) { UseShellExecute = true });
             return 0;
         }

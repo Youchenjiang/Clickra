@@ -14,8 +14,13 @@ public partial class App : Application
 
     protected override void OnLaunched(Microsoft.UI.Xaml.LaunchActivatedEventArgs args)
     {
-        _window = new MainWindow();
+        string launchArguments = string.IsNullOrWhiteSpace(args.Arguments)
+            ? string.Join(" ", Environment.GetCommandLineArgs().Skip(1).Select(QuoteArgument))
+            : args.Arguments;
+        _window = new MainWindow(launchArguments);
         MainWindow = _window;
         _window.Activate();
     }
+
+    private static string QuoteArgument(string value) => value.Contains(' ') ? $"\"{value}\"" : value;
 }

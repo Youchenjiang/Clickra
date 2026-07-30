@@ -5,7 +5,7 @@ namespace Clickra_Fluent;
 
 public sealed partial class MainWindow : Window
 {
-    public MainWindow()
+    public MainWindow(string launchArguments = "")
     {
         InitializeComponent();
         ExtendsContentIntoTitleBar = true;
@@ -13,6 +13,11 @@ public sealed partial class MainWindow : Window
         string iconPath = Path.Combine(AppContext.BaseDirectory, "app.ico");
         if (File.Exists(iconPath))
             AppWindow.SetIcon(iconPath);
-        RootFrame.Navigate(typeof(MainPage));
+        bool progressMode = !string.IsNullOrWhiteSpace(launchArguments);
+        if (progressMode)
+        {
+            AppWindow.Resize(new Windows.Graphics.SizeInt32(720, 440));
+        }
+        RootFrame.Navigate(progressMode ? typeof(TaskProgressPage) : typeof(MainPage), launchArguments);
     }
 }
