@@ -205,7 +205,9 @@ namespace Clickra.UI
             while ((status = GetMessage(out var msg, IntPtr.Zero, 0, 0)) != 0)
             {
                 if (status == -1) break;
-                if (_isPromptingPassword && IsDialogMessageW(_hwnd, ref msg))
+                // The visual splitter renders its own controls and handles its own keys
+                // (zoom shortcuts), so let WM_KEYDOWN reach WndProc during splitter mode.
+                if (!_isPromptingVisualSplitter && _isPromptingPassword && IsDialogMessageW(_hwnd, ref msg))
                 {
                     continue;
                 }

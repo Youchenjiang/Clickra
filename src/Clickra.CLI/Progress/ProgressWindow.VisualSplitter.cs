@@ -6,6 +6,7 @@ using System.IO;
 using System.Linq;
 using System.Runtime.InteropServices;
 using System.Text;
+using System.Threading.Tasks;
 using Clickra.Core;
 using Clickra.Core.Processors;
 
@@ -27,12 +28,36 @@ namespace Clickra.UI
 
         private Dictionary<int, Bitmap> _visualSplitPageThumbnails = new Dictionary<int, Bitmap>();
 
+        private string _visualSplitFilePath = "";
+        private Bitmap? _visualSplitZoomBmp = null;
+        private int _visualSplitZoomPageNum = -1;
+        private int _visualSplitZoomRenderSeq = 0;
+
+        // Zoom lightbox view state (factor 1.0 = fit; pan in logical px).
+        private float _visualSplitZoomFactor = 1f;
+        private float _visualSplitZoomPanX = 0f;
+        private float _visualSplitZoomPanY = 0f;
+        private bool _visualSplitZoomDragging = false;
+        private int _visualSplitZoomDragLastX = 0;
+        private int _visualSplitZoomDragLastY = 0;
+
+        // Zoom lightbox geometry (logical px, matches the paint layout).
+        private const float ZoomModalLeft = 24f;
+        private const float ZoomModalTop = 20f;
+        private const float ZoomModalW = 472f;
+        private const float ZoomModalH = 380f;
+        private const float ZoomImgLeft = 40f;
+        private const float ZoomImgTop = 58f;
+        private const float ZoomImgW = 440f;
+        private const float ZoomImgH = 328f;
+
         private void InitializeVisualSplitter(string filePath)
         {
             int totalPages = FileProcessor.GetPdfPageCount(filePath);
             if (totalPages <= 0) totalPages = 1;
 
             _visualSplitTotalPages = totalPages;
+            _visualSplitFilePath = filePath;
             _visualSplitMode = 0;
             _visualSplitNPages = Math.Min(5, totalPages);
             _visualSplitSegments.Clear();
@@ -55,6 +80,10 @@ namespace Clickra.UI
             _visualSplitSelectedSegmentIndex = 0;
             _visualSplitCurrentPreviewPageIndex = 0;
             _visualSplitIsZoomed = false;
+            _visualSplitZoomFactor = 1f;
+            _visualSplitZoomPanX = 0f;
+            _visualSplitZoomPanY = 0f;
+            _visualSplitZoomDragging = false;
         }
 
         private void CachePdfPageThumbnails(string filePath)
@@ -208,6 +237,182 @@ namespace Clickra.UI
             catch { }
 
             return bmp;
+        }
+
+        /// <summary>
+        /// Starts a background render of the given page at high resolution for the zoom
+        /// lightbox. The cached thumbnail keeps the lightbox populated until the render
+        /// finishes, then the high-res bitmap replaces it (progressive refinement).
+        /// </summary>
+        private void StartVisualSplitZoomRender(int pageNum)
+        {
+            lock (_stateLock)
+            {
+                _visualSplitZoomBmp?.Dispose();
+                _visualSplitZoomBmp = null;
+                _visualSplitZoomPageNum = pageNum;
+            }
+
+            int seq = ++_visualSplitZoomRenderSeq;
+            string filePath = _visualSplitFilePath;
+            // 2x the zoom lightbox image area (440 logical px), clamped to stay sane.
+            int targetW = (int)Math.Clamp(880 * _dpiScale, 660, 1600);
+
+            Task.Run(() =>
+            {
+                try
+                {
+                    using var pigDoc = UglyToad.PdfPig.PdfDocument.Open(filePath);
+                    if (pageNum < 1 || pageNum > pigDoc.NumberOfPages) return;
+                    var pigPage = pigDoc.GetPage(pageNum);
+                    var bmp = BuildPageThumbnail(pigPage, pageNum, targetW);
+                    if (bmp == null) return;
+
+                    lock (_stateLock)
+                    {
+                        if (seq != _visualSplitZoomRenderSeq)
+                        {
+                            // stale: zoom closed or another page requested meanwhile
+                            bmp.Dispose();
+                            return;
+                        }
+                        _visualSplitZoomBmp?.Dispose();
+                        _visualSplitZoomBmp = bmp;
+                        _visualSplitZoomPageNum = pageNum;
+                    }
+
+                    if (_hwnd != IntPtr.Zero)
+                        PostMessageW(_hwnd, WM_USER_INVALIDATE, (IntPtr)1, IntPtr.Zero);
+                }
+                catch { }
+            });
+        }
+
+        /// <summary>
+        /// Drops any cached zoom render and cancels in-flight renders (e.g. when the
+        /// lightbox closes).
+        /// </summary>
+        private void CancelVisualSplitZoomRender()
+        {
+            _visualSplitZoomRenderSeq++;
+            lock (_stateLock)
+            {
+                _visualSplitZoomBmp?.Dispose();
+                _visualSplitZoomBmp = null;
+                _visualSplitZoomPageNum = -1;
+            }
+        }
+
+        private int GetCurrentZoomPage()
+        {
+            if (_visualSplitSelectedSegmentIndex >= 0 && _visualSplitSelectedSegmentIndex < _visualSplitSegments.Count)
+            {
+                var seg = _visualSplitSegments[_visualSplitSelectedSegmentIndex];
+                return seg.Start + _visualSplitCurrentPreviewPageIndex;
+            }
+            return 1;
+        }
+
+        /// <summary>Bitmap currently shown in the zoom lightbox: the high-res render if
+        /// ready, otherwise the cached thumbnail.</summary>
+        private Bitmap? GetCurrentZoomBitmap()
+        {
+            int page = _visualSplitZoomPageNum >= 1 ? _visualSplitZoomPageNum : GetCurrentZoomPage();
+            lock (_stateLock)
+            {
+                if (_visualSplitZoomBmp != null && _visualSplitZoomPageNum == page)
+                    return _visualSplitZoomBmp;
+                _visualSplitPageThumbnails.TryGetValue(page, out var bmp);
+                return bmp;
+            }
+        }
+
+        private void OpenVisualSplitZoom(IntPtr hwnd)
+        {
+            _visualSplitIsZoomed = true;
+            _visualSplitZoomFactor = 1f;
+            _visualSplitZoomPanX = 0f;
+            _visualSplitZoomPanY = 0f;
+            _visualSplitZoomDragging = false;
+            StartVisualSplitZoomRender(GetCurrentZoomPage());
+            InvalidateRect(hwnd, IntPtr.Zero, true);
+        }
+
+        private void CloseVisualSplitZoom(IntPtr hwnd)
+        {
+            _visualSplitIsZoomed = false;
+            CancelVisualSplitZoomRender();
+            _visualSplitZoomFactor = 1f;
+            _visualSplitZoomPanX = 0f;
+            _visualSplitZoomPanY = 0f;
+            _visualSplitZoomDragging = false;
+            InvalidateRect(hwnd, IntPtr.Zero, true);
+        }
+
+        private void ClampVisualSplitZoomPan()
+        {
+            float fitW = ZoomImgW, fitH = ZoomImgH;
+            var bmp = GetCurrentZoomBitmap();
+            if (bmp != null)
+            {
+                float aspect = (float)bmp.Width / bmp.Height;
+                if (aspect > fitW / fitH) fitH = fitW / aspect;
+                else fitW = fitH * aspect;
+            }
+            float scaledW = fitW * _visualSplitZoomFactor;
+            float scaledH = fitH * _visualSplitZoomFactor;
+            float maxPanX = Math.Max(0f, (scaledW - ZoomImgW) / 2f);
+            float maxPanY = Math.Max(0f, (scaledH - ZoomImgH) / 2f);
+            _visualSplitZoomPanX = Math.Clamp(_visualSplitZoomPanX, -maxPanX, maxPanX);
+            _visualSplitZoomPanY = Math.Clamp(_visualSplitZoomPanY, -maxPanY, maxPanY);
+        }
+
+        /// <summary>Draw rect (logical px) of the page bitmap inside the zoom lightbox,
+        /// honoring the current zoom factor and pan.</summary>
+        private bool GetVisualSplitZoomImageRect(out float drawX, out float drawY, out float drawW, out float drawH)
+        {
+            drawX = drawY = drawW = drawH = 0f;
+            var bmp = GetCurrentZoomBitmap();
+            if (bmp == null) return false;
+
+            float fitW = ZoomImgW, fitH = ZoomImgH;
+            float aspect = (float)bmp.Width / bmp.Height;
+            if (aspect > fitW / fitH) fitH = fitW / aspect;
+            else fitW = fitH * aspect;
+
+            float scaledW = fitW * _visualSplitZoomFactor;
+            float scaledH = fitH * _visualSplitZoomFactor;
+            drawW = scaledW;
+            drawH = scaledH;
+            drawX = ZoomImgLeft + (ZoomImgW - scaledW) / 2f + _visualSplitZoomPanX;
+            drawY = ZoomImgTop + (ZoomImgH - scaledH) / 2f + _visualSplitZoomPanY;
+            return true;
+        }
+
+        /// <summary>Sets the zoom factor (clamped 1x–8x) keeping the point under
+        /// (anchorX, anchorY) stationary where possible.</summary>
+        private void SetVisualSplitZoomFactor(float newFactor, float anchorX, float anchorY)
+        {
+            newFactor = Math.Clamp(newFactor, 1f, 8f);
+            float oldFactor = Math.Max(1f, _visualSplitZoomFactor);
+
+            if (GetVisualSplitZoomImageRect(out var dx, out var dy, out var dw, out var dh))
+            {
+                float ux = (anchorX - dx) / oldFactor;
+                float uy = (anchorY - dy) / oldFactor;
+                _visualSplitZoomFactor = newFactor;
+                ClampVisualSplitZoomPan();
+                if (GetVisualSplitZoomImageRect(out var dx2, out var dy2, out var dw2, out var dh2))
+                {
+                    _visualSplitZoomPanX = (anchorX - ux * newFactor) - (ZoomImgLeft + (ZoomImgW - dw2) / 2f);
+                    _visualSplitZoomPanY = (anchorY - uy * newFactor) - (ZoomImgTop + (ZoomImgH - dh2) / 2f);
+                    ClampVisualSplitZoomPan();
+                }
+            }
+            else
+            {
+                _visualSplitZoomFactor = newFactor;
+            }
         }
 
         private Bitmap RenderSyntheticPageThumbnail(UglyToad.PdfPig.Content.Page page, int pageNum)
@@ -698,7 +903,8 @@ namespace Clickra.UI
                 g.DrawRectangle(modalPen, modalX, modalY, modalW, modalH);
 
                 using var titleBrush = new SolidBrush(Color.FromArgb(230, 240, 255));
-                g.DrawString($"頁面 P.{currentPg} 放大預覽", _msgFont ?? _tipFont!, titleBrush, modalX + 16 * s, modalY + 12 * s);
+                int zoomPct = (int)(_visualSplitZoomFactor * 100);
+                g.DrawString($"頁面 P.{currentPg} 放大預覽 · {zoomPct}%", _msgFont ?? _tipFont!, titleBrush, modalX + 16 * s, modalY + 12 * s);
 
                 float closeW = 70 * s;
                 float closeH = 22 * s;
@@ -714,25 +920,57 @@ namespace Clickra.UI
                 float imgAreaW = modalW - 32 * s;
                 float imgAreaH = modalH - 52 * s;
 
-                if (_visualSplitPageThumbnails.TryGetValue(currentPg, out var zoomBmp) && zoomBmp != null)
+                // Prefer the high-res on-demand render; fall back to the cached thumbnail
+                // while the background render is in flight. The whole draw happens under
+                // _stateLock so a completed render can never dispose a bitmap mid-draw.
+                lock (_stateLock)
                 {
-                    float imgAspect = (float)zoomBmp.Width / zoomBmp.Height;
-                    float boxAspect = imgAreaW / imgAreaH;
+                    if (GetVisualSplitZoomImageRect(out float drawX, out float drawY, out float drawW, out float drawH))
+                    {
+                        var zoomBmp = GetCurrentZoomBitmap();
+                        if (zoomBmp != null)
+                        {
+                            using var paperWhite = new SolidBrush(Color.White);
+                            g.FillRectangle(paperWhite, drawX, drawY, drawW, drawH);
 
-                    float drawW = (imgAspect > boxAspect) ? imgAreaW : (imgAreaH * imgAspect);
-                    float drawH = (imgAspect > boxAspect) ? (imgAreaW / imgAspect) : imgAreaH;
-                    float drawX = imgAreaX + (imgAreaW - drawW) / 2f;
-                    float drawY = imgAreaY + (imgAreaH - drawH) / 2f;
+                            g.InterpolationMode = System.Drawing.Drawing2D.InterpolationMode.HighQualityBicubic;
+                            g.DrawImage(zoomBmp, drawX, drawY, drawW, drawH);
 
-                    using var paperWhite = new SolidBrush(Color.White);
-                    g.FillRectangle(paperWhite, drawX, drawY, drawW, drawH);
-
-                    g.InterpolationMode = System.Drawing.Drawing2D.InterpolationMode.HighQualityBicubic;
-                    g.DrawImage(zoomBmp, drawX, drawY, drawW, drawH);
-
-                    using var imgPen = new Pen(Color.FromArgb(160, 175, 195));
-                    g.DrawRectangle(imgPen, drawX, drawY, drawW, drawH);
+                            using var imgPen = new Pen(Color.FromArgb(160, 175, 195));
+                            g.DrawRectangle(imgPen, drawX, drawY, drawW, drawH);
+                        }
+                    }
+                    else
+                    {
+                        using var paperBg = new SolidBrush(Color.FromArgb(245, 247, 250));
+                        g.FillRectangle(paperBg, imgAreaX, imgAreaY, imgAreaW, imgAreaH);
+                    }
                 }
+
+                // Bottom controls: zoom in/out, reset-to-fit, and a usage hint.
+                float zoomBtnY = modalY + modalH - 34 * s;
+                float zoomBtnH = 22 * s;
+                float zoomBtnInX = modalX + modalW - 120 * s;   // −
+                float zoomBtnOutX = modalX + modalW - 86 * s;   // ＋
+                float zoomBtnFitX = modalX + modalW - 52 * s;   // 適配
+                float zoomBtnW = 28 * s;
+                float zoomBtnFitW = 44 * s;
+
+                using var zoomBtnBg = new SolidBrush(Color.FromArgb(48, 48, 48));
+                using var zoomBtnPen = new Pen(Color.FromArgb(80, 80, 80));
+                using var zoomBtnText = new SolidBrush(Color.FromArgb(220, 220, 220));
+                g.FillRectangle(zoomBtnBg, zoomBtnInX, zoomBtnY, zoomBtnW, zoomBtnH);
+                g.DrawRectangle(zoomBtnPen, zoomBtnInX, zoomBtnY, zoomBtnW, zoomBtnH);
+                g.DrawString("−", _tipFont!, zoomBtnText, zoomBtnInX + 9 * s, zoomBtnY + 2 * s);
+                g.FillRectangle(zoomBtnBg, zoomBtnOutX, zoomBtnY, zoomBtnW, zoomBtnH);
+                g.DrawRectangle(zoomBtnPen, zoomBtnOutX, zoomBtnY, zoomBtnW, zoomBtnH);
+                g.DrawString("＋", _tipFont!, zoomBtnText, zoomBtnOutX + 9 * s, zoomBtnY + 2 * s);
+                g.FillRectangle(zoomBtnBg, zoomBtnFitX, zoomBtnY, zoomBtnFitW, zoomBtnH);
+                g.DrawRectangle(zoomBtnPen, zoomBtnFitX, zoomBtnY, zoomBtnFitW, zoomBtnH);
+                g.DrawString("適配", _tipFont!, zoomBtnText, zoomBtnFitX + 8 * s, zoomBtnY + 2 * s);
+
+                using var zoomHintBrush = new SolidBrush(Color.FromArgb(140, 140, 140));
+                g.DrawString("滾輪縮放 · 拖曳平移 · 空白鍵/Enter 切換", _tipFont!, zoomHintBrush, modalX + 16 * s, zoomBtnY + 3 * s);
             }
         }
 

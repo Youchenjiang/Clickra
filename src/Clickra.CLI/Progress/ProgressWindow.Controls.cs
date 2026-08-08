@@ -116,6 +116,42 @@ namespace Clickra.UI
                     HidePasswordInputControls(hwnd);
                     return IntPtr.Zero;
 
+                case 0x0100: // WM_KEYDOWN
+                    if (_isPromptingVisualSplitter)
+                    {
+                        int key = w.ToInt32();
+                        if (_visualSplitIsZoomed)
+                        {
+                            if (key == 0x1B || key == 0x20 || key == 0x0D) // Esc / Space / Enter
+                            {
+                                CloseVisualSplitZoom(hwnd);
+                            }
+                            else if (key == 0x6B || key == 0xBB) // numpad + / =
+                            {
+                                SetVisualSplitZoomFactor(_visualSplitZoomFactor * 1.25f, ZoomImgLeft + ZoomImgW / 2f, ZoomImgTop + ZoomImgH / 2f);
+                                InvalidateRect(hwnd, IntPtr.Zero, true);
+                            }
+                            else if (key == 0x6D || key == 0xBD) // numpad - / -
+                            {
+                                SetVisualSplitZoomFactor(_visualSplitZoomFactor / 1.25f, ZoomImgLeft + ZoomImgW / 2f, ZoomImgTop + ZoomImgH / 2f);
+                                InvalidateRect(hwnd, IntPtr.Zero, true);
+                            }
+                            else if (key == 0x30 || key == 0x60) // 0 / numpad 0 → fit
+                            {
+                                _visualSplitZoomFactor = 1f;
+                                _visualSplitZoomPanX = 0f;
+                                _visualSplitZoomPanY = 0f;
+                                InvalidateRect(hwnd, IntPtr.Zero, true);
+                            }
+                        }
+                        else if (key == 0x20 || key == 0x0D) // Space / Enter → open zoom
+                        {
+                            OpenVisualSplitZoom(hwnd);
+                        }
+                        return IntPtr.Zero;
+                    }
+                    break;
+
                 case 0x0133: // WM_CTLCOLOREDIT
                     {
                         IntPtr editHdc = w;
@@ -130,6 +166,17 @@ namespace Clickra.UI
                 case 0x020A: // WM_MOUSEWHEEL
                     {
                         int delta = (short)((w.ToInt64() >> 16) & 0xFFFF);
+                        if (_isPromptingVisualSplitter && _visualSplitIsZoomed)
+                        {
+                            // Wheel zooms in the lightbox, anchored at the cursor.
+                            int sx = (short)(l.ToInt64() & 0xFFFF);
+                            int sy = (short)((l.ToInt64() >> 16) & 0xFFFF);
+                            var pt = new Point(sx, sy);
+                            ScreenToClient(hwnd, ref pt);
+                            SetVisualSplitZoomFactor(_visualSplitZoomFactor * (delta > 0 ? 1.25f : 0.8f), pt.X / _dpiScale, pt.Y / _dpiScale);
+                            InvalidateRect(hwnd, IntPtr.Zero, true);
+                            return IntPtr.Zero;
+                        }
                         int scrollDir = delta > 0 ? -1 : 1;
                         lock (_stateLock)
                         {
@@ -151,6 +198,17 @@ namespace Clickra.UI
                         int rawY = (short)((l.ToInt64() >> 16) & 0xFFFF);
                         int mouseX = (int)(rawX / _dpiScale);
                         int mouseY = (int)(rawY / _dpiScale);
+
+                        if (_isPromptingVisualSplitter && _visualSplitIsZoomed && _visualSplitZoomDragging)
+                        {
+                            _visualSplitZoomPanX += mouseX - _visualSplitZoomDragLastX;
+                            _visualSplitZoomPanY += mouseY - _visualSplitZoomDragLastY;
+                            _visualSplitZoomDragLastX = mouseX;
+                            _visualSplitZoomDragLastY = mouseY;
+                            ClampVisualSplitZoomPan();
+                            InvalidateRect(hwnd, IntPtr.Zero, false);
+                            return IntPtr.Zero;
+                        }
 
                         lock (_stateLock)
                         {
@@ -219,11 +277,53 @@ namespace Clickra.UI
 
                         if (_isPromptingVisualSplitter)
                         {
-                            // Zoom Lightbox: any click closes it
+                            // Zoom Lightbox controls: buttons, drag-to-pan inside the image,
+                            // click outside to close.
                             if (_visualSplitIsZoomed)
                             {
-                                _visualSplitIsZoomed = false;
-                                InvalidateRect(hwnd, IntPtr.Zero, true);
+                                float zoomBtnY = ZoomModalTop + ZoomModalH - 34f;
+                                float zoomBtnH = 22f;
+                                if (mouseY >= zoomBtnY && mouseY <= zoomBtnY + zoomBtnH)
+                                {
+                                    float btnInX = ZoomModalLeft + ZoomModalW - 120f; // −
+                                    float btnOutX = ZoomModalLeft + ZoomModalW - 86f; // ＋
+                                    float btnFitX = ZoomModalLeft + ZoomModalW - 52f; // 適配
+                                    float cx = ZoomImgLeft + ZoomImgW / 2f;
+                                    float cy = ZoomImgTop + ZoomImgH / 2f;
+
+                                    if (mouseX >= btnInX && mouseX <= btnInX + 28f)
+                                    {
+                                        SetVisualSplitZoomFactor(_visualSplitZoomFactor / 1.25f, cx, cy);
+                                        InvalidateRect(hwnd, IntPtr.Zero, true);
+                                        return IntPtr.Zero;
+                                    }
+                                    if (mouseX >= btnOutX && mouseX <= btnOutX + 28f)
+                                    {
+                                        SetVisualSplitZoomFactor(_visualSplitZoomFactor * 1.25f, cx, cy);
+                                        InvalidateRect(hwnd, IntPtr.Zero, true);
+                                        return IntPtr.Zero;
+                                    }
+                                    if (mouseX >= btnFitX && mouseX <= btnFitX + 44f)
+                                    {
+                                        _visualSplitZoomFactor = 1f;
+                                        _visualSplitZoomPanX = 0f;
+                                        _visualSplitZoomPanY = 0f;
+                                        InvalidateRect(hwnd, IntPtr.Zero, true);
+                                        return IntPtr.Zero;
+                                    }
+                                }
+
+                                if (GetVisualSplitZoomImageRect(out var zx, out var zy, out var zw, out var zh) &&
+                                    mouseX >= zx && mouseX <= zx + zw && mouseY >= zy && mouseY <= zy + zh)
+                                {
+                                    _visualSplitZoomDragging = true;
+                                    _visualSplitZoomDragLastX = mouseX;
+                                    _visualSplitZoomDragLastY = mouseY;
+                                    SetCapture(hwnd);
+                                    return IntPtr.Zero;
+                                }
+
+                                CloseVisualSplitZoom(hwnd);
                                 return IntPtr.Zero;
                             }
 
@@ -305,8 +405,7 @@ namespace Clickra.UI
                             // Right Panel Preview Image (Click to Zoom)
                             if (mouseX >= 266 && mouseX <= 478 && mouseY >= 200 + navOffset && mouseY <= 374)
                             {
-                                _visualSplitIsZoomed = true;
-                                InvalidateRect(hwnd, IntPtr.Zero, true);
+                                OpenVisualSplitZoom(hwnd);
                                 return IntPtr.Zero;
                             }
 
@@ -417,6 +516,13 @@ namespace Clickra.UI
                     return IntPtr.Zero;
                 case 0x0202: // WM_LBUTTONUP
                     {
+                        if (_visualSplitZoomDragging)
+                        {
+                            _visualSplitZoomDragging = false;
+                            ReleaseCapture();
+                            InvalidateRect(hwnd, IntPtr.Zero, false);
+                            return IntPtr.Zero;
+                        }
                         lock (_stateLock)
                         {
                             if (_isDraggingScroll)
