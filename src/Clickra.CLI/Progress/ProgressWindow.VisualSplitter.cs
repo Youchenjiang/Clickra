@@ -652,6 +652,12 @@ namespace Clickra.UI
             int winH = rect.bottom - rect.top;
 
             SetWindowPos(hwnd, IntPtr.Zero, 0, 0, winW, winH, 0x0002 | 0x0004);
+
+            // Resizing only invalidates the newly exposed area, and the paint blit
+            // is clipped to that region. Force a full-window repaint so the top of
+            // the window does not keep stale progress-window pixels (the splitter
+            // prompt pauses the animation timer, so nothing else refreshes it).
+            InvalidateRect(hwnd, IntPtr.Zero, false);
         }
     }
 }
