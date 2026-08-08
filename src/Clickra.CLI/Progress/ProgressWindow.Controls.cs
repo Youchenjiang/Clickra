@@ -348,7 +348,7 @@ namespace Clickra.UI
                                     InvalidateRect(hwnd, IntPtr.Zero, true);
                                     return IntPtr.Zero;
                                 }
-                                else if (mouseX >= 132 && mouseX <= 156) // [+]
+                                if (mouseX >= 132 && mouseX <= 156) // [+]
                                 {
                                     _visualSplitNPages = Math.Min(_visualSplitTotalPages, _visualSplitNPages + 1);
                                     ApplyVisualSplitMode();
@@ -388,13 +388,13 @@ namespace Clickra.UI
                                     InvalidateRect(hwnd, IntPtr.Zero, true);
                                     return IntPtr.Zero;
                                 }
-                                else if (mouseX >= 452 && mouseX <= 478) // >
+                                if (mouseX >= 452 && mouseX <= 478) // >
                                 {
                                     _visualSplitCurrentPreviewPageIndex = Math.Min(segCnt - 1, _visualSplitCurrentPreviewPageIndex + 1);
                                     InvalidateRect(hwnd, IntPtr.Zero, true);
                                     return IntPtr.Zero;
                                 }
-                                else if (mouseX >= 410 && mouseX <= 450) // 切開 (split at current preview page)
+                                if (mouseX >= 410 && mouseX <= 450) // 切開 (split at current preview page)
                                 {
                                     SplitVisualSegmentAtCurrentPage();
                                     InvalidateRect(hwnd, IntPtr.Zero, true);

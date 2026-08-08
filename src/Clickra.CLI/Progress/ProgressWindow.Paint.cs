@@ -47,8 +47,16 @@ namespace Clickra.UI
             if (_subFont != null)
             {
                 string lang = ClickraStorage.GetSetting("Language");
-                string subText = hasErr ? "作業失敗" : (comp ? "作業完成" : (_isPromptingVisualSplitter ? "PDF 視覺化分割標記" : (isPrompting ? Localization.T("pdf_password_title", lang) : "正在執行作業...")));
-                Color subColor = hasErr ? Color.FromArgb(255, 90, 70) : (comp ? Color.FromArgb(100, 220, 100) : Color.FromArgb(160, 160, 160));
+                string subText;
+                if (hasErr) subText = "作業失敗";
+                else if (comp) subText = "作業完成";
+                else if (_isPromptingVisualSplitter) subText = "PDF 視覺化分割標記";
+                else subText = isPrompting ? Localization.T("pdf_password_title", lang) : "正在執行作業...";
+
+                Color subColor;
+                if (hasErr) subColor = Color.FromArgb(255, 90, 70);
+                else if (comp) subColor = Color.FromArgb(100, 220, 100);
+                else subColor = Color.FromArgb(160, 160, 160);
                 using var subBrush = new SolidBrush(subColor);
                 g.DrawString(subText, _subFont, subBrush, 36 * s, 72 * s);
             }

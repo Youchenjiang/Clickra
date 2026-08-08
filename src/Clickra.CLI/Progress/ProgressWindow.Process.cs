@@ -184,7 +184,7 @@ namespace Clickra.UI
                                 PostMessageW(hwnd, WM_USER_SHOW_PASSWORD_INPUT, IntPtr.Zero, IntPtr.Zero);
                                 _passwordEvent.WaitOne();
 
-                                bool cancelled;
+                                bool cancelled = false;
                                 lock (_stateLock)
                                 {
                                     cancelled = _passwordCancelled;
