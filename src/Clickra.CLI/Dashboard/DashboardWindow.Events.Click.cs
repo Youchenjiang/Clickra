@@ -646,7 +646,7 @@ namespace Clickra.UI
                 ClickraStorage.SaveSetting("PdfCompressMinifyContent", current ? "false" : "true");
                 InvalidateRect(hwnd, IntPtr.Zero, false);
             }
-            else if (element >= 50 && element <= 57)
+            else if (element >= 50 && element < 50 + ConvertCommands.Length)
             {
                 ChangeConvertCommand(element - 50);
                 InvalidateRect(hwnd, IntPtr.Zero, false);
