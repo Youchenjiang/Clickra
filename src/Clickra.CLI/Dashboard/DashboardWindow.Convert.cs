@@ -81,6 +81,7 @@ namespace Clickra.UI
                 CmdCompressPdf => new[] { ".pdf" },
                 "translate-pdf" => new[] { ".pdf" },
                 "decrypt-pdf" => new[] { ".pdf" },
+                "split-pdf" => new[] { ".pdf" },
                 "img2pdf" or CmdImgMerge or "img-stitch" => new[] { ".jpg", ".jpeg", ".png", ".bmp", ".gif", ".tiff", ".webp" },
                 _ => Array.Empty<string>()
             };
@@ -239,6 +240,7 @@ namespace Clickra.UI
                 CmdCompressPdf => FilterPdfFiles,
                 "translate-pdf" => FilterPdfFiles,
                 "decrypt-pdf" => FilterPdfFiles,
+                "split-pdf" => FilterPdfFiles,
                 _ => "Image Files (*.jpg; *.jpeg; *.png; *.bmp; *.gif; *.tiff; *.webp)\0*.jpg;*.jpeg;*.png;*.bmp;*.gif;*.tiff;*.webp\0All Files (*.*)\0*.*\0\0"
             };
         }
@@ -254,6 +256,7 @@ namespace Clickra.UI
                 "compress-pdf" => "cmd_compress_pdf",
                 "translate-pdf" => "cmd_translate_pdf",
                 "decrypt-pdf" => "cmd_decrypt_pdf",
+                "split-pdf" => "cmd_split_pdf",
                 "img2pdf" => "cmd_img_to_pdf",
                 "img-merge" => "cmd_merge_img",
                 "img-stitch" => "cmd_stitch_img",

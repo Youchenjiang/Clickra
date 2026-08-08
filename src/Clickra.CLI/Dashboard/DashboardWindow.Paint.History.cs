@@ -422,6 +422,10 @@ namespace Clickra.UI
                     tagBg = Color.FromArgb(0, 150, 136);
                     text = GetText("cmd_decrypt_pdf");
                     break;
+                case "split-pdf":
+                    tagBg = Color.FromArgb(0, 188, 212);
+                    text = GetText("cmd_split_pdf");
+                    break;
                 default:
                     tagBg = Color.FromArgb(100, 100, 100);
                     break;
