@@ -63,5 +63,7 @@ namespace Clickra.Core
             var options = new Dictionary<string, object> { { "pages", pages } };
             processor.Process(new List<string> { inputPath }, outputPath, options, onProgress, cancellationToken);
         }
+
+        public static int GetPdfPageCount(string inputPath) => PdfSplitProcessor.GetPageCount(inputPath);
     }
 }

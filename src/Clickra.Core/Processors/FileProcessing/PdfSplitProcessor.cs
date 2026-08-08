@@ -54,26 +54,65 @@ namespace Clickra.Core.Processors
             }
             else
             {
-                List<int> targetPages = ParsePageRange(pagesSpec, pageCount);
-                if (targetPages.Count == 0)
+                string[] segments = pagesSpec.Split(';', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+                if (segments.Length > 1)
                 {
-                    throw new ArgumentException($"指定的分頁範圍「{pagesSpec}」無效或超出頁數範圍 (1-{pageCount})。");
+                    for (int s = 0; s < segments.Length; s++)
+                    {
+                        cancellationToken.ThrowIfCancellationRequested();
+                        string segSpec = segments[s];
+                        List<int> targetPages = ParsePageRange(segSpec, pageCount);
+                        if (targetPages.Count == 0) continue;
+
+                        int progress = progressBase + 10 + (int)((s + 1) * 85.0 / segments.Length);
+                        onProgress?.Invoke(progress, totalProgressMax, $"正在提取區段 {s + 1}/{segments.Length} ({targetPages.First()}-{targetPages.Last()}頁)...");
+
+                        using var outDoc = new PdfDocument();
+                        foreach (int pageNum in targetPages)
+                        {
+                            outDoc.AddPage(inDoc.Pages[pageNum - 1]);
+                        }
+
+                        string outPath = Path.Combine(baseDir, $"{baseFileName}_{targetPages.First()}-{targetPages.Last()}.pdf");
+                        outDoc.Save(outPath);
+                    }
                 }
-
-                onProgress?.Invoke(progressBase + 40, totalProgressMax, $"正在提取指定頁面 ({targetPages.Count} 頁)...");
-
-                using var outDoc = new PdfDocument();
-                foreach (int pageNum in targetPages)
+                else
                 {
-                    cancellationToken.ThrowIfCancellationRequested();
-                    outDoc.AddPage(inDoc.Pages[pageNum - 1]);
-                }
+                    List<int> targetPages = ParsePageRange(pagesSpec, pageCount);
+                    if (targetPages.Count == 0)
+                    {
+                        throw new ArgumentException($"指定的分頁範圍「{pagesSpec}」無效或超出頁數範圍 (1-{pageCount})。");
+                    }
 
-                onProgress?.Invoke(progressBase + 90, totalProgressMax, "正在儲存檔案...");
-                outDoc.Save(targetOutputPath);
+                    onProgress?.Invoke(progressBase + 40, totalProgressMax, $"正在提取指定頁面 ({targetPages.Count} 頁)...");
+
+                    using var outDoc = new PdfDocument();
+                    foreach (int pageNum in targetPages)
+                    {
+                        cancellationToken.ThrowIfCancellationRequested();
+                        outDoc.AddPage(inDoc.Pages[pageNum - 1]);
+                    }
+
+                    onProgress?.Invoke(progressBase + 90, totalProgressMax, "正在儲存檔案...");
+                    outDoc.Save(targetOutputPath);
+                }
             }
 
             onProgress?.Invoke(progressBase + 100, totalProgressMax, "PDF 分割完成！");
+        }
+
+        public static int GetPageCount(string fullPath)
+        {
+            try
+            {
+                using var inDoc = PdfReader.Open(fullPath, PdfDocumentOpenMode.Import);
+                return inDoc.PageCount;
+            }
+            catch
+            {
+                return 0;
+            }
         }
 
         public static List<int> ParsePageRange(string spec, int totalPages)
