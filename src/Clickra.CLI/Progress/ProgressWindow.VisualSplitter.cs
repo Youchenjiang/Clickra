@@ -21,12 +21,12 @@ namespace Clickra.UI
         private int _visualSplitMode = 0; // 0 = 自訂分段, 1 = 全拆單頁, 2 = 固定頁數
         private int _visualSplitNPages = 5;
         private List<(int Start, int End)> _visualSplitSegments = new List<(int, int)>();
-        private List<(int Start, int End)> _visualSplitCustomSegments = new List<(int, int)>();
+        private readonly List<(int Start, int End)> _visualSplitCustomSegments = new List<(int, int)>();
         private int _visualSplitSelectedSegmentIndex = 0;
         private int _visualSplitCurrentPreviewPageIndex = 0;
         private bool _visualSplitIsZoomed = false;
 
-        private Dictionary<int, Bitmap> _visualSplitPageThumbnails = new Dictionary<int, Bitmap>();
+        private readonly Dictionary<int, Bitmap> _visualSplitPageThumbnails = new Dictionary<int, Bitmap>();
 
         private string _visualSplitFilePath = "";
         private Bitmap? _visualSplitZoomBmp = null;
@@ -285,7 +285,7 @@ namespace Clickra.UI
                         PostMessageW(_hwnd, WM_USER_INVALIDATE, (IntPtr)1, IntPtr.Zero);
                 }
                 catch { }
-            });
+            }, _cts.Token);
         }
 
         /// <summary>
