@@ -17,7 +17,8 @@
   2. 允許的 `type` 包括：`feat`, `fix`, `refactor`, `docs`, `test`, `chore`, `style`, `perf`, `security`。
   3. 允許的 `scope` 包括：`cli`, `core`, `shell`, `msix`, `docs`, `ci`, `deps`, `store`, `agent`。
   4. Body 必須與 Header 留空一行，且必須是以英文寫成的編號列表並以 `1. ` 開頭（例如：`1. Add helper method.`）。
-- **版本號同步**：每次修改功能或 UI 後，必須執行 `powershell -File scripts/bump_version.ps1 -Build` 增加 Patch（第 3 碼，且第四碼 Revision 保持為 0）、同步版本號（含 README、README.zh-TW.md、CHANGELOG.md 與 MSIX AppxManifest.xml）並自動重新編譯產物，以確保 Windows 11 選單快取刷新且內外版本一致，同時符合微軟商店的版號規範。
+- **版本號同步**：每次修改功能或 UI 後，必須執行 `powershell -File scripts/bump_version.ps1 -Build` 增加 Patch（第 3 碼，且第四碼 Revision 保持為 0）、同步版本號（含 README、README.zh-TW.md、CHANGELOG.md 與 MSIX AppxManifest.xml）並自動重新編譯產物，以確保 Windows 11 選單快取刷新且內外版本一致，同時符合微軟商店的版號規範。**但升版動作本身必須先取得使用者明確同意（見下方「禁止自行升版」），同意後才可執行。**
+- **禁止自行升版**：嚴禁在未經使用者明確同意前自行升版。任何版號變更——包括執行 `scripts/bump_version.ps1`、修改 `AppxManifest.xml` / `Directory.Build.props` / `CHANGELOG.md` / README 中的版本號、建立版本 Tag（`vX.Y.Z.0`）或提交商店發布——都必須先在對話中向使用者說明升版理由與影響範圍，取得明確同意後方可執行。若使用者未表態，一律視為不同意，不得擅自升版。
 - **Commit 審核**：在執行 Commit 之前，必須執行 `git status` 確認沒有暫存 test 垃圾。
 - **PR 描述格式**：PR body 與 commit body 是兩套不同規則；必須使用 `.github/pull_request_template.md`，依變更檔案數量選擇 Summary/Key Changes/Verification 結構，不得只貼 commit 的編號列表。
 - **Tag 規範與發布順序**：在正式對外發布或商店提交時，必須嚴格遵守以下 Git Flow 順序：

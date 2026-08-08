@@ -105,3 +105,6 @@ file count:
 `Summary` or `Overview` explains what changed and why; it is not a list of file
 names. `Key Changes` groups technical details by area. `Verification` uses a
 `[x]`/`[ ]` checklist and must state what was and was not tested.
+
+### D. No Autonomous Version Bumps
+* Never bump the product version on your own. Any version change — running `scripts/bump_version.ps1`, editing version numbers in `AppxManifest.xml` / `Directory.Build.props` / `CHANGELOG.md` / README files, creating release tags (`vX.Y.Z.0`), or submitting a store release — must first be explained to the user in the conversation and explicitly approved before it is executed. If the user has not given approval, treat it as "not approved" and do not bump the version.
