@@ -439,7 +439,6 @@ namespace Clickra.UI
                 if (words.Count > 0)
                 {
                     using var textBrush = new SolidBrush(Color.FromArgb(30, 35, 45));
-                    using var font = new Font("Segoe UI", 5.5f);
 
                     foreach (var word in words.Take(120))
                     {
@@ -604,6 +603,10 @@ namespace Clickra.UI
                     }
                     _visualSplitSelectedSegmentIndex = _visualSplitSegments.Count > 0 ? 0 : -1;
                     break;
+
+                default:
+                    _visualSplitMode = 0;
+                    goto case 0;
             }
         }
 

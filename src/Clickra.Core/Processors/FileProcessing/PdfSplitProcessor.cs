@@ -15,7 +15,7 @@ namespace Clickra.Core.Processors
         protected override void ProcessSingleFile(string fullPath, string targetOutputPath, int fileIndex, int totalFiles, Dictionary<string, object>? options, Action<int, int, string>? onProgress, CancellationToken cancellationToken)
         {
             string pagesSpec = "all";
-            if (options != null && options.TryGetValue("pages", out var pObj) && pObj is string pStr && !string.IsNullOrWhiteSpace(pStr))
+            if (options?.TryGetValue("pages", out var pObj) == true && pObj is string pStr && !string.IsNullOrWhiteSpace(pStr))
             {
                 pagesSpec = pStr.Trim();
             }
@@ -163,12 +163,9 @@ namespace Clickra.Core.Processors
                         }
                     }
                 }
-                else if (int.TryParse(part, out int singlePage))
+                else if (int.TryParse(part, out int singlePage) && singlePage >= 1 && singlePage <= totalPages)
                 {
-                    if (singlePage >= 1 && singlePage <= totalPages)
-                    {
-                        result.Add(singlePage);
-                    }
+                    result.Add(singlePage);
                 }
             }
 
