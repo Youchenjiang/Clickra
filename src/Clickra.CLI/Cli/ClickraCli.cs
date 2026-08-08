@@ -190,6 +190,21 @@ namespace Clickra
                 return true;
             }
 
+            if (args[0].Equals("--visual-splitter", StringComparison.OrdinalIgnoreCase) || args[0].Equals("--splitter", StringComparison.OrdinalIgnoreCase))
+            {
+                string pdfPath = args.Length > 1 ? args[1] : "";
+                if (string.IsNullOrEmpty(pdfPath))
+                {
+                    var found = Directory.GetFiles(Directory.GetCurrentDirectory(), "*.pdf");
+                    if (found.Length > 0) pdfPath = found[0];
+                }
+                if (!string.IsNullOrEmpty(pdfPath))
+                {
+                    ProgressWindow.Show("split-pdf", new List<string> { pdfPath });
+                }
+                return true;
+            }
+
             if (args[0].Equals("--deploy", StringComparison.OrdinalIgnoreCase) && args.Length >= 2)
             {
                 DeployAssets(args[1]);
