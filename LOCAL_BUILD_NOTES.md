@@ -74,6 +74,12 @@ The project provides built-in PowerShell scripts for automated version bumping a
     > [!NOTE]
     > **Automated Certificate Validation**: The packaging script automatically checks whether the local `ClickraDev.pfx` matches the Publisher identity defined in `AppxManifest.xml` (e.g. `CN=CBF59877-21AD-4BC4-8F91-FE8DA520A138`). If it detects a mismatch or if the certificate is missing, it will automatically call `scripts/setup/create_dev_cert.ps1` to regenerate a matching certificate. You do not need to manually manage local development PFX certs.
 
+#### vswhere / VS Installer PATH Requirement (NativeAOT link failure)
+
+- **Symptom**: Running `build_msix.ps1` from a shell whose `PATH` lacks the Visual Studio Installer directory (e.g. Git Bash) makes the CLI NativeAOT publish fail at the link step with `error MSB3073: ... exited with code 123` and a link command polluted by `'vswhere.exe' is not recognized ...`.
+- **Root cause**: VS2019's `vcvarsall.bat` calls `vswhere.exe` by bare name. When `C:\Program Files (x86)\Microsoft Visual Studio\Installer` is not on `PATH`, the "not recognized" error text leaks into .NET NativeAOT's `findvcvarsall.bat` output, which MSBuild then uses as the C++ toolchain directory, producing a broken `link.exe` invocation.
+- **Fix**: `build_msix.ps1` now prepends the VS Installer directory to `PATH` automatically (same pattern as the Windows SDK detection). If you still hit this, run the build from a normal PowerShell/CMD window.
+
 ## How to Add New Features
 
 Adding a new conversion command (e.g. `excel2pdf`) requires changes across **6 layers and 13+ files**. Missing any step will cause silent failures — the feature may compile but not appear in the right-click menu, not execute, or produce no output.
