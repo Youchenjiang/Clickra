@@ -294,6 +294,12 @@ namespace Clickra.UI
                                     InvalidateRect(hwnd, IntPtr.Zero, true);
                                     return IntPtr.Zero;
                                 }
+                                else if (mouseX >= 410 && mouseX <= 450) // 切開 (split at current preview page)
+                                {
+                                    SplitVisualSegmentAtCurrentPage();
+                                    InvalidateRect(hwnd, IntPtr.Zero, true);
+                                    return IntPtr.Zero;
+                                }
                             }
 
                             // Right Panel Preview Image (Click to Zoom)

@@ -235,6 +235,29 @@ namespace Clickra.UI
             _visualSplitCurrentPreviewPageIndex = 0;
         }
 
+        private void SplitVisualSegmentAtCurrentPage()
+        {
+            _visualSplitMode = 0;
+            if (_visualSplitSelectedSegmentIndex < 0 || _visualSplitSelectedSegmentIndex >= _visualSplitCustomSegments.Count)
+                return;
+
+            var seg = _visualSplitCustomSegments[_visualSplitSelectedSegmentIndex];
+            int pageCnt = seg.End - seg.Start + 1;
+            if (pageCnt <= 1) return;
+
+            int previewIdx = Math.Max(0, Math.Min(_visualSplitCurrentPreviewPageIndex, pageCnt - 1));
+            int splitPage = seg.Start + previewIdx;
+
+            var first = (seg.Start, splitPage);
+            var second = (splitPage + 1, seg.End);
+
+            _visualSplitCustomSegments.RemoveAt(_visualSplitSelectedSegmentIndex);
+            _visualSplitCustomSegments.Insert(_visualSplitSelectedSegmentIndex, second);
+            _visualSplitCustomSegments.Insert(_visualSplitSelectedSegmentIndex, first);
+            _visualSplitSegments = new List<(int, int)>(_visualSplitCustomSegments);
+            _visualSplitCurrentPreviewPageIndex = 0;
+        }
+
         private void ApplyVisualSplitMode()
         {
             _visualSplitCurrentPreviewPageIndex = 0;
@@ -434,8 +457,15 @@ namespace Clickra.UI
                     g.DrawRectangle(navBtnPen, nextBtnX, navY, nextBtnW, navH);
                     g.DrawString(">", _tipFont, navTextBrush, nextBtnX + 7 * s, navY + 2 * s);
 
+                    // Split-at-current-page button (between the page label and the ">" button)
+                    float splitBtnW = 40 * s;
+                    float splitBtnX = nextBtnX - splitBtnW - 4 * s;
+                    g.FillRectangle(navBtnBg, splitBtnX, navY, splitBtnW, navH);
+                    g.DrawRectangle(navBtnPen, splitBtnX, navY, splitBtnW, navH);
+                    g.DrawString("切開", _tipFont, navTextBrush, splitBtnX + 8 * s, navY + 2 * s);
+
                     float pageLabelX = prevBtnX + prevBtnW + 4 * s;
-                    float pageLabelW = badgeW - prevBtnW - nextBtnW - 8 * s;
+                    float pageLabelW = splitBtnX - 4 * s - pageLabelX;
                     using var pageInfoBrush = new SolidBrush(Color.FromArgb(200, 220, 255));
                     string pageLabelStr = $"P.{currentPageNum} (第 {_visualSplitCurrentPreviewPageIndex + 1}/{cnt} 頁)";
                     var pageLabelSz = g.MeasureString(pageLabelStr, _tipFont);
