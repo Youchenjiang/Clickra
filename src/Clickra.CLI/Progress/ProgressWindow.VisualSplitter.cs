@@ -502,7 +502,7 @@ namespace Clickra.UI
             }
 
             // 4. Bottom Action Buttons
-            float btnY = 420 * s;
+            float btnY = 380 * s;
             float btnH = 26 * s;
 
             using var addBg = new SolidBrush(Color.FromArgb(48, 48, 48));
@@ -606,7 +606,7 @@ namespace Clickra.UI
         {
             float s = _dpiScale;
             int clientW = (int)(520 * s);
-            int clientH = expand ? (int)(460 * s) : (int)(280 * s);
+            int clientH = expand ? (int)(420 * s) : (int)(280 * s);
 
             _bufferGraphics?.Dispose();
             _bufferBmp?.Dispose();

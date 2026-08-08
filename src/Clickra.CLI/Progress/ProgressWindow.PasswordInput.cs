@@ -13,6 +13,13 @@ namespace Clickra.UI
         {
             if (_hwndEdit != IntPtr.Zero) return;
 
+            if (_isPromptingVisualSplitter)
+            {
+                // The visual splitter renders its own controls; do not create the
+                // password EDIT / OK / Cancel child windows over the splitter UI.
+                return;
+            }
+
             float scale = _dpiScale;
             string lang = ClickraStorage.GetSetting("Language");
             string fontName = LocalizedUiFontSelector.GetTextFontName(lang);

@@ -105,6 +105,10 @@ namespace Clickra.UI
             switch (msg)
             {
                 case WM_USER_SHOW_PASSWORD_INPUT:
+                    if (_isPromptingVisualSplitter)
+                    {
+                        ResizeWindowForVisualSplitter(hwnd, true);
+                    }
                     ShowPasswordInputControls(hwnd);
                     return IntPtr.Zero;
 
@@ -317,6 +321,8 @@ namespace Clickra.UI
                                 }
                                 else if (mouseX >= 336 && mouseX <= 410) // 確定分割
                                 {
+                                    PostMessageW(hwnd, WM_USER_HIDE_PASSWORD_INPUT, IntPtr.Zero, IntPtr.Zero);
+                                    ResizeWindowForVisualSplitter(hwnd, false);
                                     lock (_stateLock)
                                     {
                                         _passwordCancelled = false;
@@ -326,6 +332,8 @@ namespace Clickra.UI
                                 }
                                 else if (mouseX >= 416 && mouseX <= 484) // 取消
                                 {
+                                    PostMessageW(hwnd, WM_USER_HIDE_PASSWORD_INPUT, IntPtr.Zero, IntPtr.Zero);
+                                    ResizeWindowForVisualSplitter(hwnd, false);
                                     lock (_stateLock)
                                     {
                                         _passwordCancelled = true;
