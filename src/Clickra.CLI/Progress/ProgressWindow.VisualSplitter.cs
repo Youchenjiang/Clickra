@@ -72,39 +72,142 @@ namespace Clickra.UI
                     try
                     {
                         var pigPage = pigDoc.GetPage(p);
-                        Bitmap? pageBmp = null;
-
-                        var images = pigPage.GetImages().ToList();
-                        foreach (var img in images)
-                        {
-                            try
-                            {
-                                if (img.TryGetPng(out var pngBytes) && pngBytes != null && pngBytes.Length > 100)
-                                {
-                                    using var ms = new MemoryStream(pngBytes);
-                                    pageBmp = new Bitmap(ms);
-                                    break;
-                                }
-
-                                var raw = img.RawBytes.ToArray();
-                                if (raw.Length > 100)
-                                {
-                                    using var ms = new MemoryStream(raw);
-                                    try { pageBmp = new Bitmap(ms); break; } catch { }
-                                }
-                            }
-                            catch { }
-                        }
-
-                        if (pageBmp == null)
-                            pageBmp = RenderSyntheticPageThumbnail(pigPage, p);
-
-                        _visualSplitPageThumbnails[p] = pageBmp;
+                        var pageBmp = BuildPageThumbnail(pigPage, p, 660);
+                        if (pageBmp != null)
+                            _visualSplitPageThumbnails[p] = pageBmp;
                     }
                     catch { }
                 }
             }
             catch { }
+        }
+
+        /// <summary>
+        /// Renders a thumbnail at the page's true aspect ratio by drawing embedded images at
+        /// their page coordinates and overlaying vector text (with original colors). This fixes
+        /// previews that previously dropped vector text and were distorted by image-only sizing.
+        /// </summary>
+        /// <param name="targetWidth">Pixel width of the rendered bitmap. Larger values give
+        /// crisper results when the bitmap is downscaled onto the screen.</param>
+        private Bitmap? BuildPageThumbnail(UglyToad.PdfPig.Content.Page page, int pageNum, int targetWidth)
+        {
+            double pW = page.Width > 0 ? page.Width : 595;
+            double pH = page.Height > 0 ? page.Height : 842;
+
+            // Render at high resolution so the preview is always downscaled to fit the
+            // card / zoom lightbox — upscaling a small bitmap is what made text and images
+            // look blurry.
+            int w = targetWidth;
+            int h = Math.Max(120, (int)Math.Round(w * pH / pW));
+
+            var bmp = new Bitmap(w, h);
+            using var g = Graphics.FromImage(bmp);
+            g.Clear(Color.White);
+            g.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.AntiAlias;
+            g.TextRenderingHint = System.Drawing.Text.TextRenderingHint.AntiAliasGridFit;
+            g.InterpolationMode = System.Drawing.Drawing2D.InterpolationMode.HighQualityBicubic;
+
+            try
+            {
+                // 1. Draw embedded images at their page coordinates. The largest image is
+                //    treated as the page background when it covers most of the page.
+                var images = page.GetImages().ToList();
+                if (images.Count > 0)
+                {
+                    var largest = images
+                        .OrderByDescending(img => img.BoundingBox.Width * img.BoundingBox.Height)
+                        .First();
+
+                    Bitmap? imgBmp = null;
+                    try
+                    {
+                        if (largest.TryGetPng(out var pngBytes) && pngBytes != null && pngBytes.Length > 100)
+                        {
+                            using var ms = new MemoryStream(pngBytes);
+                            imgBmp = new Bitmap(ms);
+                        }
+                        else
+                        {
+                            var raw = largest.RawBytes.ToArray();
+                            if (raw.Length > 100)
+                            {
+                                using var ms = new MemoryStream(raw);
+                                try { imgBmp = new Bitmap(ms); } catch { }
+                            }
+                        }
+                    }
+                    catch { }
+
+                    if (imgBmp != null)
+                    {
+                        using (imgBmp)
+                        {
+                            var bb = largest.BoundingBox;
+                            bool coversPage = bb.Width > pW * 0.7 && bb.Height > pH * 0.7;
+
+                            if (coversPage)
+                            {
+                                // Full-page background: stretch to the whole thumbnail.
+                                g.DrawImage(imgBmp, 0, 0, w, h);
+                            }
+                            else
+                            {
+                                // Local image: draw at its page coordinates.
+                                float x = (float)(bb.Left / pW * w);
+                                float y = (float)((1.0 - bb.Top / pH) * h);
+                                float iw = (float)(bb.Width / pW * w);
+                                float ih = (float)(bb.Height / pH * h);
+                                if (iw > 2 && ih > 2)
+                                    g.DrawImage(imgBmp, x, y, iw, ih);
+                            }
+                        }
+                    }
+                }
+
+                // 2. Overlay vector text with original colors and positions.
+                var words = page.GetWords().ToList();
+                int drawn = 0;
+                foreach (var word in words)
+                {
+                    if (drawn >= 200) break;
+
+                    var rect = word.BoundingBox;
+                    if (rect.Width <= 0 || rect.Height <= 0) continue;
+
+                    float fh = (float)(rect.Height / pH * h);
+                    if (fh < 2.5f) continue;
+
+                    float bx = (float)(rect.Left / pW * w);
+                    float by = (float)((1.0 - rect.Top / pH) * h);
+
+                    Color textColor = Color.FromArgb(30, 35, 45);
+                    if (word.Letters.Count > 0 && word.Letters[0].Color != null)
+                    {
+                        try
+                        {
+                            var (r, gg, b) = word.Letters[0].Color.ToRGBValues();
+                            textColor = Color.FromArgb(
+                                (int)Math.Clamp(r * 255.0, 0, 255),
+                                (int)Math.Clamp(gg * 255.0, 0, 255),
+                                (int)Math.Clamp(b * 255.0, 0, 255));
+                        }
+                        catch { }
+                    }
+
+                    float fontSize = Math.Max(3f, Math.Min(fh * 1.1f, 18f * w / 220f));
+                    try
+                    {
+                        using var brush = new SolidBrush(textColor);
+                        using var font = new Font("Segoe UI", fontSize, GraphicsUnit.Pixel);
+                        g.DrawString(word.Text, font, brush, bx, by);
+                        drawn++;
+                    }
+                    catch { }
+                }
+            }
+            catch { }
+
+            return bmp;
         }
 
         private Bitmap RenderSyntheticPageThumbnail(UglyToad.PdfPig.Content.Page page, int pageNum)
