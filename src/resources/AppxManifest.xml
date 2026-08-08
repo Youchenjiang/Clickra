@@ -12,7 +12,7 @@
   <Identity
     Name="ClickraSparsePackage"
     Publisher="CN=Clickra"
-    Version="3.6.4.0" />
+    Version="3.6.5.0" />
 
   <Properties>
     <DisplayName>Clickra Modern Menu</DisplayName>
