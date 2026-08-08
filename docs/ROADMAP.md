@@ -107,8 +107,8 @@
     - **命名空間整合**：將 `TestSuite` 改為位於標準命名空間中（例如 `Clickra.Core.Tests`），解決全域命名空間污染（CS-W1061）。
     - **升級測試框架**：後續規劃將自建的 `TestRunner` 升級為業界標準的單元測試框架（如 xUnit 或 NUnit），以利於在 CI 流程中整合覆蓋率分析。
 - [ ] **開發期測試後門與倉庫整潔清理 (Dev Scaffolding Cleanup)**：
-    - **移除視覺分割測試後門**：移除 `ClickraCli.cs` 中硬編碼的測試 PDF 路徑與依執行檔名稱（`TestVisualSplitter` / `ClickraVisualSplitter`）自動進入視覺分割模式的開發測試邏輯，正式版本應僅由 CLI 旗標與參數驅動。
-    - **本機工具狀態隔離**：將 `.freebuff/`（本機工具 SQLite 狀態）加入 `.gitignore`，避免污染 git status 與誤提交。
+    - [x] **移除視覺分割測試後門**：移除 `ClickraCli.cs` 中硬編碼的測試 PDF 路徑與依執行檔名稱（`TestVisualSplitter` / `ClickraVisualSplitter`）自動進入視覺分割模式的開發測試邏輯，正式版本應僅由 CLI 旗標與參數驅動。
+    - [ ] **本機工具狀態隔離**：將 `.freebuff/`（本機工具 SQLite 狀態）加入 `.gitignore`，避免污染 git status 與誤提交。
 
 ## 4. 維護、診斷與離線轉檔插件 (Diagnostics & Offline Fallback)
 - [x] **一鍵診斷回報與郵件反饋 (One-click Diagnostic Feedback) [v3.0.9]**:
