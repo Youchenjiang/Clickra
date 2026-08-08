@@ -213,6 +213,131 @@ namespace Clickra.UI
                         int mouseX = (int)(rawX / _dpiScale);
                         int mouseY = (int)(rawY / _dpiScale);
 
+                        if (_isPromptingVisualSplitter)
+                        {
+                            // Zoom Lightbox: any click closes it
+                            if (_visualSplitIsZoomed)
+                            {
+                                _visualSplitIsZoomed = false;
+                                InvalidateRect(hwnd, IntPtr.Zero, true);
+                                return IntPtr.Zero;
+                            }
+
+                            // Mode Switcher Bar
+                            if (mouseY >= 102 && mouseY <= 128)
+                            {
+                                if (mouseX >= 36 && mouseX <= 176) _visualSplitMode = 0;
+                                else if (mouseX >= 184 && mouseX <= 324) _visualSplitMode = 1;
+                                else if (mouseX >= 332 && mouseX <= 484) _visualSplitMode = 2;
+                                ApplyVisualSplitMode();
+                                InvalidateRect(hwnd, IntPtr.Zero, true);
+                                return IntPtr.Zero;
+                            }
+
+                            // N Pages Selector (+/- buttons, only in Mode 2)
+                            if (_visualSplitMode == 2 && mouseY >= 131 && mouseY <= 149)
+                            {
+                                if (mouseX >= 36 && mouseX <= 60) // [-]
+                                {
+                                    _visualSplitNPages = Math.Max(2, _visualSplitNPages - 1);
+                                    ApplyVisualSplitMode();
+                                    InvalidateRect(hwnd, IntPtr.Zero, true);
+                                    return IntPtr.Zero;
+                                }
+                                else if (mouseX >= 132 && mouseX <= 156) // [+]
+                                {
+                                    _visualSplitNPages = Math.Min(_visualSplitTotalPages, _visualSplitNPages + 1);
+                                    ApplyVisualSplitMode();
+                                    InvalidateRect(hwnd, IntPtr.Zero, true);
+                                    return IntPtr.Zero;
+                                }
+                            }
+
+                            // Left Segment Cards
+                            int cardStartY = 158 + (_visualSplitMode == 2 ? 22 : 0);
+                            if (mouseX >= 36 && mouseX <= 252 && mouseY >= cardStartY && mouseY <= 374)
+                            {
+                                int cardIdx = (mouseY - cardStartY) / 23;
+                                if (cardIdx >= 0 && cardIdx < _visualSplitSegments.Count)
+                                {
+                                    _visualSplitSelectedSegmentIndex = cardIdx;
+                                    _visualSplitCurrentPreviewPageIndex = 0;
+                                    InvalidateRect(hwnd, IntPtr.Zero, true);
+                                    return IntPtr.Zero;
+                                }
+                            }
+
+                            // Right Panel Page Navigation Bar
+                            int navOffset = (_visualSplitMode == 2 ? 22 : 0);
+                            if (mouseX >= 260 && mouseX <= 484 && mouseY >= 170 + navOffset && mouseY <= 200 + navOffset)
+                            {
+                                int segCnt = 1;
+                                if (_visualSplitSelectedSegmentIndex >= 0 && _visualSplitSelectedSegmentIndex < _visualSplitSegments.Count)
+                                {
+                                    var seg = _visualSplitSegments[_visualSplitSelectedSegmentIndex];
+                                    segCnt = seg.End - seg.Start + 1;
+                                }
+
+                                if (mouseX >= 266 && mouseX <= 292) // <
+                                {
+                                    _visualSplitCurrentPreviewPageIndex = Math.Max(0, _visualSplitCurrentPreviewPageIndex - 1);
+                                    InvalidateRect(hwnd, IntPtr.Zero, true);
+                                    return IntPtr.Zero;
+                                }
+                                else if (mouseX >= 452 && mouseX <= 478) // >
+                                {
+                                    _visualSplitCurrentPreviewPageIndex = Math.Min(segCnt - 1, _visualSplitCurrentPreviewPageIndex + 1);
+                                    InvalidateRect(hwnd, IntPtr.Zero, true);
+                                    return IntPtr.Zero;
+                                }
+                            }
+
+                            // Right Panel Preview Image (Click to Zoom)
+                            if (mouseX >= 266 && mouseX <= 478 && mouseY >= 200 + navOffset && mouseY <= 374)
+                            {
+                                _visualSplitIsZoomed = true;
+                                InvalidateRect(hwnd, IntPtr.Zero, true);
+                                return IntPtr.Zero;
+                            }
+
+                            // Bottom Action Buttons
+                            if (mouseY >= 380 && mouseY <= 406)
+                            {
+                                if (mouseX >= 36 && mouseX <= 132) // ＋ 新增區段
+                                {
+                                    AddVisualSplitSegment();
+                                }
+                                else if (mouseX >= 138 && mouseX <= 222) // 刪除區段
+                                {
+                                    DeleteVisualSplitSegment();
+                                }
+                                else if (mouseX >= 228 && mouseX <= 312) // 清空區段
+                                {
+                                    ClearVisualSplitSegments();
+                                }
+                                else if (mouseX >= 336 && mouseX <= 410) // 確定分割
+                                {
+                                    lock (_stateLock)
+                                    {
+                                        _passwordCancelled = false;
+                                        _isPromptingVisualSplitter = false;
+                                    }
+                                    _passwordEvent.Set();
+                                }
+                                else if (mouseX >= 416 && mouseX <= 484) // 取消
+                                {
+                                    lock (_stateLock)
+                                    {
+                                        _passwordCancelled = true;
+                                        _isPromptingVisualSplitter = false;
+                                    }
+                                    _passwordEvent.Set();
+                                }
+                                InvalidateRect(hwnd, IntPtr.Zero, true);
+                                return IntPtr.Zero;
+                            }
+                        }
+
                         lock (_stateLock)
                         {
                             if (!_completed && !_hasError)

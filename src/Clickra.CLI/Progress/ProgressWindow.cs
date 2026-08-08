@@ -141,7 +141,7 @@ namespace Clickra.UI
             _bgBrush ??= new SolidBrush(Color.FromArgb(45, 45, 45));
 
             int clientW = (int)(520 * _dpiScale);
-            int clientH = (int)(280 * _dpiScale);
+            int clientH = _isPromptingVisualSplitter ? (int)(420 * _dpiScale) : (int)(280 * _dpiScale);
 
             if (_bufferBmp == null)
             {

@@ -173,10 +173,12 @@ namespace Clickra.UI
                                 lock (_stateLock)
                                 {
                                     _isPromptingPassword = true;
+                                    _isPromptingVisualSplitter = true;
                                     _passwordPromptFilename = f;
                                     _passwordPromptIsRetry = false;
                                     _inputPassword = null;
                                     _passwordCancelled = false;
+                                    InitializeVisualSplitter(f);
                                 }
 
                                 PostMessageW(hwnd, WM_USER_SHOW_PASSWORD_INPUT, IntPtr.Zero, IntPtr.Zero);
@@ -186,8 +188,9 @@ namespace Clickra.UI
                                 lock (_stateLock)
                                 {
                                     cancelled = _passwordCancelled;
-                                    targetPages = string.IsNullOrWhiteSpace(_inputPassword) ? "all" : _inputPassword.Trim();
+                                    targetPages = string.IsNullOrWhiteSpace(_inputPassword) ? BuildVisualSplitSpec() : _inputPassword.Trim();
                                     _isPromptingPassword = false;
+                                    _isPromptingVisualSplitter = false;
                                 }
 
                                 if (cancelled)

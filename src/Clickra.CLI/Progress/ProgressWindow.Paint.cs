@@ -34,7 +34,7 @@ namespace Clickra.UI
                 msg = _message; errMsg = _errorMessage;
                 dispW = _currentDispWidth; shimOff = _shimmerOffset;
                 tot = _total; cur = _current;
-                isPrompting = _isPromptingPassword;
+                isPrompting = _isPromptingPassword || _isPromptingVisualSplitter;
                 promptFile = _passwordPromptFilename;
                 isRetry = _passwordPromptIsRetry;
             }
@@ -47,7 +47,7 @@ namespace Clickra.UI
             if (_subFont != null)
             {
                 string lang = ClickraStorage.GetSetting("Language");
-                string subText = hasErr ? "作業失敗" : (comp ? "作業完成" : (isPrompting ? Localization.T("pdf_password_title", lang) : "正在執行作業..."));
+                string subText = hasErr ? "作業失敗" : (comp ? "作業完成" : (_isPromptingVisualSplitter ? "PDF 視覺化分割標記" : (isPrompting ? Localization.T("pdf_password_title", lang) : "正在執行作業...")));
                 Color subColor = hasErr ? Color.FromArgb(255, 90, 70) : (comp ? Color.FromArgb(100, 220, 100) : Color.FromArgb(160, 160, 160));
                 using var subBrush = new SolidBrush(subColor);
                 g.DrawString(subText, _subFont, subBrush, 36 * s, 72 * s);
@@ -94,7 +94,11 @@ namespace Clickra.UI
             }
             else if (isPrompting)
             {
-                if (_msgFont != null)
+                if (_isPromptingVisualSplitter)
+                {
+                    PaintVisualSplitter(g, s);
+                }
+                else if (_msgFont != null)
                 {
                     string lang = ClickraStorage.GetSetting("Language");
                     string promptFormat = isRetry 
@@ -253,7 +257,7 @@ namespace Clickra.UI
             }
 
             using var targetG = Graphics.FromHdc(hdc);
-            if (isPrompting)
+            if (_isPromptingPassword && !_isPromptingVisualSplitter)
             {
                 targetG.ExcludeClip(new Rectangle((int)(36 * s - 1), (int)(165 * s - 1), (int)(448 * s + 2), (int)(28 * s + 2)));
                 targetG.ExcludeClip(new Rectangle((int)(280 * s - 1), (int)(210 * s - 1), (int)(90 * s + 2), (int)(30 * s + 2)));
