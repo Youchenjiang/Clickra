@@ -401,7 +401,8 @@ namespace Clickra.UI
                 {
                     using var textBrush = new SolidBrush(isFocused ? Color.White : Color.FromArgb(210, 210, 210));
                     int pageCnt = seg.End - seg.Start + 1;
-                    g.DrawString($"區段 {i + 1}: P.{seg.Start}-{seg.End} ({pageCnt}頁)", _tipFont, textBrush, leftX + 10 * s, cardY + i * (cardH + 3 * s) + 2 * s);
+                    string pageLabel = seg.Start == seg.End ? $"P.{seg.Start}" : $"P.{seg.Start}-{seg.End}";
+                    g.DrawString($"區段 {i + 1}: {pageLabel} ({pageCnt}頁)", _tipFont, textBrush, leftX + 10 * s, cardY + i * (cardH + 3 * s) + 2 * s);
                 }
             }
 
