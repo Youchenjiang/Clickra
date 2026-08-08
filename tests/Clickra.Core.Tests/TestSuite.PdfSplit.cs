@@ -43,10 +43,8 @@ static partial class TestSuite
                 FileProcessor.SplitPdf(inputPath, outputPath, "1-2");
 
                 Assert.True(File.Exists(outputPath), "Expected output split PDF file to exist.");
-                using (var outDoc = PdfReader.Open(outputPath, PdfDocumentOpenMode.Import))
-                {
-                    Assert.True(outDoc.PageCount == 2, $"Expected output PDF to have 2 pages, got {outDoc.PageCount}.");
-                }
+                using var outDoc = PdfReader.Open(outputPath, PdfDocumentOpenMode.Import);
+                Assert.True(outDoc.PageCount == 2, $"Expected output PDF to have 2 pages, got {outDoc.PageCount}.");
             }
             finally
             {
@@ -109,10 +107,10 @@ static partial class TestSuite
                 Assert.True(File.Exists(seg2Path), "Expected segment 4 output file to exist.");
                 Assert.True(!File.Exists(outputPath), "Multi-segment split should not write the single target output path.");
 
-                using (var s1 = PdfReader.Open(seg1Path, PdfDocumentOpenMode.Import))
-                    Assert.True(s1.PageCount == 2, $"Expected segment 1-2 to have 2 pages, got {s1.PageCount}.");
-                using (var s2 = PdfReader.Open(seg2Path, PdfDocumentOpenMode.Import))
-                    Assert.True(s2.PageCount == 1, $"Expected segment 4 to have 1 page, got {s2.PageCount}.");
+                using var s1 = PdfReader.Open(seg1Path, PdfDocumentOpenMode.Import);
+                Assert.True(s1.PageCount == 2, $"Expected segment 1-2 to have 2 pages, got {s1.PageCount}.");
+                using var s2 = PdfReader.Open(seg2Path, PdfDocumentOpenMode.Import);
+                Assert.True(s2.PageCount == 1, $"Expected segment 4 to have 1 page, got {s2.PageCount}.");
             }
             finally
             {
