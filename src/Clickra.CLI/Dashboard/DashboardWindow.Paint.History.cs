@@ -376,36 +376,16 @@ namespace Clickra.UI
             }
         }
 
-        /// <summary>Command tag colors and localization keys, keyed by the raw command name.</summary>
-        private static readonly Dictionary<string, (Color Color, string Key)> CommandTagStyles = new(StringComparer.OrdinalIgnoreCase)
-        {
-            ["word2pdf"] = (Color.FromArgb(0, 120, 212), "cmd_word_to_pdf"),
-            ["excel2pdf"] = (Color.FromArgb(16, 124, 65), "cmd_excel_to_pdf"),
-            ["ppt2pdf"] = (Color.FromArgb(180, 50, 30), "cmd_ppt_to_pdf"),
-            ["merge-pdf"] = (Color.FromArgb(16, 124, 65), "cmd_merge_pdf"),
-            ["compress-pdf"] = (Color.FromArgb(0, 120, 120), "cmd_compress_pdf"),
-            ["img2pdf"] = (Color.FromArgb(100, 60, 180), "cmd_img_to_pdf"),
-            ["img-merge"] = (Color.FromArgb(0, 130, 135), "cmd_merge_img"),
-            ["img-stitch"] = (Color.FromArgb(216, 59, 1), "cmd_stitch_img"),
-            ["translate-pdf"] = (Color.FromArgb(138, 43, 226), "cmd_translate_pdf"),
-            ["decrypt-pdf"] = (Color.FromArgb(0, 150, 136), "cmd_decrypt_pdf"),
-            ["split-pdf"] = (Color.FromArgb(0, 188, 212), "cmd_split_pdf")
-        };
-
         /// <summary>Draws a colored command tag at the given position and returns its width.</summary>
         static float DrawCommandTag(Graphics g, string command, float x, float y)
         {
             float s = _dpiScale;
-            Color tagBg;
+            Color tagBg = Color.FromArgb(100, 100, 100);
             string text = command;
-            if (CommandTagStyles.TryGetValue(command, out var style))
+            if (ConvertCommandByKey.TryGetValue(command, out var def))
             {
-                tagBg = style.Color;
-                text = GetText(style.Key);
-            }
-            else
-            {
-                tagBg = Color.FromArgb(100, 100, 100);
+                tagBg = def.TagColor;
+                text = GetText(def.TextKey);
             }
 
             float textW = 0;

@@ -14,9 +14,8 @@ namespace Clickra.UI
 {
     public static partial class DashboardWindow
     {
-        private const string CmdCompressPdf = "compress-pdf";
-        private const string CmdImgMerge = "img-merge";
-        private const string FilterPdfFiles = "PDF Files (*.pdf)\0*.pdf\0All Files (*.*)\0*.*\0\0";
+        // File filters and command metadata live in the ConvertCommandDefs
+        // registry (see DashboardWindow.ConvertRegistry.cs).
         /// <summary>Shows the Win32 file-open dialog and returns the selected paths.</summary>
         static List<string> OpenFiles(IntPtr hwndOwner, string filter, string title)
         {
@@ -75,36 +74,22 @@ namespace Clickra.UI
             errorMsg = "";
             if (files.Count == 0) return true;
 
-            string[] allowed = cmd switch
+            if (!ConvertCommandByKey.TryGetValue(cmd, out var def))
             {
-                "ppt2pdf" => new[] { ".ppt", ".pptx" },
-                "word2pdf" => new[] { ".doc", ".docx" },
-                "excel2pdf" => new[] { ".xlsx", ".xls" },
-                "merge-pdf" => new[] { ".pdf" },
-                CmdCompressPdf => new[] { ".pdf" },
-                "translate-pdf" => new[] { ".pdf" },
-                "decrypt-pdf" => new[] { ".pdf" },
-                "split-pdf" => new[] { ".pdf" },
-                "img2pdf" or CmdImgMerge or "img-stitch" => new[] { ".jpg", ".jpeg", ".png", ".bmp", ".gif", ".tiff", ".webp" },
-                _ => Array.Empty<string>()
-            };
+                errorMsg = GetText("convert_err_invalid_ext");
+                return false;
+            }
 
-            var invalid = files.Where(f => !allowed.Contains(Path.GetExtension(f).ToLowerInvariant())).ToList();
+            var invalid = files.Where(f => !def.Extensions.Contains(Path.GetExtension(f).ToLowerInvariant())).ToList();
             if (invalid.Count > 0)
             {
                 errorMsg = GetText("convert_err_invalid_ext");
                 return false;
             }
 
-            int minFiles = cmd switch
+            if (files.Count < def.MinFiles)
             {
-                "merge-pdf" or CmdImgMerge or "img-stitch" => 2,
-                _ => 1
-            };
-
-            if (files.Count < minFiles)
-            {
-                errorMsg = string.Format(GetText("convert_err_min_files"), minFiles);
+                errorMsg = string.Format(GetText("convert_err_min_files"), def.MinFiles);
                 return false;
             }
 
@@ -208,9 +193,7 @@ namespace Clickra.UI
         }
 
         static bool RequiresOfficeEngine(string cmd) =>
-            cmd.Equals("ppt2pdf", StringComparison.OrdinalIgnoreCase) ||
-            cmd.Equals("word2pdf", StringComparison.OrdinalIgnoreCase) ||
-            cmd.Equals("excel2pdf", StringComparison.OrdinalIgnoreCase);
+            ConvertCommandByKey.TryGetValue(cmd, out var def) && def.RequiresOffice;
 
         static bool HasAvailableOfficeEngine(string cmd)
         {
@@ -236,37 +219,14 @@ namespace Clickra.UI
 
         static string GetFilterForCommand(string cmd)
         {
-            return cmd switch
-            {
-                "ppt2pdf" => "PowerPoint Files (*.ppt; *.pptx)\0*.ppt;*.pptx\0All Files (*.*)\0*.*\0\0",
-                "word2pdf" => "Word Files (*.doc; *.docx)\0*.doc;*.docx\0All Files (*.*)\0*.*\0\0",
-                "excel2pdf" => "Excel Files (*.xlsx; *.xls)\0*.xlsx;*.xls\0All Files (*.*)\0*.*\0\0",
-                "merge-pdf" => FilterPdfFiles,
-                CmdCompressPdf => FilterPdfFiles,
-                "translate-pdf" => FilterPdfFiles,
-                "decrypt-pdf" => FilterPdfFiles,
-                "split-pdf" => FilterPdfFiles,
-                _ => "Image Files (*.jpg; *.jpeg; *.png; *.bmp; *.gif; *.tiff; *.webp)\0*.jpg;*.jpeg;*.png;*.bmp;*.gif;*.tiff;*.webp\0All Files (*.*)\0*.*\0\0"
-            };
+            return ConvertCommandByKey.TryGetValue(cmd, out var def) && def.Filter.Length > 0
+                ? def.Filter
+                : FilterImageFiles;
         }
 
         static string GetCommandTextKey(string cmd)
         {
-            return cmd switch
-            {
-                "word2pdf" => "cmd_word_to_pdf",
-                "excel2pdf" => "cmd_excel_to_pdf",
-                "ppt2pdf" => "cmd_ppt_to_pdf",
-                "merge-pdf" => "cmd_merge_pdf",
-                "compress-pdf" => "cmd_compress_pdf",
-                "translate-pdf" => "cmd_translate_pdf",
-                "decrypt-pdf" => "cmd_decrypt_pdf",
-                "split-pdf" => "cmd_split_pdf",
-                "img2pdf" => "cmd_img_to_pdf",
-                "img-merge" => "cmd_merge_img",
-                "img-stitch" => "cmd_stitch_img",
-                _ => ""
-            };
+            return ConvertCommandByKey.TryGetValue(cmd, out var def) ? def.TextKey : "";
         }
 
         static string GetCommandGroupKey(int groupIndex)
