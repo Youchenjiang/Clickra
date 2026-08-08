@@ -115,6 +115,33 @@ namespace Clickra.Core.Processors
             }
         }
 
+        public static string BuildSegmentSpec(int mode, int nPages, int totalPages, IReadOnlyList<(int Start, int End)> customSegments)
+        {
+            if (mode == 1) return "all";
+
+            if (mode == 2)
+            {
+                int n = Math.Max(1, nPages);
+                var segs = new List<string>();
+                for (int start = 1; start <= totalPages; start += n)
+                {
+                    int end = Math.Min(totalPages, start + n - 1);
+                    segs.Add(start == end ? $"{start}" : $"{start}-{end}");
+                }
+                return string.Join("; ", segs);
+            }
+
+            if (customSegments.Count == 0) return "all";
+
+            var specs = new List<string>();
+            foreach (var seg in customSegments)
+            {
+                if (seg.Start == seg.End) specs.Add($"{seg.Start}");
+                else specs.Add($"{seg.Start}-{seg.End}");
+            }
+            return string.Join("; ", specs);
+        }
+
         public static List<int> ParsePageRange(string spec, int totalPages)
         {
             var result = new HashSet<int>();

@@ -7,6 +7,7 @@ using System.Linq;
 using System.Runtime.InteropServices;
 using System.Text;
 using Clickra.Core;
+using Clickra.Core.Processors;
 
 using static Clickra.UI.Native.Win32;
 
@@ -275,32 +276,8 @@ namespace Clickra.UI
             }
         }
 
-        private string BuildVisualSplitSpec()
-        {
-            if (_visualSplitMode == 1) return "all";
-
-            if (_visualSplitMode == 2)
-            {
-                int n = Math.Max(1, _visualSplitNPages);
-                var segs = new List<string>();
-                for (int start = 1; start <= _visualSplitTotalPages; start += n)
-                {
-                    int end = Math.Min(_visualSplitTotalPages, start + n - 1);
-                    segs.Add(start == end ? $"{start}" : $"{start}-{end}");
-                }
-                return string.Join("; ", segs);
-            }
-
-            if (_visualSplitSegments.Count == 0) return "all";
-
-            var specs = new List<string>();
-            foreach (var seg in _visualSplitSegments)
-            {
-                if (seg.Start == seg.End) specs.Add($"{seg.Start}");
-                else specs.Add($"{seg.Start}-{seg.End}");
-            }
-            return string.Join("; ", specs);
-        }
+        private string BuildVisualSplitSpec() =>
+            PdfSplitProcessor.BuildSegmentSpec(_visualSplitMode, _visualSplitNPages, _visualSplitTotalPages, _visualSplitSegments);
 
         private void PaintVisualSplitter(Graphics g, float s)
         {
