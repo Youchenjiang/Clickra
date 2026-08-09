@@ -1,3 +1,5 @@
+namespace Clickra.Core.Tests;
+
 static partial class TestSuite
 {
     public static void RegisterTogllLayoutTests(TestRunner runner)

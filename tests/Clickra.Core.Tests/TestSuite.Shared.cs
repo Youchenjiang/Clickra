@@ -1,6 +1,8 @@
 using Clickra.Core.Models;
 using Clickra.Core.Processors;
 
+namespace Clickra.Core.Tests;
+
 static partial class TestSuite
 {
     private static TranslationPageDiagnostics Diagnostics(string sourceFile, int page)

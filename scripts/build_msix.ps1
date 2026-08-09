@@ -34,6 +34,19 @@ if (-not $foundSdk) {
     Write-Warning "[SDK] Could not locate Windows SDK tools path."
 }
 
+# Ensure the Visual Studio Installer directory is on PATH so vcvarsall.bat can
+# find vswhere.exe. When it is missing (e.g. building from Git Bash), the
+# 'vswhere.exe not recognized' error text leaks into .NET NativeAOT's
+# findvcvarsall.bat output and produces a broken link.exe command (MSB3073,
+# exit code 123).
+$pfx86 = [Environment]::GetEnvironmentVariable('ProgramFiles(x86)')
+if ([string]::IsNullOrEmpty($pfx86)) { $pfx86 = 'C:\Program Files (x86)' }
+$vsInstallerDir = Join-Path $pfx86 'Microsoft Visual Studio\Installer'
+if ((Test-Path "$vsInstallerDir\vswhere.exe") -and ($env:Path -notlike "*$vsInstallerDir*")) {
+    $env:Path = "$vsInstallerDir;$env:Path"
+    Write-Host "[SDK] Added VS Installer to PATH for vswhere.exe" -ForegroundColor Gray
+}
+
 Write-Host "[Build] Starting Clickra MSIX Build..." -ForegroundColor Cyan
 
 # 1. Clean up

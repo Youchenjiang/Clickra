@@ -1,3 +1,5 @@
+namespace Clickra.Core.Tests;
+
 static partial class TestSuite
 {
     public static void RegisterPdfLayoutRegressionTests(TestRunner runner)

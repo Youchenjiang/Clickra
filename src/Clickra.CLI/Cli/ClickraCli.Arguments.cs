@@ -15,6 +15,8 @@ namespace Clickra
 
         const int ATTACH_PARENT_PROCESS = -1;
 
+        /// <summary>Filters out files whose extension is not allowed for the command,
+        /// warning or failing depending on quiet mode.</summary>
         static void ValidateExtensions(List<string> files, string command, bool quiet, params string[] allowed)
         {
             var invalid = files
@@ -32,6 +34,8 @@ namespace Clickra
             }
         }
 
+        /// <summary>Expands directory arguments into the files they contain (recursively for
+        /// supported extensions).</summary>
         static List<string> ExpandDirectoryArguments(string command, IEnumerable<string> inputs)
         {
             var allowed = command switch
@@ -39,7 +43,7 @@ namespace Clickra
                 "ppt2pdf" => new[] { ".pptx", ".ppt" },
                 "word2pdf" => new[] { ".docx", ".doc" },
                 "excel2pdf" => new[] { ".xlsx", ".xls" },
-                "merge-pdf" or "translate-pdf" or "decrypt-pdf" or "compress-pdf" => new[] { ".pdf" },
+                "merge-pdf" or "translate-pdf" or "decrypt-pdf" or "compress-pdf" or "split-pdf" => new[] { ".pdf" },
                 "img2pdf" or "img-merge" or "img-stitch" => new[] { ".jpg", ".jpeg", ".png", ".bmp", ".gif", ".tiff", ".webp" },
                 _ => Array.Empty<string>()
             };
@@ -60,6 +64,7 @@ namespace Clickra
             return expanded;
         }
 
+        /// <summary>Attaches to the parent console when launched from a terminal.</summary>
         static void AttachParentConsoleForCli(string[] args)
         {
             if (args.Length == 0) return;
@@ -73,6 +78,7 @@ namespace Clickra
             catch { }
         }
 
+        /// <summary>Writes an inline progress line to the console.</summary>
         static void WriteConsoleProgress(int current, int total, string message)
         {
             total = Math.Max(1, total);

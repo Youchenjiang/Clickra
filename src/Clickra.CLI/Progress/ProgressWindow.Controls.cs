@@ -19,6 +19,8 @@ namespace Clickra.UI
     /// </summary>
     public partial class ProgressWindow
     {
+        /// <summary>Static window procedure: resolves the ProgressWindow instance from the
+        /// window's user data, routes messages to it and frees the GCHandle on destroy.</summary>
         static IntPtr WndProc(IntPtr hwnd, uint msg, IntPtr w, IntPtr l)
         {
             ProgressWindow? window = null;
@@ -73,6 +75,8 @@ namespace Clickra.UI
             return result;
         }
 
+        /// <summary>Subclassed EDIT window procedure: maps Enter to OK and Escape to Cancel
+        /// for the password prompt.</summary>
         [System.Runtime.InteropServices.UnmanagedCallersOnly(CallConvs = new[] { typeof(System.Runtime.CompilerServices.CallConvStdcall) })]
         private static unsafe IntPtr EditSubclassProc(IntPtr hwnd, uint msg, IntPtr w, IntPtr l)
         {
@@ -100,17 +104,61 @@ namespace Clickra.UI
             return oldProc != IntPtr.Zero ? CallWindowProc(oldProc, hwnd, msg, w, l) : DefWindowProcW(hwnd, msg, w, l);
         }
 
+        /// <summary>Instance window procedure handling the progress window messages:
+        /// painting, timers, password prompt, tray icon, scrollbar, and the visual splitter's
+        /// keyboard, mouse and zoom interactions.</summary>
+        // skipcq: CS-R1140
         private unsafe IntPtr InstanceWndProc(IntPtr hwnd, uint msg, IntPtr w, IntPtr l)
         {
             switch (msg)
             {
                 case WM_USER_SHOW_PASSWORD_INPUT:
+                    if (_isPromptingVisualSplitter)
+                    {
+                        ResizeWindowForVisualSplitter(hwnd, true);
+                    }
                     ShowPasswordInputControls(hwnd);
                     return IntPtr.Zero;
 
                 case WM_USER_HIDE_PASSWORD_INPUT:
                     HidePasswordInputControls(hwnd);
                     return IntPtr.Zero;
+
+                case 0x0100: // WM_KEYDOWN
+                    if (_isPromptingVisualSplitter)
+                    {
+                        int key = w.ToInt32();
+                        if (_visualSplitIsZoomed)
+                        {
+                            if (key == 0x1B || key == 0x20 || key == 0x0D) // Esc / Space / Enter
+                            {
+                                CloseVisualSplitZoom(hwnd);
+                            }
+                            else if (key == 0x6B || key == 0xBB) // numpad + / =
+                            {
+                                SetVisualSplitZoomFactor(_visualSplitZoomFactor * 1.25f, ZoomImgLeft + ZoomImgW / 2f, ZoomImgTop + ZoomImgH / 2f);
+                                InvalidateRect(hwnd, IntPtr.Zero, true);
+                            }
+                            else if (key == 0x6D || key == 0xBD) // numpad - / -
+                            {
+                                SetVisualSplitZoomFactor(_visualSplitZoomFactor / 1.25f, ZoomImgLeft + ZoomImgW / 2f, ZoomImgTop + ZoomImgH / 2f);
+                                InvalidateRect(hwnd, IntPtr.Zero, true);
+                            }
+                            else if (key == 0x30 || key == 0x60) // 0 / numpad 0 → fit
+                            {
+                                _visualSplitZoomFactor = 1f;
+                                _visualSplitZoomPanX = 0f;
+                                _visualSplitZoomPanY = 0f;
+                                InvalidateRect(hwnd, IntPtr.Zero, true);
+                            }
+                        }
+                        else if (key == 0x20 || key == 0x0D) // Space / Enter → open zoom
+                        {
+                            OpenVisualSplitZoom(hwnd);
+                        }
+                        return IntPtr.Zero;
+                    }
+                    break;
 
                 case 0x0133: // WM_CTLCOLOREDIT
                     {
@@ -126,6 +174,17 @@ namespace Clickra.UI
                 case 0x020A: // WM_MOUSEWHEEL
                     {
                         int delta = (short)((w.ToInt64() >> 16) & 0xFFFF);
+                        if (_isPromptingVisualSplitter && _visualSplitIsZoomed)
+                        {
+                            // Wheel zooms in the lightbox, anchored at the cursor.
+                            int sx = (short)(l.ToInt64() & 0xFFFF);
+                            int sy = (short)((l.ToInt64() >> 16) & 0xFFFF);
+                            var pt = new Point(sx, sy);
+                            ScreenToClient(hwnd, ref pt);
+                            SetVisualSplitZoomFactor(_visualSplitZoomFactor * (delta > 0 ? 1.25f : 0.8f), pt.X / _dpiScale, pt.Y / _dpiScale);
+                            InvalidateRect(hwnd, IntPtr.Zero, true);
+                            return IntPtr.Zero;
+                        }
                         int scrollDir = delta > 0 ? -1 : 1;
                         lock (_stateLock)
                         {
@@ -147,6 +206,17 @@ namespace Clickra.UI
                         int rawY = (short)((l.ToInt64() >> 16) & 0xFFFF);
                         int mouseX = (int)(rawX / _dpiScale);
                         int mouseY = (int)(rawY / _dpiScale);
+
+                        if (_isPromptingVisualSplitter && _visualSplitIsZoomed && _visualSplitZoomDragging)
+                        {
+                            _visualSplitZoomPanX += mouseX - _visualSplitZoomDragLastX;
+                            _visualSplitZoomPanY += mouseY - _visualSplitZoomDragLastY;
+                            _visualSplitZoomDragLastX = mouseX;
+                            _visualSplitZoomDragLastY = mouseY;
+                            ClampVisualSplitZoomPan();
+                            InvalidateRect(hwnd, IntPtr.Zero, false);
+                            return IntPtr.Zero;
+                        }
 
                         lock (_stateLock)
                         {
@@ -213,6 +283,182 @@ namespace Clickra.UI
                         int mouseX = (int)(rawX / _dpiScale);
                         int mouseY = (int)(rawY / _dpiScale);
 
+                        if (_isPromptingVisualSplitter)
+                        {
+                            // Zoom Lightbox controls: buttons, drag-to-pan inside the image,
+                            // click outside to close.
+                            if (_visualSplitIsZoomed)
+                            {
+                                float zoomBtnY = ZoomModalTop + ZoomModalH - 34f;
+                                float zoomBtnH = 22f;
+                                if (mouseY >= zoomBtnY && mouseY <= zoomBtnY + zoomBtnH)
+                                {
+                                    float btnInX = ZoomModalLeft + ZoomModalW - 120f; // −
+                                    float btnOutX = ZoomModalLeft + ZoomModalW - 86f; // ＋
+                                    float btnFitX = ZoomModalLeft + ZoomModalW - 52f; // 適配
+                                    float cx = ZoomImgLeft + ZoomImgW / 2f;
+                                    float cy = ZoomImgTop + ZoomImgH / 2f;
+
+                                    if (mouseX >= btnInX && mouseX <= btnInX + 28f)
+                                    {
+                                        SetVisualSplitZoomFactor(_visualSplitZoomFactor / 1.25f, cx, cy);
+                                        InvalidateRect(hwnd, IntPtr.Zero, true);
+                                        return IntPtr.Zero;
+                                    }
+                                    if (mouseX >= btnOutX && mouseX <= btnOutX + 28f)
+                                    {
+                                        SetVisualSplitZoomFactor(_visualSplitZoomFactor * 1.25f, cx, cy);
+                                        InvalidateRect(hwnd, IntPtr.Zero, true);
+                                        return IntPtr.Zero;
+                                    }
+                                    if (mouseX >= btnFitX && mouseX <= btnFitX + 44f)
+                                    {
+                                        _visualSplitZoomFactor = 1f;
+                                        _visualSplitZoomPanX = 0f;
+                                        _visualSplitZoomPanY = 0f;
+                                        InvalidateRect(hwnd, IntPtr.Zero, true);
+                                        return IntPtr.Zero;
+                                    }
+                                }
+
+                                if (GetVisualSplitZoomImageRect(out var zx, out var zy, out var zw, out var zh) &&
+                                    mouseX >= zx && mouseX <= zx + zw && mouseY >= zy && mouseY <= zy + zh)
+                                {
+                                    _visualSplitZoomDragging = true;
+                                    _visualSplitZoomDragLastX = mouseX;
+                                    _visualSplitZoomDragLastY = mouseY;
+                                    SetCapture(hwnd);
+                                    return IntPtr.Zero;
+                                }
+
+                                CloseVisualSplitZoom(hwnd);
+                                return IntPtr.Zero;
+                            }
+
+                            // Mode Switcher Bar
+                            if (mouseY >= 102 && mouseY <= 128)
+                            {
+                                if (mouseX >= 36 && mouseX <= 176) _visualSplitMode = 0;
+                                else if (mouseX >= 184 && mouseX <= 324) _visualSplitMode = 1;
+                                else if (mouseX >= 332 && mouseX <= 484) _visualSplitMode = 2;
+                                ApplyVisualSplitMode();
+                                InvalidateRect(hwnd, IntPtr.Zero, true);
+                                return IntPtr.Zero;
+                            }
+
+                            // N Pages Selector (+/- buttons, only in Mode 2)
+                            if (_visualSplitMode == 2 && mouseY >= 131 && mouseY <= 149)
+                            {
+                                if (mouseX >= 36 && mouseX <= 60) // [-]
+                                {
+                                    _visualSplitNPages = Math.Max(2, _visualSplitNPages - 1);
+                                    ApplyVisualSplitMode();
+                                    InvalidateRect(hwnd, IntPtr.Zero, true);
+                                    return IntPtr.Zero;
+                                }
+                                if (mouseX >= 132 && mouseX <= 156) // [+]
+                                {
+                                    _visualSplitNPages = Math.Min(_visualSplitTotalPages, _visualSplitNPages + 1);
+                                    ApplyVisualSplitMode();
+                                    InvalidateRect(hwnd, IntPtr.Zero, true);
+                                    return IntPtr.Zero;
+                                }
+                            }
+
+                            // Left Segment Cards
+                            int cardStartY = 158 + (_visualSplitMode == 2 ? 22 : 0);
+                            if (mouseX >= 36 && mouseX <= 252 && mouseY >= cardStartY && mouseY <= 374)
+                            {
+                                int cardIdx = (mouseY - cardStartY) / 23;
+                                if (cardIdx >= 0 && cardIdx < _visualSplitSegments.Count)
+                                {
+                                    _visualSplitSelectedSegmentIndex = cardIdx;
+                                    _visualSplitCurrentPreviewPageIndex = 0;
+                                    InvalidateRect(hwnd, IntPtr.Zero, true);
+                                    return IntPtr.Zero;
+                                }
+                            }
+
+                            // Right Panel Page Navigation Bar
+                            int navOffset = (_visualSplitMode == 2 ? 22 : 0);
+                            if (mouseX >= 260 && mouseX <= 484 && mouseY >= 170 + navOffset && mouseY <= 200 + navOffset)
+                            {
+                                int segCnt = 1;
+                                if (_visualSplitSelectedSegmentIndex >= 0 && _visualSplitSelectedSegmentIndex < _visualSplitSegments.Count)
+                                {
+                                    var seg = _visualSplitSegments[_visualSplitSelectedSegmentIndex];
+                                    segCnt = seg.End - seg.Start + 1;
+                                }
+
+                                if (mouseX >= 266 && mouseX <= 292) // <
+                                {
+                                    _visualSplitCurrentPreviewPageIndex = Math.Max(0, _visualSplitCurrentPreviewPageIndex - 1);
+                                    InvalidateRect(hwnd, IntPtr.Zero, true);
+                                    return IntPtr.Zero;
+                                }
+                                if (mouseX >= 452 && mouseX <= 478) // >
+                                {
+                                    _visualSplitCurrentPreviewPageIndex = Math.Min(segCnt - 1, _visualSplitCurrentPreviewPageIndex + 1);
+                                    InvalidateRect(hwnd, IntPtr.Zero, true);
+                                    return IntPtr.Zero;
+                                }
+                                if (mouseX >= 410 && mouseX <= 450) // 切開 (split at current preview page)
+                                {
+                                    SplitVisualSegmentAtCurrentPage();
+                                    InvalidateRect(hwnd, IntPtr.Zero, true);
+                                    return IntPtr.Zero;
+                                }
+                            }
+
+                            // Right Panel Preview Image (Click to Zoom)
+                            if (mouseX >= 266 && mouseX <= 478 && mouseY >= 200 + navOffset && mouseY <= 374)
+                            {
+                                OpenVisualSplitZoom(hwnd);
+                                return IntPtr.Zero;
+                            }
+
+                            // Bottom Action Buttons
+                            if (mouseY >= 380 && mouseY <= 406)
+                            {
+                                if (mouseX >= 36 && mouseX <= 132) // ＋ 新增區段
+                                {
+                                    AddVisualSplitSegment();
+                                }
+                                else if (mouseX >= 138 && mouseX <= 222) // 刪除區段
+                                {
+                                    DeleteVisualSplitSegment();
+                                }
+                                else if (mouseX >= 228 && mouseX <= 312) // 清空區段
+                                {
+                                    ClearVisualSplitSegments();
+                                }
+                                else if (mouseX >= 336 && mouseX <= 410) // 確定分割
+                                {
+                                    PostMessageW(hwnd, WM_USER_HIDE_PASSWORD_INPUT, IntPtr.Zero, IntPtr.Zero);
+                                    ResizeWindowForVisualSplitter(hwnd, false);
+                                    lock (_stateLock)
+                                    {
+                                        _passwordCancelled = false;
+                                        _isPromptingVisualSplitter = false;
+                                    }
+                                    _passwordEvent.Set();
+                                }
+                                else if (mouseX >= 416 && mouseX <= 484) // 取消
+                                {
+                                    PostMessageW(hwnd, WM_USER_HIDE_PASSWORD_INPUT, IntPtr.Zero, IntPtr.Zero);
+                                    ResizeWindowForVisualSplitter(hwnd, false);
+                                    lock (_stateLock)
+                                    {
+                                        _passwordCancelled = true;
+                                        _isPromptingVisualSplitter = false;
+                                    }
+                                    _passwordEvent.Set();
+                                }
+                                InvalidateRect(hwnd, IntPtr.Zero, true);
+                                return IntPtr.Zero;
+                            }
+                        }
+
                         lock (_stateLock)
                         {
                             if (!_completed && !_hasError)
@@ -278,6 +524,13 @@ namespace Clickra.UI
                     return IntPtr.Zero;
                 case 0x0202: // WM_LBUTTONUP
                     {
+                        if (_visualSplitZoomDragging)
+                        {
+                            _visualSplitZoomDragging = false;
+                            ReleaseCapture();
+                            InvalidateRect(hwnd, IntPtr.Zero, false);
+                            return IntPtr.Zero;
+                        }
                         lock (_stateLock)
                         {
                             if (_isDraggingScroll)

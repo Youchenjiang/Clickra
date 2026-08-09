@@ -19,6 +19,9 @@ namespace Clickra.UI
     /// </summary>
     public partial class ProgressWindow
     {
+        /// <summary>Paints the whole window: title, status, progress bar, error/success states,
+        /// the password prompt or the visual splitter, then blits the back buffer to the DC.</summary>
+        // skipcq: CS-R1140
         private void Paint(IntPtr hdc)
         {
             if (_bufferBmp == null || _bufferGraphics == null) return;
@@ -34,7 +37,7 @@ namespace Clickra.UI
                 msg = _message; errMsg = _errorMessage;
                 dispW = _currentDispWidth; shimOff = _shimmerOffset;
                 tot = _total; cur = _current;
-                isPrompting = _isPromptingPassword;
+                isPrompting = _isPromptingPassword || _isPromptingVisualSplitter;
                 promptFile = _passwordPromptFilename;
                 isRetry = _passwordPromptIsRetry;
             }
@@ -47,8 +50,16 @@ namespace Clickra.UI
             if (_subFont != null)
             {
                 string lang = ClickraStorage.GetSetting("Language");
-                string subText = hasErr ? "作業失敗" : (comp ? "作業完成" : (isPrompting ? Localization.T("pdf_password_title", lang) : "正在執行作業..."));
-                Color subColor = hasErr ? Color.FromArgb(255, 90, 70) : (comp ? Color.FromArgb(100, 220, 100) : Color.FromArgb(160, 160, 160));
+                string subText;
+                if (hasErr) subText = "作業失敗";
+                else if (comp) subText = "作業完成";
+                else if (_isPromptingVisualSplitter) subText = "PDF 視覺化分割標記";
+                else subText = isPrompting ? Localization.T("pdf_password_title", lang) : "正在執行作業...";
+
+                Color subColor;
+                if (hasErr) subColor = Color.FromArgb(255, 90, 70);
+                else if (comp) subColor = Color.FromArgb(100, 220, 100);
+                else subColor = Color.FromArgb(160, 160, 160);
                 using var subBrush = new SolidBrush(subColor);
                 g.DrawString(subText, _subFont, subBrush, 36 * s, 72 * s);
             }
@@ -94,7 +105,11 @@ namespace Clickra.UI
             }
             else if (isPrompting)
             {
-                if (_msgFont != null)
+                if (_isPromptingVisualSplitter)
+                {
+                    PaintVisualSplitter(g, s);
+                }
+                else if (_msgFont != null)
                 {
                     string lang = ClickraStorage.GetSetting("Language");
                     string promptFormat = isRetry 
@@ -253,7 +268,7 @@ namespace Clickra.UI
             }
 
             using var targetG = Graphics.FromHdc(hdc);
-            if (isPrompting)
+            if (_isPromptingPassword && !_isPromptingVisualSplitter)
             {
                 targetG.ExcludeClip(new Rectangle((int)(36 * s - 1), (int)(165 * s - 1), (int)(448 * s + 2), (int)(28 * s + 2)));
                 targetG.ExcludeClip(new Rectangle((int)(280 * s - 1), (int)(210 * s - 1), (int)(90 * s + 2), (int)(30 * s + 2)));
@@ -265,6 +280,8 @@ namespace Clickra.UI
             }
         }
 
+        /// <summary>Truncates a progress message mid-string, keeping the leading prefix and a
+        /// trailing progress suffix intact while shortening the file name.</summary>
         private static string TruncateProgressMessage(Graphics g, string msg, Font font, float maxLogicalWidth, float scale)
         {
             if (string.IsNullOrEmpty(msg)) return "";

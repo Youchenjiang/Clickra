@@ -77,6 +77,7 @@ namespace Clickra.UI
         private Pen? _borderPen;
         private SolidBrush? _bgBrush;
 
+        /// <summary>Rebuilds the cached GDI+ fonts and pens at the current DPI scale and UI language.</summary>
         private void RecreateScaledFonts()
         {
             try { _titleFont?.Dispose(); _titleFont = null; } catch { }
@@ -98,12 +99,16 @@ namespace Clickra.UI
             _pctFont = new Font(fontName, 13.33f * s, FontStyle.Bold, GraphicsUnit.Pixel);
         }
 
+        /// <summary>Creates and runs a progress window for the given command and files,
+        /// blocking until the window closes.</summary>
         public static void Show(string command, List<string> files)
         {
             var window = new ProgressWindow();
             window.ShowInstance(command, files);
         }
 
+        /// <summary>Registers the window class, creates the progress window and runs the
+        /// message loop while the processing runs on a background thread.</summary>
         private void ShowInstance(string command, List<string> files)
         {
             if (files == null || files.Count == 0)
@@ -141,7 +146,7 @@ namespace Clickra.UI
             _bgBrush ??= new SolidBrush(Color.FromArgb(45, 45, 45));
 
             int clientW = (int)(520 * _dpiScale);
-            int clientH = (int)(280 * _dpiScale);
+            int clientH = _isPromptingVisualSplitter ? (int)(420 * _dpiScale) : (int)(280 * _dpiScale);
 
             if (_bufferBmp == null)
             {
@@ -201,23 +206,33 @@ namespace Clickra.UI
             bgThread.IsBackground = true;
             bgThread.Start();
 
+            RunMessageLoop(_hwnd);
+
+            Marshal.FreeHGlobal(hClass);
+        }
+
+        /// <summary>Pumps messages until the window closes. The visual splitter renders its
+        /// own controls and handles its own keys (zoom shortcuts), so WM_KEYDOWN is let
+        /// through to WndProc during splitter mode instead of being consumed by the dialog
+        /// message filter.</summary>
+        private void RunMessageLoop(IntPtr hwnd)
+        {
             int status;
             while ((status = GetMessage(out var msg, IntPtr.Zero, 0, 0)) != 0)
             {
                 if (status == -1) break;
-                if (_isPromptingPassword && IsDialogMessageW(_hwnd, ref msg))
+                if (!_isPromptingVisualSplitter && _isPromptingPassword && IsDialogMessageW(hwnd, ref msg))
                 {
                     continue;
                 }
                 TranslateMessage(ref msg);
                 DispatchMessage(ref msg);
             }
-
-            Marshal.FreeHGlobal(hClass);
         }
 
 
 
+        /// <summary>Destroys child controls, disposes GDI+ resources and removes the tray icon.</summary>
         private void CleanupResources()
         {
             if (_hwndEdit != IntPtr.Zero) { DestroyWindow(_hwndEdit); _hwndEdit = IntPtr.Zero; }

@@ -9,9 +9,18 @@ namespace Clickra.UI
 {
     public partial class ProgressWindow
     {
+        /// <summary>Creates the password EDIT / OK / Cancel child windows (skipped while the
+        /// visual splitter renders its own controls) and subclasses the EDIT control.</summary>
         private unsafe void ShowPasswordInputControls(IntPtr hwnd)
         {
             if (_hwndEdit != IntPtr.Zero) return;
+
+            if (_isPromptingVisualSplitter)
+            {
+                // The visual splitter renders its own controls; do not create the
+                // password EDIT / OK / Cancel child windows over the splitter UI.
+                return;
+            }
 
             float scale = _dpiScale;
             string lang = ClickraStorage.GetSetting("Language");
@@ -42,6 +51,8 @@ namespace Clickra.UI
             InvalidateRect(_hwndBtnCancel, IntPtr.Zero, true);
         }
 
+        /// <summary>Restores the EDIT window procedure, destroys the child controls and
+        /// invalidates the window.</summary>
         private void HidePasswordInputControls(IntPtr hwnd)
         {
             if (_hwndEdit != IntPtr.Zero)
@@ -68,6 +79,8 @@ namespace Clickra.UI
             InvalidateRect(hwnd, IntPtr.Zero, false);
         }
 
+        /// <summary>Handles OK/Cancel button commands from the password prompt, storing the
+        /// result and releasing the waiting processing thread.</summary>
         private void HandlePasswordInputCommand(IntPtr hwnd, IntPtr w)
         {
             int id = (int)w.ToInt64() & 0xFFFF;

@@ -25,6 +25,8 @@ namespace Clickra
         [DllImport("user32.dll")]
         static extern bool SetProcessDpiAwarenessContext(IntPtr value);
 
+        /// <summary>CLI entry point: attaches the parent console, parses arguments and
+        /// dispatches the requested command, falling back to the dashboard UI.</summary>
         [STAThread]
         static void Main(string[] args)
         {
@@ -34,7 +36,7 @@ namespace Clickra
             if (HandleVersionOrDeploy(args)) return;
 
             var argList = args.ToList();
-            ParseOptions(argList, out bool quiet, out string? outputDirOverride, out bool hasCliLevel, out string compressionLevel);
+            ParseOptions(argList, out bool quiet, out string? outputDirOverride, out bool hasCliLevel, out string compressionLevel, out string pagesOption);
 
             if (argList.Count < 2)
             {
@@ -59,7 +61,7 @@ namespace Clickra
             string startTimeStr = DateTime.UtcNow.ToString("yyyy-MM-dd HH:mm:ss");
             try
             {
-                DispatchCommandSwitch(command, files, quiet, outputDir, hasCliLevel, compressionLevel);
+                DispatchCommandSwitch(command, files, quiet, outputDir, hasCliLevel, compressionLevel, pagesOption);
             }
             catch (Exception ex)
             {
@@ -79,6 +81,7 @@ namespace Clickra
             }
         }
 
+        /// <summary>Builds the default PDF compression options from saved settings.</summary>
         private static Dictionary<string, object> BuildDefaultPdfOptions()
         {
             string dpiStr = ClickraStorage.GetSetting("PdfCompressTargetDpi");
@@ -102,6 +105,7 @@ namespace Clickra
             };
         }
 
+        /// <summary>Compresses each PDF in quiet mode, printing progress to the console.</summary>
         private static void HandleCompressPdfQuiet(List<string> files, string outputDir, bool hasCliLevel, string compressionLevel)
         {
             Dictionary<string, object>? pdfOptions = hasCliLevel ? null : BuildDefaultPdfOptions();
@@ -122,6 +126,8 @@ namespace Clickra
             }
         }
 
+        /// <summary>Translates each PDF in quiet mode, saving render debug logs and a health
+        /// report per file; sets the exit code when any file fails.</summary>
         private static void HandleTranslatePdfQuiet(List<string> files, string outputDir)
         {
             string targetLang = ClickraStorage.GetSetting("TranslateTargetLang");
@@ -173,6 +179,8 @@ namespace Clickra
             if (translationFailed) Environment.ExitCode = 1;
         }
 
+        /// <summary>Handles the version, visual-splitter and --deploy pseudo-commands;
+        /// returns true when one of them consumed the invocation.</summary>
         private static bool HandleVersionOrDeploy(string[] args)
         {
             if (args.Length == 0 || args[0] == "-v" || args[0] == "--version")
@@ -190,6 +198,8 @@ namespace Clickra
                 return true;
             }
 
+            if (TryHandleVisualSplitterArgs(args)) return true;
+
             if (args[0].Equals("--deploy", StringComparison.OrdinalIgnoreCase) && args.Length >= 2)
             {
                 DeployAssets(args[1]);
@@ -199,7 +209,32 @@ namespace Clickra
             return false;
         }
 
-        private static void ParseOptions(List<string> argList, out bool quiet, out string? outputDirOverride, out bool hasCliLevel, out string compressionLevel)
+        /// <summary>Opens the visual splitter for the first PDF when --visual-splitter or
+        /// --splitter is passed; returns true when either flag consumed the invocation.</summary>
+        private static bool TryHandleVisualSplitterArgs(string[] args)
+        {
+            if (!args[0].Equals("--visual-splitter", StringComparison.OrdinalIgnoreCase) &&
+                !args[0].Equals("--splitter", StringComparison.OrdinalIgnoreCase))
+            {
+                return false;
+            }
+
+            string pdfPath = args.Length > 1 ? args[1] : "";
+            if (string.IsNullOrEmpty(pdfPath))
+            {
+                var found = Directory.GetFiles(Directory.GetCurrentDirectory(), "*.pdf");
+                if (found.Length > 0) pdfPath = found[0];
+            }
+            if (!string.IsNullOrEmpty(pdfPath))
+            {
+                ProgressWindow.Show("split-pdf", new List<string> { pdfPath });
+            }
+            return true;
+        }
+
+        /// <summary>Parses and removes global CLI options (quiet mode, output directory,
+        /// compression level and page range) from the argument list.</summary>
+        private static void ParseOptions(List<string> argList, out bool quiet, out string? outputDirOverride, out bool hasCliLevel, out string compressionLevel, out string pagesOption)
         {
             bool quietByDefault = ClickraStorage.GetSetting("QuietMode").Equals("true", StringComparison.OrdinalIgnoreCase);
             quiet = quietByDefault;
@@ -210,8 +245,10 @@ namespace Clickra
             outputDirOverride = ExtractOptionValue(argList, "--out-dir", "-o", "--out");
             hasCliLevel = argList.Contains("--level") || argList.Contains("--compression-level");
             compressionLevel = ExtractOptionValue(argList, "--level", "--compression-level") ?? "balanced";
+            pagesOption = ExtractOptionValue(argList, "--pages", "-p") ?? "all";
         }
 
+        /// <summary>Prints the CLI usage text to the console.</summary>
         private static void PrintUsage()
         {
             Console.WriteLine("Usage: Clickra <command> [options] <file...>");
@@ -222,21 +259,25 @@ namespace Clickra
             Console.WriteLine("Deployment: Clickra --deploy <target_dir>");
         }
 
+        /// <summary>Routes a command to the office, PDF or image dispatcher and reports
+        /// unknown commands.</summary>
         private static void DispatchCommandSwitch(
             string command,
             List<string> files,
             bool quiet,
             string outputDir,
             bool hasCliLevel,
-            string compressionLevel)
+            string compressionLevel,
+            string pagesOption)
         {
             if (DispatchOfficeCommand(command, files, quiet)) return;
-            if (DispatchPdfCommand(command, files, quiet, outputDir, hasCliLevel, compressionLevel)) return;
+            if (DispatchPdfCommand(command, files, quiet, outputDir, hasCliLevel, compressionLevel, pagesOption)) return;
             if (DispatchImageCommand(command, files, quiet, outputDir)) return;
 
             Console.WriteLine($"[錯誤] 未知指令: {command}");
         }
 
+        /// <summary>Handles office-conversion commands (ppt2pdf, word2pdf, excel2pdf).</summary>
         private static bool DispatchOfficeCommand(string command, List<string> files, bool quiet)
         {
             switch (command)
@@ -261,45 +302,62 @@ namespace Clickra
             }
         }
 
+        /// <summary>Handles PDF commands (merge, compress, split, translate, decrypt).</summary>
         private static bool DispatchPdfCommand(
             string command,
             List<string> files,
             bool quiet,
             string outputDir,
             bool hasCliLevel,
-            string compressionLevel)
+            string compressionLevel,
+            string pagesOption)
         {
             switch (command)
             {
                 case "merge-pdf":
-                    ValidateExtensions(files, command, quiet, ".pdf");
-                    RequireMinFiles(files, command, 2, quiet);
-                    if (quiet) FileProcessor.MergePdfs(files, Path.Combine(outputDir, "Merged_PDF.pdf"), (curr, tot, msg) => Console.WriteLine($"[Progress] {msg}"));
-                    else ProgressWindow.Show(command, files);
-                    return true;
+                    return DispatchPdfCase(command, files, quiet, 2,
+                        () => FileProcessor.MergePdfs(files, Path.Combine(outputDir, "Merged_PDF.pdf"), (curr, tot, msg) => Console.WriteLine($"[Progress] {msg}")));
                 case "compress-pdf":
-                    ValidateExtensions(files, command, quiet, ".pdf");
-                    RequireMinFiles(files, command, 1, quiet);
-                    if (quiet) HandleCompressPdfQuiet(files, outputDir, hasCliLevel, compressionLevel);
-                    else ProgressWindow.Show(command, files);
-                    return true;
+                    return DispatchPdfCase(command, files, quiet, 1,
+                        () => HandleCompressPdfQuiet(files, outputDir, hasCliLevel, compressionLevel));
+                case "split-pdf":
+                    return DispatchPdfCase(command, files, quiet, 1,
+                        () => HandleSplitPdfQuiet(files, outputDir, pagesOption));
                 case "translate-pdf":
-                    ValidateExtensions(files, command, quiet, ".pdf");
-                    RequireMinFiles(files, command, 1, quiet);
-                    if (quiet) HandleTranslatePdfQuiet(files, outputDir);
-                    else ProgressWindow.Show(command, files);
-                    return true;
+                    return DispatchPdfCase(command, files, quiet, 1,
+                        () => HandleTranslatePdfQuiet(files, outputDir));
                 case "decrypt-pdf":
-                    ValidateExtensions(files, command, quiet, ".pdf");
-                    RequireMinFiles(files, command, 1, quiet);
-                    if (quiet) HandleDecryptPdfQuiet(files, outputDir);
-                    else ProgressWindow.Show(command, files);
-                    return true;
+                    return DispatchPdfCase(command, files, quiet, 1,
+                        () => HandleDecryptPdfQuiet(files, outputDir));
                 default:
                     return false;
             }
         }
 
+        /// <summary>Validates a PDF command's arguments, then runs the quiet handler or opens
+        /// the progress window; returns true (the command was consumed).</summary>
+        private static bool DispatchPdfCase(string command, List<string> files, bool quiet, int minFiles, Action quietAction)
+        {
+            ValidateExtensions(files, command, quiet, ".pdf");
+            RequireMinFiles(files, command, minFiles, quiet);
+            if (quiet) quietAction();
+            else ProgressWindow.Show(command, files);
+            return true;
+        }
+
+        /// <summary>Runs the split-pdf command in quiet mode, writing one output file per input.</summary>
+        private static void HandleSplitPdfQuiet(List<string> files, string outputDir, string pagesOption)
+        {
+            for (int i = 0; i < files.Count; i++)
+            {
+                var f = files[i];
+                string outName = Path.Combine(outputDir, Path.GetFileNameWithoutExtension(f) + "_split.pdf");
+                Console.WriteLine($"[Progress] 正在分割 PDF: {Path.GetFileName(f)} ({i + 1}/{files.Count})...");
+                FileProcessor.SplitPdf(f, outName, pagesOption, (curr, tot, msg) => Console.WriteLine($"[Progress] {msg}"));
+            }
+        }
+
+        /// <summary>Handles image commands (img2pdf, img-merge, img-stitch).</summary>
         private static bool DispatchImageCommand(string command, List<string> files, bool quiet, string outputDir)
         {
             switch (command)
@@ -327,6 +385,7 @@ namespace Clickra
             }
         }
 
+        /// <summary>Converts each image to its own PDF in quiet mode.</summary>
         private static void HandleImg2PdfQuiet(List<string> files, string outputDir)
         {
             for (int i = 0; i < files.Count; i++)
@@ -339,6 +398,8 @@ namespace Clickra
             Console.WriteLine("[Progress] 轉換完成，正在儲存 PDF...");
         }
 
+        /// <summary>Removes the password from each PDF in quiet mode, translating
+        /// password errors into a localized message.</summary>
         private static void HandleDecryptPdfQuiet(List<string> files, string outputDir)
         {
             for (int i = 0; i < files.Count; i++)

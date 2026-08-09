@@ -11,6 +11,10 @@ namespace Clickra.UI
 {
     public partial class ProgressWindow
     {
+        /// <summary>Runs the command on the background thread, driving the progress callback,
+        /// password prompts and the visual splitter, then closes the window and records the
+        /// outcome in the persistent history.</summary>
+        // skipcq: CS-R1140
         private void RunProcessing(IntPtr hwnd)
         {
             string startTimeStr = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
@@ -114,7 +118,7 @@ namespace Clickra.UI
                         for (int i = 0; i < currentFiles.Count; i++)
                         {
                             _cts.Token.ThrowIfCancellationRequested();
-                            try { ClickraStorage.SetActiveRecordIndex(i); } catch { }
+                            try { ClickraStorage.SetActiveRecordIndex(i); } catch { /* Ignored: history recording must not abort processing. */ }
                             var f = currentFiles[i];
                             string outName = Path.Combine(outputDir, Path.GetFileNameWithoutExtension(f) + ".pdf");
                             progressCallback((i * 100) + 50, currentFiles.Count * 100, $"正在轉換圖片: {Path.GetFileName(f)} ({i + 1}/{currentFiles.Count})...");
@@ -135,7 +139,7 @@ namespace Clickra.UI
                             for (int i = 0; i < currentFiles.Count; i++)
                             {
                                 _cts.Token.ThrowIfCancellationRequested();
-                                try { ClickraStorage.SetActiveRecordIndex(i); } catch { }
+                                try { ClickraStorage.SetActiveRecordIndex(i); } catch { /* Ignored: history recording must not abort processing. */ }
                                 var f = currentFiles[i];
                                 string outName = Path.Combine(outputDir, Path.GetFileNameWithoutExtension(f) + "_translated.pdf");
                                 progressCallback((i * 100) + 10, currentFiles.Count * 100, $"正在翻譯 PDF: {Path.GetFileName(f)} ({i + 1}/{currentFiles.Count})...");
@@ -148,11 +152,71 @@ namespace Clickra.UI
                             progressCallback(currentFiles.Count * 100, currentFiles.Count * 100, "翻譯完成，正在儲存 PDF...");
                         }
                         break;
+                    case "split-pdf":
+                        string pagesOption = "prompt";
+                        var cliArgs = Environment.GetCommandLineArgs();
+                        for (int a = 0; a < cliArgs.Length - 1; a++)
+                        {
+                            if (cliArgs[a].Equals("--pages", StringComparison.OrdinalIgnoreCase) || cliArgs[a].Equals("-p", StringComparison.OrdinalIgnoreCase))
+                            {
+                                pagesOption = cliArgs[a + 1];
+                                break;
+                            }
+                        }
+
+                        for (int i = 0; i < currentFiles.Count; i++)
+                        {
+                            _cts.Token.ThrowIfCancellationRequested();
+                            try { ClickraStorage.SetActiveRecordIndex(i); } catch { /* Ignored: history recording must not abort processing. */ }
+                            var f = currentFiles[i];
+                            string outName = Path.Combine(outputDir, Path.GetFileNameWithoutExtension(f) + "_split.pdf");
+
+                            string targetPages = pagesOption;
+                            if (string.IsNullOrEmpty(targetPages) || targetPages.Equals("prompt", StringComparison.OrdinalIgnoreCase))
+                            {
+                                lock (_stateLock)
+                                {
+                                    _isPromptingPassword = true;
+                                    _isPromptingVisualSplitter = true;
+                                    _passwordPromptFilename = f;
+                                    _passwordPromptIsRetry = false;
+                                    _inputPassword = null;
+                                    _passwordCancelled = false;
+                                    InitializeVisualSplitter(f);
+                                }
+
+                                PostMessageW(hwnd, WM_USER_SHOW_PASSWORD_INPUT, IntPtr.Zero, IntPtr.Zero);
+                                _passwordEvent.WaitOne();
+
+                                bool cancelled = false;
+                                lock (_stateLock)
+                                {
+                                    cancelled = _passwordCancelled;
+                                    targetPages = string.IsNullOrWhiteSpace(_inputPassword) ? BuildVisualSplitSpec() : _inputPassword.Trim();
+                                    _isPromptingPassword = false;
+                                    _isPromptingVisualSplitter = false;
+                                }
+
+                                if (cancelled)
+                                {
+                                    throw new OperationCanceledException("使用者已取消頁碼範圍輸入。");
+                                }
+                            }
+
+                            progressCallback((i * 100) + 10, currentFiles.Count * 100, $"正在分割 PDF: {Path.GetFileName(f)} ({i + 1}/{currentFiles.Count})...");
+                            FileProcessor.SplitPdf(f, outName, targetPages, (curr, tot, msg) => {
+                                int progressPct = tot > 0 ? (int)(curr * 80.0 / tot) + 10 : 10;
+                                progressCallback((i * 100) + progressPct, currentFiles.Count * 100, $"[PDF 分割] {msg} ({i + 1}/{currentFiles.Count})");
+                            }, _cts.Token);
+                        }
+                        _cts.Token.ThrowIfCancellationRequested();
+                        progressCallback(currentFiles.Count * 100, currentFiles.Count * 100, "PDF 分割完成。");
+                        break;
                     case "decrypt-pdf":
                         for (int i = 0; i < currentFiles.Count; i++)
                         {
                             _cts.Token.ThrowIfCancellationRequested();
-                            try { ClickraStorage.SetActiveRecordIndex(i); } catch { }
+                            try { ClickraStorage.SetActiveRecordIndex(i); } catch { /* Ignored: history recording must not abort processing. */ }
                             var f = currentFiles[i];
                             string outName = Path.Combine(outputDir, Path.GetFileNameWithoutExtension(f) + "_decrypted.pdf");
                             progressCallback((i * 100) + 10, currentFiles.Count * 100, $"正在去除密碼: {Path.GetFileName(f)} ({i + 1}/{currentFiles.Count})...");
@@ -279,6 +343,7 @@ namespace Clickra.UI
             }
         }
 
+        /// <summary>Returns the expected output path(s) for a completed command, used for history logging.</summary>
         private static string GetOutputPath(string cmd, List<string> inputFiles, string outputDir)
         {
             switch (cmd)
@@ -305,6 +370,7 @@ namespace Clickra.UI
             }
         }
 
+        /// <summary>Shows a Windows toast notification on success, unless notifications are disabled.</summary>
         private void ShowToastNotification(string command, int count)
         {
             if (ClickraStorage.GetSetting("Notification") == "false")

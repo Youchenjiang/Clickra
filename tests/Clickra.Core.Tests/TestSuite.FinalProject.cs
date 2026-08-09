@@ -1,5 +1,7 @@
 using Clickra.Core.Processors;
 
+namespace Clickra.Core.Tests;
+
 static partial class TestSuite
 {
     public static void RegisterFinalProjectTests(TestRunner runner)
