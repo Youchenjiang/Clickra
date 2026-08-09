@@ -57,66 +57,84 @@ public class PdfSplitProcessor : SingleFileProcessorBase
 
         if (splitEach)
         {
-            for (int i = 0; i < pageCount; i++)
-            {
-                cancellationToken.ThrowIfCancellationRequested();
-                int progress = progressBase + 10 + (int)((i + 1) * 85.0 / pageCount);
-                onProgress?.Invoke(progress, totalProgressMax, $"正在拆分第 {i + 1}/{pageCount} 頁...");
-
-                using var outDoc = new PdfDocument();
-                outDoc.AddPage(inDoc.Pages[i]);
-                string outPath = Path.Combine(baseDir, $"{baseFileName}_page_{(i + 1):D3}.pdf");
-                outDoc.Save(outPath);
-            }
+            SplitEachPage(inDoc, pageCount, baseDir, baseFileName, progressBase, totalProgressMax, onProgress, cancellationToken);
         }
         else
         {
             string[] segments = pagesSpec.Split(';', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
             if (segments.Length > 1)
             {
-                for (int s = 0; s < segments.Length; s++)
-                {
-                    cancellationToken.ThrowIfCancellationRequested();
-                    string segSpec = segments[s];
-                    List<int> targetPages = ParsePageRange(segSpec, pageCount);
-                    if (targetPages.Count == 0) continue;
-
-                    int progress = progressBase + 10 + (int)((s + 1) * 85.0 / segments.Length);
-                    onProgress?.Invoke(progress, totalProgressMax, $"正在提取區段 {s + 1}/{segments.Length} ({targetPages[0]}-{targetPages[^1]}頁)...");
-
-                    using var outDoc = new PdfDocument();
-                    foreach (int pageNum in targetPages)
-                    {
-                        outDoc.AddPage(inDoc.Pages[pageNum - 1]);
-                    }
-
-                    string outPath = Path.Combine(baseDir, $"{baseFileName}_{targetPages[0]}-{targetPages[^1]}.pdf");
-                    outDoc.Save(outPath);
-                }
+                ExtractSegments(inDoc, segments, baseDir, baseFileName, progressBase, totalProgressMax, onProgress, cancellationToken);
             }
             else
             {
-                List<int> targetPages = ParsePageRange(pagesSpec, pageCount);
-                if (targetPages.Count == 0)
-                {
-                    throw new ArgumentException($"指定的分頁範圍「{pagesSpec}」無效或超出頁數範圍 (1-{pageCount})。");
-                }
-
-                onProgress?.Invoke(progressBase + 40, totalProgressMax, $"正在提取指定頁面 ({targetPages.Count} 頁)...");
-
-                using var outDoc = new PdfDocument();
-                foreach (int pageNum in targetPages)
-                {
-                    cancellationToken.ThrowIfCancellationRequested();
-                    outDoc.AddPage(inDoc.Pages[pageNum - 1]);
-                }
-
-                onProgress?.Invoke(progressBase + 90, totalProgressMax, "正在儲存檔案...");
-                outDoc.Save(targetOutputPath);
+                ExtractSingleRange(inDoc, pagesSpec, targetOutputPath, progressBase, totalProgressMax, onProgress, cancellationToken);
             }
         }
 
         onProgress?.Invoke(progressBase + 100, totalProgressMax, "PDF 分割完成！");
+    }
+
+    /// <summary>Writes one output file per page ("all" / "each" spec).</summary>
+    private static void SplitEachPage(PdfDocument inDoc, int pageCount, string baseDir, string baseFileName, int progressBase, int totalProgressMax, Action<int, int, string>? onProgress, CancellationToken cancellationToken)
+    {
+        for (int i = 0; i < pageCount; i++)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            int progress = progressBase + 10 + (int)((i + 1) * 85.0 / pageCount);
+            onProgress?.Invoke(progress, totalProgressMax, $"正在拆分第 {i + 1}/{pageCount} 頁...");
+
+            using var outDoc = new PdfDocument();
+            outDoc.AddPage(inDoc.Pages[i]);
+            string outPath = Path.Combine(baseDir, $"{baseFileName}_page_{(i + 1):D3}.pdf");
+            outDoc.Save(outPath);
+        }
+    }
+
+    /// <summary>Writes one output file per ";"-separated segment of the spec.</summary>
+    private static void ExtractSegments(PdfDocument inDoc, string[] segments, string baseDir, string baseFileName, int progressBase, int totalProgressMax, Action<int, int, string>? onProgress, CancellationToken cancellationToken)
+    {
+        for (int s = 0; s < segments.Length; s++)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            string segSpec = segments[s];
+            List<int> targetPages = ParsePageRange(segSpec, inDoc.PageCount);
+            if (targetPages.Count == 0) continue;
+
+            int progress = progressBase + 10 + (int)((s + 1) * 85.0 / segments.Length);
+            onProgress?.Invoke(progress, totalProgressMax, $"正在提取區段 {s + 1}/{segments.Length} ({targetPages[0]}-{targetPages[^1]}頁)...");
+
+            using var outDoc = new PdfDocument();
+            foreach (int pageNum in targetPages)
+            {
+                outDoc.AddPage(inDoc.Pages[pageNum - 1]);
+            }
+
+            string outPath = Path.Combine(baseDir, $"{baseFileName}_{targetPages[0]}-{targetPages[^1]}.pdf");
+            outDoc.Save(outPath);
+        }
+    }
+
+    /// <summary>Writes a single output document for one page-range spec.</summary>
+    private static void ExtractSingleRange(PdfDocument inDoc, string pagesSpec, string targetOutputPath, int progressBase, int totalProgressMax, Action<int, int, string>? onProgress, CancellationToken cancellationToken)
+    {
+        List<int> targetPages = ParsePageRange(pagesSpec, inDoc.PageCount);
+        if (targetPages.Count == 0)
+        {
+            throw new ArgumentException($"指定的分頁範圍「{pagesSpec}」無效或超出頁數範圍 (1-{inDoc.PageCount})。");
+        }
+
+        onProgress?.Invoke(progressBase + 40, totalProgressMax, $"正在提取指定頁面 ({targetPages.Count} 頁)...");
+
+        using var outDoc = new PdfDocument();
+        foreach (int pageNum in targetPages)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            outDoc.AddPage(inDoc.Pages[pageNum - 1]);
+        }
+
+        onProgress?.Invoke(progressBase + 90, totalProgressMax, "正在儲存檔案...");
+        outDoc.Save(targetOutputPath);
     }
 
     /// <summary>

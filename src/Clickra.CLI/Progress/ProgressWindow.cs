@@ -206,21 +206,28 @@ namespace Clickra.UI
             bgThread.IsBackground = true;
             bgThread.Start();
 
+            RunMessageLoop(_hwnd);
+
+            Marshal.FreeHGlobal(hClass);
+        }
+
+        /// <summary>Pumps messages until the window closes. The visual splitter renders its
+        /// own controls and handles its own keys (zoom shortcuts), so WM_KEYDOWN is let
+        /// through to WndProc during splitter mode instead of being consumed by the dialog
+        /// message filter.</summary>
+        private void RunMessageLoop(IntPtr hwnd)
+        {
             int status;
             while ((status = GetMessage(out var msg, IntPtr.Zero, 0, 0)) != 0)
             {
                 if (status == -1) break;
-                // The visual splitter renders its own controls and handles its own keys
-                // (zoom shortcuts), so let WM_KEYDOWN reach WndProc during splitter mode.
-                if (!_isPromptingVisualSplitter && _isPromptingPassword && IsDialogMessageW(_hwnd, ref msg))
+                if (!_isPromptingVisualSplitter && _isPromptingPassword && IsDialogMessageW(hwnd, ref msg))
                 {
                     continue;
                 }
                 TranslateMessage(ref msg);
                 DispatchMessage(ref msg);
             }
-
-            Marshal.FreeHGlobal(hClass);
         }
 
 

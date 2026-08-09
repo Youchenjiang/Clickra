@@ -198,20 +198,7 @@ namespace Clickra
                 return true;
             }
 
-            if (args[0].Equals("--visual-splitter", StringComparison.OrdinalIgnoreCase) || args[0].Equals("--splitter", StringComparison.OrdinalIgnoreCase))
-            {
-                string pdfPath = args.Length > 1 ? args[1] : "";
-                if (string.IsNullOrEmpty(pdfPath))
-                {
-                    var found = Directory.GetFiles(Directory.GetCurrentDirectory(), "*.pdf");
-                    if (found.Length > 0) pdfPath = found[0];
-                }
-                if (!string.IsNullOrEmpty(pdfPath))
-                {
-                    ProgressWindow.Show("split-pdf", new List<string> { pdfPath });
-                }
-                return true;
-            }
+            if (TryHandleVisualSplitterArgs(args)) return true;
 
             if (args[0].Equals("--deploy", StringComparison.OrdinalIgnoreCase) && args.Length >= 2)
             {
@@ -220,6 +207,29 @@ namespace Clickra
             }
 
             return false;
+        }
+
+        /// <summary>Opens the visual splitter for the first PDF when --visual-splitter or
+        /// --splitter is passed; returns true when either flag consumed the invocation.</summary>
+        private static bool TryHandleVisualSplitterArgs(string[] args)
+        {
+            if (!args[0].Equals("--visual-splitter", StringComparison.OrdinalIgnoreCase) &&
+                !args[0].Equals("--splitter", StringComparison.OrdinalIgnoreCase))
+            {
+                return false;
+            }
+
+            string pdfPath = args.Length > 1 ? args[1] : "";
+            if (string.IsNullOrEmpty(pdfPath))
+            {
+                var found = Directory.GetFiles(Directory.GetCurrentDirectory(), "*.pdf");
+                if (found.Length > 0) pdfPath = found[0];
+            }
+            if (!string.IsNullOrEmpty(pdfPath))
+            {
+                ProgressWindow.Show("split-pdf", new List<string> { pdfPath });
+            }
+            return true;
         }
 
         /// <summary>Parses and removes global CLI options (quiet mode, output directory,
@@ -305,46 +315,45 @@ namespace Clickra
             switch (command)
             {
                 case "merge-pdf":
-                    ValidateExtensions(files, command, quiet, ".pdf");
-                    RequireMinFiles(files, command, 2, quiet);
-                    if (quiet) FileProcessor.MergePdfs(files, Path.Combine(outputDir, "Merged_PDF.pdf"), (curr, tot, msg) => Console.WriteLine($"[Progress] {msg}"));
-                    else ProgressWindow.Show(command, files);
-                    return true;
+                    return DispatchPdfCase(command, files, quiet, 2,
+                        () => FileProcessor.MergePdfs(files, Path.Combine(outputDir, "Merged_PDF.pdf"), (curr, tot, msg) => Console.WriteLine($"[Progress] {msg}")));
                 case "compress-pdf":
-                    ValidateExtensions(files, command, quiet, ".pdf");
-                    RequireMinFiles(files, command, 1, quiet);
-                    if (quiet) HandleCompressPdfQuiet(files, outputDir, hasCliLevel, compressionLevel);
-                    else ProgressWindow.Show(command, files);
-                    return true;
+                    return DispatchPdfCase(command, files, quiet, 1,
+                        () => HandleCompressPdfQuiet(files, outputDir, hasCliLevel, compressionLevel));
                 case "split-pdf":
-                    ValidateExtensions(files, command, quiet, ".pdf");
-                    RequireMinFiles(files, command, 1, quiet);
-                    if (quiet)
-                    {
-                        for (int i = 0; i < files.Count; i++)
-                        {
-                            var f = files[i];
-                            string outName = Path.Combine(outputDir, Path.GetFileNameWithoutExtension(f) + "_split.pdf");
-                            Console.WriteLine($"[Progress] 正在分割 PDF: {Path.GetFileName(f)} ({i + 1}/{files.Count})...");
-                            FileProcessor.SplitPdf(f, outName, pagesOption, (curr, tot, msg) => Console.WriteLine($"[Progress] {msg}"));
-                        }
-                    }
-                    else ProgressWindow.Show(command, files);
-                    return true;
+                    return DispatchPdfCase(command, files, quiet, 1,
+                        () => HandleSplitPdfQuiet(files, outputDir, pagesOption));
                 case "translate-pdf":
-                    ValidateExtensions(files, command, quiet, ".pdf");
-                    RequireMinFiles(files, command, 1, quiet);
-                    if (quiet) HandleTranslatePdfQuiet(files, outputDir);
-                    else ProgressWindow.Show(command, files);
-                    return true;
+                    return DispatchPdfCase(command, files, quiet, 1,
+                        () => HandleTranslatePdfQuiet(files, outputDir));
                 case "decrypt-pdf":
-                    ValidateExtensions(files, command, quiet, ".pdf");
-                    RequireMinFiles(files, command, 1, quiet);
-                    if (quiet) HandleDecryptPdfQuiet(files, outputDir);
-                    else ProgressWindow.Show(command, files);
-                    return true;
+                    return DispatchPdfCase(command, files, quiet, 1,
+                        () => HandleDecryptPdfQuiet(files, outputDir));
                 default:
                     return false;
+            }
+        }
+
+        /// <summary>Validates a PDF command's arguments, then runs the quiet handler or opens
+        /// the progress window; returns true (the command was consumed).</summary>
+        private static bool DispatchPdfCase(string command, List<string> files, bool quiet, int minFiles, Action quietAction)
+        {
+            ValidateExtensions(files, command, quiet, ".pdf");
+            RequireMinFiles(files, command, minFiles, quiet);
+            if (quiet) quietAction();
+            else ProgressWindow.Show(command, files);
+            return true;
+        }
+
+        /// <summary>Runs the split-pdf command in quiet mode, writing one output file per input.</summary>
+        private static void HandleSplitPdfQuiet(List<string> files, string outputDir, string pagesOption)
+        {
+            for (int i = 0; i < files.Count; i++)
+            {
+                var f = files[i];
+                string outName = Path.Combine(outputDir, Path.GetFileNameWithoutExtension(f) + "_split.pdf");
+                Console.WriteLine($"[Progress] 正在分割 PDF: {Path.GetFileName(f)} ({i + 1}/{files.Count})...");
+                FileProcessor.SplitPdf(f, outName, pagesOption, (curr, tot, msg) => Console.WriteLine($"[Progress] {msg}"));
             }
         }
 

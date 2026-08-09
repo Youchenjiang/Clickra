@@ -195,49 +195,47 @@ public partial class ProgressWindow
             .OrderByDescending(img => img.BoundingBox.Width * img.BoundingBox.Height)
             .First();
 
-        Bitmap? imgBmp = null;
+        using var imgBmp = TryDecodeEmbeddedImage(largest);
+        if (imgBmp == null) return;
+
+        var bb = largest.BoundingBox;
+        if (bb.Width > pW * 0.7 && bb.Height > pH * 0.7)
+        {
+            // Full-page background: stretch to the whole thumbnail.
+            g.DrawImage(imgBmp, 0, 0, w, h);
+            return;
+        }
+
+        // Local image: draw at its page coordinates.
+        float x = (float)(bb.Left / pW * w);
+        float y = (float)((1.0 - bb.Top / pH) * h);
+        float iw = (float)(bb.Width / pW * w);
+        float ih = (float)(bb.Height / pH * h);
+        if (iw > 2 && ih > 2)
+            g.DrawImage(imgBmp, x, y, iw, ih);
+    }
+
+    /// <summary>Decodes an embedded image to a bitmap (PNG first, then raw bytes), or null
+    /// when the stream is unsupported or malformed.</summary>
+    private static Bitmap? TryDecodeEmbeddedImage(UglyToad.PdfPig.Content.IPdfImage image)
+    {
         try
         {
-            if (largest.TryGetPng(out var pngBytes) && pngBytes.Length > 100)
+            if (image.TryGetPng(out var pngBytes) && pngBytes.Length > 100)
             {
                 using var ms = new MemoryStream(pngBytes);
-                imgBmp = new Bitmap(ms);
+                return new Bitmap(ms);
             }
-            else
+
+            var raw = image.RawBytes.ToArray();
+            if (raw.Length > 100)
             {
-                var raw = largest.RawBytes.ToArray();
-                if (raw.Length > 100)
-                {
-                    using var ms = new MemoryStream(raw);
-                    try { imgBmp = new Bitmap(ms); } catch { /* Ignored: a malformed bitmap stream is skipped. */ }
-                }
+                using var ms = new MemoryStream(raw);
+                try { return new Bitmap(ms); } catch { /* Ignored: a malformed bitmap stream is skipped. */ }
             }
         }
         catch { /* Ignored: an undecodable embedded image is skipped. */ }
-
-        if (imgBmp == null) return;
-
-        using (imgBmp)
-        {
-            var bb = largest.BoundingBox;
-            bool coversPage = bb.Width > pW * 0.7 && bb.Height > pH * 0.7;
-
-            if (coversPage)
-            {
-                // Full-page background: stretch to the whole thumbnail.
-                g.DrawImage(imgBmp, 0, 0, w, h);
-            }
-            else
-            {
-                // Local image: draw at its page coordinates.
-                float x = (float)(bb.Left / pW * w);
-                float y = (float)((1.0 - bb.Top / pH) * h);
-                float iw = (float)(bb.Width / pW * w);
-                float ih = (float)(bb.Height / pH * h);
-                if (iw > 2 && ih > 2)
-                    g.DrawImage(imgBmp, x, y, iw, ih);
-            }
-        }
+        return null;
     }
 
     /// <summary>Overlays the page's vector words (up to 200, with original colors and
@@ -259,30 +257,42 @@ public partial class ProgressWindow
             float bx = (float)(rect.Left / pW * w);
             float by = (float)((1.0 - rect.Top / pH) * h);
 
-            Color textColor = Color.FromArgb(30, 35, 45);
-            if (word.Letters.Count > 0 && word.Letters[0].Color != null)
-            {
-                try
-                {
-                    var (r, gg, b) = word.Letters[0].Color.ToRGBValues();
-                    textColor = Color.FromArgb(
-                        (int)Math.Clamp(r * 255.0, 0, 255),
-                        (int)Math.Clamp(gg * 255.0, 0, 255),
-                        (int)Math.Clamp(b * 255.0, 0, 255));
-                }
-                catch { /* Ignored: an invalid color value must not abort the word overlay. */ }
-            }
-
             float fontSize = Math.Max(3f, Math.Min(fh * 1.1f, 18f * w / 220f));
+            if (TryDrawWord(g, word.Text, ResolveWordColor(word), bx, by, fontSize))
+                drawn++;
+        }
+    }
+
+    /// <summary>Returns the word's original color, or the default ink color when unset.</summary>
+    private static Color ResolveWordColor(UglyToad.PdfPig.Content.Word word)
+    {
+        if (word.Letters.Count > 0 && word.Letters[0].Color != null)
+        {
             try
             {
-                using var brush = new SolidBrush(textColor);
-                using var font = new Font("Segoe UI", fontSize, GraphicsUnit.Pixel);
-                g.DrawString(word.Text, font, brush, bx, by);
-                drawn++;
+                var (r, gg, b) = word.Letters[0].Color.ToRGBValues();
+                return Color.FromArgb(
+                    (int)Math.Clamp(r * 255.0, 0, 255),
+                    (int)Math.Clamp(gg * 255.0, 0, 255),
+                    (int)Math.Clamp(b * 255.0, 0, 255));
             }
-            catch { /* Ignored: a malformed word must not abort the overlay. */ }
+            catch { /* Ignored: an invalid color value must not abort the word overlay. */ }
         }
+        return Color.FromArgb(30, 35, 45);
+    }
+
+    /// <summary>Draws one word at the given position; returns false when drawing failed.</summary>
+    private static bool TryDrawWord(Graphics g, string text, Color color, float x, float y, float fontSize)
+    {
+        try
+        {
+            using var brush = new SolidBrush(color);
+            using var font = new Font("Segoe UI", fontSize, GraphicsUnit.Pixel);
+            g.DrawString(text, font, brush, x, y);
+            return true;
+        }
+        catch { /* Ignored: a malformed word must not abort the overlay. */ }
+        return false;
     }
 
     /// <summary>
@@ -569,43 +579,58 @@ public partial class ProgressWindow
         switch (_visualSplitMode)
         {
             case 0:
-                _visualSplitSegments = new List<(int, int)>(_visualSplitCustomSegments);
-                if (_visualSplitSegments.Count == 0 && _visualSplitTotalPages > 0)
-                {
-                    _visualSplitCustomSegments.Add((1, _visualSplitTotalPages));
-                    _visualSplitSegments = new List<(int, int)>(_visualSplitCustomSegments);
-                }
-                _visualSplitSelectedSegmentIndex = _visualSplitSegments.Count > 0 ? 0 : -1;
+                ApplyCustomSegmentsMode();
                 break;
-
             case 1:
-                _visualSplitSegments.Clear();
-                _visualSplitCustomSegments.Clear();
-                for (int p = 1; p <= _visualSplitTotalPages; p++)
-                {
-                    _visualSplitSegments.Add((p, p));
-                    _visualSplitCustomSegments.Add((p, p));
-                }
-                _visualSplitSelectedSegmentIndex = _visualSplitSegments.Count > 0 ? 0 : -1;
+                ApplyEveryPageMode();
                 break;
-
             case 2:
-                _visualSplitSegments.Clear();
-                _visualSplitCustomSegments.Clear();
-                int n = Math.Max(1, _visualSplitNPages);
-                for (int p = 1; p <= _visualSplitTotalPages; p += n)
-                {
-                    int end = Math.Min(p + n - 1, _visualSplitTotalPages);
-                    _visualSplitSegments.Add((p, end));
-                    _visualSplitCustomSegments.Add((p, end));
-                }
-                _visualSplitSelectedSegmentIndex = _visualSplitSegments.Count > 0 ? 0 : -1;
+                ApplyFixedPageMode();
                 break;
-
             default:
                 // Unreachable: the mode is normalized to 0-2 before the switch.
                 break;
         }
+    }
+
+    /// <summary>Rebuilds the segment list from the user's custom segments (mode 0).</summary>
+    private void ApplyCustomSegmentsMode()
+    {
+        _visualSplitSegments = new List<(int, int)>(_visualSplitCustomSegments);
+        if (_visualSplitSegments.Count == 0 && _visualSplitTotalPages > 0)
+        {
+            _visualSplitCustomSegments.Add((1, _visualSplitTotalPages));
+            _visualSplitSegments = new List<(int, int)>(_visualSplitCustomSegments);
+        }
+        _visualSplitSelectedSegmentIndex = _visualSplitSegments.Count > 0 ? 0 : -1;
+    }
+
+    /// <summary>Rebuilds the segment list as one segment per page (mode 1).</summary>
+    private void ApplyEveryPageMode()
+    {
+        _visualSplitSegments.Clear();
+        _visualSplitCustomSegments.Clear();
+        for (int p = 1; p <= _visualSplitTotalPages; p++)
+        {
+            _visualSplitSegments.Add((p, p));
+            _visualSplitCustomSegments.Add((p, p));
+        }
+        _visualSplitSelectedSegmentIndex = _visualSplitSegments.Count > 0 ? 0 : -1;
+    }
+
+    /// <summary>Rebuilds the segment list as fixed-size page chunks (mode 2).</summary>
+    private void ApplyFixedPageMode()
+    {
+        _visualSplitSegments.Clear();
+        _visualSplitCustomSegments.Clear();
+        int n = Math.Max(1, _visualSplitNPages);
+        for (int p = 1; p <= _visualSplitTotalPages; p += n)
+        {
+            int end = Math.Min(p + n - 1, _visualSplitTotalPages);
+            _visualSplitSegments.Add((p, end));
+            _visualSplitCustomSegments.Add((p, end));
+        }
+        _visualSplitSelectedSegmentIndex = _visualSplitSegments.Count > 0 ? 0 : -1;
     }
 
     /// <summary>Builds the page-range spec string for the active split mode via
@@ -615,13 +640,21 @@ public partial class ProgressWindow
 
     /// <summary>Paints the entire splitter UI: mode bar, page-count selector, segment list,
     /// live page preview, bottom action buttons and the zoom lightbox overlay.</summary>
-    // skipcq: CS-R1140
     private void PaintVisualSplitter(Graphics g, float s)
     {
         if (_linePen != null)
             g.DrawLine(_linePen, 36 * s, 96 * s, 484 * s, 96 * s);
 
-        // 1. Top Mode Switcher Bar
+        PaintSplitterModeBar(g, s);
+        float nSelectorHeight = PaintSplitterNSelector(g, s);
+        PaintSplitterBody(g, s, nSelectorHeight);
+        PaintSplitterButtons(g, s);
+        PaintSplitterZoomOverlay(g, s);
+    }
+
+    /// <summary>Paints the three mode buttons (custom segments, split each page, fixed pages).</summary>
+    private void PaintSplitterModeBar(Graphics g, float s)
+    {
         float modeY = 102 * s;
         float modeWidth = 140 * s;
         float modeHeight = 26 * s;
@@ -647,36 +680,40 @@ public partial class ProgressWindow
                 g.DrawString(modeTitles[i], _msgFont, textBrush, modeX + 10 * s, modeY + 4 * s);
             }
         }
+    }
 
-        // 2. N Pages Selector (only visible in Mode 2)
-        float nSelectorHeight = 0;
-        if (_visualSplitMode == 2)
-        {
-            nSelectorHeight = 22 * s;
-            float nSelY = 130 * s;
-            float nSelH = 18 * s;
+    /// <summary>Paints the pages-per-segment selector (mode 2 only) and returns its height.</summary>
+    private float PaintSplitterNSelector(Graphics g, float s)
+    {
+        if (_visualSplitMode != 2) return 0f;
 
-            float minusX = 36 * s;
-            float minusW = 24 * s;
-            using var nBtnBg = new SolidBrush(Color.FromArgb(55, 55, 55));
-            using var nBtnPen = new Pen(Color.FromArgb(90, 90, 90));
-            g.FillRectangle(nBtnBg, minusX, nSelY, minusW, nSelH);
-            g.DrawRectangle(nBtnPen, minusX, nSelY, minusW, nSelH);
-            using var nTextBrush = new SolidBrush(Color.FromArgb(220, 220, 220));
-            g.DrawString("-", _msgFont ?? _tipFont!, nTextBrush, minusX + 7 * s, nSelY + 1 * s);
+        float nSelY = 130 * s;
+        float nSelH = 18 * s;
+        float minusX = 36 * s;
+        float minusW = 24 * s;
+        using var nBtnBg = new SolidBrush(Color.FromArgb(55, 55, 55));
+        using var nBtnPen = new Pen(Color.FromArgb(90, 90, 90));
+        g.FillRectangle(nBtnBg, minusX, nSelY, minusW, nSelH);
+        g.DrawRectangle(nBtnPen, minusX, nSelY, minusW, nSelH);
+        using var nTextBrush = new SolidBrush(Color.FromArgb(220, 220, 220));
+        g.DrawString("-", _msgFont ?? _tipFont!, nTextBrush, minusX + 7 * s, nSelY + 1 * s);
 
-            float nLabelX = minusX + minusW + 6 * s;
-            using var nLabelBrush = new SolidBrush(Color.FromArgb(200, 200, 200));
-            g.DrawString($"每 {_visualSplitNPages} 頁", _msgFont ?? _tipFont!, nLabelBrush, nLabelX, nSelY + 1 * s);
+        float nLabelX = minusX + minusW + 6 * s;
+        using var nLabelBrush = new SolidBrush(Color.FromArgb(200, 200, 200));
+        g.DrawString($"每 {_visualSplitNPages} 頁", _msgFont ?? _tipFont!, nLabelBrush, nLabelX, nSelY + 1 * s);
 
-            float plusX = nLabelX + 70 * s;
-            float plusW = 24 * s;
-            g.FillRectangle(nBtnBg, plusX, nSelY, plusW, nSelH);
-            g.DrawRectangle(nBtnPen, plusX, nSelY, plusW, nSelH);
-            g.DrawString("+", _msgFont ?? _tipFont!, nTextBrush, plusX + 7 * s, nSelY + 1 * s);
-        }
+        float plusX = nLabelX + 70 * s;
+        float plusW = 24 * s;
+        g.FillRectangle(nBtnBg, plusX, nSelY, plusW, nSelH);
+        g.DrawRectangle(nBtnPen, plusX, nSelY, plusW, nSelH);
+        g.DrawString("+", _msgFont ?? _tipFont!, nTextBrush, plusX + 7 * s, nSelY + 1 * s);
+        return 22 * s;
+    }
 
-        // 3. Dual-Panel Body
+    /// <summary>Paints the dual-panel background frames and delegates to the segment-card and
+    /// preview-panel painters.</summary>
+    private void PaintSplitterBody(Graphics g, float s, float nSelectorHeight)
+    {
         float bodyY = 134 * s + nSelectorHeight;
         float leftX = 36 * s;
         float leftW = 216 * s;
@@ -695,6 +732,17 @@ public partial class ProgressWindow
             g.DrawString("[ 分段列表 ]", _msgFont, headerBrush, leftX + 8 * s, bodyY + 4 * s);
         }
 
+        PaintSegmentCards(g, s, bodyY, leftX, leftW);
+
+        g.FillRectangle(panelBg, rightX, bodyY, rightW, panelH);
+        g.DrawRectangle(panelPen, rightX, bodyY, rightW, panelH);
+
+        PaintPreviewPanel(g, s, bodyY, rightX, rightW, panelH);
+    }
+
+    /// <summary>Paints the scrollable list of segment cards in the left panel.</summary>
+    private void PaintSegmentCards(Graphics g, float s, float bodyY, float leftX, float leftW)
+    {
         float cardY = bodyY + 24 * s;
         float cardH = 20 * s;
         int maxVisibleCards = 8;
@@ -719,134 +767,144 @@ public partial class ProgressWindow
                 g.DrawString($"區段 {i + 1}: {pageLabel} ({pageCnt}頁)", _tipFont, textBrush, leftX + 10 * s, cardY + i * (cardH + 3 * s) + 2 * s);
             }
         }
+    }
 
-        // Right Panel
-        g.FillRectangle(panelBg, rightX, bodyY, rightW, panelH);
-        g.DrawRectangle(panelPen, rightX, bodyY, rightW, panelH);
+    /// <summary>Paints the right panel: the output badge, page navigation bar and the live
+    /// preview of the selected segment's current page.</summary>
+    private void PaintPreviewPanel(Graphics g, float s, float bodyY, float rightX, float rightW, float panelH)
+    {
+        if (_tipFont == null) return;
+        Font tipFont = _tipFont;
+        Font labelFont = _msgFont ?? tipFont;
 
-        if (_tipFont != null)
+        using var headerBrush = new SolidBrush(Color.FromArgb(220, 220, 220));
+        g.DrawString("[ 即時頁面縮圖預覽 ]", tipFont, headerBrush, rightX + 8 * s, bodyY + 4 * s);
+
+        if (_visualSplitSelectedSegmentIndex < 0 || _visualSplitSelectedSegmentIndex >= _visualSplitSegments.Count)
         {
-            using var headerBrush = new SolidBrush(Color.FromArgb(220, 220, 220));
-            g.DrawString("[ 即時頁面縮圖預覽 ]", _tipFont, headerBrush, rightX + 8 * s, bodyY + 4 * s);
-
-            if (_visualSplitSelectedSegmentIndex >= 0 && _visualSplitSelectedSegmentIndex < _visualSplitSegments.Count)
-            {
-                var activeSeg = _visualSplitSegments[_visualSplitSelectedSegmentIndex];
-                int cnt = activeSeg.End - activeSeg.Start + 1;
-                string outName = Path.GetFileNameWithoutExtension(_passwordPromptFilename);
-
-                float badgeX = rightX + 6 * s;
-                float badgeY = bodyY + 20 * s;
-                float badgeW = rightW - 12 * s;
-                float badgeH = 18 * s;
-
-                using var badgeBg = new SolidBrush(Color.FromArgb(25, 60, 35));
-                using var badgePen = new Pen(Color.FromArgb(50, 140, 70));
-                g.FillRectangle(badgeBg, badgeX, badgeY, badgeW, badgeH);
-                g.DrawRectangle(badgePen, badgeX, badgeY, badgeW, badgeH);
-
-                using var badgeTextBrush = new SolidBrush(Color.FromArgb(120, 240, 140));
-                string truncOutName = UIHelper.TruncateText(g, outName, _tipFont, badgeW - 55 * s, s);
-                g.DrawString($"[PDF] {truncOutName} ({cnt}頁)", _tipFont, badgeTextBrush, badgeX + 4 * s, badgeY + 2 * s);
-
-                if (_visualSplitCurrentPreviewPageIndex < 0) _visualSplitCurrentPreviewPageIndex = 0;
-                if (_visualSplitCurrentPreviewPageIndex >= cnt) _visualSplitCurrentPreviewPageIndex = cnt - 1;
-                int currentPageNum = activeSeg.Start + _visualSplitCurrentPreviewPageIndex;
-
-                // Page Navigation Bar
-                float navY = bodyY + 41 * s;
-                float navH = 20 * s;
-
-                float prevBtnX = badgeX;
-                float prevBtnW = 24 * s;
-                using var navBtnBg = new SolidBrush(Color.FromArgb(45, 50, 60));
-                using var navBtnPen = new Pen(Color.FromArgb(80, 90, 105));
-                g.FillRectangle(navBtnBg, prevBtnX, navY, prevBtnW, navH);
-                g.DrawRectangle(navBtnPen, prevBtnX, navY, prevBtnW, navH);
-                using var navTextBrush = new SolidBrush(Color.FromArgb(220, 220, 220));
-                g.DrawString("<", _tipFont, navTextBrush, prevBtnX + 7 * s, navY + 2 * s);
-
-                float nextBtnX = badgeX + badgeW - 24 * s;
-                float nextBtnW = 24 * s;
-                g.FillRectangle(navBtnBg, nextBtnX, navY, nextBtnW, navH);
-                g.DrawRectangle(navBtnPen, nextBtnX, navY, nextBtnW, navH);
-                g.DrawString(">", _tipFont, navTextBrush, nextBtnX + 7 * s, navY + 2 * s);
-
-                // Split-at-current-page button (between the page label and the ">" button)
-                float splitBtnW = 40 * s;
-                float splitBtnX = nextBtnX - splitBtnW - 4 * s;
-                g.FillRectangle(navBtnBg, splitBtnX, navY, splitBtnW, navH);
-                g.DrawRectangle(navBtnPen, splitBtnX, navY, splitBtnW, navH);
-                g.DrawString("切開", _tipFont, navTextBrush, splitBtnX + 8 * s, navY + 2 * s);
-
-                float pageLabelX = prevBtnX + prevBtnW + 4 * s;
-                float pageLabelW = splitBtnX - 4 * s - pageLabelX;
-                using var pageInfoBrush = new SolidBrush(Color.FromArgb(200, 220, 255));
-                string pageLabelStr = $"P.{currentPageNum} (第 {_visualSplitCurrentPreviewPageIndex + 1}/{cnt} 頁)";
-                var pageLabelSz = g.MeasureString(pageLabelStr, _tipFont);
-                g.DrawString(pageLabelStr, _tipFont, pageInfoBrush,
-                    pageLabelX + (pageLabelW - pageLabelSz.Width) / 2f,
-                    navY + 2 * s);
-
-                // Large Preview Box
-                float cardAreaY = navY + navH + 4 * s;
-                float cardAreaW = badgeW;
-                float cardAreaH = (bodyY + panelH) - cardAreaY - 8 * s;
-
-                using var shadowBg = new SolidBrush(Color.FromArgb(20, 20, 20));
-                g.FillRectangle(shadowBg, badgeX + 2 * s, cardAreaY + 2 * s, cardAreaW, cardAreaH);
-
-                if (_visualSplitPageThumbnails.TryGetValue(currentPageNum, out var pageBmp) && pageBmp != null)
-                {
-                    float fitW = cardAreaW;
-                    float fitH = cardAreaH;
-                    float imgAspect = (float)pageBmp.Width / pageBmp.Height;
-                    float boxAspect = fitW / fitH;
-
-                    float drawW, drawH;
-                    if (imgAspect > boxAspect) { drawW = fitW; drawH = fitW / imgAspect; }
-                    else { drawH = fitH; drawW = fitH * imgAspect; }
-
-                    float drawX = badgeX + (fitW - drawW) / 2f;
-                    float drawY = cardAreaY + (fitH - drawH) / 2f;
-
-                    using var paperWhite = new SolidBrush(Color.White);
-                    g.FillRectangle(paperWhite, drawX, drawY, drawW, drawH);
-
-                    g.InterpolationMode = System.Drawing.Drawing2D.InterpolationMode.HighQualityBicubic;
-                    g.DrawImage(pageBmp, drawX, drawY, drawW, drawH);
-
-                    using var borderPen = new Pen(Color.FromArgb(160, 175, 195), 1.5f * s);
-                    g.DrawRectangle(borderPen, drawX, drawY, drawW, drawH);
-
-                    float zoomTagW = 80 * s;
-                    float zoomTagH = 16 * s;
-                    float zoomTagX = drawX + drawW - zoomTagW - 4 * s;
-                    float zoomTagY = drawY + drawH - zoomTagH - 4 * s;
-                    using var zoomTagBg = new SolidBrush(Color.FromArgb(180, 20, 25, 35));
-                    using var zoomTagText = new SolidBrush(Color.FromArgb(240, 240, 240));
-                    g.FillRectangle(zoomTagBg, zoomTagX, zoomTagY, zoomTagW, zoomTagH);
-                    g.DrawString("[放大]", _tipFont, zoomTagText, zoomTagX + 4 * s, zoomTagY + 1 * s);
-                }
-                else
-                {
-                    using var paperBg = new SolidBrush(Color.FromArgb(245, 247, 250));
-                    using var paperPen = new Pen(Color.FromArgb(170, 180, 195));
-                    g.FillRectangle(paperBg, badgeX, cardAreaY, cardAreaW, cardAreaH);
-                    g.DrawRectangle(paperPen, badgeX, cardAreaY, cardAreaW, cardAreaH);
-
-                    using var pageNumBrush = new SolidBrush(Color.FromArgb(0, 100, 210));
-                    g.DrawString($"P.{currentPageNum}", _msgFont ?? _tipFont, pageNumBrush, badgeX + 10 * s, cardAreaY + 10 * s);
-                }
-            }
-            else
-            {
-                using var tipBrush = new SolidBrush(Color.FromArgb(140, 140, 140));
-                g.DrawString("點擊左側區段卡片以檢視預覽", _tipFont, tipBrush, rightX + 8 * s, bodyY + 42 * s);
-            }
+            using var tipBrush = new SolidBrush(Color.FromArgb(140, 140, 140));
+            g.DrawString("點擊左側區段卡片以檢視預覽", tipFont, tipBrush, rightX + 8 * s, bodyY + 42 * s);
+            return;
         }
 
-        // 4. Bottom Action Buttons
+        var activeSeg = _visualSplitSegments[_visualSplitSelectedSegmentIndex];
+        int cnt = activeSeg.End - activeSeg.Start + 1;
+        string outName = Path.GetFileNameWithoutExtension(_passwordPromptFilename);
+
+        float badgeX = rightX + 6 * s;
+        float badgeY = bodyY + 20 * s;
+        float badgeW = rightW - 12 * s;
+        float badgeH = 18 * s;
+
+        using var badgeBg = new SolidBrush(Color.FromArgb(25, 60, 35));
+        using var badgePen = new Pen(Color.FromArgb(50, 140, 70));
+        g.FillRectangle(badgeBg, badgeX, badgeY, badgeW, badgeH);
+        g.DrawRectangle(badgePen, badgeX, badgeY, badgeW, badgeH);
+
+        using var badgeTextBrush = new SolidBrush(Color.FromArgb(120, 240, 140));
+        string truncOutName = UIHelper.TruncateText(g, outName, tipFont, badgeW - 55 * s, s);
+        g.DrawString($"[PDF] {truncOutName} ({cnt}頁)", tipFont, badgeTextBrush, badgeX + 4 * s, badgeY + 2 * s);
+
+        if (_visualSplitCurrentPreviewPageIndex < 0) _visualSplitCurrentPreviewPageIndex = 0;
+        if (_visualSplitCurrentPreviewPageIndex >= cnt) _visualSplitCurrentPreviewPageIndex = cnt - 1;
+        int currentPageNum = activeSeg.Start + _visualSplitCurrentPreviewPageIndex;
+
+        // Page Navigation Bar
+        float navY = bodyY + 41 * s;
+        float navH = 20 * s;
+
+        float prevBtnX = badgeX;
+        float prevBtnW = 24 * s;
+        using var navBtnBg = new SolidBrush(Color.FromArgb(45, 50, 60));
+        using var navBtnPen = new Pen(Color.FromArgb(80, 90, 105));
+        g.FillRectangle(navBtnBg, prevBtnX, navY, prevBtnW, navH);
+        g.DrawRectangle(navBtnPen, prevBtnX, navY, prevBtnW, navH);
+        using var navTextBrush = new SolidBrush(Color.FromArgb(220, 220, 220));
+        g.DrawString("<", tipFont, navTextBrush, prevBtnX + 7 * s, navY + 2 * s);
+
+        float nextBtnX = badgeX + badgeW - 24 * s;
+        float nextBtnW = 24 * s;
+        g.FillRectangle(navBtnBg, nextBtnX, navY, nextBtnW, navH);
+        g.DrawRectangle(navBtnPen, nextBtnX, navY, nextBtnW, navH);
+        g.DrawString(">", tipFont, navTextBrush, nextBtnX + 7 * s, navY + 2 * s);
+
+        // Split-at-current-page button (between the page label and the ">" button)
+        float splitBtnW = 40 * s;
+        float splitBtnX = nextBtnX - splitBtnW - 4 * s;
+        g.FillRectangle(navBtnBg, splitBtnX, navY, splitBtnW, navH);
+        g.DrawRectangle(navBtnPen, splitBtnX, navY, splitBtnW, navH);
+        g.DrawString("切開", tipFont, navTextBrush, splitBtnX + 8 * s, navY + 2 * s);
+
+        float pageLabelX = prevBtnX + prevBtnW + 4 * s;
+        float pageLabelW = splitBtnX - 4 * s - pageLabelX;
+        using var pageInfoBrush = new SolidBrush(Color.FromArgb(200, 220, 255));
+        string pageLabelStr = $"P.{currentPageNum} (第 {_visualSplitCurrentPreviewPageIndex + 1}/{cnt} 頁)";
+        var pageLabelSz = g.MeasureString(pageLabelStr, tipFont);
+        g.DrawString(pageLabelStr, tipFont, pageInfoBrush,
+            pageLabelX + (pageLabelW - pageLabelSz.Width) / 2f,
+            navY + 2 * s);
+
+        // Large Preview Box
+        float cardAreaY = navY + navH + 4 * s;
+        float cardAreaW = badgeW;
+        float cardAreaH = (bodyY + panelH) - cardAreaY - 8 * s;
+
+        using var shadowBg = new SolidBrush(Color.FromArgb(20, 20, 20));
+        g.FillRectangle(shadowBg, badgeX + 2 * s, cardAreaY + 2 * s, cardAreaW, cardAreaH);
+
+        PaintPreviewPage(g, s, tipFont, labelFont, currentPageNum, badgeX, cardAreaY, cardAreaW, cardAreaH);
+    }
+
+    /// <summary>Draws the selected page thumbnail (or a paper placeholder) inside the preview box.</summary>
+    private void PaintPreviewPage(Graphics g, float s, Font tipFont, Font labelFont, int currentPageNum, float badgeX, float cardAreaY, float cardAreaW, float cardAreaH)
+    {
+        if (_visualSplitPageThumbnails.TryGetValue(currentPageNum, out var pageBmp) && pageBmp != null)
+        {
+            float fitW = cardAreaW;
+            float fitH = cardAreaH;
+            float imgAspect = (float)pageBmp.Width / pageBmp.Height;
+            float boxAspect = fitW / fitH;
+
+            float drawW, drawH;
+            if (imgAspect > boxAspect) { drawW = fitW; drawH = fitW / imgAspect; }
+            else { drawH = fitH; drawW = fitH * imgAspect; }
+
+            float drawX = badgeX + (fitW - drawW) / 2f;
+            float drawY = cardAreaY + (fitH - drawH) / 2f;
+
+            using var paperWhite = new SolidBrush(Color.White);
+            g.FillRectangle(paperWhite, drawX, drawY, drawW, drawH);
+
+            g.InterpolationMode = System.Drawing.Drawing2D.InterpolationMode.HighQualityBicubic;
+            g.DrawImage(pageBmp, drawX, drawY, drawW, drawH);
+
+            using var borderPen = new Pen(Color.FromArgb(160, 175, 195), 1.5f * s);
+            g.DrawRectangle(borderPen, drawX, drawY, drawW, drawH);
+
+            float zoomTagW = 80 * s;
+            float zoomTagH = 16 * s;
+            float zoomTagX = drawX + drawW - zoomTagW - 4 * s;
+            float zoomTagY = drawY + drawH - zoomTagH - 4 * s;
+            using var zoomTagBg = new SolidBrush(Color.FromArgb(180, 20, 25, 35));
+            using var zoomTagText = new SolidBrush(Color.FromArgb(240, 240, 240));
+            g.FillRectangle(zoomTagBg, zoomTagX, zoomTagY, zoomTagW, zoomTagH);
+            g.DrawString("[放大]", tipFont, zoomTagText, zoomTagX + 4 * s, zoomTagY + 1 * s);
+        }
+        else
+        {
+            using var paperBg = new SolidBrush(Color.FromArgb(245, 247, 250));
+            using var paperPen = new Pen(Color.FromArgb(170, 180, 195));
+            g.FillRectangle(paperBg, badgeX, cardAreaY, cardAreaW, cardAreaH);
+            g.DrawRectangle(paperPen, badgeX, cardAreaY, cardAreaW, cardAreaH);
+
+            using var pageNumBrush = new SolidBrush(Color.FromArgb(0, 100, 210));
+            g.DrawString($"P.{currentPageNum}", labelFont, pageNumBrush, badgeX + 10 * s, cardAreaY + 10 * s);
+        }
+    }
+
+    /// <summary>Paints the four bottom action buttons (add, delete, clear, confirm, cancel).</summary>
+    private void PaintSplitterButtons(Graphics g, float s)
+    {
         float btnY = 380 * s;
         float btnH = 26 * s;
 
@@ -884,100 +942,103 @@ public partial class ProgressWindow
             g.DrawString("確定分割", _tipFont, whiteBrush, 344 * s, btnY + 4 * s);
             g.DrawString("取消", _tipFont, whiteBrush, 436 * s, btnY + 4 * s);
         }
+    }
 
-        // 5. Zoom Lightbox Overlay
-        if (_visualSplitIsZoomed)
+    /// <summary>Paints the zoom lightbox overlay: dimmed backdrop, modal frame, title,
+    /// close button, the zoomed page image and the zoom control buttons.</summary>
+    private void PaintSplitterZoomOverlay(Graphics g, float s)
+    {
+        if (!_visualSplitIsZoomed) return;
+
+        int currentPg = 1;
+        if (_visualSplitSelectedSegmentIndex >= 0 && _visualSplitSelectedSegmentIndex < _visualSplitSegments.Count)
         {
-            int currentPg = 1;
-            if (_visualSplitSelectedSegmentIndex >= 0 && _visualSplitSelectedSegmentIndex < _visualSplitSegments.Count)
-            {
-                var seg = _visualSplitSegments[_visualSplitSelectedSegmentIndex];
-                currentPg = seg.Start + _visualSplitCurrentPreviewPageIndex;
-            }
-
-            using var overlayBg = new SolidBrush(Color.FromArgb(235, 15, 18, 24));
-            g.FillRectangle(overlayBg, 0, 0, 520 * s, 420 * s);
-
-            float modalX = 24 * s;
-            float modalY = 20 * s;
-            float modalW = 472 * s;
-            float modalH = 380 * s;
-
-            using var modalBg = new SolidBrush(Color.FromArgb(32, 35, 42));
-            using var modalPen = new Pen(Color.FromArgb(80, 90, 110), 1.5f * s);
-            g.FillRectangle(modalBg, modalX, modalY, modalW, modalH);
-            g.DrawRectangle(modalPen, modalX, modalY, modalW, modalH);
-
-            using var titleBrush = new SolidBrush(Color.FromArgb(230, 240, 255));
-            int zoomPct = (int)(_visualSplitZoomFactor * 100);
-            g.DrawString($"頁面 P.{currentPg} 放大預覽 · {zoomPct}%", _msgFont ?? _tipFont!, titleBrush, modalX + 16 * s, modalY + 12 * s);
-
-            float closeW = 70 * s;
-            float closeH = 22 * s;
-            float closeX = modalX + modalW - closeW - 12 * s;
-            float closeY = modalY + 10 * s;
-            using var closeBg = new SolidBrush(Color.FromArgb(180, 45, 40));
-            g.FillRectangle(closeBg, closeX, closeY, closeW, closeH);
-            using var closeTextBrush = new SolidBrush(Color.White);
-            g.DrawString("X 關閉", _tipFont!, closeTextBrush, closeX + 12 * s, closeY + 3 * s);
-
-            float imgAreaX = modalX + 16 * s;
-            float imgAreaY = modalY + 38 * s;
-            float imgAreaW = modalW - 32 * s;
-            float imgAreaH = modalH - 52 * s;
-
-            // Prefer the high-res on-demand render; fall back to the cached thumbnail
-            // while the background render is in flight. The whole draw happens under
-            // _stateLock so a completed render can never dispose a bitmap mid-draw.
-            lock (_stateLock)
-            {
-                if (GetVisualSplitZoomImageRect(out float drawX, out float drawY, out float drawW, out float drawH))
-                {
-                    var zoomBmp = GetCurrentZoomBitmap();
-                    if (zoomBmp != null)
-                    {
-                        using var paperWhite = new SolidBrush(Color.White);
-                        g.FillRectangle(paperWhite, drawX, drawY, drawW, drawH);
-
-                        g.InterpolationMode = System.Drawing.Drawing2D.InterpolationMode.HighQualityBicubic;
-                        g.DrawImage(zoomBmp, drawX, drawY, drawW, drawH);
-
-                        using var imgPen = new Pen(Color.FromArgb(160, 175, 195));
-                        g.DrawRectangle(imgPen, drawX, drawY, drawW, drawH);
-                    }
-                }
-                else
-                {
-                    using var paperBg = new SolidBrush(Color.FromArgb(245, 247, 250));
-                    g.FillRectangle(paperBg, imgAreaX, imgAreaY, imgAreaW, imgAreaH);
-                }
-            }
-
-            // Bottom controls: zoom in/out, reset-to-fit, and a usage hint.
-            float zoomBtnY = modalY + modalH - 34 * s;
-            float zoomBtnH = 22 * s;
-            float zoomBtnInX = modalX + modalW - 120 * s;   // −
-            float zoomBtnOutX = modalX + modalW - 86 * s;   // ＋
-            float zoomBtnFitX = modalX + modalW - 52 * s;   // 適配
-            float zoomBtnW = 28 * s;
-            float zoomBtnFitW = 44 * s;
-
-            using var zoomBtnBg = new SolidBrush(Color.FromArgb(48, 48, 48));
-            using var zoomBtnPen = new Pen(Color.FromArgb(80, 80, 80));
-            using var zoomBtnText = new SolidBrush(Color.FromArgb(220, 220, 220));
-            g.FillRectangle(zoomBtnBg, zoomBtnInX, zoomBtnY, zoomBtnW, zoomBtnH);
-            g.DrawRectangle(zoomBtnPen, zoomBtnInX, zoomBtnY, zoomBtnW, zoomBtnH);
-            g.DrawString("−", _tipFont!, zoomBtnText, zoomBtnInX + 9 * s, zoomBtnY + 2 * s);
-            g.FillRectangle(zoomBtnBg, zoomBtnOutX, zoomBtnY, zoomBtnW, zoomBtnH);
-            g.DrawRectangle(zoomBtnPen, zoomBtnOutX, zoomBtnY, zoomBtnW, zoomBtnH);
-            g.DrawString("＋", _tipFont!, zoomBtnText, zoomBtnOutX + 9 * s, zoomBtnY + 2 * s);
-            g.FillRectangle(zoomBtnBg, zoomBtnFitX, zoomBtnY, zoomBtnFitW, zoomBtnH);
-            g.DrawRectangle(zoomBtnPen, zoomBtnFitX, zoomBtnY, zoomBtnFitW, zoomBtnH);
-            g.DrawString("適配", _tipFont!, zoomBtnText, zoomBtnFitX + 8 * s, zoomBtnY + 2 * s);
-
-            using var zoomHintBrush = new SolidBrush(Color.FromArgb(140, 140, 140));
-            g.DrawString("滾輪縮放 · 拖曳平移 · 空白鍵/Enter 切換", _tipFont!, zoomHintBrush, modalX + 16 * s, zoomBtnY + 3 * s);
+            var seg = _visualSplitSegments[_visualSplitSelectedSegmentIndex];
+            currentPg = seg.Start + _visualSplitCurrentPreviewPageIndex;
         }
+
+        using var overlayBg = new SolidBrush(Color.FromArgb(235, 15, 18, 24));
+        g.FillRectangle(overlayBg, 0, 0, 520 * s, 420 * s);
+
+        float modalX = 24 * s;
+        float modalY = 20 * s;
+        float modalW = 472 * s;
+        float modalH = 380 * s;
+
+        using var modalBg = new SolidBrush(Color.FromArgb(32, 35, 42));
+        using var modalPen = new Pen(Color.FromArgb(80, 90, 110), 1.5f * s);
+        g.FillRectangle(modalBg, modalX, modalY, modalW, modalH);
+        g.DrawRectangle(modalPen, modalX, modalY, modalW, modalH);
+
+        using var titleBrush = new SolidBrush(Color.FromArgb(230, 240, 255));
+        int zoomPct = (int)(_visualSplitZoomFactor * 100);
+        g.DrawString($"頁面 P.{currentPg} 放大預覽 · {zoomPct}%", _msgFont ?? _tipFont!, titleBrush, modalX + 16 * s, modalY + 12 * s);
+
+        float closeW = 70 * s;
+        float closeH = 22 * s;
+        float closeX = modalX + modalW - closeW - 12 * s;
+        float closeY = modalY + 10 * s;
+        using var closeBg = new SolidBrush(Color.FromArgb(180, 45, 40));
+        g.FillRectangle(closeBg, closeX, closeY, closeW, closeH);
+        using var closeTextBrush = new SolidBrush(Color.White);
+        g.DrawString("X 關閉", _tipFont!, closeTextBrush, closeX + 12 * s, closeY + 3 * s);
+
+        float imgAreaX = modalX + 16 * s;
+        float imgAreaY = modalY + 38 * s;
+        float imgAreaW = modalW - 32 * s;
+        float imgAreaH = modalH - 52 * s;
+
+        // Prefer the high-res on-demand render; fall back to the cached thumbnail
+        // while the background render is in flight. The whole draw happens under
+        // _stateLock so a completed render can never dispose a bitmap mid-draw.
+        lock (_stateLock)
+        {
+            if (GetVisualSplitZoomImageRect(out float drawX, out float drawY, out float drawW, out float drawH))
+            {
+                var zoomBmp = GetCurrentZoomBitmap();
+                if (zoomBmp != null)
+                {
+                    using var paperWhite = new SolidBrush(Color.White);
+                    g.FillRectangle(paperWhite, drawX, drawY, drawW, drawH);
+
+                    g.InterpolationMode = System.Drawing.Drawing2D.InterpolationMode.HighQualityBicubic;
+                    g.DrawImage(zoomBmp, drawX, drawY, drawW, drawH);
+
+                    using var imgPen = new Pen(Color.FromArgb(160, 175, 195));
+                    g.DrawRectangle(imgPen, drawX, drawY, drawW, drawH);
+                }
+            }
+            else
+            {
+                using var paperBg = new SolidBrush(Color.FromArgb(245, 247, 250));
+                g.FillRectangle(paperBg, imgAreaX, imgAreaY, imgAreaW, imgAreaH);
+            }
+        }
+
+        // Bottom controls: zoom in/out, reset-to-fit, and a usage hint.
+        float zoomBtnY = modalY + modalH - 34 * s;
+        float zoomBtnH = 22 * s;
+        float zoomBtnInX = modalX + modalW - 120 * s;   // −
+        float zoomBtnOutX = modalX + modalW - 86 * s;   // ＋
+        float zoomBtnFitX = modalX + modalW - 52 * s;   // 適配
+        float zoomBtnW = 28 * s;
+        float zoomBtnFitW = 44 * s;
+
+        using var zoomBtnBg = new SolidBrush(Color.FromArgb(48, 48, 48));
+        using var zoomBtnPen = new Pen(Color.FromArgb(80, 80, 80));
+        using var zoomBtnText = new SolidBrush(Color.FromArgb(220, 220, 220));
+        g.FillRectangle(zoomBtnBg, zoomBtnInX, zoomBtnY, zoomBtnW, zoomBtnH);
+        g.DrawRectangle(zoomBtnPen, zoomBtnInX, zoomBtnY, zoomBtnW, zoomBtnH);
+        g.DrawString("−", _tipFont!, zoomBtnText, zoomBtnInX + 9 * s, zoomBtnY + 2 * s);
+        g.FillRectangle(zoomBtnBg, zoomBtnOutX, zoomBtnY, zoomBtnW, zoomBtnH);
+        g.DrawRectangle(zoomBtnPen, zoomBtnOutX, zoomBtnY, zoomBtnW, zoomBtnH);
+        g.DrawString("＋", _tipFont!, zoomBtnText, zoomBtnOutX + 9 * s, zoomBtnY + 2 * s);
+        g.FillRectangle(zoomBtnBg, zoomBtnFitX, zoomBtnY, zoomBtnFitW, zoomBtnH);
+        g.DrawRectangle(zoomBtnPen, zoomBtnFitX, zoomBtnY, zoomBtnFitW, zoomBtnH);
+        g.DrawString("適配", _tipFont!, zoomBtnText, zoomBtnFitX + 8 * s, zoomBtnY + 2 * s);
+
+        using var zoomHintBrush = new SolidBrush(Color.FromArgb(140, 140, 140));
+        g.DrawString("滾輪縮放 · 拖曳平移 · 空白鍵/Enter 切換", _tipFont!, zoomHintBrush, modalX + 16 * s, zoomBtnY + 3 * s);
     }
 
     /// <summary>Resizes the window between the compact password-prompt height and the
