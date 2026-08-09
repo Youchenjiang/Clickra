@@ -27,19 +27,11 @@ static partial class TestSuite
 
         runner.Run("FileProcessor.SplitPdf extracts specified page ranges to new document", () =>
         {
-            string inputPath = Path.Combine(Path.GetTempPath(), $"clickra-split-src-{Guid.NewGuid():N}.pdf");
+            string inputPath = CreateTempPdf($"clickra-split-src-{Guid.NewGuid():N}", 3);
             string outputPath = Path.Combine(Path.GetTempPath(), $"clickra-split-out-{Guid.NewGuid():N}.pdf");
 
             try
             {
-                using (var doc = new PdfDocument())
-                {
-                    doc.AddPage();
-                    doc.AddPage();
-                    doc.AddPage();
-                    doc.Save(inputPath);
-                }
-
                 FileProcessor.SplitPdf(inputPath, outputPath, "1-2");
 
                 Assert.True(File.Exists(outputPath), "Expected output split PDF file to exist.");
@@ -48,8 +40,7 @@ static partial class TestSuite
             }
             finally
             {
-                if (File.Exists(inputPath)) File.Delete(inputPath);
-                if (File.Exists(outputPath)) File.Delete(outputPath);
+                DeleteTempFiles(inputPath, outputPath);
             }
         });
 
@@ -84,23 +75,13 @@ static partial class TestSuite
         runner.Run("PdfSplitProcessor emits one output file per multi-segment spec", () =>
         {
             string baseName = $"clickra-multisplit-{Guid.NewGuid():N}";
-            string inputPath = Path.Combine(Path.GetTempPath(), $"{baseName}.pdf");
+            string inputPath = CreateTempPdf(baseName, 5);
             string outputPath = Path.Combine(Path.GetTempPath(), $"{baseName}_target.pdf");
             string seg1Path = Path.Combine(Path.GetTempPath(), $"{baseName}_1-2.pdf");
             string seg2Path = Path.Combine(Path.GetTempPath(), $"{baseName}_4-4.pdf");
 
             try
             {
-                using (var doc = new PdfDocument())
-                {
-                    doc.AddPage();
-                    doc.AddPage();
-                    doc.AddPage();
-                    doc.AddPage();
-                    doc.AddPage();
-                    doc.Save(inputPath);
-                }
-
                 FileProcessor.SplitPdf(inputPath, outputPath, "1-2; 4");
 
                 Assert.True(File.Exists(seg1Path), "Expected segment 1-2 output file to exist.");
@@ -114,10 +95,7 @@ static partial class TestSuite
             }
             finally
             {
-                if (File.Exists(inputPath)) File.Delete(inputPath);
-                if (File.Exists(outputPath)) File.Delete(outputPath);
-                if (File.Exists(seg1Path)) File.Delete(seg1Path);
-                if (File.Exists(seg2Path)) File.Delete(seg2Path);
+                DeleteTempFiles(inputPath, outputPath, seg1Path, seg2Path);
             }
         });
 
@@ -127,69 +105,58 @@ static partial class TestSuite
     /// <summary>Registers the split tests that assert loud failures on invalid input.</summary>
     private static void RegisterSplitFailureTests(TestRunner runner)
     {
-        runner.Run("PdfSplitProcessor multi-segment split fails loudly on out-of-range segment", () =>
-        {
-            string inputPath = Path.Combine(Path.GetTempPath(), $"clickra-split-invalid-{Guid.NewGuid():N}.pdf");
+        runner.Run("PdfSplitProcessor multi-segment split fails loudly on out-of-range segment",
+            () => AssertSplitFails("1-2; 99", "Expected an out-of-range multi-segment spec to throw instead of silently succeeding."));
 
+        runner.Run("PdfSplitProcessor multi-segment split rejects colliding output names",
+            () => AssertSplitFails("1-2; 1,2", "Expected colliding segment output names to throw instead of overwriting."));
+    }
+
+    /// <summary>Asserts that splitting a 3-page temp PDF with the given spec throws.</summary>
+    private static void AssertSplitFails(string spec, string failureMessage)
+    {
+        string inputPath = CreateTempPdf($"clickra-split-fail-{Guid.NewGuid():N}", 3);
+        try
+        {
+            bool threw = false;
             try
             {
-                using (var doc = new PdfDocument())
-                {
-                    doc.AddPage();
-                    doc.AddPage();
-                    doc.AddPage();
-                    doc.Save(inputPath);
-                }
-
-                bool threw = false;
-                try
-                {
-                    FileProcessor.SplitPdf(inputPath, "unused.pdf", "1-2; 99");
-                }
-                catch (ArgumentException)
-                {
-                    threw = true;
-                }
-
-                Assert.True(threw, "Expected an out-of-range multi-segment spec to throw instead of silently succeeding.");
+                FileProcessor.SplitPdf(inputPath, "unused.pdf", spec);
             }
-            finally
+            catch (ArgumentException)
             {
-                if (File.Exists(inputPath)) File.Delete(inputPath);
+                threw = true;
             }
-        });
 
-        runner.Run("PdfSplitProcessor multi-segment split rejects colliding output names", () =>
+            Assert.True(threw, failureMessage);
+        }
+        finally
         {
-            string baseName = $"clickra-collide-{Guid.NewGuid():N}";
-            string inputPath = Path.Combine(Path.GetTempPath(), $"{baseName}.pdf");
+            DeleteTempFiles(inputPath);
+        }
+    }
 
-            try
+    /// <summary>Creates a temporary blank PDF with the given page count and returns its path.</summary>
+    private static string CreateTempPdf(string baseName, int pageCount)
+    {
+        string inputPath = Path.Combine(Path.GetTempPath(), $"{baseName}.pdf");
+        using (var doc = new PdfDocument())
+        {
+            for (int i = 0; i < pageCount; i++)
             {
-                using (var doc = new PdfDocument())
-                {
-                    doc.AddPage();
-                    doc.AddPage();
-                    doc.AddPage();
-                    doc.Save(inputPath);
-                }
-
-                bool threw = false;
-                try
-                {
-                    FileProcessor.SplitPdf(inputPath, "unused.pdf", "1-2; 1,2");
-                }
-                catch (ArgumentException)
-                {
-                    threw = true;
-                }
-
-                Assert.True(threw, "Expected colliding segment output names to throw instead of overwriting.");
+                doc.AddPage();
             }
-            finally
-            {
-                if (File.Exists(inputPath)) File.Delete(inputPath);
-            }
-        });
+            doc.Save(inputPath);
+        }
+        return inputPath;
+    }
+
+    /// <summary>Deletes the given temporary files when they exist.</summary>
+    private static void DeleteTempFiles(params string[] paths)
+    {
+        foreach (var path in paths)
+        {
+            if (File.Exists(path)) File.Delete(path);
+        }
     }
 }
