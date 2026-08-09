@@ -117,6 +117,7 @@
     - **CS-R1137 readonly 誤報 ×3**：`_isPromptingVisualSplitter`（volatile 欄位不得宣告 readonly）、`_visualSplitZoomDragLastX/Y`（拖曳期間持續變動）——DeepSource 誤判，需在儀表板標 ignore，不得為此改程式碼。
     - **SonarCloud S8970 null-forgiving ×10 已全數修正 (2026/08/09)**：`VisualSplitter.cs` 的 `_tipFont!`/`_msgFont ?? _tipFont!` 並非無法處理——它們是缺 null guard 的症狀。正確修法：n-selector 用 `Font? uiFont = _msgFont ?? _tipFont; if (uiFont == null) return;`、zoom overlay 用 `tipFont`/`uiFont` 兩個非 null local + 前置 guard。全量重建 0 警告 0 錯誤，`!` 在該檔歸零。教訓：遇到「直接刪除會報編譯警告」的 analyzer finding，正確做法是重構出可證明的非 null 路徑，而非保留運算子並標記誤判。
     - **Documentation Coverage 基線移動觀察**：DeepSource 的覆蓋率參考值會隨變更集同步移動（三次 run：0.4→9.7、3.1→12.4、10.7→20，差值恆為 9.3），單靠補文件追不上；新程式碼仍應持續補 XML 文件，閘門門檻需在儀表板設定合理值。
+    - **Localization 字典結構性重複 (2026/08/09 記錄)**：SonarCloud 的 Duplications measures 將 `Localization.cs` 的 5 種語言字典鍵結構（鍵相同、值不同）判為重複（New Code 12 行、54.5%）。這是 i18n 字典資料結構的必然模式，且 repo 既有 4 個 143 行字典本就互相重複；消除需將 Localization 重構成「基底字典 + 語言覆寫」的架構級改動，留待 Localization 專項重構，不影響品質閘門（New Code 重複率 0.6% < 3%）。
 - [ ] **開發期測試後門與倉庫整潔清理 (Dev Scaffolding Cleanup)**：
     - [x] **移除視覺分割測試後門**：移除 `ClickraCli.cs` 中硬編碼的測試 PDF 路徑與依執行檔名稱（`TestVisualSplitter` / `ClickraVisualSplitter`）自動進入視覺分割模式的開發測試邏輯，正式版本應僅由 CLI 旗標與參數驅動。
     - [ ] **本機工具狀態隔離**：將 `.freebuff/`（本機工具 SQLite 狀態）加入 `.gitignore`，避免污染 git status 與誤提交。
