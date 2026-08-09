@@ -836,7 +836,7 @@ public partial class ProgressWindow
                     g.DrawRectangle(paperPen, badgeX, cardAreaY, cardAreaW, cardAreaH);
 
                     using var pageNumBrush = new SolidBrush(Color.FromArgb(0, 100, 210));
-                    g.DrawString($"P.{currentPageNum}", _msgFont ?? _tipFont!, pageNumBrush, badgeX + 10 * s, cardAreaY + 10 * s);
+                    g.DrawString($"P.{currentPageNum}", _msgFont ?? _tipFont, pageNumBrush, badgeX + 10 * s, cardAreaY + 10 * s);
                 }
             }
             else
