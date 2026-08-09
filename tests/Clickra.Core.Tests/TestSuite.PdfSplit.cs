@@ -154,9 +154,6 @@ static partial class TestSuite
     /// <summary>Deletes the given temporary files when they exist.</summary>
     private static void DeleteTempFiles(params string[] paths)
     {
-        foreach (var path in paths)
-        {
-            if (File.Exists(path)) File.Delete(path);
-        }
+        foreach (var path in paths.Where(File.Exists)) File.Delete(path);
     }
 }
