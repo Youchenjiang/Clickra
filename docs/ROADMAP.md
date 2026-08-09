@@ -108,11 +108,14 @@
     - **命令模式拆分 (Command Pattern)**：重構 `DashboardWindow.Events.Click.cs` 的 `HandleLButtonDown` (當前複雜度 130)，將點擊區域偵測與具體功能執行解耦，使每個轉檔功能封裝為獨立的 Command 物件。
     - **CLI 入口點精簡**：重構 `ClickraCli.cs` 的 `Main` (當前複雜度 89)，將參數解析與 Dashboard 啟動移至獨立的啟動類別。
     - **進度視窗複雜度 (2026/08/08 記錄)**：重構 `ProgressWindow` 系列四個高複雜度方法——`Controls.cs` 的 `InstanceWndProc` (156, critical)、`Process.cs` 的 `RunProcessing` (57, critical)、`Paint.cs` 的 `Paint` (47, very-high)、`VisualSplitter.cs` 的 `PaintVisualSplitter` (35, very-high)，將訊息路由與繪圖拆分為職責單一的方法。
+    - **SonarCloud 認知複雜度 (2026/08/09 記錄)**：SonarCloud 另標記 8 個超過認知複雜度門檻 15 的方法——`VisualSplitter.cs` 的 `DrawPageImages` (17)、`DrawPageWords` (16)、`ApplyVisualSplitMode` (16)、`PaintVisualSplitter` (60)、`ProgressWindow.cs` 的 `ShowInstance` (16)、`ClickraCli.cs` 的 `HandleVersionOrDeploy` (17) 與 `DispatchPdfCommand` (19)、`PdfSplitProcessor.cs` 的 `ProcessSingleFile` (28)；連同上方 DeepSource 圈複雜度項目於下次重構時一併處理。
+    - **已移除 (2026/08/09)**：`RenderSyntheticPageThumbnail`（無呼叫端的 dead code，複雜度 17、未用參數、非 static）已直接刪除，消除 SonarCloud S1172/S2325/S3776 三項。
 - [ ] **測試套件架構標準化與命名空間升級 [技術債]**:
     - [x] **命名空間整合 (2026/08/08 完成)**：10 個 `TestSuite` partial 檔已移入 `Clickra.Core.Tests` 命名空間並移除 S3903 pragma，解決全域命名空間污染（CS-W1061）。
     - **升級測試框架**：後續規劃將自建的 `TestRunner` 升級為業界標準的單元測試框架（如 xUnit 或 NUnit），以利於在 CI 流程中整合覆蓋率分析。
 - [ ] **品質閘門誤報與基線觀察 (2026/08/08 記錄, Static Analysis Triage)**：
     - **CS-R1137 readonly 誤報 ×3**：`_isPromptingVisualSplitter`（volatile 欄位不得宣告 readonly）、`_visualSplitZoomDragLastX/Y`（拖曳期間持續變動）——DeepSource 誤判，需在儀表板標 ignore，不得為此改程式碼。
+    - **SonarCloud S8970 null-forgiving 誤報 ×5 (2026/08/09)**：`VisualSplitter.cs` 中 `_msgFont ?? _tipFont!` 的 `!` 是有意義的——專案 `<Nullable>enable</Nullable>`、`_tipFont` 為 `Font?`，移除 `!` 會產生 CS8604 編譯警告（`??` 結果型別為 `Font?`）。SonarCloud 宣稱「nullable warnings are disabled here」與實際不符，保留 `!`、不為此改程式碼。
     - **Documentation Coverage 基線移動觀察**：DeepSource 的覆蓋率參考值會隨變更集同步移動（三次 run：0.4→9.7、3.1→12.4、10.7→20，差值恆為 9.3），單靠補文件追不上；新程式碼仍應持續補 XML 文件，閘門門檻需在儀表板設定合理值。
 - [ ] **開發期測試後門與倉庫整潔清理 (Dev Scaffolding Cleanup)**：
     - [x] **移除視覺分割測試後門**：移除 `ClickraCli.cs` 中硬編碼的測試 PDF 路徑與依執行檔名稱（`TestVisualSplitter` / `ClickraVisualSplitter`）自動進入視覺分割模式的開發測試邏輯，正式版本應僅由 CLI 旗標與參數驅動。
