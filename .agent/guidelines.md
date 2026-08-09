@@ -34,6 +34,7 @@
 - **語系優先 (Localization)**：選單標題、描述等字串嚴禁硬編碼 (Hardcode) 於 C# 中。必須統一修改 `packaging/msix/Strings/` 下的 `.resw` 檔案。
 - **動態路徑**：在 Shell Extension 中存取外部資源（如圖標、執行檔）時，必須使用 `ShellUtils` 獲取執行期路徑，嚴禁假設檔案位於 `%LocalAppData%`。
 - **本地驗證**：修改 CLI 邏輯後，必須手動執行 `./Clickra.exe [command]` 並檢查輸出檔案。修改封裝邏輯後，須執行 `scripts/build_msix.ps1` 檢查 `Layout` 結構。
+- **品質問題立即記錄**：發現品質/效能問題（靜態分析如圈複雜度、誤報、指標異常）但本次不改程式碼時，必須立即記錄到 `docs/ROADMAP.md` 的技術債清單並隨當次改動一起提交。條目須載明受影響檔案/方法、目前複雜度或發現細節、日期與延後原因，讓下次開分支可直接接手；工具誤報（如對 `volatile` 或執行期變動欄位建議 `readonly`）如實標記，不得為遷就工具而改寫可用程式碼。
 
 ## 3. 命名規範
 - **方法命名**：遵循 verb-noun 模式，如 `GetLogicalWidth`、`ProcessFile`、`ValidateExtensions`。
