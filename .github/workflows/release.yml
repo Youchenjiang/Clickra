@@ -15,6 +15,20 @@ jobs:
     steps:
     - uses: actions/checkout@v4
 
+    # Single source of truth for release triggers. All release-only steps
+    # (GitHub Release, Store publish, and any future store-related step)
+    # must gate on this flag so manual workflow_dispatch runs can validate
+    # the packaging without shipping to production.
+    - name: Detect Release Trigger
+      id: release-trigger
+      shell: bash
+      run: |
+        if [[ "${{ github.ref }}" == refs/tags/v* ]]; then
+          echo "is_release=true" >> "$GITHUB_OUTPUT"
+        else
+          echo "is_release=false" >> "$GITHUB_OUTPUT"
+        fi
+
     - name: Setup .NET
       uses: actions/setup-dotnet@v4
       with:
@@ -111,7 +125,7 @@ jobs:
         "$delimiter" >> $env:GITHUB_OUTPUT
 
     - name: Create GitHub Release
-      if: startsWith(github.ref, 'refs/tags/v')
+      if: steps.release-trigger.outputs.is_release == 'true'
       shell: bash
       env:
         GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -159,5 +173,5 @@ jobs:
     - name: Publish to Microsoft Store
       # Only publish to the store on a version tag; a manual workflow_dispatch
       # must be able to validate the packaging without shipping to production.
-      if: startsWith(github.ref, 'refs/tags/v')
+      if: steps.release-trigger.outputs.is_release == 'true'
       run: python scripts/publish_store.py
