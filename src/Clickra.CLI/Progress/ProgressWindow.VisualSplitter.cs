@@ -127,7 +127,7 @@ public partial class ProgressWindow
     private void CachePdfPageThumbnails(string filePath)
     {
         foreach (var kvp in _visualSplitPageThumbnails)
-            try { kvp.Value.Dispose(); } catch { }
+            try { kvp.Value.Dispose(); } catch { /* Ignored: disposal must not abort the cache rebuild. */ }
         _visualSplitPageThumbnails.Clear();
 
         try
@@ -139,14 +139,14 @@ public partial class ProgressWindow
                 try
                 {
                     var pigPage = pigDoc.GetPage(p);
-                    var pageBmp = BuildPageThumbnail(pigPage, p, 660);
+                    var pageBmp = BuildPageThumbnail(pigPage, 660);
                     if (pageBmp != null)
                         _visualSplitPageThumbnails[p] = pageBmp;
                 }
-                catch { }
+                catch { /* Ignored: a single unreadable page must not abort the cache build. */ }
             }
         }
-        catch { }
+        catch { /* Ignored: an unreadable PDF must not crash the splitter window. */ }
     }
 
     /// <summary>
@@ -156,7 +156,7 @@ public partial class ProgressWindow
     /// </summary>
     /// <param name="targetWidth">Pixel width of the rendered bitmap. Larger values give
     /// crisper results when the bitmap is downscaled onto the screen.</param>
-    private Bitmap? BuildPageThumbnail(UglyToad.PdfPig.Content.Page page, int pageNum, int targetWidth)
+    private static Bitmap? BuildPageThumbnail(UglyToad.PdfPig.Content.Page page, int targetWidth)
     {
         double pW = page.Width > 0 ? page.Width : 595;
         double pH = page.Height > 0 ? page.Height : 842;
@@ -179,7 +179,7 @@ public partial class ProgressWindow
             DrawPageImages(g, page, pW, pH, w, h);
             DrawPageWords(g, page, pW, pH, w, h);
         }
-        catch { }
+        catch { /* Ignored: unrenderable page content falls back to a blank sheet. */ }
 
         return bmp;
     }
@@ -198,7 +198,7 @@ public partial class ProgressWindow
         Bitmap? imgBmp = null;
         try
         {
-            if (largest.TryGetPng(out var pngBytes) && pngBytes != null && pngBytes.Length > 100)
+            if (largest.TryGetPng(out var pngBytes) && pngBytes.Length > 100)
             {
                 using var ms = new MemoryStream(pngBytes);
                 imgBmp = new Bitmap(ms);
@@ -209,11 +209,11 @@ public partial class ProgressWindow
                 if (raw.Length > 100)
                 {
                     using var ms = new MemoryStream(raw);
-                    try { imgBmp = new Bitmap(ms); } catch { }
+                    try { imgBmp = new Bitmap(ms); } catch { /* Ignored: a malformed bitmap stream is skipped. */ }
                 }
             }
         }
-        catch { }
+        catch { /* Ignored: an undecodable embedded image is skipped. */ }
 
         if (imgBmp == null) return;
 
@@ -270,7 +270,7 @@ public partial class ProgressWindow
                         (int)Math.Clamp(gg * 255.0, 0, 255),
                         (int)Math.Clamp(b * 255.0, 0, 255));
                 }
-                catch { }
+                catch { /* Ignored: an invalid color value must not abort the word overlay. */ }
             }
 
             float fontSize = Math.Max(3f, Math.Min(fh * 1.1f, 18f * w / 220f));
@@ -281,7 +281,7 @@ public partial class ProgressWindow
                 g.DrawString(word.Text, font, brush, bx, by);
                 drawn++;
             }
-            catch { }
+            catch { /* Ignored: a malformed word must not abort the overlay. */ }
         }
     }
 
@@ -311,7 +311,7 @@ public partial class ProgressWindow
                 using var pigDoc = UglyToad.PdfPig.PdfDocument.Open(filePath);
                 if (pageNum < 1 || pageNum > pigDoc.NumberOfPages) return;
                 var pigPage = pigDoc.GetPage(pageNum);
-                var bmp = BuildPageThumbnail(pigPage, pageNum, targetW);
+                var bmp = BuildPageThumbnail(pigPage, targetW);
                 if (bmp == null) return;
 
                 lock (_stateLock)
@@ -330,7 +330,7 @@ public partial class ProgressWindow
                 if (_hwnd != IntPtr.Zero)
                     PostMessageW(_hwnd, WM_USER_INVALIDATE, (IntPtr)1, IntPtr.Zero);
             }
-            catch { }
+            catch { /* Ignored: a failed background render simply leaves the cached thumbnail. */ }
         }, _cts.Token);
     }
 
@@ -447,13 +447,13 @@ public partial class ProgressWindow
         newFactor = Math.Clamp(newFactor, 1f, 8f);
         float oldFactor = Math.Max(1f, _visualSplitZoomFactor);
 
-        if (GetVisualSplitZoomImageRect(out var dx, out var dy, out var dw, out var dh))
+        if (GetVisualSplitZoomImageRect(out var dx, out var dy, out _, out _))
         {
             float ux = (anchorX - dx) / oldFactor;
             float uy = (anchorY - dy) / oldFactor;
             _visualSplitZoomFactor = newFactor;
             ClampVisualSplitZoomPan();
-            if (GetVisualSplitZoomImageRect(out var dx2, out var dy2, out var dw2, out var dh2))
+            if (GetVisualSplitZoomImageRect(out _, out _, out var dw2, out var dh2))
             {
                 _visualSplitZoomPanX = (anchorX - ux * newFactor) - (ZoomImgLeft + (ZoomImgW - dw2) / 2f);
                 _visualSplitZoomPanY = (anchorY - uy * newFactor) - (ZoomImgTop + (ZoomImgH - dh2) / 2f);
@@ -464,71 +464,6 @@ public partial class ProgressWindow
         {
             _visualSplitZoomFactor = newFactor;
         }
-    }
-
-    /// <summary>Fallback thumbnail renderer used when no page content can be extracted;
-    /// draws a placeholder sheet with a banner and text bars.</summary>
-    private Bitmap RenderSyntheticPageThumbnail(UglyToad.PdfPig.Content.Page page, int pageNum)
-    {
-        int w = 200, h = 260;
-        var bmp = new Bitmap(w, h);
-        using var g = Graphics.FromImage(bmp);
-        g.Clear(Color.FromArgb(245, 247, 250));
-        g.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.AntiAlias;
-        g.TextRenderingHint = System.Drawing.Text.TextRenderingHint.AntiAliasGridFit;
-
-        using var borderPen = new Pen(Color.FromArgb(170, 180, 195));
-        g.DrawRectangle(borderPen, 0, 0, w - 1, h - 1);
-
-        using var bannerBrush = new SolidBrush(Color.FromArgb(215, 55, 45));
-        g.FillRectangle(bannerBrush, 4, 4, w - 8, 5);
-
-        try
-        {
-            double pW = page.Width > 0 ? page.Width : 595;
-            double pH = page.Height > 0 ? page.Height : 842;
-            var words = page.GetWords().ToList();
-
-            if (words.Count > 0)
-            {
-                using var textBrush = new SolidBrush(Color.FromArgb(30, 35, 45));
-
-                foreach (var word in words.Take(120))
-                {
-                    float bx = (float)(word.BoundingBox.Left / pW * (w - 16) + 8);
-                    float by = (float)((1.0 - word.BoundingBox.Top / pH) * (h - 30) + 16);
-                    float fh = Math.Max(4.5f, (float)(word.BoundingBox.Height / pH * (h - 30)));
-
-                    if (bx >= 4 && by >= 10 && bx < w - 4 && by + fh < h - 14)
-                    {
-                        float fontSize = Math.Max(3.5f, Math.Min(fh * 0.75f, 9f));
-                        try
-                        {
-                            using var wf = new Font("Segoe UI", fontSize);
-                            g.DrawString(word.Text, wf, textBrush, bx, by);
-                        }
-                        catch { }
-                    }
-                }
-            }
-            else
-            {
-                using var barBrush = new SolidBrush(Color.FromArgb(190, 195, 205));
-                int[] barWidths = { w - 30, w - 50, w - 20, w - 60, w - 35, w - 45, w - 25, w - 55 };
-                for (int li = 0; li < barWidths.Length; li++)
-                {
-                    int bby = 22 + li * 22;
-                    g.FillRectangle(barBrush, 8, bby, barWidths[li], 7);
-                }
-
-                using var scanBrush = new SolidBrush(Color.FromArgb(140, 145, 155));
-                using var scanFont = new Font("Segoe UI", 6.5f);
-                g.DrawString("[掃描頁]", scanFont, scanBrush, 8, h - 26);
-            }
-        }
-        catch { }
-
-        return bmp;
     }
 
     /// <summary>Adds the first page gap not covered by any custom segment as a new segment
@@ -630,6 +565,7 @@ public partial class ProgressWindow
     private void ApplyVisualSplitMode()
     {
         _visualSplitCurrentPreviewPageIndex = 0;
+        if (_visualSplitMode < 0 || _visualSplitMode > 2) _visualSplitMode = 0;
         switch (_visualSplitMode)
         {
             case 0:
@@ -665,10 +601,6 @@ public partial class ProgressWindow
                 }
                 _visualSplitSelectedSegmentIndex = _visualSplitSegments.Count > 0 ? 0 : -1;
                 break;
-
-            default:
-                _visualSplitMode = 0;
-                goto case 0;
         }
     }
 
@@ -983,7 +915,7 @@ public partial class ProgressWindow
             using var closeBg = new SolidBrush(Color.FromArgb(180, 45, 40));
             g.FillRectangle(closeBg, closeX, closeY, closeW, closeH);
             using var closeTextBrush = new SolidBrush(Color.White);
-            g.DrawString("X 關閉", _tipFont!, closeTextBrush, closeX + 12 * s, closeY + 3 * s);
+            g.DrawString("X 關閉", _tipFont, closeTextBrush, closeX + 12 * s, closeY + 3 * s);
 
             float imgAreaX = modalX + 16 * s;
             float imgAreaY = modalY + 38 * s;
@@ -1031,16 +963,16 @@ public partial class ProgressWindow
             using var zoomBtnText = new SolidBrush(Color.FromArgb(220, 220, 220));
             g.FillRectangle(zoomBtnBg, zoomBtnInX, zoomBtnY, zoomBtnW, zoomBtnH);
             g.DrawRectangle(zoomBtnPen, zoomBtnInX, zoomBtnY, zoomBtnW, zoomBtnH);
-            g.DrawString("−", _tipFont!, zoomBtnText, zoomBtnInX + 9 * s, zoomBtnY + 2 * s);
+            g.DrawString("−", _tipFont, zoomBtnText, zoomBtnInX + 9 * s, zoomBtnY + 2 * s);
             g.FillRectangle(zoomBtnBg, zoomBtnOutX, zoomBtnY, zoomBtnW, zoomBtnH);
             g.DrawRectangle(zoomBtnPen, zoomBtnOutX, zoomBtnY, zoomBtnW, zoomBtnH);
-            g.DrawString("＋", _tipFont!, zoomBtnText, zoomBtnOutX + 9 * s, zoomBtnY + 2 * s);
+            g.DrawString("＋", _tipFont, zoomBtnText, zoomBtnOutX + 9 * s, zoomBtnY + 2 * s);
             g.FillRectangle(zoomBtnBg, zoomBtnFitX, zoomBtnY, zoomBtnFitW, zoomBtnH);
             g.DrawRectangle(zoomBtnPen, zoomBtnFitX, zoomBtnY, zoomBtnFitW, zoomBtnH);
-            g.DrawString("適配", _tipFont!, zoomBtnText, zoomBtnFitX + 8 * s, zoomBtnY + 2 * s);
+            g.DrawString("適配", _tipFont, zoomBtnText, zoomBtnFitX + 8 * s, zoomBtnY + 2 * s);
 
             using var zoomHintBrush = new SolidBrush(Color.FromArgb(140, 140, 140));
-            g.DrawString("滾輪縮放 · 拖曳平移 · 空白鍵/Enter 切換", _tipFont!, zoomHintBrush, modalX + 16 * s, zoomBtnY + 3 * s);
+            g.DrawString("滾輪縮放 · 拖曳平移 · 空白鍵/Enter 切換", _tipFont, zoomHintBrush, modalX + 16 * s, zoomBtnY + 3 * s);
         }
     }
 

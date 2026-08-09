@@ -118,7 +118,7 @@ namespace Clickra.UI
                         for (int i = 0; i < currentFiles.Count; i++)
                         {
                             _cts.Token.ThrowIfCancellationRequested();
-                            try { ClickraStorage.SetActiveRecordIndex(i); } catch { }
+                            try { ClickraStorage.SetActiveRecordIndex(i); } catch { /* Ignored: history recording must not abort processing. */ }
                             var f = currentFiles[i];
                             string outName = Path.Combine(outputDir, Path.GetFileNameWithoutExtension(f) + ".pdf");
                             progressCallback((i * 100) + 50, currentFiles.Count * 100, $"正在轉換圖片: {Path.GetFileName(f)} ({i + 1}/{currentFiles.Count})...");
@@ -139,7 +139,7 @@ namespace Clickra.UI
                             for (int i = 0; i < currentFiles.Count; i++)
                             {
                                 _cts.Token.ThrowIfCancellationRequested();
-                                try { ClickraStorage.SetActiveRecordIndex(i); } catch { }
+                                try { ClickraStorage.SetActiveRecordIndex(i); } catch { /* Ignored: history recording must not abort processing. */ }
                                 var f = currentFiles[i];
                                 string outName = Path.Combine(outputDir, Path.GetFileNameWithoutExtension(f) + "_translated.pdf");
                                 progressCallback((i * 100) + 10, currentFiles.Count * 100, $"正在翻譯 PDF: {Path.GetFileName(f)} ({i + 1}/{currentFiles.Count})...");
@@ -167,7 +167,7 @@ namespace Clickra.UI
                         for (int i = 0; i < currentFiles.Count; i++)
                         {
                             _cts.Token.ThrowIfCancellationRequested();
-                            try { ClickraStorage.SetActiveRecordIndex(i); } catch { }
+                            try { ClickraStorage.SetActiveRecordIndex(i); } catch { /* Ignored: history recording must not abort processing. */ }
                             var f = currentFiles[i];
                             string outName = Path.Combine(outputDir, Path.GetFileNameWithoutExtension(f) + "_split.pdf");
 
@@ -216,7 +216,7 @@ namespace Clickra.UI
                         for (int i = 0; i < currentFiles.Count; i++)
                         {
                             _cts.Token.ThrowIfCancellationRequested();
-                            try { ClickraStorage.SetActiveRecordIndex(i); } catch { }
+                            try { ClickraStorage.SetActiveRecordIndex(i); } catch { /* Ignored: history recording must not abort processing. */ }
                             var f = currentFiles[i];
                             string outName = Path.Combine(outputDir, Path.GetFileNameWithoutExtension(f) + "_decrypted.pdf");
                             progressCallback((i * 100) + 10, currentFiles.Count * 100, $"正在去除密碼: {Path.GetFileName(f)} ({i + 1}/{currentFiles.Count})...");

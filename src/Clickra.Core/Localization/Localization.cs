@@ -11,6 +11,9 @@ namespace Clickra.Core
         private const string LangJa = "ja-JP";
         private const string LangKo = "ko-KR";
         private const string KeyCmdCompressPdf = "cmd_compress_pdf";
+        private const string KeyCmdSplitPdf = "cmd_split_pdf";
+        private const string KeySplitPdfTitle = "pdf_split_title";
+        private const string KeySplitPdfPrompt = "pdf_split_prompt";
 
         private static readonly Dictionary<string, Dictionary<string, string>> Translations = new(StringComparer.OrdinalIgnoreCase)
         {
@@ -147,9 +150,9 @@ namespace Clickra.Core
                 ["setting_pdf_lang"] = "目標語言 (Target Language)",
                 ["cmd_translate_pdf"] = "PDF 一鍵翻譯",
                 ["cmd_decrypt_pdf"] = "去除 PDF 密碼",
-                ["cmd_split_pdf"] = "分割 PDF",
-                ["pdf_split_title"] = "輸入 PDF 分割頁碼範圍",
-                ["pdf_split_prompt"] = "請輸入分頁範圍（例如 1-5, 8 或 all 拆分為單頁檔）：",
+                [KeyCmdSplitPdf] = "分割 PDF",
+                [KeySplitPdfTitle] = "輸入 PDF 分割頁碼範圍",
+                [KeySplitPdfPrompt] = "請輸入分頁範圍（例如 1-5, 8 或 all 拆分為單頁檔）：",
                 ["pdf_password_title"] = "輸入 PDF 密碼",
                 ["pdf_password_prompt"] = "「{0}」受密碼保護，請輸入開啟密碼：",
                 ["pdf_password_retry"] = "密碼錯誤。請重新輸入「{0}」的密碼：",
@@ -291,9 +294,9 @@ namespace Clickra.Core
                 ["setting_pdf_lang"] = "目标语言",
                 ["cmd_translate_pdf"] = "PDF 翻译",
                 ["cmd_decrypt_pdf"] = "去除 PDF 密码",
-                ["cmd_split_pdf"] = "分割 PDF",
-                ["pdf_split_title"] = "输入 PDF 分割页码范围",
-                ["pdf_split_prompt"] = "请输入分页范围（例如 1-5, 8 或 all 拆分为单页档）：",
+                [KeyCmdSplitPdf] = "分割 PDF",
+                [KeySplitPdfTitle] = "输入 PDF 分割页码范围",
+                [KeySplitPdfPrompt] = "请输入分页范围（例如 1-5, 8 或 all 拆分为单页档）：",
                 ["pdf_password_title"] = "输入 PDF 密码",
                 ["pdf_password_prompt"] = "「{0}」受密码保护，请输入打开密码：",
                 ["pdf_password_retry"] = "密码错误。请重新输入「{0}」的密码：",
@@ -435,9 +438,9 @@ namespace Clickra.Core
                 ["setting_pdf_lang"] = "Target Language",
                 ["cmd_translate_pdf"] = "PDF Translation",
                 ["cmd_decrypt_pdf"] = "Remove PDF Password",
-                ["cmd_split_pdf"] = "Split PDF",
-                ["pdf_split_title"] = "Enter Page Range to Split PDF",
-                ["pdf_split_prompt"] = "Enter page range (e.g. 1-5, 8 or all to split into single pages):",
+                [KeyCmdSplitPdf] = "Split PDF",
+                [KeySplitPdfTitle] = "Enter Page Range to Split PDF",
+                [KeySplitPdfPrompt] = "Enter page range (e.g. 1-5, 8 or all to split into single pages):",
                 ["pdf_password_title"] = "Enter PDF Password",
                 ["pdf_password_prompt"] = "\"{0}\" is password protected. Enter open password:",
                 ["pdf_password_retry"] = "Incorrect password. Re-enter password for \"{0}\":",
@@ -579,9 +582,9 @@ namespace Clickra.Core
                 ["setting_pdf_lang"] = "対象言語 (Target Language)",
                 ["cmd_translate_pdf"] = "PDF 翻訳",
                 ["cmd_decrypt_pdf"] = "PDF パスワード解除",
-                ["cmd_split_pdf"] = "PDF 分割",
-                ["pdf_split_title"] = "PDF 分割ページ範囲の入力",
-                ["pdf_split_prompt"] = "ページ範囲を入力してください（例：1-5, 8 または全ページ分割の all）：",
+                [KeyCmdSplitPdf] = "PDF 分割",
+                [KeySplitPdfTitle] = "PDF 分割ページ範囲の入力",
+                [KeySplitPdfPrompt] = "ページ範囲を入力してください（例：1-5, 8 または全ページ分割の all）：",
                 ["pdf_password_title"] = "PDF パスワード入力",
                 ["pdf_password_prompt"] = "「{0}」はパスワードで保護されています。パスワードを入力してください：",
                 ["pdf_password_retry"] = "パスワードが正しくありません。もう一度入力してください：「{0}」",
@@ -725,9 +728,9 @@ namespace Clickra.Core
                 ["setting_pdf_lang"] = "대상 언어 (Target Language)",
                 ["cmd_translate_pdf"] = "PDF 번역",
                 ["cmd_decrypt_pdf"] = "PDF 비밀번호 제거",
-                ["cmd_split_pdf"] = "PDF 분할",
-                ["pdf_split_title"] = "PDF 분할 페이지 범위 입력",
-                ["pdf_split_prompt"] = "페이지 범위를 입력하십시오 (예: 1-5, 8 또는 전체 분할 all):",
+                [KeyCmdSplitPdf] = "PDF 분할",
+                [KeySplitPdfTitle] = "PDF 분할 페이지 범위 입력",
+                [KeySplitPdfPrompt] = "페이지 범위를 입력하십시오 (예: 1-5, 8 또는 전체 분할 all):",
                 ["pdf_password_title"] = "PDF 비밀번호 입력",
                 ["pdf_password_prompt"] = "「{0}」 파일이 비밀번호로 보호되어 있습니다. 비밀번호를 입력하십시오:",
                 ["pdf_password_retry"] = "비밀번호가 잘못되었습니다. 다시 입력하십시오:「{0}」",

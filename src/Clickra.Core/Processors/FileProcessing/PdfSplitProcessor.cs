@@ -82,7 +82,7 @@ public class PdfSplitProcessor : SingleFileProcessorBase
                     if (targetPages.Count == 0) continue;
 
                     int progress = progressBase + 10 + (int)((s + 1) * 85.0 / segments.Length);
-                    onProgress?.Invoke(progress, totalProgressMax, $"正在提取區段 {s + 1}/{segments.Length} ({targetPages.First()}-{targetPages.Last()}頁)...");
+                    onProgress?.Invoke(progress, totalProgressMax, $"正在提取區段 {s + 1}/{segments.Length} ({targetPages[0]}-{targetPages[^1]}頁)...");
 
                     using var outDoc = new PdfDocument();
                     foreach (int pageNum in targetPages)
@@ -90,7 +90,7 @@ public class PdfSplitProcessor : SingleFileProcessorBase
                         outDoc.AddPage(inDoc.Pages[pageNum - 1]);
                     }
 
-                    string outPath = Path.Combine(baseDir, $"{baseFileName}_{targetPages.First()}-{targetPages.Last()}.pdf");
+                    string outPath = Path.Combine(baseDir, $"{baseFileName}_{targetPages[0]}-{targetPages[^1]}.pdf");
                     outDoc.Save(outPath);
                 }
             }
