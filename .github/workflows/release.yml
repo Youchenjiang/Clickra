@@ -23,7 +23,11 @@ jobs:
       id: release-trigger
       shell: bash
       run: |
-        if [[ "${{ github.ref }}" == refs/tags/v* ]]; then
+        # Release-only steps run only on a version-tag push. Requiring
+        # event_name == 'push' also excludes manual workflow_dispatch runs
+        # that select a v-tag ref, so a human-triggered run can never ship
+        # to the store or create a release.
+        if [[ "${{ github.event_name }}" == "push" && "${{ github.ref }}" == refs/tags/v* ]]; then
           echo "is_release=true" >> "$GITHUB_OUTPUT"
         else
           echo "is_release=false" >> "$GITHUB_OUTPUT"
