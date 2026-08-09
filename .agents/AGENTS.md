@@ -66,7 +66,9 @@ Before sending a commit request, the submission payload must meet these hard con
 
 ### A. Atomic Commits Rule
 * Never mix code changes (e.g., script logic updates, error handling improvements) with static asset changes (e.g., migrating screenshots, updating localization markdown docs) in a single commit.
-* Even within a single file, changes serving different purposes must be committed separately (e.g., stage only the relevant hunks with `git add -p`). Never bundle unrelated purposes into one commit merely because they touch the same file.
+* Even within a single file, changes with different purposes must be committed separately (e.g., stage only the relevant hunks with `git add -p`). Never bundle unrelated purposes into one commit merely because they touch the same file. Apply the "revert test" to decide: if one change can be reverted without breaking the other, they are separate purposes and require separate commits. Contrasting examples:
+  * Logic fix (changes behavior) vs. comment cleanup (no behavior change): separate commits.
+  * Formatting/reordering vs. functional change: separate commits.
 * Group changes logically and perform sequential commits for atomic history tracking.
 
 ### B. Commit Message Formatting

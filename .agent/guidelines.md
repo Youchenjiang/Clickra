@@ -11,7 +11,7 @@
 
 ## 1. Git 完整性
 - **禁止 Nuke-and-Pave**：嚴禁刪除舊檔案再新增同名檔案。改名必須使用 `git mv`。
-- **原子化提交**：一個 Commit 只做一件事。嚴禁將多個不相干的邏輯修改（如版號同步、工作流修改、規則更新）合併到同一個 Commit 中。必須分批暫存（例如 `git add <特定檔案>`）並分開提交，確保每個 Commit 異動內容最小化且語意單一。
+- **原子化提交**：一個 Commit 只做一件事。嚴禁將多個不相干的邏輯修改（如版號同步、工作流修改、規則更新）合併到同一個 Commit 中。必須分批暫存（例如 `git add <特定檔案>`；同一檔案內用 `git add -p` 只暫存相關 hunks）並分開提交，確保每個 Commit 異動內容最小化且語意單一。判斷標準用「revert 測試」：若兩個變更可以各自獨立 revert 而不影響對方（例如邏輯修正 vs 註解清理、格式調整 vs 功能變更），就必須分開提交。
 - **Commit 訊息格式規範**：每個 Commit 訊息必須符合本地 Commit Hook 與 CI policy 的格式限制：
   1. Header 必須遵循 `type(scope): subject` 或 `type: subject`，長度必須小於等於 72 字元，不可用句號結尾；若使用 scope，必須使用 allowlist 中有意義的範圍。
   2. 允許的 `type` 包括：`feat`, `fix`, `refactor`, `docs`, `test`, `chore`, `style`, `perf`, `security`。
