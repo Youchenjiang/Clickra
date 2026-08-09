@@ -10,6 +10,8 @@ using PdfSharp.Drawing;
 using PdfSharp.Fonts;
 using PdfSharp.Pdf;
 
+namespace Clickra.Core.Tests;
+
 static partial class TestSuite
 {
     private const string DfKaiSbFontName = "DFKai-SB";

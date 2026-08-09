@@ -1,6 +1,8 @@
 using Clickra.Core.Processors;
 using Clickra.Core.Models;
 
+namespace Clickra.Core.Tests;
+
 static partial class TestSuite
 {
     public static void RegisterFigureRegressionTests(TestRunner runner)

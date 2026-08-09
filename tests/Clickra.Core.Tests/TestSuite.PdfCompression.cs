@@ -1,5 +1,3 @@
-#pragma warning disable S3903 // TestSuite is intentionally in the global namespace to match top-level Program.cs partial class usage
-
 using Clickra.Core.Processors;
 using PdfSharp.Drawing;
 using PdfSharp.Pdf;
@@ -10,6 +8,8 @@ using System.IO;
 using System.Linq;
 using System.Text;
 using System.Threading;
+
+namespace Clickra.Core.Tests;
 
 static partial class TestSuite
 {

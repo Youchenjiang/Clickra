@@ -57,6 +57,17 @@ namespace Clickra.Core
             processor.Process(new List<string> { inputPath }, outputPath, options, onProgress, cancellationToken);
         }
 
+        /// <summary>
+        /// Splits a PDF into segment documents. <paramref name="pages"/> accepts a
+        /// range spec like "1-5, 8", multiple "1-3; 5; 7-9" segments, or "all" to
+        /// write one output file per page.
+        /// </summary>
+        /// <param name="inputPath">Path of the input PDF.</param>
+        /// <param name="outputPath">Path of the single-segment output; a base name for
+        /// multi-segment and split-each outputs.</param>
+        /// <param name="pages">Page-range specification ("all" splits every page).</param>
+        /// <param name="onProgress">Optional progress callback receiving (progress, max, message).</param>
+        /// <param name="cancellationToken">Cancellation token to abort the split.</param>
         public static void SplitPdf(string inputPath, string outputPath, string pages = "all", Action<int, int, string>? onProgress = null, CancellationToken cancellationToken = default)
         {
             var processor = new PdfSplitProcessor();
@@ -64,6 +75,8 @@ namespace Clickra.Core
             processor.Process(new List<string> { inputPath }, outputPath, options, onProgress, cancellationToken);
         }
 
+        /// <summary>Returns the page count of the PDF at <paramref name="inputPath"/>, or 0 when it cannot be opened.</summary>
+        /// <param name="inputPath">Path of the PDF file.</param>
         public static int GetPdfPageCount(string inputPath) => PdfSplitProcessor.GetPageCount(inputPath);
     }
 }

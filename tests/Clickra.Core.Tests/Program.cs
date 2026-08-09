@@ -1,3 +1,5 @@
+using Clickra.Core.Tests;
+
 var runner = new TestRunner();
 
 TestSuite.RegisterPentestGrayPromptTests(runner);

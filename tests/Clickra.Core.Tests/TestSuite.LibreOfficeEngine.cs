@@ -2,6 +2,8 @@ using System.Text;
 using Clickra.Core;
 using Clickra.Core.Processors;
 
+namespace Clickra.Core.Tests;
+
 static partial class TestSuite
 {
     public static void RegisterLibreOfficeEngineTests(TestRunner runner)
