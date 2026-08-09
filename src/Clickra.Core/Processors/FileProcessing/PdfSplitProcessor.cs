@@ -52,37 +52,38 @@ public class PdfSplitProcessor : SingleFileProcessorBase
         string baseDir = Path.GetDirectoryName(targetOutputPath) ?? ClickraStorage.GetOutputDir(fullPath);
         string baseFileName = Path.GetFileNameWithoutExtension(fullPath);
 
+        var ctx = new SplitContext(progressBase, totalProgressMax, onProgress, cancellationToken);
         bool splitEach = pagesSpec.Equals("all", StringComparison.OrdinalIgnoreCase) ||
                         pagesSpec.Equals("each", StringComparison.OrdinalIgnoreCase);
 
         if (splitEach)
         {
-            SplitEachPage(inDoc, pageCount, baseDir, baseFileName, progressBase, totalProgressMax, onProgress, cancellationToken);
+            SplitEachPage(inDoc, pageCount, baseDir, baseFileName, ctx);
         }
         else
         {
             string[] segments = pagesSpec.Split(';', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
             if (segments.Length > 1)
             {
-                ExtractSegments(inDoc, segments, baseDir, baseFileName, progressBase, totalProgressMax, onProgress, cancellationToken);
+                ExtractSegments(inDoc, segments, baseDir, baseFileName, ctx);
             }
             else
             {
-                ExtractSingleRange(inDoc, pagesSpec, targetOutputPath, progressBase, totalProgressMax, onProgress, cancellationToken);
+                ExtractSingleRange(inDoc, pagesSpec, targetOutputPath, ctx);
             }
         }
 
-        onProgress?.Invoke(progressBase + 100, totalProgressMax, "PDF 分割完成！");
+        ctx.OnProgress?.Invoke(ctx.ProgressBase + 100, ctx.TotalProgressMax, "PDF 分割完成！");
     }
 
     /// <summary>Writes one output file per page ("all" / "each" spec).</summary>
-    private static void SplitEachPage(PdfDocument inDoc, int pageCount, string baseDir, string baseFileName, int progressBase, int totalProgressMax, Action<int, int, string>? onProgress, CancellationToken cancellationToken)
+    private static void SplitEachPage(PdfDocument inDoc, int pageCount, string baseDir, string baseFileName, SplitContext ctx)
     {
         for (int i = 0; i < pageCount; i++)
         {
-            cancellationToken.ThrowIfCancellationRequested();
-            int progress = progressBase + 10 + (int)((i + 1) * 85.0 / pageCount);
-            onProgress?.Invoke(progress, totalProgressMax, $"正在拆分第 {i + 1}/{pageCount} 頁...");
+            ctx.CancellationToken.ThrowIfCancellationRequested();
+            int progress = ctx.ProgressBase + 10 + (int)((i + 1) * 85.0 / pageCount);
+            ctx.OnProgress?.Invoke(progress, ctx.TotalProgressMax, $"正在拆分第 {i + 1}/{pageCount} 頁...");
 
             using var outDoc = new PdfDocument();
             outDoc.AddPage(inDoc.Pages[i]);
@@ -92,17 +93,17 @@ public class PdfSplitProcessor : SingleFileProcessorBase
     }
 
     /// <summary>Writes one output file per ";"-separated segment of the spec.</summary>
-    private static void ExtractSegments(PdfDocument inDoc, string[] segments, string baseDir, string baseFileName, int progressBase, int totalProgressMax, Action<int, int, string>? onProgress, CancellationToken cancellationToken)
+    private static void ExtractSegments(PdfDocument inDoc, string[] segments, string baseDir, string baseFileName, SplitContext ctx)
     {
         for (int s = 0; s < segments.Length; s++)
         {
-            cancellationToken.ThrowIfCancellationRequested();
+            ctx.CancellationToken.ThrowIfCancellationRequested();
             string segSpec = segments[s];
             List<int> targetPages = ParsePageRange(segSpec, inDoc.PageCount);
             if (targetPages.Count == 0) continue;
 
-            int progress = progressBase + 10 + (int)((s + 1) * 85.0 / segments.Length);
-            onProgress?.Invoke(progress, totalProgressMax, $"正在提取區段 {s + 1}/{segments.Length} ({targetPages[0]}-{targetPages[^1]}頁)...");
+            int progress = ctx.ProgressBase + 10 + (int)((s + 1) * 85.0 / segments.Length);
+            ctx.OnProgress?.Invoke(progress, ctx.TotalProgressMax, $"正在提取區段 {s + 1}/{segments.Length} ({targetPages[0]}-{targetPages[^1]}頁)...");
 
             using var outDoc = new PdfDocument();
             foreach (int pageNum in targetPages)
@@ -116,7 +117,7 @@ public class PdfSplitProcessor : SingleFileProcessorBase
     }
 
     /// <summary>Writes a single output document for one page-range spec.</summary>
-    private static void ExtractSingleRange(PdfDocument inDoc, string pagesSpec, string targetOutputPath, int progressBase, int totalProgressMax, Action<int, int, string>? onProgress, CancellationToken cancellationToken)
+    private static void ExtractSingleRange(PdfDocument inDoc, string pagesSpec, string targetOutputPath, SplitContext ctx)
     {
         List<int> targetPages = ParsePageRange(pagesSpec, inDoc.PageCount);
         if (targetPages.Count == 0)
@@ -124,18 +125,22 @@ public class PdfSplitProcessor : SingleFileProcessorBase
             throw new ArgumentException($"指定的分頁範圍「{pagesSpec}」無效或超出頁數範圍 (1-{inDoc.PageCount})。");
         }
 
-        onProgress?.Invoke(progressBase + 40, totalProgressMax, $"正在提取指定頁面 ({targetPages.Count} 頁)...");
+        ctx.OnProgress?.Invoke(ctx.ProgressBase + 40, ctx.TotalProgressMax, $"正在提取指定頁面 ({targetPages.Count} 頁)...");
 
         using var outDoc = new PdfDocument();
         foreach (int pageNum in targetPages)
         {
-            cancellationToken.ThrowIfCancellationRequested();
+            ctx.CancellationToken.ThrowIfCancellationRequested();
             outDoc.AddPage(inDoc.Pages[pageNum - 1]);
         }
 
-        onProgress?.Invoke(progressBase + 90, totalProgressMax, "正在儲存檔案...");
+        ctx.OnProgress?.Invoke(ctx.ProgressBase + 90, ctx.TotalProgressMax, "正在儲存檔案...");
         outDoc.Save(targetOutputPath);
     }
+
+    /// <summary>Bundles the progress-reporting and cancellation plumbing shared by the
+    /// segment-extraction helpers.</summary>
+    private readonly record struct SplitContext(int ProgressBase, int TotalProgressMax, Action<int, int, string>? OnProgress, CancellationToken CancellationToken);
 
     /// <summary>
     /// Returns the number of pages in the PDF at <paramref name="fullPath"/>, or 0 when the

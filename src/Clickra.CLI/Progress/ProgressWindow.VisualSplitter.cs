@@ -852,16 +852,16 @@ public partial class ProgressWindow
         using var shadowBg = new SolidBrush(Color.FromArgb(20, 20, 20));
         g.FillRectangle(shadowBg, badgeX + 2 * s, cardAreaY + 2 * s, cardAreaW, cardAreaH);
 
-        PaintPreviewPage(g, s, tipFont, labelFont, currentPageNum, badgeX, cardAreaY, cardAreaW, cardAreaH);
+        PaintPreviewPage(g, s, tipFont, labelFont, currentPageNum, new RectangleF(badgeX, cardAreaY, cardAreaW, cardAreaH));
     }
 
     /// <summary>Draws the selected page thumbnail (or a paper placeholder) inside the preview box.</summary>
-    private void PaintPreviewPage(Graphics g, float s, Font tipFont, Font labelFont, int currentPageNum, float badgeX, float cardAreaY, float cardAreaW, float cardAreaH)
+    private void PaintPreviewPage(Graphics g, float s, Font tipFont, Font labelFont, int currentPageNum, RectangleF area)
     {
         if (_visualSplitPageThumbnails.TryGetValue(currentPageNum, out var pageBmp) && pageBmp != null)
         {
-            float fitW = cardAreaW;
-            float fitH = cardAreaH;
+            float fitW = area.Width;
+            float fitH = area.Height;
             float imgAspect = (float)pageBmp.Width / pageBmp.Height;
             float boxAspect = fitW / fitH;
 
@@ -869,8 +869,8 @@ public partial class ProgressWindow
             if (imgAspect > boxAspect) { drawW = fitW; drawH = fitW / imgAspect; }
             else { drawH = fitH; drawW = fitH * imgAspect; }
 
-            float drawX = badgeX + (fitW - drawW) / 2f;
-            float drawY = cardAreaY + (fitH - drawH) / 2f;
+            float drawX = area.X + (fitW - drawW) / 2f;
+            float drawY = area.Y + (fitH - drawH) / 2f;
 
             using var paperWhite = new SolidBrush(Color.White);
             g.FillRectangle(paperWhite, drawX, drawY, drawW, drawH);
@@ -894,11 +894,11 @@ public partial class ProgressWindow
         {
             using var paperBg = new SolidBrush(Color.FromArgb(245, 247, 250));
             using var paperPen = new Pen(Color.FromArgb(170, 180, 195));
-            g.FillRectangle(paperBg, badgeX, cardAreaY, cardAreaW, cardAreaH);
-            g.DrawRectangle(paperPen, badgeX, cardAreaY, cardAreaW, cardAreaH);
+            g.FillRectangle(paperBg, area.X, area.Y, area.Width, area.Height);
+            g.DrawRectangle(paperPen, area.X, area.Y, area.Width, area.Height);
 
             using var pageNumBrush = new SolidBrush(Color.FromArgb(0, 100, 210));
-            g.DrawString($"P.{currentPageNum}", labelFont, pageNumBrush, badgeX + 10 * s, cardAreaY + 10 * s);
+            g.DrawString($"P.{currentPageNum}", labelFont, pageNumBrush, area.X + 10 * s, area.Y + 10 * s);
         }
     }
 
