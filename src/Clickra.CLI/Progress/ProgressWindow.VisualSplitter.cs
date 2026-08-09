@@ -603,6 +603,7 @@ public partial class ProgressWindow
                 break;
 
             default:
+                // Unreachable: the mode is normalized to 0-2 before the switch.
                 break;
         }
     }
