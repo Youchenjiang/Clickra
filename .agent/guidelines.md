@@ -11,13 +11,14 @@
 
 ## 1. Git 完整性
 - **禁止 Nuke-and-Pave**：嚴禁刪除舊檔案再新增同名檔案。改名必須使用 `git mv`。
-- **原子化提交**：一個 Commit 只做一件事。嚴禁將多個不相干的邏輯修改（如版號同步、工作流修改、規則更新）合併到同一個 Commit 中。必須分批暫存（例如 `git add <特定檔案>`）並分開提交，確保每個 Commit 異動內容最小化且語意單一。
+- **原子化提交**：一個 Commit 只做一件事。嚴禁將多個不相干的邏輯修改（如版號同步、工作流修改、規則更新）合併到同一個 Commit 中。必須分批暫存（例如 `git add <特定檔案>`；同一檔案內用 `git add -p` 只暫存相關 hunks）並分開提交，確保每個 Commit 異動內容最小化且語意單一。判斷標準用「revert 測試」：若兩個變更可以各自獨立 revert 而不影響對方（例如邏輯修正 vs 註解清理、格式調整 vs 功能變更），就必須分開提交。
 - **Commit 訊息格式規範**：每個 Commit 訊息必須符合本地 Commit Hook 與 CI policy 的格式限制：
   1. Header 必須遵循 `type(scope): subject` 或 `type: subject`，長度必須小於等於 72 字元，不可用句號結尾；若使用 scope，必須使用 allowlist 中有意義的範圍。
   2. 允許的 `type` 包括：`feat`, `fix`, `refactor`, `docs`, `test`, `chore`, `style`, `perf`, `security`。
   3. 允許的 `scope` 包括：`cli`, `core`, `shell`, `msix`, `docs`, `ci`, `deps`, `store`, `agent`。
   4. Body 必須與 Header 留空一行，且必須是以英文寫成的編號列表並以 `1. ` 開頭（例如：`1. Add helper method.`）。
-- **版本號同步**：每次修改功能或 UI 後，必須執行 `powershell -File scripts/bump_version.ps1 -Build` 增加 Patch（第 3 碼，且第四碼 Revision 保持為 0）、同步版本號（含 README、README.zh-TW.md、CHANGELOG.md 與 MSIX AppxManifest.xml）並自動重新編譯產物，以確保 Windows 11 選單快取刷新且內外版本一致，同時符合微軟商店的版號規範。
+- **版本號同步**：每次修改功能或 UI 後，必須執行 `powershell -File scripts/bump_version.ps1 -Build` 增加 Patch（第 3 碼，且第四碼 Revision 保持為 0）、同步版本號（含 README、README.zh-TW.md、CHANGELOG.md 與 MSIX AppxManifest.xml）並自動重新編譯產物，以確保 Windows 11 選單快取刷新且內外版本一致，同時符合微軟商店的版號規範。**但升版動作本身必須先取得使用者明確同意（見下方「禁止自行升版」），同意後才可執行。**
+- **禁止自行升版**：嚴禁在未經使用者明確同意前自行升版。任何版號變更——包括執行 `scripts/bump_version.ps1`、修改 `AppxManifest.xml` / `Directory.Build.props` / `CHANGELOG.md` / README 中的版本號、建立版本 Tag（`vX.Y.Z.0`）或提交商店發布——都必須先在對話中向使用者說明升版理由與影響範圍，取得明確同意後方可執行。若使用者未表態，一律視為不同意，不得擅自升版。
 - **Commit 審核**：在執行 Commit 之前，必須執行 `git status` 確認沒有暫存 test 垃圾。
 - **PR 描述格式**：PR body 與 commit body 是兩套不同規則；必須使用 `.github/pull_request_template.md`，依變更檔案數量選擇 Summary/Key Changes/Verification 結構，不得只貼 commit 的編號列表。
 - **Tag 規範與發布順序**：在正式對外發布或商店提交時，必須嚴格遵守以下 Git Flow 順序：
@@ -33,6 +34,7 @@
 - **語系優先 (Localization)**：選單標題、描述等字串嚴禁硬編碼 (Hardcode) 於 C# 中。必須統一修改 `packaging/msix/Strings/` 下的 `.resw` 檔案。
 - **動態路徑**：在 Shell Extension 中存取外部資源（如圖標、執行檔）時，必須使用 `ShellUtils` 獲取執行期路徑，嚴禁假設檔案位於 `%LocalAppData%`。
 - **本地驗證**：修改 CLI 邏輯後，必須手動執行 `./Clickra.exe [command]` 並檢查輸出檔案。修改封裝邏輯後，須執行 `scripts/build_msix.ps1` 檢查 `Layout` 結構。
+- **品質問題立即記錄**：發現品質/效能問題（靜態分析如圈複雜度、誤報、指標異常）但本次不改程式碼時，必須立即記錄到 `docs/ROADMAP.md` 的技術債清單並隨當次改動一起提交。條目須載明受影響檔案/方法、目前複雜度或發現細節、日期與延後原因，讓下次開分支可直接接手；工具誤報（如對 `volatile` 或執行期變動欄位建議 `readonly`）如實標記，不得為遷就工具而改寫可用程式碼。
 
 ## 3. 命名規範
 - **方法命名**：遵循 verb-noun 模式，如 `GetLogicalWidth`、`ProcessFile`、`ValidateExtensions`。

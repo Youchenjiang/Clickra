@@ -66,6 +66,9 @@ Before sending a commit request, the submission payload must meet these hard con
 
 ### A. Atomic Commits Rule
 * Never mix code changes (e.g., script logic updates, error handling improvements) with static asset changes (e.g., migrating screenshots, updating localization markdown docs) in a single commit.
+* Even within a single file, changes with different purposes must be committed separately (e.g., stage only the relevant hunks with `git add -p`). Never bundle unrelated purposes into one commit merely because they touch the same file. Apply the "revert test" to decide: if one change can be reverted without breaking the other, they are separate purposes and require separate commits. Contrasting examples:
+  * Logic fix (changes behavior) vs. comment cleanup (no behavior change): separate commits.
+  * Formatting/reordering vs. functional change: separate commits.
 * Group changes logically and perform sequential commits for atomic history tracking.
 
 ### B. Commit Message Formatting
@@ -105,3 +108,11 @@ file count:
 `Summary` or `Overview` explains what changed and why; it is not a list of file
 names. `Key Changes` groups technical details by area. `Verification` uses a
 `[x]`/`[ ]` checklist and must state what was and was not tested.
+
+### D. No Autonomous Version Bumps
+* Never bump the product version on your own. Any version change — running `scripts/bump_version.ps1`, editing version numbers in `AppxManifest.xml` / `Directory.Build.props` / `CHANGELOG.md` / README files, creating release tags (`vX.Y.Z.0`), or submitting a store release — must first be explained to the user in the conversation and explicitly approved before it is executed. If the user has not given approval, treat it as "not approved" and do not bump the version.
+
+### E. Record Quality Findings Immediately
+* When a quality or performance issue is discovered (static-analysis findings such as cyclomatic complexity, false positives, or metric anomalies) but fixing or refactoring it is out of scope for the current change, record it immediately in the technical-debt list in `docs/ROADMAP.md` and commit it with the current change. Do not leave the finding unrecorded.
+* The entry must name the affected file/method, the current complexity or finding details, the date, and the reason it is deferred, so the next branch can pick it up without re-deriving the context.
+* If the finding is a tool false positive (e.g. a `readonly` suggestion on a `volatile` or mutated field), record it as such and do not change working code to silence it.
