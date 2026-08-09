@@ -16,39 +16,67 @@ namespace Clickra.UI;
 
 public partial class ProgressWindow
 {
+    /// <summary>True while the visual splitter is active (the password prompt is suppressed).</summary>
     private volatile bool _isPromptingVisualSplitter = false;
+    /// <summary>Total page count of the document being split.</summary>
     private int _visualSplitTotalPages = 1;
-    private int _visualSplitMode = 0; // 0 = 自訂分段, 1 = 全拆單頁, 2 = 固定頁數
+    /// <summary>Split mode: 0 = custom segments, 1 = split every page, 2 = fixed pages per segment.</summary>
+    private int _visualSplitMode = 0;
+    /// <summary>Pages per segment in fixed-page mode.</summary>
     private int _visualSplitNPages = 5;
+    /// <summary>The segments currently displayed/used for the split.</summary>
     private List<(int Start, int End)> _visualSplitSegments = new List<(int, int)>();
+    /// <summary>User-defined segments (editable in custom mode).</summary>
     private readonly List<(int Start, int End)> _visualSplitCustomSegments = new List<(int, int)>();
+    /// <summary>Index of the segment currently selected in the list.</summary>
     private int _visualSplitSelectedSegmentIndex = 0;
+    /// <summary>Index of the page being previewed inside the selected segment.</summary>
     private int _visualSplitCurrentPreviewPageIndex = 0;
+    /// <summary>True while the zoom lightbox is open.</summary>
     private bool _visualSplitIsZoomed = false;
 
+    /// <summary>Cached page thumbnails keyed by 1-based page number.</summary>
     private readonly Dictionary<int, Bitmap> _visualSplitPageThumbnails = new Dictionary<int, Bitmap>();
 
+    /// <summary>Path of the PDF being split.</summary>
     private string _visualSplitFilePath = "";
+    /// <summary>High-resolution render currently shown in the zoom lightbox, or null.</summary>
     private Bitmap? _visualSplitZoomBmp = null;
+    /// <summary>Page number the current zoom render belongs to (-1 when none).</summary>
     private int _visualSplitZoomPageNum = -1;
+    /// <summary>Monotonic sequence used to discard stale background renders.</summary>
     private int _visualSplitZoomRenderSeq = 0;
 
     // Zoom lightbox view state (factor 1.0 = fit; pan in logical px).
+    /// <summary>Zoom factor of the lightbox (1.0 = fit, clamped to 8x).</summary>
     private float _visualSplitZoomFactor = 1f;
+    /// <summary>Horizontal pan offset of the zoomed page (logical px).</summary>
     private float _visualSplitZoomPanX = 0f;
+    /// <summary>Vertical pan offset of the zoomed page (logical px).</summary>
     private float _visualSplitZoomPanY = 0f;
+    /// <summary>True while the user is dragging to pan the zoomed page.</summary>
     private bool _visualSplitZoomDragging = false;
+    /// <summary>Last mouse X captured during a pan drag.</summary>
     private int _visualSplitZoomDragLastX = 0;
+    /// <summary>Last mouse Y captured during a pan drag.</summary>
     private int _visualSplitZoomDragLastY = 0;
 
     // Zoom lightbox geometry (logical px, matches the paint layout).
+    /// <summary>Modal left edge in logical px.</summary>
     private const float ZoomModalLeft = 24f;
+    /// <summary>Modal top edge in logical px.</summary>
     private const float ZoomModalTop = 20f;
+    /// <summary>Modal width in logical px.</summary>
     private const float ZoomModalW = 472f;
+    /// <summary>Modal height in logical px.</summary>
     private const float ZoomModalH = 380f;
+    /// <summary>Image area left edge in logical px.</summary>
     private const float ZoomImgLeft = 40f;
+    /// <summary>Image area top edge in logical px.</summary>
     private const float ZoomImgTop = 58f;
+    /// <summary>Image area width in logical px.</summary>
     private const float ZoomImgW = 440f;
+    /// <summary>Image area height in logical px.</summary>
     private const float ZoomImgH = 328f;
 
     /// <summary>

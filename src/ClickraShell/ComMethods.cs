@@ -26,6 +26,8 @@ namespace ClickraShell
         private static readonly string[] MenuKeys = { "Menu_Ppt2Pdf", "Menu_Word2Pdf", "Menu_Excel2Pdf", "Menu_MergePdf", "Menu_CompressPdf", "Menu_Img2Pdf", "Menu_ImgMerge", "Menu_ImgStitch", "Menu_TranslatePdf", "Menu_DecryptPdf", "Menu_SplitPdf" };
         private static readonly string[] SubArgs = { "ppt2pdf", "word2pdf", "excel2pdf", "merge-pdf", "compress-pdf", "img2pdf", "img-merge", "img-stitch", "translate-pdf", "decrypt-pdf", "split-pdf" };
 
+        /// <summary>Allocates a COM object with the given vtable and type, then performs a
+        /// QueryInterface and releases the temporary reference.</summary>
         internal static unsafe int CreateObject(IntPtr vt, Guid* riid, IntPtr* ppv, ComObjectType type, int data = -1)
         {
             IntPtr instance = Marshal.AllocCoTaskMem(Marshal.SizeOf<UniversalObject>());
@@ -36,6 +38,8 @@ namespace ClickraShell
             return hr;
         }
 
+        /// <summary>Implements IUnknown QueryInterface for the primary or selection vtable,
+        /// returning E_NOINTERFACE for unsupported interfaces.</summary>
         internal static unsafe int QIInternal(IntPtr basePtr, Guid* riid, IntPtr* ppv)
         {
             var p = (UniversalObject*)basePtr;
@@ -54,23 +58,36 @@ namespace ClickraShell
             return -2147467262; // E_NOINTERFACE
         }
 
+        /// <summary>QueryInterface entry point for the primary vtable.</summary>
         [UnmanagedCallersOnly(CallConvs = new[] { typeof(CallConvStdcall) })] public static unsafe int PrimaryQI(IntPtr _this, Guid* riid, IntPtr* ppv) => QIInternal(_this, riid, ppv);
+        /// <summary>QueryInterface entry point for the IObjectWithSelection vtable.</summary>
         [UnmanagedCallersOnly(CallConvs = new[] { typeof(CallConvStdcall) })] public static unsafe int SelectionQI(IntPtr _this, Guid* riid, IntPtr* ppv) => QIInternal(_this - IntPtr.Size, riid, ppv);
 
+        /// <summary>AddRef entry point for the primary vtable.</summary>
         [UnmanagedCallersOnly(CallConvs = new[] { typeof(CallConvStdcall) })] public static unsafe uint PrimaryAddRef(IntPtr _this) => AddRefInternal(_this);
+        /// <summary>AddRef entry point for the IObjectWithSelection vtable.</summary>
         [UnmanagedCallersOnly(CallConvs = new[] { typeof(CallConvStdcall) })] public static unsafe uint SelectionAddRef(IntPtr _this) => AddRefInternal(_this - IntPtr.Size);
+        /// <summary>Atomically increments the object reference count.</summary>
         internal static unsafe uint AddRefInternal(IntPtr basePtr) => (uint)Interlocked.Increment(ref ((UniversalObject*)basePtr)->RefCount);
 
+        /// <summary>Release entry point for the primary vtable.</summary>
         [UnmanagedCallersOnly(CallConvs = new[] { typeof(CallConvStdcall) })] public static unsafe uint PrimaryRelease(IntPtr _this) => ReleaseInternal(_this);
+        /// <summary>Release entry point for the IObjectWithSelection vtable.</summary>
         [UnmanagedCallersOnly(CallConvs = new[] { typeof(CallConvStdcall) })] public static unsafe uint SelectionRelease(IntPtr _this) => ReleaseInternal(_this - IntPtr.Size);
+        /// <summary>Decrements the reference count and frees the object when it reaches zero.</summary>
         internal static unsafe uint ReleaseInternal(IntPtr basePtr) { uint c = (uint)Interlocked.Decrement(ref ((UniversalObject*)basePtr)->RefCount); if (c == 0) Marshal.FreeCoTaskMem(basePtr); return c; }
 
+        /// <summary>IClassFactory.CreateInstance — creates a new command object.</summary>
         [UnmanagedCallersOnly(CallConvs = new[] { typeof(CallConvStdcall) })] public static unsafe int CreateInstance(IntPtr _this, IntPtr outer, Guid* riid, IntPtr* ppv) => CreateObject(Exporter.GetCommandVt(), riid, ppv, ComObjectType.Command);
+        /// <summary>IClassFactory.LockServer — no-op for this in-process factory.</summary>
         [UnmanagedCallersOnly(CallConvs = new[] { typeof(CallConvStdcall) })] public static int LockServer(IntPtr _this, int fLock) => 0;
 
+        /// <summary>IObjectWithSelection.SetSelection — stores the selected shell items.</summary>
         [UnmanagedCallersOnly(CallConvs = new[] { typeof(CallConvStdcall) })] public static unsafe int SetSelection(IntPtr _this, IntPtr psi) { ((UniversalObject*)(_this - IntPtr.Size))->ShellItems = psi; return 0; }
+        /// <summary>IObjectWithSelection.GetSelection — returns the stored shell items.</summary>
         [UnmanagedCallersOnly(CallConvs = new[] { typeof(CallConvStdcall) })] public static unsafe int GetSelection(IntPtr _this, Guid* riid, IntPtr* ppv) { var items = ((UniversalObject*)(_this - IntPtr.Size))->ShellItems; if (items == IntPtr.Zero) return -2147467259; *ppv = items; return 0; }
 
+        /// <summary>IExplorerCommand.GetTitle — localized menu title for the command index.</summary>
         [UnmanagedCallersOnly(CallConvs = new[] { typeof(CallConvStdcall) })]
         public static unsafe int GetTitle(IntPtr _this, IntPtr psi, IntPtr* ppsz)
         {
@@ -79,6 +96,7 @@ namespace ClickraShell
             *ppsz = Marshal.StringToCoTaskMemUni(t); return 0;
         }
 
+        /// <summary>IExplorerCommand.GetIcon — icon path for the root command, E_NOTIMPL otherwise.</summary>
         [UnmanagedCallersOnly(CallConvs = new[] { typeof(CallConvStdcall) })]
         public static unsafe int GetIcon(IntPtr _this, IntPtr psi, IntPtr* ppsz)
         {
@@ -91,9 +109,12 @@ namespace ClickraShell
             return -2147467263; // E_NOTIMPL
         }
 
+        /// <summary>IExplorerCommand.GetToolTip — no tooltip for menu commands.</summary>
         [UnmanagedCallersOnly(CallConvs = new[] { typeof(CallConvStdcall) })] public static unsafe int GetToolTip(IntPtr _this, IntPtr psi, IntPtr* p) { *p = IntPtr.Zero; return 0; }
+        /// <summary>IExplorerCommand.GetCanonicalName — returns a null GUID.</summary>
         [UnmanagedCallersOnly(CallConvs = new[] { typeof(CallConvStdcall) })] public static unsafe int GetCanonicalName(IntPtr _this, Guid* p) { *p = Guid.Empty; return 0; }
 
+        /// <summary>Returns whether the file extension is supported by the command index.</summary>
         private static bool IsSupported(string path, int idx)
         {
             string ext = Path.GetExtension(path).ToLowerInvariant();
@@ -111,6 +132,8 @@ namespace ClickraShell
             };
         }
 
+        /// <summary>IExplorerCommand.GetState — enables the command when the selection contains
+        /// a supported file (and the multi-file commands receive at least two files).</summary>
         [UnmanagedCallersOnly(CallConvs = new[] { typeof(CallConvStdcall) })]
         public static unsafe int GetState(IntPtr _this, IntPtr psi, int slow, uint* p)
         {
@@ -135,6 +158,7 @@ namespace ClickraShell
             return 0;
         }
 
+        /// <summary>Extracts the selected file paths from an IShellItemArray by walking its vtable.</summary>
         private static unsafe List<string> GetFiles(IntPtr psi)
         {
             var files = new List<string>();
@@ -165,8 +189,10 @@ namespace ClickraShell
             return files;
         }
 
+        /// <summary>IExplorerCommand.GetFlags — canonical name only for the root command.</summary>
         [UnmanagedCallersOnly(CallConvs = new[] { typeof(CallConvStdcall) })] public static unsafe int GetFlags(IntPtr _this, uint* p) { *p = (uint)(((UniversalObject*)_this)->Data == -1 ? 1 : 0); return 0; }
 
+        /// <summary>IExplorerCommand.EnumSubCommands — enumerates the menu commands under the root.</summary>
         [UnmanagedCallersOnly(CallConvs = new[] { typeof(CallConvStdcall) })]
         public static unsafe int EnumSubCommands(IntPtr _this, IntPtr* ppEnum)
         {
@@ -176,6 +202,8 @@ namespace ClickraShell
             return CreateObject(Exporter.GetEnumVt(), &iid, ppEnum, ComObjectType.Enum, 0);
         }
 
+        /// <summary>IExplorerCommand.Invoke — launches Clickra.exe with the sub-command and the
+        /// selected files as arguments.</summary>
         [UnmanagedCallersOnly(CallConvs = new[] { typeof(CallConvStdcall) })]
         public static unsafe int Invoke(IntPtr _this, IntPtr psi, IntPtr pbc)
         {
@@ -192,6 +220,7 @@ namespace ClickraShell
             return 0;
         }
 
+        /// <summary>IEnumExplorerCommand.Next — creates the next batch of command objects.</summary>
         [UnmanagedCallersOnly(CallConvs = new[] { typeof(CallConvStdcall) })]
         public static unsafe int EnumNext(IntPtr _this, uint celt, IntPtr* rgelt, uint* pcelt)
         {
@@ -204,8 +233,11 @@ namespace ClickraShell
             if (pcelt != null) *pcelt = f;
             return f == celt ? 0 : 1;
         }
+        /// <summary>IEnumExplorerCommand.Skip — advances the enumeration cursor.</summary>
         [UnmanagedCallersOnly(CallConvs = new[] { typeof(CallConvStdcall) })] public static unsafe int EnumSkip(IntPtr _this, uint c) { ((UniversalObject*)_this)->Data += (int)c; return 0; }
+        /// <summary>IEnumExplorerCommand.Reset — rewinds the enumeration cursor.</summary>
         [UnmanagedCallersOnly(CallConvs = new[] { typeof(CallConvStdcall) })] public static unsafe int EnumReset(IntPtr _this) { ((UniversalObject*)_this)->Data = 0; return 0; }
+        /// <summary>IEnumExplorerCommand.Clone — not implemented for this enumerator.</summary>
         [UnmanagedCallersOnly(CallConvs = new[] { typeof(CallConvStdcall) })] public static unsafe int EnumClone(IntPtr _this, IntPtr* ppv) { *ppv = IntPtr.Zero; return -2147467263; }
     }
 }

@@ -11,6 +11,7 @@ namespace Clickra.UI
 {
     public static partial class DashboardWindow
     {
+        /// <summary>Routes left-button clicks to the active dashboard tab's hit regions.</summary>
         static void HandleLButtonDown(IntPtr hwnd, IntPtr w, IntPtr l)
         {
             int rawX = (short)(l.ToInt64() & 0xFFFF);
@@ -744,12 +745,14 @@ namespace Clickra.UI
             }
         }
 
+        /// <summary>Formats a byte count as a human-readable size string.</summary>
         static string FormatBytes(long bytes)
         {
             const double mb = 1024d * 1024d;
             return $"{bytes / mb:F0} MB";
         }
 
+        /// <summary>Applies a PDF compression level selection and refreshes the settings tab.</summary>
         static void ApplyPdfCompressLevel(IntPtr hwnd, int level)
         {
             var (dpi, quality) = level switch
@@ -765,12 +768,14 @@ namespace Clickra.UI
             InvalidateRect(hwnd, IntPtr.Zero, false);
         }
 
+        /// <summary>Posts an action to run on the dashboard's UI thread.</summary>
         static void PostDashboardAction(IntPtr hwnd, Action action)
         {
             _uiActions.Enqueue(action);
             PostMessageW(hwnd, WM_USER_DASHBOARD_ACTION, IntPtr.Zero, IntPtr.Zero);
         }
 
+        /// <summary>Updates the LibreOffice setup progress/status from a background thread.</summary>
         static void SetLibreOfficeSetupStatus(int progress, string status)
         {
             lock (_libreOfficeDownloadLock)

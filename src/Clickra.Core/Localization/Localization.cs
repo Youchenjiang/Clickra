@@ -738,6 +738,8 @@ namespace Clickra.Core
             }
         };
 
+        /// <summary>Maps a language code (or the current UI culture when empty) to one of the
+        /// supported language keys, defaulting to Traditional Chinese.</summary>
         public static string NormalizeLanguageCode(string langCode)
         {
             if (string.IsNullOrEmpty(langCode))
@@ -754,6 +756,8 @@ namespace Clickra.Core
             return LangTw;
         }
 
+        /// <summary>Translates a resource key into the target language, falling back to
+        /// Traditional Chinese and finally to the key itself.</summary>
         public static string T(string key, string langCode)
         {
             string targetKey = NormalizeLanguageCode(langCode);

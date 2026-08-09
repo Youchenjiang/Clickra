@@ -19,6 +19,8 @@ namespace Clickra.UI
     /// </summary>
     public partial class ProgressWindow
     {
+        /// <summary>Paints the whole window: title, status, progress bar, error/success states,
+        /// the password prompt or the visual splitter, then blits the back buffer to the DC.</summary>
         private void Paint(IntPtr hdc)
         {
             if (_bufferBmp == null || _bufferGraphics == null) return;
@@ -277,6 +279,8 @@ namespace Clickra.UI
             }
         }
 
+        /// <summary>Truncates a progress message mid-string, keeping the leading prefix and a
+        /// trailing progress suffix intact while shortening the file name.</summary>
         private static string TruncateProgressMessage(Graphics g, string msg, Font font, float maxLogicalWidth, float scale)
         {
             if (string.IsNullOrEmpty(msg)) return "";

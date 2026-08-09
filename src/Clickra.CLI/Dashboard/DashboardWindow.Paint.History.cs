@@ -13,6 +13,7 @@ namespace Clickra.UI
 {
     public static partial class DashboardWindow
     {
+        /// <summary>Draws the history tab: header, filter chips and the scrollable entry list.</summary>
         static void DrawHistoryTab(Graphics g, float logW, float logH, float contentX)
         {
             float s = _dpiScale;
@@ -375,6 +376,7 @@ namespace Clickra.UI
             }
         }
 
+        /// <summary>Draws a colored command tag at the given position and returns its width.</summary>
         static float DrawCommandTag(Graphics g, string command, float x, float y)
         {
             float s = _dpiScale;

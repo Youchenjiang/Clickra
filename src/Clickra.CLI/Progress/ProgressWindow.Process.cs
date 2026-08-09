@@ -11,6 +11,9 @@ namespace Clickra.UI
 {
     public partial class ProgressWindow
     {
+        /// <summary>Runs the command on the background thread, driving the progress callback,
+        /// password prompts and the visual splitter, then closes the window and records the
+        /// outcome in the persistent history.</summary>
         private void RunProcessing(IntPtr hwnd)
         {
             string startTimeStr = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
@@ -339,6 +342,7 @@ namespace Clickra.UI
             }
         }
 
+        /// <summary>Returns the expected output path(s) for a completed command, used for history logging.</summary>
         private static string GetOutputPath(string cmd, List<string> inputFiles, string outputDir)
         {
             switch (cmd)
@@ -365,6 +369,7 @@ namespace Clickra.UI
             }
         }
 
+        /// <summary>Shows a Windows toast notification on success, unless notifications are disabled.</summary>
         private void ShowToastNotification(string command, int count)
         {
             if (ClickraStorage.GetSetting("Notification") == "false")

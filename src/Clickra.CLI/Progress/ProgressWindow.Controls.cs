@@ -19,6 +19,8 @@ namespace Clickra.UI
     /// </summary>
     public partial class ProgressWindow
     {
+        /// <summary>Static window procedure: resolves the ProgressWindow instance from the
+        /// window's user data, routes messages to it and frees the GCHandle on destroy.</summary>
         static IntPtr WndProc(IntPtr hwnd, uint msg, IntPtr w, IntPtr l)
         {
             ProgressWindow? window = null;
@@ -73,6 +75,8 @@ namespace Clickra.UI
             return result;
         }
 
+        /// <summary>Subclassed EDIT window procedure: maps Enter to OK and Escape to Cancel
+        /// for the password prompt.</summary>
         [System.Runtime.InteropServices.UnmanagedCallersOnly(CallConvs = new[] { typeof(System.Runtime.CompilerServices.CallConvStdcall) })]
         private static unsafe IntPtr EditSubclassProc(IntPtr hwnd, uint msg, IntPtr w, IntPtr l)
         {
@@ -100,6 +104,9 @@ namespace Clickra.UI
             return oldProc != IntPtr.Zero ? CallWindowProc(oldProc, hwnd, msg, w, l) : DefWindowProcW(hwnd, msg, w, l);
         }
 
+        /// <summary>Instance window procedure handling the progress window messages:
+        /// painting, timers, password prompt, tray icon, scrollbar, and the visual splitter's
+        /// keyboard, mouse and zoom interactions.</summary>
         private unsafe IntPtr InstanceWndProc(IntPtr hwnd, uint msg, IntPtr w, IntPtr l)
         {
             switch (msg)

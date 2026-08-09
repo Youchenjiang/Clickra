@@ -17,6 +17,7 @@ namespace Clickra.UI
         private const string CmdCompressPdf = "compress-pdf";
         private const string CmdImgMerge = "img-merge";
         private const string FilterPdfFiles = "PDF Files (*.pdf)\0*.pdf\0All Files (*.*)\0*.*\0\0";
+        /// <summary>Shows the Win32 file-open dialog and returns the selected paths.</summary>
         static List<string> OpenFiles(IntPtr hwndOwner, string filter, string title)
         {
             var files = new List<string>();
@@ -67,6 +68,8 @@ namespace Clickra.UI
             return files;
         }
 
+        /// <summary>Validates that the selected files are usable for the command, returning
+        /// the translated error message when not.</summary>
         static bool ValidateConvertFiles(string cmd, List<string> files, out string errorMsg)
         {
             errorMsg = "";
@@ -108,11 +111,13 @@ namespace Clickra.UI
             return true;
         }
 
+        /// <summary>Maps a command key to its shell context-menu index (-1 when unknown).</summary>
         static int GetCommandIndex(string cmd)
         {
             return Array.IndexOf(ConvertCommands, cmd);
         }
 
+        /// <summary>Queues a conversion action for files dropped onto the dashboard window.</summary>
         static void HandleDroppedFiles(List<string> files)
         {
             var extensions = files.Select(f => Path.GetExtension(f).ToLowerInvariant()).Distinct().ToList();

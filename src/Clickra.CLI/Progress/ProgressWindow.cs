@@ -77,6 +77,7 @@ namespace Clickra.UI
         private Pen? _borderPen;
         private SolidBrush? _bgBrush;
 
+        /// <summary>Rebuilds the cached GDI+ fonts and pens at the current DPI scale and UI language.</summary>
         private void RecreateScaledFonts()
         {
             try { _titleFont?.Dispose(); _titleFont = null; } catch { }
@@ -98,12 +99,16 @@ namespace Clickra.UI
             _pctFont = new Font(fontName, 13.33f * s, FontStyle.Bold, GraphicsUnit.Pixel);
         }
 
+        /// <summary>Creates and runs a progress window for the given command and files,
+        /// blocking until the window closes.</summary>
         public static void Show(string command, List<string> files)
         {
             var window = new ProgressWindow();
             window.ShowInstance(command, files);
         }
 
+        /// <summary>Registers the window class, creates the progress window and runs the
+        /// message loop while the processing runs on a background thread.</summary>
         private void ShowInstance(string command, List<string> files)
         {
             if (files == null || files.Count == 0)
@@ -220,6 +225,7 @@ namespace Clickra.UI
 
 
 
+        /// <summary>Destroys child controls, disposes GDI+ resources and removes the tray icon.</summary>
         private void CleanupResources()
         {
             if (_hwndEdit != IntPtr.Zero) { DestroyWindow(_hwndEdit); _hwndEdit = IntPtr.Zero; }

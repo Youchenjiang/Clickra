@@ -25,6 +25,8 @@ namespace Clickra
         [DllImport("user32.dll")]
         static extern bool SetProcessDpiAwarenessContext(IntPtr value);
 
+        /// <summary>CLI entry point: attaches the parent console, parses arguments and
+        /// dispatches the requested command, falling back to the dashboard UI.</summary>
         [STAThread]
         static void Main(string[] args)
         {
@@ -79,6 +81,7 @@ namespace Clickra
             }
         }
 
+        /// <summary>Builds the default PDF compression options from saved settings.</summary>
         private static Dictionary<string, object> BuildDefaultPdfOptions()
         {
             string dpiStr = ClickraStorage.GetSetting("PdfCompressTargetDpi");
@@ -102,6 +105,7 @@ namespace Clickra
             };
         }
 
+        /// <summary>Compresses each PDF in quiet mode, printing progress to the console.</summary>
         private static void HandleCompressPdfQuiet(List<string> files, string outputDir, bool hasCliLevel, string compressionLevel)
         {
             Dictionary<string, object>? pdfOptions = hasCliLevel ? null : BuildDefaultPdfOptions();
@@ -122,6 +126,8 @@ namespace Clickra
             }
         }
 
+        /// <summary>Translates each PDF in quiet mode, saving render debug logs and a health
+        /// report per file; sets the exit code when any file fails.</summary>
         private static void HandleTranslatePdfQuiet(List<string> files, string outputDir)
         {
             string targetLang = ClickraStorage.GetSetting("TranslateTargetLang");
@@ -173,6 +179,8 @@ namespace Clickra
             if (translationFailed) Environment.ExitCode = 1;
         }
 
+        /// <summary>Handles the version, visual-splitter and --deploy pseudo-commands;
+        /// returns true when one of them consumed the invocation.</summary>
         private static bool HandleVersionOrDeploy(string[] args)
         {
             if (args.Length == 0 || args[0] == "-v" || args[0] == "--version")
@@ -214,6 +222,8 @@ namespace Clickra
             return false;
         }
 
+        /// <summary>Parses and removes global CLI options (quiet mode, output directory,
+        /// compression level and page range) from the argument list.</summary>
         private static void ParseOptions(List<string> argList, out bool quiet, out string? outputDirOverride, out bool hasCliLevel, out string compressionLevel, out string pagesOption)
         {
             bool quietByDefault = ClickraStorage.GetSetting("QuietMode").Equals("true", StringComparison.OrdinalIgnoreCase);
@@ -228,6 +238,7 @@ namespace Clickra
             pagesOption = ExtractOptionValue(argList, "--pages", "-p") ?? "all";
         }
 
+        /// <summary>Prints the CLI usage text to the console.</summary>
         private static void PrintUsage()
         {
             Console.WriteLine("Usage: Clickra <command> [options] <file...>");
@@ -238,6 +249,8 @@ namespace Clickra
             Console.WriteLine("Deployment: Clickra --deploy <target_dir>");
         }
 
+        /// <summary>Routes a command to the office, PDF or image dispatcher and reports
+        /// unknown commands.</summary>
         private static void DispatchCommandSwitch(
             string command,
             List<string> files,
@@ -254,6 +267,7 @@ namespace Clickra
             Console.WriteLine($"[錯誤] 未知指令: {command}");
         }
 
+        /// <summary>Handles office-conversion commands (ppt2pdf, word2pdf, excel2pdf).</summary>
         private static bool DispatchOfficeCommand(string command, List<string> files, bool quiet)
         {
             switch (command)
@@ -278,6 +292,7 @@ namespace Clickra
             }
         }
 
+        /// <summary>Handles PDF commands (merge, compress, split, translate, decrypt).</summary>
         private static bool DispatchPdfCommand(
             string command,
             List<string> files,
@@ -333,6 +348,7 @@ namespace Clickra
             }
         }
 
+        /// <summary>Handles image commands (img2pdf, img-merge, img-stitch).</summary>
         private static bool DispatchImageCommand(string command, List<string> files, bool quiet, string outputDir)
         {
             switch (command)
@@ -360,6 +376,7 @@ namespace Clickra
             }
         }
 
+        /// <summary>Converts each image to its own PDF in quiet mode.</summary>
         private static void HandleImg2PdfQuiet(List<string> files, string outputDir)
         {
             for (int i = 0; i < files.Count; i++)
@@ -372,6 +389,8 @@ namespace Clickra
             Console.WriteLine("[Progress] 轉換完成，正在儲存 PDF...");
         }
 
+        /// <summary>Removes the password from each PDF in quiet mode, translating
+        /// password errors into a localized message.</summary>
         private static void HandleDecryptPdfQuiet(List<string> files, string outputDir)
         {
             for (int i = 0; i < files.Count; i++)
