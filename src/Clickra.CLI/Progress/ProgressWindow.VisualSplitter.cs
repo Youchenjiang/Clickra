@@ -919,7 +919,7 @@ public partial class ProgressWindow
             using var closeBg = new SolidBrush(Color.FromArgb(180, 45, 40));
             g.FillRectangle(closeBg, closeX, closeY, closeW, closeH);
             using var closeTextBrush = new SolidBrush(Color.White);
-            g.DrawString("X 關閉", _tipFont, closeTextBrush, closeX + 12 * s, closeY + 3 * s);
+            g.DrawString("X 關閉", _tipFont!, closeTextBrush, closeX + 12 * s, closeY + 3 * s);
 
             float imgAreaX = modalX + 16 * s;
             float imgAreaY = modalY + 38 * s;
@@ -967,16 +967,16 @@ public partial class ProgressWindow
             using var zoomBtnText = new SolidBrush(Color.FromArgb(220, 220, 220));
             g.FillRectangle(zoomBtnBg, zoomBtnInX, zoomBtnY, zoomBtnW, zoomBtnH);
             g.DrawRectangle(zoomBtnPen, zoomBtnInX, zoomBtnY, zoomBtnW, zoomBtnH);
-            g.DrawString("−", _tipFont, zoomBtnText, zoomBtnInX + 9 * s, zoomBtnY + 2 * s);
+            g.DrawString("−", _tipFont!, zoomBtnText, zoomBtnInX + 9 * s, zoomBtnY + 2 * s);
             g.FillRectangle(zoomBtnBg, zoomBtnOutX, zoomBtnY, zoomBtnW, zoomBtnH);
             g.DrawRectangle(zoomBtnPen, zoomBtnOutX, zoomBtnY, zoomBtnW, zoomBtnH);
-            g.DrawString("＋", _tipFont, zoomBtnText, zoomBtnOutX + 9 * s, zoomBtnY + 2 * s);
+            g.DrawString("＋", _tipFont!, zoomBtnText, zoomBtnOutX + 9 * s, zoomBtnY + 2 * s);
             g.FillRectangle(zoomBtnBg, zoomBtnFitX, zoomBtnY, zoomBtnFitW, zoomBtnH);
             g.DrawRectangle(zoomBtnPen, zoomBtnFitX, zoomBtnY, zoomBtnFitW, zoomBtnH);
-            g.DrawString("適配", _tipFont, zoomBtnText, zoomBtnFitX + 8 * s, zoomBtnY + 2 * s);
+            g.DrawString("適配", _tipFont!, zoomBtnText, zoomBtnFitX + 8 * s, zoomBtnY + 2 * s);
 
             using var zoomHintBrush = new SolidBrush(Color.FromArgb(140, 140, 140));
-            g.DrawString("滾輪縮放 · 拖曳平移 · 空白鍵/Enter 切換", _tipFont, zoomHintBrush, modalX + 16 * s, zoomBtnY + 3 * s);
+            g.DrawString("滾輪縮放 · 拖曳平移 · 空白鍵/Enter 切換", _tipFont!, zoomHintBrush, modalX + 16 * s, zoomBtnY + 3 * s);
         }
     }
 
