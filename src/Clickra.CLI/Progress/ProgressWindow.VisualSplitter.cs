@@ -696,17 +696,20 @@ public partial class ProgressWindow
         g.FillRectangle(nBtnBg, minusX, nSelY, minusW, nSelH);
         g.DrawRectangle(nBtnPen, minusX, nSelY, minusW, nSelH);
         using var nTextBrush = new SolidBrush(Color.FromArgb(220, 220, 220));
-        g.DrawString("-", _msgFont ?? _tipFont!, nTextBrush, minusX + 7 * s, nSelY + 1 * s);
 
         float nLabelX = minusX + minusW + 6 * s;
         using var nLabelBrush = new SolidBrush(Color.FromArgb(200, 200, 200));
-        g.DrawString($"每 {_visualSplitNPages} 頁", _msgFont ?? _tipFont!, nLabelBrush, nLabelX, nSelY + 1 * s);
 
         float plusX = nLabelX + 70 * s;
         float plusW = 24 * s;
         g.FillRectangle(nBtnBg, plusX, nSelY, plusW, nSelH);
         g.DrawRectangle(nBtnPen, plusX, nSelY, plusW, nSelH);
-        g.DrawString("+", _msgFont ?? _tipFont!, nTextBrush, plusX + 7 * s, nSelY + 1 * s);
+
+        Font? uiFont = _msgFont ?? _tipFont;
+        if (uiFont == null) return 22 * s;
+        g.DrawString("-", uiFont, nTextBrush, minusX + 7 * s, nSelY + 1 * s);
+        g.DrawString($"每 {_visualSplitNPages} 頁", uiFont, nLabelBrush, nLabelX, nSelY + 1 * s);
+        g.DrawString("+", uiFont, nTextBrush, plusX + 7 * s, nSelY + 1 * s);
         return 22 * s;
     }
 
@@ -950,6 +953,10 @@ public partial class ProgressWindow
     {
         if (!_visualSplitIsZoomed) return;
 
+        Font? tipFont = _tipFont;
+        Font? uiFont = _msgFont ?? tipFont;
+        if (tipFont == null || uiFont == null) return;
+
         int currentPg = 1;
         if (_visualSplitSelectedSegmentIndex >= 0 && _visualSplitSelectedSegmentIndex < _visualSplitSegments.Count)
         {
@@ -972,7 +979,7 @@ public partial class ProgressWindow
 
         using var titleBrush = new SolidBrush(Color.FromArgb(230, 240, 255));
         int zoomPct = (int)(_visualSplitZoomFactor * 100);
-        g.DrawString($"頁面 P.{currentPg} 放大預覽 · {zoomPct}%", _msgFont ?? _tipFont!, titleBrush, modalX + 16 * s, modalY + 12 * s);
+        g.DrawString($"頁面 P.{currentPg} 放大預覽 · {zoomPct}%", uiFont, titleBrush, modalX + 16 * s, modalY + 12 * s);
 
         float closeW = 70 * s;
         float closeH = 22 * s;
@@ -981,7 +988,7 @@ public partial class ProgressWindow
         using var closeBg = new SolidBrush(Color.FromArgb(180, 45, 40));
         g.FillRectangle(closeBg, closeX, closeY, closeW, closeH);
         using var closeTextBrush = new SolidBrush(Color.White);
-        g.DrawString("X 關閉", _tipFont!, closeTextBrush, closeX + 12 * s, closeY + 3 * s);
+        g.DrawString("X 關閉", tipFont, closeTextBrush, closeX + 12 * s, closeY + 3 * s);
 
         float imgAreaX = modalX + 16 * s;
         float imgAreaY = modalY + 38 * s;
@@ -1028,17 +1035,13 @@ public partial class ProgressWindow
         using var zoomBtnPen = new Pen(Color.FromArgb(80, 80, 80));
         using var zoomBtnText = new SolidBrush(Color.FromArgb(220, 220, 220));
         g.FillRectangle(zoomBtnBg, zoomBtnInX, zoomBtnY, zoomBtnW, zoomBtnH);
-        g.DrawRectangle(zoomBtnPen, zoomBtnInX, zoomBtnY, zoomBtnW, zoomBtnH);
-        g.DrawString("−", _tipFont!, zoomBtnText, zoomBtnInX + 9 * s, zoomBtnY + 2 * s);
+        g.DrawRectangle(zoomBtnPen, zoomBtnInX, zoomBtnY, zoomBtnW, zoomBtnH);            g.DrawString("−", tipFont, zoomBtnText, zoomBtnInX + 9 * s, zoomBtnY + 2 * s);
         g.FillRectangle(zoomBtnBg, zoomBtnOutX, zoomBtnY, zoomBtnW, zoomBtnH);
-        g.DrawRectangle(zoomBtnPen, zoomBtnOutX, zoomBtnY, zoomBtnW, zoomBtnH);
-        g.DrawString("＋", _tipFont!, zoomBtnText, zoomBtnOutX + 9 * s, zoomBtnY + 2 * s);
+        g.DrawRectangle(zoomBtnPen, zoomBtnOutX, zoomBtnY, zoomBtnW, zoomBtnH);            g.DrawString("＋", tipFont, zoomBtnText, zoomBtnOutX + 9 * s, zoomBtnY + 2 * s);
         g.FillRectangle(zoomBtnBg, zoomBtnFitX, zoomBtnY, zoomBtnFitW, zoomBtnH);
-        g.DrawRectangle(zoomBtnPen, zoomBtnFitX, zoomBtnY, zoomBtnFitW, zoomBtnH);
-        g.DrawString("適配", _tipFont!, zoomBtnText, zoomBtnFitX + 8 * s, zoomBtnY + 2 * s);
+        g.DrawRectangle(zoomBtnPen, zoomBtnFitX, zoomBtnY, zoomBtnFitW, zoomBtnH);            g.DrawString("適配", tipFont, zoomBtnText, zoomBtnFitX + 8 * s, zoomBtnY + 2 * s);
 
-        using var zoomHintBrush = new SolidBrush(Color.FromArgb(140, 140, 140));
-        g.DrawString("滾輪縮放 · 拖曳平移 · 空白鍵/Enter 切換", _tipFont!, zoomHintBrush, modalX + 16 * s, zoomBtnY + 3 * s);
+        using var zoomHintBrush = new SolidBrush(Color.FromArgb(140, 140, 140));            g.DrawString("滾輪縮放 · 拖曳平移 · 空白鍵/Enter 切換", tipFont, zoomHintBrush, modalX + 16 * s, zoomBtnY + 3 * s);
     }
 
     /// <summary>Resizes the window between the compact password-prompt height and the

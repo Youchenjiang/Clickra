@@ -115,8 +115,7 @@
     - **升級測試框架**：後續規劃將自建的 `TestRunner` 升級為業界標準的單元測試框架（如 xUnit 或 NUnit），以利於在 CI 流程中整合覆蓋率分析。
 - [ ] **品質閘門誤報與基線觀察 (2026/08/08 記錄, Static Analysis Triage)**：
     - **CS-R1137 readonly 誤報 ×3**：`_isPromptingVisualSplitter`（volatile 欄位不得宣告 readonly）、`_visualSplitZoomDragLastX/Y`（拖曳期間持續變動）——DeepSource 誤判，需在儀表板標 ignore，不得為此改程式碼。
-    - **SonarCloud S8970 null-forgiving 誤報 ×9 (2026/08/09)**：`VisualSplitter.cs` 中 `_tipFont!`（含 `_msgFont ?? _tipFont!`）的 `!` 有意義——專案 `<Nullable>enable</Nullable>`、`_tipFont` 為 `Font?`，這些呼叫點不在 null guard 內；實證：暫時移除全部 9 個 `!` 後全量重建報出 10 個 CS8604 編譯警告。SonarCloud 宣稱「nullable warnings are disabled here」與實際不符，保留 `!`、不為此改程式碼。
-    - **S8970 已修 1 處 (2026/08/09)**：`P.{currentPageNum}` 那處的 `!` 在 `if (_tipFont != null)` guard 內確實多餘，已移除（全量重建 0 警告驗證）。
+    - **SonarCloud S8970 null-forgiving ×10 已全數修正 (2026/08/09)**：`VisualSplitter.cs` 的 `_tipFont!`/`_msgFont ?? _tipFont!` 並非無法處理——它們是缺 null guard 的症狀。正確修法：n-selector 用 `Font? uiFont = _msgFont ?? _tipFont; if (uiFont == null) return;`、zoom overlay 用 `tipFont`/`uiFont` 兩個非 null local + 前置 guard。全量重建 0 警告 0 錯誤，`!` 在該檔歸零。教訓：遇到「直接刪除會報編譯警告」的 analyzer finding，正確做法是重構出可證明的非 null 路徑，而非保留運算子並標記誤判。
     - **Documentation Coverage 基線移動觀察**：DeepSource 的覆蓋率參考值會隨變更集同步移動（三次 run：0.4→9.7、3.1→12.4、10.7→20，差值恆為 9.3），單靠補文件追不上；新程式碼仍應持續補 XML 文件，閘門門檻需在儀表板設定合理值。
 - [ ] **開發期測試後門與倉庫整潔清理 (Dev Scaffolding Cleanup)**：
     - [x] **移除視覺分割測試後門**：移除 `ClickraCli.cs` 中硬編碼的測試 PDF 路徑與依執行檔名稱（`TestVisualSplitter` / `ClickraVisualSplitter`）自動進入視覺分割模式的開發測試邏輯，正式版本應僅由 CLI 旗標與參數驅動。
