@@ -121,6 +121,12 @@ static partial class TestSuite
             }
         });
 
+        RegisterSplitFailureTests(runner);
+    }
+
+    /// <summary>Registers the split tests that assert loud failures on invalid input.</summary>
+    private static void RegisterSplitFailureTests(TestRunner runner)
+    {
         runner.Run("PdfSplitProcessor multi-segment split fails loudly on out-of-range segment", () =>
         {
             string inputPath = Path.Combine(Path.GetTempPath(), $"clickra-split-invalid-{Guid.NewGuid():N}.pdf");
