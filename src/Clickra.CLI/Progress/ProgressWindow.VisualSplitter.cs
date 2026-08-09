@@ -601,6 +601,9 @@ public partial class ProgressWindow
                 }
                 _visualSplitSelectedSegmentIndex = _visualSplitSegments.Count > 0 ? 0 : -1;
                 break;
+
+            default:
+                break;
         }
     }
 
