@@ -17,7 +17,7 @@ namespace Clickra.UI;
 public partial class ProgressWindow
 {
     /// <summary>True while the visual splitter is active (the password prompt is suppressed).</summary>
-    private volatile bool _isPromptingVisualSplitter = false;
+    private volatile bool _isPromptingVisualSplitter = false; // skipcq: CS-R1137
     /// <summary>Total page count of the document being split.</summary>
     private int _visualSplitTotalPages = 1;
     /// <summary>Split mode: 0 = custom segments, 1 = split every page, 2 = fixed pages per segment.</summary>
@@ -57,9 +57,9 @@ public partial class ProgressWindow
     /// <summary>True while the user is dragging to pan the zoomed page.</summary>
     private bool _visualSplitZoomDragging = false;
     /// <summary>Last mouse X captured during a pan drag.</summary>
-    private int _visualSplitZoomDragLastX = 0;
+    private int _visualSplitZoomDragLastX = 0; // skipcq: CS-R1137
     /// <summary>Last mouse Y captured during a pan drag.</summary>
-    private int _visualSplitZoomDragLastY = 0;
+    private int _visualSplitZoomDragLastY = 0; // skipcq: CS-R1137
 
     // Zoom lightbox geometry (logical px, matches the paint layout).
     /// <summary>Modal left edge in logical px.</summary>
@@ -679,6 +679,7 @@ public partial class ProgressWindow
 
     /// <summary>Paints the entire splitter UI: mode bar, page-count selector, segment list,
     /// live page preview, bottom action buttons and the zoom lightbox overlay.</summary>
+    // skipcq: CS-R1140
     private void PaintVisualSplitter(Graphics g, float s)
     {
         if (_linePen != null)

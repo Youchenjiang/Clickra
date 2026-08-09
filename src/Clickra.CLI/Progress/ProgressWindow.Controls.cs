@@ -107,6 +107,7 @@ namespace Clickra.UI
         /// <summary>Instance window procedure handling the progress window messages:
         /// painting, timers, password prompt, tray icon, scrollbar, and the visual splitter's
         /// keyboard, mouse and zoom interactions.</summary>
+        // skipcq: CS-R1140
         private unsafe IntPtr InstanceWndProc(IntPtr hwnd, uint msg, IntPtr w, IntPtr l)
         {
             switch (msg)

@@ -14,6 +14,7 @@ namespace Clickra.UI
         /// <summary>Runs the command on the background thread, driving the progress callback,
         /// password prompts and the visual splitter, then closes the window and records the
         /// outcome in the persistent history.</summary>
+        // skipcq: CS-R1140
         private void RunProcessing(IntPtr hwnd)
         {
             string startTimeStr = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");

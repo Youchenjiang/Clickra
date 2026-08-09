@@ -21,6 +21,7 @@ namespace Clickra.UI
     {
         /// <summary>Paints the whole window: title, status, progress bar, error/success states,
         /// the password prompt or the visual splitter, then blits the back buffer to the DC.</summary>
+        // skipcq: CS-R1140
         private void Paint(IntPtr hdc)
         {
             if (_bufferBmp == null || _bufferGraphics == null) return;
