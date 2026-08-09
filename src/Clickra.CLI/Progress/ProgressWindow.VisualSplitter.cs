@@ -130,6 +130,7 @@ public partial class ProgressWindow
             try { kvp.Value.Dispose(); } catch { /* Ignored: disposal must not abort the cache rebuild. */ }
         _visualSplitPageThumbnails.Clear();
 
+        string fontName = GetThumbnailFontName();
         try
         {
             using var pigDoc = UglyToad.PdfPig.PdfDocument.Open(filePath);
@@ -139,7 +140,7 @@ public partial class ProgressWindow
                 try
                 {
                     var pigPage = pigDoc.GetPage(p);
-                    var pageBmp = BuildPageThumbnail(pigPage, 660);
+                    var pageBmp = BuildPageThumbnail(pigPage, 660, fontName);
                     if (pageBmp != null)
                         _visualSplitPageThumbnails[p] = pageBmp;
                 }
@@ -149,6 +150,14 @@ public partial class ProgressWindow
         catch { /* Ignored: an unreadable PDF must not crash the splitter window. */ }
     }
 
+    /// <summary>Returns the UI font family for the current language, so thumbnails render
+    /// CJK text with a font that actually contains the glyphs (Segoe UI does not).</summary>
+    private static string GetThumbnailFontName()
+    {
+        string lang = ClickraStorage.GetSetting("Language");
+        return LocalizedUiFontSelector.GetTextFontName(lang);
+    }
+
     /// <summary>
     /// Renders a thumbnail at the page's true aspect ratio by drawing embedded images at
     /// their page coordinates and overlaying vector text (with original colors). This fixes
@@ -156,7 +165,7 @@ public partial class ProgressWindow
     /// </summary>
     /// <param name="targetWidth">Pixel width of the rendered bitmap. Larger values give
     /// crisper results when the bitmap is downscaled onto the screen.</param>
-    private static Bitmap? BuildPageThumbnail(UglyToad.PdfPig.Content.Page page, int targetWidth)
+    private static Bitmap? BuildPageThumbnail(UglyToad.PdfPig.Content.Page page, int targetWidth, string fontName)
     {
         double pW = page.Width > 0 ? page.Width : 595;
         double pH = page.Height > 0 ? page.Height : 842;
@@ -177,7 +186,7 @@ public partial class ProgressWindow
         try
         {
             DrawPageImages(g, page, pW, pH, w, h);
-            DrawPageWords(g, page, pW, pH, w, h);
+            DrawPageWords(g, page, pW, pH, w, h, fontName);
         }
         catch { /* Ignored: unrenderable page content falls back to a blank sheet. */ }
 
@@ -240,7 +249,7 @@ public partial class ProgressWindow
 
     /// <summary>Overlays the page's vector words (up to 200, with original colors and
     /// positions) onto the thumbnail.</summary>
-    private static void DrawPageWords(Graphics g, UglyToad.PdfPig.Content.Page page, double pW, double pH, int w, int h)
+    private static void DrawPageWords(Graphics g, UglyToad.PdfPig.Content.Page page, double pW, double pH, int w, int h, string fontName)
     {
         var words = page.GetWords().ToList();
         int drawn = 0;
@@ -258,7 +267,7 @@ public partial class ProgressWindow
             float by = (float)((1.0 - rect.Top / pH) * h);
 
             float fontSize = Math.Max(3f, Math.Min(fh * 1.1f, 18f * w / 220f));
-            if (TryDrawWord(g, word.Text, ResolveWordColor(word), bx, by, fontSize))
+            if (TryDrawWord(g, word.Text, ResolveWordColor(word), bx, by, fontSize, fontName))
                 drawn++;
         }
     }
@@ -282,12 +291,12 @@ public partial class ProgressWindow
     }
 
     /// <summary>Draws one word at the given position; returns false when drawing failed.</summary>
-    private static bool TryDrawWord(Graphics g, string text, Color color, float x, float y, float fontSize)
+    private static bool TryDrawWord(Graphics g, string text, Color color, float x, float y, float fontSize, string fontName)
     {
         try
         {
             using var brush = new SolidBrush(color);
-            using var font = new Font("Segoe UI", fontSize, GraphicsUnit.Pixel);
+            using var font = new Font(fontName, fontSize, GraphicsUnit.Pixel);
             g.DrawString(text, font, brush, x, y);
             return true;
         }
@@ -311,6 +320,7 @@ public partial class ProgressWindow
 
         int seq = ++_visualSplitZoomRenderSeq;
         string filePath = _visualSplitFilePath;
+        string fontName = GetThumbnailFontName();
         // 2x the zoom lightbox image area (440 logical px), clamped to stay sane.
         int targetW = (int)Math.Clamp(880 * _dpiScale, 660, 1600);
 
@@ -321,7 +331,7 @@ public partial class ProgressWindow
                 using var pigDoc = UglyToad.PdfPig.PdfDocument.Open(filePath);
                 if (pageNum < 1 || pageNum > pigDoc.NumberOfPages) return;
                 var pigPage = pigDoc.GetPage(pageNum);
-                var bmp = BuildPageThumbnail(pigPage, targetW);
+                var bmp = BuildPageThumbnail(pigPage, targetW, fontName);
                 if (bmp == null) return;
 
                 lock (_stateLock)
