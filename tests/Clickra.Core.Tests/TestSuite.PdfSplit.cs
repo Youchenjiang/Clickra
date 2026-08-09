@@ -120,5 +120,70 @@ static partial class TestSuite
                 if (File.Exists(seg2Path)) File.Delete(seg2Path);
             }
         });
+
+        runner.Run("PdfSplitProcessor multi-segment split fails loudly on out-of-range segment", () =>
+        {
+            string inputPath = Path.Combine(Path.GetTempPath(), $"clickra-split-invalid-{Guid.NewGuid():N}.pdf");
+
+            try
+            {
+                using (var doc = new PdfDocument())
+                {
+                    doc.AddPage();
+                    doc.AddPage();
+                    doc.AddPage();
+                    doc.Save(inputPath);
+                }
+
+                bool threw = false;
+                try
+                {
+                    FileProcessor.SplitPdf(inputPath, "unused.pdf", "1-2; 99");
+                }
+                catch (ArgumentException)
+                {
+                    threw = true;
+                }
+
+                Assert.True(threw, "Expected an out-of-range multi-segment spec to throw instead of silently succeeding.");
+            }
+            finally
+            {
+                if (File.Exists(inputPath)) File.Delete(inputPath);
+            }
+        });
+
+        runner.Run("PdfSplitProcessor multi-segment split rejects colliding output names", () =>
+        {
+            string baseName = $"clickra-collide-{Guid.NewGuid():N}";
+            string inputPath = Path.Combine(Path.GetTempPath(), $"{baseName}.pdf");
+
+            try
+            {
+                using (var doc = new PdfDocument())
+                {
+                    doc.AddPage();
+                    doc.AddPage();
+                    doc.AddPage();
+                    doc.Save(inputPath);
+                }
+
+                bool threw = false;
+                try
+                {
+                    FileProcessor.SplitPdf(inputPath, "unused.pdf", "1-2; 1,2");
+                }
+                catch (ArgumentException)
+                {
+                    threw = true;
+                }
+
+                Assert.True(threw, "Expected colliding segment output names to throw instead of overwriting.");
+            }
+            finally
+            {
+                if (File.Exists(inputPath)) File.Delete(inputPath);
+            }
+        });
     }
 }

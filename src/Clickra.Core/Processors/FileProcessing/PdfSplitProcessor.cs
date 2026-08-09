@@ -92,15 +92,20 @@ public class PdfSplitProcessor : SingleFileProcessorBase
         }
     }
 
-    /// <summary>Writes one output file per ";"-separated segment of the spec.</summary>
+    /// <summary>Writes one output file per ";"-separated segment of the spec, failing loudly
+    /// when a segment resolves to no pages or two segments would produce the same output file.</summary>
     private static void ExtractSegments(PdfDocument inDoc, string[] segments, string baseDir, string baseFileName, SplitContext ctx)
     {
+        var usedOutPaths = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         for (int s = 0; s < segments.Length; s++)
         {
             ctx.CancellationToken.ThrowIfCancellationRequested();
             string segSpec = segments[s];
             List<int> targetPages = ParsePageRange(segSpec, inDoc.PageCount);
-            if (targetPages.Count == 0) continue;
+            if (targetPages.Count == 0)
+            {
+                throw new ArgumentException($"指定的分頁範圍「{segSpec}」無效或超出頁數範圍 (1-{inDoc.PageCount})。");
+            }
 
             int progress = ctx.ProgressBase + 10 + (int)((s + 1) * 85.0 / segments.Length);
             ctx.OnProgress?.Invoke(progress, ctx.TotalProgressMax, $"正在提取區段 {s + 1}/{segments.Length} ({targetPages[0]}-{targetPages[^1]}頁)...");
@@ -112,6 +117,10 @@ public class PdfSplitProcessor : SingleFileProcessorBase
             }
 
             string outPath = Path.Combine(baseDir, $"{baseFileName}_{targetPages[0]}-{targetPages[^1]}.pdf");
+            if (!usedOutPaths.Add(Path.GetFullPath(outPath)))
+            {
+                throw new ArgumentException($"區段「{segSpec}」與前面的區段產生相同輸出檔名，無法寫入。");
+            }
             outDoc.Save(outPath);
         }
     }
