@@ -44,57 +44,51 @@
 
 
 ## 2. 核心功能擴張 (Advanced Features)
-- **文件處理工具**
-    - [x] **[F2-1] Word to PDF**：Word 轉 PDF。已完成實作。
-    - [x] **[F2-2] Remove PDF Password**：PDF 去除密碼（v3.3.0）。
-        - 支援右鍵選單一鍵去除 PDF 密碼保護。
-    - [x] **[F2-3] Excel to PDF**：Excel 轉 PDF。整合微軟 Excel COM 與 LibreOffice 雙引擎轉檔支援。
-    - [x] **[F2-4] LibreOffice Offline Office Engine**：LibreOffice 離線 Office 轉檔引擎（v3.5.0）。
-        - 支援 Auto / Microsoft Office / LibreOffice 三種 Office 轉檔引擎模式，讓未安裝 Microsoft Office 的使用者可透過本機 LibreOffice 進行 Word、Excel 與 PowerPoint 轉 PDF。
-        - 內建 LibreOffice 下載 manifest、官方 MSI 下載、SHA256 驗證、背景安裝/移除、版本比對與重啟需求狀態處理。
-        - 轉檔頁改為依 Office、PDF、圖片三組呈現九個主要功能，降低使用者尋找功能時的掃描成本。
-    - [x] **[F2-5] PDF Shrinking & Compression**：PDF 壓縮與最佳化（v3.6.0）。
-        - 實作以內建 PDFsharp 與 GDI+ 為基礎的優化引擎，支援多級壓縮設定（極小、小檔、標準、高品質），自動精簡文字流、字型去重、大字型剝離與圖片高品質雙立方降解析，並在設定頁面實作 4 停靠點的橫向拉條 UI 與 Toggles。
-    - [x] **[F2-6] PDF Split**：PDF 分割。
-        - 支援依頁碼範圍（如 `1-5`, `8`）或全頁 (`all` / `each`) 將 PDF 拆分為獨立檔案，整合右鍵選單、原生 GDI+ 頁碼輸入框與 CLI 指令。
-    - [ ] **[F2-7] Advanced PDF Deep Compression**：PDF 進階極限壓縮。
-        - **階段一：結構可達性垃圾回收 (DFS GC)**：實作 Catalog 物件樹遍歷，徹底清理編輯殘留的孤立無用物件（Orphan Objects）；優化字型剝離機制，移除字型時保留度量屬性 (Font Metrics) 以防閱讀器渲染跑版。
-        - **階段二：二進位物件壓縮流 (Object Streams) [PDF 1.5+]**：引入物件壓縮流 (`ObjStm`) 與交叉引用流 (Cross-Reference Streams)，將大量散落的明文 Dictionary 與 Array 物件打包進行整體 `/FlateDecode` 壓縮。
-        - **階段三：影像進階編碼與 Zopfli 無損重壓縮**：針對 1-bit 黑白掃描文件引入 `/JBIG2Decode` 壓縮（可縮減至 1/10 體積且無 JPEG 雜訊）；針對無損 `/FlateDecode` 圖片使用 Zopfli 或 7-Zip Deflate 進行背景極限二次無損精簡。
-        - **階段四：字型子集跨頁面合併 (Font Subset Merging)**：解析 OpenType/TrueType 子集二進位，合併同名但字元不全的字型子集，徹底解決多個 PDF 合併後字型資源重複累積、檔案體積異常膨脹的痛點。
-    - [ ] **[F2-8] PDF to Image**：PDF 轉圖片。一鍵將 PDF 頁面匯出為高品質 JPG/PNG/TIFF，支援自訂 DPI 渲染率、色彩模式與透明背景處理。
-    - [ ] **[F2-9] PDF to PPTX**：PDF 轉 PPTX。並存/整合三種不同定位之模式，供使用者自選或依 PDF 類型自動推薦：
-        - **模式一：原樣保真 (Mode 1: Layout Preservation)**：將每頁 PDF 渲染為圖片並嵌入 PPTX。成功率高、相容性最高，且通常可避免版面跑位，但文字不可編輯；仍可能因 PDF 加密、檔案損毀、不支援字型或渲染失敗等情況而無法完成轉換（參考 `pdf2pptx`）。
-        - **模式二：可編輯優先 (Mode 2: Text Reconstruction)**：解析 PDF 文字框、圖片與版面結構重建為 PPTX 各元素，支援 OCR 與字型自訂（參考 `pdf2slides`）。在此模式下，引入 `opendataloader` 的空間網格定位，精確記錄文字大小、色彩與位置以還原排版。
-        - **模式三：AI 簡報修復 (Mode 3: AI Slide Repair)**：利用 Gemini AI 抹除頁面中的文字並修補背景，再藉由原始文字座標疊加可編輯文字層，使背景與文字完全分離（參考 `NBLM2PPTX`，即 *NotebookLM to PPTX* 的內部原型／概念驗證工具）。
-    - [ ] **[F2-10] Document De-identification & Redaction**：文件去識別化與隱私防護。
-        - 借鑑 `jt-doc-tools` 的隱私防護與實體擦除設計。支援在本地透過正則表達式配合校驗碼算法（中華民國身分證、統一編號、居留證、信用卡 Luhn 碼等）與 PDF 坐標定位，自動搜尋 PDF 內的敏感資料。
-        - 提供「遮蔽（Redact，以黑條塗黑並物理擦除底層字元串流）」與「遮罩（Mask，以同大小/字型大小/色彩的 * 號覆蓋重建）」雙重模式，確保敏感資料無法透過選取或複製還原。
-        - 提供選用的本地/雲端 AI（Gemini / Ollama）語意檢核，補強 Regex 無法辨識的人名、職稱與特定合約代號。
-        - **隱私安全設計**：敏感資料處理與主流程完全解耦，並在記憶體層級實作 Zeroing memory（安全清零），確保身分證字號等高度敏感資料在轉換完成後不留存於記憶體。
-    - [ ] **[F2-11] Intelligent Scanner Stitching**：智能多圖與掃描件拼合。
-        - 借鑑 `jt-doc-tools` 的證件/掃描拼合算法，支援拉入多個掃描影像，自動偵測有內容的區塊（連通域 BFS 與 Y/X 軸對齊合併），進行自適應裁剪。
-        - 實作「背景淨白」功能（僅針對亮度高且飽和度低之中性灰底色進行提亮與漂白，過濾折痕與掃描陰影；完整保留彩色印章、彩色照片及印刷色），並將裁剪出的正反面證件（身分證、健保卡）或數張單據發票一鍵拼合成單張 A4 頁面。
-- **進階 PDF 學術與 AI 工具 (Advanced PDF Academic & AI Utilities)**
-    - [x] **[F2-12] PDF Math Translate**：PDF 學術論文翻譯（v3.2.0）。純 C# 原生實現（相容 Native AOT）。自動識別與保護 LaTeX 公式，目前已實作免金鑰 Google 翻譯引擎，具備併發控制與速率限制。
-    - [x] **[F2-13] PDF Layout Fixes & High-concurrency Translation Optimization**：PDF 佈局修復與高併發翻譯優化（v3.2.1）。解決中文字型與數學字型 TTC 閃退，實作 table 頁面動態橫向合併門檻維持表格列對齊，並重構為 Google Mobile 批次翻譯。
-    - [ ] **[F2-14] Bilingual/Dual-language Translation**：PDF 雙語對照翻譯模式。
-        - 參考 `PDFMathTranslate` 的雙語對照實現，支援在輸出文件保留原文與譯文對照，提供更靈活的閱讀體驗；並擴充公式保護層（利用特殊字型如 Symbol / Cambria Math 自動辨識）。
-    - [ ] **[F2-15] PDF to Markdown/JSON with Hybrid Parser**：PDF 結構化數據與混合解析。
-        - **雙欄/多欄排版與 XY-Cut++ 閱讀順序**: 借鑑 `OpenDataLoader` 的雙欄與多欄解析算法，在本地 C# 解析中實現 XY-Cut 投影分割，確保學術論文與複雜文件在提取為 Markdown 時具備正確的閱讀順序。
-        - **混合解析模式 (Hybrid Local+AI Mode)**: 簡單或純文字頁面直接透過本地快速解析器（如 PDFium / PdfPig）處理，複雜表格、公式與圖表則路由至 Gemini API 等 Vision 端，實現 borderless 表格 HTML 重建與 AI 圖片描述。
-        - **解耦設計**：於核心（`src/Clickra.Core`）設計 `IDocParserStrategy` 等解析策略介面（Strategy Pattern），使不同解析引擎（PDFium、AI Vision、PdfPig）能夠靈活切換與擴充。
-- **圖片處理強化**
-    - [ ] **[F2-16] PNG/JPG Batch Conversion**：PNG/JPG 批量轉換。支援多種常用格式間的快速互轉。
-    - [ ] **[F2-17] High-quality Thumbnails**：高品質縮圖。支援批量調整圖片尺寸並保留細節。
-- **批次檔名與資料夾工具**
-    - [ ] **[F2-18] Folder & File Batch Renaming**：資料夾與檔案批次命名。支援自訂數字規則、提取建立日期、固定字串與自動編號。可以直接在資料夾右鍵選單對「整個資料夾及其內含檔案」進行操作。
-    - [ ] **[F2-19] Batch File Categorization**：批次檔案分類。支援依副檔名、日期區間或檔名關鍵字，將檔案自動分類並移入對應的資料夾。
-    - [ ] **[F2-20] Batch Create Empty Folders**：批量建立空資料夾。支援依指定命名規則與結構要求，一次建立多個指定結構的空資料夾。
-- **文字與編碼工具**
-    - [ ] **[F2-21] Text Encoding & Traditional/Simplified Conversion**：文字編碼與簡繁轉換。支援 Big5/GBK/UTF-8 互轉與原生 `LCMapStringEx` 簡繁字元互轉。
-- **右鍵選單功能擴充 (Context Menu Enhancements)**
-    - [ ] **[F2-22] Folder Right-click Direct Conversion**：資料夾右鍵直接轉換。支援直接在資料夾右鍵選單操作，一鍵將資料夾底下的所有支援檔案進行轉換（如 Word 批次轉 PDF、圖片轉 PDF 等），無須進入資料夾手動選取。
+- [x] **[F2-1] Word to PDF**：Word 轉 PDF。已完成實作。
+- [x] **[F2-2] Remove PDF Password**：PDF 去除密碼（v3.3.0）。
+    - 支援右鍵選單一鍵去除 PDF 密碼保護。
+- [x] **[F2-3] Excel to PDF**：Excel 轉 PDF。整合微軟 Excel COM 與 LibreOffice 雙引擎轉檔支援。
+- [x] **[F2-4] LibreOffice Offline Office Engine**：LibreOffice 離線 Office 轉檔引擎（v3.5.0）。
+    - 支援 Auto / Microsoft Office / LibreOffice 三種 Office 轉檔引擎模式，讓未安裝 Microsoft Office 的使用者可透過本機 LibreOffice 進行 Word、Excel 與 PowerPoint 轉 PDF。
+    - 內建 LibreOffice 下載 manifest、官方 MSI 下載、SHA256 驗證、背景安裝/移除、版本比對與重啟需求狀態處理。
+    - 轉檔頁改為依 Office、PDF、圖片三組呈現九個主要功能，降低使用者尋找功能時的掃描成本。
+- [x] **[F2-5] PDF Shrinking & Compression**：PDF 壓縮與最佳化（v3.6.0）。
+    - 實作以內建 PDFsharp 與 GDI+ 為基礎的優化引擎，支援多級壓縮設定（極小、小檔、標準、高品質），自動精簡文字流、字型去重、大字型剝離與圖片高品質雙立方降解析，並在設定頁面實作 4 停靠點的橫向拉條 UI 與 Toggles。
+- [x] **[F2-6] PDF Split**：PDF 分割。
+    - 支援依頁碼範圍（如 `1-5`, `8`）或全頁 (`all` / `each`) 將 PDF 拆分為獨立檔案，整合右鍵選單、原生 GDI+ 頁碼輸入框與 CLI 指令。
+- [ ] **[F2-7] Advanced PDF Deep Compression**：PDF 進階極限壓縮。
+    - **階段一：結構可達性垃圾回收 (DFS GC)**：實作 Catalog 物件樹遍歷，徹底清理編輯殘留的孤立無用物件（Orphan Objects）；優化字型剝離機制，移除字型時保留度量屬性 (Font Metrics) 以防閱讀器渲染跑版。
+    - **階段二：二進位物件壓縮流 (Object Streams) [PDF 1.5+]**：引入物件壓縮流 (`ObjStm`) 與交叉引用流 (Cross-Reference Streams)，將大量散落的明文 Dictionary 與 Array 物件打包進行整體 `/FlateDecode` 壓縮。
+    - **階段三：影像進階編碼與 Zopfli 無損重壓縮**：針對 1-bit 黑白掃描文件引入 `/JBIG2Decode` 壓縮（可縮減至 1/10 體積且無 JPEG 雜訊）；針對無損 `/FlateDecode` 圖片使用 Zopfli 或 7-Zip Deflate 進行背景極限二次無損精簡。
+    - **階段四：字型子集跨頁面合併 (Font Subset Merging)**：解析 OpenType/TrueType 子集二進位，合併同名但字元不全的字型子集，徹底解決多個 PDF 合併後字型資源重複累積、檔案體積異常膨脹的痛點。
+- [ ] **[F2-8] PDF to Image**：PDF 轉圖片。一鍵將 PDF 頁面匯出為高品質 JPG/PNG/TIFF，支援自訂 DPI 渲染率、色彩模式與透明背景處理。
+- [ ] **[F2-9] PDF to PPTX**：PDF 轉 PPTX。並存/整合三種不同定位之模式，供使用者自選或依 PDF 類型自動推薦：
+    - **模式一：原樣保真 (Mode 1: Layout Preservation)**：將每頁 PDF 渲染為圖片並嵌入 PPTX。成功率高、相容性最高，且通常可避免版面跑位，但文字不可編輯；仍可能因 PDF 加密、檔案損毀、不支援字型或渲染失敗等情況而無法完成轉換（參考 `pdf2pptx`）。
+    - **模式二：可編輯優先 (Mode 2: Text Reconstruction)**：解析 PDF 文字框、圖片與版面結構重建為 PPTX 各元素，支援 OCR 與字型自訂（參考 `pdf2slides`）。在此模式下，引入 `opendataloader` 的空間網格定位，精確記錄文字大小、色彩與位置以還原排版。
+    - **模式三：AI 簡報修復 (Mode 3: AI Slide Repair)**：利用 Gemini AI 抹除頁面中的文字並修補背景，再藉由原始文字座標疊加可編輯文字層，使背景與文字完全分離（參考 `NBLM2PPTX`，即 *NotebookLM to PPTX* 的內部原型／概念驗證工具）。
+- [ ] **[F2-10] Document De-identification & Redaction**：文件去識別化與隱私防護。
+    - 借鑑 `jt-doc-tools` 的隱私防護與實體擦除設計。支援在本地透過正則表達式配合校驗碼算法（中華民國身分證、統一編號、居留證、信用卡 Luhn 碼等）與 PDF 坐標定位，自動搜尋 PDF 內的敏感資料。
+    - 提供「遮蔽（Redact，以黑條塗黑並物理擦除底層字元串流）」與「遮罩（Mask，以同大小/字型大小/色彩的 * 號覆蓋重建）」雙重模式，確保敏感資料無法透過選取或複製還原。
+    - 提供選用的本地/雲端 AI（Gemini / Ollama）語意檢核，補強 Regex 無法辨識的人名、職稱與特定合約代號。
+    - **隱私安全設計**：敏感資料處理與主流程完全解耦，並在記憶體層級實作 Zeroing memory（安全清零），確保身分證字號等高度敏感資料在轉換完成後不留存於記憶體。
+- [ ] **[F2-11] Intelligent Scanner Stitching**：智能多圖與掃描件拼合。
+    - 借鑑 `jt-doc-tools` 的證件/掃描拼合算法，支援拉入多個掃描影像，自動偵測有內容的區塊（連通域 BFS 與 Y/X 軸對齊合併），進行自適應裁剪。
+    - 實作「背景淨白」功能（僅針對亮度高且飽和度低之中性灰底色進行提亮與漂白，過濾折痕與掃描陰影；完整保留彩色印章、彩色照片及印刷色），並將裁剪出的正反面證件（身分證、健保卡）或數張單據發票一鍵拼合成單張 A4 頁面。
+- [x] **[F2-12] PDF Math Translate**：PDF 學術論文翻譯（v3.2.0）。純 C# 原生實現（相容 Native AOT）。自動識別與保護 LaTeX 公式，目前已實作免金鑰 Google 翻譯引擎，具備併發控制與速率限制。
+- [x] **[F2-13] PDF Layout Fixes & High-concurrency Translation Optimization**：PDF 佈局修復與高併發翻譯優化（v3.2.1）。解決中文字型與數學字型 TTC 閃退，實作 table 頁面動態橫向合併門檻維持表格列對齊，並重構為 Google Mobile 批次翻譯。
+- [ ] **[F2-14] Bilingual/Dual-language Translation**：PDF 雙語對照翻譯模式。
+    - 參考 `PDFMathTranslate` 的雙語對照實現，支援在輸出文件保留原文與譯文對照，提供更靈活的閱讀體驗；並擴充公式保護層（利用特殊字型如 Symbol / Cambria Math 自動辨識）。
+- [ ] **[F2-15] PDF to Markdown/JSON with Hybrid Parser**：PDF 結構化數據與混合解析。
+    - **雙欄/多欄排版與 XY-Cut++ 閱讀順序**: 借鑑 `OpenDataLoader` 的雙欄與多欄解析算法，在本地 C# 解析中實現 XY-Cut 投影分割，確保學術論文與複雜文件在提取為 Markdown 時具備正確的閱讀順序。
+    - **混合解析模式 (Hybrid Local+AI Mode)**: 簡單或純文字頁面直接透過本地快速解析器（如 PDFium / PdfPig）處理，複雜表格、公式與圖表則路由至 Gemini API 等 Vision 端，實現 borderless 表格 HTML 重建與 AI 圖片描述。
+    - **解耦設計**：於核心（`src/Clickra.Core`）設計 `IDocParserStrategy` 等解析策略介面（Strategy Pattern），使不同解析引擎（PDFium、AI Vision、PdfPig）能夠靈活切換與擴充。
+- [ ] **[F2-16] PNG/JPG Batch Conversion**：PNG/JPG 批量轉換。支援多種常用格式間的快速互轉。
+- [ ] **[F2-17] High-quality Thumbnails**：高品質縮圖。支援批量調整圖片尺寸並保留細節。
+- [ ] **[F2-18] Folder & File Batch Renaming**：資料夾與檔案批次命名。支援自訂數字規則、提取建立日期、固定字串與自動編號。可以直接在資料夾右鍵選單對「整個資料夾及其內含檔案」進行操作。
+- [ ] **[F2-19] Batch File Categorization**：批次檔案分類。支援依副檔名、日期區間或檔名關鍵字，將檔案自動分類並移入對應的資料夾。
+- [ ] **[F2-20] Batch Create Empty Folders**：批量建立空資料夾。支援依指定命名規則與結構要求，一次建立多個指定結構的空資料夾。
+- [ ] **[F2-21] Text Encoding & Traditional/Simplified Conversion**：文字編碼與簡繁轉換。支援 Big5/GBK/UTF-8 互轉與原生 `LCMapStringEx` 簡繁字元互轉。
+- [ ] **[F2-22] Folder Right-click Direct Conversion**：資料夾右鍵直接轉換。支援直接在資料夾右鍵選單操作，一鍵將資料夾底下的所有支援檔案進行轉換（如 Word 批次轉 PDF、圖片轉 PDF 等），無須進入資料夾手動選取。
 
 ## 3. 專案架構與規範 (Refactoring)
 
