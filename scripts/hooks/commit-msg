@@ -1,0 +1,61 @@
+#!/bin/sh
+
+# Clickra commit-msg hook (versioned in-repo).
+# Installed once per clone with:  git config core.hooksPath scripts/hooks
+# (or run scripts/install-hooks.sh).
+#
+# KEEP IN SYNC with .github/workflows/policy.yml — the type/scope allowlists
+# and checks below are mirrored in that workflow's conventional-policy job.
+# Edit both files together when adding a type or scope.
+
+commit_msg_file="$1"
+header=$(head -n 1 "$commit_msg_file")
+
+TYPES="feat|fix|refactor|docs|test|chore|style|perf|security"
+SCOPES="cli|core|shell|msix|docs|ci|deps|store|agent"
+
+block() {
+  echo "========================================= [COMMIT BLOCKED] ========================================="
+  echo "ERROR: $1"
+  echo "Given header: '$header'"
+  echo "===================================================================================================="
+  exit 1
+}
+
+# 1. Header format: <type>(<scope>): <description> with an allowlisted
+#    type/scope and a lowercase-starting description (matches policy.yml).
+if ! echo "$header" | grep -qE "^($TYPES)(\(($SCOPES)\))?: [a-z0-9].*$"; then
+  block "Header must match <type>(<scope>): <description> or <type>: <description> with an allowed type/scope. Valid types: feat, fix, refactor, docs, test, chore, style, perf, security. Valid scopes: cli, core, shell, msix, docs, ci, deps, store, agent."
+fi
+
+# 2. Header length: at or under 72 characters (matches policy.yml).
+if [ "${#header}" -gt 72 ]; then
+  block "Header must be 72 characters or less."
+fi
+
+# 3. Header must not end with a period (matches policy.yml).
+case "$header" in
+  *.) block "Header must not end with a period." ;;
+esac
+
+# 4. Description must not be vague (matches policy.yml).
+description=$(echo "$header" | sed -E "s/^($TYPES)(\(($SCOPES)\))?: //")
+case "$description" in
+  update|misc|stuff|changes|fix\ bug|bug\ fix) block "Description is too vague." ;;
+esac
+
+# 5. Body must contain an English numbered list starting with "1. " or "1)".
+# Ignore comment lines starting with # and skip the first line (header).
+if ! grep -vE "^#" "$commit_msg_file" | tail -n +2 | grep -qE "^[[:space:]]*1[\.\)][[:space:]]+"; then
+  echo "========================================= [COMMIT BLOCKED] ========================================="
+  echo "ERROR: Commit message body must contain a numbered list in English starting with '1. '"
+  echo "Example:"
+  echo "  feat(core): add excel conversion"
+  echo "  "
+  echo "  1. Introduce fetchUrl for HTTP GET requests."
+  echo "  2. Implement HTML parser."
+  echo "===================================================================================================="
+  exit 1
+fi
+
+exit 0
