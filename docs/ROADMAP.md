@@ -7,7 +7,7 @@
 > **里程碑對應**：各子項標題前的編號（如 `[F2-1] Word to PDF`）即 GitHub 里程碑，命名與 GitHub 一致。
 
 ## 1. 視覺體驗與使用者介面 (Visuals & GUI)
-為了提升 Clickra 的產品質感，後續將導入符合 Windows 11 Fluent Design 的視覺元素：
+為了提升 Clickra 的產品質感，已導入符合 Windows 11 Fluent Design 的視覺元素：
 
 - [x] **[F1-1] Menu Visibility Optimization**：選單動態過濾。
     - **精確顯示**: 已實作 `GetState` 邏輯，確保在不支援的檔案上完全隱藏選單。
