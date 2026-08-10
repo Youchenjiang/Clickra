@@ -9,14 +9,14 @@
 ## 1. 視覺體驗與使用者介面 (Visuals & GUI)
 為了提升 Clickra 的產品質感，已導入符合 Windows 11 Fluent Design 的視覺元素：
 
-- [x] **[F1-1] Menu Visibility Optimization**：選單動態過濾。
+- [x] **[F1-1] Menu Visibility Optimization**：選單動態過濾（v3.0.6）。
     - **精確顯示**: 已實作 `GetState` 邏輯，確保在不支援的檔案上完全隱藏選單。
 - [x] **[F1-2] Native Dashboard Implementation**：Native 儀表板實作（v3.0.6）。
     - 基於 Native Win32 與 AOT 實作，整合 Office 狀態偵測。
 - [x] **[F1-3] GUI with Options**：具備設定選項的 GUI（v3.0.8）。
     - **轉換設定與歷史**: 提供 Dashboard 設定介面，顯示轉換歷史紀錄。
     - [x] **進度可視化 [v3.0.7]**: 處理過程中顯示動態進度條與完成通知。
-- [x] **[F1-4] Startup Experience**：Windows 啟動體驗。
+- [x] **[F1-4] Startup Experience**：Windows 啟動體驗（v3.0.6）。
     - 已實作基本啟動顯示（暫不開發額外的現代化介面）。
 - [x] **[F1-5] GUI & Layout Fixes**：Dashboard 視窗與佈局修復（v3.0.9）。
     - **最大化佈局修復**: 修正視窗最大化後佈局未自適應縮放、背景出現大片黑色空區塊與元件重複重疊繪製的問題。
@@ -44,17 +44,17 @@
 
 
 ## 2. 核心功能擴張 (Advanced Features)
-- [x] **[F2-1] Word to PDF**：Word 轉 PDF。已完成實作。
+- [x] **[F2-1] Word to PDF**：Word 轉 PDF（v3.0.6）。已完成實作。
 - [x] **[F2-2] Remove PDF Password**：PDF 去除密碼（v3.3.0）。
     - 支援右鍵選單一鍵去除 PDF 密碼保護。
-- [x] **[F2-3] Excel to PDF**：Excel 轉 PDF。整合微軟 Excel COM 與 LibreOffice 雙引擎轉檔支援。
+- [x] **[F2-3] Excel to PDF**：Excel 轉 PDF（v3.4.0）。整合微軟 Excel COM 與 LibreOffice 雙引擎轉檔支援。
 - [x] **[F2-4] LibreOffice Offline Office Engine**：LibreOffice 離線 Office 轉檔引擎（v3.5.0）。
     - 支援 Auto / Microsoft Office / LibreOffice 三種 Office 轉檔引擎模式，讓未安裝 Microsoft Office 的使用者可透過本機 LibreOffice 進行 Word、Excel 與 PowerPoint 轉 PDF。
     - 內建 LibreOffice 下載 manifest、官方 MSI 下載、SHA256 驗證、背景安裝/移除、版本比對與重啟需求狀態處理。
     - 轉檔頁改為依 Office、PDF、圖片三組呈現九個主要功能，降低使用者尋找功能時的掃描成本。
 - [x] **[F2-5] PDF Shrinking & Compression**：PDF 壓縮與最佳化（v3.6.0）。
     - 實作以內建 PDFsharp 與 GDI+ 為基礎的優化引擎，支援多級壓縮設定（極小、小檔、標準、高品質），自動精簡文字流、字型去重、大字型剝離與圖片高品質雙立方降解析，並在設定頁面實作 4 停靠點的橫向拉條 UI 與 Toggles。
-- [x] **[F2-6] PDF Split**：PDF 分割。
+- [x] **[F2-6] PDF Split**：PDF 分割（v3.6.5）。
     - 支援依頁碼範圍（如 `1-5`, `8`）或全頁 (`all` / `each`) 將 PDF 拆分為獨立檔案，整合右鍵選單、原生 GDI+ 頁碼輸入框與 CLI 指令。
 - [ ] **[F2-7] Advanced PDF Deep Compression**：PDF 進階極限壓縮。
     - **階段一：結構可達性垃圾回收 (DFS GC)**：實作 Catalog 物件樹遍歷，徹底清理編輯殘留的孤立無用物件（Orphan Objects）；優化字型剝離機制，移除字型時保留度量屬性 (Font Metrics) 以防閱讀器渲染跑版。
@@ -95,7 +95,7 @@
 > [!IMPORTANT] 品質問題追蹤流程
 > 當品質/效能問題在 PR 中被發現（靜態分析、圈複雜度過高等）但本次**不重構**時，必須立即將問題記錄到本節技術債清單並隨 PR 提交，提醒下次開分支時優先修正；修正完成後在項目旁標記日期。
 
-- [x] **[R1-1] Modularization**：模組化拆分。
+- [x] **[R1-1] Modularization**：模組化拆分（v3.0.6）。
     - 已完成 `src/Clickra.UI` 與 `src/Clickra.Core` 的解耦與 AOT 轉型。
 - [ ] **[R1-2] File Naming Cleanup**：檔案命名整理。
     - 統一整理專案內的檔案命名規範，消除歷史遺留的不一致命名。
