@@ -37,24 +37,26 @@ public static partial class DashboardWindow
         public Color TagColor = Color.FromArgb(100, 100, 100);
     }
 
-    private static readonly ConvertCommandDef[] ConvertCommandDefs =
+    private static readonly ConvertCommandDef[] ConvertCommandDefs = BuildCommandDefs();
+
+    private static ConvertCommandDef[] BuildCommandDefs() => new[]
     {
         // Office 轉 PDF (Group 0)
-        new ConvertCommandDef() { Command = "word2pdf",      TextKey = "cmd_word_to_pdf",    Filter = FilterWordFiles,       Extensions = new[] { ".doc", ".docx" },          MinFiles = 1, RequiresOffice = true, Group = 0, TagColor = Color.FromArgb(0, 120, 212) },
-        new ConvertCommandDef() { Command = "excel2pdf",     TextKey = "cmd_excel_to_pdf",   Filter = FilterExcelFiles,      Extensions = new[] { ".xlsx", ".xls" },          MinFiles = 1, RequiresOffice = true, Group = 0, TagColor = Color.FromArgb(16, 124, 65) },
-        new ConvertCommandDef() { Command = "ppt2pdf",       TextKey = "cmd_ppt_to_pdf",     Filter = FilterPowerPointFiles, Extensions = new[] { ".ppt", ".pptx" },          MinFiles = 1, RequiresOffice = true, Group = 0, TagColor = Color.FromArgb(180, 50, 30) },
+        new ConvertCommandDef { Command = "word2pdf",      TextKey = "cmd_word_to_pdf",    Filter = FilterWordFiles,       Extensions = new[] { ".doc", ".docx" },          MinFiles = 1, RequiresOffice = true, Group = 0, TagColor = Color.FromArgb(0, 120, 212) },
+        new ConvertCommandDef { Command = "excel2pdf",     TextKey = "cmd_excel_to_pdf",   Filter = FilterExcelFiles,      Extensions = new[] { ".xlsx", ".xls" },          MinFiles = 1, RequiresOffice = true, Group = 0, TagColor = Color.FromArgb(16, 124, 65) },
+        new ConvertCommandDef { Command = "ppt2pdf",       TextKey = "cmd_ppt_to_pdf",     Filter = FilterPowerPointFiles, Extensions = new[] { ".ppt", ".pptx" },          MinFiles = 1, RequiresOffice = true, Group = 0, TagColor = Color.FromArgb(180, 50, 30) },
 
         // PDF 工具 (Group 1)
-        new ConvertCommandDef() { Command = "merge-pdf",     TextKey = "cmd_merge_pdf",      Filter = FilterPdfFiles,        Extensions = new[] { ".pdf" },                  MinFiles = 2, Group = 1, TagColor = Color.FromArgb(16, 124, 65) },
-        new ConvertCommandDef() { Command = "compress-pdf",  TextKey = "cmd_compress_pdf",   Filter = FilterPdfFiles,        Extensions = new[] { ".pdf" },                  MinFiles = 1, Group = 1, TagColor = Color.FromArgb(0, 120, 120) },
-        new ConvertCommandDef() { Command = "translate-pdf", TextKey = "cmd_translate_pdf",  Filter = FilterPdfFiles,        Extensions = new[] { ".pdf" },                  MinFiles = 1, Group = 1, TagColor = Color.FromArgb(138, 43, 226) },
-        new ConvertCommandDef() { Command = "decrypt-pdf",   TextKey = "cmd_decrypt_pdf",    Filter = FilterPdfFiles,        Extensions = new[] { ".pdf" },                  MinFiles = 1, Group = 1, TagColor = Color.FromArgb(0, 150, 136) },
-        new ConvertCommandDef() { Command = "split-pdf",     TextKey = "cmd_split_pdf",      Filter = FilterPdfFiles,        Extensions = new[] { ".pdf" },                  MinFiles = 1, Group = 1, TagColor = Color.FromArgb(0, 188, 212) },
+        new ConvertCommandDef { Command = "merge-pdf",     TextKey = "cmd_merge_pdf",      Filter = FilterPdfFiles,        Extensions = new[] { ".pdf" },                  MinFiles = 2, Group = 1, TagColor = Color.FromArgb(16, 124, 65) },
+        new ConvertCommandDef { Command = "compress-pdf",  TextKey = "cmd_compress_pdf",   Filter = FilterPdfFiles,        Extensions = new[] { ".pdf" },                  MinFiles = 1, Group = 1, TagColor = Color.FromArgb(0, 120, 120) },
+        new ConvertCommandDef { Command = "translate-pdf", TextKey = "cmd_translate_pdf",  Filter = FilterPdfFiles,        Extensions = new[] { ".pdf" },                  MinFiles = 1, Group = 1, TagColor = Color.FromArgb(138, 43, 226) },
+        new ConvertCommandDef { Command = "decrypt-pdf",   TextKey = "cmd_decrypt_pdf",    Filter = FilterPdfFiles,        Extensions = new[] { ".pdf" },                  MinFiles = 1, Group = 1, TagColor = Color.FromArgb(0, 150, 136) },
+        new ConvertCommandDef { Command = "split-pdf",     TextKey = "cmd_split_pdf",      Filter = FilterPdfFiles,        Extensions = new[] { ".pdf" },                  MinFiles = 1, Group = 1, TagColor = Color.FromArgb(0, 188, 212) },
 
         // 圖片工具 (Group 2)
-        new ConvertCommandDef() { Command = "img2pdf",       TextKey = "cmd_img_to_pdf",     Filter = FilterImageFiles,      Extensions = ImageExtensions,                   MinFiles = 1, Group = 2, TagColor = Color.FromArgb(100, 60, 180) },
-        new ConvertCommandDef() { Command = "img-merge",     TextKey = "cmd_merge_img",      Filter = FilterImageFiles,      Extensions = ImageExtensions,                   MinFiles = 2, Group = 2, TagColor = Color.FromArgb(0, 130, 135) },
-        new ConvertCommandDef() { Command = "img-stitch",    TextKey = "cmd_stitch_img",     Filter = FilterImageFiles,      Extensions = ImageExtensions,                   MinFiles = 2, Group = 2, TagColor = Color.FromArgb(216, 59, 1) },
+        new ConvertCommandDef { Command = "img2pdf",       TextKey = "cmd_img_to_pdf",     Filter = FilterImageFiles,      Extensions = ImageExtensions,                   MinFiles = 1, Group = 2, TagColor = Color.FromArgb(100, 60, 180) },
+        new ConvertCommandDef { Command = "img-merge",     TextKey = "cmd_merge_img",      Filter = FilterImageFiles,      Extensions = ImageExtensions,                   MinFiles = 2, Group = 2, TagColor = Color.FromArgb(0, 130, 135) },
+        new ConvertCommandDef { Command = "img-stitch",    TextKey = "cmd_stitch_img",     Filter = FilterImageFiles,      Extensions = ImageExtensions,                   MinFiles = 2, Group = 2, TagColor = Color.FromArgb(216, 59, 1) },
     };
 
     // Derived state — keep these names so existing layout / hit-test / paint code keeps working.
