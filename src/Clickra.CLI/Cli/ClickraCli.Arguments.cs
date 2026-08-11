@@ -17,7 +17,7 @@ namespace Clickra
 
         /// <summary>Filters out files whose extension is not allowed for the command,
         /// warning or failing depending on quiet mode.</summary>
-        static void ValidateExtensions(List<string> files, string command, bool quiet, params string[] allowed)
+        internal static void ValidateExtensions(List<string> files, string command, bool quiet, params string[] allowed)
         {
             var invalid = files
                 .Where(f => !allowed.Contains(Path.GetExtension(f).ToLowerInvariant()))
@@ -36,7 +36,7 @@ namespace Clickra
 
         /// <summary>Expands directory arguments into the files they contain (recursively for
         /// supported extensions).</summary>
-        static List<string> ExpandDirectoryArguments(string command, IEnumerable<string> inputs)
+        internal static List<string> ExpandDirectoryArguments(string command, IEnumerable<string> inputs)
         {
             var allowed = command switch
             {
@@ -65,7 +65,7 @@ namespace Clickra
         }
 
         /// <summary>Attaches to the parent console when launched from a terminal.</summary>
-        static void AttachParentConsoleForCli(string[] args)
+        internal static void AttachParentConsoleForCli(string[] args)
         {
             if (args.Length == 0) return;
 
@@ -115,7 +115,7 @@ namespace Clickra
             }
         }
 
-        static string? ExtractOptionValue(List<string> args, params string[] optionNames)
+        internal static string? ExtractOptionValue(List<string> args, params string[] optionNames)
         {
             for (int i = 0; i < args.Count; i++)
             {
