@@ -210,35 +210,44 @@ namespace Clickra.UI
         /// <summary>Tracks the hovered row inside the open language dropdowns.</summary>
         static void TrackDropdownHover(IntPtr hwnd, int adjMouseX, int adjMouseY, float logW)
         {
-            if (_langDropdownOpen)
+            TrackLangDropdownHover(hwnd, adjMouseX, adjMouseY, logW);
+            TrackPdfLangDropdownHover(hwnd, adjMouseX, adjMouseY, logW);
+        }
+
+        /// <summary>Highlights the hovered row of the open UI-language dropdown.</summary>
+        private static void TrackLangDropdownHover(IntPtr hwnd, int adjMouseX, int adjMouseY, float logW)
+        {
+            if (!_langDropdownOpen) return;
+
+            int popupY = _langDropdownY - 180;
+            float contentX = GetContentX(logW);
+            if (adjMouseX >= contentX && adjMouseX <= contentX + 240 && adjMouseY >= popupY + 38 && adjMouseY < _langDropdownY)
             {
-                int popupY = _langDropdownY - 180;
-                float contentX = GetContentX(logW);
-                if (adjMouseX >= contentX && adjMouseX <= contentX + 240 && adjMouseY >= popupY + 38 && adjMouseY < _langDropdownY)
+                int idx = _langScrollOffset + (adjMouseY - (popupY + 38)) / 26;
+                var filtered = GetFilteredLanguages();
+                if (idx >= 0 && idx < filtered.Count && idx != _langHoveredIndex)
                 {
-                    int idx = _langScrollOffset + (adjMouseY - (popupY + 38)) / 26;
-                    var filtered = GetFilteredLanguages();
-                    if (idx >= 0 && idx < filtered.Count && idx != _langHoveredIndex)
-                    {
-                        _langHoveredIndex = idx;
-                        InvalidateRect(hwnd, IntPtr.Zero, false);
-                    }
+                    _langHoveredIndex = idx;
+                    InvalidateRect(hwnd, IntPtr.Zero, false);
                 }
             }
+        }
 
-            if (_pdfLangDropdownOpen)
+        /// <summary>Highlights the hovered row of the open PDF-language dropdown.</summary>
+        private static void TrackPdfLangDropdownHover(IntPtr hwnd, int adjMouseX, int adjMouseY, float logW)
+        {
+            if (!_pdfLangDropdownOpen) return;
+
+            int popupHeight = PdfLangs.Length * 26 + 8;
+            int popupY = _pdfLangDropdownY - popupHeight;
+            float contentX = GetContentX(logW);
+            if (adjMouseX >= contentX && adjMouseX <= contentX + 240 && adjMouseY >= popupY + 4 && adjMouseY < _pdfLangDropdownY - 4)
             {
-                int popupHeight = PdfLangs.Length * 26 + 8;
-                int popupY = _pdfLangDropdownY - popupHeight;
-                float contentX = GetContentX(logW);
-                if (adjMouseX >= contentX && adjMouseX <= contentX + 240 && adjMouseY >= popupY + 4 && adjMouseY < _pdfLangDropdownY - 4)
+                int idx = (adjMouseY - (popupY + 4)) / 26;
+                if (idx >= 0 && idx < PdfLangs.Length && idx != _pdfLangHoveredIndex)
                 {
-                    int idx = (adjMouseY - (popupY + 4)) / 26;
-                    if (idx >= 0 && idx < PdfLangs.Length && idx != _pdfLangHoveredIndex)
-                    {
-                        _pdfLangHoveredIndex = idx;
-                        InvalidateRect(hwnd, IntPtr.Zero, false);
-                    }
+                    _pdfLangHoveredIndex = idx;
+                    InvalidateRect(hwnd, IntPtr.Zero, false);
                 }
             }
         }
@@ -478,13 +487,16 @@ namespace Clickra.UI
             int rowW = (int)logW - (int)contentX - 40;
 
             float inputLabelW = 0f, outputLabelW = 0f, timeLabelW = 0f, errorLabelW = 0f;
-            using (var tempBmp = new Bitmap(1, 1))
-            using (var tempG = Graphics.FromImage(tempBmp))
+            if (_subFont != null)
             {
-                inputLabelW = tempG.MeasureString(GetText("history_detail_inputs") + ":", _subFont!).Width / _dpiScale;
-                outputLabelW = tempG.MeasureString(GetText("history_detail_outputs") + ":", _subFont!).Width / _dpiScale;
-                timeLabelW = tempG.MeasureString(GetText("history_detail_time") + ":", _subFont!).Width / _dpiScale;
-                errorLabelW = tempG.MeasureString(GetText(entry.IsSuccess ? "history_detail_elapsed" : "history_detail_error") + ":", _subFont!).Width / _dpiScale;
+                using (var tempBmp = new Bitmap(1, 1))
+                using (var tempG = Graphics.FromImage(tempBmp))
+                {
+                    inputLabelW = tempG.MeasureString(GetText("history_detail_inputs") + ":", _subFont).Width / _dpiScale;
+                    outputLabelW = tempG.MeasureString(GetText("history_detail_outputs") + ":", _subFont).Width / _dpiScale;
+                    timeLabelW = tempG.MeasureString(GetText("history_detail_time") + ":", _subFont).Width / _dpiScale;
+                    errorLabelW = tempG.MeasureString(GetText(entry.IsSuccess ? "history_detail_elapsed" : "history_detail_error") + ":", _subFont).Width / _dpiScale;
+                }
             }
             float maxLabelW = Math.Max(inputLabelW, Math.Max(outputLabelW, Math.Max(timeLabelW, errorLabelW)));
             float valX = contentX + 12 + maxLabelW + 16;

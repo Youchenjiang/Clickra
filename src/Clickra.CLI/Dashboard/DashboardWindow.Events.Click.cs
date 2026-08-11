@@ -175,7 +175,7 @@ namespace Clickra.UI
             {
                 if (detailFieldIndex != -1)
                 {
-                    TryStartHistoryDetailScroll(hwnd, mouseX, adjMouseX, adjMouseY, logW, clickedIndex, detailFieldIndex);
+                    TryStartHistoryDetailScroll(hwnd, mouseX, adjMouseX, logW, clickedIndex, detailFieldIndex);
                 }
                 return true;
             }
@@ -205,17 +205,14 @@ namespace Clickra.UI
             for (int i = 0; i < _historyEntries.Count; i++)
             {
                 bool isExpanded = (i == _expandedHistoryIndex);
-                int rowH = isExpanded ? 160 : 44;
+                int rowH = GetHistoryRowHeight(isExpanded);
                 if (adjMouseY >= currentY && adjMouseY < currentY + rowH)
                 {
                     if (isExpanded && adjMouseY >= currentY + 44)
                     {
                         clickedDetails = true;
                         clickedIndex = i;
-                        int relY = adjMouseY - currentY;
-                        if (relY >= 50 && relY < 76) detailFieldIndex = 0;
-                        else if (relY >= 76 && relY < 102) detailFieldIndex = 1;
-                        else if (relY >= 128 && relY < 156) detailFieldIndex = 2;
+                        detailFieldIndex = GetDetailFieldIndexFromY(adjMouseY - currentY);
                     }
                     else
                     {
@@ -227,6 +224,19 @@ namespace Clickra.UI
             }
         }
 
+        /// <summary>Height of a history row: 44 collapsed, 160 when the detail pane is open.</summary>
+        private static int GetHistoryRowHeight(bool isExpanded) => isExpanded ? 160 : 44;
+
+        /// <summary>Maps a Y offset inside an expanded history row to its detail field index,
+        /// or -1 when the offset is between fields.</summary>
+        private static int GetDetailFieldIndexFromY(int relY)
+        {
+            if (relY >= 50 && relY < 76) return 0;
+            if (relY >= 76 && relY < 102) return 1;
+            if (relY >= 128 && relY < 156) return 2;
+            return -1;
+        }
+
         /// <summary>Expands or collapses the clicked history row.</summary>
         static void ToggleHistoryRowExpand(IntPtr hwnd, int clickedIndex)
         {
@@ -236,7 +246,7 @@ namespace Clickra.UI
 
         /// <summary>Starts dragging a history detail-field scrollbar when the click lands on
         /// its thumb track.</summary>
-        static void TryStartHistoryDetailScroll(IntPtr hwnd, int mouseX, int adjMouseX, int adjMouseY, float logW, int rowIndex, int fieldIndex)
+        static void TryStartHistoryDetailScroll(IntPtr hwnd, int mouseX, int adjMouseX, float logW, int rowIndex, int fieldIndex)
         {
             string textToScroll = GetHistoryDetailText(_historyEntries[rowIndex], fieldIndex);
             if (string.IsNullOrEmpty(textToScroll)) return;
@@ -584,7 +594,7 @@ namespace Clickra.UI
             }
             InvalidateRect(hwnd, IntPtr.Zero, false);
 
-            var thread = new System.Threading.Thread(() => DownloadLibreOfficeInBackground(hwnd, removalPendingRestart));
+            var thread = new System.Threading.Thread(() => DownloadLibreOfficeInBackground(hwnd));
             thread.SetApartmentState(System.Threading.ApartmentState.STA);
             thread.IsBackground = true;
             thread.Start();
@@ -592,7 +602,7 @@ namespace Clickra.UI
 
         /// <summary>Downloads, verifies and installs LibreOffice on a background STA thread,
         /// reporting progress and result through dashboard actions.</summary>
-        static void DownloadLibreOfficeInBackground(IntPtr hwnd, bool removalPendingRestart)
+        static void DownloadLibreOfficeInBackground(IntPtr hwnd)
         {
             var package = LibreOfficeEngineInstaller.RecommendedPackage;
             try

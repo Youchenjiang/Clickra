@@ -456,7 +456,7 @@ namespace Clickra.UI
             if (mouseX < 36 || mouseX > 252 || mouseY < cardStartY || mouseY > 374) return false;
 
             int cardIdx = (mouseY - cardStartY) / 23;
-            if (cardIdx < 0 || cardIdx >= _visualSplitSegments.Count) return false;
+            if (cardIdx >= _visualSplitSegments.Count) return false;
 
             _visualSplitSelectedSegmentIndex = cardIdx;
             _visualSplitCurrentPreviewPageIndex = 0;

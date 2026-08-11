@@ -319,38 +319,44 @@ namespace Clickra.UI
             for (int i = 0; i < files.Count; i++)
             {
                 _cts.Token.ThrowIfCancellationRequested();
-                try { ClickraStorage.SetActiveRecordIndex(i); } catch { /* Ignored: history recording must not abort processing. */ }
-                var f = files[i];
-                string outName = Path.Combine(outputDir, Path.GetFileNameWithoutExtension(f) + "_decrypted.pdf");
-                progressCallback((i * 100) + 10, files.Count * 100, $"正在去除密碼: {Path.GetFileName(f)} ({i + 1}/{files.Count})...");
-
-                string currentPassword = "";
-                bool success = false;
-                bool isRetry = false;
-                while (!success)
-                {
-                    _cts.Token.ThrowIfCancellationRequested();
-                    try
-                    {
-                        FileProcessor.DecryptPdf(f, outName, currentPassword, (curr, tot, msg) => {
-                            int progressPct = tot > 0 ? (int)(curr * 80.0 / tot) + 10 : 10;
-                            progressCallback((i * 100) + progressPct, files.Count * 100, $"[去除密碼] {msg} ({i + 1}/{files.Count})");
-                        }, _cts.Token);
-                        success = true;
-                    }
-                    catch (Exception ex)
-                    {
-                        if (!IsPasswordError(ex))
-                        {
-                            throw;
-                        }
-                        currentPassword = ResolveDecryptPassword(hwnd, f, isRetry);
-                        isRetry = true;
-                    }
-                }
+                DecryptSingleFile(hwnd, files[i], outputDir, i, files.Count, progressCallback);
             }
             _cts.Token.ThrowIfCancellationRequested();
             progressCallback(files.Count * 100, files.Count * 100, "密碼去除完成，正在儲存 PDF...");
+        }
+
+        /// <summary>Removes the password from one PDF, re-prompting until the correct
+        /// password is supplied or the user cancels.</summary>
+        private void DecryptSingleFile(IntPtr hwnd, string f, string outputDir, int index, int total, Action<int, int, string> progressCallback)
+        {
+            try { ClickraStorage.SetActiveRecordIndex(index); } catch { /* Ignored: history recording must not abort processing. */ }
+            string outName = Path.Combine(outputDir, Path.GetFileNameWithoutExtension(f) + "_decrypted.pdf");
+            progressCallback((index * 100) + 10, total * 100, $"正在去除密碼: {Path.GetFileName(f)} ({index + 1}/{total})...");
+
+            string currentPassword = "";
+            bool success = false;
+            bool isRetry = false;
+            while (!success)
+            {
+                _cts.Token.ThrowIfCancellationRequested();
+                try
+                {
+                    FileProcessor.DecryptPdf(f, outName, currentPassword, (curr, tot, msg) => {
+                        int progressPct = tot > 0 ? (int)(curr * 80.0 / tot) + 10 : 10;
+                        progressCallback((index * 100) + progressPct, total * 100, $"[去除密碼] {msg} ({index + 1}/{total})");
+                    }, _cts.Token);
+                    success = true;
+                }
+                catch (Exception ex)
+                {
+                    if (!IsPasswordError(ex))
+                    {
+                        throw;
+                    }
+                    currentPassword = ResolveDecryptPassword(hwnd, f, isRetry);
+                    isRetry = true;
+                }
+            }
         }
 
         /// <summary>Whether the exception indicates a wrong or missing PDF password.</summary>
@@ -374,12 +380,12 @@ namespace Clickra.UI
             PostMessageW(hwnd, WM_USER_SHOW_PASSWORD_INPUT, IntPtr.Zero, IntPtr.Zero);
             _passwordEvent.WaitOne();
 
-            bool cancelled = false;
-            string? input = null;
+            // The prompt window writes these fields on the UI thread while this
+            // thread waits on _passwordEvent, so read them through Volatile.Read.
+            bool cancelled = Volatile.Read(ref _passwordCancelled);
+            string? input = Volatile.Read(ref _inputPassword);
             lock (_stateLock)
             {
-                cancelled = _passwordCancelled;
-                input = _inputPassword;
                 _isPromptingPassword = false;
             }
 
