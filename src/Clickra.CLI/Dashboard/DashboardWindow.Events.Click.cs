@@ -731,7 +731,7 @@ namespace Clickra.UI
         {
             if (element >= 50 && element < 50 + ConvertCommands.Length)
             {
-                ChangeConvertCommand(element - 50);
+                ConvertCommands[element - 50].Select();
                 InvalidateRect(hwnd, IntPtr.Zero, false);
             }
             else if (element == 18)
@@ -745,7 +745,7 @@ namespace Clickra.UI
                     _convertCommandIndex = -1;
                     for (int i = 0; i < ConvertCommands.Length; i++)
                     {
-                        if (ValidateConvertFiles(ConvertCommands[i], _selectedFiles, out _))
+                        if (ConvertCommands[i].ValidateFiles(_selectedFiles, out _))
                         {
                             _convertCommandIndex = i;
                             break;

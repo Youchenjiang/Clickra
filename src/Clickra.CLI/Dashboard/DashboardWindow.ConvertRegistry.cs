@@ -1,7 +1,11 @@
 using System;
 using System.Collections.Generic;
 using System.Drawing;
+using System.IO;
 using System.Linq;
+using Clickra.Core;
+using Clickra.Core.Processors;
+using static Clickra.UI.Native.Win32;
 
 namespace Clickra.UI
 {
@@ -54,12 +58,12 @@ namespace Clickra.UI
         };
 
         // Derived state — keep these names so existing layout / hit-test / paint code keeps working.
-        private static readonly string[] ConvertCommands = BuildCommandList(ConvertCommandDefs);
+        private static readonly ConvertCommand[] ConvertCommands = BuildCommands(ConvertCommandDefs);
         private static readonly int[] ConvertCommandGroupSizes = BuildGroupSizes(ConvertCommandDefs);
-        private static readonly Dictionary<string, ConvertCommandDef> ConvertCommandByKey = BuildCommandLookup(ConvertCommandDefs);
+        private static readonly Dictionary<string, ConvertCommand> ConvertCommandByKey = BuildCommandLookup(ConvertCommands);
 
-        private static string[] BuildCommandList(ConvertCommandDef[] defs)
-            => defs.OrderBy(d => d.Group).Select(d => d.Command).ToArray();
+        private static ConvertCommand[] BuildCommands(ConvertCommandDef[] defs)
+            => defs.OrderBy(d => d.Group).Select(d => new ConvertCommand(d)).ToArray();
 
         private static int[] BuildGroupSizes(ConvertCommandDef[] defs)
         {
@@ -70,12 +74,137 @@ namespace Clickra.UI
             return sizes;
         }
 
-        private static Dictionary<string, ConvertCommandDef> BuildCommandLookup(ConvertCommandDef[] defs)
+        private static Dictionary<string, ConvertCommand> BuildCommandLookup(ConvertCommand[] commands)
         {
-            var map = new Dictionary<string, ConvertCommandDef>(StringComparer.OrdinalIgnoreCase);
-            foreach (var d in defs)
-                map[d.Command] = d;
+            var map = new Dictionary<string, ConvertCommand>(StringComparer.OrdinalIgnoreCase);
+            foreach (var c in commands)
+                map[c.Command] = c;
             return map;
+        }
+
+        /// <summary>A dashboard convert feature: registry metadata plus its execution behavior.</summary>
+        private sealed class ConvertCommand
+        {
+            private readonly ConvertCommandDef _def;
+
+            public ConvertCommand(ConvertCommandDef def) => _def = def;
+
+            public string Command => _def.Command;
+            public string TextKey => _def.TextKey;
+            public string[] Extensions => _def.Extensions;
+            public int MinFiles => _def.MinFiles;
+            public bool RequiresOffice => _def.RequiresOffice;
+            public int Group => _def.Group;
+            public Color TagColor => _def.TagColor;
+
+            /// <summary>The localized button label.</summary>
+            public string DisplayName => GetText(_def.TextKey);
+
+            public string GetOpenFilter()
+                => _def.Filter.Length > 0 ? _def.Filter : FilterImageFiles;
+
+            /// <summary>Validates that the selected files are usable for this command, returning
+            /// the translated error message when not.</summary>
+            public bool ValidateFiles(List<string> files, out string errorMsg)
+            {
+                errorMsg = "";
+                if (files.Count == 0) return true;
+
+                var invalid = files.Where(f => !Extensions.Contains(Path.GetExtension(f).ToLowerInvariant())).ToList();
+                if (invalid.Count > 0)
+                {
+                    errorMsg = GetText("convert_err_invalid_ext");
+                    return false;
+                }
+
+                if (files.Count < MinFiles)
+                {
+                    errorMsg = string.Format(GetText("convert_err_min_files"), MinFiles);
+                    return false;
+                }
+
+                return true;
+            }
+
+            /// <summary>Whether a usable Office engine (Microsoft or LibreOffice) is available for this command.</summary>
+            public bool HasAvailableEngine()
+            {
+                string engine = ClickraStorage.GetSetting("OfficeEngine");
+                bool libreOfficeReady = !string.IsNullOrWhiteSpace(LibreOfficeHelper.GetResolvedExecutablePath());
+
+                if (engine.Equals("libreoffice", StringComparison.OrdinalIgnoreCase))
+                    return libreOfficeReady;
+
+                string app = Command switch
+                {
+                    "ppt2pdf" => "PowerPoint",
+                    "word2pdf" => "Word",
+                    "excel2pdf" => "Excel",
+                    _ => ""
+                };
+                bool microsoftReady = !string.IsNullOrWhiteSpace(app) && IsOfficeInstalled(app);
+
+                return engine.Equals("microsoft", StringComparison.OrdinalIgnoreCase)
+                    ? microsoftReady
+                    : microsoftReady || libreOfficeReady;
+            }
+
+            /// <summary>Activates this command on the convert tab, clearing incompatible selections.</summary>
+            public void Select()
+            {
+                _convertCommandIndex = Array.IndexOf(ConvertCommands, this);
+                if (_selectedFiles.Count > 0 && !ValidateFiles(_selectedFiles, out _))
+                {
+                    _selectedFiles.Clear();
+                }
+            }
+
+            /// <summary>Runs this command for the currently selected files and switches to the history tab.</summary>
+            public void Run(IntPtr hwnd)
+            {
+                if (_selectedFiles.Count == 0) return;
+
+                if (!ValidateFiles(_selectedFiles, out string error))
+                {
+                    MessageBox(hwnd, error, "Clickra", 0x30);
+                    return;
+                }
+
+                if (RequiresOffice && !HasAvailableEngine())
+                {
+                    string language = ClickraStorage.GetSetting("Language");
+                    string engine = ClickraStorage.GetSetting("OfficeEngine");
+                    string errorKey = engine.Equals("libreoffice", StringComparison.OrdinalIgnoreCase)
+                        ? "error_libreoffice_not_ready"
+                        : engine.Equals("microsoft", StringComparison.OrdinalIgnoreCase)
+                            ? "error_microsoftoffice_not_ready"
+                            : "setting_engine_none_available";
+                    MessageBox(hwnd, Localization.T(errorKey, language), "Clickra", 0x30);
+                    return;
+                }
+
+                var filesCopy = new List<string>(_selectedFiles);
+                var thread = new System.Threading.Thread(() =>
+                {
+                    try
+                    {
+                        ProgressWindow.Show(Command, filesCopy);
+                    }
+                    catch (Exception ex)
+                    {
+                        MessageBox(IntPtr.Zero, $"Execution failed: {ex.Message}", "Clickra", 0x10);
+                    }
+                });
+                thread.SetApartmentState(System.Threading.ApartmentState.STA);
+                thread.IsBackground = true;
+                thread.Start();
+
+                _selectedFiles.Clear();
+
+                _activeTab = 2; // Switch to History
+                RefreshHistoryData();
+                InvalidateRect(hwnd, IntPtr.Zero, false);
+            }
         }
     }
 }
