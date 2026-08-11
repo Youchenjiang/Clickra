@@ -224,7 +224,7 @@ public sealed partial class MainPage : Page
 
     private void HookCommandButtons()
     {
-        foreach (var button in new[] { BtnWord2Pdf, BtnExcel2Pdf, BtnPpt2Pdf, BtnMergePdf, BtnCompressPdf, BtnTranslatePdf, BtnDecryptPdf, BtnImg2Pdf, BtnImgMerge, BtnImgStitch })
+        foreach (var button in new[] { BtnWord2Pdf, BtnExcel2Pdf, BtnPpt2Pdf, BtnMergePdf, BtnCompressPdf, BtnTranslatePdf, BtnDecryptPdf, BtnSplitPdf, BtnImg2Pdf, BtnImgMerge, BtnImgStitch })
         {
             if (button.Tag is string command)
             {
@@ -694,6 +694,7 @@ public sealed partial class MainPage : Page
         BtnCompressPdf.Content = L("cmd_compress_pdf");
         BtnTranslatePdf.Content = L("cmd_translate_pdf");
         BtnDecryptPdf.Content = L("cmd_decrypt_pdf");
+        BtnSplitPdf.Content = L("cmd_split_pdf");
         BtnImg2Pdf.Content = "PDF";
         BtnImgMerge.Content = L("cmd_merge_img");
         BtnImgStitch.Content = L("cmd_stitch_img");
