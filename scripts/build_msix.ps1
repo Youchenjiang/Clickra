@@ -1,4 +1,4 @@
-﻿# Clickra MSIX Build Script
+# Clickra MSIX Build Script
 $ErrorActionPreference = "Stop"
 
 $root = Get-Location
@@ -10,6 +10,32 @@ function Assert-NativeSuccess {
     if ($LASTEXITCODE -ne 0) {
         throw "Native command failed with exit code $LASTEXITCODE"
     }
+}
+
+function Sync-WindowsAppRuntimeDependency {
+    param(
+        [string]$ProjectPath,
+        [string]$ManifestPath
+    )
+
+    [xml]$project = Get-Content $ProjectPath
+    $sdkReference = $project.Project.ItemGroup.PackageReference |
+        Where-Object Include -eq "Microsoft.WindowsAppSDK" |
+        Select-Object -First 1
+    $sdkVersion = [version]$sdkReference.Version
+    if ($sdkVersion.Major -lt 2) {
+        throw "Automatic Windows App Runtime alignment requires Windows App SDK 2.0 or newer."
+    }
+
+    [xml]$manifest = Get-Content $ManifestPath
+    $dependency = $manifest.Package.Dependencies.PackageDependency |
+        Where-Object Name -like "Microsoft.WindowsAppRuntime.*" |
+        Select-Object -First 1
+    $dependency.Name = "Microsoft.WindowsAppRuntime.$($sdkVersion.Major)"
+    $dependency.MinVersion = "$($sdkVersion.ToString(3)).0"
+    $manifest.Save($ManifestPath)
+
+    Write-Host "[Build] Windows App Runtime aligned to $($dependency.Name) $($dependency.MinVersion)" -ForegroundColor Gray
 }
 
 # Add Windows SDK tools to PATH
@@ -58,6 +84,10 @@ Write-Host "[Build] Starting Clickra MSIX Build..." -ForegroundColor Cyan
 # 1. Clean up
 if (Test-Path $layoutDir) { Remove-Item -Recurse -Force $layoutDir }
 if (Test-Path $publishDir) { Remove-Item -Recurse -Force $publishDir }
+$fluentBuildDir = "$root/src/Clickra.Fluent/bin/Release"
+$fluentObjDir = "$root/src/Clickra.Fluent/obj/Release"
+if (Test-Path $fluentBuildDir) { Remove-Item -Recurse -Force $fluentBuildDir }
+if (Test-Path $fluentObjDir) { Remove-Item -Recurse -Force $fluentObjDir }
 New-Item -ItemType Directory -Path $layoutDir | Out-Null
 
 # 2. Build Binaries
@@ -76,6 +106,9 @@ Assert-NativeSuccess
 # 3. Assemble Layout
 Write-Host "[Build] Assembling Layout..." -ForegroundColor Gray
 Copy-Item "$packagingDir/AppxManifest.xml" "$layoutDir/"
+Sync-WindowsAppRuntimeDependency `
+    -ProjectPath "$root/src/Clickra.Fluent/Clickra.Fluent.csproj" `
+    -ManifestPath "$layoutDir/AppxManifest.xml"
 Copy-Item -Recurse "$packagingDir/Assets" "$layoutDir/"
 Copy-Item -Recurse "$packagingDir/Strings" "$layoutDir/"
 
@@ -86,7 +119,7 @@ Copy-Item "src/Clickra.Fluent/Assets/AppIcon.png" "$layoutDir/Assets/AppIcon.png
 
 # Copy Fluent GUI output from the SDK-generated publish folder; its deps.json
 # includes WinUI and Bootstrap.Net entries that are missing from the custom -o output.
-$fluentPublishSource = "src/Clickra.Fluent/bin/Release/net10.0-windows10.0.26100.0/win-x64/publish"
+$fluentPublishSource = "src/Clickra.Fluent/bin/Release/net8.0-windows10.0.26100.0/win-x64/publish"
 
 # Keep the deps/runtime files, but skip large Windows ML payloads Clickra does not use.
 $fluentExclude = @(
@@ -120,21 +153,16 @@ if (Test-Path "src/resources/app.ico") {
     Copy-Item "src/resources/app.ico" "$layoutDir/app.ico"
 }
 
-# 4. Compile Resources (MakePri)
-Write-Host "[Build] Compiling Resource Index (PRI)..." -ForegroundColor Gray
-& "makepri.exe" createconfig /cf "$layoutDir/priconfig.xml" /dq zh-TW /pv 10.0.0 /o
-Assert-NativeSuccess
-& "makepri.exe" new /pr "$layoutDir" /cf "$layoutDir/priconfig.xml" /of "$layoutDir/resources.pri" /o
-Assert-NativeSuccess
+# The Fluent publish output already contains the XAML resource index.
 
-# 5. Create Appx Package
+# 4. Create Appx Package
 Write-Host "[Build] Creating MSIX Package..." -ForegroundColor Gray
 $msixPath = "$root/Clickra.msix"
 if (Test-Path $msixPath) { Remove-Item $msixPath }
 & "makeappx.exe" pack /d "$layoutDir" /p $msixPath /o
 Assert-NativeSuccess
 
-# 6. Signing (Optional)
+# 5. Signing (Optional)
 $pfxPath = "$packagingDir/ClickraDev.pfx"
 
 # Read publisher from AppxManifest.xml

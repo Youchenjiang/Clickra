@@ -44,8 +44,8 @@ Clickra 尊重您的隐私。大多数处理流程（文档转 PDF、PDF 压缩�
 - 图片 (JPG/PNG/WebP) 批量转 PDF
 - 图片垂直拼接
 - 快速多文件 PDF 合并
-- 100% NativeAOT 原生编译，低延迟响应
-- Windows 11 Fluent Design 界面集成
+ - NativeAOT Shell 集成，保持右键菜单快速响应
+ - WinUI 3 Fluent 仪表板与转换进度界面
 - 安全的本机处理（仅可选 PDF 翻译使用云端翻译服务）
 
 ---

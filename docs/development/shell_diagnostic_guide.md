@@ -51,14 +51,17 @@ Run the checks in order:
 
 1. Confirm that the package is installed and its publisher matches the
    manifest certificate.
-2. Restart Explorer after reinstalling or changing the shell DLL.
-3. Check whether `DllGetClassObject` appears in the log.
-4. If it does, compare every requested IID with the values in
+2. Launch the packaged `Clickra.Fluent` dashboard directly. If it exits before
+   showing a window, diagnose the app/runtime before touching shell code.
+3. Activate the packaged app with one known command independently of Explorer.
+4. Restart Explorer after reinstalling or changing the shell DLL.
+5. Check whether `DllGetClassObject` appears in the log.
+6. If it does, compare every requested IID with the values in
    [`src/ClickraShell/Guids.cs`](../../src/ClickraShell/Guids.cs).
-5. If submenu callbacks appear but no item is shown, inspect the enumerator's
+7. If submenu callbacks appear but no item is shown, inspect the enumerator's
    `Next` result, item count, and `GetState`/selection-count logic.
-6. If `Invoke` appears but no output is produced, trace the CLI command and
-   its argument list independently of Explorer.
+8. If `Invoke` appears but no progress window opens, trace packaged activation
+   and Fluent startup independently of Explorer.
 
 Useful PowerShell commands:
 
@@ -85,7 +88,46 @@ Never return `S_OK` while leaving an output pointer unset. Clear output
 pointers before branching and return `E_NOTIMPL` or `E_NOINTERFACE` when the
 operation is not supported.
 
-## 4. Package and Explorer checks
+## 4. App starts but no window appears
+
+If Explorer briefly shows a busy cursor and then nothing happens, first decide
+whether the shell invocation failed or the Fluent process crashed before XAML
+created a window.
+
+1. Confirm whether shell logging reached `Invoke`.
+2. Launch `Clickra.Fluent.exe` directly from the installed package.
+3. Inspect Windows Event Viewer under **Application Error** and
+   **.NET Runtime**.
+4. Treat `MissingMethodException` (`0x80131513`) or `TypeLoadException`
+   (`0x80131522`) involving `Microsoft.UI.Xaml` as a likely Windows App SDK
+   projection/runtime mismatch.
+5. Compare:
+   - `Microsoft.WindowsAppSDK` in
+     `src/Clickra.Fluent/Clickra.Fluent.csproj`;
+   - `Microsoft.WindowsAppRuntime.<major>` and `MinVersion` in the layout
+     manifest;
+   - `Microsoft.WinUI.dll` in the layout with the resolved NuGet package.
+6. Rebuild only through `scripts/build_msix.ps1`. It cleans stale Release
+   output, aligns the copied runtime dependency for Windows App SDK 2.x, and
+   preserves the SDK-generated `resources.pri`.
+
+An unexpectedly small package or `Microsoft.WinUI.dll` is evidence of missing
+or stale payload, not an optimization success.
+
+### 2026-07 packaging incident
+
+The observed symptom was a working context-menu command followed by no progress
+window. Explorer reached `Invoke`, but `Clickra.Fluent` crashed before creating
+the first XAML window. First-chance diagnostics reported missing WinUI methods,
+and the packaged `Microsoft.WinUI.dll` did not match the resolved SDK payload.
+
+The package had mixed stale Windows App SDK artifacts, and a later `makepri new`
+step replaced Fluent's XAML resource index. The durable fix was to clean Fluent
+Release output before publish, keep the SDK-generated `resources.pri`, align the
+layout runtime dependency from the Fluent project version, and restart Explorer
+after reinstalling the same package version.
+
+## 5. Package and Explorer checks
 
 The supported packaging path is [`scripts/build_msix.ps1`](../../scripts/build_msix.ps1),
 which produces the NativeAOT shell DLL and the full MSIX layout. Do not use a
@@ -97,6 +139,8 @@ When a package appears installed but Explorer never calls the DLL, check:
 - the CLSID in both manifests matches `Guids.Clsid`;
 - the package publisher matches the signing certificate;
 - `ClickraShell.dll` and its side-by-side manifest are present in the layout;
+- `Clickra.Fluent.exe`, `Microsoft.WinUI.dll`, and `resources.pri` are present;
+- the layout Windows App Runtime dependency matches the Fluent project SDK;
 - the package was rebuilt after changing the DLL;
 - Explorer was restarted after reinstalling the package.
 

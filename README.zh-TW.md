@@ -3,7 +3,9 @@
 [![Microsoft Store](https://img.shields.io/badge/Microsoft%20Store-Clickra-blue?style=for-the-badge&logo=microsoft-store)](https://apps.microsoft.com/detail/9NGLBF6P1KLD)
 [![License: Apache 2.0](https://img.shields.io/badge/License-Apache%202.0-blue.svg?style=for-the-badge)](https://opensource.org/licenses/Apache-2.0)
 
-這是一個支援 Windows 10 與 Windows 11 的高性能原生右鍵選單工具套件。採用 C# NativeAOT 技術開發，徹底取代啟動緩慢的 Python 腳本，提供毫秒級的即時響應。
+這是一個支援 Windows 10 與 Windows 11 的高性能右鍵選單工具套件。Explorer
+整合與 CLI 採用 C# NativeAOT，Dashboard 與轉換進度則使用 WinUI 3 Fluent
+控制項。
 
 [English Version (英文版)](README.md)
 
@@ -13,10 +15,10 @@
 
 大多數生產力腳本（如 PDF 合併、圖片轉檔）通常使用 Python 編寫。雖然開發快速，但 Python 每次執行都有 **1-2 秒的「冷啟動」延遲**。對於右鍵選單這種頻繁操作來說，這幾秒鐘的等待非常破壞節奏。
 
-**Clickra** 採用 **NativeAOT (原生預編譯)** 技術：
-*   **啟動速度 < 0.01 秒**：體感上完全沒有延遲，感覺就像是 Windows 內建的功能。
-*   **零依賴**：不需要安裝 .NET Runtime 或 Python 環境，點開即用。
-*   **現代外觀**：完全整合進 Windows 11 的現代右鍵選單，支援優雅的「子選單」架構。
+**Clickra** 採用混合式 Windows 架構：
+*   **Native Shell 邊界**：Explorer 命令提供者使用 NativeAOT，確保選單列舉快速且可預期。
+*   **Fluent 應用程式介面**：Dashboard、設定、歷史、對話框與右鍵進度視窗使用 WinUI 3。
+*   **本機處理**：轉換邏輯不依賴 Python；MSIX 負責宣告 Windows App Runtime 相依性。
 
 ---
 
@@ -40,8 +42,8 @@
 ### 1. 📂 現代化子選單 (Windows 10/11)
 在 Windows 11 中，所有功能皆優雅地收納在 `Clickra` 現代化子選單；Windows 10 則使用相容的傳統右鍵選單整合。
 
-### 2. 📊 原生儀表板 (Native Dashboard)
-*   **功能**：採用高效能 Win32 原生開發的深色模式儀表板。
+### 2. 📊 Fluent 儀表板 (Fluent Dashboard)
+*   **功能**：採用 WinUI 3 的響應式 Dashboard，整合轉換、設定、歷史與診斷。
 *   **特色**：即時偵測 PDF 引擎與 Office 轉檔引擎狀態。
 
 ### 3. 📄 文書轉 PDF (Office to PDF)
@@ -62,11 +64,11 @@
 
 ### 7. 🕒 轉換歷史記錄 (Conversion History)
 *   **功能**：本地追蹤並顯示所有的轉檔操作歷史。
-*   **特色**：採用高性能原生繪製的歷史紀錄列表，呈現轉換的檔案路徑、操作類型、時間戳記與成功/失敗狀態。
+*   **特色**：Fluent 左右分欄介面呈現檔案路徑、操作類型、時間、耗時與成功／失敗狀態。
 
 ### 8. 🔓 PDF 去除密碼 (Remove PDF Password)
 *   **功能**：直接在右鍵選單對受密碼保護的 PDF 檔案進行解密並生成無密碼版本。
-*   **特色**：於 GDI+ 進度視窗內建無閃爍的內嵌密碼輸入介面，輸入過程流暢且免去彈出視窗打斷體驗。
+*   **特色**：在 Fluent 轉換流程中使用已在地化的 WinUI 密碼對話框。
 *   **安全**：自動偵測檔案加密狀態，若檔案本身未加密則會提示無須解密以維護系統安全性。
 
 ### 9. 📄 PDF 壓縮 (PDF Compression)
@@ -99,6 +101,7 @@ Clickra/
 ├── PRIVACY.md                      # 隱私權政策 (符合 Windows 應用程式商店合規)
 ├── LOCAL_BUILD_NOTES.md            # 開發人員指南 (包含本地編譯、腳本、功能擴充與 Git 分支合併規則)
 └── docs/
+    ├── ARCHITECTURE.md             # NativeAOT／Fluent 邊界、遷移狀態與最終方向
     ├── ROADMAP.md                  # 產品開發路線圖與里程碑
     ├── StoreListing_*.md           # 微軟商店文案與描述資訊
     └── development/
@@ -114,6 +117,7 @@ Clickra/
     *   [商店描述資訊](docs/StoreListing_ZH.md) — 微軟商店中的詳細功能描述文案。
 *   **開發人員核心指南（新進開發者起點）**：
     *   [LOCAL_BUILD_NOTES.md](LOCAL_BUILD_NOTES.md) — 包含詳細的本地端編譯步驟、自動化打包腳本、功能擴充方法，以及開發分支合併規則。
+    *   [架構說明](docs/ARCHITECTURE.md) — NativeAOT／Fluent 邊界、執行路徑、刻意限制、已知缺口與最終方向。
 *   **進階開發與發布專題**：
     *   [版本管理與發布規範](docs/development/release_guideline.md) — 定義四位數版本限制、發布時需更新之檔案清單與 Git Tag 規定。
     *   [Shell 擴充開發最佳實踐](docs/development/shell_extension_best_practices.md) — COM 介面、NativeAOT 記憶體規則與 Sparse Package/MSIX 封裝不變量。

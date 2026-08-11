@@ -49,6 +49,13 @@ $$\text{Version} = \text{Major} . \text{Minor} . \text{Patch} . \mathbf{0}$$
 *   **[packaging/msix/AppxManifest.xml](../../packaging/msix/AppxManifest.xml)**:
     更新 `<Identity ... Version="X.Y.Z.0" />`。此為最終打包成 `.msix` 用於商店發布的核心 Manifest。
 
+> [!NOTE]
+> Clickra 的 `X.Y.Z.0` 應用程式版本與 Windows App SDK 套件版本是兩套不同資料。
+> Windows App SDK 版本只在 `src/Clickra.Fluent/Clickra.Fluent.csproj` 更新；
+> `scripts/build_msix.ps1` 會依該版本自動對齊打包副本中的
+> `Microsoft.WindowsAppRuntime` family 與 `MinVersion`。不要用
+> `bump_version.ps1` 管理 Windows App SDK 版本。
+
 ### 3.3 專案文件 (Documentation)
 *   **[README.md](../../README.md)**: 更新標題的 `Clickra vX.Y.Z.0` 以及版本歷史表格。
 *   **[README.zh-TW.md](../../README.zh-TW.md)**: 同步更新繁中說明的標題與版本歷史。

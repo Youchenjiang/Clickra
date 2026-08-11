@@ -1303,12 +1303,30 @@ public sealed partial class MainPage : Page
     {
         try
         {
-            string dataDir = ClickraStorage.GetDataDir();
-            string logPath = Path.Combine(dataDir, "history.log");
+            string logPath;
+            try
+            {
+                // 使用官方 WinRT API 直接獲取硬碟實體路徑
+                string localPath = Windows.Storage.ApplicationData.Current.LocalFolder.Path;
+                logPath = Path.Combine(localPath, "history.log");
+            }
+            catch
+            {
+                logPath = Path.Combine(ClickraStorage.GetDataDir(), "history.log");
+            }
+
+            string? dir = Path.GetDirectoryName(logPath);
+            if (!string.IsNullOrEmpty(dir) && !Directory.Exists(dir))
+                Directory.CreateDirectory(dir);
+
+            if (!File.Exists(logPath))
+                File.WriteAllText(logPath, "");
+
+            // 喚醒檔案總管並使用 /select 自動高亮選中 history.log 檔案
             Process.Start(new ProcessStartInfo
             {
                 FileName = "explorer.exe",
-                Arguments = File.Exists(logPath) ? $"/select,\"{logPath}\"" : $"\"{dataDir}\"",
+                Arguments = $"/select,\"{logPath}\"",
                 UseShellExecute = true
             })?.Dispose();
         }

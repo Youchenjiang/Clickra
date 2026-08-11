@@ -15,8 +15,15 @@ Explorer selection
   -> DllGetClassObject / ClassFactory
   -> IExplorerCommand
   -> IEnumExplorerCommand (Clickra submenu)
-  -> Clickra.CLI command arguments
+  -> IApplicationActivationManager
+  -> packaged Clickra.Fluent.exe
+  -> TaskProgressPage
 ```
+
+`ComMethods.Invoke` must prefer packaged activation using the application's
+AUMID. This preserves package identity and Windows App Runtime dependency
+resolution. Direct process launch is fallback only: try `Clickra.Fluent.exe`,
+then the legacy `Clickra.exe` when Fluent is unavailable.
 
 Keep the CLSID and interface IDs in [`src/ClickraShell/Guids.cs`](../../src/ClickraShell/Guids.cs)
 as the source of truth. The package manifest and the sparse-package manifest
@@ -80,8 +87,15 @@ users receive the full MSIX. Verify both paths before release:
   same CLSID and version. Their package names and publishers may differ by
   deployment context, but each publisher must match its signing certificate.
 - `scripts/build_msix.ps1` is the supported packaging entry point; it publishes
-  both `Clickra.CLI` and `ClickraShell`, assembles the layout, creates the PRI
-  index, and builds `Clickra.msix`.
+  `Clickra.CLI`, `ClickraShell`, and `Clickra.Fluent`, assembles the layout,
+  preserves the Fluent publish output's `resources.pri`, and builds
+  `Clickra.msix`.
+- `src/Clickra.Fluent/Clickra.Fluent.csproj` is the Windows App SDK version
+  source. The packaging script derives the copied layout manifest's
+  `Microsoft.WindowsAppRuntime` family and minimum version from it.
+- Never combine managed projections from one Windows App SDK release with a
+  runtime dependency from another. Always retain the clean step for Fluent
+  `bin/Release`, `obj/Release`, publish, and layout output.
 - A package must be signed with a certificate whose publisher matches the
   manifest. Do not distribute an unsigned MSIX or shell DLL.
 - After reinstalling a development package, restart Explorer before judging a
@@ -95,6 +109,9 @@ Sparse Package/MSIX flow. Such snippets belong in historical notes only.
 - [ ] CLSID and interface IDs were checked against `src/ClickraShell/Guids.cs`.
 - [ ] Both manifests were updated if identity or version changed.
 - [ ] NativeAOT publish succeeds for `ClickraShell` and `Clickra.CLI`.
+- [ ] Fluent publish succeeds and its `resources.pri` remains in the layout.
+- [ ] The layout manifest runtime dependency matches the Fluent SDK version.
+- [ ] The packaged Fluent app launches directly before Explorer is tested.
 - [ ] The modern Windows 11 submenu appears and enumerates all commands.
 - [ ] A command launches with the expected arguments and selection count.
 - [ ] Classic Windows 10 behavior was checked when the change affects it.

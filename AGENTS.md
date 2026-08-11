@@ -16,4 +16,8 @@ Before an external mutation, state the exact user authorization and the single o
 
 If the user objects to or revokes an action, stop all mutations immediately. Do not revert, delete, cancel, or force-push as “cleanup” without separate authorization.
 
-The detailed project rules are in [`.agents/AGENTS.md`](.agents/AGENTS.md), [`.agent/guidelines.md`](.agent/guidelines.md), and [`LOCAL_BUILD_NOTES.md`](LOCAL_BUILD_NOTES.md).
+The detailed project rules are in [`.agents/AGENTS.md`](.agents/AGENTS.md), [`.agent/guidelines.md`](.agent/guidelines.md), [`LOCAL_BUILD_NOTES.md`](LOCAL_BUILD_NOTES.md), and the [`docs/`](docs/) directory:
+- [`ARCHITECTURE_AND_FRAMEWORK.md`](docs/ARCHITECTURE_AND_FRAMEWORK.md)
+- [`WINDOWS_COMPATIBILITY_AND_MSIX_SANDBOX.md`](docs/WINDOWS_COMPATIBILITY_AND_MSIX_SANDBOX.md)
+- [`TROUBLESHOOTING_AND_RESOLUTIONS.md`](docs/TROUBLESHOOTING_AND_RESOLUTIONS.md)
+- [`CI_CD_DUAL_RELEASE_GUIDE.md`](docs/CI_CD_DUAL_RELEASE_GUIDE.md)

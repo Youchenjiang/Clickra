@@ -44,8 +44,8 @@ Clickra 絕大多數功能（文書轉 PDF、PDF 壓縮、PDF 合併、圖片拼
 - 圖片 (JPG/PNG/WebP) 批次轉 PDF
 - 圖片垂直無縫拼接
 - 極速 PDF 多檔合併
-- 100% Native AOT 原生編譯，零延遲啟動
-- Windows 11 Fluent Design 介面整合
+ - NativeAOT Shell 整合，維持右鍵選單快速回應
+ - WinUI 3 Fluent 儀表板與轉換進度介面
 - 安全本機處理（僅 PDF 翻譯使用選用的雲端翻譯服務）
 
 ---

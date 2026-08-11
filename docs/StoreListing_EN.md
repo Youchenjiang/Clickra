@@ -44,8 +44,8 @@ Clickra respects your privacy. Most processing (Office-to-PDF conversion, PDF co
  - Batch Image to PDF conversion (JPG/PNG/WebP)
  - Seamless vertical image stitching
  - Fast multi-file PDF merging
- - 100% NativeAOT for zero-latency responsiveness
- - Modern Windows 11 Fluent Design integration
+  - NativeAOT shell integration for responsive context-menu commands
+  - WinUI 3 Fluent dashboard and conversion progress
  - Safe local processing (optional cloud-based PDF Translation)
 
 ---

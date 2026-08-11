@@ -1,4 +1,4 @@
-﻿<?xml version="1.0" encoding="utf-8"?>
+<?xml version="1.0" encoding="utf-8"?>
 <Package
   xmlns="http://schemas.microsoft.com/appx/manifest/foundation/windows10"
   xmlns:uap="http://schemas.microsoft.com/appx/manifest/uap/windows10"
@@ -16,7 +16,7 @@
     Version="3.6.5.0" />
 
   <Properties>
-    <DisplayName>ms-resource:AppName</DisplayName>
+    <DisplayName>Clickra</DisplayName>
     <PublisherDisplayName>g1014308</PublisherDisplayName>
     <Logo>Assets\StoreLogo.png</Logo>
   </Properties>
@@ -43,8 +43,8 @@
       uap10:RuntimeBehavior="packagedClassicApp"
       uap10:TrustLevel="mediumIL">
       <uap:VisualElements
-        DisplayName="ms-resource:AppName"
-        Description="ms-resource:AppDescription"
+        DisplayName="Clickra"
+        Description="Clickra file conversion tools"
         BackgroundColor="transparent"
         Square150x150Logo="Assets\Square150x150Logo.png"
         Square44x44Logo="Assets\Square44x44Logo.png">
@@ -64,12 +64,34 @@
           </desktop4:FileExplorerContextMenus>
         </desktop4:Extension>
 
-        <!-- 使用 desktop9 告知系統此為 IExplorerCommand 的傳統型 handler -->
+        <!-- 使用 desktop9 告知系統此為 IExplorerCommand 的傳統型 handler (Win10 20H2+ / Win11) -->
         <desktop9:Extension Category="windows.fileExplorerClassicContextMenuHandler">
           <desktop9:FileExplorerClassicContextMenuHandler>
             <desktop9:ExtensionHandler Type="*" Clsid="B17A34D2-55E0-4D6F-8D1F-7A6E9C2B30A1" />
+            <desktop9:ExtensionHandler Type="Directory" Clsid="B17A34D2-55E0-4D6F-8D1F-7A6E9C2B30A1" />
+            <desktop9:ExtensionHandler Type="Directory\Background" Clsid="B17A34D2-55E0-4D6F-8D1F-7A6E9C2B30A1" />
           </desktop9:FileExplorerClassicContextMenuHandler>
         </desktop9:Extension>
+
+        <!-- Windows 10 傳統檔案關聯右鍵選單備援 -->
+        <uap:Extension Category="windows.fileTypeAssociation">
+          <uap:FileTypeAssociation Name="clickra">
+            <uap:SupportedFileTypes>
+              <uap:FileType>.pdf</uap:FileType>
+              <uap:FileType>.docx</uap:FileType>
+              <uap:FileType>.doc</uap:FileType>
+              <uap:FileType>.pptx</uap:FileType>
+              <uap:FileType>.ppt</uap:FileType>
+              <uap:FileType>.xlsx</uap:FileType>
+              <uap:FileType>.xls</uap:FileType>
+              <uap:FileType>.png</uap:FileType>
+              <uap:FileType>.jpg</uap:FileType>
+              <uap:FileType>.jpeg</uap:FileType>
+              <uap:FileType>.webp</uap:FileType>
+              <uap:FileType>.bmp</uap:FileType>
+            </uap:SupportedFileTypes>
+          </uap:FileTypeAssociation>
+        </uap:Extension>
 
         <!-- COM 伺服器註冊 -->
         <com:Extension Category="windows.comServer">

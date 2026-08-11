@@ -44,8 +44,8 @@ Clickra는 개인정보 보호를 중요하게 생각합니다. Office to PDF, P
  - JPG/PNG/WebP 이미지 일괄 PDF 변환
  - 이미지 세로 병합
  - 빠른 다중 PDF 병합
- - NativeAOT 기반 저지연 응답
- - Windows 11 Fluent Design 통합
+  - NativeAOT 셸 통합 기반의 빠른 컨텍스트 메뉴 응답
+  - WinUI 3 Fluent 대시보드 및 변환 진행 UI
  - 안전한 로컬 처리(선택형 PDF 번역만 클라우드 번역 사용)
 
 ---
