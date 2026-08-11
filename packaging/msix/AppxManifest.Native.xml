@@ -1,0 +1,110 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Package
+  xmlns="http://schemas.microsoft.com/appx/manifest/foundation/windows10"
+  xmlns:uap="http://schemas.microsoft.com/appx/manifest/uap/windows10"
+  xmlns:rescap="http://schemas.microsoft.com/appx/manifest/foundation/windows10/restrictedcapabilities"
+  xmlns:desktop4="http://schemas.microsoft.com/appx/manifest/desktop/windows10/4"
+  xmlns:desktop5="http://schemas.microsoft.com/appx/manifest/desktop/windows10/5"
+  xmlns:desktop9="http://schemas.microsoft.com/appx/manifest/desktop/windows10/9"
+  xmlns:com="http://schemas.microsoft.com/appx/manifest/com/windows10"
+  xmlns:uap10="http://schemas.microsoft.com/appx/manifest/uap/windows10/10"
+  IgnorableNamespaces="uap rescap desktop4 desktop5 desktop9 com uap10">
+
+  <!-- NativeAOT 軌道（零依賴）：與 Fluent 軌道共用相同 Identity，
+       因此同一時間只會安裝其中之一，切換即為升級/取代。 -->
+  <Identity
+    Name="g1014308.Clickra"
+    Publisher="CN=CBF59877-21AD-4BC4-8F91-FE8DA520A138"
+    ProcessorArchitecture="x64"
+    Version="3.6.5.0" />
+
+  <Properties>
+    <DisplayName>Clickra</DisplayName>
+    <PublisherDisplayName>g1014308</PublisherDisplayName>
+    <Logo>Assets\StoreLogo.png</Logo>
+  </Properties>
+
+  <Dependencies>
+    <TargetDeviceFamily Name="Windows.Desktop" MinVersion="10.0.19041.0" MaxVersionTested="10.0.22621.0" />
+    <!-- 注意：NativeAOT 軌道刻意不宣告 Microsoft.WindowsAppRuntime 相依，
+         也不需要 .NET runtime，可在乾淨機器上直接安裝。 -->
+  </Dependencies>
+
+  <Resources>
+    <Resource Language="zh-TW" />
+    <Resource Language="en-US" />
+    <Resource Language="ja-JP" />
+    <Resource Language="ko-KR" />
+    <Resource Language="zh-CN" />
+  </Resources>
+
+  <Applications>
+    <Application Id="App" Executable="Clickra.exe"
+      EntryPoint="Windows.FullTrustApplication"
+      uap10:RuntimeBehavior="packagedClassicApp"
+      uap10:TrustLevel="mediumIL">
+      <uap:VisualElements
+        DisplayName="Clickra"
+        Description="Clickra file conversion tools"
+        BackgroundColor="transparent"
+        Square150x150Logo="Assets\Square150x150Logo.png"
+        Square44x44Logo="Assets\Square44x44Logo.png">
+        <uap:DefaultTile Wide310x150Logo="Assets\Wide310x150Logo.png" />
+      </uap:VisualElements>
+
+      <Extensions>
+        <desktop4:Extension Category="windows.fileExplorerContextMenus">
+          <desktop4:FileExplorerContextMenus>
+            <desktop5:ItemType Type="*">
+              <desktop5:Verb Id="ClickraMenu" Clsid="B17A34D2-55E0-4D6F-8D1F-7A6E9C2B30A1" />
+            </desktop5:ItemType>
+            <desktop5:ItemType Type="Directory">
+              <desktop5:Verb Id="ClickraDirMenu" Clsid="B17A34D2-55E0-4D6F-8D1F-7A6E9C2B30A1" />
+            </desktop5:ItemType>
+          </desktop4:FileExplorerContextMenus>
+        </desktop4:Extension>
+
+        <desktop9:Extension Category="windows.fileExplorerClassicContextMenuHandler">
+          <desktop9:FileExplorerClassicContextMenuHandler>
+            <desktop9:ExtensionHandler Type="*" Clsid="B17A34D2-55E0-4D6F-8D1F-7A6E9C2B30A1" />
+            <desktop9:ExtensionHandler Type="Directory" Clsid="B17A34D2-55E0-4D6F-8D1F-7A6E9C2B30A1" />
+            <desktop9:ExtensionHandler Type="Directory\Background" Clsid="B17A34D2-55E0-4D6F-8D1F-7A6E9C2B30A1" />
+          </desktop9:FileExplorerClassicContextMenuHandler>
+        </desktop9:Extension>
+
+        <uap:Extension Category="windows.fileTypeAssociation">
+          <uap:FileTypeAssociation Name="clickra">
+            <uap:SupportedFileTypes>
+              <uap:FileType>.pdf</uap:FileType>
+              <uap:FileType>.docx</uap:FileType>
+              <uap:FileType>.doc</uap:FileType>
+              <uap:FileType>.pptx</uap:FileType>
+              <uap:FileType>.ppt</uap:FileType>
+              <uap:FileType>.xlsx</uap:FileType>
+              <uap:FileType>.xls</uap:FileType>
+              <uap:FileType>.png</uap:FileType>
+              <uap:FileType>.jpg</uap:FileType>
+              <uap:FileType>.jpeg</uap:FileType>
+              <uap:FileType>.webp</uap:FileType>
+              <uap:FileType>.bmp</uap:FileType>
+            </uap:SupportedFileTypes>
+          </uap:FileTypeAssociation>
+        </uap:Extension>
+
+        <com:Extension Category="windows.comServer">
+          <com:ComServer>
+            <com:SurrogateServer DisplayName="Clickra Context Menu Handler">
+              <com:Class Id="B17A34D2-55E0-4D6F-8D1F-7A6E9C2B30A1" Path="ClickraShell.dll" ThreadingModel="Both">
+              <com:DefaultIcon Path="app.ico" />
+            </com:Class>
+            </com:SurrogateServer>
+          </com:ComServer>
+        </com:Extension>
+      </Extensions>
+    </Application>
+  </Applications>
+
+  <Capabilities>
+    <rescap:Capability Name="runFullTrust" />
+  </Capabilities>
+</Package>

@@ -84,9 +84,17 @@
 ### 推薦方法：Microsoft Store (自動更新)
 [![Microsoft Store Badge](https://developer.microsoft.com/en-us/store/badges/images/English_get-it-from-MS.png)](https://apps.microsoft.com/detail/9NGLBF6P1KLD)
 
-### 手動安裝 (GitHub Release)
-1.  從 [Releases](../../releases) 下載最新的 `Clickra.msix`。
-2.  雙擊檔案進行安裝。
+### 手動安裝 (GitHub Release, 自動選擇軌道)
+1.  從 [Releases](../../releases) 下載 `ClickraSetup.exe`。
+2.  雙擊執行。安裝程式會自動偵測本機是否具備 .NET 8+ 與 Windows App Runtime，
+    並安裝對應的軌道：
+    *   兩者皆具備 → **Fluent 軌道**（`Clickra.msix`，完整 WinUI 3 儀表板）。
+    *   任一缺失 → **NativeAOT 軌道**（`Clickra-Native.msix`，零依賴原生版，
+        乾淨機器不需任何 .NET runtime 即可使用）。
+
+    也可以手動安裝指定軌道：`Clickra.msix`（Fluent，需要 .NET 8+ 與 Windows App Runtime 2.x）
+    或 `Clickra-Native.msix`（NativeAOT，零依賴）。詳細說明見
+    [docs/development/dual_track_guide.md](docs/development/dual_track_guide.md)。
 
 ---
 
@@ -107,7 +115,8 @@ Clickra/
     └── development/
         ├── release_guideline.md    # 版本號管理規範與商店上線檢查清單
         ├── shell_extension_best_practices.md # COM、NativeAOT、記憶體與封裝不變量
-        └── shell_diagnostic_guide.md         # Shell 擴充日誌與 Explorer 診斷
+        ├── shell_diagnostic_guide.md         # Shell 擴充日誌與 Explorer 診斷
+        └── dual_track_guide.md     # Fluent/NativeAOT 雙軌發行設計
 ```
 
 ### 文件導覽連結

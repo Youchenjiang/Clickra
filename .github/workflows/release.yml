@@ -38,59 +38,45 @@ jobs:
       with:
         dotnet-version: '10.0.x'
 
-    - name: Publish Shell DLL
-      run: dotnet publish src/ClickraShell/ClickraShell.csproj -c Release -r win-x64 --output ./publish/shell
+    # ---- 雙軌產出 ----
+    # Clickra.msix        = Fluent 軌道（WinUI 3，framework-dependent，供 Microsoft Store 與有 .NET 的用戶）
+    # Clickra-Native.msix = NativeAOT 軌道（零依賴，供沒有 .NET / Windows App Runtime 的乾淨機器）
+    # ClickraSetup.exe    = 自動偵測 runtime 並安裝對應軌道的 bootstrapper
 
-    - name: Publish CLI App
-      run: dotnet publish src/Clickra.CLI/Clickra.csproj -c Release -r win-x64 --output ./publish/cli
-
-    - name: Prepare MSIX Layout
+    - name: Build Fluent MSIX (Store track)
       shell: pwsh
       run: |
-        New-Item -ItemType Directory -Path ./msix_layout -Force
-        New-Item -ItemType Directory -Path ./msix_layout/Assets -Force
-        Copy-Item "./publish/cli/Clickra.exe" "./msix_layout/"
-        Copy-Item "./publish/shell/ClickraShell.dll" "./msix_layout/"
-        Copy-Item "./packaging/msix/AppxManifest.xml" "./msix_layout/"
-        Copy-Item "./packaging/msix/Assets/*" "./msix_layout/Assets/" -Recurse
-        if (-not (Test-Path "./packaging/msix/Strings")) {
-            throw "Required resource folder 'packaging/msix/Strings' not found."
-        }
-        Copy-Item "./packaging/msix/Strings" "./msix_layout/Strings" -Recurse
-        Copy-Item "./src/resources/app.ico" "./msix_layout/app.ico"
-        # Also ensure app.png exists for modern menu
-        Copy-Item "./packaging/msix/Assets/StoreLogo.png" "./msix_layout/app.png"
-
-    - name: Find Windows SDK Tools
-      id: sdk-tools
-      shell: pwsh
-      run: |
-        $kitPath = "C:\Program Files (x86)\Windows Kits\10\bin"
-        $latestVersion = Get-ChildItem -Path $kitPath | Where-Object { $_.Name -match "^10\.0\." } | Sort-Object Name -Descending | Select-Object -First 1
-        $sdkBin = Join-Path $kitPath $latestVersion.Name "x64"
-        echo "SDK_BIN=$sdkBin" >> $env:GITHUB_ENV
-        Write-Host "Found SDK tools at: $sdkBin"
-
-    - name: Compile PRI Resource Index
-      shell: pwsh
-      run: |
-        & "${{ env.SDK_BIN }}\makepri.exe" createconfig /cf ./msix_layout/priconfig.xml /dq zh-TW /pv 10.0.0 /o
-        & "${{ env.SDK_BIN }}\makepri.exe" new /pr ./msix_layout /cf ./msix_layout/priconfig.xml /of ./msix_layout/resources.pri /o
-        if (-not (Test-Path "./msix_layout/resources.pri")) {
-            throw "Resource index resources.pri was not generated."
+        ./scripts/build_msix.ps1
+        if (-not (Test-Path "./Clickra.msix")) {
+            throw "Fluent MSIX was not produced."
         }
 
-    - name: Create MSIX Package
+    - name: Build NativeAOT MSIX (Zero-dependency track)
       shell: pwsh
       run: |
-        & "${{ env.SDK_BIN }}\makeappx.exe" pack /d ./msix_layout /p Clickra.msix /o
+        ./scripts/build_native_msix.ps1
+        if (-not (Test-Path "./Clickra-Native.msix")) {
+            throw "NativeAOT MSIX was not produced."
+        }
 
-    - name: Sign MSIX (CI Self-Signed)
+    - name: Build ClickraSetup Bootstrapper
       shell: pwsh
       run: |
-        # The Subject MUST match the Publisher in AppxManifest.xml
-        $cert = New-SelfSignedCertificate -Type Custom -Subject "CN=CBF59877-21AD-4BC4-8F91-FE8DA520A138" -KeyUsage DigitalSignature -FriendlyName "Clickra CI Cert" -CertStoreLocation "Cert:\CurrentUser\My" -TextExtension @("2.5.29.37={text}1.3.6.1.5.5.7.3.3")
-        & "${{ env.SDK_BIN }}\signtool.exe" sign /fd SHA256 /a /sha1 $($cert.Thumbprint) Clickra.msix
+        dotnet publish src/Clickra.Setup/Clickra.Setup.csproj -c Release -r win-x64 -o ./publish-setup
+        Copy-Item "./publish-setup/ClickraSetup.exe" "./ClickraSetup.exe"
+        if (-not (Test-Path "./ClickraSetup.exe")) {
+            throw "ClickraSetup.exe was not produced."
+        }
+
+    - name: Sign ClickraSetup.exe (CI Self-Signed)
+      shell: pwsh
+      run: |
+        $cert = Get-ChildItem Cert:\CurrentUser\My | Where-Object Subject -like "*CBF59877-21AD-4BC4-8F91-FE8DA520A138*" | Select-Object -First 1
+        if ($cert) {
+            & signtool.exe sign /fd SHA256 /a /sha1 $cert.Thumbprint ./ClickraSetup.exe
+        } else {
+            Write-Warning "No matching certificate found; ClickraSetup.exe left unsigned."
+        }
 
     - name: Fetch Merged Pull Request Description
       id: get_pr_desc
@@ -139,12 +125,18 @@ jobs:
 
         ---
         ### 📦 Installation
-        1. Download the attached `Clickra.msix`.
-        2. Double-click to install.
+        **自動安裝（推薦）**：下載 `ClickraSetup.exe`，它會自動偵測本機是否具備 .NET 8 與 Windows App Runtime，
+        有 → 安裝 Fluent 軌道（`Clickra.msix`）；沒有 → 安裝零依賴的 NativeAOT 軌道（`Clickra-Native.msix`）。
 
-        *Note: This package is signed with a CI certificate for automation.*
+        手動安裝亦可直接下載對應的 MSIX：
+        - `Clickra.msix`（Fluent，需要 .NET 8+ 與 Windows App Runtime 2.x）
+        - `Clickra-Native.msix`（NativeAOT，零依賴，乾淨機器可用）
+
+        *Note: These packages are signed with a CI certificate for automation.*
         EOF
-        gh release create "${{ github.ref_name }}" Clickra.msix --title "${{ github.ref_name }}" --notes-file release_notes.md
+        gh release create "${{ github.ref_name }}" \
+          Clickra.msix Clickra-Native.msix ClickraSetup.exe \
+          --title "${{ github.ref_name }}" --notes-file release_notes.md
 
     - name: Setup Microsoft Store Developer CLI
       uses: microsoft/microsoft-store-apppublisher@b76227f539d68e6465f79bbbc82ed92f61081aa4 # v1.3

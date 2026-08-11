@@ -83,9 +83,17 @@ On Windows 11, commands appear in the modern `Clickra` sub-menu. Windows 10 uses
 ### Recommended: Microsoft Store (Auto-updates)
 [![Microsoft Store Badge](https://developer.microsoft.com/en-us/store/badges/images/English_get-it-from-MS.png)](https://apps.microsoft.com/detail/9NGLBF6P1KLD)
 
-### Manual: GitHub Release
-1.  Download the latest `Clickra.msix` from [Releases](../../releases).
-2.  Double-click the file to install.
+### Manual: GitHub Release (Auto Track Selection)
+1.  Download `ClickraSetup.exe` from [Releases](../../releases).
+2.  Double-click it. The installer detects whether your PC has .NET 8+ and the
+    Windows App Runtime, then installs the matching track automatically:
+    *   **Fluent track** (`Clickra.msix`) when both runtimes are present — full WinUI 3 dashboard.
+    *   **NativeAOT track** (`Clickra-Native.msix`) otherwise — zero-dependency native build,
+        works on clean machines without any .NET runtime.
+
+    You can also install a specific track manually: `Clickra.msix` (Fluent, needs
+    .NET 8+ and Windows App Runtime 2.x) or `Clickra-Native.msix` (NativeAOT, no
+    dependencies). See [docs/development/dual_track_guide.md](docs/development/dual_track_guide.md).
 
 ---
 
@@ -106,7 +114,8 @@ Clickra/
     └── development/
         ├── release_guideline.md    # Versioning constraints & release checklists
         ├── shell_extension_best_practices.md # COM, NativeAOT, memory, and package invariants
-        └── shell_diagnostic_guide.md         # Shell extension logging and Explorer diagnostics
+        ├── shell_diagnostic_guide.md         # Shell extension logging and Explorer diagnostics
+        └── dual_track_guide.md     # Fluent/NativeAOT dual-track distribution design
 ```
 
 ### Document Navigation Links
@@ -147,6 +156,7 @@ Clickra separates the Explorer boundary from the application UI:
 src/
 ├── Clickra.Fluent/           # WinUI 3 dashboard and task progress
 ├── Clickra.CLI/              # NativeAOT CLI and legacy UI fallback
+├── Clickra.Setup/            # NativeAOT dual-track installer (runtime detection)
 ├── Clickra.Core/             # Core Logic (Processors & Storage)
 │   ├── Processors/               (Base classes + 8 Processor implementations)
 │   ├── ClickraStorage.*.cs       (Settings, History, ActiveRecord)

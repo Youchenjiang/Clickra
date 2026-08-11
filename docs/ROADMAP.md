@@ -40,6 +40,15 @@
 - [x] **[F1-9] Progress Window Inline Input Optimization**：進度視窗內嵌輸入框優化（v3.3.0）。
     - **內嵌式密碼輸入**：實作於進度視窗內繪製與管理 Win32 Edit 控制項，實現無閃爍且支援 Enter 鍵送出、Esc 鍵取消的內嵌密碼輸入。
     - **加密狀態預檢**：自動判定 PDF 是否有加密，無加密檔案直接顯示提示不進行重複要求。
+- [x] **[F1-10] Dual-Track Distribution (Fluent / NativeAOT)**：雙軌發行。
+    - 2026/08 決定維持兩條軌道：本機有 .NET 8+ 與 Windows App Runtime → 安裝 Fluent；任一缺失 → 安裝 NativeAOT（零依賴）。
+    - 新增 `ClickraSetup.exe`（NativeAOT bootstrapper）自動偵測 runtime 並安裝對應軌道；新增 `Clickra-Native.msix` 零依賴套件與 `scripts/build_native_msix.ps1`。
+    - 舊 Win32 Dashboard/Progress 由「過渡 fallback」改為**永久 NativeAOT 軌道**，不再排定移除。
+    - 詳細設計見 `docs/development/dual_track_guide.md`。
+- [ ] **[F1-11] Fluent Release Stabilization (Dual-Track)**：Fluent 發布穩定化。
+    - 在 Windows App SDK 2.3.1 下完成 Windows 10/11 的 dashboard 與右鍵實機測試，涵蓋執行中、成功、失敗、取消、PDF 密碼與 Office 雙引擎。
+    - 補上 packaged-app 啟動與 shell activation smoke test，避免只有編譯／打包成功但啟動前崩潰。
+    - 實機驗證 Native ↔ Fluent 同版本切換（`-ForceUpdateFromAnyVersion`）與乾淨機器（無 .NET / 無 WinAppRuntime）上的 NativeAOT 軌道安裝。
 
 ## 2. 核心功能擴張 (Advanced Features)
 - [x] **[F2-1] Word to PDF**：Word 轉 PDF（v3.0.6）。
@@ -117,7 +126,7 @@
     - **Localization 字典結構性重複 (2026/08/09 記錄)**：SonarCloud 的 Duplications measures 將 `Localization.cs` 的 5 種語言字典鍵結構（鍵相同、值不同）判為重複（New Code 12 行、54.5%）。這是 i18n 字典資料結構的必然模式，且 repo 既有 4 個 143 行字典本就互相重複；消除需將 Localization 重構成「基底字典 + 語言覆寫」的架構級改動，留待 Localization 專項重構，不影響品質閘門（New Code 重複率 0.6% < 3%）。
 - [ ] **[R1-6] Dev Scaffolding Cleanup**：開發期清理。
     - [x] **移除視覺分割測試後門**：移除 `ClickraCli.cs` 中硬編碼的測試 PDF 路徑與依執行檔名稱（`TestVisualSplitter` / `ClickraVisualSplitter`）自動進入視覺分割模式的開發測試邏輯，正式版本應僅由 CLI 旗標與參數驅動。
-    - [ ] **本機工具狀態隔離**：將 `.freebuff/`（本機工具 SQLite 狀態）加入 `.gitignore`，避免污染 git status 與誤提交。
+    - [x] **本機工具狀態隔離 (2026/08/11 完成)**：已將 `.freebuff/`（本機工具 SQLite 狀態）與 `Clickra.rar`（本機備份檔）加入 `.gitignore`，避免污染 git status 與誤提交。
 
 ## 4. 維護、診斷與離線轉檔插件 (Diagnostics & Offline Fallback)
 - [x] **[F3-1] One-click Diagnostic Feedback**：一鍵診斷回報與郵件反饋（v3.0.9）。
