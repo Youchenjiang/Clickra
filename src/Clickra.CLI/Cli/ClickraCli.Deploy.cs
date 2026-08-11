@@ -14,7 +14,7 @@ namespace Clickra
     partial class ClickraCli
     {
 
-        static void DeployAssets(string targetDir)
+        internal static void DeployAssets(string targetDir)
         {
             if (!Directory.Exists(targetDir)) Directory.CreateDirectory(targetDir);
 

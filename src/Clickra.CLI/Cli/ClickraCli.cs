@@ -22,64 +22,11 @@ namespace Clickra
         static void ShowWarning(string msg, string title) =>
             MessageBox(IntPtr.Zero, msg, title, MB_OK | MB_ICONWARNING);
 
-        [DllImport("user32.dll")]
-        static extern bool SetProcessDpiAwarenessContext(IntPtr value);
-
-        /// <summary>CLI entry point: attaches the parent console, parses arguments and
-        /// dispatches the requested command, falling back to the dashboard UI.</summary>
+        /// <summary>CLI entry point: delegates the whole startup pipeline (console
+        /// attachment, dashboard launch, argument parsing and dispatch) to
+        /// <see cref="ClickraStartup"/>.</summary>
         [STAThread]
-        static void Main(string[] args)
-        {
-            AttachParentConsoleForCli(args);
-            try { PdfSharp.Fonts.GlobalFontSettings.FontResolver = new ClickraFontResolver(); } catch { }
-            try { SetProcessDpiAwarenessContext((IntPtr)(-4)); } catch { }
-            if (HandleVersionOrDeploy(args)) return;
-
-            var argList = args.ToList();
-            ParseOptions(argList, out bool quiet, out string? outputDirOverride, out bool hasCliLevel, out string compressionLevel, out string pagesOption);
-
-            if (argList.Count < 2)
-            {
-                PrintUsage();
-                return;
-            }
-
-            string command = argList[0].ToLowerInvariant();
-            var files = ExpandDirectoryArguments(
-                    command,
-                    argList.Skip(1).Where(f => !int.TryParse(f, out _)))
-                .OrderBy(f => f)
-                .ToList();
-            if (files.Count == 0)
-            {
-                Console.WriteLine($"[錯誤] 指令「{command}」找不到可處理的檔案。");
-                return;
-            }
-            string outputDir = string.IsNullOrWhiteSpace(outputDirOverride)
-                ? ClickraStorage.GetOutputDir(files[0])
-                : Path.GetFullPath(outputDirOverride);
-            string startTimeStr = DateTime.UtcNow.ToString("yyyy-MM-dd HH:mm:ss");
-            try
-            {
-                DispatchCommandSwitch(command, files, quiet, outputDir, hasCliLevel, compressionLevel, pagesOption);
-            }
-            catch (Exception ex)
-            {
-                if (quiet)
-                {
-                    try { ClickraStorage.CompleteActiveRecord(command, startTimeStr, false, ex.Message); } catch { }
-                    System.Threading.Thread.Sleep(1500);
-                    try { ClickraStorage.ClearActiveRecord(); } catch { }
-                }
-                Console.WriteLine($"Error: {ex.Message}");
-                Console.WriteLine(ex.StackTrace);
-                if (!quiet && Environment.UserInteractive && !Console.IsInputRedirected)
-                {
-                    Console.WriteLine("Press any key to exit...");
-                    Console.ReadKey();
-                }
-            }
-        }
+        static void Main(string[] args) => ClickraStartup.Run(args);
 
         /// <summary>Builds the default PDF compression options from saved settings.</summary>
         private static Dictionary<string, object> BuildDefaultPdfOptions()
@@ -179,89 +126,9 @@ namespace Clickra
             if (translationFailed) Environment.ExitCode = 1;
         }
 
-        /// <summary>Handles the version, visual-splitter and --deploy pseudo-commands;
-        /// returns true when one of them consumed the invocation.</summary>
-        private static bool HandleVersionOrDeploy(string[] args)
-        {
-            if (args.Length == 0 || args[0] == "-v" || args[0] == "--version")
-            {
-                var version = typeof(ClickraCli).Assembly.GetName().Version?.ToString(3) ?? "Unknown";
-                if (args.Length == 0)
-                {
-                    DashboardWindow.Show();
-                    return true;
-                }
-
-                Console.WriteLine($"Clickra v{version} (Modern Shell Edition)");
-                Console.WriteLine("Author: Youchen Jiang");
-                Console.WriteLine("Commands: ppt2pdf, word2pdf, excel2pdf, merge-pdf, compress-pdf, img2pdf, img-merge, img-stitch, translate-pdf, decrypt-pdf, --deploy");
-                return true;
-            }
-
-            if (TryHandleVisualSplitterArgs(args)) return true;
-
-            if (args[0].Equals("--deploy", StringComparison.OrdinalIgnoreCase) && args.Length >= 2)
-            {
-                DeployAssets(args[1]);
-                return true;
-            }
-
-            return false;
-        }
-
-        /// <summary>Opens the visual splitter for the first PDF when --visual-splitter or
-        /// --splitter is passed; returns true when either flag consumed the invocation.</summary>
-        private static bool TryHandleVisualSplitterArgs(string[] args)
-        {
-            if (!args[0].Equals("--visual-splitter", StringComparison.OrdinalIgnoreCase) &&
-                !args[0].Equals("--splitter", StringComparison.OrdinalIgnoreCase))
-            {
-                return false;
-            }
-
-            string pdfPath = args.Length > 1 ? args[1] : "";
-            if (string.IsNullOrEmpty(pdfPath))
-            {
-                var found = Directory.GetFiles(Directory.GetCurrentDirectory(), "*.pdf");
-                if (found.Length > 0) pdfPath = found[0];
-            }
-            if (!string.IsNullOrEmpty(pdfPath))
-            {
-                ProgressWindow.Show("split-pdf", new List<string> { pdfPath });
-            }
-            return true;
-        }
-
-        /// <summary>Parses and removes global CLI options (quiet mode, output directory,
-        /// compression level and page range) from the argument list.</summary>
-        private static void ParseOptions(List<string> argList, out bool quiet, out string? outputDirOverride, out bool hasCliLevel, out string compressionLevel, out string pagesOption)
-        {
-            bool quietByDefault = ClickraStorage.GetSetting("QuietMode").Equals("true", StringComparison.OrdinalIgnoreCase);
-            quiet = quietByDefault;
-            if (argList.Contains("--quiet")) { quiet = true; argList.Remove("--quiet"); }
-            if (argList.Contains("--no-ui")) { quiet = true; argList.Remove("--no-ui"); }
-            if (argList.Contains("--show-ui")) { quiet = false; argList.Remove("--show-ui"); }
-
-            outputDirOverride = ExtractOptionValue(argList, "--out-dir", "-o", "--out");
-            hasCliLevel = argList.Contains("--level") || argList.Contains("--compression-level");
-            compressionLevel = ExtractOptionValue(argList, "--level", "--compression-level") ?? "balanced";
-            pagesOption = ExtractOptionValue(argList, "--pages", "-p") ?? "all";
-        }
-
-        /// <summary>Prints the CLI usage text to the console.</summary>
-        private static void PrintUsage()
-        {
-            Console.WriteLine("Usage: Clickra <command> [options] <file...>");
-            Console.WriteLine("Options: --quiet / --no-ui  (Run in background without GUI)");
-            Console.WriteLine("         --show-ui          (Force show progress window)");
-            Console.WriteLine("         --out-dir <dir> / -o <dir> / --out <dir>  (Write outputs to directory)");
-            Console.WriteLine("         --level <small|balanced|high>  (PDF compression level)");
-            Console.WriteLine("Deployment: Clickra --deploy <target_dir>");
-        }
-
         /// <summary>Routes a command to the office, PDF or image dispatcher and reports
         /// unknown commands.</summary>
-        private static void DispatchCommandSwitch(
+        internal static void DispatchCommandSwitch(
             string command,
             List<string> files,
             bool quiet,

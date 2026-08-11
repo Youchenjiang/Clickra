@@ -16,13 +16,8 @@ namespace Clickra.UI
         // Convert tab state
         static int _convertCommandIndex = 0; // Default: Word to PDF
         static List<string> _selectedFiles = new List<string>();
-        private static readonly string[] ConvertCommands =
-        {
-            "word2pdf", "excel2pdf", "ppt2pdf",
-            "merge-pdf", "compress-pdf", "translate-pdf", "decrypt-pdf", "split-pdf",
-            "img2pdf", "img-merge", "img-stitch"
-        };
-        private static readonly int[] ConvertCommandGroupSizes = { 3, 5, 3 };
+        // ConvertCommands / ConvertCommandGroupSizes are derived from the
+        // ConvertCommandDefs registry (see DashboardWindow.ConvertRegistry.cs).
         
         // Language Dropdown state
         static bool _langDropdownOpen = false;

@@ -14,9 +14,8 @@ namespace Clickra.UI
 {
     public static partial class DashboardWindow
     {
-        private const string CmdCompressPdf = "compress-pdf";
-        private const string CmdImgMerge = "img-merge";
-        private const string FilterPdfFiles = "PDF Files (*.pdf)\0*.pdf\0All Files (*.*)\0*.*\0\0";
+        // File filters and command metadata live in the ConvertCommandDefs
+        // registry (see DashboardWindow.ConvertRegistry.cs).
         /// <summary>Shows the Win32 file-open dialog and returns the selected paths.</summary>
         static List<string> OpenFiles(IntPtr hwndOwner, string filter, string title)
         {
@@ -68,53 +67,10 @@ namespace Clickra.UI
             return files;
         }
 
-        /// <summary>Validates that the selected files are usable for the command, returning
-        /// the translated error message when not.</summary>
-        static bool ValidateConvertFiles(string cmd, List<string> files, out string errorMsg)
-        {
-            errorMsg = "";
-            if (files.Count == 0) return true;
-
-            string[] allowed = cmd switch
-            {
-                "ppt2pdf" => new[] { ".ppt", ".pptx" },
-                "word2pdf" => new[] { ".doc", ".docx" },
-                "excel2pdf" => new[] { ".xlsx", ".xls" },
-                "merge-pdf" => new[] { ".pdf" },
-                CmdCompressPdf => new[] { ".pdf" },
-                "translate-pdf" => new[] { ".pdf" },
-                "decrypt-pdf" => new[] { ".pdf" },
-                "split-pdf" => new[] { ".pdf" },
-                "img2pdf" or CmdImgMerge or "img-stitch" => new[] { ".jpg", ".jpeg", ".png", ".bmp", ".gif", ".tiff", ".webp" },
-                _ => Array.Empty<string>()
-            };
-
-            var invalid = files.Where(f => !allowed.Contains(Path.GetExtension(f).ToLowerInvariant())).ToList();
-            if (invalid.Count > 0)
-            {
-                errorMsg = GetText("convert_err_invalid_ext");
-                return false;
-            }
-
-            int minFiles = cmd switch
-            {
-                "merge-pdf" or CmdImgMerge or "img-stitch" => 2,
-                _ => 1
-            };
-
-            if (files.Count < minFiles)
-            {
-                errorMsg = string.Format(GetText("convert_err_min_files"), minFiles);
-                return false;
-            }
-
-            return true;
-        }
-
-        /// <summary>Maps a command key to its shell context-menu index (-1 when unknown).</summary>
+        /// <summary>Maps a command key to its index in ConvertCommands (-1 when unknown).</summary>
         static int GetCommandIndex(string cmd)
         {
-            return Array.IndexOf(ConvertCommands, cmd);
+            return ConvertCommandByKey.TryGetValue(cmd, out var command) ? Array.IndexOf(ConvertCommands, command) : -1;
         }
 
         /// <summary>Queues a conversion action for files dropped onto the dashboard window.</summary>
@@ -125,148 +81,33 @@ namespace Clickra.UI
 
             if (extensions.All(ext => ext == ".ppt" || ext == ".pptx"))
             {
-                ChangeConvertCommand(GetCommandIndex("ppt2pdf"));
+                ConvertCommand.Select(ConvertCommands[GetCommandIndex("ppt2pdf")]);
             }
             else if (extensions.All(ext => ext == ".doc" || ext == ".docx"))
             {
-                ChangeConvertCommand(GetCommandIndex("word2pdf"));
+                ConvertCommand.Select(ConvertCommands[GetCommandIndex("word2pdf")]);
             }
             else if (extensions.All(ext => ext == ".xlsx" || ext == ".xls"))
             {
-                ChangeConvertCommand(GetCommandIndex("excel2pdf"));
+                ConvertCommand.Select(ConvertCommands[GetCommandIndex("excel2pdf")]);
             }
             else if (extensions.All(ext => ext == ".pdf"))
             {
-                ChangeConvertCommand(files.Count == 1 ? GetCommandIndex("compress-pdf") : GetCommandIndex("merge-pdf"));
+                ConvertCommand.Select(ConvertCommands[GetCommandIndex(files.Count == 1 ? "compress-pdf" : "merge-pdf")]);
             }
             else if (extensions.All(ext => new[] { ".jpg", ".jpeg", ".png", ".bmp", ".gif", ".tiff", ".webp" }.Contains(ext)))
             {
-                ChangeConvertCommand(files.Count > 1 ? GetCommandIndex("img-merge") : GetCommandIndex("img2pdf"));
+                ConvertCommand.Select(ConvertCommands[GetCommandIndex(files.Count > 1 ? "img-merge" : "img2pdf")]);
             }
 
             _selectedFiles = files;
         }
 
-        static void ChangeConvertCommand(int index)
-        {
-            _convertCommandIndex = index;
-            string cmd = ConvertCommands[index];
-            if (_selectedFiles.Count > 0)
-            {
-                if (!ValidateConvertFiles(cmd, _selectedFiles, out _))
-                {
-                    _selectedFiles.Clear();
-                }
-            }
-        }
-
+        /// <summary>Runs the currently selected convert command for the selected files.</summary>
         static void RunConversion(IntPtr hwnd)
         {
-            string cmd = ConvertCommands[_convertCommandIndex];
-            if (_selectedFiles.Count == 0) return;
-
-            if (!ValidateConvertFiles(cmd, _selectedFiles, out string error))
-            {
-                MessageBox(hwnd, error, "Clickra", 0x30);
-                return;
-            }
-
-            if (RequiresOfficeEngine(cmd) &&
-                !HasAvailableOfficeEngine(cmd))
-            {
-                string language = ClickraStorage.GetSetting("Language");
-                string engine = ClickraStorage.GetSetting("OfficeEngine");
-                string errorKey = engine.Equals("libreoffice", StringComparison.OrdinalIgnoreCase)
-                    ? "error_libreoffice_not_ready"
-                    : engine.Equals("microsoft", StringComparison.OrdinalIgnoreCase)
-                        ? "error_microsoftoffice_not_ready"
-                        : "setting_engine_none_available";
-                MessageBox(hwnd, Localization.T(errorKey, language), "Clickra", 0x30);
-                return;
-            }
-
-            var filesCopy = new List<string>(_selectedFiles);
-            var thread = new System.Threading.Thread(() =>
-            {
-                try
-                {
-                    ProgressWindow.Show(cmd, filesCopy);
-                }
-                catch (Exception ex)
-                {
-                    MessageBox(IntPtr.Zero, $"Execution failed: {ex.Message}", "Clickra", 0x10);
-                }
-            });
-            thread.SetApartmentState(System.Threading.ApartmentState.STA);
-            thread.Start();
-
-            _selectedFiles.Clear();
-
-            _activeTab = 2; // Switch to History
-            RefreshHistoryData();
-            InvalidateRect(hwnd, IntPtr.Zero, false);
-        }
-
-        static bool RequiresOfficeEngine(string cmd) =>
-            cmd.Equals("ppt2pdf", StringComparison.OrdinalIgnoreCase) ||
-            cmd.Equals("word2pdf", StringComparison.OrdinalIgnoreCase) ||
-            cmd.Equals("excel2pdf", StringComparison.OrdinalIgnoreCase);
-
-        static bool HasAvailableOfficeEngine(string cmd)
-        {
-            string engine = ClickraStorage.GetSetting("OfficeEngine");
-            bool libreOfficeReady = !string.IsNullOrWhiteSpace(LibreOfficeHelper.GetResolvedExecutablePath());
-
-            if (engine.Equals("libreoffice", StringComparison.OrdinalIgnoreCase))
-                return libreOfficeReady;
-
-            string app = cmd switch
-            {
-                "ppt2pdf" => "PowerPoint",
-                "word2pdf" => "Word",
-                "excel2pdf" => "Excel",
-                _ => ""
-            };
-            bool microsoftReady = !string.IsNullOrWhiteSpace(app) && IsOfficeInstalled(app);
-
-            return engine.Equals("microsoft", StringComparison.OrdinalIgnoreCase)
-                ? microsoftReady
-                : microsoftReady || libreOfficeReady;
-        }
-
-        static string GetFilterForCommand(string cmd)
-        {
-            return cmd switch
-            {
-                "ppt2pdf" => "PowerPoint Files (*.ppt; *.pptx)\0*.ppt;*.pptx\0All Files (*.*)\0*.*\0\0",
-                "word2pdf" => "Word Files (*.doc; *.docx)\0*.doc;*.docx\0All Files (*.*)\0*.*\0\0",
-                "excel2pdf" => "Excel Files (*.xlsx; *.xls)\0*.xlsx;*.xls\0All Files (*.*)\0*.*\0\0",
-                "merge-pdf" => FilterPdfFiles,
-                CmdCompressPdf => FilterPdfFiles,
-                "translate-pdf" => FilterPdfFiles,
-                "decrypt-pdf" => FilterPdfFiles,
-                "split-pdf" => FilterPdfFiles,
-                _ => "Image Files (*.jpg; *.jpeg; *.png; *.bmp; *.gif; *.tiff; *.webp)\0*.jpg;*.jpeg;*.png;*.bmp;*.gif;*.tiff;*.webp\0All Files (*.*)\0*.*\0\0"
-            };
-        }
-
-        static string GetCommandTextKey(string cmd)
-        {
-            return cmd switch
-            {
-                "word2pdf" => "cmd_word_to_pdf",
-                "excel2pdf" => "cmd_excel_to_pdf",
-                "ppt2pdf" => "cmd_ppt_to_pdf",
-                "merge-pdf" => "cmd_merge_pdf",
-                "compress-pdf" => "cmd_compress_pdf",
-                "translate-pdf" => "cmd_translate_pdf",
-                "decrypt-pdf" => "cmd_decrypt_pdf",
-                "split-pdf" => "cmd_split_pdf",
-                "img2pdf" => "cmd_img_to_pdf",
-                "img-merge" => "cmd_merge_img",
-                "img-stitch" => "cmd_stitch_img",
-                _ => ""
-            };
+            if (_convertCommandIndex < 0 || _convertCommandIndex >= ConvertCommands.Length) return;
+            ConvertCommand.Run(ConvertCommands[_convertCommandIndex], hwnd);
         }
 
         static string GetCommandGroupKey(int groupIndex)
@@ -409,7 +250,7 @@ namespace Clickra.UI
 
                     bool isSelected = _convertCommandIndex == i;
                     bool isHovered = _hoveredElement == (50 + i);
-                    bool isEnabled = ValidateConvertFiles(ConvertCommands[i], _selectedFiles, out _);
+                    bool isEnabled = ConvertCommands[i].ValidateFiles(_selectedFiles, out _);
 
                     Color cardBg;
                     Color cardBorder;
@@ -440,7 +281,7 @@ namespace Clickra.UI
                     g.FillPath(bgBrush, path);
                     g.DrawPath(borderPen, path);
 
-                    string cmdText = GetText(GetCommandTextKey(ConvertCommands[i]));
+                    string cmdText = ConvertCommands[i].DisplayName;
 
                     if (_tabFont != null)
                     {
