@@ -2,6 +2,8 @@ using Clickra.Core;
 using PdfSharp.Pdf;
 using PdfSharp.Pdf.IO;
 
+namespace Clickra.Core.Tests;
+
 static partial class TestSuite
 {
     public static void RegisterPdfDecryptTests(TestRunner runner)
