@@ -27,7 +27,9 @@ namespace Clickra.UI
             var g = _bufferGraphics;
             g.Clear(Color.FromArgb(32, 32, 32));
 
-            bool hasErr, comp, isPrompting; string msg, errMsg, promptFile; bool isRetry;
+            bool hasErr = false, comp = false, isPrompting = false;
+            string msg = "", errMsg = "", promptFile = "";
+            bool isRetry = false;
             double dispW; float shimOff; int tot, cur;
 
             lock (_stateLock)
