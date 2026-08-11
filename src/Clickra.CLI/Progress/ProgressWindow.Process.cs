@@ -326,18 +326,8 @@ namespace Clickra.UI
                 }
                 PostMessageW(hwnd, WM_USER_INVALIDATE, (IntPtr)1, IntPtr.Zero);
 
-                // 失敗：立即寫入持久化日誌並暫留 Failed 狀態供 Dashboard 讀取
                 try { ClickraStorage.CompleteActiveRecord(cmd, startTimeStr, false, errorMsg, endTime, elapsedMs, inputs, outputs); } catch { }
 
-                if (!wasCanceled)
-                {
-                    string lang = ClickraStorage.GetSetting("Language");
-                    MessageBox(
-                        hwnd,
-                        string.Format(Localization.T("error_processing_failed", lang), ex.Message),
-                        $"Clickra — {Localization.T("status_error", lang)}",
-                        0x10); // MB_ICONERROR
-                }
                 try { ClickraStorage.ClearActiveRecord(); } catch { }
                 PostMessageW(hwnd, 0x0010, IntPtr.Zero, IntPtr.Zero); // WM_CLOSE
             }
