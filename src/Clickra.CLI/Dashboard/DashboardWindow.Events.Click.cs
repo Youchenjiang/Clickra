@@ -39,458 +39,36 @@ namespace Clickra.UI
             int element = HitTest(hwnd, adjMouseX, adjMouseY);
             if (element >= 0 && element <= 4)
             {
-                _activeTab = element;
-                if (_activeTab == 0 || _activeTab == 2)
-                {
-                    RefreshHistoryData();
-                }
-
-                _langScrollOffset = 0;
-                _contentScrollX = 0;
-                _contentScrollY = 0;
-                InvalidateRect(hwnd, IntPtr.Zero, false);
+                HandleTabBarClick(hwnd, element);
             }
             else if (element == 22)
             {
-                if (MessageBox(hwnd, GetText("history_clear_confirm"), "Clickra", 0x24) == 6)
-                {
-                    ClickraStorage.ClearHistory();
-                    _expandedHistoryIndex = -1;
-                    RefreshHistoryData();
-                    InvalidateRect(hwnd, IntPtr.Zero, false);
-                }
+                HandleHistoryToolbarClick(hwnd, element);
             }
-            else if (element == 5)
+            else if (element == 5 || element == 6 || element == 7 || element == 8 || element == 9 ||
+                     element == 20 || element == 32 || element == 33 || element == 34)
             {
-                bool current = ClickraStorage.GetSetting("QuietMode").Equals("true", StringComparison.OrdinalIgnoreCase);
-                ClickraStorage.SaveSetting("QuietMode", current ? "false" : "true");
-                InvalidateRect(hwnd, IntPtr.Zero, false);
+                HandleSettingsClick(hwnd, element);
             }
-            else if (element == 6)
+            else if (element == 35 || element == 36 || element == 38)
             {
-                bool current = ClickraStorage.GetSetting("Notification").Equals("true", StringComparison.OrdinalIgnoreCase);
-                ClickraStorage.SaveSetting("Notification", current ? "false" : "true");
-                InvalidateRect(hwnd, IntPtr.Zero, false);
+                HandleLibreOfficeClick(hwnd, element);
             }
-            else if (element == 7)
+            else if (element == 10 || element == 31)
             {
-                ClickraStorage.SaveSetting("OutputDir", "source");
-                InvalidateRect(hwnd, IntPtr.Zero, false);
+                HandleDropdownToggleClick(hwnd, element);
             }
-            else if (element == 8)
+            else if (element == 83 || element == 81 || element == 82)
             {
-                ClickraStorage.SaveSetting("OutputDir", "desktop");
-                InvalidateRect(hwnd, IntPtr.Zero, false);
+                HandleCompressSettingsClick(hwnd, element, adjMouseX);
             }
-            else if (element == 9)
+            else if (element == 18 || element == 19 || element == 25 || (element >= 50 && element < 50 + ConvertCommands.Length))
             {
-                ClickraStorage.SaveSetting("OutputDir", "downloads");
-                InvalidateRect(hwnd, IntPtr.Zero, false);
+                HandleConvertClick(hwnd, element);
             }
-            else if (element == 20)
+            else if (element == 23 || element == 24)
             {
-                string title = GetText("setting_output_browse_title");
-                string folder = BrowseForFolder(hwnd, title);
-                if (!string.IsNullOrEmpty(folder))
-                {
-                    ClickraStorage.SaveSetting("OutputDir", folder);
-                    InvalidateRect(hwnd, IntPtr.Zero, false);
-                }
-            }
-            else if (element == 32)
-            {
-                ClickraStorage.SaveSetting("OfficeEngine", "auto");
-                InvalidateRect(hwnd, IntPtr.Zero, false);
-            }
-            else if (element == 33)
-            {
-                ClickraStorage.SaveSetting("OfficeEngine", "microsoft");
-                InvalidateRect(hwnd, IntPtr.Zero, false);
-            }
-            else if (element == 34)
-            {
-                ClickraStorage.SaveSetting("OfficeEngine", "libreoffice");
-                ClickraStorage.SaveSetting("LibreOfficePath", "");
-                InvalidateRect(hwnd, IntPtr.Zero, false);
-            }
-            else if (element == 35)
-            {
-                const string sofficeFilter = "LibreOffice soffice.exe\0soffice.exe\0Executable Files (*.exe)\0*.exe\0All Files (*.*)\0*.*\0\0";
-                var chosen = OpenFiles(hwnd, sofficeFilter, GetText("setting_libreoffice_browse_title"));
-                if (chosen.Count > 0)
-                {
-                    string candidate = chosen[0];
-                    if (Path.GetFileName(candidate).Equals("soffice.exe", StringComparison.OrdinalIgnoreCase))
-                    {
-                        if (LibreOfficeHelper.LooksLikeLibreOfficeExecutable(candidate))
-                        {
-                            ClickraStorage.SaveSetting("LibreOfficePath", candidate);
-                            ClickraStorage.SaveSetting("LibreOfficeRemovalPendingRestart", "false");
-                            MessageBox(hwnd, string.Format(GetText("setting_libreoffice_validated"), Path.GetDirectoryName(candidate)), "Clickra", 0x40);
-                        }
-                        else
-                        {
-                            MessageBox(hwnd, GetText("setting_libreoffice_validation_failed"), "Clickra", 0x30);
-                        }
-                    }
-                    else
-                    {
-                        MessageBox(hwnd, GetText("setting_libreoffice_invalid"), "Clickra", 0x30);
-                    }
-                    InvalidateRect(hwnd, IntPtr.Zero, false);
-                }
-            }
-            else if (element == 36)
-            {
-                lock (_libreOfficeDownloadLock)
-                {
-                    if (_libreOfficeDownloadInProgress)
-                    {
-                        MessageBox(hwnd, GetText("setting_libreoffice_download_in_progress"), "Clickra", 0x40);
-                        return;
-                    }
-                }
-
-                bool removalPendingRestart = ClickraStorage.GetSetting("LibreOfficeRemovalPendingRestart").Equals("true", StringComparison.OrdinalIgnoreCase);
-                var package = LibreOfficeEngineInstaller.RecommendedPackage;
-                string installedVersion = LibreOfficeEngineInstaller.GetInstalledSystemVersion();
-                if (!removalPendingRestart &&
-                    !string.IsNullOrWhiteSpace(installedVersion) &&
-                    LibreOfficeEngineInstaller.IsRecommendedVersionInstalled())
-                {
-                    string resolvedPath = LibreOfficeEngineInstaller.ResolveSystemSofficePath();
-                    if (!string.IsNullOrWhiteSpace(resolvedPath))
-                    {
-                        ClickraStorage.SaveSetting("LibreOfficePath", resolvedPath);
-                    }
-
-                    MessageBox(
-                        hwnd,
-                        string.Format(GetText("setting_libreoffice_already_current"), installedVersion),
-                        "Clickra",
-                        0x40);
-                    InvalidateRect(hwnd, IntPtr.Zero, false);
-                    return;
-                }
-
-                string prompt = string.Format(
-                    GetText("setting_libreoffice_download_prompt"),
-                    package.Version,
-                    package.Edition,
-                    FormatBytes(package.DownloadBytes),
-                    LibreOfficeEngineInstaller.GetDefaultInstallRoot(),
-                    package.Sha256);
-
-                if (MessageBox(hwnd, prompt, "Clickra", 0x41) == 1)
-                {
-                    lock (_libreOfficeDownloadLock)
-                    {
-                        _libreOfficeDownloadInProgress = true;
-                        _libreOfficeDownloadProgress = 0;
-                        _libreOfficeDownloadStatus = removalPendingRestart
-                            ? GetText("setting_libreoffice_reinstall_starting")
-                            : GetText("setting_libreoffice_download_starting");
-                    }
-                    InvalidateRect(hwnd, IntPtr.Zero, false);
-
-                    var thread = new System.Threading.Thread(() =>
-                    {
-                        try
-                        {
-                            string downloadDir = Path.Combine(ClickraStorage.GetDataDir(), "downloads");
-                            var progress = new Progress<int>(percent =>
-                            {
-                                int displayPercent = Math.Min(80, Math.Max(1, percent * 80 / 100));
-                                PostDashboardAction(hwnd, () =>
-                                {
-                                    SetLibreOfficeSetupStatus(
-                                        displayPercent,
-                                        percent >= 100
-                                            ? GetText("setting_libreoffice_verifying")
-                                            : string.Format(GetText("setting_libreoffice_download_progress"), percent));
-                                });
-                            });
-                            string installerPath = LibreOfficeEngineInstaller.DownloadAndVerifyAsync(
-                                    package,
-                                    downloadDir,
-                                    progress,
-                                    System.Threading.CancellationToken.None)
-                                .GetAwaiter()
-                                .GetResult();
-
-                            PostDashboardAction(hwnd, () =>
-                            {
-                                SetLibreOfficeSetupStatus(85, GetText("setting_libreoffice_installing"));
-                            });
-
-                            LibreOfficeInstallResult installResult = LibreOfficeEngineInstaller.InstallMsiPackageAsync(
-                                    installerPath,
-                                    System.Threading.CancellationToken.None)
-                                .GetAwaiter()
-                                .GetResult();
-
-                            string sofficePath = installResult.SofficePath;
-                            if (!installResult.RestartRequired && !LibreOfficeHelper.LooksLikeLibreOfficeExecutable(sofficePath))
-                                throw new Exception(GetText("setting_libreoffice_validation_failed"));
-
-                            PostDashboardAction(hwnd, () =>
-                            {
-                                SetLibreOfficeSetupStatus(95, GetText("setting_libreoffice_installing"));
-                            });
-
-                            if (!string.IsNullOrWhiteSpace(sofficePath))
-                                ClickraStorage.SaveSetting("LibreOfficePath", sofficePath);
-                            ClickraStorage.SaveSetting("LibreOfficeInstalledByClickra", "true");
-                            ClickraStorage.SaveSetting("LibreOfficeRemovalPendingRestart", "false");
-
-                            PostDashboardAction(hwnd, () =>
-                            {
-                                MessageBox(
-                                    hwnd,
-                                    string.Format(
-                                        GetText(installResult.RestartRequired
-                                            ? "setting_libreoffice_install_restart_required"
-                                            : "setting_libreoffice_download_ready"),
-                                        string.IsNullOrWhiteSpace(sofficePath) ? LibreOfficeEngineInstaller.GetDefaultInstallRoot() : sofficePath),
-                                    "Clickra",
-                                    0x40);
-                            });
-                        }
-                        catch (Exception ex)
-                        {
-                            ClickraStorage.SaveSetting("LibreOfficePath", "");
-                            PostDashboardAction(hwnd, () =>
-                            {
-                                MessageBox(
-                                    hwnd,
-                                    string.Format(GetText("setting_libreoffice_download_failed"), ex.Message),
-                                    "Clickra",
-                                    0x10);
-                            });
-                        }
-                        finally
-                        {
-                            PostDashboardAction(hwnd, () =>
-                            {
-                                FinishLibreOfficeSetupStatus();
-                            });
-                        }
-                    });
-                    thread.SetApartmentState(System.Threading.ApartmentState.STA);
-                    thread.IsBackground = true;
-                    thread.Start();
-                }
-            }
-            else if (element == 38)
-            {
-                lock (_libreOfficeDownloadLock)
-                {
-                    if (_libreOfficeDownloadInProgress)
-                    {
-                        MessageBox(hwnd, GetText("setting_libreoffice_download_in_progress"), "Clickra", 0x40);
-                        return;
-                    }
-                }
-
-                if (ClickraStorage.GetSetting("LibreOfficeRemovalPendingRestart").Equals("true", StringComparison.OrdinalIgnoreCase))
-                {
-                    MessageBox(hwnd, GetText("setting_libreoffice_removal_pending"), "Clickra", 0x40);
-                    return;
-                }
-
-                if (MessageBox(hwnd, GetText("setting_libreoffice_uninstall_confirm"), "Clickra", 0x31) == 1)
-                {
-                    lock (_libreOfficeDownloadLock)
-                    {
-                        _libreOfficeDownloadInProgress = true;
-                        _libreOfficeDownloadProgress = 60;
-                        _libreOfficeDownloadStatus = GetText("setting_libreoffice_uninstalling");
-                    }
-                    InvalidateRect(hwnd, IntPtr.Zero, false);
-
-                    var thread = new System.Threading.Thread(() =>
-                    {
-                        try
-                        {
-                            LibreOfficeUninstallResult uninstallResult = LibreOfficeEngineInstaller.UninstallSystemLibreOfficeAsync(
-                                    System.Threading.CancellationToken.None)
-                                .GetAwaiter()
-                                .GetResult();
-
-                            ClickraStorage.SaveSetting("LibreOfficePath", "");
-                            ClickraStorage.SaveSetting("LibreOfficeInstalledByClickra", "false");
-                            ClickraStorage.SaveSetting("LibreOfficeRemovalPendingRestart", uninstallResult.RestartRequired ? "true" : "false");
-                            ClickraStorage.SaveSetting("OfficeEngine", "auto");
-
-                            PostDashboardAction(hwnd, () =>
-                            {
-                                MessageBox(
-                                    hwnd,
-                                    GetText(uninstallResult.RestartRequired
-                                        ? "setting_libreoffice_uninstall_restart_required"
-                                        : "setting_libreoffice_uninstall_ready"),
-                                    "Clickra",
-                                    0x40);
-                            });
-                        }
-                        catch (Exception ex)
-                        {
-                            PostDashboardAction(hwnd, () =>
-                            {
-                                MessageBox(
-                                    hwnd,
-                                    string.Format(GetText("setting_libreoffice_uninstall_failed"), ex.Message),
-                                    "Clickra",
-                                    0x10);
-                            });
-                        }
-                        finally
-                        {
-                            PostDashboardAction(hwnd, () =>
-                            {
-                                FinishLibreOfficeSetupStatus();
-                            });
-                        }
-                    });
-                    thread.SetApartmentState(System.Threading.ApartmentState.STA);
-                    thread.IsBackground = true;
-                    thread.Start();
-                }
-            }
-            else if (element == 10)
-            {
-                _langDropdownOpen = !_langDropdownOpen;
-                if (_langDropdownOpen)
-                {
-                    _langSearchQuery = "";
-                    _langHoveredIndex = 0;
-                    _langScrollOffset = 0;
-                }
-                InvalidateRect(hwnd, IntPtr.Zero, false);
-            }
-            else if (element == 31)
-            {
-                _pdfLangDropdownOpen = !_pdfLangDropdownOpen;
-                _langDropdownOpen = false;
-                InvalidateRect(hwnd, IntPtr.Zero, false);
-            }
-            else if (element == 83)
-            {
-                // PDF compress slider clicked — snap to nearest of 4 stops via equal-width segments + enable drag
-                float relX = adjMouseX - _pdfSliderTrackX;
-                float fraction = Math.Max(0f, Math.Min(1f, relX / _pdfSliderTrackW));
-                int newLevel = (int)Math.Max(0, Math.Min(3, Math.Round(fraction * 3, MidpointRounding.AwayFromZero)));
-                ApplyPdfCompressLevel(hwnd, newLevel);
-                _isDraggingPdfSlider = true;
-                SetCapture(hwnd);
-            }
-            else if (element == 81)
-            {
-                bool current = ClickraStorage.GetSetting("PdfCompressStripFonts").Equals("true", StringComparison.OrdinalIgnoreCase);
-                ClickraStorage.SaveSetting("PdfCompressStripFonts", current ? "false" : "true");
-                InvalidateRect(hwnd, IntPtr.Zero, false);
-            }
-            else if (element == 82)
-            {
-                bool current = !ClickraStorage.GetSetting("PdfCompressMinifyContent").Equals("false", StringComparison.OrdinalIgnoreCase);
-                ClickraStorage.SaveSetting("PdfCompressMinifyContent", current ? "false" : "true");
-                InvalidateRect(hwnd, IntPtr.Zero, false);
-            }
-            else if (element >= 50 && element < 50 + ConvertCommands.Length)
-            {
-                ChangeConvertCommand(element - 50);
-                InvalidateRect(hwnd, IntPtr.Zero, false);
-            }
-            else if (element == 18)
-            {
-                string title = GetText("convert_drag_drop_hint");
-                const string allFilter = "Supported Files (*.doc;*.docx;*.ppt;*.pptx;*.pdf;*.jpg;*.jpeg;*.png;*.bmp;*.gif;*.tiff;*.webp)\0*.doc;*.docx;*.ppt;*.pptx;*.pdf;*.jpg;*.jpeg;*.png;*.bmp;*.gif;*.tiff;*.webp\0All Files (*.*)\0*.*\0\0";
-                var chosen = OpenFiles(hwnd, allFilter, title);
-                if (chosen.Count > 0)
-                {
-                    _selectedFiles = chosen;
-                    _convertCommandIndex = -1;
-                    for (int i = 0; i < ConvertCommands.Length; i++)
-                    {
-                        if (ValidateConvertFiles(ConvertCommands[i], _selectedFiles, out _))
-                        {
-                            _convertCommandIndex = i;
-                            break;
-                        }
-                    }
-                    InvalidateRect(hwnd, IntPtr.Zero, false);
-                }
-            }
-            else if (element == 19)
-            {
-                RunConversion(hwnd);
-            }
-            else if (element == 25)
-            {
-                _selectedFiles.Clear();
-                _convertCommandIndex = -1;
-                InvalidateRect(hwnd, IntPtr.Zero, false);
-            }
-            else if (element == 23)
-            {
-                try
-                {
-                    System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
-                    {
-                        FileName = "https://github.com/Youchenjiang/Clickra",
-                        UseShellExecute = true
-                    });
-                }
-                catch (Exception ex)
-                {
-                    MessageBox(hwnd, $"Cannot open browser: {ex.Message}", "Clickra", 0x10);
-                }
-            }
-            else if (element == 24)
-            {
-                try
-                {
-                    string dataDir = ClickraStorage.GetDataDir();
-                    string logPath = Path.Combine(dataDir, "history.log");
-
-                    if (File.Exists(logPath))
-                    {
-                        System.Diagnostics.Process.Start("explorer.exe", $"/select,\"{logPath}\"");
-                    }
-                    else
-                    {
-                        System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
-                        {
-                            FileName = dataDir,
-                            UseShellExecute = true
-                        });
-                    }
-
-                    var ver = typeof(DashboardWindow).Assembly.GetName().Version;
-                    string verStr = ver != null ? $"{ver.Major}.{ver.Minor}.{ver.Build}" : "Unknown";
-                    string timeStr = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
-                    string subject = Uri.EscapeDataString("Clickra Diagnostics Report");
-                    string body = Uri.EscapeDataString(
-                        "感謝您提交 Clickra 診斷回報！\r\n\r\n" +
-                        "請直接將已為您選取好的「history.log」拖曳到此郵件中作為附件。\r\n\r\n" +
-                        $"[系統資訊]\r\n" +
-                        $"作業系統: Windows\r\n" +
-                        $"Clickra 版本: {verStr}\r\n" +
-                        $"時間: {timeStr}\r\n\r\n" +
-                        "[問題描述]\r\n" +
-                        "（請在此處填寫您遇到的問題...）"
-                    );
-                    string gmailUrl = $"https://mail.google.com/mail/?view=cm&fs=1&to=jiangyouchen%40gmail.com&su={subject}&body={body}";
-                    System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
-                    {
-                        FileName = gmailUrl,
-                        UseShellExecute = true
-                    });
-                }
-                catch (Exception ex)
-                {
-                    MessageBox(hwnd, $"Cannot start feedback: {ex.Message}", "Clickra", 0x10);
-                }
+                HandleAboutClick(hwnd, element);
             }
         }
 
@@ -763,6 +341,495 @@ namespace Clickra.UI
             }
 
             return false;
+        }
+
+        /// <summary>Switches the active tab and resets scroll state.</summary>
+        static void HandleTabBarClick(IntPtr hwnd, int element)
+        {
+            _activeTab = element;
+            if (_activeTab == 0 || _activeTab == 2)
+            {
+                RefreshHistoryData();
+            }
+
+            _langScrollOffset = 0;
+            _contentScrollX = 0;
+            _contentScrollY = 0;
+            InvalidateRect(hwnd, IntPtr.Zero, false);
+        }
+
+        /// <summary>Handles the history toolbar clear button.</summary>
+        static void HandleHistoryToolbarClick(IntPtr hwnd, int element)
+        {
+            if (MessageBox(hwnd, GetText("history_clear_confirm"), "Clickra", 0x24) == 6)
+            {
+                ClickraStorage.ClearHistory();
+                _expandedHistoryIndex = -1;
+                RefreshHistoryData();
+                InvalidateRect(hwnd, IntPtr.Zero, false);
+            }
+        }
+
+        /// <summary>Handles settings-tab element clicks: toggles, output dirs and office engine selection.</summary>
+        static void HandleSettingsClick(IntPtr hwnd, int element)
+        {
+            if (element == 5)
+            {
+                bool current = ClickraStorage.GetSetting("QuietMode").Equals("true", StringComparison.OrdinalIgnoreCase);
+                ClickraStorage.SaveSetting("QuietMode", current ? "false" : "true");
+                InvalidateRect(hwnd, IntPtr.Zero, false);
+            }
+            else if (element == 6)
+            {
+                bool current = ClickraStorage.GetSetting("Notification").Equals("true", StringComparison.OrdinalIgnoreCase);
+                ClickraStorage.SaveSetting("Notification", current ? "false" : "true");
+                InvalidateRect(hwnd, IntPtr.Zero, false);
+            }
+            else if (element == 7)
+            {
+                ClickraStorage.SaveSetting("OutputDir", "source");
+                InvalidateRect(hwnd, IntPtr.Zero, false);
+            }
+            else if (element == 8)
+            {
+                ClickraStorage.SaveSetting("OutputDir", "desktop");
+                InvalidateRect(hwnd, IntPtr.Zero, false);
+            }
+            else if (element == 9)
+            {
+                ClickraStorage.SaveSetting("OutputDir", "downloads");
+                InvalidateRect(hwnd, IntPtr.Zero, false);
+            }
+            else if (element == 20)
+            {
+                string title = GetText("setting_output_browse_title");
+                string folder = BrowseForFolder(hwnd, title);
+                if (!string.IsNullOrEmpty(folder))
+                {
+                    ClickraStorage.SaveSetting("OutputDir", folder);
+                    InvalidateRect(hwnd, IntPtr.Zero, false);
+                }
+            }
+            else if (element == 32)
+            {
+                ClickraStorage.SaveSetting("OfficeEngine", "auto");
+                InvalidateRect(hwnd, IntPtr.Zero, false);
+            }
+            else if (element == 33)
+            {
+                ClickraStorage.SaveSetting("OfficeEngine", "microsoft");
+                InvalidateRect(hwnd, IntPtr.Zero, false);
+            }
+            else if (element == 34)
+            {
+                ClickraStorage.SaveSetting("OfficeEngine", "libreoffice");
+                ClickraStorage.SaveSetting("LibreOfficePath", "");
+                InvalidateRect(hwnd, IntPtr.Zero, false);
+            }
+        }
+
+        /// <summary>Handles LibreOffice setup clicks: browse, install/download and uninstall.</summary>
+        static void HandleLibreOfficeClick(IntPtr hwnd, int element)
+        {
+            if (element == 35)
+            {
+                const string sofficeFilter = "LibreOffice soffice.exe\0soffice.exe\0Executable Files (*.exe)\0*.exe\0All Files (*.*)\0*.*\0\0";
+                var chosen = OpenFiles(hwnd, sofficeFilter, GetText("setting_libreoffice_browse_title"));
+                if (chosen.Count > 0)
+                {
+                    string candidate = chosen[0];
+                    if (Path.GetFileName(candidate).Equals("soffice.exe", StringComparison.OrdinalIgnoreCase))
+                    {
+                        if (LibreOfficeHelper.LooksLikeLibreOfficeExecutable(candidate))
+                        {
+                            ClickraStorage.SaveSetting("LibreOfficePath", candidate);
+                            ClickraStorage.SaveSetting("LibreOfficeRemovalPendingRestart", "false");
+                            MessageBox(hwnd, string.Format(GetText("setting_libreoffice_validated"), Path.GetDirectoryName(candidate)), "Clickra", 0x40);
+                        }
+                        else
+                        {
+                            MessageBox(hwnd, GetText("setting_libreoffice_validation_failed"), "Clickra", 0x30);
+                        }
+                    }
+                    else
+                    {
+                        MessageBox(hwnd, GetText("setting_libreoffice_invalid"), "Clickra", 0x30);
+                    }
+                    InvalidateRect(hwnd, IntPtr.Zero, false);
+                }
+            }
+            else if (element == 36)
+            {
+                lock (_libreOfficeDownloadLock)
+                {
+                    if (_libreOfficeDownloadInProgress)
+                    {
+                        MessageBox(hwnd, GetText("setting_libreoffice_download_in_progress"), "Clickra", 0x40);
+                        return;
+                    }
+                }
+
+                bool removalPendingRestart = ClickraStorage.GetSetting("LibreOfficeRemovalPendingRestart").Equals("true", StringComparison.OrdinalIgnoreCase);
+                var package = LibreOfficeEngineInstaller.RecommendedPackage;
+                string installedVersion = LibreOfficeEngineInstaller.GetInstalledSystemVersion();
+                if (!removalPendingRestart &&
+                    !string.IsNullOrWhiteSpace(installedVersion) &&
+                    LibreOfficeEngineInstaller.IsRecommendedVersionInstalled())
+                {
+                    string resolvedPath = LibreOfficeEngineInstaller.ResolveSystemSofficePath();
+                    if (!string.IsNullOrWhiteSpace(resolvedPath))
+                    {
+                        ClickraStorage.SaveSetting("LibreOfficePath", resolvedPath);
+                    }
+
+                    MessageBox(
+                        hwnd,
+                        string.Format(GetText("setting_libreoffice_already_current"), installedVersion),
+                        "Clickra",
+                        0x40);
+                    InvalidateRect(hwnd, IntPtr.Zero, false);
+                    return;
+                }
+
+                string prompt = string.Format(
+                    GetText("setting_libreoffice_download_prompt"),
+                    package.Version,
+                    package.Edition,
+                    FormatBytes(package.DownloadBytes),
+                    LibreOfficeEngineInstaller.GetDefaultInstallRoot(),
+                    package.Sha256);
+
+                if (MessageBox(hwnd, prompt, "Clickra", 0x41) == 1)
+                {
+                    lock (_libreOfficeDownloadLock)
+                    {
+                        _libreOfficeDownloadInProgress = true;
+                        _libreOfficeDownloadProgress = 0;
+                        _libreOfficeDownloadStatus = removalPendingRestart
+                            ? GetText("setting_libreoffice_reinstall_starting")
+                            : GetText("setting_libreoffice_download_starting");
+                    }
+                    InvalidateRect(hwnd, IntPtr.Zero, false);
+
+                    var thread = new System.Threading.Thread(() =>
+                    {
+                        try
+                        {
+                            string downloadDir = Path.Combine(ClickraStorage.GetDataDir(), "downloads");
+                            var progress = new Progress<int>(percent =>
+                            {
+                                int displayPercent = Math.Min(80, Math.Max(1, percent * 80 / 100));
+                                PostDashboardAction(hwnd, () =>
+                                {
+                                    SetLibreOfficeSetupStatus(
+                                        displayPercent,
+                                        percent >= 100
+                                            ? GetText("setting_libreoffice_verifying")
+                                            : string.Format(GetText("setting_libreoffice_download_progress"), percent));
+                                });
+                            });
+                            string installerPath = LibreOfficeEngineInstaller.DownloadAndVerifyAsync(
+                                    package,
+                                    downloadDir,
+                                    progress,
+                                    System.Threading.CancellationToken.None)
+                                .GetAwaiter()
+                                .GetResult();
+
+                            PostDashboardAction(hwnd, () =>
+                            {
+                                SetLibreOfficeSetupStatus(85, GetText("setting_libreoffice_installing"));
+                            });
+
+                            LibreOfficeInstallResult installResult = LibreOfficeEngineInstaller.InstallMsiPackageAsync(
+                                    installerPath,
+                                    System.Threading.CancellationToken.None)
+                                .GetAwaiter()
+                                .GetResult();
+
+                            string sofficePath = installResult.SofficePath;
+                            if (!installResult.RestartRequired && !LibreOfficeHelper.LooksLikeLibreOfficeExecutable(sofficePath))
+                                throw new Exception(GetText("setting_libreoffice_validation_failed"));
+
+                            PostDashboardAction(hwnd, () =>
+                            {
+                                SetLibreOfficeSetupStatus(95, GetText("setting_libreoffice_installing"));
+                            });
+
+                            if (!string.IsNullOrWhiteSpace(sofficePath))
+                                ClickraStorage.SaveSetting("LibreOfficePath", sofficePath);
+                            ClickraStorage.SaveSetting("LibreOfficeInstalledByClickra", "true");
+                            ClickraStorage.SaveSetting("LibreOfficeRemovalPendingRestart", "false");
+
+                            PostDashboardAction(hwnd, () =>
+                            {
+                                MessageBox(
+                                    hwnd,
+                                    string.Format(
+                                        GetText(installResult.RestartRequired
+                                            ? "setting_libreoffice_install_restart_required"
+                                            : "setting_libreoffice_download_ready"),
+                                        string.IsNullOrWhiteSpace(sofficePath) ? LibreOfficeEngineInstaller.GetDefaultInstallRoot() : sofficePath),
+                                    "Clickra",
+                                    0x40);
+                            });
+                        }
+                        catch (Exception ex)
+                        {
+                            ClickraStorage.SaveSetting("LibreOfficePath", "");
+                            PostDashboardAction(hwnd, () =>
+                            {
+                                MessageBox(
+                                    hwnd,
+                                    string.Format(GetText("setting_libreoffice_download_failed"), ex.Message),
+                                    "Clickra",
+                                    0x10);
+                            });
+                        }
+                        finally
+                        {
+                            PostDashboardAction(hwnd, () =>
+                            {
+                                FinishLibreOfficeSetupStatus();
+                            });
+                        }
+                    });
+                    thread.SetApartmentState(System.Threading.ApartmentState.STA);
+                    thread.IsBackground = true;
+                    thread.Start();
+                }
+            }
+            else if (element == 38)
+            {
+                lock (_libreOfficeDownloadLock)
+                {
+                    if (_libreOfficeDownloadInProgress)
+                    {
+                        MessageBox(hwnd, GetText("setting_libreoffice_download_in_progress"), "Clickra", 0x40);
+                        return;
+                    }
+                }
+
+                if (ClickraStorage.GetSetting("LibreOfficeRemovalPendingRestart").Equals("true", StringComparison.OrdinalIgnoreCase))
+                {
+                    MessageBox(hwnd, GetText("setting_libreoffice_removal_pending"), "Clickra", 0x40);
+                    return;
+                }
+
+                if (MessageBox(hwnd, GetText("setting_libreoffice_uninstall_confirm"), "Clickra", 0x31) == 1)
+                {
+                    lock (_libreOfficeDownloadLock)
+                    {
+                        _libreOfficeDownloadInProgress = true;
+                        _libreOfficeDownloadProgress = 60;
+                        _libreOfficeDownloadStatus = GetText("setting_libreoffice_uninstalling");
+                    }
+                    InvalidateRect(hwnd, IntPtr.Zero, false);
+
+                    var thread = new System.Threading.Thread(() =>
+                    {
+                        try
+                        {
+                            LibreOfficeUninstallResult uninstallResult = LibreOfficeEngineInstaller.UninstallSystemLibreOfficeAsync(
+                                    System.Threading.CancellationToken.None)
+                                .GetAwaiter()
+                                .GetResult();
+
+                            ClickraStorage.SaveSetting("LibreOfficePath", "");
+                            ClickraStorage.SaveSetting("LibreOfficeInstalledByClickra", "false");
+                            ClickraStorage.SaveSetting("LibreOfficeRemovalPendingRestart", uninstallResult.RestartRequired ? "true" : "false");
+                            ClickraStorage.SaveSetting("OfficeEngine", "auto");
+
+                            PostDashboardAction(hwnd, () =>
+                            {
+                                MessageBox(
+                                    hwnd,
+                                    GetText(uninstallResult.RestartRequired
+                                        ? "setting_libreoffice_uninstall_restart_required"
+                                        : "setting_libreoffice_uninstall_ready"),
+                                    "Clickra",
+                                    0x40);
+                            });
+                        }
+                        catch (Exception ex)
+                        {
+                            PostDashboardAction(hwnd, () =>
+                            {
+                                MessageBox(
+                                    hwnd,
+                                    string.Format(GetText("setting_libreoffice_uninstall_failed"), ex.Message),
+                                    "Clickra",
+                                    0x10);
+                            });
+                        }
+                        finally
+                        {
+                            PostDashboardAction(hwnd, () =>
+                            {
+                                FinishLibreOfficeSetupStatus();
+                            });
+                        }
+                    });
+                    thread.SetApartmentState(System.Threading.ApartmentState.STA);
+                    thread.IsBackground = true;
+                    thread.Start();
+                }
+            }
+        }
+
+        /// <summary>Toggles the UI-language and PDF-language dropdowns.</summary>
+        static void HandleDropdownToggleClick(IntPtr hwnd, int element)
+        {
+            if (element == 10)
+            {
+                _langDropdownOpen = !_langDropdownOpen;
+                if (_langDropdownOpen)
+                {
+                    _langSearchQuery = "";
+                    _langHoveredIndex = 0;
+                    _langScrollOffset = 0;
+                }
+                InvalidateRect(hwnd, IntPtr.Zero, false);
+            }
+            else if (element == 31)
+            {
+                _pdfLangDropdownOpen = !_pdfLangDropdownOpen;
+                _langDropdownOpen = false;
+                InvalidateRect(hwnd, IntPtr.Zero, false);
+            }
+        }
+
+        /// <summary>Handles PDF compression settings: slider drag start and option toggles.</summary>
+        static void HandleCompressSettingsClick(IntPtr hwnd, int element, int adjMouseX)
+        {
+            if (element == 83)
+            {
+                // PDF compress slider clicked — snap to nearest of 4 stops via equal-width segments + enable drag
+                float relX = adjMouseX - _pdfSliderTrackX;
+                float fraction = Math.Max(0f, Math.Min(1f, relX / _pdfSliderTrackW));
+                int newLevel = (int)Math.Max(0, Math.Min(3, Math.Round(fraction * 3, MidpointRounding.AwayFromZero)));
+                ApplyPdfCompressLevel(hwnd, newLevel);
+                _isDraggingPdfSlider = true;
+                SetCapture(hwnd);
+            }
+            else if (element == 81)
+            {
+                bool current = ClickraStorage.GetSetting("PdfCompressStripFonts").Equals("true", StringComparison.OrdinalIgnoreCase);
+                ClickraStorage.SaveSetting("PdfCompressStripFonts", current ? "false" : "true");
+                InvalidateRect(hwnd, IntPtr.Zero, false);
+            }
+            else if (element == 82)
+            {
+                bool current = !ClickraStorage.GetSetting("PdfCompressMinifyContent").Equals("false", StringComparison.OrdinalIgnoreCase);
+                ClickraStorage.SaveSetting("PdfCompressMinifyContent", current ? "false" : "true");
+                InvalidateRect(hwnd, IntPtr.Zero, false);
+            }
+        }
+
+        /// <summary>Handles convert-tab clicks: command selection, file picking, run and clear.</summary>
+        static void HandleConvertClick(IntPtr hwnd, int element)
+        {
+            if (element >= 50 && element < 50 + ConvertCommands.Length)
+            {
+                ChangeConvertCommand(element - 50);
+                InvalidateRect(hwnd, IntPtr.Zero, false);
+            }
+            else if (element == 18)
+            {
+                string title = GetText("convert_drag_drop_hint");
+                const string allFilter = "Supported Files (*.doc;*.docx;*.ppt;*.pptx;*.pdf;*.jpg;*.jpeg;*.png;*.bmp;*.gif;*.tiff;*.webp)\0*.doc;*.docx;*.ppt;*.pptx;*.pdf;*.jpg;*.jpeg;*.png;*.bmp;*.gif;*.tiff;*.webp\0All Files (*.*)\0*.*\0\0";
+                var chosen = OpenFiles(hwnd, allFilter, title);
+                if (chosen.Count > 0)
+                {
+                    _selectedFiles = chosen;
+                    _convertCommandIndex = -1;
+                    for (int i = 0; i < ConvertCommands.Length; i++)
+                    {
+                        if (ValidateConvertFiles(ConvertCommands[i], _selectedFiles, out _))
+                        {
+                            _convertCommandIndex = i;
+                            break;
+                        }
+                    }
+                    InvalidateRect(hwnd, IntPtr.Zero, false);
+                }
+            }
+            else if (element == 19)
+            {
+                RunConversion(hwnd);
+            }
+            else if (element == 25)
+            {
+                _selectedFiles.Clear();
+                _convertCommandIndex = -1;
+                InvalidateRect(hwnd, IntPtr.Zero, false);
+            }
+        }
+
+        /// <summary>Handles about/help clicks: GitHub link and diagnostics feedback.</summary>
+        static void HandleAboutClick(IntPtr hwnd, int element)
+        {
+            if (element == 23)
+            {
+                try
+                {
+                    System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
+                    {
+                        FileName = "https://github.com/Youchenjiang/Clickra",
+                        UseShellExecute = true
+                    });
+                }
+                catch (Exception ex)
+                {
+                    MessageBox(hwnd, $"Cannot open browser: {ex.Message}", "Clickra", 0x10);
+                }
+            }
+            else if (element == 24)
+            {
+                try
+                {
+                    string dataDir = ClickraStorage.GetDataDir();
+                    string logPath = Path.Combine(dataDir, "history.log");
+
+                    if (File.Exists(logPath))
+                    {
+                        System.Diagnostics.Process.Start("explorer.exe", $"/select,\"{logPath}\"");
+                    }
+                    else
+                    {
+                        System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
+                        {
+                            FileName = dataDir,
+                            UseShellExecute = true
+                        });
+                    }
+
+                    var ver = typeof(DashboardWindow).Assembly.GetName().Version;
+                    string verStr = ver != null ? $"{ver.Major}.{ver.Minor}.{ver.Build}" : "Unknown";
+                    string timeStr = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
+                    string subject = Uri.EscapeDataString("Clickra Diagnostics Report");
+                    string body = Uri.EscapeDataString(
+                        "感謝您提交 Clickra 診斷回報！\r\n\r\n" +
+                        "請直接將已為您選取好的「history.log」拖曳到此郵件中作為附件。\r\n\r\n" +
+                        $"[系統資訊]\r\n" +
+                        $"作業系統: Windows\r\n" +
+                        $"Clickra 版本: {verStr}\r\n" +
+                        $"時間: {timeStr}\r\n\r\n" +
+                        "[問題描述]\r\n" +
+                        "（請在此處填寫您遇到的問題...）"
+                    );
+                    string gmailUrl = $"https://mail.google.com/mail/?view=cm&fs=1&to=jiangyouchen%40gmail.com&su={subject}&body={body}";
+                    System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
+                    {
+                        FileName = gmailUrl,
+                        UseShellExecute = true
+                    });
+                }
+                catch (Exception ex)
+                {
+                    MessageBox(hwnd, $"Cannot start feedback: {ex.Message}", "Clickra", 0x10);
+                }
+            }
         }
 
         /// <summary>Formats a byte count as a human-readable size string.</summary>
