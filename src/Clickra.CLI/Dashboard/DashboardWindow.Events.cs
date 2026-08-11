@@ -489,14 +489,12 @@ namespace Clickra.UI
             float inputLabelW = 0f, outputLabelW = 0f, timeLabelW = 0f, errorLabelW = 0f;
             if (_subFont != null)
             {
-                using (var tempBmp = new Bitmap(1, 1))
-                using (var tempG = Graphics.FromImage(tempBmp))
-                {
-                    inputLabelW = tempG.MeasureString(GetText("history_detail_inputs") + ":", _subFont).Width / _dpiScale;
-                    outputLabelW = tempG.MeasureString(GetText("history_detail_outputs") + ":", _subFont).Width / _dpiScale;
-                    timeLabelW = tempG.MeasureString(GetText("history_detail_time") + ":", _subFont).Width / _dpiScale;
-                    errorLabelW = tempG.MeasureString(GetText(entry.IsSuccess ? "history_detail_elapsed" : "history_detail_error") + ":", _subFont).Width / _dpiScale;
-                }
+                using var tempBmp = new Bitmap(1, 1);
+                using var tempG = Graphics.FromImage(tempBmp);
+                inputLabelW = tempG.MeasureString(GetText("history_detail_inputs") + ":", _subFont).Width / _dpiScale;
+                outputLabelW = tempG.MeasureString(GetText("history_detail_outputs") + ":", _subFont).Width / _dpiScale;
+                timeLabelW = tempG.MeasureString(GetText("history_detail_time") + ":", _subFont).Width / _dpiScale;
+                errorLabelW = tempG.MeasureString(GetText(entry.IsSuccess ? "history_detail_elapsed" : "history_detail_error") + ":", _subFont).Width / _dpiScale;
             }
             float maxLabelW = Math.Max(inputLabelW, Math.Max(outputLabelW, Math.Max(timeLabelW, errorLabelW)));
             float valX = contentX + 12 + maxLabelW + 16;
