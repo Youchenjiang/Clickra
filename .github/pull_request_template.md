@@ -9,6 +9,9 @@ The medium structure below is the default. Remove unused sections and replace ev
 PR metadata is validated by the Repository Policy workflow (assignee, labels, milestone)
 and listed in the checklist below. The PR description also becomes the GitHub Release
 notes for the merged version, so write it as public-facing copy.
+
+Title rule: use a plain descriptive title (type(scope): what changed), never internal
+roadmap codes like "R1-3" -- those belong in the milestone only.
 -->
 
 ## Summary

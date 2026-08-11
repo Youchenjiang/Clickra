@@ -21,6 +21,7 @@
 - **禁止自行升版**：嚴禁在未經使用者明確同意前自行升版。任何版號變更——包括執行 `scripts/bump_version.ps1`、修改 `AppxManifest.xml` / `Directory.Build.props` / `CHANGELOG.md` / README 中的版本號、建立版本 Tag（`vX.Y.Z.0`）或提交商店發布——都必須先在對話中向使用者說明升版理由與影響範圍，取得明確同意後方可執行。若使用者未表態，一律視為不同意，不得擅自升版。
 - **Commit 審核**：在執行 Commit 之前，必須執行 `git status` 確認沒有暫存 test 垃圾。
 - **PR 描述格式**：PR body 與 commit body 是兩套不同規則；必須使用 `.github/pull_request_template.md`，依變更檔案數量選擇 Summary/Key Changes/Verification 結構，不得只貼 commit 的編號列表。
+- **PR 標題規範**：PR 標題必須使用一般人能理解的描述性文字（例如 `refactor(cli): split dashboard event handlers`），嚴禁寫 roadmap 代號（如 `R1-3`）、內部編號或只有專案成員才懂的術語；roadmap 編號一律放在 milestone/labels 中，不得出現在標題或 body 開頭。標題同樣須符合 policy 的 `type(scope): subject` 格式與 72 字元限制。
 - **Tag 規範與發布順序**：在正式對外發布或商店提交時，必須嚴格遵守以下 Git Flow 順序：
   1. 在 `feature/*` 或 `hotfix/*` 工作分支上完成開發並提交（Commit）。
   2. 將工作分支推送到遠端，在 GitHub 上建立 Pull Request，成功合併（Merge）入 `main`。
