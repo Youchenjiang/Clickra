@@ -119,16 +119,18 @@ jobs:
               );
             }
 
-            // Milestone: required unless this is a release, hotfix, or dependency PR,
-            // which target a version milestone or none at all.
+            // Milestone: required unless this is a release, hotfix, dependency, or
+            // docs PR, which target a version milestone or none at all.
+            // deps and dependencies are both valid dependency labels; docs PRs
+            // (roadmap / agent-rule updates) historically carry no milestone.
             const milestoneExempt = (pr.labels || []).some((label) =>
-              /^(release|hotfix|dependencies)$/i.test(label.name),
+              /^(release|hotfix|deps|dependencies|docs)$/i.test(label.name),
             );
             if (!pr.milestone && !milestoneExempt) {
               failures.push(
                 "PR must be linked to a GitHub Milestone (roadmap phase or target version). " +
-                  "Release / hotfix / dependency PRs are exempt. If no milestone exists yet, " +
-                  "create one matching the current roadmap phase.",
+                  "Release / hotfix / dependency / docs PRs are exempt. If no milestone exists " +
+                  "yet, create one matching the current roadmap phase.",
               );
             }
 

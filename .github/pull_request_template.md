@@ -31,5 +31,5 @@ notes for the merged version, so write it as public-facing copy.
 <!-- Checked by the Repository Policy workflow; fill these in before opening the PR. -->
 - [ ] **Assignee**: self-assigned (the workflow auto-assigns the author if left empty).
 - [ ] **Label**: added at least one matching the title scope (`cli` / `core` / `shell` / `msix` / `docs` / `ci` / `deps` / `store` / `agent`).
-- [ ] **Milestone**: linked to the roadmap phase or target version (exempt for `release` / `hotfix` / `dependencies`-labeled PRs).
+- [ ] **Milestone**: linked to the roadmap phase or target version (exempt for `release` / `hotfix` / `deps` / `dependencies` / `docs`-labeled PRs).
 - [ ] **Development**: linked to the issue(s) this PR closes, if any.
