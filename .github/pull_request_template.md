@@ -5,6 +5,10 @@ Use the structure that matches the number of changed files:
   - Medium (10-50 files): Summary + Key Changes + Verification.
   - Large (50+ files): Overview + Key Changes (numbered sections) + Verification.
 The medium structure below is the default. Remove unused sections and replace every placeholder.
+
+PR metadata is validated by the Repository Policy workflow (assignee, labels, milestone)
+and listed in the checklist below. The PR description also becomes the GitHub Release
+notes for the merged version, so write it as public-facing copy.
 -->
 
 ## Summary
@@ -22,3 +26,10 @@ The medium structure below is the default. Remove unused sections and replace ev
 
 ## Notes
 <!-- Optional: record non-obvious decisions, limitations, or rollout considerations. -->
+
+## PR Metadata
+<!-- Checked by the Repository Policy workflow; fill these in before opening the PR. -->
+- [ ] **Assignee**: self-assigned (the workflow auto-assigns the author if left empty).
+- [ ] **Label**: added at least one matching the title scope (`cli` / `core` / `shell` / `msix` / `docs` / `ci` / `deps` / `store` / `agent`).
+- [ ] **Milestone**: linked to the roadmap phase or target version (exempt for `release` / `hotfix` / `deps` / `dependencies` / `docs`-labeled PRs).
+- [ ] **Development**: linked to the issue(s) this PR closes, if any.

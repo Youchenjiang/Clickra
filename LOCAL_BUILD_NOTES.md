@@ -213,9 +213,17 @@ or
 
 **Language**: Always English, consistent with title.
 
+**Metadata** — validated by the Repository Policy workflow:
+- **Assignee**: set one (the workflow auto-assigns the author if empty).
+- **Labels**: at least one, matching the title scope when possible.
+- **Milestone**: required unless the PR is a `release` / `hotfix` / `dependencies` PR.
+- **Development**: link the issue(s) this PR closes, if any.
+
+**Release notes**: the PR description becomes the GitHub Release notes for the merged version (`release.yml`), so write it as public-facing copy.
+
 **What to avoid** (from past mistakes):
 - Empty body (PR #1, #3)
-- Title over 50 chars (PR #6 was 46)
+- Title over 72 chars (CI policy enforces the 72-char limit)
 - Mixed Chinese/English (PR #2)
 - Using `####` for top-level sections (PR #10)
 - Scope always `release` regardless of content (PR #12)
@@ -227,6 +235,9 @@ This project follows [Conventional Commits](https://www.conventionalcommits.org/
 
 ```
 <type>(<scope>): <description>
+
+1. <English numbered detail>
+2. <English numbered detail>
 ```
 
 **Type** (required):
@@ -270,8 +281,10 @@ docs(agent): update AI-agent instructions
 
 **Rules**:
 - Description must be in **English**, lowercase after the colon, no period at the end
+- Body is required by the local commit-msg hook: an English numbered list starting with `1. ` (e.g. `1. Add helper method.`)
 - One commit = one logical change (atomic commits)
 - Use `git mv` for file renames, never delete-then-recreate
+- The type/scope allowlists are enforced by CI in `.github/workflows/policy.yml` and the local hook in `scripts/hooks/commit-msg`; keep both in sync when changing them. Install the hook once per clone with `scripts/install-hooks.sh` (or `git config core.hooksPath scripts/hooks`).
 
 ### Commit Granularity Rules
 

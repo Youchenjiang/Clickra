@@ -64,6 +64,8 @@ Before sending a commit request, the submission payload must meet these hard con
 
 ## 2. Code Quality & Commits Guidelines
 
+Authoritative enforcement of the commit/PR conventions: `.github/workflows/policy.yml` (CI) and `scripts/hooks/commit-msg` (local hook, installed via `scripts/install-hooks.sh`); the human-facing reference is `LOCAL_BUILD_NOTES.md`. Keep the type/scope allowlists in sync across all of them.
+
 ### A. Atomic Commits Rule
 * Never mix code changes (e.g., script logic updates, error handling improvements) with static asset changes (e.g., migrating screenshots, updating localization markdown docs) in a single commit.
 * Even within a single file, changes with different purposes must be committed separately (e.g., stage only the relevant hunks with `git add -p`). Never bundle unrelated purposes into one commit merely because they touch the same file. Apply the "revert test" to decide: if one change can be reverted without breaking the other, they are separate purposes and require separate commits. Contrasting examples:
