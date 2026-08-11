@@ -578,18 +578,7 @@ namespace Clickra.UI
             try
             {
                 string downloadDir = Path.Combine(ClickraStorage.GetDataDir(), "downloads");
-                var progress = new Progress<int>(percent =>
-                {
-                    int displayPercent = Math.Min(80, Math.Max(1, percent * 80 / 100));
-                    PostDashboardAction(hwnd, () =>
-                    {
-                        SetLibreOfficeSetupStatus(
-                            displayPercent,
-                            percent >= 100
-                                ? GetText("setting_libreoffice_verifying")
-                                : string.Format(GetText("setting_libreoffice_download_progress"), percent));
-                    });
-                });
+                var progress = new Progress<int>(percent => ReportDownloadProgress(hwnd, percent));
                 string installerPath = LibreOfficeEngineInstaller.DownloadAndVerifyAsync(
                         package,
                         downloadDir,
@@ -617,35 +606,51 @@ namespace Clickra.UI
                 ClickraStorage.SaveSetting("LibreOfficeInstalledByClickra", "true");
                 ClickraStorage.SaveSetting("LibreOfficeRemovalPendingRestart", "false");
 
-                PostDashboardAction(hwnd, () =>
-                {
-                    MessageBox(
-                        hwnd,
-                        string.Format(
-                            GetText(installResult.RestartRequired
-                                ? "setting_libreoffice_install_restart_required"
-                                : "setting_libreoffice_download_ready"),
-                            string.IsNullOrWhiteSpace(sofficePath) ? LibreOfficeEngineInstaller.GetDefaultInstallRoot() : sofficePath),
-                        "Clickra",
-                        0x40);
-                });
+                PostDashboardAction(hwnd, () => ShowInstallResultMessage(hwnd, installResult.RestartRequired, sofficePath));
             }
             catch (Exception ex)
             {
                 ClickraStorage.SaveSetting("LibreOfficePath", "");
-                PostDashboardAction(hwnd, () =>
-                {
-                    MessageBox(
-                        hwnd,
-                        string.Format(GetText("setting_libreoffice_download_failed"), ex.Message),
-                        "Clickra",
-                        0x10);
-                });
+                PostDashboardAction(hwnd, () => ShowDownloadFailureMessage(hwnd, ex.Message));
             }
             finally
             {
                 PostDashboardAction(hwnd, FinishLibreOfficeSetupStatus);
             }
+        }
+
+        /// <summary>Posts the LibreOffice download progress percentage to the dashboard.</summary>
+        private static void ReportDownloadProgress(IntPtr hwnd, int percent)
+        {
+            int displayPercent = Math.Min(80, Math.Max(1, percent * 80 / 100));
+            PostDashboardAction(hwnd, () =>
+            {
+                SetLibreOfficeSetupStatus(
+                    displayPercent,
+                    percent >= 100
+                        ? GetText("setting_libreoffice_verifying")
+                        : string.Format(GetText("setting_libreoffice_download_progress"), percent));
+            });
+        }
+
+        /// <summary>Shows the LibreOffice install result (restart-required or ready) on the dashboard.</summary>
+        private static void ShowInstallResultMessage(IntPtr hwnd, bool restartRequired, string sofficePath)
+        {
+            MessageBox(
+                hwnd,
+                string.Format(
+                    GetText(restartRequired
+                        ? "setting_libreoffice_install_restart_required"
+                        : "setting_libreoffice_download_ready"),
+                    string.IsNullOrWhiteSpace(sofficePath) ? LibreOfficeEngineInstaller.GetDefaultInstallRoot() : sofficePath),
+                "Clickra",
+                0x40);
+        }
+
+        /// <summary>Shows the LibreOffice download/install failure message on the dashboard.</summary>
+        private static void ShowDownloadFailureMessage(IntPtr hwnd, string errorMessage)
+        {
+            MessageBox(hwnd, string.Format(GetText("setting_libreoffice_download_failed"), errorMessage), "Clickra", 0x10);
         }
 
         /// <summary>Starts the LibreOffice uninstall flow after the confirmation prompt.</summary>
