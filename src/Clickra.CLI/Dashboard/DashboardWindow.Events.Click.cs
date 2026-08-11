@@ -20,10 +20,6 @@ namespace Clickra.UI
             int mouseY = (int)(rawY / _dpiScale);
 
             float logW = GetLogicalWidth(hwnd);
-            float logH = GetLogicalHeight(hwnd);
-            float contentH = GetContentHeight(hwnd);
-            bool showV = logH < contentH;
-            bool showH = logW < 760;
             float sidebarW = GetSidebarWidth(logW);
             float contentX = GetContentX(logW);
 
@@ -37,7 +33,7 @@ namespace Clickra.UI
             if (_activeTab == 2 && HandleHistoryClick(hwnd, mouseX, adjMouseX, adjMouseY, logW, contentX)) return;
 
             int element = HitTest(hwnd, adjMouseX, adjMouseY);
-            if (element >= 0 && element <= 4)
+            if (IsTabBarElement(element))
             {
                 HandleTabBarClick(hwnd, element);
             }
@@ -45,32 +41,56 @@ namespace Clickra.UI
             {
                 HandleHistoryToolbarClick(hwnd);
             }
-            else if (element == 5 || element == 6 || element == 7 || element == 8 || element == 9 ||
-                     element == 20 || element == 32 || element == 33 || element == 34)
+            else if (IsSettingsElement(element))
             {
                 HandleSettingsClick(hwnd, element);
             }
-            else if (element == 35 || element == 36 || element == 38)
+            else if (IsLibreOfficeElement(element))
             {
                 HandleLibreOfficeClick(hwnd, element);
             }
-            else if (element == 10 || element == 31)
+            else if (IsDropdownToggleElement(element))
             {
                 HandleDropdownToggleClick(hwnd, element);
             }
-            else if (element == 83 || element == 81 || element == 82)
+            else if (IsCompressSettingsElement(element))
             {
                 HandleCompressSettingsClick(hwnd, element, adjMouseX);
             }
-            else if (element == 18 || element == 19 || element == 25 || (element >= 50 && element < 50 + ConvertCommands.Length))
+            else if (IsConvertElement(element))
             {
                 HandleConvertClick(hwnd, element);
             }
-            else if (element == 23 || element == 24)
+            else if (IsAboutElement(element))
             {
                 HandleAboutClick(hwnd, element);
             }
         }
+
+        /// <summary>True when the element is one of the tab-bar buttons (0-4).</summary>
+        static bool IsTabBarElement(int element) => element >= 0 && element <= 4;
+
+        /// <summary>True when the element is one of the settings-page controls.</summary>
+        static bool IsSettingsElement(int element)
+            => element == 5 || element == 6 || element == 7 || element == 8 || element == 9 ||
+               element == 20 || element == 32 || element == 33 || element == 34;
+
+        /// <summary>True when the element is one of the LibreOffice setup buttons.</summary>
+        static bool IsLibreOfficeElement(int element) => element == 35 || element == 36 || element == 38;
+
+        /// <summary>True when the element is one of the language dropdown toggles.</summary>
+        static bool IsDropdownToggleElement(int element) => element == 10 || element == 31;
+
+        /// <summary>True when the element is one of the PDF compression settings controls.</summary>
+        static bool IsCompressSettingsElement(int element) => element == 83 || element == 81 || element == 82;
+
+        /// <summary>True when the element is one of the convert buttons, including the
+        /// dynamically laid-out command cards that follow element 50.</summary>
+        static bool IsConvertElement(int element)
+            => element == 18 || element == 19 || element == 25 || (element >= 50 && element < 50 + ConvertCommands.Length);
+
+        /// <summary>True when the element is one of the about-dialog buttons.</summary>
+        static bool IsAboutElement(int element) => element == 23 || element == 24;
 
         /// <summary>Handles PDF-language and UI-language dropdown clicks, closing them on outside clicks.</summary>
         static bool HandleDropdownClick(IntPtr hwnd, int adjMouseX, int adjMouseY, float logW, float contentX)
@@ -122,7 +142,7 @@ namespace Clickra.UI
                 {
                     return true;
                 }
-                else if (adjMouseY >= popupY + 38 && adjMouseY < _langDropdownY)
+                if (adjMouseY >= popupY + 38 && adjMouseY < _langDropdownY)
                 {
                     int clickedIdx = _langScrollOffset + (adjMouseY - (popupY + 38)) / 26;
                     var filtered = GetFilteredLanguages();
@@ -221,7 +241,7 @@ namespace Clickra.UI
             string textToScroll = GetHistoryDetailText(_historyEntries[rowIndex], fieldIndex);
             if (string.IsNullOrEmpty(textToScroll)) return;
 
-            float textW;
+            float textW = 0f;
             using (var tempBmp = new Bitmap(1, 1))
             using (var tempG = Graphics.FromImage(tempBmp))
             {
@@ -231,7 +251,7 @@ namespace Clickra.UI
             float maxScroll = Math.Max(0f, textW - maxValW);
             if (maxScroll <= 0) return;
 
-            float inputLabelW, outputLabelW, timeLabelW, errorLabelW;
+            float inputLabelW = 0f, outputLabelW = 0f, timeLabelW = 0f, errorLabelW = 0f;
             using (var tempBmp = new Bitmap(1, 1))
             using (var tempG = Graphics.FromImage(tempBmp))
             {
@@ -597,7 +617,7 @@ namespace Clickra.UI
 
                 string sofficePath = installResult.SofficePath;
                 if (!installResult.RestartRequired && !LibreOfficeHelper.LooksLikeLibreOfficeExecutable(sofficePath))
-                    throw new Exception(GetText("setting_libreoffice_validation_failed"));
+                    throw new InvalidOperationException(GetText("setting_libreoffice_validation_failed"));
 
                 PostDashboardAction(hwnd, () => SetLibreOfficeSetupStatus(95, GetText("setting_libreoffice_installing")));
 
@@ -623,14 +643,11 @@ namespace Clickra.UI
         private static void ReportDownloadProgress(IntPtr hwnd, int percent)
         {
             int displayPercent = Math.Min(80, Math.Max(1, percent * 80 / 100));
-            PostDashboardAction(hwnd, () =>
-            {
-                SetLibreOfficeSetupStatus(
-                    displayPercent,
-                    percent >= 100
-                        ? GetText("setting_libreoffice_verifying")
-                        : string.Format(GetText("setting_libreoffice_download_progress"), percent));
-            });
+            PostDashboardAction(hwnd, () => SetLibreOfficeSetupStatus(
+                displayPercent,
+                percent >= 100
+                    ? GetText("setting_libreoffice_verifying")
+                    : string.Format(GetText("setting_libreoffice_download_progress"), percent)));
         }
 
         /// <summary>Shows the LibreOffice install result (restart-required or ready) on the dashboard.</summary>
@@ -703,27 +720,21 @@ namespace Clickra.UI
                 ClickraStorage.SaveSetting("LibreOfficeRemovalPendingRestart", uninstallResult.RestartRequired ? "true" : "false");
                 ClickraStorage.SaveSetting("OfficeEngine", "auto");
 
-                PostDashboardAction(hwnd, () =>
-                {
-                    MessageBox(
-                        hwnd,
-                        GetText(uninstallResult.RestartRequired
-                            ? "setting_libreoffice_uninstall_restart_required"
-                            : "setting_libreoffice_uninstall_ready"),
-                        "Clickra",
-                        0x40);
-                });
+                PostDashboardAction(hwnd, () => MessageBox(
+                    hwnd,
+                    GetText(uninstallResult.RestartRequired
+                        ? "setting_libreoffice_uninstall_restart_required"
+                        : "setting_libreoffice_uninstall_ready"),
+                    "Clickra",
+                    0x40));
             }
             catch (Exception ex)
             {
-                PostDashboardAction(hwnd, () =>
-                {
-                    MessageBox(
-                        hwnd,
-                        string.Format(GetText("setting_libreoffice_uninstall_failed"), ex.Message),
-                        "Clickra",
-                        0x10);
-                });
+                PostDashboardAction(hwnd, () => MessageBox(
+                    hwnd,
+                    string.Format(GetText("setting_libreoffice_uninstall_failed"), ex.Message),
+                    "Clickra",
+                    0x10));
             }
             finally
             {

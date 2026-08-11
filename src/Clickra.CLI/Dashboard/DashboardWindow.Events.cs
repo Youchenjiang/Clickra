@@ -148,7 +148,6 @@ namespace Clickra.UI
         static void UpdateScrollXDrag(IntPtr hwnd, int mouseX, float logW, float logH, float sidebarW)
         {
             float deltaX = mouseX - _dragStartMouseX;
-            float trackX = sidebarW + 4;
             float trackW = (logW - sidebarW) - 8;
             float contentH = GetContentHeight(hwnd);
             bool showV = logH < contentH;
@@ -172,7 +171,7 @@ namespace Clickra.UI
             string textToScroll = GetHistoryDetailText(_historyEntries[_draggingDetailRowIndex], _draggingDetailFieldIndex);
             if (string.IsNullOrEmpty(textToScroll)) return;
 
-            float textW;
+            float textW = 0f;
             using (var tempBmp = new Bitmap(1, 1))
             using (var tempG = Graphics.FromImage(tempBmp))
             {
@@ -285,7 +284,7 @@ namespace Clickra.UI
                 {
                     if (_langSearchQuery.Length > 0)
                     {
-                        _langSearchQuery = _langSearchQuery.Substring(0, _langSearchQuery.Length - 1);
+                        _langSearchQuery = _langSearchQuery[..^1];
                         _langHoveredIndex = 0;
                         _langScrollOffset = 0;
                         InvalidateRect(hwnd, IntPtr.Zero, false);
@@ -478,7 +477,7 @@ namespace Clickra.UI
             float contentX = GetContentX(logW);
             int rowW = (int)logW - (int)contentX - 40;
 
-            float inputLabelW, outputLabelW, timeLabelW, errorLabelW;
+            float inputLabelW = 0f, outputLabelW = 0f, timeLabelW = 0f, errorLabelW = 0f;
             using (var tempBmp = new Bitmap(1, 1))
             using (var tempG = Graphics.FromImage(tempBmp))
             {
@@ -499,7 +498,7 @@ namespace Clickra.UI
             string textToScroll = GetHistoryDetailWheelText(entry, fieldIndex);
             if (string.IsNullOrEmpty(textToScroll)) return false;
 
-            float textW;
+            float textW = 0f;
             using (var tempBmp = new Bitmap(1, 1))
             using (var tempG = Graphics.FromImage(tempBmp))
             {

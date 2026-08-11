@@ -255,9 +255,11 @@ namespace Clickra.UI
 
                 var shimmerRect = new RectangleF(shimOff * s, barY, 120 * s, barH);
                 using var shimmerBrush = new LinearGradientBrush(shimmerRect, Color.FromArgb(0, 255, 255, 255), Color.FromArgb(100, 255, 255, 255), LinearGradientMode.Horizontal);
-                var blend = new ColorBlend(3);
-                blend.Colors = new Color[] { Color.FromArgb(0, 255, 255, 255), Color.FromArgb(100, 255, 255, 255), Color.FromArgb(0, 255, 255, 255) };
-                blend.Positions = new float[] { 0.0f, 0.5f, 1.0f };
+                var blend = new ColorBlend(3)
+                {
+                    Colors = new[] { Color.FromArgb(0, 255, 255, 255), Color.FromArgb(100, 255, 255, 255), Color.FromArgb(0, 255, 255, 255) },
+                    Positions = new[] { 0.0f, 0.5f, 1.0f }
+                };
                 shimmerBrush.InterpolationColors = blend;
 
                 g.FillRectangle(shimmerBrush, shimmerRect);
