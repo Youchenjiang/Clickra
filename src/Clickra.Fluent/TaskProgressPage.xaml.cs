@@ -166,6 +166,15 @@ public sealed partial class TaskProgressPage : Page
                     FileProcessor.DecryptPdf(files[i], outputs[i], password, (c, t, m) => Progress((i * 100) + c, files.Count * 100, m), token);
                 }
                 break;
+            case "split-pdf":
+                string? splitPages = DispatcherQueue.EnqueueAsync(PromptSplitPagesAsync).GetAwaiter().GetResult();
+                if (splitPages is null) throw new OperationCanceledException(token);
+                for (int i = 0; i < files.Count; i++)
+                {
+                    token.ThrowIfCancellationRequested();
+                    FileProcessor.SplitPdf(files[i], outputs[i], splitPages, (c, t, m) => Progress((i * 100) + c, files.Count * 100, m), token);
+                }
+                break;
         }
     }
 
@@ -181,6 +190,20 @@ public sealed partial class TaskProgressPage : Page
             XamlRoot = XamlRoot
         };
         return await dialog.ShowAsync() == ContentDialogResult.Primary ? box.Password : null;
+    }
+
+    private async Task<string?> PromptSplitPagesAsync()
+    {
+        var box = new TextBox { Text = "all", PlaceholderText = L("pdf_split_prompt") };
+        var dialog = new ContentDialog
+        {
+            Title = L("pdf_split_title"),
+            Content = box,
+            PrimaryButtonText = L("fluent_ok"),
+            CloseButtonText = L("dialog_cancel"),
+            XamlRoot = XamlRoot
+        };
+        return await dialog.ShowAsync() == ContentDialogResult.Primary ? (string.IsNullOrWhiteSpace(box.Text) ? "all" : box.Text.Trim()) : null;
     }
 
     private void SetProgress(int percent, string message)
@@ -257,6 +280,7 @@ public sealed partial class TaskProgressPage : Page
             "compress-pdf" => files.Select(f => Path.Combine(ClickraStorage.GetOutputDir(f), Path.GetFileNameWithoutExtension(f) + "_compressed.pdf")).ToList(),
             "translate-pdf" => files.Select(f => Path.Combine(ClickraStorage.GetOutputDir(f), Path.GetFileNameWithoutExtension(f) + "_translated.pdf")).ToList(),
             "decrypt-pdf" => files.Select(f => Path.Combine(ClickraStorage.GetOutputDir(f), Path.GetFileNameWithoutExtension(f) + "_decrypted.pdf")).ToList(),
+            "split-pdf" => files.Select(f => Path.Combine(ClickraStorage.GetOutputDir(f), Path.GetFileNameWithoutExtension(f) + "_split.pdf")).ToList(),
             "img2pdf" => files.Select(f => Path.Combine(ClickraStorage.GetOutputDir(f), Path.GetFileNameWithoutExtension(f) + ".pdf")).ToList(),
             _ => files.Select(f => Path.Combine(ClickraStorage.GetOutputDir(f), Path.GetFileNameWithoutExtension(f) + ".pdf")).ToList()
         };
@@ -276,7 +300,7 @@ public sealed partial class TaskProgressPage : Page
         "ppt2pdf" => new[] { ".ppt", ".pptx" },
         "word2pdf" => new[] { ".doc", ".docx" },
         "excel2pdf" => new[] { ".xls", ".xlsx" },
-        "merge-pdf" or "compress-pdf" or "translate-pdf" or "decrypt-pdf" => new[] { ".pdf" },
+        "merge-pdf" or "compress-pdf" or "translate-pdf" or "decrypt-pdf" or "split-pdf" => new[] { ".pdf" },
         "img2pdf" or "img-merge" or "img-stitch" => new[] { ".jpg", ".jpeg", ".png", ".bmp", ".gif", ".tiff", ".webp" },
         _ => Array.Empty<string>()
     };
@@ -290,6 +314,7 @@ public sealed partial class TaskProgressPage : Page
         "compress-pdf" => "cmd_compress_pdf",
         "translate-pdf" => "cmd_translate_pdf",
         "decrypt-pdf" => "cmd_decrypt_pdf",
+        "split-pdf" => "cmd_split_pdf",
         "img2pdf" => "cmd_img_to_pdf",
         "img-merge" => "cmd_merge_img",
         "img-stitch" => "cmd_stitch_img",

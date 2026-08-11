@@ -214,11 +214,12 @@
                                     <TextBlock x:Name="PdfCommandLabel" Text="PDF" FontSize="12" FontWeight="SemiBold" Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
                                     <Grid ColumnSpacing="8" RowSpacing="8">
                                         <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
-                                        <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
+                                        <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
                                         <Button x:Name="BtnMergePdf" Content="合併 PDF" Tag="merge-pdf" HorizontalAlignment="Stretch"/>
                                         <Button x:Name="BtnCompressPdf" Grid.Column="1" Content="壓縮 PDF" Tag="compress-pdf" HorizontalAlignment="Stretch"/>
                                         <Button x:Name="BtnTranslatePdf" Grid.Row="1" Content="PDF 一鍵翻譯" Tag="translate-pdf" HorizontalAlignment="Stretch"/>
                                         <Button x:Name="BtnDecryptPdf" Grid.Row="1" Grid.Column="1" Content="去除 PDF 密碼" Tag="decrypt-pdf" HorizontalAlignment="Stretch"/>
+                                        <Button x:Name="BtnSplitPdf" Grid.Row="2" Grid.ColumnSpan="2" Content="分割 PDF" Tag="split-pdf" HorizontalAlignment="Stretch"/>
                                     </Grid>
                                 </StackPanel>
                                 <StackPanel Spacing="8">
