@@ -40,12 +40,15 @@
 - [x] **[F1-9] Progress Window Inline Input Optimization**：進度視窗內嵌輸入框優化（v3.3.0）。
     - **內嵌式密碼輸入**：實作於進度視窗內繪製與管理 Win32 Edit 控制項，實現無閃爍且支援 Enter 鍵送出、Esc 鍵取消的內嵌密碼輸入。
     - **加密狀態預檢**：自動判定 PDF 是否有加密，無加密檔案直接顯示提示不進行重複要求。
-- [x] **[F1-10] Dual-Track Distribution (Fluent / NativeAOT)**：雙軌發行。
+- [x] **[F1-10] Fluent Dashboard Migration (WinUI 3)**：Fluent 主介面與右鍵進度遷移。
+    - Dashboard、Settings、History 與右鍵轉換進度已移至 `Clickra.Fluent`，直接重用 `Clickra.Core`、既有設定格式與歷史格式。
+    - Explorer 透過 packaged activation 啟動 Fluent；NativeAOT Shell 維持輕量 COM 邊界，舊 Win32 UI 保留為 NativeAOT 軌道 fallback（見 F1-11）。
+- [x] **[F1-11] Dual-Track Distribution (Fluent / NativeAOT)**：雙軌發行。
     - 2026/08 決定維持兩條軌道：本機有 .NET 8+ 與 Windows App Runtime → 安裝 Fluent；任一缺失 → 安裝 NativeAOT（零依賴）。
     - 新增 `ClickraSetup.exe`（NativeAOT bootstrapper）自動偵測 runtime 並安裝對應軌道；新增 `Clickra-Native.msix` 零依賴套件與 `scripts/build_native_msix.ps1`。
     - 舊 Win32 Dashboard/Progress 由「過渡 fallback」改為**永久 NativeAOT 軌道**，不再排定移除。
     - 詳細設計見 `docs/development/dual_track_guide.md`。
-- [ ] **[F1-11] Fluent Release Stabilization (Dual-Track)**：Fluent 發布穩定化。
+- [ ] **[F1-12] Fluent Release Stabilization (Dual-Track)**：Fluent 發布穩定化。
     - 在 Windows App SDK 2.3.1 下完成 Windows 10/11 的 dashboard 與右鍵實機測試，涵蓋執行中、成功、失敗、取消、PDF 密碼與 Office 雙引擎。
     - 補上 packaged-app 啟動與 shell activation smoke test，避免只有編譯／打包成功但啟動前崩潰。
     - 實機驗證 Native ↔ Fluent 同版本切換（`-ForceUpdateFromAnyVersion`）與乾淨機器（無 .NET / 無 WinAppRuntime）上的 NativeAOT 軌道安裝。
