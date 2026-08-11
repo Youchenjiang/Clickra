@@ -240,7 +240,7 @@ namespace Clickra.UI
         }
 
         /// <summary>Redraws the window, honoring the erase flag carried in wParam.</summary>
-        private IntPtr HandleInvalidate(IntPtr hwnd, IntPtr w)
+        private static IntPtr HandleInvalidate(IntPtr hwnd, IntPtr w)
         {
             InvalidateRect(hwnd, IntPtr.Zero, w != IntPtr.Zero);
             return IntPtr.Zero;
@@ -347,185 +347,208 @@ namespace Clickra.UI
             return IntPtr.Zero;
         }
 
-        /// <summary>Handles visual-splitter clicks: zoom-lightbox buttons and drag-to-pan,
-        /// mode switcher, pages selector, segment cards, page navigation and the bottom
-        /// action buttons; returns true when the click hit a splitter element.</summary>
+        /// <summary>Handles visual-splitter clicks, dispatching to the zoom lightbox, mode
+        /// bar, segment cards, page navigation or action buttons; returns true when the
+        /// click hit a splitter element.</summary>
         private bool HandleVisualSplitterClick(IntPtr hwnd, int mouseX, int mouseY)
         {
-            // Zoom Lightbox controls: buttons, drag-to-pan inside the image,
-            // click outside to close.
-            if (_visualSplitIsZoomed)
+            if (HandleVisualSplitterZoomClick(hwnd, mouseX, mouseY)) return true;
+            if (HandleSplitterModeBarClick(hwnd, mouseX, mouseY)) return true;
+            if (HandleSplitterNPagesClick(hwnd, mouseX, mouseY)) return true;
+            if (HandleSplitterSegmentCardsClick(hwnd, mouseX, mouseY)) return true;
+            if (HandleSplitterNavBarClick(hwnd, mouseX, mouseY)) return true;
+            if (HandleSplitterPreviewZoomClick(hwnd, mouseX, mouseY)) return true;
+            if (HandleSplitterActionButtonsClick(hwnd, mouseX, mouseY)) return true;
+            return false;
+        }
+
+        /// <summary>Handles zoom-lightbox clicks: zoom buttons, drag-to-pan inside the image
+        /// and click-outside to close; consumes every click while the lightbox is open.</summary>
+        private bool HandleVisualSplitterZoomClick(IntPtr hwnd, int mouseX, int mouseY)
+        {
+            if (!_visualSplitIsZoomed) return false;
+
+            float zoomBtnY = ZoomModalTop + ZoomModalH - 34f;
+            float zoomBtnH = 22f;
+            if (mouseY >= zoomBtnY && mouseY <= zoomBtnY + zoomBtnH)
             {
-                float zoomBtnY = ZoomModalTop + ZoomModalH - 34f;
-                float zoomBtnH = 22f;
-                if (mouseY >= zoomBtnY && mouseY <= zoomBtnY + zoomBtnH)
-                {
-                    float btnInX = ZoomModalLeft + ZoomModalW - 120f; // −
-                    float btnOutX = ZoomModalLeft + ZoomModalW - 86f; // ＋
-                    float btnFitX = ZoomModalLeft + ZoomModalW - 52f; // 適配
-                    float cx = ZoomImgLeft + ZoomImgW / 2f;
-                    float cy = ZoomImgTop + ZoomImgH / 2f;
+                float btnInX = ZoomModalLeft + ZoomModalW - 120f; // −
+                float btnOutX = ZoomModalLeft + ZoomModalW - 86f; // ＋
+                float btnFitX = ZoomModalLeft + ZoomModalW - 52f; // 適配
+                float cx = ZoomImgLeft + ZoomImgW / 2f;
+                float cy = ZoomImgTop + ZoomImgH / 2f;
 
-                    if (mouseX >= btnInX && mouseX <= btnInX + 28f)
-                    {
-                        SetVisualSplitZoomFactor(_visualSplitZoomFactor / 1.25f, cx, cy);
-                        InvalidateRect(hwnd, IntPtr.Zero, true);
-                        return true;
-                    }
-                    if (mouseX >= btnOutX && mouseX <= btnOutX + 28f)
-                    {
-                        SetVisualSplitZoomFactor(_visualSplitZoomFactor * 1.25f, cx, cy);
-                        InvalidateRect(hwnd, IntPtr.Zero, true);
-                        return true;
-                    }
-                    if (mouseX >= btnFitX && mouseX <= btnFitX + 44f)
-                    {
-                        _visualSplitZoomFactor = 1f;
-                        _visualSplitZoomPanX = 0f;
-                        _visualSplitZoomPanY = 0f;
-                        InvalidateRect(hwnd, IntPtr.Zero, true);
-                        return true;
-                    }
-                }
-
-                if (GetVisualSplitZoomImageRect(out var zx, out var zy, out var zw, out var zh) &&
-                    mouseX >= zx && mouseX <= zx + zw && mouseY >= zy && mouseY <= zy + zh)
+                if (mouseX >= btnInX && mouseX <= btnInX + 28f)
                 {
-                    _visualSplitZoomDragging = true;
-                    _visualSplitZoomDragLastX = mouseX;
-                    _visualSplitZoomDragLastY = mouseY;
-                    SetCapture(hwnd);
+                    SetVisualSplitZoomFactor(_visualSplitZoomFactor / 1.25f, cx, cy);
+                    InvalidateRect(hwnd, IntPtr.Zero, true);
                     return true;
                 }
+                if (mouseX >= btnOutX && mouseX <= btnOutX + 28f)
+                {
+                    SetVisualSplitZoomFactor(_visualSplitZoomFactor * 1.25f, cx, cy);
+                    InvalidateRect(hwnd, IntPtr.Zero, true);
+                    return true;
+                }
+                if (mouseX >= btnFitX && mouseX <= btnFitX + 44f)
+                {
+                    _visualSplitZoomFactor = 1f;
+                    _visualSplitZoomPanX = 0f;
+                    _visualSplitZoomPanY = 0f;
+                    InvalidateRect(hwnd, IntPtr.Zero, true);
+                    return true;
+                }
+            }
 
-                CloseVisualSplitZoom(hwnd);
+            if (GetVisualSplitZoomImageRect(out var zx, out var zy, out var zw, out var zh) &&
+                mouseX >= zx && mouseX <= zx + zw && mouseY >= zy && mouseY <= zy + zh)
+            {
+                _visualSplitZoomDragging = true;
+                _visualSplitZoomDragLastX = mouseX;
+                _visualSplitZoomDragLastY = mouseY;
+                SetCapture(hwnd);
                 return true;
             }
 
-            // Mode Switcher Bar
-            if (mouseY >= 102 && mouseY <= 128)
+            CloseVisualSplitZoom(hwnd);
+            return true;
+        }
+
+        /// <summary>Handles clicks on the split mode switcher bar.</summary>
+        private bool HandleSplitterModeBarClick(IntPtr hwnd, int mouseX, int mouseY)
+        {
+            if (mouseY < 102 || mouseY > 128) return false;
+
+            if (mouseX >= 36 && mouseX <= 176) _visualSplitMode = 0;
+            else if (mouseX >= 184 && mouseX <= 324) _visualSplitMode = 1;
+            else if (mouseX >= 332 && mouseX <= 484) _visualSplitMode = 2;
+            ApplyVisualSplitMode();
+            InvalidateRect(hwnd, IntPtr.Zero, true);
+            return true;
+        }
+
+        /// <summary>Handles clicks on the pages-per-segment +/- selector (mode 2 only).</summary>
+        private bool HandleSplitterNPagesClick(IntPtr hwnd, int mouseX, int mouseY)
+        {
+            if (_visualSplitMode != 2 || mouseY < 131 || mouseY > 149) return false;
+
+            if (mouseX >= 36 && mouseX <= 60) // [-]
             {
-                if (mouseX >= 36 && mouseX <= 176) _visualSplitMode = 0;
-                else if (mouseX >= 184 && mouseX <= 324) _visualSplitMode = 1;
-                else if (mouseX >= 332 && mouseX <= 484) _visualSplitMode = 2;
+                _visualSplitNPages = Math.Max(2, _visualSplitNPages - 1);
                 ApplyVisualSplitMode();
                 InvalidateRect(hwnd, IntPtr.Zero, true);
                 return true;
             }
-
-            // N Pages Selector (+/- buttons, only in Mode 2)
-            if (_visualSplitMode == 2 && mouseY >= 131 && mouseY <= 149)
+            if (mouseX >= 132 && mouseX <= 156) // [+]
             {
-                if (mouseX >= 36 && mouseX <= 60) // [-]
-                {
-                    _visualSplitNPages = Math.Max(2, _visualSplitNPages - 1);
-                    ApplyVisualSplitMode();
-                    InvalidateRect(hwnd, IntPtr.Zero, true);
-                    return true;
-                }
-                if (mouseX >= 132 && mouseX <= 156) // [+]
-                {
-                    _visualSplitNPages = Math.Min(_visualSplitTotalPages, _visualSplitNPages + 1);
-                    ApplyVisualSplitMode();
-                    InvalidateRect(hwnd, IntPtr.Zero, true);
-                    return true;
-                }
-            }
-
-            // Left Segment Cards
-            int cardStartY = 158 + (_visualSplitMode == 2 ? 22 : 0);
-            if (mouseX >= 36 && mouseX <= 252 && mouseY >= cardStartY && mouseY <= 374)
-            {
-                int cardIdx = (mouseY - cardStartY) / 23;
-                if (cardIdx >= 0 && cardIdx < _visualSplitSegments.Count)
-                {
-                    _visualSplitSelectedSegmentIndex = cardIdx;
-                    _visualSplitCurrentPreviewPageIndex = 0;
-                    InvalidateRect(hwnd, IntPtr.Zero, true);
-                    return true;
-                }
-            }
-
-            // Right Panel Page Navigation Bar
-            int navOffset = (_visualSplitMode == 2 ? 22 : 0);
-            if (mouseX >= 260 && mouseX <= 484 && mouseY >= 170 + navOffset && mouseY <= 200 + navOffset)
-            {
-                int segCnt = 1;
-                if (_visualSplitSelectedSegmentIndex >= 0 && _visualSplitSelectedSegmentIndex < _visualSplitSegments.Count)
-                {
-                    var seg = _visualSplitSegments[_visualSplitSelectedSegmentIndex];
-                    segCnt = seg.End - seg.Start + 1;
-                }
-
-                if (mouseX >= 266 && mouseX <= 292) // <
-                {
-                    _visualSplitCurrentPreviewPageIndex = Math.Max(0, _visualSplitCurrentPreviewPageIndex - 1);
-                    InvalidateRect(hwnd, IntPtr.Zero, true);
-                    return true;
-                }
-                if (mouseX >= 452 && mouseX <= 478) // >
-                {
-                    _visualSplitCurrentPreviewPageIndex = Math.Min(segCnt - 1, _visualSplitCurrentPreviewPageIndex + 1);
-                    InvalidateRect(hwnd, IntPtr.Zero, true);
-                    return true;
-                }
-                if (mouseX >= 410 && mouseX <= 450) // 切開 (split at current preview page)
-                {
-                    SplitVisualSegmentAtCurrentPage();
-                    InvalidateRect(hwnd, IntPtr.Zero, true);
-                    return true;
-                }
-            }
-
-            // Right Panel Preview Image (Click to Zoom)
-            if (mouseX >= 266 && mouseX <= 478 && mouseY >= 200 + navOffset && mouseY <= 374)
-            {
-                OpenVisualSplitZoom(hwnd);
-                return true;
-            }
-
-            // Bottom Action Buttons
-            if (mouseY >= 380 && mouseY <= 406)
-            {
-                if (mouseX >= 36 && mouseX <= 132) // ＋ 新增區段
-                {
-                    AddVisualSplitSegment();
-                }
-                else if (mouseX >= 138 && mouseX <= 222) // 刪除區段
-                {
-                    DeleteVisualSplitSegment();
-                }
-                else if (mouseX >= 228 && mouseX <= 312) // 清空區段
-                {
-                    ClearVisualSplitSegments();
-                }
-                else if (mouseX >= 336 && mouseX <= 410) // 確定分割
-                {
-                    PostMessageW(hwnd, WM_USER_HIDE_PASSWORD_INPUT, IntPtr.Zero, IntPtr.Zero);
-                    ResizeWindowForVisualSplitter(hwnd, false);
-                    lock (_stateLock)
-                    {
-                        _passwordCancelled = false;
-                        _isPromptingVisualSplitter = false;
-                    }
-                    _passwordEvent.Set();
-                }
-                else if (mouseX >= 416 && mouseX <= 484) // 取消
-                {
-                    PostMessageW(hwnd, WM_USER_HIDE_PASSWORD_INPUT, IntPtr.Zero, IntPtr.Zero);
-                    ResizeWindowForVisualSplitter(hwnd, false);
-                    lock (_stateLock)
-                    {
-                        _passwordCancelled = true;
-                        _isPromptingVisualSplitter = false;
-                    }
-                    _passwordEvent.Set();
-                }
+                _visualSplitNPages = Math.Min(_visualSplitTotalPages, _visualSplitNPages + 1);
+                ApplyVisualSplitMode();
                 InvalidateRect(hwnd, IntPtr.Zero, true);
                 return true;
             }
-
             return false;
+        }
+
+        /// <summary>Handles clicks on the left segment cards list.</summary>
+        private bool HandleSplitterSegmentCardsClick(IntPtr hwnd, int mouseX, int mouseY)
+        {
+            int cardStartY = 158 + (_visualSplitMode == 2 ? 22 : 0);
+            if (mouseX < 36 || mouseX > 252 || mouseY < cardStartY || mouseY > 374) return false;
+
+            int cardIdx = (mouseY - cardStartY) / 23;
+            if (cardIdx < 0 || cardIdx >= _visualSplitSegments.Count) return false;
+
+            _visualSplitSelectedSegmentIndex = cardIdx;
+            _visualSplitCurrentPreviewPageIndex = 0;
+            InvalidateRect(hwnd, IntPtr.Zero, true);
+            return true;
+        }
+
+        /// <summary>Handles clicks on the right-panel page navigation bar.</summary>
+        private bool HandleSplitterNavBarClick(IntPtr hwnd, int mouseX, int mouseY)
+        {
+            int navOffset = (_visualSplitMode == 2 ? 22 : 0);
+            if (mouseX < 260 || mouseX > 484 || mouseY < 170 + navOffset || mouseY > 200 + navOffset) return false;
+
+            int segCnt = 1;
+            if (_visualSplitSelectedSegmentIndex >= 0 && _visualSplitSelectedSegmentIndex < _visualSplitSegments.Count)
+            {
+                var seg = _visualSplitSegments[_visualSplitSelectedSegmentIndex];
+                segCnt = seg.End - seg.Start + 1;
+            }
+
+            if (mouseX >= 266 && mouseX <= 292) // <
+            {
+                _visualSplitCurrentPreviewPageIndex = Math.Max(0, _visualSplitCurrentPreviewPageIndex - 1);
+                InvalidateRect(hwnd, IntPtr.Zero, true);
+                return true;
+            }
+            if (mouseX >= 452 && mouseX <= 478) // >
+            {
+                _visualSplitCurrentPreviewPageIndex = Math.Min(segCnt - 1, _visualSplitCurrentPreviewPageIndex + 1);
+                InvalidateRect(hwnd, IntPtr.Zero, true);
+                return true;
+            }
+            if (mouseX >= 410 && mouseX <= 450) // 切開 (split at current preview page)
+            {
+                SplitVisualSegmentAtCurrentPage();
+                InvalidateRect(hwnd, IntPtr.Zero, true);
+                return true;
+            }
+            return false;
+        }
+
+        /// <summary>Opens the zoom lightbox when the preview image area is clicked.</summary>
+        private bool HandleSplitterPreviewZoomClick(IntPtr hwnd, int mouseX, int mouseY)
+        {
+            int navOffset = (_visualSplitMode == 2 ? 22 : 0);
+            if (mouseX < 266 || mouseX > 478 || mouseY < 200 + navOffset || mouseY > 374) return false;
+            OpenVisualSplitZoom(hwnd);
+            return true;
+        }
+
+        /// <summary>Handles clicks on the bottom action buttons (add/delete/clear segments,
+        /// confirm/cancel split).</summary>
+        private bool HandleSplitterActionButtonsClick(IntPtr hwnd, int mouseX, int mouseY)
+        {
+            if (mouseY < 380 || mouseY > 406) return false;
+
+            if (mouseX >= 36 && mouseX <= 132) // ＋ 新增區段
+            {
+                AddVisualSplitSegment();
+            }
+            else if (mouseX >= 138 && mouseX <= 222) // 刪除區段
+            {
+                DeleteVisualSplitSegment();
+            }
+            else if (mouseX >= 228 && mouseX <= 312) // 清空區段
+            {
+                ClearVisualSplitSegments();
+            }
+            else if (mouseX >= 336 && mouseX <= 410) // 確定分割
+            {
+                PostMessageW(hwnd, WM_USER_HIDE_PASSWORD_INPUT, IntPtr.Zero, IntPtr.Zero);
+                ResizeWindowForVisualSplitter(hwnd, false);
+                lock (_stateLock)
+                {
+                    _passwordCancelled = false;
+                    _isPromptingVisualSplitter = false;
+                }
+                _passwordEvent.Set();
+            }
+            else if (mouseX >= 416 && mouseX <= 484) // 取消
+            {
+                PostMessageW(hwnd, WM_USER_HIDE_PASSWORD_INPUT, IntPtr.Zero, IntPtr.Zero);
+                ResizeWindowForVisualSplitter(hwnd, false);
+                lock (_stateLock)
+                {
+                    _passwordCancelled = true;
+                    _isPromptingVisualSplitter = false;
+                }
+                _passwordEvent.Set();
+            }
+            InvalidateRect(hwnd, IntPtr.Zero, true);
+            return true;
         }
 
         /// <summary>Handles progress-area clicks: the minimize-to-tray button and the
@@ -536,7 +559,7 @@ namespace Clickra.UI
             {
                 if (_completed || _hasError) return;
 
-                if (mouseX >= 456 && mouseX <= 484 && mouseY >= 36 && mouseY <= 64)
+                if (IsTrayButtonHit(mouseX, mouseY))
                 {
                     SetupTrayIcon(hwnd);
                     ShowWindow(hwnd, 0); // SW_HIDE
@@ -544,54 +567,63 @@ namespace Clickra.UI
                     return;
                 }
 
-                float logicalPctW = 0;
-                string drawPctStr = _total > 0 ? $"{(_current * 100 / _total)}%" : "";
-                if (_pctFont != null && _total > 0)
+                TryStartProgressScrollDrag(hwnd, mouseX, mouseY);
+            }
+        }
+
+        /// <summary>Whether the point is inside the minimize-to-tray button.</summary>
+        private static bool IsTrayButtonHit(int mouseX, int mouseY)
+            => mouseX >= 456 && mouseX <= 484 && mouseY >= 36 && mouseY <= 64;
+
+        /// <summary>Starts dragging the status-message scrollbar when the click lands on its
+        /// thumb track.</summary>
+        private void TryStartProgressScrollDrag(IntPtr hwnd, int mouseX, int mouseY)
+        {
+            float logicalPctW = 0;
+            string drawPctStr = _total > 0 ? $"{(_current * 100 / _total)}%" : "";
+            if (_pctFont != null && _total > 0)
+            {
+                using var tempBmp = new Bitmap(1, 1);
+                using var tempG = Graphics.FromImage(tempBmp);
+                logicalPctW = tempG.MeasureString(drawPctStr, _pctFont).Width / _dpiScale;
+            }
+            float logicalMaxMsgW = 448f;
+            if (logicalPctW > 0)
+            {
+                logicalMaxMsgW = 448f - logicalPctW - 10f;
+            }
+
+            if (mouseX < 36 || mouseX > 36 + logicalMaxMsgW || mouseY < 148 || mouseY > 158) return;
+
+            string statusMsg = _message;
+            float fullMsgW = 0f;
+            using (var tempBmp = new Bitmap(1, 1))
+            using (var tempG = Graphics.FromImage(tempBmp))
+            {
+                if (_msgFont != null)
                 {
-                    using var tempBmp = new Bitmap(1, 1);
-                    using var tempG = Graphics.FromImage(tempBmp);
-                    logicalPctW = tempG.MeasureString(drawPctStr, _pctFont).Width / _dpiScale;
-                }
-                float logicalMaxMsgW = 448f;
-                if (logicalPctW > 0)
-                {
-                    logicalMaxMsgW = 448f - logicalPctW - 10f;
-                }
-
-                if (mouseX >= 36 && mouseX <= 36 + logicalMaxMsgW && mouseY >= 148 && mouseY <= 158)
-                {
-                    string statusMsg = _message;
-                    float fullMsgW = 0f;
-                    using (var tempBmp = new Bitmap(1, 1))
-                    using (var tempG = Graphics.FromImage(tempBmp))
-                    {
-                        if (_msgFont != null)
-                        {
-                            fullMsgW = tempG.MeasureString(statusMsg, _msgFont).Width / _dpiScale;
-                        }
-                    }
-
-                    float maxLogicalScroll = Math.Max(0f, fullMsgW - logicalMaxMsgW);
-                    if (maxLogicalScroll > 0)
-                    {
-                        float clickX = mouseX - 36f;
-                        float thumbW = Math.Max(15f, (logicalMaxMsgW / fullMsgW) * logicalMaxMsgW);
-                        float thumbX = (_scrollOffset / fullMsgW) * logicalMaxMsgW;
-                        if (thumbX + thumbW > logicalMaxMsgW) thumbX = logicalMaxMsgW - thumbW;
-
-                        float travelRange = logicalMaxMsgW - thumbW;
-                        float relativePos = travelRange > 0 ? (clickX - thumbW / 2f) / travelRange : 0f;
-                        float newOffset = Math.Max(0f, Math.Min(relativePos * maxLogicalScroll, maxLogicalScroll));
-
-                        _scrollOffset = newOffset;
-                        _isDraggingScroll = true;
-                        _dragStartMouseX = mouseX;
-                        _dragStartOffset = newOffset;
-                        SetCapture(hwnd);
-                        InvalidateRect(hwnd, IntPtr.Zero, false);
-                    }
+                    fullMsgW = tempG.MeasureString(statusMsg, _msgFont).Width / _dpiScale;
                 }
             }
+
+            float maxLogicalScroll = Math.Max(0f, fullMsgW - logicalMaxMsgW);
+            if (maxLogicalScroll <= 0) return;
+
+            float clickX = mouseX - 36f;
+            float thumbW = Math.Max(15f, (logicalMaxMsgW / fullMsgW) * logicalMaxMsgW);
+            float thumbX = (_scrollOffset / fullMsgW) * logicalMaxMsgW;
+            if (thumbX + thumbW > logicalMaxMsgW) thumbX = logicalMaxMsgW - thumbW;
+
+            float travelRange = logicalMaxMsgW - thumbW;
+            float relativePos = travelRange > 0 ? (clickX - thumbW / 2f) / travelRange : 0f;
+            float newOffset = Math.Max(0f, Math.Min(relativePos * maxLogicalScroll, maxLogicalScroll));
+
+            _scrollOffset = newOffset;
+            _isDraggingScroll = true;
+            _dragStartMouseX = mouseX;
+            _dragStartOffset = newOffset;
+            SetCapture(hwnd);
+            InvalidateRect(hwnd, IntPtr.Zero, false);
         }
 
         /// <summary>Ends zoom-lightbox or scrollbar dragging and releases the capture.</summary>
@@ -679,7 +711,7 @@ namespace Clickra.UI
             if (_bufferBmp != null)
             {
                 _bufferGraphics?.Dispose();
-                _bufferBmp?.Dispose();
+                _bufferBmp.Dispose();
                 _bufferBmp = new Bitmap(clientW, clientH);
                 _bufferGraphics = Graphics.FromImage(_bufferBmp);
                 _bufferGraphics.TextRenderingHint = TextRenderingHint.AntiAliasGridFit;
