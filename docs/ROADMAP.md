@@ -114,7 +114,7 @@
     - 統一整理專案內的檔案命名規範，消除歷史遺留的不一致命名。
 - [ ] **[R1-3] Complexity Reduction**：圈複雜度重構（技術債）。
     - **視窗訊息路由器 (WndProc Router)**：重構 `DashboardWindow.Events.cs` 的 `WndProc` (當前複雜度 137)，將龐大的 `switch` 拆分為單純的訊息路由，將特定 Win32 訊息指派至專屬的事件方法中處理。
-    - **命令模式拆分 (Command Pattern)**：重構 `DashboardWindow.Events.Click.cs` 的 `HandleLButtonDown` (當前複雜度 130)，將點擊區域偵測與具體功能執行解耦，使每個轉檔功能封裝為獨立的 Command 物件。
+    - [x] **命令模式拆分 (Command Pattern) (2026/08/11 完成)**：重構 `DashboardWindow.Events.Click.cs` 的 `HandleLButtonDown` (原複雜度 130)，將點擊區域偵測與具體功能執行解耦，使每個轉檔功能封裝為獨立的 Command 物件（`ConvertCommandDef` 登錄 + `ConvertCommand`），`HandleLButtonDown` 現為薄路由器（委派給各 tab 的 handler）。
     - **CLI 入口點精簡**：重構 `ClickraCli.cs` 的 `Main` (當前複雜度 89)，將參數解析與 Dashboard 啟動移至獨立的啟動類別。
     - **進度視窗複雜度 (2026/08/08 記錄)**：重構 `ProgressWindow` 系列四個高複雜度方法——`Controls.cs` 的 `InstanceWndProc` (156, critical)、`Process.cs` 的 `RunProcessing` (57, critical)、`Paint.cs` 的 `Paint` (47, very-high)、`VisualSplitter.cs` 的 `PaintVisualSplitter` (35, very-high)，將訊息路由與繪圖拆分為職責單一的方法。
     - [x] **SonarCloud 認知複雜度 (2026/08/09 記錄，同日完成重構)**：SonarCloud 標記 8 個超過認知複雜度門檻 15 的方法已全部重構——`PaintVisualSplitter` (60) 拆成 8 個職責單一的方法（mode bar / n-selector / body / cards / preview panel / preview page / buttons / zoom overlay）、`ProcessSingleFile` (28) 抽 `SplitEachPage`/`ExtractSegments`/`ExtractSingleRange`、`DrawPageImages` (17) 抽 `TryDecodeEmbeddedImage`、`DrawPageWords` (16) 抽 `ResolveWordColor`/`TryDrawWord`、`ApplyVisualSplitMode` (16) 每模式抽方法、`HandleVersionOrDeploy` (17) 抽 `TryHandleVisualSplitterArgs`、`DispatchPdfCommand` (19) 抽 `DispatchPdfCase`/`HandleSplitPdfQuiet`、`ShowInstance` (16) 抽 `RunMessageLoop`。全量重建 0 警告 0 錯誤，分割測試全 PASS。
