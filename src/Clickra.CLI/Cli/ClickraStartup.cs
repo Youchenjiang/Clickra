@@ -2,6 +2,7 @@ using System;
 using System.IO;
 using System.Linq;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Runtime.InteropServices;
 using Clickra.Core;
 using Clickra.UI;
@@ -20,8 +21,7 @@ namespace Clickra
         public static void Run(string[] args)
         {
             ClickraCli.AttachParentConsoleForCli(args);
-            try { PdfSharp.Fonts.GlobalFontSettings.FontResolver = new ClickraFontResolver(); } catch { }
-            try { SetProcessDpiAwarenessContext((IntPtr)(-4)); } catch { }
+            InitializeProcessEnvironment();
             if (HandleVersionOrDeploy(args)) return;
 
             var argList = args.ToList();
@@ -54,19 +54,39 @@ namespace Clickra
             }
             catch (Exception ex)
             {
-                if (quiet)
-                {
-                    try { ClickraStorage.CompleteActiveRecord(command, startTimeStr, false, ex.Message); } catch { }
-                    System.Threading.Thread.Sleep(1500);
-                    try { ClickraStorage.ClearActiveRecord(); } catch { }
-                }
-                Console.WriteLine($"Error: {ex.Message}");
-                Console.WriteLine(ex.StackTrace);
-                if (!quiet && Environment.UserInteractive && !Console.IsInputRedirected)
-                {
-                    Console.WriteLine("Press any key to exit...");
-                    Console.ReadKey();
-                }
+                ReportDispatchError(command, startTimeStr, quiet, ex);
+            }
+        }
+
+        /// <summary>Configures the PDF font resolver and process DPI awareness; both steps
+        /// are best-effort so a failure must never abort the process (PdfSharp falls back
+        /// to its default resolver and Windows keeps the system DPI behavior).</summary>
+        private static void InitializeProcessEnvironment()
+        {
+            try { PdfSharp.Fonts.GlobalFontSettings.FontResolver = new ClickraFontResolver(); }
+            catch (Exception ex) { Debug.WriteLine($"Font resolver init failed: {ex.Message}"); }
+            try { SetProcessDpiAwarenessContext((IntPtr)(-4)); }
+            catch (Exception ex) { Debug.WriteLine($"DPI awareness init failed: {ex.Message}"); }
+        }
+
+        /// <summary>Reports a dispatch failure: records it in the history when running
+        /// quiet, prints the error, and waits for a key press in interactive mode.</summary>
+        private static void ReportDispatchError(string command, string startTimeStr, bool quiet, Exception ex)
+        {
+            if (quiet)
+            {
+                try { ClickraStorage.CompleteActiveRecord(command, startTimeStr, false, ex.Message); }
+                catch (Exception recordEx) { Debug.WriteLine($"Failed to record the failed job: {recordEx.Message}"); }
+                System.Threading.Thread.Sleep(1500);
+                try { ClickraStorage.ClearActiveRecord(); }
+                catch (Exception recordEx) { Debug.WriteLine($"Failed to clear the active job: {recordEx.Message}"); }
+            }
+            Console.WriteLine($"Error: {ex.Message}");
+            Console.WriteLine(ex.StackTrace);
+            if (!quiet && Environment.UserInteractive && !Console.IsInputRedirected)
+            {
+                Console.WriteLine("Press any key to exit...");
+                Console.ReadKey();
             }
         }
 

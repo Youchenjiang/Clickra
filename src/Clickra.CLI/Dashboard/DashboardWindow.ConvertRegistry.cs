@@ -149,36 +149,46 @@ namespace Clickra.UI
                     : microsoftReady || libreOfficeReady;
             }
 
-            /// <summary>Activates this command on the convert tab, clearing incompatible selections.</summary>
-            public void Select()
+            /// <summary>Activates the given command on the convert tab, clearing incompatible
+            /// selections.</summary>
+            public static void Select(ConvertCommand command)
             {
-                _convertCommandIndex = Array.IndexOf(ConvertCommands, this);
-                if (_selectedFiles.Count > 0 && !ValidateFiles(_selectedFiles, out _))
+                _convertCommandIndex = Array.IndexOf(ConvertCommands, command);
+                if (_selectedFiles.Count > 0 && !command.ValidateFiles(_selectedFiles, out _))
                 {
                     _selectedFiles.Clear();
                 }
             }
 
-            /// <summary>Runs this command for the currently selected files and switches to the history tab.</summary>
-            public void Run(IntPtr hwnd)
+            /// <summary>Runs the given command for the currently selected files and switches
+            /// to the history tab.</summary>
+            public static void Run(ConvertCommand command, IntPtr hwnd)
             {
                 if (_selectedFiles.Count == 0) return;
 
-                if (!ValidateFiles(_selectedFiles, out string error))
+                if (!command.ValidateFiles(_selectedFiles, out string error))
                 {
                     MessageBox(hwnd, error, "Clickra", 0x30);
                     return;
                 }
 
-                if (RequiresOffice && !HasAvailableEngine())
+                if (command.RequiresOffice && !command.HasAvailableEngine())
                 {
                     string language = ClickraStorage.GetSetting("Language");
                     string engine = ClickraStorage.GetSetting("OfficeEngine");
-                    string errorKey = engine.Equals("libreoffice", StringComparison.OrdinalIgnoreCase)
-                        ? "error_libreoffice_not_ready"
-                        : engine.Equals("microsoft", StringComparison.OrdinalIgnoreCase)
-                            ? "error_microsoftoffice_not_ready"
-                            : "setting_engine_none_available";
+                    string errorKey;
+                    if (engine.Equals("libreoffice", StringComparison.OrdinalIgnoreCase))
+                    {
+                        errorKey = "error_libreoffice_not_ready";
+                    }
+                    else if (engine.Equals("microsoft", StringComparison.OrdinalIgnoreCase))
+                    {
+                        errorKey = "error_microsoftoffice_not_ready";
+                    }
+                    else
+                    {
+                        errorKey = "setting_engine_none_available";
+                    }
                     MessageBox(hwnd, Localization.T(errorKey, language), "Clickra", 0x30);
                     return;
                 }
@@ -188,7 +198,7 @@ namespace Clickra.UI
                 {
                     try
                     {
-                        ProgressWindow.Show(Command, filesCopy);
+                        ProgressWindow.Show(command.Command, filesCopy);
                     }
                     catch (Exception ex)
                     {
