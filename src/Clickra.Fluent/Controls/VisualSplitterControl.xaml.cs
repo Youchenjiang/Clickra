@@ -130,10 +130,10 @@ public sealed partial class VisualSplitterControl : UserControl
     private void SetZoomFactor(float factor)
     {
         float newFactor = Math.Clamp(factor, 1f, 8f);
-        if (newFactor == _zoomFactor) return;
+        if (Math.Abs(newFactor - _zoomFactor) < 0.001f) return;
         _zoomFactor = newFactor;
         ApplyPreviewSize();
-        UpdatePreview();
+        _ = UpdatePreview();
     }
 
     private void ZoomInBtn_Click(object sender, RoutedEventArgs e) => SetZoomFactor(_zoomFactor * 1.25f);
@@ -166,7 +166,7 @@ public sealed partial class VisualSplitterControl : UserControl
         {
             _pdfDoc = null;
         }
-        UpdatePreview();
+        _ = UpdatePreview();
     }
 
     /// <summary>Refreshes the three mode button labels, keeping the fixed-pages button
@@ -244,7 +244,7 @@ public sealed partial class VisualSplitterControl : UserControl
 
         _selectedSegmentIndex = _segments.Count > 0 ? 0 : -1;
         RefreshSegmentList();
-        UpdatePreview();
+        _ = UpdatePreview();
     }
 
     private void RefreshSegmentList()
@@ -267,7 +267,7 @@ public sealed partial class VisualSplitterControl : UserControl
         if (_suppressSelection || SegmentList.SelectedIndex < 0) return;
         _selectedSegmentIndex = SegmentList.SelectedIndex;
         _currentPreviewPageIndex = 0;
-        UpdatePreview();
+        _ = UpdatePreview();
     }
 
     private int GetCurrentPageNumber()
@@ -285,7 +285,7 @@ public sealed partial class VisualSplitterControl : UserControl
         var seg = _segments[_selectedSegmentIndex];
         int pageCnt = seg.End - seg.Start + 1;
         _currentPreviewPageIndex = Math.Clamp(_currentPreviewPageIndex + delta, 0, pageCnt - 1);
-        UpdatePreview();
+        _ = UpdatePreview();
     }
 
     /// <summary>Splits the selected segment at the currently previewed page into two
@@ -315,7 +315,7 @@ public sealed partial class VisualSplitterControl : UserControl
         if (!(ModeCustomBtn.IsChecked == true)) ModeCustomBtn.IsChecked = true;
 
         RefreshSegmentList();
-        UpdatePreview();
+        _ = UpdatePreview();
     }
 
     /// <summary>Adds the first page gap not covered by any custom segment as a new
@@ -333,7 +333,7 @@ public sealed partial class VisualSplitterControl : UserControl
             _selectedSegmentIndex = 0;
             _currentPreviewPageIndex = 0;
             RefreshSegmentList();
-            UpdatePreview();
+            _ = UpdatePreview();
             return;
         }
 
@@ -365,7 +365,7 @@ public sealed partial class VisualSplitterControl : UserControl
         _selectedSegmentIndex = _segments.FindIndex(s => s.Start == gapStart && s.End == gapEnd);
         _currentPreviewPageIndex = 0;
         RefreshSegmentList();
-        UpdatePreview();
+        _ = UpdatePreview();
     }
 
     /// <summary>Removes the selected custom segment (keeping at least one).</summary>
@@ -384,7 +384,7 @@ public sealed partial class VisualSplitterControl : UserControl
             _selectedSegmentIndex = _segments.Count - 1;
         _currentPreviewPageIndex = 0;
         RefreshSegmentList();
-        UpdatePreview();
+        _ = UpdatePreview();
     }
 
     /// <summary>Clears all custom segments and switches to custom mode.</summary>
@@ -397,13 +397,13 @@ public sealed partial class VisualSplitterControl : UserControl
         _selectedSegmentIndex = -1;
         _currentPreviewPageIndex = 0;
         RefreshSegmentList();
-        UpdatePreview();
+        _ = UpdatePreview();
     }
 
     /// <summary>Renders the current preview page at fit width and swaps it into the
     /// preview image, discarding stale renders via a sequence guard. Uses the Windows
     /// built-in PDF renderer for true page quality.</summary>
-    private async void UpdatePreview()
+    private async Task UpdatePreview()
     {
         int page = GetCurrentPageNumber();
 
