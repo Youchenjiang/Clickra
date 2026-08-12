@@ -11,6 +11,7 @@ namespace Clickra.Core
         private const string LangJa = "ja-JP";
         private const string LangKo = "ko-KR";
         private const string KeyCmdCompressPdf = "cmd_compress_pdf";
+        private const string OfficeName = "Office";
 
         private static readonly Dictionary<string, Dictionary<string, string>> Translations = new(StringComparer.OrdinalIgnoreCase)
         {
@@ -913,7 +914,7 @@ namespace Clickra.Core
                 ("fluent_pdf_password", "PDF 密碼", "PDF 密码", "PDF password", "PDF パスワード", "PDF 암호"),
                 ("fluent_pdf_password_placeholder", "輸入 PDF 密碼", "输入 PDF 密码", "Enter PDF password", "PDF パスワードを入力", "PDF 암호 입력"),
                 ("fluent_ok", "確定", "确定", "OK", "OK", "확인"),
-                ("fluent_office", "Office", "Office", "Office", "Office", "Office"),
+                ("fluent_office", OfficeName, OfficeName, OfficeName, OfficeName, OfficeName),
                 ("fluent_images", "圖片", "图片", "Images", "画像", "이미지"),
                 ("fluent_history_subtitle", "近期轉換結果", "近期转换结果", "Recent conversion results", "最近の変換結果", "최근 변환 결과"),
                 ("status_office_starting", "正在啟動 {0} 引擎 ({1}/{2})...", "正在启动 {0} 引擎 ({1}/{2})...", "Starting {0} engine ({1}/{2})...", "{0} エンジンを起動中 ({1}/{2})...", "{0} 엔진 시작 중 ({1}/{2})..."),

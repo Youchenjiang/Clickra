@@ -11,6 +11,8 @@ namespace Clickra.Core.Processors
 {
     public static class PowerShellHelper
     {
+        private const string LanguageSettingKey = "Language";
+
         public static void ExportOfficeToPdf(
             string appType,
             string fullPath,
@@ -32,7 +34,7 @@ namespace Clickra.Core.Processors
                 !IsMicrosoftOfficeReady(appType))
             {
                 if (string.IsNullOrWhiteSpace(LibreOfficeHelper.GetResolvedExecutablePath()))
-                    throw new Exception(Localization.T("error_libreoffice_not_ready", ClickraStorage.GetSetting("Language")));
+                    throw new Exception(Localization.T("error_libreoffice_not_ready", ClickraStorage.GetSetting(LanguageSettingKey)));
 
                 LibreOfficeHelper.ExportToPdf(appType, fullPath, outputPdfPath, fileIndex, totalFiles, onProgress, cancellationToken);
                 return;
@@ -48,7 +50,7 @@ namespace Clickra.Core.Processors
                 if (string.IsNullOrWhiteSpace(LibreOfficeHelper.GetResolvedExecutablePath()))
                     throw;
 
-                string language = ClickraStorage.GetSetting("Language");
+                string language = ClickraStorage.GetSetting(LanguageSettingKey);
                 onProgress?.Invoke(
                     fileIndex * 100,
                     totalFiles * 100,
@@ -199,7 +201,7 @@ try {{
             };
 
             using var process = System.Diagnostics.Process.Start(startInfo)
-                ?? throw new InvalidOperationException(string.Format(Localization.T("error_office_powershell_start", ClickraStorage.GetSetting("Language")), appName));
+                ?? throw new InvalidOperationException(string.Format(Localization.T("error_office_powershell_start", ClickraStorage.GetSetting(LanguageSettingKey)), appName));
 
             using var registration = cancellationToken.Register(() =>
             {
@@ -248,20 +250,21 @@ try {{
             if (!string.IsNullOrWhiteSpace(errorText) && process.ExitCode != 0)
             {
                 if (errorText.Contains("0x80040154") || errorText.Contains("New-Object"))
-                    throw new InvalidOperationException(string.Format(Localization.T("error_office_not_installed", ClickraStorage.GetSetting("Language")), appName));
+                    throw new InvalidOperationException(string.Format(Localization.T("error_office_not_installed", ClickraStorage.GetSetting(LanguageSettingKey)), appName));
                 else
-                    throw new InvalidOperationException(string.Format(Localization.T("error_office_failed", ClickraStorage.GetSetting("Language")), appName, errorText.Trim()));
+                    throw new InvalidOperationException(string.Format(Localization.T("error_office_failed", ClickraStorage.GetSetting(LanguageSettingKey)), appName, errorText.Trim()));
             }
 
             if (process.ExitCode != 0)
             {
-                throw new InvalidOperationException(string.Format(Localization.T("error_office_exit_code", ClickraStorage.GetSetting("Language")), appName, process.ExitCode));
+                throw new InvalidOperationException(string.Format(Localization.T("error_office_exit_code", ClickraStorage.GetSetting(LanguageSettingKey)), appName, process.ExitCode));
             }
         }
     }
 
     public static class LibreOfficeHelper
     {
+        private const string LanguageSettingKey = "Language";
         private const uint SemFailCriticalErrors = 0x0001;
         private const uint SemNoGpFaultErrorBox = 0x0002;
         private const uint SemNoOpenFileErrorBox = 0x8000;
@@ -388,21 +391,21 @@ try {{
             CancellationToken cancellationToken)
         {
             if (!CanConvert(appType))
-                throw new NotSupportedException(string.Format(Localization.T("error_libreoffice_unsupported", ClickraStorage.GetSetting("Language")), appType));
+                throw new NotSupportedException(string.Format(Localization.T("error_libreoffice_unsupported", ClickraStorage.GetSetting(LanguageSettingKey)), appType));
 
             if (ClickraStorage.GetSetting("LibreOfficeRemovalPendingRestart").Equals("true", StringComparison.OrdinalIgnoreCase))
             {
-                throw new Exception(Localization.T("error_libreoffice_not_ready", ClickraStorage.GetSetting("Language")));
+                throw new Exception(Localization.T("error_libreoffice_not_ready", ClickraStorage.GetSetting(LanguageSettingKey)));
             }
 
             if (!TryResolveExecutable(ClickraStorage.GetSetting("LibreOfficePath"), out string executablePath))
             {
-                throw new Exception(Localization.T("error_libreoffice_not_ready", ClickraStorage.GetSetting("Language")));
+                throw new Exception(Localization.T("error_libreoffice_not_ready", ClickraStorage.GetSetting(LanguageSettingKey)));
             }
 
             if (!LooksLikeLibreOfficeExecutable(executablePath))
             {
-                throw new Exception(Localization.T("error_libreoffice_unusable", ClickraStorage.GetSetting("Language")));
+                throw new Exception(Localization.T("error_libreoffice_unusable", ClickraStorage.GetSetting(LanguageSettingKey)));
             }
 
             string tempDir = Path.Combine(Path.GetTempPath(), "ClickraLibreOffice", Guid.NewGuid().ToString("N"));
@@ -416,7 +419,7 @@ try {{
                     fileIndex * 100 + 20,
                     totalFiles * 100,
                     string.Format(
-                        Localization.T("status_libreoffice_starting", ClickraStorage.GetSetting("Language")),
+                        Localization.T("status_libreoffice_starting", ClickraStorage.GetSetting(LanguageSettingKey)),
                         fileIndex + 1,
                         totalFiles));
 
@@ -446,7 +449,7 @@ try {{
                 uint previousErrorMode = SetErrorMode(SemFailCriticalErrors | SemNoGpFaultErrorBox | SemNoOpenFileErrorBox);
                 using var process = StartProcessAndRestoreErrorMode(startInfo, previousErrorMode);
                 if (process == null)
-                    throw new InvalidOperationException(Localization.T("error_libreoffice_start", ClickraStorage.GetSetting("Language")));
+                    throw new InvalidOperationException(Localization.T("error_libreoffice_start", ClickraStorage.GetSetting(LanguageSettingKey)));
 
                 using var registration = cancellationToken.Register(() =>
                 {
@@ -470,27 +473,27 @@ try {{
                     fileIndex * 100 + 60,
                     totalFiles * 100,
                     string.Format(
-                        Localization.T("status_libreoffice_exporting", ClickraStorage.GetSetting("Language")),
+                        Localization.T("status_libreoffice_exporting", ClickraStorage.GetSetting(LanguageSettingKey)),
                         Path.GetFileName(fullPath)));
 
                 if (!process.WaitForExit(TimeSpan.FromMinutes(2)))
                 {
                     try { process.Kill(true); } catch { /* Ignored: a hung process must not mask the timeout error. */ }
-                    throw new TimeoutException(Localization.T("error_libreoffice_timeout", ClickraStorage.GetSetting("Language")));
+                    throw new TimeoutException(Localization.T("error_libreoffice_timeout", ClickraStorage.GetSetting(LanguageSettingKey)));
                 }
                 cancellationToken.ThrowIfCancellationRequested();
 
                 if (process.ExitCode != 0)
                 {
                     string details = error.Length > 0 ? error.ToString().Trim() : output.ToString().Trim();
-                    throw new InvalidOperationException(string.Format(Localization.T("error_libreoffice_exit_code", ClickraStorage.GetSetting("Language")), process.ExitCode, FormatLibreOfficeExitCode(process.ExitCode), details));
+                    throw new InvalidOperationException(string.Format(Localization.T("error_libreoffice_exit_code", ClickraStorage.GetSetting(LanguageSettingKey)), process.ExitCode, FormatLibreOfficeExitCode(process.ExitCode), details));
                 }
 
                 string convertedPath = Path.Combine(tempDir, Path.GetFileNameWithoutExtension(fullPath) + ".pdf");
                 if (!File.Exists(convertedPath))
                 {
                     string details = error.Length > 0 ? error.ToString().Trim() : output.ToString().Trim();
-                    throw new InvalidOperationException(string.Format(Localization.T("error_libreoffice_output_missing", ClickraStorage.GetSetting("Language")), details));
+                    throw new InvalidOperationException(string.Format(Localization.T("error_libreoffice_output_missing", ClickraStorage.GetSetting(LanguageSettingKey)), details));
                 }
 
                 string? outputDir = Path.GetDirectoryName(outputPdfPath);
@@ -504,7 +507,7 @@ try {{
                     fileIndex * 100 + 100,
                     totalFiles * 100,
                     string.Format(
-                        Localization.T("status_libreoffice_completed", ClickraStorage.GetSetting("Language")),
+                        Localization.T("status_libreoffice_completed", ClickraStorage.GetSetting(LanguageSettingKey)),
                         Path.GetFileName(fullPath)));
             }
             finally

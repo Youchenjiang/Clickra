@@ -8,6 +8,8 @@ namespace Clickra.Core.Processors
 {
     internal static class PdfTranslationBatchRunner
     {
+        private const string LanguageSettingKey = "Language";
+
         public static List<string> TranslatePageBatches(
             ITranslationEngine translator,
             List<string> textsToTranslate,
@@ -25,7 +27,7 @@ namespace Clickra.Core.Processors
             {
                 cancellationToken.ThrowIfCancellationRequested();
                 var chunk = chunks[chunkIndex];
-                string language = ClickraStorage.GetSetting("Language");
+                string language = ClickraStorage.GetSetting(LanguageSettingKey);
                 onProgress?.Invoke(
                     GetTranslationProgress(pageIndex, totalPages, chunkIndex, chunks.Count),
                     100,
@@ -118,14 +120,14 @@ namespace Clickra.Core.Processors
                     cancellationToken);
                 if (string.IsNullOrWhiteSpace(translated))
                 {
-                    throw new InvalidOperationException(Localization.T("pdf_error_provider_empty", ClickraStorage.GetSetting("Language")));
+                    throw new InvalidOperationException(Localization.T("pdf_error_provider_empty", ClickraStorage.GetSetting(LanguageSettingKey)));
                 }
                 return new List<string> { translated };
             }
             catch (Exception ex) when (!cancellationToken.IsCancellationRequested)
             {
                 throw new InvalidOperationException(
-                    string.Format(Localization.T("pdf_error_unable_paragraph", ClickraStorage.GetSetting("Language")), pageIndex + 1),
+                    string.Format(Localization.T("pdf_error_unable_paragraph", ClickraStorage.GetSetting(LanguageSettingKey)), pageIndex + 1),
                     ex);
             }
         }
@@ -144,7 +146,7 @@ namespace Clickra.Core.Processors
             catch (OperationCanceledException) when (
                 !cancellationToken.IsCancellationRequested && timeoutCts.IsCancellationRequested)
             {
-                throw new TimeoutException(string.Format(Localization.T("pdf_error_provider_timeout", ClickraStorage.GetSetting("Language")), timeout.TotalSeconds.ToString("0")));
+                throw new TimeoutException(string.Format(Localization.T("pdf_error_provider_timeout", ClickraStorage.GetSetting(LanguageSettingKey)), timeout.TotalSeconds.ToString("0")));
             }
         }
 
