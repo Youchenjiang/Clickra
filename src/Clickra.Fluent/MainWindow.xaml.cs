@@ -16,7 +16,9 @@ public sealed partial class MainWindow : Window
         bool progressMode = !string.IsNullOrWhiteSpace(launchArguments);
         if (progressMode)
         {
-            AppWindow.Resize(new Windows.Graphics.SizeInt32(720, 440));
+            // Big enough for the full-window visual splitter when the shell activates
+            // the app with split-pdf (a dialog-sized window would squeeze the preview).
+            AppWindow.Resize(new Windows.Graphics.SizeInt32(1150, 760));
         }
         RootFrame.Navigate(progressMode ? typeof(TaskProgressPage) : typeof(MainPage), launchArguments);
     }

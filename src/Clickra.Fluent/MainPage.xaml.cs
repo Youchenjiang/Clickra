@@ -1424,7 +1424,12 @@ public sealed partial class MainPage : Page
     }
 
     private async Task<string> PromptSplitPagesAsync(string pdfPath)
-        => await SplitPagesDialog.PromptAsync(XamlRoot, pdfPath) ?? "";
+    {
+        SplitOverlay.Visibility = Visibility.Visible;
+        string? spec = await SplitOverlay.ShowForAsync(pdfPath);
+        SplitOverlay.Visibility = Visibility.Collapsed;
+        return spec ?? "";
+    }
 
     private async Task ShowErrorAsync(string message)
     {

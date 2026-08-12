@@ -5,11 +5,10 @@
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     mc:Ignorable="d"
-    d:DesignHeight="300"
-    d:DesignWidth="580"
-    MinWidth="480"
-    Height="300"
-    HorizontalAlignment="Stretch">
+    d:DesignHeight="560"
+    d:DesignWidth="860"
+    HorizontalAlignment="Stretch"
+    VerticalAlignment="Stretch">
 
     <Grid RowSpacing="10">
         <Grid.RowDefinitions>
@@ -39,7 +38,7 @@
         <!-- Body: segment list + preview -->
         <Grid Grid.Row="1" ColumnSpacing="14">
             <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="200"/>
+                <ColumnDefinition Width="190"/>
                 <ColumnDefinition Width="*"/>
             </Grid.ColumnDefinitions>
 
@@ -59,32 +58,36 @@
                 </StackPanel>
             </Grid>
 
-            <!-- Right: preview -->
+            <!-- Right: preview. Badge and page nav share one row so the preview box gets
+                 the full remaining height (a portrait page needs vertical room). -->
             <Grid Grid.Column="1" RowSpacing="6">
                 <Grid.RowDefinitions>
-                    <RowDefinition Height="Auto"/>
                     <RowDefinition Height="Auto"/>
                     <RowDefinition Height="*"/>
                 </Grid.RowDefinitions>
 
-                <!-- Output badge: [PDF] filename (N pages), Fluent accent fill -->
-                <Border x:Name="OutputBadge" Background="{ThemeResource AccentFillColorDefaultBrush}"
-                        BorderBrush="{ThemeResource AccentFillColorSecondaryBrush}" BorderThickness="1"
-                        CornerRadius="4" Padding="10,4">
-                    <TextBlock x:Name="OutputBadgeText" Foreground="{ThemeResource TextOnAccentFillColorPrimaryBrush}"/>
-                </Border>
-
-                <!-- Page navigation bar: < P.x (第 y/N 頁) 切開 > -->
-                <StackPanel Grid.Row="1" Orientation="Horizontal" Spacing="6" HorizontalAlignment="Center">
-                    <Button x:Name="PrevPageBtn" Content="&#x25C0;" MinWidth="34" Padding="8,5"/>
-                    <TextBlock x:Name="PageLabel" VerticalAlignment="Center" MinWidth="130" TextAlignment="Center"/>
-                    <Button x:Name="SplitAtPageBtn" Content="切開" Padding="10,5"/>
-                    <Button x:Name="NextPageBtn" Content="&#x25B6;" MinWidth="34" Padding="8,5"/>
-                </StackPanel>
+                <!-- Output badge + page navigation in one row -->
+                <Grid ColumnSpacing="8">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+                    <Border x:Name="OutputBadge" Background="{ThemeResource AccentFillColorDefaultBrush}"
+                            BorderBrush="{ThemeResource AccentFillColorSecondaryBrush}" BorderThickness="1"
+                            CornerRadius="4" Padding="10,4" VerticalAlignment="Center">
+                        <TextBlock x:Name="OutputBadgeText" Foreground="{ThemeResource TextOnAccentFillColorPrimaryBrush}"/>
+                    </Border>
+                    <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
+                        <Button x:Name="PrevPageBtn" Content="&#x25C0;" MinWidth="34" Padding="8,5"/>
+                        <TextBlock x:Name="PageLabel" VerticalAlignment="Center" MinWidth="130" TextAlignment="Center"/>
+                        <Button x:Name="SplitAtPageBtn" Content="切開" Padding="10,5"/>
+                        <Button x:Name="NextPageBtn" Content="&#x25B6;" MinWidth="34" Padding="8,5"/>
+                    </StackPanel>
+                </Grid>
 
                 <!-- Preview box: paper-white page with border and a [放大] tag. Clicking the
                      preview (or the tag) opens the zoom lightbox, mirroring the CLI. -->
-                <Border x:Name="PreviewBox" Grid.Row="2" BorderThickness="1" BorderBrush="{ThemeResource ControlStrokeColorDefaultBrush}" Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                <Border x:Name="PreviewBox" Grid.Row="1" BorderThickness="1" BorderBrush="{ThemeResource ControlStrokeColorDefaultBrush}" Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
                         PointerPressed="PreviewBox_PointerPressed">
                     <Grid>
                         <Image x:Name="FitImage" Stretch="Uniform"/>
