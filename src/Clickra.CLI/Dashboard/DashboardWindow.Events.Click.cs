@@ -817,13 +817,18 @@ namespace Clickra.UI
                 if (chosen.Count > 0)
                 {
                     _selectedFiles = chosen;
-                    _convertCommandIndex = -1;
-                    for (int i = 0; i < ConvertCommands.Length; i++)
+                    if (!CurrentSelectionAcceptsFiles(_selectedFiles))
                     {
-                        if (ConvertCommands[i].ValidateFiles(_selectedFiles, out _))
+                        // Only auto-select when the user's current command can't accept the files
+                        // (e.g. 分割 PDF stays selected after picking a PDF).
+                        _convertCommandIndex = -1;
+                        for (int i = 0; i < ConvertCommands.Length; i++)
                         {
-                            _convertCommandIndex = i;
-                            break;
+                            if (ConvertCommands[i].ValidateFiles(_selectedFiles, out _))
+                            {
+                                _convertCommandIndex = i;
+                                break;
+                            }
                         }
                     }
                     InvalidateRect(hwnd, IntPtr.Zero, false);
