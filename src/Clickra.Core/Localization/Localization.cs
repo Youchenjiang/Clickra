@@ -19,6 +19,10 @@ namespace Clickra.Core
         private const string KeySplitPdfModeFixed = "pdf_split_mode_fixed";
         private const string KeySplitPdfPagesPerSegment = "pdf_split_pages_per_segment";
         private const string KeySplitPdfZoomTag = "pdf_split_zoom_tag";
+        private const string KeySplitPdfZoomTitle = "pdf_split_zoom_title";
+        private const string KeySplitPdfZoomHint = "pdf_split_zoom_hint";
+        private const string KeySplitPdfZoomClose = "pdf_split_zoom_close";
+        private const string KeySplitPdfZoomFit = "pdf_split_zoom_fit";
 
         private static readonly Dictionary<string, Dictionary<string, string>> Translations = new(StringComparer.OrdinalIgnoreCase)
         {
@@ -163,6 +167,10 @@ namespace Clickra.Core
                 [KeySplitPdfModeFixed] = "固定頁數",
                 [KeySplitPdfPagesPerSegment] = "每檔頁數",
                 [KeySplitPdfZoomTag] = "放大",
+                [KeySplitPdfZoomTitle] = "頁面放大預覽",
+                [KeySplitPdfZoomHint] = "滾輪縮放 · 拖曳平移 · 空白鍵/Esc 關閉",
+                [KeySplitPdfZoomClose] = "X 關閉",
+                [KeySplitPdfZoomFit] = "適配",
                 ["pdf_password_title"] = "輸入 PDF 密碼",
                 ["pdf_password_prompt"] = "「{0}」受密碼保護，請輸入開啟密碼：",
                 ["pdf_password_retry"] = "密碼錯誤。請重新輸入「{0}」的密碼：",
@@ -312,6 +320,10 @@ namespace Clickra.Core
                 [KeySplitPdfModeFixed] = "固定页数",
                 [KeySplitPdfPagesPerSegment] = "每档页数",
                 [KeySplitPdfZoomTag] = "放大",
+                [KeySplitPdfZoomTitle] = "页面放大预览",
+                [KeySplitPdfZoomHint] = "滚轮缩放 · 拖拽平移 · 空格/Esc 关闭",
+                [KeySplitPdfZoomClose] = "X 关闭",
+                [KeySplitPdfZoomFit] = "适配",
                 ["pdf_password_title"] = "输入 PDF 密码",
                 ["pdf_password_prompt"] = "「{0}」受密码保护，请输入打开密码：",
                 ["pdf_password_retry"] = "密码错误。请重新输入「{0}」的密码：",
@@ -461,6 +473,10 @@ namespace Clickra.Core
                 [KeySplitPdfModeFixed] = "Fixed pages per file",
                 [KeySplitPdfPagesPerSegment] = "Pages per file",
                 [KeySplitPdfZoomTag] = "Zoom",
+                [KeySplitPdfZoomTitle] = "Page zoom preview",
+                [KeySplitPdfZoomHint] = "Wheel to zoom · drag to pan · Space/Esc to close",
+                [KeySplitPdfZoomClose] = "X Close",
+                [KeySplitPdfZoomFit] = "Fit",
                 ["pdf_password_title"] = "Enter PDF Password",
                 ["pdf_password_prompt"] = "\"{0}\" is password protected. Enter open password:",
                 ["pdf_password_retry"] = "Incorrect password. Re-enter password for \"{0}\":",
@@ -610,6 +626,10 @@ namespace Clickra.Core
                 [KeySplitPdfModeFixed] = "固定ページ数",
                 [KeySplitPdfPagesPerSegment] = "1ファイルあたりのページ数",
                 [KeySplitPdfZoomTag] = "拡大",
+                [KeySplitPdfZoomTitle] = "ページ拡大プレビュー",
+                [KeySplitPdfZoomHint] = "ホイールで拡大 · ドラッグで移動 · Space/Esc で閉じる",
+                [KeySplitPdfZoomClose] = "X 閉じる",
+                [KeySplitPdfZoomFit] = "フィット",
                 ["pdf_password_title"] = "PDF パスワード入力",
                 ["pdf_password_prompt"] = "「{0}」はパスワードで保護されています。パスワードを入力してください：",
                 ["pdf_password_retry"] = "パスワードが正しくありません。もう一度入力してください：「{0}」",
@@ -761,6 +781,10 @@ namespace Clickra.Core
                 [KeySplitPdfModeFixed] = "고정 페이지 수",
                 [KeySplitPdfPagesPerSegment] = "파일당 페이지 수",
                 [KeySplitPdfZoomTag] = "확대",
+                [KeySplitPdfZoomTitle] = "페이지 확대 미리보기",
+                [KeySplitPdfZoomHint] = "휠 확대 · 드래그 이동 · Space/Esc 닫기",
+                [KeySplitPdfZoomClose] = "X 닫기",
+                [KeySplitPdfZoomFit] = "맞춤",
                 ["pdf_password_title"] = "PDF 비밀번호 입력",
                 ["pdf_password_prompt"] = "「{0}」 파일이 비밀번호로 보호되어 있습니다. 비밀번호를 입력하십시오:",
                 ["pdf_password_retry"] = "비밀번호가 잘못되었습니다. 다시 입력하십시오:「{0}」",
