@@ -238,7 +238,9 @@ public sealed partial class MainPage : Page
     {
         if (_isRunning) return;
         var picker = new FileOpenPicker();
-        foreach (var extension in GetAllowedExtensions(_selectedCommand))
+        foreach (var extension in _selectedCommand is null
+            ? ConvertCommandRegistry.AllSupportedExtensions
+            : ConvertCommandRegistry.GetAllowedExtensions(_selectedCommand))
             picker.FileTypeFilter.Add(extension);
         if (App.MainWindow is not null)
         {
@@ -288,62 +290,14 @@ public sealed partial class MainPage : Page
         if (_startupCommandHandled) return;
         _startupCommandHandled = true;
 
-        var args = SplitCommandLine(_startupArguments);
-        if (args.Count < 2 || !IsKnownCommand(args[0])) return;
+        var args = ConvertCommandRegistry.SplitCommandLine(_startupArguments);
+        if (args.Count < 2 || !ConvertCommandRegistry.IsKnownCommand(args[0])) return;
 
         SelectNavItem("Convert");
         string command = args[0];
-        AddFiles(ExpandDirectoryArguments(command, args.Skip(1)));
+        AddFiles(ConvertCommandRegistry.ExpandDirectoryArguments(command, args.Skip(1)));
         SelectCommand(command);
         await StartConversionAsync();
-    }
-
-    private static List<string> SplitCommandLine(string value)
-    {
-        var args = new List<string>();
-        var current = new StringBuilder();
-        bool inQuote = false;
-
-        foreach (char ch in value)
-        {
-            if (ch == '"')
-            {
-                inQuote = !inQuote;
-                continue;
-            }
-
-            if (char.IsWhiteSpace(ch) && !inQuote)
-            {
-                if (current.Length > 0)
-                {
-                    args.Add(current.ToString());
-                    current.Clear();
-                }
-                continue;
-            }
-
-            current.Append(ch);
-        }
-
-        if (current.Length > 0) args.Add(current.ToString());
-        return args;
-    }
-
-    private static IEnumerable<string> ExpandDirectoryArguments(string command, IEnumerable<string> inputs)
-    {
-        string[] allowed = GetAllowedExtensions(command);
-        foreach (var input in inputs)
-        {
-            if (Directory.Exists(input))
-            {
-                foreach (var file in Directory.EnumerateFiles(input).Where(file => allowed.Contains(Path.GetExtension(file), StringComparer.OrdinalIgnoreCase)))
-                    yield return file;
-            }
-            else
-            {
-                yield return input;
-            }
-        }
     }
 
     private void SelectCommand(string command)
@@ -351,7 +305,7 @@ public sealed partial class MainPage : Page
         if (!IsCommandCompatibleWithSelectedFiles(command)) return;
         _selectedCommand = command;
         UpdateCommandAvailability();
-        CommandStatusText.Text = string.Format(L("fluent_selected_command"), CommandLabel(command));
+        CommandStatusText.Text = string.Format(L("fluent_selected_command"), L(ConvertCommandRegistry.GetLabelKey(command)));
         UpdateStartState();
     }
 
@@ -418,9 +372,9 @@ public sealed partial class MainPage : Page
     private bool IsCommandCompatibleWithSelectedFiles(string command)
     {
         if (_selectedFiles.Count == 0) return true;
-        int minFiles = command is "merge-pdf" or "img-merge" or "img-stitch" ? 2 : 1;
+        int minFiles = ConvertCommandRegistry.GetMinFiles(command);
         if (_selectedFiles.Count < minFiles) return false;
-        string[] extensions = GetAllowedExtensions(command);
+        string[] extensions = ConvertCommandRegistry.GetAllowedExtensions(command);
         return _selectedFiles.All(f => extensions.Contains(Path.GetExtension(f), StringComparer.OrdinalIgnoreCase));
     }
 
@@ -448,18 +402,25 @@ public sealed partial class MainPage : Page
         var files = _selectedFiles.ToList();
         string startTime = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
         string inputs = string.Join(";", files);
-        var outputs = EstimateOutputs(command, files);
+        var outputs = ConvertCommandRegistry.EstimateOutputs(command, files);
         var stopwatch = Stopwatch.StartNew();
 
         try
         {
             ClickraStorage.StartActiveRecord(command, files.Count, inputs);
             ClickraStorage.SetActiveRecordInProgress();
-            await Task.Run(() => RunCommand(command, files, outputs, _cts.Token), _cts.Token);
+            void Progress(int current, int total, string message)
+            {
+                int percent = total > 0 ? Math.Clamp((int)(current * 100.0 / total), 0, 100) : 0;
+                DispatcherQueue.TryEnqueue(() => SetProgress(percent, message));
+            }
+            await Task.Run(() => ConvertCommandRunner.Run(command, files, outputs, Progress, _cts.Token,
+                () => DispatcherQueue.EnqueueAsync(PromptPasswordAsync),
+                pdfPath => DispatcherQueue.EnqueueAsync(() => PromptSplitPagesAsync(pdfPath))), _cts.Token);
             stopwatch.Stop();
             ClickraStorage.CompleteActiveRecord(command, startTime, true, "", elapsedMs: stopwatch.ElapsedMilliseconds, inputPaths: inputs, outputPath: string.Join(";", outputs));
             SetProgress(100, L("fluent_progress_completed"));
-            ShowToast(L("fluent_toast_done_title"), string.Format(L("fluent_toast_done_body"), CommandLabel(command), files.Count));
+            ShowToast(L("fluent_toast_done_title"), string.Format(L("fluent_toast_done_body"), L(ConvertCommandRegistry.GetLabelKey(command)), files.Count));
             _selectedFiles.Clear();
             RefreshFiles();
         }
@@ -468,7 +429,7 @@ public sealed partial class MainPage : Page
             stopwatch.Stop();
             ClickraStorage.CompleteActiveRecord(command, startTime, false, "Canceled", elapsedMs: stopwatch.ElapsedMilliseconds, inputPaths: inputs, outputPath: string.Join(";", outputs));
             SetProgress(0, L("fluent_progress_canceled"));
-            ShowToast(L("fluent_toast_canceled_title"), string.Format(L("fluent_toast_canceled_body"), CommandLabel(command)));
+            ShowToast(L("fluent_toast_canceled_title"), string.Format(L("fluent_toast_canceled_body"), L(ConvertCommandRegistry.GetLabelKey(command))));
         }
         catch (Exception ex)
         {
@@ -488,75 +449,6 @@ public sealed partial class MainPage : Page
         }
     }
 
-    private void RunCommand(string command, List<string> files, List<string> outputs, CancellationToken token)
-    {
-        void Progress(int current, int total, string message)
-        {
-            int percent = total > 0 ? Math.Clamp((int)(current * 100.0 / total), 0, 100) : 0;
-            DispatcherQueue.TryEnqueue(() => SetProgress(percent, message));
-        }
-
-        switch (command)
-        {
-            case "ppt2pdf":
-                FileProcessor.ConvertPptToPdf(files, Progress, token);
-                break;
-            case "word2pdf":
-                FileProcessor.ConvertWordToPdf(files, Progress, token);
-                break;
-            case "excel2pdf":
-                FileProcessor.ConvertExcelToPdf(files, Progress, token);
-                break;
-            case "merge-pdf":
-                FileProcessor.MergePdfs(files, outputs[0], Progress, token);
-                break;
-            case "compress-pdf":
-                for (int i = 0; i < files.Count; i++)
-                {
-                    token.ThrowIfCancellationRequested();
-                    FileProcessor.CompressPdf(files[i], outputs[i], CompressionOptions(), (c, t, m) => Progress((i * 100) + c, files.Count * 100, m), token);
-                }
-                break;
-            case "translate-pdf":
-                for (int i = 0; i < files.Count; i++)
-                {
-                    token.ThrowIfCancellationRequested();
-                    FileProcessor.TranslatePdf(files[i], outputs[i], ClickraStorage.GetSetting("TranslateTargetLang"), (c, t, m) => Progress((i * 100) + c, files.Count * 100, m), token);
-                }
-                break;
-            case "decrypt-pdf":
-                string password = DispatcherQueue.EnqueueAsync(PromptPasswordAsync).GetAwaiter().GetResult();
-                for (int i = 0; i < files.Count; i++)
-                {
-                    token.ThrowIfCancellationRequested();
-                    FileProcessor.DecryptPdf(files[i], outputs[i], password, (c, t, m) => Progress((i * 100) + c, files.Count * 100, m), token);
-                }
-                break;
-            case "split-pdf":
-                for (int i = 0; i < files.Count; i++)
-                {
-                    token.ThrowIfCancellationRequested();
-                    string splitPages = DispatcherQueue.EnqueueAsync(() => PromptSplitPagesAsync(files[i])).GetAwaiter().GetResult();
-                    if (string.IsNullOrWhiteSpace(splitPages)) throw new OperationCanceledException(token);
-                    FileProcessor.SplitPdf(files[i], outputs[i], splitPages, (c, t, m) => Progress((i * 100) + c, files.Count * 100, m), token);
-                }
-                break;
-            case "img2pdf":
-                for (int i = 0; i < files.Count; i++)
-                {
-                    token.ThrowIfCancellationRequested();
-                    FileProcessor.ConvertImagesToPdf(new List<string> { files[i] }, outputs[i], (c, t, m) => Progress((i * 100) + c, files.Count * 100, m), token);
-                }
-                break;
-            case "img-merge":
-                FileProcessor.ConvertImagesToPdf(files, outputs[0], Progress, token);
-                break;
-            case "img-stitch":
-                FileProcessor.StitchImages(files, outputs[0], Progress, token);
-                break;
-        }
-    }
-
     private void SetProgress(int percent, string message)
     {
         ConversionProgressBar.Value = percent;
@@ -568,49 +460,20 @@ public sealed partial class MainPage : Page
     private bool ValidateSelection(string command, out string error)
     {
         error = "";
-        string[] extensions = GetAllowedExtensions(command);
-        int minFiles = command is "merge-pdf" or "img-merge" or "img-stitch" ? 2 : 1;
+        string[] extensions = ConvertCommandRegistry.GetAllowedExtensions(command);
+        int minFiles = ConvertCommandRegistry.GetMinFiles(command);
         if (_selectedFiles.Count < minFiles)
         {
-            error = string.Format(L("fluent_validate_min_files"), CommandLabel(command), minFiles);
+            error = string.Format(L("fluent_validate_min_files"), L(ConvertCommandRegistry.GetLabelKey(command)), minFiles);
             return false;
         }
         var bad = _selectedFiles.FirstOrDefault(f => !extensions.Contains(Path.GetExtension(f), StringComparer.OrdinalIgnoreCase));
         if (bad is not null)
         {
-            error = string.Format(L("fluent_validate_bad_ext"), Path.GetFileName(bad), CommandLabel(command));
+            error = string.Format(L("fluent_validate_bad_ext"), Path.GetFileName(bad), L(ConvertCommandRegistry.GetLabelKey(command)));
             return false;
         }
         return true;
-    }
-
-    private static bool IsKnownCommand(string command) => GetAllowedExtensions(command).Length > 0;
-
-    private static string[] GetAllowedExtensions(string? command) => command switch
-    {
-        "ppt2pdf" => new[] { ".ppt", ".pptx" },
-        "word2pdf" => new[] { ".doc", ".docx" },
-        "excel2pdf" => new[] { ".xls", ".xlsx" },
-        "merge-pdf" or "compress-pdf" or "translate-pdf" or "decrypt-pdf" or "split-pdf" => new[] { ".pdf" },
-        "img2pdf" or "img-merge" or "img-stitch" => new[] { ".jpg", ".jpeg", ".png", ".bmp", ".gif", ".tiff", ".webp" },
-        _ => new[] { ".pdf", ".ppt", ".pptx", ".doc", ".docx", ".xls", ".xlsx", ".jpg", ".jpeg", ".png", ".bmp", ".gif", ".tiff", ".webp" }
-    };
-
-    private List<string> EstimateOutputs(string command, List<string> files)
-    {
-        string outputDir = ClickraStorage.GetOutputDir(files[0]);
-        return command switch
-        {
-            "merge-pdf" => new() { Path.Combine(outputDir, "Merged_PDF.pdf") },
-            "img-merge" => new() { Path.Combine(outputDir, "Merged_Images.pdf") },
-            "img-stitch" => new() { Path.Combine(outputDir, "Stitched_Image.png") },
-            "compress-pdf" => files.Select(f => Path.Combine(ClickraStorage.GetOutputDir(f), Path.GetFileNameWithoutExtension(f) + "_compressed.pdf")).ToList(),
-            "translate-pdf" => files.Select(f => Path.Combine(ClickraStorage.GetOutputDir(f), Path.GetFileNameWithoutExtension(f) + "_translated.pdf")).ToList(),
-            "decrypt-pdf" => files.Select(f => Path.Combine(ClickraStorage.GetOutputDir(f), Path.GetFileNameWithoutExtension(f) + "_decrypted.pdf")).ToList(),
-            "split-pdf" => files.Select(f => Path.Combine(ClickraStorage.GetOutputDir(f), Path.GetFileNameWithoutExtension(f) + "_split.pdf")).ToList(),
-            "img2pdf" => files.Select(f => Path.Combine(ClickraStorage.GetOutputDir(f), Path.GetFileNameWithoutExtension(f) + ".pdf")).ToList(),
-            _ => files.Select(f => Path.Combine(ClickraStorage.GetOutputDir(f), Path.GetFileNameWithoutExtension(f) + ".pdf")).ToList()
-        };
     }
 
     private void LoadSettings()
@@ -683,7 +546,7 @@ public sealed partial class MainPage : Page
         ClearFilesButton.Content = L("fluent_clear");
         EmptyFileMessage.Text = L("fluent_no_files");
         CommandTitle.Text = L("fluent_command");
-        CommandStatusText.Text = _selectedCommand is null ? L("fluent_choose_command") : string.Format(L("fluent_selected_command"), CommandLabel(_selectedCommand));
+        CommandStatusText.Text = _selectedCommand is null ? L("fluent_choose_command") : string.Format(L("fluent_selected_command"), L(ConvertCommandRegistry.GetLabelKey(_selectedCommand)));
         OfficeCommandLabel.Text = L("fluent_office");
         PdfCommandLabel.Text = "PDF";
         ImageCommandLabel.Text = L("fluent_images");
@@ -866,7 +729,7 @@ public sealed partial class MainPage : Page
             var title = new StackPanel { Spacing = 2 };
             title.Children.Add(new TextBlock
             {
-                Text = CommandLabel(entry.Command),
+                Text = L(ConvertCommandRegistry.GetLabelKey(entry.Command)),
                 FontSize = 14,
                 FontWeight = Microsoft.UI.Text.FontWeights.SemiBold
             });
@@ -922,7 +785,7 @@ public sealed partial class MainPage : Page
         var title = new StackPanel { Spacing = 3 };
         title.Children.Add(new TextBlock
         {
-            Text = CommandLabel(entry.Command),
+            Text = L(ConvertCommandRegistry.GetLabelKey(entry.Command)),
             FontSize = 15,
             FontWeight = Microsoft.UI.Text.FontWeights.SemiBold
         });
@@ -1016,7 +879,7 @@ public sealed partial class MainPage : Page
         var title = new StackPanel { Spacing = 4 };
         title.Children.Add(new TextBlock
         {
-            Text = CommandLabel(entry.Command),
+            Text = L(ConvertCommandRegistry.GetLabelKey(entry.Command)),
             FontSize = 26,
             FontWeight = Microsoft.UI.Text.FontWeights.SemiBold
         });
@@ -1402,14 +1265,7 @@ public sealed partial class MainPage : Page
         _ => "balanced"
     };
 
-    private Dictionary<string, object> CompressionOptions() => new()
-    {
-        ["level"] = CompressionLevel(),
-        ["strip_fonts"] = StripFontsToggle.IsOn,
-        ["minify_content"] = MinifyContentToggle.IsOn
-    };
-
-    private async Task<string> PromptPasswordAsync()
+    private async Task<string?> PromptPasswordAsync()
     {
         var box = new PasswordBox { PlaceholderText = L("fluent_pdf_password") };
         var dialog = new ContentDialog
@@ -1420,15 +1276,15 @@ public sealed partial class MainPage : Page
             CloseButtonText = L("fluent_cancel"),
             XamlRoot = XamlRoot
         };
-        return await dialog.ShowAsync() == ContentDialogResult.Primary ? box.Password : "";
+        return await dialog.ShowAsync() == ContentDialogResult.Primary ? box.Password : null;
     }
 
-    private async Task<string> PromptSplitPagesAsync(string pdfPath)
+    private async Task<string?> PromptSplitPagesAsync(string pdfPath)
     {
         SplitOverlay.Visibility = Visibility.Visible;
         string? spec = await SplitOverlay.ShowForAsync(pdfPath);
         SplitOverlay.Visibility = Visibility.Collapsed;
-        return spec ?? "";
+        return spec;
     }
 
     private async Task ShowErrorAsync(string message)
