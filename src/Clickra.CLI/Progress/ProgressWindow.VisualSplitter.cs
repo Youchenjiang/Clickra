@@ -9,6 +9,7 @@ using System.Text;
 using System.Threading.Tasks;
 using Clickra.Core;
 using Clickra.Core.Processors;
+using Clickra.Core.Rendering;
 
 using static Clickra.UI.Native.Win32;
 
@@ -140,7 +141,7 @@ public partial class ProgressWindow
                 try
                 {
                     var pigPage = pigDoc.GetPage(p);
-                    var pageBmp = BuildPageThumbnail(pigPage, 660, fontName);
+                    var pageBmp = PdfPageThumbnailRenderer.RenderPage(pigPage, 660, fontName);
                     if (pageBmp != null)
                         _visualSplitPageThumbnails[p] = pageBmp;
                 }
@@ -157,153 +158,6 @@ public partial class ProgressWindow
         string lang = ClickraStorage.GetSetting("Language");
         return LocalizedUiFontSelector.GetTextFontName(lang);
     }
-
-    /// <summary>
-    /// Renders a thumbnail at the page's true aspect ratio by drawing embedded images at
-    /// their page coordinates and overlaying vector text (with original colors). This fixes
-    /// previews that previously dropped vector text and were distorted by image-only sizing.
-    /// </summary>
-    /// <param name="targetWidth">Pixel width of the rendered bitmap. Larger values give
-    /// crisper results when the bitmap is downscaled onto the screen.</param>
-    private static Bitmap? BuildPageThumbnail(UglyToad.PdfPig.Content.Page page, int targetWidth, string fontName)
-    {
-        double pW = page.Width > 0 ? page.Width : 595;
-        double pH = page.Height > 0 ? page.Height : 842;
-
-        // Render at high resolution so the preview is always downscaled to fit the
-        // card / zoom lightbox — upscaling a small bitmap is what made text and images
-        // look blurry.
-        int w = targetWidth;
-        int h = Math.Max(120, (int)Math.Round(w * pH / pW));
-
-        var bmp = new Bitmap(w, h);
-        using var g = Graphics.FromImage(bmp);
-        g.Clear(Color.White);
-        g.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.AntiAlias;
-        g.TextRenderingHint = System.Drawing.Text.TextRenderingHint.AntiAliasGridFit;
-        g.InterpolationMode = System.Drawing.Drawing2D.InterpolationMode.HighQualityBicubic;
-
-        try
-        {
-            DrawPageImages(g, page, pW, pH, w, h);
-            DrawPageWords(g, page, pW, pH, w, h, fontName);
-        }
-        catch { /* Ignored: unrenderable page content falls back to a blank sheet. */ }
-
-        return bmp;
-    }
-
-    /// <summary>Draws the page's embedded images onto the thumbnail at their page coordinates.
-    /// The largest image is stretched as a full-page background when it covers most of the page.</summary>
-    private static void DrawPageImages(Graphics g, UglyToad.PdfPig.Content.Page page, double pW, double pH, int w, int h)
-    {
-        var images = page.GetImages().ToList();
-        if (images.Count == 0) return;
-
-        var largest = images
-            .OrderByDescending(img => img.BoundingBox.Width * img.BoundingBox.Height)
-            .First();
-
-        using var imgBmp = TryDecodeEmbeddedImage(largest);
-        if (imgBmp == null) return;
-
-        var bb = largest.BoundingBox;
-        if (bb.Width > pW * 0.7 && bb.Height > pH * 0.7)
-        {
-            // Full-page background: stretch to the whole thumbnail.
-            g.DrawImage(imgBmp, 0, 0, w, h);
-            return;
-        }
-
-        // Local image: draw at its page coordinates.
-        float x = (float)(bb.Left / pW * w);
-        float y = (float)((1.0 - bb.Top / pH) * h);
-        float iw = (float)(bb.Width / pW * w);
-        float ih = (float)(bb.Height / pH * h);
-        if (iw > 2 && ih > 2)
-            g.DrawImage(imgBmp, x, y, iw, ih);
-    }
-
-    /// <summary>Decodes an embedded image to a bitmap (PNG first, then raw bytes), or null
-    /// when the stream is unsupported or malformed.</summary>
-    private static Bitmap? TryDecodeEmbeddedImage(UglyToad.PdfPig.Content.IPdfImage image)
-    {
-        try
-        {
-            if (image.TryGetPng(out var pngBytes) && pngBytes.Length > 100)
-            {
-                using var ms = new MemoryStream(pngBytes);
-                return new Bitmap(ms);
-            }
-
-            var raw = image.RawBytes.ToArray();
-            if (raw.Length > 100)
-            {
-                using var ms = new MemoryStream(raw);
-                try { return new Bitmap(ms); } catch { /* Ignored: a malformed bitmap stream is skipped. */ }
-            }
-        }
-        catch { /* Ignored: an undecodable embedded image is skipped. */ }
-        return null;
-    }
-
-    /// <summary>Overlays the page's vector words (up to 200, with original colors and
-    /// positions) onto the thumbnail.</summary>
-    private static void DrawPageWords(Graphics g, UglyToad.PdfPig.Content.Page page, double pW, double pH, int w, int h, string fontName)
-    {
-        var words = page.GetWords().ToList();
-        int drawn = 0;
-        foreach (var word in words)
-        {
-            if (drawn >= 200) break;
-
-            var rect = word.BoundingBox;
-            if (rect.Width <= 0 || rect.Height <= 0) continue;
-
-            float fh = (float)(rect.Height / pH * h);
-            if (fh < 2.5f) continue;
-
-            float bx = (float)(rect.Left / pW * w);
-            float by = (float)((1.0 - rect.Top / pH) * h);
-
-            float fontSize = Math.Max(3f, Math.Min(fh * 1.1f, 18f * w / 220f));
-            if (TryDrawWord(g, word.Text, ResolveWordColor(word), bx, by, fontSize, fontName))
-                drawn++;
-        }
-    }
-
-    /// <summary>Returns the word's original color, or the default ink color when unset.</summary>
-    private static Color ResolveWordColor(UglyToad.PdfPig.Content.Word word)
-    {
-        if (word.Letters.Count > 0 && word.Letters[0].Color != null)
-        {
-            try
-            {
-                var (r, gg, b) = word.Letters[0].Color.ToRGBValues();
-                return Color.FromArgb(
-                    (int)Math.Clamp(r * 255.0, 0, 255),
-                    (int)Math.Clamp(gg * 255.0, 0, 255),
-                    (int)Math.Clamp(b * 255.0, 0, 255));
-            }
-            catch { /* Ignored: an invalid color value must not abort the word overlay. */ }
-        }
-        return Color.FromArgb(30, 35, 45);
-    }
-
-    /// <summary>Draws one word at the given position; returns false when drawing failed.</summary>
-    private static bool TryDrawWord(Graphics g, string text, Color color, float x, float y, float fontSize, string fontName)
-    {
-        try
-        {
-            using var brush = new SolidBrush(color);
-            using var font = new Font(fontName, fontSize, GraphicsUnit.Pixel);
-            g.DrawString(text, font, brush, x, y);
-            return true;
-        }
-        catch { /* Ignored: a malformed word must not abort the overlay. */ }
-        return false;
-    }
-
     /// <summary>
     /// Starts a background render of the given page at high resolution for the zoom
     /// lightbox. The cached thumbnail keeps the lightbox populated until the render
@@ -331,7 +185,7 @@ public partial class ProgressWindow
                 using var pigDoc = UglyToad.PdfPig.PdfDocument.Open(filePath);
                 if (pageNum < 1 || pageNum > pigDoc.NumberOfPages) return;
                 var pigPage = pigDoc.GetPage(pageNum);
-                var bmp = BuildPageThumbnail(pigPage, targetW, fontName);
+                var bmp = PdfPageThumbnailRenderer.RenderPage(pigPage, targetW, fontName);
                 if (bmp == null) return;
 
                 lock (_stateLock)
