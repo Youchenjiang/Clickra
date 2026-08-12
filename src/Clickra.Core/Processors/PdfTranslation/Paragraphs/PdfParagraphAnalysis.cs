@@ -55,7 +55,7 @@ namespace Clickra.Core.Processors
         {
             string plain = Regex.Replace(text.Trim(), @"\{v\d+\}", "", RegexOptions.None, TimeSpan.FromSeconds(1));
             int wordCount = Regex.Matches(plain, @"\b[A-Za-z][A-Za-z-]*\b", RegexOptions.None, TimeSpan.FromSeconds(1)).Count;
-            if (wordCount < 18 || !plain.Any(char.IsLower)) return false;
+            if (wordCount < 18 || plain.All(c => !char.IsLower(c))) return false;
             if (Regex.IsMatch(plain, @"\b(?:public|private|class|void|return|assert|try|catch|if|else)\b",
                     RegexOptions.IgnoreCase, TimeSpan.FromSeconds(1))) return false;
 
