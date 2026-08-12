@@ -110,7 +110,7 @@ GitHub Release 的 MSIX 以 CI 自簽憑證簽署，使用者需信任憑證或�
 
 「選分割 PDF → 匯入/拖放 PDF」會被洗回 compress-pdf：`HandleDroppedFiles` 對單一 PDF 強制切 `compress-pdf`、element 18 重設後選第一個可用指令。已修（`2c49b15`）：新增 `CurrentSelectionAcceptsFiles()` 守門員，目前指令能接受檔案就保留。
 
-**待查**：Fluent（MainPage）的匯入/拖放流程是否有同樣的覆寫問題——檢查後比照修。
+**已確認無此問題（2026/08/12）**：Fluent 的 `DropZone_Tapped`/`DropZone_Drop` → `AddFiles` 不碰 `_selectedCommand`；`UpdateCommandAvailability` 只在目前指令與檔案不相容時才清空（`MainPage.xaml.cs:405`），相容則保留。設計上比 CLI 更保守（CLI 舊版是強制切換，Fluent 從不自動換指令）。無需修正。
 
 ---
 
