@@ -5,12 +5,13 @@
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     mc:Ignorable="d"
-    d:DesignHeight="240"
-    d:DesignWidth="540"
-    Width="540"
-    Height="240">
+    d:DesignHeight="300"
+    d:DesignWidth="580"
+    MinWidth="480"
+    Height="300"
+    HorizontalAlignment="Stretch">
 
-    <Grid>
+    <Grid RowSpacing="10">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="*"/>
@@ -18,32 +19,32 @@
 
         <!-- Mode bar: three mode buttons side by side (custom / each page / fixed pages),
              with a -/+ pages-per-segment stepper for fixed-pages mode, mirroring the CLI. -->
-        <Grid Grid.Row="0" ColumnSpacing="8" Margin="0,0,0,6">
+        <Grid Grid.Row="0" ColumnSpacing="12">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="*"/>
                 <ColumnDefinition Width="Auto"/>
             </Grid.ColumnDefinitions>
-            <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="6">
-                <RadioButton x:Name="ModeCustomBtn" GroupName="SplitMode" Padding="10,4" VerticalAlignment="Center"/>
-                <RadioButton x:Name="ModeEachBtn" GroupName="SplitMode" Padding="10,4" VerticalAlignment="Center"/>
-                <RadioButton x:Name="ModeFixedBtn" GroupName="SplitMode" Padding="10,4" VerticalAlignment="Center"/>
+            <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                <RadioButton x:Name="ModeCustomBtn" GroupName="SplitMode" Padding="12,6" VerticalAlignment="Center"/>
+                <RadioButton x:Name="ModeEachBtn" GroupName="SplitMode" Padding="12,6" VerticalAlignment="Center"/>
+                <RadioButton x:Name="ModeFixedBtn" GroupName="SplitMode" Padding="12,6" VerticalAlignment="Center"/>
             </StackPanel>
-            <StackPanel x:Name="NSelector" Grid.Column="1" Orientation="Horizontal" Spacing="4" VerticalAlignment="Center">
-                <Button x:Name="NMinusBtn" Content="&#x2212;" Width="30" Padding="0,3"/>
-                <TextBlock x:Name="NLabel" VerticalAlignment="Center" MinWidth="64" TextAlignment="Center"/>
-                <Button x:Name="NPlusBtn" Content="&#xFF0B;" Width="30" Padding="0,3"/>
+            <StackPanel x:Name="NSelector" Grid.Column="1" Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
+                <Button x:Name="NMinusBtn" Content="&#x2212;" MinWidth="36" Padding="8,6"/>
+                <TextBlock x:Name="NLabel" VerticalAlignment="Center" MinWidth="72" TextAlignment="Center"/>
+                <Button x:Name="NPlusBtn" Content="&#xFF0B;" MinWidth="36" Padding="8,6"/>
             </StackPanel>
         </Grid>
 
         <!-- Body: segment list + preview -->
-        <Grid Grid.Row="1" ColumnSpacing="10">
+        <Grid Grid.Row="1" ColumnSpacing="14">
             <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="185"/>
+                <ColumnDefinition Width="200"/>
                 <ColumnDefinition Width="*"/>
             </Grid.ColumnDefinitions>
 
             <!-- Left: segment list -->
-            <Grid Grid.Column="0" RowSpacing="3">
+            <Grid Grid.Column="0" RowSpacing="6">
                 <Grid.RowDefinitions>
                     <RowDefinition Height="Auto"/>
                     <RowDefinition Height="*"/>
@@ -51,32 +52,34 @@
                 </Grid.RowDefinitions>
                 <TextBlock x:Name="SegmentHeader" FontWeight="SemiBold" Margin="4,0,0,0"/>
                 <ListView x:Name="SegmentList" Grid.Row="1" SelectionMode="Single" BorderThickness="1"/>
-                <StackPanel Grid.Row="2" Orientation="Horizontal" Spacing="4" Margin="0,3,0,0">
-                    <Button x:Name="AddSegmentBtn" Content="＋ 新增" Padding="8,2"/>
-                    <Button x:Name="DeleteSegmentBtn" Content="刪除" Padding="8,2"/>
-                    <Button x:Name="ClearSegmentsBtn" Content="清空" Padding="8,2"/>
+                <StackPanel Grid.Row="2" Orientation="Horizontal" Spacing="6" Margin="0,6,0,0">
+                    <Button x:Name="AddSegmentBtn" Content="＋ 新增" Padding="10,5"/>
+                    <Button x:Name="DeleteSegmentBtn" Content="刪除" Padding="10,5"/>
+                    <Button x:Name="ClearSegmentsBtn" Content="清空" Padding="10,5"/>
                 </StackPanel>
             </Grid>
 
             <!-- Right: preview -->
-            <Grid Grid.Column="1" RowSpacing="3">
+            <Grid Grid.Column="1" RowSpacing="6">
                 <Grid.RowDefinitions>
                     <RowDefinition Height="Auto"/>
                     <RowDefinition Height="Auto"/>
                     <RowDefinition Height="*"/>
                 </Grid.RowDefinitions>
 
-                <!-- Output badge: [PDF] filename (N pages) -->
-                <Border x:Name="OutputBadge" Background="#193C23" BorderBrush="#328C46" BorderThickness="1" CornerRadius="3" Padding="6,2">
-                    <TextBlock x:Name="OutputBadgeText" Foreground="#78F08C" FontSize="12"/>
+                <!-- Output badge: [PDF] filename (N pages), Fluent accent fill -->
+                <Border x:Name="OutputBadge" Background="{ThemeResource AccentFillColorDefaultBrush}"
+                        BorderBrush="{ThemeResource AccentFillColorSecondaryBrush}" BorderThickness="1"
+                        CornerRadius="4" Padding="10,4">
+                    <TextBlock x:Name="OutputBadgeText" Foreground="{ThemeResource TextOnAccentFillColorPrimaryBrush}"/>
                 </Border>
 
                 <!-- Page navigation bar: < P.x (第 y/N 頁) 切開 > -->
-                <StackPanel Grid.Row="1" Orientation="Horizontal" Spacing="4" HorizontalAlignment="Center">
-                    <Button x:Name="PrevPageBtn" Content="&#x25C0;" MinWidth="30" Padding="6,2"/>
-                    <TextBlock x:Name="PageLabel" VerticalAlignment="Center" MinWidth="120" TextAlignment="Center"/>
-                    <Button x:Name="SplitAtPageBtn" Content="切開" Padding="8,2"/>
-                    <Button x:Name="NextPageBtn" Content="&#x25B6;" MinWidth="30" Padding="6,2"/>
+                <StackPanel Grid.Row="1" Orientation="Horizontal" Spacing="6" HorizontalAlignment="Center">
+                    <Button x:Name="PrevPageBtn" Content="&#x25C0;" MinWidth="34" Padding="8,5"/>
+                    <TextBlock x:Name="PageLabel" VerticalAlignment="Center" MinWidth="130" TextAlignment="Center"/>
+                    <Button x:Name="SplitAtPageBtn" Content="切開" Padding="10,5"/>
+                    <Button x:Name="NextPageBtn" Content="&#x25B6;" MinWidth="34" Padding="8,5"/>
                 </StackPanel>
 
                 <!-- Preview box: paper-white page with border and a [放大] tag. Clicking the
@@ -86,8 +89,10 @@
                     <Grid>
                         <Image x:Name="FitImage" Stretch="Uniform"/>
                         <Border x:Name="ZoomTag" HorizontalAlignment="Right" VerticalAlignment="Bottom"
-                                Background="#CC14191F" CornerRadius="2" Padding="4,1" Margin="0,0,4,4">
-                            <TextBlock x:Name="ZoomTagText" Foreground="#F0F0F0" FontSize="11"/>
+                                Background="{ThemeResource ControlFillColorSecondaryBrush}"
+                                BorderBrush="{ThemeResource ControlStrokeColorDefaultBrush}" BorderThickness="1"
+                                CornerRadius="4" Padding="8,3" Margin="0,0,4,4">
+                            <TextBlock x:Name="ZoomTagText" Foreground="{ThemeResource TextFillColorPrimaryBrush}"/>
                         </Border>
                     </Grid>
                 </Border>
@@ -97,24 +102,26 @@
         <!-- Zoom lightbox overlay: dimmed backdrop, modal frame with title, close button,
              scrollable high-res page image and zoom controls (wheel / drag / buttons), all
              mirroring the CLI lightbox. -->
-        <Grid x:Name="ZoomOverlay" Grid.RowSpan="2" Visibility="Collapsed" Background="#EB0F1218"
+        <!-- ScrimBrush is not resolved in unpackaged WinUI 3; use the standard 40% black scrim. -->
+        <Grid x:Name="ZoomOverlay" Grid.RowSpan="2" Visibility="Collapsed" Background="#66000000"
               PointerWheelChanged="ZoomOverlay_PointerWheelChanged"
               PointerPressed="ZoomOverlay_PointerPressed"
               KeyDown="ZoomOverlay_KeyDown">
-            <Border x:Name="ZoomModal" Width="472" Height="220" Background="#20232A" BorderBrush="#505A6E" BorderThickness="1.5"
-                    HorizontalAlignment="Center" VerticalAlignment="Center" CornerRadius="4">
+            <Border x:Name="ZoomModal" MinWidth="420" MaxWidth="540" Width="480" MinHeight="220" MaxHeight="280" Height="240"
+                    Background="{ThemeResource LayerFillColorDefaultBrush}"
+                    BorderBrush="{ThemeResource ControlStrokeColorSecondaryBrush}" BorderThickness="1"
+                    HorizontalAlignment="Center" VerticalAlignment="Center" CornerRadius="8">
                 <Grid>
                     <Grid.RowDefinitions>
                         <RowDefinition Height="Auto"/>
                         <RowDefinition Height="*"/>
                         <RowDefinition Height="Auto"/>
                     </Grid.RowDefinitions>
-                    <Grid Grid.Row="0" Margin="14,8,14,0">
-                        <TextBlock x:Name="ZoomTitle" Foreground="#E6F0FF" VerticalAlignment="Center" FontSize="13"/>
-                        <Button x:Name="ZoomCloseBtn" Content="X 關閉" HorizontalAlignment="Right" Background="#B52D28"
-                                Foreground="White" Padding="10,3" FontSize="12" Click="ZoomCloseBtn_Click"/>
+                    <Grid Grid.Row="0" Margin="16,10,16,0">
+                        <TextBlock x:Name="ZoomTitle" Foreground="{ThemeResource TextFillColorPrimaryBrush}" VerticalAlignment="Center"/>
+                        <Button x:Name="ZoomCloseBtn" Content="X 關閉" HorizontalAlignment="Right" Padding="12,6" Click="ZoomCloseBtn_Click"/>
                     </Grid>
-                    <ScrollViewer x:Name="ZoomScroll" Grid.Row="1" Margin="14,8"
+                    <ScrollViewer x:Name="ZoomScroll" Grid.Row="1" Margin="16,10"
                                   HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto"
                                   HorizontalScrollMode="Enabled" VerticalScrollMode="Enabled" ZoomMode="Disabled">
                         <!-- Stretch=Fill: the page is rendered at high resolution and sized by
@@ -126,12 +133,12 @@
                                PointerReleased="ZoomImage_PointerReleased"
                                PointerCanceled="ZoomImage_PointerReleased"/>
                     </ScrollViewer>
-                    <Grid Grid.Row="2" Margin="14,0,14,8">
-                        <TextBlock x:Name="ZoomHint" Foreground="#8C8C8C" FontSize="11" VerticalAlignment="Center"/>
+                    <Grid Grid.Row="2" Margin="16,0,16,10">
+                        <TextBlock x:Name="ZoomHint" Foreground="{ThemeResource TextFillColorSecondaryBrush}" VerticalAlignment="Center"/>
                         <StackPanel Orientation="Horizontal" Spacing="6" HorizontalAlignment="Right">
-                            <Button x:Name="ZoomOutBtn" Content="&#x2212;" Width="30" Padding="0,3" FontSize="13" Click="ZoomOutBtn_Click"/>
-                            <Button x:Name="ZoomInBtn" Content="&#xFF0B;" Width="30" Padding="0,3" FontSize="13" Click="ZoomInBtn_Click"/>
-                            <Button x:Name="ZoomFitBtn" Content="適配" Padding="10,3" FontSize="12" Click="ZoomFitBtn_Click"/>
+                            <Button x:Name="ZoomOutBtn" Content="&#x2212;" MinWidth="34" Padding="8,6" Click="ZoomOutBtn_Click"/>
+                            <Button x:Name="ZoomInBtn" Content="&#xFF0B;" MinWidth="34" Padding="8,6" Click="ZoomInBtn_Click"/>
+                            <Button x:Name="ZoomFitBtn" Content="適配" Padding="12,6" Click="ZoomFitBtn_Click"/>
                         </StackPanel>
                     </Grid>
                 </Grid>
