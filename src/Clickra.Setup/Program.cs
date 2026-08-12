@@ -96,7 +96,7 @@ internal static class Program
         int installExit = InstallMsix(msixPath);
         if (installExit != 0)
         {
-            Console.Error.WriteLine(
+            await Console.Error.WriteLineAsync(
                 "[Clickra Setup] MSIX 安裝失敗。若為 Fluent 軌道，可能是本機缺少 .NET 8 或 Windows App Runtime；" +
                 "可改跑 ClickraSetup.exe --native 安裝零依賴版本。");
             return installExit;
