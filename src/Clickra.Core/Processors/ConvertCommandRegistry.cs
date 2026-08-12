@@ -3,12 +3,12 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 
-namespace Clickra.Core.Processors
+namespace Clickra.Core.Processors;
+
+/// <summary>Single source of truth for convert command metadata shared by the
+/// Fluent and NativeAOT UIs. Adding a command means editing this table once.</summary>
+public static class ConvertCommandRegistry
 {
-    /// <summary>Single source of truth for convert command metadata shared by the
-    /// Fluent and NativeAOT UIs. Adding a command means editing this table once.</summary>
-    public static class ConvertCommandRegistry
-    {
         private sealed record CommandDef(string[] Extensions, int MinFiles, string LabelKey);
 
         private static readonly string[] PdfExtensions = { ".pdf" };
@@ -130,4 +130,3 @@ namespace Clickra.Core.Processors
             }
         }
     }
-}
