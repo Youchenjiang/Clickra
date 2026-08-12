@@ -43,12 +43,12 @@ internal static class Program
 
     private static async Task<int> Main(string[] args)
     {
-        string parseError = ParseArguments(args, out bool forceFluent, out bool forceNative, out bool checkOnly, out bool quiet, out string? localMsix, out string releaseBase, out bool helpRequested);
-        if (helpRequested)
+        SetupOptions? options = ParseArguments(args);
+        if (options is null)
             return 0;
-        if (parseError is not null)
+        if (options.Error is not null)
         {
-            await Console.Error.WriteLineAsync(parseError);
+            await Console.Error.WriteLineAsync(options.Error);
             return 2;
         }
 
@@ -57,42 +57,32 @@ internal static class Program
         bool hasWinAppRuntime = HasWindowsAppRuntime();
         bool hasDotNet = dotNetVersion is not null && dotNetVersion >= RequiredDotNetVersion;
 
-        if (!quiet)
+        if (!options.Quiet)
             PrintDetectionReport(dotNetVersion, hasWinAppRuntime);
 
-        if (checkOnly)
+        if (options.CheckOnly)
             return hasDotNet && hasWinAppRuntime ? 0 : 1;
 
         // ---- 2. 決定軌道 ----
-        bool useFluent = DecideTrack(forceFluent, forceNative, hasDotNet, hasWinAppRuntime);
-        string trackName = useFluent
-            ? "Fluent（WinUI 3，需要 .NET 8+ 與 Windows App Runtime 2.x）"
-            : "NativeAOT（零依賴原生版，不需要 .NET）";
+        bool useFluent = DecideTrack(options.ForceFluent, options.ForceNative, hasDotNet, hasWinAppRuntime);
 
         if (useFluent && (!hasDotNet || !hasWinAppRuntime))
         {
             await Console.Out.WriteLineAsync("[Clickra Setup] 警告：強制安裝 Fluent，但本機未完整具備所需 runtime，安裝可能失敗。");
         }
 
-        if (!quiet)
+        if (!options.Quiet)
+        {
+            string trackName = useFluent
+                ? "Fluent（WinUI 3，需要 .NET 8+ 與 Windows App Runtime 2.x）"
+                : "NativeAOT（零依賴原生版，不需要 .NET）";
             Console.WriteLine($"[Clickra Setup] 決定安裝軌道：{trackName}");
+        }
 
         // ---- 3. 取得 MSIX ----
-        string msixPath;
-        if (localMsix is not null)
-        {
-            if (!File.Exists(localMsix))
-            {
-                await Console.Error.WriteLineAsync($"[Clickra Setup] 找不到本機 MSIX：{localMsix}");
-                return 3;
-            }
-            msixPath = Path.GetFullPath(localMsix);
-        }
-        else
-        {
-            string assetName = useFluent ? FluentAssetName : NativeAssetName;
-            msixPath = await DownloadMsixAsync(releaseBase, assetName);
-        }
+        string msixPath = await AcquireMsixAsync(options.LocalMsix, options.ReleaseBase, useFluent);
+        if (msixPath == MissingMsixMarker)
+            return 3;
 
         // ---- 4. 安裝 ----
         int installExit = InstallMsix(msixPath);
@@ -104,21 +94,42 @@ internal static class Program
             return installExit;
         }
 
-        Console.WriteLine("[Clickra Setup] 安裝完成！您可以從開始功能表或檔案右鍵選單使用 Clickra。");
+        await Console.Out.WriteLineAsync("[Clickra Setup] 安裝完成！您可以從開始功能表或檔案右鍵選單使用 Clickra。");
         return 0;
     }
 
-    /// <summary>Parses CLI arguments, returning an error message or null on success.
-    /// --help/-h print usage and are reported as handled via the success path.</summary>
-    private static string? ParseArguments(string[] args, out bool forceFluent, out bool forceNative, out bool checkOnly, out bool quiet, out string? localMsix, out string releaseBase, out bool helpRequested)
+    private const string MissingMsixMarker = "<missing-msix>";
+
+    /// <summary>Resolves the MSIX to install: the --local file when given (erroring
+    /// when it is missing), otherwise the release asset for the chosen track.</summary>
+    private static async Task<string> AcquireMsixAsync(string? localMsix, string releaseBase, bool useFluent)
     {
-        forceFluent = false;
-        forceNative = false;
-        checkOnly = false;
-        quiet = false;
-        localMsix = null;
-        releaseBase = DefaultReleaseBase;
-        helpRequested = false;
+        if (localMsix is not null)
+        {
+            if (!File.Exists(localMsix))
+            {
+                await Console.Error.WriteLineAsync($"[Clickra Setup] 找不到本機 MSIX：{localMsix}");
+                return MissingMsixMarker;
+            }
+            return Path.GetFullPath(localMsix);
+        }
+
+        string assetName = useFluent ? FluentAssetName : NativeAssetName;
+        return await DownloadMsixAsync(releaseBase, assetName);
+    }
+
+    private sealed record SetupOptions(bool ForceFluent, bool ForceNative, bool CheckOnly, bool Quiet, string? LocalMsix, string ReleaseBase, string? Error);
+
+    /// <summary>Parses CLI arguments. Returns null when --help was requested, an
+    /// options record otherwise (Error is set for invalid combinations).</summary>
+    private static SetupOptions? ParseArguments(string[] args)
+    {
+        bool forceFluent = false;
+        bool forceNative = false;
+        bool checkOnly = false;
+        bool quiet = false;
+        string? localMsix = null;
+        string releaseBase = DefaultReleaseBase;
 
         foreach (string raw in args)
         {
@@ -131,7 +142,6 @@ internal static class Program
                 case "--quiet": quiet = true; break;
                 case "--help":
                 case "-h":
-                    helpRequested = true;
                     return null;
             }
 
@@ -139,7 +149,7 @@ internal static class Program
             {
                 int idx = Array.IndexOf(args, raw);
                 if (idx + 1 >= args.Length)
-                    return $"[Clickra Setup] 缺少 {raw} 的參數值。";
+                    return new SetupOptions(false, false, false, false, null, DefaultReleaseBase, $"[Clickra Setup] 缺少 {raw} 的參數值。");
                 string value = args[idx + 1];
                 if (arg == "--local") localMsix = value;
                 else releaseBase = value;
@@ -147,9 +157,9 @@ internal static class Program
         }
 
         if (forceFluent && forceNative)
-            return "[Clickra Setup] --fluent 與 --native 不能同時指定。";
+            return new SetupOptions(true, true, checkOnly, quiet, localMsix, releaseBase, "[Clickra Setup] --fluent 與 --native 不能同時指定。");
 
-        return null;
+        return new SetupOptions(forceFluent, forceNative, checkOnly, quiet, localMsix, releaseBase, null);
     }
 
     /// <summary>Decides which track to install: explicit --fluent/--native wins over
