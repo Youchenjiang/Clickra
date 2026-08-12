@@ -151,7 +151,9 @@ public static class PdfPageThumbnailRenderer
     }
 
     /// <summary>Overlays the page's vector words (with original colors and positions) onto
-    /// the thumbnail. Every word is drawn (no word cap), so dense pages render fully.</summary>
+    /// the thumbnail. Every word is drawn (no word cap), so dense pages render fully.
+    /// Each word is scaled to fit its PDF bounding box, so adjacent words never collide
+    /// even when the UI font is wider than the PDF's original font.</summary>
     private static void DrawPageWords(Graphics g, Page page, double pW, double pH, int w, int h, string fontName)
     {
         foreach (var word in page.GetWords())
@@ -164,9 +166,10 @@ public static class PdfPageThumbnailRenderer
 
             float bx = (float)(rect.Left / pW * w);
             float by = (float)((1.0 - rect.Top / pH) * h);
+            float bw = (float)(rect.Width / pW * w);
 
             float fontSize = Math.Max(3f, Math.Min(fh * 1.1f, 18f * w / 220f));
-            TryDrawWord(g, word.Text, ResolveWordColor(word), bx, by, fontSize, fontName);
+            TryDrawWord(g, word.Text, ResolveWordColor(word), bx, by, bw, fontSize, fontName);
         }
     }
 
@@ -188,14 +191,29 @@ public static class PdfPageThumbnailRenderer
         return Color.FromArgb(30, 35, 45);
     }
 
-    /// <summary>Draws one word at the given position; returns false when drawing failed.</summary>
-    private static bool TryDrawWord(Graphics g, string text, Color color, float x, float y, float fontSize, string fontName)
+    /// <summary>Draws one word fitted into its PDF bounding box: the text is measured
+    /// tightly (GenericTypographic) and uniformly scaled down when it is wider than the
+    /// box, so it never spills into the adjacent word. Words narrower than their box are
+    /// drawn at natural size, preserving the original look. Returns false when drawing
+    /// failed.</summary>
+    private static bool TryDrawWord(Graphics g, string text, Color color, float x, float y, float boxW, float fontSize, string fontName)
     {
         try
         {
             using var brush = new SolidBrush(color);
             using var font = new Font(fontName, fontSize, GraphicsUnit.Pixel);
-            g.DrawString(text, font, brush, x, y);
+            using var format = StringFormat.GenericTypographic;
+
+            var measured = g.MeasureString(text, font, PointF.Empty, format);
+            float scale = 1f;
+            if (measured.Width > 0.1f && measured.Width > boxW)
+                scale = boxW / measured.Width;
+
+            var state = g.Save();
+            g.TranslateTransform(x, y);
+            if (scale < 1f) g.ScaleTransform(scale, scale);
+            g.DrawString(text, font, brush, 0, 0, format);
+            g.Restore(state);
             return true;
         }
         catch { /* Ignored: a malformed word must not abort the overlay. */ }
