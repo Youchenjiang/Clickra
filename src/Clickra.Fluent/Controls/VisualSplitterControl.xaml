@@ -117,7 +117,10 @@
                     <ScrollViewer x:Name="ZoomScroll" Grid.Row="1" Margin="14,8"
                                   HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto"
                                   HorizontalScrollMode="Enabled" VerticalScrollMode="Enabled" ZoomMode="Disabled">
-                        <Image x:Name="ZoomImage" Stretch="None"
+                        <!-- Stretch=Fill: the page is rendered at high resolution and sized by
+                             Width/Height in code (aspect-preserving), so Fill scales the full
+                             page into that rect instead of clipping the top-left corner. -->
+                        <Image x:Name="ZoomImage" Stretch="Fill"
                                PointerPressed="ZoomImage_PointerPressed"
                                PointerMoved="ZoomImage_PointerMoved"
                                PointerReleased="ZoomImage_PointerReleased"
