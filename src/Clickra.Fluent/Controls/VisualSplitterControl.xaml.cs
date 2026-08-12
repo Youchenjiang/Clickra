@@ -312,18 +312,25 @@ public sealed partial class VisualSplitterControl : UserControl
         _currentPreviewPageIndex = 0;
 
         _mode = 0;
-        if (ModeCustomBtn.IsChecked is not true) ModeCustomBtn.IsChecked = true;
+        SelectCustomMode();
 
         RefreshSegmentList();
         _ = UpdatePreview();
+    }
+
+    /// <summary>Switches the mode toggle to custom segments. The null-safe
+    /// <c>is not true</c> treats the toggle's uninitialized state as unchecked.</summary>
+    private void SelectCustomMode()
+    {
+        if (ModeCustomBtn.IsChecked is not true) ModeCustomBtn.IsChecked = true; // NOSONAR:S1125 — literal required for nullable IsChecked.
+        _mode = 0;
     }
 
     /// <summary>Adds the first page gap not covered by any custom segment as a new
     /// segment and selects it (switching to custom mode).</summary>
     private void AddVisualSplitSegment()
     {
-        if (ModeCustomBtn.IsChecked is not true) ModeCustomBtn.IsChecked = true;
-        _mode = 0;
+        SelectCustomMode();
 
         if (_customSegments.Count == 0)
         {
@@ -374,8 +381,7 @@ public sealed partial class VisualSplitterControl : UserControl
         if (_customSegments.Count <= 1) return;
         if (_selectedSegmentIndex < 0 || _selectedSegmentIndex >= _customSegments.Count) return;
 
-        if (ModeCustomBtn.IsChecked is not true) ModeCustomBtn.IsChecked = true;
-        _mode = 0;
+        SelectCustomMode();
 
         _customSegments.RemoveAt(_selectedSegmentIndex);
         _segments.Clear();
@@ -390,8 +396,7 @@ public sealed partial class VisualSplitterControl : UserControl
     /// <summary>Clears all custom segments and switches to custom mode.</summary>
     private void ClearVisualSplitSegments()
     {
-        if (ModeCustomBtn.IsChecked is not true) ModeCustomBtn.IsChecked = true;
-        _mode = 0;
+        SelectCustomMode();
         _customSegments.Clear();
         _segments.Clear();
         _selectedSegmentIndex = -1;

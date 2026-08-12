@@ -18,7 +18,7 @@ namespace Clickra_Fluent;
 
 public sealed partial class MainPage : Page
 {
-    private const string GitHubUrl = "https://github.com/Youchenjiang/Clickra";
+    private const string GitHubUrl = "https://github.com/Youchenjiang/Clickra"; // NOSONAR:S1075 — the project's canonical repository URL.
     private readonly List<string> _selectedFiles = new();
     private readonly Dictionary<string, Button> _commandButtons = new(StringComparer.OrdinalIgnoreCase);
     private CancellationTokenSource? _cts;
@@ -1259,6 +1259,7 @@ public sealed partial class MainPage : Page
 
     private static string SplitPaths(string paths) => string.Join(Environment.NewLine, paths.Split(';', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries));
 
+    // NOSONAR:S2325 — reads the XAML-generated CompressionSlider value.
     private string CompressionLevel() => ((int)CompressionSlider.Value) switch
     {
         0 => "small",
@@ -1305,21 +1306,6 @@ $toast = [Windows.UI.Notifications.ToastNotification]::new($template)
         catch { /* Ignored: a failed toast must not break the conversion flow. */ }
     }
 
-    private string CommandLabel(string command) => command switch
-    {
-        "ppt2pdf" => L("cmd_ppt_to_pdf"),
-        "word2pdf" => L("cmd_word_to_pdf"),
-        "excel2pdf" => L("cmd_excel_to_pdf"),
-        "merge-pdf" => L("cmd_merge_pdf"),
-        "compress-pdf" => L("cmd_compress_pdf"),
-        "translate-pdf" => L("cmd_translate_pdf"),
-        "decrypt-pdf" => L("cmd_decrypt_pdf"),
-        "split-pdf" => L("cmd_split_pdf"),
-        "img2pdf" => L("cmd_img_to_pdf"),
-        "img-merge" => L("cmd_merge_img"),
-        "img-stitch" => L("cmd_stitch_img"),
-        _ => command
-    };
 }
 
 internal static class DispatcherQueueExtensions

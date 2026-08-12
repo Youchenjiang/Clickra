@@ -39,6 +39,7 @@ public sealed partial class TaskProgressPage : Page
 
     private static string L(string key) => Localization.T(key, ClickraStorage.GetSetting("Language"));
 
+    // NOSONAR:S2325 — updates XAML-generated title/file/state fields.
     private void ApplyLanguage()
     {
         TitleText.Text = L("fluent_progress_running_title");
@@ -115,6 +116,7 @@ public sealed partial class TaskProgressPage : Page
     }
 
 
+    // NOSONAR:S2325 — updates XAML-generated progress/percent/state fields.
     private void SetProgress(int percent, string message)
     {
         ProgressBar.Value = percent;
