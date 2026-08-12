@@ -4,13 +4,13 @@ using System.Diagnostics;
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace Clickra.Core.Processors
+namespace Clickra.Core.Processors;
+
+/// <summary>Runs a convert command against FileProcessor. Both UIs dispatch through
+/// this single implementation; UI-specific interactions (password / split-page
+/// prompts) are supplied as delegates.</summary>
+public static class ConvertCommandRunner
 {
-    /// <summary>Runs a convert command against FileProcessor. Both UIs dispatch through
-    /// this single implementation; UI-specific interactions (password / split-page
-    /// prompts) are supplied as delegates.</summary>
-    public static class ConvertCommandRunner
-    {
         /// <summary>Outcome of a tracked conversion run.</summary>
         public enum ConvertRunStatus { Succeeded, Canceled, Failed }
 
@@ -136,4 +136,3 @@ namespace Clickra.Core.Processors
             }
         }
     }
-}
