@@ -2,11 +2,13 @@ namespace Clickra.Core.Tests;
 
 static partial class TestSuite
 {
+    private const string TogllFixtureName = "TOGLL_Oracle Generation.pdf";
+
     public static void RegisterTogllLayoutTests(TestRunner runner)
     {
         runner.Run("TOGLL p8 RQ4 body prose is translatable outside tables", () =>
         {
-            var page = Diagnostics("TOGLL_Oracle Generation.pdf", 8);
+            var page = Diagnostics(TogllFixtureName, 8);
 
             AssertParagraph(page, "Experimental Setup", p => IsPlainTranslatable(p) && p.IsBodyProse);
             AssertParagraph(page, "RQ3 Finding", IsPlainTranslatable);
@@ -14,7 +16,7 @@ static partial class TestSuite
 
         runner.Run("TOGLL p5 Table I grids and prompt details stay bypassed", () =>
         {
-            var page = Diagnostics("TOGLL_Oracle Generation.pdf", 5);
+            var page = Diagnostics(TogllFixtureName, 5);
 
             foreach (var text in new[]
             {
@@ -36,7 +38,7 @@ static partial class TestSuite
 
         runner.Run("TOGLL p4 Figure 2 clip stays above equation 1 explanation", () =>
         {
-            var page = Diagnostics("TOGLL_Oracle Generation.pdf", 4);
+            var page = Diagnostics(TogllFixtureName, 4);
             var explanation = page.Paragraphs.Single(p =>
                 p.Text.Contains("number of total test prefixes", StringComparison.OrdinalIgnoreCase));
 
@@ -52,21 +54,21 @@ static partial class TestSuite
 
         runner.Run("TOGLL p3 prompt 5 remains translatable prose", () =>
         {
-            var page = Diagnostics("TOGLL_Oracle Generation.pdf", 3);
+            var page = Diagnostics(TogllFixtureName, 3);
 
             AssertParagraph(page, "Prompt 5 (P5) includes the code for the entire MUT", IsBodyProse);
         });
 
         runner.Run("TOGLL p4 TOGA baseline paragraph remains translatable prose", () =>
         {
-            var page = Diagnostics("TOGLL_Oracle Generation.pdf", 4);
+            var page = Diagnostics(TogllFixtureName, 4);
 
             AssertParagraph(page, "We selected TOGA as our baseline method", IsBodyProse);
         });
 
         runner.Run("TOGLL p9 finding continuation remains translatable prose", () =>
         {
-            var page = Diagnostics("TOGLL_Oracle Generation.pdf", 9);
+            var page = Diagnostics(TogllFixtureName, 9);
 
             AssertParagraph(page, "thereby establishing a new SOTA", IsBodyProse);
         });
