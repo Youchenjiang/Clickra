@@ -11,18 +11,6 @@ namespace Clickra.Core
         private const string LangJa = "ja-JP";
         private const string LangKo = "ko-KR";
         private const string KeyCmdCompressPdf = "cmd_compress_pdf";
-        private const string KeyCmdSplitPdf = "cmd_split_pdf";
-        private const string KeySplitPdfTitle = "pdf_split_title";
-        private const string KeySplitPdfPrompt = "pdf_split_prompt";
-        private const string KeySplitPdfModeCustom = "pdf_split_mode_custom";
-        private const string KeySplitPdfModeEach = "pdf_split_mode_each";
-        private const string KeySplitPdfModeFixed = "pdf_split_mode_fixed";
-        private const string KeySplitPdfPagesPerSegment = "pdf_split_pages_per_segment";
-        private const string KeySplitPdfZoomTag = "pdf_split_zoom_tag";
-        private const string KeySplitPdfZoomTitle = "pdf_split_zoom_title";
-        private const string KeySplitPdfZoomHint = "pdf_split_zoom_hint";
-        private const string KeySplitPdfZoomClose = "pdf_split_zoom_close";
-        private const string KeySplitPdfZoomFit = "pdf_split_zoom_fit";
 
         private static readonly Dictionary<string, Dictionary<string, string>> Translations = new(StringComparer.OrdinalIgnoreCase)
         {
@@ -159,18 +147,6 @@ namespace Clickra.Core
                 ["setting_pdf_lang"] = "目標語言 (Target Language)",
                 ["cmd_translate_pdf"] = "PDF 一鍵翻譯",
                 ["cmd_decrypt_pdf"] = "去除 PDF 密碼",
-                [KeyCmdSplitPdf] = "分割 PDF",
-                [KeySplitPdfTitle] = "PDF 視覺化分割",
-                [KeySplitPdfPrompt] = "請輸入分頁範圍（例如 1-5, 8 或 all 拆分為單頁檔）：",
-                [KeySplitPdfModeCustom] = "自訂分段",
-                [KeySplitPdfModeEach] = "全拆單頁",
-                [KeySplitPdfModeFixed] = "固定頁數",
-                [KeySplitPdfPagesPerSegment] = "每檔頁數",
-                [KeySplitPdfZoomTag] = "放大",
-                [KeySplitPdfZoomTitle] = "頁面放大預覽",
-                [KeySplitPdfZoomHint] = "滾輪縮放 · 拖曳平移 · 空白鍵/Esc 關閉",
-                [KeySplitPdfZoomClose] = "X 關閉",
-                [KeySplitPdfZoomFit] = "適配",
                 ["pdf_password_title"] = "輸入 PDF 密碼",
                 ["pdf_password_prompt"] = "「{0}」受密碼保護，請輸入開啟密碼：",
                 ["pdf_password_retry"] = "密碼錯誤。請重新輸入「{0}」的密碼：",
@@ -312,18 +288,6 @@ namespace Clickra.Core
                 ["setting_pdf_lang"] = "目标语言",
                 ["cmd_translate_pdf"] = "PDF 翻译",
                 ["cmd_decrypt_pdf"] = "去除 PDF 密码",
-                [KeyCmdSplitPdf] = "分割 PDF",
-                [KeySplitPdfTitle] = "PDF 可视化分割",
-                [KeySplitPdfPrompt] = "请输入分页范围（例如 1-5, 8 或 all 拆分为单页档）：",
-                [KeySplitPdfModeCustom] = "自訂分段",
-                [KeySplitPdfModeEach] = "全拆单页",
-                [KeySplitPdfModeFixed] = "固定页数",
-                [KeySplitPdfPagesPerSegment] = "每档页数",
-                [KeySplitPdfZoomTag] = "放大",
-                [KeySplitPdfZoomTitle] = "页面放大预览",
-                [KeySplitPdfZoomHint] = "滚轮缩放 · 拖拽平移 · 空格/Esc 关闭",
-                [KeySplitPdfZoomClose] = "X 关闭",
-                [KeySplitPdfZoomFit] = "适配",
                 ["pdf_password_title"] = "输入 PDF 密码",
                 ["pdf_password_prompt"] = "「{0}」受密码保护，请输入打开密码：",
                 ["pdf_password_retry"] = "密码错误。请重新输入「{0}」的密码：",
@@ -465,18 +429,6 @@ namespace Clickra.Core
                 ["setting_pdf_lang"] = "Target Language",
                 ["cmd_translate_pdf"] = "PDF Translation",
                 ["cmd_decrypt_pdf"] = "Remove PDF Password",
-                [KeyCmdSplitPdf] = "Split PDF",
-                [KeySplitPdfTitle] = "Split PDF Visually",
-                [KeySplitPdfPrompt] = "Enter page range (e.g. 1-5, 8 or all to split into single pages):",
-                [KeySplitPdfModeCustom] = "Custom segments",
-                [KeySplitPdfModeEach] = "Split each page",
-                [KeySplitPdfModeFixed] = "Fixed pages per file",
-                [KeySplitPdfPagesPerSegment] = "Pages per file",
-                [KeySplitPdfZoomTag] = "Zoom",
-                [KeySplitPdfZoomTitle] = "Page zoom preview",
-                [KeySplitPdfZoomHint] = "Wheel to zoom · drag to pan · Space/Esc to close",
-                [KeySplitPdfZoomClose] = "X Close",
-                [KeySplitPdfZoomFit] = "Fit",
                 ["pdf_password_title"] = "Enter PDF Password",
                 ["pdf_password_prompt"] = "\"{0}\" is password protected. Enter open password:",
                 ["pdf_password_retry"] = "Incorrect password. Re-enter password for \"{0}\":",
@@ -618,18 +570,6 @@ namespace Clickra.Core
                 ["setting_pdf_lang"] = "対象言語 (Target Language)",
                 ["cmd_translate_pdf"] = "PDF 翻訳",
                 ["cmd_decrypt_pdf"] = "PDF パスワード解除",
-                [KeyCmdSplitPdf] = "PDF 分割",
-                [KeySplitPdfTitle] = "PDF 視覚分割",
-                [KeySplitPdfPrompt] = "ページ範囲を入力してください（例：1-5, 8 または全ページ分割の all）：",
-                [KeySplitPdfModeCustom] = "カスタム分割",
-                [KeySplitPdfModeEach] = "全ページ分割",
-                [KeySplitPdfModeFixed] = "固定ページ数",
-                [KeySplitPdfPagesPerSegment] = "1ファイルあたりのページ数",
-                [KeySplitPdfZoomTag] = "拡大",
-                [KeySplitPdfZoomTitle] = "ページ拡大プレビュー",
-                [KeySplitPdfZoomHint] = "ホイールで拡大 · ドラッグで移動 · Space/Esc で閉じる",
-                [KeySplitPdfZoomClose] = "X 閉じる",
-                [KeySplitPdfZoomFit] = "フィット",
                 ["pdf_password_title"] = "PDF パスワード入力",
                 ["pdf_password_prompt"] = "「{0}」はパスワードで保護されています。パスワードを入力してください：",
                 ["pdf_password_retry"] = "パスワードが正しくありません。もう一度入力してください：「{0}」",
@@ -773,18 +713,6 @@ namespace Clickra.Core
                 ["setting_pdf_lang"] = "대상 언어 (Target Language)",
                 ["cmd_translate_pdf"] = "PDF 번역",
                 ["cmd_decrypt_pdf"] = "PDF 비밀번호 제거",
-                [KeyCmdSplitPdf] = "PDF 분할",
-                [KeySplitPdfTitle] = "PDF 시각적 분할",
-                [KeySplitPdfPrompt] = "페이지 범위를 입력하십시오 (예: 1-5, 8 또는 전체 분할 all):",
-                [KeySplitPdfModeCustom] = "사용자 정의 분할",
-                [KeySplitPdfModeEach] = "전체 페이지 분할",
-                [KeySplitPdfModeFixed] = "고정 페이지 수",
-                [KeySplitPdfPagesPerSegment] = "파일당 페이지 수",
-                [KeySplitPdfZoomTag] = "확대",
-                [KeySplitPdfZoomTitle] = "페이지 확대 미리보기",
-                [KeySplitPdfZoomHint] = "휠 확대 · 드래그 이동 · Space/Esc 닫기",
-                [KeySplitPdfZoomClose] = "X 닫기",
-                [KeySplitPdfZoomFit] = "맞춤",
                 ["pdf_password_title"] = "PDF 비밀번호 입력",
                 ["pdf_password_prompt"] = "「{0}」 파일이 비밀번호로 보호되어 있습니다. 비밀번호를 입력하십시오:",
                 ["pdf_password_retry"] = "비밀번호가 잘못되었습니다. 다시 입력하십시오:「{0}」",
@@ -1016,7 +944,19 @@ namespace Clickra.Core
                 ("pdf_error_mismatched_batch", "批次翻譯結果數量不一致。", "批次翻译结果数量不一致。", "Mismatched batch translation results count.", "バッチ翻訳結果数が一致しません。", "배치 번역 결과 수가 일치하지 않습니다."),
                 ("pdf_error_provider_empty", "翻譯供應商回傳空白結果。", "翻译供应商返回空白结果。", "Translator returned an empty result.", "翻訳プロバイダーが空の結果を返しました。", "번역 공급자가 빈 결과를 반환했습니다."),
                 ("pdf_error_unable_paragraph", "第 {0} 頁段落在批次拆分與供應商備援後仍無法翻譯。", "第 {0} 页段落在批次拆分与供应商备用后仍无法翻译。", "Unable to translate page {0} paragraph after batch splitting and provider fallback.", "{0} ページの段落をバッチ分割と代替後も翻訳できません。", "{0}페이지 문단을 배치 분할과 공급자 대체 후에도 번역할 수 없습니다."),
-                ("pdf_error_provider_timeout", "翻譯供應商鏈呼叫超過 {0} 秒。", "翻译供应商链调用超过 {0} 秒。", "Translation provider chain call exceeded {0}s.", "翻訳プロバイダー呼び出しが {0} 秒を超えました。", "번역 공급자 호출이 {0}초를 초과했습니다.")
+                ("pdf_error_provider_timeout", "翻譯供應商鏈呼叫超過 {0} 秒。", "翻译供应商链调用超过 {0} 秒。", "Translation provider chain call exceeded {0}s.", "翻訳プロバイダー呼び出しが {0} 秒を超えました。", "번역 공급자 호출이 {0}초를 초과했습니다."),
+                ("cmd_split_pdf", "分割 PDF", "分割 PDF", "Split PDF", "PDF 分割", "PDF 분할"),
+                ("pdf_split_title", "PDF 視覺化分割", "PDF 可视化分割", "Split PDF Visually", "PDF 視覚分割", "PDF 시각적 분할"),
+                ("pdf_split_prompt", "請輸入分頁範圍（例如 1-5, 8 或 all 拆分為單頁檔）：", "请输入分页范围（例如 1-5, 8 或 all 拆分为单页档）：", "Enter page range (e.g. 1-5, 8 or all to split into single pages):", "ページ範囲を入力してください（例：1-5, 8 または全ページ分割の all）：", "페이지 범위를 입력하십시오 (예: 1-5, 8 또는 전체 분할 all):"),
+                ("pdf_split_mode_custom", "自訂分段", "自訂分段", "Custom segments", "カスタム分割", "사용자 정의 분할"),
+                ("pdf_split_mode_each", "全拆單頁", "全拆单页", "Split each page", "全ページ分割", "전체 페이지 분할"),
+                ("pdf_split_mode_fixed", "固定頁數", "固定页数", "Fixed pages per file", "固定ページ数", "고정 페이지 수"),
+                ("pdf_split_pages_per_segment", "每檔頁數", "每档页数", "Pages per file", "1ファイルあたりのページ数", "파일당 페이지 수"),
+                ("pdf_split_zoom_tag", "放大", "放大", "Zoom", "拡大", "확대"),
+                ("pdf_split_zoom_title", "頁面放大預覽", "页面放大预览", "Page zoom preview", "ページ拡大プレビュー", "페이지 확대 미리보기"),
+                ("pdf_split_zoom_hint", "滾輪縮放 · 拖曳平移 · 空白鍵/Esc 關閉", "滚轮缩放 · 拖拽平移 · 空格/Esc 关闭", "Wheel to zoom · drag to pan · Space/Esc to close", "ホイールで拡大 · ドラッグで移動 · Space/Esc で閉じる", "휠 확대 · 드래그 이동 · Space/Esc 닫기"),
+                ("pdf_split_zoom_close", "X 關閉", "X 关闭", "X Close", "X 閉じる", "X 닫기"),
+                ("pdf_split_zoom_fit", "適配", "适配", "Fit", "フィット", "맞춤")
             };
 
             foreach (var item in data)
