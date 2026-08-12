@@ -211,24 +211,24 @@ try {{
             var error = new StringBuilder();
             process.OutputDataReceived += (s, e) =>
             {
-                if (!string.IsNullOrEmpty(e.Data) && e.Data.StartsWith("PROGRESS:"))
+                if (string.IsNullOrEmpty(e.Data) || !e.Data.StartsWith("PROGRESS:") ||
+                    !int.TryParse(e.Data.Substring(9), out int subProg))
                 {
-                    if (int.TryParse(e.Data.Substring(9), out int subProg))
-                    {
-                        string language = ClickraStorage.GetSetting("Language");
-                        string fileName = Path.GetFileName(filePath);
-                        int currentProgress = (fileIndex * 100) + subProg;
-                        string statusMsg = subProg switch
-                        {
-                            20 => string.Format(Localization.T("status_office_starting", language), appName, fileIndex + 1, totalFiles),
-                            50 => string.Format(Localization.T("status_office_reading", language), fileName),
-                            80 => string.Format(Localization.T("status_office_exporting", language), fileName),
-                            100 => string.Format(Localization.T("status_office_completed", language), fileName),
-                            _ => string.Format(Localization.T("status_office_converting", language), appName, fileName)
-                        };
-                        onProgress?.Invoke(currentProgress, totalFiles * 100, statusMsg);
-                    }
+                    return;
                 }
+
+                string language = ClickraStorage.GetSetting(LanguageSettingKey);
+                string fileName = Path.GetFileName(filePath);
+                int currentProgress = (fileIndex * 100) + subProg;
+                string statusMsg = subProg switch
+                {
+                    20 => string.Format(Localization.T("status_office_starting", language), appName, fileIndex + 1, totalFiles),
+                    50 => string.Format(Localization.T("status_office_reading", language), fileName),
+                    80 => string.Format(Localization.T("status_office_exporting", language), fileName),
+                    100 => string.Format(Localization.T("status_office_completed", language), fileName),
+                    _ => string.Format(Localization.T("status_office_converting", language), appName, fileName)
+                };
+                onProgress?.Invoke(currentProgress, totalFiles * 100, statusMsg);
             };
             process.ErrorDataReceived += (_, e) =>
             {
