@@ -14,8 +14,7 @@
                 x:Name="LayoutRoot"
                 MaxWidth="720"
                 HorizontalAlignment="Stretch"
-                RowSpacing="12"
-                SizeChanged="OnLayoutSizeChanged">
+                RowSpacing="12">
                 <Grid.RowDefinitions>
                     <RowDefinition Height="Auto" />
                     <RowDefinition Height="Auto" />

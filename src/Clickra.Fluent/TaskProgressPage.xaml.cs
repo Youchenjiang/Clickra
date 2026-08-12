@@ -16,7 +16,8 @@ public sealed partial class TaskProgressPage : Page
     public TaskProgressPage()
     {
         InitializeComponent();
-        ApplyLanguage();
+        ApplyLanguage(TitleText, FileText, StateText, OutputText, FooterText, OpenFolderButton, CancelButton);
+        LayoutRoot.SizeChanged += (_, e) => ApplyLayoutSize(ActionButtons, ActionButtonsRow, e.NewSize.Width);
         CancelButton.Click += (_, _) => _cts?.Cancel();
         OpenFolderButton.Click += (_, _) => OpenOutputFolder();
         Loaded += async (_, _) => await RunAsync();
@@ -27,28 +28,26 @@ public sealed partial class TaskProgressPage : Page
         _arguments = e.Parameter as string ?? "";
     }
 
-    // NOSONAR:S2325 — XAML event handler touching generated instance fields (ActionButtons).
-    private void OnLayoutSizeChanged(object sender, SizeChangedEventArgs e)
+    private static void ApplyLayoutSize(StackPanel actionButtons, RowDefinition actionButtonsRow, double width)
     {
-        bool narrow = e.NewSize.Width < 300;
-        Grid.SetColumn(ActionButtons, narrow ? 0 : 1);
-        Grid.SetRow(ActionButtons, narrow ? 1 : 0);
-        ActionButtons.HorizontalAlignment = narrow ? HorizontalAlignment.Left : HorizontalAlignment.Right;
-        ActionButtonsRow.Height = narrow ? GridLength.Auto : new GridLength(0);
+        bool narrow = width < 300;
+        Grid.SetColumn(actionButtons, narrow ? 0 : 1);
+        Grid.SetRow(actionButtons, narrow ? 1 : 0);
+        actionButtons.HorizontalAlignment = narrow ? HorizontalAlignment.Left : HorizontalAlignment.Right;
+        actionButtonsRow.Height = narrow ? GridLength.Auto : new GridLength(0);
     }
 
     private static string L(string key) => Localization.T(key, ClickraStorage.GetSetting("Language"));
 
-    // NOSONAR:S2325 — updates XAML-generated title/file/state fields.
-    private void ApplyLanguage()
+    private static void ApplyLanguage(TextBlock titleText, TextBlock fileText, TextBlock stateText, TextBlock outputText, TextBlock footerText, Button openFolderButton, Button cancelButton)
     {
-        TitleText.Text = L("fluent_progress_running_title");
-        FileText.Text = L("fluent_progress_preparing");
-        StateText.Text = L("fluent_progress_preparing");
-        OutputText.Text = $"{L("fluent_progress_output")}{L("fluent_progress_preparing")}";
-        FooterText.Text = L("fluent_progress_waiting");
-        OpenFolderButton.Content = L("fluent_progress_open_folder");
-        CancelButton.Content = L("fluent_cancel");
+        titleText.Text = L("fluent_progress_running_title");
+        fileText.Text = L("fluent_progress_preparing");
+        stateText.Text = L("fluent_progress_preparing");
+        outputText.Text = $"{L("fluent_progress_output")}{L("fluent_progress_preparing")}";
+        footerText.Text = L("fluent_progress_waiting");
+        openFolderButton.Content = L("fluent_progress_open_folder");
+        cancelButton.Content = L("fluent_cancel");
     }
 
     private async Task RunAsync()
@@ -90,7 +89,7 @@ public sealed partial class TaskProgressPage : Page
         try
         {
             var result = await ConvertCommandRunner.RunTrackedAsync(command, files, outputs,
-                (percent, message) => DispatcherQueue.TryEnqueue(() => SetProgress(percent, message)),
+                (percent, message) => DispatcherQueue.TryEnqueue(() => SetProgress(ProgressBar, PercentText, StateText, percent, message)),
                 () => DispatcherQueue.EnqueueAsync(() => FluentDialogs.PromptPasswordAsync(XamlRoot, L)),
                 pdfPath => DispatcherQueue.EnqueueAsync(() => SplitOverlay.ShowForAsync(pdfPath)),
                 _cts.Token);
@@ -116,17 +115,16 @@ public sealed partial class TaskProgressPage : Page
     }
 
 
-    // NOSONAR:S2325 — updates XAML-generated progress/percent/state fields.
-    private void SetProgress(int percent, string message)
+    private static void SetProgress(ProgressBar progressBar, TextBlock percentText, TextBlock stateText, int percent, string message)
     {
-        ProgressBar.Value = percent;
-        PercentText.Text = $"{percent}%";
-        StateText.Text = string.IsNullOrWhiteSpace(message) ? L("fluent_progress_processing") : message;
+        progressBar.Value = percent;
+        percentText.Text = $"{percent}%";
+        stateText.Text = string.IsNullOrWhiteSpace(message) ? L("fluent_progress_processing") : message;
     }
 
     private void Complete(string message, bool success)
     {
-        SetProgress(success ? 100 : 0, message);
+        SetProgress(ProgressBar, PercentText, StateText, success ? 100 : 0, message);
         TitleText.Text = success ? L("fluent_progress_done_title") : L("fluent_progress_failed_title");
         StatusIcon.Glyph = success ? "\uE73E" : "\uE783";
         StateText.Text = success ? message : L("fluent_progress_failed");

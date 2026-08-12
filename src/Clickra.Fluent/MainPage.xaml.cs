@@ -53,10 +53,10 @@ public sealed partial class MainPage : Page
         SizeChanged += (_, _) => ApplyResponsiveLayout();
         NavView.SelectionChanged += NavView_SelectionChanged;
         DropZone.Tapped += DropZone_Tapped;
-        DropZone.PointerEntered += (_, _) => SetDropZoneHot(true);
-        DropZone.PointerExited += (_, _) => SetDropZoneHot(false);
+        DropZone.PointerEntered += (_, _) => SetDropZoneHot(DropZone, DropZoneIcon, true);
+        DropZone.PointerExited += (_, _) => SetDropZoneHot(DropZone, DropZoneIcon, false);
         DropZone.DragOver += DropZone_DragOver;
-        DropZone.DragLeave += (_, _) => SetDropZoneHot(false);
+        DropZone.DragLeave += (_, _) => SetDropZoneHot(DropZone, DropZoneIcon, false);
         DropZone.Drop += DropZone_Drop;
         ClearFilesButton.Click += (_, _) => { _selectedFiles.Clear(); RefreshFiles(); };
         StartButton.Click += async (_, _) => await StartConversionAsync();
@@ -113,7 +113,7 @@ public sealed partial class MainPage : Page
         var narrow = ActualWidth < 1000;
 
         SetTwoPaneLayout(OverviewSidePane, OverviewMainColumn, OverviewSideColumn, 1.4, 0.85, narrow);
-        ApplyConvertResponsiveLayout(narrow);
+        ApplyConvertResponsiveLayout(narrow, ConvertMainColumn, ConvertSideColumn, ConvertCommandCard, ConvertRunCard);
         ApplyHistoryResponsiveLayout(narrow);
         ApplySettingsResponsiveLayout(narrow);
         ApplyAboutResponsiveLayout(narrow);
@@ -132,16 +132,15 @@ public sealed partial class MainPage : Page
         Grid.SetRow(sidePane, narrow ? 1 : 0);
     }
 
-    // NOSONAR:S2325 — accesses XAML-generated instance fields (ConvertMainColumn etc.).
-    private void ApplyConvertResponsiveLayout(bool narrow)
+    private static void ApplyConvertResponsiveLayout(bool narrow, ColumnDefinition mainColumn, ColumnDefinition sideColumn, FrameworkElement commandCard, FrameworkElement runCard)
     {
-        ConvertMainColumn.Width = new GridLength(1, GridUnitType.Star);
-        ConvertSideColumn.Width = narrow ? new GridLength(0) : new GridLength(1, GridUnitType.Star);
+        mainColumn.Width = new GridLength(1, GridUnitType.Star);
+        sideColumn.Width = narrow ? new GridLength(0) : new GridLength(1, GridUnitType.Star);
 
-        Grid.SetColumn(ConvertCommandCard, narrow ? 0 : 1);
-        Grid.SetRow(ConvertCommandCard, narrow ? 2 : 0);
-        Grid.SetColumn(ConvertRunCard, narrow ? 0 : 1);
-        Grid.SetRow(ConvertRunCard, narrow ? 3 : 1);
+        Grid.SetColumn(commandCard, narrow ? 0 : 1);
+        Grid.SetRow(commandCard, narrow ? 2 : 0);
+        Grid.SetColumn(runCard, narrow ? 0 : 1);
+        Grid.SetRow(runCard, narrow ? 3 : 1);
     }
 
     private void ApplyHistoryResponsiveLayout(bool narrow)
@@ -267,7 +266,7 @@ public sealed partial class MainPage : Page
     private void DropZone_DragOver(object sender, DragEventArgs e)
     {
         e.AcceptedOperation = _isRunning ? DataPackageOperation.None : DataPackageOperation.Copy;
-        SetDropZoneHot(!_isRunning);
+        SetDropZoneHot(DropZone, DropZoneIcon, !_isRunning);
     }
 
     private async void DropZone_Drop(object sender, DragEventArgs e)
@@ -276,15 +275,14 @@ public sealed partial class MainPage : Page
         if (!e.DataView.Contains(StandardDataFormats.StorageItems)) return;
         var items = await e.DataView.GetStorageItemsAsync();
         AddFiles(items.OfType<StorageFile>().Select(f => f.Path));
-        SetDropZoneHot(false);
+        SetDropZoneHot(DropZone, DropZoneIcon, false);
     }
 
-    // NOSONAR:S2325 — accesses XAML-generated instance fields (DropZone/DropZoneIcon).
-    private void SetDropZoneHot(bool isHot)
+    private static void SetDropZoneHot(Border dropZone, FrameworkElement dropZoneIcon, bool isHot)
     {
-        DropZone.Background = (Brush)Application.Current.Resources[isHot ? SecondaryCardBrushResource : "CardBackgroundFillColorDefaultBrush"];
-        DropZone.BorderBrush = (Brush)Application.Current.Resources[isHot ? "AccentFillColorDefaultBrush" : "CardStrokeColorDefaultBrush"];
-        DropZoneIcon.Opacity = isHot ? 1 : 0.85;
+        dropZone.Background = (Brush)Application.Current.Resources[isHot ? SecondaryCardBrushResource : "CardBackgroundFillColorDefaultBrush"];
+        dropZone.BorderBrush = (Brush)Application.Current.Resources[isHot ? "AccentFillColorDefaultBrush" : "CardStrokeColorDefaultBrush"];
+        dropZoneIcon.Opacity = isHot ? 1 : 0.85;
     }
 
     private void AddFiles(IEnumerable<string> paths)
@@ -616,7 +614,7 @@ public sealed partial class MainPage : Page
 
     private void UpdateCompressionLabel()
     {
-        CompressionLabel.Text = CompressionLevel() switch
+        CompressionLabel.Text = CompressionLevel(CompressionSlider) switch
         {
             "small" => L("setting_pdf_compress_level_small"),
             "high" => L("setting_pdf_compress_level_high"),
@@ -1271,8 +1269,7 @@ public sealed partial class MainPage : Page
 
     private static string SplitPaths(string paths) => string.Join(Environment.NewLine, paths.Split(';', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries));
 
-    // NOSONAR:S2325 — reads the XAML-generated CompressionSlider value.
-    private string CompressionLevel() => ((int)CompressionSlider.Value) switch
+    private static string CompressionLevel(Slider slider) => ((int)slider.Value) switch
     {
         0 => "small",
         2 or 3 => "high",
