@@ -250,11 +250,7 @@ internal static class PdfPageParagraphBuilder
             double maxX = rightColumn ? pageWidth : pageWidth / 2.0 + 12.0;
             int marked = 0;
 
-            foreach (var para in ordered.Where(p =>
-                         !ReferenceEquals(p, heading) &&
-                         p.Y1 <= heading.Y1 + 4.0 &&
-                         p.X0 >= minX &&
-                         p.X1 <= maxX))
+            foreach (var para in ordered.Where(p => IsCandidateAlgorithmBody(p, heading, minX, maxX)))
             {
                 string text = para.TextWithPlaceholders.Trim();
                 bool pseudoCode = PdfParagraphCodeClassifier.IsAlgorithmPseudoCodeLine(text);
@@ -269,6 +265,16 @@ internal static class PdfPageParagraphBuilder
                 marked++;
             }
         }
+    }
+
+    /// <summary>Whether the paragraph lies within the heading's visual column and below
+    /// its baseline, i.e. could be part of the algorithm body.</summary>
+    private static bool IsCandidateAlgorithmBody(PdfParagraph p, PdfParagraph heading, double minX, double maxX)
+    {
+        return !ReferenceEquals(p, heading) &&
+               p.Y1 <= heading.Y1 + 4.0 &&
+               p.X0 >= minX &&
+               p.X1 <= maxX;
     }
 
     private static bool LooksLikeAlgorithmBodyExit(PdfParagraph para, string text)

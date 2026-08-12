@@ -119,21 +119,7 @@ namespace Clickra.Core.Processors
                 int overflowEntries = debugLines.Count(line => line.Contains("overflow=true", StringComparison.OrdinalIgnoreCase));
                 if (outputPages != sourcePages)
                     throw new InvalidOperationException($"PDF page count changed from {sourcePages} to {outputPages}.");
-                var layoutWarnings = new List<string>();
-                if (overflowEntries > 0)
-                    layoutWarnings.Add($"PDF layout still has {overflowEntries} overflowing paragraph(s).");
-                if (guardClipEntries > 0)
-                    layoutWarnings.Add($"PDF layout still uses {guardClipEntries} guard clip(s).");
-                if (layoutSummary.BottomOverflowCount > 0)
-                    layoutWarnings.Add($"PDF layout has {layoutSummary.BottomOverflowCount} paragraph(s) below the page bottom.");
-                if (layoutSummary.MinimumBodyFontRatio < PdfTranslationHealthReport.MinimumAllowedBodyFontRatio - 0.01)
-                    layoutWarnings.Add($"PDF body font ratio fell to {layoutSummary.MinimumBodyFontRatio:F3}; the minimum is {PdfTranslationHealthReport.MinimumAllowedBodyFontRatio:F2}.");
-                if (layoutSummary.MaximumBodyFontRatio > PdfTranslationHealthReport.MaximumAllowedBodyFontRatio + 0.01)
-                    layoutWarnings.Add($"PDF body font ratio grew to {layoutSummary.MaximumBodyFontRatio:F3}; the maximum is {PdfTranslationHealthReport.MaximumAllowedBodyFontRatio:F2}.");
-                if (layoutSummary.MaximumBodyLineSpacingMultiplier > PdfTranslationHealthReport.MaximumAllowedBodyLineSpacingMultiplier + 0.01)
-                    layoutWarnings.Add($"PDF body line spacing grew to {layoutSummary.MaximumBodyLineSpacingMultiplier:F3}; the maximum is {PdfTranslationHealthReport.MaximumAllowedBodyLineSpacingMultiplier:F2}.");
-                if (layoutSummary.MaximumFlowRegionResidualWhitespace > PdfTranslationHealthReport.MaximumAllowedFlowRegionResidualWhitespace)
-                    layoutWarnings.Add($"PDF flow region retained {layoutSummary.MaximumFlowRegionResidualWhitespace:F1}pt of undistributed whitespace; the maximum is {PdfTranslationHealthReport.MaximumAllowedFlowRegionResidualWhitespace:F1}pt.");
+                var layoutWarnings = CollectLayoutWarnings(layoutSummary, overflowEntries, guardClipEntries);
 
                 var healthReport = new PdfTranslationHealthReport
                 {
@@ -190,6 +176,28 @@ namespace Clickra.Core.Processors
                     try { File.Delete(partialOutputPath); } catch (IOException) { /* Ignore transient cleanup error */ }
                 }
             }
+        }
+
+        /// <summary>Collects human-readable layout warnings from the rebuilt document
+        /// diagnostics, one entry per violated health threshold.</summary>
+        private static List<string> CollectLayoutWarnings(PdfTranslationLayoutSummary layoutSummary, int overflowEntries, int guardClipEntries)
+        {
+            var warnings = new List<string>();
+            if (overflowEntries > 0)
+                warnings.Add($"PDF layout still has {overflowEntries} overflowing paragraph(s).");
+            if (guardClipEntries > 0)
+                warnings.Add($"PDF layout still uses {guardClipEntries} guard clip(s).");
+            if (layoutSummary.BottomOverflowCount > 0)
+                warnings.Add($"PDF layout has {layoutSummary.BottomOverflowCount} paragraph(s) below the page bottom.");
+            if (layoutSummary.MinimumBodyFontRatio < PdfTranslationHealthReport.MinimumAllowedBodyFontRatio - 0.01)
+                warnings.Add($"PDF body font ratio fell to {layoutSummary.MinimumBodyFontRatio:F3}; the minimum is {PdfTranslationHealthReport.MinimumAllowedBodyFontRatio:F2}.");
+            if (layoutSummary.MaximumBodyFontRatio > PdfTranslationHealthReport.MaximumAllowedBodyFontRatio + 0.01)
+                warnings.Add($"PDF body font ratio grew to {layoutSummary.MaximumBodyFontRatio:F3}; the maximum is {PdfTranslationHealthReport.MaximumAllowedBodyFontRatio:F2}.");
+            if (layoutSummary.MaximumBodyLineSpacingMultiplier > PdfTranslationHealthReport.MaximumAllowedBodyLineSpacingMultiplier + 0.01)
+                warnings.Add($"PDF body line spacing grew to {layoutSummary.MaximumBodyLineSpacingMultiplier:F3}; the maximum is {PdfTranslationHealthReport.MaximumAllowedBodyLineSpacingMultiplier:F2}.");
+            if (layoutSummary.MaximumFlowRegionResidualWhitespace > PdfTranslationHealthReport.MaximumAllowedFlowRegionResidualWhitespace)
+                warnings.Add($"PDF flow region retained {layoutSummary.MaximumFlowRegionResidualWhitespace:F1}pt of undistributed whitespace; the maximum is {PdfTranslationHealthReport.MaximumAllowedFlowRegionResidualWhitespace:F1}pt.");
+            return warnings;
         }
 
         private readonly record struct FailureHealthReportConfig(
