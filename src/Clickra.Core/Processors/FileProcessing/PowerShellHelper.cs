@@ -177,7 +177,7 @@ try {{
             
             if (!File.Exists(outputPdfPath))
             {
-                throw new Exception(string.Format(Localization.T("error_office_output_missing", ClickraStorage.GetSetting("Language")), appType));
+                throw new InvalidOperationException(string.Format(Localization.T("error_office_output_missing", ClickraStorage.GetSetting(LanguageSettingKey)), appType));
             }
         }
 
