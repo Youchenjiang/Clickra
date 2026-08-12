@@ -151,6 +151,8 @@ internal static class Program
                 case "--help":
                 case "-h":
                     return null;
+                default:
+                    break;
             }
 
             if (arg == "--local" || arg == "--release-url")
