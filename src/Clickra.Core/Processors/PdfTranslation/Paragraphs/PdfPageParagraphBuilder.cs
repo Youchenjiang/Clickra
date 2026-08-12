@@ -252,12 +252,9 @@ internal static class PdfPageParagraphBuilder
 
             foreach (var para in ordered.Where(p => IsCandidateAlgorithmBody(p, heading, minX, maxX)))
             {
-                string text = para.TextWithPlaceholders.Trim();
-                bool pseudoCode = PdfParagraphCodeClassifier.IsAlgorithmPseudoCodeLine(text);
-                bool indentedContinuation = marked > 0 && para.X0 > heading.X0 + 10.0 && !LooksLikeAlgorithmBodyExit(para, text);
-                if (!pseudoCode && !indentedContinuation)
+                if (!ShouldMarkAlgorithmBodyLine(para, heading, marked, out bool stopScan))
                 {
-                    if (marked > 0) break;
+                    if (stopScan) break;
                     continue;
                 }
 
@@ -265,6 +262,18 @@ internal static class PdfPageParagraphBuilder
                 marked++;
             }
         }
+    }
+
+    /// <summary>Whether the paragraph is a pseudo-code line or an indented continuation
+    /// of the algorithm body. When false, <paramref name="stopScan"/> tells the caller
+    /// whether scanning ended (a non-body paragraph appeared after a marked line).</summary>
+    private static bool ShouldMarkAlgorithmBodyLine(PdfParagraph para, PdfParagraph heading, int marked, out bool stopScan)
+    {
+        string text = para.TextWithPlaceholders.Trim();
+        bool pseudoCode = PdfParagraphCodeClassifier.IsAlgorithmPseudoCodeLine(text);
+        bool indentedContinuation = marked > 0 && para.X0 > heading.X0 + 10.0 && !LooksLikeAlgorithmBodyExit(para, text);
+        stopScan = marked > 0 && !pseudoCode && !indentedContinuation;
+        return pseudoCode || indentedContinuation;
     }
 
     /// <summary>Whether the paragraph lies within the heading's visual column and below
