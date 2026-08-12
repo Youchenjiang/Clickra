@@ -19,6 +19,17 @@ namespace Clickra_Fluent;
 public sealed partial class MainPage : Page
 {
     private const string GitHubUrl = "https://github.com/Youchenjiang/Clickra"; // NOSONAR:S1075 — the project's canonical repository URL.
+    private const string LanguageSettingKey = "Language";
+    private const string OutputDirectorySettingKey = "OutputDir";
+    private const string DownloadsSettingValue = "downloads";
+    private const string SimplifiedChineseLanguage = "zh-CN";
+    private const string FalseSettingValue = "false";
+    private const string SuccessLocalizationKey = "fluent_success";
+    private const string FailedLocalizationKey = "fluent_failed";
+    private const string SecondaryCardBrushResource = "CardBackgroundFillColorSecondaryBrush";
+    private const string SecondaryTextBrushResource = "TextFillColorSecondaryBrush";
+    private const string LibreOfficeRemovalSettingKey = "LibreOfficeRemovalPendingRestart";
+    private const string LibreOfficePathSettingKey = "LibreOfficePath";
     private readonly List<string> _selectedFiles = new();
     private readonly Dictionary<string, Button> _commandButtons = new(StringComparer.OrdinalIgnoreCase);
     private CancellationTokenSource? _cts;
@@ -76,7 +87,7 @@ public sealed partial class MainPage : Page
         }
     }
 
-    private static string L(string key) => Localization.T(key, ClickraStorage.GetSetting("Language"));
+    private static string L(string key) => Localization.T(key, ClickraStorage.GetSetting(LanguageSettingKey));
 
     private void NavView_SelectionChanged(NavigationView sender, NavigationViewSelectionChangedEventArgs args)
     {
@@ -271,7 +282,7 @@ public sealed partial class MainPage : Page
     // NOSONAR:S2325 — accesses XAML-generated instance fields (DropZone/DropZoneIcon).
     private void SetDropZoneHot(bool isHot)
     {
-        DropZone.Background = (Brush)Application.Current.Resources[isHot ? "CardBackgroundFillColorSecondaryBrush" : "CardBackgroundFillColorDefaultBrush"];
+        DropZone.Background = (Brush)Application.Current.Resources[isHot ? SecondaryCardBrushResource : "CardBackgroundFillColorDefaultBrush"];
         DropZone.BorderBrush = (Brush)Application.Current.Resources[isHot ? "AccentFillColorDefaultBrush" : "CardStrokeColorDefaultBrush"];
         DropZoneIcon.Opacity = isHot ? 1 : 0.85;
     }
@@ -469,15 +480,15 @@ public sealed partial class MainPage : Page
     private void LoadSettings()
     {
         _loadingSettings = true;
-        OutputDirCombo.SelectedIndex = ClickraStorage.GetSetting("OutputDir") switch { "desktop" => 1, "downloads" => 2, var s when !string.IsNullOrWhiteSpace(s) && s != "source" => 3, _ => 0 };
+        OutputDirCombo.SelectedIndex = ClickraStorage.GetSetting(OutputDirectorySettingKey) switch { "desktop" => 1, DownloadsSettingValue => 2, var s when !string.IsNullOrWhiteSpace(s) && s != "source" => 3, _ => 0 };
         EngineCombo.SelectedIndex = ClickraStorage.GetSetting("OfficeEngine") switch { "microsoft" => 1, "libreoffice" => 2, _ => 0 };
-        LanguageCombo.SelectedIndex = ClickraStorage.GetSetting("Language") switch { "zh-CN" => 1, "en-US" => 2, "ja-JP" => 3, "ko-KR" => 4, _ => 0 };
+        LanguageCombo.SelectedIndex = ClickraStorage.GetSetting(LanguageSettingKey) switch { SimplifiedChineseLanguage => 1, "en-US" => 2, "ja-JP" => 3, "ko-KR" => 4, _ => 0 };
         QuietModeToggle.IsOn = ClickraStorage.GetSetting("QuietMode").Equals("true", StringComparison.OrdinalIgnoreCase);
-        NotificationToggle.IsOn = !ClickraStorage.GetSetting("Notification").Equals("false", StringComparison.OrdinalIgnoreCase);
-        PdfLangCombo.SelectedIndex = ClickraStorage.GetSetting("TranslateTargetLang") switch { "en" => 1, "zh-CN" => 2, "ja" => 3, "ko" => 4, _ => 0 };
+        NotificationToggle.IsOn = !ClickraStorage.GetSetting("Notification").Equals(FalseSettingValue, StringComparison.OrdinalIgnoreCase);
+        PdfLangCombo.SelectedIndex = ClickraStorage.GetSetting("TranslateTargetLang") switch { "en" => 1, SimplifiedChineseLanguage => 2, "ja" => 3, "ko" => 4, _ => 0 };
         CompressionSlider.Value = int.TryParse(ClickraStorage.GetSetting("PdfCompressImageLevel"), out int level) ? level : 1;
         StripFontsToggle.IsOn = ClickraStorage.GetSetting("PdfCompressStripFonts").Equals("true", StringComparison.OrdinalIgnoreCase);
-        MinifyContentToggle.IsOn = !ClickraStorage.GetSetting("PdfCompressMinifyContent").Equals("false", StringComparison.OrdinalIgnoreCase);
+        MinifyContentToggle.IsOn = !ClickraStorage.GetSetting("PdfCompressMinifyContent").Equals(FalseSettingValue, StringComparison.OrdinalIgnoreCase);
         _loadingSettings = false;
         ApplyLanguage();
         RefreshLibreOfficeStatus();
@@ -515,8 +526,8 @@ public sealed partial class MainPage : Page
         OverviewNoHistoryText.Text = L("fluent_no_history");
         OverviewActivityTitle.Text = L("fluent_activity_summary");
         OverviewTotalLabel.Text = L("fluent_total");
-        OverviewOkLabel.Text = L("fluent_success");
-        OverviewFailLabel.Text = L("fluent_failed");
+        OverviewOkLabel.Text = L(SuccessLocalizationKey);
+        OverviewFailLabel.Text = L(FailedLocalizationKey);
         OverviewToolsLabel.Text = L("fluent_tools");
         OverviewToolsReady.Text = L("fluent_ready");
         OverviewExplorerLabel.Text = L("fluent_explorer_menu");
@@ -560,8 +571,8 @@ public sealed partial class MainPage : Page
         HistorySubtitle.Text = L("fluent_history_subtitle");
         ClearHistoryButton.Content = L("fluent_clear");
         HistoryTotalLabel.Text = L("fluent_total");
-        HistorySuccessLabel.Text = L("fluent_success");
-        HistoryFailedLabel.Text = L("fluent_failed");
+        HistorySuccessLabel.Text = L(SuccessLocalizationKey);
+        HistoryFailedLabel.Text = L(FailedLocalizationKey);
         ActiveJobTitle.Text = L("fluent_run");
         EmptyHistoryText.Text = L("fluent_no_history");
 
@@ -617,13 +628,13 @@ public sealed partial class MainPage : Page
     {
         if (_loadingSettings) return;
         ClickraStorage.SaveSetting("OfficeEngine", EngineCombo.SelectedIndex switch { 1 => "microsoft", 2 => "libreoffice", _ => "auto" });
-        ClickraStorage.SaveSetting("Language", LanguageCombo.SelectedIndex switch { 1 => "zh-CN", 2 => "en-US", 3 => "ja-JP", 4 => "ko-KR", _ => "zh-TW" });
-        ClickraStorage.SaveSetting("TranslateTargetLang", PdfLangCombo.SelectedIndex switch { 1 => "en", 2 => "zh-CN", 3 => "ja", 4 => "ko", _ => "zh-TW" });
+        ClickraStorage.SaveSetting(LanguageSettingKey, LanguageCombo.SelectedIndex switch { 1 => SimplifiedChineseLanguage, 2 => "en-US", 3 => "ja-JP", 4 => "ko-KR", _ => "zh-TW" });
+        ClickraStorage.SaveSetting("TranslateTargetLang", PdfLangCombo.SelectedIndex switch { 1 => "en", 2 => SimplifiedChineseLanguage, 3 => "ja", 4 => "ko", _ => "zh-TW" });
         ClickraStorage.SaveSetting("PdfCompressImageLevel", ((int)CompressionSlider.Value).ToString());
-        ClickraStorage.SaveSetting("PdfCompressStripFonts", StripFontsToggle.IsOn ? "true" : "false");
-        ClickraStorage.SaveSetting("PdfCompressMinifyContent", MinifyContentToggle.IsOn ? "true" : "false");
-        ClickraStorage.SaveSetting("QuietMode", QuietModeToggle.IsOn ? "true" : "false");
-        ClickraStorage.SaveSetting("Notification", NotificationToggle.IsOn ? "true" : "false");
+        ClickraStorage.SaveSetting("PdfCompressStripFonts", StripFontsToggle.IsOn ? "true" : FalseSettingValue);
+        ClickraStorage.SaveSetting("PdfCompressMinifyContent", MinifyContentToggle.IsOn ? "true" : FalseSettingValue);
+        ClickraStorage.SaveSetting("QuietMode", QuietModeToggle.IsOn ? "true" : FalseSettingValue);
+        ClickraStorage.SaveSetting("Notification", NotificationToggle.IsOn ? "true" : FalseSettingValue);
         RefreshLibreOfficeStatus();
     }
 
@@ -643,15 +654,15 @@ public sealed partial class MainPage : Page
             if (folder is null)
             {
                 _loadingSettings = true;
-                OutputDirCombo.SelectedIndex = ClickraStorage.GetSetting("OutputDir") switch { "desktop" => 1, "downloads" => 2, var s when !string.IsNullOrWhiteSpace(s) && s != "source" => 3, _ => 0 };
+                OutputDirCombo.SelectedIndex = ClickraStorage.GetSetting(OutputDirectorySettingKey) switch { "desktop" => 1, DownloadsSettingValue => 2, var s when !string.IsNullOrWhiteSpace(s) && s != "source" => 3, _ => 0 };
                 _loadingSettings = false;
                 return;
             }
-            ClickraStorage.SaveSetting("OutputDir", folder.Path);
+            ClickraStorage.SaveSetting(OutputDirectorySettingKey, folder.Path);
             return;
         }
 
-        ClickraStorage.SaveSetting("OutputDir", OutputDirCombo.SelectedIndex switch { 1 => "desktop", 2 => "downloads", _ => "source" });
+        ClickraStorage.SaveSetting(OutputDirectorySettingKey, OutputDirCombo.SelectedIndex switch { 1 => "desktop", 2 => DownloadsSettingValue, _ => "source" });
     }
 
     private void RefreshHistory()
@@ -701,7 +712,7 @@ public sealed partial class MainPage : Page
             {
                 ColumnSpacing = 10,
                 Padding = new Thickness(12, 10, 12, 10),
-                Background = (Brush)Application.Current.Resources["CardBackgroundFillColorSecondaryBrush"],
+                Background = (Brush)Application.Current.Resources[SecondaryCardBrushResource],
                 CornerRadius = new CornerRadius(8)
             };
             row.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
@@ -727,7 +738,7 @@ public sealed partial class MainPage : Page
             {
                 Text = entry.Time,
                 FontSize = 12,
-                Foreground = (Brush)Application.Current.Resources["TextFillColorSecondaryBrush"],
+                Foreground = (Brush)Application.Current.Resources[SecondaryTextBrushResource],
                 TextTrimming = TextTrimming.CharacterEllipsis
             });
             var elapsed = new TextBlock
@@ -783,7 +794,7 @@ public sealed partial class MainPage : Page
         {
             Text = $"{entry.Time} · {entry.FileCount} {L("fluent_file_count")}",
             FontSize = 12,
-            Foreground = (Brush)Application.Current.Resources["TextFillColorSecondaryBrush"],
+            Foreground = (Brush)Application.Current.Resources[SecondaryTextBrushResource],
             TextTrimming = TextTrimming.CharacterEllipsis
         });
 
@@ -794,7 +805,7 @@ public sealed partial class MainPage : Page
         };
         result.Children.Add(new TextBlock
         {
-            Text = entry.IsSuccess ? L("fluent_success") : L("fluent_failed"),
+            Text = entry.IsSuccess ? L(SuccessLocalizationKey) : L(FailedLocalizationKey),
             FontSize = 13,
             Foreground = statusBrush,
             HorizontalAlignment = HorizontalAlignment.Right
@@ -803,7 +814,7 @@ public sealed partial class MainPage : Page
         {
             Text = FormatElapsed(entry.ElapsedMs),
             FontSize = 12,
-            Foreground = (Brush)Application.Current.Resources["TextFillColorSecondaryBrush"],
+            Foreground = (Brush)Application.Current.Resources[SecondaryTextBrushResource],
             HorizontalAlignment = HorizontalAlignment.Right
         });
 
@@ -819,7 +830,7 @@ public sealed partial class MainPage : Page
             Content = row,
             HorizontalAlignment = HorizontalAlignment.Stretch,
             HorizontalContentAlignment = HorizontalAlignment.Stretch,
-            Background = (Brush)Application.Current.Resources[selected ? "CardBackgroundFillColorSecondaryBrush" : "CardBackgroundFillColorDefaultBrush"],
+            Background = (Brush)Application.Current.Resources[selected ? SecondaryCardBrushResource : "CardBackgroundFillColorDefaultBrush"],
             BorderBrush = (Brush)Application.Current.Resources[selected ? "AccentFillColorDefaultBrush" : "CardStrokeColorDefaultBrush"],
             BorderThickness = new Thickness(selected ? 2 : 1),
             Padding = new Thickness(0),
@@ -843,7 +854,7 @@ public sealed partial class MainPage : Page
         {
             Glyph = "\uE81C",
             FontSize = 42,
-            Foreground = (Brush)Application.Current.Resources["TextFillColorSecondaryBrush"],
+            Foreground = (Brush)Application.Current.Resources[SecondaryTextBrushResource],
             HorizontalAlignment = HorizontalAlignment.Center,
             Margin = new Thickness(0, 120, 0, 0)
         });
@@ -852,7 +863,7 @@ public sealed partial class MainPage : Page
             Text = L("fluent_select_history"),
             FontSize = 18,
             FontWeight = Microsoft.UI.Text.FontWeights.SemiBold,
-            Foreground = (Brush)Application.Current.Resources["TextFillColorSecondaryBrush"],
+            Foreground = (Brush)Application.Current.Resources[SecondaryTextBrushResource],
             HorizontalAlignment = HorizontalAlignment.Center
         });
     }
@@ -877,7 +888,7 @@ public sealed partial class MainPage : Page
         {
             Text = entry.Time,
             FontSize = 13,
-            Foreground = (Brush)Application.Current.Resources["TextFillColorSecondaryBrush"]
+            Foreground = (Brush)Application.Current.Resources[SecondaryTextBrushResource]
         });
 
         var status = new Border
@@ -890,7 +901,7 @@ public sealed partial class MainPage : Page
             VerticalAlignment = VerticalAlignment.Top,
             Child = new TextBlock
             {
-                Text = entry.IsSuccess ? L("fluent_success") : L("fluent_failed"),
+                Text = entry.IsSuccess ? L(SuccessLocalizationKey) : L(FailedLocalizationKey),
                 FontSize = 13,
                 Foreground = statusBrush
             }
@@ -904,7 +915,7 @@ public sealed partial class MainPage : Page
         var facts = new Grid
         {
             ColumnSpacing = 12,
-            Background = (Brush)Application.Current.Resources["CardBackgroundFillColorSecondaryBrush"],
+            Background = (Brush)Application.Current.Resources[SecondaryCardBrushResource],
             CornerRadius = new CornerRadius(8),
             Padding = new Thickness(14)
         };
@@ -913,7 +924,7 @@ public sealed partial class MainPage : Page
         facts.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
         AddFact(facts, 0, L("fluent_files"), entry.FileCount.ToString());
         AddFact(facts, 1, L("fluent_elapsed"), FormatElapsed(entry.ElapsedMs));
-        AddFact(facts, 2, L("fluent_result"), entry.IsSuccess ? L("fluent_success") : L("fluent_failed"), statusBrush);
+        AddFact(facts, 2, L("fluent_result"), entry.IsSuccess ? L(SuccessLocalizationKey) : L(FailedLocalizationKey), statusBrush);
         HistoryDetailContainer.Children.Add(facts);
 
         AddDetailSection(L("fluent_input_paths"), SplitPaths(entry.InputPaths));
@@ -931,7 +942,7 @@ public sealed partial class MainPage : Page
         {
             Text = label,
             FontSize = 12,
-            Foreground = (Brush)Application.Current.Resources["TextFillColorSecondaryBrush"]
+            Foreground = (Brush)Application.Current.Resources[SecondaryTextBrushResource]
         });
         stack.Children.Add(new TextBlock
         {
@@ -955,13 +966,13 @@ public sealed partial class MainPage : Page
             Text = label,
             FontSize = 13,
             FontWeight = Microsoft.UI.Text.FontWeights.SemiBold,
-            Foreground = (Brush)Application.Current.Resources["TextFillColorSecondaryBrush"],
+            Foreground = (Brush)Application.Current.Resources[SecondaryTextBrushResource],
             Margin = new Thickness(0, 4, 0, -6)
         });
 
         HistoryDetailContainer.Children.Add(new Border
         {
-            Background = isError ? new SolidColorBrush(Color.FromArgb(32, 255, 107, 107)) : (Brush)Application.Current.Resources["CardBackgroundFillColorSecondaryBrush"],
+            Background = isError ? new SolidColorBrush(Color.FromArgb(32, 255, 107, 107)) : (Brush)Application.Current.Resources[SecondaryCardBrushResource],
             BorderBrush = isError ? valueBrush : (Brush)Application.Current.Resources["CardStrokeColorDefaultBrush"],
             BorderThickness = new Thickness(1),
             CornerRadius = new CornerRadius(8),
@@ -987,7 +998,7 @@ public sealed partial class MainPage : Page
     private void RefreshLibreOfficeStatus()
     {
         string resolvedPath = LibreOfficeHelper.GetResolvedExecutablePath();
-        bool removalPending = ClickraStorage.GetSetting("LibreOfficeRemovalPendingRestart").Equals("true", StringComparison.OrdinalIgnoreCase);
+        bool removalPending = ClickraStorage.GetSetting(LibreOfficeRemovalSettingKey).Equals("true", StringComparison.OrdinalIgnoreCase);
         bool ready = !string.IsNullOrWhiteSpace(resolvedPath);
         string installedVersion = LibreOfficeEngineInstaller.GetInstalledSystemVersion();
 
@@ -1034,8 +1045,8 @@ public sealed partial class MainPage : Page
             return;
         }
 
-        ClickraStorage.SaveSetting("LibreOfficePath", file.Path);
-        ClickraStorage.SaveSetting("LibreOfficeRemovalPendingRestart", "false");
+        ClickraStorage.SaveSetting(LibreOfficePathSettingKey, file.Path);
+        ClickraStorage.SaveSetting(LibreOfficeRemovalSettingKey, FalseSettingValue);
         RefreshLibreOfficeStatus();
     }
 
@@ -1047,14 +1058,14 @@ public sealed partial class MainPage : Page
             return;
         }
 
-        bool removalPending = ClickraStorage.GetSetting("LibreOfficeRemovalPendingRestart").Equals("true", StringComparison.OrdinalIgnoreCase);
+        bool removalPending = ClickraStorage.GetSetting(LibreOfficeRemovalSettingKey).Equals("true", StringComparison.OrdinalIgnoreCase);
         var package = LibreOfficeEngineInstaller.RecommendedPackage;
         string installedVersion = LibreOfficeEngineInstaller.GetInstalledSystemVersion();
         if (!removalPending && !string.IsNullOrWhiteSpace(installedVersion) && LibreOfficeEngineInstaller.IsRecommendedVersionInstalled())
         {
             string resolvedPath = LibreOfficeEngineInstaller.ResolveSystemSofficePath();
             if (!string.IsNullOrWhiteSpace(resolvedPath))
-                ClickraStorage.SaveSetting("LibreOfficePath", resolvedPath);
+                ClickraStorage.SaveSetting(LibreOfficePathSettingKey, resolvedPath);
             await ShowErrorAsync(string.Format(L("setting_libreoffice_already_current"), installedVersion));
             RefreshLibreOfficeStatus();
             return;
@@ -1076,7 +1087,7 @@ public sealed partial class MainPage : Page
 
         try
         {
-            string downloadDir = Path.Combine(ClickraStorage.GetDataDir(), "downloads");
+            string downloadDir = Path.Combine(ClickraStorage.GetDataDir(), DownloadsSettingValue);
             var progress = new Progress<int>(percent =>
             {
                 int displayPercent = Math.Min(80, Math.Max(1, percent * 80 / 100));
@@ -1100,9 +1111,9 @@ public sealed partial class MainPage : Page
                 throw new InvalidOperationException(L("setting_libreoffice_validation_failed"));
 
             if (!string.IsNullOrWhiteSpace(sofficePath))
-                ClickraStorage.SaveSetting("LibreOfficePath", sofficePath);
+                ClickraStorage.SaveSetting(LibreOfficePathSettingKey, sofficePath);
             ClickraStorage.SaveSetting("LibreOfficeInstalledByClickra", "true");
-            ClickraStorage.SaveSetting("LibreOfficeRemovalPendingRestart", "false");
+            ClickraStorage.SaveSetting(LibreOfficeRemovalSettingKey, FalseSettingValue);
             LibreOfficeSetupProgress.Value = 100;
 
             await ShowErrorAsync(string.Format(
@@ -1111,7 +1122,7 @@ public sealed partial class MainPage : Page
         }
         catch (Exception ex)
         {
-            ClickraStorage.SaveSetting("LibreOfficePath", "");
+            ClickraStorage.SaveSetting(LibreOfficePathSettingKey, "");
             await ShowErrorAsync(string.Format(L("setting_libreoffice_download_failed"), ex.Message));
         }
         finally
@@ -1128,7 +1139,7 @@ public sealed partial class MainPage : Page
             await ShowErrorAsync(L("setting_libreoffice_download_in_progress"));
             return;
         }
-        if (ClickraStorage.GetSetting("LibreOfficeRemovalPendingRestart").Equals("true", StringComparison.OrdinalIgnoreCase))
+        if (ClickraStorage.GetSetting(LibreOfficeRemovalSettingKey).Equals("true", StringComparison.OrdinalIgnoreCase))
         {
             await ShowErrorAsync(L("setting_libreoffice_removal_pending"));
             return;
@@ -1142,9 +1153,9 @@ public sealed partial class MainPage : Page
         try
         {
             LibreOfficeUninstallResult result = await LibreOfficeEngineInstaller.UninstallSystemLibreOfficeAsync(CancellationToken.None);
-            ClickraStorage.SaveSetting("LibreOfficePath", "");
-            ClickraStorage.SaveSetting("LibreOfficeInstalledByClickra", "false");
-            ClickraStorage.SaveSetting("LibreOfficeRemovalPendingRestart", result.RestartRequired ? "true" : "false");
+            ClickraStorage.SaveSetting(LibreOfficePathSettingKey, "");
+            ClickraStorage.SaveSetting("LibreOfficeInstalledByClickra", FalseSettingValue);
+            ClickraStorage.SaveSetting(LibreOfficeRemovalSettingKey, result.RestartRequired ? "true" : FalseSettingValue);
             ClickraStorage.SaveSetting("OfficeEngine", "auto");
             _loadingSettings = true;
             EngineCombo.SelectedIndex = 0;
@@ -1283,7 +1294,7 @@ public sealed partial class MainPage : Page
 
     private static void ShowToast(string title, string body)
     {
-        if (ClickraStorage.GetSetting("Notification").Equals("false", StringComparison.OrdinalIgnoreCase)) return;
+        if (ClickraStorage.GetSetting("Notification").Equals(FalseSettingValue, StringComparison.OrdinalIgnoreCase)) return;
         try
         {
             static string Escape(string value) => value.Replace("'", "''").Replace("`", "``").Replace("\"", "`\"");
