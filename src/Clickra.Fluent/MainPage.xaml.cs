@@ -400,44 +400,34 @@ public sealed partial class MainPage : Page
 
         string command = _selectedCommand;
         var files = _selectedFiles.ToList();
-        string startTime = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
-        string inputs = string.Join(";", files);
         var outputs = ConvertCommandRegistry.EstimateOutputs(command, files);
-        var stopwatch = Stopwatch.StartNew();
 
         try
         {
-            ClickraStorage.StartActiveRecord(command, files.Count, inputs);
-            ClickraStorage.SetActiveRecordInProgress();
-            void Progress(int current, int total, string message)
+            var result = await ConvertCommandRunner.RunTrackedAsync(command, files, outputs,
+                (percent, message) => DispatcherQueue.TryEnqueue(() => SetProgress(percent, message)),
+                _cts.Token,
+                () => DispatcherQueue.EnqueueAsync(() => FluentDialogs.PromptPasswordAsync(XamlRoot, L)),
+                pdfPath => DispatcherQueue.EnqueueAsync(() => SplitOverlay.ShowForAsync(pdfPath)));
+
+            switch (result.Status)
             {
-                int percent = total > 0 ? Math.Clamp((int)(current * 100.0 / total), 0, 100) : 0;
-                DispatcherQueue.TryEnqueue(() => SetProgress(percent, message));
+                case ConvertCommandRunner.ConvertRunStatus.Succeeded:
+                    SetProgress(100, L("fluent_progress_completed"));
+                    ShowToast(L("fluent_toast_done_title"), string.Format(L("fluent_toast_done_body"), L(ConvertCommandRegistry.GetLabelKey(command)), files.Count));
+                    _selectedFiles.Clear();
+                    RefreshFiles();
+                    break;
+                case ConvertCommandRunner.ConvertRunStatus.Canceled:
+                    SetProgress(0, L("fluent_progress_canceled"));
+                    ShowToast(L("fluent_toast_canceled_title"), string.Format(L("fluent_toast_canceled_body"), L(ConvertCommandRegistry.GetLabelKey(command))));
+                    break;
+                default:
+                    SetProgress(0, string.Format(L("fluent_progress_failed"), result.Error));
+                    ShowToast(L("fluent_toast_failed_title"), result.Error ?? "");
+                    await ShowErrorAsync(result.Error ?? "");
+                    break;
             }
-            await Task.Run(() => ConvertCommandRunner.Run(command, files, outputs, Progress, _cts.Token,
-                () => DispatcherQueue.EnqueueAsync(PromptPasswordAsync),
-                pdfPath => DispatcherQueue.EnqueueAsync(() => PromptSplitPagesAsync(pdfPath))), _cts.Token);
-            stopwatch.Stop();
-            ClickraStorage.CompleteActiveRecord(command, startTime, true, "", elapsedMs: stopwatch.ElapsedMilliseconds, inputPaths: inputs, outputPath: string.Join(";", outputs));
-            SetProgress(100, L("fluent_progress_completed"));
-            ShowToast(L("fluent_toast_done_title"), string.Format(L("fluent_toast_done_body"), L(ConvertCommandRegistry.GetLabelKey(command)), files.Count));
-            _selectedFiles.Clear();
-            RefreshFiles();
-        }
-        catch (OperationCanceledException)
-        {
-            stopwatch.Stop();
-            ClickraStorage.CompleteActiveRecord(command, startTime, false, "Canceled", elapsedMs: stopwatch.ElapsedMilliseconds, inputPaths: inputs, outputPath: string.Join(";", outputs));
-            SetProgress(0, L("fluent_progress_canceled"));
-            ShowToast(L("fluent_toast_canceled_title"), string.Format(L("fluent_toast_canceled_body"), L(ConvertCommandRegistry.GetLabelKey(command))));
-        }
-        catch (Exception ex)
-        {
-            stopwatch.Stop();
-            ClickraStorage.CompleteActiveRecord(command, startTime, false, ex.Message, elapsedMs: stopwatch.ElapsedMilliseconds, inputPaths: inputs, outputPath: string.Join(";", outputs));
-            SetProgress(0, string.Format(L("fluent_progress_failed"), ex.Message));
-            ShowToast(L("fluent_toast_failed_title"), ex.Message);
-            await ShowErrorAsync(ex.Message);
         }
         finally
         {
@@ -1276,28 +1266,6 @@ public sealed partial class MainPage : Page
         _ => "balanced"
     };
 
-    private async Task<string?> PromptPasswordAsync()
-    {
-        var box = new PasswordBox { PlaceholderText = L("fluent_pdf_password") };
-        var dialog = new ContentDialog
-        {
-            Title = L("fluent_pdf_password"),
-            Content = box,
-            PrimaryButtonText = L("fluent_ok"),
-            CloseButtonText = L("fluent_cancel"),
-            XamlRoot = XamlRoot
-        };
-        return await dialog.ShowAsync() == ContentDialogResult.Primary ? box.Password : null;
-    }
-
-    // NOSONAR:S2325 — accesses the XAML-generated SplitOverlay instance field.
-    private async Task<string?> PromptSplitPagesAsync(string pdfPath)
-    {
-        SplitOverlay.Visibility = Visibility.Visible;
-        string? spec = await SplitOverlay.ShowForAsync(pdfPath);
-        SplitOverlay.Visibility = Visibility.Collapsed;
-        return spec;
-    }
 
     private async Task ShowErrorAsync(string message)
     {

@@ -28,15 +28,24 @@ public sealed partial class SplitPagesOverlay : UserControl
     }
 
     /// <summary>
-    /// Loads a fresh splitter for <paramref name="pdfPath"/> and returns a task that
-    /// completes with the chosen page-range spec, or null when cancelled.
+    /// Shows the overlay, loads a fresh splitter for <paramref name="pdfPath"/> and
+    /// returns a task that completes with the chosen page-range spec, or null when
+    /// cancelled. The overlay hides itself when the task completes.
     /// </summary>
-    public Task<string?> ShowForAsync(string pdfPath)
+    public async Task<string?> ShowForAsync(string pdfPath)
     {
-        _tcs = new TaskCompletionSource<string?>();
-        SplitterHost.Child = new VisualSplitterControl(pdfPath);
-        OverlayFile.Text = Path.GetFileName(pdfPath);
-        return _tcs.Task;
+        Visibility = Visibility.Visible;
+        try
+        {
+            _tcs = new TaskCompletionSource<string?>();
+            SplitterHost.Child = new VisualSplitterControl(pdfPath);
+            OverlayFile.Text = Path.GetFileName(pdfPath);
+            return await _tcs.Task;
+        }
+        finally
+        {
+            Visibility = Visibility.Collapsed;
+        }
     }
 
     private void ConfirmBtn_Click(object sender, RoutedEventArgs e)

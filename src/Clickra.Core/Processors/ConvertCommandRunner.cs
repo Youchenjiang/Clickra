@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -10,6 +11,58 @@ namespace Clickra.Core.Processors
     /// prompts) are supplied as delegates.</summary>
     public static class ConvertCommandRunner
     {
+        /// <summary>Outcome of a tracked conversion run.</summary>
+        public enum ConvertRunStatus { Succeeded, Canceled, Failed }
+
+        /// <summary>Outcome of a tracked conversion run together with the failure message.</summary>
+        public readonly record struct ConvertRunResult(ConvertRunStatus Status, string? Error);
+
+        /// <summary>Executes a command while recording the active record in ClickraStorage.
+        /// The progress delegate receives already-marshaled UI updates; the caller keeps
+        /// handling the result-specific UI. Shared by both UIs so start/complete/cancel
+        /// accounting stays in one place.</summary>
+        public static async Task<ConvertRunResult> RunTrackedAsync(
+            string command,
+            List<string> files,
+            List<string> outputs,
+            Action<int, string> updateProgress,
+            CancellationToken token,
+            Func<Task<string?>> promptPassword,
+            Func<string, Task<string?>> promptSplitPages)
+        {
+            string startTime = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
+            string inputs = string.Join(";", files);
+            var stopwatch = Stopwatch.StartNew();
+
+            void Progress(int current, int total, string message)
+            {
+                int percent = total > 0 ? Math.Clamp((int)(current * 100.0 / total), 0, 100) : 0;
+                updateProgress(percent, message);
+            }
+
+            try
+            {
+                ClickraStorage.StartActiveRecord(command, files.Count, inputs);
+                ClickraStorage.SetActiveRecordInProgress();
+                await Task.Run(() => Run(command, files, outputs, Progress, token, promptPassword, promptSplitPages), token);
+                stopwatch.Stop();
+                ClickraStorage.CompleteActiveRecord(command, startTime, true, "", elapsedMs: stopwatch.ElapsedMilliseconds, inputPaths: inputs, outputPath: string.Join(";", outputs));
+                return new ConvertRunResult(ConvertRunStatus.Succeeded, null);
+            }
+            catch (OperationCanceledException)
+            {
+                stopwatch.Stop();
+                ClickraStorage.CompleteActiveRecord(command, startTime, false, "Canceled", elapsedMs: stopwatch.ElapsedMilliseconds, inputPaths: inputs, outputPath: string.Join(";", outputs));
+                return new ConvertRunResult(ConvertRunStatus.Canceled, null);
+            }
+            catch (Exception ex)
+            {
+                stopwatch.Stop();
+                ClickraStorage.CompleteActiveRecord(command, startTime, false, ex.Message, elapsedMs: stopwatch.ElapsedMilliseconds, inputPaths: inputs, outputPath: string.Join(";", outputs));
+                return new ConvertRunResult(ConvertRunStatus.Failed, ex.Message);
+            }
+        }
+
         /// <summary>Executes the given command. A null result from either prompt delegate
         /// cancels the operation.</summary>
         public static void Run(

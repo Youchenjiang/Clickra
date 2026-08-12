@@ -75,11 +75,8 @@ public sealed partial class TaskProgressPage : Page
             return;
         }
 
-        string startTime = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
-        string inputs = string.Join(";", files);
         var outputs = ConvertCommandRegistry.EstimateOutputs(command, files);
         _outputFolder = Path.GetDirectoryName(outputs[0]) ?? "";
-        var stopwatch = Stopwatch.StartNew();
         _cts = new CancellationTokenSource();
 
         TitleText.Text = string.Format(L("fluent_progress_running_title"), L(ConvertCommandRegistry.GetLabelKey(command)));
@@ -91,31 +88,24 @@ public sealed partial class TaskProgressPage : Page
 
         try
         {
-            ClickraStorage.StartActiveRecord(command, files.Count, inputs);
-            ClickraStorage.SetActiveRecordInProgress();
-            void Progress(int current, int total, string message)
+            var result = await ConvertCommandRunner.RunTrackedAsync(command, files, outputs,
+                (percent, message) => DispatcherQueue.TryEnqueue(() => SetProgress(percent, message)),
+                _cts.Token,
+                () => DispatcherQueue.EnqueueAsync(() => FluentDialogs.PromptPasswordAsync(XamlRoot, L)),
+                pdfPath => DispatcherQueue.EnqueueAsync(() => SplitOverlay.ShowForAsync(pdfPath)));
+
+            switch (result.Status)
             {
-                int percent = total > 0 ? Math.Clamp((int)(current * 100.0 / total), 0, 100) : 0;
-                DispatcherQueue.TryEnqueue(() => SetProgress(percent, message));
+                case ConvertCommandRunner.ConvertRunStatus.Succeeded:
+                    Complete(L("fluent_progress_completed"), true);
+                    break;
+                case ConvertCommandRunner.ConvertRunStatus.Canceled:
+                    Complete(L("fluent_progress_canceled"), false);
+                    break;
+                default:
+                    Complete(result.Error ?? "", false);
+                    break;
             }
-            await Task.Run(() => ConvertCommandRunner.Run(command, files, outputs, Progress, _cts.Token,
-                () => DispatcherQueue.EnqueueAsync(PromptPasswordAsync),
-                pdfPath => DispatcherQueue.EnqueueAsync(() => PromptSplitPagesAsync(pdfPath))), _cts.Token);
-            stopwatch.Stop();
-            ClickraStorage.CompleteActiveRecord(command, startTime, true, "", elapsedMs: stopwatch.ElapsedMilliseconds, inputPaths: inputs, outputPath: string.Join(";", outputs));
-            Complete(L("fluent_progress_completed"), true);
-        }
-        catch (OperationCanceledException)
-        {
-            stopwatch.Stop();
-            ClickraStorage.CompleteActiveRecord(command, startTime, false, "Canceled", elapsedMs: stopwatch.ElapsedMilliseconds, inputPaths: inputs, outputPath: string.Join(";", outputs));
-            Complete(L("fluent_progress_canceled"), false);
-        }
-        catch (Exception ex)
-        {
-            stopwatch.Stop();
-            ClickraStorage.CompleteActiveRecord(command, startTime, false, ex.Message, elapsedMs: stopwatch.ElapsedMilliseconds, inputPaths: inputs, outputPath: string.Join(";", outputs));
-            Complete(ex.Message, false);
         }
         finally
         {
@@ -124,28 +114,6 @@ public sealed partial class TaskProgressPage : Page
         }
     }
 
-    private async Task<string?> PromptPasswordAsync()
-    {
-        var box = new PasswordBox { PlaceholderText = L("fluent_pdf_password_placeholder") };
-        var dialog = new ContentDialog
-        {
-            Title = L("fluent_pdf_password"),
-            Content = box,
-            PrimaryButtonText = L("fluent_ok"),
-            CloseButtonText = L("dialog_cancel"),
-            XamlRoot = XamlRoot
-        };
-        return await dialog.ShowAsync() == ContentDialogResult.Primary ? box.Password : null;
-    }
-
-    // NOSONAR:S2325 — accesses the XAML-generated SplitOverlay instance field.
-    private async Task<string?> PromptSplitPagesAsync(string pdfPath)
-    {
-        SplitOverlay.Visibility = Visibility.Visible;
-        string? spec = await SplitOverlay.ShowForAsync(pdfPath);
-        SplitOverlay.Visibility = Visibility.Collapsed;
-        return spec;
-    }
 
     private void SetProgress(int percent, string message)
     {
