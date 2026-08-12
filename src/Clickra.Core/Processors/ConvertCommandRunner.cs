@@ -111,6 +111,8 @@ public static class ConvertCommandRunner
                 case "img-stitch":
                     FileProcessor.StitchImages(files, outputs[0], progress, token);
                     break;
+                default:
+                    throw new InvalidOperationException($"Unknown convert command '{command}'.");
             }
         }
 
