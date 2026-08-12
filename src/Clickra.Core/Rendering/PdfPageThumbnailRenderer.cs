@@ -83,9 +83,15 @@ public static class PdfPageThumbnailRenderer
     }
 
     /// <summary>Opens the PDF at <paramref name="filePath"/> and renders one 1-based
-    /// page, or null when the file or page cannot be read.</summary>
+    /// page, or null when the file or page cannot be read. Renders with the Windows
+    /// built-in PDF engine first (real text, vector graphics and images), falling back
+    /// to the PdfPig word overlay when the engine cannot open the file (e.g. encrypted
+    /// PDFs).</summary>
     public static Bitmap? RenderPageFromFile(string filePath, int pageNumber, int targetWidth, string fontName)
     {
+        var real = TryRenderWithWindowsPdf(filePath, pageNumber, targetWidth);
+        if (real != null) return real;
+
         try
         {
             using var pigDoc = UglyToad.PdfPig.PdfDocument.Open(filePath);
@@ -93,6 +99,48 @@ public static class PdfPageThumbnailRenderer
             return RenderPage(pigDoc.GetPage(pageNumber), targetWidth, fontName);
         }
         catch { /* Ignored: an unreadable PDF must not crash the preview. */ }
+        return null;
+    }
+
+    /// <summary>Returns the page count of the PDF at <paramref name="filePath"/>, or 0
+    /// when the file cannot be read.</summary>
+    public static int GetPageCount(string filePath)
+    {
+        try
+        {
+            var file = Windows.Storage.StorageFile.GetFileFromPathAsync(filePath).AsTask().GetAwaiter().GetResult();
+            var doc = Windows.Data.Pdf.PdfDocument.LoadFromFileAsync(file).AsTask().GetAwaiter().GetResult();
+            return (int)doc.PageCount;
+        }
+        catch { /* Ignored: falls back to PdfPig. */ }
+        try
+        {
+            using var pigDoc = UglyToad.PdfPig.PdfDocument.Open(filePath);
+            return pigDoc.NumberOfPages;
+        }
+        catch { /* Ignored: an unreadable PDF has no page count. */ }
+        return 0;
+    }
+
+    /// <summary>Renders one 1-based page with the Windows built-in PDF engine at the
+    /// given target width, or null when the engine cannot open or render the page.</summary>
+    private static Bitmap? TryRenderWithWindowsPdf(string filePath, int pageNumber, int targetWidth)
+    {
+        try
+        {
+            var file = Windows.Storage.StorageFile.GetFileFromPathAsync(filePath).AsTask().GetAwaiter().GetResult();
+            var doc = Windows.Data.Pdf.PdfDocument.LoadFromFileAsync(file).AsTask().GetAwaiter().GetResult();
+            if (pageNumber < 1 || pageNumber > (int)doc.PageCount) return null;
+
+            using var stream = new Windows.Storage.Streams.InMemoryRandomAccessStream();
+            doc.GetPage((uint)(pageNumber - 1))
+               .RenderToStreamAsync(stream, new Windows.Data.Pdf.PdfPageRenderOptions { DestinationWidth = (uint)targetWidth })
+               .AsTask().GetAwaiter().GetResult();
+
+            using var ms = stream.AsStreamForRead();
+            return new Bitmap(ms);
+        }
+        catch { /* Ignored: falls back to the overlay renderer. */ }
         return null;
     }
 

@@ -134,14 +134,12 @@ public partial class ProgressWindow
         string fontName = GetThumbnailFontName();
         try
         {
-            using var pigDoc = UglyToad.PdfPig.PdfDocument.Open(filePath);
-            int maxP = Math.Min(pigDoc.NumberOfPages, 20);
+            int maxP = Math.Min(PdfPageThumbnailRenderer.GetPageCount(filePath), 20);
             for (int p = 1; p <= maxP; p++)
             {
                 try
                 {
-                    var pigPage = pigDoc.GetPage(p);
-                    var pageBmp = PdfPageThumbnailRenderer.RenderPage(pigPage, 660, fontName);
+                    var pageBmp = PdfPageThumbnailRenderer.RenderPageFromFile(filePath, p, 660, fontName);
                     if (pageBmp != null)
                         _visualSplitPageThumbnails[p] = pageBmp;
                 }
@@ -182,10 +180,8 @@ public partial class ProgressWindow
         {
             try
             {
-                using var pigDoc = UglyToad.PdfPig.PdfDocument.Open(filePath);
-                if (pageNum < 1 || pageNum > pigDoc.NumberOfPages) return;
-                var pigPage = pigDoc.GetPage(pageNum);
-                var bmp = PdfPageThumbnailRenderer.RenderPage(pigPage, targetW, fontName);
+                if (pageNum < 1) return;
+                var bmp = PdfPageThumbnailRenderer.RenderPageFromFile(filePath, pageNum, targetW, fontName);
                 if (bmp == null) return;
 
                 lock (_stateLock)
