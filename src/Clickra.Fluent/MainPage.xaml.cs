@@ -1199,7 +1199,7 @@ public sealed partial class MainPage : Page
             // 喚醒檔案總管並使用 /select 自動高亮選中 history.log 檔案
             Process.Start(new ProcessStartInfo
             {
-                FileName = "explorer.exe",
+                FileName = Clickra.Core.SystemPaths.Explorer,
                 Arguments = $"/select,\"{logPath}\"",
                 UseShellExecute = true
             })?.Dispose();
@@ -1316,7 +1316,7 @@ $toast = [Windows.UI.Notifications.ToastNotification]::new($template)
 
             Process.Start(new ProcessStartInfo
             {
-                FileName = "powershell.exe",
+                FileName = Clickra.Core.SystemPaths.PowerShell,
                 Arguments = $"-NoProfile -ExecutionPolicy Bypass -Command \"{script}\"",
                 UseShellExecute = false,
                 CreateNoWindow = true

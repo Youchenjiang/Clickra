@@ -169,7 +169,7 @@ public sealed partial class TaskProgressPage : Page
     private void OpenOutputFolder()
     {
         if (string.IsNullOrWhiteSpace(_outputFolder) || !Directory.Exists(_outputFolder)) return;
-        Process.Start(new ProcessStartInfo("explorer.exe", $"\"{_outputFolder}\"") { UseShellExecute = true })?.Dispose();
+        Process.Start(new ProcessStartInfo(Clickra.Core.SystemPaths.Explorer, $"\"{_outputFolder}\"") { UseShellExecute = true })?.Dispose();
     }
 
 }

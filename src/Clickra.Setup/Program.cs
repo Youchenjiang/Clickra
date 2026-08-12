@@ -318,7 +318,8 @@ internal static class Program
         }
 
         Console.WriteLine("[Clickra Setup] 正在安裝 MSIX（視套件大小約需 10~60 秒）...");
-        var psi = new ProcessStartInfo("powershell.exe")
+        string powerShell = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.System), "WindowsPowerShell", "v1.0", "powershell.exe");
+        var psi = new ProcessStartInfo(powerShell)
         {
             Arguments = "-NoProfile -ExecutionPolicy Bypass -Command \"" + command.Replace("\"", "\\\"") + "\"",
             UseShellExecute = false,

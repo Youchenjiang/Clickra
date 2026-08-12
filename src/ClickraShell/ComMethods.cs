@@ -230,6 +230,8 @@ namespace ClickraShell
 
         /// <summary>IEnumExplorerCommand.Next — creates the next batch of command objects.</summary>
 
+        [System.Diagnostics.CodeAnalysis.SuppressMessage("Security", "S6640:Use a safe type when calling unmanaged code",
+            Justification = "NativeAOT shell extension has no managed wrapper for IApplicationActivationManager; the COM vtable is dispatched directly (same pattern as the rest of this file).")]
         private static unsafe bool ActivatePackagedApp(string appUserModelId, string arguments)
         {
             IntPtr manager = IntPtr.Zero;
