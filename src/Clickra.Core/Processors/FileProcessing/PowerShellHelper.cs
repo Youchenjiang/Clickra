@@ -203,6 +203,7 @@ try {{
             using var process = System.Diagnostics.Process.Start(startInfo)
                 ?? throw new InvalidOperationException(string.Format(Localization.T("error_office_powershell_start", ClickraStorage.GetSetting(LanguageSettingKey)), appName));
 
+            // skipcq: CS-W1100 — the registration is kept alive only to dispose it.
             using var registration = cancellationToken.Register(() =>
             {
                 try { process.Kill(true); } catch { }
@@ -451,6 +452,7 @@ try {{
                 if (process == null)
                     throw new InvalidOperationException(Localization.T("error_libreoffice_start", ClickraStorage.GetSetting(LanguageSettingKey)));
 
+                // skipcq: CS-W1100 — the registration is kept alive only to dispose it.
                 using var registration = cancellationToken.Register(() =>
                 {
                     try { process.Kill(true); } catch { }

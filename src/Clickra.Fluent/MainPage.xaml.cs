@@ -1223,7 +1223,8 @@ public sealed partial class MainPage : Page
             "[系統資訊]\r\n" +
             "作業系統: Windows\r\n" +
             $"Clickra 版本: {versionText}\r\n" +
-            $"時間: {DateTime.Now:yyyy-MM-dd HH:mm:ss}\r\n\r\n" +
+            $"時間: {DateTime.Now:yyyy-MM-dd HH:mm:ss}\r\n\r\n" + // skipcq: CS-W1091 — user-facing local timestamp in the report body.
+
             "[問題描述]\r\n" +
             "（請在此處填寫您遇到的問題...）");
         await OpenUriAsync($"https://mail.google.com/mail/?view=cm&fs=1&to=jiangyouchen%40gmail.com&su={subject}&body={body}");

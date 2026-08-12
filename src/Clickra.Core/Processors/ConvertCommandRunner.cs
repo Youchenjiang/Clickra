@@ -30,7 +30,8 @@ public static class ConvertCommandRunner
             Func<string, Task<string?>> promptSplitPages,
             CancellationToken token)
         {
-            string startTime = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
+            // Display timestamp for the history log; local time is what the user expects.
+            string startTime = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss"); // skipcq: CS-W1091
             string inputs = string.Join(";", files);
             var stopwatch = Stopwatch.StartNew();
 
