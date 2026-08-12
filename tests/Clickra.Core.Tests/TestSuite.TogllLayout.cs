@@ -8,10 +8,8 @@ static partial class TestSuite
         {
             var page = Diagnostics("TOGLL_Oracle Generation.pdf", 8);
 
-            AssertParagraph(page, "Experimental Setup", p =>
-                !p.IsTable && !p.IsBypassed && !p.IsDiagram && !p.IsGrayPromptContent && p.IsBodyProse);
-            AssertParagraph(page, "RQ3 Finding", p =>
-                !p.IsTable && !p.IsBypassed && !p.IsDiagram && !p.IsGrayPromptContent);
+            AssertParagraph(page, "Experimental Setup", p => IsPlainTranslatable(p) && p.IsBodyProse);
+            AssertParagraph(page, "RQ3 Finding", IsPlainTranslatable);
         });
 
         runner.Run("TOGLL p5 Table I grids and prompt details stay bypassed", () =>
@@ -30,12 +28,10 @@ static partial class TestSuite
                 "P6: prefix + [sep] + doc. + [sep] + mut"
             })
             {
-                AssertParagraph(page, text, p =>
-                    p.IsTable && p.IsBypassed && !p.IsDiagram && !p.IsGrayPromptContent);
+                AssertParagraph(page, text, IsTableBypassed);
             }
 
-            AssertParagraph(page, "TEST ORACLE GENERATION PERFORMANCE", p =>
-                !p.IsTable && !p.IsBypassed && !p.IsDiagram && !p.IsGrayPromptContent);
+            AssertParagraph(page, "TEST ORACLE GENERATION PERFORMANCE", IsPlainTranslatable);
         });
 
         runner.Run("TOGLL p4 Figure 2 clip stays above equation 1 explanation", () =>
@@ -58,24 +54,21 @@ static partial class TestSuite
         {
             var page = Diagnostics("TOGLL_Oracle Generation.pdf", 3);
 
-            AssertParagraph(page, "Prompt 5 (P5) includes the code for the entire MUT", p =>
-                !p.IsBypassed && !p.IsCode && !p.IsDiagram && p.IsBodyProse);
+            AssertParagraph(page, "Prompt 5 (P5) includes the code for the entire MUT", IsBodyProse);
         });
 
         runner.Run("TOGLL p4 TOGA baseline paragraph remains translatable prose", () =>
         {
             var page = Diagnostics("TOGLL_Oracle Generation.pdf", 4);
 
-            AssertParagraph(page, "We selected TOGA as our baseline method", p =>
-                !p.IsBypassed && !p.IsCode && !p.IsDiagram && p.IsBodyProse);
+            AssertParagraph(page, "We selected TOGA as our baseline method", IsBodyProse);
         });
 
         runner.Run("TOGLL p9 finding continuation remains translatable prose", () =>
         {
             var page = Diagnostics("TOGLL_Oracle Generation.pdf", 9);
 
-            AssertParagraph(page, "thereby establishing a new SOTA", p =>
-                !p.IsBypassed && !p.IsCode && !p.IsDiagram && p.IsBodyProse);
+            AssertParagraph(page, "thereby establishing a new SOTA", IsBodyProse);
         });
     }
 }

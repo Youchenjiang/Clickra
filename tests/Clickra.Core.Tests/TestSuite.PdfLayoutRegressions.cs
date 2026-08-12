@@ -60,14 +60,12 @@ static partial class TestSuite
                 "Total Post"
             })
             {
-                AssertParagraph(page, text, p =>
-                    p.IsTable && p.IsBypassed && !p.IsDiagram && !p.IsGrayPromptContent);
+                AssertParagraph(page, text, IsTableBypassed);
             }
 
             foreach (var text in new[] { "TABLE II", "TABLE III", "TABLE IV" })
             {
-                AssertParagraph(page, text, p =>
-                    !p.IsTable && !p.IsBypassed && !p.IsDiagram && !p.IsGrayPromptContent);
+                AssertParagraph(page, text, IsPlainTranslatable);
             }
         });
     }

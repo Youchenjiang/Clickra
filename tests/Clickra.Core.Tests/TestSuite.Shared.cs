@@ -74,6 +74,17 @@ static partial class TestSuite
             string.Join("\n", matches.Select(Describe)));
     }
 
+    /// <summary>Shared predicates for layout assertions; keep them here so the
+    /// per-suite test files do not repeat the same lambda bodies.</summary>
+    private static bool IsTableBypassed(TranslationParagraphDiagnostics p) =>
+        p.IsTable && p.IsBypassed && !p.IsDiagram && !p.IsGrayPromptContent;
+
+    private static bool IsPlainTranslatable(TranslationParagraphDiagnostics p) =>
+        !p.IsTable && !p.IsBypassed && !p.IsDiagram && !p.IsGrayPromptContent;
+
+    private static bool IsBodyProse(TranslationParagraphDiagnostics p) =>
+        !p.IsBypassed && !p.IsCode && !p.IsDiagram && p.IsBodyProse;
+
     private static void AssertAllParagraphs(
         TranslationPageDiagnostics page,
         string text,
