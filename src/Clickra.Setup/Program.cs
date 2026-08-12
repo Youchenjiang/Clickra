@@ -63,6 +63,14 @@ internal static class Program
         if (options.CheckOnly)
             return hasDotNet && hasWinAppRuntime ? 0 : 1;
 
+        return await InstallSelectedTrackAsync(options, hasDotNet, hasWinAppRuntime);
+    }
+
+    private static async Task<int> InstallSelectedTrackAsync(
+        SetupOptions options,
+        bool hasDotNet,
+        bool hasWinAppRuntime)
+    {
         // ---- 2. 決定軌道 ----
         bool useFluent = DecideTrack(options.ForceFluent, options.ForceNative, hasDotNet, hasWinAppRuntime);
 
