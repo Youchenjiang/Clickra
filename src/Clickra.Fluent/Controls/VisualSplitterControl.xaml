@@ -64,10 +64,13 @@
                     <Button x:Name="SplitAtPageBtn" Content="切開"/>
                 </StackPanel>
                 <Border Grid.Row="1" BorderThickness="1" BorderBrush="{ThemeResource ControlStrokeColorDefaultBrush}" Background="{ThemeResource CardBackgroundFillColorDefaultBrush}">
-                    <ScrollViewer x:Name="PreviewScroll" HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Disabled"
-                                  HorizontalScrollMode="Enabled" VerticalScrollMode="Enabled" ZoomMode="Disabled">
-                        <Image x:Name="PreviewImage" Stretch="Uniform"/>
-                    </ScrollViewer>
+                    <Grid>
+                        <ScrollViewer x:Name="ZoomHost" Visibility="Collapsed" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto"
+                                      HorizontalScrollMode="Enabled" VerticalScrollMode="Enabled" ZoomMode="Disabled">
+                            <Image x:Name="ZoomImage" Stretch="None"/>
+                        </ScrollViewer>
+                        <Image x:Name="FitImage" Stretch="Uniform"/>
+                    </Grid>
                 </Border>
                 <ToggleButton x:Name="ZoomToggle" Grid.Row="2" Content="放大檢視" HorizontalAlignment="Center" Margin="0,6,0,0"/>
             </Grid>

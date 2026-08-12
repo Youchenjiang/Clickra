@@ -9,6 +9,9 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Threading.Tasks;
+using Windows.Data.Pdf;
+using Windows.Storage;
+using Windows.Storage.Streams;
 
 namespace Clickra_Fluent;
 
@@ -37,6 +40,7 @@ public sealed partial class VisualSplitterControl : UserControl
 
     private int _renderSeq;
     private bool _suppressSelection;
+    private PdfDocument? _pdfDoc;
 
     public VisualSplitterControl(string pdfPath)
     {
@@ -90,6 +94,23 @@ public sealed partial class VisualSplitterControl : UserControl
         ZoomToggle.Unchecked += (_, _) => UpdatePreview();
 
         ApplyMode(0);
+        _ = LoadPreviewDocumentAsync();
+    }
+
+    /// <summary>Loads the Windows built-in PDF renderer for true page previews; falls
+    /// back to the shared Core word-overlay renderer when the document cannot be opened.</summary>
+    private async Task LoadPreviewDocumentAsync()
+    {
+        try
+        {
+            var file = await StorageFile.GetFileFromPathAsync(_pdfPath);
+            _pdfDoc = await PdfDocument.LoadFromFileAsync(file);
+        }
+        catch
+        {
+            _pdfDoc = null;
+        }
+        UpdatePreview();
     }
 
     /// <summary>Builds the page-range spec for the active mode via
@@ -298,8 +319,9 @@ public sealed partial class VisualSplitterControl : UserControl
         UpdatePreview();
     }
 
-    /// <summary>Renders the current preview page (fit or zoomed) off-thread and swaps it
-    /// into the preview image, discarding stale renders via a sequence guard.</summary>
+    /// <summary>Renders the current preview page (fit or zoomed) and swaps it into the
+    /// preview image, discarding stale renders via a sequence guard. Uses the Windows
+    /// built-in PDF renderer for true page quality.</summary>
     private async void UpdatePreview()
     {
         int page = GetCurrentPageNumber();
@@ -307,31 +329,46 @@ public sealed partial class VisualSplitterControl : UserControl
 
         bool zoomed = ZoomToggle.IsChecked == true;
         int targetW = zoomed ? ZoomWidth : PreviewWidth;
-        PreviewScroll.HorizontalScrollBarVisibility = zoomed ? ScrollBarVisibility.Auto : ScrollBarVisibility.Disabled;
-        PreviewScroll.VerticalScrollBarVisibility = zoomed ? ScrollBarVisibility.Auto : ScrollBarVisibility.Disabled;
-        PreviewImage.Width = zoomed ? ZoomWidth : PreviewWidth;
-        PreviewImage.Height = double.NaN;
+        ZoomHost.Visibility = zoomed ? Visibility.Visible : Visibility.Collapsed;
+        FitImage.Visibility = zoomed ? Visibility.Collapsed : Visibility.Visible;
 
-        string fontName = PdfPageThumbnailRenderer.GetTextFontName(ClickraStorage.GetSetting("Language"));
         int seq = ++_renderSeq;
-
-        var bmp = await Task.Run(() => PdfPageThumbnailRenderer.RenderPageFromFile(_pdfPath, page, targetW, fontName));
-        if (bmp == null)
+        BitmapImage? source;
+        if (_pdfDoc != null)
         {
-            if (seq == _renderSeq) PreviewImage.Source = null;
-            return;
+            source = await RenderPageAsync(_pdfDoc, page, targetW);
+        }
+        else
+        {
+            // Windows PDF renderer unavailable (e.g. encrypted file): fall back to the
+            // shared Core word-overlay renderer.
+            string fontName = PdfPageThumbnailRenderer.GetTextFontName(ClickraStorage.GetSetting("Language"));
+            var bmp = await Task.Run(() => PdfPageThumbnailRenderer.RenderPageFromFile(_pdfPath, page, targetW, fontName));
+            source = bmp == null ? null : await ToBitmapImageAsync(bmp);
+            bmp?.Dispose();
         }
 
-        if (seq != _renderSeq)
-        {
-            bmp.Dispose();
-            return;
-        }
-
-        var source = await ToBitmapImageAsync(bmp);
-        bmp.Dispose();
         if (seq != _renderSeq || source == null) return;
-        PreviewImage.Source = source;
+        var img = zoomed ? ZoomImage : FitImage;
+        img.Source = source;
+        if (zoomed) ZoomImage.Width = ZoomWidth;
+    }
+
+    private static async Task<BitmapImage?> RenderPageAsync(PdfDocument doc, int pageNumber, int targetWidth)
+    {
+        try
+        {
+            using var page = doc.GetPage((uint)(pageNumber - 1));
+            var stream = new InMemoryRandomAccessStream();
+            await page.RenderToStreamAsync(stream, new PdfPageRenderOptions { DestinationWidth = (uint)targetWidth });
+            var image = new BitmapImage();
+            await image.SetSourceAsync(stream);
+            return image;
+        }
+        catch
+        {
+            return null;
+        }
     }
 
     private static async Task<BitmapImage?> ToBitmapImageAsync(System.Drawing.Bitmap bmp)
