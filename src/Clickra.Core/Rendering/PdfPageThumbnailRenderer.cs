@@ -52,6 +52,36 @@ public static class PdfPageThumbnailRenderer
         return bmp;
     }
 
+    /// <summary>Returns the UI font family for the current language, so thumbnails
+    /// render CJK text with a font that actually contains the glyphs (Segoe UI does not).</summary>
+    public static string GetTextFontName(string language)
+    {
+        string normalized = Localization.NormalizeLanguageCode(language);
+        if (normalized.StartsWith("zh-TW", StringComparison.OrdinalIgnoreCase) ||
+            normalized.StartsWith("zh-HK", StringComparison.OrdinalIgnoreCase))
+        {
+            return "Microsoft JhengHei UI";
+        }
+
+        if (normalized.StartsWith("zh-CN", StringComparison.OrdinalIgnoreCase) ||
+            normalized.StartsWith("zh", StringComparison.OrdinalIgnoreCase))
+        {
+            return "Microsoft YaHei UI";
+        }
+
+        if (normalized.StartsWith("ja", StringComparison.OrdinalIgnoreCase))
+        {
+            return "Yu Gothic UI";
+        }
+
+        if (normalized.StartsWith("ko", StringComparison.OrdinalIgnoreCase))
+        {
+            return "Malgun Gothic";
+        }
+
+        return "Segoe UI";
+    }
+
     /// <summary>Opens the PDF at <paramref name="filePath"/> and renders one 1-based
     /// page, or null when the file or page cannot be read.</summary>
     public static Bitmap? RenderPageFromFile(string filePath, int pageNumber, int targetWidth, string fontName)
