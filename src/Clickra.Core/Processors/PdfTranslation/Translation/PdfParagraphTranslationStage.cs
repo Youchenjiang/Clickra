@@ -99,7 +99,7 @@ internal static class PdfParagraphTranslationStage
                     }
                     else
                     {
-                        throw new Exception(Localization.T("pdf_error_mismatched_batch", language));
+                        throw new InvalidOperationException(Localization.T("pdf_error_mismatched_batch", language));
                     }
                 }
                 catch (Exception ex)

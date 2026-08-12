@@ -199,7 +199,7 @@ try {{
             };
 
             using var process = System.Diagnostics.Process.Start(startInfo)
-                ?? throw new Exception(string.Format(Localization.T("error_office_powershell_start", ClickraStorage.GetSetting("Language")), appName));
+                ?? throw new InvalidOperationException(string.Format(Localization.T("error_office_powershell_start", ClickraStorage.GetSetting("Language")), appName));
 
             using var registration = cancellationToken.Register(() =>
             {
@@ -248,14 +248,14 @@ try {{
             if (!string.IsNullOrWhiteSpace(errorText) && process.ExitCode != 0)
             {
                 if (errorText.Contains("0x80040154") || errorText.Contains("New-Object"))
-                    throw new Exception(string.Format(Localization.T("error_office_not_installed", ClickraStorage.GetSetting("Language")), appName));
+                    throw new InvalidOperationException(string.Format(Localization.T("error_office_not_installed", ClickraStorage.GetSetting("Language")), appName));
                 else
-                    throw new Exception(string.Format(Localization.T("error_office_failed", ClickraStorage.GetSetting("Language")), appName, errorText.Trim()));
+                    throw new InvalidOperationException(string.Format(Localization.T("error_office_failed", ClickraStorage.GetSetting("Language")), appName, errorText.Trim()));
             }
 
             if (process.ExitCode != 0)
             {
-                throw new Exception(string.Format(Localization.T("error_office_exit_code", ClickraStorage.GetSetting("Language")), appName, process.ExitCode));
+                throw new InvalidOperationException(string.Format(Localization.T("error_office_exit_code", ClickraStorage.GetSetting("Language")), appName, process.ExitCode));
             }
         }
     }
@@ -446,7 +446,7 @@ try {{
                 uint previousErrorMode = SetErrorMode(SemFailCriticalErrors | SemNoGpFaultErrorBox | SemNoOpenFileErrorBox);
                 using var process = StartProcessAndRestoreErrorMode(startInfo, previousErrorMode);
                 if (process == null)
-                    throw new Exception(Localization.T("error_libreoffice_start", ClickraStorage.GetSetting("Language")));
+                    throw new InvalidOperationException(Localization.T("error_libreoffice_start", ClickraStorage.GetSetting("Language")));
 
                 using var registration = cancellationToken.Register(() =>
                 {
@@ -483,14 +483,14 @@ try {{
                 if (process.ExitCode != 0)
                 {
                     string details = error.Length > 0 ? error.ToString().Trim() : output.ToString().Trim();
-                    throw new Exception(string.Format(Localization.T("error_libreoffice_exit_code", ClickraStorage.GetSetting("Language")), process.ExitCode, FormatLibreOfficeExitCode(process.ExitCode), details));
+                    throw new InvalidOperationException(string.Format(Localization.T("error_libreoffice_exit_code", ClickraStorage.GetSetting("Language")), process.ExitCode, FormatLibreOfficeExitCode(process.ExitCode), details));
                 }
 
                 string convertedPath = Path.Combine(tempDir, Path.GetFileNameWithoutExtension(fullPath) + ".pdf");
                 if (!File.Exists(convertedPath))
                 {
                     string details = error.Length > 0 ? error.ToString().Trim() : output.ToString().Trim();
-                    throw new Exception(string.Format(Localization.T("error_libreoffice_output_missing", ClickraStorage.GetSetting("Language")), details));
+                    throw new InvalidOperationException(string.Format(Localization.T("error_libreoffice_output_missing", ClickraStorage.GetSetting("Language")), details));
                 }
 
                 string? outputDir = Path.GetDirectoryName(outputPdfPath);
