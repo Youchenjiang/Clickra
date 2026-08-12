@@ -150,16 +150,12 @@ public static class PdfPageThumbnailRenderer
         return null;
     }
 
-    /// <summary>Overlays the page's vector words (up to 200, with original colors and
-    /// positions) onto the thumbnail.</summary>
+    /// <summary>Overlays the page's vector words (with original colors and positions) onto
+    /// the thumbnail. Every word is drawn (no word cap), so dense pages render fully.</summary>
     private static void DrawPageWords(Graphics g, Page page, double pW, double pH, int w, int h, string fontName)
     {
-        var words = page.GetWords().ToList();
-        int drawn = 0;
-        foreach (var word in words)
+        foreach (var word in page.GetWords())
         {
-            if (drawn >= 200) break;
-
             var rect = word.BoundingBox;
             if (rect.Width <= 0 || rect.Height <= 0) continue;
 
@@ -170,8 +166,7 @@ public static class PdfPageThumbnailRenderer
             float by = (float)((1.0 - rect.Top / pH) * h);
 
             float fontSize = Math.Max(3f, Math.Min(fh * 1.1f, 18f * w / 220f));
-            if (TryDrawWord(g, word.Text, ResolveWordColor(word), bx, by, fontSize, fontName))
-                drawn++;
+            TryDrawWord(g, word.Text, ResolveWordColor(word), bx, by, fontSize, fontName);
         }
     }
 
