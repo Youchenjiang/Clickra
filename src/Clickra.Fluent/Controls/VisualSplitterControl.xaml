@@ -16,16 +16,22 @@
             <RowDefinition Height="*"/>
         </Grid.RowDefinitions>
 
-        <!-- Mode bar -->
+        <!-- Mode bar: three mode buttons side by side (custom / each page / fixed pages),
+             with a -/+ pages-per-segment stepper for fixed-pages mode, mirroring the CLI. -->
         <Grid Grid.Row="0" ColumnSpacing="8" Margin="0,0,0,6">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="*"/>
                 <ColumnDefinition Width="Auto"/>
             </Grid.ColumnDefinitions>
-            <ComboBox x:Name="ModeCombo" Grid.Column="0" HorizontalAlignment="Stretch" VerticalAlignment="Center"/>
-            <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
-                <TextBlock x:Name="NLabel" Text="每檔頁數" VerticalAlignment="Center"/>
-                <NumberBox x:Name="NBox" Width="80" SpinButtonPlacementMode="Inline" VerticalAlignment="Center"/>
+            <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="6">
+                <RadioButton x:Name="ModeCustomBtn" GroupName="SplitMode" Padding="10,4" VerticalAlignment="Center"/>
+                <RadioButton x:Name="ModeEachBtn" GroupName="SplitMode" Padding="10,4" VerticalAlignment="Center"/>
+                <RadioButton x:Name="ModeFixedBtn" GroupName="SplitMode" Padding="10,4" VerticalAlignment="Center"/>
+            </StackPanel>
+            <StackPanel x:Name="NSelector" Grid.Column="1" Orientation="Horizontal" Spacing="4" VerticalAlignment="Center">
+                <Button x:Name="NMinusBtn" Content="&#x2212;" Width="30" Padding="0,3"/>
+                <TextBlock x:Name="NLabel" VerticalAlignment="Center" MinWidth="64" TextAlignment="Center"/>
+                <Button x:Name="NPlusBtn" Content="&#xFF0B;" Width="30" Padding="0,3"/>
             </StackPanel>
         </Grid>
 
@@ -43,7 +49,7 @@
                     <RowDefinition Height="*"/>
                     <RowDefinition Height="Auto"/>
                 </Grid.RowDefinitions>
-                <TextBlock x:Name="SegmentHeader" Text="分段列表" FontWeight="SemiBold" Margin="4,0,0,0"/>
+                <TextBlock x:Name="SegmentHeader" FontWeight="SemiBold" Margin="4,0,0,0"/>
                 <ListView x:Name="SegmentList" Grid.Row="1" SelectionMode="Single" BorderThickness="1"/>
                 <StackPanel Grid.Row="2" Orientation="Horizontal" Spacing="4" Margin="0,3,0,0">
                     <Button x:Name="AddSegmentBtn" Content="＋ 新增" Padding="8,2"/>
@@ -56,25 +62,33 @@
             <Grid Grid.Column="1" RowSpacing="3">
                 <Grid.RowDefinitions>
                     <RowDefinition Height="Auto"/>
-                    <RowDefinition Height="*"/>
                     <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="*"/>
                 </Grid.RowDefinitions>
-                <StackPanel Orientation="Horizontal" Spacing="4" HorizontalAlignment="Center">
+
+                <!-- Output badge: [PDF] filename (N pages) -->
+                <Border x:Name="OutputBadge" Background="#193C23" BorderBrush="#328C46" BorderThickness="1" CornerRadius="3" Padding="6,2">
+                    <TextBlock x:Name="OutputBadgeText" Foreground="#78F08C" FontSize="12"/>
+                </Border>
+
+                <!-- Page navigation bar: < P.x (第 y/N 頁) 切開 > -->
+                <StackPanel Grid.Row="1" Orientation="Horizontal" Spacing="4" HorizontalAlignment="Center">
                     <Button x:Name="PrevPageBtn" Content="&#x25C0;" MinWidth="30" Padding="6,2"/>
-                    <TextBlock x:Name="PageLabel" VerticalAlignment="Center" MinWidth="72" TextAlignment="Center"/>
-                    <Button x:Name="NextPageBtn" Content="&#x25B6;" MinWidth="30" Padding="6,2"/>
+                    <TextBlock x:Name="PageLabel" VerticalAlignment="Center" MinWidth="120" TextAlignment="Center"/>
                     <Button x:Name="SplitAtPageBtn" Content="切開" Padding="8,2"/>
+                    <Button x:Name="NextPageBtn" Content="&#x25B6;" MinWidth="30" Padding="6,2"/>
                 </StackPanel>
-                <Border Grid.Row="1" BorderThickness="1" BorderBrush="{ThemeResource ControlStrokeColorDefaultBrush}" Background="{ThemeResource CardBackgroundFillColorDefaultBrush}">
+
+                <!-- Preview box: paper-white page with border and a [放大] tag -->
+                <Border Grid.Row="2" BorderThickness="1" BorderBrush="{ThemeResource ControlStrokeColorDefaultBrush}" Background="{ThemeResource CardBackgroundFillColorDefaultBrush}">
                     <Grid>
-                        <ScrollViewer x:Name="ZoomHost" Visibility="Collapsed" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto"
-                                      HorizontalScrollMode="Enabled" VerticalScrollMode="Enabled" ZoomMode="Disabled">
-                            <Image x:Name="ZoomImage" Stretch="None"/>
-                        </ScrollViewer>
                         <Image x:Name="FitImage" Stretch="Uniform"/>
+                        <Border x:Name="ZoomTag" HorizontalAlignment="Right" VerticalAlignment="Bottom"
+                                Background="#CC14191F" CornerRadius="2" Padding="4,1" Margin="0,0,4,4">
+                            <TextBlock x:Name="ZoomTagText" Foreground="#F0F0F0" FontSize="11"/>
+                        </Border>
                     </Grid>
                 </Border>
-                <ToggleButton x:Name="ZoomToggle" Grid.Row="2" Content="放大檢視" HorizontalAlignment="Center"/>
             </Grid>
         </Grid>
     </Grid>

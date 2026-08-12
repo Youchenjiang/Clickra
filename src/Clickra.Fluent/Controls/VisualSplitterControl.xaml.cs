@@ -52,14 +52,12 @@ public sealed partial class VisualSplitterControl : UserControl
         _nPages = Math.Min(5, _totalPages);
 
         string L(string key) => Localization.T(key, ClickraStorage.GetSetting("Language"));
-        ModeCombo.Items.Add(L("pdf_split_mode_custom"));
-        ModeCombo.Items.Add(L("pdf_split_mode_each"));
-        ModeCombo.Items.Add(L("pdf_split_mode_fixed"));
-        ModeCombo.SelectedIndex = 0;
-        NLabel.Text = L("pdf_split_pages_per_segment");
-        NBox.Minimum = 1;
-        NBox.Maximum = _totalPages;
-        NBox.Value = _nPages;
+        ModeCustomBtn.Content = L("pdf_split_mode_custom");
+        ModeEachBtn.Content = L("pdf_split_mode_each");
+        ModeCustomBtn.IsChecked = true;
+        RefreshModeButtons();
+        RefreshNSelector();
+        ZoomTagText.Text = L("pdf_split_zoom_tag");
 
         // Seed custom segments with halves of the document, mirroring the CLI splitter.
         if (_totalPages == 1)
@@ -73,15 +71,11 @@ public sealed partial class VisualSplitterControl : UserControl
             _customSegments.Add((half + 1, _totalPages));
         }
 
-        ModeCombo.SelectionChanged += (_, _) => ApplyMode(ModeCombo.SelectedIndex);
-        NBox.ValueChanged += (_, _) =>
-        {
-            if (NBox.Value >= 1)
-            {
-                _nPages = (int)Math.Round(NBox.Value);
-                ApplyMode(_mode);
-            }
-        };
+        ModeCustomBtn.Checked += (_, _) => ApplyMode(0);
+        ModeEachBtn.Checked += (_, _) => ApplyMode(1);
+        ModeFixedBtn.Checked += (_, _) => ApplyMode(2);
+        NMinusBtn.Click += (_, _) => AdjustNPages(-1);
+        NPlusBtn.Click += (_, _) => AdjustNPages(+1);
 
         SegmentList.SelectionChanged += SegmentList_SelectionChanged;
         AddSegmentBtn.Click += (_, _) => AddVisualSplitSegment();
@@ -90,8 +84,6 @@ public sealed partial class VisualSplitterControl : UserControl
         PrevPageBtn.Click += (_, _) => NavigatePreview(-1);
         NextPageBtn.Click += (_, _) => NavigatePreview(+1);
         SplitAtPageBtn.Click += (_, _) => SplitSegmentAtCurrentPage();
-        ZoomToggle.Checked += (_, _) => UpdatePreview();
-        ZoomToggle.Unchecked += (_, _) => UpdatePreview();
 
         ApplyMode(0);
         _ = LoadPreviewDocumentAsync();
@@ -113,6 +105,30 @@ public sealed partial class VisualSplitterControl : UserControl
         UpdatePreview();
     }
 
+    /// <summary>Refreshes the three mode button labels, keeping the fixed-pages button
+    /// in sync with the current N ("固定頁數: 5頁", mirroring the CLI mode bar).</summary>
+    private void RefreshModeButtons()
+    {
+        ModeFixedBtn.Content = $"{Localization.T("pdf_split_mode_fixed", ClickraStorage.GetSetting("Language"))}: {_nPages}頁";
+    }
+
+    /// <summary>Refreshes the pages-per-segment stepper label ("每 5 頁").</summary>
+    private void RefreshNSelector()
+    {
+        NLabel.Text = $"{Localization.T("pdf_split_pages_per_segment", ClickraStorage.GetSetting("Language"))} {_nPages}";
+    }
+
+    /// <summary>Adjusts N in fixed-pages mode (clamped to 1..total pages) and rebuilds the segments.</summary>
+    private void AdjustNPages(int delta)
+    {
+        int n = Math.Clamp(_nPages + delta, 1, _totalPages);
+        if (n == _nPages) return;
+        _nPages = n;
+        RefreshModeButtons();
+        RefreshNSelector();
+        if (_mode == 2) ApplyMode(2);
+    }
+
     /// <summary>Builds the page-range spec for the active mode via
     /// <see cref="PdfSplitProcessor.BuildSegmentSpec"/> (always non-null; an empty
     /// custom list falls back to "all", matching the CLI splitter).</summary>
@@ -125,8 +141,9 @@ public sealed partial class VisualSplitterControl : UserControl
         _currentPreviewPageIndex = 0;
 
         bool fixedMode = mode == 2;
-        NLabel.Visibility = fixedMode ? Visibility.Visible : Visibility.Collapsed;
-        NBox.Visibility = fixedMode ? Visibility.Visible : Visibility.Collapsed;
+        NSelector.Visibility = fixedMode ? Visibility.Visible : Visibility.Collapsed;
+        if (fixedMode) RefreshNSelector();
+        RefreshModeButtons();
 
         switch (mode)
         {
@@ -175,7 +192,7 @@ public sealed partial class VisualSplitterControl : UserControl
             var seg = _segments[i];
             int pageCnt = seg.End - seg.Start + 1;
             string pageLabel = seg.Start == seg.End ? $"P.{seg.Start}" : $"P.{seg.Start}-{seg.End}";
-            SegmentList.Items.Add($"{pageLabel} ({pageCnt}頁)");
+            SegmentList.Items.Add($"區段 {i + 1}: {pageLabel} ({pageCnt}頁)");
         }
         SegmentList.SelectedIndex = _selectedSegmentIndex;
         _suppressSelection = false;
@@ -231,7 +248,7 @@ public sealed partial class VisualSplitterControl : UserControl
         _currentPreviewPageIndex = 0;
 
         _mode = 0;
-        if (ModeCombo.SelectedIndex != 0) ModeCombo.SelectedIndex = 0;
+        if (!(ModeCustomBtn.IsChecked == true)) ModeCustomBtn.IsChecked = true;
 
         RefreshSegmentList();
         UpdatePreview();
@@ -241,7 +258,7 @@ public sealed partial class VisualSplitterControl : UserControl
     /// segment and selects it (switching to custom mode).</summary>
     private void AddVisualSplitSegment()
     {
-        if (ModeCombo.SelectedIndex != 0) ModeCombo.SelectedIndex = 0;
+        if (!(ModeCustomBtn.IsChecked == true)) ModeCustomBtn.IsChecked = true;
         _mode = 0;
 
         if (_customSegments.Count == 0)
@@ -293,7 +310,7 @@ public sealed partial class VisualSplitterControl : UserControl
         if (_customSegments.Count <= 1) return;
         if (_selectedSegmentIndex < 0 || _selectedSegmentIndex >= _customSegments.Count) return;
 
-        if (ModeCombo.SelectedIndex != 0) ModeCombo.SelectedIndex = 0;
+        if (!(ModeCustomBtn.IsChecked == true)) ModeCustomBtn.IsChecked = true;
         _mode = 0;
 
         _customSegments.RemoveAt(_selectedSegmentIndex);
@@ -309,7 +326,7 @@ public sealed partial class VisualSplitterControl : UserControl
     /// <summary>Clears all custom segments and switches to custom mode.</summary>
     private void ClearVisualSplitSegments()
     {
-        if (ModeCombo.SelectedIndex != 0) ModeCombo.SelectedIndex = 0;
+        if (!(ModeCustomBtn.IsChecked == true)) ModeCustomBtn.IsChecked = true;
         _mode = 0;
         _customSegments.Clear();
         _segments.Clear();
@@ -319,39 +336,44 @@ public sealed partial class VisualSplitterControl : UserControl
         UpdatePreview();
     }
 
-    /// <summary>Renders the current preview page (fit or zoomed) and swaps it into the
+    /// <summary>Renders the current preview page at fit width and swaps it into the
     /// preview image, discarding stale renders via a sequence guard. Uses the Windows
     /// built-in PDF renderer for true page quality.</summary>
     private async void UpdatePreview()
     {
         int page = GetCurrentPageNumber();
-        PageLabel.Text = $"P.{page} / {_totalPages}";
 
-        bool zoomed = ZoomToggle.IsChecked == true;
-        int targetW = zoomed ? ZoomWidth : PreviewWidth;
-        ZoomHost.Visibility = zoomed ? Visibility.Visible : Visibility.Collapsed;
-        FitImage.Visibility = zoomed ? Visibility.Collapsed : Visibility.Visible;
+        // "P.5 (第 2/3 頁)": absolute page inside the segment-relative position.
+        int pageCnt = 1;
+        if (_selectedSegmentIndex >= 0 && _selectedSegmentIndex < _segments.Count)
+        {
+            var seg = _segments[_selectedSegmentIndex];
+            pageCnt = seg.End - seg.Start + 1;
+        }
+        PageLabel.Text = $"P.{page} (第 {Math.Min(_currentPreviewPageIndex + 1, pageCnt)}/{pageCnt} 頁)";
+
+        // Output badge: [PDF] filename (N pages) of the selected segment.
+        string outName = Path.GetFileNameWithoutExtension(_pdfPath);
+        OutputBadgeText.Text = $"[PDF] {outName} ({pageCnt}頁)";
 
         int seq = ++_renderSeq;
         BitmapImage? source;
         if (_pdfDoc != null)
         {
-            source = await RenderPageAsync(_pdfDoc, page, targetW);
+            source = await RenderPageAsync(_pdfDoc, page, PreviewWidth);
         }
         else
         {
             // Windows PDF renderer unavailable (e.g. encrypted file): fall back to the
             // shared Core word-overlay renderer.
             string fontName = PdfPageThumbnailRenderer.GetTextFontName(ClickraStorage.GetSetting("Language"));
-            var bmp = await Task.Run(() => PdfPageThumbnailRenderer.RenderPageFromFile(_pdfPath, page, targetW, fontName));
+            var bmp = await Task.Run(() => PdfPageThumbnailRenderer.RenderPageFromFile(_pdfPath, page, PreviewWidth, fontName));
             source = bmp == null ? null : await ToBitmapImageAsync(bmp);
             bmp?.Dispose();
         }
 
         if (seq != _renderSeq || source == null) return;
-        var img = zoomed ? ZoomImage : FitImage;
-        img.Source = source;
-        if (zoomed) ZoomImage.Width = ZoomWidth;
+        FitImage.Source = source;
     }
 
     private static async Task<BitmapImage?> RenderPageAsync(PdfDocument doc, int pageNumber, int targetWidth)
