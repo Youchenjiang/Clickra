@@ -533,11 +533,11 @@ public sealed partial class MainPage : Page
                 }
                 break;
             case "split-pdf":
-                string splitPages = DispatcherQueue.EnqueueAsync(PromptSplitPagesAsync).GetAwaiter().GetResult();
-                if (string.IsNullOrWhiteSpace(splitPages)) throw new OperationCanceledException(token);
                 for (int i = 0; i < files.Count; i++)
                 {
                     token.ThrowIfCancellationRequested();
+                    string splitPages = DispatcherQueue.EnqueueAsync(() => PromptSplitPagesAsync(files[i])).GetAwaiter().GetResult();
+                    if (string.IsNullOrWhiteSpace(splitPages)) throw new OperationCanceledException(token);
                     FileProcessor.SplitPdf(files[i], outputs[i], splitPages, (c, t, m) => Progress((i * 100) + c, files.Count * 100, m), token);
                 }
                 break;
@@ -1423,19 +1423,8 @@ public sealed partial class MainPage : Page
         return await dialog.ShowAsync() == ContentDialogResult.Primary ? box.Password : "";
     }
 
-    private async Task<string> PromptSplitPagesAsync()
-    {
-        var box = new TextBox { Text = "all", PlaceholderText = L("pdf_split_prompt") };
-        var dialog = new ContentDialog
-        {
-            Title = L("pdf_split_title"),
-            Content = box,
-            PrimaryButtonText = L("fluent_ok"),
-            CloseButtonText = L("fluent_cancel"),
-            XamlRoot = XamlRoot
-        };
-        return await dialog.ShowAsync() == ContentDialogResult.Primary ? (string.IsNullOrWhiteSpace(box.Text) ? "all" : box.Text.Trim()) : "";
-    }
+    private async Task<string> PromptSplitPagesAsync(string pdfPath)
+        => await SplitPagesDialog.PromptAsync(XamlRoot, pdfPath) ?? "";
 
     private async Task ShowErrorAsync(string message)
     {
