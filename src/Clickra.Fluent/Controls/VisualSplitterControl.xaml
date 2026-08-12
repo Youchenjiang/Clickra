@@ -1,0 +1,76 @@
+<UserControl
+    x:Class="Clickra_Fluent.VisualSplitterControl"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    mc:Ignorable="d"
+    d:DesignHeight="470"
+    d:DesignWidth="620">
+
+    <Grid Width="620" Height="470">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+        </Grid.RowDefinitions>
+
+        <!-- Mode bar -->
+        <Grid Grid.Row="0" ColumnSpacing="8" Margin="0,0,0,10">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="Auto"/>
+            </Grid.ColumnDefinitions>
+            <ComboBox x:Name="ModeCombo" Grid.Column="0" HorizontalAlignment="Stretch" VerticalAlignment="Center"/>
+            <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                <TextBlock x:Name="NLabel" Text="每檔頁數" VerticalAlignment="Center"/>
+                <NumberBox x:Name="NBox" Width="100" SpinButtonPlacementMode="Inline" VerticalAlignment="Center"/>
+            </StackPanel>
+        </Grid>
+
+        <!-- Body: segment list + preview -->
+        <Grid Grid.Row="1" ColumnSpacing="12">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="230"/>
+                <ColumnDefinition Width="*"/>
+            </Grid.ColumnDefinitions>
+
+            <!-- Left: segment list -->
+            <Grid Grid.Column="0" RowSpacing="6">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="*"/>
+                    <RowDefinition Height="Auto"/>
+                </Grid.RowDefinitions>
+                <TextBlock x:Name="SegmentHeader" Text="分段列表" FontWeight="SemiBold" Margin="4,0,0,0"/>
+                <ListView x:Name="SegmentList" Grid.Row="1" SelectionMode="Single" BorderThickness="1"/>
+                <StackPanel Grid.Row="2" Orientation="Horizontal" Spacing="6" Margin="0,6,0,0">
+                    <Button x:Name="AddSegmentBtn" Content="＋ 新增"/>
+                    <Button x:Name="DeleteSegmentBtn" Content="刪除"/>
+                    <Button x:Name="ClearSegmentsBtn" Content="清空"/>
+                </StackPanel>
+            </Grid>
+
+            <!-- Right: preview -->
+            <Grid Grid.Column="1" RowSpacing="6">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="*"/>
+                    <RowDefinition Height="Auto"/>
+                </Grid.RowDefinitions>
+                <StackPanel Orientation="Horizontal" Spacing="6" HorizontalAlignment="Center">
+                    <Button x:Name="PrevPageBtn" Content="&#x25C0;" MinWidth="36"/>
+                    <TextBlock x:Name="PageLabel" VerticalAlignment="Center" MinWidth="90" TextAlignment="Center"/>
+                    <Button x:Name="NextPageBtn" Content="&#x25B6;" MinWidth="36"/>
+                    <Button x:Name="SplitAtPageBtn" Content="切開"/>
+                </StackPanel>
+                <Border Grid.Row="1" BorderThickness="1" BorderBrush="{ThemeResource ControlStrokeColorDefaultBrush}" Background="{ThemeResource CardBackgroundFillColorDefaultBrush}">
+                    <ScrollViewer x:Name="PreviewScroll" HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Disabled"
+                                  HorizontalScrollMode="Enabled" VerticalScrollMode="Enabled" ZoomMode="Disabled">
+                        <Image x:Name="PreviewImage" Stretch="Uniform"/>
+                    </ScrollViewer>
+                </Border>
+                <ToggleButton x:Name="ZoomToggle" Grid.Row="2" Content="放大檢視" HorizontalAlignment="Center" Margin="0,6,0,0"/>
+            </Grid>
+        </Grid>
+    </Grid>
+</UserControl>
