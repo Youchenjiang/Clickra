@@ -48,32 +48,41 @@
 
 CLI（`ProgressWindow.Process.cs` / `ClickraCli.cs`）與 Fluent（`MainPage.xaml.cs:501` + `TaskProgressPage.xaml.cs:130`）各有一份命令 dispatch switch（10 個 case 幾乎相同）。與 1.1 一起解決（Core 至少提供命令描述與參數估算，或直接提供 dispatch 幫手）。
 
+### 1.5 渲染管線已收斂（參考範式）✅（2026/08/12）
+
+`PdfPageThumbnailRenderer.RenderPageFromFile` 已是共用元件：**Windows.Data.Pdf 主渲染 + PdfPig overlay fallback（加密檔）**，CLI 縮圖/燈箱與 Fluent 加密 fallback 消費同一份（commit `42221ca`；前置 `a35519b` 移除 200 字上限、`abf7cd3` 字框對齊）。這是「抽共用」的成功案例，1.1~1.4 的收斂可參考其模式。
+
+**設計影響**：Core TFM 已升 `net8.0-windows10.0.19041.0`（WinRT projections）——Core 不再純平台輕量；NativeAOT 下的 CsWinRT 已實測可用（見 2.3）。後續重構若把更多 UI 邏輯上移 Core，須留意 Core 的平台依賴會隨之增加。
+
 ---
 
 ## 2. 未解決問題
 
-### 2.1 [BUG] Fluent 軌道下「分割 PDF」無效（split-pdf）🚨
+### 2.1 [已實作，待實機驗證] Fluent 軌道「分割 PDF」✅（2026/08/12 更新）
 
-**根因（已確認）**：`ClickraShell/ComMethods.cs` 的 `SubArgs` 提供 `split-pdf`，且 `Invoke` 優先走 packaged activation → **Fluent**；但 Fluent 的 `TaskProgressPage` dispatch **沒有 split-pdf case 也沒有 default**，`IsKnownCommand`（= 副檔名表有無對應）對 split-pdf 回 false → 顯示「無效命令」錯誤。v3.6.5.0 的視覺分割器只實作在 CLI（`ProgressWindow.VisualSplitter.cs`）。
+**原狀（已確認，現已解決）**：`ClickraShell/ComMethods.cs` 的 `SubArgs` 提供 `split-pdf`，且 `Invoke` 優先走 packaged activation → **Fluent**；當時 Fluent 的 `TaskProgressPage` dispatch 沒有 split-pdf case 也沒有 default，`IsKnownCommand` 對 split-pdf 回 false → 顯示「無效命令」錯誤。v3.6.5.0 的視覺分割器原本只實作在 CLI（`ProgressWindow.VisualSplitter.cs`）。
 
-**影響**：Fluent 軌道用戶右鍵「分割 PDF」直接報錯；NativeAOT 軌道正常。
+**現況（2026/08/12 核對）**：Fluent 兩處 dispatch 都已有 `case "split-pdf"`：
+- `MainPage.xaml.cs:535`（右鍵路徑）與 `TaskProgressPage.xaml.cs:169`（進度頁），皆含 `PromptSplitPagesAsync` 視覺分割流程與預覽/放大
+- 共用渲染器 `PdfPageThumbnailRenderer.RenderPageFromFile` 改走 Windows.Data.Pdf 後，Fluent 分割預覽與 CLI 同一引擎（見 1.5）
 
-**選項**：
-1. Fluent 實作分割 UI（雙份 UI 成本，但功能齊全）
-2. 右鍵 split-pdf 改路由到軌道內的 `Clickra.exe`（shell 可依命令選擇目標 exe）
-3. 先從 shell `SubArgs` 移除 split-pdf（最快止血，功能只剩 CLI/儀表板內）
+**剩餘**：packaged activation 端到端（右鍵 → Fluent 分割 UI）尚未實機跑過——shell 延伸需重開機載入。選項 1（Fluent 實作分割 UI）已實作；選項 2/3 不再需要。
 
 ### 2.2 [未驗證] 同版本切換軌道（Native ↔ Fluent）
 
 `-ForceUpdateFromAnyVersion` 是否在所有 Windows 版本生效未實機驗證。風險：部分版本視為「已安裝」而拒絕；後備方案：NativeAOT 套件改用獨立 Identity（`g1014308.ClickraNative`），但需處理兩套右鍵選單 COM 註冊（相同 CLSID）衝突。屬 F1-12 驗證範圍。
 
-### 2.3 [未驗證] NativeAOT publish 產線
+### 2.3 [部分已驗證] NativeAOT publish 產線 ✅（2026/08/12）
 
-本機只有 VS2019（MSVC 14.29），.NET 8 NativeAOT 需要 VS2022 的 MSVC 14.3x——`ClickraSetup.exe` 與 `Clickra-Native.msix` 的 AOT publish 本機無法驗證。CI（windows-latest 有 VS2022）可驗證，需跑一次完整 release 流程確認。
+本機 `build_msix.ps1` 已成功產出含 Windows.Data.Pdf 的 NativeAOT 包，並安裝、執行成功（CsWinRT marshalling 正常）。之前 `dotnet publish` 在 shell 直接跑失敗是**環境問題**（vswhere 找不到 / 誤抓 VS2019 toolchain）；build 腳本會把 VS Installer 目錄加入 PATH，走腳本即可。
 
-### 2.4 [未驗證] MSIX 側載憑證信任
+**仍待**：`Clickra-Native.msix`（零依賴軌道）與 `ClickraSetup.exe` 在本機的完整驗證（先前只驗了含 Fluent 的完整包）；CI（windows-latest）跑一次完整 release 流程。
+
+### 2.4 [部分已解] MSIX 側載憑證信任
 
 GitHub Release 的 MSIX 以 CI 自簽憑證簽署，使用者需信任憑證或開開發者模式才能側載。bootstrapper 目前**不**自動安裝憑證；若要自動化需明確實作信任決策（安全敏感）。
+
+**本機層（已解，2026/08/12）**：`ClickraDev.pfx` 曾被 07/26 重生（BBF263）但信任沒跟上，導致 build 產的包安裝失敗（0x800B0109）。已把 PFX 對齊回機器信任的 DCA07995（含私鑰、密碼 1234，git-ignored）——本機 build → 安裝直接成功。注意：PFX 是各機器本機產物，若在別台機器/CI 簽名需各自對齊信任。
 
 ### 2.5 [已知限制]
 
@@ -95,16 +104,24 @@ GitHub Release 的 MSIX 以 CI 自簽憑證簽署，使用者需信任憑證或�
 
 疑似順序依賴（套件內共享靜態狀態）或環境依賴（字型渲染／逾時計時）。CI 若依賴「全 PASS」當門檻會誤報；需要先穩定測試套件（隔離狀態／固定順序／允許逾時容差）再以全 PASS 為合併條件。
 
+**2026/08/12 補充**：測試專案 TFM 已對齊 Core 的 `net10.0-windows10.0.19041.0`（`f621572`），套件可正常執行；95 PASS / 11 FAIL 的 flaky 基線不變，仍未根治。
+
+### 2.8 [已修] CLI 匯入覆寫已選指令（2026/08/12）
+
+「選分割 PDF → 匯入/拖放 PDF」會被洗回 compress-pdf：`HandleDroppedFiles` 對單一 PDF 強制切 `compress-pdf`、element 18 重設後選第一個可用指令。已修（`2c49b15`）：新增 `CurrentSelectionAcceptsFiles()` 守門員，目前指令能接受檔案就保留。
+
+**待查**：Fluent（MainPage）的匯入/拖放流程是否有同樣的覆寫問題——檢查後比照修。
+
 ---
 
 ## 3. 分支與發行狀態
 
 | 項目 | 狀態 |
 | :--- | :--- |
-| `feature/winui3-fluent-dashboard` | 領先 origin/main **29 commit**（0 落後），**從未 push**；建置 0 錯誤、測試全 PASS、歷史已審計 |
-| `refactor/command-metadata-to-core` | 已開（基底 = feature tip `21f2e6d`）；若 feature 先 fast-forward 合回 main，此分支基底自動等於新 main tip，無需重開 |
+| `feature/winui3-fluent-dashboard` | 領先 origin/main **54 commit**（2026/08/12 核對；backlog 建立時為 29），**從未 push**；建置 0 錯誤、測試 95/11（既有 flaky 基線）、歷史已審計 |
+| `refactor/command-metadata-to-core` | 已開（基底 = feature tip `21f2e6d`）；若 feature 先合回 main，此分支基底自動等於新 main tip，無需重開 |
 | 合併順序建議 | 先合 feature → main（雙軌正式化），再合 refactor（diff 乾淨） |
-| 合併前待決 | push 授權、合併方式（PR vs fast-forward）、2.2~2.4 未驗證項是否先補 |
+| 合併前待決 | push 授權、合併方式（PR vs fast-forward）、2.2/2.4/2.3 殘項是否先補；**local main 停在 PR #37（b3dcedc）已過時，合併前先 fetch origin/main（已到 PR #45）** |
 
 **發行狀態**：`AppxManifest.Native.xml` 版本已同步 3.6.5.0（與 Fluent manifest / Directory.Build.props 一致）。
 
@@ -114,7 +131,7 @@ GitHub Release 的 MSIX 以 CI 自簽憑證簽署，使用者需信任憑證或�
 
 | ROADMAP 項目 | 狀態與關聯 |
 | :--- | :--- |
-| **R1-3 Command Pattern**（HandleLButtonDown 複雜度 130） | ✅ **已完成但 ROADMAP 未更新**：本分支 `32c8837`（model convert features as Command objects）、`ad41a2e`（route clicks to per-tab handlers）、`b908d2a`、`628ab42` 已把 `HandleLButtonDown` 改成薄路由器（現為 delegate 鏈）。需在 ROADMAP 補記完成日期。 |
+| **R1-3 Command Pattern**（HandleLButtonDown 複雜度 130） | ✅ **已完成**：本分支 `32c8837`（model convert features as Command objects）、`ad41a2e`（route clicks to per-tab handlers）、`b908d2a`、`628ab42` 已把 `HandleLButtonDown` 改成薄路由器（現為 delegate 鏈）；ROADMAP 已記 `(2026/08/11 完成)`。 |
 | **R1-3 WndProc Router**（複雜度 137） | 未完成，仍待重構（與本盤點 1.x 無關，屬 CLI 既有技術債）。 |
 | **R1-5 Localization 字典結構性重複** | 未完成（2026/08/09 記錄）。i18n 字典資料結構的必然模式，消除需「基底字典 + 語言覆寫」架構級改動，留待 Localization 專項。 |
 | **R1-4 測試框架升級**（TestRunner → xUnit/NUnit） | 未完成。 |
@@ -126,7 +143,7 @@ GitHub Release 的 MSIX 以 CI 自簽憑證簽署，使用者需信任憑證或�
 
 ## 5. 執行建議
 
-1. **先做 2.1 的止血決策**（split-pdf 在 Fluent 軌道壞掉是最急的用戶可見 bug）。
+1. **2.1 已解決（2026/08/12）**：Fluent 已實作 split-pdf 分割流程，剩 packaged activation 端到端實機驗證（重開機載入 shell 延伸後測右鍵）。
 2. **refactor 分支依序**：1.1 命令登錄上移 → 1.2 OfficeEngineDetector → 1.3 history.log → 1.4 dispatch（與 1.1 連動），每個獨立 commit、各自可驗證。
 3. **合併順序**：feature → main 先行，refactor 隨後（見 §3）。
 4. **發布前**：以 CI 跑一次完整 release 流程補 2.2~2.4 驗證（F1-12）。

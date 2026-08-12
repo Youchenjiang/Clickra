@@ -49,6 +49,7 @@
     - 舊 Win32 Dashboard/Progress 由「過渡 fallback」改為**永久 NativeAOT 軌道**，不再排定移除。
     - 詳細設計見 `docs/development/dual_track_guide.md`。
 - [ ] **[F1-12] Fluent Release Stabilization (Dual-Track)**：Fluent 發布穩定化。
+    - **2026/08/12 進度**：共用渲染器改走 Windows.Data.Pdf（真實文字/圖片/向量圖，`42221ca`）；NativeAOT 包已本機打包、安裝、執行驗證成功（含 CsWinRT marshalling）。剩 packaged shell activation 端到端、Native ↔ Fluent 同版本切換與乾淨機器安裝的實機驗證。
     - 在 Windows App SDK 2.3.1 下完成 Windows 10/11 的 dashboard 與右鍵實機測試，涵蓋執行中、成功、失敗、取消、PDF 密碼與 Office 雙引擎。
     - 補上 packaged-app 啟動與 shell activation smoke test，避免只有編譯／打包成功但啟動前崩潰。
     - 實機驗證 Native ↔ Fluent 同版本切換（`-ForceUpdateFromAnyVersion`）與乾淨機器（無 .NET / 無 WinAppRuntime）上的 NativeAOT 軌道安裝。
