@@ -97,14 +97,17 @@ public sealed partial class VisualSplitterControl : UserControl
         PrevPageBtn.Click += (_, _) => NavigatePreview(-1);
         NextPageBtn.Click += (_, _) => NavigatePreview(+1);
         SplitAtPageBtn.Click += (_, _) => SplitSegmentAtCurrentPage();
-        FitImage.PointerPressed += (_, _) => OpenZoom();
-        ZoomTag.PointerPressed += (_, _) => OpenZoom();
+        PreviewBox.PointerPressed += PreviewBox_PointerPressed;
+        ZoomTag.PointerPressed += ZoomTag_PointerPressed;
 
         ApplyMode(0);
         _ = LoadPreviewDocumentAsync();
     }
 
     // ---- Zoom lightbox ----------------------------------------------------
+
+    private void PreviewBox_PointerPressed(object sender, PointerRoutedEventArgs e) => OpenZoom();
+    private void ZoomTag_PointerPressed(object sender, PointerRoutedEventArgs e) => OpenZoom();
 
     private void OpenZoom()
     {

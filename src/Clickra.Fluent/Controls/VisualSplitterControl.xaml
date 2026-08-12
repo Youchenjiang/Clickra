@@ -81,7 +81,8 @@
 
                 <!-- Preview box: paper-white page with border and a [放大] tag. Clicking the
                      preview (or the tag) opens the zoom lightbox, mirroring the CLI. -->
-                <Border Grid.Row="2" BorderThickness="1" BorderBrush="{ThemeResource ControlStrokeColorDefaultBrush}" Background="{ThemeResource CardBackgroundFillColorDefaultBrush}">
+                <Border x:Name="PreviewBox" Grid.Row="2" BorderThickness="1" BorderBrush="{ThemeResource ControlStrokeColorDefaultBrush}" Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                        PointerPressed="PreviewBox_PointerPressed">
                     <Grid>
                         <Image x:Name="FitImage" Stretch="Uniform"/>
                         <Border x:Name="ZoomTag" HorizontalAlignment="Right" VerticalAlignment="Bottom"
