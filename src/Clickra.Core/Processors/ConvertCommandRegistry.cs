@@ -33,9 +33,11 @@ namespace Clickra.Core.Processors
             ["img-stitch"] = new(ImageExtensions, 2, "cmd_stitch_img")
         };
 
-        /// <summary>Every file type any convert command accepts, used for unfiltered pickers.</summary>
-        public static readonly string[] AllSupportedExtensions =
+        private static readonly string[] AllSupportedExtensionsValue =
             Commands.Values.SelectMany(def => def.Extensions).Distinct().ToArray();
+
+        /// <summary>Every file type any convert command accepts, used for unfiltered pickers.</summary>
+        public static string[] AllSupportedExtensions => AllSupportedExtensionsValue;
 
         /// <summary>File extensions a command accepts; empty when the command is unknown.</summary>
         public static string[] GetAllowedExtensions(string? command) =>
