@@ -26,9 +26,9 @@ public static class ConvertCommandRunner
             List<string> files,
             List<string> outputs,
             Action<int, string> updateProgress,
-            CancellationToken token,
             Func<Task<string?>> promptPassword,
-            Func<string, Task<string?>> promptSplitPages)
+            Func<string, Task<string?>> promptSplitPages,
+            CancellationToken token)
         {
             string startTime = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
             string inputs = string.Join(";", files);
@@ -44,7 +44,7 @@ public static class ConvertCommandRunner
             {
                 ClickraStorage.StartActiveRecord(command, files.Count, inputs);
                 ClickraStorage.SetActiveRecordInProgress();
-                await Task.Run(() => Run(command, files, outputs, Progress, token, promptPassword, promptSplitPages), token);
+                await Task.Run(() => Run(command, files, outputs, Progress, promptPassword, promptSplitPages, token), token);
                 stopwatch.Stop();
                 ClickraStorage.CompleteActiveRecord(command, startTime, true, "", elapsedMs: stopwatch.ElapsedMilliseconds, inputPaths: inputs, outputPath: string.Join(";", outputs));
                 return new ConvertRunResult(ConvertRunStatus.Succeeded, null);
@@ -70,9 +70,9 @@ public static class ConvertCommandRunner
             List<string> files,
             List<string> outputs,
             Action<int, int, string> progress,
-            CancellationToken token,
             Func<Task<string?>> promptPassword,
-            Func<string, Task<string?>> promptSplitPages)
+            Func<string, Task<string?>> promptSplitPages,
+            CancellationToken token)
         {
             switch (command)
             {
