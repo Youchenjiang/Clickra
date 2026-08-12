@@ -217,7 +217,8 @@ public static class PdfPageThumbnailRenderer
             float bw = (float)(rect.Width / pW * w);
 
             float fontSize = Math.Max(3f, Math.Min(fh * 1.1f, 18f * w / 220f));
-            TryDrawWord(g, word.Text, ResolveWordColor(word), bx, by, bw, fontSize, fontName);
+            using var font = new Font(fontName, fontSize, GraphicsUnit.Pixel);
+            TryDrawWord(g, word.Text, ResolveWordColor(word), bx, by, bw, font);
         }
     }
 
@@ -242,14 +243,12 @@ public static class PdfPageThumbnailRenderer
     /// <summary>Draws one word fitted into its PDF bounding box: the text is measured
     /// tightly (GenericTypographic) and uniformly scaled down when it is wider than the
     /// box, so it never spills into the adjacent word. Words narrower than their box are
-    /// drawn at natural size, preserving the original look. Returns false when drawing
-    /// failed.</summary>
-    private static bool TryDrawWord(Graphics g, string text, Color color, float x, float y, float boxW, float fontSize, string fontName)
+    /// drawn at natural size, preserving the original look.</summary>
+    private static void TryDrawWord(Graphics g, string text, Color color, float x, float y, float boxW, Font font)
     {
         try
         {
             using var brush = new SolidBrush(color);
-            using var font = new Font(fontName, fontSize, GraphicsUnit.Pixel);
             using var format = StringFormat.GenericTypographic;
 
             var measured = g.MeasureString(text, font, PointF.Empty, format);
@@ -262,9 +261,7 @@ public static class PdfPageThumbnailRenderer
             if (scale < 1f) g.ScaleTransform(scale, scale);
             g.DrawString(text, font, brush, 0, 0, format);
             g.Restore(state);
-            return true;
         }
         catch { /* Ignored: a malformed word must not abort the overlay. */ }
-        return false;
     }
 }
