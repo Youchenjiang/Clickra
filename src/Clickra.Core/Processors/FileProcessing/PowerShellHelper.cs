@@ -170,7 +170,7 @@ try {{
             }
             else
             {
-                throw new NotSupportedException(string.Format(Localization.T("error_office_unsupported", ClickraStorage.GetSetting("Language")), appType));
+                throw new NotSupportedException(string.Format(Localization.T("error_office_unsupported", ClickraStorage.GetSetting(LanguageSettingKey)), appType));
             }
 
             RunOfficeInteropScript(psScript, fileIndex, totalFiles, fullPath, appType, onProgress, cancellationToken);
@@ -241,7 +241,7 @@ try {{
             if (!process.WaitForExit(TimeSpan.FromMinutes(2)))
             {
                 try { process.Kill(true); } catch { /* Ignored: a hung process must not mask the timeout error. */ }
-                throw new TimeoutException(string.Format(Localization.T("error_office_timeout", ClickraStorage.GetSetting("Language")), appName));
+                throw new TimeoutException(string.Format(Localization.T("error_office_timeout", ClickraStorage.GetSetting(LanguageSettingKey)), appName));
             }
 
             cancellationToken.ThrowIfCancellationRequested();
