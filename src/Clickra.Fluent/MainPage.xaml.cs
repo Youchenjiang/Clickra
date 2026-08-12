@@ -18,6 +18,7 @@ namespace Clickra_Fluent;
 
 public sealed partial class MainPage : Page
 {
+    private const string GitHubUrl = "https://github.com/Youchenjiang/Clickra";
     private readonly List<string> _selectedFiles = new();
     private readonly Dictionary<string, Button> _commandButtons = new(StringComparer.OrdinalIgnoreCase);
     private CancellationTokenSource? _cts;
@@ -55,7 +56,7 @@ public sealed partial class MainPage : Page
         LibreOfficeBrowseButton.Click += async (_, _) => await BrowseLibreOfficeAsync();
         LibreOfficeDownloadButton.Click += async (_, _) => await InstallLibreOfficeAsync();
         LibreOfficeUninstallButton.Click += async (_, _) => await UninstallLibreOfficeAsync();
-        GitHubButton.Click += async (_, _) => await OpenUriAsync("https://github.com/Youchenjiang/Clickra");
+        GitHubButton.Click += async (_, _) => await OpenUriAsync(GitHubUrl);
         OpenDataDirButton.Click += async (_, _) => await OpenDataDirAsync();
         GmailButton.Click += async (_, _) => await OpenDiagnosticsEmailAsync();
         HookCommandButtons();
@@ -1001,15 +1002,26 @@ public sealed partial class MainPage : Page
         bool ready = !string.IsNullOrWhiteSpace(resolvedPath);
         string installedVersion = LibreOfficeEngineInstaller.GetInstalledSystemVersion();
 
-        LibreOfficeStatusText.Text = _libreOfficeSetupInProgress
-            ? LibreOfficeStatusText.Text
-            : removalPending
-                ? L("setting_libreoffice_removal_pending")
-                : ready
-                    ? string.IsNullOrWhiteSpace(installedVersion)
-                        ? L("setting_libreoffice_ready")
-                        : $"{L("setting_libreoffice_ready")} · {installedVersion}"
-                    : L("setting_libreoffice_missing");
+        string statusText;
+        if (_libreOfficeSetupInProgress)
+        {
+            statusText = LibreOfficeStatusText.Text;
+        }
+        else if (removalPending)
+        {
+            statusText = L("setting_libreoffice_removal_pending");
+        }
+        else if (ready)
+        {
+            statusText = string.IsNullOrWhiteSpace(installedVersion)
+                ? L("setting_libreoffice_ready")
+                : $"{L("setting_libreoffice_ready")} · {installedVersion}";
+        }
+        else
+        {
+            statusText = L("setting_libreoffice_missing");
+        }
+        LibreOfficeStatusText.Text = statusText;
         LibreOfficePathText.Text = ready ? resolvedPath : "";
         LibreOfficeSetupProgress.Visibility = _libreOfficeSetupInProgress ? Visibility.Visible : Visibility.Collapsed;
         LibreOfficeBrowseButton.IsEnabled = !_libreOfficeSetupInProgress;
@@ -1194,7 +1206,7 @@ public sealed partial class MainPage : Page
                 Directory.CreateDirectory(dir);
 
             if (!File.Exists(logPath))
-                File.WriteAllText(logPath, "");
+                await File.WriteAllTextAsync(logPath, "");
 
             // 喚醒檔案總管並使用 /select 自動高亮選中 history.log 檔案
             Process.Start(new ProcessStartInfo
@@ -1322,7 +1334,7 @@ $toast = [Windows.UI.Notifications.ToastNotification]::new($template)
                 CreateNoWindow = true
             })?.Dispose();
         }
-        catch { }
+        catch { /* Ignored: a failed toast must not break the conversion flow. */ }
     }
 
     private string CommandLabel(string command) => command switch

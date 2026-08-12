@@ -238,7 +238,7 @@ try {{
 
             if (!process.WaitForExit(TimeSpan.FromMinutes(2)))
             {
-                try { process.Kill(true); } catch { }
+                try { process.Kill(true); } catch { /* Ignored: a hung process must not mask the timeout error. */ }
                 throw new TimeoutException(string.Format(Localization.T("error_office_timeout", ClickraStorage.GetSetting("Language")), appName));
             }
 
@@ -475,7 +475,7 @@ try {{
 
                 if (!process.WaitForExit(TimeSpan.FromMinutes(2)))
                 {
-                    try { process.Kill(true); } catch { }
+                    try { process.Kill(true); } catch { /* Ignored: a hung process must not mask the timeout error. */ }
                     throw new TimeoutException(Localization.T("error_libreoffice_timeout", ClickraStorage.GetSetting("Language")));
                 }
                 cancellationToken.ThrowIfCancellationRequested();

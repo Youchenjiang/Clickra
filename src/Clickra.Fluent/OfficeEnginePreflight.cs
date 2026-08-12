@@ -20,18 +20,20 @@ internal static class OfficeEnginePreflight
         string engine = ClickraStorage.GetSetting("OfficeEngine");
         bool libreOfficeReady = !string.IsNullOrWhiteSpace(LibreOfficeHelper.GetResolvedExecutablePath());
         bool microsoftReady = IsOfficeInstalled(app);
-        bool ready = engine.Equals("libreoffice", StringComparison.OrdinalIgnoreCase)
-            ? libreOfficeReady
-            : engine.Equals("microsoft", StringComparison.OrdinalIgnoreCase)
-                ? microsoftReady
-                : microsoftReady || libreOfficeReady;
+        bool isLibreOffice = engine.Equals("libreoffice", StringComparison.OrdinalIgnoreCase);
+        bool isMicrosoft = engine.Equals("microsoft", StringComparison.OrdinalIgnoreCase);
+
+        bool ready;
+        if (isLibreOffice) ready = libreOfficeReady;
+        else if (isMicrosoft) ready = microsoftReady;
+        else ready = microsoftReady || libreOfficeReady;
         if (ready) return true;
 
-        error = localize(engine.Equals("libreoffice", StringComparison.OrdinalIgnoreCase)
-            ? "error_libreoffice_not_ready"
-            : engine.Equals("microsoft", StringComparison.OrdinalIgnoreCase)
-                ? "error_microsoftoffice_not_ready"
-                : "setting_engine_none_available");
+        string errorKey;
+        if (isLibreOffice) errorKey = "error_libreoffice_not_ready";
+        else if (isMicrosoft) errorKey = "error_microsoftoffice_not_ready";
+        else errorKey = "setting_engine_none_available";
+        error = localize(errorKey);
         return false;
     }
 

@@ -312,7 +312,7 @@ public sealed partial class VisualSplitterControl : UserControl
         _currentPreviewPageIndex = 0;
 
         _mode = 0;
-        if (!(ModeCustomBtn.IsChecked == true)) ModeCustomBtn.IsChecked = true;
+        if (ModeCustomBtn.IsChecked is not true) ModeCustomBtn.IsChecked = true;
 
         RefreshSegmentList();
         _ = UpdatePreview();
@@ -322,7 +322,7 @@ public sealed partial class VisualSplitterControl : UserControl
     /// segment and selects it (switching to custom mode).</summary>
     private void AddVisualSplitSegment()
     {
-        if (!(ModeCustomBtn.IsChecked == true)) ModeCustomBtn.IsChecked = true;
+        if (ModeCustomBtn.IsChecked is not true) ModeCustomBtn.IsChecked = true;
         _mode = 0;
 
         if (_customSegments.Count == 0)
@@ -374,7 +374,7 @@ public sealed partial class VisualSplitterControl : UserControl
         if (_customSegments.Count <= 1) return;
         if (_selectedSegmentIndex < 0 || _selectedSegmentIndex >= _customSegments.Count) return;
 
-        if (!(ModeCustomBtn.IsChecked == true)) ModeCustomBtn.IsChecked = true;
+        if (ModeCustomBtn.IsChecked is not true) ModeCustomBtn.IsChecked = true;
         _mode = 0;
 
         _customSegments.RemoveAt(_selectedSegmentIndex);
@@ -390,7 +390,7 @@ public sealed partial class VisualSplitterControl : UserControl
     /// <summary>Clears all custom segments and switches to custom mode.</summary>
     private void ClearVisualSplitSegments()
     {
-        if (!(ModeCustomBtn.IsChecked == true)) ModeCustomBtn.IsChecked = true;
+        if (ModeCustomBtn.IsChecked is not true) ModeCustomBtn.IsChecked = true;
         _mode = 0;
         _customSegments.Clear();
         _segments.Clear();

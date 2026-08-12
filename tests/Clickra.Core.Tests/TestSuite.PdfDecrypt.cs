@@ -42,6 +42,6 @@ static partial class TestSuite
 
     private static void TryDeleteDecryptFixture(string path)
     {
-        try { if (File.Exists(path)) File.Delete(path); } catch { }
+        try { if (File.Exists(path)) File.Delete(path); } catch { /* Ignored: best-effort test fixture cleanup. */ }
     }
 }

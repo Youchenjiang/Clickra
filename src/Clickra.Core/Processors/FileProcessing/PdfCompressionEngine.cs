@@ -48,7 +48,7 @@ public sealed class NativePdfCompressionEngine : IPdfCompressionEngine
                 if (PdfSharp.Fonts.GlobalFontSettings.FontResolver == null)
                     PdfSharp.Fonts.GlobalFontSettings.FontResolver = new ClickraFontResolver();
             }
-            catch { }
+            catch { /* Ignored: font resolver setup is best-effort; default fonts still render. */ }
 
             var settings = PdfCompressionSettings.Parse(options);
 

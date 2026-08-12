@@ -70,7 +70,7 @@ internal static class Program
                 int idx = Array.IndexOf(args, raw);
                 if (idx + 1 >= args.Length)
                 {
-                    Console.Error.WriteLine($"[Clickra Setup] 缺少 {raw} 的參數值。");
+                    await Console.Error.WriteLineAsync($"[Clickra Setup] 缺少 {raw} 的參數值。");
                     return 2;
                 }
                 string value = args[idx + 1];
@@ -81,7 +81,7 @@ internal static class Program
 
         if (forceFluent && forceNative)
         {
-            Console.Error.WriteLine("[Clickra Setup] --fluent 與 --native 不能同時指定。");
+            await Console.Error.WriteLineAsync("[Clickra Setup] --fluent 與 --native 不能同時指定。");
             return 2;
         }
 
@@ -104,7 +104,7 @@ internal static class Program
 
         if (useFluent && (!hasDotNet || !hasWinAppRuntime))
         {
-            Console.WriteLine("[Clickra Setup] 警告：強制安裝 Fluent，但本機未完整具備所需 runtime，安裝可能失敗。");
+            await Console.Out.WriteLineAsync("[Clickra Setup] 警告：強制安裝 Fluent，但本機未完整具備所需 runtime，安裝可能失敗。");
         }
 
         if (!quiet)
@@ -116,7 +116,7 @@ internal static class Program
         {
             if (!File.Exists(localMsix))
             {
-                Console.Error.WriteLine($"[Clickra Setup] 找不到本機 MSIX：{localMsix}");
+                await Console.Error.WriteLineAsync($"[Clickra Setup] 找不到本機 MSIX：{localMsix}");
                 return 3;
             }
             msixPath = Path.GetFullPath(localMsix);
@@ -283,7 +283,7 @@ internal static class Program
         string dir = Path.Combine(Path.GetTempPath(), "ClickraSetup");
         Directory.CreateDirectory(dir);
         string dest = Path.Combine(dir, assetName);
-        string url = releaseBase.TrimEnd('/') + "/" + assetName;
+        string url = Path.Combine(releaseBase.TrimEnd('/'), assetName);
 
         Console.WriteLine($"[Clickra Setup] 正在下載 {url} ...");
         using var client = new HttpClient { Timeout = TimeSpan.FromMinutes(10) };
