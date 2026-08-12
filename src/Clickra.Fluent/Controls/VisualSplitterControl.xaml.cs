@@ -13,16 +13,15 @@ using System.Threading.Tasks;
 using Windows.Data.Pdf;
 using Windows.Storage;
 using Windows.Storage.Streams;
-using Windows.System;
 
 namespace Clickra_Fluent;
 
 /// <summary>
 /// WinUI visual PDF splitter, mirroring the CLI's visual splitter: a segment list,
-/// a live page preview with page navigation and "split at current page", custom /
-/// split-each / fixed-pages modes, and a zoomed inspection view. The page-range spec
-/// is built by <see cref="PdfSplitProcessor.BuildSegmentSpec"/> so both tracks share
-/// one Core source of truth.
+/// a live page preview with inline zoom (buttons / Ctrl+wheel), page navigation
+/// and "split at current page", and custom / split-each / fixed-pages modes. The
+/// page-range spec is built by <see cref="PdfSplitProcessor.BuildSegmentSpec"/> so
+/// both tracks share one Core source of truth.
 /// </summary>
 public sealed partial class VisualSplitterControl : UserControl
 {
@@ -44,13 +43,8 @@ public sealed partial class VisualSplitterControl : UserControl
     private bool _suppressSelection;
     private PdfDocument? _pdfDoc;
 
-    // Zoom lightbox state (mirrors the CLI: factor 1.0 = fit, clamped to 8x).
-    private bool _zoomOpen;
+    // Inline preview zoom (mirrors the CLI: factor 1.0 = fit, clamped to 8x).
     private float _zoomFactor = 1f;
-    private bool _zoomDragging;
-    private double _zoomDragStartX, _zoomDragStartY;
-    private double _zoomDragOffsetX, _zoomDragOffsetY;
-    private int _zoomRenderSeq;
 
     public VisualSplitterControl(string pdfPath)
     {
@@ -67,9 +61,7 @@ public sealed partial class VisualSplitterControl : UserControl
         ModeCustomBtn.IsChecked = true;
         RefreshModeButtons();
         RefreshNSelector();
-        ZoomTagText.Text = L("pdf_split_zoom_tag");
-        ZoomHint.Text = L("pdf_split_zoom_hint");
-        ZoomCloseBtn.Content = L("pdf_split_zoom_close");
+        ZoomLevelText.Text = "100%";
         ZoomFitBtn.Content = L("pdf_split_zoom_fit");
 
         // Seed custom segments with halves of the document, mirroring the CLI splitter.
@@ -97,183 +89,68 @@ public sealed partial class VisualSplitterControl : UserControl
         PrevPageBtn.Click += (_, _) => NavigatePreview(-1);
         NextPageBtn.Click += (_, _) => NavigatePreview(+1);
         SplitAtPageBtn.Click += (_, _) => SplitSegmentAtCurrentPage();
-        PreviewBox.PointerPressed += PreviewBox_PointerPressed;
-        ZoomTag.PointerPressed += ZoomTag_PointerPressed;
+        // Re-fit the preview (keeping the zoom factor) when the window or the
+        // viewport changes (e.g. scrollbars appearing, window resizing).
+        SizeChanged += (_, _) => ApplyPreviewSize();
+        PreviewScroll.ViewChanged += (_, _) => ApplyPreviewSize();
 
         ApplyMode(0);
         _ = LoadPreviewDocumentAsync();
     }
 
-    // ---- Zoom lightbox ----------------------------------------------------
+    // ---- Inline preview zoom -------------------------------------------------
 
-    private void PreviewBox_PointerPressed(object sender, PointerRoutedEventArgs e) => OpenZoom();
-    private void ZoomTag_PointerPressed(object sender, PointerRoutedEventArgs e) => OpenZoom();
+    /// <summary>Renders the page at a resolution that supports the current zoom
+    /// factor (fit 1x = 660px, capped at 1500px for deep zoom).</summary>
+    private int RenderWidth => (int)Math.Clamp(PreviewWidth * _zoomFactor, PreviewWidth, ZoomWidth);
 
-    private void OpenZoom()
+    /// <summary>Sizes the preview page so factor 1.0 fits the viewport, then scales by
+    /// the zoom factor (the ScrollViewer then provides panning when zoomed in).</summary>
+    private void ApplyPreviewSize()
     {
-        if (_zoomOpen) return;
-        _zoomOpen = true;
-        _zoomFactor = 1f;
-        _zoomDragging = false;
-        ZoomOverlay.Visibility = Visibility.Visible;
-        ZoomOverlay.Focus(FocusState.Programmatic);
-        UpdateZoom();
-    }
-
-    private void CloseZoom()
-    {
-        if (!_zoomOpen) return;
-        _zoomOpen = false;
-        _zoomDragging = false;
-        ZoomOverlay.Visibility = Visibility.Collapsed;
-    }
-
-    /// <summary>Renders the current page at high resolution for the lightbox and refreshes
-    /// the title and size, honoring the current zoom factor.</summary>
-    private async void UpdateZoom()
-    {
-        int page = GetCurrentPageNumber();
-        int seq = ++_zoomRenderSeq;
-        BitmapImage? source;
-        if (_pdfDoc != null)
-        {
-            source = await RenderPageAsync(_pdfDoc, page, ZoomWidth);
-        }
-        else
-        {
-            string fontName = PdfPageThumbnailRenderer.GetTextFontName(ClickraStorage.GetSetting("Language"));
-            var bmp = await Task.Run(() => PdfPageThumbnailRenderer.RenderPageFromFile(_pdfPath, page, ZoomWidth, fontName));
-            source = bmp == null ? null : await ToBitmapImageAsync(bmp);
-            bmp?.Dispose();
-        }
-
-        if (!_zoomOpen || seq != _zoomRenderSeq || source == null) return;
-        ZoomImage.Source = source;
-        ApplyZoomSize();
-    }
-
-    /// <summary>Sizes the zoomed page so factor 1.0 fits the lightbox viewport, then
-    /// scales by the zoom factor (the ScrollViewer then provides panning).</summary>
-    private void ApplyZoomSize()
-    {
-        if (ZoomImage.Source is not BitmapImage bmp) return;
-        double vw = ZoomScroll.ViewportWidth;
-        double vh = ZoomScroll.ViewportHeight;
+        if (PreviewImage.Source is not BitmapImage bmp) return;
+        double vw = PreviewScroll.ViewportWidth;
+        double vh = PreviewScroll.ViewportHeight;
         if (vw <= 0 || vh <= 0) return;
 
         double aspect = (double)bmp.PixelWidth / bmp.PixelHeight;
         double fitW = vw, fitH = vw / aspect;
         if (fitH > vh) { fitH = vh; fitW = vh * aspect; }
+        // Keep 1px of slack so layout rounding never leaves a phantom scrollbar.
+        fitW = Math.Max(1, fitW - 1);
+        fitH = Math.Max(1, fitH - 1);
 
-        ZoomImage.Width = fitW * _zoomFactor;
-        ZoomImage.Height = fitH * _zoomFactor;
-
-        int pct = (int)(_zoomFactor * 100);
-        ZoomTitle.Text = $"{Localization.T("pdf_split_zoom_title", ClickraStorage.GetSetting("Language"))} P.{GetCurrentPageNumber()} \u00B7 {pct}%";
+        PreviewImage.Width = fitW * _zoomFactor;
+        PreviewImage.Height = fitH * _zoomFactor;
+        ZoomLevelText.Text = $"{Math.Round(_zoomFactor * 100)}%";
     }
 
-    /// <summary>Sets the zoom factor (clamped 1x-8x), keeping the lightbox viewport centered.</summary>
+    /// <summary>Sets the zoom factor (clamped 1x-8x). Resizes immediately with the
+    /// current bitmap, then re-renders at higher resolution for crispness.</summary>
     private void SetZoomFactor(float factor)
     {
         float newFactor = Math.Clamp(factor, 1f, 8f);
         if (newFactor == _zoomFactor) return;
         _zoomFactor = newFactor;
-        ApplyZoomSize();
+        ApplyPreviewSize();
+        UpdatePreview();
     }
 
     private void ZoomInBtn_Click(object sender, RoutedEventArgs e) => SetZoomFactor(_zoomFactor * 1.25f);
     private void ZoomOutBtn_Click(object sender, RoutedEventArgs e) => SetZoomFactor(_zoomFactor / 1.25f);
     private void ZoomFitBtn_Click(object sender, RoutedEventArgs e) => SetZoomFactor(1f);
-    private void ZoomCloseBtn_Click(object sender, RoutedEventArgs e) => CloseZoom();
 
-    /// <summary>Wheel zooms the lightbox anchored at the cursor (mirrors the CLI).</summary>
-    private void ZoomOverlay_PointerWheelChanged(object sender, PointerRoutedEventArgs e)
+    /// <summary>Ctrl+wheel zooms the inline preview; a plain wheel keeps scrolling the
+    /// preview when zoomed in (standard viewer behaviour).</summary>
+    private void PreviewImage_PointerWheelChanged(object sender, PointerRoutedEventArgs e)
     {
-        if (!_zoomOpen) return;
-        int delta = e.GetCurrentPoint(ZoomScroll).Properties.MouseWheelDelta;
+        var ctrlState = Microsoft.UI.Input.InputKeyboardSource.GetKeyStateForCurrentThread(Windows.System.VirtualKey.Control);
+        bool isCtrl = ctrlState.HasFlag(Windows.UI.Core.CoreVirtualKeyStates.Down);
+        if (!isCtrl) return;
+        int delta = e.GetCurrentPoint(PreviewImage).Properties.MouseWheelDelta;
         if (delta == 0) return;
-
-        var pt = e.GetCurrentPoint(ZoomScroll).Position;
-        double oldW = ZoomImage.Width;
-        float factor = delta > 0 ? 1.25f : 0.8f;
-        float newFactor = Math.Clamp(_zoomFactor * factor, 1f, 8f);
-        if (newFactor == _zoomFactor) return;
-
-        double ratio = newFactor / _zoomFactor;
-        _zoomFactor = newFactor;
-        double anchorX = ZoomScroll.HorizontalOffset + pt.X;
-        double anchorY = ZoomScroll.VerticalOffset + pt.Y;
-        ApplyZoomSize();
-        ZoomScroll.ChangeView(anchorX * ratio - pt.X, anchorY * ratio - pt.Y, null, true);
+        SetZoomFactor(_zoomFactor * (delta > 0 ? 1.25f : 0.8f));
         e.Handled = true;
-    }
-
-    /// <summary>Drag-to-pan the zoomed page; a press outside the modal closes the lightbox.</summary>
-    private void ZoomOverlay_PointerPressed(object sender, PointerRoutedEventArgs e)
-    {
-        if (!_zoomOpen) return;
-        var pt = e.GetCurrentPoint(ZoomOverlay).Position;
-        var origin = ZoomModal.TransformToVisual(ZoomOverlay).TransformPoint(new Windows.Foundation.Point(0, 0));
-        var rect = new Windows.Foundation.Rect(origin.X, origin.Y, ZoomModal.ActualWidth, ZoomModal.ActualHeight);
-        if (!rect.Contains(pt)) CloseZoom();
-    }
-
-    private void ZoomImage_PointerPressed(object sender, PointerRoutedEventArgs e)
-    {
-        if (!_zoomOpen) return;
-        _zoomDragging = true;
-        var pt = e.GetCurrentPoint(ZoomScroll);
-        _zoomDragStartX = pt.Position.X;
-        _zoomDragStartY = pt.Position.Y;
-        _zoomDragOffsetX = ZoomScroll.HorizontalOffset;
-        _zoomDragOffsetY = ZoomScroll.VerticalOffset;
-        ZoomImage.CapturePointer(e.Pointer);
-        e.Handled = true;
-    }
-
-    private void ZoomImage_PointerMoved(object sender, PointerRoutedEventArgs e)
-    {
-        if (!_zoomDragging) return;
-        var pt = e.GetCurrentPoint(ZoomScroll);
-        double dx = pt.Position.X - _zoomDragStartX;
-        double dy = pt.Position.Y - _zoomDragStartY;
-        ZoomScroll.ChangeView(_zoomDragOffsetX - dx, _zoomDragOffsetY - dy, null, true);
-    }
-
-    private void ZoomImage_PointerReleased(object sender, PointerRoutedEventArgs e)
-    {
-        if (!_zoomDragging) return;
-        _zoomDragging = false;
-        ZoomImage.ReleasePointerCapture(e.Pointer);
-        e.Handled = true;
-    }
-
-    /// <summary>Lightbox keyboard shortcuts: Esc/Space/Enter close, +/− zoom, 0 resets (mirrors the CLI).</summary>
-    private void ZoomOverlay_KeyDown(object sender, KeyRoutedEventArgs e)
-    {
-        if (!_zoomOpen) return;
-        switch (e.Key)
-        {
-            case VirtualKey.Escape:
-            case VirtualKey.Space:
-            case VirtualKey.Enter:
-                CloseZoom();
-                e.Handled = true;
-                break;
-            case VirtualKey.Add:
-            case VirtualKey.Number1:
-                SetZoomFactor(_zoomFactor * 1.25f);
-                e.Handled = true;
-                break;
-            case VirtualKey.Subtract:
-                SetZoomFactor(_zoomFactor / 1.25f);
-                e.Handled = true;
-                break;
-            case VirtualKey.Number0:
-                SetZoomFactor(1f);
-                e.Handled = true;
-                break;
-        }
     }
 
     /// <summary>Loads the Windows built-in PDF renderer for true page previews; falls
@@ -547,20 +424,21 @@ public sealed partial class VisualSplitterControl : UserControl
         BitmapImage? source;
         if (_pdfDoc != null)
         {
-            source = await RenderPageAsync(_pdfDoc, page, PreviewWidth);
+            source = await RenderPageAsync(_pdfDoc, page, RenderWidth);
         }
         else
         {
             // Windows PDF renderer unavailable (e.g. encrypted file): fall back to the
             // shared Core word-overlay renderer.
             string fontName = PdfPageThumbnailRenderer.GetTextFontName(ClickraStorage.GetSetting("Language"));
-            var bmp = await Task.Run(() => PdfPageThumbnailRenderer.RenderPageFromFile(_pdfPath, page, PreviewWidth, fontName));
+            var bmp = await Task.Run(() => PdfPageThumbnailRenderer.RenderPageFromFile(_pdfPath, page, RenderWidth, fontName));
             source = bmp == null ? null : await ToBitmapImageAsync(bmp);
             bmp?.Dispose();
         }
 
         if (seq != _renderSeq || source == null) return;
-        FitImage.Source = source;
+        PreviewImage.Source = source;
+        ApplyPreviewSize();
     }
 
     private static async Task<BitmapImage?> RenderPageAsync(PdfDocument doc, int pageNumber, int targetWidth)

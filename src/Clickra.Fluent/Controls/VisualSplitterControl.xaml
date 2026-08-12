@@ -64,6 +64,7 @@
                 <Grid.RowDefinitions>
                     <RowDefinition Height="Auto"/>
                     <RowDefinition Height="*"/>
+                    <RowDefinition Height="Auto"/>
                 </Grid.RowDefinitions>
 
                 <!-- Output badge + page navigation in one row -->
@@ -85,67 +86,28 @@
                     </StackPanel>
                 </Grid>
 
-                <!-- Preview box: paper-white page with border and a [放大] tag. Clicking the
-                     preview (or the tag) opens the zoom lightbox, mirroring the CLI. -->
-                <Border x:Name="PreviewBox" Grid.Row="1" BorderThickness="1" BorderBrush="{ThemeResource ControlStrokeColorDefaultBrush}" Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
-                        PointerPressed="PreviewBox_PointerPressed">
-                    <Grid>
-                        <Image x:Name="FitImage" Stretch="Uniform"/>
-                        <Border x:Name="ZoomTag" HorizontalAlignment="Right" VerticalAlignment="Bottom"
-                                Background="{ThemeResource ControlFillColorSecondaryBrush}"
-                                BorderBrush="{ThemeResource ControlStrokeColorDefaultBrush}" BorderThickness="1"
-                                CornerRadius="4" Padding="8,3" Margin="0,0,4,4">
-                            <TextBlock x:Name="ZoomTagText" Foreground="{ThemeResource TextFillColorPrimaryBrush}"/>
-                        </Border>
-                    </Grid>
+                <!-- Preview: scrollable page image. Zoom (factor 1x = fit) is applied inline
+                     here via the controls below / Ctrl+wheel, so there is no separate
+                     lightbox; the scrollbars provide panning when zoomed in. -->
+                <Border x:Name="PreviewBox" Grid.Row="1" BorderThickness="1" BorderBrush="{ThemeResource ControlStrokeColorDefaultBrush}" Background="{ThemeResource CardBackgroundFillColorDefaultBrush}">
+                    <ScrollViewer x:Name="PreviewScroll" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto"
+                                  HorizontalScrollMode="Enabled" VerticalScrollMode="Enabled" ZoomMode="Disabled">
+                        <!-- Stretch=Fill: Width/Height are set in code to the aspect-preserved
+                             display size (fit * zoom factor), so Fill shows the whole page. -->
+                        <Image x:Name="PreviewImage" Stretch="Fill" PointerWheelChanged="PreviewImage_PointerWheelChanged"/>
+                    </ScrollViewer>
                 </Border>
+
+                <!-- Inline zoom controls: zoom out / level / zoom in / fit -->
+                <StackPanel Grid.Row="2" Orientation="Horizontal" Spacing="6" HorizontalAlignment="Right">
+                    <Button x:Name="ZoomOutBtn" Content="&#x2212;" MinWidth="34" Padding="8,5" Click="ZoomOutBtn_Click"/>
+                    <TextBlock x:Name="ZoomLevelText" VerticalAlignment="Center" MinWidth="56" TextAlignment="Center"/>
+                    <Button x:Name="ZoomInBtn" Content="&#xFF0B;" MinWidth="34" Padding="8,5" Click="ZoomInBtn_Click"/>
+                    <Button x:Name="ZoomFitBtn" Content="適配" Padding="10,5" Click="ZoomFitBtn_Click"/>
+                </StackPanel>
             </Grid>
         </Grid>
 
-        <!-- Zoom lightbox overlay: dimmed backdrop, modal frame with title, close button,
-             scrollable high-res page image and zoom controls (wheel / drag / buttons), all
-             mirroring the CLI lightbox. -->
-        <!-- ScrimBrush is not resolved in unpackaged WinUI 3; use the standard 40% black scrim. -->
-        <Grid x:Name="ZoomOverlay" Grid.RowSpan="2" Visibility="Collapsed" Background="#66000000"
-              PointerWheelChanged="ZoomOverlay_PointerWheelChanged"
-              PointerPressed="ZoomOverlay_PointerPressed"
-              KeyDown="ZoomOverlay_KeyDown">
-            <Border x:Name="ZoomModal" MinWidth="420" MaxWidth="540" Width="480" MinHeight="220" MaxHeight="280" Height="240"
-                    Background="{ThemeResource LayerFillColorDefaultBrush}"
-                    BorderBrush="{ThemeResource ControlStrokeColorSecondaryBrush}" BorderThickness="1"
-                    HorizontalAlignment="Center" VerticalAlignment="Center" CornerRadius="8">
-                <Grid>
-                    <Grid.RowDefinitions>
-                        <RowDefinition Height="Auto"/>
-                        <RowDefinition Height="*"/>
-                        <RowDefinition Height="Auto"/>
-                    </Grid.RowDefinitions>
-                    <Grid Grid.Row="0" Margin="16,10,16,0">
-                        <TextBlock x:Name="ZoomTitle" Foreground="{ThemeResource TextFillColorPrimaryBrush}" VerticalAlignment="Center"/>
-                        <Button x:Name="ZoomCloseBtn" Content="X 關閉" HorizontalAlignment="Right" Padding="12,6" Click="ZoomCloseBtn_Click"/>
-                    </Grid>
-                    <ScrollViewer x:Name="ZoomScroll" Grid.Row="1" Margin="16,10"
-                                  HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto"
-                                  HorizontalScrollMode="Enabled" VerticalScrollMode="Enabled" ZoomMode="Disabled">
-                        <!-- Stretch=Fill: the page is rendered at high resolution and sized by
-                             Width/Height in code (aspect-preserving), so Fill scales the full
-                             page into that rect instead of clipping the top-left corner. -->
-                        <Image x:Name="ZoomImage" Stretch="Fill"
-                               PointerPressed="ZoomImage_PointerPressed"
-                               PointerMoved="ZoomImage_PointerMoved"
-                               PointerReleased="ZoomImage_PointerReleased"
-                               PointerCanceled="ZoomImage_PointerReleased"/>
-                    </ScrollViewer>
-                    <Grid Grid.Row="2" Margin="16,0,16,10">
-                        <TextBlock x:Name="ZoomHint" Foreground="{ThemeResource TextFillColorSecondaryBrush}" VerticalAlignment="Center"/>
-                        <StackPanel Orientation="Horizontal" Spacing="6" HorizontalAlignment="Right">
-                            <Button x:Name="ZoomOutBtn" Content="&#x2212;" MinWidth="34" Padding="8,6" Click="ZoomOutBtn_Click"/>
-                            <Button x:Name="ZoomInBtn" Content="&#xFF0B;" MinWidth="34" Padding="8,6" Click="ZoomInBtn_Click"/>
-                            <Button x:Name="ZoomFitBtn" Content="適配" Padding="12,6" Click="ZoomFitBtn_Click"/>
-                        </StackPanel>
-                    </Grid>
-                </Grid>
-            </Border>
-        </Grid>
+
     </Grid>
 </UserControl>
