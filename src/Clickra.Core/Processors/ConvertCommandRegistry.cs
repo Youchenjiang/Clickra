@@ -9,42 +9,48 @@ namespace Clickra.Core.Processors
     /// Fluent and NativeAOT UIs. Adding a command means editing this table once.</summary>
     public static class ConvertCommandRegistry
     {
+        private sealed record CommandDef(string[] Extensions, int MinFiles, string LabelKey);
+
+        private static readonly string[] PdfExtensions = { ".pdf" };
+        private static readonly string[] PptExtensions = { ".ppt", ".pptx" };
+        private static readonly string[] WordExtensions = { ".doc", ".docx" };
+        private static readonly string[] ExcelExtensions = { ".xls", ".xlsx" };
+        private static readonly string[] ImageExtensions = { ".jpg", ".jpeg", ".png", ".bmp", ".gif", ".tiff", ".webp" };
+
+        /// <summary>Every convert command and its metadata, in dashboard order.</summary>
+        private static readonly Dictionary<string, CommandDef> Commands = new(StringComparer.OrdinalIgnoreCase)
+        {
+            ["ppt2pdf"] = new(PptExtensions, 1, "cmd_ppt_to_pdf"),
+            ["word2pdf"] = new(WordExtensions, 1, "cmd_word_to_pdf"),
+            ["excel2pdf"] = new(ExcelExtensions, 1, "cmd_excel_to_pdf"),
+            ["merge-pdf"] = new(PdfExtensions, 2, "cmd_merge_pdf"),
+            ["compress-pdf"] = new(PdfExtensions, 1, "cmd_compress_pdf"),
+            ["translate-pdf"] = new(PdfExtensions, 1, "cmd_translate_pdf"),
+            ["decrypt-pdf"] = new(PdfExtensions, 1, "cmd_decrypt_pdf"),
+            ["split-pdf"] = new(PdfExtensions, 1, "cmd_split_pdf"),
+            ["img2pdf"] = new(ImageExtensions, 1, "cmd_img_to_pdf"),
+            ["img-merge"] = new(ImageExtensions, 2, "cmd_merge_img"),
+            ["img-stitch"] = new(ImageExtensions, 2, "cmd_stitch_img")
+        };
+
         /// <summary>Every file type any convert command accepts, used for unfiltered pickers.</summary>
-        public static readonly string[] AllSupportedExtensions = { ".pdf", ".ppt", ".pptx", ".doc", ".docx", ".xls", ".xlsx", ".jpg", ".jpeg", ".png", ".bmp", ".gif", ".tiff", ".webp" };
+        public static readonly string[] AllSupportedExtensions =
+            Commands.Values.SelectMany(def => def.Extensions).Distinct().ToArray();
 
         /// <summary>File extensions a command accepts; empty when the command is unknown.</summary>
-        public static string[] GetAllowedExtensions(string? command) => command switch
-        {
-            "ppt2pdf" => new[] { ".ppt", ".pptx" },
-            "word2pdf" => new[] { ".doc", ".docx" },
-            "excel2pdf" => new[] { ".xls", ".xlsx" },
-            "merge-pdf" or "compress-pdf" or "translate-pdf" or "decrypt-pdf" or "split-pdf" => new[] { ".pdf" },
-            "img2pdf" or "img-merge" or "img-stitch" => new[] { ".jpg", ".jpeg", ".png", ".bmp", ".gif", ".tiff", ".webp" },
-            _ => Array.Empty<string>()
-        };
+        public static string[] GetAllowedExtensions(string? command) =>
+            command is not null && Commands.TryGetValue(command, out var def) ? def.Extensions : Array.Empty<string>();
 
         /// <summary>Whether the command key maps to a known conversion.</summary>
-        public static bool IsKnownCommand(string command) => GetAllowedExtensions(command).Length > 0;
+        public static bool IsKnownCommand(string command) => Commands.ContainsKey(command);
 
         /// <summary>Minimum number of files the command requires.</summary>
-        public static int GetMinFiles(string command) => command is "merge-pdf" or "img-merge" or "img-stitch" ? 2 : 1;
+        public static int GetMinFiles(string command) =>
+            Commands.TryGetValue(command, out var def) ? def.MinFiles : 1;
 
         /// <summary>Localization key for the command display name.</summary>
-        public static string GetLabelKey(string command) => command switch
-        {
-            "ppt2pdf" => "cmd_ppt_to_pdf",
-            "word2pdf" => "cmd_word_to_pdf",
-            "excel2pdf" => "cmd_excel_to_pdf",
-            "merge-pdf" => "cmd_merge_pdf",
-            "compress-pdf" => "cmd_compress_pdf",
-            "translate-pdf" => "cmd_translate_pdf",
-            "decrypt-pdf" => "cmd_decrypt_pdf",
-            "split-pdf" => "cmd_split_pdf",
-            "img2pdf" => "cmd_img_to_pdf",
-            "img-merge" => "cmd_merge_img",
-            "img-stitch" => "cmd_stitch_img",
-            _ => command
-        };
+        public static string GetLabelKey(string command) =>
+            Commands.TryGetValue(command, out var def) ? def.LabelKey : command;
 
         /// <summary>Predicts the output paths a command will produce for the given files.</summary>
         public static List<string> EstimateOutputs(string command, List<string> files)
