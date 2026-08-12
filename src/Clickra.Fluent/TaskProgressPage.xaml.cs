@@ -27,6 +27,7 @@ public sealed partial class TaskProgressPage : Page
         _arguments = e.Parameter as string ?? "";
     }
 
+    // NOSONAR:S2325 — XAML event handler touching generated instance fields (ActionButtons).
     private void OnLayoutSizeChanged(object sender, SizeChangedEventArgs e)
     {
         bool narrow = e.NewSize.Width < 300;
@@ -36,7 +37,7 @@ public sealed partial class TaskProgressPage : Page
         ActionButtonsRow.Height = narrow ? GridLength.Auto : new GridLength(0);
     }
 
-    private string L(string key) => Localization.T(key, ClickraStorage.GetSetting("Language"));
+    private static string L(string key) => Localization.T(key, ClickraStorage.GetSetting("Language"));
 
     private void ApplyLanguage()
     {
@@ -137,6 +138,7 @@ public sealed partial class TaskProgressPage : Page
         return await dialog.ShowAsync() == ContentDialogResult.Primary ? box.Password : null;
     }
 
+    // NOSONAR:S2325 — accesses the XAML-generated SplitOverlay instance field.
     private async Task<string?> PromptSplitPagesAsync(string pdfPath)
     {
         SplitOverlay.Visibility = Visibility.Visible;

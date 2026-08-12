@@ -129,12 +129,14 @@ $fluentExclude = @(
     "Microsoft.Windows.AI.MachineLearning.dll",
     "Microsoft.Windows.ApplicationModel.Background.UniversalBGTask.dll"
 )
-Get-ChildItem $fluentPublishSource -File | Where-Object {
-    $name = $_.Name
-    -not ($fluentExclude | Where-Object { $name -like $_ })
-} | ForEach-Object {
-    Copy-Item $_.FullName "$layoutDir/"
-}
+Get-ChildItem $fluentPublishSource -File |
+    Where-Object {
+        $name = $_.Name
+        -not ($fluentExclude | Where-Object { $name -like $_ })
+    } |
+    ForEach-Object {
+        Copy-Item $_.FullName "$layoutDir/"
+    }
 
 $runtimeSource = "$fluentPublishSource/runtimes/win-x64/native"
 if (Test-Path $runtimeSource) {

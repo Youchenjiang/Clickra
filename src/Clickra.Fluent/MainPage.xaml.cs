@@ -76,7 +76,7 @@ public sealed partial class MainPage : Page
         }
     }
 
-    private string L(string key) => Localization.T(key, ClickraStorage.GetSetting("Language"));
+    private static string L(string key) => Localization.T(key, ClickraStorage.GetSetting("Language"));
 
     private void NavView_SelectionChanged(NavigationView sender, NavigationViewSelectionChangedEventArgs args)
     {
@@ -121,6 +121,7 @@ public sealed partial class MainPage : Page
         Grid.SetRow(sidePane, narrow ? 1 : 0);
     }
 
+    // NOSONAR:S2325 — accesses XAML-generated instance fields (ConvertMainColumn etc.).
     private void ApplyConvertResponsiveLayout(bool narrow)
     {
         ConvertMainColumn.Width = new GridLength(1, GridUnitType.Star);
@@ -267,6 +268,7 @@ public sealed partial class MainPage : Page
         SetDropZoneHot(false);
     }
 
+    // NOSONAR:S2325 — accesses XAML-generated instance fields (DropZone/DropZoneIcon).
     private void SetDropZoneHot(bool isHot)
     {
         DropZone.Background = (Brush)Application.Current.Resources[isHot ? "CardBackgroundFillColorSecondaryBrush" : "CardBackgroundFillColorDefaultBrush"];
@@ -276,12 +278,9 @@ public sealed partial class MainPage : Page
 
     private void AddFiles(IEnumerable<string> paths)
     {
-        foreach (var path in paths)
+        foreach (var path in paths.Where(p => File.Exists(p) && !_selectedFiles.Contains(p, StringComparer.OrdinalIgnoreCase)))
         {
-            if (File.Exists(path) && !_selectedFiles.Contains(path, StringComparer.OrdinalIgnoreCase))
-            {
-                _selectedFiles.Add(path);
-            }
+            _selectedFiles.Add(path);
         }
         RefreshFiles();
     }
@@ -1206,7 +1205,7 @@ public sealed partial class MainPage : Page
                 Directory.CreateDirectory(dir);
 
             if (!File.Exists(logPath))
-                await File.WriteAllTextAsync(logPath, "");
+                await File.WriteAllTextAsync(logPath, "", _cts?.Token ?? CancellationToken.None);
 
             // 喚醒檔案總管並使用 /select 自動高亮選中 history.log 檔案
             Process.Start(new ProcessStartInfo
@@ -1291,6 +1290,7 @@ public sealed partial class MainPage : Page
         return await dialog.ShowAsync() == ContentDialogResult.Primary ? box.Password : null;
     }
 
+    // NOSONAR:S2325 — accesses the XAML-generated SplitOverlay instance field.
     private async Task<string?> PromptSplitPagesAsync(string pdfPath)
     {
         SplitOverlay.Visibility = Visibility.Visible;

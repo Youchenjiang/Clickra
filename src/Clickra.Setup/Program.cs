@@ -43,45 +43,12 @@ internal static class Program
 
     private static async Task<int> Main(string[] args)
     {
-        bool forceFluent = false;
-        bool forceNative = false;
-        bool checkOnly = false;
-        bool quiet = false;
-        string? localMsix = null;
-        string releaseBase = DefaultReleaseBase;
-
-        foreach (string raw in args)
+        string parseError = ParseArguments(args, out bool forceFluent, out bool forceNative, out bool checkOnly, out bool quiet, out string? localMsix, out string releaseBase, out bool helpRequested);
+        if (helpRequested)
+            return 0;
+        if (parseError is not null)
         {
-            string arg = raw.ToLowerInvariant();
-            switch (arg)
-            {
-                case "--fluent": forceFluent = true; break;
-                case "--native": forceNative = true; break;
-                case "--check": checkOnly = true; break;
-                case "--quiet": quiet = true; break;
-                case "--help":
-                case "-h":
-                    PrintUsage();
-                    return 0;
-            }
-
-            if (arg == "--local" || arg == "--release-url")
-            {
-                int idx = Array.IndexOf(args, raw);
-                if (idx + 1 >= args.Length)
-                {
-                    await Console.Error.WriteLineAsync($"[Clickra Setup] 缺少 {raw} 的參數值。");
-                    return 2;
-                }
-                string value = args[idx + 1];
-                if (arg == "--local") localMsix = value;
-                else releaseBase = value;
-            }
-        }
-
-        if (forceFluent && forceNative)
-        {
-            await Console.Error.WriteLineAsync("[Clickra Setup] --fluent 與 --native 不能同時指定。");
+            await Console.Error.WriteLineAsync(parseError);
             return 2;
         }
 
@@ -97,7 +64,7 @@ internal static class Program
             return hasDotNet && hasWinAppRuntime ? 0 : 1;
 
         // ---- 2. 決定軌道 ----
-        bool useFluent = forceFluent || (!forceNative && hasDotNet && hasWinAppRuntime);
+        bool useFluent = DecideTrack(forceFluent, forceNative, hasDotNet, hasWinAppRuntime);
         string trackName = useFluent
             ? "Fluent（WinUI 3，需要 .NET 8+ 與 Windows App Runtime 2.x）"
             : "NativeAOT（零依賴原生版，不需要 .NET）";
@@ -141,6 +108,57 @@ internal static class Program
         return 0;
     }
 
+    /// <summary>Parses CLI arguments, returning an error message or null on success.
+    /// --help/-h print usage and are reported as handled via the success path.</summary>
+    private static string? ParseArguments(string[] args, out bool forceFluent, out bool forceNative, out bool checkOnly, out bool quiet, out string? localMsix, out string releaseBase, out bool helpRequested)
+    {
+        forceFluent = false;
+        forceNative = false;
+        checkOnly = false;
+        quiet = false;
+        localMsix = null;
+        releaseBase = DefaultReleaseBase;
+        helpRequested = false;
+
+        foreach (string raw in args)
+        {
+            string arg = raw.ToLowerInvariant();
+            switch (arg)
+            {
+                case "--fluent": forceFluent = true; break;
+                case "--native": forceNative = true; break;
+                case "--check": checkOnly = true; break;
+                case "--quiet": quiet = true; break;
+                case "--help":
+                case "-h":
+                    helpRequested = true;
+                    return null;
+            }
+
+            if (arg == "--local" || arg == "--release-url")
+            {
+                int idx = Array.IndexOf(args, raw);
+                if (idx + 1 >= args.Length)
+                    return $"[Clickra Setup] 缺少 {raw} 的參數值。";
+                string value = args[idx + 1];
+                if (arg == "--local") localMsix = value;
+                else releaseBase = value;
+            }
+        }
+
+        if (forceFluent && forceNative)
+            return "[Clickra Setup] --fluent 與 --native 不能同時指定。";
+
+        return null;
+    }
+
+    /// <summary>Decides which track to install: explicit --fluent/--native wins over
+    /// the automatic runtime-based selection.</summary>
+    private static bool DecideTrack(bool forceFluent, bool forceNative, bool hasDotNet, bool hasWinAppRuntime)
+    {
+        return forceFluent || (!forceNative && hasDotNet && hasWinAppRuntime);
+    }
+
     // ------------------------------------------------------------------
     // 偵測
     // ------------------------------------------------------------------
@@ -154,44 +172,36 @@ internal static class Program
     private static Version? FindLatestDotNetDesktopRuntime()
     {
         Version? best = FindDotNetDesktopFromRegistry();
+        if (best is not null) return best;
 
-        if (best is null)
-        {
-            // Fallback：直接列舉 shared framework 資料夾。
-            string[] roots =
-            {
-                Path.Combine(
-                    Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles),
-                    "dotnet", "shared", "Microsoft.WindowsDesktop.App"),
-                Path.Combine(
-                    Environment.GetFolderPath(Environment.SpecialFolder.ProgramFilesX86),
-                    "dotnet", "shared", "Microsoft.WindowsDesktop.App"),
-                Path.Combine(
-                    Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-                    "Microsoft", "dotnet", "shared", "Microsoft.WindowsDesktop.App"),
-            };
-            foreach (string dir in roots)
-            {
-                try
-                {
-                    if (!Directory.Exists(dir)) continue;
-                    foreach (string sub in Directory.GetDirectories(dir))
-                    {
-                        if (Version.TryParse(Path.GetFileName(sub), out Version? v) &&
-                            (best is null || v > best))
-                        {
-                            best = v;
-                        }
-                    }
-                }
-                catch
-                {
-                    // 忽略無權限的資料夾。
-                }
-            }
-        }
-
+        // Fallback：直接列舉 shared framework 資料夾（某些 SDK/zip 安裝方式不會寫登錄檔）。
+        foreach (string dir in SharedFrameworkRoots())
+            best = MaxVersion(best, ScanSharedFrameworkDir(dir));
         return best;
+    }
+
+    private static IEnumerable<string> SharedFrameworkRoots()
+    {
+        yield return Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles), "dotnet", "shared", "Microsoft.WindowsDesktop.App");
+        yield return Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFilesX86), "dotnet", "shared", "Microsoft.WindowsDesktop.App");
+        yield return Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Microsoft", "dotnet", "shared", "Microsoft.WindowsDesktop.App");
+    }
+
+    private static Version? ScanSharedFrameworkDir(string dir)
+    {
+        try
+        {
+            if (!Directory.Exists(dir)) return null;
+            Version? best = null;
+            foreach (string sub in Directory.GetDirectories(dir))
+                best = MaxVersion(best, Version.TryParse(Path.GetFileName(sub), out Version? v) ? v : null);
+            return best;
+        }
+        catch
+        {
+            // 忽略無權限的資料夾。
+        }
+        return null;
     }
 
     private static Version? FindDotNetDesktopFromRegistry()
@@ -206,37 +216,39 @@ internal static class Program
             foreach (RegistryView view in views)
             {
                 foreach (string arch in arches)
-                {
-                    string subPath =
-                        $@"SOFTWARE\dotnet\Setup\InstalledVersions\{arch}\sharedfx\Microsoft.WindowsDesktop.App";
-                    try
-                    {
-                        using RegistryKey? key = RegistryKey.OpenBaseKey(hive, view).OpenSubKey(subPath);
-                        if (key is null) continue;
-
-                        // 每個已安裝版本是該鍵下的一個子鍵（鍵名即版本號）。
-                        foreach (string name in key.GetSubKeyNames())
-                        {
-                            if (Version.TryParse(name, out Version? v) && (best is null || v > best))
-                                best = v;
-                        }
-
-                        // 部分安裝會直接寫 "Version" 值。
-                        if (key.GetValue("Version") is string versionString &&
-                            Version.TryParse(versionString, out Version? direct) &&
-                            (best is null || direct > best))
-                        {
-                            best = direct;
-                        }
-                    }
-                    catch
-                    {
-                        // 忽略無權限或格式問題的鍵。
-                    }
-                }
+                    best = MaxVersion(best, ReadInstalledVersion(hive, view, arch));
             }
         }
         return best;
+    }
+
+    private static Version? ReadInstalledVersion(RegistryHive hive, RegistryView view, string arch)
+    {
+        try
+        {
+            string subPath = $@"SOFTWARE\dotnet\Setup\InstalledVersions\{arch}\sharedfx\Microsoft.WindowsDesktop.App";
+            using RegistryKey? key = RegistryKey.OpenBaseKey(hive, view).OpenSubKey(subPath);
+            if (key is null) return null;
+
+            Version? best = null;
+            // 每個已安裝版本是該鍵下的一個子鍵（鍵名即版本號）。
+            foreach (string name in key.GetSubKeyNames())
+                best = MaxVersion(best, Version.TryParse(name, out Version? v) ? v : null);
+            // 部分安裝會直接寫 "Version" 值。
+            if (key.GetValue("Version") is string versionString)
+                best = MaxVersion(best, Version.TryParse(versionString, out Version? direct) ? direct : null);
+            return best;
+        }
+        catch
+        {
+            // 忽略無權限或格式問題的鍵。
+        }
+        return null;
+    }
+
+    private static Version? MaxVersion(Version? current, Version? candidate)
+    {
+        return candidate is not null && (current is null || candidate > current) ? candidate : current;
     }
 
     /// <summary>
