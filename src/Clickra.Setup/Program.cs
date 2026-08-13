@@ -152,6 +152,7 @@ internal static class Program
                 case "-h":
                     return null;
                 default:
+                    // Value-bearing and unknown options are handled below.
                     break;
             }
 
