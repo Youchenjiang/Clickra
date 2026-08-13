@@ -501,7 +501,7 @@ public sealed partial class MainPage : Page
             RefreshHistory();
         };
         PdfLangCombo.SelectionChanged += (_, _) => SaveSettings();
-        CompressionSlider.ValueChanged += (_, _) => { SaveSettings(); UpdateCompressionLabel(); };
+        CompressionSlider.ValueChanged += (_, _) => { SaveSettings(); UpdateCompressionLabel(CompressionLabel, CompressionSlider); };
         StripFontsToggle.Toggled += (_, _) => SaveSettings();
         MinifyContentToggle.Toggled += (_, _) => SaveSettings();
         QuietModeToggle.Toggled += (_, _) => SaveSettings();
@@ -601,7 +601,7 @@ public sealed partial class MainPage : Page
         LibreOfficeBrowseButton.Content = L("setting_libreoffice_browse");
         LibreOfficeDownloadButton.Content = L("setting_libreoffice_download");
         LibreOfficeUninstallButton.Content = L("setting_libreoffice_uninstall");
-        UpdateCompressionLabel();
+        UpdateCompressionLabel(CompressionLabel, CompressionSlider);
 
         AboutDescription.Text = L("fluent_about_desc");
         GitHubText.Text = L("about_btn_github");
@@ -612,9 +612,9 @@ public sealed partial class MainPage : Page
         RefreshLibreOfficeStatus();
     }
 
-    private void UpdateCompressionLabel()
+    private static void UpdateCompressionLabel(TextBlock compressionLabel, Slider compressionSlider)
     {
-        CompressionLabel.Text = CompressionLevel(CompressionSlider) switch
+        compressionLabel.Text = CompressionLevel(compressionSlider) switch
         {
             "small" => L("setting_pdf_compress_level_small"),
             "high" => L("setting_pdf_compress_level_high"),

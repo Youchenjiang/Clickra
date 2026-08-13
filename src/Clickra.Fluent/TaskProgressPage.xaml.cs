@@ -55,7 +55,7 @@ public sealed partial class TaskProgressPage : Page
         var args = ConvertCommandRegistry.SplitCommandLine(_arguments);
         if (args.Count < 2 || !ConvertCommandRegistry.IsKnownCommand(args[0]))
         {
-            Complete(L("fluent_progress_invalid_command"), false);
+            Complete(this, L("fluent_progress_invalid_command"), false);
             CancelButton.Click += (_, _) => App.MainWindow?.Close();
             return;
         }
@@ -64,14 +64,14 @@ public sealed partial class TaskProgressPage : Page
         var files = ConvertCommandRegistry.ExpandDirectoryArguments(command, args.Skip(1)).Where(File.Exists).ToList();
         if (files.Count == 0)
         {
-            Complete(L("fluent_progress_file_not_found"), false);
+            Complete(this, L("fluent_progress_file_not_found"), false);
             CancelButton.Click += (_, _) => App.MainWindow?.Close();
             return;
         }
 
         if (!OfficeEnginePreflight.TryValidate(command, L, out string preflightError))
         {
-            Complete(preflightError, false);
+            Complete(this, preflightError, false);
             return;
         }
 
@@ -97,13 +97,13 @@ public sealed partial class TaskProgressPage : Page
             switch (result.Status)
             {
                 case ConvertCommandRunner.ConvertRunStatus.Succeeded:
-                    Complete(L("fluent_progress_completed"), true);
+                    Complete(this, L("fluent_progress_completed"), true);
                     break;
                 case ConvertCommandRunner.ConvertRunStatus.Canceled:
-                    Complete(L("fluent_progress_canceled"), false);
+                    Complete(this, L("fluent_progress_canceled"), false);
                     break;
                 default:
-                    Complete(result.Error ?? "", false);
+                    Complete(this, result.Error ?? "", false);
                     break;
             }
         }
@@ -122,18 +122,18 @@ public sealed partial class TaskProgressPage : Page
         stateText.Text = string.IsNullOrWhiteSpace(message) ? L("fluent_progress_processing") : message;
     }
 
-    private void Complete(string message, bool success)
+    private static void Complete(TaskProgressPage page, string message, bool success)
     {
-        SetProgress(ProgressBar, PercentText, StateText, success ? 100 : 0, message);
-        TitleText.Text = success ? L("fluent_progress_done_title") : L("fluent_progress_failed_title");
-        StatusIcon.Glyph = success ? "\uE73E" : "\uE783";
-        StateText.Text = success ? message : L("fluent_progress_failed");
-        ErrorText.Text = success ? "" : message;
-        ErrorText.Visibility = success ? Visibility.Collapsed : Visibility.Visible;
-        FooterText.Text = success ? L("fluent_progress_done_footer") : L("fluent_progress_failed_footer");
-        OpenFolderButton.Visibility = success ? Microsoft.UI.Xaml.Visibility.Visible : Microsoft.UI.Xaml.Visibility.Collapsed;
-        CancelButton.Content = L("fluent_progress_close");
-        CancelButton.Click += (_, _) => App.MainWindow?.Close();
+        SetProgress(page.ProgressBar, page.PercentText, page.StateText, success ? 100 : 0, message);
+        page.TitleText.Text = success ? L("fluent_progress_done_title") : L("fluent_progress_failed_title");
+        page.StatusIcon.Glyph = success ? "\uE73E" : "\uE783";
+        page.StateText.Text = success ? message : L("fluent_progress_failed");
+        page.ErrorText.Text = success ? "" : message;
+        page.ErrorText.Visibility = success ? Visibility.Collapsed : Visibility.Visible;
+        page.FooterText.Text = success ? L("fluent_progress_done_footer") : L("fluent_progress_failed_footer");
+        page.OpenFolderButton.Visibility = success ? Visibility.Visible : Visibility.Collapsed;
+        page.CancelButton.Content = L("fluent_progress_close");
+        page.CancelButton.Click += (_, _) => App.MainWindow?.Close();
     }
 
     private void OpenOutputFolder()
