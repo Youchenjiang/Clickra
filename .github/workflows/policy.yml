@@ -14,13 +14,14 @@ jobs:
     name: PR and commit policy
     runs-on: ubuntu-latest
     steps:
-      - name: Validate PR title and commit subjects
+      - name: Validate PR title and commit messages
         uses: actions/github-script@v8
         with:
           script: |
             // KEEP IN SYNC with scripts/hooks/commit-msg — the type/scope
-            // allowlists below are mirrored in the local commit-msg hook.
-            // Edit both files together when adding a type or scope.
+            // allowlists and the subject/body checks below are mirrored in the
+            // local commit-msg hook. Edit both files together when adding a
+            // type, scope, or commit-message rule.
             const allowedTypes = [
               "feat",
               "fix",
@@ -73,6 +74,26 @@ jobs:
               return errors;
             }
 
+            // Mirrors scripts/hooks/commit-msg rule #5: the commit body must
+            // contain an English numbered list starting with "1. " or "1)".
+            // Comment lines and the header line are ignored, exactly like the
+            // local hook.
+            function validateBody(message, label) {
+              const lines = message
+                .split("\n")
+                .slice(1)
+                .filter((line) => !line.startsWith("#"));
+              const hasNumberedList = lines.some((line) =>
+                /^\s*1[\.\)]\s+/.test(line),
+              );
+              if (hasNumberedList) {
+                return [];
+              }
+              return [
+                `${label} body must contain an English numbered list starting with "1. " or "1)"`,
+              ];
+            }
+
             const failures = [];
             failures.push(...validateSubject(context.payload.pull_request.title, "PR title", 72));
 
@@ -84,8 +105,12 @@ jobs:
             });
 
             for (const commit of commits) {
-              const subject = commit.commit.message.split("\n")[0];
+              const message = commit.commit.message;
+              const subject = message.split("\n")[0];
               for (const error of validateSubject(subject, `Commit ${commit.sha.slice(0, 7)}`, 72)) {
+                failures.push(`${error}\n  subject: ${subject}`);
+              }
+              for (const error of validateBody(message, `Commit ${commit.sha.slice(0, 7)}`)) {
                 failures.push(`${error}\n  subject: ${subject}`);
               }
             }
