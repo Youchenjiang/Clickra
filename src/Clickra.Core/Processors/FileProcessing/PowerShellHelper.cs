@@ -34,7 +34,7 @@ namespace Clickra.Core.Processors
                 !IsMicrosoftOfficeReady(appType))
             {
                 if (string.IsNullOrWhiteSpace(LibreOfficeHelper.GetResolvedExecutablePath()))
-                    throw new Exception(Localization.T("error_libreoffice_not_ready", ClickraStorage.GetSetting(LanguageSettingKey)));
+                    throw new InvalidOperationException(Localization.T("error_libreoffice_not_ready", ClickraStorage.GetSetting(LanguageSettingKey)));
 
                 LibreOfficeHelper.ExportToPdf(appType, fullPath, outputPdfPath, fileIndex, totalFiles, onProgress, cancellationToken);
                 return;
@@ -396,17 +396,17 @@ try {{
 
             if (ClickraStorage.GetSetting("LibreOfficeRemovalPendingRestart").Equals("true", StringComparison.OrdinalIgnoreCase))
             {
-                throw new Exception(Localization.T("error_libreoffice_not_ready", ClickraStorage.GetSetting(LanguageSettingKey)));
+                throw new InvalidOperationException(Localization.T("error_libreoffice_not_ready", ClickraStorage.GetSetting(LanguageSettingKey)));
             }
 
             if (!TryResolveExecutable(ClickraStorage.GetSetting("LibreOfficePath"), out string executablePath))
             {
-                throw new Exception(Localization.T("error_libreoffice_not_ready", ClickraStorage.GetSetting(LanguageSettingKey)));
+                throw new InvalidOperationException(Localization.T("error_libreoffice_not_ready", ClickraStorage.GetSetting(LanguageSettingKey)));
             }
 
             if (!LooksLikeLibreOfficeExecutable(executablePath))
             {
-                throw new Exception(Localization.T("error_libreoffice_unusable", ClickraStorage.GetSetting(LanguageSettingKey)));
+                throw new InvalidOperationException(Localization.T("error_libreoffice_unusable", ClickraStorage.GetSetting(LanguageSettingKey)));
             }
 
             string tempDir = Path.Combine(Path.GetTempPath(), "ClickraLibreOffice", Guid.NewGuid().ToString("N"));
