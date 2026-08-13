@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
+using System.Linq;
 using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading;
@@ -30,17 +31,8 @@ public static class LibreOfficeHelper
 
     public static bool TryResolveExecutable(string? configuredPath, out string executablePath)
     {
-        foreach (string candidate in EnumerateExecutableCandidates(configuredPath))
-        {
-            if (File.Exists(candidate))
-            {
-                executablePath = candidate;
-                return true;
-            }
-        }
-
-        executablePath = "";
-        return false;
+        executablePath = EnumerateExecutableCandidates(configuredPath).FirstOrDefault(File.Exists) ?? "";
+        return executablePath.Length > 0;
     }
 
     public static string GetResolvedExecutablePath()
