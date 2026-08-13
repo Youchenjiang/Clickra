@@ -1,5 +1,5 @@
 #!/bin/sh
-# Installs Clickra's versioned commit-msg hook for this clone.
+# Installs Clickra's versioned hooks (commit-msg + pre-push) for this clone.
 # Git loads hooks from scripts/hooks instead of the (untracked) .git/hooks dir.
 set -e
 

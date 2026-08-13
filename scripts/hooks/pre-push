@@ -1,0 +1,43 @@
+#!/bin/sh
+# Clickra pre-push hook (versioned in-repo).
+# Installed once per clone with:  git config core.hooksPath scripts/hooks
+# (or run scripts/install-hooks.sh).
+#
+# Mirrors .github/workflows/ci.yml: really builds every product project and
+# runs the self-built test runner with the correct invocation. It replaces the
+# old local-only hook that ran `dotnet test` on an Exe project, which built
+# successfully without executing a single test.
+#
+# Notes:
+# - The runner exits non-zero when any test fails, so a push is aborted just
+#   like the CI test job would be. The suite has a known flaky baseline
+#   (~95 PASS / ~11 FAIL) tracked as PR-B in
+#   docs/development/PR46_POST_MERGE_AUDIT_AND_OPTIONS.md.
+# - `git push --no-verify` remains the documented escape hatch for the known
+#   baseline; the CI gate still records the truth on every push.
+# - CI additionally publishes NativeAOT binaries; this hook only compiles the
+#   projects (Release) to keep push latency reasonable.
+
+set -e
+
+echo "Running pre-push checks (mirrors .github/workflows/ci.yml)..."
+
+echo "[pre-push] Building Clickra.Core..."
+dotnet build src/Clickra.Core/Clickra.Core.csproj -c Release
+
+echo "[pre-push] Building Clickra.CLI..."
+dotnet build src/Clickra.CLI/Clickra.csproj -c Release
+
+echo "[pre-push] Building ClickraShell..."
+dotnet build src/ClickraShell/ClickraShell.csproj -c Release
+
+echo "[pre-push] Building Clickra.Fluent..."
+dotnet build src/Clickra.Fluent/Clickra.Fluent.csproj -c Release
+
+echo "[pre-push] Building Clickra.Setup..."
+dotnet build src/Clickra.Setup/Clickra.Setup.csproj -c Release
+
+echo "[pre-push] Running self-built test runner (correct invocation)..."
+dotnet run --project tests/Clickra.Core.Tests/Clickra.Core.Tests.csproj -c Release
+
+echo "All pre-push checks passed."
