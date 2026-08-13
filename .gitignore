@@ -11,6 +11,8 @@ packaging/msix/Layout/
 
 scratch/
 .codebase-memory/
+.freebuff/
+Clickra.rar
 test_pdfs/
 tmp/
 __pycache__/

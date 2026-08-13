@@ -73,11 +73,27 @@ namespace Clickra.UI
             return ConvertCommandByKey.TryGetValue(cmd, out var command) ? Array.IndexOf(ConvertCommands, command) : -1;
         }
 
+        /// <summary>Whether the currently selected convert command accepts the given files;
+        /// used to keep the user's explicit choice when importing or dropping files.</summary>
+        static bool CurrentSelectionAcceptsFiles(List<string> files)
+        {
+            return _convertCommandIndex >= 0 && _convertCommandIndex < ConvertCommands.Length
+                && ConvertCommands[_convertCommandIndex].ValidateFiles(files, out _);
+        }
+
         /// <summary>Queues a conversion action for files dropped onto the dashboard window.</summary>
         static void HandleDroppedFiles(List<string> files)
         {
             var extensions = files.Select(f => Path.GetExtension(f).ToLowerInvariant()).Distinct().ToList();
             if (extensions.Count == 0) return;
+
+            if (CurrentSelectionAcceptsFiles(files))
+            {
+                // Keep the user's explicit command when it accepts the dropped files
+                // (e.g. 分割 PDF stays selected after dropping a PDF).
+                _selectedFiles = files;
+                return;
+            }
 
             if (extensions.All(ext => ext == ".ppt" || ext == ".pptx"))
             {

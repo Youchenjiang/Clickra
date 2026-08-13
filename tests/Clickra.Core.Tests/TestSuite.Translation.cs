@@ -136,6 +136,15 @@ static partial class TestSuite
                     new List<MathFormula> { formula }));
         });
 
+        runner.Run("Algorithm pseudo-code lines are treated as code", () =>
+        {
+            Assert.True(PdfParagraphCodeClassifier.IsAlgorithmPseudoCodeLine("Algorithm 1 Oracle De-Differentiation (ODD)"), "Algorithm heading should be code.");
+            Assert.True(PdfParagraphCodeClassifier.IsAlgorithmPseudoCodeLine("temp_var {v0}\"temp_\" + str(temp_count)"), "Assignment-like pseudo-code should be code.");
+            Assert.True(PdfParagraphCodeClassifier.IsAlgorithmPseudoCodeLine("return (macro_op, None, [child.text])"), "Return pseudo-code should be code.");
+            Assert.True(!PdfParagraphCodeClassifier.IsAlgorithmPseudoCodeLine("This paragraph explains why the method improves test oracle generation."), "Ordinary prose should not be code.");
+            Assert.True(!PdfParagraphCodeClassifier.IsAlgorithmPseudoCodeLine("If P is not an expression (e.g., function call and arithmetic operations), the conversion ends; otherwise, the complex expressions are assigned to temporary variables."), "Formula-heavy prose should not be code.");
+        });
+
         runner.Run("Caption marker formulas are restored inline", () =>
         {
             var formulas = Enumerable.Range(0, 3)
@@ -303,6 +312,21 @@ static partial class TestSuite
                 .GetResult();
             Assert.Equal($"fallback:{source}", batch.Single());
             Assert.True(fallback.BatchSizes.Count == 1, "Fallback provider should handle unchanged batch output.");
+        });
+
+        runner.Run("Fallback translator allows unchanged URL references", () =>
+        {
+            var primary = new UnchangedTranslationEngine(PrimaryEngineName);
+            var fallback = new RecordingTranslationEngine(FallbackEngineName);
+            var translator = new FallbackTranslator(primary, fallback);
+            const string source = "ACM ISBN 979-8-4007-2426-8/26/04 https://doi.org/10.1145/3786583.3786868";
+
+            string result = translator.TranslateAsync(source, "zh-TW", CancellationToken.None)
+                .GetAwaiter()
+                .GetResult();
+
+            Assert.Equal(source, result);
+            Assert.True(fallback.SingleAttempts == 0, "URL-only references should not consume fallback quota.");
         });
 
         runner.Run("Fallback translator propagates caller cancellation without fallback", () =>
@@ -608,6 +632,45 @@ static partial class TestSuite
                 "Flowable body text must report its natural height instead of shrinking into the source box.");
             Assert.True(metrics.EffectiveFontSize >= paragraph.AverageFontSize - 0.01,
                 "Space planning must not begin from a body font smaller than the source reading size.");
+        });
+
+        runner.Run("Body font sizing ignores isolated oversized source glyphs", () =>
+        {
+            try { GlobalFontSettings.FontResolver = new ClickraFontResolver(); } catch (InvalidOperationException) { /* FontResolver already initialized */ }
+            using var document = new PdfDocument();
+            var page = document.AddPage();
+            page.Width = XUnit.FromPoint(612);
+            page.Height = XUnit.FromPoint(792);
+            using var gfx = XGraphics.FromPdfPage(page);
+            var paragraph = LayoutParagraph(
+                "This body paragraph contains one oversized citation glyph.",
+                string.Concat(Enumerable.Repeat("這是一段用來驗證正文不會因單一異常大字元而被放大的翻譯文字。", 6)),
+                49, 500, 300, 540,
+                10);
+            paragraph.SourceVisualFontSize = 20;
+            paragraph.AllLetters = Enumerable.Range(0, 20)
+                .Select(i => new PdfLetter { Value = "a", FontSize = i == 0 ? 20 : 10, Top = 10, Bottom = 0 })
+                .ToList();
+
+            PdfParagraphRenderMetrics metrics = default;
+            PdfTranslatedParagraphRenderer.RenderParagraph(
+                gfx,
+                paragraph,
+                DfKaiSbFontName,
+                measureOnly: true,
+                metricsSink: value => metrics = value);
+
+            var plan = PdfTranslationLayoutPlanner.BuildAndApply(
+                gfx,
+                new[] { paragraph },
+                DfKaiSbFontName,
+                612,
+                792);
+
+            Assert.True(metrics.EffectiveFontSize <= 10.1,
+                $"Body renderer must not use the isolated 20pt glyph as its font floor; got {metrics.EffectiveFontSize:F2}.");
+            Assert.True(plan.MaximumBodyFontRatio <= 1.01,
+                $"Body planner must size from the normal 10pt body font; got ratio {plan.MaximumBodyFontRatio:F2}.");
         });
     }
 

@@ -3,7 +3,9 @@
 [![Microsoft Store](https://img.shields.io/badge/Microsoft%20Store-Clickra-blue?style=for-the-badge&logo=microsoft-store)](https://apps.microsoft.com/detail/9NGLBF6P1KLD)
 [![License: Apache 2.0](https://img.shields.io/badge/License-Apache%202.0-blue.svg?style=for-the-badge)](https://opensource.org/licenses/Apache-2.0)
 
-A high-performance, native context menu utility suite for Windows 10 and Windows 11. Powered by C# NativeAOT, it provides sub-millisecond responsiveness, replacing slow Python scripts with a truly native user experience.
+A high-performance context-menu utility suite for Windows 10 and Windows 11.
+Its Explorer integration and CLI use C# NativeAOT, while its dashboard and
+conversion progress use WinUI 3 Fluent controls.
 
 [閱讀中文版 (Read in Traditional Chinese)](README.zh-TW.md)
 
@@ -13,10 +15,10 @@ A high-performance, native context menu utility suite for Windows 10 and Windows
 
 Most productivity scripts (PDF merging, image conversion, etc.) are typically written in Python. While powerful, Python suffers from a **1-2 second "cold start" delay** every time you run a script. For context menu actions, this delay feels like an eternity.
 
-**Clickra** is built using **NativeAOT (Native Ahead-of-Time)** technology:
-*   **Zero Latency**: Starts in **less than 0.01 seconds**. It feels instantaneous, just like a built-in Windows feature.
-*   **Zero Dependencies**: No need to install .NET Runtime or Python. It's a truly self-contained binary.
-*   **Modern Aesthetics**: Fully integrated into the Windows 11 modern context menu with a sleek sub-menu architecture.
+**Clickra** uses a hybrid Windows architecture:
+*   **Native shell boundary**: The Explorer command provider is NativeAOT for fast, predictable menu enumeration.
+*   **Fluent application UI**: The dashboard, settings, history, dialogs, and right-click progress window use WinUI 3.
+*   **Local processing**: Conversion logic runs locally without Python; MSIX manages the required Windows App Runtime dependency.
 
 ---
 
@@ -39,10 +41,9 @@ Most productivity scripts (PDF merging, image conversion, etc.) are typically wr
 ### 1. 📂 Modern Sub-menu (Windows 10/11)
 On Windows 11, commands appear in the modern `Clickra` sub-menu. Windows 10 uses the compatible classic context-menu integration.
 
-### 2. 📊 Native Dashboard
-*   **Feature**: A high-performance, dark-themed dashboard to monitor system compatibility.
+### 2. 📊 Fluent Dashboard
+*   **Feature**: A responsive WinUI 3 dashboard for conversion, settings, history, and diagnostics.
 *   **Status Detection**: Real-time detection of the PDF engine and Office conversion engine readiness.
-*   **AOT Power**: Pure Win32 implementation ensures zero startup lag.
 
 ### 3. 📄 Office to PDF
 *   **Feature**: Silently exports Word, Excel, and PowerPoint documents to high-quality PDFs in the background.
@@ -62,11 +63,11 @@ On Windows 11, commands appear in the modern `Clickra` sub-menu. Windows 10 uses
 
 ### 7. 🕒 Conversion History
 *   **Feature**: Locally tracks all conversion activities.
-*   **Details**: A high-performance native Win32 list view rendering processed file paths, operation types, timestamps, and execution status.
+*   **Details**: A Fluent master-detail view shows paths, operation types, timestamps, duration, and execution status.
 
 ### 8. 🔓 Remove PDF Password
 *   **Feature**: Removes passwords from protected PDF documents directly from the right-click menu.
-*   **Aesthetics**: Implemented a modern, non-flickering inline password input box directly within the GDI+ progress window, offering a native, seamless flow without modal dialog popups.
+*   **Aesthetics**: Uses a localized WinUI password dialog inside the Fluent conversion flow.
 *   **Safety**: Validates PDF encryption status first to prevent decrypting unencrypted files.
 
 ### 9. 📄 PDF Compression
@@ -82,9 +83,17 @@ On Windows 11, commands appear in the modern `Clickra` sub-menu. Windows 10 uses
 ### Recommended: Microsoft Store (Auto-updates)
 [![Microsoft Store Badge](https://developer.microsoft.com/en-us/store/badges/images/English_get-it-from-MS.png)](https://apps.microsoft.com/detail/9NGLBF6P1KLD)
 
-### Manual: GitHub Release
-1.  Download the latest `Clickra.msix` from [Releases](../../releases).
-2.  Double-click the file to install.
+### Manual: GitHub Release (Auto Track Selection)
+1.  Download `ClickraSetup.exe` from [Releases](../../releases).
+2.  Double-click it. The installer detects whether your PC has .NET 8+ and the
+    Windows App Runtime, then installs the matching track automatically:
+    *   **Fluent track** (`Clickra.msix`) when both runtimes are present — full WinUI 3 dashboard.
+    *   **NativeAOT track** (`Clickra-Native.msix`) otherwise — zero-dependency native build,
+        works on clean machines without any .NET runtime.
+
+    You can also install a specific track manually: `Clickra.msix` (Fluent, needs
+    .NET 8+ and Windows App Runtime 2.x) or `Clickra-Native.msix` (NativeAOT, no
+    dependencies). See [docs/development/dual_track_guide.md](docs/development/dual_track_guide.md).
 
 ---
 
@@ -99,12 +108,14 @@ Clickra/
 ├── PRIVACY.md                      # Privacy Policy (for Windows Store compliance)
 ├── LOCAL_BUILD_NOTES.md            # Developer Guidelines (Setup, compilation, packaging, and Git workflow)
 └── docs/
+    ├── ARCHITECTURE.md             # Current NativeAOT/Fluent split and migration state
     ├── ROADMAP.md                  # Product Roadmap & Milestones
     ├── StoreListing_*.md           # Store Metadata & Product Descriptions
     └── development/
         ├── release_guideline.md    # Versioning constraints & release checklists
         ├── shell_extension_best_practices.md # COM, NativeAOT, memory, and package invariants
-        └── shell_diagnostic_guide.md         # Shell extension logging and Explorer diagnostics
+        ├── shell_diagnostic_guide.md         # Shell extension logging and Explorer diagnostics
+        └── dual_track_guide.md     # Fluent/NativeAOT dual-track distribution design
 ```
 
 ### Document Navigation Links
@@ -114,6 +125,7 @@ Clickra/
     *   [Store Listing Metadata](docs/StoreListing_EN.md) — Store descriptions and screenshots index.
 *   **Developer Guidelines (Start Here)**:
     *   [LOCAL_BUILD_NOTES.md](LOCAL_BUILD_NOTES.md) — Local development compilation, packaging scripts, adding new features, and development Git workflows.
+    *   [Architecture](docs/ARCHITECTURE.md) — NativeAOT/Fluent boundaries, execution paths, intentional constraints, known gaps, and intended end state.
 *   **Specialized Development Guides**:
     *   [Release & Versioning Guidelines](docs/development/release_guideline.md) — 4-digit version constraints, version update files list, and MSIX store publishing checklist.
     *   [Shell Extension Best Practices](docs/development/shell_extension_best_practices.md) — COM interfaces, NativeAOT memory rules, and Sparse Package/MSIX invariants.
@@ -138,16 +150,13 @@ Because the extension runs inside `explorer.exe`, any stack imbalance (like a mi
 
 ## 🏗️ Architecture
 
-Clickra follows a clean three-layer architecture:
+Clickra separates the Explorer boundary from the application UI:
 
 ```text
 src/
-├── Clickra.CLI/              # UI Layer (Win32/GDI+ Dashboard & Progress)
-│   ├── DashboardWindow.*.cs      (6 partial classes: State, Events, Paint, etc.)
-│   ├── ProgressWindow.*.cs       (5 partial classes: Controls, Paint, Process, Tray)
-│   ├── ClickraCli.*.cs           (Entry point & deployment)
-│   ├── Native/Win32.cs           (P/Invoke declarations)
-│   └── UIHelper.cs               (Shared UI utilities)
+├── Clickra.Fluent/           # WinUI 3 dashboard and task progress
+├── Clickra.CLI/              # NativeAOT CLI and legacy UI fallback
+├── Clickra.Setup/            # NativeAOT dual-track installer (runtime detection)
 ├── Clickra.Core/             # Core Logic (Processors & Storage)
 │   ├── Processors/               (Base classes + 8 Processor implementations)
 │   ├── ClickraStorage.*.cs       (Settings, History, ActiveRecord)
@@ -163,7 +172,7 @@ src/
 ```
 
 ### Key Design Patterns
-- **Partial Classes**: Large files split by responsibility (e.g., `DashboardWindow.Paint.cs`, `DashboardWindow.Events.cs`)
+- **Process boundary**: NativeAOT stays at Explorer/CLI boundaries; WinUI remains out of process
 - **Template Method**: `SingleFileProcessorBase` and `MultiFileProcessorBase` provide common loop/cancellation patterns
 - **Facade Pattern**: `FileProcessor` exposes a simplified public API over internal processors
 - **Shared Utilities**: `UIHelper` contains reusable drawing methods (scrollbars, dropdowns, rounded rects)

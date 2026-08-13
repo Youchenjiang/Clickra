@@ -43,6 +43,13 @@ public sealed class NativePdfCompressionEngine : IPdfCompressionEngine
 
         try
         {
+            try
+            {
+                if (PdfSharp.Fonts.GlobalFontSettings.FontResolver == null)
+                    PdfSharp.Fonts.GlobalFontSettings.FontResolver = new ClickraFontResolver();
+            }
+            catch { /* Ignored: font resolver setup is best-effort; default fonts still render. */ }
+
             var settings = PdfCompressionSettings.Parse(options);
 
             onProgress?.Invoke(15, 100, "正在讀取 PDF...");

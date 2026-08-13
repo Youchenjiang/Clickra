@@ -1,18 +1,43 @@
 # Local Build Notes
 
+> 📚 **Agent & Developer Migration Documentation Index**:
+> - [ARCHITECTURE_AND_FRAMEWORK.md](file:///c:/Users/g1014308/Documents/GitHub/Youchen/Clickra/docs/ARCHITECTURE_AND_FRAMEWORK.md): .NET 8 LTS Baseline, RollForward Policy & Trimming Rules.
+> - [WINDOWS_COMPATIBILITY_AND_MSIX_SANDBOX.md](file:///c:/Users/g1014308/Documents/GitHub/Youchen/Clickra/docs/WINDOWS_COMPATIBILITY_AND_MSIX_SANDBOX.md): Win10/Win11 Context Menu & MSIX Sandbox Path Resolution.
+> - [TROUBLESHOOTING_AND_RESOLUTIONS.md](file:///c:/Users/g1014308/Documents/GitHub/Youchen/Clickra/docs/TROUBLESHOOTING_AND_RESOLUTIONS.md): Complete Troubleshooting Log & Fix History.
+> - [CI_CD_DUAL_RELEASE_GUIDE.md](file:///c:/Users/g1014308/Documents/GitHub/Youchen/Clickra/docs/CI_CD_DUAL_RELEASE_GUIDE.md): Dual-Output Pipeline Strategy (Portable Zip + Store MSIX).
+
 ## Windows SDK Tools
-This project requires `makepri.exe` and `makeappx.exe`. On this machine, they are located at:
+This project requires `makeappx.exe` and `signtool.exe`. On this machine, the
+Windows SDK tools are located at:
 `C:\Windows Kits\10\bin\10.0.26100.0\x64`
 
 The `scripts/build_msix.ps1` script has been updated to automatically detect this path.
 
 ## Packaging Requirements
 - Version revision number (4th digit) MUST be 0 for Microsoft Store.
-- App must handle zero-argument launch without crashing (handled in `Clickra.CLI/Program.cs`).
+- Both `Clickra.Fluent.exe` and `Clickra.exe` must handle zero-argument launch.
+- `src/Clickra.Fluent/Clickra.Fluent.csproj` is the source of truth for the
+  Windows App SDK version. For Windows App SDK 2.x and newer,
+  `scripts/build_msix.ps1` automatically aligns the copied layout manifest to
+  `Microsoft.WindowsAppRuntime.<major>` and `<sdk-version>.0`.
+- The packaging script removes the MSIX layout, publish directory, and Fluent
+  `bin/Release` and `obj/Release` directories before publishing. Do not remove
+  this clean step; stale managed projections can compile but crash before the
+  first WinUI window appears.
+- Keep the SDK-generated Fluent `resources.pri`. Do not run `makepri new` over
+  the assembled layout because it replaces the XAML resource index required by
+  WinUI.
 
 ## Technical Context (For AI Handoff)
-- **Architecture**: The entire project (`ClickraShell` and `Clickra.CLI`) is now **100% Native AOT**. Standard WinForms/WPF cannot be used.
-- **UI Rendering**: The Dashboard (`DashboardWindow*.cs`) and Progress Window (`ProgressWindow.cs`) use raw Win32 APIs (`CreateWindowExW`) and GDI+.
+- **Architecture**: `ClickraShell` and `Clickra.CLI` are NativeAOT.
+  `Clickra.Fluent` is the framework-dependent WinUI 3 dashboard and right-click
+  task-progress UI.
+- **Primary UI**: `MainPage` owns the dashboard and `TaskProgressPage` owns
+  right-click conversion progress. The raw Win32 `DashboardWindow` and
+  `ProgressWindow` remain legacy fallback paths only.
+- **Legacy fallback rendering**: The following rules apply only to
+  `DashboardWindow*.cs` and `ProgressWindow*.cs`, which use raw Win32 APIs and
+  GDI+:
   - *Rule 1*: Always use `W` (Unicode) suffixed APIs and `Marshal.StringToHGlobalUni` to prevent MSIX title bar truncation (the "C" bug).
   - *Rule 2*: Do not attempt Mica/Acrylic rendering. We use a solid `#202020` dark background because GDI+ cannot blend with DWM Mica properly.
   - *Rule 3*: ProgressWindow uses `WM_TIMER` (16ms) to drive smooth cubic easing animations and shimmer glow overlays. It dynamically fetches system accent color via `DwmGetColorizationColor`.
@@ -32,7 +57,10 @@ The `scripts/build_msix.ps1` script has been updated to automatically detect thi
   - Avoid moving private helper methods (`WriteActiveFileInternal`/`ReadActiveFileInternal`) above public active record methods. Keep the original method ordering to prevent noisy, massive diff blocks in git history.
 
 ## Inline Password Input Technical Context
-- **Inline Password Input (decrypt-pdf)**:
+- **Fluent password input (`decrypt-pdf`)**:
+  - `TaskProgressPage` uses a WinUI `ContentDialog` with `PasswordBox`.
+  - Cancelling the dialog cancels the conversion without creating output.
+- **Legacy fallback password input**:
   - The password prompt for `decrypt-pdf` is rendered **inline** inside the `ProgressWindow` Win32 window — **not** as a separate dialog. Child `EDIT` (with `ES_PASSWORD`) and `BUTTON` controls are created via `CreateWindowExW` directly on `_hwnd`.
   - `WS_CLIPCHILDREN` is set on the parent window to prevent GDI+ paint calls from overwriting the child controls and causing flickering.
   - The main message loop uses `IsDialogMessageW` to enable Tab/Enter/Esc navigation for the child controls, and `TranslateMessage` is called for all non-dialog messages to ensure `WM_CHAR` is generated and text can be typed.
@@ -44,17 +72,23 @@ The `scripts/build_msix.ps1` script has been updated to automatically detect thi
   - All file read/write operations in `bump_version.ps1` now use `[System.IO.File]::ReadAllText` / `::WriteAllText` with `New-Object System.Text.UTF8Encoding($false)` (no-BOM UTF-8). This prevents PowerShell 5.1's default ANSI encoding and `[System.Text.Encoding]::UTF8`'s implicit BOM from corrupting Markdown and XML files.
 
 ## How to Build (Manual Compilation)
-Since we use asset embedding, the build is a two-stage process:
+The package contains three binaries:
 
-1.  **Stage 1: Build the Shell Extension (DLL)**:
+1.  **CLI (NativeAOT)**:
     ```powershell
-    dotnet publish src\ClickraShell\ClickraShell.csproj -c Release -r win-x64 -p:PublishAot=true --output .
+    dotnet publish src\Clickra.CLI\Clickra.csproj -c Release -r win-x64 -o publish\cli --self-contained true
     ```
-2.  **Stage 2: Build the Main App (CLI)**:
-    This embeds the DLL and assets from `src/resources` into the final executable using NativeAOT:
+2.  **Shell extension (NativeAOT)**:
     ```powershell
-    dotnet publish src\Clickra.CLI\Clickra.csproj -c Release -r win-x64 -p:PublishAot=true --output .
+    dotnet publish src\ClickraShell\ClickraShell.csproj -c Release -r win-x64 -o publish\shell --self-contained true
     ```
+3.  **Fluent UI (framework-dependent)**:
+    ```powershell
+    dotnet publish src\Clickra.Fluent\Clickra.Fluent.csproj -c Release --self-contained false
+    ```
+
+Use `scripts/build_msix.ps1` for the actual package so the correct Fluent
+publish output, runtime files, and XAML resource index are assembled together.
 
 ## Automated Packaging & Versioning Scripts
 The project provides built-in PowerShell scripts for automated version bumping and MSIX packaging:
@@ -65,12 +99,15 @@ The project provides built-in PowerShell scripts for automated version bumping a
     powershell -File scripts/bump_version.ps1 -Build
     ```
     *   `-Type`: Optional. Specifies the version component to increment (`major`, `minor`, `patch`). Avoid using `revision` as it generates a non-zero 4th version digit, which is rejected by the Microsoft Store.
-    *   `-Build`: Automatically triggers the Native AOT two-stage build, compiles PRI resources, signs the package, and generates the final `Clickra.msix` in the root directory.
+    *   `-Build`: Invokes the canonical MSIX build, signs the package, and generates the final `Clickra.msix` in the root directory.
 *   **Standalone MSIX Packaging**:
     If you only want to rebuild the MSIX package without bumping the version:
     ```powershell
     powershell -File scripts/build_msix.ps1
     ```
+    The script performs a clean publish, automatically aligns the copied MSIX
+    manifest with the Windows App SDK version in the Fluent project, preserves
+    the SDK-generated `resources.pri`, and packages all three binaries.
     > [!NOTE]
     > **Automated Certificate Validation**: The packaging script automatically checks whether the local `ClickraDev.pfx` matches the Publisher identity defined in `AppxManifest.xml` (e.g. `CN=CBF59877-21AD-4BC4-8F91-FE8DA520A138`). If it detects a mismatch or if the certificate is missing, it will automatically call `scripts/setup/create_dev_cert.ps1` to regenerate a matching certificate. You do not need to manually manage local development PFX certs.
 
@@ -448,15 +485,17 @@ Explorer selection
   -> ClickraShell.dll
   -> DllGetClassObject / ClassFactory
   -> IExplorerCommand and IEnumExplorerCommand
-  -> Clickra.CLI command arguments
+  -> IApplicationActivationManager
+  -> packaged Clickra.Fluent.exe command arguments
+  -> TaskProgressPage
 ```
 
 When changing the context menu, keep these project boundaries in mind:
 
 - `src/ClickraShell` owns COM identity, vtables, selection handling, and menu
   command routing.
-- `src/Clickra.CLI` owns the command implementation and progress/dashboard
-  execution.
+- `src/Clickra.Fluent` owns the primary dashboard and task-progress execution.
+- `src/Clickra.CLI` owns CLI execution and the legacy Win32 fallback UI.
 - `src/resources/AppxManifest.xml` and `packaging/msix/AppxManifest.xml` must
   agree on identity, CLSID, version, and supported Windows versions.
 - `packaging/msix/Strings/*/Resources.resw` contains the five localized menu
@@ -476,11 +515,11 @@ For a shell or packaging change, use the full pipeline:
 powershell -File scripts\build_msix.ps1
 ```
 
-The script publishes both NativeAOT projects, assembles the MSIX layout,
-compiles the PRI resources, creates `Clickra.msix`, and signs it when a
-matching development certificate is available. Test the sparse/development
-path and the final MSIX path separately, then restart Explorer after each
-reinstall.
+The script publishes both NativeAOT projects and the Fluent project, assembles
+the MSIX layout while preserving Fluent's XAML PRI, creates `Clickra.msix`, and
+signs it when a matching development certificate is available. Launch the
+packaged Fluent app directly before testing Explorer, then restart Explorer
+after each reinstall so it reloads `ClickraShell.dll`.
 
 ### Context-menu change checklist
 

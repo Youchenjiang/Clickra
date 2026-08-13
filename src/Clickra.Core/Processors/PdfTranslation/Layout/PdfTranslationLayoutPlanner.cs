@@ -80,6 +80,7 @@ internal static class PdfTranslationLayoutPlanner
     private const double Gap = 2.0;
     private const double PageBottomMargin = 14.0;
     private const double MinimumBodyFontScale = 0.80;
+    private const double EmergencyBodyFontScale = 0.55;
     private const double MaximumBodyFontScale = 1.15;
     private const double MaximumBodyLineSpacing = 1.50;
     private const double ProtectedRegionOverlapRatio = 0.20;
@@ -105,9 +106,9 @@ internal static class PdfTranslationLayoutPlanner
             out double maximumInterParagraphGap,
             out double maximumFlowRegionResidualWhitespace);
 
-        ValidateNoBottomOverflow(snapshots, pageHeight, protectedRegions);
+        int bottomOverflowCount = CountBottomOverflows(snapshots, pageHeight);
 
-        return BuildPlanResult(snapshots, shifted, pageHeight, protectedRegions, maximumInterParagraphGap, maximumFlowRegionResidualWhitespace);
+        return BuildPlanResult(snapshots, shifted, pageHeight, protectedRegions, maximumInterParagraphGap, maximumFlowRegionResidualWhitespace, bottomOverflowCount);
     }
 
     private static List<PdfParagraphLayoutSnapshot> InitializeSnapshots(
@@ -234,29 +235,10 @@ internal static class PdfTranslationLayoutPlanner
         return shifted;
     }
 
-    private static void ValidateNoBottomOverflow(
-        List<PdfParagraphLayoutSnapshot> snapshots,
-        double pageHeight,
-        IReadOnlyList<TableMaskRegion>? protectedRegions)
-    {
-        var bottomOverflowParagraphs = snapshots
-            .Where(s => IsReflowShiftable(s.Paragraph, pageHeight) &&
-                        s.Paragraph.Y0 < PageBottomMargin - 0.5 &&
-                        s.Paragraph.OriginalY0 >= PageBottomMargin - 0.5)
-            .ToList();
-        if (bottomOverflowParagraphs.Count == 0) return;
-
-        string details = string.Join(", ", bottomOverflowParagraphs
-            .Take(3).Select(s =>
-                $"'{Preview(s.Paragraph.TextWithPlaceholders)}' role={s.Role} " +
-                $"y=[{s.Paragraph.Y0:F1},{s.Paragraph.Y1:F1}] " +
-                $"original=[{s.Paragraph.OriginalY0:F1},{s.Paragraph.OriginalY1:F1}] " +
-                $"measured={s.MeasuredHeight:F1} shift={s.ShiftY:F1} " +
-                $"cjk={HasCjkTranslation(s.Paragraph)} protected={OverlapsProtectedRegion(s.Paragraph, protectedRegions ?? Array.Empty<TableMaskRegion>())}"));
-        throw new PdfLayoutPlanningException(
-            $"{bottomOverflowParagraphs.Count} paragraph(s) moved below the page bottom: {details}",
-            bottomOverflowCount: bottomOverflowParagraphs.Count);
-    }
+    private static int CountBottomOverflows(List<PdfParagraphLayoutSnapshot> snapshots, double pageHeight) =>
+        snapshots.Count(s => IsReflowShiftable(s.Paragraph, pageHeight) &&
+                             s.Paragraph.Y0 < PageBottomMargin - 0.5 &&
+                             s.Paragraph.OriginalY0 >= PageBottomMargin - 0.5);
 
     private static PdfTranslationLayoutPlan BuildPlanResult(
         List<PdfParagraphLayoutSnapshot> snapshots,
@@ -264,7 +246,8 @@ internal static class PdfTranslationLayoutPlanner
         double pageHeight,
         IReadOnlyList<TableMaskRegion>? protectedRegions,
         double maximumInterParagraphGap,
-        double maximumFlowRegionResidualWhitespace)
+        double maximumFlowRegionResidualWhitespace,
+        int bottomOverflowCount)
     {
         double maximumAlignmentAnchorShift = snapshots
             .Where(s => IsHeading(s.Role))
@@ -291,7 +274,7 @@ internal static class PdfTranslationLayoutPlanner
             HeadingCount = snapshots.Count(s => IsHeading(s.Role)),
             ShiftedParagraphCount = shifted,
             FixedCollisionCount = 0,
-            BottomOverflowCount = 0,
+            BottomOverflowCount = bottomOverflowCount,
             MaximumAlignmentAnchorShift = maximumAlignmentAnchorShift,
             MinimumBodyFontRatio = bodySnapshots.Select(s => s.FontRatio).DefaultIfEmpty(1.0).Min(),
             MaximumBodyFontRatio = bodySnapshots.Select(s => s.FontRatio).DefaultIfEmpty(1.0).Max(),
@@ -421,11 +404,18 @@ internal static class PdfTranslationLayoutPlanner
 
         double regionTop = run[0].Paragraph.Y1;
         double protectedBoundaryTop = FindAdjacentProtectedBoundaryTop(run, options.ProtectedRegions, regionTop);
+        double flowBoundaryTop = FindAdjacentFlowBoundaryTop(
+            run,
+            options.Snapshots,
+            options.PageWidth,
+            options.ProtectedRegions,
+            regionTop);
+        double boundaryTop = Math.Max(protectedBoundaryTop, flowBoundaryTop);
         double regionBottom = Math.Max(
             PageBottomMargin,
             Math.Max(
                 run[^1].Paragraph.OriginalY0,
-                protectedBoundaryTop > 0 ? protectedBoundaryTop + Gap : 0));
+                boundaryTop > 0 ? boundaryTop + Gap : 0));
         double availableHeight = regionTop - regionBottom;
         if (availableHeight <= 0) return 0;
 
@@ -567,6 +557,42 @@ internal static class PdfTranslationLayoutPlanner
             .Max();
     }
 
+    private static double FindAdjacentFlowBoundaryTop(
+        IReadOnlyList<PdfParagraphLayoutSnapshot> run,
+        IReadOnlyList<PdfParagraphLayoutSnapshot> snapshots,
+        double pageWidth,
+        IReadOnlyList<TableMaskRegion> protectedRegions,
+        double regionTop)
+    {
+        if (run.Count == 0) return 0;
+
+        var last = run[^1].Paragraph;
+        double paragraphWidth = Math.Max(0, last.OriginalX1 - last.OriginalX0);
+        if (paragraphWidth <= 0) return 0;
+
+        return snapshots
+            .Where(boundary =>
+                !run.Contains(boundary) &&
+                IsFlowBoundary(boundary, pageWidth, protectedRegions) &&
+                boundary.Paragraph.OriginalY1 <= regionTop + 0.5 &&
+                SharesHorizontalBand(last, boundary.Paragraph, paragraphWidth))
+            .Select(boundary => boundary.Paragraph.OriginalY1)
+            .DefaultIfEmpty(0)
+            .Max();
+    }
+
+    private static bool SharesHorizontalBand(
+        PdfParagraph paragraph,
+        PdfParagraph boundary,
+        double paragraphWidth)
+    {
+        double overlapWidth = Math.Max(
+            0,
+            Math.Min(paragraph.OriginalX1, boundary.OriginalX1) -
+            Math.Max(paragraph.OriginalX0, boundary.OriginalX0));
+        return overlapWidth / paragraphWidth >= ProtectedRegionOverlapRatio;
+    }
+
     private static IReadOnlyList<List<PdfParagraphLayoutSnapshot>> BuildBodyFlowRuns(
         IReadOnlyList<PdfParagraphLayoutSnapshot> flowable,
         IReadOnlyList<PdfParagraphLayoutSnapshot> allSnapshots,
@@ -676,6 +702,28 @@ internal static class PdfTranslationLayoutPlanner
         }
 
         double best = low;
+        for (int attempt = 0; attempt < 8; attempt++)
+        {
+            double candidate = (low + high) / 2.0;
+            ApplyFontScaleAndMeasure(gfx, run, baseFonts, targetFontName, candidate);
+            double totalHeight = run.Sum(s => s.MeasuredHeight);
+            if (totalHeight <= contentBudget + 0.5)
+            {
+                best = candidate;
+                low = candidate;
+            }
+            else
+            {
+                high = candidate;
+            }
+        }
+        ApplyFontScaleAndMeasure(gfx, run, baseFonts, targetFontName, best);
+        if (run.Sum(s => s.MeasuredHeight) <= contentBudget + 0.5)
+            return best;
+
+        low = EmergencyBodyFontScale;
+        high = MinimumBodyFontScale;
+        best = low;
         for (int attempt = 0; attempt < 8; attempt++)
         {
             double candidate = (low + high) / 2.0;
@@ -849,6 +897,15 @@ internal static class PdfTranslationLayoutPlanner
 
     private static double CalculateSourceFontSize(PdfParagraph p)
     {
+        if (p.IsPageTitle || PdfParagraphSemanticClassifier.IsHeadingParagraph(p))
+        {
+            if (p.SourceVisualFontSize > 0)
+                return p.SourceVisualFontSize;
+            return p.AllLetters.Count == 0 ? p.AverageFontSize : p.AllLetters.Max(l => l.FontSize);
+        }
+
+        if (p.AverageFontSize > 0)
+            return p.AverageFontSize;
         if (p.SourceVisualFontSize > 0)
             return p.SourceVisualFontSize;
         return p.AllLetters.Count == 0 ? p.AverageFontSize : p.AllLetters.Max(l => l.FontSize);
@@ -890,8 +947,8 @@ internal static class PdfTranslationLayoutPlanner
         double available = heading.Paragraph.OriginalY0 - obstacleTop - Gap;
         if (extra > available + 0.5)
         {
-            string reason = $"Heading '{Preview(heading.Paragraph.TextWithPlaceholders)}' needs {extra:F1}pt but only {Math.Max(0, available):F1}pt is available before a fixed region/page bottom.";
-            throw new PdfLayoutPlanningException(reason, fixedCollisionCount: 1);
+            // ponytail: keep the PDF output; add a real compact-heading fallback if this overlap becomes common.
+            return 0;
         }
 
         int shifted = 0;

@@ -57,5 +57,26 @@ namespace ClickraShell
             }
             catch { return key; }
         }
+
+        public static string? GetPackagedAppUserModelId()
+        {
+            try
+            {
+                string dir = GetModuleDir();
+                string packageName = Path.GetFileName(dir);
+                int separator = packageName.IndexOf('_');
+                int publisherSeparator = packageName.LastIndexOf("__", StringComparison.Ordinal);
+                if (separator <= 0 || publisherSeparator <= separator + 1) return null;
+
+                string packageFamilyName = packageName[..separator] + "_" + packageName[(publisherSeparator + 2)..];
+                string manifestPath = Path.Combine(dir, "AppxManifest.xml");
+                if (!File.Exists(manifestPath)) return null;
+
+                var doc = XDocument.Load(manifestPath);
+                string? appId = doc.Descendants().FirstOrDefault(e => e.Name.LocalName == "Application")?.Attribute("Id")?.Value;
+                return string.IsNullOrWhiteSpace(appId) ? null : $"{packageFamilyName}!{appId}";
+            }
+            catch { return null; }
+        }
     }
 }

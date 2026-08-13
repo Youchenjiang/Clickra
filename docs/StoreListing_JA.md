@@ -44,8 +44,8 @@ Clickra はプライバシーを重視します。Office から PDF、PDF 圧縮
  - JPG/PNG/WebP 画像の一括 PDF 変換
  - 画像の縦方向結合
  - 複数 PDF の高速結合
- - NativeAOT による低遅延レスポンス
- - Windows 11 Fluent Design との統合
+  - NativeAOT シェル統合による応答性の高いコンテキストメニュー
+  - WinUI 3 Fluent ダッシュボードと変換進行状況画面
  - 安全なローカル処理（任意の PDF 翻訳のみクラウド翻訳を使用）
 
 ---

@@ -11,9 +11,7 @@ namespace Clickra.Core
         private const string LangJa = "ja-JP";
         private const string LangKo = "ko-KR";
         private const string KeyCmdCompressPdf = "cmd_compress_pdf";
-        private const string KeyCmdSplitPdf = "cmd_split_pdf";
-        private const string KeySplitPdfTitle = "pdf_split_title";
-        private const string KeySplitPdfPrompt = "pdf_split_prompt";
+        private const string OfficeName = "Office";
 
         private static readonly Dictionary<string, Dictionary<string, string>> Translations = new(StringComparer.OrdinalIgnoreCase)
         {
@@ -150,9 +148,6 @@ namespace Clickra.Core
                 ["setting_pdf_lang"] = "目標語言 (Target Language)",
                 ["cmd_translate_pdf"] = "PDF 一鍵翻譯",
                 ["cmd_decrypt_pdf"] = "去除 PDF 密碼",
-                [KeyCmdSplitPdf] = "分割 PDF",
-                [KeySplitPdfTitle] = "輸入 PDF 分割頁碼範圍",
-                [KeySplitPdfPrompt] = "請輸入分頁範圍（例如 1-5, 8 或 all 拆分為單頁檔）：",
                 ["pdf_password_title"] = "輸入 PDF 密碼",
                 ["pdf_password_prompt"] = "「{0}」受密碼保護，請輸入開啟密碼：",
                 ["pdf_password_retry"] = "密碼錯誤。請重新輸入「{0}」的密碼：",
@@ -294,9 +289,6 @@ namespace Clickra.Core
                 ["setting_pdf_lang"] = "目标语言",
                 ["cmd_translate_pdf"] = "PDF 翻译",
                 ["cmd_decrypt_pdf"] = "去除 PDF 密码",
-                [KeyCmdSplitPdf] = "分割 PDF",
-                [KeySplitPdfTitle] = "输入 PDF 分割页码范围",
-                [KeySplitPdfPrompt] = "请输入分页范围（例如 1-5, 8 或 all 拆分为单页档）：",
                 ["pdf_password_title"] = "输入 PDF 密码",
                 ["pdf_password_prompt"] = "「{0}」受密码保护，请输入打开密码：",
                 ["pdf_password_retry"] = "密码错误。请重新输入「{0}」的密码：",
@@ -438,9 +430,6 @@ namespace Clickra.Core
                 ["setting_pdf_lang"] = "Target Language",
                 ["cmd_translate_pdf"] = "PDF Translation",
                 ["cmd_decrypt_pdf"] = "Remove PDF Password",
-                [KeyCmdSplitPdf] = "Split PDF",
-                [KeySplitPdfTitle] = "Enter Page Range to Split PDF",
-                [KeySplitPdfPrompt] = "Enter page range (e.g. 1-5, 8 or all to split into single pages):",
                 ["pdf_password_title"] = "Enter PDF Password",
                 ["pdf_password_prompt"] = "\"{0}\" is password protected. Enter open password:",
                 ["pdf_password_retry"] = "Incorrect password. Re-enter password for \"{0}\":",
@@ -582,9 +571,6 @@ namespace Clickra.Core
                 ["setting_pdf_lang"] = "対象言語 (Target Language)",
                 ["cmd_translate_pdf"] = "PDF 翻訳",
                 ["cmd_decrypt_pdf"] = "PDF パスワード解除",
-                [KeyCmdSplitPdf] = "PDF 分割",
-                [KeySplitPdfTitle] = "PDF 分割ページ範囲の入力",
-                [KeySplitPdfPrompt] = "ページ範囲を入力してください（例：1-5, 8 または全ページ分割の all）：",
                 ["pdf_password_title"] = "PDF パスワード入力",
                 ["pdf_password_prompt"] = "「{0}」はパスワードで保護されています。パスワードを入力してください：",
                 ["pdf_password_retry"] = "パスワードが正しくありません。もう一度入力してください：「{0}」",
@@ -728,9 +714,6 @@ namespace Clickra.Core
                 ["setting_pdf_lang"] = "대상 언어 (Target Language)",
                 ["cmd_translate_pdf"] = "PDF 번역",
                 ["cmd_decrypt_pdf"] = "PDF 비밀번호 제거",
-                [KeyCmdSplitPdf] = "PDF 분할",
-                [KeySplitPdfTitle] = "PDF 분할 페이지 범위 입력",
-                [KeySplitPdfPrompt] = "페이지 범위를 입력하십시오 (예: 1-5, 8 또는 전체 분할 all):",
                 ["pdf_password_title"] = "PDF 비밀번호 입력",
                 ["pdf_password_prompt"] = "「{0}」 파일이 비밀번호로 보호되어 있습니다. 비밀번호를 입력하십시오:",
                 ["pdf_password_retry"] = "비밀번호가 잘못되었습니다. 다시 입력하십시오:「{0}」",
@@ -784,6 +767,7 @@ namespace Clickra.Core
         static Localization()
         {
             RegisterCompressionTranslations();
+            RegisterFluentDashboardTranslations();
         }
 
         private static void RegisterCompressionTranslations()
@@ -827,6 +811,163 @@ namespace Clickra.Core
             dict["setting_pdf_compress_level_small"] = values[12];
             dict["setting_pdf_compress_level_std"] = values[13];
             dict["setting_pdf_compress_level_high"] = values[14];
+        }
+
+        private static void RegisterFluentDashboardTranslations()
+        {
+            var data = new (string Key, string Tw, string Cn, string En, string Ja, string Ko)[]
+            {
+                ("fluent_nav_overview", "總覽", "总览", "Overview", "概要", "개요"),
+                ("fluent_nav_convert", "轉檔", "转换", "Convert", "変換", "변환"),
+                ("fluent_nav_history", "歷史", "历史", "History", "履歴", "기록"),
+                ("fluent_nav_settings", "設定", "设置", "Settings", "設定", "설정"),
+                ("fluent_nav_about", "關於", "关于", "About", "情報", "정보"),
+                ("fluent_overview_title", "轉換檔案", "转换文件", "Convert files", "ファイルを変換", "파일 변환"),
+                ("fluent_overview_subtitle", "PDF、Office 與圖片工具集中在同一個工作區。", "PDF、Office 与图片工具集中在同一个工作区。", "PDF, Office, and image tools in one workspace.", "PDF、Office、画像ツールを 1 つの作業領域に集約。", "PDF, Office, 이미지 도구를 한 작업 공간에서 사용합니다."),
+                ("fluent_choose_files", "選擇檔案", "选择文件", "Choose files", "ファイルを選択", "파일 선택"),
+                ("fluent_recent_jobs", "近期作業", "近期作业", "Recent jobs", "最近のジョブ", "최근 작업"),
+                ("fluent_recent_activity", "近期活動", "近期活动", "Recent activity", "最近の操作", "최근 활동"),
+                ("fluent_no_history", "尚無轉換紀錄。", "暂无转换记录。", "No conversion history yet.", "変換履歴はまだありません。", "변환 기록이 없습니다."),
+                ("fluent_activity_summary", "活動摘要", "活动摘要", "Activity summary", "操作サマリー", "활동 요약"),
+                ("fluent_total", "總計", "总计", "Total", "合計", "전체"),
+                ("fluent_success", "成功", "成功", "OK", "成功", "성공"),
+                ("fluent_failed", "失敗", "失败", "Fail", "失敗", "실패"),
+                ("fluent_tools", "PDF 與 Office 工具", "PDF 与 Office 工具", "PDF and Office tools", "PDF と Office ツール", "PDF 및 Office 도구"),
+                ("fluent_explorer_menu", "檔案總管選單", "文件资源管理器菜单", "Explorer menu", "Explorer メニュー", "Explorer 메뉴"),
+                ("fluent_available", "可用", "可用", "Available", "利用可能", "사용 가능"),
+                ("fluent_pdf_desc", "合併、壓縮、翻譯、解密。", "合并、压缩、翻译、解密。", "Merge, compress, translate, decrypt.", "結合、圧縮、翻訳、復号。", "병합, 압축, 번역, 암호 해제."),
+                ("fluent_office_desc", "Word、Excel、PowerPoint 轉 PDF。", "Word、Excel、PowerPoint 转 PDF。", "Word, Excel, PowerPoint to PDF.", "Word、Excel、PowerPoint を PDF へ。", "Word, Excel, PowerPoint를 PDF로 변환."),
+                ("fluent_images_desc", "建立 PDF、合併、拼接。", "创建 PDF、合并、拼接。", "Create PDFs, merge, stitch.", "PDF 作成、結合、連結。", "PDF 생성, 병합, 이어붙이기."),
+                ("fluent_drop_title", "拖放檔案到這裡", "拖放文件到这里", "Drop files here", "ここにファイルをドロップ", "여기에 파일 놓기"),
+                ("fluent_drop_browse", "點擊此區域選取檔案", "点击此区域选择文件", "Click this area to browse", "この領域をクリックして選択", "이 영역을 클릭해 선택"),
+                ("fluent_drop_types", "PDF、Office 文件與圖片", "PDF、Office 文档与图片", "PDF, Office documents, and images", "PDF、Office 文書、画像", "PDF, Office 문서, 이미지"),
+                ("fluent_selected_files", "已選取檔案", "已选择文件", "Selected files", "選択したファイル", "선택한 파일"),
+                ("fluent_selected_files_desc", "檔案會依照目前命令驗證。", "文件会按照当前命令验证。", "Files are validated against the selected command.", "ファイルは選択中のコマンドで検証されます。", "선택한 명령에 맞게 파일을 확인합니다."),
+                ("fluent_clear", "清除", "清除", "Clear", "クリア", "지우기"),
+                ("fluent_no_files", "未選取檔案", "未选择文件", "No files selected", "ファイル未選択", "선택한 파일 없음"),
+                ("fluent_command", "命令", "命令", "Command", "コマンド", "명령"),
+                ("fluent_choose_command", "選擇命令", "选择命令", "Choose a command", "コマンドを選択", "명령 선택"),
+                ("fluent_selected_command", "已選擇：{0}", "已选择：{0}", "Selected: {0}", "選択中: {0}", "선택됨: {0}"),
+                ("fluent_run", "執行", "运行", "Run", "実行", "실행"),
+                ("fluent_start", "開始轉換", "开始转换", "Start conversion", "変換開始", "변환 시작"),
+                ("fluent_cancel", "取消", "取消", "Cancel", "キャンセル", "취소"),
+                ("fluent_ready", "準備就緒", "准备就绪", "Ready", "準備完了", "준비됨"),
+                ("fluent_file_count", "個檔案", "个文件", "file(s)", "件", "개 파일"),
+                ("fluent_select_history", "選取一筆歷史紀錄", "选择一条历史记录", "Select a history item", "履歴項目を選択", "기록 항목 선택"),
+                ("fluent_files", "檔案", "文件", "Files", "ファイル", "파일"),
+                ("fluent_elapsed", "耗時", "耗时", "Elapsed", "経過時間", "소요 시간"),
+                ("fluent_result", "結果", "结果", "Result", "結果", "결과"),
+                ("fluent_input_paths", "輸入路徑", "输入路径", "Input paths", "入力パス", "입력 경로"),
+                ("fluent_output_paths", "輸出路徑", "输出路径", "Output paths", "出力パス", "출력 경로"),
+                ("fluent_error_message", "錯誤訊息", "错误消息", "Error message", "エラーメッセージ", "오류 메시지"),
+                ("fluent_settings_subtitle", "使用者介面與檔案總管命令的預設值", "界面与文件资源管理器命令的默认值", "Defaults used by the dashboard and Explorer commands", "ダッシュボードと Explorer コマンドの既定値", "대시보드와 Explorer 명령의 기본값"),
+                ("fluent_output_dir", "輸出資料夾", "输出文件夹", "Output directory", "出力フォルダー", "출력 폴더"),
+                ("fluent_output_dir_desc", "轉換後檔案的儲存位置", "转换后文件的保存位置", "Where converted files are saved", "変換後ファイルの保存先", "변환된 파일 저장 위치"),
+                ("fluent_output_source", "與來源相同", "与来源相同", "Same as source", "元と同じ", "원본과 같음"),
+                ("fluent_desktop", "桌面", "桌面", "Desktop", "デスクトップ", "바탕 화면"),
+                ("fluent_downloads", "下載", "下载", "Downloads", "ダウンロード", "다운로드"),
+                ("fluent_custom", "自訂...", "自定义...", "Custom...", "カスタム...", "사용자 지정..."),
+                ("fluent_office_engine", "Office 引擎", "Office 引擎", "Office engine", "Office エンジン", "Office 엔진"),
+                ("fluent_office_engine_desc", "Office 轉檔使用的引擎", "Office 转换使用的引擎", "Engine used for Office conversion", "Office 変換に使うエンジン", "Office 변환에 사용할 엔진"),
+                ("fluent_auto", "自動", "自动", "Auto", "自動", "자동"),
+                ("fluent_default_language", "預設語言", "默认语言", "Default language", "既定の言語", "기본 언어"),
+                ("fluent_default_language_desc", "用於介面、檔案總管命令與處理訊息。", "用于界面、文件资源管理器命令与处理消息。", "Used by the interface, Explorer commands, and processor messages.", "UI、Explorer コマンド、処理メッセージに使用します。", "UI, Explorer 명령, 처리 메시지에 사용합니다."),
+                ("fluent_pdf_target", "PDF 翻譯目標", "PDF 翻译目标", "PDF translation target", "PDF 翻訳先", "PDF 번역 대상"),
+                ("fluent_behavior", "行為", "行为", "Behavior", "動作", "동작"),
+                ("fluent_quiet_mode", "靜默模式", "静默模式", "Quiet mode", "静音モード", "무음 모드"),
+                ("fluent_quiet_mode_desc", "檔案總管命令預設使用；此視窗仍會顯示。", "文件资源管理器命令默认使用；此窗口仍会显示。", "Default for Explorer commands; this dashboard still stays visible.", "Explorer コマンドの既定。この画面は表示されます。", "Explorer 명령의 기본값입니다. 이 창은 계속 표시됩니다."),
+                ("fluent_notifications", "通知", "通知", "Notifications", "通知", "알림"),
+                ("fluent_notifications_desc", "轉換完成時顯示通知", "转换完成时显示通知", "Show toast when conversion completes", "変換完了時に通知を表示", "변환 완료 시 알림 표시"),
+                ("fluent_pdf_compression", "PDF 壓縮", "PDF 压缩", "PDF compression", "PDF 圧縮", "PDF 압축"),
+                ("fluent_strip_fonts", "移除嵌入字型", "移除嵌入字体", "Strip embedded fonts", "埋め込みフォントを削除", "포함 글꼴 제거"),
+                ("fluent_minify_content", "最佳化 PDF 結構", "优化 PDF 结构", "Optimize PDF structure", "PDF 構造を最適化", "PDF 구조 최적화"),
+                ("fluent_about_desc", "Clickra 是 Windows 上快速、輕量的檔案轉換工作區。", "Clickra 是 Windows 上快速、轻量的文件转换工作区。", "A fast, lightweight file conversion workspace for Windows.", "Windows 向けの高速で軽量なファイル変換ワークスペース。", "Windows용 빠르고 가벼운 파일 변환 작업 공간입니다."),
+                ("fluent_github", "在 GitHub 檢視", "在 GitHub 查看", "View on GitHub", "GitHub で表示", "GitHub에서 보기"),
+                ("fluent_platform", "平台", "平台", "Platform", "プラットフォーム", "플랫폼"),
+                ("fluent_app_model", "應用程式模型", "应用模型", "App model", "アプリモデル", "앱 모델"),
+                ("fluent_toast_done_title", "Clickra 轉換完成", "Clickra 转换完成", "Clickra conversion completed", "Clickra 変換完了", "Clickra 변환 완료"),
+                ("fluent_toast_done_body", "{0} 已完成，共 {1} 個檔案。", "{0} 已完成，共 {1} 个文件。", "{0} finished for {1} file(s).", "{0} が完了しました。{1} 件。", "{0} 완료, {1}개 파일."),
+                ("fluent_toast_canceled_title", "Clickra 轉換已取消", "Clickra 转换已取消", "Clickra conversion canceled", "Clickra 変換キャンセル", "Clickra 변환 취소"),
+                ("fluent_toast_canceled_body", "{0} 已取消。", "{0} 已取消。", "{0} was canceled.", "{0} はキャンセルされました。", "{0} 취소됨."),
+                ("fluent_toast_failed_title", "Clickra 轉換失敗", "Clickra 转换失败", "Clickra conversion failed", "Clickra 変換失敗", "Clickra 변환 실패"),
+                ("fluent_validate_min_files", "{0} 至少需要 {1} 個檔案。", "{0} 至少需要 {1} 个文件。", "{0} needs at least {1} file(s).", "{0} には少なくとも {1} 件のファイルが必要です。", "{0}에는 최소 {1}개 파일이 필요합니다."),
+                ("fluent_validate_bad_ext", "{0} 不適用於 {1}。", "{0} 不适用于 {1}。", "{0} is not valid for {1}.", "{0} は {1} に使用できません。", "{0}은(는) {1}에 사용할 수 없습니다."),
+                ("fluent_progress_starting", "正在開始...", "正在开始...", "Starting...", "開始中...", "시작 중..."),
+                ("fluent_progress_completed", "已完成。", "已完成。", "Completed.", "完了しました。", "완료됨."),
+                ("fluent_progress_canceled", "已取消。", "已取消。", "Canceled.", "キャンセルしました。", "취소됨."),
+                ("fluent_progress_failed", "失敗：{0}", "失败：{0}", "Failed: {0}", "失敗: {0}", "실패: {0}"),
+                ("fluent_progress_running_title", "正在{0}", "正在{0}", "{0} in progress", "{0} を実行中", "{0} 진행 중"),
+                ("fluent_progress_preparing", "準備中", "准备中", "Preparing", "準備中", "준비 중"),
+                ("fluent_progress_output", "輸出：", "输出：", "Output: ", "出力: ", "출력: "),
+                ("fluent_progress_waiting", "請稍候，正在背景處理中...", "请稍候，正在后台处理中...", "Please wait. Processing in the background...", "お待ちください。バックグラウンドで処理しています...", "잠시만 기다려 주세요. 백그라운드에서 처리 중입니다..."),
+                ("fluent_progress_running", "正在執行作業...", "正在执行作业...", "Working...", "処理を実行中...", "작업 실행 중..."),
+                ("fluent_progress_processing", "正在處理...", "正在处理...", "Processing...", "処理中...", "처리 중..."),
+                ("fluent_progress_done_title", "處理完成", "处理完成", "Completed", "処理完了", "처리 완료"),
+                ("fluent_progress_failed_title", "處理未完成", "处理未完成", "Not completed", "未完了", "완료되지 않음"),
+                ("fluent_progress_done_footer", "處理完成，可以開啟輸出資料夾。", "处理完成，可以打开输出文件夹。", "Completed. You can open the output folder.", "完了しました。出力フォルダーを開けます。", "완료되었습니다. 출력 폴더를 열 수 있습니다."),
+                ("fluent_progress_failed_footer", "請檢查訊息後關閉視窗。", "请检查消息后关闭窗口。", "Check the message, then close this window.", "メッセージを確認してから閉じてください。", "메시지를 확인한 후 창을 닫아 주세요."),
+                ("fluent_progress_open_folder", "開啟資料夾", "打开文件夹", "Open folder", "フォルダーを開く", "폴더 열기"),
+                ("fluent_progress_close", "關閉", "关闭", "Close", "閉じる", "닫기"),
+                ("fluent_progress_invalid_command", "無效的轉換命令。", "无效的转换命令。", "Invalid conversion command.", "無効な変換コマンドです。", "잘못된 변환 명령입니다."),
+                ("fluent_progress_file_not_found", "找不到可轉換的檔案。", "找不到可转换的文件。", "No convertible files were found.", "変換できるファイルが見つかりません。", "변환할 파일을 찾을 수 없습니다."),
+                ("fluent_progress_multiple_files", "{0} 等 {1} 個檔案", "{0} 等 {1} 个文件", "{0} and {1} files", "{0} ほか {1} 件", "{0} 외 {1}개 파일"),
+                ("fluent_pdf_password", "PDF 密碼", "PDF 密码", "PDF password", "PDF パスワード", "PDF 암호"),
+                ("fluent_pdf_password_placeholder", "輸入 PDF 密碼", "输入 PDF 密码", "Enter PDF password", "PDF パスワードを入力", "PDF 암호 입력"),
+                ("fluent_ok", "確定", "确定", "OK", "OK", "확인"),
+                ("fluent_office", OfficeName, OfficeName, OfficeName, OfficeName, OfficeName),
+                ("fluent_images", "圖片", "图片", "Images", "画像", "이미지"),
+                ("fluent_history_subtitle", "近期轉換結果", "近期转换结果", "Recent conversion results", "最近の変換結果", "최근 변환 결과"),
+                ("status_office_starting", "正在啟動 {0} 引擎 ({1}/{2})...", "正在启动 {0} 引擎 ({1}/{2})...", "Starting {0} engine ({1}/{2})...", "{0} エンジンを起動中 ({1}/{2})...", "{0} 엔진 시작 중 ({1}/{2})..."),
+                ("status_office_reading", "正在讀取文件：{0}...", "正在读取文档：{0}...", "Reading document: {0}...", "文書を読み込み中: {0}...", "문서 읽는 중: {0}..."),
+                ("status_office_exporting", "正在匯出 PDF：{0}...", "正在导出 PDF：{0}...", "Exporting PDF: {0}...", "PDF を書き出し中: {0}...", "PDF 내보내는 중: {0}..."),
+                ("status_office_completed", "已完成轉換：{0}", "已完成转换：{0}", "Conversion completed: {0}", "変換完了: {0}", "변환 완료: {0}"),
+                ("status_office_converting", "正在轉換 {0}：{1}...", "正在转换 {0}：{1}...", "Converting {0}: {1}...", "{0} を変換中: {1}...", "{0} 변환 중: {1}..."),
+                ("error_office_unsupported", "不支援的 Office 應用程式：{0}。", "不支持的 Office 应用程序：{0}。", "Office application {0} is not supported.", "Office アプリ {0} はサポートされていません。", "Office 앱 {0}은(는) 지원되지 않습니다."),
+                ("error_office_output_missing", "{0} 轉換失敗：未建立輸出 PDF。", "{0} 转换失败：未创建输出 PDF。", "{0} conversion failed: output PDF file was not created.", "{0} 変換失敗: 出力 PDF が作成されませんでした。", "{0} 변환 실패: 출력 PDF 파일이 생성되지 않았습니다."),
+                ("error_office_powershell_start", "Microsoft {0} 轉換失敗：無法啟動 PowerShell。", "Microsoft {0} 转换失败：无法启动 PowerShell。", "Microsoft {0} conversion failed: unable to start PowerShell.", "Microsoft {0} 変換失敗: PowerShell を起動できません。", "Microsoft {0} 변환 실패: PowerShell을 시작할 수 없습니다."),
+                ("error_office_timeout", "Microsoft {0} 轉換超過 2 分鐘。請改用其他 Office 引擎，或手動匯出此檔案。", "Microsoft {0} 转换超过 2 分钟。请改用其他 Office 引擎，或手动导出此文件。", "Microsoft {0} conversion timed out after 2 minutes. Try another Office engine or export this file manually.", "Microsoft {0} 変換が 2 分でタイムアウトしました。別の Office エンジンを使うか手動で書き出してください。", "Microsoft {0} 변환이 2분 후 시간 초과되었습니다. 다른 Office 엔진을 사용하거나 수동으로 내보내세요."),
+                ("error_office_not_installed", "尚未安裝 Microsoft {0}。此功能需要系統中已安裝 Microsoft {0}。", "尚未安装 Microsoft {0}。此功能需要系统中已安装 Microsoft {0}。", "Microsoft {0} is not installed. This feature requires Microsoft {0} to be installed on your system.", "Microsoft {0} がインストールされていません。この機能には Microsoft {0} が必要です。", "Microsoft {0}이(가) 설치되어 있지 않습니다. 이 기능에는 Microsoft {0}이(가) 필요합니다."),
+                ("error_office_failed", "{0} 轉換失敗：{1}", "{0} 转换失败：{1}", "{0} conversion failed: {1}", "{0} 変換失敗: {1}", "{0} 변환 실패: {1}"),
+                ("error_office_exit_code", "{0} 轉換失敗，結束碼 {1}。", "{0} 转换失败，退出码 {1}。", "{0} conversion failed with exit code {1}.", "{0} 変換失敗、終了コード {1}。", "{0} 변환 실패, 종료 코드 {1}."),
+                ("error_libreoffice_unsupported", "LibreOffice 不支援轉換 {0}。", "LibreOffice 不支持转换 {0}。", "LibreOffice conversion does not support {0}.", "LibreOffice は {0} 変換をサポートしていません。", "LibreOffice는 {0} 변환을 지원하지 않습니다."),
+                ("error_libreoffice_start", "LibreOffice 轉換失敗：無法啟動程序。", "LibreOffice 转换失败：无法启动进程。", "LibreOffice conversion failed: unable to start process.", "LibreOffice 変換失敗: プロセスを起動できません。", "LibreOffice 변환 실패: 프로세스를 시작할 수 없습니다."),
+                ("error_libreoffice_timeout", "LibreOffice 轉換超過 2 分鐘。請改用 Microsoft Office 或自動引擎處理此檔案。", "LibreOffice 转换超过 2 分钟。请改用 Microsoft Office 或自动引擎处理此文件。", "LibreOffice conversion timed out after 2 minutes. Try Microsoft Office or Auto engine for this file.", "LibreOffice 変換が 2 分でタイムアウトしました。Microsoft Office または自動エンジンを試してください。", "LibreOffice 변환이 2분 후 시간 초과되었습니다. Microsoft Office 또는 자동 엔진을 사용해 보세요."),
+                ("error_libreoffice_exit_code", "LibreOffice 轉換失敗，結束碼 {0} ({1})：{2}", "LibreOffice 转换失败，退出码 {0} ({1})：{2}", "LibreOffice conversion failed with exit code {0} ({1}): {2}", "LibreOffice 変換失敗、終了コード {0} ({1}): {2}", "LibreOffice 변환 실패, 종료 코드 {0} ({1}): {2}"),
+                ("error_libreoffice_output_missing", "LibreOffice 轉換失敗：未建立輸出 PDF。{0}", "LibreOffice 转换失败：未创建输出 PDF。{0}", "LibreOffice conversion failed: output PDF file was not created. {0}", "LibreOffice 変換失敗: 出力 PDF が作成されませんでした。{0}", "LibreOffice 변환 실패: 출력 PDF 파일이 생성되지 않았습니다. {0}"),
+                ("pdf_progress_analyzing", "正在分析 PDF 版面結構與公式...", "正在分析 PDF 版面结构与公式...", "Analyzing PDF layout and formulas...", "PDF レイアウトと数式を解析中...", "PDF 레이아웃과 수식 분석 중..."),
+                ("pdf_progress_translating", "正在翻譯文本內容...", "正在翻译文本内容...", "Translating text content...", "テキストを翻訳中...", "텍스트 내용 번역 중..."),
+                ("pdf_progress_translating_page", "正在翻譯第 {0}/{1} 頁...", "正在翻译第 {0}/{1} 页...", "Translating page {0}/{1}...", "{0}/{1} ページを翻訳中...", "{0}/{1} 페이지 번역 중..."),
+                ("pdf_progress_translating_batch", "正在翻譯第 {0}/{1} 頁，批次 {2}/{3}（段落 {4}-{5}/{6}）...", "正在翻译第 {0}/{1} 页，批次 {2}/{3}（段落 {4}-{5}/{6}）...", "Translating page {0}/{1}, batch {2}/{3} (paragraphs {4}-{5}/{6})...", "{0}/{1} ページ、バッチ {2}/{3} を翻訳中（段落 {4}-{5}/{6}）...", "{0}/{1} 페이지, 배치 {2}/{3} 번역 중(문단 {4}-{5}/{6})..."),
+                ("pdf_progress_rebuilding", "正在重建 PDF 版面與公式...", "正在重建 PDF 版面与公式...", "Rebuilding PDF layout and formulas...", "PDF レイアウトと数式を再構築中...", "PDF 레이아웃과 수식 재구성 중..."),
+                ("pdf_progress_saving", "正在儲存翻譯後的檔案...", "正在保存翻译后的文件...", "Saving translated file...", "翻訳済みファイルを保存中...", "번역된 파일 저장 중..."),
+                ("pdf_error_deadline", "PDF 翻譯超過 10 分鐘文件時限。", "PDF 翻译超过 10 分钟文档时限。", "PDF translation exceeded the 10-minute document deadline.", "PDF 翻訳が 10 分の文書制限を超えました。", "PDF 번역이 10분 문서 제한 시간을 초과했습니다."),
+                ("pdf_error_translation_failed_page", "PDF 第 {0} 頁翻譯失敗；自動批次拆分與供應商備援已用盡。", "PDF 第 {0} 页翻译失败；自动批次拆分与供应商备用已用尽。", "PDF translation failed on page {0}; automatic batch splitting and provider fallback were exhausted.", "PDF {0} ページの翻訳に失敗しました。自動バッチ分割とプロバイダー代替を使い切りました。", "PDF {0}페이지 번역 실패: 자동 배치 분할과 공급자 대체를 모두 사용했습니다."),
+                ("pdf_error_mismatched_batch", "批次翻譯結果數量不一致。", "批次翻译结果数量不一致。", "Mismatched batch translation results count.", "バッチ翻訳結果数が一致しません。", "배치 번역 결과 수가 일치하지 않습니다."),
+                ("pdf_error_provider_empty", "翻譯供應商回傳空白結果。", "翻译供应商返回空白结果。", "Translator returned an empty result.", "翻訳プロバイダーが空の結果を返しました。", "번역 공급자가 빈 결과를 반환했습니다."),
+                ("pdf_error_unable_paragraph", "第 {0} 頁段落在批次拆分與供應商備援後仍無法翻譯。", "第 {0} 页段落在批次拆分与供应商备用后仍无法翻译。", "Unable to translate page {0} paragraph after batch splitting and provider fallback.", "{0} ページの段落をバッチ分割と代替後も翻訳できません。", "{0}페이지 문단을 배치 분할과 공급자 대체 후에도 번역할 수 없습니다."),
+                ("pdf_error_provider_timeout", "翻譯供應商鏈呼叫超過 {0} 秒。", "翻译供应商链调用超过 {0} 秒。", "Translation provider chain call exceeded {0}s.", "翻訳プロバイダー呼び出しが {0} 秒を超えました。", "번역 공급자 호출이 {0}초를 초과했습니다."),
+                ("cmd_split_pdf", "分割 PDF", "分割 PDF", "Split PDF", "PDF 分割", "PDF 분할"),
+                ("pdf_split_title", "PDF 視覺化分割", "PDF 可视化分割", "Split PDF Visually", "PDF 視覚分割", "PDF 시각적 분할"),
+                ("pdf_split_prompt", "請輸入分頁範圍（例如 1-5, 8 或 all 拆分為單頁檔）：", "请输入分页范围（例如 1-5, 8 或 all 拆分为单页档）：", "Enter page range (e.g. 1-5, 8 or all to split into single pages):", "ページ範囲を入力してください（例：1-5, 8 または全ページ分割の all）：", "페이지 범위를 입력하십시오 (예: 1-5, 8 또는 전체 분할 all):"),
+                ("pdf_split_mode_custom", "自訂分段", "自訂分段", "Custom segments", "カスタム分割", "사용자 정의 분할"),
+                ("pdf_split_mode_each", "全拆單頁", "全拆单页", "Split each page", "全ページ分割", "전체 페이지 분할"),
+                ("pdf_split_mode_fixed", "固定頁數", "固定页数", "Fixed pages per file", "固定ページ数", "고정 페이지 수"),
+                ("pdf_split_pages_per_segment", "每檔頁數", "每档页数", "Pages per file", "1ファイルあたりのページ数", "파일당 페이지 수"),
+                ("pdf_split_zoom_tag", "放大", "放大", "Zoom", "拡大", "확대"),
+                ("pdf_split_zoom_title", "頁面放大預覽", "页面放大预览", "Page zoom preview", "ページ拡大プレビュー", "페이지 확대 미리보기"),
+                ("pdf_split_zoom_hint", "滾輪縮放 · 拖曳平移 · 空白鍵/Esc 關閉", "滚轮缩放 · 拖拽平移 · 空格/Esc 关闭", "Wheel to zoom · drag to pan · Space/Esc to close", "ホイールで拡大 · ドラッグで移動 · Space/Esc で閉じる", "휠 확대 · 드래그 이동 · Space/Esc 닫기"),
+                ("pdf_split_zoom_close", "X 關閉", "X 关闭", "X Close", "X 閉じる", "X 닫기"),
+                ("pdf_split_zoom_fit", "適配", "适配", "Fit", "フィット", "맞춤")
+            };
+
+            foreach (var item in data)
+            {
+                Translations[LangTw][item.Key] = item.Tw;
+                Translations[LangCn][item.Key] = item.Cn;
+                Translations[LangEn][item.Key] = item.En;
+                Translations[LangJa][item.Key] = item.Ja;
+                Translations[LangKo][item.Key] = item.Ko;
+            }
         }
     }
 }

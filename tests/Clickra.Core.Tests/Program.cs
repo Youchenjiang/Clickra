@@ -11,5 +11,6 @@ TestSuite.RegisterTranslationTests(runner);
 TestSuite.RegisterLibreOfficeEngineTests(runner);
 TestSuite.RegisterPdfCompressionTests(runner);
 TestSuite.RegisterPdfSplitTests(runner);
+TestSuite.RegisterPdfDecryptTests(runner);
 
 return runner.Failures == 0 ? 0 : 1;

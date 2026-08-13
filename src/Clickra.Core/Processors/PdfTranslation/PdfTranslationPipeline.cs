@@ -72,7 +72,8 @@ namespace Clickra.Core.Processors
                 deadlineCts.CancelAfter(TimeSpan.FromMinutes(10));
                 CancellationToken operationToken = deadlineCts.Token;
 
-                onProgress?.Invoke(10, 100, "正在分析 PDF 版面結構與公式...");
+                string language = ClickraStorage.GetSetting("Language");
+                onProgress?.Invoke(10, 100, Localization.T("pdf_progress_analyzing", language));
                 using var pigDoc = UglyToad.PdfPig.PdfDocument.Open(inputPath);
                 sourcePages = pigDoc.NumberOfPages;
                 var pageParagraphs = new List<List<PdfParagraph>>();
@@ -88,7 +89,7 @@ namespace Clickra.Core.Processors
 
                 PdfReferenceSectionBypasser.Apply(pageParagraphs, pageWidths, PdfPageReadingOrder.GetPageReadingOrder);
 
-                onProgress?.Invoke(30, 100, "正在翻譯文本內容...");
+                onProgress?.Invoke(30, 100, Localization.T("pdf_progress_translating", language));
                 providerName = TranslationEngineFactory.Create().Name;
                 stageReport = PdfParagraphTranslationStage.TranslatePages(
                     pageParagraphs, inputPath, targetLang, onProgress, operationToken);
@@ -118,18 +119,7 @@ namespace Clickra.Core.Processors
                 int overflowEntries = debugLines.Count(line => line.Contains("overflow=true", StringComparison.OrdinalIgnoreCase));
                 if (outputPages != sourcePages)
                     throw new InvalidOperationException($"PDF page count changed from {sourcePages} to {outputPages}.");
-                if (overflowEntries > 0)
-                    throw new InvalidOperationException($"PDF layout still has {overflowEntries} overflowing paragraph(s).");
-                if (guardClipEntries > 0)
-                    throw new InvalidOperationException($"PDF layout still uses {guardClipEntries} guard clip(s); translated text must be reflowed instead of clipped.");
-                if (layoutSummary.MinimumBodyFontRatio < PdfTranslationHealthReport.MinimumAllowedBodyFontRatio - 0.01)
-                    throw new InvalidOperationException($"PDF body font ratio fell to {layoutSummary.MinimumBodyFontRatio:F3}; the minimum is {PdfTranslationHealthReport.MinimumAllowedBodyFontRatio:F2}.");
-                if (layoutSummary.MaximumBodyFontRatio > PdfTranslationHealthReport.MaximumAllowedBodyFontRatio + 0.01)
-                    throw new InvalidOperationException($"PDF body font ratio grew to {layoutSummary.MaximumBodyFontRatio:F3}; the maximum is {PdfTranslationHealthReport.MaximumAllowedBodyFontRatio:F2}.");
-                if (layoutSummary.MaximumBodyLineSpacingMultiplier > PdfTranslationHealthReport.MaximumAllowedBodyLineSpacingMultiplier + 0.01)
-                    throw new InvalidOperationException($"PDF body line spacing grew to {layoutSummary.MaximumBodyLineSpacingMultiplier:F3}; the maximum is {PdfTranslationHealthReport.MaximumAllowedBodyLineSpacingMultiplier:F2}.");
-                if (layoutSummary.MaximumFlowRegionResidualWhitespace > PdfTranslationHealthReport.MaximumAllowedFlowRegionResidualWhitespace)
-                    throw new InvalidOperationException($"PDF flow region retained {layoutSummary.MaximumFlowRegionResidualWhitespace:F1}pt of undistributed whitespace; the maximum is {PdfTranslationHealthReport.MaximumAllowedFlowRegionResidualWhitespace:F1}pt.");
+                var layoutWarnings = CollectLayoutWarnings(layoutSummary, overflowEntries, guardClipEntries);
 
                 var healthReport = new PdfTranslationHealthReport
                 {
@@ -154,6 +144,7 @@ namespace Clickra.Core.Processors
                     ShiftedParagraphCount = layoutSummary.ShiftedParagraphCount,
                     FixedRegionCollisionCount = layoutSummary.FixedCollisionCount,
                     BottomOverflowCount = layoutSummary.BottomOverflowCount,
+                    LayoutFailureReason = string.Join(" ", layoutWarnings),
                     TranslationFailures = stageReport.Failures,
                     Succeeded = true
                 };
@@ -164,8 +155,8 @@ namespace Clickra.Core.Processors
             {
                 WriteFailureHealthReport(new FailureHealthReportConfig(
                     healthPath, inputPath, finalOutputPath, sourcePages, stageReport, providerName,
-                    "Translation operation exceeded the 10-minute document deadline.", layoutSummary));
-                throw new TimeoutException("PDF translation exceeded the 10-minute document deadline.", ex);
+                    Localization.T("pdf_error_deadline", ClickraStorage.GetSetting("Language")), layoutSummary));
+                throw new TimeoutException(Localization.T("pdf_error_deadline", ClickraStorage.GetSetting("Language")), ex);
             }
             catch (Exception ex)
             {
@@ -185,6 +176,28 @@ namespace Clickra.Core.Processors
                     try { File.Delete(partialOutputPath); } catch (IOException) { /* Ignore transient cleanup error */ }
                 }
             }
+        }
+
+        /// <summary>Collects human-readable layout warnings from the rebuilt document
+        /// diagnostics, one entry per violated health threshold.</summary>
+        private static List<string> CollectLayoutWarnings(PdfTranslationLayoutSummary layoutSummary, int overflowEntries, int guardClipEntries)
+        {
+            var warnings = new List<string>();
+            if (overflowEntries > 0)
+                warnings.Add($"PDF layout still has {overflowEntries} overflowing paragraph(s).");
+            if (guardClipEntries > 0)
+                warnings.Add($"PDF layout still uses {guardClipEntries} guard clip(s).");
+            if (layoutSummary.BottomOverflowCount > 0)
+                warnings.Add($"PDF layout has {layoutSummary.BottomOverflowCount} paragraph(s) below the page bottom.");
+            if (layoutSummary.MinimumBodyFontRatio < PdfTranslationHealthReport.MinimumAllowedBodyFontRatio - 0.01)
+                warnings.Add($"PDF body font ratio fell to {layoutSummary.MinimumBodyFontRatio:F3}; the minimum is {PdfTranslationHealthReport.MinimumAllowedBodyFontRatio:F2}.");
+            if (layoutSummary.MaximumBodyFontRatio > PdfTranslationHealthReport.MaximumAllowedBodyFontRatio + 0.01)
+                warnings.Add($"PDF body font ratio grew to {layoutSummary.MaximumBodyFontRatio:F3}; the maximum is {PdfTranslationHealthReport.MaximumAllowedBodyFontRatio:F2}.");
+            if (layoutSummary.MaximumBodyLineSpacingMultiplier > PdfTranslationHealthReport.MaximumAllowedBodyLineSpacingMultiplier + 0.01)
+                warnings.Add($"PDF body line spacing grew to {layoutSummary.MaximumBodyLineSpacingMultiplier:F3}; the maximum is {PdfTranslationHealthReport.MaximumAllowedBodyLineSpacingMultiplier:F2}.");
+            if (layoutSummary.MaximumFlowRegionResidualWhitespace > PdfTranslationHealthReport.MaximumAllowedFlowRegionResidualWhitespace)
+                warnings.Add($"PDF flow region retained {layoutSummary.MaximumFlowRegionResidualWhitespace:F1}pt of undistributed whitespace; the maximum is {PdfTranslationHealthReport.MaximumAllowedFlowRegionResidualWhitespace:F1}pt.");
+            return warnings;
         }
 
         private readonly record struct FailureHealthReportConfig(

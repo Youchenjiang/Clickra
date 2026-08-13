@@ -207,6 +207,7 @@ internal static class PdfPageParagraphBuilder
             PdfGrayPromptMarker.RestoreGrayPromptContinuations(pageList);
             PdfGrayPromptMarker.FinalizeGrayPromptContentFlags(pageList);
         }
+        MarkAlgorithmPseudoCodeRegions(pageList, page.Width);
     }
 
     private static bool IsPublicationMetadata(string finalText, int pageNumber)
@@ -233,6 +234,72 @@ internal static class PdfPageParagraphBuilder
            !para.IsTable && !para.IsDiagram && !para.IsCode && !para.IsGrayPromptContent &&
            leadingContinuation.Length > 0 && char.IsLower(leadingContinuation[0]);
 
+    private static bool IsTranslatableProseMisclassifiedAsBypassed(PdfParagraph para)
+        => PdfParagraphRoleClassifier.IsTranslatableBodyProse(para) &&
+           !ReferenceSectionDetector.IsReferenceParagraph(para) &&
+           !para.IsTable && !para.IsDiagram && !para.IsCode && !para.IsGrayPromptContent;
+
+    private static void MarkAlgorithmPseudoCodeRegions(List<PdfParagraph> pageList, double pageWidth)
+    {
+        var ordered = pageList.OrderByDescending(p => p.Y1).ThenBy(p => p.X0).ToList();
+        foreach (var heading in ordered.Where(p => p.TextWithPlaceholders.TrimStart().StartsWith("Algorithm ", StringComparison.OrdinalIgnoreCase)))
+        {
+            MarkAsCodeBypass(heading);
+            bool rightColumn = (heading.X0 + heading.X1) / 2.0 >= pageWidth / 2.0;
+            double minX = rightColumn ? pageWidth / 2.0 - 12.0 : 0.0;
+            double maxX = rightColumn ? pageWidth : pageWidth / 2.0 + 12.0;
+            int marked = 0;
+
+            foreach (var para in ordered.Where(p => IsCandidateAlgorithmBody(p, heading, minX, maxX)))
+            {
+                if (!ShouldMarkAlgorithmBodyLine(para, heading, marked, out bool stopScan))
+                {
+                    if (stopScan) break;
+                    continue;
+                }
+
+                MarkAsCodeBypass(para);
+                marked++;
+            }
+        }
+    }
+
+    /// <summary>Whether the paragraph is a pseudo-code line or an indented continuation
+    /// of the algorithm body. When false, <paramref name="stopScan"/> tells the caller
+    /// whether scanning ended (a non-body paragraph appeared after a marked line).</summary>
+    private static bool ShouldMarkAlgorithmBodyLine(PdfParagraph para, PdfParagraph heading, int marked, out bool stopScan)
+    {
+        string text = para.TextWithPlaceholders.Trim();
+        bool pseudoCode = PdfParagraphCodeClassifier.IsAlgorithmPseudoCodeLine(text);
+        bool indentedContinuation = marked > 0 && para.X0 > heading.X0 + 10.0 && !LooksLikeAlgorithmBodyExit(para, text);
+        stopScan = marked > 0 && !pseudoCode && !indentedContinuation;
+        return pseudoCode || indentedContinuation;
+    }
+
+    /// <summary>Whether the paragraph lies within the heading's visual column and below
+    /// its baseline, i.e. could be part of the algorithm body.</summary>
+    private static bool IsCandidateAlgorithmBody(PdfParagraph p, PdfParagraph heading, double minX, double maxX)
+    {
+        return !ReferenceEquals(p, heading) &&
+               p.Y1 <= heading.Y1 + 4.0 &&
+               p.X0 >= minX &&
+               p.X1 <= maxX;
+    }
+
+    private static bool LooksLikeAlgorithmBodyExit(PdfParagraph para, string text)
+        => PdfParagraphSemanticClassifier.IsHeadingParagraph(para) ||
+           (PdfParagraphRoleClassifier.IsTranslatableBodyProse(para) &&
+            text.Split(WhitespaceSeparators, StringSplitOptions.RemoveEmptyEntries).Length >= 12 &&
+            text.Contains('.'));
+
+    private static void MarkAsCodeBypass(PdfParagraph para)
+    {
+        para.IsCode = true;
+        para.IsBypassed = true;
+        para.IsTable = false;
+        para.IsDiagram = false;
+    }
+
     private static void FinalizeParagraphBypassFlags(List<PdfParagraph> pageList, UglyToad.PdfPig.Content.Page page)
     {
         if (page.Number == 1)
@@ -258,6 +325,8 @@ internal static class PdfPageParagraphBuilder
             // excluded. This prevents source-only tail lines at page bottoms.
             string leadingContinuation = finalText.TrimStart();
             if (para.IsBypassed && IsLowerCaseProseContinuation(para, leadingContinuation))
+                para.IsBypassed = false;
+            if (para.IsBypassed && IsTranslatableProseMisclassifiedAsBypassed(para))
                 para.IsBypassed = false;
 
             // Preserve IsBypassed=true set by proximity propagation (Pass 2 above);

@@ -811,23 +811,7 @@ namespace Clickra.UI
             }
             else if (element == 18)
             {
-                string title = GetText("convert_drag_drop_hint");
-                const string allFilter = "Supported Files (*.doc;*.docx;*.ppt;*.pptx;*.pdf;*.jpg;*.jpeg;*.png;*.bmp;*.gif;*.tiff;*.webp)\0*.doc;*.docx;*.ppt;*.pptx;*.pdf;*.jpg;*.jpeg;*.png;*.bmp;*.gif;*.tiff;*.webp\0All Files (*.*)\0*.*\0\0";
-                var chosen = OpenFiles(hwnd, allFilter, title);
-                if (chosen.Count > 0)
-                {
-                    _selectedFiles = chosen;
-                    _convertCommandIndex = -1;
-                    for (int i = 0; i < ConvertCommands.Length; i++)
-                    {
-                        if (ConvertCommands[i].ValidateFiles(_selectedFiles, out _))
-                        {
-                            _convertCommandIndex = i;
-                            break;
-                        }
-                    }
-                    InvalidateRect(hwnd, IntPtr.Zero, false);
-                }
+                HandlePickFiles(hwnd);
             }
             else if (element == 19)
             {
@@ -839,6 +823,36 @@ namespace Clickra.UI
                 _convertCommandIndex = -1;
                 InvalidateRect(hwnd, IntPtr.Zero, false);
             }
+        }
+
+        /// <summary>Shows the file-open dialog and keeps the user's current command when it
+        /// accepts the chosen files, auto-selecting only when it can't.</summary>
+        static void HandlePickFiles(IntPtr hwnd)
+        {
+            string title = GetText("convert_drag_drop_hint");
+            const string allFilter = "Supported Files (*.doc;*.docx;*.ppt;*.pptx;*.pdf;*.jpg;*.jpeg;*.png;*.bmp;*.gif;*.tiff;*.webp)\0*.doc;*.docx;*.ppt;*.pptx;*.pdf;*.jpg;*.jpeg;*.png;*.bmp;*.gif;*.tiff;*.webp\0All Files (*.*)\0*.*\0\0";
+            var chosen = OpenFiles(hwnd, allFilter, title);
+            if (chosen.Count == 0) return;
+
+            _selectedFiles = chosen;
+            if (CurrentSelectionAcceptsFiles(_selectedFiles))
+            {
+                InvalidateRect(hwnd, IntPtr.Zero, false);
+                return;
+            }
+
+            // Only auto-select when the user's current command can't accept the files
+            // (e.g. 分割 PDF stays selected after picking a PDF).
+            _convertCommandIndex = -1;
+            for (int i = 0; i < ConvertCommands.Length; i++)
+            {
+                if (ConvertCommands[i].ValidateFiles(_selectedFiles, out _))
+                {
+                    _convertCommandIndex = i;
+                    break;
+                }
+            }
+            InvalidateRect(hwnd, IntPtr.Zero, false);
         }
 
         /// <summary>Handles about/help clicks: GitHub link and diagnostics feedback.</summary>

@@ -23,6 +23,8 @@ namespace ClickraShell
 
     internal static class ComMethods
     {
+        private static readonly Guid ClsidApplicationActivationManager = new("45BA127D-10A8-46EA-8AB7-56EA9078943C");
+        private static readonly Guid IidApplicationActivationManager = new("2E941141-7F97-4756-BA1D-9DECDE894A3D");
         private static readonly string[] MenuKeys = { "Menu_Ppt2Pdf", "Menu_Word2Pdf", "Menu_Excel2Pdf", "Menu_MergePdf", "Menu_CompressPdf", "Menu_Img2Pdf", "Menu_ImgMerge", "Menu_ImgStitch", "Menu_TranslatePdf", "Menu_DecryptPdf", "Menu_SplitPdf" };
         private static readonly string[] SubArgs = { "ppt2pdf", "word2pdf", "excel2pdf", "merge-pdf", "compress-pdf", "img2pdf", "img-merge", "img-stitch", "translate-pdf", "decrypt-pdf", "split-pdf" };
 
@@ -215,12 +217,54 @@ namespace ClickraShell
             var files = GetFiles(psi);
             foreach (var f in files) sb.Append(" \"").Append(f).Append("\"");
 
-            string app = Path.Combine(ShellUtils.GetModuleDir(), "Clickra.exe");
-            if (File.Exists(app)) Process.Start(new ProcessStartInfo(app, sb.ToString()) { UseShellExecute = true });
+            string arguments = sb.ToString();
+            string? appUserModelId = ShellUtils.GetPackagedAppUserModelId();
+            if (!string.IsNullOrEmpty(appUserModelId) && ActivatePackagedApp(appUserModelId, arguments)) return 0;
+
+            string moduleDir = ShellUtils.GetModuleDir();
+            string app = Path.Combine(moduleDir, "Clickra.Fluent.exe");
+            if (!File.Exists(app)) app = Path.Combine(moduleDir, "Clickra.exe");
+            if (File.Exists(app)) Process.Start(new ProcessStartInfo(app, arguments) { UseShellExecute = true });
             return 0;
         }
 
         /// <summary>IEnumExplorerCommand.Next — creates the next batch of command objects.</summary>
+
+        [System.Diagnostics.CodeAnalysis.SuppressMessage("Security", "S6640:Use a safe type when calling unmanaged code",
+            Justification = "NativeAOT shell extension has no managed wrapper for IApplicationActivationManager; the COM vtable is dispatched directly (same pattern as the rest of this file).")]
+        private static unsafe bool ActivatePackagedApp(string appUserModelId, string arguments)
+        {
+            IntPtr manager = IntPtr.Zero;
+            IntPtr appId = IntPtr.Zero;
+            IntPtr args = IntPtr.Zero;
+            try
+            {
+                int hr = CoCreateInstance(ClsidApplicationActivationManager, IntPtr.Zero, 0x4, IidApplicationActivationManager, out manager);
+                if (hr < 0 || manager == IntPtr.Zero) return false;
+
+                appId = Marshal.StringToCoTaskMemUni(appUserModelId);
+                args = Marshal.StringToCoTaskMemUni(arguments);
+                IntPtr vtable = *(IntPtr*)manager;
+                var activate = (delegate* unmanaged[Stdcall]<IntPtr, IntPtr, IntPtr, uint, uint*, int>)(*(IntPtr*)(vtable + 3 * IntPtr.Size));
+                uint processId = 0;
+                return activate(manager, appId, args, 0, &processId) >= 0;
+            }
+            catch { return false; }
+            finally
+            {
+                if (args != IntPtr.Zero) Marshal.FreeCoTaskMem(args);
+                if (appId != IntPtr.Zero) Marshal.FreeCoTaskMem(appId);
+                if (manager != IntPtr.Zero)
+                {
+                    IntPtr vtable = *(IntPtr*)manager;
+                    var release = (delegate* unmanaged[Stdcall]<IntPtr, uint>)(*(IntPtr*)(vtable + 2 * IntPtr.Size));
+                    release(manager);
+                }
+            }
+        }
+
+        [DllImport("ole32.dll")]
+        private static extern int CoCreateInstance(in Guid rclsid, IntPtr pUnkOuter, uint dwClsContext, in Guid riid, out IntPtr ppv); // skipcq: CS-R1138 — parameter order is fixed by the Win32 COM ABI.
         [UnmanagedCallersOnly(CallConvs = new[] { typeof(CallConvStdcall) })]
         public static unsafe int EnumNext(IntPtr _this, uint celt, IntPtr* rgelt, uint* pcelt)
         {

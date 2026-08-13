@@ -22,7 +22,11 @@ internal static class PdfParagraphTranslationStage
             var paragraphs = pageParagraphs[p];
             if (paragraphs.Count == 0) continue;
 
-            onProgress?.Invoke(30 + (int)(p * 40.0 / totalPages), 100, $"正在翻譯第 {p + 1}/{totalPages} 頁...");
+            string language = ClickraStorage.GetSetting("Language");
+            onProgress?.Invoke(
+                30 + (int)(p * 40.0 / totalPages),
+                100,
+                string.Format(Localization.T("pdf_progress_translating_page", language), p + 1, totalPages));
 
             var paragraphsToTranslate = new List<PdfParagraph>();
             var textsToTranslate = new List<string>();
@@ -95,7 +99,7 @@ internal static class PdfParagraphTranslationStage
                     }
                     else
                     {
-                        throw new Exception("Mismatched batch translation results count.");
+                        throw new InvalidOperationException(Localization.T("pdf_error_mismatched_batch", language));
                     }
                 }
                 catch (Exception ex)
@@ -103,7 +107,7 @@ internal static class PdfParagraphTranslationStage
                     LogTranslationError(inputPath, p, $"Translation recovery exhausted. Error: {ex.Message}", logLock);
                     report.Failures.Add($"page {p + 1}: {ex.Message}");
                     throw new InvalidOperationException(
-                        $"PDF translation failed on page {p + 1}; automatic batch splitting and provider fallback were exhausted.",
+                        string.Format(Localization.T("pdf_error_translation_failed_page", language), p + 1),
                         ex);
                 }
             }
