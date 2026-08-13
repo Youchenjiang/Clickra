@@ -140,6 +140,7 @@ sealed class PathInfo(string value)
 
 sealed class TestRunner
 {
+    public int Passed { get; private set; }
     public int Failures { get; private set; }
 
     public void Run(string name, Action test)
@@ -147,6 +148,7 @@ sealed class TestRunner
         try
         {
             test();
+            Passed++;
             Console.WriteLine($"PASS {name}");
         }
         catch (Exception ex)
