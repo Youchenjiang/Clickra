@@ -104,7 +104,7 @@ public static class LibreOfficeHelper
             var errorTask = process.StandardError.ReadToEndAsync();
             if (!process.WaitForExit(5000))
             {
-                try { process.Kill(true); } catch { }
+                TryKillProcess(process);
                 return false;
             }
 
@@ -193,10 +193,7 @@ public static class LibreOfficeHelper
                 throw new InvalidOperationException(Localization.T("error_libreoffice_start", ClickraStorage.GetSetting(LanguageSettingKey)));
 
             // skipcq: CS-W1100 — the registration is kept alive only to dispose it.
-            using var registration = cancellationToken.Register(() =>
-            {
-                try { process.Kill(true); } catch { }
-            });
+            using var registration = cancellationToken.Register(() => TryKillProcess(process));
 
             process.OutputDataReceived += (_, e) =>
             {
@@ -220,7 +217,7 @@ public static class LibreOfficeHelper
 
             if (!process.WaitForExit(TimeSpan.FromMinutes(2)))
             {
-                try { process.Kill(true); } catch { /* Ignored: a hung process must not mask the timeout error. */ }
+                TryKillProcess(process);
                 throw new TimeoutException(Localization.T("error_libreoffice_timeout", ClickraStorage.GetSetting(LanguageSettingKey)));
             }
             cancellationToken.ThrowIfCancellationRequested();
@@ -254,18 +251,33 @@ public static class LibreOfficeHelper
         }
         finally
         {
-            try
-            {
-                if (Directory.Exists(tempDir))
-                    Directory.Delete(tempDir, recursive: true);
-            }
-            catch { }
-            try
-            {
-                if (Directory.Exists(profileDir))
-                    Directory.Delete(profileDir, recursive: true);
-            }
-            catch { }
+            TryDeleteDirectory(tempDir);
+            TryDeleteDirectory(profileDir);
+        }
+    }
+
+    private static void TryKillProcess(Process process)
+    {
+        try
+        {
+            process.Kill(true);
+        }
+        catch
+        {
+            // Best effort only: the original timeout or cancellation outcome must be preserved.
+        }
+    }
+
+    private static void TryDeleteDirectory(string path)
+    {
+        try
+        {
+            if (Directory.Exists(path))
+                Directory.Delete(path, recursive: true);
+        }
+        catch
+        {
+            // Best effort only: temporary cleanup must not hide the conversion outcome.
         }
     }
 
