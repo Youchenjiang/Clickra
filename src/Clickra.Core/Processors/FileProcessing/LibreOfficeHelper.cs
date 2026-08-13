@@ -13,6 +13,8 @@ namespace Clickra.Core.Processors;
 public static class LibreOfficeHelper
 {
     private const string LanguageSettingKey = "Language";
+    private const string LibreOfficeExecutableName = "soffice.exe";
+    private const string LibreOfficeProgramDirectoryName = "program";
     private const uint SemFailCriticalErrors = 0x0001;
     private const uint SemNoGpFaultErrorBox = 0x0002;
     private const uint SemNoOpenFileErrorBox = 0x8000;
@@ -296,7 +298,7 @@ public static class LibreOfficeHelper
             return false;
 
         string fileName = Path.GetFileName(executablePath);
-        if (!fileName.Equals("soffice.exe", StringComparison.OrdinalIgnoreCase) &&
+        if (!fileName.Equals(LibreOfficeExecutableName, StringComparison.OrdinalIgnoreCase) &&
             !fileName.Equals("soffice.com", StringComparison.OrdinalIgnoreCase))
             return false;
 
@@ -339,7 +341,7 @@ public static class LibreOfficeHelper
             string? programDir = Path.GetDirectoryName(executablePath);
             if (!string.IsNullOrWhiteSpace(programDir))
             {
-                string windowedLauncher = Path.Combine(programDir, "soffice.exe");
+                string windowedLauncher = Path.Combine(programDir, LibreOfficeExecutableName);
                 if (File.Exists(windowedLauncher))
                     return windowedLauncher;
             }
@@ -354,8 +356,8 @@ public static class LibreOfficeHelper
         {
             if (Directory.Exists(configuredPath))
             {
-                yield return Path.Combine(configuredPath, "program", "soffice.exe");
-                yield return Path.Combine(configuredPath, "soffice.exe");
+                yield return Path.Combine(configuredPath, LibreOfficeProgramDirectoryName, LibreOfficeExecutableName);
+                yield return Path.Combine(configuredPath, LibreOfficeExecutableName);
             }
             else
             {
@@ -368,8 +370,8 @@ public static class LibreOfficeHelper
         {
             if (Directory.Exists(envPath))
             {
-                yield return Path.Combine(envPath, "program", "soffice.exe");
-                yield return Path.Combine(envPath, "soffice.exe");
+                yield return Path.Combine(envPath, LibreOfficeProgramDirectoryName, LibreOfficeExecutableName);
+                yield return Path.Combine(envPath, LibreOfficeExecutableName);
             }
             else
             {
@@ -380,16 +382,16 @@ public static class LibreOfficeHelper
         string programFiles = Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles);
         string programFilesX86 = Environment.GetFolderPath(Environment.SpecialFolder.ProgramFilesX86);
         if (!string.IsNullOrEmpty(programFiles))
-            yield return Path.Combine(programFiles, "LibreOffice", "program", "soffice.exe");
+            yield return Path.Combine(programFiles, "LibreOffice", LibreOfficeProgramDirectoryName, LibreOfficeExecutableName);
         if (!string.IsNullOrEmpty(programFilesX86))
-            yield return Path.Combine(programFilesX86, "LibreOffice", "program", "soffice.exe");
+            yield return Path.Combine(programFilesX86, "LibreOffice", LibreOfficeProgramDirectoryName, LibreOfficeExecutableName);
 
         string pathValue = Environment.GetEnvironmentVariable("PATH") ?? "";
         foreach (string pathDir in pathValue.Split(Path.PathSeparator, StringSplitOptions.RemoveEmptyEntries))
         {
             string trimmed = pathDir.Trim('"');
             if (trimmed.Length > 0)
-                yield return Path.Combine(trimmed, "soffice.exe");
+                yield return Path.Combine(trimmed, LibreOfficeExecutableName);
         }
     }
 }
