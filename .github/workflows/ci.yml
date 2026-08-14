@@ -82,8 +82,8 @@ jobs:
           }
           Write-Host "All expected build outputs present."
 
-  test:
-    name: Run Clickra.Core.Tests runner
+  deterministic-tests:
+    name: Deterministic tests (no fixtures)
     runs-on: windows-latest
     needs: build
     timeout-minutes: 30
@@ -105,10 +105,39 @@ jobs:
       # test_pdfs/ is git-ignored (large PDFs), so on a fresh checkout the
       # fixture-dependent layout tests cannot run: the runner marks them SKIP
       # instead of FAIL, keeping this gate green for the deterministic suite
-      # while still telling the truth about what actually executed. Locally,
-      # where fixtures exist, the same suite runs those layout tests and still
-      # has a known baseline (tracked as PR-B in
-      # docs/development/PR46_POST_MERGE_AUDIT_AND_OPTIONS.md); do not silence
-      # those with continue-on-error either.
-      - name: Run self-built test runner
+      # while still telling the truth about what actually executed.
+      - name: Run self-built test runner (fixture SKIP contract)
+        run: dotnet run --project tests/Clickra.Core.Tests/Clickra.Core.Tests.csproj -c Release
+
+  fixture-regression-tests:
+    # PR-B (docs/development/PR46_POST_MERGE_AUDIT_AND_OPTIONS.md): the
+    # fixture-dependent layout suite gets its own gate instead of being
+    # folded into the deterministic job. The fixtures live outside git
+    # (test_pdfs/ is git-ignored because the PDFs are large), so this job
+    # only runs when the checkout actually carries them; otherwise it exits
+    # neutral (78) and is reported as skipped rather than pretending to
+    # pass. Once a fixture source (LFS / artifact / storage) exists, wire it
+    # into this job before checkout and the suite runs here as-is.
+    name: Fixture regression tests
+    runs-on: windows-latest
+    needs: build
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+
+      - name: Check fixture availability
+        shell: pwsh
+        run: |
+          if (-not (Test-Path 'test_pdfs/source')) {
+            Write-Host "test_pdfs/source is not present in this checkout;"
+            Write-Host "fixture suite skipped (neutral) until a fixture source exists."
+            exit 78
+          }
+
+      - name: Run self-built test runner (with fixtures)
         run: dotnet run --project tests/Clickra.Core.Tests/Clickra.Core.Tests.csproj -c Release
