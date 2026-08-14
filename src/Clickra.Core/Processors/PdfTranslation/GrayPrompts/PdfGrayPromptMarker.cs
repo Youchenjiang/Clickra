@@ -365,6 +365,15 @@ internal static class PdfGrayPromptMarker
         {
             if (PdfParagraphSemanticClassifier.IsHeadingParagraph(para) || PdfParagraphSemanticClassifier.IsAppendixSectionHeading(para))
             {
+                // A prompt line ending in a colon (e.g. "Generate a concise
+                // summary ... questions:") can be misread as a heading. If the
+                // gray-prompt block scan already flagged it as continuation
+                // content, that stronger signal wins; only clear headings that
+                // were never part of a gray block.
+                if (para.IsGrayPromptContent && PdfGrayPromptClassifier.IsGrayPromptBoxContinuationParagraph(para, null))
+                {
+                    continue;
+                }
                 para.IsGrayPromptContent = false;
                 if (!PdfGrayPromptClassifier.IsGrayPromptBoxParagraph(para) && !PdfGrayPromptClassifier.IsGrayPromptSubheading(para))
                 {

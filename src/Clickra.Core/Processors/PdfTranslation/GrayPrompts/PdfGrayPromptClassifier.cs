@@ -54,10 +54,18 @@ namespace Clickra.Core.Processors
 
         public static bool IsGrayPromptBoxContinuationParagraph(PdfParagraph para, PdfParagraph? anchor)
         {
+            // Body prose is never a gray-prompt continuation: it is handled by
+            // the shaded-region geometry pass instead. Heading/callout exclusions
+            // only apply when there is no block anchor (standalone decisions).
+            // Inside an active gray-prompt block scan the continuation geometry
+            // (same column, small gap) is the stronger signal: a prompt line that
+            // ends in a colon can otherwise be misread as a heading and dropped
+            // (PentestAgent p7 "Generate a concise summary...").
             if (PdfParagraphRoleClassifier.IsTranslatableBodyProse(para) ||
-                PdfParagraphRoleClassifier.IsTranslatableCalloutProse(para) ||
-                PdfParagraphSemanticClassifier.IsHeadingParagraph(para) ||
-                PdfParagraphSemanticClassifier.IsAppendixSectionHeading(para))
+                (!para.IsGrayPromptContent && anchor == null &&
+                 (PdfParagraphRoleClassifier.IsTranslatableCalloutProse(para) ||
+                  PdfParagraphSemanticClassifier.IsHeadingParagraph(para) ||
+                  PdfParagraphSemanticClassifier.IsAppendixSectionHeading(para))))
             {
                 return false;
             }
