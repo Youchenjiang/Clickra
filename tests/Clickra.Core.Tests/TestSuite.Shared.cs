@@ -1,6 +1,9 @@
 using System.Globalization;
 using Clickra.Core.Models;
 using Clickra.Core.Processors;
+using PdfSharp.Drawing;
+using PdfSharp.Fonts;
+using PdfSharp.Pdf;
 
 namespace Clickra.Core.Tests;
 
@@ -28,6 +31,37 @@ static partial class TestSuite
             throw new TestSkippedException($"Missing test PDF fixture: {path}");
         }
         return PdfTranslateProcessor.AnalyzePageParagraphDiagnostics(path, page);
+    }
+
+    /// <summary>Runs the real translation pipeline over a synthetic PDF built
+    /// in-memory, so layout-classification tests no longer depend on the
+    /// git-ignored test_pdfs/ fixtures. Returns the page-1 diagnostics.
+    /// The temp file is deleted afterwards.</summary>
+    private static TranslationPageDiagnostics DiagnosticsFromSynthetic(SyntheticGrayPage page)
+    {
+        EnsureFontResolver();
+        string path = page.WriteTempPdf();
+        try
+        {
+            return PdfTranslateProcessor.AnalyzePageParagraphDiagnostics(path, 1);
+        }
+        finally
+        {
+            try { File.Delete(path); } catch { /* best-effort */ }
+        }
+    }
+
+    private static bool _fontResolverInstalled;
+
+    private static void EnsureFontResolver()
+    {
+        // PdfSharp 6.x needs an IFontResolver to locate TrueType fonts; the
+        // default resolver is unreliable across machines/CI. Use the same
+        // resolver Core production code uses (Arial, DFKai-SB and friends),
+        // so synthetic pages and layout tests agree on font availability.
+        if (_fontResolverInstalled) return;
+        GlobalFontSettings.FontResolver = new ClickraFontResolver();
+        _fontResolverInstalled = true;
     }
 
     private static PdfParagraph UninitializedParagraph(string text, double width, double height)
@@ -249,3 +283,73 @@ static class Assert
         throw new InvalidOperationException($"Expected {typeof(T).Name}.");
     }
 }
+
+/// <summary>Builds a one-page PDF whose layout reproduces the vector
+/// features the classifier relies on: gray-filled prompt boxes (with a
+/// heading line plus instruction lines inside), optional standalone
+/// heading/instruction text outside any box, and optional body prose.
+/// The geometry is synthetic, so the tests run without the git-ignored
+/// test_pdfs/ fixtures and reproduce on any developer machine.</summary>
+sealed class SyntheticGrayPage
+{
+    private readonly List<GrayBox> _boxes = new();
+    private readonly List<(double Y, string Text)> _outside = new();
+
+    public SyntheticGrayPage AddBox(double x, double y, double width, double height, string heading, params string[] lines)
+    {
+        _boxes.Add(new GrayBox(x, y, width, height, heading, lines));
+        return this;
+    }
+
+    /// <summary>Adds a text line outside any gray box (e.g. body prose that
+    /// must stay translatable, or a standalone heading).</summary>
+    public SyntheticGrayPage AddOutsideText(double y, string text)
+    {
+        _outside.Add((y, text));
+        return this;
+    }
+
+    /// <summary>Writes the page to a unique temp file and returns its path.</summary>
+    public string WriteTempPdf()
+    {
+        string path = Path.Combine(Path.GetTempPath(), $"clickra-synth-{Guid.NewGuid():N}.pdf");
+        using var doc = new PdfDocument();
+        var page = doc.AddPage();
+        page.Width = XUnit.FromPoint(612);
+        page.Height = XUnit.FromPoint(792);
+        using var gfx = XGraphics.FromPdfPage(page);
+
+        foreach (var box in _boxes)
+        {
+            gfx.DrawRectangle(
+                new XSolidBrush(XColor.FromArgb(230, 230, 230)),
+                new XRect(box.X, box.Y, box.Width, box.Height));
+
+            double cursor = box.Y + 10;
+            DrawText(gfx, box.X + 8, cursor, box.Heading, bold: true);
+            cursor += 26;
+            foreach (string line in box.Lines)
+            {
+                DrawText(gfx, box.X + 8, cursor, line, bold: false);
+                cursor += 26;
+            }
+        }
+
+        foreach (var (y, text) in _outside)
+        {
+            DrawText(gfx, 72, y, text, bold: false);
+        }
+
+        doc.Save(path);
+        return path;
+    }
+
+    private static void DrawText(XGraphics gfx, double x, double y, string text, bool bold)
+    {
+        var font = new XFont("Arial", 10, bold ? XFontStyleEx.Bold : XFontStyleEx.Regular);
+        gfx.DrawString(text, font, XBrushes.Black, new XRect(x, y, 400, 20), XStringFormats.TopLeft);
+    }
+
+    private sealed record GrayBox(double X, double Y, double Width, double Height, string Heading, string[] Lines);
+}
+
