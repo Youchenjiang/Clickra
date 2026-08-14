@@ -13,7 +13,7 @@ static partial class TestSuite
         {
             var page = DiagnosticsFromSynthetic(
                 new SyntheticGrayPage()
-                    .AddTable(72, 700, new[] { 0.0, 95.0, 190.0 }, 22.0, BuildTogllTableCells(8))
+                    .AddTable(72, 700, new[] { 0.0, 95.0, 190.0 }, 22.0, BuildTogllTableCells())
                     .AddOutsideText(300, "The Experimental Setup section describes the oracle generation benchmark and its evaluation metrics.")
                     .AddOutsideText(260, "RQ3 Finding: the generated assertions outperform the baseline on the mutation benchmark.")
                     .AddOutsideText(220, "This body paragraph sits outside the table grid and must stay translatable."));
@@ -104,7 +104,7 @@ static partial class TestSuite
         });
     }
 
-    private static string[][] BuildTogllTableCells(int seed)
+    private static string[][] BuildTogllTableCells()
     {
         var cells = new string[8][];
         for (int r = 0; r < 8; r++)

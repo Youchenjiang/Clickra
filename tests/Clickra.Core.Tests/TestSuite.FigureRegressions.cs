@@ -182,7 +182,7 @@ static partial class TestSuite
         });
 
         runner.Run("TOGLL p8 Figure 4 source code stays inside the original figure", () =>
-            VerifyTogllFigureSourceCode(8, new[]
+            VerifyTogllFigureSourceCode(new[]
             {
                 "public void test3",
                 "assertSame(oA1, oA0)",
@@ -193,7 +193,7 @@ static partial class TestSuite
             }, "Diverse yet correct test oracles"));
 
         runner.Run("TOGLL p9 Figure 5 source code stays inside the original figure", () =>
-            VerifyTogllFigureSourceCode(9, new[]
+            VerifyTogllFigureSourceCode(new[]
             {
                 "calculatePrintedLength",
                 "public void test327",
@@ -221,7 +221,7 @@ static partial class TestSuite
         return (diagram, labels);
     }
 
-    private static void VerifyTogllFigureSourceCode(int pageNum, string[] expectedDiagramTexts, string captionText)
+    private static void VerifyTogllFigureSourceCode(string[] expectedDiagramTexts, string captionText)
     {
         // The fixture-based check (TOGLL_Oracle Generation.pdf) is replaced by
         // a synthetic workflow figure frame containing the same code lines,
