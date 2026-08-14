@@ -83,9 +83,9 @@ namespace Clickra.Core.Processors
         /// <summary>Section list items ("2) Loss of Context:") and parenthesized numbers.</summary>
         private static bool IsPromptListItem(string txt, PdfParagraph para)
         {
-            if (Regex.IsMatch(txt, @"^\(\d+\)")) return true;
-            if (Regex.IsMatch(txt, @"^AMPLE\}?$", RegexOptions.IgnoreCase)) return true;
-            if (!Regex.IsMatch(txt, @"^\d+\)")) return false;
+            if (Regex.IsMatch(txt, @"^\(\d+\)", RegexOptions.None, TimeSpan.FromSeconds(1))) return true;
+            if (Regex.IsMatch(txt, @"^AMPLE\}?$", RegexOptions.IgnoreCase, TimeSpan.FromSeconds(1))) return true;
+            if (!Regex.IsMatch(txt, @"^\d+\)", RegexOptions.None, TimeSpan.FromSeconds(1))) return false;
             // Section body like "2) Loss of Context:" — not a prompt list item inside gray boxes.
             if (para.Height > 28 || para.Width > 250) return false;
             if (txt.Contains(" of ", StringComparison.OrdinalIgnoreCase)) return false;
