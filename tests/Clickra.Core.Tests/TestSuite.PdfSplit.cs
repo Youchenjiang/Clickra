@@ -113,15 +113,22 @@ static partial class TestSuite
     }
 
     /// <summary>Asserts that splitting a 3-page temp PDF with the given spec throws.</summary>
+    /// <remarks>Everything lives in one unique temp directory so the segment
+    /// outputs SplitPdf derives from the spec cannot leak into the repo cwd
+    /// (a relative "unused.pdf" output path used to leave
+    /// clickra-split-fail-*_1-2.pdf files behind); the whole directory is
+    /// deleted in finally.</remarks>
     private static void AssertSplitFails(string spec, string failureMessage)
     {
-        string inputPath = CreateTempPdf($"clickra-split-fail-{Guid.NewGuid():N}", 3);
+        string tempDir = Path.Combine(Path.GetTempPath(), $"clickra-split-test-{Guid.NewGuid():N}");
+        Directory.CreateDirectory(tempDir);
         try
         {
+            string inputPath = CreateTempPdf(tempDir, "input.pdf", 3);
             bool threw = false;
             try
             {
-                FileProcessor.SplitPdf(inputPath, "unused.pdf", spec);
+                FileProcessor.SplitPdf(inputPath, Path.Combine(tempDir, "unused.pdf"), spec);
             }
             catch (ArgumentException)
             {
@@ -132,14 +139,21 @@ static partial class TestSuite
         }
         finally
         {
-            DeleteTempFiles(inputPath);
+            try
+            {
+                Directory.Delete(tempDir, recursive: true);
+            }
+            catch
+            {
+                // Best-effort cleanup; temp files are git-ignored anyway.
+            }
         }
     }
 
-    /// <summary>Creates a temporary blank PDF with the given page count and returns its path.</summary>
-    private static string CreateTempPdf(string baseName, int pageCount)
+    /// <summary>Creates a temporary blank PDF in the given directory with the given page count.</summary>
+    private static string CreateTempPdf(string directory, string fileName, int pageCount)
     {
-        string inputPath = Path.Combine(Path.GetTempPath(), $"{baseName}.pdf");
+        string inputPath = Path.Combine(directory, fileName);
         using (var doc = new PdfDocument())
         {
             for (int i = 0; i < pageCount; i++)
@@ -150,6 +164,10 @@ static partial class TestSuite
         }
         return inputPath;
     }
+
+    /// <summary>Creates a temporary blank PDF in the system temp directory with the given page count.</summary>
+    private static string CreateTempPdf(string baseName, int pageCount) =>
+        CreateTempPdf(Path.GetTempPath(), $"{baseName}.pdf", pageCount);
 
     /// <summary>Deletes the given temporary files when they exist.</summary>
     private static void DeleteTempFiles(params string[] paths)
