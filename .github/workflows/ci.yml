@@ -114,28 +114,42 @@ jobs:
     # fixture-dependent layout suite gets its own gate instead of being
     # folded into the deterministic job. The fixtures live outside git
     # (test_pdfs/ is git-ignored because the PDFs are large), so this job
-    # only runs when the checkout actually carries them; otherwise the job
-    # is skipped entirely (GitHub reports it as skipped) rather than
+    # only runs the suite when the checkout actually carries them; otherwise
+    # the suite step is skipped (reported as skipped, not red) rather than
     # pretending to pass. Once a fixture source (LFS / artifact / storage)
     # exists, wire it into this job before checkout and the suite runs here
     # as-is with --require-fixtures so any missing fixture fails the gate
-    # loudly. (exit 78 is NOT a GitHub Actions neutral signal - only CircleCI
-    # treats it that way - so the job condition below is the skip mechanism.)
+    # loudly. (exit 78 is NOT a GitHub Actions neutral signal - only
+    # CircleCI treats it that way - and hashFiles is only valid in
+    # step-level if, so the availability guard step decides the skip.)
     name: Fixture regression tests
     runs-on: windows-latest
     needs: build
     timeout-minutes: 30
-    # Skip cleanly when the checkout has no fixtures instead of failing the
-    # gate: GitHub Actions has no neutral exit code, so an exit-78 hack would
-    # fail the job. A skipped job is reported as skipped, not red.
-    if: hashFiles('test_pdfs/source/**') != ''
+    # hashFiles is only valid in step-level if, so the skip decision lives
+    # in a guard step. The job itself always runs; with no fixtures the guard
+    # step succeeds and the actual suite step is skipped, which GitHub
+    # reports as skipped, not red.
     steps:
       - uses: actions/checkout@v4
 
+      - name: Check fixture availability
+        id: fixtures
+        shell: pwsh
+        run: |
+          if (Test-Path 'test_pdfs/source') {
+            Write-Output "has-fixtures=true"
+          } else {
+            Write-Output "has-fixtures=false"
+            Write-Host "test_pdfs/source not present; fixture suite step skipped."
+          }
+
       - name: Setup .NET
+        if: steps.fixtures.outputs.has-fixtures == 'true'
         uses: actions/setup-dotnet@v4
         with:
           dotnet-version: ${{ env.DOTNET_VERSION }}
 
       - name: Run self-built test runner (with fixtures, missing = fail)
+        if: steps.fixtures.outputs.has-fixtures == 'true'
         run: dotnet run --project tests/Clickra.Core.Tests/Clickra.Core.Tests.csproj -c Release -- --require-fixtures
