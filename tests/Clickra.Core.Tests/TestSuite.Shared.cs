@@ -186,7 +186,7 @@ sealed class TestRunner
 
 /// <summary>Thrown when a test cannot run because its git-ignored PDF fixture
 /// is absent (e.g. a fresh CI checkout). Counted as skipped, not failed.</summary>
-sealed class TestSkippedException(string message) : Exception(message);
+public sealed class TestSkippedException(string message) : Exception(message);
 
 static class Assert
 {
