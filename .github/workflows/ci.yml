@@ -14,6 +14,11 @@ concurrency:
 permissions:
   contents: read
 
+# Single source of truth for the .NET SDK version used by every job.
+# Bump this one value instead of editing each setup-dotnet step.
+env:
+  DOTNET_VERSION: '10.0.x'
+
 jobs:
   build:
     name: Build Core / CLI / Shell / Fluent / Setup
@@ -25,7 +30,7 @@ jobs:
       - name: Setup .NET
         uses: actions/setup-dotnet@v4
         with:
-          dotnet-version: '10.0.x'
+          dotnet-version: ${{ env.DOTNET_VERSION }}
 
       # Commands mirror scripts/build_msix.ps1, scripts/build_native_msix.ps1
       # and .github/workflows/release.yml so CI build behavior matches release.
@@ -88,7 +93,7 @@ jobs:
       - name: Setup .NET
         uses: actions/setup-dotnet@v4
         with:
-          dotnet-version: '10.0.x'
+          dotnet-version: ${{ env.DOTNET_VERSION }}
 
       # The suite is an Exe with a self-built TestRunner, not a
       # Microsoft.NET.Test.Sdk project: `dotnet test` would only build it and
