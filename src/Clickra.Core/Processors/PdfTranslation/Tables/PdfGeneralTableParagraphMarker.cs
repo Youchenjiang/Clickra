@@ -349,6 +349,18 @@ namespace Clickra.Core.Processors
 
             foreach (var para in pageList.OrderByDescending(p => p.Y1))
             {
+                // The caption itself has the largest Y1, so it sorts first.
+                // Skip it instead of breaking: IsCandidateForCaptionRegion
+                // returns false for it and would abort the whole region scan
+                // before a single table body paragraph is examined.
+                if (para == caption) continue;
+
+                // A paragraph spanning nearly the full page width is a title or
+                // running header, not a merged table body (merged cells stay
+                // inside the column grid). Stop the region scan there so page
+                // titles directly below the caption are not misclassified.
+                if (para.Width > pageWidth * 0.45) break;
+
                 if (!IsCandidateForCaptionRegion(para, caption, captionOnLeft, pageWidth, prevBottom))
                     break;
 
