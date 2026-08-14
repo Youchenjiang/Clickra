@@ -1,0 +1,114 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+
+# Cancel superseded runs for the same ref to keep the queue short.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+# Single source of truth for the .NET SDK version used by every job.
+# Bump this one value instead of editing each setup-dotnet step.
+env:
+  DOTNET_VERSION: '10.0.x'
+
+jobs:
+  build:
+    name: Build Core / CLI / Shell / Fluent / Setup
+    runs-on: windows-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+
+      # Commands mirror scripts/build_msix.ps1, scripts/build_native_msix.ps1
+      # and .github/workflows/release.yml so CI build behavior matches release.
+      - name: Build Clickra.Core
+        run: dotnet build src/Clickra.Core/Clickra.Core.csproj -c Release
+
+      # NativeAOT publish resolves the MSVC toolchain through vswhere.exe;
+      # the same helper that scripts/build_msix.ps1 uses keeps that on PATH so
+      # the build does not fail with MSB3073 on runners where it is missing.
+      - name: Publish CLI (NativeAOT)
+        shell: pwsh
+        run: |
+          . ./scripts/build_common.ps1
+          Add-VsInstallerToPath
+          dotnet publish src/Clickra.CLI/Clickra.csproj -c Release -r win-x64 --self-contained true -o publish/ci/cli
+
+      - name: Publish Shell Extension (NativeAOT)
+        shell: pwsh
+        run: |
+          . ./scripts/build_common.ps1
+          Add-VsInstallerToPath
+          dotnet publish src/ClickraShell/ClickraShell.csproj -c Release -r win-x64 --self-contained true -o publish/ci/shell
+
+      - name: Publish Fluent GUI (framework-dependent)
+        # No -o on purpose: the WinUI SDK-generated publish folder (with
+        # deps.json / runtime assets) is what build_msix.ps1 consumes.
+        run: dotnet publish src/Clickra.Fluent/Clickra.Fluent.csproj -c Release --self-contained false
+
+      - name: Publish Setup bootstrapper (NativeAOT)
+        shell: pwsh
+        run: |
+          . ./scripts/build_common.ps1
+          Add-VsInstallerToPath
+          dotnet publish src/Clickra.Setup/Clickra.Setup.csproj -c Release -r win-x64 -o publish/ci/setup
+
+      - name: Verify expected build outputs
+        shell: pwsh
+        run: |
+          $required = @(
+            'publish/ci/cli/Clickra.exe',
+            'publish/ci/shell/ClickraShell.dll',
+            'publish/ci/setup/ClickraSetup.exe',
+            'src/Clickra.Fluent/bin/Release/net8.0-windows10.0.26100.0/win-x64/publish/Clickra.Fluent.exe'
+          )
+          foreach ($file in $required) {
+            if (-not (Test-Path $file)) {
+              throw "Missing expected build output: $file"
+            }
+          }
+          Write-Host "All expected build outputs present."
+
+  test:
+    name: Run Clickra.Core.Tests runner
+    runs-on: windows-latest
+    needs: build
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+
+      # The suite is an Exe with a self-built TestRunner, not a
+      # Microsoft.NET.Test.Sdk project: `dotnet test` would only build it and
+      # report success without running a single test. This is the invocation
+      # that actually executes the runner (see tests/README.md).
+      #
+      # The runner prints PASS/FAIL/SKIP per test plus a SUMMARY line with the
+      # executed test count, and exits non-zero when any test fails.
+      # test_pdfs/ is git-ignored (large PDFs), so on a fresh checkout the
+      # fixture-dependent layout tests cannot run: the runner marks them SKIP
+      # instead of FAIL, keeping this gate green for the deterministic suite
+      # while still telling the truth about what actually executed. Locally,
+      # where fixtures exist, the same suite runs those layout tests and still
+      # has a known baseline (tracked as PR-B in
+      # docs/development/PR46_POST_MERGE_AUDIT_AND_OPTIONS.md); do not silence
+      # those with continue-on-error either.
+      - name: Run self-built test runner
+        run: dotnet run --project tests/Clickra.Core.Tests/Clickra.Core.Tests.csproj -c Release
