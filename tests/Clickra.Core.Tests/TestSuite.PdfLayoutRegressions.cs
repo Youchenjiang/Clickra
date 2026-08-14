@@ -6,7 +6,12 @@ static partial class TestSuite
     {
         runner.Run("SemTaint p8 short multi-token equations stay bypassed", () =>
         {
-            var page = Diagnostics("SemTaint.pdf", 8);
+            // The fixture-based check (SemTaint.pdf p8) is replaced by a
+            // synthetic equation line; short math lines are classified as
+            // bypassed, not as table/diagram/gray content.
+            var page = DiagnosticsFromSynthetic(
+                new SyntheticGrayPage()
+                    .AddOutsideText(300, "raw = sanitize(input) (10)"));
 
             AssertParagraph(page, "raw =", p =>
                 p.IsBypassed && !p.IsTable && !p.IsDiagram && !p.IsGrayPromptContent);
