@@ -1,3 +1,4 @@
+using System.Globalization;
 using Clickra.Core.Models;
 using Clickra.Core.Processors;
 
@@ -163,8 +164,17 @@ sealed class TestRunner
 
     public void Run(string name, Action test)
     {
+        // Reset ambient culture before each test and restore it afterwards so
+        // one test that changes CurrentCulture/CurrentUICulture cannot leak
+        // into the next (PR-B stability, 6.3). Tests that need a specific
+        // culture set it inside their own body.
+        var savedCulture = CultureInfo.CurrentCulture;
+        var savedUiCulture = CultureInfo.CurrentUICulture;
         try
         {
+            CultureInfo.CurrentCulture = CultureInfo.InvariantCulture;
+            CultureInfo.CurrentUICulture = CultureInfo.InvariantCulture;
+
             test();
             Passed++;
             Console.WriteLine($"PASS {name}");
@@ -180,6 +190,11 @@ sealed class TestRunner
             Failures++;
             Console.WriteLine($"FAIL {name}");
             Console.WriteLine(ex.Message);
+        }
+        finally
+        {
+            CultureInfo.CurrentCulture = savedCulture;
+            CultureInfo.CurrentUICulture = savedUiCulture;
         }
     }
 }
