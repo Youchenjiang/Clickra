@@ -102,13 +102,30 @@ jobs:
             const failures = [];
 
             // Assignee: self-assign the author so ownership is never "No one".
+            // This is a convenience, not a policy gate: a transient GitHub API
+            // failure (e.g. 502) must not turn the whole check red, so retry a
+            // couple of times and only warn if it still fails.
             if (!pr.assignees || pr.assignees.length === 0) {
-              await github.rest.issues.addAssignees({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                issue_number: pr.number,
-                assignees: [pr.user.login],
-              });
+              let assigned = false;
+              for (let attempt = 1; attempt <= 3 && !assigned; attempt++) {
+                try {
+                  await github.rest.issues.addAssignees({
+                    owner: context.repo.owner,
+                    repo: context.repo.repo,
+                    issue_number: pr.number,
+                    assignees: [pr.user.login],
+                  });
+                  assigned = true;
+                } catch (err) {
+                  if (attempt === 3) {
+                    core.warning(
+                      `Could not auto-assign ${pr.user.login} after 3 attempts: ${err.message}`,
+                    );
+                  } else {
+                    await new Promise((resolve) => setTimeout(resolve, attempt * 2000));
+                  }
+                }
+              }
             }
 
             // Labels: require at least one, matching the title scope when possible.
