@@ -61,77 +61,84 @@ namespace Clickra.Core.Processors
             // (same column, small gap) is the stronger signal: a prompt line that
             // ends in a colon can otherwise be misread as a heading and dropped
             // (PentestAgent p7 "Generate a concise summary...").
-            if (PdfParagraphRoleClassifier.IsTranslatableBodyProse(para) ||
-                (!para.IsGrayPromptContent && anchor == null &&
-                 (PdfParagraphRoleClassifier.IsTranslatableCalloutProse(para) ||
-                  PdfParagraphSemanticClassifier.IsHeadingParagraph(para) ||
-                  PdfParagraphSemanticClassifier.IsAppendixSectionHeading(para))))
+            if (IsExcludedStandaloneProse(para, anchor))
             {
                 return false;
             }
             string txt = para.TextWithPlaceholders.Trim();
             if (string.IsNullOrWhiteSpace(txt)) return false;
-            if (Regex.IsMatch(txt, @"^\d+\)"))
-            {
-                // Section body like "2) Loss of Context:" — not a prompt list item inside gray boxes.
-                if (para.Height > 28 || para.Width > 250) return false;
-                if (txt.Contains(" of ", StringComparison.OrdinalIgnoreCase)) return false;
-                return true;
-            }
-            if (Regex.IsMatch(txt, @"^\(\d+\)"))
-            {
-                return true;
-            }
-            if (Regex.IsMatch(txt, @"^AMPLE\}?$", RegexOptions.IgnoreCase))
-            {
-                return true;
-            }
+            if (IsPromptListItem(txt, para)) return true;
             if (txt.StartsWith("LLM:", StringComparison.OrdinalIgnoreCase) ||
                 txt.StartsWith("User:", StringComparison.OrdinalIgnoreCase))
             {
                 return true;
             }
-            if (txt.StartsWith("You ", StringComparison.OrdinalIgnoreCase) ||
-                txt.StartsWith("You\u2019re ", StringComparison.OrdinalIgnoreCase) ||
-                txt.StartsWith("You're ", StringComparison.OrdinalIgnoreCase) ||
-                txt.StartsWith("Analyze ", StringComparison.OrdinalIgnoreCase) ||
-                txt.StartsWith("Use your ", StringComparison.OrdinalIgnoreCase) ||
-                txt.StartsWith("For example", StringComparison.OrdinalIgnoreCase) ||
-                txt.StartsWith("Generate a ", StringComparison.OrdinalIgnoreCase) ||
-                txt.StartsWith("Your next task", StringComparison.OrdinalIgnoreCase) ||
-                txt.StartsWith("You should use ", StringComparison.OrdinalIgnoreCase) ||
-                txt.StartsWith("You should always ", StringComparison.OrdinalIgnoreCase) ||
-                txt.StartsWith("You should ", StringComparison.OrdinalIgnoreCase) ||
-                txt.StartsWith("When the results", StringComparison.OrdinalIgnoreCase))
-            {
-                return true;
-            }
-            if (txt.Contains("JSON format", StringComparison.OrdinalIgnoreCase) ||
-                txt.Contains("FORMAT SPEC", StringComparison.OrdinalIgnoreCase) ||
-                txt.Contains("OUTPUT FORMAT", StringComparison.OrdinalIgnoreCase) ||
-                txt.Contains("{FORMAT", StringComparison.OrdinalIgnoreCase))
-            {
-                return true;
-            }
+            if (StartsWithAny(txt, PromptInstructionPrefixes)) return true;
+            if (ContainsAny(txt, PromptFormatMarkers)) return true;
             if (anchor == null) return false;
+            return HasAnchoredContinuationGeometry(para, anchor, txt) ||
+                   HasAnchoredHyphenatedGeometry(para, anchor, txt);
+        }
+
+        /// <summary>Section list items ("2) Loss of Context:") and parenthesized numbers.</summary>
+        private static bool IsPromptListItem(string txt, PdfParagraph para)
+        {
+            if (Regex.IsMatch(txt, @"^\(\d+\)")) return true;
+            if (Regex.IsMatch(txt, @"^AMPLE\}?$", RegexOptions.IgnoreCase)) return true;
+            if (!Regex.IsMatch(txt, @"^\d+\)")) return false;
+            // Section body like "2) Loss of Context:" — not a prompt list item inside gray boxes.
+            if (para.Height > 28 || para.Width > 250) return false;
+            if (txt.Contains(" of ", StringComparison.OrdinalIgnoreCase)) return false;
+            return true;
+        }
+
+        private static bool HasAnchoredContinuationGeometry(PdfParagraph para, PdfParagraph anchor, string txt)
+        {
             double gap = anchor.Y1 - para.Y1;
             double overlap = Math.Min(para.X1, anchor.X1) - Math.Max(para.X0, anchor.X0);
             double minWidth = Math.Min(para.Width, anchor.Width);
-            if (gap >= -2 && gap <= 32 && minWidth > 0 && overlap / minWidth >= 0.55 &&
+            return gap >= -2 && gap <= 32 && minWidth > 0 && overlap / minWidth >= 0.55 &&
                 para.Height <= 22 && txt.Length <= 160 &&
                 !PdfParagraphRoleClassifier.IsTranslatableBodyProse(para) &&
-                !PdfParagraphRoleClassifier.IsTranslatableCalloutProse(para))
-            {
-                return true;
-            }
-            // Hyphenated prompt lines split across PDF text blocks (e.g. "EX-" / "AMPLE}").
-            if (gap >= -2 && gap <= 18 && minWidth > 0 && overlap / minWidth >= 0.55 &&
-                para.Height <= 14 && txt.Length <= 16)
-            {
-                return true;
-            }
-            return false;
+                !PdfParagraphRoleClassifier.IsTranslatableCalloutProse(para);
         }
+
+        /// <summary>Hyphenated prompt lines split across PDF text blocks (e.g. "EX-" / "AMPLE}").</summary>
+        private static bool HasAnchoredHyphenatedGeometry(PdfParagraph para, PdfParagraph anchor, string txt)
+        {
+            double gap = anchor.Y1 - para.Y1;
+            double overlap = Math.Min(para.X1, anchor.X1) - Math.Max(para.X0, anchor.X0);
+            double minWidth = Math.Min(para.Width, anchor.Width);
+            return gap >= -2 && gap <= 18 && minWidth > 0 && overlap / minWidth >= 0.55 &&
+                para.Height <= 14 && txt.Length <= 16;
+        }
+
+        private static bool IsExcludedStandaloneProse(PdfParagraph para, PdfParagraph? anchor)
+        {
+            if (PdfParagraphRoleClassifier.IsTranslatableBodyProse(para)) return true;
+            if (anchor != null || para.IsGrayPromptContent) return false;
+            return PdfParagraphRoleClassifier.IsTranslatableCalloutProse(para) ||
+                   PdfParagraphSemanticClassifier.IsHeadingParagraph(para) ||
+                   PdfParagraphSemanticClassifier.IsAppendixSectionHeading(para);
+        }
+
+        private static readonly string[] PromptInstructionPrefixes =
+        {
+            "You ", "You\u2019re ", "You're ", "Analyze ", "Use your ", "For example",
+            "Generate a ", "Your next task", "You should use ", "You should always ",
+            "You should ", "When the results"
+        };
+
+        private static readonly string[] PromptFormatMarkers =
+        {
+            "JSON format", "FORMAT SPEC", "OUTPUT FORMAT", "{FORMAT"
+        };
+
+        private static bool StartsWithAny(string txt, string[] prefixes)
+            => prefixes.Any(p => txt.StartsWith(p, StringComparison.OrdinalIgnoreCase));
+
+        private static bool ContainsAny(string txt, string[] markers)
+            => markers.Any(m => txt.Contains(m, StringComparison.OrdinalIgnoreCase));
 
         public static bool IsGrayPromptSubheading(PdfParagraph para)
         {
