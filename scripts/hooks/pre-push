@@ -10,9 +10,10 @@
 #
 # Notes:
 # - The runner exits non-zero when any test fails, so a push is aborted just
-#   like the CI test job would be. The suite has a known flaky baseline
-#   (~95 PASS / ~11 FAIL) tracked as PR-B in
-#   docs/development/PR46_POST_MERGE_AUDIT_AND_OPTIONS.md.
+#   like the CI test job would be. test_pdfs/ is git-ignored, so on a fresh
+#   clone the fixture-dependent layout tests print SKIP instead of FAIL (same
+#   behavior as CI). With fixtures present locally the suite still has a known
+#   baseline tracked as PR-B in docs/development/PR46_POST_MERGE_AUDIT_AND_OPTIONS.md.
 # - `git push --no-verify` remains the documented escape hatch for the known
 #   baseline; the CI gate still records the truth on every push.
 # - CI additionally publishes NativeAOT binaries; this hook only compiles the

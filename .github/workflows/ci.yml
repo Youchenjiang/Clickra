@@ -95,12 +95,15 @@ jobs:
       # report success without running a single test. This is the invocation
       # that actually executes the runner (see tests/README.md).
       #
-      # The runner prints PASS/FAIL per test plus a SUMMARY line with the
-      # executed test count, and exits non-zero when any test fails. The suite
-      # currently has a known flaky baseline (~95 PASS / ~11 FAIL on clean
-      # runners, tracked as PR-B in docs/development/PR46_POST_MERGE_AUDIT_AND_OPTIONS.md),
-      # so this job intentionally reports red until that baseline is split into
-      # deterministic / fixture suites. Do not silence failures with
-      # continue-on-error: the whole point of this gate is that it tells the truth.
+      # The runner prints PASS/FAIL/SKIP per test plus a SUMMARY line with the
+      # executed test count, and exits non-zero when any test fails.
+      # test_pdfs/ is git-ignored (large PDFs), so on a fresh checkout the
+      # fixture-dependent layout tests cannot run: the runner marks them SKIP
+      # instead of FAIL, keeping this gate green for the deterministic suite
+      # while still telling the truth about what actually executed. Locally,
+      # where fixtures exist, the same suite runs those layout tests and still
+      # has a known baseline (tracked as PR-B in
+      # docs/development/PR46_POST_MERGE_AUDIT_AND_OPTIONS.md); do not silence
+      # those with continue-on-error either.
       - name: Run self-built test runner
         run: dotnet run --project tests/Clickra.Core.Tests/Clickra.Core.Tests.csproj -c Release
