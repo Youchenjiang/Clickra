@@ -113,15 +113,22 @@ jobs:
     # PR-B (docs/development/PR46_POST_MERGE_AUDIT_AND_OPTIONS.md): the
     # fixture-dependent layout suite gets its own gate instead of being
     # folded into the deterministic job. The fixtures live outside git
-    # (test_pdfs/ is git-ignored because the PDFs are large), so this job      # only runs when the checkout actually carries them; otherwise it exits
-      # neutral (78) and is reported as skipped rather than pretending to
-      # pass. Once a fixture source (LFS / artifact / storage) exists, wire it
-      # into this job before checkout and the suite runs here as-is with
-      # --require-fixtures so any missing fixture fails the gate loudly.
+    # (test_pdfs/ is git-ignored because the PDFs are large), so this job
+    # only runs when the checkout actually carries them; otherwise the job
+    # is skipped entirely (GitHub reports it as skipped) rather than
+    # pretending to pass. Once a fixture source (LFS / artifact / storage)
+    # exists, wire it into this job before checkout and the suite runs here
+    # as-is with --require-fixtures so any missing fixture fails the gate
+    # loudly. (exit 78 is NOT a GitHub Actions neutral signal - only CircleCI
+    # treats it that way - so the job condition below is the skip mechanism.)
     name: Fixture regression tests
     runs-on: windows-latest
     needs: build
     timeout-minutes: 30
+    # Skip cleanly when the checkout has no fixtures instead of failing the
+    # gate: GitHub Actions has no neutral exit code, so an exit-78 hack would
+    # fail the job. A skipped job is reported as skipped, not red.
+    if: hashFiles('test_pdfs/source/**') != ''
     steps:
       - uses: actions/checkout@v4
 
@@ -129,15 +136,6 @@ jobs:
         uses: actions/setup-dotnet@v4
         with:
           dotnet-version: ${{ env.DOTNET_VERSION }}
-
-      - name: Check fixture availability
-        shell: pwsh
-        run: |
-          if (-not (Test-Path 'test_pdfs/source')) {
-            Write-Host "test_pdfs/source is not present in this checkout;"
-            Write-Host "fixture suite skipped (neutral) until a fixture source exists."
-            exit 78
-          }
 
       - name: Run self-built test runner (with fixtures, missing = fail)
         run: dotnet run --project tests/Clickra.Core.Tests/Clickra.Core.Tests.csproj -c Release -- --require-fixtures
