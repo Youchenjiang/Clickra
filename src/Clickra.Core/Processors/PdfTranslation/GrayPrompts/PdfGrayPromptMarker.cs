@@ -363,23 +363,43 @@ internal static class PdfGrayPromptMarker
     {
         foreach (var para in pageList)
         {
-            if (PdfParagraphSemanticClassifier.IsHeadingParagraph(para) || PdfParagraphSemanticClassifier.IsAppendixSectionHeading(para))
+            if (IsHeadingOrAppendixSection(para))
             {
-                para.IsGrayPromptContent = false;
-                if (!PdfGrayPromptClassifier.IsGrayPromptBoxParagraph(para) && !PdfGrayPromptClassifier.IsGrayPromptSubheading(para))
+                // A prompt line ending in a colon (e.g. "Generate a concise
+                // summary ... questions:") can be misread as a heading. If the
+                // gray-prompt block scan already flagged it as continuation
+                // content, that stronger signal wins; only clear headings that
+                // were never part of a gray block.
+                if (para.IsGrayPromptContent && PdfGrayPromptClassifier.IsGrayPromptBoxContinuationParagraph(para, null))
                 {
-                    para.IsCode = false;
+                    continue;
                 }
+                ClearHeadingGrayPromptFlags(para);
                 continue;
             }
 
-            if (PdfGrayPromptClassifier.IsGrayPromptBoxParagraph(para) || PdfGrayPromptClassifier.IsGrayPromptSubheading(para))
+            if (IsGrayPromptBoxOrSubheading(para))
                 para.IsDiagram = false;
 
             if (!para.IsGrayPromptContent) continue;
             para.IsCode = true;
             para.IsDiagram = false;
             para.IsTable = false;
+        }
+    }
+
+    private static bool IsHeadingOrAppendixSection(PdfParagraph para)
+        => PdfParagraphSemanticClassifier.IsHeadingParagraph(para) || PdfParagraphSemanticClassifier.IsAppendixSectionHeading(para);
+
+    private static bool IsGrayPromptBoxOrSubheading(PdfParagraph para)
+        => PdfGrayPromptClassifier.IsGrayPromptBoxParagraph(para) || PdfGrayPromptClassifier.IsGrayPromptSubheading(para);
+
+    private static void ClearHeadingGrayPromptFlags(PdfParagraph para)
+    {
+        para.IsGrayPromptContent = false;
+        if (!PdfGrayPromptClassifier.IsGrayPromptBoxParagraph(para) && !PdfGrayPromptClassifier.IsGrayPromptSubheading(para))
+        {
+            para.IsCode = false;
         }
     }
 

@@ -7,6 +7,19 @@ dotnet build tests\Clickra.Core.Tests\Clickra.Core.Tests.csproj --no-restore
 dotnet tests\Clickra.Core.Tests\bin\Debug\net10.0-windows\Clickra.Core.Tests.dll
 ```
 
+The C# runner follows the same fixture contract as the Python regression
+runner below: tests that need `test_pdfs/` fixtures print `SKIP` (and count
+as skipped, not failed) when the fixtures are absent, so a clean checkout or
+CI without the ignored fixtures still reports a green suite. The summary line
+counts passed / failed / skipped explicitly.
+
+Pass `--require-fixtures` to flip that contract (mirroring the Python
+runner's `--require-fixtures`): fixture-dependent tests that cannot run are
+reported as failures and the runner exits non-zero, so a gate that expects
+fixtures fails loudly instead of quietly passing. The `fixture-regression-tests`
+CI job runs with this flag once fixtures are available.
+
+
 PDF regression checks live under `tests/PdfRegression`. They require local
 `test_pdfs/` fixtures, which are intentionally ignored by git because the PDFs
 are large.

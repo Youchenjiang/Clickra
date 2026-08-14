@@ -21,6 +21,7 @@ __pycache__/
 /*_renderdbg.log
 /*_translated.pdf
 /*_p*.pdf
+/clickra-split-fail-*.pdf
 pdf_refer/
 local_store_config.json
 temp_store_metadata.json

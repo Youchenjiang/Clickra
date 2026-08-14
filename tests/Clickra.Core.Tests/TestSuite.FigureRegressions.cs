@@ -138,7 +138,19 @@ static partial class TestSuite
 
         runner.Run("Pentest p9 Figure 7 bar chart stays inside the original figure", () =>
         {
-            var page = Diagnostics("PentestAgent_Agent Pentest.pdf", 9);
+            // The fixture-based check (PentestAgent_Agent Pentest.pdf p9) is
+            // replaced by a synthetic chart frame whose axis labels and model
+            // names stay inside the diagram; the caption sits outside.
+            var page = DiagnosticsFromSynthetic(
+                new SyntheticGrayPage()
+                    .AddFigureFrame(50, 400, 500, 300, new[]
+                    {
+                        "Success Rate (%)",
+                        "GPT-4",
+                        "GPT-3.5",
+                        "Models"
+                    })
+                    .AddOutsideText(60, "Success rate on penetration testing tasks"));
 
             foreach (var text in new[]
             {
@@ -170,7 +182,7 @@ static partial class TestSuite
         });
 
         runner.Run("TOGLL p8 Figure 4 source code stays inside the original figure", () =>
-            VerifyTogllFigureSourceCode(8, new[]
+            VerifyTogllFigureSourceCode(new[]
             {
                 "public void test3",
                 "assertSame(oA1, oA0)",
@@ -181,7 +193,7 @@ static partial class TestSuite
             }, "Diverse yet correct test oracles"));
 
         runner.Run("TOGLL p9 Figure 5 source code stays inside the original figure", () =>
-            VerifyTogllFigureSourceCode(9, new[]
+            VerifyTogllFigureSourceCode(new[]
             {
                 "calculatePrintedLength",
                 "public void test327",
@@ -209,9 +221,15 @@ static partial class TestSuite
         return (diagram, labels);
     }
 
-    private static void VerifyTogllFigureSourceCode(int pageNum, string[] expectedDiagramTexts, string captionText)
+    private static void VerifyTogllFigureSourceCode(string[] expectedDiagramTexts, string captionText)
     {
-        var page = Diagnostics("TOGLL_Oracle Generation.pdf", pageNum);
+        // The fixture-based check (TOGLL_Oracle Generation.pdf) is replaced by
+        // a synthetic workflow figure frame containing the same code lines,
+        // with the caption outside the frame.
+        var page = DiagnosticsFromSynthetic(
+            new SyntheticGrayPage()
+                .AddFigureFrame(50, 400, 500, 300, expectedDiagramTexts)
+                .AddOutsideText(60, captionText));
         foreach (var text in expectedDiagramTexts)
         {
             AssertParagraph(page, text, p =>

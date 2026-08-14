@@ -1,5 +1,9 @@
+using System.Globalization;
 using Clickra.Core.Models;
 using Clickra.Core.Processors;
+using PdfSharp.Drawing;
+using PdfSharp.Fonts;
+using PdfSharp.Pdf;
 
 namespace Clickra.Core.Tests;
 
@@ -27,6 +31,37 @@ static partial class TestSuite
             throw new TestSkippedException($"Missing test PDF fixture: {path}");
         }
         return PdfTranslateProcessor.AnalyzePageParagraphDiagnostics(path, page);
+    }
+
+    /// <summary>Runs the real translation pipeline over a synthetic PDF built
+    /// in-memory, so layout-classification tests no longer depend on the
+    /// git-ignored test_pdfs/ fixtures. Returns the page-1 diagnostics.
+    /// The temp file is deleted afterwards.</summary>
+    private static TranslationPageDiagnostics DiagnosticsFromSynthetic(SyntheticGrayPage page)
+    {
+        EnsureFontResolver();
+        string path = page.WriteTempPdf();
+        try
+        {
+            return PdfTranslateProcessor.AnalyzePageParagraphDiagnostics(path, 1);
+        }
+        finally
+        {
+            try { File.Delete(path); } catch { /* best-effort */ }
+        }
+    }
+
+    private static bool _fontResolverInstalled;
+
+    private static void EnsureFontResolver()
+    {
+        // PdfSharp 6.x needs an IFontResolver to locate TrueType fonts; the
+        // default resolver is unreliable across machines/CI. Use the same
+        // resolver Core production code uses (Arial, DFKai-SB and friends),
+        // so synthetic pages and layout tests agree on font availability.
+        if (_fontResolverInstalled) return;
+        GlobalFontSettings.FontResolver = new ClickraFontResolver();
+        _fontResolverInstalled = true;
     }
 
     private static PdfParagraph UninitializedParagraph(string text, double width, double height)
@@ -102,6 +137,9 @@ static partial class TestSuite
     private static bool IsBodyProse(TranslationParagraphDiagnostics p) =>
         !p.IsBypassed && !p.IsCode && !p.IsDiagram && p.IsBodyProse;
 
+    private static bool IsGrayPromptBypassed(TranslationParagraphDiagnostics p) =>
+        p.IsGrayPromptContent && p.IsCode && p.IsBypassed && !p.IsDiagram && !p.IsTable;
+
     private static void AssertAllParagraphs(
         TranslationPageDiagnostics page,
         string text,
@@ -157,29 +195,61 @@ sealed class PathInfo(string value)
 
 sealed class TestRunner
 {
+    private readonly bool _requireFixtures;
+
+    public TestRunner(bool requireFixtures = false)
+    {
+        _requireFixtures = requireFixtures;
+    }
+
     public int Passed { get; private set; }
     public int Failures { get; private set; }
     public int Skipped { get; private set; }
 
     public void Run(string name, Action test)
     {
+        // Reset ambient culture before each test and restore it afterwards so
+        // one test that changes CurrentCulture/CurrentUICulture cannot leak
+        // into the next (PR-B stability, 6.3). Tests that need a specific
+        // culture set it inside their own body.
+        var savedCulture = CultureInfo.CurrentCulture;
+        var savedUiCulture = CultureInfo.CurrentUICulture;
         try
         {
+            CultureInfo.CurrentCulture = CultureInfo.InvariantCulture;
+            CultureInfo.CurrentUICulture = CultureInfo.InvariantCulture;
+
             test();
             Passed++;
             Console.WriteLine($"PASS {name}");
         }
         catch (TestSkippedException ex)
         {
-            Skipped++;
-            Console.WriteLine($"SKIP {name}");
-            Console.WriteLine(ex.Message);
+            // --require-fixtures turns missing fixtures into failures so a
+            // fixture-expecting gate fails loudly (see Program.cs).
+            if (_requireFixtures)
+            {
+                Failures++;
+                Console.WriteLine($"FAIL {name}");
+                Console.WriteLine(ex.Message);
+            }
+            else
+            {
+                Skipped++;
+                Console.WriteLine($"SKIP {name}");
+                Console.WriteLine(ex.Message);
+            }
         }
         catch (Exception ex)
         {
             Failures++;
             Console.WriteLine($"FAIL {name}");
             Console.WriteLine(ex.Message);
+        }
+        finally
+        {
+            CultureInfo.CurrentCulture = savedCulture;
+            CultureInfo.CurrentUICulture = savedUiCulture;
         }
     }
 }
@@ -216,3 +286,164 @@ static class Assert
         throw new InvalidOperationException($"Expected {typeof(T).Name}.");
     }
 }
+
+/// <summary>Builds a one-page PDF whose layout reproduces the vector
+/// features the classifier relies on: gray-filled prompt boxes (with a
+/// heading line plus instruction lines inside), optional standalone
+/// heading/instruction text outside any box, and optional body prose.
+/// The geometry is synthetic, so the tests run without the git-ignored
+/// test_pdfs/ fixtures and reproduce on any developer machine.</summary>
+sealed class SyntheticGrayPage
+{
+    private readonly List<GrayBox> _boxes = new();
+    private readonly List<(double Y, string Text)> _outside = new();
+    private readonly List<(double Y, string Text)> _headings = new();
+    private readonly List<TableGrid> _tables = new();
+    private readonly List<FigureFrame> _figures = new();
+
+    public SyntheticGrayPage AddBox(double x, double y, double width, double height, string heading, params string[] lines)
+    {
+        _boxes.Add(new GrayBox(x, y, width, height, heading, lines));
+        return this;
+    }
+
+    /// <summary>Adds a table grid: cells are laid out in <paramref name="rows"/>
+    /// rows of <paramref name="cols"/> columns, with the given column X
+    /// offsets (relative to <paramref name="x"/>) and a fixed row height.
+    /// Grid lines are drawn as thin rectangles so the geometry reads as a
+    /// ruled table.</summary>
+    public SyntheticGrayPage AddTable(
+        double x,
+        double y,
+        double[] colXOffsets,
+        double rowHeight,
+        string[][] cells)
+    {
+        _tables.Add(new TableGrid(x, y, colXOffsets, rowHeight, cells));
+        return this;
+    }
+
+    /// <summary>Adds a text line outside any gray box (e.g. body prose that
+    /// must stay translatable, or a standalone heading).</summary>
+    public SyntheticGrayPage AddOutsideText(double y, string text)
+    {
+        _outside.Add((y, text));
+        return this;
+    }
+
+    /// <summary>Adds a bold heading line (larger font) outside any box, so
+    /// section-heading classifiers (REFERENCES, TABLE II, ...) see the
+    /// geometry they require.</summary>
+    public SyntheticGrayPage AddHeading(double y, string text)
+    {
+        _headings.Add((y, text));
+        return this;
+    }
+
+    /// <summary>Adds a workflow-figure frame: an outer vector rectangle with
+    /// short internal labels, mimicking a figure whose content must stay
+    /// inside the original diagram.</summary>
+    public SyntheticGrayPage AddFigureFrame(double x, double y, double width, double height, string[] labels)
+    {
+        _figures.Add(new FigureFrame(x, y, width, height, labels));
+        return this;
+    }
+
+    /// <summary>Writes the page to a unique temp file and returns its path.</summary>
+    public string WriteTempPdf()
+    {
+        string path = Path.Combine(Path.GetTempPath(), $"clickra-synth-{Guid.NewGuid():N}.pdf");
+        using var doc = new PdfDocument();
+        var page = doc.AddPage();
+        page.Width = XUnit.FromPoint(612);
+        page.Height = XUnit.FromPoint(792);
+        using var gfx = XGraphics.FromPdfPage(page);
+
+        foreach (var box in _boxes)
+        {
+            gfx.DrawRectangle(
+                new XSolidBrush(XColor.FromArgb(230, 230, 230)),
+                new XRect(box.X, box.Y, box.Width, box.Height));
+
+            double cursor = box.Y + 10;
+            DrawText(gfx, box.X + 8, cursor, box.Heading, bold: true);
+            cursor += 26;
+            foreach (string line in box.Lines)
+            {
+                DrawText(gfx, box.X + 8, cursor, line, bold: false);
+                cursor += 26;
+            }
+        }
+
+        foreach (var (y, text) in _outside)
+        {
+            DrawText(gfx, 72, y, text, bold: false);
+        }
+
+        foreach (var (y, text) in _headings)
+        {
+            DrawText(gfx, 72, y, text, bold: true, fontSize: 12);
+        }
+
+        foreach (var table in _tables)
+        {
+            DrawTable(gfx, table);
+        }
+
+        foreach (var figure in _figures)
+        {
+            DrawFigureFrame(gfx, figure);
+        }
+
+        doc.Save(path);
+        return path;
+    }
+
+    private static void DrawFigureFrame(XGraphics gfx, FigureFrame figure)
+    {
+        gfx.DrawRectangle(
+            new XPen(XColors.Black, 1),
+            new XRect(figure.X, figure.Y, figure.Width, figure.Height));
+        double cursor = figure.Y + 12;
+        foreach (string label in figure.Labels)
+        {
+            DrawText(gfx, figure.X + 16, cursor, label, bold: false);
+            cursor += 26;
+        }
+    }
+
+    private static void DrawTable(XGraphics gfx, TableGrid table)
+    {
+        // No vector rectangles: real academic tables are often borderless,
+        // and drawing boxes here would be picked up by the diagram detector
+        // instead of the table classifier. Just lay out the cell text in
+        // aligned columns.
+        for (int row = 0; row < table.Cells.Length; row++)
+        {
+            for (int col = 0; col < table.Cells[row].Length; col++)
+            {
+                double cellX = table.X + table.ColXOffsets[col];
+                double cellY = table.Y + row * table.RowHeight;
+                DrawText(gfx, cellX, cellY + 3, table.Cells[row][col], bold: false);
+            }
+        }
+    }
+
+    private static void DrawText(XGraphics gfx, double x, double y, string text, bool bold, double fontSize = 10)
+    {
+        var font = new XFont("Arial", fontSize, bold ? XFontStyleEx.Bold : XFontStyleEx.Regular);
+        gfx.DrawString(text, font, XBrushes.Black, new XRect(x, y, 400, 24), XStringFormats.TopLeft);
+    }
+
+    private sealed record GrayBox(double X, double Y, double Width, double Height, string Heading, string[] Lines);
+
+    private sealed record TableGrid(
+        double X,
+        double Y,
+        double[] ColXOffsets,
+        double RowHeight,
+        string[][] Cells);
+
+    private sealed record FigureFrame(double X, double Y, double Width, double Height, string[] Labels);
+}
+

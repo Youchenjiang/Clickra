@@ -153,6 +153,11 @@ namespace Clickra.Core.Processors
             if (diagramRegions.Count == 0) return;
             foreach (var para in pageList)
             {
+                // Gray prompt boxes bypass as code, never as diagram: this final
+                // short-label pass must not re-flag their content (PentestAgent
+                // p4/p7/p14 prompt boxes overlap diagram regions).
+                if (para.IsGrayPromptContent || para.IsCode) continue;
+
                 bool intersects = diagramRegions.Any(region =>
                     para.X0 <= region.X1 && para.X1 >= region.X0 &&
                     para.Y0 <= region.Y1 && para.Y1 >= region.Y0);

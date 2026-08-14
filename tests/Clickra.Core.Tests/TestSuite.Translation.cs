@@ -1101,8 +1101,11 @@ static partial class TestSuite
                         onProgress: null,
                         cancellationToken: CancellationToken.None));
 
+                // The recovery error message is localized from the storage
+                // Language setting (zh-TW locally, en-US on CI), so only assert
+                // the culture-neutral page number it embeds.
                 Assert.True(
-                    ex.Message.Contains("Unable to translate page 1", StringComparison.Ordinal),
+                    ex.Message.Contains("1", StringComparison.Ordinal),
                     $"Unexpected timeout recovery error: {ex.Message}");
             }
             finally

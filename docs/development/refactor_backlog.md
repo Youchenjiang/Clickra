@@ -94,7 +94,7 @@ GitHub Release 的 MSIX 以 CI 自簽憑證簽署，使用者需信任憑證或�
 
 雙軌決策把舊 Win32 UI 升級為永久產品線（ROADMAP F1-11），但「新功能是否兩軌都要」未定案。候選策略：a) 凍結 Native 軌道（新功能只做 Fluent）；b) Native 軌道以 CLI 為主、GUI 只維持既有功能。決策影響所有未來功能的開發成本。
 
-### 2.7 [缺陷] PDF 翻譯回歸測試套件不穩定（2026/08/12 記錄）
+### 2.7 [已修] PDF 翻譯回歸測試套件不穩定（2026/08/12 記錄，2026/08/14 根治）
 
 同一份 Core 程式碼（測試專案只引用 `Clickra.Core`，與 Fluent 改動無關）重複跑測試，FAIL 數在 **3~11 之間浮動**（PASS 恆為 95）：
 
@@ -105,6 +105,8 @@ GitHub Release 的 MSIX 以 CI 自簽憑證簽署，使用者需信任憑證或�
 疑似順序依賴（套件內共享靜態狀態）或環境依賴（字型渲染／逾時計時）。CI 若依賴「全 PASS」當門檻會誤報；需要先穩定測試套件（隔離狀態／固定順序／允許逾時容差）再以全 PASS 為合併條件。
 
 **2026/08/12 補充**：測試專案 TFM 已對齊 Core 的 `net10.0-windows10.0.19041.0`（`f621572`），套件可正常執行；95 PASS / 11 FAIL 的 flaky 基線不變，仍未根治。
+
+**2026/08/14 更新（PR-B 推進）**：套件已穩定，不再是 flaky 基線——CI（無 `test_pdfs/`）固定 **87 passed / 0 failed / 19 skipped**（fixture 測試 SKIP），本機（有 fixture）**100 passed / 0 failed / 6 skipped**。已修項目：fixture 缺失改 SKIP（不再誤報 FAIL）、Table captions caption-delimited 掃描 bug、Pentest p4/p14 diagram 誤標（`FinalizeShortFigureLabels` 未排除 gray prompt 內容）、Pentest p7 gray 標記被 `FinalizeGrayPromptContentFlags` 以冒號標題規則清掉、PDF batch runner culture 依賴（改斷言 culture-neutral 頁碼）。剩餘的 6 個 SKIP 是 fixture 存在但來源未覆蓋的測試，非失敗。
 
 ### 2.8 [已修] CLI 匯入覆寫已選指令（2026/08/12）
 
