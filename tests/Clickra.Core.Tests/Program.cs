@@ -1,6 +1,11 @@
 using Clickra.Core.Tests;
 
-var runner = new TestRunner();
+// Mirrors tests/PdfRegression/run_translation_tests.py --require-fixtures:
+// when set, fixture-dependent tests that cannot run are reported as failures
+// instead of skips, so a regression gate that expects fixtures fails loudly
+// when they are missing rather than quietly passing.
+bool requireFixtures = args.Contains("--require-fixtures", StringComparer.Ordinal);
+var runner = new TestRunner(requireFixtures);
 
 TestSuite.RegisterPentestGrayPromptTests(runner);
 TestSuite.RegisterFinalProjectTests(runner);

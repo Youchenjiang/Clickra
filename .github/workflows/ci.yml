@@ -113,11 +113,11 @@ jobs:
     # PR-B (docs/development/PR46_POST_MERGE_AUDIT_AND_OPTIONS.md): the
     # fixture-dependent layout suite gets its own gate instead of being
     # folded into the deterministic job. The fixtures live outside git
-    # (test_pdfs/ is git-ignored because the PDFs are large), so this job
-    # only runs when the checkout actually carries them; otherwise it exits
-    # neutral (78) and is reported as skipped rather than pretending to
-    # pass. Once a fixture source (LFS / artifact / storage) exists, wire it
-    # into this job before checkout and the suite runs here as-is.
+    # (test_pdfs/ is git-ignored because the PDFs are large), so this job      # only runs when the checkout actually carries them; otherwise it exits
+      # neutral (78) and is reported as skipped rather than pretending to
+      # pass. Once a fixture source (LFS / artifact / storage) exists, wire it
+      # into this job before checkout and the suite runs here as-is with
+      # --require-fixtures so any missing fixture fails the gate loudly.
     name: Fixture regression tests
     runs-on: windows-latest
     needs: build
@@ -139,5 +139,5 @@ jobs:
             exit 78
           }
 
-      - name: Run self-built test runner (with fixtures)
-        run: dotnet run --project tests/Clickra.Core.Tests/Clickra.Core.Tests.csproj -c Release
+      - name: Run self-built test runner (with fixtures, missing = fail)
+        run: dotnet run --project tests/Clickra.Core.Tests/Clickra.Core.Tests.csproj -c Release -- --require-fixtures

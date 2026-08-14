@@ -158,6 +158,13 @@ sealed class PathInfo(string value)
 
 sealed class TestRunner
 {
+    private readonly bool _requireFixtures;
+
+    public TestRunner(bool requireFixtures = false)
+    {
+        _requireFixtures = requireFixtures;
+    }
+
     public int Passed { get; private set; }
     public int Failures { get; private set; }
     public int Skipped { get; private set; }
@@ -181,9 +188,20 @@ sealed class TestRunner
         }
         catch (TestSkippedException ex)
         {
-            Skipped++;
-            Console.WriteLine($"SKIP {name}");
-            Console.WriteLine(ex.Message);
+            // --require-fixtures turns missing fixtures into failures so a
+            // fixture-expecting gate fails loudly (see Program.cs).
+            if (_requireFixtures)
+            {
+                Failures++;
+                Console.WriteLine($"FAIL {name}");
+                Console.WriteLine(ex.Message);
+            }
+            else
+            {
+                Skipped++;
+                Console.WriteLine($"SKIP {name}");
+                Console.WriteLine(ex.Message);
+            }
         }
         catch (Exception ex)
         {
