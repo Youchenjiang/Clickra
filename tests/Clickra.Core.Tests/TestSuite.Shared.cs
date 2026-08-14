@@ -137,6 +137,9 @@ static partial class TestSuite
     private static bool IsBodyProse(TranslationParagraphDiagnostics p) =>
         !p.IsBypassed && !p.IsCode && !p.IsDiagram && p.IsBodyProse;
 
+    private static bool IsGrayPromptBypassed(TranslationParagraphDiagnostics p) =>
+        p.IsGrayPromptContent && p.IsCode && p.IsBypassed && !p.IsDiagram && !p.IsTable;
+
     private static void AssertAllParagraphs(
         TranslationPageDiagnostics page,
         string text,
