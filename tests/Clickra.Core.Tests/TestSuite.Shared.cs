@@ -294,10 +294,29 @@ sealed class SyntheticGrayPage
 {
     private readonly List<GrayBox> _boxes = new();
     private readonly List<(double Y, string Text)> _outside = new();
+    private readonly List<(double Y, string Text)> _headings = new();
+    private readonly List<TableGrid> _tables = new();
+    private readonly List<FigureFrame> _figures = new();
 
     public SyntheticGrayPage AddBox(double x, double y, double width, double height, string heading, params string[] lines)
     {
         _boxes.Add(new GrayBox(x, y, width, height, heading, lines));
+        return this;
+    }
+
+    /// <summary>Adds a table grid: cells are laid out in <paramref name="rows"/>
+    /// rows of <paramref name="cols"/> columns, with the given column X
+    /// offsets (relative to <paramref name="x"/>) and a fixed row height.
+    /// Grid lines are drawn as thin rectangles so the geometry reads as a
+    /// ruled table.</summary>
+    public SyntheticGrayPage AddTable(
+        double x,
+        double y,
+        double[] colXOffsets,
+        double rowHeight,
+        string[][] cells)
+    {
+        _tables.Add(new TableGrid(x, y, colXOffsets, rowHeight, cells));
         return this;
     }
 
@@ -306,6 +325,24 @@ sealed class SyntheticGrayPage
     public SyntheticGrayPage AddOutsideText(double y, string text)
     {
         _outside.Add((y, text));
+        return this;
+    }
+
+    /// <summary>Adds a bold heading line (larger font) outside any box, so
+    /// section-heading classifiers (REFERENCES, TABLE II, ...) see the
+    /// geometry they require.</summary>
+    public SyntheticGrayPage AddHeading(double y, string text)
+    {
+        _headings.Add((y, text));
+        return this;
+    }
+
+    /// <summary>Adds a workflow-figure frame: an outer vector rectangle with
+    /// short internal labels, mimicking a figure whose content must stay
+    /// inside the original diagram.</summary>
+    public SyntheticGrayPage AddFigureFrame(double x, double y, double width, double height, string[] labels)
+    {
+        _figures.Add(new FigureFrame(x, y, width, height, labels));
         return this;
     }
 
@@ -340,16 +377,70 @@ sealed class SyntheticGrayPage
             DrawText(gfx, 72, y, text, bold: false);
         }
 
+        foreach (var (y, text) in _headings)
+        {
+            DrawText(gfx, 72, y, text, bold: true, fontSize: 12);
+        }
+
+        foreach (var table in _tables)
+        {
+            DrawTable(gfx, table);
+        }
+
+        foreach (var figure in _figures)
+        {
+            DrawFigureFrame(gfx, figure);
+        }
+
         doc.Save(path);
         return path;
     }
 
-    private static void DrawText(XGraphics gfx, double x, double y, string text, bool bold)
+    private static void DrawFigureFrame(XGraphics gfx, FigureFrame figure)
     {
-        var font = new XFont("Arial", 10, bold ? XFontStyleEx.Bold : XFontStyleEx.Regular);
-        gfx.DrawString(text, font, XBrushes.Black, new XRect(x, y, 400, 20), XStringFormats.TopLeft);
+        gfx.DrawRectangle(
+            new XPen(XColors.Black, 1),
+            new XRect(figure.X, figure.Y, figure.Width, figure.Height));
+        double cursor = figure.Y + 12;
+        foreach (string label in figure.Labels)
+        {
+            DrawText(gfx, figure.X + 16, cursor, label, bold: false);
+            cursor += 26;
+        }
+    }
+
+    private static void DrawTable(XGraphics gfx, TableGrid table)
+    {
+        // No vector rectangles: real academic tables are often borderless,
+        // and drawing boxes here would be picked up by the diagram detector
+        // instead of the table classifier. Just lay out the cell text in
+        // aligned columns.
+        for (int row = 0; row < table.Cells.Length; row++)
+        {
+            for (int col = 0; col < table.Cells[row].Length; col++)
+            {
+                double cellX = table.X + table.ColXOffsets[col];
+                double cellY = table.Y + row * table.RowHeight;
+                DrawText(gfx, cellX, cellY + 3, table.Cells[row][col], bold: false);
+            }
+        }
+    }
+
+    private static void DrawText(XGraphics gfx, double x, double y, string text, bool bold, double fontSize = 10)
+    {
+        var font = new XFont("Arial", fontSize, bold ? XFontStyleEx.Bold : XFontStyleEx.Regular);
+        gfx.DrawString(text, font, XBrushes.Black, new XRect(x, y, 400, 24), XStringFormats.TopLeft);
     }
 
     private sealed record GrayBox(double X, double Y, double Width, double Height, string Heading, string[] Lines);
+
+    private sealed record TableGrid(
+        double X,
+        double Y,
+        double[] ColXOffsets,
+        double RowHeight,
+        string[][] Cells);
+
+    private sealed record FigureFrame(double X, double Y, double Width, double Height, string[] Labels);
 }
 
