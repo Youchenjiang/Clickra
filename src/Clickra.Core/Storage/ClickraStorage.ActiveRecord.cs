@@ -245,7 +245,8 @@ namespace Clickra.Core
             {
                 if (!Directory.Exists(TasksDir)) return new List<string>();
                 return Directory.GetFiles(TasksDir, "task-*.tmp")
-                    .OrderByDescending(f => Path.GetFileName(f))
+                    .OrderByDescending(f => File.GetLastWriteTime(f))
+                    .ThenByDescending(f => Path.GetFileName(f))
                     .Select(f => Path.GetFileNameWithoutExtension(f)["task-".Length..])
                     .ToList();
             }
