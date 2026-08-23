@@ -124,10 +124,18 @@
     - [x] **命名空間整合 (2026/08/08 完成)**：10 個 `TestSuite` partial 檔已移入 `Clickra.Core.Tests` 命名空間並移除 S3903 pragma，解決全域命名空間污染（CS-W1061）。
     - **升級測試框架**：後續規劃將自建的 `TestRunner` 升級為業界標準的單元測試框架（如 xUnit 或 NUnit），以利於在 CI 流程中整合覆蓋率分析。
 - [ ] **[R1-5] Quality Gate Observations**：品質閘門觀察。
+    - **SonarCloud 參數過多 (2026/08/23 記錄)**：`WriteTaskFileInternal` 12 參數、`CompleteTask` 9 參數，均超過 SonarCloud 門檻 7。需引入 `TaskFileData` record 類型封裝參數，或將可選參數改為 options object。此為架構級重構，留待下一個 PR 處理。
+    - **Localization "Excel" 結構性重複 (2026/08/23 記錄)**：`Localization.cs` 的 5 種語言字典中 "Excel" 出現5次，SonarCloud 警告 Define a constant。此為 i18n 字典結構性重複（同 R1-5 Localization 字典重複），不單獨處理。
     - **CS-R1137 readonly 誤報 ×3**：`_isPromptingVisualSplitter`（volatile 欄位不得宣告 readonly）、`_visualSplitZoomDragLastX/Y`（拖曳期間持續變動）——DeepSource 誤判，需在儀表板標 ignore，不得為此改程式碼。
     - **SonarCloud S8970 null-forgiving ×10 已全數修正 (2026/08/09)**：`VisualSplitter.cs` 的 `_tipFont!`/`_msgFont ?? _tipFont!` 並非無法處理——它們是缺 null guard 的症狀。正確修法：n-selector 用 `Font? uiFont = _msgFont ?? _tipFont; if (uiFont == null) return;`、zoom overlay 用 `tipFont`/`uiFont` 兩個非 null local + 前置 guard。全量重建 0 警告 0 錯誤，`!` 在該檔歸零。教訓：遇到「直接刪除會報編譯警告」的 analyzer finding，正確做法是重構出可證明的非 null 路徑，而非保留運算子並標記誤判。
     - **Documentation Coverage 基線移動觀察**：DeepSource 的覆蓋率參考值會隨變更集同步移動（三次 run：0.4→9.7、3.1→12.4、10.7→20，差值恆為 9.3），單靠補文件追不上；新程式碼仍應持續補 XML 文件，閘門門檻需在儀表板設定合理值。
     - **Localization 字典結構性重複 (2026/08/09 記錄)**：SonarCloud 的 Duplications measures 將 `Localization.cs` 的 5 種語言字典鍵結構（鍵相同、值不同）判為重複（New Code 12 行、54.5%）。這是 i18n 字典資料結構的必然模式，且 repo 既有 4 個 143 行字典本就互相重複；消除需將 Localization 重構成「基底字典 + 語言覆寫」的架構級改動，留待 Localization 專項重構，不影響品質閘門（New Code 重複率 0.6% < 3%）。
+- [x] **[R1-7] Per-Task Queue & Concurrent Conversion Infrastructure**：per-task 任務佇列與並行轉換基礎架構。
+    - 以 `tasks/task-{id}.tmp` 取代單一 `active.tmp` IPC，解決多個並行轉換互相覆蓋進度的問題。
+    - 新增 `Task` API（StartTask / CompleteTask / ParkTask / DeleteTask / GetActiveTasks 等），支援 `Parked` 狀態與可配置保留天數。
+    - 新增 `CLICKRA_DATA_DIR` 環境變數覆寫，支援可攜式執行與測試隔離。
+    - 新增 `FileTypes` UI 檔案類型註冊表（pdf / word / excel / ppt / image），為 Fluent 儀表板重設計提供基礎。
+    - Legacy `active.tmp` API 暫時保留，待 Clickra.CLI 遷移後移除。
 - [ ] **[R1-6] Dev Scaffolding Cleanup**：開發期清理。
     - [x] **移除視覺分割測試後門**：移除 `ClickraCli.cs` 中硬編碼的測試 PDF 路徑與依執行檔名稱（`TestVisualSplitter` / `ClickraVisualSplitter`）自動進入視覺分割模式的開發測試邏輯，正式版本應僅由 CLI 旗標與參數驅動。
     - [x] **本機工具狀態隔離 (2026/08/11 完成)**：已將 `.freebuff/`（本機工具 SQLite 狀態）與 `Clickra.rar`（本機備份檔）加入 `.gitignore`，避免污染 git status 與誤提交。
