@@ -201,7 +201,7 @@ static partial class TestSuite
             }
         });
 
-        runner.Run("Task queue: legacy active.tmp is migrated away and queue orders newest first", () =>
+        runner.Run("Task queue: legacy active.tmp is preserved and queue orders newest first", () =>
         {
             string dataDir = ClickraStorage.GetDataDir();
             string legacy = Path.Combine(dataDir, "active.tmp");
@@ -211,9 +211,9 @@ static partial class TestSuite
             string second = ClickraStorage.StartTask("compress-pdf", 1, @"C:\in\z.pdf");
             try
             {
-                Assert.True(!File.Exists(legacy), "Legacy active.tmp should be removed after migration.");
+                Assert.True(File.Exists(legacy), "Legacy active.tmp must be preserved for CLI compatibility.");
                 var active = ClickraStorage.GetActiveTasks();
-                Assert.True(active.Count == 2, $"Expected 2 active tasks after migration, got {active.Count}.");
+                Assert.True(active.Count == 2, $"Expected 2 active tasks, got {active.Count}.");
                 Assert.True(active[0].Id == second, "Newest task must come first in the queue.");
                 Assert.True(active[1].Id == first, "Older task must come second in the queue.");
             }
@@ -221,6 +221,7 @@ static partial class TestSuite
             {
                 ClickraStorage.DeleteTask(first);
                 ClickraStorage.DeleteTask(second);
+                try { File.Delete(legacy); } catch { }
             }
         });
     }

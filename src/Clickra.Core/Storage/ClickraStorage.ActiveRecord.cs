@@ -223,11 +223,9 @@ namespace Clickra.Core
                 {
                     Directory.CreateDirectory(TasksDir);
                 }
-                // 舊版單一 active.tmp 已由 per-task 檔取代，一併清除避免混淆。
-                if (File.Exists(LegacyActiveFile))
-                {
-                    try { File.Delete(LegacyActiveFile); } catch { }
-                }
+                // NOTE: Legacy active.tmp is NOT deleted here. Clickra.CLI
+                // (ProgressWindow, DashboardWindow) still writes to it.
+                // Defer cleanup until the legacy API is fully migrated.
             }
             catch { }
         }
