@@ -257,7 +257,9 @@ namespace Clickra.Core
 
         /// <summary>清除過期的任務檔：已完成超過 10 分鐘、進行中超過 24 小時（遺棄）、
         /// 或建立進程已死的進行中任務（崩潰/被強制結束/系統重啟）——後者記錄為
-        /// Canceled 歷史後刪除，避免 dashboard 永遠顯示「轉換中」。</summary>
+        /// Canceled 歷史後刪除，避免 dashboard 永遠顯示「轉換中」。
+        /// 注意：進行中任務的檔案 last-write-time 由 SetTaskIndex/SetTaskInProgress
+        /// 更新，因此 24h 超時實際上偵測的是「24 小時無任何進度更新」。</summary>
         private static void PruneTasks()
         {
             try
@@ -282,15 +284,20 @@ namespace Clickra.Core
                         int parkedTtlDays = parked ? GetParkedRetentionDays() : 0;
                         TimeSpan age = now - File.GetLastWriteTime(file);
 
-                        // 遺棄：進行中（Pending/InProgress）但建立進程已死，不可能再更新。
-                        bool abandoned = !finished && !parked && entry.Value.Pid > 0 && !IsProcessAlive(entry.Value.Pid);
-                        if (abandoned)
+                        // Case 1: Dead PID — process crashed/killed, task is orphaned.
+                        bool deadPid = !finished && !parked && entry.Value.Pid > 0 && !IsProcessAlive(entry.Value.Pid);
+                        // Case 2: Active but no progress for 24h — ghost InProgress
+                        // (thread died inside live process) or stalled conversion.
+                        bool stale = !finished && !parked && !deadPid && age.TotalHours > AbandonedTaskTtlHours;
+
+                        if (deadPid || stale)
                         {
                             lock (FileLock)
                             {
                                 var e = entry.Value;
                                 string cleanInputs = e.InputPaths.Replace("\r", " ").Replace("\n", " ").Replace("|", " ");
-                                string historyLine = $"{e.Time}|{e.Command}|{e.FileCount}|Failed|Canceled|{now:yyyy-MM-dd HH:mm:ss}|-1|{cleanInputs}|{e.OutputPath}";
+                                string reason = deadPid ? "Canceled" : "Canceled";
+                                string historyLine = $"{e.Time}|{e.Command}|{e.FileCount}|Failed|{reason}|{now:yyyy-MM-dd HH:mm:ss}|-1|{cleanInputs}|{e.OutputPath}";
                                 File.AppendAllText(HistoryFile, historyLine + Environment.NewLine, System.Text.Encoding.UTF8);
                                 File.Delete(file);
                             }
@@ -301,7 +308,7 @@ namespace Clickra.Core
                             ? age.TotalMinutes > CompletedTaskTtlMinutes
                             : parked
                                 ? (parkedTtlDays > 0 && age.TotalDays > parkedTtlDays)
-                                : age.TotalHours > AbandonedTaskTtlHours;
+                                : false; // active tasks handled above
                         if (expired)
                         {
                             File.Delete(file);
