@@ -270,53 +270,66 @@ namespace Clickra.Core
                 var now = DateTime.UtcNow;
                 foreach (string file in Directory.GetFiles(TasksDir, "task-*.tmp"))
                 {
-                    try
-                    {
-                        string taskId = Path.GetFileNameWithoutExtension(file);
-                        if (taskId.StartsWith("task-", StringComparison.OrdinalIgnoreCase))
-                        {
-                            taskId = taskId["task-".Length..];
-                        }
-                        var entry = ReadTaskFileInternal(taskId);
-                        if (!entry.HasValue) continue;
-
-                        bool finished = entry.Value.Status == ConversionStatus.Success || entry.Value.Status == ConversionStatus.Failed;
-                        bool parked = entry.Value.Status == ConversionStatus.Parked;
-                        int parkedTtlDays = parked ? GetParkedRetentionDays() : 0;
-                        TimeSpan age = now - File.GetLastWriteTime(file);
-
-                        // Case 1: Dead PID — process crashed/killed, task is orphaned.
-                        bool deadPid = !finished && !parked && entry.Value.Pid > 0 && !IsProcessAlive(entry.Value.Pid);
-                        // Case 2: Active but no progress for 24h — ghost InProgress
-                        // (thread died inside live process) or stalled conversion.
-                        bool stale = !finished && !parked && !deadPid && age.TotalHours > AbandonedTaskTtlHours;
-
-                        if (deadPid || stale)
-                        {
-                            lock (FileLock)
-                            {
-                                var e = entry.Value;
-                                string cleanInputs = e.InputPaths.Replace("\r", " ").Replace("\n", " ").Replace("|", " ");
-                                string reason = deadPid ? "Abandoned" : "Canceled";
-                                string historyLine = $"{e.Time}|{e.Command}|{e.FileCount}|Failed|{reason}|{now:yyyy-MM-dd HH:mm:ss}|-1|{cleanInputs}|{e.OutputPath}";
-                                File.AppendAllText(HistoryFile, historyLine + Environment.NewLine, System.Text.Encoding.UTF8);
-                                File.Delete(file);
-                            }
-                            continue;
-                        }
-
-                        bool expired = false;
-                        if (finished) expired = age.TotalMinutes > CompletedTaskTtlMinutes;
-                        else if (parked) expired = parkedTtlDays > 0 && age.TotalDays > parkedTtlDays;
-                        if (expired)
-                        {
-                            File.Delete(file);
-                        }
-                    }
-                    catch { }
+                    try { PruneSingleTaskFile(file, now); }
+                    catch { /* skip corrupt task file */ }
                 }
             }
-            catch { }
+            catch { /* tasks dir not ready */ }
+        }
+
+        private static void PruneSingleTaskFile(string file, DateTime now)
+        {
+            string taskId = Path.GetFileNameWithoutExtension(file);
+            if (taskId.StartsWith("task-", StringComparison.OrdinalIgnoreCase))
+            {
+                taskId = taskId["task-".Length..];
+            }
+            var entry = ReadTaskFileInternal(taskId);
+            if (!entry.HasValue) return;
+
+            var e = entry.Value;
+            bool finished = e.Status == ConversionStatus.Success || e.Status == ConversionStatus.Failed;
+            bool parked = e.Status == ConversionStatus.Parked;
+            TimeSpan age = now - File.GetLastWriteTime(file);
+
+            if (IsOrphaned(e, finished, parked, age))
+            {
+                string reason = IsDeadPid(e, finished, parked) ? "Abandoned" : "Canceled";
+                WriteCanceledHistory(e, reason, now);
+                File.Delete(file);
+                return;
+            }
+
+            if (IsExpired(finished, parked, age))
+            {
+                File.Delete(file);
+            }
+        }
+
+        private static bool IsDeadPid(HistoryEntry e, bool finished, bool parked)
+            => !finished && !parked && e.Pid > 0 && !IsProcessAlive(e.Pid);
+
+        private static bool IsOrphaned(HistoryEntry e, bool finished, bool parked, TimeSpan age)
+        {
+            if (IsDeadPid(e, finished, parked)) return true;
+            return !finished && !parked && age.TotalHours > AbandonedTaskTtlHours;
+        }
+
+        private static bool IsExpired(bool finished, bool parked, TimeSpan age)
+        {
+            if (finished) return age.TotalMinutes > CompletedTaskTtlMinutes;
+            if (parked) return GetParkedRetentionDays() > 0 && age.TotalDays > GetParkedRetentionDays();
+            return false;
+        }
+
+        private static void WriteCanceledHistory(HistoryEntry e, string reason, DateTime now)
+        {
+            lock (FileLock)
+            {
+                string cleanInputs = e.InputPaths.Replace("\r", " ").Replace("\n", " ").Replace("|", " ");
+                string historyLine = $"{e.Time}|{e.Command}|{e.FileCount}|Failed|{reason}|{now:yyyy-MM-dd HH:mm:ss}|-1|{cleanInputs}|{e.OutputPath}";
+                File.AppendAllText(HistoryFile, historyLine + Environment.NewLine, System.Text.Encoding.UTF8);
+            }
         }
 
         /// <summary>指定的進程 ID 是否仍在執行（用於偵測遺棄任務）。</summary>
