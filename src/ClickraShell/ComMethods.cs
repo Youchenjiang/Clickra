@@ -23,10 +23,14 @@ namespace ClickraShell
 
     internal static class ComMethods
     {
-        private static readonly Guid ClsidApplicationActivationManager = new("45BA127D-10A8-46EA-8AB7-56EA9078943C");
-        private static readonly Guid IidApplicationActivationManager = new("2E941141-7F97-4756-BA1D-9DECDE894A3D");
         private static readonly string[] MenuKeys = { "Menu_Ppt2Pdf", "Menu_Word2Pdf", "Menu_Excel2Pdf", "Menu_MergePdf", "Menu_CompressPdf", "Menu_Img2Pdf", "Menu_ImgMerge", "Menu_ImgStitch", "Menu_TranslatePdf", "Menu_DecryptPdf", "Menu_SplitPdf" };
         private static readonly string[] SubArgs = { "ppt2pdf", "word2pdf", "excel2pdf", "merge-pdf", "compress-pdf", "img2pdf", "img-merge", "img-stitch", "translate-pdf", "decrypt-pdf", "split-pdf" };
+        /// <summary>Per-command icon files, positionally aligned with SubArgs. The root command (-1) uses app.ico.</summary>
+        private static readonly string[] IconFiles = {
+            "menu-ppt2pdf.ico", "menu-word2pdf.ico", "menu-excel2pdf.ico", "menu-merge-pdf.ico",
+            "menu-compress-pdf.ico", "menu-img2pdf.ico", "menu-img-merge.ico", "menu-img-stitch.ico",
+            "menu-translate-pdf.ico", "menu-decrypt-pdf.ico", "menu-split-pdf.ico"
+        };
 
         /// <summary>Allocates a COM object with the given vtable and type, then performs a
         /// QueryInterface and releases the temporary reference.</summary>
@@ -98,16 +102,22 @@ namespace ClickraShell
             *ppsz = Marshal.StringToCoTaskMemUni(t); return 0;
         }
 
-        /// <summary>IExplorerCommand.GetIcon — icon path for the root command, E_NOTIMPL otherwise.</summary>
+        /// <summary>IExplorerCommand.GetIcon — icon path for every command. Each subcommand gets its
+        /// own icon (menu-&lt;cmd&gt;.ico) so the action is recognizable; the root uses app.ico.
+        /// .ico files are preferred because the shell cannot reliably extract icons from a bare
+        /// .png path (it renders an empty box). Falls back to app.ico, then app.png.</summary>
         [UnmanagedCallersOnly(CallConvs = new[] { typeof(CallConvStdcall) })]
         public static unsafe int GetIcon(IntPtr _this, IntPtr psi, IntPtr* ppsz)
         {
             *ppsz = IntPtr.Zero;
-            if (((UniversalObject*)_this)->Data == -1)
-            {
-                string iconPath = Path.Combine(ShellUtils.GetModuleDir(), "app.png");
-                if (File.Exists(iconPath)) { *ppsz = Marshal.StringToCoTaskMemUni(iconPath); return 0; }
-            }
+            int idx = ((UniversalObject*)_this)->Data;
+            string dir = ShellUtils.GetModuleDir();
+            string iconPath = idx >= 0 && idx < IconFiles.Length
+                ? Path.Combine(dir, IconFiles[idx])
+                : Path.Combine(dir, "app.ico");
+            if (!File.Exists(iconPath)) iconPath = Path.Combine(dir, "app.ico");
+            if (!File.Exists(iconPath)) iconPath = Path.Combine(dir, "app.png");
+            if (File.Exists(iconPath)) { *ppsz = Marshal.StringToCoTaskMemUni(iconPath); return 0; }
             return -2147467263; // E_NOTIMPL
         }
 
@@ -218,53 +228,35 @@ namespace ClickraShell
             foreach (var f in files) sb.Append(" \"").Append(f).Append("\"");
 
             string arguments = sb.ToString();
-            string? appUserModelId = ShellUtils.GetPackagedAppUserModelId();
-            if (!string.IsNullOrEmpty(appUserModelId) && ActivatePackagedApp(appUserModelId, arguments)) return 0;
 
+            // Single MSIX: hand the verb + file list to ClickraLauncher.exe,
+            // which picks the UI for this machine (Fluent when .NET 8+ and
+            // Windows App Runtime are installed, native Win32 otherwise) and
+            // forwards the arguments unchanged.
+            //
+            // 刻意用 CreateProcess（UseShellExecute=false）而不是 ShellExecute：
+            // ShellExecute 會把啟動交給 shell，產生的子程序成為孤兒、脫離套件的程序樹，
+            // 解除安裝時 Windows 無法自動關閉/終止它，會被「應用程式仍在執行」擋住。
+            // 由載入 ClickraShell.dll 的 dllhost（本身在套件程序樹內）直接建立子程序，
+            // 整個啟動鏈都留在套件內，解除安裝才能自動終止。
             string moduleDir = ShellUtils.GetModuleDir();
+            string launcher = Path.Combine(moduleDir, "ClickraLauncher.exe");
+            if (File.Exists(launcher))
+            {
+                Process.Start(new ProcessStartInfo(launcher, arguments) { UseShellExecute = false })?.Dispose();
+                return 0;
+            }
+
+            // Fallback for non-packaged (unpacked) deployments: launch the
+            // Fluent exe directly, or the native exe if Fluent is absent.
             string app = Path.Combine(moduleDir, "Clickra.Fluent.exe");
             if (!File.Exists(app)) app = Path.Combine(moduleDir, "Clickra.exe");
-            if (File.Exists(app)) Process.Start(new ProcessStartInfo(app, arguments) { UseShellExecute = true });
+            if (File.Exists(app)) Process.Start(new ProcessStartInfo(app, arguments) { UseShellExecute = false })?.Dispose();
             return 0;
         }
 
         /// <summary>IEnumExplorerCommand.Next — creates the next batch of command objects.</summary>
 
-        [System.Diagnostics.CodeAnalysis.SuppressMessage("Security", "S6640:Use a safe type when calling unmanaged code",
-            Justification = "NativeAOT shell extension has no managed wrapper for IApplicationActivationManager; the COM vtable is dispatched directly (same pattern as the rest of this file).")]
-        private static unsafe bool ActivatePackagedApp(string appUserModelId, string arguments)
-        {
-            IntPtr manager = IntPtr.Zero;
-            IntPtr appId = IntPtr.Zero;
-            IntPtr args = IntPtr.Zero;
-            try
-            {
-                int hr = CoCreateInstance(ClsidApplicationActivationManager, IntPtr.Zero, 0x4, IidApplicationActivationManager, out manager);
-                if (hr < 0 || manager == IntPtr.Zero) return false;
-
-                appId = Marshal.StringToCoTaskMemUni(appUserModelId);
-                args = Marshal.StringToCoTaskMemUni(arguments);
-                IntPtr vtable = *(IntPtr*)manager;
-                var activate = (delegate* unmanaged[Stdcall]<IntPtr, IntPtr, IntPtr, uint, uint*, int>)(*(IntPtr*)(vtable + 3 * IntPtr.Size));
-                uint processId = 0;
-                return activate(manager, appId, args, 0, &processId) >= 0;
-            }
-            catch { return false; }
-            finally
-            {
-                if (args != IntPtr.Zero) Marshal.FreeCoTaskMem(args);
-                if (appId != IntPtr.Zero) Marshal.FreeCoTaskMem(appId);
-                if (manager != IntPtr.Zero)
-                {
-                    IntPtr vtable = *(IntPtr*)manager;
-                    var release = (delegate* unmanaged[Stdcall]<IntPtr, uint>)(*(IntPtr*)(vtable + 2 * IntPtr.Size));
-                    release(manager);
-                }
-            }
-        }
-
-        [DllImport("ole32.dll")]
-        private static extern int CoCreateInstance(in Guid rclsid, IntPtr pUnkOuter, uint dwClsContext, in Guid riid, out IntPtr ppv); // skipcq: CS-R1138 — parameter order is fixed by the Win32 COM ABI.
         [UnmanagedCallersOnly(CallConvs = new[] { typeof(CallConvStdcall) })]
         public static unsafe int EnumNext(IntPtr _this, uint celt, IntPtr* rgelt, uint* pcelt)
         {
