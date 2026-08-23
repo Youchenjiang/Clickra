@@ -86,7 +86,7 @@ namespace Clickra.Core
                     try
                     {
                         string cleanErr = (errorMsg ?? "").Replace("\r", " ").Replace("\n", " ").Replace("|", " ");
-                        string et = endTime ?? DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
+                        string et = endTime ?? DateTime.UtcNow.ToString("yyyy-MM-dd HH:mm:ss");
 
                         // Read existing task to preserve FileCount/InputPaths when caller omits them.
                         var existing = ReadTaskFileInternal(taskId);
@@ -113,7 +113,7 @@ namespace Clickra.Core
                         // so the UI does not show a phantom success.
                         try
                         {
-                            WriteTaskFileInternal(taskId, command, 0, ConversionStatus.Failed, "History persistence error", startTime, "", 0, "", endTime ?? DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss"), -1, Environment.ProcessId);
+                            WriteTaskFileInternal(taskId, command, 0, ConversionStatus.Failed, "History persistence error", startTime, "", 0, "", endTime ?? DateTime.UtcNow.ToString("yyyy-MM-dd HH:mm:ss"), -1, Environment.ProcessId);
                         }
                         catch { }
                     }
@@ -266,7 +266,7 @@ namespace Clickra.Core
             {
                 EnsureTasksDir();
                 if (!Directory.Exists(TasksDir)) return;
-                var now = DateTime.Now;
+                var now = DateTime.UtcNow;
                 foreach (string file in Directory.GetFiles(TasksDir, "task-*.tmp"))
                 {
                     try
@@ -296,7 +296,7 @@ namespace Clickra.Core
                             {
                                 var e = entry.Value;
                                 string cleanInputs = e.InputPaths.Replace("\r", " ").Replace("\n", " ").Replace("|", " ");
-                                string reason = deadPid ? "Canceled" : "Canceled";
+                                string reason = deadPid ? "Abandoned" : "Canceled";
                                 string historyLine = $"{e.Time}|{e.Command}|{e.FileCount}|Failed|{reason}|{now:yyyy-MM-dd HH:mm:ss}|-1|{cleanInputs}|{e.OutputPath}";
                                 File.AppendAllText(HistoryFile, historyLine + Environment.NewLine, System.Text.Encoding.UTF8);
                                 File.Delete(file);
@@ -304,11 +304,9 @@ namespace Clickra.Core
                             continue;
                         }
 
-                        bool expired = finished
-                            ? age.TotalMinutes > CompletedTaskTtlMinutes
-                            : parked
-                                ? (parkedTtlDays > 0 && age.TotalDays > parkedTtlDays)
-                                : false; // active tasks handled above
+                        bool expired = false;
+                        if (finished) expired = age.TotalMinutes > CompletedTaskTtlMinutes;
+                        else if (parked) expired = parkedTtlDays > 0 && age.TotalDays > parkedTtlDays;
                         if (expired)
                         {
                             File.Delete(file);
@@ -341,8 +339,7 @@ namespace Clickra.Core
                 try
                 {
                     using var sw = new StreamWriter(TaskFilePath(taskId), false, System.Text.Encoding.UTF8);
-                    sw.WriteLine($"Id={taskId}");
-                    sw.WriteLine($"Time={time ?? DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss")}");
+                    sw.WriteLine($"Id={taskId}");                            sw.WriteLine($"Time={time ?? DateTime.UtcNow.ToString("yyyy-MM-dd HH:mm:ss")}");
                     sw.WriteLine($"Command={command}");
                     sw.WriteLine($"FileCount={fileCount}");
                     sw.WriteLine($"Status={status}");
@@ -374,7 +371,7 @@ namespace Clickra.Core
                         int idx = line.IndexOf('=');
                         if (idx > 0)
                         {
-                            dict[line.Substring(0, idx)] = line.Substring(idx + 1);
+                            dict[line[..idx]] = line[(idx + 1)..];
                         }
                     }
 
@@ -460,7 +457,7 @@ namespace Clickra.Core
                     try
                     {
                         string cleanErr = (errorMsg ?? "").Replace("\r", " ").Replace("\n", " ").Replace("|", " ");
-                        string et = endTime ?? DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
+                        string et = endTime ?? DateTime.UtcNow.ToString("yyyy-MM-dd HH:mm:ss");
                         string inputs = (inputPaths ?? "").Replace("\r", " ").Replace("\n", " ").Replace("|", " ");
                         string output = (outputPath ?? "").Replace("\r", " ").Replace("\n", " ").Replace("|", " ");
 
@@ -515,8 +512,7 @@ namespace Clickra.Core
             {
                 try
                 {
-                    using var sw = new StreamWriter(ActiveFile, false, System.Text.Encoding.UTF8);
-                    sw.WriteLine($"Time={time ?? DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss")}");
+                    using var sw = new StreamWriter(ActiveFile, false, System.Text.Encoding.UTF8);                            sw.WriteLine($"Time={time ?? DateTime.UtcNow.ToString("yyyy-MM-dd HH:mm:ss")}");
                     sw.WriteLine($"Command={command}");
                     sw.WriteLine($"FileCount={fileCount}");
                     sw.WriteLine($"Status={status}");
@@ -547,7 +543,7 @@ namespace Clickra.Core
                         int idx = line.IndexOf('=');
                         if (idx > 0)
                         {
-                            dict[line.Substring(0, idx)] = line.Substring(idx + 1);
+                            dict[line[..idx]] = line[(idx + 1)..];
                         }
                     }
 

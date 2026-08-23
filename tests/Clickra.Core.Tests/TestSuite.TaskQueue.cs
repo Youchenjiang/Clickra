@@ -192,8 +192,8 @@ static partial class TestSuite
                     "Task with a dead owner pid must be pruned from the active queue.");
 
                 var history = ClickraStorage.GetHistory(10);
-                Assert.True(history.Any(h => h.Command == "split-pdf" && !h.IsSuccess && h.ErrorMessage == "Canceled"),
-                    "Abandoned task must be recorded in history as Canceled.");
+                Assert.True(history.Any(h => h.Command == "split-pdf" && !h.IsSuccess && h.ErrorMessage == "Abandoned"),
+                    "Abandoned task must be recorded in history as Abandoned.");
             }
             finally
             {

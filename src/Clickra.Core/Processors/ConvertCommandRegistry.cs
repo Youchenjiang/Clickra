@@ -15,7 +15,7 @@ public static class ConvertCommandRegistry
         private static readonly string[] PptExtensions = { ".ppt", ".pptx" };
         private static readonly string[] WordExtensions = { ".doc", ".docx" };
         private static readonly string[] ExcelExtensions = { ".xls", ".xlsx" };
-        private static readonly string[] ImageExtensions = { ".jpg", ".jpeg", ".png", ".bmp", ".gif", ".tiff", ".webp" };
+        private static readonly string[] ImageExtensions = [".jpg", ".jpeg", ".png", ".bmp", ".gif", ".tiff", ".webp"];
 
         /// <summary>UI 檔案類型分類：先選類型再選命令，從源頭避免混雜類型。</summary>
         private static readonly (string Type, string[] Extensions, string[] Commands)[] FileTypes =
