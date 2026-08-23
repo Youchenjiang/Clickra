@@ -70,6 +70,8 @@ namespace Clickra.Core
                 {
                     acquired = true;
                 }
+                if (!acquired)
+                    throw new TimeoutException("Storage mutex not acquired within 5 s; aborting to prevent concurrent file corruption.");
                 action();
             }
             finally
@@ -92,6 +94,8 @@ namespace Clickra.Core
                 {
                     acquired = true;
                 }
+                if (!acquired)
+                    throw new TimeoutException("Storage mutex not acquired within 5 s; aborting to prevent concurrent file corruption.");
                 return func();
             }
             finally
