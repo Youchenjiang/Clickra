@@ -87,25 +87,23 @@ namespace Clickra.Core
                     {
                         string cleanErr = (errorMsg ?? "").Replace("\r", " ").Replace("\n", " ").Replace("|", " ");
                         string et = endTime ?? DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
-                        string inputs = (inputPaths ?? "").Replace("\r", " ").Replace("\n", " ").Replace("|", " ");
-                        string output = (outputPath ?? "").Replace("\r", " ").Replace("\n", " ").Replace("|", " ");
+
+                        // Read existing task to preserve FileCount/InputPaths when caller omits them.
+                        var existing = ReadTaskFileInternal(taskId);
+                        string inputs = inputPaths != null
+                            ? inputPaths.Replace("\r", " ").Replace("\n", " ").Replace("|", " ")
+                            : existing?.InputPaths ?? "";
+                        string output = outputPath != null
+                            ? outputPath.Replace("\r", " ").Replace("\n", " ").Replace("|", " ")
+                            : existing?.OutputPath ?? "";
 
                         var inputList = inputs.Split(new[] { ';' }, StringSplitOptions.RemoveEmptyEntries);
+                        int fileCount = inputList.Length > 0 ? inputList.Length : existing?.FileCount ?? 0;
+                        int currentIndex = existing?.CurrentIndex ?? 0;
 
-                        int currentIndex = 0;
-                        try
-                        {
-                            var activeEntry = ReadTaskFileInternal(taskId);
-                            if (activeEntry.HasValue)
-                            {
-                                currentIndex = activeEntry.Value.CurrentIndex;
-                            }
-                        }
-                        catch { }
+                        WriteTaskFileInternal(taskId, command, fileCount, isSuccess ? ConversionStatus.Success : ConversionStatus.Failed, cleanErr, startTime, inputs, currentIndex, output, et, elapsedMs, Environment.ProcessId);
 
-                        WriteTaskFileInternal(taskId, command, inputList.Length, isSuccess ? ConversionStatus.Success : ConversionStatus.Failed, cleanErr, startTime, inputs, currentIndex, output, et, elapsedMs, Environment.ProcessId);
-
-                        string historyLine = $"{startTime}|{command}|{inputList.Length}|{(isSuccess ? "Success" : "Failed")}|{cleanErr}|{et}|{elapsedMs}|{inputs}|{output}";
+                        string historyLine = $"{startTime}|{command}|{fileCount}|{(isSuccess ? "Success" : "Failed")}|{cleanErr}|{et}|{elapsedMs}|{inputs}|{output}";
                         File.AppendAllText(HistoryFile, historyLine + Environment.NewLine, System.Text.Encoding.UTF8);
                     }
                     catch { }
