@@ -123,7 +123,7 @@ static partial class TestSuite
                 var resumed = ClickraStorage.GetTask(a);
                 Assert.True(resumed.HasValue && resumed.Value.Status == ConversionStatus.InProgress,
                     "Resumed task must be InProgress.");
-                Assert.True(resumed.Value.CurrentIndex == 1, "Resumed task must keep its next index.");
+                Assert.True(resumed.HasValue && resumed.Value.CurrentIndex == 1, "Resumed task must keep its next index.");
 
                 ClickraStorage.CompleteTask(a, "decrypt-pdf", "2026-08-16 12:00:00", true, "", null, 900,
                     @"C:\in\a1.pdf;C:\in\a2.pdf", @"C:\out\a1.pdf;C:\out\a2.pdf");
