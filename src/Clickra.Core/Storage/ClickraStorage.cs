@@ -17,7 +17,7 @@ namespace Clickra.Core
 
     public static partial class ClickraStorage
     {
-        private static readonly string DataDir;
+        private static readonly string DataDir = string.Empty;
         private static readonly string SettingsFile;
         private static readonly string HistoryFile;
         private static readonly object FileLock = new object();

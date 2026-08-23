@@ -15,8 +15,8 @@ namespace Clickra.Core
         // 格式：每行 Key=Value，欄位有 Id / Time / Command / FileCount / Status /
         // ErrorMessage / InputPaths / CurrentIndex / OutputPath / EndTime / ElapsedMs / Pid
 
-        private static string TasksDir => Path.Combine(DataDir!, "tasks");
-        private static string LegacyActiveFile => Path.Combine(DataDir!, "active.tmp");
+        private static string TasksDir => Path.Combine(DataDir, "tasks");
+        private static string LegacyActiveFile => Path.Combine(DataDir, "active.tmp");
 
         // 完成後的任務檔保留一小段時間供 UI 短暫顯示結果，之後自動清除。
         private const int CompletedTaskTtlMinutes = 10;
@@ -236,9 +236,9 @@ namespace Clickra.Core
                 // NOTE: Legacy active.tmp is NOT deleted here. Clickra.CLI
                 // (ProgressWindow, DashboardWindow) still writes to it.
                 // Defer cleanup until the legacy API is fully migrated.
-            }
-            catch { }
+            }            catch { /* tasks dir may not exist yet on first run */ }
         }
+
 
         private static List<string> ListTaskFiles()
         {
@@ -420,7 +420,7 @@ namespace Clickra.Core
         // These methods are retained for backward compatibility with Clickra.CLI
         // (ProgressWindow, ClickraStartup) until they migrate to the Task API above.
 
-        private static string ActiveFile => Path.Combine(DataDir!, "active.tmp");
+        private static string ActiveFile => Path.Combine(DataDir, "active.tmp");
 
         /// <summary>
         /// 開始追蹤一個新的作業（Pending 狀態），寫入 active.tmp。

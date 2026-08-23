@@ -11,6 +11,8 @@ static partial class TestSuite
     private const string CmdDecryptPdf = "decrypt-pdf";
     private const string ParkReason = "Waiting for input";
     private const string SettingParkedRetention = "ParkedTaskRetention";
+    private const string TestInDir = @"C:\in";
+    private const string TestOutDir = @"C:\out";
     public static void RegisterTaskQueueTests(TestRunner runner)
     {
         runner.Run("Task queue: concurrent tasks keep independent progress files",
@@ -41,8 +43,8 @@ static partial class TestSuite
 
     private static void TestConcurrentTasksKeepIndependentProgressFiles()
     {
-        string a = ClickraStorage.StartTask(CmdSplitPdf, 1, @"C:\in\a.pdf");
-        string b = ClickraStorage.StartTask(CmdDecryptPdf, 2, @"C:\in\b1.pdf;C:\in\b2.pdf");
+        string a = ClickraStorage.StartTask(CmdSplitPdf, 1, TestInDir + "\\a.pdf");
+        string b = ClickraStorage.StartTask(CmdDecryptPdf, 2, TestInDir + "\\b1.pdf;" + TestInDir + "\\b2.pdf");
         try
         {
             ClickraStorage.SetTaskInProgress(a);
@@ -67,12 +69,12 @@ static partial class TestSuite
 
     private static void TestCompletingTaskLeavesQueueAndWritesHistory()
     {
-        string a = ClickraStorage.StartTask(CmdSplitPdf, 1, @"C:\in\a.pdf");
-        string b = ClickraStorage.StartTask(CmdDecryptPdf, 1, @"C:\in\b.pdf");
+        string a = ClickraStorage.StartTask(CmdSplitPdf, 1, TestInDir + "\\a.pdf");
+        string b = ClickraStorage.StartTask(CmdDecryptPdf, 1, TestInDir + "\\b.pdf");
         try
         {
             ClickraStorage.CompleteTask(a, CmdSplitPdf, "2026-08-16 12:00:00", true, "", null, 1234,
-                @"C:\in\a.pdf", @"C:\out\a_split.pdf");
+                TestInDir + "\\a.pdf", TestOutDir + "\\a_split.pdf");
             var active = ClickraStorage.GetActiveTasks();
             Assert.True(active.All(t => t.Id != a), "Completed task A must leave the active queue.");
             Assert.True(active.Any(t => t.Id == b), "Task B must stay in the queue while A completes.");
@@ -80,7 +82,7 @@ static partial class TestSuite
             Assert.True(finishedA.HasValue && finishedA.Value.Status == ConversionStatus.Success,
                 "Completed task A should keep its Success status file.");
             var history = ClickraStorage.GetHistory(10);
-            Assert.True(history.Any(h => h.Command == CmdSplitPdf && h.IsSuccess && h.OutputPath == @"C:\out\a_split.pdf"),
+            Assert.True(history.Any(h => h.Command == CmdSplitPdf && h.IsSuccess && h.OutputPath == TestOutDir + "\\a_split.pdf"),
                 "History line missing for the completed task A.");
         }
         finally { ClickraStorage.DeleteTask(a); ClickraStorage.DeleteTask(b); }
@@ -88,7 +90,7 @@ static partial class TestSuite
 
     private static void TestDeletingTaskRemovesProgressFile()
     {
-        string a = ClickraStorage.StartTask("merge-pdf", 2, @"C:\in\x.pdf;C:\in\y.pdf");
+        string a = ClickraStorage.StartTask("merge-pdf", 2, TestInDir + "\\x.pdf;" + TestInDir + "\\y.pdf");
         Assert.True(ClickraStorage.GetTask(a) != null, "Task should be readable right after StartTask.");
         ClickraStorage.DeleteTask(a);
         Assert.True(ClickraStorage.GetTask(a) == null, "Task must not be readable after DeleteTask.");
@@ -97,7 +99,7 @@ static partial class TestSuite
 
     private static void TestParkingMovesTaskToParkedWithIndex()
     {
-        string a = ClickraStorage.StartTask(CmdDecryptPdf, 2, @"C:\in\a1.pdf;C:\in\a2.pdf");
+        string a = ClickraStorage.StartTask(CmdDecryptPdf, 2, TestInDir + "\\a1.pdf;" + TestInDir + "\\a2.pdf");
         try
         {
             ClickraStorage.SetTaskInProgress(a);
@@ -118,7 +120,7 @@ static partial class TestSuite
 
     private static void TestResumingParkedTaskReusesIdentity()
     {
-        string a = ClickraStorage.StartTask(CmdDecryptPdf, 2, @"C:\in\a1.pdf;C:\in\a2.pdf");
+        string a = ClickraStorage.StartTask(CmdDecryptPdf, 2, TestInDir + "\\a1.pdf;" + TestInDir + "\\a2.pdf");
         try
         {
             ClickraStorage.SetTaskInProgress(a);
@@ -129,7 +131,7 @@ static partial class TestSuite
                 "Resumed task must be InProgress.");
             Assert.True(resumed.HasValue && resumed.Value.CurrentIndex == 1, "Resumed task must keep its next index.");
             ClickraStorage.CompleteTask(a, CmdDecryptPdf, "2026-08-16 12:00:00", true, "", null, 900,
-                @"C:\in\a1.pdf;C:\in\a2.pdf", @"C:\out\a1.pdf;C:\out\a2.pdf");
+                TestInDir + "\\a1.pdf;" + TestInDir + "\\a2.pdf", TestOutDir + "\\a1.pdf;" + TestOutDir + "\\a2.pdf");
             Assert.True(ClickraStorage.GetParkedTasks().All(t => t.Id != a), "Completed resumed task must not stay parked.");
             var history = ClickraStorage.GetHistory(10);
             Assert.True(history.Count(h => h.Command == CmdDecryptPdf) == 1,
@@ -151,7 +153,7 @@ static partial class TestSuite
 
     private static void TestSetTaskInProgressRefreshesPid()
     {
-        string a = ClickraStorage.StartTask(CmdSplitPdf, 1, @"C:\in\a.pdf");
+        string a = ClickraStorage.StartTask(CmdSplitPdf, 1, TestInDir + "\\a.pdf");
         try
         {
             ClickraStorage.SetTaskInProgress(a);
@@ -169,7 +171,7 @@ static partial class TestSuite
 
     private static void TestDeadPidTaskPrunedAsAbandoned()
     {
-        string a = ClickraStorage.StartTask(CmdSplitPdf, 1, @"C:\in\a.pdf");
+        string a = ClickraStorage.StartTask(CmdSplitPdf, 1, TestInDir + "\\a.pdf");
         try
         {
             ClickraStorage.SetTaskInProgress(a);
@@ -193,8 +195,8 @@ static partial class TestSuite
         string dataDir = ClickraStorage.GetDataDir();
         string legacy = Path.Combine(dataDir, "active.tmp");
         File.WriteAllText(legacy, "Time=2026-08-16 11:00:00\nCommand=merge-pdf\nStatus=InProgress\n");
-        string first = ClickraStorage.StartTask("merge-pdf", 2, @"C:\in\x.pdf;C:\in\y.pdf");
-        string second = ClickraStorage.StartTask("compress-pdf", 1, @"C:\in\z.pdf");
+        string first = ClickraStorage.StartTask("merge-pdf", 2, TestInDir + "\\x.pdf;" + TestInDir + "\\y.pdf");
+        string second = ClickraStorage.StartTask("compress-pdf", 1, TestInDir + "\\z.pdf");
         try
         {
             Assert.True(File.Exists(legacy), "Legacy active.tmp must be preserved for CLI compatibility.");
