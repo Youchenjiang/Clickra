@@ -764,6 +764,9 @@ namespace Clickra.UI
         {
             KillTimer(hwnd, (IntPtr)1);
             CleanupResources();
+            // 程序結束前清掉殘留的 ClickraShell surrogate（dllhost），
+            // 避免解除安裝時被「應用程式仍在執行」擋住。
+            ClickraShellProcess.KillSurrogateHosts();
             PostQuitMessage(0);
             return IntPtr.Zero;
         }
