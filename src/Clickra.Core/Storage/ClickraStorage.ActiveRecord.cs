@@ -24,6 +24,43 @@ namespace Clickra.Core
         private const int AbandonedTaskTtlHours = 24;
         private const string DateTimeFormat = "yyyy-MM-dd HH:mm:ss";
 
+        /// <summary>封裝 task-*.tmp 檔案所有欄位，供 WriteTaskFileInternal 使用。</summary>
+        private record TaskFileData
+        {
+            public string TaskId { get; init; } = string.Empty;
+            public string Command { get; init; } = string.Empty;
+            public int FileCount { get; init; }
+            public ConversionStatus Status { get; init; }
+            public string ErrorMessage { get; init; } = string.Empty;
+            public string? Time { get; init; }
+            public string? InputPaths { get; init; }
+            public int CurrentIndex { get; init; }
+            public string? OutputPath { get; init; }
+            public string? EndTime { get; init; }
+            public long ElapsedMs { get; init; } = -1;
+            public int Pid { get; init; }
+        }
+
+        /// <summary>從 HistoryEntry 構建 TaskFileData（保留所有既有欄位）。</summary>
+        private static TaskFileData ToTaskData(HistoryEntry entry, ConversionStatus status, string? errorMsg = null, string? endTime = null, long elapsedMs = -1, int? pidOverride = null)
+        {
+            return new TaskFileData
+            {
+                TaskId = entry.Id,
+                Command = entry.Command,
+                FileCount = entry.FileCount,
+                Status = status,
+                ErrorMessage = errorMsg ?? entry.ErrorMessage,
+                Time = entry.Time,
+                InputPaths = entry.InputPaths,
+                CurrentIndex = entry.CurrentIndex,
+                OutputPath = entry.OutputPath,
+                EndTime = endTime ?? entry.EndTime,
+                ElapsedMs = elapsedMs >= 0 ? elapsedMs : entry.ElapsedMs,
+                Pid = pidOverride ?? entry.Pid
+            };
+        }
+
         // 目前執行緒正在處理的任務（Win32 ProgressWindow 在同一執行緒上建立並
         // 回報任務；Fluent 走 Task.Run，執行緒不同，則退回 Pid 定位，見
         // SetActiveRecordIndex）。
@@ -40,7 +77,16 @@ namespace Clickra.Core
             RunWithMutex(() =>
             {
                 EnsureTasksDir();
-                if (!WriteTaskFileInternal(taskId, command, fileCount, ConversionStatus.Pending, "", null, inputPaths, pid: Environment.ProcessId))
+                var data = new TaskFileData
+                {
+                    TaskId = taskId,
+                    Command = command,
+                    FileCount = fileCount,
+                    Status = ConversionStatus.Pending,
+                    InputPaths = inputPaths,
+                    Pid = Environment.ProcessId
+                };
+                if (!WriteTaskFileInternal(data))
                     throw new IOException($"Failed to write task file for {taskId}; check data directory permissions.");
             });
             _threadTaskId = taskId;
@@ -56,7 +102,8 @@ namespace Clickra.Core
                 var entry = ReadTaskFileInternal(taskId);
                 if (entry.HasValue)
                 {
-                    WriteTaskFileInternal(taskId, entry.Value.Command, entry.Value.FileCount, ConversionStatus.InProgress, "", entry.Value.Time, entry.Value.InputPaths, entry.Value.CurrentIndex, entry.Value.OutputPath, entry.Value.EndTime, entry.Value.ElapsedMs, Environment.ProcessId);
+                    var data = ToTaskData(entry.Value, ConversionStatus.InProgress, pidOverride: Environment.ProcessId);
+                    WriteTaskFileInternal(data);
                 }
             });
         }
@@ -69,16 +116,29 @@ namespace Clickra.Core
                 var entry = ReadTaskFileInternal(taskId);
                 if (entry.HasValue)
                 {
-                    WriteTaskFileInternal(taskId, entry.Value.Command, entry.Value.FileCount, entry.Value.Status, entry.Value.ErrorMessage, entry.Value.Time, entry.Value.InputPaths, index, entry.Value.OutputPath, entry.Value.EndTime, entry.Value.ElapsedMs, entry.Value.Pid);
+                    var data = ToTaskData(entry.Value, entry.Value.Status) with { CurrentIndex = index };
+                    WriteTaskFileInternal(data);
                 }
             });
+        }
+
+        /// <summary>CompleteTask 參數封裝，減少方法參數數量。</summary>
+        public record CompleteTaskRequest
+        {
+            public string StartTime { get; init; } = string.Empty;
+            public bool IsSuccess { get; init; }
+            public string ErrorMsg { get; init; } = string.Empty;
+            public string? EndTime { get; init; }
+            public long ElapsedMs { get; init; } = -1;
+            public string? InputPaths { get; init; }
+            public string? OutputPath { get; init; }
         }
 
         /// <summary>
         /// 完成任務：寫入 Success/Failed 最終狀態並附加一行持久化歷史紀錄。
         /// 任務檔會保留一小段時間（見 CompletedTaskTtlMinutes）供 UI 顯示結果。
         /// </summary>
-        public static void CompleteTask(string taskId, string command, string startTime, bool isSuccess, string errorMsg, string? endTime = null, long elapsedMs = -1, string? inputPaths = null, string? outputPath = null)
+        public static void CompleteTask(string taskId, string command, CompleteTaskRequest req)
         {
             RunWithMutex(() =>
             {
@@ -86,26 +146,41 @@ namespace Clickra.Core
                 {
                     try
                     {
-                        string cleanErr = (errorMsg ?? "").Replace("\r", " ").Replace("\n", " ").Replace("|", " ");
-                        string et = endTime ?? DateTime.UtcNow.ToString(DateTimeFormat);
+                        string cleanErr = (req.ErrorMsg ?? "").Replace("\r", " ").Replace("\n", " ").Replace("|", " ");
+                        string et = req.EndTime ?? DateTime.UtcNow.ToString(DateTimeFormat);
 
                         // Read existing task to preserve FileCount/InputPaths when caller omits them.
                         var existing = ReadTaskFileInternal(taskId);
-                        string inputs = inputPaths != null
-                            ? inputPaths.Replace("\r", " ").Replace("\n", " ").Replace("|", " ")
+                        string inputs = req.InputPaths != null
+                            ? req.InputPaths.Replace("\r", " ").Replace("\n", " ").Replace("|", " ")
                             : existing?.InputPaths ?? "";
-                        string output = outputPath != null
-                            ? outputPath.Replace("\r", " ").Replace("\n", " ").Replace("|", " ")
+                        string output = req.OutputPath != null
+                            ? req.OutputPath.Replace("\r", " ").Replace("\n", " ").Replace("|", " ")
                             : existing?.OutputPath ?? "";
 
                         var inputList = inputs.Split(new[] { ';' }, StringSplitOptions.RemoveEmptyEntries);
                         int fileCount = inputList.Length > 0 ? inputList.Length : existing?.FileCount ?? 0;
                         int currentIndex = existing?.CurrentIndex ?? 0;
 
-                        var finalStatus = isSuccess ? ConversionStatus.Success : ConversionStatus.Failed;
-                        WriteTaskFileInternal(taskId, command, fileCount, finalStatus, cleanErr, startTime, inputs, currentIndex, output, et, elapsedMs, Environment.ProcessId);
+                        var finalStatus = req.IsSuccess ? ConversionStatus.Success : ConversionStatus.Failed;
+                        var data = new TaskFileData
+                        {
+                            TaskId = taskId,
+                            Command = command,
+                            FileCount = fileCount,
+                            Status = finalStatus,
+                            ErrorMessage = cleanErr,
+                            Time = req.StartTime,
+                            InputPaths = inputs,
+                            CurrentIndex = currentIndex,
+                            OutputPath = output,
+                            EndTime = et,
+                            ElapsedMs = req.ElapsedMs,
+                            Pid = Environment.ProcessId
+                        };
+                        WriteTaskFileInternal(data);
 
-                        string historyLine = $"{startTime}|{command}|{fileCount}|{finalStatus}|{cleanErr}|{et}|{elapsedMs}|{inputs}|{output}";
+                        string historyLine = $"{req.StartTime}|{command}|{fileCount}|{finalStatus}|{cleanErr}|{et}|{req.ElapsedMs}|{inputs}|{output}";
                         File.AppendAllText(HistoryFile, historyLine + Environment.NewLine, System.Text.Encoding.UTF8);
                     }
                     catch
@@ -114,7 +189,17 @@ namespace Clickra.Core
                         // so the UI does not show a phantom success.
                         try
                         {
-                            WriteTaskFileInternal(taskId, command, 0, ConversionStatus.Failed, "History persistence error", startTime, "", 0, "", endTime ?? DateTime.UtcNow.ToString(DateTimeFormat), -1, Environment.ProcessId);
+                            var fallback = new TaskFileData
+                            {
+                                TaskId = taskId,
+                                Command = command,
+                                Status = ConversionStatus.Failed,
+                                ErrorMessage = "History persistence error",
+                                Time = req.StartTime,
+                                EndTime = req.EndTime ?? DateTime.UtcNow.ToString(DateTimeFormat),
+                                Pid = Environment.ProcessId
+                            };
+                            WriteTaskFileInternal(fallback);
                         }
                         catch { /* best-effort fallback write */ }
                     }
@@ -134,7 +219,8 @@ namespace Clickra.Core
                 var entry = ReadTaskFileInternal(taskId);
                 if (entry.HasValue)
                 {
-                    WriteTaskFileInternal(taskId, entry.Value.Command, entry.Value.FileCount, ConversionStatus.Parked, reason, entry.Value.Time, entry.Value.InputPaths, nextIndex, entry.Value.OutputPath, entry.Value.EndTime, entry.Value.ElapsedMs, entry.Value.Pid);
+                    var data = ToTaskData(entry.Value, ConversionStatus.Parked, errorMsg: reason) with { CurrentIndex = nextIndex };
+                    WriteTaskFileInternal(data);
                 }
             });
             if (_threadTaskId == taskId) _threadTaskId = null;
@@ -347,24 +433,25 @@ namespace Clickra.Core
             }
         }
 
-        private static bool WriteTaskFileInternal(string taskId, string command, int fileCount, ConversionStatus status, string errorMsg, string? time = null, string? inputPaths = null, int currentIndex = 0, string? outputPath = null, string? endTime = null, long elapsedMs = -1, int pid = 0)
+        private static bool WriteTaskFileInternal(TaskFileData d)
         {
             lock (FileLock)
             {
                 try
                 {
-                    using var sw = new StreamWriter(TaskFilePath(taskId), false, System.Text.Encoding.UTF8);
-                    sw.WriteLine($"Id={taskId}");                            sw.WriteLine($"Time={time ?? DateTime.UtcNow.ToString(DateTimeFormat)}");
-                    sw.WriteLine($"Command={command}");
-                    sw.WriteLine($"FileCount={fileCount}");
-                    sw.WriteLine($"Status={status}");
-                    sw.WriteLine($"ErrorMessage={(errorMsg ?? "").Replace("\r", " ").Replace("\n", " ")}");
-                    sw.WriteLine($"InputPaths={(inputPaths ?? "").Replace("\r", " ").Replace("\n", " ")}");
-                    sw.WriteLine($"CurrentIndex={currentIndex}");
-                    sw.WriteLine($"OutputPath={(outputPath ?? "").Replace("\r", " ").Replace("\n", " ")}");
-                    sw.WriteLine($"EndTime={endTime ?? ""}");
-                    sw.WriteLine($"ElapsedMs={elapsedMs}");
-                    sw.WriteLine($"Pid={pid}");
+                    using var sw = new StreamWriter(TaskFilePath(d.TaskId), false, System.Text.Encoding.UTF8);
+                    sw.WriteLine($"Id={d.TaskId}");
+                    sw.WriteLine($"Time={d.Time ?? DateTime.UtcNow.ToString(DateTimeFormat)}");
+                    sw.WriteLine($"Command={d.Command}");
+                    sw.WriteLine($"FileCount={d.FileCount}");
+                    sw.WriteLine($"Status={d.Status}");
+                    sw.WriteLine($"ErrorMessage={(d.ErrorMessage ?? "").Replace("\r", " ").Replace("\n", " ")}");
+                    sw.WriteLine($"InputPaths={(d.InputPaths ?? "").Replace("\r", " ").Replace("\n", " ")}");
+                    sw.WriteLine($"CurrentIndex={d.CurrentIndex}");
+                    sw.WriteLine($"OutputPath={(d.OutputPath ?? "").Replace("\r", " ").Replace("\n", " ")}");
+                    sw.WriteLine($"EndTime={d.EndTime ?? ""}");
+                    sw.WriteLine($"ElapsedMs={d.ElapsedMs}");
+                    sw.WriteLine($"Pid={d.Pid}");
                     return true;
                 }
                 catch { return false; }

@@ -73,8 +73,14 @@ static partial class TestSuite
         string b = ClickraStorage.StartTask(CmdDecryptPdf, 1, TestInDir + "\\b.pdf");
         try
         {
-            ClickraStorage.CompleteTask(a, CmdSplitPdf, "2026-08-16 12:00:00", true, "", null, 1234,
-                TestInDir + "\\a.pdf", TestOutDir + "\\a_split.pdf");
+            ClickraStorage.CompleteTask(a, CmdSplitPdf, new ClickraStorage.CompleteTaskRequest
+            {
+                StartTime = "2026-08-16 12:00:00",
+                IsSuccess = true,
+                ElapsedMs = 1234,
+                InputPaths = TestInDir + "\\a.pdf",
+                OutputPath = TestOutDir + "\\a_split.pdf"
+            });
             var active = ClickraStorage.GetActiveTasks();
             Assert.True(active.All(t => t.Id != a), "Completed task A must leave the active queue.");
             Assert.True(active.Any(t => t.Id == b), "Task B must stay in the queue while A completes.");
@@ -130,8 +136,14 @@ static partial class TestSuite
             Assert.True(resumed.HasValue && resumed.Value.Status == ConversionStatus.InProgress,
                 "Resumed task must be InProgress.");
             Assert.True(resumed.HasValue && resumed.Value.CurrentIndex == 1, "Resumed task must keep its next index.");
-            ClickraStorage.CompleteTask(a, CmdDecryptPdf, "2026-08-16 12:00:00", true, "", null, 900,
-                TestInDir + "\\a1.pdf;" + TestInDir + "\\a2.pdf", TestOutDir + "\\a1.pdf;" + TestOutDir + "\\a2.pdf");
+            ClickraStorage.CompleteTask(a, CmdDecryptPdf, new ClickraStorage.CompleteTaskRequest
+            {
+                StartTime = "2026-08-16 12:00:00",
+                IsSuccess = true,
+                ElapsedMs = 900,
+                InputPaths = TestInDir + "\\a1.pdf;" + TestInDir + "\\a2.pdf",
+                OutputPath = TestOutDir + "\\a1.pdf;" + TestOutDir + "\\a2.pdf"
+            });
             Assert.True(ClickraStorage.GetParkedTasks().All(t => t.Id != a), "Completed resumed task must not stay parked.");
             var history = ClickraStorage.GetHistory(10);
             Assert.True(history.Count(h => h.Command == CmdDecryptPdf) == 1,
