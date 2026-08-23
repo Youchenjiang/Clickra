@@ -332,7 +332,7 @@ namespace Clickra.Core
             {
                 if (!Directory.Exists(TasksDir)) return new List<string>();
                 return Directory.GetFiles(TasksDir, "task-*.tmp")
-                    .OrderByDescending(f => GetTaskFileSortKey(f))
+                    .OrderByDescending(GetTaskFileSortKey)
                     .Select(f => Path.GetFileNameWithoutExtension(f)["task-".Length..])
                     .ToList();
             }
