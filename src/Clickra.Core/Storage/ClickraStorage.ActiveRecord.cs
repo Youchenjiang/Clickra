@@ -332,8 +332,7 @@ namespace Clickra.Core
             {
                 if (!Directory.Exists(TasksDir)) return new List<string>();
                 return Directory.GetFiles(TasksDir, "task-*.tmp")
-                    .OrderByDescending(File.GetLastWriteTime)
-                    .ThenByDescending(f => Path.GetFileName(f))
+                    .OrderByDescending(f => GetTaskFileSortKey(f))
                     .Select(f => Path.GetFileNameWithoutExtension(f)["task-".Length..])
                     .ToList();
             }
@@ -341,6 +340,19 @@ namespace Clickra.Core
             {
                 return new List<string>();
             }
+        }
+
+        /// <summary>Extract the creation timestamp from a task filename for ordering.
+        /// File.GetLastWriteTime has only 2-second resolution on NTFS, causing
+        /// ordering instability when two tasks are created within the same window.</summary>
+        private static string GetTaskFileSortKey(string filePath)
+        {
+            string name = Path.GetFileNameWithoutExtension(filePath); // task-{id}
+            string id = name.Length > "task-".Length ? name["task-".Length..] : name;
+            // NewTaskId format: yyyyMMdd-HHmmssfff-xxxxxxxxxxxx
+            string ts = id.Length >= 19 ? id[..19] : id;
+            // Zero-pad to 19 chars to ensure lexicographic sort matches chronological order
+            return ts.PadRight(19, '0');
         }
 
         /// <summary>清除過期的任務檔：已完成超過 10 分鐘、進行中超過 24 小時（遺棄）、
