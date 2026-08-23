@@ -20,11 +20,11 @@ public static class ConvertCommandRegistry
         /// <summary>UI 檔案類型分類：先選類型再選命令，從源頭避免混雜類型。</summary>
         private static readonly (string Type, string[] Extensions, string[] Commands)[] FileTypes =
         {
-            ("pdf", PdfExtensions, new[] { "merge-pdf", "compress-pdf", "translate-pdf", "decrypt-pdf", "split-pdf" }),
-            ("word", WordExtensions, new[] { "word2pdf" }),
-            ("excel", ExcelExtensions, new[] { "excel2pdf" }),
-            ("ppt", PptExtensions, new[] { "ppt2pdf" }),
-            ("image", ImageExtensions, new[] { "img2pdf", "img-merge", "img-stitch" })
+            ("pdf", PdfExtensions, ["merge-pdf", "compress-pdf", "translate-pdf", "decrypt-pdf", "split-pdf"]),
+            ("word", WordExtensions, ["word2pdf"]),
+            ("excel", ExcelExtensions, ["excel2pdf"]),
+            ("ppt", PptExtensions, ["ppt2pdf"]),
+            ("image", ImageExtensions, ["img2pdf", "img-merge", "img-stitch"])
         };
 
         /// <summary>File extensions accepted by a UI file type ("pdf", "word", "excel", "ppt", "image").</summary>
