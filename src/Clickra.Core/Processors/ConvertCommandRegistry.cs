@@ -32,7 +32,7 @@ public static class ConvertCommandRegistry
         {
             foreach (var entry in FileTypes)
             {
-                if (entry.Type == type) return entry.Extensions;
+                if (string.Equals(entry.Type, type, StringComparison.OrdinalIgnoreCase)) return entry.Extensions;
             }
             return Array.Empty<string>();
         }
@@ -42,7 +42,7 @@ public static class ConvertCommandRegistry
         {
             foreach (var entry in FileTypes)
             {
-                if (entry.Type == type) return entry.Commands;
+                if (string.Equals(entry.Type, type, StringComparison.OrdinalIgnoreCase)) return entry.Commands;
             }
             return Array.Empty<string>();
         }
