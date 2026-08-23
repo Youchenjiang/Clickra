@@ -75,11 +75,16 @@ internal static class ClickraStartup
     {
         if (quiet)
         {
-            try { ClickraStorage.CompleteActiveRecord(command, startTimeStr, false, ex.Message); }
+            // 診斷錯誤路徑沒有正在執行的任務：建立一個失敗任務寫入歷史，暫留
+            // 1.5 秒供儀表板顯示後清除（每個任務有獨立的進度檔）。
+            try
+            {
+                string taskId = ClickraStorage.StartTask(command, 0, null);
+                ClickraStorage.CompleteTask(taskId, command, startTimeStr, false, ex.Message);
+                System.Threading.Thread.Sleep(1500);
+                ClickraStorage.DeleteTask(taskId);
+            }
             catch (Exception recordEx) { Debug.WriteLine($"Failed to record the failed job: {recordEx.Message}"); }
-            System.Threading.Thread.Sleep(1500);
-            try { ClickraStorage.ClearActiveRecord(); }
-            catch (Exception recordEx) { Debug.WriteLine($"Failed to clear the active job: {recordEx.Message}"); }
         }
         Console.WriteLine($"Error: {ex.Message}");
         Console.WriteLine(ex.StackTrace);
