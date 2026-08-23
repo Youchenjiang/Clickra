@@ -415,8 +415,8 @@ public sealed partial class MainPage : Page
         {
             var result = await ConvertCommandRunner.RunTrackedAsync(command, files, outputs,
                 (percent, message) => DispatcherQueue.TryEnqueue(() => SetProgress(percent, message)),
-                () => DispatcherQueue.EnqueueAsync(() => FluentDialogs.PromptPasswordAsync(XamlRoot, L)),
-                pdfPath => DispatcherQueue.EnqueueAsync(() => SplitOverlay.ShowForAsync(pdfPath)),
+                (index) => DispatcherQueue.EnqueueAsync(() => FluentDialogs.PromptPasswordAsync(XamlRoot, L)),
+                (index, pdfPath) => DispatcherQueue.EnqueueAsync(() => SplitOverlay.ShowForAsync(pdfPath)),
                 _cts.Token);
 
             switch (result.Status)
