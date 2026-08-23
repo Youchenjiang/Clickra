@@ -30,31 +30,22 @@ public static class ConvertCommandRegistry
         /// <summary>File extensions accepted by a UI file type ("pdf", "word", "excel", "ppt", "image").</summary>
         public static string[] GetAllowedExtensionsByType(string type)
         {
-            foreach (var entry in FileTypes)
-            {
-                if (string.Equals(entry.Type, type, StringComparison.OrdinalIgnoreCase)) return entry.Extensions;
-            }
-            return Array.Empty<string>();
+            var entry = Array.Find(FileTypes, e => string.Equals(e.Type, type, StringComparison.OrdinalIgnoreCase));
+            return entry.Extensions ?? Array.Empty<string>();
         }
 
         /// <summary>Convert commands available for a UI file type.</summary>
         public static string[] GetCommandsForType(string type)
         {
-            foreach (var entry in FileTypes)
-            {
-                if (string.Equals(entry.Type, type, StringComparison.OrdinalIgnoreCase)) return entry.Commands;
-            }
-            return Array.Empty<string>();
+            var entry = Array.Find(FileTypes, e => string.Equals(e.Type, type, StringComparison.OrdinalIgnoreCase));
+            return entry.Commands ?? Array.Empty<string>();
         }
 
         /// <summary>The UI file type a command belongs to (defaults to "pdf" for unknown commands).</summary>
         public static string GetFileTypeForCommand(string command)
         {
-            foreach (var entry in FileTypes)
-            {
-                if (entry.Commands.Contains(command, StringComparer.OrdinalIgnoreCase)) return entry.Type;
-            }
-            return "pdf";
+            var entry = Array.Find(FileTypes, e => e.Commands.Contains(command, StringComparer.OrdinalIgnoreCase));
+            return entry.Type ?? "pdf";
         }
 
         /// <summary>Every convert command and its metadata, in dashboard order.</summary>

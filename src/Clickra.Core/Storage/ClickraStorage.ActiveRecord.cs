@@ -22,6 +22,7 @@ namespace Clickra.Core
         private const int CompletedTaskTtlMinutes = 10;
         // 逾時仍未完成的任務視為遺棄（進程崩潰/被強制結束），自動清除。
         private const int AbandonedTaskTtlHours = 24;
+        private const string DateTimeFormat = "yyyy-MM-dd HH:mm:ss";
 
         // 目前執行緒正在處理的任務（Win32 ProgressWindow 在同一執行緒上建立並
         // 回報任務；Fluent 走 Task.Run，執行緒不同，則退回 Pid 定位，見
@@ -86,7 +87,7 @@ namespace Clickra.Core
                     try
                     {
                         string cleanErr = (errorMsg ?? "").Replace("\r", " ").Replace("\n", " ").Replace("|", " ");
-                        string et = endTime ?? DateTime.UtcNow.ToString("yyyy-MM-dd HH:mm:ss");
+                        string et = endTime ?? DateTime.UtcNow.ToString(DateTimeFormat);
 
                         // Read existing task to preserve FileCount/InputPaths when caller omits them.
                         var existing = ReadTaskFileInternal(taskId);
@@ -113,9 +114,9 @@ namespace Clickra.Core
                         // so the UI does not show a phantom success.
                         try
                         {
-                            WriteTaskFileInternal(taskId, command, 0, ConversionStatus.Failed, "History persistence error", startTime, "", 0, "", endTime ?? DateTime.UtcNow.ToString("yyyy-MM-dd HH:mm:ss"), -1, Environment.ProcessId);
+                            WriteTaskFileInternal(taskId, command, 0, ConversionStatus.Failed, "History persistence error", startTime, "", 0, "", endTime ?? DateTime.UtcNow.ToString(DateTimeFormat), -1, Environment.ProcessId);
                         }
-                        catch { }
+                        catch { /* best-effort fallback write */ }
                     }
                 }
             });
@@ -176,7 +177,7 @@ namespace Clickra.Core
                             File.Delete(path);
                         }
                     }
-                    catch { }
+                    catch { /* file may already be deleted by another process */ }
                 }
             });
             if (_threadTaskId == taskId) _threadTaskId = null;
@@ -353,7 +354,7 @@ namespace Clickra.Core
                 try
                 {
                     using var sw = new StreamWriter(TaskFilePath(taskId), false, System.Text.Encoding.UTF8);
-                    sw.WriteLine($"Id={taskId}");                            sw.WriteLine($"Time={time ?? DateTime.UtcNow.ToString("yyyy-MM-dd HH:mm:ss")}");
+                    sw.WriteLine($"Id={taskId}");                            sw.WriteLine($"Time={time ?? DateTime.UtcNow.ToString(DateTimeFormat)}");
                     sw.WriteLine($"Command={command}");
                     sw.WriteLine($"FileCount={fileCount}");
                     sw.WriteLine($"Status={status}");
@@ -471,7 +472,7 @@ namespace Clickra.Core
                     try
                     {
                         string cleanErr = (errorMsg ?? "").Replace("\r", " ").Replace("\n", " ").Replace("|", " ");
-                        string et = endTime ?? DateTime.UtcNow.ToString("yyyy-MM-dd HH:mm:ss");
+                        string et = endTime ?? DateTime.UtcNow.ToString(DateTimeFormat);
                         string inputs = (inputPaths ?? "").Replace("\r", " ").Replace("\n", " ").Replace("|", " ");
                         string output = (outputPath ?? "").Replace("\r", " ").Replace("\n", " ").Replace("|", " ");
 
@@ -526,7 +527,7 @@ namespace Clickra.Core
             {
                 try
                 {
-                    using var sw = new StreamWriter(ActiveFile, false, System.Text.Encoding.UTF8);                            sw.WriteLine($"Time={time ?? DateTime.UtcNow.ToString("yyyy-MM-dd HH:mm:ss")}");
+                    using var sw = new StreamWriter(ActiveFile, false, System.Text.Encoding.UTF8);                            sw.WriteLine($"Time={time ?? DateTime.UtcNow.ToString(DateTimeFormat)}");
                     sw.WriteLine($"Command={command}");
                     sw.WriteLine($"FileCount={fileCount}");
                     sw.WriteLine($"Status={status}");

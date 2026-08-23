@@ -7,6 +7,10 @@ namespace Clickra.Core.Tests;
 
 static partial class TestSuite
 {
+    private const string CmdSplitPdf = "split-pdf";
+    private const string CmdDecryptPdf = "decrypt-pdf";
+    private const string ParkReason = "Waiting for input";
+    private const string SettingParkedRetention = "ParkedTaskRetention";
     public static void RegisterTaskQueueTests(TestRunner runner)
     {
         runner.Run("Task queue: concurrent tasks keep independent progress files",
@@ -37,16 +41,16 @@ static partial class TestSuite
 
     private static void TestConcurrentTasksKeepIndependentProgressFiles()
     {
-        string a = ClickraStorage.StartTask("split-pdf", 1, @"C:\in\a.pdf");
-        string b = ClickraStorage.StartTask("decrypt-pdf", 2, @"C:\in\b1.pdf;C:\in\b2.pdf");
+        string a = ClickraStorage.StartTask(CmdSplitPdf, 1, @"C:\in\a.pdf");
+        string b = ClickraStorage.StartTask(CmdDecryptPdf, 2, @"C:\in\b1.pdf;C:\in\b2.pdf");
         try
         {
             ClickraStorage.SetTaskInProgress(a);
             ClickraStorage.SetTaskInProgress(b);
             var active = ClickraStorage.GetActiveTasks();
             Assert.True(active.Count == 2, $"Expected 2 active tasks, got {active.Count}.");
-            Assert.True(active.Any(t => t.Id == a && t.Command == "split-pdf"), "Task A missing from the queue.");
-            Assert.True(active.Any(t => t.Id == b && t.Command == "decrypt-pdf"), "Task B missing from the queue.");
+            Assert.True(active.Any(t => t.Id == a && t.Command == CmdSplitPdf), "Task A missing from the queue.");
+            Assert.True(active.Any(t => t.Id == b && t.Command == CmdDecryptPdf), "Task B missing from the queue.");
             ClickraStorage.SetTaskIndex(a, 1);
             ClickraStorage.SetTaskIndex(b, 3);
             var ta = ClickraStorage.GetTask(a);
@@ -63,11 +67,11 @@ static partial class TestSuite
 
     private static void TestCompletingTaskLeavesQueueAndWritesHistory()
     {
-        string a = ClickraStorage.StartTask("split-pdf", 1, @"C:\in\a.pdf");
-        string b = ClickraStorage.StartTask("decrypt-pdf", 1, @"C:\in\b.pdf");
+        string a = ClickraStorage.StartTask(CmdSplitPdf, 1, @"C:\in\a.pdf");
+        string b = ClickraStorage.StartTask(CmdDecryptPdf, 1, @"C:\in\b.pdf");
         try
         {
-            ClickraStorage.CompleteTask(a, "split-pdf", "2026-08-16 12:00:00", true, "", null, 1234,
+            ClickraStorage.CompleteTask(a, CmdSplitPdf, "2026-08-16 12:00:00", true, "", null, 1234,
                 @"C:\in\a.pdf", @"C:\out\a_split.pdf");
             var active = ClickraStorage.GetActiveTasks();
             Assert.True(active.All(t => t.Id != a), "Completed task A must leave the active queue.");
@@ -76,7 +80,7 @@ static partial class TestSuite
             Assert.True(finishedA.HasValue && finishedA.Value.Status == ConversionStatus.Success,
                 "Completed task A should keep its Success status file.");
             var history = ClickraStorage.GetHistory(10);
-            Assert.True(history.Any(h => h.Command == "split-pdf" && h.IsSuccess && h.OutputPath == @"C:\out\a_split.pdf"),
+            Assert.True(history.Any(h => h.Command == CmdSplitPdf && h.IsSuccess && h.OutputPath == @"C:\out\a_split.pdf"),
                 "History line missing for the completed task A.");
         }
         finally { ClickraStorage.DeleteTask(a); ClickraStorage.DeleteTask(b); }
@@ -93,68 +97,68 @@ static partial class TestSuite
 
     private static void TestParkingMovesTaskToParkedWithIndex()
     {
-        string a = ClickraStorage.StartTask("decrypt-pdf", 2, @"C:\in\a1.pdf;C:\in\a2.pdf");
+        string a = ClickraStorage.StartTask(CmdDecryptPdf, 2, @"C:\in\a1.pdf;C:\in\a2.pdf");
         try
         {
             ClickraStorage.SetTaskInProgress(a);
-            ClickraStorage.ParkTask(a, "Waiting for input", 1);
+            ClickraStorage.ParkTask(a, ParkReason, 1);
             var active = ClickraStorage.GetActiveTasks();
             Assert.True(active.All(t => t.Id != a), "Parked task must leave the active queue.");
             var parked = ClickraStorage.GetParkedTasks();
             var entry = parked.FirstOrDefault(t => t.Id == a);
             Assert.True(entry.Id == a, "Parked task missing from GetParkedTasks.");
             Assert.True(entry.Status == ConversionStatus.Parked, "Parked task status must be Parked.");
-            Assert.True(entry.ErrorMessage == "Waiting for input", $"Park reason lost: '{entry.ErrorMessage}'.");
+            Assert.True(entry.ErrorMessage == ParkReason, $"Park reason lost: '{entry.ErrorMessage}'.");
             Assert.True(entry.CurrentIndex == 1, $"Next index should be 1, got {entry.CurrentIndex}.");
             var history = ClickraStorage.GetHistory(10);
-            Assert.True(history.All(h => h.Command != "decrypt-pdf"), "Parking must not write a history line.");
+            Assert.True(history.All(h => h.Command != CmdDecryptPdf), "Parking must not write a history line.");
         }
         finally { ClickraStorage.DeleteTask(a); }
     }
 
     private static void TestResumingParkedTaskReusesIdentity()
     {
-        string a = ClickraStorage.StartTask("decrypt-pdf", 2, @"C:\in\a1.pdf;C:\in\a2.pdf");
+        string a = ClickraStorage.StartTask(CmdDecryptPdf, 2, @"C:\in\a1.pdf;C:\in\a2.pdf");
         try
         {
             ClickraStorage.SetTaskInProgress(a);
-            ClickraStorage.ParkTask(a, "Waiting for input", 1);
+            ClickraStorage.ParkTask(a, ParkReason, 1);
             ClickraStorage.SetTaskInProgress(a);
             var resumed = ClickraStorage.GetTask(a);
             Assert.True(resumed.HasValue && resumed.Value.Status == ConversionStatus.InProgress,
                 "Resumed task must be InProgress.");
             Assert.True(resumed.HasValue && resumed.Value.CurrentIndex == 1, "Resumed task must keep its next index.");
-            ClickraStorage.CompleteTask(a, "decrypt-pdf", "2026-08-16 12:00:00", true, "", null, 900,
+            ClickraStorage.CompleteTask(a, CmdDecryptPdf, "2026-08-16 12:00:00", true, "", null, 900,
                 @"C:\in\a1.pdf;C:\in\a2.pdf", @"C:\out\a1.pdf;C:\out\a2.pdf");
             Assert.True(ClickraStorage.GetParkedTasks().All(t => t.Id != a), "Completed resumed task must not stay parked.");
             var history = ClickraStorage.GetHistory(10);
-            Assert.True(history.Count(h => h.Command == "decrypt-pdf") == 1,
-                $"Resume+complete must write exactly one history line, got {history.Count(h => h.Command == "decrypt-pdf")}.");
+            Assert.True(history.Count(h => h.Command == CmdDecryptPdf) == 1,
+                $"Resume+complete must write exactly one history line, got {history.Count(h => h.Command == CmdDecryptPdf)}.");
         }
         finally { ClickraStorage.DeleteTask(a); }
     }
 
     private static void TestParkedRetentionDaysFromSetting()
     {
-        ClickraStorage.SaveSetting("ParkedTaskRetention", "0");
+        ClickraStorage.SaveSetting(SettingParkedRetention, "0");
         Assert.True(ClickraStorage.GetParkedRetentionDays() == 0, "0 should mean unlimited (no pruning).");
-        ClickraStorage.SaveSetting("ParkedTaskRetention", "14");
+        ClickraStorage.SaveSetting(SettingParkedRetention, "14");
         Assert.True(ClickraStorage.GetParkedRetentionDays() == 14, "Custom days should be honored.");
-        ClickraStorage.SaveSetting("ParkedTaskRetention", "abc");
+        ClickraStorage.SaveSetting(SettingParkedRetention, "abc");
         Assert.True(ClickraStorage.GetParkedRetentionDays() == 7, "Invalid value should fall back to 7 days.");
-        ClickraStorage.SaveSetting("ParkedTaskRetention", "7");
+        ClickraStorage.SaveSetting(SettingParkedRetention, "7");
     }
 
     private static void TestSetTaskInProgressRefreshesPid()
     {
-        string a = ClickraStorage.StartTask("split-pdf", 1, @"C:\in\a.pdf");
+        string a = ClickraStorage.StartTask(CmdSplitPdf, 1, @"C:\in\a.pdf");
         try
         {
             ClickraStorage.SetTaskInProgress(a);
             var entry = ClickraStorage.GetTask(a);
             Assert.True(entry.HasValue && entry.Value.Pid == Environment.ProcessId,
                 $"InProgress task must carry the current pid, got {entry?.Pid}.");
-            ClickraStorage.ParkTask(a, "Waiting for input", 0);
+            ClickraStorage.ParkTask(a, ParkReason, 0);
             ClickraStorage.SetTaskInProgress(a);
             var resumed = ClickraStorage.GetTask(a);
             Assert.True(resumed.HasValue && resumed.Value.Pid == Environment.ProcessId,
@@ -165,7 +169,7 @@ static partial class TestSuite
 
     private static void TestDeadPidTaskPrunedAsAbandoned()
     {
-        string a = ClickraStorage.StartTask("split-pdf", 1, @"C:\in\a.pdf");
+        string a = ClickraStorage.StartTask(CmdSplitPdf, 1, @"C:\in\a.pdf");
         try
         {
             ClickraStorage.SetTaskInProgress(a);
@@ -178,7 +182,7 @@ static partial class TestSuite
             Assert.True(active.All(t => t.Id != a),
                 "Task with a dead owner pid must be pruned from the active queue.");
             var history = ClickraStorage.GetHistory(10);
-            Assert.True(history.Any(h => h.Command == "split-pdf" && !h.IsSuccess && h.ErrorMessage == "Abandoned"),
+            Assert.True(history.Any(h => h.Command == CmdSplitPdf && !h.IsSuccess && h.ErrorMessage == "Abandoned"),
                 "Abandoned task must be recorded in history as Abandoned.");
         }
         finally { ClickraStorage.DeleteTask(a); }
