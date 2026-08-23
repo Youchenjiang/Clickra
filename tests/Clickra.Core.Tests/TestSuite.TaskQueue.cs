@@ -13,6 +13,9 @@ static partial class TestSuite
     private const string SettingParkedRetention = "ParkedTaskRetention";
     private const string TestInDir = @"C:\in";
     private const string TestOutDir = @"C:\out";
+    private const string FileA = @"\a.pdf";
+    private const string FileA1 = @"\a1.pdf;";
+    private const string FileA2 = @"\a2.pdf";
     public static void RegisterTaskQueueTests(TestRunner runner)
     {
         runner.Run("Task queue: concurrent tasks keep independent progress files",
@@ -43,7 +46,7 @@ static partial class TestSuite
 
     private static void TestConcurrentTasksKeepIndependentProgressFiles()
     {
-        string a = ClickraStorage.StartTask(CmdSplitPdf, 1, TestInDir + "\\a.pdf");
+        string a = ClickraStorage.StartTask(CmdSplitPdf, 1, TestInDir + FileA);
         string b = ClickraStorage.StartTask(CmdDecryptPdf, 2, TestInDir + "\\b1.pdf;" + TestInDir + "\\b2.pdf");
         try
         {
@@ -69,7 +72,7 @@ static partial class TestSuite
 
     private static void TestCompletingTaskLeavesQueueAndWritesHistory()
     {
-        string a = ClickraStorage.StartTask(CmdSplitPdf, 1, TestInDir + "\\a.pdf");
+        string a = ClickraStorage.StartTask(CmdSplitPdf, 1, TestInDir + FileA);
         string b = ClickraStorage.StartTask(CmdDecryptPdf, 1, TestInDir + "\\b.pdf");
         try
         {
@@ -78,7 +81,7 @@ static partial class TestSuite
                 StartTime = "2026-08-16 12:00:00",
                 IsSuccess = true,
                 ElapsedMs = 1234,
-                InputPaths = TestInDir + "\\a.pdf",
+                InputPaths = TestInDir + FileA,
                 OutputPath = TestOutDir + "\\a_split.pdf"
             });
             var active = ClickraStorage.GetActiveTasks();
@@ -105,7 +108,7 @@ static partial class TestSuite
 
     private static void TestParkingMovesTaskToParkedWithIndex()
     {
-        string a = ClickraStorage.StartTask(CmdDecryptPdf, 2, TestInDir + "\\a1.pdf;" + TestInDir + "\\a2.pdf");
+        string a = ClickraStorage.StartTask(CmdDecryptPdf, 2, TestInDir + FileA1 + TestInDir + FileA2);
         try
         {
             ClickraStorage.SetTaskInProgress(a);
@@ -126,7 +129,7 @@ static partial class TestSuite
 
     private static void TestResumingParkedTaskReusesIdentity()
     {
-        string a = ClickraStorage.StartTask(CmdDecryptPdf, 2, TestInDir + "\\a1.pdf;" + TestInDir + "\\a2.pdf");
+        string a = ClickraStorage.StartTask(CmdDecryptPdf, 2, TestInDir + FileA1 + TestInDir + FileA2);
         try
         {
             ClickraStorage.SetTaskInProgress(a);
@@ -141,8 +144,8 @@ static partial class TestSuite
                 StartTime = "2026-08-16 12:00:00",
                 IsSuccess = true,
                 ElapsedMs = 900,
-                InputPaths = TestInDir + "\\a1.pdf;" + TestInDir + "\\a2.pdf",
-                OutputPath = TestOutDir + "\\a1.pdf;" + TestOutDir + "\\a2.pdf"
+                InputPaths = TestInDir + FileA1 + TestInDir + FileA2,
+                OutputPath = TestOutDir + FileA1 + TestOutDir + FileA2
             });
             Assert.True(ClickraStorage.GetParkedTasks().All(t => t.Id != a), "Completed resumed task must not stay parked.");
             var history = ClickraStorage.GetHistory(10);
@@ -165,7 +168,7 @@ static partial class TestSuite
 
     private static void TestSetTaskInProgressRefreshesPid()
     {
-        string a = ClickraStorage.StartTask(CmdSplitPdf, 1, TestInDir + "\\a.pdf");
+        string a = ClickraStorage.StartTask(CmdSplitPdf, 1, TestInDir + FileA);
         try
         {
             ClickraStorage.SetTaskInProgress(a);
@@ -183,7 +186,7 @@ static partial class TestSuite
 
     private static void TestDeadPidTaskPrunedAsAbandoned()
     {
-        string a = ClickraStorage.StartTask(CmdSplitPdf, 1, TestInDir + "\\a.pdf");
+        string a = ClickraStorage.StartTask(CmdSplitPdf, 1, TestInDir + FileA);
         try
         {
             ClickraStorage.SetTaskInProgress(a);

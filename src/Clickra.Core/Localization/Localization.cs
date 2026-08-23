@@ -10,6 +10,7 @@ namespace Clickra.Core
         private const string LangEn = "en-US";
         private const string LangJa = "ja-JP";
         private const string LangKo = "ko-KR";
+        private const string AppExcel = "Excel";
         private const string KeyCmdCompressPdf = "cmd_compress_pdf";
         private const string OfficeName = "Office";
 
@@ -849,7 +850,7 @@ namespace Clickra.Core
                 ("fluent_file_type", "檔案類型", "文件类型", "File type", "ファイル種類", "파일 유형"),
                 ("fluent_file_type_pdf", "PDF", "PDF", "PDF", "PDF", "PDF"),
                 ("fluent_file_type_word", "Word", "Word", "Word", "Word", "Word"),
-                ("fluent_file_type_excel", "Excel", "Excel", "Excel", "Excel", "Excel"),
+                ("fluent_file_type_excel", AppExcel, AppExcel, AppExcel, AppExcel, AppExcel),
                 ("fluent_file_type_ppt", "PPT", "PPT", "PPT", "PPT", "PPT"),
                 ("fluent_file_type_image", "圖片", "图片", "Images", "画像", "이미지"),
                 ("fluent_drop_title_for_type", "拖放 {0} 檔案到這裡", "拖放 {0} 文件到这里", "Drop {0} files here", "{0} ファイルをここにドロップ", "{0} 파일을 여기에 놓기"),
