@@ -10,6 +10,8 @@ namespace Clickra.Core
 
         public struct HistoryEntry
         {
+            /// <summary>任務佇列檔的唯一識別碼（history.log 紀錄中為空字串）。</summary>
+            public string Id { get; set; }
             public string Time { get; set; }
             public string Command { get; set; }
             public int FileCount { get; set; }
@@ -23,6 +25,8 @@ namespace Clickra.Core
             public string InputPaths { get; set; }
             public string OutputPath { get; set; }
             public int CurrentIndex { get; set; }
+            /// <summary>建立任務的進程 ID（history.log 紀錄中為 0）；用於跨進程定位任務。</summary>
+            public int Pid { get; set; }
         }
 
         public static List<HistoryEntry> GetHistory(int limit = 50)
