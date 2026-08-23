@@ -1,6 +1,7 @@
 using System;
 using System.IO;
 using System.Linq;
+using System.Threading;
 using Clickra.Core;
 
 namespace Clickra.Core.Tests;
@@ -211,6 +212,8 @@ static partial class TestSuite
         string legacy = Path.Combine(dataDir, "active.tmp");
         File.WriteAllText(legacy, "Time=2026-08-16 11:00:00\nCommand=merge-pdf\nStatus=InProgress\n");
         string first = ClickraStorage.StartTask("merge-pdf", 2, TestInDir + "\\x.pdf;" + TestInDir + "\\y.pdf");
+        // Ensure the two tasks get distinct timestamps (DateTime.UtcNow has ~15ms resolution on Windows).
+        Thread.Sleep(20);
         string second = ClickraStorage.StartTask("compress-pdf", 1, TestInDir + "\\z.pdf");
         try
         {

@@ -349,10 +349,11 @@ namespace Clickra.Core
         {
             string name = Path.GetFileNameWithoutExtension(filePath); // task-{id}
             string id = name.Length > "task-".Length ? name["task-".Length..] : name;
-            // NewTaskId format: yyyyMMdd-HHmmssfff-xxxxxxxxxxxx
-            string ts = id.Length >= 19 ? id[..19] : id;
-            // Zero-pad to 19 chars to ensure lexicographic sort matches chronological order
-            return ts.PadRight(19, '0');
+            // NewTaskId format: yyyyMMddHHmmssfff-GUID[0..8]
+            // Timestamp is the first 17 chars; the dash and GUID follow.
+            // Use only the 17-char timestamp for deterministic chronological ordering.
+            string ts = id.Length >= 17 ? id[..17] : id;
+            return ts.PadRight(17, '0');
         }
 
         /// <summary>清除過期的任務檔：已完成超過 10 分鐘、進行中超過 24 小時（遺棄）、
