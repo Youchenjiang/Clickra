@@ -39,7 +39,8 @@ namespace Clickra.Core
             RunWithMutex(() =>
             {
                 EnsureTasksDir();
-                WriteTaskFileInternal(taskId, command, fileCount, ConversionStatus.Pending, "", null, inputPaths, pid: Environment.ProcessId);
+                if (!WriteTaskFileInternal(taskId, command, fileCount, ConversionStatus.Pending, "", null, inputPaths, pid: Environment.ProcessId))
+                    throw new IOException($"Failed to write task file for {taskId}; check data directory permissions.");
             });
             _threadTaskId = taskId;
             return taskId;
@@ -318,7 +319,7 @@ namespace Clickra.Core
             }
         }
 
-        private static void WriteTaskFileInternal(string taskId, string command, int fileCount, ConversionStatus status, string errorMsg, string? time = null, string? inputPaths = null, int currentIndex = 0, string? outputPath = null, string? endTime = null, long elapsedMs = -1, int pid = 0)
+        private static bool WriteTaskFileInternal(string taskId, string command, int fileCount, ConversionStatus status, string errorMsg, string? time = null, string? inputPaths = null, int currentIndex = 0, string? outputPath = null, string? endTime = null, long elapsedMs = -1, int pid = 0)
         {
             lock (FileLock)
             {
@@ -337,8 +338,9 @@ namespace Clickra.Core
                     sw.WriteLine($"EndTime={endTime ?? ""}");
                     sw.WriteLine($"ElapsedMs={elapsedMs}");
                     sw.WriteLine($"Pid={pid}");
+                    return true;
                 }
-                catch { }
+                catch { return false; }
             }
         }
 
