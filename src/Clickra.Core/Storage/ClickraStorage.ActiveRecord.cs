@@ -101,12 +101,22 @@ namespace Clickra.Core
                         int fileCount = inputList.Length > 0 ? inputList.Length : existing?.FileCount ?? 0;
                         int currentIndex = existing?.CurrentIndex ?? 0;
 
-                        WriteTaskFileInternal(taskId, command, fileCount, isSuccess ? ConversionStatus.Success : ConversionStatus.Failed, cleanErr, startTime, inputs, currentIndex, output, et, elapsedMs, Environment.ProcessId);
+                        var finalStatus = isSuccess ? ConversionStatus.Success : ConversionStatus.Failed;
+                        WriteTaskFileInternal(taskId, command, fileCount, finalStatus, cleanErr, startTime, inputs, currentIndex, output, et, elapsedMs, Environment.ProcessId);
 
-                        string historyLine = $"{startTime}|{command}|{fileCount}|{(isSuccess ? "Success" : "Failed")}|{cleanErr}|{et}|{elapsedMs}|{inputs}|{output}";
+                        string historyLine = $"{startTime}|{command}|{fileCount}|{finalStatus}|{cleanErr}|{et}|{elapsedMs}|{inputs}|{output}";
                         File.AppendAllText(HistoryFile, historyLine + Environment.NewLine, System.Text.Encoding.UTF8);
                     }
-                    catch { }
+                    catch
+                    {
+                        // History append or task write failed — mark task as Failed
+                        // so the UI does not show a phantom success.
+                        try
+                        {
+                            WriteTaskFileInternal(taskId, command, 0, ConversionStatus.Failed, "History persistence error", startTime, "", 0, "", endTime ?? DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss"), -1, Environment.ProcessId);
+                        }
+                        catch { }
+                    }
                 }
             });
             if (_threadTaskId == taskId) _threadTaskId = null;
