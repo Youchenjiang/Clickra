@@ -184,16 +184,10 @@ namespace Clickra.UI
             return true;
         }
 
-        /// <summary>Returns the number of files of the in-flight active record (min 1).</summary>
+        /// <summary>Returns the number of in-flight tasks in the queue (one row each).</summary>
         static int GetActiveHistoryCount()
         {
-            var activeEntry = ClickraStorage.GetActiveEntry();
-            if (!activeEntry.HasValue) return 0;
-            var ae = activeEntry.Value;
-            var activeFiles = !string.IsNullOrEmpty(ae.InputPaths)
-                ? ae.InputPaths.Split(new[] { ';' }, StringSplitOptions.RemoveEmptyEntries)
-                : Array.Empty<string>();
-            return activeFiles.Length > 0 ? activeFiles.Length : 1;
+            return ClickraStorage.GetActiveTasks().Count;
         }
 
         /// <summary>Finds the history row (and optional detail field) under the click point.</summary>
