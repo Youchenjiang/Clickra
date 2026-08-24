@@ -1,0 +1,49 @@
+name: OWASP ZAP Security Scan
+
+on:
+  pull_request:
+    paths:
+      - 'src/Clickra.Core/Translation/**'
+      - 'src/Clickra.Core/Processors/**/LibreOfficeEngine*'
+      - 'tools/zap/**'
+      - '.github/workflows/zap-security-scan.yml'
+  push:
+    branches:
+      - main
+    paths:
+      - 'src/Clickra.Core/Translation/**'
+      - 'src/Clickra.Core/Processors/**/LibreOfficeEngine*'
+      - 'tools/zap/**'
+  workflow_dispatch:
+
+concurrency:
+  group: zap-scan-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  security-events: write
+
+jobs:
+  zap-baseline:
+    name: ZAP Baseline Scan
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: OWASP ZAP Baseline Scan
+        uses: zaproxy/action-baseline@v0.15.0
+        with:
+          target: >-
+            https://translate.google.com/translate_a/t?client=at&sl=auto&tl=en
+          rules_file_name: 'tools/zap/zap-rules.tsv'
+          cmd_options: >-
+            -a
+            -j
+            -l WARN
+            -z "-config spider.maxDepth=0 -config connection.timeout=60"
+          allow_issue_writing: false
+          artifact_name: 'zap-baseline-report'
+          fail_action: false
