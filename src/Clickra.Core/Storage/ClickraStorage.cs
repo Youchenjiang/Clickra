@@ -10,6 +10,7 @@ namespace Clickra.Core
     {
         Pending,    // 已建立，尚未開始
         InProgress, // 正在轉換中
+        Parked,     // 已暫存（等待恢復或取消，不寫歷史）
         Success,    // 成功完成
         Failed      // 發生錯誤
     }
@@ -26,9 +27,18 @@ namespace Clickra.Core
 
         static ClickraStorage()
         {
-            // 標準 LocalAppData 目錄，MSIX 商店隔離與非商店版均適用
-            string localApp = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
-            DataDir = Path.Combine(localApp, "Clickra");
+            // 標準 LocalAppData 目錄，MSIX 商店隔離與非商店版均適用。
+            // CLICKRA_DATA_DIR 可覆寫資料目錄（可攜式執行 / 測試隔離用）。
+            string? overrideDir = Environment.GetEnvironmentVariable("CLICKRA_DATA_DIR");
+            if (!string.IsNullOrWhiteSpace(overrideDir))
+            {
+                DataDir = Path.GetFullPath(overrideDir);
+            }
+            else
+            {
+                string localApp = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
+                DataDir = Path.Combine(localApp, "Clickra");
+            }
             SettingsFile = Path.Combine(DataDir, "settings.conf");
             HistoryFile = Path.Combine(DataDir, "history.log");
 
@@ -60,6 +70,8 @@ namespace Clickra.Core
                 {
                     acquired = true;
                 }
+                if (!acquired)
+                    throw new TimeoutException("Storage mutex not acquired within 5 s; aborting to prevent concurrent file corruption.");
                 action();
             }
             finally
@@ -82,6 +94,8 @@ namespace Clickra.Core
                 {
                     acquired = true;
                 }
+                if (!acquired)
+                    throw new TimeoutException("Storage mutex not acquired within 5 s; aborting to prevent concurrent file corruption.");
                 return func();
             }
             finally
@@ -105,6 +119,7 @@ namespace Clickra.Core
                     SettingsCache["TranslateTargetLang"] = "zh-TW";
                     SettingsCache["OfficeEngine"] = "auto"; // auto, microsoft, libreoffice
                     SettingsCache["LibreOfficePath"] = "";
+                    SettingsCache["ParkedTaskRetention"] = "7"; // 已暫存任務保留天數；0 = 無限期
 
                     if (File.Exists(SettingsFile))
                     {

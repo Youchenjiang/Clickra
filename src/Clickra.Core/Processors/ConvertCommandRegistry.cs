@@ -15,7 +15,38 @@ public static class ConvertCommandRegistry
         private static readonly string[] PptExtensions = { ".ppt", ".pptx" };
         private static readonly string[] WordExtensions = { ".doc", ".docx" };
         private static readonly string[] ExcelExtensions = { ".xls", ".xlsx" };
-        private static readonly string[] ImageExtensions = { ".jpg", ".jpeg", ".png", ".bmp", ".gif", ".tiff", ".webp" };
+        private static readonly string[] ImageExtensions = [".jpg", ".jpeg", ".png", ".bmp", ".gif", ".tiff", ".webp"];
+
+        /// <summary>UI 檔案類型分類：先選類型再選命令，從源頭避免混雜類型。</summary>
+        private static readonly (string Type, string[] Extensions, string[] Commands)[] FileTypes =
+        {
+            ("pdf", PdfExtensions, ["merge-pdf", "compress-pdf", "translate-pdf", "decrypt-pdf", "split-pdf"]),
+            ("word", WordExtensions, ["word2pdf"]),
+            ("excel", ExcelExtensions, ["excel2pdf"]),
+            ("ppt", PptExtensions, ["ppt2pdf"]),
+            ("image", ImageExtensions, ["img2pdf", "img-merge", "img-stitch"])
+        };
+
+        /// <summary>File extensions accepted by a UI file type ("pdf", "word", "excel", "ppt", "image").</summary>
+        public static string[] GetAllowedExtensionsByType(string type)
+        {
+            var entry = Array.Find(FileTypes, e => string.Equals(e.Type, type, StringComparison.OrdinalIgnoreCase));
+            return entry.Extensions ?? Array.Empty<string>();
+        }
+
+        /// <summary>Convert commands available for a UI file type.</summary>
+        public static string[] GetCommandsForType(string type)
+        {
+            var entry = Array.Find(FileTypes, e => string.Equals(e.Type, type, StringComparison.OrdinalIgnoreCase));
+            return entry.Commands ?? Array.Empty<string>();
+        }
+
+        /// <summary>The UI file type a command belongs to (defaults to "pdf" for unknown commands).</summary>
+        public static string GetFileTypeForCommand(string command)
+        {
+            var entry = Array.Find(FileTypes, e => e.Commands.Contains(command, StringComparer.OrdinalIgnoreCase));
+            return entry.Type ?? "pdf";
+        }
 
         /// <summary>Every convert command and its metadata, in dashboard order.</summary>
         private static readonly Dictionary<string, CommandDef> Commands = new(StringComparer.OrdinalIgnoreCase)
