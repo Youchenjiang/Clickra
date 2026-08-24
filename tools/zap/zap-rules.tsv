@@ -6,12 +6,12 @@
 # Reference: https://www.zaproxy.org/docs/docker/baseline-scan/
 
 # ============================================================
-# Rules IGNORED — False positives for desktop app context
+# Rules IGNORED — Server-side issues Clickra cannot control
 # ============================================================
 
-# Clickra is a Windows desktop app, not a web application.
-# These rules produce false positives when scanning external API
-# endpoints (translation APIs, download servers).
+# These findings are on EXTERNAL API server response headers.
+# Clickra is the CLIENT — it cannot modify the server's headers.
+# Documented in zap-false-positives.md with full justification.
 
 10202	IGNORE	(Absence of Anti-CSRF Tokens)
 10098	IGNORE	(Cross-Domain JavaScript Source Inclusion)

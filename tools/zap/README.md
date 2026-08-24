@@ -47,12 +47,23 @@ The rules file (`zap-rules.tsv`) uses ZAP's standard format:
 - **IGNORE** — suppress alert from scan results
 - **FAIL** — fail the scan if this alert is found (default behavior)
 
-### Disabled Rules (Desktop App Context)
+### Server-Side Issues (Clickra Cannot Control)
+
+These findings are on **external API server response headers**. Clickra is the CLIENT — it cannot modify the server's headers. See `zap-false-positives.md` for detailed justification.
+
+- **10035** — Strict-Transport-Security Header Not Set (server-side HSTS)
+- **10021** — X-Content-Type-Options Header Missing (server-side header)
+- **10036** — Server Leaks Version Information (server-side header)
+- **10063** — Permissions Policy Header Not Set (server-side header)
+- **10038** — Content Security Policy Header Not Set (server-side header)
+- **10098** — Cross-Domain JavaScript Source Inclusion (server-side CORS)
+- **90005** — Sec-Fetch-* Headers Missing (browser-only headers, not applicable to desktop apps)
+
+### Desktop App Context (False Positives)
 
 These rules are disabled because Clickra is a desktop app, not a web application:
 
 - **10202** — Absence of Anti-CSRF Tokens (no web forms)
-- **10098** — Cross-domain JavaScript source inclusion (external APIs expected)
 - **10023** — Information disclosure - Debug errors (API responses may contain debug info)
 - **40012** — Cross-site scripting - Reflected (JSON responses, not browser DOM)
 - **40018** — SQL Injection (external APIs use query parameters, not SQL)
