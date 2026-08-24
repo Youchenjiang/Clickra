@@ -95,6 +95,16 @@
     - **雙欄/多欄排版與 XY-Cut++ 閱讀順序**：借鑑 `OpenDataLoader` 的雙欄與多欄解析算法，在本地 C# 解析中實現 XY-Cut 投影分割，確保學術論文與複雜文件在提取為 Markdown 時具備正確的閱讀順序。
     - **混合解析模式 (Hybrid Local+AI Mode)**：簡單或純文字頁面直接透過本地快速解析器（如 PDFium / PdfPig）處理，複雜表格、公式與圖表則路由至 Gemini API 等 Vision 端，實現 borderless 表格 HTML 重建與 AI 圖片描述。
     - **解耦設計**：於核心（`src/Clickra.Core`）設計 `IDocParserStrategy` 等解析策略介面（Strategy Pattern），使不同解析引擎（PDFium、AI Vision、PdfPig）能夠靈活切換與擴充。
+- [ ] **[F2-19] Secure Translation API Migration**：安全翻譯 API 遷移。
+    - **背景**：OWASP ZAP 掃描發現目前使用的翻譯 API（Google Free、MyMemory）缺乏安全 headers（HSTS、X-Content-Type-Options、CSP 等），存在安全風險。
+    - **目標**：將翻譯 API 遷移至更安全的替代方案，同時保留現有 API 作為 fallback。
+    - **Phase 1**：實作 DeepL API Free 翻譯引擎（每月 50 萬字免費、有完整安全 headers）。
+    - **Phase 2**：保留 Google Free 和 MyMemory 作為 fallback 引擎。
+    - **Phase 3**：在設定中讓使用者選擇翻譯引擎（DeepL / Google Free / MyMemory）。
+    - **Phase 4**：未來版本預設使用 DeepL，其他作為備選。
+    - **安全改善**：DeepL、Microsoft Translator、Google Cloud Translation 都有設定 HSTS、X-Content-Type-Options 等安全 headers。
+    - **隱私改善**：官方 API 有明確的隱私政策，使用者自己的 API key 不會共用。
+    - 詳見 `tools/zap/zap-false-positives.md` 的「Current API Security Limitations」章節。
 - [x] **[F2-18] Image to PDF & Merge**：圖片轉 PDF 與合併（v3.0.0）。
 - [ ] **[F2-19] PNG/JPG Batch Conversion**：PNG/JPG 批量轉換。支援多種常用格式間的快速互轉。
 - [ ] **[F2-20] High-quality Thumbnails**：高品質縮圖。支援批量調整圖片尺寸並保留細節。
