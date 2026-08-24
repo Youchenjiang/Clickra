@@ -446,6 +446,21 @@ namespace Clickra.Core
             }
         }
 
+        /// <summary>Parse a Key=Value text file into a dictionary (shared by Task and Legacy readers).</summary>
+        private static Dictionary<string, string> ParseKeyValueLines(string[] lines)
+        {
+            var dict = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+            foreach (var line in lines)
+            {
+                int idx = line.IndexOf('=');
+                if (idx > 0)
+                {
+                    dict[line[..idx]] = line[(idx + 1)..];
+                }
+            }
+            return dict;
+        }
+
         private static bool WriteTaskFileInternal(TaskFileData d)
         {
             lock (FileLock)
@@ -479,16 +494,7 @@ namespace Clickra.Core
                 if (!File.Exists(path)) return null;
                 try
                 {
-                    var lines = File.ReadAllLines(path);
-                    var dict = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
-                    foreach (var line in lines)
-                    {
-                        int idx = line.IndexOf('=');
-                        if (idx > 0)
-                        {
-                            dict[line[..idx]] = line[(idx + 1)..];
-                        }
-                    }
+                    var dict = ParseKeyValueLines(File.ReadAllLines(path));
 
                     if (!int.TryParse(dict.GetValueOrDefault("FileCount", "0"), out int fc)) fc = 0;
                     if (!Enum.TryParse(dict.GetValueOrDefault("Status", "Pending"), out ConversionStatus status)) status = ConversionStatus.Pending;
@@ -651,16 +657,7 @@ namespace Clickra.Core
                 if (!File.Exists(ActiveFile)) return null;
                 try
                 {
-                    var lines = File.ReadAllLines(ActiveFile);
-                    var dict = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
-                    foreach (var line in lines)
-                    {
-                        int idx = line.IndexOf('=');
-                        if (idx > 0)
-                        {
-                            dict[line[..idx]] = line[(idx + 1)..];
-                        }
-                    }
+                    var dict = ParseKeyValueLines(File.ReadAllLines(ActiveFile));
 
                     if (!int.TryParse(dict.GetValueOrDefault("FileCount", "0"), out int fc)) fc = 0;
                     if (!Enum.TryParse(dict.GetValueOrDefault("Status", "Pending"), out ConversionStatus status)) status = ConversionStatus.Pending;
