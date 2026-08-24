@@ -23,9 +23,10 @@ namespace Clickra.Core
         // 逾時仍未完成的任務視為遺棄（進程崩潰/被強制結束），自動清除。
         private const int AbandonedTaskTtlHours = 24;
         private const string DateTimeFormat = "yyyy-MM-dd HH:mm:ss";
+        private const string TaskFilePrefix = "task-";
 
         /// <summary>封裝 task-*.tmp 檔案所有欄位，供 WriteTaskFileInternal 使用。</summary>
-        private record TaskFileData
+        private sealed record TaskFileData
         {
             public string TaskId { get; init; } = string.Empty;
             public string Command { get; init; } = string.Empty;
@@ -305,7 +306,7 @@ namespace Clickra.Core
 
         // ─── Internal ──────────────────────────────────────────────────────────
 
-        private static string TaskFilePath(string taskId) => Path.Combine(TasksDir, $"task-{taskId}.tmp");
+        private static string TaskFilePath(string taskId) => Path.Combine(TasksDir, $"{TaskFilePrefix}{taskId}.tmp");
 
         /// <summary>可排序的唯一任務 ID：時間戳 + 短 GUID（檔名排序即建立順序）。</summary>
         private static string NewTaskId()
@@ -331,9 +332,9 @@ namespace Clickra.Core
             try
             {
                 if (!Directory.Exists(TasksDir)) return new List<string>();
-                return Directory.GetFiles(TasksDir, "task-*.tmp")
+                return Directory.GetFiles(TasksDir, $"{TaskFilePrefix}*.tmp")
                     .OrderByDescending(GetTaskFileSortKey)
-                    .Select(f => Path.GetFileNameWithoutExtension(f)["task-".Length..])
+                    .Select(f => Path.GetFileNameWithoutExtension(f)[TaskFilePrefix.Length..])
                     .ToList();
             }
             catch
@@ -348,7 +349,7 @@ namespace Clickra.Core
         private static string GetTaskFileSortKey(string filePath)
         {
             string name = Path.GetFileNameWithoutExtension(filePath); // task-{id}
-            string id = name.Length > "task-".Length ? name["task-".Length..] : name;
+            string id = name.Length > TaskFilePrefix.Length ? name[TaskFilePrefix.Length..] : name;
             // NewTaskId format: yyyyMMddHHmmssfff-GUID[0..8]
             // Timestamp is the first 17 chars; the dash and GUID follow.
             // Use only the 17-char timestamp for deterministic chronological ordering.
@@ -368,7 +369,7 @@ namespace Clickra.Core
                 EnsureTasksDir();
                 if (!Directory.Exists(TasksDir)) return;
                 var now = DateTime.UtcNow;
-                foreach (string file in Directory.GetFiles(TasksDir, "task-*.tmp"))
+                foreach (string file in Directory.GetFiles(TasksDir, $"{TaskFilePrefix}*.tmp"))
                 {
                     try { PruneSingleTaskFile(file, now); }
                     catch { /* skip corrupt task file */ }
@@ -380,9 +381,9 @@ namespace Clickra.Core
         private static void PruneSingleTaskFile(string file, DateTime now)
         {
             string taskId = Path.GetFileNameWithoutExtension(file);
-            if (taskId.StartsWith("task-", StringComparison.OrdinalIgnoreCase))
+            if (taskId.StartsWith(TaskFilePrefix, StringComparison.OrdinalIgnoreCase))
             {
-                taskId = taskId["task-".Length..];
+                taskId = taskId[TaskFilePrefix.Length..];
             }
             var entry = ReadTaskFileInternal(taskId);
             if (!entry.HasValue) return;
