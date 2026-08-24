@@ -1,0 +1,53 @@
+# OWASP ZAP Scan Rules for Clickra
+# Format: <ruleId>\t<level>\t(<ruleName>)
+# Tab-separated, at least 3 tokens required
+#
+# Levels: WARN (default), FAIL, IGNORE, INFO
+# Reference: https://www.zaproxy.org/docs/docker/baseline-scan/
+
+# ============================================================
+# Rules IGNORED — False positives for desktop app context
+# ============================================================
+
+# Clickra is a Windows desktop app, not a web application.
+# These rules produce false positives when scanning external API
+# endpoints (translation APIs, download servers).
+
+10202	IGNORE	(Absence of Anti-CSRF Tokens)
+10098	IGNORE	(Cross-Domain JavaScript Source Inclusion)
+10023	IGNORE	(Information Disclosure - Debug Error Messages)
+10024	IGNORE	(Information Disclosure - Sensitive Information in URL)
+40012	IGNORE	(Cross-Site Scripting (Reflected))
+40014	IGNORE	(Cross-Site Scripting (DOM))
+40018	IGNORE	(SQL Injection)
+90033	IGNORE	(Loosely Scoped Cookie)
+10205	IGNORE	(Absence of Anti-Clickjacking HTTP Header)
+10038	IGNORE	(Content Security Policy Header Not Set)
+10054	IGNORE	(Cookie Without SameSite Attribute)
+10049	IGNORE	(Storable and Cacheable Content)
+10050	IGNORE	(Retrieved from Cache)
+10096	IGNORE	(Timestamp Disclosure)
+10108	IGNORE	(Modern Web Application Detection)
+10110	IGNORE	(Delta Encoded Cache Response)
+
+# ============================================================
+# Rules KEPT — Actively checked (default: WARN)
+# ============================================================
+
+# These rules are NOT ignored and will be reported as WARN:
+# 10015 - Incomplete or No Cache-control and Pragma HTTP Header Set
+# 10020 - X-Frame-Options Header Not Set
+# 10021 - X-Content-Type-Options Header Missing
+# 10036 - Server Leaks version info via "Server" HTTP response header
+# 10040 - Secure Pages Include Mixed Content
+# 10041 - Content-Type Header Missing
+# 10042 - TLS/SSL certificate issues
+# 10044 - Weak authentication method
+# 10045 - Source code disclosure
+# 10046 - Incomplete or no Cache-control header
+# 10047 - CORS header
+# 10048 - X-Content-Type-Options missing
+# 10053 - Information disclosure - sensitive data in URL
+# 10057 - HTTP Server response header
+# 10105 - Weak authentication method
+# 10114 - Weak TLS version
