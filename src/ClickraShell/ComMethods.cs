@@ -243,7 +243,8 @@ namespace ClickraShell
             string launcher = Path.Combine(moduleDir, "ClickraLauncher.exe");
             if (File.Exists(launcher))
             {
-                Process.Start(new ProcessStartInfo(launcher, arguments) { UseShellExecute = false })?.Dispose();
+                try { Process.Start(new ProcessStartInfo(launcher, arguments) { UseShellExecute = false })?.Dispose(); }
+                catch { /* launcher locked during update — fall through to direct exe */ }
                 return 0;
             }
 
@@ -251,7 +252,7 @@ namespace ClickraShell
             // Fluent exe directly, or the native exe if Fluent is absent.
             string app = Path.Combine(moduleDir, "Clickra.Fluent.exe");
             if (!File.Exists(app)) app = Path.Combine(moduleDir, "Clickra.exe");
-            if (File.Exists(app)) Process.Start(new ProcessStartInfo(app, arguments) { UseShellExecute = false })?.Dispose();
+            if (File.Exists(app)) { try { Process.Start(new ProcessStartInfo(app, arguments) { UseShellExecute = false })?.Dispose(); } catch { } }
             return 0;
         }
 
