@@ -1,86 +1,63 @@
-# OWASP ZAP Security Scanning for Clickra
+# Security Scanning for Clickra
 
 ## Overview
 
-This directory contains OWASP ZAP (Zed Attack Proxy) configuration for security
-scanning Clickra's external API communication endpoints.
+This directory contains OWASP ZAP configuration for security scanning Clickra's
+external API communication endpoints, plus documentation about third-party API
+security limitations.
 
-Since Clickra is a Windows desktop application (not a web app), ZAP is used here
-to scan the HTTP endpoints the app communicates with — primarily translation
-APIs and file download services.
+The GitHub Actions workflow (`.github/workflows/zap-security-scan.yml`) runs two
+complementary security checks:
+
+1. **NuGet Dependency Vulnerability Scan** — scans Clickra's own package
+   dependencies for known CVEs (actionable, Clickra can fix these)
+2. **OWASP ZAP Baseline Scan** — scans third-party translation APIs for
+   security header issues (informational only, Clickra cannot fix these)
+
+## Why ZAP Limitations Exist
+
+Clickra is a **Windows desktop application** with no local web server. ZAP is a
+web application scanner, so it can only scan the external HTTP endpoints Clickra
+communicates with. The findings are all **server-side response header issues**
+on third-party APIs — Clickra is the client and cannot modify these.
+
+**NuGet vulnerability scanning is the actionable security check** — it finds
+vulnerabilities in Clickra's own dependencies that can be updated.
 
 ## Files
 
 | File | Purpose |
 |------|---------|
-| `zap-rules.tsv` | Scan rules — which alerts to IGNORE vs KEEP |
-| `zap-false-positives.md` | Track known false positives |
+| `zap-rules.tsv` | ZAP scan rules — which alerts to IGNORE vs KEEP |
+| `zap-false-positives.md` | Track known false positives with detailed justification |
 | `README.md` | This documentation |
 
-## How It Works
+## ZAP Scan Target
 
-The ZAP scan runs via GitHub Actions (`.github/workflows/zap-security-scan.yml`)
-using `zaproxy/action-baseline@v0.15.0`. The action:
-
-1. Starts a ZAP Docker container
-2. Spiders the target URL (depth 0 — API endpoint only)
-3. Runs passive scan rules against the response
-4. Reports findings as a GitHub Actions artifact
-
-### Scan Targets
-
-| Endpoint | Purpose | Scan Type |
-|----------|---------|-----------|
-| `translate.google.com` | Google Free Translator API | Passive |
-| `api.mymemory.translated.net` | MyMemory Translation API | Passive |
-| `download.documentfoundation.org` | LibreOffice download server | Passive |
-
-## Rules Format
-
-The rules file (`zap-rules.tsv`) uses ZAP's standard format:
-
-```
-<ruleId> IGNORE (<ruleName>)
-<ruleId> FAIL (<ruleName>)
-```
-
-- **IGNORE** — suppress alert from scan results
-- **FAIL** — fail the scan if this alert is found (default behavior)
-
-### Server-Side Issues (Clickra Cannot Control)
-
-These findings are on **external API server response headers**. Clickra is the CLIENT — it cannot modify the server's headers. See `zap-false-positives.md` for detailed justification.
-
-- **10035** — Strict-Transport-Security Header Not Set (server-side HSTS)
-- **10021** — X-Content-Type-Options Header Missing (server-side header)
-- **10036** — Server Leaks Version Information (server-side header)
-- **10063** — Permissions Policy Header Not Set (server-side header)
-- **10038** — Content Security Policy Header Not Set (server-side header)
-- **10098** — Cross-Domain JavaScript Source Inclusion (server-side CORS)
-- **90005** — Sec-Fetch-* Headers Missing (browser-only headers, not applicable to desktop apps)
-
-### Desktop App Context (False Positives)
-
-These rules are disabled because Clickra is a desktop app, not a web application:
-
-- **10202** — Absence of Anti-CSRF Tokens (no web forms)
-- **10023** — Information disclosure - Debug errors (API responses may contain debug info)
-- **40012** — Cross-site scripting - Reflected (JSON responses, not browser DOM)
-- **40018** — SQL Injection (external APIs use query parameters, not SQL)
-- **90033** — Loosely scoped cookie (desktop app cookie handling)
-- And more — see `zap-rules.tsv` for the full list
+| Endpoint | Purpose | Notes |
+|----------|---------|-------|
+| `translate.google.com` | Google Free Translator API | Non-official API, no security headers |
 
 ## CI Integration
 
-The scan runs automatically when translation-related code changes:
+The workflow runs automatically when:
 
-- **PR** — baseline scan on every PR touching translation code
-- **Push to main** — baseline scan on push
+- **PR** — touches any source code or ZAP config files
+- **Push to main** — touches source code
 - **Manual** — trigger via GitHub Actions workflow_dispatch
 
-The workflow is at `.github/workflows/zap-security-scan.yml`.
+### NuGet Vulnerability Scan
 
-## Adding New Rules
+Fails the pipeline if any package has a known CVE. This is the **primary
+security gate** — Clickra controls these dependencies and can update them.
+
+### ZAP Baseline Scan
+
+Runs as informational only (`fail_action: false`). Reports server-side header
+issues on third-party APIs that Clickra cannot fix. See `zap-false-positives.md`
+for detailed justification.
+
+## Adding New ZAP Rules
 
 To disable a new rule, add a line to `zap-rules.tsv`:
 
