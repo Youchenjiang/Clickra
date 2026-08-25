@@ -90,6 +90,66 @@ function Sync-WindowsAppRuntimeDependency {
     Write-Host "[Build] Windows App Runtime aligned to $($dependency.Name) $($dependency.MinVersion)" -ForegroundColor Gray
 }
 
+function Remove-ForceDir {
+    param([string]$Path, [switch]$TolerateLocks)
+    if (Test-Path $Path) {
+        $ea = if ($TolerateLocks) { 'SilentlyContinue' } else { 'Stop' }
+        Remove-Item -Recurse -Force $Path -ErrorAction $ea
+    }
+}
+
+function Clear-BuildArtifacts {
+    param([string]$Root, [switch]$TolerateLocks)
+    Remove-ForceDir "$Root/packaging/msix/Layout" -TolerateLocks:$TolerateLocks
+    Remove-ForceDir "$Root/publish" -TolerateLocks:$TolerateLocks
+    Remove-ForceDir "$Root/src/Clickra.Fluent/bin/Release" -TolerateLocks:$TolerateLocks
+    Remove-ForceDir "$Root/src/Clickra.Fluent/obj/Release" -TolerateLocks:$TolerateLocks
+    New-Item -ItemType Directory -Path "$Root/packaging/msix/Layout" -Force | Out-Null
+}
+
+function Copy-AssemblyLayout {
+    param(
+        [string]$Root,
+        [string]$PackagingDir,
+        [string]$LayoutDir,
+        [string]$PublishDir,
+        [string[]]$ExtraBinaries = @()
+    )
+    Copy-Item "$PackagingDir/AppxManifest.xml" "$LayoutDir/"
+    Sync-WindowsAppRuntimeDependency `
+        -ProjectPath "$Root/src/Clickra.Fluent/Clickra.Fluent.csproj" `
+        -ManifestPath "$LayoutDir/AppxManifest.xml"
+    Copy-Item -Recurse "$PackagingDir/Assets" "$LayoutDir/"
+    Copy-Item -Recurse "$PackagingDir/Strings" "$LayoutDir/"
+    Copy-Item "$PublishDir/cli/Clickra.exe" "$LayoutDir/"
+    Copy-Item "$PublishDir/shell/ClickraShell.dll" "$LayoutDir/"
+    foreach ($bin in $ExtraBinaries) {
+        Copy-Item "$PublishDir/$bin" "$LayoutDir/"
+    }
+    Copy-Item "src/Clickra.Fluent/Assets/AppIcon.png" "$LayoutDir/Assets/AppIcon.png"
+    Copy-FluentPublishOutput -LayoutDir $LayoutDir -FluentPublishSource "src/Clickra.Fluent/bin/Release/net8.0-windows10.0.26100.0/win-x64/publish"
+    Copy-IconAssets -PackagingDir $PackagingDir -LayoutDir $LayoutDir
+}
+
+function New-AndSignMsix {
+    param(
+        [string]$Root,
+        [string]$PackagingDir,
+        [string]$LayoutDir
+    )
+    Write-Host "[Build] Creating MSIX Package..." -ForegroundColor Gray
+    $msixPath = "$Root/Clickra.msix"
+    if (Test-Path $msixPath) { Remove-Item $msixPath }
+    & "makeappx.exe" pack /d "$LayoutDir" /p $msixPath /o
+    Assert-NativeSuccess
+    Invoke-SignMsixPackage `
+        -ManifestPath "$PackagingDir/AppxManifest.xml" `
+        -MsixPath $msixPath `
+        -PfxPath "$PackagingDir/ClickraDev.pfx" `
+        -DevCertScriptPath "$PSScriptRoot/setup/create_dev_cert.ps1"
+    return $msixPath
+}
+
 function Assert-NativeSuccess {
     if ($LASTEXITCODE -ne 0) {
         throw "Native command failed with exit code $LASTEXITCODE"
