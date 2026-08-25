@@ -36,27 +36,29 @@ jobs:
         with:
           dotnet-version: '9.0.x'
 
-      - name: Restore packages
-        run: dotnet restore
-
       - name: Scan for vulnerable packages
         run: |
-          echo "## NuGet Dependency Vulnerability Report" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          dotnet list package --vulnerable --include-transitive 2>&1 | tee vuln-report.txt
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo '```' >> $GITHUB_STEP_SUMMARY
-          cat vuln-report.txt >> $GITHUB_STEP_SUMMARY
-          echo '```' >> $GITHUB_STEP_SUMMARY
-
-          # Fail if any package has a known vulnerability
-          if grep -q "has the following vulnerable packages" vuln-report.txt; then
-            echo "" >> $GITHUB_STEP_SUMMARY
-            echo "⚠️ **Vulnerable packages detected!** Please update the affected packages." >> $GITHUB_STEP_SUMMARY
+          echo "## NuGet Dependency Vulnerability Report" > vuln-report.txt
+          echo "" >> vuln-report.txt
+          VULN_FOUND=false
+          for proj in $(find src -name '*.csproj' -not -path '*/bin/*' -not -path '*/obj/*'); do
+            echo "Scanning $proj..."
+            echo "### $proj" >> vuln-report.txt
+            RESULT=$(dotnet list "$proj" package --vulnerable --include-transitive 2>&1)
+            echo "$RESULT" >> vuln-report.txt
+            echo "" >> vuln-report.txt
+            if echo "$RESULT" | grep -q "has the following vulnerable packages"; then
+              VULN_FOUND=true
+            fi
+          done
+          echo "" >> vuln-report.txt
+          if [ "$VULN_FOUND" = true ]; then
+            echo "⚠️ **Vulnerable packages detected!** Please update the affected packages." >> vuln-report.txt
+            cat vuln-report.txt >> $GITHUB_STEP_SUMMARY
             exit 1
           else
-            echo "" >> $GITHUB_STEP_SUMMARY
-            echo "✅ No known vulnerabilities found." >> $GITHUB_STEP_SUMMARY
+            echo "✅ No known vulnerabilities found." >> vuln-report.txt
+            cat vuln-report.txt >> $GITHUB_STEP_SUMMARY
           fi
 
       - name: Upload vulnerability report
