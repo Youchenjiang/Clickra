@@ -117,16 +117,15 @@ internal static class Program
         yield return Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Microsoft", "dotnet", "shared", "Microsoft.WindowsDesktop.App");
     }
 
-    /// <summary>嘗試解析 Version，失敗時回傳 null。</summary>
-    private static Version? ParseVersion(string s) =>
-        Version.TryParse(s, out Version? v) ? v : null;
+    /// <summary>嘗試解析 Version 並累積到 best，失敗時忽略。</summary>
+    private static Version? AccumulateVersion(Version? best, string s) =>
+        MaxVersion(best, Version.TryParse(s, out Version? v) ? v : null);
 
     private static Version? ScanSharedFrameworkDir(string dir) => TryGuard<Version?>(() =>
     {
         if (!Directory.Exists(dir)) return null;
         Version? best = null;
-        foreach (string sub in Directory.GetDirectories(dir))
-            best = MaxVersion(best, ParseVersion(Path.GetFileName(sub)));
+        foreach (string sub in Directory.GetDirectories(dir))                best = AccumulateVersion(best, Path.GetFileName(sub));
         return best;
     });
 
@@ -152,9 +151,9 @@ internal static class Program
             if (key is null) return null;
             Version? best = null;
             foreach (string name in key.GetSubKeyNames())
-                best = MaxVersion(best, ParseVersion(name));
+                best = AccumulateVersion(best, name);
             if (key.GetValue("Version") is string versionString)
-                best = MaxVersion(best, ParseVersion(versionString));
+                best = AccumulateVersion(best, versionString);
             return best;
         });
 
