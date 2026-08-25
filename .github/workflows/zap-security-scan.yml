@@ -1,23 +1,21 @@
-name: OWASP ZAP Security Scan
+name: Security Scan
 
 on:
   pull_request:
     paths:
-      - 'src/Clickra.Core/Translation/**'
-      - 'src/Clickra.Core/Processors/**/LibreOfficeEngine*'
+      - 'src/**'
       - 'tools/zap/**'
       - '.github/workflows/zap-security-scan.yml'
   push:
     branches:
       - main
     paths:
-      - 'src/Clickra.Core/Translation/**'
-      - 'src/Clickra.Core/Processors/**/LibreOfficeEngine*'
+      - 'src/**'
       - 'tools/zap/**'
   workflow_dispatch:
 
 concurrency:
-  group: zap-scan-${{ github.ref }}
+  group: security-scan-${{ github.ref }}
   cancel-in-progress: true
 
 permissions:
@@ -25,8 +23,52 @@ permissions:
   security-events: write
 
 jobs:
+  nuget-vulnerability:
+    name: NuGet Dependency Vulnerability Scan
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '9.0.x'
+
+      - name: Restore packages
+        run: dotnet restore
+
+      - name: Scan for vulnerable packages
+        run: |
+          echo "## NuGet Dependency Vulnerability Report" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          dotnet list package --vulnerable --include-transitive 2>&1 | tee vuln-report.txt
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+          cat vuln-report.txt >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+
+          # Fail if any package has a known vulnerability
+          if grep -q "has the following vulnerable packages" vuln-report.txt; then
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "⚠️ **Vulnerable packages detected!** Please update the affected packages." >> $GITHUB_STEP_SUMMARY
+            exit 1
+          else
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "✅ No known vulnerabilities found." >> $GITHUB_STEP_SUMMARY
+          fi
+
+      - name: Upload vulnerability report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: nuget-vulnerability-report
+          path: vuln-report.txt
+          retention-days: 30
+
   zap-baseline:
-    name: ZAP Baseline Scan
+    name: ZAP Baseline Scan (Third-party APIs)
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
