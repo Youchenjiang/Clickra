@@ -4,6 +4,14 @@
 $ErrorActionPreference = "Stop"
 
 # ------------------------------------------------------------------
+# Shared build environment setup
+# ------------------------------------------------------------------
+$script:Root = Get-Location
+$script:PackagingDir = "$($script:Root)/packaging/msix"
+$script:LayoutDir = "$($script:PackagingDir)/Layout"
+$script:PublishDir = "$($script:Root)/publish"
+
+# ------------------------------------------------------------------
 # Shared build functions
 # ------------------------------------------------------------------
 

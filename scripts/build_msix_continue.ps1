@@ -2,11 +2,7 @@
 param()
 $ErrorActionPreference = "Continue"
 . "$PSScriptRoot/build_common.ps1"
-
-$root = Get-Location
-$packagingDir = "$root/packaging/msix"
-$layoutDir = "$packagingDir/Layout"
-$publishDir = "$root/publish"
+$root = $script:Root; $packagingDir = $script:PackagingDir; $layoutDir = $script:LayoutDir; $publishDir = $script:PublishDir
 
 # 1. Clean up - tolerate locked files
 Write-Host "[Build] Cleaning up..." -ForegroundColor Gray
