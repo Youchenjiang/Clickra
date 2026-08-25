@@ -11,8 +11,9 @@ complementary security checks:
 
 1. **NuGet Dependency Vulnerability Scan** — scans Clickra's own package
    dependencies for known CVEs (actionable, Clickra can fix these)
-2. **OWASP ZAP Baseline Scan** — scans third-party translation APIs for
-   security header issues (informational only, Clickra cannot fix these)
+2. **OWASP ZAP Baseline Scan** — scans the Google Translate API endpoint for
+   security header issues (informational only, server-side issues Clickra cannot
+   fix)
 
 ## Why ZAP Limitations Exist
 

@@ -95,7 +95,7 @@
     - **雙欄/多欄排版與 XY-Cut++ 閱讀順序**：借鑑 `OpenDataLoader` 的雙欄與多欄解析算法，在本地 C# 解析中實現 XY-Cut 投影分割，確保學術論文與複雜文件在提取為 Markdown 時具備正確的閱讀順序。
     - **混合解析模式 (Hybrid Local+AI Mode)**：簡單或純文字頁面直接透過本地快速解析器（如 PDFium / PdfPig）處理，複雜表格、公式與圖表則路由至 Gemini API 等 Vision 端，實現 borderless 表格 HTML 重建與 AI 圖片描述。
     - **解耦設計**：於核心（`src/Clickra.Core`）設計 `IDocParserStrategy` 等解析策略介面（Strategy Pattern），使不同解析引擎（PDFium、AI Vision、PdfPig）能夠靈活切換與擴充。
-- [ ] **[F2-19] Secure Translation API Migration**：安全翻譯 API 遷移。
+- [ ] **[F2-27] Secure Translation API Migration**：安全翻譯 API 遷移。
     - **背景**：OWASP ZAP 掃描發現目前使用的翻譯 API（Google Free、MyMemory）缺乏安全 headers（HSTS、X-Content-Type-Options、CSP 等），存在安全風險。
     - **目標**：將翻譯 API 遷移至更安全的替代方案，同時保留現有 API 作為 fallback。
     - **Phase 1**：實作 DeepL API Free 翻譯引擎（每月 50 萬字免費、有完整安全 headers）。
@@ -123,7 +123,7 @@
         - 翻譯管線（`BaseTranslator` / `TranslationEngineFactory`）檢查設定，本地模式時跳過網路請求。
         - UI 層級：本地模式時灰掉翻譯相關選項，顯示離線提示訊息。
         - CLI 支援 `--offline` 旗標強制本地模式。
-    - **關聯**：此功能與 F2-19（Secure Translation API Migration）互補，提供使用者更完整的網路控制權。
+    - **關聯**：此功能與 F2-27（Secure Translation API Migration）互補，提供使用者更完整的網路控制權。
 
 ## 3. 專案架構與規範 (Refactoring)
 

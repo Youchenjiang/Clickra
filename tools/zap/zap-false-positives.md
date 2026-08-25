@@ -17,9 +17,11 @@ For each false positive, document:
 
 ---
 
-## Documented Findings (Server-Side Issues)
+## Documented Findings (Server-Side / Not Actionable by Clickra)
 
-These findings are on **external API server response headers**. Clickra is the CLIENT — it cannot modify the server's headers. These are NOT false positives; they are real security issues on the third-party API servers that Clickra cannot control.
+These findings are on **external API server response headers**. Clickra is the CLIENT — it cannot modify the server's headers. They are included here for completeness so future contributors understand why ZAP alerts exist but are not addressed in Clickra code.
+
+> **Note**: The current ZAP workflow only scans `translate.google.com`. The MyMemory findings below are from earlier manual scans and would appear if MyMemory were added to the scan target.
 
 ### Rule 10035 — Strict-Transport-Security Header Not Set
 
