@@ -117,21 +117,24 @@ internal static class Program
         yield return Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Microsoft", "dotnet", "shared", "Microsoft.WindowsDesktop.App");
     }
 
-    private static Version? ScanSharedFrameworkDir(string dir)
-    {
-        try
+    /// <summary>嘗試解析 Version，失敗時回傳 null。</summary>
+    private static Version? ParseVersion(string s) =>
+        Version.TryParse(s, out Version? v) ? v : null;
+
+    private static Version? ScanSharedFrameworkDir(string dir) =>
+        TryDetectVersion(() =>
         {
             if (!Directory.Exists(dir)) return null;
             Version? best = null;
             foreach (string sub in Directory.GetDirectories(dir))
-                best = MaxVersion(best, Version.TryParse(Path.GetFileName(sub), out Version? v) ? v : null);
+                best = MaxVersion(best, ParseVersion(Path.GetFileName(sub)));
             return best;
-        }
-        catch
-        {
-            // 忽略無權限的資料夾。
-        }
-        return null;
+        });
+
+    private static Version? TryDetectVersion(Func<Version?> probe)
+    {
+        try { return probe(); }
+        catch { return null; }
     }
 
     private static Version? FindDotNetDesktopFromRegistry()
@@ -142,43 +145,36 @@ internal static class Program
         RegistryHive[] hives = { RegistryHive.LocalMachine, RegistryHive.CurrentUser };
 
         foreach (RegistryHive hive in hives)
-        {
             foreach (RegistryView view in views)
-            {
                 foreach (string arch in arches)
                     best = MaxVersion(best, ReadInstalledVersion(hive, view, arch));
-            }
-        }
         return best;
     }
 
-    private static Version? ReadInstalledVersion(RegistryHive hive, RegistryView view, string arch)
-    {
-        try
+    private static Version? ReadInstalledVersion(RegistryHive hive, RegistryView view, string arch) =>
+        TryDetectVersion(() =>
         {
             string subPath = $@"SOFTWARE\dotnet\Setup\InstalledVersions\{arch}\sharedfx\Microsoft.WindowsDesktop.App";
             using RegistryKey? key = RegistryKey.OpenBaseKey(hive, view).OpenSubKey(subPath);
             if (key is null) return null;
-
             Version? best = null;
-            // 每個已安裝版本是該鍵下的一個子鍵（鍵名即版本號）。
             foreach (string name in key.GetSubKeyNames())
-                best = MaxVersion(best, Version.TryParse(name, out Version? v) ? v : null);
-            // 部分安裝會直接寫 "Version" 值。
+                best = MaxVersion(best, ParseVersion(name));
             if (key.GetValue("Version") is string versionString)
-                best = MaxVersion(best, Version.TryParse(versionString, out Version? direct) ? direct : null);
+                best = MaxVersion(best, ParseVersion(versionString));
             return best;
-        }
-        catch
-        {
-            // 忽略無權限或格式問題的鍵。
-        }
-        return null;
-    }
+        });
 
     private static Version? MaxVersion(Version? current, Version? candidate)
     {
         return candidate is not null && (current is null || candidate > current) ? candidate : current;
+    }
+
+    /// <summary>嘗試執行偵測函數，失敗時回傳 false（不影響主流程）。</summary>
+    private static bool TryDetect(Func<bool> probe)
+    {
+        try { return probe(); }
+        catch { return false; }
     }
 
     /// <summary>
@@ -186,22 +182,14 @@ internal static class Program
     /// Microsoft.WindowsAppRuntime.Bootstrap.dll 放到 System32，
     /// 因此能從 System32 載入該 DLL 就代表 framework 套件已安裝。
     /// </summary>
-    private static bool HasWindowsAppRuntime()
+    private static bool HasWindowsAppRuntime() => TryDetect(() =>
     {
-        try
-        {
-            IntPtr handle = LoadLibraryExW(
-                "Microsoft.WindowsAppRuntime.Bootstrap.dll",
-                IntPtr.Zero,
-                LoadLibrarySearchSystem32);
-            // 故意不 FreeLibrary：安裝程式生命週期極短，避免卸載競態。
-            return handle != IntPtr.Zero;
-        }
-        catch
-        {
-            return false;
-        }
-    }
+        IntPtr handle = LoadLibraryExW(
+            "Microsoft.WindowsAppRuntime.Bootstrap.dll",
+            IntPtr.Zero,
+            LoadLibrarySearchSystem32);
+        return handle != IntPtr.Zero;
+    });
 
     // GetCurrentPackageFullName: kernel32 (AppModel)。回傳碼：
     //   ERROR_SUCCESS (0) / ERROR_INSUFFICIENT_BUFFER (0x7A) → 有 package identity；
@@ -216,18 +204,11 @@ internal static class Program
     /// （Explorer in-proc 載入 ClickraShell.dll）spawn 出的 launcher 則為 unpackaged，
     /// 需回歸 System32 bootstrap 偵測。
     /// </summary>
-    private static bool IsPackagedProcess()
+    private static bool IsPackagedProcess() => TryDetect(() =>
     {
-        try
-        {
-            int length = 0;
-            int hr = GetCurrentPackageFullName(ref length, IntPtr.Zero);
-            return hr == 0 || hr == 0x7A; // ERROR_SUCCESS / ERROR_INSUFFICIENT_BUFFER
-        }
-        catch
-        {
-            return false;
-        }
-    }
+        int length = 0;
+        int hr = GetCurrentPackageFullName(ref length, IntPtr.Zero);
+        return hr == 0 || hr == 0x7A;
+    });
 
 }
