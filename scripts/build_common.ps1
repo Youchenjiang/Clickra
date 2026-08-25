@@ -1,7 +1,94 @@
 # Shared helpers for Clickra MSIX build scripts.
-# Dot-sourced by build_msix.ps1 and build_native_msix.ps1 so the two tracks
-# keep a single copy of environment setup and package signing.
+# Dot-sourced by build_msix.ps1, build_msix_continue.ps1, and build_native_msix.ps1
+# so the three tracks keep a single copy of environment setup, build steps, and signing.
 $ErrorActionPreference = "Stop"
+
+# ------------------------------------------------------------------
+# Shared build functions
+# ------------------------------------------------------------------
+
+function Invoke-NativePublish {
+    param(
+        [string]$Project,
+        [string]$OutputDir,
+        [string]$ExtraArgs = ""
+    )
+    $cmd = "dotnet publish $Project -c Release -r win-x64 -o \"$OutputDir\" --self-contained true $ExtraArgs"
+    Write-Host "[Build] Publishing $Project..." -ForegroundColor Gray
+    Invoke-Expression $cmd
+    Assert-NativeSuccess
+}
+
+function Invoke-FluentPublish {
+    param(
+        [string]$ExtraArgs = ""
+    )
+    Write-Host "[Build] Publishing Fluent GUI (framework-dependent)..." -ForegroundColor Gray
+    dotnet publish src/Clickra.Fluent/Clickra.Fluent.csproj -c Release --self-contained false $ExtraArgs
+    Assert-NativeSuccess
+}
+
+function Copy-FluentPublishOutput {
+    param(
+        [string]$LayoutDir,
+        [string]$FluentPublishSource
+    )
+    $fluentExclude = @(
+        "*.pdb",
+        "DirectML.dll",
+        "onnxruntime.dll",
+        "Microsoft.Windows.AI.MachineLearning.dll",
+        "Microsoft.Windows.ApplicationModel.Background.UniversalBGTask.dll"
+    )
+    Get-ChildItem $FluentPublishSource -File |
+        Where-Object {
+            $name = $_.Name
+            -not ($fluentExclude | Where-Object { $name -like $_ })
+        } |
+        ForEach-Object {
+            Copy-Item $_.FullName "$LayoutDir/"
+        }
+}function Copy-IconAssets {
+    param(
+        [string]$PackagingDir,
+        [string]$LayoutDir
+    )
+    if (Test-Path "$PackagingDir/Assets/StoreLogo.png") {
+        Copy-Item "$PackagingDir/Assets/StoreLogo.png" "$LayoutDir/app.png"
+    }
+    if (Test-Path "src/resources/app.ico") {
+        Copy-Item "src/resources/app.ico" "$LayoutDir/"
+    }
+    if (Test-Path "src/resources/menu-*.ico") {
+        Copy-Item "src/resources/menu-*.ico" "$LayoutDir/"
+    }
+}
+
+function Sync-WindowsAppRuntimeDependency {
+    param(
+        [string]$ProjectPath,
+        [string]$ManifestPath
+    )
+
+    [xml]$project = Get-Content $ProjectPath
+    $sdkReference = $project.Project.ItemGroup.PackageReference |
+        Where-Object Include -eq "Microsoft.WindowsAppSDK" |
+        Select-Object -First 1
+    $sdkVersion = [version]$sdkReference.Version
+    if ($sdkVersion.Major -lt 2) {
+        throw "Automatic Windows App Runtime alignment requires Windows App SDK 2.0 or newer."
+    }
+
+    [xml]$manifest = Get-Content $ManifestPath
+    $dependency = $manifest.Package.Dependencies.PackageDependency |
+        Where-Object Name -like "Microsoft.WindowsAppRuntime.*" |
+        Select-Object -First 1
+    $dependency.Name = "Microsoft.WindowsAppRuntime.$($sdkVersion.Major)"
+    $dependency.MinVersion = "$($sdkVersion.ToString(3)).0"
+    $manifest.Save($ManifestPath)
+
+    Write-Host "[Build] Windows App Runtime aligned to $($dependency.Name) $($dependency.MinVersion)" -ForegroundColor Gray
+}
 
 function Assert-NativeSuccess {
     if ($LASTEXITCODE -ne 0) {
