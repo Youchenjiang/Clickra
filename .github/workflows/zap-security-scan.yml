@@ -46,7 +46,7 @@ jobs:
             echo "Scanning $proj..."
             echo "### $proj" >> vuln-report.txt
             dotnet restore "$proj" -p:EnableWindowsTargeting=true --verbosity quiet 2>&1 || true
-            RESULT=$(dotnet list "$proj" package --vulnerable 2>&1)
+            RESULT=$(dotnet list "$proj" package --vulnerable 2>&1) || true
             echo "$RESULT" >> vuln-report.txt
             echo "" >> vuln-report.txt
             if echo "$RESULT" | grep -q "has the following vulnerable packages"; then
