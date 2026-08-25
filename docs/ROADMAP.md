@@ -113,6 +113,17 @@
 - [ ] **[F2-23] Batch Create Empty Folders**：批量建立空資料夾。支援依指定命名規則與結構要求，一次建立多個指定結構的空資料夾。
 - [ ] **[F2-24] Text Encoding & Traditional/Simplified Conversion**：文字編碼與簡繁轉換。支援 Big5/GBK/UTF-8 互轉與原生 `LCMapStringEx` 簡繁字元互轉。
 - [ ] **[F2-25] Folder Right-click Direct Conversion**：資料夾右鍵直接轉換。支援直接在資料夾右鍵選單操作，一鍵將資料夾底下的所有支援檔案進行轉換（如 Word 批次轉 PDF、圖片轉 PDF 等），無須進入資料夾手動選取。
+- [ ] **[F2-26] Offline Mode / Network Control**：離線模式與網路控制。
+    - **需求背景**：部分使用者出於隱私或資安考量，希望在完全離線環境下使用 Clickra，不希望應用程式有任何聯網行為。
+    - **功能設計**：於設定頁面新增「網路模式」選項，提供兩種模式：
+        - **完全本地模式 (Local Only)**：關閉所有聯網功能，翻譯相關選項灰化並顯示提示，避免任何 HTTP 請求。
+        - **允許翻譯聯網 (Online)**：維持現有行為，可使用 Google Free / MyMemory 等翻譯 API。
+    - **實作範圍**：
+        - `ClickraStorage` 新增 `NetworkMode` 設定（`local` / `online`）。
+        - 翻譯管線（`BaseTranslator` / `TranslationEngineFactory`）檢查設定，本地模式時跳過網路請求。
+        - UI 層級：本地模式時灰掉翻譯相關選項，顯示離線提示訊息。
+        - CLI 支援 `--offline` 旗標強制本地模式。
+    - **關聯**：此功能與 F2-19（Secure Translation API Migration）互補，提供使用者更完整的網路控制權。
 
 ## 3. 專案架構與規範 (Refactoring)
 
