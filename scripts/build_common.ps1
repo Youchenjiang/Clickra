@@ -13,7 +13,7 @@ function Invoke-NativePublish {
         [string]$OutputDir,
         [string]$ExtraArgs = ""
     )
-    $cmd = "dotnet publish $Project -c Release -r win-x64 -o \"$OutputDir\" --self-contained true $ExtraArgs"
+    $cmd = "dotnet publish $Project -c Release -r win-x64 -o `"$OutputDir`" --self-contained true $ExtraArgs"
     Write-Host "[Build] Publishing $Project..." -ForegroundColor Gray
     Invoke-Expression $cmd
     Assert-NativeSuccess
