@@ -45,7 +45,7 @@ jobs:
             if [ ! -f "$proj" ]; then continue; fi
             echo "Scanning $proj..."
             echo "### $proj" >> vuln-report.txt
-            dotnet restore "$proj" --verbosity quiet 2>&1 || true
+            dotnet restore "$proj" -p:EnableWindowsTargeting=true --verbosity quiet 2>&1 || true
             RESULT=$(dotnet list "$proj" package --vulnerable --include-transitive 2>&1)
             echo "$RESULT" >> vuln-report.txt
             echo "" >> vuln-report.txt
