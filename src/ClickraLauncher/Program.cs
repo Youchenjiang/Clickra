@@ -121,21 +121,14 @@ internal static class Program
     private static Version? ParseVersion(string s) =>
         Version.TryParse(s, out Version? v) ? v : null;
 
-    private static Version? ScanSharedFrameworkDir(string dir) =>
-        TryDetectVersion(() =>
-        {
-            if (!Directory.Exists(dir)) return null;
-            Version? best = null;
-            foreach (string sub in Directory.GetDirectories(dir))
-                best = MaxVersion(best, ParseVersion(Path.GetFileName(sub)));
-            return best;
-        });
-
-    private static Version? TryDetectVersion(Func<Version?> probe)
+    private static Version? ScanSharedFrameworkDir(string dir) => TryGuard<Version?>(() =>
     {
-        try { return probe(); }
-        catch { return null; }
-    }
+        if (!Directory.Exists(dir)) return null;
+        Version? best = null;
+        foreach (string sub in Directory.GetDirectories(dir))
+            best = MaxVersion(best, ParseVersion(Path.GetFileName(sub)));
+        return best;
+    });
 
     private static Version? FindDotNetDesktopFromRegistry()
     {
@@ -152,7 +145,7 @@ internal static class Program
     }
 
     private static Version? ReadInstalledVersion(RegistryHive hive, RegistryView view, string arch) =>
-        TryDetectVersion(() =>
+        TryGuard<Version?>(() =>
         {
             string subPath = $@"SOFTWARE\dotnet\Setup\InstalledVersions\{arch}\sharedfx\Microsoft.WindowsDesktop.App";
             using RegistryKey? key = RegistryKey.OpenBaseKey(hive, view).OpenSubKey(subPath);
@@ -170,11 +163,11 @@ internal static class Program
         return candidate is not null && (current is null || candidate > current) ? candidate : current;
     }
 
-    /// <summary>嘗試執行偵測函數，失敗時回傳 false（不影響主流程）。</summary>
-    private static bool TryDetect(Func<bool> probe)
+    /// <summary>嘗試執行 probe，回傳結果；失敗時回傳 default。</summary>
+    private static T TryGuard<T>(Func<T> probe, T @default = default!)
     {
         try { return probe(); }
-        catch { return false; }
+        catch { return @default; }
     }
 
     /// <summary>
@@ -182,7 +175,7 @@ internal static class Program
     /// Microsoft.WindowsAppRuntime.Bootstrap.dll 放到 System32，
     /// 因此能從 System32 載入該 DLL 就代表 framework 套件已安裝。
     /// </summary>
-    private static bool HasWindowsAppRuntime() => TryDetect(() =>
+    private static bool HasWindowsAppRuntime() => TryGuard(() =>
     {
         IntPtr handle = LoadLibraryExW(
             "Microsoft.WindowsAppRuntime.Bootstrap.dll",
@@ -204,7 +197,7 @@ internal static class Program
     /// （Explorer in-proc 載入 ClickraShell.dll）spawn 出的 launcher 則為 unpackaged，
     /// 需回歸 System32 bootstrap 偵測。
     /// </summary>
-    private static bool IsPackagedProcess() => TryDetect(() =>
+    private static bool IsPackagedProcess() => TryGuard(() =>
     {
         int length = 0;
         int hr = GetCurrentPackageFullName(ref length, IntPtr.Zero);
