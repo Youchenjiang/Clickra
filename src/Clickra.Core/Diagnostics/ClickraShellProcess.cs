@@ -94,19 +94,11 @@ public static class ClickraShellProcess
                 if (entry.th32ProcessID == currentPid) continue;
                 if (!entry.szExeFile.Equals(DllHostExe, StringComparison.OrdinalIgnoreCase)) continue;
                 if (HasModuleLoaded(entry.th32ProcessID, ShellDllName))
-                {
                     Terminate(entry.th32ProcessID);
-                }
             } while (Process32NextW(snapshot, ref entry));
         }
-        catch
-        {
-            // 清理失敗絕不能影響主流程。
-        }
-        finally
-        {
-            CloseHandle(snapshot);
-        }
+        catch { }
+        finally { CloseHandle(snapshot); }
     }
 
     /// <summary>該程序是否已載入指定模組（Toolhelp 模組快照）。</summary>
@@ -124,14 +116,8 @@ public static class ClickraShellProcess
             } while (Module32NextW(snapshot, ref entry));
             return false;
         }
-        catch
-        {
-            return false;
-        }
-        finally
-        {
-            CloseHandle(snapshot);
-        }
+        catch { return false; }
+        finally { CloseHandle(snapshot); }
     }
 
     private static void Terminate(uint processId)
