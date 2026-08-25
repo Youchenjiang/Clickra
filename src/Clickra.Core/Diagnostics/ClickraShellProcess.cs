@@ -3,6 +3,20 @@ using System.Runtime.InteropServices;
 
 namespace Clickra.Core;
 
+/// <summary>RAII wrapper for a Win32 Toolhelp32 snapshot handle.</summary>
+internal readonly struct ToolhelpSnapshot : IDisposable
+{
+    public readonly IntPtr Handle;
+    public ToolhelpSnapshot(uint flags, uint processId) =>
+        Handle = CreateToolhelp32Snapshot(flags, processId);
+    public bool IsValid => Handle != new IntPtr(-1);
+    public void Dispose() { if (IsValid) CloseHandle(Handle); }
+    [DllImport("kernel32.dll", SetLastError = true)]
+    private static extern IntPtr CreateToolhelp32Snapshot(uint dwFlags, uint th32ProcessID);
+    [DllImport("kernel32.dll", SetLastError = true)]
+    private static extern bool CloseHandle(IntPtr hObject);
+}
+
 /// <summary>
 /// 清除殘留的 ClickraShell COM surrogate（dllhost.exe）。
 ///
@@ -56,9 +70,6 @@ public static class ClickraShellProcess
     }
 
     [DllImport("kernel32.dll", SetLastError = true)]
-    private static extern IntPtr CreateToolhelp32Snapshot(uint dwFlags, uint th32ProcessID);
-
-    [DllImport("kernel32.dll", SetLastError = true)]
     private static extern bool Process32FirstW(IntPtr hSnapshot, ref ProcessEntry32W lppe);
 
     [DllImport("kernel32.dll", SetLastError = true)]
@@ -83,41 +94,39 @@ public static class ClickraShellProcess
     public static void KillSurrogateHosts()
     {
         uint currentPid = (uint)Environment.ProcessId;
-        IntPtr snapshot = CreateToolhelp32Snapshot(Th32csSnapProcess, 0);
-        if (snapshot == new IntPtr(-1)) return;
+        using var snap = new ToolhelpSnapshot(Th32csSnapProcess, 0);
+        if (!snap.IsValid) return;
         try
         {
             var entry = new ProcessEntry32W { dwSize = (uint)Marshal.SizeOf<ProcessEntry32W>() };
-            if (!Process32FirstW(snapshot, ref entry)) return;
+            if (!Process32FirstW(snap.Handle, ref entry)) return;
             do
             {
                 if (entry.th32ProcessID == currentPid) continue;
                 if (!entry.szExeFile.Equals(DllHostExe, StringComparison.OrdinalIgnoreCase)) continue;
                 if (HasModuleLoaded(entry.th32ProcessID, ShellDllName))
                     Terminate(entry.th32ProcessID);
-            } while (Process32NextW(snapshot, ref entry));
+            } while (Process32NextW(snap.Handle, ref entry));
         }
         catch { }
-        finally { CloseHandle(snapshot); }
     }
 
     /// <summary>該程序是否已載入指定模組（Toolhelp 模組快照）。</summary>
     private static bool HasModuleLoaded(uint processId, string moduleName)
     {
-        IntPtr snapshot = CreateToolhelp32Snapshot(Th32csSnapModule, processId);
-        if (snapshot == new IntPtr(-1)) return false;
+        using var snap = new ToolhelpSnapshot(Th32csSnapModule, processId);
+        if (!snap.IsValid) return false;
         try
         {
             var entry = new ModuleEntry32W { dwSize = (uint)Marshal.SizeOf<ModuleEntry32W>() };
-            if (!Module32FirstW(snapshot, ref entry)) return false;
+            if (!Module32FirstW(snap.Handle, ref entry)) return false;
             do
             {
                 if (entry.szModule.Equals(moduleName, StringComparison.OrdinalIgnoreCase)) return true;
-            } while (Module32NextW(snapshot, ref entry));
+            } while (Module32NextW(snap.Handle, ref entry));
             return false;
         }
         catch { return false; }
-        finally { CloseHandle(snapshot); }
     }
 
     private static void Terminate(uint processId)
