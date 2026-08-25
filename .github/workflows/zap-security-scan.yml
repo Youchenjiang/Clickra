@@ -1,0 +1,97 @@
+name: Security Scan
+
+on:
+  pull_request:
+    paths:
+      - 'src/**'
+      - 'tools/zap/**'
+      - '.github/workflows/zap-security-scan.yml'
+  push:
+    branches:
+      - main
+    paths:
+      - 'src/**'
+      - 'tools/zap/**'
+  workflow_dispatch:
+
+concurrency:
+  group: security-scan-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  nuget-vulnerability:
+    name: NuGet Dependency Vulnerability Scan
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@67a3573c9a986a3f9c594539f4ab511d57bb3ce9 # v4.3.1
+        with:
+          dotnet-version: '9.0.x'
+
+      - name: Scan for vulnerable packages
+        run: |
+          echo "## NuGet Dependency Vulnerability Report" > vuln-report.txt
+          echo "" >> vuln-report.txt
+          VULN_FOUND=false
+          for proj in src/Clickra.Core/Clickra.Core.csproj src/Clickra.CLI/Clickra.csproj src/Clickra.Fluent/Clickra.Fluent.csproj src/Clickra.Setup/Clickra.Setup.csproj; do
+            if [ ! -f "$proj" ]; then continue; fi
+            echo "Scanning $proj..."
+            echo "### $proj" >> vuln-report.txt
+            dotnet restore "$proj" -p:EnableWindowsTargeting=true --verbosity quiet 2>&1 || true
+            RESULT=$(dotnet list "$proj" package --vulnerable 2>&1) || true
+            echo "$RESULT" >> vuln-report.txt
+            echo "" >> vuln-report.txt
+            if echo "$RESULT" | grep -q "has the following vulnerable packages"; then
+              VULN_FOUND=true
+            fi
+          done
+          echo "" >> vuln-report.txt
+          if [ "$VULN_FOUND" = true ]; then
+            echo "⚠️ **Vulnerable packages detected!** Please update the affected packages." >> vuln-report.txt
+            cat vuln-report.txt >> $GITHUB_STEP_SUMMARY
+            exit 1
+          else
+            echo "✅ No known vulnerabilities found." >> vuln-report.txt
+            cat vuln-report.txt >> $GITHUB_STEP_SUMMARY
+          fi
+
+      - name: Upload vulnerability report
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: nuget-vulnerability-report
+          path: vuln-report.txt
+          retention-days: 30
+
+  zap-baseline:
+    name: ZAP Baseline Scan (Third-party APIs)
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      security-events: write
+    timeout-minutes: 30
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+
+      - name: OWASP ZAP Baseline Scan
+        uses: zaproxy/action-baseline@de8ad967d3548d44ef623df22cf95c3b0baf8b25 # v0.15.0
+        with:
+          target: >-
+            https://translate.google.com/translate_a/t?client=at&sl=auto&tl=en
+          rules_file_name: 'tools/zap/zap-rules.tsv'
+          cmd_options: >-
+            -a
+            -j
+            -l WARN
+            -z "-config spider.maxDepth=0 -config connection.timeout=60"
+          allow_issue_writing: false
+          artifact_name: 'zap-baseline-report'
+          fail_action: false
