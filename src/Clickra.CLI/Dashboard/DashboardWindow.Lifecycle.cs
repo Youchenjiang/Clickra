@@ -30,6 +30,10 @@ namespace Clickra.UI
 
             RefreshHistoryData();
 
+            // 清除先前右鍵操作殘留的 ClickraShell surrogate（dllhost，帶套件身分），
+            // 避免解除安裝時被「應用程式仍在執行」擋住。
+            ClickraShellProcess.KillSurrogateHosts();
+
             try { SetProcessDpiAwarenessContext((IntPtr)(-4)); } catch {}
             uint dpi = 96;
             try { dpi = GetDpiForSystem(); } catch {}
