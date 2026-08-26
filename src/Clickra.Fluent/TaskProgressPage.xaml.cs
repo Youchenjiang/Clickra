@@ -94,60 +94,49 @@ public sealed partial class TaskProgressPage : Page
         cancelButton.Content = L("fluent_cancel");
     }
 
-    private async Task RunAsync()
+    private record ParseResult(string Command, List<string> Files, int StartIndex, string? ExistingTaskId);
+
+    private ParseResult? TryParseArguments()
     {
         var args = ConvertCommandRegistry.SplitCommandLine(_arguments);
+        bool isResume = args.Count > 0 && args[0].Equals("resume", StringComparison.OrdinalIgnoreCase);
 
-        // 解析任務參數：resume {taskId} = 從暫存繼續；否則為「command 檔案...」。
-        string command;
-        List<string> files;
-        int startIndex = 0;
-        string? existingTaskId = null;
+        if (isResume) return TryParseResume(args);
+        return TryParseFresh(args);
+    }
 
-        if (args.Count > 0 && args[0].Equals("resume", StringComparison.OrdinalIgnoreCase))
+    private ParseResult? TryParseResume(List<string> args)
+    {
+        if (args.Count < 2) return null;
+        var parked = ClickraStorage.GetTask(args[1]);
+        if (parked == null || parked.Value.Status != ConversionStatus.Parked) return null;
+        var files = parked.Value.InputPaths.Split(';', StringSplitOptions.RemoveEmptyEntries).ToList();
+        if (files.Count == 0) return null;
+        int startIndex = Math.Clamp(parked.Value.CurrentIndex, 0, files.Count);
+        return new ParseResult(parked.Value.Command, files, startIndex, args[1]);
+    }
+
+    private ParseResult? TryParseFresh(List<string> args)
+    {
+        if (args.Count < 2 || !ConvertCommandRegistry.IsKnownCommand(args[0])) return null;
+        var files = ConvertCommandRegistry.ExpandDirectoryArguments(args[0], args.Skip(1)).Where(File.Exists).ToList();
+        if (files.Count == 0) return null;
+        return new ParseResult(args[0], files, 0, null);
+    }
+
+    private async Task RunAsync()
+    {
+        var parsed = TryParseArguments();
+        if (parsed == null)
         {
-            if (args.Count < 2)
-            {
-                Complete(L("fluent_progress_invalid_command"), false);
-                CancelButton.Click += (_, _) => CloseHostWindow();
-                return;
-            }
-            string taskId = args[1];
-            var parked = ClickraStorage.GetTask(taskId);
-            if (parked == null || parked.Value.Status != ConversionStatus.Parked)
-            {
-                Complete(L("fluent_progress_invalid_command"), false);
-                CancelButton.Click += (_, _) => CloseHostWindow();
-                return;
-            }
-            command = parked.Value.Command;
-            files = parked.Value.InputPaths.Split(';', StringSplitOptions.RemoveEmptyEntries).ToList();
-            if (files.Count == 0)
-            {
-                Complete(L("fluent_progress_file_not_found"), false);
-                CancelButton.Click += (_, _) => CloseHostWindow();
-                return;
-            }
-            startIndex = Math.Clamp(parked.Value.CurrentIndex, 0, files.Count);
-            existingTaskId = taskId;
+            Complete(L("fluent_progress_invalid_command"), false);
+            CancelButton.Click += (_, _) => CloseHostWindow();
+            return;
         }
-        else
-        {
-            if (args.Count < 2 || !ConvertCommandRegistry.IsKnownCommand(args[0]))
-            {
-                Complete(L("fluent_progress_invalid_command"), false);
-                CancelButton.Click += (_, _) => CloseHostWindow();
-                return;
-            }
-            command = args[0];
-            files = ConvertCommandRegistry.ExpandDirectoryArguments(command, args.Skip(1)).Where(File.Exists).ToList();
-            if (files.Count == 0)
-            {
-                Complete(L("fluent_progress_file_not_found"), false);
-                CancelButton.Click += (_, _) => CloseHostWindow();
-                return;
-            }
-        }
+        string command = parsed.Command;
+        List<string> files = parsed.Files;
+        int startIndex = parsed.StartIndex;
+        string? existingTaskId = parsed.ExistingTaskId;
 
         if (!OfficeEnginePreflight.TryValidate(command, L, out string preflightError))
         {
