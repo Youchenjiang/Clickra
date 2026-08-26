@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.Linq;
 using System.Runtime.InteropServices;
 using Microsoft.Win32;
 
@@ -117,16 +118,20 @@ internal static class Program
         yield return Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Microsoft", "dotnet", "shared", "Microsoft.WindowsDesktop.App");
     }
 
-    /// <summary>嘗試解析 Version 並累積到 best，失敗時忽略。</summary>
-    private static Version? AccumulateVersion(Version? best, string s) =>
-        MaxVersion(best, Version.TryParse(s, out Version? v) ? v : null);
+    /// <summary>從一組候選字串中找出最高 Version。</summary>
+    private static Version? FindBestVersion(IEnumerable<string> candidates)
+    {
+        Version? best = null;
+        foreach (string s in candidates)
+            if (Version.TryParse(s, out Version? v))
+                best = MaxVersion(best, v);
+        return best;
+    }
 
     private static Version? ScanSharedFrameworkDir(string dir) => TryGuard<Version?>(() =>
     {
         if (!Directory.Exists(dir)) return null;
-        Version? best = null;
-        foreach (string sub in Directory.GetDirectories(dir))                best = AccumulateVersion(best, Path.GetFileName(sub));
-        return best;
+        return FindBestVersion(Directory.GetDirectories(dir).Select(Path.GetFileName));
     });
 
     private static Version? FindDotNetDesktopFromRegistry()
@@ -149,12 +154,9 @@ internal static class Program
             string subPath = $@"SOFTWARE\dotnet\Setup\InstalledVersions\{arch}\sharedfx\Microsoft.WindowsDesktop.App";
             using RegistryKey? key = RegistryKey.OpenBaseKey(hive, view).OpenSubKey(subPath);
             if (key is null) return null;
-            Version? best = null;
-            foreach (string name in key.GetSubKeyNames())
-                best = AccumulateVersion(best, name);
-            if (key.GetValue("Version") is string versionString)
-                best = AccumulateVersion(best, versionString);
-            return best;
+            var candidates = key.GetSubKeyNames().ToList();
+            if (key.GetValue("Version") is string v) candidates.Add(v);
+            return FindBestVersion(candidates);
         });
 
     private static Version? MaxVersion(Version? current, Version? candidate)

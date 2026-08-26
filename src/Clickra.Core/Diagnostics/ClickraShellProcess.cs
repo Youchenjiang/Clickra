@@ -6,10 +6,10 @@ namespace Clickra.Core;
 /// <summary>RAII wrapper for a Win32 Toolhelp32 snapshot handle.</summary>
 internal readonly struct ToolhelpSnapshot : IDisposable
 {
-    public readonly IntPtr Handle;
+    internal readonly IntPtr Handle;
     public ToolhelpSnapshot(uint flags, uint processId) =>
         Handle = CreateToolhelp32Snapshot(flags, processId);
-    public bool IsValid => Handle != new IntPtr(-1);
+    internal bool IsValid => Handle != new IntPtr(-1);
     public void Dispose() { if (IsValid) CloseHandle(Handle); }
     [DllImport("kernel32.dll", SetLastError = true)]
     private static extern IntPtr CreateToolhelp32Snapshot(uint dwFlags, uint th32ProcessID);
