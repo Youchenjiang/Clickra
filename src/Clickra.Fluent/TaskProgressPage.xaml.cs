@@ -201,7 +201,7 @@ public sealed partial class TaskProgressPage : Page
                     {
                         TrayService.Instance.RemoveBackgroundWindow(Window);
                         ShowToast(L("fluent_toast_canceled_title"), string.Format(L("fluent_toast_canceled_body"), Path.GetFileName(files[0])));
-                        await Task.Delay(1200);
+                        await Task.Delay(1200, CancellationToken.None);
                     }
                     CloseHostWindow();
                     return;
@@ -210,7 +210,7 @@ public sealed partial class TaskProgressPage : Page
                     _finished = true;
                     TrayService.Instance.RemoveBackgroundWindow(Window);
                     ShowToast(L("fluent_park_toast_title"), L("fluent_park_toast_body"));
-                    await Task.Delay(800);
+                    await Task.Delay(800, CancellationToken.None);
                     CloseHostWindow();
                     return;
                 default:
@@ -230,7 +230,7 @@ public sealed partial class TaskProgressPage : Page
                 // 最後一個視窗關閉時程序隨之結束（TrackWindow）。
                 TrayService.Instance.RemoveBackgroundWindow(Window);
                 ShowToast(toastTitle, toastBody);
-                await Task.Delay(1500);
+                await Task.Delay(1500, CancellationToken.None);
                 CloseHostWindow();
             }
         }
