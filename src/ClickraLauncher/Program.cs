@@ -144,13 +144,17 @@ internal static class Program
         string fxName = "Microsoft.WindowsDesktop.App";
 
         foreach (RegistryHive hive in new[] { RegistryHive.LocalMachine, RegistryHive.CurrentUser })
-        foreach (RegistryView view in new[] { RegistryView.Registry64, RegistryView.Registry32 })
-        foreach (string arch in new[] { "x64", "arm64", "x86" })
         {
-            best = PickBest(best, TryReadRegValue(hive, view, arch, fxName, "Version"));
-            foreach (string subKeyName in TryGetRegSubKeys(hive, view, arch, fxName))
+            foreach (RegistryView view in new[] { RegistryView.Registry64, RegistryView.Registry32 })
             {
-                best = PickBest(best, TryParseVer(subKeyName));
+                foreach (string arch in new[] { "x64", "arm64", "x86" })
+                {
+                    best = PickBest(best, TryReadRegValue(hive, view, arch, fxName, "Version"));
+                    foreach (string subKeyName in TryGetRegSubKeys(hive, view, arch, fxName))
+                    {
+                        best = PickBest(best, TryParseVer(subKeyName));
+                    }
+                }
             }
         }
 
