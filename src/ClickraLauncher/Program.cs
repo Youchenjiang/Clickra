@@ -21,44 +21,30 @@ namespace Clickra.Launcher;
 /// </summary>
 internal static class Program
 {
-    private static readonly Version RequiredDotNetVersion = new(8, 0);
+    private const uint LoadLibrarySearchSystem32 = 0x00000800;
 
-    // LoadLibraryEx with LOAD_LIBRARY_SEARCH_SYSTEM32: 只在 System32 找檔，不載入工作目錄同名檔案。
     [DllImport("kernel32.dll", CharSet = CharSet.Unicode, SetLastError = true)]
     private static extern IntPtr LoadLibraryExW(string lpFileName, IntPtr hFile, uint dwFlags);
-    private const uint LoadLibrarySearchSystem32 = 0x00000800;
+
+    [DllImport("kernel32.dll", CharSet = CharSet.Unicode, SetLastError = true)]
+    private static extern int GetCurrentPackageFullName(ref int len, IntPtr buf);
 
     private static int Main(string[] args)
     {
-        // ---- 1. 偵測 ----（registry 讀取 + System32 DLL load + 檔案探測，皆 <2ms）
         string exeDir = AppContext.BaseDirectory;
-        Version? dotNetVersion = FindLatestDotNetDesktopRuntime();
-        bool hasDotNet = dotNetVersion is not null && dotNetVersion >= RequiredDotNetVersion;
+        bool canRunFluent = DetectFluentCapability();
 
-        // 套件內的 Fluent 是 framework-dependent WinUI 3：需要 .NET 8+ 與 Windows App
-        // Runtime。launcher 為 packaged（Start menu / 套件 activation）時 framework 由
-        // manifest dependency 提供（繼承的 package graph 含該 framework）；unpackaged
-        // （右鍵 COM 鏈路 / 直接雙擊）時需本機已安裝 runtime（System32 bootstrap DLL）。
-        bool canRunFluent = hasDotNet && (HasWindowsAppRuntime() || IsPackagedProcess());
-
-        // ---- 2. 決定目標 ----（任一條件缺失 → 零依賴 Win32）
         string target = canRunFluent ? "Clickra.Fluent.exe" : "Clickra.exe";
 
-        // ---- 3. 啟動目標並退出 ----（GUI subsystem，無 console 閃現）
         try
         {
             string targetPath = Path.Combine(exeDir, target);
             if (!File.Exists(targetPath))
-            {
-                // Fallback：與 launcher 同目錄找不到時，試執行檔所在目錄的同層。
-                targetPath = Path.Combine(
-                    Path.GetDirectoryName(Environment.ProcessPath) ?? exeDir,
-                    target);
-            }
+                targetPath = Path.Combine(Path.GetDirectoryName(Environment.ProcessPath) ?? exeDir, target);
+
             // 刻意用 CreateProcess（UseShellExecute=false）而不是 ShellExecute：
-            // 由套件（packaged）的 launcher 直接建立的子程序會繼承套件身分並留在套件的
-            // 程序樹中，解除安裝時 Windows 才能自動關閉/終止 UI；ShellExecute 會把啟動
-            // 交給 shell，產生的子程序成為孤兒，解除安裝會被「應用程式仍在執行」擋住。
+            // 由套件的 launcher 直接建立的子程序會繼承套件身分並留在套件的
+            // 程序樹中，解除安裝時 Windows 才能自動關閉/終止 UI。
             var psi = new ProcessStartInfo(targetPath)
             {
                 UseShellExecute = false,
@@ -70,20 +56,14 @@ internal static class Program
         }
         catch (Exception ex)
         {
-            // 啟動失敗必須能被診斷，但不能讓 launcher 掛著：寫錯誤檔並回傳非零。
-            // （刻意不用 EventLog：NativeAOT 下會引入 System.Diagnostics.EventLog 依賴。）
             try
             {
                 string logDir = Path.Combine(Path.GetTempPath(), "ClickraLauncher");
                 Directory.CreateDirectory(logDir);
-                File.WriteAllText(
-                    Path.Combine(logDir, "launcher-error.log"),
+                File.WriteAllText(Path.Combine(logDir, "launcher-error.log"),
                     $"{DateTime.Now:yyyy-MM-dd HH:mm:ss} Failed to start {target}: {ex}");
             }
-            catch
-            {
-                // 連寫檔都失敗時只能靜默，仍以非零結束。
-            }
+            catch { }
             return 1;
         }
 
@@ -91,118 +71,123 @@ internal static class Program
     }
 
     // ------------------------------------------------------------------
-    // 偵測
+    // Runtime detection
     // ------------------------------------------------------------------
 
-    /// <summary>
-    /// 查詢已安裝的 .NET Desktop Runtime 最高版本。
-    /// 先讀登錄檔（官方 runtime 安裝程式會寫
-    /// HKLM/HKCU\SOFTWARE\dotnet\Setup\InstalledVersions\{arch}\sharedfx\Microsoft.WindowsDesktop.App），
-    /// 再以磁碟上的 shared framework 資料夾補強（某些 SDK/zip 安裝方式不會寫登錄檔）。
-    /// </summary>
-    private static Version? FindLatestDotNetDesktopRuntime()
+    private static bool DetectFluentCapability()
     {
-        Version? best = FindDotNetDesktopFromRegistry();
-        if (best is not null) return best;
-
-        // Fallback：直接列舉 shared framework 資料夾（某些 SDK/zip 安裝方式不會寫登錄檔）。
-        foreach (string dir in SharedFrameworkRoots())
-            best = MaxVersion(best, ScanSharedFrameworkDir(dir));
-        return best;
-    }
-
-    private static IEnumerable<string> SharedFrameworkRoots()
-    {
-        yield return Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles), "dotnet", "shared", "Microsoft.WindowsDesktop.App");
-        yield return Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFilesX86), "dotnet", "shared", "Microsoft.WindowsDesktop.App");
-        yield return Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Microsoft", "dotnet", "shared", "Microsoft.WindowsDesktop.App");
-    }
-
-    /// <summary>從一組候選字串中找出最高 Version。</summary>
-    private static Version? FindBestVersion(IEnumerable<string> candidates)
-    {
-        Version? best = null;
-        foreach (string s in candidates)
-            if (Version.TryParse(s, out Version? v))
-                best = MaxVersion(best, v);
-        return best;
-    }
-
-    private static Version? ScanSharedFrameworkDir(string dir) => TryGuard<Version?>(() =>
-    {
-        if (!Directory.Exists(dir)) return null;
-        return FindBestVersion(Directory.GetDirectories(dir).Select(Path.GetFileName));
-    });
-
-    private static Version? FindDotNetDesktopFromRegistry()
-    {
-        Version? best = null;
-        string[] arches = { "x64", "arm64", "x86" };
-        RegistryView[] views = { RegistryView.Registry64, RegistryView.Registry32 };
-        RegistryHive[] hives = { RegistryHive.LocalMachine, RegistryHive.CurrentUser };
-
-        foreach (RegistryHive hive in hives)
-            foreach (RegistryView view in views)
-                foreach (string arch in arches)
-                    best = MaxVersion(best, ReadInstalledVersion(hive, view, arch));
-        return best;
-    }
-
-    private static Version? ReadInstalledVersion(RegistryHive hive, RegistryView view, string arch) =>
-        TryGuard<Version?>(() =>
+        bool hasDotNet = Probe(() =>
         {
-            string subPath = $@"SOFTWARE\dotnet\Setup\InstalledVersions\{arch}\sharedfx\Microsoft.WindowsDesktop.App";
-            using RegistryKey? key = RegistryKey.OpenBaseKey(hive, view).OpenSubKey(subPath);
-            if (key is null) return null;
-            var candidates = key.GetSubKeyNames().ToList();
-            if (key.GetValue("Version") is string v) candidates.Add(v);
-            return FindBestVersion(candidates);
+            Version? ver = ScanInstalledDotNetVersions();
+            return ver is not null && ver >= new Version(8, 0);
         });
 
-    private static Version? MaxVersion(Version? current, Version? candidate)
-    {
-        return candidate is not null && (current is null || candidate > current) ? candidate : current;
-    }
+        bool hasWinAppRuntime = Probe(() =>
+        {
+            IntPtr h = LoadLibraryExW("Microsoft.WindowsAppRuntime.Bootstrap.dll",
+                                      IntPtr.Zero, LoadLibrarySearchSystem32);
+            return h != IntPtr.Zero;
+        });
 
-    /// <summary>嘗試執行 probe，回傳結果；失敗時回傳 default。</summary>
-    private static T TryGuard<T>(Func<T> probe, T @default = default!)
-    {
-        try { return probe(); }
-        catch { return @default; }
+        bool isPackaged = Probe(() =>
+        {
+            int len = 0;
+            int hr = GetCurrentPackageFullName(ref len, IntPtr.Zero);
+            return hr == 0 || hr == 0x7A;
+        });
+
+        return hasDotNet && (hasWinAppRuntime || isPackaged);
     }
 
     /// <summary>
-    /// Windows App Runtime 的偵測：官方 redistributable 安裝程式會把
-    /// Microsoft.WindowsAppRuntime.Bootstrap.dll 放到 System32，
-    /// 因此能從 System32 載入該 DLL 就代表 framework 套件已安裝。
+    /// Scans both registry keys and shared framework directories to find the
+    /// highest installed .NET Desktop Runtime version.
     /// </summary>
-    private static bool HasWindowsAppRuntime() => TryGuard(() =>
+    private static Version? ScanInstalledDotNetVersions()
     {
-        IntPtr handle = LoadLibraryExW(
-            "Microsoft.WindowsAppRuntime.Bootstrap.dll",
-            IntPtr.Zero,
-            LoadLibrarySearchSystem32);
-        return handle != IntPtr.Zero;
-    });
+        // 1) Registry lookup: official runtime installers write here.
+        Version? fromReg = ScanRegistry();
+        if (fromReg is not null) return fromReg;
 
-    // GetCurrentPackageFullName: kernel32 (AppModel)。回傳碼：
-    //   ERROR_SUCCESS (0) / ERROR_INSUFFICIENT_BUFFER (0x7A) → 有 package identity；
-    //   ERROR_NO_PACKAGE (0x73C) → unpackaged。
-    [DllImport("kernel32.dll", CharSet = CharSet.Unicode, SetLastError = true)]
-    private static extern int GetCurrentPackageFullName(ref int packageFullNameLength, IntPtr packageFullName);
+        // 2) Filesystem fallback for SDK / zip installs that skip registry.
+        return Probe(() =>
+        {
+            string sharedFx = "shared/Microsoft.WindowsDesktop.App";
+            string[] roots =
+            [
+                Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles),
+                    "dotnet", sharedFx),
+                Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFilesX86),
+                    "dotnet", sharedFx),
+                Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+                    "Microsoft", "dotnet", sharedFx),
+            ];
 
-    /// <summary>
-    /// 目前程序是否為 packaged（有 package identity）。launcher 從 Start menu / 套件
-    /// activation 啟動時是 packaged，其 package graph 含 manifest 宣告的 framework
-    /// dependency（Store 軌）→ Fluent 繼承後可解析 Windows App Runtime；右鍵 COM 鏈路
-    /// （Explorer in-proc 載入 ClickraShell.dll）spawn 出的 launcher 則為 unpackaged，
-    /// 需回歸 System32 bootstrap 偵測。
-    /// </summary>
-    private static bool IsPackagedProcess() => TryGuard(() =>
+            Version? best = null;
+            foreach (string root in roots)
+            {
+                if (!Directory.Exists(root)) continue;
+                foreach (string child in Directory.GetDirectories(root))
+                {
+                    if (Version.TryParse(Path.GetFileName(child), out Version? v) &&
+                        (best is null || v > best))
+                        best = v;
+                }
+            }
+            return best;
+        });
+    }
+
+    private static Version? ScanRegistry()
     {
-        int length = 0;
-        int hr = GetCurrentPackageFullName(ref length, IntPtr.Zero);
-        return hr == 0 || hr == 0x7A;
-    });
+        Version? best = null;
+        string fxName = "Microsoft.WindowsDesktop.App";
 
+        foreach (RegistryHive hive in new[] { RegistryHive.LocalMachine, RegistryHive.CurrentUser })
+        foreach (RegistryView view in new[] { RegistryView.Registry64, RegistryView.Registry32 })
+        foreach (string arch in new[] { "x64", "arm64", "x86" })
+        {
+            best = PickBest(best, TryReadRegValue(hive, view, arch, fxName, "Version"));
+            foreach (string subKeyName in TryGetRegSubKeys(hive, view, arch, fxName))
+                best = PickBest(best, TryParseVer(subKeyName));
+        }
+
+        return best;
+    }
+
+    private static IEnumerable<string> TryGetRegSubKeys(
+        RegistryHive hive, RegistryView view, string arch, string fxName)
+    {
+        string path = $@"SOFTWARE\dotnet\Setup\InstalledVersions\{arch}\sharedfx\{fxName}";
+        try
+        {
+            using var key = RegistryKey.OpenBaseKey(hive, view).OpenSubKey(path);
+            return key?.GetSubKeyNames() ?? Array.Empty<string>();
+        }
+        catch { return Array.Empty<string>(); }
+    }
+
+    private static string? TryReadRegValue(
+        RegistryHive hive, RegistryView view, string arch, string fxName, string valueName)
+    {
+        string path = $@"SOFTWARE\dotnet\Setup\InstalledVersions\{arch}\sharedfx\{fxName}";
+        try
+        {
+            using var key = RegistryKey.OpenBaseKey(hive, view).OpenSubKey(path);
+            return key?.GetValue(valueName) as string;
+        }
+        catch { return null; }
+    }
+
+    private static Version? TryParseVer(string s) =>
+        Version.TryParse(s, out Version? v) ? v : null;
+
+    private static Version? PickBest(Version? current, Version? candidate) =>
+        candidate is not null && (current is null || candidate > current) ? candidate : current;
+
+    private static T Probe<T>(Func<T> fn, T fallback = default!)
+    {
+        try { return fn(); }
+        catch { return fallback; }
+    }
 }
