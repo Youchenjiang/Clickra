@@ -146,7 +146,7 @@ internal sealed class TrayService
 
             GetCursorPos(out POINT pt);
             // TPM_RETURNCMD：由回傳值取得選中的命令，避免對 message-only 視窗 SendMessage。
-            uint cmd = TrackPopupMenuEx(menu, TPM_RETURNCMD | TPM_NONOTIFY | TPM_LEFTALIGN | TPM_BOTTOMALIGN,
+            uint cmd = TrackPopupMenuEx(menu, TPM_RETURNCMD | TPM_NONOTIFY | TPM_BOTTOMALIGN,
                 pt.X, pt.Y, IntPtr.Zero, IntPtr.Zero);
 
             if (cmd == idRestoreAll)
