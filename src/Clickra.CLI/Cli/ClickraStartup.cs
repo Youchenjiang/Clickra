@@ -80,7 +80,7 @@ internal static class ClickraStartup
             try
             {
                 string taskId = ClickraStorage.StartTask(command, 0, null);
-                ClickraStorage.CompleteTask(taskId, command, startTimeStr, false, ex.Message);
+                ClickraStorage.CompleteTask(taskId, command, new() { StartTime = startTimeStr, IsSuccess = false, ErrorMsg = ex.Message });
                 System.Threading.Thread.Sleep(1500);
                 ClickraStorage.DeleteTask(taskId);
             }
