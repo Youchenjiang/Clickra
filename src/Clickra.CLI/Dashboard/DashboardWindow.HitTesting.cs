@@ -27,7 +27,16 @@ namespace Clickra.UI
                 float virtLogW = Math.Max(760f, logW);
                 if (adjMouseX >= contentX && adjMouseX < virtLogW - 40)
                 {
-                    int activeCount = ClickraStorage.GetActiveTasks().Count;
+                    var activeEntry = ClickraStorage.GetActiveEntry();
+                    int activeCount = 0;
+                    if (activeEntry.HasValue)
+                    {
+                        var ae = activeEntry.Value;
+                        var activeFiles = !string.IsNullOrEmpty(ae.InputPaths)
+                            ? ae.InputPaths.Split(new[] { ';' }, StringSplitOptions.RemoveEmptyEntries)
+                            : Array.Empty<string>();
+                        activeCount = activeFiles.Length > 0 ? activeFiles.Length : 1;
+                    }
                     int startY = 90 + activeCount * 52;
                     int currentY = startY;
                     for (int i = 0; i < _historyEntries.Count; i++)

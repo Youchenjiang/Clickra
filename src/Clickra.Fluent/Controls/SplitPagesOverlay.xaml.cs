@@ -52,9 +52,5 @@ public sealed partial class SplitPagesOverlay : UserControl
         => _tcs?.TrySetResult((SplitterHost.Child as VisualSplitterControl)?.GetSpec());
 
     private void CancelBtn_Click(object sender, RoutedEventArgs e)
-        => Cancel();
-
-    /// <summary>取消目前的分割規格（供「暫存」流程喚醒卡住的等待，讓背景執行緒乾淨結束）。</summary>
-    internal void Cancel()
         => _tcs?.TrySetResult(null);
 }

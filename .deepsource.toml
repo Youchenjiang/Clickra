@@ -1,8 +1,0 @@
-version = 1
-
-[analyze]
-  languages = ["csharp", "python"]
-
-  [[analyze.exclude_patterns]]
-    path = "src/Clickra.Fluent/TrayIcon.cs"
-    reason = "P/Invoke struct fields must be public for Win32 marshaling; DeepSource flags all IntPtr fields as unmanaged resource exposure"
