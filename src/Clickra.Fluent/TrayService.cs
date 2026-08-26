@@ -126,7 +126,6 @@ internal sealed class TrayService
         const uint MF_SEPARATOR = 0x00000800;
         const uint TPM_RETURNCMD = 0x00000100;
         const uint TPM_NONOTIFY = 0x00000080;
-        const uint TPM_LEFTALIGN = 0x00000000;
         const uint TPM_BOTTOMALIGN = 0x00000020;
 
         uint idRestoreAll = 1;
