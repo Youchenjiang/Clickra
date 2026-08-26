@@ -130,11 +130,7 @@ namespace Clickra.UI
                         using var countBrush = new SolidBrush(Color.FromArgb(200, 200, 200));
                         float fileCountX = tagX + tagW + 16;
                         
-                        string displayText = activeFiles.Length > 0
-                            ? activeFiles.Length > 1
-                                ? $"{Path.GetFileName(activeFiles[0])} + {activeFiles.Length - 1} {GetText("label_files")}"
-                                : Path.GetFileName(activeFiles[0])
-                            : $"{task.FileCount} {GetText("label_files")}";
+                        string displayText = FormatFileCountText(activeFiles, task.FileCount);
 
                         float maxW = activeStatusX - 16 - fileCountX;
                         if (maxW > 20)
@@ -358,6 +354,16 @@ namespace Clickra.UI
 
                 currentY += currentH + 8;
             }
+        }
+
+        /// <summary>Formats the file-count display text for a history row.</summary>
+        private static string FormatFileCountText(string[] activeFiles, int fileCount)
+        {
+            if (activeFiles.Length == 0)
+                return $"{fileCount} {GetText("label_files")}";
+            if (activeFiles.Length == 1)
+                return Path.GetFileName(activeFiles[0]);
+            return $"{Path.GetFileName(activeFiles[0])} + {activeFiles.Length - 1} {GetText("label_files")}";
         }
 
         /// <summary>Draws a colored command tag at the given position and returns its width.</summary>

@@ -88,7 +88,7 @@ public partial class App : Application
                 }
                 finally
                 {
-                    Environment.Exit(0);
+                    Environment.Exit(0); // skipcq: CS-W1005 — WinUI single-instance: Application.Current.Exit() unreliable (microsoft-ui-xaml#5931)
                 }
             });
         };
@@ -102,7 +102,7 @@ public partial class App : Application
                 // 兜底路徑（正常關閉會被上面的 AppWindow.Closing 攔截）：
                 // 關閉事件觸發時視窗已不存在，此時 Application.Current.Exit() 無效
                 // （microsoft-ui-xaml#5931），直接用 Environment.Exit 確保程序結束。
-                Environment.Exit(0);
+                Environment.Exit(0); // skipcq: CS-W1005 — WinUI fallback: last window closed, must force-terminate
             }
         };
     }
@@ -132,7 +132,7 @@ public partial class App : Application
             {
                 // 導向失敗時仍以單一實例為準：直接退出，不開啟第二個視窗。
             }
-            Environment.Exit(0);
+            Environment.Exit(0); // skipcq: CS-W1005 — single-instance redirect failed, must not open second instance
             return;
         }
 
