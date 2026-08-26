@@ -139,12 +139,28 @@ function Copy-AssemblyLayout {
     Copy-IconAssets -PackagingDir $PackagingDir -LayoutDir $LayoutDir
 }
 
+function Test-LayoutComplete {
+    param([string]$LayoutDir)
+    $required = @(
+        "Clickra.exe",
+        "Clickra.Fluent.exe",
+        "ClickraShell.dll",
+        "AppxManifest.xml"
+    )
+    $missing = $required | Where-Object { -not (Test-Path "$LayoutDir/$_") }
+    if ($missing) {
+        throw "Layout incomplete — missing required files: $($missing -join ', ')"
+    }
+    Write-Host "[Build] Layout verified — all required files present." -ForegroundColor Gray
+}
+
 function New-AndSignMsix {
     param(
         [string]$Root,
         [string]$PackagingDir,
         [string]$LayoutDir
     )
+    Test-LayoutComplete -LayoutDir $LayoutDir
     Write-Host "[Build] Creating MSIX Package..." -ForegroundColor Gray
     $msixPath = "$Root/Clickra.msix"
     if (Test-Path $msixPath) { Remove-Item $msixPath }

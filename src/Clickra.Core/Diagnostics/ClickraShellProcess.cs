@@ -113,7 +113,11 @@ public static class ClickraShellProcess
     }
 
     /// <summary>該程序是否已載入指定模組（Toolhelp 模組快照）。</summary>
-    private static bool HasModuleLoaded(uint processId, string moduleName)
+    /// <param name="requirePackagePath">
+    /// 若為 true，除了模組名稱外還會驗證模組路徑包含 "WindowsApps"，
+    /// 確保只终止本套件的 surrogate，不會誤殺其他應用程式的 dllhost。
+    /// </param>
+    private static bool HasModuleLoaded(uint processId, string moduleName, bool requirePackagePath = true)
     {
         using var snap = new ToolhelpSnapshot(Th32csSnapModule, processId);
         if (!snap.IsValid) return false;
@@ -123,7 +127,11 @@ public static class ClickraShellProcess
             if (!Module32FirstW(snap.GetHandle(), ref entry)) return false;
             do
             {
-                if (entry.szModule.Equals(moduleName, StringComparison.OrdinalIgnoreCase)) return true;
+                if (!entry.szModule.Equals(moduleName, StringComparison.OrdinalIgnoreCase)) continue;
+                // 驗證模組路徑來自 MSIX 套件目錄，避免誤殺同名的第三方 dllhost。
+                if (requirePackagePath && !entry.szExePath.Contains("WindowsApps", StringComparison.OrdinalIgnoreCase))
+                    continue;
+                return true;
             } while (Module32NextW(snap.GetHandle(), ref entry));
             return false;
         }
