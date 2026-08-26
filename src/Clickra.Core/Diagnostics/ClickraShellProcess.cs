@@ -6,11 +6,12 @@ namespace Clickra.Core;
 /// <summary>RAII wrapper for a Win32 Toolhelp32 snapshot handle.</summary>
 internal readonly struct ToolhelpSnapshot : IDisposable
 {
-    internal readonly IntPtr Handle;
+    private readonly IntPtr _handle;
     public ToolhelpSnapshot(uint flags, uint processId) =>
-        Handle = CreateToolhelp32Snapshot(flags, processId);
-    internal bool IsValid => Handle != new IntPtr(-1);
-    public void Dispose() { if (IsValid) CloseHandle(Handle); }
+        _handle = CreateToolhelp32Snapshot(flags, processId);
+    internal bool IsValid => _handle != new IntPtr(-1);
+    internal IntPtr GetHandle() => _handle;
+    public void Dispose() { if (IsValid) CloseHandle(_handle); }
     [DllImport("kernel32.dll", SetLastError = true)]
     private static extern IntPtr CreateToolhelp32Snapshot(uint dwFlags, uint th32ProcessID);
     [DllImport("kernel32.dll", SetLastError = true)]
@@ -99,14 +100,14 @@ public static class ClickraShellProcess
         try
         {
             var entry = new ProcessEntry32W { dwSize = (uint)Marshal.SizeOf<ProcessEntry32W>() };
-            if (!Process32FirstW(snap.Handle, ref entry)) return;
+            if (!Process32FirstW(snap.GetHandle(), ref entry)) return;
             do
             {
                 if (entry.th32ProcessID == currentPid) continue;
                 if (!entry.szExeFile.Equals(DllHostExe, StringComparison.OrdinalIgnoreCase)) continue;
                 if (HasModuleLoaded(entry.th32ProcessID, ShellDllName))
                     Terminate(entry.th32ProcessID);
-            } while (Process32NextW(snap.Handle, ref entry));
+            } while (Process32NextW(snap.GetHandle(), ref entry));
         }
         catch { }
     }
@@ -119,11 +120,11 @@ public static class ClickraShellProcess
         try
         {
             var entry = new ModuleEntry32W { dwSize = (uint)Marshal.SizeOf<ModuleEntry32W>() };
-            if (!Module32FirstW(snap.Handle, ref entry)) return false;
+            if (!Module32FirstW(snap.GetHandle(), ref entry)) return false;
             do
             {
                 if (entry.szModule.Equals(moduleName, StringComparison.OrdinalIgnoreCase)) return true;
-            } while (Module32NextW(snap.Handle, ref entry));
+            } while (Module32NextW(snap.GetHandle(), ref entry));
             return false;
         }
         catch { return false; }
