@@ -191,15 +191,13 @@ public partial class App : Application
     {
         // 與 MainWindow 相同的 Fluent 外殼：Mica 背景 + 自訂標題列 + 應用程式圖示。
         // （之前只開裸 Window，內容是純色深灰、沒有 Mica，看起來像舊版 Win32。）
-        var window = new Window { Title = "Clickra" };
-        window.SystemBackdrop = new MicaBackdrop();
+        var window = new Window { Title = "Clickra", SystemBackdrop = new MicaBackdrop() };
 
         var root = new Grid();
         root.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
         root.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) });
 
-        var titleBar = new TitleBar { Title = "Clickra" };
-        titleBar.IconSource = new ImageIconSource { ImageSource = new BitmapImage(new Uri("ms-appx:///Assets/AppIcon.png")) };
+        var titleBar = new TitleBar { Title = "Clickra", IconSource = new ImageIconSource { ImageSource = new BitmapImage(new Uri("ms-appx:///Assets/AppIcon.png")) } };
 
         var frame = new Frame();
         Grid.SetRow(frame, 1);
