@@ -115,19 +115,19 @@ public static class ConvertCommandRunner
                     FileProcessor.MergePdfs(files, outputs[0], progress, token);
                     break;
                 case "compress-pdf":
-                    RunPerFile(files, outputs, (f, o, p, t) => FileProcessor.CompressPdf(f, o, ConvertCommandRegistry.CompressionOptions(), p, t), progress, token, startIndex);
+                    RunPerFile(files, outputs, (f, o, p, t) => FileProcessor.CompressPdf(f, o, ConvertCommandRegistry.CompressionOptions(), p, t), progress, startIndex, token);
                     break;
                 case "translate-pdf":
-                    RunPerFile(files, outputs, (f, o, p, t) => FileProcessor.TranslatePdf(f, o, ClickraStorage.GetSetting("TranslateTargetLang"), p, t), progress, token, startIndex);
+                    RunPerFile(files, outputs, (f, o, p, t) => FileProcessor.TranslatePdf(f, o, ClickraStorage.GetSetting("TranslateTargetLang"), p, t), progress, startIndex, token);
                     break;
                 case "decrypt-pdf":
-                    RunDecrypt(files, outputs, promptPassword, progress, token, startIndex);
+                    RunDecrypt(files, outputs, promptPassword, progress, startIndex, token);
                     break;
                 case "split-pdf":
-                    RunSplit(files, outputs, promptSplitPages, progress, token, startIndex);
+                    RunSplit(files, outputs, promptSplitPages, progress, startIndex, token);
                     break;
                 case "img2pdf":
-                    RunPerFile(files, outputs, (f, o, p, t) => FileProcessor.ConvertImagesToPdf(new List<string> { f }, o, p, t), progress, token, startIndex);
+                    RunPerFile(files, outputs, (f, o, p, t) => FileProcessor.ConvertImagesToPdf(new List<string> { f }, o, p, t), progress, startIndex, token);
                     break;
                 case "img-merge":
                     FileProcessor.ConvertImagesToPdf(files, outputs[0], progress, token);
@@ -140,7 +140,7 @@ public static class ConvertCommandRunner
             }
         }
 
-        private static void RunPerFile(List<string> files, List<string> outputs, Action<string, string, Action<int, int, string>, CancellationToken> action, Action<int, int, string> progress, CancellationToken token, int startIndex)
+        private static void RunPerFile(List<string> files, List<string> outputs, Action<string, string, Action<int, int, string>, CancellationToken> action, Action<int, int, string> progress, int startIndex, CancellationToken token)
         {
             for (int i = startIndex; i < files.Count; i++)
             {
@@ -153,7 +153,7 @@ public static class ConvertCommandRunner
         /// <summary>Removes the password from each PDF, trying an empty password first
         /// and prompting only when the file is actually encrypted (mirrors the native
         /// CLI flow). A null result from the prompt cancels the operation.</summary>
-        private static void RunDecrypt(List<string> files, List<string> outputs, Func<int, Task<string?>> promptPassword, Action<int, int, string> progress, CancellationToken token, int startIndex)
+        private static void RunDecrypt(List<string> files, List<string> outputs, Func<int, Task<string?>> promptPassword, Action<int, int, string> progress, int startIndex, CancellationToken token)
         {
             for (int i = startIndex; i < files.Count; i++)
             {
@@ -169,7 +169,7 @@ public static class ConvertCommandRunner
                         FileProcessor.DecryptPdf(files[i], outputs[i], password, (c, t, m) => progress((index * 100) + c, files.Count * 100, m), token);
                         success = true;
                     }
-                    catch (Exception ex) when (IsPasswordError(ex))
+                    catch (PdfReaderException ex) when (IsPasswordError(ex))
                     {
                         password = promptPassword(i).GetAwaiter().GetResult() ?? throw new OperationCanceledException(token);
                     }
@@ -182,7 +182,7 @@ public static class ConvertCommandRunner
             => ex is PdfReaderException &&
                ex.Message.Contains("password", StringComparison.OrdinalIgnoreCase);
 
-        private static void RunSplit(List<string> files, List<string> outputs, Func<int, string, Task<string?>> promptSplitPages, Action<int, int, string> progress, CancellationToken token, int startIndex)
+        private static void RunSplit(List<string> files, List<string> outputs, Func<int, string, Task<string?>> promptSplitPages, Action<int, int, string> progress, int startIndex, CancellationToken token)
         {
             for (int i = startIndex; i < files.Count; i++)
             {
