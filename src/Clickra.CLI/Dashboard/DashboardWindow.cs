@@ -62,15 +62,17 @@ namespace Clickra.UI
 
         static float GetContentHeight(IntPtr hwnd)
         {
-            if (_activeTab == 0) // Overview
+            return _activeTab switch
             {
-                return _overviewContentHeight;
-            }
-            if (_activeTab == 1) // Convert
-            {
-                return 450;
-            }
-            if (_activeTab == 2) // History
+                0 => _overviewContentHeight,
+                1 => 450,
+                2 => CalcHistoryHeight(),
+                3 => Math.Max(460f, _settingsContentHeight),
+                4 => Math.Max(460, _aboutBtnY + 60),
+                _ => 460
+            };
+
+            float CalcHistoryHeight()
             {
                 var activeEntry = ClickraStorage.GetActiveEntry();
                 int activeCount = 0;
@@ -84,20 +86,9 @@ namespace Clickra.UI
                 }
                 int totalHeight = 90 + activeCount * 52;
                 for (int i = 0; i < _historyEntries.Count; i++)
-                {
                     totalHeight += (i == _expandedHistoryIndex ? 160 : 44) + 8;
-                }
                 return Math.Max(460, totalHeight + 20);
             }
-            if (_activeTab == 3) // Settings
-            {
-                return Math.Max(460f, _settingsContentHeight);
-            }
-            if (_activeTab == 4) // About
-            {
-                return Math.Max(460, _aboutBtnY + 60);
-            }
-            return 460;
         }
 
         static void RecreateBuffer(int w, int h)

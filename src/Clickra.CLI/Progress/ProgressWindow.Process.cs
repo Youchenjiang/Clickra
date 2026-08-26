@@ -52,12 +52,12 @@ namespace Clickra.UI
 
                 // 立即建立 Pending 紀錄，讓 Dashboard 可即時看到
                 string inputsStr = string.Join(";", currentFiles);
-                try { ClickraStorage.StartActiveRecord(cmd, currentFiles.Count, inputsStr); } catch { }
+                try { ClickraStorage.StartActiveRecord(cmd, currentFiles.Count, inputsStr); } catch { /* Intentionally swallowed — task file I/O is best-effort */ }
 
                 string outputDir = ClickraStorage.GetOutputDir(currentFiles[0]);
 
                 // 開始實際處理，切換為 InProgress
-                try { ClickraStorage.SetActiveRecordInProgress(); } catch { }
+                try { ClickraStorage.SetActiveRecordInProgress(); } catch { /* Intentionally swallowed — task file I/O is best-effort */ }
 
                 switch (cmd)
                 {
@@ -111,12 +111,12 @@ namespace Clickra.UI
                 PostMessageW(hwnd, WM_USER_INVALIDATE, (IntPtr)1, IntPtr.Zero);
 
                 // 完成：寫入持久化日誌並暫留 Success 狀態供 Dashboard 讀取
-                try { ClickraStorage.CompleteActiveRecord(cmd, startTimeStr, true, "", endTime, elapsedMs, inputs, outputs); } catch { }
+                try { ClickraStorage.CompleteActiveRecord(cmd, startTimeStr, true, "", endTime, elapsedMs, inputs, outputs); } catch { /* Intentionally swallowed — task file I/O is best-effort */ }
 
                 ShowToastNotification(cmd, currentFiles.Count);
 
                 Thread.Sleep(1500);
-                try { ClickraStorage.ClearActiveRecord(); } catch { }
+                try { ClickraStorage.ClearActiveRecord(); } catch { /* Intentionally swallowed — task file I/O is best-effort */ }
                 PostMessageW(hwnd, 0x0010, IntPtr.Zero, IntPtr.Zero); // WM_CLOSE
             }
             catch (Exception ex)
@@ -138,9 +138,9 @@ namespace Clickra.UI
                 }
                 PostMessageW(hwnd, WM_USER_INVALIDATE, (IntPtr)1, IntPtr.Zero);
 
-                try { ClickraStorage.CompleteActiveRecord(cmd, startTimeStr, false, errorMsg, endTime, elapsedMs, inputs, outputs); } catch { }
+                try { ClickraStorage.CompleteActiveRecord(cmd, startTimeStr, false, errorMsg, endTime, elapsedMs, inputs, outputs); } catch { /* Intentionally swallowed — task file I/O is best-effort */ }
 
-                try { ClickraStorage.ClearActiveRecord(); } catch { }
+                try { ClickraStorage.ClearActiveRecord(); } catch { /* Intentionally swallowed — task file I/O is best-effort */ }
                 PostMessageW(hwnd, 0x0010, IntPtr.Zero, IntPtr.Zero); // WM_CLOSE
             }
         }
