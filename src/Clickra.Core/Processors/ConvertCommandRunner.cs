@@ -64,7 +64,7 @@ public static class ConvertCommandRunner
             {
                 await Task.Run(() => Run(command, files, outputs, Progress, promptPassword, promptSplitPages, token, startIndex), token);
                 stopwatch.Stop();
-                ClickraStorage.CompleteTask(taskId, command, startTime, true, "", endTime: null, stopwatch.ElapsedMilliseconds, inputs, string.Join(";", outputs));
+                ClickraStorage.CompleteTask(taskId, command, new() { StartTime = startTime, IsSuccess = true, InputPaths = inputs, OutputPath = string.Join(";", outputs), ElapsedMs = stopwatch.ElapsedMilliseconds });
                 return new ConvertRunResult(ConvertRunStatus.Succeeded, null, taskId);
             }
             catch (ParkedException ex)
@@ -76,13 +76,13 @@ public static class ConvertCommandRunner
             catch (OperationCanceledException)
             {
                 stopwatch.Stop();
-                ClickraStorage.CompleteTask(taskId, command, startTime, false, "Canceled", endTime: null, stopwatch.ElapsedMilliseconds, inputs, string.Join(";", outputs));
+                ClickraStorage.CompleteTask(taskId, command, new() { StartTime = startTime, IsSuccess = false, ErrorMsg = "Canceled", InputPaths = inputs, OutputPath = string.Join(";", outputs), ElapsedMs = stopwatch.ElapsedMilliseconds });
                 return new ConvertRunResult(ConvertRunStatus.Canceled, null, taskId);
             }
             catch (Exception ex)
             {
                 stopwatch.Stop();
-                ClickraStorage.CompleteTask(taskId, command, startTime, false, ex.Message, endTime: null, stopwatch.ElapsedMilliseconds, inputs, string.Join(";", outputs));
+                ClickraStorage.CompleteTask(taskId, command, new() { StartTime = startTime, IsSuccess = false, ErrorMsg = ex.Message, InputPaths = inputs, OutputPath = string.Join(";", outputs), ElapsedMs = stopwatch.ElapsedMilliseconds });
                 return new ConvertRunResult(ConvertRunStatus.Failed, ex.Message, taskId);
             }
         }

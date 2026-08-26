@@ -114,7 +114,7 @@ namespace Clickra.UI
                 PostMessageW(hwnd, WM_USER_INVALIDATE, (IntPtr)1, IntPtr.Zero);
 
                 // 完成：寫入持久化日誌並暫留 Success 狀態供 Dashboard 讀取
-                try { ClickraStorage.CompleteTask(taskId, cmd, startTimeStr, true, "", endTime, elapsedMs, inputs, outputs); } catch { }
+                try { ClickraStorage.CompleteTask(taskId, cmd, new() { StartTime = startTimeStr, IsSuccess = true, EndTime = endTime, ElapsedMs = elapsedMs, InputPaths = inputs, OutputPath = outputs }); } catch { }
 
                 ShowToastNotification(cmd, currentFiles.Count);
 
@@ -141,7 +141,7 @@ namespace Clickra.UI
                 }
                 PostMessageW(hwnd, WM_USER_INVALIDATE, (IntPtr)1, IntPtr.Zero);
 
-                try { ClickraStorage.CompleteTask(taskId, cmd, startTimeStr, false, errorMsg, endTime, elapsedMs, inputs, outputs); } catch { }
+                try { ClickraStorage.CompleteTask(taskId, cmd, new() { StartTime = startTimeStr, IsSuccess = false, ErrorMsg = errorMsg, EndTime = endTime, ElapsedMs = elapsedMs, InputPaths = inputs, OutputPath = outputs }); } catch { }
 
                 try { ClickraStorage.DeleteTask(taskId); } catch { }
                 PostMessageW(hwnd, 0x0010, IntPtr.Zero, IntPtr.Zero); // WM_CLOSE
