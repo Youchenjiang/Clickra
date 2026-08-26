@@ -46,39 +46,22 @@ namespace Clickra.UI
                 g.DrawLine(divPen, contentX * s, 75 * s, (logW - 40) * s, 75 * s);
             }
 
-            // 取得目前進行中作業（若有）
-            var activeEntry = ClickraStorage.GetActiveEntry();
+            // 取得目前進行中的任務佇列（每個任務一列；並行任務各自獨立，不會互搶）
+            var activeTasks = ClickraStorage.GetActiveTasks();
 
             int startY = 90;
             int rowW = (int)logW - (int)contentX - 40;
             int rowH = 44;
 
-            // ——— 顯示進行中作業（置頂）———
-            if (activeEntry.HasValue)
+            // ——— 顯示進行中任務佇列（置頂）———
+            foreach (var task in activeTasks)
             {
-                var ae = activeEntry.Value;
-                var activeFiles = !string.IsNullOrEmpty(ae.InputPaths)
-                    ? ae.InputPaths.Split(new[] { ';' }, StringSplitOptions.RemoveEmptyEntries)
+                int rowY = startY;
+                var activeFiles = !string.IsNullOrEmpty(task.InputPaths)
+                    ? task.InputPaths.Split(new[] { ';' }, StringSplitOptions.RemoveEmptyEntries)
                     : Array.Empty<string>();
 
-                int activeCount = activeFiles.Length > 0 ? activeFiles.Length : 1;
-
-                for (int idxActive = 0; idxActive < activeCount; idxActive++)
-                {
-                    int rowY = startY;
-
-                    // Determine status for this specific file
-                    ConversionStatus fileStatus = ae.Status;
-                    if (ae.Status == ConversionStatus.InProgress && activeFiles.Length > 1)
-                    {
-                        if (idxActive < ae.CurrentIndex) fileStatus = ConversionStatus.Success;
-                        else if (idxActive == ae.CurrentIndex) fileStatus = ConversionStatus.InProgress;
-                        else fileStatus = ConversionStatus.Pending;
-                    }
-                    else if (ae.Status == ConversionStatus.Pending && activeFiles.Length > 1)
-                    {
-                        fileStatus = ConversionStatus.Pending;
-                    }
+                ConversionStatus fileStatus = task.Status;
 
                     // Background color & border color based on fileStatus
                     Color activeBgColor = fileStatus switch
@@ -113,13 +96,13 @@ namespace Clickra.UI
                     if (_bodyFont != null)
                     {
                         using var timeBrush = new SolidBrush(Color.FromArgb(140, 140, 140));
-                        g.DrawString(ae.Time, _bodyFont, timeBrush, (contentX + 12) * s, (rowY + 13) * s);
-                        timeW = g.MeasureString(ae.Time, _bodyFont).Width / s;
+                        g.DrawString(task.Time, _bodyFont, timeBrush, (contentX + 12) * s, (rowY + 13) * s);
+                        timeW = g.MeasureString(task.Time, _bodyFont).Width / s;
                     }
 
                     // Command Tag
                     float tagX = contentX + 12 + timeW + 16;
-                    float tagW = DrawCommandTag(g, ae.Command, tagX, rowY + 11);
+                    float tagW = DrawCommandTag(g, task.Command, tagX, rowY + 11);
 
                     // Status Label (量測實際寬度，靠右對齊)
                     string statusText = fileStatus switch
@@ -147,9 +130,7 @@ namespace Clickra.UI
                         using var countBrush = new SolidBrush(Color.FromArgb(200, 200, 200));
                         float fileCountX = tagX + tagW + 16;
                         
-                        string displayText = activeFiles.Length > 0
-                            ? Path.GetFileName(activeFiles[idxActive])
-                            : $"{ae.FileCount} {GetText("label_files")}";
+                        string displayText = FormatFileCountText(activeFiles, task.FileCount);
 
                         float maxW = activeStatusX - 16 - fileCountX;
                         if (maxW > 20)
@@ -167,13 +148,12 @@ namespace Clickra.UI
 
 
                     startY += 52;
-                }
             }
 
             // ——— 顯示持久化歷史紀錄———
             if (_historyEntries == null || _historyEntries.Count == 0)
             {
-                if (!activeEntry.HasValue && _tabFont != null)
+                if (activeTasks.Count == 0 && _tabFont != null)
                 {
                     using var textBrush = new SolidBrush(Color.FromArgb(120, 120, 120));
                     g.DrawString(GetText("history_empty"), _tabFont, textBrush, contentX * s, 100 * s);
@@ -374,6 +354,16 @@ namespace Clickra.UI
 
                 currentY += currentH + 8;
             }
+        }
+
+        /// <summary>Formats the file-count display text for a history row.</summary>
+        private static string FormatFileCountText(string[] activeFiles, int fileCount)
+        {
+            if (activeFiles.Length == 0)
+                return $"{fileCount} {GetText("label_files")}";
+            if (activeFiles.Length == 1)
+                return Path.GetFileName(activeFiles[0]);
+            return $"{Path.GetFileName(activeFiles[0])} + {activeFiles.Length - 1} {GetText("label_files")}";
         }
 
         /// <summary>Draws a colored command tag at the given position and returns its width.</summary>
