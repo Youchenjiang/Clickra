@@ -5,107 +5,148 @@
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:local="using:Clickra_Fluent">
     <Grid>
-    <!-- 背景不設色：視窗 Mica（或 MainWindow 的 Mica）透出，與 dashboard 一致。
-         x:Name 供分割介面顯示時收合本卡，避免透明覆蓋層讓它透出來疊字。 -->
     <ScrollViewer
-        x:Name="ProgressCardHost"
+        Background="{ThemeResource ApplicationPageBackgroundThemeBrush}"
         HorizontalScrollBarVisibility="Disabled"
         VerticalScrollBarVisibility="Auto">
-        <!-- MinHeight 綁定視窗高度：內容不足一窗時垂直置中，超長（錯誤訊息）時可捲動。 -->
-        <Grid
-            MinHeight="{Binding ElementName=ProgressCardHost, Path=ActualHeight}"
-            Padding="28,20">
-            <!-- IDM 式緊湊排版：狀態圖示+標題一列、檔名縮排、進度條與 % 同一列、按鈕右下。
-                 取消大徽章與 44px 大百分比——那兩者正是「內容垂直散開」的來源。 -->
-            <StackPanel
+        <Grid Padding="24,16">
+            <Grid
                 x:Name="LayoutRoot"
-                MaxWidth="460"
+                MaxWidth="720"
                 HorizontalAlignment="Stretch"
-                VerticalAlignment="Center"
-                Spacing="12">
+                RowSpacing="12">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
+                </Grid.RowDefinitions>
 
-                <!-- 列 1：狀態圖示 + 任務名稱 -->
-                <Grid>
+                <Grid ColumnSpacing="12">
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="Auto" />
                         <ColumnDefinition Width="*" />
                     </Grid.ColumnDefinitions>
-                    <FontIcon
-                        x:Name="StatusIcon"
-                        Glyph="&#xE895;"
-                        FontSize="14"
-                        Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}"
-                        VerticalAlignment="Center" />
-                    <TextBlock
-                        x:Name="TitleText"
-                        Grid.Column="1"
-                        Margin="10,0,0,0"
-                        FontSize="15"
-                        FontWeight="SemiBold"
-                        TextTrimming="CharacterEllipsis"
-                        VerticalAlignment="Center" />
+                    <Border
+                        Width="36"
+                        Height="36"
+                        CornerRadius="18"
+                        Background="{ThemeResource AccentFillColorTertiaryBrush}">
+                        <FontIcon
+                            x:Name="StatusIcon"
+                            Glyph="&#xE895;"
+                            FontSize="16"
+                            Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}"
+                            HorizontalAlignment="Center"
+                            VerticalAlignment="Center" />
+                    </Border>
+                    <StackPanel Grid.Column="1" Spacing="2" VerticalAlignment="Center">
+                        <TextBlock
+                            x:Name="TitleText"
+                            Text=""
+                            FontSize="20"
+                            FontWeight="SemiBold"
+                            TextWrapping="WrapWholeWords" />
+                        <TextBlock
+                            x:Name="FileText"
+                            Text=""
+                            FontSize="13"
+                            Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                            TextWrapping="WrapWholeWords" />
+                    </StackPanel>
                 </Grid>
 
-                <!-- 目前檔案（縮排對齊狀態圖示） -->
-                <TextBlock
-                    x:Name="FileText"
-                    Margin="24,0,0,0"
-                    FontSize="12"
-                    Foreground="{ThemeResource TextFillColorSecondaryBrush}"
-                    TextTrimming="CharacterEllipsis" />
+                <Border
+                    Grid.Row="1"
+                    Padding="14,12"
+                    Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                    BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                    BorderThickness="1"
+                    CornerRadius="8">
+                    <Grid RowSpacing="6">
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
+                        </Grid.RowDefinitions>
+                        <TextBlock
+                            x:Name="StateText"
+                            Text=""
+                            FontSize="14"
+                            TextWrapping="WrapWholeWords" />
+                        <Grid Grid.Row="1" ColumnSpacing="12">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <ProgressBar
+                                x:Name="ProgressBar"
+                                Height="4"
+                                Minimum="0"
+                                Maximum="100"
+                                VerticalAlignment="Center" />
+                            <TextBlock
+                                x:Name="PercentText"
+                                Grid.Column="1"
+                                MinWidth="42"
+                                Text="0%"
+                                TextAlignment="Right"
+                                Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                        </Grid>
+                        <TextBlock
+                            x:Name="OutputText"
+                            Grid.Row="2"
+                            Text=""
+                            FontSize="13"
+                            Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                            TextWrapping="WrapWholeWords" />
+                        <TextBlock
+                            x:Name="ErrorText"
+                            Grid.Row="3"
+                            Visibility="Collapsed"
+                            Foreground="{ThemeResource SystemFillColorCriticalBrush}"
+                            TextWrapping="WrapWholeWords" />
+                    </Grid>
+                </Border>
 
-                <!-- 進度條 + 百分比（同一列，IDM 式） -->
-                <Grid>
+                <Grid
+                    x:Name="ActionLayout"
+                    Grid.Row="2"
+                    ColumnSpacing="12"
+                    RowSpacing="8">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition x:Name="ActionButtonsRow" Height="0" />
+                    </Grid.RowDefinitions>
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="*" />
                         <ColumnDefinition Width="Auto" />
                     </Grid.ColumnDefinitions>
-                    <ProgressBar
-                        x:Name="ProgressBar"
-                        Height="6"
-                        Minimum="0"
-                        Maximum="100"
-                        VerticalAlignment="Center" />
                     <TextBlock
-                        x:Name="PercentText"
+                        x:Name="FooterText"
+                        VerticalAlignment="Center"
+                        FontSize="13"
+                        Foreground="{ThemeResource TextFillColorTertiaryBrush}"
+                        Text=""
+                        TextWrapping="WrapWholeWords" />
+                    <StackPanel
+                        x:Name="ActionButtons"
                         Grid.Column="1"
-                        Margin="12,0,0,0"
-                        FontSize="14"
-                        FontWeight="SemiBold"
-                        Text="0%" />
+                        Orientation="Horizontal"
+                        Spacing="8"
+                        HorizontalAlignment="Right">
+                        <Button
+                            x:Name="OpenFolderButton"
+                            Content=""
+                            Padding="12,6"
+                            Visibility="Collapsed" />
+                        <Button
+                            x:Name="CancelButton"
+                            Content=""
+                            Padding="14,6" />
+                    </StackPanel>
                 </Grid>
-
-                <!-- 狀態行 / 錯誤訊息 -->
-                <TextBlock
-                    x:Name="StateText"
-                    FontSize="12"
-                    Foreground="{ThemeResource TextFillColorSecondaryBrush}"
-                    TextWrapping="WrapWholeWords" />
-                <TextBlock
-                    x:Name="ErrorText"
-                    Visibility="Collapsed"
-                    FontSize="12.5"
-                    Foreground="{ThemeResource SystemFillColorCriticalBrush}"
-                    TextWrapping="WrapWholeWords" />
-
-                <!-- 動作按鈕（右下） -->
-                <StackPanel
-                    x:Name="ActionButtons"
-                    Orientation="Horizontal"
-                    Spacing="8"
-                    HorizontalAlignment="Right">
-                    <Button
-                        x:Name="OpenFolderButton"
-                        Content=""
-                        Padding="12,5"
-                        Style="{ThemeResource AccentButtonStyle}"
-                        Visibility="Collapsed" />
-                    <Button
-                        x:Name="CancelButton"
-                        Content=""
-                        Padding="12,5" />
-                </StackPanel>
-            </StackPanel>
+            </Grid>
         </Grid>
     </ScrollViewer>
 

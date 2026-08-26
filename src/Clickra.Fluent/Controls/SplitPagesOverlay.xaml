@@ -5,22 +5,21 @@
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:local="using:Clickra_Fluent">
 
-    <!-- 背景不設色：讓視窗的 Mica 透出（與 dashboard 一致）；卡片維持不透明 -->
-    <Grid>
+    <Grid Background="{ThemeResource ApplicationPageBackgroundThemeBrush}">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="*"/>
         </Grid.RowDefinitions>
 
         <!-- Header: splitter title + source file, actions on the right. -->
-        <Grid Grid.Row="0" Padding="20,10" ColumnSpacing="16"
+        <Grid Grid.Row="0" Padding="24,12" ColumnSpacing="16"
               Background="{ThemeResource LayerOnAcrylicFillColorDefaultBrush}">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="*"/>
                 <ColumnDefinition Width="Auto"/>
             </Grid.ColumnDefinitions>
             <StackPanel VerticalAlignment="Center" Spacing="2">
-                <TextBlock x:Name="OverlayTitle" FontSize="18" FontWeight="SemiBold"/>
+                <TextBlock x:Name="OverlayTitle" FontSize="20" FontWeight="SemiBold"/>
                 <TextBlock x:Name="OverlayFile" FontSize="13"
                            Foreground="{ThemeResource TextFillColorSecondaryBrush}"
                            TextTrimming="CharacterEllipsis"/>

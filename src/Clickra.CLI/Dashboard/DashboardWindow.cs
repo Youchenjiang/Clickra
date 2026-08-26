@@ -72,8 +72,16 @@ namespace Clickra.UI
             }
             if (_activeTab == 2) // History
             {
-                // 進行中任務佇列：每個任務佔一列（並行任務各自獨立）。
-                int activeCount = ClickraStorage.GetActiveTasks().Count;
+                var activeEntry = ClickraStorage.GetActiveEntry();
+                int activeCount = 0;
+                if (activeEntry.HasValue)
+                {
+                    var ae = activeEntry.Value;
+                    var activeFiles = !string.IsNullOrEmpty(ae.InputPaths)
+                        ? ae.InputPaths.Split(new[] { ';' }, StringSplitOptions.RemoveEmptyEntries)
+                        : Array.Empty<string>();
+                    activeCount = activeFiles.Length > 0 ? activeFiles.Length : 1;
+                }
                 int totalHeight = 90 + activeCount * 52;
                 for (int i = 0; i < _historyEntries.Count; i++)
                 {

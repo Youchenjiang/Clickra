@@ -20,7 +20,6 @@ namespace Clickra.UI
             string startTimeStr = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
             List<string> currentFiles = new List<string>();
             string cmd = "";
-            string taskId = "";
             var sw = System.Diagnostics.Stopwatch.StartNew();
             try
             {
@@ -51,17 +50,14 @@ namespace Clickra.UI
                     UpdateTrayIconProgress();
                 };
 
-                // 立即建立 Pending 任務紀錄，讓 Dashboard 可即時看到；每個任務有
-                // 獨立的進度檔（tasks/task-{id}.tmp），並行任務不會互相覆蓋。
+                // 立即建立 Pending 紀錄，讓 Dashboard 可即時看到
                 string inputsStr = string.Join(";", currentFiles);
-                try
-                {
-                    taskId = ClickraStorage.StartTask(cmd, currentFiles.Count, inputsStr);
-                    ClickraStorage.SetTaskInProgress(taskId);
-                }
-                catch { }
+                try { ClickraStorage.StartActiveRecord(cmd, currentFiles.Count, inputsStr); } catch { }
 
                 string outputDir = ClickraStorage.GetOutputDir(currentFiles[0]);
+
+                // 開始實際處理，切換為 InProgress
+                try { ClickraStorage.SetActiveRecordInProgress(); } catch { }
 
                 switch (cmd)
                 {
@@ -115,12 +111,12 @@ namespace Clickra.UI
                 PostMessageW(hwnd, WM_USER_INVALIDATE, (IntPtr)1, IntPtr.Zero);
 
                 // 完成：寫入持久化日誌並暫留 Success 狀態供 Dashboard 讀取
-                try { ClickraStorage.CompleteTask(taskId, cmd, new() { StartTime = startTimeStr, IsSuccess = true, EndTime = endTime, ElapsedMs = elapsedMs, InputPaths = inputs, OutputPath = outputs }); } catch { }
+                try { ClickraStorage.CompleteActiveRecord(cmd, startTimeStr, true, "", endTime, elapsedMs, inputs, outputs); } catch { }
 
                 ShowToastNotification(cmd, currentFiles.Count);
 
                 Thread.Sleep(1500);
-                try { ClickraStorage.DeleteTask(taskId); } catch { }
+                try { ClickraStorage.ClearActiveRecord(); } catch { }
                 PostMessageW(hwnd, 0x0010, IntPtr.Zero, IntPtr.Zero); // WM_CLOSE
             }
             catch (Exception ex)
@@ -142,9 +138,9 @@ namespace Clickra.UI
                 }
                 PostMessageW(hwnd, WM_USER_INVALIDATE, (IntPtr)1, IntPtr.Zero);
 
-                try { ClickraStorage.CompleteTask(taskId, cmd, new() { StartTime = startTimeStr, IsSuccess = false, ErrorMsg = errorMsg, EndTime = endTime, ElapsedMs = elapsedMs, InputPaths = inputs, OutputPath = outputs }); } catch { }
+                try { ClickraStorage.CompleteActiveRecord(cmd, startTimeStr, false, errorMsg, endTime, elapsedMs, inputs, outputs); } catch { }
 
-                try { ClickraStorage.DeleteTask(taskId); } catch { }
+                try { ClickraStorage.ClearActiveRecord(); } catch { }
                 PostMessageW(hwnd, 0x0010, IntPtr.Zero, IntPtr.Zero); // WM_CLOSE
             }
         }
