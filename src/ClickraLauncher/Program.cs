@@ -63,7 +63,7 @@ internal static class Program
                 File.WriteAllText(Path.Combine(logDir, "launcher-error.log"),
                     $"{DateTime.Now:yyyy-MM-dd HH:mm:ss} Failed to start {target}: {ex}");
             }
-            catch { }
+            catch { /* Ignore secondary failure when writing crash log to temp dir. */ }
             return 1;
         }
 
@@ -149,7 +149,9 @@ internal static class Program
         {
             best = PickBest(best, TryReadRegValue(hive, view, arch, fxName, "Version"));
             foreach (string subKeyName in TryGetRegSubKeys(hive, view, arch, fxName))
+            {
                 best = PickBest(best, TryParseVer(subKeyName));
+            }
         }
 
         return best;
@@ -185,9 +187,9 @@ internal static class Program
     private static Version? PickBest(Version? current, Version? candidate) =>
         candidate is not null && (current is null || candidate > current) ? candidate : current;
 
-    private static T Probe<T>(Func<T> fn, T fallback = default!)
+    private static T Probe<T>(Func<T> fn, T fallback = default)
     {
         try { return fn(); }
-        catch { return fallback; }
+        catch { return fallback; } // Intentionally swallowed — probe methods are best-effort.
     }
 }

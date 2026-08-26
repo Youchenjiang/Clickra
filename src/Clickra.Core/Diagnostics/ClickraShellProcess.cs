@@ -109,7 +109,7 @@ public static class ClickraShellProcess
                     Terminate(entry.th32ProcessID);
             } while (Process32NextW(snap.GetHandle(), ref entry));
         }
-        catch { }
+        catch { /* Best-effort: continue killing remaining surrogates. */ }
     }
 
     /// <summary>該程序是否已載入指定模組（Toolhelp 模組快照）。</summary>
