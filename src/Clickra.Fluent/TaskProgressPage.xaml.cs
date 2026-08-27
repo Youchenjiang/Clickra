@@ -198,7 +198,7 @@ public sealed partial class TaskProgressPage : Page
                     if (_isBackgrounded)
                     {
                         TrayService.Instance.RemoveBackgroundWindow(Window);
-                        ShowToast(L("fluent_toast_canceled_title"), string.Format(L("fluent_toast_canceled_body"), Path.GetFileName(files[0])));
+                        ToastHelper.Show(L("fluent_toast_canceled_title"), string.Format(L("fluent_toast_canceled_body"), Path.GetFileName(files[0])));
                         await Task.Delay(1200, CancellationToken.None);
                     }
                     CloseHostWindow();
@@ -207,7 +207,7 @@ public sealed partial class TaskProgressPage : Page
                     // 已暫存：不寫歷史，留待 dashboard「繼續 / 取消」。通知後自動關窗。
                     _finished = true;
                     TrayService.Instance.RemoveBackgroundWindow(Window);
-                    ShowToast(L("fluent_park_toast_title"), L("fluent_park_toast_body"));
+                    ToastHelper.Show(L("fluent_park_toast_title"), L("fluent_park_toast_body"));
                     await Task.Delay(800, CancellationToken.None);
                     CloseHostWindow();
                     return;
@@ -227,7 +227,7 @@ public sealed partial class TaskProgressPage : Page
                 // 縮在系統匣內時任務結束：移除匣圖示、跳出通知，稍候自動關窗——
                 // 最後一個視窗關閉時程序隨之結束（TrackWindow）。
                 TrayService.Instance.RemoveBackgroundWindow(Window);
-                ShowToast(toastTitle, toastBody);
+                ToastHelper.Show(toastTitle, toastBody);
                 await Task.Delay(1500, CancellationToken.None);
                 CloseHostWindow();
             }
@@ -388,33 +388,6 @@ public sealed partial class TaskProgressPage : Page
     {
         if (string.IsNullOrWhiteSpace(_outputFolder) || !Directory.Exists(_outputFolder)) return;
         Process.Start(new ProcessStartInfo(Clickra.Core.SystemPaths.Explorer, $"\"{_outputFolder}\"") { UseShellExecute = true })?.Dispose();
-    }
-
-    /// <summary>任務結束的 Windows Toast 通知（與 MainPage 相同實作；Notification 關閉時略過）。</summary>
-    private static void ShowToast(string title, string body)
-    {
-        if (ClickraStorage.GetSetting("Notification").Equals("false", StringComparison.OrdinalIgnoreCase)) return;
-        try
-        {
-            static string Escape(string value) => value.Replace("'", "''").Replace("`", "``").Replace("\"", "`\"");
-            var script = $@"
-[Windows.UI.Notifications.ToastNotificationManager, Windows.UI.Notifications, ContentType = WindowsRuntime] | Out-Null
-$template = [Windows.UI.Notifications.ToastNotificationManager]::GetTemplateContent([Windows.UI.Notifications.ToastTemplateType]::ToastText02)
-$textNodes = $template.GetElementsByTagName('text')
-$textNodes.Item(0).AppendChild($template.CreateTextNode('{Escape(title)}')) | Out-Null
-$textNodes.Item(1).AppendChild($template.CreateTextNode('{Escape(body)}')) | Out-Null
-$toast = [Windows.UI.Notifications.ToastNotification]::new($template)
-[Windows.UI.Notifications.ToastNotificationManager]::CreateToastNotifier('Clickra').Show($toast)";
-
-            Process.Start(new ProcessStartInfo
-            {
-                FileName = Clickra.Core.SystemPaths.PowerShell,
-                Arguments = $"-NoProfile -ExecutionPolicy Bypass -Command \"{script}\"",
-                UseShellExecute = false,
-                CreateNoWindow = true
-            })?.Dispose();
-        }
-        catch { /* Ignored: a failed toast must not break the conversion flow. */ }
     }
 
 }

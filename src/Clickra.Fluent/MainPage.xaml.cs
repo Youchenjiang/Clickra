@@ -424,17 +424,17 @@ public sealed partial class MainPage : Page
             {
                 case ConvertCommandRunner.ConvertRunStatus.Succeeded:
                     SetProgress(100, L("fluent_progress_completed"));
-                    ShowToast(L("fluent_toast_done_title"), string.Format(L("fluent_toast_done_body"), L(ConvertCommandRegistry.GetLabelKey(command)), files.Count));
+                    ToastHelper.Show(L("fluent_toast_done_title"), string.Format(L("fluent_toast_done_body"), L(ConvertCommandRegistry.GetLabelKey(command)), files.Count));
                     _selectedFiles.Clear();
                     RefreshFiles();
                     break;
                 case ConvertCommandRunner.ConvertRunStatus.Canceled:
                     SetProgress(0, L("fluent_progress_canceled"));
-                    ShowToast(L("fluent_toast_canceled_title"), string.Format(L("fluent_toast_canceled_body"), L(ConvertCommandRegistry.GetLabelKey(command))));
+                    ToastHelper.Show(L("fluent_toast_canceled_title"), string.Format(L("fluent_toast_canceled_body"), L(ConvertCommandRegistry.GetLabelKey(command))));
                     break;
                 default:
                     SetProgress(0, string.Format(L("fluent_progress_failed"), result.Error));
-                    ShowToast(L("fluent_toast_failed_title"), result.Error ?? "");
+                    ToastHelper.Show(L("fluent_toast_failed_title"), result.Error ?? "");
                     await ShowErrorAsync(result.Error ?? "");
                     break;
             }
@@ -1288,32 +1288,6 @@ public sealed partial class MainPage : Page
             XamlRoot = XamlRoot
         };
         await dialog.ShowAsync();
-    }
-
-    private static void ShowToast(string title, string body)
-    {
-        if (ClickraStorage.GetSetting("Notification").Equals(FalseSettingValue, StringComparison.OrdinalIgnoreCase)) return;
-        try
-        {
-            static string Escape(string value) => value.Replace("'", "''").Replace("`", "``").Replace("\"", "`\"");
-            var script = $@"
-[Windows.UI.Notifications.ToastNotificationManager, Windows.UI.Notifications, ContentType = WindowsRuntime] | Out-Null
-$template = [Windows.UI.Notifications.ToastNotificationManager]::GetTemplateContent([Windows.UI.Notifications.ToastTemplateType]::ToastText02)
-$textNodes = $template.GetElementsByTagName('text')
-$textNodes.Item(0).AppendChild($template.CreateTextNode('{Escape(title)}')) | Out-Null
-$textNodes.Item(1).AppendChild($template.CreateTextNode('{Escape(body)}')) | Out-Null
-$toast = [Windows.UI.Notifications.ToastNotification]::new($template)
-[Windows.UI.Notifications.ToastNotificationManager]::CreateToastNotifier('Clickra').Show($toast)";
-
-            Process.Start(new ProcessStartInfo
-            {
-                FileName = Clickra.Core.SystemPaths.PowerShell,
-                Arguments = $"-NoProfile -ExecutionPolicy Bypass -Command \"{script}\"",
-                UseShellExecute = false,
-                CreateNoWindow = true
-            })?.Dispose();
-        }
-        catch { /* Ignored: a failed toast must not break the conversion flow. */ }
     }
 
 }
