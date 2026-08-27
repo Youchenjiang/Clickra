@@ -1,14 +1,18 @@
 version = 1
 
-[analyze]
-  languages = ["csharp", "python"]
+exclude_patterns = [
+  "src/Clickra.Fluent/TrayIcon.cs",
+  "src/Clickra.Fluent/TrayService.cs"
+]
 
-  [[analyze.exclude_patterns]]
-    path = "src/Clickra.Fluent/TrayIcon.cs"
-    reason = "P/Invoke struct fields must be public for Win32 marshaling; DeepSource flags all IntPtr fields as unmanaged resource exposure"
-  [[analyze.exclude_patterns]]
-    path = "**/TrayIcon.cs"
-    reason = "P/Invoke struct fields must be public for Win32 marshaling; DeepSource flags all IntPtr fields as unmanaged resource exposure"
-  [[analyze.exclude_patterns]]
-    path = "**/TrayService.cs"
-    reason = "P/Invoke interop code with Win32 Shell_NotifyIcon; analyzer findings conflict with required marshaling visibility"
+test_patterns = [
+  "tests/**"
+]
+
+[[analyzers]]
+name = "csharp"
+enabled = true
+
+[[analyzers]]
+name = "python"
+enabled = true
