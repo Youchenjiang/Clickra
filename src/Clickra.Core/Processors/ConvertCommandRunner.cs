@@ -47,8 +47,8 @@ public static class ConvertCommandRunner
             List<string> files,
             List<string> outputs,
             Action<int, string> updateProgress,
-            CancellationToken token,
-            ConversionOptions options)
+            ConversionOptions options,
+            CancellationToken token = default)
         {
             // Display timestamp for the history log; local time is what the user expects.
             string startTime = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss"); // skipcq: CS-W1091
@@ -67,7 +67,7 @@ public static class ConvertCommandRunner
             ClickraStorage.SetTaskInProgress(taskId);
             try
             {
-                await Task.Run(() => Run(command, files, outputs, Progress, token, options), token);
+                await Task.Run(() => Run(command, files, outputs, Progress, options, token), token);
                 stopwatch.Stop();
                 ClickraStorage.CompleteTask(taskId, command, new() { StartTime = startTime, IsSuccess = true, InputPaths = inputs, OutputPath = string.Join(";", outputs), ElapsedMs = stopwatch.ElapsedMilliseconds });
                 return new ConvertRunResult(ConvertRunStatus.Succeeded, null, taskId);
@@ -100,8 +100,8 @@ public static class ConvertCommandRunner
             List<string> files,
             List<string> outputs,
             Action<int, int, string> progress,
-            CancellationToken token,
-            ConversionOptions options)
+            ConversionOptions options,
+            CancellationToken token = default)
         {
             switch (command)
             {

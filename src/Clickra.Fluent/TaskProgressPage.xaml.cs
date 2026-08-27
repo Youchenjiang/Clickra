@@ -174,10 +174,10 @@ public sealed partial class TaskProgressPage : Page
                     }
                     DispatcherQueue.TryEnqueue(() => SetProgress(percent, message));
                 },
-                _cts.Token,
                 new ConvertCommandRunner.ConversionOptions(
                     PromptPasswordAsync, PromptSplitAsync,
-                    startIndex, _taskId));
+                    startIndex, _taskId),
+                _cts.Token);
 
             string statusMessage;
             bool success;
