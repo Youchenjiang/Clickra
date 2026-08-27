@@ -18,6 +18,14 @@ public static class ConvertCommandRunner
         /// <summary>Outcome of a tracked conversion run together with the failure message.</summary>
         public readonly record struct ConvertRunResult(ConvertRunStatus Status, string? Error, string TaskId = "");
 
+        /// <summary>Groups the optional parameters for conversion execution.
+        /// Keeps method signatures under the 7-parameter SonarCloud threshold.</summary>
+        public sealed record ConversionOptions(
+            Func<int, Task<string?>> PromptPassword,
+            Func<int, string, Task<string?>> PromptSplitPages,
+            int StartIndex = 0,
+            string? ExistingTaskId = null);
+
         /// <summary>
         /// 任務被「暫存」的信號：由 prompt delegate 在 UI 要求暫存（例如卡在密碼/分割
         /// 輸入時關窗）時拋出。RunTrackedAsync 會寫入 Parked 狀態（不寫歷史），
@@ -34,17 +42,13 @@ public static class ConvertCommandRunner
         /// The progress delegate receives already-marshaled UI updates; the caller keeps
         /// handling the result-specific UI. Shared by both UIs so start/complete/cancel
         /// accounting stays in one place.</summary>
-        // skipcq: CS-R1062 — both UIs share this runner; splitting would duplicate dispatch logic.
         public static async Task<ConvertRunResult> RunTrackedAsync(
             string command,
             List<string> files,
             List<string> outputs,
             Action<int, string> updateProgress,
-            Func<int, Task<string?>> promptPassword,
-            Func<int, string, Task<string?>> promptSplitPages,
             CancellationToken token,
-            int startIndex = 0,
-            string? existingTaskId = null)
+            ConversionOptions options)
         {
             // Display timestamp for the history log; local time is what the user expects.
             string startTime = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss"); // skipcq: CS-W1091
@@ -59,11 +63,11 @@ public static class ConvertCommandRunner
 
             // 每個任務有獨立的進度檔（tasks/task-{id}.tmp），多個並行任務不會互相覆蓋。
             // resume 時沿用原任務檔（existingTaskId），避免重複建立與歷史重複寫入。
-            string taskId = existingTaskId ?? ClickraStorage.StartTask(command, files.Count, inputs);
+            string taskId = options.ExistingTaskId ?? ClickraStorage.StartTask(command, files.Count, inputs);
             ClickraStorage.SetTaskInProgress(taskId);
             try
             {
-                await Task.Run(() => Run(command, files, outputs, Progress, promptPassword, promptSplitPages, token, startIndex), token);
+                await Task.Run(() => Run(command, files, outputs, Progress, token, options), token);
                 stopwatch.Stop();
                 ClickraStorage.CompleteTask(taskId, command, new() { StartTime = startTime, IsSuccess = true, InputPaths = inputs, OutputPath = string.Join(";", outputs), ElapsedMs = stopwatch.ElapsedMilliseconds });
                 return new ConvertRunResult(ConvertRunStatus.Succeeded, null, taskId);
@@ -91,16 +95,13 @@ public static class ConvertCommandRunner
         /// <summary>Executes the given command. A null result from either prompt delegate
         /// cancels the operation. <paramref name="startIndex"/> lets a resumed (parked)
         /// batch skip files that already completed.</summary>
-        // skipcq: CS-R1062 — command dispatch must handle all 11 command types in one switch.
         public static void Run(
             string command,
             List<string> files,
             List<string> outputs,
             Action<int, int, string> progress,
-            Func<int, Task<string?>> promptPassword,
-            Func<int, string, Task<string?>> promptSplitPages,
             CancellationToken token,
-            int startIndex = 0)
+            ConversionOptions options)
         {
             switch (command)
             {
@@ -117,19 +118,19 @@ public static class ConvertCommandRunner
                     FileProcessor.MergePdfs(files, outputs[0], progress, token);
                     break;
                 case "compress-pdf":
-                    RunPerFile(files, outputs, (f, o, p, t) => FileProcessor.CompressPdf(f, o, ConvertCommandRegistry.CompressionOptions(), p, t), progress, startIndex, token);
+                    RunPerFile(files, outputs, (f, o, p, t) => FileProcessor.CompressPdf(f, o, ConvertCommandRegistry.CompressionOptions(), p, t), progress, options.StartIndex, token);
                     break;
                 case "translate-pdf":
-                    RunPerFile(files, outputs, (f, o, p, t) => FileProcessor.TranslatePdf(f, o, ClickraStorage.GetSetting("TranslateTargetLang"), p, t), progress, startIndex, token);
+                    RunPerFile(files, outputs, (f, o, p, t) => FileProcessor.TranslatePdf(f, o, ClickraStorage.GetSetting("TranslateTargetLang"), p, t), progress, options.StartIndex, token);
                     break;
                 case "decrypt-pdf":
-                    RunDecrypt(files, outputs, promptPassword, progress, startIndex, token);
+                    RunDecrypt(files, outputs, options.PromptPassword, progress, options.StartIndex, token);
                     break;
                 case "split-pdf":
-                    RunSplit(files, outputs, promptSplitPages, progress, startIndex, token);
+                    RunSplit(files, outputs, options.PromptSplitPages, progress, options.StartIndex, token);
                     break;
                 case "img2pdf":
-                    RunPerFile(files, outputs, (f, o, p, t) => FileProcessor.ConvertImagesToPdf(new List<string> { f }, o, p, t), progress, startIndex, token);
+                    RunPerFile(files, outputs, (f, o, p, t) => FileProcessor.ConvertImagesToPdf(new List<string> { f }, o, p, t), progress, options.StartIndex, token);
                     break;
                 case "img-merge":
                     FileProcessor.ConvertImagesToPdf(files, outputs[0], progress, token);

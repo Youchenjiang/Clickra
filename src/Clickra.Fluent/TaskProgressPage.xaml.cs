@@ -174,12 +174,10 @@ public sealed partial class TaskProgressPage : Page
                     }
                     DispatcherQueue.TryEnqueue(() => SetProgress(percent, message));
                 },
-                PromptPasswordAsync,
-                PromptSplitAsync,
                 _cts.Token,
-                startIndex: startIndex,
-                // 一律沿用頁面建立的 task 檔（fresh 或 resume），避免 Core 重複建立產生孤兒任務。
-                existingTaskId: _taskId);
+                new ConvertCommandRunner.ConversionOptions(
+                    PromptPasswordAsync, PromptSplitAsync,
+                    startIndex, _taskId));
 
             string statusMessage;
             bool success;
