@@ -13,6 +13,8 @@ namespace Clickra.UI
 {
     public static partial class DashboardWindow
     {
+        private const string LabelFilesKey = "label_files";
+
         /// <summary>Draws the history tab: header, filter chips and the scrollable entry list.</summary>
         static void DrawHistoryTab(Graphics g, float logW, float logH, float contentX)
         {
@@ -211,13 +213,13 @@ namespace Clickra.UI
                 {
                     using var countBrush = new SolidBrush(Color.FromArgb(200, 200, 200));
                     float fileCountX = tagX + tagW + 16;
-                    string displayText = $"{entry.FileCount} {GetText("label_files")}";
+                    string displayText = $"{entry.FileCount} {GetText(LabelFilesKey)}";
                     if (!string.IsNullOrEmpty(entry.InputPaths))
                     {
                         var paths = entry.InputPaths.Split(';', StringSplitOptions.RemoveEmptyEntries);
                         if (paths.Length > 1)
                         {
-                            displayText = $"{Path.GetFileName(paths[0])} + {paths.Length - 1} {GetText("label_files")}";
+                            displayText = $"{Path.GetFileName(paths[0])} + {paths.Length - 1} {GetText(LabelFilesKey)}";
                         }
                         else if (paths.Length == 1)
                         {
@@ -360,10 +362,10 @@ namespace Clickra.UI
         private static string FormatFileCountText(string[] activeFiles, int fileCount)
         {
             if (activeFiles.Length == 0)
-                return $"{fileCount} {GetText("label_files")}";
+                return $"{fileCount} {GetText(LabelFilesKey)}";
             if (activeFiles.Length == 1)
                 return Path.GetFileName(activeFiles[0]);
-            return $"{Path.GetFileName(activeFiles[0])} + {activeFiles.Length - 1} {GetText("label_files")}";
+            return $"{Path.GetFileName(activeFiles[0])} + {activeFiles.Length - 1} {GetText(LabelFilesKey)}";
         }
 
         /// <summary>Draws a colored command tag at the given position and returns its width.</summary>

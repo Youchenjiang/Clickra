@@ -154,6 +154,7 @@ internal sealed class TrayIcon : IDisposable
     private delegate IntPtr WndProcDelegate(IntPtr hWnd, uint msg, IntPtr wParam, IntPtr lParam);
 
     [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Unicode)]
+    // skipcq: CS-R1062 — Win32 API requires exact casing for P/Invoke marshaling.
     private struct WNDCLASSW
     {
         public uint style;
@@ -170,6 +171,7 @@ internal sealed class TrayIcon : IDisposable
 
     // 與 Clickra.CLI/Native/Win32.cs 的 NOTIFYICONDATAW 相同配置，確保 ABI 一致。
     [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Unicode)]
+    // skipcq: CS-R1062 — Win32 API requires exact casing for P/Invoke marshaling.
     private struct NOTIFYICONDATAW
     {
         public uint cbSize;

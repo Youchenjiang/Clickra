@@ -34,6 +34,7 @@ public static class ConvertCommandRunner
         /// The progress delegate receives already-marshaled UI updates; the caller keeps
         /// handling the result-specific UI. Shared by both UIs so start/complete/cancel
         /// accounting stays in one place.</summary>
+        // skipcq: CS-R1062 — both UIs share this runner; splitting would duplicate dispatch logic.
         public static async Task<ConvertRunResult> RunTrackedAsync(
             string command,
             List<string> files,
@@ -90,6 +91,7 @@ public static class ConvertCommandRunner
         /// <summary>Executes the given command. A null result from either prompt delegate
         /// cancels the operation. <paramref name="startIndex"/> lets a resumed (parked)
         /// batch skip files that already completed.</summary>
+        // skipcq: CS-R1062 — command dispatch must handle all 11 command types in one switch.
         public static void Run(
             string command,
             List<string> files,

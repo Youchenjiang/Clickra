@@ -197,6 +197,7 @@ public partial class App : Application
         root.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
         root.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) });
 
+        // skipcq: CS-W1091 — ms-appx:/// is the standard WinUI 3 package URI scheme for embedded assets.
         var titleBar = new TitleBar { Title = "Clickra", IconSource = new ImageIconSource { ImageSource = new BitmapImage(new Uri("ms-appx:///Assets/AppIcon.png")) } };
 
         var frame = new Frame();

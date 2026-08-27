@@ -152,6 +152,7 @@ internal sealed class TrayService
             {
                 RestoreAll();
             }
+            // skipcq: CS-W1091 — cmd is returned by TrackPopupMenuEx and can be any uint value.
             else if (cmd >= idFirstTask)
             {
                 int index = (int)(cmd - idFirstTask);
@@ -167,6 +168,7 @@ internal sealed class TrayService
         }
     }
 
+    // skipcq: CS-R1062 — Win32 API requires exact casing for P/Invoke marshaling.
     [StructLayout(LayoutKind.Sequential)]
     private struct POINT
     {

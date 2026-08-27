@@ -7,6 +7,7 @@ namespace Clickra_Fluent;
 public sealed partial class MainWindow : Window
 {
     /// <summary>主導覽 Frame（供 App 處理單一實例導向時讀取目前頁面）。</summary>
+    // skipcq: CS-R1093 — MainFrame must be instance-level to access the XAML-generated RootFrame field.
     public Frame MainFrame => RootFrame;
 
     public MainWindow(string launchArguments = "")

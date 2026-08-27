@@ -94,7 +94,7 @@ public sealed partial class TaskProgressPage : Page
         cancelButton.Content = L("fluent_cancel");
     }
 
-    private record ParseResult(string Command, List<string> Files, int StartIndex, string? ExistingTaskId);
+    private sealed record ParseResult(string Command, List<string> Files, int StartIndex, string? ExistingTaskId);
 
     private ParseResult? TryParseArguments()
     {
@@ -105,7 +105,7 @@ public sealed partial class TaskProgressPage : Page
         return TryParseFresh(args);
     }
 
-    private ParseResult? TryParseResume(List<string> args)
+    private static ParseResult? TryParseResume(List<string> args)
     {
         if (args.Count < 2) return null;
         var parked = ClickraStorage.GetTask(args[1]);
@@ -116,7 +116,7 @@ public sealed partial class TaskProgressPage : Page
         return new ParseResult(parked.Value.Command, files, startIndex, args[1]);
     }
 
-    private ParseResult? TryParseFresh(List<string> args)
+    private static ParseResult? TryParseFresh(List<string> args)
     {
         if (args.Count < 2 || !ConvertCommandRegistry.IsKnownCommand(args[0])) return null;
         var files = ConvertCommandRegistry.ExpandDirectoryArguments(args[0], args.Skip(1)).Where(File.Exists).ToList();
@@ -301,7 +301,7 @@ public sealed partial class TaskProgressPage : Page
         _parkReason = L("fluent_task_parked_waiting");
         if (_activeDialog != null)
         {
-            try { _activeDialog.Hide(); } catch { }
+            try { _activeDialog.Hide(); } catch { /* Dialog may already be disposed; ignore. */ }
             _activeDialog = null;
         }
         SplitOverlay.Cancel();
