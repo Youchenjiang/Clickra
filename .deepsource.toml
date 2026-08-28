@@ -1,0 +1,18 @@
+version = 1
+
+exclude_patterns = [
+  "src/Clickra.Fluent/TrayIcon.cs",
+  "src/Clickra.Fluent/TrayService.cs"
+]
+
+test_patterns = [
+  "tests/**"
+]
+
+[[analyzers]]
+name = "csharp"
+enabled = true
+
+[[analyzers]]
+name = "python"
+enabled = true
