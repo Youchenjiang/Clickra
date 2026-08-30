@@ -1,9 +1,11 @@
 # Create a self-signed certificate for local Clickra development
 # Password: 1234
+# Subject is read from AppxManifest.xml Publisher attribute.
 
-$certName = "CBF59877-21AD-4BC4-8F91-FE8DA520A138"
+[xml]$manifest = Get-Content "$PSScriptRoot/../msix/AppxManifest.xml"
+$certName = $manifest.Package.Identity.Publisher -replace '^CN=', ''
 $password = ConvertTo-SecureString "1234" -AsPlainText -Force
-$outPath = "packaging/msix/ClickraDev.pfx"
+$outPath = "$PSScriptRoot/../msix/ClickraDev.pfx"
 
 Write-Host "🚀 Creating self-signed certificate: $certName" -ForegroundColor Cyan
 
