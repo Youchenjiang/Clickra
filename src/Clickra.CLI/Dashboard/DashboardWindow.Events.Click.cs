@@ -449,6 +449,7 @@ namespace Clickra.UI
                 case 34: ClickraStorage.SaveSetting("OfficeEngine", "libreoffice");
                          ApplySetting(hwnd, "LibreOfficePath", ""); break;
                 case 40: OpenStorePage(hwnd); break;
+                default: break;
             }
         }
 
