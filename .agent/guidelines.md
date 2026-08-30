@@ -1,4 +1,4 @@
-# ⚡ Clickra 專案行為準則 (AI Agent 專用)
+﻿# ⚡ Clickra 專案行為準則 (AI Agent 專用)
 
 ## 0. 授權閘門（每次對話必須先套用）
 
@@ -8,6 +8,30 @@
 - 每次外部寫入前，先列出「使用者授權涵蓋的精確操作」與「即將執行的單一操作」；未涵蓋的下一步必須停下來詢問。
 - 授權操作失敗而需要新增分支、PR、合併或改 workflow 才能繼續時，必須停下回報證據，不得自行升級處理範圍。
 - 使用者表示反對或撤回授權後，立即停止；不得自行 revert、刪除、取消 workflow 或 force-push 進行清理。
+
+## 0.1 PDF 翻譯審核產物規則
+
+要求使用者審核 PDF 翻譯時，只能提供由實際設定的翻譯供應商在目標語言中產出的 PDF。identity、synthetic-cjk、英文來源 PDF、版面診斷和其他測試引擎輸出僅為內部測試檔案，絕不可作為可審核的翻譯結果呈交。若真實供應商尚未成功完成，應聲明目前尚無可審核的翻譯 PDF。
+
+## 0.2 Microsoft Store Ingestion API 生命週期與狀態定義
+
+Microsoft Ingestion API 操作高度非同步。不要信任暫態 HTTP 回應成功碼或簡單的狀態字串輸出，必須驗證 Microsoft Partner Center 內的實際狀態。
+
+### A. CommitStarted 陷阱（關鍵）
+* 含義：當 API 收到 POST .../commit 請求時，立即回應 202 Accepted 並將 submission 狀態設為 CommitStarted。這不代表應用程式已進入認證。
+* 背景處理：Microsoft 後端會排隊處理複製套件檔案、分發在地化 CDN 螢幕截圖和執行靜態二進位掃描。
+* 危險：若背景處理失敗，submission 會靜默停留在 CommitStarted 或回退為 PendingCommit（Draft）。
+* 真正認證狀態：submission 只有在狀態變更為 Certification 時才正式提交人工審查。
+
+### B. 提交前的預防檢查清單
+1. 關鍵字上限：每個 listing 物件最多 7 個關鍵字。遞迴清理整個 JSON payload 中的 Keywords 和 keywords。
+2. 螢幕截圖完整性：每個活躍 listing 容器至少包含 1 張螢幕截圖。0 張截圖會導致 submission 停留在未完成。
+3. 繁體中文映射：zh-tw listing 必須正確映射 tw1.png/tw2.png。
+
+### C. 處理 API Gateway 逾時（HTTP 502/504）
+* Microsoft Dev Center Ingestion API 在大型 metadata 更新時容易發生 gateway 逾時。
+* 處理策略：使用指數退避重試（15s -> 30s -> 60s -> 120s），連線逾時設定至少 180 秒。
+* 驗證：PUT 或 POST 逾時後，必須重新查詢應用程式狀態再決定是否重試。
 
 ## 1. Git 完整性
 - **禁止 Nuke-and-Pave**：嚴禁刪除舊檔案再新增同名檔案。改名必須使用 `git mv`。
