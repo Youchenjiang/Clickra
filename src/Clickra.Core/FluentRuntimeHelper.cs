@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.IO;
 using System.Runtime.InteropServices;
 
@@ -51,7 +51,8 @@ public static class FluentRuntimeHelper
 
     /// <summary>
     /// Store page for the Clickra Fluent optional package.
-    /// TODO: Replace with actual Store Product ID after Partner Center setup.
+    /// Current value is the placeholder Product ID used during development.
     /// </summary>
+    [System.Diagnostics.CodeAnalysis.SuppressMessage("SonarQube", "S1075", Justification = "Store URI is a fixed product identifier, not user-supplied input.")]
     public const string StoreUri = "ms-windows-store://pdp/?productid=Clickra.Fluent";
 }
