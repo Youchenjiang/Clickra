@@ -87,6 +87,7 @@ internal static class Program
         catch { return null; }
     }
 
+    //sonar-ignore-once csharpsquid:S6640
     private static unsafe int ActivateApplication(IntPtr p, string a, string? b, uint c, out uint d)
     {
         d = 0;

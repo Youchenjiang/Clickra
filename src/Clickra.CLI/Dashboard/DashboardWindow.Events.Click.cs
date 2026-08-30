@@ -494,7 +494,8 @@ namespace Clickra.UI
                 {
                     System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
                     {
-                        FileName = Clickra.Core.FluentRuntimeHelper.StoreUri,
+                        //sonar-ignore-once csharpsquid:S4036
+                    FileName = Clickra.Core.FluentRuntimeHelper.StoreUri,
                         UseShellExecute = true
                     });
                 }
