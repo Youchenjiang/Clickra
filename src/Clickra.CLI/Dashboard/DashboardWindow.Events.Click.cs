@@ -1,7 +1,8 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Drawing;
 using System.IO;
+using System.Diagnostics.CodeAnalysis;
 using System.Runtime.InteropServices;
 using Clickra.Core;
 using Clickra.Core.Processors;
@@ -432,6 +433,7 @@ namespace Clickra.UI
         }
 
         /// <summary>Handles settings-tab element clicks: toggles, output dirs and office engine selection.</summary>
+        [SuppressMessage("SonarQube", "S4036", Justification = "StoreUri is an absolute ms-windows-store URI")]
         static void HandleSettingsClick(IntPtr hwnd, int element)
         {
             if (element == 5)

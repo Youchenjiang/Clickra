@@ -1,5 +1,6 @@
-using System.Diagnostics;
+﻿using System.Diagnostics;
 using System.Runtime.CompilerServices;
+using System.Diagnostics.CodeAnalysis;
 using System.Runtime.InteropServices;
 
 namespace Clickra.Launcher;
@@ -87,7 +88,7 @@ internal static class Program
         catch { return null; }
     }
 
-    //sonar-ignore-once csharpsquid:S6640
+    [SuppressMessage("SonarQube", "S6640", Justification = "NativeAOT COM vtable interop requires unsafe code")]
     private static unsafe int ActivateApplication(IntPtr p, string a, string? b, uint c, out uint d)
     {
         d = 0;
