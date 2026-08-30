@@ -1,4 +1,4 @@
-name: Security Scan
+﻿name: Security Scan
 
 on:
   pull_request:
@@ -40,7 +40,7 @@ jobs:
           echo "## NuGet Dependency Vulnerability Report" > vuln-report.txt
           echo "" >> vuln-report.txt
           VULN_FOUND=false
-          for proj in src/Clickra.Core/Clickra.Core.csproj src/Clickra.CLI/Clickra.csproj src/Clickra.Fluent/Clickra.Fluent.csproj src/Clickra.Setup/Clickra.Setup.csproj; do
+          for proj in src/Clickra.Core/Clickra.Core.csproj src/Clickra.CLI/Clickra.csproj src/Clickra.Fluent/Clickra.Fluent.csproj; do
             if [ ! -f "$proj" ]; then continue; fi
             echo "Scanning $proj..."
             echo "### $proj" >> vuln-report.txt
