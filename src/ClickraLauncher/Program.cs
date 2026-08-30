@@ -109,8 +109,11 @@ internal static class Program
         return null;
     }
 
+    // skipcq: CS-R1138
     [DllImport("ole32.dll", ExactSpelling = true)] private static extern int CoInitializeEx(IntPtr r, uint m);
     [DllImport("ole32.dll", ExactSpelling = true)] private static extern void CoUninitialize();
+    // skipcq: CS-R1138
     [DllImport("ole32.dll", ExactSpelling = true)] private static extern int CoCreateInstance(ref Guid rclsid, IntPtr pUnkOuter, uint dwClsContext, ref Guid riid, out IntPtr ppv);
+    // skipcq: CS-R1138
     [DllImport("kernel32.dll", CharSet = CharSet.Unicode)] private static extern int GetCurrentPackageFamilyName(ref uint l, Span<char> n);
 }

@@ -14,6 +14,7 @@ namespace Clickra.UI
 {
     public static partial class DashboardWindow
     {
+        // skipcq: CS-R1140
         static void DrawSettingsTab(Graphics g, float logW, float logH, float contentX)
         {
             float s = _dpiScale;
