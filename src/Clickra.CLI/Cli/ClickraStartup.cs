@@ -237,12 +237,10 @@ internal static class ClickraStartup
     private static bool HasDotNetDesktopRuntime()
     {
         string fxName = "Microsoft.WindowsDesktop.App";
-        foreach (RegistryHive hive in new[] { RegistryHive.LocalMachine, RegistryHive.CurrentUser })
-            foreach (RegistryView view in new[] { RegistryView.Registry64, RegistryView.Registry32 })
-                foreach (string arch in new[] { "x64", "arm64", "x86" })
-                    if (CheckRegistryForDesktopFx(hive, view, arch, fxName))
-                        return true;
-        return false;
+        var hives = new[] { RegistryHive.LocalMachine, RegistryHive.CurrentUser };
+        var views = new[] { RegistryView.Registry64, RegistryView.Registry32 };
+        var archs = new[] { "x64", "arm64", "x86" };
+        return hives.Any(h => views.Any(v => archs.Any(a => CheckRegistryForDesktopFx(h, v, a, fxName))));
     }
 
     /// <summary>Checks a single registry location for the WindowsDesktop.App shared framework.</summary>
