@@ -31,7 +31,7 @@ internal static class Program
                 if (!proc.HasExited)
                     return 0;
             }
-            catch { }
+            catch (ArgumentException) { /* Process already exited or invalid PID ??safe to ignore. */ }
         }
 
         // Fallback: NativeAOT Dashboard
