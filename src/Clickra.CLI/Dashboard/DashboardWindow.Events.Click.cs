@@ -436,75 +436,56 @@ namespace Clickra.UI
         [SuppressMessage("SonarQube", "S4036", Justification = "StoreUri is an absolute ms-windows-store URI")]
         static void HandleSettingsClick(IntPtr hwnd, int element)
         {
-            if (element == 5)
+            switch (element)
             {
-                bool current = ClickraStorage.GetSetting("QuietMode").Equals("true", StringComparison.OrdinalIgnoreCase);
-                ClickraStorage.SaveSetting("QuietMode", current ? "false" : "true");
-                InvalidateRect(hwnd, IntPtr.Zero, false);
+                case 5: ToggleBoolSetting(hwnd, "QuietMode"); break;
+                case 6: ToggleBoolSetting(hwnd, "Notification"); break;
+                case 7: ApplySetting(hwnd, "OutputDir", "source"); break;
+                case 8: ApplySetting(hwnd, "OutputDir", "desktop"); break;
+                case 9: ApplySetting(hwnd, "OutputDir", "downloads"); break;
+                case 20: BrowseOutputDir(hwnd); break;
+                case 32: ApplySetting(hwnd, "OfficeEngine", "auto"); break;
+                case 33: ApplySetting(hwnd, "OfficeEngine", "microsoft"); break;
+                case 34: ClickraStorage.SaveSetting("OfficeEngine", "libreoffice");
+                         ApplySetting(hwnd, "LibreOfficePath", ""); break;
+                case 40: OpenStorePage(hwnd); break;
             }
-            else if (element == 6)
+        }
+
+        private static void ToggleBoolSetting(IntPtr hwnd, string key)
+        {
+            bool current = ClickraStorage.GetSetting(key).Equals("true", StringComparison.OrdinalIgnoreCase);
+            ClickraStorage.SaveSetting(key, current ? "false" : "true");
+            InvalidateRect(hwnd, IntPtr.Zero, false);
+        }
+
+        private static void ApplySetting(IntPtr hwnd, string key, string value)
+        {
+            ClickraStorage.SaveSetting(key, value);
+            InvalidateRect(hwnd, IntPtr.Zero, false);
+        }
+
+        private static void BrowseOutputDir(IntPtr hwnd)
+        {
+            string title = GetText("setting_output_browse_title");
+            string folder = BrowseForFolder(hwnd, title);
+            if (!string.IsNullOrEmpty(folder))
+                ApplySetting(hwnd, "OutputDir", folder);
+        }
+
+        private static void OpenStorePage(IntPtr hwnd)
+        {
+            try
             {
-                bool current = ClickraStorage.GetSetting("Notification").Equals("true", StringComparison.OrdinalIgnoreCase);
-                ClickraStorage.SaveSetting("Notification", current ? "false" : "true");
-                InvalidateRect(hwnd, IntPtr.Zero, false);
-            }
-            else if (element == 7)
-            {
-                ClickraStorage.SaveSetting("OutputDir", "source");
-                InvalidateRect(hwnd, IntPtr.Zero, false);
-            }
-            else if (element == 8)
-            {
-                ClickraStorage.SaveSetting("OutputDir", "desktop");
-                InvalidateRect(hwnd, IntPtr.Zero, false);
-            }
-            else if (element == 9)
-            {
-                ClickraStorage.SaveSetting("OutputDir", "downloads");
-                InvalidateRect(hwnd, IntPtr.Zero, false);
-            }
-            else if (element == 20)
-            {
-                string title = GetText("setting_output_browse_title");
-                string folder = BrowseForFolder(hwnd, title);
-                if (!string.IsNullOrEmpty(folder))
+                System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
                 {
-                    ClickraStorage.SaveSetting("OutputDir", folder);
-                    InvalidateRect(hwnd, IntPtr.Zero, false);
-                }
-            }
-            else if (element == 32)
-            {
-                ClickraStorage.SaveSetting("OfficeEngine", "auto");
-                InvalidateRect(hwnd, IntPtr.Zero, false);
-            }
-            else if (element == 33)
-            {
-                ClickraStorage.SaveSetting("OfficeEngine", "microsoft");
-                InvalidateRect(hwnd, IntPtr.Zero, false);
-            }
-            else if (element == 34)
-            {
-                ClickraStorage.SaveSetting("OfficeEngine", "libreoffice");
-                ClickraStorage.SaveSetting("LibreOfficePath", "");
-                InvalidateRect(hwnd, IntPtr.Zero, false);
-            }
-            else if (element == 40)
-            {
-                // Open Store page for Clickra Fluent optional package
-                try
-                {
-                    System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
-                    {
-                        //sonar-ignore-once csharpsquid:S4036
                     FileName = Clickra.Core.FluentRuntimeHelper.StoreUri,
-                        UseShellExecute = true
-                    });
-                }
-                catch (Exception ex)
-                {
-                    MessageBox(hwnd, $"Cannot open Store: {ex.Message}", "Clickra", 0x10);
-                }
+                    UseShellExecute = true
+                });
+            }
+            catch (Exception ex)
+            {
+                MessageBox(hwnd, $"Cannot open Store: {ex.Message}", "Clickra", 0x10);
             }
         }
 
