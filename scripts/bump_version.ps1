@@ -10,7 +10,6 @@
 $ErrorActionPreference = "Stop"
 $root = (Get-Location).Path
 $propsPath = "src/Directory.Build.props"
-$manifestPath = "packaging/msix/AppxManifest.xml"
 
 # 1. 敺?Directory.Build.props ???桀??
 $content = [System.IO.File]::ReadAllText("$root/$propsPath", [System.Text.Encoding]::UTF8)
