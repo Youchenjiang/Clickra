@@ -35,8 +35,6 @@ dotnet build src/ClickraShell/ClickraShell.csproj -c Release
 echo "[pre-push] Building Clickra.Fluent..."
 dotnet build src/Clickra.Fluent/Clickra.Fluent.csproj -c Release
 
-echo "[pre-push] Building Clickra.Setup..."
-dotnet build src/Clickra.Setup/Clickra.Setup.csproj -c Release
 
 echo "[pre-push] Running self-built test runner (correct invocation)..."
 dotnet run --project tests/Clickra.Core.Tests/Clickra.Core.Tests.csproj -c Release
