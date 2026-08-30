@@ -5,9 +5,9 @@ using System.Runtime.InteropServices;
 namespace Clickra.Launcher;
 
 /// <summary>
-/// Clickra Launcher — NativeAOT entry point, zero dependency.
-/// COM activation via IApplicationActivationManager → Fluent optional.
-/// Fallback → AOT Dashboard.
+/// Clickra Launcher ??NativeAOT entry point, zero dependency.
+/// COM activation via IApplicationActivationManager ??Fluent optional.
+/// Fallback ??AOT Dashboard.
 /// </summary>
 internal static class Program
 {
@@ -109,6 +109,6 @@ internal static class Program
 
     [DllImport("ole32.dll", ExactSpelling = true)] private static extern int CoInitializeEx(IntPtr r, uint m);
     [DllImport("ole32.dll", ExactSpelling = true)] private static extern void CoUninitialize();
-    [DllImport("ole32.dll", ExactSpelling = true)] private static extern int CoCreateInstance(ref Guid a, IntPtr b, uint c, ref Guid d, out IntPtr e);
+    [DllImport("ole32.dll", ExactSpelling = true)] private static extern int CoCreateInstance(ref Guid rclsid, IntPtr pUnkOuter, uint dwClsContext, ref Guid riid, out IntPtr ppv);
     [DllImport("kernel32.dll", CharSet = CharSet.Unicode)] private static extern int GetCurrentPackageFamilyName(ref uint l, Span<char> n);
 }

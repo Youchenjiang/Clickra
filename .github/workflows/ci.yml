@@ -1,4 +1,4 @@
-﻿name: CI
+name: CI
 
 on:
   pull_request:
@@ -67,13 +67,14 @@ jobs:
           $required = @(
             'publish/ci/cli/Clickra.exe',
             'publish/ci/shell/ClickraShell.dll',
-            'publish/ci/launcher/ClickraLauncher.exe',
+            'publish/ci/launcher/ClickraLauncher.exe'
           )
           foreach ($file in $required) {
             if (-not (Test-Path $file)) {
               throw "Missing expected build output: $file"
             }
-          }          Write-Host "All expected build outputs present."
+          }
+          Write-Host "All expected build outputs present."
 
       - name: Validate publisher CN consistency across manifests
         shell: pwsh
