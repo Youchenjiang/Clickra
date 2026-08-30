@@ -28,6 +28,7 @@ Invoke-LauncherPublish -OutputDir "$publishDir/launcher"
 
 # 3. Build Fluent
 Write-Host "[3/6] Building Fluent GUI (framework-dependent)..." -ForegroundColor Gray
+Invoke-NativePublish "src/Clickra.Fluent/Clickra.Fluent.csproj" "$publishDir/fluent"
 
 # 4. Assemble Main Layout (AOT only)
 Write-Host "[4/6] Assembling Main layout..." -ForegroundColor Gray
@@ -56,7 +57,7 @@ New-Item -ItemType Directory -Path $optionalLayout -Force | Out-Null
 Copy-Item "$packagingDir/AppxManifest.Fluent.xml" "$optionalLayout/AppxManifest.xml"
 Copy-Item -Recurse "$packagingDir/Assets" "$optionalLayout/"
 
-$fluentSource = "src/Clickra.Fluent/bin/Release/net8.0-windows10.0.26100.0/win-x64/publish"
+$fluentSource = "$publishDir/fluent"
 $fluentExclude = @("*.pdb", "DirectML.dll", "onnxruntime.dll",
     "Microsoft.Windows.AI.MachineLearning.dll",
     "Microsoft.Windows.ApplicationModel.Background.UniversalBGTask.dll")
