@@ -67,7 +67,7 @@ Related set 的綁定由 Partner Center 自動處理：
 
 ```powershell
 # 更新版本號（兩個 manifest 都要改）
-# packaging/msix/AppxManifest.Main.xml
+# packaging/msix/AppxManifest.xml
 # packaging/msix/AppxManifest.Fluent.xml
 .\scripts\bump_version.ps1
 ```
@@ -121,4 +121,4 @@ AOT Dashboard → 點「啟用 Fluent 介面」
 
 1. **Main MSIX**：直接 sideloading 安裝，測試 AOT 功能
 2. **Optional MSIX**：需要透過 Store flight 測試
-3. **Launcher 邏輯**：可用 combined MSIX（`build_combined_poc.ps1`）測試偵測和 fallback
+3. **Launcher 邏輯**：可用 combined MSIX（`build_store.ps1`）測試偵測和 fallback

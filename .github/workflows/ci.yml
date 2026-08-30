@@ -1,4 +1,4 @@
-﻿name: CI
+name: CI
 
 on:
   pull_request:
@@ -76,7 +76,6 @@ jobs:
             'publish/ci/cli/Clickra.exe',
             'publish/ci/shell/ClickraShell.dll',
             'publish/ci/launcher/ClickraLauncher.exe',
-            'publish/ci/setup/ClickraSetup.exe',
           )
           foreach ($file in $required) {
             if (-not (Test-Path $file)) {

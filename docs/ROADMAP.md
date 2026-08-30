@@ -45,7 +45,7 @@
     - Explorer 透過 packaged activation 啟動 Fluent；NativeAOT Shell 維持輕量 COM 邊界，舊 Win32 UI 保留為 NativeAOT 軌道 fallback（見 F1-11）。
 - [x] **[F1-11] Dual-Track Distribution (Fluent / NativeAOT)**：雙軌發行。
     - 2026/08 決定維持兩條軌道：本機有 .NET 8+ 與 Windows App Runtime → 安裝 Fluent；任一缺失 → 安裝 NativeAOT（零依賴）。
-    - 新增 `ClickraSetup.exe`（NativeAOT bootstrapper）自動偵測 runtime 並安裝對應軌道；新增 `Clickra-Native.msix` 零依賴套件與 `scripts/build_native_msix.ps1`。
+    - 新增 `ClickraLauncher.exe`（NativeAOT bootstrapper）自動偵測 runtime 並安裝對應軌道；新增 `Clickra.msix (Main)` 零依賴套件與 `scripts/build_msix.ps1`。
     - 舊 Win32 Dashboard/Progress 由「過渡 fallback」改為**永久 NativeAOT 軌道**，不再排定移除。
     - 詳細設計見 `docs/development/dual_track_guide.md`。
 - [ ] **[F1-13] Store-Resilient Optional Fluent Delivery**：AOT 主套件＋Fluent Optional Package（**目前最高優先級**）。

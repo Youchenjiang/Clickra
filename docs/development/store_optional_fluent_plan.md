@@ -215,7 +215,7 @@ capability；首版設計一律使用顯示系統確認的 Store API。權限遭
 
 1. 將方案狀態改為「已採用」。
 2. 取代 Store 的 Fluent-only 主套件。
-3. 評估現行 GitHub `ClickraSetup.exe` 真雙軌是否保留、簡化或退役。
+3. 評估現行 GitHub `ClickraLauncher.exe` 真雙軌是否保留、簡化或退役。
 
 ## 9. 失敗時的回退決策
 

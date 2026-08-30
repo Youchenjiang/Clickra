@@ -26,9 +26,9 @@ Clickra.Fluent（WinUI 3 儀表板）是 framework-dependent，需要兩樣 runt
 | 軌道 | 套件 | 內容 | Runtime 需求 |
 | :--- | :--- | :--- | :--- |
 | **Fluent** | `Clickra.msix` | Clickra.Fluent.exe + Clickra.exe + ClickraShell.dll | .NET 8+ + Windows App Runtime 2.x |
-| **NativeAOT** | `Clickra-Native.msix` | Clickra.exe + ClickraShell.dll（舊 Win32 Dashboard/Progress） | 無（零依賴） |
+| **NativeAOT** | `Clickra.msix (Main)` | Clickra.exe + ClickraShell.dll（舊 Win32 Dashboard/Progress） | 無（零依賴） |
 
-由 **`ClickraSetup.exe`**（NativeAOT bootstrapper）在安裝前偵測 runtime，
+由 **`ClickraLauncher.exe`**（NativeAOT bootstrapper）在安裝前偵測 runtime，
 自動下載並安裝對應軌道。
 
 ### 為什麼不是單一自包含套件？
@@ -52,7 +52,7 @@ Clickra.Fluent（WinUI 3 儀表板）是 framework-dependent，需要兩樣 runt
 兩個 MSIX 使用**相同 Identity**（`g1014308.Clickra` / 相同 Publisher / 相同版本）：
 
 - 同一時間只會安裝其中一個套件（安裝另一個 = 取代/升級）。
-- 切換軌道：重跑 `ClickraSetup.exe --native` 或 `--fluent`，
+- 切換軌道：重跑 `ClickraLauncher.exe --native` 或 `--fluent`，
   bootstrapper 偵測到套件已安裝時會以
   `Add-AppxPackage -ForceUpdateFromAnyVersion -ForceApplicationShutdown` 強制取代。
 - 商店套件（Fluent）與 GitHub 的 NativeAOT 套件不會同時存在於系統，
@@ -66,7 +66,7 @@ Clickra.Fluent（WinUI 3 儀表板）是 framework-dependent，需要兩樣 runt
 
 ---
 
-## 3. Bootstrapper（ClickraSetup.exe）
+## 3. Bootstrapper（ClickraLauncher.exe）
 
 ### 3.1 偵測邏輯（`src/Clickra.Setup/Program.cs`）
 
@@ -101,13 +101,13 @@ Clickra.Fluent（WinUI 3 儀表板）是 framework-dependent，需要兩樣 runt
 ### 3.4 用法
 
 ```text
-ClickraSetup.exe                   自動偵測並安裝最適合的軌道
-ClickraSetup.exe --check           僅輸出偵測結果（不安裝）
-ClickraSetup.exe --fluent          強制安裝 Fluent 軌道
-ClickraSetup.exe --native          強制安裝 NativeAOT 軌道
-ClickraSetup.exe --local <msix>    使用本機 MSIX 安裝
-ClickraSetup.exe --release-url <base>  自訂下載來源
-ClickraSetup.exe --quiet           精簡輸出
+ClickraLauncher.exe                   自動偵測並安裝最適合的軌道
+ClickraLauncher.exe --check           僅輸出偵測結果（不安裝）
+ClickraLauncher.exe --fluent          強制安裝 Fluent 軌道
+ClickraLauncher.exe --native          強制安裝 NativeAOT 軌道
+ClickraLauncher.exe --local <msix>    使用本機 MSIX 安裝
+ClickraLauncher.exe --release-url <base>  自訂下載來源
+ClickraLauncher.exe --quiet           精簡輸出
 ```
 
 ---
@@ -119,9 +119,9 @@ ClickraSetup.exe --quiet           精簡輸出
 | 產物 | 腳本 |
 | :--- | :--- |
 | `Clickra.msix`（Fluent） | `scripts/build_msix.ps1`（既有，含 Fluent publish 輸出） |
-| `Clickra-Native.msix` | `scripts/build_native_msix.ps1`（新） |
+| `Clickra.msix (Main)` | `scripts/build_msix.ps1`（新） |
 
-Native 套件的 manifest 為 `packaging/msix/AppxManifest.Native.xml`：
+Native 套件的 manifest 為 `packaging/msix/AppxManifest.xml`：
 Application entry 指向 `Clickra.exe`（無參數啟動舊 Win32 Dashboard），
 **不宣告** `Microsoft.WindowsAppRuntime` 相依。
 
@@ -130,8 +130,8 @@ Application entry 指向 `Clickra.exe`（無參數啟動舊 Win32 Dashboard）�
 `v*` tag 觸發時一次產出三個 Release assets：
 
 1. `Clickra.msix`（Fluent）→ GitHub Release 附件 + **Microsoft Store** 上架
-2. `Clickra-Native.msix`（NativeAOT，零依賴）
-3. `ClickraSetup.exe`（自動偵測安裝程式）
+2. `Clickra.msix (Main)`（NativeAOT，零依賴）
+3. `ClickraLauncher.exe`（自動偵測安裝程式）
 
 > [!IMPORTANT]
 > 本次調整同時修正了既有 CI 的問題：舊 CI 直接以
@@ -152,7 +152,7 @@ Application entry 指向 `Clickra.exe`（無參數啟動舊 Win32 Dashboard）�
   若未來 runtime 安裝方式改變（例如內建於 Windows），需同步更新。
 - **ARM64**：目前兩條軌道均只打包 x64。
 - **Store 分支**：商店無法安裝時分支，固定為 Fluent 軌道；
-  商店用戶不需要 ClickraSetup.exe。
+  商店用戶不需要 ClickraLauncher.exe。
 - **舊 UI 維護**：NativeAOT 軌道沿用舊 Win32 UI，不再排定移除時程
   （見 `docs/ROADMAP.md` 更新）。
 
@@ -172,7 +172,7 @@ Application entry 指向 `Clickra.exe`（無參數啟動舊 Win32 Dashboard）�
 此設計的成功標準是「Fluent 可以慢或失敗，但 AOT 已安裝且永遠可用」，而不是承諾 Fluent
 不再需要 framework。由於 Store optional packages / related sets 需要 Microsoft 額外授權，且
 Clickra 的 full-trust WinUI 3 組合仍需 PoC，此處只記錄演進方向；不得在驗證完成前刪除
-`Clickra-Native.msix`、`ClickraSetup.exe` 或現行 Fluent 發布流程。
+`Clickra.msix (Main)`、`ClickraLauncher.exe` 或現行 Fluent 發布流程。
 
 權限、套件拓撲、launcher 路由、資料共用、版本同步、失敗回退與完整測試矩陣統一由
 `docs/development/store_optional_fluent_plan.md` 管理，避免在多份文件分散出互相矛盾的規則。

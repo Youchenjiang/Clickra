@@ -76,7 +76,7 @@ CLI（`ProgressWindow.Process.cs` / `ClickraCli.cs`）與 Fluent（`MainPage.xam
 
 本機 `build_msix.ps1` 已成功產出含 Windows.Data.Pdf 的 NativeAOT 包，並安裝、執行成功（CsWinRT marshalling 正常）。之前 `dotnet publish` 在 shell 直接跑失敗是**環境問題**（vswhere 找不到 / 誤抓 VS2019 toolchain）；build 腳本會把 VS Installer 目錄加入 PATH，走腳本即可。
 
-**仍待**：`Clickra-Native.msix`（零依賴軌道）與 `ClickraSetup.exe` 在本機的完整驗證（先前只驗了含 Fluent 的完整包）；CI（windows-latest）跑一次完整 release 流程。
+**仍待**：`Clickra.msix (Main)`（零依賴軌道）與 `ClickraLauncher.exe` 在本機的完整驗證（先前只驗了含 Fluent 的完整包）；CI（windows-latest）跑一次完整 release 流程。
 
 ### 2.4 [部分已解] MSIX 側載憑證信任
 
@@ -125,7 +125,7 @@ GitHub Release 的 MSIX 以 CI 自簽憑證簽署，使用者需信任憑證或�
 | 合併順序建議 | 先合 feature → main（雙軌正式化），再合 refactor（diff 乾淨） |
 | 合併前待決 | push 授權、合併方式（PR vs fast-forward）、2.2/2.4/2.3 殘項是否先補；**local main 停在 PR #37（b3dcedc）已過時，合併前先 fetch origin/main（已到 PR #45）** |
 
-**發行狀態**：`AppxManifest.Native.xml` 版本已同步 3.6.5.0（與 Fluent manifest / Directory.Build.props 一致）。
+**發行狀態**：Main manifest (`AppxManifest.xml`) + Fluent manifest (`AppxManifest.Fluent.xml`) 版本已同步 3.6.5.0。
 
 ---
 
