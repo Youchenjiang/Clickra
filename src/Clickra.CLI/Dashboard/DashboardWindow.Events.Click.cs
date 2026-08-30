@@ -17,6 +17,7 @@ namespace Clickra.UI
         private const string SettingLibreOfficePath = "LibreOfficePath";
         private const string SettingValueTrue = "true";
         private const string SettingValueFalse = "false";
+        private const string SettingLibreOfficeRemovalPending = "LibreOfficeRemovalPendingRestart";
         /// <summary>Routes left-button clicks to the active dashboard tab's hit regions.</summary>
         static void HandleLButtonDown(IntPtr hwnd, IntPtr w, IntPtr l)
         {
@@ -525,7 +526,7 @@ namespace Clickra.UI
                 if (LibreOfficeHelper.LooksLikeLibreOfficeExecutable(candidate))
                 {
                     ClickraStorage.SaveSetting(SettingLibreOfficePath, candidate);
-                    ClickraStorage.SaveSetting("LibreOfficeRemovalPendingRestart", SettingValueFalse);
+                    ClickraStorage.SaveSetting(SettingLibreOfficeRemovalPending, SettingValueFalse);
                     MessageBox(hwnd, string.Format(GetText("setting_libreoffice_validated"), Path.GetDirectoryName(candidate)), "Clickra", 0x40);
                 }
                 else
@@ -552,7 +553,7 @@ namespace Clickra.UI
                 }
             }
 
-            bool removalPendingRestart = ClickraStorage.GetSetting("LibreOfficeRemovalPendingRestart").Equals(SettingValueTrue, StringComparison.OrdinalIgnoreCase);
+            bool removalPendingRestart = ClickraStorage.GetSetting(SettingLibreOfficeRemovalPending).Equals(SettingValueTrue, StringComparison.OrdinalIgnoreCase);
             var package = LibreOfficeEngineInstaller.RecommendedPackage;
             string installedVersion = LibreOfficeEngineInstaller.GetInstalledSystemVersion();
             if (!removalPendingRestart &&
@@ -634,7 +635,7 @@ namespace Clickra.UI
                 if (!string.IsNullOrWhiteSpace(sofficePath))
                     ClickraStorage.SaveSetting(SettingLibreOfficePath, sofficePath);
                 ClickraStorage.SaveSetting("LibreOfficeInstalledByClickra", SettingValueTrue);
-                ClickraStorage.SaveSetting("LibreOfficeRemovalPendingRestart", SettingValueFalse);
+                ClickraStorage.SaveSetting(SettingLibreOfficeRemovalPending, SettingValueFalse);
 
                 PostDashboardAction(hwnd, () => ShowInstallResultMessage(hwnd, installResult.RestartRequired, sofficePath));
             }
@@ -692,7 +693,7 @@ namespace Clickra.UI
                 }
             }
 
-            if (ClickraStorage.GetSetting("LibreOfficeRemovalPendingRestart").Equals(SettingValueTrue, StringComparison.OrdinalIgnoreCase))
+            if (ClickraStorage.GetSetting(SettingLibreOfficeRemovalPending).Equals(SettingValueTrue, StringComparison.OrdinalIgnoreCase))
             {
                 MessageBox(hwnd, GetText("setting_libreoffice_removal_pending"), "Clickra", 0x40);
                 return;
@@ -727,7 +728,7 @@ namespace Clickra.UI
 
                 ClickraStorage.SaveSetting(SettingLibreOfficePath, "");
                 ClickraStorage.SaveSetting("LibreOfficeInstalledByClickra", SettingValueFalse);
-                ClickraStorage.SaveSetting("LibreOfficeRemovalPendingRestart", uninstallResult.RestartRequired ? SettingValueTrue : SettingValueFalse);
+                ClickraStorage.SaveSetting(SettingLibreOfficeRemovalPending, uninstallResult.RestartRequired ? SettingValueTrue : SettingValueFalse);
                 ClickraStorage.SaveSetting(SettingOfficeEngine, "auto");
 
                 PostDashboardAction(hwnd, () => MessageBox(
