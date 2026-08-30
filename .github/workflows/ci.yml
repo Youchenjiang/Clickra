@@ -1,4 +1,4 @@
-name: CI
+﻿name: CI
 
 on:
   pull_request:
@@ -60,14 +60,6 @@ jobs:
           . ./scripts/build_common.ps1
           Add-VsInstallerToPath
           dotnet publish src/ClickraLauncher/ClickraLauncher.csproj -c Release -r win-x64 --self-contained true -o publish/ci/launcher
-
-
-      - name: Publish Setup bootstrapper (NativeAOT)
-        shell: pwsh
-        run: |
-          . ./scripts/build_common.ps1
-          Add-VsInstallerToPath
-          dotnet publish src/Clickra.Setup/Clickra.Setup.csproj -c Release -r win-x64 -o publish/ci/setup
 
       - name: Verify expected build outputs
         shell: pwsh
