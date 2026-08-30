@@ -84,17 +84,11 @@
 ### 推薦方法：Microsoft Store (自動更新)
 [![Microsoft Store Badge](https://developer.microsoft.com/en-us/store/badges/images/English_get-it-from-MS.png)](https://apps.microsoft.com/detail/9NGLBF6P1KLD)
 
-### 手動安裝 (GitHub Release, 自動選擇軌道)
-1.  從 [Releases](../../releases) 下載 `ClickraSetup.exe`。
-2.  雙擊執行。安裝程式會自動偵測本機是否具備 .NET 8+ 與 Windows App Runtime，
-    並安裝對應的軌道：
-    *   兩者皆具備 → **Fluent 軌道**（`Clickra.msix`，完整 WinUI 3 儀表板）。
-    *   任一缺失 → **NativeAOT 軌道**（`Clickra-Native.msix`，零依賴原生版，
-        乾淨機器不需任何 .NET runtime 即可使用）。
+### 手動安裝 (GitHub Release)
+1.  從 [Releases](../../releases) 下載 `Clickra.msix`。
+2.  雙擊即可安裝。套件無需額外 runtime 相依性，可在任何 Windows 10+ 機器上直接使用。
+    *   **Fluent 介面**可從 AOT Dashboard 設定頁面透過 Microsoft Store 安裝為附加元件。
 
-    也可以手動安裝指定軌道：`Clickra.msix`（Fluent，需要 .NET 8+ 與 Windows App Runtime 2.x）
-    或 `Clickra-Native.msix`（NativeAOT，零依賴）。詳細說明見
-    [docs/development/dual_track_guide.md](docs/development/dual_track_guide.md)。
 
 ---
 
