@@ -1,4 +1,4 @@
-name: CI
+﻿name: CI
 
 on:
   pull_request:
@@ -21,7 +21,7 @@ env:
 
 jobs:
   build:
-    name: Build Core / CLI / Shell / Fluent / Setup
+    name: Build Core / CLI / Shell / Setup
     runs-on: windows-latest
     timeout-minutes: 60
     steps:
@@ -32,7 +32,7 @@ jobs:
         with:
           dotnet-version: ${{ env.DOTNET_VERSION }}
 
-      # Commands mirror scripts/build_msix.ps1, scripts/build_native_msix.ps1
+      # Commands mirror scripts/build_msix.ps1
       # and .github/workflows/release.yml so CI build behavior matches release.
       - name: Build Clickra.Core
         run: dotnet build src/Clickra.Core/Clickra.Core.csproj -c Release
@@ -54,10 +54,13 @@ jobs:
           Add-VsInstallerToPath
           dotnet publish src/ClickraShell/ClickraShell.csproj -c Release -r win-x64 --self-contained true -o publish/ci/shell
 
-      - name: Publish Fluent GUI (framework-dependent)
-        # No -o on purpose: the WinUI SDK-generated publish folder (with
-        # deps.json / runtime assets) is what build_msix.ps1 consumes.
-        run: dotnet publish src/Clickra.Fluent/Clickra.Fluent.csproj -c Release --self-contained false
+      - name: Publish ClickraLauncher (NativeAOT)
+        shell: pwsh
+        run: |
+          . ./scripts/build_common.ps1
+          Add-VsInstallerToPath
+          dotnet publish src/ClickraLauncher/ClickraLauncher.csproj -c Release -r win-x64 --self-contained true -o publish/ci/launcher
+
 
       - name: Publish Setup bootstrapper (NativeAOT)
         shell: pwsh
@@ -72,15 +75,46 @@ jobs:
           $required = @(
             'publish/ci/cli/Clickra.exe',
             'publish/ci/shell/ClickraShell.dll',
+            'publish/ci/launcher/ClickraLauncher.exe',
             'publish/ci/setup/ClickraSetup.exe',
-            'src/Clickra.Fluent/bin/Release/net8.0-windows10.0.26100.0/win-x64/publish/Clickra.Fluent.exe'
           )
           foreach ($file in $required) {
             if (-not (Test-Path $file)) {
               throw "Missing expected build output: $file"
             }
+          }          Write-Host "All expected build outputs present."
+
+      - name: Validate publisher CN consistency across manifests
+        shell: pwsh
+        run: |
+          # All XML/manifest files that declare a publisher must agree on the
+          # same CN value.  A mismatch silently breaks MSIX signing because the
+          # certificate subject must match the Identity Publisher in the manifest.
+          $manifests = @(
+            'packaging/msix/AppxManifest.xml',
+            'packaging/msix/AppxManifest.Fluent.xml',
+            'src/resources/AppxManifest.xml',
+            'src/resources/ClickraShell.dll.manifest',
+            'src/resources/Clickra.exe.manifest'
+          )
+          $expected = 'CN=CBF59877-21AD-4BC4-8F91-FE8DA520A138'
+          $failures = @()
+          foreach ($file in $manifests) {
+            if (-not (Test-Path $file)) {
+              continue
+            }
+            $content = Get-Content $file -Raw
+            if ($content -match '[Pp]ublisher\s*=\s*"([^"]+)"') {
+              $actual = $Matches[1]
+              if ($actual -ne $expected) {
+                $failures += "$file publisher is '$actual', expected '$expected'"
+              }
+            }
           }
-          Write-Host "All expected build outputs present."
+          if ($failures.Count -gt 0) {
+            throw "Publisher CN mismatch detected:`n$($failures -join "`n")"
+          }
+          Write-Host "All manifests use publisher: $expected"
 
   deterministic-tests:
     name: Deterministic tests (no fixtures)
