@@ -1,4 +1,4 @@
-# Clickra Architecture
+﻿# Clickra Architecture
 
 ## Current Shape
 
@@ -114,7 +114,7 @@ user-selectable theme).
 
 ## Packaging Notes
 
-Two MSIX tracks share the `g1014308.Clickra` identity (only one is installed at
+Two MSIX tracks share the `Clickra` identity (only one is installed at
 a time; switching replaces the other):
 
 - `Clickra.msix` (Fluent, framework-dependent, Store + GitHub) — built by
