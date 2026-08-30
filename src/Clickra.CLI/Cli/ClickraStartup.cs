@@ -225,7 +225,7 @@ internal static class ClickraStartup
 
             // Wait briefly to check if the process survives (WinUI 3 crash
             // happens almost instantly if activation factory is missing).
-            bool survived = proc.WaitForExit(2000) == false;
+            bool survived = !proc.WaitForExit(2000);
             return survived;
         }
         catch
