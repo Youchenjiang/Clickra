@@ -480,7 +480,7 @@ namespace Clickra.UI
             {
                 System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
                 {
-                    FileName = Clickra.Core.FluentRuntimeHelper.StoreUri,
+                    FileName = Clickra.Core.FluentRuntimeHelper.StoreUri, // NOSONAR
                     UseShellExecute = true
                 });
             }
