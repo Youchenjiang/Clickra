@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.IO;
 using System.Linq;
 using System.Collections.Generic;
@@ -238,25 +238,30 @@ internal static class ClickraStartup
     {
         string fxName = "Microsoft.WindowsDesktop.App";
         foreach (RegistryHive hive in new[] { RegistryHive.LocalMachine, RegistryHive.CurrentUser })
-        {
             foreach (RegistryView view in new[] { RegistryView.Registry64, RegistryView.Registry32 })
-            {
                 foreach (string arch in new[] { "x64", "arm64", "x86" })
-                {
-                    string path = $@"SOFTWARE\dotnet\Setup\InstalledVersions\{arch}\sharedfx\{fxName}";
-                    try
-                    {
-                        using var key = RegistryKey.OpenBaseKey(hive, view).OpenSubKey(path);
-                        if (key?.GetValue("Version") is string v && Version.TryParse(v, out var ver) && ver >= new Version(8, 0))
-                            return true;
-                        if (key?.GetSubKeyNames().Length > 0)
-                            return true;
-                    }
-                    catch { }
-                }
-            }
-        }
+                    if (CheckRegistryForDesktopFx(hive, view, arch, fxName))
+                        return true;
         return false;
+    }
+
+    /// <summary>Checks a single registry location for the WindowsDesktop.App shared framework.</summary>
+    private static bool CheckRegistryForDesktopFx(RegistryHive hive, RegistryView view, string arch, string fxName)
+    {
+        string path = $@"SOFTWARE\dotnet\Setup\InstalledVersions\{arch}\sharedfx\{fxName}";
+        try
+        {
+            using var key = RegistryKey.OpenBaseKey(hive, view).OpenSubKey(path);
+            if (key == null) return false;
+            if (key.GetValue("Version") is string v && Version.TryParse(v, out var ver) && ver >= new Version(8, 0))
+                return true;
+            return key.GetSubKeyNames().Length > 0;
+        }
+        catch (System.Security.SecurityException)
+        {
+            // Registry access denied ??continue checking other hives/views.
+            return false;
+        }
     }
 
     private static bool HasWindowsAppRuntime()
