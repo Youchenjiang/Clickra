@@ -22,7 +22,7 @@ internal static class Program
             exeDir = Path.GetDirectoryName(Environment.ProcessPath);
 
         // Try COM activation for Fluent optional package
-        if (TryActivateFluent(out uint pid))
+        if (TryActivateFluent(args, out uint pid))
         {
             Thread.Sleep(FluentTimeoutMs);
             try
@@ -46,7 +46,7 @@ internal static class Program
         return 0;
     }
 
-    private static bool TryActivateFluent(out uint processId)
+    private static bool TryActivateFluent(string[] args, out uint processId)
     {
         processId = 0;
         int hr = CoInitializeEx(IntPtr.Zero, 0x2);
