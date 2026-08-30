@@ -48,7 +48,7 @@ jobs:
       run: |
         ./scripts/build_msix.ps1
         if (-not (Test-Path "./Clickra.msix")) {
-            throw "Fluent MSIX was not produced."
+            throw "Main MSIX was not produced."
         }
 
     - name: Fetch Merged Pull Request Description
