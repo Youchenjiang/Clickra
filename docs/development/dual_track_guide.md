@@ -1,4 +1,4 @@
-# Clickra 雙軌發行指南 (Dual-Track Distribution Guide)
+﻿# Clickra 雙軌發行指南 (Dual-Track Distribution Guide)
 
 > 決策狀態：**已採用（真雙軌）**。2026/08 決定維持兩條發行軌道：
 > 使用者電腦上有 .NET 8+ 與 Windows App Runtime 2.x → 安裝 **Fluent** 軌道；
@@ -49,7 +49,7 @@ Clickra.Fluent（WinUI 3 儀表板）是 framework-dependent，需要兩樣 runt
 
 ## 2. 套件 Identity 策略
 
-兩個 MSIX 使用**相同 Identity**（`g1014308.Clickra` / 相同 Publisher / 相同版本）：
+兩個 MSIX 使用**相同 Identity**（`Clickra` / 相同 Publisher / 相同版本）：
 
 - 同一時間只會安裝其中一個套件（安裝另一個 = 取代/升級）。
 - 切換軌道：重跑 `ClickraLauncher.exe --native` 或 `--fluent`，
@@ -61,14 +61,14 @@ Clickra.Fluent（WinUI 3 儀表板）是 framework-dependent，需要兩樣 runt
 > [!WARNING]
 > 相同版本號的同 Identity 取代，在部分 Windows 版本可能被視為「已安裝」而拒絕。
 > bootstrapper 已加入 `-ForceUpdateFromAnyVersion`；若實測仍有問題，
-> 需考慮讓 NativeAOT 套件使用獨立 Identity（`g1014308.ClickraNative`），
+> 需考慮讓 NativeAOT 套件使用獨立 Identity（`Clickra.Native`），
 > 但要處理「兩套右鍵選單同時註冊」的衝突問題。
 
 ---
 
 ## 3. Bootstrapper（ClickraLauncher.exe）
 
-### 3.1 偵測邏輯（`src/Clickra.Setup/Program.cs`）
+### 3.1 偵測邏輯（`src/ClickraLauncher/Program.cs`）
 
 | 檢查 | 方法 |
 | :--- | :--- |
