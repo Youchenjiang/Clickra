@@ -66,7 +66,8 @@ internal static class Program
                 if (string.IsNullOrEmpty(familyName)) return false;
 
                 string aumid = familyName + "!FluentApp";
-                hr = ActivateApplication(pMgr, aumid, string.Empty, 0, out processId);
+                string activationArgs = args.Length > 0 ? string.Join(" ", args) : string.Empty;
+                hr = ActivateApplication(pMgr, aumid, activationArgs, 0, out processId);
                 return hr == 0 && processId != 0;
             }
             finally { Marshal.Release(pMgr); }
