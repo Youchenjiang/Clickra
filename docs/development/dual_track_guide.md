@@ -4,6 +4,13 @@
 > 使用者電腦上有 .NET 8+ 與 Windows App Runtime 2.x → 安裝 **Fluent** 軌道；
 > 任一缺失 → 安裝 **NativeAOT**（零依賴）軌道。
 
+> [!IMPORTANT]
+> **2026/08/29 後續最高優先級候選**：專案正在驗證「Store AOT 主套件 +
+> Fluent executable optional package / related set」，讓 AOT 先可靠安裝、Fluent 再按需取得。
+> 這個候選方案必須先取得 Microsoft Store 權限，並通過 WinUI 3 full-trust optional EXE、
+> package graph、更新與 private flight 實測；在全部閘門通過前，本文件描述的真雙軌仍是
+> 現行有效架構。詳見 `docs/development/store_optional_fluent_plan.md`。
+
 ---
 
 ## 1. 背景與決策
@@ -148,3 +155,24 @@ Application entry 指向 `Clickra.exe`（無參數啟動舊 Win32 Dashboard）�
   商店用戶不需要 ClickraSetup.exe。
 - **舊 UI 維護**：NativeAOT 軌道沿用舊 Win32 UI，不再排定移除時程
   （見 `docs/ROADMAP.md` 更新）。
+
+---
+
+## 6. Store Optional Fluent 候選演進
+
+現行真雙軌在 GitHub / 官網可以於安裝前選擇套件，但 Store 的 framework-dependent Fluent
+主套件仍可能因 Windows App Runtime 解析耗時或失敗，使 Clickra 無法先提供任何可用介面。
+專案下一個最高優先級候選是把 Store 發行拆為：
+
+1. 必要的 NativeAOT main package：包含 launcher、AOT UI、CLI 與 Shell，不宣告
+   Windows App Runtime dependency。
+2. 按需的 Fluent optional package：包含 WinUI 3 與 managed payload，單獨宣告
+   Windows App Runtime dependency，並透過 related set 與 main 綁定。
+
+此設計的成功標準是「Fluent 可以慢或失敗，但 AOT 已安裝且永遠可用」，而不是承諾 Fluent
+不再需要 framework。由於 Store optional packages / related sets 需要 Microsoft 額外授權，且
+Clickra 的 full-trust WinUI 3 組合仍需 PoC，此處只記錄演進方向；不得在驗證完成前刪除
+`Clickra-Native.msix`、`ClickraSetup.exe` 或現行 Fluent 發布流程。
+
+權限、套件拓撲、launcher 路由、資料共用、版本同步、失敗回退與完整測試矩陣統一由
+`docs/development/store_optional_fluent_plan.md` 管理，避免在多份文件分散出互相矛盾的規則。

@@ -48,6 +48,14 @@
     - 新增 `ClickraSetup.exe`（NativeAOT bootstrapper）自動偵測 runtime 並安裝對應軌道；新增 `Clickra-Native.msix` 零依賴套件與 `scripts/build_native_msix.ps1`。
     - 舊 Win32 Dashboard/Progress 由「過渡 fallback」改為**永久 NativeAOT 軌道**，不再排定移除。
     - 詳細設計見 `docs/development/dual_track_guide.md`。
+- [ ] **[F1-13] Store-Resilient Optional Fluent Delivery**：AOT 主套件＋Fluent Optional Package（**目前最高優先級**）。
+    - **2026/08/29 決策狀態**：MSIX 平台已確認支援 executable optional package、related set、activatable optional app 與 Store 按需安裝 API；但公開範例未直接涵蓋 Clickra 的 NativeAOT main + .NET 8 WinUI 3 full-trust optional EXE 組合，且 Store 帳號必須先取得 Microsoft 的 optional package / related set 權限。因此本項目前是有硬性退出條件的 feasibility gate，不是已採用的正式發行架構。
+    - **產品目標**：Store 先安裝小於 50 MB、零 Windows App Runtime dependency 的 NativeAOT main（launcher、CLI/legacy UI、Shell）；使用者再按需安裝承擔 Windows App Runtime dependency 的 Fluent optional package。Fluent 安裝、framework 解析或啟動失敗時，AOT 必須持續可用。
+    - **Phase 0 硬閘門**：取得 Windows Developer Support 對 Clickra 帳號使用 optional packages、related sets、executable optional package 的書面核准，並確認 Partner Center 能建立 associated DLC/optional product。權限遭拒即停止，不以兩個 Store listing 繞過。
+    - **Phase 1–3 技術閘門**：完成最小 related-set PoC、AUMID packaged activation、Unicode/空格參數轉交、AOT fallback、共享 settings/history/tasks、隱藏第二個 Start entry，以及 main-only / main+optional 的安裝、移除、損壞與跨版本更新矩陣。
+    - **Phase 4 發行閘門**：Store private flight 必須通過 ingestion、full-trust WinUI optional certification、乾淨 VM main-first 安裝及 optional 安全失敗測試。全部通過後才能取代現行 Store Fluent-only 路線；未通過前 F1-11 真雙軌與既有產線維持有效。
+    - **已排除方案**：不採用大於 50 MB 的 self-contained Fluent 主套件；不採用兩個可能同時安裝並衝突 Shell CLSID 的 Store listing；不從 Store app 私自下載外部可執行檔繞過 Store servicing。
+    - 完整技術決策、風險、驗收矩陣與原子化提交規劃見 `docs/development/store_optional_fluent_plan.md`。
 - [ ] **[F1-12] Fluent Release Stabilization (Dual-Track)**：Fluent 發布穩定化。
     - **2026/08/12 進度**：共用渲染器改走 Windows.Data.Pdf（真實文字/圖片/向量圖，`42221ca`）；NativeAOT 包已本機打包、安裝、執行驗證成功（含 CsWinRT marshalling）。剩 packaged shell activation 端到端、Native ↔ Fluent 同版本切換與乾淨機器安裝的實機驗證。
     - 在 Windows App SDK 2.3.1 下完成 Windows 10/11 的 dashboard 與右鍵實機測試，涵蓋執行中、成功、失敗、取消、PDF 密碼與 Office 雙引擎。
