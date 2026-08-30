@@ -1,4 +1,4 @@
-# Clickra 重構待辦與未解決問題盤點 (Refactor Backlog & Open Issues)
+﻿# Clickra 重構待辦與未解決問題盤點 (Refactor Backlog & Open Issues)
 
 > **建立**：2026-08-12（於 `feature/winui3-fluent-dashboard` 分支，基底 `21f2e6d`）
 > **目的**：把程式碼審計發現的重複/契約繞過、功能落差 bug、未驗證項與已知限制一次盤點清楚，
@@ -70,7 +70,7 @@ CLI（`ProgressWindow.Process.cs` / `ClickraCli.cs`）與 Fluent（`MainPage.xam
 
 ### 2.2 [未驗證] 同版本切換軌道（Native ↔ Fluent）
 
-`-ForceUpdateFromAnyVersion` 是否在所有 Windows 版本生效未實機驗證。風險：部分版本視為「已安裝」而拒絕；後備方案：NativeAOT 套件改用獨立 Identity（`g1014308.ClickraNative`），但需處理兩套右鍵選單 COM 註冊（相同 CLSID）衝突。屬 F1-12 驗證範圍。
+`-ForceUpdateFromAnyVersion` 是否在所有 Windows 版本生效未實機驗證。風險：部分版本視為「已安裝」而拒絕；後備方案：NativeAOT 套件改用獨立 Identity（`Clickra.Native`），但需處理兩套右鍵選單 COM 註冊（相同 CLSID）衝突。屬 F1-12 驗證範圍。
 
 ### 2.3 [部分已驗證] NativeAOT publish 產線 ✅（2026/08/12）
 
