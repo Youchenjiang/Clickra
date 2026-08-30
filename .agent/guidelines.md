@@ -8,6 +8,7 @@
 - 每次外部寫入前，先列出「使用者授權涵蓋的精確操作」與「即將執行的單一操作」；未涵蓋的下一步必須停下來詢問。
 - 授權操作失敗而需要新增分支、PR、合併或改 workflow 才能繼續時，必須停下回報證據，不得自行升級處理範圍。
 - 使用者表示反對或撤回授權後，立即停止；不得自行 revert、刪除、取消 workflow 或 force-push 進行清理。
+n- **Preflight steps**：每次外部操作前，必須：（1）引用或摘要使用者授權並列出涵蓋的操作；（2）檢查當前目標（repository、branch、tag、PR、workflow、release）；（3）若下一步操作未被明確涵蓋則停下詢問；（4）每次只執行一個授權操作，回報結果後再考慮下一個。
 
 ## 0.1 PDF 翻譯審核產物規則
 
@@ -35,6 +36,7 @@ Microsoft Ingestion API 操作高度非同步。不要信任暫態 HTTP 回應�
 
 ## 1. Git 完整性
 - **禁止 Nuke-and-Pave**：嚴禁刪除舊檔案再新增同名檔案。改名必須使用 `git mv`。
+- **Enforcement-file references**：Commit/PR 規範的權威執行點為 `.github/workflows/policy.yml`（CI）與 `scripts/hooks/commit-msg`（本地 hook，透過 `scripts/install-hooks.sh` 安裝）；人類可讀參考為 `LOCAL_BUILD_NOTES.md`。type/scope allowlist 必須在所有位置保持同步。
 - **原子化提交**：一個 Commit 只做一件事。嚴禁將多個不相干的邏輯修改（如版號同步、工作流修改、規則更新）合併到同一個 Commit 中。必須分批暫存（例如 `git add <特定檔案>`；同一檔案內用 `git add -p` 只暫存相關 hunks）並分開提交，確保每個 Commit 異動內容最小化且語意單一。判斷標準用「revert 測試」：若兩個變更可以各自獨立 revert 而不影響對方（例如邏輯修正 vs 註解清理、格式調整 vs 功能變更），就必須分開提交。
 - **Commit 訊息格式規範**：每個 Commit 訊息必須符合本地 Commit Hook 與 CI policy 的格式限制：
   1. Header 必須遵循 `type(scope): subject` 或 `type: subject`，長度必須小於等於 72 字元，不可用句號結尾；若使用 scope，必須使用 allowlist 中有意義的範圍。
@@ -43,8 +45,7 @@ Microsoft Ingestion API 操作高度非同步。不要信任暫態 HTTP 回應�
   4. Body 必須與 Header 留空一行，且必須是以英文寫成的編號列表並以 `1. ` 開頭（例如：`1. Add helper method.`）。
 - **版本號同步**：當功能或 UI 有變動、且使用者已明確同意升版時，執行 `powershell -File scripts/bump_version.ps1 -Build` 增加 Patch（第 3 碼，且第四碼 Revision 保持為 0），同步版本號（含 README、README.zh-TW.md、CHANGELOG.md 與 MSIX AppxManifest.xml）並自動重新編譯產物，以確保 Windows 11 選單快取刷新且內外版本一致，同時符合微軟商店的版號規範。升版與否、何時升版，一律以使用者明確同意為準（見下方「禁止自行升版」）。
 - **禁止自行升版**：嚴禁在未經使用者明確同意前自行升版。任何版號變更——包括執行 `scripts/bump_version.ps1`、修改 `AppxManifest.xml` / `Directory.Build.props` / `CHANGELOG.md` / README 中的版本號、建立版本 Tag（`vX.Y.Z.0`）或提交商店發布——都必須先在對話中向使用者說明升版理由與影響範圍，取得明確同意後方可執行。若使用者未表態，一律視為不同意，不得擅自升版。
-- **Commit 審核**：在執行 Commit 之前，必須執行 `git status` 確認沒有暫存 test 垃圾。
-- **PR 描述格式**：PR body 與 commit body 是兩套不同規則；必須使用 `.github/pull_request_template.md`，依變更檔案數量選擇 Summary/Key Changes/Verification 結構，不得只貼 commit 的編號列表。
+- **PR 描述格式**：PR body 與 commit body 是兩套不同規則；必須使用 `.github/pull_request_template.md`，依變更檔案數量選擇結構：10 個檔案以下用 Summary + 編號列表；10-50 個用 Summary + Key Changes + Verification；50 個以上用 Overview + Key Changes（分節）+ Verification。Summary/Overview 說明改了什麼和為什麼，不是檔案清單。Verification 使用 `[x]`/`[ ]` checklist。
 - **PR 標題規範**：PR 標題必須使用一般人能理解的描述性文字（例如 `refactor(cli): split dashboard event handlers`），嚴禁寫 roadmap 代號（如 `R1-3`）、內部編號或只有專案成員才懂的術語；roadmap 編號一律放在 milestone/labels 中，不得出現在標題或 body 開頭。標題同樣須符合 policy 的 `type(scope): subject` 格式與 72 字元限制。
 - **Tag 規範與發布順序**：在正式對外發布或商店提交時，必須嚴格遵守以下 Git Flow 順序：
   1. 在 `feature/*` 或 `hotfix/*` 工作分支上完成開發並提交（Commit）。
