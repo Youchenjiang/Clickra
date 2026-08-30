@@ -73,7 +73,7 @@ namespace Clickra.UI
         /// <summary>True when the element is one of the settings-page controls.</summary>
         static bool IsSettingsElement(int element)
             => element == 5 || element == 6 || element == 7 || element == 8 || element == 9 ||
-               element == 20 || element == 32 || element == 33 || element == 34;
+               element == 20 || element == 32 || element == 33 || element == 34 || element == 40;
 
         /// <summary>True when the element is one of the LibreOffice setup buttons.</summary>
         static bool IsLibreOfficeElement(int element) => element == 35 || element == 36 || element == 38;
@@ -486,6 +486,22 @@ namespace Clickra.UI
                 ClickraStorage.SaveSetting("OfficeEngine", "libreoffice");
                 ClickraStorage.SaveSetting("LibreOfficePath", "");
                 InvalidateRect(hwnd, IntPtr.Zero, false);
+            }
+            else if (element == 40)
+            {
+                // Open Store page for Clickra Fluent optional package
+                try
+                {
+                    System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
+                    {
+                        FileName = Clickra.Core.FluentRuntimeHelper.StoreUri,
+                        UseShellExecute = true
+                    });
+                }
+                catch (Exception ex)
+                {
+                    MessageBox(hwnd, $"Cannot open Store: {ex.Message}", "Clickra", 0x10);
+                }
             }
         }
 
