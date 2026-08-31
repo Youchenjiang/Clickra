@@ -11,7 +11,7 @@
 
   <Identity
     Name="ClickraSparsePackage"
-    Publisher="CN=Clickra"
+    Publisher="CN=CBF59877-21AD-4BC4-8F91-FE8DA520A138"
     Version="3.6.5.0" />
 
   <Properties>

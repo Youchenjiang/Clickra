@@ -2,7 +2,7 @@
 <assembly manifestVersion="1.0" xmlns="urn:schemas-microsoft-com:asm.v1" xmlns:asmv3="urn:schemas-microsoft-com:asm.v3">
   <assemblyIdentity version="1.0.0.0" name="Clickra.exe"/>
   <msix xmlns="urn:schemas-microsoft-com:msix.v1"
-          publisher="CN=Clickra"
+          publisher="CN=CBF59877-21AD-4BC4-8F91-FE8DA520A138"
           packageName="ClickraSparsePackage"
           applicationId="ClickraApp"
         />

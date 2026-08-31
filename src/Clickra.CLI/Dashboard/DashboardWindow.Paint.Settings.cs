@@ -14,6 +14,7 @@ namespace Clickra.UI
 {
     public static partial class DashboardWindow
     {
+        // skipcq: CS-R1140
         static void DrawSettingsTab(Graphics g, float logW, float logH, float contentX)
         {
             float s = _dpiScale;
@@ -298,6 +299,42 @@ namespace Clickra.UI
             AddHitRect(31, contentX, _pdfLangDropdownY, 240, 30);
 
             y += 95f;
+
+            // Fluent UI section
+            bool fluentAvailable = Clickra.Core.FluentRuntimeHelper.IsAvailable();
+            DrawSectionHeader("setting_fluent_title", "setting_fluent_desc", y);
+            y += 50f;
+
+            if (fluentAvailable)
+            {
+                // Show status: ready
+                if (_subFont != null)
+                {
+                    using var statusBrush = new SolidBrush(Color.FromArgb(100, 220, 100));
+                    g.DrawString(GetText("setting_fluent_ready"), _subFont, statusBrush, contentX * s, y * s);
+                }
+            }
+            else
+            {
+                // Show status: not installed + install button
+                if (_subFont != null)
+                {
+                    using var statusBrush = new SolidBrush(Color.FromArgb(255, 190, 90));
+                    g.DrawString(GetText("setting_fluent_not_installed"), _subFont, statusBrush, contentX * s, y * s);
+                }
+                y += 28f;
+                DrawOutputDirButton(
+                    g,
+                    GetText("setting_fluent_install"),
+                    false,
+                    40,
+                    (int)contentX,
+                    (int)y,
+                    200);
+                AddHitRect(40, contentX, y, 200, 30);
+            }
+            y += 48f;
+
             DrawSectionHeader("setting_pdf_compress_title", "setting_pdf_compress_desc", y);
             y += 48f;
 

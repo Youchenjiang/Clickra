@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
+﻿<?xml version="1.0" encoding="utf-8"?>
 <Package
   xmlns="http://schemas.microsoft.com/appx/manifest/foundation/windows10"
   xmlns:uap="http://schemas.microsoft.com/appx/manifest/uap/windows10"
@@ -10,23 +10,26 @@
   xmlns:uap10="http://schemas.microsoft.com/appx/manifest/uap/windows10/10"
   IgnorableNamespaces="uap rescap desktop4 desktop5 desktop9 com uap10">
 
+  <!--
+    Clickra Main MSIX (Phase 1 PoC)
+    - Entry point: ClickraLauncher.exe (NativeAOT, zero dependency)
+    - Launcher detects optional Fluent package and routes accordingly
+    - No Windows App Runtime dependency (carried by optional package)
+  -->
   <Identity
-    Name="g1014308.Clickra"
+    Name="Clickra"
     Publisher="CN=CBF59877-21AD-4BC4-8F91-FE8DA520A138"
     Version="3.6.5.0" />
 
   <Properties>
     <DisplayName>Clickra</DisplayName>
-    <PublisherDisplayName>g1014308</PublisherDisplayName>
+    <PublisherDisplayName>Clickra</PublisherDisplayName>
     <Logo>Assets\StoreLogo.png</Logo>
   </Properties>
 
   <Dependencies>
     <TargetDeviceFamily Name="Windows.Desktop" MinVersion="10.0.19041.0" MaxVersionTested="10.0.22621.0" />
-    <PackageDependency
-      Name="Microsoft.WindowsAppRuntime.2"
-      MinVersion="2.3.1.0"
-      Publisher="CN=Microsoft Corporation, O=Microsoft Corporation, L=Redmond, S=Washington, C=US" />
+    <!-- No Windows App Runtime dependency — carried by optional Fluent package -->
   </Dependencies>
 
   <Resources>
@@ -38,7 +41,8 @@
   </Resources>
 
   <Applications>
-    <Application Id="App" Executable="Clickra.Fluent.exe"
+    <Application Id="App"
+      Executable="ClickraLauncher.exe"
       EntryPoint="Windows.FullTrustApplication"
       uap10:RuntimeBehavior="packagedClassicApp"
       uap10:TrustLevel="mediumIL">
@@ -52,7 +56,6 @@
       </uap:VisualElements>
 
       <Extensions>
-        <!-- 使用正確的 desktop5:ItemType (非 desktop4) 避免層級錯誤 -->
         <desktop4:Extension Category="windows.fileExplorerContextMenus">
           <desktop4:FileExplorerContextMenus>
             <desktop5:ItemType Type="*">
@@ -64,7 +67,6 @@
           </desktop4:FileExplorerContextMenus>
         </desktop4:Extension>
 
-        <!-- 使用 desktop9 告知系統此為 IExplorerCommand 的傳統型 handler (Win10 20H2+ / Win11) -->
         <desktop9:Extension Category="windows.fileExplorerClassicContextMenuHandler">
           <desktop9:FileExplorerClassicContextMenuHandler>
             <desktop9:ExtensionHandler Type="*" Clsid="B17A34D2-55E0-4D6F-8D1F-7A6E9C2B30A1" />
@@ -73,7 +75,6 @@
           </desktop9:FileExplorerClassicContextMenuHandler>
         </desktop9:Extension>
 
-        <!-- Windows 10 傳統檔案關聯右鍵選單備援 -->
         <uap:Extension Category="windows.fileTypeAssociation">
           <uap:FileTypeAssociation Name="clickra">
             <uap:SupportedFileTypes>
@@ -93,13 +94,12 @@
           </uap:FileTypeAssociation>
         </uap:Extension>
 
-        <!-- COM 伺服器註冊 -->
         <com:Extension Category="windows.comServer">
           <com:ComServer>
             <com:SurrogateServer DisplayName="Clickra Context Menu Handler">
               <com:Class Id="B17A34D2-55E0-4D6F-8D1F-7A6E9C2B30A1" Path="ClickraShell.dll" ThreadingModel="Both">
-              <com:DefaultIcon Path="app.ico" />
-            </com:Class>
+                <com:DefaultIcon Path="app.ico" />
+              </com:Class>
             </com:SurrogateServer>
           </com:ComServer>
         </com:Extension>

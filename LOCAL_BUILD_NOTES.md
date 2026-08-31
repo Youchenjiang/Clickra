@@ -1,6 +1,6 @@
-# Local Build Notes
+﻿# Local Build Notes
 
-> 📚 **Agent & Developer Migration Documentation Index**:
+> ?? **Agent & Developer Migration Documentation Index**:
 > - [ARCHITECTURE_AND_FRAMEWORK.md](file:///c:/Users/g1014308/Documents/GitHub/Youchen/Clickra/docs/ARCHITECTURE_AND_FRAMEWORK.md): .NET 8 LTS Baseline, RollForward Policy & Trimming Rules.
 > - [WINDOWS_COMPATIBILITY_AND_MSIX_SANDBOX.md](file:///c:/Users/g1014308/Documents/GitHub/Youchen/Clickra/docs/WINDOWS_COMPATIBILITY_AND_MSIX_SANDBOX.md): Win10/Win11 Context Menu & MSIX Sandbox Path Resolution.
 > - [TROUBLESHOOTING_AND_RESOLUTIONS.md](file:///c:/Users/g1014308/Documents/GitHub/Youchen/Clickra/docs/TROUBLESHOOTING_AND_RESOLUTIONS.md): Complete Troubleshooting Log & Fix History.
@@ -14,6 +14,33 @@ Windows SDK tools are located at:
 The `scripts/build_msix.ps1` script has been updated to automatically detect this path.
 
 ## Packaging Requirements
+
+## Main + Optional Package Architecture (v3.6.5+)
+
+Clickra ships as two MSIX packages for Microsoft Store:
+
+- **Clickra.msix** (~14 MB): Main MSIX, zero dependency. Contains ClickraLauncher.exe (entry point), Clickra.exe (AOT Dashboard), ClickraShell.dll (Explorer integration). No Windows App Runtime dependency.
+- **Clickra.Fluent.msix** (~14 MB): Optional MSIX, WinUI 3 Fluent UI. Contains Clickra.Fluent.exe and managed dependencies. Declares Microsoft.WindowsAppRuntime.2 dependency and MainPackageDependency on Clickra. Installed on-demand via Store.
+
+### Build Scripts
+- scripts/build_msix.ps1 — Main MSIX only (for development/testing)
+- scripts/build_store.ps1 — Both Main + Optional MSIX (for Store submission)
+
+### Launcher Routing
+ClickraLauncher.exe (NativeAOT, zero dependency) is the MSIX entry point:
+1. If Clickra.Fluent.exe exists (optional package installed) -> launches Clickra.Fluent.exe (WinUI 3)
+2. If Fluent not installed -> launches Clickra.exe (AOT Dashboard)
+
+### Dashboard Fluent Section
+The AOT Dashboard Settings tab has a Fluent section:
+- If Fluent not installed -> shows Install button -> opens Store URI
+- If Fluent installed -> shows ready status
+
+### Key Files
+- packaging/msix/AppxManifest.xml — Main MSIX manifest
+- packaging/msix/AppxManifest.Fluent.xml — Optional MSIX manifest
+- src/Clickra.Core/FluentRuntimeHelper.cs — Detection + Store URI
+
 - Version revision number (4th digit) MUST be 0 for Microsoft Store.
 - Both `Clickra.Fluent.exe` and `Clickra.exe` must handle zero-argument launch.
 - `src/Clickra.Fluent/Clickra.Fluent.csproj` is the source of truth for the
@@ -44,7 +71,7 @@ The `scripts/build_msix.ps1` script has been updated to automatically detect thi
   - *Rule 4*: For fonts on high-DPI screens, always initialize with `GraphicsUnit.Pixel` to prevent double/quadratic scaling (overlapping text), and use language-adaptive font names.
   - *Rule 5*: The history record table layout dynamically calculates column widths (Adaptive layout) and uses custom-drawn text truncation to prevent column contents from overlapping.
 - **Translation Languages**:
-  - Redundant translation targets (English, Japanese, Korean, Simplified Chinese) have been removed from the Settings panel. Only the active dropdown and the functional "Traditional Chinese" (繁體中文) option are retained.
+  - Redundant translation targets (English, Japanese, Korean, Simplified Chinese) have been removed from the Settings panel. Only the active dropdown and the functional "Traditional Chinese" (蝜?銝剜?) option are retained.
 - **Office Detection in MSIX**: Standard `Type.GetTypeFromProgID` fails inside the MSIX container. You must use direct registry checks (`HKLM\SOFTWARE\Classes\PowerPoint.Application`).
 - **Cross-process Sync & Locking**:
   - We use explicit argument passing for command tags and start times (`CompleteActiveRecord` signature in `ClickraStorage.cs` / `ClickraCli.cs`) instead of reading `active.tmp` inside the storage class, resolving concurrency race conditions.
@@ -61,7 +88,7 @@ The `scripts/build_msix.ps1` script has been updated to automatically detect thi
   - `TaskProgressPage` uses a WinUI `ContentDialog` with `PasswordBox`.
   - Cancelling the dialog cancels the conversion without creating output.
 - **Legacy fallback password input**:
-  - The password prompt for `decrypt-pdf` is rendered **inline** inside the `ProgressWindow` Win32 window — **not** as a separate dialog. Child `EDIT` (with `ES_PASSWORD`) and `BUTTON` controls are created via `CreateWindowExW` directly on `_hwnd`.
+  - The password prompt for `decrypt-pdf` is rendered **inline** inside the `ProgressWindow` Win32 window ??**not** as a separate dialog. Child `EDIT` (with `ES_PASSWORD`) and `BUTTON` controls are created via `CreateWindowExW` directly on `_hwnd`.
   - `WS_CLIPCHILDREN` is set on the parent window to prevent GDI+ paint calls from overwriting the child controls and causing flickering.
   - The main message loop uses `IsDialogMessageW` to enable Tab/Enter/Esc navigation for the child controls, and `TranslateMessage` is called for all non-dialog messages to ensure `WM_CHAR` is generated and text can be typed.
   - The `EDIT` control is subclassed via `SetWindowLongPtrW(GWL_WNDPROC)` to intercept `VK_RETURN` (submit) and `VK_ESCAPE` (cancel) key presses.
@@ -111,6 +138,17 @@ The project provides built-in PowerShell scripts for automated version bumping a
     > [!NOTE]
     > **Automated Certificate Validation**: The packaging script automatically checks whether the local `ClickraDev.pfx` matches the Publisher identity defined in `AppxManifest.xml` (e.g. `CN=CBF59877-21AD-4BC4-8F91-FE8DA520A138`). If it detects a mismatch or if the certificate is missing, it will automatically call `scripts/setup/create_dev_cert.ps1` to regenerate a matching certificate. You do not need to manually manage local development PFX certs.
 
+> [!IMPORTANT]
+> **Publisher CN Must Be Consistent Across All Manifests**: Every XML/manifest file that declares a `Publisher` or `publisher` attribute must use the same CN value: `CN=CBF59877-21AD-4BC4-8F91-FE8DA520A138`. This includes:
+>
+> - `packaging/msix/AppxManifest.xml`
+> - `packaging/msix/AppxManifest.Fluent.xml`
+> - `src/resources/AppxManifest.xml`
+> - `src/resources/ClickraShell.dll.manifest`
+> - `src/resources/Clickra.exe.manifest`
+>
+> A mismatch will cause MSIX signing failures because the certificate subject must match the Identity Publisher. CI enforces this automatically ??any PR that introduces an inconsistent CN will fail the `Validate publisher CN consistency across manifests` step.
+
 #### vswhere / VS Installer PATH Requirement (NativeAOT link failure)
 
 - **Symptom**: Running `build_msix.ps1` from a shell whose `PATH` lacks the Visual Studio Installer directory (e.g. Git Bash) makes the CLI NativeAOT publish fail at the link step with `error MSB3073: ... exited with code 123` and a link command polluted by `'vswhere.exe' is not recognized ...`.
@@ -119,7 +157,7 @@ The project provides built-in PowerShell scripts for automated version bumping a
 
 ## How to Add New Features
 
-Adding a new conversion command (e.g. `excel2pdf`) requires changes across **6 layers and 13+ files**. Missing any step will cause silent failures — the feature may compile but not appear in the right-click menu, not execute, or produce no output.
+Adding a new conversion command (e.g. `excel2pdf`) requires changes across **6 layers and 13+ files**. Missing any step will cause silent failures ??the feature may compile but not appear in the right-click menu, not execute, or produce no output.
 
 ### Checklist: Adding a New Conversion Command
 
@@ -146,7 +184,7 @@ Use this checklist every time you add a new file conversion command. The Excel t
 
 | # | File | What to do |
 |---|------|------------|
-| 6 | `src/Clickra.CLI/Progress/ProgressWindow.Process.cs` | **Line ~58 switch**: Add `case "newcmd":` calling `FileProcessor.ConvertXxx()`. **Without this, right-click conversion does NOTHING** — the progress window shows "completed" but no file is created. |
+| 6 | `src/Clickra.CLI/Progress/ProgressWindow.Process.cs` | **Line ~58 switch**: Add `case "newcmd":` calling `FileProcessor.ConvertXxx()`. **Without this, right-click conversion does NOTHING** ??the progress window shows "completed" but no file is created. |
 | 7 | `src/Clickra.CLI/Progress/ProgressWindow.Process.cs` | **Line ~232 `GetOutputPath()`**: Add your command to the output path switch so history logs the correct output file path. |
 
 #### Layer 4: Dashboard UI
@@ -172,7 +210,7 @@ Use this checklist every time you add a new file conversion command. The Excel t
 | 14 | `src/ClickraShell/ComMethods.cs` **Line 26 `MenuKeys`** | Add your menu resource key (e.g. `"Menu_NewCmd"`) at the correct index. |
 | 15 | `src/ClickraShell/ComMethods.cs` **Line 27 `SubArgs`** | Add your CLI sub-command (e.g. `"newcmd"`) at the **same index** as MenuKeys. |
 | 16 | `src/ClickraShell/ComMethods.cs` **Line 97-111 `IsSupported()`** | Add a case for your index mapping file extensions. |
-| 17 | `src/ClickraShell/ComMethods.cs` **Line 125-128 `GetState()`** | If your command requires a minimum file count (e.g. merge requires 2+), add it to the `countOk` switch. **WARNING**: After inserting a new command, ALL existing indices shift — update the indices for existing commands too. |
+| 17 | `src/ClickraShell/ComMethods.cs` **Line 125-128 `GetState()`** | If your command requires a minimum file count (e.g. merge requires 2+), add it to the `countOk` switch. **WARNING**: After inserting a new command, ALL existing indices shift ??update the indices for existing commands too. |
 | 18 | `packaging/msix/Strings/*/Resources.resw` (5 files) | Add `Menu_NewCmd` resource string in all 5 languages (en-us, zh-tw, zh-cn, ja-jp, ko-kr). |
 
 ---
@@ -182,11 +220,11 @@ Use this checklist every time you add a new file conversion command. The Excel t
 | Pitfall | Symptom | Root Cause |
 |---------|---------|------------|
 | Missing `ProgressWindow.Process.cs` case | Right-click shows progress then "completed" but **no output file created** | Switch falls through without executing any code |
-| Missing `ExpandDirectoryArguments` case | CLI: `Clickra newcmd C:\Folder` returns "找不到可處理的檔案" | Directory expansion yields 0 files for unknown commands |
+| Missing `ExpandDirectoryArguments` case | CLI: `Clickra newcmd C:\Folder` returns "?曆??啣????獢? | Directory expansion yields 0 files for unknown commands |
 | Wrong `GetState` indices | Menu item doesn't appear or appears for wrong file types | Inserting a new command shifts all subsequent indices |
 | Missing `engine_xxx` key | Dashboard crashes or shows raw key name | Localization dictionary missing key for all 5 languages |
 | Missing `GetOutputPath` case | History log shows output path as directory instead of file | Default case returns `outputDir` instead of specific file path |
-| Missing `IsOfficeInstalled` progId | Engine status always shows "未安裝" even when Office is installed | Registry check uses wrong ProgID |
+| Missing `IsOfficeInstalled` progId | Engine status always shows "?芸?鋆? even when Office is installed | Registry check uses wrong ProgID |
 
 ### Index Management Rule
 
@@ -219,7 +257,7 @@ Use the canonical [pull request template](.github/pull_request_template.md).
 The template is authoritative for PR body structure; commit body rules do not
 replace it.
 
-**Title** — follow Conventional Commits, keep at or under 72 chars:
+**Title** ??follow Conventional Commits, keep at or under 72 chars:
 
 ```
 <type>(<scope>): <description>
@@ -231,7 +269,7 @@ or
 - Scope is optional. When present, it must be one of `cli`, `core`, `shell`, `msix`, `docs`, `ci`, `deps`, `store`, or `agent`.
 - Always English, no mixed languages
 
-**Description** — required for every PR, even 1-line fixes. Structure by PR size:
+**Description** ??required for every PR, even 1-line fixes. Structure by PR size:
 
 | Size | Files | Structure |
 |------|-------|-----------|
@@ -250,7 +288,7 @@ or
 
 **Language**: Always English, consistent with title.
 
-**Metadata** — validated by the Repository Policy workflow:
+**Metadata** ??validated by the Repository Policy workflow:
 - **Assignee**: set one (the workflow auto-assigns the author if empty).
 - **Labels**: at least one, matching the title scope when possible.
 - **Milestone**: required unless the PR is a `release` / `hotfix` / `dependencies` PR.
@@ -327,7 +365,7 @@ docs(agent): update AI-agent instructions
 
 Each commit must contain **only one type of change**. Do NOT mix different change types in a single commit.
 
-**By change type — separate commits for each**:
+**By change type ??separate commits for each**:
 
 | Change type | What it means | Example |
 |-------------|---------------|---------|
@@ -335,12 +373,12 @@ Each commit must contain **only one type of change**. Do NOT mix different chang
 | **Modify** | Changing existing logic without adding/removing files | `fix(shell): correct GetState index offset` |
 | **Delete** | Removing files or removing code from existing files | `refactor(cli): remove obsolete ClickraCli.cs` |
 
-**Refactoring — split into multiple commits**:
+**Refactoring ??split into multiple commits**:
 
 When refactoring that involves **deleting whole files with no replacement** (e.g. removing a deprecated module), that's its own commit:
 
 ```
-# CORRECT — delete standalone, add new standalone:
+# CORRECT ??delete standalone, add new standalone:
 refactor(pdf): remove monolithic FileProcessor
   (deletes FileProcessor.cs)
 
@@ -348,27 +386,27 @@ feat(pdf): add individual processor classes
   (adds ImageToPdfProcessor, PdfMergeProcessor, etc.)
 ```
 
-When **moving/extracting code between files** (the code still exists, just relocated), this is ONE logical change → **ONE commit**:
+When **moving/extracting code between files** (the code still exists, just relocated), this is ONE logical change ??**ONE commit**:
 
 ```
-# CORRECT — one commit, two file changes:
+# CORRECT ??one commit, two file changes:
 refactor(pdf): extract paragraph helpers to PdfParagraphAnalysis
   (modifies FileProcessor.cs to remove the method AND adds PdfParagraphAnalysis.cs with the method)
 ```
 
 The key question: **does the code still exist after the change?**
-- Yes → one commit (move/extract)
-- No → separate commit (delete)
+- Yes ??one commit (move/extract)
+- No ??separate commit (delete)
 
-**By concern — separate commits for each**:
+**By concern ??separate commits for each**:
 
 If a change touches multiple concerns (e.g. refactoring + fixing a bug + adding a feature), split into separate commits:
 
 ```
-# WRONG — three concerns in one commit:
+# WRONG ??three concerns in one commit:
 feat(excel): add excel2pdf, fix GetState index, add engine status
 
-# CORRECT — three separate commits:
+# CORRECT ??three separate commits:
 feat(excel): add Excel to PDF conversion support
 fix(shell): correct GetState index offset after inserting excel2pdf
 feat(dashboard): add Excel engine status row to overview tab
@@ -378,7 +416,7 @@ feat(dashboard): add Excel engine status row to overview tab
 
 | Scenario | How to commit |
 |----------|---------------|
-| Rename a file | `git mv` → 1 commit: `refactor(core): rename X to Y` |
+| Rename a file | `git mv` ??1 commit: `refactor(core): rename X to Y` |
 | Rename + change logic | 2 commits: first rename, then modify logic |
 | Extract method from A to new file B | 1 commit: `refactor(core): extract X from A to B` |
 | Delete entire file + add replacement (same code, different location) | 1 commit: `refactor(core): move X to Y` |
@@ -388,7 +426,7 @@ feat(dashboard): add Excel engine status row to overview tab
 
 ---
 
-## Partner Center API — Known Behaviors & Gotchas
+## Partner Center API ??Known Behaviors & Gotchas
 
 These notes were discovered through extensive testing of `scripts/publish_store.py`
 against the Microsoft Store Submission API (`manage.devcenter.microsoft.com`).
@@ -399,15 +437,15 @@ against the Microsoft Store Submission API (`manage.devcenter.microsoft.com`).
 
 ### Submission Lifecycle (Status Flow)
 ```
-(POST) → Draft → PendingCommit → CommitStarted → PreProcessing → Certification → Published
-                                                                   ↘ CommitFailed
+(POST) ??Draft ??PendingCommit ??CommitStarted ??PreProcessing ??Certification ??Published
+                                                                   ??CommitFailed
 ```
-- **CommitStarted ≠ submitted.** It only means the backend *started* processing the
+- **CommitStarted ??submitted.** It only means the backend *started* processing the
   commit.  The script MUST poll until `PreProcessing` / `Certification` / `Published`
   to confirm real acceptance.  Checking for `CommitStarted` alone is a false positive.
-- The API returns `202` with `{"status":"CommitStarted"}` immediately — this is async.
-- Typical processing time: 15–30 minutes.  The post-commit verification loop runs
-  9 checks × 20 s = 3 min; it may time out before the backend finishes, which is
+- The API returns `202` with `{"status":"CommitStarted"}` immediately ??this is async.
+- Typical processing time: 15??0 minutes.  The post-commit verification loop runs
+  9 checks ? 20 s = 3 min; it may time out before the backend finishes, which is
   normal and not a failure.
 
 ### Creating a Submission (POST)
@@ -415,7 +453,7 @@ against the Microsoft Store Submission API (`manage.devcenter.microsoft.com`).
   - Using `b'{}'` causes HTTP 400: *"The size of Listings must be 1 or more"*.
 - The response clones the last *published* version's listings and packages.
 - Returns `fileUploadUrl` (Azure Blob SAS URL) for the ZIP upload.
-- **409 Conflict** means a pending submission already exists — delete it first.
+- **409 Conflict** means a pending submission already exists ??delete it first.
 
 ### Uploading the Package (PUT to SAS URL)
 - Upload a single ZIP containing: MSIX + screenshots + any other assets.
@@ -428,7 +466,7 @@ against the Microsoft Store Submission API (`manage.devcenter.microsoft.com`).
 - **Key casing**: The API returns **camelCase** keys (`releaseNotes`, `baseListing`,
   `images`), NOT PascalCase (`ReleaseNotes`, `BaseListing`, `Images`).  The script
   must match camelCase when reading/writing to avoid creating duplicate keys.
-- PUT response `200` means accepted; does not guarantee persistence — the commit
+- PUT response `200` means accepted; does not guarantee persistence ??the commit
   may still reject changes.
 
 ### Package References (`applicationPackages`)
@@ -436,9 +474,9 @@ against the Microsoft Store Submission API (`manage.devcenter.microsoft.com`).
 - The API **requires** keeping existing package entries.  You must:
   1. Copy each existing package, set `fileStatus: "PendingDelete"` (preserve `id`).
   2. Append a new entry: `{fileName: "Clickra.msix", fileStatus: "PendingUpload"}`.
-- Omitting old entries → HTTP 400: *"Please keep all file entries for existing packages."*
+- Omitting old entries ??HTTP 400: *"Please keep all file entries for existing packages."*
 - During commit, the backend removes the old package and processes the new one.
-  Both entries may temporarily coexist with the same filename — this is normal.
+  Both entries may temporarily coexist with the same filename ??this is normal.
 
 ### Screenshot / Image References (`images` in `baseListing`)
 - **Key behavior**: The API **silently ignores** `PendingDelete` on screenshots that
@@ -449,8 +487,8 @@ against the Microsoft Store Submission API (`manage.devcenter.microsoft.com`).
   IDs.  Old screenshots remain alongside.
 - **Cleanup**: Old/redundant screenshots must be removed manually in the Partner
   Center UI.
-- Screenshot requirements: `.png` format, ≤ 50 MB, recommended ≥ 1366×768 pixels.
-  Smaller sizes (e.g. 1140×733) are accepted but not ideal.
+- Screenshot requirements: `.png` format, ??50 MB, recommended ??1366?768 pixels.
+  Smaller sizes (e.g. 1140?733) are accepted but not ideal.
 
 ### `zh-cn` Listing
 - The cloned submission may not include a `zh-cn` listing.
@@ -460,7 +498,7 @@ against the Microsoft Store Submission API (`manage.devcenter.microsoft.com`).
 
 ### Retry / Timeout
 - Microsoft's ingestion gateway is slow and unreliable.  GET requests frequently
-  time out (504) or take 60–180 seconds.
+  time out (504) or take 60??80 seconds.
 - The `api_request()` helper uses exponential backoff (5 retries, starting at 15 s).
 - For critical calls (GET submission, PUT metadata), a minimum timeout of 180 s
   is recommended.
@@ -470,9 +508,9 @@ against the Microsoft Store Submission API (`manage.devcenter.microsoft.com`).
 | HTTP Code | Meaning | Action |
 |-----------|---------|--------|
 | 400 | Bad request (missing listings, missing package IDs, etc.) | Fix the JSON payload |
-| 409 | Conflict — pending submission exists | Delete existing submission first |
-| 504 | Gateway timeout | Retry after 15–30 s |
-| 202 | Accepted (commit started) | Normal — poll for final status |
+| 409 | Conflict ??pending submission exists | Delete existing submission first |
+| 504 | Gateway timeout | Retry after 15??0 s |
+| 202 | Accepted (commit started) | Normal ??poll for final status |
 
 ## Windows 11 Context-Menu Development Workflow
 
@@ -515,8 +553,8 @@ For a shell or packaging change, use the full pipeline:
 powershell -File scripts\build_msix.ps1
 ```
 
-The script publishes both NativeAOT projects and the Fluent project, assembles
-the MSIX layout while preserving Fluent's XAML PRI, creates `Clickra.msix`, and
+The script publishes the NativeAOT projects (CLI, Shell, Launcher), assembles
+the MSIX layout, creates `Clickra.msix`, and
 signs it when a matching development certificate is available. Launch the
 packaged Fluent app directly before testing Explorer, then restart Explorer
 after each reinstall so it reloads `ClickraShell.dll`.

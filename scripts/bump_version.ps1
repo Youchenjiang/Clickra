@@ -1,4 +1,4 @@
-param(
+﻿param(
     [Parameter(Mandatory=$false)]
     [ValidateSet("major", "minor", "patch", "revision")]
     [string]$Type = "patch",
@@ -10,9 +10,8 @@ param(
 $ErrorActionPreference = "Stop"
 $root = (Get-Location).Path
 $propsPath = "src/Directory.Build.props"
-$manifestPath = "packaging/msix/AppxManifest.xml"
 
-# 1. 從 Directory.Build.props 抓取目前版本
+# 1. 敺?Directory.Build.props ???桀??
 $content = [System.IO.File]::ReadAllText("$root/$propsPath", [System.Text.Encoding]::UTF8)
 if ($content -match '<Version>(?<v>.*)</Version>') {
     $currentVersion = [version]$Matches['v']
@@ -20,8 +19,7 @@ if ($content -match '<Version>(?<v>.*)</Version>') {
     Write-Error "Could not find Version in $propsPath"
 }
 
-# 2. 計算新版本
-$major = $currentVersion.Major
+# 2. 閮??啁???$major = $currentVersion.Major
 $minor = $currentVersion.Minor
 $patch = $currentVersion.Build
 if ($patch -lt 0) { $patch = 0 }
@@ -40,13 +38,12 @@ Write-Host "[*] Upgrading version from $currentVersion to $newVersion ..." -Fore
 
 $utf8NoBOM = New-Object System.Text.UTF8Encoding($false)
 
-# 3. 更新各個檔案
-# Directory.Build.props
+# 3. ?湔??獢?# Directory.Build.props
 $newProps = $content -replace '<Version>.*</Version>', "<Version>$newVersion</Version>"
 [System.IO.File]::WriteAllText("$root/$propsPath", $newProps, $utf8NoBOM)
 
-# AppxManifest.xml (同時更新外層與嵌入層)
-$manifestPaths = @("packaging/msix/AppxManifest.xml", "src/resources/AppxManifest.xml")
+# AppxManifest.xml (???湔憭惜???亙惜)
+    $manifestPaths = @("packaging/msix/AppxManifest.xml", "packaging/msix/AppxManifest.Fluent.xml", "src/resources/AppxManifest.xml")
 foreach ($mPath in $manifestPaths) {
     if (Test-Path $mPath) {
         $manifest = [System.IO.File]::ReadAllText("$root/$mPath", [System.Text.Encoding]::UTF8)
@@ -56,7 +53,7 @@ foreach ($mPath in $manifestPaths) {
     }
 }
 
-# 4. 更新 CHANGELOG.md（在現有內容頂部插入新版本）
+# 4. ?湔 CHANGELOG.md嚗?暹??批捆???啁??穿?
 $changelogPath = "CHANGELOG.md"
 if (Test-Path $changelogPath) {
     $changelog = [System.IO.File]::ReadAllText("$root/$changelogPath", [System.Text.Encoding]::UTF8)
@@ -67,16 +64,15 @@ if (Test-Path $changelogPath) {
     Write-Host "[Doc] Updated CHANGELOG.md with new version entry" -ForegroundColor Gray
 }
 
-# 5. 更新 README 檔案（旋轉版本：第3筆移到 CHANGELOG，保留最新3筆）
+# 5. ?湔 README 瑼?嚗?頧??穿?蝚?蝑宏??CHANGELOG嚗?????蝑?
 $readmeFiles = @("README.md", "README.zh-TW.md")
 foreach ($f in $readmeFiles) {
     if (Test-Path $f) {
         $content = [System.IO.File]::ReadAllText("$root/$f", [System.Text.Encoding]::UTF8)
-        # 更新標題 (# Clickra vX.X.X.X)
+        # ?湔璅? (# Clickra vX.X.X.X)
         $content = $content -replace '(?m)^# Clickra v[\d\.]+', "# Clickra v$newVersion"
 
-        # 找到版本表格中的資料行（排除標題和分隔線）
-        $lines = $content -split "`n"
+        # ?曉?銵冽銝剔?鞈?銵??璅?????嚗?        $lines = $content -split "`n"
         $tableStart = -1
         $rowCount = 0
         for ($i = 0; $i -lt $lines.Count; $i++) {
@@ -86,7 +82,7 @@ foreach ($f in $readmeFiles) {
             }
         }
 
-        # 如果有3筆以上，把第3筆移到 CHANGELOG
+        # 憒???蝑誑銝??洵3蝑宏??CHANGELOG
         if ($rowCount -ge 3 -and $tableStart -ge 0) {
             $thirdRow = $lines[$tableStart + 2]
             if ($thirdRow -match '\*\*(v[\d\.]+)\*\*\s*\|\s*([^|]+?)\s*\|\s*(.+?)\s*\|') {
@@ -94,17 +90,16 @@ foreach ($f in $readmeFiles) {
                 $oldDate = (Get-Date $Matches[2].Trim()).ToString("yyyy-MM-dd")
                 $oldDesc = $Matches[3].Trim()
 
-                # 移除 README 中的第三筆
-                $lines = $lines[0..($tableStart + 1)] + $lines[($tableStart + 3)..($lines.Count - 1)]
+                # 蝘駁 README 銝剔?蝚砌?蝑?                $lines = $lines[0..($tableStart + 1)] + $lines[($tableStart + 3)..($lines.Count - 1)]
                 $content = $lines -join "`n"
 
-                # 將舊版本加入 CHANGELOG（若不存在，則插入到第二個版本標題之前）
+                # 撠??? CHANGELOG嚗銝??剁????亙蝚砌????祆?憿???
                 if (Test-Path $changelogPath) {
                     $changelog = [System.IO.File]::ReadAllText("$root/$changelogPath", [System.Text.Encoding]::UTF8)
                     $escapedVersion = [regex]::Escape($oldVersion)
                     if ($changelog -notmatch "##\s*\[?v?${escapedVersion}\]?") {
                         $oldEntry = "`n## [$oldVersion] - $oldDate`n`n- $oldDesc`n"
-                        # 找到第二個 ## [vX.X.X] 標題的位置，插入在該標題之前
+                        # ?曉蝚砌???## [vX.X.X] 璅???蝵殷???刻府璅?銋?
                         $firstIdx = $changelog.IndexOf("## [v")
                         $secondIdx = -1
                         if ($firstIdx -ge 0) {
@@ -124,8 +119,7 @@ foreach ($f in $readmeFiles) {
             }
         }
 
-        # 插入新版本行到表格頂部（標題和分隔線之後）
-        $lines = $content -split "`n"
+        # ??啁??祈??啗”?潮??剁?璅?????銋?嚗?        $lines = $content -split "`n"
         $tableStart = -1
         for ($i = 0; $i -lt $lines.Count; $i++) {
             if ($lines[$i] -match '^\| \*\*v[\d\.]+\*\*') {

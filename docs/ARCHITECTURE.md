@@ -1,4 +1,4 @@
-# Clickra Architecture
+﻿# Clickra Architecture
 
 ## Current Shape
 
@@ -74,7 +74,7 @@ PDF password input through a WinUI `ContentDialog`.
 
 | Behavior | Reason |
 |---|---|
-| Legacy Win32 dashboard/progress code still ships | Permanent NativeAOT track (`Clickra-Native.msix`) for machines without .NET 8+ / Windows App Runtime. Installed only by track choice, not a user-selectable theme. |
+| AOT Dashboard ships as fallback | Main MSIX contains ClickraLauncher (router) + Clickra.exe (AOT). Fluent is an optional Store package installed on demand. |
 | Fluent is framework-dependent | MSIX declares the Windows App Runtime dependency instead of bundling the complete runtime into every package. |
 | Explorer must be restarted after reinstalling the same version | Explorer caches the loaded COM DLL and menu state. This is Windows shell behavior. |
 | Packaging aligns only the copied layout manifest | Builds remain deterministic without silently rewriting tracked source files. |
@@ -100,28 +100,26 @@ PDF password input through a WinUI `ContentDialog`.
 
 ## Intended end state
 
+ClickraLauncher is the NativeAOT entry point that routes to Fluent or
+AOT Dashboard via IApplicationActivationManager COM activation. The
+optional Fluent MSIX (WinUI 3) is distributed through Store on demand.
+The AOT Dashboard (Clickra.exe) in Clickra.CLI ships inside the Main
+MSIX as the fallback when Fluent is not installed. See
+[docs/development/dual_track_guide.md](docs/development/dual_track_guide.md).
+
 `ClickraShell` remains a small NativeAOT command provider. `Clickra.Fluent`
 remains the flagship interactive dashboard and progress UI, shipped as the
 framework-dependent `Clickra.msix`. The legacy Win32 dashboard/progress code in
-`Clickra.CLI` is **kept as the permanent NativeAOT fallback track**
-(`Clickra-Native.msix`, zero dependency) for machines without .NET 8+ or the
-Windows App Runtime. `ClickraSetup.exe` detects the runtimes at install time and
-picks the matching track. See
-[docs/development/dual_track_guide.md](docs/development/dual_track_guide.md).
-No legacy-UI preference toggle is planned (track choice is automatic, not a
 user-selectable theme).
 
 ## Packaging Notes
 
-Two MSIX tracks share the `g1014308.Clickra` identity (only one is installed at
+Two MSIX tracks share the `Clickra` identity (only one is installed at
 a time; switching replaces the other):
 
 - `Clickra.msix` (Fluent, framework-dependent, Store + GitHub) — built by
   `scripts/build_msix.ps1`, app entry `Clickra.Fluent.exe`.
-- `Clickra-Native.msix` (NativeAOT, zero dependency, GitHub only) — built by
-  `scripts/build_native_msix.ps1` with `packaging/msix/AppxManifest.Native.xml`,
   app entry `Clickra.exe`.
-- `ClickraSetup.exe` — NativeAOT bootstrapper that detects .NET 8+ / Windows
   App Runtime and installs the matching track.
 
 MSIX packaging must include:

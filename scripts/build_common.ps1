@@ -1,6 +1,6 @@
-# Shared helpers for Clickra MSIX build scripts.
-# Dot-sourced by build_msix.ps1, build_msix_continue.ps1, and build_native_msix.ps1
-# so the three tracks keep a single copy of environment setup, build steps, and signing.
+﻿# Shared helpers for Clickra MSIX build scripts.
+# Dot-sourced by build_msix.ps1 and build_store.ps1
+# so all build tracks keep a single copy of environment setup, build steps, and signing.
 $ErrorActionPreference = "Stop"
 
 # ------------------------------------------------------------------
@@ -21,42 +21,20 @@ function Invoke-NativePublish {
         [string]$OutputDir,
         [string]$ExtraArgs = ""
     )
-    $cmd = "dotnet publish $Project -c Release -r win-x64 -o `"$OutputDir`" --self-contained true $ExtraArgs"
     Write-Host "[Build] Publishing $Project..." -ForegroundColor Gray
-    Invoke-Expression $cmd
+    & dotnet publish $Project -c Release -r win-x64 -o $OutputDir --self-contained true $ExtraArgs
     Assert-NativeSuccess
 }
 
-function Invoke-FluentPublish {
+function Invoke-LauncherPublish {
     param(
-        [string]$ExtraArgs = ""
+        [string]$OutputDir
     )
-    Write-Host "[Build] Publishing Fluent GUI (framework-dependent)..." -ForegroundColor Gray
-    dotnet publish src/Clickra.Fluent/Clickra.Fluent.csproj -c Release --self-contained false $ExtraArgs
+    Write-Host "[Build] Publishing ClickraLauncher (NativeAOT)..." -ForegroundColor Gray
+    dotnet publish src/ClickraLauncher/ClickraLauncher.csproj -c Release -r win-x64 --self-contained true -o "$OutputDir"
     Assert-NativeSuccess
 }
-
-function Copy-FluentPublishOutput {
-    param(
-        [string]$LayoutDir,
-        [string]$FluentPublishSource
-    )
-    $fluentExclude = @(
-        "*.pdb",
-        "DirectML.dll",
-        "onnxruntime.dll",
-        "Microsoft.Windows.AI.MachineLearning.dll",
-        "Microsoft.Windows.ApplicationModel.Background.UniversalBGTask.dll"
-    )
-    Get-ChildItem $FluentPublishSource -File |
-        Where-Object {
-            $name = $_.Name
-            -not ($fluentExclude | Where-Object { $name -like $_ })
-        } |
-        ForEach-Object {
-            Copy-Item $_.FullName "$LayoutDir/"
-        }
-}function Copy-IconAssets {
+function Copy-IconAssets {
     param(
         [string]$PackagingDir,
         [string]$LayoutDir
@@ -71,33 +49,6 @@ function Copy-FluentPublishOutput {
         Copy-Item "src/resources/menu-*.ico" "$LayoutDir/"
     }
 }
-
-function Sync-WindowsAppRuntimeDependency {
-    param(
-        [string]$ProjectPath,
-        [string]$ManifestPath
-    )
-
-    [xml]$project = Get-Content $ProjectPath
-    $sdkReference = $project.Project.ItemGroup.PackageReference |
-        Where-Object Include -eq "Microsoft.WindowsAppSDK" |
-        Select-Object -First 1
-    $sdkVersion = [version]$sdkReference.Version
-    if ($sdkVersion.Major -lt 2) {
-        throw "Automatic Windows App Runtime alignment requires Windows App SDK 2.0 or newer."
-    }
-
-    [xml]$manifest = Get-Content $ManifestPath
-    $dependency = $manifest.Package.Dependencies.PackageDependency |
-        Where-Object Name -like "Microsoft.WindowsAppRuntime.*" |
-        Select-Object -First 1
-    $dependency.Name = "Microsoft.WindowsAppRuntime.$($sdkVersion.Major)"
-    $dependency.MinVersion = "$($sdkVersion.ToString(3)).0"
-    $manifest.Save($ManifestPath)
-
-    Write-Host "[Build] Windows App Runtime aligned to $($dependency.Name) $($dependency.MinVersion)" -ForegroundColor Gray
-}
-
 function Remove-ForceDir {
     param([string]$Path, [switch]$TolerateLocks)
     if (Test-Path $Path) {
@@ -123,19 +74,15 @@ function Copy-AssemblyLayout {
         [string]$PublishDir,
         [string[]]$ExtraBinaries = @()
     )
-    Copy-Item "$PackagingDir/AppxManifest.xml" "$LayoutDir/"
-    Sync-WindowsAppRuntimeDependency `
-        -ProjectPath "$Root/src/Clickra.Fluent/Clickra.Fluent.csproj" `
-        -ManifestPath "$LayoutDir/AppxManifest.xml"
+    Copy-Item "$PackagingDir/AppxManifest.xml" "$LayoutDir/AppxManifest.xml"
     Copy-Item -Recurse "$PackagingDir/Assets" "$LayoutDir/"
     Copy-Item -Recurse "$PackagingDir/Strings" "$LayoutDir/"
     Copy-Item "$PublishDir/cli/Clickra.exe" "$LayoutDir/"
+    Copy-Item "$PublishDir/launcher/ClickraLauncher.exe" "$LayoutDir/"
     Copy-Item "$PublishDir/shell/ClickraShell.dll" "$LayoutDir/"
     foreach ($bin in $ExtraBinaries) {
         Copy-Item "$PublishDir/$bin" "$LayoutDir/"
     }
-    Copy-Item "src/Clickra.Fluent/Assets/AppIcon.png" "$LayoutDir/Assets/AppIcon.png"
-    Copy-FluentPublishOutput -LayoutDir $LayoutDir -FluentPublishSource "src/Clickra.Fluent/bin/Release/net8.0-windows10.0.26100.0/win-x64/publish"
     Copy-IconAssets -PackagingDir $PackagingDir -LayoutDir $LayoutDir
 }
 
@@ -143,7 +90,7 @@ function Test-LayoutComplete {
     param([string]$LayoutDir)
     $required = @(
         "Clickra.exe",
-        "Clickra.Fluent.exe",
+        "ClickraLauncher.exe",
         "ClickraShell.dll",
         "AppxManifest.xml"
     )

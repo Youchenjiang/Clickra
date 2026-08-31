@@ -1,4 +1,4 @@
-# Windows 10/11 相容性與 MSIX 沙盒重定向指南
+﻿# Windows 10/11 相容性與 MSIX 沙盒重定向指南
 
 ## 1. Windows 10 vs Windows 11 右鍵選單相容性
 
@@ -18,7 +18,7 @@ Manifest 中已配置雙軌宣告：
 
 ### 2.1 檔案系統虛擬化 (MSIX Container Redirection)
 - **現象**：MSIX 包執行時，寫入 `AppData\Local\Clickra` 的檔案會被 Windows 透明重定向至硬碟的實體位置：
-  `%LocalAppData%\Packages\g1014308.Clickra_CBF59877-21AD-4BC4-8F91-FE8DA520A138\LocalCache\Local\Clickra\history.log`
+  `%LocalAppData%\Packages\Clickra_CBF59877-21AD-4BC4-8F91-FE8DA520A138\LocalCache\Local\Clickra\history.log`
 - **問題**：若傳遞虛擬路徑給容器外的 `explorer.exe`，檔案總管找不到虛擬路徑，會退回顯示空無一物的 `%LocalAppData%`。
 
 ### 2.2 解決方案 (`MainPage.xaml.cs` 中的 `OpenDataDirAsync`)

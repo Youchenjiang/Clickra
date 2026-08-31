@@ -1,199 +1,120 @@
-using System.Diagnostics;
-using System.Linq;
+﻿using System.Diagnostics;
+using System.Runtime.CompilerServices;
+using System.Diagnostics.CodeAnalysis;
 using System.Runtime.InteropServices;
-using Microsoft.Win32;
 
 namespace Clickra.Launcher;
 
 /// <summary>
-/// Clickra 單一 MSIX 啟動器 (Single MSIX UI Launcher)
-///
-/// 單一 MSIX 內同時包含 Fluent（WinUI 3）與 NativeAOT Win32 兩個介面，
-/// 啟動時依本機 runtime 決定要開哪一個：
-///   - 有 .NET 8+ Desktop Runtime 與 Windows App Runtime → 啟動 Fluent
-///     （framework-dependent WinUI 3；launcher 為 packaged 時 framework 由
-///     manifest dependency 提供，unpackaged 時需本機已安裝 runtime）。
-///   - 任一條件缺失（例如完全沒有 .NET 的機器）→ 啟動 NativeAOT Win32 儀表板
-///     （Clickra.exe，零依賴，不需要任何 runtime）。
-///
-/// 命令列參數（例如右鍵選單的「指令 + 檔案清單」）原樣轉交給目標介面，
-/// 因此 GUI 啟動與右鍵轉檔都會得到與機器配置一致的介面。
+/// Clickra Launcher ??NativeAOT entry point, zero dependency.
+/// COM activation via IApplicationActivationManager ??Fluent optional.
+/// Fallback ??AOT Dashboard.
 /// </summary>
 internal static class Program
 {
-    private const uint LoadLibrarySearchSystem32 = 0x00000800;
-
-    [DllImport("kernel32.dll", CharSet = CharSet.Unicode, SetLastError = true)]
-    private static extern IntPtr LoadLibraryExW(string lpFileName, IntPtr hFile, uint dwFlags);
-
-    [DllImport("kernel32.dll", CharSet = CharSet.Unicode, SetLastError = true)]
-    private static extern int GetCurrentPackageFullName(ref int len, IntPtr buf);
+    private const string AotExe = "Clickra.exe";
+    private const int FluentTimeoutMs = 5000;
 
     private static int Main(string[] args)
     {
-        string exeDir = AppContext.BaseDirectory;
-        bool canRunFluent = DetectFluentCapability();
+        string? exeDir = AppContext.BaseDirectory;
+        if (string.IsNullOrEmpty(exeDir))
+            exeDir = Path.GetDirectoryName(Environment.ProcessPath);
 
-        string target = canRunFluent ? "Clickra.Fluent.exe" : "Clickra.exe";
-
-        try
+        // Try COM activation for Fluent optional package
+        if (TryActivateFluent(args, out uint pid))
         {
-            string targetPath = Path.Combine(exeDir, target);
-            if (!File.Exists(targetPath))
-                targetPath = Path.Combine(Path.GetDirectoryName(Environment.ProcessPath) ?? exeDir, target);
-
-            // 刻意用 CreateProcess（UseShellExecute=false）而不是 ShellExecute：
-            // 由套件的 launcher 直接建立的子程序會繼承套件身分並留在套件的
-            // 程序樹中，解除安裝時 Windows 才能自動關閉/終止 UI。
-            var psi = new ProcessStartInfo(targetPath)
-            {
-                UseShellExecute = false,
-                WorkingDirectory = Environment.CurrentDirectory,
-            };
-            foreach (string arg in args)
-                psi.ArgumentList.Add(arg);
-            Process.Start(psi)?.Dispose();
-        }
-        catch (Exception ex)
-        {
+            Thread.Sleep(FluentTimeoutMs);
             try
             {
-                string logDir = Path.Combine(Path.GetTempPath(), "ClickraLauncher");
-                Directory.CreateDirectory(logDir);
-                File.WriteAllText(Path.Combine(logDir, "launcher-error.log"),
-                    $"{DateTime.Now:yyyy-MM-dd HH:mm:ss} Failed to start {target}: {ex}");
+                var proc = Process.GetProcessById((int)pid);
+                if (!proc.HasExited)
+                    return 0;
             }
-            catch { /* Ignore secondary failure when writing crash log to temp dir. */ }
-            return 1;
+            catch (ArgumentException) { /* Process already exited or invalid PID ??safe to ignore. */ }
         }
 
+        // Fallback: NativeAOT Dashboard
+        if (exeDir == null) return 1;
+        string? aotPath = FindExe(exeDir, AotExe);
+        if (aotPath == null) return 1;
+
+        var psi = new ProcessStartInfo(aotPath) { UseShellExecute = false };
+        foreach (string arg in args)
+            psi.ArgumentList.Add(arg);
+        Process.Start(psi)?.Dispose();
         return 0;
     }
 
-    // ------------------------------------------------------------------
-    // Runtime detection
-    // ------------------------------------------------------------------
-
-    private static bool DetectFluentCapability()
+    private static bool TryActivateFluent(string[] args, out uint processId)
     {
-        bool hasDotNet = Probe(() =>
-        {
-            Version? ver = ScanInstalledDotNetVersions();
-            return ver is not null && ver >= new Version(8, 0);
-        });
+        processId = 0;
+        int hr = CoInitializeEx(IntPtr.Zero, 0x2);
+        if (hr != 0 && hr != 1 && hr != 0x80010106) return false;
 
-        bool hasWinAppRuntime = Probe(() =>
-        {
-            IntPtr h = LoadLibraryExW("Microsoft.WindowsAppRuntime.Bootstrap.dll",
-                                      IntPtr.Zero, LoadLibrarySearchSystem32);
-            return h != IntPtr.Zero;
-        });
-
-        bool isPackaged = Probe(() =>
-        {
-            int len = 0;
-            int hr = GetCurrentPackageFullName(ref len, IntPtr.Zero);
-            return hr == 0 || hr == 0x7A;
-        });
-
-        return hasDotNet && (hasWinAppRuntime || isPackaged);
-    }
-
-    /// <summary>
-    /// Scans both registry keys and shared framework directories to find the
-    /// highest installed .NET Desktop Runtime version.
-    /// </summary>
-    private static Version? ScanInstalledDotNetVersions()
-    {
-        // 1) Registry lookup: official runtime installers write here.
-        Version? fromReg = ScanRegistry();
-        if (fromReg is not null) return fromReg;
-
-        // 2) Filesystem fallback for SDK / zip installs that skip registry.
-        return Probe(() =>
-        {
-            string sharedFx = "shared/Microsoft.WindowsDesktop.App";
-            string[] roots =
-            [
-                Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles),
-                    "dotnet", sharedFx),
-                Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFilesX86),
-                    "dotnet", sharedFx),
-                Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-                    "Microsoft", "dotnet", sharedFx),
-            ];
-
-            Version? best = null;
-            foreach (string root in roots)
-            {
-                if (!Directory.Exists(root)) continue;
-                foreach (string child in Directory.GetDirectories(root))
-                {
-                    if (Version.TryParse(Path.GetFileName(child), out Version? v) &&
-                        (best is null || v > best))
-                        best = v;
-                }
-            }
-            return best;
-        });
-    }
-
-    private static Version? ScanRegistry()
-    {
-        Version? best = null;
-        string fxName = "Microsoft.WindowsDesktop.App";
-
-        foreach (RegistryHive hive in new[] { RegistryHive.LocalMachine, RegistryHive.CurrentUser })
-        {
-            foreach (RegistryView view in new[] { RegistryView.Registry64, RegistryView.Registry32 })
-            {
-                foreach (string arch in new[] { "x64", "arm64", "x86" })
-                {
-                    best = PickBest(best, TryReadRegValue(hive, view, arch, fxName, "Version"));
-                    foreach (string subKeyName in TryGetRegSubKeys(hive, view, arch, fxName))
-                    {
-                        best = PickBest(best, TryParseVer(subKeyName));
-                    }
-                }
-            }
-        }
-
-        return best;
-    }
-
-    private static IEnumerable<string> TryGetRegSubKeys(
-        RegistryHive hive, RegistryView view, string arch, string fxName)
-    {
-        string path = $@"SOFTWARE\dotnet\Setup\InstalledVersions\{arch}\sharedfx\{fxName}";
         try
         {
-            using var key = RegistryKey.OpenBaseKey(hive, view).OpenSubKey(path);
-            return key?.GetSubKeyNames() ?? Array.Empty<string>();
+            Guid clsid = new(0x45ba127d, 0x10a8, 0x46ea, 0x8a, 0xb7, 0x56, 0xea, 0x90, 0x78, 0x94, 0x3c);
+            Guid iid = new(0x2e941141, 0x7f97, 0x4756, 0xba, 0x1d, 0x9d, 0xec, 0xde, 0x89, 0x4a, 0x3d);
+
+            hr = CoCreateInstance(ref clsid, IntPtr.Zero, 0x1, ref iid, out IntPtr pMgr);
+            if (hr < 0 || pMgr == IntPtr.Zero) return false;
+
+            try
+            {
+                string? familyName = GetPackageFamilyName();
+                if (string.IsNullOrEmpty(familyName)) return false;
+
+                string aumid = familyName + "!FluentApp";
+                string activationArgs = args.Length > 0 ? string.Join(" ", args) : string.Empty;
+                hr = ActivateApplication(pMgr, aumid, activationArgs, 0, out processId);
+                return hr == 0 && processId != 0;
+            }
+            finally { Marshal.Release(pMgr); }
         }
-        catch { return Array.Empty<string>(); }
+        finally { CoUninitialize(); }
     }
 
-    private static string? TryReadRegValue(
-        RegistryHive hive, RegistryView view, string arch, string fxName, string valueName)
+    private static string? GetPackageFamilyName()
     {
-        string path = $@"SOFTWARE\dotnet\Setup\InstalledVersions\{arch}\sharedfx\{fxName}";
         try
         {
-            using var key = RegistryKey.OpenBaseKey(hive, view).OpenSubKey(path);
-            return key?.GetValue(valueName) as string;
+            uint len = 0;
+            int r = GetCurrentPackageFamilyName(ref len, null);
+            if (r != 120 || len == 0) return null;
+            Span<char> name = stackalloc char[(int)len];
+            r = GetCurrentPackageFamilyName(ref len, name);
+            return r == 0 ? name.ToString() : null;
         }
         catch { return null; }
     }
 
-    private static Version? TryParseVer(string s) =>
-        Version.TryParse(s, out Version? v) ? v : null;
-
-    private static Version? PickBest(Version? current, Version? candidate) =>
-        candidate is not null && (current is null || candidate > current) ? candidate : current;
-
-    private static T Probe<T>(Func<T> fn, T fallback = default)
+    [SuppressMessage("SonarQube", "S6640", Justification = "NativeAOT COM vtable interop requires unsafe code")]
+    private static unsafe int ActivateApplication(IntPtr p, string a, string? b, uint c, out uint d)
     {
-        try { return fn(); }
-        catch { return fallback; } // Intentionally swallowed — probe methods are best-effort.
+        d = 0;
+        IntPtr vt = Marshal.ReadIntPtr(p);
+        IntPtr fn = Marshal.ReadIntPtr(vt, 3 * IntPtr.Size);
+        delegate* unmanaged[Stdcall]<IntPtr, char*, char*, uint, out uint, int> act =
+            (delegate* unmanaged[Stdcall]<IntPtr, char*, char*, uint, out uint, int>)fn;
+        fixed (char* pa = a) fixed (char* pb = b ?? "")
+            return act(p, pa, pb, c, out d);
     }
+
+    private static string? FindExe(string dir, string name)
+    {
+        string p = Path.Combine(dir, name);
+        if (File.Exists(p)) return p;
+        string? pd = Path.GetDirectoryName(Environment.ProcessPath);
+        if (pd != null) { p = Path.Combine(pd, name); if (File.Exists(p)) return p; }
+        return null;
+    }
+
+    // skipcq: CS-R1138
+    [DllImport("ole32.dll", ExactSpelling = true)] private static extern int CoInitializeEx(IntPtr r, uint m);
+    [DllImport("ole32.dll", ExactSpelling = true)] private static extern void CoUninitialize();
+    // skipcq: CS-R1138
+    [DllImport("ole32.dll", ExactSpelling = true)] private static extern int CoCreateInstance(ref Guid rclsid, IntPtr pUnkOuter, uint dwClsContext, ref Guid riid, out IntPtr ppv);
+    // skipcq: CS-R1138
+    [DllImport("kernel32.dll", CharSet = CharSet.Unicode)] private static extern int GetCurrentPackageFamilyName(ref uint l, Span<char> n);
 }

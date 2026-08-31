@@ -1,0 +1,62 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Package
+  xmlns="http://schemas.microsoft.com/appx/manifest/foundation/windows10"
+  xmlns:uap="http://schemas.microsoft.com/appx/manifest/uap/windows10"
+  xmlns:rescap="http://schemas.microsoft.com/appx/manifest/foundation/windows10/restrictedcapabilities"
+  xmlns:uap3="http://schemas.microsoft.com/appx/manifest/uap/windows10/3"
+  xmlns:uap10="http://schemas.microsoft.com/appx/manifest/uap/windows10/10"
+  IgnorableNamespaces="uap rescap uap3 uap10">
+
+  <!--
+    Clickra Fluent Optional Package
+    - Related-set companion to Clickra Main MSIX
+    - Carries Windows App Runtime dependency (Main does not)
+    - Only installed when user explicitly requests Fluent UI
+  -->
+  <Identity
+    Name="Clickra.Fluent"
+    Publisher="CN=CBF59877-21AD-4BC4-8F91-FE8DA520A138"
+    Version="3.6.5.0" />
+
+  <Properties>
+    <DisplayName>Clickra Fluent</DisplayName>
+    <PublisherDisplayName>Clickra</PublisherDisplayName>
+    <Logo>Assets\StoreLogo.png</Logo>
+  </Properties>
+
+  <Dependencies>
+    <TargetDeviceFamily Name="Windows.Desktop" MinVersion="10.0.17763.0" MaxVersionTested="10.0.22621.0" />
+    <!-- Windows App Runtime: only this optional package declares the dependency -->
+    <PackageDependency Name="Microsoft.WindowsAppRuntime.2"
+      Publisher="CN=Microsoft Corporation, O=Microsoft Corporation, L=Redmond, S=Washington, C=US"
+      MinVersion="2.3.1.0" />
+    <!-- Related-set binding: must match Main package Identity Name -->
+    <uap3:MainPackageDependency Name="Clickra" />
+  </Dependencies>
+
+  <Resources>
+    <Resource Language="zh-TW" />
+    <Resource Language="en-US" />
+    <Resource Language="ja-JP" />
+    <Resource Language="ko-KR" />
+    <Resource Language="zh-CN" />
+  </Resources>
+
+  <Applications>
+    <Application Id="FluentApp"
+      Executable="Clickra.Fluent.exe"
+      EntryPoint="Windows.FullTrustApplication"
+      uap10:RuntimeBehavior="packagedClassicApp"
+      uap10:TrustLevel="mediumIL">
+      <uap:VisualElements
+        DisplayName="Clickra Fluent"
+        Description="Clickra Fluent UI (WinUI 3)"
+        BackgroundColor="transparent"
+        Square150x150Logo="Assets\Square150x150Logo.png"
+        Square44x44Logo="Assets\Square44x44Logo.png">
+        <uap:DefaultTile Wide310x150Logo="Assets\Wide310x150Logo.png" />
+      </uap:VisualElements>
+    </Application>
+  </Applications>
+
+</Package>
