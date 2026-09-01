@@ -774,12 +774,12 @@ static partial class TestSuite
 
         runner.Run("Spatial table promotion expands until table rows stabilize", () =>
         {
-            var headerLeft = LayoutParagraph("Type", "", 330, 700, 380, 710, 6);
-            var headerRight = LayoutParagraph("Format", "", 500, 700, 550, 710, 6);
+            var headerLeft = LayoutParagraph("Type", x0: 330, y0: 700, x1: 380, y1: 710, fontSize: 6);
+            var headerRight = LayoutParagraph("Format", x0: 500, y0: 700, x1: 550, y1: 710, fontSize: 6);
             headerLeft.IsTable = true;
             headerRight.IsTable = true;
-            var firstBridge = LayoutParagraph("Q5. Level of expertise", "", 360, 688, 520, 696, 6);
-            var secondBridge = LayoutParagraph("Q6. Prior experience", "", 360, 676, 520, 684, 6);
+            var firstBridge = LayoutParagraph("Q5. Level of expertise", x0: 360, y0: 688, x1: 520, y1: 696, fontSize: 6);
+            var secondBridge = LayoutParagraph("Q6. Prior experience", x0: 360, y0: 676, x1: 520, y1: 684, fontSize: 6);
 
             int marked = PdfTableMaskPlanner.MarkParagraphsInsideTableMasksUntilStable(
                 new List<PdfParagraph> { headerLeft, headerRight, firstBridge, secondBridge },
@@ -792,17 +792,13 @@ static partial class TestSuite
 
         runner.Run("Spatial table promotion fills narrow aligned mask gaps", () =>
         {
-            var topLeft = LayoutParagraph("Type", "", 345, 700, 380, 710, 6);
-            var topRight = LayoutParagraph("Format", "", 500, 700, 530, 710, 6);
-            var bottomLeft = LayoutParagraph("Q10", "", 345, 640, 380, 650, 6);
-            var bottomRight = LayoutParagraph("Likert", "", 500, 640, 530, 650, 6);
+            var topLeft = LayoutParagraph("Type", x0: 345, y0: 700, x1: 380, y1: 710, fontSize: 6);
+            var topRight = LayoutParagraph("Format", x0: 500, y0: 700, x1: 530, y1: 710, fontSize: 6);
+            var bottomLeft = LayoutParagraph("Q10", x0: 345, y0: 640, x1: 380, y1: 650, fontSize: 6);
+            var bottomRight = LayoutParagraph("Likert", x0: 500, y0: 640, x1: 530, y1: 650, fontSize: 6);
             foreach (var seed in new[] { topLeft, topRight, bottomLeft, bottomRight })
                 seed.IsTable = true;
-            var gapRow = LayoutParagraph(
-                "Q7. Prior experience with automated test generation",
-                "",
-                367, 668, 519, 686,
-                6);
+            var gapRow = LayoutParagraph("Q7. Prior experience with automated test generation", x0: 367, y0: 668, x1: 519, y1: 686, fontSize: 6);
 
             int marked = PdfTableMaskPlanner.MarkParagraphsInsideTableMasksUntilStable(
                 new List<PdfParagraph> { topLeft, topRight, bottomLeft, bottomRight, gapRow },

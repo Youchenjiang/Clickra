@@ -79,8 +79,8 @@ static partial class TestSuite
         string upperText, string lowerText,
         double upperFontSize = 9.5, double lowerFontSize = 8.0)
     {
-        var upper = LayoutParagraph(upperText, string.Empty, 108, 150, 504, 180, upperFontSize);
-        var lower = LayoutParagraph(lowerText, string.Empty, 108, 137, 295, 144, lowerFontSize);
+        var upper = LayoutParagraph(upperText, x0: 108, y0: 150, x1: 504, y1: 180, fontSize: upperFontSize);
+        var lower = LayoutParagraph(lowerText, x0: 108, y0: 137, x1: 295, y1: 144, fontSize: lowerFontSize);
         var paragraphs = new List<PdfParagraph> { upper, lower };
         PdfParagraphPostProcessor.MergeHyphenatedTechnicalLineFragments(
             paragraphs,
@@ -143,11 +143,11 @@ static partial class TestSuite
 
     private static PdfParagraph LayoutParagraph(
         string source,
-        string translated,
-        double x0,
-        double y0,
-        double x1,
-        double y1,
+        string translated = "",
+        double x0 = 0,
+        double y0 = 0,
+        double x1 = 0,
+        double y1 = 0,
         double fontSize = 10)
     {
         var paragraph = new PdfParagraph(Array.Empty<UglyToad.PdfPig.DocumentLayoutAnalysis.TextLine>())
