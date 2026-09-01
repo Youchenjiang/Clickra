@@ -147,7 +147,7 @@ internal class FallbackTranslator : ITranslationEngine
         // valid document into a provider-rate-limit failure).
         string label = source.Trim();
         if (Regex.IsMatch(label, @"^[A-Za-z]+(?:-[A-Za-z0-9]+)+$", RegexOptions.None, TimeSpan.FromSeconds(1)) ||
-            Regex.IsMatch(label, @"^[A-Z][a-z]+[A-Z][A-Za-z0-9]*$", RegexOptions.None, TimeSpan.FromSeconds(1)))
+            TranslationSourcePreservationClassifier.IsHighConfidenceTechnicalLabel(label))
             return false;
         if (IsNonTranslatableReference(label))
             return false;

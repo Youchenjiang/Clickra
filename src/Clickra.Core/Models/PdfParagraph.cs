@@ -126,7 +126,7 @@ namespace Clickra.Core.Models
             return PdfTextLineMerger.MergeHorizontalLines(initialLines);
         }
 
-        public void MergeWith(PdfParagraph other)
+        public void MergeWith(PdfParagraph other, string separator = " ")
         {
             if (other == null) return;
 
@@ -146,14 +146,14 @@ namespace Clickra.Core.Models
 
             this.TextWithPlaceholders = string.IsNullOrWhiteSpace(this.TextWithPlaceholders)
                 ? otherText
-                : this.TextWithPlaceholders + " " + otherText;
+                : this.TextWithPlaceholders + separator + otherText;
 
             string otherStyled = string.IsNullOrWhiteSpace(other.TranslationTextWithStyles)
                 ? otherText
                 : other.TranslationTextWithStyles;
             this.TranslationTextWithStyles = string.IsNullOrWhiteSpace(this.TranslationTextWithStyles)
                 ? otherStyled
-                : $"{this.TranslationTextWithStyles} {otherStyled}";
+                : $"{this.TranslationTextWithStyles}{separator}{otherStyled}";
 
             this.AllLetters.AddRange(other.AllLetters);
 

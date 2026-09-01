@@ -329,6 +329,78 @@ static partial class TestSuite
             Assert.True(fallback.SingleAttempts == 0, "URL-only references should not consume fallback quota.");
         });
 
+        runner.Run("Fallback translator preserves numbered technical headings without a whitelist", () =>
+        {
+            var primary = new UnchangedTranslationEngine(PrimaryEngineName);
+            var fallback = new RecordingTranslationEngine(FallbackEngineName);
+            var translator = new FallbackTranslator(primary, fallback);
+
+            string result = translator.TranslateAsync(
+                    "B.3 CoppeliaSim",
+                    "zh-TW",
+                    CancellationToken.None)
+                .GetAwaiter()
+                .GetResult();
+
+            Assert.Equal("B.3 CoppeliaSim", result);
+            Assert.True(fallback.SingleAttempts == 0,
+                "A high-confidence technical heading should be preserved without consuming fallback quota.");
+        });
+
+        runner.Run("Fallback translator does not preserve ordinary numbered headings", () =>
+        {
+            var primary = new UnchangedTranslationEngine(PrimaryEngineName);
+            var fallback = new RecordingTranslationEngine(FallbackEngineName);
+            var translator = new FallbackTranslator(primary, fallback);
+
+            string result = translator.TranslateAsync(
+                    "B.3 Experimental Setup",
+                    "zh-TW",
+                    CancellationToken.None)
+                .GetAwaiter()
+                .GetResult();
+
+            Assert.Equal("fallback:B.3 Experimental Setup", result);
+            Assert.True(fallback.SingleAttempts == 1,
+                "An ordinary multiword heading must still be translated.");
+        });
+
+        runner.Run("Translation health serializes preserved technical labels", () =>
+        {
+            string reportPath = Path.Combine(
+                Path.GetTempPath(),
+                $"clickra-translation-health-{Guid.NewGuid():N}.json");
+            try
+            {
+                new PdfTranslationHealthReport
+                {
+                    Succeeded = true,
+                    PreservedTechnicalLabels = new[]
+                    {
+                        new PdfTranslationPreservation
+                        {
+                            Page = 18,
+                            Text = "B.3 CoppeliaSim",
+                            Action = "preserved",
+                            Reason = "section heading containing a technical label"
+                        }
+                    }
+                }.Save(reportPath);
+
+                string json = File.ReadAllText(reportPath);
+                Assert.True(json.Contains("\"Page\": 18", StringComparison.Ordinal),
+                    "Health report should include the preserved label page.");
+                Assert.True(json.Contains("\"B.3 CoppeliaSim\"", StringComparison.Ordinal),
+                    "Health report should include the preserved source text.");
+                Assert.True(json.Contains("\"Action\": \"preserved\"", StringComparison.Ordinal),
+                    "Health report should identify the preservation action.");
+            }
+            finally
+            {
+                if (File.Exists(reportPath)) File.Delete(reportPath);
+            }
+        });
+
         runner.Run("Fallback translator propagates caller cancellation without fallback", () =>
         {
             using var cts = new CancellationTokenSource();
@@ -671,6 +743,80 @@ static partial class TestSuite
                 $"Body renderer must not use the isolated 20pt glyph as its font floor; got {metrics.EffectiveFontSize:F2}.");
             Assert.True(plan.MaximumBodyFontRatio <= 1.01,
                 $"Body planner must size from the normal 10pt body font; got ratio {plan.MaximumBodyFontRatio:F2}.");
+        });
+
+        runner.Run("Technical identifiers split across source lines are safely dehyphenated", () =>
+        {
+            var upper = LayoutParagraph(
+                "For example, inspect objects in Cop-",
+                string.Empty,
+                108, 150, 504, 180,
+                9.5);
+            var lower = LayoutParagraph(
+                "peliaSim scene, one can use the following call:",
+                string.Empty,
+                108, 137, 295, 144,
+                8.0);
+            var paragraphs = new List<PdfParagraph> { upper, lower };
+
+            PdfParagraphPostProcessor.MergeHyphenatedTechnicalLineFragments(
+                paragraphs,
+                PdfParagraphSemanticClassifier.IsHeadingParagraph,
+                792);
+
+            Assert.True(paragraphs.Count == 1, "The split technical identifier should form one paragraph.");
+            Assert.True(upper.TextWithPlaceholders.Contains("CoppeliaSim scene", StringComparison.Ordinal),
+                $"Expected CoppeliaSim to be rejoined, got: {upper.TextWithPlaceholders}");
+            Assert.True(!upper.TextWithPlaceholders.Contains("Cop-peliaSim", StringComparison.Ordinal),
+                "The source line-break hyphen must be removed.");
+        });
+
+        runner.Run("Meaningful lowercase compound hyphens are preserved", () =>
+        {
+            var upper = LayoutParagraph("This is a long-", string.Empty, 108, 150, 504, 180, 9.0);
+            var lower = LayoutParagraph("term study.", string.Empty, 108, 137, 295, 144, 9.0);
+            var paragraphs = new List<PdfParagraph> { upper, lower };
+
+            PdfParagraphPostProcessor.MergeHyphenatedTechnicalLineFragments(
+                paragraphs,
+                PdfParagraphSemanticClassifier.IsHeadingParagraph,
+                792);
+
+            Assert.True(paragraphs.Count == 2, "A meaningful compound must not be dehyphenated.");
+            Assert.True(upper.TextWithPlaceholders.EndsWith("long-", StringComparison.Ordinal),
+                "The meaningful compound hyphen should remain intact.");
+        });
+
+        runner.Run("Continuation font inheritance cannot be amplified twice", () =>
+        {
+            try { GlobalFontSettings.FontResolver = new ClickraFontResolver(); } catch (InvalidOperationException) { }
+            using var document = new PdfDocument();
+            var page = document.AddPage();
+            page.Width = XUnit.FromPoint(612);
+            page.Height = XUnit.FromPoint(792);
+            using var gfx = XGraphics.FromPdfPage(page);
+            var predecessor = LayoutParagraph(
+                "First body fragment",
+                "第一個正文片段",
+                108, 500, 504, 520,
+                10.0);
+            predecessor.SourceLineHeight = 10.0;
+            var continuation = LayoutParagraph(
+                "continuation fragment",
+                "續行片段",
+                108, 484, 300, 492,
+                8.5);
+            continuation.SourceLineHeight = 8.5;
+
+            var plan = PdfTranslationLayoutPlanner.BuildAndApply(
+                gfx,
+                new[] { predecessor, continuation },
+                DfKaiSbFontName,
+                612,
+                792);
+
+            Assert.True(plan.MaximumBodyFontRatio <= PdfTranslationHealthReport.MaximumAllowedBodyFontRatio + 0.001,
+                $"Continuation inheritance must stay within the body scale limit; got {plan.MaximumBodyFontRatio:F3}.");
         });
     }
 

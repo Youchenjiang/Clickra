@@ -156,6 +156,9 @@
     - [x] **命名空間整合 (2026/08/08 完成)**：10 個 `TestSuite` partial 檔已移入 `Clickra.Core.Tests` 命名空間並移除 S3903 pragma，解決全域命名空間污染（CS-W1061）。
     - **升級測試框架**：後續規劃將自建的 `TestRunner` 升級為業界標準的單元測試框架（如 xUnit 或 NUnit），以利於在 CI 流程中整合覆蓋率分析。
 - [ ] **[R1-5] Quality Gate Observations**：品質閘門觀察。
+    - **NativeAOT build warnings (2026/09/01 記錄)**：`src/ClickraLauncher/Program.cs:53` 產生 CS0652（將 `int` 與超出其範圍的整數常數比較，條件無意義）；`src/ClickraShell/obj/.../ClickraShell.def` 的 `DllGetClassObject`、`DllCanUnloadNow` export 產生 LNK4104（建議標為 `PRIVATE`）。兩者在右鍵命令圖示資源修復的完整 MSIX 建置中發現，與本次缺少 `menu-*.ico` 的根因無關，為維持原子化範圍延後至 Launcher／Shell build-warning 專項處理。
+    - [x] **PDF 來源技術識別字斷字重建 (2026/09/01 完成)**：以技術識別字形狀、同欄左邊界與緊鄰行距，安全合併 `Cop-`＋`peliaSim`，同時保留 `long-term` 等真正複合詞。`2502.03297v3.pdf` 第 18 頁診斷不再產生獨立 `peliaSim` 段落，並新增正反向回歸案例。
+    - [x] **PDF 續行字級二次放大 (2026/09/01 完成)**：續行繼承前段字級時同步正規化來源字級，避免版面平衡再次乘上放大倍率。`2502.03297v3.pdf` 的 28 頁 synthetic-CJK 版面回歸將 `MaximumBodyFontRatio` 從 `1.423` 降至 `1.15`，`LayoutFailureReason` 清空，且 `GuardClipEntries=0`、`OverflowEntries=0`；核心測試 121/121 通過。
     - **SonarCloud 參數過多 (2026/08/23 記錄)**：`WriteTaskFileInternal` 12 參數、`CompleteTask` 9 參數，均超過 SonarCloud 門檻 7。需引入 `TaskFileData` record 類型封裝參數，或將可選參數改為 options object。此為架構級重構，留待下一個 PR 處理。
     - [x] **ConvertCommandRunner 參數過多 (2026/08/28 記錄，同日完成重構)**：引入 `ConversionOptions` record 封裝 `PromptPassword`、`PromptSplitPages`、`StartIndex`、`ExistingTaskId`，`RunTrackedAsync` 9→6 參數、`Run` 8→6 參數，均低於門檻 7。
     - **Localization "Excel" 結構性重複 (2026/08/23 記錄)**：`Localization.cs` 的 5 種語言字典中 "Excel" 出現5次，SonarCloud 警告 Define a constant。此為 i18n 字典結構性重複（同 R1-5 Localization 字典重複），不單獨處理。

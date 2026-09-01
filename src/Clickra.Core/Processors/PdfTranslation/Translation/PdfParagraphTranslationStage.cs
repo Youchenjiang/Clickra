@@ -74,13 +74,21 @@ internal static class PdfParagraphTranslationStage
                             // that looks complete while silently leaving one
                             // paragraph untranslated.
                             string rawResult = results[i];
-                            string styledSource = paragraphsToTranslate[i].TranslationTextWithStyles;
+                            PdfParagraph paragraph = paragraphsToTranslate[i];
+                            string translationSource = textsToTranslate[i];
+                            bool preservedTechnicalLabel =
+                                PdfParagraphSemanticClassifier.IsHeadingParagraph(paragraph) &&
+                                TranslationSourcePreservationClassifier.IsHighConfidenceTechnicalLabel(
+                                    paragraph.TextWithPlaceholders) &&
+                                TranslationSourcePreservationClassifier.IsUnchanged(
+                                    translationSource,
+                                    rawResult);
                             string? qualityProblem = translator.Name.Equals(
                                 "synthetic-cjk",
                                 StringComparison.OrdinalIgnoreCase)
                                 ? null
                                 : TranslationResultQualityGuard.FindProblem(
-                                    styledSource,
+                                    translationSource,
                                     rawResult,
                                     targetLang);
                             if (qualityProblem != null)
@@ -94,7 +102,20 @@ internal static class PdfParagraphTranslationStage
                                 restoredMarkers,
                                 targetLang
                             );
-                            report.TranslatedParagraphs++;
+                            if (preservedTechnicalLabel)
+                            {
+                                report.PreservedTechnicalLabels.Add(new PdfTranslationPreservation
+                                {
+                                    Page = p + 1,
+                                    Text = paragraph.TextWithPlaceholders,
+                                    Action = "preserved",
+                                    Reason = "section heading containing a technical label"
+                                });
+                            }
+                            else
+                            {
+                                report.TranslatedParagraphs++;
+                            }
                         }
                     }
                     else
@@ -136,5 +157,6 @@ internal sealed class PdfTranslationStageReport
     public string Provider { get; init; } = string.Empty;
     public int TranslatedParagraphs { get; set; }
     public int BypassedParagraphs { get; set; }
+    public List<PdfTranslationPreservation> PreservedTechnicalLabels { get; } = new();
     public List<string> Failures { get; } = new();
 }

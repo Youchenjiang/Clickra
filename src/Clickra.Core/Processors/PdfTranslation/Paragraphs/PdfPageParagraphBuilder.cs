@@ -164,6 +164,10 @@ internal static class PdfPageParagraphBuilder
         PdfGrayPromptMarker.ClearMisclassifiedCodeFlags(pageList);
 
         PdfParagraphPostProcessor.MergeVerticallyAdjacentParagraphs(pageList, PdfParagraphSemanticClassifier.IsHeadingParagraph);
+        PdfParagraphPostProcessor.MergeHyphenatedTechnicalLineFragments(
+            pageList,
+            PdfParagraphSemanticClassifier.IsHeadingParagraph,
+            page.Height);
         // Docstrum may split wrapped ordinary prose at a short right edge.
         // Rejoin only tight, same-column line fragments before translation so
         // one visual paragraph receives one typography/reflow decision.

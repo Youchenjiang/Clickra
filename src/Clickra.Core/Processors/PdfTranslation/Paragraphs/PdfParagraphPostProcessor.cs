@@ -1,12 +1,15 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Text.RegularExpressions;
 using Clickra.Core.Models;
 
 namespace Clickra.Core.Processors
 {
     internal static class PdfParagraphPostProcessor
     {
+        private static readonly TimeSpan RegexTimeout = TimeSpan.FromSeconds(1);
+
         public static void MergeVerticallyAdjacentParagraphs(
             List<PdfParagraph> paragraphs,
             Func<PdfParagraph, bool> isHeadingParagraph)
@@ -114,6 +117,139 @@ namespace Clickra.Core.Processors
             }
         }
 
+        /// <summary>
+        /// Rejoins a technical identifier that PdfPig split across two visual
+        /// lines (for example <c>Cop-</c> + <c>peliaSim</c>). The mixed-case or
+        /// digit shape is the safety signal: ordinary compounds such as
+        /// <c>long-</c> + <c>term</c> retain their meaningful hyphen.
+        /// </summary>
+        public static void MergeHyphenatedTechnicalLineFragments(
+            List<PdfParagraph> paragraphs,
+            Func<PdfParagraph, bool> isHeadingParagraph,
+            double pageHeight)
+        {
+            if (paragraphs.Count <= 1) return;
+
+            bool mergedAny = true;
+            while (mergedAny)
+            {
+                mergedAny = false;
+                var sorted = paragraphs.OrderByDescending(paragraph => paragraph.Y1).ToList();
+                foreach (PdfParagraph upper in sorted)
+                {
+                    PdfParagraph? lower = sorted
+                        .Where(candidate => candidate != upper && candidate.Y1 <= upper.Y0 + 1.0)
+                        .OrderByDescending(candidate => candidate.Y1)
+                        .FirstOrDefault(candidate => CanMergeHyphenatedTechnicalFragment(
+                            upper,
+                            candidate,
+                            isHeadingParagraph,
+                            pageHeight));
+                    if (lower == null) continue;
+
+                    upper.TextWithPlaceholders = RemoveTerminalLineBreakHyphen(upper.TextWithPlaceholders);
+                    upper.TranslationTextWithStyles = RemoveTerminalLineBreakHyphen(
+                        upper.TranslationTextWithStyles);
+                    upper.MergeWith(lower, string.Empty);
+                    paragraphs.Remove(lower);
+                    mergedAny = true;
+                    break;
+                }
+            }
+        }
+
+        private static bool CanMergeHyphenatedTechnicalFragment(
+            PdfParagraph upper,
+            PdfParagraph lower,
+            Func<PdfParagraph, bool> isHeadingParagraph,
+            double pageHeight)
+        {
+            if (IsProtectedHyphenatedPair(upper, lower, isHeadingParagraph))
+                return false;
+            if (!HasMatchingHyphenatedColumn(upper, lower, pageHeight))
+                return false;
+
+            double gap = upper.Y0 - lower.Y1;
+            if (gap < -1.0 || gap > 8.0)
+                return false;
+
+            Match upperFragment = Regex.Match(
+                upper.TextWithPlaceholders.Trim(),
+                @"(?<fragment>[A-Za-z][A-Za-z0-9]{1,})-$",
+                RegexOptions.None,
+                RegexTimeout);
+            Match lowerFragment = Regex.Match(
+                lower.TextWithPlaceholders.TrimStart(),
+                @"^(?<fragment>[a-z][A-Za-z0-9]{1,})",
+                RegexOptions.None,
+                RegexTimeout);
+            if (!upperFragment.Success || !lowerFragment.Success)
+                return false;
+
+            string combined = upperFragment.Groups["fragment"].Value +
+                              lowerFragment.Groups["fragment"].Value;
+            return TranslationSourcePreservationClassifier.IsHighConfidenceTechnicalLabel(combined);
+        }
+
+        private static bool IsProtectedHyphenatedPair(
+            PdfParagraph upper,
+            PdfParagraph lower,
+            Func<PdfParagraph, bool> isHeadingParagraph)
+        {
+            if (upper.IsBypassed || lower.IsBypassed || upper.IsTable || lower.IsTable ||
+                upper.IsDiagram || lower.IsDiagram || upper.IsCode || lower.IsCode ||
+                upper.IsGrayPromptContent || lower.IsGrayPromptContent ||
+                string.IsNullOrWhiteSpace(upper.TextWithPlaceholders) ||
+                string.IsNullOrWhiteSpace(lower.TextWithPlaceholders))
+                return true;
+
+            // The lower fragment can end in a colon and therefore resemble a
+            // label heading. Its lowercase lexical continuation is evaluated
+            // after this guard and is the stronger signal for this one path.
+            return isHeadingParagraph(upper) ||
+                   PdfParagraphRoleClassifier.IsFigureTableCaptionParagraph(upper) ||
+                   PdfParagraphRoleClassifier.IsFigureTableCaptionParagraph(lower) ||
+                   PdfParagraphBlockMerger.StartsNewParagraphOrSection(upper.TextWithPlaceholders);
+        }
+
+        private static bool HasMatchingHyphenatedColumn(
+            PdfParagraph upper,
+            PdfParagraph lower,
+            double pageHeight)
+        {
+            if (PdfParagraphRoleClassifier.IsRunningHeaderOrFooter(upper, pageHeight) !=
+                PdfParagraphRoleClassifier.IsRunningHeaderOrFooter(lower, pageHeight))
+                return false;
+
+            double minimumWidth = Math.Min(upper.Width, lower.Width);
+            if (minimumWidth <= 0 || Math.Abs(upper.X0 - lower.X0) > 12.0)
+                return false;
+
+            double overlap = Math.Min(upper.X1, lower.X1) - Math.Max(upper.X0, lower.X0);
+            return overlap / minimumWidth >= 0.8;
+        }
+
+        private static bool HasMatchingColumn(PdfParagraph upper, PdfParagraph lower, double pageHeight)
+        {
+            if (PdfParagraphRoleClassifier.IsRunningHeaderOrFooter(upper, pageHeight) !=
+                PdfParagraphRoleClassifier.IsRunningHeaderOrFooter(lower, pageHeight))
+                return false;
+
+            double centerUpper = (upper.X0 + upper.X1) / 2.0;
+            double centerLower = (lower.X0 + lower.X1) / 2.0;
+            return Math.Abs(upper.X0 - lower.X0) <= 12.0 &&
+                   Math.Abs(centerUpper - centerLower) <=
+                   Math.Max(24.0, Math.Min(upper.Width, lower.Width) * 0.25);
+        }
+
+        private static string RemoveTerminalLineBreakHyphen(string value) =>
+            Regex.Replace(
+                value,
+                @"-(?=(?:\{/b\})?\s*$)",
+                string.Empty,
+                RegexOptions.None,
+                RegexTimeout);
+
         private static bool CanMergeWrappedFragment(
             PdfParagraph upper,
             PdfParagraph lower,
@@ -154,14 +290,7 @@ namespace Clickra.Core.Processors
 
         private static bool HasMatchingColumnAndTypography(PdfParagraph upper, PdfParagraph lower, double pageHeight)
         {
-            if (PdfParagraphRoleClassifier.IsRunningHeaderOrFooter(upper, pageHeight) !=
-                PdfParagraphRoleClassifier.IsRunningHeaderOrFooter(lower, pageHeight))
-                return false;
-
-            double centerUpper = (upper.X0 + upper.X1) / 2.0;
-            double centerLower = (lower.X0 + lower.X1) / 2.0;
-            if (Math.Abs(upper.X0 - lower.X0) > 12.0 ||
-                Math.Abs(centerUpper - centerLower) > Math.Max(24.0, Math.Min(upper.Width, lower.Width) * 0.25))
+            if (!HasMatchingColumn(upper, lower, pageHeight))
                 return false;
 
             double upperFont = upper.SourceVisualFontSize > 0 ? upper.SourceVisualFontSize : upper.AverageFontSize;
