@@ -865,8 +865,21 @@ internal static class PdfTranslationLayoutPlanner
             double gap = Math.Abs(((predecessor.Paragraph.OriginalY0 + predecessor.Paragraph.OriginalY1) / 2.0) -
                                  ((current.Paragraph.OriginalY0 + current.Paragraph.OriginalY1) / 2.0));
             if (gap > 32.0 || predecessor.OutputFontSize <= 0) continue;
-            current.Paragraph.LayoutFontSizeOverride = predecessor.OutputFontSize;
-            current.OutputFontSize = predecessor.OutputFontSize;
+            double inheritedSourceFontSize = Math.Max(
+                current.SourceFontSize,
+                predecessor.SourceFontSize);
+            current.SourceFontSize = inheritedSourceFontSize;
+            current.SourceLineHeight = Math.Max(
+                current.SourceLineHeight,
+                predecessor.SourceLineHeight);
+            current.Paragraph.SourceVisualFontSize = inheritedSourceFontSize;
+            current.Paragraph.SourceLineHeight = current.SourceLineHeight;
+
+            double inheritedOutputFontSize = Math.Min(
+                predecessor.OutputFontSize,
+                inheritedSourceFontSize * MaximumBodyFontScale);
+            current.Paragraph.LayoutFontSizeOverride = inheritedOutputFontSize;
+            current.OutputFontSize = inheritedOutputFontSize;
 
             // PdfPig can expose the last source line as a separate, very short
             // paragraph.  Keeping its original Y1 leaves a large blank gap

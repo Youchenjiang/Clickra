@@ -18,6 +18,7 @@ static partial class TestSuite
     private const string CircledNumbersText = "①、②、③";
     private const string PrimaryEngineName = "primary";
     private const string FallbackEngineName = "fallback";
+    private const string TranslationEngineEnvVar = "CLICKRA_TRANSLATION_ENGINE";
     private const string ProviderTimeoutEnvVar = "CLICKRA_TRANSLATION_PROVIDER_TIMEOUT_SECONDS";
 
     public static void RegisterTranslationTests(TestRunner runner)
@@ -176,11 +177,8 @@ static partial class TestSuite
         });
 
         runner.Run("Identity translation engine is opt-in for layout tests", () =>
-        {
-            var oldValue = Environment.GetEnvironmentVariable("CLICKRA_TRANSLATION_ENGINE");
-            try
+            WithEnvVar(TranslationEngineEnvVar, "identity", () =>
             {
-                Environment.SetEnvironmentVariable("CLICKRA_TRANSLATION_ENGINE", "identity");
                 var translator = TranslationEngineFactory.Create();
                 Assert.Equal("identity", translator.Name);
                 Assert.Equal(
@@ -188,19 +186,11 @@ static partial class TestSuite
                     translator.TranslateAsync("Keep layout text unchanged.", "zh-TW", CancellationToken.None)
                         .GetAwaiter()
                         .GetResult());
-            }
-            finally
-            {
-                Environment.SetEnvironmentVariable("CLICKRA_TRANSLATION_ENGINE", oldValue);
-            }
-        });
+            }));
 
         runner.Run("Synthetic CJK engine preserves placeholders for layout tests", () =>
-        {
-            var oldValue = Environment.GetEnvironmentVariable("CLICKRA_TRANSLATION_ENGINE");
-            try
+            WithEnvVar(TranslationEngineEnvVar, "synthetic-cjk", () =>
             {
-                Environment.SetEnvironmentVariable("CLICKRA_TRANSLATION_ENGINE", "synthetic-cjk");
                 var translator = TranslationEngineFactory.Create();
                 Assert.Equal("synthetic-cjk", translator.Name);
                 string translated = translator.TranslateAsync(
@@ -214,32 +204,19 @@ static partial class TestSuite
                 Assert.True(
                     translated.Length < "runtime features {v0}.".Length,
                     "Synthetic CJK output did not model the higher information density of CJK text.");
-            }
-            finally
-            {
-                Environment.SetEnvironmentVariable("CLICKRA_TRANSLATION_ENGINE", oldValue);
-            }
-        });
+            }));
 
         runner.Run("Translation engine defaults to Google with MyMemory fallback", () =>
-        {
-            var oldValue = Environment.GetEnvironmentVariable("CLICKRA_TRANSLATION_ENGINE");
-            try
+            WithEnvVar(TranslationEngineEnvVar, null, () =>
             {
-                Environment.SetEnvironmentVariable("CLICKRA_TRANSLATION_ENGINE", null);
                 Assert.Equal("google-free+mymemory", TranslationEngineFactory.Create().Name);
 
-                Environment.SetEnvironmentVariable("CLICKRA_TRANSLATION_ENGINE", "mymemory");
+                Environment.SetEnvironmentVariable(TranslationEngineEnvVar, "mymemory");
                 Assert.Equal("mymemory", TranslationEngineFactory.Create().Name);
 
-                Environment.SetEnvironmentVariable("CLICKRA_TRANSLATION_ENGINE", "google");
+                Environment.SetEnvironmentVariable(TranslationEngineEnvVar, "google");
                 Assert.Equal("google-free", TranslationEngineFactory.Create().Name);
-            }
-            finally
-            {
-                Environment.SetEnvironmentVariable("CLICKRA_TRANSLATION_ENGINE", oldValue);
-            }
-        });
+            }));
     }
 
     private static void RegisterEngineAndProcessorTests(TestRunner runner)
@@ -252,9 +229,7 @@ static partial class TestSuite
     {
         runner.Run("Fallback translator chunks batches and retries only failed chunks", () =>
         {
-            var primary = new RecordingTranslationEngine(PrimaryEngineName, failOnMarker: "FAIL");
-            var fallback = new RecordingTranslationEngine(FallbackEngineName);
-            var translator = new FallbackTranslator(primary, fallback);
+            var (translator, primary, fallback) = CreateRecordingFallbackTranslator(primaryFailOnMarker: "FAIL");
             var texts = Enumerable.Range(0, 30)
                 .Select(i => i == 25 ? "FAIL " + new string('x', 280) : $"item-{i} " + new string('x', 280))
                 .ToList();
@@ -273,9 +248,7 @@ static partial class TestSuite
 
         runner.Run("Fallback translator rejects incomplete fallback batches", () =>
         {
-            var primary = new RecordingTranslationEngine(PrimaryEngineName, failOnMarker: "FAIL");
-            var fallback = new RecordingTranslationEngine(FallbackEngineName, dropLastBatchResult: true);
-            var translator = new FallbackTranslator(primary, fallback);
+            var (translator, _, _) = CreateRecordingFallbackTranslator(primaryFailOnMarker: "FAIL", fallbackDropLastBatch: true);
 
             var ex = Assert.Throws<Exception>(() =>
                 translator.TranslateBatchAsync(
@@ -291,9 +264,7 @@ static partial class TestSuite
 
         runner.Run("Fallback translator rejects unchanged CJK provider output", () =>
         {
-            var primary = new UnchangedTranslationEngine(PrimaryEngineName);
-            var fallback = new RecordingTranslationEngine(FallbackEngineName);
-            var translator = new FallbackTranslator(primary, fallback);
+            var (translator, primary, fallback) = CreateUnchangedFallbackTranslator();
             const string source = "ASTER: Natural and Multi-language Unit Test Generation with LLMs";
 
             string result = translator.TranslateAsync(source, "zh-TW", CancellationToken.None)
@@ -316,9 +287,7 @@ static partial class TestSuite
 
         runner.Run("Fallback translator allows unchanged URL references", () =>
         {
-            var primary = new UnchangedTranslationEngine(PrimaryEngineName);
-            var fallback = new RecordingTranslationEngine(FallbackEngineName);
-            var translator = new FallbackTranslator(primary, fallback);
+            var (translator, _, fallback) = CreateUnchangedFallbackTranslator();
             const string source = "ACM ISBN 979-8-4007-2426-8/26/04 https://doi.org/10.1145/3786583.3786868";
 
             string result = translator.TranslateAsync(source, "zh-TW", CancellationToken.None)
@@ -329,13 +298,79 @@ static partial class TestSuite
             Assert.True(fallback.SingleAttempts == 0, "URL-only references should not consume fallback quota.");
         });
 
+        runner.Run("Fallback translator preserves numbered technical headings without a whitelist", () =>
+        {
+            var (translator, _, fallback) = CreateUnchangedFallbackTranslator();
+
+            string result = translator.TranslateAsync(
+                    "B.3 CoppeliaSim",
+                    "zh-TW",
+                    CancellationToken.None)
+                .GetAwaiter()
+                .GetResult();
+
+            Assert.Equal("B.3 CoppeliaSim", result);
+            Assert.True(fallback.SingleAttempts == 0,
+                "A high-confidence technical heading should be preserved without consuming fallback quota.");
+        });
+
+        runner.Run("Fallback translator does not preserve ordinary numbered headings", () =>
+        {
+            var (translator, _, fallback) = CreateUnchangedFallbackTranslator();
+
+            string result = translator.TranslateAsync(
+                    "B.3 Experimental Setup",
+                    "zh-TW",
+                    CancellationToken.None)
+                .GetAwaiter()
+                .GetResult();
+
+            Assert.Equal("fallback:B.3 Experimental Setup", result);
+            Assert.True(fallback.SingleAttempts == 1,
+                "An ordinary multiword heading must still be translated.");
+        });
+
+        runner.Run("Translation health serializes preserved technical labels", () =>
+        {
+            string reportPath = Path.Combine(
+                Path.GetTempPath(),
+                $"clickra-translation-health-{Guid.NewGuid():N}.json");
+            try
+            {
+                new PdfTranslationHealthReport
+                {
+                    Succeeded = true,
+                    PreservedTechnicalLabels = new[]
+                    {
+                        new PdfTranslationPreservation
+                        {
+                            Page = 18,
+                            Text = "B.3 CoppeliaSim",
+                            Action = "preserved",
+                            Reason = "section heading containing a technical label"
+                        }
+                    }
+                }.Save(reportPath);
+
+                string json = File.ReadAllText(reportPath);
+                Assert.True(json.Contains("\"Page\": 18", StringComparison.Ordinal),
+                    "Health report should include the preserved label page.");
+                Assert.True(json.Contains("\"B.3 CoppeliaSim\"", StringComparison.Ordinal),
+                    "Health report should include the preserved source text.");
+                Assert.True(json.Contains("\"Action\": \"preserved\"", StringComparison.Ordinal),
+                    "Health report should identify the preservation action.");
+            }
+            finally
+            {
+                if (File.Exists(reportPath)) File.Delete(reportPath);
+            }
+        });
+
         runner.Run("Fallback translator propagates caller cancellation without fallback", () =>
         {
             using var cts = new CancellationTokenSource();
             cts.Cancel();
-            var primary = new RecordingTranslationEngine(PrimaryEngineName);
-            var fallback = new RecordingTranslationEngine(FallbackEngineName);
-            var translator = new FallbackTranslator(primary, fallback);
+            var (translator, _, fallback) = CreateRecordingFallbackTranslator();
 
             Assert.Throws<OperationCanceledException>(() =>
                 translator.TranslateBatchAsync(
@@ -350,11 +385,8 @@ static partial class TestSuite
         });
 
         runner.Run("Fallback translator gives each provider an independent deadline", () =>
-        {
-            var oldTimeout = Environment.GetEnvironmentVariable(ProviderTimeoutEnvVar);
-            try
+            WithEnvVar(ProviderTimeoutEnvVar, "1", () =>
             {
-                Environment.SetEnvironmentVariable(ProviderTimeoutEnvVar, "1");
                 var primary = new DelayedTranslationEngine("slow-primary", delayMilliseconds: 1500);
                 var fallback = new RecordingTranslationEngine(FallbackEngineName);
                 var translator = new FallbackTranslator(primary, fallback);
@@ -369,19 +401,11 @@ static partial class TestSuite
                 Assert.Equal("fallback:deadline test", result.Single());
                 Assert.True(primary.BatchAttempts == 1, "Primary provider should be attempted once.");
                 Assert.True(fallback.BatchSizes.Count == 1, "Fallback should run after primary timeout.");
-            }
-            finally
-            {
-                Environment.SetEnvironmentVariable(ProviderTimeoutEnvVar, oldTimeout);
-            }
-        });
+            }));
 
         runner.Run("Fallback translator fails closed when both provider deadlines expire", () =>
-        {
-            var oldTimeout = Environment.GetEnvironmentVariable(ProviderTimeoutEnvVar);
-            try
+            WithEnvVar(ProviderTimeoutEnvVar, "1", () =>
             {
-                Environment.SetEnvironmentVariable(ProviderTimeoutEnvVar, "1");
                 var translator = new FallbackTranslator(
                     new DelayedTranslationEngine("slow-primary", delayMilliseconds: 1500),
                     new DelayedTranslationEngine("slow-fallback", delayMilliseconds: 1500));
@@ -392,12 +416,7 @@ static partial class TestSuite
                         CancellationToken.None)
                     .GetAwaiter()
                     .GetResult());
-            }
-            finally
-            {
-                Environment.SetEnvironmentVariable(ProviderTimeoutEnvVar, oldTimeout);
-            }
-        });
+            }));
     }
 
     private static void RegisterProcessorAndPipelineTests(TestRunner runner)
@@ -410,14 +429,8 @@ static partial class TestSuite
     {
         runner.Run("Heading classifier recognizes Roman sections but not equation numbers", () =>
         {
-            var heading = new PdfParagraph(Array.Empty<UglyToad.PdfPig.DocumentLayoutAnalysis.TextLine>())
-            {
-                TextWithPlaceholders = "I. INTRODUCTION"
-            };
-            var equationNumber = new PdfParagraph(Array.Empty<UglyToad.PdfPig.DocumentLayoutAnalysis.TextLine>())
-            {
-                TextWithPlaceholders = "2"
-            };
+            var heading = MakeParagraph("I. INTRODUCTION");
+            var equationNumber = MakeParagraph("2");
 
             Assert.True(PdfParagraphSemanticClassifier.IsHeadingParagraph(heading),
                 "Roman-numbered section should be treated as a heading.");
@@ -427,55 +440,23 @@ static partial class TestSuite
 
         runner.Run("Heading classifier preserves short colon labels", () =>
         {
-            var label = new PdfParagraph(Array.Empty<UglyToad.PdfPig.DocumentLayoutAnalysis.TextLine>())
-            {
-                TextWithPlaceholders = "The main contributions of this work include:"
-            };
+            var label = MakeParagraph("The main contributions of this work include:");
             Assert.True(PdfParagraphSemanticClassifier.IsHeadingParagraph(label),
                 "A short colon label should retain heading typography.");
         });
 
         runner.Run("Lower-case wide continuation remains translatable prose", () =>
         {
-            var continuation = new PdfParagraph(Array.Empty<UglyToad.PdfPig.DocumentLayoutAnalysis.TextLine>())
-            {
-                TextWithPlaceholders = "of test assertions, (3) meaningfulness of test sequences, (4)",
-                X0 = 314,
-                X1 = 545,
-                Y0 = 102,
-                Y1 = 109
-            };
+            var continuation = MakeParagraph("of test assertions, (3) meaningfulness of test sequences, (4)", 314, 102, 545, 109);
             Assert.True(PdfParagraphRoleClassifier.IsTranslatableBodyProse(continuation),
                 "A wide lower-case continuation must not be treated as a bypass fragment.");
         });
 
         runner.Run("Reference section bypasses every continuation line", () =>
         {
-            var heading = new PdfParagraph(Array.Empty<UglyToad.PdfPig.DocumentLayoutAnalysis.TextLine>())
-            {
-                TextWithPlaceholders = "REFERENCES",
-                AverageFontSize = 9.96,
-                X0 = 150,
-                X1 = 220,
-                Y0 = 500,
-                Y1 = 512
-            };
-            var entry = new PdfParagraph(Array.Empty<UglyToad.PdfPig.DocumentLayoutAnalysis.TextLine>())
-            {
-                TextWithPlaceholders = "[25] N. Alshahwan, J. Chheda, and E. Wang, Automated unit improvement",
-                X0 = 60,
-                X1 = 300,
-                Y0 = 450,
-                Y1 = 460
-            };
-            var continuation = new PdfParagraph(Array.Empty<UglyToad.PdfPig.DocumentLayoutAnalysis.TextLine>())
-            {
-                TextWithPlaceholders = "using large language models for testing, in the proceedings.",
-                X0 = 60,
-                X1 = 300,
-                Y0 = 438,
-                Y1 = 448
-            };
+            var heading = MakeParagraph("REFERENCES", 150, 500, 220, 512, 9.96);
+            var entry = MakeParagraph("[25] N. Alshahwan, J. Chheda, and E. Wang, Automated unit improvement", 60, 450, 300, 460);
+            var continuation = MakeParagraph("using large language models for testing, in the proceedings.", 60, 438, 300, 448);
             var pages = new List<List<PdfParagraph>> { new() { heading, entry, continuation } };
 
             PdfReferenceSectionBypasser.Apply(
@@ -489,15 +470,7 @@ static partial class TestSuite
 
         runner.Run("Reference author initials do not terminate bibliography bypass", () =>
         {
-            var authorContinuation = new PdfParagraph(Array.Empty<UglyToad.PdfPig.DocumentLayoutAnalysis.TextLine>())
-            {
-                TextWithPlaceholders = "A. Panichella and G. Fraser",
-                AverageFontSize = 9.96,
-                X0 = 314,
-                X1 = 545,
-                Y0 = 650,
-                Y1 = 657
-            };
+            var authorContinuation = MakeParagraph("A. Panichella and G. Fraser", 314, 650, 545, 657, 9.96);
 
             Assert.True(!ReferenceSectionDetector.IsTerminator(authorContinuation),
                 "An author-initial continuation must not end the reference section.");
@@ -505,26 +478,10 @@ static partial class TestSuite
 
         runner.Run("References heading survives diagram misclassification", () =>
         {
-            var bibliographyHeading = new PdfParagraph(Array.Empty<UglyToad.PdfPig.DocumentLayoutAnalysis.TextLine>())
-            {
-                TextWithPlaceholders = "REFERENCES",
-                AverageFontSize = 7.514,
-                X0 = 150,
-                X1 = 201,
-                Y0 = 500,
-                Y1 = 506,
-                IsDiagram = true
-            };
-            var tableField = new PdfParagraph(Array.Empty<UglyToad.PdfPig.DocumentLayoutAnalysis.TextLine>())
-            {
-                TextWithPlaceholders = "Reference",
-                AverageFontSize = 9.96,
-                X0 = 150,
-                X1 = 222,
-                Y0 = 500,
-                Y1 = 510,
-                IsTable = true
-            };
+            var bibliographyHeading = MakeParagraph("REFERENCES", 150, 500, 201, 506, 7.514);
+            bibliographyHeading.IsDiagram = true;
+            var tableField = MakeParagraph("Reference", 150, 500, 222, 510, 9.96);
+            tableField.IsTable = true;
 
             Assert.True(ReferenceSectionDetector.IsHeading(bibliographyHeading),
                 "An unambiguous REFERENCES heading must start bibliography bypass despite a diagram flag.");
@@ -534,42 +491,21 @@ static partial class TestSuite
 
         runner.Run("Short research questions remain full-size prose", () =>
         {
-            var question = new PdfParagraph(Array.Empty<UglyToad.PdfPig.DocumentLayoutAnalysis.TextLine>())
-            {
-                TextWithPlaceholders = "RQ3: How natural are ASTER-generated tests?",
-                X0 = 314,
-                X1 = 545,
-                Y0 = 563,
-                Y1 = 570
-            };
+            var question = MakeParagraph("RQ3: How natural are ASTER-generated tests?", 314, 563, 545, 570);
             Assert.True(PdfParagraphRoleClassifier.IsTranslatableCalloutProse(question),
                 "RQ3 must not be treated as a tiny fixed-height label.");
         });
 
         runner.Run("Narrow lower-case continuation remains full-size prose", () =>
         {
-            var continuation = new PdfParagraph(Array.Empty<UglyToad.PdfPig.DocumentLayoutAnalysis.TextLine>())
-            {
-                TextWithPlaceholders = "search questions.",
-                X0 = 65,
-                X1 = 128,
-                Y0 = 93,
-                Y1 = 100
-            };
+            var continuation = MakeParagraph("search questions.", 65, 93, 128, 100);
             Assert.True(PdfParagraphRoleClassifier.IsTranslatableCalloutProse(continuation),
                 "A narrow lower-case continuation must not be shrunk to its extraction box.");
         });
 
         runner.Run("Finding callouts preserve their fixed container geometry", () =>
         {
-            var finding = new PdfParagraph(Array.Empty<UglyToad.PdfPig.DocumentLayoutAnalysis.TextLine>())
-            {
-                TextWithPlaceholders = "Finding 5: Developers prefer ASTER-generated tests.",
-                X0 = 67.6,
-                X1 = 292.4,
-                Y0 = 330.1,
-                Y1 = 380.5
-            };
+            var finding = MakeParagraph("Finding 5: Developers prefer ASTER-generated tests.", 67.6, 330.1, 292.4, 380.5);
             Assert.True(PdfParagraphRoleClassifier.IsFindingCallout(finding),
                 "Singular numbered Finding callouts must be classified explicitly.");
             Assert.True(PdfParagraphRoleClassifier.IsTranslatableCalloutProse(finding),
@@ -584,13 +520,9 @@ static partial class TestSuite
 
         runner.Run("Paragraph source visual font size survives title grouping", () =>
         {
-            var title = new PdfParagraph(Array.Empty<UglyToad.PdfPig.DocumentLayoutAnalysis.TextLine>())
-            {
-                TextWithPlaceholders = "Main title",
-                IsPageTitle = true,
-                SourceVisualFontSize = 18,
-                AverageFontSize = 11
-            };
+            var title = MakeParagraph("Main title", fontSize: 11);
+            title.IsPageTitle = true;
+            title.SourceVisualFontSize = 18;
             Assert.True(Math.Abs(title.SourceVisualFontSize - 18d) < 0.001,
                 "Source visual font size was not retained.");
             Assert.True(title.IsPageTitle, "Title role was not retained in the source snapshot.");
@@ -598,25 +530,10 @@ static partial class TestSuite
 
         runner.Run("Flowable translated body measures at source size before vertical balancing", () =>
         {
-            try { GlobalFontSettings.FontResolver = new ClickraFontResolver(); } catch (InvalidOperationException) { /* FontResolver already initialized */ }
-            using var document = new PdfDocument();
-            var page = document.AddPage();
-            page.Width = XUnit.FromPoint(612);
-            page.Height = XUnit.FromPoint(792);
-            using var gfx = XGraphics.FromPdfPage(page);
-            var paragraph = new PdfParagraph(Array.Empty<UglyToad.PdfPig.DocumentLayoutAnalysis.TextLine>())
-            {
-                TextWithPlaceholders = "A deliberately long body paragraph",
-                TranslatedText = string.Concat(Enumerable.Repeat("這是一段用來驗證正文自然重排高度的翻譯文字。", 12)),
-                SemanticRole = PdfParagraphSemanticRole.Body,
-                X0 = 49,
-                X1 = 300,
-                Y0 = 500,
-                Y1 = 520,
-                AverageFontSize = 9.0,
-                SourceVisualFontSize = 9.0,
-                SourceLineHeight = 9.0
-            };
+            var (_, gfx) = CreateTestDoc();
+            var paragraph = MakeParagraph("A deliberately long body paragraph", 49, 500, 300, 520, 9.0);
+            paragraph.TranslatedText = string.Concat(Enumerable.Repeat("這是一段用來驗證正文自然重排高度的翻譯文字。", 12));
+            paragraph.SemanticRole = PdfParagraphSemanticRole.Body;
 
             PdfParagraphRenderMetrics metrics = default;
             PdfTranslatedParagraphRenderer.RenderParagraph(
@@ -636,12 +553,7 @@ static partial class TestSuite
 
         runner.Run("Body font sizing ignores isolated oversized source glyphs", () =>
         {
-            try { GlobalFontSettings.FontResolver = new ClickraFontResolver(); } catch (InvalidOperationException) { /* FontResolver already initialized */ }
-            using var document = new PdfDocument();
-            var page = document.AddPage();
-            page.Width = XUnit.FromPoint(612);
-            page.Height = XUnit.FromPoint(792);
-            using var gfx = XGraphics.FromPdfPage(page);
+            var (_, gfx) = CreateTestDoc();
             var paragraph = LayoutParagraph(
                 "This body paragraph contains one oversized citation glyph.",
                 string.Concat(Enumerable.Repeat("這是一段用來驗證正文不會因單一異常大字元而被放大的翻譯文字。", 6)),
@@ -672,6 +584,60 @@ static partial class TestSuite
             Assert.True(plan.MaximumBodyFontRatio <= 1.01,
                 $"Body planner must size from the normal 10pt body font; got ratio {plan.MaximumBodyFontRatio:F2}.");
         });
+
+        runner.Run("Technical identifiers split across source lines are safely dehyphenated", () =>
+        {
+            var paragraphs = MergeHyphenatedPair(
+                "For example, inspect objects in Cop-",
+                "peliaSim scene, one can use the following call:");
+            var upper = paragraphs[0];
+
+            Assert.True(paragraphs.Count == 1, "The split technical identifier should form one paragraph.");
+            Assert.True(upper.TextWithPlaceholders.Contains("CoppeliaSim scene", StringComparison.Ordinal),
+                $"Expected CoppeliaSim to be rejoined, got: {upper.TextWithPlaceholders}");
+            Assert.True(!upper.TextWithPlaceholders.Contains("Cop-peliaSim", StringComparison.Ordinal),
+                "The source line-break hyphen must be removed.");
+        });
+
+        runner.Run("Meaningful lowercase compound hyphens are preserved", () =>
+        {
+            var paragraphs = MergeHyphenatedPair(
+                "This is a long-",
+                "term study.",
+                upperFontSize: 9.0, lowerFontSize: 9.0);
+            var upper = paragraphs[0];
+
+            Assert.True(paragraphs.Count == 2, "A meaningful compound must not be dehyphenated.");
+            Assert.True(upper.TextWithPlaceholders.EndsWith("long-", StringComparison.Ordinal),
+                "The meaningful compound hyphen should remain intact.");
+        });
+
+        runner.Run("Continuation font inheritance cannot be amplified twice", () =>
+        {
+            var (_, gfx) = CreateTestDoc();
+            var predecessor = LayoutParagraph(
+                "First body fragment",
+                "第一個正文片段",
+                108, 500, 504, 520,
+                10.0);
+            predecessor.SourceLineHeight = 10.0;
+            var continuation = LayoutParagraph(
+                "continuation fragment",
+                "續行片段",
+                108, 484, 300, 492,
+                8.5);
+            continuation.SourceLineHeight = 8.5;
+
+            var plan = PdfTranslationLayoutPlanner.BuildAndApply(
+                gfx,
+                new[] { predecessor, continuation },
+                DfKaiSbFontName,
+                612,
+                792);
+
+            Assert.True(plan.MaximumBodyFontRatio <= PdfTranslationHealthReport.MaximumAllowedBodyFontRatio + 0.001,
+                $"Continuation inheritance must stay within the body scale limit; got {plan.MaximumBodyFontRatio:F3}.");
+        });
     }
 
     private static void RegisterLayoutAndMaskPipelineTests(TestRunner runner)
@@ -684,12 +650,7 @@ static partial class TestSuite
     {
         runner.Run("Vertical balancing treats spatial table masks as fixed boundaries", () =>
         {
-            try { GlobalFontSettings.FontResolver = new ClickraFontResolver(); } catch (InvalidOperationException) { /* FontResolver already initialized */ }
-            using var document = new PdfDocument();
-            var page = document.AddPage();
-            page.Width = XUnit.FromPoint(612);
-            page.Height = XUnit.FromPoint(792);
-            using var gfx = XGraphics.FromPdfPage(page);
+            var (_, gfx) = CreateTestDoc();
 
             var unclassifiedTableText = LayoutParagraph(
                 "Q1. Current Professional Role Open Q2. Years of experience",
@@ -723,12 +684,7 @@ static partial class TestSuite
 
         runner.Run("Vertical balancing ignores incidental fixed-region overlap", () =>
         {
-            try { GlobalFontSettings.FontResolver = new ClickraFontResolver(); } catch (InvalidOperationException) { /* Font resolver already initialized */ }
-            using var document = new PdfDocument();
-            var page = document.AddPage();
-            page.Width = XUnit.FromPoint(612);
-            page.Height = XUnit.FromPoint(792);
-            using var gfx = XGraphics.FromPdfPage(page);
+            var (_, gfx) = CreateTestDoc();
 
             var bodyAboveCallout = LayoutParagraph(
                 string.Join(' ', Enumerable.Repeat("translated body prose", 45)),
@@ -795,12 +751,12 @@ static partial class TestSuite
 
         runner.Run("Spatial table promotion expands until table rows stabilize", () =>
         {
-            var headerLeft = LayoutParagraph("Type", "", 330, 700, 380, 710, 6);
-            var headerRight = LayoutParagraph("Format", "", 500, 700, 550, 710, 6);
+            var headerLeft = LayoutParagraph("Type", x0: 330, y0: 700, x1: 380, y1: 710, fontSize: 6);
+            var headerRight = LayoutParagraph("Format", x0: 500, y0: 700, x1: 550, y1: 710, fontSize: 6);
             headerLeft.IsTable = true;
             headerRight.IsTable = true;
-            var firstBridge = LayoutParagraph("Q5. Level of expertise", "", 360, 688, 520, 696, 6);
-            var secondBridge = LayoutParagraph("Q6. Prior experience", "", 360, 676, 520, 684, 6);
+            var firstBridge = LayoutParagraph("Q5. Level of expertise", x0: 360, y0: 688, x1: 520, y1: 696, fontSize: 6);
+            var secondBridge = LayoutParagraph("Q6. Prior experience", x0: 360, y0: 676, x1: 520, y1: 684, fontSize: 6);
 
             int marked = PdfTableMaskPlanner.MarkParagraphsInsideTableMasksUntilStable(
                 new List<PdfParagraph> { headerLeft, headerRight, firstBridge, secondBridge },
@@ -813,17 +769,13 @@ static partial class TestSuite
 
         runner.Run("Spatial table promotion fills narrow aligned mask gaps", () =>
         {
-            var topLeft = LayoutParagraph("Type", "", 345, 700, 380, 710, 6);
-            var topRight = LayoutParagraph("Format", "", 500, 700, 530, 710, 6);
-            var bottomLeft = LayoutParagraph("Q10", "", 345, 640, 380, 650, 6);
-            var bottomRight = LayoutParagraph("Likert", "", 500, 640, 530, 650, 6);
+            var topLeft = LayoutParagraph("Type", x0: 345, y0: 700, x1: 380, y1: 710, fontSize: 6);
+            var topRight = LayoutParagraph("Format", x0: 500, y0: 700, x1: 530, y1: 710, fontSize: 6);
+            var bottomLeft = LayoutParagraph("Q10", x0: 345, y0: 640, x1: 380, y1: 650, fontSize: 6);
+            var bottomRight = LayoutParagraph("Likert", x0: 500, y0: 640, x1: 530, y1: 650, fontSize: 6);
             foreach (var seed in new[] { topLeft, topRight, bottomLeft, bottomRight })
                 seed.IsTable = true;
-            var gapRow = LayoutParagraph(
-                "Q7. Prior experience with automated test generation",
-                "",
-                367, 668, 519, 686,
-                6);
+            var gapRow = LayoutParagraph("Q7. Prior experience with automated test generation", x0: 367, y0: 668, x1: 519, y1: 686, fontSize: 6);
 
             int marked = PdfTableMaskPlanner.MarkParagraphsInsideTableMasksUntilStable(
                 new List<PdfParagraph> { topLeft, topRight, bottomLeft, bottomRight, gapRow },
@@ -928,24 +880,9 @@ static partial class TestSuite
 
         runner.Run("Page-one wrapped title lines share the title role", () =>
         {
-            var title = new PdfParagraph(Array.Empty<UglyToad.PdfPig.DocumentLayoutAnalysis.TextLine>())
-            {
-                TextWithPlaceholders = "ASTER: Natural and Multi-language Unit Test",
-                X0 = 89.9, X1 = 512.9, Y0 = 667.4, Y1 = 682.4,
-                AverageFontSize = 23.91, SourceVisualFontSize = 23.91
-            };
-            var generation = new PdfParagraph(Array.Empty<UglyToad.PdfPig.DocumentLayoutAnalysis.TextLine>())
-            {
-                TextWithPlaceholders = "Generation",
-                X0 = 197.8, X1 = 299.6, Y0 = 639.1, Y1 = 656.7,
-                AverageFontSize = 23.91, SourceVisualFontSize = 23.91
-            };
-            var withLlms = new PdfParagraph(Array.Empty<UglyToad.PdfPig.DocumentLayoutAnalysis.TextLine>())
-            {
-                TextWithPlaceholders = "with LLMs",
-                X0 = 308.0, X1 = 405.0, Y0 = 639.1, Y1 = 656.7,
-                AverageFontSize = 23.91, SourceVisualFontSize = 23.91
-            };
+            var title = MakeRawParagraph("ASTER: Natural and Multi-language Unit Test", 89.9, 667.4, 512.9, 682.4, 23.91);
+            var generation = MakeRawParagraph("Generation", 197.8, 639.1, 299.6, 656.7, 23.91);
+            var withLlms = MakeRawParagraph("with LLMs", 308.0, 639.1, 405.0, 656.7, 23.91);
             var page = new List<PdfParagraph> { title, generation, withLlms };
 
             PageOneLayoutClassifier.MergeTitleWithSubtitle(page, 792);
@@ -960,18 +897,8 @@ static partial class TestSuite
 
         runner.Run("Page-one running header cannot replace the paper title", () =>
         {
-            var runningHeader = new PdfParagraph(Array.Empty<UglyToad.PdfPig.DocumentLayoutAnalysis.TextLine>())
-            {
-                TextWithPlaceholders = "2025 IEEE/ACM International Conference on Software Engineering",
-                X0 = 62, X1 = 550, Y0 = 762, Y1 = 769,
-                AverageFontSize = 5.2
-            };
-            var paperTitle = new PdfParagraph(Array.Empty<UglyToad.PdfPig.DocumentLayoutAnalysis.TextLine>())
-            {
-                TextWithPlaceholders = "ASTER: Natural and Multi-language Unit Test",
-                X0 = 90, X1 = 513, Y0 = 667, Y1 = 682,
-                AverageFontSize = 18
-            };
+            var runningHeader = MakeRawParagraph("2025 IEEE/ACM International Conference on Software Engineering", 62, 762, 550, 769, 5.2);
+            var paperTitle = MakeRawParagraph("ASTER: Natural and Multi-language Unit Test", 90, 667, 513, 682, 18);
 
             Assert.True(
                 ReferenceEquals(
@@ -1043,17 +970,9 @@ static partial class TestSuite
 
         runner.Run("Academic table headers stay bypassed and bold", () =>
         {
-            var header = new PdfParagraph(Array.Empty<UglyToad.PdfPig.DocumentLayoutAnalysis.TextLine>())
-            {
-                TextWithPlaceholders = "Model Name Provider Update Date Model Size",
-                IsBold = true,
-                IsTable = true,
-                AverageFontSize = 5.74,
-                Y0 = 698.5,
-                Y1 = 702.5,
-                X0 = 77.7,
-                X1 = 204.2
-            };
+            var header = MakeRawParagraph("Model Name Provider Update Date Model Size", 77.7, 698.5, 204.2, 702.5, 5.74);
+            header.IsBold = true;
+            header.IsTable = true;
 
             PdfTableMisclassifiedProseCleanup.Reclassify(new List<PdfParagraph> { header }, 612);
             Assert.True(header.IsTable, "A bold compact table header was demoted to prose.");
@@ -1084,11 +1003,8 @@ static partial class TestSuite
         });
 
         runner.Run("PDF batch runner bounds a hung provider call", () =>
-        {
-            var oldTimeout = Environment.GetEnvironmentVariable(ProviderTimeoutEnvVar);
-            try
+            WithEnvVar(ProviderTimeoutEnvVar, "1", () =>
             {
-                Environment.SetEnvironmentVariable(ProviderTimeoutEnvVar, "1");
                 var translator = new HangingTranslationEngine();
 
                 var ex = Assert.Throws<Exception>(() =>
@@ -1107,12 +1023,7 @@ static partial class TestSuite
                 Assert.True(
                     ex.Message.Contains("1", StringComparison.Ordinal),
                     $"Unexpected timeout recovery error: {ex.Message}");
-            }
-            finally
-            {
-                Environment.SetEnvironmentVariable(ProviderTimeoutEnvVar, oldTimeout);
-            }
-        });
+            }));
 
         runner.Run("PdfBypassedParagraphRenderer handles ligatures correctly without crashing", () =>
         {

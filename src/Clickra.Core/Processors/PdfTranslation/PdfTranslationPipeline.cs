@@ -145,6 +145,7 @@ namespace Clickra.Core.Processors
                     FixedRegionCollisionCount = layoutSummary.FixedCollisionCount,
                     BottomOverflowCount = layoutSummary.BottomOverflowCount,
                     LayoutFailureReason = string.Join(" ", layoutWarnings),
+                    PreservedTechnicalLabels = stageReport.PreservedTechnicalLabels,
                     TranslationFailures = stageReport.Failures,
                     Succeeded = true
                 };
@@ -241,6 +242,9 @@ namespace Clickra.Core.Processors
                     FixedRegionCollisionCount = cfg.LayoutSummary?.FixedCollisionCount ?? cfg.FixedCollisionCount ?? 0,
                     BottomOverflowCount = cfg.LayoutSummary?.BottomOverflowCount ?? cfg.BottomOverflowCount ?? 0,
                     LayoutFailureReason = cfg.Error,
+                    PreservedTechnicalLabels = cfg.StageReport is null
+                        ? Array.Empty<PdfTranslationPreservation>()
+                        : cfg.StageReport.PreservedTechnicalLabels,
                     TranslationFailures = new[] { cfg.Error },
                     Succeeded = false
                 }.Save(cfg.HealthPath);

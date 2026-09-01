@@ -64,6 +64,87 @@ static partial class TestSuite
         _fontResolverInstalled = true;
     }
 
+    private static (PdfDocument Document, XGraphics Gfx) CreateTestDoc()
+    {
+        EnsureFontResolver();
+        var document = new PdfDocument();
+        var page = document.AddPage();
+        page.Width = XUnit.FromPoint(612);
+        page.Height = XUnit.FromPoint(792);
+        var gfx = XGraphics.FromPdfPage(page);
+        return (document, gfx);
+    }
+
+    private static List<PdfParagraph> MergeHyphenatedPair(
+        string upperText, string lowerText,
+        double upperFontSize = 9.5, double lowerFontSize = 8.0)
+    {
+        var upper = LayoutParagraph(upperText, x0: 108, y0: 150, x1: 504, y1: 180, fontSize: upperFontSize);
+        var lower = LayoutParagraph(lowerText, x0: 108, y0: 137, x1: 295, y1: 144, fontSize: lowerFontSize);
+        var paragraphs = new List<PdfParagraph> { upper, lower };
+        PdfParagraphPostProcessor.MergeHyphenatedTechnicalLineFragments(
+            paragraphs,
+            PdfParagraphSemanticClassifier.IsHeadingParagraph,
+            792);
+        return paragraphs;
+    }
+
+    private static PdfParagraph MakeRawParagraph(
+        string text,
+        double x0 = 0, double y0 = 0, double x1 = 0, double y1 = 0,
+        double fontSize = 10)
+    {
+        return new PdfParagraph(Array.Empty<UglyToad.PdfPig.DocumentLayoutAnalysis.TextLine>())
+        {
+            TextWithPlaceholders = text,
+            X0 = x0, Y0 = y0, X1 = x1, Y1 = y1,
+            AverageFontSize = fontSize,
+            SourceVisualFontSize = fontSize
+        };
+    }
+
+    private static PdfParagraph MakeParagraph(
+        string text,
+        double x0 = 0, double y0 = 0, double x1 = 0, double y1 = 0,
+        double fontSize = 10)
+    {
+        var p = MakeRawParagraph(text, x0, y0, x1, y1, fontSize);
+        p.SourceLineHeight = fontSize;
+        return p;
+    }
+
+    private static (FallbackTranslator Translator, RecordingTranslationEngine Primary, RecordingTranslationEngine Fallback)
+        CreateRecordingFallbackTranslator(
+            string? primaryFailOnMarker = null,
+            bool fallbackDropLastBatch = false)
+    {
+        var primary = new RecordingTranslationEngine(PrimaryEngineName, primaryFailOnMarker);
+        var fallback = new RecordingTranslationEngine(FallbackEngineName, dropLastBatchResult: fallbackDropLastBatch);
+        return (new FallbackTranslator(primary, fallback), primary, fallback);
+    }
+
+    private static (FallbackTranslator Translator, UnchangedTranslationEngine Primary, RecordingTranslationEngine Fallback)
+        CreateUnchangedFallbackTranslator()
+    {
+        var primary = new UnchangedTranslationEngine(PrimaryEngineName);
+        var fallback = new RecordingTranslationEngine(FallbackEngineName);
+        return (new FallbackTranslator(primary, fallback), primary, fallback);
+    }
+
+    private static void WithEnvVar(string name, string? value, Action action)
+    {
+        var old = Environment.GetEnvironmentVariable(name);
+        try
+        {
+            Environment.SetEnvironmentVariable(name, value);
+            action();
+        }
+        finally
+        {
+            Environment.SetEnvironmentVariable(name, old);
+        }
+    }
+
     private static PdfParagraph UninitializedParagraph(string text, double width, double height)
     {
         var paragraph = (PdfParagraph)System.Runtime.CompilerServices.RuntimeHelpers
@@ -78,11 +159,11 @@ static partial class TestSuite
 
     private static PdfParagraph LayoutParagraph(
         string source,
-        string translated,
-        double x0,
-        double y0,
-        double x1,
-        double y1,
+        string translated = "",
+        double x0 = 0,
+        double y0 = 0,
+        double x1 = 0,
+        double y1 = 0,
         double fontSize = 10)
     {
         var paragraph = new PdfParagraph(Array.Empty<UglyToad.PdfPig.DocumentLayoutAnalysis.TextLine>())

@@ -31,6 +31,8 @@ public sealed class PdfTranslationHealthReport
     public int FixedRegionCollisionCount { get; init; }
     public int BottomOverflowCount { get; init; }
     public string LayoutFailureReason { get; init; } = string.Empty;
+    public IReadOnlyList<PdfTranslationPreservation> PreservedTechnicalLabels { get; init; } =
+        Array.Empty<PdfTranslationPreservation>();
     public IReadOnlyList<string> TranslationFailures { get; init; } = Array.Empty<string>();
     public bool Succeeded { get; init; }
     public DateTimeOffset CompletedAtUtc { get; init; } = DateTimeOffset.UtcNow;
@@ -72,6 +74,17 @@ public sealed class PdfTranslationHealthReport
         writer.WriteNumber(nameof(FixedRegionCollisionCount), FixedRegionCollisionCount);
         writer.WriteNumber(nameof(BottomOverflowCount), BottomOverflowCount);
         writer.WriteString(nameof(LayoutFailureReason), LayoutFailureReason);
+        writer.WriteStartArray(nameof(PreservedTechnicalLabels));
+        foreach (PdfTranslationPreservation preservation in PreservedTechnicalLabels)
+        {
+            writer.WriteStartObject();
+            writer.WriteNumber(nameof(PdfTranslationPreservation.Page), preservation.Page);
+            writer.WriteString(nameof(PdfTranslationPreservation.Text), preservation.Text);
+            writer.WriteString(nameof(PdfTranslationPreservation.Action), preservation.Action);
+            writer.WriteString(nameof(PdfTranslationPreservation.Reason), preservation.Reason);
+            writer.WriteEndObject();
+        }
+        writer.WriteEndArray();
         writer.WriteStartArray(nameof(TranslationFailures));
         foreach (string failure in TranslationFailures)
             writer.WriteStringValue(failure);
@@ -81,4 +94,12 @@ public sealed class PdfTranslationHealthReport
         writer.WriteEndObject();
         writer.Flush();
     }
+}
+
+public sealed class PdfTranslationPreservation
+{
+    public int Page { get; init; }
+    public string Text { get; init; } = string.Empty;
+    public string Action { get; init; } = string.Empty;
+    public string Reason { get; init; } = string.Empty;
 }
