@@ -75,6 +75,20 @@ static partial class TestSuite
         return (document, gfx);
     }
 
+    private static List<PdfParagraph> MergeHyphenatedPair(
+        string upperText, string lowerText,
+        double upperFontSize = 9.5, double lowerFontSize = 8.0)
+    {
+        var upper = LayoutParagraph(upperText, string.Empty, 108, 150, 504, 180, upperFontSize);
+        var lower = LayoutParagraph(lowerText, string.Empty, 108, 137, 295, 144, lowerFontSize);
+        var paragraphs = new List<PdfParagraph> { upper, lower };
+        PdfParagraphPostProcessor.MergeHyphenatedTechnicalLineFragments(
+            paragraphs,
+            PdfParagraphSemanticClassifier.IsHeadingParagraph,
+            792);
+        return paragraphs;
+    }
+
     private static PdfParagraph MakeParagraph(
         string text,
         double x0 = 0, double y0 = 0, double x1 = 0, double y1 = 0,

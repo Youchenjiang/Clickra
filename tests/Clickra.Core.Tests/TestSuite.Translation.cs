@@ -640,22 +640,10 @@ static partial class TestSuite
 
         runner.Run("Technical identifiers split across source lines are safely dehyphenated", () =>
         {
-            var upper = LayoutParagraph(
+            var paragraphs = MergeHyphenatedPair(
                 "For example, inspect objects in Cop-",
-                string.Empty,
-                108, 150, 504, 180,
-                9.5);
-            var lower = LayoutParagraph(
-                "peliaSim scene, one can use the following call:",
-                string.Empty,
-                108, 137, 295, 144,
-                8.0);
-            var paragraphs = new List<PdfParagraph> { upper, lower };
-
-            PdfParagraphPostProcessor.MergeHyphenatedTechnicalLineFragments(
-                paragraphs,
-                PdfParagraphSemanticClassifier.IsHeadingParagraph,
-                792);
+                "peliaSim scene, one can use the following call:");
+            var upper = paragraphs[0];
 
             Assert.True(paragraphs.Count == 1, "The split technical identifier should form one paragraph.");
             Assert.True(upper.TextWithPlaceholders.Contains("CoppeliaSim scene", StringComparison.Ordinal),
@@ -666,14 +654,11 @@ static partial class TestSuite
 
         runner.Run("Meaningful lowercase compound hyphens are preserved", () =>
         {
-            var upper = LayoutParagraph("This is a long-", string.Empty, 108, 150, 504, 180, 9.0);
-            var lower = LayoutParagraph("term study.", string.Empty, 108, 137, 295, 144, 9.0);
-            var paragraphs = new List<PdfParagraph> { upper, lower };
-
-            PdfParagraphPostProcessor.MergeHyphenatedTechnicalLineFragments(
-                paragraphs,
-                PdfParagraphSemanticClassifier.IsHeadingParagraph,
-                792);
+            var paragraphs = MergeHyphenatedPair(
+                "This is a long-",
+                "term study.",
+                upperFontSize: 9.0, lowerFontSize: 9.0);
+            var upper = paragraphs[0];
 
             Assert.True(paragraphs.Count == 2, "A meaningful compound must not be dehyphenated.");
             Assert.True(upper.TextWithPlaceholders.EndsWith("long-", StringComparison.Ordinal),
