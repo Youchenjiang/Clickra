@@ -113,8 +113,24 @@ static partial class TestSuite
         return p;
     }
 
-    /// <summary>Sets an environment variable for the duration of
-    /// <paramref name="action"/> and restores the previous value afterwards.</summary>
+    private static (FallbackTranslator Translator, RecordingTranslationEngine Primary, RecordingTranslationEngine Fallback)
+        CreateRecordingFallbackTranslator(
+            string? primaryFailOnMarker = null,
+            bool fallbackDropLastBatch = false)
+    {
+        var primary = new RecordingTranslationEngine(PrimaryEngineName, primaryFailOnMarker);
+        var fallback = new RecordingTranslationEngine(FallbackEngineName, dropLastBatchResult: fallbackDropLastBatch);
+        return (new FallbackTranslator(primary, fallback), primary, fallback);
+    }
+
+    private static (FallbackTranslator Translator, UnchangedTranslationEngine Primary, RecordingTranslationEngine Fallback)
+        CreateUnchangedFallbackTranslator()
+    {
+        var primary = new UnchangedTranslationEngine(PrimaryEngineName);
+        var fallback = new RecordingTranslationEngine(FallbackEngineName);
+        return (new FallbackTranslator(primary, fallback), primary, fallback);
+    }
+
     private static void WithEnvVar(string name, string? value, Action action)
     {
         var old = Environment.GetEnvironmentVariable(name);

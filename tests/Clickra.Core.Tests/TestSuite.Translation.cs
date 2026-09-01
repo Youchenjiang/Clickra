@@ -234,9 +234,7 @@ static partial class TestSuite
     {
         runner.Run("Fallback translator chunks batches and retries only failed chunks", () =>
         {
-            var primary = new RecordingTranslationEngine(PrimaryEngineName, failOnMarker: "FAIL");
-            var fallback = new RecordingTranslationEngine(FallbackEngineName);
-            var translator = new FallbackTranslator(primary, fallback);
+            var (translator, primary, fallback) = CreateRecordingFallbackTranslator(primaryFailOnMarker: "FAIL");
             var texts = Enumerable.Range(0, 30)
                 .Select(i => i == 25 ? "FAIL " + new string('x', 280) : $"item-{i} " + new string('x', 280))
                 .ToList();
@@ -255,9 +253,7 @@ static partial class TestSuite
 
         runner.Run("Fallback translator rejects incomplete fallback batches", () =>
         {
-            var primary = new RecordingTranslationEngine(PrimaryEngineName, failOnMarker: "FAIL");
-            var fallback = new RecordingTranslationEngine(FallbackEngineName, dropLastBatchResult: true);
-            var translator = new FallbackTranslator(primary, fallback);
+            var (translator, _, _) = CreateRecordingFallbackTranslator(primaryFailOnMarker: "FAIL", fallbackDropLastBatch: true);
 
             var ex = Assert.Throws<Exception>(() =>
                 translator.TranslateBatchAsync(
@@ -273,9 +269,7 @@ static partial class TestSuite
 
         runner.Run("Fallback translator rejects unchanged CJK provider output", () =>
         {
-            var primary = new UnchangedTranslationEngine(PrimaryEngineName);
-            var fallback = new RecordingTranslationEngine(FallbackEngineName);
-            var translator = new FallbackTranslator(primary, fallback);
+            var (translator, primary, fallback) = CreateUnchangedFallbackTranslator();
             const string source = "ASTER: Natural and Multi-language Unit Test Generation with LLMs";
 
             string result = translator.TranslateAsync(source, "zh-TW", CancellationToken.None)
@@ -298,9 +292,7 @@ static partial class TestSuite
 
         runner.Run("Fallback translator allows unchanged URL references", () =>
         {
-            var primary = new UnchangedTranslationEngine(PrimaryEngineName);
-            var fallback = new RecordingTranslationEngine(FallbackEngineName);
-            var translator = new FallbackTranslator(primary, fallback);
+            var (translator, _, fallback) = CreateUnchangedFallbackTranslator();
             const string source = "ACM ISBN 979-8-4007-2426-8/26/04 https://doi.org/10.1145/3786583.3786868";
 
             string result = translator.TranslateAsync(source, "zh-TW", CancellationToken.None)
@@ -313,9 +305,7 @@ static partial class TestSuite
 
         runner.Run("Fallback translator preserves numbered technical headings without a whitelist", () =>
         {
-            var primary = new UnchangedTranslationEngine(PrimaryEngineName);
-            var fallback = new RecordingTranslationEngine(FallbackEngineName);
-            var translator = new FallbackTranslator(primary, fallback);
+            var (translator, _, fallback) = CreateUnchangedFallbackTranslator();
 
             string result = translator.TranslateAsync(
                     "B.3 CoppeliaSim",
@@ -331,9 +321,7 @@ static partial class TestSuite
 
         runner.Run("Fallback translator does not preserve ordinary numbered headings", () =>
         {
-            var primary = new UnchangedTranslationEngine(PrimaryEngineName);
-            var fallback = new RecordingTranslationEngine(FallbackEngineName);
-            var translator = new FallbackTranslator(primary, fallback);
+            var (translator, _, fallback) = CreateUnchangedFallbackTranslator();
 
             string result = translator.TranslateAsync(
                     "B.3 Experimental Setup",
@@ -387,9 +375,7 @@ static partial class TestSuite
         {
             using var cts = new CancellationTokenSource();
             cts.Cancel();
-            var primary = new RecordingTranslationEngine(PrimaryEngineName);
-            var fallback = new RecordingTranslationEngine(FallbackEngineName);
-            var translator = new FallbackTranslator(primary, fallback);
+            var (translator, _, fallback) = CreateRecordingFallbackTranslator();
 
             Assert.Throws<OperationCanceledException>(() =>
                 translator.TranslateBatchAsync(
@@ -408,7 +394,7 @@ static partial class TestSuite
             WithEnvVar(ProviderTimeoutEnvVar, "1", () =>
             {
                 var primary = new DelayedTranslationEngine("slow-primary", delayMilliseconds: 1500);
-                var fallback = new RecordingTranslationEngine(FallbackEngineName);
+                var (_, _, fallback) = CreateRecordingFallbackTranslator();
                 var translator = new FallbackTranslator(primary, fallback);
 
                 var result = translator.TranslateBatchAsync(
