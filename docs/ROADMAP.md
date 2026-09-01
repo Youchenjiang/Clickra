@@ -48,6 +48,8 @@
     - 新增 `ClickraLauncher.exe`（NativeAOT bootstrapper）自動偵測 runtime 並安裝對應軌道；新增 `Clickra.msix (Main)` 零依賴套件與 `scripts/build_msix.ps1`。
     - 舊 Win32 Dashboard/Progress 由「過渡 fallback」改為**永久 NativeAOT 軌道**，不再排定移除。
     - 詳細設計見 `docs/development/dual_track_guide.md`。
+- [ ] **[F1-14] Shell Context Menu Icons**：右鍵選單圖示。
+    - 為所有右鍵轉檔命令新增專屬圖示（PDF、Word、Excel、PPT、圖片操作），並提供 PowerShell 產生腳本。
 - [ ] **[F1-13] Store-Resilient Optional Fluent Delivery**：AOT 主套件＋Fluent Optional Package（**目前最高優先級**）。
     - **2026/08/29 決策狀態**：MSIX 平台已確認支援 executable optional package、related set、activatable optional app 與 Store 按需安裝 API；但公開範例未直接涵蓋 Clickra 的 NativeAOT main + .NET 8 WinUI 3 full-trust optional EXE 組合，且 Store 帳號必須先取得 Microsoft 的 optional package / related set 權限。因此本項目前是有硬性退出條件的 feasibility gate，不是已採用的正式發行架構。
     - **產品目標**：Store 先安裝小於 50 MB、零 Windows App Runtime dependency 的 NativeAOT main（launcher、CLI/legacy UI、Shell）；使用者再按需安裝承擔 Windows App Runtime dependency 的 Fluent optional package。Fluent 安裝、framework 解析或啟動失敗時，AOT 必須持續可用。
