@@ -176,7 +176,6 @@ static partial class TestSuite
         });
 
         runner.Run("Identity translation engine is opt-in for layout tests", () =>
-        {
             WithEnvVar("CLICKRA_TRANSLATION_ENGINE", "identity", () =>
             {
                 var translator = TranslationEngineFactory.Create();
@@ -186,11 +185,9 @@ static partial class TestSuite
                     translator.TranslateAsync("Keep layout text unchanged.", "zh-TW", CancellationToken.None)
                         .GetAwaiter()
                         .GetResult());
-            });
-        });
+            }));
 
         runner.Run("Synthetic CJK engine preserves placeholders for layout tests", () =>
-        {
             WithEnvVar("CLICKRA_TRANSLATION_ENGINE", "synthetic-cjk", () =>
             {
                 var translator = TranslationEngineFactory.Create();
@@ -206,11 +203,9 @@ static partial class TestSuite
                 Assert.True(
                     translated.Length < "runtime features {v0}.".Length,
                     "Synthetic CJK output did not model the higher information density of CJK text.");
-            });
-        });
+            }));
 
         runner.Run("Translation engine defaults to Google with MyMemory fallback", () =>
-        {
             WithEnvVar("CLICKRA_TRANSLATION_ENGINE", null, () =>
             {
                 Assert.Equal("google-free+mymemory", TranslationEngineFactory.Create().Name);
@@ -220,8 +215,7 @@ static partial class TestSuite
 
                 Environment.SetEnvironmentVariable("CLICKRA_TRANSLATION_ENGINE", "google");
                 Assert.Equal("google-free", TranslationEngineFactory.Create().Name);
-            });
-        });
+            }));
     }
 
     private static void RegisterEngineAndProcessorTests(TestRunner runner)
@@ -390,11 +384,10 @@ static partial class TestSuite
         });
 
         runner.Run("Fallback translator gives each provider an independent deadline", () =>
-        {
             WithEnvVar(ProviderTimeoutEnvVar, "1", () =>
             {
                 var primary = new DelayedTranslationEngine("slow-primary", delayMilliseconds: 1500);
-                var (_, _, fallback) = CreateRecordingFallbackTranslator();
+                var fallback = new RecordingTranslationEngine(FallbackEngineName);
                 var translator = new FallbackTranslator(primary, fallback);
 
                 var result = translator.TranslateBatchAsync(
@@ -407,11 +400,9 @@ static partial class TestSuite
                 Assert.Equal("fallback:deadline test", result.Single());
                 Assert.True(primary.BatchAttempts == 1, "Primary provider should be attempted once.");
                 Assert.True(fallback.BatchSizes.Count == 1, "Fallback should run after primary timeout.");
-            });
-        });
+            }));
 
         runner.Run("Fallback translator fails closed when both provider deadlines expire", () =>
-        {
             WithEnvVar(ProviderTimeoutEnvVar, "1", () =>
             {
                 var translator = new FallbackTranslator(
@@ -424,8 +415,7 @@ static partial class TestSuite
                         CancellationToken.None)
                     .GetAwaiter()
                     .GetResult());
-            });
-        });
+            }));
     }
 
     private static void RegisterProcessorAndPipelineTests(TestRunner runner)
@@ -1012,7 +1002,6 @@ static partial class TestSuite
         });
 
         runner.Run("PDF batch runner bounds a hung provider call", () =>
-        {
             WithEnvVar(ProviderTimeoutEnvVar, "1", () =>
             {
                 var translator = new HangingTranslationEngine();
@@ -1033,8 +1022,7 @@ static partial class TestSuite
                 Assert.True(
                     ex.Message.Contains("1", StringComparison.Ordinal),
                     $"Unexpected timeout recovery error: {ex.Message}");
-            });
-        });
+            }));
 
         runner.Run("PdfBypassedParagraphRenderer handles ligatures correctly without crashing", () =>
         {
