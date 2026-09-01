@@ -177,10 +177,8 @@ static partial class TestSuite
 
         runner.Run("Identity translation engine is opt-in for layout tests", () =>
         {
-            var oldValue = Environment.GetEnvironmentVariable("CLICKRA_TRANSLATION_ENGINE");
-            try
+            WithEnvVar("CLICKRA_TRANSLATION_ENGINE", "identity", () =>
             {
-                Environment.SetEnvironmentVariable("CLICKRA_TRANSLATION_ENGINE", "identity");
                 var translator = TranslationEngineFactory.Create();
                 Assert.Equal("identity", translator.Name);
                 Assert.Equal(
@@ -188,19 +186,13 @@ static partial class TestSuite
                     translator.TranslateAsync("Keep layout text unchanged.", "zh-TW", CancellationToken.None)
                         .GetAwaiter()
                         .GetResult());
-            }
-            finally
-            {
-                Environment.SetEnvironmentVariable("CLICKRA_TRANSLATION_ENGINE", oldValue);
-            }
+            });
         });
 
         runner.Run("Synthetic CJK engine preserves placeholders for layout tests", () =>
         {
-            var oldValue = Environment.GetEnvironmentVariable("CLICKRA_TRANSLATION_ENGINE");
-            try
+            WithEnvVar("CLICKRA_TRANSLATION_ENGINE", "synthetic-cjk", () =>
             {
-                Environment.SetEnvironmentVariable("CLICKRA_TRANSLATION_ENGINE", "synthetic-cjk");
                 var translator = TranslationEngineFactory.Create();
                 Assert.Equal("synthetic-cjk", translator.Name);
                 string translated = translator.TranslateAsync(
@@ -214,19 +206,13 @@ static partial class TestSuite
                 Assert.True(
                     translated.Length < "runtime features {v0}.".Length,
                     "Synthetic CJK output did not model the higher information density of CJK text.");
-            }
-            finally
-            {
-                Environment.SetEnvironmentVariable("CLICKRA_TRANSLATION_ENGINE", oldValue);
-            }
+            });
         });
 
         runner.Run("Translation engine defaults to Google with MyMemory fallback", () =>
         {
-            var oldValue = Environment.GetEnvironmentVariable("CLICKRA_TRANSLATION_ENGINE");
-            try
+            WithEnvVar("CLICKRA_TRANSLATION_ENGINE", null, () =>
             {
-                Environment.SetEnvironmentVariable("CLICKRA_TRANSLATION_ENGINE", null);
                 Assert.Equal("google-free+mymemory", TranslationEngineFactory.Create().Name);
 
                 Environment.SetEnvironmentVariable("CLICKRA_TRANSLATION_ENGINE", "mymemory");
@@ -234,11 +220,7 @@ static partial class TestSuite
 
                 Environment.SetEnvironmentVariable("CLICKRA_TRANSLATION_ENGINE", "google");
                 Assert.Equal("google-free", TranslationEngineFactory.Create().Name);
-            }
-            finally
-            {
-                Environment.SetEnvironmentVariable("CLICKRA_TRANSLATION_ENGINE", oldValue);
-            }
+            });
         });
     }
 
@@ -423,10 +405,8 @@ static partial class TestSuite
 
         runner.Run("Fallback translator gives each provider an independent deadline", () =>
         {
-            var oldTimeout = Environment.GetEnvironmentVariable(ProviderTimeoutEnvVar);
-            try
+            WithEnvVar(ProviderTimeoutEnvVar, "1", () =>
             {
-                Environment.SetEnvironmentVariable(ProviderTimeoutEnvVar, "1");
                 var primary = new DelayedTranslationEngine("slow-primary", delayMilliseconds: 1500);
                 var fallback = new RecordingTranslationEngine(FallbackEngineName);
                 var translator = new FallbackTranslator(primary, fallback);
@@ -441,19 +421,13 @@ static partial class TestSuite
                 Assert.Equal("fallback:deadline test", result.Single());
                 Assert.True(primary.BatchAttempts == 1, "Primary provider should be attempted once.");
                 Assert.True(fallback.BatchSizes.Count == 1, "Fallback should run after primary timeout.");
-            }
-            finally
-            {
-                Environment.SetEnvironmentVariable(ProviderTimeoutEnvVar, oldTimeout);
-            }
+            });
         });
 
         runner.Run("Fallback translator fails closed when both provider deadlines expire", () =>
         {
-            var oldTimeout = Environment.GetEnvironmentVariable(ProviderTimeoutEnvVar);
-            try
+            WithEnvVar(ProviderTimeoutEnvVar, "1", () =>
             {
-                Environment.SetEnvironmentVariable(ProviderTimeoutEnvVar, "1");
                 var translator = new FallbackTranslator(
                     new DelayedTranslationEngine("slow-primary", delayMilliseconds: 1500),
                     new DelayedTranslationEngine("slow-fallback", delayMilliseconds: 1500));
@@ -464,11 +438,7 @@ static partial class TestSuite
                         CancellationToken.None)
                     .GetAwaiter()
                     .GetResult());
-            }
-            finally
-            {
-                Environment.SetEnvironmentVariable(ProviderTimeoutEnvVar, oldTimeout);
-            }
+            });
         });
     }
 
@@ -937,24 +907,9 @@ static partial class TestSuite
 
         runner.Run("Page-one wrapped title lines share the title role", () =>
         {
-            var title = new PdfParagraph(Array.Empty<UglyToad.PdfPig.DocumentLayoutAnalysis.TextLine>())
-            {
-                TextWithPlaceholders = "ASTER: Natural and Multi-language Unit Test",
-                X0 = 89.9, X1 = 512.9, Y0 = 667.4, Y1 = 682.4,
-                AverageFontSize = 23.91, SourceVisualFontSize = 23.91
-            };
-            var generation = new PdfParagraph(Array.Empty<UglyToad.PdfPig.DocumentLayoutAnalysis.TextLine>())
-            {
-                TextWithPlaceholders = "Generation",
-                X0 = 197.8, X1 = 299.6, Y0 = 639.1, Y1 = 656.7,
-                AverageFontSize = 23.91, SourceVisualFontSize = 23.91
-            };
-            var withLlms = new PdfParagraph(Array.Empty<UglyToad.PdfPig.DocumentLayoutAnalysis.TextLine>())
-            {
-                TextWithPlaceholders = "with LLMs",
-                X0 = 308.0, X1 = 405.0, Y0 = 639.1, Y1 = 656.7,
-                AverageFontSize = 23.91, SourceVisualFontSize = 23.91
-            };
+            var title = MakeRawParagraph("ASTER: Natural and Multi-language Unit Test", 89.9, 667.4, 512.9, 682.4, 23.91);
+            var generation = MakeRawParagraph("Generation", 197.8, 639.1, 299.6, 656.7, 23.91);
+            var withLlms = MakeRawParagraph("with LLMs", 308.0, 639.1, 405.0, 656.7, 23.91);
             var page = new List<PdfParagraph> { title, generation, withLlms };
 
             PageOneLayoutClassifier.MergeTitleWithSubtitle(page, 792);
@@ -969,18 +924,8 @@ static partial class TestSuite
 
         runner.Run("Page-one running header cannot replace the paper title", () =>
         {
-            var runningHeader = new PdfParagraph(Array.Empty<UglyToad.PdfPig.DocumentLayoutAnalysis.TextLine>())
-            {
-                TextWithPlaceholders = "2025 IEEE/ACM International Conference on Software Engineering",
-                X0 = 62, X1 = 550, Y0 = 762, Y1 = 769,
-                AverageFontSize = 5.2
-            };
-            var paperTitle = new PdfParagraph(Array.Empty<UglyToad.PdfPig.DocumentLayoutAnalysis.TextLine>())
-            {
-                TextWithPlaceholders = "ASTER: Natural and Multi-language Unit Test",
-                X0 = 90, X1 = 513, Y0 = 667, Y1 = 682,
-                AverageFontSize = 18
-            };
+            var runningHeader = MakeRawParagraph("2025 IEEE/ACM International Conference on Software Engineering", 62, 762, 550, 769, 5.2);
+            var paperTitle = MakeRawParagraph("ASTER: Natural and Multi-language Unit Test", 90, 667, 513, 682, 18);
 
             Assert.True(
                 ReferenceEquals(
@@ -1052,17 +997,9 @@ static partial class TestSuite
 
         runner.Run("Academic table headers stay bypassed and bold", () =>
         {
-            var header = new PdfParagraph(Array.Empty<UglyToad.PdfPig.DocumentLayoutAnalysis.TextLine>())
-            {
-                TextWithPlaceholders = "Model Name Provider Update Date Model Size",
-                IsBold = true,
-                IsTable = true,
-                AverageFontSize = 5.74,
-                Y0 = 698.5,
-                Y1 = 702.5,
-                X0 = 77.7,
-                X1 = 204.2
-            };
+            var header = MakeRawParagraph("Model Name Provider Update Date Model Size", 77.7, 698.5, 204.2, 702.5, 5.74);
+            header.IsBold = true;
+            header.IsTable = true;
 
             PdfTableMisclassifiedProseCleanup.Reclassify(new List<PdfParagraph> { header }, 612);
             Assert.True(header.IsTable, "A bold compact table header was demoted to prose.");
@@ -1094,10 +1031,8 @@ static partial class TestSuite
 
         runner.Run("PDF batch runner bounds a hung provider call", () =>
         {
-            var oldTimeout = Environment.GetEnvironmentVariable(ProviderTimeoutEnvVar);
-            try
+            WithEnvVar(ProviderTimeoutEnvVar, "1", () =>
             {
-                Environment.SetEnvironmentVariable(ProviderTimeoutEnvVar, "1");
                 var translator = new HangingTranslationEngine();
 
                 var ex = Assert.Throws<Exception>(() =>
@@ -1116,11 +1051,7 @@ static partial class TestSuite
                 Assert.True(
                     ex.Message.Contains("1", StringComparison.Ordinal),
                     $"Unexpected timeout recovery error: {ex.Message}");
-            }
-            finally
-            {
-                Environment.SetEnvironmentVariable(ProviderTimeoutEnvVar, oldTimeout);
-            }
+            });
         });
 
         runner.Run("PdfBypassedParagraphRenderer handles ligatures correctly without crashing", () =>

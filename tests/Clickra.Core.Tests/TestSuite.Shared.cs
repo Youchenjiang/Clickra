@@ -104,6 +104,38 @@ static partial class TestSuite
         };
     }
 
+    /// <summary>Creates a bare PdfParagraph without SourceLineHeight or
+    /// SemanticRole, for tests that need to set properties independently.</summary>
+    private static PdfParagraph MakeRawParagraph(
+        string text,
+        double x0 = 0, double y0 = 0, double x1 = 0, double y1 = 0,
+        double fontSize = 10)
+    {
+        return new PdfParagraph(Array.Empty<UglyToad.PdfPig.DocumentLayoutAnalysis.TextLine>())
+        {
+            TextWithPlaceholders = text,
+            X0 = x0, Y0 = y0, X1 = x1, Y1 = y1,
+            AverageFontSize = fontSize,
+            SourceVisualFontSize = fontSize
+        };
+    }
+
+    /// <summary>Sets an environment variable for the duration of
+    /// <paramref name="action"/> and restores the previous value afterwards.</summary>
+    private static void WithEnvVar(string name, string? value, Action action)
+    {
+        var old = Environment.GetEnvironmentVariable(name);
+        try
+        {
+            Environment.SetEnvironmentVariable(name, value);
+            action();
+        }
+        finally
+        {
+            Environment.SetEnvironmentVariable(name, old);
+        }
+    }
+
     private static PdfParagraph UninitializedParagraph(string text, double width, double height)
     {
         var paragraph = (PdfParagraph)System.Runtime.CompilerServices.RuntimeHelpers
