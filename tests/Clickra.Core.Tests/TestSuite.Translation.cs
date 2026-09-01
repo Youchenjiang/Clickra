@@ -18,6 +18,7 @@ static partial class TestSuite
     private const string CircledNumbersText = "①、②、③";
     private const string PrimaryEngineName = "primary";
     private const string FallbackEngineName = "fallback";
+    private const string TranslationEngineEnvVar = "CLICKRA_TRANSLATION_ENGINE";
     private const string ProviderTimeoutEnvVar = "CLICKRA_TRANSLATION_PROVIDER_TIMEOUT_SECONDS";
 
     public static void RegisterTranslationTests(TestRunner runner)
@@ -176,7 +177,7 @@ static partial class TestSuite
         });
 
         runner.Run("Identity translation engine is opt-in for layout tests", () =>
-            WithEnvVar("CLICKRA_TRANSLATION_ENGINE", "identity", () =>
+            WithEnvVar(TranslationEngineEnvVar, "identity", () =>
             {
                 var translator = TranslationEngineFactory.Create();
                 Assert.Equal("identity", translator.Name);
@@ -188,7 +189,7 @@ static partial class TestSuite
             }));
 
         runner.Run("Synthetic CJK engine preserves placeholders for layout tests", () =>
-            WithEnvVar("CLICKRA_TRANSLATION_ENGINE", "synthetic-cjk", () =>
+            WithEnvVar(TranslationEngineEnvVar, "synthetic-cjk", () =>
             {
                 var translator = TranslationEngineFactory.Create();
                 Assert.Equal("synthetic-cjk", translator.Name);
@@ -206,14 +207,14 @@ static partial class TestSuite
             }));
 
         runner.Run("Translation engine defaults to Google with MyMemory fallback", () =>
-            WithEnvVar("CLICKRA_TRANSLATION_ENGINE", null, () =>
+            WithEnvVar(TranslationEngineEnvVar, null, () =>
             {
                 Assert.Equal("google-free+mymemory", TranslationEngineFactory.Create().Name);
 
-                Environment.SetEnvironmentVariable("CLICKRA_TRANSLATION_ENGINE", "mymemory");
+                Environment.SetEnvironmentVariable(TranslationEngineEnvVar, "mymemory");
                 Assert.Equal("mymemory", TranslationEngineFactory.Create().Name);
 
-                Environment.SetEnvironmentVariable("CLICKRA_TRANSLATION_ENGINE", "google");
+                Environment.SetEnvironmentVariable(TranslationEngineEnvVar, "google");
                 Assert.Equal("google-free", TranslationEngineFactory.Create().Name);
             }));
     }
