@@ -64,6 +64,17 @@ static partial class TestSuite
         _fontResolverInstalled = true;
     }
 
+    private static (PdfDocument Document, XGraphics Gfx) CreateTestDoc()
+    {
+        EnsureFontResolver();
+        var document = new PdfDocument();
+        var page = document.AddPage();
+        page.Width = XUnit.FromPoint(612);
+        page.Height = XUnit.FromPoint(792);
+        var gfx = XGraphics.FromPdfPage(page);
+        return (document, gfx);
+    }
+
     private static PdfParagraph UninitializedParagraph(string text, double width, double height)
     {
         var paragraph = (PdfParagraph)System.Runtime.CompilerServices.RuntimeHelpers

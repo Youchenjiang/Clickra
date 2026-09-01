@@ -670,12 +670,7 @@ static partial class TestSuite
 
         runner.Run("Flowable translated body measures at source size before vertical balancing", () =>
         {
-            try { GlobalFontSettings.FontResolver = new ClickraFontResolver(); } catch (InvalidOperationException) { /* FontResolver already initialized */ }
-            using var document = new PdfDocument();
-            var page = document.AddPage();
-            page.Width = XUnit.FromPoint(612);
-            page.Height = XUnit.FromPoint(792);
-            using var gfx = XGraphics.FromPdfPage(page);
+            var (_, gfx) = CreateTestDoc();
             var paragraph = new PdfParagraph(Array.Empty<UglyToad.PdfPig.DocumentLayoutAnalysis.TextLine>())
             {
                 TextWithPlaceholders = "A deliberately long body paragraph",
@@ -708,12 +703,7 @@ static partial class TestSuite
 
         runner.Run("Body font sizing ignores isolated oversized source glyphs", () =>
         {
-            try { GlobalFontSettings.FontResolver = new ClickraFontResolver(); } catch (InvalidOperationException) { /* FontResolver already initialized */ }
-            using var document = new PdfDocument();
-            var page = document.AddPage();
-            page.Width = XUnit.FromPoint(612);
-            page.Height = XUnit.FromPoint(792);
-            using var gfx = XGraphics.FromPdfPage(page);
+            var (_, gfx) = CreateTestDoc();
             var paragraph = LayoutParagraph(
                 "This body paragraph contains one oversized citation glyph.",
                 string.Concat(Enumerable.Repeat("這是一段用來驗證正文不會因單一異常大字元而被放大的翻譯文字。", 6)),
@@ -789,12 +779,7 @@ static partial class TestSuite
 
         runner.Run("Continuation font inheritance cannot be amplified twice", () =>
         {
-            try { GlobalFontSettings.FontResolver = new ClickraFontResolver(); } catch (InvalidOperationException) { }
-            using var document = new PdfDocument();
-            var page = document.AddPage();
-            page.Width = XUnit.FromPoint(612);
-            page.Height = XUnit.FromPoint(792);
-            using var gfx = XGraphics.FromPdfPage(page);
+            var (_, gfx) = CreateTestDoc();
             var predecessor = LayoutParagraph(
                 "First body fragment",
                 "第一個正文片段",
@@ -830,12 +815,7 @@ static partial class TestSuite
     {
         runner.Run("Vertical balancing treats spatial table masks as fixed boundaries", () =>
         {
-            try { GlobalFontSettings.FontResolver = new ClickraFontResolver(); } catch (InvalidOperationException) { /* FontResolver already initialized */ }
-            using var document = new PdfDocument();
-            var page = document.AddPage();
-            page.Width = XUnit.FromPoint(612);
-            page.Height = XUnit.FromPoint(792);
-            using var gfx = XGraphics.FromPdfPage(page);
+            var (_, gfx) = CreateTestDoc();
 
             var unclassifiedTableText = LayoutParagraph(
                 "Q1. Current Professional Role Open Q2. Years of experience",
@@ -869,12 +849,7 @@ static partial class TestSuite
 
         runner.Run("Vertical balancing ignores incidental fixed-region overlap", () =>
         {
-            try { GlobalFontSettings.FontResolver = new ClickraFontResolver(); } catch (InvalidOperationException) { /* Font resolver already initialized */ }
-            using var document = new PdfDocument();
-            var page = document.AddPage();
-            page.Width = XUnit.FromPoint(612);
-            page.Height = XUnit.FromPoint(792);
-            using var gfx = XGraphics.FromPdfPage(page);
+            var (_, gfx) = CreateTestDoc();
 
             var bodyAboveCallout = LayoutParagraph(
                 string.Join(' ', Enumerable.Repeat("translated body prose", 45)),
