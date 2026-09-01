@@ -83,14 +83,28 @@ jobs:
                 .split("\n")
                 .slice(1)
                 .filter((line) => !line.startsWith("#"));
-              const hasNumberedList = lines.some((line) =>
+              const numberedLine = lines.find((line) =>
                 /^\s*1[\.\)]\s+/.test(line),
               );
-              if (hasNumberedList) {
+              if (!numberedLine) {
+                return [
+                  `${label} body must contain an English numbered list starting with "1. " or "1)"`,
+                ];
+              }
+              // Extract text after the "1. " or "1)" marker and verify it is
+              // predominantly ASCII/Latin so the policy truly enforces English.
+              const content = numberedLine.replace(/^\s*1[\.\)]\s+/, "");
+              const alphaChars = content.replace(/[^a-zA-Z]/g, "");
+              if (alphaChars.length === 0) {
+                return [];
+              }
+              const asciiRatio =
+                alphaChars.replace(/[^\x00-\x7F]/g, "").length / alphaChars.length;
+              if (asciiRatio >= 0.7) {
                 return [];
               }
               return [
-                `${label} body must contain an English numbered list starting with "1. " or "1)"`,
+                `${label} body numbered list content must be predominantly English (ASCII). Got ${Math.round(asciiRatio * 100)}% ASCII letters.`,
               ];
             }
 
