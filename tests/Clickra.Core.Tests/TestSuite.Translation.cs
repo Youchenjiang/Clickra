@@ -482,14 +482,8 @@ static partial class TestSuite
     {
         runner.Run("Heading classifier recognizes Roman sections but not equation numbers", () =>
         {
-            var heading = new PdfParagraph(Array.Empty<UglyToad.PdfPig.DocumentLayoutAnalysis.TextLine>())
-            {
-                TextWithPlaceholders = "I. INTRODUCTION"
-            };
-            var equationNumber = new PdfParagraph(Array.Empty<UglyToad.PdfPig.DocumentLayoutAnalysis.TextLine>())
-            {
-                TextWithPlaceholders = "2"
-            };
+            var heading = MakeParagraph("I. INTRODUCTION");
+            var equationNumber = MakeParagraph("2");
 
             Assert.True(PdfParagraphSemanticClassifier.IsHeadingParagraph(heading),
                 "Roman-numbered section should be treated as a heading.");
@@ -499,55 +493,23 @@ static partial class TestSuite
 
         runner.Run("Heading classifier preserves short colon labels", () =>
         {
-            var label = new PdfParagraph(Array.Empty<UglyToad.PdfPig.DocumentLayoutAnalysis.TextLine>())
-            {
-                TextWithPlaceholders = "The main contributions of this work include:"
-            };
+            var label = MakeParagraph("The main contributions of this work include:");
             Assert.True(PdfParagraphSemanticClassifier.IsHeadingParagraph(label),
                 "A short colon label should retain heading typography.");
         });
 
         runner.Run("Lower-case wide continuation remains translatable prose", () =>
         {
-            var continuation = new PdfParagraph(Array.Empty<UglyToad.PdfPig.DocumentLayoutAnalysis.TextLine>())
-            {
-                TextWithPlaceholders = "of test assertions, (3) meaningfulness of test sequences, (4)",
-                X0 = 314,
-                X1 = 545,
-                Y0 = 102,
-                Y1 = 109
-            };
+            var continuation = MakeParagraph("of test assertions, (3) meaningfulness of test sequences, (4)", 314, 102, 545, 109);
             Assert.True(PdfParagraphRoleClassifier.IsTranslatableBodyProse(continuation),
                 "A wide lower-case continuation must not be treated as a bypass fragment.");
         });
 
         runner.Run("Reference section bypasses every continuation line", () =>
         {
-            var heading = new PdfParagraph(Array.Empty<UglyToad.PdfPig.DocumentLayoutAnalysis.TextLine>())
-            {
-                TextWithPlaceholders = "REFERENCES",
-                AverageFontSize = 9.96,
-                X0 = 150,
-                X1 = 220,
-                Y0 = 500,
-                Y1 = 512
-            };
-            var entry = new PdfParagraph(Array.Empty<UglyToad.PdfPig.DocumentLayoutAnalysis.TextLine>())
-            {
-                TextWithPlaceholders = "[25] N. Alshahwan, J. Chheda, and E. Wang, Automated unit improvement",
-                X0 = 60,
-                X1 = 300,
-                Y0 = 450,
-                Y1 = 460
-            };
-            var continuation = new PdfParagraph(Array.Empty<UglyToad.PdfPig.DocumentLayoutAnalysis.TextLine>())
-            {
-                TextWithPlaceholders = "using large language models for testing, in the proceedings.",
-                X0 = 60,
-                X1 = 300,
-                Y0 = 438,
-                Y1 = 448
-            };
+            var heading = MakeParagraph("REFERENCES", 150, 500, 220, 512, 9.96);
+            var entry = MakeParagraph("[25] N. Alshahwan, J. Chheda, and E. Wang, Automated unit improvement", 60, 450, 300, 460);
+            var continuation = MakeParagraph("using large language models for testing, in the proceedings.", 60, 438, 300, 448);
             var pages = new List<List<PdfParagraph>> { new() { heading, entry, continuation } };
 
             PdfReferenceSectionBypasser.Apply(
@@ -561,15 +523,7 @@ static partial class TestSuite
 
         runner.Run("Reference author initials do not terminate bibliography bypass", () =>
         {
-            var authorContinuation = new PdfParagraph(Array.Empty<UglyToad.PdfPig.DocumentLayoutAnalysis.TextLine>())
-            {
-                TextWithPlaceholders = "A. Panichella and G. Fraser",
-                AverageFontSize = 9.96,
-                X0 = 314,
-                X1 = 545,
-                Y0 = 650,
-                Y1 = 657
-            };
+            var authorContinuation = MakeParagraph("A. Panichella and G. Fraser", 314, 650, 545, 657, 9.96);
 
             Assert.True(!ReferenceSectionDetector.IsTerminator(authorContinuation),
                 "An author-initial continuation must not end the reference section.");
@@ -577,26 +531,10 @@ static partial class TestSuite
 
         runner.Run("References heading survives diagram misclassification", () =>
         {
-            var bibliographyHeading = new PdfParagraph(Array.Empty<UglyToad.PdfPig.DocumentLayoutAnalysis.TextLine>())
-            {
-                TextWithPlaceholders = "REFERENCES",
-                AverageFontSize = 7.514,
-                X0 = 150,
-                X1 = 201,
-                Y0 = 500,
-                Y1 = 506,
-                IsDiagram = true
-            };
-            var tableField = new PdfParagraph(Array.Empty<UglyToad.PdfPig.DocumentLayoutAnalysis.TextLine>())
-            {
-                TextWithPlaceholders = "Reference",
-                AverageFontSize = 9.96,
-                X0 = 150,
-                X1 = 222,
-                Y0 = 500,
-                Y1 = 510,
-                IsTable = true
-            };
+            var bibliographyHeading = MakeParagraph("REFERENCES", 150, 500, 201, 506, 7.514);
+            bibliographyHeading.IsDiagram = true;
+            var tableField = MakeParagraph("Reference", 150, 500, 222, 510, 9.96);
+            tableField.IsTable = true;
 
             Assert.True(ReferenceSectionDetector.IsHeading(bibliographyHeading),
                 "An unambiguous REFERENCES heading must start bibliography bypass despite a diagram flag.");
@@ -606,42 +544,21 @@ static partial class TestSuite
 
         runner.Run("Short research questions remain full-size prose", () =>
         {
-            var question = new PdfParagraph(Array.Empty<UglyToad.PdfPig.DocumentLayoutAnalysis.TextLine>())
-            {
-                TextWithPlaceholders = "RQ3: How natural are ASTER-generated tests?",
-                X0 = 314,
-                X1 = 545,
-                Y0 = 563,
-                Y1 = 570
-            };
+            var question = MakeParagraph("RQ3: How natural are ASTER-generated tests?", 314, 563, 545, 570);
             Assert.True(PdfParagraphRoleClassifier.IsTranslatableCalloutProse(question),
                 "RQ3 must not be treated as a tiny fixed-height label.");
         });
 
         runner.Run("Narrow lower-case continuation remains full-size prose", () =>
         {
-            var continuation = new PdfParagraph(Array.Empty<UglyToad.PdfPig.DocumentLayoutAnalysis.TextLine>())
-            {
-                TextWithPlaceholders = "search questions.",
-                X0 = 65,
-                X1 = 128,
-                Y0 = 93,
-                Y1 = 100
-            };
+            var continuation = MakeParagraph("search questions.", 65, 93, 128, 100);
             Assert.True(PdfParagraphRoleClassifier.IsTranslatableCalloutProse(continuation),
                 "A narrow lower-case continuation must not be shrunk to its extraction box.");
         });
 
         runner.Run("Finding callouts preserve their fixed container geometry", () =>
         {
-            var finding = new PdfParagraph(Array.Empty<UglyToad.PdfPig.DocumentLayoutAnalysis.TextLine>())
-            {
-                TextWithPlaceholders = "Finding 5: Developers prefer ASTER-generated tests.",
-                X0 = 67.6,
-                X1 = 292.4,
-                Y0 = 330.1,
-                Y1 = 380.5
-            };
+            var finding = MakeParagraph("Finding 5: Developers prefer ASTER-generated tests.", 67.6, 330.1, 292.4, 380.5);
             Assert.True(PdfParagraphRoleClassifier.IsFindingCallout(finding),
                 "Singular numbered Finding callouts must be classified explicitly.");
             Assert.True(PdfParagraphRoleClassifier.IsTranslatableCalloutProse(finding),
@@ -656,13 +573,9 @@ static partial class TestSuite
 
         runner.Run("Paragraph source visual font size survives title grouping", () =>
         {
-            var title = new PdfParagraph(Array.Empty<UglyToad.PdfPig.DocumentLayoutAnalysis.TextLine>())
-            {
-                TextWithPlaceholders = "Main title",
-                IsPageTitle = true,
-                SourceVisualFontSize = 18,
-                AverageFontSize = 11
-            };
+            var title = MakeParagraph("Main title", fontSize: 11);
+            title.IsPageTitle = true;
+            title.SourceVisualFontSize = 18;
             Assert.True(Math.Abs(title.SourceVisualFontSize - 18d) < 0.001,
                 "Source visual font size was not retained.");
             Assert.True(title.IsPageTitle, "Title role was not retained in the source snapshot.");
@@ -671,19 +584,9 @@ static partial class TestSuite
         runner.Run("Flowable translated body measures at source size before vertical balancing", () =>
         {
             var (_, gfx) = CreateTestDoc();
-            var paragraph = new PdfParagraph(Array.Empty<UglyToad.PdfPig.DocumentLayoutAnalysis.TextLine>())
-            {
-                TextWithPlaceholders = "A deliberately long body paragraph",
-                TranslatedText = string.Concat(Enumerable.Repeat("這是一段用來驗證正文自然重排高度的翻譯文字。", 12)),
-                SemanticRole = PdfParagraphSemanticRole.Body,
-                X0 = 49,
-                X1 = 300,
-                Y0 = 500,
-                Y1 = 520,
-                AverageFontSize = 9.0,
-                SourceVisualFontSize = 9.0,
-                SourceLineHeight = 9.0
-            };
+            var paragraph = MakeParagraph("A deliberately long body paragraph", 49, 500, 300, 520, 9.0);
+            paragraph.TranslatedText = string.Concat(Enumerable.Repeat("這是一段用來驗證正文自然重排高度的翻譯文字。", 12));
+            paragraph.SemanticRole = PdfParagraphSemanticRole.Body;
 
             PdfParagraphRenderMetrics metrics = default;
             PdfTranslatedParagraphRenderer.RenderParagraph(

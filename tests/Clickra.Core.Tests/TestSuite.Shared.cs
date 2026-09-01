@@ -75,6 +75,21 @@ static partial class TestSuite
         return (document, gfx);
     }
 
+    private static PdfParagraph MakeParagraph(
+        string text,
+        double x0 = 0, double y0 = 0, double x1 = 0, double y1 = 0,
+        double fontSize = 10)
+    {
+        return new PdfParagraph(Array.Empty<UglyToad.PdfPig.DocumentLayoutAnalysis.TextLine>())
+        {
+            TextWithPlaceholders = text,
+            X0 = x0, Y0 = y0, X1 = x1, Y1 = y1,
+            AverageFontSize = fontSize,
+            SourceVisualFontSize = fontSize,
+            SourceLineHeight = fontSize
+        };
+    }
+
     private static PdfParagraph UninitializedParagraph(string text, double width, double height)
     {
         var paragraph = (PdfParagraph)System.Runtime.CompilerServices.RuntimeHelpers
