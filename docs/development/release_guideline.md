@@ -2,6 +2,41 @@
 
 本文件定義了 Clickra 的版本號設計邏輯、微軟商店相容規範，以及發布新版本時必須更新的檔案清單。
 
+---
+
+## 0. 發布清單 (Release Checklist)
+
+> [!WARNING]
+> **每次發版前，務必逐項檢查以下清單。** 遺漏任何一項都會導致版本不一致或商店文案過時。
+
+### Step 1：決定版本號
+- [ ] 依據 §2 規則決定新版本號（Major / Minor / Patch）
+- [ ] 確認 Revision 固定為 `0`
+
+### Step 2：執行 bump_version.ps1（自動更新版本號）
+- [ ] 執行 `./scripts/bump_version.ps1 -Type minor`（或 `major` / `patch`）
+- [ ] 腳本會自動更新：`Directory.Build.props`、3 份 `AppxManifest.xml`、`CHANGELOG.md`（TODO placeholder）、`README.md` / `README.zh-TW.md`（標題 + 版本表格）、5 份 `StoreListing_*.md`（版本標題）
+
+### Step 3：手動更新文件（腳本無法自動處理的內容）
+- [ ] **CHANGELOG.md**：將 `**TODO**: Add changelog entry here` 替換為實際的變更描述（參考 §3.4）
+- [ ] **README.md / README.zh-TW.md**：將版本表格中的 `**TODO**: Add milestone description here` 替換為實際描述
+- [ ] **docs/ROADMAP.md**：更新里程碑完成狀態（`[ ]` → `[x]`）與進度說明
+- [ ] **docs/development/refactor_backlog.md**：更新「發行狀態」行的版本號
+- [ ] **LOCAL_BUILD_NOTES.md**：更新架構版本標記（如有）
+- [ ] **docs/StoreListing_*.md**（5 語言）：更新 Description、What's new、Product Features、Short description（參考 §3.5）
+
+### Step 4：驗證
+- [ ] `dotnet build` 無錯誤
+- [ ] 測試全部通過
+- [ ] 殘留舊版號檢查：將下方指令中的 `3.6.5.0` 換成 **Step 2 輸出「Upgrading version from X to Y」中的 X（上一版號）** 後執行，確認除歷史文件（CHANGELOG / README / ROADMAP / refactor_backlog）外無任何輸出：
+      `grep -rn "3.6.5.0" --include="*.xml" --include="*.props" --include="*.md" . | grep -v CHANGELOG | grep -v README | grep -v ROADMAP | grep -v refactor_backlog`
+
+### Step 5：提交與推送
+- [ ] 原子化提交：版本號升級一個 commit，文件內容更新可分開提交
+- [ ] 推送並建立 PR（或直接推送標籤觸發 CI）
+
+---
+
 ## 1. 版本號結構與微軟商店限制
 
 Clickra 遵循四位數版本號格式：`Major.Minor.Patch.Revision`（例如 `3.0.8.0`）。
@@ -37,17 +72,22 @@ $$\text{Version} = \text{Major} . \text{Minor} . \text{Patch} . \mathbf{0}$$
 
 ## 3. 發布版本時必須更新的檔案清單 (Files to Update)
 
-當要發布/編譯新版本時，必須更新以下檔案中的版本號字串：
+> [!CAUTION]
+> **此清單是權威來源。** 每次發版前务必逐項核對。遺漏任何檔案都會導致版本不一致。
 
-### 3.1 核心專案與編譯配置 (Core & Compilation)
+當要發布/編譯新版本時，必須更新以下所有檔案：
+
+### 3.1 核心專案與編譯配置 (Core & Compilation) — `bump_version.ps1` 自動處理
 *   **[Directory.Build.props](../../src/Directory.Build.props)**:
     更新 `<Version>X.Y.Z.0</Version>` 標籤。這會自動套用至所有編譯出來的 C# 二進位檔 (`Clickra.exe`, `ClickraShell.dll` 等)。
 *   **[src/resources/AppxManifest.xml](../../src/resources/AppxManifest.xml)**:
     更新 `<Identity ... Version="X.Y.Z.0" />`。此處為本地開發與資源包專用的 Manifest。
 
-### 3.2 MSIX 打包配置 (MSIX Packaging)
+### 3.2 MSIX 打包配置 (MSIX Packaging) — `bump_version.ps1` 自動處理
 *   **[packaging/msix/AppxManifest.xml](../../packaging/msix/AppxManifest.xml)**:
-    更新 `<Identity ... Version="X.Y.Z.0" />`。此為最終打包成 `.msix` 用於商店發布的核心 Manifest。
+    更新 `<Identity ... Version="X.Y.Z.0" />`。此為主套件（AOT）的商店 Manifest。
+*   **[packaging/msix/AppxManifest.Fluent.xml](../../packaging/msix/AppxManifest.Fluent.xml)**:
+    更新 `<Identity ... Version="X.Y.Z.0" />`。此為 Fluent 可選套件的商店 Manifest。
 
 > [!NOTE]
 > Clickra 的 `X.Y.Z.0` 應用程式版本與 Windows App SDK 套件版本是兩套不同資料。
@@ -56,10 +96,26 @@ $$\text{Version} = \text{Major} . \text{Minor} . \text{Patch} . \mathbf{0}$$
 > `Microsoft.WindowsAppRuntime` family 與 `MinVersion`。不要用
 > `bump_version.ps1` 管理 Windows App SDK 版本。
 
-### 3.3 專案文件 (Documentation)
+### 3.3 專案文件 (Documentation) — `bump_version.ps1` 自動處理標題與版本表格
 *   **[README.md](../../README.md)**: 更新標題的 `Clickra vX.Y.Z.0` 以及版本歷史表格。
 *   **[README.zh-TW.md](../../README.zh-TW.md)**: 同步更新繁中說明的標題與版本歷史。
-*   **[docs/ROADMAP.md](../ROADMAP.md)**: 更新里程碑狀態與對應的版本號。
+
+### 3.4 專案文件 (Documentation) — 需手動更新
+*   **[CHANGELOG.md](../../CHANGELOG.md)**: 腳本會自動插入 TODO placeholder，需手動替換為實際變更描述。
+*   **[docs/ROADMAP.md](../ROADMAP.md)**: 更新里程碑完成狀態（`[ ]` → `[x]`）與進度說明。
+*   **[docs/development/refactor_backlog.md](refactor_backlog.md)**: 更新「發行狀態」行的版本號。
+*   **[LOCAL_BUILD_NOTES.md](../../LOCAL_BUILD_NOTES.md)**: 更新架構版本標記（如有）。
+
+### 3.5 商店文案 (Store Listings) — `bump_version.ps1` 自動更新版本標題，內容需手動更新
+*   **[docs/StoreListing_EN.md](../StoreListing_EN.md)**: 英文商店文案。
+*   **[docs/StoreListing_ZH.md](../StoreListing_ZH.md)**: 繁體中文商店文案。
+*   **[docs/StoreListing_JA.md](../StoreListing_JA.md)**: 日文商店文案。
+*   **[docs/StoreListing_KO.md](../StoreListing_KO.md)**: 韓文商店文案。
+*   **[docs/StoreListing_ZH-CN.md](../StoreListing_ZH-CN.md)**: 簡體中文商店文案。
+
+> [!WARNING]
+> 商店文案的 **Description**、**What's new**、**Product Features**、**Short description** 欄位不會被腳本自動更新。
+> 每次發版時，必須手動更新這 5 個檔案中的功能描述，確保與 CHANGELOG 一致。
 
 ---
 

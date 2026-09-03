@@ -139,6 +139,42 @@ foreach ($f in $readmeFiles) {
     }
 }
 
+# 6. Update StoreListing version stamp at the top of each file
+$storeListingFiles = @(
+    "docs/StoreListing_EN.md",
+    "docs/StoreListing_ZH.md",
+    "docs/StoreListing_JA.md",
+    "docs/StoreListing_KO.md",
+    "docs/StoreListing_ZH-CN.md"
+)
+foreach ($f in $storeListingFiles) {
+    # A missing listing must fail the release, never be silently skipped.
+    if (-not (Test-Path "$root/$f")) {
+        throw "Required StoreListing file not found: $f"
+    }
+    $content = [System.IO.File]::ReadAllText("$root/$f", [System.Text.Encoding]::UTF8)
+    # Only bump the version stamp in the top-of-file intro sentence; never
+    # rewrite version-formatted strings that may appear later in feature
+    # descriptions or historical notes.
+    $eol = if ($content -match "`r`n") { "`r`n" } else { "`n" }
+    $lines = $content -split "`r?`n"
+    $stampFound = $false
+    $headerLimit = [Math]::Min(10, $lines.Count)
+    for ($i = 0; $i -lt $headerLimit; $i++) {
+        if ($lines[$i] -match 'v\d+\.\d+\.\d+\.\d+') {
+            $lines[$i] = $lines[$i] -replace 'v\d+\.\d+\.\d+\.\d+', "v$newVersion"
+            $stampFound = $true
+            break
+        }
+    }
+    if (-not $stampFound) {
+        throw "No version stamp found in the top of $f; refusing to bump it blindly"
+    }
+    $content = $lines -join $eol
+    [System.IO.File]::WriteAllText("$root/$f", $content, $utf8NoBOM)
+    Write-Host "[Doc] Synced StoreListing: $f" -ForegroundColor Gray
+}
+
 Write-Host "[Success] All files synced successfully!" -ForegroundColor Green
 
 if ($Build) {

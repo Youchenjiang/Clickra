@@ -1,5 +1,25 @@
 # Changelog
 
+All notable changes to Clickra will be documented in this file.
+
+## [v3.7.0.0] - 2026-09-02
+
+- **PDF Translation Hyphenation**：技術術語跨行連字自動重組（如 Cop-peliaSim → CoppeliaSim），並調整 CJK 字體縮放比例以提升可讀性。
+- **右鍵選單圖示 (Context Menu Icons)**：所有 Shell 轉檔指令現在在 Windows 11 及傳統右鍵選單中顯示在地化圖示。
+- **每任務檔案佇列 (Per-task File Queue)**：取代單一 active.tmp，改為個別任務進度檔案；新增歷史記錄、任務暫停/恢復與過期任務清理，提升多工作業可靠性。
+- **卸載安全機制 (Uninstall Safety)**：終止 COM 代理程序前先驗證模組路徑，避免誤殺無關程序。
+- **WinUI 3 Fluent Dashboard**：全新 WinUI 3 介面，包含設定、歷史、轉檔與關於頁面；以可選 MSIX 套件形式提供（Store 可選套件權限待審核中）。
+- 修復 PDF 解密失敗時出現重複彈窗的問題。
+- 限定 Store 發佈步驟僅在版本標籤推送時觸發。
+
+## [v3.6.5.0] - 2026-08-08
+
+- **視覺化 PDF 分割標記 (Visual PDF Splitter)**：於進度視窗新增視覺化分割介面，支援自訂分段、全拆單頁與固定頁數三種模式，提供頁面縮圖預覽與放大檢視，並以分號分隔的多區段規格一次輸出多個檔案。
+- **主視窗「分割 PDF」按鈕 (Split PDF Button)**：轉檔頁「PDF 工具」群組新增「分割 PDF」按鈕，可直接從主視窗呼叫分割功能，並一併修復圖片合併／圖片拼接按鈕無法點選的問題。
+- **「切開」功能 (Split at Current Page)**：分割視窗的頁面導覽列新增「切開」按鈕，可在目前預覽的頁面將選中分段直接切成兩段，方便快速拆出單一頁面。
+- **PDF 翻譯穩定性修復 (PDF Translation Stability)**：修正 PDF 翻譯流程中版面溢出計算與流程式正文旗標處理的問題，並重構翻譯測試註冊結構以提升可維護性。
+- 修復視覺分割器首次開啟時版面殘留舊畫面、單頁分段顯示為 `P.28-28`、視窗未放大導致底部按鈕被裁切，以及密碼輸入控制項重疊於分割介面的問題。
+
 ## [v3.6.4.0] - 2026-07-22
 
 - **PDF 翻譯可靠性 (PDF Translation Reliability)**：限制文件、provider 與 fallback 的 deadline 和重試範圍；以純 .NET MyMemory 請求、批次拆分及 provider fallback 復原可恢復的失敗。未翻譯原文、破損粗體標記、重複片語與異常英文殘留均會觸發 fallback，且只在翻譯與 health gate 全部通過後原子發布輸出。
@@ -7,19 +27,6 @@
 - **固定內容與繪圖保護 (Protected Content and Drawing Preservation)**：保護圖表、合併／窄欄表格、程式碼、公式、灰色 prompt、作者資訊與參考文獻等 bypass 區域，並重建向量標記、邊框、遮罩及 overlay，避免翻譯覆蓋、Table III 列遺失或原始圖形受損。
 - **PDF 連結保存 (PDF Link Preservation)**：依 annotation occurrence 重建內部引用與外部超連結，避免重複文字造成錯誤配對或遺失連結。
 - **診斷與回歸門檻 (Diagnostics and Regression Gates)**：擴充 PDF layout health report，加入來源對譯文的逐頁逐欄渲染占用比較，並以 ASTER 標題、摘要、Table III、圖說、受保護區域、連結、provider fallback 及輸出品質檢查作為 deterministic regression gates。
-
-All notable changes to Clickra will be documented in this file.
-
-## [v3.6.5.0] - 2026-08-08
-
-- **視覺化 PDF 分割標記 (Visual PDF Splitter)**：於進度視窗新增視覺化分割介面，支援自訂分段、全拆單頁與固定頁數三種模式，提供頁面縮圖預覽與放大檢視，並以分號分隔的多區段規格一次輸出多個檔案。
-- **主視窗「分割 PDF」按鈕 (Split PDF Button)**：轉檔頁「PDF 工具」群組新增「分割 PDF」按鈕，可直接從主視窗呼叫分割功能，並一併修復圖片合併／圖片拼接按鈕無法點選的問題。
-- **「切開」功能 (Split at Current Page)**：分割視窗的頁面導覽列新增「切開」按鈕，可在目前預覽的頁面將選中分段直接切成兩段，方便快速拆出單一頁面。
-- 修復視覺分割器首次開啟時版面殘留舊畫面、單頁分段顯示為 `P.28-28`、視窗未放大導致底部按鈕被裁切，以及密碼輸入控制項重疊於分割介面的問題。
-
-## [v3.6.4.0] - 2026-08-08
-
-- **PDF 翻譯穩定性修復 (PDF Translation Stability)**：修正 PDF 翻譯流程中版面溢出計算與流程式正文旗標處理的問題，並重構翻譯測試註冊結構以提升可維護性。
 
 ## [v3.6.3.0] - 2026-07-09
 

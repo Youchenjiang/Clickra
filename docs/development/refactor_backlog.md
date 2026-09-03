@@ -125,7 +125,7 @@ GitHub Release 的 MSIX 以 CI 自簽憑證簽署，使用者需信任憑證或�
 | 合併順序建議 | 先合 feature → main（雙軌正式化），再合 refactor（diff 乾淨） |
 | 合併前待決 | push 授權、合併方式（PR vs fast-forward）、2.2/2.4/2.3 殘項是否先補；**local main 停在 PR #37（b3dcedc）已過時，合併前先 fetch origin/main（已到 PR #45）** |
 
-**發行狀態**：Main manifest (`AppxManifest.xml`) + Fluent manifest (`AppxManifest.Fluent.xml`) 版本已同步 3.6.5.0。
+**發行狀態**：Main manifest (`AppxManifest.xml`) + Fluent manifest (`AppxManifest.Fluent.xml`) 版本已同步 3.7.0.0。
 
 ---
 
