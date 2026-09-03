@@ -1,4 +1,4 @@
-# Clickra v3.6.5.0
+# Clickra v3.7.0.0
 
 [![Microsoft Store](https://img.shields.io/badge/Microsoft%20Store-Clickra-blue?style=for-the-badge&logo=microsoft-store)](https://apps.microsoft.com/detail/9NGLBF6P1KLD)
 [![License: Apache 2.0](https://img.shields.io/badge/License-Apache%202.0-blue.svg?style=for-the-badge)](https://opensource.org/licenses/Apache-2.0)
@@ -26,6 +26,7 @@
 
 | 版本       | 日期       | 關鍵里程碑                                                             |
 | :--------- | :--------- | :--------------------------------------------------------------------- |
+| **v3.7.0.0** | 2026/09/02 | **PDF 連字修復、右鍵選單圖示、任務佇列與 WinUI 3 Fluent Dashboard**。自動重組跨行技術術語連字、各轉檔指令新增在地化圖示、每任務獨立進度檔案佇列支援歷史/暫停/恢復，以及全新 WinUI 3 Fluent 使用者介面。 |
 | **v3.6.5.0** | 2026/08/08 | **視覺化 PDF 分割與「分割 PDF」按鈕**。新增視覺化 PDF 分割介面（自訂分段／全拆單頁／固定頁數）與頁面預覽、主視窗「分割 PDF」按鈕，以及「切開」單頁功能。 |
 | **v3.6.4.0** | 2026/07/22 | **可靠且理解版面的 PDF 翻譯**。加入有界限的純 .NET provider fallback、異常輸出 guard 與原子輸出門檻；保存標題階層、字型樣式、合併表格、固定圖形、圖說及連結；加入來源／譯文渲染占用比較與 deterministic ASTER 回歸測試。 |
 | **v3.6.3.0** | 2026/07/09 | **CI/CD 自動化發布與多國語言支援**。新增 GitHub Actions 提交規範檢查、將 Windows 商店上架流程整合至 CI/CD 自動化管線，並為應用程式安裝包與商店頁面完整補全繁中、英文、日文、韓文與簡中 5 國語系原生支援。 |

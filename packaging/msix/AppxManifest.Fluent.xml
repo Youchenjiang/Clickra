@@ -16,7 +16,7 @@
   <Identity
     Name="Clickra.Fluent"
     Publisher="CN=CBF59877-21AD-4BC4-8F91-FE8DA520A138"
-    Version="3.6.5.0" />
+    Version="3.7.0.0" />
 
   <Properties>
     <DisplayName>Clickra Fluent</DisplayName>

@@ -15,7 +15,7 @@ The `scripts/build_msix.ps1` script has been updated to automatically detect thi
 
 ## Packaging Requirements
 
-## Main + Optional Package Architecture (v3.6.5+)
+## Main + Optional Package Architecture (v3.7.0+)
 
 Clickra ships as two MSIX packages for Microsoft Store:
 

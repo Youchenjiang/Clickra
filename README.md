@@ -1,4 +1,4 @@
-﻿# Clickra v3.6.5.0
+﻿# Clickra v3.7.0.0
 
 [![Microsoft Store](https://img.shields.io/badge/Microsoft%20Store-Clickra-blue?style=for-the-badge&logo=microsoft-store)](https://apps.microsoft.com/detail/9NGLBF6P1KLD)
 [![License: Apache 2.0](https://img.shields.io/badge/License-Apache%202.0-blue.svg?style=for-the-badge)](https://opensource.org/licenses/Apache-2.0)
@@ -26,6 +26,7 @@ Most productivity scripts (PDF merging, image conversion, etc.) are typically wr
 
 | Version | Release Date | Key Milestone |
 | :--- | :--- | :--- |
+| **v3.7.0.0** | 2026/09/02 | **PDF Hyphenation, Context Menu Icons, Task Queue & WinUI 3 Fluent Dashboard**. Rejoined split technical identifiers, added per-command shell icons, per-task file queue with history/parking/resume, and a new WinUI 3 Fluent UI. |
 | **v3.6.5.0** | 2026/08/08 | **Visual PDF Splitter & Split PDF Button**. Added a visual PDF splitter (custom segments, split-each-page, fixed-page modes) with page preview, a Split PDF button in the dashboard, and split-at-current-page. |
 | **v3.6.4.0** | 2026/07/22 | **Reliable, Layout-Aware PDF Translation**. Added bounded .NET provider fallback, malformed-output guards, and atomic output gates; preserved heading hierarchy, typography, merged tables, fixed artwork, captions, and links; added rendered source/output occupancy and deterministic ASTER regression coverage. |
 | **v3.6.3.0** | 2026/07/09 | **CI/CD Release Automation & Multi-language Support**. Added repository policy validation, integrated Microsoft Store publishing into CI/CD release workflow, and enabled full native packaging and listing synchronization for 5 languages. |

@@ -1,6 +1,6 @@
 # Microsoft Store Listing - English (US)
 
-Below is the complete information for you to copy and paste directly into the Microsoft Partner Center, updated for the v3.6.0.0 release.
+Below is the complete information for you to copy and paste directly into the Microsoft Partner Center, updated for the v3.7.0.0 release.
 
 ---
 
@@ -19,6 +19,9 @@ Core Features:
  - PDF Compression: Compress PDF files locally using a high-fidelity native engine, reducing file size through content stream minification, font deduplication, and image downsampling.
  - PDF Password Decryption: Decrypt password-protected PDF files directly from the context menu.
  - Instant PDF Merging: Select multiple PDF files and merge them instantly from the right-click menu.
+ - Visual PDF Splitter: Split PDFs with a visual page-preview dialog — custom segments, split-each-page, or fixed-page-count modes, with inline zoom and a "Split at Page" quick action.
+ - PDF Translation Hyphenation: Automatically rejoins technical identifiers split across source lines (e.g. "Cop-peliaSim" → "CoppeliaSim") and adjusts CJK font scaling for better readability.
+ - Context Menu Icons: All conversion commands now display localized icons in the Windows 11 and classic right-click menus.
  - Image to PDF: Quickly wrap images (JPG/PNG/WebP) into PDF documents.
  - Image Stitching: Combine multiple images vertically into a single long-form image.
 
@@ -27,10 +30,11 @@ Clickra respects your privacy. Most processing (Office-to-PDF conversion, PDF co
 🔗 Open Source on GitHub: https://github.com/Youchenjiang/Clickra
 
 ## What's new in this version
- - PDF Local Compression: Compress PDF files locally with a native C#/GDI+ engine without external dependencies.
- - Structural Optimization: Simplify streams, deduplicate fonts, and unembed large fonts to minimize file size.
- - High-Quality Downsampling: Intelligently resize images using bicubic downsampling while bypassing small/low-res images to keep charts sharp.
- - Settings Slider: Compact 4-stop horizontal settings slider (Min, Small, Std, High) to instantly control DPI and quality.
+ - PDF Translation Hyphenation: Rejoins technical identifiers split across lines and adjusts CJK font scaling for improved readability.
+ - Context Menu Icons: All right-click conversion commands now display localized icons in Windows 11 and classic context menus.
+ - Per-task File Queue: Each conversion task now tracks progress independently with history logging, task parking/resume, and stale-task pruning.
+ - Visual PDF Splitter: A visual split dialog with page thumbnails, three split modes (custom segments, split-each-page, fixed-page-count), inline zoom, and a "Split at Page" quick action button.
+ - Uninstall Safety: Surrogate process cleanup now verifies the module path before terminating to prevent accidental kills of unrelated processes.
 
 ## Product Features
 *(Max 20, displayed as bullet points)*
@@ -41,14 +45,17 @@ Clickra respects your privacy. Most processing (Office-to-PDF conversion, PDF co
  - 4-stop horizontal settings slider to instantly adjust PDF compression levels
  - One-click PDF password removal
  - Inline secure password input within the progress window
+ - Visual PDF Splitter with page thumbnails and three split modes
+ - Context menu icons for all conversion commands
  - Batch Image to PDF conversion (JPG/PNG/WebP)
  - Seamless vertical image stitching
  - Fast multi-file PDF merging
-  - NativeAOT shell integration for responsive context-menu commands
-  - WinUI 3 Fluent dashboard and conversion progress
+ - NativeAOT shell integration for responsive context-menu commands
+ - WinUI 3 Fluent dashboard and conversion progress
  - Safe local processing (optional cloud-based PDF Translation)
 
 ---
+
 ### Supplemental Fields
 
 ## Short title
@@ -58,9 +65,10 @@ Clickra
 Clickra
 
 ## Short description
-Clickra is a high-performance native context menu utility for Office to PDF conversion, PDF decryption, PDF merging, and image stitching. Secure, local-first, and extremely fast!
+Clickra is a high-performance native context menu utility for Office to PDF conversion, PDF decryption, PDF splitting, PDF merging, and image stitching. Secure, local-first, and extremely fast!
 
 ---
+
 ### Other Information
 
 ## Keywords
