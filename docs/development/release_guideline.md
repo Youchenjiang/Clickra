@@ -28,7 +28,8 @@
 ### Step 4：驗證
 - [ ] `dotnet build` 無錯誤
 - [ ] 測試全部通過
-- [ ] `grep -rn "旧版本號" --include="*.xml" --include="*.props" --include="*.md" . | grep -v CHANGELOG | grep -v README | grep -v ROADMAP` 確認無殘留舊版本號（歷史記錄除外）
+- [ ] 殘留舊版號檢查：將下方指令中的 `3.6.5.0` 換成 **Step 2 輸出「Upgrading version from X to Y」中的 X（上一版號）** 後執行，確認除歷史文件（CHANGELOG / README / ROADMAP / refactor_backlog）外無任何輸出：
+      `grep -rn "3.6.5.0" --include="*.xml" --include="*.props" --include="*.md" . | grep -v CHANGELOG | grep -v README | grep -v ROADMAP | grep -v refactor_backlog`
 
 ### Step 5：提交與推送
 - [ ] 原子化提交：版本號升級一個 commit，文件內容更新可分開提交
