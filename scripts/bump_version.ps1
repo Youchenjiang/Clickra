@@ -139,6 +139,24 @@ foreach ($f in $readmeFiles) {
     }
 }
 
+# 6. 更新 StoreListing 文件版本標題
+$storeListingFiles = @(
+    "docs/StoreListing_EN.md",
+    "docs/StoreListing_ZH.md",
+    "docs/StoreListing_JA.md",
+    "docs/StoreListing_KO.md",
+    "docs/StoreListing_ZH-CN.md"
+)
+foreach ($f in $storeListingFiles) {
+    if (Test-Path $f) {
+        $content = [System.IO.File]::ReadAllText("$root/$f", [System.Text.Encoding]::UTF8)
+        # Replace version references in the header line (e.g. "v3.6.0.0" → "v3.7.0.0")
+        $content = $content -replace 'v[\d]+\.[\d]+\.[\d]+\.[\d]+', "v$newVersion"
+        [System.IO.File]::WriteAllText("$root/$f", $content, $utf8NoBOM)
+        Write-Host "[Doc] Synced StoreListing: $f" -ForegroundColor Gray
+    }
+}
+
 Write-Host "[Success] All files synced successfully!" -ForegroundColor Green
 
 if ($Build) {
