@@ -1,178 +1,85 @@
-﻿# Clickra v3.7.0.0
+<div align="center">
+<img src="src/resources/app.png" alt="Clickra Logo" width="80" height="80" />
+<h1>Clickra</h1>
+<p>High-performance context-menu utility suite for Windows 10 &amp; 11</p>
+<p>
+<a href="https://apps.microsoft.com/detail/9NGLBF6P1KLD"><img src="https://img.shields.io/badge/Microsoft%20Store-Clickra-blue?style=flat-square&logo=microsoft-store" alt="Microsoft Store" /></a>
+<a href="LICENSE"><img src="https://img.shields.io/badge/License-Apache%202.0-blue?style=flat-square" alt="License: Apache 2.0" /></a>
+</p>
+<p>
+<b>English</b> | <a href="README.zh-TW.md">繁體中文</a>
+</p>
+</div>
 
-[![Microsoft Store](https://img.shields.io/badge/Microsoft%20Store-Clickra-blue?style=for-the-badge&logo=microsoft-store)](https://apps.microsoft.com/detail/9NGLBF6P1KLD)
-[![License: Apache 2.0](https://img.shields.io/badge/License-Apache%202.0-blue.svg?style=for-the-badge)](https://opensource.org/licenses/Apache-2.0)
+**Clickra** is a high-performance context-menu utility suite for Windows 10 and Windows 11. It brings fast document conversion and PDF tools straight to File Explorer's right-click menu.
 
-A high-performance context-menu utility suite for Windows 10 and Windows 11.
-Its Explorer integration and CLI use C# NativeAOT, while its dashboard and
-conversion progress use WinUI 3 Fluent controls.
+Most productivity scripts are written in Python and pay a 1–2 second "cold start" penalty on every invocation. Clickra uses a hybrid Windows architecture instead: a **NativeAOT** shell boundary for instant menu responses, a **WinUI 3 Fluent** dashboard and progress UI, and 100% local processing with no Python runtime.
 
-[閱讀中文版 (Read in Traditional Chinese)](README.zh-TW.md)
+## Core Features
 
----
+### Modern Context Menu (Windows 10/11)
+On Windows 11, all commands live in the `Clickra` sub-menu with localized icons. Windows 10 uses the compatible classic context-menu integration.
 
-## 📌 Why Clickra?
+### Fluent Dashboard
+A responsive WinUI 3 dashboard for conversion, settings, history, and diagnostics, with real-time detection of PDF and Office engine readiness.
 
-Most productivity scripts (PDF merging, image conversion, etc.) are typically written in Python. While powerful, Python suffers from a **1-2 second "cold start" delay** every time you run a script. For context menu actions, this delay feels like an eternity.
+### Office to PDF
+Silently exports Word, Excel, and PowerPoint documents to high-quality PDFs in the background. Supports Auto, Microsoft Office, and LibreOffice engine modes — LibreOffice can be downloaded and managed from Clickra as a free local fallback.
 
-**Clickra** uses a hybrid Windows architecture:
-*   **Native shell boundary**: The Explorer command provider is NativeAOT for fast, predictable menu enumeration.
-*   **Fluent application UI**: The dashboard, settings, history, dialogs, and right-click progress window use WinUI 3.
-*   **Local processing**: Conversion logic runs locally without Python; MSIX manages the required Windows App Runtime dependency.
+### PDF Tools
+- **Merge** — combine selected PDFs into one document in filename order.
+- **Split** — visual PDF splitter with page previews (custom segments, split-each-page, fixed-page modes).
+- **Compress** — high-fidelity native compression with a 4-stop quality slider.
+- **Remove Password** — decrypt protected PDFs directly from the right-click menu.
 
----
+### Images
+- **Images to PDF** — package JPG, PNG, and WebP files into a multi-page PDF, pixel-perfect.
+- **Stitch** — join multiple images vertically into a single long-form image.
 
-## 📜 Version History
+### PDF Translation
+Translates PDF content while preserving layout — heading hierarchy, typography, merged tables, fixed artwork, captions, and links — with CJK font scaling and re-joined technical identifiers.
 
-| Version | Release Date | Key Milestone |
-| :--- | :--- | :--- |
-| **v3.7.0.0** | 2026/09/02 | **PDF Hyphenation, Context Menu Icons, Task Queue & WinUI 3 Fluent Dashboard**. Rejoined split technical identifiers, added per-command shell icons, per-task file queue with history/parking/resume, and a new WinUI 3 Fluent UI. |
-| **v3.6.5.0** | 2026/08/08 | **Visual PDF Splitter & Split PDF Button**. Added a visual PDF splitter (custom segments, split-each-page, fixed-page modes) with page preview, a Split PDF button in the dashboard, and split-at-current-page. |
-| **v3.6.4.0** | 2026/07/22 | **Reliable, Layout-Aware PDF Translation**. Added bounded .NET provider fallback, malformed-output guards, and atomic output gates; preserved heading hierarchy, typography, merged tables, fixed artwork, captions, and links; added rendered source/output occupancy and deterministic ASTER regression coverage. |
-| **v3.6.3.0** | 2026/07/09 | **CI/CD Release Automation & Multi-language Support**. Added repository policy validation, integrated Microsoft Store publishing into CI/CD release workflow, and enabled full native packaging and listing synchronization for 5 languages. |
-| **v3.6.2.0** | 2026/07/05 | **SSL/TLS Certificate Verification**. Removed insecure validation bypass in MyMemory API translator and enabled standard TLS 1.2/1.3 system validation. |
+### Conversion History
+Locally tracks every conversion in a Fluent master-detail view with paths, operation types, timestamps, duration, and status.
 
-[View Full Changelog](CHANGELOG.md)
+## Installation
 
-
----
-
-## ✨ Core Features
-
-### 1. 📂 Modern Sub-menu (Windows 10/11)
-On Windows 11, commands appear in the modern `Clickra` sub-menu. Windows 10 uses the compatible classic context-menu integration.
-
-### 2. 📊 Fluent Dashboard
-*   **Feature**: A responsive WinUI 3 dashboard for conversion, settings, history, and diagnostics.
-*   **Status Detection**: Real-time detection of the PDF engine and Office conversion engine readiness.
-
-### 3. 📄 Office to PDF
-*   **Feature**: Silently exports Word, Excel, and PowerPoint documents to high-quality PDFs in the background.
-*   **Engine Choice**: Supports Auto, Microsoft Office, and LibreOffice modes. LibreOffice can be downloaded and managed from Clickra as a free local fallback when Microsoft Office is not available.
-
-### 4. 🔗 PDF Merge
-*   **Feature**: Merges selected PDF files into a single document based on filename order.
-*   **Speed**: Instant processing with automated cleanup of temporary resources.
-
-### 5. 🖼️ Images to PDF
-*   **Feature**: Packages multiple images (JPG, PNG, WebP) into a single multi-page PDF.
-*   **Quality**: Pixel-perfect conversion preserving original resolution and aspect ratios.
-
-### 6. 🎞️ Image Stitching
-*   **Feature**: Joins multiple images vertically into a single long-form image.
-*   **Alignment**: Automatic horizontal centering for images of varying widths.
-
-### 7. 🕒 Conversion History
-*   **Feature**: Locally tracks all conversion activities.
-*   **Details**: A Fluent master-detail view shows paths, operation types, timestamps, duration, and execution status.
-
-### 8. 🔓 Remove PDF Password
-*   **Feature**: Removes passwords from protected PDF documents directly from the right-click menu.
-*   **Aesthetics**: Uses a localized WinUI password dialog inside the Fluent conversion flow.
-*   **Safety**: Validates PDF encryption status first to prevent decrypting unencrypted files.
-
-### 9. 📄 PDF Compression
-*   **Feature**: Compresses PDF files locally using a high-fidelity native engine, reducing file size through content stream minification, font deduplication, and image downsampling.
-*   **UI Settings**: A compact, space-saving 4-stop horizontal slider (Min, Small, Std, High) to control DPI and JPEG quality parameters instantly.
-*   **Clever Logic**: Automatically bypasses low-resolution or small images to keep drawings and charts sharp.
-
-
----
-
-## 🛠️ Installation
-
-### Recommended: Microsoft Store (Auto-updates)
+### Recommended: Microsoft Store (auto-updates)
 [![Microsoft Store Badge](https://developer.microsoft.com/en-us/store/badges/images/English_get-it-from-MS.png)](https://apps.microsoft.com/detail/9NGLBF6P1KLD)
 
 ### Manual: GitHub Release
-1.  Download \x60Clickra.msix\x60 from [Releases](../../releases).
-2.  Double-click to install. The package works on any Windows 10+ machine with no additional runtime dependencies.
-    *   **Fluent UI** is available as an optional Store add-on - install it from the AOT Dashboard Settings page.
+1. Download `Clickra.msix` from [Releases](../../releases).
+2. Double-click to install — no additional runtime dependencies on Windows 10+.
+   - The Fluent UI add-on is available from the AOT Dashboard Settings page.
 
----
+## Local Development
 
-## 📂 Documentation Directory
+### Requirements
+- Windows 10 or 11
+- .NET SDK 10
+- Visual Studio with the C++ workload (for NativeAOT linking)
 
-To keep the main documentation clean and accessible, Clickra's documentation is divided into specialized guides. Please refer to the branch map below to navigate the repository documentation:
-
-```text
-Clickra/
-├── README.md (or README.zh-TW.md)  # Root Entry (Product Intro, Install, Features)
-├── CHANGELOG.md                    # Version History (all releases)
-├── PRIVACY.md                      # Privacy Policy (for Windows Store compliance)
-├── LOCAL_BUILD_NOTES.md            # Developer Guidelines (Setup, compilation, packaging, and Git workflow)
-└── docs/
-    ├── ARCHITECTURE.md             # Current NativeAOT/Fluent split and migration state
-    ├── ROADMAP.md                  # Product Roadmap & Milestones
-    ├── StoreListing_*.md           # Store Metadata & Product Descriptions
-    └── development/
-        ├── release_guideline.md    # Versioning constraints & release checklists
-        ├── shell_extension_best_practices.md # COM, NativeAOT, memory, and package invariants
-        ├── shell_diagnostic_guide.md         # Shell extension logging and Explorer diagnostics
-        └── dual_track_guide.md     # Fluent/NativeAOT dual-track distribution design
+### Build
+```bash
+git clone https://github.com/Youchenjiang/Clickra.git
+cd Clickra
+powershell -File scripts/build_msix.ps1
 ```
 
-### Document Navigation Links
-*   **Product & Public Documentation**:
-    *   [Roadmap & Future Goals](docs/ROADMAP.md) — High-level milestone tracking and feature plans.
-    *   [Privacy Policy](PRIVACY.md) — Privacy declarations for Windows App Store compliance.
-    *   [Store Listing Metadata](docs/StoreListing_EN.md) — Store descriptions and screenshots index.
-*   **Developer Guidelines (Start Here)**:
-    *   [LOCAL_BUILD_NOTES.md](LOCAL_BUILD_NOTES.md) — Local development compilation, packaging scripts, adding new features, and development Git workflows.
-    *   [Architecture](docs/ARCHITECTURE.md) — NativeAOT/Fluent boundaries, execution paths, intentional constraints, known gaps, and intended end state.
-*   **Specialized Development Guides**:
-    *   [Release & Versioning Guidelines](docs/development/release_guideline.md) — 4-digit version constraints, version update files list, and MSIX store publishing checklist.
-    *   [Shell Extension Best Practices](docs/development/shell_extension_best_practices.md) — COM interfaces, NativeAOT memory rules, and Sparse Package/MSIX invariants.
-    *   [Shell Extension Diagnostics & Debugging](docs/development/shell_diagnostic_guide.md) — Fail-safe logging, HRESULT triage, and staged Explorer troubleshooting.
-
----
-
-## 🧠 Technical Insights (The "War Stories")
-
-Developing a Shell Extension in **NativeAOT** is a deep dive into Windows internals:
-
-### 1. Manual COM VTables
-Since NativeAOT doesn't support standard .NET COM Interop, we manually constructed VTables for `IExplorerCommand`. This ensures binary compatibility with the Windows Shell while maintaining high performance.
-
-### 2. The Windows 11 "Shadow" Interface
-Windows 11 often queries undocumented **"Shadow GUIDs"** instead of the official `IExplorerCommand` GUID. Supporting these alternative interfaces is critical for rendering sub-menu arrows and maintaining responsiveness.
-
-### 3. VTable Parameter Sensitivity
-Because the extension runs inside `explorer.exe`, any stack imbalance (like a mismatched function signature) results in an immediate desktop crash. Precision is mandatory.
-
----
-
-## 🏗️ Architecture
-
-Clickra separates the Explorer boundary from the application UI:
-
-```text
-src/
-├── Clickra.Fluent/           # WinUI 3 dashboard and task progress
-├── Clickra.CLI/              # NativeAOT CLI and legacy UI fallback
-├── ClickraLauncher/          # NativeAOT entry: COM activation -> Fluent or AOT fallback
-├── Clickra.Core/             # Core Logic (Processors & Storage)
-│   ├── Processors/               (Base classes + 8 Processor implementations)
-│   ├── ClickraStorage.*.cs       (Settings, History, ActiveRecord)
-│   ├── FileProcessor.cs          (Public API facade)
-│   ├── Localization.cs           (i18n support)
-│   └── TranslationEngine.cs      (PDF translation)
-└── ClickraShell/             # Windows Shell Integration
-    ├── ComMethods.cs             (COM interface implementations)
-    ├── Exporter.cs               (VTable creation)
-    ├── Guids.cs                  (COM interface GUIDs)
-    ├── Kernel32.cs               (Win32 API declarations)
-    └── ShellUtils.cs             (Module path & string resources)
+### Test
+```bash
+dotnet run --project tests/Clickra.Core.Tests/Clickra.Core.Tests.csproj -c Release
 ```
 
-### Key Design Patterns
-- **Process boundary**: NativeAOT stays at Explorer/CLI boundaries; WinUI remains out of process
-- **Template Method**: `SingleFileProcessorBase` and `MultiFileProcessorBase` provide common loop/cancellation patterns
-- **Facade Pattern**: `FileProcessor` exposes a simplified public API over internal processors
-- **Shared Utilities**: `UIHelper` contains reusable drawing methods (scrollbars, dropdowns, rounded rects)
+Full setup, packaging, and Git workflow details: [LOCAL_BUILD_NOTES.md](LOCAL_BUILD_NOTES.md)
 
----
+## Contributing
+Before opening a pull request, please see:
+- [LOCAL_BUILD_NOTES.md](LOCAL_BUILD_NOTES.md) — build, packaging, and Git workflow
+- [docs/development/release_guideline.md](docs/development/release_guideline.md) — versioning and release checklists
+- [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) — NativeAOT/Fluent architecture
+- [docs/ROADMAP.md](docs/ROADMAP.md) — product roadmap and milestones
+- [CHANGELOG.md](CHANGELOG.md) — full version history
 
-## 📄 License
-This project is licensed under the **Apache License 2.0**.
-Core components use **PDFsharp** (MIT License).
+## License
+Licensed under the **Apache License 2.0**. Core components use **PDFsharp** (MIT License).

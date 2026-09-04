@@ -45,6 +45,16 @@ Windows builds can request compatibility IDs during submenu discovery. Keep
 the compatibility handling and its rationale documented in code comments; do
 not replace these values with unverified values copied from another project.
 
+**Field note**: Windows 11 frequently queries these undocumented "shadow
+GUIDs" instead of the official `IExplorerCommand` GUID. Supporting them is
+required for submenu arrows to render and for menus to stay responsive —
+do not treat them as stale entries to prune.
+
+**Field note**: because the extension runs inside `explorer.exe`, any vtable
+stack imbalance (for example a 2-parameter method implemented with a
+1-parameter signature) crashes the whole desktop instantly. Treat every
+signature change as a potential hard crash and verify in a VM first.
+
 ## 2. NativeAOT COM rules
 
 ClickraShell is a NativeAOT shared library. Do not rely on the normal managed
