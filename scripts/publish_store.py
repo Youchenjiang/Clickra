@@ -474,16 +474,72 @@ def collect_image_uploads(repo_root):
             })
     return uploads
 
+MAX_SCREENSHOTS_PER_LISTING = 10  # Microsoft Store per-language screenshot cap
+
+# Microsoft lists these imageType values as "Screenshot images" in the
+# submission API documentation; they all count against the cap above.
+SCREENSHOT_IMAGE_TYPES = frozenset({
+    'Screenshot',
+    'MobileScreenshot',
+    'XboxScreenshot',
+    'SurfaceHubScreenshot',
+    'HoloLensScreenshot',
+})
+
+
+def is_screenshot_image(image):
+    return (image.get('imageType') or image.get('ImageType') or '').lower() in {
+        t.lower() for t in SCREENSHOT_IMAGE_TYPES
+    }
+
+
 def update_listing_image_refs(metadata, image_uploads):
+    """Merge the repo screenshots into each listing without exceeding the cap.
+
+    A new submission is a copy of the last published one, so screenshots from
+    previous releases already exist as 'Uploaded' entries. Re-adding the same
+    files every release would grow each listing past Microsoft's 10-screenshot
+    limit. Mark stale copies for deletion (PendingDelete) before adding the
+    fresh PendingUpload screenshots, and trim the oldest screenshots if the
+    listing would otherwise exceed the cap.
+    """
     listings = metadata.get('listings') or metadata.get('Listings') or {}
     for lang, listing_container in listings.items():
         base = listing_container.get('baseListing') or listing_container.get('BaseListing') or {}
         existing_images = base.get('images') or base.get('Images') or []
         search_lang = 'en' if lang.lower() == 'en-us' else lang
         new_screenshots = image_uploads.get(search_lang, [])
-        if new_screenshots:
-            base['images'] = existing_images + new_screenshots
-        print(f"  [{lang}] kept {len(existing_images)} existing image(s), "
+        if not new_screenshots:
+            print(f"  [{lang}] no repo screenshots; kept {len(existing_images)} existing image(s)")
+            continue
+
+        new_file_names = {img.get('fileName') for img in new_screenshots}
+
+        # Screenshots whose file we are (re)uploading replace their published
+        # copy instead of stacking a duplicate on top of it.
+        for image in existing_images:
+            if is_screenshot_image(image) and image.get('fileName') in new_file_names:
+                image['fileStatus'] = 'PendingDelete'
+
+        # Trim the oldest live screenshots when the listing is still over the
+        # cap after adding the fresh uploads (e.g. legacy listings that
+        # accumulated screenshots before this guard existed).
+        live = [image for image in existing_images
+                if not (is_screenshot_image(image)
+                        and image.get('fileStatus') == 'PendingDelete')]
+        live_screenshots = [image for image in live if is_screenshot_image(image)]
+        excess = len(live_screenshots) + len(new_screenshots) - MAX_SCREENSHOTS_PER_LISTING
+        if excess > 0:
+            print(f"  [{lang}] trimming {excess} screenshot(s) to stay within the "
+                  f"{MAX_SCREENSHOTS_PER_LISTING}-image listing limit")
+            for image in live_screenshots[:excess]:
+                image['fileStatus'] = 'PendingDelete'
+
+        replaced = sum(1 for image in existing_images
+                       if image.get('fileStatus') == 'PendingDelete')
+        base['images'] = existing_images + list(new_screenshots)
+        print(f"  [{lang}] kept {len(existing_images) - replaced} existing image(s), "
+              f"removed {replaced} stale screenshot(s), "
               f"added {len(new_screenshots)} new screenshot(s)")
 
 def update_submission_manifest_refs(metadata, msix_path, repo_root):
