@@ -15,15 +15,14 @@
 
 ### Step 2：執行 bump_version.ps1（自動更新版本號）
 - [ ] 執行 `./scripts/bump_version.ps1 -Type minor`（或 `major` / `patch`）
-- [ ] 腳本會自動更新：`Directory.Build.props`、3 份 `AppxManifest.xml`、`CHANGELOG.md`（TODO placeholder）、`README.md` / `README.zh-TW.md`（標題 + 版本表格）、5 份 `StoreListing_*.md`（版本標題）
+- [ ] 腳本會自動更新：`Directory.Build.props`、3 份 `AppxManifest.xml`、`CHANGELOG.md`（TODO placeholder）、5 份 `StoreListing_*.md`（版本標題）
 
 ### Step 3：手動更新文件（腳本無法自動處理的內容）
-- [ ] **CHANGELOG.md**：將 `**TODO**: Add changelog entry here` 替換為實際的變更描述（參考 §3.4）
-- [ ] **README.md / README.zh-TW.md**：將版本表格中的 `**TODO**: Add milestone description here` 替換為實際描述
+- [ ] **CHANGELOG.md**：將 `**TODO**: Add changelog entry here` 替換為實際的變更描述（參考 §3.3）
 - [ ] **docs/ROADMAP.md**：更新里程碑完成狀態（`[ ]` → `[x]`）與進度說明
 - [ ] **docs/development/refactor_backlog.md**：更新「發行狀態」行的版本號
 - [ ] **LOCAL_BUILD_NOTES.md**：更新架構版本標記（如有）
-- [ ] **docs/StoreListing_*.md**（5 語言）：更新 Description、What's new、Product Features、Short description（參考 §3.5）
+- [ ] **docs/StoreListing_*.md**（5 語言）：更新 Description、What's new、Product Features、Short description（參考 §3.4）
 
 ### Step 4：驗證
 - [ ] `dotnet build` 無錯誤
@@ -96,17 +95,13 @@ $$\text{Version} = \text{Major} . \text{Minor} . \text{Patch} . \mathbf{0}$$
 > `Microsoft.WindowsAppRuntime` family 與 `MinVersion`。不要用
 > `bump_version.ps1` 管理 Windows App SDK 版本。
 
-### 3.3 專案文件 (Documentation) — `bump_version.ps1` 自動處理標題與版本表格
-*   **[README.md](../../README.md)**: 更新標題的 `Clickra vX.Y.Z.0` 以及版本歷史表格。
-*   **[README.zh-TW.md](../../README.zh-TW.md)**: 同步更新繁中說明的標題與版本歷史。
-
-### 3.4 專案文件 (Documentation) — 需手動更新
+### 3.3 專案文件 (Documentation) — 需手動更新
 *   **[CHANGELOG.md](../../CHANGELOG.md)**: 腳本會自動插入 TODO placeholder，需手動替換為實際變更描述。
 *   **[docs/ROADMAP.md](../ROADMAP.md)**: 更新里程碑完成狀態（`[ ]` → `[x]`）與進度說明。
 *   **[docs/development/refactor_backlog.md](refactor_backlog.md)**: 更新「發行狀態」行的版本號。
 *   **[LOCAL_BUILD_NOTES.md](../../LOCAL_BUILD_NOTES.md)**: 更新架構版本標記（如有）。
 
-### 3.5 商店文案 (Store Listings) — `bump_version.ps1` 自動更新版本標題，內容需手動更新
+### 3.4 商店文案 (Store Listings) — `bump_version.ps1` 自動更新版本標題，內容需手動更新
 *   **[docs/StoreListing_EN.md](../StoreListing_EN.md)**: 英文商店文案。
 *   **[docs/StoreListing_ZH.md](../StoreListing_ZH.md)**: 繁體中文商店文案。
 *   **[docs/StoreListing_JA.md](../StoreListing_JA.md)**: 日文商店文案。
