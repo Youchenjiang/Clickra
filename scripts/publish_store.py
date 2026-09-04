@@ -493,6 +493,28 @@ def is_screenshot_image(image):
     }
 
 
+def mark_replaced_screenshots(existing_images, new_file_names):
+    """Mark screenshots that are being re-uploaded as PendingDelete."""
+    for image in existing_images:
+        if is_screenshot_image(image) and image.get('fileName') in new_file_names:
+            image['fileStatus'] = 'PendingDelete'
+
+
+def trim_screenshots_to_cap(existing_images, new_screenshots, lang):
+    """Trim the oldest live screenshots when a listing would exceed the cap."""
+    live = [image for image in existing_images
+            if not (is_screenshot_image(image)
+                    and image.get('fileStatus') == 'PendingDelete')]
+    live_screenshots = [image for image in live if is_screenshot_image(image)]
+    excess = len(live_screenshots) + len(new_screenshots) - MAX_SCREENSHOTS_PER_LISTING
+    if excess <= 0:
+        return
+    print(f"  [{lang}] trimming {excess} screenshot(s) to stay within the "
+          f"{MAX_SCREENSHOTS_PER_LISTING}-image listing limit")
+    for image in live_screenshots[:excess]:
+        image['fileStatus'] = 'PendingDelete'
+
+
 def update_listing_image_refs(metadata, image_uploads):
     """Merge the repo screenshots into each listing without exceeding the cap.
 
@@ -517,23 +539,12 @@ def update_listing_image_refs(metadata, image_uploads):
 
         # Screenshots whose file we are (re)uploading replace their published
         # copy instead of stacking a duplicate on top of it.
-        for image in existing_images:
-            if is_screenshot_image(image) and image.get('fileName') in new_file_names:
-                image['fileStatus'] = 'PendingDelete'
+        mark_replaced_screenshots(existing_images, new_file_names)
 
         # Trim the oldest live screenshots when the listing is still over the
         # cap after adding the fresh uploads (e.g. legacy listings that
         # accumulated screenshots before this guard existed).
-        live = [image for image in existing_images
-                if not (is_screenshot_image(image)
-                        and image.get('fileStatus') == 'PendingDelete')]
-        live_screenshots = [image for image in live if is_screenshot_image(image)]
-        excess = len(live_screenshots) + len(new_screenshots) - MAX_SCREENSHOTS_PER_LISTING
-        if excess > 0:
-            print(f"  [{lang}] trimming {excess} screenshot(s) to stay within the "
-                  f"{MAX_SCREENSHOTS_PER_LISTING}-image listing limit")
-            for image in live_screenshots[:excess]:
-                image['fileStatus'] = 'PendingDelete'
+        trim_screenshots_to_cap(existing_images, new_screenshots, lang)
 
         replaced = sum(1 for image in existing_images
                        if image.get('fileStatus') == 'PendingDelete')
