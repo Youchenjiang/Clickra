@@ -31,7 +31,7 @@
       Publisher="CN=Microsoft Corporation, O=Microsoft Corporation, L=Redmond, S=Washington, C=US"
       MinVersion="2.3.1.0" />
     <!-- Related-set binding: must match Main package Identity Name -->
-    <uap3:MainPackageDependency Name="Clickra" />
+    <uap3:MainPackageDependency Name="g1014308.Clickra" />
   </Dependencies>
 
   <Resources>
