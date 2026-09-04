@@ -123,7 +123,7 @@ Write-Host "   - No Windows App Runtime dependency" -ForegroundColor White
 Write-Host "`n Optional package:" -ForegroundColor Cyan
 Write-Host "   - Clickra.Fluent.exe (WinUI 3)" -ForegroundColor White
 Write-Host "   - Windows App Runtime 2.x dependency" -ForegroundColor White
-Write-Host "   - MainPackageDependency → Clickra" -ForegroundColor White
+Write-Host "   - MainPackageDependency → g1014308.Clickra" -ForegroundColor White
 Write-Host "`n Store submission:" -ForegroundColor Cyan
 Write-Host "   1. Upload Clickra_Main.msix as primary package" -ForegroundColor White
 Write-Host "   2. Create optional package product in Partner Center" -ForegroundColor White
