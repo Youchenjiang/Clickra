@@ -17,7 +17,7 @@
     - No Windows App Runtime dependency (carried by optional package)
   -->
   <Identity
-    Name="Clickra"
+    Name="g1014308.Clickra"
     Publisher="CN=CBF59877-21AD-4BC4-8F91-FE8DA520A138"
     Version="3.7.0.0" />
 
