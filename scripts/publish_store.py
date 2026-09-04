@@ -697,7 +697,7 @@ def verify_commit_status(token, p_id, submission_id):
     submission = api_request(sub_url, token, retries=3, delay=10)
     if submission:
         status = submission.get('status') or submission.get('Status')
-        if status != 'CommitFailed' and status != 'PendingCommit':
+        if status not in ('CommitFailed', 'PendingCommit'):
             print(
                 f"⚠️  Commit accepted but status is still '{status}' after the poll window. "
                 "Treating as success; final certification status is reported in Partner Center."
