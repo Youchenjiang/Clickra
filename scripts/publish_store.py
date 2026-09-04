@@ -689,6 +689,22 @@ def verify_commit_status(token, p_id, submission_id):
                 report_commit_failure(submission)
                 return False
         time.sleep(20)
+
+    # The commit POST already succeeded, so a polling timeout is not a
+    # failure: 'CommitStarted' is a normal in-flight state that can persist
+    # longer than the poll window. Only a confirmed CommitFailed state (or a
+    # submission still awaiting commit) warrants failing the release.
+    submission = api_request(sub_url, token, retries=3, delay=10)
+    if submission:
+        status = submission.get('status') or submission.get('Status')
+        if status != 'CommitFailed' and status != 'PendingCommit':
+            print(
+                f"⚠️  Commit accepted but status is still '{status}' after the poll window. "
+                "Treating as success; final certification status is reported in Partner Center."
+            )
+            return True
+        if status == 'CommitFailed':
+            report_commit_failure(submission)
     return False
 
 def run_submission_flow(repo_root, token, p_id, msix_path):
