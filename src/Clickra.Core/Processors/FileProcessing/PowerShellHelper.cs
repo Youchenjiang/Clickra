@@ -190,10 +190,11 @@ try {{
             Action<int, int, string>? onProgress, 
             CancellationToken cancellationToken)
         {
+            string encodedScript = Convert.ToBase64String(Encoding.Unicode.GetBytes(psScript));
             var startInfo = new System.Diagnostics.ProcessStartInfo
             {
                 FileName = "powershell.exe",
-                Arguments = $"-NoProfile -ExecutionPolicy Bypass -Command \"{psScript}\"",
+                Arguments = $"-NoProfile -ExecutionPolicy Bypass -EncodedCommand {encodedScript}",
                 UseShellExecute = false,
                 RedirectStandardOutput = true,
                 RedirectStandardError = true,
