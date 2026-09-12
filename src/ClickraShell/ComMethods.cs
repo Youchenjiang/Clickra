@@ -158,7 +158,7 @@ namespace ClickraShell
 
             // Specific logic for multi-file commands
             bool countOk = idx switch {
-                3 or 7 => files.Count > 1, // Merge PDF (3) and Image Stitch (7) require at least 2 files
+                3 or 6 or 7 => files.Count > 1, // Merge PDF (3), Image Merge (6), and Image Stitch (7) require at least 2 files
                 _ => true
             };
 
