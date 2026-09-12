@@ -134,12 +134,12 @@ namespace ClickraShell
 
             return idx switch
             {
-                -1 => new[] { ".ppt", ".pptx", ".doc", ".docx", ".xlsx", ".xls", ".pdf", ".jpg", ".jpeg", ".png", ".bmp", ".gif", ".tiff", ".webp" }.Contains(ext),
+                -1 => new[] { ".ppt", ".pptx", ".doc", ".docx", ".xlsx", ".xls", ".pdf", ".jpg", ".jpeg", ".png", ".gif", ".webp" }.Contains(ext),
                 0 => ext == ".ppt" || ext == ".pptx",
                 1 => ext == ".doc" || ext == ".docx",
                 2 => ext == ".xlsx" || ext == ".xls",
                 3 or 4 or 8 or 9 or 10 => ext == ".pdf",
-                5 or 6 or 7 => new[] { ".jpg", ".jpeg", ".png", ".bmp", ".gif", ".tiff", ".webp" }.Contains(ext),
+                5 or 6 or 7 => new[] { ".jpg", ".jpeg", ".png", ".gif", ".webp" }.Contains(ext),
                 _ => false
             };
         }
