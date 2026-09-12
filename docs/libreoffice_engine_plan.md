@@ -33,12 +33,12 @@ C:\Program Files\LibreOffice
 Current package metadata checked on 2026-06-29:
 
 ```text
-Version: 26.2.4
+Version: 26.2.6
 Edition: Windows x86-64 MSI
-Download page: https://download.documentfoundation.org/libreoffice/stable/26.2.4/win/x86_64/LibreOffice_26.2.4_Win_x86-64.msi.mirrorlist
-Direct download: https://download.documentfoundation.org/libreoffice/stable/26.2.4/win/x86_64/LibreOffice_26.2.4_Win_x86-64.msi
-Download size: 372,539,392 bytes
-SHA256: 202f26cda071c5aa4996a5a28412fddceb3891dceb0366982c62650456c0730f
+Download page: https://download.documentfoundation.org/libreoffice/stable/26.2.6/win/x86_64/LibreOffice_26.2.6_Win_x86-64.msi.mirrorlist
+Direct download: https://download.documentfoundation.org/libreoffice/stable/26.2.6/win/x86_64/LibreOffice_26.2.6_Win_x86-64.msi
+Download size: 373,252,096 bytes
+SHA256: f9877032fd908beb9c0ddf06df4af5c2e85f419c42e14876c4cce5aae5fb2660
 License: MPL-2.0
 ```
 
