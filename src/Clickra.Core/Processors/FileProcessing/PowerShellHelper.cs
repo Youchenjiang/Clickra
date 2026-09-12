@@ -96,6 +96,8 @@ $ErrorActionPreference = 'Stop'
 try {{
     Write-Host 'PROGRESS:20'
     $word = New-Object -ComObject Word.Application
+    $word.Visible = $false
+    $word.DisplayAlerts = 0
     try {{
         Write-Host 'PROGRESS:50'
         $doc = $word.Documents.Open('{fullPath.Replace("'", "''")}', $false, $true)
@@ -119,6 +121,7 @@ $ErrorActionPreference = 'Stop'
 try {{
     Write-Host 'PROGRESS:20'
     $ppt = New-Object -ComObject PowerPoint.Application
+    $ppt.DisplayAlerts = 1
     try {{
         Write-Host 'PROGRESS:50'
         $pres = $ppt.Presentations.Open('{fullPath.Replace("'", "''")}', $true, $false, $false)
