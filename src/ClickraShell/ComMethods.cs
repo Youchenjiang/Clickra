@@ -219,8 +219,10 @@ namespace ClickraShell
         [UnmanagedCallersOnly(CallConvs = new[] { typeof(CallConvStdcall) })]
         public static unsafe int Invoke(IntPtr _this, IntPtr psi, IntPtr pbc)
         {
-            int idx = ((UniversalObject*)_this)->Data;
+            var obj = (UniversalObject*)_this;
+            int idx = obj->Data;
             if (idx == -1) return 0;
+            if (psi == IntPtr.Zero) psi = obj->ShellItems;
 
             StringBuilder sb = new StringBuilder();
             sb.Append(SubArgs[idx]);
