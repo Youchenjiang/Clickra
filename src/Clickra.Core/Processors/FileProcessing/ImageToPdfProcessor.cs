@@ -31,7 +31,9 @@ namespace Clickra.Core.Processors
         {
             onProgress?.Invoke((fileIndex * 100) + 50, totalFiles * 100, $"正在處理圖片: {Path.GetFileName(filePath)} ({fileIndex + 1}/{totalFiles})...");
             if (!File.Exists(filePath)) throw new FileNotFoundException("Image file not found", filePath);
-            using var ximg = XImage.FromFile(filePath);
+            
+            using var holder = LoadXImageSafely(filePath);
+            var ximg = holder.Image;
             var page = _doc!.AddPage();
 
             double resolutionX = ximg.HorizontalResolution > 0 ? ximg.HorizontalResolution : 72.0;
@@ -42,6 +44,47 @@ namespace Clickra.Core.Processors
 
             using var gfx = XGraphics.FromPdfPage(page);
             gfx.DrawImage(ximg, 0, 0, page.Width.Point, page.Height.Point);
+        }
+
+        private sealed class XImageHolder : IDisposable
+        {
+            public XImage Image { get; }
+            private readonly IDisposable? _underlyingStream;
+
+            public XImageHolder(XImage image, IDisposable? underlyingStream = null)
+            {
+                Image = image;
+                _underlyingStream = underlyingStream;
+            }
+
+            public void Dispose()
+            {
+                Image.Dispose();
+                _underlyingStream?.Dispose();
+            }
+        }
+
+        private static XImageHolder LoadXImageSafely(string filePath)
+        {
+            string ext = Path.GetExtension(filePath).ToLowerInvariant();
+            if (ext != ".heic" && ext != ".heif" && ext != ".hif")
+            {
+                try
+                {
+                    return new XImageHolder(XImage.FromFile(filePath));
+                }
+                catch
+                {
+                    // Fall back to WicImageHelper
+                }
+            }
+
+            using var bmp = WicImageHelper.LoadImageSafely(filePath);
+            var ms = new MemoryStream();
+            bmp.Save(ms, System.Drawing.Imaging.ImageFormat.Png);
+            ms.Position = 0;
+            var ximg = XImage.FromStream(ms);
+            return new XImageHolder(ximg, ms);
         }
 
         protected override void OnAllFilesProcessed(string? outputPath, int totalFiles, Action<int, int, string>? onProgress, CancellationToken cancellationToken)
