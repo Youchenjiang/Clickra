@@ -2,6 +2,21 @@
 
 All notable changes to Clickra will be documented in this file.
 
+## [Unreleased]
+
+### Added
+
+- HEIC 輸入與 HEIC 輸出支援：圖片轉換命令現已接受 HEIC 輸入，並新增 `img-to-heic` 命令將 PNG/JPG/WEBP/GIF/HEIC 轉出為 HEIC（輸出依賴系統 HEIF/HEIC 編碼器）。
+- 編碼器預檢：`img-to-heic`／`img-to-webp`／`img-compress`（WebP/HEIC 輸入）在轉檔前先檢查系統編碼器；缺少免費的 Windows「HEIF 影像延伸」或「WebP 影像延伸」時，以本地化訊息提示並提供一鍵開啟 Microsoft Store 安裝，不再於轉檔中途直接失敗。
+- 圖片壓縮（`img-compress`）：全新獨立的圖片壓縮功能，支援 0–3 品質等級（比照 PDF 壓縮滑桿）與最大長邊尺寸（原始／4K／FHD／HD），可與改尺寸一併使用；輸出至 `<名稱>_compressed.<原副檔名>`，壓縮後反而變大時自動略過以保護來源。PNG 若不超過 256 色會以無損的索引式調色盤重新編碼（截圖與圖表通常可省 40% 以上）。Fluent 與原生儀表板設定頁皆可調整。
+
+### Changed
+
+- 同格式轉換排除：選取的檔案已是目標格式時（如選 PNG 時的「轉成 PNG」），對應的 `img-to-*` 命令會自動停用或隱藏，jpg/jpeg 視為同格式；Fluent、原生儀表板、右鍵選單與 CLI 一體適用。
+- 修正右鍵選單 img-to-webp／img-to-heic／img-to-gif 顯示錯誤標籤的問題，並新增 `img-compress` 右鍵項目與圖示。
+
+<!-- Remainder of changelog is preserved unchanged below -->
+
 ## [v3.7.0.0] - 2026-09-02
 
 - **PDF Translation Hyphenation**：技術術語跨行連字自動重組（如 Cop-peliaSim → CoppeliaSim），並調整 CJK 字體縮放比例以提升可讀性。
