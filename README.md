@@ -35,12 +35,19 @@ Silently exports Word, Excel, and PowerPoint documents to high-quality PDFs in t
 ### Images
 - **Images to PDF** — package JPG, PNG, and WebP files into a multi-page PDF, pixel-perfect.
 - **Stitch** — join multiple images vertically into a single long-form image.
+- **Format Conversion** — convert images between PNG, JPG, BMP, GIF, and TIFF right from the context menu.
 
 ### PDF Translation
 Translates PDF content while preserving layout — heading hierarchy, typography, merged tables, fixed artwork, captions, and links — with CJK font scaling and re-joined technical identifiers.
 
 ### Conversion History
 Locally tracks every conversion in a Fluent master-detail view with paths, operation types, timestamps, duration, and status.
+
+### Local-First & Privacy
+Clickra operates on a strict **Local-First** philosophy:
+- **100% Offline by Default**: PDF merge/split/compress/decrypt, image conversion/compression/stitching, and Office-to-PDF run entirely on your local machine. Your documents never leave your device.
+- **Zero Telemetry**: No tracking, analytics, or background telemetry.
+- **Transparent Network Access**: Only the optional PDF Translation connects to public translation APIs, and the optional LibreOffice installer connects to the official Document Foundation repository. See [PRIVACY.md](PRIVACY.md) and [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for details.
 
 ## Installation
 
