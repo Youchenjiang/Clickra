@@ -50,7 +50,11 @@ internal static class Program
     {
         processId = 0;
         int hr = CoInitializeEx(IntPtr.Zero, 0x2);
-        if (hr != 0 && hr != 1 && hr != 0x80010106) return false;
+        // RPC_E_CHANGED_MODE means COM is already initialized with another apartment model, which
+        // is fine for activation. The literal needs an unchecked cast: 0x80010106 does not fit in
+        // int, so comparing against it directly was always true and made this check dead code.
+        const int RpcChangedMode = unchecked((int)0x80010106);
+        if (hr != 0 && hr != 1 && hr != RpcChangedMode) return false;
 
         try
         {
