@@ -50,16 +50,10 @@ public sealed partial class MainPage : Page
         Loaded += async (_, _) =>
         {
             ApplyResponsiveLayout();
+            HookMainWindowActivatedForParkedRefresh();
             await RunStartupCommandAsync();
         };
         SizeChanged += (_, _) => ApplyResponsiveLayout();
-        // 回到 dashboard 時同步「待繼續」清單：暫存是在任務視窗完成的，主視窗要能立刻反映。
-        Loaded += (_, _) =>
-        {
-            if (_parkedRefreshHooked || App.MainWindow is not { } mainWindow) return;
-            _parkedRefreshHooked = true;
-            mainWindow.Activated += (_, _) => RefreshParkedTasks();
-        };
         NavView.SelectionChanged += NavView_SelectionChanged;
         DropZone.Tapped += DropZone_Tapped;
         DropZone.PointerEntered += (_, _) => SetDropZoneHot(DropZone, DropZoneIcon, true);
@@ -711,6 +705,14 @@ public sealed partial class MainPage : Page
         RenderHistoryDetail(_historyEntries[_selectedHistoryIndex]);
     }
 
+    /// <summary>回到 dashboard 時同步「待繼續」清單：暫存是在任務視窗完成的，主視窗要能立刻反映。</summary>
+    private void HookMainWindowActivatedForParkedRefresh()
+    {
+        if (_parkedRefreshHooked || App.MainWindow is not { } mainWindow) return;
+        _parkedRefreshHooked = true;
+        mainWindow.Activated += (_, _) => RefreshParkedTasks();
+    }
+
     /// <summary>Lists the parked (paused) conversions in the History page. The park toast promises
     /// this page is where they can be resumed or cancelled, so the card stays hidden while none exist.</summary>
     private void RefreshParkedTasks()
@@ -815,17 +817,27 @@ public sealed partial class MainPage : Page
 
     /// <summary>Status colour: green success, gray canceled, red failure.</summary>
     private static SolidColorBrush StatusBrushFor(ClickraStorage.HistoryEntry entry)
-        => new(entry.IsSuccess ? Colors.LimeGreen : IsCanceledEntry(entry) ? Colors.Gray : Colors.IndianRed);
+    {
+        if (entry.IsSuccess) return new(Colors.LimeGreen);
+        if (IsCanceledEntry(entry)) return new(Colors.Gray);
+        return new(Colors.IndianRed);
+    }
 
     /// <summary>Status chip background matching <see cref="StatusBrushFor"/>.</summary>
     private static SolidColorBrush StatusBackgroundFor(ClickraStorage.HistoryEntry entry)
-        => new(entry.IsSuccess
-            ? Color.FromArgb(36, 57, 211, 83)
-            : IsCanceledEntry(entry) ? Color.FromArgb(36, 128, 128, 128) : Color.FromArgb(40, 255, 107, 107));
+    {
+        if (entry.IsSuccess) return new(Color.FromArgb(36, 57, 211, 83));
+        if (IsCanceledEntry(entry)) return new(Color.FromArgb(36, 128, 128, 128));
+        return new(Color.FromArgb(40, 255, 107, 107));
+    }
 
     /// <summary>Localized status label for a history entry.</summary>
     private static string StatusLabelFor(ClickraStorage.HistoryEntry entry)
-        => IsCanceledEntry(entry) ? L("fluent_status_canceled") : entry.IsSuccess ? L(SuccessLocalizationKey) : L(FailedLocalizationKey);
+    {
+        if (IsCanceledEntry(entry)) return L("fluent_status_canceled");
+        if (entry.IsSuccess) return L(SuccessLocalizationKey);
+        return L(FailedLocalizationKey);
+    }
 
     private void RenderOverviewHistory(IReadOnlyList<ClickraStorage.HistoryEntry> history)
     {

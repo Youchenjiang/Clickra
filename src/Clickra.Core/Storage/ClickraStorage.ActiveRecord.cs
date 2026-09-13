@@ -251,9 +251,12 @@ namespace Clickra.Core
                 var entry = ReadTaskFileInternal(taskId);
                 if (entry is null || entry.Value.Status != ConversionStatus.Parked) return;
 
+                string path = TaskFilePath(taskId);
+                if (File.Exists(path))
+                {
+                    File.Delete(path);
+                }
                 WriteCanceledHistory(entry.Value, CanceledReason, DateTime.UtcNow);
-                try { File.Delete(TaskFilePath(taskId)); }
-                catch { /* already removed by another process */ }
             });
         }
 

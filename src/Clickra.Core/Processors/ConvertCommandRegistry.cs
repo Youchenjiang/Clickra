@@ -113,7 +113,7 @@ public static class ConvertCommandRegistry
             return ClickraStorage.GetSetting("PdfCompressTargetDpi") switch
             {
                 "300" => 3,
-                "150" => 2,
+                "150" => 1,
                 "0" => 3,
                 _ => 1
             };
