@@ -25,6 +25,11 @@ namespace ClickraShell
     [SuppressMessage("SonarQube", "S6640", Justification = "NativeAOT COM vtable interop requires unsafe code")]
     internal static class ComMethods
     {
+        private const int E_NOTIMPL = -2_147_467_263;
+        private const int E_NOINTERFACE = -2_147_467_262;
+        private const int E_FAIL = -2_147_467_259;
+        private const uint SIGDN_FILESYSPATH = 0x8005_8000;
+
         private static readonly string[] MenuKeys = { "Menu_Ppt2Pdf", "Menu_Word2Pdf", "Menu_Excel2Pdf", "Menu_MergePdf", "Menu_CompressPdf", "Menu_Img2Pdf", "Menu_ImgMerge", "Menu_ImgStitch", "Menu_TranslatePdf", "Menu_DecryptPdf", "Menu_SplitPdf" };
         private static readonly string[] SubArgs = { "ppt2pdf", "word2pdf", "excel2pdf", "merge-pdf", "compress-pdf", "img2pdf", "img-merge", "img-stitch", "translate-pdf", "decrypt-pdf", "split-pdf" };
         /// <summary>Per-command icon files, positionally aligned with SubArgs. The root command (-1) uses app.ico.</summary>
@@ -63,7 +68,7 @@ namespace ClickraShell
             if (req == Guids.IID_IObjectWithSelection && (p->Type == ComObjectType.Command || p->Type == ComObjectType.Enum)) {
                 *ppv = basePtr + IntPtr.Size; AddRefInternal(basePtr); return 0;
             }
-            return -2147467262; // E_NOINTERFACE
+            return E_NOINTERFACE;
         }
 
         /// <summary>QueryInterface entry point for the primary vtable.</summary>
@@ -127,7 +132,7 @@ namespace ClickraShell
             if (items == IntPtr.Zero)
             {
                 if (ppv != null) *ppv = IntPtr.Zero;
-                return -2147467259; // E_FAIL
+                return E_FAIL;
             }
             IntPtr vt = *(IntPtr*)items;
             delegate* unmanaged[Stdcall]<IntPtr, Guid*, IntPtr*, int> qi = (delegate* unmanaged[Stdcall]<IntPtr, Guid*, IntPtr*, int>)(*(IntPtr*)vt);
@@ -159,7 +164,7 @@ namespace ClickraShell
             if (!File.Exists(iconPath)) iconPath = Path.Combine(dir, "app.ico");
             if (!File.Exists(iconPath)) iconPath = Path.Combine(dir, "app.png");
             if (File.Exists(iconPath)) { *ppsz = Marshal.StringToCoTaskMemUni(iconPath); return 0; }
-            return -2147467263; // E_NOTIMPL
+            return E_NOTIMPL;
         }
 
         /// <summary>IExplorerCommand.GetToolTip — no tooltip for menu commands.</summary>
@@ -228,7 +233,7 @@ namespace ClickraShell
                             IntPtr ivt = *(IntPtr*)item;
                             delegate* unmanaged[Stdcall]<IntPtr, uint, IntPtr*, int> getName = (delegate* unmanaged[Stdcall]<IntPtr, uint, IntPtr*, int>)(*(IntPtr*)(ivt + 5 * IntPtr.Size));
                             IntPtr namePtr = IntPtr.Zero;
-                            if (getName(item, 0x80058000, &namePtr) == 0) {
+                            if (getName(item, SIGDN_FILESYSPATH, &namePtr) == 0) {
                                 string? path = Marshal.PtrToStringUni(namePtr);
                                 if (!string.IsNullOrEmpty(path)) files.Add(path);
                                 Marshal.FreeCoTaskMem(namePtr);
@@ -319,6 +324,6 @@ namespace ClickraShell
         /// <summary>IEnumExplorerCommand.Reset — rewinds the enumeration cursor.</summary>
         [UnmanagedCallersOnly(CallConvs = new[] { typeof(CallConvStdcall) })] public static unsafe int EnumReset(IntPtr _this) { ((UniversalObject*)_this)->Data = 0; return 0; }
         /// <summary>IEnumExplorerCommand.Clone — not implemented for this enumerator.</summary>
-        [UnmanagedCallersOnly(CallConvs = new[] { typeof(CallConvStdcall) })] public static unsafe int EnumClone(IntPtr _this, IntPtr* ppv) { *ppv = IntPtr.Zero; return -2147467263; }
+        [UnmanagedCallersOnly(CallConvs = new[] { typeof(CallConvStdcall) })] public static unsafe int EnumClone(IntPtr _this, IntPtr* ppv) { *ppv = IntPtr.Zero; return E_NOTIMPL; }
     }
 }
