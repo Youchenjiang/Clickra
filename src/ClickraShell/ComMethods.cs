@@ -81,17 +81,53 @@ namespace ClickraShell
         /// <summary>Release entry point for the IObjectWithSelection vtable.</summary>
         [UnmanagedCallersOnly(CallConvs = new[] { typeof(CallConvStdcall) })] public static unsafe uint SelectionRelease(IntPtr _this) => ReleaseInternal(_this - IntPtr.Size);
         /// <summary>Decrements the reference count and frees the object when it reaches zero.</summary>
-        internal static unsafe uint ReleaseInternal(IntPtr basePtr) { uint c = (uint)Interlocked.Decrement(ref ((UniversalObject*)basePtr)->RefCount); if (c == 0) Marshal.FreeCoTaskMem(basePtr); return c; }
+        internal static unsafe uint ReleaseInternal(IntPtr basePtr)
+        {
+            uint c = (uint)Interlocked.Decrement(ref ((UniversalObject*)basePtr)->RefCount);
+            if (c == 0)
+            {
+                var obj = (UniversalObject*)basePtr;
+                if (obj->ShellItems != IntPtr.Zero)
+                {
+                    Marshal.Release(obj->ShellItems);
+                    obj->ShellItems = IntPtr.Zero;
+                }
+                Marshal.FreeCoTaskMem(basePtr);
+            }
+            return c;
+        }
 
         /// <summary>IClassFactory.CreateInstance — creates a new command object.</summary>
         [UnmanagedCallersOnly(CallConvs = new[] { typeof(CallConvStdcall) })] public static unsafe int CreateInstance(IntPtr _this, IntPtr outer, Guid* riid, IntPtr* ppv) => CreateObject(Exporter.GetCommandVt(), riid, ppv, ComObjectType.Command);
         /// <summary>IClassFactory.LockServer — no-op for this in-process factory.</summary>
         [UnmanagedCallersOnly(CallConvs = new[] { typeof(CallConvStdcall) })] public static int LockServer(IntPtr _this, int fLock) => 0;
 
-        /// <summary>IObjectWithSelection.SetSelection — stores the selected shell items.</summary>
-        [UnmanagedCallersOnly(CallConvs = new[] { typeof(CallConvStdcall) })] public static unsafe int SetSelection(IntPtr _this, IntPtr psi) { ((UniversalObject*)(_this - IntPtr.Size))->ShellItems = psi; return 0; }
-        /// <summary>IObjectWithSelection.GetSelection — returns the stored shell items.</summary>
-        [UnmanagedCallersOnly(CallConvs = new[] { typeof(CallConvStdcall) })] public static unsafe int GetSelection(IntPtr _this, Guid* riid, IntPtr* ppv) { var items = ((UniversalObject*)(_this - IntPtr.Size))->ShellItems; if (items == IntPtr.Zero) return -2147467259; *ppv = items; return 0; }
+        /// <summary>IObjectWithSelection.SetSelection — stores the selected shell items with COM reference tracking.</summary>
+        [UnmanagedCallersOnly(CallConvs = new[] { typeof(CallConvStdcall) })]
+        public static unsafe int SetSelection(IntPtr _this, IntPtr psi)
+        {
+            var obj = (UniversalObject*)(_this - IntPtr.Size);
+            if (obj->ShellItems == psi) return 0;
+            if (psi != IntPtr.Zero) Marshal.AddRef(psi);
+            if (obj->ShellItems != IntPtr.Zero) Marshal.Release(obj->ShellItems);
+            obj->ShellItems = psi;
+            return 0;
+        }
+
+        /// <summary>IObjectWithSelection.GetSelection — returns the stored shell items with QueryInterface.</summary>
+        [UnmanagedCallersOnly(CallConvs = new[] { typeof(CallConvStdcall) })]
+        public static unsafe int GetSelection(IntPtr _this, Guid* riid, IntPtr* ppv)
+        {
+            var items = ((UniversalObject*)(_this - IntPtr.Size))->ShellItems;
+            if (items == IntPtr.Zero)
+            {
+                if (ppv != null) *ppv = IntPtr.Zero;
+                return -2147467259; // E_FAIL
+            }
+            IntPtr vt = *(IntPtr*)items;
+            delegate* unmanaged[Stdcall]<IntPtr, Guid*, IntPtr*, int> qi = (delegate* unmanaged[Stdcall]<IntPtr, Guid*, IntPtr*, int>)(*(IntPtr*)vt);
+            return qi(items, riid, ppv);
+        }
 
         /// <summary>IExplorerCommand.GetTitle — localized menu title for the command index.</summary>
         [UnmanagedCallersOnly(CallConvs = new[] { typeof(CallConvStdcall) })]
