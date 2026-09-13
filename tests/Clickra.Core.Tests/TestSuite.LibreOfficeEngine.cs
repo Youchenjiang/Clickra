@@ -13,11 +13,11 @@ static partial class TestSuite
             var manifest = LibreOfficeEngineInstaller.BuiltInManifest;
             var package = manifest.LibreOffice;
             Assert.True(manifest.Schema == 1, "Expected manifest schema 1.");
-            Assert.Equal("26.2.4", package.Version);
+            Assert.Equal("26.2.6", package.Version);
             Assert.Equal("Windows x86-64 MSI", package.Edition);
             Assert.Equal("MPL-2.0", package.License);
-            Assert.True(package.DownloadBytes > 300L * 1024L * 1024L, "Expected download size metadata for LibreOffice MSI.");
-            Assert.Equal("202f26cda071c5aa4996a5a28412fddceb3891dceb0366982c62650456c0730f", package.Sha256);
+            Assert.Equal(373_252_096, package.DownloadBytes); // skipcq: CS-R1005
+            Assert.Equal("f9877032fd908beb9c0ddf06df4af5c2e85f419c42e14876c4cce5aae5fb2660", package.Sha256);
         });
 
         runner.Run("LibreOffice engine installer rejects non-ASCII paths", () =>

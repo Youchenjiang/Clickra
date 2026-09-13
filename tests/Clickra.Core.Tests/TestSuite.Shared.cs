@@ -353,6 +353,12 @@ static class Assert
             throw new InvalidOperationException($"Expected '{expected}', got '{actual}'.");
     }
 
+    public static void Equal(long expected, long actual)
+    {
+        if (expected != actual)
+            throw new InvalidOperationException($"Expected {expected}, got {actual}.");
+    }
+
     public static T Throws<T>(Action action) where T : Exception
     {
         try
