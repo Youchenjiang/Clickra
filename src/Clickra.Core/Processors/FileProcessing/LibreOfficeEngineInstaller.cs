@@ -38,7 +38,7 @@ namespace Clickra.Core.Processors
                 DownloadPageUrl: "https://download.documentfoundation.org/libreoffice/stable/26.2.6/win/x86_64/LibreOffice_26.2.6_Win_x86-64.msi.mirrorlist",
                 DirectDownloadUrl: "https://download.documentfoundation.org/libreoffice/stable/26.2.6/win/x86_64/LibreOffice_26.2.6_Win_x86-64.msi",
                 Sha256: "f9877032fd908beb9c0ddf06df4af5c2e85f419c42e14876c4cce5aae5fb2660",
-                DownloadBytes: 373_252_096L,
+                DownloadBytes: 373_252_096, // skipcq: CS-R1005
                 License: "MPL-2.0"));
 
         public static LibreOfficeEnginePackage RecommendedPackage => BuiltInManifest.LibreOffice;

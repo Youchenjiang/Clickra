@@ -16,7 +16,7 @@ static partial class TestSuite
             Assert.Equal("26.2.6", package.Version);
             Assert.Equal("Windows x86-64 MSI", package.Edition);
             Assert.Equal("MPL-2.0", package.License);
-            Assert.Equal(373_252_096L, package.DownloadBytes);
+            Assert.Equal(373_252_096, package.DownloadBytes); // skipcq: CS-R1005
             Assert.Equal("f9877032fd908beb9c0ddf06df4af5c2e85f419c42e14876c4cce5aae5fb2660", package.Sha256);
         });
 
