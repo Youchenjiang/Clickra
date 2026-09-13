@@ -97,6 +97,8 @@ try {{
     Write-Host 'PROGRESS:20'
     $word = New-Object -ComObject Word.Application
     try {{
+        $word.Visible = $false
+        $word.DisplayAlerts = 0
         Write-Host 'PROGRESS:50'
         $doc = $word.Documents.Open('{fullPath.Replace("'", "''")}', $false, $true)
         Write-Host 'PROGRESS:80'
@@ -120,6 +122,7 @@ try {{
     Write-Host 'PROGRESS:20'
     $ppt = New-Object -ComObject PowerPoint.Application
     try {{
+        $ppt.DisplayAlerts = 1
         Write-Host 'PROGRESS:50'
         $pres = $ppt.Presentations.Open('{fullPath.Replace("'", "''")}', $true, $false, $false)
         Write-Host 'PROGRESS:80'
@@ -142,9 +145,9 @@ $ErrorActionPreference = 'Stop'
 try {{
     Write-Host 'PROGRESS:20'
     $excel = New-Object -ComObject Excel.Application
-    $excel.Visible = $false
-    $excel.DisplayAlerts = $false
     try {{
+        $excel.Visible = $false
+        $excel.DisplayAlerts = $false
         Write-Host 'PROGRESS:50'
         $wb = $excel.Workbooks.Open('{fullPath.Replace("'", "''")}')
         try {{
@@ -187,10 +190,11 @@ try {{
             Action<int, int, string>? onProgress, 
             CancellationToken cancellationToken)
         {
+            string encodedScript = Convert.ToBase64String(Encoding.Unicode.GetBytes(psScript));
             var startInfo = new System.Diagnostics.ProcessStartInfo
             {
                 FileName = "powershell.exe",
-                Arguments = $"-NoProfile -ExecutionPolicy Bypass -Command \"{psScript}\"",
+                Arguments = $"-NoProfile -ExecutionPolicy Bypass -EncodedCommand {encodedScript}",
                 UseShellExecute = false,
                 RedirectStandardOutput = true,
                 RedirectStandardError = true,
