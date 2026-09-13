@@ -96,9 +96,9 @@ $ErrorActionPreference = 'Stop'
 try {{
     Write-Host 'PROGRESS:20'
     $word = New-Object -ComObject Word.Application
-    $word.Visible = $false
-    $word.DisplayAlerts = 0
     try {{
+        $word.Visible = $false
+        $word.DisplayAlerts = 0
         Write-Host 'PROGRESS:50'
         $doc = $word.Documents.Open('{fullPath.Replace("'", "''")}', $false, $true)
         Write-Host 'PROGRESS:80'
@@ -121,8 +121,8 @@ $ErrorActionPreference = 'Stop'
 try {{
     Write-Host 'PROGRESS:20'
     $ppt = New-Object -ComObject PowerPoint.Application
-    $ppt.DisplayAlerts = 1
     try {{
+        $ppt.DisplayAlerts = 1
         Write-Host 'PROGRESS:50'
         $pres = $ppt.Presentations.Open('{fullPath.Replace("'", "''")}', $true, $false, $false)
         Write-Host 'PROGRESS:80'
@@ -145,9 +145,9 @@ $ErrorActionPreference = 'Stop'
 try {{
     Write-Host 'PROGRESS:20'
     $excel = New-Object -ComObject Excel.Application
-    $excel.Visible = $false
-    $excel.DisplayAlerts = $false
     try {{
+        $excel.Visible = $false
+        $excel.DisplayAlerts = $false
         Write-Host 'PROGRESS:50'
         $wb = $excel.Workbooks.Open('{fullPath.Replace("'", "''")}')
         try {{
