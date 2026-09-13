@@ -2,6 +2,7 @@ using System;
 using System.Text;
 using System.IO;
 using System.Diagnostics;
+using System.Diagnostics.CodeAnalysis;
 using System.Runtime.InteropServices;
 using System.Runtime.CompilerServices;
 using System.Collections.Generic;
@@ -21,6 +22,7 @@ namespace ClickraShell
         public IntPtr ShellItems;
     }
 
+    [SuppressMessage("SonarQube", "S6640", Justification = "NativeAOT COM vtable interop requires unsafe code")]
     internal static class ComMethods
     {
         private static readonly string[] MenuKeys = { "Menu_Ppt2Pdf", "Menu_Word2Pdf", "Menu_Excel2Pdf", "Menu_MergePdf", "Menu_CompressPdf", "Menu_Img2Pdf", "Menu_ImgMerge", "Menu_ImgStitch", "Menu_TranslatePdf", "Menu_DecryptPdf", "Menu_SplitPdf" };
@@ -81,6 +83,7 @@ namespace ClickraShell
         /// <summary>Release entry point for the IObjectWithSelection vtable.</summary>
         [UnmanagedCallersOnly(CallConvs = new[] { typeof(CallConvStdcall) })] public static unsafe uint SelectionRelease(IntPtr _this) => ReleaseInternal(_this - IntPtr.Size);
         /// <summary>Decrements the reference count and frees the object when it reaches zero.</summary>
+        [SuppressMessage("SonarQube", "S6640", Justification = "NativeAOT COM vtable interop requires unsafe code")]
         internal static unsafe uint ReleaseInternal(IntPtr basePtr)
         {
             uint c = (uint)Interlocked.Decrement(ref ((UniversalObject*)basePtr)->RefCount);
@@ -103,6 +106,7 @@ namespace ClickraShell
         [UnmanagedCallersOnly(CallConvs = new[] { typeof(CallConvStdcall) })] public static int LockServer(IntPtr _this, int fLock) => 0;
 
         /// <summary>IObjectWithSelection.SetSelection — stores the selected shell items with COM reference tracking.</summary>
+        [SuppressMessage("SonarQube", "S6640", Justification = "NativeAOT COM vtable interop requires unsafe code")]
         [UnmanagedCallersOnly(CallConvs = new[] { typeof(CallConvStdcall) })]
         public static unsafe int SetSelection(IntPtr _this, IntPtr psi)
         {
@@ -115,6 +119,7 @@ namespace ClickraShell
         }
 
         /// <summary>IObjectWithSelection.GetSelection — returns the stored shell items with QueryInterface.</summary>
+        [SuppressMessage("SonarQube", "S6640", Justification = "NativeAOT COM vtable interop requires unsafe code")]
         [UnmanagedCallersOnly(CallConvs = new[] { typeof(CallConvStdcall) })]
         public static unsafe int GetSelection(IntPtr _this, Guid* riid, IntPtr* ppv)
         {
@@ -252,6 +257,7 @@ namespace ClickraShell
 
         /// <summary>IExplorerCommand.Invoke — launches Clickra.exe with the sub-command and the
         /// selected files as arguments.</summary>
+        [SuppressMessage("SonarQube", "S6640", Justification = "NativeAOT COM vtable interop requires unsafe code")]
         [UnmanagedCallersOnly(CallConvs = new[] { typeof(CallConvStdcall) })]
         public static unsafe int Invoke(IntPtr _this, IntPtr psi, IntPtr pbc)
         {
