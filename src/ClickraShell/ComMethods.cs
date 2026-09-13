@@ -2,6 +2,7 @@ using System;
 using System.Text;
 using System.IO;
 using System.Diagnostics;
+using System.Diagnostics.CodeAnalysis;
 using System.Runtime.InteropServices;
 using System.Runtime.CompilerServices;
 using System.Collections.Generic;
@@ -21,8 +22,14 @@ namespace ClickraShell
         public IntPtr ShellItems;
     }
 
+    [SuppressMessage("SonarQube", "S6640", Justification = "NativeAOT COM vtable interop requires unsafe code")]
     internal static class ComMethods
     {
+        private const int E_NOTIMPL = -2_147_467_263;
+        private const int E_NOINTERFACE = -2_147_467_262;
+        private const int E_FAIL = -2_147_467_259;
+        private const uint SIGDN_FILESYSPATH = 0x8005_8000;
+
         private static readonly string[] MenuKeys = { "Menu_Ppt2Pdf", "Menu_Word2Pdf", "Menu_Excel2Pdf", "Menu_MergePdf", "Menu_CompressPdf", "Menu_Img2Pdf", "Menu_ImgMerge", "Menu_ImgStitch", "Menu_TranslatePdf", "Menu_DecryptPdf", "Menu_SplitPdf" };
         private static readonly string[] SubArgs = { "ppt2pdf", "word2pdf", "excel2pdf", "merge-pdf", "compress-pdf", "img2pdf", "img-merge", "img-stitch", "translate-pdf", "decrypt-pdf", "split-pdf" };
         /// <summary>Per-command icon files, positionally aligned with SubArgs. The root command (-1) uses app.ico.</summary>
@@ -61,7 +68,7 @@ namespace ClickraShell
             if (req == Guids.IID_IObjectWithSelection && (p->Type == ComObjectType.Command || p->Type == ComObjectType.Enum)) {
                 *ppv = basePtr + IntPtr.Size; AddRefInternal(basePtr); return 0;
             }
-            return -2147467262; // E_NOINTERFACE
+            return E_NOINTERFACE;
         }
 
         /// <summary>QueryInterface entry point for the primary vtable.</summary>
@@ -81,17 +88,56 @@ namespace ClickraShell
         /// <summary>Release entry point for the IObjectWithSelection vtable.</summary>
         [UnmanagedCallersOnly(CallConvs = new[] { typeof(CallConvStdcall) })] public static unsafe uint SelectionRelease(IntPtr _this) => ReleaseInternal(_this - IntPtr.Size);
         /// <summary>Decrements the reference count and frees the object when it reaches zero.</summary>
-        internal static unsafe uint ReleaseInternal(IntPtr basePtr) { uint c = (uint)Interlocked.Decrement(ref ((UniversalObject*)basePtr)->RefCount); if (c == 0) Marshal.FreeCoTaskMem(basePtr); return c; }
+        [SuppressMessage("SonarQube", "S6640", Justification = "NativeAOT COM vtable interop requires unsafe code")]
+        internal static unsafe uint ReleaseInternal(IntPtr basePtr)
+        {
+            uint c = (uint)Interlocked.Decrement(ref ((UniversalObject*)basePtr)->RefCount);
+            if (c == 0)
+            {
+                var obj = (UniversalObject*)basePtr;
+                if (obj->ShellItems != IntPtr.Zero)
+                {
+                    Marshal.Release(obj->ShellItems);
+                    obj->ShellItems = IntPtr.Zero;
+                }
+                Marshal.FreeCoTaskMem(basePtr);
+            }
+            return c;
+        }
 
         /// <summary>IClassFactory.CreateInstance — creates a new command object.</summary>
         [UnmanagedCallersOnly(CallConvs = new[] { typeof(CallConvStdcall) })] public static unsafe int CreateInstance(IntPtr _this, IntPtr outer, Guid* riid, IntPtr* ppv) => CreateObject(Exporter.GetCommandVt(), riid, ppv, ComObjectType.Command);
         /// <summary>IClassFactory.LockServer — no-op for this in-process factory.</summary>
         [UnmanagedCallersOnly(CallConvs = new[] { typeof(CallConvStdcall) })] public static int LockServer(IntPtr _this, int fLock) => 0;
 
-        /// <summary>IObjectWithSelection.SetSelection — stores the selected shell items.</summary>
-        [UnmanagedCallersOnly(CallConvs = new[] { typeof(CallConvStdcall) })] public static unsafe int SetSelection(IntPtr _this, IntPtr psi) { ((UniversalObject*)(_this - IntPtr.Size))->ShellItems = psi; return 0; }
-        /// <summary>IObjectWithSelection.GetSelection — returns the stored shell items.</summary>
-        [UnmanagedCallersOnly(CallConvs = new[] { typeof(CallConvStdcall) })] public static unsafe int GetSelection(IntPtr _this, Guid* riid, IntPtr* ppv) { var items = ((UniversalObject*)(_this - IntPtr.Size))->ShellItems; if (items == IntPtr.Zero) return -2147467259; *ppv = items; return 0; }
+        /// <summary>IObjectWithSelection.SetSelection — stores the selected shell items with COM reference tracking.</summary>
+        [SuppressMessage("SonarQube", "S6640", Justification = "NativeAOT COM vtable interop requires unsafe code")]
+        [UnmanagedCallersOnly(CallConvs = new[] { typeof(CallConvStdcall) })]
+        public static unsafe int SetSelection(IntPtr _this, IntPtr psi)
+        {
+            var obj = (UniversalObject*)(_this - IntPtr.Size);
+            if (obj->ShellItems == psi) return 0;
+            if (psi != IntPtr.Zero) Marshal.AddRef(psi);
+            if (obj->ShellItems != IntPtr.Zero) Marshal.Release(obj->ShellItems);
+            obj->ShellItems = psi;
+            return 0;
+        }
+
+        /// <summary>IObjectWithSelection.GetSelection — returns the stored shell items with QueryInterface.</summary>
+        [SuppressMessage("SonarQube", "S6640", Justification = "NativeAOT COM vtable interop requires unsafe code")]
+        [UnmanagedCallersOnly(CallConvs = new[] { typeof(CallConvStdcall) })]
+        public static unsafe int GetSelection(IntPtr _this, Guid* riid, IntPtr* ppv)
+        {
+            var items = ((UniversalObject*)(_this - IntPtr.Size))->ShellItems;
+            if (items == IntPtr.Zero)
+            {
+                if (ppv != null) *ppv = IntPtr.Zero;
+                return E_FAIL;
+            }
+            IntPtr vt = *(IntPtr*)items;
+            delegate* unmanaged[Stdcall]<IntPtr, Guid*, IntPtr*, int> qi = (delegate* unmanaged[Stdcall]<IntPtr, Guid*, IntPtr*, int>)(*(IntPtr*)vt);
+            return qi(items, riid, ppv);
+        }
 
         /// <summary>IExplorerCommand.GetTitle — localized menu title for the command index.</summary>
         [UnmanagedCallersOnly(CallConvs = new[] { typeof(CallConvStdcall) })]
@@ -118,7 +164,7 @@ namespace ClickraShell
             if (!File.Exists(iconPath)) iconPath = Path.Combine(dir, "app.ico");
             if (!File.Exists(iconPath)) iconPath = Path.Combine(dir, "app.png");
             if (File.Exists(iconPath)) { *ppsz = Marshal.StringToCoTaskMemUni(iconPath); return 0; }
-            return -2147467263; // E_NOTIMPL
+            return E_NOTIMPL;
         }
 
         /// <summary>IExplorerCommand.GetToolTip — no tooltip for menu commands.</summary>
@@ -134,12 +180,12 @@ namespace ClickraShell
 
             return idx switch
             {
-                -1 => new[] { ".ppt", ".pptx", ".doc", ".docx", ".xlsx", ".xls", ".pdf", ".jpg", ".jpeg", ".png", ".bmp", ".gif", ".tiff", ".webp" }.Contains(ext),
+                -1 => new[] { ".ppt", ".pptx", ".doc", ".docx", ".xlsx", ".xls", ".pdf", ".jpg", ".jpeg", ".png", ".gif", ".webp" }.Contains(ext),
                 0 => ext == ".ppt" || ext == ".pptx",
                 1 => ext == ".doc" || ext == ".docx",
                 2 => ext == ".xlsx" || ext == ".xls",
                 3 or 4 or 8 or 9 or 10 => ext == ".pdf",
-                5 or 6 or 7 => new[] { ".jpg", ".jpeg", ".png", ".bmp", ".gif", ".tiff", ".webp" }.Contains(ext),
+                5 or 6 or 7 => new[] { ".jpg", ".jpeg", ".png", ".gif", ".webp" }.Contains(ext),
                 _ => false
             };
         }
@@ -158,7 +204,7 @@ namespace ClickraShell
 
             // Specific logic for multi-file commands
             bool countOk = idx switch {
-                3 or 7 => files.Count > 1, // Merge PDF (3) and Image Stitch (7) require at least 2 files
+                3 or 6 or 7 => files.Count > 1, // Merge PDF (3), Image Merge (6), and Image Stitch (7) require at least 2 files
                 _ => true
             };
 
@@ -187,7 +233,7 @@ namespace ClickraShell
                             IntPtr ivt = *(IntPtr*)item;
                             delegate* unmanaged[Stdcall]<IntPtr, uint, IntPtr*, int> getName = (delegate* unmanaged[Stdcall]<IntPtr, uint, IntPtr*, int>)(*(IntPtr*)(ivt + 5 * IntPtr.Size));
                             IntPtr namePtr = IntPtr.Zero;
-                            if (getName(item, 0x80058000, &namePtr) == 0) {
+                            if (getName(item, SIGDN_FILESYSPATH, &namePtr) == 0) {
                                 string? path = Marshal.PtrToStringUni(namePtr);
                                 if (!string.IsNullOrEmpty(path)) files.Add(path);
                                 Marshal.FreeCoTaskMem(namePtr);
@@ -216,11 +262,14 @@ namespace ClickraShell
 
         /// <summary>IExplorerCommand.Invoke — launches Clickra.exe with the sub-command and the
         /// selected files as arguments.</summary>
+        [SuppressMessage("SonarQube", "S6640", Justification = "NativeAOT COM vtable interop requires unsafe code")]
         [UnmanagedCallersOnly(CallConvs = new[] { typeof(CallConvStdcall) })]
         public static unsafe int Invoke(IntPtr _this, IntPtr psi, IntPtr pbc)
         {
-            int idx = ((UniversalObject*)_this)->Data;
+            var obj = (UniversalObject*)_this;
+            int idx = obj->Data;
             if (idx == -1) return 0;
+            if (psi == IntPtr.Zero) psi = obj->ShellItems;
 
             StringBuilder sb = new StringBuilder();
             sb.Append(SubArgs[idx]);
@@ -275,6 +324,6 @@ namespace ClickraShell
         /// <summary>IEnumExplorerCommand.Reset — rewinds the enumeration cursor.</summary>
         [UnmanagedCallersOnly(CallConvs = new[] { typeof(CallConvStdcall) })] public static unsafe int EnumReset(IntPtr _this) { ((UniversalObject*)_this)->Data = 0; return 0; }
         /// <summary>IEnumExplorerCommand.Clone — not implemented for this enumerator.</summary>
-        [UnmanagedCallersOnly(CallConvs = new[] { typeof(CallConvStdcall) })] public static unsafe int EnumClone(IntPtr _this, IntPtr* ppv) { *ppv = IntPtr.Zero; return -2147467263; }
+        [UnmanagedCallersOnly(CallConvs = new[] { typeof(CallConvStdcall) })] public static unsafe int EnumClone(IntPtr _this, IntPtr* ppv) { *ppv = IntPtr.Zero; return E_NOTIMPL; }
     }
 }
