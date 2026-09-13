@@ -37,6 +37,72 @@ static partial class TestSuite
             TestDeadPidTaskPrunedAsAbandoned);
         runner.Run("Task queue: legacy active.tmp is preserved and queue orders newest first",
             TestLegacyActiveTmpPreserved);
+        runner.Run("Task queue: cancelling a parked task records one canceled line and removes it",
+            TestCancellingParkedTaskRecordsCanceledLine);
+        runner.Run("Fluent History page exposes resume and cancel for parked conversions",
+            TestFluentParkedTaskEntryPoint);
+    }
+
+    private static void TestCancellingParkedTaskRecordsCanceledLine()
+    {
+        string a = ClickraStorage.StartTask(CmdDecryptPdf, 2, TestInDir + FileA1 + TestInDir + FileA2);
+        try
+        {
+            ClickraStorage.SetTaskInProgress(a);
+            ClickraStorage.ParkTask(a, ParkReason, 1);
+            Assert.True(ClickraStorage.GetParkedTasks().Any(t => t.Id == a), "Task must be parked before it can be cancelled.");
+
+            int linesBefore = ClickraStorage.GetHistory(100).Count;
+            ClickraStorage.CancelParkedTask(a);
+            var after = ClickraStorage.GetHistory(100);
+
+            Assert.True(after.Count == linesBefore + 1, $"Cancel must append exactly one history line, got {after.Count - linesBefore}.");
+            Assert.True(after.Any(h => h.Command == CmdDecryptPdf && !h.IsSuccess && ClickraStorage.IsUserCanceledReason(h.ErrorMessage)),
+                "Cancelling a parked task must be recorded as cancelled, not as a failure or a success.");
+            Assert.True(ClickraStorage.IsUserCanceledReason(ClickraStorage.CanceledReason) && ClickraStorage.IsUserCanceledReason(ClickraStorage.LegacyUserAbortedReason),
+                "Both the shared and the CLI's legacy cancel markers must be recognised as cancellations.");
+            Assert.False(ClickraStorage.IsUserCanceledReason(null) || ClickraStorage.IsUserCanceledReason("boom"),
+                "Ordinary failures must not be mistaken for cancellations.");
+            Assert.True(ClickraStorage.GetParkedTasks().All(t => t.Id != a), "Cancelled task must leave the parked list.");
+            Assert.True(ClickraStorage.GetTask(a) == null, "Cancelled task file must be removed so it cannot be resumed later.");
+
+            // Cancelling again (already removed) must stay a no-op instead of writing more history.
+            ClickraStorage.CancelParkedTask(a);
+            Assert.True(ClickraStorage.GetHistory(100).Count == after.Count, "Cancelling a removed task must not write another history line.");
+        }
+        finally { ClickraStorage.DeleteTask(a); }
+    }
+
+    /// <summary>The park toast promises the History page can resume or cancel a parked conversion;
+    /// this guards the entry point so the promise cannot silently become a dead end again.</summary>
+    private static void TestFluentParkedTaskEntryPoint()
+    {
+        string? root = FindRepoRoot();
+        if (root is null) throw new TestSkippedException("Could not locate the repository root from the test output directory.");
+
+        string code = File.ReadAllText(Path.Combine(root, "src", "Clickra.Fluent", "MainPage.xaml.cs"));
+        string xaml = File.ReadAllText(Path.Combine(root, "src", "Clickra.Fluent", "MainPage.xaml"));
+
+        Assert.True(xaml.Contains("ParkedTasksSection", StringComparison.Ordinal), "The History page must render a parked-conversions section.");
+        Assert.True(code.Contains("ClickraStorage.GetParkedTasks", StringComparison.Ordinal), "The History page must list parked conversions.");
+        Assert.True(code.Contains("ClickraStorage.CancelParkedTask", StringComparison.Ordinal), "The History page must offer cancel for parked conversions.");
+        Assert.True(code.Contains("OpenTaskProgressWindow($\"resume {", StringComparison.Ordinal), "Resume must go through the shared resume entry point.");
+        Assert.True(code.Contains("ClickraStorage.IsUserCanceledReason", StringComparison.Ordinal), "Cancelled rows must be recognised by the shared history marker, including the CLI's legacy one.");
+
+        // TaskProgressPage.TryParseResume only accepts a task whose status is still Parked, so the
+        // UI has to open the resume window before anything flips the status; otherwise the entry
+        // point silently does nothing. Guard the method body rather than the whole file.
+        int resumeStart = code.IndexOf("private void ResumeParkedTask", StringComparison.Ordinal);
+        Assert.True(resumeStart >= 0, "ResumeParkedTask must exist on the History page.");
+        int resumeEnd = code.IndexOf("private ", resumeStart + 1, StringComparison.Ordinal);
+        string resumeBody = resumeEnd > resumeStart ? code[resumeStart..resumeEnd] : code[resumeStart..];
+        Assert.True(resumeBody.Contains("OpenTaskProgressWindow", StringComparison.Ordinal), "Resume must open the shared task window.");
+        Assert.False(resumeBody.Contains("SetTaskInProgress", StringComparison.Ordinal),
+            "Resume must not mark the task InProgress first; TaskProgressPage only accepts a Parked task.");
+        foreach (string key in new[] { "fluent_task_parked_title", "fluent_task_parked_desc", "fluent_task_parked_cancel_confirm", "fluent_task_resume", "fluent_status_canceled" })
+        {
+            Assert.True(code.Contains(key, StringComparison.Ordinal), $"{key} must be rendered by the parked-conversion UI.");
+        }
     }
 
     private static void CleanupActiveTasks()

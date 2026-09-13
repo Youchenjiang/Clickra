@@ -252,6 +252,21 @@ static partial class TestSuite
         throw new InvalidOperationException("Could not locate Clickra repo root.");
     }
 
+    private static string? FindRepoRoot()
+    {
+        var dir = new DirectoryInfo(AppContext.BaseDirectory);
+        while (dir is not null)
+        {
+            if (File.Exists(Path.Combine(dir.FullName, "src", "ClickraShell", "ComMethods.cs")) &&
+                Directory.Exists(Path.Combine(dir.FullName, "packaging", "msix")))
+            {
+                return dir.FullName;
+            }
+            dir = dir.Parent;
+        }
+        return null;
+    }
+
     private static string Describe(TranslationParagraphDiagnostics p) =>
         $"  [{p.Index}] bypass={p.IsBypassed} table={p.IsTable} code={p.IsCode} " +
         $"diagram={p.IsDiagram} gray={p.IsGrayPromptContent} body={p.IsBodyProse} " +
@@ -344,6 +359,12 @@ static class Assert
     public static void True(bool condition, string message)
     {
         if (!condition)
+            throw new InvalidOperationException(message);
+    }
+
+    public static void False(bool condition, string message)
+    {
+        if (condition)
             throw new InvalidOperationException(message);
     }
 
