@@ -131,6 +131,34 @@ static partial class TestSuite
             }
             Assert.True(foundImage, "Expected to find compressed image in output PDF.");
         }));
+
+        runner.Run("PDF compression presets live in one table shared by the processor and the UIs", () =>
+        {
+            // The 0-3 slider maps onto the three levels; the top two stops both mean "high".
+            Assert.True(PdfCompressionOptions.FromSliderLevel(0) == PdfCompressionLevel.Small, "Slider 0 must mean small.");
+            Assert.True(PdfCompressionOptions.FromSliderLevel(1) == PdfCompressionLevel.Balanced, "Slider 1 must mean balanced.");
+            Assert.True(PdfCompressionOptions.FromSliderLevel(2) == PdfCompressionLevel.HighQuality, "Slider 2 must mean high quality.");
+            Assert.True(PdfCompressionOptions.FromSliderLevel(3) == PdfCompressionLevel.HighQuality, "Slider 3 must mean high quality.");
+            Assert.Equal("small", PdfCompressionOptions.ToOptionName(PdfCompressionLevel.Small));
+            Assert.Equal("balanced", PdfCompressionOptions.ToOptionName(PdfCompressionLevel.Balanced));
+            Assert.Equal("high", PdfCompressionOptions.ToOptionName(PdfCompressionLevel.HighQuality));
+
+            // The processor must take its numbers from that same table rather than repeating them,
+            // otherwise a level change would compress with one set of values and report another.
+            foreach (var level in new[] { PdfCompressionLevel.Small, PdfCompressionLevel.Balanced, PdfCompressionLevel.HighQuality })
+            {
+                var preset = PdfCompressionOptions.GetPreset(level);
+                var settings = PdfCompressionSettings.Parse(new Dictionary<string, object>
+                {
+                    { LevelKey, PdfCompressionOptions.ToOptionName(level) }
+                });
+                Assert.True(settings.Level == level, $"The parsed level must round-trip for {level}.");
+                Assert.True(settings.TargetDpi == preset.TargetDpi, $"{level} must use the preset DPI.");
+                Assert.True(settings.JpegQuality == preset.JpegQuality, $"{level} must use the preset JPEG quality.");
+                Assert.True(settings.StripFonts == preset.StripFonts, $"{level} must use the preset strip-fonts flag.");
+                Assert.True(settings.MinifyContent == preset.MinifyContent, $"{level} must use the preset minify flag.");
+            }
+        });
     }
 
     private static void RunWithTempFiles(Action<string, string> testAction)
