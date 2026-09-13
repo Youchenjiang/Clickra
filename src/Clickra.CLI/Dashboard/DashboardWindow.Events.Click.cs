@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Drawing;
 using System.IO;
@@ -932,16 +932,7 @@ namespace Clickra.UI
         /// <summary>Applies a PDF compression level selection and refreshes the settings tab.</summary>
         static void ApplyPdfCompressLevel(IntPtr hwnd, int level)
         {
-            var (dpi, quality) = level switch
-            {
-                0 => ("120", "65"),
-                1 => ("120", "75"),
-                2 => ("150", "80"),
-                _ => ("300", "85")
-            };
             ClickraStorage.SaveSetting("PdfCompressImageLevel", level.ToString());
-            ClickraStorage.SaveSetting("PdfCompressTargetDpi", dpi);
-            ClickraStorage.SaveSetting("PdfCompressJpegQuality", quality);
             InvalidateRect(hwnd, IntPtr.Zero, false);
         }
 

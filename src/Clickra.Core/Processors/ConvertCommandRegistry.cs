@@ -104,12 +104,17 @@ public static class ConvertCommandRegistry
         }
 
         /// <summary>Current PDF compression settings as a parameter dictionary.</summary>
-        public static Dictionary<string, object> CompressionOptions() => new()
+        public static Dictionary<string, object> CompressionOptions()
         {
-            ["level"] = ClickraStorage.GetSetting("PdfCompressImageLevel") switch { "0" => "small", "2" or "3" => "high", _ => "balanced" },
-            ["strip_fonts"] = ClickraStorage.GetSetting("PdfCompressStripFonts").Equals("true", StringComparison.OrdinalIgnoreCase),
-            ["minify_content"] = !ClickraStorage.GetSetting("PdfCompressMinifyContent").Equals("false", StringComparison.OrdinalIgnoreCase)
-        };
+            int sliderLevel = int.TryParse(ClickraStorage.GetSetting("PdfCompressImageLevel"), out int lvl) ? lvl : 1;
+            var level = PdfCompressionOptions.FromSliderLevel(sliderLevel);
+            return new Dictionary<string, object>
+            {
+                ["level"] = PdfCompressionOptions.ToOptionName(level),
+                ["strip_fonts"] = ClickraStorage.GetSetting("PdfCompressStripFonts").Equals("true", StringComparison.OrdinalIgnoreCase),
+                ["minify_content"] = !ClickraStorage.GetSetting("PdfCompressMinifyContent").Equals("false", StringComparison.OrdinalIgnoreCase)
+            };
+        }
 
         /// <summary>Splits a command line string into arguments, honoring double quotes.</summary>
         public static List<string> SplitCommandLine(string value)

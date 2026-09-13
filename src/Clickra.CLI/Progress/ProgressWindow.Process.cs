@@ -4,6 +4,7 @@ using System.Linq;
 using System.Threading;
 using System.Collections.Generic;
 using Clickra.Core;
+using Clickra.Core.Processors;
 
 using static Clickra.UI.Native.Win32;
 
@@ -176,27 +177,8 @@ namespace Clickra.UI
         }
 
         /// <summary>Builds the PDF compression options dictionary from saved settings.</summary>
-        private static Dictionary<string, object> BuildPdfCompressOptions()
-        {
-            string qualityStr = ClickraStorage.GetSetting("PdfCompressJpegQuality");
-            if (string.IsNullOrEmpty(qualityStr)) qualityStr = "75";
-            string dpiStr = ClickraStorage.GetSetting("PdfCompressTargetDpi");
-            if (string.IsNullOrEmpty(dpiStr)) dpiStr = "150";
-            if (!int.TryParse(dpiStr, out int dpi)) dpi = 150;
-            string stripStr = ClickraStorage.GetSetting("PdfCompressStripFonts");
-            if (string.IsNullOrEmpty(stripStr)) stripStr = "false";
-            string minifyStr = ClickraStorage.GetSetting("PdfCompressMinifyContent");
-            if (string.IsNullOrEmpty(minifyStr)) minifyStr = "true";
-            if (!int.TryParse(qualityStr, out int quality)) quality = 75;
-
-            return new Dictionary<string, object>
-            {
-                { "target_dpi", dpi },
-                { "jpeg_quality", quality },
-                { "strip_fonts", stripStr.Equals("true", StringComparison.OrdinalIgnoreCase) },
-                { "minify_content", minifyStr.Equals("true", StringComparison.OrdinalIgnoreCase) }
-            };
-        }
+        private static Dictionary<string, object> BuildPdfCompressOptions() =>
+            ConvertCommandRegistry.CompressionOptions();
 
         /// <summary>Converts each image to its own PDF, reporting per-file progress.</summary>
         private void RunImg2Pdf(List<string> files, string outputDir, Action<int, int, string> progressCallback)

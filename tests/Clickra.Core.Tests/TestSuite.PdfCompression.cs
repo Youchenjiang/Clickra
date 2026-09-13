@@ -1,3 +1,4 @@
+using Clickra.Core;
 using Clickra.Core.Processors;
 using PdfSharp.Drawing;
 using PdfSharp.Pdf;
@@ -157,6 +158,27 @@ static partial class TestSuite
                 Assert.True(settings.JpegQuality == preset.JpegQuality, $"{level} must use the preset JPEG quality.");
                 Assert.True(settings.StripFonts == preset.StripFonts, $"{level} must use the preset strip-fonts flag.");
                 Assert.True(settings.MinifyContent == preset.MinifyContent, $"{level} must use the preset minify flag.");
+            }
+
+            // ConvertCommandRegistry.CompressionOptions maps slider settings directly to preset levels
+            string origLevel = ClickraStorage.GetSetting("PdfCompressImageLevel");
+            try
+            {
+                ClickraStorage.SaveSetting("PdfCompressImageLevel", "0");
+                Assert.Equal("small", (string)ConvertCommandRegistry.CompressionOptions()["level"]);
+
+                ClickraStorage.SaveSetting("PdfCompressImageLevel", "1");
+                Assert.Equal("balanced", (string)ConvertCommandRegistry.CompressionOptions()["level"]);
+
+                ClickraStorage.SaveSetting("PdfCompressImageLevel", "2");
+                Assert.Equal("high", (string)ConvertCommandRegistry.CompressionOptions()["level"]);
+
+                ClickraStorage.SaveSetting("PdfCompressImageLevel", "3");
+                Assert.Equal("high", (string)ConvertCommandRegistry.CompressionOptions()["level"]);
+            }
+            finally
+            {
+                ClickraStorage.SaveSetting("PdfCompressImageLevel", origLevel);
             }
         });
     }
