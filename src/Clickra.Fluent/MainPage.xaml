@@ -271,6 +271,7 @@
                         <RowDefinition Height="Auto"/>
                         <RowDefinition Height="Auto"/>
                         <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
                         <RowDefinition Height="*"/>
                     </Grid.RowDefinitions>
 
@@ -303,7 +304,19 @@
                         </StackPanel>
                     </Grid>
 
-                    <Grid Grid.Row="2" x:Name="ActiveJobSection" Background="{ThemeResource CardBackgroundFillColorDefaultBrush}" CornerRadius="8" Padding="18" Visibility="Collapsed">
+                    <!-- Parked conversions: the toast promises they can be resumed or cancelled
+                         from the History page, so that entry point lives here. -->
+                    <Grid Grid.Row="2" x:Name="ParkedTasksSection" Background="{ThemeResource CardBackgroundFillColorDefaultBrush}" CornerRadius="8" Padding="16" Visibility="Collapsed">
+                        <StackPanel Spacing="10">
+                            <StackPanel Spacing="2">
+                                <TextBlock x:Name="ParkedTasksTitle" FontSize="15" FontWeight="SemiBold"/>
+                                <TextBlock x:Name="ParkedTasksDesc" FontSize="12" Foreground="{ThemeResource TextFillColorSecondaryBrush}" TextWrapping="Wrap"/>
+                            </StackPanel>
+                            <StackPanel x:Name="ParkedTasksContainer" Spacing="8"/>
+                        </StackPanel>
+                    </Grid>
+
+                    <Grid Grid.Row="3" x:Name="ActiveJobSection" Background="{ThemeResource CardBackgroundFillColorDefaultBrush}" CornerRadius="8" Padding="18" Visibility="Collapsed">
                         <StackPanel Spacing="8">
                             <TextBlock x:Name="ActiveJobTitle" Text="執行" FontSize="15" FontWeight="SemiBold"/>
                             <TextBlock x:Name="ActiveJobText" Text="轉換中..." FontSize="13"/>
@@ -311,14 +324,14 @@
                         </StackPanel>
                     </Grid>
 
-                    <Grid Grid.Row="3" x:Name="EmptyHistoryState" Background="{ThemeResource CardBackgroundFillColorDefaultBrush}" CornerRadius="8" Padding="28">
+                    <Grid Grid.Row="4" x:Name="EmptyHistoryState" Background="{ThemeResource CardBackgroundFillColorDefaultBrush}" CornerRadius="8" Padding="28">
                         <StackPanel HorizontalAlignment="Center" Spacing="8">
                             <FontIcon Glyph="&#xE81C;" FontSize="36" Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
                             <TextBlock x:Name="EmptyHistoryText" Text="尚無轉換紀錄。" FontSize="14" Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
                         </StackPanel>
                     </Grid>
 
-                    <ScrollViewer x:Name="HistoryListScrollViewer" Grid.Row="4" VerticalScrollBarVisibility="Auto">
+                    <ScrollViewer x:Name="HistoryListScrollViewer" Grid.Row="5" VerticalScrollBarVisibility="Auto">
                         <StackPanel x:Name="HistoryListContainer" Spacing="8" HorizontalAlignment="Stretch"/>
                     </ScrollViewer>
                 </Grid>

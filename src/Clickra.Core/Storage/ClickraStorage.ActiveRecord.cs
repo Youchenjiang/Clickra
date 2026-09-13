@@ -241,6 +241,25 @@ namespace Clickra.Core
             });
         }
 
+        /// <summary>取消一個已暫存的任務：寫入 Canceled 歷史（與逾時/遺棄清理相同的記帳）
+        /// 並刪除任務檔，讓它離開 dashboard 的「待繼續」清單。
+        /// 非暫存或已不存在的任務為 no-op。</summary>
+        public static void CancelParkedTask(string taskId)
+        {
+            RunWithMutex(() =>
+            {
+                var entry = ReadTaskFileInternal(taskId);
+                if (entry is null || entry.Value.Status != ConversionStatus.Parked) return;
+
+                string path = TaskFilePath(taskId);
+                if (File.Exists(path))
+                {
+                    File.Delete(path);
+                }
+                WriteCanceledHistory(entry.Value, CanceledReason, DateTime.UtcNow);
+            });
+        }
+
         /// <summary>已暫存任務的保留天數（設定 ParkedTaskRetention；0 = 無限期，預設 7）。</summary>
         public static int GetParkedRetentionDays()
         {
@@ -395,7 +414,7 @@ namespace Clickra.Core
 
             if (IsOrphaned(e, finished, parked, age))
             {
-                string reason = IsDeadPid(e, finished, parked) ? "Abandoned" : "Canceled";
+                string reason = IsDeadPid(e, finished, parked) ? AbandonedReason : CanceledReason;
                 WriteCanceledHistory(e, reason, now);
                 File.Delete(file);
                 return;

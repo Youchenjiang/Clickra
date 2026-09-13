@@ -6,6 +6,24 @@ namespace Clickra.Core
 {
     public static partial class ClickraStorage
     {
+        /// <summary>使用者取消（或任務清理判定為取消）時寫入歷史的原因標記。UI 用它把
+        /// 取消顯示成「已取消」而非失敗，因此必須與寫入端共用同一個字串。</summary>
+        public const string CanceledReason = "Canceled";
+
+        /// <summary>建立任務的進程已死時，清理任務時寫入歷史的原因標記。</summary>
+        public const string AbandonedReason = "Abandoned";
+
+        /// <summary>CLI 進度視窗沿用至今的取消標記（見 ProgressWindow.Process.cs）。
+        /// 尚未統一成 <see cref="CanceledReason"/>，但歷史顯示必須把兩者一視同仁。</summary>
+        public const string LegacyUserAbortedReason = "User Aborted";
+
+        /// <summary>歷史紀錄的錯誤訊息是否代表「使用者取消」而非失敗；跨 UI 共用，
+        /// 讓歷史把取消顯示成已取消而不是錯誤。</summary>
+        public static bool IsUserCanceledReason(string? errorMessage)
+            => errorMessage is not null &&
+               (errorMessage.Equals(CanceledReason, StringComparison.Ordinal) ||
+                errorMessage.Equals(LegacyUserAbortedReason, StringComparison.OrdinalIgnoreCase));
+
         // ─── History (Persistent) ──────────────────────────────────────────────
 
         public struct HistoryEntry

@@ -103,10 +103,26 @@ public static class ConvertCommandRegistry
             };
         }
 
+        /// <summary>Reads the current slider level from settings (0-3, default 1: balanced).</summary>
+        public static int GetPdfCompressLevel()
+        {
+            string levelStr = ClickraStorage.GetSetting("PdfCompressImageLevel");
+            if (int.TryParse(levelStr, out int lvl) && lvl >= 0 && lvl <= 3)
+                return lvl;
+
+            return ClickraStorage.GetSetting("PdfCompressTargetDpi") switch
+            {
+                "300" => 3,
+                "150" => 1,
+                "0" => 3,
+                _ => 1
+            };
+        }
+
         /// <summary>Current PDF compression settings as a parameter dictionary.</summary>
         public static Dictionary<string, object> CompressionOptions()
         {
-            int sliderLevel = int.TryParse(ClickraStorage.GetSetting("PdfCompressImageLevel"), out int lvl) ? lvl : 1;
+            int sliderLevel = GetPdfCompressLevel();
             var level = PdfCompressionOptions.FromSliderLevel(sliderLevel);
             return new Dictionary<string, object>
             {
