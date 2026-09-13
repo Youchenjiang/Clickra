@@ -116,13 +116,14 @@
     - **Phase 4**：未來版本預設使用 DeepL，其他作為備選。
     - **安全改善**：DeepL、Microsoft Translator、Google Cloud Translation 都有設定 HSTS、X-Content-Type-Options 等安全 headers。
     - **隱私改善**：官方 API 有明確的隱私政策，使用者自己的 API key 不會共用。
-    - 詳見 `tools/zap/zap-false-positives.md` 的「Current API Security Limitations」章節。    - [x] **[F2-18] Image to PDF & Merge**：圖片轉 PDF 與合併（v3.0.0）。
+    - 詳見 `tools/zap/zap-false-positives.md` 的「Current API Security Limitations」章節。
+- [x] **[F2-18] Image to PDF & Merge**：圖片轉 PDF 與合併（v3.0.0）。
 - [x] **[F2-19] HEIC Input & HEIC Output**：HEIC 輸入與 HEIC 輸出支援（v3.8.0）。
     - 支援將 HEIC 檔案作為現有圖片轉換命令的輸入來源（PNG/JPG/WEBP/GIF/HEIC）。
     - 新增 `img-to-heic` 命令，將 PNG/JPG/WEBP/GIF/HEIC 轉出為 HEIC；輸出端依賴系統提供的 HEIF/HEIC 編碼器，轉檔前先預檢，缺少免費編碼器時以本地化訊息提供 Microsoft Store 一鍵安裝，不產生不相容檔案。
     - 更新影片/圖片副檔名清單、儀表板過濾、Fluent 按鈕、Shell 選單與本地化字串，並補充對應測試。
 - [ ] **[F2-20] PNG/JPG Batch Conversion**：PNG/JPG 批量轉換。支援多種常用格式間的快速互轉。
-- [x] **[F2-20] Image Compression & Resize**：圖片壓縮與改尺寸（v3.8.0）。
+- [x] **[F2-28] Image Compression & Resize**：圖片壓縮與改尺寸（v3.8.0）。
     - 新增獨立 `img-compress` 命令：0–3 品質等級（比照 PDF 壓縮滑桿，對應 JPEG/WebP/HEIC 編碼品質）與最大長邊尺寸（原始／4K／FHD／HD，Bicubic 高品質縮放）。
     - 輸出 `<名稱>_compressed.<原副檔名>`；JPG/WebP/HEIC 依品質等級重新編碼，PNG 不超過 256 色時以無損索引式調色盤重新編碼（純 managed，無原生依賴），PNG/GIF 其餘情況僅在調整尺寸時重新編碼；壓縮後反而變大時自動略過，不覆蓋來源。
     - 同格式轉換排除：`img-to-*` 命令在選取的檔案已是目標格式時自動停用（jpg/jpeg 視為同格式），避免無意義的轉檔。
