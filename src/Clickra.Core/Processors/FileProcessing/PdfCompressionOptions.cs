@@ -36,4 +36,33 @@ public static class PdfCompressionOptions
                 return false;
         }
     }
+
+    /// <summary>Authoritative preset numbers for a compression level. These are the values
+    /// applied when only a level is chosen; individual option keys can still override them.</summary>
+    public static (int TargetDpi, int JpegQuality, bool StripFonts, bool MinifyContent) GetPreset(PdfCompressionLevel level) =>
+        level switch
+        {
+            PdfCompressionLevel.Small => (120, 75, true, true),
+            PdfCompressionLevel.HighQuality => (0, 85, false, true), // 0 = skip downsampling
+            _ => (150, 80, false, true)
+        };
+
+    /// <summary>Maps a 0-3 dashboard slider position to the compression level it selects;
+    /// the top two stops both mean "high".</summary>
+    public static PdfCompressionLevel FromSliderLevel(int level) =>
+        level switch
+        {
+            0 => PdfCompressionLevel.Small,
+            2 or 3 => PdfCompressionLevel.HighQuality,
+            _ => PdfCompressionLevel.Balanced
+        };
+
+    /// <summary>The lower-case "level" option name for a compression level.</summary>
+    public static string ToOptionName(PdfCompressionLevel level) =>
+        level switch
+        {
+            PdfCompressionLevel.Small => "small",
+            PdfCompressionLevel.HighQuality => "high",
+            _ => "balanced"
+        };
 }

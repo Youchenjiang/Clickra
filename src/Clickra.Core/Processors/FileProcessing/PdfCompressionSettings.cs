@@ -30,32 +30,14 @@ public class PdfCompressionSettings
         }
 
         settings.Level = parsedLevel;
-        switch (parsedLevel)
-        {
-            case PdfCompressionLevel.Small:
-                settings.MinifyContent = true;
-                settings.DeduplicateFonts = true;
-                settings.StripFonts = true;
-                settings.TargetDpi = 120;
-                settings.JpegQuality = 75;
-                break;
-            case PdfCompressionLevel.Balanced:
-                settings.MinifyContent = true;
-                settings.DeduplicateFonts = true;
-                settings.StripFonts = false;
-                settings.TargetDpi = 150;
-                settings.JpegQuality = 80;
-                break;
-            case PdfCompressionLevel.HighQuality:
-                settings.MinifyContent = true;
-                settings.DeduplicateFonts = true;
-                settings.StripFonts = false;
-                settings.TargetDpi = 0; // 0 means skip downsampling
-                settings.JpegQuality = 85;
-                break;
-            default:
-                throw new ArgumentException("Encountered unexpected value.");
-        }
+
+        // Preset numbers come from one table so the UI mapping and the processor cannot drift.
+        var (targetDpi, jpegQuality, stripFonts, minifyContent) = PdfCompressionOptions.GetPreset(parsedLevel);
+        settings.TargetDpi = targetDpi;
+        settings.JpegQuality = jpegQuality;
+        settings.StripFonts = stripFonts;
+        settings.MinifyContent = minifyContent;
+        settings.DeduplicateFonts = true;
 
         // 2. Individual custom options overrides
         if (options.TryGetValue("strip_fonts", out var sf))
