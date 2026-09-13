@@ -17,6 +17,10 @@ static partial class TestSuite
     public static void RegisterPdfCompressionTests(TestRunner runner)
     {
         const string LevelKey = "level";
+        const string LevelSmall = "small";
+        const string LevelBalanced = "balanced";
+        const string LevelHigh = "high";
+        const string SettingPdfCompressImageLevel = "PdfCompressImageLevel";
 
         runner.Run("PDF compression parses user-facing level aliases", () =>
         {
@@ -43,7 +47,7 @@ static partial class TestSuite
         {
             CreateSamplePdf(input);
             var processor = new PdfCompressionProcessor();
-            var options = new Dictionary<string, object> { { LevelKey, "small" } };
+            var options = new Dictionary<string, object> { { LevelKey, LevelSmall } };
 
             processor.Process(new List<string> { input }, output, options);
 
@@ -56,7 +60,7 @@ static partial class TestSuite
             CreateSamplePdf(input);
             var engine = new RecordingPdfCompressionEngine();
             var processor = new PdfCompressionProcessor(engine);
-            var options = new Dictionary<string, object> { { LevelKey, "high" } };
+            var options = new Dictionary<string, object> { { LevelKey, LevelHigh } };
 
             processor.Process(new List<string> { input }, output, options);
 
@@ -86,7 +90,7 @@ static partial class TestSuite
             new PdfCompressionProcessor().Process(
                 new List<string> { input },
                 output,
-                new Dictionary<string, object> { { LevelKey, "balanced" } });
+                new Dictionary<string, object> { { LevelKey, LevelBalanced } });
 
             long inputBytes = new FileInfo(input).Length;
             long outputBytes = new FileInfo(output).Length;
@@ -99,7 +103,7 @@ static partial class TestSuite
             new PdfCompressionProcessor().Process(
                 new List<string> { input },
                 output,
-                new Dictionary<string, object> { { LevelKey, "balanced" } });
+                new Dictionary<string, object> { { LevelKey, LevelBalanced } });
 
             long inputBytes = new FileInfo(input).Length;
             long outputBytes = new FileInfo(output).Length;
@@ -112,7 +116,7 @@ static partial class TestSuite
             new PdfCompressionProcessor().Process(
                 new List<string> { input },
                 output,
-                new Dictionary<string, object> { { LevelKey, "small" } });
+                new Dictionary<string, object> { { LevelKey, LevelSmall } });
 
             Assert.True(File.Exists(output), "Expected output file to exist.");
 
@@ -140,9 +144,9 @@ static partial class TestSuite
             Assert.True(PdfCompressionOptions.FromSliderLevel(1) == PdfCompressionLevel.Balanced, "Slider 1 must mean balanced.");
             Assert.True(PdfCompressionOptions.FromSliderLevel(2) == PdfCompressionLevel.HighQuality, "Slider 2 must mean high quality.");
             Assert.True(PdfCompressionOptions.FromSliderLevel(3) == PdfCompressionLevel.HighQuality, "Slider 3 must mean high quality.");
-            Assert.Equal("small", PdfCompressionOptions.ToOptionName(PdfCompressionLevel.Small));
-            Assert.Equal("balanced", PdfCompressionOptions.ToOptionName(PdfCompressionLevel.Balanced));
-            Assert.Equal("high", PdfCompressionOptions.ToOptionName(PdfCompressionLevel.HighQuality));
+            Assert.Equal(LevelSmall, PdfCompressionOptions.ToOptionName(PdfCompressionLevel.Small));
+            Assert.Equal(LevelBalanced, PdfCompressionOptions.ToOptionName(PdfCompressionLevel.Balanced));
+            Assert.Equal(LevelHigh, PdfCompressionOptions.ToOptionName(PdfCompressionLevel.HighQuality));
 
             // The processor must take its numbers from that same table rather than repeating them,
             // otherwise a level change would compress with one set of values and report another.
@@ -161,24 +165,24 @@ static partial class TestSuite
             }
 
             // ConvertCommandRegistry.CompressionOptions maps slider settings directly to preset levels
-            string origLevel = ClickraStorage.GetSetting("PdfCompressImageLevel");
+            string origLevel = ClickraStorage.GetSetting(SettingPdfCompressImageLevel);
             try
             {
-                ClickraStorage.SaveSetting("PdfCompressImageLevel", "0");
-                Assert.Equal("small", (string)ConvertCommandRegistry.CompressionOptions()["level"]);
+                ClickraStorage.SaveSetting(SettingPdfCompressImageLevel, "0");
+                Assert.Equal(LevelSmall, (string)ConvertCommandRegistry.CompressionOptions()[LevelKey]);
 
-                ClickraStorage.SaveSetting("PdfCompressImageLevel", "1");
-                Assert.Equal("balanced", (string)ConvertCommandRegistry.CompressionOptions()["level"]);
+                ClickraStorage.SaveSetting(SettingPdfCompressImageLevel, "1");
+                Assert.Equal(LevelBalanced, (string)ConvertCommandRegistry.CompressionOptions()[LevelKey]);
 
-                ClickraStorage.SaveSetting("PdfCompressImageLevel", "2");
-                Assert.Equal("high", (string)ConvertCommandRegistry.CompressionOptions()["level"]);
+                ClickraStorage.SaveSetting(SettingPdfCompressImageLevel, "2");
+                Assert.Equal(LevelHigh, (string)ConvertCommandRegistry.CompressionOptions()[LevelKey]);
 
-                ClickraStorage.SaveSetting("PdfCompressImageLevel", "3");
-                Assert.Equal("high", (string)ConvertCommandRegistry.CompressionOptions()["level"]);
+                ClickraStorage.SaveSetting(SettingPdfCompressImageLevel, "3");
+                Assert.Equal(LevelHigh, (string)ConvertCommandRegistry.CompressionOptions()[LevelKey]);
             }
             finally
             {
-                ClickraStorage.SaveSetting("PdfCompressImageLevel", origLevel);
+                ClickraStorage.SaveSetting(SettingPdfCompressImageLevel, origLevel);
             }
         });
     }
