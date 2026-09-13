@@ -1,4 +1,4 @@
-﻿using System.Diagnostics;
+using System.Diagnostics;
 using System.Runtime.CompilerServices;
 using System.Diagnostics.CodeAnalysis;
 using System.Runtime.InteropServices;
@@ -52,9 +52,10 @@ internal static class Program
         int hr = CoInitializeEx(IntPtr.Zero, 0x2);
         // RPC_E_CHANGED_MODE means COM is already initialized with another apartment model, which
         // is fine for activation. The literal needs an unchecked cast: 0x80010106 does not fit in
-        // int, so comparing against it directly was always true and made this check dead code.
+        // int, so comparing against it directly caused a compile-time type/constant-conversion error.
         const int RpcChangedMode = unchecked((int)0x80010106);
         if (hr != 0 && hr != 1 && hr != RpcChangedMode) return false;
+        bool coInitSuccess = hr == 0 || hr == 1;
 
         try
         {
@@ -76,7 +77,13 @@ internal static class Program
             }
             finally { Marshal.Release(pMgr); }
         }
-        finally { CoUninitialize(); }
+        finally
+        {
+            if (coInitSuccess)
+            {
+                CoUninitialize();
+            }
+        }
     }
 
     private static string? GetPackageFamilyName()
