@@ -28,9 +28,7 @@ static partial class TestSuite
 
         runner.Run("WicImageHelper.LoadImageSafely loads standard PNG and JPEG correctly", () =>
         {
-            string tempDir = Path.Combine(Path.GetTempPath(), $"wic-test-{Guid.NewGuid():N}");
-            Directory.CreateDirectory(tempDir);
-            try
+            RunWithTempDirectory(tempDir =>
             {
                 string pngPath = Path.Combine(tempDir, "test.png");
                 using (var bmp = new Bitmap(100, 100))
@@ -46,21 +44,12 @@ static partial class TestSuite
                 Assert.True(loaded != null, "Loaded bitmap should not be null.");
                 Assert.True(loaded!.Width == 100, "Loaded width should match.");
                 Assert.True(loaded.Height == 100, "Loaded height should match.");
-            }
-            finally
-            {
-                if (Directory.Exists(tempDir))
-                {
-                    try { Directory.Delete(tempDir, recursive: true); } catch { }
-                }
-            }
+            });
         });
 
         runner.Run("ImageToPdfProcessor processes image using WicImage fallback", () =>
         {
-            string tempDir = Path.Combine(Path.GetTempPath(), $"img2pdf-test-{Guid.NewGuid():N}");
-            Directory.CreateDirectory(tempDir);
-            try
+            RunWithTempDirectory(tempDir =>
             {
                 string pngPath = Path.Combine(tempDir, "page.png");
                 using (var bmp = new Bitmap(50, 50))
@@ -85,21 +74,12 @@ static partial class TestSuite
                 new ImageToPdfProcessor().Process(new List<string> { heicSimulatedPath }, pdfOut2, null, null, CancellationToken.None);
                 Assert.True(File.Exists(pdfOut2), "Generated PDF from simulated HEIC should exist.");
                 Assert.True(new FileInfo(pdfOut2).Length > 0, "Generated PDF from simulated HEIC should not be empty.");
-            }
-            finally
-            {
-                if (Directory.Exists(tempDir))
-                {
-                    try { Directory.Delete(tempDir, recursive: true); } catch { }
-                }
-            }
+            });
         });
 
         runner.Run("ImageStitchProcessor processes images loaded via WicImageHelper", () =>
         {
-            string tempDir = Path.Combine(Path.GetTempPath(), $"stitch-test-{Guid.NewGuid():N}");
-            Directory.CreateDirectory(tempDir);
-            try
+            RunWithTempDirectory(tempDir =>
             {
                 string img1 = Path.Combine(tempDir, "1.png");
                 string img2 = Path.Combine(tempDir, "2.png");
@@ -117,14 +97,37 @@ static partial class TestSuite
                 using var result = new Bitmap(stitchedOut);
                 Assert.True(result.Width == 40, "Stitched width should match.");
                 Assert.True(result.Height == 80, "Stitched height should match.");
-            }
-            finally
+            });
+        });
+    }
+
+    private static void RunWithTempDirectory(Action<string> action)
+    {
+        string tempDir = Path.Combine(Path.GetTempPath(), $"wic-test-{Guid.NewGuid():N}");
+        Directory.CreateDirectory(tempDir);
+        try
+        {
+            action(tempDir);
+        }
+        finally
+        {
+            if (Directory.Exists(tempDir))
             {
-                if (Directory.Exists(tempDir))
+                try
                 {
-                    try { Directory.Delete(tempDir, recursive: true); } catch { }
+                    Directory.Delete(tempDir, recursive: true);
+                }
+                catch (IOException ex)
+                {
+                    // Best-effort cleanup for temporary directories; file locks or antivirus scans may briefly hold directory handles.
+                    Console.WriteLine($"[TestCleanup] Failed to delete temporary test directory: {ex.Message}");
+                }
+                catch (UnauthorizedAccessException ex)
+                {
+                    // Best-effort cleanup for temporary directories.
+                    Console.WriteLine($"[TestCleanup] Unauthorized access deleting temporary test directory: {ex.Message}");
                 }
             }
-        });
+        }
     }
 }
