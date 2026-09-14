@@ -11,18 +11,25 @@ namespace Clickra.Core.Processors
     {
         private PdfDocument? _doc;
         private string? _outputPath;
+        private readonly List<IDisposable> _pageResources = new();
 
         public new void Process(List<string> files, string? outputPath, Dictionary<string, object>? options = null, Action<int, int, string>? onProgress = null, CancellationToken cancellationToken = default)
         {
             if (string.IsNullOrEmpty(outputPath)) throw new ArgumentException("Output path is required for image to PDF conversion.");
             _outputPath = outputPath;
             _doc = new PdfDocument();
+            _pageResources.Clear();
             try
             {
                 base.Process(files, outputPath, options, onProgress, cancellationToken);
             }
             finally
             {
+                foreach (var resource in _pageResources)
+                {
+                    try { resource.Dispose(); } catch { }
+                }
+                _pageResources.Clear();
                 _doc?.Dispose();
             }
         }
@@ -32,7 +39,8 @@ namespace Clickra.Core.Processors
             onProgress?.Invoke((fileIndex * 100) + 50, totalFiles * 100, $"正在處理圖片: {Path.GetFileName(filePath)} ({fileIndex + 1}/{totalFiles})...");
             if (!File.Exists(filePath)) throw new FileNotFoundException("Image file not found", filePath);
             
-            using var holder = LoadXImageSafely(filePath);
+            var holder = LoadXImageSafely(filePath);
+            _pageResources.Add(holder);
             var ximg = holder.Image;
             var page = _doc!.AddPage();
 

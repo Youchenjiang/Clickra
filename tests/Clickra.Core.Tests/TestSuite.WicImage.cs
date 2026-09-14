@@ -77,6 +77,14 @@ static partial class TestSuite
 
                 Assert.True(File.Exists(pdfOut), "Generated PDF should exist.");
                 Assert.True(new FileInfo(pdfOut).Length > 0, "Generated PDF should not be empty.");
+
+                // Also test WIC fallback branch via .heic extension
+                string heicSimulatedPath = Path.Combine(tempDir, "simulated.heic");
+                File.Copy(pngPath, heicSimulatedPath);
+                string pdfOut2 = Path.Combine(tempDir, "output2.pdf");
+                new ImageToPdfProcessor().Process(new List<string> { heicSimulatedPath }, pdfOut2, null, null, CancellationToken.None);
+                Assert.True(File.Exists(pdfOut2), "Generated PDF from simulated HEIC should exist.");
+                Assert.True(new FileInfo(pdfOut2).Length > 0, "Generated PDF from simulated HEIC should not be empty.");
             }
             finally
             {

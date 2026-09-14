@@ -88,6 +88,7 @@ public static class WicImageHelper
 
     /// <summary>
     /// Loads an image using WIC/WinRT BitmapDecoder and converts it into a 32bpp GDI+ Bitmap.
+    /// Uses OrientedPixelWidth/OrientedPixelHeight to respect EXIF orientation.
     /// </summary>
     private static Bitmap LoadViaWic(string filePath)
     {
@@ -104,8 +105,8 @@ public static class WicImageHelper
         ).AsTask().GetAwaiter().GetResult();
 
         byte[] pixels = pixelData.DetachPixelData();
-        int width = checked((int)decoder.PixelWidth);
-        int height = checked((int)decoder.PixelHeight);
+        int width = checked((int)decoder.OrientedPixelWidth);
+        int height = checked((int)decoder.OrientedPixelHeight);
 
         var bitmap = new Bitmap(width, height, PixelFormat.Format32bppPArgb);
         var bmpData = bitmap.LockBits(new Rectangle(0, 0, width, height), ImageLockMode.WriteOnly, PixelFormat.Format32bppPArgb);
@@ -180,7 +181,7 @@ public static class WicImageHelper
         ).AsTask().GetAwaiter().GetResult();
 
         byte[] pixels = pixelData.DetachPixelData();
-        EncodePixelsToHeic(pixels, decoder.PixelWidth, decoder.PixelHeight, decoder.DpiX, decoder.DpiY, outputPath, quality);
+        EncodePixelsToHeic(pixels, decoder.OrientedPixelWidth, decoder.OrientedPixelHeight, decoder.DpiX, decoder.DpiY, outputPath, quality);
     }
 
     /// <summary>
