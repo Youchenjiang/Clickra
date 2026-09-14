@@ -107,9 +107,9 @@ public class ImageFormatConvertProcessor : MultiFileProcessorBase
         public static string? GetMissingCodecForCommand(string command, IEnumerable<string> files)
         {
             // If any source file is .heic, we need a HEIC decoder to read it
-            if (files.Any(f => string.Equals(Path.GetExtension(f), ".heic", StringComparison.OrdinalIgnoreCase)))
+            if (!WicImageHelper.IsHeicDecoderAvailable() && files.Any(f => string.Equals(Path.GetExtension(f), ".heic", StringComparison.OrdinalIgnoreCase)))
             {
-                if (!WicImageHelper.IsHeicDecoderAvailable()) return "heic";
+                return "heic";
             }
 
             string? codec = command switch
