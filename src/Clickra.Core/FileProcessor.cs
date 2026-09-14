@@ -74,6 +74,35 @@ namespace Clickra.Core
         public static void StitchImages(List<string> files, string outputPath, Action<int, int, string>? onProgress = null, CancellationToken cancellationToken = default) =>
             new ImageStitchProcessor().Process(files, outputPath, null, onProgress, cancellationToken);
 
+        /// <summary>Converts an image file to a target format (png / jpg / webp / gif / heic).</summary>
+        /// <param name="inputPath">Path of the source image.</param>
+        /// <param name="outputPath">Path of the converted output image.</param>
+        /// <param name="format">Target format name ("png", "jpg", "webp", "gif" or "heic").</param>
+        /// <param name="onProgress">Optional progress callback receiving (progress, max, message).</param>
+        /// <param name="cancellationToken">Cancellation token to abort the conversion.</param>
+        public static void ConvertImageFormat(string inputPath, string outputPath, string format, Action<int, int, string>? onProgress = null, CancellationToken cancellationToken = default)
+        {
+            var processor = new ImageFormatConvertProcessor();
+            var options = new Dictionary<string, object> { { "format", format } };
+            processor.Process(new List<string> { inputPath }, outputPath, options, onProgress, cancellationToken);
+        }
+
+        /// <summary>Compresses an image in its existing format, optionally capping its
+        /// long edge to <paramref name="maxDimension"/> pixels (0 keeps the original size).</summary>
+        /// <param name="inputPath">Path of the source image.</param>
+        /// <param name="outputPath">Path of the compressed output image.</param>
+        /// <param name="level">Quality level 0-3 (0 smallest, 3 highest quality).</param>
+        /// <param name="maxDimension">Max long-edge dimension in pixels; 0 keeps the original size.</param>
+        /// <param name="onProgress">Optional progress callback receiving (progress, max, message).</param>
+        /// <param name="cancellationToken">Cancellation token to abort the compression.</param>
+        public static void CompressImage(string inputPath, string outputPath, int level = 1, int maxDimension = 0, Action<int, int, string>? onProgress = null, CancellationToken cancellationToken = default)
+            => throw new NotImplementedException("Image compression will be implemented in the image compression feature branch.");
+
+        /// <summary>Compresses an image using an explicit options dictionary ("level" 0-3
+        /// and "max_dimension" pixels, 0 = original size).</summary>
+        public static void CompressImage(string inputPath, string outputPath, Dictionary<string, object> options, Action<int, int, string>? onProgress = null, CancellationToken cancellationToken = default)
+            => throw new NotImplementedException("Image compression will be implemented in the image compression feature branch.");
+
         /// <summary>Converts PowerPoint files to PDF via the LibreOffice engine.</summary>
         /// <param name="files">Input .ppt/.pptx paths.</param>
         /// <param name="onProgress">Optional progress callback receiving (progress, max, message).</param>

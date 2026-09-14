@@ -13,6 +13,19 @@ namespace Clickra.Core
         private const string AppExcel = "Excel";
         private const string KeyCmdCompressPdf = "cmd_compress_pdf";
         private const string OfficeName = "Office";
+        private const string KeyCmdImgToPng = "cmd_img_to_png";
+        private const string KeyCmdImgToJpg = "cmd_img_to_jpg";
+        private const string KeyCmdImgToWebp = "cmd_img_to_webp";
+        private const string KeyCmdImgToHeic = "cmd_img_to_heic";
+        private const string KeyCmdImgToGif = "cmd_img_to_gif";
+        private const string KeyCmdImgCompress = "cmd_img_compress";
+        private const string KeySettingImageCompressTitle = "setting_image_compress_title";
+        private const string KeySettingImageCompressDesc = "setting_image_compress_desc";
+        private const string KeySettingImageCompressSize = "setting_image_compress_size";
+        private const string KeySettingImageCompressSizeOriginal = "setting_image_compress_size_original";
+        private const string ImageSize4k = "4K (3840px)";
+        private const string ImageSizeFhd = "FHD (1920px)";
+        private const string ImageSizeHd = "HD (1280px)";
 
         private static readonly Dictionary<string, Dictionary<string, string>> Translations = new(StringComparer.OrdinalIgnoreCase)
         {
@@ -111,6 +124,11 @@ namespace Clickra.Core
                 ["cmd_img_to_pdf"] = "圖片 → PDF",
                 ["cmd_merge_img"] = "圖片合併",
                 ["cmd_stitch_img"] = "圖片拼接",
+                [KeyCmdImgToPng] = "轉成 PNG",
+                [KeyCmdImgToJpg] = "轉成 JPG",
+                [KeyCmdImgToWebp] = "轉成 WEBP",
+                [KeyCmdImgToHeic] = "轉成 HEIC",
+                [KeyCmdImgToGif] = "轉成 GIF",
                 ["tab_convert"] = "轉檔",
                 ["convert_drag_drop_hint"] = "拖曳檔案至此，或點擊此處選取檔案",
                 ["convert_drag_drop_sub"] = "支援 Word, PPT, PDF 及多種圖片格式",
@@ -122,6 +140,11 @@ namespace Clickra.Core
                 ["convert_group_image"] = "圖片工具",
                 ["convert_err_min_files"] = "此功能至少需要 {0} 個檔案！",
                 ["convert_err_invalid_ext"] = "檔案格式不符，請重新選取！",
+                [KeyCmdImgCompress] = "壓縮圖片",
+                [KeySettingImageCompressTitle] = "圖片壓縮設定",
+                [KeySettingImageCompressDesc] = "自訂圖片壓縮的品質與最大尺寸（長邊）",
+                [KeySettingImageCompressSize] = "最大尺寸（長邊）",
+                [KeySettingImageCompressSizeOriginal] = "原始尺寸",
                 ["tab_about"] = "關於",
                 ["about_desc_title"] = "專案說明",
                 ["about_desc_body"] = "Clickra 是一款專為 Windows 11 量身打造的極致輕量、現代化右鍵轉檔工具。\n底層採用先進的 C# NativeAOT 技術，擺脫笨重的執行環境，實現小於 0.01 秒的瞬時啟動與免安裝極致體驗，與系統完美融為一體。",
@@ -252,6 +275,11 @@ namespace Clickra.Core
                 ["cmd_img_to_pdf"] = "图片 → PDF",
                 ["cmd_merge_img"] = "图片合并",
                 ["cmd_stitch_img"] = "图片拼接",
+                [KeyCmdImgToPng] = "转换为 PNG",
+                [KeyCmdImgToJpg] = "转换为 JPG",
+                [KeyCmdImgToWebp] = "转换为 WEBP",
+                [KeyCmdImgToHeic] = "转换为 HEIC",
+                [KeyCmdImgToGif] = "转换为 GIF",
                 ["tab_convert"] = "转档",
                 ["convert_drag_drop_hint"] = "拖拽文件至此，或点击此处选择文件",
                 ["convert_drag_drop_sub"] = "支持 Word, PPT, PDF 及多种图片格式",
@@ -263,6 +291,11 @@ namespace Clickra.Core
                 ["convert_group_image"] = "图片工具",
                 ["convert_err_min_files"] = "此功能至少需要 {0} 个文件！",
                 ["convert_err_invalid_ext"] = "文件格式不符，请重新选择！",
+                [KeyCmdImgCompress] = "压缩图片",
+                [KeySettingImageCompressTitle] = "图片压缩设置",
+                [KeySettingImageCompressDesc] = "自定义图片压缩的品质与最大尺寸（长边）",
+                [KeySettingImageCompressSize] = "最大尺寸（长边）",
+                [KeySettingImageCompressSizeOriginal] = "原始尺寸",
                 ["tab_about"] = "关于",
                 ["about_desc_title"] = "项目说明",
                 ["about_desc_body"] = "Clickra 是一款专为 Windows 11 量身打造的极致轻量、现代化右键转档工具。\n底层采用先进的 C# NativeAOT 技术，摆脱臃肿的运行环境，实现小于 0.01 秒的瞬时启动与免安装极致体验，与系统完美融为一体。",
@@ -398,6 +431,11 @@ namespace Clickra.Core
                 ["cmd_img_to_pdf"] = "Image → PDF",
                 ["cmd_merge_img"] = "Merge Images",
                 ["cmd_stitch_img"] = "Stitch Images",
+                [KeyCmdImgToPng] = "Convert to PNG",
+                [KeyCmdImgToJpg] = "Convert to JPG",
+                [KeyCmdImgToWebp] = "Convert to WEBP",
+                [KeyCmdImgToHeic] = "Convert to HEIC",
+                [KeyCmdImgToGif] = "Convert to GIF",
                 ["tab_convert"] = "Convert",
                 ["convert_drag_drop_hint"] = "Drag files here, or click to browse",
                 ["convert_drag_drop_sub"] = "Supports Word, PPT, PDF, and image files",
@@ -409,6 +447,11 @@ namespace Clickra.Core
                 ["convert_group_image"] = "Image Tools",
                 ["convert_err_min_files"] = "This action requires at least {0} files!",
                 ["convert_err_invalid_ext"] = "Invalid file extensions detected!",
+                [KeyCmdImgCompress] = "Compress Images",
+                [KeySettingImageCompressTitle] = "Image Compression Settings",
+                [KeySettingImageCompressDesc] = "Customize image compression quality and max size (long edge)",
+                [KeySettingImageCompressSize] = "Max Size (Long Edge)",
+                [KeySettingImageCompressSizeOriginal] = "Original Size",
                 ["tab_about"] = "About",
                 ["about_desc_title"] = "About Project",
                 ["about_desc_body"] = "Clickra is a premium, ultra-lightweight modern context menu utility designed for Windows 11.\nBuilt with C# NativeAOT, it skips all runtime overhead to deliver sub-10ms instantaneous startup and a zero-dependency user experience that feels like a native OS feature.",
@@ -541,6 +584,11 @@ namespace Clickra.Core
                 ["cmd_img_to_pdf"] = "画像 → PDF",
                 ["cmd_merge_img"] = "画像結合",
                 ["cmd_stitch_img"] = "画像結合 (縦/横)",
+                [KeyCmdImgToPng] = "PNG に変換",
+                [KeyCmdImgToJpg] = "JPG に変換",
+                [KeyCmdImgToWebp] = "WEBP に変換",
+                [KeyCmdImgToHeic] = "HEIC に変換",
+                [KeyCmdImgToGif] = "GIF に変換",
                 ["convert_drag_drop_hint"] = "ここにファイルをドラッグするか、クリックして選択",
                 ["convert_drag_drop_sub"] = "Word、PPT、PDF、および画像ファイルをサポート",
                 ["convert_selected_count"] = "{0} 個のファイルが選択されました",
@@ -551,6 +599,11 @@ namespace Clickra.Core
                 ["convert_group_image"] = "画像ツール",
                 ["convert_err_min_files"] = "この機能には少なくとも {0} 個のファイルが必要です！",
                 ["convert_err_invalid_ext"] = "無効なファイル形式が含まれています！",
+                [KeyCmdImgCompress] = "画像を圧縮",
+                [KeySettingImageCompressTitle] = "画像圧縮設定",
+                [KeySettingImageCompressDesc] = "画像圧縮の品質と最大サイズ（長辺）をカスタマイズします",
+                [KeySettingImageCompressSize] = "最大サイズ（長辺）",
+                [KeySettingImageCompressSizeOriginal] = "元のサイズ",
                 ["about_desc_title"] = "プロジェクトについて",
                 ["about_desc_body"] = "Clickra は、Windows 11 のために設計された極めて軽量でモダンな右鍵コンテキストメニュー変換ツールです。\nC# NativeAOT 技術を採用し、不要なランタイムを排除することで、0.01秒未満の瞬間起動と完全なスタンドアロン動作を実現しました。",
                 ["about_collab_title"] = "コラボレーションとソースコード",
@@ -682,6 +735,11 @@ namespace Clickra.Core
                 ["cmd_img_to_pdf"] = "이미지 → PDF",
                 ["cmd_merge_img"] = "이미지 병합",
                 ["cmd_stitch_img"] = "이미지 이어붙이기",
+                [KeyCmdImgToPng] = "PNG로 변환",
+                [KeyCmdImgToJpg] = "JPG로 변환",
+                [KeyCmdImgToWebp] = "WEBP로 변환",
+                [KeyCmdImgToHeic] = "HEIC로 변환",
+                [KeyCmdImgToGif] = "GIF로 변환",
                 ["tab_convert"] = "변환",
                 ["convert_drag_drop_hint"] = "여기에 파일을 끌어다 놓거나 클릭하여 선택",
                 ["convert_drag_drop_sub"] = "Word, PPT, PDF 및 이미지 파일 지원",
@@ -693,6 +751,11 @@ namespace Clickra.Core
                 ["convert_group_image"] = "이미지 도구",
                 ["convert_err_min_files"] = "이 작업은 최소 {0}개의 파일이 필요합니다!",
                 ["convert_err_invalid_ext"] = "잘못된 파일 확장자가 감지되었습니다!",
+                [KeyCmdImgCompress] = "이미지 압축",
+                [KeySettingImageCompressTitle] = "이미지 압축 설정",
+                [KeySettingImageCompressDesc] = "이미지 압축 품질과 최대 크기(긴 쪽)를 사용자 정의합니다",
+                [KeySettingImageCompressSize] = "최대 크기 (긴 쪽)",
+                [KeySettingImageCompressSizeOriginal] = "원본 크기",
                 ["tab_about"] = "정보",
                 ["about_desc_title"] = "프로젝트 정보",
                 ["about_desc_body"] = "Clickra는 Windows 11을 위해 특별히 설계된 초경량 현대식 마우스 오른쪽 버튼 변환 도구입니다.\n최첨단 C# NativeAOT 기술을 적용하여 불필요한 런타임을 배제하고 0.01초 미만의 즉각적인 실행 속도와 무설치 작동을 제공합니다.",
@@ -995,7 +1058,19 @@ namespace Clickra.Core
                 ("pdf_split_zoom_title", "頁面放大預覽", "页面放大预览", "Page zoom preview", "ページ拡大プレビュー", "페이지 확대 미리보기"),
                 ("pdf_split_zoom_hint", "滾輪縮放 · 拖曳平移 · 空白鍵/Esc 關閉", "滚轮缩放 · 拖拽平移 · 空格/Esc 关闭", "Wheel to zoom · drag to pan · Space/Esc to close", "ホイールで拡大 · ドラッグで移動 · Space/Esc で閉じる", "휠 확대 · 드래그 이동 · Space/Esc 닫기"),
                 ("pdf_split_zoom_close", "X 關閉", "X 关闭", "X Close", "X 閉じる", "X 닫기"),
-                ("pdf_split_zoom_fit", "適配", "适配", "Fit", "フィット", "맞춤")
+                ("pdf_split_zoom_fit", "適配", "适配", "Fit", "フィット", "맞춤"),
+                ("fluent_image_compression", "圖片壓縮", "图片压缩", "Image Compression", "画像圧縮", "이미지 압축"),
+                ("fluent_image_max_size", "最大尺寸（長邊）", "最大尺寸（长边）", "Max size (long edge)", "最大サイズ（長辺）", "최대 크기 (긴 쪽)"),
+                ("fluent_image_size_original", "原始尺寸", "原始尺寸", "Original size", "元のサイズ", "원본 크기"),
+                ("fluent_image_size_4k", ImageSize4k, ImageSize4k, ImageSize4k, ImageSize4k, ImageSize4k),
+                ("fluent_image_size_fhd", ImageSizeFhd, ImageSizeFhd, ImageSizeFhd, ImageSizeFhd, ImageSizeFhd),
+                ("fluent_image_size_hd", ImageSizeHd, ImageSizeHd, ImageSizeHd, ImageSizeHd, ImageSizeHd),
+                ("error_heic_codec_missing", "此系統沒有 HEIF/HEIC 編碼器，無法輸出 HEIC 檔案。", "此系统没有 HEIF/HEIC 编码器，无法输出 HEIC 文件。", "This system has no HEIF/HEIC encoder, so HEIC files cannot be written.", "このシステムには HEIF/HEIC エンコーダーがなく、HEIC ファイルを出力できません。", "이 시스템에는 HEIF/HEIC 인코더가 없어 HEIC 파일을 출력할 수 없습니다."),
+                ("error_webp_codec_missing", "此系統沒有 WebP 編碼器，無法處理 WebP 圖片。", "此系统没有 WebP 编码器，无法处理 WebP 图片。", "This system has no WebP encoder, so WebP images cannot be processed.", "このシステムには WebP エンコーダーがなく、WebP 画像を処理できません。", "이 시스템에는 WebP 인코더가 없어 WebP 이미지를 처리할 수 없습니다."),
+                ("codec_missing_store_prompt", "{0}\n\n是否立即開啟 Microsoft Store 免費安裝「{1}」？", "{0}\n\n是否立即打开 Microsoft Store 免费安装「{1}」？", "{0}\n\nOpen the Microsoft Store now to install the free \"{1}\"?", "{0}\n\n今すぐ Microsoft Store を開いて無料の「{1}」をインストールしますか？", "{0}\n\n지금 Microsoft Store를 열어 무료 \"{1}\"을(를) 설치하시겠습니까?"),
+                ("codec_heif_extension_name", "HEIF 影像延伸", "HEIF 图像扩展", "HEIF Image Extensions", "HEIF 画像拡張機能", "HEIF 이미지 확장"),
+                ("codec_webp_extension_name", "WebP 影像延伸", "WebP 图像扩展", "WebP Image Extensions", "WebP 画像拡張機能", "WebP 이미지 확장"),
+                ("codec_missing_install_action", "安裝編碼器", "安装编码器", "Install codec", "コーデックをインストール", "코덱 설치")
             };
 
             foreach (var item in data)

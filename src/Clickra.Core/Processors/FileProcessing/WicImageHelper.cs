@@ -26,11 +26,20 @@ public static class WicImageHelper
         try
         {
             var encoders = BitmapEncoder.GetEncoderInformationEnumerator();
+            bool found = false;
             foreach (var enc in encoders)
             {
-                if (enc.CodecId == BitmapEncoder.HeifEncoderId) return true;
+                if (enc.CodecId == BitmapEncoder.HeifEncoderId)
+                {
+                    found = true;
+                    break;
+                }
             }
-            return false;
+            if (!found) return false;
+
+            using var probeStream = new InMemoryRandomAccessStream();
+            var probeEncoder = BitmapEncoder.CreateAsync(BitmapEncoder.HeifEncoderId, probeStream).AsTask().GetAwaiter().GetResult();
+            return probeEncoder != null;
         }
         catch
         {
