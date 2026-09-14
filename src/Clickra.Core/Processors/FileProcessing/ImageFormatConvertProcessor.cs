@@ -11,8 +11,15 @@ namespace Clickra.Core.Processors;
 /// <summary>Converts an image file to a target format (png / jpg / webp / gif / heic).
 /// The target format is supplied through the "format" option; files that are
 /// already in the target format are skipped so the source is never overwritten.</summary>
-public class ImageFormatConvertProcessor : MultiFileProcessorBase
+    public class ImageFormatConvertProcessor : MultiFileProcessorBase
     {
+        private const string ExtHeic = ".heic";
+        private const string ExtWebp = ".webp";
+        private const string CodecHeic = "heic";
+        private const string CodecWebp = "webp";
+        private const string HeifStoreUri = "ms-windows-store://pdp/?productid=9PMMSR1CGPWG";
+        private const string WebpStoreUri = "ms-windows-store://pdp/?productid=9PG2DK419DRG";
+
         private string? _outputPath;
         private string _format = "";
 
@@ -40,16 +47,16 @@ public class ImageFormatConvertProcessor : MultiFileProcessorBase
                 return;
             }
 
-            if (string.Equals(sourceExt, ".heic", StringComparison.OrdinalIgnoreCase) && !WicImageHelper.IsHeicDecoderAvailable())
+            if (string.Equals(sourceExt, ExtHeic, StringComparison.OrdinalIgnoreCase) && !WicImageHelper.IsHeicDecoderAvailable())
             {
                 throw new NotSupportedException(Localize("error_heic_codec_missing"));
             }
 
-            if (string.Equals(_format, "heic", StringComparison.OrdinalIgnoreCase))
+            if (string.Equals(_format, CodecHeic, StringComparison.OrdinalIgnoreCase))
             {
                 SaveAsHeic(filePath, _outputPath!);
             }
-            else if (string.Equals(_format, "webp", StringComparison.OrdinalIgnoreCase))
+            else if (string.Equals(_format, CodecWebp, StringComparison.OrdinalIgnoreCase))
             {
                 if (!IsWebpEncodingSupported())
                 {
@@ -109,18 +116,19 @@ public class ImageFormatConvertProcessor : MultiFileProcessorBase
         /// formats GDI+ encodes out of the box (png/jpg/gif) and unknown formats.</summary>
         public static string? GetRequiredCodec(string format) => format.TrimStart('.').ToLowerInvariant() switch
         {
-            "heic" => "heic",
-            "webp" => "webp",
+            CodecHeic => CodecHeic,
+            CodecWebp => CodecWebp,
             "png" or "jpg" or "jpeg" or "gif" => null,
             _ => null
         };
 
         /// <summary>Microsoft Store URI of the free extension that provides the given codec;
         /// null when the codec needs no Store install.</summary>
+        [System.Diagnostics.CodeAnalysis.SuppressMessage("SonarQube", "S1075", Justification = "Store URIs are fixed product identifiers.")]
         public static Uri? GetCodecStoreUri(string codec) => codec.ToLowerInvariant() switch
         {
-            "heic" => new Uri("ms-windows-store://pdp/?productid=9PMMSR1CGPWG"), // HEIF Image Extensions
-            "webp" => new Uri("ms-windows-store://pdp/?productid=9PG2DK419DRG"), // WebP Image Extensions
+            CodecHeic => new Uri(HeifStoreUri), // NOSONAR:S1075
+            CodecWebp => new Uri(WebpStoreUri), // NOSONAR:S1075
             _ => null
         };
 
@@ -130,26 +138,26 @@ public class ImageFormatConvertProcessor : MultiFileProcessorBase
         public static string? GetMissingCodecForCommand(string command, IEnumerable<string> files)
         {
             // If any source file is .heic, we need a HEIC decoder to read it
-            if (!WicImageHelper.IsHeicDecoderAvailable() && files.Any(f => string.Equals(Path.GetExtension(f), ".heic", StringComparison.OrdinalIgnoreCase)))
+            if (!WicImageHelper.IsHeicDecoderAvailable() && files.Any(f => string.Equals(Path.GetExtension(f), ExtHeic, StringComparison.OrdinalIgnoreCase)))
             {
-                return "heic";
+                return CodecHeic;
             }
 
             string? codec = command switch
             {
-                "img-to-heic" => "heic",
-                "img-to-webp" => "webp",
+                "img-to-heic" => CodecHeic,
+                "img-to-webp" => CodecWebp,
                 "img-compress" => files
                     .Select(f => Path.GetExtension(f).ToLowerInvariant())
-                    .Select(ext => ext switch { ".heic" => "heic", ".webp" => "webp", _ => null })
+                    .Select(ext => ext switch { ExtHeic => CodecHeic, ExtWebp => CodecWebp, _ => null })
                     .FirstOrDefault(c => c is not null),
                 _ => null
             };
 
             return codec switch
             {
-                "heic" => IsHeicEncodingSupported() ? null : "heic",
-                "webp" => IsWebpEncodingSupported() ? null : "webp",
+                CodecHeic => IsHeicEncodingSupported() ? null : CodecHeic,
+                CodecWebp => IsWebpEncodingSupported() ? null : CodecWebp,
                 _ => null
             };
         }
@@ -159,7 +167,7 @@ public class ImageFormatConvertProcessor : MultiFileProcessorBase
         {
             "png" => ImageFormat.Png,
             "jpg" or "jpeg" => ImageFormat.Jpeg,
-            "webp" => ImageFormat.Webp,
+            CodecWebp => ImageFormat.Webp,
             "gif" => ImageFormat.Gif,
             _ => throw new NotSupportedException($"Unsupported target image format: {format}")
         };
@@ -169,9 +177,9 @@ public class ImageFormatConvertProcessor : MultiFileProcessorBase
         {
             "png" => ".png",
             "jpg" or "jpeg" => ".jpg",
-            "webp" => ".webp",
+            CodecWebp => ExtWebp,
             "gif" => ".gif",
-            "heic" => ".heic",
+            CodecHeic => ExtHeic,
             _ => throw new NotSupportedException($"Unsupported target image format: {format}")
         };
     }

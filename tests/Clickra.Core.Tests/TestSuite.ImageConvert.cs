@@ -11,6 +11,17 @@ namespace Clickra.Core.Tests;
 
 static partial class TestSuite
 {
+    private const string InputPng = "input.png";
+    private const string CmdImgToHeic = "img-to-heic";
+    private const string CmdImgToWebp = "img-to-webp";
+    private const string CmdImgToPng = "img-to-png";
+    private const string CmdImgToJpg = "img-to-jpg";
+    private const string CmdImgToGif = "img-to-gif";
+    private const string CmdImg2Pdf = "img2pdf";
+    private const string ExtHeic = ".heic";
+    private const string PasswordPromptErrorMessage = "Password prompt must not run for image conversion.";
+    private const string SplitPromptErrorMessage = "Split prompt must not run for image conversion.";
+
     public static void RegisterImageConvertTests(TestRunner runner)
     {
         RegisterBasicFormatConversionTests(runner);
@@ -23,7 +34,7 @@ static partial class TestSuite
         runner.Run("ImageFormatConvertProcessor converts PNG to JPG with JPEG magic bytes", () =>
             RunWithTempDirectory(tempDir =>
             {
-                string input = CreateTestImage(tempDir, "input.png", ImageFormat.Png);
+                string input = CreateTestImage(tempDir, InputPng, ImageFormat.Png);
                 string output = Path.Combine(tempDir, "output.jpg");
                 FileProcessor.ConvertImageFormat(input, output, "jpg");
                 Assert.True(File.Exists(output), "Expected JPG output to exist.");
@@ -43,7 +54,7 @@ static partial class TestSuite
         runner.Run("ImageFormatConvertProcessor converts to WEBP and GIF", () =>
             RunWithTempDirectory(tempDir =>
             {
-                string input = CreateTestImage(tempDir, "input.png", ImageFormat.Png);
+                string input = CreateTestImage(tempDir, InputPng, ImageFormat.Png);
                 string gif = Path.Combine(tempDir, "out.gif");
                 FileProcessor.ConvertImageFormat(input, gif, "gif");
                 Assert.True(File.Exists(gif), "Expected GIF output to exist.");
@@ -63,9 +74,9 @@ static partial class TestSuite
         runner.Run("ImageFormatConvertProcessor skips same-format input without overwriting the source", () =>
             RunWithTempDirectory(tempDir =>
             {
-                string input = CreateTestImage(tempDir, "input.png", ImageFormat.Png);
+                string input = CreateTestImage(tempDir, InputPng, ImageFormat.Png);
                 long originalSize = new FileInfo(input).Length;
-                string same = Path.Combine(tempDir, "input.png");
+                string same = Path.Combine(tempDir, InputPng);
                 FileProcessor.ConvertImageFormat(input, same, "png");
                 Assert.True(File.Exists(same), "Expected the source file to still exist.");
                 Assert.True(new FileInfo(same).Length == originalSize, "Source must not be overwritten by a same-format conversion.");
@@ -74,7 +85,7 @@ static partial class TestSuite
         runner.Run("ImageFormatConvertProcessor rejects unsupported target formats", () =>
             RunWithTempDirectory(tempDir =>
             {
-                string input = CreateTestImage(tempDir, "input.png", ImageFormat.Png);
+                string input = CreateTestImage(tempDir, InputPng, ImageFormat.Png);
                 string output = Path.Combine(tempDir, "out.xyz");
                 Assert.Throws<NotSupportedException>(() => FileProcessor.ConvertImageFormat(input, output, "xyz"));
             }));
@@ -82,7 +93,7 @@ static partial class TestSuite
         runner.Run("ImageFormatConvertProcessor supports HEIC output when a codec is available", () =>
             RunWithTempDirectory(tempDir =>
             {
-                string input = CreateTestImage(tempDir, "input.png", ImageFormat.Png);
+                string input = CreateTestImage(tempDir, InputPng, ImageFormat.Png);
                 string output = Path.Combine(tempDir, "out.heic");
                 if (ImageFormatConvertProcessor.IsHeicEncodingSupported())
                 {
@@ -124,9 +135,9 @@ static partial class TestSuite
             Assert.Equal("heic", ImageFormatConvertProcessor.GetRequiredCodec("heic") ?? "");
             Assert.Equal("heic", ImageFormatConvertProcessor.GetRequiredCodec(".HEIC") ?? "");
             Assert.Equal("webp", ImageFormatConvertProcessor.GetRequiredCodec("webp") ?? "");
-            Assert.True(ImageFormatConvertProcessor.GetRequiredCodec("png") is null, "png must not require an extra codec.");
-            Assert.True(ImageFormatConvertProcessor.GetRequiredCodec("jpg") is null, "jpg must not require an extra codec.");
-            Assert.True(ImageFormatConvertProcessor.GetRequiredCodec("gif") is null, "gif must not require an extra codec.");
+            Assert.Equal("webp", ImageFormatConvertProcessor.GetRequiredCodec(".WEBP") ?? "");
+            Assert.True(ImageFormatConvertProcessor.GetRequiredCodec("png") is null, "png reports no extra codec.");
+            Assert.True(ImageFormatConvertProcessor.GetRequiredCodec("jpg") is null, "jpg reports no extra codec.");
             Assert.True(ImageFormatConvertProcessor.GetRequiredCodec("xyz") is null, "unknown formats report no codec.");
 
             Assert.Equal("ms-windows-store://pdp/?productid=9PMMSR1CGPWG", ImageFormatConvertProcessor.GetCodecStoreUri("heic")?.AbsoluteUri);
@@ -139,10 +150,13 @@ static partial class TestSuite
             bool heicSupported = ImageFormatConvertProcessor.IsHeicEncodingSupported();
             bool webpSupported = ImageFormatConvertProcessor.IsWebpEncodingSupported();
 
-            Assert.True(heicSupported == (ImageFormatConvertProcessor.GetMissingCodecForCommand("img-to-heic", new List<string> { "C:\\x\\a.png" }) is null), "img-to-heic preflight must agree with IsHeicEncodingSupported.");
-            Assert.True(webpSupported == (ImageFormatConvertProcessor.GetMissingCodecForCommand("img-to-webp", new List<string> { "C:\\x\\a.png" }) is null), "img-to-webp preflight must agree with IsWebpEncodingSupported.");
-            Assert.True(ImageFormatConvertProcessor.GetMissingCodecForCommand("img2pdf", new List<string> { "C:\\x\\a.png" }) is null, "img2pdf needs no extra codec.");
-            Assert.True(ImageFormatConvertProcessor.GetMissingCodecForCommand("merge-pdf", new List<string> { "C:\\x\\a.pdf" }) is null, "merge-pdf needs no extra codec.");
+            string dummyPng = Path.Combine(Path.GetTempPath(), "clickra_probe_test.png");
+            string dummyPdf = Path.Combine(Path.GetTempPath(), "clickra_probe_test.pdf");
+
+            Assert.True(heicSupported == (ImageFormatConvertProcessor.GetMissingCodecForCommand(CmdImgToHeic, new List<string> { dummyPng }) is null), "img-to-heic preflight must agree with IsHeicEncodingSupported.");
+            Assert.True(webpSupported == (ImageFormatConvertProcessor.GetMissingCodecForCommand(CmdImgToWebp, new List<string> { dummyPng }) is null), "img-to-webp preflight must agree with IsWebpEncodingSupported.");
+            Assert.True(ImageFormatConvertProcessor.GetMissingCodecForCommand(CmdImg2Pdf, new List<string> { dummyPng }) is null, "img2pdf needs no extra codec.");
+            Assert.True(ImageFormatConvertProcessor.GetMissingCodecForCommand("merge-pdf", new List<string> { dummyPdf }) is null, "merge-pdf needs no extra codec.");
         });
 
         runner.Run("Missing-codec messages are localized in every supported language", () =>
@@ -167,7 +181,7 @@ static partial class TestSuite
             Assert.Equal(".jpg", ImageFormatConvertProcessor.ToOutputExtension("jpeg"));
             Assert.Equal(".png", ImageFormatConvertProcessor.ToOutputExtension("PNG"));
             Assert.Equal(".webp", ImageFormatConvertProcessor.ToOutputExtension("webp"));
-            Assert.Equal(".heic", ImageFormatConvertProcessor.ToOutputExtension("heic"));
+            Assert.Equal(ExtHeic, ImageFormatConvertProcessor.ToOutputExtension("heic"));
         });
     }
 
@@ -175,44 +189,44 @@ static partial class TestSuite
     {
         runner.Run("ConvertCommandRegistry registers img-to-* commands with image inputs", () =>
         {
-            foreach (var command in new[] { "img-to-png", "img-to-jpg", "img-to-webp", "img-to-gif", "img-to-heic" })
+            foreach (var command in new[] { CmdImgToPng, CmdImgToJpg, CmdImgToWebp, CmdImgToGif, CmdImgToHeic })
             {
                 Assert.True(ConvertCommandRegistry.IsKnownCommand(command), $"{command} should be a known command.");
                 Assert.True(ConvertCommandRegistry.GetMinFiles(command) == 1, $"{command} should accept a single file.");
-                Assert.True(ConvertCommandRegistry.GetAllowedExtensions(command).Contains(".png", StringComparer.OrdinalIgnoreCase) || command == "img-to-png", $"{command} should accept PNG inputs unless PNG is the target.");
-                Assert.True(ConvertCommandRegistry.GetAllowedExtensions(command).Contains(".heic", StringComparer.OrdinalIgnoreCase) || command == "img-to-heic", $"{command} should accept HEIC inputs unless HEIC is the target.");
+                Assert.True(ConvertCommandRegistry.GetAllowedExtensions(command).Contains(".png", StringComparer.OrdinalIgnoreCase) || command == CmdImgToPng, $"{command} should accept PNG inputs unless PNG is the target.");
+                Assert.True(ConvertCommandRegistry.GetAllowedExtensions(command).Contains(ExtHeic, StringComparer.OrdinalIgnoreCase) || command == CmdImgToHeic, $"{command} should accept HEIC inputs unless HEIC is the target.");
                 Assert.Equal("image", ConvertCommandRegistry.GetFileTypeForCommand(command));
             }
         });
 
         runner.Run("ConvertCommandRegistry excludes same-format sources from img-to-* commands", () =>
         {
-            Assert.False(ConvertCommandRegistry.GetAllowedExtensions("img-to-png").Contains(".png", StringComparer.OrdinalIgnoreCase), "img-to-png must not accept .png inputs.");
-            Assert.False(ConvertCommandRegistry.GetAllowedExtensions("img-to-jpg").Contains(".jpg", StringComparer.OrdinalIgnoreCase), "img-to-jpg must not accept .jpg inputs.");
-            Assert.False(ConvertCommandRegistry.GetAllowedExtensions("img-to-jpg").Contains(".jpeg", StringComparer.OrdinalIgnoreCase), "img-to-jpg must not accept .jpeg inputs.");
-            Assert.False(ConvertCommandRegistry.GetAllowedExtensions("img-to-webp").Contains(".webp", StringComparer.OrdinalIgnoreCase), "img-to-webp must not accept .webp inputs.");
-            Assert.False(ConvertCommandRegistry.GetAllowedExtensions("img-to-gif").Contains(".gif", StringComparer.OrdinalIgnoreCase), "img-to-gif must not accept .gif inputs.");
-            Assert.False(ConvertCommandRegistry.GetAllowedExtensions("img-to-heic").Contains(".heic", StringComparer.OrdinalIgnoreCase), "img-to-heic must not accept .heic inputs.");
+            Assert.False(ConvertCommandRegistry.GetAllowedExtensions(CmdImgToPng).Contains(".png", StringComparer.OrdinalIgnoreCase), "img-to-png must not accept .png inputs.");
+            Assert.False(ConvertCommandRegistry.GetAllowedExtensions(CmdImgToJpg).Contains(".jpg", StringComparer.OrdinalIgnoreCase), "img-to-jpg must not accept .jpg inputs.");
+            Assert.False(ConvertCommandRegistry.GetAllowedExtensions(CmdImgToJpg).Contains(".jpeg", StringComparer.OrdinalIgnoreCase), "img-to-jpg must not accept .jpeg inputs.");
+            Assert.False(ConvertCommandRegistry.GetAllowedExtensions(CmdImgToWebp).Contains(".webp", StringComparer.OrdinalIgnoreCase), "img-to-webp must not accept .webp inputs.");
+            Assert.False(ConvertCommandRegistry.GetAllowedExtensions(CmdImgToGif).Contains(".gif", StringComparer.OrdinalIgnoreCase), "img-to-gif must not accept .gif inputs.");
+            Assert.False(ConvertCommandRegistry.GetAllowedExtensions(CmdImgToHeic).Contains(ExtHeic, StringComparer.OrdinalIgnoreCase), "img-to-heic must not accept .heic inputs.");
 
-            Assert.True(ConvertCommandRegistry.GetAllowedExtensions("img-to-heic").Contains(".png", StringComparer.OrdinalIgnoreCase), "img-to-heic should still accept .png inputs.");
-            Assert.True(ConvertCommandRegistry.GetExcludedExtensions("img-to-heic").Contains(".heic", StringComparer.OrdinalIgnoreCase), "img-to-heic should declare .heic as excluded.");
-            Assert.True(ConvertCommandRegistry.GetExcludedExtensions("img2pdf").Length == 0, "img2pdf accepts every image input.");
-            Assert.True(ConvertCommandRegistry.GetAllowedExtensions("img2pdf").Contains(".bmp", StringComparer.OrdinalIgnoreCase), "img2pdf must accept .bmp inputs.");
-            Assert.True(ConvertCommandRegistry.GetAllowedExtensions("img2pdf").Contains(".tiff", StringComparer.OrdinalIgnoreCase), "img2pdf must accept .tiff inputs.");
-            Assert.True(ConvertCommandRegistry.GetAllowedExtensions("img-to-png").Contains(".bmp", StringComparer.OrdinalIgnoreCase), "img-to-png must accept .bmp inputs.");
+            Assert.True(ConvertCommandRegistry.GetAllowedExtensions(CmdImgToHeic).Contains(".png", StringComparer.OrdinalIgnoreCase), "img-to-heic should still accept .png inputs.");
+            Assert.True(ConvertCommandRegistry.GetExcludedExtensions(CmdImgToHeic).Contains(ExtHeic, StringComparer.OrdinalIgnoreCase), "img-to-heic should declare .heic as excluded.");
+            Assert.True(ConvertCommandRegistry.GetExcludedExtensions(CmdImg2Pdf).Length == 0, "img2pdf accepts every image input.");
+            Assert.True(ConvertCommandRegistry.GetAllowedExtensions(CmdImg2Pdf).Contains(".bmp", StringComparer.OrdinalIgnoreCase), "img2pdf must accept .bmp inputs.");
+            Assert.True(ConvertCommandRegistry.GetAllowedExtensions(CmdImg2Pdf).Contains(".tiff", StringComparer.OrdinalIgnoreCase), "img2pdf must accept .tiff inputs.");
+            Assert.True(ConvertCommandRegistry.GetAllowedExtensions(CmdImgToPng).Contains(".bmp", StringComparer.OrdinalIgnoreCase), "img-to-png must accept .bmp inputs.");
         });
 
         runner.Run("ConvertCommandRegistry.EstimateOutputs predicts target extension per input", () =>
             RunWithTempDirectory(tempDir =>
             {
                 string input = CreateTestImage(tempDir, "photo.png", ImageFormat.Png);
-                var outputs = ConvertCommandRegistry.EstimateOutputs("img-to-jpg", new List<string> { input });
+                var outputs = ConvertCommandRegistry.EstimateOutputs(CmdImgToJpg, new List<string> { input });
                 Assert.True(outputs.Count == 1, "Expected exactly one predicted output.");
                 Assert.True(outputs[0].EndsWith(".jpg", StringComparison.OrdinalIgnoreCase), $"Expected .jpg output, got {outputs[0]}.");
 
-                outputs = ConvertCommandRegistry.EstimateOutputs("img-to-heic", new List<string> { input });
+                outputs = ConvertCommandRegistry.EstimateOutputs(CmdImgToHeic, new List<string> { input });
                 Assert.True(outputs.Count == 1, "Expected exactly one predicted output.");
-                Assert.True(outputs[0].EndsWith(".heic", StringComparison.OrdinalIgnoreCase), $"Expected .heic output, got {outputs[0]}.");
+                Assert.True(outputs[0].EndsWith(ExtHeic, StringComparison.OrdinalIgnoreCase), $"Expected .heic output, got {outputs[0]}.");
             }));
 
         runner.Run("ConvertCommandRunner runs img-to-heic end to end when a HEIC encoder is available", () =>
@@ -223,22 +237,22 @@ static partial class TestSuite
                 var messages = new List<string>();
                 if (ImageFormatConvertProcessor.IsHeicEncodingSupported())
                 {
-                    ConvertCommandRunner.Run("img-to-heic", new List<string> { input }, new List<string> { output },
+                    ConvertCommandRunner.Run(CmdImgToHeic, new List<string> { input }, new List<string> { output },
                         (c, t, m) => messages.Add(m),
                         new ConvertCommandRunner.ConversionOptions(
-                            _ => throw new InvalidOperationException("Password prompt must not run for image conversion."),
-                            (_, _) => throw new InvalidOperationException("Split prompt must not run for image conversion.")));
+                            _ => throw new InvalidOperationException(PasswordPromptErrorMessage),
+                            (_, _) => throw new InvalidOperationException(SplitPromptErrorMessage)));
                     Assert.True(File.Exists(output), "Expected HEIC output to exist after ConvertCommandRunner.Run when a HEIC encoder is present.");
                     Assert.True(HasHeicMagicBytes(output), "Expected HEIC magic bytes on runner output.");
                 }
                 else
                 {
                     Assert.Throws<NotSupportedException>(() =>
-                        ConvertCommandRunner.Run("img-to-heic", new List<string> { input }, new List<string> { output },
+                        ConvertCommandRunner.Run(CmdImgToHeic, new List<string> { input }, new List<string> { output },
                             (c, t, m) => messages.Add(m),
                             new ConvertCommandRunner.ConversionOptions(
-                                _ => throw new InvalidOperationException("Password prompt must not run for image conversion."),
-                                (_, _) => throw new InvalidOperationException("Split prompt must not run for image conversion."))));
+                                _ => throw new InvalidOperationException(PasswordPromptErrorMessage),
+                                (_, _) => throw new InvalidOperationException(SplitPromptErrorMessage))));
                 }
                 Assert.True(messages.Count > 0, "Expected the runner to attempt the conversion.");
             }));
@@ -251,21 +265,21 @@ static partial class TestSuite
                 var messages = new List<string>();
                 if (ImageFormatConvertProcessor.IsWebpEncodingSupported())
                 {
-                    ConvertCommandRunner.Run("img-to-webp", new List<string> { input }, new List<string> { output },
+                    ConvertCommandRunner.Run(CmdImgToWebp, new List<string> { input }, new List<string> { output },
                         (c, t, m) => messages.Add(m),
                         new ConvertCommandRunner.ConversionOptions(
-                            _ => throw new InvalidOperationException("Password prompt must not run for image conversion."),
-                            (_, _) => throw new InvalidOperationException("Split prompt must not run for image conversion.")));
+                            _ => throw new InvalidOperationException(PasswordPromptErrorMessage),
+                            (_, _) => throw new InvalidOperationException(SplitPromptErrorMessage)));
                     Assert.True(File.Exists(output), "Expected WEBP output to exist after ConvertCommandRunner.Run.");
                 }
                 else
                 {
                     Assert.Throws<NotSupportedException>(() =>
-                        ConvertCommandRunner.Run("img-to-webp", new List<string> { input }, new List<string> { output },
+                        ConvertCommandRunner.Run(CmdImgToWebp, new List<string> { input }, new List<string> { output },
                             (c, t, m) => messages.Add(m),
                             new ConvertCommandRunner.ConversionOptions(
-                                _ => throw new InvalidOperationException("Password prompt must not run for image conversion."),
-                                (_, _) => throw new InvalidOperationException("Split prompt must not run for image conversion."))));
+                                _ => throw new InvalidOperationException(PasswordPromptErrorMessage),
+                                (_, _) => throw new InvalidOperationException(SplitPromptErrorMessage))));
                 }
                 Assert.True(messages.Count > 0, "Expected the runner to attempt the conversion.");
             }));
