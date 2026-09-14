@@ -44,12 +44,20 @@ static partial class TestSuite
             RunWithTempDirectory(tempDir =>
             {
                 string input = CreateTestImage(tempDir, "input.png", ImageFormat.Png);
-                string webp = Path.Combine(tempDir, "out.webp");
                 string gif = Path.Combine(tempDir, "out.gif");
-                FileProcessor.ConvertImageFormat(input, webp, "webp");
                 FileProcessor.ConvertImageFormat(input, gif, "gif");
-                Assert.True(File.Exists(webp), "Expected WEBP output to exist.");
                 Assert.True(File.Exists(gif), "Expected GIF output to exist.");
+
+                string webp = Path.Combine(tempDir, "out.webp");
+                if (ImageFormatConvertProcessor.IsWebpEncodingSupported())
+                {
+                    FileProcessor.ConvertImageFormat(input, webp, "webp");
+                    Assert.True(File.Exists(webp), "Expected WEBP output to exist.");
+                }
+                else
+                {
+                    Assert.Throws<NotSupportedException>(() => FileProcessor.ConvertImageFormat(input, webp, "webp"));
+                }
             }));
 
         runner.Run("ImageFormatConvertProcessor skips same-format input without overwriting the source", () =>
@@ -189,6 +197,9 @@ static partial class TestSuite
             Assert.True(ConvertCommandRegistry.GetAllowedExtensions("img-to-heic").Contains(".png", StringComparer.OrdinalIgnoreCase), "img-to-heic should still accept .png inputs.");
             Assert.True(ConvertCommandRegistry.GetExcludedExtensions("img-to-heic").Contains(".heic", StringComparer.OrdinalIgnoreCase), "img-to-heic should declare .heic as excluded.");
             Assert.True(ConvertCommandRegistry.GetExcludedExtensions("img2pdf").Length == 0, "img2pdf accepts every image input.");
+            Assert.True(ConvertCommandRegistry.GetAllowedExtensions("img2pdf").Contains(".bmp", StringComparer.OrdinalIgnoreCase), "img2pdf must accept .bmp inputs.");
+            Assert.True(ConvertCommandRegistry.GetAllowedExtensions("img2pdf").Contains(".tiff", StringComparer.OrdinalIgnoreCase), "img2pdf must accept .tiff inputs.");
+            Assert.True(ConvertCommandRegistry.GetAllowedExtensions("img-to-png").Contains(".bmp", StringComparer.OrdinalIgnoreCase), "img-to-png must accept .bmp inputs.");
         });
 
         runner.Run("ConvertCommandRegistry.EstimateOutputs predicts target extension per input", () =>
@@ -238,12 +249,25 @@ static partial class TestSuite
                 string input = CreateTestImage(tempDir, "source.png", ImageFormat.Png);
                 string output = Path.Combine(tempDir, "source.webp");
                 var messages = new List<string>();
-                ConvertCommandRunner.Run("img-to-webp", new List<string> { input }, new List<string> { output },
-                    (c, t, m) => messages.Add(m),
-                    new ConvertCommandRunner.ConversionOptions(
-                        _ => throw new InvalidOperationException("Password prompt must not run for image conversion."),
-                        (_, _) => throw new InvalidOperationException("Split prompt must not run for image conversion.")));
-                Assert.True(File.Exists(output), "Expected WEBP output to exist after ConvertCommandRunner.Run.");
+                if (ImageFormatConvertProcessor.IsWebpEncodingSupported())
+                {
+                    ConvertCommandRunner.Run("img-to-webp", new List<string> { input }, new List<string> { output },
+                        (c, t, m) => messages.Add(m),
+                        new ConvertCommandRunner.ConversionOptions(
+                            _ => throw new InvalidOperationException("Password prompt must not run for image conversion."),
+                            (_, _) => throw new InvalidOperationException("Split prompt must not run for image conversion.")));
+                    Assert.True(File.Exists(output), "Expected WEBP output to exist after ConvertCommandRunner.Run.");
+                }
+                else
+                {
+                    Assert.Throws<NotSupportedException>(() =>
+                        ConvertCommandRunner.Run("img-to-webp", new List<string> { input }, new List<string> { output },
+                            (c, t, m) => messages.Add(m),
+                            new ConvertCommandRunner.ConversionOptions(
+                                _ => throw new InvalidOperationException("Password prompt must not run for image conversion."),
+                                (_, _) => throw new InvalidOperationException("Split prompt must not run for image conversion."))));
+                }
+                Assert.True(messages.Count > 0, "Expected the runner to attempt the conversion.");
             }));
     }
 

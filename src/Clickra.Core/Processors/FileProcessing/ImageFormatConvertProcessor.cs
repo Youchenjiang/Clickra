@@ -40,9 +40,24 @@ public class ImageFormatConvertProcessor : MultiFileProcessorBase
                 return;
             }
 
+            if (string.Equals(sourceExt, ".heic", StringComparison.OrdinalIgnoreCase) && !WicImageHelper.IsHeicDecoderAvailable())
+            {
+                throw new NotSupportedException(Localize("error_heic_codec_missing"));
+            }
+
             if (string.Equals(_format, "heic", StringComparison.OrdinalIgnoreCase))
             {
                 SaveAsHeic(filePath, _outputPath!);
+            }
+            else if (string.Equals(_format, "webp", StringComparison.OrdinalIgnoreCase))
+            {
+                if (!IsWebpEncodingSupported())
+                {
+                    throw new NotSupportedException(Localize("error_webp_codec_missing"));
+                }
+                ImageFormat imageFormat = ToImageFormat(_format);
+                using var image = WicImageHelper.LoadImageSafely(filePath);
+                image.Save(_outputPath!, imageFormat);
             }
             else
             {
@@ -54,6 +69,8 @@ public class ImageFormatConvertProcessor : MultiFileProcessorBase
 
         private const string LanguageSettingKey = "Language";
 
+        private static string Localize(string key) => Localization.T(key, ClickraStorage.GetSetting(LanguageSettingKey));
+
         /// <summary>
         /// Saves the image as HEIC using Windows WIC / WinRT (Microsoft HEIF Encoder).
         /// When a Windows HEIF/HEIC extension is present it is used directly; otherwise this throws
@@ -61,12 +78,20 @@ public class ImageFormatConvertProcessor : MultiFileProcessorBase
         /// </summary>
         public static void SaveAsHeic(string inputPath, string outputPath)
         {
+            if (!IsHeicEncodingSupported())
+            {
+                throw new NotSupportedException(Localize("error_heic_codec_missing"));
+            }
             WicImageHelper.ConvertFileToHeic(inputPath, outputPath, 90);
         }
 
         /// <summary>Saves an already-loaded image as HEIC with an explicit encoder quality (1-100).</summary>
         public static void SaveAsHeic(Image image, string outputPath, long quality)
         {
+            if (!IsHeicEncodingSupported())
+            {
+                throw new NotSupportedException(Localize("error_heic_codec_missing"));
+            }
             WicImageHelper.SaveAsHeic(image, outputPath, quality);
         }
 
