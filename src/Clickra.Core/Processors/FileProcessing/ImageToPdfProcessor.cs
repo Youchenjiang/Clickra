@@ -25,16 +25,9 @@ namespace Clickra.Core.Processors
             }
             finally
             {
-                foreach (var resource in _pageResources)
+                for (int i = 0; i < _pageResources.Count; i++)
                 {
-                    try
-                    {
-                        resource.Dispose();
-                    }
-                    catch (Exception)
-                    {
-                        // Best-effort cleanup: individual resource disposal failures must not prevent remaining resources or the main document from disposing.
-                    }
+                    _pageResources[i].Dispose();
                 }
                 _pageResources.Clear();
                 _doc?.Dispose();

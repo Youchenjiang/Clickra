@@ -27,7 +27,6 @@ static partial class TestSuite
         });
 
         runner.Run("WicImageHelper.LoadImageSafely loads standard PNG and JPEG correctly", () =>
-        {
             RunWithTempDirectory(tempDir =>
             {
                 string pngPath = Path.Combine(tempDir, "test.png");
@@ -44,11 +43,9 @@ static partial class TestSuite
                 Assert.True(loaded != null, "Loaded bitmap should not be null.");
                 Assert.True(loaded!.Width == 100, "Loaded width should match.");
                 Assert.True(loaded.Height == 100, "Loaded height should match.");
-            });
-        });
+            }));
 
         runner.Run("ImageToPdfProcessor processes image using WicImage fallback", () =>
-        {
             RunWithTempDirectory(tempDir =>
             {
                 string pngPath = Path.Combine(tempDir, "page.png");
@@ -74,11 +71,9 @@ static partial class TestSuite
                 new ImageToPdfProcessor().Process(new List<string> { heicSimulatedPath }, pdfOut2, null, null, CancellationToken.None);
                 Assert.True(File.Exists(pdfOut2), "Generated PDF from simulated HEIC should exist.");
                 Assert.True(new FileInfo(pdfOut2).Length > 0, "Generated PDF from simulated HEIC should not be empty.");
-            });
-        });
+            }));
 
         runner.Run("ImageStitchProcessor processes images loaded via WicImageHelper", () =>
-        {
             RunWithTempDirectory(tempDir =>
             {
                 string img1 = Path.Combine(tempDir, "1.png");
@@ -97,8 +92,7 @@ static partial class TestSuite
                 using var result = new Bitmap(stitchedOut);
                 Assert.True(result.Width == 40, "Stitched width should match.");
                 Assert.True(result.Height == 80, "Stitched height should match.");
-            });
-        });
+            }));
     }
 
     private static void RunWithTempDirectory(Action<string> action)
