@@ -47,10 +47,8 @@ public class ImageFormatConvertProcessor : MultiFileProcessorBase
             else
             {
                 ImageFormat imageFormat = ToImageFormat(_format);
-                using (var image = WicImageHelper.LoadImageSafely(filePath))
-                {
-                    image.Save(_outputPath!, imageFormat);
-                }
+                using var image = WicImageHelper.LoadImageSafely(filePath);
+                image.Save(_outputPath!, imageFormat);
             }
         }
 
@@ -93,12 +91,12 @@ public class ImageFormatConvertProcessor : MultiFileProcessorBase
         };
 
         /// <summary>Microsoft Store URI of the free extension that provides the given codec;
-        /// empty when the codec needs no Store install.</summary>
-        public static string GetCodecStoreUri(string codec) => codec.ToLowerInvariant() switch
+        /// null when the codec needs no Store install.</summary>
+        public static Uri? GetCodecStoreUri(string codec) => codec.ToLowerInvariant() switch
         {
-            "heic" => "ms-windows-store://pdp/?productid=9PMMSR1CGPWG", // HEIF Image Extensions
-            "webp" => "ms-windows-store://pdp/?productid=9PG2DK419DRG", // WebP Image Extensions
-            _ => ""
+            "heic" => new Uri("ms-windows-store://pdp/?productid=9PMMSR1CGPWG"), // HEIF Image Extensions
+            "webp" => new Uri("ms-windows-store://pdp/?productid=9PG2DK419DRG"), // WebP Image Extensions
+            _ => null
         };
 
         /// <summary>The codec the command needs for these files but the system lacks, or null

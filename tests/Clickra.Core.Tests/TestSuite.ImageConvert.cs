@@ -121,9 +121,9 @@ static partial class TestSuite
             Assert.True(ImageFormatConvertProcessor.GetRequiredCodec("gif") is null, "gif must not require an extra codec.");
             Assert.True(ImageFormatConvertProcessor.GetRequiredCodec("xyz") is null, "unknown formats report no codec.");
 
-            Assert.Equal("ms-windows-store://pdp/?productid=9PMMSR1CGPWG", ImageFormatConvertProcessor.GetCodecStoreUri("heic"));
-            Assert.Equal("ms-windows-store://pdp/?productid=9PG2DK419DRG", ImageFormatConvertProcessor.GetCodecStoreUri("webp"));
-            Assert.Equal("", ImageFormatConvertProcessor.GetCodecStoreUri("png"));
+            Assert.Equal("ms-windows-store://pdp/?productid=9PMMSR1CGPWG", ImageFormatConvertProcessor.GetCodecStoreUri("heic")?.AbsoluteUri);
+            Assert.Equal("ms-windows-store://pdp/?productid=9PG2DK419DRG", ImageFormatConvertProcessor.GetCodecStoreUri("webp")?.AbsoluteUri);
+            Assert.True(ImageFormatConvertProcessor.GetCodecStoreUri("png") is null, "png does not require a Store codec.");
         });
 
         runner.Run("ImageFormatConvertProcessor preflight reports the codec a command is missing", () =>
