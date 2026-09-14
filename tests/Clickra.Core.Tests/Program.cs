@@ -24,6 +24,7 @@ TestSuite.RegisterPdfCompressionTests(runner);
 TestSuite.RegisterPdfSplitTests(runner);
 TestSuite.RegisterPdfDecryptTests(runner);
 TestSuite.RegisterTaskQueueTests(runner);
+TestSuite.RegisterWicImageTests(runner);
 
 // Print an explicit summary so CI logs show the actual executed test count
 // instead of only a build-success signal. Skipped counts fixture-dependent

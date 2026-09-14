@@ -29,7 +29,7 @@ namespace Clickra.Core.Processors
                 foreach (var f in files)
                 {
                     cancellationToken.ThrowIfCancellationRequested();
-                    _images.Add(Image.FromFile(f));
+                    _images.Add(WicImageHelper.LoadImageSafely(f));
                 }
 
                 _totalWidth = _images.Max(img => img.Width);
