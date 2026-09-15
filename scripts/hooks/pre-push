@@ -23,20 +23,23 @@ set -e
 
 echo "Running pre-push checks (mirrors .github/workflows/ci.yml)..."
 
-echo "[pre-push] Building Clickra.Core..."
-dotnet build src/Clickra.Core/Clickra.Core.csproj -c Release
+echo "[pre-push] Building Clickra.Core (warnaserror)..."
+dotnet build src/Clickra.Core/Clickra.Core.csproj -c Release -warnaserror
 
-echo "[pre-push] Building Clickra.CLI..."
-dotnet build src/Clickra.CLI/Clickra.csproj -c Release
+echo "[pre-push] Building Clickra.CLI (warnaserror)..."
+dotnet build src/Clickra.CLI/Clickra.csproj -c Release -warnaserror
 
-echo "[pre-push] Building ClickraShell..."
-dotnet build src/ClickraShell/ClickraShell.csproj -c Release
+echo "[pre-push] Building ClickraShell (warnaserror)..."
+dotnet build src/ClickraShell/ClickraShell.csproj -c Release -warnaserror
 
-echo "[pre-push] Building Clickra.Fluent..."
-dotnet build src/Clickra.Fluent/Clickra.Fluent.csproj -c Release
+echo "[pre-push] Building ClickraLauncher (warnaserror)..."
+dotnet build src/ClickraLauncher/ClickraLauncher.csproj -c Release -warnaserror
+
+echo "[pre-push] Building Clickra.Fluent (warnaserror)..."
+dotnet build src/Clickra.Fluent/Clickra.Fluent.csproj -c Release -warnaserror
 
 
-echo "[pre-push] Running self-built test runner (correct invocation)..."
-dotnet run --project tests/Clickra.Core.Tests/Clickra.Core.Tests.csproj -c Release
+echo "[pre-push] Running self-built test runner (correct invocation, warnaserror)..."
+dotnet run --project tests/Clickra.Core.Tests/Clickra.Core.Tests.csproj -c Release --property:TreatWarningsAsErrors=true
 
 echo "All pre-push checks passed."

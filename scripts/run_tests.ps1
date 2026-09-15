@@ -1,4 +1,4 @@
-﻿<#
+<#
 .SYNOPSIS
     Runs the Clickra.Core test suite with correct invocation and optional clean.
 
@@ -94,9 +94,9 @@ if ($Clean) {
     Write-Host "[Clean] Completed. Cleaned $cleanedCount item(s)." -ForegroundColor Green
 }
 
-# Construct the correct dotnet run invocation
+# Construct the correct dotnet run invocation with warnings as errors enforced
 $projectFile = Join-Path $repoRoot "tests/Clickra.Core.Tests/Clickra.Core.Tests.csproj"
-$runArgs = @("--project", $projectFile, "-c", $Configuration)
+$runArgs = @("--project", $projectFile, "-c", $Configuration, "--property:TreatWarningsAsErrors=true")
 
 $testArgs = @()
 if ($RequireFixtures) {
