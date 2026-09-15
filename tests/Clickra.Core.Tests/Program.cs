@@ -11,6 +11,12 @@ Environment.SetEnvironmentVariable("CLICKRA_DATA_DIR", testDataDir);
 // instead of skips, so a regression gate that expects fixtures fails loudly
 // when they are missing rather than quietly passing.
 bool requireFixtures = args.Contains("--require-fixtures", StringComparer.Ordinal);
+bool clean = args.Contains("--clean", StringComparer.OrdinalIgnoreCase);
+if (clean)
+{
+    var (dirs, files) = TestSuite.CleanStaleArtifacts(testDataDir);
+    Console.WriteLine($"[Clean] Cleaned {dirs} stale directory(s) and {files} leftover artifact file(s).");
+}
 var runner = new TestRunner(requireFixtures);
 
 TestSuite.RegisterPentestGrayPromptTests(runner);

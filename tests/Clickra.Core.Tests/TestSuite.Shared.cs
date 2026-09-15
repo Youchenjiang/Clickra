@@ -252,7 +252,67 @@ static partial class TestSuite
         throw new InvalidOperationException("Could not locate Clickra repo root.");
     }
 
-    private static string? FindRepoRoot()
+    internal static (int cleanedDirs, int cleanedFiles) CleanStaleArtifacts(string? currentTestDataDir = null)
+    {
+        int cleanedDirs = 0;
+        int cleanedFiles = 0;
+
+        try
+        {
+            string tempPath = Path.GetTempPath();
+            foreach (var dir in Directory.GetDirectories(tempPath, "clickra-test-data-*"))
+            {
+                if (currentTestDataDir == null || !string.Equals(dir, currentTestDataDir, StringComparison.OrdinalIgnoreCase))
+                {
+                    try
+                    {
+                        Directory.Delete(dir, recursive: true);
+                        cleanedDirs++;
+                    }
+                    catch { }
+                }
+            }
+        }
+        catch { }
+
+        string? root = FindRepoRoot();
+        if (root != null)
+        {
+            try
+            {
+                foreach (var file in Directory.GetFiles(root, "clickra-split-fail-*.pdf"))
+                {
+                    try { File.Delete(file); cleanedFiles++; } catch { }
+                }
+            }
+            catch { }
+
+            try
+            {
+                foreach (var file in Directory.GetFiles(root, "*_renderdbg.log"))
+                {
+                    try { File.Delete(file); cleanedFiles++; } catch { }
+                }
+            }
+            catch { }
+
+            string obsoleteX64 = Path.Combine(root, "src", "Clickra.Fluent", "bin", "x64");
+            if (Directory.Exists(obsoleteX64))
+            {
+                try { Directory.Delete(obsoleteX64, recursive: true); cleanedDirs++; } catch { }
+            }
+
+            string orphanDiag = Path.Combine(root, "tmp", "Diag");
+            if (Directory.Exists(orphanDiag))
+            {
+                try { Directory.Delete(orphanDiag, recursive: true); cleanedDirs++; } catch { }
+            }
+        }
+
+        return (cleanedDirs, cleanedFiles);
+    }
+
+    internal static string? FindRepoRoot()
     {
         var dir = new DirectoryInfo(AppContext.BaseDirectory);
         while (dir is not null)

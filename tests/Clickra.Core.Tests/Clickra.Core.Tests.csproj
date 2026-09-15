@@ -9,6 +9,7 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <Compile Remove="TestSuite.VisualSplitter.cs" Condition="!Exists('..\..\src\Clickra.Core\Processors\FileProcessing\VisualSplitModel.cs')" />
     <ProjectReference Include="..\..\src\Clickra.Core\Clickra.Core.csproj" />
   </ItemGroup>
 
