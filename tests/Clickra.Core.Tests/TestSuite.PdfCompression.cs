@@ -139,11 +139,10 @@ static partial class TestSuite
 
         runner.Run("PDF compression presets live in one table shared by the processor and the UIs", () =>
         {
-            // The 0-3 slider maps onto the three levels; the top two stops both mean "high".
+            // The 0-2 slider maps onto the three levels.
             Assert.True(PdfCompressionOptions.FromSliderLevel(0) == PdfCompressionLevel.Small, "Slider 0 must mean small.");
             Assert.True(PdfCompressionOptions.FromSliderLevel(1) == PdfCompressionLevel.Balanced, "Slider 1 must mean balanced.");
             Assert.True(PdfCompressionOptions.FromSliderLevel(2) == PdfCompressionLevel.HighQuality, "Slider 2 must mean high quality.");
-            Assert.True(PdfCompressionOptions.FromSliderLevel(3) == PdfCompressionLevel.HighQuality, "Slider 3 must mean high quality.");
             Assert.Equal(LevelSmall, PdfCompressionOptions.ToOptionName(PdfCompressionLevel.Small));
             Assert.Equal(LevelBalanced, PdfCompressionOptions.ToOptionName(PdfCompressionLevel.Balanced));
             Assert.Equal(LevelHigh, PdfCompressionOptions.ToOptionName(PdfCompressionLevel.HighQuality));
@@ -177,8 +176,9 @@ static partial class TestSuite
                 ClickraStorage.SaveSetting(SettingPdfCompressImageLevel, "2");
                 Assert.Equal(LevelHigh, (string)ConvertCommandRegistry.CompressionOptions()[LevelKey]);
 
+                // Values outside 0-2 fall back to the default (balanced)
                 ClickraStorage.SaveSetting(SettingPdfCompressImageLevel, "3");
-                Assert.Equal(LevelHigh, (string)ConvertCommandRegistry.CompressionOptions()[LevelKey]);
+                Assert.Equal(LevelBalanced, (string)ConvertCommandRegistry.CompressionOptions()[LevelKey]);
             }
             finally
             {

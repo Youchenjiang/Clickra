@@ -47,13 +47,12 @@ public static class PdfCompressionOptions
             _ => (150, 80, false, true)
         };
 
-    /// <summary>Maps a 0-3 dashboard slider position to the compression level it selects;
-    /// the top two stops both mean "high".</summary>
+    /// <summary>Maps a 0-2 dashboard slider position to the compression level it selects.</summary>
     public static PdfCompressionLevel FromSliderLevel(int level) =>
         level switch
         {
             0 => PdfCompressionLevel.Small,
-            2 or 3 => PdfCompressionLevel.HighQuality,
+            2 => PdfCompressionLevel.HighQuality,
             _ => PdfCompressionLevel.Balanced
         };
 

@@ -174,12 +174,12 @@ public static class ConvertCommandRegistry
             }
         }
 
-        /// <summary>Reads the current slider level from settings (0-3). 未設定或超出範圍時採用
+        /// <summary>Reads the current slider level from settings (0-2). 未設定或超出範圍時採用
         /// 登錄表的預設值，所以叫位永遠一致（不再有多份換算表）。</summary>
         public static int GetPdfCompressLevel()
         {
             int level = ClickraStorage.GetSettingInt(ClickraSettings.PdfCompressImageLevel);
-            return level >= 0 && level <= 3
+            return level >= 0 && level <= 2
                 ? level
                 : ClickraSettings.GetDefaultInt(ClickraSettings.PdfCompressImageLevel);
         }
