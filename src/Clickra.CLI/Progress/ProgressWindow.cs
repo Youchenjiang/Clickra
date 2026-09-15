@@ -88,7 +88,7 @@ namespace Clickra.UI
             try { _tipFont?.Dispose(); _tipFont = null; } catch { }
             try { _pctFont?.Dispose(); _pctFont = null; } catch { }
 
-            string lang = ClickraStorage.GetSetting("Language");
+            string lang = ClickraStorage.GetSetting(ClickraSettings.Language);
             string fontName = LocalizedUiFontSelector.GetTextFontName(lang);
 
             float s = _dpiScale;

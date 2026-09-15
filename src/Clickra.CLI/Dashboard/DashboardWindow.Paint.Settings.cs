@@ -55,17 +55,17 @@ namespace Clickra.UI
             float y = 100f;
             float margin = 10f;
 
-            bool quietMode = ClickraStorage.GetSetting("QuietMode").Equals("true", StringComparison.OrdinalIgnoreCase);
+            bool quietMode = ClickraStorage.GetSettingBool(ClickraSettings.QuietMode);
             DrawToggleSection("setting_silent_title", "setting_silent_desc", quietMode, 5, y);
             y += 70f;
 
-            bool notification = ClickraStorage.GetSetting("Notification").Equals("true", StringComparison.OrdinalIgnoreCase);
+            bool notification = ClickraStorage.GetSettingBool(ClickraSettings.Notification);
             DrawToggleSection("setting_notify_title", "setting_notify_desc", notification, 6, y);
             y += 70f;
 
             DrawSectionHeader("setting_output_title", "setting_output_desc", y);
 
-            string outputDirMode = ClickraStorage.GetSetting("OutputDir");
+            string outputDirMode = ClickraStorage.GetSetting(ClickraSettings.OutputDir);
             bool isSource = outputDirMode.Equals("source", StringComparison.OrdinalIgnoreCase);
             bool isDesktop = outputDirMode.Equals("desktop", StringComparison.OrdinalIgnoreCase);
             bool isDownloads = outputDirMode.Equals("downloads", StringComparison.OrdinalIgnoreCase);
@@ -114,7 +114,7 @@ namespace Clickra.UI
 
             DrawSectionHeader("setting_engine_title", "setting_engine_desc", y);
 
-            string engineMode = ClickraStorage.GetSetting("OfficeEngine");
+            string engineMode = ClickraStorage.GetSetting(ClickraSettings.OfficeEngine);
             bool isAutoEngine = string.IsNullOrEmpty(engineMode) || engineMode.Equals("auto", StringComparison.OrdinalIgnoreCase);
             bool isMicrosoftEngine = engineMode.Equals("microsoft", StringComparison.OrdinalIgnoreCase);
             bool isLibreOfficeEngine = engineMode.Equals("libreoffice", StringComparison.OrdinalIgnoreCase);
@@ -142,8 +142,11 @@ namespace Clickra.UI
                 downloadStatus = _libreOfficeDownloadStatus;
             }
             string resolvedLibreOffice = isLibreOfficeSetupRunning ? "" : LibreOfficeHelper.GetResolvedExecutablePath();
-            bool removalPendingRestart = ClickraStorage.GetSetting("LibreOfficeRemovalPendingRestart").Equals("true", StringComparison.OrdinalIgnoreCase);
+            bool removalPendingRestart = ClickraStorage.GetSettingBool(ClickraSettings.LibreOfficeRemovalPendingRestart);
             bool libreOfficeReady = !string.IsNullOrEmpty(resolvedLibreOffice);
+            // Provenance of the LibreOffice on this machine: only a Clickra-installed one may be removed
+            // from the dashboard, the user's own installation has to go through Windows.
+            bool libreOfficeInstalledByClickra = LibreOfficeEngineInstaller.WasInstalledByClickra();
             bool officeReady = IsOfficeInstalled("Word") && IsOfficeInstalled("Excel") && IsOfficeInstalled("PowerPoint");
 
             if (_subFont != null)
@@ -243,16 +246,25 @@ namespace Clickra.UI
                         (int)_wLibreOfficeDownload);
                     AddHitRect(36, contentX, y, _wLibreOfficeDownload, 30);
 
-                    float uninstallX = contentX + _wLibreOfficeDownload + margin;
-                    DrawOutputDirButton(
-                        g,
-                        GetText("setting_libreoffice_uninstall"),
-                        false,
-                        38,
-                        (int)uninstallX,
-                        (int)y,
-                        (int)_wLibreOfficeUninstall);
-                    AddHitRect(38, uninstallX, y, _wLibreOfficeUninstall, 30);
+                    if (libreOfficeInstalledByClickra)
+                    {
+                        float uninstallX = contentX + _wLibreOfficeDownload + margin;
+                        DrawOutputDirButton(
+                            g,
+                            GetText("setting_libreoffice_uninstall"),
+                            false,
+                            38,
+                            (int)uninstallX,
+                            (int)y,
+                            (int)_wLibreOfficeUninstall);
+                        AddHitRect(38, uninstallX, y, _wLibreOfficeUninstall, 30);
+                    }
+                    else if (_subFont != null)
+                    {
+                        // No uninstall button for a LibreOffice Clickra did not install; explain instead.
+                        using var externalBrush = new SolidBrush(Color.FromArgb(150, 150, 150));
+                        g.DrawString(GetText("setting_libreoffice_external_hint"), _subFont, externalBrush, contentX * s, (y + 32f) * s);
+                    }
                     y += 55f;
                 }
                 else
@@ -339,7 +351,7 @@ namespace Clickra.UI
             y += 48f;
 
             // Compact slider: one level maps to both DPI + JPEG quality
-            int compressLevel = GetPdfCompressLevel();
+            int compressLevel = ConvertCommandRegistry.GetPdfCompressLevel();
             float sliderW = 300f;
             _pdfSliderTrackX = contentX;
             _pdfSliderTrackW = sliderW;
@@ -348,12 +360,12 @@ namespace Clickra.UI
             y += 72f;
 
             // Strip Fonts Toggle
-            bool stripFonts = ClickraStorage.GetSetting("PdfCompressStripFonts").Equals("true", StringComparison.OrdinalIgnoreCase);
+            bool stripFonts = ClickraStorage.GetSettingBool(ClickraSettings.PdfCompressStripFonts);
             DrawToggleSection("setting_pdf_compress_strip_fonts", "", stripFonts, 81, y);
             y += 44f;
 
             // Minify Content Toggle
-            bool minifyContent = !ClickraStorage.GetSetting("PdfCompressMinifyContent").Equals("false", StringComparison.OrdinalIgnoreCase);
+            bool minifyContent = ClickraStorage.GetSettingBool(ClickraSettings.PdfCompressMinifyContent);
             DrawToggleSection("setting_pdf_compress_minify_content", "", minifyContent, 82, y);
             y += 44f;
 
@@ -503,20 +515,6 @@ namespace Clickra.UI
             Color accentColor = UIHelper.GetSystemColorizationColor();
             using var textBrush = new SolidBrush(accentColor);
             g.DrawString(text, _subFont, textBrush, (x + 9) * s, (y + (pillH - textSize.Height / s) / 2f) * s);
-        }
-
-        static int GetPdfCompressLevel()
-        {
-            string levelStr = ClickraStorage.GetSetting("PdfCompressImageLevel");
-            if (int.TryParse(levelStr, out int lvl) && lvl >= 0 && lvl <= 3)
-                return lvl;
-            // Backward compat: derive from DPI setting
-            return ClickraStorage.GetSetting("PdfCompressTargetDpi") switch {
-                "300" => 3,
-                "150" => 2,
-                "0" => 3,
-                _ => 1  // default: 120 DPI = level 1 (小檔)
-            };
         }
 
         static void DrawCompressSlider(Graphics g, float x, float y, float w, int level)

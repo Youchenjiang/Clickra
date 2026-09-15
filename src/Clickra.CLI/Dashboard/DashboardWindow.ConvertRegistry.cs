@@ -136,7 +136,7 @@ public static partial class DashboardWindow
         /// <summary>Whether a usable Office engine (Microsoft or LibreOffice) is available for this command.</summary>
         public bool HasAvailableEngine()
         {
-            string engine = ClickraStorage.GetSetting("OfficeEngine");
+            string engine = ClickraStorage.GetSetting(ClickraSettings.OfficeEngine);
             bool libreOfficeReady = !string.IsNullOrWhiteSpace(LibreOfficeHelper.GetResolvedExecutablePath());
 
             if (engine.Equals("libreoffice", StringComparison.OrdinalIgnoreCase))
@@ -181,8 +181,8 @@ public static partial class DashboardWindow
 
             if (command.RequiresOffice && !command.HasAvailableEngine())
             {
-                string language = ClickraStorage.GetSetting("Language");
-                string engine = ClickraStorage.GetSetting("OfficeEngine");
+                string language = ClickraStorage.GetSetting(ClickraSettings.Language);
+                string engine = ClickraStorage.GetSetting(ClickraSettings.OfficeEngine);
                 string errorKey = "";
                 if (engine.Equals("libreoffice", StringComparison.OrdinalIgnoreCase))
                 {

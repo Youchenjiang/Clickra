@@ -12,12 +12,6 @@ namespace Clickra.UI
 {
     public static partial class DashboardWindow
     {
-        private const string SettingOutputDir = "OutputDir";
-        private const string SettingOfficeEngine = "OfficeEngine";
-        private const string SettingLibreOfficePath = "LibreOfficePath";
-        private const string SettingValueTrue = "true";
-        private const string SettingValueFalse = "false";
-        private const string SettingLibreOfficeRemovalPending = "LibreOfficeRemovalPendingRestart";
         /// <summary>Routes left-button clicks to the active dashboard tab's hit regions.</summary>
         static void HandleLButtonDown(IntPtr hwnd, IntPtr w, IntPtr l)
         {
@@ -126,7 +120,7 @@ namespace Clickra.UI
                     int clickedIdx = (adjMouseY - (popupY + 4)) / 26;
                     if (clickedIdx >= 0 && clickedIdx < PdfLangs.Length)
                     {
-                        ClickraStorage.SaveSetting("TranslateTargetLang", PdfLangs[clickedIdx].Code);
+                        ClickraStorage.SaveSetting(ClickraSettings.TranslateTargetLang, PdfLangs[clickedIdx].Code);
                     }
                 }
                 _pdfLangDropdownOpen = false;
@@ -444,16 +438,16 @@ namespace Clickra.UI
         {
             switch (element)
             {
-                case 5: ToggleBoolSetting(hwnd, "QuietMode"); break;
-                case 6: ToggleBoolSetting(hwnd, "Notification"); break;
-                case 7: ApplySetting(hwnd, SettingOutputDir, "source"); break;
-                case 8: ApplySetting(hwnd, SettingOutputDir, "desktop"); break;
-                case 9: ApplySetting(hwnd, SettingOutputDir, "downloads"); break;
+                case 5: ToggleBoolSetting(hwnd, ClickraSettings.QuietMode); break;
+                case 6: ToggleBoolSetting(hwnd, ClickraSettings.Notification); break;
+                case 7: ApplySetting(hwnd, ClickraSettings.OutputDir, ClickraSettings.DefaultOutputDirSource); break;
+                case 8: ApplySetting(hwnd, ClickraSettings.OutputDir, ClickraSettings.OutputDirDesktop); break;
+                case 9: ApplySetting(hwnd, ClickraSettings.OutputDir, ClickraSettings.OutputDirDownloads); break;
                 case 20: BrowseOutputDir(hwnd); break;
-                case 32: ApplySetting(hwnd, SettingOfficeEngine, "auto"); break;
-                case 33: ApplySetting(hwnd, SettingOfficeEngine, "microsoft"); break;
-                case 34: ClickraStorage.SaveSetting(SettingOfficeEngine, "libreoffice");
-                         ApplySetting(hwnd, SettingLibreOfficePath, ""); break;
+                case 32: ApplySetting(hwnd, ClickraSettings.OfficeEngine, ClickraSettings.DefaultOfficeEngineAuto); break;
+                case 33: ApplySetting(hwnd, ClickraSettings.OfficeEngine, ClickraSettings.OfficeEngineMicrosoft); break;
+                case 34: ClickraStorage.SaveSetting(ClickraSettings.OfficeEngine, ClickraSettings.OfficeEngineLibreOffice);
+                         ApplySetting(hwnd, ClickraSettings.LibreOfficePath, ClickraSettings.DefaultEmpty); break;
                 case 40: OpenStorePage(hwnd); break;
                 default: break; // Unhandled settings element — ignore.
             }
@@ -461,8 +455,8 @@ namespace Clickra.UI
 
         private static void ToggleBoolSetting(IntPtr hwnd, string key)
         {
-            bool current = ClickraStorage.GetSetting(key).Equals(SettingValueTrue, StringComparison.OrdinalIgnoreCase);
-            ClickraStorage.SaveSetting(key, current ? SettingValueFalse : SettingValueTrue);
+            bool current = ClickraStorage.GetSetting(key).Equals(ClickraSettings.ValueTrue, StringComparison.OrdinalIgnoreCase);
+            ClickraStorage.SaveSetting(key, current ? ClickraSettings.ValueFalse : ClickraSettings.ValueTrue);
             InvalidateRect(hwnd, IntPtr.Zero, false);
         }
 
@@ -477,7 +471,7 @@ namespace Clickra.UI
             string title = GetText("setting_output_browse_title");
             string folder = BrowseForFolder(hwnd, title);
             if (!string.IsNullOrEmpty(folder))
-                ApplySetting(hwnd, SettingOutputDir, folder);
+                ApplySetting(hwnd, ClickraSettings.OutputDir, folder);
         }
 
         private static void OpenStorePage(IntPtr hwnd)
@@ -525,8 +519,8 @@ namespace Clickra.UI
             {
                 if (LibreOfficeHelper.LooksLikeLibreOfficeExecutable(candidate))
                 {
-                    ClickraStorage.SaveSetting(SettingLibreOfficePath, candidate);
-                    ClickraStorage.SaveSetting(SettingLibreOfficeRemovalPending, SettingValueFalse);
+                    ClickraStorage.SaveSetting(ClickraSettings.LibreOfficePath, candidate);
+                    ClickraStorage.SaveSetting(ClickraSettings.LibreOfficeRemovalPendingRestart, ClickraSettings.ValueFalse);
                     MessageBox(hwnd, string.Format(GetText("setting_libreoffice_validated"), Path.GetDirectoryName(candidate)), "Clickra", 0x40);
                 }
                 else
@@ -553,7 +547,7 @@ namespace Clickra.UI
                 }
             }
 
-            bool removalPendingRestart = ClickraStorage.GetSetting(SettingLibreOfficeRemovalPending).Equals(SettingValueTrue, StringComparison.OrdinalIgnoreCase);
+            bool removalPendingRestart = ClickraStorage.GetSetting(ClickraSettings.LibreOfficeRemovalPendingRestart).Equals(ClickraSettings.ValueTrue, StringComparison.OrdinalIgnoreCase);
             var package = LibreOfficeEngineInstaller.RecommendedPackage;
             string installedVersion = LibreOfficeEngineInstaller.GetInstalledSystemVersion();
             if (!removalPendingRestart &&
@@ -563,7 +557,7 @@ namespace Clickra.UI
                 string resolvedPath = LibreOfficeEngineInstaller.ResolveSystemSofficePath();
                 if (!string.IsNullOrWhiteSpace(resolvedPath))
                 {
-                    ClickraStorage.SaveSetting(SettingLibreOfficePath, resolvedPath);
+                    ClickraStorage.SaveSetting(ClickraSettings.LibreOfficePath, resolvedPath);
                 }
 
                 MessageBox(
@@ -633,15 +627,15 @@ namespace Clickra.UI
                 PostDashboardAction(hwnd, () => SetLibreOfficeSetupStatus(95, GetText("setting_libreoffice_installing")));
 
                 if (!string.IsNullOrWhiteSpace(sofficePath))
-                    ClickraStorage.SaveSetting(SettingLibreOfficePath, sofficePath);
-                ClickraStorage.SaveSetting("LibreOfficeInstalledByClickra", SettingValueTrue);
-                ClickraStorage.SaveSetting(SettingLibreOfficeRemovalPending, SettingValueFalse);
+                    ClickraStorage.SaveSetting(ClickraSettings.LibreOfficePath, sofficePath);
+                LibreOfficeEngineInstaller.MarkInstalledByClickra(true);
+                ClickraStorage.SaveSetting(ClickraSettings.LibreOfficeRemovalPendingRestart, ClickraSettings.ValueFalse);
 
                 PostDashboardAction(hwnd, () => ShowInstallResultMessage(hwnd, installResult.RestartRequired, sofficePath));
             }
             catch (Exception ex)
             {
-                ClickraStorage.SaveSetting(SettingLibreOfficePath, "");
+                ClickraStorage.SaveSetting(ClickraSettings.LibreOfficePath, "");
                 PostDashboardAction(hwnd, () => ShowDownloadFailureMessage(hwnd, ex.Message));
             }
             finally
@@ -693,9 +687,17 @@ namespace Clickra.UI
                 }
             }
 
-            if (ClickraStorage.GetSetting(SettingLibreOfficeRemovalPending).Equals(SettingValueTrue, StringComparison.OrdinalIgnoreCase))
+            if (ClickraStorage.GetSetting(ClickraSettings.LibreOfficeRemovalPendingRestart).Equals(ClickraSettings.ValueTrue, StringComparison.OrdinalIgnoreCase))
             {
                 MessageBox(hwnd, GetText("setting_libreoffice_removal_pending"), "Clickra", 0x40);
+                return;
+            }
+
+            // Only a LibreOffice Clickra installed itself may be removed from here. The dashboard hides
+            // the button in this case, but the action still has to refuse on its own.
+            if (!LibreOfficeEngineInstaller.WasInstalledByClickra())
+            {
+                MessageBox(hwnd, GetText("setting_libreoffice_external_note"), "Clickra", 0x40);
                 return;
             }
 
@@ -726,10 +728,10 @@ namespace Clickra.UI
                     .GetAwaiter()
                     .GetResult();
 
-                ClickraStorage.SaveSetting(SettingLibreOfficePath, "");
-                ClickraStorage.SaveSetting("LibreOfficeInstalledByClickra", SettingValueFalse);
-                ClickraStorage.SaveSetting(SettingLibreOfficeRemovalPending, uninstallResult.RestartRequired ? SettingValueTrue : SettingValueFalse);
-                ClickraStorage.SaveSetting(SettingOfficeEngine, "auto");
+                ClickraStorage.SaveSetting(ClickraSettings.LibreOfficePath, "");
+                LibreOfficeEngineInstaller.MarkInstalledByClickra(false);
+                ClickraStorage.SaveSetting(ClickraSettings.LibreOfficeRemovalPendingRestart, uninstallResult.RestartRequired ? ClickraSettings.ValueTrue : ClickraSettings.ValueFalse);
+                ClickraStorage.SaveSetting(ClickraSettings.OfficeEngine, "auto");
 
                 PostDashboardAction(hwnd, () => MessageBox(
                     hwnd,
@@ -790,14 +792,14 @@ namespace Clickra.UI
             }
             else if (element == 81)
             {
-                bool current = ClickraStorage.GetSetting("PdfCompressStripFonts").Equals(SettingValueTrue, StringComparison.OrdinalIgnoreCase);
-                ClickraStorage.SaveSetting("PdfCompressStripFonts", current ? SettingValueFalse : SettingValueTrue);
+                bool current = ClickraStorage.GetSettingBool(ClickraSettings.PdfCompressStripFonts);
+                ClickraStorage.SaveSetting(ClickraSettings.PdfCompressStripFonts, current ? ClickraSettings.ValueFalse : ClickraSettings.ValueTrue);
                 InvalidateRect(hwnd, IntPtr.Zero, false);
             }
             else if (element == 82)
             {
-                bool current = !ClickraStorage.GetSetting("PdfCompressMinifyContent").Equals(SettingValueFalse, StringComparison.OrdinalIgnoreCase);
-                ClickraStorage.SaveSetting("PdfCompressMinifyContent", current ? SettingValueFalse : SettingValueTrue);
+                bool current = ClickraStorage.GetSettingBool(ClickraSettings.PdfCompressMinifyContent);
+                ClickraStorage.SaveSetting(ClickraSettings.PdfCompressMinifyContent, current ? ClickraSettings.ValueFalse : ClickraSettings.ValueTrue);
                 InvalidateRect(hwnd, IntPtr.Zero, false);
             }
         }
@@ -932,7 +934,7 @@ namespace Clickra.UI
         /// <summary>Applies a PDF compression level selection and refreshes the settings tab.</summary>
         static void ApplyPdfCompressLevel(IntPtr hwnd, int level)
         {
-            ClickraStorage.SaveSetting("PdfCompressImageLevel", level.ToString());
+            ClickraStorage.SaveSetting(ClickraSettings.PdfCompressImageLevel, level.ToString());
             InvalidateRect(hwnd, IntPtr.Zero, false);
         }
 

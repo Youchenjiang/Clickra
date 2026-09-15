@@ -221,7 +221,7 @@ namespace Clickra.UI
         /// progress through the callback.</summary>
         private void RunTranslatePdf(List<string> files, string outputDir, Action<int, int, string> progressCallback)
         {
-            string targetLang = ClickraStorage.GetSetting("TranslateTargetLang");
+            string targetLang = ClickraStorage.GetSetting(ClickraSettings.TranslateTargetLang);
             for (int i = 0; i < files.Count; i++)
             {
                 _cts.Token.ThrowIfCancellationRequested();
@@ -397,7 +397,7 @@ namespace Clickra.UI
 
             if (cancelled)
             {
-                throw new OperationCanceledException(Localization.T("error_user_aborted", ClickraStorage.GetSetting("Language")));
+                throw new OperationCanceledException(Localization.T("error_user_aborted", ClickraStorage.GetSetting(ClickraSettings.Language)));
             }
             return input ?? "";
         }
@@ -438,7 +438,7 @@ namespace Clickra.UI
         /// <summary>Shows a Windows toast notification on success, unless notifications are disabled.</summary>
         private void ShowToastNotification(string command, int count)
         {
-            if (ClickraStorage.GetSetting("Notification") == "false")
+            if (!ClickraStorage.GetSettingBool(ClickraSettings.Notification))
                 return;
 
             try
