@@ -39,6 +39,8 @@ static partial class TestSuite
         runner.Run("Settings registry: Diagnostics email localization coverage across all 5 languages", TestDiagnosticsEmailLocalizationCoverage);
         runner.Run("Settings registry: Tray and visual splitter localization coverage across all 5 languages", TestTraySplitterLocalizationCoverage);
         runner.Run("Localization guard: No hardcoded Chinese strings in Clickra.Fluent and Dashboard paint files", TestNoHardcodedChineseUiStrings);
+        runner.Run("Settings registry: Translation diagnostics lists gaps grouped by language when translations are missing", TestTranslationDiagnosticsGapReport);
+        runner.Run("Settings registry: All registered keys must have complete translations across all 5 languages", TestLocalizationDictionaryParity);
     }
 
     private static void TestSettingKeysDeclaredExactlyOnce()
@@ -319,6 +321,30 @@ static partial class TestSuite
         };
 
         AssertLocalizationKeysCoverage(keys);
+    }
+
+    private static void TestTranslationDiagnosticsGapReport()
+    {
+        string[] testKeys = { "sample_key_tw_only", "sample_key_non_existent" };
+        var missing = Localization.FindMissingTranslations(testKeys);
+
+        Assert.True(missing.Count > 0, "Missing translations must be detected for unregistered test keys.");
+        Assert.True(missing.ContainsKey("en-US"), "en-US must be reported as missing test keys.");
+        Assert.True(missing.ContainsKey("ja-JP"), "ja-JP must be reported as missing test keys.");
+        Assert.True(missing.ContainsKey("ko-KR"), "ko-KR must be reported as missing test keys.");
+
+        string report = Localization.FormatMissingReport(missing);
+        Assert.True(report.Contains("[en-US]"), "Report must include language section for en-US.");
+        Assert.True(report.Contains("- sample_key_non_existent"), "Report must list the specific missing key.");
+    }
+
+    private static void TestLocalizationDictionaryParity()
+    {
+        var missing = Localization.FindMissingTranslations();
+        if (missing.Count > 0)
+        {
+            Assert.True(false, Localization.FormatMissingReport(missing));
+        }
     }
 
     private static void TestNoHardcodedChineseUiStrings()
