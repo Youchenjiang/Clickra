@@ -42,6 +42,7 @@ static partial class TestSuite
         runner.Run("Localization guard: No hardcoded Chinese strings in Clickra.Fluent and Dashboard paint files", TestNoHardcodedChineseUiStrings);
         runner.Run("Settings registry: Translation diagnostics lists gaps grouped by language when translations are missing", TestTranslationDiagnosticsGapReport);
         runner.Run("Settings registry: All registered keys must have complete translations across all 5 languages", TestLocalizationDictionaryParity);
+        runner.Run("Test runner: CleanStaleArtifacts cleans isolated temp directories and test artifacts", TestCleanStaleArtifacts);
     }
 
     private static void TestSettingKeysDeclaredExactlyOnce()
@@ -345,6 +346,23 @@ static partial class TestSuite
         if (missing.Count > 0)
         {
             Assert.True(false, Localization.FormatMissingReport(missing));
+        }
+    }
+
+    private static void TestCleanStaleArtifacts()
+    {
+        string staleDir = Path.Combine(Path.GetTempPath(), $"clickra-test-data-dummy-{Guid.NewGuid():N}");
+        Directory.CreateDirectory(staleDir);
+        Assert.True(Directory.Exists(staleDir), "Dummy stale directory must exist before cleanup.");
+
+        string? activeDataDir = Environment.GetEnvironmentVariable("CLICKRA_DATA_DIR");
+        var (dirs, _) = CleanStaleArtifacts(activeDataDir);
+
+        Assert.True(dirs >= 1, "Must have cleaned at least the dummy stale directory.");
+        Assert.False(Directory.Exists(staleDir), "Dummy stale directory must be removed.");
+        if (activeDataDir != null && Directory.Exists(activeDataDir))
+        {
+            Assert.True(Directory.Exists(activeDataDir), "Active test data directory must not be removed.");
         }
     }
 
