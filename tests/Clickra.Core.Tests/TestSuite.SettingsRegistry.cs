@@ -18,6 +18,9 @@ static partial class TestSuite
     private const string SettingKeyDeclarationPattern = @"const\s+string\s+\w+\s*=\s*""([^""]+)""";
     private const string NullCoalescedSettingPattern = @"GetSetting\([^)]*\)\s*\?\?";
     private const string LiteralSettingComparisonPattern = "GetSetting\\([^)]*\\)\\.Equals\\(\"";
+    private const string RetiredPdfTargetDpi = "PdfCompressTargetDpi";
+    private const string RetiredPdfJpegQuality = "PdfCompressJpegQuality";
+    private const string RetiredPdfDpi = "PdfCompressDpi";
 
     public static void RegisterSettingsRegistryTests(TestRunner runner)
     {
@@ -25,6 +28,8 @@ static partial class TestSuite
         runner.Run("Settings registry: GetSetting applies defaults for unset keys", TestSettingDefaults);
         runner.Run("Settings registry: readers must not invent keys or defaults", TestSettingReadersUseRegistry);
         runner.Run("Settings registry: numeric accessors take their fallback from the registry", TestNumericAccessorsUseRegistry);
+        runner.Run("Settings registry: retired keys stay outside the active registry", TestRetiredKeysStayDisjoint);
+        runner.Run("Settings storage: retired keys are purged and rewritten on load", TestRetiredSettingsPurgedOnLoad);
     }
 
     private static void TestSettingKeysDeclaredExactlyOnce()
@@ -68,6 +73,8 @@ static partial class TestSuite
         Assert.False(ClickraStorage.GetSettingBool(ClickraSettings.PdfCompressStripFonts), "Unset StripFonts must default to off.");
         Assert.Equal(1, ClickraStorage.GetSettingInt(ClickraSettings.ImageCompressLevel));
         Assert.Equal(1, ConvertCommandRegistry.GetPdfCompressLevel());
+        Assert.Equal(1, ConvertCommandRegistry.GetImageCompressLevel());
+        Assert.Equal(0, ConvertCommandRegistry.GetImageCompressMaxDimension());
 
         // Unknown keys stay empty: the registry is the only place defaults exist.
         Assert.Equal("", ClickraStorage.GetSetting("NoSuchSettingKey"));
@@ -130,6 +137,8 @@ static partial class TestSuite
 
         AssertNumericAccessorUsesRegistry("GetParkedRetentionDays", storage);
         AssertNumericAccessorUsesRegistry("GetPdfCompressLevel", registry);
+        AssertNumericAccessorUsesRegistry("GetImageCompressLevel", registry);
+        AssertNumericAccessorUsesRegistry("GetImageCompressMaxDimension", registry);
     }
 
     private static void AssertNumericAccessorUsesRegistry(string name, string source)
@@ -148,5 +157,63 @@ static partial class TestSuite
         string body = source[start..end];
         Assert.True(body.Contains("ClickraSettings", StringComparison.Ordinal),
             $"{name} must get its fallback default from ClickraSettings, found: {body}");
+    }
+
+    private static void TestRetiredKeysStayDisjoint()
+    {
+        Assert.True(ClickraSettings.RetiredKeys.Count > 0, "Retired keys list must not be empty.");
+        Assert.True(ClickraSettings.IsRetired(RetiredPdfTargetDpi), $"{RetiredPdfTargetDpi} must be retired.");
+        Assert.True(ClickraSettings.IsRetired(RetiredPdfJpegQuality), $"{RetiredPdfJpegQuality} must be retired.");
+        Assert.True(ClickraSettings.IsRetired(RetiredPdfDpi), $"{RetiredPdfDpi} must be retired.");
+
+        var activeKeys = new System.Collections.Generic.HashSet<string>(
+            ClickraSettings.All.Select(s => s.Key), StringComparer.OrdinalIgnoreCase);
+        foreach (string retired in ClickraSettings.RetiredKeys)
+        {
+            Assert.False(activeKeys.Contains(retired),
+                $"Retired key '{retired}' cannot simultaneously exist in ClickraSettings.All.");
+        }
+    }
+
+    private static void TestRetiredSettingsPurgedOnLoad()
+    {
+        string settingsFile = ClickraStorage.GetSettingsFilePath();
+        string? backup = File.Exists(settingsFile) ? File.ReadAllText(settingsFile) : null;
+
+        try
+        {
+            string content = $"Language=zh-CN\n{RetiredPdfTargetDpi}=150\n{RetiredPdfJpegQuality}=75\nOutputDir=desktop\n";
+            File.WriteAllText(settingsFile, content, System.Text.Encoding.UTF8);
+
+            ClickraStorage.ReloadSettings();
+
+            Assert.Equal("zh-CN", ClickraStorage.GetSetting(ClickraSettings.Language));
+            Assert.Equal(ClickraSettings.OutputDirDesktop, ClickraStorage.GetSetting(ClickraSettings.OutputDir));
+            Assert.Equal(ClickraSettings.DefaultEmpty, ClickraStorage.GetSetting(RetiredPdfTargetDpi));
+            Assert.Equal(ClickraSettings.DefaultEmpty, ClickraStorage.GetSetting(RetiredPdfJpegQuality));
+
+            string[] persistedLines = File.ReadAllLines(settingsFile);
+            Assert.True(persistedLines.Any(line => line.StartsWith("Language=zh-CN", StringComparison.OrdinalIgnoreCase)),
+                "Active setting Language must remain in the persisted file.");
+            Assert.True(persistedLines.Any(line => line.StartsWith("OutputDir=desktop", StringComparison.OrdinalIgnoreCase)),
+                "Active setting OutputDir must remain in the persisted file.");
+            Assert.False(persistedLines.Any(line => line.Contains(RetiredPdfTargetDpi, StringComparison.OrdinalIgnoreCase)),
+                $"{RetiredPdfTargetDpi} must be pruned from the persisted file.");
+            Assert.False(persistedLines.Any(line => line.Contains(RetiredPdfJpegQuality, StringComparison.OrdinalIgnoreCase)),
+                $"{RetiredPdfJpegQuality} must be pruned from the persisted file.");
+        }
+        finally
+        {
+            if (backup is not null)
+            {
+                File.WriteAllText(settingsFile, backup, System.Text.Encoding.UTF8);
+            }
+            else if (File.Exists(settingsFile))
+            {
+                File.Delete(settingsFile);
+            }
+
+            ClickraStorage.ReloadSettings();
+        }
     }
 }
