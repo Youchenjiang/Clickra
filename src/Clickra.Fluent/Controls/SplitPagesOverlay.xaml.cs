@@ -21,7 +21,7 @@ public sealed partial class SplitPagesOverlay : UserControl
     public SplitPagesOverlay()
     {
         InitializeComponent();
-        string L(string key) => Localization.T(key, ClickraStorage.GetSetting("Language"));
+        string L(string key) => Localization.T(key, ClickraStorage.GetSetting(ClickraSettings.Language));
         OverlayTitle.Text = L("pdf_split_title");
         ConfirmBtn.Content = L("fluent_ok");
         CancelBtn.Content = L("dialog_cancel");

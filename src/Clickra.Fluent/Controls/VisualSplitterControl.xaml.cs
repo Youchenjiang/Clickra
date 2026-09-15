@@ -27,8 +27,6 @@ public sealed partial class VisualSplitterControl : UserControl
 {
     private const int PreviewWidth = 660;
     private const int ZoomWidth = 1500;
-    private const string LanguageSettingKey = "Language";
-
     private readonly string _pdfPath;
     private readonly int _totalPages;
 
@@ -56,7 +54,7 @@ public sealed partial class VisualSplitterControl : UserControl
         if (_totalPages <= 0) _totalPages = 1;
         _nPages = Math.Min(5, _totalPages);
 
-        string L(string key) => Localization.T(key, ClickraStorage.GetSetting(LanguageSettingKey));
+        string L(string key) => Localization.T(key, ClickraStorage.GetSetting(ClickraSettings.Language));
         ModeCustomBtn.Content = L("pdf_split_mode_custom");
         ModeEachBtn.Content = L("pdf_split_mode_each");
         ModeCustomBtn.IsChecked = true;
@@ -174,13 +172,13 @@ public sealed partial class VisualSplitterControl : UserControl
     /// in sync with the current N ("固定頁數: 5頁", mirroring the CLI mode bar).</summary>
     private void RefreshModeButtons()
     {
-        ModeFixedBtn.Content = $"{Localization.T("pdf_split_mode_fixed", ClickraStorage.GetSetting(LanguageSettingKey))}: {_nPages}頁";
+        ModeFixedBtn.Content = $"{Localization.T("pdf_split_mode_fixed", ClickraStorage.GetSetting(ClickraSettings.Language))}: {_nPages}頁";
     }
 
     /// <summary>Refreshes the pages-per-segment stepper label ("每 5 頁").</summary>
     private void RefreshNSelector()
     {
-        NLabel.Text = $"{Localization.T("pdf_split_pages_per_segment", ClickraStorage.GetSetting(LanguageSettingKey))} {_nPages}";
+        NLabel.Text = $"{Localization.T("pdf_split_pages_per_segment", ClickraStorage.GetSetting(ClickraSettings.Language))} {_nPages}";
     }
 
     /// <summary>Adjusts N in fixed-pages mode (clamped to 1..total pages) and rebuilds the segments.</summary>
@@ -436,7 +434,7 @@ public sealed partial class VisualSplitterControl : UserControl
         {
             // Windows PDF renderer unavailable (e.g. encrypted file): fall back to the
             // shared Core word-overlay renderer.
-            string fontName = PdfPageThumbnailRenderer.GetTextFontName(ClickraStorage.GetSetting(LanguageSettingKey));
+            string fontName = PdfPageThumbnailRenderer.GetTextFontName(ClickraStorage.GetSetting(ClickraSettings.Language));
             var bmp = await Task.Run(() => PdfPageThumbnailRenderer.RenderPageFromFile(_pdfPath, page, RenderWidth, fontName));
             source = bmp == null ? null : await ToBitmapImageAsync(bmp);
             bmp?.Dispose();

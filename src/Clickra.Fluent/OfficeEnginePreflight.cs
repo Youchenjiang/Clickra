@@ -17,7 +17,7 @@ internal static class OfficeEnginePreflight
         };
         if (string.IsNullOrWhiteSpace(app)) return true;
 
-        string engine = ClickraStorage.GetSetting("OfficeEngine");
+        string engine = ClickraStorage.GetSetting(ClickraSettings.OfficeEngine);
         bool libreOfficeReady = !string.IsNullOrWhiteSpace(LibreOfficeHelper.GetResolvedExecutablePath());
         bool microsoftReady = IsOfficeInstalled(app);
         bool isLibreOffice = engine.Equals("libreoffice", StringComparison.OrdinalIgnoreCase);
