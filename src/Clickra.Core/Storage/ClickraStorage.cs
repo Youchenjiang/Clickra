@@ -110,16 +110,9 @@ namespace Clickra.Core
             {
                 RunWithMutex(() =>
                 {
+                    // 只載入實際存在的設定；預設值統一由 ClickraSettings 登錄表提供，
+                    // 因此刪掉設定檔中的一行就等於回復該鍵的預設值。
                     SettingsCache.Clear();
-                    // 預設值
-                    SettingsCache["QuietMode"] = "false";
-                    SettingsCache["Notification"] = "true";
-                    SettingsCache["OutputDir"] = "source"; // source, desktop, downloads
-                    SettingsCache["Language"] = "";
-                    SettingsCache["TranslateTargetLang"] = "zh-TW";
-                    SettingsCache["OfficeEngine"] = "auto"; // auto, microsoft, libreoffice
-                    SettingsCache["LibreOfficePath"] = "";
-                    SettingsCache["ParkedTaskRetention"] = "7"; // 已暫存任務保留天數；0 = 無限期
 
                     if (File.Exists(SettingsFile))
                     {
@@ -143,13 +136,22 @@ namespace Clickra.Core
             }
         }
 
+        /// <summary>讀取設定；未設定（或設定檔中沒有該行）時回傳登錄表的預設值。</summary>
         public static string GetSetting(string key)
         {
             lock (FileLock)
             {
-                return SettingsCache.TryGetValue(key, out string? val) ? val : "";
+                return SettingsCache.TryGetValue(key, out string? val) ? val : ClickraSettings.GetDefault(key);
             }
         }
+
+        /// <summary>讀取布林設定：登錄表的預設值決定未設定時的行為（只有 "true" 為真）。</summary>
+        public static bool GetSettingBool(string key) =>
+            GetSetting(key).Equals(ClickraSettings.ValueTrue, StringComparison.OrdinalIgnoreCase);
+
+        /// <summary>讀取整數設定；無法解析時回傳登錄表的預設值。</summary>
+        public static int GetSettingInt(string key) =>
+            int.TryParse(GetSetting(key), out int value) ? value : ClickraSettings.GetDefaultInt(key);
 
         public static void SaveSetting(string key, string val)
         {
@@ -173,19 +175,19 @@ namespace Clickra.Core
 
         public static string GetOutputDir(string sourceFilePath)
         {
-            string mode = GetSetting("OutputDir");
-            if (mode.Equals("desktop", StringComparison.OrdinalIgnoreCase))
+            string mode = GetSetting(ClickraSettings.OutputDir);
+            if (mode.Equals(ClickraSettings.OutputDirDesktop, StringComparison.OrdinalIgnoreCase))
             {
                 return Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory);
             }
-            if (mode.Equals("downloads", StringComparison.OrdinalIgnoreCase))
+            if (mode.Equals(ClickraSettings.OutputDirDownloads, StringComparison.OrdinalIgnoreCase))
             {
                 string userProfile = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
                 string downloads = Path.Combine(userProfile, "Downloads");
                 if (Directory.Exists(downloads)) return downloads;
                 return Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory);
             }
-            if (!mode.Equals("source", StringComparison.OrdinalIgnoreCase) && Directory.Exists(mode))
+            if (!mode.Equals(ClickraSettings.DefaultOutputDirSource, StringComparison.OrdinalIgnoreCase) && Directory.Exists(mode))
             {
                 return mode;
             }
