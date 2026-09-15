@@ -4,5 +4,6 @@
     <Authors>Youchen Jiang</Authors>
     <Company>Clickra</Company>
     <Copyright>Copyright © 2026</Copyright>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
   </PropertyGroup>
 </Project>
