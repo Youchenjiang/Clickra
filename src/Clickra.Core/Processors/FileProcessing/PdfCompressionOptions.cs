@@ -64,4 +64,13 @@ public static class PdfCompressionOptions
             PdfCompressionLevel.HighQuality => "high",
             _ => "balanced"
         };
+
+    /// <summary>The localization key shared with the UI for displaying the level label.</summary>
+    public static string GetLabelKey(PdfCompressionLevel level) =>
+        level switch
+        {
+            PdfCompressionLevel.Small => "setting_pdf_compress_level_small",
+            PdfCompressionLevel.HighQuality => "setting_pdf_compress_level_high",
+            _ => "setting_pdf_compress_level_std"
+        };
 }
