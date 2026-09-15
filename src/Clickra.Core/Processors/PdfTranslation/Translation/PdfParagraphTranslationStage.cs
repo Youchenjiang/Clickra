@@ -22,7 +22,7 @@ internal static class PdfParagraphTranslationStage
             var paragraphs = pageParagraphs[p];
             if (paragraphs.Count == 0) continue;
 
-            string language = ClickraStorage.GetSetting("Language");
+            string language = ClickraStorage.GetSetting(ClickraSettings.Language);
             onProgress?.Invoke(
                 30 + (int)(p * 40.0 / totalPages),
                 100,

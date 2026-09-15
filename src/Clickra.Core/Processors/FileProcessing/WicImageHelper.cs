@@ -17,8 +17,6 @@ namespace Clickra.Core.Processors;
 /// </summary>
 public static class WicImageHelper
 {
-    private const string LanguageSettingKey = "Language";
-
     /// <summary>
     /// Checks whether the system provides a WIC/WinRT HEIF/HEIC encoder (Microsoft HEIF Encoder).
     /// </summary>
@@ -211,7 +209,7 @@ public static class WicImageHelper
     {
         if (!IsHeicEncoderAvailable())
         {
-            throw new NotSupportedException(Localization.T("error_heic_codec_missing", ClickraStorage.GetSetting(LanguageSettingKey)));
+            throw new NotSupportedException(Localization.T("error_heic_codec_missing", ClickraStorage.GetSetting(ClickraSettings.Language)));
         }
 
         using var fileStream = File.OpenRead(inputPath);
@@ -237,7 +235,7 @@ public static class WicImageHelper
     {
         if (!IsHeicEncoderAvailable())
         {
-            throw new NotSupportedException(Localization.T("error_heic_codec_missing", ClickraStorage.GetSetting(LanguageSettingKey)));
+            throw new NotSupportedException(Localization.T("error_heic_codec_missing", ClickraStorage.GetSetting(ClickraSettings.Language)));
         }
 
         // Convert System.Drawing.Image to pixel buffer in BGRA8 format

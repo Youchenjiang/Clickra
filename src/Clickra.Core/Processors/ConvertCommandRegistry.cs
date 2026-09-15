@@ -169,25 +169,19 @@ public static class ConvertCommandRegistry
                 .FirstOrDefault(group => group.Count() > 1);
             if (duplicate is not null)
             {
-                string template = Localization.T("error_image_output_collision", ClickraStorage.GetSetting("Language"));
+                string template = Localization.T("error_image_output_collision", ClickraStorage.GetSetting(ClickraSettings.Language));
                 throw new InvalidOperationException(string.Format(template, duplicate.Key));
             }
         }
 
-        /// <summary>Reads the current slider level from settings (0-3, default 1: balanced).</summary>
+        /// <summary>Reads the current slider level from settings (0-3). 未設定或超出範圍時採用
+        /// 登錄表的預設值，所以叫位永遠一致（不再有多份換算表）。</summary>
         public static int GetPdfCompressLevel()
         {
-            string levelStr = ClickraStorage.GetSetting("PdfCompressImageLevel");
-            if (int.TryParse(levelStr, out int lvl) && lvl >= 0 && lvl <= 3)
-                return lvl;
-
-            return ClickraStorage.GetSetting("PdfCompressTargetDpi") switch
-            {
-                "300" => 3,
-                "150" => 1,
-                "0" => 3,
-                _ => 1
-            };
+            int level = ClickraStorage.GetSettingInt(ClickraSettings.PdfCompressImageLevel);
+            return level >= 0 && level <= 3
+                ? level
+                : ClickraSettings.GetDefaultInt(ClickraSettings.PdfCompressImageLevel);
         }
 
         /// <summary>Current PDF compression settings as a parameter dictionary.</summary>
@@ -198,8 +192,8 @@ public static class ConvertCommandRegistry
             return new Dictionary<string, object>
             {
                 ["level"] = PdfCompressionOptions.ToOptionName(level),
-                ["strip_fonts"] = ClickraStorage.GetSetting("PdfCompressStripFonts").Equals("true", StringComparison.OrdinalIgnoreCase),
-                ["minify_content"] = !ClickraStorage.GetSetting("PdfCompressMinifyContent").Equals("false", StringComparison.OrdinalIgnoreCase)
+                ["strip_fonts"] = ClickraStorage.GetSettingBool(ClickraSettings.PdfCompressStripFonts),
+                ["minify_content"] = ClickraStorage.GetSettingBool(ClickraSettings.PdfCompressMinifyContent)
             };
         }
 
