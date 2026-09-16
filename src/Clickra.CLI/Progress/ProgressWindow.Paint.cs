@@ -74,12 +74,11 @@ namespace Clickra.UI
 
             if (_subFont != null)
             {
-                string lang = ClickraStorage.GetSetting(ClickraSettings.Language);
                 string subText;
-                if (hasErr) subText = "作業失敗";
-                else if (comp) subText = "作業完成";
-                else if (_isPromptingVisualSplitter) subText = "PDF 視覺化分割標記";
-                else subText = isPrompting ? Localization.T("pdf_password_title", lang) : "正在執行作業...";
+                if (hasErr) subText = Loc("progress_sub_failed");
+                else if (comp) subText = Loc("progress_sub_completed");
+                else if (_isPromptingVisualSplitter) subText = Loc("progress_sub_visual_splitter");
+                else subText = isPrompting ? Loc("pdf_password_title") : Loc("progress_sub_running");
 
                 Color subColor;
                 if (hasErr) subColor = Color.FromArgb(255, 90, 70);
@@ -99,7 +98,7 @@ namespace Clickra.UI
             if (_headerFont != null)
             {
                 using var errBrush = new SolidBrush(Color.FromArgb(255, 90, 70));
-                g.DrawString("❌ 處理失敗", _headerFont, errBrush, 36 * s, 130 * s);
+                g.DrawString($"❌ {Loc("progress_header_failed")}", _headerFont, errBrush, 36 * s, 130 * s);
             }
             if (_msgFont != null)
             {
@@ -107,7 +106,7 @@ namespace Clickra.UI
                 string displayErrMsg = errMsg;
                 if (displayErrMsg.Equals("User Aborted", StringComparison.OrdinalIgnoreCase))
                 {
-                    displayErrMsg = Localization.T("error_user_aborted", ClickraStorage.GetSetting(ClickraSettings.Language));
+                    displayErrMsg = Loc("error_user_aborted");
                 }
                 g.DrawString(displayErrMsg, _msgFont, errMsgBrush, new RectangleF(36 * s, 170 * s, 448 * s, 60 * s));
             }
@@ -120,7 +119,7 @@ namespace Clickra.UI
             if (_headerFont != null)
             {
                 using var succBrush = new SolidBrush(Color.FromArgb(100, 220, 100));
-                g.DrawString("✔ 轉換成功！", _headerFont, succBrush, 36 * s, 130 * s);
+                g.DrawString($"✔ {Loc("progress_header_success")}", _headerFont, succBrush, 36 * s, 130 * s);
             }
             if (_msgFont != null)
             {
@@ -130,7 +129,7 @@ namespace Clickra.UI
             if (_tipFont != null)
             {
                 using var tipBrush = new SolidBrush(Color.FromArgb(120, 120, 120));
-                g.DrawString("視窗將於數秒後自動關閉...", _tipFont, tipBrush, 36 * s, 220 * s);
+                g.DrawString(Loc("progress_auto_close_hint"), _tipFont, tipBrush, 36 * s, 220 * s);
             }
         }
 
@@ -143,10 +142,9 @@ namespace Clickra.UI
             }
             else if (_msgFont != null)
             {
-                string lang = ClickraStorage.GetSetting(ClickraSettings.Language);
                 string promptFormat = isRetry
-                    ? Localization.T("pdf_password_retry", lang)
-                    : Localization.T("pdf_password_prompt", lang);
+                    ? Loc("pdf_password_retry")
+                    : Loc("pdf_password_prompt");
                 string promptText = string.Format(promptFormat, Path.GetFileName(promptFile));
 
                 using var promptBrush = new SolidBrush(Color.FromArgb(220, 220, 220));
@@ -172,7 +170,7 @@ namespace Clickra.UI
             if (_tipFont != null)
             {
                 using var tipBrush = new SolidBrush(Color.FromArgb(100, 100, 100));
-                g.DrawString("請稍候，正在背景高速處理中...", _tipFont, tipBrush, 36 * s, 220 * s);
+                g.DrawString(Loc("progress_tip_processing"), _tipFont, tipBrush, 36 * s, 220 * s);
             }
 
             PaintTrayButton(g, s);
@@ -300,8 +298,7 @@ namespace Clickra.UI
             // Draw custom tooltip next to the button when hovered
             if (_isTrayBtnHovered && _tipFont != null)
             {
-                string lang = ClickraStorage.GetSetting(ClickraSettings.Language);
-                string tooltipText = Localization.T("progress_background", lang);
+                string tooltipText = Loc("progress_background");
                 var tSize = g.MeasureString(tooltipText, _tipFont);
                 float tx = btnRect.X - tSize.Width - 10 * s;
                 float ty = btnRect.Y + (btnRect.Height - tSize.Height) / 2;
