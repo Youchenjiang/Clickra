@@ -507,7 +507,6 @@ namespace Clickra.Core
                 ("fluent_task_parked_ttl_expired", "已過期（即將清理）", "已过期（即将清理）", "Expired (pending cleanup)", "期限切れ（まもなく削除）", "만료됨 (곧 정리됨)"),
                 ("fluent_task_parked_expiring_warning", "⚠️ 有 {0} 個待繼續任務即將過期，請儘速處理。", "⚠️ 有 {0} 个待继续任务即将过期，请尽快处理。", "⚠️ {0} parked task(s) expiring soon. Please resume or cancel promptly.", "⚠️ {0} 件の再開待ちタスクがまもなく期限切れになります。速やかに処理してください。", "⚠️ {0}개의 재개 대기 작업이 곧 만료됩니다. 신속히 처리해 주세요."),
                 ("fluent_task_parked_badge_expiring", "即將過期", "即将过期", "Expiring soon", "まもなく期限切れ", "곧 만료됨"),
-                ("tray_restore_all", "還原所有轉換視窗", "还原所有转换窗口", "Restore all conversion windows", "すべての変換ウィンドウを復元", "모든 변환 창 복원"),
                 ("setting_parked_ttl_title", "暫存保留", "暂存保留", "Parked task retention", "一時停止の保持期間", "보류 작업 보관"),
                 ("setting_parked_ttl_desc", "已暫存轉換的保留天數（0 = 無限期）", "已暂存转换的保留天数（0 = 无期限）", "Days to keep parked conversions (0 = unlimited)", "一時停止した変換の保持日数（0 = 無期限）", "보류된 변환 보관 일수(0 = 무제한)"),
                 ("setting_parked_ttl_days", RetentionDayZh, RetentionDayZh, "{0} days", "{0} 日", "{0} 일"),
