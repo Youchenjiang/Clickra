@@ -38,8 +38,8 @@ static partial class TestSuite
         runner.Run("Settings storage: retired keys are purged and rewritten on load", TestRetiredSettingsPurgedOnLoad);
         runner.Run("Settings registry: CLI localization keys coverage across all 5 languages", TestCliLocalizationKeysCoverage);
         runner.Run("Settings registry: Diagnostics email localization coverage across all 5 languages", TestDiagnosticsEmailLocalizationCoverage);
-        runner.Run("Settings registry: Tray and visual splitter localization coverage across all 5 languages", TestTraySplitterLocalizationCoverage);
-        runner.Run("Localization guard: No hardcoded Chinese strings in Clickra.Fluent, Dashboard paint files, and ProgressWindow.VisualSplitter.cs", TestNoHardcodedChineseUiStrings);
+        runner.Run("Settings registry: Tray, visual splitter, and progress window localization coverage across all 5 languages", TestTraySplitterLocalizationCoverage);
+        runner.Run("Localization guard: No hardcoded Chinese strings in Clickra.Fluent, Dashboard paint files, and ProgressWindow paint files", TestNoHardcodedChineseUiStrings);
         runner.Run("Settings registry: Translation diagnostics lists gaps grouped by language when translations are missing", TestTranslationDiagnosticsGapReport);
         runner.Run("Settings registry: All registered keys must have complete translations across all 5 languages", TestLocalizationDictionaryParity);
         runner.Run("Test runner: CleanStaleArtifacts cleans isolated temp directories and test artifacts", TestCleanStaleArtifacts);
@@ -320,7 +320,15 @@ static partial class TestSuite
             "pdf_split_segment_item",
             "pdf_split_page_preview_format",
             "pdf_split_badge_format",
-            "pdf_split_pages_n"
+            "pdf_split_pages_n",
+            "progress_sub_failed",
+            "progress_sub_completed",
+            "progress_sub_visual_splitter",
+            "progress_sub_running",
+            "progress_header_failed",
+            "progress_header_success",
+            "progress_auto_close_hint",
+            "progress_tip_processing"
         };
 
         AssertLocalizationKeysCoverage(keys);
@@ -390,6 +398,12 @@ static partial class TestSuite
         if (File.Exists(visualSplitterPath))
         {
             filesToScan.Add(visualSplitterPath);
+        }
+
+        string progressPaintPath = Path.Combine(root, "src", "Clickra.CLI", "Progress", "ProgressWindow.Paint.cs");
+        if (File.Exists(progressPaintPath))
+        {
+            filesToScan.Add(progressPaintPath);
         }
 
         Assert.True(filesToScan.Count > 0, "Expected to find target UI files for localization guard scanning.");
