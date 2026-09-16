@@ -296,7 +296,7 @@ public sealed partial class TaskProgressPage : Page
     {
         if (_parkRequested) return;
         _parkRequested = true;
-        _parkReason = L("fluent_task_parked_waiting");
+        _parkReason = L("task_parked_waiting");
         if (_activeDialog != null)
         {
             try { _activeDialog.Hide(); } catch { /* Dialog may already be disposed; ignore. */ }
