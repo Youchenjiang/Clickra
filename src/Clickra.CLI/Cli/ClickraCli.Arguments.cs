@@ -17,13 +17,8 @@ namespace Clickra
 
         const int ATTACH_PARENT_PROCESS = -1;
 
-        private static string CurrentLanguage => ClickraStorage.GetSetting(ClickraSettings.Language);
-
-        internal static string Loc(string key, params object[] args)
-        {
-            string t = Localization.T(key, CurrentLanguage);
-            return args.Length > 0 ? string.Format(t, args) : t;
-        }
+        internal static string Loc(string key, params object[] args) =>
+            Localization.T(key, args);
 
         /// <summary>Filters out files whose extension is not allowed for the command,
         /// warning or failing depending on quiet mode.</summary>

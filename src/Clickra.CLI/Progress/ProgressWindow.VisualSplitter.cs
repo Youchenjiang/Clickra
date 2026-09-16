@@ -408,11 +408,9 @@ public partial class ProgressWindow
         PaintSplitterZoomOverlay(g, s);
     }
 
-    private static string Loc(string key) =>
-        Localization.T(key, ClickraStorage.GetSetting(ClickraSettings.Language));
+    private static string Loc(string key) => Localization.T(key);
 
-    private static string Loc(string key, params object[] args) =>
-        string.Format(Localization.T(key, ClickraStorage.GetSetting(ClickraSettings.Language)), args);
+    private static string Loc(string key, params object[] args) => Localization.T(key, args);
 
     /// <summary>Paints the three mode buttons (custom segments, split each page, fixed pages).</summary>
     private void PaintSplitterModeBar(Graphics g, float s)
