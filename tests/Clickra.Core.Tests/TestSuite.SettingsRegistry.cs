@@ -39,6 +39,7 @@ static partial class TestSuite
         runner.Run("Settings registry: CLI localization keys coverage across all 5 languages", TestCliLocalizationKeysCoverage);
         runner.Run("Settings registry: Diagnostics email localization coverage across all 5 languages", TestDiagnosticsEmailLocalizationCoverage);
         runner.Run("Settings registry: Tray, visual splitter, and progress window localization coverage across all 5 languages", TestTraySplitterLocalizationCoverage);
+        runner.Run("Settings registry: Localization.T default language and formatting overloads", TestLocalizationDefaultLanguageAndFormatting);
         runner.Run("Localization guard: No hardcoded Chinese strings in Clickra.Fluent, Dashboard paint files, and ProgressWindow paint files", TestNoHardcodedChineseUiStrings);
         runner.Run("Settings registry: Translation diagnostics lists gaps grouped by language when translations are missing", TestTranslationDiagnosticsGapReport);
         runner.Run("Settings registry: All registered keys must have complete translations across all 5 languages", TestLocalizationDictionaryParity);
@@ -332,6 +333,35 @@ static partial class TestSuite
         };
 
         AssertLocalizationKeysCoverage(keys);
+    }
+
+    private static void TestLocalizationDefaultLanguageAndFormatting()
+    {
+        string origLang = ClickraStorage.GetSetting(ClickraSettings.Language);
+        try
+        {
+            ClickraStorage.SaveSetting(ClickraSettings.Language, LanguageEnUs);
+            Assert.Equal("Overview", Localization.T("fluent_nav_overview"));
+            Assert.Equal("Operation completed", Localization.T("progress_sub_completed"));
+
+            ClickraStorage.SaveSetting(ClickraSettings.Language, LanguageJaJp);
+            Assert.Equal("概要", Localization.T("fluent_nav_overview"));
+            Assert.Equal("処理完了", Localization.T("progress_sub_completed"));
+
+            ClickraStorage.SaveSetting(ClickraSettings.Language, LanguageZhTw);
+            Assert.Equal("總覽", Localization.T("fluent_nav_overview"));
+            Assert.Equal("作業完成", Localization.T("progress_sub_completed"));
+
+            ClickraStorage.SaveSetting(ClickraSettings.Language, LanguageEnUs);
+            Assert.Equal("[PDF] doc.pdf (5 pages)", Localization.T("pdf_split_badge_format", "doc.pdf", 5));
+
+            ClickraStorage.SaveSetting(ClickraSettings.Language, LanguageZhTw);
+            Assert.Equal("[PDF] doc.pdf (5 頁)", Localization.T("pdf_split_badge_format", "doc.pdf", 5));
+        }
+        finally
+        {
+            ClickraStorage.SaveSetting(ClickraSettings.Language, origLang);
+        }
     }
 
     private static void TestTranslationDiagnosticsGapReport()
