@@ -86,7 +86,7 @@ public sealed partial class MainPage : Page
         }
     }
 
-    private static string L(string key) => Localization.T(key, ClickraStorage.GetSetting(ClickraSettings.Language));
+    private static string L(string key) => Localization.T(key);
 
     private void NavView_SelectionChanged(NavigationView sender, NavigationViewSelectionChangedEventArgs args)
     {
