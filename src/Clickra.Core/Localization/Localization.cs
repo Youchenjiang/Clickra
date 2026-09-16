@@ -652,6 +652,8 @@ namespace Clickra.Core
                 ("cli_progress_translating_pdf_saving", "翻譯完成，正在儲存 PDF...", "翻译完成，正在保存 PDF...", "Translation complete, saving PDF...", "翻訳完了、PDF を保存中...", "번역 완료, PDF 저장 중..."),
                 ("cli_progress_translating_pdf_stage", "[PDF 翻譯] {0} ({1}/{2})", "[PDF 翻译] {0} ({1}/{2})", "[PDF translate] {0} ({1}/{2})", "[PDF 翻訳] {0} ({1}/{2})", "[PDF 번역] {0} ({1}/{2})"),
                 ("cli_tray_converting", "Clickra - 正在轉換... {0}%", "Clickra - 正在转换... {0}%", "Clickra - Converting... {0}%", "Clickra - 変換中... {0}%", "Clickra - 변환 중... {0}%"),
+                ("cli_tray_restore", "還原", "还原", "Restore", "復元", "복원"),
+                ("cli_tray_cancel", "取消作業", "取消作业", "Cancel Operation", "処理を中止", "작업 취소"),
             };
 
             RegisterTranslations(data);
