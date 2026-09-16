@@ -22,6 +22,15 @@ namespace Clickra.Core
         private static readonly string HistoryFile;
         private static readonly object FileLock = new object();
         private static readonly Dictionary<string, string> SettingsCache = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        private static DateTime _lastLoadedTimestampUtc = DateTime.MinValue;
+        private static FileSystemWatcher? _settingsWatcher;
+        private static int _reloadDebounceScheduled = 0;
+
+        /// <summary>當設定自磁碟或外部程序重新載入時引發此事件。</summary>
+        public static event Action? SettingsReloaded;
+
+        /// <summary>當個別設定值變更時引發此事件（鍵，新值）。</summary>
+        public static event Action<string, string>? SettingChanged;
 
         public static string GetDataDir() => DataDir;
 
@@ -52,6 +61,7 @@ namespace Clickra.Core
             catch { }
 
             LoadSettings();
+            InitializeSettingsWatcher();
         }
 
         // ─── Settings ──────────────────────────────────────────────────────────
@@ -104,63 +114,184 @@ namespace Clickra.Core
             }
         }
 
+        private static void InitializeSettingsWatcher()
+        {
+            try
+            {
+                if (!Directory.Exists(DataDir))
+                {
+                    Directory.CreateDirectory(DataDir);
+                }
+
+                _settingsWatcher = new FileSystemWatcher(DataDir, Path.GetFileName(SettingsFile))
+                {
+                    NotifyFilter = NotifyFilters.LastWrite | NotifyFilters.Size | NotifyFilters.FileName | NotifyFilters.CreationTime,
+                    EnableRaisingEvents = true
+                };
+
+                FileSystemEventHandler onFileChanged = (_, _) => OnSettingsFileChangedOnDisk();
+                _settingsWatcher.Changed += onFileChanged;
+                _settingsWatcher.Created += onFileChanged;
+                _settingsWatcher.Renamed += (_, _) => OnSettingsFileChangedOnDisk();
+            }
+            catch
+            {
+                // In restricted sandbox or test environments where FileSystemWatcher is unsupported, fallback gracefully.
+            }
+        }
+
+        private static void OnSettingsFileChangedOnDisk()
+        {
+            if (Interlocked.Exchange(ref _reloadDebounceScheduled, 1) == 0)
+            {
+                ThreadPool.QueueUserWorkItem(_ =>
+                {
+                    Thread.Sleep(25);
+                    Interlocked.Exchange(ref _reloadDebounceScheduled, 0);
+                    ReloadSettings();
+                });
+            }
+        }
+
         private static void LoadSettings()
         {
             lock (FileLock)
             {
                 RunWithMutex(() =>
                 {
-                    // 只載入實際存在的設定；預設值統一由 ClickraSettings 登錄表提供，
-                    // 因此刪掉設定檔中的一行就等於回復該鍵的預設值。
-                    SettingsCache.Clear();
-                    bool cleanedRetiredKeys = false;
-
-                    if (File.Exists(SettingsFile))
-                    {
-                        try
-                        {
-                            foreach (string line in File.ReadLines(SettingsFile))
-                            {
-                                if (string.IsNullOrWhiteSpace(line) || line.StartsWith("#")) continue;
-                                int idx = line.IndexOf('=');
-                                if (idx > 0)
-                                {
-                                    string key = line.Substring(0, idx).Trim();
-                                    string val = line.Substring(idx + 1).Trim();
-
-                                    // 遇到已退役鍵時自動剔除，不再載入記憶體
-                                    if (ClickraSettings.IsRetired(key))
-                                    {
-                                        cleanedRetiredKeys = true;
-                                        continue;
-                                    }
-
-                                    SettingsCache[key] = val;
-                                }
-                            }
-
-                            // 若發現設定檔中存在退役鍵，將乾淨的設定寫回檔案，避免廢棄設定永久殘留
-                            if (cleanedRetiredKeys)
-                            {
-                                PersistSettingsFileLocked();
-                            }
-                        }
-                        catch { }
-                    }
+                    LoadSettingsInternalLocked();
                 });
+            }
+        }
+
+        private static void LoadSettingsInternalLocked()
+        {
+            var newCache = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+            bool cleanedRetiredKeys = false;
+            DateTime currentWriteTime = DateTime.MinValue;
+
+            if (File.Exists(SettingsFile))
+            {
+                try
+                {
+                    currentWriteTime = File.GetLastWriteTimeUtc(SettingsFile);
+                    foreach (string line in File.ReadLines(SettingsFile))
+                    {
+                        if (string.IsNullOrWhiteSpace(line) || line.StartsWith("#")) continue;
+                        int idx = line.IndexOf('=');
+                        if (idx > 0)
+                        {
+                            string key = line.Substring(0, idx).Trim();
+                            string val = line.Substring(idx + 1).Trim();
+
+                            if (ClickraSettings.IsRetired(key))
+                            {
+                                cleanedRetiredKeys = true;
+                                continue;
+                            }
+
+                            newCache[key] = val;
+                        }
+                    }
+                }
+                catch { }
+            }
+
+            var changedKeys = new List<(string Key, string Value)>();
+            foreach (var kvp in newCache)
+            {
+                if (!SettingsCache.TryGetValue(kvp.Key, out var oldVal) || oldVal != kvp.Value)
+                {
+                    changedKeys.Add((kvp.Key, kvp.Value));
+                }
+            }
+            foreach (var kvp in SettingsCache)
+            {
+                if (!newCache.ContainsKey(kvp.Key))
+                {
+                    changedKeys.Add((kvp.Key, ClickraSettings.GetDefault(kvp.Key)));
+                }
+            }
+
+            SettingsCache.Clear();
+            foreach (var kvp in newCache)
+            {
+                SettingsCache[kvp.Key] = kvp.Value;
+            }
+            _lastLoadedTimestampUtc = currentWriteTime;
+
+            if (cleanedRetiredKeys)
+            {
+                PersistSettingsFileLocked();
+            }
+
+            if (changedKeys.Count > 0)
+            {
+                NotifySettingsChanged(changedKeys);
             }
         }
 
         private static void PersistSettingsFileLocked()
         {
-            using var sw = new StreamWriter(SettingsFile, false, System.Text.Encoding.UTF8);
-            foreach (var kvp in SettingsCache)
+            using (var sw = new StreamWriter(SettingsFile, false, System.Text.Encoding.UTF8))
             {
-                sw.WriteLine($"{kvp.Key}={kvp.Value}");
+                foreach (var kvp in SettingsCache)
+                {
+                    sw.WriteLine($"{kvp.Key}={kvp.Value}");
+                }
+            }
+            try
+            {
+                _lastLoadedTimestampUtc = File.GetLastWriteTimeUtc(SettingsFile);
+            }
+            catch { }
+        }
+
+        private static void EnsureFreshSettingsLocked()
+        {
+            try
+            {
+                if (File.Exists(SettingsFile))
+                {
+                    DateTime diskTime = File.GetLastWriteTimeUtc(SettingsFile);
+                    if (diskTime != _lastLoadedTimestampUtc)
+                    {
+                        RunWithMutex(() =>
+                        {
+                            LoadSettingsInternalLocked();
+                        });
+                    }
+                }
+                else if (_lastLoadedTimestampUtc != DateTime.MinValue)
+                {
+                    RunWithMutex(() =>
+                    {
+                        LoadSettingsInternalLocked();
+                    });
+                }
+            }
+            catch { }
+        }
+
+        /// <summary>主動檢查設定檔在磁碟上的更新時間；若已被外部程序修改則立即同步快取。</summary>
+        public static void EnsureFreshSettings()
+        {
+            lock (FileLock)
+            {
+                EnsureFreshSettingsLocked();
             }
         }
 
-        internal static void ReloadSettings() => LoadSettings();
+        public static void ReloadSettings()
+        {
+            lock (FileLock)
+            {
+                RunWithMutex(() =>
+                {
+                    LoadSettingsInternalLocked();
+                });
+            }
+        }
 
         internal static string GetSettingsFilePath() => SettingsFile;
 
@@ -169,6 +300,7 @@ namespace Clickra.Core
         {
             lock (FileLock)
             {
+                EnsureFreshSettingsLocked();
                 return SettingsCache.TryGetValue(key, out string? val) ? val : ClickraSettings.GetDefault(key);
             }
         }
@@ -185,6 +317,12 @@ namespace Clickra.Core
         {
             lock (FileLock)
             {
+                EnsureFreshSettingsLocked();
+                if (SettingsCache.TryGetValue(key, out string? oldVal) && oldVal == val)
+                {
+                    return;
+                }
+
                 SettingsCache[key] = val;
                 RunWithMutex(() =>
                 {
@@ -194,7 +332,25 @@ namespace Clickra.Core
                     }
                     catch { }
                 });
+
+                NotifySettingsChanged(new List<(string Key, string Value)> { (key, val) });
             }
+        }
+
+        private static void NotifySettingsChanged(List<(string Key, string Value)> changes)
+        {
+            ThreadPool.QueueUserWorkItem(_ =>
+            {
+                try
+                {
+                    foreach (var (key, value) in changes)
+                    {
+                        SettingChanged?.Invoke(key, value);
+                    }
+                    SettingsReloaded?.Invoke();
+                }
+                catch { }
+            });
         }
 
         public static string GetOutputDir(string sourceFilePath)
