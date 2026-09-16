@@ -571,7 +571,7 @@ public sealed partial class MainPage : Page
         DropZoneTypesText.Text = L("fluent_drop_types");
         SelectedFilesTitle.Text = L("fluent_selected_files");
         SelectedFilesDesc.Text = L("fluent_selected_files_desc");
-        ClearFilesButton.Content = L("fluent_clear");
+        ClearFilesButton.Content = L("convert_clear");
         EmptyFileMessage.Text = L("fluent_no_files");
         CommandTitle.Text = L("fluent_command");
         CommandStatusText.Text = _selectedCommand is null ? L("fluent_choose_command") : string.Format(L("fluent_selected_command"), L(ConvertCommandRegistry.GetLabelKey(_selectedCommand)));
@@ -596,12 +596,12 @@ public sealed partial class MainPage : Page
         BtnImgToHeic.Content = L("cmd_img_to_heic");
         RunTitle.Text = L("fluent_run");
         StartButton.Content = L("fluent_start");
-        CancelButton.Content = L("fluent_cancel");
+        CancelButton.Content = L("dialog_cancel");
         if (!_isRunning) ConversionProgressText.Text = L("fluent_ready");
 
         HistoryTitle.Text = L("fluent_nav_history");
         HistorySubtitle.Text = L("fluent_history_subtitle");
-        ClearHistoryButton.Content = L("fluent_clear");
+        ClearHistoryButton.Content = L("convert_clear");
         HistoryTotalLabel.Text = L("fluent_total");
         HistorySuccessLabel.Text = L(SuccessLocalizationKey);
         HistoryFailedLabel.Text = L(FailedLocalizationKey);
@@ -872,7 +872,7 @@ public sealed partial class MainPage : Page
         };
         var resumeButton = new Button { Content = L("fluent_task_resume"), Padding = new Thickness(14, 6, 14, 6) };
         resumeButton.Click += (_, _) => ResumeParkedTask(task);
-        var cancelButton = new Button { Content = L("fluent_cancel"), Padding = new Thickness(14, 6, 14, 6) };
+        var cancelButton = new Button { Content = L("dialog_cancel"), Padding = new Thickness(14, 6, 14, 6) };
         cancelButton.Click += async (_, _) => await CancelParkedTaskAsync(task);
         actions.Children.Add(resumeButton);
         actions.Children.Add(cancelButton);
@@ -1570,8 +1570,8 @@ public sealed partial class MainPage : Page
         {
             Title = "Clickra",
             Content = message,
-            PrimaryButtonText = L("fluent_ok"),
-            CloseButtonText = L("fluent_cancel"),
+            PrimaryButtonText = L("dialog_ok"),
+            CloseButtonText = L("dialog_cancel"),
             XamlRoot = XamlRoot
         };
         return await dialog.ShowAsync() == ContentDialogResult.Primary;
@@ -1602,7 +1602,7 @@ public sealed partial class MainPage : Page
         {
             Title = "Clickra",
             Content = message,
-            CloseButtonText = L("fluent_ok"),
+            CloseButtonText = L("dialog_ok"),
             XamlRoot = XamlRoot
         };
         await dialog.ShowAsync();

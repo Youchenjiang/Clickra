@@ -18,7 +18,7 @@ internal static class FluentDialogs
         {
             Title = localize("fluent_pdf_password"),
             Content = box,
-            PrimaryButtonText = localize("fluent_ok"),
+            PrimaryButtonText = localize("dialog_ok"),
             CloseButtonText = localize("dialog_cancel"),
             XamlRoot = xamlRoot
         };

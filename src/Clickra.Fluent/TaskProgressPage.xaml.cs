@@ -91,7 +91,7 @@ public sealed partial class TaskProgressPage : Page
         fileText.Text = "";
         stateText.Text = L("fluent_progress_preparing");
         openFolderButton.Content = L("fluent_progress_open_folder");
-        cancelButton.Content = L("fluent_cancel");
+        cancelButton.Content = L("dialog_cancel");
     }
 
     private sealed record ParseResult(string Command, List<string> Files, int StartIndex, string? ExistingTaskId);
