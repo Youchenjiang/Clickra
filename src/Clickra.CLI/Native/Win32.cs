@@ -121,7 +121,17 @@ namespace Clickra.UI.Native
         public const uint WS_TABSTOP = 0x00010000;
         public const int IDC_HAND = 32649;
 
+        [DllImport("user32.dll", SetLastError = true)] public static extern IntPtr CreatePopupMenu();
+        [DllImport("user32.dll", EntryPoint = "AppendMenuW", CharSet = CharSet.Unicode, SetLastError = true)] public static extern bool AppendMenu(IntPtr hMenu, uint uFlags, IntPtr uIDNewItem, string? lpNewItem);
+        [DllImport("user32.dll", SetLastError = true)] public static extern uint TrackPopupMenuEx(IntPtr hMenu, uint uFlags, int x, int y, IntPtr hwnd, IntPtr lptpm);
+        [DllImport("user32.dll", SetLastError = true)] public static extern bool DestroyMenu(IntPtr hMenu);
+
         public delegate IntPtr WndProcDelegate(IntPtr h, uint msg, IntPtr w, IntPtr l);
         public static readonly IntPtr TIMER_ID_REFRESH = (IntPtr)1001;
+        public const uint MF_STRING = 0x00000000;
+        public const uint MF_SEPARATOR = 0x00000800;
+        public const uint TPM_RETURNCMD = 0x00000100;
+        public const uint TPM_NONOTIFY = 0x00000080;
+        public const uint TPM_BOTTOMALIGN = 0x00000020;
     }
 }

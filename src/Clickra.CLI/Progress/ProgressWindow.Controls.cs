@@ -672,15 +672,56 @@ namespace Clickra.UI
             return IntPtr.Zero; // Handled: the window hides rather than entering the minimized state.
         }
 
-        /// <summary>Restores the window when the tray icon is double-clicked.</summary>
+        /// <summary>Handles tray icon interaction: left click/double-click restores the window,
+        /// right click pops up a context menu with restore and cancel actions.</summary>
         private IntPtr HandleTrayIcon(IntPtr hwnd, IntPtr l)
         {
-            if (l.ToInt64() == 0x0203) // WM_LBUTTONDBLCLK
+            long msg = l.ToInt64();
+            if (msg == 0x0202 || msg == 0x0203) // WM_LBUTTONUP or WM_LBUTTONDBLCLK
             {
                 ShowWindow(hwnd, 5); // SW_SHOW
                 ShowWindow(hwnd, 9); // SW_RESTORE
                 SetForegroundWindow(hwnd);
                 RemoveTrayIcon();
+            }
+            else if (msg == 0x0205 || msg == 0x007B) // WM_RBUTTONUP or WM_CONTEXTMENU
+            {
+                SetForegroundWindow(hwnd);
+                GetCursorPos(out Point pt);
+
+                IntPtr menu = CreatePopupMenu();
+                if (menu != IntPtr.Zero)
+                {
+                    try
+                    {
+                        const uint idRestore = 1;
+                        const uint idCancel = 2;
+
+                        AppendMenu(menu, MF_STRING, (IntPtr)idRestore, Loc("cli_tray_restore"));
+                        AppendMenu(menu, MF_SEPARATOR, IntPtr.Zero, null);
+                        AppendMenu(menu, MF_STRING, (IntPtr)idCancel, Loc("cli_tray_cancel"));
+
+                        uint cmd = TrackPopupMenuEx(menu, TPM_RETURNCMD | TPM_NONOTIFY | TPM_BOTTOMALIGN,
+                            pt.X, pt.Y, hwnd, IntPtr.Zero);
+                        PostMessageW(hwnd, 0, IntPtr.Zero, IntPtr.Zero);
+
+                        if (cmd == idRestore)
+                        {
+                            ShowWindow(hwnd, 5); // SW_SHOW
+                            ShowWindow(hwnd, 9); // SW_RESTORE
+                            SetForegroundWindow(hwnd);
+                            RemoveTrayIcon();
+                        }
+                        else if (cmd == idCancel)
+                        {
+                            SendMessageW(hwnd, 0x0010, IntPtr.Zero, IntPtr.Zero); // WM_CLOSE -> HandleClose(hwnd)
+                        }
+                    }
+                    finally
+                    {
+                        DestroyMenu(menu);
+                    }
+                }
             }
             return IntPtr.Zero;
         }
