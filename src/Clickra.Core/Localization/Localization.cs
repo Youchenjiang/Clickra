@@ -823,6 +823,18 @@ namespace Clickra.Core
             return key;
         }
 
+        /// <summary>
+        /// Translates a resource key using the currently configured language setting.
+        /// </summary>
+        public static string T(string key) =>
+            T(key, ClickraStorage.GetSetting(ClickraSettings.Language));
+
+        /// <summary>
+        /// Translates a resource key using the currently configured language setting and formats it with arguments.
+        /// </summary>
+        public static string T(string key, params object[] args) =>
+            args is { Length: > 0 } ? string.Format(T(key), args) : T(key);
+
         /// <summary>Canonical list of the 5 supported language codes.</summary>
         public static IReadOnlyList<string> SupportedLanguages => new[] { LangTw, LangCn, LangEn, LangJa, LangKo };
 
