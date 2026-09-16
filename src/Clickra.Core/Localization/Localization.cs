@@ -539,7 +539,6 @@ namespace Clickra.Core
                 ("fluent_progress_preparing", "準備中", "准备中", "Preparing", "準備中", "준비 중"),
                 ("fluent_progress_output", "輸出：", "输出：", "Output: ", "出力: ", "출력: "),
                 ("fluent_progress_waiting", "請稍候，正在背景處理中...", "请稍候，正在后台处理中...", "Please wait. Processing in the background...", "お待ちください。バックグラウンドで処理しています...", "잠시만 기다려 주세요. 백그라운드에서 처리 중입니다..."),
-                ("fluent_progress_running", "正在執行作業...", "正在执行作业...", "Working...", "処理を実行中...", "작업 실행 중..."),
                 ("fluent_progress_processing", "正在處理...", "正在处理...", "Processing...", "処理中...", "처리 중..."),
                 ("fluent_progress_done_title", "處理完成", "处理完成", "Completed", "処理完了", "처리 완료"),
                 ("fluent_progress_failed_title", "處理未完成", "处理未完成", "Not completed", "未完了", "완료되지 않음"),
