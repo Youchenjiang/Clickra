@@ -600,6 +600,18 @@ namespace Clickra.Core
                 ("fluent_office", OfficeName, OfficeName, OfficeName, OfficeName, OfficeName),
                 ("fluent_images", "圖片", "图片", "Images", "画像", "이미지"),
                 ("fluent_history_subtitle", "近期轉換結果", "近期转换结果", "Recent conversion results", "最近の変換結果", "최근 변환 결과"),
+                ("task_parked_waiting", "等待輸入", "等待输入", "Waiting for input", "入力待ち", "입력 대기"),
+                ("task_parked_title", "待繼續任務", "待继续任务", "Tasks awaiting continuation", "再開待ちタスク", "재개 대기 작업"),
+                ("task_parked_desc", "已暫存的轉換作業，可在過期前隨時繼續或取消。", "已暂存的转换任务，可在过期前随时继续或取消。", "Parked conversions that can be resumed or cancelled before expiring.", "一時停止した変換作業は、有効期限が切れる前にいつでも再開またはキャンセルできます。", "보류된 변환 작업은 만료되기 전에 언제든지 재개하거나 취소할 수 있습니다."),
+                ("task_parked_cancel_confirm", "確定要取消此暫存任務嗎？", "确定要取消此暂存任务吗？", "Are you sure you want to cancel this parked task?", "この一時停止タスクをキャンセルしてもよろしいですか？", "이 보류된 작업을 취소하시겠습니까?"),
+                ("task_parked_ttl_days", "剩餘 {0} 天過期", "剩余 {0} 天过期", "Expires in {0} days", "残り {0} 日で期限切れ", "{0}일 후 만료"),
+                ("task_parked_ttl_days_one", "剩餘 {0} 天過期", "剩余 {0} 天过期", "Expires in {0} day", "残り {0} 日で期限切れ", "{0}일 후 만료"),
+                ("task_parked_ttl_expiring_soon", "即將過期（剩餘不到 1 天）", "即将过期（剩余不到 1 天）", "Expiring soon (less than 1 day left)", "まもなく期限切れ（残り1日未満）", "곧 만료됨 (1일 미만 남음)"),
+                ("task_parked_ttl_unlimited", "永久保留", "永久保留", "Never expires", "無期限に保持", "영구 보관"),
+                ("task_parked_ttl_expired", "已過期（即將清理）", "已过期（即将清理）", "Expired (pending cleanup)", "期限切れ（まもなく削除）", "만료됨 (곧 정리됨)"),
+                ("task_parked_expiring_warning", "⚠️ 有 {0} 個待繼續任務即將過期，請儘速處理。", "⚠️ 有 {0} 个待继续任务即将过期，请尽快处理。", "⚠️ {0} parked task(s) expiring soon. Please resume or cancel promptly.", "⚠️ {0} 件の再開待ちタスクがまもなく期限切れになります。速やかに処理してください。", "⚠️ {0}개의 재개 대기 작업이 곧 만료됩니다. 신속히 처리해 주세요."),
+                ("task_parked_badge_expiring", "即將過期", "即将过期", "Expiring soon", "まもなく期限切れ", "곧 만료됨"),
+                ("fluent_status_canceled", "已取消", "已取消", "Canceled", "キャンセル済み", "취소됨"),
             };
 
             RegisterTranslations(data);
@@ -636,7 +648,25 @@ namespace Clickra.Core
                 ( "progress_header_failed", "處理失敗", "处理失败", "Processing failed", "処理失敗", "처리 실패" ),
                 ( "progress_header_success", "轉換成功！", "转换成功！", "Conversion successful!", "変換に成功しました！", "변환 성공!" ),
                 ( "progress_auto_close_hint", "視窗將於數秒後自動關閉...", "窗口将于数秒后自动关闭...", "Window will close automatically in a few seconds...", "ウィンドウは数秒後に自動で閉じます...", "창이 몇 초 후 자동으로 닫힙니다..." ),
-                ( "progress_tip_processing", "請稍候，正在背景高速處理中...", "请稍候，正在后台高速处理中...", "Please wait, processing in background...", "しばらくお待ちください。バックグラウンドで処理中です...", "잠시 기다려 주십시오. 백그라운드에서 처리 중입니다..." )
+                ( "progress_tip_processing", "請稍候，正在背景高速處理中...", "请稍候，正在后台高速处理中...", "Please wait, processing in background...", "しばらくお待ちください。バックグラウンドで処理中です...", "잠시 기다려 주십시오. 백그라운드에서 처리 중입니다..." ),
+                ("cli_err_no_input", "未傳入任何檔案進行處理。", "未传入任何文件进行处理。", "No files were passed in for processing.", "処理するファイルが渡されていません。", "처리할 파일이 전달되지 않았습니다."),
+                ("cli_err_no_input_title", "Clickra — 警告", "Clickra — 警告", "Clickra — Warning", "Clickra — 警告", "Clickra — 경고"),
+                ("cli_progress_all_done", "所有作業已順利完成！", "所有作业已顺利完成！", "All operations completed successfully!", "すべての処理が完了しました！", "모든 작업이 완료되었습니다!"),
+                ("cli_progress_compressing_pdf_done", "PDF 壓縮完成。", "PDF 压缩完成。", "PDF compression complete.", "PDF 圧縮が完了しました。", "PDF 압축 완료."),
+                ("cli_progress_compressing_pdf_stage", "[PDF 壓縮] {0} ({1}/{2})", "[PDF 压缩] {0} ({1}/{2})", "[PDF compress] {0} ({1}/{2})", "[PDF 圧縮] {0} ({1}/{2})", "[PDF 압축] {0} ({1}/{2})"),
+                ("cli_progress_decrypting_pdf_saving", "密碼去除完成，正在儲存 PDF...", "密码去除完成，正在保存 PDF...", "Password removal complete, saving PDF...", "パスワード解除完了、PDF を保存中...", "비밀번호 제거 완료, PDF 저장 중..."),
+                ("cli_progress_decrypting_pdf_stage", "[去除密碼] {0} ({1}/{2})", "[去除密码] {0} ({1}/{2})", "[Remove password] {0} ({1}/{2})", "[パスワード解除] {0} ({1}/{2})", "[비밀번호 제거] {0} ({1}/{2})"),
+                ("cli_progress_no_files", "無檔案可處理。", "无文件可处理。", "No files to process.", "処理できるファイルがありません。", "처리할 파일이 없습니다."),
+                ("cli_progress_pages_input_canceled", "使用者已取消頁碼範圍輸入。", "用户已取消页码范围输入。", "Page range input was canceled by the user.", "ユーザーがページ範囲の入力をキャンセルしました。", "사용자가 페이지 범위 입력을 취소했습니다."),
+                ("cli_progress_preparing", "正在準備處理...", "正在准备处理...", "Preparing...", "準備しています...", "준비 중..."),
+                ("cli_progress_splitting_pdf_done", "PDF 分割完成。", "PDF 分割完成。", "PDF split complete.", "PDF 分割が完了しました。", "PDF 분할 완료."),
+                ("cli_progress_splitting_pdf_stage", "[PDF 分割] {0} ({1}/{2})", "[PDF 分割] {0} ({1}/{2})", "[PDF split] {0} ({1}/{2})", "[PDF 分割] {0} ({1}/{2})", "[PDF 분할] {0} ({1}/{2})"),
+                ("cli_progress_toast_body", "已順利完成「{0}」作業（共 {1} 個檔案）。", "已顺利完成“{0}”作业（共 {1} 个文件）。", "Completed {0} successfully ({1} file(s)).", "「{0}」を {1} 件すべて完了しました。", "'{0}' 작업을 {1}개 파일 모두 완료했습니다."),
+                ("cli_progress_toast_title", "Clickra 轉換成功", "Clickra 转换成功", "Clickra conversion complete", "Clickra 変換完了", "Clickra 변환 완료"),
+                ("cli_progress_translating_pdf_saving", "翻譯完成，正在儲存 PDF...", "翻译完成，正在保存 PDF...", "Translation complete, saving PDF...", "翻訳完了、PDF を保存中...", "번역 완료, PDF 저장 중..."),
+                ("cli_progress_translating_pdf_stage", "[PDF 翻譯] {0} ({1}/{2})", "[PDF 翻译] {0} ({1}/{2})", "[PDF translate] {0} ({1}/{2})", "[PDF 翻訳] {0} ({1}/{2})", "[PDF 번역] {0} ({1}/{2})"),
+                ("cli_tray_converting", "Clickra - 正在轉換... {0}%", "Clickra - 正在转换... {0}%", "Clickra - Converting... {0}%", "Clickra - 変換中... {0}%", "Clickra - 변환 중... {0}%"),
+                ("cmd_img_compress", "壓縮圖片", "压缩图片", "Compress Images", "画像圧縮", "이미지 압축"),
             };
 
             RegisterTranslations(data);

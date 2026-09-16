@@ -272,6 +272,20 @@ namespace Clickra.Core
             bool IsExpiringSoon,
             bool HasExpired);
 
+        /// <summary>Formats the shared parked-task retention state for every UI surface.</summary>
+        public static string DescribeParkedRetention(ParkedRetentionInfo info)
+        {
+            if (info.IsUnlimited)
+                return Localization.T("task_parked_ttl_unlimited");
+            if (info.HasExpired)
+                return Localization.T("task_parked_ttl_expired");
+            if (info.IsExpiringSoon)
+                return Localization.T("task_parked_ttl_expiring_soon");
+            if (info.RemainingDays == 1)
+                return Localization.T("task_parked_ttl_days_one", 1);
+            return Localization.T("task_parked_ttl_days", info.RemainingDays);
+        }
+
         /// <summary>根據設定的保留天數與暫存經過時間，計算剩餘保留狀態。</summary>
         public static ParkedRetentionInfo CalculateRetentionInfo(int retentionDays, TimeSpan age)
         {
