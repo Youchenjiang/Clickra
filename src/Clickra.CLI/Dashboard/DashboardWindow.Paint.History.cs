@@ -495,6 +495,15 @@ namespace Clickra.UI
                     g.DrawString(warning, _tabFont, warningBrush,
                         (contentX + rowW - warningSize.Width / s) * s, startY * s);
                 }
+                else
+                {
+                    string desc = GetText("task_parked_desc");
+                    using var descBrush = new SolidBrush(Color.FromArgb(140, 140, 140));
+                    var fontToUse = _subFont ?? _tabFont;
+                    var descSize = g.MeasureString(desc, fontToUse);
+                    g.DrawString(desc, fontToUse, descBrush,
+                        (contentX + rowW - descSize.Width / s) * s, (startY + 2) * s);
+                }
             }
         }
 
@@ -531,6 +540,28 @@ namespace Clickra.UI
             float tagX = contentX + 12 + timeW + 16;
             float tagW = DrawCommandTag(g, task.Command, tagX, currentY + 11);
 
+            float nextContentX = tagX + tagW + 12;
+            if (needsAttention)
+            {
+                string badgeText = GetText("task_parked_badge_expiring");
+                float badgeTextW = _tagFont != null ? g.MeasureString(badgeText, _tagFont).Width / s : 48f;
+                float badgeW = badgeTextW + 14f;
+                const float badgeH = 22f;
+
+                using var badgePath = UIHelper.GetRoundedRectPath(new RectangleF(nextContentX * s, (currentY + 11) * s, badgeW * s, badgeH * s), 4 * s);
+                using var badgeBgBrush = new SolidBrush(Color.FromArgb(50, 40, 20));
+                using var badgeBorderPen = new Pen(ParkedAlertColor);
+                g.FillPath(badgeBgBrush, badgePath);
+                g.DrawPath(badgeBorderPen, badgePath);
+
+                if (_tagFont != null)
+                {
+                    using var badgeTextBrush = new SolidBrush(ParkedAlertColor);
+                    g.DrawString(badgeText, _tagFont, badgeTextBrush, (nextContentX + 7) * s, (currentY + 14) * s);
+                }
+                nextContentX += badgeW + 12;
+            }
+
             string ttlText = ClickraStorage.DescribeParkedRetention(info);
             float ttlW = _tagFont != null ? g.MeasureString(ttlText, _tagFont).Width / s : 60f;
             float ttlX = contentX + rowW - 16 - ttlW;
@@ -540,14 +571,22 @@ namespace Clickra.UI
             if (_bodyFont != null)
             {
                 using var fileBrush = new SolidBrush(Color.FromArgb(200, 200, 200));
-                float fileX = tagX + tagW + 16;
-                string displayText = FormatFileCountText(parkedFiles, task.FileCount);
+                string firstFile = parkedFiles.Length > 0
+                    ? Path.GetFileName(parkedFiles[0])
+                    : $"{task.FileCount} {GetText(LabelFilesKey)}";
+                string stoppedOn = task.FileCount > 1
+                    ? string.Format(GetText("fluent_task_file_index"), Math.Clamp(task.CurrentIndex + 1, 1, task.FileCount), task.FileCount)
+                    : "";
+                string reason = !string.IsNullOrWhiteSpace(task.ErrorMessage) ? task.ErrorMessage : "";
+                string displayText = string.Join(" · ", new[] { firstFile, stoppedOn, reason }.Where(part => !string.IsNullOrWhiteSpace(part)));
+
+                float fileX = nextContentX;
                 float maxW = ttlX - 16 - fileX;
                 if (maxW > 20)
                 {
                     displayText = UIHelper.TruncateFileName(g, displayText, _bodyFont, maxW, s);
+                    g.DrawString(displayText, _bodyFont, fileBrush, fileX * s, (currentY + 13) * s);
                 }
-                g.DrawString(displayText, _bodyFont, fileBrush, fileX * s, (currentY + 13) * s);
             }
 
             if (_tagFont != null)

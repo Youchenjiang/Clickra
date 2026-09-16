@@ -401,8 +401,24 @@ static partial class TestSuite
             "Each parked row must carry its own remaining retention.");
         Assert.True(paint.Contains("task_parked_title", StringComparison.Ordinal),
             "The parked block needs its localized heading.");
+        Assert.True(paint.Contains("task_parked_desc", StringComparison.Ordinal),
+            "The parked block must show its description when no tasks are expiring.");
         Assert.True(paint.Contains("task_parked_expiring_warning", StringComparison.Ordinal),
             "Parked rows about to be pruned must raise the aggregate warning.");
+        Assert.True(paint.Contains("task_parked_badge_expiring", StringComparison.Ordinal),
+            "Parked tasks that are expiring soon must render the expiring badge.");
+        Assert.True(paint.Contains("info.IsExpiringSoon", StringComparison.Ordinal),
+            "CLI dashboard must check IsExpiringSoon to highlight expiring tasks.");
+        Assert.True(paint.Contains("fluent_task_file_index", StringComparison.Ordinal),
+            "CLI dashboard must display the file index matching Fluent format.");
+        const string guardedSubtitleRender =
+            "if (maxW > 20)\n" +
+            "                {\n" +
+            "                    displayText = UIHelper.TruncateFileName(g, displayText, _bodyFont, maxW, s);\n" +
+            "                    g.DrawString(displayText, _bodyFont, fileBrush, fileX * s, (currentY + 13) * s);\n" +
+            "                }";
+        Assert.True(paint.Contains(guardedSubtitleRender, StringComparison.Ordinal),
+            "Parked task details must only render when space remains before the right-aligned retention label.");
         Assert.True(paint.Contains("DrawParkedQueue(g,", StringComparison.Ordinal),
             "The History page must call the parked block.");
 
