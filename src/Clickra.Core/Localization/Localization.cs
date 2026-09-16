@@ -603,6 +603,14 @@ namespace Clickra.Core
                 ("task_parked_ttl_expired", "已過期（即將清理）", "已过期（即将清理）", "Expired (pending cleanup)", "期限切れ（まもなく削除）", "만료됨 (곧 정리됨)"),
                 ("task_parked_expiring_warning", "⚠️ 有 {0} 個待繼續任務即將過期，請儘速處理。", "⚠️ 有 {0} 个待继续任务即将过期，请尽快处理。", "⚠️ {0} parked task(s) expiring soon. Please resume or cancel promptly.", "⚠️ {0} 件の再開待ちタスクがまもなく期限切れになります。速やかに処理してください。", "⚠️ {0}개의 재개 대기 작업이 곧 만료됩니다. 신속히 처리해 주세요."),
                 ("task_parked_badge_expiring", "即將過期", "即将过期", "Expiring soon", "まもなく期限切れ", "곧 만료됨"),
+                ("setting_image_compress_title", "圖片壓縮品質", "图片压缩质量", "Image Compression Quality", "画像圧縮品質", "이미지 압축 품질"),
+                ("setting_image_compress_desc", "選擇圖片壓縮品質等級（等級越高，壓縮比越大）", "选择图片压缩质量等级（等级越高，压缩比越大）", "Select image compression quality level (higher levels compress more)", "画像圧縮品質レベルを選択（高いほど高圧縮）", "이미지 압축 품질 수준 선택 (높을수록 압축률 증가)"),
+                ("setting_image_level_min", "最低", "最低", "Minimum", "最小", "최소"),
+                ("setting_image_level_small", "較小", "较小", "Small", "小", "작게"),
+                ("setting_image_level_std", "標準", "标准", "Standard", "標準", "표준"),
+                ("setting_image_level_high", "高壓縮", "高压缩", "High", "高圧縮", "고압축"),
+                ("setting_image_max_dimension_title", "圖片最大長邊", "图片最大长边", "Image Max Dimension", "画像最大長辺", "이미지 최대 긴 변"),
+                ("setting_image_max_dimension_desc", "限制壓縮後圖片的長邊像素（0 = 保持原始尺寸）", "限制压缩后图片的长边像素（0 = 保持原始尺寸）", "Max long-edge pixels for compressed images (0 = keep original size)", "圧縮後画像の長辺ピクセルを制限（0 = 元のサイズを維持）", "압축 후 이미지의 긴 쪽 픽셀 제한 (0 = 원본 크기 유지)"),
                 ("fluent_status_canceled", "已取消", "已取消", "Canceled", "キャンセル済み", "취소됨"),
             };
 
