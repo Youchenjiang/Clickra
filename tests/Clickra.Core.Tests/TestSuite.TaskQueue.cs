@@ -219,9 +219,10 @@ static partial class TestSuite
                     clickCode.Contains("ClickraSettings.GetDefaultInt(ClickraSettings.ParkedTaskRetention)", StringComparison.Ordinal),
             "CLI retention default must derive from the registered ParkedTaskRetention default.");
 
-        // Must clamp through the shared maximum used by both CLI and Fluent.
-        Assert.True(clickCode.Contains("ClickraSettings.MaxParkedTaskRetentionDays", StringComparison.Ordinal),
-            "Retention click handler must clamp through the shared maximum.");
+        // Must clamp through the centralized range used by both CLI and Fluent.
+        Assert.True(clickCode.Contains("ClickraSettings.MinParkedRetentionDays", StringComparison.Ordinal) &&
+                    clickCode.Contains("ClickraSettings.MaxParkedRetentionDays", StringComparison.Ordinal),
+            "Retention click handler must clamp through the centralized range.");
 
         // No local hardcoded settings-key literal; localization-key constants are allowed.
         Assert.False(clickCode.Contains("\"ParkedTaskRetention\"", StringComparison.Ordinal) ||
@@ -238,19 +239,25 @@ static partial class TestSuite
         string fluentXaml = File.ReadAllText(Path.Combine(root, "src", FluentProjectDirectory, "MainPage.xaml"));
         string cliClick = File.ReadAllText(Path.Combine(root, "src", CliProjectDirectory, DashboardDirectory, DashboardEventsClickFile));
 
-        Assert.True(ClickraSettings.MaxParkedTaskRetentionDays > 0, "The shared retention bound must be positive.");
+        Assert.True(ClickraSettings.MaxParkedRetentionDays > 0, "The shared retention bound must be positive.");
+        Assert.Equal(ClickraSettings.MaxParkedTaskRetentionDays, ClickraSettings.MaxParkedRetentionDays);
         foreach ((string name, string source) in new[] { ("Fluent", fluentCode), ("CLI dashboard", cliClick) })
         {
-            Assert.True(source.Contains("ClickraSettings.MaxParkedTaskRetentionDays", StringComparison.Ordinal),
-                $"{name} must take the retention bound from ClickraSettings.");
             Assert.False(source.Contains("365", StringComparison.Ordinal),
                 $"{name} must not keep a second copy of the retention bound.");
         }
 
-        Assert.True(fluentCode.Contains("ParkedRetentionBox.Maximum = ClickraSettings.MaxParkedTaskRetentionDays", StringComparison.Ordinal),
+        Assert.True(fluentCode.Contains("ParkedRetentionBox.Minimum = MinParkedRetentionDays", StringComparison.Ordinal),
+            "The Fluent control must set its runtime minimum from the shared bound.");
+        Assert.True(fluentCode.Contains("ParkedRetentionBox.Maximum = MaxParkedRetentionDays", StringComparison.Ordinal),
             "The Fluent control must set its runtime maximum from the shared bound.");
-        Assert.True(fluentXaml.Contains($"Maximum=\"{ClickraSettings.MaxParkedTaskRetentionDays}\"", StringComparison.Ordinal),
+        Assert.True(fluentXaml.Contains($"Minimum=\"{ClickraSettings.MinParkedRetentionDays}\"", StringComparison.Ordinal),
+            "The Fluent markup's Minimum must match the shared retention bound.");
+        Assert.True(fluentXaml.Contains($"Maximum=\"{ClickraSettings.MaxParkedRetentionDays}\"", StringComparison.Ordinal),
             "The Fluent markup's Maximum must match the shared retention bound.");
+        Assert.True(cliClick.Contains("ClickraSettings.MinParkedRetentionDays", StringComparison.Ordinal) &&
+                    cliClick.Contains("ClickraSettings.MaxParkedRetentionDays", StringComparison.Ordinal),
+            "The CLI retention click handler must use the shared retention bounds.");
     }
 
     private static void TestParkedRetentionAccessorClampsToSharedRange()
