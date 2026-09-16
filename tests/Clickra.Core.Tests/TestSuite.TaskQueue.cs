@@ -47,10 +47,16 @@ static partial class TestSuite
             TestFluentParkedRetentionControl);
         runner.Run("CLI Dashboard settings page exposes the parked retention control",
             TestCliDashboardParkedRetentionControl);
+        runner.Run("Parked retention: both settings pages share one range",
+            TestParkedRetentionRangeIsShared);
+        runner.Run("Parked retention: the accessor clamps to the range both settings pages can set",
+            TestParkedRetentionAccessorClampsToSharedRange);
         runner.Run("Task queue: parked retention calculation handles unlimited, active, expiring-soon and expired states",
             TestParkedRetentionInfoCalculation);
         runner.Run("Fluent History page renders expiration days and alerts user when parked tasks expire soon",
             TestFluentParkedExpirationUiContract);
+        runner.Run("CLI Dashboard History shows every parked task with its own remaining retention",
+            TestCliDashboardParkedTaskVisibility);
     }
 
     private static void TestCancellingParkedTaskRecordsCanceledLine()
@@ -109,7 +115,7 @@ static partial class TestSuite
         Assert.True(resumeBody.Contains("OpenTaskProgressWindow", StringComparison.Ordinal), "Resume must open the shared task window.");
         Assert.False(resumeBody.Contains("SetTaskInProgress", StringComparison.Ordinal),
             "Resume must not mark the task InProgress first; TaskProgressPage only accepts a Parked task.");
-        foreach (string key in new[] { "fluent_task_parked_title", "fluent_task_parked_desc", "fluent_task_parked_cancel_confirm", "fluent_task_resume", "fluent_status_canceled" })
+        foreach (string key in new[] { "task_parked_title", "task_parked_desc", "task_parked_cancel_confirm", "fluent_task_resume", "fluent_status_canceled" })
         {
             Assert.True(code.Contains(key, StringComparison.Ordinal), $"{key} must be rendered by the parked-conversion UI.");
         }
@@ -218,6 +224,60 @@ static partial class TestSuite
             "ParkedTaskRetention must come from ClickraSettings, not a local string literal.");
     }
 
+    private static void TestParkedRetentionRangeIsShared()
+    {
+        string? root = FindRepoRoot();
+        if (root is null) throw new TestSkippedException(RepoRootNotFoundMessage);
+
+        string fluentCode = File.ReadAllText(Path.Combine(root, "src", FluentProjectDirectory, "MainPage.xaml.cs"));
+        string fluentXaml = File.ReadAllText(Path.Combine(root, "src", FluentProjectDirectory, "MainPage.xaml"));
+        string cliClick = File.ReadAllText(Path.Combine(root, "src", "Clickra.CLI", "Dashboard", "DashboardWindow.Events.Click.cs"));
+
+        Assert.True(ClickraSettings.MaxParkedTaskRetentionDays > 0, "The shared retention bound must be positive.");
+        foreach ((string name, string source) in new[] { ("Fluent", fluentCode), ("CLI dashboard", cliClick) })
+        {
+            Assert.True(source.Contains("ClickraSettings.MaxParkedTaskRetentionDays", StringComparison.Ordinal),
+                $"{name} must take the retention bound from ClickraSettings.");
+            Assert.False(source.Contains("365", StringComparison.Ordinal),
+                $"{name} must not keep a second copy of the retention bound.");
+        }
+
+        Assert.True(fluentCode.Contains("ParkedRetentionBox.Maximum = ClickraSettings.MaxParkedTaskRetentionDays", StringComparison.Ordinal),
+            "The Fluent control must set its runtime maximum from the shared bound.");
+        Assert.True(fluentXaml.Contains($"Maximum=\"{ClickraSettings.MaxParkedTaskRetentionDays}\"", StringComparison.Ordinal),
+            "The Fluent markup's Maximum must match the shared retention bound.");
+    }
+
+    private static void TestParkedRetentionAccessorClampsToSharedRange()
+    {
+        int max = ClickraSettings.MaxParkedTaskRetentionDays;
+        (string Stored, int Expected)[] cases =
+        {
+            ("0", 0),
+            ("-5", 0),
+            ("7", 7),
+            ($"{max}", max),
+            ($"{max + 1}", max),
+            ("99999", max),
+            ("abc", 7)
+        };
+
+        try
+        {
+            foreach ((string stored, int expected) in cases)
+            {
+                ClickraStorage.SaveSetting(ClickraSettings.ParkedTaskRetention, stored);
+                int days = ClickraStorage.GetParkedRetentionDays();
+                Assert.True(days == expected, $"Stored '{stored}' must read back as {expected} days, got {days}.");
+                Assert.True(days >= 0 && days <= max,
+                    $"Stored '{stored}' produced {days}, which the settings pages cannot show or set.");
+            }
+        }
+        finally
+        {
+            ClickraStorage.SaveSetting(ClickraSettings.ParkedTaskRetention, ClickraSettings.DefaultParkedTaskRetention);
+        }
+    }
     /// <summary>Unit test verifying that parked retention calculations correctly identify
     /// unlimited retention, remaining days, expiring-soon alerts, and expiration.</summary>
     private static void TestParkedRetentionInfoCalculation()
@@ -268,30 +328,104 @@ static partial class TestSuite
         string? root = FindRepoRoot();
         if (root is null) throw new TestSkippedException(RepoRootNotFoundMessage);
 
-        string code = File.ReadAllText(Path.Combine(root, "src", "Clickra.Fluent", "MainPage.xaml.cs"));
+        string fluentCode = File.ReadAllText(Path.Combine(root, "src", FluentProjectDirectory, "MainPage.xaml.cs"));
+        string cliHistory = File.ReadAllText(Path.Combine(root, "src", "Clickra.CLI", "Dashboard", "DashboardWindow.Paint.History.cs"));
+        string storageCode = File.ReadAllText(Path.Combine(root, "src", "Clickra.Core", "Storage", "ClickraStorage.ActiveRecord.cs"));
 
-        // Must read retention info via ClickraStorage.GetParkedRetentionInfo
-        Assert.True(code.Contains("ClickraStorage.GetParkedRetentionInfo", StringComparison.Ordinal),
+        Assert.True(fluentCode.Contains("ClickraStorage.GetParkedRetentionInfo", StringComparison.Ordinal),
             "Fluent History page must read task retention info via ClickraStorage.GetParkedRetentionInfo.");
 
-        // Must wire up expiration text localization keys
         foreach (string key in new[]
         {
-            "fluent_task_parked_ttl_days",
-            "fluent_task_parked_ttl_expiring_soon",
-            "fluent_task_parked_ttl_unlimited",
-            "fluent_task_parked_ttl_expired",
-            "fluent_task_parked_expiring_warning",
-            "fluent_task_parked_badge_expiring"
+            "task_parked_ttl_days",
+            "task_parked_ttl_days_one",
+            "task_parked_ttl_expiring_soon",
+            "task_parked_ttl_unlimited",
+            "task_parked_ttl_expired",
+            "task_parked_expiring_warning",
+            "task_parked_badge_expiring"
         })
         {
-            Assert.True(code.Contains(key, StringComparison.Ordinal),
-                $"{key} must be referenced in MainPage.xaml.cs to render expiration and warnings.");
+            string owner = key is "task_parked_expiring_warning" or "task_parked_badge_expiring"
+                ? fluentCode
+                : storageCode;
+            Assert.True(owner.Contains(key, StringComparison.Ordinal),
+                $"{key} must be referenced by the surface that renders it.");
         }
 
-        // Must check IsExpiringSoon or IsExpired to trigger alerts
-        Assert.True(code.Contains("info.IsExpiringSoon", StringComparison.Ordinal),
-            "MainPage must check IsExpiringSoon to display warning badge and alert colors.");
+        Assert.True(storageCode.Contains("DescribeParkedRetention", StringComparison.Ordinal),
+            "ClickraStorage must expose one formatter for parked-task retention text.");
+        Assert.True(fluentCode.Contains("ClickraStorage.DescribeParkedRetention", StringComparison.Ordinal),
+            "The Fluent History row must render the deadline via the shared formatter.");
+        Assert.True(cliHistory.Contains("ClickraStorage.DescribeParkedRetention", StringComparison.Ordinal),
+            "The CLI History row must render the deadline via the shared formatter.");
+
+        foreach ((string name, string source) in new[] { ("Fluent", fluentCode), ("CLI dashboard", cliHistory) })
+        {
+            foreach (string ttlKey in new[]
+            {
+                "task_parked_ttl_days",
+                "task_parked_ttl_days_one",
+                "task_parked_ttl_unlimited",
+                "task_parked_ttl_expired",
+                "task_parked_ttl_expiring_soon"
+            })
+            {
+                Assert.False(source.Contains(ttlKey, StringComparison.Ordinal),
+                    $"{name} must not duplicate shared deadline wording for {ttlKey}.");
+            }
+        }
+
+        Assert.True(fluentCode.Contains("info.IsExpiringSoon", StringComparison.Ordinal) &&
+                    fluentCode.Contains("info.HasExpired", StringComparison.Ordinal),
+            "MainPage must alert for both expiring-soon and expired parked tasks.");
+    }
+
+    private static void TestCliDashboardParkedTaskVisibility()
+    {
+        string? root = FindRepoRoot();
+        if (root is null) throw new TestSkippedException(RepoRootNotFoundMessage);
+
+        string dir = Path.Combine(root, "src", "Clickra.CLI", "Dashboard");
+        string paint = File.ReadAllText(Path.Combine(dir, "DashboardWindow.Paint.History.cs"));
+        string lifecycle = File.ReadAllText(Path.Combine(dir, "DashboardWindow.Lifecycle.cs"));
+
+        Assert.True(lifecycle.Contains("ClickraStorage.GetParkedTasks()", StringComparison.Ordinal),
+            "The dashboard must load parked conversions with the history snapshot.");
+        Assert.True(paint.Contains("ClickraStorage.GetParkedRetentionInfo", StringComparison.Ordinal),
+            "Each parked row must carry its own remaining retention.");
+        Assert.True(paint.Contains("task_parked_title", StringComparison.Ordinal),
+            "The parked block needs its localized heading.");
+        Assert.True(paint.Contains("task_parked_expiring_warning", StringComparison.Ordinal),
+            "Parked rows about to be pruned must raise the aggregate warning.");
+        Assert.True(paint.Contains("DrawParkedQueue(g,", StringComparison.Ordinal),
+            "The History page must call the parked block.");
+
+        string layout = File.ReadAllText(Path.Combine(dir, "DashboardWindow.cs"));
+        int startYStart = layout.IndexOf("static int GetHistoryListStartY()", StringComparison.Ordinal);
+        Assert.True(startYStart >= 0, "GetHistoryListStartY must exist.");
+        int startYEnd = layout.IndexOf(';', startYStart);
+        string startYBody = startYEnd > startYStart ? layout[startYStart..startYEnd] : layout[startYStart..];
+        Assert.True(startYBody.Contains("ParkedBlockHeight()", StringComparison.Ordinal),
+            "GetHistoryListStartY must count the parked block's height.");
+        Assert.True(startYBody.Contains("HistoryRowStride", StringComparison.Ordinal),
+            "GetHistoryListStartY must derive active rows from the shared stride.");
+
+        foreach (string file in new[] { "DashboardWindow.Paint.History.cs", "DashboardWindow.HitTesting.cs", "DashboardWindow.Events.Click.cs", "DashboardWindow.Events.cs" })
+        {
+            string source = File.ReadAllText(Path.Combine(dir, file));
+            Assert.True(source.Contains("GetHistoryListStartY()", StringComparison.Ordinal),
+                $"{file} must take the persisted-history start from GetHistoryListStartY().");
+        }
+
+        foreach (string file in new[] { "DashboardWindow.Paint.History.cs", "DashboardWindow.HitTesting.cs", "DashboardWindow.Events.Click.cs", "DashboardWindow.Events.cs", "DashboardWindow.cs" })
+        {
+            string source = File.ReadAllText(Path.Combine(dir, file));
+            Assert.False(source.Contains("GetActiveHistoryCount", StringComparison.Ordinal),
+                $"{file} still computes the history start separately.");
+            Assert.False(source.Contains("* 52", StringComparison.Ordinal),
+                $"{file} still hardcodes the queue row stride.");
+        }
     }
 
     private static void CleanupActiveTasks()

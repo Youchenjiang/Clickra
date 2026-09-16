@@ -14,7 +14,7 @@ namespace Clickra.Core.Tests;
 /// 1. 已宣告的鍵都必須有人消費——否則它是一條永遠不會出現在畫面上的死翻譯，五種語言
 ///    的翻譯成本已經付了，卻沒有任何使用者看得到。
 /// 2. 被查詢的鍵都必須已宣告——否則 <c>T()</c> 會原樣回傳鍵名，使用者看到的是
-///    "fluent_task_parked_title" 這種字串。
+///    "task_parked_title" 這種字串。
 ///
 /// 孤兒鍵基線只能單向縮小。新增孤兒鍵會讓測試失敗；把某個鍵接上 UI（或連同翻譯刪除）
 /// 之後也必須同步把基線條目刪掉，否則「基線曾經是對的」會掩蓋「現在已經不準了」。這
@@ -33,8 +33,8 @@ static partial class TestSuite
         // 引擎／PDF 設定：這些曾被設定頁與錯誤對話框使用，現在同一個位置改由 Core 的
         // 預設表或別的鍵呈現，字串本身已經沒有讀取端。
         "engine_pdf", "engine_ppt", "engine_word", "engine_excel", "engine_libreoffice",
-        "setting_libreoffice_optional", "setting_pdf_lang", "setting_pdf_compress_dpi",
-        "setting_pdf_compress_quality", "setting_pdf_compress_group_image",
+        "setting_libreoffice_optional",
+        "setting_pdf_compress_group_image",
         "setting_pdf_compress_group_other", "error_processing_failed",
 
         // Fluent 檔案類型／拖放白名單：描述一套以檔案類型過濾拖放內容的介面。
@@ -50,20 +50,16 @@ static partial class TestSuite
         "fluent_progress_file_not_found",
 
         // Fluent 任務佇列／帳本：排隊與暫存任務的看板文案。
-        "fluent_task_queue_title", "fluent_task_queue_running", "fluent_task_ledger_title",
-        "fluent_task_ledger_empty", "fluent_task_view",
+        "fluent_task_queue_title", "fluent_task_queue_running",
+        "fluent_task_ledger_title", "fluent_task_ledger_empty", "fluent_task_view",
 
         // 視覺化分割器：pdf_split_prompt 從未被接上，pdf_split_pages_per_segment 在 N
         // 步進器改用 pdf_split_pages_n 之後失效。兩者的模型側已由
         // TestSuite.VisualSplitter.cs 單獨守住。
-        "pdf_split_prompt", "pdf_split_pages_per_segment",
-
         // 圖片壓縮／編解碼器：圖片壓縮設定頁與 Codec 商店的文案。這批是進行中的圖片
         // 轉檔／壓縮功能的字串，接上介面之後就該從基線移除。
         "fluent_image_compression", "fluent_image_max_size", "fluent_image_size_original",
         "fluent_image_size_4k", "fluent_image_size_fhd", "fluent_image_size_hd",
-        "setting_image_compress_title", "setting_image_compress_desc", "setting_image_compress_size",
-        "setting_image_compress_size_original",
         "codec_missing_store_prompt", "codec_heif_extension_name", "codec_webp_extension_name",
         "codec_missing_install_action"
     };
@@ -178,6 +174,12 @@ static partial class TestSuite
 
     private static void TestProgressTipFitsOneLine()
     {
+        string? root = FindRepoRoot();
+        if (root is null) throw new TestSkippedException("Could not locate the repository root from the test output directory.");
+        string paintCode = File.ReadAllText(Path.Combine(root, "src", "Clickra.CLI", "Progress", "ProgressWindow.Paint.cs"));
+        Assert.True(paintCode.Contains("Loc(\"progress_tray_hint\")", StringComparison.Ordinal),
+            "The in-progress state must render progress_tray_hint, otherwise the sentence is unreachable copy.");
+
         foreach (string lang in Localization.SupportedLanguages)
         {
             string tip = Localization.T("progress_tray_hint", lang);
