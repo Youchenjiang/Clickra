@@ -615,13 +615,13 @@ public sealed partial class MainPage : Page
         SettingsSubtitle.Text = L("fluent_settings_subtitle");
         OutputDirTitle.Text = L("fluent_output_dir");
         OutputDirDesc.Text = L("fluent_output_dir_desc");
-        OutputDirSourceItem.Content = L("fluent_output_source");
-        OutputDirDesktopItem.Content = L("fluent_desktop");
-        OutputDirDownloadsItem.Content = L("fluent_downloads");
-        OutputDirCustomItem.Content = L("fluent_custom");
+        OutputDirSourceItem.Content = L("setting_output_same_as_source");
+        OutputDirDesktopItem.Content = L("setting_output_desktop");
+        OutputDirDownloadsItem.Content = L("setting_output_downloads");
+        OutputDirCustomItem.Content = L("setting_output_custom");
         OfficeEngineTitle.Text = L("fluent_office_engine");
         OfficeEngineDesc.Text = L("fluent_office_engine_desc");
-        EngineAutoItem.Content = L("fluent_auto");
+        EngineAutoItem.Content = L("setting_engine_auto");
         EngineMicrosoftItem.Content = "Microsoft Office";
         EngineLibreOfficeItem.Content = "LibreOffice";
         LanguageTitle.Text = L("fluent_default_language");
@@ -1202,11 +1202,11 @@ public sealed partial class MainPage : Page
         AddFact(facts, 2, L("fluent_result"), StatusLabelFor(entry), statusBrush);
         HistoryDetailContainer.Children.Add(facts);
 
-        AddDetailSection(L("fluent_input_paths"), SplitPaths(entry.InputPaths));
-        AddDetailSection(L("fluent_output_paths"), SplitPaths(entry.OutputPath));
+        AddDetailSection(L("history_detail_inputs"), SplitPaths(entry.InputPaths));
+        AddDetailSection(L("history_detail_outputs"), SplitPaths(entry.OutputPath));
         if (!entry.IsSuccess && !string.IsNullOrWhiteSpace(entry.ErrorMessage))
         {
-            AddDetailSection(L("fluent_error_message"), entry.ErrorMessage, statusBrush, true);
+            AddDetailSection(L("history_detail_error"), entry.ErrorMessage, statusBrush, true);
         }
     }
 
