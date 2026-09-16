@@ -8,6 +8,16 @@ namespace Clickra.UI
 {
     public partial class ProgressWindow
     {
+        /// <summary>Sends the window to the notification area: adds the tray icon (the only
+        /// place the progress tooltip lives) and hides the window. Both the title bar's
+        /// minimize button and the self-drawn minimize button come through here, so a
+        /// running conversion can never end up hidden with no way to see its progress.</summary>
+        private void MinimizeToTray(IntPtr hwnd)
+        {
+            SetupTrayIcon(hwnd);
+            ShowWindow(hwnd, 0); // SW_HIDE
+        }
+
         private void SetupTrayIcon(IntPtr hwnd)
         {
             if (_trayIconAdded) return;
@@ -28,7 +38,7 @@ namespace Clickra.UI
                     pct = _current * 100 / _total;
                 }
             }
-            _nid.szTip = $"Clickra - 正在轉換... {pct}%";
+            _nid.szTip = Loc("cli_tray_converting", pct);
 
             Shell_NotifyIcon(NIM_ADD, ref _nid);
             _trayIconAdded = true;
@@ -46,7 +56,7 @@ namespace Clickra.UI
                     pct = _current * 100 / _total;
                 }
             }
-            _nid.szTip = $"Clickra - 正在轉換... {pct}%";
+            _nid.szTip = Loc("cli_tray_converting", pct);
             _nid.uFlags = NIF_TIP;
             Shell_NotifyIcon(NIM_MODIFY, ref _nid);
         }

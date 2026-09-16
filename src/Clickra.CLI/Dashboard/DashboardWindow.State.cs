@@ -46,6 +46,10 @@ namespace Clickra.UI
         // History & Statistics Cache
         static List<ClickraStorage.HistoryEntry> _historyEntries = new List<ClickraStorage.HistoryEntry>();
 
+        // 待繼續（已暫存）任務：畫在歷史紀錄上方，所以與歷史一起快取，
+        // 讓繪製、命中測試與捲動高度用的是同一份清單。
+        static List<ClickraStorage.HistoryEntry> _parkedEntries = new List<ClickraStorage.HistoryEntry>();
+
         static int _langScrollOffset = 0;
         static int _statTotal = 0;
         static int _statSuccess = 0;

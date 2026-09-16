@@ -324,12 +324,19 @@ namespace Clickra.UI
 
             y += 110f;
             DrawSectionHeader("setting_pdf_title", "setting_pdf_desc", y);
-            _pdfLangDropdownY = (int)(y + 50);
+
+            // 這個下拉的唯一內容就是目標語言，所以下拉本身需要一行標題來說明它選的是什麼。
+            if (_subFont != null)
+            {
+                using var pdfLangLabelBrush = new SolidBrush(Color.FromArgb(180, 180, 180));
+                g.DrawString(GetText("setting_pdf_lang"), _subFont, pdfLangLabelBrush, contentX * s, (y + 50) * s);
+            }
+            _pdfLangDropdownY = (int)(y + 72);
 
             DrawPdfLangDropdown(g, _pdfLangDropdownY, contentX);
             AddHitRect(31, contentX, _pdfLangDropdownY, 240, 30);
 
-            y += 95f;
+            y += 117f;
 
             // Fluent UI section
             bool fluentAvailable = Clickra.Core.FluentRuntimeHelper.IsAvailable();

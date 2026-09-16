@@ -15,6 +15,9 @@ namespace Clickra.UI
     {
         private const string LabelFilesKey = "label_files";
 
+        /// <summary>待繼續任務即將被清理時使用的警示色（與 Fluent 的琥珀色一致）。</summary>
+        private static readonly Color ParkedAlertColor = Color.FromArgb(255, 160, 40);
+
         /// <summary>Draws the history tab: header, filter chips and the scrollable entry list.</summary>
         static void DrawHistoryTab(Graphics g, float logW, float logH, float contentX)
         {
@@ -51,14 +54,15 @@ namespace Clickra.UI
             // 取得目前進行中的任務佇列（每個任務一列；並行任務各自獨立，不會互搶）
             var activeTasks = ClickraStorage.GetActiveTasks();
 
-            int startY = 90;
             int rowW = (int)logW - (int)contentX - 40;
             int rowH = 44;
 
             // ——— 顯示進行中任務佇列（置頂）———
+            int activeIndex = 0;
             foreach (var task in activeTasks)
             {
-                int rowY = startY;
+                int rowY = 90 + activeIndex * HistoryRowStride;
+                activeIndex++;
                 var activeFiles = !string.IsNullOrEmpty(task.InputPaths)
                     ? task.InputPaths.Split(new[] { ';' }, StringSplitOptions.RemoveEmptyEntries)
                     : Array.Empty<string>();
@@ -148,14 +152,15 @@ namespace Clickra.UI
                         g.DrawString(statusText, _tagFont, statusBrush, activeStatusX * s, (rowY + 13) * s);
                     }
 
-
-                    startY += 52;
             }
+
+            // ——— 顯示待繼續（已暫存）任務：逐項顯示還剩幾天過期 ———
+            DrawParkedQueue(g, contentX, rowW, 90 + activeTasks.Count * HistoryRowStride);
 
             // ——— 顯示持久化歷史紀錄———
             if (_historyEntries == null || _historyEntries.Count == 0)
             {
-                if (activeTasks.Count == 0 && _tabFont != null)
+                if (activeTasks.Count == 0 && _parkedEntries.Count == 0 && _tabFont != null)
                 {
                     using var textBrush = new SolidBrush(Color.FromArgb(120, 120, 120));
                     g.DrawString(GetText("history_empty"), _tabFont, textBrush, contentX * s, 100 * s);
@@ -163,7 +168,8 @@ namespace Clickra.UI
                 return;
             }
 
-            int currentY = startY;
+            // 起點與命中測試／hover／捲動高度共用 GetHistoryListStartY()，不是各自累加出來的。
+            int currentY = GetHistoryListStartY();
             for (int i = 0; i < _historyEntries.Count; i++)
             {
                 var entry = _historyEntries[i];
@@ -366,6 +372,107 @@ namespace Clickra.UI
             if (activeFiles.Length == 1)
                 return Path.GetFileName(activeFiles[0]);
             return $"{Path.GetFileName(activeFiles[0])} + {activeFiles.Length - 1} {GetText(LabelFilesKey)}";
+        }
+
+        /// <summary>畫出待繼續（已暫存）任務，每列帶自己的剩餘保留期限，讓保留期限是逐項可見的，
+        /// 而不只是設定頁上那句話。回傳持久化歷史紀錄的起始 Y。</summary>
+        static int DrawParkedQueue(Graphics g, float contentX, int rowW, int startY)
+        {
+            if (_parkedEntries.Count == 0) return startY;
+
+            float s = _dpiScale;
+            var infos = new ClickraStorage.ParkedRetentionInfo[_parkedEntries.Count];
+            int expiringSoonCount = 0;
+            for (int i = 0; i < _parkedEntries.Count; i++)
+            {
+                infos[i] = ClickraStorage.GetParkedRetentionInfo(_parkedEntries[i].Id);
+                if (infos[i].IsExpiringSoon || infos[i].IsExpired) expiringSoonCount++;
+            }
+
+            // 區塊標題；有任務即將被清理時，右側補一句聚合警示。
+            if (_tabFont != null)
+            {
+                using var titleBrush = new SolidBrush(Color.FromArgb(200, 200, 200));
+                g.DrawString(GetText("task_parked_title"), _tabFont, titleBrush, contentX * s, startY * s);
+
+                if (expiringSoonCount > 0)
+                {
+                    string warning = string.Format(GetText("task_parked_expiring_warning"), expiringSoonCount);
+                    using var warningBrush = new SolidBrush(ParkedAlertColor);
+                    var warningSize = g.MeasureString(warning, _tabFont);
+                    g.DrawString(warning, _tabFont, warningBrush,
+                        (contentX + rowW - warningSize.Width / s) * s, startY * s);
+                }
+            }
+
+            int currentY = startY + ParkedBlockHeaderHeight;
+            for (int i = 0; i < _parkedEntries.Count; i++)
+            {
+                var task = _parkedEntries[i];
+                var info = infos[i];
+                bool needsAttention = info.IsExpiringSoon || info.IsExpired;
+
+                Color rowBg = needsAttention ? Color.FromArgb(48, 40, 30) : Color.FromArgb(34, 34, 40);
+                Color rowBorder = info.IsExpired
+                    ? Color.FromArgb(200, 60, 60)
+                    : info.IsExpiringSoon ? ParkedAlertColor : Color.FromArgb(70, 70, 100);
+
+                using (var path = UIHelper.GetRoundedRectPath(new RectangleF(contentX * s, currentY * s, rowW * s, 44 * s), 6 * s))
+                using (var rowBgBrush = new SolidBrush(rowBg))
+                {
+                    g.FillPath(rowBgBrush, path);
+                    using var borderPen = new Pen(rowBorder);
+                    g.DrawPath(borderPen, path);
+                }
+
+                // 時間
+                float timeW = 120;
+                if (_bodyFont != null)
+                {
+                    using var timeBrush = new SolidBrush(Color.FromArgb(140, 140, 140));
+                    g.DrawString(task.Time, _bodyFont, timeBrush, (contentX + 12) * s, (currentY + 13) * s);
+                    timeW = g.MeasureString(task.Time, _bodyFont).Width / s;
+                }
+
+                // 指令標籤
+                float tagX = contentX + 12 + timeW + 16;
+                float tagW = DrawCommandTag(g, task.Command, tagX, currentY + 11);
+
+                // 剩餘保留期限（靠右）：一列一期限，就是這個區塊存在的理由。
+                string ttlText = ClickraStorage.DescribeParkedRetention(info);
+                float ttlW = _tagFont != null ? g.MeasureString(ttlText, _tagFont).Width / s : 60f;
+                float ttlX = contentX + rowW - 16 - ttlW;
+
+                var parkedFiles = !string.IsNullOrEmpty(task.InputPaths)
+                    ? task.InputPaths.Split(new[] { ';' }, StringSplitOptions.RemoveEmptyEntries)
+                    : Array.Empty<string>();
+
+                if (_bodyFont != null)
+                {
+                    using var fileBrush = new SolidBrush(Color.FromArgb(200, 200, 200));
+                    float fileX = tagX + tagW + 16;
+                    string displayText = FormatFileCountText(parkedFiles, task.FileCount);
+                    float maxW = ttlX - 16 - fileX;
+                    if (maxW > 20)
+                    {
+                        displayText = UIHelper.TruncateFileName(g, displayText, _bodyFont, maxW, s);
+                    }
+                    g.DrawString(displayText, _bodyFont, fileBrush, fileX * s, (currentY + 13) * s);
+                }
+
+                if (_tagFont != null)
+                {
+                    Color ttlColor = info.IsExpired
+                        ? Color.FromArgb(255, 90, 70)
+                        : needsAttention ? ParkedAlertColor : Color.FromArgb(150, 150, 160);
+                    using var ttlBrush = new SolidBrush(ttlColor);
+                    g.DrawString(ttlText, _tagFont, ttlBrush, ttlX * s, (currentY + 13) * s);
+                }
+
+                currentY += HistoryRowStride;
+            }
+
+            return currentY;
         }
 
         /// <summary>Draws a colored command tag at the given position and returns its width.</summary>

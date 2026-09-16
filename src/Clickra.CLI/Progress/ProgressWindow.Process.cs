@@ -33,7 +33,7 @@ namespace Clickra.UI
 
                 if (currentFiles.Count == 0)
                 {
-                    lock (_stateLock) { _completed = true; _message = "無檔案可處理。"; }
+                    lock (_stateLock) { _completed = true; _message = Loc("cli_progress_no_files"); }
                     PostMessageW(hwnd, WM_USER_INVALIDATE, (IntPtr)1, IntPtr.Zero);
                     Thread.Sleep(1000);
                     PostMessageW(hwnd, 0x0010, IntPtr.Zero, IntPtr.Zero); // WM_CLOSE
@@ -117,7 +117,7 @@ namespace Clickra.UI
                 {
                     _completed = true;
                     if (cmd != "compress-pdf")
-                        _message = "所有作業已順利完成！";
+                        _message = Loc("cli_progress_all_done");
                 }
                 PostMessageW(hwnd, WM_USER_INVALIDATE, (IntPtr)1, IntPtr.Zero);
 
@@ -167,7 +167,7 @@ namespace Clickra.UI
                 try { ClickraStorage.SetActiveRecordIndex(i); } catch { /* Non-critical UI state; ignore if storage unavailable */ }
                 var f = files[i];
                 string outName = Path.Combine(outputDir, Path.GetFileNameWithoutExtension(f) + "_compressed.pdf");
-                progressCallback((i * 100) + 10, files.Count * 100, $"正在壓縮 PDF: {Path.GetFileName(f)} ({i + 1}/{files.Count})...");
+                progressCallback((i * 100) + 10, files.Count * 100, Loc("cli_progress_compressing_pdf", Path.GetFileName(f), i + 1, files.Count));
 
                 var pdfOptions = BuildPdfCompressOptions();
 
@@ -175,12 +175,12 @@ namespace Clickra.UI
                     int progressPct = tot > 0 ? (int)(curr * 80.0 / tot) + 10 : 10;
                     if (curr >= tot && !string.IsNullOrWhiteSpace(msg))
                         compressionSummary = msg;
-                    progressCallback((i * 100) + progressPct, files.Count * 100, $"[PDF 壓縮] {msg} ({i + 1}/{files.Count})");
+                    progressCallback((i * 100) + progressPct, files.Count * 100, Loc("cli_progress_compressing_pdf_stage", msg, i + 1, files.Count));
                 }, _cts.Token);
             }
             _cts.Token.ThrowIfCancellationRequested();
             progressCallback(files.Count * 100, files.Count * 100,
-                string.IsNullOrWhiteSpace(compressionSummary) ? "PDF 壓縮完成。" : compressionSummary);
+                string.IsNullOrWhiteSpace(compressionSummary) ? Loc("cli_progress_compressing_pdf_done") : compressionSummary);
         }
 
         /// <summary>Builds the PDF compression options dictionary from saved settings.</summary>
@@ -196,11 +196,11 @@ namespace Clickra.UI
                 try { ClickraStorage.SetActiveRecordIndex(i); } catch { /* Ignored: history recording must not abort processing. */ }
                 var f = files[i];
                 string outName = Path.Combine(outputDir, Path.GetFileNameWithoutExtension(f) + ".pdf");
-                progressCallback((i * 100) + 50, files.Count * 100, $"正在轉換圖片: {Path.GetFileName(f)} ({i + 1}/{files.Count})...");
+                progressCallback((i * 100) + 50, files.Count * 100, Loc("cli_progress_converting_image", Path.GetFileName(f), i + 1, files.Count));
                 FileProcessor.ConvertImagesToPdf(new List<string> { f }, outName, null, _cts.Token);
             }
             _cts.Token.ThrowIfCancellationRequested();
-            progressCallback(files.Count * 100, files.Count * 100, "轉換完成，正在儲存 PDF...");
+            progressCallback(files.Count * 100, files.Count * 100, Loc("cli_progress_converting_image_saving"));
         }
 
         /// <summary>Runs a registered img-to-* conversion through the shared core runner.</summary>
@@ -228,14 +228,14 @@ namespace Clickra.UI
                 try { ClickraStorage.SetActiveRecordIndex(i); } catch { /* Ignored: history recording must not abort processing. */ }
                 var f = files[i];
                 string outName = Path.Combine(outputDir, Path.GetFileNameWithoutExtension(f) + "_translated.pdf");
-                progressCallback((i * 100) + 10, files.Count * 100, $"正在翻譯 PDF: {Path.GetFileName(f)} ({i + 1}/{files.Count})...");
+                progressCallback((i * 100) + 10, files.Count * 100, Loc("cli_progress_translating_pdf", Path.GetFileName(f), i + 1, files.Count));
                 FileProcessor.TranslatePdf(f, outName, targetLang, (curr, tot, msg) => {
                     int progressPct = tot > 0 ? (int)(curr * 80.0 / tot) + 10 : 10;
-                    progressCallback((i * 100) + progressPct, files.Count * 100, $"[PDF 翻譯] {msg} ({i + 1}/{files.Count})");
+                    progressCallback((i * 100) + progressPct, files.Count * 100, Loc("cli_progress_translating_pdf_stage", msg, i + 1, files.Count));
                 }, _cts.Token);
             }
             _cts.Token.ThrowIfCancellationRequested();
-            progressCallback(files.Count * 100, files.Count * 100, "翻譯完成，正在儲存 PDF...");
+            progressCallback(files.Count * 100, files.Count * 100, Loc("cli_progress_translating_pdf_saving"));
         }
 
         /// <summary>Splits each PDF, prompting the visual splitter when no --pages range
@@ -252,14 +252,14 @@ namespace Clickra.UI
 
                 string targetPages = ResolveSplitTargetPages(hwnd, f, pagesOption);
 
-                progressCallback((i * 100) + 10, files.Count * 100, $"正在分割 PDF: {Path.GetFileName(f)} ({i + 1}/{files.Count})...");
+                progressCallback((i * 100) + 10, files.Count * 100, Loc("cli_progress_splitting_pdf", Path.GetFileName(f), i + 1, files.Count));
                 FileProcessor.SplitPdf(f, outName, targetPages, (curr, tot, msg) => {
                     int progressPct = tot > 0 ? (int)(curr * 80.0 / tot) + 10 : 10;
-                    progressCallback((i * 100) + progressPct, files.Count * 100, $"[PDF 分割] {msg} ({i + 1}/{files.Count})");
+                    progressCallback((i * 100) + progressPct, files.Count * 100, Loc("cli_progress_splitting_pdf_stage", msg, i + 1, files.Count));
                 }, _cts.Token);
             }
             _cts.Token.ThrowIfCancellationRequested();
-            progressCallback(files.Count * 100, files.Count * 100, "PDF 分割完成。");
+            progressCallback(files.Count * 100, files.Count * 100, Loc("cli_progress_splitting_pdf_done"));
         }
 
         /// <summary>Reads the --pages / -p page-range option from the command line.</summary>
@@ -313,7 +313,7 @@ namespace Clickra.UI
 
             if (cancelled)
             {
-                throw new OperationCanceledException("使用者已取消頁碼範圍輸入。");
+                throw new OperationCanceledException(Loc("cli_progress_pages_input_canceled"));
             }
             return targetPages;
         }
@@ -328,7 +328,7 @@ namespace Clickra.UI
                 DecryptSingleFile(hwnd, files[i], outputDir, i, files.Count, progressCallback);
             }
             _cts.Token.ThrowIfCancellationRequested();
-            progressCallback(files.Count * 100, files.Count * 100, "密碼去除完成，正在儲存 PDF...");
+            progressCallback(files.Count * 100, files.Count * 100, Loc("cli_progress_decrypting_pdf_saving"));
         }
 
         /// <summary>Removes the password from one PDF, re-prompting until the correct
@@ -337,7 +337,7 @@ namespace Clickra.UI
         {
             try { ClickraStorage.SetActiveRecordIndex(index); } catch { /* Ignored: history recording must not abort processing. */ }
             string outName = Path.Combine(outputDir, Path.GetFileNameWithoutExtension(f) + "_decrypted.pdf");
-            progressCallback((index * 100) + 10, total * 100, $"正在去除密碼: {Path.GetFileName(f)} ({index + 1}/{total})...");
+            progressCallback((index * 100) + 10, total * 100, Loc("cli_progress_decrypting_pdf", Path.GetFileName(f), index + 1, total));
 
             string currentPassword = "";
             bool success = false;
@@ -349,7 +349,7 @@ namespace Clickra.UI
                 {
                     FileProcessor.DecryptPdf(f, outName, currentPassword, (curr, tot, msg) => {
                         int progressPct = tot > 0 ? (int)(curr * 80.0 / tot) + 10 : 10;
-                        progressCallback((index * 100) + progressPct, total * 100, $"[去除密碼] {msg} ({index + 1}/{total})");
+                        progressCallback((index * 100) + progressPct, total * 100, Loc("cli_progress_decrypting_pdf_stage", msg, index + 1, total));
                     }, _cts.Token);
                     success = true;
                 }
@@ -443,8 +443,8 @@ namespace Clickra.UI
 
             try
             {
-                string title = "Clickra 轉換成功";
-                string body = $"已順利完成 {command} 作業 (共 {count} 個檔案)。";
+                string title = Loc("cli_progress_toast_title");
+                string body = Loc("cli_progress_toast_body", Loc(ConvertCommandRegistry.GetLabelKey(command)), count);
                 
                 string psScript = $@"
 $ErrorActionPreference = 'Stop'
@@ -458,7 +458,7 @@ try {{
     $notifier = [Windows.UI.Notifications.ToastNotificationManager]::CreateToastNotifier('Clickra')
     $notifier.Show($toast)
 }} catch {{
-    # 忽略 Toast 失敗
+    # Ignore toast failures
 }}";
 
                 var startInfo = new System.Diagnostics.ProcessStartInfo

@@ -127,6 +127,12 @@ namespace Clickra.UI
                 case 0x0201: return HandleLButtonDown(hwnd, l); // WM_LBUTTONDOWN
                 case 0x0202: return HandleLButtonUp(hwnd); // WM_LBUTTONUP
                 case WM_TRAYICON: return HandleTrayIcon(hwnd, l);
+                case 0x0112: // WM_SYSCOMMAND
+                    {
+                        IntPtr? sysResult = HandleSysCommand(hwnd, w);
+                        if (sysResult != null) return sysResult.Value;
+                    }
+                    break;
                 case 0x0010: return HandleClose(hwnd); // WM_CLOSE
                 case 0x02E0: return HandleDpiChanged(hwnd, w, l); // WM_DPICHANGED
                 case 0x0014: return (IntPtr)1; // WM_ERASEBKGND
@@ -560,8 +566,7 @@ namespace Clickra.UI
 
                 if (IsTrayButtonHit(mouseX, mouseY))
                 {
-                    SetupTrayIcon(hwnd);
-                    ShowWindow(hwnd, 0); // SW_HIDE
+                    MinimizeToTray(hwnd);
                     _isTrayBtnHovered = false;
                     return;
                 }
@@ -645,6 +650,26 @@ namespace Clickra.UI
                 }
             }
             return IntPtr.Zero;
+        }
+
+        /// <summary>Redirects the title bar's minimize button (and the system menu's Minimize)
+        /// to the notification area, the same place the self-drawn button sends the window.
+        /// Minimizing must not just hide the window: the tray icon carries the progress
+        /// tooltip, so dropping it would leave a running job with no visible indicator.
+        /// Returns null for every other system command so Windows handles it itself.</summary>
+        private IntPtr? HandleSysCommand(IntPtr hwnd, IntPtr w)
+        {
+            if ((w.ToInt64() & 0xFFF0) != 0xF020) return null; // SC_MINIMIZE
+
+            // A finished or failed job is already on its way out and stops reporting progress,
+            // so keep the ordinary minimize for those states instead of pinning a tray icon.
+            lock (_stateLock)
+            {
+                if (_completed || _hasError) return null;
+            }
+
+            MinimizeToTray(hwnd);
+            return IntPtr.Zero; // Handled: the window hides rather than entering the minimized state.
         }
 
         /// <summary>Restores the window when the tray icon is double-clicked.</summary>

@@ -74,14 +74,29 @@ namespace Clickra.UI
 
             float CalcHistoryHeight()
             {
-                // 進行中任務佇列：每個任務佔一列（並行任務各自獨立）。
-                int activeCount = ClickraStorage.GetActiveTasks().Count;
-                int totalHeight = 90 + activeCount * 52;
+                // 進行中任務佇列與待繼續任務各佔一列，持久化歷史紀錄接在後面。
+                int totalHeight = GetHistoryListStartY();
                 for (int i = 0; i < _historyEntries.Count; i++)
                     totalHeight += (i == _expandedHistoryIndex ? 160 : 44) + 8;
                 return Math.Max(460, totalHeight + 20);
             }
         }
+
+        /// <summary>一列佇列的間距：列高 44px 加上 8px 間隙。</summary>
+        private const int HistoryRowStride = 52;
+
+        /// <summary>待繼續任務區塊上方那一行標題的高度。</summary>
+        private const int ParkedBlockHeaderHeight = 30;
+
+        /// <summary>第一列持久化歷史紀錄的 Y。進行中佇列與待繼續任務都畫在它上方，因此繪製、
+        /// 點擊命中、hover 判定與捲動高度必須全部從這一個數字出發 —— 這個算式曾被各自複製在
+        /// 三處，只要上方多一列，點擊就會展開指標所指的那一列以上。</summary>
+        static int GetHistoryListStartY() =>
+            90 + ClickraStorage.GetActiveTasks().Count * HistoryRowStride + ParkedBlockHeight();
+
+        /// <summary>待繼續任務區塊的高度（含標題行）；沒有暫存任務時為 0。</summary>
+        static int ParkedBlockHeight() =>
+            _parkedEntries.Count == 0 ? 0 : ParkedBlockHeaderHeight + _parkedEntries.Count * HistoryRowStride;
 
         static void RecreateBuffer(int w, int h)
         {

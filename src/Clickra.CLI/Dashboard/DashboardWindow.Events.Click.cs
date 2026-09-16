@@ -169,7 +169,7 @@ namespace Clickra.UI
             float virtLogW = Math.Max(760f, logW);
             if (adjMouseX < contentX || adjMouseX >= virtLogW - 40) return false;
 
-            int currentY = 90 + GetActiveHistoryCount() * 52;
+            int currentY = GetHistoryListStartY();
             FindClickedHistoryRow(adjMouseY, ref currentY, out int clickedIndex, out bool clickedDetails, out int detailFieldIndex);
             if (clickedIndex == -1) return false;
 
@@ -184,12 +184,6 @@ namespace Clickra.UI
 
             ToggleHistoryRowExpand(hwnd, clickedIndex);
             return true;
-        }
-
-        /// <summary>Returns the number of in-flight tasks in the queue (one row each).</summary>
-        static int GetActiveHistoryCount()
-        {
-            return ClickraStorage.GetActiveTasks().Count;
         }
 
         /// <summary>Finds the history row (and optional detail field) under the click point.</summary>
@@ -467,8 +461,7 @@ namespace Clickra.UI
         private static void AdjustParkedRetention(IntPtr hwnd, int delta)
         {
             int current = ClickraStorage.GetParkedRetentionDays();
-            int updated = Math.Clamp(current + delta, 0, ClickraSettings.MaxParkedTaskRetentionDays);
-            SetParkedRetention(hwnd, updated);
+            SetParkedRetention(hwnd, current + delta);
         }
 
         private static int GetDefaultParkedRetentionDays()
@@ -476,6 +469,7 @@ namespace Clickra.UI
 
         private static void SetParkedRetention(IntPtr hwnd, int days)
         {
+            // Shared with Fluent through the settings registry; do not duplicate the retention bound.
             int clamped = Math.Clamp(days, 0, ClickraSettings.MaxParkedTaskRetentionDays);
             ClickraStorage.SaveSetting(ClickraSettings.ParkedTaskRetention, clamped.ToString());
             InvalidateRect(hwnd, IntPtr.Zero, false);
