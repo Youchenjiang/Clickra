@@ -39,7 +39,7 @@ static partial class TestSuite
         runner.Run("Settings registry: CLI localization keys coverage across all 5 languages", TestCliLocalizationKeysCoverage);
         runner.Run("Settings registry: Diagnostics email localization coverage across all 5 languages", TestDiagnosticsEmailLocalizationCoverage);
         runner.Run("Settings registry: Tray and visual splitter localization coverage across all 5 languages", TestTraySplitterLocalizationCoverage);
-        runner.Run("Localization guard: No hardcoded Chinese strings in Clickra.Fluent and Dashboard paint files", TestNoHardcodedChineseUiStrings);
+        runner.Run("Localization guard: No hardcoded Chinese strings in Clickra.Fluent, Dashboard paint files, and ProgressWindow.VisualSplitter.cs", TestNoHardcodedChineseUiStrings);
         runner.Run("Settings registry: Translation diagnostics lists gaps grouped by language when translations are missing", TestTranslationDiagnosticsGapReport);
         runner.Run("Settings registry: All registered keys must have complete translations across all 5 languages", TestLocalizationDictionaryParity);
         runner.Run("Test runner: CleanStaleArtifacts cleans isolated temp directories and test artifacts", TestCleanStaleArtifacts);
@@ -384,6 +384,12 @@ static partial class TestSuite
         {
             filesToScan.AddRange(Directory.EnumerateFiles(fluentDir, "*.*", SearchOption.AllDirectories)
                 .Where(IsLocalizationGuardTarget));
+        }
+
+        string visualSplitterPath = Path.Combine(root, "src", "Clickra.CLI", "Progress", "ProgressWindow.VisualSplitter.cs");
+        if (File.Exists(visualSplitterPath))
+        {
+            filesToScan.Add(visualSplitterPath);
         }
 
         Assert.True(filesToScan.Count > 0, "Expected to find target UI files for localization guard scanning.");
