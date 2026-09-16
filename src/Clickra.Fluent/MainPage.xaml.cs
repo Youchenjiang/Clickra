@@ -43,6 +43,48 @@ public sealed partial class MainPage : Page
     private bool _syncingParkedRetention;
     private int _selectedHistoryIndex = -1;
 
+    private sealed class DynamicSettingControl
+    {
+        public SettingDescriptor Descriptor { get; }
+        public FrameworkElement Card { get; }
+        public TextBlock TitleBlock { get; }
+        public TextBlock? DescBlock { get; }
+        public FrameworkElement InputControl { get; }
+        public TextBlock? ValueLabel { get; }
+
+        public DynamicSettingControl(
+            SettingDescriptor descriptor,
+            FrameworkElement card,
+            TextBlock titleBlock,
+            TextBlock? descBlock,
+            FrameworkElement inputControl,
+            TextBlock? valueLabel = null)
+        {
+            Descriptor = descriptor;
+            Card = card;
+            TitleBlock = titleBlock;
+            DescBlock = descBlock;
+            InputControl = inputControl;
+            ValueLabel = valueLabel;
+        }
+    }
+
+    private readonly List<DynamicSettingControl> _dynamicSettingControls = new();
+
+    private static readonly HashSet<string> StaticSettingKeys = new(StringComparer.OrdinalIgnoreCase)
+    {
+        ClickraSettings.OutputDir,
+        ClickraSettings.OfficeEngine,
+        ClickraSettings.Language,
+        ClickraSettings.TranslateTargetLang,
+        ClickraSettings.QuietMode,
+        ClickraSettings.Notification,
+        ClickraSettings.PdfCompressImageLevel,
+        ClickraSettings.PdfCompressStripFonts,
+        ClickraSettings.PdfCompressMinifyContent,
+        ClickraSettings.ParkedTaskRetention,
+    };
+
     public MainPage()
     {
         InitializeComponent();
@@ -507,8 +549,191 @@ public sealed partial class MainPage : Page
         return true;
     }
 
+    private void BuildDynamicSettingsControls()
+    {
+        if (_dynamicSettingControls.Count > 0) return;
+
+        int insertIdx = SettingsLayout.Children.IndexOf(ParkedRetentionCard);
+        if (insertIdx < 0) insertIdx = SettingsLayout.Children.Count;
+
+        foreach (var descriptor in SettingPageRegistry.AllDescriptors)
+        {
+            if (StaticSettingKeys.Contains(descriptor.Key)) continue;
+
+            var card = new Grid
+            {
+                CornerRadius = new CornerRadius(8),
+                Padding = new Thickness(18),
+                Background = (Brush)Application.Current.Resources["CardBackgroundFillColorDefaultBrush"],
+            };
+
+            var stack = new StackPanel { Spacing = 8 };
+            var titleBlock = new TextBlock
+            {
+                FontSize = 15,
+                FontWeight = Microsoft.UI.Text.FontWeights.SemiBold,
+                Text = L(descriptor.TitleKey),
+            };
+            stack.Children.Add(titleBlock);
+
+            TextBlock? descBlock = null;
+            if (!string.IsNullOrEmpty(descriptor.DescriptionKey))
+            {
+                descBlock = new TextBlock
+                {
+                    FontSize = 12,
+                    Foreground = (Brush)Application.Current.Resources["TextFillColorSecondaryBrush"],
+                    Text = L(descriptor.DescriptionKey),
+                    TextWrapping = TextWrapping.Wrap,
+                };
+                stack.Children.Add(descBlock);
+            }
+
+            FrameworkElement inputControl;
+            TextBlock? valueLabel = null;
+
+            switch (descriptor.EditorKind)
+            {
+                case SettingEditorKind.Toggle:
+                {
+                    var toggle = new ToggleSwitch
+                    {
+                        VerticalAlignment = VerticalAlignment.Center,
+                    };
+                    toggle.Toggled += (_, _) =>
+                    {
+                        if (_loadingSettings) return;
+                        ClickraStorage.SaveSetting(descriptor.Key, toggle.IsOn ? ClickraSettings.ValueTrue : ClickraSettings.ValueFalse);
+                    };
+                    inputControl = toggle;
+                    stack.Children.Add(toggle);
+                    break;
+                }
+
+                case SettingEditorKind.Slider:
+                {
+                    var sliderGrid = new Grid { ColumnSpacing = 12 };
+                    sliderGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+                    sliderGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+
+                    var range = descriptor.GetEffectiveNumericRange() ?? new NumericSettingRange(0, 1, 0);
+                    var slider = new Slider
+                    {
+                        Minimum = range.Min,
+                        Maximum = range.Max,
+                        StepFrequency = 1,
+                        TickFrequency = 1,
+                    };
+                    valueLabel = new TextBlock
+                    {
+                        VerticalAlignment = VerticalAlignment.Center,
+                        FontSize = 13,
+                    };
+                    Grid.SetColumn(slider, 0);
+                    Grid.SetColumn(valueLabel, 1);
+                    sliderGrid.Children.Add(slider);
+                    sliderGrid.Children.Add(valueLabel);
+
+                    var currentValLabel = valueLabel;
+                    slider.ValueChanged += (_, _) =>
+                    {
+                        if (_loadingSettings) return;
+                        int level = Math.Clamp((int)slider.Value, range.Min, range.Max);
+                        ClickraStorage.SaveSetting(descriptor.Key, level.ToString());
+                        UpdateDynamicSliderLabel(currentValLabel, descriptor, level);
+                    };
+
+                    inputControl = slider;
+                    stack.Children.Add(sliderGrid);
+                    break;
+                }
+
+                case SettingEditorKind.Number:
+                {
+                    var numGrid = new Grid { ColumnSpacing = 16 };
+                    numGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+                    numGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+
+                    var range = descriptor.GetEffectiveNumericRange() ?? new NumericSettingRange(0, 100, 0);
+                    var numBox = new NumberBox
+                    {
+                        Minimum = range.Min,
+                        Maximum = range.Max,
+                        SmallChange = 1,
+                        SpinButtonPlacementMode = NumberBoxSpinButtonPlacementMode.Compact,
+                        ValidationMode = NumberBoxValidationMode.InvalidInputOverwritten,
+                        VerticalAlignment = VerticalAlignment.Center,
+                        MinWidth = 160,
+                    };
+                    Grid.SetColumn(numBox, 1);
+                    numGrid.Children.Add(numBox);
+
+                    numBox.ValueChanged += (_, _) =>
+                    {
+                        if (_loadingSettings || double.IsNaN(numBox.Value)) return;
+                        int clamped = Math.Clamp((int)numBox.Value, range.Min, range.Max);
+                        ClickraStorage.SaveSetting(descriptor.Key, clamped.ToString());
+                    };
+
+                    inputControl = numBox;
+                    stack.Children.Add(numGrid);
+                    break;
+                }
+
+                case SettingEditorKind.Choice:
+                {
+                    var combo = new ComboBox { MinWidth = 260 };
+                    if (descriptor.Options != null)
+                    {
+                        foreach (var opt in descriptor.Options)
+                        {
+                            string label = L(opt.LabelKey);
+                            if (string.Equals(label, opt.LabelKey, StringComparison.Ordinal) && !string.IsNullOrEmpty(opt.FallbackText))
+                                label = opt.FallbackText;
+                            combo.Items.Add(new ComboBoxItem { Content = label, Tag = opt.Value });
+                        }
+                    }
+                    combo.SelectionChanged += (_, _) =>
+                    {
+                        if (_loadingSettings) return;
+                        if (combo.SelectedItem is ComboBoxItem item && item.Tag is string val)
+                        {
+                            ClickraStorage.SaveSetting(descriptor.Key, val);
+                        }
+                    };
+
+                    inputControl = combo;
+                    stack.Children.Add(combo);
+                    break;
+                }
+
+                default:
+                    continue;
+            }
+
+            card.Children.Add(stack);
+            SettingsLayout.Children.Insert(insertIdx++, card);
+
+            _dynamicSettingControls.Add(new DynamicSettingControl(
+                descriptor, card, titleBlock, descBlock, inputControl, valueLabel));
+        }
+    }
+
+    private static void UpdateDynamicSliderLabel(TextBlock label, SettingDescriptor descriptor, int level)
+    {
+        if (descriptor.SliderLabels != null && level >= 0 && level < descriptor.SliderLabels.Count)
+        {
+            label.Text = L(descriptor.SliderLabels[level]);
+        }
+        else
+        {
+            label.Text = level.ToString();
+        }
+    }
+
     private void LoadSettings()
     {
+        BuildDynamicSettingsControls();
         SyncSettingsToUi();
 
         OutputDirCombo.SelectionChanged += async (_, _) => await SaveOutputDirAsync();
@@ -577,6 +802,53 @@ public sealed partial class MainPage : Page
             ParkedRetentionBox.Minimum = MinParkedRetentionDays;
             ParkedRetentionBox.Maximum = MaxParkedRetentionDays;
             ParkedRetentionBox.Value = ClickraStorage.GetParkedRetentionDays();
+
+            foreach (var dynamicCtrl in _dynamicSettingControls)
+            {
+                var d = dynamicCtrl.Descriptor;
+                switch (d.EditorKind)
+                {
+                    case SettingEditorKind.Toggle:
+                        if (dynamicCtrl.InputControl is ToggleSwitch ts)
+                            ts.IsOn = ClickraStorage.GetSettingBool(d.Key);
+                        break;
+                    case SettingEditorKind.Slider:
+                        if (dynamicCtrl.InputControl is Slider sl)
+                        {
+                            var range = d.GetEffectiveNumericRange() ?? new NumericSettingRange(0, 1, 0);
+                            int val = Math.Clamp(ClickraStorage.GetSettingInt(d.Key), range.Min, range.Max);
+                            sl.Minimum = range.Min;
+                            sl.Maximum = range.Max;
+                            sl.Value = val;
+                            if (dynamicCtrl.ValueLabel != null)
+                                UpdateDynamicSliderLabel(dynamicCtrl.ValueLabel, d, val);
+                        }
+                        break;
+                    case SettingEditorKind.Number:
+                        if (dynamicCtrl.InputControl is NumberBox nb)
+                        {
+                            var range = d.GetEffectiveNumericRange() ?? new NumericSettingRange(0, 100, 0);
+                            nb.Minimum = range.Min;
+                            nb.Maximum = range.Max;
+                            nb.Value = Math.Clamp(ClickraStorage.GetSettingInt(d.Key), range.Min, range.Max);
+                        }
+                        break;
+                    case SettingEditorKind.Choice:
+                        if (dynamicCtrl.InputControl is ComboBox cb)
+                        {
+                            string val = ClickraStorage.GetSetting(d.Key);
+                            for (int i = 0; i < cb.Items.Count; i++)
+                            {
+                                if (cb.Items[i] is ComboBoxItem item && string.Equals(item.Tag as string, val, StringComparison.OrdinalIgnoreCase))
+                                {
+                                    cb.SelectedIndex = i;
+                                    break;
+                                }
+                            }
+                        }
+                        break;
+                }
+            }
         }
         finally
         {
@@ -696,6 +968,31 @@ public sealed partial class MainPage : Page
         LibreOfficeUninstallButton.Content = L("setting_libreoffice_uninstall");
         LibreOfficeAdoptButton.Content = L("setting_libreoffice_adopt");
         UpdateCompressionLabel(CompressionLabel, CompressionSlider);
+
+        foreach (var dynamicCtrl in _dynamicSettingControls)
+        {
+            dynamicCtrl.TitleBlock.Text = L(dynamicCtrl.Descriptor.TitleKey);
+            if (dynamicCtrl.DescBlock != null && !string.IsNullOrEmpty(dynamicCtrl.Descriptor.DescriptionKey))
+                dynamicCtrl.DescBlock.Text = L(dynamicCtrl.Descriptor.DescriptionKey);
+            if (dynamicCtrl.Descriptor.EditorKind == SettingEditorKind.Slider && dynamicCtrl.InputControl is Slider sl && dynamicCtrl.ValueLabel != null)
+            {
+                UpdateDynamicSliderLabel(dynamicCtrl.ValueLabel, dynamicCtrl.Descriptor, (int)sl.Value);
+            }
+            if (dynamicCtrl.Descriptor.EditorKind == SettingEditorKind.Choice && dynamicCtrl.InputControl is ComboBox cb && dynamicCtrl.Descriptor.Options != null)
+            {
+                for (int i = 0; i < cb.Items.Count && i < dynamicCtrl.Descriptor.Options.Count; i++)
+                {
+                    if (cb.Items[i] is ComboBoxItem item)
+                    {
+                        var opt = dynamicCtrl.Descriptor.Options[i];
+                        string label = L(opt.LabelKey);
+                        if (string.Equals(label, opt.LabelKey, StringComparison.Ordinal) && !string.IsNullOrEmpty(opt.FallbackText))
+                            label = opt.FallbackText;
+                        item.Content = label;
+                    }
+                }
+            }
+        }
 
         AboutDescription.Text = L("fluent_about_desc");
         GitHubText.Text = L("about_btn_github");
