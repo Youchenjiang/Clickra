@@ -73,7 +73,8 @@ namespace Clickra.UI
 
         /// <summary>True when the element is one of the settings-page controls.</summary>
         static bool IsSettingsElement(int element)
-            => element == 5 || element == 6 || element == 7 || element == 8 || element == 9 ||
+            => (element >= 1000 && element < 2000) ||
+               element == 5 || element == 6 || element == 7 || element == 8 || element == 9 ||
                element == 20 || element == 32 || element == 33 || element == 34 || element == 40 ||
                (element >= 90 && element <= 96);
 
@@ -431,6 +432,12 @@ namespace Clickra.UI
         [SuppressMessage("SonarQube", "S4036", Justification = "StoreUri is an absolute ms-windows-store URI")]
         static void HandleSettingsClick(IntPtr hwnd, int element)
         {
+            if (element >= 1000 && element < 2000)
+            {
+                HandleDynamicSettingClick(hwnd, element);
+                return;
+            }
+
             switch (element)
             {
                 case 5: ToggleBoolSetting(hwnd, ClickraSettings.QuietMode); break;
@@ -455,6 +462,68 @@ namespace Clickra.UI
                 case 95: SetParkedRetention(hwnd, 14); break;
                 case 96: SetParkedRetention(hwnd, 30); break;
                 default: break; // Unhandled settings element — ignore.
+            }
+        }
+
+        static void HandleDynamicSettingClick(IntPtr hwnd, int element)
+        {
+            int descriptorIndex = (element - 1000) / 10;
+            int subId = (element - 1000) % 10;
+
+            if (descriptorIndex < 0 || descriptorIndex >= SettingPageRegistry.AllDescriptors.Count) return;
+            var descriptor = SettingPageRegistry.AllDescriptors[descriptorIndex];
+
+            switch (descriptor.EditorKind)
+            {
+                case SettingEditorKind.Toggle:
+                    ToggleBoolSetting(hwnd, descriptor.Key);
+                    break;
+
+                case SettingEditorKind.Slider:
+                {
+                    var range = descriptor.GetEffectiveNumericRange();
+                    if (!range.HasValue) break;
+                    _dynamicSliderDescriptorIndex = descriptorIndex;
+                    _isDraggingDynamicSlider = true;
+                    SetCapture(hwnd);
+
+                    var pt = new Point();
+                    if (GetCursorPos(out pt))
+                    {
+                        ScreenToClient(hwnd, ref pt);
+                        float mouseX = (pt.X / _dpiScale) + _contentScrollX;
+                        float relX = mouseX - _dynamicSliderTrackX;
+                        float fraction = Math.Max(0f, Math.Min(1f, relX / _dynamicSliderTrackW));
+                        int span = range.Value.Max - range.Value.Min;
+                        int newLevel = Math.Clamp(
+                            (int)Math.Round(fraction * span, MidpointRounding.AwayFromZero) + range.Value.Min,
+                            range.Value.Min,
+                            range.Value.Max);
+                        ClickraStorage.SaveSetting(descriptor.Key, newLevel.ToString());
+                        InvalidateRect(hwnd, IntPtr.Zero, false);
+                    }
+                    break;
+                }
+
+                case SettingEditorKind.Number:
+                {
+                    var range = descriptor.GetEffectiveNumericRange() ?? new NumericSettingRange(0, 100, 0);
+                    int current = ClickraStorage.GetSettingInt(descriptor.Key);
+                    int delta = subId == 1 ? -1 : (subId == 2 ? 1 : 0);
+                    int updated = Math.Clamp(current + delta, range.Min, range.Max);
+                    ClickraStorage.SaveSetting(descriptor.Key, updated.ToString());
+                    InvalidateRect(hwnd, IntPtr.Zero, false);
+                    break;
+                }
+
+                case SettingEditorKind.Choice:
+                {
+                    if (descriptor.Options != null && subId >= 0 && subId < descriptor.Options.Count)
+                    {
+                        ApplySetting(hwnd, descriptor.Key, descriptor.Options[subId].Value);
+                    }
+                    break;
+                }
             }
         }
 

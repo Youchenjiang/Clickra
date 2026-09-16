@@ -110,6 +110,7 @@ namespace Clickra.UI
             else if (_isDraggingScrollX) UpdateScrollXDrag(hwnd, mouseX, logW, logH, sidebarW);
             else if (_isDraggingDetailScroll) UpdateDetailScrollDrag(hwnd, mouseX, logW);
             else if (_isDraggingPdfSlider) UpdatePdfSliderDrag(hwnd, mouseX, sidebarW);
+            else if (_isDraggingDynamicSlider) UpdateDynamicSliderDrag(hwnd, mouseX, sidebarW);
 
             int adjMouseX = mouseX >= sidebarW ? (int)(mouseX + _contentScrollX) : mouseX;
             int adjMouseY = mouseX >= sidebarW ? (int)(mouseY + _contentScrollY) : mouseY;
@@ -207,6 +208,30 @@ namespace Clickra.UI
             if (current != newLevel.ToString())
             {
                 ApplyPdfCompressLevel(hwnd, newLevel);
+            }
+        }
+
+        /// <summary>Snaps a dynamic settings slider to the nearest level while it is dragged.</summary>
+        static void UpdateDynamicSliderDrag(IntPtr hwnd, int mouseX, float sidebarW)
+        {
+            if (_dynamicSliderDescriptorIndex < 0 || _dynamicSliderDescriptorIndex >= SettingPageRegistry.AllDescriptors.Count) return;
+            var descriptor = SettingPageRegistry.AllDescriptors[_dynamicSliderDescriptorIndex];
+            var range = descriptor.GetEffectiveNumericRange();
+            if (!range.HasValue) return;
+
+            float sliderMouseX = mouseX >= sidebarW ? mouseX + _contentScrollX : mouseX;
+            float relX = sliderMouseX - _dynamicSliderTrackX;
+            float fraction = Math.Max(0f, Math.Min(1f, relX / _dynamicSliderTrackW));
+            int span = range.Value.Max - range.Value.Min;
+            int newLevel = Math.Clamp(
+                (int)Math.Round(fraction * span, MidpointRounding.AwayFromZero) + range.Value.Min,
+                range.Value.Min,
+                range.Value.Max);
+            string current = ClickraStorage.GetSetting(descriptor.Key);
+            if (current != newLevel.ToString())
+            {
+                ClickraStorage.SaveSetting(descriptor.Key, newLevel.ToString());
+                InvalidateRect(hwnd, IntPtr.Zero, false);
             }
         }
 
@@ -374,12 +399,14 @@ namespace Clickra.UI
 
         static IntPtr HandleLButtonUp(IntPtr hwnd)
         {
-            if (_isDraggingScrollX || _isDraggingScrollY || _isDraggingDetailScroll || _isDraggingPdfSlider)
+            if (_isDraggingScrollX || _isDraggingScrollY || _isDraggingDetailScroll || _isDraggingPdfSlider || _isDraggingDynamicSlider)
             {
                 _isDraggingScrollX = false;
                 _isDraggingScrollY = false;
                 _isDraggingDetailScroll = false;
                 _isDraggingPdfSlider = false;
+                _isDraggingDynamicSlider = false;
+                _dynamicSliderDescriptorIndex = -1;
                 ReleaseCapture();
                 InvalidateRect(hwnd, IntPtr.Zero, false);
             }

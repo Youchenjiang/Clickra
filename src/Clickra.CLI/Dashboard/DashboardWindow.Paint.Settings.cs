@@ -453,6 +453,15 @@ namespace Clickra.UI
 
             y += 50f;
 
+            // Dynamic settings from SettingPageRegistry
+            for (int i = 0; i < SettingPageRegistry.AllDescriptors.Count; i++)
+            {
+                var descriptor = SettingPageRegistry.AllDescriptors[i];
+                if (LegacyPaintedSettings.Contains(descriptor.Key)) continue;
+
+                DrawDynamicSettingDescriptor(g, descriptor, i, logW, contentX, ref y, margin);
+            }
+
             _settingsContentHeight = Math.Max(460f, y + 80f);
         }
 
@@ -673,6 +682,210 @@ namespace Clickra.UI
                     using var lBrush = new SolidBrush(active ? Color.White : Color.FromArgb(95, 95, 95));
                     var lSize = g.MeasureString(stopLabels[i], _subFont);
                     g.DrawString(stopLabels[i], _subFont, lBrush,
+                        (sx - lSize.Width / s / 2f) * s,
+                        (trackY + trackH / 2f + dotR + 5f) * s);
+                }
+            }
+        }
+
+        private static readonly HashSet<string> LegacyPaintedSettings = new(StringComparer.OrdinalIgnoreCase)
+        {
+            ClickraSettings.QuietMode,
+            ClickraSettings.Notification,
+            ClickraSettings.OutputDir,
+            ClickraSettings.OfficeEngine,
+            ClickraSettings.Language,
+            ClickraSettings.TranslateTargetLang,
+            ClickraSettings.PdfCompressImageLevel,
+            ClickraSettings.PdfCompressStripFonts,
+            ClickraSettings.PdfCompressMinifyContent,
+            ClickraSettings.ParkedTaskRetention,
+        };
+
+        static void DrawDynamicSettingDescriptor(
+            Graphics g,
+            SettingDescriptor descriptor,
+            int descriptorIndex,
+            float logW,
+            float contentX,
+            ref float y,
+            float margin)
+        {
+            float s = _dpiScale;
+            int baseElemId = 1000 + descriptorIndex * 10;
+
+            switch (descriptor.EditorKind)
+            {
+                case SettingEditorKind.Toggle:
+                {
+                    bool state = ClickraStorage.GetSettingBool(descriptor.Key);
+                    if (_tabFont != null)
+                        g.DrawString(GetText(descriptor.TitleKey), _tabFont, Brushes.White, contentX * s, y * s);
+                    if (!string.IsNullOrEmpty(descriptor.DescriptionKey) && _subFont != null)
+                    {
+                        using var subBrush = new SolidBrush(Color.FromArgb(140, 140, 140));
+                        g.DrawString(GetText(descriptor.DescriptionKey), _subFont, subBrush, contentX * s, (y + 22) * s);
+                    }
+                    int toggleX = (int)logW - 100;
+                    DrawToggleSwitch(g, state, _hoveredElement == baseElemId, toggleX, (int)(y + 5), 44, 22);
+                    _settingsHitRects[baseElemId] = new RectangleF(toggleX, y + 5, 44, 22);
+                    y += 70f;
+                    break;
+                }
+
+                case SettingEditorKind.Slider:
+                {
+                    if (_tabFont != null)
+                        g.DrawString(GetText(descriptor.TitleKey), _tabFont, Brushes.White, contentX * s, y * s);
+                    if (!string.IsNullOrEmpty(descriptor.DescriptionKey) && _subFont != null)
+                    {
+                        using var subBrush = new SolidBrush(Color.FromArgb(140, 140, 140));
+                        g.DrawString(GetText(descriptor.DescriptionKey), _subFont, subBrush, contentX * s, (y + 22) * s);
+                    }
+                    y += 48f;
+
+                    float sliderW = 300f;
+                    _dynamicSliderTrackX = contentX;
+                    _dynamicSliderTrackW = sliderW;
+                    int currentLevel = ClickraStorage.GetSettingInt(descriptor.Key);
+                    var range = descriptor.GetEffectiveNumericRange() ?? new NumericSettingRange(0, 1, 0);
+                    currentLevel = Math.Clamp(currentLevel, range.Min, range.Max);
+
+                    DrawDynamicSlider(g, contentX, y, sliderW, descriptor, currentLevel, range);
+                    _settingsHitRects[baseElemId] = new RectangleF(contentX - 10, y - 4, sliderW + 20, 62);
+                    y += 72f;
+                    break;
+                }
+
+                case SettingEditorKind.Number:
+                {
+                    if (_tabFont != null)
+                        g.DrawString(GetText(descriptor.TitleKey), _tabFont, Brushes.White, contentX * s, y * s);
+                    if (!string.IsNullOrEmpty(descriptor.DescriptionKey) && _subFont != null)
+                    {
+                        using var subBrush = new SolidBrush(Color.FromArgb(140, 140, 140));
+                        g.DrawString(GetText(descriptor.DescriptionKey), _subFont, subBrush, contentX * s, (y + 22) * s);
+                    }
+                    y += 50f;
+
+                    int val = ClickraStorage.GetSettingInt(descriptor.Key);
+                    var range = descriptor.GetEffectiveNumericRange() ?? new NumericSettingRange(0, 100, 0);
+                    val = Math.Clamp(val, range.Min, range.Max);
+
+                    if (_subFont != null)
+                    {
+                        using var valBrush = new SolidBrush(Color.FromArgb(200, 200, 200));
+                        g.DrawString(val.ToString(), _subFont, valBrush, contentX * s, y * s);
+                    }
+                    y += 28f;
+
+                    float curX = contentX;
+                    float btnY = y;
+                    float wStep = 34f;
+
+                    DrawOutputDirButton(g, "-", false, baseElemId + 1, (int)curX, (int)btnY, (int)wStep);
+                    _settingsHitRects[baseElemId + 1] = new RectangleF(curX, btnY, wStep, 30);
+                    curX += wStep + margin;
+
+                    DrawOutputDirButton(g, "+", false, baseElemId + 2, (int)curX, (int)btnY, (int)wStep);
+                    _settingsHitRects[baseElemId + 2] = new RectangleF(curX, btnY, wStep, 30);
+                    curX += wStep + margin + 8f;
+
+                    y += 50f;
+                    break;
+                }
+
+                case SettingEditorKind.Choice:
+                {
+                    if (_tabFont != null)
+                        g.DrawString(GetText(descriptor.TitleKey), _tabFont, Brushes.White, contentX * s, y * s);
+                    if (!string.IsNullOrEmpty(descriptor.DescriptionKey) && _subFont != null)
+                    {
+                        using var subBrush = new SolidBrush(Color.FromArgb(140, 140, 140));
+                        g.DrawString(GetText(descriptor.DescriptionKey), _subFont, subBrush, contentX * s, (y + 22) * s);
+                    }
+                    y += 50f;
+
+                    string currentVal = ClickraStorage.GetSetting(descriptor.Key);
+                    float curX = contentX;
+                    float buttonY = y;
+
+                    var options = descriptor.Options ?? Array.Empty<SettingOption>();
+                    for (int optIdx = 0; optIdx < options.Count; optIdx++)
+                    {
+                        var opt = options[optIdx];
+                        bool isSelected = string.Equals(currentVal, opt.Value, StringComparison.OrdinalIgnoreCase);
+                        string label = GetText(opt.LabelKey);
+                        if (string.Equals(label, opt.LabelKey, StringComparison.Ordinal) && !string.IsNullOrEmpty(opt.FallbackText))
+                            label = opt.FallbackText;
+
+                        var measureFont = _subFont ?? SystemFonts.DefaultFont;
+                        float btnW = Math.Max(60f, g.MeasureString(label, measureFont).Width / s + 20f);
+                        int elemId = baseElemId + optIdx;
+
+                        DrawOutputDirButton(g, label, isSelected, elemId, (int)curX, (int)buttonY, (int)btnW);
+                        _settingsHitRects[elemId] = new RectangleF(curX, buttonY, btnW, 30);
+                        curX += btnW + margin;
+                    }
+
+                    y += 50f;
+                    break;
+                }
+            }
+        }
+
+        static void DrawDynamicSlider(Graphics g, float x, float y, float w, SettingDescriptor descriptor, int level, NumericSettingRange range)
+        {
+            float s = _dpiScale;
+            int stops = Math.Max(2, range.Max - range.Min + 1);
+            float trackY = y + 18f;
+            float trackH = 5f;
+            Color accent = UIHelper.GetSystemColorizationColor();
+
+            // Track background
+            using var bgPath = UIHelper.GetRoundedRectPath(
+                new RectangleF(x * s, trackY * s, w * s, trackH * s), (trackH / 2f) * s);
+            using var bgBrush = new SolidBrush(Color.FromArgb(55, 55, 55));
+            g.FillPath(bgBrush, bgPath);
+
+            // Filled portion
+            float thumbX = x + (float)(level - range.Min) / (stops - 1) * w;
+            float fillW = thumbX - x;
+            if (fillW > 0.5f)
+            {
+                using var fillPath = UIHelper.GetRoundedRectPath(
+                    new RectangleF(x * s, trackY * s, fillW * s, trackH * s), (trackH / 2f) * s);
+                using var fillBrush = new SolidBrush(accent);
+                g.FillPath(fillBrush, fillPath);
+            }
+
+            // Stop dots + labels
+            var labels = descriptor.SliderLabels;
+            for (int i = 0; i < stops; i++)
+            {
+                float sx = x + (float)i / (stops - 1) * w;
+                bool active = (i + range.Min == level);
+
+                float dotR = active ? 7.5f : 3.5f;
+                Color dotColor = (i + range.Min) <= level ? accent : Color.FromArgb(65, 65, 65);
+                if (active)
+                {
+                    using var ringBrush = new SolidBrush(Color.FromArgb(200, 200, 200));
+                    g.FillEllipse(ringBrush,
+                        (sx - dotR - 2f) * s, (trackY + trackH / 2f - dotR - 2f) * s,
+                        (dotR + 2f) * 2f * s, (dotR + 2f) * 2f * s);
+                }
+                using var dotBrush = new SolidBrush(dotColor);
+                g.FillEllipse(dotBrush,
+                    (sx - dotR) * s, (trackY + trackH / 2f - dotR) * s,
+                    dotR * 2f * s, dotR * 2f * s);
+
+                if (_subFont != null && labels != null && i < labels.Count)
+                {
+                    string label = GetText(labels[i]);
+                    using var lBrush = new SolidBrush(active ? Color.White : Color.FromArgb(95, 95, 95));
+                    var lSize = g.MeasureString(label, _subFont);
+                    g.DrawString(label, _subFont, lBrush,
                         (sx - lSize.Width / s / 2f) * s,
                         (trackY + trackH / 2f + dotR + 5f) * s);
                 }

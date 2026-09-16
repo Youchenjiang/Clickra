@@ -124,6 +124,12 @@ namespace Clickra.UI
         static float _pdfSliderTrackW = 300;
         static bool _isDraggingPdfSlider = false;
 
+        // Dynamic settings sliders state
+        static float _dynamicSliderTrackX = 0;
+        static float _dynamicSliderTrackW = 300;
+        static bool _isDraggingDynamicSlider = false;
+        static int _dynamicSliderDescriptorIndex = -1;
+
 
     }
 }
