@@ -1220,7 +1220,15 @@ namespace Clickra.Core
                 { "cli_warn_file_missing_skip", "跳過已不存在的 PDF: {0} ({1}/{2})", "跳过已不存在的 PDF: {0} ({1}/{2})", "Skipping missing PDF: {0} ({1}/{2})", "存在しない PDF をスキップ: {0} ({1}/{2})", "존재하지 않는 PDF 건너뜀: {0} ({1}/{2})" },
                 { "cli_warn_translate_file_vanished", "翻譯期間檔案消失，已跳過: {0}", "翻译期间文件消失，已跳过: {0}", "File disappeared during translation, skipped: {0}", "翻訳中にファイルが消失したためスキップしました: {0}", "번역 중 파일이 사라져 건너뛰었습니다: {0}" },
                 { "cli_warn_translate_dir_vanished", "翻譯期間資料夾消失，已跳過: {0}", "翻译期间文件夹消失，已跳过: {0}", "Directory disappeared during translation, skipped: {0}", "翻訳中にフォルダーが消失したためスキップしました: {0}", "번역 중 폴더가 사라져 건너뛰었습니다: {0}" },
-                { "cli_err_translate_failed", "翻譯檔案未完成: {0}. 錯誤訊息: {1}", "翻译文件未完成: {0}. 错误信息: {1}", "Translation failed: {0}. Error: {1}", "ファイルの翻訳が未完了です: {0}. エラー: {1}", "파일 번역 미완료: {0}. 오류: {1}" }
+                { "cli_err_translate_failed", "翻譯檔案未完成: {0}. 錯誤訊息: {1}", "翻译文件未完成: {0}. 错误信息: {1}", "Translation failed: {0}. Error: {1}", "ファイルの翻訳が未完了です: {0}. エラー: {1}", "파일 번역 미완료: {0}. 오류: {1}" },
+                { "progress_sub_failed", "作業失敗", "作业失败", "Operation failed", "処理失敗", "작업 실패" },
+                { "progress_sub_completed", "作業完成", "作业完成", "Operation completed", "処理完了", "작업 완료" },
+                { "progress_sub_visual_splitter", "PDF 視覺化分割標記", "PDF 可视化分割标记", "PDF visual split marking", "PDF 視覚的分割マーキング", "PDF 시각적 분할 표시" },
+                { "progress_sub_running", "正在執行作業...", "正在执行作业...", "Working...", "処理を実行中...", "작업 실행 중..." },
+                { "progress_header_failed", "處理失敗", "处理失败", "Processing failed", "処理失敗", "처리 실패" },
+                { "progress_header_success", "轉換成功！", "转换成功！", "Conversion successful!", "変換に成功しました！", "변환 성공!" },
+                { "progress_auto_close_hint", "視窗將於數秒後自動關閉...", "窗口将于数秒后自动关闭...", "Window will close automatically in a few seconds...", "ウィンドウは数秒後に自動で閉じます...", "창이 몇 초 후 자동으로 닫힙니다..." },
+                { "progress_tip_processing", "請稍候，正在背景高速處理中...", "请稍候，正在后台高速处理中...", "Please wait, processing in background...", "しばらくお待ちください。バックグラウンドで処理中です...", "잠시 기다려 주십시오. 백그라운드에서 처리 중입니다..." }
             };
 
             RegisterTranslationMatrix(data);
