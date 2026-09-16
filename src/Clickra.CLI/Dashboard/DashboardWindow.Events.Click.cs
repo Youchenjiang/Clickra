@@ -469,8 +469,9 @@ namespace Clickra.UI
 
         private static void SetParkedRetention(IntPtr hwnd, int days)
         {
-            // Shared with Fluent through the settings registry; do not duplicate the retention bound.
-            int clamped = Math.Clamp(days, 0, ClickraSettings.MaxParkedTaskRetentionDays);
+            // Same range as the Fluent settings page, from one place: a second copy of the bound
+            // would let the two settings pages drift apart.
+            int clamped = Math.Clamp(days, ClickraSettings.MinParkedRetentionDays, ClickraSettings.MaxParkedRetentionDays);
             ClickraStorage.SaveSetting(ClickraSettings.ParkedTaskRetention, clamped.ToString());
             InvalidateRect(hwnd, IntPtr.Zero, false);
         }
@@ -857,10 +858,13 @@ namespace Clickra.UI
         {
             if (element == 83)
             {
-                // PDF compress slider clicked — snap to nearest of 3 stops via equal-width segments + enable drag
+                // PDF compress slider clicked — snap to nearest stop via equal-width segments + enable drag
                 float relX = adjMouseX - _pdfSliderTrackX;
                 float fraction = Math.Max(0f, Math.Min(1f, relX / _pdfSliderTrackW));
-                int newLevel = (int)Math.Max(0, Math.Min(2, Math.Round(fraction * 2, MidpointRounding.AwayFromZero)));
+                int span = ClickraSettings.MaxPdfCompressLevel - ClickraSettings.MinPdfCompressLevel;
+                int newLevel = ClickraSettings.ClampNumericSetting(
+                    ClickraSettings.PdfCompressImageLevel,
+                    (int)Math.Round(fraction * span, MidpointRounding.AwayFromZero) + ClickraSettings.MinPdfCompressLevel);
                 ApplyPdfCompressLevel(hwnd, newLevel);
                 _isDraggingPdfSlider = true;
                 SetCapture(hwnd);
@@ -1001,7 +1005,8 @@ namespace Clickra.UI
         /// <summary>Applies a PDF compression level selection and refreshes the settings tab.</summary>
         static void ApplyPdfCompressLevel(IntPtr hwnd, int level)
         {
-            ClickraStorage.SaveSetting(ClickraSettings.PdfCompressImageLevel, level.ToString());
+            int clamped = ClickraSettings.ClampNumericSetting(ClickraSettings.PdfCompressImageLevel, level);
+            ClickraStorage.SaveSetting(ClickraSettings.PdfCompressImageLevel, clamped.ToString());
             InvalidateRect(hwnd, IntPtr.Zero, false);
         }
 
