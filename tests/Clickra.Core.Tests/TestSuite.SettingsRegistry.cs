@@ -368,6 +368,8 @@ static partial class TestSuite
             "cli_progress_toast_title",
             "cli_progress_toast_body",
             "cli_tray_converting",
+            "cli_tray_restore",
+            "cli_tray_cancel",
             "cli_err_no_input",
             "cli_err_no_input_title"
         };

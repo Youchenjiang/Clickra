@@ -81,6 +81,26 @@ static partial class TestSuite
                         restore.Contains("ShowWindow(hwnd, 9)", StringComparison.Ordinal),
                 "Restoring from the tray must show and restore the window, not just re-show it.");
 
+            // Left-click single and double click must restore the window
+            Assert.True(restore.Contains("0x0202", StringComparison.Ordinal),
+                "HandleTrayIcon must handle WM_LBUTTONUP (0x0202) for single-click restore.");
+            Assert.True(restore.Contains("0x0203", StringComparison.Ordinal),
+                "HandleTrayIcon must handle WM_LBUTTONDBLCLK (0x0203) for double-click restore.");
+
+            // Right-click context menu must provide restore and cancel options wired to close workflow
+            Assert.True(restore.Contains("0x0205", StringComparison.Ordinal),
+                "HandleTrayIcon must handle WM_RBUTTONUP (0x0205) for context menu popup.");
+            Assert.True(restore.Contains("CreatePopupMenu()", StringComparison.Ordinal) &&
+                        restore.Contains("TrackPopupMenuEx(", StringComparison.Ordinal) &&
+                        restore.Contains("DestroyMenu(", StringComparison.Ordinal),
+                "HandleTrayIcon must create, track, and destroy the context popup menu.");
+            Assert.True(restore.Contains("cli_tray_restore", StringComparison.Ordinal),
+                "Tray context menu must contain localized restore item.");
+            Assert.True(restore.Contains("cli_tray_cancel", StringComparison.Ordinal),
+                "Tray context menu must contain localized cancel item.");
+            Assert.True(restore.Contains("0x0010", StringComparison.Ordinal) || restore.Contains("HandleClose", StringComparison.Ordinal),
+                "Tray cancel item must forward to the window close/cancel workflow.");
+
             // The icon must never outlive the window.
             Assert.True(MethodBody(window, "private void CleanupResources").Contains("RemoveTrayIcon()", StringComparison.Ordinal),
                 "CleanupResources must remove the tray icon so a closed progress window leaves nothing behind.");
