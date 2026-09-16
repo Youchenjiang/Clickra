@@ -418,6 +418,7 @@ namespace Clickra.UI
         {
             if (w == TIMER_ID_REFRESH)
             {
+                ClickraStorage.EnsureFreshSettings();
                 RefreshHistoryData();
                 InvalidateRect(hwnd, IntPtr.Zero, false);
             }

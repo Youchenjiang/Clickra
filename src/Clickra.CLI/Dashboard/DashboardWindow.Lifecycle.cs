@@ -96,6 +96,16 @@ namespace Clickra.UI
 
             ShowWindow(hwnd, 5);
 
+            Action onSettingsReloaded = () =>
+            {
+                PostDashboardAction(hwnd, () =>
+                {
+                    RecreateScaledFonts();
+                    InvalidateRect(hwnd, IntPtr.Zero, false);
+                });
+            };
+            ClickraStorage.SettingsReloaded += onSettingsReloaded;
+
             SetTimer(hwnd, TIMER_ID_REFRESH, 250, IntPtr.Zero);
 
             while (GetMessage(out var msg, IntPtr.Zero, 0, 0) > 0)
@@ -103,6 +113,8 @@ namespace Clickra.UI
                 TranslateMessage(ref msg);
                 DispatchMessage(ref msg);
             }
+
+            ClickraStorage.SettingsReloaded -= onSettingsReloaded;
             
             Marshal.FreeHGlobal(hClass);
         }
