@@ -147,10 +147,8 @@ namespace Clickra.UI
             RecreateScaledFonts();
         }
 
-        static string GetText(string key)
-        {
-            return Clickra.Core.Localization.T(key, ClickraStorage.GetSetting(ClickraSettings.Language));
-        }
+        static string GetText(string key) =>
+            Clickra.Core.Localization.T(key);
 
 
 
