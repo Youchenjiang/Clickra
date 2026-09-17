@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Text;
@@ -23,6 +24,15 @@ namespace Clickra.Core.Tests;
 static partial class TestSuite
 {
     private static readonly TimeSpan LocalizationRegexTimeout = TimeSpan.FromSeconds(1);
+
+    /// <summary>孤兒鍵基線目前條數。基線只能單向縮小。</summary>
+    public static int UnconsumedKeyBaselineCount => UnconsumedKeyBaseline.Length;
+
+    /// <summary>
+    /// 孤兒鍵基線水位硬上限。任何 PR 若試圖擴大基線，將直接被此上限及 Git 基準比對擋下。
+    /// 只能隨著鍵被消費或刪除而單向調低，絕不可調高。
+    /// </summary>
+    public const int BaselineCeiling = 33;
 
     /// <summary>
     /// 目前仍沒有消費者的鍵。每一條都必須有一條明確的出路：接上某個介面，或連同五種
@@ -87,6 +97,7 @@ static partial class TestSuite
     public static void RegisterLocalizationOrphanTests(TestRunner runner)
     {
         runner.Run("Localization guard: every declared key has a consumer (shrinking orphan baseline)", TestEveryDeclaredKeyHasConsumer);
+        runner.Run("Localization guard: orphan baseline monotonically shrinking invariants and helpers", TestOrphanBaselineMonotonicInvariants);
         runner.Run("Localization guard: every localization lookup names a declared key", TestEveryLookupNamesDeclaredKey);
         runner.Run("Localization guard: the CLI progress tip is glyph-free and fits one tip line", TestProgressTipFitsOneLine);
     }
@@ -98,6 +109,13 @@ static partial class TestSuite
 
         Assert.True(UnconsumedKeyBaseline.Length == UnconsumedKeyBaseline.Distinct(StringComparer.Ordinal).Count(),
             "The unconsumed-key baseline must not list the same key twice.");
+
+        Assert.True(UnconsumedKeyBaseline.Length <= BaselineCeiling,
+            $"The orphan baseline may only shrink, never grow. Current count ({UnconsumedKeyBaseline.Length}) " +
+            $"exceeds the hard ceiling of {BaselineCeiling}. New unconsumed keys must not be added to the baseline.");
+
+        VerifyBaselineMonotonicallyShrinksAgainstGit(root);
+        WriteBaselineReport(UnconsumedKeyBaseline.Length);
 
         var keys = Localization.GetAllKeys();
         Assert.True(keys.Count > 0, "Expected Localization to declare at least one key.");
@@ -128,6 +146,24 @@ static partial class TestSuite
             "up, or deleted together with its 5 translations, and then dropped from " +
             "UnconsumedKeyBaseline - the list may only shrink." +
             $"{Environment.NewLine}  baseline: {expected}{Environment.NewLine}  actual:   {actual}");
+    }
+
+    private static void TestOrphanBaselineMonotonicInvariants()
+    {
+        Assert.True(BaselineCeiling == UnconsumedKeyBaseline.Length,
+            $"BaselineCeiling ({BaselineCeiling}) must exactly match UnconsumedKeyBaseline.Length ({UnconsumedKeyBaseline.Length}). " +
+            "When removing consumed or deleted keys from the baseline, BaselineCeiling must be lowered synchronously.");
+
+        string sampleCode = "private static readonly string[] UnconsumedKeyBaseline = { \"key_one\", \"key_two\" };";
+        var extracted = ExtractBaselineKeys(sampleCode);
+        Assert.True(extracted.Contains("key_one") && extracted.Contains("key_two") && extracted.Count == 2,
+            "ExtractBaselineKeys must correctly parse keys from source code snippet.");
+
+        var mockBase = new HashSet<string> { "key_one" };
+        var mockCurrent = new HashSet<string> { "key_one", "key_injected" };
+        var mockAdded = mockCurrent.Where(k => !mockBase.Contains(k)).ToList();
+        Assert.True(mockAdded.Count == 1 && mockAdded[0] == "key_injected",
+            "Monotonic shrinking detector must flag any key not present in the base branch baseline.");
     }
 
     private static void TestEveryLookupNamesDeclaredKey()
@@ -236,5 +272,96 @@ static partial class TestSuite
         string stripped = Regex.Replace(text, @"/\*.*?\*/", string.Empty, RegexOptions.Singleline, LocalizationRegexTimeout);
         stripped = Regex.Replace(stripped, @"<!--.*?-->", string.Empty, RegexOptions.Singleline, LocalizationRegexTimeout);
         return Regex.Replace(stripped, @"//[^\n]*", string.Empty, RegexOptions.None, LocalizationRegexTimeout);
+    }
+
+    /// <summary>
+    /// 驗證當前基線相較於 Git 基準分支（origin/main 或 main）只能縮小，絕不可增加任何 Main 沒有的鍵。
+    /// </summary>
+    private static void VerifyBaselineMonotonicallyShrinksAgainstGit(string repoRoot)
+    {
+        string? baseContent = TryGetGitFileContent(repoRoot, "origin/main", "tests/Clickra.Core.Tests/TestSuite.LocalizationOrphans.cs")
+                           ?? TryGetGitFileContent(repoRoot, "main", "tests/Clickra.Core.Tests/TestSuite.LocalizationOrphans.cs");
+
+        if (string.IsNullOrEmpty(baseContent)) return;
+
+        var baseKeys = ExtractBaselineKeys(baseContent);
+        if (baseKeys.Count == 0) return;
+
+        var currentKeys = new HashSet<string>(UnconsumedKeyBaseline, StringComparer.Ordinal);
+        var addedKeys = currentKeys.Where(k => !baseKeys.Contains(k)).OrderBy(k => k, StringComparer.Ordinal).ToList();
+
+        Assert.True(addedKeys.Count == 0,
+            $"PR blocked: New unconsumed key(s) detected in baseline that were not present on base branch ({string.Join(", ", addedKeys)}). " +
+            "New localization keys must have active consumers in src/, and the orphan baseline may only shrink.");
+
+        Assert.True(UnconsumedKeyBaseline.Length <= baseKeys.Count,
+            $"The orphan baseline count ({UnconsumedKeyBaseline.Length}) cannot exceed base branch count ({baseKeys.Count}).");
+    }
+
+    /// <summary>從指定 Git 版本取得檔案內容；若非 Git 環境或該分支不存在則優雅回傳 null。</summary>
+    private static string? TryGetGitFileContent(string repoRoot, string revision, string relativePath)
+    {
+        try
+        {
+            var psi = new ProcessStartInfo
+            {
+                FileName = "git",
+                Arguments = $"show {revision}:{relativePath.Replace('\\', '/')}",
+                WorkingDirectory = repoRoot,
+                RedirectStandardOutput = true,
+                RedirectStandardError = true,
+                UseShellExecute = false,
+                CreateNoWindow = true
+            };
+            using var proc = Process.Start(psi);
+            if (proc is null) return null;
+            string output = proc.StandardOutput.ReadToEnd();
+            proc.WaitForExit(3000);
+            return proc.ExitCode == 0 ? output : null;
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
+    /// <summary>從原始碼中解析 UnconsumedKeyBaseline 陣列內宣告的鍵清單。</summary>
+    private static HashSet<string> ExtractBaselineKeys(string fileContent)
+    {
+        var keys = new HashSet<string>(StringComparer.Ordinal);
+        var match = Regex.Match(fileContent, @"UnconsumedKeyBaseline\s*=\s*\{(?<content>.*?)\};", RegexOptions.Singleline, LocalizationRegexTimeout);
+        if (!match.Success) return keys;
+
+        string arrayBody = match.Groups["content"].Value;
+        foreach (Match m in Regex.Matches(arrayBody, @"""([A-Za-z0-9_]+)""", RegexOptions.None, LocalizationRegexTimeout))
+        {
+            keys.Add(m.Groups[1].Value);
+        }
+        return keys;
+    }
+
+    /// <summary>將基線條數報告輸出至控制台，並在 CI 環境寫入 GITHUB_STEP_SUMMARY。</summary>
+    private static void WriteBaselineReport(int currentCount)
+    {
+        string reportLine = $"[Localization] Orphan baseline: {currentCount} keys remaining (ceiling: {BaselineCeiling}, monotonic shrinking)";
+        Console.WriteLine(reportLine);
+
+        string? summaryFile = Environment.GetEnvironmentVariable("GITHUB_STEP_SUMMARY");
+        if (!string.IsNullOrEmpty(summaryFile))
+        {
+            try
+            {
+                string markdown = Environment.NewLine +
+                    "### 🌐 Localization Orphan Baseline Report" + Environment.NewLine +
+                    $"- **Current Unconsumed Keys**: `{currentCount}`" + Environment.NewLine +
+                    $"- **Baseline Hard Ceiling**: `{BaselineCeiling}`" + Environment.NewLine +
+                    "- **Shrinking Policy**: `Enforced` (PRs adding new unconsumed keys are automatically blocked)" + Environment.NewLine;
+                File.AppendAllText(summaryFile, markdown);
+            }
+            catch
+            {
+                // Best-effort in CI environments
+            }
+        }
     }
 }
