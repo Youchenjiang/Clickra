@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Drawing;
 using System.Runtime.InteropServices;
 using Clickra.Core;
+using Clickra.Core.Layout;
 using static Clickra.UI.Native.Win32;
 
 namespace Clickra.UI
@@ -168,8 +169,8 @@ namespace Clickra.UI
         /// <summary>Moves the history detail-field scrollbar thumb while it is being dragged.</summary>
         static void UpdateDetailScrollDrag(IntPtr hwnd, int mouseX, float logW)
         {
-            if (_draggingDetailRowIndex < 0 || _draggingDetailRowIndex >= _historyEntries.Count) return;
-            string textToScroll = GetHistoryDetailText(_historyEntries[_draggingDetailRowIndex], _draggingDetailFieldIndex);
+            if (_draggingDetailRowIndex < 0 || _draggingDetailRowIndex >= CompletedItems.Count) return;
+            string textToScroll = GetHistoryDetailText(CompletedItems[_draggingDetailRowIndex], _draggingDetailFieldIndex);
             if (string.IsNullOrEmpty(textToScroll)) return;
 
             float textW = 0f;
@@ -247,11 +248,13 @@ namespace Clickra.UI
         {
             if (!_langDropdownOpen) return;
 
-            int popupY = _langDropdownY - 180;
-            float contentX = GetContentX(logW);
-            if (adjMouseX >= contentX && adjMouseX <= contentX + 240 && adjMouseY >= popupY + 38 && adjMouseY < _langDropdownY)
+            var popup = DashboardLayout.DropdownPopupRect((int)GetContentX(logW), _langDropdownY, DashboardLayout.LanguagePopupHeight);
+            if (popup.Contains(adjMouseX, adjMouseY))
             {
-                int idx = _langScrollOffset + (adjMouseY - (popupY + 38)) / 26;
+                int itemIndex = DashboardLayout.DropdownItemAt(
+                    popup.Y, DashboardLayout.LanguagePopupListTop, popup.Height, adjMouseY);
+                if (itemIndex < 0) return;
+                int idx = _langScrollOffset + itemIndex;
                 var filtered = GetFilteredLanguages();
                 if (idx >= 0 && idx < filtered.Count && idx != _langHoveredIndex)
                 {
@@ -266,12 +269,11 @@ namespace Clickra.UI
         {
             if (!_pdfLangDropdownOpen) return;
 
-            int popupHeight = PdfLangs.Length * 26 + 8;
-            int popupY = _pdfLangDropdownY - popupHeight;
-            float contentX = GetContentX(logW);
-            if (adjMouseX >= contentX && adjMouseX <= contentX + 240 && adjMouseY >= popupY + 4 && adjMouseY < _pdfLangDropdownY - 4)
+            int popupHeight = DashboardLayout.PdfPopupHeight(PdfLangs.Length);
+            var popup = DashboardLayout.DropdownPopupRect((int)GetContentX(logW), _pdfLangDropdownY, popupHeight);
+            if (popup.Contains(adjMouseX, adjMouseY))
             {
-                int idx = (adjMouseY - (popupY + 4)) / 26;
+                int idx = DashboardLayout.DropdownItemAt(popup.Y, DashboardLayout.PdfPopupListTop, popup.Height, adjMouseY);
                 if (idx >= 0 && idx < PdfLangs.Length && idx != _pdfLangHoveredIndex)
                 {
                     _pdfLangHoveredIndex = idx;
@@ -496,24 +498,18 @@ namespace Clickra.UI
             int adjMouseX = mouseX >= sidebarW ? (int)(mouseX + _contentScrollX) : mouseX;
             int adjMouseY = mouseX >= sidebarW ? (int)(mouseY + _contentScrollY) : mouseY;
 
-            int currentY = GetHistoryListStartY();
-            for (int i = 0; i < _historyEntries.Count; i++)
-            {
-                bool isExpanded = (i == _expandedHistoryIndex);
-                int rowH = isExpanded ? 160 : 44;
-                if (isExpanded && adjMouseY >= currentY && adjMouseY < currentY + rowH)
-                {
-                    return ScrollHistoryDetailField(hwnd, i, adjMouseX, adjMouseY, currentY, logW, scrollDir);
-                }
-                currentY += rowH + 8;
-            }
-            return false;
+            // 哪一列在游標下由堆疊決定，與繪製及點擊是同一份列位置。
+            HistoryBlock history = GetHistoryBlock(HistoryBlockKind.History);
+            int rowIndex = history.RowAt(adjMouseY);
+            if (rowIndex < 0 || rowIndex != _expandedHistoryIndex) return false;
+            return ScrollHistoryDetailField(hwnd, rowIndex, adjMouseX, adjMouseY, history.RowTop(rowIndex), logW, scrollDir);
         }
 
         /// <summary>Scrolls the detail field under the wheel cursor by one step.</summary>
         static bool ScrollHistoryDetailField(IntPtr hwnd, int rowIndex, int adjMouseX, int adjMouseY, int currentY, float logW, int scrollDir)
         {
-            var entry = _historyEntries[rowIndex];
+            var item = CompletedItems[rowIndex];
+            var entry = item.Entry;
             float contentX = GetContentX(logW);
             int rowW = (int)logW - (int)contentX - 40;
 
@@ -533,10 +529,12 @@ namespace Clickra.UI
 
             if (adjMouseX < contentX + 12 || adjMouseX >= contentX + rowW - 12) return false;
 
-            int fieldIndex = GetHistoryDetailWheelFieldIndex(adjMouseY, currentY);
+            int fieldIndex = DashboardLayout.DetailScrollFieldAt(adjMouseY - currentY);
             if (fieldIndex == -1) return false;
 
-            string textToScroll = GetHistoryDetailWheelText(entry, fieldIndex);
+            // 與繪製端同一份文字（含取消旗標的在地化），否則量到的寬度與畫出來的字數不一致，
+            // 長訊息的捲軸範圍就會算錯。
+            string textToScroll = GetHistoryDetailText(item, fieldIndex);
             if (string.IsNullOrEmpty(textToScroll)) return false;
 
             float textW = 0f;
@@ -555,33 +553,6 @@ namespace Clickra.UI
             DetailScrollOffsets[key] = nextOffset;
             InvalidateRect(hwnd, IntPtr.Zero, false);
             return true;
-        }
-
-        /// <summary>Maps a detail-row Y offset to its field index (-1 when between fields).</summary>
-        static int GetHistoryDetailWheelFieldIndex(int adjMouseY, int currentY)
-        {
-            if (adjMouseY >= currentY + 50 && adjMouseY < currentY + 72) return 0;
-            if (adjMouseY >= currentY + 76 && adjMouseY < currentY + 98) return 1;
-            if (adjMouseY >= currentY + 128 && adjMouseY < currentY + 150) return 2;
-            return -1;
-        }
-
-        /// <summary>Returns the text of a history detail field as shown in the expanded row.</summary>
-        static string GetHistoryDetailWheelText(ClickraStorage.HistoryEntry entry, int fieldIndex)
-        {
-            if (fieldIndex == 0)
-            {
-                return (entry.InputPaths ?? "").Replace(";", ", ");
-            }
-            if (fieldIndex == 1)
-            {
-                return entry.OutputPath ?? "";
-            }
-            if (entry.IsSuccess)
-            {
-                return entry.ElapsedMs >= 0 ? $"{entry.ElapsedMs / 1000.0:F2} s ({entry.ElapsedMs} ms)" : "N/A";
-            }
-            return entry.ErrorMessage ?? "";
         }
 
         static IntPtr HandleDestroy(IntPtr hwnd)

@@ -2,6 +2,7 @@ using System;
 using System.Drawing;
 using System.Linq;
 using Clickra.Core;
+using Clickra.Core.Layout;
 using Clickra.Core.Processors;
 
 using static Clickra.UI.Native.Win32;
@@ -27,17 +28,8 @@ namespace Clickra.UI
                 float virtLogW = Math.Max(760f, logW);
                 if (adjMouseX >= contentX && adjMouseX < virtLogW - 40)
                 {
-                    int currentY = GetHistoryListStartY();
-                    for (int i = 0; i < _historyEntries.Count; i++)
-                    {
-                        bool isExpanded = (i == _expandedHistoryIndex);
-                        int rowH = isExpanded ? 160 : 44;
-                        if (adjMouseY >= currentY && adjMouseY < currentY + rowH)
-                        {
-                            return true;
-                        }
-                        currentY += rowH + 8;
-                    }
+                    // 列的位置由堆疊提供，hover 不會因為上方多一列而落在別列。
+                    return GetHistoryBlock(HistoryBlockKind.History).RowAt(adjMouseY) >= 0;
                 }
             }
             return false;
@@ -51,38 +43,24 @@ namespace Clickra.UI
             float sidebarW = GetSidebarWidth(logW);
             float contentX = GetContentX(logW);
 
-            // Sidebar tabs (always active)
+            // Sidebar tabs (always active)：列的 Y 與高度來自版面表，與繪製共用同一個算式。
             if (x >= 0 && x < sidebarW)
             {
-                if (y >= 120 && y < 160) return 0;
-                if (y >= 168 && y < 208) return 1;
-                if (y >= 216 && y < 256) return 2;
-                if (y >= 264 && y < 304) return 3;
-                if (y >= 312 && y < 352) return 4;
+                int tab = DashboardLayout.SidebarTabAt(y);
+                if (tab >= 0) return tab;
             }
 
             if (_activeTab == 1) // Convert
             {
-                int zoneW = (int)logW - (int)contentX - 50;
-                int zoneH = 120;
-                int clearX = (int)logW - 110;
-
-                int groupGap = 14;
-                int groupW = (zoneW - 2 * groupGap) / 3;
-                int groupTop = 230;
-                int headerH = 24;
-                int cardH = 38;
-                int cardGap = 8;
-                int buttonY = groupTop + headerH + ConvertCommandGroupSizes.Max() * (cardH + cardGap) + 16;
+                // 畫什麼、點什麼都由版面表的同一個矩形決定。
+                LayoutRect zone = DashboardLayout.ConvertZoneRect((int)contentX, (int)logW);
 
                 int commandIndex = 0;
                 for (int group = 0; group < ConvertCommandGroupSizes.Length; group++)
                 {
                     for (int local = 0; local < ConvertCommandGroupSizes[group]; local++)
                     {
-                        int cardX = (int)contentX + group * (groupW + groupGap);
-                        int cardY = groupTop + headerH + local * (cardH + cardGap);
-                        if (x >= cardX && x < cardX + groupW && y >= cardY && y < cardY + cardH
+                        if (DashboardLayout.ConvertCardRect(group, local, zone.X, zone.Width).Contains(x, y)
                             && ConvertCommands[commandIndex].ValidateFiles(_selectedFiles, out _))
                         {
                             return 50 + commandIndex;
@@ -91,15 +69,33 @@ namespace Clickra.UI
                     }
                 }
 
-                if (_selectedFiles.Count > 0 && x >= clearX && x < clearX + 48 && y >= 107 && y < 107 + 22) return 25; // Clear button
-                if (x >= contentX && x < contentX + zoneW && y >= 95 && y < 95 + zoneH) return 18; // Drag & Drop zone
-                if (_selectedFiles.Count > 0 && _convertCommandIndex != -1 && x >= contentX && x < contentX + zoneW && y >= buttonY && y < buttonY + 36) return 19; // Start button
+                if (_selectedFiles.Count > 0 && DashboardLayout.ConvertClearButtonRect((int)logW).Contains(x, y)) return 25; // Clear button
+                if (zone.Contains(x, y)) return 18; // Drag & Drop zone
+                if (_selectedFiles.Count > 0 && _convertCommandIndex != -1 &&
+                    DashboardLayout.ConvertStartButtonRect(zone.X, zone.Width, ConvertCommandGroupSizes.Max()).Contains(x, y)) return 19; // Start button
             }
             else if (_activeTab == 2) // History
             {
                 // Clear history button
-                int clearX = (int)logW - 130;
-                if (x >= clearX && x < clearX + 90 && y >= 38 && y < 66) return 22;
+                if (DashboardLayout.HistoryClearButtonRect((int)logW).Contains(x, y)) return 22;
+
+                // 待繼續任務列的期限微調鈕：矩形來自版面表，與繪製端逐像素相同。
+                HistoryBlock parked = GetHistoryBlock(HistoryBlockKind.Parked);
+                if (!parked.IsEmpty)
+                {
+                    int rowW = (int)logW - (int)contentX - 40;
+                    var parkedItems = ParkedItems;
+                    for (int row = 0; row < parkedItems.Count; row++)
+                    {
+                        for (int action = 0; action < ParkedActionCount; action++)
+                        {
+                            if (DashboardLayout.ParkedRowActionRect((int)contentX, rowW, parked.RowTop(row), parked.RowHeight(row), action).Contains(x, y))
+                            {
+                                return ParkedActionElement(row, action);
+                            }
+                        }
+                    }
+                }
             }
             else if (_activeTab == 3) // Settings
             {
@@ -111,11 +107,11 @@ namespace Clickra.UI
                     }
                 }
 
-                // Language dropdown button
-                if (x >= contentX && x < contentX + 240 && y >= _langDropdownY && y < _langDropdownY + 30) return 10;
+                // Language dropdown button（與設定頁記錄的矩形共用同一份寬高）
+                if (DashboardLayout.DropdownButtonRect((int)contentX, _langDropdownY).Contains(x, y)) return 10;
 
                 // PDF Translation dropdown buttons
-                if (x >= contentX && x < contentX + 240 && y >= _pdfLangDropdownY && y < _pdfLangDropdownY + 30) return 31;
+                if (DashboardLayout.DropdownButtonRect((int)contentX, _pdfLangDropdownY).Contains(x, y)) return 31;
             }
             else if (_activeTab == 4) // About
             {

@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Collections.Concurrent;
 using System.Drawing;
 using Clickra.Core;
+using Clickra.Core.Layout;
 using static Clickra.UI.Native.Win32;
 
 namespace Clickra.UI
@@ -44,11 +45,33 @@ namespace Clickra.UI
         static int _pdfLangDropdownY = 0;
         
         // History & Statistics Cache
-        static List<ClickraStorage.HistoryEntry> _historyEntries = new List<ClickraStorage.HistoryEntry>();
+        //
+        // 一份清單三個切片（進行中、待繼續、已完成），與 Fluent 的 History 頁共用 Core 的
+        // HistoryFeed：狀態文字、剩餘期限、檔案描述都已經在模型裡算好一次，這裡只排版。
+        // 一次 250ms 的更新讀取一次，而不是每張畫格重新掃任務目錄、逐列查檔案時間。
+        static HistoryFeed _historyFeed = HistoryFeed.Empty;
 
-        // 待繼續（已暫存）任務：畫在歷史紀錄上方，所以與歷史一起快取，
-        // 讓繪製、命中測試與捲動高度用的是同一份清單。
-        static List<ClickraStorage.HistoryEntry> _parkedEntries = new List<ClickraStorage.HistoryEntry>();
+        static IReadOnlyList<HistoryItem> ActiveItems => _historyFeed.OfKind(HistoryItemKind.Active);
+        static IReadOnlyList<HistoryItem> ParkedItems => _historyFeed.OfKind(HistoryItemKind.Parked);
+
+        /// <summary>已完成紀錄：歷史列表可展開明細，也是統計卡的來源。</summary>
+        static IReadOnlyList<HistoryItem> CompletedItems => _historyFeed.OfKind(HistoryItemKind.Completed);
+
+        // 待繼續任務列右端的動作按鈕：每列四個（縮短、延長、繼續、取消）。元素 id 由此推導，
+        // 幾何則來自 Core 的版面表（DashboardLayout.ParkedRowActionRect）。
+        const int ParkedActionElementBase = 200;
+        const int ParkedActionShorten = DashboardLayout.ParkedActionShorten;
+        const int ParkedActionExtend = DashboardLayout.ParkedActionExtend;
+        const int ParkedActionResume = DashboardLayout.ParkedActionResume;
+        const int ParkedActionCancel = DashboardLayout.ParkedActionCancel;
+        const int ParkedActionCount = DashboardLayout.ParkedActionCount;
+
+        static int ParkedActionElement(int rowIndex, int action) =>
+            ParkedActionElementBase + rowIndex * ParkedActionCount + action;
+
+        /// <summary>這個元素 id 是不是待繼續列的動作按鈕；列數與動作數由同一份定義決定。</summary>
+        static bool IsParkedActionElement(int element) =>
+            element >= ParkedActionElementBase && element < ParkedActionElementBase + ParkedItems.Count * ParkedActionCount;
 
         static int _langScrollOffset = 0;
         static int _statTotal = 0;

@@ -5,6 +5,7 @@ using System.IO;
 using System.Diagnostics.CodeAnalysis;
 using System.Runtime.InteropServices;
 using Clickra.Core;
+using Clickra.Core.Layout;
 using Clickra.Core.Processors;
 using static Clickra.UI.Native.Win32;
 
@@ -58,6 +59,10 @@ namespace Clickra.UI
             {
                 HandleCompressSettingsClick(hwnd, element, adjMouseX);
             }
+            else if (IsParkedActionElement(element))
+            {
+                HandleParkedActionClick(hwnd, element);
+            }
             else if (IsConvertElement(element))
             {
                 HandleConvertClick(hwnd, element);
@@ -65,6 +70,68 @@ namespace Clickra.UI
             else if (IsAboutElement(element))
             {
                 HandleAboutClick(hwnd, element);
+            }
+        }
+
+        /// <summary>
+        /// 待繼續任務列右端的動作按鈕：縮短、延長、繼續、取消。
+        /// 天數微調與取消/繼續全部調用 Core 的共用入口。
+        /// 取消動作沿用 Fluent 的確認文案（task_parked_cancel_confirm）。
+        /// 繼續動作直接啟動 ProgressWindow 續傳，不預先翻轉狀態（保持與 Fluent 一致的安全約定）。
+        /// </summary>
+        static void HandleParkedActionClick(IntPtr hwnd, int element)
+        {
+            int offset = element - ParkedActionElementBase;
+            int rowIndex = offset / ParkedActionCount;
+            int action = offset % ParkedActionCount;
+
+            var parkedItems = ParkedItems;
+            if (rowIndex < 0 || rowIndex >= parkedItems.Count) return;
+            string taskId = parkedItems[rowIndex].Entry.Id;
+            if (string.IsNullOrEmpty(taskId)) return;
+
+            if (action is ParkedActionShorten or ParkedActionExtend)
+            {
+                int delta = action == ParkedActionExtend
+                    ? ClickraSettings.ParkedRetentionStepDays
+                    : -ClickraSettings.ParkedRetentionStepDays;
+                if (ClickraStorage.AdjustParkedRetention(taskId, delta) is null) return;
+
+                RefreshHistoryData();
+                InvalidateRect(hwnd, IntPtr.Zero, false);
+                return;
+            }
+
+            if (action == ParkedActionCancel)
+            {
+                if (MessageBox(hwnd, GetText("task_parked_cancel_confirm"), "Clickra", 0x24) != 6) return;
+                ClickraStorage.CancelParkedTask(taskId);
+                RefreshHistoryData();
+                InvalidateRect(hwnd, IntPtr.Zero, false);
+                return;
+            }
+
+            if (action == ParkedActionResume)
+            {
+                var resumed = ClickraStorage.GetParkedTaskForResume(taskId);
+                if (resumed is null) return;
+
+                var thread = new System.Threading.Thread(() =>
+                {
+                    try
+                    {
+                        ProgressWindow.ShowResume(resumed.TaskId);
+                    }
+                    catch (Exception ex)
+                    {
+                        MessageBox(IntPtr.Zero, $"Execution failed: {ex.Message}", "Clickra", 0x10);
+                    }
+                });
+                thread.SetApartmentState(System.Threading.ApartmentState.STA);
+                thread.Start();
+
+                RefreshHistoryData();
+                InvalidateRect(hwnd, IntPtr.Zero, false);
             }
         }
 
@@ -113,17 +180,14 @@ namespace Clickra.UI
         /// or closing the popup on an outside click.</summary>
         static bool HandlePdfLangDropdownClick(IntPtr hwnd, int adjMouseX, int adjMouseY, float contentX)
         {
-            int popupHeight = PdfLangs.Length * 26 + 8;
-            int popupY = _pdfLangDropdownY - popupHeight;
-            if (adjMouseX >= contentX && adjMouseX <= contentX + 240 && adjMouseY >= popupY && adjMouseY < _pdfLangDropdownY)
+            int popupHeight = DashboardLayout.PdfPopupHeight(PdfLangs.Length);
+            LayoutRect popup = DashboardLayout.DropdownPopupRect((int)contentX, _pdfLangDropdownY, popupHeight);
+            if (popup.Contains(adjMouseX, adjMouseY))
             {
-                if (adjMouseY >= popupY + 4 && adjMouseY < _pdfLangDropdownY - 4)
+                int clickedIdx = DashboardLayout.DropdownItemAt(popup.Y, DashboardLayout.PdfPopupListTop, popup.Height, adjMouseY);
+                if (clickedIdx >= 0 && clickedIdx < PdfLangs.Length)
                 {
-                    int clickedIdx = (adjMouseY - (popupY + 4)) / 26;
-                    if (clickedIdx >= 0 && clickedIdx < PdfLangs.Length)
-                    {
-                        ClickraStorage.SaveSetting(ClickraSettings.TranslateTargetLang, PdfLangs[clickedIdx].Code);
-                    }
+                    ClickraStorage.SaveSetting(ClickraSettings.TranslateTargetLang, PdfLangs[clickedIdx].Code);
                 }
                 _pdfLangDropdownOpen = false;
                 InvalidateRect(hwnd, IntPtr.Zero, false);
@@ -138,16 +202,21 @@ namespace Clickra.UI
         /// language or closing the popup on an outside click.</summary>
         static bool HandleLangDropdownClick(IntPtr hwnd, int adjMouseX, int adjMouseY, float logW)
         {
-            int popupY = _langDropdownY - 180;
-            if (adjMouseX >= GetContentX(logW) && adjMouseX <= GetContentX(logW) + 240)
+            var langPopup = DashboardLayout.DropdownPopupRect((int)GetContentX(logW), _langDropdownY, DashboardLayout.LanguagePopupHeight);
+            if (langPopup.Contains(adjMouseX, adjMouseY))
             {
-                if (adjMouseY >= popupY && adjMouseY < popupY + 38)
+                // 搜尋框佔住清單上方的區域：點在那裡不選任何語言，也不關閉清單。
+                if (adjMouseY < langPopup.Y + DashboardLayout.LanguagePopupListTop)
                 {
                     return true;
                 }
-                if (adjMouseY >= popupY + 38 && adjMouseY < _langDropdownY)
+
+                // 列號與繪製走同一個對應；不在任何列上（-1，例如清單下方的留白）就只關閉清單。
+                int itemIndex = DashboardLayout.DropdownItemAt(
+                    langPopup.Y, DashboardLayout.LanguagePopupListTop, langPopup.Height, adjMouseY);
+                if (itemIndex >= 0)
                 {
-                    int clickedIdx = _langScrollOffset + (adjMouseY - (popupY + 38)) / 26;
+                    int clickedIdx = _langScrollOffset + itemIndex;
                     var filtered = GetFilteredLanguages();
                     if (clickedIdx >= 0 && clickedIdx < filtered.Count)
                     {
@@ -170,8 +239,8 @@ namespace Clickra.UI
             float virtLogW = Math.Max(760f, logW);
             if (adjMouseX < contentX || adjMouseX >= virtLogW - 40) return false;
 
-            int currentY = GetHistoryListStartY();
-            FindClickedHistoryRow(adjMouseY, ref currentY, out int clickedIndex, out bool clickedDetails, out int detailFieldIndex);
+            HistoryBlock history = GetHistoryBlock(HistoryBlockKind.History);
+            FindClickedHistoryRow(history, adjMouseY, out int clickedIndex, out bool clickedDetails, out int detailFieldIndex);
             if (clickedIndex == -1) return false;
 
             if (clickedDetails)
@@ -187,45 +256,26 @@ namespace Clickra.UI
             return true;
         }
 
-        /// <summary>Finds the history row (and optional detail field) under the click point.</summary>
-        static void FindClickedHistoryRow(int adjMouseY, ref int currentY, out int clickedIndex, out bool clickedDetails, out int detailFieldIndex)
+        /// <summary>Finds the history row (and optional detail field) under the click point.
+        /// 列的位置、列高與明細欄位的命中帶都來自傳入的區塊（Core 的版面表）。</summary>
+        static void FindClickedHistoryRow(HistoryBlock history, int adjMouseY, out int clickedIndex, out bool clickedDetails, out int detailFieldIndex)
         {
             clickedIndex = -1;
             clickedDetails = false;
             detailFieldIndex = -1;
-            for (int i = 0; i < _historyEntries.Count; i++)
+
+            int index = history.RowAt(adjMouseY);
+            if (index < 0) return;
+
+            clickedIndex = index;
+
+            // 展開列的分隔線之下是明細區，點在那裡是點欄位而不是收合列。
+            int relY = history.RowRelativeY(index, adjMouseY);
+            if (index == _expandedHistoryIndex && relY >= DashboardLayout.DetailDividerY)
             {
-                bool isExpanded = (i == _expandedHistoryIndex);
-                int rowH = GetHistoryRowHeight(isExpanded);
-                if (adjMouseY >= currentY && adjMouseY < currentY + rowH)
-                {
-                    if (isExpanded && adjMouseY >= currentY + 44)
-                    {
-                        clickedDetails = true;
-                        clickedIndex = i;
-                        detailFieldIndex = GetDetailFieldIndexFromY(adjMouseY - currentY);
-                    }
-                    else
-                    {
-                        clickedIndex = i;
-                    }
-                    break;
-                }
-                currentY += rowH + 8;
+                clickedDetails = true;
+                detailFieldIndex = DashboardLayout.DetailScrollFieldAt(relY);
             }
-        }
-
-        /// <summary>Height of a history row: 44 collapsed, 160 when the detail pane is open.</summary>
-        private static int GetHistoryRowHeight(bool isExpanded) => isExpanded ? 160 : 44;
-
-        /// <summary>Maps a Y offset inside an expanded history row to its detail field index,
-        /// or -1 when the offset is between fields.</summary>
-        private static int GetDetailFieldIndexFromY(int relY)
-        {
-            if (relY >= 50 && relY < 76) return 0;
-            if (relY >= 76 && relY < 102) return 1;
-            if (relY >= 128 && relY < 156) return 2;
-            return -1;
         }
 
         /// <summary>Expands or collapses the clicked history row.</summary>
@@ -239,7 +289,7 @@ namespace Clickra.UI
         /// its thumb track.</summary>
         static void TryStartHistoryDetailScroll(IntPtr hwnd, int mouseX, int adjMouseX, float logW, int rowIndex, int fieldIndex)
         {
-            string textToScroll = GetHistoryDetailText(_historyEntries[rowIndex], fieldIndex);
+            string textToScroll = GetHistoryDetailText(CompletedItems[rowIndex], fieldIndex);
             if (string.IsNullOrEmpty(textToScroll)) return;
 
             float textW = 0f;
@@ -290,9 +340,12 @@ namespace Clickra.UI
             InvalidateRect(hwnd, IntPtr.Zero, false);
         }
 
-        /// <summary>Returns the text of a history detail field, localizing the user-abort marker.</summary>
-        static string GetHistoryDetailText(ClickraStorage.HistoryEntry entry, int fieldIndex)
+        /// <summary>Returns the text of a history detail field, localizing the user-abort marker.
+        /// 取一个項目而不是紀錄：項目已經知道自己是哪一種、是不是被取消（Core 認得新舊兩種
+        /// 取消旗標），所以這裡不必再自行比對訊息字串，也保證與繪製端量到的是同一個字串。</summary>
+        static string GetHistoryDetailText(HistoryItem item, int fieldIndex)
         {
+            var entry = item.Entry;
             if (fieldIndex == 0)
             {
                 return (entry.InputPaths ?? "").Replace(";", ", ");
@@ -301,16 +354,12 @@ namespace Clickra.UI
             {
                 return entry.OutputPath ?? "";
             }
-            if (entry.IsSuccess)
+            if (item.IsSuccess)
             {
                 return entry.ElapsedMs >= 0 ? $"{entry.ElapsedMs / 1000.0:F2} s ({entry.ElapsedMs} ms)" : "N/A";
             }
-            string errorMsg = !string.IsNullOrEmpty(entry.ErrorMessage) ? entry.ErrorMessage : "";
-            if (errorMsg.Equals("User Aborted", StringComparison.OrdinalIgnoreCase))
-            {
-                errorMsg = GetText("error_user_aborted");
-            }
-            return errorMsg;
+            if (item.IsCanceled) return GetText("error_user_aborted");
+            return !string.IsNullOrEmpty(entry.ErrorMessage) ? entry.ErrorMessage : "";
         }
 
         /// <summary>Handles vertical/horizontal scrollbar clicks: thumb drag start and track jump.</summary>
