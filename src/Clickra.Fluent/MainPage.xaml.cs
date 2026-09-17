@@ -22,6 +22,8 @@ public sealed partial class MainPage : Page
     private const string SimplifiedChineseLanguage = "zh-CN";
     private const string SuccessLocalizationKey = "fluent_success";
     private const string FailedLocalizationKey = "fluent_failed";
+    // 歷史清單顯示幾筆已完成紀錄（與 Core 的 HistoryFeed.Load 預設一致）。
+    private const int CompletedHistoryLimit = 50;
     private const string SecondaryCardBrushResource = "CardBackgroundFillColorSecondaryBrush";
     private const string SecondaryTextBrushResource = "TextFillColorSecondaryBrush";
     // Shared with the CLI dashboard's settings page; see ClickraSettings.MaxParkedRetentionDays.
@@ -36,8 +38,12 @@ public sealed partial class MainPage : Page
     private bool _startupCommandHandled;
     private string _startupArguments = "";
     private string? _selectedCommand;
-    private List<ClickraStorage.HistoryEntry> _historyEntries = new();
-    private List<ClickraStorage.HistoryEntry> _parkedTasks = new();
+    // 一份清單三個切片（Core 的 HistoryFeed，與 Win32 dashboard 共用）：進行中、待繼續、
+    // 已完成。這頁只是它的另一個呈現層，所以狀態用字、檔案描述與剩餘期限都讀模型的欄位。
+    private HistoryFeed _historyFeed = HistoryFeed.Empty;
+    private List<HistoryItem> _activeTasks = new();
+    private List<HistoryItem> _parkedTasks = new();
+    private List<HistoryItem> _historyEntries = new();
     private bool _parkedRefreshHooked;
     private bool _settingsReloadHooked;
     private bool _syncingParkedRetention;
@@ -911,7 +917,8 @@ public sealed partial class MainPage : Page
         OpenConvertButton.Content = L("fluent_choose_files");
         ViewHistoryButton.Content = L("fluent_recent_jobs");
         OverviewRecentTitle.Text = L("fluent_recent_activity");
-        OverviewNoHistoryText.Text = L("fluent_no_history");
+        // 與 dashboard 的 History 頁同一句話：清單共用，措辭也共用。
+        OverviewNoHistoryText.Text = L("history_empty");
         OverviewActivityTitle.Text = L("fluent_activity_summary");
         OverviewTotalLabel.Text = L("fluent_total");
         OverviewOkLabel.Text = L(SuccessLocalizationKey);
@@ -968,9 +975,10 @@ public sealed partial class MainPage : Page
         HistoryFailedLabel.Text = L(FailedLocalizationKey);
         ActiveJobTitle.Text = L("fluent_run");
         ActiveJobText.Text = L("status_converting") + "...";
-        EmptyHistoryText.Text = L("fluent_no_history");
+        EmptyHistoryText.Text = L("history_empty");
         ParkedTasksTitle.Text = L("task_parked_title");
         ParkedTasksDesc.Text = L("task_parked_desc");
+        ActiveTasksTitle.Text = L("task_active_title");
 
         SettingsTitle.Text = L("fluent_nav_settings");
         SettingsSubtitle.Text = L("fluent_settings_subtitle");
@@ -1133,17 +1141,26 @@ public sealed partial class MainPage : Page
 
     private void RefreshHistory()
     {
-        RefreshParkedTasks();
-        _historyEntries = ClickraStorage.GetHistory(20);
-        StatTotal.Text = _historyEntries.Count.ToString();
-        StatSuccess.Text = _historyEntries.Count(h => h.IsSuccess).ToString();
-        StatFailed.Text = _historyEntries.Count(h => !h.IsSuccess).ToString();
-        HistoryTotalText.Text = _historyEntries.Count.ToString();
-        HistorySuccessText.Text = _historyEntries.Count(h => h.IsSuccess).ToString();
-        HistoryFailedText.Text = _historyEntries.Count(h => !h.IsSuccess).ToString();
+        // 讀一次清單：進行中、待繼續、已完成都在裡面，統計卡也是同一份數字。
+        _historyFeed = HistoryFeed.Load(CompletedHistoryLimit);
+        _activeTasks = _historyFeed.OfKind(HistoryItemKind.Active).ToList();
+        _parkedTasks = _historyFeed.OfKind(HistoryItemKind.Parked).ToList();
+        _historyEntries = _historyFeed.OfKind(HistoryItemKind.Completed).ToList();
+
+        StatTotal.Text = _historyFeed.CompletedCount.ToString();
+        StatSuccess.Text = _historyFeed.SuccessCount.ToString();
+        StatFailed.Text = _historyFeed.FailedCount.ToString();
+        HistoryTotalText.Text = _historyFeed.CompletedCount.ToString();
+        HistorySuccessText.Text = _historyFeed.SuccessCount.ToString();
+        HistoryFailedText.Text = _historyFeed.FailedCount.ToString();
         RenderOverviewHistory(_historyEntries);
 
-        EmptyHistoryState.Visibility = _historyEntries.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
+        RenderActiveTasks();
+        RenderParkedTasks();
+
+        // 「尚無紀錄」只在整份清單都空的時候出現：有人在跑或有待繼續任務時，這頁有東西可看。
+        bool nothingAtAll = _historyEntries.Count == 0 && _activeTasks.Count == 0 && _parkedTasks.Count == 0;
+        EmptyHistoryState.Visibility = nothingAtAll ? Visibility.Visible : Visibility.Collapsed;
         HistoryListContainer.Visibility = _historyEntries.Count == 0 ? Visibility.Collapsed : Visibility.Visible;
         HistoryListContainer.Children.Clear();
 
@@ -1175,20 +1192,19 @@ public sealed partial class MainPage : Page
         mainWindow.Activated += (_, _) => RefreshParkedTasks();
     }
 
+    /// <summary>待繼續清單只是共用清單的一個切片，所以「重新整理待繼續」就是重新讀整份清單。</summary>
+    private void RefreshParkedTasks() => RefreshHistory();
+
     /// <summary>Lists the parked (paused) conversions in the History page. The park toast promises
-    /// this page is where they can be resumed or cancelled, so the card stays hidden while none exist.</summary>
-    private void RefreshParkedTasks()
+    /// this page is where they can be resumed, cancelled, or given their own retention, so the card
+    /// stays hidden while none exist.</summary>
+    private void RenderParkedTasks()
     {
-        _parkedTasks = ClickraStorage.GetParkedTasks();
         ParkedTasksContainer.Children.Clear();
         ParkedTasksSection.Visibility = _parkedTasks.Count == 0 ? Visibility.Collapsed : Visibility.Visible;
         if (_parkedTasks.Count == 0) return;
 
-        int expiringSoonCount = _parkedTasks.Count(t =>
-        {
-            var info = ClickraStorage.GetParkedRetentionInfo(t.Id);
-            return info.IsExpiringSoon || info.HasExpired;
-        });
+        int expiringSoonCount = _historyFeed.ExpiringSoonCount;
 
         if (expiringSoonCount > 0)
         {
@@ -1201,16 +1217,76 @@ public sealed partial class MainPage : Page
             ParkedTasksDesc.Foreground = (Brush)Application.Current.Resources[SecondaryTextBrushResource];
         }
 
-        foreach (var task in _parkedTasks)
+        foreach (var item in _parkedTasks)
         {
-            ParkedTasksContainer.Children.Add(CreateParkedTaskRow(task));
+            ParkedTasksContainer.Children.Add(CreateParkedTaskRow(item));
         }
     }
 
-    /// <summary>One parked conversion: command, where it stopped, remaining expiration, and its resume/cancel actions.</summary>
-    private Grid CreateParkedTaskRow(ClickraStorage.HistoryEntry task)
+    /// <summary>Conversions running in another window (or from the command line): the Win32 dashboard
+    /// already lists these rows, so both pages render the same items from the same feed.</summary>
+    private void RenderActiveTasks()
     {
-        var info = ClickraStorage.GetParkedRetentionInfo(task.Id);
+        ActiveTasksTitle.Text = L("task_active_title");
+        ActiveTasksContainer.Children.Clear();
+        ActiveTasksSection.Visibility = _activeTasks.Count == 0 ? Visibility.Collapsed : Visibility.Visible;
+        if (_activeTasks.Count == 0) return;
+
+        foreach (var item in _activeTasks)
+        {
+            ActiveTasksContainer.Children.Add(CreateActiveTaskRow(item));
+        }
+    }
+
+    /// <summary>One running conversion: command, file, and the shared status word.</summary>
+    private Grid CreateActiveTaskRow(HistoryItem item)
+    {
+        var row = new Grid
+        {
+            ColumnSpacing = 10,
+            Padding = new Thickness(12, 10, 12, 10),
+            Background = (Brush)Application.Current.Resources[SecondaryCardBrushResource],
+            CornerRadius = new CornerRadius(8)
+        };
+        row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+        row.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+
+        var texts = new StackPanel { Spacing = 2 };
+        var titleRow = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8 };
+        titleRow.Children.Add(new TextBlock
+        {
+            Text = L(item.CommandLabelKey),
+            FontSize = 14,
+            FontWeight = Microsoft.UI.Text.FontWeights.SemiBold,
+            VerticalAlignment = VerticalAlignment.Center
+        });
+        titleRow.Children.Add(new TextBlock
+        {
+            Text = L(item.StatusKey),
+            FontSize = 12,
+            Foreground = StatusBrushFor(item),
+            VerticalAlignment = VerticalAlignment.Center
+        });
+        texts.Children.Add(titleRow);
+        texts.Children.Add(new TextBlock
+        {
+            Text = $"{item.Time} · {item.FileCountText}",
+            FontSize = 12,
+            Foreground = (Brush)Application.Current.Resources[SecondaryTextBrushResource],
+            TextTrimming = TextTrimming.CharacterEllipsis
+        });
+
+        Grid.SetColumn(texts, 0);
+        row.Children.Add(texts);
+        return row;
+    }
+
+    /// <summary>One parked conversion: command, where it stopped, its own remaining retention, and the
+    /// actions that apply to it alone (resume, cancel, extend/shorten the deadline, or follow the
+    /// global policy again).</summary>
+    private Grid CreateParkedTaskRow(HistoryItem item)
+    {
+        var task = item.Entry;
 
         var row = new Grid
         {
@@ -1220,7 +1296,7 @@ public sealed partial class MainPage : Page
             CornerRadius = new CornerRadius(8)
         };
 
-        if (info.IsExpiringSoon || info.HasExpired)
+        if (item.NeedsAttention)
         {
             row.BorderThickness = new Thickness(1);
             row.BorderBrush = new SolidColorBrush(Color.FromArgb(180, 255, 140, 0));
@@ -1234,13 +1310,13 @@ public sealed partial class MainPage : Page
         var titleRow = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8 };
         titleRow.Children.Add(new TextBlock
         {
-            Text = L(ConvertCommandRegistry.GetLabelKey(task.Command)),
+            Text = L(item.CommandLabelKey),
             FontSize = 14,
             FontWeight = Microsoft.UI.Text.FontWeights.SemiBold,
             VerticalAlignment = VerticalAlignment.Center
         });
 
-        if (info.IsExpiringSoon || info.HasExpired)
+        if (item.NeedsAttention)
         {
             var badge = new Border
             {
@@ -1265,7 +1341,8 @@ public sealed partial class MainPage : Page
 
         texts.Children.Add(new TextBlock
         {
-            Text = ParkedTaskSubtitle(task, info),
+            // Subtitle 與期限都來自共用模型：另一個介面印的就是同一句話。
+            Text = string.Join(" · ", new[] { item.Subtitle, item.RetentionText }.Where(part => !string.IsNullOrWhiteSpace(part))),
             FontSize = 12,
             Foreground = (Brush)Application.Current.Resources[SecondaryTextBrushResource],
             TextTrimming = TextTrimming.CharacterEllipsis
@@ -1277,6 +1354,36 @@ public sealed partial class MainPage : Page
             Spacing = 8,
             VerticalAlignment = VerticalAlignment.Center
         };
+        // 單一任務的保留期限：不必為了某一件改動整個政策。天數的加減、下限與夾取都在
+        // Core，所以這兩個介面移動的永遠是同一個天數。
+        int step = ClickraSettings.ParkedRetentionStepDays;
+        var shortenButton = new Button
+        {
+            Content = string.Format(L("task_parked_shorten_days"), step),
+            Padding = new Thickness(14, 6, 14, 6)
+        };
+        shortenButton.Click += (_, _) => AdjustParkedRetention(item, -step);
+        var extendButton = new Button
+        {
+            Content = string.Format(L("task_parked_extend_days"), step),
+            Padding = new Thickness(14, 6, 14, 6),
+            // 「永久保留」的任務沒有延長可言：它本來就不會過期。
+            IsEnabled = !(item.Retention?.IsUnlimited ?? false)
+        };
+        extendButton.Click += (_, _) => AdjustParkedRetention(item, +step);
+        actions.Children.Add(shortenButton);
+        actions.Children.Add(extendButton);
+        if (item.HasRetentionOverride)
+        {
+            var resetButton = new Button
+            {
+                Content = L("task_parked_retention_reset"),
+                Padding = new Thickness(14, 6, 14, 6)
+            };
+            resetButton.Click += (_, _) => ResetParkedRetention(item);
+            actions.Children.Add(resetButton);
+        }
+
         var resumeButton = new Button { Content = L("fluent_task_resume"), Padding = new Thickness(14, 6, 14, 6) };
         resumeButton.Click += (_, _) => ResumeParkedTask(task);
         var cancelButton = new Button { Content = L("dialog_cancel"), Padding = new Thickness(14, 6, 14, 6) };
@@ -1291,20 +1398,22 @@ public sealed partial class MainPage : Page
         return row;
     }
 
-    /// <summary>Row subtitle: which file it stopped on, parking reason, and expiration information.</summary>
-    private static string ParkedTaskSubtitle(ClickraStorage.HistoryEntry task)
-        => ParkedTaskSubtitle(task, ClickraStorage.GetParkedRetentionInfo(task.Id));
-
-    private static string ParkedTaskSubtitle(ClickraStorage.HistoryEntry task, ClickraStorage.ParkedRetentionInfo info)
+    /// <summary>Adjusts this one parked conversion's retention. The deadline arithmetic (including the
+    /// floor that keeps a shortened task from being deleted outright) lives in Core, so both interfaces
+    /// move the same number of days; a null result means there was nothing to adjust.</summary>
+    private void AdjustParkedRetention(HistoryItem item, int deltaDays)
     {
-        string firstFile = Path.GetFileName(task.InputPaths.Split(';', StringSplitOptions.RemoveEmptyEntries).FirstOrDefault() ?? "");
-        string stoppedOn = task.FileCount > 1
-            ? string.Format(L("fluent_task_file_index"), Math.Clamp(task.CurrentIndex + 1, 1, task.FileCount), task.FileCount)
-            : "";
-        // Shared with the CLI dashboard's History page, so both surfaces word the deadline the same way.
-        string ttlText = ClickraStorage.DescribeParkedRetention(info);
+        if (string.IsNullOrWhiteSpace(item.Entry.Id)) return;
+        if (ClickraStorage.AdjustParkedRetention(item.Entry.Id, deltaDays) is null) return;
+        RefreshHistory();
+    }
 
-        return string.Join(" · ", new[] { firstFile, stoppedOn, task.ErrorMessage, ttlText }.Where(part => !string.IsNullOrWhiteSpace(part)));
+    /// <summary>Clears this task's own retention so it follows the global policy again.</summary>
+    private void ResetParkedRetention(HistoryItem item)
+    {
+        if (string.IsNullOrWhiteSpace(item.Entry.Id)) return;
+        ClickraStorage.SetParkedRetentionOverride(item.Entry.Id, null);
+        RefreshHistory();
     }
 
     /// <summary>Resumes a parked conversion through the shared "resume" entry point, so the persisted
@@ -1332,44 +1441,40 @@ public sealed partial class MainPage : Page
         RefreshHistory();
     }
 
-    /// <summary>True when a history entry records a user cancellation rather than a failure.
-    /// Both the shared cancel marker and the CLI's legacy one count, so the same action reads
-    /// the same way whichever UI ran it.</summary>
-    private static bool IsCanceledEntry(ClickraStorage.HistoryEntry entry)
-        => ClickraStorage.IsUserCanceledReason(entry.ErrorMessage);
-
-    /// <summary>Status colour: green success, gray canceled, red failure.</summary>
-    private static SolidColorBrush StatusBrushFor(ClickraStorage.HistoryEntry entry)
+    /// <summary>Status colour: green success, gray canceled, red failure; the shape of the row comes
+    /// from the shared item, so both interfaces colour the same three outcomes the same way.</summary>
+    private static SolidColorBrush StatusBrushFor(HistoryItem item)
     {
-        if (entry.IsSuccess) return new(Colors.LimeGreen);
-        if (IsCanceledEntry(entry)) return new(Colors.Gray);
+        if (item.Kind == HistoryItemKind.Active)
+            return new(item.Entry.Status == ConversionStatus.Pending
+                ? Color.FromArgb(255, 180, 180, 100)
+                : Color.FromArgb(255, 80, 160, 240));
+        if (item.IsSuccess) return new(Colors.LimeGreen);
+        if (item.IsCanceled) return new(Colors.Gray);
         return new(Colors.IndianRed);
     }
 
     /// <summary>Status chip background matching <see cref="StatusBrushFor"/>.</summary>
-    private static SolidColorBrush StatusBackgroundFor(ClickraStorage.HistoryEntry entry)
+    private static SolidColorBrush StatusBackgroundFor(HistoryItem item)
     {
-        if (entry.IsSuccess) return new(Color.FromArgb(36, 57, 211, 83));
-        if (IsCanceledEntry(entry)) return new(Color.FromArgb(36, 128, 128, 128));
+        if (item.Kind == HistoryItemKind.Active) return new(Color.FromArgb(36, 80, 160, 240));
+        if (item.IsSuccess) return new(Color.FromArgb(36, 57, 211, 83));
+        if (item.IsCanceled) return new(Color.FromArgb(36, 128, 128, 128));
         return new(Color.FromArgb(40, 255, 107, 107));
     }
 
-    /// <summary>Localized status label for a history entry.</summary>
-    private static string StatusLabelFor(ClickraStorage.HistoryEntry entry)
-    {
-        if (IsCanceledEntry(entry)) return L("fluent_status_canceled");
-        if (entry.IsSuccess) return L(SuccessLocalizationKey);
-        return L(FailedLocalizationKey);
-    }
+    /// <summary>Localized status label for a history item: the wording is the model's, so this page
+    /// and the Win32 dashboard cannot describe the same entry differently.</summary>
+    private static string StatusLabelFor(HistoryItem item) => L(item.StatusKey);
 
-    private void RenderOverviewHistory(IReadOnlyList<ClickraStorage.HistoryEntry> history)
+    private void RenderOverviewHistory(IReadOnlyList<HistoryItem> history)
     {
         OverviewRecentContainer.Children.Clear();
         OverviewNoHistoryText.Visibility = history.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
 
-        foreach (var entry in history.Take(3))
+        foreach (var item in history.Take(3))
         {
-            var statusBrush = StatusBrushFor(entry);
+            var statusBrush = StatusBrushFor(item);
             var row = new Grid
             {
                 ColumnSpacing = 10,
@@ -1392,20 +1497,20 @@ public sealed partial class MainPage : Page
             var title = new StackPanel { Spacing = 2 };
             title.Children.Add(new TextBlock
             {
-                Text = L(ConvertCommandRegistry.GetLabelKey(entry.Command)),
+                Text = L(item.CommandLabelKey),
                 FontSize = 14,
                 FontWeight = Microsoft.UI.Text.FontWeights.SemiBold
             });
             title.Children.Add(new TextBlock
             {
-                Text = entry.Time,
+                Text = item.Time,
                 FontSize = 12,
                 Foreground = (Brush)Application.Current.Resources[SecondaryTextBrushResource],
                 TextTrimming = TextTrimming.CharacterEllipsis
             });
             var elapsed = new TextBlock
             {
-                Text = FormatElapsed(entry.ElapsedMs),
+                Text = FormatElapsed(item.ElapsedMs),
                 FontSize = 12,
                 Foreground = statusBrush,
                 VerticalAlignment = VerticalAlignment.Center
@@ -1421,10 +1526,10 @@ public sealed partial class MainPage : Page
         }
     }
 
-    private Button CreateHistoryListItem(ClickraStorage.HistoryEntry entry, int index)
+    private Button CreateHistoryListItem(HistoryItem item, int index)
     {
         var selected = index == _selectedHistoryIndex;
-        var statusBrush = StatusBrushFor(entry);
+        var statusBrush = StatusBrushFor(item);
 
         var row = new Grid
         {
@@ -1448,13 +1553,13 @@ public sealed partial class MainPage : Page
         var title = new StackPanel { Spacing = 3 };
         title.Children.Add(new TextBlock
         {
-            Text = L(ConvertCommandRegistry.GetLabelKey(entry.Command)),
+            Text = L(item.CommandLabelKey),
             FontSize = 15,
             FontWeight = Microsoft.UI.Text.FontWeights.SemiBold
         });
         title.Children.Add(new TextBlock
         {
-            Text = $"{entry.Time} · {entry.FileCount} {L("fluent_file_count")}",
+            Text = $"{item.Time} · {item.FileCountText}",
             FontSize = 12,
             Foreground = (Brush)Application.Current.Resources[SecondaryTextBrushResource],
             TextTrimming = TextTrimming.CharacterEllipsis
@@ -1467,14 +1572,14 @@ public sealed partial class MainPage : Page
         };
         result.Children.Add(new TextBlock
         {
-            Text = StatusLabelFor(entry),
+            Text = StatusLabelFor(item),
             FontSize = 13,
             Foreground = statusBrush,
             HorizontalAlignment = HorizontalAlignment.Right
         });
         result.Children.Add(new TextBlock
         {
-            Text = FormatElapsed(entry.ElapsedMs),
+            Text = FormatElapsed(item.ElapsedMs),
             FontSize = 12,
             Foreground = (Brush)Application.Current.Resources[SecondaryTextBrushResource],
             HorizontalAlignment = HorizontalAlignment.Right
@@ -1530,10 +1635,10 @@ public sealed partial class MainPage : Page
         });
     }
 
-    private void RenderHistoryDetail(ClickraStorage.HistoryEntry entry)
+    private void RenderHistoryDetail(HistoryItem item)
     {
         HistoryDetailContainer.Children.Clear();
-        var statusBrush = StatusBrushFor(entry);
+        var statusBrush = StatusBrushFor(item);
 
         var header = new Grid { ColumnSpacing = 12 };
         header.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
@@ -1542,20 +1647,20 @@ public sealed partial class MainPage : Page
         var title = new StackPanel { Spacing = 4 };
         title.Children.Add(new TextBlock
         {
-            Text = L(ConvertCommandRegistry.GetLabelKey(entry.Command)),
+            Text = L(item.CommandLabelKey),
             FontSize = 26,
             FontWeight = Microsoft.UI.Text.FontWeights.SemiBold
         });
         title.Children.Add(new TextBlock
         {
-            Text = entry.Time,
+            Text = item.Time,
             FontSize = 13,
             Foreground = (Brush)Application.Current.Resources[SecondaryTextBrushResource]
         });
 
         var status = new Border
         {
-            Background = StatusBackgroundFor(entry),
+            Background = StatusBackgroundFor(item),
             BorderBrush = statusBrush,
             BorderThickness = new Thickness(1),
             CornerRadius = new CornerRadius(8),
@@ -1563,7 +1668,7 @@ public sealed partial class MainPage : Page
             VerticalAlignment = VerticalAlignment.Top,
             Child = new TextBlock
             {
-                Text = StatusLabelFor(entry),
+                Text = StatusLabelFor(item),
                 FontSize = 13,
                 Foreground = statusBrush
             }
@@ -1584,16 +1689,16 @@ public sealed partial class MainPage : Page
         facts.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
         facts.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
         facts.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
-        AddFact(facts, 0, L("fluent_files"), entry.FileCount.ToString());
-        AddFact(facts, 1, L("fluent_elapsed"), FormatElapsed(entry.ElapsedMs));
-        AddFact(facts, 2, L("fluent_result"), StatusLabelFor(entry), statusBrush);
+        AddFact(facts, 0, L("fluent_files"), item.FileCountText);
+        AddFact(facts, 1, L("fluent_elapsed"), FormatElapsed(item.ElapsedMs));
+        AddFact(facts, 2, L("fluent_result"), StatusLabelFor(item), statusBrush);
         HistoryDetailContainer.Children.Add(facts);
 
-        AddDetailSection(L("fluent_input_paths"), SplitPaths(entry.InputPaths));
-        AddDetailSection(L("fluent_output_paths"), SplitPaths(entry.OutputPath));
-        if (!entry.IsSuccess && !string.IsNullOrWhiteSpace(entry.ErrorMessage))
+        AddDetailSection(L("history_detail_inputs"), SplitPaths(item.Entry.InputPaths));
+        AddDetailSection(L("history_detail_outputs"), SplitPaths(item.Entry.OutputPath));
+        if (!item.IsSuccess && !string.IsNullOrWhiteSpace(item.Entry.ErrorMessage))
         {
-            AddDetailSection(L("fluent_error_message"), entry.ErrorMessage, statusBrush, true);
+            AddDetailSection(L("history_detail_error"), item.Entry.ErrorMessage, statusBrush, true);
         }
     }
 

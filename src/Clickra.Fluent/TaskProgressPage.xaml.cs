@@ -108,12 +108,8 @@ public sealed partial class TaskProgressPage : Page
     private static ParseResult? TryParseResume(List<string> args)
     {
         if (args.Count < 2) return null;
-        var parked = ClickraStorage.GetTask(args[1]);
-        if (parked == null || parked.Value.Status != ConversionStatus.Parked) return null;
-        var files = parked.Value.InputPaths.Split(';', StringSplitOptions.RemoveEmptyEntries).ToList();
-        if (files.Count == 0) return null;
-        int startIndex = Math.Clamp(parked.Value.CurrentIndex, 0, files.Count);
-        return new ParseResult(parked.Value.Command, files, startIndex, args[1]);
+        if (ClickraStorage.GetParkedTaskForResume(args[1]) is not { } resumed) return null;
+        return new ParseResult(resumed.Command, resumed.Files, resumed.StartIndex, resumed.TaskId);
     }
 
     private static ParseResult? TryParseFresh(List<string> args)
@@ -337,7 +333,7 @@ public sealed partial class TaskProgressPage : Page
         {
             int fileIndex = Math.Clamp((int)((long)percent * _files.Count / 100), 0, _files.Count - 1);
             FileText.Text = Path.GetFileName(_files[fileIndex]);
-            StateText.Text = string.Format(L("fluent_task_file_index"), fileIndex + 1, _files.Count)
+            StateText.Text = string.Format(L("task_file_index"), fileIndex + 1, _files.Count)
                 + (string.IsNullOrWhiteSpace(message) ? "" : $" · {message}");
         }
         else
