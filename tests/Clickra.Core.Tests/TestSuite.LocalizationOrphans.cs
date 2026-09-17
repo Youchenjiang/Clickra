@@ -32,7 +32,7 @@ static partial class TestSuite
     /// 孤兒鍵基線水位硬上限。任何 PR 若試圖擴大基線，將直接被此上限及 Git 基準比對擋下。
     /// 只能隨著鍵被消費或刪除而單向調低，絕不可調高。
     /// </summary>
-    public const int BaselineCeiling = 33;
+    public const int BaselineCeiling = 22;
 
     /// <summary>
     /// 目前仍沒有消費者的鍵。每一條都必須有一條明確的出路：接上某個介面，或連同五種
@@ -46,11 +46,7 @@ static partial class TestSuite
         "engine_pdf", "engine_ppt", "engine_word", "engine_excel", "engine_libreoffice",
         "setting_libreoffice_optional", "error_processing_failed",
 
-        // Fluent 檔案類型／拖放白名單：描述一套以檔案類型過濾拖放內容的介面。
-        "fluent_remove_file", "fluent_file_type", "fluent_file_type_pdf", "fluent_file_type_word",
-        "fluent_file_type_ppt", "fluent_file_type_excel",
-        "fluent_file_type_image", "fluent_drop_title_for_type",
-        "fluent_drop_types_only", "fluent_files_skipped_type", "fluent_files_removed_type",
+        // Fluent 檔案類型／拖放白名單鍵（fluent_file_type_* 等 11 條）已隨未採用的類型過濾介面刪除。
         "fluent_github",
 
         // Fluent 進度頁：TaskProgressPage 目前只用 fluent_progress_* 其中的一部分。
