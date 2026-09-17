@@ -15,6 +15,9 @@
   <data name="AppName" xml:space="preserve">
     <value>Clickra</value>
   </data>
+  <data name="AppDescription" xml:space="preserve">
+    <value>【系統需求】「簡報轉PDF」與「文件轉PDF」功能需於本機裝置安裝Microsoft Office (PowerPoint/Word)。此舉可確保轉換過程維持最高還原度。其餘所有功能（PDF合併、圖片轉換等）皆可原生執行，無需額外外部依賴。</value>
+  </data>
   <data name="Menu_Ppt2Pdf" xml:space="preserve">
     <value>簡報轉 PDF</value>
   </data>

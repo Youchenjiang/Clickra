@@ -15,6 +15,9 @@
   <data name="AppName" xml:space="preserve">
     <value>Clickra</value>
   </data>
+  <data name="AppDescription" xml:space="preserve">
+    <value>[システム要件]「PPT → PDF」および「Word → PDF」機能を使用するには、ローカルデバイスに Microsoft Office (PowerPoint/Word) がインストールされている必要があります。これにより、変換プロセスの再現性を最大限に高めることができます。その他のすべての機能（PDF結合、画像変換など）はネイティブで動作し、外部の依存関係は不要です。</value>
+  </data>
   <data name="Menu_Ppt2Pdf" xml:space="preserve">
     <value>スライドを PDF に変換</value>
   </data>
