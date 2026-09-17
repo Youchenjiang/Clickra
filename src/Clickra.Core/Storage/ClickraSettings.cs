@@ -64,6 +64,7 @@ public static class ClickraSettings
     public const int MaxParkedTaskRetentionDays = 365;
     public const int MinParkedRetentionDays = 0;
     public const int MaxParkedRetentionDays = MaxParkedTaskRetentionDays;
+    public const int ParkedRetentionStepDays = 7;
     public const int MinPdfCompressLevel = 0;
     public const int MaxPdfCompressLevel = 2;
     public const int MinImageCompressLevel = 0;

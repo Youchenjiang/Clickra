@@ -45,6 +45,15 @@ namespace Clickra.Core
             public int CurrentIndex { get; set; }
             /// <summary>建立任務的進程 ID（history.log 紀錄中為 0）；用於跨進程定位任務。</summary>
             public int Pid { get; set; }
+
+            /// <summary>這個暫存任務自己的保留天數（0 = 無限期）；null 代表沒有覆寫、沿用全域政策。
+            /// 使用者可以只替某一件任務延長或縮短期限，而不必改動整個政策。</summary>
+            public int? ParkedRetentionDays { get; set; }
+
+            /// <summary>任務被暫存的時間（UTC，yyyy-MM-dd HH:mm:ss）；空字串代表尚未記錄，
+            /// 此時的年資退回檔案 mtime。第一次調整期限時寫入 —— 寫入本身會把 mtime 更新成現在，
+            /// 若不先記下來，調整一次就會把已過的時間清掉。</summary>
+            public string ParkedSince { get; set; }
         }
 
         public static List<HistoryEntry> GetHistory(int limit = 50)

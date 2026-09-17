@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Globalization;
 using System.IO;
 using System.Linq;
 
@@ -40,6 +41,12 @@ namespace Clickra.Core
             public string? EndTime { get; init; }
             public long ElapsedMs { get; init; } = -1;
             public int Pid { get; init; }
+
+            /// <summary>單一任務的保留天數覆寫；null = 沿用全域政策。</summary>
+            public int? ParkedRetentionDays { get; init; }
+
+            /// <summary>暫存起始時間（UTC）；null = 尚未記錄，年資退回檔案 mtime。</summary>
+            public string? ParkedSince { get; init; }
         }
 
         /// <summary>從 HistoryEntry 構建 TaskFileData（保留所有既有欄位）。</summary>
@@ -58,7 +65,9 @@ namespace Clickra.Core
                 OutputPath = entry.OutputPath,
                 EndTime = endTime ?? entry.EndTime,
                 ElapsedMs = elapsedMs >= 0 ? elapsedMs : entry.ElapsedMs,
-                Pid = pidOverride ?? entry.Pid
+                Pid = pidOverride ?? entry.Pid,
+                ParkedRetentionDays = entry.ParkedRetentionDays,
+                ParkedSince = entry.ParkedSince
             };
         }
 
@@ -261,10 +270,106 @@ namespace Clickra.Core
         }
 
         /// <summary>已暫存任務的保留天數（0 = 無限期）。未設定或無法解析時採用登錄表的預設值。</summary>
+        public record ResumedTaskInfo(string TaskId, string Command, List<string> Files, int StartIndex);
+
+        public static ResumedTaskInfo? GetParkedTaskForResume(string taskId)
+        {
+            if (string.IsNullOrWhiteSpace(taskId)) return null;
+            return RunWithMutex(() =>
+            {
+                var entry = ReadTaskFileInternal(taskId);
+                if (entry is null || entry.Value.Status != ConversionStatus.Parked) return null;
+
+                var files = (entry.Value.InputPaths ?? string.Empty)
+                    .Split(';', StringSplitOptions.RemoveEmptyEntries)
+                    .ToList();
+                if (files.Count == 0) return null;
+
+                int startIndex = Math.Clamp(entry.Value.CurrentIndex, 0, files.Count);
+                return new ResumedTaskInfo(taskId, entry.Value.Command, files, startIndex);
+            });
+        }
+
         public static int GetParkedRetentionDays() =>
             ClickraSettings.ClampNumericSetting(
                 ClickraSettings.ParkedTaskRetention,
                 GetSettingInt(ClickraSettings.ParkedTaskRetention));
+
+        public static int GetEffectiveParkedRetentionDays(HistoryEntry entry) =>
+            entry.ParkedRetentionDays.HasValue
+                ? ClickraSettings.ClampNumericSetting(ClickraSettings.ParkedTaskRetention, entry.ParkedRetentionDays.Value)
+                : GetParkedRetentionDays();
+
+        public static void SetParkedRetentionOverride(string taskId, int? days)
+        {
+            RunWithMutex(() =>
+            {
+                var entry = ReadTaskFileInternal(taskId);
+                if (!entry.HasValue || entry.Value.Status != ConversionStatus.Parked) return;
+
+                int? clamped = days.HasValue
+                    ? ClickraSettings.ClampNumericSetting(ClickraSettings.ParkedTaskRetention, days.Value)
+                    : null;
+                var data = ToTaskData(entry.Value, ConversionStatus.Parked) with { ParkedRetentionDays = clamped };
+                WriteTaskFileInternal(data);
+            });
+        }
+
+        public static int? AdjustParkedRetention(string taskId, int deltaDays)
+        {
+            if (deltaDays == 0) return null;
+
+            return RunWithMutex(() =>
+            {
+                string path = TaskFilePath(taskId);
+                var maybe = ReadTaskFileInternal(taskId);
+                if (!maybe.HasValue || maybe.Value.Status != ConversionStatus.Parked) return (int?)null;
+
+                var entry = maybe.Value;
+                var now = DateTime.UtcNow;
+                var age = ParkedAge(entry, path, now);
+                int current = GetEffectiveParkedRetentionDays(entry);
+
+                int next;
+                if (current <= 0)
+                {
+                    if (deltaDays > 0) return (int?)null;
+                    next = ClickraSettings.MinParkedRetentionDays + 1;
+                }
+                else
+                {
+                    double shortest = Math.Floor(age.TotalDays) + 1.0;
+                    next = (int)Math.Ceiling(Math.Max(current + (double)deltaDays, shortest));
+                }
+
+                next = ClickraSettings.ClampNumericSetting(ClickraSettings.ParkedTaskRetention, next);
+                string since = string.IsNullOrEmpty(entry.ParkedSince)
+                    ? (now - age).ToString(DateTimeFormat, CultureInfo.InvariantCulture)
+                    : entry.ParkedSince;
+
+                var data = ToTaskData(entry, ConversionStatus.Parked) with
+                {
+                    ParkedRetentionDays = next,
+                    ParkedSince = since
+                };
+                if (!WriteTaskFileInternal(data)) return (int?)null;
+                return next;
+            });
+        }
+
+        private static TimeSpan ParkedAge(HistoryEntry entry, string path, DateTime now)
+        {
+            if (DateTime.TryParse(entry.ParkedSince, CultureInfo.InvariantCulture,
+                    DateTimeStyles.AdjustToUniversal | DateTimeStyles.AssumeUniversal, out var since))
+            {
+                return now - since;
+            }
+
+            return now - File.GetLastWriteTimeUtc(path);
+        }
+
+        private static (int Days, TimeSpan Age) ParkedWindow(HistoryEntry entry, string path, DateTime now)
+            => (GetEffectiveParkedRetentionDays(entry), ParkedAge(entry, path, now));
 
         /// <summary>封裝已暫存任務的保留天數與過期狀態資訊。</summary>
         public readonly record struct ParkedRetentionInfo(
@@ -272,24 +377,29 @@ namespace Clickra.Core
             int RemainingDays,
             TimeSpan RemainingTime,
             bool IsExpiringSoon,
-            bool HasExpired);
+            bool HasExpired,
+            bool IsTaskOverride = false);
 
         /// <summary>Formats the shared parked-task retention state for every UI surface.</summary>
         public static string DescribeParkedRetention(ParkedRetentionInfo info)
         {
+            string phrase;
             if (info.IsUnlimited)
-                return Localization.T("task_parked_ttl_unlimited");
-            if (info.HasExpired)
-                return Localization.T("task_parked_ttl_expired");
-            if (info.IsExpiringSoon)
-                return Localization.T("task_parked_ttl_expiring_soon");
-            if (info.RemainingDays == 1)
-                return Localization.T("task_parked_ttl_days_one", 1);
-            return Localization.T("task_parked_ttl_days", info.RemainingDays);
+                phrase = Localization.T("task_parked_ttl_unlimited");
+            else if (info.HasExpired)
+                phrase = Localization.T("task_parked_ttl_expired");
+            else if (info.IsExpiringSoon)
+                phrase = Localization.T("task_parked_ttl_expiring_soon");
+            else if (info.RemainingDays == 1)
+                phrase = Localization.T("task_parked_ttl_days_one", 1);
+            else
+                phrase = Localization.T("task_parked_ttl_days", info.RemainingDays);
+
+            return info.IsTaskOverride ? phrase + Localization.T("task_parked_ttl_override") : phrase;
         }
 
         /// <summary>根據設定的保留天數與暫存經過時間，計算剩餘保留狀態。</summary>
-        public static ParkedRetentionInfo CalculateRetentionInfo(int retentionDays, TimeSpan age)
+        public static ParkedRetentionInfo CalculateRetentionInfo(int retentionDays, TimeSpan age, bool isTaskOverride = false)
         {
             if (retentionDays <= 0)
             {
@@ -298,7 +408,8 @@ namespace Clickra.Core
                     RemainingDays: 0,
                     RemainingTime: TimeSpan.Zero,
                     IsExpiringSoon: false,
-                    HasExpired: false);
+                    HasExpired: false,
+                    IsTaskOverride: isTaskOverride);
             }
 
             TimeSpan remaining = TimeSpan.FromDays(retentionDays) - age;
@@ -311,22 +422,18 @@ namespace Clickra.Core
                 RemainingDays: remainingDays,
                 RemainingTime: remaining,
                 IsExpiringSoon: isExpiringSoon,
-                HasExpired: isExpired);
+                HasExpired: isExpired,
+                IsTaskOverride: isTaskOverride);
         }
 
         /// <summary>取得指定暫存任務的保留與過期資訊。若任務檔不存在或已過期，傳回對應狀態。</summary>
         public static ParkedRetentionInfo GetParkedRetentionInfo(string taskId)
         {
-            int retentionDays = GetParkedRetentionDays();
-            if (retentionDays <= 0)
-            {
-                return CalculateRetentionInfo(0, TimeSpan.Zero);
-            }
-
             return RunWithMutex(() =>
             {
                 string path = TaskFilePath(taskId);
-                if (!File.Exists(path))
+                var entry = ReadTaskFileInternal(taskId);
+                if (!entry.HasValue)
                 {
                     return new ParkedRetentionInfo(
                         IsUnlimited: false,
@@ -336,8 +443,8 @@ namespace Clickra.Core
                         HasExpired: true);
                 }
 
-                TimeSpan age = DateTime.UtcNow - File.GetLastWriteTimeUtc(path);
-                return CalculateRetentionInfo(retentionDays, age);
+                var (days, age) = ParkedWindow(entry.Value, path, DateTime.UtcNow);
+                return CalculateRetentionInfo(days, age, entry.Value.ParkedRetentionDays.HasValue);
             });
         }
 
@@ -493,7 +600,16 @@ namespace Clickra.Core
                 return;
             }
 
-            if (IsExpired(finished, parked, age))
+            // 期限與顯示用的數字必須是同一份：使用者替某件任務延長期限後，清理不能
+            // 仍依全域政策把它刪掉。
+            TimeSpan expiryAge = age;
+            int parkedDays = 0;
+            if (parked)
+            {
+                (parkedDays, expiryAge) = ParkedWindow(e, file, now);
+            }
+
+            if (IsExpired(finished, parked, expiryAge, parkedDays))
             {
                 File.Delete(file);
             }
@@ -508,14 +624,10 @@ namespace Clickra.Core
             return !finished && !parked && age.TotalHours > AbandonedTaskTtlHours;
         }
 
-        private static bool IsExpired(bool finished, bool parked, TimeSpan age)
+        private static bool IsExpired(bool finished, bool parked, TimeSpan age, int parkedRetentionDays)
         {
             if (finished) return age.TotalMinutes > CompletedTaskTtlMinutes;
-            if (parked)
-            {
-                int retentionDays = GetParkedRetentionDays();
-                return retentionDays > 0 && CalculateRetentionInfo(retentionDays, age).HasExpired;
-            }
+            if (parked) return parkedRetentionDays > 0 && age.TotalDays > parkedRetentionDays;
             return false;
         }
 
@@ -577,6 +689,11 @@ namespace Clickra.Core
                     sw.WriteLine($"EndTime={d.EndTime ?? ""}");
                     sw.WriteLine($"ElapsedMs={d.ElapsedMs}");
                     sw.WriteLine($"Pid={d.Pid}");
+                    // 只有被使用者調過期限的任務才寫這兩行；其他任務檔的格式完全不變。
+                    if (d.ParkedRetentionDays.HasValue)
+                        sw.WriteLine($"ParkedRetentionDays={d.ParkedRetentionDays.Value}");
+                    if (!string.IsNullOrEmpty(d.ParkedSince))
+                        sw.WriteLine($"ParkedSince={d.ParkedSince}");
                     return true;
                 }
                 catch { return false; }
@@ -598,6 +715,8 @@ namespace Clickra.Core
                     if (!int.TryParse(dict.GetValueOrDefault("CurrentIndex", "0"), out int ci)) ci = 0;
                     if (!long.TryParse(dict.GetValueOrDefault("ElapsedMs", "-1"), out long ms)) ms = -1;
                     if (!int.TryParse(dict.GetValueOrDefault("Pid", "0"), out int pid)) pid = 0;
+                    // 沒有這一行就是「沒有覆寫」（null），而不是 0（無限期）——不要預設成 0。
+                    int? parkedDays = int.TryParse(dict.GetValueOrDefault("ParkedRetentionDays", ""), out int prd) ? prd : null;
 
                     return new HistoryEntry
                     {
@@ -612,7 +731,9 @@ namespace Clickra.Core
                         OutputPath = dict.GetValueOrDefault("OutputPath", ""),
                         EndTime = dict.GetValueOrDefault("EndTime", ""),
                         ElapsedMs = ms,
-                        Pid = pid
+                        Pid = pid,
+                        ParkedRetentionDays = parkedDays,
+                        ParkedSince = dict.GetValueOrDefault("ParkedSince", "")
                     };
                 }
                 catch { return null; }
