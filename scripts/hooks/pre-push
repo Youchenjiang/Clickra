@@ -39,7 +39,10 @@ echo "[pre-push] Building Clickra.Fluent (warnaserror)..."
 dotnet build src/Clickra.Fluent/Clickra.Fluent.csproj -c Release -warnaserror
 
 
-echo "[pre-push] Running self-built test runner (correct invocation, warnaserror)..."
-dotnet run --project tests/Clickra.Core.Tests/Clickra.Core.Tests.csproj -c Release --property:TreatWarningsAsErrors=true
+echo "[pre-push] Running architecture and localization guards (warnaserror)..."
+dotnet run --project tests/Clickra.Core.Tests/Clickra.Core.Tests.csproj -c Release --property:TreatWarningsAsErrors=true -- --guards
+
+echo "[pre-push] Running functional unit tests (warnaserror)..."
+dotnet run --project tests/Clickra.Core.Tests/Clickra.Core.Tests.csproj -c Release --property:TreatWarningsAsErrors=true -- --functional
 
 echo "All pre-push checks passed."

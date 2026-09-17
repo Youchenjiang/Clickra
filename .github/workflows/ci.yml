@@ -135,8 +135,11 @@ jobs:
       # fixture-dependent layout tests cannot run: the runner marks them SKIP
       # instead of FAIL, keeping this gate green for the deterministic suite
       # while still telling the truth about what actually executed.
-      - name: Run self-built test runner (fixture SKIP contract)
-        run: dotnet run --project tests/Clickra.Core.Tests/Clickra.Core.Tests.csproj -c Release --property:TreatWarningsAsErrors=true
+      - name: Run architecture and localization guards
+        run: dotnet run --project tests/Clickra.Core.Tests/Clickra.Core.Tests.csproj -c Release --property:TreatWarningsAsErrors=true -- --guards
+
+      - name: Run functional unit tests (fixture SKIP contract)
+        run: dotnet run --project tests/Clickra.Core.Tests/Clickra.Core.Tests.csproj -c Release --property:TreatWarningsAsErrors=true -- --functional
 
   store-publishing-tests:
     name: Store publishing unit tests

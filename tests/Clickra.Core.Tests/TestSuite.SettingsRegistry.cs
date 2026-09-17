@@ -45,28 +45,28 @@ static partial class TestSuite
 
     public static void RegisterSettingsRegistryTests(TestRunner runner)
     {
-        runner.Run("Settings registry: every setting key is declared exactly once", TestSettingKeysDeclaredExactlyOnce);
+        runner.RunGuard("Settings registry: every setting key is declared exactly once", TestSettingKeysDeclaredExactlyOnce);
         runner.Run("Settings registry: GetSetting applies defaults for unset keys", TestSettingDefaults);
-        runner.Run("Settings registry: readers must not invent keys or defaults", TestSettingReadersUseRegistry);
-        runner.Run("Settings registry: numeric accessors take their fallback from the registry", TestNumericAccessorsUseRegistry);
+        runner.RunGuard("Settings registry: readers must not invent keys or defaults", TestSettingReadersUseRegistry);
+        runner.RunGuard("Settings registry: numeric accessors take their fallback from the registry", TestNumericAccessorsUseRegistry);
         runner.Run("Settings registry: numeric ranges are declared, valid, and clamp correctly", TestNumericRangesAreDeclaredAndClampCorrectly);
-        runner.Run("Settings registry: UI controls derive bounds and guards from centralized ranges", TestNumericUiControlsDeriveBounds);
-        runner.Run("Settings registry: retired keys stay outside the active registry", TestRetiredKeysStayDisjoint);
+        runner.RunGuard("Settings registry: UI controls derive bounds and guards from centralized ranges", TestNumericUiControlsDeriveBounds);
+        runner.RunGuard("Settings registry: retired keys stay outside the active registry", TestRetiredKeysStayDisjoint);
         runner.Run("Settings storage: retired keys are purged and rewritten on load", TestRetiredSettingsPurgedOnLoad);
         runner.Run("Settings storage: real-time file watcher and cache synchronization", TestSettingsFileWatcherAndCacheSynchronization);
         runner.Run("Settings storage: UI components hook SettingsReloaded for real-time sync", TestSettingsReloadedUiHooks);
-        runner.Run("Settings descriptors: every registered setting is valid and mapped in SettingPageRegistry", TestSettingDescriptorsAreValid);
+        runner.RunGuard("Settings descriptors: every registered setting is valid and mapped in SettingPageRegistry", TestSettingDescriptorsAreValid);
         runner.Run("Settings descriptors: UI components hook descriptor registry for automatic control generation", TestDescriptorUiHooks);
-        runner.Run("Settings registry: CLI localization keys coverage across all 5 languages", TestCliLocalizationKeysCoverage);
-        runner.Run("Settings registry: Diagnostics email localization coverage across all 5 languages", TestDiagnosticsEmailLocalizationCoverage);
-        runner.Run("Settings registry: Tray, visual splitter, and progress window localization coverage across all 5 languages", TestTraySplitterLocalizationCoverage);
+        runner.RunGuard("Settings registry: CLI localization keys coverage across all 5 languages", TestCliLocalizationKeysCoverage);
+        runner.RunGuard("Settings registry: Diagnostics email localization coverage across all 5 languages", TestDiagnosticsEmailLocalizationCoverage);
+        runner.RunGuard("Settings registry: Tray, visual splitter, and progress window localization coverage across all 5 languages", TestTraySplitterLocalizationCoverage);
         runner.Run("Settings registry: Fluent add-on settings localization coverage across all 5 languages", TestFluentSettingsLocalizationCoverage);
         runner.Run("Settings registry: Localization.T default language and formatting overloads", TestLocalizationDefaultLanguageAndFormatting);
         runner.Run("Settings registry: surface-specific copy stays distinct from shared keys", TestFluentSpecificCopyPreserved);
-        runner.Run("Localization guard: no hardcoded CJK text in Clickra.Fluent, Dashboard paint files, and the Win32 progress window", TestNoHardcodedChineseUiStrings);
-        runner.Run("Settings registry: Translation diagnostics lists gaps grouped by language when translations are missing", TestTranslationDiagnosticsGapReport);
-        runner.Run("Settings registry: All registered keys must have complete translations across all 5 languages", TestLocalizationDictionaryParity);
-        runner.Run("Test runner: every compiled test suite is invoked by Program.cs", TestEveryCompiledSuiteIsInvoked);
+        runner.RunGuard("Localization guard: no hardcoded CJK text in Clickra.Fluent, Dashboard paint files, and the Win32 progress window", TestNoHardcodedChineseUiStrings);
+        runner.RunGuard("Settings registry: Translation diagnostics lists gaps grouped by language when translations are missing", TestTranslationDiagnosticsGapReport);
+        runner.RunGuard("Settings registry: All registered keys must have complete translations across all 5 languages", TestLocalizationDictionaryParity);
+        runner.RunGuard("Test runner: every compiled test suite is invoked by Program.cs", TestEveryCompiledSuiteIsInvoked);
         runner.Run("Test runner: CleanStaleArtifacts cleans isolated temp directories and test artifacts", TestCleanStaleArtifacts);
     }
 

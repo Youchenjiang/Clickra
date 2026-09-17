@@ -3,9 +3,13 @@
 The primary test project is the C# contract suite:
 
 ```powershell
-dotnet build tests\Clickra.Core.Tests\Clickra.Core.Tests.csproj --no-restore
-dotnet tests\Clickra.Core.Tests\bin\Debug\net10.0-windows\Clickra.Core.Tests.dll
+dotnet run --project tests\Clickra.Core.Tests\Clickra.Core.Tests.csproj
 ```
+
+The C# test runner distinguishes **Guards** (architecture, localization, settings registry, and UI resource contracts) from **Functional** unit tests:
+- `dotnet run --project tests\Clickra.Core.Tests\Clickra.Core.Tests.csproj -- --guards` runs only the architecture and localization guards.
+- `dotnet run --project tests\Clickra.Core.Tests\Clickra.Core.Tests.csproj -- --functional` runs only the functional unit tests.
+- Without flags, the suite runs all tests and reports both overall counts and per-category breakdowns.
 
 The C# runner follows the same fixture contract as the Python regression
 runner below: tests that need `test_pdfs/` fixtures print `SKIP` (and count

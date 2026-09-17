@@ -92,10 +92,10 @@ static partial class TestSuite
 
     public static void RegisterLocalizationOrphanTests(TestRunner runner)
     {
-        runner.Run("Localization guard: every declared key has a consumer (shrinking orphan baseline)", TestEveryDeclaredKeyHasConsumer);
-        runner.Run("Localization guard: orphan baseline monotonically shrinking invariants and helpers", TestOrphanBaselineMonotonicInvariants);
-        runner.Run("Localization guard: every localization lookup names a declared key", TestEveryLookupNamesDeclaredKey);
-        runner.Run("Localization guard: the CLI progress tip is glyph-free and fits one tip line", TestProgressTipFitsOneLine);
+        runner.RunGuard("Localization guard: every declared key has a consumer (shrinking orphan baseline)", TestEveryDeclaredKeyHasConsumer);
+        runner.RunGuard("Localization guard: orphan baseline monotonically shrinking invariants and helpers", TestOrphanBaselineMonotonicInvariants);
+        runner.RunGuard("Localization guard: every localization lookup names a declared key", TestEveryLookupNamesDeclaredKey);
+        runner.RunGuard("Localization guard: the CLI progress tip is glyph-free and fits one tip line", TestProgressTipFitsOneLine);
     }
 
     private static void TestEveryDeclaredKeyHasConsumer()

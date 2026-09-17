@@ -394,21 +394,67 @@ sealed class PathInfo(string value)
     public override string ToString() => Value;
 }
 
+public enum TestCategory
+{
+    Functional,
+    Guard
+}
+
+public enum TestFilterMode
+{
+    All,
+    GuardsOnly,
+    FunctionalOnly
+}
+
 sealed class TestRunner
 {
     private readonly bool _requireFixtures;
+    private readonly TestFilterMode _filterMode;
 
-    public TestRunner(bool requireFixtures = false)
+    public TestRunner(bool requireFixtures = false, TestFilterMode filterMode = TestFilterMode.All)
     {
         _requireFixtures = requireFixtures;
+        _filterMode = filterMode;
     }
 
-    public int Passed { get; private set; }
-    public int Failures { get; private set; }
-    public int Skipped { get; private set; }
+    public TestFilterMode FilterMode => _filterMode;
 
-    public void Run(string name, Action test)
+    public int Passed => GuardPassed + FunctionalPassed;
+    public int Failures => GuardFailures + FunctionalFailures;
+    public int Skipped => GuardSkipped + FunctionalSkipped;
+
+    public int GuardPassed { get; private set; }
+    public int GuardFailures { get; private set; }
+    public int GuardSkipped { get; private set; }
+
+    public int FunctionalPassed { get; private set; }
+    public int FunctionalFailures { get; private set; }
+    public int FunctionalSkipped { get; private set; }
+
+    public void RunGuard(string name, Action test) => Run(name, test, TestCategory.Guard);
+
+    public void Run(string name, Action test) => Run(name, test, TestCategory.Functional);
+
+    public void Run(string name, Action test, TestCategory category)
     {
+        // Auto-detect guard if test name explicitly starts with "Localization guard:"
+        if (category == TestCategory.Functional && name.StartsWith("Localization guard:", StringComparison.OrdinalIgnoreCase))
+        {
+            category = TestCategory.Guard;
+        }
+
+        if (_filterMode == TestFilterMode.GuardsOnly && category != TestCategory.Guard)
+        {
+            return;
+        }
+        if (_filterMode == TestFilterMode.FunctionalOnly && category != TestCategory.Functional)
+        {
+            return;
+        }
+
+        string tag = category == TestCategory.Guard ? " [GUARD]" : "";
+
         // Reset ambient culture before each test and restore it afterwards so
         // one test that changes CurrentCulture/CurrentUICulture cannot leak
         // into the next (PR-B stability, 6.3). Tests that need a specific
@@ -421,8 +467,8 @@ sealed class TestRunner
             CultureInfo.CurrentUICulture = CultureInfo.InvariantCulture;
 
             test();
-            Passed++;
-            Console.WriteLine($"PASS {name}");
+            if (category == TestCategory.Guard) GuardPassed++; else FunctionalPassed++;
+            Console.WriteLine($"PASS{tag} {name}");
         }
         catch (TestSkippedException ex)
         {
@@ -430,27 +476,50 @@ sealed class TestRunner
             // fixture-expecting gate fails loudly (see Program.cs).
             if (_requireFixtures)
             {
-                Failures++;
-                Console.WriteLine($"FAIL {name}");
+                if (category == TestCategory.Guard) GuardFailures++; else FunctionalFailures++;
+                Console.WriteLine($"FAIL{tag} {name}");
                 Console.WriteLine(ex.Message);
             }
             else
             {
-                Skipped++;
-                Console.WriteLine($"SKIP {name}");
+                if (category == TestCategory.Guard) GuardSkipped++; else FunctionalSkipped++;
+                Console.WriteLine($"SKIP{tag} {name}");
                 Console.WriteLine(ex.Message);
             }
         }
         catch (Exception ex)
         {
-            Failures++;
-            Console.WriteLine($"FAIL {name}");
+            if (category == TestCategory.Guard) GuardFailures++; else FunctionalFailures++;
+            Console.WriteLine($"FAIL{tag} {name}");
             Console.WriteLine(ex.Message);
         }
         finally
         {
             CultureInfo.CurrentCulture = savedCulture;
             CultureInfo.CurrentUICulture = savedUiCulture;
+        }
+    }
+
+    public void PrintSummary()
+    {
+        Console.WriteLine($"SUMMARY: {Passed} passed, {Failures} failed, {Skipped} skipped");
+        if (_filterMode == TestFilterMode.All)
+        {
+            Console.WriteLine($"  Guards:     {GuardPassed} passed, {GuardFailures} failed, {GuardSkipped} skipped");
+            Console.WriteLine($"  Functional: {FunctionalPassed} passed, {FunctionalFailures} failed, {FunctionalSkipped} skipped");
+        }
+        else if (_filterMode == TestFilterMode.GuardsOnly)
+        {
+            Console.WriteLine($"  Guards:     {GuardPassed} passed, {GuardFailures} failed, {GuardSkipped} skipped");
+        }
+        else if (_filterMode == TestFilterMode.FunctionalOnly)
+        {
+            Console.WriteLine($"  Functional: {FunctionalPassed} passed, {FunctionalFailures} failed, {FunctionalSkipped} skipped");
+        }
+
+        if (Failures > 0)
+        {
+            Console.WriteLine($"FAILURES: {GuardFailures} guard failure(s), {FunctionalFailures} functional failure(s).");
         }
     }
 }

@@ -21,10 +21,16 @@
 param(
     [switch]$Clean,
     [switch]$RequireFixtures,
+    [switch]$Guards,
+    [switch]$Functional,
     [string]$Configuration = "Debug",
     [Parameter(ValueFromRemainingArguments = $true)]
     [string[]]$RemainingArgs
 )
+
+if ($Guards -and $Functional) {
+    throw "Cannot specify both -Guards and -Functional simultaneously."
+}
 
 $ErrorActionPreference = "Stop"
 
@@ -104,6 +110,12 @@ if ($RequireFixtures) {
 }
 if ($Clean) {
     $testArgs += "--clean"
+}
+if ($Guards) {
+    $testArgs += "--guards"
+}
+if ($Functional) {
+    $testArgs += "--functional"
 }
 if ($RemainingArgs) {
     $testArgs += $RemainingArgs
