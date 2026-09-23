@@ -220,6 +220,37 @@ static partial class TestSuite
                     null,
                 CancellationToken.None));
         });
+
+        runner.Run("LibreOffice uninstall refuses an installation Clickra did not make", () =>
+        {
+            const string provenanceKey = "LibreOfficeInstalledByClickra";
+            string oldValue = ClickraStorage.GetSetting(provenanceKey);
+            try
+            {
+                ClickraStorage.SaveSetting(provenanceKey, "false");
+                Assert.False(
+                    LibreOfficeEngineInstaller.WasInstalledByClickra(),
+                    "An unmarked installation must not be treated as Clickra-owned.");
+
+                InvalidOperationException refusal = Assert.Throws<InvalidOperationException>(() =>
+                    LibreOfficeEngineInstaller.UninstallSystemLibreOfficeAsync(CancellationToken.None)
+                        .GetAwaiter()
+                        .GetResult());
+
+                Assert.True(
+                    refusal.Message.Contains("not installed by Clickra", StringComparison.OrdinalIgnoreCase),
+                    $"The refusal must explain installation ownership, got: {refusal.Message}");
+
+                ClickraStorage.SaveSetting(provenanceKey, "true");
+                Assert.True(
+                    LibreOfficeEngineInstaller.WasInstalledByClickra(),
+                    "The existing provenance flag must allow Clickra-owned installations.");
+            }
+            finally
+            {
+                ClickraStorage.SaveSetting(provenanceKey, oldValue);
+            }
+        });
     }
 
     private static void CreateLibreOfficeProgramLayout(string programDir, string launcherName = "soffice.exe")
