@@ -43,7 +43,7 @@ namespace Clickra.Core.Processors
                 ExportMicrosoftOfficeToPdf(appType, fullPath, outputPdfPath, fileIndex, totalFiles, onProgress, cancellationToken);
                 return;
             }
-            catch (Exception) when (!engine.Equals("microsoft", StringComparison.OrdinalIgnoreCase) && LibreOfficeHelper.CanConvert(appType))
+            catch (Exception) when (ShouldFallBackToLibreOffice(engine, appType, cancellationToken))
             {
                 if (string.IsNullOrWhiteSpace(LibreOfficeHelper.GetResolvedExecutablePath()))
                     throw;
@@ -59,6 +59,18 @@ namespace Clickra.Core.Processors
                 LibreOfficeHelper.ExportToPdf(appType, fullPath, outputPdfPath, fileIndex, totalFiles, onProgress, cancellationToken);
             }
         }
+
+        /// <summary>
+        /// Whether a failed Microsoft Office conversion may recover through LibreOffice.
+        /// Cancellation is a terminal user decision and must never launch a second engine.
+        /// </summary>
+        public static bool ShouldFallBackToLibreOffice(
+            string engine,
+            string appType,
+            CancellationToken cancellationToken) =>
+            !cancellationToken.IsCancellationRequested &&
+            !engine.Equals("microsoft", StringComparison.OrdinalIgnoreCase) &&
+            LibreOfficeHelper.CanConvert(appType);
 
         [DllImport("ole32.dll", CharSet = CharSet.Unicode)]
         private static extern int CLSIDFromProgID(string lpszProgID, out Guid lpclsid);
