@@ -20,6 +20,7 @@ TestSuite.RegisterFigureRegressionTests(runner);
 TestSuite.RegisterPdfLayoutRegressionTests(runner);
 TestSuite.RegisterTranslationTests(runner);
 TestSuite.RegisterLibreOfficeEngineTests(runner);
+TestSuite.RegisterFileBackupTests(runner);
 TestSuite.RegisterPdfCompressionTests(runner);
 TestSuite.RegisterPdfSplitTests(runner);
 TestSuite.RegisterPdfDecryptTests(runner);
