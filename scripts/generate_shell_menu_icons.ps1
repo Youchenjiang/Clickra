@@ -1,4 +1,4 @@
-param(
+﻿param(
     [string]$OutputDirectory = (Join-Path $PSScriptRoot "..\src\resources")
 )
 

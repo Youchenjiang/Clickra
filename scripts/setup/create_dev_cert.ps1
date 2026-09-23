@@ -1,4 +1,4 @@
-# Create a self-signed certificate for local Clickra development
+﻿# Create a self-signed certificate for local Clickra development
 # Password: 1234
 # Subject is read from AppxManifest.xml Publisher attribute.
 
