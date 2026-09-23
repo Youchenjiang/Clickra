@@ -89,6 +89,8 @@ internal static class ClickraStartup
         }
         Console.WriteLine($"Error: {ex.Message}");
         Console.WriteLine(ex.StackTrace);
+        // Headless callers must be able to distinguish a failed conversion from success.
+        Environment.ExitCode = 1;
         if (!quiet && Environment.UserInteractive && !Console.IsInputRedirected)
         {
             Console.WriteLine("Press any key to exit...");
