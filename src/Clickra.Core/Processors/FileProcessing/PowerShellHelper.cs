@@ -1,5 +1,6 @@
 using System;
 using System.IO;
+using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading;
 using Clickra.Core;
@@ -59,19 +60,24 @@ namespace Clickra.Core.Processors
             }
         }
 
-        private static bool IsMicrosoftOfficeReady(string appType)
+        [DllImport("ole32.dll", CharSet = CharSet.Unicode)]
+        private static extern int CLSIDFromProgID(string lpszProgID, out Guid lpclsid);
+
+        public static bool IsMicrosoftOfficeReady(string appType)
         {
+            string? progId = appType switch
+            {
+                "Word" => "Word.Application",
+                "Excel" => "Excel.Application",
+                "PowerPoint" => "PowerPoint.Application",
+                _ => null
+            };
+
+            if (progId == null) return false;
+
             try
             {
-                Type? type = appType switch
-                {
-                    "Word" => Type.GetTypeFromProgID("Word.Application"),
-                    "Excel" => Type.GetTypeFromProgID("Excel.Application"),
-                    "PowerPoint" => Type.GetTypeFromProgID("PowerPoint.Application"),
-                    _ => null
-                };
-
-                return type != null;
+                return CLSIDFromProgID(progId, out _) == 0;
             }
             catch
             {
