@@ -16,6 +16,8 @@
 ### Step 2：執行 bump_version.ps1（自動更新版本號）
 - [ ] 執行 `./scripts/bump_version.ps1 -Type minor`（或 `major` / `patch`）
 - [ ] 腳本會自動更新：`Directory.Build.props`、3 份 `AppxManifest.xml`、`CHANGELOG.md`（TODO placeholder）、5 份 `StoreListing_*.md`（版本標題）
+- [ ] 確認版本更新保留每個目標檔案原有的 UTF-8 BOM 狀態：原本有 BOM 的檔案繼續保留，原本無 BOM 的檔案維持無 BOM
+- [ ] 版本準備必須在乾淨 checkout 上以 single-writer 方式執行；不支援 editor、formatter 或其他 release process 並行修改同一批檔案
 
 ### Step 3：手動更新文件（腳本無法自動處理的內容）
 - [ ] **CHANGELOG.md**：將 `**TODO**: Add changelog entry here` 替換為實際的變更描述（參考 §3.3）
@@ -153,5 +155,5 @@ $$\text{Version} = \text{Major} . \text{Minor} . \text{Patch} . \mathbf{0}$$
     2.  **進度視窗內嵌式密碼輸入子系統**：全新設計的跨執行緒 UI 機制，透過 `PostMessageW(WM_USER_SHOW_PASSWORD_INPUT)` 通知 UI 執行緒動態建立 `ES_PASSWORD` Edit 控制項與 OK/Cancel 按鈕，避免彈出式對話框干擾。
     3.  **閃爍修復（WS_CLIPCHILDREN）**：在父視窗加上 `WS_CLIPCHILDREN` 旗標，防止 GDI+ 的 `Paint()` 覆蓋繪製子控制項導致閃爍。
     4.  **輸入修復（TranslateMessage + IsDialogMessageW）**：修正主訊息迴圈中 `TranslateMessage` 與 `IsDialogMessageW` 的呼叫順序，確保 `WM_CHAR` 能正確產生使文字可輸入，同時支援 Enter 確認、Esc 取消的熱鍵行為。
-    5.  **bump_version.ps1 UTF-8 BOM-preserving 修正**：版本更新使用 `[System.IO.File]` API，寫回時保留各目標檔案原本的 UTF-8 BOM 狀態；原本有 BOM 的檔案繼續保留，原本無 BOM 的檔案維持無 BOM。這可避免 PowerShell 5.1 預設 ANSI 解碼以及版本更新時意外新增或移除 BOM。版本準備應在乾淨 checkout 上以 single-writer 方式執行，不支援與 editor / formatter / 其他 release process 並行修改同一批檔案。
+    5.  **bump_version.ps1 UTF-8 無 BOM 修正**：所有腳本的檔案讀寫改用 `[System.IO.File]` API 搭配 `New-Object System.Text.UTF8Encoding($false)`，消除 PowerShell 5.1 預設 ANSI 與 `[System.Text.Encoding]::UTF8` 隱式 BOM 對 Markdown/XML 文件造成的字元污染問題。
 *   **決策理由**：`decrypt-pdf` 是全新的文件處理功能模組，且進度視窗的密碼輸入架構屬於子系統級的新設計，已超出單純 UI 修補的範疇，依規範遞增為次版本號 `3.3.0.0`（因 CI 問題實際發布為 `3.3.1.0`）。
