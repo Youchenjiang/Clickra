@@ -37,11 +37,38 @@ switch ($Type) {
 $newVersion = "$major.$minor.$patch.$revision"
 Write-Host "[*] Upgrading version from $currentVersion to $newVersion ..." -ForegroundColor Cyan
 
-$utf8NoBOM = New-Object System.Text.UTF8Encoding($false)
+# ReadAllText strips a detected UTF-8 BOM from the returned string. Preserve the
+# file's existing BOM state when writing version updates back to disk.
+function Write-TextPreservingBom {
+    param(
+        [string]$Path,
+        [string]$Text
+    )
+
+    $withBom = $false
+    $stream = [System.IO.File]::Open(
+        $Path,
+        [System.IO.FileMode]::Open,
+        [System.IO.FileAccess]::Read,
+        [System.IO.FileShare]::ReadWrite)
+    try {
+        $head = New-Object byte[] 3
+        $withBom = (
+            $stream.Read($head, 0, 3) -eq 3 -and
+            $head[0] -eq 0xEF -and
+            $head[1] -eq 0xBB -and
+            $head[2] -eq 0xBF)
+    } finally {
+        $stream.Dispose()
+    }
+
+    $encoding = New-Object System.Text.UTF8Encoding($withBom)
+    [System.IO.File]::WriteAllText($Path, $Text, $encoding)
+}
 
 # 3. Update Directory.Build.props
 $newProps = $content -replace '<Version>.*</Version>', "<Version>$newVersion</Version>"
-[System.IO.File]::WriteAllText("$root/$propsPath", $newProps, $utf8NoBOM)
+Write-TextPreservingBom -Path "$root/$propsPath" -Text $newProps
 
 # Update all AppxManifest.xml files (Identity Version attribute)
 $manifestPaths = @("packaging/msix/AppxManifest.xml", "packaging/msix/AppxManifest.Fluent.xml", "src/resources/AppxManifest.xml")
@@ -49,7 +76,7 @@ foreach ($mPath in $manifestPaths) {
     if (Test-Path $mPath) {
         $manifest = [System.IO.File]::ReadAllText("$root/$mPath", [System.Text.Encoding]::UTF8)
         $newManifest = $manifest -replace '(?<=<Identity\s+[^>]*?Version=")([\d\.]+)', $newVersion
-        [System.IO.File]::WriteAllText("$root/$mPath", $newManifest, $utf8NoBOM)
+        Write-TextPreservingBom -Path "$root/$mPath" -Text $newManifest
         Write-Host "[Manifest] Synced Manifest: $mPath" -ForegroundColor Gray
     }
 }
@@ -61,7 +88,7 @@ if (Test-Path $changelogPath) {
     $date = Get-Date -Format "yyyy-MM-dd"
     $newEntry = "`n## [v$newVersion] - $date`n`n- **TODO**: Add changelog entry here`n"
     $changelog = $changelog -replace '(?m)^# Changelog\r?\n', "# Changelog`n$newEntry"
-    [System.IO.File]::WriteAllText("$root/$changelogPath", $changelog, $utf8NoBOM)
+    Write-TextPreservingBom -Path "$root/$changelogPath" -Text $changelog
     Write-Host "[Doc] Updated CHANGELOG.md with new version entry" -ForegroundColor Gray
 }
 
@@ -97,7 +124,7 @@ foreach ($f in $storeListingFiles) {
         throw "No version stamp found in the top of $f; refusing to bump it blindly"
     }
     $content = $lines -join $eol
-    [System.IO.File]::WriteAllText("$root/$f", $content, $utf8NoBOM)
+    Write-TextPreservingBom -Path "$root/$f" -Text $content
     Write-Host "[Doc] Synced StoreListing: $f" -ForegroundColor Gray
 }
 
