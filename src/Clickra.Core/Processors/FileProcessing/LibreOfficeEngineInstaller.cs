@@ -30,6 +30,8 @@ namespace Clickra.Core.Processors
 
     public static class LibreOfficeEngineInstaller
     {
+        private const string InstalledByClickraSetting = "LibreOfficeInstalledByClickra";
+
         public static readonly LibreOfficeEngineManifest BuiltInManifest = new(
             Schema: 1,
             LibreOffice: new LibreOfficeEnginePackage(
@@ -42,6 +44,11 @@ namespace Clickra.Core.Processors
                 License: "MPL-2.0"));
 
         public static LibreOfficeEnginePackage RecommendedPackage => BuiltInManifest.LibreOffice;
+
+        /// <summary>True only when Clickra recorded ownership of the installed LibreOffice.</summary>
+        public static bool WasInstalledByClickra() =>
+            ClickraStorage.GetSetting(InstalledByClickraSetting)
+                .Equals("true", StringComparison.OrdinalIgnoreCase);
 
         private static readonly HttpClient HttpClient = new()
         {
@@ -179,6 +186,12 @@ namespace Clickra.Core.Processors
 
         public static async Task<LibreOfficeUninstallResult> UninstallSystemLibreOfficeAsync(CancellationToken cancellationToken)
         {
+            // The registry lookup below can find a LibreOffice the user installed independently.
+            // Refuse before starting msiexec unless Clickra already recorded that it owns it.
+            if (!WasInstalledByClickra())
+                throw new InvalidOperationException(
+                    "Refusing to uninstall: this LibreOffice was not installed by Clickra, so it is managed by the user.");
+
             string productCode = FindInstalledLibreOfficeProductCode()
                 ?? throw new InvalidOperationException("LibreOffice MSI installation was not found.");
 
