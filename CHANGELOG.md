@@ -1,5 +1,11 @@
 # Changelog
 
+## [v3.7.1.0] - 2026-09-25
+
+- **破壞性操作安全 (Destructive-operation Safety)**：覆寫既有輸出前若 recovery backup 建立失敗就立即停止；rollback 或 backup cleanup 失敗會明確回報並保留 recovery artifact，避免無保護覆寫或靜默遺失復原資料。
+- **LibreOffice 卸載保護 (LibreOffice Uninstall Safety)**：只允許 Clickra 移除自己管理的 LibreOffice 安裝，不再誤刪使用者自行安裝的 Office engine。
+- **發佈流程可靠性 (Release Pipeline Reliability)**：版本同步保留每個檔案原有的 UTF-8 BOM 狀態；Store publisher 遇到既存 pending submission 時改為 fail closed，不再自動刪除前一版 submission。
+
 All notable changes to Clickra will be documented in this file.
 
 ## [Unreleased]

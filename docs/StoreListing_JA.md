@@ -1,6 +1,6 @@
 # Microsoft Store Listing - Japanese (Japan)
 
-Microsoft Partner Center にそのまま貼り付けられる、v3.7.0.0 向けのストア掲載情報です。
+Microsoft Partner Center にそのまま貼り付けられる、v3.7.1.0 向けのストア掲載情報です。
 
 ---
 
