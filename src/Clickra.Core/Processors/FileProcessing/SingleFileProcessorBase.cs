@@ -33,11 +33,9 @@ namespace Clickra.Core.Processors
                     ? outputPath 
                     : Path.Combine(outDir, Path.GetFileNameWithoutExtension(filePath) + GetOutputSuffix());
 
-                using (var backupScope = FileBackupScope.Create(targetOutputPath))
-                {
-                    ProcessSingleFile(fullPath, targetOutputPath, i, total, options, onProgress, cancellationToken);
-                    backupScope.Commit();
-                }
+                using var backupScope = FileBackupScope.Create(targetOutputPath);
+                ProcessSingleFile(fullPath, targetOutputPath, i, total, options, onProgress, cancellationToken);
+                backupScope.Commit();
             }
         }
 
