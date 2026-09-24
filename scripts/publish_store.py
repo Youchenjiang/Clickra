@@ -341,40 +341,49 @@ def limit_listing_keywords(base_listing):
         if keyword_key in base_listing and isinstance(base_listing[keyword_key], list):
             base_listing[keyword_key] = base_listing[keyword_key][:7]
 
-def delete_pending_submission_via_api(token, p_id):
-    print("Checking and deleting any pending submissions to ensure clean state...")
+def ensure_no_pending_submission(token, p_id):
+    print("Checking for an existing Microsoft Store submission...")
     if is_dry_run():
         return
-        
+
     app_url = f'https://manage.devcenter.microsoft.com/v1.0/my/applications/{p_id}'
     app = api_request(app_url, token)
     if not app:
         print("Error: Could not query app info.")
         sys.exit(1)
-        
+
     pending = app.get('pendingApplicationSubmission')
     if not pending:
         print("No pending submission found. Clean state verified.")
         return
-        
-    sub_id = pending['id']
-    print(f"Found pending submission: {sub_id}. Deleting...")
-    
-    del_url = f'https://manage.devcenter.microsoft.com/v1.0/my/applications/{p_id}/submissions/{sub_id}'
-    
+
+    sub_id = pending.get('id') or '<unknown>'
+    print(f"ERROR: Existing pending submission detected: {sub_id}")
+    print("Refusing to delete or replace an in-flight Store submission.")
+    print("Wait until the previous release is Published and no pending submission remains, then retry.")
+    sys.exit(1)
+
+
+def delete_submission_via_api(token, p_id, submission_id):
+    """Delete only the draft created by the current release attempt."""
+    if is_dry_run():
+        return True
+
+    del_url = f'https://manage.devcenter.microsoft.com/v1.0/my/applications/{p_id}/submissions/{submission_id}'
     for attempt in range(1, 4):
         req = urllib.request.Request(del_url, headers={'Authorization': f'Bearer {token}'}, method='DELETE')
         try:
             with open_https(req, timeout=60) as r:
                 if r.status in (200, 204):
-                    print("✅ Pending submission deleted successfully.")
-                    time.sleep(15) # Wait for deletion propagation
-                    return
+                    print(f"✅ Failed draft {submission_id} deleted successfully.")
+                    time.sleep(15)  # Wait for deletion propagation
+                    return True
         except Exception as e:
             print(f"  Delete attempt {attempt} failed: {e}")
             if attempt < 3:
                 time.sleep(15)
-    print("Warning: Could not delete pending submission.")
+    print(f"Warning: Could not delete failed draft {submission_id}.")
+    return False
 
 def create_new_submission(token, p_id):
     print("Creating a new submission draft...")
@@ -724,14 +733,14 @@ def verify_commit_status(token, p_id, submission_id):
     return None
 
 def run_submission_flow(repo_root, token, p_id, msix_path):
-    delete_pending_submission_via_api(token, p_id)
+    ensure_no_pending_submission(token, p_id)
     submission = create_new_submission(token, p_id)
     submission_id = submission['id']
     build_and_upload_archive(submission['fileUploadUrl'], msix_path, repo_root)
     update_submission_metadata(submission, token, p_id, submission_id, repo_root, msix_path)
     if not wait_for_preprocessing(token, p_id, submission_id):
         print("\n❌ Package processing validation failed. Deleting failed submission draft...")
-        delete_pending_submission_via_api(token, p_id)
+        delete_submission_via_api(token, p_id, submission_id)
         sys.exit(1)
     if not commit_submission_via_api(token, p_id, submission_id):
         print("\n❌ Failed to commit submission draft.")
