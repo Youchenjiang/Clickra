@@ -12,6 +12,7 @@ on:
     paths:
       - 'src/**'
       - 'tools/zap/**'
+      - '.github/workflows/zap-security-scan.yml'
   workflow_dispatch:
 
 concurrency:
@@ -71,6 +72,8 @@ jobs:
           retention-days: 30
 
   zap-baseline:
+    # The baseline targets a third-party API, so keep it as a post-merge/manual gate.
+    if: github.event_name != 'pull_request'
     name: ZAP Baseline Scan (Third-party APIs)
     runs-on: ubuntu-latest
     permissions:
