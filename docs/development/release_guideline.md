@@ -16,6 +16,8 @@
 ### Step 2：執行 bump_version.ps1（自動更新版本號）
 - [ ] 執行 `./scripts/bump_version.ps1 -Type minor`（或 `major` / `patch`）
 - [ ] 腳本會自動更新：`Directory.Build.props`、3 份 `AppxManifest.xml`、`CHANGELOG.md`（TODO placeholder）、5 份 `StoreListing_*.md`（版本標題）
+- [ ] 確認版本更新保留每個目標檔案原有的 UTF-8 BOM 狀態：原本有 BOM 的檔案繼續保留，原本無 BOM 的檔案維持無 BOM
+- [ ] 版本準備必須在乾淨 checkout 上以 single-writer 方式執行；不支援 editor、formatter 或其他 release process 並行修改同一批檔案
 
 ### Step 3：手動更新文件（腳本無法自動處理的內容）
 - [ ] **CHANGELOG.md**：將 `**TODO**: Add changelog entry here` 替換為實際的變更描述（參考 §3.3）

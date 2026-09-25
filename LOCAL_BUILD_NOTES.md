@@ -96,7 +96,8 @@ The AOT Dashboard Settings tab has a Fluent section:
   - `WM_CTLCOLOREDIT` (0x0133) is handled to paint the edit control background `#2D2D2D` with white foreground text to match the dark theme.
   - Encryption pre-check: `decrypt-pdf` validates whether the input PDF is actually encrypted before prompting. Unencrypted files display a red-cross error message and abort without prompting.
 - **bump_version.ps1 Encoding Fix**:
-  - All file read/write operations in `bump_version.ps1` now use `[System.IO.File]::ReadAllText` / `::WriteAllText` with `New-Object System.Text.UTF8Encoding($false)` (no-BOM UTF-8). This prevents PowerShell 5.1's default ANSI encoding and `[System.Text.Encoding]::UTF8`'s implicit BOM from corrupting Markdown and XML files.
+  - `bump_version.ps1` reads release metadata through `[System.IO.File]` APIs and preserves each target file's existing UTF-8 BOM state when writing it back. Files that already carry a BOM keep it; BOM-free files remain BOM-free. This avoids both PowerShell 5.1 ANSI decoding hazards and accidental BOM loss/addition in Markdown and XML files.
+  - Run version preparation as a single-writer operation on a clean checkout. Concurrent editors, formatters, or release processes are unsupported because they can cause lost updates independently of the BOM-preservation logic.
 
 ## How to Build (Manual Compilation)
 The package contains three binaries:
