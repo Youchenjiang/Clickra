@@ -159,7 +159,7 @@ public static class ConvertCommandRegistry
         public static void EnsureUniqueOutputPaths(IEnumerable<string> outputs)
         {
             var duplicate = outputs
-                .GroupBy(path => Path.GetFullPath(path), StringComparer.OrdinalIgnoreCase)
+                .GroupBy(Path.GetFullPath, StringComparer.OrdinalIgnoreCase)
                 .FirstOrDefault(group => group.Count() > 1);
             if (duplicate is not null)
             {
