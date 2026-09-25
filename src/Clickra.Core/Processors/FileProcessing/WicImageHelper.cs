@@ -101,7 +101,7 @@ public static class WicImageHelper
             return LoadWebpViaLibwebp(filePath);
         }
 
-        if (ext != ".heic" && ext != ".heif" && ext != ".hif")
+        if (!IsHeifExtension(ext))
         {
             try
             {
@@ -117,6 +117,11 @@ public static class WicImageHelper
 
         return LoadViaWic(filePath);
     }
+
+    internal static bool IsHeifExtension(string extension) =>
+        string.Equals(extension, ".heic", StringComparison.OrdinalIgnoreCase) ||
+        string.Equals(extension, ".heif", StringComparison.OrdinalIgnoreCase) ||
+        string.Equals(extension, ".hif", StringComparison.OrdinalIgnoreCase);
 
     /// <summary>Decodes WebP with the bundled libwebp runtime so WebP input support does
     /// not depend on an optional Windows Store codec.</summary>

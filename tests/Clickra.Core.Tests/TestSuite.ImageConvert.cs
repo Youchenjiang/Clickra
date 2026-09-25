@@ -147,9 +147,21 @@ static partial class TestSuite
             string dummyPdf = Path.Combine(Path.GetTempPath(), "clickra_probe_test.pdf");
 
             Assert.True(heicSupported == (ImageFormatConvertProcessor.GetMissingCodecForCommand(CmdImgToHeic, new List<string> { dummyPng }) is null), "img-to-heic preflight must agree with IsHeicEncodingSupported.");
+            Assert.True(heicSupported == (ImageFormatConvertProcessor.GetMissingCodecForCommand("IMG-TO-HEIC", new List<string> { dummyPng }) is null), "img-to-heic preflight must be case-insensitive.");
             Assert.True(ImageFormatConvertProcessor.GetMissingCodecForCommand(CmdImgToWebp, new List<string> { dummyPng }) is null, "img-to-webp uses the bundled encoder and needs no Store codec.");
             Assert.True(ImageFormatConvertProcessor.GetMissingCodecForCommand(CmdImg2Pdf, new List<string> { dummyPng }) is null, "img2pdf needs no extra codec.");
             Assert.True(ImageFormatConvertProcessor.GetMissingCodecForCommand("merge-pdf", new List<string> { dummyPdf }) is null, "merge-pdf needs no extra codec.");
+
+            Assert.True(WicImageHelper.IsHeifExtension(".heic"), ".heic should require the Windows HEIF decoder.");
+            Assert.True(WicImageHelper.IsHeifExtension(".HEIF"), ".heif matching should be case-insensitive.");
+            Assert.True(WicImageHelper.IsHeifExtension(".hif"), ".hif should require the Windows HEIF decoder.");
+            Assert.False(WicImageHelper.IsHeifExtension(".jpg"), ".jpg must not be treated as a HEIF alias.");
+
+            if (!WicImageHelper.IsHeicDecoderAvailable())
+            {
+                Assert.Equal("heic", ImageFormatConvertProcessor.GetMissingCodecForCommand(CmdImgToPng, new[] { "probe.heif" }) ?? "");
+                Assert.Equal("heic", ImageFormatConvertProcessor.GetMissingCodecForCommand(CmdImgToPng, new[] { "probe.hif" }) ?? "");
+            }
         });
 
         runner.Run("Missing-codec messages are localized in every supported language", () =>

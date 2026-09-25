@@ -46,7 +46,7 @@ namespace Clickra.Core.Processors;
                 return;
             }
 
-            if (string.Equals(sourceExt, ExtHeic, StringComparison.OrdinalIgnoreCase) && !WicImageHelper.IsHeicDecoderAvailable())
+            if (WicImageHelper.IsHeifExtension(sourceExt) && !WicImageHelper.IsHeicDecoderAvailable())
             {
                 throw new NotSupportedException(Localize("error_heic_decoder_missing"));
             }
@@ -127,13 +127,13 @@ namespace Clickra.Core.Processors;
         /// HEIC source decoding for any image format conversion.</summary>
         public static string? GetMissingCodecForCommand(string command, IEnumerable<string> files)
         {
-            // If any source file is .heic, we need a HEIC decoder to read it
-            if (!WicImageHelper.IsHeicDecoderAvailable() && files.Any(f => string.Equals(Path.GetExtension(f), ExtHeic, StringComparison.OrdinalIgnoreCase)))
+            // HEIC/HEIF aliases all route through the same Windows decoder.
+            if (!WicImageHelper.IsHeicDecoderAvailable() && files.Any(f => WicImageHelper.IsHeifExtension(Path.GetExtension(f))))
             {
                 return CodecHeic;
             }
 
-            string? codec = command == "img-to-heic" ? CodecHeic : null;
+            string? codec = string.Equals(command, "img-to-heic", StringComparison.OrdinalIgnoreCase) ? CodecHeic : null;
 
             return codec switch
             {
