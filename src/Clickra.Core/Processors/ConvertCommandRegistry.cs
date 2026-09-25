@@ -9,6 +9,12 @@ namespace Clickra.Core.Processors;
 /// Fluent and NativeAOT UIs. Adding a command means editing this table once.</summary>
 public static class ConvertCommandRegistry
 {
+        private const string CmdImgToPng = "img-to-png";
+        private const string CmdImgToJpg = "img-to-jpg";
+        private const string CmdImgToWebp = "img-to-webp";
+        private const string CmdImgToGif = "img-to-gif";
+        private const string CmdImgToHeic = "img-to-heic";
+
         private sealed record CommandDef(string[] Extensions, int MinFiles, string LabelKey, string[]? ExcludeExtensions = null);
 
         private static readonly string[] PdfExtensions = { ".pdf" };
@@ -24,7 +30,7 @@ public static class ConvertCommandRegistry
             ("word", WordExtensions, ["word2pdf"]),
             ("excel", ExcelExtensions, ["excel2pdf"]),
             ("ppt", PptExtensions, ["ppt2pdf"]),
-            ("image", ImageExtensions, ["img2pdf", "img-merge", "img-stitch", "img-to-png", "img-to-jpg", "img-to-webp", "img-to-gif", "img-to-heic"])
+            ("image", ImageExtensions, ["img2pdf", "img-merge", "img-stitch", CmdImgToPng, CmdImgToJpg, CmdImgToWebp, CmdImgToGif, CmdImgToHeic])
         };
 
         /// <summary>File extensions accepted by a UI file type ("pdf", "word", "excel", "ppt", "image").</summary>
@@ -71,11 +77,11 @@ public static class ConvertCommandRegistry
             ["img2pdf"] = new(ImageExtensions, 1, "cmd_img_to_pdf"),
             ["img-merge"] = new(ImageExtensions, 2, "cmd_merge_img"),
             ["img-stitch"] = new(ImageExtensions, 2, "cmd_stitch_img"),
-            ["img-to-png"] = new(ImageExtensions, 1, "cmd_img_to_png", PngExcluded),
-            ["img-to-jpg"] = new(ImageExtensions, 1, "cmd_img_to_jpg", JpegExcluded),
-            ["img-to-webp"] = new(ImageExtensions, 1, "cmd_img_to_webp", WebpExcluded),
-            ["img-to-gif"] = new(ImageExtensions, 1, "cmd_img_to_gif", GifExcluded),
-            ["img-to-heic"] = new(ImageExtensions, 1, "cmd_img_to_heic", HeicExcluded)
+            [CmdImgToPng] = new(ImageExtensions, 1, "cmd_img_to_png", PngExcluded),
+            [CmdImgToJpg] = new(ImageExtensions, 1, "cmd_img_to_jpg", JpegExcluded),
+            [CmdImgToWebp] = new(ImageExtensions, 1, "cmd_img_to_webp", WebpExcluded),
+            [CmdImgToGif] = new(ImageExtensions, 1, "cmd_img_to_gif", GifExcluded),
+            [CmdImgToHeic] = new(ImageExtensions, 1, "cmd_img_to_heic", HeicExcluded)
         };
 
         private static readonly string[] AllSupportedExtensionsValue =
@@ -126,7 +132,7 @@ public static class ConvertCommandRegistry
                 "decrypt-pdf" => files.Select(f => Path.Combine(ClickraStorage.GetOutputDir(f), Path.GetFileNameWithoutExtension(f) + "_decrypted.pdf")).ToList(),
                 "split-pdf" => files.Select(f => Path.Combine(ClickraStorage.GetOutputDir(f), Path.GetFileNameWithoutExtension(f) + "_split.pdf")).ToList(),
                 "img2pdf" => files.Select(f => Path.Combine(ClickraStorage.GetOutputDir(f), Path.GetFileNameWithoutExtension(f) + ".pdf")).ToList(),
-                "img-to-png" or "img-to-jpg" or "img-to-webp" or "img-to-gif" or "img-to-heic"
+                CmdImgToPng or CmdImgToJpg or CmdImgToWebp or CmdImgToGif or CmdImgToHeic
                     => EstimateImageFormatOutputs(command, files),
                 _ => files.Select(f => Path.Combine(ClickraStorage.GetOutputDir(f), Path.GetFileNameWithoutExtension(f) + ".pdf")).ToList()
             };
@@ -138,11 +144,11 @@ public static class ConvertCommandRegistry
         {
             string extension = command switch
             {
-                "img-to-png" => ".png",
-                "img-to-jpg" => ".jpg",
-                "img-to-webp" => ".webp",
-                "img-to-gif" => ".gif",
-                "img-to-heic" => ".heic",
+                CmdImgToPng => ".png",
+                CmdImgToJpg => ".jpg",
+                CmdImgToWebp => ".webp",
+                CmdImgToGif => ".gif",
+                CmdImgToHeic => ".heic",
                 _ => throw new InvalidOperationException($"Unknown image format command '{command}'.")
             };
             var outputs = files
