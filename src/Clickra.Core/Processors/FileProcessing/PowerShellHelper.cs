@@ -1,5 +1,6 @@
 using System;
 using System.IO;
+using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading;
 using Clickra.Core;
@@ -42,7 +43,7 @@ namespace Clickra.Core.Processors
                 ExportMicrosoftOfficeToPdf(appType, fullPath, outputPdfPath, fileIndex, totalFiles, onProgress, cancellationToken);
                 return;
             }
-            catch (Exception) when (!engine.Equals("microsoft", StringComparison.OrdinalIgnoreCase) && LibreOfficeHelper.CanConvert(appType))
+            catch (Exception) when (ShouldFallBackToLibreOffice(engine, appType, cancellationToken))
             {
                 if (string.IsNullOrWhiteSpace(LibreOfficeHelper.GetResolvedExecutablePath()))
                     throw;
@@ -59,19 +60,38 @@ namespace Clickra.Core.Processors
             }
         }
 
-        private static bool IsMicrosoftOfficeReady(string appType)
+        /// <summary>
+        /// Whether a failed Microsoft Office conversion may recover through LibreOffice.
+        /// Cancellation is a terminal user decision and must never launch a second engine.
+        /// </summary>
+        internal static bool ShouldFallBackToLibreOffice(
+            string engine,
+            string appType,
+            CancellationToken cancellationToken) =>
+            !cancellationToken.IsCancellationRequested &&
+            !engine.Equals("microsoft", StringComparison.OrdinalIgnoreCase) &&
+            LibreOfficeHelper.CanConvert(appType);
+
+        [DllImport("ole32.dll", CharSet = CharSet.Unicode)]
+        private static extern int CLSIDFromProgID(string lpszProgID, out Guid lpclsid);
+
+        internal static string? GetMicrosoftOfficeProgId(string appType) => appType switch
         {
+            "Word" => "Word.Application",
+            "Excel" => "Excel.Application",
+            "PowerPoint" => "PowerPoint.Application",
+            _ => null
+        };
+
+        internal static bool IsMicrosoftOfficeReady(string appType)
+        {
+            string? progId = GetMicrosoftOfficeProgId(appType);
+
+            if (progId == null) return false;
+
             try
             {
-                Type? type = appType switch
-                {
-                    "Word" => Type.GetTypeFromProgID("Word.Application"),
-                    "Excel" => Type.GetTypeFromProgID("Excel.Application"),
-                    "PowerPoint" => Type.GetTypeFromProgID("PowerPoint.Application"),
-                    _ => null
-                };
-
-                return type != null;
+                return CLSIDFromProgID(progId, out _) == 0;
             }
             catch
             {
