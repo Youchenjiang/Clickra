@@ -57,7 +57,14 @@ internal static class ClickraStartup
             {
                 Directory.CreateDirectory(outputDir);
             }
-            ClickraCli.DispatchCommandSwitch(command, files, quiet, outputDir, outputDirOverride, hasCliLevel, compressionLevel, pagesOption);
+            var dispatchOptions = new ClickraCli.DispatchOptions(
+                quiet,
+                outputDir,
+                outputDirOverride,
+                hasCliLevel,
+                compressionLevel,
+                pagesOption);
+            ClickraCli.DispatchCommandSwitch(command, files, dispatchOptions);
         }
         catch (Exception ex)
         {

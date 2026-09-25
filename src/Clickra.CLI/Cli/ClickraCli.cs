@@ -14,6 +14,14 @@ namespace Clickra
 {
     partial class ClickraCli
     {
+        internal sealed record DispatchOptions(
+            bool Quiet,
+            string OutputDir,
+            string? OutputDirOverride,
+            bool HasCliLevel,
+            string CompressionLevel,
+            string PagesOption);
+
         // Native Win32 MessageBox — zero WinForms dependency, keeps exe tiny
         [DllImport("user32.dll", CharSet = CharSet.Unicode)]
         static extern int MessageBox(IntPtr hWnd, string text, string caption, uint type);
@@ -111,16 +119,11 @@ namespace Clickra
         internal static void DispatchCommandSwitch(
             string command,
             List<string> files,
-            bool quiet,
-            string outputDir,
-            string? outputDirOverride,
-            bool hasCliLevel,
-            string compressionLevel,
-            string pagesOption)
+            DispatchOptions options)
         {
-            if (DispatchOfficeCommand(command, files, quiet)) return;
-            if (DispatchPdfCommand(command, files, quiet, outputDir, hasCliLevel, compressionLevel, pagesOption)) return;
-            if (DispatchImageCommand(command, files, quiet, outputDir, outputDirOverride)) return;
+            if (DispatchOfficeCommand(command, files, options.Quiet)) return;
+            if (DispatchPdfCommand(command, files, options.Quiet, options.OutputDir, options.HasCliLevel, options.CompressionLevel, options.PagesOption)) return;
+            if (DispatchImageCommand(command, files, options.Quiet, options.OutputDir, options.OutputDirOverride)) return;
 
             Console.WriteLine($"[錯誤] 未知指令: {command}");
         }
