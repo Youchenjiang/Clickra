@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Runtime.InteropServices;
+using Clickra.Core.Processors;
 
 namespace Clickra
 {
@@ -38,15 +39,7 @@ namespace Clickra
         /// supported extensions).</summary>
         internal static List<string> ExpandDirectoryArguments(string command, IEnumerable<string> inputs)
         {
-            var allowed = command switch
-            {
-                "ppt2pdf" => new[] { ".pptx", ".ppt" },
-                "word2pdf" => new[] { ".docx", ".doc" },
-                "excel2pdf" => new[] { ".xlsx", ".xls" },
-                "merge-pdf" or "translate-pdf" or "decrypt-pdf" or "compress-pdf" or "split-pdf" => new[] { ".pdf" },
-                "img2pdf" or "img-merge" or "img-stitch" => new[] { ".jpg", ".jpeg", ".png", ".bmp", ".gif", ".tiff", ".webp" },
-                _ => Array.Empty<string>()
-            };
+            string[] allowed = ConvertCommandRegistry.GetAllowedExtensions(command);
 
             var expanded = new List<string>();
             foreach (var input in inputs)

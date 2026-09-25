@@ -113,13 +113,14 @@ namespace Clickra
             List<string> files,
             bool quiet,
             string outputDir,
+            string? outputDirOverride,
             bool hasCliLevel,
             string compressionLevel,
             string pagesOption)
         {
             if (DispatchOfficeCommand(command, files, quiet)) return;
             if (DispatchPdfCommand(command, files, quiet, outputDir, hasCliLevel, compressionLevel, pagesOption)) return;
-            if (DispatchImageCommand(command, files, quiet, outputDir)) return;
+            if (DispatchImageCommand(command, files, quiet, outputDir, outputDirOverride)) return;
 
             Console.WriteLine($"[錯誤] 未知指令: {command}");
         }
@@ -204,8 +205,8 @@ namespace Clickra
             }
         }
 
-        /// <summary>Handles image commands (img2pdf, img-merge, img-stitch).</summary>
-        private static bool DispatchImageCommand(string command, List<string> files, bool quiet, string outputDir)
+        /// <summary>Handles image conversion, merge and stitching commands.</summary>
+        private static bool DispatchImageCommand(string command, List<string> files, bool quiet, string outputDir, string? outputDirOverride)
         {
             switch (command)
             {
@@ -227,9 +228,42 @@ namespace Clickra
                     if (quiet) FileProcessor.StitchImages(files, Path.Combine(outputDir, "Stitched_Image.png"), (curr, tot, msg) => Console.WriteLine($"[Progress] {msg}"));
                     else ProgressWindow.Show(command, files);
                     return true;
+                case "img-to-png":
+                case "img-to-jpg":
+                case "img-to-webp":
+                case "img-to-gif":
+                case "img-to-heic":
+                    return DispatchImageFormatCommand(command, files, quiet, outputDir, outputDirOverride);
                 default:
                     return false;
             }
+        }
+
+        /// <summary>Validates and dispatches one of the img-to-* format conversion commands.</summary>
+        private static bool DispatchImageFormatCommand(string command, List<string> files, bool quiet, string outputDir, string? outputDirOverride)
+        {
+            string[] allowed = ConvertCommandRegistry.GetAllowedExtensions(command);
+            ValidateExtensions(files, command, quiet, allowed);
+            RequireMinFiles(files, command, ConvertCommandRegistry.GetMinFiles(command), quiet);
+
+            if (quiet)
+            {
+                var outputs = ConvertCommandRegistry.EstimateImageFormatOutputs(command, files, outputDir);
+                ConvertCommandRunner.Run(
+                    command,
+                    files,
+                    outputs,
+                    (curr, total, msg) => Console.WriteLine($"[Progress] {msg}"),
+                    new ConvertCommandRunner.ConversionOptions(
+                        _ => System.Threading.Tasks.Task.FromResult<string?>(null),
+                        (_, _) => System.Threading.Tasks.Task.FromResult<string?>(null)));
+            }
+            else
+            {
+                ProgressWindow.Show(command, files, outputDirOverride);
+            }
+
+            return true;
         }
 
         /// <summary>Converts each image to its own PDF in quiet mode.</summary>

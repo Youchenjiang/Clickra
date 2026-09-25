@@ -89,6 +89,13 @@ namespace Clickra.UI
                     case "img-stitch":
                         FileProcessor.StitchImages(currentFiles, Path.Combine(outputDir, "Stitched_Image.png"), progressCallback, _cts.Token);
                         break;
+                    case "img-to-png":
+                    case "img-to-jpg":
+                    case "img-to-webp":
+                    case "img-to-gif":
+                    case "img-to-heic":
+                        RunImageFormatConvert(cmd, currentFiles, _outputDirOverride, progressCallback);
+                        break;
                     case "translate-pdf":
                         RunTranslatePdf(currentFiles, outputDir, progressCallback);
                         break;
@@ -104,7 +111,7 @@ namespace Clickra.UI
                 long elapsedMs = sw.ElapsedMilliseconds;
                 string endTime = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
                 string inputs = string.Join(";", currentFiles);
-                string outputs = GetOutputPath(cmd, currentFiles, outputDir);
+                string outputs = GetOutputPath(cmd, currentFiles, outputDir, _outputDirOverride);
 
                 lock (_stateLock)
                 {
@@ -130,7 +137,7 @@ namespace Clickra.UI
                 string endTime = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
                 string inputs = string.Join(";", currentFiles);
                 string outputDir = currentFiles.Count > 0 ? ClickraStorage.GetOutputDir(currentFiles[0]) : "";
-                string outputs = currentFiles.Count > 0 ? GetOutputPath(cmd, currentFiles, outputDir) : "";
+                string outputs = currentFiles.Count > 0 ? GetOutputPath(cmd, currentFiles, outputDir, _outputDirOverride) : "";
 
                 bool wasCanceled = _cts.IsCancellationRequested || ex is OperationCanceledException;
                 string errorMsg = wasCanceled ? "User Aborted" : ex.Message;
@@ -196,6 +203,20 @@ namespace Clickra.UI
             progressCallback(files.Count * 100, files.Count * 100, "轉換完成，正在儲存 PDF...");
         }
 
+        /// <summary>Runs a registered img-to-* conversion through the shared core runner.</summary>
+        private void RunImageFormatConvert(string command, List<string> files, string? outputDirOverride, Action<int, int, string> progressCallback)
+        {
+            var outputs = ConvertCommandRegistry.EstimateImageFormatOutputs(command, files, outputDirOverride);
+            ConvertCommandRunner.Run(
+                command,
+                files,
+                outputs,
+                progressCallback,
+                new ConvertCommandRunner.ConversionOptions(
+                    _ => System.Threading.Tasks.Task.FromResult<string?>(null),
+                    (_, _) => System.Threading.Tasks.Task.FromResult<string?>(null)),
+                _cts.Token);
+        }
         /// <summary>Translates each PDF to the saved target language, reporting per-file
         /// progress through the callback.</summary>
         private void RunTranslatePdf(List<string> files, string outputDir, Action<int, int, string> progressCallback)
@@ -382,7 +403,7 @@ namespace Clickra.UI
         }
 
         /// <summary>Returns the expected output path(s) for a completed command, used for history logging.</summary>
-        private static string GetOutputPath(string cmd, List<string> inputFiles, string outputDir)
+        private static string GetOutputPath(string cmd, List<string> inputFiles, string outputDir, string? outputDirOverride)
         {
             switch (cmd)
             {
@@ -403,6 +424,12 @@ namespace Clickra.UI
                     return string.Join(";", inputFiles.Select(f => Path.Combine(outputDir, Path.GetFileNameWithoutExtension(f) + "_decrypted.pdf")));
                 case "compress-pdf":
                     return string.Join(";", inputFiles.Select(f => Path.Combine(outputDir, Path.GetFileNameWithoutExtension(f) + "_compressed.pdf")));
+                case "img-to-png":
+                case "img-to-jpg":
+                case "img-to-webp":
+                case "img-to-gif":
+                case "img-to-heic":
+                    return string.Join(";", ConvertCommandRegistry.EstimateImageFormatOutputs(cmd, inputFiles, outputDirOverride));
                 default:
                     return outputDir;
             }
