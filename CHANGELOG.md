@@ -1,5 +1,10 @@
 # Changelog
 
+## [v3.7.2.0] - 2026-09-25
+
+- **Office 引擎可靠性 (Office Engine Reliability)**：Office readiness 改以 `CLSIDFromProgID` 檢查 COM 註冊，避免 NativeAOT 發布環境依賴 reflection-only API，並保留 Word / Excel / PowerPoint 的自動引擎選擇。
+- **取消與 fallback 安全 (Cancellation / Fallback Safety)**：使用者取消 Microsoft Office 轉換後不再啟動 LibreOffice 第二次嘗試；明確指定 Microsoft engine 時也會直接回報原始失敗。
+
 ## [v3.7.1.0] - 2026-09-25
 
 - **破壞性操作安全 (Destructive-operation Safety)**：覆寫既有輸出前若 recovery backup 建立失敗就立即停止；rollback 或 backup cleanup 失敗會明確回報並保留 recovery artifact，避免無保護覆寫或靜默遺失復原資料。
