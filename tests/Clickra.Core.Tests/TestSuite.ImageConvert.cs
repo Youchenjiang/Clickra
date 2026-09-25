@@ -19,6 +19,7 @@ static partial class TestSuite
     private const string CmdImgToGif = "img-to-gif";
     private const string CmdImg2Pdf = "img2pdf";
     private const string ExtHeic = ".heic";
+    private const string CliProjectDir = "Clickra.CLI";
     private const string PasswordPromptErrorMessage = "Password prompt must not run for image conversion.";
     private const string SplitPromptErrorMessage = "Split prompt must not run for image conversion.";
 
@@ -295,10 +296,10 @@ static partial class TestSuite
             string? root = FindRepoRoot();
             if (root is null) throw new TestSkippedException("Could not locate the repository root from the test output directory.");
 
-            string cli = File.ReadAllText(Path.Combine(root, "src", "Clickra.CLI", "Cli", "ClickraCli.cs"));
-            string startup = File.ReadAllText(Path.Combine(root, "src", "Clickra.CLI", "Cli", "ClickraStartup.cs"));
-            string dashboard = File.ReadAllText(Path.Combine(root, "src", "Clickra.CLI", "Dashboard", "DashboardWindow.ConvertRegistry.cs"));
-            string progress = File.ReadAllText(Path.Combine(root, "src", "Clickra.CLI", "Progress", "ProgressWindow.Process.cs"));
+            string cli = File.ReadAllText(Path.Combine(root, "src", CliProjectDir, "Cli", "ClickraCli.cs"));
+            string startup = File.ReadAllText(Path.Combine(root, "src", CliProjectDir, "Cli", "ClickraStartup.cs"));
+            string dashboard = File.ReadAllText(Path.Combine(root, "src", CliProjectDir, "Dashboard", "DashboardWindow.ConvertRegistry.cs"));
+            string progress = File.ReadAllText(Path.Combine(root, "src", CliProjectDir, "Progress", "ProgressWindow.Process.cs"));
             string fluentXaml = File.ReadAllText(Path.Combine(root, "src", "Clickra.Fluent", "MainPage.xaml"));
             string fluentCode = File.ReadAllText(Path.Combine(root, "src", "Clickra.Fluent", "MainPage.xaml.cs"));
 
