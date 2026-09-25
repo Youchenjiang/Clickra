@@ -6,8 +6,26 @@ static partial class TestSuite
 {
     public static void RegisterOfficeEngineReliabilityTests(TestRunner runner)
     {
-        runner.Run("Office readiness probe supports NativeAOT-safe COM lookup", () =>
+        runner.Run("Office readiness maps supported app types before COM lookup", () =>
         {
+            Assert.Equal(
+                "Word.Application",
+                PowerShellHelper.GetMicrosoftOfficeProgId("Word") ?? "<null>");
+            Assert.Equal(
+                "Excel.Application",
+                PowerShellHelper.GetMicrosoftOfficeProgId("Excel") ?? "<null>");
+            Assert.Equal(
+                "PowerPoint.Application",
+                PowerShellHelper.GetMicrosoftOfficeProgId("PowerPoint") ?? "<null>");
+            Assert.True(
+                PowerShellHelper.GetMicrosoftOfficeProgId("Unknown") is null,
+                "Unknown Office application types must not map to a COM ProgID.");
+        });
+
+        runner.Run("Office readiness COM probe executes for supported app types", () =>
+        {
+            // Installed Office availability is environment-dependent, so these are smoke calls.
+            // The mapping semantics are asserted separately above.
             _ = PowerShellHelper.IsMicrosoftOfficeReady("Word");
             _ = PowerShellHelper.IsMicrosoftOfficeReady("Excel");
             _ = PowerShellHelper.IsMicrosoftOfficeReady("PowerPoint");

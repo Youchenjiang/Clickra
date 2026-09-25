@@ -64,7 +64,7 @@ namespace Clickra.Core.Processors
         /// Whether a failed Microsoft Office conversion may recover through LibreOffice.
         /// Cancellation is a terminal user decision and must never launch a second engine.
         /// </summary>
-        public static bool ShouldFallBackToLibreOffice(
+        internal static bool ShouldFallBackToLibreOffice(
             string engine,
             string appType,
             CancellationToken cancellationToken) =>
@@ -75,15 +75,17 @@ namespace Clickra.Core.Processors
         [DllImport("ole32.dll", CharSet = CharSet.Unicode)]
         private static extern int CLSIDFromProgID(string lpszProgID, out Guid lpclsid);
 
-        public static bool IsMicrosoftOfficeReady(string appType)
+        internal static string? GetMicrosoftOfficeProgId(string appType) => appType switch
         {
-            string? progId = appType switch
-            {
-                "Word" => "Word.Application",
-                "Excel" => "Excel.Application",
-                "PowerPoint" => "PowerPoint.Application",
-                _ => null
-            };
+            "Word" => "Word.Application",
+            "Excel" => "Excel.Application",
+            "PowerPoint" => "PowerPoint.Application",
+            _ => null
+        };
+
+        internal static bool IsMicrosoftOfficeReady(string appType)
+        {
+            string? progId = GetMicrosoftOfficeProgId(appType);
 
             if (progId == null) return false;
 
