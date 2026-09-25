@@ -1,5 +1,9 @@
 # Changelog
 
+## [v3.7.3.0] - 2026-09-25
+
+- **Headless CLI 錯誤碼 (Headless CLI Exit Codes)**：命令派送拋出例外時會將 process exit code 設為 `1`，讓 scripts、CI 與排程工作可靠辨識轉換失敗；成功命令（例如 `--version`）仍維持 exit code `0`。
+
 ## [v3.7.2.0] - 2026-09-25
 
 - **Office 引擎可靠性 (Office Engine Reliability)**：Office readiness 改以 `CLSIDFromProgID` 檢查 COM 註冊，避免 NativeAOT 發布環境依賴 reflection-only API，並保留 Word / Excel / PowerPoint 的自動引擎選擇。
