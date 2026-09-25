@@ -169,6 +169,12 @@ static partial class TestSuite
         {
             foreach (var lang in new[] { "zh-TW", "zh-CN", "en-US", "ja-JP", "ko-KR" })
             {
+                foreach (string command in new[] { CmdImgToPng, CmdImgToJpg, CmdImgToWebp, CmdImgToGif, CmdImgToHeic })
+                {
+                    string labelKey = "cmd_" + command.Replace('-', '_');
+                    Assert.False(Localization.T(labelKey, lang).Equals(labelKey, StringComparison.Ordinal), $"image command label missing for {command} in {lang}.");
+                }
+
                 string heic = Localization.T("error_heic_codec_missing", lang);
                 string heicDecoder = Localization.T("error_heic_decoder_missing", lang);
                 string collision = Localization.T("error_image_output_collision", lang);
