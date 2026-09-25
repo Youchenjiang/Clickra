@@ -74,6 +74,19 @@ namespace Clickra.Core
         public static void StitchImages(List<string> files, string outputPath, Action<int, int, string>? onProgress = null, CancellationToken cancellationToken = default) =>
             new ImageStitchProcessor().Process(files, outputPath, null, onProgress, cancellationToken);
 
+        /// <summary>Converts an image file to a target format (png / jpg / webp / gif / heic).</summary>
+        /// <param name="inputPath">Path of the source image.</param>
+        /// <param name="outputPath">Path of the converted output image.</param>
+        /// <param name="format">Target format name ("png", "jpg", "webp", "gif" or "heic").</param>
+        /// <param name="onProgress">Optional progress callback receiving (progress, max, message).</param>
+        /// <param name="cancellationToken">Cancellation token to abort the conversion.</param>
+        public static void ConvertImageFormat(string inputPath, string outputPath, string format, Action<int, int, string>? onProgress = null, CancellationToken cancellationToken = default)
+        {
+            var processor = new ImageFormatConvertProcessor();
+            var options = new Dictionary<string, object> { { "format", format } };
+            processor.Process(new List<string> { inputPath }, outputPath, options, onProgress, cancellationToken);
+        }
+
         /// <summary>Converts PowerPoint files to PDF via the LibreOffice engine.</summary>
         /// <param name="files">Input .ppt/.pptx paths.</param>
         /// <param name="onProgress">Optional progress callback receiving (progress, max, message).</param>

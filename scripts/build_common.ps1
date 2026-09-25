@@ -10,6 +10,13 @@ $script:Root = Get-Location
 $script:PackagingDir = "$($script:Root)/packaging/msix"
 $script:LayoutDir = "$($script:PackagingDir)/Layout"
 $script:PublishDir = "$($script:Root)/publish"
+$script:WebpRuntimeFiles = @(
+    "libsharpyuv.dll",
+    "libwebp.dll",
+    "libwebpdemux.dll",
+    "libwebpmux.dll"
+)
+$script:ThirdPartyNoticesFile = "THIRD-PARTY-NOTICES.txt"
 
 # ------------------------------------------------------------------
 # Shared build functions
@@ -78,8 +85,12 @@ function Copy-AssemblyLayout {
     Copy-Item -Recurse "$PackagingDir/Assets" "$LayoutDir/"
     Copy-Item -Recurse "$PackagingDir/Strings" "$LayoutDir/"
     Copy-Item "$PublishDir/cli/Clickra.exe" "$LayoutDir/"
+    foreach ($runtimeFile in $script:WebpRuntimeFiles) {
+        Copy-Item "$PublishDir/cli/$runtimeFile" "$LayoutDir/"
+    }
     Copy-Item "$PublishDir/launcher/ClickraLauncher.exe" "$LayoutDir/"
     Copy-Item "$PublishDir/shell/ClickraShell.dll" "$LayoutDir/"
+    Copy-Item "$Root/$($script:ThirdPartyNoticesFile)" "$LayoutDir/"
     foreach ($bin in $ExtraBinaries) {
         Copy-Item "$PublishDir/$bin" "$LayoutDir/"
     }
@@ -92,8 +103,9 @@ function Test-LayoutComplete {
         "Clickra.exe",
         "ClickraLauncher.exe",
         "ClickraShell.dll",
-        "AppxManifest.xml"
-    )
+        "AppxManifest.xml",
+        $script:ThirdPartyNoticesFile
+    ) + $script:WebpRuntimeFiles
     $missing = $required | Where-Object { -not (Test-Path "$LayoutDir/$_") }
     if ($missing) {
         throw "Layout incomplete — missing required files: $($missing -join ', ')"

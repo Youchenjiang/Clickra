@@ -92,4 +92,4 @@ dotnet run --project tests/Clickra.Core.Tests/Clickra.Core.Tests.csproj -c Relea
 - [CHANGELOG.md](CHANGELOG.md) — 完整版本歷史
 
 ## 授權條款
-本專案採用 **Apache License 2.0**。核心組件使用 **PDFsharp** (MIT License)。
+本專案採用 **Apache License 2.0**。核心組件使用 **PDFsharp**、**Imazen.WebP**（MIT）與 **libwebp**（BSD 3-Clause）；再散布之第三方授權聲明請見 `THIRD-PARTY-NOTICES.txt`。

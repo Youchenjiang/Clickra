@@ -13,6 +13,11 @@ namespace Clickra.Core
         private const string AppExcel = "Excel";
         private const string KeyCmdCompressPdf = "cmd_compress_pdf";
         private const string OfficeName = "Office";
+        private const string KeyCmdImgToPng = "cmd_img_to_png";
+        private const string KeyCmdImgToJpg = "cmd_img_to_jpg";
+        private const string KeyCmdImgToWebp = "cmd_img_to_webp";
+        private const string KeyCmdImgToHeic = "cmd_img_to_heic";
+        private const string KeyCmdImgToGif = "cmd_img_to_gif";
 
         private static readonly Dictionary<string, Dictionary<string, string>> Translations = new(StringComparer.OrdinalIgnoreCase)
         {
@@ -111,6 +116,11 @@ namespace Clickra.Core
                 ["cmd_img_to_pdf"] = "圖片 → PDF",
                 ["cmd_merge_img"] = "圖片合併",
                 ["cmd_stitch_img"] = "圖片拼接",
+                [KeyCmdImgToPng] = "轉成 PNG",
+                [KeyCmdImgToJpg] = "轉成 JPG",
+                [KeyCmdImgToWebp] = "轉成 WEBP",
+                [KeyCmdImgToHeic] = "轉成 HEIC",
+                [KeyCmdImgToGif] = "轉成 GIF",
                 ["tab_convert"] = "轉檔",
                 ["convert_drag_drop_hint"] = "拖曳檔案至此，或點擊此處選取檔案",
                 ["convert_drag_drop_sub"] = "支援 Word, PPT, PDF 及多種圖片格式",
@@ -252,6 +262,11 @@ namespace Clickra.Core
                 ["cmd_img_to_pdf"] = "图片 → PDF",
                 ["cmd_merge_img"] = "图片合并",
                 ["cmd_stitch_img"] = "图片拼接",
+                [KeyCmdImgToPng] = "转换为 PNG",
+                [KeyCmdImgToJpg] = "转换为 JPG",
+                [KeyCmdImgToWebp] = "转换为 WEBP",
+                [KeyCmdImgToHeic] = "转换为 HEIC",
+                [KeyCmdImgToGif] = "转换为 GIF",
                 ["tab_convert"] = "转档",
                 ["convert_drag_drop_hint"] = "拖拽文件至此，或点击此处选择文件",
                 ["convert_drag_drop_sub"] = "支持 Word, PPT, PDF 及多种图片格式",
@@ -398,6 +413,11 @@ namespace Clickra.Core
                 ["cmd_img_to_pdf"] = "Image → PDF",
                 ["cmd_merge_img"] = "Merge Images",
                 ["cmd_stitch_img"] = "Stitch Images",
+                [KeyCmdImgToPng] = "Convert to PNG",
+                [KeyCmdImgToJpg] = "Convert to JPG",
+                [KeyCmdImgToWebp] = "Convert to WEBP",
+                [KeyCmdImgToHeic] = "Convert to HEIC",
+                [KeyCmdImgToGif] = "Convert to GIF",
                 ["tab_convert"] = "Convert",
                 ["convert_drag_drop_hint"] = "Drag files here, or click to browse",
                 ["convert_drag_drop_sub"] = "Supports Word, PPT, PDF, and image files",
@@ -541,6 +561,11 @@ namespace Clickra.Core
                 ["cmd_img_to_pdf"] = "画像 → PDF",
                 ["cmd_merge_img"] = "画像結合",
                 ["cmd_stitch_img"] = "画像結合 (縦/横)",
+                [KeyCmdImgToPng] = "PNG に変換",
+                [KeyCmdImgToJpg] = "JPG に変換",
+                [KeyCmdImgToWebp] = "WEBP に変換",
+                [KeyCmdImgToHeic] = "HEIC に変換",
+                [KeyCmdImgToGif] = "GIF に変換",
                 ["convert_drag_drop_hint"] = "ここにファイルをドラッグするか、クリックして選択",
                 ["convert_drag_drop_sub"] = "Word、PPT、PDF、および画像ファイルをサポート",
                 ["convert_selected_count"] = "{0} 個のファイルが選択されました",
@@ -682,6 +707,11 @@ namespace Clickra.Core
                 ["cmd_img_to_pdf"] = "이미지 → PDF",
                 ["cmd_merge_img"] = "이미지 병합",
                 ["cmd_stitch_img"] = "이미지 이어붙이기",
+                [KeyCmdImgToPng] = "PNG로 변환",
+                [KeyCmdImgToJpg] = "JPG로 변환",
+                [KeyCmdImgToWebp] = "WEBP로 변환",
+                [KeyCmdImgToHeic] = "HEIC로 변환",
+                [KeyCmdImgToGif] = "GIF로 변환",
                 ["tab_convert"] = "변환",
                 ["convert_drag_drop_hint"] = "여기에 파일을 끌어다 놓거나 클릭하여 선택",
                 ["convert_drag_drop_sub"] = "Word, PPT, PDF 및 이미지 파일 지원",
@@ -995,7 +1025,13 @@ namespace Clickra.Core
                 ("pdf_split_zoom_title", "頁面放大預覽", "页面放大预览", "Page zoom preview", "ページ拡大プレビュー", "페이지 확대 미리보기"),
                 ("pdf_split_zoom_hint", "滾輪縮放 · 拖曳平移 · 空白鍵/Esc 關閉", "滚轮缩放 · 拖拽平移 · 空格/Esc 关闭", "Wheel to zoom · drag to pan · Space/Esc to close", "ホイールで拡大 · ドラッグで移動 · Space/Esc で閉じる", "휠 확대 · 드래그 이동 · Space/Esc 닫기"),
                 ("pdf_split_zoom_close", "X 關閉", "X 关闭", "X Close", "X 閉じる", "X 닫기"),
-                ("pdf_split_zoom_fit", "適配", "适配", "Fit", "フィット", "맞춤")
+                ("pdf_split_zoom_fit", "適配", "适配", "Fit", "フィット", "맞춤"),
+                ("error_heic_decoder_missing", "此系統沒有 HEIF/HEIC 解碼器，無法讀取 HEIC 輸入檔案。", "此系统没有 HEIF/HEIC 解码器，无法读取 HEIC 输入文件。", "This system has no HEIF/HEIC decoder, so HEIC input files cannot be read.", "このシステムには HEIF/HEIC デコーダーがなく、HEIC 入力ファイルを読み取れません。", "이 시스템에는 HEIF/HEIC 디코더가 없어 HEIC 입력 파일을 읽을 수 없습니다."),
+                ("error_heic_codec_missing", "此系統沒有 HEIF/HEIC 編碼器，無法輸出 HEIC 檔案。", "此系统没有 HEIF/HEIC 编码器，无法输出 HEIC 文件。", "This system has no HEIF/HEIC encoder, so HEIC files cannot be written.", "このシステムには HEIF/HEIC エンコーダーがなく、HEIC ファイルを出力できません。", "이 시스템에는 HEIF/HEIC 인코더가 없어 HEIC 파일을 출력할 수 없습니다."),
+                ("error_image_output_collision", "多個輸入檔案會寫入相同的輸出路徑，已中止以避免覆寫：{0}", "多个输入文件会写入相同的输出路径，已中止以避免覆盖：{0}", "Multiple inputs would write to the same output path; conversion stopped to prevent overwriting: {0}", "複数の入力ファイルが同じ出力先に書き込まれるため、上書きを防ぐため処理を中止しました: {0}", "여러 입력 파일이 동일한 출력 경로에 기록되므로 덮어쓰기를 방지하기 위해 변환을 중단했습니다: {0}"),
+                ("codec_missing_store_prompt", "{0}\n\n是否立即開啟 Microsoft Store 免費安裝「{1}」？", "{0}\n\n是否立即打开 Microsoft Store 免费安装「{1}」？", "{0}\n\nOpen the Microsoft Store now to install the free \"{1}\"?", "{0}\n\n今すぐ Microsoft Store を開いて無料の「{1}」をインストールしますか？", "{0}\n\n지금 Microsoft Store를 열어 무료 \"{1}\"을(를) 설치하시겠습니까?"),
+                ("codec_heif_extension_name", "HEIF 影像延伸", "HEIF 图像扩展", "HEIF Image Extensions", "HEIF 画像拡張機能", "HEIF 이미지 확장"),
+                ("codec_missing_install_action", "安裝編碼器", "安装编码器", "Install codec", "コーデックをインストール", "코덱 설치")
             };
 
             foreach (var item in data)

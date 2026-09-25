@@ -6,6 +6,7 @@ using System.Runtime.InteropServices;
 using System.Runtime.InteropServices.WindowsRuntime;
 using Windows.Graphics.Imaging;
 using Windows.Storage.Streams;
+using Imazen.WebP;
 
 namespace Clickra.Core.Processors;
 
@@ -26,11 +27,20 @@ public static class WicImageHelper
         try
         {
             var encoders = BitmapEncoder.GetEncoderInformationEnumerator();
+            bool found = false;
             foreach (var enc in encoders)
             {
-                if (enc.CodecId == BitmapEncoder.HeifEncoderId) return true;
+                if (enc.CodecId == BitmapEncoder.HeifEncoderId)
+                {
+                    found = true;
+                    break;
+                }
             }
-            return false;
+            if (!found) return false;
+
+            using var probeStream = new InMemoryRandomAccessStream();
+            var probeEncoder = BitmapEncoder.CreateAsync(BitmapEncoder.HeifEncoderId, probeStream).AsTask().GetAwaiter().GetResult();
+            return probeEncoder != null;
         }
         catch
         {
@@ -59,6 +69,23 @@ public static class WicImageHelper
     }
 
     /// <summary>
+    /// WebP encoding is bundled with Clickra through libwebp, so it does not depend on
+    /// the Windows WebP extension (which exposes only a decoder on Windows).
+    /// </summary>
+    public static bool IsWebpEncoderAvailable()
+    {
+        try
+        {
+            _ = SimpleEncoder.GetEncoderVersion();
+            return true;
+        }
+        catch
+        {
+            return false;
+        }
+    }
+
+    /// <summary>
     /// Safely loads an image file into a System.Drawing.Bitmap.
     /// Uses GDI+ for standard formats (PNG/JPG/BMP/GIF) and automatically uses WIC BitmapDecoder
     /// for HEIC/HEIF or when GDI+ fails (e.g. WebP or specialized color profiles).
@@ -69,6 +96,11 @@ public static class WicImageHelper
             throw new FileNotFoundException("Image file not found.", filePath);
 
         string ext = Path.GetExtension(filePath).ToLowerInvariant();
+        if (ext == ".webp")
+        {
+            return LoadWebpViaLibwebp(filePath);
+        }
+
         if (ext != ".heic" && ext != ".heif" && ext != ".hif")
         {
             try
@@ -84,6 +116,15 @@ public static class WicImageHelper
         }
 
         return LoadViaWic(filePath);
+    }
+
+    /// <summary>Decodes WebP with the bundled libwebp runtime so WebP input support does
+    /// not depend on an optional Windows Store codec.</summary>
+    private static Bitmap LoadWebpViaLibwebp(string filePath)
+    {
+        byte[] bytes = File.ReadAllBytes(filePath);
+        var decoder = new SimpleDecoder();
+        return decoder.DecodeFromBytes(bytes, bytes.LongLength);
     }
 
     /// <summary>
@@ -214,5 +255,17 @@ public static class WicImageHelper
         }
 
         EncodePixelsToHeic(pixels, (uint)width, (uint)height, image.HorizontalResolution, image.VerticalResolution, outputPath, quality);
+    }
+
+    /// <summary>Converts any image format Clickra can decode into WebP using the bundled
+    /// libwebp encoder. HEIC inputs still flow through the Windows HEIF decoder first.</summary>
+    public static void ConvertFileToWebp(string inputPath, string outputPath, int quality = 90)
+    {
+        using var source = LoadImageSafely(inputPath);
+        string? dir = Path.GetDirectoryName(outputPath);
+        if (!string.IsNullOrEmpty(dir)) Directory.CreateDirectory(dir);
+        using var output = File.Create(outputPath);
+        var encoder = new SimpleEncoder();
+        encoder.Encode(source, output, Math.Clamp(quality, 1, 100));
     }
 }
