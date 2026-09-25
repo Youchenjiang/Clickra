@@ -92,4 +92,4 @@ Before opening a pull request, please see:
 - [CHANGELOG.md](CHANGELOG.md) — full version history
 
 ## License
-Licensed under the **Apache License 2.0**. Core components use **PDFsharp** (MIT License).
+Licensed under the **Apache License 2.0**. Core components use **PDFsharp** and **Imazen.WebP** (MIT), plus **libwebp** (BSD 3-Clause). See `THIRD-PARTY-NOTICES.txt` for redistributed third-party notices.

@@ -138,9 +138,32 @@ public static class ConvertCommandRunner
                 case "img-stitch":
                     FileProcessor.StitchImages(files, outputs[0], progress, token);
                     break;
+                case "img-to-png":
+                    RunImageConvert(files, outputs, "png", progress, options.StartIndex, token);
+                    break;
+                case "img-to-jpg":
+                    RunImageConvert(files, outputs, "jpg", progress, options.StartIndex, token);
+                    break;
+                case "img-to-webp":
+                    RunImageConvert(files, outputs, "webp", progress, options.StartIndex, token);
+                    break;
+                case "img-to-gif":
+                    RunImageConvert(files, outputs, "gif", progress, options.StartIndex, token);
+                    break;
+                case "img-to-heic":
+                    RunImageConvert(files, outputs, "heic", progress, options.StartIndex, token);
+                    break;
                 default:
                     throw new InvalidOperationException($"Unknown convert command '{command}'.");
             }
+        }
+
+        /// <summary>Converts each image to the target format, reusing the per-file
+        /// loop with the format baked into the FileProcessor call.</summary>
+        private static void RunImageConvert(List<string> files, List<string> outputs, string format, Action<int, int, string> progress, int startIndex, CancellationToken token)
+        {
+            ConvertCommandRegistry.EnsureUniqueOutputPaths(outputs);
+            RunPerFile(files, outputs, (f, o, p, t) => FileProcessor.ConvertImageFormat(f, o, format, p, t), progress, startIndex, token);
         }
 
         private static void RunPerFile(List<string> files, List<string> outputs, Action<string, string, Action<int, int, string>, CancellationToken> action, Action<int, int, string> progress, int startIndex, CancellationToken token)

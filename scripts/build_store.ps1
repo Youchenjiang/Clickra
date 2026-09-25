@@ -1,6 +1,6 @@
 ﻿# Clickra Store Submission Build
 # Produces two MSIX files ready for Microsoft Store upload:
-#   1. Clickra_Main.msix    — AOT only, zero dependency (< 50MB target)
+#   1. Clickra_Main.msix    — NativeAOT with bundled image codec runtime
 #   2. Clickra_Fluent.msix   — WinUI 3 optional, carries Windows App Runtime
 #
 # Both packages share the same Publisher and are designed for related-set deployment.
@@ -40,11 +40,15 @@ Copy-Item "$packagingDir/AppxManifest.xml" "$mainLayout/AppxManifest.xml"
 Copy-Item -Recurse "$packagingDir/Assets" "$mainLayout/"
 Copy-Item -Recurse "$packagingDir/Strings" "$mainLayout/"
 Copy-Item "$publishDir/cli/Clickra.exe" "$mainLayout/"
+foreach ($runtimeFile in $script:WebpRuntimeFiles) {
+    Copy-Item "$publishDir/cli/$runtimeFile" "$mainLayout/"
+}
 Copy-Item "$publishDir/launcher/ClickraLauncher.exe" "$mainLayout/"
 Copy-Item "$publishDir/shell/ClickraShell.dll" "$mainLayout/"
+Copy-Item "$root/$($script:ThirdPartyNoticesFile)" "$mainLayout/"
 Copy-IconAssets -PackagingDir $packagingDir -LayoutDir $mainLayout
 
-$mainRequired = @("Clickra.exe", "ClickraLauncher.exe", "ClickraShell.dll", "AppxManifest.xml")
+$mainRequired = @("Clickra.exe", "ClickraLauncher.exe", "ClickraShell.dll", "AppxManifest.xml", $script:ThirdPartyNoticesFile) + $script:WebpRuntimeFiles
 $mainMissing = $mainRequired | Where-Object { -not (Test-Path "$mainLayout/$_") }
 if ($mainMissing) { throw "Main layout incomplete: $($mainMissing -join ', ')" }
 
@@ -71,8 +75,9 @@ Get-ChildItem $fluentSource -File |
 if (Test-Path "src/Clickra.Fluent/Assets/AppIcon.png") {
     Copy-Item "src/Clickra.Fluent/Assets/AppIcon.png" "$optionalLayout/Assets/AppIcon.png"
 }
+Copy-Item "$root/$($script:ThirdPartyNoticesFile)" "$optionalLayout/"
 
-$optionalRequired = @("Clickra.Fluent.exe", "AppxManifest.xml")
+$optionalRequired = @("Clickra.Fluent.exe", "AppxManifest.xml", $script:ThirdPartyNoticesFile) + $script:WebpRuntimeFiles
 $optionalMissing = $optionalRequired | Where-Object { -not (Test-Path "$optionalLayout/$_") }
 if ($optionalMissing) { throw "Optional layout incomplete: $($optionalMissing -join ', ')" }
 

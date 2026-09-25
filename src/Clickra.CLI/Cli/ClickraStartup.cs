@@ -14,6 +14,7 @@ namespace Clickra;
 /// initialization, dashboard launch, CLI argument parsing and dispatch.</summary>
 internal static class ClickraStartup
 {
+    private const string CommandSummary = "Commands: ppt2pdf, word2pdf, excel2pdf, merge-pdf, compress-pdf, translate-pdf, decrypt-pdf, split-pdf, img2pdf, img-merge, img-stitch, img-to-png, img-to-jpg, img-to-webp, img-to-gif, img-to-heic, --deploy";
     [DllImport("user32.dll")]
     static extern bool SetProcessDpiAwarenessContext(IntPtr value);
 
@@ -43,15 +44,27 @@ internal static class ClickraStartup
         if (files.Count == 0)
         {
             Console.WriteLine($"[錯誤] 指令「{command}」找不到可處理的檔案。");
+            Environment.ExitCode = 1;
             return;
         }
-        string outputDir = string.IsNullOrWhiteSpace(outputDirOverride)
-            ? ClickraStorage.GetOutputDir(files[0])
-            : Path.GetFullPath(outputDirOverride);
         string startTimeStr = DateTime.UtcNow.ToString("yyyy-MM-dd HH:mm:ss");
         try
         {
-            ClickraCli.DispatchCommandSwitch(command, files, quiet, outputDir, hasCliLevel, compressionLevel, pagesOption);
+            string outputDir = string.IsNullOrWhiteSpace(outputDirOverride)
+                ? ClickraStorage.GetOutputDir(files[0])
+                : Path.GetFullPath(outputDirOverride);
+            if (!string.IsNullOrWhiteSpace(outputDirOverride))
+            {
+                Directory.CreateDirectory(outputDir);
+            }
+            var dispatchOptions = new ClickraCli.DispatchOptions(
+                quiet,
+                outputDir,
+                outputDirOverride,
+                hasCliLevel,
+                compressionLevel,
+                pagesOption);
+            ClickraCli.DispatchCommandSwitch(command, files, dispatchOptions);
         }
         catch (Exception ex)
         {
@@ -122,6 +135,7 @@ internal static class ClickraStartup
         Console.WriteLine("         --show-ui          (Force show progress window)");
         Console.WriteLine("         --out-dir <dir> / -o <dir> / --out <dir>  (Write outputs to directory)");
         Console.WriteLine("         --level <small|balanced|high>  (PDF compression level)");
+        Console.WriteLine(CommandSummary);
         Console.WriteLine("Deployment: Clickra --deploy <target_dir>");
     }
 
@@ -152,7 +166,7 @@ internal static class ClickraStartup
 
             Console.WriteLine($"Clickra v{version} (Modern Shell Edition)");
             Console.WriteLine("Author: Youchen Jiang");
-            Console.WriteLine("Commands: ppt2pdf, word2pdf, excel2pdf, merge-pdf, compress-pdf, img2pdf, img-merge, img-stitch, translate-pdf, decrypt-pdf, --deploy");
+            Console.WriteLine(CommandSummary);
             return true;
         }
 

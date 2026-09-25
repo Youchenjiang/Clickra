@@ -225,11 +225,17 @@
                                 </StackPanel>
                                 <StackPanel Spacing="8">
                                     <TextBlock x:Name="ImageCommandLabel" Text="圖片" FontSize="12" FontWeight="SemiBold" Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
-                                    <Grid ColumnSpacing="8">
+                                    <Grid ColumnSpacing="8" RowSpacing="8">
                                         <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="*"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+                                        <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
                                         <Button x:Name="BtnImg2Pdf" Content="PDF" Tag="img2pdf" HorizontalAlignment="Stretch"/>
                                         <Button x:Name="BtnImgMerge" Grid.Column="1" Content="圖片合併" Tag="img-merge" HorizontalAlignment="Stretch"/>
                                         <Button x:Name="BtnImgStitch" Grid.Column="2" Content="圖片拼接" Tag="img-stitch" HorizontalAlignment="Stretch"/>
+                                        <Button x:Name="BtnImgToPng" Grid.Row="1" Content="PNG" Tag="img-to-png" HorizontalAlignment="Stretch"/>
+                                        <Button x:Name="BtnImgToJpg" Grid.Row="1" Grid.Column="1" Content="JPG" Tag="img-to-jpg" HorizontalAlignment="Stretch"/>
+                                        <Button x:Name="BtnImgToWebp" Grid.Row="1" Grid.Column="2" Content="WebP" Tag="img-to-webp" HorizontalAlignment="Stretch"/>
+                                        <Button x:Name="BtnImgToGif" Grid.Row="2" Content="GIF" Tag="img-to-gif" HorizontalAlignment="Stretch"/>
+                                        <Button x:Name="BtnImgToHeic" Grid.Row="2" Grid.Column="1" Content="HEIC" Tag="img-to-heic" HorizontalAlignment="Stretch"/>
                                     </Grid>
                                 </StackPanel>
                             </StackPanel>

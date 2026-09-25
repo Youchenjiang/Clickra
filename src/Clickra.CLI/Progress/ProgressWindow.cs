@@ -45,6 +45,7 @@ namespace Clickra.UI
 
         private string _command = "";
         private List<string> _files = new List<string>();
+        private string? _outputDirOverride;
         private int _current = 0;
         private int _total = 0;
         private string _message = "";
@@ -101,9 +102,9 @@ namespace Clickra.UI
 
         /// <summary>Creates and runs a progress window for the given command and files,
         /// blocking until the window closes.</summary>
-        public static void Show(string command, List<string> files)
+        public static void Show(string command, List<string> files, string? outputDirOverride = null)
         {
-            var window = new ProgressWindow();
+            var window = new ProgressWindow { _outputDirOverride = outputDirOverride };
             window.ShowInstance(command, files);
         }
 

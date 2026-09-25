@@ -239,7 +239,7 @@ public sealed partial class MainPage : Page
 
     private void HookCommandButtons()
     {
-        foreach (var button in new[] { BtnWord2Pdf, BtnExcel2Pdf, BtnPpt2Pdf, BtnMergePdf, BtnCompressPdf, BtnTranslatePdf, BtnDecryptPdf, BtnSplitPdf, BtnImg2Pdf, BtnImgMerge, BtnImgStitch })
+        foreach (var button in new[] { BtnWord2Pdf, BtnExcel2Pdf, BtnPpt2Pdf, BtnMergePdf, BtnCompressPdf, BtnTranslatePdf, BtnDecryptPdf, BtnSplitPdf, BtnImg2Pdf, BtnImgMerge, BtnImgStitch, BtnImgToPng, BtnImgToJpg, BtnImgToWebp, BtnImgToGif, BtnImgToHeic })
         {
             if (button.Tag is string command)
             {
@@ -404,15 +404,24 @@ public sealed partial class MainPage : Page
             return;
         }
 
+        string command = _selectedCommand;
+        var files = _selectedFiles.ToList();
+        List<string> outputs;
+        try
+        {
+            outputs = ConvertCommandRegistry.EstimateOutputs(command, files);
+        }
+        catch (Exception ex)
+        {
+            await ShowErrorAsync(ex.Message);
+            return;
+        }
+
         _isRunning = true;
         _cts = new CancellationTokenSource();
         UpdateStartState();
         ConversionProgressSection.Visibility = Visibility.Visible;
         SetProgress(0, L("fluent_progress_starting"));
-
-        string command = _selectedCommand;
-        var files = _selectedFiles.ToList();
-        var outputs = ConvertCommandRegistry.EstimateOutputs(command, files);
 
         try
         {
@@ -564,6 +573,11 @@ public sealed partial class MainPage : Page
         BtnImg2Pdf.Content = "PDF";
         BtnImgMerge.Content = L("cmd_merge_img");
         BtnImgStitch.Content = L("cmd_stitch_img");
+        BtnImgToPng.Content = L("cmd_img_to_png");
+        BtnImgToJpg.Content = L("cmd_img_to_jpg");
+        BtnImgToWebp.Content = L("cmd_img_to_webp");
+        BtnImgToGif.Content = L("cmd_img_to_gif");
+        BtnImgToHeic.Content = L("cmd_img_to_heic");
         RunTitle.Text = L("fluent_run");
         StartButton.Content = L("fluent_start");
         CancelButton.Content = L("fluent_cancel");

@@ -9,13 +9,19 @@ namespace Clickra.Core.Processors;
 /// Fluent and NativeAOT UIs. Adding a command means editing this table once.</summary>
 public static class ConvertCommandRegistry
 {
-        private sealed record CommandDef(string[] Extensions, int MinFiles, string LabelKey);
+        private const string CmdImgToPng = "img-to-png";
+        private const string CmdImgToJpg = "img-to-jpg";
+        private const string CmdImgToWebp = "img-to-webp";
+        private const string CmdImgToGif = "img-to-gif";
+        private const string CmdImgToHeic = "img-to-heic";
+
+        private sealed record CommandDef(string[] Extensions, int MinFiles, string LabelKey, string[]? ExcludeExtensions = null);
 
         private static readonly string[] PdfExtensions = { ".pdf" };
         private static readonly string[] PptExtensions = { ".ppt", ".pptx" };
         private static readonly string[] WordExtensions = { ".doc", ".docx" };
         private static readonly string[] ExcelExtensions = { ".xls", ".xlsx" };
-        private static readonly string[] ImageExtensions = [".jpg", ".jpeg", ".png", ".bmp", ".gif", ".tiff", ".webp"];
+        private static readonly string[] ImageExtensions = [".jpg", ".jpeg", ".png", ".bmp", ".gif", ".tiff", ".webp", ".heic"];
 
         /// <summary>UI 檔案類型分類：先選類型再選命令，從源頭避免混雜類型。</summary>
         private static readonly (string Type, string[] Extensions, string[] Commands)[] FileTypes =
@@ -24,7 +30,7 @@ public static class ConvertCommandRegistry
             ("word", WordExtensions, ["word2pdf"]),
             ("excel", ExcelExtensions, ["excel2pdf"]),
             ("ppt", PptExtensions, ["ppt2pdf"]),
-            ("image", ImageExtensions, ["img2pdf", "img-merge", "img-stitch"])
+            ("image", ImageExtensions, ["img2pdf", "img-merge", "img-stitch", CmdImgToPng, CmdImgToJpg, CmdImgToWebp, CmdImgToGif, CmdImgToHeic])
         };
 
         /// <summary>File extensions accepted by a UI file type ("pdf", "word", "excel", "ppt", "image").</summary>
@@ -48,6 +54,15 @@ public static class ConvertCommandRegistry
             return entry.Type ?? "pdf";
         }
 
+        /// <summary>Converting to a format the file already has is a no-op, so format
+        /// commands declare the source extensions they must exclude (jpg/jpeg are aliases
+        /// and are always excluded together).</summary>
+        private static readonly string[] PngExcluded = { ".png" };
+        private static readonly string[] JpegExcluded = { ".jpg", ".jpeg" };
+        private static readonly string[] WebpExcluded = { ".webp" };
+        private static readonly string[] GifExcluded = { ".gif" };
+        private static readonly string[] HeicExcluded = { ".heic" };
+
         /// <summary>Every convert command and its metadata, in dashboard order.</summary>
         private static readonly Dictionary<string, CommandDef> Commands = new(StringComparer.OrdinalIgnoreCase)
         {
@@ -61,7 +76,12 @@ public static class ConvertCommandRegistry
             ["split-pdf"] = new(PdfExtensions, 1, "cmd_split_pdf"),
             ["img2pdf"] = new(ImageExtensions, 1, "cmd_img_to_pdf"),
             ["img-merge"] = new(ImageExtensions, 2, "cmd_merge_img"),
-            ["img-stitch"] = new(ImageExtensions, 2, "cmd_stitch_img")
+            ["img-stitch"] = new(ImageExtensions, 2, "cmd_stitch_img"),
+            [CmdImgToPng] = new(ImageExtensions, 1, "cmd_img_to_png", PngExcluded),
+            [CmdImgToJpg] = new(ImageExtensions, 1, "cmd_img_to_jpg", JpegExcluded),
+            [CmdImgToWebp] = new(ImageExtensions, 1, "cmd_img_to_webp", WebpExcluded),
+            [CmdImgToGif] = new(ImageExtensions, 1, "cmd_img_to_gif", GifExcluded),
+            [CmdImgToHeic] = new(ImageExtensions, 1, "cmd_img_to_heic", HeicExcluded)
         };
 
         private static readonly string[] AllSupportedExtensionsValue =
@@ -70,9 +90,22 @@ public static class ConvertCommandRegistry
         /// <summary>Every file type any convert command accepts, used for unfiltered pickers.</summary>
         public static string[] AllSupportedExtensions => AllSupportedExtensionsValue;
 
-        /// <summary>File extensions a command accepts; empty when the command is unknown.</summary>
-        public static string[] GetAllowedExtensions(string? command) =>
-            command is not null && Commands.TryGetValue(command, out var def) ? def.Extensions : Array.Empty<string>();
+        /// <summary>File extensions a command accepts; empty when the command is unknown.
+        /// For format-conversion commands this already excludes the source extensions that
+        /// would make the conversion a no-op (e.g. img-to-png does not accept .png).</summary>
+        public static string[] GetAllowedExtensions(string? command)
+        {
+            if (command is null || !Commands.TryGetValue(command, out var def)) return Array.Empty<string>();
+            if (def.ExcludeExtensions is not { Length: > 0 } excluded) return def.Extensions;
+            return def.Extensions.Where(ext => !excluded.Contains(ext, StringComparer.OrdinalIgnoreCase)).ToArray();
+        }
+
+        /// <summary>Source extensions a command must exclude to avoid no-op conversions;
+        /// empty when the command accepts everything it lists.</summary>
+        public static string[] GetExcludedExtensions(string? command) =>
+            command is not null && Commands.TryGetValue(command, out var def)
+                ? def.ExcludeExtensions ?? Array.Empty<string>()
+                : Array.Empty<string>();
 
         /// <summary>Whether the command key maps to a known conversion.</summary>
         public static bool IsKnownCommand(string command) => Commands.ContainsKey(command);
@@ -99,8 +132,46 @@ public static class ConvertCommandRegistry
                 "decrypt-pdf" => files.Select(f => Path.Combine(ClickraStorage.GetOutputDir(f), Path.GetFileNameWithoutExtension(f) + "_decrypted.pdf")).ToList(),
                 "split-pdf" => files.Select(f => Path.Combine(ClickraStorage.GetOutputDir(f), Path.GetFileNameWithoutExtension(f) + "_split.pdf")).ToList(),
                 "img2pdf" => files.Select(f => Path.Combine(ClickraStorage.GetOutputDir(f), Path.GetFileNameWithoutExtension(f) + ".pdf")).ToList(),
+                CmdImgToPng or CmdImgToJpg or CmdImgToWebp or CmdImgToGif or CmdImgToHeic
+                    => EstimateImageFormatOutputs(command, files),
                 _ => files.Select(f => Path.Combine(ClickraStorage.GetOutputDir(f), Path.GetFileNameWithoutExtension(f) + ".pdf")).ToList()
             };
+        }
+
+        /// <summary>Predicts one output path per input file for image format conversion
+        /// commands: same directory and base name, target extension.</summary>
+        public static List<string> EstimateImageFormatOutputs(string command, List<string> files, string? outputDirOverride = null)
+        {
+            string extension = command switch
+            {
+                CmdImgToPng => ".png",
+                CmdImgToJpg => ".jpg",
+                CmdImgToWebp => ".webp",
+                CmdImgToGif => ".gif",
+                CmdImgToHeic => ".heic",
+                _ => throw new InvalidOperationException($"Unknown image format command '{command}'.")
+            };
+            var outputs = files
+                .Select(f => Path.Combine(
+                    string.IsNullOrWhiteSpace(outputDirOverride) ? ClickraStorage.GetOutputDir(f) : outputDirOverride,
+                    Path.GetFileNameWithoutExtension(f) + extension))
+                .ToList();
+            EnsureUniqueOutputPaths(outputs);
+            return outputs;
+        }
+
+        /// <summary>Fails before conversion when multiple inputs would resolve to the same
+        /// output path. This prevents silent last-writer-wins data loss across CLI and UI callers.</summary>
+        public static void EnsureUniqueOutputPaths(IEnumerable<string> outputs)
+        {
+            var duplicate = outputs
+                .GroupBy(Path.GetFullPath, StringComparer.OrdinalIgnoreCase)
+                .FirstOrDefault(group => group.Count() > 1);
+            if (duplicate is not null)
+            {
+                string template = Localization.T("error_image_output_collision", ClickraStorage.GetSetting("Language"));
+                throw new InvalidOperationException(string.Format(template, duplicate.Key));
+            }
         }
 
         /// <summary>Reads the current slider level from settings (0-3, default 1: balanced).</summary>

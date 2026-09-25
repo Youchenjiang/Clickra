@@ -21,9 +21,9 @@ public static partial class DashboardWindow
     private const string FilterWordFiles = "Word Files (*.doc; *.docx)\0*.doc;*.docx\0All Files (*.*)\0*.*\0\0";
     private const string FilterExcelFiles = "Excel Files (*.xlsx; *.xls)\0*.xlsx;*.xls\0All Files (*.*)\0*.*\0\0";
     private const string FilterPowerPointFiles = "PowerPoint Files (*.ppt; *.pptx)\0*.ppt;*.pptx\0All Files (*.*)\0*.*\0\0";
-    private const string FilterImageFiles = "Image Files (*.jpg; *.jpeg; *.png; *.bmp; *.gif; *.tiff; *.webp)\0*.jpg;*.jpeg;*.png;*.bmp;*.gif;*.tiff;*.webp\0All Files (*.*)\0*.*\0\0";
+    private const string FilterImageFiles = "Image Files (*.jpg; *.jpeg; *.png; *.bmp; *.gif; *.tiff; *.webp; *.heic)\0*.jpg;*.jpeg;*.png;*.bmp;*.gif;*.tiff;*.webp;*.heic\0All Files (*.*)\0*.*\0\0";
 
-    private static readonly string[] ImageExtensions = { ".jpg", ".jpeg", ".png", ".bmp", ".gif", ".tiff", ".webp" };
+    private static readonly string[] ImageExtensions = { ".jpg", ".jpeg", ".png", ".bmp", ".gif", ".tiff", ".webp", ".heic" };
 
     private sealed class ConvertCommandDef
     {
@@ -57,6 +57,11 @@ public static partial class DashboardWindow
         new ConvertCommandDef { Command = "img2pdf",       TextKey = "cmd_img_to_pdf",     Filter = FilterImageFiles,      Extensions = ImageExtensions,                   MinFiles = 1, Group = 2, TagColor = Color.FromArgb(100, 60, 180) },
         new ConvertCommandDef { Command = "img-merge",     TextKey = "cmd_merge_img",      Filter = FilterImageFiles,      Extensions = ImageExtensions,                   MinFiles = 2, Group = 2, TagColor = Color.FromArgb(0, 130, 135) },
         new ConvertCommandDef { Command = "img-stitch",    TextKey = "cmd_stitch_img",     Filter = FilterImageFiles,      Extensions = ImageExtensions,                   MinFiles = 2, Group = 2, TagColor = Color.FromArgb(216, 59, 1) },
+        new ConvertCommandDef { Command = "img-to-png",    TextKey = "cmd_img_to_png",     Filter = FilterImageFiles,      Extensions = ConvertCommandRegistry.GetAllowedExtensions("img-to-png"),  MinFiles = 1, Group = 2, TagColor = Color.FromArgb(0, 120, 212) },
+        new ConvertCommandDef { Command = "img-to-jpg",    TextKey = "cmd_img_to_jpg",     Filter = FilterImageFiles,      Extensions = ConvertCommandRegistry.GetAllowedExtensions("img-to-jpg"),  MinFiles = 1, Group = 2, TagColor = Color.FromArgb(255, 140, 0) },
+        new ConvertCommandDef { Command = "img-to-webp",   TextKey = "cmd_img_to_webp",    Filter = FilterImageFiles,      Extensions = ConvertCommandRegistry.GetAllowedExtensions("img-to-webp"), MinFiles = 1, Group = 2, TagColor = Color.FromArgb(0, 153, 188) },
+        new ConvertCommandDef { Command = "img-to-gif",    TextKey = "cmd_img_to_gif",     Filter = FilterImageFiles,      Extensions = ConvertCommandRegistry.GetAllowedExtensions("img-to-gif"),  MinFiles = 1, Group = 2, TagColor = Color.FromArgb(163, 73, 164) },
+        new ConvertCommandDef { Command = "img-to-heic",   TextKey = "cmd_img_to_heic",    Filter = FilterImageFiles,      Extensions = ConvertCommandRegistry.GetAllowedExtensions("img-to-heic"), MinFiles = 1, Group = 2, TagColor = Color.FromArgb(16, 124, 65) },
     };
 
     // Derived state — keep these names so existing layout / hit-test / paint code keeps working.
