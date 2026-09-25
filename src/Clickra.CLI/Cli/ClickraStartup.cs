@@ -47,16 +47,16 @@ internal static class ClickraStartup
             Environment.ExitCode = 1;
             return;
         }
-        string outputDir = string.IsNullOrWhiteSpace(outputDirOverride)
-            ? ClickraStorage.GetOutputDir(files[0])
-            : Path.GetFullPath(outputDirOverride);
-        if (!string.IsNullOrWhiteSpace(outputDirOverride))
-        {
-            Directory.CreateDirectory(outputDir);
-        }
         string startTimeStr = DateTime.UtcNow.ToString("yyyy-MM-dd HH:mm:ss");
         try
         {
+            string outputDir = string.IsNullOrWhiteSpace(outputDirOverride)
+                ? ClickraStorage.GetOutputDir(files[0])
+                : Path.GetFullPath(outputDirOverride);
+            if (!string.IsNullOrWhiteSpace(outputDirOverride))
+            {
+                Directory.CreateDirectory(outputDir);
+            }
             ClickraCli.DispatchCommandSwitch(command, files, quiet, outputDir, outputDirOverride, hasCliLevel, compressionLevel, pagesOption);
         }
         catch (Exception ex)
