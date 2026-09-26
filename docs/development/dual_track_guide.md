@@ -1,15 +1,16 @@
-﻿# Clickra 雙軌發行指南 (Dual-Track Distribution Guide)
+﻿# Clickra Legacy Dual-Track Distribution Guide (Historical)
 
-> 決策狀態：**已採用（真雙軌）**。2026/08 決定維持兩條發行軌道：
-> 使用者電腦上有 .NET 8+ 與 Windows App Runtime 2.x → 安裝 **Fluent** 軌道；
-> 任一缺失 → 安裝 **NativeAOT**（零依賴）軌道。
+> **文件角色**：本文件保存 2026/08 的 legacy dual-track distribution 設計與其理由，
+> 不是目前 automated release pipeline 的權威來源。現行 `release.yml` / `build_msix.ps1`
+> 只建立 NativeAOT Main `Clickra.msix`；實際 shipping state 請以
+> `docs/CI_CD_DUAL_RELEASE_GUIDE.md` 與 workflow/scripts 為準。
 
 > [!IMPORTANT]
-> **2026/08/29 後續最高優先級候選**：專案正在驗證「Store AOT 主套件 +
+> **後續候選架構**：專案另有「Store AOT 主套件 +
 > Fluent executable optional package / related set」，讓 AOT 先可靠安裝、Fluent 再按需取得。
 > 這個候選方案必須先取得 Microsoft Store 權限，並通過 WinUI 3 full-trust optional EXE、
-> package graph、更新與 private flight 實測；在全部閘門通過前，本文件描述的真雙軌仍是
-> 現行有效架構。詳見 `docs/development/store_optional_fluent_plan.md`。
+> package graph、更新與 private flight 實測；未通過前不得把 optional package 描述成
+> 已投入 production Store distribution。詳見 `store_optional_fluent_plan.md`。
 
 ---
 
@@ -112,7 +113,9 @@ ClickraLauncher.exe --quiet           精簡輸出
 
 ---
 
-## 4. 打包與 CI
+## 4. Historical packaging / CI snapshot（2026/08；non-normative）
+
+> 本節只保存 dual-track implementation 當時的 build/CI 形狀。下列 artifact/腳本描述不得拿來推定目前 `release.yml` 行為；current pipeline 只看 `docs/CI_CD_DUAL_RELEASE_GUIDE.md` 與實際 workflow/scripts。
 
 ### 4.1 本機打包
 
@@ -137,11 +140,11 @@ Application entry 指向 `Clickra.exe`（無參數啟動舊 Win32 Dashboard）�
 > 本次調整同時修正了既有 CI 的問題：舊 CI 直接以
 > `Clickra.exe + ClickraShell.dll` 組成的「NativeAOT-only」layout 上架商店，
 > 但 manifest 的 Application entry 是 `Clickra.Fluent.exe`（套件內不存在），
-> 商店版開始功能表入口會失效。現在商店統一送 `build_msix.ps1` 產出的完整 Fluent 套件。
+> 商店版開始功能表入口會失效。**當時的修正**是改送 `build_msix.ps1` 產出的完整 Fluent 套件；這是歷史紀錄，不代表目前 Store artifact。
 
 ---
 
-## 5. 已知限制與後續
+## 5. Historical limitations / follow-up notes（non-normative）
 
 - **同版本切換**：`-ForceUpdateFromAnyVersion` 是否在所有 Windows 版本生效，
   需實機驗證（Native ↔ Fluent 互換）。
@@ -158,11 +161,11 @@ Application entry 指向 `Clickra.exe`（無參數啟動舊 Win32 Dashboard）�
 
 ---
 
-## 6. Store Optional Fluent 候選演進
+## 6. Store Optional Fluent candidate evolution
 
-現行真雙軌在 GitHub / 官網可以於安裝前選擇套件，但 Store 的 framework-dependent Fluent
+在 legacy dual-track 時期，GitHub / 官網可以於安裝前選擇套件，但 Store 的 framework-dependent Fluent
 主套件仍可能因 Windows App Runtime 解析耗時或失敗，使 Clickra 無法先提供任何可用介面。
-專案下一個最高優先級候選是把 Store 發行拆為：
+因此後續提出把 Store 發行拆為：
 
 1. 必要的 NativeAOT main package：包含 launcher、AOT UI、CLI 與 Shell，不宣告
    Windows App Runtime dependency。
@@ -171,8 +174,7 @@ Application entry 指向 `Clickra.exe`（無參數啟動舊 Win32 Dashboard）�
 
 此設計的成功標準是「Fluent 可以慢或失敗，但 AOT 已安裝且永遠可用」，而不是承諾 Fluent
 不再需要 framework。由於 Store optional packages / related sets 需要 Microsoft 額外授權，且
-Clickra 的 full-trust WinUI 3 組合仍需 PoC，此處只記錄演進方向；不得在驗證完成前刪除
-`Clickra.msix (Main)`、`ClickraLauncher.exe` 或現行 Fluent 發布流程。
+Clickra 的 full-trust WinUI 3 組合仍需 PoC，此處只記錄演進方向。**目前是否已進入 production、目前發布哪些 artifact，一律不得從本歷史文件判定。**
 
 權限、套件拓撲、launcher 路由、資料共用、版本同步、失敗回退與完整測試矩陣統一由
 `docs/development/store_optional_fluent_plan.md` 管理，避免在多份文件分散出互相矛盾的規則。

@@ -1,10 +1,10 @@
 ﻿# Local Build Notes
 
-> ?? **Agent & Developer Migration Documentation Index**:
-> - [ARCHITECTURE_AND_FRAMEWORK.md](file:///c:/Users/g1014308/Documents/GitHub/Youchen/Clickra/docs/ARCHITECTURE_AND_FRAMEWORK.md): .NET 8 LTS Baseline, RollForward Policy & Trimming Rules.
-> - [WINDOWS_COMPATIBILITY_AND_MSIX_SANDBOX.md](file:///c:/Users/g1014308/Documents/GitHub/Youchen/Clickra/docs/WINDOWS_COMPATIBILITY_AND_MSIX_SANDBOX.md): Win10/Win11 Context Menu & MSIX Sandbox Path Resolution.
-> - [TROUBLESHOOTING_AND_RESOLUTIONS.md](file:///c:/Users/g1014308/Documents/GitHub/Youchen/Clickra/docs/TROUBLESHOOTING_AND_RESOLUTIONS.md): Complete Troubleshooting Log & Fix History.
-> - [CI_CD_DUAL_RELEASE_GUIDE.md](file:///c:/Users/g1014308/Documents/GitHub/Youchen/Clickra/docs/CI_CD_DUAL_RELEASE_GUIDE.md): Dual-Output Pipeline Strategy (Portable Zip + Store MSIX).
+> **Agent & Developer Documentation Index**:
+> - [ARCHITECTURE_AND_FRAMEWORK.md](docs/ARCHITECTURE_AND_FRAMEWORK.md): .NET 8 baseline, roll-forward policy, and trimming rules.
+> - [WINDOWS_COMPATIBILITY_AND_MSIX_SANDBOX.md](docs/WINDOWS_COMPATIBILITY_AND_MSIX_SANDBOX.md): Win10/Win11 context-menu and packaged storage notes.
+> - [TROUBLESHOOTING_AND_RESOLUTIONS.md](docs/TROUBLESHOOTING_AND_RESOLUTIONS.md): troubleshooting history and prior fixes.
+> - [CI_CD_DUAL_RELEASE_GUIDE.md](docs/CI_CD_DUAL_RELEASE_GUIDE.md): current automated release pipeline and source-of-truth boundaries.
 
 ## Windows SDK Tools
 This project requires `makeappx.exe` and `signtool.exe`. On this machine, the
@@ -15,53 +15,39 @@ The `scripts/build_msix.ps1` script has been updated to automatically detect thi
 
 ## Packaging Requirements
 
-## Main + Optional Package Architecture (v3.7.0+)
+## Current Main MSIX architecture
 
-Clickra ships as two MSIX packages for Microsoft Store:
+The current automated release pipeline ships one production MSIX:
 
-- **Clickra.msix** (~14 MB): Main MSIX, zero dependency. Contains ClickraLauncher.exe (entry point), Clickra.exe (AOT Dashboard), ClickraShell.dll (Explorer integration). No Windows App Runtime dependency.
-- **Clickra.Fluent.msix** (~14 MB): Optional MSIX, WinUI 3 Fluent UI. Contains Clickra.Fluent.exe and managed dependencies. Declares Microsoft.WindowsAppRuntime.2 dependency and MainPackageDependency on Clickra. Installed on-demand via Store.
+- **`Clickra.msix`**: NativeAOT Main package containing `ClickraLauncher.exe` (entry point), `Clickra.exe` (CLI / AOT Dashboard), and `ClickraShell.dll` (Explorer integration). The Main manifest does not declare Windows App Runtime.
+
+The repository also contains `AppxManifest.Fluent.xml` and `scripts/build_store.ps1` for the proposed Fluent optional-package / related-set path. Those files are a **conditional PoC/migration path**, not proof that the current `release.yml` builds or publishes a Fluent optional MSIX. See `docs/development/store_optional_fluent_plan.md` before using that path.
 
 ### Build Scripts
-- scripts/build_msix.ps1 — Main MSIX only (for development/testing)
-- scripts/build_store.ps1 — Both Main + Optional MSIX (for Store submission)
+- `scripts/build_msix.ps1` — canonical current Main MSIX build used by `release.yml`.
+- `scripts/build_store.ps1` — conditional Main + Optional PoC path; use only when the optional-package gates/runbook explicitly permit it.
 
 ### Launcher Routing
-ClickraLauncher.exe (NativeAOT, zero dependency) is the MSIX entry point:
-1. If Clickra.Fluent.exe exists (optional package installed) -> launches Clickra.Fluent.exe (WinUI 3)
-2. If Fluent not installed -> launches Clickra.exe (AOT Dashboard)
-
-### Dashboard Fluent Section
-The AOT Dashboard Settings tab has a Fluent section:
-- If Fluent not installed -> shows Install button -> opens Store URI
-- If Fluent installed -> shows ready status
+`ClickraLauncher.exe` (NativeAOT, zero dependency) is the Main MSIX entry point:
+1. It attempts packaged Fluent activation through `IApplicationActivationManager`.
+2. If activation is unavailable or the launched Fluent process does not stay alive, it falls back to `Clickra.exe` (AOT Dashboard).
 
 ### Key Files
-- packaging/msix/AppxManifest.xml — Main MSIX manifest
-- packaging/msix/AppxManifest.Fluent.xml — Optional MSIX manifest
-- src/Clickra.Core/FluentRuntimeHelper.cs — Detection + Store URI
+- `packaging/msix/AppxManifest.xml` — current Main MSIX manifest.
+- `packaging/msix/AppxManifest.Fluent.xml` — proposed optional-package manifest; conditional path.
+- `.github/workflows/release.yml` — current tag/manual release behavior.
+- `scripts/build_msix.ps1` — current Main package build.
+- `scripts/build_store.ps1` — optional-package PoC build path.
 
 - Version revision number (4th digit) MUST be 0 for Microsoft Store.
-- Both `Clickra.Fluent.exe` and `Clickra.exe` must handle zero-argument launch.
-- `src/Clickra.Fluent/Clickra.Fluent.csproj` is the source of truth for the
-  Windows App SDK version. For Windows App SDK 2.x and newer,
-  `scripts/build_msix.ps1` automatically aligns the copied layout manifest to
-  `Microsoft.WindowsAppRuntime.<major>` and `<sdk-version>.0`.
-- The packaging script removes the MSIX layout, publish directory, and Fluent
-  `bin/Release` and `obj/Release` directories before publishing. Do not remove
-  this clean step; stale managed projections can compile but crash before the
-  first WinUI window appears.
-- Keep the SDK-generated Fluent `resources.pri`. Do not run `makepri new` over
-  the assembled layout because it replaces the XAML resource index required by
-  WinUI.
+- `ClickraLauncher.exe` and `Clickra.exe` must remain independently runnable because the Main package must work without Fluent.
+- `src/Clickra.Fluent/Clickra.Fluent.csproj` remains the source of truth for the Windows App SDK version used by Fluent development/optional packaging; it is not consumed by the current Main-only `build_msix.ps1` artifact.
 
 ## Technical Context (For AI Handoff)
 - **Architecture**: `ClickraShell` and `Clickra.CLI` are NativeAOT.
   `Clickra.Fluent` is the framework-dependent WinUI 3 dashboard and right-click
   task-progress UI.
-- **Primary UI**: `MainPage` owns the dashboard and `TaskProgressPage` owns
-  right-click conversion progress. The raw Win32 `DashboardWindow` and
-  `ProgressWindow` remain legacy fallback paths only.
+- **UI roles**: `MainPage` / `TaskProgressPage` are the Fluent UI surfaces when Fluent is available. The production Main package must still provide the raw Win32 `DashboardWindow` / `ProgressWindow` path through `Clickra.exe` as the zero-dependency fallback.
 - **Legacy fallback rendering**: The following rules apply only to
   `DashboardWindow*.cs` and `ProgressWindow*.cs`, which use raw Win32 APIs and
   GDI+:
@@ -100,7 +86,7 @@ The AOT Dashboard Settings tab has a Fluent section:
   - Run version preparation as a single-writer operation on a clean checkout. Concurrent editors, formatters, or release processes are unsupported because they can cause lost updates independently of the BOM-preservation logic.
 
 ## How to Build (Manual Compilation)
-The package contains three binaries:
+The current Main package contains three binaries:
 
 1.  **CLI (NativeAOT)**:
     ```powershell
@@ -110,16 +96,20 @@ The package contains three binaries:
     ```powershell
     dotnet publish src\ClickraShell\ClickraShell.csproj -c Release -r win-x64 -o publish\shell --self-contained true
     ```
-3.  **Fluent UI (framework-dependent)**:
+3.  **Launcher (NativeAOT)**:
     ```powershell
-    dotnet publish src\Clickra.Fluent\Clickra.Fluent.csproj -c Release --self-contained false
+    dotnet publish src\ClickraLauncher\ClickraLauncher.csproj -c Release -r win-x64 -o publish\launcher --self-contained true
     ```
 
-Use `scripts/build_msix.ps1` for the actual package so the correct Fluent
-publish output, runtime files, and XAML resource index are assembled together.
+For Fluent development, build `src\Clickra.Fluent\Clickra.Fluent.csproj` separately. It is not assembled into the current Main `Clickra.msix` by `scripts/build_msix.ps1`.
+
+Use `scripts/build_msix.ps1` for the actual current Main package so the CLI, Launcher, Shell, assets, strings, codec runtime files, and manifest are assembled consistently.
 
 ## Automated Packaging & Versioning Scripts
 The project provides built-in PowerShell scripts for automated version bumping and MSIX packaging:
+
+> [!IMPORTANT]
+> `bump_version.ps1` is a **release-preparation tool**, not an ordinary feature/bugfix step. Do not run it merely because product code changed; version bumps occur only at an authorized release boundary. For version-surface rules see `docs/development/release_guideline.md`.
 
 *   **Bump Version & Build**:
     By default, the script increments the `patch` version (3rd digit) and resets the `revision` (4th digit) to `0` for Microsoft Store compatibility.
@@ -133,9 +123,7 @@ The project provides built-in PowerShell scripts for automated version bumping a
     ```powershell
     powershell -File scripts/build_msix.ps1
     ```
-    The script performs a clean publish, automatically aligns the copied MSIX
-    manifest with the Windows App SDK version in the Fluent project, preserves
-    the SDK-generated `resources.pri`, and packages all three binaries.
+    The script performs a clean NativeAOT publish of CLI + Shell + Launcher, assembles the Main package layout, signs it, and writes `Clickra.msix` at the repository root.
     > [!NOTE]
     > **Automated Certificate Validation**: The packaging script automatically checks whether the local `ClickraDev.pfx` matches the Publisher identity defined in `AppxManifest.xml` (e.g. `CN=CBF59877-21AD-4BC4-8F91-FE8DA520A138`). If it detects a mismatch or if the certificate is missing, it will automatically call `scripts/setup/create_dev_cert.ps1` to regenerate a matching certificate. You do not need to manually manage local development PFX certs.
 
@@ -270,24 +258,20 @@ or
 - Scope is optional. When present, it must be one of `cli`, `core`, `shell`, `msix`, `docs`, `ci`, `deps`, `store`, or `agent`.
 - Always English, no mixed languages
 
-**Description** ??required for every PR, even 1-line fixes. Structure by PR size:
-
-| Size | Files | Structure |
-|------|-------|-----------|
-| Small | <10 | `## Summary` (1-2 sentences) + numbered list |
-| Medium | 10-50 | `## Summary` + `## Key Changes` (bullets grouped by area) |
-| Large | 50+ | `## Overview` + `## Key Changes` (numbered sections with subsections) + `## Verification` |
+**Description** — required for every PR, even 1-line fixes. Keep ordinary PR bodies concise and reviewer-facing instead of scaling their length with file count.
 
 **Section rules**:
 
 | Section | Rules |
 |---------|-------|
-| `## Summary` / `## Overview` | 1-2 sentences: what changed + why. No file names. |
-| `## Key Changes` | Group by area (Core / CLI / UI / Docs). Use `*` bullets with technical detail (API names, file names) for significant changes. |
-| `## Verification` | Checklist `[x]` format. Describe how changes were verified (build, manual QA, etc.) |
-| `## Notes` | Optional. Add when there's a non-obvious decision the reviewer should know. |
+| `## Summary` | 1-2 sentences: what changed + why. No file-name inventory. |
+| `## Changes` | Short reviewer-relevant bullets describing behavior/contracts. Do not reproduce the commit ledger. |
+| `## Validation` | Summarize meaningful build/test/manual validation. Do not enumerate every CI job unless a specific result matters to review. |
+| `## Scope` | Optional. Use only for important exclusions or ownership boundaries. |
 
 **Language**: Always English, consistent with title.
+
+**Do not include internal rollout evidence**: provenance refs, source/rebased tip hashes, ancestry math, exhaustive per-job CI output, Store-gate narration, and historical reconstruction stay in internal rollout records rather than the PR body.
 
 **Metadata** ??validated by the Repository Policy workflow:
 - **Assignee**: set one (the workflow auto-assigns the author if empty).
@@ -295,7 +279,7 @@ or
 - **Milestone**: required unless the PR is a `release` / `hotfix` / `dependencies` PR.
 - **Development**: link the issue(s) this PR closes, if any.
 
-**Release notes**: the PR description becomes the GitHub Release notes for the merged version (`release.yml`), so write it as public-facing copy.
+**Release notes**: ordinary content PR bodies are for reviewers. The tag-triggered release workflow uses the PR associated with the tagged merge commit, which should be the dedicated **release-preparation PR**; that PR body therefore also serves as public GitHub Release notes and should summarize the release concisely.
 
 **What to avoid** (from past mistakes):
 - Empty body (PR #1, #3)

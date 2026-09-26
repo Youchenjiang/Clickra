@@ -14,41 +14,28 @@ Manifest 中已配置雙軌宣告：
 
 ---
 
-## 2. MSIX 沙盒虛擬化與日誌開啟 (UX 體驗優化)
+## 2. Shared data path and packaged execution
 
-### 2.1 檔案系統虛擬化 (MSIX Container Redirection)
-- **現象**：MSIX 包執行時，寫入 `AppData\Local\Clickra` 的檔案會被 Windows 透明重定向至硬碟的實體位置：
-  `%LocalAppData%\Packages\Clickra_CBF59877-21AD-4BC4-8F91-FE8DA520A138\LocalCache\Local\Clickra\history.log`
-- **問題**：若傳遞虛擬路徑給容器外的 `explorer.exe`，檔案總管找不到虛擬路徑，會退回顯示空無一物的 `%LocalAppData%`。
+### 2.1 Canonical Clickra data directory
 
-### 2.2 解決方案 (`MainPage.xaml.cs` 中的 `OpenDataDirAsync`)
-透過 WinRT 官方 API 獲取原生實體硬碟路徑，並傳遞 `/select` 參數：
+`ClickraStorage` is the storage authority for shared Clickra state. Unless tests/portable
+execution set `CLICKRA_DATA_DIR`, it resolves the data directory as:
 
-```csharp
-private async Task OpenDataDirAsync()
-{
-    string logPath;
-    try
-    {
-        // 1. 使用 WinRT API 取得硬碟真實實體路徑
-        string localPath = Windows.Storage.ApplicationData.Current.LocalFolder.Path;
-        logPath = Path.Combine(localPath, "history.log");
-    }
-    catch
-    {
-        logPath = Path.Combine(ClickraStorage.GetDataDir(), "history.log");
-    }
+`%LOCALAPPDATA%\Clickra`
 
-    if (!File.Exists(logPath))
-        File.WriteAllText(logPath, "");
+`settings.conf`, `history.log`, and related shared records must be derived from that contract.
+Do **not** hard-code a package-family `LocalCache` path or assume that MSIX execution implies a
+specific redirection layout; package identity/path details are not a stable substitute for
+`ClickraStorage.GetDataDir()`.
 
-    // 2. 喚醒檔案總管，自動將 history.log 呈藍色高亮選取狀態
-    Process.Start(new ProcessStartInfo
-    {
-        FileName = "explorer.exe",
-        Arguments = $"/select,\"{logPath}\"",
-        UseShellExecute = true
-    })?.Dispose();
-}
-```
-- **使用者體驗**：開啟資料夾時，`history.log` 保持藍色高亮選取，使用者無需在資料夾中尋找或猜測日誌名稱。
+### 2.2 Fluent folder-opening behavior
+
+`MainPage.OpenDataDirAsync` currently probes `ApplicationData.Current.LocalFolder` when running
+with package identity and falls back to `ClickraStorage.GetDataDir()`. That helper is UI behavior,
+not the canonical persistence contract. Changes to folder-opening UX must verify that the selected
+file corresponds to the same data used by `ClickraStorage` instead of inventing a second storage
+location.
+
+When opening the data folder through `explorer.exe`, pass a real filesystem path and use `/select`
+only after the target file/path has been resolved. The goal is to highlight the actual Clickra
+record without encoding PFN-specific paths in application logic or documentation.

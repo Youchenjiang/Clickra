@@ -1,33 +1,71 @@
-# Clickra CI/CD 雙軌發布流程指南 (Dual-Release Strategy)
+# Clickra CI/CD Release Pipeline Guide
 
-本文檔說明 CI/CD (`.github/workflows/release.yml`) 雙軌產出的最佳發布配置。
+> **Document role**: this file describes the release pipeline that is implemented by
+> `.github/workflows/release.yml` and `scripts/build_msix.ps1`. It is not the authority
+> for deciding *when* a release may start, which version to choose, or whether a Store
+> publication gate has cleared.
 
----
+## 1. Current automated release artifact
 
-## 1. 雙軌產出架構
+The current release workflow builds one shipping artifact:
 
-| 產物名稱 | 發布目標 | 模式 | 檔案大小 | 特點與適用對象 |
-| :--- | :--- | :--- | :--- | :--- |
-| **`Clickra-Portable.zip`** | GitHub Releases / 官網 | Framework-Dependent | **~15 MB** | **極輕量**。適合習慣點開即可運行的 GitHub 技術使用者。 |
-| **`Clickra.msix`** | Microsoft Store | Framework-Dependent | **~25 MB** | **商店標準格式**。微軟商店會處理相依性與增量更新。 |
+| Artifact | Contents | Release targets |
+|---|---|---|
+| `Clickra.msix` | NativeAOT `ClickraLauncher.exe`, `Clickra.exe`, `ClickraShell.dll`, resources, and package assets | GitHub Release + Microsoft Store |
 
----
+`scripts/build_msix.ps1` publishes the CLI, Shell, and Launcher as NativeAOT binaries and
+assembles them with `packaging/msix/AppxManifest.xml`. The current workflow does **not**
+publish `Clickra.Fluent.exe`, a portable ZIP, or a Fluent optional package.
 
-## 2. GitHub Actions (`release.yml`) 步驟規劃
+`packaging/msix/AppxManifest.Fluent.xml` describes the proposed Fluent optional-package
+shape, but that package is not built or uploaded by the current `release.yml` pipeline.
+The optional-package migration remains governed by
+`docs/development/store_optional_fluent_plan.md` and must not be described as an active
+Store release path until its gates are explicitly cleared.
 
-1. **版本標籤觸發**：當 Push 標籤 `v*` 時啟動工作流程。
-2. **打包 Portable Zip**：
-   - 執行 `dotnet publish src/Clickra.Fluent/Clickra.Fluent.csproj -c Release --self-contained false`。
-   - 將 CLI (NativeAOT)、Shell DLL (NativeAOT) 與 Fluent UI 壓縮為 `Clickra-vX.Y.Z-Portable.zip`。
-   - 上傳作為 GitHub Release 的第一附件。
-3. **打包 MSIX 套件**：
-   - 執行 `powershell -File scripts/build_msix.ps1` 產出 `Clickra.msix`。
-   - 將 `Clickra.msix` 上傳作為 GitHub Release 第二附件。
-4. **自動提交微軟商店**：
-   - 呼叫 `python scripts/publish_store.py` 將 `Clickra.msix` 自動上傳至 Microsoft Store Partner Center。
+## 2. Trigger behavior
 
----
+`release.yml` supports two trigger modes with intentionally different effects:
 
-## 3. 微軟商店下載與增量更新機制
-- **初次下載**：微軟商店伺服器二次壓縮後，使用者端下載僅約 25 MB 左右。
-- **後續更新 (Delta Updates)**：微軟商店使用 Block Map 差分更新，更新新版本時使用者僅需下載改動的幾 MB 程式碼，無需重複下載整體框架。
+1. **Tag push (`v*`)** — real release.
+   - Builds and validates `Clickra.msix`.
+   - Uploads the MSIX as a workflow artifact.
+   - Creates the GitHub Release.
+   - Publishes the same MSIX to Microsoft Store through `scripts/publish_store.py`.
+2. **Manual `workflow_dispatch`** — package validation only.
+   - Builds and uploads the MSIX workflow artifact.
+   - Does **not** create a GitHub Release.
+   - Does **not** submit anything to Microsoft Store.
+
+The workflow's `Detect Release Trigger` step is the single implementation switch for this
+behavior. Do not infer a Store submission from a successful manual dispatch run.
+
+## 3. GitHub Release notes
+
+For a tag-triggered release, the workflow looks up the PR associated with the tagged merge
+commit and uses that PR body as the GitHub Release notes. Under the project PR-writing
+rules, this should be the dedicated **release-preparation PR**, not an arbitrary content PR.
+
+Ordinary content PRs remain concise and reviewer-facing. The release-preparation PR should
+summarize the release in public-facing language because its body is the input consumed by
+the release workflow.
+
+## 4. Microsoft Store submission
+
+The `store-publish` job runs only for a tag-triggered release. It:
+
+1. Downloads the already-built `Clickra.msix` artifact.
+2. Creates `scripts/local_store_config.json` from repository secrets.
+3. Runs `python scripts/publish_store.py`.
+
+A successful workflow means the submission step completed; it does **not** prove that the
+Store later reached `Published`. Publication/certification state must be verified separately
+before any later release boundary that requires a `Published + no pending submission` gate.
+
+## 5. Source-of-truth boundaries
+
+- **Pipeline implementation**: `.github/workflows/release.yml`, `scripts/build_msix.ps1`.
+- **Version format and synchronized version surfaces**: `docs/development/release_guideline.md`.
+- **Optional Fluent package proposal/gates**: `docs/development/store_optional_fluent_plan.md`.
+- **Historical release observations** are evidence only; they do not replace a fresh check of
+  the current GitHub workflow, remote repository, or Partner Center state.

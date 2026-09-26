@@ -86,7 +86,7 @@ dotnet run --project tests/Clickra.Core.Tests/Clickra.Core.Tests.csproj -c Relea
 - [docs/development/release_guideline.md](docs/development/release_guideline.md) — 版本管理與發布檢查清單
 - [docs/development/shell_extension_best_practices.md](docs/development/shell_extension_best_practices.md) — COM 與 NativeAOT 殼層不變量
 - [docs/development/shell_diagnostic_guide.md](docs/development/shell_diagnostic_guide.md) — Shell 擴充日誌與診斷
-- [docs/development/dual_track_guide.md](docs/development/dual_track_guide.md) — Fluent／NativeAOT 雙軌發行設計
+- [docs/development/dual_track_guide.md](docs/development/dual_track_guide.md) — 歷史 Fluent／NativeAOT 雙軌發行設計紀錄
 - [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) — NativeAOT／Fluent 架構
 - [docs/ROADMAP.md](docs/ROADMAP.md) — 產品路線圖與里程碑
 - [CHANGELOG.md](CHANGELOG.md) — 完整版本歷史

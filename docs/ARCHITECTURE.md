@@ -76,13 +76,12 @@ Clickra is designed as a **Local-First, privacy-respecting utility**. By princip
 | | `img-merge` ⚑ | ❌ 100% Offline | None | In-process PDFsharp |
 | | `img-stitch` ⚑ | ❌ 100% Offline | None | In-memory canvas vertical stitching |
 | | `img-to-png` / `jpg` / `gif` ⚑ | ❌ 100% Offline | None | Built-in Windows GDI+ / WIC encoders |
-| | `img-compress` ⚑ | ❌ 100% Offline | None | Pure local quantization (lossless 256-color palette PNG), resizing, and quality tuning |
 | | `img-to-webp` ⚑ | ⚠️ User-initiated Store preflight if extension is absent | Windows WebP Image Extension (if absent) | Windows WIC encoder with Store preflight fallback |
 | | `img-to-heic` ⚑ | ⚠️ User-initiated Store preflight if extension is absent | Windows HEIF Image Extension (if absent) | Windows WIC / WinRT (`Microsoft HEIF Encoder`) with Store preflight fallback |
 | **Office to PDF** | `word2pdf`<br>`excel2pdf`<br>`ppt2pdf` | ❌ 100% Offline | Microsoft Office or LibreOffice | 1. Local MS Office via COM Automation (preferred)<br>2. Local LibreOffice via headless CLI<br>3. Guided on-demand download of official LibreOffice MSI (~372 MB) if neither is installed |
 | **PDF Translation** | `translate-pdf` | 🌐 **Requires Internet** | None | Text extracted locally and sent over HTTPS to Google Translate / MyMemory API; layout synthesis and PDF rendering are 100% local |
 
-*(Note: Commands marked with ⚑ are specified for the v3.8.0 image conversion & compression milestone (`[F2-19]`, `[F2-28]`); their architectural offline boundaries and dependency policies are formalized in this specification.)*
+*(Note: Commands marked with ⚑ belong to the image-conversion roadmap. The image-compression preset/settings contract exists in Core, but `img-compress` is not currently exposed as a production command or processor and is therefore not listed as an active command here.)*
 
 ### Outbound Network Endpoints
 
@@ -95,10 +94,10 @@ Three explicit operations in Clickra can initiate outbound network connections:
 
 | Entry | Current path |
 |---|---|
-| Start menu or zero arguments | `Clickra.Fluent` -> `MainPage` |
-| Explorer command | `ClickraShell` -> packaged activation -> `TaskProgressPage` -> `Clickra.Core` |
+| Packaged Start menu entry | `ClickraLauncher.exe` -> try Fluent optional-package activation -> fall back to `Clickra.exe` NativeAOT dashboard |
+| Explorer command | `ClickraShell` -> `ClickraLauncher.exe` with the original verb/files -> Fluent activation when available, otherwise `Clickra.exe` |
 | Command line / quiet mode | `Clickra.exe` -> `Clickra.Core` |
-| Packaged activation unavailable | direct `Clickra.Fluent.exe`, then legacy `Clickra.exe` |
+| Unpacked shell fallback | direct `Clickra.Fluent.exe` when present, otherwise `Clickra.exe` |
 
 The Fluent right-click path currently includes localized status text, Office
 engine preflight, cancellation, history recording, output-folder actions, and
@@ -116,7 +115,11 @@ PDF password input through a WinUI `ContentDialog`.
 | The package is larger than the old NativeAOT-only build | It now contains three binaries plus WinUI managed projections. A sudden unexplained increase is still a packaging warning. |
 | WinUI is never hosted inside Explorer | A UI/runtime failure must not destabilize `explorer.exe`. |
 
-## Known gaps (2026-07-31)
+## Historical gap snapshot (2026-07-31; non-normative)
+
+The following bullets record the state observed on 2026-07-31. They are retained as
+historical engineering evidence and must not be used as a live release/test checklist;
+current CI and packaging state must be checked from the repository and GitHub runs.
 
 - The Windows App SDK 2.3.1 MSIX builds and signs successfully, but still needs
   installed-package smoke testing for dashboard launch and real right-click
@@ -132,41 +135,30 @@ PDF password input through a WinUI `ContentDialog`.
   unused managed projections can be audited later if package size becomes a
   release problem.
 
-## Intended end state
+## Packaging state and authority
 
-ClickraLauncher is the NativeAOT entry point that routes to Fluent or
-AOT Dashboard via IApplicationActivationManager COM activation. The
-optional Fluent MSIX (WinUI 3) is distributed through Store on demand.
-The AOT Dashboard (Clickra.exe) in Clickra.CLI ships inside the Main
-MSIX as the fallback when Fluent is not installed. See
-[docs/development/dual_track_guide.md](docs/development/dual_track_guide.md).
+The **current automated release artifact** is the NativeAOT Main MSIX produced by
+`scripts/build_msix.ps1` and `.github/workflows/release.yml`. Its tracked manifest is
+`packaging/msix/AppxManifest.xml`, whose Start menu entry is `ClickraLauncher.exe`.
+The package layout contains:
 
-`ClickraShell` remains a small NativeAOT command provider. `Clickra.Fluent`
-remains the flagship interactive dashboard and progress UI, shipped as the
-framework-dependent `Clickra.msix`. The legacy Win32 dashboard/progress code in
-user-selectable theme).
+- `ClickraLauncher.exe` — NativeAOT routing entry point.
+- `Clickra.exe` — NativeAOT CLI and dashboard fallback.
+- `ClickraShell.dll` — NativeAOT Explorer command provider.
+- package resources, assets, and required native codec/runtime files.
 
-## Packaging Notes
+The current `release.yml` does **not** build or upload `Clickra.Fluent.exe` as part of
+`Clickra.msix`, and it does not publish a second Fluent MSIX. The tracked
+`packaging/msix/AppxManifest.Fluent.xml` describes the proposed related-set optional
+package shape, but that distribution path remains gated by
+`development/store_optional_fluent_plan.md` until the required Store/Partner Center
+conditions are explicitly cleared.
 
-Two MSIX tracks share the `Clickra` identity (only one is installed at
-a time; switching replaces the other):
+This separation matters when reading the source tree: `Clickra.Fluent` is a real maintained
+application and `ClickraLauncher` already contains optional-package activation/fallback logic,
+but source availability is not proof that the Fluent optional package is part of the current
+automated Store release.
 
-- `Clickra.msix` (Fluent, framework-dependent, Store + GitHub) — built by
-  `scripts/build_msix.ps1`, app entry `Clickra.Fluent.exe`.
-  app entry `Clickra.exe`.
-  App Runtime and installs the matching track.
-
-MSIX packaging must include:
-
-- `Clickra.Fluent.exe` as the Start menu GUI entry.
-- `Clickra.exe` for CLI and legacy fallback execution.
-- `ClickraShell.dll` for context-menu registration.
-- The Fluent publish output, including its SDK-generated `resources.pri`.
-- App assets and manifest files whose Windows App Runtime dependency matches
-  the Windows App SDK package used by `Clickra.Fluent`.
-
-Use `scripts/build_msix.ps1` as the packaging entry point. It cleans stale
-Fluent Release output and derives the copied layout manifest's Windows App
-Runtime dependency from the SDK version in `Clickra.Fluent.csproj`.
-
-Do not change package identity or version metadata as part of feature work. Keep release/version commits separate.
+For release-pipeline behavior, use `docs/CI_CD_DUAL_RELEASE_GUIDE.md` together with the actual
+workflow/scripts. Do not change package identity or version metadata as part of ordinary
+feature work; release/version changes stay in dedicated release-preparation work.
