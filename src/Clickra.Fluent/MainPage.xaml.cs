@@ -1327,7 +1327,7 @@ public sealed partial class MainPage : Page
         }
         catch (Exception ex)
         {
-            ClickraStorage.SaveSetting(ClickraSettings.LibreOfficePath, "");
+            ClickraStorage.SaveSetting(ClickraSettings.LibreOfficePath, ClickraSettings.DefaultEmpty);
             await ShowErrorAsync(string.Format(L("setting_libreoffice_download_failed"), ex.Message));
         }
         finally
@@ -1365,7 +1365,7 @@ public sealed partial class MainPage : Page
         try
         {
             LibreOfficeUninstallResult result = await LibreOfficeEngineInstaller.UninstallSystemLibreOfficeAsync(CancellationToken.None);
-            ClickraStorage.SaveSetting(ClickraSettings.LibreOfficePath, "");
+            ClickraStorage.SaveSetting(ClickraSettings.LibreOfficePath, ClickraSettings.DefaultEmpty);
             LibreOfficeEngineInstaller.MarkInstalledByClickra(false);
             ClickraStorage.SaveSetting(ClickraSettings.LibreOfficeRemovalPendingRestart, result.RestartRequired ? ClickraSettings.ValueTrue : ClickraSettings.ValueFalse);
             ClickraStorage.SaveSetting(ClickraSettings.OfficeEngine, ClickraSettings.DefaultOfficeEngineAuto);

@@ -20,8 +20,8 @@ internal static class OfficeEnginePreflight
         string engine = ClickraStorage.GetSetting(ClickraSettings.OfficeEngine);
         bool libreOfficeReady = !string.IsNullOrWhiteSpace(LibreOfficeHelper.GetResolvedExecutablePath());
         bool microsoftReady = IsOfficeInstalled(app);
-        bool isLibreOffice = engine.Equals("libreoffice", StringComparison.OrdinalIgnoreCase);
-        bool isMicrosoft = engine.Equals("microsoft", StringComparison.OrdinalIgnoreCase);
+        bool isLibreOffice = engine.Equals(ClickraSettings.OfficeEngineLibreOffice, StringComparison.OrdinalIgnoreCase);
+        bool isMicrosoft = engine.Equals(ClickraSettings.OfficeEngineMicrosoft, StringComparison.OrdinalIgnoreCase);
 
         bool ready;
         if (isLibreOffice) ready = libreOfficeReady;
