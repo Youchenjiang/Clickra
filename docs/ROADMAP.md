@@ -4,6 +4,8 @@
 
 本文件定義了 Clickra 後續的功能擴張與視覺體驗優化標準，目標是從一個實用的腳本套件進化為精緻的 Windows 應用程式。
 
+> **文件角色**：ROADMAP 是里程碑／產品方向追蹤，不是 live Git/PR/release/Store state 的權威來源。文中的版本、PR、日期、「目前」「最高優先級」等敘述若帶有時間背景，均視為該時間點的 planning snapshot；執行 branch、release 或 Store 操作前必須重新查目前 repository / GitHub / Store evidence 與當次 rollout governance。
+
 > **里程碑對應**：各子項標題前的編號（如 `[F2-1] Word to PDF`）即 GitHub 里程碑，命名與 GitHub 一致。
 
 ## 1. 視覺體驗與使用者介面 (Visuals & GUI)
@@ -47,7 +49,7 @@
     - 2026/08 決定維持兩條軌道：本機有 .NET 8+ 與 Windows App Runtime → 安裝 Fluent；任一缺失 → 安裝 NativeAOT（零依賴）。
     - 新增 `ClickraLauncher.exe`（NativeAOT bootstrapper）自動偵測 runtime 並安裝對應軌道；新增 `Clickra.msix (Main)` 零依賴套件與 `scripts/build_msix.ps1`。
     - 舊 Win32 Dashboard/Progress 由「過渡 fallback」改為**永久 NativeAOT 軌道**，不再排定移除。
-    - 詳細設計見 `docs/development/dual_track_guide.md`。
+    - 當時的詳細雙軌設計紀錄見 `docs/development/dual_track_guide.md`；目前 release pipeline 另以實際 workflow/scripts 為準。
 - [x] **[F1-14] Shell Context Menu Icons**：右鍵選單圖示（v3.7.0）。
     - 為所有右鍵轉檔命令新增專屬圖示（PDF、Word、Excel、PPT、圖片操作），並提供 PowerShell 產生腳本。
 - [ ] **[F1-13] Store-Resilient Optional Fluent Delivery**：AOT 主套件＋Fluent Optional Package（**目前最高優先級**，Phase 0 待微軟回應）。
