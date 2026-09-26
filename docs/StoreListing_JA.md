@@ -1,6 +1,6 @@
 # Microsoft Store Listing - Japanese (Japan)
 
-Microsoft Partner Center にそのまま貼り付けられる、v3.7.3.0 向けのストア掲載情報です。
+Microsoft Partner Center にそのまま貼り付けられる、v3.8.0.0 向けのストア掲載情報です。
 
 ---
 
@@ -30,11 +30,10 @@ Clickra はプライバシーを重視します。Office から PDF、PDF 圧縮
 🔗 Open Source on GitHub: https://github.com/Youchenjiang/Clickra
 
 ## What's new in this version
- - PDF 翻訳ハイフェネーション分割結合: 行で切断された技術識別子を再結合し、CJK フォントのスケーリングを調整して可読性を向上。
- - コンテキストメニューアイコン: すべての変換コマンドが Windows 11 およびクラシック右クリックメニューにローカライズされたアイコンを表示。
- - タスク別ファイルキュー: 各変換タスクの進捗を個別に追跡し、履歴記録、一時停止/再開、古いタスクの整理をサポート。
- - ビジュアル PDF 分割: ページサムネイル付きの3モード分割ダイアログ（カスタムセグメント、1ページずつ分割、固定ページ数）、インラインズームと「このページで分割」クイックアクション。
- - アンインストール安全機構: COM プロキシプロセスの終了前にモジュールパスを検証し、無関係なプロセスの誤殺を防止。
+ - 画像形式変換: CLI、ネイティブダッシュボード、Fluent UI から画像を PNG、JPG、WebP、GIF、HEIC に変換できます。
+ - WebP ランタイム同梱: WebP のエンコード/デコードを Clickra に同梱し、Microsoft Store の WebP コーデックに依存しなくなりました。
+ - HEIC/HEIF 安全チェック: 必要な HEIF/HEIC エンコーダーまたはデコーダーがない場合は明確に通知して fail closed し、`.heic`、`.heif`、`.hif` 入力を一貫して検査します。
+ - より安全な出力: 同一形式入力、未対応の変換先、出力パスの衝突を変換前に拒否し、明示した出力フォルダーを一貫して使用します。
 
 ## Product Features
 *(Max 20, displayed as bullet points)*

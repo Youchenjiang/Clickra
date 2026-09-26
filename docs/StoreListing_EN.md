@@ -1,6 +1,6 @@
 # Microsoft Store Listing - English (US)
 
-Below is the complete information for you to copy and paste directly into the Microsoft Partner Center, updated for the v3.7.3.0 release.
+Below is the complete information for you to copy and paste directly into the Microsoft Partner Center, updated for the v3.8.0.0 release.
 
 ---
 
@@ -30,11 +30,10 @@ Clickra respects your privacy. Most processing (Office-to-PDF conversion, PDF co
 🔗 Open Source on GitHub: https://github.com/Youchenjiang/Clickra
 
 ## What's new in this version
- - PDF Translation Hyphenation: Rejoins technical identifiers split across lines and adjusts CJK font scaling for improved readability.
- - Context Menu Icons: All right-click conversion commands now display localized icons in Windows 11 and classic context menus.
- - Per-task File Queue: Each conversion task now tracks progress independently with history logging, task parking/resume, and stale-task pruning.
- - Visual PDF Splitter: A visual split dialog with page thumbnails, three split modes (custom segments, split-each-page, fixed-page-count), inline zoom, and a "Split at Page" quick action button.
- - Uninstall Safety: Surrogate process cleanup now verifies the module path before terminating to prevent accidental kills of unrelated processes.
+ - Image Format Conversion: Convert images to PNG, JPG, WebP, GIF, or HEIC from the CLI, Native dashboard, and Fluent UI.
+ - Bundled WebP Runtime: WebP encoding and decoding now ship with Clickra and no longer depend on a Microsoft Store WebP codec.
+ - HEIC/HEIF Safety: Missing HEIF/HEIC encoder or decoder support is reported clearly and fails closed for `.heic`, `.heif`, and `.hif` inputs.
+ - Safer Outputs: Same-format inputs, unsupported targets, and colliding output paths are rejected before conversion, while explicit output directories are honored consistently.
 
 ## Product Features
 *(Max 20, displayed as bullet points)*
