@@ -66,9 +66,9 @@ namespace Clickra.UI
             DrawSectionHeader("setting_output_title", "setting_output_desc", y);
 
             string outputDirMode = ClickraStorage.GetSetting(ClickraSettings.OutputDir);
-            bool isSource = outputDirMode.Equals("source", StringComparison.OrdinalIgnoreCase);
-            bool isDesktop = outputDirMode.Equals("desktop", StringComparison.OrdinalIgnoreCase);
-            bool isDownloads = outputDirMode.Equals("downloads", StringComparison.OrdinalIgnoreCase);
+            bool isSource = outputDirMode.Equals(ClickraSettings.DefaultOutputDirSource, StringComparison.OrdinalIgnoreCase);
+            bool isDesktop = outputDirMode.Equals(ClickraSettings.OutputDirDesktop, StringComparison.OrdinalIgnoreCase);
+            bool isDownloads = outputDirMode.Equals(ClickraSettings.OutputDirDownloads, StringComparison.OrdinalIgnoreCase);
             bool isCustom = !isSource && !isDesktop && !isDownloads;
 
             string textSource = GetText("setting_output_same_as_source");
@@ -115,9 +115,9 @@ namespace Clickra.UI
             DrawSectionHeader("setting_engine_title", "setting_engine_desc", y);
 
             string engineMode = ClickraStorage.GetSetting(ClickraSettings.OfficeEngine);
-            bool isAutoEngine = string.IsNullOrEmpty(engineMode) || engineMode.Equals("auto", StringComparison.OrdinalIgnoreCase);
-            bool isMicrosoftEngine = engineMode.Equals("microsoft", StringComparison.OrdinalIgnoreCase);
-            bool isLibreOfficeEngine = engineMode.Equals("libreoffice", StringComparison.OrdinalIgnoreCase);
+            bool isAutoEngine = string.IsNullOrEmpty(engineMode) || engineMode.Equals(ClickraSettings.DefaultOfficeEngineAuto, StringComparison.OrdinalIgnoreCase);
+            bool isMicrosoftEngine = engineMode.Equals(ClickraSettings.OfficeEngineMicrosoft, StringComparison.OrdinalIgnoreCase);
+            bool isLibreOfficeEngine = engineMode.Equals(ClickraSettings.OfficeEngineLibreOffice, StringComparison.OrdinalIgnoreCase);
 
             float xEngineAuto = contentX;
             float xEngineMicrosoft = xEngineAuto + _wEngineAuto + margin;

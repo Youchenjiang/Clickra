@@ -635,7 +635,7 @@ namespace Clickra.UI
             }
             catch (Exception ex)
             {
-                ClickraStorage.SaveSetting(ClickraSettings.LibreOfficePath, "");
+                ClickraStorage.SaveSetting(ClickraSettings.LibreOfficePath, ClickraSettings.DefaultEmpty);
                 PostDashboardAction(hwnd, () => ShowDownloadFailureMessage(hwnd, ex.Message));
             }
             finally
@@ -728,10 +728,10 @@ namespace Clickra.UI
                     .GetAwaiter()
                     .GetResult();
 
-                ClickraStorage.SaveSetting(ClickraSettings.LibreOfficePath, "");
+                ClickraStorage.SaveSetting(ClickraSettings.LibreOfficePath, ClickraSettings.DefaultEmpty);
                 LibreOfficeEngineInstaller.MarkInstalledByClickra(false);
                 ClickraStorage.SaveSetting(ClickraSettings.LibreOfficeRemovalPendingRestart, uninstallResult.RestartRequired ? ClickraSettings.ValueTrue : ClickraSettings.ValueFalse);
-                ClickraStorage.SaveSetting(ClickraSettings.OfficeEngine, "auto");
+                ClickraStorage.SaveSetting(ClickraSettings.OfficeEngine, ClickraSettings.DefaultOfficeEngineAuto);
 
                 PostDashboardAction(hwnd, () => MessageBox(
                     hwnd,
