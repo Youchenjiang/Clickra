@@ -1,0 +1,45 @@
+name: ZAP Post-Merge Scan
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'src/**'
+      - 'tools/zap/**'
+      - '.github/workflows/zap-post-merge.yml'
+  workflow_dispatch:
+
+concurrency:
+  group: zap-post-merge-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  zap-baseline:
+    name: ZAP Baseline Scan (Third-party APIs)
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+      security-events: write
+    timeout-minutes: 30
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: OWASP ZAP Baseline Scan
+        uses: zaproxy/action-baseline@de8ad967d3548d44ef623df22cf95c3b0baf8b25 # v0.15.0
+        with:
+          target: >-
+            https://translate.google.com/translate_a/t?client=at&sl=auto&tl=en
+          rules_file_name: 'tools/zap/zap-rules.tsv'
+          cmd_options: >-
+            -a
+            -j
+            -l WARN
+            -z "-config spider.maxDepth=0 -config connection.timeout=60"
+          allow_issue_writing: false
+          artifact_name: 'zap-baseline-report'
+          fail_action: false
