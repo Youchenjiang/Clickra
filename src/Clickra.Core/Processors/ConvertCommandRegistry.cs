@@ -202,6 +202,27 @@ public static class ConvertCommandRegistry
             };
         }
 
+        /// <summary>Current image compression settings as a parameter dictionary: a 0-3
+        /// quality level and a max long-edge dimension (0 = keep original size).</summary>
+        public static Dictionary<string, object> ImageCompressionOptions()
+        {
+            var level = Clickra.Core.Processors.ImageCompressionOptions.FromSliderLevel(GetImageCompressLevel());
+            return new Dictionary<string, object>
+            {
+                ["level"] = Clickra.Core.Processors.ImageCompressionOptions.ToOptionName(level),
+                ["quality"] = Clickra.Core.Processors.ImageCompressionOptions.GetQuality(level),
+                ["max_dimension"] = GetImageCompressMaxDimension()
+            };
+        }
+
+        /// <summary>The saved image compression quality level, clamped to 0-3.</summary>
+        public static int GetImageCompressLevel() =>
+            Math.Clamp(ClickraStorage.GetSettingInt(ClickraSettings.ImageCompressLevel), 0, 3);
+
+        /// <summary>The saved max long-edge dimension for image compression (0 = original).</summary>
+        public static int GetImageCompressMaxDimension() =>
+            Math.Max(ClickraStorage.GetSettingInt(ClickraSettings.ImageCompressMaxDimension), 0);
+
         /// <summary>Splits a command line string into arguments, honoring double quotes.</summary>
         public static List<string> SplitCommandLine(string value)
         {

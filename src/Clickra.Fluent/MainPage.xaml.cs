@@ -652,12 +652,8 @@ public sealed partial class MainPage : Page
 
     private static void UpdateCompressionLabel(TextBlock compressionLabel, Slider compressionSlider)
     {
-        compressionLabel.Text = CompressionLevel(compressionSlider) switch
-        {
-            "small" => L("setting_pdf_compress_level_small"),
-            "high" => L("setting_pdf_compress_level_high"),
-            _ => L("setting_pdf_compress_level_std")
-        };
+        var level = PdfCompressionOptions.FromSliderLevel((int)compressionSlider.Value);
+        compressionLabel.Text = L(PdfCompressionOptions.GetLabelKey(level));
     }
 
     private void SaveSettings()
@@ -1479,8 +1475,6 @@ public sealed partial class MainPage : Page
 
     private static string SplitPaths(string paths) => string.Join(Environment.NewLine, paths.Split(';', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries));
 
-    private static string CompressionLevel(Slider slider) =>
-        PdfCompressionOptions.ToOptionName(PdfCompressionOptions.FromSliderLevel((int)slider.Value));
 
 
     private async Task ShowErrorAsync(string message)

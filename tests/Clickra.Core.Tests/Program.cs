@@ -28,6 +28,7 @@ TestSuite.RegisterPdfDecryptTests(runner);
 TestSuite.RegisterTaskQueueTests(runner);
 TestSuite.RegisterWicImageTests(runner);
 TestSuite.RegisterImageConvertTests(runner);
+TestSuite.RegisterImageCompressionTests(runner);
 TestSuite.RegisterSettingsRegistryTests(runner);
 
 // Print an explicit summary so CI logs show the actual executed test count
