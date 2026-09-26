@@ -448,7 +448,17 @@
                                 </Grid>
                             </StackPanel>
                         </Grid>
-                        <Grid Grid.Row="3" Grid.ColumnSpan="2" Background="{ThemeResource CardBackgroundFillColorDefaultBrush}" CornerRadius="8" Padding="18">
+                        <Grid x:Name="ParkedRetentionCard" Grid.Row="3" Grid.ColumnSpan="2" Background="{ThemeResource CardBackgroundFillColorDefaultBrush}" CornerRadius="8" Padding="18">
+                            <Grid ColumnSpacing="16">
+                                <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+                                <StackPanel Spacing="2">
+                                    <TextBlock x:Name="ParkedRetentionTitle" Text="暫存保留" FontSize="15" FontWeight="SemiBold"/>
+                                    <TextBlock x:Name="ParkedRetentionDesc" Text="已暫存轉換的保留天數（0 = 無限期）" FontSize="12" Foreground="{ThemeResource TextFillColorSecondaryBrush}" TextWrapping="Wrap"/>
+                                </StackPanel>
+                                <NumberBox x:Name="ParkedRetentionBox" Grid.Column="1" MinWidth="160" Minimum="0" Maximum="365" SmallChange="1" SpinButtonPlacementMode="Compact" ValidationMode="InvalidInputOverwritten" VerticalAlignment="Center"/>
+                            </Grid>
+                        </Grid>
+                        <Grid Grid.Row="4" Grid.ColumnSpan="2" Background="{ThemeResource CardBackgroundFillColorDefaultBrush}" CornerRadius="8" Padding="18">
                             <StackPanel Spacing="12">
                                 <TextBlock Text="LibreOffice" FontSize="15" FontWeight="SemiBold"/>
                                 <TextBlock x:Name="LibreOfficeStatusText" Text="LibreOffice 尚未設定" FontSize="13" Foreground="{ThemeResource TextFillColorSecondaryBrush}" TextWrapping="Wrap"/>

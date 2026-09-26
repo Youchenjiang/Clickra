@@ -83,7 +83,7 @@ public sealed partial class TaskProgressPage : Page
         _arguments = e.Parameter as string ?? "";
     }
 
-    private static string L(string key) => Localization.T(key, ClickraStorage.GetSetting("Language"));
+    private static string L(string key) => Localization.T(key, ClickraStorage.GetSetting(ClickraSettings.Language));
 
     private static void ApplyLanguage(TextBlock titleText, TextBlock fileText, TextBlock stateText, Button openFolderButton, Button cancelButton)
     {

@@ -1,0 +1,152 @@
+using System;
+using System.IO;
+using System.Linq;
+using System.Text.RegularExpressions;
+using Clickra.Core;
+using Clickra.Core.Processors;
+
+namespace Clickra.Core.Tests;
+
+/// <summary>
+/// 設定登錄表的守門：鍵與預設值只能在 ClickraSettings.cs 定義一次；任何讀取端
+/// 都不得把鍵寫成字串、不得自行宣告鍵常數、不得在呼叫點發明預設值。
+/// </summary>
+static partial class TestSuite
+{
+    private static readonly TimeSpan SettingsRegexTimeout = TimeSpan.FromSeconds(1);
+    private const string LiteralSettingKeyPattern = @"(GetSetting|SaveSetting)\(\s*""";
+    private const string SettingKeyDeclarationPattern = @"const\s+string\s+\w+\s*=\s*""([^""]+)""";
+    private const string NullCoalescedSettingPattern = @"GetSetting\([^)]*\)\s*\?\?";
+    private const string LiteralSettingComparisonPattern = "GetSetting\\([^)]*\\)\\.Equals\\(\"";
+
+    public static void RegisterSettingsRegistryTests(TestRunner runner)
+    {
+        runner.Run("Settings registry: every setting key is declared exactly once", TestSettingKeysDeclaredExactlyOnce);
+        runner.Run("Settings registry: GetSetting applies defaults for unset keys", TestSettingDefaults);
+        runner.Run("Settings registry: readers must not invent keys or defaults", TestSettingReadersUseRegistry);
+        runner.Run("Settings registry: numeric accessors take their fallback from the registry", TestNumericAccessorsUseRegistry);
+    }
+
+    private static void TestSettingKeysDeclaredExactlyOnce()
+    {
+        var keys = ClickraSettings.All.Select(s => s.Key).ToList();
+        Assert.True(keys.Count == keys.Distinct(StringComparer.OrdinalIgnoreCase).Count(),
+            "Setting keys must be unique in the registry.");
+
+        string[] expected =
+        {
+            "Language", "OutputDir", "QuietMode", "Notification",
+            "OfficeEngine", "LibreOfficePath", "LibreOfficeRemovalPendingRestart", "LibreOfficeInstalledByClickra",
+            "TranslateTargetLang", "PdfCompressImageLevel", "PdfCompressStripFonts", "PdfCompressMinifyContent",
+            "ImageCompressLevel", "ImageCompressMaxDimension", "ParkedTaskRetention"
+        };
+        string[] actual = keys.OrderBy(k => k, StringComparer.Ordinal).ToArray();
+        string[] want = expected.OrderBy(k => k, StringComparer.Ordinal).ToArray();
+        Assert.True(actual.SequenceEqual(want),
+            $"The registry must cover exactly the keys the codebase uses.\nGot:      {string.Join(", ", actual)}\nExpected: {string.Join(", ", want)}\nAdd missing keys to ClickraSettings.All (and remove stale ones).");
+        foreach (string key in expected)
+        {
+            Assert.True(ClickraSettings.IsRegistered(key), $"{key} must be registered.");
+        }
+    }
+
+    private static void TestSettingDefaults()
+    {
+        // These keys are never written by the test suite, so the fallback path is what is under test.
+        Assert.Equal("", ClickraStorage.GetSetting(ClickraSettings.Language));
+        Assert.Equal("source", ClickraStorage.GetSetting(ClickraSettings.OutputDir));
+        Assert.Equal("false", ClickraStorage.GetSetting(ClickraSettings.QuietMode));
+        Assert.Equal("true", ClickraStorage.GetSetting(ClickraSettings.Notification));
+        Assert.Equal("auto", ClickraStorage.GetSetting(ClickraSettings.OfficeEngine));
+        Assert.Equal("zh-TW", ClickraStorage.GetSetting(ClickraSettings.TranslateTargetLang));
+        Assert.Equal("1", ClickraStorage.GetSetting(ClickraSettings.PdfCompressImageLevel));
+        Assert.Equal("0", ClickraStorage.GetSetting(ClickraSettings.ImageCompressMaxDimension));
+
+        Assert.False(ClickraStorage.GetSettingBool(ClickraSettings.QuietMode), "Unset QuietMode must default to off.");
+        Assert.True(ClickraStorage.GetSettingBool(ClickraSettings.Notification), "Unset Notification must default to on.");
+        Assert.True(ClickraStorage.GetSettingBool(ClickraSettings.PdfCompressMinifyContent), "Unset MinifyContent must default to on.");
+        Assert.False(ClickraStorage.GetSettingBool(ClickraSettings.PdfCompressStripFonts), "Unset StripFonts must default to off.");
+        Assert.Equal(1, ClickraStorage.GetSettingInt(ClickraSettings.ImageCompressLevel));
+        Assert.Equal(1, ConvertCommandRegistry.GetPdfCompressLevel());
+
+        // Unknown keys stay empty: the registry is the only place defaults exist.
+        Assert.Equal("", ClickraStorage.GetSetting("NoSuchSettingKey"));
+        Assert.False(ClickraStorage.GetSettingBool("NoSuchSettingKey"), "Unknown keys must default to false.");
+        Assert.Equal(0, ClickraStorage.GetSettingInt("NoSuchSettingKey"));
+    }
+
+    private static void TestSettingReadersUseRegistry()
+    {
+        string root = FindRepoRoot() ?? throw new TestSkippedException(
+            "Could not locate the repository root from the test output directory.");
+        string[] files = Directory
+            .EnumerateFiles(Path.Combine(root, "src"), "*.cs", SearchOption.AllDirectories)
+            .Where(p => !p.Contains($"{Path.DirectorySeparatorChar}obj{Path.DirectorySeparatorChar}", StringComparison.Ordinal) &&
+                        !p.Contains($"{Path.DirectorySeparatorChar}bin{Path.DirectorySeparatorChar}", StringComparison.Ordinal))
+            .ToArray();
+        var registered = new System.Collections.Generic.HashSet<string>(
+            ClickraSettings.All.Select(s => s.Key), StringComparer.OrdinalIgnoreCase);
+
+        foreach (string file in files)
+        {
+            AssertSettingReaderUsesRegistry(file, registered);
+        }
+    }
+
+    private static void AssertSettingReaderUsesRegistry(
+        string file,
+        System.Collections.Generic.HashSet<string> registered)
+    {
+        string source = File.ReadAllText(file);
+        bool isRegistry = file.EndsWith("ClickraSettings.cs", StringComparison.Ordinal);
+        string shortName = Path.GetFileName(file);
+
+        Assert.True(!Regex.IsMatch(source, LiteralSettingKeyPattern, RegexOptions.CultureInvariant, SettingsRegexTimeout),
+            $"{shortName}: GetSetting/SaveSetting must take a ClickraSettings constant, not a literal.");
+
+        if (!isRegistry)
+        {
+            string? redeclaredKey = Regex
+                .Matches(source, SettingKeyDeclarationPattern, RegexOptions.CultureInvariant, SettingsRegexTimeout)
+                .Cast<Match>()
+                .Select(match => match.Groups[1].Value)
+                .FirstOrDefault(registered.Contains);
+            Assert.True(redeclaredKey is null,
+                $"{shortName}: the setting key \"{redeclaredKey}\" is redeclared outside the registry.");
+        }
+
+        Assert.True(!Regex.IsMatch(source, NullCoalescedSettingPattern, RegexOptions.CultureInvariant, SettingsRegexTimeout),
+            $"{shortName}: GetSetting results must not be followed by a hand-written ?? default.");
+        Assert.True(!Regex.IsMatch(source, LiteralSettingComparisonPattern, RegexOptions.CultureInvariant, SettingsRegexTimeout),
+            $"{shortName}: use GetSettingBool for boolean settings instead of comparing to a literal.");
+    }
+
+    private static void TestNumericAccessorsUseRegistry()
+    {
+        string root = FindRepoRoot() ?? throw new TestSkippedException(
+            "Could not locate the repository root from the test output directory.");
+        string storage = File.ReadAllText(Path.Combine(root, "src", "Clickra.Core", "Storage", "ClickraStorage.ActiveRecord.cs"));
+        string registry = File.ReadAllText(Path.Combine(root, "src", "Clickra.Core", "Processors", "ConvertCommandRegistry.cs"));
+
+        AssertNumericAccessorUsesRegistry("GetParkedRetentionDays", storage);
+        AssertNumericAccessorUsesRegistry("GetPdfCompressLevel", registry);
+    }
+
+    private static void AssertNumericAccessorUsesRegistry(string name, string source)
+    {
+        int start = source.IndexOf($"int {name}(", StringComparison.Ordinal);
+        Assert.True(start >= 0, $"{name} must exist.");
+        int end = source.Length;
+        foreach (string marker in new[] { "\n        public", "\n        private", "\n        internal", "\n        static" })
+        {
+            int i = source.IndexOf(marker, start + 1, StringComparison.Ordinal);
+            if (i > 0 && i < end)
+            {
+                end = i;
+            }
+        }
+        string body = source[start..end];
+        Assert.True(body.Contains("ClickraSettings", StringComparison.Ordinal),
+            $"{name} must get its fallback default from ClickraSettings, found: {body}");
+    }
+}

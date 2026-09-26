@@ -19,17 +19,12 @@ namespace Clickra_Fluent;
 public sealed partial class MainPage : Page
 {
     private const string GitHubUrl = "https://github.com/Youchenjiang/Clickra"; // NOSONAR:S1075 — the project's canonical repository URL.
-    private const string LanguageSettingKey = "Language";
-    private const string OutputDirectorySettingKey = "OutputDir";
-    private const string DownloadsSettingValue = "downloads";
     private const string SimplifiedChineseLanguage = "zh-CN";
-    private const string FalseSettingValue = "false";
     private const string SuccessLocalizationKey = "fluent_success";
     private const string FailedLocalizationKey = "fluent_failed";
     private const string SecondaryCardBrushResource = "CardBackgroundFillColorSecondaryBrush";
     private const string SecondaryTextBrushResource = "TextFillColorSecondaryBrush";
-    private const string LibreOfficeRemovalSettingKey = "LibreOfficeRemovalPendingRestart";
-    private const string LibreOfficePathSettingKey = "LibreOfficePath";
+    private const int MaxParkedRetentionDays = 365;
     private readonly List<string> _selectedFiles = new();
     private readonly Dictionary<string, Button> _commandButtons = new(StringComparer.OrdinalIgnoreCase);
     private CancellationTokenSource? _cts;
@@ -42,6 +37,7 @@ public sealed partial class MainPage : Page
     private List<ClickraStorage.HistoryEntry> _historyEntries = new();
     private List<ClickraStorage.HistoryEntry> _parkedTasks = new();
     private bool _parkedRefreshHooked;
+    private bool _syncingParkedRetention;
     private int _selectedHistoryIndex = -1;
 
     public MainPage()
@@ -90,7 +86,7 @@ public sealed partial class MainPage : Page
         }
     }
 
-    private static string L(string key) => Localization.T(key, ClickraStorage.GetSetting(LanguageSettingKey));
+    private static string L(string key) => Localization.T(key, ClickraStorage.GetSetting(ClickraSettings.Language));
 
     private void NavView_SelectionChanged(NavigationView sender, NavigationViewSelectionChangedEventArgs args)
     {
@@ -213,14 +209,31 @@ public sealed partial class MainPage : Page
 
         SettingsLayout.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
         SettingsLayout.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
-        for (var i = 0; i < Math.Ceiling(cards.Count / 2.0); i++)
+
+        // 兩欄排列；宣告 ColumnSpan=2 的卡片（暫存保留、LibreOffice）各獨占一整列。
+        int row = 0;
+        int column = 0;
+        foreach (var card in cards)
         {
-            SettingsLayout.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
-        }
-        for (var i = 0; i < cards.Count; i++)
-        {
-            Grid.SetRow(cards[i], i / 2);
-            Grid.SetColumn(cards[i], i % 2);
+            bool fullWidth = Grid.GetColumnSpan(card) > 1;
+            if (fullWidth && column != 0)
+            {
+                row++;
+                column = 0;
+            }
+
+            while (SettingsLayout.RowDefinitions.Count <= row)
+            {
+                SettingsLayout.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+            }
+
+            Grid.SetRow(card, row);
+            Grid.SetColumn(card, column);
+            if (fullWidth || ++column == 2)
+            {
+                row++;
+                column = 0;
+            }
         }
     }
 
@@ -491,15 +504,17 @@ public sealed partial class MainPage : Page
     private void LoadSettings()
     {
         _loadingSettings = true;
-        OutputDirCombo.SelectedIndex = ClickraStorage.GetSetting(OutputDirectorySettingKey) switch { "desktop" => 1, DownloadsSettingValue => 2, var s when !string.IsNullOrWhiteSpace(s) && s != "source" => 3, _ => 0 };
-        EngineCombo.SelectedIndex = ClickraStorage.GetSetting("OfficeEngine") switch { "microsoft" => 1, "libreoffice" => 2, _ => 0 };
-        LanguageCombo.SelectedIndex = ClickraStorage.GetSetting(LanguageSettingKey) switch { SimplifiedChineseLanguage => 1, "en-US" => 2, "ja-JP" => 3, "ko-KR" => 4, _ => 0 };
-        QuietModeToggle.IsOn = ClickraStorage.GetSetting("QuietMode").Equals("true", StringComparison.OrdinalIgnoreCase);
-        NotificationToggle.IsOn = !ClickraStorage.GetSetting("Notification").Equals(FalseSettingValue, StringComparison.OrdinalIgnoreCase);
-        PdfLangCombo.SelectedIndex = ClickraStorage.GetSetting("TranslateTargetLang") switch { "en" => 1, SimplifiedChineseLanguage => 2, "ja" => 3, "ko" => 4, _ => 0 };
+        OutputDirCombo.SelectedIndex = ClickraStorage.GetSetting(ClickraSettings.OutputDir) switch { ClickraSettings.OutputDirDesktop => 1, ClickraSettings.OutputDirDownloads => 2, var s when !string.IsNullOrWhiteSpace(s) && s != ClickraSettings.DefaultOutputDirSource => 3, _ => 0 };
+        EngineCombo.SelectedIndex = ClickraStorage.GetSetting(ClickraSettings.OfficeEngine) switch { ClickraSettings.OfficeEngineMicrosoft => 1, ClickraSettings.OfficeEngineLibreOffice => 2, _ => 0 };
+        LanguageCombo.SelectedIndex = ClickraStorage.GetSetting(ClickraSettings.Language) switch { SimplifiedChineseLanguage => 1, "en-US" => 2, "ja-JP" => 3, "ko-KR" => 4, _ => 0 };
+        QuietModeToggle.IsOn = ClickraStorage.GetSettingBool(ClickraSettings.QuietMode);
+        NotificationToggle.IsOn = ClickraStorage.GetSettingBool(ClickraSettings.Notification);
+        PdfLangCombo.SelectedIndex = ClickraStorage.GetSetting(ClickraSettings.TranslateTargetLang) switch { "en" => 1, SimplifiedChineseLanguage => 2, "ja" => 3, "ko" => 4, _ => 0 };
         CompressionSlider.Value = ConvertCommandRegistry.GetPdfCompressLevel();
-        StripFontsToggle.IsOn = ClickraStorage.GetSetting("PdfCompressStripFonts").Equals("true", StringComparison.OrdinalIgnoreCase);
-        MinifyContentToggle.IsOn = !ClickraStorage.GetSetting("PdfCompressMinifyContent").Equals(FalseSettingValue, StringComparison.OrdinalIgnoreCase);
+        StripFontsToggle.IsOn = ClickraStorage.GetSettingBool(ClickraSettings.PdfCompressStripFonts);
+        MinifyContentToggle.IsOn = ClickraStorage.GetSettingBool(ClickraSettings.PdfCompressMinifyContent);
+        ParkedRetentionBox.Maximum = MaxParkedRetentionDays;
+        ParkedRetentionBox.Value = ClickraStorage.GetParkedRetentionDays();
         _loadingSettings = false;
         ApplyLanguage();
         RefreshLibreOfficeStatus();
@@ -519,6 +534,7 @@ public sealed partial class MainPage : Page
         MinifyContentToggle.Toggled += (_, _) => SaveSettings();
         QuietModeToggle.Toggled += (_, _) => SaveSettings();
         NotificationToggle.Toggled += (_, _) => SaveSettings();
+        ParkedRetentionBox.ValueChanged += OnParkedRetentionChanged;
     }
 
     private void ApplyLanguage()
@@ -618,6 +634,8 @@ public sealed partial class MainPage : Page
         PdfCompressionTitle.Text = L("fluent_pdf_compression");
         StripFontsTitle.Text = L("fluent_strip_fonts");
         MinifyContentTitle.Text = L("fluent_minify_content");
+        ParkedRetentionTitle.Text = L("setting_parked_ttl_title");
+        ParkedRetentionDesc.Text = L("setting_parked_ttl_desc");
         LibreOfficeBrowseButton.Content = L("setting_libreoffice_browse");
         LibreOfficeDownloadButton.Content = L("setting_libreoffice_download");
         LibreOfficeUninstallButton.Content = L("setting_libreoffice_uninstall");
@@ -645,15 +663,40 @@ public sealed partial class MainPage : Page
     private void SaveSettings()
     {
         if (_loadingSettings) return;
-        ClickraStorage.SaveSetting("OfficeEngine", EngineCombo.SelectedIndex switch { 1 => "microsoft", 2 => "libreoffice", _ => "auto" });
-        ClickraStorage.SaveSetting(LanguageSettingKey, LanguageCombo.SelectedIndex switch { 1 => SimplifiedChineseLanguage, 2 => "en-US", 3 => "ja-JP", 4 => "ko-KR", _ => "zh-TW" });
-        ClickraStorage.SaveSetting("TranslateTargetLang", PdfLangCombo.SelectedIndex switch { 1 => "en", 2 => SimplifiedChineseLanguage, 3 => "ja", 4 => "ko", _ => "zh-TW" });
-        ClickraStorage.SaveSetting("PdfCompressImageLevel", ((int)CompressionSlider.Value).ToString());
-        ClickraStorage.SaveSetting("PdfCompressStripFonts", StripFontsToggle.IsOn ? "true" : FalseSettingValue);
-        ClickraStorage.SaveSetting("PdfCompressMinifyContent", MinifyContentToggle.IsOn ? "true" : FalseSettingValue);
-        ClickraStorage.SaveSetting("QuietMode", QuietModeToggle.IsOn ? "true" : FalseSettingValue);
-        ClickraStorage.SaveSetting("Notification", NotificationToggle.IsOn ? "true" : FalseSettingValue);
+        ClickraStorage.SaveSetting(ClickraSettings.OfficeEngine, EngineCombo.SelectedIndex switch { 1 => ClickraSettings.OfficeEngineMicrosoft, 2 => ClickraSettings.OfficeEngineLibreOffice, _ => ClickraSettings.DefaultOfficeEngineAuto });
+        ClickraStorage.SaveSetting(ClickraSettings.Language, LanguageCombo.SelectedIndex switch { 1 => SimplifiedChineseLanguage, 2 => "en-US", 3 => "ja-JP", 4 => "ko-KR", _ => "zh-TW" });
+        ClickraStorage.SaveSetting(ClickraSettings.TranslateTargetLang, PdfLangCombo.SelectedIndex switch { 1 => "en", 2 => SimplifiedChineseLanguage, 3 => "ja", 4 => "ko", _ => ClickraSettings.DefaultTranslateTargetLang });
+        ClickraStorage.SaveSetting(ClickraSettings.PdfCompressImageLevel, ((int)CompressionSlider.Value).ToString());
+        ClickraStorage.SaveSetting(ClickraSettings.PdfCompressStripFonts, StripFontsToggle.IsOn ? ClickraSettings.ValueTrue : ClickraSettings.ValueFalse);
+        ClickraStorage.SaveSetting(ClickraSettings.PdfCompressMinifyContent, MinifyContentToggle.IsOn ? ClickraSettings.ValueTrue : ClickraSettings.ValueFalse);
+        ClickraStorage.SaveSetting(ClickraSettings.QuietMode, QuietModeToggle.IsOn ? ClickraSettings.ValueTrue : ClickraSettings.ValueFalse);
+        ClickraStorage.SaveSetting(ClickraSettings.Notification, NotificationToggle.IsOn ? ClickraSettings.ValueTrue : ClickraSettings.ValueFalse);
         RefreshLibreOfficeStatus();
+    }
+
+    /// <summary>Persists how long a parked conversion is kept, in days (0 = unlimited).
+    /// An empty or invalid entry (NumberBox reports NaN) restores the stored value instead of
+    /// silently changing the setting, and the saved value is clamped to the control's range.</summary>
+    private void OnParkedRetentionChanged(NumberBox sender, NumberBoxValueChangedEventArgs args)
+    {
+        if (_loadingSettings || _syncingParkedRetention) return;
+
+        if (double.IsNaN(args.NewValue))
+        {
+            _syncingParkedRetention = true;
+            sender.Value = ClickraStorage.GetParkedRetentionDays();
+            _syncingParkedRetention = false;
+            return;
+        }
+
+        int days = Math.Clamp((int)Math.Round(args.NewValue, MidpointRounding.AwayFromZero), 0, MaxParkedRetentionDays);
+        ClickraStorage.SaveSetting(ClickraSettings.ParkedTaskRetention, days.ToString());
+        if (Math.Abs(sender.Value - days) > 0.0001)
+        {
+            _syncingParkedRetention = true;
+            sender.Value = days;
+            _syncingParkedRetention = false;
+        }
     }
 
     private async Task SaveOutputDirAsync()
@@ -672,15 +715,15 @@ public sealed partial class MainPage : Page
             if (folder is null)
             {
                 _loadingSettings = true;
-                OutputDirCombo.SelectedIndex = ClickraStorage.GetSetting(OutputDirectorySettingKey) switch { "desktop" => 1, DownloadsSettingValue => 2, var s when !string.IsNullOrWhiteSpace(s) && s != "source" => 3, _ => 0 };
+                OutputDirCombo.SelectedIndex = ClickraStorage.GetSetting(ClickraSettings.OutputDir) switch { ClickraSettings.OutputDirDesktop => 1, ClickraSettings.OutputDirDownloads => 2, var s when !string.IsNullOrWhiteSpace(s) && s != ClickraSettings.DefaultOutputDirSource => 3, _ => 0 };
                 _loadingSettings = false;
                 return;
             }
-            ClickraStorage.SaveSetting(OutputDirectorySettingKey, folder.Path);
+            ClickraStorage.SaveSetting(ClickraSettings.OutputDir, folder.Path);
             return;
         }
 
-        ClickraStorage.SaveSetting(OutputDirectorySettingKey, OutputDirCombo.SelectedIndex switch { 1 => "desktop", 2 => DownloadsSettingValue, _ => "source" });
+        ClickraStorage.SaveSetting(ClickraSettings.OutputDir, OutputDirCombo.SelectedIndex switch { 1 => ClickraSettings.OutputDirDesktop, 2 => ClickraSettings.OutputDirDownloads, _ => ClickraSettings.DefaultOutputDirSource });
     }
 
     private void RefreshHistory()
@@ -1151,9 +1194,12 @@ public sealed partial class MainPage : Page
     private void RefreshLibreOfficeStatus()
     {
         string resolvedPath = LibreOfficeHelper.GetResolvedExecutablePath();
-        bool removalPending = ClickraStorage.GetSetting(LibreOfficeRemovalSettingKey).Equals("true", StringComparison.OrdinalIgnoreCase);
+        bool removalPending = ClickraStorage.GetSettingBool(ClickraSettings.LibreOfficeRemovalPendingRestart);
         bool ready = !string.IsNullOrWhiteSpace(resolvedPath);
         string installedVersion = LibreOfficeEngineInstaller.GetInstalledSystemVersion();
+        // Only a LibreOffice Clickra installed itself may be removed from here. Anything else is the
+        // user's own installation and has to be removed through Windows.
+        bool installedByClickra = LibreOfficeEngineInstaller.WasInstalledByClickra();
 
         string statusText;
         if (_libreOfficeSetupInProgress)
@@ -1169,6 +1215,8 @@ public sealed partial class MainPage : Page
             statusText = string.IsNullOrWhiteSpace(installedVersion)
                 ? L("setting_libreoffice_ready")
                 : $"{L("setting_libreoffice_ready")} · {installedVersion}";
+            if (!installedByClickra)
+                statusText += $"\n{L("setting_libreoffice_external_note")}";
         }
         else
         {
@@ -1179,7 +1227,7 @@ public sealed partial class MainPage : Page
         LibreOfficeSetupProgress.Visibility = _libreOfficeSetupInProgress ? Visibility.Visible : Visibility.Collapsed;
         LibreOfficeBrowseButton.IsEnabled = !_libreOfficeSetupInProgress;
         LibreOfficeDownloadButton.IsEnabled = !_libreOfficeSetupInProgress;
-        LibreOfficeUninstallButton.IsEnabled = !_libreOfficeSetupInProgress && (ready || removalPending);
+        LibreOfficeUninstallButton.IsEnabled = !_libreOfficeSetupInProgress && ready && installedByClickra;
     }
 
     private async Task BrowseLibreOfficeAsync()
@@ -1198,8 +1246,8 @@ public sealed partial class MainPage : Page
             return;
         }
 
-        ClickraStorage.SaveSetting(LibreOfficePathSettingKey, file.Path);
-        ClickraStorage.SaveSetting(LibreOfficeRemovalSettingKey, FalseSettingValue);
+        ClickraStorage.SaveSetting(ClickraSettings.LibreOfficePath, file.Path);
+        ClickraStorage.SaveSetting(ClickraSettings.LibreOfficeRemovalPendingRestart, ClickraSettings.ValueFalse);
         RefreshLibreOfficeStatus();
     }
 
@@ -1211,14 +1259,14 @@ public sealed partial class MainPage : Page
             return;
         }
 
-        bool removalPending = ClickraStorage.GetSetting(LibreOfficeRemovalSettingKey).Equals("true", StringComparison.OrdinalIgnoreCase);
+        bool removalPending = ClickraStorage.GetSettingBool(ClickraSettings.LibreOfficeRemovalPendingRestart);
         var package = LibreOfficeEngineInstaller.RecommendedPackage;
         string installedVersion = LibreOfficeEngineInstaller.GetInstalledSystemVersion();
         if (!removalPending && !string.IsNullOrWhiteSpace(installedVersion) && LibreOfficeEngineInstaller.IsRecommendedVersionInstalled())
         {
             string resolvedPath = LibreOfficeEngineInstaller.ResolveSystemSofficePath();
             if (!string.IsNullOrWhiteSpace(resolvedPath))
-                ClickraStorage.SaveSetting(LibreOfficePathSettingKey, resolvedPath);
+                ClickraStorage.SaveSetting(ClickraSettings.LibreOfficePath, resolvedPath);
             await ShowErrorAsync(string.Format(L("setting_libreoffice_already_current"), installedVersion));
             RefreshLibreOfficeStatus();
             return;
@@ -1240,7 +1288,7 @@ public sealed partial class MainPage : Page
 
         try
         {
-            string downloadDir = Path.Combine(ClickraStorage.GetDataDir(), DownloadsSettingValue);
+            string downloadDir = Path.Combine(ClickraStorage.GetDataDir(), ClickraSettings.OutputDirDownloads);
             var progress = new Progress<int>(percent =>
             {
                 int displayPercent = Math.Min(80, Math.Max(1, percent * 80 / 100));
@@ -1264,9 +1312,9 @@ public sealed partial class MainPage : Page
                 throw new InvalidOperationException(L("setting_libreoffice_validation_failed"));
 
             if (!string.IsNullOrWhiteSpace(sofficePath))
-                ClickraStorage.SaveSetting(LibreOfficePathSettingKey, sofficePath);
-            ClickraStorage.SaveSetting("LibreOfficeInstalledByClickra", "true");
-            ClickraStorage.SaveSetting(LibreOfficeRemovalSettingKey, FalseSettingValue);
+                ClickraStorage.SaveSetting(ClickraSettings.LibreOfficePath, sofficePath);
+            LibreOfficeEngineInstaller.MarkInstalledByClickra(true);
+            ClickraStorage.SaveSetting(ClickraSettings.LibreOfficeRemovalPendingRestart, ClickraSettings.ValueFalse);
             LibreOfficeSetupProgress.Value = 100;
 
             await ShowErrorAsync(string.Format(
@@ -1275,7 +1323,7 @@ public sealed partial class MainPage : Page
         }
         catch (Exception ex)
         {
-            ClickraStorage.SaveSetting(LibreOfficePathSettingKey, "");
+            ClickraStorage.SaveSetting(ClickraSettings.LibreOfficePath, ClickraSettings.DefaultEmpty);
             await ShowErrorAsync(string.Format(L("setting_libreoffice_download_failed"), ex.Message));
         }
         finally
@@ -1292,9 +1340,16 @@ public sealed partial class MainPage : Page
             await ShowErrorAsync(L("setting_libreoffice_download_in_progress"));
             return;
         }
-        if (ClickraStorage.GetSetting(LibreOfficeRemovalSettingKey).Equals("true", StringComparison.OrdinalIgnoreCase))
+        if (ClickraStorage.GetSettingBool(ClickraSettings.LibreOfficeRemovalPendingRestart))
         {
             await ShowErrorAsync(L("setting_libreoffice_removal_pending"));
+            return;
+        }
+        // The button is disabled in this case, but the action has to refuse on its own too: removing a
+        // LibreOffice the user installed themselves would be destructive and hard to undo.
+        if (!LibreOfficeEngineInstaller.WasInstalledByClickra())
+        {
+            await ShowErrorAsync(L("setting_libreoffice_external_note"));
             return;
         }
         if (!await ConfirmAsync(L("setting_libreoffice_uninstall_confirm"))) return;
@@ -1306,10 +1361,10 @@ public sealed partial class MainPage : Page
         try
         {
             LibreOfficeUninstallResult result = await LibreOfficeEngineInstaller.UninstallSystemLibreOfficeAsync(CancellationToken.None);
-            ClickraStorage.SaveSetting(LibreOfficePathSettingKey, "");
-            ClickraStorage.SaveSetting("LibreOfficeInstalledByClickra", FalseSettingValue);
-            ClickraStorage.SaveSetting(LibreOfficeRemovalSettingKey, result.RestartRequired ? "true" : FalseSettingValue);
-            ClickraStorage.SaveSetting("OfficeEngine", "auto");
+            ClickraStorage.SaveSetting(ClickraSettings.LibreOfficePath, ClickraSettings.DefaultEmpty);
+            LibreOfficeEngineInstaller.MarkInstalledByClickra(false);
+            ClickraStorage.SaveSetting(ClickraSettings.LibreOfficeRemovalPendingRestart, result.RestartRequired ? ClickraSettings.ValueTrue : ClickraSettings.ValueFalse);
+            ClickraStorage.SaveSetting(ClickraSettings.OfficeEngine, ClickraSettings.DefaultOfficeEngineAuto);
             _loadingSettings = true;
             EngineCombo.SelectedIndex = 0;
             _loadingSettings = false;

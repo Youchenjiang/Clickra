@@ -17,6 +17,7 @@ static partial class TestSuite
     private const string FileA = @"\a.pdf";
     private const string FileA1 = @"\a1.pdf;";
     private const string FileA2 = @"\a2.pdf";
+    private const string FluentProjectDirectory = "Clickra.Fluent";
     public static void RegisterTaskQueueTests(TestRunner runner)
     {
         runner.Run("Task queue: concurrent tasks keep independent progress files",
@@ -41,6 +42,8 @@ static partial class TestSuite
             TestCancellingParkedTaskRecordsCanceledLine);
         runner.Run("Fluent History page exposes resume and cancel for parked conversions",
             TestFluentParkedTaskEntryPoint);
+        runner.Run("Fluent settings page exposes the parked retention control",
+            TestFluentParkedRetentionControl);
     }
 
     private static void TestCancellingParkedTaskRecordsCanceledLine()
@@ -80,8 +83,8 @@ static partial class TestSuite
         string? root = FindRepoRoot();
         if (root is null) throw new TestSkippedException("Could not locate the repository root from the test output directory.");
 
-        string code = File.ReadAllText(Path.Combine(root, "src", "Clickra.Fluent", "MainPage.xaml.cs"));
-        string xaml = File.ReadAllText(Path.Combine(root, "src", "Clickra.Fluent", "MainPage.xaml"));
+        string code = File.ReadAllText(Path.Combine(root, "src", FluentProjectDirectory, "MainPage.xaml.cs"));
+        string xaml = File.ReadAllText(Path.Combine(root, "src", FluentProjectDirectory, "MainPage.xaml"));
 
         Assert.True(xaml.Contains("ParkedTasksSection", StringComparison.Ordinal), "The History page must render a parked-conversions section.");
         Assert.True(code.Contains("ClickraStorage.GetParkedTasks", StringComparison.Ordinal), "The History page must list parked conversions.");
@@ -103,6 +106,49 @@ static partial class TestSuite
         {
             Assert.True(code.Contains(key, StringComparison.Ordinal), $"{key} must be rendered by the parked-conversion UI.");
         }
+    }
+
+    /// <summary>A parked conversion silently disappears once it ages past its retention, so the user
+    /// must be able to see and change that window. The control has to read the value through the same
+    /// accessor the pruner uses, otherwise the number on screen can drift from the actual behaviour.</summary>
+    private static void TestFluentParkedRetentionControl()
+    {
+        string? root = FindRepoRoot();
+        if (root is null) throw new TestSkippedException("Could not locate the repository root from the test output directory.");
+
+        string code = File.ReadAllText(Path.Combine(root, "src", FluentProjectDirectory, "MainPage.xaml.cs"));
+        string xaml = File.ReadAllText(Path.Combine(root, "src", FluentProjectDirectory, "MainPage.xaml"));
+
+        Assert.True(xaml.Contains("x:Name=\"ParkedRetentionBox\"", StringComparison.Ordinal) && xaml.Contains("<NumberBox", StringComparison.Ordinal),
+            "The settings page must offer a numeric control for the parked-conversion retention.");
+        Assert.True(code.Contains("ParkedRetentionBox.Value = ClickraStorage.GetParkedRetentionDays()", StringComparison.Ordinal),
+            "The retention control must show the same value the task pruner enforces.");
+        Assert.True(code.Contains("ParkedRetentionBox.ValueChanged += OnParkedRetentionChanged", StringComparison.Ordinal),
+            "Editing the retention control must persist the setting.");
+        Assert.True(code.Contains("ClickraStorage.SaveSetting(ClickraSettings.ParkedTaskRetention", StringComparison.Ordinal),
+            "Changing the retention control must write the ParkedTaskRetention setting.");
+        Assert.False(code.Contains("const string ParkedRetentionSettingKey", StringComparison.Ordinal),
+            "The key must come from the ClickraSettings registry, not a local constant.");
+
+        foreach (string key in new[] { "setting_parked_ttl_title", "setting_parked_ttl_desc" })
+        {
+            Assert.True(code.Contains(key, StringComparison.Ordinal), $"{key} must be rendered by the retention control.");
+        }
+
+        // Two full-width cards now share the settings grid, so the layout must give a spanning card its
+        // own row; the old fixed i/2 pairing would have drawn it on top of the LibreOffice card.
+        int layoutStart = code.IndexOf("private void ApplySettingsResponsiveLayout", StringComparison.Ordinal);
+        Assert.True(layoutStart >= 0, "ApplySettingsResponsiveLayout must exist.");
+        int layoutEnd = code.IndexOf("\n    private ", layoutStart + 1, StringComparison.Ordinal);
+        string layoutBody = layoutEnd > layoutStart ? code[layoutStart..layoutEnd] : code[layoutStart..];
+        Assert.True(layoutBody.Contains("Grid.GetColumnSpan", StringComparison.Ordinal),
+            "The settings layout must place ColumnSpan=2 cards on their own row.");
+
+        string[] fullWidthCards = xaml.Split('\n')
+            .Where(l => l.Contains("Grid.ColumnSpan=\"2\"", StringComparison.Ordinal) && l.Contains("<Grid ", StringComparison.Ordinal))
+            .ToArray();
+        Assert.True(fullWidthCards.Length == 2,
+            $"Exactly two settings cards span both columns (retention and LibreOffice), found {fullWidthCards.Length}.");
     }
 
     private static void CleanupActiveTasks()
