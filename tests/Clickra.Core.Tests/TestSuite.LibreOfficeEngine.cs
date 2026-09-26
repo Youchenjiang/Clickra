@@ -281,9 +281,11 @@ static partial class TestSuite
                 "The shared ownership key must be registered in ClickraSettings.");
 
             foreach (string key in new[] { "setting_libreoffice_external_note", "setting_libreoffice_external_hint" })
-            foreach (string lang in new[] { "zh-TW", "zh-CN", "en-US", "ja-JP", "ko-KR" })
             {
-                Assert.True(Localization.T(key, lang) != key, $"{key} must be translated in {lang}.");
+                foreach (string lang in new[] { "zh-TW", "zh-CN", "en-US", "ja-JP", "ko-KR" })
+                {
+                    Assert.True(Localization.T(key, lang) != key, $"{key} must be translated in {lang}.");
+                }
             }
         });
     }
