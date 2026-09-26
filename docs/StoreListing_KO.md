@@ -1,6 +1,6 @@
 # Microsoft Store Listing - Korean (Korea)
 
-Microsoft Partner Center에 바로 복사해 넣을 수 있는 v3.7.3.0용 스토어 등록 정보입니다.
+Microsoft Partner Center에 바로 복사해 넣을 수 있는 v3.8.0.0용 스토어 등록 정보입니다.
 
 ---
 
@@ -30,11 +30,10 @@ Clickra는 개인정보 보호를 중요하게 생각합니다. Office to PDF, P
 🔗 Open Source on GitHub: https://github.com/Youchenjiang/Clickra
 
 ## What's new in this version
- - PDF 번역 하이phenation 연결: 줄에서 잘린 기술 식별자를 재결합하고 CJK 글꼴 스케일링을 조정하여 가독성을 향상.
- - 컨텍스트 메뉴 아이콘: 모든 변환 명령이 Windows 11 및 클래식 우클릭 메뉴에 현지화된 아이콘을 표시.
- - 태스크별 파일 큐: 각 변환 태스크의 진행 상황을 개별적으로 추적하며, 기록 로깅, 일시 중지/재개, 오래된 태스크 정리를 지원.
- - 비주얼 PDF 분할: 페이지 미리보기가 포함된 3가지 모드 분할 다이얼로그 (사용자 지정 세그먼트, 페이지별 분할, 고정 페이지 수), 인라인 확대와 "이 페이지에서 분할" 빠른 작업.
- - 제거 안전 장치: COM 프록시 프로세스 종료 전에 모듈 경로를 확인하여 무관한 프로세스의 실수로 인한 종료를 방지.
+ - 이미지 형식 변환: CLI, 네이티브 대시보드, Fluent UI에서 이미지를 PNG, JPG, WebP, GIF 또는 HEIC로 변환할 수 있습니다.
+ - WebP 런타임 번들: WebP 인코딩/디코딩을 Clickra에 함께 제공하여 Microsoft Store WebP 코덱에 더 이상 의존하지 않습니다.
+ - HEIC/HEIF 안전 검사: 필요한 HEIF/HEIC 인코더 또는 디코더가 없으면 명확히 알리고 fail closed 하며 `.heic`, `.heif`, `.hif` 입력을 일관되게 검사합니다.
+ - 더 안전한 출력: 동일 형식 입력, 지원하지 않는 대상 형식, 출력 경로 충돌을 변환 전에 거부하고 명시한 출력 폴더를 일관되게 사용합니다.
 
 ## Product Features
 *(Max 20, displayed as bullet points)*
@@ -48,6 +47,7 @@ Clickra는 개인정보 보호를 중요하게 생각합니다. Office to PDF, P
  - 비주얼 PDF 분할 (페이지 미리보기 및 3가지 분할 모드)
  - 컨텍스트 메뉴의 모든 변환 명령에 아이콘 표시
  - JPG/PNG/WebP 이미지 일괄 PDF 변환
+ - PNG, JPG, WebP, GIF, HEIC 이미지 형식 변환
  - 이미지 세로 병합
  - 빠른 다중 PDF 병합
  - NativeAOT 셸 통합 기반의 빠른 컨텍스트 메뉴 응답

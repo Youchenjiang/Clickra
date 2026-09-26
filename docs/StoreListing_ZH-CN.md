@@ -1,6 +1,6 @@
 # Microsoft Store 清单 - 中文（简体）
 
-以下是供您直接复制粘贴至 Microsoft 合作伙伴中心 (Partner Center) 的完整字段信息，已更新至 v3.7.3.0。
+以下是供您直接复制粘贴至 Microsoft 合作伙伴中心 (Partner Center) 的完整字段信息，已更新至 v3.8.0.0。
 
 ---
 
@@ -30,11 +30,10 @@ Clickra 尊重您的隐私。大多数处理流程（文档转 PDF、PDF 压缩�
 🔗 开源项目主页：https://github.com/Youchenjiang/Clickra
 
 ## What's new in this version
-- PDF 翻译连字修复：自动重组跨行被断开的技术术语连字，并调整 CJK 字体缩放比例以提升可读性。
-- 右键菜单图标：所有转档指令现在在 Windows 11 及传统右键菜单中显示本地化图标。
-- 每任务文件队列：每个转档任务独立追踪进度，支持历史记录、任务暂停/恢复与过期任务清理。
-- 可视化 PDF 分割：三模式分割对话框（自定义分段、单页拆分、固定页数），支持页面缩图预览、内建缩放灯箱与"在此页切开"快速按钮。
-- 卸载安全机制：终止 COM 代理程序前先验证模块路径，避免误杀无关程序。
+- 图片格式转换：可从 CLI、原生仪表板与 Fluent UI 将图片转换为 PNG、JPG、WebP、GIF 或 HEIC。
+- WebP 内建 runtime：WebP 编码与解码现在随 Clickra 一同打包，不再依赖 Microsoft Store 的 WebP codec。
+- HEIC/HEIF 安全检查：缺少必要的 HEIF/HEIC encoder 或 decoder 时会明确提示并 fail closed；`.heic`、`.heif`、`.hif` 输入均采用一致检查。
+- 输出更安全：转换前会拒绝同格式输入、不支持的目标格式与输出路径冲突，并一致遵守明确指定的输出目录。
 
 ## Product Features
 *(最多 20 个，以项目符号显示)*
@@ -48,6 +47,7 @@ Clickra 尊重您的隐私。大多数处理流程（文档转 PDF、PDF 压缩�
 - 可视化 PDF 分割，支持页面缩图与三种分割模式
 - 右键菜单图标，所有转档指令显示本地化图标
 - 图片 (JPG/PNG/WebP) 批量转 PDF
+- 图片格式转换，支持输出 PNG、JPG、WebP、GIF 与 HEIC
 - 图片垂直拼接
 - 快速多文件 PDF 合并
 - NativeAOT Shell 集成，保持右键菜单快速响应

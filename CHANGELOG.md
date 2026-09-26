@@ -1,5 +1,12 @@
 # Changelog
 
+## [v3.8.0.0] - 2026-09-26
+
+- **圖片格式轉換 (Image Format Conversion)**：新增 `img-to-png`、`img-to-jpg`、`img-to-webp`、`img-to-gif` 與 `img-to-heic`，並透過 shared Core registry/runner 同步提供給 legacy CLI、Native dashboard/progress 與 Fluent UI。
+- **內建 WebP runtime (Bundled WebP Runtime)**：WebP 編碼與解碼改由隨應用程式封裝的 Imazen.WebP/libwebp 提供，不再依賴 Microsoft Store 的 WebP codec。
+- **HEIC/HEIF fail-closed 檢查 (HEIC/HEIF Safety)**：系統缺少必要的 HEIF/HEIC decoder 或 encoder 時會顯示在地化錯誤並停止；`.heic`、`.heif`、`.hif` 輸入皆套用一致的 preflight。
+- **輸出路徑安全 (Output Safety)**：轉換前拒絕同格式輸入、不支援的目標格式與重複輸出碰撞，並讓 CLI / Native flow 正確處理明確指定的輸出資料夾與失敗 exit code。
+
 ## [v3.7.3.0] - 2026-09-25
 
 - **Headless CLI 錯誤碼 (Headless CLI Exit Codes)**：命令派送拋出例外時會將 process exit code 設為 `1`，讓 scripts、CI 與排程工作可靠辨識轉換失敗；成功命令（例如 `--version`）仍維持 exit code `0`。
