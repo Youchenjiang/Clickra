@@ -1,13 +1,15 @@
 # Clickra 版本號管理與發布規範 (Release Versioning Guide)
 
-本文件定義了 Clickra 的版本號設計邏輯、微軟商店相容規範，以及發布新版本時必須更新的檔案清單。
+本文件是 Clickra **版本格式與同步 version surfaces** 的規範：定義版本號設計邏輯、Microsoft Store 的版本限制，以及 release-preparation 時必須同步的檔案。
+
+> **Authority boundary**：本文件不決定 content PR 的 base/rebase 流程、不決定何時跨越 release boundary，也不代表 Microsoft Store 已達 `Published`。PR sequencing、release/Store gates 與 tag 授權必須依當次 rollout governance 與 live remote/Store evidence；本文件只回答「一旦獲准準備某個版本，要改哪些 version surfaces、如何保持一致」。
 
 ---
 
-## 0. 發布清單 (Release Checklist)
+## 0. Release-preparation checklist
 
 > [!WARNING]
-> **每次發版前，務必逐項檢查以下清單。** 遺漏任何一項都會導致版本不一致或商店文案過時。
+> **只有 release boundary 已獲准進入 release-preparation 後才執行本清單。** 遺漏任何一項都會導致版本不一致或商店文案過時；但完成本清單本身不等於已獲得 tag / Store publication 授權。
 
 ### Step 1：決定版本號
 - [ ] 依據 §2 規則決定新版本號（Major / Minor / Patch）
@@ -22,7 +24,6 @@
 ### Step 3：手動更新文件（腳本無法自動處理的內容）
 - [ ] **CHANGELOG.md**：將 `**TODO**: Add changelog entry here` 替換為實際的變更描述（參考 §3.3）
 - [ ] **docs/ROADMAP.md**：更新里程碑完成狀態（`[ ]` → `[x]`）與進度說明
-- [ ] **docs/development/refactor_backlog.md**：更新「發行狀態」行的版本號
 - [ ] **LOCAL_BUILD_NOTES.md**：更新架構版本標記（如有）
 - [ ] **docs/StoreListing_*.md**（5 語言）：更新 Description、What's new、Product Features、Short description（參考 §3.4）
 
@@ -32,9 +33,14 @@
 - [ ] 殘留舊版號檢查：將下方指令中的 `3.6.5.0` 換成 **Step 2 輸出「Upgrading version from X to Y」中的 X（上一版號）** 後執行，確認除歷史文件（CHANGELOG / README / ROADMAP / refactor_backlog）外無任何輸出：
       `grep -rn "3.6.5.0" --include="*.xml" --include="*.props" --include="*.md" . | grep -v CHANGELOG | grep -v README | grep -v ROADMAP | grep -v refactor_backlog`
 
-### Step 5：提交與推送
+### Step 5：release-preparation PR
 - [ ] 原子化提交：版本號升級一個 commit，文件內容更新可分開提交
-- [ ] 推送並建立 PR（或直接推送標籤觸發 CI）
+- [ ] 依當次 PR preparation gate 推送並建立獨立 release-preparation PR
+- [ ] PR merge 後重新驗證最新 `main` 與 release checks；**不得用直接推 tag 取代 release-preparation PR**
+
+### Step 6：tag / release
+- [ ] 只有在 release-preparation 已 merge、必要 main checks 完成且取得明確 tag/release 授權後，才建立並 push `vX.Y.Z.0`
+- [ ] tag-triggered `.github/workflows/release.yml` 才是正式 GitHub Release / Store submission 入口；manual dispatch 只做 package validation
 
 ---
 
@@ -74,7 +80,7 @@ $$\text{Version} = \text{Major} . \text{Minor} . \text{Patch} . \mathbf{0}$$
 ## 3. 發布版本時必須更新的檔案清單 (Files to Update)
 
 > [!CAUTION]
-> **此清單是權威來源。** 每次發版前务必逐項核對。遺漏任何檔案都會導致版本不一致。
+> **此清單只對「版本同步 surfaces」具有權威性。** 每次 release-preparation 都要逐項核對；它不擁有 PR sequencing、Store gate 或 tag 時機。
 
 當要發布/編譯新版本時，必須更新以下所有檔案：
 
@@ -100,7 +106,6 @@ $$\text{Version} = \text{Major} . \text{Minor} . \text{Patch} . \mathbf{0}$$
 ### 3.3 專案文件 (Documentation) — 需手動更新
 *   **[CHANGELOG.md](../../CHANGELOG.md)**: 腳本會自動插入 TODO placeholder，需手動替換為實際變更描述。
 *   **[docs/ROADMAP.md](../ROADMAP.md)**: 更新里程碑完成狀態（`[ ]` → `[x]`）與進度說明。
-*   **[docs/development/refactor_backlog.md](refactor_backlog.md)**: 更新「發行狀態」行的版本號。
 *   **[LOCAL_BUILD_NOTES.md](../../LOCAL_BUILD_NOTES.md)**: 更新架構版本標記（如有）。
 
 ### 3.4 商店文案 (Store Listings) — `bump_version.ps1` 自動更新版本標題，內容需手動更新
@@ -119,12 +124,13 @@ $$\text{Version} = \text{Major} . \text{Minor} . \text{Patch} . \mathbf{0}$$
 ## 4. Git 標籤 (Tag) 與發布規範
 
 *   **標籤命名格式**：必須與版本號完全一致，即 `vX.Y.Z.0`（例如 `v3.0.8.0`）。
+*   **標籤時機**：tag 只能建立在已 merge 且已驗證的 release-preparation 結果上，並需有明確 release/tag 授權。不要因為本文件的版本清單已完成就自行建立 tag。
 *   **Git 標籤指令**：
     ```bash
     git tag v3.0.8.0
     git push origin v3.0.8.0
     ```
-*   **注意**：Clickra 專案**禁止直接推送至主要分支或發布分支**（例如 `main` 與 release branches）；開發者可將功能分支推送至 remote 以建立 PR，但正式發布僅允許直接推送 Git 標籤以觸發發布與追蹤。
+*   **注意**：Clickra 專案**禁止直接推送至主要分支或發布分支**（例如 `main` 與 release branches）。正式發布由經核准的 tag push 觸發 `.github/workflows/release.yml`；該 tag 必須在 release-preparation PR merge/validation 之後，而不是 content work 的捷徑。
 
 ---
 

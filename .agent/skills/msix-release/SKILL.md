@@ -1,96 +1,106 @@
 ---
-description: "Version bump + MSIX build + manual post-fixes for Clickra releases. Covers bump_version.ps1 known issues, CHANGELOG/README fixups, and MSIX signing."
+description: "Prepare an authorized Clickra release: synchronize version surfaces, update release copy, validate the NativeAOT Main MSIX, and stop at the release-preparation PR/tag gates."
 ---
 
-# MSIX Release Pipeline
+# MSIX Release Preparation
 
-Bump version, build MSIX package, and fix known script issues for Clickra releases.
+Use this skill only for a dedicated **release-preparation** task after the active rollout has
+reached a release boundary and any required Store/publication gate has cleared. Ordinary
+content PRs do not bump versions.
 
-## Arguments
+## Preconditions
 
-`$ARGUMENTS` — Version bump type: `patch`, `minor`, or `major`. Default: `patch`.
+Before changing any version surface:
 
-## Version Convention
+1. Confirm the user has explicitly authorized release preparation/version bump work.
+2. Confirm the active rollout/release gate allows the next release preparation to start.
+3. Fresh-fetch `origin/main` and create the release-preparation branch from that current
+   remote main according to the canonical PR publication gate. Do not reuse an old
+   release-preparation branch or replay its history.
+4. Determine the intended `major` / `minor` / `patch` bump from the authorized release target.
 
-- **patch** = fixes, layout improvements, CI/store resubmission repairs, and other changes to existing modules
-- **minor** = new features
-- **major** = breaking changes
+Version format and synchronized surfaces are defined by
+`docs/development/release_guideline.md`.
 
 ## Procedure
 
-All commands run from the Clickra project root: `C:\Users\g1014308\Documents\GitHub\Youchen\Clickra`
+### Step 1: Synchronize version surfaces
 
-### Step 1: Version bump
+Run from the repository root:
 
 ```powershell
-powershell -File scripts/bump_version.ps1 -Build -Type patch
+powershell -File scripts/bump_version.ps1 -Type patch
 ```
 
-This updates:
-- `src/Directory.Build.props` (version number)
-- `packaging/msix/AppxManifest.xml` (2 locations)
-- `CHANGELOG.md`
-- `README.md`
-- `README.zh-TW.md`
-- `docs/ROADMAP.md` (milestone/version status, when applicable)
+Use the authorized bump type instead of `patch` when required. The script currently updates:
 
-### Step 2: Fix CHANGELOG.md (REQUIRED)
+- `src/Directory.Build.props`
+- `packaging/msix/AppxManifest.xml`
+- `packaging/msix/AppxManifest.Fluent.xml`
+- `src/resources/AppxManifest.xml`
+- `CHANGELOG.md` with a new-version TODO entry
+- all five `docs/StoreListing_*.md` version stamps
 
-`bump_version.ps1` CHANGELOG insertion via regex produces **malformed duplicate entries and misplaced headers**. Agent MUST manually rewrite the CHANGELOG after running the script:
+It preserves each target file's existing UTF-8 BOM state. It does **not** update README
+version tables or invent release notes.
 
-1. Read the current CHANGELOG.md
-2. Remove any duplicate version headers
-3. Ensure the new version entry is at the top under the correct date
-4. Verify no content from older entries was duplicated or displaced
+### Step 2: Finish release copy
 
-### Step 3: Fix README version tables (REQUIRED)
+1. Replace the new CHANGELOG TODO with the actual release summary.
+2. Update `docs/ROADMAP.md` milestone state only where the release actually changes it.
+3. Update `LOCAL_BUILD_NOTES.md` only if its architecture/version marker is genuinely affected.
+4. Update the five Store listing content sections (Description / What's new / Product Features /
+   Short description) as required; the bump script changes only their version stamps.
 
-The script inserts `"TODO: Add milestone description here."` placeholder instead of actual content. Agent MUST:
+Keep version synchronization and substantive documentation updates atomic/reviewable according
+to `.agent/guidelines.md`.
 
-1. Read README.md and README.zh-TW.md
-2. Replace the placeholder with an actual description of the changes
-3. Ensure version table is consistent between English and Chinese READMEs
+### Step 3: Validate
 
-### Step 4: Build MSIX
+At minimum:
 
 ```powershell
+dotnet build src/Clickra.Core/Clickra.Core.csproj -c Release -p:TreatWarningsAsErrors=true
+dotnet build src/Clickra.CLI/Clickra.csproj -c Release -p:TreatWarningsAsErrors=true
+dotnet build src/ClickraShell/ClickraShell.csproj -c Release -p:TreatWarningsAsErrors=true
+dotnet build src/Clickra.Fluent/Clickra.Fluent.csproj -c Release -p:TreatWarningsAsErrors=true
+dotnet build tests/Clickra.Core.Tests/Clickra.Core.Tests.csproj -c Release -p:TreatWarningsAsErrors=true
+dotnet run --project tests/Clickra.Core.Tests/Clickra.Core.Tests.csproj -c Release --no-build
 powershell -NoProfile -ExecutionPolicy Bypass -File scripts/build_msix.ps1
 ```
 
-Pipeline: NativeAOT publish of Clickra.CLI + ClickraShell → Layout assembly → makepri.exe (PRI index) → makeappx.exe → signtool.exe sign.
+Run any additional NativeAOT/package/smoke gates required by the active release plan. The current
+`build_msix.ps1` publishes NativeAOT CLI + Shell + Launcher and produces the Main `Clickra.msix`.
 
-Depends on Windows SDK tools in `C:\Program Files (x86)\Windows Kits\10\bin\10.*\x64\`.
+### Step 4: Publish the release-preparation PR
 
-Output: `Clickra.msix` in the project root.
+Before push/open PR, re-run the canonical latest-`origin/main` race gate. If main advanced,
+rebuild/revalidate the branch on the new main first.
 
-### Step 5: Verify build
+The release-preparation PR body is special: `.github/workflows/release.yml` uses the PR associated
+with the tagged merge commit as GitHub Release notes. Keep the body concise, public-facing, and
+focused on the release rather than internal provenance/CI ledgers.
 
-```powershell
-dotnet build src/Clickra.CLI/Clickra.csproj -c Release 2>&1
-```
+Stop at the merge gate. The release-preparation PR must be merged before any release tag exists.
 
-Ensure 0 errors, 0 warnings.
+## Tag and release order
 
-## Known Issues
+After the user merges the release-preparation PR:
 
-- **bump_version.ps1 CHANGELOG corruption**: Regex insertion produces malformed entries. Always manually fix after running.
-- **bump_version.ps1 README placeholder**: Inserts `"TODO: Add milestone description here."` — must replace with actual content.
-- **MSIX install error 0x8007007E**: If user has a previous MSIX install with a different signing certificate, the new install fails with "找不到指定的模組". Fix: uninstall old version first. Store auto-update users are unaffected.
-- **Branch naming**: Use `feature/*` or `hotfix/*` prefix with descriptive name. Do NOT include version numbers in branch names (avoid confusion with Git Tags).
+1. Fresh-fetch and verify the resulting `main` commit and required post-merge checks.
+2. Obtain explicit user authorization for the release/tag operation.
+3. Create `vX.Y.Z.0` on the verified release-preparation merge result.
+4. Push only the tag (`git push origin vX.Y.Z.0`); never push directly to `main`.
+5. The tag-triggered `release.yml` creates the GitHub Release and submits the Main MSIX to Store.
+6. A successful workflow submission is not proof of Store `Published`; later release boundaries
+   that require `Published + no pending submission` must verify that state separately.
 
-## Tag and Release Order
-
-Per `.agent/guidelines.md` §1:
-
-1. Complete development on feature/hotfix branch
-2. Push branch, create PR, merge into `main`
-3. Switch to local `main`: `git checkout main && git pull`
-4. Create Git Tag on merged main: `vX.Y.Z.0`
-5. Never push directly to `main` or `release` branches
-6. Push tag: `git push origin vX.Y.Z.0`
+Manual `workflow_dispatch` is package validation only and must not be treated as a real release.
 
 ## Reference
 
-- Version bump issues: `LOCAL_BUILD_NOTES.md` → Automated Packaging & Versioning Scripts
-- MSIX build pipeline: `LOCAL_BUILD_NOTES.md` → Automated Packaging & Versioning Scripts
-- Tag/release convention: `docs/development/release_guideline.md`
+- Version format/surfaces: `docs/development/release_guideline.md`
+- Current automated release pipeline: `docs/CI_CD_DUAL_RELEASE_GUIDE.md`
+- General agent/PR/tag rules: `.agent/guidelines.md`
+- Actual implementation: `.github/workflows/release.yml`, `scripts/bump_version.ps1`,
+  `scripts/build_msix.ps1`

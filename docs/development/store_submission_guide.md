@@ -1,10 +1,15 @@
-# Store Submission Guide — Main + Optional Package Architecture
+# Conditional Store Submission Runbook — Main + Optional Package Architecture
 
-> **前提**：已通過 Phase 0 Store 權限申請（Optional packages、Related sets、Executable code）
+> **文件角色：conditional runbook，非現行 Store 發布流程。**
+>
+> 本文件只有在 `store_optional_fluent_plan.md` 的權限／related-set／private-flight gates
+> 明確通過後才可執行。現行 `.github/workflows/release.yml` 只建立並提交 NativeAOT Main
+> `Clickra.msix`，不會建立或上傳 Fluent optional package；不得因本文件存在就推定
+> Partner Center 權限已核准或 optional distribution 已投入 production。
 
 ## 1. 概覽
 
-Clickra 採用兩包架構上傳 Store：
+若 optional-package migration gates 全部通過，目標 Store submission architecture 為：
 
 | 套件 | 內容 | 大小目標 | 依賴 |
 |------|------|---------|------|
@@ -13,7 +18,10 @@ Clickra 採用兩包架構上傳 Store：
 
 兩包透過 **related set** 綁定，由同一 Store publisher 發行。
 
-## 2. 打包
+## 2. Conditional packaging path
+
+> `scripts/build_store.ps1` 是 optional-package / related-set PoC 路徑，不是目前 tag-triggered
+> production release 的打包入口。現行 production release 由 `scripts/build_msix.ps1` 建立 Main MSIX。
 
 ```powershell
 # 產生 Store submission 用的兩個 MSIX
@@ -24,7 +32,7 @@ Clickra 採用兩包架構上傳 Store：
 - `Clickra_Main.msix` — 主套件
 - `Clickra_Fluent.msix` — 選擇性套件
 
-## 3. Partner Center 設定
+## 3. Partner Center 設定（僅 gate 通過後）
 
 ### 3.1 主套件（已有）
 
@@ -58,9 +66,9 @@ Related set 的綁定由 Partner Center 自動處理：
 - 兩者的 Identity Name 透過 `MainPackageDependency` 關聯
 - Store 會自動同步版本更新
 
-## 4. 版本同步
+## 4. 版本同步（目標架構）
 
-每次 release 必須：
+在 optional-package architecture 正式採用後，每次 release 才需要：
 1. 同時更新兩個 MSIX 的版本號（`AppxManifest.xml` 的 `Version`）
 2. 從相同 source 同時 build 兩個套件
 3. 同時提交兩個套件的 Store submission
@@ -72,7 +80,7 @@ Related set 的綁定由 Partner Center 自動處理：
 .\scripts\bump_version.ps1
 ```
 
-## 5. 更新流程
+## 5. 更新流程（目標架構）
 
 | 情境 | 處理方式 |
 |------|---------|
@@ -81,7 +89,7 @@ Related set 的綁定由 Partner Center 自動處理：
 | 同時更新兩者 | 同時提交兩個 MSIX |
 | Optional 更新失敗 | Main 繼續使用舊版，AOT 不受影響 |
 
-## 6. 使用者體驗
+## 6. 使用者體驗（目標架構）
 
 ### 首次安裝（無 Fluent）
 ```
@@ -106,7 +114,7 @@ AOT Dashboard → 點「啟用 Fluent 介面」
     → 偵測 Fluent → 沒有 → Clickra.exe（AOT Dashboard）
 ```
 
-## 7. 故障排除
+## 7. 故障排除（目標架構）
 
 | 問題 | 處理 |
 |------|------|
@@ -115,7 +123,7 @@ AOT Dashboard → 點「啟用 Fluent 介面」
 | Optional 更新中斷 | Main 繼續使用舊版 |
 | 移除 Optional 後重啟 | Launcher 直接走 AOT |
 
-## 8. 本地測試
+## 8. 本地測試 / PoC
 
 本地 sideloading 無法安裝 related-set optional package（`0x80073D17`）。測試方式：
 

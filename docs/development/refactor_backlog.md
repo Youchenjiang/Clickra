@@ -4,6 +4,8 @@
 > **目的**：把程式碼審計發現的重複/契約繞過、功能落差 bug、未驗證項與已知限制一次盤點清楚，
 > 作為後續 `refactor/command-metadata-to-core` 分支與發布驗證的執行依據。
 > **追蹤慣例**：項目完成後在標題旁標記日期（與 `docs/ROADMAP.md` 的 R1-x 慣例一致）。
+>
+> **文件角色**：這是一份技術債／歷史盤點，不是 live branch、`origin/main`、版本號、PR 順序或 release 狀態的權威來源。任何 dated branch/release snapshot 都只代表當時觀測；執行前必須重新查 Git/GitHub 與現行 release governance。
 
 ---
 
@@ -116,7 +118,9 @@ GitHub Release 的 MSIX 以 CI 自簽憑證簽署，使用者需信任憑證或�
 
 ---
 
-## 3. 分支與發行狀態
+## 3. Historical branch / release snapshot（2026-08-12；non-normative）
+
+> 本節保留建立 backlog 當時的 branch / release evidence，**不得作為目前操作指令**。尤其是 commit 數、PR 編號、`origin/main` hash、合併順序與版本號都可能早已過期。
 
 | 項目 | 狀態 |
 | :--- | :--- |
@@ -125,7 +129,7 @@ GitHub Release 的 MSIX 以 CI 自簽憑證簽署，使用者需信任憑證或�
 | 合併順序建議 | 先合 feature → main（雙軌正式化），再合 refactor（diff 乾淨） |
 | 合併前待決 | push 授權、合併方式（PR vs fast-forward）、2.2/2.4/2.3 殘項是否先補；**local main 停在 PR #37（b3dcedc）已過時，合併前先 fetch origin/main（已到 PR #45）** |
 
-**發行狀態**：Main manifest (`AppxManifest.xml`) + Fluent manifest (`AppxManifest.Fluent.xml`) 版本已同步 3.8.0.0。
+**Historical version snapshot**：建立／後續維護此盤點時，兩份 manifest 曾同步到 3.8.0.0；目前版本必須直接查 tracked manifests / release-preparation state，不得從本節推定。
 
 ---
 
@@ -143,7 +147,9 @@ GitHub Release 的 MSIX 以 CI 自簽憑證簽署，使用者需信任憑證或�
 
 ---
 
-## 5. 執行建議
+## 5. Historical execution notes（non-normative）
+
+> 以下是 2026-08-12 當時為該批 refactor 工作寫下的順序建議。它們只解釋歷史決策，不定義今天的 PR base、branch order、merge strategy 或 release gate。
 
 1. **2.1 已解決（2026/08/12）**：Fluent 已實作 split-pdf 分割流程，剩 packaged activation 端到端實機驗證（重開機載入 shell 延伸後測右鍵）。
 2. **refactor 分支依序**：1.1 命令登錄上移 → 1.2 OfficeEngineDetector → 1.3 history.log → 1.4 dispatch（與 1.1 連動），每個獨立 commit、各自可驗證。

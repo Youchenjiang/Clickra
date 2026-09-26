@@ -86,7 +86,7 @@ Before opening a pull request, please see:
 - [docs/development/release_guideline.md](docs/development/release_guideline.md) — versioning and release checklists
 - [docs/development/shell_extension_best_practices.md](docs/development/shell_extension_best_practices.md) — COM and NativeAOT shell invariants
 - [docs/development/shell_diagnostic_guide.md](docs/development/shell_diagnostic_guide.md) — shell extension logging and diagnostics
-- [docs/development/dual_track_guide.md](docs/development/dual_track_guide.md) — Fluent/NativeAOT dual-track distribution
+- [docs/development/dual_track_guide.md](docs/development/dual_track_guide.md) — historical Fluent/NativeAOT dual-track distribution design
 - [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) — NativeAOT/Fluent architecture
 - [docs/ROADMAP.md](docs/ROADMAP.md) — product roadmap and milestones
 - [CHANGELOG.md](CHANGELOG.md) — full version history

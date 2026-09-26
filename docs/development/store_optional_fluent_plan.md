@@ -3,7 +3,7 @@
 > **狀態**：最高優先級候選架構（Feasibility Gate，尚未核准正式遷移）  
 > **記錄日期**：2026-08-29  
 > **關聯里程碑**：`F1-13 Store-Resilient Optional Fluent Delivery`  
-> **現行有效架構**：`docs/development/dual_track_guide.md` 所述的 Fluent / NativeAOT 真雙軌；本文件的全部閘門通過前不得移除現行產線。
+> **目前 automated release state**：`.github/workflows/release.yml` / `scripts/build_msix.ps1` 只發布 NativeAOT Main `Clickra.msix`。`dual_track_guide.md` 保存的是較早的 dual-track distribution 設計，不是 live release authority；本文件全部閘門通過前，也不得把 Fluent optional package 描述成 production Store path。
 
 ## 1. 問題與決策目標
 
@@ -265,4 +265,3 @@ submission、Partner Center mutation、branch、commit、push 或 PR 操作仍�
 - [StoreContext.RequestDownloadAndInstallStorePackagesAsync](https://learn.microsoft.com/uwp/api/windows.services.store.storecontext.requestdownloadandinstallstorepackagesasync)
 - [PackageCatalog.AddOptionalPackageAsync](https://learn.microsoft.com/uwp/api/windows.applicationmodel.packagecatalog.addoptionalpackageasync)
 - [Windows App SDK dynamic dependency and package graph specification](https://github.com/microsoft/WindowsAppSDK/blob/main/specs/dynamicdependencies/DynamicDependencies.md)
-
