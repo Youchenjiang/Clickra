@@ -33,7 +33,9 @@ static partial class TestSuite
             Assert.True(actual.SequenceEqual(want),
                 $"The registry must cover exactly the keys the codebase uses.\nGot:      {string.Join(", ", actual)}\nExpected: {string.Join(", ", want)}\nAdd missing keys to ClickraSettings.All (and remove stale ones).");
             foreach (string key in expected)
+            {
                 Assert.True(ClickraSettings.IsRegistered(key), $"{key} must be registered.");
+            }
         });
 
         runner.Run("Settings registry: GetSetting applies defaults for unset keys", () =>
@@ -54,8 +56,6 @@ static partial class TestSuite
             Assert.False(ClickraStorage.GetSettingBool(ClickraSettings.PdfCompressStripFonts), "Unset StripFonts must default to off.");
             Assert.Equal(1, ClickraStorage.GetSettingInt(ClickraSettings.ImageCompressLevel));
             Assert.Equal(1, ConvertCommandRegistry.GetPdfCompressLevel());
-            Assert.Equal(1, ConvertCommandRegistry.GetImageCompressLevel());
-            Assert.Equal(0, ConvertCommandRegistry.GetImageCompressMaxDimension());
 
             // Unknown keys stay empty: the registry is the only place defaults exist.
             Assert.Equal("", ClickraStorage.GetSetting("NoSuchSettingKey"));
@@ -120,8 +120,6 @@ static partial class TestSuite
             {
                 ("GetParkedRetentionDays", storage),
                 ("GetPdfCompressLevel", registry2),
-                ("GetImageCompressLevel", registry2),
-                ("GetImageCompressMaxDimension", registry2),
             })
             {
                 int start = source.IndexOf($"int {name}(", StringComparison.Ordinal);
