@@ -47,6 +47,7 @@ Clickra는 개인정보 보호를 중요하게 생각합니다. Office to PDF, P
  - 비주얼 PDF 분할 (페이지 미리보기 및 3가지 분할 모드)
  - 컨텍스트 메뉴의 모든 변환 명령에 아이콘 표시
  - JPG/PNG/WebP 이미지 일괄 PDF 변환
+ - PNG, JPG, WebP, GIF, HEIC 이미지 형식 변환
  - 이미지 세로 병합
  - 빠른 다중 PDF 병합
  - NativeAOT 셸 통합 기반의 빠른 컨텍스트 메뉴 응답

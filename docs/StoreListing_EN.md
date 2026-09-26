@@ -47,6 +47,7 @@ Clickra respects your privacy. Most processing (Office-to-PDF conversion, PDF co
  - Visual PDF Splitter with page thumbnails and three split modes
  - Context menu icons for all conversion commands
  - Batch Image to PDF conversion (JPG/PNG/WebP)
+ - Image format conversion to PNG, JPG, WebP, GIF, and HEIC
  - Seamless vertical image stitching
  - Fast multi-file PDF merging
  - NativeAOT shell integration for responsive context-menu commands

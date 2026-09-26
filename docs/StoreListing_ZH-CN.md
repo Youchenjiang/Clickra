@@ -47,6 +47,7 @@ Clickra 尊重您的隐私。大多数处理流程（文档转 PDF、PDF 压缩�
 - 可视化 PDF 分割，支持页面缩图与三种分割模式
 - 右键菜单图标，所有转档指令显示本地化图标
 - 图片 (JPG/PNG/WebP) 批量转 PDF
+- 图片格式转换，支持输出 PNG、JPG、WebP、GIF 与 HEIC
 - 图片垂直拼接
 - 快速多文件 PDF 合并
 - NativeAOT Shell 集成，保持右键菜单快速响应

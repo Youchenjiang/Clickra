@@ -47,6 +47,7 @@ Clickra 絕大多數功能（文書轉 PDF、PDF 壓縮、PDF 合併、圖片拼
 - 視覺化 PDF 分割，支援頁面縮圖與三種分割模式
 - 右鍵選單圖示，所有轉檔指令顯示在地化圖示
 - 圖片 (JPG/PNG/WebP) 批次轉 PDF
+- 圖片格式轉換，支援輸出 PNG、JPG、WebP、GIF 與 HEIC
 - 圖片垂直無縫拼接
 - 極速 PDF 多檔合併
 - NativeAOT Shell 整合，維持右鍵選單快速回應
