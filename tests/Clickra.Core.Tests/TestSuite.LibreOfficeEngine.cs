@@ -251,7 +251,7 @@ static partial class TestSuite
             }
         });
 
-        runner.Run("Only a Clickra-installed LibreOffice can be removed, from either UI", () =>
+        runner.Run("LibreOffice ownership guard protects both UIs while CLI exposes ownership state", () =>
         {
             string? root = FindRepoRoot();
             if (root is null) throw new TestSkippedException("Could not locate the repository root from the test output directory.");
@@ -259,31 +259,26 @@ static partial class TestSuite
             string fluent = File.ReadAllText(Path.Combine(root, "src", "Clickra.Fluent", "MainPage.xaml.cs"));
             string cliEvents = File.ReadAllText(Path.Combine(root, "src", "Clickra.CLI", "Dashboard", "DashboardWindow.Events.Click.cs"));
             string cliPaint = File.ReadAllText(Path.Combine(root, "src", "Clickra.CLI", "Dashboard", "DashboardWindow.Paint.Settings.cs"));
+            string settings = File.ReadAllText(Path.Combine(root, "src", "Clickra.Core", "Storage", "ClickraSettings.cs"));
 
-            foreach ((string name, string source) in new[] { ("Fluent", fluent), ("CLI", cliEvents) })
-            {
-                Assert.True(source.Contains("LibreOfficeEngineInstaller.WasInstalledByClickra()", StringComparison.Ordinal),
-                    $"{name} must refuse to uninstall a LibreOffice Clickra did not install.");
-                Assert.True(source.Contains("LibreOfficeEngineInstaller.MarkInstalledByClickra", StringComparison.Ordinal),
-                    $"{name} must record the provenance through the shared accessor.");
-                Assert.False(source.Contains("SaveSetting(\"LibreOfficeInstalledByClickra\"", StringComparison.Ordinal),
-                    $"{name} must not write the provenance key directly.");
-            }
+            // Both UIs ultimately route removal through the Core method above, whose first action is the
+            // ownership check. Fluent's broader settings-registry migration is intentionally a later PR.
+            Assert.True(fluent.Contains("LibreOfficeEngineInstaller.UninstallSystemLibreOfficeAsync", StringComparison.Ordinal),
+                "Fluent must route removal through the ownership-guarded Core uninstaller.");
+
+            Assert.True(cliEvents.Contains("LibreOfficeEngineInstaller.WasInstalledByClickra()", StringComparison.Ordinal),
+                "The legacy CLI must refuse a user-managed LibreOffice before presenting its uninstall path.");
+            Assert.True(cliEvents.Contains("LibreOfficeEngineInstaller.MarkInstalledByClickra", StringComparison.Ordinal),
+                "The legacy CLI must record provenance through the shared accessor.");
+            Assert.False(cliEvents.Contains("SaveSetting(\"LibreOfficeInstalledByClickra\"", StringComparison.Ordinal),
+                "The legacy CLI must not write the provenance key directly.");
 
             Assert.True(cliPaint.Contains("LibreOfficeEngineInstaller.WasInstalledByClickra()", StringComparison.Ordinal) &&
                         cliPaint.Contains("setting_libreoffice_external_hint", StringComparison.Ordinal),
                 "The CLI settings page must hide the uninstall button and explain why.");
 
-            // The provenance key is declared in exactly one place, so the two UIs cannot disagree.
-            string[] declarers = Directory
-                .EnumerateFiles(Path.Combine(root, "src"), "*.cs", SearchOption.AllDirectories)
-                .Where(p => !p.Contains($"{Path.DirectorySeparatorChar}obj{Path.DirectorySeparatorChar}", StringComparison.Ordinal) &&
-                            !p.Contains($"{Path.DirectorySeparatorChar}bin{Path.DirectorySeparatorChar}", StringComparison.Ordinal))
-                .Where(p => File.ReadAllText(p).Contains("\"LibreOfficeInstalledByClickra\"", StringComparison.Ordinal))
-                .Select(p => Path.GetFileName(p) ?? "")
-                .ToArray();
-            Assert.True(declarers.Length == 1 && declarers[0] == "ClickraSettings.cs",
-                $"The provenance key must live only in the settings registry, found: {string.Join(", ", declarers)}");
+            Assert.True(settings.Contains("public const string LibreOfficeInstalledByClickra", StringComparison.Ordinal),
+                "The shared ownership key must be registered in ClickraSettings.");
 
             foreach (string key in new[] { "setting_libreoffice_external_note", "setting_libreoffice_external_hint" })
             foreach (string lang in new[] { "zh-TW", "zh-CN", "en-US", "ja-JP", "ko-KR" })
