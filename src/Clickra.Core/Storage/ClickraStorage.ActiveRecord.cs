@@ -260,13 +260,9 @@ namespace Clickra.Core
             });
         }
 
-        /// <summary>已暫存任務的保留天數（設定 ParkedTaskRetention；0 = 無限期，預設 7）。</summary>
-        public static int GetParkedRetentionDays()
-        {
-            string raw = GetSetting("ParkedTaskRetention");
-            if (string.IsNullOrWhiteSpace(raw)) return 7;
-            return int.TryParse(raw, out int days) ? Math.Max(days, 0) : 7;
-        }
+        /// <summary>已暫存任務的保留天數（0 = 無限期）。未設定或無法解析時採用登錄表的預設值。</summary>
+        public static int GetParkedRetentionDays() =>
+            Math.Max(GetSettingInt(ClickraSettings.ParkedTaskRetention), 0);
 
         /// <summary>刪除任務進度檔（例如任務完成且不需保留，或診斷錯誤後清理）。</summary>
         public static void DeleteTask(string taskId)

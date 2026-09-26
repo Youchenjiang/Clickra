@@ -20,7 +20,7 @@ internal static class PdfTranslatedPdfRebuilder
     {
         int totalPages = pageParagraphs.Count;
         var layoutSummary = new PdfTranslationLayoutSummary();
-        string language = ClickraStorage.GetSetting("Language");
+        string language = ClickraStorage.GetSetting(ClickraSettings.Language);
         onProgress?.Invoke(80, 100, Localization.T("pdf_progress_rebuilding", language));
         cancellationToken.ThrowIfCancellationRequested();
 

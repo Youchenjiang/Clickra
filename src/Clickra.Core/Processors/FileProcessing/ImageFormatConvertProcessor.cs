@@ -67,9 +67,7 @@ namespace Clickra.Core.Processors;
             }
         }
 
-        private const string LanguageSettingKey = "Language";
-
-        private static string Localize(string key) => Localization.T(key, ClickraStorage.GetSetting(LanguageSettingKey));
+        private static string Localize(string key) => Localization.T(key, ClickraStorage.GetSetting(ClickraSettings.Language));
 
         /// <summary>
         /// Saves the image as HEIC using Windows WIC / WinRT (Microsoft HEIF Encoder).

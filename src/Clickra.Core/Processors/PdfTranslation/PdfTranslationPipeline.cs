@@ -72,7 +72,7 @@ namespace Clickra.Core.Processors
                 deadlineCts.CancelAfter(TimeSpan.FromMinutes(10));
                 CancellationToken operationToken = deadlineCts.Token;
 
-                string language = ClickraStorage.GetSetting("Language");
+                string language = ClickraStorage.GetSetting(ClickraSettings.Language);
                 onProgress?.Invoke(10, 100, Localization.T("pdf_progress_analyzing", language));
                 using var pigDoc = UglyToad.PdfPig.PdfDocument.Open(inputPath);
                 sourcePages = pigDoc.NumberOfPages;
@@ -156,8 +156,8 @@ namespace Clickra.Core.Processors
             {
                 WriteFailureHealthReport(new FailureHealthReportConfig(
                     healthPath, inputPath, finalOutputPath, sourcePages, stageReport, providerName,
-                    Localization.T("pdf_error_deadline", ClickraStorage.GetSetting("Language")), layoutSummary));
-                throw new TimeoutException(Localization.T("pdf_error_deadline", ClickraStorage.GetSetting("Language")), ex);
+                    Localization.T("pdf_error_deadline", ClickraStorage.GetSetting(ClickraSettings.Language)), layoutSummary));
+                throw new TimeoutException(Localization.T("pdf_error_deadline", ClickraStorage.GetSetting(ClickraSettings.Language)), ex);
             }
             catch (Exception ex)
             {

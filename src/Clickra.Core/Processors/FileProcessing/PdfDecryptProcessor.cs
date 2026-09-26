@@ -29,7 +29,7 @@ namespace Clickra.Core.Processors
 
             if (inDoc.SecurityHandler == null || inDoc.SecurityHandler.Elements.Count == 0)
             {
-                string lang = ClickraStorage.GetSetting("Language");
+                string lang = ClickraStorage.GetSetting(ClickraSettings.Language);
                 throw new InvalidOperationException(Localization.T("pdf_not_encrypted", lang));
             }
 

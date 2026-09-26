@@ -121,7 +121,7 @@ public static class ConvertCommandRunner
                     RunPerFile(files, outputs, (f, o, p, t) => FileProcessor.CompressPdf(f, o, ConvertCommandRegistry.CompressionOptions(), p, t), progress, options.StartIndex, token);
                     break;
                 case "translate-pdf":
-                    RunPerFile(files, outputs, (f, o, p, t) => FileProcessor.TranslatePdf(f, o, ClickraStorage.GetSetting("TranslateTargetLang"), p, t), progress, options.StartIndex, token);
+                    RunPerFile(files, outputs, (f, o, p, t) => FileProcessor.TranslatePdf(f, o, ClickraStorage.GetSetting(ClickraSettings.TranslateTargetLang), p, t), progress, options.StartIndex, token);
                     break;
                 case "decrypt-pdf":
                     RunDecrypt(files, outputs, options.PromptPassword, progress, options.StartIndex, token);
