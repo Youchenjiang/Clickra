@@ -6,6 +6,8 @@ from unittest import mock
 
 SCRIPT_PATH = pathlib.Path(__file__).resolve().parents[1] / "scripts" / "publish_store.py"
 SPEC = importlib.util.spec_from_file_location("publish_store", SCRIPT_PATH)
+if SPEC is None or SPEC.loader is None:
+    raise RuntimeError(f"Unable to load Store publishing module from {SCRIPT_PATH}")
 publish_store = importlib.util.module_from_spec(SPEC)
 SPEC.loader.exec_module(publish_store)
 
