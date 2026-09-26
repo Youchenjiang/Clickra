@@ -99,4 +99,19 @@ public static class ClickraSettings
     /// <summary>以布林解讀已註冊鍵的預設值（只有 "true" 為真）。</summary>
     public static bool GetDefaultBool(string key) =>
         GetDefault(key).Equals(ValueTrue, StringComparison.OrdinalIgnoreCase);
+
+    /// <summary>
+    /// 已退役的舊設定鍵。LoadSettings 時若遇到這些鍵，會自動從記憶體中丟棄並重寫設定檔，
+    /// 避免廢棄設定永久殘留在使用者的 settings.conf。
+    /// </summary>
+    public static readonly IReadOnlyCollection<string> RetiredKeys = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+    {
+        "PdfCompressTargetDpi",
+        "PdfCompressJpegQuality",
+        "PdfCompressDpi",
+    };
+
+    /// <summary>該鍵是否已被標記為退役廢棄。</summary>
+    public static bool IsRetired(string key) =>
+        !string.IsNullOrWhiteSpace(key) && RetiredKeys.Contains(key);
 }

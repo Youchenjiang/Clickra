@@ -113,6 +113,7 @@ namespace Clickra.Core
                     // 只載入實際存在的設定；預設值統一由 ClickraSettings 登錄表提供，
                     // 因此刪掉設定檔中的一行就等於回復該鍵的預設值。
                     SettingsCache.Clear();
+                    bool cleanedRetiredKeys = false;
 
                     if (File.Exists(SettingsFile))
                     {
@@ -126,8 +127,22 @@ namespace Clickra.Core
                                 {
                                     string key = line.Substring(0, idx).Trim();
                                     string val = line.Substring(idx + 1).Trim();
+
+                                    // 遇到已退役鍵時自動剔除，不再載入記憶體
+                                    if (ClickraSettings.IsRetired(key))
+                                    {
+                                        cleanedRetiredKeys = true;
+                                        continue;
+                                    }
+
                                     SettingsCache[key] = val;
                                 }
+                            }
+
+                            // 若發現設定檔中存在退役鍵，將乾淨的設定寫回檔案，避免廢棄設定永久殘留
+                            if (cleanedRetiredKeys)
+                            {
+                                PersistSettingsFileLocked();
                             }
                         }
                         catch { }
@@ -135,6 +150,19 @@ namespace Clickra.Core
                 });
             }
         }
+
+        private static void PersistSettingsFileLocked()
+        {
+            using var sw = new StreamWriter(SettingsFile, false, System.Text.Encoding.UTF8);
+            foreach (var kvp in SettingsCache)
+            {
+                sw.WriteLine($"{kvp.Key}={kvp.Value}");
+            }
+        }
+
+        internal static void ReloadSettings() => LoadSettings();
+
+        internal static string GetSettingsFilePath() => SettingsFile;
 
         /// <summary>讀取設定；未設定（或設定檔中沒有該行）時回傳登錄表的預設值。</summary>
         public static string GetSetting(string key)
@@ -162,11 +190,7 @@ namespace Clickra.Core
                 {
                     try
                     {
-                        using var sw = new StreamWriter(SettingsFile, false, System.Text.Encoding.UTF8);
-                        foreach (var kvp in SettingsCache)
-                        {
-                            sw.WriteLine($"{kvp.Key}={kvp.Value}");
-                        }
+                        PersistSettingsFileLocked();
                     }
                     catch { }
                 });
