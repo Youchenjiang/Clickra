@@ -680,6 +680,8 @@ def report_commit_failure(submission):
 
 ACCEPTED_STATUSES = ('PreProcessing', 'Certification', 'Published')
 IN_FLIGHT_STATUSES = ('CommitStarted',)
+POST_COMMIT_POLL_ATTEMPTS = 3
+POST_COMMIT_POLL_INTERVAL_SECONDS = 10
 
 
 def verify_commit_status(token, p_id, submission_id):
@@ -697,11 +699,16 @@ def verify_commit_status(token, p_id, submission_id):
         return 'confirmed'
 
     sub_url = f'https://manage.devcenter.microsoft.com/v1.0/my/applications/{p_id}/submissions/{submission_id}'
-    for check in range(1, 10):
-        print(f"Checking post-commit status ({check}/9)...")
+    last_submission = None
+    last_status = None
+    for check in range(1, POST_COMMIT_POLL_ATTEMPTS + 1):
+        print(f"Checking post-commit status ({check}/{POST_COMMIT_POLL_ATTEMPTS})...")
         submission = api_request(sub_url, token, retries=3, delay=10)
+        last_submission = submission
+        last_status = None
         if submission:
             status = submission.get('status') or submission.get('Status')
+            last_status = status
             print(f"  Current Status: {status}")
             if status in ACCEPTED_STATUSES:
                 print("✅ Confirmed: submission accepted by Microsoft Store backend: " + status)
@@ -709,27 +716,20 @@ def verify_commit_status(token, p_id, submission_id):
             if status == 'CommitFailed':
                 report_commit_failure(submission)
                 return None
-        time.sleep(20)
+        if check < POST_COMMIT_POLL_ATTEMPTS:
+            time.sleep(POST_COMMIT_POLL_INTERVAL_SECONDS)
 
-    # The commit POST already succeeded, so a polling timeout is not a
-    # failure: 'CommitStarted' is a normal in-flight state that can persist
-    # longer than the poll window. Only a recognized in-flight status keeps
-    # the release green; missing/unknown statuses remain unverifiable and
-    # fail rather than risk a false success.
-    submission = api_request(sub_url, token, retries=3, delay=10)
-    if submission:
-        status = submission.get('status') or submission.get('Status')
-        if status in IN_FLIGHT_STATUSES:
-            print(
-                f"⚠️  Commit accepted but status is still '{status}' after the poll window. "
-                "Treating as success; final certification status is reported in Partner Center."
-            )
-            return 'unverified'
-        if status in ACCEPTED_STATUSES:
-            print("✅ Confirmed: submission accepted by Microsoft Store backend: " + status)
-            return 'confirmed'
-        if status == 'CommitFailed':
-            report_commit_failure(submission)
+    # The commit POST already succeeded. A recognized final in-flight state
+    # such as CommitStarted is enough to hand certification off to Partner
+    # Center without blocking the release job for several extra minutes.
+    # Missing or unknown final states still fail closed rather than reporting
+    # an unverifiable submission as successful.
+    if last_submission and last_status in IN_FLIGHT_STATUSES:
+        print(
+            f"⚠️  Commit accepted but status is still '{last_status}' after the short poll window. "
+            "Treating as success; final certification status is reported in Partner Center."
+        )
+        return 'unverified'
     return None
 
 def run_submission_flow(repo_root, token, p_id, msix_path):

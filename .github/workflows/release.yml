@@ -7,140 +7,165 @@ on:
   workflow_dispatch:
 
 jobs:
-  build-and-release:
+  build-msix:
     runs-on: windows-latest
+    permissions:
+      contents: read
+    outputs:
+      is_release: ${{ steps.release-trigger.outputs.is_release }}
+
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      # Single source of truth for release triggers. Downstream publishing jobs
+      # consume this output so manual workflow_dispatch runs can validate the
+      # package without creating a GitHub Release or shipping to the Store.
+      - name: Detect Release Trigger
+        id: release-trigger
+        shell: bash
+        run: |
+          if [[ "${{ github.event_name }}" == "push" && "${{ github.ref }}" == refs/tags/v* ]]; then
+            echo "is_release=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "is_release=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Build Main MSIX (NativeAOT)
+        shell: pwsh
+        run: |
+          ./scripts/build_msix.ps1
+          if (-not (Test-Path "./Clickra.msix")) {
+              throw "Main MSIX was not produced."
+          }
+
+      - name: Upload release package
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: clickra-msix
+          path: Clickra.msix
+          if-no-files-found: error
+          retention-days: 7
+
+  github-release:
+    needs: build-msix
+    if: needs.build-msix.outputs.is_release == 'true'
+    runs-on: ubuntu-24.04
     permissions:
       contents: write
 
     steps:
-    - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Download release package
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: clickra-msix
+          path: .
 
-    # Single source of truth for release triggers. All release-only steps
-    # (GitHub Release, Store publish, and any future store-related step)
-    # must gate on this flag so manual workflow_dispatch runs can validate
-    # the packaging without shipping to production.
-    - name: Detect Release Trigger
-      id: release-trigger
-      shell: bash
-      run: |
-        # Release-only steps run only on a version-tag push. Requiring
-        # event_name == 'push' also excludes manual workflow_dispatch runs
-        # that select a v-tag ref, so a human-triggered run can never ship
-        # to the store or create a release.
-        if [[ "${{ github.event_name }}" == "push" && "${{ github.ref }}" == refs/tags/v* ]]; then
-          echo "is_release=true" >> "$GITHUB_OUTPUT"
-        else
-          echo "is_release=false" >> "$GITHUB_OUTPUT"
-        fi
+      - name: Fetch Merged Pull Request Description
+        id: get_pr_desc
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          $commitSha = "${{ github.sha }}"
+          Write-Host "Fetching PR for commit: $commitSha"
+          $prBody = ""
+          try {
+              $pullsJson = gh api "repos/${{ github.repository }}/commits/$commitSha/pulls"
+              $pulls = $pullsJson | ConvertFrom-Json
+              if ($pulls -and $pulls.Count -gt 0) {
+                  $prBody = $pulls[0].body
+                  Write-Host "Found PR #${($pulls[0].number)}: $($pulls[0].title)"
+              }
+          } catch {}
+          if ([string]::IsNullOrWhiteSpace($prBody)) {
+              Write-Host "No direct PR found for commit. Fetching the last merged PR..."
+              try {
+                  $lastPrJson = gh pr list --repo "${{ github.repository }}" --state merged --limit 1 --json body,number,title
+                  $lastPr = $lastPrJson | ConvertFrom-Json
+                  if ($lastPr -and $lastPr.Count -gt 0) {
+                      $prBody = $lastPr[0].body
+                      Write-Host "Found last merged PR #${($lastPr[0].number)}: $($lastPr[0].title)"
+                  }
+              } catch {}
+          }
+          if ([string]::IsNullOrWhiteSpace($prBody)) {
+              $prBody = "No release notes available."
+          }
+          $delimiter = [guid]::NewGuid().ToString()
+          "pr_body<<$delimiter" >> $env:GITHUB_OUTPUT
+          $prBody >> $env:GITHUB_OUTPUT
+          "$delimiter" >> $env:GITHUB_OUTPUT
 
-    - name: Setup .NET
-      uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
-      with:
-        dotnet-version: '10.0.x'
+      - name: Create GitHub Release
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          cat << 'EOF' > release_notes.md
+          ${{ steps.get_pr_desc.outputs.pr_body }}
 
-    # ---- Main MSIX ----
-    # Clickra.msix = Main MSIX (NativeAOT, zero dependency)
-    
-    
+          ---
+          ### 📦 Installation
+          **下載安裝**：
+          下載 `Clickra.msix`（零依賴 NativeAOT，任何 Windows 10+ 機器可直接安裝）。
 
-    - name: Build Main MSIX (NativeAOT)
-      shell: pwsh
-      run: |
-        ./scripts/build_msix.ps1
-        if (-not (Test-Path "./Clickra.msix")) {
-            throw "Main MSIX was not produced."
-        }
+          手動安裝亦可直接下載對應的 MSIX：
 
-    - name: Fetch Merged Pull Request Description
-      id: get_pr_desc
-      shell: pwsh
-      env:
-        GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      run: |
-        $commitSha = "${{ github.sha }}"
-        Write-Host "Fetching PR for commit: $commitSha"
-        $prBody = ""
-        try {
-            $pullsJson = gh api "repos/${{ github.repository }}/commits/$commitSha/pulls"
-            $pulls = $pullsJson | ConvertFrom-Json
-            if ($pulls -and $pulls.Count -gt 0) {
-                $prBody = $pulls[0].body
-                Write-Host "Found PR #${($pulls[0].number)}: $($pulls[0].title)"
-            }
-        } catch {}
-        if ([string]::IsNullOrWhiteSpace($prBody)) {
-            Write-Host "No direct PR found for commit. Fetching the last merged PR..."
-            try {
-                $lastPrJson = gh pr list --state merged --limit 1 --json body,number,title
-                $lastPr = $lastPrJson | ConvertFrom-Json
-                if ($lastPr -and $lastPr.Count -gt 0) {
-                    $prBody = $lastPr[0].body
-                    Write-Host "Found last merged PR #${($lastPr[0].number)}: $($lastPr[0].title)"
-                }
-            } catch {}
-        }
-        if ([string]::IsNullOrWhiteSpace($prBody)) {
-            $prBody = "No release notes available."
-        }
-        $delimiter = [guid]::NewGuid().ToString()
-        "pr_body<<$delimiter" >> $env:GITHUB_OUTPUT
-        $prBody >> $env:GITHUB_OUTPUT
-        "$delimiter" >> $env:GITHUB_OUTPUT
+          - Fluent UI 可從 AOT Dashboard 設定頁面按需從 Store 安裝
 
-    - name: Create GitHub Release
-      if: steps.release-trigger.outputs.is_release == 'true'
-      shell: bash
-      env:
-        GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      run: |
-        cat << 'EOF' > release_notes.md
-        ${{ steps.get_pr_desc.outputs.pr_body }}
+          *Note: These packages are signed with a CI certificate for automation.*
+          EOF
+          gh release create "${{ github.ref_name }}" \
+            Clickra.msix \
+            --title "${{ github.ref_name }}" --notes-file release_notes.md
 
-        ---
-        ### 📦 Installation
-        **下載安裝**：
-        下載 `Clickra.msix`（零依賴 NativeAOT，任何 Windows 10+ 機器可直接安裝）。
+  store-publish:
+    needs: build-msix
+    if: needs.build-msix.outputs.is_release == 'true'
+    runs-on: windows-latest
+    permissions:
+      contents: read
 
-        手動安裝亦可直接下載對應的 MSIX：
-        
-        - Fluent UI 可從 AOT Dashboard 設定頁面按需從 Store 安裝
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
-        *Note: These packages are signed with a CI certificate for automation.*
-        EOF
-        gh release create "${{ github.ref_name }}" \
-          Clickra.msix \
-          --title "${{ github.ref_name }}" --notes-file release_notes.md
+      - name: Download release package
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: clickra-msix
+          path: .
 
-    - name: Setup Microsoft Store Developer CLI
-      uses: microsoft/microsoft-store-apppublisher@cc9910a8d59f2eb55cbb83df0a3800cf3b5300e0 # v1.4
+      - name: Setup Microsoft Store Developer CLI
+        uses: microsoft/microsoft-store-apppublisher@cc9910a8d59f2eb55cbb83df0a3800cf3b5300e0 # v1.4
 
-    - name: Create MSStore Config
-      shell: pwsh
-      env:
-        STORE_TENANT_ID: ${{ secrets.STORE_TENANT_ID }}
-        STORE_CLIENT_ID: ${{ secrets.STORE_CLIENT_ID }}
-        STORE_CLIENT_SECRET: ${{ secrets.STORE_CLIENT_SECRET }}
-        STORE_SELLER_ID: ${{ secrets.STORE_SELLER_ID }}
-        STORE_PRODUCT_ID: ${{ secrets.STORE_PRODUCT_ID }}
-      run: |
-        $config = @{
-            TenantId = $env:STORE_TENANT_ID
-            ClientId = $env:STORE_CLIENT_ID
-            ClientSecret = $env:STORE_CLIENT_SECRET
-            SellerId = $env:STORE_SELLER_ID
-            ProductId = $env:STORE_PRODUCT_ID
-            MsixPath = "Clickra.msix"
-        }
-        $config | ConvertTo-Json | Out-File -FilePath scripts/local_store_config.json -Encoding utf8
+      - name: Create MSStore Config
+        shell: pwsh
+        env:
+          STORE_TENANT_ID: ${{ secrets.STORE_TENANT_ID }}
+          STORE_CLIENT_ID: ${{ secrets.STORE_CLIENT_ID }}
+          STORE_CLIENT_SECRET: ${{ secrets.STORE_CLIENT_SECRET }}
+          STORE_SELLER_ID: ${{ secrets.STORE_SELLER_ID }}
+          STORE_PRODUCT_ID: ${{ secrets.STORE_PRODUCT_ID }}
+        run: |
+          $config = @{
+              TenantId = $env:STORE_TENANT_ID
+              ClientId = $env:STORE_CLIENT_ID
+              ClientSecret = $env:STORE_CLIENT_SECRET
+              SellerId = $env:STORE_SELLER_ID
+              ProductId = $env:STORE_PRODUCT_ID
+              MsixPath = "Clickra.msix"
+          }
+          $config | ConvertTo-Json | Out-File -FilePath scripts/local_store_config.json -Encoding utf8
 
+      - name: Setup Python
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: '3.12'
 
-    - name: Setup Python
-      uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
-      with:
-        python-version: '3.12'
-
-    - name: Publish to Microsoft Store
-      # Only publish to the store on a version tag; a manual workflow_dispatch
-      # must be able to validate the packaging without shipping to production.
-      if: steps.release-trigger.outputs.is_release == 'true'
-      run: python scripts/publish_store.py
+      - name: Publish to Microsoft Store
+        run: python scripts/publish_store.py
