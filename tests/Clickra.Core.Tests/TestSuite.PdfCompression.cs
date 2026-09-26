@@ -175,8 +175,12 @@ static partial class TestSuite
                 ClickraStorage.SaveSetting(ClickraSettings.PdfCompressImageLevel, "2");
                 Assert.Equal(LevelHigh, (string)ConvertCommandRegistry.CompressionOptions()[LevelKey]);
 
-                // Values outside 0-2 fall back to the default (balanced)
+                // Level 3 was the previous UI's duplicate High stop; preserve that user preference.
                 ClickraStorage.SaveSetting(ClickraSettings.PdfCompressImageLevel, "3");
+                Assert.Equal(LevelHigh, (string)ConvertCommandRegistry.CompressionOptions()[LevelKey]);
+
+                // Other values outside 0-2 fall back to the registered default (balanced).
+                ClickraStorage.SaveSetting(ClickraSettings.PdfCompressImageLevel, "4");
                 Assert.Equal(LevelBalanced, (string)ConvertCommandRegistry.CompressionOptions()[LevelKey]);
             }
             finally

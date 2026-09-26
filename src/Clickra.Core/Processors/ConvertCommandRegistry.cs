@@ -179,6 +179,11 @@ public static class ConvertCommandRegistry
         public static int GetPdfCompressLevel()
         {
             int level = ClickraStorage.GetSettingInt(ClickraSettings.PdfCompressImageLevel);
+            if (level == 3)
+            {
+                return 2;
+            }
+
             return level >= 0 && level <= 2
                 ? level
                 : ClickraSettings.GetDefaultInt(ClickraSettings.PdfCompressImageLevel);
