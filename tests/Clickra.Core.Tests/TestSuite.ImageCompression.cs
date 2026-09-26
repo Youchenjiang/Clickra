@@ -9,6 +9,9 @@ namespace Clickra.Core.Tests;
 
 static partial class TestSuite
 {
+    private const string ImageCompressionLevelKey = "level";
+    private const string ImageCompressionQualityKey = "quality";
+
     public static void RegisterImageCompressionTests(TestRunner runner)
     {
         runner.Run("Image compression presets live in one table shared by the processor and the UIs", () =>
@@ -63,23 +66,23 @@ static partial class TestSuite
             {
                 ClickraStorage.SaveSetting(ClickraSettings.ImageCompressLevel, "0");
                 var opt0 = ConvertCommandRegistry.ImageCompressionOptions();
-                Assert.Equal(ImageCompressionOptions.OptionMin, (string)opt0["level"]);
-                Assert.Equal(ImageCompressionOptions.GetQuality(ImageCompressionLevel.Minimum), (int)opt0["quality"]);
+                Assert.Equal(ImageCompressionOptions.OptionMin, (string)opt0[ImageCompressionLevelKey]);
+                Assert.Equal(ImageCompressionOptions.GetQuality(ImageCompressionLevel.Minimum), (int)opt0[ImageCompressionQualityKey]);
 
                 ClickraStorage.SaveSetting(ClickraSettings.ImageCompressLevel, "1");
                 var opt1 = ConvertCommandRegistry.ImageCompressionOptions();
-                Assert.Equal(ImageCompressionOptions.OptionSmall, (string)opt1["level"]);
-                Assert.Equal(ImageCompressionOptions.GetQuality(ImageCompressionLevel.Small), (int)opt1["quality"]);
+                Assert.Equal(ImageCompressionOptions.OptionSmall, (string)opt1[ImageCompressionLevelKey]);
+                Assert.Equal(ImageCompressionOptions.GetQuality(ImageCompressionLevel.Small), (int)opt1[ImageCompressionQualityKey]);
 
                 ClickraStorage.SaveSetting(ClickraSettings.ImageCompressLevel, "2");
                 var opt2 = ConvertCommandRegistry.ImageCompressionOptions();
-                Assert.Equal(ImageCompressionOptions.OptionStandard, (string)opt2["level"]);
-                Assert.Equal(ImageCompressionOptions.GetQuality(ImageCompressionLevel.Standard), (int)opt2["quality"]);
+                Assert.Equal(ImageCompressionOptions.OptionStandard, (string)opt2[ImageCompressionLevelKey]);
+                Assert.Equal(ImageCompressionOptions.GetQuality(ImageCompressionLevel.Standard), (int)opt2[ImageCompressionQualityKey]);
 
                 ClickraStorage.SaveSetting(ClickraSettings.ImageCompressLevel, "3");
                 var opt3 = ConvertCommandRegistry.ImageCompressionOptions();
-                Assert.Equal(ImageCompressionOptions.OptionHigh, (string)opt3["level"]);
-                Assert.Equal(ImageCompressionOptions.GetQuality(ImageCompressionLevel.High), (int)opt3["quality"]);
+                Assert.Equal(ImageCompressionOptions.OptionHigh, (string)opt3[ImageCompressionLevelKey]);
+                Assert.Equal(ImageCompressionOptions.GetQuality(ImageCompressionLevel.High), (int)opt3[ImageCompressionQualityKey]);
             }
             finally
             {
