@@ -13,7 +13,7 @@ jobs:
       contents: write
 
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
     # Single source of truth for release triggers. All release-only steps
     # (GitHub Release, Store publish, and any future store-related step)
@@ -34,7 +34,7 @@ jobs:
         fi
 
     - name: Setup .NET
-      uses: actions/setup-dotnet@v4
+      uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
       with:
         dotnet-version: '10.0.x'
 
@@ -112,7 +112,7 @@ jobs:
           --title "${{ github.ref_name }}" --notes-file release_notes.md
 
     - name: Setup Microsoft Store Developer CLI
-      uses: microsoft/microsoft-store-apppublisher@b76227f539d68e6465f79bbbc82ed92f61081aa4 # v1.3
+      uses: microsoft/microsoft-store-apppublisher@cc9910a8d59f2eb55cbb83df0a3800cf3b5300e0 # v1.4
 
     - name: Create MSStore Config
       shell: pwsh
@@ -135,7 +135,7 @@ jobs:
 
 
     - name: Setup Python
-      uses: actions/setup-python@v5
+      uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
       with:
         python-version: '3.12'
 
