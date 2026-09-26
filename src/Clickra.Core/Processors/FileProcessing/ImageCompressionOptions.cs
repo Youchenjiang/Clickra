@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 
 namespace Clickra.Core.Processors;
 
@@ -9,49 +10,44 @@ public static class ImageCompressionOptions
     public const string OptionStandard = "std";
     public const string OptionHigh = "high";
 
+    private static readonly IReadOnlyDictionary<string, ImageCompressionLevel> LevelAliases =
+        new Dictionary<string, ImageCompressionLevel>(StringComparer.OrdinalIgnoreCase)
+        {
+            ["min"] = ImageCompressionLevel.Minimum,
+            ["minimum"] = ImageCompressionLevel.Minimum,
+            ["low"] = ImageCompressionLevel.Minimum,
+            ["0"] = ImageCompressionLevel.Minimum,
+            ["最小"] = ImageCompressionLevel.Minimum,
+            ["small"] = ImageCompressionLevel.Small,
+            ["compact"] = ImageCompressionLevel.Small,
+            ["1"] = ImageCompressionLevel.Small,
+            ["小"] = ImageCompressionLevel.Small,
+            ["小檔案"] = ImageCompressionLevel.Small,
+            ["小文件"] = ImageCompressionLevel.Small,
+            ["std"] = ImageCompressionLevel.Standard,
+            ["standard"] = ImageCompressionLevel.Standard,
+            ["balanced"] = ImageCompressionLevel.Standard,
+            ["medium"] = ImageCompressionLevel.Standard,
+            ["2"] = ImageCompressionLevel.Standard,
+            ["標準"] = ImageCompressionLevel.Standard,
+            ["标准"] = ImageCompressionLevel.Standard,
+            ["high"] = ImageCompressionLevel.High,
+            ["maximum"] = ImageCompressionLevel.High,
+            ["max"] = ImageCompressionLevel.High,
+            ["3"] = ImageCompressionLevel.High,
+            ["高品質"] = ImageCompressionLevel.High,
+            ["高质量"] = ImageCompressionLevel.High
+        };
+
     public static bool TryParseLevel(string? value, out ImageCompressionLevel level)
     {
         level = ImageCompressionLevel.Small;
         if (string.IsNullOrWhiteSpace(value))
-            return true;
-
-        switch (value.Trim().ToLowerInvariant())
         {
-            case "min":
-            case "minimum":
-            case "low":
-            case "0":
-            case "最小":
-                level = ImageCompressionLevel.Minimum;
-                return true;
-            case "small":
-            case "compact":
-            case "1":
-            case "小":
-            case "小檔案":
-            case "小文件":
-                level = ImageCompressionLevel.Small;
-                return true;
-            case "std":
-            case "standard":
-            case "balanced":
-            case "medium":
-            case "2":
-            case "標準":
-            case "标准":
-                level = ImageCompressionLevel.Standard;
-                return true;
-            case "high":
-            case "maximum":
-            case "max":
-            case "3":
-            case "高品質":
-            case "高质量":
-                level = ImageCompressionLevel.High;
-                return true;
-            default:
-                return false;
+            return true;
         }
+
+        return LevelAliases.TryGetValue(value.Trim(), out level);
     }
 
     /// <summary>Maps a 0-3 slider position to the image compression level it selects.</summary>
