@@ -223,32 +223,69 @@ static partial class TestSuite
 
         runner.Run("LibreOffice uninstall refuses an installation Clickra did not make", () =>
         {
-            const string provenanceKey = "LibreOfficeInstalledByClickra";
-            string oldValue = ClickraStorage.GetSetting(provenanceKey);
+            string oldValue = ClickraStorage.GetSetting(ClickraSettings.LibreOfficeInstalledByClickra);
             try
             {
-                ClickraStorage.SaveSetting(provenanceKey, "false");
-                Assert.False(
-                    LibreOfficeEngineInstaller.WasInstalledByClickra(),
-                    "An unmarked installation must not be treated as Clickra-owned.");
+                LibreOfficeEngineInstaller.MarkInstalledByClickra(false);
+                Assert.False(LibreOfficeEngineInstaller.WasInstalledByClickra(),
+                    "An unmarked installation must not be treated as Clickra's.");
 
+                // The guard has to fire before any installer work, which also keeps this safe on a
+                // developer machine that really has a LibreOffice installed.
                 InvalidOperationException refusal = Assert.Throws<InvalidOperationException>(() =>
-                    LibreOfficeEngineInstaller.UninstallSystemLibreOfficeAsync(CancellationToken.None)
-                        .GetAwaiter()
-                        .GetResult());
+                    LibreOfficeEngineInstaller.UninstallSystemLibreOfficeAsync(CancellationToken.None).GetAwaiter().GetResult());
+                Assert.True(refusal.Message.Contains("not installed by Clickra", StringComparison.OrdinalIgnoreCase),
+                    $"The refusal must say who owns the installation, got: {refusal.Message}");
 
-                Assert.True(
-                    refusal.Message.Contains("not installed by Clickra", StringComparison.OrdinalIgnoreCase),
-                    $"The refusal must explain installation ownership, got: {refusal.Message}");
+                LibreOfficeEngineInstaller.MarkInstalledByClickra(true);
+                Assert.True(LibreOfficeEngineInstaller.WasInstalledByClickra(),
+                    "A LibreOffice Clickra installed must be recorded as Clickra's.");
 
-                ClickraStorage.SaveSetting(provenanceKey, "true");
-                Assert.True(
-                    LibreOfficeEngineInstaller.WasInstalledByClickra(),
-                    "The existing provenance flag must allow Clickra-owned installations.");
+                LibreOfficeEngineInstaller.MarkInstalledByClickra(false);
+                Assert.False(LibreOfficeEngineInstaller.WasInstalledByClickra(),
+                    "Removing it again must clear the provenance flag.");
             }
             finally
             {
-                ClickraStorage.SaveSetting(provenanceKey, oldValue);
+                ClickraStorage.SaveSetting(ClickraSettings.LibreOfficeInstalledByClickra, oldValue);
+            }
+        });
+
+        runner.Run("LibreOffice ownership guard protects both UIs while CLI exposes ownership state", () =>
+        {
+            string? root = FindRepoRoot();
+            if (root is null) throw new TestSkippedException("Could not locate the repository root from the test output directory.");
+
+            string fluent = File.ReadAllText(Path.Combine(root, "src", "Clickra.Fluent", "MainPage.xaml.cs"));
+            string cliEvents = File.ReadAllText(Path.Combine(root, "src", "Clickra.CLI", "Dashboard", "DashboardWindow.Events.Click.cs"));
+            string cliPaint = File.ReadAllText(Path.Combine(root, "src", "Clickra.CLI", "Dashboard", "DashboardWindow.Paint.Settings.cs"));
+            string settings = File.ReadAllText(Path.Combine(root, "src", "Clickra.Core", "Storage", "ClickraSettings.cs"));
+
+            // Both UIs ultimately route removal through the Core method above, whose first action is the
+            // ownership check. Fluent's broader settings-registry migration is intentionally a later PR.
+            Assert.True(fluent.Contains("LibreOfficeEngineInstaller.UninstallSystemLibreOfficeAsync", StringComparison.Ordinal),
+                "Fluent must route removal through the ownership-guarded Core uninstaller.");
+
+            Assert.True(cliEvents.Contains("LibreOfficeEngineInstaller.WasInstalledByClickra()", StringComparison.Ordinal),
+                "The legacy CLI must refuse a user-managed LibreOffice before presenting its uninstall path.");
+            Assert.True(cliEvents.Contains("LibreOfficeEngineInstaller.MarkInstalledByClickra", StringComparison.Ordinal),
+                "The legacy CLI must record provenance through the shared accessor.");
+            Assert.False(cliEvents.Contains("SaveSetting(\"LibreOfficeInstalledByClickra\"", StringComparison.Ordinal),
+                "The legacy CLI must not write the provenance key directly.");
+
+            Assert.True(cliPaint.Contains("LibreOfficeEngineInstaller.WasInstalledByClickra()", StringComparison.Ordinal) &&
+                        cliPaint.Contains("setting_libreoffice_external_hint", StringComparison.Ordinal),
+                "The CLI settings page must hide the uninstall button and explain why.");
+
+            Assert.True(settings.Contains("public const string LibreOfficeInstalledByClickra", StringComparison.Ordinal),
+                "The shared ownership key must be registered in ClickraSettings.");
+
+            foreach (string key in new[] { "setting_libreoffice_external_note", "setting_libreoffice_external_hint" })
+            {
+                foreach (string lang in new[] { "zh-TW", "zh-CN", "en-US", "ja-JP", "ko-KR" })
+                {
+                    Assert.True(Localization.T(key, lang) != key, $"{key} must be translated in {lang}.");
+                }
             }
         });
     }

@@ -32,7 +32,7 @@ namespace Clickra.UI
 
             bool microsoftReady = IsOfficeInstalled("Word") && IsOfficeInstalled("Excel") && IsOfficeInstalled("PowerPoint");
             bool libreOfficeReady = !string.IsNullOrEmpty(LibreOfficeHelper.GetResolvedExecutablePath());
-            string engineMode = ClickraStorage.GetSetting("OfficeEngine");
+            string engineMode = ClickraStorage.GetSetting(ClickraSettings.OfficeEngine);
             bool isLibreOfficeMode = engineMode.Equals("libreoffice", StringComparison.OrdinalIgnoreCase);
             bool isMicrosoftMode = engineMode.Equals("microsoft", StringComparison.OrdinalIgnoreCase);
             bool officeReady = isLibreOfficeMode

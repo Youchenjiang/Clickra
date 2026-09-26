@@ -200,7 +200,7 @@ namespace Clickra.UI
             float relX = sliderMouseX - _pdfSliderTrackX;
             float fraction = Math.Max(0f, Math.Min(1f, relX / _pdfSliderTrackW));
             int newLevel = (int)Math.Max(0, Math.Min(3, Math.Floor(fraction * 4)));
-            string current = ClickraStorage.GetSetting("PdfCompressImageLevel");
+            string current = ClickraStorage.GetSetting(ClickraSettings.PdfCompressImageLevel);
             if (current != newLevel.ToString())
             {
                 ApplyPdfCompressLevel(hwnd, newLevel);

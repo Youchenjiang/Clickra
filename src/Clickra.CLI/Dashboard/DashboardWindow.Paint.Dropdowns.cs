@@ -16,7 +16,7 @@ namespace Clickra.UI
         static void DrawLanguageDropdown(Graphics g, int y, float contentX)
         {
             float s = _dpiScale;
-            string currentLangCode = ClickraStorage.GetSetting("Language");
+            string currentLangCode = ClickraStorage.GetSetting(ClickraSettings.Language);
             currentLangCode = Clickra.Core.Localization.NormalizeLanguageCode(currentLangCode);
             
             var currentLang = SupportedLanguages.FirstOrDefault(l => l.Code.Equals(currentLangCode, StringComparison.OrdinalIgnoreCase));
@@ -143,13 +143,13 @@ namespace Clickra.UI
 
         static void SelectLanguage(string code)
         {
-            ClickraStorage.SaveSetting("Language", code);
+            ClickraStorage.SaveSetting(ClickraSettings.Language, code);
             RecreateScaledFonts();
         }
 
         static string GetText(string key)
         {
-            return Clickra.Core.Localization.T(key, ClickraStorage.GetSetting("Language"));
+            return Clickra.Core.Localization.T(key, ClickraStorage.GetSetting(ClickraSettings.Language));
         }
 
 
@@ -158,7 +158,7 @@ namespace Clickra.UI
         {
             float s = _dpiScale;
 
-            string currentLang = ClickraStorage.GetSetting("TranslateTargetLang");
+            string currentLang = ClickraStorage.GetSetting(ClickraSettings.TranslateTargetLang);
             if (string.IsNullOrEmpty(currentLang)) currentLang = "zh-TW";
 
             string displayText = currentLang;

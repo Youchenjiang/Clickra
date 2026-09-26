@@ -30,8 +30,6 @@ namespace Clickra.Core.Processors
 
     public static class LibreOfficeEngineInstaller
     {
-        private const string InstalledByClickraSetting = "LibreOfficeInstalledByClickra";
-
         public static readonly LibreOfficeEngineManifest BuiltInManifest = new(
             Schema: 1,
             LibreOffice: new LibreOfficeEnginePackage(
@@ -45,10 +43,16 @@ namespace Clickra.Core.Processors
 
         public static LibreOfficeEnginePackage RecommendedPackage => BuiltInManifest.LibreOffice;
 
-        /// <summary>True only when Clickra recorded ownership of the installed LibreOffice.</summary>
+        /// <summary>True when Clickra installed the LibreOffice that is present now. A missing or
+        /// unparsable value means "not ours", so a user-managed installation is never removed.</summary>
         public static bool WasInstalledByClickra() =>
-            ClickraStorage.GetSetting(InstalledByClickraSetting)
-                .Equals("true", StringComparison.OrdinalIgnoreCase);
+            ClickraStorage.GetSettingBool(ClickraSettings.LibreOfficeInstalledByClickra);
+
+        /// <summary>Records the provenance of the system LibreOffice after Clickra installs or removes it.</summary>
+        public static void MarkInstalledByClickra(bool installed) =>
+            ClickraStorage.SaveSetting(
+                ClickraSettings.LibreOfficeInstalledByClickra,
+                installed ? ClickraSettings.ValueTrue : ClickraSettings.ValueFalse);
 
         private static readonly HttpClient HttpClient = new()
         {
@@ -186,8 +190,9 @@ namespace Clickra.Core.Processors
 
         public static async Task<LibreOfficeUninstallResult> UninstallSystemLibreOfficeAsync(CancellationToken cancellationToken)
         {
-            // The registry lookup below can find a LibreOffice the user installed independently.
-            // Refuse before starting msiexec unless Clickra already recorded that it owns it.
+            // Single choke point for the invariant: Clickra only ever removes a LibreOffice it installed
+            // itself. The registry lookup below matches any LibreOffice MSI, including one the user
+            // installed for their own work, so this check has to run before any uninstaller work.
             if (!WasInstalledByClickra())
                 throw new InvalidOperationException(
                     "Refusing to uninstall: this LibreOffice was not installed by Clickra, so it is managed by the user.");

@@ -74,7 +74,7 @@ namespace Clickra.UI
 
             if (_subFont != null)
             {
-                string lang = ClickraStorage.GetSetting("Language");
+                string lang = ClickraStorage.GetSetting(ClickraSettings.Language);
                 string subText;
                 if (hasErr) subText = "作業失敗";
                 else if (comp) subText = "作業完成";
@@ -107,7 +107,7 @@ namespace Clickra.UI
                 string displayErrMsg = errMsg;
                 if (displayErrMsg.Equals("User Aborted", StringComparison.OrdinalIgnoreCase))
                 {
-                    displayErrMsg = Localization.T("error_user_aborted", ClickraStorage.GetSetting("Language"));
+                    displayErrMsg = Localization.T("error_user_aborted", ClickraStorage.GetSetting(ClickraSettings.Language));
                 }
                 g.DrawString(displayErrMsg, _msgFont, errMsgBrush, new RectangleF(36 * s, 170 * s, 448 * s, 60 * s));
             }
@@ -143,7 +143,7 @@ namespace Clickra.UI
             }
             else if (_msgFont != null)
             {
-                string lang = ClickraStorage.GetSetting("Language");
+                string lang = ClickraStorage.GetSetting(ClickraSettings.Language);
                 string promptFormat = isRetry
                     ? Localization.T("pdf_password_retry", lang)
                     : Localization.T("pdf_password_prompt", lang);
@@ -300,7 +300,7 @@ namespace Clickra.UI
             // Draw custom tooltip next to the button when hovered
             if (_isTrayBtnHovered && _tipFont != null)
             {
-                string lang = ClickraStorage.GetSetting("Language");
+                string lang = ClickraStorage.GetSetting(ClickraSettings.Language);
                 string tooltipText = Localization.T("progress_background", lang);
                 var tSize = g.MeasureString(tooltipText, _tipFont);
                 float tx = btnRect.X - tSize.Width - 10 * s;

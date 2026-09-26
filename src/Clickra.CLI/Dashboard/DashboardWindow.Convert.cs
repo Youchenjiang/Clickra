@@ -206,7 +206,7 @@ namespace Clickra.UI
                     }
                     g.DrawString(joinedNames, _subFont, listBrush, (zoneX + 20) * s, (zoneY + 50) * s);
 
-                    string outDirMode = ClickraStorage.GetSetting("OutputDir");
+                    string outDirMode = ClickraStorage.GetSetting(ClickraSettings.OutputDir);
                     string outPathDesc = outDirMode.ToLowerInvariant() switch
                     {
                         "desktop" => GetText("setting_output_desktop"),
