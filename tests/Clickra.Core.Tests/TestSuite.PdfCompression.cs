@@ -20,7 +20,6 @@ static partial class TestSuite
         const string LevelSmall = "small";
         const string LevelBalanced = "balanced";
         const string LevelHigh = "high";
-        const string SettingPdfCompressImageLevel = "PdfCompressImageLevel";
 
         runner.Run("PDF compression parses user-facing level aliases", () =>
         {
@@ -139,11 +138,10 @@ static partial class TestSuite
 
         runner.Run("PDF compression presets live in one table shared by the processor and the UIs", () =>
         {
-            // The 0-3 slider maps onto the three levels; the top two stops both mean "high".
+            // The 0-2 slider maps onto the three levels.
             Assert.True(PdfCompressionOptions.FromSliderLevel(0) == PdfCompressionLevel.Small, "Slider 0 must mean small.");
             Assert.True(PdfCompressionOptions.FromSliderLevel(1) == PdfCompressionLevel.Balanced, "Slider 1 must mean balanced.");
             Assert.True(PdfCompressionOptions.FromSliderLevel(2) == PdfCompressionLevel.HighQuality, "Slider 2 must mean high quality.");
-            Assert.True(PdfCompressionOptions.FromSliderLevel(3) == PdfCompressionLevel.HighQuality, "Slider 3 must mean high quality.");
             Assert.Equal(LevelSmall, PdfCompressionOptions.ToOptionName(PdfCompressionLevel.Small));
             Assert.Equal(LevelBalanced, PdfCompressionOptions.ToOptionName(PdfCompressionLevel.Balanced));
             Assert.Equal(LevelHigh, PdfCompressionOptions.ToOptionName(PdfCompressionLevel.HighQuality));
@@ -165,26 +163,54 @@ static partial class TestSuite
             }
 
             // ConvertCommandRegistry.CompressionOptions maps slider settings directly to preset levels
-            string origLevel = ClickraStorage.GetSetting(SettingPdfCompressImageLevel);
+            string origLevel = ClickraStorage.GetSetting(ClickraSettings.PdfCompressImageLevel);
             try
             {
-                ClickraStorage.SaveSetting(SettingPdfCompressImageLevel, "0");
+                ClickraStorage.SaveSetting(ClickraSettings.PdfCompressImageLevel, "0");
                 Assert.Equal(LevelSmall, (string)ConvertCommandRegistry.CompressionOptions()[LevelKey]);
 
-                ClickraStorage.SaveSetting(SettingPdfCompressImageLevel, "1");
+                ClickraStorage.SaveSetting(ClickraSettings.PdfCompressImageLevel, "1");
                 Assert.Equal(LevelBalanced, (string)ConvertCommandRegistry.CompressionOptions()[LevelKey]);
 
-                ClickraStorage.SaveSetting(SettingPdfCompressImageLevel, "2");
+                ClickraStorage.SaveSetting(ClickraSettings.PdfCompressImageLevel, "2");
                 Assert.Equal(LevelHigh, (string)ConvertCommandRegistry.CompressionOptions()[LevelKey]);
 
-                ClickraStorage.SaveSetting(SettingPdfCompressImageLevel, "3");
+                // Level 3 was the previous UI's duplicate High stop; preserve that user preference.
+                ClickraStorage.SaveSetting(ClickraSettings.PdfCompressImageLevel, "3");
                 Assert.Equal(LevelHigh, (string)ConvertCommandRegistry.CompressionOptions()[LevelKey]);
+
+                // Other values outside 0-2 fall back to the registered default (balanced).
+                ClickraStorage.SaveSetting(ClickraSettings.PdfCompressImageLevel, "4");
+                Assert.Equal(LevelBalanced, (string)ConvertCommandRegistry.CompressionOptions()[LevelKey]);
             }
             finally
             {
-                ClickraStorage.SaveSetting(SettingPdfCompressImageLevel, origLevel);
+                ClickraStorage.SaveSetting(ClickraSettings.PdfCompressImageLevel, origLevel);
             }
         });
+
+        runner.Run("PDF compression slider surfaces expose exactly three presets", TestPdfCompressionSliderSurfaces);
+    }
+
+    private static void TestPdfCompressionSliderSurfaces()
+    {
+        string root = FindRepoRoot() ?? throw new TestSkippedException(
+            "Could not locate the repository root from the test output directory.");
+        string fluentXaml = File.ReadAllText(Path.Combine(root, "src", "Clickra.Fluent", "MainPage.xaml"));
+        string cliPaint = File.ReadAllText(Path.Combine(root, "src", "Clickra.CLI", "Dashboard", "DashboardWindow.Paint.Settings.cs"));
+        string cliClick = File.ReadAllText(Path.Combine(root, "src", "Clickra.CLI", "Dashboard", "DashboardWindow.Events.Click.cs"));
+        string cliDrag = File.ReadAllText(Path.Combine(root, "src", "Clickra.CLI", "Dashboard", "DashboardWindow.Events.cs"));
+
+        Assert.True(fluentXaml.Contains("x:Name=\"CompressionSlider\" Minimum=\"0\" Maximum=\"2\" Value=\"1\"", StringComparison.Ordinal),
+            "Fluent PDF compression must expose only the three 0-2 preset positions.");
+        Assert.True(cliPaint.Contains("const int stops = 3;", StringComparison.Ordinal),
+            "The legacy dashboard must render exactly three PDF compression stops.");
+        Assert.False(cliPaint.Contains("GetText(\"setting_pdf_compress_level_min\")", StringComparison.Ordinal),
+            "The retired fourth/minimum slider label must not be rendered.");
+        Assert.True(cliClick.Contains("Math.Round(fraction * 2", StringComparison.Ordinal),
+            "Dashboard slider clicks must snap to the same three preset positions.");
+        Assert.True(cliDrag.Contains("Math.Round(fraction * 2", StringComparison.Ordinal),
+            "Dashboard slider dragging must snap to the same three preset positions.");
     }
 
     private static void RunWithTempFiles(Action<string, string> testAction)

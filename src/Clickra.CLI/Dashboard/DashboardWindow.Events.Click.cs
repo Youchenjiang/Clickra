@@ -782,10 +782,10 @@ namespace Clickra.UI
         {
             if (element == 83)
             {
-                // PDF compress slider clicked — snap to nearest of 4 stops via equal-width segments + enable drag
+                // PDF compress slider clicked — snap to nearest of 3 stops via equal-width segments + enable drag
                 float relX = adjMouseX - _pdfSliderTrackX;
                 float fraction = Math.Max(0f, Math.Min(1f, relX / _pdfSliderTrackW));
-                int newLevel = (int)Math.Max(0, Math.Min(3, Math.Round(fraction * 3, MidpointRounding.AwayFromZero)));
+                int newLevel = (int)Math.Max(0, Math.Min(2, Math.Round(fraction * 2, MidpointRounding.AwayFromZero)));
                 ApplyPdfCompressLevel(hwnd, newLevel);
                 _isDraggingPdfSlider = true;
                 SetCapture(hwnd);

@@ -433,7 +433,7 @@
                                 <TextBlock x:Name="PdfCompressionTitle" Text="PDF 壓縮" FontSize="15" FontWeight="SemiBold"/>
                                 <Grid ColumnSpacing="12">
                                     <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
-                                    <Slider x:Name="CompressionSlider" Minimum="0" Maximum="3" Value="1"/>
+                                    <Slider x:Name="CompressionSlider" Minimum="0" Maximum="2" Value="1"/>
                                     <TextBlock x:Name="CompressionLabel" Grid.Column="1" Text="標準" VerticalAlignment="Center"/>
                                 </Grid>
                                 <Grid ColumnSpacing="16">

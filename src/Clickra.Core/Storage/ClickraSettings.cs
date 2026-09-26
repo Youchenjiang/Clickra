@@ -71,7 +71,7 @@ public static class ClickraSettings
         new ClickraSetting(LibreOfficeRemovalPendingRestart, ValueFalse, "LibreOffice 已排程移除，等待 Windows 重新啟動"),
         new ClickraSetting(LibreOfficeInstalledByClickra, ValueFalse, "這台機器上的 LibreOffice 是否由 Clickra 安裝"),
         new ClickraSetting(TranslateTargetLang, DefaultTranslateTargetLang, "PDF 翻譯目標語言"),
-        new ClickraSetting(PdfCompressImageLevel, DefaultPdfCompressLevel, "PDF 圖片壓縮等級 0-3（1 = 平衡）"),
+        new ClickraSetting(PdfCompressImageLevel, DefaultPdfCompressLevel, "PDF 圖片壓縮等級 0-2（1 = 平衡）"),
         new ClickraSetting(PdfCompressStripFonts, ValueFalse, "壓縮 PDF 時移除嵌入字型"),
         new ClickraSetting(PdfCompressMinifyContent, ValueTrue, "壓縮 PDF 時最佳化結構"),
         new ClickraSetting(ImageCompressLevel, DefaultImageCompressLevel, "圖片壓縮品質等級 0-3"),

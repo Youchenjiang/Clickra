@@ -520,7 +520,7 @@ namespace Clickra.UI
         static void DrawCompressSlider(Graphics g, float x, float y, float w, int level)
         {
             float s = _dpiScale;
-            const int stops = 4;
+            const int stops = 3;
             float trackY = y + 18f;   // guidance labels occupy top 18px
             float trackH = 5f;
             Color accent = UIHelper.GetSystemColorizationColor();
@@ -557,7 +557,6 @@ namespace Clickra.UI
             // Stop dots + labels below from localization
             string[] stopLabels = new[]
             {
-                GetText("setting_pdf_compress_level_min"),
                 GetText("setting_pdf_compress_level_small"),
                 GetText("setting_pdf_compress_level_std"),
                 GetText("setting_pdf_compress_level_high")
