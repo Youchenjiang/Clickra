@@ -211,7 +211,6 @@ public sealed partial class MainPage : Page
         SettingsLayout.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
 
         // 兩欄排列；宣告 ColumnSpan=2 的卡片（暫存保留、LibreOffice）各獨占一整列。
-        var placements = new List<(FrameworkElement Card, int Row, int Column)>();
         int row = 0;
         int column = 0;
         foreach (var card in cards)
@@ -222,22 +221,19 @@ public sealed partial class MainPage : Page
                 row++;
                 column = 0;
             }
-            placements.Add((card, row, column));
+
+            while (SettingsLayout.RowDefinitions.Count <= row)
+            {
+                SettingsLayout.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+            }
+
+            Grid.SetRow(card, row);
+            Grid.SetColumn(card, column);
             if (fullWidth || ++column == 2)
             {
                 row++;
                 column = 0;
             }
-        }
-
-        for (var i = 0; i < placements[^1].Row + 1; i++)
-        {
-            SettingsLayout.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
-        }
-        foreach (var (card, cardRow, cardColumn) in placements)
-        {
-            Grid.SetRow(card, cardRow);
-            Grid.SetColumn(card, cardColumn);
         }
     }
 
