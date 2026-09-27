@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Runtime.InteropServices;
+using Clickra.Core;
 using Clickra.Core.Processors;
 
 namespace Clickra
@@ -16,6 +17,14 @@ namespace Clickra
 
         const int ATTACH_PARENT_PROCESS = -1;
 
+        private static string CurrentLanguage => ClickraStorage.GetSetting(ClickraSettings.Language);
+
+        internal static string Loc(string key, params object[] args)
+        {
+            string t = Localization.T(key, CurrentLanguage);
+            return args.Length > 0 ? string.Format(t, args) : t;
+        }
+
         /// <summary>Filters out files whose extension is not allowed for the command,
         /// warning or failing depending on quiet mode.</summary>
         internal static void ValidateExtensions(List<string> files, string command, bool quiet, params string[] allowed)
@@ -28,9 +37,9 @@ namespace Clickra
             {
                 string allowedList = string.Join(", ", allowed);
                 string invalidList = string.Join("\n  ", invalid.Select(Path.GetFileName));
-                string msg = $"指令\u300c{command}\u300d\u53ea\u63a5\u53d7\u4ee5\u4e0b\u683c\u5f0f\uff1a{allowedList}\n\n\u4ee5\u4e0b\u6a94\u6848\u683c\u5f0f\u4e0d\u7b26\uff0c\u5df2\u4e2d\u6b62\u57f7\u884c\uff1a\n  {invalidList}";
-                Console.WriteLine("[錯誤] " + msg);
-                if (!quiet) ShowWarning(msg, "Clickra — 格式錯誤");
+                string msg = Loc("cli_err_invalid_format", command, allowedList, invalidList);
+                Console.WriteLine(Loc("cli_err_prefix") + msg);
+                if (!quiet) ShowWarning(msg, Loc("cli_err_invalid_format_title"));
                 Environment.Exit(1);
             }
         }
@@ -119,7 +128,7 @@ namespace Clickra
                     {
                         if (i + 1 >= args.Count)
                         {
-                            Console.WriteLine($"[錯誤] 參數「{optionName}」需要指定資料夾。");
+                            Console.WriteLine(Loc("cli_err_prefix") + Loc("cli_err_option_requires_dir", optionName));
                             args.RemoveAt(i);
                             return null;
                         }
@@ -147,9 +156,9 @@ namespace Clickra
         {
             if (files.Count < min)
             {
-                string msg = $"指令「{command}」至少需要 {min} 個檔案，但您只傳入了 {files.Count} 個。\n\n請多選幾個檔案後，再透過「傳送到」執行。";
-                Console.WriteLine("[錯誤] " + msg);
-                if (!quiet) ShowWarning(msg, "Clickra — 檔案數量不足");
+                string msg = Loc("cli_err_min_files", command, min, files.Count);
+                Console.WriteLine(Loc("cli_err_prefix") + msg);
+                if (!quiet) ShowWarning(msg, Loc("cli_err_min_files_title"));
                 Environment.Exit(1);
             }
         }
