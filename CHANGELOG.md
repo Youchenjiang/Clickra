@@ -1,5 +1,13 @@
 # Changelog
 
+## [v3.9.0.0] - 2026-09-28
+
+- **CLI 多語系支援 (CLI Localization)**：命令列介面的說明、狀態與錯誤訊息擴充為繁體中文、簡體中文、英文、日文與韓文，並以共用 Core localization 資源維持一致。
+- **診斷郵件在地化 (Diagnostics Email Localization)**：診斷郵件的主旨與內容會依目前語系產生對應文字，降低跨語系支援時的理解成本。
+- **系統匣與視覺分割器在地化 (Tray / Visual Splitter Localization)**：系統匣提示、還原操作與 Visual PDF Splitter 的按鈕、區段、頁數與預覽標籤全面改用共用翻譯資源。
+- **翻譯完整性檢查 (Translation Gap Diagnostics)**：新增缺漏翻譯偵測、分語系報告與完整字典 parity 測試，避免新增功能只補到部分語言。
+- **發佈可靠性 (Release Reliability)**：GitHub Release 建立流程與 public PR governance 進一步收斂，降低 release target 與公開分支歷史被誤操作的風險。
+
 ## [v3.8.1.0] - 2026-09-27
 
 - **LibreOffice 安裝所有權保護 (LibreOffice Ownership Safety)**：Clickra 只會移除自己安裝與管理的 LibreOffice；偵測到使用者自行安裝的 LibreOffice 時會保留原安裝並顯示對應提示。

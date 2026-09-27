@@ -1,6 +1,6 @@
 # Microsoft Store Listing - Korean (Korea)
 
-Microsoft Partner Center에 바로 복사해 넣을 수 있는 v3.8.1.0용 스토어 등록 정보입니다.
+Microsoft Partner Center에 바로 복사해 넣을 수 있는 v3.9.0.0용 스토어 등록 정보입니다.
 
 ---
 
@@ -30,10 +30,10 @@ Clickra는 개인정보 보호를 중요하게 생각합니다. Office to PDF, P
 🔗 Open Source on GitHub: https://github.com/Youchenjiang/Clickra
 
 ## What's new in this version
- - 더 안전한 LibreOffice 관리: Clickra가 직접 설치하고 관리하는 LibreOffice만 제거하며, 사용자가 직접 관리하는 설치는 그대로 유지합니다.
- - 일관된 설정: 공용 설정을 중앙에서 관리되는 키, 기본값 및 ownership 규칙으로 통일하여 동작 차이를 줄였습니다.
- - 더 명확한 PDF 압축: 압축 슬라이더를 Small, Balanced, High Quality의 세 가지 프리셋으로 통일하고 기존 사용자의 High 설정도 그대로 유지합니다.
- - 더 깔끔한 설정 파일: 사용 중단된 PDF 압축 설정을 로드 시 자동으로 제거하면서 활성 설정은 보존합니다.
+ - 다국어 CLI: 명령 도움말, 상태 메시지 및 오류가 번체 중국어, 간체 중국어, 영어, 일본어, 한국어를 지원합니다.
+ - 진단 이메일 현지화: 진단 이메일의 제목과 본문이 현재 언어를 따라 표시되어 지원 및 문제 보고가 더 명확해졌습니다.
+ - 트레이 및 Visual Splitter 현지화: 트레이 동작과 Visual PDF Splitter의 버튼, 구간, 페이지 수 및 미리보기 레이블이 공용 번역을 사용합니다.
+ - 번역 완성도 검사: 누락 번역 진단과 사전 parity 테스트를 추가하여 릴리스 전에 부족한 언어 리소스를 감지합니다.
 
 ## Product Features
 *(Max 20, displayed as bullet points)*
