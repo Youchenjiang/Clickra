@@ -39,6 +39,9 @@ Microsoft Ingestion API 操作高度非同步。不要信任暫態 HTTP 回應�
 - **Enforcement-file references**：Commit/PR 規範的權威執行點為 `.github/workflows/policy.yml`（CI）與 `scripts/hooks/commit-msg`（本地 hook，透過 `scripts/install-hooks.sh` 安裝）；人類可讀參考為 `LOCAL_BUILD_NOTES.md`。type/scope allowlist 必須在所有位置保持同步。
 - **原子化提交**：一個 Commit 只做一件事。嚴禁將多個不相干的邏輯修改（如版號同步、工作流修改、規則更新）合併到同一個 Commit 中。必須分批暫存（例如 `git add <特定檔案>`；同一檔案內用 `git add -p` 只暫存相關 hunks）並分開提交，確保每個 Commit 異動內容最小化且語意單一。判斷標準用「revert 測試」：若兩個變更可以各自獨立 revert 而不影響對方（例如邏輯修正 vs 註解清理、格式調整 vs 功能變更），就必須分開提交。
 - **PR publication gate**：不得從 stale historical/stacked base 直接 push/open PR。若本輪工作有 active rollout/publication plan，其 canonical PR gate 是唯一流程權威，本文件不複製另一套步驟；至少必須在公開 PR 前 fresh fetch `origin/main`、依該 gate 只重建本 PR 自己的 scope/range、完成 required validation，並在 push/open PR 前再次確認 remote main 沒有前進。若 main 已前進，先重新 rebuild/revalidate，不得先開 PR 再補 base。
+- **Public PR 禁止隨意改寫 history**：branch 一旦已 push 並建立 public PR，後續預設只能用 normal fast-forward push 加新的 atomic follow-up commits。不得只為了整理 commit history、壓縮 commits、移除已公開但無害的中間過程、讓 PR 看起來更乾淨，或避免一顆 revert/fixup commit，就 force-push 改寫已公開 history。
+- **Force push 只作最後手段**：只有在不改寫 history 就無法安全完成該 PR 時才可考慮，例如已公開 commit 含敏感資料、不應繼續存在的大型 binary/history 污染、branch ancestry/base 已損壞且普通 follow-up/revert/merge 無法恢復正確 PR，或其他能明確證明「不用 rewrite 就過不了」的情況。一般 review finding、錯誤判斷、scope 收斂、commit 不夠漂亮，都優先用新的修正/revert commit處理。
+- **Force push 前置條件**：若 public PR 確實非 history rewrite 不可，必須先在對話中說明為何 normal follow-up / revert 不足、確認 remote 沒有他人的新 commits、取得使用者對該次 rewrite 的明確授權，且只允許 `git push --force-with-lease`，禁止裸 `--force`。rewrite 後必須重新跑完整 PR validation / CI，舊 head 的任何綠燈不得沿用。`--force-with-lease` 只是最低安全機制，不是 force 的授權理由。
 - **Commit 訊息格式規範**：每個 Commit 訊息必須符合本地 Commit Hook 與 CI policy 的格式限制：
   1. Header 必須遵循 `type(scope): subject` 或 `type: subject`，長度必須小於等於 72 字元，不可用句號結尾；若使用 scope，必須使用 allowlist 中有意義的範圍。
   2. 允許的 `type` 包括：`feat`, `fix`, `refactor`, `docs`, `test`, `chore`, `style`, `perf`, `security`。
