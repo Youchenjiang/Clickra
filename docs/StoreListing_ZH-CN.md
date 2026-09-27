@@ -30,10 +30,10 @@ Clickra 尊重您的隐私。大多数处理流程（文档转 PDF、PDF 压缩�
 🔗 开源项目主页：https://github.com/Youchenjiang/Clickra
 
 ## What's new in this version
-- 图片格式转换：可从 CLI、原生仪表板与 Fluent UI 将图片转换为 PNG、JPG、WebP、GIF 或 HEIC。
-- WebP 内建 runtime：WebP 编码与解码现在随 Clickra 一同打包，不再依赖 Microsoft Store 的 WebP codec。
-- HEIC/HEIF 安全检查：缺少必要的 HEIF/HEIC encoder 或 decoder 时会明确提示并 fail closed；`.heic`、`.heif`、`.hif` 输入均采用一致检查。
-- 输出更安全：转换前会拒绝同格式输入、不支持的目标格式与输出路径冲突，并一致遵守明确指定的输出目录。
+- LibreOffice 管理更安全：Clickra 现在只会移除由自身安装和管理的 LibreOffice，用户自行管理的安装会完整保留。
+- 设置一致性提升：共用设置现在统一使用集中管理的设置键、默认值与 ownership 规则，减少行为漂移。
+- PDF 压缩更直观：压缩滑杆统一为 Small、Balanced、High Quality 三个明确预设，并正确保留现有用户原来的 High 设置。
+- 设置文件更整洁：加载设置时会自动清除已停用的 PDF 压缩设置，同时保留所有有效偏好。
 
 ## Product Features
 *(最多 20 个，以项目符号显示)*
@@ -41,7 +41,7 @@ Clickra 尊重您的隐私。大多数处理流程（文档转 PDF、PDF 压缩�
 - 支持 Word/Excel/PPT 一键转 PDF
 - 未安装 Microsoft Office 时可使用 LibreOffice 备用引擎
 - 支持一键 PDF 文件本机高保真压缩功能
-- 4 段设置拉条 Slider 快速微调 PDF 压缩率
+- 3 段 PDF 压缩预设滑杆：Small、Balanced、High Quality
 - PDF 一键去除密码
 - 进度窗口内嵌安全密码输入
 - 可视化 PDF 分割，支持页面缩图与三种分割模式
@@ -51,7 +51,7 @@ Clickra 尊重您的隐私。大多数处理流程（文档转 PDF、PDF 压缩�
 - 图片垂直拼接
 - 快速多文件 PDF 合并
 - NativeAOT Shell 集成，保持右键菜单快速响应
-- WinUI 3 Fluent 仪表板与转换进度界面
+- 原生仪表板与转换进度界面
 - 安全的本机处理（仅可选 PDF 翻译使用云端翻译服务）
 
 ---

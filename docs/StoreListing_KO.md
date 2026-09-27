@@ -30,10 +30,10 @@ Clickra는 개인정보 보호를 중요하게 생각합니다. Office to PDF, P
 🔗 Open Source on GitHub: https://github.com/Youchenjiang/Clickra
 
 ## What's new in this version
- - 이미지 형식 변환: CLI, 네이티브 대시보드, Fluent UI에서 이미지를 PNG, JPG, WebP, GIF 또는 HEIC로 변환할 수 있습니다.
- - WebP 런타임 번들: WebP 인코딩/디코딩을 Clickra에 함께 제공하여 Microsoft Store WebP 코덱에 더 이상 의존하지 않습니다.
- - HEIC/HEIF 안전 검사: 필요한 HEIF/HEIC 인코더 또는 디코더가 없으면 명확히 알리고 fail closed 하며 `.heic`, `.heif`, `.hif` 입력을 일관되게 검사합니다.
- - 더 안전한 출력: 동일 형식 입력, 지원하지 않는 대상 형식, 출력 경로 충돌을 변환 전에 거부하고 명시한 출력 폴더를 일관되게 사용합니다.
+ - 더 안전한 LibreOffice 관리: Clickra가 직접 설치하고 관리하는 LibreOffice만 제거하며, 사용자가 직접 관리하는 설치는 그대로 유지합니다.
+ - 일관된 설정: 공용 설정을 중앙에서 관리되는 키, 기본값 및 ownership 규칙으로 통일하여 동작 차이를 줄였습니다.
+ - 더 명확한 PDF 압축: 압축 슬라이더를 Small, Balanced, High Quality의 세 가지 프리셋으로 통일하고 기존 사용자의 High 설정도 그대로 유지합니다.
+ - 더 깔끔한 설정 파일: 사용 중단된 PDF 압축 설정을 로드 시 자동으로 제거하면서 활성 설정은 보존합니다.
 
 ## Product Features
 *(Max 20, displayed as bullet points)*
@@ -41,7 +41,7 @@ Clickra는 개인정보 보호를 중요하게 생각합니다. Office to PDF, P
  - Word/Excel/PPT to PDF 원클릭 변환
  - Microsoft Office가 없을 때 LibreOffice 대체 엔진 지원
  - 로컬 PDF 압축 및 최적화 지원
- - 4단계 가로형 설정 슬라이더로 PDF 압축 레벨 직관적 조절
+ - Small, Balanced, High Quality 3개 프리셋으로 PDF 압축 레벨 조절
  - PDF 암호 원클릭 제거
  - 진행 창 안의 안전한 암호 입력
  - 비주얼 PDF 분할 (페이지 미리보기 및 3가지 분할 모드)
@@ -51,7 +51,7 @@ Clickra는 개인정보 보호를 중요하게 생각합니다. Office to PDF, P
  - 이미지 세로 병합
  - 빠른 다중 PDF 병합
  - NativeAOT 셸 통합 기반의 빠른 컨텍스트 메뉴 응답
- - WinUI 3 Fluent 대시보드 및 변환 진행 UI
+ - 네이티브 대시보드 및 변환 진행 UI
  - 안전한 로컬 처리(선택형 PDF 번역만 클라우드 번역 사용)
 
 ---

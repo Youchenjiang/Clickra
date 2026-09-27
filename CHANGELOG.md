@@ -2,7 +2,11 @@
 
 ## [v3.8.1.0] - 2026-09-27
 
-- **TODO**: Add changelog entry here
+- **LibreOffice 安裝所有權保護 (LibreOffice Ownership Safety)**：Clickra 只會移除自己安裝與管理的 LibreOffice；偵測到使用者自行安裝的 LibreOffice 時會保留原安裝並顯示對應提示。
+- **設定登錄集中化 (Settings Registry Consolidation)**：Core、原生介面與 Fluent 介面統一使用共享設定鍵、預設值與 ownership helpers，降低不同介面之間的設定漂移。
+- **PDF 壓縮三段預設 (PDF Compression Presets)**：PDF 壓縮滑桿統一為 Small、Balanced、High Quality 三個明確位置；舊版儲存的第 4 段 High 設定會自動保留為新的 High 預設，不會降級成 Balanced。
+- **設定檔清理 (Settings Cleanup)**：載入設定時會移除已退役的 PDF 壓縮鍵，同時保留所有有效設定，避免舊設定長期殘留造成行為不一致。
+- **發佈與維護可靠性 (Release / Maintenance Reliability)**：CI、安全掃描、Store submission verification 與文件權威邊界進一步收斂，降低發布與後續維護時的狀態誤判。
 
 ## [v3.8.0.0] - 2026-09-26
 
