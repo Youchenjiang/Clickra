@@ -122,6 +122,7 @@ jobs:
           EOF
           gh release create "${{ github.ref_name }}" \
             Clickra.msix \
+            --repo "${{ github.repository }}" \
             --title "${{ github.ref_name }}" --notes-file release_notes.md
 
   store-publish:
