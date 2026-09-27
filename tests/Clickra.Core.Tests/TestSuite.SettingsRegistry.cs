@@ -24,8 +24,9 @@ static partial class TestSuite
     private const string RetiredPdfDpi = "PdfCompressDpi";
     private const string LanguageZhTw = "zh-TW";
     private const string LanguageEnUs = "en-US";
+    private const string LanguageJaJp = "ja-JP";
     private static readonly string[] SupportedLocalizationLanguages =
-        { LanguageZhTw, "zh-CN", LanguageEnUs, "ja-JP", "ko-KR" };
+        { LanguageZhTw, "zh-CN", LanguageEnUs, LanguageJaJp, "ko-KR" };
 
     public static void RegisterSettingsRegistryTests(TestRunner runner)
     {
@@ -39,6 +40,8 @@ static partial class TestSuite
         runner.Run("Settings registry: Diagnostics email localization coverage across all 5 languages", TestDiagnosticsEmailLocalizationCoverage);
         runner.Run("Settings registry: Tray and visual splitter localization coverage across all 5 languages", TestTraySplitterLocalizationCoverage);
         runner.Run("Localization guard: No hardcoded Chinese strings in Clickra.Fluent and Dashboard paint files", TestNoHardcodedChineseUiStrings);
+        runner.Run("Settings registry: Translation diagnostics lists gaps grouped by language when translations are missing", TestTranslationDiagnosticsGapReport);
+        runner.Run("Settings registry: All registered keys must have complete translations across all 5 languages", TestLocalizationDictionaryParity);
     }
 
     private static void TestSettingKeysDeclaredExactlyOnce()
@@ -295,7 +298,7 @@ static partial class TestSuite
         Assert.True(twBody.Contains("Clickra 版本: 1.2.0"), "Expected formatted Traditional Chinese version.");
         Assert.True(twBody.Contains("[系統資訊]"), "Expected Traditional Chinese section header.");
 
-        var (jaSubject, jaBody) = Localization.BuildDiagnosticsEmail("1.2.0", "2026-09-15 12:00:00", "ja-JP");
+        var (jaSubject, jaBody) = Localization.BuildDiagnosticsEmail("1.2.0", "2026-09-15 12:00:00", LanguageJaJp);
         Assert.Equal("Clickra 診断レポート", jaSubject);
         Assert.True(jaBody.Contains("Clickra バージョン: 1.2.0"), "Expected Japanese version label.");
     }
@@ -319,6 +322,30 @@ static partial class TestSuite
         };
 
         AssertLocalizationKeysCoverage(keys);
+    }
+
+    private static void TestTranslationDiagnosticsGapReport()
+    {
+        string[] testKeys = { "sample_key_tw_only", "sample_key_non_existent" };
+        var missing = Localization.FindMissingTranslations(testKeys);
+
+        Assert.True(missing.Count > 0, "Missing translations must be detected for unregistered test keys.");
+        Assert.True(missing.ContainsKey("en-US"), "en-US must be reported as missing test keys.");
+        Assert.True(missing.ContainsKey(LanguageJaJp), "ja-JP must be reported as missing test keys.");
+        Assert.True(missing.ContainsKey("ko-KR"), "ko-KR must be reported as missing test keys.");
+
+        string report = Localization.FormatMissingReport(missing);
+        Assert.True(report.Contains("[en-US]"), "Report must include language section for en-US.");
+        Assert.True(report.Contains("- sample_key_non_existent"), "Report must list the specific missing key.");
+    }
+
+    private static void TestLocalizationDictionaryParity()
+    {
+        var missing = Localization.FindMissingTranslations();
+        if (missing.Count > 0)
+        {
+            Assert.True(false, Localization.FormatMissingReport(missing));
+        }
     }
 
     private static void TestNoHardcodedChineseUiStrings()
@@ -398,7 +425,7 @@ static partial class TestSuite
     private static bool IsAllowedLanguageAutonym(string line) =>
         line.Contains("zh-TW", StringComparison.OrdinalIgnoreCase) ||
         line.Contains("zh-CN", StringComparison.OrdinalIgnoreCase) ||
-        line.Contains("ja-JP", StringComparison.OrdinalIgnoreCase) ||
+        line.Contains(LanguageJaJp, StringComparison.OrdinalIgnoreCase) ||
         line.Contains("ja)", StringComparison.OrdinalIgnoreCase) ||
         line.Contains("ko-KR", StringComparison.OrdinalIgnoreCase);
 

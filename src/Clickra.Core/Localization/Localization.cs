@@ -14,6 +14,11 @@ namespace Clickra.Core
         private const string KeyCmdCompressPdf = "cmd_compress_pdf";
         private const string KeyLibreOfficeExternalNote = "setting_libreoffice_external_note";
         private const string KeyLibreOfficeExternalHint = "setting_libreoffice_external_hint";
+        private const string KeyFluentTitle = "setting_fluent_title";
+        private const string KeyFluentDescription = "setting_fluent_desc";
+        private const string KeyFluentReady = "setting_fluent_ready";
+        private const string KeyFluentNotInstalled = "setting_fluent_not_installed";
+        private const string KeyFluentInstall = "setting_fluent_install";
         private const string OfficeName = "Office";
 
         private static readonly Dictionary<string, Dictionary<string, string>> Translations = new(StringComparer.OrdinalIgnoreCase)
@@ -102,11 +107,6 @@ namespace Clickra.Core
                 ["setting_microsoft_missing"] = "Microsoft Office 尚未安裝或不完整",
                 ["setting_engine_auto_using"] = "自動：使用 {0}",
                 ["setting_engine_none_available"] = "沒有可用的 Office 轉檔引擎。請安裝 Microsoft Office 或取得 LibreOffice。",
-                ["setting_fluent_title"] = "Fluent 介面",
-                ["setting_fluent_desc"] = "安裝 Fluent 介面附加元件以使用現代化 WinUI 3 介面",
-                ["setting_fluent_ready"] = "Fluent 介面已安裝，下次啟動將自動使用",
-                ["setting_fluent_not_installed"] = "Fluent 介面未安裝，目前使用經典介面",
-                ["setting_fluent_install"] = "從 Store 安裝 Fluent 介面",
                 ["overview_tip"] = "提示：直接在檔案總管選取檔案，右鍵即可呼叫 Clickra 選單進行轉換。",
                 ["cmd_word_to_pdf"] = "Word → PDF",
                 ["cmd_excel_to_pdf"] = "Excel → PDF",
@@ -393,11 +393,6 @@ namespace Clickra.Core
                 ["setting_microsoft_missing"] = "Microsoft Office is not installed or is incomplete",
                 ["setting_engine_auto_using"] = "Auto: using {0}",
                 ["setting_engine_none_available"] = "No Office conversion engine is available. Install Microsoft Office or get LibreOffice.",
-                ["setting_fluent_title"] = "Fluent Interface",
-                ["setting_fluent_desc"] = "Install Fluent add-on to enable modern WinUI 3 interface",
-                ["setting_fluent_ready"] = "Fluent installed. Will be used on next launch.",
-                ["setting_fluent_not_installed"] = "Fluent not installed. Using classic interface.",
-                ["setting_fluent_install"] = "Install Fluent from Store",
                 ["overview_tip"] = "Tip: Select files in File Explorer, right-click, and select Clickra to convert.",
                 ["cmd_word_to_pdf"] = "Word → PDF",
                 ["cmd_excel_to_pdf"] = "Excel → PDF",
@@ -747,6 +742,51 @@ namespace Clickra.Core
             }
         };
 
+        private static void RegisterFluentSettingsTranslations()
+        {
+            AddSupportedTranslation(KeyFluentTitle,
+                "Fluent 介面", "Fluent 界面", "Fluent Interface", "Fluent インターフェース", "Fluent 인터페이스");
+            AddSupportedTranslation(KeyFluentDescription,
+                "安裝 Fluent 介面附加元件以使用現代化 WinUI 3 介面",
+                "安装 Fluent 界面附加组件以使用现代 WinUI 3 界面",
+                "Install Fluent add-on to enable modern WinUI 3 interface",
+                "Fluent アドオンをインストールして最新の WinUI 3 インターフェースを使用します",
+                "Fluent 추가 기능을 설치하여 최신 WinUI 3 인터페이스를 사용합니다");
+            AddSupportedTranslation(KeyFluentReady,
+                "Fluent 介面已安裝，下次啟動將自動使用",
+                "Fluent 界面已安装，下次启动将自动使用",
+                "Fluent installed. Will be used on next launch.",
+                "Fluent インターフェースはインストール済みです。次回起動時に自動的に使用されます",
+                "Fluent 인터페이스가 설치되었습니다. 다음 시작 시 자동으로 사용됩니다");
+            AddSupportedTranslation(KeyFluentNotInstalled,
+                "Fluent 介面未安裝，目前使用經典介面",
+                "Fluent 界面未安装，当前使用经典界面",
+                "Fluent not installed. Using classic interface.",
+                "Fluent インターフェースは未インストールです。現在クラシックを使用中",
+                "Fluent 인터페이스가 설치되지 않았습니다. 현재 클래식 인터페이스를 사용 중입니다");
+            AddSupportedTranslation(KeyFluentInstall,
+                "從 Store 安裝 Fluent 介面",
+                "从 Store 安装 Fluent 界面",
+                "Install Fluent from Store",
+                "Store から Fluent インターフェースをインストール",
+                "Store에서 Fluent 인터페이스 설치");
+        }
+
+        private static void AddSupportedTranslation(
+            string key,
+            string tw,
+            string cn,
+            string en,
+            string ja,
+            string ko)
+        {
+            Translations[LangTw][key] = tw;
+            Translations[LangCn][key] = cn;
+            Translations[LangEn][key] = en;
+            Translations[LangJa][key] = ja;
+            Translations[LangKo][key] = ko;
+        }
+
         /// <summary>Maps a language code (or the current UI culture when empty) to one of the
         /// supported language keys, defaulting to Traditional Chinese.</summary>
         public static string NormalizeLanguageCode(string langCode)
@@ -787,9 +827,95 @@ namespace Clickra.Core
             return key;
         }
 
+        /// <summary>Canonical list of the 5 supported language codes.</summary>
+        public static IReadOnlyList<string> SupportedLanguages => new[] { LangTw, LangCn, LangEn, LangJa, LangKo };
+
+        /// <summary>
+        /// Checks if an exact, non-empty translation exists for the given key in the specified language (bypassing fallback to zh-TW).
+        /// </summary>
+        public static bool HasExactTranslation(string key, string langCode)
+        {
+            string targetKey = NormalizeLanguageCode(langCode);
+            return Translations.TryGetValue(targetKey, out var dict) &&
+                   dict.TryGetValue(key, out var val) &&
+                   !string.IsNullOrWhiteSpace(val);
+        }
+
+        /// <summary>
+        /// Returns all unique translation keys registered in any language dictionary.
+        /// </summary>
+        public static IReadOnlyCollection<string> GetAllKeys()
+        {
+            var keys = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            foreach (var dict in Translations.Values)
+            {
+                foreach (var k in dict.Keys)
+                {
+                    keys.Add(k);
+                }
+            }
+            return keys;
+        }
+
+        /// <summary>
+        /// Analyzes translations for the specified keys (or all registered keys if null) across
+        /// the given languages (or all supported languages if null), and returns a dictionary
+        /// mapping each language to its list of missing keys.
+        /// </summary>
+        public static IReadOnlyDictionary<string, IReadOnlyList<string>> FindMissingTranslations(
+            IEnumerable<string>? keysToCheck = null,
+            IEnumerable<string>? languagesToCheck = null)
+        {
+            var langs = (languagesToCheck ?? SupportedLanguages).ToArray();
+            var keys = (keysToCheck ?? GetAllKeys()).OrderBy(k => k, StringComparer.OrdinalIgnoreCase).ToArray();
+
+            var result = new Dictionary<string, IReadOnlyList<string>>(StringComparer.OrdinalIgnoreCase);
+
+            foreach (string lang in langs)
+            {
+                List<string> missing = keys
+                    .Where(key => !HasExactTranslation(key, lang))
+                    .ToList();
+
+                if (missing.Count > 0)
+                {
+                    result[lang] = missing;
+                }
+            }
+
+            return result;
+        }
+
+        /// <summary>
+        /// Formats a human-readable diagnosis report grouping missing keys by language.
+        /// </summary>
+        public static string FormatMissingReport(IReadOnlyDictionary<string, IReadOnlyList<string>> missing)
+        {
+            if (missing.Count == 0) return string.Empty;
+
+            int total = 0;
+            foreach (var list in missing.Values) total += list.Count;
+
+            var sb = new System.Text.StringBuilder();
+            sb.AppendLine($"Missing translations detected across languages (total missing: {total} in {missing.Count} language(s)):");
+
+            foreach (var kvp in missing.OrderBy(k => k.Key, StringComparer.OrdinalIgnoreCase))
+            {
+                sb.AppendLine();
+                sb.AppendLine($"[{kvp.Key}] ({kvp.Value.Count} missing):");
+                foreach (string key in kvp.Value)
+                {
+                    sb.AppendLine($"  - {key}");
+                }
+            }
+
+            return sb.ToString().TrimEnd();
+        }
+
         static Localization()
         {
             RegisterCompressionTranslations();
+            RegisterFluentSettingsTranslations();
             RegisterFluentDashboardTranslations();
             RegisterCliTranslations();
             RegisterDiagnosticsEmailTranslations();
