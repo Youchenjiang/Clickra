@@ -1431,17 +1431,10 @@ public sealed partial class MainPage : Page
         await OpenDataDirAsync();
         var version = typeof(MainPage).Assembly.GetName().Version;
         string versionText = version is null ? "Unknown" : $"{version.Major}.{version.Minor}.{version.Build}";
-        string subject = Uri.EscapeDataString("Clickra Diagnostics Report");
-        string body = Uri.EscapeDataString(
-            "感謝您提交 Clickra 診斷回報！\r\n\r\n" +
-            "請直接將已為您選取好的「history.log」拖曳到此郵件中作為附件。\r\n\r\n" +
-            "[系統資訊]\r\n" +
-            "作業系統: Windows\r\n" +
-            $"Clickra 版本: {versionText}\r\n" +
-            $"時間: {DateTime.Now:yyyy-MM-dd HH:mm:ss}\r\n\r\n" + // skipcq: CS-W1091 — user-facing local timestamp in the report body.
-
-            "[問題描述]\r\n" +
-            "（請在此處填寫您遇到的問題...）");
+        string timeText = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss"); // skipcq: CS-W1091 — user-facing local timestamp in the report body.
+        var (subjectText, bodyText) = Localization.BuildDiagnosticsEmail(versionText, timeText);
+        string subject = Uri.EscapeDataString(subjectText);
+        string body = Uri.EscapeDataString(bodyText);
         await OpenUriAsync($"https://mail.google.com/mail/?view=cm&fs=1&to=jiangyouchen%40gmail.com&su={subject}&body={body}");
     }
 
