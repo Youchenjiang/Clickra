@@ -606,6 +606,7 @@ public sealed partial class MainPage : Page
         HistorySuccessLabel.Text = L(SuccessLocalizationKey);
         HistoryFailedLabel.Text = L(FailedLocalizationKey);
         ActiveJobTitle.Text = L("fluent_run");
+        ActiveJobText.Text = L("status_converting") + "...";
         EmptyHistoryText.Text = L("fluent_no_history");
         ParkedTasksTitle.Text = L("fluent_task_parked_title");
         ParkedTasksDesc.Text = L("fluent_task_parked_desc");
