@@ -31,6 +31,7 @@ static partial class TestSuite
         runner.Run("Settings registry: retired keys stay outside the active registry", TestRetiredKeysStayDisjoint);
         runner.Run("Settings storage: retired keys are purged and rewritten on load", TestRetiredSettingsPurgedOnLoad);
         runner.Run("Settings registry: CLI localization keys coverage across all 5 languages", TestCliLocalizationKeysCoverage);
+        runner.Run("Settings registry: Diagnostics email localization coverage across all 5 languages", TestDiagnosticsEmailLocalizationCoverage);
     }
 
     private static void TestSettingKeysDeclaredExactlyOnce()
@@ -265,5 +266,52 @@ static partial class TestSuite
         string enNoFiles = string.Format(Localization.T("cli_err_no_files_found", "en-US"), "compress-pdf");
         Assert.True(enNoFiles.Contains("No convertible files found"),
             $"Expected English translation, got: {enNoFiles}");
+    }
+
+    private static void TestDiagnosticsEmailLocalizationCoverage()
+    {
+        string[] emailKeys =
+        {
+            "diag_email_subject",
+            "diag_email_thanks",
+            "diag_email_attachment_hint",
+            "diag_email_system_info",
+            "diag_email_os",
+            "diag_email_version",
+            "diag_email_time",
+            "diag_email_problem_desc",
+            "diag_email_problem_placeholder"
+        };
+
+        string[] languages = { "zh-TW", "zh-CN", "en-US", "ja-JP", "ko-KR" };
+        foreach (string lang in languages)
+        {
+            foreach (string key in emailKeys)
+            {
+                string translated = Localization.T(key, lang);
+                Assert.True(!string.IsNullOrWhiteSpace(translated),
+                    $"Key '{key}' must have non-empty translation for language '{lang}'.");
+                Assert.False(translated.Equals(key, StringComparison.Ordinal),
+                    $"Key '{key}' was not found in dictionary for language '{lang}' (returned raw key).");
+            }
+        }
+
+        var (enSubject, enBody) = Localization.BuildDiagnosticsEmail("1.2.0", "2026-09-15 12:00:00", "en-US");
+        Assert.Equal("Clickra Diagnostics Report", enSubject);
+        Assert.True(enBody.Contains("Thank you for submitting a Clickra diagnostics report!"),
+            "Expected English thanks text.");
+        Assert.True(enBody.Contains("Clickra Version: 1.2.0"), "Expected formatted English version.");
+        Assert.True(enBody.Contains("[System Information]"), "Expected English section header.");
+
+        var (twSubject, twBody) = Localization.BuildDiagnosticsEmail("1.2.0", "2026-09-15 12:00:00", "zh-TW");
+        Assert.Equal("Clickra 診斷回報", twSubject);
+        Assert.True(twBody.Contains("感謝您提交 Clickra 診斷回報！"),
+            "Expected Traditional Chinese thanks text.");
+        Assert.True(twBody.Contains("Clickra 版本: 1.2.0"), "Expected formatted Traditional Chinese version.");
+        Assert.True(twBody.Contains("[系統資訊]"), "Expected Traditional Chinese section header.");
+
+        var (jaSubject, jaBody) = Localization.BuildDiagnosticsEmail("1.2.0", "2026-09-15 12:00:00", "ja-JP");
+        Assert.Equal("Clickra 診断レポート", jaSubject);
+        Assert.True(jaBody.Contains("Clickra バージョン: 1.2.0"), "Expected Japanese version label.");
     }
 }
