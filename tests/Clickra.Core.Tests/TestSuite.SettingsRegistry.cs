@@ -21,6 +21,10 @@ static partial class TestSuite
     private const string RetiredPdfTargetDpi = "PdfCompressTargetDpi";
     private const string RetiredPdfJpegQuality = "PdfCompressJpegQuality";
     private const string RetiredPdfDpi = "PdfCompressDpi";
+    private const string LanguageZhTw = "zh-TW";
+    private const string LanguageEnUs = "en-US";
+    private static readonly string[] SupportedLocalizationLanguages =
+        { LanguageZhTw, "zh-CN", LanguageEnUs, "ja-JP", "ko-KR" };
 
     public static void RegisterSettingsRegistryTests(TestRunner runner)
     {
@@ -65,7 +69,7 @@ static partial class TestSuite
         Assert.Equal("false", ClickraStorage.GetSetting(ClickraSettings.QuietMode));
         Assert.Equal("true", ClickraStorage.GetSetting(ClickraSettings.Notification));
         Assert.Equal("auto", ClickraStorage.GetSetting(ClickraSettings.OfficeEngine));
-        Assert.Equal("zh-TW", ClickraStorage.GetSetting(ClickraSettings.TranslateTargetLang));
+        Assert.Equal(LanguageZhTw, ClickraStorage.GetSetting(ClickraSettings.TranslateTargetLang));
         Assert.Equal("1", ClickraStorage.GetSetting(ClickraSettings.PdfCompressImageLevel));
         Assert.Equal("0", ClickraStorage.GetSetting(ClickraSettings.ImageCompressMaxDimension));
 
@@ -245,25 +249,14 @@ static partial class TestSuite
             "cli_err_translate_failed"
         };
 
-        string[] languages = { "zh-TW", "zh-CN", "en-US", "ja-JP", "ko-KR" };
-        foreach (string lang in languages)
-        {
-            foreach (string key in cliKeys)
-            {
-                string translated = Localization.T(key, lang);
-                Assert.True(!string.IsNullOrWhiteSpace(translated),
-                    $"Key '{key}' must have non-empty translation for language '{lang}'.");
-                Assert.False(translated.Equals(key, StringComparison.Ordinal),
-                    $"Key '{key}' was not found in dictionary for language '{lang}' (returned raw key).");
-            }
-        }
+        AssertLocalizationKeysCoverage(cliKeys);
 
-        string enErr = Localization.T("cli_err_prefix", "en-US");
-        string twErr = Localization.T("cli_err_prefix", "zh-TW");
+        string enErr = Localization.T("cli_err_prefix", LanguageEnUs);
+        string twErr = Localization.T("cli_err_prefix", LanguageZhTw);
         Assert.Equal("[Error] ", enErr);
         Assert.Equal("[錯誤] ", twErr);
 
-        string enNoFiles = string.Format(Localization.T("cli_err_no_files_found", "en-US"), "compress-pdf");
+        string enNoFiles = string.Format(Localization.T("cli_err_no_files_found", LanguageEnUs), "compress-pdf");
         Assert.True(enNoFiles.Contains("No convertible files found"),
             $"Expected English translation, got: {enNoFiles}");
     }
@@ -283,27 +276,16 @@ static partial class TestSuite
             "diag_email_problem_placeholder"
         };
 
-        string[] languages = { "zh-TW", "zh-CN", "en-US", "ja-JP", "ko-KR" };
-        foreach (string lang in languages)
-        {
-            foreach (string key in emailKeys)
-            {
-                string translated = Localization.T(key, lang);
-                Assert.True(!string.IsNullOrWhiteSpace(translated),
-                    $"Key '{key}' must have non-empty translation for language '{lang}'.");
-                Assert.False(translated.Equals(key, StringComparison.Ordinal),
-                    $"Key '{key}' was not found in dictionary for language '{lang}' (returned raw key).");
-            }
-        }
+        AssertLocalizationKeysCoverage(emailKeys);
 
-        var (enSubject, enBody) = Localization.BuildDiagnosticsEmail("1.2.0", "2026-09-15 12:00:00", "en-US");
+        var (enSubject, enBody) = Localization.BuildDiagnosticsEmail("1.2.0", "2026-09-15 12:00:00", LanguageEnUs);
         Assert.Equal("Clickra Diagnostics Report", enSubject);
         Assert.True(enBody.Contains("Thank you for submitting a Clickra diagnostics report!"),
             "Expected English thanks text.");
         Assert.True(enBody.Contains("Clickra Version: 1.2.0"), "Expected formatted English version.");
         Assert.True(enBody.Contains("[System Information]"), "Expected English section header.");
 
-        var (twSubject, twBody) = Localization.BuildDiagnosticsEmail("1.2.0", "2026-09-15 12:00:00", "zh-TW");
+        var (twSubject, twBody) = Localization.BuildDiagnosticsEmail("1.2.0", "2026-09-15 12:00:00", LanguageZhTw);
         Assert.Equal("Clickra 診斷回報", twSubject);
         Assert.True(twBody.Contains("感謝您提交 Clickra 診斷回報！"),
             "Expected Traditional Chinese thanks text.");
@@ -313,5 +295,20 @@ static partial class TestSuite
         var (jaSubject, jaBody) = Localization.BuildDiagnosticsEmail("1.2.0", "2026-09-15 12:00:00", "ja-JP");
         Assert.Equal("Clickra 診断レポート", jaSubject);
         Assert.True(jaBody.Contains("Clickra バージョン: 1.2.0"), "Expected Japanese version label.");
+    }
+
+    private static void AssertLocalizationKeysCoverage(string[] keys)
+    {
+        foreach (string lang in SupportedLocalizationLanguages)
+        {
+            foreach (string key in keys)
+            {
+                string translated = Localization.T(key, lang);
+                Assert.True(!string.IsNullOrWhiteSpace(translated),
+                    $"Key '{key}' must have non-empty translation for language '{lang}'.");
+                Assert.False(translated.Equals(key, StringComparison.Ordinal),
+                    $"Key '{key}' was not found in dictionary for language '{lang}' (returned raw key).");
+            }
+        }
     }
 }

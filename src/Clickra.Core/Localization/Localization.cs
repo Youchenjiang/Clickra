@@ -1059,6 +1059,11 @@ namespace Clickra.Core
                 { "cli_err_translate_failed", "翻譯檔案未完成: {0}. 錯誤訊息: {1}", "翻译文件未完成: {0}. 错误信息: {1}", "Translation failed: {0}. Error: {1}", "ファイルの翻訳が未完了です: {0}. エラー: {1}", "파일 번역 미완료: {0}. 오류: {1}" }
             };
 
+            RegisterTranslationMatrix(data);
+        }
+
+        private static void RegisterTranslationMatrix(string[,] data)
+        {
             for (int row = 0; row < data.GetLength(0); row++)
             {
                 string key = data[row, 0];
@@ -1072,27 +1077,20 @@ namespace Clickra.Core
 
         private static void RegisterDiagnosticsEmailTranslations()
         {
-            var data = new (string Key, string Tw, string Cn, string En, string Ja, string Ko)[]
+            var data = new string[,]
             {
-                ("diag_email_subject", "Clickra 診斷回報", "Clickra 诊断报告", "Clickra Diagnostics Report", "Clickra 診断レポート", "Clickra 진단 보고서"),
-                ("diag_email_thanks", "感謝您提交 Clickra 診斷回報！", "感谢您提交 Clickra 诊断报告！", "Thank you for submitting a Clickra diagnostics report!", "Clickra 診断レポートの送信にご協力いただきありがとうございます。", "Clickra 진단 보고서를 제출해 주셔서 감사합니다!"),
-                ("diag_email_attachment_hint", "請直接將已為您選取好的「history.log」拖曳到此郵件中作為附件。", "请直接将已为您选中的“history.log”拖拽到此邮件中作为附件。", "Please drag and drop the selected \"history.log\" file into this email as an attachment.", "選択されている「history.log」をこのメールにドラッグ＆ドロップして添付してください。", "선택된 'history.log' 파일을 이 메일에 첨부 파일로 끌어다 놓으세요."),
-                ("diag_email_system_info", "[系統資訊]", "[系统信息]", "[System Information]", "[システム情報]", "[시스템 정보]"),
-                ("diag_email_os", "作業系統: Windows", "操作系统: Windows", "Operating System: Windows", "OS: Windows", "운영 체제: Windows"),
-                ("diag_email_version", "Clickra 版本: {0}", "Clickra 版本: {0}", "Clickra Version: {0}", "Clickra バージョン: {0}", "Clickra 버전: {0}"),
-                ("diag_email_time", "時間: {0}", "时间: {0}", "Time: {0}", "日時: {0}", "시간: {0}"),
-                ("diag_email_problem_desc", "[問題描述]", "[问题描述]", "[Problem Description]", "[問題の説明]", "[문제 설명]"),
-                ("diag_email_problem_placeholder", "（請在此處填寫您遇到的問題...）", "（请在此处填写您遇到的问题...）", "(Please describe the issue you encountered here...)", "（ここに発生した問題の詳細をご記入ください...）", "(여기에 발생한 문제를 작성해 주세요...)")
+                { "diag_email_subject", "Clickra 診斷回報", "Clickra 诊断报告", "Clickra Diagnostics Report", "Clickra 診断レポート", "Clickra 진단 보고서" },
+                { "diag_email_thanks", "感謝您提交 Clickra 診斷回報！", "感谢您提交 Clickra 诊断报告！", "Thank you for submitting a Clickra diagnostics report!", "Clickra 診断レポートの送信にご協力いただきありがとうございます。", "Clickra 진단 보고서를 제출해 주셔서 감사합니다!" },
+                { "diag_email_attachment_hint", "請直接將已為您選取好的「history.log」拖曳到此郵件中作為附件。", "请直接将已为您选中的“history.log”拖拽到此邮件中作为附件。", "Please drag and drop the selected \"history.log\" file into this email as an attachment.", "選択されている「history.log」をこのメールにドラッグ＆ドロップして添付してください。", "선택된 'history.log' 파일을 이 메일에 첨부 파일로 끌어다 놓으세요." },
+                { "diag_email_system_info", "[系統資訊]", "[系统信息]", "[System Information]", "[システム情報]", "[시스템 정보]" },
+                { "diag_email_os", "作業系統: Windows", "操作系统: Windows", "Operating System: Windows", "OS: Windows", "운영 체제: Windows" },
+                { "diag_email_version", "Clickra 版本: {0}", "Clickra 版本: {0}", "Clickra Version: {0}", "Clickra バージョン: {0}", "Clickra 버전: {0}" },
+                { "diag_email_time", "時間: {0}", "时间: {0}", "Time: {0}", "日時: {0}", "시간: {0}" },
+                { "diag_email_problem_desc", "[問題描述]", "[问题描述]", "[Problem Description]", "[問題の説明]", "[문제 설명]" },
+                { "diag_email_problem_placeholder", "（請在此處填寫您遇到的問題...）", "（请在此处填写您遇到的问题...）", "(Please describe the issue you encountered here...)", "（ここに発生した問題の詳細をご記入ください...）", "(여기에 발생한 문제를 작성해 주세요...)" }
             };
 
-            foreach (var item in data)
-            {
-                Translations[LangTw][item.Key] = item.Tw;
-                Translations[LangCn][item.Key] = item.Cn;
-                Translations[LangEn][item.Key] = item.En;
-                Translations[LangJa][item.Key] = item.Ja;
-                Translations[LangKo][item.Key] = item.Ko;
-            }
+            RegisterTranslationMatrix(data);
         }
 
         /// <summary>
