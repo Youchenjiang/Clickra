@@ -107,11 +107,6 @@ namespace Clickra.Core
                 ["setting_microsoft_missing"] = "Microsoft Office 尚未安裝或不完整",
                 ["setting_engine_auto_using"] = "自動：使用 {0}",
                 ["setting_engine_none_available"] = "沒有可用的 Office 轉檔引擎。請安裝 Microsoft Office 或取得 LibreOffice。",
-                [KeyFluentTitle] = "Fluent 介面",
-                [KeyFluentDescription] = "安裝 Fluent 介面附加元件以使用現代化 WinUI 3 介面",
-                [KeyFluentReady] = "Fluent 介面已安裝，下次啟動將自動使用",
-                [KeyFluentNotInstalled] = "Fluent 介面未安裝，目前使用經典介面",
-                [KeyFluentInstall] = "從 Store 安裝 Fluent 介面",
                 ["overview_tip"] = "提示：直接在檔案總管選取檔案，右鍵即可呼叫 Clickra 選單進行轉換。",
                 ["cmd_word_to_pdf"] = "Word → PDF",
                 ["cmd_excel_to_pdf"] = "Excel → PDF",
@@ -255,11 +250,6 @@ namespace Clickra.Core
                 ["setting_microsoft_missing"] = "Microsoft Office 尚未安装或不完整",
                 ["setting_engine_auto_using"] = "自动：使用 {0}",
                 ["setting_engine_none_available"] = "没有可用的 Office 转换引擎。请安装 Microsoft Office 或获取 LibreOffice。",
-                [KeyFluentTitle] = "Fluent 界面",
-                [KeyFluentDescription] = "安装 Fluent 界面附加组件以使用现代 WinUI 3 界面",
-                [KeyFluentReady] = "Fluent 界面已安装，下次启动将自动使用",
-                [KeyFluentNotInstalled] = "Fluent 界面未安装，当前使用经典界面",
-                [KeyFluentInstall] = "从 Store 安装 Fluent 界面",
                 ["overview_tip"] = "提示：直接在文件资源管理器中选择文件，右键即可呼叫 Clickra 菜单进行转换。",
                 ["cmd_word_to_pdf"] = "Word → PDF",
                 ["cmd_excel_to_pdf"] = "Excel → PDF",
@@ -403,11 +393,6 @@ namespace Clickra.Core
                 ["setting_microsoft_missing"] = "Microsoft Office is not installed or is incomplete",
                 ["setting_engine_auto_using"] = "Auto: using {0}",
                 ["setting_engine_none_available"] = "No Office conversion engine is available. Install Microsoft Office or get LibreOffice.",
-                [KeyFluentTitle] = "Fluent Interface",
-                [KeyFluentDescription] = "Install Fluent add-on to enable modern WinUI 3 interface",
-                [KeyFluentReady] = "Fluent installed. Will be used on next launch.",
-                [KeyFluentNotInstalled] = "Fluent not installed. Using classic interface.",
-                [KeyFluentInstall] = "Install Fluent from Store",
                 ["overview_tip"] = "Tip: Select files in File Explorer, right-click, and select Clickra to convert.",
                 ["cmd_word_to_pdf"] = "Word → PDF",
                 ["cmd_excel_to_pdf"] = "Excel → PDF",
@@ -553,11 +538,6 @@ namespace Clickra.Core
                 ["setting_microsoft_missing"] = "Microsoft Office が未インストール、または不完全です",
                 ["setting_engine_auto_using"] = "自動：{0} を使用",
                 ["setting_engine_none_available"] = "利用可能な Office 変換エンジンがありません。Microsoft Office をインストールするか、LibreOffice を取得してください。",
-                [KeyFluentTitle] = "Fluent インターフェース",
-                [KeyFluentDescription] = "Fluent アドオンをインストールして最新の WinUI 3 インターフェースを使用します",
-                [KeyFluentReady] = "Fluent インターフェースはインストール済みです。次回起動時に自動的に使用されます",
-                [KeyFluentNotInstalled] = "Fluent インターフェースは未インストールです。現在クラシックを使用中",
-                [KeyFluentInstall] = "Store から Fluent インターフェースをインストール",
                 ["overview_tip"] = "ヒント：エクスプローラーでファイルを選択し、右クリックして Clickra から変換します。",
                 ["cmd_word_to_pdf"] = "Word → PDF",
                 ["cmd_excel_to_pdf"] = "Excel → PDF",
@@ -701,11 +681,6 @@ namespace Clickra.Core
                 ["setting_microsoft_missing"] = "Microsoft Office가 설치되지 않았거나 완전하지 않습니다",
                 ["setting_engine_auto_using"] = "자동: {0} 사용",
                 ["setting_engine_none_available"] = "사용 가능한 Office 변환 엔진이 없습니다. Microsoft Office를 설치하거나 LibreOffice를 받으세요.",
-                [KeyFluentTitle] = "Fluent 인터페이스",
-                [KeyFluentDescription] = "Fluent 추가 기능을 설치하여 최신 WinUI 3 인터페이스를 사용합니다",
-                [KeyFluentReady] = "Fluent 인터페이스가 설치되었습니다. 다음 시작 시 자동으로 사용됩니다",
-                [KeyFluentNotInstalled] = "Fluent 인터페이스가 설치되지 않았습니다. 현재 클래식 인터페이스를 사용 중입니다",
-                [KeyFluentInstall] = "Store에서 Fluent 인터페이스 설치",
                 ["overview_tip"] = "팁: 파일 탐색기에서 파일을 선택하고 마우스 오른쪽 버튼을 클릭하여 Clickra로 변환하세요.",
                 ["cmd_word_to_pdf"] = "Word → PDF",
                 ["cmd_excel_to_pdf"] = "Excel → PDF",
@@ -766,6 +741,51 @@ namespace Clickra.Core
                 ["dialog_cancel"] = "취소"
             }
         };
+
+        private static void RegisterFluentSettingsTranslations()
+        {
+            AddSupportedTranslation(KeyFluentTitle,
+                "Fluent 介面", "Fluent 界面", "Fluent Interface", "Fluent インターフェース", "Fluent 인터페이스");
+            AddSupportedTranslation(KeyFluentDescription,
+                "安裝 Fluent 介面附加元件以使用現代化 WinUI 3 介面",
+                "安装 Fluent 界面附加组件以使用现代 WinUI 3 界面",
+                "Install Fluent add-on to enable modern WinUI 3 interface",
+                "Fluent アドオンをインストールして最新の WinUI 3 インターフェースを使用します",
+                "Fluent 추가 기능을 설치하여 최신 WinUI 3 인터페이스를 사용합니다");
+            AddSupportedTranslation(KeyFluentReady,
+                "Fluent 介面已安裝，下次啟動將自動使用",
+                "Fluent 界面已安装，下次启动将自动使用",
+                "Fluent installed. Will be used on next launch.",
+                "Fluent インターフェースはインストール済みです。次回起動時に自動的に使用されます",
+                "Fluent 인터페이스가 설치되었습니다. 다음 시작 시 자동으로 사용됩니다");
+            AddSupportedTranslation(KeyFluentNotInstalled,
+                "Fluent 介面未安裝，目前使用經典介面",
+                "Fluent 界面未安装，当前使用经典界面",
+                "Fluent not installed. Using classic interface.",
+                "Fluent インターフェースは未インストールです。現在クラシックを使用中",
+                "Fluent 인터페이스가 설치되지 않았습니다. 현재 클래식 인터페이스를 사용 중입니다");
+            AddSupportedTranslation(KeyFluentInstall,
+                "從 Store 安裝 Fluent 介面",
+                "从 Store 安装 Fluent 界面",
+                "Install Fluent from Store",
+                "Store から Fluent インターフェースをインストール",
+                "Store에서 Fluent 인터페이스 설치");
+        }
+
+        private static void AddSupportedTranslation(
+            string key,
+            string tw,
+            string cn,
+            string en,
+            string ja,
+            string ko)
+        {
+            Translations[LangTw][key] = tw;
+            Translations[LangCn][key] = cn;
+            Translations[LangEn][key] = en;
+            Translations[LangJa][key] = ja;
+            Translations[LangKo][key] = ko;
+        }
 
         /// <summary>Maps a language code (or the current UI culture when empty) to one of the
         /// supported language keys, defaulting to Traditional Chinese.</summary>
@@ -895,6 +915,7 @@ namespace Clickra.Core
         static Localization()
         {
             RegisterCompressionTranslations();
+            RegisterFluentSettingsTranslations();
             RegisterFluentDashboardTranslations();
             RegisterCliTranslations();
             RegisterDiagnosticsEmailTranslations();
