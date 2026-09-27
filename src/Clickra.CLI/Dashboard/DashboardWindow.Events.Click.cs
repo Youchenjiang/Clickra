@@ -899,17 +899,9 @@ namespace Clickra.UI
                     var ver = typeof(DashboardWindow).Assembly.GetName().Version;
                     string verStr = ver != null ? $"{ver.Major}.{ver.Minor}.{ver.Build}" : "Unknown";
                     string timeStr = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
-                    string subject = Uri.EscapeDataString("Clickra Diagnostics Report");
-                    string body = Uri.EscapeDataString(
-                        "感謝您提交 Clickra 診斷回報！\r\n\r\n" +
-                        "請直接將已為您選取好的「history.log」拖曳到此郵件中作為附件。\r\n\r\n" +
-                        $"[系統資訊]\r\n" +
-                        $"作業系統: Windows\r\n" +
-                        $"Clickra 版本: {verStr}\r\n" +
-                        $"時間: {timeStr}\r\n\r\n" +
-                        "[問題描述]\r\n" +
-                        "（請在此處填寫您遇到的問題...）"
-                    );
+                    var (subjectText, bodyText) = Localization.BuildDiagnosticsEmail(verStr, timeStr);
+                    string subject = Uri.EscapeDataString(subjectText);
+                    string body = Uri.EscapeDataString(bodyText);
                     string gmailUrl = $"https://mail.google.com/mail/?view=cm&fs=1&to=jiangyouchen%40gmail.com&su={subject}&body={body}";
                     System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
                     {
