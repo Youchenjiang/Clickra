@@ -1,5 +1,9 @@
 # Changelog
 
+## [v3.8.1.0] - 2026-09-27
+
+- **TODO**: Add changelog entry here
+
 ## [v3.8.0.0] - 2026-09-26
 
 - **圖片格式轉換 (Image Format Conversion)**：新增 `img-to-png`、`img-to-jpg`、`img-to-webp`、`img-to-gif` 與 `img-to-heic`，並透過 shared Core registry/runner 同步提供給 legacy CLI、Native dashboard/progress 與 Fluent UI。
