@@ -24,8 +24,9 @@ static partial class TestSuite
     private const string RetiredPdfDpi = "PdfCompressDpi";
     private const string LanguageZhTw = "zh-TW";
     private const string LanguageEnUs = "en-US";
+    private const string LanguageJaJp = "ja-JP";
     private static readonly string[] SupportedLocalizationLanguages =
-        { LanguageZhTw, "zh-CN", LanguageEnUs, "ja-JP", "ko-KR" };
+        { LanguageZhTw, "zh-CN", LanguageEnUs, LanguageJaJp, "ko-KR" };
 
     public static void RegisterSettingsRegistryTests(TestRunner runner)
     {
@@ -297,7 +298,7 @@ static partial class TestSuite
         Assert.True(twBody.Contains("Clickra 版本: 1.2.0"), "Expected formatted Traditional Chinese version.");
         Assert.True(twBody.Contains("[系統資訊]"), "Expected Traditional Chinese section header.");
 
-        var (jaSubject, jaBody) = Localization.BuildDiagnosticsEmail("1.2.0", "2026-09-15 12:00:00", "ja-JP");
+        var (jaSubject, jaBody) = Localization.BuildDiagnosticsEmail("1.2.0", "2026-09-15 12:00:00", LanguageJaJp);
         Assert.Equal("Clickra 診断レポート", jaSubject);
         Assert.True(jaBody.Contains("Clickra バージョン: 1.2.0"), "Expected Japanese version label.");
     }
@@ -330,7 +331,7 @@ static partial class TestSuite
 
         Assert.True(missing.Count > 0, "Missing translations must be detected for unregistered test keys.");
         Assert.True(missing.ContainsKey("en-US"), "en-US must be reported as missing test keys.");
-        Assert.True(missing.ContainsKey("ja-JP"), "ja-JP must be reported as missing test keys.");
+        Assert.True(missing.ContainsKey(LanguageJaJp), "ja-JP must be reported as missing test keys.");
         Assert.True(missing.ContainsKey("ko-KR"), "ko-KR must be reported as missing test keys.");
 
         string report = Localization.FormatMissingReport(missing);
@@ -424,7 +425,7 @@ static partial class TestSuite
     private static bool IsAllowedLanguageAutonym(string line) =>
         line.Contains("zh-TW", StringComparison.OrdinalIgnoreCase) ||
         line.Contains("zh-CN", StringComparison.OrdinalIgnoreCase) ||
-        line.Contains("ja-JP", StringComparison.OrdinalIgnoreCase) ||
+        line.Contains(LanguageJaJp, StringComparison.OrdinalIgnoreCase) ||
         line.Contains("ja)", StringComparison.OrdinalIgnoreCase) ||
         line.Contains("ko-KR", StringComparison.OrdinalIgnoreCase);
 
