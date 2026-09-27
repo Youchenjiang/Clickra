@@ -1,6 +1,6 @@
 # Microsoft Store 清單 - 中文 (台灣)
 
-以下是供您直接複製貼上至 Microsoft 合作夥伴中心 (Partner Center) 的完整欄位資訊，已更新至 v3.8.0.0 的最新狀態。
+以下是供您直接複製貼上至 Microsoft 合作夥伴中心 (Partner Center) 的完整欄位資訊，已更新至 v3.8.1.0 的最新狀態。
 
 ---
 
@@ -30,10 +30,10 @@ Clickra 絕大多數功能（文書轉 PDF、PDF 壓縮、PDF 合併、圖片拼
 🔗 開源專案首頁：https://github.com/Youchenjiang/Clickra
 
 ## What's new in this version
-- 圖片格式轉換：可從 CLI、原生儀表板與 Fluent UI 將圖片轉成 PNG、JPG、WebP、GIF 或 HEIC。
-- WebP 內建 runtime：WebP 編碼與解碼現在隨 Clickra 一同封裝，不再依賴 Microsoft Store 的 WebP codec。
-- HEIC/HEIF 安全檢查：缺少必要的 HEIF/HEIC encoder 或 decoder 時會明確回報並 fail closed；`.heic`、`.heif`、`.hif` 輸入皆一致檢查。
-- 輸出更安全：轉換前會拒絕同格式輸入、不支援的目標格式與輸出路徑碰撞，並一致遵守明確指定的輸出資料夾。
+- LibreOffice 管理更安全：Clickra 現在只會移除自己安裝與管理的 LibreOffice，使用者自行安裝的版本會完整保留。
+- 設定一致性提升：共用設定現在統一使用集中管理的設定鍵、預設值與 ownership 規則，降低行為漂移。
+- PDF 壓縮更直覺：壓縮滑桿改為 Small、Balanced、High Quality 三個明確預設，既有使用者原本的 High 設定也會正確保留。
+- 設定檔更乾淨：載入設定時會自動清除已退役的 PDF 壓縮設定，同時保留所有有效偏好。
 
 ## Product Features
 *(最多 20 個，以項目符號顯示)*
@@ -41,7 +41,7 @@ Clickra 絕大多數功能（文書轉 PDF、PDF 壓縮、PDF 合併、圖片拼
 - 支援 Word/Excel/PPT 一鍵轉 PDF
 - 未安裝 Microsoft Office 時可使用 LibreOffice 備援
 - 支援一鍵 PDF 檔案本機高保真壓縮功能
-- 4 段設定拉條 Slider 快速微調 PDF 壓縮率
+- 3 段 PDF 壓縮預設滑桿：Small、Balanced、High Quality
 - PDF 一鍵去除密碼功能
 - 進度視窗內嵌式安全密碼輸入
 - 視覺化 PDF 分割，支援頁面縮圖與三種分割模式
@@ -51,7 +51,7 @@ Clickra 絕大多數功能（文書轉 PDF、PDF 壓縮、PDF 合併、圖片拼
 - 圖片垂直無縫拼接
 - 極速 PDF 多檔合併
 - NativeAOT Shell 整合，維持右鍵選單快速回應
-- WinUI 3 Fluent 儀表板與轉換進度介面
+- 原生儀表板與轉換進度介面
 - 安全本機處理（僅 PDF 翻譯使用選用的雲端翻譯服務）
 
 ---

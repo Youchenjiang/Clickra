@@ -1,6 +1,6 @@
 # Microsoft Store Listing - English (US)
 
-Below is the complete information for you to copy and paste directly into the Microsoft Partner Center, updated for the v3.8.0.0 release.
+Below is the complete information for you to copy and paste directly into the Microsoft Partner Center, updated for the v3.8.1.0 release.
 
 ---
 
@@ -30,10 +30,10 @@ Clickra respects your privacy. Most processing (Office-to-PDF conversion, PDF co
 🔗 Open Source on GitHub: https://github.com/Youchenjiang/Clickra
 
 ## What's new in this version
- - Image Format Conversion: Convert images to PNG, JPG, WebP, GIF, or HEIC from the CLI, Native dashboard, and Fluent UI.
- - Bundled WebP Runtime: WebP encoding and decoding now ship with Clickra and no longer depend on a Microsoft Store WebP codec.
- - HEIC/HEIF Safety: Missing HEIF/HEIC encoder or decoder support is reported clearly and fails closed for `.heic`, `.heif`, and `.hif` inputs.
- - Safer Outputs: Same-format inputs, unsupported targets, and colliding output paths are rejected before conversion, while explicit output directories are honored consistently.
+ - Safer LibreOffice Management: Clickra now removes only LibreOffice installations that it installed and manages, while preserving user-managed installations.
+ - Consistent Settings: Shared settings now use centralized registered keys, defaults, and ownership rules to reduce behavior drift.
+ - Clearer PDF Compression: The compression slider now exposes three distinct presets — Small, Balanced, and High Quality — while preserving existing users' previous High setting.
+ - Cleaner Configuration: Retired PDF compression settings are removed automatically when settings are loaded, without touching active preferences.
 
 ## Product Features
 *(Max 20, displayed as bullet points)*
@@ -41,7 +41,7 @@ Clickra respects your privacy. Most processing (Office-to-PDF conversion, PDF co
  - One-click Word/Excel/PPT to PDF conversion
  - Optional LibreOffice fallback when Microsoft Office is unavailable
  - Native high-fidelity PDF compression support
- - 4-stop horizontal settings slider to instantly adjust PDF compression levels
+ - 3-preset horizontal settings slider for Small, Balanced, and High Quality PDF compression
  - One-click PDF password removal
  - Inline secure password input within the progress window
  - Visual PDF Splitter with page thumbnails and three split modes
@@ -51,7 +51,7 @@ Clickra respects your privacy. Most processing (Office-to-PDF conversion, PDF co
  - Seamless vertical image stitching
  - Fast multi-file PDF merging
  - NativeAOT shell integration for responsive context-menu commands
- - WinUI 3 Fluent dashboard and conversion progress
+ - Native dashboard and conversion progress UI
  - Safe local processing (optional cloud-based PDF Translation)
 
 ---

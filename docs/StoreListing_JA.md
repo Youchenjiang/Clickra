@@ -1,6 +1,6 @@
 # Microsoft Store Listing - Japanese (Japan)
 
-Microsoft Partner Center にそのまま貼り付けられる、v3.8.0.0 向けのストア掲載情報です。
+Microsoft Partner Center にそのまま貼り付けられる、v3.8.1.0 向けのストア掲載情報です。
 
 ---
 
@@ -30,10 +30,10 @@ Clickra はプライバシーを重視します。Office から PDF、PDF 圧縮
 🔗 Open Source on GitHub: https://github.com/Youchenjiang/Clickra
 
 ## What's new in this version
- - 画像形式変換: CLI、ネイティブダッシュボード、Fluent UI から画像を PNG、JPG、WebP、GIF、HEIC に変換できます。
- - WebP ランタイム同梱: WebP のエンコード/デコードを Clickra に同梱し、Microsoft Store の WebP コーデックに依存しなくなりました。
- - HEIC/HEIF 安全チェック: 必要な HEIF/HEIC エンコーダーまたはデコーダーがない場合は明確に通知して fail closed し、`.heic`、`.heif`、`.hif` 入力を一貫して検査します。
- - より安全な出力: 同一形式入力、未対応の変換先、出力パスの衝突を変換前に拒否し、明示した出力フォルダーを一貫して使用します。
+ - LibreOffice 管理の安全性向上: Clickra がインストールして管理している LibreOffice だけを削除し、ユーザー自身が管理するインストールは保持します。
+ - 設定の一貫性向上: 共通設定を集中管理されたキー、既定値、ownership ルールに統一し、動作のずれを減らします。
+ - PDF 圧縮を明確化: 圧縮スライダーを Small、Balanced、High Quality の3つの明確なプリセットに統一し、既存ユーザーの従来の High 設定も保持します。
+ - 設定ファイルの整理: 廃止済みの PDF 圧縮設定を読み込み時に自動削除し、有効な設定はそのまま保持します。
 
 ## Product Features
 *(Max 20, displayed as bullet points)*
@@ -41,7 +41,7 @@ Clickra はプライバシーを重視します。Office から PDF、PDF 圧縮
  - Word/Excel/PPT から PDF へのワンクリック変換
  - Microsoft Office がない場合の LibreOffice フォールバック
  - 本地での PDF 圧縮・最適化に対応
- - 4段階の横型設定スライダーで PDF 圧縮レベルを直感的に調整可能
+ - Small、Balanced、High Quality の3プリセットで PDF 圧縮レベルを調整
  - PDF パスワードのワンクリック解除
  - 進行状況ウィンドウ内の安全なパスワード入力
  - ビジュアル PDF 分割（ページサムネイルと3分割モード）
@@ -51,7 +51,7 @@ Clickra はプライバシーを重視します。Office から PDF、PDF 圧縮
  - 画像の縦方向結合
  - 複数 PDF の高速結合
  - NativeAOT シェル統合による応答性の高いコンテキストメニュー
- - WinUI 3 Fluent ダッシュボードと変換進行状況画面
+ - ネイティブ ダッシュボードと変換進行状況画面
  - 安全なローカル処理（任意の PDF 翻訳のみクラウド翻訳を使用）
 
 ---
