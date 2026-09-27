@@ -43,7 +43,7 @@ internal static class ClickraStartup
             .ToList();
         if (files.Count == 0)
         {
-            Console.WriteLine($"[錯誤] 指令「{command}」找不到可處理的檔案。");
+            Console.WriteLine(ClickraCli.Loc("cli_err_prefix") + ClickraCli.Loc("cli_err_no_files_found", command));
             Environment.ExitCode = 1;
             return;
         }

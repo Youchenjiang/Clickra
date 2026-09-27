@@ -49,7 +49,7 @@ namespace Clickra
             {
                 var f = files[i];
                 string outName = Path.Combine(outputDir, Path.GetFileNameWithoutExtension(f) + "_compressed.pdf");
-                Console.WriteLine($"[Progress] 正在壓縮 PDF: {Path.GetFileName(f)} ({i + 1}/{files.Count})...");
+                Console.WriteLine($"[Progress] {Loc("cli_progress_compressing_pdf", Path.GetFileName(f), i + 1, files.Count)}");
                 if (pdfOptions != null)
                 {
                     FileProcessor.CompressPdf(f, outName, pdfOptions, (curr, tot, msg) => Console.WriteLine($"[Progress] {msg}"));
@@ -72,7 +72,7 @@ namespace Clickra
                 var f = files[i];
                 if (!File.Exists(f))
                 {
-                    Console.WriteLine($"[Warning] 跳過已不存在的 PDF: {f} ({i + 1}/{files.Count})");
+                    Console.WriteLine($"[Warning] {Loc("cli_warn_file_missing_skip", f, i + 1, files.Count)}");
                     continue;
                 }
 
@@ -80,12 +80,12 @@ namespace Clickra
                 string dbgLog = Path.Combine(outputDir, Path.GetFileNameWithoutExtension(f) + "_renderdbg.log");
                 string healthReport = Path.Combine(outputDir, Path.GetFileNameWithoutExtension(f) + "_translated_health.json");
                 ClickraDebug.Clear();
-                Console.WriteLine($"[Progress] 開始翻譯 PDF: {Path.GetFileName(f)} ({i + 1}/{files.Count})");
-                WriteConsoleProgress(0, 100, $"正在翻譯 PDF: {Path.GetFileName(f)} ({i + 1}/{files.Count})...");
+                Console.WriteLine($"[Progress] {Loc("cli_progress_translating_pdf_start", Path.GetFileName(f), i + 1, files.Count)}");
+                WriteConsoleProgress(0, 100, Loc("cli_progress_translating_pdf", Path.GetFileName(f), i + 1, files.Count));
                 try
                 {
                     FileProcessor.TranslatePdf(f, outName, targetLang, WriteConsoleProgress);
-                    WriteConsoleProgress(100, 100, $"完成翻譯 PDF: {Path.GetFileName(f)} ({i + 1}/{files.Count})");
+                    WriteConsoleProgress(100, 100, Loc("cli_progress_translating_pdf_done", Path.GetFileName(f), i + 1, files.Count));
                     FinishConsoleProgressLine();
                     ClickraDebug.SaveTo(dbgLog);
                     Console.WriteLine($"[Debug] Render log: {dbgLog} ({ClickraDebug.Lines.Count} entries)");
@@ -94,20 +94,20 @@ namespace Clickra
                 {
                     translationFailed = true;
                     FinishConsoleProgressLine();
-                    Console.WriteLine($"[Warning] 翻譯期間檔案消失，已跳過: {f}");
+                    Console.WriteLine($"[Warning] {Loc("cli_warn_translate_file_vanished", f)}");
                 }
                 catch (DirectoryNotFoundException)
                 {
                     translationFailed = true;
                     FinishConsoleProgressLine();
-                    Console.WriteLine($"[Warning] 翻譯期間資料夾消失，已跳過: {f}");
+                    Console.WriteLine($"[Warning] {Loc("cli_warn_translate_dir_vanished", f)}");
                 }
                 catch (Exception ex)
                 {
                     translationFailed = true;
                     FinishConsoleProgressLine();
                     ClickraDebug.SaveTo(dbgLog);
-                    Console.WriteLine($"[Error] 翻譯檔案未完成: {f}. 錯誤訊息: {ex.Message}");
+                    Console.WriteLine($"[Error] {Loc("cli_err_translate_failed", f, ex.Message)}");
                     Console.WriteLine($"[Debug] Health report: {healthReport}");
                 }
             }
@@ -125,7 +125,7 @@ namespace Clickra
             if (DispatchPdfCommand(command, files, options.Quiet, options.OutputDir, options.HasCliLevel, options.CompressionLevel, options.PagesOption)) return;
             if (DispatchImageCommand(command, files, options.Quiet, options.OutputDir, options.OutputDirOverride)) return;
 
-            Console.WriteLine($"[錯誤] 未知指令: {command}");
+            Console.WriteLine(Loc("cli_err_prefix") + Loc("cli_err_unknown_command", command));
         }
 
         /// <summary>Handles office-conversion commands (ppt2pdf, word2pdf, excel2pdf).</summary>
@@ -203,7 +203,7 @@ namespace Clickra
             {
                 var f = files[i];
                 string outName = Path.Combine(outputDir, Path.GetFileNameWithoutExtension(f) + "_split.pdf");
-                Console.WriteLine($"[Progress] 正在分割 PDF: {Path.GetFileName(f)} ({i + 1}/{files.Count})...");
+                Console.WriteLine($"[Progress] {Loc("cli_progress_splitting_pdf", Path.GetFileName(f), i + 1, files.Count)}");
                 FileProcessor.SplitPdf(f, outName, pagesOption, (curr, tot, msg) => Console.WriteLine($"[Progress] {msg}"));
             }
         }
@@ -276,10 +276,10 @@ namespace Clickra
             {
                 var f = files[i];
                 string outName = Path.Combine(outputDir, Path.GetFileNameWithoutExtension(f) + ".pdf");
-                Console.WriteLine($"[Progress] 正在轉換圖片: {Path.GetFileName(f)} ({i + 1}/{files.Count})...");
+                Console.WriteLine($"[Progress] {Loc("cli_progress_converting_image", Path.GetFileName(f), i + 1, files.Count)}");
                 FileProcessor.ConvertImagesToPdf(new List<string> { f }, outName, null);
             }
-            Console.WriteLine("[Progress] 轉換完成，正在儲存 PDF...");
+            Console.WriteLine($"[Progress] {Loc("cli_progress_converting_image_saving")}");
         }
 
         /// <summary>Removes the password from each PDF in quiet mode, translating
@@ -290,7 +290,7 @@ namespace Clickra
             {
                 var f = files[i];
                 string outName = Path.Combine(outputDir, Path.GetFileNameWithoutExtension(f) + "_decrypted.pdf");
-                Console.WriteLine($"[Progress] 正在移除密碼: {Path.GetFileName(f)} ({i + 1}/{files.Count})...");
+                Console.WriteLine($"[Progress] {Loc("cli_progress_decrypting_pdf", Path.GetFileName(f), i + 1, files.Count)}");
 
                 try
                 {

@@ -791,6 +791,7 @@ namespace Clickra.Core
         {
             RegisterCompressionTranslations();
             RegisterFluentDashboardTranslations();
+            RegisterCliTranslations();
         }
 
         private static void RegisterCompressionTranslations()
@@ -1028,6 +1029,43 @@ namespace Clickra.Core
                 Translations[LangEn][item.Key] = item.En;
                 Translations[LangJa][item.Key] = item.Ja;
                 Translations[LangKo][item.Key] = item.Ko;
+            }
+        }
+
+        private static void RegisterCliTranslations()
+        {
+            var data = new string[,]
+            {
+                { "cli_err_prefix", "[錯誤] ", "[错误] ", "[Error] ", "[エラー] ", "[오류] " },
+                { "cli_err_unknown_command", "未知指令: {0}", "未知指令: {0}", "Unknown command: {0}", "不明なコマンド: {0}", "알 수 없는 명령: {0}" },
+                { "cli_err_no_files_found", "指令「{0}」找不到可處理的檔案。", "指令“{0}”找不到可处理的文件。", "No convertible files found for command '{0}'.", "コマンド「{0}」で処理できるファイルが見つかりません。", "명령 '{0}'에서 처리할 수 있는 파일을 찾을 수 없습니다." },
+                { "cli_err_invalid_format", "指令「{0}」只接受以下格式：{1}\n\n以下檔案格式不符，已中止執行：\n  {2}", "指令“{0}”只接受以下格式：{1}\n\n以下文件格式不符，已中止执行：\n  {2}", "Command '{0}' only accepts the following formats: {1}\n\nThe following files have invalid formats and execution was aborted:\n  {2}", "コマンド「{0}」は次の形式のみ受け付けます: {1}\n\n次のファイル形式が一致しないため、実行を中止しました:\n  {2}", "명령 '{0}'은(는) 다음 형식만 지원합니다: {1}\n\n다음 파일 형식이 일치하지 않아 실행을 중단했습니다:\n  {2}" },
+                { "cli_err_invalid_format_title", "Clickra — 格式錯誤", "Clickra — 格式错误", "Clickra — Invalid Format", "Clickra — 形式エラー", "Clickra — 형식 오류" },
+                { "cli_err_min_files", "指令「{0}」至少需要 {1} 個檔案，但您只傳入了 {2} 個。\n\n請多選幾個檔案後，再透過「傳送到」執行。", "指令“{0}”至少需要 {1} 个文件，但您只传入了 {2} 个。\n\n请多选几个文件后，再通过“发送到”执行。", "Command '{0}' requires at least {1} file(s), but only {2} were provided.\n\nPlease select more files and try again via 'Send to'.", "コマンド「{0}」には少なくとも {1} 個のファイルが必要ですが、{2} 個しか指定されていません。\n\n複数のファイルを選択してから「送る」で再実行してください。", "명령 '{0}'은(는) 최소 {1}개의 파일이 필요하지만 {2}개만 전달되었습니다.\n\n파일을 더 선택한 후 '보내기'를 통해 다시 실행하세요." },
+                { "cli_err_min_files_title", "Clickra — 檔案數量不足", "Clickra — 文件数量不足", "Clickra — Insufficient Files", "Clickra — ファイル数が不足", "Clickra — 파일 수 부족" },
+                { "cli_err_option_requires_dir", "參數「{0}」需要指定資料夾。", "参数“{0}”需要指定文件夹。", "Option '{0}' requires a target directory.", "オプション「{0}」にはフォルダーの指定が必要です。", "옵션 '{0}'은(는) 폴더를 지정해야 합니다." },
+                { "cli_progress_compressing_pdf", "正在壓縮 PDF: {0} ({1}/{2})...", "正在压缩 PDF: {0} ({1}/{2})...", "Compressing PDF: {0} ({1}/{2})...", "PDF を圧縮中: {0} ({1}/{2})...", "PDF 압축 중: {0} ({1}/{2})..." },
+                { "cli_progress_splitting_pdf", "正在分割 PDF: {0} ({1}/{2})...", "正在分割 PDF: {0} ({1}/{2})...", "Splitting PDF: {0} ({1}/{2})...", "PDF を分割中: {0} ({1}/{2})...", "PDF 분할 중: {0} ({1}/{2})..." },
+                { "cli_progress_converting_image", "正在轉換圖片: {0} ({1}/{2})...", "正在转换图片: {0} ({1}/{2})...", "Converting image: {0} ({1}/{2})...", "画像を変換中: {0} ({1}/{2})...", "이미지 변환 중: {0} ({1}/{2})..." },
+                { "cli_progress_converting_image_saving", "轉換完成，正在儲存 PDF...", "转换完成，正在保存 PDF...", "Conversion complete, saving PDF...", "変換完了、PDF を保存中...", "변환 완료, PDF 저장 중..." },
+                { "cli_progress_decrypting_pdf", "正在移除密碼: {0} ({1}/{2})...", "正在移除密码: {0} ({1}/{2})...", "Removing password: {0} ({1}/{2})...", "パスワードを解除中: {0} ({1}/{2})...", "암호 제거 중: {0} ({1}/{2})..." },
+                { "cli_progress_translating_pdf_start", "開始翻譯 PDF: {0} ({1}/{2})", "开始翻译 PDF: {0} ({1}/{2})", "Starting PDF translation: {0} ({1}/{2})", "PDF 翻訳を開始: {0} ({1}/{2})", "PDF 번역 시작: {0} ({1}/{2})" },
+                { "cli_progress_translating_pdf", "正在翻譯 PDF: {0} ({1}/{2})...", "正在翻译 PDF: {0} ({1}/{2})...", "Translating PDF: {0} ({1}/{2})...", "PDF を翻訳中: {0} ({1}/{2})...", "PDF 번역 중: {0} ({1}/{2})..." },
+                { "cli_progress_translating_pdf_done", "完成翻譯 PDF: {0} ({1}/{2})", "完成翻译 PDF: {0} ({1}/{2})", "Finished translating PDF: {0} ({1}/{2})", "PDF 翻訳が完了: {0} ({1}/{2})", "PDF 번역 완료: {0} ({1}/{2})" },
+                { "cli_warn_file_missing_skip", "跳過已不存在的 PDF: {0} ({1}/{2})", "跳过已不存在的 PDF: {0} ({1}/{2})", "Skipping missing PDF: {0} ({1}/{2})", "存在しない PDF をスキップ: {0} ({1}/{2})", "존재하지 않는 PDF 건너뜀: {0} ({1}/{2})" },
+                { "cli_warn_translate_file_vanished", "翻譯期間檔案消失，已跳過: {0}", "翻译期间文件消失，已跳过: {0}", "File disappeared during translation, skipped: {0}", "翻訳中にファイルが消失したためスキップしました: {0}", "번역 중 파일이 사라져 건너뛰었습니다: {0}" },
+                { "cli_warn_translate_dir_vanished", "翻譯期間資料夾消失，已跳過: {0}", "翻译期间文件夹消失，已跳过: {0}", "Directory disappeared during translation, skipped: {0}", "翻訳中にフォルダーが消失したためスキップしました: {0}", "번역 중 폴더가 사라져 건너뛰었습니다: {0}" },
+                { "cli_err_translate_failed", "翻譯檔案未完成: {0}. 錯誤訊息: {1}", "翻译文件未完成: {0}. 错误信息: {1}", "Translation failed: {0}. Error: {1}", "ファイルの翻訳が未完了です: {0}. エラー: {1}", "파일 번역 미완료: {0}. 오류: {1}" }
+            };
+
+            for (int row = 0; row < data.GetLength(0); row++)
+            {
+                string key = data[row, 0];
+                Translations[LangTw][key] = data[row, 1];
+                Translations[LangCn][key] = data[row, 2];
+                Translations[LangEn][key] = data[row, 3];
+                Translations[LangJa][key] = data[row, 4];
+                Translations[LangKo][key] = data[row, 5];
             }
         }
     }
