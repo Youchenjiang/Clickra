@@ -363,8 +363,8 @@ static partial class TestSuite
         string ext = Path.GetExtension(file).ToLowerInvariant();
         string raw = File.ReadAllText(file);
         raw = ext == ".cs"
-            ? Regex.Replace(raw, @"/\*.*?\*/", match => PreserveLineBreaks(match.Value), RegexOptions.Singleline)
-            : Regex.Replace(raw, @"<!--.*?-->", match => PreserveLineBreaks(match.Value), RegexOptions.Singleline);
+            ? Regex.Replace(raw, @"/\*.*?\*/", match => PreserveLineBreaks(match.Value), RegexOptions.Singleline, SettingsRegexTimeout)
+            : Regex.Replace(raw, @"<!--.*?-->", match => PreserveLineBreaks(match.Value), RegexOptions.Singleline, SettingsRegexTimeout);
 
         string[] lines = raw.Split(new[] { "\r\n", "\r", "\n" }, StringSplitOptions.None);
         for (int index = 0; index < lines.Length; index++)
