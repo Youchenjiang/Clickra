@@ -52,9 +52,9 @@
                 <TextBlock x:Name="SegmentHeader" FontWeight="SemiBold" Margin="4,0,0,0"/>
                 <ListView x:Name="SegmentList" Grid.Row="1" SelectionMode="Single" BorderThickness="1"/>
                 <StackPanel Grid.Row="2" Orientation="Horizontal" Spacing="6" Margin="0,6,0,0">
-                    <Button x:Name="AddSegmentBtn" Content="＋ 新增" Padding="10,5"/>
-                    <Button x:Name="DeleteSegmentBtn" Content="刪除" Padding="10,5"/>
-                    <Button x:Name="ClearSegmentsBtn" Content="清空" Padding="10,5"/>
+                    <Button x:Name="AddSegmentBtn" Content="+ Add" Padding="10,5"/>
+                    <Button x:Name="DeleteSegmentBtn" Content="Delete" Padding="10,5"/>
+                    <Button x:Name="ClearSegmentsBtn" Content="Clear" Padding="10,5"/>
                 </StackPanel>
             </Grid>
 
@@ -81,7 +81,7 @@
                     <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
                         <Button x:Name="PrevPageBtn" Content="&#x25C0;" MinWidth="34" Padding="8,5"/>
                         <TextBlock x:Name="PageLabel" VerticalAlignment="Center" MinWidth="130" TextAlignment="Center"/>
-                        <Button x:Name="SplitAtPageBtn" Content="切開" Padding="10,5"/>
+                        <Button x:Name="SplitAtPageBtn" Content="Split" Padding="10,5"/>
                         <Button x:Name="NextPageBtn" Content="&#x25B6;" MinWidth="34" Padding="8,5"/>
                     </StackPanel>
                 </Grid>
@@ -103,7 +103,7 @@
                     <Button x:Name="ZoomOutBtn" Content="&#x2212;" MinWidth="34" Padding="8,5" Click="ZoomOutBtn_Click"/>
                     <TextBlock x:Name="ZoomLevelText" VerticalAlignment="Center" MinWidth="56" TextAlignment="Center"/>
                     <Button x:Name="ZoomInBtn" Content="&#xFF0B;" MinWidth="34" Padding="8,5" Click="ZoomInBtn_Click"/>
-                    <Button x:Name="ZoomFitBtn" Content="適配" Padding="10,5" Click="ZoomFitBtn_Click"/>
+                    <Button x:Name="ZoomFitBtn" Content="Fit" Padding="10,5" Click="ZoomFitBtn_Click"/>
                 </StackPanel>
             </Grid>
         </Grid>

@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text.RegularExpressions;
@@ -36,6 +37,8 @@ static partial class TestSuite
         runner.Run("Settings storage: retired keys are purged and rewritten on load", TestRetiredSettingsPurgedOnLoad);
         runner.Run("Settings registry: CLI localization keys coverage across all 5 languages", TestCliLocalizationKeysCoverage);
         runner.Run("Settings registry: Diagnostics email localization coverage across all 5 languages", TestDiagnosticsEmailLocalizationCoverage);
+        runner.Run("Settings registry: Tray and visual splitter localization coverage across all 5 languages", TestTraySplitterLocalizationCoverage);
+        runner.Run("Localization guard: No hardcoded Chinese strings in Clickra.Fluent and Dashboard paint files", TestNoHardcodedChineseUiStrings);
     }
 
     private static void TestSettingKeysDeclaredExactlyOnce()
@@ -296,6 +299,108 @@ static partial class TestSuite
         Assert.Equal("Clickra 診断レポート", jaSubject);
         Assert.True(jaBody.Contains("Clickra バージョン: 1.2.0"), "Expected Japanese version label.");
     }
+
+    private static void TestTraySplitterLocalizationCoverage()
+    {
+        string[] keys =
+        {
+            "tray_background_running",
+            "tray_restore_all",
+            "pdf_split_btn_add",
+            "pdf_split_btn_delete",
+            "pdf_split_btn_clear",
+            "pdf_split_btn_split_at",
+            "pdf_split_mode_fixed_n",
+            "pdf_split_segment_header",
+            "pdf_split_segment_item",
+            "pdf_split_page_preview_format",
+            "pdf_split_badge_format",
+            "pdf_split_pages_n"
+        };
+
+        AssertLocalizationKeysCoverage(keys);
+    }
+
+    private static void TestNoHardcodedChineseUiStrings()
+    {
+        string root = FindRepoRoot() ?? throw new TestSkippedException(
+            "Could not locate the repository root from the test output directory.");
+        var filesToScan = new List<string>();
+
+        string dashboardDir = Path.Combine(root, "src", "Clickra.CLI", "Dashboard");
+        if (Directory.Exists(dashboardDir))
+        {
+            filesToScan.AddRange(Directory.GetFiles(dashboardDir, "DashboardWindow.Paint*.cs"));
+        }
+
+        string fluentDir = Path.Combine(root, "src", "Clickra.Fluent");
+        if (Directory.Exists(fluentDir))
+        {
+            filesToScan.AddRange(Directory.EnumerateFiles(fluentDir, "*.*", SearchOption.AllDirectories)
+                .Where(IsLocalizationGuardTarget));
+        }
+
+        Assert.True(filesToScan.Count > 0, "Expected to find target UI files for localization guard scanning.");
+
+        List<string> violations = filesToScan
+            .SelectMany(file => FindHardcodedChineseViolations(root, file))
+            .ToList();
+        Assert.True(violations.Count == 0,
+            $"Found {violations.Count} hardcoded Chinese string(s) in UI/Paint files:\n" + string.Join("\n", violations));
+    }
+
+    private static bool IsLocalizationGuardTarget(string path)
+    {
+        bool supportedExtension = path.EndsWith(".cs", StringComparison.OrdinalIgnoreCase) ||
+                                  path.EndsWith(".xaml", StringComparison.OrdinalIgnoreCase);
+        bool generatedPath = path.Contains($"{Path.DirectorySeparatorChar}obj{Path.DirectorySeparatorChar}", StringComparison.OrdinalIgnoreCase) ||
+                             path.Contains($"{Path.DirectorySeparatorChar}bin{Path.DirectorySeparatorChar}", StringComparison.OrdinalIgnoreCase);
+        return supportedExtension && !generatedPath;
+    }
+
+    private static IEnumerable<string> FindHardcodedChineseViolations(string root, string file)
+    {
+        string ext = Path.GetExtension(file).ToLowerInvariant();
+        string raw = File.ReadAllText(file);
+        raw = ext == ".cs"
+            ? Regex.Replace(raw, @"/\*.*?\*/", match => PreserveLineBreaks(match.Value), RegexOptions.Singleline, SettingsRegexTimeout)
+            : Regex.Replace(raw, @"<!--.*?-->", match => PreserveLineBreaks(match.Value), RegexOptions.Singleline, SettingsRegexTimeout);
+
+        string[] lines = raw.Split(new[] { "\r\n", "\r", "\n" }, StringSplitOptions.None);
+        for (int index = 0; index < lines.Length; index++)
+        {
+            string line = ext == ".cs" ? StripSingleLineComment(lines[index]) : lines[index];
+            if (!Regex.IsMatch(line, @"[\u4e00-\u9fff]", RegexOptions.CultureInvariant, SettingsRegexTimeout) ||
+                IsAllowedLanguageAutonym(line))
+            {
+                continue;
+            }
+
+            yield return $"{Path.GetRelativePath(root, file)}:{index + 1}: {line.Trim()}";
+        }
+    }
+
+    private static string PreserveLineBreaks(string value) =>
+        new('\n', value.Count(character => character == '\n'));
+
+    private static string StripSingleLineComment(string line)
+    {
+        string trimmed = line.Trim();
+        if (trimmed.StartsWith("//", StringComparison.Ordinal))
+        {
+            return string.Empty;
+        }
+
+        int commentIndex = line.IndexOf("//", StringComparison.Ordinal);
+        return commentIndex >= 0 ? line[..commentIndex] : line;
+    }
+
+    private static bool IsAllowedLanguageAutonym(string line) =>
+        line.Contains("zh-TW", StringComparison.OrdinalIgnoreCase) ||
+        line.Contains("zh-CN", StringComparison.OrdinalIgnoreCase) ||
+        line.Contains("ja-JP", StringComparison.OrdinalIgnoreCase) ||
+        line.Contains("ja)", StringComparison.OrdinalIgnoreCase) ||
+        line.Contains("ko-KR", StringComparison.OrdinalIgnoreCase);
 
     private static void AssertLocalizationKeysCoverage(string[] keys)
     {
