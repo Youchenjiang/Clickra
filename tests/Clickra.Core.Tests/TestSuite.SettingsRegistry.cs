@@ -337,7 +337,7 @@ static partial class TestSuite
         if (Directory.Exists(fluentDir))
         {
             filesToScan.AddRange(Directory.EnumerateFiles(fluentDir, "*.*", SearchOption.AllDirectories)
-                .Where(path => IsLocalizationGuardTarget(path)));
+                .Where(IsLocalizationGuardTarget));
         }
 
         Assert.True(filesToScan.Count > 0, "Expected to find target UI files for localization guard scanning.");
