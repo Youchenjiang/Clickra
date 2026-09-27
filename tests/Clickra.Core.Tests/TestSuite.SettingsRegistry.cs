@@ -30,6 +30,7 @@ static partial class TestSuite
         runner.Run("Settings registry: numeric accessors take their fallback from the registry", TestNumericAccessorsUseRegistry);
         runner.Run("Settings registry: retired keys stay outside the active registry", TestRetiredKeysStayDisjoint);
         runner.Run("Settings storage: retired keys are purged and rewritten on load", TestRetiredSettingsPurgedOnLoad);
+        runner.Run("Settings registry: CLI localization keys coverage across all 5 languages", TestCliLocalizationKeysCoverage);
     }
 
     private static void TestSettingKeysDeclaredExactlyOnce()
@@ -215,5 +216,54 @@ static partial class TestSuite
 
             ClickraStorage.ReloadSettings();
         }
+    }
+
+    private static void TestCliLocalizationKeysCoverage()
+    {
+        string[] cliKeys =
+        {
+            "cli_err_prefix",
+            "cli_err_unknown_command",
+            "cli_err_no_files_found",
+            "cli_err_invalid_format",
+            "cli_err_invalid_format_title",
+            "cli_err_min_files",
+            "cli_err_min_files_title",
+            "cli_err_option_requires_dir",
+            "cli_progress_compressing_pdf",
+            "cli_progress_splitting_pdf",
+            "cli_progress_converting_image",
+            "cli_progress_converting_image_saving",
+            "cli_progress_decrypting_pdf",
+            "cli_progress_translating_pdf_start",
+            "cli_progress_translating_pdf",
+            "cli_progress_translating_pdf_done",
+            "cli_warn_file_missing_skip",
+            "cli_warn_translate_file_vanished",
+            "cli_warn_translate_dir_vanished",
+            "cli_err_translate_failed"
+        };
+
+        string[] languages = { "zh-TW", "zh-CN", "en-US", "ja-JP", "ko-KR" };
+        foreach (string lang in languages)
+        {
+            foreach (string key in cliKeys)
+            {
+                string translated = Localization.T(key, lang);
+                Assert.True(!string.IsNullOrWhiteSpace(translated),
+                    $"Key '{key}' must have non-empty translation for language '{lang}'.");
+                Assert.False(translated.Equals(key, StringComparison.Ordinal),
+                    $"Key '{key}' was not found in dictionary for language '{lang}' (returned raw key).");
+            }
+        }
+
+        string enErr = Localization.T("cli_err_prefix", "en-US");
+        string twErr = Localization.T("cli_err_prefix", "zh-TW");
+        Assert.Equal("[Error] ", enErr);
+        Assert.Equal("[錯誤] ", twErr);
+
+        string enNoFiles = string.Format(Localization.T("cli_err_no_files_found", "en-US"), "compress-pdf");
+        Assert.True(enNoFiles.Contains("No convertible files found"),
+            $"Expected English translation, got: {enNoFiles}");
     }
 }
