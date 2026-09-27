@@ -57,6 +57,11 @@ public sealed partial class VisualSplitterControl : UserControl
         string L(string key) => Localization.T(key, ClickraStorage.GetSetting(ClickraSettings.Language));
         ModeCustomBtn.Content = L("pdf_split_mode_custom");
         ModeEachBtn.Content = L("pdf_split_mode_each");
+        AddSegmentBtn.Content = L("pdf_split_btn_add");
+        DeleteSegmentBtn.Content = L("pdf_split_btn_delete");
+        ClearSegmentsBtn.Content = L("pdf_split_btn_clear");
+        SplitAtPageBtn.Content = L("pdf_split_btn_split_at");
+        SegmentHeader.Text = L("pdf_split_segment_header");
         ModeCustomBtn.IsChecked = true;
         RefreshModeButtons();
         RefreshNSelector();
@@ -169,13 +174,15 @@ public sealed partial class VisualSplitterControl : UserControl
     }
 
     /// <summary>Refreshes the three mode button labels, keeping the fixed-pages button
-    /// in sync with the current N ("固定頁數: 5頁", mirroring the CLI mode bar).</summary>
+    /// in sync with the current N ("Fixed pages: 5 pages", mirroring the CLI mode bar).</summary>
     private void RefreshModeButtons()
     {
-        ModeFixedBtn.Content = $"{Localization.T("pdf_split_mode_fixed", ClickraStorage.GetSetting(ClickraSettings.Language))}: {_nPages}頁";
+        string lang = ClickraStorage.GetSetting(ClickraSettings.Language);
+        ModeFixedBtn.Content = string.Format(Localization.T("pdf_split_mode_fixed_n", lang),
+            Localization.T("pdf_split_mode_fixed", lang), _nPages);
     }
 
-    /// <summary>Refreshes the pages-per-segment stepper label ("每 5 頁").</summary>
+    /// <summary>Refreshes the pages-per-segment stepper label ("Every 5 pages").</summary>
     private void RefreshNSelector()
     {
         NLabel.Text = $"{Localization.T("pdf_split_pages_per_segment", ClickraStorage.GetSetting(ClickraSettings.Language))} {_nPages}";
@@ -250,12 +257,13 @@ public sealed partial class VisualSplitterControl : UserControl
     {
         _suppressSelection = true;
         SegmentList.Items.Clear();
+        string lang = ClickraStorage.GetSetting(ClickraSettings.Language);
         for (int i = 0; i < _segments.Count; i++)
         {
             var seg = _segments[i];
             int pageCnt = seg.End - seg.Start + 1;
             string pageLabel = seg.Start == seg.End ? $"P.{seg.Start}" : $"P.{seg.Start}-{seg.End}";
-            SegmentList.Items.Add($"區段 {i + 1}: {pageLabel} ({pageCnt}頁)");
+            SegmentList.Items.Add(string.Format(Localization.T("pdf_split_segment_item", lang), i + 1, pageLabel, pageCnt));
         }
         SegmentList.SelectedIndex = _selectedSegmentIndex;
         _suppressSelection = false;
@@ -288,7 +296,7 @@ public sealed partial class VisualSplitterControl : UserControl
     }
 
     /// <summary>Splits the selected segment at the currently previewed page into two
-    /// adjacent segments, switching to custom mode (mirrors the CLI "切開" action).</summary>
+    /// adjacent segments, switching to custom mode (mirrors the CLI split action).</summary>
     private void SplitSegmentAtCurrentPage()
     {
         if (_selectedSegmentIndex < 0 || _selectedSegmentIndex >= _customSegments.Count) return;
@@ -411,18 +419,20 @@ public sealed partial class VisualSplitterControl : UserControl
     {
         int page = GetCurrentPageNumber();
 
-        // "P.5 (第 2/3 頁)": absolute page inside the segment-relative position.
+        // "P.5 (Page 2/3)": absolute page inside the segment-relative position.
         int pageCnt = 1;
         if (_selectedSegmentIndex >= 0 && _selectedSegmentIndex < _segments.Count)
         {
             var seg = _segments[_selectedSegmentIndex];
             pageCnt = seg.End - seg.Start + 1;
         }
-        PageLabel.Text = $"P.{page} (第 {Math.Min(_currentPreviewPageIndex + 1, pageCnt)}/{pageCnt} 頁)";
+        string lang = ClickraStorage.GetSetting(ClickraSettings.Language);
+        PageLabel.Text = string.Format(Localization.T("pdf_split_page_preview_format", lang),
+            page, Math.Min(_currentPreviewPageIndex + 1, pageCnt), pageCnt);
 
         // Output badge: [PDF] filename (N pages) of the selected segment.
         string outName = Path.GetFileNameWithoutExtension(_pdfPath);
-        OutputBadgeText.Text = $"[PDF] {outName} ({pageCnt}頁)";
+        OutputBadgeText.Text = string.Format(Localization.T("pdf_split_badge_format", lang), outName, pageCnt);
 
         int seq = ++_renderSeq;
         BitmapImage? source;

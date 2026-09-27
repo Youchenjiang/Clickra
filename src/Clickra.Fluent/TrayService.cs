@@ -1,3 +1,4 @@
+using Clickra.Core;
 using Microsoft.UI.Xaml;
 using System;
 using System.Collections.Generic;
@@ -5,21 +6,15 @@ using System.Runtime.InteropServices;
 
 namespace Clickra_Fluent;
 
-/// <summary>
-/// 全 app 單一系統匣圖示（IDM 模型，見 docs/development/fluent_aot_parity.md G1）。
-/// 取代各頁面各自管理匣圖示的做法：
-/// <list type="bullet">
-/// <item>雙擊 → 還原所有背景轉換視窗</item>
-/// <item>右鍵 → 彈出選單：「還原所有轉換視窗」＋ 每個背景任務一列（點選還原該視窗）</item>
-/// </list>
-/// 圖示只在有背景任務時存在（閒置即無匣圖示，維持解除安裝零殘留約束）。
-/// </summary>
 internal sealed class TrayService
 {
     public static TrayService Instance { get; } = new();
 
     private readonly List<TrayEntry> _entries = new();
     private TrayIcon? _icon;
+
+    private static string L(string key) =>
+        Localization.T(key, ClickraStorage.GetSetting(ClickraSettings.Language));
 
     private sealed class TrayEntry
     {
@@ -107,7 +102,7 @@ internal sealed class TrayService
         }
         else if (_entries.Count > 1)
         {
-            _icon.SetTooltip($"Clickra - {_entries.Count} 個轉換背景執行中");
+            _icon.SetTooltip(string.Format(L("tray_background_running"), _entries.Count));
         }
         else
         {
@@ -135,7 +130,7 @@ internal sealed class TrayService
         if (menu == IntPtr.Zero) return;
         try
         {
-            AppendMenuW(menu, MF_STRING, idRestoreAll, "還原所有轉換視窗");
+            AppendMenuW(menu, MF_STRING, idRestoreAll, L("tray_restore_all"));
             AppendMenuW(menu, MF_SEPARATOR, 0, null);
             uint id = idFirstTask;
             foreach (var entry in _entries)
