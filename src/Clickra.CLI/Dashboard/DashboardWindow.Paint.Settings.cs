@@ -14,6 +14,8 @@ namespace Clickra.UI
 {
     public static partial class DashboardWindow
     {
+        private const string ParkedRetentionDaysTextKey = "setting_parked_ttl_days";
+
         // skipcq: CS-R1140
         static void DrawSettingsTab(Graphics g, float logW, float logH, float contentX)
         {
@@ -380,7 +382,7 @@ namespace Clickra.UI
             {
                 0 => GetText("setting_parked_ttl_unlimited"),
                 1 => string.Format(GetText("setting_parked_ttl_day_single"), currentDays),
-                _ => string.Format(GetText("setting_parked_ttl_days"), currentDays)
+                _ => string.Format(GetText(ParkedRetentionDaysTextKey), currentDays)
             };
             string currentLabel = string.Format(GetText("setting_parked_ttl_current"), currentDaysText);
 
@@ -406,10 +408,10 @@ namespace Clickra.UI
             (int days, int elemId, string label)[] presets = new[]
             {
                 (0, 92, GetText("setting_parked_ttl_unlimited")),
-                (3, 93, string.Format(GetText("setting_parked_ttl_days"), 3)),
+                (3, 93, string.Format(GetText(ParkedRetentionDaysTextKey), 3)),
                 (defaultDays, 94, string.Format(GetText("setting_parked_ttl_default"), defaultDays)),
-                (14, 95, string.Format(GetText("setting_parked_ttl_days"), 14)),
-                (30, 96, string.Format(GetText("setting_parked_ttl_days"), 30))
+                (14, 95, string.Format(GetText(ParkedRetentionDaysTextKey), 14)),
+                (30, 96, string.Format(GetText(ParkedRetentionDaysTextKey), 30))
             };
 
             var measureFont = _subFont ?? SystemFonts.DefaultFont;
