@@ -264,6 +264,67 @@ namespace Clickra.Core
         public static int GetParkedRetentionDays() =>
             Math.Max(GetSettingInt(ClickraSettings.ParkedTaskRetention), 0);
 
+        /// <summary>封裝已暫存任務的保留天數與過期狀態資訊。</summary>
+        public readonly record struct ParkedRetentionInfo(
+            bool IsUnlimited,
+            int RemainingDays,
+            TimeSpan RemainingTime,
+            bool IsExpiringSoon,
+            bool IsExpired);
+
+        /// <summary>根據設定的保留天數與暫存經過時間，計算剩餘保留狀態。</summary>
+        public static ParkedRetentionInfo CalculateRetentionInfo(int retentionDays, TimeSpan age)
+        {
+            if (retentionDays <= 0)
+            {
+                return new ParkedRetentionInfo(
+                    IsUnlimited: true,
+                    RemainingDays: 0,
+                    RemainingTime: TimeSpan.Zero,
+                    IsExpiringSoon: false,
+                    IsExpired: false);
+            }
+
+            TimeSpan remaining = TimeSpan.FromDays(retentionDays) - age;
+            bool isExpired = remaining.TotalSeconds <= 0;
+            int remainingDays = isExpired ? 0 : Math.Max(1, (int)Math.Ceiling(remaining.TotalDays));
+            bool isExpiringSoon = !isExpired && (remaining.TotalHours <= 24.0 || remainingDays <= 1);
+
+            return new ParkedRetentionInfo(
+                IsUnlimited: false,
+                RemainingDays: remainingDays,
+                RemainingTime: remaining,
+                IsExpiringSoon: isExpiringSoon,
+                IsExpired: isExpired);
+        }
+
+        /// <summary>取得指定暫存任務的保留與過期資訊。若任務檔不存在或已過期，傳回對應狀態。</summary>
+        public static ParkedRetentionInfo GetParkedRetentionInfo(string taskId)
+        {
+            int retentionDays = GetParkedRetentionDays();
+            if (retentionDays <= 0)
+            {
+                return CalculateRetentionInfo(0, TimeSpan.Zero);
+            }
+
+            return RunWithMutex(() =>
+            {
+                string path = TaskFilePath(taskId);
+                if (!File.Exists(path))
+                {
+                    return new ParkedRetentionInfo(
+                        IsUnlimited: false,
+                        RemainingDays: 0,
+                        RemainingTime: TimeSpan.Zero,
+                        IsExpiringSoon: false,
+                        IsExpired: true);
+                }
+
+                TimeSpan age = DateTime.UtcNow - File.GetLastWriteTimeUtc(path);
+                return CalculateRetentionInfo(retentionDays, age);
+            });
+        }
+
         /// <summary>刪除任務進度檔（例如任務完成且不需保留，或診斷錯誤後清理）。</summary>
         public static void DeleteTask(string taskId)
         {
@@ -406,7 +467,7 @@ namespace Clickra.Core
             var e = entry.Value;
             bool finished = e.Status == ConversionStatus.Success || e.Status == ConversionStatus.Failed;
             bool parked = e.Status == ConversionStatus.Parked;
-            TimeSpan age = now - File.GetLastWriteTime(file);
+            TimeSpan age = now - File.GetLastWriteTimeUtc(file);
 
             if (IsOrphaned(e, finished, parked, age))
             {
