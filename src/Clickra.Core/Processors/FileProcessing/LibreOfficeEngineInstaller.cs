@@ -202,7 +202,7 @@ namespace Clickra.Core.Processors
             foreach (string candidate in candidates)
             {
                 if (File.Exists(candidate) &&
-                    !resolved.Any(existing => PathsReferToSameInstallation(existing, candidate)))
+                    resolved.All(existing => !PathsReferToSameInstallation(existing, candidate)))
                 {
                     resolved.Add(candidate);
                 }
