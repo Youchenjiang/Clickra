@@ -469,7 +469,7 @@ namespace Clickra.UI
         }
 
         private static int GetDefaultParkedRetentionDays()
-            => int.Parse(ClickraSettings.DefaultParkedTaskRetention, System.Globalization.CultureInfo.InvariantCulture);
+            => ClickraSettings.GetDefaultInt(ClickraSettings.ParkedTaskRetention);
 
         private static void SetParkedRetention(IntPtr hwnd, int days)
         {

@@ -200,8 +200,8 @@ static partial class TestSuite
 
         // The default preset must come from the registry rather than embedding seven days locally.
         Assert.True(paintCode.Contains("GetDefaultParkedRetentionDays()", StringComparison.Ordinal) &&
-                    clickCode.Contains("ClickraSettings.DefaultParkedTaskRetention", StringComparison.Ordinal),
-            "CLI retention default must derive from ClickraSettings.DefaultParkedTaskRetention.");
+                    clickCode.Contains("ClickraSettings.GetDefaultInt(ClickraSettings.ParkedTaskRetention)", StringComparison.Ordinal),
+            "CLI retention default must derive from the registered ParkedTaskRetention default.");
 
         // Must clamp values to [0, 365] matching Fluent
         Assert.True(clickCode.Contains("Math.Clamp(", StringComparison.Ordinal) && clickCode.Contains("365", StringComparison.Ordinal),
