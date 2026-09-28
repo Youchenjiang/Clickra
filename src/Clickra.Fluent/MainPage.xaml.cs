@@ -773,15 +773,36 @@ public sealed partial class MainPage : Page
         _parkedTasks = ClickraStorage.GetParkedTasks();
         ParkedTasksContainer.Children.Clear();
         ParkedTasksSection.Visibility = _parkedTasks.Count == 0 ? Visibility.Collapsed : Visibility.Visible;
+        if (_parkedTasks.Count == 0) return;
+
+        int expiringSoonCount = _parkedTasks.Count(t =>
+        {
+            var info = ClickraStorage.GetParkedRetentionInfo(t.Id);
+            return info.IsExpiringSoon || info.HasExpired;
+        });
+
+        if (expiringSoonCount > 0)
+        {
+            ParkedTasksDesc.Text = string.Format(L("fluent_task_parked_expiring_warning"), expiringSoonCount);
+            ParkedTasksDesc.Foreground = new SolidColorBrush(Color.FromArgb(255, 255, 160, 40));
+        }
+        else
+        {
+            ParkedTasksDesc.Text = L("fluent_task_parked_desc");
+            ParkedTasksDesc.Foreground = (Brush)Application.Current.Resources[SecondaryTextBrushResource];
+        }
+
         foreach (var task in _parkedTasks)
         {
             ParkedTasksContainer.Children.Add(CreateParkedTaskRow(task));
         }
     }
 
-    /// <summary>One parked conversion: command, where it stopped, and its resume/cancel actions.</summary>
+    /// <summary>One parked conversion: command, where it stopped, remaining expiration, and its resume/cancel actions.</summary>
     private Grid CreateParkedTaskRow(ClickraStorage.HistoryEntry task)
     {
+        var info = ClickraStorage.GetParkedRetentionInfo(task.Id);
+
         var row = new Grid
         {
             ColumnSpacing = 10,
@@ -789,19 +810,53 @@ public sealed partial class MainPage : Page
             Background = (Brush)Application.Current.Resources[SecondaryCardBrushResource],
             CornerRadius = new CornerRadius(8)
         };
+
+        if (info.IsExpiringSoon || info.HasExpired)
+        {
+            row.BorderThickness = new Thickness(1);
+            row.BorderBrush = new SolidColorBrush(Color.FromArgb(180, 255, 140, 0));
+        }
+
         row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
         row.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
 
         var texts = new StackPanel { Spacing = 2 };
-        texts.Children.Add(new TextBlock
+
+        var titleRow = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8 };
+        titleRow.Children.Add(new TextBlock
         {
             Text = L(ConvertCommandRegistry.GetLabelKey(task.Command)),
             FontSize = 14,
-            FontWeight = Microsoft.UI.Text.FontWeights.SemiBold
+            FontWeight = Microsoft.UI.Text.FontWeights.SemiBold,
+            VerticalAlignment = VerticalAlignment.Center
         });
+
+        if (info.IsExpiringSoon || info.HasExpired)
+        {
+            var badge = new Border
+            {
+                Background = new SolidColorBrush(Color.FromArgb(40, 255, 140, 0)),
+                BorderBrush = new SolidColorBrush(Color.FromArgb(160, 255, 140, 0)),
+                BorderThickness = new Thickness(1),
+                CornerRadius = new CornerRadius(4),
+                Padding = new Thickness(6, 1, 6, 1),
+                VerticalAlignment = VerticalAlignment.Center,
+                Child = new TextBlock
+                {
+                    Text = "⚠️ " + L("fluent_task_parked_badge_expiring"),
+                    FontSize = 11,
+                    FontWeight = Microsoft.UI.Text.FontWeights.Medium,
+                    Foreground = new SolidColorBrush(Color.FromArgb(255, 255, 160, 40))
+                }
+            };
+            titleRow.Children.Add(badge);
+        }
+
+        texts.Children.Add(titleRow);
+
         texts.Children.Add(new TextBlock
         {
-            Text = ParkedTaskSubtitle(task),
+            Text = ParkedTaskSubtitle(task, info),
             FontSize = 12,
             Foreground = (Brush)Application.Current.Resources[SecondaryTextBrushResource],
             TextTrimming = TextTrimming.CharacterEllipsis
@@ -827,14 +882,40 @@ public sealed partial class MainPage : Page
         return row;
     }
 
-    /// <summary>Row subtitle: which file it stopped on plus the parking reason.</summary>
+    /// <summary>Row subtitle: which file it stopped on, parking reason, and expiration information.</summary>
     private static string ParkedTaskSubtitle(ClickraStorage.HistoryEntry task)
+        => ParkedTaskSubtitle(task, ClickraStorage.GetParkedRetentionInfo(task.Id));
+
+    private static string ParkedTaskSubtitle(ClickraStorage.HistoryEntry task, ClickraStorage.ParkedRetentionInfo info)
     {
         string firstFile = Path.GetFileName(task.InputPaths.Split(';', StringSplitOptions.RemoveEmptyEntries).FirstOrDefault() ?? "");
         string stoppedOn = task.FileCount > 1
             ? string.Format(L("fluent_task_file_index"), Math.Clamp(task.CurrentIndex + 1, 1, task.FileCount), task.FileCount)
             : "";
-        return string.Join(" · ", new[] { firstFile, stoppedOn, task.ErrorMessage }.Where(part => !string.IsNullOrWhiteSpace(part)));
+
+        string ttlText;
+        if (info.IsUnlimited)
+        {
+            ttlText = L("fluent_task_parked_ttl_unlimited");
+        }
+        else if (info.HasExpired)
+        {
+            ttlText = L("fluent_task_parked_ttl_expired");
+        }
+        else if (info.IsExpiringSoon)
+        {
+            ttlText = L("fluent_task_parked_ttl_expiring_soon");
+        }
+        else if (info.RemainingDays == 1)
+        {
+            ttlText = string.Format(L("fluent_task_parked_ttl_days_one"), 1);
+        }
+        else
+        {
+            ttlText = string.Format(L("fluent_task_parked_ttl_days"), info.RemainingDays);
+        }
+
+        return string.Join(" · ", new[] { firstFile, stoppedOn, task.ErrorMessage, ttlText }.Where(part => !string.IsNullOrWhiteSpace(part)));
     }
 
     /// <summary>Resumes a parked conversion through the shared "resume" entry point, so the persisted

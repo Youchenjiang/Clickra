@@ -18,6 +18,7 @@ static partial class TestSuite
     private const string FileA1 = @"\a1.pdf;";
     private const string FileA2 = @"\a2.pdf";
     private const string FluentProjectDirectory = "Clickra.Fluent";
+    private const string RepoRootNotFoundMessage = "Could not locate the repository root from the test output directory.";
     public static void RegisterTaskQueueTests(TestRunner runner)
     {
         runner.Run("Task queue: concurrent tasks keep independent progress files",
@@ -46,6 +47,10 @@ static partial class TestSuite
             TestFluentParkedRetentionControl);
         runner.Run("CLI Dashboard settings page exposes the parked retention control",
             TestCliDashboardParkedRetentionControl);
+        runner.Run("Task queue: parked retention calculation handles unlimited, active, expiring-soon and expired states",
+            TestParkedRetentionInfoCalculation);
+        runner.Run("Fluent History page renders expiration days and alerts user when parked tasks expire soon",
+            TestFluentParkedExpirationUiContract);
     }
 
     private static void TestCancellingParkedTaskRecordsCanceledLine()
@@ -83,7 +88,7 @@ static partial class TestSuite
     private static void TestFluentParkedTaskEntryPoint()
     {
         string? root = FindRepoRoot();
-        if (root is null) throw new TestSkippedException("Could not locate the repository root from the test output directory.");
+        if (root is null) throw new TestSkippedException(RepoRootNotFoundMessage);
 
         string code = File.ReadAllText(Path.Combine(root, "src", FluentProjectDirectory, "MainPage.xaml.cs"));
         string xaml = File.ReadAllText(Path.Combine(root, "src", FluentProjectDirectory, "MainPage.xaml"));
@@ -116,7 +121,7 @@ static partial class TestSuite
     private static void TestFluentParkedRetentionControl()
     {
         string? root = FindRepoRoot();
-        if (root is null) throw new TestSkippedException("Could not locate the repository root from the test output directory.");
+        if (root is null) throw new TestSkippedException(RepoRootNotFoundMessage);
 
         string code = File.ReadAllText(Path.Combine(root, "src", FluentProjectDirectory, "MainPage.xaml.cs"));
         string xaml = File.ReadAllText(Path.Combine(root, "src", FluentProjectDirectory, "MainPage.xaml"));
@@ -158,7 +163,7 @@ static partial class TestSuite
     private static void TestCliDashboardParkedRetentionControl()
     {
         string? root = FindRepoRoot();
-        if (root is null) throw new TestSkippedException("Could not locate the repository root from the test output directory.");
+        if (root is null) throw new TestSkippedException(RepoRootNotFoundMessage);
 
         string paintCode = File.ReadAllText(Path.Combine(root, "src", "Clickra.CLI", "Dashboard", "DashboardWindow.Paint.Settings.cs"));
         string clickCode = File.ReadAllText(Path.Combine(root, "src", "Clickra.CLI", "Dashboard", "DashboardWindow.Events.Click.cs"));
@@ -211,6 +216,82 @@ static partial class TestSuite
         Assert.False(clickCode.Contains("\"ParkedTaskRetention\"", StringComparison.Ordinal) ||
                      paintCode.Contains("\"ParkedTaskRetention\"", StringComparison.Ordinal),
             "ParkedTaskRetention must come from ClickraSettings, not a local string literal.");
+    }
+
+    /// <summary>Unit test verifying that parked retention calculations correctly identify
+    /// unlimited retention, remaining days, expiring-soon alerts, and expiration.</summary>
+    private static void TestParkedRetentionInfoCalculation()
+    {
+        // 1. Unlimited retention (0 days)
+        var unlimited = ClickraStorage.CalculateRetentionInfo(0, TimeSpan.FromDays(100));
+        Assert.True(unlimited.IsUnlimited, "Retention <= 0 must be flagged as unlimited.");
+        Assert.False(unlimited.IsExpiringSoon, "Unlimited retention cannot expire soon.");
+        Assert.False(unlimited.HasExpired, "Unlimited retention cannot be expired.");
+
+        // 2. Active retention with multiple days remaining
+        var active = ClickraStorage.CalculateRetentionInfo(7, TimeSpan.FromDays(2));
+        Assert.False(active.IsUnlimited, "Active 7-day retention is not unlimited.");
+        Assert.Equal(5, active.RemainingDays);
+        Assert.False(active.IsExpiringSoon, "5 days remaining is not expiring soon.");
+        Assert.False(active.HasExpired, "5 days remaining is not expired.");
+
+        // 3. Exactly one day remaining: show the singular day state, not "less than 1 day".
+        var oneDay = ClickraStorage.CalculateRetentionInfo(7, TimeSpan.FromDays(6));
+        Assert.Equal(1, oneDay.RemainingDays);
+        Assert.False(oneDay.IsExpiringSoon, "Exactly 24 hours left is not less than one day.");
+        Assert.False(oneDay.HasExpired, "Exactly one day remaining is still active.");
+
+        // 4. Expiring soon (strictly less than 24 hours remaining)
+        var expiringSoon = ClickraStorage.CalculateRetentionInfo(7, TimeSpan.FromDays(6.3));
+        Assert.False(expiringSoon.IsUnlimited, "Active retention is not unlimited.");
+        Assert.Equal(1, expiringSoon.RemainingDays);
+        Assert.True(expiringSoon.IsExpiringSoon, "< 24 hours left must be flagged as expiring soon.");
+        Assert.False(expiringSoon.HasExpired, "Still within retention window.");
+
+        // 5. Exactly at the retention deadline: expiration and pruning share this boundary.
+        var atDeadline = ClickraStorage.CalculateRetentionInfo(7, TimeSpan.FromDays(7));
+        Assert.Equal(0, atDeadline.RemainingDays);
+        Assert.True(atDeadline.HasExpired, "Age equal to retentionDays must be expired.");
+
+        // 6. Expired (past retention limit)
+        var expired = ClickraStorage.CalculateRetentionInfo(7, TimeSpan.FromDays(7.2));
+        Assert.False(expired.IsUnlimited, "Active retention is not unlimited.");
+        Assert.Equal(0, expired.RemainingDays);
+        Assert.False(expired.IsExpiringSoon, "Expired tasks are expired, not merely expiring soon.");
+        Assert.True(expired.HasExpired, "Age > retentionDays must be flagged as expired.");
+    }
+
+    /// <summary>Contract test ensuring that the Fluent History page displays remaining expiration
+    /// and uses proper localization keys and visual alerts when tasks are expiring soon.</summary>
+    private static void TestFluentParkedExpirationUiContract()
+    {
+        string? root = FindRepoRoot();
+        if (root is null) throw new TestSkippedException(RepoRootNotFoundMessage);
+
+        string code = File.ReadAllText(Path.Combine(root, "src", "Clickra.Fluent", "MainPage.xaml.cs"));
+
+        // Must read retention info via ClickraStorage.GetParkedRetentionInfo
+        Assert.True(code.Contains("ClickraStorage.GetParkedRetentionInfo", StringComparison.Ordinal),
+            "Fluent History page must read task retention info via ClickraStorage.GetParkedRetentionInfo.");
+
+        // Must wire up expiration text localization keys
+        foreach (string key in new[]
+        {
+            "fluent_task_parked_ttl_days",
+            "fluent_task_parked_ttl_expiring_soon",
+            "fluent_task_parked_ttl_unlimited",
+            "fluent_task_parked_ttl_expired",
+            "fluent_task_parked_expiring_warning",
+            "fluent_task_parked_badge_expiring"
+        })
+        {
+            Assert.True(code.Contains(key, StringComparison.Ordinal),
+                $"{key} must be referenced in MainPage.xaml.cs to render expiration and warnings.");
+        }
+
+        // Must check IsExpiringSoon or IsExpired to trigger alerts
+        Assert.True(code.Contains("info.IsExpiringSoon", StringComparison.Ordinal),
+            "MainPage must check IsExpiringSoon to display warning badge and alert colors.");
     }
 
     private static void CleanupActiveTasks()
@@ -336,6 +417,9 @@ static partial class TestSuite
         Assert.True(ClickraStorage.GetParkedRetentionDays() == 0, "0 should mean unlimited (no pruning).");
         ClickraStorage.SaveSetting(SettingParkedRetention, "14");
         Assert.True(ClickraStorage.GetParkedRetentionDays() == 14, "Custom days should be honored.");
+        ClickraStorage.SaveSetting(SettingParkedRetention, "999");
+        Assert.True(ClickraStorage.GetParkedRetentionDays() == ClickraSettings.MaxParkedTaskRetentionDays,
+            "Retention above the supported range should clamp to the shared maximum.");
         ClickraStorage.SaveSetting(SettingParkedRetention, "abc");
         Assert.True(ClickraStorage.GetParkedRetentionDays() == 7, "Invalid value should fall back to 7 days.");
         ClickraStorage.SaveSetting(SettingParkedRetention, "7");
