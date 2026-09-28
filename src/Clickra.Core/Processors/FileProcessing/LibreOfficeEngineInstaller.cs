@@ -5,6 +5,7 @@ using System.IO;
 using System.Linq;
 using System.Net.Http;
 using System.Net.Sockets;
+using System.Security;
 using System.Security.Cryptography;
 using System.Text.RegularExpressions;
 using System.Threading;
@@ -397,7 +398,15 @@ namespace Clickra.Core.Processors
                     }
                 }
             }
-            catch
+            catch (SecurityException)
+            {
+                // Some registry views may be unavailable under reduced permissions.
+            }
+            catch (UnauthorizedAccessException)
+            {
+                // Some registry views may be unavailable under reduced permissions.
+            }
+            catch (IOException)
             {
                 // Some registry views may be unavailable under reduced permissions.
             }
@@ -429,7 +438,19 @@ namespace Clickra.Core.Processors
                 string systemFullPath = Path.GetFullPath(systemPath);
                 return resolvedFullPath.Equals(systemFullPath, StringComparison.OrdinalIgnoreCase);
             }
-            catch
+            catch (ArgumentException)
+            {
+                return false;
+            }
+            catch (NotSupportedException)
+            {
+                return false;
+            }
+            catch (PathTooLongException)
+            {
+                return false;
+            }
+            catch (SecurityException)
             {
                 return false;
             }

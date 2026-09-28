@@ -1479,7 +1479,7 @@ public sealed partial class MainPage : Page
         {
             LibreOfficeEngineInstaller.AdoptExistingInstallation();
         }
-        catch
+        catch (InvalidOperationException)
         {
             await ShowErrorAsync(L("setting_libreoffice_external_note"));
             RefreshLibreOfficeStatus();

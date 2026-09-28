@@ -823,7 +823,7 @@ namespace Clickra.UI
             {
                 LibreOfficeEngineInstaller.AdoptExistingInstallation();
             }
-            catch
+            catch (InvalidOperationException)
             {
                 MessageBox(hwnd, GetText("setting_libreoffice_external_note"), "Clickra", 0x30);
                 InvalidateRect(hwnd, IntPtr.Zero, false);
