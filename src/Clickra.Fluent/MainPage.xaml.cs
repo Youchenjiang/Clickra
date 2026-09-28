@@ -24,7 +24,6 @@ public sealed partial class MainPage : Page
     private const string FailedLocalizationKey = "fluent_failed";
     private const string SecondaryCardBrushResource = "CardBackgroundFillColorSecondaryBrush";
     private const string SecondaryTextBrushResource = "TextFillColorSecondaryBrush";
-    private const int MaxParkedRetentionDays = 365;
     private readonly List<string> _selectedFiles = new();
     private readonly Dictionary<string, Button> _commandButtons = new(StringComparer.OrdinalIgnoreCase);
     private CancellationTokenSource? _cts;
@@ -513,7 +512,7 @@ public sealed partial class MainPage : Page
         CompressionSlider.Value = ConvertCommandRegistry.GetPdfCompressLevel();
         StripFontsToggle.IsOn = ClickraStorage.GetSettingBool(ClickraSettings.PdfCompressStripFonts);
         MinifyContentToggle.IsOn = ClickraStorage.GetSettingBool(ClickraSettings.PdfCompressMinifyContent);
-        ParkedRetentionBox.Maximum = MaxParkedRetentionDays;
+        ParkedRetentionBox.Maximum = ClickraSettings.MaxParkedTaskRetentionDays;
         ParkedRetentionBox.Value = ClickraStorage.GetParkedRetentionDays();
         _loadingSettings = false;
         ApplyLanguage();
@@ -686,7 +685,7 @@ public sealed partial class MainPage : Page
             return;
         }
 
-        int days = Math.Clamp((int)Math.Round(args.NewValue, MidpointRounding.AwayFromZero), 0, MaxParkedRetentionDays);
+        int days = Math.Clamp((int)Math.Round(args.NewValue, MidpointRounding.AwayFromZero), 0, ClickraSettings.MaxParkedTaskRetentionDays);
         ClickraStorage.SaveSetting(ClickraSettings.ParkedTaskRetention, days.ToString());
         if (Math.Abs(sender.Value - days) > 0.0001)
         {

@@ -464,7 +464,7 @@ namespace Clickra.UI
         private static void AdjustParkedRetention(IntPtr hwnd, int delta)
         {
             int current = ClickraStorage.GetParkedRetentionDays();
-            int updated = Math.Clamp(current + delta, 0, 365);
+            int updated = Math.Clamp(current + delta, 0, ClickraSettings.MaxParkedTaskRetentionDays);
             SetParkedRetention(hwnd, updated);
         }
 
@@ -473,7 +473,7 @@ namespace Clickra.UI
 
         private static void SetParkedRetention(IntPtr hwnd, int days)
         {
-            int clamped = Math.Clamp(days, 0, 365);
+            int clamped = Math.Clamp(days, 0, ClickraSettings.MaxParkedTaskRetentionDays);
             ClickraStorage.SaveSetting(ClickraSettings.ParkedTaskRetention, clamped.ToString());
             InvalidateRect(hwnd, IntPtr.Zero, false);
         }

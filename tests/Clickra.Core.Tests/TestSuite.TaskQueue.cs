@@ -203,9 +203,9 @@ static partial class TestSuite
                     clickCode.Contains("ClickraSettings.GetDefaultInt(ClickraSettings.ParkedTaskRetention)", StringComparison.Ordinal),
             "CLI retention default must derive from the registered ParkedTaskRetention default.");
 
-        // Must clamp values to [0, 365] matching Fluent
-        Assert.True(clickCode.Contains("Math.Clamp(", StringComparison.Ordinal) && clickCode.Contains("365", StringComparison.Ordinal),
-            "Retention click handler must clamp days to [0, 365] range.");
+        // Must clamp through the shared maximum used by both CLI and Fluent.
+        Assert.True(clickCode.Contains("ClickraSettings.MaxParkedTaskRetentionDays", StringComparison.Ordinal),
+            "Retention click handler must clamp through the shared maximum.");
 
         // No local hardcoded settings-key literal; localization-key constants are allowed.
         Assert.False(clickCode.Contains("\"ParkedTaskRetention\"", StringComparison.Ordinal) ||

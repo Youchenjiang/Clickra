@@ -52,6 +52,7 @@ public static class ClickraSettings
     public const string DefaultImageCompressLevel = "1";
     public const string DefaultImageCompressMaxDimension = "0";
     public const string DefaultParkedTaskRetention = "7";
+    public const int MaxParkedTaskRetentionDays = 365;
 
     // ─── 設定值的列舉字彙 ─────────────────────────────────────────────────
     public const string OutputDirDesktop = "desktop";
