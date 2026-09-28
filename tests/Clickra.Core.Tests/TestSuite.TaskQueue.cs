@@ -234,14 +234,20 @@ static partial class TestSuite
         Assert.False(active.IsExpiringSoon, "5 days remaining is not expiring soon.");
         Assert.False(active.IsExpired, "5 days remaining is not expired.");
 
-        // 3. Expiring soon (within 24 hours / 1 day remaining)
+        // 3. Exactly one day remaining: show the singular day state, not "less than 1 day".
+        var oneDay = ClickraStorage.CalculateRetentionInfo(7, TimeSpan.FromDays(6));
+        Assert.Equal(1, oneDay.RemainingDays);
+        Assert.False(oneDay.IsExpiringSoon, "Exactly 24 hours left is not less than one day.");
+        Assert.False(oneDay.IsExpired, "Exactly one day remaining is still active.");
+
+        // 4. Expiring soon (strictly less than 24 hours remaining)
         var expiringSoon = ClickraStorage.CalculateRetentionInfo(7, TimeSpan.FromDays(6.3));
         Assert.False(expiringSoon.IsUnlimited, "Active retention is not unlimited.");
         Assert.Equal(1, expiringSoon.RemainingDays);
-        Assert.True(expiringSoon.IsExpiringSoon, "<= 24 hours left must be flagged as expiring soon.");
+        Assert.True(expiringSoon.IsExpiringSoon, "< 24 hours left must be flagged as expiring soon.");
         Assert.False(expiringSoon.IsExpired, "Still within retention window.");
 
-        // 4. Expired (past retention limit)
+        // 5. Expired (past retention limit)
         var expired = ClickraStorage.CalculateRetentionInfo(7, TimeSpan.FromDays(7.2));
         Assert.False(expired.IsUnlimited, "Active retention is not unlimited.");
         Assert.Equal(0, expired.RemainingDays);

@@ -288,7 +288,7 @@ namespace Clickra.Core
             TimeSpan remaining = TimeSpan.FromDays(retentionDays) - age;
             bool isExpired = remaining.TotalSeconds <= 0;
             int remainingDays = isExpired ? 0 : Math.Max(1, (int)Math.Ceiling(remaining.TotalDays));
-            bool isExpiringSoon = !isExpired && (remaining.TotalHours <= 24.0 || remainingDays <= 1);
+            bool isExpiringSoon = !isExpired && remaining.TotalHours < 24.0;
 
             return new ParkedRetentionInfo(
                 IsUnlimited: false,
