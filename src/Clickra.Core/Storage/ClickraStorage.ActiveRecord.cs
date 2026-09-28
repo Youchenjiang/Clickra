@@ -262,7 +262,7 @@ namespace Clickra.Core
 
         /// <summary>已暫存任務的保留天數（0 = 無限期）。未設定或無法解析時採用登錄表的預設值。</summary>
         public static int GetParkedRetentionDays() =>
-            Math.Max(GetSettingInt(ClickraSettings.ParkedTaskRetention), 0);
+            Math.Clamp(GetSettingInt(ClickraSettings.ParkedTaskRetention), 0, ClickraSettings.MaxParkedTaskRetentionDays);
 
         /// <summary>封裝已暫存任務的保留天數與過期狀態資訊。</summary>
         public readonly record struct ParkedRetentionInfo(

@@ -405,6 +405,9 @@ static partial class TestSuite
         Assert.True(ClickraStorage.GetParkedRetentionDays() == 0, "0 should mean unlimited (no pruning).");
         ClickraStorage.SaveSetting(SettingParkedRetention, "14");
         Assert.True(ClickraStorage.GetParkedRetentionDays() == 14, "Custom days should be honored.");
+        ClickraStorage.SaveSetting(SettingParkedRetention, "999");
+        Assert.True(ClickraStorage.GetParkedRetentionDays() == ClickraSettings.MaxParkedTaskRetentionDays,
+            "Retention above the supported range should clamp to the shared maximum.");
         ClickraStorage.SaveSetting(SettingParkedRetention, "abc");
         Assert.True(ClickraStorage.GetParkedRetentionDays() == 7, "Invalid value should fall back to 7 days.");
         ClickraStorage.SaveSetting(SettingParkedRetention, "7");
