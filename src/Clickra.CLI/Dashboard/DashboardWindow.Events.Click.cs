@@ -78,7 +78,7 @@ namespace Clickra.UI
                (element >= 90 && element <= 96);
 
         /// <summary>True when the element is one of the LibreOffice setup buttons.</summary>
-        static bool IsLibreOfficeElement(int element) => element == 35 || element == 36 || element == 38;
+        static bool IsLibreOfficeElement(int element) => element == 35 || element == 36 || element == 38 || element == 39;
 
         /// <summary>True when the element is one of the language dropdown toggles.</summary>
         static bool IsDropdownToggleElement(int element) => element == 10 || element == 31;
@@ -530,6 +530,10 @@ namespace Clickra.UI
             {
                 HandleLibreOfficeUninstall(hwnd);
             }
+            else if (element == 39)
+            {
+                HandleLibreOfficeAdopt(hwnd);
+            }
         }
 
         /// <summary>Lets the user browse for a soffice.exe and validates the selection.</summary>
@@ -778,6 +782,30 @@ namespace Clickra.UI
             {
                 PostDashboardAction(hwnd, FinishLibreOfficeSetupStatus);
             }
+        }
+
+        /// <summary>Allows the user to explicitly adopt an existing system LibreOffice into Clickra's management.</summary>
+        static void HandleLibreOfficeAdopt(IntPtr hwnd)
+        {
+            lock (_libreOfficeDownloadLock)
+            {
+                if (_libreOfficeDownloadInProgress)
+                {
+                    MessageBox(hwnd, GetText("setting_libreoffice_download_in_progress"), "Clickra", 0x40);
+                    return;
+                }
+            }
+
+            if (LibreOfficeEngineInstaller.WasInstalledByClickra())
+            {
+                return;
+            }
+
+            if (MessageBox(hwnd, GetText("setting_libreoffice_adopt_confirm"), "Clickra", 0x31) != 1) return;
+
+            LibreOfficeEngineInstaller.AdoptExistingInstallation();
+            InvalidateRect(hwnd, IntPtr.Zero, false);
+            MessageBox(hwnd, GetText("setting_libreoffice_adopt_success"), "Clickra", 0x40);
         }
 
         /// <summary>Toggles the UI-language and PDF-language dropdowns.</summary>

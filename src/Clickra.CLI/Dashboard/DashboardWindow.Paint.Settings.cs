@@ -261,11 +261,25 @@ namespace Clickra.UI
                             (int)_wLibreOfficeUninstall);
                         AddHitRect(38, uninstallX, y, _wLibreOfficeUninstall, 30);
                     }
-                    else if (_subFont != null)
+                    else
                     {
-                        // No uninstall button for a LibreOffice Clickra did not install; explain instead.
-                        using var externalBrush = new SolidBrush(Color.FromArgb(150, 150, 150));
-                        g.DrawString(GetText("setting_libreoffice_external_hint"), _subFont, externalBrush, contentX * s, (y + 32f) * s);
+                        float adoptX = contentX + _wLibreOfficeDownload + margin;
+                        DrawOutputDirButton(
+                            g,
+                            GetText("setting_libreoffice_adopt"),
+                            false,
+                            39,
+                            (int)adoptX,
+                            (int)y,
+                            (int)_wLibreOfficeAdopt);
+                        AddHitRect(39, adoptX, y, _wLibreOfficeAdopt, 30);
+
+                        if (_subFont != null)
+                        {
+                            // Explain external installation provenance to the user.
+                            using var externalBrush = new SolidBrush(Color.FromArgb(150, 150, 150));
+                            g.DrawString(GetText("setting_libreoffice_external_hint"), _subFont, externalBrush, contentX * s, (y + 32f) * s);
+                        }
                     }
                     y += 55f;
                 }

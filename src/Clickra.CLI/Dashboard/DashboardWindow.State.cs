@@ -86,6 +86,7 @@ namespace Clickra.UI
         static float _wLibreOfficeBrowse = 120f;
         static float _wLibreOfficeDownload = 125f;
         static float _wLibreOfficeUninstall = 125f;
+        static float _wLibreOfficeAdopt = 140f;
         static float _wGit = 160f;
         static float _wGmail = 160f;
         static float _overviewContentHeight = 430f;

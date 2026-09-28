@@ -165,6 +165,7 @@ namespace Clickra.UI
                                 tempG.MeasureString(GetText("setting_libreoffice_update"), _subFont).Width),
                             tempG.MeasureString(GetText("setting_libreoffice_reinstall"), _subFont).Width) / _dpiScale + 20f);
                     _wLibreOfficeUninstall = Math.Max(125f, tempG.MeasureString(GetText("setting_libreoffice_uninstall"), _subFont).Width / _dpiScale + 20f);
+                    _wLibreOfficeAdopt = Math.Max(135f, tempG.MeasureString(GetText("setting_libreoffice_adopt"), _subFont).Width / _dpiScale + 20f);
 
                     string textGit = GetText("about_btn_github");
                     string textGmail = GetText("about_btn_gmail");
