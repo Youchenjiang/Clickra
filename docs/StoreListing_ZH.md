@@ -1,6 +1,6 @@
 # Microsoft Store 清單 - 中文 (台灣)
 
-以下是供您直接複製貼上至 Microsoft 合作夥伴中心 (Partner Center) 的完整欄位資訊，已更新至 v3.8.1.0 的最新狀態。
+以下是供您直接複製貼上至 Microsoft 合作夥伴中心 (Partner Center) 的完整欄位資訊，已更新至 v3.9.0.0 的最新狀態。
 
 ---
 
@@ -30,10 +30,10 @@ Clickra 絕大多數功能（文書轉 PDF、PDF 壓縮、PDF 合併、圖片拼
 🔗 開源專案首頁：https://github.com/Youchenjiang/Clickra
 
 ## What's new in this version
-- LibreOffice 管理更安全：Clickra 現在只會移除自己安裝與管理的 LibreOffice，使用者自行安裝的版本會完整保留。
-- 設定一致性提升：共用設定現在統一使用集中管理的設定鍵、預設值與 ownership 規則，降低行為漂移。
-- PDF 壓縮更直覺：壓縮滑桿改為 Small、Balanced、High Quality 三個明確預設，既有使用者原本的 High 設定也會正確保留。
-- 設定檔更乾淨：載入設定時會自動清除已退役的 PDF 壓縮設定，同時保留所有有效偏好。
+- CLI 多語系支援：命令說明、狀態與錯誤訊息新增繁體中文、簡體中文、英文、日文與韓文支援。
+- 診斷郵件在地化：診斷郵件主旨與內容會依目前語系顯示，讓支援與回報流程更清楚。
+- 系統匣與視覺分割器在地化：系統匣操作及 Visual PDF Splitter 的按鈕、區段、頁數與預覽標籤全面使用共用翻譯。
+- 翻譯完整性檢查：新增缺漏翻譯診斷與字典 parity 測試，在版本發布前找出尚未補齊的語系內容。
 
 ## Product Features
 *(最多 20 個，以項目符號顯示)*

@@ -1,6 +1,6 @@
 # Microsoft Store Listing - English (US)
 
-Below is the complete information for you to copy and paste directly into the Microsoft Partner Center, updated for the v3.8.1.0 release.
+Below is the complete information for you to copy and paste directly into the Microsoft Partner Center, updated for the v3.9.0.0 release.
 
 ---
 
@@ -30,10 +30,10 @@ Clickra respects your privacy. Most processing (Office-to-PDF conversion, PDF co
 🔗 Open Source on GitHub: https://github.com/Youchenjiang/Clickra
 
 ## What's new in this version
- - Safer LibreOffice Management: Clickra now removes only LibreOffice installations that it installed and manages, while preserving user-managed installations.
- - Consistent Settings: Shared settings now use centralized registered keys, defaults, and ownership rules to reduce behavior drift.
- - Clearer PDF Compression: The compression slider now exposes three distinct presets — Small, Balanced, and High Quality — while preserving existing users' previous High setting.
- - Cleaner Configuration: Retired PDF compression settings are removed automatically when settings are loaded, without touching active preferences.
+ - Multilingual CLI: Command help, status messages, and errors now support Traditional Chinese, Simplified Chinese, English, Japanese, and Korean.
+ - Localized Diagnostics Email: Diagnostic email subjects and bodies now follow the active language for clearer support workflows.
+ - Localized Tray and Visual Splitter: Tray actions and Visual PDF Splitter controls, segments, page counts, and preview labels now use shared translations.
+ - Translation Coverage Checks: New diagnostics and parity tests detect missing translations before they reach users.
 
 ## Product Features
 *(Max 20, displayed as bullet points)*

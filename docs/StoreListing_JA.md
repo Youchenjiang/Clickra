@@ -1,6 +1,6 @@
 # Microsoft Store Listing - Japanese (Japan)
 
-Microsoft Partner Center にそのまま貼り付けられる、v3.8.1.0 向けのストア掲載情報です。
+Microsoft Partner Center にそのまま貼り付けられる、v3.9.0.0 向けのストア掲載情報です。
 
 ---
 
@@ -30,10 +30,10 @@ Clickra はプライバシーを重視します。Office から PDF、PDF 圧縮
 🔗 Open Source on GitHub: https://github.com/Youchenjiang/Clickra
 
 ## What's new in this version
- - LibreOffice 管理の安全性向上: Clickra がインストールして管理している LibreOffice だけを削除し、ユーザー自身が管理するインストールは保持します。
- - 設定の一貫性向上: 共通設定を集中管理されたキー、既定値、ownership ルールに統一し、動作のずれを減らします。
- - PDF 圧縮を明確化: 圧縮スライダーを Small、Balanced、High Quality の3つの明確なプリセットに統一し、既存ユーザーの従来の High 設定も保持します。
- - 設定ファイルの整理: 廃止済みの PDF 圧縮設定を読み込み時に自動削除し、有効な設定はそのまま保持します。
+ - CLI の多言語対応: コマンドのヘルプ、状態表示、エラーメッセージが繁体字中国語、簡体字中国語、英語、日本語、韓国語に対応しました。
+ - 診断メールのローカライズ: 診断メールの件名と本文が現在の言語に合わせて表示され、サポート時の確認がしやすくなりました。
+ - トレイと Visual Splitter のローカライズ: トレイ操作と Visual PDF Splitter のボタン、セグメント、ページ数、プレビュー表示を共通翻訳に統一しました。
+ - 翻訳カバレッジ検査: 翻訳漏れの診断と辞書 parity テストを追加し、リリース前に不足している言語リソースを検出します。
 
 ## Product Features
 *(Max 20, displayed as bullet points)*
