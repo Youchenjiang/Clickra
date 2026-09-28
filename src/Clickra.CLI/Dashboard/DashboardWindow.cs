@@ -139,9 +139,9 @@ namespace Clickra.UI
             _sidebarWidth = Math.Max(130f, _sidebarWidth); // Ensure it's at least 130px
 
             // Cache button widths to avoid GC pressure in HitTest
-            using (var tempBmp = new Bitmap(1, 1))
-            using (var tempG = Graphics.FromImage(tempBmp))
             {
+                using var tempBmp = new Bitmap(1, 1);
+                using var tempG = Graphics.FromImage(tempBmp);
                 if (_subFont != null)
                 {
                     string textSource = GetText("setting_output_same_as_source");
