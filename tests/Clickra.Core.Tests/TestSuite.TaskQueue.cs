@@ -207,10 +207,10 @@ static partial class TestSuite
         Assert.True(clickCode.Contains("Math.Clamp(", StringComparison.Ordinal) && clickCode.Contains("365", StringComparison.Ordinal),
             "Retention click handler must clamp days to [0, 365] range.");
 
-        // No local hardcoded key constants
-        Assert.False(clickCode.Contains("const string ParkedRetention", StringComparison.Ordinal) ||
-                     paintCode.Contains("const string ParkedRetention", StringComparison.Ordinal),
-            "Retention key must come from ClickraSettings, not a local constant.");
+        // No local hardcoded settings-key literal; localization-key constants are allowed.
+        Assert.False(clickCode.Contains("\"ParkedTaskRetention\"", StringComparison.Ordinal) ||
+                     paintCode.Contains("\"ParkedTaskRetention\"", StringComparison.Ordinal),
+            "ParkedTaskRetention must come from ClickraSettings, not a local string literal.");
     }
 
     private static void CleanupActiveTasks()
