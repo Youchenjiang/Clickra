@@ -224,6 +224,8 @@ static partial class TestSuite
         runner.Run("LibreOffice uninstall refuses an installation Clickra did not make", () =>
         {
             string oldValue = ClickraStorage.GetSetting(ClickraSettings.LibreOfficeInstalledByClickra);
+            string oldProductCode = ClickraStorage.GetSetting(ClickraSettings.LibreOfficeManagedProductCode);
+            string oldManagedPath = ClickraStorage.GetSetting(ClickraSettings.LibreOfficeManagedSofficePath);
             try
             {
                 LibreOfficeEngineInstaller.MarkInstalledByClickra(false);
@@ -237,26 +239,121 @@ static partial class TestSuite
                 Assert.True(refusal.Message.Contains("not installed by Clickra", StringComparison.OrdinalIgnoreCase),
                     $"The refusal must say who owns the installation, got: {refusal.Message}");
 
-                LibreOfficeEngineInstaller.MarkInstalledByClickra(true);
-                Assert.True(LibreOfficeEngineInstaller.WasInstalledByClickra(),
-                    "A LibreOffice Clickra installed must be recorded as Clickra's.");
-
-                LibreOfficeEngineInstaller.MarkInstalledByClickra(false);
+                ClickraStorage.SaveSetting(ClickraSettings.LibreOfficeInstalledByClickra, ClickraSettings.ValueTrue);
+                ClickraStorage.SaveSetting(ClickraSettings.LibreOfficeManagedProductCode, "{00000000-0000-0000-0000-000000000000}");
+                ClickraStorage.SaveSetting(ClickraSettings.LibreOfficeManagedSofficePath, @"C:\Missing\LibreOffice\program\soffice.exe");
                 Assert.False(LibreOfficeEngineInstaller.WasInstalledByClickra(),
-                    "Removing it again must clear the provenance flag.");
-
-                LibreOfficeEngineInstaller.AdoptExistingInstallation();
-                Assert.True(LibreOfficeEngineInstaller.WasInstalledByClickra(),
-                    "Adopting an existing LibreOffice installation must record it as Clickra-managed.");
-
+                    "A stale management marker must fail closed when its MSI identity is not installed.");
                 LibreOfficeEngineInstaller.ReleaseManagement();
                 Assert.False(LibreOfficeEngineInstaller.WasInstalledByClickra(),
                     "Releasing management must clear the provenance flag.");
+                Assert.Equal(ClickraSettings.DefaultEmpty,
+                    ClickraStorage.GetSetting(ClickraSettings.LibreOfficeManagedProductCode));
+                Assert.Equal(ClickraSettings.DefaultEmpty,
+                    ClickraStorage.GetSetting(ClickraSettings.LibreOfficeManagedSofficePath));
             }
             finally
             {
                 ClickraStorage.SaveSetting(ClickraSettings.LibreOfficeInstalledByClickra, oldValue);
+                ClickraStorage.SaveSetting(ClickraSettings.LibreOfficeManagedProductCode, oldProductCode);
+                ClickraStorage.SaveSetting(ClickraSettings.LibreOfficeManagedSofficePath, oldManagedPath);
             }
+        });
+
+        runner.Run("LibreOffice management identity selection fails closed", () =>
+        {
+            const string productA = "{11111111-1111-1111-1111-111111111111}";
+            const string productB = "{22222222-2222-2222-2222-222222222222}";
+            const string systemSoffice = @"C:\Program Files\LibreOffice\program\soffice.exe";
+
+            Assert.Equal(productA,
+                LibreOfficeEngineInstaller.SelectUniqueProductCode(
+                    new[]
+                    {
+                        new LibreOfficeRegistryProduct(productA, "LibreOffice 26.2.6", @"C:\Program Files\LibreOffice")
+                    },
+                    systemSoffice) ?? "");
+            Assert.Equal(productA,
+                LibreOfficeEngineInstaller.SelectUniqueProductCode(
+                    new[]
+                    {
+                        new LibreOfficeRegistryProduct(productA, "LibreOffice 26.2.6", @"C:\Program Files\LibreOffice"),
+                        new LibreOfficeRegistryProduct(productA.ToLowerInvariant(), "LibreOffice 26.2.6", @"C:\Program Files\LibreOffice")
+                    },
+                    systemSoffice) ?? "");
+            Assert.Equal("",
+                LibreOfficeEngineInstaller.SelectUniqueProductCode(
+                    new[]
+                    {
+                        new LibreOfficeRegistryProduct(productA, "LibreOffice 26.2.6", @"C:\Program Files\LibreOffice"),
+                        new LibreOfficeRegistryProduct(productB, "LibreOffice 25.8", @"C:\Program Files\LibreOffice")
+                    },
+                    systemSoffice) ?? "");
+            Assert.Equal("",
+                LibreOfficeEngineInstaller.SelectUniqueProductCode(
+                    new[]
+                    {
+                        new LibreOfficeRegistryProduct(productA, "Not LibreOffice", @"C:\Program Files\LibreOffice")
+                    },
+                    systemSoffice) ?? "");
+            Assert.Equal("",
+                LibreOfficeEngineInstaller.SelectUniqueProductCode(
+                    new[]
+                    {
+                        new LibreOfficeRegistryProduct(productA, "LibreOffice 26.2.6", @"D:\Portable\LibreOffice")
+                    },
+                    systemSoffice) ?? "");
+            Assert.Equal("",
+                LibreOfficeEngineInstaller.SelectUniqueProductCode(
+                    new[]
+                    {
+                        new LibreOfficeRegistryProduct(productA, "LibreOffice 26.2.6", "")
+                    },
+                    systemSoffice) ?? "");
+
+            Assert.True(
+                LibreOfficeEngineInstaller.PathsReferToSameInstallation(
+                    @"C:\Program Files\LibreOffice\program\soffice.exe",
+                    @"c:\program files\libreoffice\program\SOFFICE.EXE"),
+                "The same system executable must compare equal case-insensitively.");
+            Assert.False(
+                LibreOfficeEngineInstaller.PathsReferToSameInstallation(
+                    @"D:\Portable\LibreOffice\program\soffice.exe",
+                    @"C:\Program Files\LibreOffice\program\soffice.exe"),
+                "A portable/custom executable must never authorize management of the system MSI.");
+
+            Assert.True(
+                LibreOfficeEngineInstaller.IsManagedIdentityCurrent(
+                    true,
+                    productA,
+                    systemSoffice,
+                    systemSoffice,
+                    productA),
+                "Stored consent is valid only while the same unique MSI identity remains current.");
+            Assert.False(
+                LibreOfficeEngineInstaller.IsManagedIdentityCurrent(
+                    true,
+                    productA,
+                    systemSoffice,
+                    systemSoffice,
+                    productB),
+                "A replacement MSI ProductCode must invalidate earlier management consent.");
+            Assert.False(
+                LibreOfficeEngineInstaller.IsManagedIdentityCurrent(
+                    true,
+                    productA,
+                    systemSoffice,
+                    systemSoffice,
+                    null),
+                "Ambiguous or missing current MSI identity must fail closed.");
+            Assert.False(
+                LibreOfficeEngineInstaller.IsManagedIdentityCurrent(
+                    true,
+                    productA,
+                    systemSoffice,
+                    @"D:\Portable\LibreOffice\program\soffice.exe",
+                    productA),
+                "Changing the currently resolved executable must invalidate management consent.");
         });
 
         runner.Run("LibreOffice ownership guard protects both UIs while CLI exposes ownership state", () =>
@@ -273,10 +370,17 @@ static partial class TestSuite
             {
                 Assert.True(source.Contains("LibreOfficeEngineInstaller.WasInstalledByClickra()", StringComparison.Ordinal),
                     $"{name} must refuse to uninstall a LibreOffice Clickra did not install.");
-                Assert.True(source.Contains("LibreOfficeEngineInstaller.MarkInstalledByClickra", StringComparison.Ordinal),
-                    $"{name} must record provenance through the shared accessor.");
                 Assert.True(source.Contains("LibreOfficeEngineInstaller.AdoptExistingInstallation()", StringComparison.Ordinal),
                     $"{name} must allow adopting an existing LibreOffice installation.");
+                Assert.True(source.Contains("LibreOfficeEngineInstaller.CanAdoptExistingInstallation", StringComparison.Ordinal),
+                    $"{name} must gate adoption on a verified system MSI identity.");
+                Assert.True(source.Contains("LibreOfficeEngineInstaller.TryRecordManagedSystemInstallation", StringComparison.Ordinal),
+                    $"{name} must bind Clickra-driven installs to a verified MSI identity.");
+                Assert.True(source.Contains("managementRecorded", StringComparison.Ordinal) &&
+                            source.Contains("setting_libreoffice_management_unverified", StringComparison.Ordinal),
+                    $"{name} must tell the user when install succeeds without verified Clickra management.");
+                Assert.True(source.Contains("LibreOfficeEngineInstaller.ReleaseManagement()", StringComparison.Ordinal),
+                    $"{name} must clear the exact management identity after uninstall.");
                 Assert.False(source.Contains("SaveSetting(\"LibreOfficeInstalledByClickra\"", StringComparison.Ordinal),
                     $"{name} must not write the provenance key directly.");
             }
@@ -287,6 +391,10 @@ static partial class TestSuite
 
             Assert.True(settings.Contains("public const string LibreOfficeInstalledByClickra", StringComparison.Ordinal),
                 "The shared ownership key must be registered in ClickraSettings.");
+            Assert.True(settings.Contains("public const string LibreOfficeManagedProductCode", StringComparison.Ordinal),
+                "The managed MSI identity key must be registered in ClickraSettings.");
+            Assert.True(settings.Contains("public const string LibreOfficeManagedSofficePath", StringComparison.Ordinal),
+                "The managed soffice path key must be registered in ClickraSettings.");
 
             foreach (string key in new[] { "setting_libreoffice_external_note", "setting_libreoffice_external_hint" })
             {

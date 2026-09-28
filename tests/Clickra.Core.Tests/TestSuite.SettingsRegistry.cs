@@ -55,6 +55,7 @@ static partial class TestSuite
         {
             "Language", "OutputDir", "QuietMode", "Notification",
             "OfficeEngine", "LibreOfficePath", "LibreOfficeRemovalPendingRestart", "LibreOfficeInstalledByClickra",
+            "LibreOfficeManagedProductCode", "LibreOfficeManagedSofficePath",
             "TranslateTargetLang", "PdfCompressImageLevel", "PdfCompressStripFonts", "PdfCompressMinifyContent",
             "ImageCompressLevel", "ImageCompressMaxDimension", "ParkedTaskRetention"
         };
