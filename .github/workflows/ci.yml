@@ -35,7 +35,10 @@ jobs:
       # Commands mirror scripts/build_msix.ps1
       # and .github/workflows/release.yml so CI build behavior matches release.
       - name: Build Clickra.Core
-        run: dotnet build src/Clickra.Core/Clickra.Core.csproj -c Release
+        run: dotnet build src/Clickra.Core/Clickra.Core.csproj -c Release -warnaserror
+
+      - name: Build Clickra.Fluent
+        run: dotnet build src/Clickra.Fluent/Clickra.Fluent.csproj -c Release -warnaserror
 
       # NativeAOT publish resolves the MSVC toolchain through vswhere.exe;
       # the same helper that scripts/build_msix.ps1 uses keeps that on PATH so
@@ -45,21 +48,21 @@ jobs:
         run: |
           . ./scripts/build_common.ps1
           Add-VsInstallerToPath
-          dotnet publish src/Clickra.CLI/Clickra.csproj -c Release -r win-x64 --self-contained true -o publish/ci/cli
+          dotnet publish src/Clickra.CLI/Clickra.csproj -c Release -r win-x64 --self-contained true -o publish/ci/cli -warnaserror
 
       - name: Publish Shell Extension (NativeAOT)
         shell: pwsh
         run: |
           . ./scripts/build_common.ps1
           Add-VsInstallerToPath
-          dotnet publish src/ClickraShell/ClickraShell.csproj -c Release -r win-x64 --self-contained true -o publish/ci/shell
+          dotnet publish src/ClickraShell/ClickraShell.csproj -c Release -r win-x64 --self-contained true -o publish/ci/shell -warnaserror
 
       - name: Publish ClickraLauncher (NativeAOT)
         shell: pwsh
         run: |
           . ./scripts/build_common.ps1
           Add-VsInstallerToPath
-          dotnet publish src/ClickraLauncher/ClickraLauncher.csproj -c Release -r win-x64 --self-contained true -o publish/ci/launcher
+          dotnet publish src/ClickraLauncher/ClickraLauncher.csproj -c Release -r win-x64 --self-contained true -o publish/ci/launcher -warnaserror
 
       - name: Verify expected build outputs
         shell: pwsh
@@ -133,7 +136,7 @@ jobs:
       # instead of FAIL, keeping this gate green for the deterministic suite
       # while still telling the truth about what actually executed.
       - name: Run self-built test runner (fixture SKIP contract)
-        run: dotnet run --project tests/Clickra.Core.Tests/Clickra.Core.Tests.csproj -c Release
+        run: dotnet run --project tests/Clickra.Core.Tests/Clickra.Core.Tests.csproj -c Release --property:TreatWarningsAsErrors=true
 
   store-publishing-tests:
     name: Store publishing unit tests
@@ -193,4 +196,4 @@ jobs:
 
       - name: Run self-built test runner (with fixtures, missing = fail)
         if: steps.fixtures.outputs.has-fixtures == 'true'
-        run: dotnet run --project tests/Clickra.Core.Tests/Clickra.Core.Tests.csproj -c Release -- --require-fixtures
+        run: dotnet run --project tests/Clickra.Core.Tests/Clickra.Core.Tests.csproj -c Release --property:TreatWarningsAsErrors=true -- --require-fixtures

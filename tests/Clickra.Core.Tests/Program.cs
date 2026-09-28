@@ -2,7 +2,7 @@ using Clickra.Core.Tests;
 
 // 隔離 ClickraStorage 資料目錄：整個測試套件使用暫存目錄，不讀寫真實使用者
 // 資料（%LOCALAPPDATA%\Clickra）。必須在任何 ClickraStorage 靜態初始化之前設定。
-string testDataDir = Path.Combine(Path.GetTempPath(), $"clickra-test-data-{Guid.NewGuid():N}");
+string testDataDir = Path.Combine(TestSuite.GetTestDataRoot(), $"clickra-test-data-{Guid.NewGuid():N}");
 Directory.CreateDirectory(testDataDir);
 Environment.SetEnvironmentVariable("CLICKRA_DATA_DIR", testDataDir);
 
@@ -11,6 +11,12 @@ Environment.SetEnvironmentVariable("CLICKRA_DATA_DIR", testDataDir);
 // instead of skips, so a regression gate that expects fixtures fails loudly
 // when they are missing rather than quietly passing.
 bool requireFixtures = args.Contains("--require-fixtures", StringComparer.Ordinal);
+bool clean = args.Contains("--clean", StringComparer.OrdinalIgnoreCase);
+if (clean)
+{
+    var (dirs, files) = TestSuite.CleanStaleArtifacts(testDataDir);
+    Console.WriteLine($"[Clean] Cleaned {dirs} stale directory(s) and {files} leftover artifact file(s).");
+}
 var runner = new TestRunner(requireFixtures);
 
 TestSuite.RegisterPentestGrayPromptTests(runner);

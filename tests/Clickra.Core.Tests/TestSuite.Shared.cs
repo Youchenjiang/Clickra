@@ -252,7 +252,112 @@ static partial class TestSuite
         throw new InvalidOperationException("Could not locate Clickra repo root.");
     }
 
-    private static string? FindRepoRoot()
+    internal static (int cleanedDirs, int cleanedFiles) CleanStaleArtifacts(string? currentTestDataDir = null)
+    {
+        int cleanedDirs = CleanStaleTestDataDirectories(currentTestDataDir);
+        int cleanedFiles = 0;
+
+        string? root = FindRepoRoot();
+        if (root == null)
+        {
+            return (cleanedDirs, cleanedFiles);
+        }
+
+        cleanedFiles += DeleteMatchingFiles(root, "clickra-split-fail-*.pdf");
+        cleanedFiles += DeleteMatchingFiles(root, "*_renderdbg.log");
+        cleanedDirs += TryDeleteDirectory(Path.Combine(root, "src", "Clickra.Fluent", "bin", "x64")) ? 1 : 0;
+        cleanedDirs += TryDeleteDirectory(Path.Combine(root, "tmp", "Diag")) ? 1 : 0;
+
+        return (cleanedDirs, cleanedFiles);
+    }
+
+    private static int CleanStaleTestDataDirectories(string? currentTestDataDir)
+    {
+        string testDataRoot = GetTestDataRoot();
+        try
+        {
+            Directory.CreateDirectory(testDataRoot);
+            return Directory.GetDirectories(testDataRoot, "clickra-test-data-*")
+                .Where(dir => currentTestDataDir == null ||
+                    !string.Equals(dir, currentTestDataDir, StringComparison.OrdinalIgnoreCase))
+                .Count(TryDeleteDirectory);
+        }
+        catch (IOException)
+        {
+            // Cleanup is best-effort; an inaccessible stale test directory must not fail the test run.
+            return 0;
+        }
+        catch (UnauthorizedAccessException)
+        {
+            // Cleanup is best-effort; an inaccessible stale test directory must not fail the test run.
+            return 0;
+        }
+    }
+
+    private static int DeleteMatchingFiles(string root, string pattern)
+    {
+        try
+        {
+            return Directory.GetFiles(root, pattern).Count(TryDeleteFile);
+        }
+        catch (IOException)
+        {
+            // Cleanup is best-effort; inaccessible diagnostic artifacts may be left for the next run.
+            return 0;
+        }
+        catch (UnauthorizedAccessException)
+        {
+            // Cleanup is best-effort; inaccessible diagnostic artifacts may be left for the next run.
+            return 0;
+        }
+    }
+
+    private static bool TryDeleteFile(string path)
+    {
+        try
+        {
+            File.Delete(path);
+            return true;
+        }
+        catch (IOException)
+        {
+            return false;
+        }
+        catch (UnauthorizedAccessException)
+        {
+            return false;
+        }
+    }
+
+    private static bool TryDeleteDirectory(string path)
+    {
+        if (!Directory.Exists(path))
+        {
+            return false;
+        }
+
+        try
+        {
+            Directory.Delete(path, recursive: true);
+            return true;
+        }
+        catch (IOException)
+        {
+            return false;
+        }
+        catch (UnauthorizedAccessException)
+        {
+            return false;
+        }
+    }
+
+    internal static string GetTestDataRoot() =>
+        Path.Combine(
+            Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+            "Clickra",
+            "TestRuns");
+
+    internal static string? FindRepoRoot()
     {
         var dir = new DirectoryInfo(AppContext.BaseDirectory);
         while (dir is not null)
@@ -554,4 +659,3 @@ sealed class SyntheticGrayPage
 
     private sealed record FigureFrame(double X, double Y, double Width, double Height, string[] Labels);
 }
-

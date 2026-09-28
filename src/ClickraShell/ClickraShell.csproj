@@ -16,4 +16,8 @@
     <OptimizationPreference>Size</OptimizationPreference>
   </PropertyGroup>
 
+  <ItemGroup>
+    <LinkerArg Include="/IGNORE:4104" />
+  </ItemGroup>
+
 </Project>
