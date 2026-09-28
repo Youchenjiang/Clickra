@@ -1,6 +1,6 @@
 # Microsoft Store Listing - English (US)
 
-Below is the complete information for you to copy and paste directly into the Microsoft Partner Center, updated for the v3.9.0.0 release.
+Below is the complete information for you to copy and paste directly into the Microsoft Partner Center, updated for the v3.10.0.0 release.
 
 ---
 
@@ -22,6 +22,7 @@ Core Features:
  - Visual PDF Splitter: Split PDFs with a visual page-preview dialog — custom segments, split-each-page, or fixed-page-count modes, with inline zoom and a "Split at Page" quick action.
  - PDF Translation Hyphenation: Automatically rejoins technical identifiers split across source lines (e.g. "Cop-peliaSim" → "CoppeliaSim") and adjusts CJK font scaling for better readability.
  - Context Menu Icons: All conversion commands now display localized icons in the Windows 11 and classic right-click menus.
+ - Parked Task Retention: Pause conversions safely, choose how long parked tasks are retained, and see expiration warnings before cleanup.
  - Image to PDF: Quickly wrap images (JPG/PNG/WebP) into PDF documents.
  - Image Stitching: Combine multiple images vertically into a single long-form image.
 
@@ -30,10 +31,10 @@ Clickra respects your privacy. Most processing (Office-to-PDF conversion, PDF co
 🔗 Open Source on GitHub: https://github.com/Youchenjiang/Clickra
 
 ## What's new in this version
- - Multilingual CLI: Command help, status messages, and errors now support Traditional Chinese, Simplified Chinese, English, Japanese, and Korean.
- - Localized Diagnostics Email: Diagnostic email subjects and bodies now follow the active language for clearer support workflows.
- - Localized Tray and Visual Splitter: Tray actions and Visual PDF Splitter controls, segments, page counts, and preview labels now use shared translations.
- - Translation Coverage Checks: New diagnostics and parity tests detect missing translations before they reach users.
+ - Parked Task Retention: Choose how long paused conversions are kept, including unlimited retention, quick presets, and a shared 365-day maximum.
+ - Expiration Alerts: Fluent History now shows remaining retention time and highlights tasks that are approaching expiration.
+ - Safer Test Runs: Test artifacts are isolated under the current user's local app data and stale artifacts are cleaned before runs.
+ - Warning-free CI: Product and test builds now treat compiler warnings as errors in local hooks and hosted CI.
 
 ## Product Features
 *(Max 20, displayed as bullet points)*
@@ -52,6 +53,7 @@ Clickra respects your privacy. Most processing (Office-to-PDF conversion, PDF co
  - Fast multi-file PDF merging
  - NativeAOT shell integration for responsive context-menu commands
  - Native dashboard and conversion progress UI
+ - Parked conversion retention controls with expiration status and alerts
  - Safe local processing (optional cloud-based PDF Translation)
 
 ---
@@ -65,7 +67,7 @@ Clickra
 Clickra
 
 ## Short description
-Clickra is a high-performance native context menu utility for Office to PDF conversion, PDF decryption, PDF splitting, PDF merging, and image stitching. Secure, local-first, and extremely fast!
+Clickra is a high-performance native context menu utility for Office, PDF, and image workflows, including resumable parked conversions with retention controls and expiration alerts. Secure, local-first, and extremely fast!
 
 ---
 

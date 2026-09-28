@@ -1,5 +1,13 @@
 # Changelog
 
+## [v3.10.0.0] - 2026-09-28
+
+- **警告零容忍建置 (Warning-free Builds)**：產品專案與測試統一啟用 warnings-as-errors，CI 與 pre-push gate 會在發佈前阻擋新的編譯警告。
+- **測試產物隔離與清理 (Test Artifact Isolation)**：測試資料改存於使用者私有的 Clickra TestRuns 目錄，並加入可驗證的 stale-artifact 清理流程，避免共用暫存目錄與舊測試產物干擾。
+- **暫存任務保留控制 (Parked Task Retention Controls)**：Native Dashboard 新增 0–365 天的暫存任務保留設定、stepper 與常用預設，並與 Fluent 共用設定登錄的預設值與最大值。
+- **到期狀態與提醒 (Retention Expiration Alerts)**：Fluent History 會顯示暫存任務剩餘保留時間、即將到期與已到期狀態，並以五語系警示提示使用者及時繼續或取消任務。
+- **保留期限一致性 (Retention Boundary Consistency)**：Core、Native Dashboard 與 Fluent 共用相同的最大保留天數與嚴格少於 24 小時的即將到期邊界，避免不同介面產生不一致判定。
+
 ## [v3.9.0.0] - 2026-09-28
 
 - **CLI 多語系支援 (CLI Localization)**：命令列介面的說明、狀態與錯誤訊息擴充為繁體中文、簡體中文、英文、日文與韓文，並以共用 Core localization 資源維持一致。
