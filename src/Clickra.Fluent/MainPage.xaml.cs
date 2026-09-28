@@ -840,14 +840,14 @@ public sealed partial class MainPage : Page
                 BorderThickness = new Thickness(1),
                 CornerRadius = new CornerRadius(4),
                 Padding = new Thickness(6, 1, 6, 1),
-                VerticalAlignment = VerticalAlignment.Center
-            };
-            badge.Child = new TextBlock
-            {
-                Text = "⚠️ " + L("fluent_task_parked_badge_expiring"),
-                FontSize = 11,
-                FontWeight = Microsoft.UI.Text.FontWeights.Medium,
-                Foreground = new SolidColorBrush(Color.FromArgb(255, 255, 160, 40))
+                VerticalAlignment = VerticalAlignment.Center,
+                Child = new TextBlock
+                {
+                    Text = "⚠️ " + L("fluent_task_parked_badge_expiring"),
+                    FontSize = 11,
+                    FontWeight = Microsoft.UI.Text.FontWeights.Medium,
+                    Foreground = new SolidColorBrush(Color.FromArgb(255, 255, 160, 40))
+                }
             };
             titleRow.Children.Add(badge);
         }
