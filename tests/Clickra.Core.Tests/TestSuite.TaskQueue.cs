@@ -44,6 +44,8 @@ static partial class TestSuite
             TestFluentParkedTaskEntryPoint);
         runner.Run("Fluent settings page exposes the parked retention control",
             TestFluentParkedRetentionControl);
+        runner.Run("CLI Dashboard settings page exposes the parked retention control",
+            TestCliDashboardParkedRetentionControl);
     }
 
     private static void TestCancellingParkedTaskRecordsCanceledLine()
@@ -149,6 +151,66 @@ static partial class TestSuite
             .ToArray();
         Assert.True(fullWidthCards.Length == 2,
             $"Exactly two settings cards span both columns (retention and LibreOffice), found {fullWidthCards.Length}.");
+    }
+
+    /// <summary>The Win32 CLI Dashboard settings page must also expose parked retention
+    /// controls, using the central ClickraSettings.ParkedTaskRetention key and clamping to [0, 365].</summary>
+    private static void TestCliDashboardParkedRetentionControl()
+    {
+        string? root = FindRepoRoot();
+        if (root is null) throw new TestSkippedException("Could not locate the repository root from the test output directory.");
+
+        string paintCode = File.ReadAllText(Path.Combine(root, "src", "Clickra.CLI", "Dashboard", "DashboardWindow.Paint.Settings.cs"));
+        string clickCode = File.ReadAllText(Path.Combine(root, "src", "Clickra.CLI", "Dashboard", "DashboardWindow.Events.Click.cs"));
+
+        // Must render the section title and description using localization keys
+        foreach (string key in new[] { "setting_parked_ttl_title", "setting_parked_ttl_desc" })
+        {
+            Assert.True(paintCode.Contains(key, StringComparison.Ordinal),
+                $"The CLI settings paint file must render {key}.");
+        }
+
+        // Must read current retention via ClickraStorage.GetParkedRetentionDays()
+        Assert.True(paintCode.Contains("ClickraStorage.GetParkedRetentionDays()", StringComparison.Ordinal),
+            "CLI dashboard settings must read the retention setting via ClickraStorage.GetParkedRetentionDays().");
+
+        // Must offer both stepper hit targets and the five preset IDs through the shared preset loop.
+        Assert.True(paintCode.Contains("AddHitRect(90,", StringComparison.Ordinal) &&
+                    paintCode.Contains("AddHitRect(91,", StringComparison.Ordinal),
+            "CLI settings must register both retention stepper hit targets.");
+        foreach (string preset in new[] { "(0, 92,", "(3, 93,", "(defaultDays, 94,", "(14, 95,", "(30, 96," })
+        {
+            Assert.True(paintCode.Contains(preset, StringComparison.Ordinal),
+                $"CLI settings must declare retention preset {preset}.");
+        }
+        Assert.True(paintCode.Contains("AddHitRect(elemId,", StringComparison.Ordinal),
+            "CLI settings must register each preset element ID with the shared hit-target loop.");
+
+        foreach (int id in Enumerable.Range(90, 7))
+        {
+            Assert.True(clickCode.Contains($"case {id}:", StringComparison.Ordinal),
+                $"CLI settings click handler must route retention element {id}.");
+        }
+        Assert.True(clickCode.Contains("element >= 90 && element <= 96", StringComparison.Ordinal),
+            "IsSettingsElement must route the entire retention control ID range.");
+
+        // Must write using the central registry constant ClickraSettings.ParkedTaskRetention
+        Assert.True(clickCode.Contains("ClickraStorage.SaveSetting(ClickraSettings.ParkedTaskRetention", StringComparison.Ordinal),
+            "Click handler must persist retention using ClickraSettings.ParkedTaskRetention.");
+
+        // The default preset must come from the registry rather than embedding seven days locally.
+        Assert.True(paintCode.Contains("GetDefaultParkedRetentionDays()", StringComparison.Ordinal) &&
+                    clickCode.Contains("ClickraSettings.GetDefaultInt(ClickraSettings.ParkedTaskRetention)", StringComparison.Ordinal),
+            "CLI retention default must derive from the registered ParkedTaskRetention default.");
+
+        // Must clamp through the shared maximum used by both CLI and Fluent.
+        Assert.True(clickCode.Contains("ClickraSettings.MaxParkedTaskRetentionDays", StringComparison.Ordinal),
+            "Retention click handler must clamp through the shared maximum.");
+
+        // No local hardcoded settings-key literal; localization-key constants are allowed.
+        Assert.False(clickCode.Contains("\"ParkedTaskRetention\"", StringComparison.Ordinal) ||
+                     paintCode.Contains("\"ParkedTaskRetention\"", StringComparison.Ordinal),
+            "ParkedTaskRetention must come from ClickraSettings, not a local string literal.");
     }
 
     private static void CleanupActiveTasks()

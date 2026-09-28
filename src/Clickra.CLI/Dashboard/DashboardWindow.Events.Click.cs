@@ -74,7 +74,8 @@ namespace Clickra.UI
         /// <summary>True when the element is one of the settings-page controls.</summary>
         static bool IsSettingsElement(int element)
             => element == 5 || element == 6 || element == 7 || element == 8 || element == 9 ||
-               element == 20 || element == 32 || element == 33 || element == 34 || element == 40;
+               element == 20 || element == 32 || element == 33 || element == 34 || element == 40 ||
+               (element >= 90 && element <= 96);
 
         /// <summary>True when the element is one of the LibreOffice setup buttons.</summary>
         static bool IsLibreOfficeElement(int element) => element == 35 || element == 36 || element == 38;
@@ -449,8 +450,32 @@ namespace Clickra.UI
                 case 34: ClickraStorage.SaveSetting(ClickraSettings.OfficeEngine, ClickraSettings.OfficeEngineLibreOffice);
                          ApplySetting(hwnd, ClickraSettings.LibreOfficePath, ClickraSettings.DefaultEmpty); break;
                 case 40: OpenStorePage(hwnd); break;
+                case 90: AdjustParkedRetention(hwnd, -1); break;
+                case 91: AdjustParkedRetention(hwnd, 1); break;
+                case 92: SetParkedRetention(hwnd, 0); break;
+                case 93: SetParkedRetention(hwnd, 3); break;
+                case 94: SetParkedRetention(hwnd, GetDefaultParkedRetentionDays()); break;
+                case 95: SetParkedRetention(hwnd, 14); break;
+                case 96: SetParkedRetention(hwnd, 30); break;
                 default: break; // Unhandled settings element — ignore.
             }
+        }
+
+        private static void AdjustParkedRetention(IntPtr hwnd, int delta)
+        {
+            int current = ClickraStorage.GetParkedRetentionDays();
+            int updated = Math.Clamp(current + delta, 0, ClickraSettings.MaxParkedTaskRetentionDays);
+            SetParkedRetention(hwnd, updated);
+        }
+
+        private static int GetDefaultParkedRetentionDays()
+            => ClickraSettings.GetDefaultInt(ClickraSettings.ParkedTaskRetention);
+
+        private static void SetParkedRetention(IntPtr hwnd, int days)
+        {
+            int clamped = Math.Clamp(days, 0, ClickraSettings.MaxParkedTaskRetentionDays);
+            ClickraStorage.SaveSetting(ClickraSettings.ParkedTaskRetention, clamped.ToString());
+            InvalidateRect(hwnd, IntPtr.Zero, false);
         }
 
         private static void ToggleBoolSetting(IntPtr hwnd, string key)
