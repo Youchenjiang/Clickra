@@ -247,7 +247,12 @@ static partial class TestSuite
         Assert.True(expiringSoon.IsExpiringSoon, "< 24 hours left must be flagged as expiring soon.");
         Assert.False(expiringSoon.IsExpired, "Still within retention window.");
 
-        // 5. Expired (past retention limit)
+        // 5. Exactly at the retention deadline: expiration and pruning share this boundary.
+        var atDeadline = ClickraStorage.CalculateRetentionInfo(7, TimeSpan.FromDays(7));
+        Assert.Equal(0, atDeadline.RemainingDays);
+        Assert.True(atDeadline.IsExpired, "Age equal to retentionDays must be expired.");
+
+        // 6. Expired (past retention limit)
         var expired = ClickraStorage.CalculateRetentionInfo(7, TimeSpan.FromDays(7.2));
         Assert.False(expired.IsUnlimited, "Active retention is not unlimited.");
         Assert.Equal(0, expired.RemainingDays);

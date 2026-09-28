@@ -495,7 +495,11 @@ namespace Clickra.Core
         private static bool IsExpired(bool finished, bool parked, TimeSpan age)
         {
             if (finished) return age.TotalMinutes > CompletedTaskTtlMinutes;
-            if (parked) return GetParkedRetentionDays() > 0 && age.TotalDays > GetParkedRetentionDays();
+            if (parked)
+            {
+                int retentionDays = GetParkedRetentionDays();
+                return retentionDays > 0 && CalculateRetentionInfo(retentionDays, age).IsExpired;
+            }
             return false;
         }
 
