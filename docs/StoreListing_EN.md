@@ -1,6 +1,6 @@
 # Microsoft Store Listing - English (US)
 
-Below is the complete information for you to copy and paste directly into the Microsoft Partner Center, updated for the v3.10.0.0 release.
+Below is the complete information for you to copy and paste directly into the Microsoft Partner Center, updated for the v3.11.0.0 release.
 
 ---
 
@@ -15,7 +15,7 @@ Clickra is the ultimate high-performance, native context menu productivity suite
 Core Features:
  - Native Dashboard: A sleek dark-themed interface to monitor PDF and Office conversion engine status in real-time.
  - Office to PDF: High-quality, silent conversion for Word (.doc/.docx), Excel (.xls/.xlsx), and PowerPoint (.ppt/.pptx) files.
- - LibreOffice Fallback: Download and manage LibreOffice from Clickra as a free local conversion engine when Microsoft Office is unavailable.
+ - LibreOffice Fallback: Download LibreOffice from Clickra, or explicitly adopt a verified existing system installation, as a free local conversion engine when Microsoft Office is unavailable.
  - PDF Compression: Compress PDF files locally using a high-fidelity native engine, reducing file size through content stream minification, font deduplication, and image downsampling.
  - PDF Password Decryption: Decrypt password-protected PDF files directly from the context menu.
  - Instant PDF Merging: Select multiple PDF files and merge them instantly from the right-click menu.
@@ -31,16 +31,16 @@ Clickra respects your privacy. Most processing (Office-to-PDF conversion, PDF co
 🔗 Open Source on GitHub: https://github.com/Youchenjiang/Clickra
 
 ## What's new in this version
- - Parked Task Retention: Choose how long paused conversions are kept, including unlimited retention, quick presets, and a shared 365-day maximum.
- - Expiration Alerts: Fluent History now shows remaining retention time and highlights tasks that are approaching expiration.
- - Safer Test Runs: Test artifacts are isolated under the current user's local app data and stale artifacts are cleaned before runs.
- - Warning-free CI: Product and test builds now treat compiler warnings as errors in local hooks and hosted CI.
+ - LibreOffice Adoption: Existing verified system LibreOffice installations can now be explicitly brought under Clickra management from both Native and Fluent settings.
+ - Verified Uninstall Management: Clickra only offers managed uninstall when one unique MSI identity and system executable path can be verified.
+ - Fail-closed Safety: Ambiguous 32-bit/64-bit installations, replaced installs, path mismatches, and unverifiable MSI identities stay unmanaged instead of being removed by Clickra.
+ - Clear Management Status: New localized confirmations and status messages distinguish Clickra-managed installations from externally managed LibreOffice installs.
 
 ## Product Features
 *(Max 20, displayed as bullet points)*
  - Native Dashboard for PDF and Office engine monitoring
  - One-click Word/Excel/PPT to PDF conversion
- - Optional LibreOffice fallback when Microsoft Office is unavailable
+ - Optional LibreOffice fallback with verified existing-install adoption
  - Native high-fidelity PDF compression support
  - 3-preset horizontal settings slider for Small, Balanced, and High Quality PDF compression
  - One-click PDF password removal
@@ -54,6 +54,7 @@ Clickra respects your privacy. Most processing (Office-to-PDF conversion, PDF co
  - NativeAOT shell integration for responsive context-menu commands
  - Native dashboard and conversion progress UI
  - Parked conversion retention controls with expiration status and alerts
+ - Verified LibreOffice management and fail-closed uninstall protection
  - Safe local processing (optional cloud-based PDF Translation)
 
 ---
@@ -67,7 +68,7 @@ Clickra
 Clickra
 
 ## Short description
-Clickra is a high-performance native context menu utility for Office, PDF, and image workflows, including resumable parked conversions with retention controls and expiration alerts. Secure, local-first, and extremely fast!
+Clickra is a high-performance native context menu utility for Office, PDF, and image workflows, with verified LibreOffice adoption, resumable conversions, and local-first processing.
 
 ---
 

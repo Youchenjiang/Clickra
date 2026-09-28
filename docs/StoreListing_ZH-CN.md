@@ -1,6 +1,6 @@
 # Microsoft Store 清单 - 中文（简体）
 
-以下是供您直接复制粘贴至 Microsoft 合作伙伴中心 (Partner Center) 的完整字段信息，已更新至 v3.10.0.0。
+以下是供您直接复制粘贴至 Microsoft 合作伙伴中心 (Partner Center) 的完整字段信息，已更新至 v3.11.0.0。
 
 ---
 
@@ -15,7 +15,7 @@ Clickra 是一款面向 Windows 10 与 Windows 11 的高速原生右键菜单工
 核心功能：
 　　原生仪表板：深色模式界面，实时监测 PDF 与 Office 转换引擎状态。
 　　文档转 PDF：支持 Word (.doc/.docx)、Excel (.xls/.xlsx) 与 PowerPoint (.ppt/.pptx) 静默转换为 PDF。
-　　LibreOffice 备用引擎：未安装 Microsoft Office 时，可由 Clickra 下载并管理 LibreOffice 作为免费的本机转换引擎。
+　　LibreOffice 备用引擎：未安装 Microsoft Office 时，可由 Clickra 下载 LibreOffice，或明确接管已验证的现有系统安装，作为免费的本机转换引擎。
 　　PDF 本机压缩：一键在本机高效压缩 PDF，自动精减流、大字体剥离并跳过小图。
 　　PDF 去除密码：直接从右键菜单解密受密码保护的 PDF，并生成无密码版本。
 　　快速 PDF 合并：选择多个 PDF 后，一键合并为单个文件。
@@ -31,16 +31,16 @@ Clickra 尊重您的隐私。大多数处理流程（文档转 PDF、PDF 压缩�
 🔗 开源项目主页：https://github.com/Youchenjiang/Clickra
 
 ## What's new in this version
-- 暂存任务保留：可设置暂停转换的保留时间，支持永久保留、快速预设以及统一的 365 天上限。
-- 到期提醒：Fluent 历史页面会显示剩余保留时间，并醒目标记即将到期的暂存任务。
-- 更安全的测试流程：测试产物隔离在当前用户的本地数据目录，并在运行前清理过期测试产物。
-- 零警告 CI：产品与测试构建在本地 hook 和 hosted CI 中都会将编译警告视为错误。
+- LibreOffice 现有安装接管：Native 与 Fluent 设置现在都可以将符合条件的现有系统 LibreOffice 明确交由 Clickra 管理。
+- 可验证的卸载管理：只有在唯一 MSI 身份与系统可执行文件路径都能够验证时，Clickra 才会提供受管理的卸载。
+- Fail-closed 保护：32/64 位双安装、安装被替换、路径不匹配或 MSI 身份无法唯一确认时，Clickra 会保持未接管并拒绝移除。
+- 清晰的管理状态：新增五种语言的确认与状态信息，明确区分 Clickra 管理与外部管理的 LibreOffice。
 
 ## Product Features
 *(最多 20 个，以项目符号显示)*
 - 原生仪表板监测 PDF 与 Office 引擎状态
 - 支持 Word/Excel/PPT 一键转 PDF
-- 未安装 Microsoft Office 时可使用 LibreOffice 备用引擎
+- 未安装 Microsoft Office 时可使用 LibreOffice 备用引擎，并支持验证后接管现有安装
 - 支持一键 PDF 文件本机高保真压缩功能
 - 3 段 PDF 压缩预设滑杆：Small、Balanced、High Quality
 - PDF 一键去除密码
@@ -54,6 +54,7 @@ Clickra 尊重您的隐私。大多数处理流程（文档转 PDF、PDF 压缩�
 - NativeAOT Shell 集成，保持右键菜单快速响应
 - 原生仪表板与转换进度界面
 - 暂存转换保留控制、剩余时间与到期提醒
+- LibreOffice 验证式接管与 fail-closed 卸载保护
 - 安全的本机处理（仅可选 PDF 翻译使用云端翻译服务）
 
 ---
@@ -67,7 +68,7 @@ Clickra
 Clickra
 
 ## Short description
-Clickra 是一款高速原生右键菜单工具，支持文档、PDF、图片处理，以及可继续的暂存转换、保留控制与到期提醒。安全、优先本机处理。
+Clickra 是一款高速原生右键菜单工具，支持文档、PDF、图片处理、LibreOffice 验证式接管以及可继续的暂存转换。安全、优先本机处理。
 
 ---
 

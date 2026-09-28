@@ -1,6 +1,6 @@
 # Microsoft Store Listing - Korean (Korea)
 
-Microsoft Partner Center에 바로 복사해 넣을 수 있는 v3.10.0.0용 스토어 등록 정보입니다.
+Microsoft Partner Center에 바로 복사해 넣을 수 있는 v3.11.0.0용 스토어 등록 정보입니다.
 
 ---
 
@@ -15,7 +15,7 @@ Clickra는 Windows 10 및 Windows 11용 고성능 네이티브 우클릭 메뉴 
 주요 기능:
  - 네이티브 대시보드: PDF 및 Office 변환 엔진 상태를 실시간으로 확인하는 다크 테마 화면.
  - Office to PDF: Word (.doc/.docx), Excel (.xls/.xlsx), PowerPoint (.ppt/.pptx) 파일을 고품질 PDF로 조용히 변환.
- - LibreOffice 대체 엔진: Microsoft Office가 없는 환경에서도 Clickra에서 LibreOffice를 내려받아 로컬 변환 엔진으로 사용.
+ - LibreOffice 대체 엔진: Microsoft Office가 없는 환경에서도 Clickra에서 LibreOffice를 내려받거나 검증된 기존 시스템 설치를 명시적으로 Clickra 관리 대상으로 전환하여 로컬 변환 엔진으로 사용.
  - PDF 로컬 압축: C#/GDI+ 엔진을 활용하여 중복 폰트 제거, 스트림 간소화, 저해상도 이미지 압축 우회 등으로 화질 저하를 방지하며 PDF를 로컬에서 강력하게 압축.
  - PDF 암호 제거: 암호로 보호된 PDF를 우클릭 메뉴에서 복호화하고 암호 없는 PDF를 생성.
  - PDF 병합: 여러 PDF를 선택해 빠르게 하나의 파일로 병합.
@@ -31,16 +31,16 @@ Clickra는 개인정보 보호를 중요하게 생각합니다. Office to PDF, P
 🔗 Open Source on GitHub: https://github.com/Youchenjiang/Clickra
 
 ## What's new in this version
- - 보류 작업 보관 기간: 일시 중지된 변환을 무기한, 빠른 프리셋 또는 공용 최대 365일 범위에서 보관하도록 설정할 수 있습니다.
- - 만료 알림: Fluent 기록 페이지에서 남은 보관 시간을 표시하고 만료가 임박한 보류 작업을 강조합니다.
- - 더 안전한 테스트 실행: 테스트 산출물을 현재 사용자의 로컬 데이터 영역에 격리하고 실행 전에 오래된 산출물을 정리합니다.
- - 경고 없는 CI: 제품 및 테스트 빌드는 로컬 hook과 hosted CI에서 컴파일러 경고를 오류로 처리합니다.
+ - LibreOffice 기존 설치 관리: Native 및 Fluent 설정에서 조건을 충족하는 기존 시스템 LibreOffice를 명시적으로 Clickra 관리 대상으로 전환할 수 있습니다.
+ - 검증된 제거 관리: 하나의 고유한 MSI ID와 시스템 실행 파일 경로를 확인할 수 있을 때만 Clickra에서 관리형 제거를 제공합니다.
+ - Fail-closed 보호: 32/64비트 중복 설치, 교체된 설치, 경로 불일치 또는 MSI ID를 고유하게 확인할 수 없는 경우 관리 대상으로 전환하지 않고 Clickra에서 제거하지 않습니다.
+ - 명확한 관리 상태: 5개 언어의 확인 및 상태 메시지로 Clickra 관리 설치와 외부 관리 LibreOffice를 구분합니다.
 
 ## Product Features
 *(Max 20, displayed as bullet points)*
  - PDF 및 Office 엔진 상태를 확인하는 네이티브 대시보드
  - Word/Excel/PPT to PDF 원클릭 변환
- - Microsoft Office가 없을 때 LibreOffice 대체 엔진 지원
+ - Microsoft Office가 없을 때 LibreOffice 대체 엔진 및 검증된 기존 설치 관리 지원
  - 로컬 PDF 압축 및 최적화 지원
  - Small, Balanced, High Quality 3개 프리셋으로 PDF 압축 레벨 조절
  - PDF 암호 원클릭 제거
@@ -54,6 +54,7 @@ Clickra는 개인정보 보호를 중요하게 생각합니다. Office to PDF, P
  - NativeAOT 셸 통합 기반의 빠른 컨텍스트 메뉴 응답
  - 네이티브 대시보드 및 변환 진행 UI
  - 보류 변환 보관 기간, 남은 시간 및 만료 알림
+ - LibreOffice 검증 관리 및 fail-closed 제거 보호
  - 안전한 로컬 처리(선택형 PDF 번역만 클라우드 번역 사용)
 
 ---
@@ -67,7 +68,7 @@ Clickra
 Clickra
 
 ## Short description
-Clickra는 Office/PDF/이미지 작업과 함께 다시 시작할 수 있는 보류 변환, 보관 기간 설정 및 만료 알림을 제공하는 고성능 네이티브 우클릭 메뉴 도구입니다. 안전하고 로컬 처리를 우선합니다.
+Clickra는 Office/PDF/이미지 작업과 함께 LibreOffice 검증 관리 및 다시 시작할 수 있는 보류 변환을 제공하는 고성능 네이티브 우클릭 메뉴 도구입니다. 안전하고 로컬 처리를 우선합니다.
 
 ---
 

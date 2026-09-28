@@ -199,6 +199,7 @@
     - 在 Clickra 宣傳頁與 GitHub Pages 架構完成後，將 LibreOffice manifest 從純內建資料擴充為可更新的遠端 manifest，讓新版本 LibreOffice 發佈時可不必等待 Clickra 主程式更新。
     - 增加 manifest 簽章或 checksum metadata 防護，確保遠端資料來源可驗證且可回退到內建 manifest。
 - [ ] **[F3-5] LibreOffice Setup Maintenance UX**：LibreOffice 安裝維護體驗強化。
+    - **v3.11.0 進度**：新增既有系統 LibreOffice 納管、唯一 MSI ProductCode 與 soffice.exe 路徑綁定，以及解除安裝前的 fail-closed 身分重新驗證；32/64 位元雙安裝、路徑不符或 MSI 身分不明時維持未納管。下載續傳、代理/企業網路提示與安裝取消復原仍待後續完成。
     - 補強下載中斷續傳、代理/企業網路提示、安裝取消復原、以及 Windows Installer pending restart 場景的更細緻狀態說明。
 - [ ] **[F3-6] Office Engine Abstraction & Integration Tests**：Office 轉檔引擎抽象化與整合測試。
     - 將 `PowerShellHelper.ExportOfficeToPdf` 目前直接讀取設定、呼叫 Microsoft Office COM 與 LibreOffice process 的流程抽出可測試的 engine resolver/strategy。

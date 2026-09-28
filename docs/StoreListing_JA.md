@@ -1,6 +1,6 @@
 # Microsoft Store Listing - Japanese (Japan)
 
-Microsoft Partner Center にそのまま貼り付けられる、v3.10.0.0 向けのストア掲載情報です。
+Microsoft Partner Center にそのまま貼り付けられる、v3.11.0.0 向けのストア掲載情報です。
 
 ---
 
@@ -15,7 +15,7 @@ Clickra は、Windows 10 と Windows 11 向けの高速なネイティブ右ク�
 主な機能:
  - ネイティブ ダッシュボード: PDF と Office 変換エンジンの状態をリアルタイムで確認できるダークテーマの画面。
  - Office から PDF: Word (.doc/.docx)、Excel (.xls/.xlsx)、PowerPoint (.ppt/.pptx) を高品質な PDF に静かに変換。
- - LibreOffice フォールバック: Microsoft Office がない環境でも、Clickra から LibreOffice を取得してローカル変換エンジンとして利用可能。
+ - LibreOffice フォールバック: Microsoft Office がない環境でも、Clickra から LibreOffice を取得するか、検証済みの既存システム インストールを明示的に Clickra 管理へ移行してローカル変換エンジンとして利用可能。
  - PDF 本地圧縮: C#/GDI+ エンジンを使用し、重複フォントの整理、コンテンツストリームの簡素化、低解像度画像の圧縮除外ロジックなど、高度な本地圧縮を実現。
  - PDF パスワード解除: パスワード付き PDF を右クリックメニューから復号し、パスワードなしの PDF を作成。
  - PDF 結合: 複数の PDF を選択してすばやく 1 つのファイルに結合。
@@ -31,16 +31,16 @@ Clickra はプライバシーを重視します。Office から PDF、PDF 圧縮
 🔗 Open Source on GitHub: https://github.com/Youchenjiang/Clickra
 
 ## What's new in this version
- - 一時停止タスクの保持期間: 一時停止した変換を保持する期間を、無期限・クイックプリセット・共通の最大365日から設定できます。
- - 期限切れアラート: Fluent の履歴ページに残り保持時間を表示し、期限が近い一時停止タスクを強調します。
- - より安全なテスト実行: テスト成果物を現在のユーザーのローカルデータ領域に分離し、古い成果物を実行前にクリーンアップします。
- - 警告ゼロの CI: 製品とテストのビルドで、ローカル hook と hosted CI の両方がコンパイラ警告をエラーとして扱います。
+ - LibreOffice の既存インストール管理: Native と Fluent の設定から、条件を満たす既存のシステム LibreOffice を明示的に Clickra 管理へ移行できます。
+ - 検証済みアンインストール管理: 一意の MSI 識別情報とシステム実行ファイルのパスを確認できる場合にのみ、Clickra から管理されたアンインストールを提供します。
+ - Fail-closed 保護: 32/64 ビットの二重インストール、置き換えられたインストール、パス不一致、MSI 識別情報を一意に確認できない場合は管理対象にせず、Clickra から削除しません。
+ - 明確な管理状態: 5 言語の確認・状態メッセージで、Clickra 管理の LibreOffice と外部管理のインストールを区別できます。
 
 ## Product Features
 *(Max 20, displayed as bullet points)*
  - PDF と Office エンジン状態を確認できるネイティブ ダッシュボード
  - Word/Excel/PPT から PDF へのワンクリック変換
- - Microsoft Office がない場合の LibreOffice フォールバック
+ - Microsoft Office がない場合の LibreOffice フォールバックと検証済み既存インストールの管理
  - 本地での PDF 圧縮・最適化に対応
  - Small、Balanced、High Quality の3プリセットで PDF 圧縮レベルを調整
  - PDF パスワードのワンクリック解除
@@ -54,6 +54,7 @@ Clickra はプライバシーを重視します。Office から PDF、PDF 圧縮
  - NativeAOT シェル統合による応答性の高いコンテキストメニュー
  - ネイティブ ダッシュボードと変換進行状況画面
  - 一時停止した変換の保持期間、残り時間、期限切れアラート
+ - LibreOffice の検証済み管理と fail-closed アンインストール保護
  - 安全なローカル処理（任意の PDF 翻訳のみクラウド翻訳を使用）
 
 ---
@@ -67,7 +68,7 @@ Clickra
 Clickra
 
 ## Short description
-Clickra は Office・PDF・画像処理に加え、再開可能な一時停止変換、保持期間設定、期限切れアラートを備えた高速ネイティブ右クリックメニューツールです。安全でローカル処理を重視します。
+Clickra は Office・PDF・画像処理に加え、LibreOffice の検証済み管理と再開可能な一時停止変換を備えた高速ネイティブ右クリックメニューツールです。安全でローカル処理を重視します。
 
 ---
 
