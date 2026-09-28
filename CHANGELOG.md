@@ -1,5 +1,12 @@
 # Changelog
 
+## [v3.11.0.0] - 2026-09-29
+
+- **LibreOffice 既有安裝納管 (LibreOffice Adoption)**：Native Dashboard 與 Fluent Settings 現在可將符合條件的既有系統 LibreOffice 明確交由 Clickra 管理，不必重新安裝才能使用 Clickra 的更新與解除安裝流程。
+- **可驗證的管理身分 (Verified Management Identity)**：Clickra 會將管理權綁定到唯一可驗證的 MSI ProductCode 與 soffice.exe 系統路徑，只有目前身分仍完全一致時才允許 Clickra 執行解除安裝。
+- **模糊安裝狀態 Fail-closed (Ambiguous Install Fail-closed)**：若同時存在 32/64 位元系統安裝、找不到唯一 MSI 身分、路徑不一致或安裝已被替換，Clickra 會保留 LibreOffice 並拒絕取得或使用解除安裝管理權。
+- **管理狀態與同意提示 (Management Status & Consent)**：五語系介面新增納管確認、成功、外部安裝與管理身分無法驗證提示，讓使用者清楚知道哪些 LibreOffice 由 Clickra 管理、哪些仍由 Windows 管理。
+
 ## [v3.10.0.0] - 2026-09-28
 
 - **警告零容忍建置 (Warning-free Builds)**：產品專案與測試統一啟用 warnings-as-errors，CI 與 pre-push gate 會在發佈前阻擋新的編譯警告。

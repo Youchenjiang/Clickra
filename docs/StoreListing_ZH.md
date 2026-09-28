@@ -1,6 +1,6 @@
 # Microsoft Store 清單 - 中文 (台灣)
 
-以下是供您直接複製貼上至 Microsoft 合作夥伴中心 (Partner Center) 的完整欄位資訊，已更新至 v3.10.0.0 的最新狀態。
+以下是供您直接複製貼上至 Microsoft 合作夥伴中心 (Partner Center) 的完整欄位資訊，已更新至 v3.11.0.0 的最新狀態。
 
 ---
 
@@ -15,7 +15,7 @@ Clickra 是一款專為 Windows 10 與 Windows 11 打造的極速原生右鍵選
 核心功能：
 　　原生儀表板：全新深色模式介面，即時監測 PDF 與 Office 轉檔引擎狀態。
 　　文書轉 PDF：支援 Word (.doc/.docx)、Excel (.xls/.xlsx) 與 PPT (.ppt/.pptx) 靜默轉檔，高品質不跑版。
-　　LibreOffice 備援：未安裝 Microsoft Office 時，可由 Clickra 下載並管理 LibreOffice 作為免費本機轉檔引擎。
+　　LibreOffice 備援：未安裝 Microsoft Office 時，可由 Clickra 下載 LibreOffice，或明確納管已驗證的既有系統安裝，作為免費本機轉檔引擎。
 　　PDF 本機壓縮：一鍵在本地端以 C#/GDI+ 高效壓縮 PDF，自動精簡流與大字型剝離、小圖跳過。
 　　PDF 去除密碼：一鍵對加密的 PDF 檔案進行解密並產出無密碼版本。
 　　極速 PDF 合併：選取多個 PDF，右鍵一鍵合併。
@@ -31,16 +31,16 @@ Clickra 絕大多數功能（文書轉 PDF、PDF 壓縮、PDF 合併、圖片拼
 🔗 開源專案首頁：https://github.com/Youchenjiang/Clickra
 
 ## What's new in this version
-- 暫存任務保留：可設定暫停轉換要保留多久，支援永久保留、快速預設與共用的 365 天上限。
-- 到期提醒：Fluent 歷史頁會顯示剩餘保留時間，並醒目提示即將到期的暫存任務。
-- 更安全的測試流程：測試產物隔離於目前使用者的本機資料目錄，並在執行前清理過期測試產物。
-- 零警告 CI：產品與測試建置在本機 hook 與 hosted CI 中都會把編譯警告視為錯誤。
+- LibreOffice 既有安裝納管：Native 與 Fluent 設定現在都能將符合條件的既有系統 LibreOffice 明確交由 Clickra 管理。
+- 可驗證的解除安裝管理：只有在唯一 MSI 身分與系統執行檔路徑都可驗證時，Clickra 才會提供受管理的解除安裝。
+- Fail-closed 保護：32/64 位元雙安裝、安裝被替換、路徑不符或 MSI 身分無法唯一確認時，Clickra 會維持未納管而不執行移除。
+- 清楚的管理狀態：新增五語系確認與狀態訊息，明確區分 Clickra 管理與外部管理的 LibreOffice。
 
 ## Product Features
 *(最多 20 個，以項目符號顯示)*
 - 原生儀表板監測 PDF 與 Office 引擎狀態
 - 支援 Word/Excel/PPT 一鍵轉 PDF
-- 未安裝 Microsoft Office 時可使用 LibreOffice 備援
+- 未安裝 Microsoft Office 時可使用 LibreOffice 備援，並支援驗證後納管既有安裝
 - 支援一鍵 PDF 檔案本機高保真壓縮功能
 - 3 段 PDF 壓縮預設滑桿：Small、Balanced、High Quality
 - PDF 一鍵去除密碼功能
@@ -54,6 +54,7 @@ Clickra 絕大多數功能（文書轉 PDF、PDF 壓縮、PDF 合併、圖片拼
 - NativeAOT Shell 整合，維持右鍵選單快速回應
 - 原生儀表板與轉換進度介面
 - 暫存轉換保留控制、剩餘時間與到期提醒
+- LibreOffice 驗證式納管與 fail-closed 解除安裝保護
 - 安全本機處理（僅 PDF 翻譯使用選用的雲端翻譯服務）
 
 ---
@@ -67,7 +68,7 @@ Clickra
 Clickra
 
 ## Short description
-Clickra 是一款極速的原生右鍵選單工具，支援文書、PDF、圖片處理，以及可繼續的暫存轉換、保留控制與到期提醒。安全、以本機處理優先！
+Clickra 是一款極速的原生右鍵選單工具，支援文書、PDF、圖片處理、LibreOffice 驗證式納管與可繼續的暫存轉換。安全、以本機處理優先！
 
 ---
 
