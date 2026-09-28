@@ -19,6 +19,7 @@ namespace Clickra.Core
         private const string KeyFluentReady = "setting_fluent_ready";
         private const string KeyFluentNotInstalled = "setting_fluent_not_installed";
         private const string KeyFluentInstall = "setting_fluent_install";
+        private const string RetentionDayZh = "{0} 天";
         private const string OfficeName = "Office";
 
         private static readonly Dictionary<string, Dictionary<string, string>> Translations = new(StringComparer.OrdinalIgnoreCase)
@@ -1087,8 +1088,8 @@ namespace Clickra.Core
                 ("tray_restore_all", "還原所有轉換視窗", "还原所有转换窗口", "Restore all conversion windows", "すべての変換ウィンドウを復元", "모든 변환 창 복원"),
                 ("setting_parked_ttl_title", "暫存保留", "暂存保留", "Parked task retention", "一時停止の保持期間", "보류 작업 보관"),
                 ("setting_parked_ttl_desc", "已暫存轉換的保留天數（0 = 無限期）", "已暂存转换的保留天数（0 = 无期限）", "Days to keep parked conversions (0 = unlimited)", "一時停止した変換の保持日数（0 = 無期限）", "보류된 변환 보관 일수(0 = 무제한)"),
-                ("setting_parked_ttl_days", "{0} 天", "{0} 天", "{0} days", "{0} 日", "{0} 일"),
-                ("setting_parked_ttl_day_single", "{0} 天", "{0} 天", "{0} day", "{0} 日", "{0} 일"),
+                ("setting_parked_ttl_days", RetentionDayZh, RetentionDayZh, "{0} days", "{0} 日", "{0} 일"),
+                ("setting_parked_ttl_day_single", RetentionDayZh, RetentionDayZh, "{0} day", "{0} 日", "{0} 일"),
                 ("setting_parked_ttl_unlimited", "0（無限期）", "0（无期限）", "0 (unlimited)", "0（無期限）", "0 (무제한)"),
                 ("setting_parked_ttl_default", "{0} 天（預設）", "{0} 天（默认）", "{0} days (default)", "{0} 日（デフォルト）", "{0} 일 (기본값)"),
                 ("setting_parked_ttl_current", "目前保留：{0}", "当前保留：{0}", "Current retention: {0}", "現在の保持期間: {0}", "현재 보관 기간: {0}"),
