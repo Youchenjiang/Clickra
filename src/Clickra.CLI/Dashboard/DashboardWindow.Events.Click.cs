@@ -657,10 +657,14 @@ namespace Clickra.UI
 
                 if (!string.IsNullOrWhiteSpace(sofficePath))
                     ClickraStorage.SaveSetting(ClickraSettings.LibreOfficePath, sofficePath);
-                LibreOfficeEngineInstaller.MarkInstalledByClickra(true);
+                bool managementRecorded = LibreOfficeEngineInstaller.TryRecordManagedSystemInstallation(sofficePath);
                 ClickraStorage.SaveSetting(ClickraSettings.LibreOfficeRemovalPendingRestart, ClickraSettings.ValueFalse);
 
-                PostDashboardAction(hwnd, () => ShowInstallResultMessage(hwnd, installResult.RestartRequired, sofficePath));
+                PostDashboardAction(hwnd, () => ShowInstallResultMessage(
+                    hwnd,
+                    installResult.RestartRequired,
+                    sofficePath,
+                    managementRecorded));
             }
             catch (Exception ex)
             {
@@ -685,7 +689,11 @@ namespace Clickra.UI
         }
 
         /// <summary>Shows the LibreOffice install result (restart-required or ready) on the dashboard.</summary>
-        private static void ShowInstallResultMessage(IntPtr hwnd, bool restartRequired, string sofficePath)
+        private static void ShowInstallResultMessage(
+            IntPtr hwnd,
+            bool restartRequired,
+            string sofficePath,
+            bool managementRecorded)
         {
             MessageBox(
                 hwnd,
@@ -696,6 +704,8 @@ namespace Clickra.UI
                     string.IsNullOrWhiteSpace(sofficePath) ? LibreOfficeEngineInstaller.GetDefaultInstallRoot() : sofficePath),
                 "Clickra",
                 0x40);
+            if (!managementRecorded)
+                MessageBox(hwnd, GetText("setting_libreoffice_management_unverified"), "Clickra", 0x30);
         }
 
         /// <summary>Shows the LibreOffice download/install failure message on the dashboard.</summary>
@@ -722,8 +732,8 @@ namespace Clickra.UI
                 return;
             }
 
-            // Only a LibreOffice Clickra installed itself may be removed from here. The dashboard hides
-            // the button in this case, but the action still has to refuse on its own.
+            // Only a LibreOffice with a freshly verified Clickra management identity may be removed here.
+            // The dashboard hides the button otherwise, but the action still has to refuse on its own.
             if (!LibreOfficeEngineInstaller.WasInstalledByClickra())
             {
                 MessageBox(hwnd, GetText("setting_libreoffice_external_note"), "Clickra", 0x40);
@@ -758,7 +768,7 @@ namespace Clickra.UI
                     .GetResult();
 
                 ClickraStorage.SaveSetting(ClickraSettings.LibreOfficePath, ClickraSettings.DefaultEmpty);
-                LibreOfficeEngineInstaller.MarkInstalledByClickra(false);
+                LibreOfficeEngineInstaller.ReleaseManagement();
                 ClickraStorage.SaveSetting(ClickraSettings.LibreOfficeRemovalPendingRestart, uninstallResult.RestartRequired ? ClickraSettings.ValueTrue : ClickraSettings.ValueFalse);
                 ClickraStorage.SaveSetting(ClickraSettings.OfficeEngine, ClickraSettings.DefaultOfficeEngineAuto);
 
@@ -801,9 +811,24 @@ namespace Clickra.UI
                 return;
             }
 
+            string resolvedPath = LibreOfficeHelper.GetResolvedExecutablePath();
+            if (!LibreOfficeEngineInstaller.CanAdoptExistingInstallation(resolvedPath))
+            {
+                return;
+            }
+
             if (MessageBox(hwnd, GetText("setting_libreoffice_adopt_confirm"), "Clickra", 0x31) != 1) return;
 
-            LibreOfficeEngineInstaller.AdoptExistingInstallation();
+            try
+            {
+                LibreOfficeEngineInstaller.AdoptExistingInstallation();
+            }
+            catch
+            {
+                MessageBox(hwnd, GetText("setting_libreoffice_external_note"), "Clickra", 0x30);
+                InvalidateRect(hwnd, IntPtr.Zero, false);
+                return;
+            }
             InvalidateRect(hwnd, IntPtr.Zero, false);
             MessageBox(hwnd, GetText("setting_libreoffice_adopt_success"), "Clickra", 0x40);
         }

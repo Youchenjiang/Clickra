@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
@@ -27,6 +28,10 @@ namespace Clickra.Core.Processors
 
     public sealed record LibreOfficeInstallResult(string SofficePath, bool RestartRequired);
     public sealed record LibreOfficeUninstallResult(bool RestartRequired);
+    internal sealed record LibreOfficeRegistryProduct(
+        string ProductCode,
+        string DisplayName,
+        string InstallLocation);
 
     public static class LibreOfficeEngineInstaller
     {
@@ -43,27 +48,97 @@ namespace Clickra.Core.Processors
 
         public static LibreOfficeEnginePackage RecommendedPackage => BuiltInManifest.LibreOffice;
 
-        /// <summary>True when Clickra installed the LibreOffice that is present now. A missing or
-        /// unparsable value means "not ours", so a user-managed installation is never removed.</summary>
-        public static bool WasInstalledByClickra() =>
-            ClickraStorage.GetSettingBool(ClickraSettings.LibreOfficeInstalledByClickra);
+        /// <summary>
+        /// True only when the currently resolved LibreOffice is the same system installation whose
+        /// MSI identity was explicitly recorded for Clickra management.
+        /// </summary>
+        public static bool WasInstalledByClickra()
+        {
+            return TryGetVerifiedManagedProductCode(out _);
+        }
 
-        /// <summary>Records the provenance of the system LibreOffice after Clickra installs or removes it.</summary>
-        public static void MarkInstalledByClickra(bool installed) =>
-            ClickraStorage.SaveSetting(
-                ClickraSettings.LibreOfficeInstalledByClickra,
-                installed ? ClickraSettings.ValueTrue : ClickraSettings.ValueFalse);
+        /// <summary>
+        /// Records or releases management of the current system LibreOffice. The positive path fails
+        /// closed unless one unambiguous LibreOffice MSI identity can be bound to the system executable.
+        /// </summary>
+        public static void MarkInstalledByClickra(bool installed)
+        {
+            if (!installed)
+            {
+                ClickraStorage.SaveSetting(ClickraSettings.LibreOfficeInstalledByClickra, ClickraSettings.ValueFalse);
+                ClickraStorage.SaveSetting(ClickraSettings.LibreOfficeManagedProductCode, ClickraSettings.DefaultEmpty);
+                ClickraStorage.SaveSetting(ClickraSettings.LibreOfficeManagedSofficePath, ClickraSettings.DefaultEmpty);
+                return;
+            }
+
+            // Clear any older authorization before resolving a new identity. If discovery is ambiguous
+            // or fails, the destructive path remains disabled instead of retaining stale consent.
+            ClickraStorage.SaveSetting(ClickraSettings.LibreOfficeInstalledByClickra, ClickraSettings.ValueFalse);
+            ClickraStorage.SaveSetting(ClickraSettings.LibreOfficeManagedProductCode, ClickraSettings.DefaultEmpty);
+            ClickraStorage.SaveSetting(ClickraSettings.LibreOfficeManagedSofficePath, ClickraSettings.DefaultEmpty);
+
+            string systemPath = ResolveSystemSofficePath();
+            string? productCode = FindUniqueInstalledLibreOfficeProductCode();
+            if (string.IsNullOrWhiteSpace(systemPath) || string.IsNullOrWhiteSpace(productCode))
+                throw new InvalidOperationException(
+                    "Unable to bind Clickra management to one verified system LibreOffice MSI installation.");
+
+            RecordManagedInstallation(productCode, systemPath);
+        }
+
+        /// <summary>
+        /// Records management after a Clickra-driven MSI install/update only when the resulting executable
+        /// and registry identity can be tied to one exact system installation. Failure leaves it unmanaged.
+        /// </summary>
+        public static bool TryRecordManagedSystemInstallation(string? sofficePath)
+        {
+            ReleaseManagement();
+
+            string systemPath = ResolveSystemSofficePath();
+            string candidatePath = string.IsNullOrWhiteSpace(sofficePath) ? systemPath : sofficePath;
+            if (!PathsReferToSameInstallation(candidatePath, systemPath))
+                return false;
+
+            string? productCode = FindUniqueInstalledLibreOfficeProductCode();
+            if (string.IsNullOrWhiteSpace(productCode))
+                return false;
+
+            RecordManagedInstallation(productCode, systemPath);
+            return true;
+        }
 
         /// <summary>
         /// Explicitly adopts an existing system LibreOffice installation into Clickra's management,
         /// allowing it to be updated or uninstalled by Clickra.
         /// </summary>
-        public static void AdoptExistingInstallation() => MarkInstalledByClickra(true);
+        public static void AdoptExistingInstallation()
+        {
+            string resolvedPath = LibreOfficeHelper.GetResolvedExecutablePath();
+            if (!CanAdoptExistingInstallation(resolvedPath))
+                throw new InvalidOperationException(
+                    "Only one verified system LibreOffice MSI installation can be adopted by Clickra.");
+
+            MarkInstalledByClickra(true);
+        }
 
         /// <summary>
         /// Releases Clickra's management over the system LibreOffice installation without removing files.
         /// </summary>
         public static void ReleaseManagement() => MarkInstalledByClickra(false);
+
+        /// <summary>
+        /// Adoption is offered only for the system LibreOffice that the UI is currently showing, and
+        /// only when its MSI identity is unambiguous. Portable/custom/PATH installations stay external.
+        /// </summary>
+        public static bool CanAdoptExistingInstallation(string? resolvedPath = null)
+        {
+            resolvedPath ??= LibreOfficeHelper.GetResolvedExecutablePath();
+            string systemPath = ResolveSystemSofficePath();
+            if (!PathsReferToSameInstallation(resolvedPath, systemPath))
+                return false;
+
+            return FindUniqueInstalledLibreOfficeProductCode() is not null;
+        }
 
         private static readonly HttpClient HttpClient = new()
         {
@@ -204,12 +279,9 @@ namespace Clickra.Core.Processors
             // Single choke point for the invariant: Clickra only ever removes a LibreOffice it installed
             // itself. The registry lookup below matches any LibreOffice MSI, including one the user
             // installed for their own work, so this check has to run before any uninstaller work.
-            if (!WasInstalledByClickra())
+            if (!TryGetVerifiedManagedProductCode(out string productCode))
                 throw new InvalidOperationException(
                     "Refusing to uninstall: this LibreOffice was not installed by Clickra, so it is managed by the user.");
-
-            string productCode = FindInstalledLibreOfficeProductCode()
-                ?? throw new InvalidOperationException("LibreOffice MSI installation was not found.");
 
             var startInfo = new ProcessStartInfo
             {
@@ -251,49 +323,177 @@ namespace Clickra.Core.Processors
             return new LibreOfficeUninstallResult(RestartRequired: false);
         }
 
-        private static string? FindInstalledLibreOfficeProductCode()
+        private static string? FindUniqueInstalledLibreOfficeProductCode()
+        {
+            string systemPath = ResolveSystemSofficePath();
+            return SelectUniqueProductCode(EnumerateInstalledLibreOfficeProducts(), systemPath);
+        }
+
+        private static bool TryGetVerifiedManagedProductCode(out string productCode)
+        {
+            bool consent = ClickraStorage.GetSettingBool(ClickraSettings.LibreOfficeInstalledByClickra);
+            productCode = ClickraStorage.GetSetting(ClickraSettings.LibreOfficeManagedProductCode);
+            string managedPath = ClickraStorage.GetSetting(ClickraSettings.LibreOfficeManagedSofficePath);
+            string resolvedPath = LibreOfficeHelper.GetResolvedExecutablePath();
+            string? uniqueCurrentProductCode = FindUniqueInstalledLibreOfficeProductCode();
+
+            return IsManagedIdentityCurrent(
+                consent,
+                productCode,
+                managedPath,
+                resolvedPath,
+                uniqueCurrentProductCode);
+        }
+
+        private static IEnumerable<LibreOfficeRegistryProduct> EnumerateInstalledLibreOfficeProducts()
         {
             foreach (RegistryHive hive in new[] { RegistryHive.LocalMachine, RegistryHive.CurrentUser })
             foreach (RegistryView view in new[] { RegistryView.Registry64, RegistryView.Registry32 })
             {
-                try
+                foreach (LibreOfficeRegistryProduct product in ReadLibreOfficeProducts(hive, view))
                 {
-                    using RegistryKey baseKey = RegistryKey.OpenBaseKey(hive, view);
-                    using RegistryKey? uninstallKey = baseKey.OpenSubKey(@"SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall");
-                    if (uninstallKey == null)
-                        continue;
-
-                    foreach (string subKeyName in uninstallKey.GetSubKeyNames())
-                    {
-                        using RegistryKey? appKey = uninstallKey.OpenSubKey(subKeyName);
-                        if (appKey == null)
-                            continue;
-
-                        string displayName = Convert.ToString(appKey.GetValue("DisplayName")) ?? "";
-                        if (!displayName.StartsWith("LibreOffice", StringComparison.OrdinalIgnoreCase))
-                            continue;
-
-                        if (LooksLikeProductCode(subKeyName))
-                            return subKeyName;
-
-                        string uninstallString = Convert.ToString(appKey.GetValue("UninstallString")) ?? "";
-                        Match match = Regex.Match(uninstallString, @"\{[0-9A-Fa-f\-]{36}\}");
-                        if (match.Success)
-                            return match.Value;
-                    }
-                }
-                catch
-                {
-                    // Some registry views may be unavailable under reduced permissions.
+                    yield return product;
                 }
             }
+        }
+
+        private static IReadOnlyList<LibreOfficeRegistryProduct> ReadLibreOfficeProducts(
+            RegistryHive hive,
+            RegistryView view)
+        {
+            var entries = new List<LibreOfficeRegistryProduct>();
+            try
+            {
+                using RegistryKey baseKey = RegistryKey.OpenBaseKey(hive, view);
+                using RegistryKey? uninstallKey = baseKey.OpenSubKey(@"SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall");
+                if (uninstallKey == null)
+                    return entries;
+
+                foreach (string subKeyName in uninstallKey.GetSubKeyNames())
+                {
+                    using RegistryKey? appKey = uninstallKey.OpenSubKey(subKeyName);
+                    if (appKey == null)
+                        continue;
+
+                    string displayName = Convert.ToString(appKey.GetValue("DisplayName")) ?? "";
+                    if (!displayName.StartsWith("LibreOffice", StringComparison.OrdinalIgnoreCase))
+                        continue;
+
+                    string? productCode = GetProductCode(subKeyName);
+                    if (productCode is not null)
+                    {
+                        string installLocation = Convert.ToString(appKey.GetValue("InstallLocation")) ?? "";
+                        entries.Add(new LibreOfficeRegistryProduct(productCode, displayName, installLocation));
+                    }
+                }
+            }
+            catch
+            {
+                // Some registry views may be unavailable under reduced permissions.
+            }
+
+            return entries;
+        }
+
+        private static string? GetProductCode(string subKeyName)
+        {
+            if (LooksLikeProductCode(subKeyName))
+                return subKeyName.ToUpperInvariant();
 
             return null;
         }
 
-        private static bool LooksLikeProductCode(string value)
+        internal static bool LooksLikeProductCode(string value)
         {
             return Regex.IsMatch(value, @"^\{[0-9A-Fa-f\-]{36}\}$");
+        }
+
+        internal static bool PathsReferToSameInstallation(string? resolvedPath, string? systemPath)
+        {
+            if (string.IsNullOrWhiteSpace(resolvedPath) || string.IsNullOrWhiteSpace(systemPath))
+                return false;
+
+            try
+            {
+                string resolvedFullPath = Path.GetFullPath(resolvedPath);
+                string systemFullPath = Path.GetFullPath(systemPath);
+                return resolvedFullPath.Equals(systemFullPath, StringComparison.OrdinalIgnoreCase);
+            }
+            catch
+            {
+                return false;
+            }
+        }
+
+        internal static bool IsManagedIdentityCurrent(
+            bool consent,
+            string? storedProductCode,
+            string? storedSofficePath,
+            string? currentResolvedPath,
+            string? uniqueCurrentProductCode)
+        {
+            return consent &&
+                   !string.IsNullOrWhiteSpace(storedProductCode) &&
+                   LooksLikeProductCode(storedProductCode) &&
+                   !string.IsNullOrWhiteSpace(storedSofficePath) &&
+                   PathsReferToSameInstallation(currentResolvedPath, storedSofficePath) &&
+                   !string.IsNullOrWhiteSpace(uniqueCurrentProductCode) &&
+                   storedProductCode.Equals(uniqueCurrentProductCode, StringComparison.OrdinalIgnoreCase);
+        }
+
+        internal static string? SelectUniqueProductCode(
+            IEnumerable<LibreOfficeRegistryProduct> entries,
+            string? systemExecutablePath)
+        {
+            string? selected = null;
+            foreach (LibreOfficeRegistryProduct entry in entries)
+            {
+                if (!entry.DisplayName.StartsWith("LibreOffice", StringComparison.OrdinalIgnoreCase) ||
+                    !LooksLikeProductCode(entry.ProductCode) ||
+                    !RegistryProductMatchesSystemExecutable(entry, systemExecutablePath))
+                {
+                    continue;
+                }
+
+                string normalized = entry.ProductCode.ToUpperInvariant();
+                if (selected is null)
+                {
+                    selected = normalized;
+                }
+                else if (!selected.Equals(normalized, StringComparison.OrdinalIgnoreCase))
+                {
+                    return null;
+                }
+            }
+
+            return selected;
+        }
+
+        internal static bool RegistryProductMatchesSystemExecutable(
+            LibreOfficeRegistryProduct product,
+            string? systemExecutablePath)
+        {
+            if (string.IsNullOrWhiteSpace(product.InstallLocation) ||
+                string.IsNullOrWhiteSpace(systemExecutablePath))
+            {
+                return false;
+            }
+
+            string installRoot = product.InstallLocation.Trim().TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+            return PathsReferToSameInstallation(
+                       Path.Combine(installRoot, "program", "soffice.exe"),
+                       systemExecutablePath) ||
+                   PathsReferToSameInstallation(
+                       Path.Combine(installRoot, "soffice.exe"),
+                       systemExecutablePath);
+        }
+
+        private static void RecordManagedInstallation(string productCode, string sofficePath)
+        {
+            string canonicalPath = Path.GetFullPath(sofficePath);
+            ClickraStorage.SaveSetting(ClickraSettings.LibreOfficeManagedProductCode, productCode.ToUpperInvariant());
+            ClickraStorage.SaveSetting(ClickraSettings.LibreOfficeManagedSofficePath, canonicalPath);
+            ClickraStorage.SaveSetting(ClickraSettings.LibreOfficeInstalledByClickra, ClickraSettings.ValueTrue);
         }
 
         private static async Task WaitForSystemUninstallAsync(CancellationToken cancellationToken)

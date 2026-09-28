@@ -27,6 +27,8 @@ public static class ClickraSettings
     public const string LibreOfficePath = "LibreOfficePath";
     public const string LibreOfficeRemovalPendingRestart = "LibreOfficeRemovalPendingRestart";
     public const string LibreOfficeInstalledByClickra = "LibreOfficeInstalledByClickra";
+    public const string LibreOfficeManagedProductCode = "LibreOfficeManagedProductCode";
+    public const string LibreOfficeManagedSofficePath = "LibreOfficeManagedSofficePath";
 
     // ─── PDF ───────────────────────────────────────────────────────────────
     public const string TranslateTargetLang = "TranslateTargetLang";
@@ -70,7 +72,9 @@ public static class ClickraSettings
         new ClickraSetting(OfficeEngine, DefaultOfficeEngineAuto, $"Office 轉檔引擎：{DefaultOfficeEngineAuto} / {OfficeEngineMicrosoft} / {OfficeEngineLibreOffice}"),
         new ClickraSetting(LibreOfficePath, DefaultEmpty, "LibreOffice 執行檔路徑（空 = 自動偵測）"),
         new ClickraSetting(LibreOfficeRemovalPendingRestart, ValueFalse, "LibreOffice 已排程移除，等待 Windows 重新啟動"),
-        new ClickraSetting(LibreOfficeInstalledByClickra, ValueFalse, "這台機器上的 LibreOffice 是否由 Clickra 安裝"),
+        new ClickraSetting(LibreOfficeInstalledByClickra, ValueFalse, "目前的系統 LibreOffice 是否已明確交由 Clickra 管理"),
+        new ClickraSetting(LibreOfficeManagedProductCode, DefaultEmpty, "Clickra 目前獲授權管理的 LibreOffice MSI ProductCode"),
+        new ClickraSetting(LibreOfficeManagedSofficePath, DefaultEmpty, "Clickra 目前獲授權管理的 LibreOffice soffice.exe 路徑"),
         new ClickraSetting(TranslateTargetLang, DefaultTranslateTargetLang, "PDF 翻譯目標語言"),
         new ClickraSetting(PdfCompressImageLevel, DefaultPdfCompressLevel, "PDF 圖片壓縮等級 0-2（1 = 平衡）"),
         new ClickraSetting(PdfCompressStripFonts, ValueFalse, "壓縮 PDF 時移除嵌入字型"),

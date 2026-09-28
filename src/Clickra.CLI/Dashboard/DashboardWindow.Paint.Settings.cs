@@ -146,9 +146,11 @@ namespace Clickra.UI
             string resolvedLibreOffice = isLibreOfficeSetupRunning ? "" : LibreOfficeHelper.GetResolvedExecutablePath();
             bool removalPendingRestart = ClickraStorage.GetSettingBool(ClickraSettings.LibreOfficeRemovalPendingRestart);
             bool libreOfficeReady = !string.IsNullOrEmpty(resolvedLibreOffice);
-            // Provenance of the LibreOffice on this machine: only a Clickra-installed one may be removed
-            // from the dashboard, the user's own installation has to go through Windows.
+            // Only a LibreOffice with a freshly verified Clickra management identity may be removed
+            // from the dashboard; all other installations remain user-managed.
             bool libreOfficeInstalledByClickra = LibreOfficeEngineInstaller.WasInstalledByClickra();
+            bool canAdoptLibreOffice = !libreOfficeInstalledByClickra &&
+                                       LibreOfficeEngineInstaller.CanAdoptExistingInstallation(resolvedLibreOffice);
             bool officeReady = IsOfficeInstalled("Word") && IsOfficeInstalled("Excel") && IsOfficeInstalled("PowerPoint");
 
             if (_subFont != null)
@@ -261,7 +263,7 @@ namespace Clickra.UI
                             (int)_wLibreOfficeUninstall);
                         AddHitRect(38, uninstallX, y, _wLibreOfficeUninstall, 30);
                     }
-                    else
+                    else if (canAdoptLibreOffice)
                     {
                         float adoptX = contentX + _wLibreOfficeDownload + margin;
                         DrawOutputDirButton(
@@ -274,12 +276,13 @@ namespace Clickra.UI
                             (int)_wLibreOfficeAdopt);
                         AddHitRect(39, adoptX, y, _wLibreOfficeAdopt, 30);
 
-                        if (_subFont != null)
-                        {
-                            // Explain external installation provenance to the user.
-                            using var externalBrush = new SolidBrush(Color.FromArgb(150, 150, 150));
-                            g.DrawString(GetText("setting_libreoffice_external_hint"), _subFont, externalBrush, contentX * s, (y + 32f) * s);
-                        }
+                    }
+                    if (!libreOfficeInstalledByClickra && _subFont != null)
+                    {
+                        // Explain external installation provenance even when a custom/portable install
+                        // cannot safely be adopted for system-MSI management.
+                        using var externalBrush = new SolidBrush(Color.FromArgb(150, 150, 150));
+                        g.DrawString(GetText("setting_libreoffice_external_hint"), _subFont, externalBrush, contentX * s, (y + 32f) * s);
                     }
                     y += 55f;
                 }
