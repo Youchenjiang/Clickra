@@ -351,7 +351,7 @@ static partial class TestSuite
 
     private static void TestCleanStaleArtifacts()
     {
-        string staleDir = Path.Combine(Path.GetTempPath(), $"clickra-test-data-dummy-{Guid.NewGuid():N}");
+        string staleDir = Path.Combine(GetTestDataRoot(), $"clickra-test-data-dummy-{Guid.NewGuid():N}");
         Directory.CreateDirectory(staleDir);
         Assert.True(Directory.Exists(staleDir), "Dummy stale directory must exist before cleanup.");
 

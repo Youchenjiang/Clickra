@@ -259,8 +259,9 @@ static partial class TestSuite
 
         try
         {
-            string tempPath = Path.GetTempPath();
-            foreach (var dir in Directory.GetDirectories(tempPath, "clickra-test-data-*"))
+            string testDataRoot = GetTestDataRoot();
+            Directory.CreateDirectory(testDataRoot);
+            foreach (var dir in Directory.GetDirectories(testDataRoot, "clickra-test-data-*"))
             {
                 if (currentTestDataDir == null || !string.Equals(dir, currentTestDataDir, StringComparison.OrdinalIgnoreCase))
                 {
@@ -311,6 +312,12 @@ static partial class TestSuite
 
         return (cleanedDirs, cleanedFiles);
     }
+
+    internal static string GetTestDataRoot() =>
+        Path.Combine(
+            Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+            "Clickra",
+            "TestRuns");
 
     internal static string? FindRepoRoot()
     {
@@ -614,4 +621,3 @@ sealed class SyntheticGrayPage
 
     private sealed record FigureFrame(double X, double Y, double Width, double Height, string[] Labels);
 }
-
