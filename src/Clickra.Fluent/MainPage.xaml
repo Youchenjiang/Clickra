@@ -473,10 +473,12 @@
                                         <ColumnDefinition Width="Auto"/>
                                         <ColumnDefinition Width="Auto"/>
                                         <ColumnDefinition Width="Auto"/>
+                                        <ColumnDefinition Width="Auto"/>
                                     </Grid.ColumnDefinitions>
                                     <Button x:Name="LibreOfficeBrowseButton" Content="Browse..." Padding="14,8"/>
                                     <Button x:Name="LibreOfficeDownloadButton" Grid.Column="1" Content="Get LibreOffice" Padding="14,8"/>
                                     <Button x:Name="LibreOfficeUninstallButton" Grid.Column="2" Content="Uninstall LibreOffice" Padding="14,8"/>
+                                    <Button x:Name="LibreOfficeAdoptButton" Grid.Column="3" Content="Manage with Clickra" Padding="14,8" Visibility="Collapsed"/>
                                 </Grid>
                             </StackPanel>
                         </Grid>

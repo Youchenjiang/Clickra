@@ -65,6 +65,7 @@ public sealed partial class MainPage : Page
         LibreOfficeBrowseButton.Click += async (_, _) => await BrowseLibreOfficeAsync();
         LibreOfficeDownloadButton.Click += async (_, _) => await InstallLibreOfficeAsync();
         LibreOfficeUninstallButton.Click += async (_, _) => await UninstallLibreOfficeAsync();
+        LibreOfficeAdoptButton.Click += async (_, _) => await AdoptLibreOfficeAsync();
         GitHubButton.Click += async (_, _) => await OpenUriAsync(GitHubUrl);
         OpenDataDirButton.Click += async (_, _) => await OpenDataDirAsync();
         GmailButton.Click += async (_, _) => await OpenDiagnosticsEmailAsync();
@@ -639,6 +640,7 @@ public sealed partial class MainPage : Page
         LibreOfficeBrowseButton.Content = L("setting_libreoffice_browse");
         LibreOfficeDownloadButton.Content = L("setting_libreoffice_download");
         LibreOfficeUninstallButton.Content = L("setting_libreoffice_uninstall");
+        LibreOfficeAdoptButton.Content = L("setting_libreoffice_adopt");
         UpdateCompressionLabel(CompressionLabel, CompressionSlider);
 
         AboutDescription.Text = L("fluent_about_desc");
@@ -1305,6 +1307,9 @@ public sealed partial class MainPage : Page
         LibreOfficeBrowseButton.IsEnabled = !_libreOfficeSetupInProgress;
         LibreOfficeDownloadButton.IsEnabled = !_libreOfficeSetupInProgress;
         LibreOfficeUninstallButton.IsEnabled = !_libreOfficeSetupInProgress && ready && installedByClickra;
+        LibreOfficeUninstallButton.Visibility = ready && installedByClickra ? Visibility.Visible : Visibility.Collapsed;
+        LibreOfficeAdoptButton.IsEnabled = !_libreOfficeSetupInProgress && ready && !installedByClickra;
+        LibreOfficeAdoptButton.Visibility = ready && !installedByClickra ? Visibility.Visible : Visibility.Collapsed;
     }
 
     private async Task BrowseLibreOfficeAsync()
@@ -1456,6 +1461,17 @@ public sealed partial class MainPage : Page
             _libreOfficeSetupInProgress = false;
             RefreshLibreOfficeStatus();
         }
+    }
+
+    private async Task AdoptLibreOfficeAsync()
+    {
+        if (_libreOfficeSetupInProgress) return;
+        if (LibreOfficeEngineInstaller.WasInstalledByClickra()) return;
+        if (!await ConfirmAsync(L("setting_libreoffice_adopt_confirm"))) return;
+
+        LibreOfficeEngineInstaller.AdoptExistingInstallation();
+        RefreshLibreOfficeStatus();
+        await ShowErrorAsync(L("setting_libreoffice_adopt_success"));
     }
 
     private async Task OpenUriAsync(string uri)
