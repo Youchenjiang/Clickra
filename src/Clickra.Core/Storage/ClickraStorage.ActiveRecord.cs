@@ -270,7 +270,7 @@ namespace Clickra.Core
             int RemainingDays,
             TimeSpan RemainingTime,
             bool IsExpiringSoon,
-            bool IsExpired);
+            bool HasExpired);
 
         /// <summary>根據設定的保留天數與暫存經過時間，計算剩餘保留狀態。</summary>
         public static ParkedRetentionInfo CalculateRetentionInfo(int retentionDays, TimeSpan age)
@@ -282,7 +282,7 @@ namespace Clickra.Core
                     RemainingDays: 0,
                     RemainingTime: TimeSpan.Zero,
                     IsExpiringSoon: false,
-                    IsExpired: false);
+                    HasExpired: false);
             }
 
             TimeSpan remaining = TimeSpan.FromDays(retentionDays) - age;
@@ -295,7 +295,7 @@ namespace Clickra.Core
                 RemainingDays: remainingDays,
                 RemainingTime: remaining,
                 IsExpiringSoon: isExpiringSoon,
-                IsExpired: isExpired);
+                HasExpired: isExpired);
         }
 
         /// <summary>取得指定暫存任務的保留與過期資訊。若任務檔不存在或已過期，傳回對應狀態。</summary>
@@ -317,7 +317,7 @@ namespace Clickra.Core
                         RemainingDays: 0,
                         RemainingTime: TimeSpan.Zero,
                         IsExpiringSoon: false,
-                        IsExpired: true);
+                        HasExpired: true);
                 }
 
                 TimeSpan age = DateTime.UtcNow - File.GetLastWriteTimeUtc(path);
@@ -498,7 +498,7 @@ namespace Clickra.Core
             if (parked)
             {
                 int retentionDays = GetParkedRetentionDays();
-                return retentionDays > 0 && CalculateRetentionInfo(retentionDays, age).IsExpired;
+                return retentionDays > 0 && CalculateRetentionInfo(retentionDays, age).HasExpired;
             }
             return false;
         }

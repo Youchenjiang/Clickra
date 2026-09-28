@@ -225,39 +225,39 @@ static partial class TestSuite
         var unlimited = ClickraStorage.CalculateRetentionInfo(0, TimeSpan.FromDays(100));
         Assert.True(unlimited.IsUnlimited, "Retention <= 0 must be flagged as unlimited.");
         Assert.False(unlimited.IsExpiringSoon, "Unlimited retention cannot expire soon.");
-        Assert.False(unlimited.IsExpired, "Unlimited retention cannot be expired.");
+        Assert.False(unlimited.HasExpired, "Unlimited retention cannot be expired.");
 
         // 2. Active retention with multiple days remaining
         var active = ClickraStorage.CalculateRetentionInfo(7, TimeSpan.FromDays(2));
         Assert.False(active.IsUnlimited, "Active 7-day retention is not unlimited.");
         Assert.Equal(5, active.RemainingDays);
         Assert.False(active.IsExpiringSoon, "5 days remaining is not expiring soon.");
-        Assert.False(active.IsExpired, "5 days remaining is not expired.");
+        Assert.False(active.HasExpired, "5 days remaining is not expired.");
 
         // 3. Exactly one day remaining: show the singular day state, not "less than 1 day".
         var oneDay = ClickraStorage.CalculateRetentionInfo(7, TimeSpan.FromDays(6));
         Assert.Equal(1, oneDay.RemainingDays);
         Assert.False(oneDay.IsExpiringSoon, "Exactly 24 hours left is not less than one day.");
-        Assert.False(oneDay.IsExpired, "Exactly one day remaining is still active.");
+        Assert.False(oneDay.HasExpired, "Exactly one day remaining is still active.");
 
         // 4. Expiring soon (strictly less than 24 hours remaining)
         var expiringSoon = ClickraStorage.CalculateRetentionInfo(7, TimeSpan.FromDays(6.3));
         Assert.False(expiringSoon.IsUnlimited, "Active retention is not unlimited.");
         Assert.Equal(1, expiringSoon.RemainingDays);
         Assert.True(expiringSoon.IsExpiringSoon, "< 24 hours left must be flagged as expiring soon.");
-        Assert.False(expiringSoon.IsExpired, "Still within retention window.");
+        Assert.False(expiringSoon.HasExpired, "Still within retention window.");
 
         // 5. Exactly at the retention deadline: expiration and pruning share this boundary.
         var atDeadline = ClickraStorage.CalculateRetentionInfo(7, TimeSpan.FromDays(7));
         Assert.Equal(0, atDeadline.RemainingDays);
-        Assert.True(atDeadline.IsExpired, "Age equal to retentionDays must be expired.");
+        Assert.True(atDeadline.HasExpired, "Age equal to retentionDays must be expired.");
 
         // 6. Expired (past retention limit)
         var expired = ClickraStorage.CalculateRetentionInfo(7, TimeSpan.FromDays(7.2));
         Assert.False(expired.IsUnlimited, "Active retention is not unlimited.");
         Assert.Equal(0, expired.RemainingDays);
         Assert.False(expired.IsExpiringSoon, "Expired tasks are expired, not merely expiring soon.");
-        Assert.True(expired.IsExpired, "Age > retentionDays must be flagged as expired.");
+        Assert.True(expired.HasExpired, "Age > retentionDays must be flagged as expired.");
     }
 
     /// <summary>Contract test ensuring that the Fluent History page displays remaining expiration

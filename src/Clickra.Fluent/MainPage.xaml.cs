@@ -778,7 +778,7 @@ public sealed partial class MainPage : Page
         int expiringSoonCount = _parkedTasks.Count(t =>
         {
             var info = ClickraStorage.GetParkedRetentionInfo(t.Id);
-            return info.IsExpiringSoon || info.IsExpired;
+            return info.IsExpiringSoon || info.HasExpired;
         });
 
         if (expiringSoonCount > 0)
@@ -811,7 +811,7 @@ public sealed partial class MainPage : Page
             CornerRadius = new CornerRadius(8)
         };
 
-        if (info.IsExpiringSoon || info.IsExpired)
+        if (info.IsExpiringSoon || info.HasExpired)
         {
             row.BorderThickness = new Thickness(1);
             row.BorderBrush = new SolidColorBrush(Color.FromArgb(180, 255, 140, 0));
@@ -831,7 +831,7 @@ public sealed partial class MainPage : Page
             VerticalAlignment = VerticalAlignment.Center
         });
 
-        if (info.IsExpiringSoon || info.IsExpired)
+        if (info.IsExpiringSoon || info.HasExpired)
         {
             var badge = new Border
             {
@@ -898,7 +898,7 @@ public sealed partial class MainPage : Page
         {
             ttlText = L("fluent_task_parked_ttl_unlimited");
         }
-        else if (info.IsExpired)
+        else if (info.HasExpired)
         {
             ttlText = L("fluent_task_parked_ttl_expired");
         }
