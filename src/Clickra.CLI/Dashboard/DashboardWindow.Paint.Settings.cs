@@ -369,6 +369,60 @@ namespace Clickra.UI
             DrawToggleSection("setting_pdf_compress_minify_content", "", minifyContent, 82, y);
             y += 44f;
 
+            // Parked Task Retention Section
+            y += 16f;
+            DrawSectionHeader("setting_parked_ttl_title", "setting_parked_ttl_desc", y);
+            y += 50f;
+
+            int currentDays = ClickraStorage.GetParkedRetentionDays();
+            string currentDaysText = currentDays switch
+            {
+                0 => GetText("setting_parked_ttl_unlimited"),
+                1 => string.Format(GetText("setting_parked_ttl_day_single"), currentDays),
+                _ => string.Format(GetText("setting_parked_ttl_days"), currentDays)
+            };
+            string currentLabel = string.Format(GetText("setting_parked_ttl_current"), currentDaysText);
+
+            if (_subFont != null)
+            {
+                using var currentBrush = new SolidBrush(Color.FromArgb(200, 200, 200));
+                g.DrawString(currentLabel, _subFont, currentBrush, contentX * s, y * s);
+            }
+            y += 28f;
+
+            float curX = contentX;
+            float btnY = y;
+            float wStep = 34f;
+
+            DrawOutputDirButton(g, "-", false, 90, (int)curX, (int)btnY, (int)wStep);
+            AddHitRect(90, curX, btnY, wStep, 30);
+            curX += wStep + margin;
+
+            DrawOutputDirButton(g, "+", false, 91, (int)curX, (int)btnY, (int)wStep);
+            AddHitRect(91, curX, btnY, wStep, 30);
+            curX += wStep + margin + 8f;
+
+            (int days, int elemId, string label)[] presets = new[]
+            {
+                (0, 92, GetText("setting_parked_ttl_unlimited")),
+                (3, 93, string.Format(GetText("setting_parked_ttl_days"), 3)),
+                (7, 94, GetText("setting_parked_ttl_default")),
+                (14, 95, string.Format(GetText("setting_parked_ttl_days"), 14)),
+                (30, 96, string.Format(GetText("setting_parked_ttl_days"), 30))
+            };
+
+            var measureFont = _subFont ?? SystemFonts.DefaultFont;
+            foreach (var (days, elemId, label) in presets)
+            {
+                float btnW = Math.Max(50f, g.MeasureString(label, measureFont).Width / s + 20f);
+                bool isSelected = (currentDays == days);
+                DrawOutputDirButton(g, label, isSelected, elemId, (int)curX, (int)btnY, (int)btnW);
+                AddHitRect(elemId, curX, btnY, btnW, 30);
+                curX += btnW + margin;
+            }
+
+            y += 50f;
+
             _settingsContentHeight = Math.Max(460f, y + 80f);
         }
 
