@@ -1090,7 +1090,7 @@ namespace Clickra.Core
                 ("setting_parked_ttl_days", "{0} 天", "{0} 天", "{0} days", "{0} 日", "{0} 일"),
                 ("setting_parked_ttl_day_single", "{0} 天", "{0} 天", "{0} day", "{0} 日", "{0} 일"),
                 ("setting_parked_ttl_unlimited", "0（無限期）", "0（无期限）", "0 (unlimited)", "0（無期限）", "0 (무제한)"),
-                ("setting_parked_ttl_default", "7 天（預設）", "7 天（默认）", "7 days (default)", "7 日（デフォルト）", "7 일 (기본값)"),
+                ("setting_parked_ttl_default", "{0} 天（預設）", "{0} 天（默认）", "{0} days (default)", "{0} 日（デフォルト）", "{0} 일 (기본값)"),
                 ("setting_parked_ttl_current", "目前保留：{0}", "当前保留：{0}", "Current retention: {0}", "現在の保持期間: {0}", "현재 보관 기간: {0}"),
                 ("fluent_park_toast_title", "Clickra 轉換已暫存", "Clickra 转换已暂存", "Clickra conversion parked", "Clickra 変換を一時停止", "Clickra 변환이 보류됨"),
                 ("fluent_park_toast_body", "可在「歷史」頁繼續或取消。", "可在“历史”页继续或取消。", "Resume or cancel it from the History page.", "「履歴」ページで再開またはキャンセルできます。", "「기록」페이지에서 재개하거나 취소할 수 있습니다."),

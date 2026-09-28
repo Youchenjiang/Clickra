@@ -454,7 +454,7 @@ namespace Clickra.UI
                 case 91: AdjustParkedRetention(hwnd, 1); break;
                 case 92: SetParkedRetention(hwnd, 0); break;
                 case 93: SetParkedRetention(hwnd, 3); break;
-                case 94: SetParkedRetention(hwnd, 7); break;
+                case 94: SetParkedRetention(hwnd, GetDefaultParkedRetentionDays()); break;
                 case 95: SetParkedRetention(hwnd, 14); break;
                 case 96: SetParkedRetention(hwnd, 30); break;
                 default: break; // Unhandled settings element — ignore.
@@ -467,6 +467,9 @@ namespace Clickra.UI
             int updated = Math.Clamp(current + delta, 0, 365);
             SetParkedRetention(hwnd, updated);
         }
+
+        private static int GetDefaultParkedRetentionDays()
+            => int.Parse(ClickraSettings.DefaultParkedTaskRetention, System.Globalization.CultureInfo.InvariantCulture);
 
         private static void SetParkedRetention(IntPtr hwnd, int days)
         {

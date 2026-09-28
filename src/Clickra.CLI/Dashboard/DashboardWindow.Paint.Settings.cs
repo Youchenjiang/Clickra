@@ -375,6 +375,7 @@ namespace Clickra.UI
             y += 50f;
 
             int currentDays = ClickraStorage.GetParkedRetentionDays();
+            int defaultDays = GetDefaultParkedRetentionDays();
             string currentDaysText = currentDays switch
             {
                 0 => GetText("setting_parked_ttl_unlimited"),
@@ -406,7 +407,7 @@ namespace Clickra.UI
             {
                 (0, 92, GetText("setting_parked_ttl_unlimited")),
                 (3, 93, string.Format(GetText("setting_parked_ttl_days"), 3)),
-                (7, 94, GetText("setting_parked_ttl_default")),
+                (defaultDays, 94, string.Format(GetText("setting_parked_ttl_default"), defaultDays)),
                 (14, 95, string.Format(GetText("setting_parked_ttl_days"), 14)),
                 (30, 96, string.Format(GetText("setting_parked_ttl_days"), 30))
             };
