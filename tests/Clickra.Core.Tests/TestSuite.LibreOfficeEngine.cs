@@ -265,6 +265,7 @@ static partial class TestSuite
             const string productA = "{11111111-1111-1111-1111-111111111111}";
             const string productB = "{22222222-2222-2222-2222-222222222222}";
             const string systemSoffice = @"C:\Program Files\LibreOffice\program\soffice.exe";
+            const string systemSofficeX86 = @"C:\Program Files (x86)\LibreOffice\program\soffice.exe";
 
             Assert.Equal(productA,
                 LibreOfficeEngineInstaller.SelectUniqueProductCode(
@@ -272,7 +273,7 @@ static partial class TestSuite
                     {
                         new LibreOfficeRegistryProduct(productA, "LibreOffice 26.2.6", @"C:\Program Files\LibreOffice")
                     },
-                    systemSoffice) ?? "");
+                    new[] { systemSoffice }) ?? "");
             Assert.Equal(productA,
                 LibreOfficeEngineInstaller.SelectUniqueProductCode(
                     new[]
@@ -280,7 +281,7 @@ static partial class TestSuite
                         new LibreOfficeRegistryProduct(productA, "LibreOffice 26.2.6", @"C:\Program Files\LibreOffice"),
                         new LibreOfficeRegistryProduct(productA.ToLowerInvariant(), "LibreOffice 26.2.6", @"C:\Program Files\LibreOffice")
                     },
-                    systemSoffice) ?? "");
+                    new[] { systemSoffice }) ?? "");
             Assert.Equal("",
                 LibreOfficeEngineInstaller.SelectUniqueProductCode(
                     new[]
@@ -288,28 +289,36 @@ static partial class TestSuite
                         new LibreOfficeRegistryProduct(productA, "LibreOffice 26.2.6", @"C:\Program Files\LibreOffice"),
                         new LibreOfficeRegistryProduct(productB, "LibreOffice 25.8", @"C:\Program Files\LibreOffice")
                     },
-                    systemSoffice) ?? "");
+                    new[] { systemSoffice }) ?? "");
+            Assert.Equal("",
+                LibreOfficeEngineInstaller.SelectUniqueProductCode(
+                    new[]
+                    {
+                        new LibreOfficeRegistryProduct(productA, "LibreOffice 26.2.6", @"C:\Program Files\LibreOffice"),
+                        new LibreOfficeRegistryProduct(productA, "LibreOffice 26.2.6", @"C:\Program Files (x86)\LibreOffice")
+                    },
+                    new[] { systemSoffice, systemSofficeX86 }) ?? "");
             Assert.Equal("",
                 LibreOfficeEngineInstaller.SelectUniqueProductCode(
                     new[]
                     {
                         new LibreOfficeRegistryProduct(productA, "Not LibreOffice", @"C:\Program Files\LibreOffice")
                     },
-                    systemSoffice) ?? "");
+                    new[] { systemSoffice }) ?? "");
             Assert.Equal("",
                 LibreOfficeEngineInstaller.SelectUniqueProductCode(
                     new[]
                     {
                         new LibreOfficeRegistryProduct(productA, "LibreOffice 26.2.6", @"D:\Portable\LibreOffice")
                     },
-                    systemSoffice) ?? "");
+                    new[] { systemSoffice }) ?? "");
             Assert.Equal("",
                 LibreOfficeEngineInstaller.SelectUniqueProductCode(
                     new[]
                     {
                         new LibreOfficeRegistryProduct(productA, "LibreOffice 26.2.6", "")
                     },
-                    systemSoffice) ?? "");
+                    new[] { systemSoffice }) ?? "");
 
             Assert.True(
                 LibreOfficeEngineInstaller.PathsReferToSameInstallation(

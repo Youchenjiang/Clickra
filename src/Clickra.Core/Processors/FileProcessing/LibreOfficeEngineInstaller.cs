@@ -184,6 +184,11 @@ namespace Clickra.Core.Processors
 
         public static string ResolveSystemSofficePath()
         {
+            return ResolveSystemSofficePaths().FirstOrDefault() ?? "";
+        }
+
+        private static IReadOnlyList<string> ResolveSystemSofficePaths()
+        {
             string programFiles = Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles);
             string programFilesX86 = Environment.GetFolderPath(Environment.SpecialFolder.ProgramFilesX86);
             string[] candidates =
@@ -192,13 +197,17 @@ namespace Clickra.Core.Processors
                 Path.Combine(programFilesX86, "LibreOffice", "program", "soffice.exe")
             };
 
+            var resolved = new List<string>();
             foreach (string candidate in candidates)
             {
-                if (File.Exists(candidate))
-                    return candidate;
+                if (File.Exists(candidate) &&
+                    !resolved.Any(existing => PathsReferToSameInstallation(existing, candidate)))
+                {
+                    resolved.Add(candidate);
+                }
             }
 
-            return "";
+            return resolved;
         }
 
         public static string GetInstalledSystemVersion()
@@ -325,8 +334,9 @@ namespace Clickra.Core.Processors
 
         private static string? FindUniqueInstalledLibreOfficeProductCode()
         {
-            string systemPath = ResolveSystemSofficePath();
-            return SelectUniqueProductCode(EnumerateInstalledLibreOfficeProducts(), systemPath);
+            return SelectUniqueProductCode(
+                EnumerateInstalledLibreOfficeProducts(),
+                ResolveSystemSofficePaths());
         }
 
         private static bool TryGetVerifiedManagedProductCode(out string productCode)
@@ -443,8 +453,12 @@ namespace Clickra.Core.Processors
 
         internal static string? SelectUniqueProductCode(
             IEnumerable<LibreOfficeRegistryProduct> entries,
-            string? systemExecutablePath)
+            IEnumerable<string> systemExecutablePaths)
         {
+            string? systemExecutablePath = SelectUniqueSystemExecutablePath(systemExecutablePaths);
+            if (systemExecutablePath is null)
+                return null;
+
             string? selected = null;
             foreach (LibreOfficeRegistryProduct entry in entries)
             {
@@ -461,6 +475,27 @@ namespace Clickra.Core.Processors
                     selected = normalized;
                 }
                 else if (!selected.Equals(normalized, StringComparison.OrdinalIgnoreCase))
+                {
+                    return null;
+                }
+            }
+
+            return selected;
+        }
+
+        internal static string? SelectUniqueSystemExecutablePath(IEnumerable<string> systemExecutablePaths)
+        {
+            string? selected = null;
+            foreach (string candidatePath in systemExecutablePaths)
+            {
+                if (string.IsNullOrWhiteSpace(candidatePath))
+                    continue;
+
+                if (selected is null)
+                {
+                    selected = candidatePath;
+                }
+                else if (!PathsReferToSameInstallation(selected, candidatePath))
                 {
                     return null;
                 }
