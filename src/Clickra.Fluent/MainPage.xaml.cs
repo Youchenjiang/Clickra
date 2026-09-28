@@ -65,6 +65,7 @@ public sealed partial class MainPage : Page
         LibreOfficeBrowseButton.Click += async (_, _) => await BrowseLibreOfficeAsync();
         LibreOfficeDownloadButton.Click += async (_, _) => await InstallLibreOfficeAsync();
         LibreOfficeUninstallButton.Click += async (_, _) => await UninstallLibreOfficeAsync();
+        LibreOfficeAdoptButton.Click += async (_, _) => await AdoptLibreOfficeAsync();
         GitHubButton.Click += async (_, _) => await OpenUriAsync(GitHubUrl);
         OpenDataDirButton.Click += async (_, _) => await OpenDataDirAsync();
         GmailButton.Click += async (_, _) => await OpenDiagnosticsEmailAsync();
@@ -639,6 +640,7 @@ public sealed partial class MainPage : Page
         LibreOfficeBrowseButton.Content = L("setting_libreoffice_browse");
         LibreOfficeDownloadButton.Content = L("setting_libreoffice_download");
         LibreOfficeUninstallButton.Content = L("setting_libreoffice_uninstall");
+        LibreOfficeAdoptButton.Content = L("setting_libreoffice_adopt");
         UpdateCompressionLabel(CompressionLabel, CompressionSlider);
 
         AboutDescription.Text = L("fluent_about_desc");
@@ -1274,37 +1276,46 @@ public sealed partial class MainPage : Page
         bool removalPending = ClickraStorage.GetSettingBool(ClickraSettings.LibreOfficeRemovalPendingRestart);
         bool ready = !string.IsNullOrWhiteSpace(resolvedPath);
         string installedVersion = LibreOfficeEngineInstaller.GetInstalledSystemVersion();
-        // Only a LibreOffice Clickra installed itself may be removed from here. Anything else is the
-        // user's own installation and has to be removed through Windows.
+        // Only a LibreOffice with a freshly verified Clickra management identity may be removed here.
+        // Anything else remains user-managed and has to be removed through Windows.
         bool installedByClickra = LibreOfficeEngineInstaller.WasInstalledByClickra();
+        bool canAdopt = !installedByClickra &&
+                        LibreOfficeEngineInstaller.CanAdoptExistingInstallation(resolvedPath);
 
-        string statusText;
-        if (_libreOfficeSetupInProgress)
-        {
-            statusText = LibreOfficeStatusText.Text;
-        }
-        else if (removalPending)
-        {
-            statusText = L("setting_libreoffice_removal_pending");
-        }
-        else if (ready)
-        {
-            statusText = string.IsNullOrWhiteSpace(installedVersion)
-                ? L("setting_libreoffice_ready")
-                : $"{L("setting_libreoffice_ready")} · {installedVersion}";
-            if (!installedByClickra)
-                statusText += $"\n{L("setting_libreoffice_external_note")}";
-        }
-        else
-        {
-            statusText = L("setting_libreoffice_missing");
-        }
-        LibreOfficeStatusText.Text = statusText;
+        LibreOfficeStatusText.Text = GetLibreOfficeStatusText(
+            installedVersion,
+            removalPending,
+            ready,
+            installedByClickra);
         LibreOfficePathText.Text = ready ? resolvedPath : "";
         LibreOfficeSetupProgress.Visibility = _libreOfficeSetupInProgress ? Visibility.Visible : Visibility.Collapsed;
         LibreOfficeBrowseButton.IsEnabled = !_libreOfficeSetupInProgress;
         LibreOfficeDownloadButton.IsEnabled = !_libreOfficeSetupInProgress;
         LibreOfficeUninstallButton.IsEnabled = !_libreOfficeSetupInProgress && ready && installedByClickra;
+        LibreOfficeUninstallButton.Visibility = ready && installedByClickra ? Visibility.Visible : Visibility.Collapsed;
+        LibreOfficeAdoptButton.IsEnabled = !_libreOfficeSetupInProgress && canAdopt;
+        LibreOfficeAdoptButton.Visibility = canAdopt ? Visibility.Visible : Visibility.Collapsed;
+    }
+
+    private string GetLibreOfficeStatusText(
+        string installedVersion,
+        bool removalPending,
+        bool ready,
+        bool installedByClickra)
+    {
+        if (_libreOfficeSetupInProgress)
+            return LibreOfficeStatusText.Text;
+        if (removalPending)
+            return L("setting_libreoffice_removal_pending");
+        if (!ready)
+            return L("setting_libreoffice_missing");
+
+        string statusText = string.IsNullOrWhiteSpace(installedVersion)
+            ? L("setting_libreoffice_ready")
+            : $"{L("setting_libreoffice_ready")} · {installedVersion}";
+        if (!installedByClickra)
+            statusText += $"\n{L("setting_libreoffice_external_note")}";
+        return statusText;
     }
 
     private async Task BrowseLibreOfficeAsync()
@@ -1339,15 +1350,8 @@ public sealed partial class MainPage : Page
         bool removalPending = ClickraStorage.GetSettingBool(ClickraSettings.LibreOfficeRemovalPendingRestart);
         var package = LibreOfficeEngineInstaller.RecommendedPackage;
         string installedVersion = LibreOfficeEngineInstaller.GetInstalledSystemVersion();
-        if (!removalPending && !string.IsNullOrWhiteSpace(installedVersion) && LibreOfficeEngineInstaller.IsRecommendedVersionInstalled())
-        {
-            string resolvedPath = LibreOfficeEngineInstaller.ResolveSystemSofficePath();
-            if (!string.IsNullOrWhiteSpace(resolvedPath))
-                ClickraStorage.SaveSetting(ClickraSettings.LibreOfficePath, resolvedPath);
-            await ShowErrorAsync(string.Format(L("setting_libreoffice_already_current"), installedVersion));
-            RefreshLibreOfficeStatus();
+        if (await TryHandleCurrentLibreOfficeAsync(removalPending, installedVersion))
             return;
-        }
 
         string prompt = string.Format(
             L("setting_libreoffice_download_prompt"),
@@ -1390,13 +1394,15 @@ public sealed partial class MainPage : Page
 
             if (!string.IsNullOrWhiteSpace(sofficePath))
                 ClickraStorage.SaveSetting(ClickraSettings.LibreOfficePath, sofficePath);
-            LibreOfficeEngineInstaller.MarkInstalledByClickra(true);
+            bool managementRecorded = LibreOfficeEngineInstaller.TryRecordManagedSystemInstallation(sofficePath);
             ClickraStorage.SaveSetting(ClickraSettings.LibreOfficeRemovalPendingRestart, ClickraSettings.ValueFalse);
             LibreOfficeSetupProgress.Value = 100;
 
             await ShowErrorAsync(string.Format(
                 L(result.RestartRequired ? "setting_libreoffice_install_restart_required" : "setting_libreoffice_download_ready"),
                 string.IsNullOrWhiteSpace(sofficePath) ? LibreOfficeEngineInstaller.GetDefaultInstallRoot() : sofficePath));
+            if (!managementRecorded)
+                await ShowErrorAsync(L("setting_libreoffice_management_unverified"));
         }
         catch (Exception ex)
         {
@@ -1408,6 +1414,23 @@ public sealed partial class MainPage : Page
             _libreOfficeSetupInProgress = false;
             RefreshLibreOfficeStatus();
         }
+    }
+
+    private async Task<bool> TryHandleCurrentLibreOfficeAsync(bool removalPending, string installedVersion)
+    {
+        if (removalPending ||
+            string.IsNullOrWhiteSpace(installedVersion) ||
+            !LibreOfficeEngineInstaller.IsRecommendedVersionInstalled())
+        {
+            return false;
+        }
+
+        string resolvedPath = LibreOfficeEngineInstaller.ResolveSystemSofficePath();
+        if (!string.IsNullOrWhiteSpace(resolvedPath))
+            ClickraStorage.SaveSetting(ClickraSettings.LibreOfficePath, resolvedPath);
+        await ShowErrorAsync(string.Format(L("setting_libreoffice_already_current"), installedVersion));
+        RefreshLibreOfficeStatus();
+        return true;
     }
 
     private async Task UninstallLibreOfficeAsync()
@@ -1439,7 +1462,7 @@ public sealed partial class MainPage : Page
         {
             LibreOfficeUninstallResult result = await LibreOfficeEngineInstaller.UninstallSystemLibreOfficeAsync(CancellationToken.None);
             ClickraStorage.SaveSetting(ClickraSettings.LibreOfficePath, ClickraSettings.DefaultEmpty);
-            LibreOfficeEngineInstaller.MarkInstalledByClickra(false);
+            LibreOfficeEngineInstaller.ReleaseManagement();
             ClickraStorage.SaveSetting(ClickraSettings.LibreOfficeRemovalPendingRestart, result.RestartRequired ? ClickraSettings.ValueTrue : ClickraSettings.ValueFalse);
             ClickraStorage.SaveSetting(ClickraSettings.OfficeEngine, ClickraSettings.DefaultOfficeEngineAuto);
             _loadingSettings = true;
@@ -1456,6 +1479,28 @@ public sealed partial class MainPage : Page
             _libreOfficeSetupInProgress = false;
             RefreshLibreOfficeStatus();
         }
+    }
+
+    private async Task AdoptLibreOfficeAsync()
+    {
+        if (_libreOfficeSetupInProgress) return;
+        if (LibreOfficeEngineInstaller.WasInstalledByClickra()) return;
+        string resolvedPath = LibreOfficeHelper.GetResolvedExecutablePath();
+        if (!LibreOfficeEngineInstaller.CanAdoptExistingInstallation(resolvedPath)) return;
+        if (!await ConfirmAsync(L("setting_libreoffice_adopt_confirm"))) return;
+
+        try
+        {
+            LibreOfficeEngineInstaller.AdoptExistingInstallation();
+        }
+        catch (InvalidOperationException)
+        {
+            await ShowErrorAsync(L("setting_libreoffice_external_note"));
+            RefreshLibreOfficeStatus();
+            return;
+        }
+        RefreshLibreOfficeStatus();
+        await ShowErrorAsync(L("setting_libreoffice_adopt_success"));
     }
 
     private async Task OpenUriAsync(string uri)

@@ -78,7 +78,7 @@ namespace Clickra.UI
                (element >= 90 && element <= 96);
 
         /// <summary>True when the element is one of the LibreOffice setup buttons.</summary>
-        static bool IsLibreOfficeElement(int element) => element == 35 || element == 36 || element == 38;
+        static bool IsLibreOfficeElement(int element) => element == 35 || element == 36 || element == 38 || element == 39;
 
         /// <summary>True when the element is one of the language dropdown toggles.</summary>
         static bool IsDropdownToggleElement(int element) => element == 10 || element == 31;
@@ -530,6 +530,10 @@ namespace Clickra.UI
             {
                 HandleLibreOfficeUninstall(hwnd);
             }
+            else if (element == 39)
+            {
+                HandleLibreOfficeAdopt(hwnd);
+            }
         }
 
         /// <summary>Lets the user browse for a soffice.exe and validates the selection.</summary>
@@ -653,10 +657,14 @@ namespace Clickra.UI
 
                 if (!string.IsNullOrWhiteSpace(sofficePath))
                     ClickraStorage.SaveSetting(ClickraSettings.LibreOfficePath, sofficePath);
-                LibreOfficeEngineInstaller.MarkInstalledByClickra(true);
+                bool managementRecorded = LibreOfficeEngineInstaller.TryRecordManagedSystemInstallation(sofficePath);
                 ClickraStorage.SaveSetting(ClickraSettings.LibreOfficeRemovalPendingRestart, ClickraSettings.ValueFalse);
 
-                PostDashboardAction(hwnd, () => ShowInstallResultMessage(hwnd, installResult.RestartRequired, sofficePath));
+                PostDashboardAction(hwnd, () => ShowInstallResultMessage(
+                    hwnd,
+                    installResult.RestartRequired,
+                    sofficePath,
+                    managementRecorded));
             }
             catch (Exception ex)
             {
@@ -681,7 +689,11 @@ namespace Clickra.UI
         }
 
         /// <summary>Shows the LibreOffice install result (restart-required or ready) on the dashboard.</summary>
-        private static void ShowInstallResultMessage(IntPtr hwnd, bool restartRequired, string sofficePath)
+        private static void ShowInstallResultMessage(
+            IntPtr hwnd,
+            bool restartRequired,
+            string sofficePath,
+            bool managementRecorded)
         {
             MessageBox(
                 hwnd,
@@ -692,6 +704,8 @@ namespace Clickra.UI
                     string.IsNullOrWhiteSpace(sofficePath) ? LibreOfficeEngineInstaller.GetDefaultInstallRoot() : sofficePath),
                 "Clickra",
                 0x40);
+            if (!managementRecorded)
+                MessageBox(hwnd, GetText("setting_libreoffice_management_unverified"), "Clickra", 0x30);
         }
 
         /// <summary>Shows the LibreOffice download/install failure message on the dashboard.</summary>
@@ -718,8 +732,8 @@ namespace Clickra.UI
                 return;
             }
 
-            // Only a LibreOffice Clickra installed itself may be removed from here. The dashboard hides
-            // the button in this case, but the action still has to refuse on its own.
+            // Only a LibreOffice with a freshly verified Clickra management identity may be removed here.
+            // The dashboard hides the button otherwise, but the action still has to refuse on its own.
             if (!LibreOfficeEngineInstaller.WasInstalledByClickra())
             {
                 MessageBox(hwnd, GetText("setting_libreoffice_external_note"), "Clickra", 0x40);
@@ -754,7 +768,7 @@ namespace Clickra.UI
                     .GetResult();
 
                 ClickraStorage.SaveSetting(ClickraSettings.LibreOfficePath, ClickraSettings.DefaultEmpty);
-                LibreOfficeEngineInstaller.MarkInstalledByClickra(false);
+                LibreOfficeEngineInstaller.ReleaseManagement();
                 ClickraStorage.SaveSetting(ClickraSettings.LibreOfficeRemovalPendingRestart, uninstallResult.RestartRequired ? ClickraSettings.ValueTrue : ClickraSettings.ValueFalse);
                 ClickraStorage.SaveSetting(ClickraSettings.OfficeEngine, ClickraSettings.DefaultOfficeEngineAuto);
 
@@ -778,6 +792,45 @@ namespace Clickra.UI
             {
                 PostDashboardAction(hwnd, FinishLibreOfficeSetupStatus);
             }
+        }
+
+        /// <summary>Allows the user to explicitly adopt an existing system LibreOffice into Clickra's management.</summary>
+        static void HandleLibreOfficeAdopt(IntPtr hwnd)
+        {
+            lock (_libreOfficeDownloadLock)
+            {
+                if (_libreOfficeDownloadInProgress)
+                {
+                    MessageBox(hwnd, GetText("setting_libreoffice_download_in_progress"), "Clickra", 0x40);
+                    return;
+                }
+            }
+
+            if (LibreOfficeEngineInstaller.WasInstalledByClickra())
+            {
+                return;
+            }
+
+            string resolvedPath = LibreOfficeHelper.GetResolvedExecutablePath();
+            if (!LibreOfficeEngineInstaller.CanAdoptExistingInstallation(resolvedPath))
+            {
+                return;
+            }
+
+            if (MessageBox(hwnd, GetText("setting_libreoffice_adopt_confirm"), "Clickra", 0x31) != 1) return;
+
+            try
+            {
+                LibreOfficeEngineInstaller.AdoptExistingInstallation();
+            }
+            catch (InvalidOperationException)
+            {
+                MessageBox(hwnd, GetText("setting_libreoffice_external_note"), "Clickra", 0x30);
+                InvalidateRect(hwnd, IntPtr.Zero, false);
+                return;
+            }
+            InvalidateRect(hwnd, IntPtr.Zero, false);
+            MessageBox(hwnd, GetText("setting_libreoffice_adopt_success"), "Clickra", 0x40);
         }
 
         /// <summary>Toggles the UI-language and PDF-language dropdowns.</summary>
