@@ -244,6 +244,14 @@ static partial class TestSuite
                 LibreOfficeEngineInstaller.MarkInstalledByClickra(false);
                 Assert.False(LibreOfficeEngineInstaller.WasInstalledByClickra(),
                     "Removing it again must clear the provenance flag.");
+
+                LibreOfficeEngineInstaller.AdoptExistingInstallation();
+                Assert.True(LibreOfficeEngineInstaller.WasInstalledByClickra(),
+                    "Adopting an existing LibreOffice installation must record it as Clickra-managed.");
+
+                LibreOfficeEngineInstaller.ReleaseManagement();
+                Assert.False(LibreOfficeEngineInstaller.WasInstalledByClickra(),
+                    "Releasing management must clear the provenance flag.");
             }
             finally
             {
@@ -261,17 +269,17 @@ static partial class TestSuite
             string cliPaint = File.ReadAllText(Path.Combine(root, "src", "Clickra.CLI", "Dashboard", "DashboardWindow.Paint.Settings.cs"));
             string settings = File.ReadAllText(Path.Combine(root, "src", "Clickra.Core", "Storage", "ClickraSettings.cs"));
 
-            // Both UIs ultimately route removal through the Core method above, whose first action is the
-            // ownership check. Fluent's broader settings-registry migration is intentionally a later PR.
-            Assert.True(fluent.Contains("LibreOfficeEngineInstaller.UninstallSystemLibreOfficeAsync", StringComparison.Ordinal),
-                "Fluent must route removal through the ownership-guarded Core uninstaller.");
-
-            Assert.True(cliEvents.Contains("LibreOfficeEngineInstaller.WasInstalledByClickra()", StringComparison.Ordinal),
-                "The legacy CLI must refuse a user-managed LibreOffice before presenting its uninstall path.");
-            Assert.True(cliEvents.Contains("LibreOfficeEngineInstaller.MarkInstalledByClickra", StringComparison.Ordinal),
-                "The legacy CLI must record provenance through the shared accessor.");
-            Assert.False(cliEvents.Contains("SaveSetting(\"LibreOfficeInstalledByClickra\"", StringComparison.Ordinal),
-                "The legacy CLI must not write the provenance key directly.");
+            foreach ((string name, string source) in new[] { ("Fluent", fluent), ("CLI", cliEvents) })
+            {
+                Assert.True(source.Contains("LibreOfficeEngineInstaller.WasInstalledByClickra()", StringComparison.Ordinal),
+                    $"{name} must refuse to uninstall a LibreOffice Clickra did not install.");
+                Assert.True(source.Contains("LibreOfficeEngineInstaller.MarkInstalledByClickra", StringComparison.Ordinal),
+                    $"{name} must record provenance through the shared accessor.");
+                Assert.True(source.Contains("LibreOfficeEngineInstaller.AdoptExistingInstallation()", StringComparison.Ordinal),
+                    $"{name} must allow adopting an existing LibreOffice installation.");
+                Assert.False(source.Contains("SaveSetting(\"LibreOfficeInstalledByClickra\"", StringComparison.Ordinal),
+                    $"{name} must not write the provenance key directly.");
+            }
 
             Assert.True(cliPaint.Contains("LibreOfficeEngineInstaller.WasInstalledByClickra()", StringComparison.Ordinal) &&
                         cliPaint.Contains("setting_libreoffice_external_hint", StringComparison.Ordinal),
