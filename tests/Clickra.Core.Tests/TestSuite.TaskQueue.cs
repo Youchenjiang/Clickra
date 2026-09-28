@@ -18,6 +18,7 @@ static partial class TestSuite
     private const string FileA1 = @"\a1.pdf;";
     private const string FileA2 = @"\a2.pdf";
     private const string FluentProjectDirectory = "Clickra.Fluent";
+    private const string RepoRootNotFoundMessage = "Could not locate the repository root from the test output directory.";
     public static void RegisterTaskQueueTests(TestRunner runner)
     {
         runner.Run("Task queue: concurrent tasks keep independent progress files",
@@ -87,7 +88,7 @@ static partial class TestSuite
     private static void TestFluentParkedTaskEntryPoint()
     {
         string? root = FindRepoRoot();
-        if (root is null) throw new TestSkippedException("Could not locate the repository root from the test output directory.");
+        if (root is null) throw new TestSkippedException(RepoRootNotFoundMessage);
 
         string code = File.ReadAllText(Path.Combine(root, "src", FluentProjectDirectory, "MainPage.xaml.cs"));
         string xaml = File.ReadAllText(Path.Combine(root, "src", FluentProjectDirectory, "MainPage.xaml"));
@@ -120,7 +121,7 @@ static partial class TestSuite
     private static void TestFluentParkedRetentionControl()
     {
         string? root = FindRepoRoot();
-        if (root is null) throw new TestSkippedException("Could not locate the repository root from the test output directory.");
+        if (root is null) throw new TestSkippedException(RepoRootNotFoundMessage);
 
         string code = File.ReadAllText(Path.Combine(root, "src", FluentProjectDirectory, "MainPage.xaml.cs"));
         string xaml = File.ReadAllText(Path.Combine(root, "src", FluentProjectDirectory, "MainPage.xaml"));
@@ -162,7 +163,7 @@ static partial class TestSuite
     private static void TestCliDashboardParkedRetentionControl()
     {
         string? root = FindRepoRoot();
-        if (root is null) throw new TestSkippedException("Could not locate the repository root from the test output directory.");
+        if (root is null) throw new TestSkippedException(RepoRootNotFoundMessage);
 
         string paintCode = File.ReadAllText(Path.Combine(root, "src", "Clickra.CLI", "Dashboard", "DashboardWindow.Paint.Settings.cs"));
         string clickCode = File.ReadAllText(Path.Combine(root, "src", "Clickra.CLI", "Dashboard", "DashboardWindow.Events.Click.cs"));
@@ -265,7 +266,7 @@ static partial class TestSuite
     private static void TestFluentParkedExpirationUiContract()
     {
         string? root = FindRepoRoot();
-        if (root is null) throw new TestSkippedException("Could not locate the repository root from the test output directory.");
+        if (root is null) throw new TestSkippedException(RepoRootNotFoundMessage);
 
         string code = File.ReadAllText(Path.Combine(root, "src", "Clickra.Fluent", "MainPage.xaml.cs"));
 
