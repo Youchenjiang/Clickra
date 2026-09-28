@@ -54,6 +54,17 @@ namespace Clickra.Core.Processors
                 ClickraSettings.LibreOfficeInstalledByClickra,
                 installed ? ClickraSettings.ValueTrue : ClickraSettings.ValueFalse);
 
+        /// <summary>
+        /// Explicitly adopts an existing system LibreOffice installation into Clickra's management,
+        /// allowing it to be updated or uninstalled by Clickra.
+        /// </summary>
+        public static void AdoptExistingInstallation() => MarkInstalledByClickra(true);
+
+        /// <summary>
+        /// Releases Clickra's management over the system LibreOffice installation without removing files.
+        /// </summary>
+        public static void ReleaseManagement() => MarkInstalledByClickra(false);
+
         private static readonly HttpClient HttpClient = new()
         {
             Timeout = TimeSpan.FromMinutes(10)
