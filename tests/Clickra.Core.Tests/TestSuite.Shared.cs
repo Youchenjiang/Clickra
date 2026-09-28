@@ -254,63 +254,101 @@ static partial class TestSuite
 
     internal static (int cleanedDirs, int cleanedFiles) CleanStaleArtifacts(string? currentTestDataDir = null)
     {
-        int cleanedDirs = 0;
+        int cleanedDirs = CleanStaleTestDataDirectories(currentTestDataDir);
         int cleanedFiles = 0;
+
+        string? root = FindRepoRoot();
+        if (root == null)
+        {
+            return (cleanedDirs, cleanedFiles);
+        }
+
+        cleanedFiles += DeleteMatchingFiles(root, "clickra-split-fail-*.pdf");
+        cleanedFiles += DeleteMatchingFiles(root, "*_renderdbg.log");
+        cleanedDirs += TryDeleteDirectory(Path.Combine(root, "src", "Clickra.Fluent", "bin", "x64")) ? 1 : 0;
+        cleanedDirs += TryDeleteDirectory(Path.Combine(root, "tmp", "Diag")) ? 1 : 0;
+
+        return (cleanedDirs, cleanedFiles);
+    }
+
+    private static int CleanStaleTestDataDirectories(string? currentTestDataDir)
+    {
+        string testDataRoot = GetTestDataRoot();
+        try
+        {
+            Directory.CreateDirectory(testDataRoot);
+            return Directory.GetDirectories(testDataRoot, "clickra-test-data-*")
+                .Where(dir => currentTestDataDir == null ||
+                    !string.Equals(dir, currentTestDataDir, StringComparison.OrdinalIgnoreCase))
+                .Count(TryDeleteDirectory);
+        }
+        catch (IOException)
+        {
+            // Cleanup is best-effort; an inaccessible stale test directory must not fail the test run.
+            return 0;
+        }
+        catch (UnauthorizedAccessException)
+        {
+            // Cleanup is best-effort; an inaccessible stale test directory must not fail the test run.
+            return 0;
+        }
+    }
+
+    private static int DeleteMatchingFiles(string root, string pattern)
+    {
+        try
+        {
+            return Directory.GetFiles(root, pattern).Count(TryDeleteFile);
+        }
+        catch (IOException)
+        {
+            // Cleanup is best-effort; inaccessible diagnostic artifacts may be left for the next run.
+            return 0;
+        }
+        catch (UnauthorizedAccessException)
+        {
+            // Cleanup is best-effort; inaccessible diagnostic artifacts may be left for the next run.
+            return 0;
+        }
+    }
+
+    private static bool TryDeleteFile(string path)
+    {
+        try
+        {
+            File.Delete(path);
+            return true;
+        }
+        catch (IOException)
+        {
+            return false;
+        }
+        catch (UnauthorizedAccessException)
+        {
+            return false;
+        }
+    }
+
+    private static bool TryDeleteDirectory(string path)
+    {
+        if (!Directory.Exists(path))
+        {
+            return false;
+        }
 
         try
         {
-            string testDataRoot = GetTestDataRoot();
-            Directory.CreateDirectory(testDataRoot);
-            foreach (var dir in Directory.GetDirectories(testDataRoot, "clickra-test-data-*"))
-            {
-                if (currentTestDataDir == null || !string.Equals(dir, currentTestDataDir, StringComparison.OrdinalIgnoreCase))
-                {
-                    try
-                    {
-                        Directory.Delete(dir, recursive: true);
-                        cleanedDirs++;
-                    }
-                    catch { }
-                }
-            }
+            Directory.Delete(path, recursive: true);
+            return true;
         }
-        catch { }
-
-        string? root = FindRepoRoot();
-        if (root != null)
+        catch (IOException)
         {
-            try
-            {
-                foreach (var file in Directory.GetFiles(root, "clickra-split-fail-*.pdf"))
-                {
-                    try { File.Delete(file); cleanedFiles++; } catch { }
-                }
-            }
-            catch { }
-
-            try
-            {
-                foreach (var file in Directory.GetFiles(root, "*_renderdbg.log"))
-                {
-                    try { File.Delete(file); cleanedFiles++; } catch { }
-                }
-            }
-            catch { }
-
-            string obsoleteX64 = Path.Combine(root, "src", "Clickra.Fluent", "bin", "x64");
-            if (Directory.Exists(obsoleteX64))
-            {
-                try { Directory.Delete(obsoleteX64, recursive: true); cleanedDirs++; } catch { }
-            }
-
-            string orphanDiag = Path.Combine(root, "tmp", "Diag");
-            if (Directory.Exists(orphanDiag))
-            {
-                try { Directory.Delete(orphanDiag, recursive: true); cleanedDirs++; } catch { }
-            }
+            return false;
         }
-
-        return (cleanedDirs, cleanedFiles);
+        catch (UnauthorizedAccessException)
+        {
+            return false;
+        }
     }
 
     internal static string GetTestDataRoot() =>
