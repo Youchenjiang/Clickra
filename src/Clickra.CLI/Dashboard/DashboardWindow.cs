@@ -138,52 +138,54 @@ namespace Clickra.UI
             _sidebarWidth = (52f * _dpiScale + maxLabelW + 24f * _dpiScale) / _dpiScale;
             _sidebarWidth = Math.Max(130f, _sidebarWidth); // Ensure it's at least 130px
 
-            // Cache button widths to avoid GC pressure in HitTest
+            CacheButtonWidths();
+        }
+
+        static void CacheButtonWidths()
+        {
+            using var tempBmp = new Bitmap(1, 1);
+            using var tempG = Graphics.FromImage(tempBmp);
+            if (_subFont != null)
             {
-                using var tempBmp = new Bitmap(1, 1);
-                using var tempG = Graphics.FromImage(tempBmp);
-                if (_subFont != null)
-                {
-                    string textSource = GetText("setting_output_same_as_source");
-                    string textDesktop = GetText("setting_output_desktop");
-                    string textDownloads = GetText("setting_output_downloads");
-                    string textCustom = GetText("setting_output_custom");
-                    
-                    _wSource = Math.Max(110f, tempG.MeasureString(textSource, _subFont).Width / _dpiScale + 20f);
-                    _wDesktop = Math.Max(65f, tempG.MeasureString(textDesktop, _subFont).Width / _dpiScale + 20f);
-                    _wDownloads = Math.Max(80f, tempG.MeasureString(textDownloads, _subFont).Width / _dpiScale + 20f);
-                    _wCustom = Math.Max(100f, tempG.MeasureString(textCustom, _subFont).Width / _dpiScale + 20f);
-                    _wEngineAuto = Math.Max(80f, tempG.MeasureString(GetText("setting_engine_auto"), _subFont).Width / _dpiScale + 20f);
-                    _wEngineMicrosoft = Math.Max(125f, tempG.MeasureString(GetText("setting_engine_microsoft"), _subFont).Width / _dpiScale + 20f);
-                    _wEngineLibreOffice = Math.Max(110f, tempG.MeasureString(GetText("setting_engine_libreoffice"), _subFont).Width / _dpiScale + 20f);
-                    _wLibreOfficeBrowse = Math.Max(120f, tempG.MeasureString(GetText("setting_libreoffice_browse"), _subFont).Width / _dpiScale + 20f);
-                    _wLibreOfficeDownload = Math.Max(
-                        125f,
+                string textSource = GetText("setting_output_same_as_source");
+                string textDesktop = GetText("setting_output_desktop");
+                string textDownloads = GetText("setting_output_downloads");
+                string textCustom = GetText("setting_output_custom");
+
+                _wSource = Math.Max(110f, tempG.MeasureString(textSource, _subFont).Width / _dpiScale + 20f);
+                _wDesktop = Math.Max(65f, tempG.MeasureString(textDesktop, _subFont).Width / _dpiScale + 20f);
+                _wDownloads = Math.Max(80f, tempG.MeasureString(textDownloads, _subFont).Width / _dpiScale + 20f);
+                _wCustom = Math.Max(100f, tempG.MeasureString(textCustom, _subFont).Width / _dpiScale + 20f);
+                _wEngineAuto = Math.Max(80f, tempG.MeasureString(GetText("setting_engine_auto"), _subFont).Width / _dpiScale + 20f);
+                _wEngineMicrosoft = Math.Max(125f, tempG.MeasureString(GetText("setting_engine_microsoft"), _subFont).Width / _dpiScale + 20f);
+                _wEngineLibreOffice = Math.Max(110f, tempG.MeasureString(GetText("setting_engine_libreoffice"), _subFont).Width / _dpiScale + 20f);
+                _wLibreOfficeBrowse = Math.Max(120f, tempG.MeasureString(GetText("setting_libreoffice_browse"), _subFont).Width / _dpiScale + 20f);
+                _wLibreOfficeDownload = Math.Max(
+                    125f,
+                    Math.Max(
                         Math.Max(
-                            Math.Max(
-                                tempG.MeasureString(GetText("setting_libreoffice_download"), _subFont).Width,
-                                tempG.MeasureString(GetText("setting_libreoffice_update"), _subFont).Width),
-                            tempG.MeasureString(GetText("setting_libreoffice_reinstall"), _subFont).Width) / _dpiScale + 20f);
-                    _wLibreOfficeUninstall = Math.Max(125f, tempG.MeasureString(GetText("setting_libreoffice_uninstall"), _subFont).Width / _dpiScale + 20f);
-                    _wLibreOfficeAdopt = Math.Max(135f, tempG.MeasureString(GetText("setting_libreoffice_adopt"), _subFont).Width / _dpiScale + 20f);
+                            tempG.MeasureString(GetText("setting_libreoffice_download"), _subFont).Width,
+                            tempG.MeasureString(GetText("setting_libreoffice_update"), _subFont).Width),
+                        tempG.MeasureString(GetText("setting_libreoffice_reinstall"), _subFont).Width) / _dpiScale + 20f);
+                _wLibreOfficeUninstall = Math.Max(125f, tempG.MeasureString(GetText("setting_libreoffice_uninstall"), _subFont).Width / _dpiScale + 20f);
+                _wLibreOfficeAdopt = Math.Max(135f, tempG.MeasureString(GetText("setting_libreoffice_adopt"), _subFont).Width / _dpiScale + 20f);
 
-                    string textGit = GetText("about_btn_github");
-                    string textGmail = GetText("about_btn_gmail");
-                    if (_iconFont != null)
-                    {
-                        float iconW_git = tempG.MeasureString("\uE71B", _iconFont).Width / _dpiScale;
-                        float textW_git = tempG.MeasureString(textGit, _subFont).Width / _dpiScale;
-                        _wGit = Math.Max(160f, iconW_git + 6f + textW_git + 24f);
+                string textGit = GetText("about_btn_github");
+                string textGmail = GetText("about_btn_gmail");
+                if (_iconFont != null)
+                {
+                    float iconW_git = tempG.MeasureString("\uE71B", _iconFont).Width / _dpiScale;
+                    float textW_git = tempG.MeasureString(textGit, _subFont).Width / _dpiScale;
+                    _wGit = Math.Max(160f, iconW_git + 6f + textW_git + 24f);
 
-                        float iconW_gmail = tempG.MeasureString("\uE715", _iconFont).Width / _dpiScale;
-                        float textW_gmail = tempG.MeasureString(textGmail, _subFont).Width / _dpiScale;
-                        _wGmail = Math.Max(160f, iconW_gmail + 6f + textW_gmail + 24f);
-                    }
-                    else
-                    {
-                        _wGit = Math.Max(160f, tempG.MeasureString(textGit, _subFont).Width / _dpiScale + 24f);
-                        _wGmail = Math.Max(160f, tempG.MeasureString(textGmail, _subFont).Width / _dpiScale + 24f);
-                    }
+                    float iconW_gmail = tempG.MeasureString("\uE715", _iconFont).Width / _dpiScale;
+                    float textW_gmail = tempG.MeasureString(textGmail, _subFont).Width / _dpiScale;
+                    _wGmail = Math.Max(160f, iconW_gmail + 6f + textW_gmail + 24f);
+                }
+                else
+                {
+                    _wGit = Math.Max(160f, tempG.MeasureString(textGit, _subFont).Width / _dpiScale + 24f);
+                    _wGmail = Math.Max(160f, tempG.MeasureString(textGmail, _subFont).Width / _dpiScale + 24f);
                 }
             }
         }
