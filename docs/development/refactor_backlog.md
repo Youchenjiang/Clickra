@@ -82,7 +82,7 @@ CLI（`ProgressWindow.Process.cs` / `ClickraCli.cs`）與 Fluent（`MainPage.xam
 
 ### 2.4 [部分已解] MSIX 側載憑證信任
 
-GitHub Release 的 MSIX 以 CI 自簽憑證簽署，使用者需信任憑證或開開發者模式才能側載。bootstrapper 目前**不**自動安裝憑證；若要自動化需明確實作信任決策（安全敏感）。
+GitHub Release 的 MSIX 必須通過 trusted-signature 驗證才可公開發布；CI 產生的 self-signed 開發憑證僅供 build/Store submission 使用，不得作為公開 direct-download Release 資產。bootstrapper 目前**不**自動安裝憑證；若要支援非 Store 側載，需另行提供正式 production signing 或明確的信任安裝流程（安全敏感）。
 
 **本機層（已解，2026/08/12）**：`ClickraDev.pfx` 曾被 07/26 重生（BBF263）但信任沒跟上，導致 build 產的包安裝失敗（0x800B0109）。已把 PFX 對齊回機器信任的 DCA07995（含私鑰、密碼 1234，git-ignored）——本機 build → 安裝直接成功。注意：PFX 是各機器本機產物，若在別台機器/CI 簽名需各自對齊信任。
 
