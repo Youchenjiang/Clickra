@@ -34,12 +34,12 @@ function Set-PublisherAttribute {
     $text = [System.IO.File]::ReadAllText($Path, $encoding)
 
     $pattern = '(?i)(\bpublisher=")[^"]+("\s*)'
-    $matches = [regex]::Matches($text, $pattern)
-    if ($matches.Count -ne 1) {
-        throw "Expected exactly one Publisher attribute in '$Path', found $($matches.Count)."
+    $publisherMatches = [regex]::Matches($text, $pattern)
+    if ($publisherMatches.Count -ne 1) {
+        throw "Expected exactly one Publisher attribute in '$Path', found $($publisherMatches.Count)."
     }
 
-    $match = $matches[0]
+    $match = $publisherMatches[0]
     $xmlValue = [System.Security.SecurityElement]::Escape($Value)
     if ($null -eq $xmlValue) {
         throw "Failed to XML-escape Publisher value for '$Path'."
