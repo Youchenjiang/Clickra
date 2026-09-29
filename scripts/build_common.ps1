@@ -231,7 +231,12 @@ function Invoke-SignMsixPackage {
             & "signtool.exe" sign /fd SHA256 /a /sha1 $cert.Thumbprint $MsixPath
             Assert-NativeSuccess
         } else {
-            Write-Warning "[Sign] No certificate found. Package is unsigned."
+            throw "[Sign] No certificate found after certificate generation. Refusing to produce an unsigned package."
         }
     }
+
+    & powershell.exe -NoProfile -ExecutionPolicy Bypass -File "$PSScriptRoot/verify_msix_signature.ps1" `
+        -MsixPath $MsixPath `
+        -AllowUntrustedDevelopmentCertificate
+    Assert-NativeSuccess
 }
