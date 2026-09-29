@@ -41,6 +41,14 @@
 ### Step 6：tag / release
 - [ ] 只有在 release-preparation 已 merge、必要 main checks 完成且取得明確 tag/release 授權後，才建立並 push `vX.Y.Z.0`
 - [ ] tag-triggered `.github/workflows/release.yml` 才是正式 GitHub Release / Store submission 入口；manual dispatch 只做 package validation
+- [ ] Microsoft Store submission 使用 source tree 中的 Store package identity；Store 會在 certification 後重新簽署 MSIX
+- [ ] GitHub direct-download MSIX 由 release workflow 以 Artifact Signing certificate profile 的 `Subject name` 暫時覆寫 direct build 的 package/sparse Publisher surfaces，重新編譯並產生 unsigned MSIX，再以 Azure Artifact Signing 簽署；strict signature verification 通過前不得建立 GitHub Release asset。原始 Store identity 檔案必須在 build 後還原
+- [ ] GitHub Artifact Signing 必須先配置 OIDC federated identity 與下列 repository settings：
+  - Secrets: `AZURE_CLIENT_ID`, `AZURE_TENANT_ID`, `AZURE_SUBSCRIPTION_ID`
+  - Variables: `ARTIFACT_SIGNING_ENDPOINT`, `ARTIFACT_SIGNING_ACCOUNT_NAME`, `ARTIFACT_SIGNING_CERTIFICATE_PROFILE`, `ARTIFACT_SIGNING_PUBLISHER`
+- [ ] OIDC workload identity 必須對目標 signing account / certificate profile 具備 `Artifact Signing Certificate Profile Signer` 角色；endpoint 必須與 account/profile 所在區域一致
+- [ ] `ARTIFACT_SIGNING_PUBLISHER` 必須與 Azure certificate profile 顯示的完整 `Subject name` **完全一致**；MSIX publisher/signing subject 不一致時簽章會 fail closed
+- [ ] GitHub direct-download 與 Store package 因 Publisher 不同而屬於不同 package family；GitHub direct-download 目前為 **NativeAOT-only**，不得宣稱或顯示 Store Fluent optional-package 安裝入口。若未來需要 direct-download Fluent，必須另建與 direct main 相同 Publisher 的配套 optional package
 
 ---
 
