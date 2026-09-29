@@ -23,9 +23,20 @@ if ($signature.Status -eq [System.Management.Automation.SignatureStatus]::Valid)
 }
 
 $isSelfSigned = $signature.SignerCertificate.Subject -eq $signature.SignerCertificate.Issuer
-$isUntrustedDevelopmentStatus = $signature.Status -eq [System.Management.Automation.SignatureStatus]::NotTrusted -or
-    ($signature.Status -eq [System.Management.Automation.SignatureStatus]::UnknownError -and
-     $signature.StatusMessage -like "*root certificate which is not trusted*")
+$chain = [System.Security.Cryptography.X509Certificates.X509Chain]::new()
+try {
+    $chain.ChainPolicy.RevocationMode = [System.Security.Cryptography.X509Certificates.X509RevocationMode]::NoCheck
+    [void]$chain.Build($signature.SignerCertificate)
+    $chainStatusFlags = @($chain.ChainStatus | ForEach-Object Status)
+    $hasOnlyUntrustedRoot = $chainStatusFlags.Count -eq 1 -and
+        $chainStatusFlags[0] -eq [System.Security.Cryptography.X509Certificates.X509ChainStatusFlags]::UntrustedRoot
+} finally {
+    $chain.Dispose()
+}
+
+$isUntrustedDevelopmentStatus = $hasOnlyUntrustedRoot -and
+    ($signature.Status -eq [System.Management.Automation.SignatureStatus]::NotTrusted -or
+     $signature.Status -eq [System.Management.Automation.SignatureStatus]::UnknownError)
 
 if ($AllowUntrustedDevelopmentCertificate -and $isSelfSigned -and $isUntrustedDevelopmentStatus) {
     Write-Host "[Sign] Development signature present but not publicly trusted: $($signature.SignerCertificate.Subject)" -ForegroundColor Yellow
