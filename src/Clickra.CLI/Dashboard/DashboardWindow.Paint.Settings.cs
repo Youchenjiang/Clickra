@@ -353,16 +353,19 @@ namespace Clickra.UI
                     using var statusBrush = new SolidBrush(Color.FromArgb(255, 190, 90));
                     g.DrawString(GetText("setting_fluent_not_installed"), _subFont, statusBrush, contentX * s, y * s);
                 }
-                y += 28f;
-                DrawOutputDirButton(
-                    g,
-                    GetText("setting_fluent_install"),
-                    false,
-                    40,
-                    (int)contentX,
-                    (int)y,
-                    200);
-                AddHitRect(40, contentX, y, 200, 30);
+                if (Clickra.Core.FluentRuntimeHelper.SupportsStoreFluentAddon())
+                {
+                    y += 28f;
+                    DrawOutputDirButton(
+                        g,
+                        GetText("setting_fluent_install"),
+                        false,
+                        40,
+                        (int)contentX,
+                        (int)y,
+                        200);
+                    AddHitRect(40, contentX, y, 200, 30);
+                }
             }
             y += 48f;
 
