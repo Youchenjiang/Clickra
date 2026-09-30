@@ -318,6 +318,20 @@ This phase must not invent a temporary signer.
 - prove that final downloads come from an expected Microsoft-hosted endpoint;
 - do not mutate a GitHub Release during this phase.
 
+#### 2026-09-30 prototype observation
+
+The read-only prototype in `scripts/resolve_store_package.py` successfully identified the exact published Clickra Store candidate for version `3.11.0.0` without downloading package bytes:
+
+- package: `g1014308.Clickra_3.11.0.0_neutral__mgcm3zc7fc0ty.msix`;
+- package type: single `.msix` rather than a bundle;
+- architecture marker: `neutral`;
+- package CDN host observed: `tlu.dl.delivery.mp.microsoft.com`;
+- BlockMap CDN host observed in the same resolver response: `dl.delivery.mp.microsoft.com`.
+
+The resolver currently returned these candidate URLs with the `http://` scheme. Microsoft documents `*.dl.delivery.mp.microsoft.com` and `*.delivery.mp.microsoft.com` as Windows Update / Microsoft Store delivery endpoints that may use HTTP as well as HTTPS. The prototype therefore permits the resolver-provided HTTP scheme only when the host is inside the expected Microsoft delivery domain. HTTP is not accepted for arbitrary hosts, redirects must remain inside the same Microsoft delivery trust boundary, and downloaded bytes are not trusted until package signature and identity validation pass.
+
+Phase 4 must independently verify the final download host, resolver-reported hash, package identity, version, package family, and Microsoft Marketplace signature before Store enrichment can advance.
+
 ### Phase 4 - Store package verification
 
 - download a known already-published Clickra Store version;
@@ -325,6 +339,26 @@ This phase must not invent a temporary signer.
 - inspect package/signature state;
 - establish the exact verification assertions required for automation;
 - verify behavior for bundles, resource packages, dependencies, and multiple architectures if returned.
+
+#### 2026-09-30 verification evidence
+
+The exact published `3.11.0.0` candidate was downloaded from the Microsoft delivery host returned by the resolver and verified offline without installation or execution.
+
+- resolver-reported SHA-1: `ED11280D94470C24DEC86676C5CF286A60A541DF`;
+- downloaded SHA-1: `ED11280D94470C24DEC86676C5CF286A60A541DF`;
+- downloaded SHA-256: `23BC746154BFBDE12463B2B3109205EDBBCD8619398BAD0EBF0919C4E607D3CF`;
+- manifest identity: `g1014308.Clickra`;
+- manifest version: `3.11.0.0`;
+- manifest Publisher: `CN=CBF59877-21AD-4BC4-8F91-FE8DA520A138`;
+- package family: `g1014308.Clickra_mgcm3zc7fc0ty`;
+- `Get-AuthenticodeSignature`: `Valid`;
+- signer Subject: `CN=CBF59877-21AD-4BC4-8F91-FE8DA520A138`;
+- signer Issuer: `Microsoft Marketplace CA G 027`;
+- Windows SDK `signtool verify /pa /v`: successfully verified with zero warnings and zero errors.
+
+Negative verification checks also failed closed as intended for a mismatched resolver hash, mismatched expected version, and mismatched package-family suffix.
+
+Microsoft's Windows endpoint documentation explicitly lists `*.dl.delivery.mp.microsoft.com` and `*.delivery.mp.microsoft.com` as Windows Update / Microsoft Store delivery endpoints that may use HTTP as well as HTTPS. The automation therefore treats transport security as a constrained Microsoft-delivery policy rather than requiring an unsupported HTTPS rewrite of a resolver-issued signed CDN URL. Package authenticity remains gated by exact metadata, resolver hash agreement, Store identity, and a valid Microsoft Marketplace package signature.
 
 ### Phase 5 - Automated Store enrichment
 
