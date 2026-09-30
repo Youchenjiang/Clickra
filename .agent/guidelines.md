@@ -6,6 +6,7 @@
 - 建立/切換/刪除分支、commit、push/force-push、建立/修改/合併/關閉 PR、resolve review thread、建立/修改/刪除 release、dispatch/rerun/cancel workflow，以及 Microsoft Store/Partner Center 寫入，都必須在**當次對話**取得對應的明確授權。
 - 授權是逐項的，不可推論擴張。例如「force-push `v3.6.3.0` tag」只授權該 tag 操作，不授權開分支、開 PR、改 workflow、合併 PR 或提交商店。
 - 每次外部寫入前，先列出「使用者授權涵蓋的精確操作」與「即將執行的單一操作」；未涵蓋的下一步必須停下來詢問。
+- **外部供應商選型閘門**：能力需求不得自行推導成具名供應商決策。例如「需要 publicly trusted code signing」只定義能力，不代表 Azure Artifact Signing、SignPath、DigiCert 或任何其他服務已被選定。凡是要在 repo、workflow、文件或 secrets/variables 中新增或綁定具名雲端服務、簽章供應商、憑證平台、付款帳號或第三方整合，必須先列出候選方案與影響，並取得使用者對該**供應商本身**的明確選擇；一般的「ok／開始／繼續」不得被解讀為新的 provider 選型授權。未選定 provider 時，只能實作 provider-neutral contract，或維持該能力 disabled / fail-closed。
 - 授權操作失敗而需要新增分支、PR、合併或改 workflow 才能繼續時，必須停下回報證據，不得自行升級處理範圍。
 - 使用者表示反對或撤回授權後，立即停止；不得自行 revert、刪除、取消 workflow 或 force-push 進行清理。
 - **Preflight steps**：每次外部操作前，必須：（1）引用或摘要使用者授權並列出涵蓋的操作；（2）檢查當前目標（repository、branch、tag、PR、workflow、release）；（3）若下一步操作未被明確涵蓋則停下詢問；（4）每次只執行一個授權操作，回報結果後再考慮下一個。

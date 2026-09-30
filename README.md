@@ -51,13 +51,22 @@ Clickra operates on a strict **Local-First** philosophy:
 
 ## Installation
 
+### Code signing policy
+
+Clickra's production direct-download signing rules, maintainer roles, privacy reference, and release-signing controls are documented in the [Code signing policy](docs/CODE_SIGNING_POLICY.md).
+
 ### Recommended: Microsoft Store (auto-updates)
 [![Microsoft Store Badge](https://developer.microsoft.com/en-us/store/badges/images/English_get-it-from-MS.png)](https://apps.microsoft.com/detail/9NGLBF6P1KLD)
 
 ### Manual: GitHub Release
-1. Download `Clickra.msix` from [Releases](../../releases).
-2. Double-click to install — no additional runtime dependencies on Windows 10+.
-   - The Fluent UI add-on is available from the AOT Dashboard Settings page.
+
+GitHub direct-download MSIX publication is temporarily unavailable while Clickra's production direct-signing integration is being established. Current GitHub Releases provide release notes/history only; use the Microsoft Store installation path above for signed end-user installation.
+
+When direct-download publication is enabled, the GitHub package will use the NativeAOT interface only and will not expose the Microsoft Store Fluent optional-package installation path.
+
+### Uninstall
+
+Open **Settings > Apps > Installed apps**, find **Clickra**, and choose **Uninstall**. The packaged Explorer integration is removed with the Clickra app package. Optional external software such as Microsoft Office or LibreOffice is not part of the Clickra app package and remains independently managed.
 
 ## Local Development
 

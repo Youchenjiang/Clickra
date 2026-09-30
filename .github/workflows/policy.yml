@@ -140,6 +140,22 @@ jobs:
             const pr = context.payload.pull_request;
             const failures = [];
 
+            // External provider selection is an explicit architecture decision.
+            // Every PR must acknowledge that it either introduces no new named
+            // provider or that the user explicitly selected that provider before
+            // implementation. This prevents capability requirements from being
+            // silently converted into vendor choices.
+            const providerAcknowledged = /- \[[xX]\] \*\*External provider\*\*:/.test(
+              pr.body || "",
+            );
+            if (pr.user.type !== "Bot" && !providerAcknowledged) {
+              failures.push(
+                "PR must check the 'External provider' metadata item. Confirm that no new named " +
+                  "provider is introduced, or that the provider was explicitly selected by the user " +
+                  "before implementation.",
+              );
+            }
+
             // Assignee: self-assign the author so ownership is never "No one".
             // This is a convenience, not a policy gate: a transient GitHub API
             // failure (e.g. 502) must not turn the whole check red, so retry a

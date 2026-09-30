@@ -5,17 +5,26 @@
 > for deciding *when* a release may start, which version to choose, or whether a Store
 > publication gate has cleared.
 
-## 1. Current automated release artifact
+## 1. Current automated Store artifact and GitHub Release state
 
-The current release workflow builds one shipping artifact:
+The current release workflow builds one Store shipping artifact:
 
-| Artifact | Contents | Release targets |
+| Artifact | Contents | Release target |
 |---|---|---|
-| `Clickra.msix` | NativeAOT `ClickraLauncher.exe`, `Clickra.exe`, `ClickraShell.dll`, resources, and package assets | GitHub Release + Microsoft Store |
+| `Clickra.msix` | NativeAOT `ClickraLauncher.exe`, `Clickra.exe`, `ClickraShell.dll`, resources, and package assets | Microsoft Store |
 
 `scripts/build_msix.ps1` publishes the CLI, Shell, and Launcher as NativeAOT binaries and
-assembles them with `packaging/msix/AppxManifest.xml`. The current workflow does **not**
-publish `Clickra.Fluent.exe`, a portable ZIP, or a Fluent optional package.
+assembles them with `packaging/msix/AppxManifest.xml`. The tag workflow uploads this
+Store-identity MSIX as an internal workflow artifact for the independent `store-publish` job;
+it is not attached to GitHub Release.
+
+GitHub direct-download packaging support remains available through the provider-neutral
+`scripts/build_github_msix.ps1` and `scripts/verify_msix_signature.ps1` helpers, but direct
+MSIX publication is disabled until the selected production signing path is integrated and
+validated. The current tag-triggered GitHub Release therefore contains release notes only.
+
+The current workflow does **not** publish `Clickra.Fluent.exe`, a portable ZIP, or a Fluent
+optional package.
 
 `packaging/msix/AppxManifest.Fluent.xml` describes the proposed Fluent optional-package
 shape, but that package is not built or uploaded by the current `release.yml` pipeline.
@@ -30,8 +39,8 @@ Store release path until its gates are explicitly cleared.
 1. **Tag push (`v*`)** — real release.
    - Builds and validates `Clickra.msix`.
    - Uploads the MSIX as a workflow artifact.
-   - Creates the GitHub Release.
-   - Publishes the same MSIX to Microsoft Store through `scripts/publish_store.py`.
+   - Creates the GitHub Release with release notes only; no direct MSIX asset is attached while production direct signing is not integrated.
+   - Publishes the Store-identity workflow artifact to Microsoft Store through `scripts/publish_store.py`.
 2. **Manual `workflow_dispatch`** — package validation only.
    - Builds and uploads the MSIX workflow artifact.
    - Does **not** create a GitHub Release.
@@ -49,6 +58,9 @@ rules, this should be the dedicated **release-preparation PR**, not an arbitrary
 Ordinary content PRs remain concise and reviewer-facing. The release-preparation PR should
 summarize the release in public-facing language because its body is the input consumed by
 the release workflow.
+
+Until the planned SignPath Foundation direct-signing integration is complete, GitHub Release
+is metadata/release-history only and must not imply that a direct-download MSIX is available.
 
 ## 4. Microsoft Store submission
 
