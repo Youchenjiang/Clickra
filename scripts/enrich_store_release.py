@@ -52,11 +52,15 @@ def command_environment(
 
 
 def run_command(args: list[str], *, capture: bool = True) -> subprocess.CompletedProcess[str]:
+    executable = pathlib.Path(args[0]).name.casefold()
+    text_encoding = "utf-8" if executable in {"gh", "gh.exe"} else None
     try:
         return subprocess.run(
             args,
             check=True,
             text=True,
+            encoding=text_encoding,
+            errors="strict" if text_encoding else None,
             capture_output=capture,
             env=command_environment(args),
         )
@@ -251,7 +255,7 @@ def update_release(repo: str, tag: str, package_path: pathlib.Path, asset_name: 
     new_body, changed = merge_release_body(body, build_store_section(asset_name, sha256))
     if changed:
         notes_path = package_path.parent / "release-notes.md"
-        notes_path.write_text(new_body, encoding="utf-8")
+        notes_path.write_text(new_body, encoding="utf-8", newline="\n")
         run_command(
             ["gh", "release", "edit", tag, "--repo", repo, "--notes-file", str(notes_path)],
             capture=False,

@@ -1,6 +1,7 @@
 import importlib.util
 import pathlib
 import subprocess
+import tempfile
 import unittest
 from unittest import mock
 
@@ -25,6 +26,26 @@ class StoreReleaseEnrichmentTests(unittest.TestCase):
         with mock.patch.object(enrich.subprocess, "run", side_effect=failure), \
              self.assertRaisesRegex(RuntimeError, r"(?s)verifier stdout.*verifier stderr"):
             enrich.run_command(["powershell"])
+
+    def test_gh_stdout_is_decoded_as_utf8(self):
+        completed = subprocess.CompletedProcess(
+            ["gh"],
+            0,
+            stdout='{"body":"### 📦 Installation\\n下載安裝"}',
+            stderr="",
+        )
+        with mock.patch.object(enrich.subprocess, "run", return_value=completed) as runner:
+            result = enrich.run_command(["gh", "release", "view"])
+        self.assertEqual('{"body":"### 📦 Installation\\n下載安裝"}', result.stdout)
+        self.assertEqual("utf-8", runner.call_args.kwargs["encoding"])
+        self.assertEqual("strict", runner.call_args.kwargs["errors"])
+
+    def test_non_gh_commands_do_not_force_text_encoding(self):
+        completed = subprocess.CompletedProcess(["powershell"], 0, stdout="ok", stderr="")
+        with mock.patch.object(enrich.subprocess, "run", return_value=completed) as runner:
+            enrich.run_command(["powershell", "-NoProfile"])
+        self.assertIsNone(runner.call_args.kwargs["encoding"])
+        self.assertIsNone(runner.call_args.kwargs["errors"])
 
     def test_windows_powershell_gets_isolated_module_path(self):
         source = {
@@ -78,12 +99,40 @@ class StoreReleaseEnrichmentTests(unittest.TestCase):
 
     def test_release_notes_append_once(self):
         section = enrich.build_store_section("Clickra-store.msix", "abc")
-        body, changed = enrich.merge_release_body("Existing notes", section)
+        existing = "### 📦 Installation\n下載安裝：\n"
+        body, changed = enrich.merge_release_body(existing, section)
         self.assertTrue(changed)
+        self.assertIn("📦 Installation", body)
+        self.assertIn("下載安裝", body)
         self.assertIn(enrich.STORE_SECTION_MARKER, body)
         body_again, changed_again = enrich.merge_release_body(body, section)
         self.assertFalse(changed_again)
         self.assertEqual(body, body_again)
+
+    def test_release_notes_file_is_utf8_and_lf_only(self):
+        release = {
+            "assets": [{"name": "Clickra-store.msix", "digest": "sha256:abc"}],
+            "body": "### 📦 Installation\n下載安裝：\n",
+        }
+        with tempfile.TemporaryDirectory() as temp_dir, \
+             mock.patch.object(enrich, "run_command") as runner:
+            package = pathlib.Path(temp_dir) / "Clickra-store.msix"
+            package.write_bytes(b"placeholder")
+            enrich.update_release(
+                "Youchenjiang/Clickra",
+                "v3.11.0.0",
+                package,
+                "Clickra-store.msix",
+                "abc",
+                release,
+            )
+            notes_path = pathlib.Path(temp_dir) / "release-notes.md"
+            raw = notes_path.read_bytes()
+            decoded = raw.decode("utf-8")
+            self.assertIn("📦 Installation", decoded)
+            self.assertIn("下載安裝", decoded)
+            self.assertNotIn(b"\r\n", raw)
+            self.assertIn("--notes-file", runner.call_args.args[0])
 
     def test_acquisition_invokes_official_helper_and_validates_evidence(self):
         completed = subprocess.CompletedProcess(["powershell"], 0, stdout="Downloading...", stderr="")
