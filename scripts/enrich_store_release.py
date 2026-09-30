@@ -9,12 +9,46 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import os
 import pathlib
 import subprocess
 
 
 STORE_SECTION_MARKER = "<!-- clickra-store-package -->"
 STORE_SECTION_HEADING = "### Microsoft Store package"
+
+
+def required_environment_value(env: dict[str, str], name: str) -> str:
+    value = next((value for key, value in env.items() if key.casefold() == name.casefold()), None)
+    if not value:
+        raise RuntimeError(
+            f"Cannot construct an isolated Windows PowerShell module path; missing environment variable: {name}"
+        )
+    return value
+
+
+def command_environment(
+    args: list[str],
+    *,
+    platform_name: str | None = None,
+) -> dict[str, str] | None:
+    executable = pathlib.Path(args[0]).name.casefold()
+    effective_platform = os.name if platform_name is None else platform_name
+    if effective_platform != "nt" or executable not in {"powershell", "powershell.exe"}:
+        return None
+
+    env = os.environ.copy()
+    user_profile = required_environment_value(env, "USERPROFILE")
+    program_files = required_environment_value(env, "ProgramFiles")
+    system_root = required_environment_value(env, "SystemRoot")
+
+    module_paths = [
+        pathlib.PureWindowsPath(user_profile) / "Documents" / "WindowsPowerShell" / "Modules",
+        pathlib.PureWindowsPath(program_files) / "WindowsPowerShell" / "Modules",
+        pathlib.PureWindowsPath(system_root) / "System32" / "WindowsPowerShell" / "v1.0" / "Modules",
+    ]
+    env["PSModulePath"] = ";".join(str(path) for path in module_paths)
+    return env
 
 
 def run_command(args: list[str], *, capture: bool = True) -> subprocess.CompletedProcess[str]:
@@ -24,6 +58,7 @@ def run_command(args: list[str], *, capture: bool = True) -> subprocess.Complete
             check=True,
             text=True,
             capture_output=capture,
+            env=command_environment(args),
         )
     except subprocess.CalledProcessError as error:
         stdout = (error.stdout or "").strip()

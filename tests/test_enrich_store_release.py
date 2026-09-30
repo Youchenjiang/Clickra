@@ -26,6 +26,32 @@ class StoreReleaseEnrichmentTests(unittest.TestCase):
              self.assertRaisesRegex(RuntimeError, r"(?s)verifier stdout.*verifier stderr"):
             enrich.run_command(["powershell"])
 
+    def test_windows_powershell_gets_isolated_module_path(self):
+        source = {
+            "USERPROFILE": r"C:\Users\runneradmin",
+            "ProgramFiles": r"C:\Program Files",
+            "SystemRoot": r"C:\Windows",
+            "PSModulePath": (
+                r"C:\Program Files\PowerShell\7\Modules;"
+                r"C:\Program Files\WindowsPowerShell\Modules"
+            ),
+        }
+        with mock.patch.dict(enrich.os.environ, source, clear=True):
+            env = enrich.command_environment(["powershell", "-NoProfile"], platform_name="nt")
+        self.assertIsNotNone(env)
+        assert env is not None
+        self.assertNotIn(r"PowerShell\7\Modules", env["PSModulePath"])
+        self.assertIn(r"WindowsPowerShell\Modules", env["PSModulePath"])
+        self.assertIn(r"WindowsPowerShell\v1.0\Modules", env["PSModulePath"])
+
+    def test_non_powershell_commands_keep_default_environment(self):
+        self.assertIsNone(enrich.command_environment(["gh", "release", "view"]))
+
+    def test_non_windows_powershell_keeps_default_environment(self):
+        self.assertIsNone(
+            enrich.command_environment(["powershell", "-NoProfile"], platform_name="posix")
+        )
+
     def test_parse_release_version_requires_v_four_part_numeric_version(self):
         self.assertEqual("3.11.0.0", enrich.parse_release_version("v3.11.0.0"))
         for value in ("3.11.0.0", "v3.11", "v3.11.0.x", "v"):
