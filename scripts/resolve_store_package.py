@@ -31,7 +31,10 @@ class Candidate:
     url: str
     host: str
     https_transport: bool
+    allowed_store_transport: bool
     extension: str
+    reported_sha1: str | None
+    reported_size: str | None
     identity: str | None
     version: str | None
     architecture: str | None
@@ -49,19 +52,50 @@ class LinkParser(html.parser.HTMLParser):
         self._href: str | None = None
         self._text: list[str] = []
         self.links: list[tuple[str, str]] = []
+        self._in_row = False
+        self._in_cell = False
+        self._row_cells: list[str] = []
+        self._cell_text: list[str] = []
+        self._row_href: str | None = None
+        self.rows: list[tuple[str, str, str | None, str | None]] = []
 
     def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
+        if tag.lower() == "tr":
+            self._in_row = True
+            self._row_cells = []
+            self._row_href = None
+        elif tag.lower() == "td" and self._in_row:
+            self._in_cell = True
+            self._cell_text = []
         if tag.lower() != "a":
             return
         self._href = dict(attrs).get("href")
+        if self._in_row:
+            self._row_href = self._href
         self._text = []
 
     def handle_data(self, data: str) -> None:
         if self._href is not None:
             self._text.append(data)
+        if self._in_cell:
+            self._cell_text.append(data)
 
     def handle_endtag(self, tag: str) -> None:
-        if tag.lower() != "a" or self._href is None:
+        lowered = tag.lower()
+        if lowered == "td" and self._in_cell:
+            self._row_cells.append("".join(self._cell_text).strip())
+            self._in_cell = False
+            self._cell_text = []
+        if lowered == "tr" and self._in_row:
+            if self._row_href and self._row_cells:
+                name = self._row_cells[0]
+                sha1 = self._row_cells[2] if len(self._row_cells) > 2 else None
+                size = self._row_cells[3] if len(self._row_cells) > 3 else None
+                self.rows.append((self._row_href, name, sha1, size))
+            self._in_row = False
+            self._row_cells = []
+            self._row_href = None
+        if lowered != "a" or self._href is None:
             return
         self.links.append((self._href, "".join(self._text).strip()))
         self._href = None
@@ -102,6 +136,7 @@ def parse_candidates(
 ) -> list[Candidate]:
     parser = LinkParser()
     parser.feed(html)
+    metadata = {url: (name, sha1, size) for url, name, sha1, size in parser.rows}
     candidates: list[Candidate] = []
     for url, name in parser.links:
         parsed_url = urllib.parse.urlparse(url)
@@ -112,13 +147,14 @@ def parse_candidates(
             continue
         microsoft_cdn = is_microsoft_cdn_host(parsed_url.hostname)
         https_transport = parsed_url.scheme.lower() == "https"
+        allowed_store_transport = microsoft_cdn and parsed_url.scheme.lower() in ("http", "https")
         exact_identity = parsed_identity == identity
         exact_version = parsed_version == version
         intended_type = extension in (".msix", ".msixbundle")
         intended_architecture = parsed_architecture == architecture
         selected = all(
             (
-                https_transport,
+                allowed_store_transport,
                 microsoft_cdn,
                 exact_identity,
                 exact_version,
@@ -132,7 +168,10 @@ def parse_candidates(
                 url=url,
                 host=parsed_url.hostname,
                 https_transport=https_transport,
+                allowed_store_transport=allowed_store_transport,
                 extension=extension,
+                reported_sha1=(metadata.get(url) or (None, None, None))[1],
+                reported_size=(metadata.get(url) or (None, None, None))[2],
                 identity=parsed_identity,
                 version=parsed_version,
                 architecture=parsed_architecture,
@@ -189,11 +228,10 @@ def query_resolver(product_id: str, timeout: int) -> str:
 def run_self_test() -> None:
     fixture = """
     <table>
-      <tr><td><a href="https://tlu.dl.delivery.mp.microsoft.com/a">g1014308.Clickra_3.11.0.0_neutral__mgcm3zc7fc0ty.msix</a></td></tr>
+      <tr><td><a href="http://tlu.dl.delivery.mp.microsoft.com/a">g1014308.Clickra_3.11.0.0_neutral__mgcm3zc7fc0ty.msix</a></td><td>2099-01-01</td><td>ABCDEF</td><td>15 MB</td></tr>
       <tr><td><a href="https://dl.delivery.mp.microsoft.com/b">g1014308.Clickra_3.12.0.0_neutral__mgcm3zc7fc0ty.msix</a></td></tr>
       <tr><td><a href="https://evil.example/c">g1014308.Clickra_3.11.0.0_neutral__mgcm3zc7fc0ty.msix</a></td></tr>
       <tr><td><a href="https://dl.delivery.mp.microsoft.com/d">Microsoft.VCLibs_14.0.0.0_x64__8wekyb3d8bbwe.appx</a></td></tr>
-      <tr><td><a href="http://tlu.dl.delivery.mp.microsoft.com/e">g1014308.Clickra_3.11.0.0_neutral__mgcm3zc7fc0ty.msix</a></td></tr>
     </table>
     """
     candidates = parse_candidates(
@@ -203,15 +241,17 @@ def run_self_test() -> None:
         architecture=DEFAULT_ARCHITECTURE,
     )
     selected = [candidate for candidate in candidates if candidate.selected]
-    assert len(candidates) == 5
+    assert len(candidates) == 4
     assert len(selected) == 1
     assert selected[0].name.endswith(".msix")
     assert selected[0].microsoft_cdn
+    assert selected[0].allowed_store_transport
+    assert not selected[0].https_transport
+    assert selected[0].reported_sha1 == "ABCDEF"
+    assert selected[0].reported_size == "15 MB"
     assert not candidates[1].exact_version
     assert not candidates[2].microsoft_cdn
     assert not candidates[3].exact_identity
-    assert not candidates[4].https_transport
-    assert not candidates[4].selected
 
 
 def main() -> int:
