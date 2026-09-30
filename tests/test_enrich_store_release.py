@@ -62,7 +62,6 @@ class StoreReleaseEnrichmentTests(unittest.TestCase):
     def test_acquisition_invokes_official_helper_and_validates_evidence(self):
         completed = subprocess.CompletedProcess(["powershell"], 0, stdout="Downloading...", stderr="")
         destination = pathlib.Path("Clickra-store.msix")
-        evidence_path = destination.with_suffix(".acquisition.json")
         payload = (
             '{"ProductId":"9NGLBF6P1KLD","Identity":"g1014308.Clickra",'
             '"Version":"3.11.0.0","SourceFileName":"g1014308.Clickra_3.11.0.0_neutral__mgcm3zc7fc0ty.Msix",'
