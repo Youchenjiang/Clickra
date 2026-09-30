@@ -57,75 +57,9 @@ jobs:
     runs-on: windows-latest
     permissions:
       contents: write
-      id-token: write
 
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-
-      - name: Setup .NET
-        uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
-        with:
-          dotnet-version: '10.0.x'
-
-      - name: Validate Artifact Signing configuration
-        shell: pwsh
-        env:
-          AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
-          AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
-          AZURE_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
-          ARTIFACT_SIGNING_ENDPOINT: ${{ vars.ARTIFACT_SIGNING_ENDPOINT }}
-          ARTIFACT_SIGNING_ACCOUNT_NAME: ${{ vars.ARTIFACT_SIGNING_ACCOUNT_NAME }}
-          ARTIFACT_SIGNING_CERTIFICATE_PROFILE: ${{ vars.ARTIFACT_SIGNING_CERTIFICATE_PROFILE }}
-          ARTIFACT_SIGNING_PUBLISHER: ${{ vars.ARTIFACT_SIGNING_PUBLISHER }}
-        run: |
-          $required = @(
-              'AZURE_CLIENT_ID',
-              'AZURE_TENANT_ID',
-              'AZURE_SUBSCRIPTION_ID',
-              'ARTIFACT_SIGNING_ENDPOINT',
-              'ARTIFACT_SIGNING_ACCOUNT_NAME',
-              'ARTIFACT_SIGNING_CERTIFICATE_PROFILE',
-              'ARTIFACT_SIGNING_PUBLISHER'
-          )
-          $missing = $required | Where-Object {
-              [string]::IsNullOrWhiteSpace([Environment]::GetEnvironmentVariable($_))
-          }
-          if ($missing) {
-              throw "Artifact Signing configuration is incomplete. Missing: $($missing -join ', ')"
-          }
-
-      - name: Build GitHub direct-download package identity
-        shell: pwsh
-        env:
-          ARTIFACT_SIGNING_PUBLISHER: ${{ vars.ARTIFACT_SIGNING_PUBLISHER }}
-        run: |
-          ./scripts/build_github_msix.ps1 -Publisher $env:ARTIFACT_SIGNING_PUBLISHER
-          if (-not (Test-Path "./Clickra.msix")) {
-              throw "GitHub direct-download MSIX was not produced."
-          }
-
-      - name: Azure login for Artifact Signing
-        uses: azure/login@f5d393ae46f8fde4be8b75f32e3fc50e654ad0ca # v3.0.1
-        with:
-          client-id: ${{ secrets.AZURE_CLIENT_ID }}
-          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
-          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
-
-      - name: Sign MSIX with Azure Artifact Signing
-        uses: azure/artifact-signing-action@c7ab2a863ab5f9a846ddb8265964877ef296ee82 # v2.0.0
-        with:
-          endpoint: ${{ vars.ARTIFACT_SIGNING_ENDPOINT }}
-          signing-account-name: ${{ vars.ARTIFACT_SIGNING_ACCOUNT_NAME }}
-          certificate-profile-name: ${{ vars.ARTIFACT_SIGNING_CERTIFICATE_PROFILE }}
-          files: ${{ github.workspace }}\Clickra.msix
-          file-digest: SHA256
-          timestamp-rfc3161: http://timestamp.acs.microsoft.com
-          timestamp-digest: SHA256
-          cache-dependencies: false
-
-      - name: Verify trusted MSIX signature
-        shell: pwsh
-        run: ./scripts/verify_msix_signature.ps1 -MsixPath ./Clickra.msix
 
       - name: Fetch Merged Pull Request Description
         id: get_pr_desc
@@ -173,17 +107,11 @@ jobs:
 
           ---
           ### 📦 Installation
-          **下載安裝**：
-          下載 `Clickra.msix`（零依賴 NativeAOT，任何 Windows 10+ 機器可直接安裝）。
+          Microsoft Store remains the signed distribution channel for this release.
 
-          手動安裝亦可直接下載對應的 MSIX：
-
-          - Microsoft Store builds can install the Fluent optional package from Store; GitHub direct-download builds currently use the NativeAOT interface only.
-
-          *Note: GitHub Release assets are published only when the MSIX signature validates as trusted.*
+          GitHub direct-download MSIX publication is disabled until a production code-signing provider is explicitly selected, integrated, and validated. No unsigned or untrusted MSIX asset is published here.
           EOF
           gh release create "${{ github.ref_name }}" \
-            Clickra.msix \
             --repo "${{ github.repository }}" \
             --title "${{ github.ref_name }}" --notes-file release_notes.md
 
