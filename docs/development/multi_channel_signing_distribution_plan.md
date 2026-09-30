@@ -389,6 +389,14 @@ Current behavior:
 
 The workflow currently exposes only `workflow_dispatch` with an explicit tag. This keeps release mutation reviewable while the reconciliation logic is qualified. A recurring condition-watch schedule may be added separately after its cadence and target-release selection policy are explicitly chosen; no polling cadence is assumed by this implementation.
 
+#### 2026-09-30 runner qualification update
+
+Two production qualification runs on GitHub-hosted Windows runners established that the Phase 5 reconciliation path must not rely on the hosted runner network for Store package retrieval. The first run failed closed during verification without sufficient subprocess diagnostics. After diagnostics were added, the second run failed earlier while downloading the exact resolver-selected Microsoft Store CDN package with HTTP 403. The same resolver candidate and package verify successfully from the maintainer Windows environment. Both failed runs left the GitHub Release unchanged with no Store asset and no reconciliation marker.
+
+The reconciliation job therefore targets only a dedicated self-hosted Windows x64 runner carrying the custom `clickra-store` label. The workflow retains `workflow_dispatch`, `contents: write`, the existing resolver filters, the Microsoft delivery-domain boundary, and the full Phase 4 verifier. A runner preflight requires Windows x64, GitHub CLI, Python, and Windows PowerShell before any Store package reconciliation is attempted. No verification requirement is relaxed by moving the job to a self-hosted runner.
+
+The dedicated runner is intentionally not shared with pull-request workflows. Registration and host operation are separate administrative actions: the repository workflow can be merged before a runner is registered, and without a matching `self-hosted`, `Windows`, `X64`, `clickra-store` runner the reconciliation job remains queued rather than falling back to a GitHub-hosted runner.
+
 ---
 
 ## 9. Required Test Matrix
