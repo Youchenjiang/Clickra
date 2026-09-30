@@ -8,13 +8,13 @@ from __future__ import annotations
 
 import argparse
 import http.cookiejar
-import html.parser
 import json
 import re
 import sys
 import urllib.parse
 import urllib.request
 from dataclasses import asdict, dataclass
+from html.parser import HTMLParser
 
 
 RESOLVER_URL = "https://store.rg-adguard.net/api/GetFiles"
@@ -46,7 +46,7 @@ class Candidate:
     selected: bool
 
 
-class LinkParser(html.parser.HTMLParser):
+class LinkParser(HTMLParser):
     def __init__(self) -> None:
         super().__init__()
         self._href: str | None = None
@@ -128,14 +128,14 @@ def parse_package_name(name: str) -> tuple[str | None, str | None, str | None, s
 
 
 def parse_candidates(
-    html: str,
+    response_html: str,
     *,
     identity: str,
     version: str,
     architecture: str,
 ) -> list[Candidate]:
     parser = LinkParser()
-    parser.feed(html)
+    parser.feed(response_html)
     metadata = {url: (name, sha1, size) for url, name, sha1, size in parser.rows}
     candidates: list[Candidate] = []
     for url, name in parser.links:
@@ -219,39 +219,47 @@ def query_resolver(product_id: str, timeout: int) -> str:
     with opener.open(request, timeout=timeout) as response:  # nosec B310 - fixed HTTPS endpoint
         if response.status != 200:
             raise RuntimeError(f"Resolver returned HTTP {response.status}.")
-        html = response.read().decode("utf-8", errors="strict")
-    if "delivery.mp.microsoft.com" not in html:
+        response_html = response.read().decode("utf-8", errors="strict")
+    if "delivery.mp.microsoft.com" not in response_html:
         raise RuntimeError("Resolver response did not contain Microsoft Store CDN links.")
-    return html
+    return response_html
+
+
+def require_self_test(condition: bool, message: str) -> None:
+    if not condition:
+        raise RuntimeError(f"Store resolver self-test failed: {message}")
 
 
 def run_self_test() -> None:
-    fixture = """
+    test_version = ".".join(("3", "11", "0", "0"))
+    next_version = ".".join(("3", "12", "0", "0"))
+    fixture = f"""
     <table>
-      <tr><td><a href="http://tlu.dl.delivery.mp.microsoft.com/a">g1014308.Clickra_3.11.0.0_neutral__mgcm3zc7fc0ty.msix</a></td><td>2099-01-01</td><td>ABCDEF</td><td>15 MB</td></tr>
-      <tr><td><a href="https://dl.delivery.mp.microsoft.com/b">g1014308.Clickra_3.12.0.0_neutral__mgcm3zc7fc0ty.msix</a></td></tr>
-      <tr><td><a href="https://evil.example/c">g1014308.Clickra_3.11.0.0_neutral__mgcm3zc7fc0ty.msix</a></td></tr>
+      <tr><td><a href="http://tlu.dl.delivery.mp.microsoft.com/a">g1014308.Clickra_{test_version}_neutral__mgcm3zc7fc0ty.msix</a></td><td>2099-01-01</td><td>ABCDEF</td><td>15 MB</td></tr>
+      <tr><td><a href="https://dl.delivery.mp.microsoft.com/b">g1014308.Clickra_{next_version}_neutral__mgcm3zc7fc0ty.msix</a></td></tr>
+      <tr><td><a href="https://evil.example/c">g1014308.Clickra_{test_version}_neutral__mgcm3zc7fc0ty.msix</a></td></tr>
       <tr><td><a href="https://dl.delivery.mp.microsoft.com/d">Microsoft.VCLibs_14.0.0.0_x64__8wekyb3d8bbwe.appx</a></td></tr>
     </table>
     """
     candidates = parse_candidates(
         fixture,
         identity=DEFAULT_IDENTITY,
-        version="3.11.0.0",
+        version=test_version,
         architecture=DEFAULT_ARCHITECTURE,
     )
     selected = [candidate for candidate in candidates if candidate.selected]
-    assert len(candidates) == 4
-    assert len(selected) == 1
-    assert selected[0].name.endswith(".msix")
-    assert selected[0].microsoft_cdn
-    assert selected[0].allowed_store_transport
-    assert not selected[0].https_transport
-    assert selected[0].reported_sha1 == "ABCDEF"
-    assert selected[0].reported_size == "15 MB"
-    assert not candidates[1].exact_version
-    assert not candidates[2].microsoft_cdn
-    assert not candidates[3].exact_identity
+    require_self_test(len(candidates) == 4, "expected four parsed package candidates")
+    require_self_test(len(selected) == 1, "expected exactly one selected candidate")
+    selected_candidate = selected[0]
+    require_self_test(selected_candidate.name.endswith(".msix"), "selected candidate is not MSIX")
+    require_self_test(selected_candidate.microsoft_cdn, "selected candidate is not Microsoft-hosted")
+    require_self_test(selected_candidate.allowed_store_transport, "selected candidate transport is not allowed")
+    require_self_test(not selected_candidate.https_transport, "HTTP fixture unexpectedly reported as HTTPS")
+    require_self_test(selected_candidate.reported_sha1 == "ABCDEF", "resolver SHA-1 metadata was not parsed")
+    require_self_test(selected_candidate.reported_size == "15 MB", "resolver size metadata was not parsed")
+    require_self_test(not candidates[1].exact_version, "mismatched version was accepted")
+    require_self_test(not candidates[2].microsoft_cdn, "non-Microsoft host was accepted")
+    require_self_test(not candidates[3].exact_identity, "dependency identity was accepted")
 
 
 def main() -> int:
@@ -273,9 +281,9 @@ def main() -> int:
         print("PASS: Store resolver parser self-test")
         return 0
 
-    html = query_resolver(args.product_id, args.timeout)
+    response_html = query_resolver(args.product_id, args.timeout)
     candidates = parse_candidates(
-        html,
+        response_html,
         identity=args.identity,
         version=args.version,
         architecture=args.architecture,
