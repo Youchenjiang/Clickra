@@ -318,6 +318,20 @@ This phase must not invent a temporary signer.
 - prove that final downloads come from an expected Microsoft-hosted endpoint;
 - do not mutate a GitHub Release during this phase.
 
+#### 2026-09-30 prototype observation
+
+The read-only prototype in `scripts/resolve_store_package.py` successfully identified the exact published Clickra Store candidate for version `3.11.0.0` without downloading package bytes:
+
+- package: `g1014308.Clickra_3.11.0.0_neutral__mgcm3zc7fc0ty.msix`;
+- package type: single `.msix` rather than a bundle;
+- architecture marker: `neutral`;
+- package CDN host observed: `tlu.dl.delivery.mp.microsoft.com`;
+- BlockMap CDN host observed in the same resolver response: `dl.delivery.mp.microsoft.com`.
+
+The resolver currently returned these candidate URLs with the `http://` scheme. The prototype intentionally treats that as a fail-closed transport mismatch even when every identity/version/type/architecture check matches, so the candidate is reported for review but not selected for download. No GitHub Release mutation and no Store package download were performed during this observation.
+
+Phase 4 must therefore establish an acceptable HTTPS retrieval path and independently verify the final downloaded URL, package identity, version, package family, and signature before Store enrichment can advance.
+
 ### Phase 4 - Store package verification
 
 - download a known already-published Clickra Store version;
