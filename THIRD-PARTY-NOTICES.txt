@@ -1,6 +1,17 @@
 Clickra Third-Party Notices
 ===========================
 
+Microsoft Store package downloader / StoreLib-derived FE3 support
+Source: https://github.com/hanyu1212/microsoft-store-package-downloader-skill
+Pinned source commit: d1c508cc458223ec7ae684e685625c5b7cb62286
+Underlying StoreLib source: https://github.com/StoreDev/StoreLib
+License: Mozilla Public License 2.0
+
+The corresponding source files and MPL-2.0 license texts are distributed in
+third_party/microsoft-store-package-downloader/. These files are used only by
+the post-publication Microsoft Store package acquisition path.
+
+
 Imazen.WebP 11.0.0
 Source: https://github.com/imazen/libwebp-net
 License: MIT

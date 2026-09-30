@@ -81,7 +81,7 @@ if ($derivedFamily -cne $ExpectedPackageFamilyName) {
 
 $sha1 = (Get-FileHash -Algorithm SHA1 -LiteralPath $resolvedPath).Hash # NOSONAR: resolver publishes SHA-1 as comparison metadata; authenticity is gated by the valid package signature and SHA-256 is also recorded.
 if ($ExpectedSha1 -and $sha1 -cne $ExpectedSha1.ToUpperInvariant()) {
-    throw "Store MSIX verification failed: SHA-1 '$sha1' does not match resolver-reported '$ExpectedSha1'."
+    throw "Store MSIX verification failed: SHA-1 '$sha1' does not match acquisition evidence '$ExpectedSha1'."
 }
 $sha256 = (Get-FileHash -Algorithm SHA256 -LiteralPath $resolvedPath).Hash
 
