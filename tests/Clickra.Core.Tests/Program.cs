@@ -36,6 +36,7 @@ TestSuite.RegisterWicImageTests(runner);
 TestSuite.RegisterImageConvertTests(runner);
 TestSuite.RegisterImageCompressionTests(runner);
 TestSuite.RegisterSettingsRegistryTests(runner);
+TestSuite.RegisterFluentRuntimeTests(runner);
 
 // Print an explicit summary so CI logs show the actual executed test count
 // instead of only a build-success signal. Skipped counts fixture-dependent

@@ -1,4 +1,8 @@
 ﻿# Clickra MSIX Build Script
+param(
+    [switch]$SkipSigning
+)
+
 $ErrorActionPreference = "Stop"
 . "$PSScriptRoot/build_common.ps1"
 $root = $script:Root; $packagingDir = $script:PackagingDir; $layoutDir = $script:LayoutDir; $publishDir = $script:PublishDir
@@ -21,6 +25,10 @@ Write-Host "[Build] Assembling Layout..." -ForegroundColor Gray
 Copy-AssemblyLayout -Root $root -PackagingDir $packagingDir -LayoutDir $layoutDir -PublishDir $publishDir
 
 # 4. Create & Sign MSIX
-$msixPath = New-AndSignMsix -Root $root -PackagingDir $packagingDir -LayoutDir $layoutDir
+$msixPath = New-AndSignMsix `
+    -Root $root `
+    -PackagingDir $packagingDir `
+    -LayoutDir $layoutDir `
+    -SkipSigning:$SkipSigning
 
 Write-Host "`n[Done] Clickra MSIX Build Complete: $msixPath" -ForegroundColor Green

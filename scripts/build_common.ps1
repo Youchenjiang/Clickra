@@ -117,7 +117,8 @@ function New-AndSignMsix {
     param(
         [string]$Root,
         [string]$PackagingDir,
-        [string]$LayoutDir
+        [string]$LayoutDir,
+        [switch]$SkipSigning
     )
     Test-LayoutComplete -LayoutDir $LayoutDir
     Write-Host "[Build] Creating MSIX Package..." -ForegroundColor Gray
@@ -125,6 +126,12 @@ function New-AndSignMsix {
     if (Test-Path $msixPath) { Remove-Item $msixPath }
     & "makeappx.exe" pack /d "$LayoutDir" /p $msixPath /o
     Assert-NativeSuccess
+
+    if ($SkipSigning) {
+        Write-Host "[Sign] Signing skipped for post-build production signing." -ForegroundColor Gray
+        return $msixPath
+    }
+
     Invoke-SignMsixPackage `
         -ManifestPath "$PackagingDir/AppxManifest.xml" `
         -MsixPath $msixPath `

@@ -449,7 +449,10 @@ namespace Clickra.UI
                 case 33: ApplySetting(hwnd, ClickraSettings.OfficeEngine, ClickraSettings.OfficeEngineMicrosoft); break;
                 case 34: ClickraStorage.SaveSetting(ClickraSettings.OfficeEngine, ClickraSettings.OfficeEngineLibreOffice);
                          ApplySetting(hwnd, ClickraSettings.LibreOfficePath, ClickraSettings.DefaultEmpty); break;
-                case 40: OpenStorePage(hwnd); break;
+                case 40:
+                    if (Clickra.Core.FluentRuntimeHelper.SupportsStoreFluentAddon())
+                        OpenStorePage(hwnd);
+                    break;
                 case 90: AdjustParkedRetention(hwnd, -1); break;
                 case 91: AdjustParkedRetention(hwnd, 1); break;
                 case 92: SetParkedRetention(hwnd, 0); break;

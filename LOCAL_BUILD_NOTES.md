@@ -138,6 +138,11 @@ The project provides built-in PowerShell scripts for automated version bumping a
 >
 > A mismatch will cause MSIX signing failures because the certificate subject must match the Identity Publisher. CI enforces this automatically ??any PR that introduces an inconsistent CN will fail the `Validate publisher CN consistency across manifests` step.
 
+> [!NOTE]
+> The source manifests intentionally keep the Microsoft Store package identity above. GitHub direct-download releases are a separate distribution identity: the tag-triggered release workflow temporarily substitutes the exact Azure Artifact Signing certificate-profile subject across the direct build's package and sparse-identity manifests, rebuilds the NativeAOT binaries and MSIX unsigned, restores the checked-in Store identity files, signs the generated MSIX with Artifact Signing, and then runs strict signature verification before publication. Do not replace the checked-in Store Publisher CN with the Artifact Signing subject.
+>
+> Because the Publisher change creates a different package family, the Store-owned Fluent optional package is intentionally unavailable to GitHub direct-download builds. The NativeAOT settings UI exposes the Store Fluent install action only when the running package Publisher matches the Store Publisher above. GitHub direct-download builds are NativeAOT-only until a matching direct-distribution Fluent package exists.
+
 #### vswhere / VS Installer PATH Requirement (NativeAOT link failure)
 
 - **Symptom**: Running `build_msix.ps1` from a shell whose `PATH` lacks the Visual Studio Installer directory (e.g. Git Bash) makes the CLI NativeAOT publish fail at the link step with `error MSB3073: ... exited with code 123` and a link command polluted by `'vswhere.exe' is not recognized ...`.
