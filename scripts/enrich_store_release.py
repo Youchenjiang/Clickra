@@ -11,7 +11,6 @@ import hashlib
 import json
 import pathlib
 import subprocess
-import sys
 import urllib.parse
 import urllib.request
 
