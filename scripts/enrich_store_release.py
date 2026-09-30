@@ -9,12 +9,38 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import os
 import pathlib
 import subprocess
 
 
 STORE_SECTION_MARKER = "<!-- clickra-store-package -->"
 STORE_SECTION_HEADING = "### Microsoft Store package"
+
+
+def command_environment(args: list[str]) -> dict[str, str] | None:
+    executable = pathlib.Path(args[0]).name.casefold()
+    if executable not in {"powershell", "powershell.exe"}:
+        return None
+
+    env = os.environ.copy()
+    env_lookup = {name.casefold(): value for name, value in env.items()}
+    required = ("USERPROFILE", "ProgramFiles", "SystemRoot")
+    values = {name: env_lookup.get(name.casefold()) for name in required}
+    missing = [name for name, value in values.items() if not value]
+    if missing:
+        raise RuntimeError(
+            "Cannot construct an isolated Windows PowerShell module path; missing environment variable(s): "
+            + ", ".join(missing)
+        )
+
+    module_paths = [
+        pathlib.Path(values["USERPROFILE"]) / "Documents" / "WindowsPowerShell" / "Modules",
+        pathlib.Path(values["ProgramFiles"]) / "WindowsPowerShell" / "Modules",
+        pathlib.Path(values["SystemRoot"]) / "System32" / "WindowsPowerShell" / "v1.0" / "Modules",
+    ]
+    env["PSModulePath"] = os.pathsep.join(str(path) for path in module_paths)
+    return env
 
 
 def run_command(args: list[str], *, capture: bool = True) -> subprocess.CompletedProcess[str]:
@@ -24,6 +50,7 @@ def run_command(args: list[str], *, capture: bool = True) -> subprocess.Complete
             check=True,
             text=True,
             capture_output=capture,
+            env=command_environment(args),
         )
     except subprocess.CalledProcessError as error:
         stdout = (error.stdout or "").strip()
