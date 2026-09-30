@@ -70,15 +70,15 @@ try {
     $escapedIdentity = [regex]::Escape($ExpectedIdentity)
     $escapedVersion = [regex]::Escape($ExpectedVersion)
     $expectedNamePattern = "^${escapedIdentity}_${escapedVersion}_neutral__(?<publisherId>[a-z0-9]+)\.msix$"
-    $matches = @(
+    $packageMatches = @(
         $manifest.Packages |
             Where-Object { [string]$_.FileName -match $expectedNamePattern }
     )
-    if ($matches.Count -ne 1) {
-        throw "Expected exactly one '$ExpectedIdentity' Store MSIX for version '$ExpectedVersion', found $($matches.Count)."
+    if ($packageMatches.Count -ne 1) {
+        throw "Expected exactly one '$ExpectedIdentity' Store MSIX for version '$ExpectedVersion', found $($packageMatches.Count)."
     }
 
-    $selected = $matches[0]
+    $selected = $packageMatches[0]
     $sourceUri = [Uri][string]$selected.SourceUrl
     if (-not (Test-MicrosoftDeliveryUri -Uri $sourceUri)) {
         throw "Store package source escaped the Microsoft delivery boundary: $sourceUri"

@@ -28,6 +28,13 @@ class StoreAcquisitionTests(unittest.TestCase):
         self.assertNotIn("runs-on: [self-hosted", workflow)
         self.assertNotIn("clickra-store]", workflow)
 
+    def test_sonar_excludes_only_vendored_store_source(self):
+        sonar = (ROOT / ".sonarcloud.properties").read_text(encoding="utf-8").strip()
+        self.assertEqual(
+            "sonar.exclusions=third_party/microsoft-store-package-downloader/**",
+            sonar,
+        )
+
 
 if __name__ == "__main__":
     unittest.main()
