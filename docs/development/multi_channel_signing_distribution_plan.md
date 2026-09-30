@@ -67,7 +67,8 @@ release tag
 - all workflow jobs leading to the signing request must use GitHub-hosted runners as required by the OSS trusted-build policy;
 - repository and SignPath accounts used in the signing chain must satisfy the Foundation's MFA and project-governance requirements;
 - a project code-signing policy must be documented as required by SignPath Foundation;
-- signing request approval responsibilities must be explicitly assigned.
+- signing request approval responsibilities must be explicitly assigned;
+- every production release signing request must receive the manual approval required by the SignPath Foundation OSS policy.
 
 **Direct package identity:**
 
@@ -202,7 +203,7 @@ On an explicitly authorized release tag:
 2. Upload the Store build artifact for the independent `store-publish` job.
 3. Build the direct-download package with the approved SignPath signing Publisher.
 4. Submit the direct artifact to SignPath through the approved GitHub trusted-build workflow.
-5. Wait for the SignPath release-signing request to satisfy its configured approval/policy.
+5. Wait for the designated approver to manually approve the SignPath release-signing request and for all configured signing/origin policies to pass.
 6. Retrieve the signed artifact.
 7. Run strict direct-package identity/version/signature verification.
 8. Create the GitHub Release and attach only the verified SignPath-signed direct artifact.
@@ -374,11 +375,10 @@ These are intentionally left undecided until evidence is available:
 
 1. Exact SignPath Foundation certificate Subject/Publisher value assigned to Clickra.
 2. Exact SignPath organization/project/signing-policy identifiers and required repository secret names.
-3. Whether SignPath release signing for Clickra will require a manual approver action for every release or can be automated under an accepted release policy.
-4. Exact Store artifact shape for Clickra after publication (`.msix` versus `.msixbundle`, architecture variants, and any related resource packages).
-5. Exact Microsoft CDN hostname allowlist observed for Clickra Store package downloads.
-6. Whether Store publication detection should extend the existing Store job or live in a separate reconciliation workflow.
-7. Whether the Microsoft Store artifact should be exposed primarily as a downloadable archival asset or only as an advanced/diagnostic alternative to Store installation.
+3. Exact Store artifact shape for Clickra after publication (`.msix` versus `.msixbundle`, architecture variants, and any related resource packages).
+4. Exact Microsoft CDN hostname allowlist observed for Clickra Store package downloads.
+5. Whether Store publication detection should extend the existing Store job or live in a separate reconciliation workflow.
+6. Whether the Microsoft Store artifact should be exposed primarily as a downloadable archival asset or only as an advanced/diagnostic alternative to Store installation.
 
 No implementation should guess these values.
 
