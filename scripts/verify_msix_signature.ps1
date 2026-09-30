@@ -9,8 +9,35 @@ $ErrorActionPreference = "Stop"
 $resolvedPath = Resolve-Path $MsixPath
 $signature = Get-AuthenticodeSignature -FilePath $resolvedPath
 
+Add-Type -AssemblyName System.IO.Compression.FileSystem
+$archive = [System.IO.Compression.ZipFile]::OpenRead($resolvedPath.Path)
+try {
+    $manifestEntry = $archive.GetEntry("AppxManifest.xml")
+    if (-not $manifestEntry) {
+        throw "MSIX signature verification failed: AppxManifest.xml is missing from the package."
+    }
+
+    $reader = [System.IO.StreamReader]::new($manifestEntry.Open())
+    try {
+        [xml]$manifest = $reader.ReadToEnd()
+    } finally {
+        $reader.Dispose()
+    }
+} finally {
+    $archive.Dispose()
+}
+
+$manifestPublisher = [string]$manifest.Package.Identity.Publisher
+if ([string]::IsNullOrWhiteSpace($manifestPublisher)) {
+    throw "MSIX signature verification failed: package manifest Publisher is missing."
+}
+
 if (-not $signature.SignerCertificate -or $signature.Status -eq [System.Management.Automation.SignatureStatus]::NotSigned) {
     throw "MSIX signature verification failed: package is not signed."
+}
+
+if ($signature.SignerCertificate.Subject -cne $manifestPublisher) {
+    throw "MSIX signature verification failed: signer subject '$($signature.SignerCertificate.Subject)' does not match package Publisher '$manifestPublisher'."
 }
 
 if ($signature.Status -eq [System.Management.Automation.SignatureStatus]::HashMismatch) {
