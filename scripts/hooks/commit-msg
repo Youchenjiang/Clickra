@@ -8,6 +8,19 @@
 # and checks below are mirrored in that workflow's conventional-policy job.
 # Edit both files together when adding a type or scope.
 
+identity_name=$(git config --get user.name 2>/dev/null || true)
+identity_email=$(git config --get user.email 2>/dev/null || true)
+
+case "$identity_email" in
+  *.invalid)
+    echo "========================================= [COMMIT BLOCKED] ========================================="
+    echo "ERROR: Refusing to commit with a fixture/invalid Git identity."
+    echo "Effective identity: ${identity_name:-<unset>} <${identity_email:-<unset>}>"
+    echo "Remove the repository-local user.name/user.email override or configure a real maintainer identity."
+    echo "===================================================================================================="
+    exit 1
+    ;;
+esac
 commit_msg_file="$1"
 header=$(head -n 1 "$commit_msg_file")
 
