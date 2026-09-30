@@ -22,12 +22,24 @@ STORE_SECTION_HEADING = "### Microsoft Store package"
 
 
 def run_command(args: list[str], *, capture: bool = True) -> subprocess.CompletedProcess[str]:
-    return subprocess.run(
-        args,
-        check=True,
-        text=True,
-        capture_output=capture,
-    )
+    try:
+        return subprocess.run(
+            args,
+            check=True,
+            text=True,
+            capture_output=capture,
+        )
+    except subprocess.CalledProcessError as error:
+        stdout = (error.stdout or "").strip()
+        stderr = (error.stderr or "").strip()
+        details = "\n".join(part for part in (stdout, stderr) if part)
+        if details:
+            raise RuntimeError(
+                f"Command failed with exit code {error.returncode}: {args[0]}\n{details}"
+            ) from error
+        raise RuntimeError(
+            f"Command failed with exit code {error.returncode}: {args[0]}"
+        ) from error
 
 
 def parse_release_version(tag: str) -> str:

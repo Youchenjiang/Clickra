@@ -1,5 +1,6 @@
 import importlib.util
 import pathlib
+import subprocess
 import sys
 import unittest
 from unittest import mock
@@ -23,6 +24,17 @@ SPEC.loader.exec_module(enrich)
 
 
 class StoreReleaseEnrichmentTests(unittest.TestCase):
+    def test_run_command_surfaces_captured_failure_details(self):
+        failure = subprocess.CalledProcessError(
+            1,
+            ["powershell"],
+            output="verifier stdout",
+            stderr="verifier stderr",
+        )
+        with mock.patch.object(enrich.subprocess, "run", side_effect=failure), \
+             self.assertRaisesRegex(RuntimeError, r"(?s)verifier stdout.*verifier stderr"):
+            enrich.run_command(["powershell"])
+
     def test_parse_release_version_requires_v_four_part_numeric_version(self):
         self.assertEqual("3.11.0.0", enrich.parse_release_version("v3.11.0.0"))
         for value in ("3.11.0.0", "v3.11", "v3.11.0.x", "v"):
