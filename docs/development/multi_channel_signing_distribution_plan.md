@@ -380,7 +380,8 @@ Current behavior:
 - downloads only the selected Microsoft delivery candidate;
 - runs the Phase 4 Store MSIX verifier before any GitHub Release mutation;
 - requires the verifier SHA-256 to match the downloaded bytes;
-- uploads the package as the separate Store-channel asset `Clickra-store.msix` / `Clickra-store.msixbundle`;
+- uploads the package as the separate Store-channel asset `Clickra-store.msix`;
+- fails closed if the resolver returns an `.msixbundle`; bundle enrichment remains disabled until bundle-specific verification is implemented and qualified;
 - treats an existing same-name asset with the same GitHub SHA-256 digest as already reconciled;
 - fails closed instead of replacing an existing same-name asset when the digest differs or is unavailable;
 - appends a marker-delimited Microsoft Store package note exactly once;
