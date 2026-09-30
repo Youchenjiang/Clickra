@@ -22,7 +22,10 @@ DEFAULT_PRODUCT_ID = "9NGLBF6P1KLD"
 DEFAULT_IDENTITY = "g1014308.Clickra"
 DEFAULT_ARCHITECTURE = "neutral"
 MICROSOFT_CDN_SUFFIX = ".delivery.mp.microsoft.com"
-PACKAGE_EXTENSIONS = (".msix", ".msixbundle", ".appx", ".appxbundle")
+MSIX_EXTENSION = ".msix"
+MSIX_BUNDLE_EXTENSION = ".msixbundle"
+STORE_PACKAGE_EXTENSIONS = (MSIX_EXTENSION, MSIX_BUNDLE_EXTENSION)
+PACKAGE_EXTENSIONS = (*STORE_PACKAGE_EXTENSIONS, ".appx", ".appxbundle")
 
 
 @dataclass(frozen=True)
@@ -150,7 +153,7 @@ def parse_candidates(
         allowed_store_transport = microsoft_cdn and parsed_url.scheme.lower() in ("http", "https")
         exact_identity = parsed_identity == identity
         exact_version = parsed_version == version
-        intended_type = extension in (".msix", ".msixbundle")
+        intended_type = extension in STORE_PACKAGE_EXTENSIONS
         intended_architecture = parsed_architecture == architecture
         selected = all(
             (
@@ -235,9 +238,9 @@ def run_self_test() -> None:
     next_version = ".".join(("3", "12", "0", "0"))
     fixture = f"""
     <table>
-      <tr><td><a href="http://tlu.dl.delivery.mp.microsoft.com/a">g1014308.Clickra_{test_version}_neutral__mgcm3zc7fc0ty.msix</a></td><td>2099-01-01</td><td>ABCDEF</td><td>15 MB</td></tr>
-      <tr><td><a href="https://dl.delivery.mp.microsoft.com/b">g1014308.Clickra_{next_version}_neutral__mgcm3zc7fc0ty.msix</a></td></tr>
-      <tr><td><a href="https://evil.example/c">g1014308.Clickra_{test_version}_neutral__mgcm3zc7fc0ty.msix</a></td></tr>
+      <tr><td><a href="http://tlu.dl.delivery.mp.microsoft.com/a">g1014308.Clickra_{test_version}_neutral__mgcm3zc7fc0ty{MSIX_EXTENSION}</a></td><td>2099-01-01</td><td>ABCDEF</td><td>15 MB</td></tr>
+      <tr><td><a href="https://dl.delivery.mp.microsoft.com/b">g1014308.Clickra_{next_version}_neutral__mgcm3zc7fc0ty{MSIX_EXTENSION}</a></td></tr>
+      <tr><td><a href="https://evil.example/c">g1014308.Clickra_{test_version}_neutral__mgcm3zc7fc0ty{MSIX_EXTENSION}</a></td></tr>
       <tr><td><a href="https://dl.delivery.mp.microsoft.com/d">Microsoft.VCLibs_14.0.0.0_x64__8wekyb3d8bbwe.appx</a></td></tr>
     </table>
     """
@@ -251,7 +254,7 @@ def run_self_test() -> None:
     require_self_test(len(candidates) == 4, "expected four parsed package candidates")
     require_self_test(len(selected) == 1, "expected exactly one selected candidate")
     selected_candidate = selected[0]
-    require_self_test(selected_candidate.name.endswith(".msix"), "selected candidate is not MSIX")
+    require_self_test(selected_candidate.name.endswith(MSIX_EXTENSION), "selected candidate is not MSIX")
     require_self_test(selected_candidate.microsoft_cdn, "selected candidate is not Microsoft-hosted")
     require_self_test(selected_candidate.allowed_store_transport, "selected candidate transport is not allowed")
     require_self_test(not selected_candidate.https_transport, "HTTP fixture unexpectedly reported as HTTPS")
@@ -297,7 +300,7 @@ def main() -> int:
             "identity": args.identity,
             "version": args.version,
             "architecture": args.architecture,
-            "packageTypes": [".msix", ".msixbundle"],
+            "packageTypes": list(STORE_PACKAGE_EXTENSIONS),
             "microsoftCdnSuffix": MICROSOFT_CDN_SUFFIX,
         },
         "candidateCount": len(candidates),
