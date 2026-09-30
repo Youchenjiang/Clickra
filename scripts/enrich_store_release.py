@@ -58,6 +58,7 @@ def acquire_store_package(
     version: str,
     product_id: str,
 ) -> dict[str, object]:
+    evidence_path = destination.with_suffix(".acquisition.json")
     command = [
         "powershell",
         "-NoProfile",
@@ -73,15 +74,20 @@ def acquire_store_package(
         version,
         "-OutputPath",
         str(destination),
+        "-EvidencePath",
+        str(evidence_path),
     ]
-    result = run_command(command)
-    evidence = json.loads(result.stdout)
+    run_command(command)
+    if not evidence_path.is_file():
+        raise RuntimeError("Store acquisition did not produce its JSON evidence file.")
+    evidence = json.loads(evidence_path.read_text(encoding="utf-8-sig"))
     if evidence.get("ProductId") != product_id:
         raise RuntimeError("Store acquisition returned an unexpected ProductId.")
     if evidence.get("Identity") != DEFAULT_IDENTITY:
         raise RuntimeError("Store acquisition returned an unexpected package identity.")
     if evidence.get("Version") != version:
         raise RuntimeError("Store acquisition returned an unexpected package version.")
+    evidence_path.unlink()
     return evidence
 
 
