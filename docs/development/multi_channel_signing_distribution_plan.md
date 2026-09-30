@@ -369,6 +369,26 @@ Microsoft's Windows endpoint documentation explicitly lists `*.dl.delivery.mp.mi
 - update release notes idempotently;
 - never replace an existing asset with different bytes automatically.
 
+#### 2026-09-30 reconciliation implementation
+
+The first Phase 5 implementation is intentionally separated from the Store submission job. `scripts/enrich_store_release.py` and `.github/workflows/store-release-enrichment.yml` provide an explicit reconciliation path for an already existing GitHub Release and an already published Store package.
+
+Current behavior:
+
+- accepts an explicit four-part release tag such as `v3.11.0.0`;
+- resolves exactly one matching Retail Store package using the Phase 3 resolver;
+- downloads only the selected Microsoft delivery candidate;
+- runs the Phase 4 Store MSIX verifier before any GitHub Release mutation;
+- requires the verifier SHA-256 to match the downloaded bytes;
+- uploads the package as the separate Store-channel asset `Clickra-store.msix`;
+- fails closed if the resolver returns an `.msixbundle`; bundle enrichment remains disabled until bundle-specific verification is implemented and qualified;
+- treats an existing same-name asset with the same GitHub SHA-256 digest as already reconciled;
+- fails closed instead of replacing an existing same-name asset when the digest differs or is unavailable;
+- appends a marker-delimited Microsoft Store package note exactly once;
+- does not alter the Microsoft Store submission workflow or direct-download signing channel.
+
+The workflow currently exposes only `workflow_dispatch` with an explicit tag. This keeps release mutation reviewable while the reconciliation logic is qualified. A recurring condition-watch schedule may be added separately after its cadence and target-release selection policy are explicitly chosen; no polling cadence is assumed by this implementation.
+
 ---
 
 ## 9. Required Test Matrix
