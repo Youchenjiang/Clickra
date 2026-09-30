@@ -27,9 +27,14 @@ def required_environment_value(env: dict[str, str], name: str) -> str:
     return value
 
 
-def command_environment(args: list[str]) -> dict[str, str] | None:
+def command_environment(
+    args: list[str],
+    *,
+    platform_name: str | None = None,
+) -> dict[str, str] | None:
     executable = pathlib.Path(args[0]).name.casefold()
-    if os.name != "nt" or executable not in {"powershell", "powershell.exe"}:
+    effective_platform = os.name if platform_name is None else platform_name
+    if effective_platform != "nt" or executable not in {"powershell", "powershell.exe"}:
         return None
 
     env = os.environ.copy()
