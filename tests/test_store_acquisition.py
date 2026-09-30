@@ -21,6 +21,7 @@ class StoreAcquisitionTests(unittest.TestCase):
         self.assertIn("third_party\\microsoft-store-package-downloader", wrapper)
         self.assertNotIn("store.rg-adguard.net", wrapper)
         self.assertNotIn("git clone", wrapper.lower())
+        self.assertNotIn("& powershell -NoProfile", wrapper)
 
     def test_workflow_no_longer_requires_self_hosted_runner(self):
         workflow = (ROOT / ".github" / "workflows" / "store-release-enrichment.yml").read_text(encoding="utf-8")

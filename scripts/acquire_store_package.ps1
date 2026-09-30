@@ -7,6 +7,8 @@ param(
     [string]$ExpectedVersion,
     [Parameter(Mandatory = $true)]
     [string]$OutputPath,
+    [Parameter(Mandatory = $true)]
+    [string]$EvidencePath,
     [string]$ExpectedPublisher = "CN=CBF59877-21AD-4BC4-8F91-FE8DA520A138"
 )
 
@@ -34,25 +36,33 @@ if (-not (Test-Path -LiteralPath $vendorScript)) {
 }
 
 $destination = [IO.Path]::GetFullPath($OutputPath)
+$evidenceDestination = [IO.Path]::GetFullPath($EvidencePath)
 if ([IO.Path]::GetExtension($destination) -cne ".msix") {
     throw "Store acquisition output must use the canonical .msix extension."
 }
+if ([IO.Path]::GetExtension($evidenceDestination) -cne ".json") {
+    throw "Store acquisition evidence must use the canonical .json extension."
+}
 if (Test-Path -LiteralPath $destination) {
     throw "Store acquisition output already exists; refusing to reuse stale bytes: $destination"
+}
+[IO.Directory]::CreateDirectory((Split-Path -Parent $evidenceDestination)) | Out-Null
+if (Test-Path -LiteralPath $evidenceDestination) {
+    throw "Store acquisition evidence already exists; refusing to reuse stale evidence: $evidenceDestination"
 }
 [IO.Directory]::CreateDirectory((Split-Path -Parent $destination)) | Out-Null
 
 $temporaryRoot = Join-Path ([IO.Path]::GetTempPath()) ("clickra-store-acquire-" + [guid]::NewGuid().ToString("N"))
 [IO.Directory]::CreateDirectory($temporaryRoot) | Out-Null
 try {
-    $vendorOutput = & powershell -NoProfile -ExecutionPolicy Bypass `
-        -File $vendorScript `
-        -ProductId $ProductId `
-        -Architecture "x64" `
-        -OutputDirectory $temporaryRoot 2>&1
-    if ($LASTEXITCODE -ne 0) {
-        $details = ($vendorOutput | Out-String).Trim()
-        throw "Microsoft Store endpoint acquisition failed with exit code $LASTEXITCODE.`n$details"
+    try {
+        $vendorOutput = & $vendorScript `
+            -ProductId $ProductId `
+            -Architecture "x64" `
+            -OutputDirectory $temporaryRoot 2>&1
+    } catch {
+        $details = ($_ | Format-List * -Force | Out-String).Trim()
+        throw "Microsoft Store endpoint acquisition failed.`n$details"
     }
 
     $manifestPath = Join-Path $temporaryRoot "package-manifest.json"
@@ -104,7 +114,7 @@ try {
     $sha256 = (Get-FileHash -Algorithm SHA256 -LiteralPath $sourcePath).Hash
     Move-Item -LiteralPath $sourcePath -Destination $destination
 
-    [pscustomobject]@{
+    $evidence = [pscustomobject]@{
         ProductId = $ProductId
         Identity = $ExpectedIdentity
         Version = $ExpectedVersion
@@ -116,7 +126,9 @@ try {
         SignerIssuer = $signature.SignerCertificate.Issuer
         SHA1 = $sha1
         SHA256 = $sha256
-    } | ConvertTo-Json -Depth 3
+    }
+    $evidence | ConvertTo-Json -Depth 3 | Set-Content -LiteralPath $evidenceDestination -Encoding UTF8
+    $evidence
 } finally {
     if (Test-Path -LiteralPath $temporaryRoot) {
         Remove-Item -LiteralPath $temporaryRoot -Recurse -Force

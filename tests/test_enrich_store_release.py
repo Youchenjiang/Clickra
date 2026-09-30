@@ -60,36 +60,31 @@ class StoreReleaseEnrichmentTests(unittest.TestCase):
         self.assertEqual(body, body_again)
 
     def test_acquisition_invokes_official_helper_and_validates_evidence(self):
-        completed = subprocess.CompletedProcess(
-            ["powershell"],
-            0,
-            stdout=(
-                '{"ProductId":"9NGLBF6P1KLD","Identity":"g1014308.Clickra",'
-                '"Version":"3.11.0.0","SourceFileName":"g1014308.Clickra_3.11.0.0_neutral__mgcm3zc7fc0ty.Msix",'
-                '"SHA1":"ABC","SHA256":"DEF"}'
-            ),
-            stderr="",
+        completed = subprocess.CompletedProcess(["powershell"], 0, stdout="Downloading...", stderr="")
+        destination = pathlib.Path("Clickra-store.msix")
+        payload = (
+            '{"ProductId":"9NGLBF6P1KLD","Identity":"g1014308.Clickra",'
+            '"Version":"3.11.0.0","SourceFileName":"g1014308.Clickra_3.11.0.0_neutral__mgcm3zc7fc0ty.Msix",'
+            '"SHA1":"ABC","SHA256":"DEF"}'
         )
-        with mock.patch.object(enrich, "run_command", return_value=completed) as runner:
-            evidence = enrich.acquire_store_package(
-                pathlib.Path("Clickra-store.msix"),
-                version="3.11.0.0",
-                product_id="9NGLBF6P1KLD",
-            )
+        with mock.patch.object(enrich, "run_command", return_value=completed) as runner, \
+             mock.patch.object(pathlib.Path, "is_file", return_value=True), \
+             mock.patch.object(pathlib.Path, "read_text", return_value=payload), \
+             mock.patch.object(pathlib.Path, "unlink"):
+            evidence = enrich.acquire_store_package(destination, version="3.11.0.0", product_id="9NGLBF6P1KLD")
         self.assertEqual("DEF", evidence["SHA256"])
         command = runner.call_args.args[0]
         self.assertIn("acquire_store_package.ps1", " ".join(command))
         self.assertIn("9NGLBF6P1KLD", command)
         self.assertIn("3.11.0.0", command)
+        self.assertIn("Clickra-store.acquisition.json", command)
 
     def test_acquisition_fails_closed_on_unexpected_identity(self):
-        completed = subprocess.CompletedProcess(
-            ["powershell"],
-            0,
-            stdout='{"ProductId":"9NGLBF6P1KLD","Identity":"Other.App","Version":"3.11.0.0"}',
-            stderr="",
-        )
-        with mock.patch.object(enrich, "run_command", return_value=completed), self.assertRaises(RuntimeError):
+        completed = subprocess.CompletedProcess(["powershell"], 0, stdout="", stderr="")
+        with mock.patch.object(enrich, "run_command", return_value=completed), \
+             mock.patch.object(pathlib.Path, "is_file", return_value=True), \
+             mock.patch.object(pathlib.Path, "read_text", return_value='{"ProductId":"9NGLBF6P1KLD","Identity":"Other.App","Version":"3.11.0.0"}'), \
+             self.assertRaises(RuntimeError):
             enrich.acquire_store_package(
                 pathlib.Path("Clickra-store.msix"),
                 version="3.11.0.0",
