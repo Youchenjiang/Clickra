@@ -55,6 +55,10 @@ def select_exact_candidate(version: str, product_id: str) -> resolve_store_packa
     candidate = selected[0]
     if not candidate.reported_sha1:
         raise RuntimeError("Resolver candidate is missing the published SHA-1 metadata.")
+    if candidate.extension != resolve_store_package.MSIX_EXTENSION:
+        raise RuntimeError(
+            f"Store enrichment currently supports only verified .msix packages, got '{candidate.extension}'."
+        )
     return candidate
 
 
@@ -200,8 +204,7 @@ def main() -> int:
 
     version = parse_release_version(args.tag)
     candidate = select_exact_candidate(version, args.product_id)
-    extension = candidate.extension
-    asset_name = f"Clickra-store{extension}"
+    asset_name = "Clickra-store.msix"
     work_dir = pathlib.Path(args.work_dir).resolve()
     package_path = work_dir / asset_name
 

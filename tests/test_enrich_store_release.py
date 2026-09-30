@@ -2,6 +2,7 @@ import importlib.util
 import pathlib
 import sys
 import unittest
+from unittest import mock
 
 
 SCRIPT_DIR = pathlib.Path(__file__).resolve().parents[1] / "scripts"
@@ -54,6 +55,31 @@ class StoreReleaseEnrichmentTests(unittest.TestCase):
         body_again, changed_again = enrich.merge_release_body(body, section)
         self.assertFalse(changed_again)
         self.assertEqual(body, body_again)
+
+    def test_bundle_candidate_fails_closed_until_bundle_verification_exists(self):
+        candidate = resolve_store_package.Candidate(
+            name="g1014308.Clickra_3.11.0.0_neutral__mgcm3zc7fc0ty.msixbundle",
+            url="https://dl.delivery.mp.microsoft.com/example",
+            host="dl.delivery.mp.microsoft.com",
+            https_transport=True,
+            allowed_store_transport=True,
+            extension=resolve_store_package.MSIX_BUNDLE_EXTENSION,
+            reported_sha1="ABCDEF",
+            reported_size="15 MB",
+            identity=resolve_store_package.DEFAULT_IDENTITY,
+            version="3.11.0.0",
+            architecture=resolve_store_package.DEFAULT_ARCHITECTURE,
+            microsoft_cdn=True,
+            exact_identity=True,
+            exact_version=True,
+            intended_type=True,
+            intended_architecture=True,
+            selected=True,
+        )
+        with mock.patch.object(resolve_store_package, "query_resolver", return_value="fixture"), \
+             mock.patch.object(resolve_store_package, "parse_candidates", return_value=[candidate]), \
+             self.assertRaises(RuntimeError):
+            enrich.select_exact_candidate("3.11.0.0", resolve_store_package.DEFAULT_PRODUCT_ID)
 
 
 if __name__ == "__main__":
