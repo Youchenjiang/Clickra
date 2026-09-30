@@ -38,6 +38,7 @@ Microsoft Ingestion API 操作高度非同步。不要信任暫態 HTTP 回應�
 ## 1. Git 完整性
 - **禁止 Nuke-and-Pave**：嚴禁刪除舊檔案再新增同名檔案。改名必須使用 `git mv`。
 - **Enforcement-file references**：Commit/PR 規範的權威執行點為 `.github/workflows/policy.yml`（CI）與 `scripts/hooks/commit-msg`（本地 hook，透過 `scripts/install-hooks.sh` 安裝）；人類可讀參考為 `LOCAL_BUILD_NOTES.md`。type/scope allowlist 必須在所有位置保持同步。
+- **禁止 fixture Git 身分進入專案歷史**：`scripts/hooks/commit-msg` 會拒絕 effective `user.email` 落在保留的 `.invalid` 網域（例如 `fixture@clickra.invalid`）。測試 fixture 只能在自己的 throwaway repository 內設定假身分；不得把 fixture 的 `user.name`／`user.email`／`commit.gpgsign` 寫到 Clickra shared `.git/config`。
 - **原子化提交**：一個 Commit 只做一件事。嚴禁將多個不相干的邏輯修改（如版號同步、工作流修改、規則更新）合併到同一個 Commit 中。必須分批暫存（例如 `git add <特定檔案>`；同一檔案內用 `git add -p` 只暫存相關 hunks）並分開提交，確保每個 Commit 異動內容最小化且語意單一。判斷標準用「revert 測試」：若兩個變更可以各自獨立 revert 而不影響對方（例如邏輯修正 vs 註解清理、格式調整 vs 功能變更），就必須分開提交。
 - **PR publication gate**：不得從 stale historical/stacked base 直接 push/open PR。若本輪工作有 active rollout/publication plan，其 canonical PR gate 是唯一流程權威，本文件不複製另一套步驟；至少必須在公開 PR 前 fresh fetch `origin/main`、依該 gate 只重建本 PR 自己的 scope/range、完成 required validation，並在 push/open PR 前再次確認 remote main 沒有前進。若 main 已前進，先重新 rebuild/revalidate，不得先開 PR 再補 base。
 - **Public PR 禁止隨意改寫 history**：branch 一旦已 push 並建立 public PR，後續預設只能用 normal fast-forward push 加新的 atomic follow-up commits。不得只為了整理 commit history、壓縮 commits、移除已公開但無害的中間過程、讓 PR 看起來更乾淨，或避免一顆 revert/fixup commit，就 force-push 改寫已公開 history。

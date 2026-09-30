@@ -21,6 +21,7 @@ var runner = new TestRunner(requireFixtures);
 
 TestSuite.RegisterPentestGrayPromptTests(runner);
 TestSuite.RegisterFinalProjectTests(runner);
+TestSuite.RegisterGitPolicyTests(runner);
 TestSuite.RegisterTogllLayoutTests(runner);
 TestSuite.RegisterFigureRegressionTests(runner);
 TestSuite.RegisterPdfLayoutRegressionTests(runner);
