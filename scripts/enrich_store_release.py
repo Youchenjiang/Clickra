@@ -159,7 +159,12 @@ def build_store_section(asset_name: str, sha256: str) -> str:
 def merge_release_body(body: str, section: str) -> tuple[str, bool]:
     if STORE_SECTION_MARKER in body:
         return body, False
-    separator = "\n\n" if body and not body.endswith("\n") else "\n" if body else ""
+    if not body:
+        separator = ""
+    elif body.endswith("\n"):
+        separator = "\n"
+    else:
+        separator = "\n\n"
     return f"{body}{separator}{section}\n", True
 
 
