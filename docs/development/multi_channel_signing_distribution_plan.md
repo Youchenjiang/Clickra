@@ -114,21 +114,19 @@ Any failure is fail-closed: the direct MSIX is not published.
 
 After Microsoft Store certification is complete and the exact Clickra version is publicly distributed by the Store, the same GitHub Release may be enriched with the package actually distributed through the Microsoft Store channel.
 
-### 3.1 Resolver
+### 3.1 Store acquisition
 
-The selected resolver for this workflow is `store.rg-adguard.net`.
+The production reconciliation path uses Microsoft Store endpoints directly. It queries the Microsoft Store display catalog for the Clickra Product ID, resolves fulfillment through Microsoft's FE3 delivery service, and downloads package bytes only from `*.delivery.mp.microsoft.com`.
 
-Its responsibility is limited to discovering Microsoft Store package download links for the Clickra Store product. It is not a trust authority and its response must never be treated as sufficient proof that an artifact is safe or belongs to Clickra.
-
-The authoritative artifact bytes must be downloaded from the Microsoft-hosted CDN URL returned by the resolver.
+The FE3 protocol support used by Clickra is vendored as MPL-2.0 source under `third_party/microsoft-store-package-downloader/`, pinned to a reviewed upstream commit and accompanied by its corresponding source and license notices. Production CI does not clone or execute a moving external repository.
 
 ### 3.2 Trust boundary
 
-The resolver answers the question:
+The Store catalog and FE3 acquisition layer answer the question:
 
 > "Where can this Store package be downloaded?"
 
-It does **not** answer:
+They do **not** answer:
 
 > "Is this the correct Clickra package and may it be published?"
 
@@ -217,10 +215,10 @@ After Store submission:
 
 1. Observe the Store submission until the exact release version is genuinely published.
 2. Do not use transient submission states as proof that the package is publicly available.
-3. Once published, query `store.rg-adguard.net` using the Clickra Store product identity/URL and the intended Retail channel.
-4. Parse candidate package entries.
-5. Select candidates only by exact identity/version/package-type rules.
-6. Download the candidate from the Microsoft-hosted CDN.
+3. Once published, query the Microsoft Store display catalog using the Clickra Store Product ID.
+4. Resolve package fulfillment through Microsoft's FE3 delivery service.
+5. Select the package only by exact Clickra identity/version/package-type rules.
+6. Download only from the constrained Microsoft delivery domain.
 7. Run the complete Store artifact verification gate described above.
 8. Only after verification, attach the Store-distributed artifact to the existing GitHub Release for the same version.
 9. Update release notes to indicate that the Microsoft Store version is available and identify the Store artifact separately from the direct artifact.
@@ -230,7 +228,7 @@ After Store submission:
 The Store enrichment workflow must be idempotent.
 
 - If the Store version is not published yet: make no GitHub Release changes.
-- If the resolver is unavailable: make no GitHub Release changes.
+- If Microsoft Store catalog or FE3 acquisition is unavailable: make no GitHub Release changes.
 - If no exact-version candidate exists: make no GitHub Release changes.
 - If package verification fails: make no GitHub Release changes and surface the evidence.
 - If the exact verified Store asset is already attached: report success without uploading a duplicate.
@@ -269,13 +267,9 @@ The external services intentionally selected by this plan are:
    - scope: direct artifact only;
    - must not alter the Store package path.
 
-2. **store.rg-adguard.net**
-   - role: resolver for Microsoft Store/CDN package locations after Store publication;
-   - scope: discovery only;
-   - never serves as the trust anchor for publication.
-
-3. **Microsoft Store / Microsoft CDN**
-   - role: Store submission, certification, Store distribution, and authoritative artifact hosting for the Store-distributed package.
+2. **Microsoft Store / Microsoft delivery services**
+   - role: Store submission, certification, display catalog discovery, FE3 fulfillment, Store distribution, and authoritative artifact hosting for the Store-distributed package;
+   - production package acquisition is constrained to Microsoft Store catalog/FE3 endpoints and `*.delivery.mp.microsoft.com` package URLs.
 
 Any replacement or additional provider requires a new explicit provider-selection decision before implementation.
 
@@ -318,6 +312,8 @@ This phase must not invent a temporary signer.
 - prove that final downloads come from an expected Microsoft-hosted endpoint;
 - do not mutate a GitHub Release during this phase.
 
+This prototype established the package-selection and Microsoft-delivery trust boundaries, but it was later superseded for production by direct Microsoft Store catalog/FE3 acquisition after hosted-runner qualification exposed resolver/CDN transport failures. `store.rg-adguard.net` is no longer a production dependency.
+
 #### 2026-09-30 prototype observation
 
 The read-only prototype in `scripts/resolve_store_package.py` successfully identified the exact published Clickra Store candidate for version `3.11.0.0` without downloading package bytes:
@@ -330,7 +326,7 @@ The read-only prototype in `scripts/resolve_store_package.py` successfully ident
 
 The resolver currently returned these candidate URLs with the `http://` scheme. Microsoft documents `*.dl.delivery.mp.microsoft.com` and `*.delivery.mp.microsoft.com` as Windows Update / Microsoft Store delivery endpoints that may use HTTP as well as HTTPS. The prototype therefore permits the resolver-provided HTTP scheme only when the host is inside the expected Microsoft delivery domain. HTTP is not accepted for arbitrary hosts, redirects must remain inside the same Microsoft delivery trust boundary, and downloaded bytes are not trusted until package signature and identity validation pass.
 
-Phase 4 must independently verify the final download host, resolver-reported hash, package identity, version, package family, and Microsoft Marketplace signature before Store enrichment can advance.
+The prototype originally carried resolver-reported SHA-1 metadata into Phase 4. The production path now replaces that third-party metadata dependency with acquisition-side byte hashes from the Microsoft Store path and independently recomputes them in the verifier; identity, version, package family, and Microsoft Marketplace signature checks remain mandatory.
 
 ### Phase 4 - Store package verification
 
@@ -342,9 +338,9 @@ Phase 4 must independently verify the final download host, resolver-reported has
 
 #### 2026-09-30 verification evidence
 
-The exact published `3.11.0.0` candidate was downloaded from the Microsoft delivery host returned by the resolver and verified offline without installation or execution.
+The exact published `3.11.0.0` candidate was originally downloaded from the Microsoft delivery host returned by the resolver and verified offline without installation or execution. The later Microsoft Store catalog/FE3 hosted-runner qualification reproduced the same package bytes and all of the same verifier evidence without using the resolver in production.
 
-- resolver-reported SHA-1: `ED11280D94470C24DEC86676C5CF286A60A541DF`;
+- historical resolver-reported SHA-1: `ED11280D94470C24DEC86676C5CF286A60A541DF`;
 - downloaded SHA-1: `ED11280D94470C24DEC86676C5CF286A60A541DF`;
 - downloaded SHA-256: `23BC746154BFBDE12463B2B3109205EDBBCD8619398BAD0EBF0919C4E607D3CF`;
 - manifest identity: `g1014308.Clickra`;
@@ -356,9 +352,9 @@ The exact published `3.11.0.0` candidate was downloaded from the Microsoft deliv
 - signer Issuer: `Microsoft Marketplace CA G 027`;
 - Windows SDK `signtool verify /pa /v`: successfully verified with zero warnings and zero errors.
 
-Negative verification checks also failed closed as intended for a mismatched resolver hash, mismatched expected version, and mismatched package-family suffix.
+Negative verification checks also failed closed as intended for a mismatched acquisition hash, mismatched expected version, and mismatched package-family suffix.
 
-Microsoft's Windows endpoint documentation explicitly lists `*.dl.delivery.mp.microsoft.com` and `*.delivery.mp.microsoft.com` as Windows Update / Microsoft Store delivery endpoints that may use HTTP as well as HTTPS. The automation therefore treats transport security as a constrained Microsoft-delivery policy rather than requiring an unsupported HTTPS rewrite of a resolver-issued signed CDN URL. Package authenticity remains gated by exact metadata, resolver hash agreement, Store identity, and a valid Microsoft Marketplace package signature.
+Microsoft's Windows endpoint documentation explicitly lists `*.dl.delivery.mp.microsoft.com` and `*.delivery.mp.microsoft.com` as Windows Update / Microsoft Store delivery endpoints that may use HTTP as well as HTTPS. The automation therefore treats transport security as a constrained Microsoft-delivery policy rather than requiring an unsupported HTTPS rewrite of an FE3-issued package URL. Package authenticity remains gated by exact identity/version/package-family checks, independent byte-hash recomputation, and a valid Microsoft Marketplace package signature.
 
 ### Phase 5 - Automated Store enrichment
 
@@ -376,12 +372,13 @@ The first Phase 5 implementation is intentionally separated from the Store submi
 Current behavior:
 
 - accepts an explicit four-part release tag such as `v3.11.0.0`;
-- resolves exactly one matching Retail Store package using the Phase 3 resolver;
-- downloads only the selected Microsoft delivery candidate;
+- queries the Microsoft Store display catalog and FE3 delivery service using the fixed Clickra Store Product ID;
+- selects exactly one matching neutral `.msix` for the requested Clickra identity and version;
+- downloads only from the constrained Microsoft delivery domain;
 - runs the Phase 4 Store MSIX verifier before any GitHub Release mutation;
-- requires the verifier SHA-256 to match the downloaded bytes;
+- requires acquisition and verifier SHA-256 evidence to match the downloaded bytes;
 - uploads the package as the separate Store-channel asset `Clickra-store.msix`;
-- fails closed if the resolver returns an `.msixbundle`; bundle enrichment remains disabled until bundle-specific verification is implemented and qualified;
+- does not select `.msixbundle`; bundle enrichment remains disabled until bundle-specific verification is implemented and qualified;
 - treats an existing same-name asset with the same GitHub SHA-256 digest as already reconciled;
 - fails closed instead of replacing an existing same-name asset when the digest differs or is unavailable;
 - appends a marker-delimited Microsoft Store package note exactly once;
@@ -389,13 +386,13 @@ Current behavior:
 
 The workflow currently exposes only `workflow_dispatch` with an explicit tag. This keeps release mutation reviewable while the reconciliation logic is qualified. A recurring condition-watch schedule may be added separately after its cadence and target-release selection policy are explicitly chosen; no polling cadence is assumed by this implementation.
 
-#### 2026-09-30 runner qualification update
+#### 2026-09-30 hosted-runner qualification update
 
-Two production qualification runs on GitHub-hosted Windows runners established that the Phase 5 reconciliation path must not rely on the hosted runner network for Store package retrieval. The first run failed closed during verification without sufficient subprocess diagnostics. After diagnostics were added, the second run failed earlier while downloading the exact resolver-selected Microsoft Store CDN package with HTTP 403. The same resolver candidate and package verify successfully from the maintainer Windows environment. Both failed runs left the GitHub Release unchanged with no Store asset and no reconciliation marker.
+The first two production qualification runs on GitHub-hosted Windows runners failed closed on the original resolver-based transport path: one failure lacked sufficient subprocess diagnostics, and the next exposed HTTP 403 while downloading the resolver-selected Microsoft CDN URL. A temporary self-hosted-runner topology was merged as a proposed workaround, but the maintainer explicitly rejected connecting a personal Windows host to GitHub Actions, so that topology is not part of the final operating model.
 
-The reconciliation job therefore targets only a dedicated self-hosted Windows x64 runner carrying the custom `clickra-store` label. The workflow retains `workflow_dispatch`, `contents: write`, the existing resolver filters, the Microsoft delivery-domain boundary, and the full Phase 4 verifier. A runner preflight requires Windows x64, GitHub CLI, Python, and Windows PowerShell before any Store package reconciliation is attempted. No verification requirement is relaxed by moving the job to a self-hosted runner.
+Follow-up probes tested Microsoft-supported acquisition paths without changing the GitHub Release. WinGet could identify the public Store listing but required Microsoft Entra ID authentication for package download in the unattended hosted-runner session. Direct resolver probes also remained unreliable. A final GitHub-hosted Windows probe instead used the Microsoft Store display catalog plus FE3 delivery service and succeeded end to end in Actions run `36724724340`: it downloaded `g1014308.Clickra_3.11.0.0_neutral__mgcm3zc7fc0ty.msix` from a Microsoft delivery host and the unchanged verifier confirmed identity `g1014308.Clickra`, version `3.11.0.0`, package family `g1014308.Clickra_mgcm3zc7fc0ty`, valid Microsoft Marketplace signature, SHA-1 `ED11280D94470C24DEC86676C5CF286A60A541DF`, and SHA-256 `23BC746154BFBDE12463B2B3109205EDBBCD8619398BAD0EBF0919C4E607D3CF`.
 
-The dedicated runner is intentionally not shared with pull-request workflows. Registration and host operation are separate administrative actions: the repository workflow can be merged before a runner is registered, and without a matching `self-hosted`, `Windows`, `X64`, `clickra-store` runner the reconciliation job remains queued rather than falling back to a GitHub-hosted runner.
+Production reconciliation therefore returns to `windows-latest`. The Store protocol support is vendored at a pinned MPL-2.0 source revision, the workflow requires only GitHub-hosted Windows x64 plus GitHub CLI/Python/Windows PowerShell, and the full Store identity/signature/hash verification gate remains unchanged before any Release mutation. No self-hosted runner or maintainer workstation connection is required.
 
 ---
 
