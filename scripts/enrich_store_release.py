@@ -18,26 +18,29 @@ STORE_SECTION_MARKER = "<!-- clickra-store-package -->"
 STORE_SECTION_HEADING = "### Microsoft Store package"
 
 
+def required_environment_value(env: dict[str, str], name: str) -> str:
+    value = next((value for key, value in env.items() if key.casefold() == name.casefold()), None)
+    if not value:
+        raise RuntimeError(
+            f"Cannot construct an isolated Windows PowerShell module path; missing environment variable: {name}"
+        )
+    return value
+
+
 def command_environment(args: list[str]) -> dict[str, str] | None:
     executable = pathlib.Path(args[0]).name.casefold()
-    if executable not in {"powershell", "powershell.exe"}:
+    if os.name != "nt" or executable not in {"powershell", "powershell.exe"}:
         return None
 
     env = os.environ.copy()
-    env_lookup = {name.casefold(): value for name, value in env.items()}
-    required = ("USERPROFILE", "ProgramFiles", "SystemRoot")
-    values = {name: env_lookup.get(name.casefold()) for name in required}
-    missing = [name for name, value in values.items() if not value]
-    if missing:
-        raise RuntimeError(
-            "Cannot construct an isolated Windows PowerShell module path; missing environment variable(s): "
-            + ", ".join(missing)
-        )
+    user_profile = required_environment_value(env, "USERPROFILE")
+    program_files = required_environment_value(env, "ProgramFiles")
+    system_root = required_environment_value(env, "SystemRoot")
 
     module_paths = [
-        pathlib.Path(values["USERPROFILE"]) / "Documents" / "WindowsPowerShell" / "Modules",
-        pathlib.Path(values["ProgramFiles"]) / "WindowsPowerShell" / "Modules",
-        pathlib.Path(values["SystemRoot"]) / "System32" / "WindowsPowerShell" / "v1.0" / "Modules",
+        pathlib.Path(user_profile) / "Documents" / "WindowsPowerShell" / "Modules",
+        pathlib.Path(program_files) / "WindowsPowerShell" / "Modules",
+        pathlib.Path(system_root) / "System32" / "WindowsPowerShell" / "v1.0" / "Modules",
     ]
     env["PSModulePath"] = os.pathsep.join(str(path) for path in module_paths)
     return env

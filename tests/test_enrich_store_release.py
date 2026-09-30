@@ -36,7 +36,8 @@ class StoreReleaseEnrichmentTests(unittest.TestCase):
                 r"C:\Program Files\WindowsPowerShell\Modules"
             ),
         }
-        with mock.patch.dict(enrich.os.environ, source, clear=True):
+        with mock.patch.object(enrich.os, "name", "nt"), \
+             mock.patch.dict(enrich.os.environ, source, clear=True):
             env = enrich.command_environment(["powershell", "-NoProfile"])
         self.assertIsNotNone(env)
         assert env is not None
@@ -46,6 +47,10 @@ class StoreReleaseEnrichmentTests(unittest.TestCase):
 
     def test_non_powershell_commands_keep_default_environment(self):
         self.assertIsNone(enrich.command_environment(["gh", "release", "view"]))
+
+    def test_non_windows_powershell_keeps_default_environment(self):
+        with mock.patch.object(enrich.os, "name", "posix"):
+            self.assertIsNone(enrich.command_environment(["powershell", "-NoProfile"]))
 
     def test_parse_release_version_requires_v_four_part_numeric_version(self):
         self.assertEqual("3.11.0.0", enrich.parse_release_version("v3.11.0.0"))
