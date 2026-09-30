@@ -151,7 +151,7 @@ jobs:
           python-version: '3.12'
 
       - name: Run Store publishing unit tests
-        run: python -m unittest discover -s tests -p 'test_publish_store.py' -v
+        run: python -m unittest discover -s tests -p 'test_*store*.py' -v
 
   fixture-regression-tests:
     # PR-B (docs/development/PR46_POST_MERGE_AUDIT_AND_OPTIONS.md): the
