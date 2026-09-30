@@ -6,7 +6,8 @@ Do not turn the PR body into an internal audit log: provenance refs, commit-hash
 ancestry math, exhaustive per-job CI output, and publication-policy narration belong in
 internal rollout evidence instead.
 
-PR metadata is validated by the Repository Policy workflow (assignee, labels, milestone)
+PR metadata is validated by the Repository Policy workflow (external-provider acknowledgement,
+assignee, labels, milestone)
 and listed in the checklist below.
 
 Release-preparation PRs are the exception: the tag-triggered release workflow uses the
@@ -37,3 +38,4 @@ roadmap codes like "R1-3" -- those belong in the milestone only.
 - [ ] **Label**: added at least one matching the title scope (`cli` / `core` / `shell` / `msix` / `docs` / `ci` / `deps` / `store` / `agent`).
 - [ ] **Milestone**: linked to the roadmap phase or target version (exempt for `release` / `hotfix` / `deps` / `dependencies` / `docs`-labeled PRs).
 - [ ] **Development**: linked to the issue(s) this PR closes, if any.
+- [ ] **External provider**: this PR does not introduce or bind a new named external provider, or that provider was explicitly selected by the user before implementation.
