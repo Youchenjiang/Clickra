@@ -43,11 +43,11 @@ def command_environment(
     system_root = required_environment_value(env, "SystemRoot")
 
     module_paths = [
-        pathlib.Path(user_profile) / "Documents" / "WindowsPowerShell" / "Modules",
-        pathlib.Path(program_files) / "WindowsPowerShell" / "Modules",
-        pathlib.Path(system_root) / "System32" / "WindowsPowerShell" / "v1.0" / "Modules",
+        pathlib.PureWindowsPath(user_profile) / "Documents" / "WindowsPowerShell" / "Modules",
+        pathlib.PureWindowsPath(program_files) / "WindowsPowerShell" / "Modules",
+        pathlib.PureWindowsPath(system_root) / "System32" / "WindowsPowerShell" / "v1.0" / "Modules",
     ]
-    env["PSModulePath"] = os.pathsep.join(str(path) for path in module_paths)
+    env["PSModulePath"] = ";".join(str(path) for path in module_paths)
     return env
 
 
