@@ -11,10 +11,6 @@ import hashlib
 import json
 import pathlib
 import subprocess
-import urllib.parse
-import urllib.request
-
-import resolve_store_package
 
 
 STORE_SECTION_MARKER = "<!-- clickra-store-package -->"
@@ -52,39 +48,41 @@ def parse_release_version(tag: str) -> str:
     return version
 
 
-def select_exact_candidate(version: str, product_id: str) -> resolve_store_package.Candidate:
-    response_html = resolve_store_package.query_resolver(product_id, timeout=90)
-    candidates = resolve_store_package.parse_candidates(
-        response_html,
-        identity=resolve_store_package.DEFAULT_IDENTITY,
-        version=version,
-        architecture=resolve_store_package.DEFAULT_ARCHITECTURE,
-    )
-    selected = [candidate for candidate in candidates if candidate.selected]
-    if len(selected) != 1:
-        raise RuntimeError(f"Expected exactly one verified resolver candidate, found {len(selected)}.")
-    candidate = selected[0]
-    if not candidate.reported_sha1:
-        raise RuntimeError("Resolver candidate is missing the published SHA-1 metadata.")
-    if candidate.extension != resolve_store_package.MSIX_EXTENSION:
-        raise RuntimeError(
-            f"Store enrichment currently supports only verified .msix packages, got '{candidate.extension}'."
-        )
-    return candidate
+DEFAULT_PRODUCT_ID = "9NGLBF6P1KLD"
+DEFAULT_IDENTITY = "g1014308.Clickra"
 
 
-def download_candidate(candidate: resolve_store_package.Candidate, destination: pathlib.Path) -> None:
-    request = urllib.request.Request(candidate.url, headers={"User-Agent": "Mozilla/5.0 Clickra-Store-Enrichment/1.0"})
-    destination.parent.mkdir(parents=True, exist_ok=True)
-    with urllib.request.urlopen(request, timeout=120) as response, destination.open("wb") as output:  # nosec B310 - URL is resolver-filtered to the documented Microsoft delivery domain.
-        final_url = urllib.parse.urlparse(response.geturl())
-        if not final_url.hostname or not resolve_store_package.is_microsoft_cdn_host(final_url.hostname):
-            raise RuntimeError(f"Store download redirected outside the Microsoft delivery domain: {response.geturl()}")
-        while True:
-            chunk = response.read(1024 * 1024)
-            if not chunk:
-                break
-            output.write(chunk)
+def acquire_store_package(
+    destination: pathlib.Path,
+    *,
+    version: str,
+    product_id: str,
+) -> dict[str, object]:
+    command = [
+        "powershell",
+        "-NoProfile",
+        "-ExecutionPolicy",
+        "Bypass",
+        "-File",
+        str(pathlib.Path(__file__).with_name("acquire_store_package.ps1")),
+        "-ProductId",
+        product_id,
+        "-ExpectedIdentity",
+        DEFAULT_IDENTITY,
+        "-ExpectedVersion",
+        version,
+        "-OutputPath",
+        str(destination),
+    ]
+    result = run_command(command)
+    evidence = json.loads(result.stdout)
+    if evidence.get("ProductId") != product_id:
+        raise RuntimeError("Store acquisition returned an unexpected ProductId.")
+    if evidence.get("Identity") != DEFAULT_IDENTITY:
+        raise RuntimeError("Store acquisition returned an unexpected package identity.")
+    if evidence.get("Version") != version:
+        raise RuntimeError("Store acquisition returned an unexpected package version.")
+    return evidence
 
 
 def sha256_file(path: pathlib.Path) -> str:
@@ -95,7 +93,17 @@ def sha256_file(path: pathlib.Path) -> str:
     return digest.hexdigest()
 
 
-def verify_store_package(path: pathlib.Path, version: str, candidate: resolve_store_package.Candidate) -> dict[str, object]:
+def verify_store_package(
+    path: pathlib.Path,
+    version: str,
+    acquisition: dict[str, object],
+) -> dict[str, object]:
+    source_file_name = acquisition.get("SourceFileName")
+    expected_sha1 = acquisition.get("SHA1")
+    if not isinstance(source_file_name, str) or not source_file_name:
+        raise RuntimeError("Store acquisition evidence is missing SourceFileName.")
+    if not isinstance(expected_sha1, str) or not expected_sha1:
+        raise RuntimeError("Store acquisition evidence is missing SHA1.")
     command = [
         "powershell",
         "-NoProfile",
@@ -108,9 +116,9 @@ def verify_store_package(path: pathlib.Path, version: str, candidate: resolve_st
         "-ExpectedVersion",
         version,
         "-SourceFileName",
-        candidate.name,
+        source_file_name,
         "-ExpectedSha1",
-        candidate.reported_sha1 or "",
+        expected_sha1,
     ]
     result = run_command(command)
     return json.loads(result.stdout)
@@ -162,8 +170,8 @@ def build_store_section(asset_name: str, sha256: str) -> str:
         f"{STORE_SECTION_MARKER}\n"
         f"{STORE_SECTION_HEADING}\n"
         f"The Microsoft Store-published package for this release is attached as `{asset_name}`. "
-        "It was resolved from the Retail Store channel and verified against the Store identity, version, package family, "
-        "resolver hash metadata, and Microsoft Marketplace signature before attachment.\n\n"
+        "It was acquired through Microsoft Store catalog and delivery endpoints and verified against the Store identity, "
+        "version, package family, byte hashes, and Microsoft Marketplace signature before attachment.\n\n"
         f"SHA-256: `{sha256}`"
     )
 
@@ -213,13 +221,12 @@ def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--repo", required=True)
     parser.add_argument("--tag", required=True)
-    parser.add_argument("--product-id", default=resolve_store_package.DEFAULT_PRODUCT_ID)
+    parser.add_argument("--product-id", default=DEFAULT_PRODUCT_ID)
     parser.add_argument("--work-dir", default=".store-release-enrichment")
     parser.add_argument("--dry-run", action="store_true")
     args = parser.parse_args()
 
     version = parse_release_version(args.tag)
-    candidate = select_exact_candidate(version, args.product_id)
     asset_name = "Clickra-store.msix"
     work_dir = pathlib.Path(args.work_dir).resolve()
     package_path = work_dir / asset_name
@@ -234,7 +241,8 @@ def main() -> int:
                 {
                     "tag": args.tag,
                     "version": version,
-                    "candidate": candidate.name,
+                    "productId": args.product_id,
+                    "acquisition": "Microsoft Store catalog and delivery endpoints",
                     "assetName": asset_name,
                     "releaseUrl": release.get("url"),
                     "mutation": False,
@@ -244,9 +252,16 @@ def main() -> int:
         )
         return 0
 
-    download_candidate(candidate, package_path)
-    verification = verify_store_package(package_path, version, candidate)
+    acquisition = acquire_store_package(
+        package_path,
+        version=version,
+        product_id=args.product_id,
+    )
+    verification = verify_store_package(package_path, version, acquisition)
     sha256 = sha256_file(package_path)
+    acquisition_sha256 = acquisition.get("SHA256")
+    if not isinstance(acquisition_sha256, str) or acquisition_sha256.lower() != sha256:
+        raise RuntimeError("Acquisition SHA-256 does not match the downloaded package bytes.")
     if str(verification.get("SHA256", "")).lower() != sha256:
         raise RuntimeError("Verifier SHA-256 does not match the downloaded package bytes.")
 

@@ -13,7 +13,7 @@ permissions:
 
 jobs:
   reconcile:
-    runs-on: [self-hosted, Windows, X64, clickra-store]
+    runs-on: windows-latest
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -23,21 +23,24 @@ jobs:
         with:
           python-version: '3.12'
 
-      - name: Validate Store reconciliation runner
+      - name: Validate Store reconciliation environment
         shell: pwsh
         run: |
           $ErrorActionPreference = 'Stop'
           if ($env:RUNNER_OS -ne 'Windows') {
-            throw "Store reconciliation requires a Windows runner; got '$env:RUNNER_OS'."
+            throw "Store reconciliation requires a Windows hosted runner; got '$env:RUNNER_OS'."
           }
           if ($env:RUNNER_ARCH -ne 'X64') {
-            throw "Store reconciliation requires an X64 runner; got '$env:RUNNER_ARCH'."
+            throw "Store reconciliation requires an X64 hosted runner; got '$env:RUNNER_ARCH'."
           }
           if (-not (Get-Command gh -ErrorAction SilentlyContinue)) {
             throw 'GitHub CLI (gh) is required on the Store reconciliation runner.'
           }
           if (-not (Get-Command powershell -ErrorAction SilentlyContinue)) {
             throw 'Windows PowerShell is required for Store MSIX verification.'
+          }
+          if (-not (Test-Path 'third_party\microsoft-store-package-downloader\scripts\download-store-package.ps1')) {
+            throw 'Vendored Microsoft Store acquisition helper is missing.'
           }
           python --version
           gh --version | Select-Object -First 1
