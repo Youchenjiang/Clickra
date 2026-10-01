@@ -21,6 +21,8 @@ namespace Clickra.Core.Tests;
 /// </summary>
 static partial class TestSuite
 {
+    private static readonly TimeSpan LocalizationRegexTimeout = TimeSpan.FromSeconds(1);
+
     /// <summary>
     /// 目前仍沒有消費者的鍵。每一條都必須有一條明確的出路：接上某個介面，或連同五種
     /// 語言的翻譯一起刪除。分組只是為了讓稽核有跡可循，不是豁免理由。
@@ -85,7 +87,8 @@ static partial class TestSuite
     /// </summary>
     private static readonly Regex LocalizationLookupPattern = new(
         @"(?:\bL|\bLoc|\bGetText|\bT)\(\s*""([A-Za-z0-9_]+)""",
-        RegexOptions.Compiled);
+        RegexOptions.Compiled,
+        LocalizationRegexTimeout);
 
     public static void RegisterLocalizationOrphanTests(TestRunner runner)
     {
@@ -150,7 +153,7 @@ static partial class TestSuite
             // cannot silently shrink this guard to nothing.
             foreach (string accessor in new[] { "L", "Loc", "GetText", "T" })
             {
-                Assert.True(Regex.IsMatch(sourceText, $@"static string {accessor}\(string"),
+                Assert.True(Regex.IsMatch(sourceText, $@"static string {accessor}\(string", RegexOptions.None, LocalizationRegexTimeout),
                     $"The '{accessor}' localization accessor must still be defined in src/.");
             }
 
@@ -219,10 +222,10 @@ static partial class TestSuite
     /// remain: the two literal table forms, and keys declared through a const.</summary>
     private static string StripDeclarations(string localizationSource)
     {
-        string stripped = Regex.Replace(localizationSource, @"\[""[A-Za-z0-9_]+""\]\s*=", " = ");
+        string stripped = Regex.Replace(localizationSource, @"\[""[A-Za-z0-9_]+""\]\s*=", " = ", RegexOptions.None, LocalizationRegexTimeout);
         // The tuple tables hold (Key, Tw, Cn, En, Ja, Ko); the first value is sometimes a const.
-        stripped = Regex.Replace(stripped, @"^(\s*)\(""[A-Za-z0-9_]+"",", "$1(\"", RegexOptions.Multiline);
-        return Regex.Replace(stripped, @"private const string [A-Za-z0-9_]+ = ""[A-Za-z0-9_]+"";", string.Empty);
+        stripped = Regex.Replace(stripped, @"^(\s*)\(""[A-Za-z0-9_]+"",", "$1(\"", RegexOptions.Multiline, LocalizationRegexTimeout);
+        return Regex.Replace(stripped, @"private const string [A-Za-z0-9_]+ = ""[A-Za-z0-9_]+"";", string.Empty, RegexOptions.None, LocalizationRegexTimeout);
     }
 
     /// <summary>Whether the character occupies a full-width cell: CJK, kana, Hangul and the
@@ -239,8 +242,8 @@ static partial class TestSuite
     /// for a consumer.</summary>
     private static string StripComments(string text)
     {
-        string stripped = Regex.Replace(text, @"/\*.*?\*/", string.Empty, RegexOptions.Singleline);
-        stripped = Regex.Replace(stripped, @"<!--.*?-->", string.Empty, RegexOptions.Singleline);
-        return Regex.Replace(stripped, @"//[^\n]*", string.Empty);
+        string stripped = Regex.Replace(text, @"/\*.*?\*/", string.Empty, RegexOptions.Singleline, LocalizationRegexTimeout);
+        stripped = Regex.Replace(stripped, @"<!--.*?-->", string.Empty, RegexOptions.Singleline, LocalizationRegexTimeout);
+        return Regex.Replace(stripped, @"//[^\n]*", string.Empty, RegexOptions.None, LocalizationRegexTimeout);
     }
 }
