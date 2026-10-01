@@ -409,7 +409,6 @@ public partial class ProgressWindow
     /// adjacent segments.</summary>
     private void SplitVisualSegmentAtCurrentPage()
     {
-        _visualSplitMode = 0;
         if (_visualSplitSelectedSegmentIndex < 0 || _visualSplitSelectedSegmentIndex >= _visualSplitCustomSegments.Count)
             return;
 
@@ -419,7 +418,9 @@ public partial class ProgressWindow
 
         int previewIdx = Math.Max(0, Math.Min(_visualSplitCurrentPreviewPageIndex, pageCnt - 1));
         int splitPage = seg.Start + previewIdx;
+        if (splitPage >= seg.End) return;
 
+        _visualSplitMode = 0;
         var first = (seg.Start, splitPage);
         var second = (splitPage + 1, seg.End);
 

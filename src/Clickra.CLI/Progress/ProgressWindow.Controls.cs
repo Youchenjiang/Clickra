@@ -434,7 +434,7 @@ namespace Clickra.UI
 
             if (mouseX >= 36 && mouseX <= 60) // [-]
             {
-                _visualSplitNPages = Math.Max(2, _visualSplitNPages - 1);
+                _visualSplitNPages = Math.Max(1, _visualSplitNPages - 1);
                 ApplyVisualSplitMode();
                 InvalidateRect(hwnd, IntPtr.Zero, true);
                 return true;
