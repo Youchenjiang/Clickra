@@ -608,8 +608,8 @@ public sealed partial class MainPage : Page
         ActiveJobTitle.Text = L("fluent_run");
         ActiveJobText.Text = L("status_converting") + "...";
         EmptyHistoryText.Text = L("fluent_no_history");
-        ParkedTasksTitle.Text = L("fluent_task_parked_title");
-        ParkedTasksDesc.Text = L("fluent_task_parked_desc");
+        ParkedTasksTitle.Text = L("task_parked_title");
+        ParkedTasksDesc.Text = L("task_parked_desc");
 
         SettingsTitle.Text = L("fluent_nav_settings");
         SettingsSubtitle.Text = L("fluent_settings_subtitle");
@@ -785,12 +785,12 @@ public sealed partial class MainPage : Page
 
         if (expiringSoonCount > 0)
         {
-            ParkedTasksDesc.Text = string.Format(L("fluent_task_parked_expiring_warning"), expiringSoonCount);
+            ParkedTasksDesc.Text = string.Format(L("task_parked_expiring_warning"), expiringSoonCount);
             ParkedTasksDesc.Foreground = new SolidColorBrush(Color.FromArgb(255, 255, 160, 40));
         }
         else
         {
-            ParkedTasksDesc.Text = L("fluent_task_parked_desc");
+            ParkedTasksDesc.Text = L("task_parked_desc");
             ParkedTasksDesc.Foreground = (Brush)Application.Current.Resources[SecondaryTextBrushResource];
         }
 
@@ -845,7 +845,7 @@ public sealed partial class MainPage : Page
                 VerticalAlignment = VerticalAlignment.Center,
                 Child = new TextBlock
                 {
-                    Text = "⚠️ " + L("fluent_task_parked_badge_expiring"),
+                    Text = "⚠️ " + L("task_parked_badge_expiring"),
                     FontSize = 11,
                     FontWeight = Microsoft.UI.Text.FontWeights.Medium,
                     Foreground = new SolidColorBrush(Color.FromArgb(255, 255, 160, 40))
@@ -894,28 +894,8 @@ public sealed partial class MainPage : Page
         string stoppedOn = task.FileCount > 1
             ? string.Format(L("fluent_task_file_index"), Math.Clamp(task.CurrentIndex + 1, 1, task.FileCount), task.FileCount)
             : "";
-
-        string ttlText;
-        if (info.IsUnlimited)
-        {
-            ttlText = L("fluent_task_parked_ttl_unlimited");
-        }
-        else if (info.HasExpired)
-        {
-            ttlText = L("fluent_task_parked_ttl_expired");
-        }
-        else if (info.IsExpiringSoon)
-        {
-            ttlText = L("fluent_task_parked_ttl_expiring_soon");
-        }
-        else if (info.RemainingDays == 1)
-        {
-            ttlText = string.Format(L("fluent_task_parked_ttl_days_one"), 1);
-        }
-        else
-        {
-            ttlText = string.Format(L("fluent_task_parked_ttl_days"), info.RemainingDays);
-        }
+        // Shared with the CLI dashboard's History page, so both surfaces word the deadline the same way.
+        string ttlText = ClickraStorage.DescribeParkedRetention(info);
 
         return string.Join(" · ", new[] { firstFile, stoppedOn, task.ErrorMessage, ttlText }.Where(part => !string.IsNullOrWhiteSpace(part)));
     }
@@ -940,7 +920,7 @@ public sealed partial class MainPage : Page
     private async Task CancelParkedTaskAsync(ClickraStorage.HistoryEntry task)
     {
         if (string.IsNullOrWhiteSpace(task.Id)) return;
-        if (!await ConfirmAsync(L("fluent_task_parked_cancel_confirm"))) return;
+        if (!await ConfirmAsync(L("task_parked_cancel_confirm"))) return;
         ClickraStorage.CancelParkedTask(task.Id);
         RefreshHistory();
     }

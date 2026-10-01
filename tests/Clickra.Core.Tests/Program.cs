@@ -38,6 +38,9 @@ TestSuite.RegisterWicImageTests(runner);
 TestSuite.RegisterImageConvertTests(runner);
 TestSuite.RegisterImageCompressionTests(runner);
 TestSuite.RegisterSettingsRegistryTests(runner);
+TestSuite.RegisterProgressWindowTests(runner);
+TestSuite.RegisterLocalizationOrphanTests(runner);
+TestSuite.RegisterUiResourceCoverageTests(runner);
 TestSuite.RegisterXamlLocalizationTests(runner);
 TestSuite.RegisterFluentRuntimeTests(runner);
 

@@ -465,7 +465,7 @@ namespace Clickra.UI
             int adjMouseX = mouseX >= sidebarW ? (int)(mouseX + _contentScrollX) : mouseX;
             int adjMouseY = mouseX >= sidebarW ? (int)(mouseY + _contentScrollY) : mouseY;
 
-            int currentY = 90 + GetActiveHistoryCount() * 52;
+            int currentY = GetHistoryListStartY();
             for (int i = 0; i < _historyEntries.Count; i++)
             {
                 bool isExpanded = (i == _expandedHistoryIndex);

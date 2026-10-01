@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Text.RegularExpressions;
@@ -15,6 +16,14 @@ namespace Clickra.Core.Tests;
 static partial class TestSuite
 {
     private static readonly TimeSpan SettingsRegexTimeout = TimeSpan.FromSeconds(1);
+    private static readonly Regex HardcodedCjkTextPattern = new(
+        @"[\u3000-\u303F\u3040-\u30FF\u3400-\u4DBF\u4E00-\u9FFF\uAC00-\uD7AF\uF900-\uFAFF\uFF00-\uFFEF]",
+        RegexOptions.Compiled,
+        SettingsRegexTimeout);
+    private static readonly Regex DrawnGlyphLiteralPattern = new(
+        "\"[\uFF01-\uFF5E]\"",
+        RegexOptions.Compiled,
+        SettingsRegexTimeout);
     private const string LiteralSettingKeyPattern = @"(GetSetting|SaveSetting)\(\s*""";
     private const string SettingKeyDeclarationPattern = @"const\s+string\s+\w+\s*=\s*""([^""]+)""";
     private const string NullCoalescedSettingPattern = @"GetSetting\([^)]*\)\s*\?\?";
@@ -28,6 +37,8 @@ static partial class TestSuite
     private const string LanguageJaJp = "ja-JP";
     private const string LanguageKoKr = "ko-KR";
     private const string ProgressSubCompleted = "progress_sub_completed";
+    private const string SamplePdfFileName = "doc.pdf";
+    private const string SamplePdfStage = "page 2/10";
     private static readonly string[] SupportedLocalizationLanguages =
         { LanguageZhTw, LanguageZhCn, LanguageEnUs, LanguageJaJp, LanguageKoKr };
 
@@ -45,9 +56,10 @@ static partial class TestSuite
         runner.Run("Settings registry: Fluent add-on settings localization coverage across all 5 languages", TestFluentSettingsLocalizationCoverage);
         runner.Run("Settings registry: Localization.T default language and formatting overloads", TestLocalizationDefaultLanguageAndFormatting);
         runner.Run("Settings registry: Fluent-specific copy stays distinct from shared keys", TestFluentSpecificCopyPreserved);
-        runner.Run("Localization guard: No hardcoded Chinese strings in Clickra.Fluent, Dashboard paint files, and ProgressWindow paint files", TestNoHardcodedChineseUiStrings);
+        runner.Run("Localization guard: no hardcoded CJK text in Clickra.Fluent, Dashboard paint files, and the Win32 progress window", TestNoHardcodedChineseUiStrings);
         runner.Run("Settings registry: Translation diagnostics lists gaps grouped by language when translations are missing", TestTranslationDiagnosticsGapReport);
         runner.Run("Settings registry: All registered keys must have complete translations across all 5 languages", TestLocalizationDictionaryParity);
+        runner.Run("Test runner: every compiled test suite is invoked by Program.cs", TestEveryCompiledSuiteIsInvoked);
         runner.Run("Test runner: CleanStaleArtifacts cleans isolated temp directories and test artifacts", TestCleanStaleArtifacts);
     }
 
@@ -105,7 +117,7 @@ static partial class TestSuite
     private static void TestSettingReadersUseRegistry()
     {
         string root = FindRepoRoot() ?? throw new TestSkippedException(
-            "Could not locate the repository root from the test output directory.");
+            RepoRootNotFoundMessage);
         string[] files = Directory
             .EnumerateFiles(Path.Combine(root, "src"), "*.cs", SearchOption.AllDirectories)
             .Where(p => !p.Contains($"{Path.DirectorySeparatorChar}obj{Path.DirectorySeparatorChar}", StringComparison.Ordinal) &&
@@ -151,7 +163,7 @@ static partial class TestSuite
     private static void TestNumericAccessorsUseRegistry()
     {
         string root = FindRepoRoot() ?? throw new TestSkippedException(
-            "Could not locate the repository root from the test output directory.");
+            RepoRootNotFoundMessage);
         string storage = File.ReadAllText(Path.Combine(root, "src", "Clickra.Core", "Storage", "ClickraStorage.ActiveRecord.cs"));
         string registry = File.ReadAllText(Path.Combine(root, "src", "Clickra.Core", "Processors", "ConvertCommandRegistry.cs"));
 
@@ -334,10 +346,64 @@ static partial class TestSuite
             "progress_header_failed",
             "progress_header_success",
             "progress_auto_close_hint",
-            "progress_tip_processing"
+            "progress_tip_processing",
+            "cli_progress_preparing",
+            "cli_progress_no_files",
+            "cli_progress_all_done",
+            "cli_progress_pages_input_canceled",
+            "cli_progress_compressing_pdf",
+            "cli_progress_compressing_pdf_stage",
+            "cli_progress_compressing_pdf_done",
+            "cli_progress_converting_image",
+            "cli_progress_converting_image_saving",
+            "cli_progress_translating_pdf",
+            "cli_progress_translating_pdf_stage",
+            "cli_progress_translating_pdf_saving",
+            "cli_progress_splitting_pdf",
+            "cli_progress_splitting_pdf_stage",
+            "cli_progress_splitting_pdf_done",
+            "cli_progress_decrypting_pdf",
+            "cli_progress_decrypting_pdf_stage",
+            "cli_progress_decrypting_pdf_saving",
+            "cli_progress_toast_title",
+            "cli_progress_toast_body",
+            "cli_tray_converting",
+            "cli_err_no_input",
+            "cli_err_no_input_title"
         };
 
         AssertLocalizationKeysCoverage(keys);
+
+        var placeholderKeys = new (string Key, object[] Args)[]
+        {
+            ("cli_progress_compressing_pdf", new object[] { SamplePdfFileName, 1, 3 }),
+            ("cli_progress_compressing_pdf_stage", new object[] { SamplePdfStage, 1, 3 }),
+            ("cli_progress_converting_image", new object[] { "photo.png", 1, 3 }),
+            ("cli_progress_translating_pdf", new object[] { SamplePdfFileName, 1, 3 }),
+            ("cli_progress_translating_pdf_stage", new object[] { SamplePdfStage, 1, 3 }),
+            ("cli_progress_splitting_pdf", new object[] { SamplePdfFileName, 1, 3 }),
+            ("cli_progress_splitting_pdf_stage", new object[] { SamplePdfStage, 1, 3 }),
+            ("cli_progress_decrypting_pdf", new object[] { SamplePdfFileName, 1, 3 }),
+            ("cli_progress_decrypting_pdf_stage", new object[] { SamplePdfStage, 1, 3 }),
+            ("cli_progress_toast_body", new object[] { "Compress PDF", 3 }),
+            ("cli_tray_converting", new object[] { 42 })
+        };
+
+        foreach (string lang in SupportedLocalizationLanguages)
+        {
+            foreach (var (key, args) in placeholderKeys)
+            {
+                string rendered = string.Format(CultureInfo.InvariantCulture, Localization.T(key, lang), args);
+                Assert.False(Regex.IsMatch(rendered, @"\{\d+\}", RegexOptions.None, SettingsRegexTimeout),
+                    $"Key '{key}' for '{lang}' left an unformatted placeholder: {rendered}");
+                foreach (object arg in args)
+                {
+                    string text = Convert.ToString(arg, CultureInfo.InvariantCulture) ?? "";
+                    Assert.True(rendered.Contains(text, StringComparison.Ordinal),
+                        $"Key '{key}' for '{lang}' dropped the argument '{text}': {rendered}");
+                }
+            }
+        }
     }
 
     private static void TestFluentSettingsLocalizationCoverage()
@@ -372,10 +438,10 @@ static partial class TestSuite
             Assert.Equal("作業完成", Localization.T(ProgressSubCompleted));
 
             ClickraStorage.SaveSetting(ClickraSettings.Language, LanguageEnUs);
-            Assert.Equal("[PDF] doc.pdf (5 pages)", Localization.T("pdf_split_badge_format", "doc.pdf", 5));
+            Assert.Equal("[PDF] doc.pdf (5 pages)", Localization.T("pdf_split_badge_format", SamplePdfFileName, 5));
 
             ClickraStorage.SaveSetting(ClickraSettings.Language, LanguageZhTw);
-            Assert.Equal("[PDF] doc.pdf (5 頁)", Localization.T("pdf_split_badge_format", "doc.pdf", 5));
+            Assert.Equal("[PDF] doc.pdf (5 頁)", Localization.T("pdf_split_badge_format", SamplePdfFileName, 5));
         }
         finally
         {
@@ -424,6 +490,29 @@ static partial class TestSuite
         }
     }
 
+    private static void TestEveryCompiledSuiteIsInvoked()
+    {
+        string? root = FindRepoRoot();
+        if (root is null) throw new TestSkippedException(RepoRootNotFoundMessage);
+
+        var defined = typeof(TestSuite)
+            .GetMethods(System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Static)
+            .Where(m => m.Name.StartsWith("Register", StringComparison.Ordinal) &&
+                        m.ReturnType == typeof(void) &&
+                        m.GetParameters().Length == 1 &&
+                        m.GetParameters()[0].ParameterType == typeof(TestRunner))
+            .Select(m => m.Name)
+            .OrderBy(n => n, StringComparer.Ordinal)
+            .ToList();
+
+        Assert.True(defined.Count > 0, "Expected at least one compiled test suite registration method.");
+        string program = File.ReadAllText(Path.Combine(root, "tests", "Clickra.Core.Tests", "Program.cs"));
+        var missing = defined.Where(n => !program.Contains($"TestSuite.{n}(", StringComparison.Ordinal)).ToList();
+
+        Assert.True(missing.Count == 0,
+            "These test suites are compiled but never invoked: " + string.Join(", ", missing));
+    }
+
     private static void TestCleanStaleArtifacts()
     {
         string staleDir = Path.Combine(GetTestDataRoot(), $"clickra-test-data-dummy-{Guid.NewGuid():N}");
@@ -444,7 +533,7 @@ static partial class TestSuite
     private static void TestNoHardcodedChineseUiStrings()
     {
         string root = FindRepoRoot() ?? throw new TestSkippedException(
-            "Could not locate the repository root from the test output directory.");
+            RepoRootNotFoundMessage);
         var filesToScan = new List<string>();
 
         string dashboardDir = Path.Combine(root, "src", "Clickra.CLI", "Dashboard");
@@ -460,16 +549,27 @@ static partial class TestSuite
                 .Where(IsLocalizationGuardTarget));
         }
 
-        string visualSplitterPath = Path.Combine(root, "src", "Clickra.CLI", "Progress", "ProgressWindow.VisualSplitter.cs");
-        if (File.Exists(visualSplitterPath))
+        string progressDir = Path.Combine(root, "src", "Clickra.CLI", "Progress");
+        if (Directory.Exists(progressDir))
         {
-            filesToScan.Add(visualSplitterPath);
+            filesToScan.AddRange(Directory.GetFiles(progressDir, "*.cs"));
         }
 
-        string progressPaintPath = Path.Combine(root, "src", "Clickra.CLI", "Progress", "ProgressWindow.Paint.cs");
-        if (File.Exists(progressPaintPath))
+        string[] expectedProgressFiles =
         {
-            filesToScan.Add(progressPaintPath);
+            "ProgressWindow.cs",
+            "ProgressWindow.Controls.cs",
+            "ProgressWindow.Paint.cs",
+            "ProgressWindow.PasswordInput.cs",
+            "ProgressWindow.Process.cs",
+            "ProgressWindow.Tray.cs",
+            "ProgressWindow.VisualSplitter.cs"
+        };
+        foreach (string name in expectedProgressFiles)
+        {
+            string expected = Path.Combine(progressDir, name);
+            Assert.True(filesToScan.Contains(expected),
+                $"Progress window file '{name}' must be covered by the localization guard.");
         }
 
         Assert.True(filesToScan.Count > 0, "Expected to find target UI files for localization guard scanning.");
@@ -478,9 +578,8 @@ static partial class TestSuite
             .SelectMany(file => FindHardcodedChineseViolations(root, file))
             .ToList();
         Assert.True(violations.Count == 0,
-            $"Found {violations.Count} hardcoded Chinese string(s) in UI/Paint files:\n" + string.Join("\n", violations));
+            $"Found {violations.Count} hardcoded CJK text(s) in UI/Paint files:\n" + string.Join("\n", violations));
     }
-
     private static bool IsLocalizationGuardTarget(string path)
     {
         bool supportedExtension = path.EndsWith(".cs", StringComparison.OrdinalIgnoreCase) ||
@@ -502,8 +601,9 @@ static partial class TestSuite
         for (int index = 0; index < lines.Length; index++)
         {
             string line = ext == ".cs" ? StripSingleLineComment(lines[index]) : lines[index];
-            if (!Regex.IsMatch(line, @"[\u4e00-\u9fff]", RegexOptions.CultureInvariant, SettingsRegexTimeout) ||
-                IsAllowedLanguageAutonym(line))
+            string candidate = DrawnGlyphLiteralPattern.Replace(line, "\"\"");
+            candidate = XamlEndonymPattern.Replace(candidate, string.Empty);
+            if (!HardcodedCjkTextPattern.IsMatch(candidate))
             {
                 continue;
             }

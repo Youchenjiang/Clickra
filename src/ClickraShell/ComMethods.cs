@@ -31,6 +31,10 @@ namespace ClickraShell
         private const uint SIGDN_FILESYSPATH = 0x8005_8000;
 
         private static readonly string[] MenuKeys = { "Menu_Ppt2Pdf", "Menu_Word2Pdf", "Menu_Excel2Pdf", "Menu_MergePdf", "Menu_CompressPdf", "Menu_Img2Pdf", "Menu_ImgMerge", "Menu_ImgStitch", "Menu_TranslatePdf", "Menu_DecryptPdf", "Menu_SplitPdf" };
+
+        /// <summary>Resource key of the root (parent) submenu label, so the app's own name comes from
+        /// the same resw as every entry under it instead of a hardcoded literal.</summary>
+        private const string RootTitleKey = "AppName";
         private static readonly string[] SubArgs = { "ppt2pdf", "word2pdf", "excel2pdf", "merge-pdf", "compress-pdf", "img2pdf", "img-merge", "img-stitch", "translate-pdf", "decrypt-pdf", "split-pdf" };
         /// <summary>Per-command icon files, positionally aligned with SubArgs. The root command (-1) uses app.ico.</summary>
         private static readonly string[] IconFiles = {
@@ -144,7 +148,7 @@ namespace ClickraShell
         public static unsafe int GetTitle(IntPtr _this, IntPtr psi, IntPtr* ppsz)
         {
             int idx = ((UniversalObject*)_this)->Data;
-            string t = (idx == -1) ? "Clickra" : ShellUtils.GetString(MenuKeys[idx]);
+            string t = (idx == -1) ? ShellUtils.GetString(RootTitleKey) : ShellUtils.GetString(MenuKeys[idx]);
             *ppsz = Marshal.StringToCoTaskMemUni(t); return 0;
         }
 

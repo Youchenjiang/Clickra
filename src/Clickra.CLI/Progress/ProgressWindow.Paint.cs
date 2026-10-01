@@ -171,6 +171,10 @@ namespace Clickra.UI
             {
                 using var tipBrush = new SolidBrush(Color.FromArgb(100, 100, 100));
                 g.DrawString(Loc("progress_tip_processing"), _tipFont, tipBrush, 36 * s, 220 * s);
+
+                // 系統匣按鈕是一顆無標籤的圖示，而縮到系統匣有兩條路（自繪按鈕與標題列的「—」）。
+                // 把這件事寫在處理中那行下面，使用者在可能想縮小時就看得到。
+                g.DrawString(Loc("progress_tray_hint"), _tipFont, tipBrush, 36 * s, 238 * s);
             }
 
             PaintTrayButton(g, s);

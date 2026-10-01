@@ -112,6 +112,7 @@ namespace Clickra.UI
             try
             {
                 _historyEntries = ClickraStorage.GetHistory(50);
+                _parkedEntries = ClickraStorage.GetParkedTasks();
                 _statTotal = _historyEntries.Count;
                 _statSuccess = _historyEntries.Count(h => h.IsSuccess);
                 _statFailed = _historyEntries.Count(h => !h.IsSuccess);
@@ -119,6 +120,7 @@ namespace Clickra.UI
             catch
             {
                 _historyEntries = new List<ClickraStorage.HistoryEntry>();
+                _parkedEntries = new List<ClickraStorage.HistoryEntry>();
                 _statTotal = 0;
                 _statSuccess = 0;
                 _statFailed = 0;

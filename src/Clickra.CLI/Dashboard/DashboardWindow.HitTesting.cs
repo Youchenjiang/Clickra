@@ -27,9 +27,7 @@ namespace Clickra.UI
                 float virtLogW = Math.Max(760f, logW);
                 if (adjMouseX >= contentX && adjMouseX < virtLogW - 40)
                 {
-                    int activeCount = ClickraStorage.GetActiveTasks().Count;
-                    int startY = 90 + activeCount * 52;
-                    int currentY = startY;
+                    int currentY = GetHistoryListStartY();
                     for (int i = 0; i < _historyEntries.Count; i++)
                     {
                         bool isExpanded = (i == _expandedHistoryIndex);

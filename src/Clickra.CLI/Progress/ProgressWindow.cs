@@ -114,7 +114,7 @@ namespace Clickra.UI
         {
             if (files == null || files.Count == 0)
             {
-                MessageBox(IntPtr.Zero, "未傳入任何檔案進行處理。", "Clickra — 警告", 0x30); // MB_ICONWARNING
+                MessageBox(IntPtr.Zero, Loc("cli_err_no_input"), Loc("cli_err_no_input_title"), 0x30); // MB_ICONWARNING
                 return;
             }
 
@@ -128,7 +128,7 @@ namespace Clickra.UI
                 _files = files;
                 _current = 0;
                 _total = files.Count * 100;
-                _message = "正在準備處理...";
+                _message = Loc("cli_progress_preparing");
                 _completed = false;
                 _hasError = false;
                 _errorMessage = "";
