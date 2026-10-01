@@ -96,7 +96,7 @@ public sealed partial class VisualSplitterControl : UserControl
 
     /// <summary>Renders the page at a resolution that supports the current zoom
     /// factor (fit 1x = 660px, capped at 1500px for deep zoom).</summary>
-    private int RenderWidth => (int)Math.Clamp(PreviewWidth * _zoomFactor, PreviewWidth, ZoomWidth);
+    private int RenderWidth => VisualSplitModel.ZoomRenderWidth(_zoomFactor, PreviewWidth, PreviewWidth, ZoomWidth);
 
     /// <summary>Sizes the preview page so factor 1.0 fits the viewport, then scales by
     /// the zoom factor (the ScrollViewer then provides panning when zoomed in).</summary>
@@ -116,22 +116,22 @@ public sealed partial class VisualSplitterControl : UserControl
 
         PreviewImage.Width = fitW * _zoomFactor;
         PreviewImage.Height = fitH * _zoomFactor;
-        ZoomLevelText.Text = $"{Math.Round(_zoomFactor * 100)}%";
+        ZoomLevelText.Text = $"{VisualSplitModel.ZoomPercent(_zoomFactor)}%";
     }
 
     /// <summary>Sets the zoom factor (clamped 1x-8x). Resizes immediately with the
     /// current bitmap, then re-renders at higher resolution for crispness.</summary>
     private void SetZoomFactor(float factor)
     {
-        float newFactor = Math.Clamp(factor, 1f, 8f);
+        float newFactor = VisualSplitModel.ClampZoomFactor(factor);
         if (Math.Abs(newFactor - _zoomFactor) < 0.001f) return;
         _zoomFactor = newFactor;
         ApplyPreviewSize();
         _ = UpdatePreview();
     }
 
-    private void ZoomInBtn_Click(object sender, RoutedEventArgs e) => SetZoomFactor(_zoomFactor * 1.25f);
-    private void ZoomOutBtn_Click(object sender, RoutedEventArgs e) => SetZoomFactor(_zoomFactor / 1.25f);
+    private void ZoomInBtn_Click(object sender, RoutedEventArgs e) => SetZoomFactor(VisualSplitModel.ZoomFactorAfter(_zoomFactor, +1));
+    private void ZoomOutBtn_Click(object sender, RoutedEventArgs e) => SetZoomFactor(VisualSplitModel.ZoomFactorAfter(_zoomFactor, -1));
     private void ZoomFitBtn_Click(object sender, RoutedEventArgs e) => SetZoomFactor(1f);
 
     /// <summary>Ctrl+wheel zooms the inline preview; a plain wheel keeps scrolling the
@@ -143,7 +143,7 @@ public sealed partial class VisualSplitterControl : UserControl
         if (!isCtrl) return;
         int delta = e.GetCurrentPoint(PreviewImage).Properties.MouseWheelDelta;
         if (delta == 0) return;
-        SetZoomFactor(_zoomFactor * (delta > 0 ? 1.25f : 0.8f));
+        SetZoomFactor(VisualSplitModel.ZoomFactorAfter(_zoomFactor, delta > 0 ? +1 : -1));
         e.Handled = true;
     }
 

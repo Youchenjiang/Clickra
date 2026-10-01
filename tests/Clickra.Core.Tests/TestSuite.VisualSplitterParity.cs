@@ -219,6 +219,26 @@ static partial class TestSuite
             Assert.Equal(TenPageHalvesSpec, driver.GetSpec());
         });
 
+        runner.Run("Visual splitter production zoom: clamp and step contract", () =>
+        {
+            Assert.True(Math.Abs(VisualSplitModel.ClampZoomFactor(0.25f) - VisualSplitModel.ZoomMinFactor) < 0.0001f,
+                "Zoom must not go below fit.");
+            Assert.True(Math.Abs(VisualSplitModel.ClampZoomFactor(99f) - VisualSplitModel.ZoomMaxFactor) < 0.0001f,
+                "Zoom must not exceed the maximum factor.");
+            Assert.True(Math.Abs(VisualSplitModel.ZoomFactorAfter(1f, +1) - 1.25f) < 0.0001f,
+                "One zoom-in step must multiply by 1.25.");
+            Assert.True(Math.Abs(VisualSplitModel.ZoomFactorAfter(1.25f, -1) - 1f) < 0.0001f,
+                "One zoom-out step must return 1.25x to fit.");
+            Assert.Equal(125, VisualSplitModel.ZoomPercent(1.25f));
+        });
+
+        runner.Run("Visual splitter production zoom: render width follows clamped factor", () =>
+        {
+            Assert.Equal(660, VisualSplitModel.ZoomRenderWidth(1f, 660, 660, 1500));
+            Assert.Equal(1320, VisualSplitModel.ZoomRenderWidth(2f, 660, 660, 1500));
+            Assert.Equal(1500, VisualSplitModel.ZoomRenderWidth(8f, 660, 660, 1500));
+            Assert.Equal(660, VisualSplitModel.ZoomRenderWidth(0.25f, 660, 660, 1500));
+        });
         runner.Run("Visual splitter UI surfaces delegate parity state to production model", () =>
         {
             string? root = FindRepoRoot();
@@ -273,6 +293,17 @@ static partial class TestSuite
                 Assert.True(fluentSplitter.Contains(call),
                     $"Fluent visual splitter must delegate production state through {call}.");
             }
+
+            Assert.True(cliControls.Contains("VisualSplitModel.ZoomFactorAfter(", StringComparison.Ordinal),
+                "CLI zoom stepping must delegate to the shared production zoom contract.");
+            Assert.True(cliSplitter.Contains("VisualSplitModel.ClampZoomFactor(", StringComparison.Ordinal),
+                "CLI zoom clamping must delegate to the shared production zoom contract.");
+            Assert.True(fluentSplitter.Contains("VisualSplitModel.ZoomFactorAfter(", StringComparison.Ordinal),
+                "Fluent zoom stepping must delegate to the shared production zoom contract.");
+            Assert.True(fluentSplitter.Contains("VisualSplitModel.ClampZoomFactor(", StringComparison.Ordinal),
+                "Fluent zoom clamping must delegate to the shared production zoom contract.");
+            Assert.True(fluentSplitter.Contains("VisualSplitModel.ZoomRenderWidth(", StringComparison.Ordinal),
+                "Fluent preview resolution must delegate to the shared production zoom contract.");
         });
     }
 }

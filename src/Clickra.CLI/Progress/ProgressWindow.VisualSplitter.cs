@@ -296,7 +296,7 @@ public partial class ProgressWindow
     /// (anchorX, anchorY) stationary where possible.</summary>
     private void SetVisualSplitZoomFactor(float newFactor, float anchorX, float anchorY)
     {
-        newFactor = Math.Clamp(newFactor, 1f, 8f);
+        newFactor = VisualSplitModel.ClampZoomFactor(newFactor);
         float oldFactor = Math.Max(1f, _visualSplitZoomFactor);
 
         if (GetVisualSplitZoomImageRect(out var dx, out var dy, out _, out _))
