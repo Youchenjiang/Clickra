@@ -19,8 +19,6 @@ public partial class ProgressWindow
 {
     /// <summary>True while the visual splitter is active (the password prompt is suppressed).</summary>
     private volatile bool _isPromptingVisualSplitter = false; // skipcq: CS-R1137
-    /// <summary>Total page count of the document being split.</summary>
-    private int _visualSplitTotalPages = 1;
     /// <summary>Split mode: 0 = custom segments, 1 = split every page, 2 = fixed pages per segment.</summary>
     private int _visualSplitMode = 0;
     /// <summary>Pages per segment in fixed-page mode.</summary>
@@ -387,7 +385,6 @@ public partial class ProgressWindow
     /// <summary>Copies shared model state into the Win32 view fields used by paint/layout code.</summary>
     private void SyncVisualSplitStateFromModel()
     {
-        _visualSplitTotalPages = _visualSplitModel.TotalPages;
         _visualSplitMode = _visualSplitModel.Mode;
         _visualSplitNPages = _visualSplitModel.PagesPerSegment;
         _visualSplitSegments = new List<(int Start, int End)>(_visualSplitModel.Segments);

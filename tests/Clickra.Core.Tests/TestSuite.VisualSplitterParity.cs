@@ -11,6 +11,8 @@ namespace Clickra.Core.Tests;
 /// </summary>
 static partial class TestSuite
 {
+    private const string TenPageHalvesSpec = "1-5; 6-10";
+
     public interface IVisualSplitterDriver
     {
         int TotalPages { get; }
@@ -68,13 +70,13 @@ static partial class TestSuite
     {
         var goldenCases = new List<GoldenTestCase>
         {
-            new("Init halves: 10 pages", 10, _ => { }, "1-5; 6-10"),
+            new("Init halves: 10 pages", 10, _ => { }, TenPageHalvesSpec),
             new("Init odd: 7 pages", 7, _ => { }, "1-3; 4-7"),
             new("Init single: 1 page", 1, _ => { }, "1"),
             new("Init pair: 2 pages", 2, _ => { }, "1; 2"),
             new("Init clamp non-positive: 0 pages clamped to 1", 0, _ => { }, "1"),
             new("Switch mode: split every page on 5 pages", 5, d => d.SetMode(1), "all"),
-            new("Fixed pages: default N=5 on 10 pages", 10, d => d.SetMode(2), "1-5; 6-10"),
+            new("Fixed pages: default N=5 on 10 pages", 10, d => d.SetMode(2), TenPageHalvesSpec),
             new("Fixed pages: step down N from 5 to 4 on 10 pages", 10, d =>
             {
                 d.SetMode(2);
@@ -120,7 +122,7 @@ static partial class TestSuite
             {
                 d.NavigatePreview(+10); // clamped to page 5 (last page of 1-5)
                 d.SplitAtCurrentPage();
-            }, "1-5; 6-10"),
+            }, TenPageHalvesSpec),
             new("Delete first segment when multiple exist", 10, d =>
             {
                 d.DeleteSegment();
@@ -140,7 +142,7 @@ static partial class TestSuite
             new("Add segment when fully covered is safe no-op", 10, d =>
             {
                 d.AddSegment();
-            }, "1-5; 6-10"),
+            }, TenPageHalvesSpec),
             new("Clear segments produces all spec", 10, d =>
             {
                 d.ClearSegments();
@@ -178,7 +180,7 @@ static partial class TestSuite
             {
                 d.SelectSegment(99);
                 d.SelectSegment(-1);
-            }, "1-5; 6-10"),
+            }, TenPageHalvesSpec),
             new("Complex multi-step sequence parity", 15, d =>
             {
                 d.SetMode(2);          // 1-5, 6-10, 11-15
@@ -214,7 +216,7 @@ static partial class TestSuite
             driver.AddSegment();
 
             Assert.Equal(VisualSplitModel.ModeCustom, driver.Mode);
-            Assert.Equal("1-5; 6-10", driver.GetSpec());
+            Assert.Equal(TenPageHalvesSpec, driver.GetSpec());
         });
 
         runner.Run("Visual splitter UI surfaces delegate parity state to production model", () =>
