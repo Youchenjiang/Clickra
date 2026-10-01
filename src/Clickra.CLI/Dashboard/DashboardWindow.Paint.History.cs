@@ -76,108 +76,113 @@ namespace Clickra.UI
 
         private static void DrawActiveHistoryRows(Graphics g, float contentX, int rowW, float s, List<ClickraStorage.HistoryEntry> activeTasks)
         {
-            int rowH = 44;
-
-            // ——— 顯示進行中任務佇列（置頂）———
-            int activeIndex = 0;
-            foreach (var task in activeTasks)
+            const int rowH = 44;
+            for (int i = 0; i < activeTasks.Count; i++)
             {
-                int rowY = 90 + activeIndex * HistoryRowStride;
-                activeIndex++;
-                var activeFiles = !string.IsNullOrEmpty(task.InputPaths)
-                    ? task.InputPaths.Split(new[] { ';' }, StringSplitOptions.RemoveEmptyEntries)
-                    : Array.Empty<string>();
-
-                ConversionStatus fileStatus = task.Status;
-
-                    // Background color & border color based on fileStatus
-                    Color activeBgColor = fileStatus switch
-                    {
-                        ConversionStatus.Pending    => Color.FromArgb(38, 38, 48),
-                        ConversionStatus.InProgress => Color.FromArgb(30, 42, 55),
-                        ConversionStatus.Success    => Color.FromArgb(30, 44, 34),
-                        ConversionStatus.Failed     => Color.FromArgb(50, 32, 32),
-                        _                           => Color.FromArgb(36, 36, 36)
-                    };
-                    Color activeBorderColor = fileStatus switch
-                    {
-                        ConversionStatus.Pending    => Color.FromArgb(70, 70, 100),
-                        ConversionStatus.InProgress => Color.FromArgb(0, 120, 212),
-                        ConversionStatus.Success    => Color.FromArgb(50, 160, 80),
-                        ConversionStatus.Failed     => Color.FromArgb(200, 60, 60),
-                        _                           => Color.FromArgb(60, 60, 60)
-                    };
-
-                    using (var path = UIHelper.GetRoundedRectPath(new RectangleF(contentX * s, rowY * s, rowW * s, rowH * s), 6 * s))
-                    using (var rowBg = new SolidBrush(activeBgColor))
-                    {
-                        g.FillPath(rowBg, path);
-                        using (var borderPen = new Pen(activeBorderColor))
-                        {
-                            g.DrawPath(borderPen, path);
-                        }
-                    }
-
-                    // Render Time
-                    float timeW = 120;
-                    if (_bodyFont != null)
-                    {
-                        using var timeBrush = new SolidBrush(Color.FromArgb(140, 140, 140));
-                        g.DrawString(task.Time, _bodyFont, timeBrush, (contentX + 12) * s, (rowY + 13) * s);
-                        timeW = g.MeasureString(task.Time, _bodyFont).Width / s;
-                    }
-
-                    // Command Tag
-                    float tagX = contentX + 12 + timeW + 16;
-                    float tagW = DrawCommandTag(g, task.Command, tagX, rowY + 11);
-
-                    // Status Label (量測實際寬度，靠右對齊)
-                    string statusText = fileStatus switch
-                    {
-                        ConversionStatus.Pending    => GetText("status_pending"),
-                        ConversionStatus.InProgress => GetText("status_converting"),
-                        ConversionStatus.Success    => GetText("status_success"),
-                        ConversionStatus.Failed     => GetText("status_failed"),
-                        _                           => ""
-                    };
-                    Color statusColor = fileStatus switch
-                    {
-                        ConversionStatus.Pending    => Color.FromArgb(180, 180, 100),
-                        ConversionStatus.InProgress => Color.FromArgb(80, 160, 240),
-                        ConversionStatus.Success    => Color.FromArgb(100, 220, 100),
-                        ConversionStatus.Failed     => Color.FromArgb(255, 90, 70),
-                        _                           => Color.Gray
-                    };
-                    float activeStatusW = _tagFont != null ? g.MeasureString(statusText, _tagFont).Width / s : 50f;
-                    float activeStatusX = contentX + rowW - 16 - activeStatusW;
-
-                    // Filename (tag 之後到 status 之前的所有空間)
-                    if (_bodyFont != null)
-                    {
-                        using var countBrush = new SolidBrush(Color.FromArgb(200, 200, 200));
-                        float fileCountX = tagX + tagW + 16;
-                        
-                        string displayText = FormatFileCountText(activeFiles, task.FileCount);
-
-                        float maxW = activeStatusX - 16 - fileCountX;
-                        if (maxW > 20)
-                        {
-                            displayText = UIHelper.TruncateFileName(g, displayText, _bodyFont, maxW, s);
-                        }
-                        g.DrawString(displayText, _bodyFont, countBrush, fileCountX * s, (rowY + 13) * s);
-                    }
-
-                    if (_tagFont != null)
-                    {
-                        using var statusBrush = new SolidBrush(statusColor);
-                        g.DrawString(statusText, _tagFont, statusBrush, activeStatusX * s, (rowY + 13) * s);
-                    }
-
+                int rowY = 90 + i * HistoryRowStride;
+                DrawActiveHistoryRow(g, contentX, rowW, rowH, rowY, s, activeTasks[i]);
             }
-
-            // ——— 顯示待繼續（已暫存）任務：逐項顯示還剩幾天過期 ———
         }
 
+        private static void DrawActiveHistoryRow(
+            Graphics g,
+            float contentX,
+            int rowW,
+            int rowH,
+            int rowY,
+            float s,
+            ClickraStorage.HistoryEntry task)
+        {
+            string[] activeFiles = SplitHistoryInputPaths(task.InputPaths);
+            ConversionStatus fileStatus = task.Status;
+            Color activeBgColor = GetActiveHistoryBackgroundColor(fileStatus);
+            Color activeBorderColor = GetActiveHistoryBorderColor(fileStatus);
+
+            using (var path = UIHelper.GetRoundedRectPath(
+                       new RectangleF(contentX * s, rowY * s, rowW * s, rowH * s), 6 * s))
+            using (var rowBg = new SolidBrush(activeBgColor))
+            {
+                g.FillPath(rowBg, path);
+                using var borderPen = new Pen(activeBorderColor);
+                g.DrawPath(borderPen, path);
+            }
+
+            float timeW = 120;
+            if (_bodyFont != null)
+            {
+                using var timeBrush = new SolidBrush(Color.FromArgb(140, 140, 140));
+                g.DrawString(task.Time, _bodyFont, timeBrush, (contentX + 12) * s, (rowY + 13) * s);
+                timeW = g.MeasureString(task.Time, _bodyFont).Width / s;
+            }
+
+            float tagX = contentX + 12 + timeW + 16;
+            float tagW = DrawCommandTag(g, task.Command, tagX, rowY + 11);
+            string statusText = GetActiveHistoryStatusText(fileStatus);
+            Color statusColor = GetActiveHistoryStatusColor(fileStatus);
+            float activeStatusW = _tagFont != null ? g.MeasureString(statusText, _tagFont).Width / s : 50f;
+            float activeStatusX = contentX + rowW - 16 - activeStatusW;
+
+            if (_bodyFont != null)
+            {
+                using var countBrush = new SolidBrush(Color.FromArgb(200, 200, 200));
+                float fileCountX = tagX + tagW + 16;
+                string displayText = FormatFileCountText(activeFiles, task.FileCount);
+                float maxW = activeStatusX - 16 - fileCountX;
+                if (maxW > 20)
+                {
+                    displayText = UIHelper.TruncateFileName(g, displayText, _bodyFont, maxW, s);
+                }
+
+                g.DrawString(displayText, _bodyFont, countBrush, fileCountX * s, (rowY + 13) * s);
+            }
+
+            if (_tagFont != null)
+            {
+                using var statusBrush = new SolidBrush(statusColor);
+                g.DrawString(statusText, _tagFont, statusBrush, activeStatusX * s, (rowY + 13) * s);
+            }
+        }
+
+        private static string[] SplitHistoryInputPaths(string inputPaths) =>
+            !string.IsNullOrEmpty(inputPaths)
+                ? inputPaths.Split(new[] { ';' }, StringSplitOptions.RemoveEmptyEntries)
+                : Array.Empty<string>();
+
+        private static Color GetActiveHistoryBackgroundColor(ConversionStatus status) => status switch
+        {
+            ConversionStatus.Pending => Color.FromArgb(38, 38, 48),
+            ConversionStatus.InProgress => Color.FromArgb(30, 42, 55),
+            ConversionStatus.Success => Color.FromArgb(30, 44, 34),
+            ConversionStatus.Failed => Color.FromArgb(50, 32, 32),
+            _ => Color.FromArgb(36, 36, 36)
+        };
+
+        private static Color GetActiveHistoryBorderColor(ConversionStatus status) => status switch
+        {
+            ConversionStatus.Pending => Color.FromArgb(70, 70, 100),
+            ConversionStatus.InProgress => Color.FromArgb(0, 120, 212),
+            ConversionStatus.Success => Color.FromArgb(50, 160, 80),
+            ConversionStatus.Failed => Color.FromArgb(200, 60, 60),
+            _ => Color.FromArgb(60, 60, 60)
+        };
+
+        private static string GetActiveHistoryStatusText(ConversionStatus status) => status switch
+        {
+            ConversionStatus.Pending => GetText("status_pending"),
+            ConversionStatus.InProgress => GetText("status_converting"),
+            ConversionStatus.Success => GetText("status_success"),
+            ConversionStatus.Failed => GetText("status_failed"),
+            _ => ""
+        };
+
+        private static Color GetActiveHistoryStatusColor(ConversionStatus status) => status switch
+        {
+            ConversionStatus.Pending => Color.FromArgb(180, 180, 100),
+            ConversionStatus.InProgress => Color.FromArgb(80, 160, 240),
+            ConversionStatus.Success => Color.FromArgb(100, 220, 100),
+            ConversionStatus.Failed => Color.FromArgb(255, 90, 70),
+            _ => Color.Gray
+        };
         private static void DrawPersistedHistoryRows(Graphics g, float logH, float contentX, int rowW, float s)
         {
             int currentY = GetHistoryListStartY();
@@ -187,198 +192,217 @@ namespace Clickra.UI
             }
         }
 
-        private static int DrawPersistedHistoryRow(Graphics g, int i, int currentY, float logH, float contentX, int rowW, float s)
+        private static int DrawPersistedHistoryRow(
+            Graphics g,
+            int index,
+            int currentY,
+            float logH,
+            float contentX,
+            int rowW,
+            float s)
         {
-                var entry = _historyEntries[i];
-                bool isExpanded = (i == _expandedHistoryIndex);
-                int currentH = isExpanded ? 160 : 44;
+            var entry = _historyEntries[index];
+            bool isExpanded = index == _expandedHistoryIndex;
+            int currentH = isExpanded ? 160 : 44;
+            int nextY = currentY + currentH + 8;
 
-                // Optimization: Skip rendering if item is completely outside viewport
-                if (currentY + currentH < _contentScrollY || currentY > _contentScrollY + logH)
-                {
-                    return currentY + currentH + 8;
-                }
+            if (currentY + currentH < _contentScrollY || currentY > _contentScrollY + logH)
+            {
+                return nextY;
+            }
 
-                using var path = UIHelper.GetRoundedRectPath(new RectangleF(contentX * s, currentY * s, rowW * s, currentH * s), 6 * s);
-                using var rowBg = new SolidBrush(Color.FromArgb(36, 36, 36));
-                g.FillPath(rowBg, path);
+            using var path = UIHelper.GetRoundedRectPath(
+                new RectangleF(contentX * s, currentY * s, rowW * s, currentH * s), 6 * s);
+            using var rowBg = new SolidBrush(Color.FromArgb(36, 36, 36));
+            g.FillPath(rowBg, path);
 
-                using var borderPen = new Pen(Color.FromArgb(48, 48, 48));
-                g.DrawPath(borderPen, path);
+            using var borderPen = new Pen(Color.FromArgb(48, 48, 48));
+            g.DrawPath(borderPen, path);
 
-                // 時間與相對排版計算
-                float timeW = 120;
-                if (_bodyFont != null)
-                {
-                    using var timeBrush = new SolidBrush(Color.FromArgb(140, 140, 140));
-                    g.DrawString(entry.Time, _bodyFont, timeBrush, (contentX + 12) * s, (currentY + 13) * s);
-                    timeW = g.MeasureString(entry.Time, _bodyFont).Width / s;
-                }
+            DrawPersistedHistorySummary(g, entry, currentY, contentX, rowW, s);
+            if (isExpanded)
+            {
+                DrawExpandedHistoryDetails(g, entry, index, currentY, contentX, rowW, s);
+            }
 
-                // 指令標籤 (動態相對起點)
-                float tagX = contentX + 12 + timeW + 16;
-                float tagW = DrawCommandTag(g, entry.Command, tagX, currentY + 11);
-
-                // 狀態標籤與顏色計算
-                Color statusColor = entry.IsSuccess ? Color.FromArgb(100, 220, 100) : Color.FromArgb(255, 90, 70);
-                string statusText = entry.IsSuccess 
-                    ? GetText("status_success") 
-                    : (entry.ErrorMessage?.Equals("User Aborted", StringComparison.OrdinalIgnoreCase) == true 
-                        ? GetText("error_user_aborted") 
-                        : GetText("status_error"));
-
-                float statusW = _tagFont != null ? g.MeasureString(statusText, _tagFont).Width / s : 50f;
-                float statusX = contentX + rowW - 16 - statusW;
-
-                // 檔案名稱：tag 之後到 status 之前的所有空間
-                if (_bodyFont != null)
-                {
-                    using var countBrush = new SolidBrush(Color.FromArgb(200, 200, 200));
-                    float fileCountX = tagX + tagW + 16;
-                    string displayText = $"{entry.FileCount} {GetText(LabelFilesKey)}";
-                    if (!string.IsNullOrEmpty(entry.InputPaths))
-                    {
-                        var paths = entry.InputPaths.Split(';', StringSplitOptions.RemoveEmptyEntries);
-                        if (paths.Length > 1)
-                        {
-                            displayText = $"{Path.GetFileName(paths[0])} + {paths.Length - 1} {GetText(LabelFilesKey)}";
-                        }
-                        else if (paths.Length == 1)
-                        {
-                            displayText = Path.GetFileName(paths[0]);
-                        }
-                    }
-                    float maxW = statusX - 16 - fileCountX;
-                    if (maxW > 20)
-                    {
-                        displayText = UIHelper.TruncateFileName(g, displayText, _bodyFont, maxW, s);
-                    }
-                    g.DrawString(displayText, _bodyFont, countBrush, fileCountX * s, (currentY + 13) * s);
-                }
-
-                // 繪製狀態標籤（靠右）
-                if (_tagFont != null)
-                {
-                    using var statusBrush = new SolidBrush(statusColor);
-                    g.DrawString(statusText, _tagFont, statusBrush, statusX * s, (currentY + 13) * s);
-                }
-
-                // Render Expanded Details
-                if (isExpanded)
-                {
-                    using (var cardDivPen = new Pen(Color.FromArgb(56, 56, 56)))
-                    {
-                        g.DrawLine(cardDivPen, (contentX + 12) * s, (currentY + 44) * s, (contentX + rowW - 12) * s, (currentY + 44) * s);
-                    }
-
-                    if (_subFont != null)
-                    {
-                        using var labelBrush = new SolidBrush(Color.FromArgb(140, 140, 140));
-                        using var valBrush = new SolidBrush(Color.FromArgb(220, 220, 220));
-
-                        // Measure label widths to draw values relatively
-                        float w1 = g.MeasureString(GetText("history_detail_inputs") + ":", _subFont).Width / s;
-                        float w2 = g.MeasureString(GetText("history_detail_outputs") + ":", _subFont).Width / s;
-                        float w3 = g.MeasureString(GetText("history_detail_time") + ":", _subFont).Width / s;
-                        float w4 = g.MeasureString(GetText(entry.IsSuccess ? "history_detail_elapsed" : "history_detail_error") + ":", _subFont).Width / s;
-                        float maxLabelW = Math.Max(w1, Math.Max(w2, Math.Max(w3, w4)));
-                        float valX = contentX + 12 + maxLabelW + 16;
-                        float maxValW = contentX + rowW - 12 - valX;
-
-                        // 1. Files / Input Paths
-                        g.DrawString(GetText("history_detail_inputs") + ":", _subFont, labelBrush, (contentX + 12) * s, (currentY + 54) * s);
-                        string inputsText = entry.InputPaths;
-                        if (string.IsNullOrEmpty(inputsText)) inputsText = "N/A";
-                        else inputsText = inputsText.Replace(";", ", ");
-                        
-                        float scrollOffset0 = 0;
-                        DetailScrollOffsets.TryGetValue((i, 0), out scrollOffset0);
-                        var state0 = g.Save();
-                        g.IntersectClip(new RectangleF(valX * s, (currentY + 54) * s, maxValW * s, 20 * s));
-                        g.DrawString(inputsText, _subFont, valBrush, (valX - scrollOffset0) * s, (currentY + 54) * s);
-                        g.Restore(state0);
-
-                        // Draw inputs scrollbar if scrollable
-                        float textW0 = g.MeasureString(inputsText, _subFont).Width / s;
-                        if (textW0 > maxValW)
-                        {
-                            float scrollbarY = currentY + 71;
-                            float thumbW = Math.Max(15f, (maxValW / textW0) * maxValW);
-                            float thumbX = valX + (scrollOffset0 / textW0) * maxValW;
-                            if (thumbX + thumbW > valX + maxValW) thumbX = valX + maxValW - thumbW;
-                            UIHelper.DrawHorizontalScrollbar(g, valX, scrollbarY, maxValW, thumbX, thumbW, s);
-                        }
-
-                        // 2. Output Path
-                        g.DrawString(GetText("history_detail_outputs") + ":", _subFont, labelBrush, (contentX + 12) * s, (currentY + 80) * s);
-                        string outputsText = entry.OutputPath;
-                        if (string.IsNullOrEmpty(outputsText)) outputsText = "N/A";
-                        
-                        float scrollOffset1 = 0;
-                        DetailScrollOffsets.TryGetValue((i, 1), out scrollOffset1);
-                        var state1 = g.Save();
-                        g.IntersectClip(new RectangleF(valX * s, (currentY + 80) * s, maxValW * s, 20 * s));
-                        g.DrawString(outputsText, _subFont, valBrush, (valX - scrollOffset1) * s, (currentY + 80) * s);
-                        g.Restore(state1);
-
-                        // Draw outputs scrollbar if scrollable
-                        float textW1 = g.MeasureString(outputsText, _subFont).Width / s;
-                        if (textW1 > maxValW)
-                        {
-                            float scrollbarY = currentY + 97;
-                            float thumbW = Math.Max(15f, (maxValW / textW1) * maxValW);
-                            float thumbX = valX + (scrollOffset1 / textW1) * maxValW;
-                            if (thumbX + thumbW > valX + maxValW) thumbX = valX + maxValW - thumbW;
-                            UIHelper.DrawHorizontalScrollbar(g, valX, scrollbarY, maxValW, thumbX, thumbW, s);
-                        }
-
-                        // 3. Time Details
-                        g.DrawString(GetText("history_detail_time") + ":", _subFont, labelBrush, (contentX + 12) * s, (currentY + 106) * s);
-                        string timeText = $"{entry.Time}  →  {(string.IsNullOrEmpty(entry.EndTime) ? entry.Time : entry.EndTime)}";
-                        timeText = UIHelper.TruncateText(g, timeText, _subFont, maxValW, s);
-                        g.DrawString(timeText, _subFont, valBrush, valX * s, (currentY + 106) * s);
-
-                        // 4. Elapsed Time or Error Message
-                        if (entry.IsSuccess)
-                        {
-                            g.DrawString(GetText("history_detail_elapsed") + ":", _subFont, labelBrush, (contentX + 12) * s, (currentY + 132) * s);
-                            string elapsedText = entry.ElapsedMs >= 0 ? $"{(entry.ElapsedMs / 1000.0):F2} s ({entry.ElapsedMs} ms)" : "N/A";
-                            elapsedText = UIHelper.TruncateText(g, elapsedText, _subFont, maxValW, s);
-                            g.DrawString(elapsedText, _subFont, valBrush, valX * s, (currentY + 132) * s);
-                        }
-                        else
-                        {
-                            g.DrawString(GetText("history_detail_error") + ":", _subFont, labelBrush, (contentX + 12) * s, (currentY + 132) * s);
-                            string errorText = !string.IsNullOrEmpty(entry.ErrorMessage) ? entry.ErrorMessage : "N/A";
-                            if (errorText.Equals("User Aborted", StringComparison.OrdinalIgnoreCase))
-                            {
-                                errorText = GetText("error_user_aborted");
-                            }
-                            
-                            float scrollOffset2 = 0;
-                            DetailScrollOffsets.TryGetValue((i, 2), out scrollOffset2);
-                            var state2 = g.Save();
-                            g.IntersectClip(new RectangleF(valX * s, (currentY + 132) * s, maxValW * s, 20 * s));
-                            g.DrawString(errorText, _subFont, valBrush, (valX - scrollOffset2) * s, (currentY + 132) * s);
-                            g.Restore(state2);
-
-                            // Draw error scrollbar if scrollable
-                            float textW2 = g.MeasureString(errorText, _subFont).Width / s;
-                            if (textW2 > maxValW)
-                            {
-                                float scrollbarY = currentY + 149;
-                                float thumbW = Math.Max(15f, (maxValW / textW2) * maxValW);
-                                float thumbX = valX + (scrollOffset2 / textW2) * maxValW;
-                                if (thumbX + thumbW > valX + maxValW) thumbX = valX + maxValW - thumbW;
-                                UIHelper.DrawHorizontalScrollbar(g, valX, scrollbarY, maxValW, thumbX, thumbW, s);
-                            }
-                        }
-                    }
-                }
-
-            return currentY + currentH + 8;
+            return nextY;
         }
 
+        private static void DrawPersistedHistorySummary(
+            Graphics g,
+            ClickraStorage.HistoryEntry entry,
+            int currentY,
+            float contentX,
+            int rowW,
+            float s)
+        {
+            float timeW = 120;
+            if (_bodyFont != null)
+            {
+                using var timeBrush = new SolidBrush(Color.FromArgb(140, 140, 140));
+                g.DrawString(entry.Time, _bodyFont, timeBrush, (contentX + 12) * s, (currentY + 13) * s);
+                timeW = g.MeasureString(entry.Time, _bodyFont).Width / s;
+            }
+
+            float tagX = contentX + 12 + timeW + 16;
+            float tagW = DrawCommandTag(g, entry.Command, tagX, currentY + 11);
+            string statusText = GetPersistedHistoryStatusText(entry);
+            Color statusColor = entry.IsSuccess ? Color.FromArgb(100, 220, 100) : Color.FromArgb(255, 90, 70);
+            float statusW = _tagFont != null ? g.MeasureString(statusText, _tagFont).Width / s : 50f;
+            float statusX = contentX + rowW - 16 - statusW;
+
+            if (_bodyFont != null)
+            {
+                using var countBrush = new SolidBrush(Color.FromArgb(200, 200, 200));
+                float fileCountX = tagX + tagW + 16;
+                string[] paths = SplitHistoryInputPaths(entry.InputPaths);
+                string displayText = FormatFileCountText(paths, entry.FileCount);
+                float maxW = statusX - 16 - fileCountX;
+                if (maxW > 20)
+                {
+                    displayText = UIHelper.TruncateFileName(g, displayText, _bodyFont, maxW, s);
+                }
+
+                g.DrawString(displayText, _bodyFont, countBrush, fileCountX * s, (currentY + 13) * s);
+            }
+
+            if (_tagFont != null)
+            {
+                using var statusBrush = new SolidBrush(statusColor);
+                g.DrawString(statusText, _tagFont, statusBrush, statusX * s, (currentY + 13) * s);
+            }
+        }
+
+        private static string GetPersistedHistoryStatusText(ClickraStorage.HistoryEntry entry)
+        {
+            if (entry.IsSuccess) return GetText("status_success");
+            if (entry.ErrorMessage?.Equals("User Aborted", StringComparison.OrdinalIgnoreCase) == true)
+                return GetText("error_user_aborted");
+            return GetText("status_error");
+        }
+
+        private static void DrawExpandedHistoryDetails(
+            Graphics g,
+            ClickraStorage.HistoryEntry entry,
+            int index,
+            int currentY,
+            float contentX,
+            int rowW,
+            float s)
+        {
+            using (var cardDivPen = new Pen(Color.FromArgb(56, 56, 56)))
+            {
+                g.DrawLine(
+                    cardDivPen,
+                    (contentX + 12) * s,
+                    (currentY + 44) * s,
+                    (contentX + rowW - 12) * s,
+                    (currentY + 44) * s);
+            }
+
+            if (_subFont == null) return;
+
+            using var labelBrush = new SolidBrush(Color.FromArgb(140, 140, 140));
+            using var valBrush = new SolidBrush(Color.FromArgb(220, 220, 220));
+
+            string resultLabelKey = entry.IsSuccess ? "history_detail_elapsed" : "history_detail_error";
+            float w1 = g.MeasureString(GetText("history_detail_inputs") + ":", _subFont).Width / s;
+            float w2 = g.MeasureString(GetText("history_detail_outputs") + ":", _subFont).Width / s;
+            float w3 = g.MeasureString(GetText("history_detail_time") + ":", _subFont).Width / s;
+            float w4 = g.MeasureString(GetText(resultLabelKey) + ":", _subFont).Width / s;
+            float maxLabelW = Math.Max(w1, Math.Max(w2, Math.Max(w3, w4)));
+            float valX = contentX + 12 + maxLabelW + 16;
+            float maxValW = contentX + rowW - 12 - valX;
+
+            g.DrawString(GetText("history_detail_inputs") + ":", _subFont, labelBrush,
+                (contentX + 12) * s, (currentY + 54) * s);
+            string inputsText = string.IsNullOrEmpty(entry.InputPaths) ? "N/A" : entry.InputPaths.Replace(";", ", ");
+            DrawScrollableHistoryDetail(
+                g, inputsText, valBrush, index, 0, valX, currentY + 54, currentY + 71, maxValW, s);
+
+            g.DrawString(GetText("history_detail_outputs") + ":", _subFont, labelBrush,
+                (contentX + 12) * s, (currentY + 80) * s);
+            string outputsText = string.IsNullOrEmpty(entry.OutputPath) ? "N/A" : entry.OutputPath;
+            DrawScrollableHistoryDetail(
+                g, outputsText, valBrush, index, 1, valX, currentY + 80, currentY + 97, maxValW, s);
+
+            g.DrawString(GetText("history_detail_time") + ":", _subFont, labelBrush,
+                (contentX + 12) * s, (currentY + 106) * s);
+            string endTime = string.IsNullOrEmpty(entry.EndTime) ? entry.Time : entry.EndTime;
+            string timeText = $"{entry.Time}  →  {endTime}";
+            timeText = UIHelper.TruncateText(g, timeText, _subFont, maxValW, s);
+            g.DrawString(timeText, _subFont, valBrush, valX * s, (currentY + 106) * s);
+
+            DrawExpandedHistoryResult(
+                g, entry, index, currentY, contentX, valX, maxValW, labelBrush, valBrush, s);
+        }
+
+        private static void DrawExpandedHistoryResult(
+            Graphics g,
+            ClickraStorage.HistoryEntry entry,
+            int index,
+            int currentY,
+            float contentX,
+            float valX,
+            float maxValW,
+            Brush labelBrush,
+            Brush valBrush,
+            float s)
+        {
+            if (entry.IsSuccess)
+            {
+                g.DrawString(GetText("history_detail_elapsed") + ":", _subFont!, labelBrush,
+                    (contentX + 12) * s, (currentY + 132) * s);
+                string elapsedText = entry.ElapsedMs >= 0
+                    ? $"{(entry.ElapsedMs / 1000.0):F2} s ({entry.ElapsedMs} ms)"
+                    : "N/A";
+                elapsedText = UIHelper.TruncateText(g, elapsedText, _subFont!, maxValW, s);
+                g.DrawString(elapsedText, _subFont!, valBrush, valX * s, (currentY + 132) * s);
+                return;
+            }
+
+            g.DrawString(GetText("history_detail_error") + ":", _subFont!, labelBrush,
+                (contentX + 12) * s, (currentY + 132) * s);
+            string errorText = string.IsNullOrEmpty(entry.ErrorMessage) ? "N/A" : entry.ErrorMessage;
+            if (errorText.Equals("User Aborted", StringComparison.OrdinalIgnoreCase))
+            {
+                errorText = GetText("error_user_aborted");
+            }
+
+            DrawScrollableHistoryDetail(
+                g, errorText, valBrush, index, 2, valX, currentY + 132, currentY + 149, maxValW, s);
+        }
+
+        private static void DrawScrollableHistoryDetail(
+            Graphics g,
+            string text,
+            Brush brush,
+            int historyIndex,
+            int detailIndex,
+            float valX,
+            float valueY,
+            float scrollbarY,
+            float maxValW,
+            float s)
+        {
+            DetailScrollOffsets.TryGetValue((historyIndex, detailIndex), out float scrollOffset);
+            var state = g.Save();
+            g.IntersectClip(new RectangleF(valX * s, valueY * s, maxValW * s, 20 * s));
+            g.DrawString(text, _subFont!, brush, (valX - scrollOffset) * s, valueY * s);
+            g.Restore(state);
+
+            float textW = g.MeasureString(text, _subFont!).Width / s;
+            if (textW <= maxValW) return;
+
+            float thumbW = Math.Max(15f, (maxValW / textW) * maxValW);
+            float thumbX = valX + (scrollOffset / textW) * maxValW;
+            if (thumbX + thumbW > valX + maxValW)
+            {
+                thumbX = valX + maxValW - thumbW;
+            }
+
+            UIHelper.DrawHorizontalScrollbar(g, valX, scrollbarY, maxValW, thumbX, thumbW, s);
+        }
         /// <summary>Formats the file-count display text for a history row.</summary>
         private static string FormatFileCountText(string[] activeFiles, int fileCount)
         {
