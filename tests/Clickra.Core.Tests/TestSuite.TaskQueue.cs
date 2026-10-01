@@ -401,15 +401,18 @@ static partial class TestSuite
             "Each parked row must carry its own remaining retention.");
         Assert.True(paint.Contains("task_parked_title", StringComparison.Ordinal),
             "The parked block needs its localized heading.");
-        Assert.True(paint.Contains("task_parked_desc", StringComparison.Ordinal),
+        void AssertPaintContains(string token, string failure) =>
+            Assert.True(paint.Contains(token, StringComparison.Ordinal), failure);
+
+        AssertPaintContains("task_parked_desc",
             "The parked block must show its description when no tasks are expiring.");
         Assert.True(paint.Contains("task_parked_expiring_warning", StringComparison.Ordinal),
             "Parked rows about to be pruned must raise the aggregate warning.");
-        Assert.True(paint.Contains("task_parked_badge_expiring", StringComparison.Ordinal),
+        AssertPaintContains("task_parked_badge_expiring",
             "Parked tasks that are expiring soon must render the expiring badge.");
-        Assert.True(paint.Contains("info.IsExpiringSoon", StringComparison.Ordinal),
+        AssertPaintContains("info.IsExpiringSoon",
             "CLI dashboard must check IsExpiringSoon to highlight expiring tasks.");
-        Assert.True(paint.Contains("fluent_task_file_index", StringComparison.Ordinal),
+        AssertPaintContains("fluent_task_file_index",
             "CLI dashboard must display the file index matching Fluent format.");
         string parkedDetails = MethodBody(paint, "private static void DrawParkedTaskDetails(");
         Assert.True(parkedDetails.Contains("DrawHistoryRowText(g, displayText, fileX, ttlX, currentY, s, suppressWhenNarrow: true)", StringComparison.Ordinal),
