@@ -14,6 +14,8 @@ namespace Clickra.Core.Tests;
 /// </summary>
 static partial class TestSuite
 {
+    private const string ProgressDirectory = "Progress";
+
     public static void RegisterProgressWindowTests(TestRunner runner)
     {
         runner.Run("Progress window: every minimize goes through the tray path", () =>
@@ -21,7 +23,7 @@ static partial class TestSuite
             string? root = FindRepoRoot();
             if (root is null) throw new TestSkippedException("Could not locate the repository root from the test output directory.");
 
-            string dir = Path.Combine(root, "src", "Clickra.CLI", "Progress");
+            string dir = Path.Combine(root, "src", CliProjectDirectory, ProgressDirectory);
             string controls = StripComments(File.ReadAllText(Path.Combine(dir, "ProgressWindow.Controls.cs")));
             string tray = StripComments(File.ReadAllText(Path.Combine(dir, "ProgressWindow.Tray.cs")));
 
@@ -66,10 +68,10 @@ static partial class TestSuite
             string? root = FindRepoRoot();
             if (root is null) throw new TestSkippedException("Could not locate the repository root from the test output directory.");
 
-            string dir = Path.Combine(root, "src", "Clickra.CLI", "Progress");
+            string dir = Path.Combine(root, "src", CliProjectDirectory, ProgressDirectory);
             string controls = StripComments(File.ReadAllText(Path.Combine(dir, "ProgressWindow.Controls.cs")));
             string window = StripComments(File.ReadAllText(Path.Combine(dir, "ProgressWindow.cs")));
-            string win32 = StripComments(File.ReadAllText(Path.Combine(root, "src", "Clickra.CLI", "Native", "Win32.cs")));
+            string win32 = StripComments(File.ReadAllText(Path.Combine(root, "src", CliProjectDirectory, "Native", "Win32.cs")));
 
             // Minimizing to the tray is only acceptable because the tray icon restores the window;
             // if the round trip breaks, hiding the window becomes a one-way trip.
@@ -141,8 +143,8 @@ static partial class TestSuite
             string? root = FindRepoRoot();
             if (root is null) throw new TestSkippedException("Could not locate repository root.");
 
-            string paintPath = Path.Combine(root, "src", "Clickra.CLI", "Progress", "ProgressWindow.Paint.cs");
-            string splitterPath = Path.Combine(root, "src", "Clickra.CLI", "Progress", "ProgressWindow.VisualSplitter.cs");
+            string paintPath = Path.Combine(root, "src", CliProjectDirectory, ProgressDirectory, "ProgressWindow.Paint.cs");
+            string splitterPath = Path.Combine(root, "src", CliProjectDirectory, ProgressDirectory, "ProgressWindow.VisualSplitter.cs");
             string xamlPath = Path.Combine(root, "src", "Clickra.Fluent", "Controls", "VisualSplitterControl.xaml");
             string xamlCodePath = Path.Combine(root, "src", "Clickra.Fluent", "Controls", "VisualSplitterControl.xaml.cs");
 
