@@ -412,11 +412,14 @@ static partial class TestSuite
         Assert.True(paint.Contains("fluent_task_file_index", StringComparison.Ordinal),
             "CLI dashboard must display the file index matching Fluent format.");
         string parkedDetails = MethodBody(paint, "private static void DrawParkedTaskDetails(");
-        int widthGuard = parkedDetails.IndexOf("if (maxW <= 20) return;", StringComparison.Ordinal);
-        int truncateCall = parkedDetails.IndexOf("UIHelper.TruncateFileName", StringComparison.Ordinal);
-        int drawCall = parkedDetails.IndexOf("g.DrawString(displayText", StringComparison.Ordinal);
-        Assert.True(widthGuard >= 0 && truncateCall > widthGuard && drawCall > truncateCall,
+        Assert.True(parkedDetails.Contains("DrawHistoryRowText(g, displayText, fileX, ttlX, currentY, s, suppressWhenNarrow: true)", StringComparison.Ordinal),
             "Parked task details must only render when space remains before the right-aligned retention label.");
+        string sharedRowText = MethodBody(paint, "private static void DrawHistoryRowText(");
+        int widthGuard = sharedRowText.IndexOf("if (suppressWhenNarrow && maxW <= 20) return;", StringComparison.Ordinal);
+        int truncateCall = sharedRowText.IndexOf("UIHelper.TruncateFileName", StringComparison.Ordinal);
+        int drawCall = sharedRowText.IndexOf("g.DrawString(displayText", StringComparison.Ordinal);
+        Assert.True(widthGuard >= 0 && truncateCall > widthGuard && drawCall > truncateCall,
+            "Shared history row text must preserve the narrow-row guard before truncation and drawing.");
         Assert.True(paint.Contains("DrawParkedQueue(g,", StringComparison.Ordinal),
             "The History page must call the parked block.");
 

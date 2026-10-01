@@ -135,19 +135,9 @@ namespace Clickra.UI
             float activeStatusW = _tagFont != null ? g.MeasureString(statusText, _tagFont).Width / s : 50f;
             float activeStatusX = contentX + rowW - 16 - activeStatusW;
 
-            if (_bodyFont != null)
-            {
-                using var countBrush = new SolidBrush(Color.FromArgb(200, 200, 200));
-                float fileCountX = tagX + tagW + 16;
-                string displayText = FormatFileCountText(activeFiles, task.FileCount);
-                float maxW = activeStatusX - 16 - fileCountX;
-                if (maxW > 20)
-                {
-                    displayText = UIHelper.TruncateFileName(g, displayText, _bodyFont, maxW, s);
-                }
-
-                g.DrawString(displayText, _bodyFont, countBrush, fileCountX * s, (rowY + 13) * s);
-            }
+            float fileCountX = tagX + tagW + 16;
+            string displayText = FormatFileCountText(activeFiles, task.FileCount);
+            DrawHistoryRowText(g, displayText, fileCountX, activeStatusX, rowY, s, suppressWhenNarrow: false);
 
             if (_tagFont != null)
             {
@@ -264,20 +254,10 @@ namespace Clickra.UI
             float statusW = _tagFont != null ? g.MeasureString(statusText, _tagFont).Width / s : 50f;
             float statusX = contentX + rowW - 16 - statusW;
 
-            if (_bodyFont != null)
-            {
-                using var countBrush = new SolidBrush(Color.FromArgb(200, 200, 200));
-                float fileCountX = tagX + tagW + 16;
-                string[] paths = SplitHistoryInputPaths(entry.InputPaths);
-                string displayText = FormatFileCountText(paths, entry.FileCount);
-                float maxW = statusX - 16 - fileCountX;
-                if (maxW > 20)
-                {
-                    displayText = UIHelper.TruncateFileName(g, displayText, _bodyFont, maxW, s);
-                }
-
-                g.DrawString(displayText, _bodyFont, countBrush, fileCountX * s, (currentY + 13) * s);
-            }
+            float fileCountX = tagX + tagW + 16;
+            string[] paths = SplitHistoryInputPaths(entry.InputPaths);
+            string displayText = FormatFileCountText(paths, entry.FileCount);
+            DrawHistoryRowText(g, displayText, fileCountX, statusX, currentY, s, suppressWhenNarrow: false);
 
             if (_tagFont != null)
             {
@@ -606,12 +586,29 @@ namespace Clickra.UI
             string reason = !string.IsNullOrWhiteSpace(task.ErrorMessage) ? task.ErrorMessage : "";
             string displayText = string.Join(" · ", new[] { firstFile, stoppedOn, reason }.Where(part => !string.IsNullOrWhiteSpace(part)));
 
-            float maxW = ttlX - 16 - fileX;
-            if (maxW <= 20) return;
+            DrawHistoryRowText(g, displayText, fileX, ttlX, currentY, s, suppressWhenNarrow: true);
+        }
 
-            displayText = UIHelper.TruncateFileName(g, displayText, _bodyFont, maxW, s);
-            using var fileBrush = new SolidBrush(Color.FromArgb(200, 200, 200));
-            g.DrawString(displayText, _bodyFont, fileBrush, fileX * s, (currentY + 13) * s);
+        private static void DrawHistoryRowText(
+            Graphics g,
+            string displayText,
+            float textX,
+            float rightTextX,
+            int rowY,
+            float s,
+            bool suppressWhenNarrow)
+        {
+            if (_bodyFont == null) return;
+
+            float maxW = rightTextX - 16 - textX;
+            if (suppressWhenNarrow && maxW <= 20) return;
+            if (maxW > 20)
+            {
+                displayText = UIHelper.TruncateFileName(g, displayText, _bodyFont, maxW, s);
+            }
+
+            using var textBrush = new SolidBrush(Color.FromArgb(200, 200, 200));
+            g.DrawString(displayText, _bodyFont, textBrush, textX * s, (rowY + 13) * s);
         }
 
         /// <summary>Draws a colored command tag at the given position and returns its width.</summary>
