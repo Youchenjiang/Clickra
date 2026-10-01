@@ -24,6 +24,7 @@ namespace Clickra.Core.Tests;
 /// </summary>
 static partial class TestSuite
 {
+    private static readonly TimeSpan UiResourceRegexTimeout = TimeSpan.FromSeconds(1);
     /// <summary>UI 語言的程式碼（zh-TW）與 resw 資料夾名稱（zh-tw）互轉。</summary>
     private static string CultureFolder(string languageCode) => languageCode.ToLowerInvariant();
 
@@ -32,13 +33,13 @@ static partial class TestSuite
     {
         string comMethods = File.ReadAllText(Path.Combine(repoRoot, "src", "ClickraShell", "ComMethods.cs"));
 
-        Match menuKeys = Regex.Match(comMethods, @"MenuKeys\s*=\s*\{(?<body>[^}]*)\}");
+        Match menuKeys = Regex.Match(comMethods, @"MenuKeys\s*=\s*\{(?<body>[^}]*)\}", RegexOptions.None, UiResourceRegexTimeout);
         Assert.True(menuKeys.Success, "ComMethods must declare the MenuKeys array the shell menu renders.");
-        var keys = Regex.Matches(menuKeys.Groups["body"].Value, "\"(?<key>[^\"]+)\"")
+        var keys = Regex.Matches(menuKeys.Groups["body"].Value, "\"(?<key>[^\"]+)\"", RegexOptions.None, UiResourceRegexTimeout)
             .Select(m => m.Groups["key"].Value)
             .ToList();
 
-        Match rootKey = Regex.Match(comMethods, @"RootTitleKey\s*=\s*""(?<key>[^""]+)""");
+        Match rootKey = Regex.Match(comMethods, @"RootTitleKey\s*=\s*""(?<key>[^""]+)""", RegexOptions.None, UiResourceRegexTimeout);
         Assert.True(rootKey.Success, "ComMethods must declare the root menu label's resource key.");
         keys.Add(rootKey.Groups["key"].Value);
 
@@ -109,7 +110,7 @@ static partial class TestSuite
 
             // Every label key the table declares, straight from the registry source.
             string registrySource = File.ReadAllText(Path.Combine(root, "src", "Clickra.Core", "Processors", "ConvertCommandRegistry.cs"));
-            string[] declared = Regex.Matches(registrySource, "\"(?<key>cmd_[a-z_]+)\"")
+            string[] declared = Regex.Matches(registrySource, "\"(?<key>cmd_[a-z_]+)\"", RegexOptions.None, UiResourceRegexTimeout)
                 .Select(m => m.Groups["key"].Value)
                 .Distinct(StringComparer.Ordinal)
                 .OrderBy(k => k, StringComparer.Ordinal)
