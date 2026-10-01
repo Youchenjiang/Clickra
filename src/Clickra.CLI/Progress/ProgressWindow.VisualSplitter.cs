@@ -512,6 +512,12 @@ public partial class ProgressWindow
         PaintSplitterZoomOverlay(g, s);
     }
 
+    private static string Loc(string key) =>
+        Localization.T(key, ClickraStorage.GetSetting(ClickraSettings.Language));
+
+    private static string Loc(string key, params object[] args) =>
+        string.Format(Localization.T(key, ClickraStorage.GetSetting(ClickraSettings.Language)), args);
+
     /// <summary>Paints the three mode buttons (custom segments, split each page, fixed pages).</summary>
     private void PaintSplitterModeBar(Graphics g, float s)
     {
@@ -519,7 +525,12 @@ public partial class ProgressWindow
         float modeWidth = 140 * s;
         float modeHeight = 26 * s;
 
-        string[] modeTitles = { "自訂分段", "全拆單頁", $"固定頁數: {_visualSplitNPages}頁" };
+        string[] modeTitles =
+        {
+            Loc("pdf_split_mode_custom"),
+            Loc("pdf_split_mode_each"),
+            Loc("pdf_split_mode_fixed_n", Loc("pdf_split_mode_fixed"), _visualSplitNPages)
+        };
         for (int i = 0; i < 3; i++)
         {
             float modeX = (36 + i * 148) * s;
@@ -568,7 +579,7 @@ public partial class ProgressWindow
         Font? uiFont = _msgFont ?? _tipFont;
         if (uiFont == null) return 22 * s;
         g.DrawString("-", uiFont, nTextBrush, minusX + 7 * s, nSelY + 1 * s);
-        g.DrawString($"每 {_visualSplitNPages} 頁", uiFont, nLabelBrush, nLabelX, nSelY + 1 * s);
+        g.DrawString(Loc("pdf_split_pages_n", _visualSplitNPages), uiFont, nLabelBrush, nLabelX, nSelY + 1 * s);
         g.DrawString("+", uiFont, nTextBrush, plusX + 7 * s, nSelY + 1 * s);
         return 22 * s;
     }
@@ -592,7 +603,7 @@ public partial class ProgressWindow
         if (_msgFont != null)
         {
             using var headerBrush = new SolidBrush(Color.FromArgb(220, 220, 220));
-            g.DrawString("[ 分段列表 ]", _msgFont, headerBrush, leftX + 8 * s, bodyY + 4 * s);
+            g.DrawString($"[ {Loc("pdf_split_segment_header")} ]", _msgFont, headerBrush, leftX + 8 * s, bodyY + 4 * s);
         }
 
         PaintSegmentCards(g, s, bodyY, leftX, leftW);
@@ -627,7 +638,7 @@ public partial class ProgressWindow
                 using var textBrush = new SolidBrush(isFocused ? Color.White : Color.FromArgb(210, 210, 210));
                 int pageCnt = seg.End - seg.Start + 1;
                 string pageLabel = seg.Start == seg.End ? $"P.{seg.Start}" : $"P.{seg.Start}-{seg.End}";
-                g.DrawString($"區段 {i + 1}: {pageLabel} ({pageCnt}頁)", _tipFont, textBrush, leftX + 10 * s, cardY + i * (cardH + 3 * s) + 2 * s);
+                g.DrawString(Loc("pdf_split_segment_item", i + 1, pageLabel, pageCnt), _tipFont, textBrush, leftX + 10 * s, cardY + i * (cardH + 3 * s) + 2 * s);
             }
         }
     }
@@ -641,12 +652,12 @@ public partial class ProgressWindow
         Font labelFont = _msgFont ?? tipFont;
 
         using var headerBrush = new SolidBrush(Color.FromArgb(220, 220, 220));
-        g.DrawString("[ 即時頁面縮圖預覽 ]", tipFont, headerBrush, rightX + 8 * s, bodyY + 4 * s);
+        g.DrawString($"[ {Loc("pdf_split_zoom_title")} ]", tipFont, headerBrush, rightX + 8 * s, bodyY + 4 * s);
 
         if (_visualSplitSelectedSegmentIndex < 0 || _visualSplitSelectedSegmentIndex >= _visualSplitSegments.Count)
         {
             using var tipBrush = new SolidBrush(Color.FromArgb(140, 140, 140));
-            g.DrawString("點擊左側區段卡片以檢視預覽", tipFont, tipBrush, rightX + 8 * s, bodyY + 42 * s);
+            g.DrawString(Loc("pdf_split_prompt"), tipFont, tipBrush, new RectangleF(rightX + 8 * s, bodyY + 42 * s, rightW - 16 * s, panelH - 50 * s));
             return;
         }
 
@@ -666,7 +677,7 @@ public partial class ProgressWindow
 
         using var badgeTextBrush = new SolidBrush(Color.FromArgb(120, 240, 140));
         string truncOutName = UIHelper.TruncateText(g, outName, tipFont, badgeW - 55 * s, s);
-        g.DrawString($"[PDF] {truncOutName} ({cnt}頁)", tipFont, badgeTextBrush, badgeX + 4 * s, badgeY + 2 * s);
+        g.DrawString(Loc("pdf_split_badge_format", truncOutName, cnt), tipFont, badgeTextBrush, badgeX + 4 * s, badgeY + 2 * s);
 
         if (_visualSplitCurrentPreviewPageIndex < 0) _visualSplitCurrentPreviewPageIndex = 0;
         if (_visualSplitCurrentPreviewPageIndex >= cnt) _visualSplitCurrentPreviewPageIndex = cnt - 1;
@@ -696,12 +707,12 @@ public partial class ProgressWindow
         float splitBtnX = nextBtnX - splitBtnW - 4 * s;
         g.FillRectangle(navBtnBg, splitBtnX, navY, splitBtnW, navH);
         g.DrawRectangle(navBtnPen, splitBtnX, navY, splitBtnW, navH);
-        g.DrawString("切開", tipFont, navTextBrush, splitBtnX + 8 * s, navY + 2 * s);
+        g.DrawString(Loc("pdf_split_btn_split_at"), tipFont, navTextBrush, splitBtnX + 8 * s, navY + 2 * s);
 
         float pageLabelX = prevBtnX + prevBtnW + 4 * s;
         float pageLabelW = splitBtnX - 4 * s - pageLabelX;
         using var pageInfoBrush = new SolidBrush(Color.FromArgb(200, 220, 255));
-        string pageLabelStr = $"P.{currentPageNum} (第 {_visualSplitCurrentPreviewPageIndex + 1}/{cnt} 頁)";
+        string pageLabelStr = Loc("pdf_split_page_preview_format", currentPageNum, _visualSplitCurrentPreviewPageIndex + 1, cnt);
         var pageLabelSz = g.MeasureString(pageLabelStr, tipFont);
         g.DrawString(pageLabelStr, tipFont, pageInfoBrush,
             pageLabelX + (pageLabelW - pageLabelSz.Width) / 2f,
@@ -751,7 +762,7 @@ public partial class ProgressWindow
             using var zoomTagBg = new SolidBrush(Color.FromArgb(180, 20, 25, 35));
             using var zoomTagText = new SolidBrush(Color.FromArgb(240, 240, 240));
             g.FillRectangle(zoomTagBg, zoomTagX, zoomTagY, zoomTagW, zoomTagH);
-            g.DrawString("[放大]", tipFont, zoomTagText, zoomTagX + 4 * s, zoomTagY + 1 * s);
+            g.DrawString($"[{Loc("pdf_split_zoom_tag")}]", tipFont, zoomTagText, zoomTagX + 4 * s, zoomTagY + 1 * s);
         }
         else
         {
@@ -799,11 +810,11 @@ public partial class ProgressWindow
             using var whiteBrush = new SolidBrush(Color.White);
             using var grayBrush = new SolidBrush(Color.FromArgb(200, 200, 200));
 
-            g.DrawString("＋ 新增區段", _tipFont, grayBrush, 44 * s, btnY + 4 * s);
-            g.DrawString("刪除區段", _tipFont, grayBrush, 146 * s, btnY + 4 * s);
-            g.DrawString("清空區段", _tipFont, grayBrush, 236 * s, btnY + 4 * s);
-            g.DrawString("確定分割", _tipFont, whiteBrush, 344 * s, btnY + 4 * s);
-            g.DrawString("取消", _tipFont, whiteBrush, 436 * s, btnY + 4 * s);
+            g.DrawString(Loc("pdf_split_btn_add"), _tipFont, grayBrush, 44 * s, btnY + 4 * s);
+            g.DrawString(Loc("pdf_split_btn_delete"), _tipFont, grayBrush, 146 * s, btnY + 4 * s);
+            g.DrawString(Loc("pdf_split_btn_clear"), _tipFont, grayBrush, 236 * s, btnY + 4 * s);
+            g.DrawString(Loc("dialog_ok"), _tipFont, whiteBrush, 344 * s, btnY + 4 * s);
+            g.DrawString(Loc("dialog_cancel"), _tipFont, whiteBrush, 436 * s, btnY + 4 * s);
         }
     }
 
@@ -839,7 +850,7 @@ public partial class ProgressWindow
 
         using var titleBrush = new SolidBrush(Color.FromArgb(230, 240, 255));
         int zoomPct = (int)(_visualSplitZoomFactor * 100);
-        g.DrawString($"頁面 P.{currentPg} 放大預覽 · {zoomPct}%", uiFont, titleBrush, modalX + 16 * s, modalY + 12 * s);
+        g.DrawString($"{Loc("pdf_split_zoom_title")} · P.{currentPg} · {zoomPct}%", uiFont, titleBrush, modalX + 16 * s, modalY + 12 * s);
 
         float closeW = 70 * s;
         float closeH = 22 * s;
@@ -848,7 +859,7 @@ public partial class ProgressWindow
         using var closeBg = new SolidBrush(Color.FromArgb(180, 45, 40));
         g.FillRectangle(closeBg, closeX, closeY, closeW, closeH);
         using var closeTextBrush = new SolidBrush(Color.White);
-        g.DrawString("X 關閉", tipFont, closeTextBrush, closeX + 12 * s, closeY + 3 * s);
+        g.DrawString(Loc("pdf_split_zoom_close"), tipFont, closeTextBrush, closeX + 12 * s, closeY + 3 * s);
 
         float imgAreaX = modalX + 16 * s;
         float imgAreaY = modalY + 38 * s;
@@ -899,9 +910,11 @@ public partial class ProgressWindow
         g.FillRectangle(zoomBtnBg, zoomBtnOutX, zoomBtnY, zoomBtnW, zoomBtnH);
         g.DrawRectangle(zoomBtnPen, zoomBtnOutX, zoomBtnY, zoomBtnW, zoomBtnH);            g.DrawString("＋", tipFont, zoomBtnText, zoomBtnOutX + 9 * s, zoomBtnY + 2 * s);
         g.FillRectangle(zoomBtnBg, zoomBtnFitX, zoomBtnY, zoomBtnFitW, zoomBtnH);
-        g.DrawRectangle(zoomBtnPen, zoomBtnFitX, zoomBtnY, zoomBtnFitW, zoomBtnH);            g.DrawString("適配", tipFont, zoomBtnText, zoomBtnFitX + 8 * s, zoomBtnY + 2 * s);
+        g.DrawRectangle(zoomBtnPen, zoomBtnFitX, zoomBtnY, zoomBtnFitW, zoomBtnH);
+        g.DrawString(Loc("pdf_split_zoom_fit"), tipFont, zoomBtnText, zoomBtnFitX + 8 * s, zoomBtnY + 2 * s);
 
-        using var zoomHintBrush = new SolidBrush(Color.FromArgb(140, 140, 140));            g.DrawString("滾輪縮放 · 拖曳平移 · 空白鍵/Enter 切換", tipFont, zoomHintBrush, modalX + 16 * s, zoomBtnY + 3 * s);
+        using var zoomHintBrush = new SolidBrush(Color.FromArgb(140, 140, 140));
+        g.DrawString(Loc("pdf_split_zoom_hint"), tipFont, zoomHintBrush, modalX + 16 * s, zoomBtnY + 3 * s);
     }
 
     /// <summary>Resizes the window between the compact password-prompt height and the
