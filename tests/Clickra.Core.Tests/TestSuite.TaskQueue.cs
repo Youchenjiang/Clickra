@@ -417,7 +417,8 @@ static partial class TestSuite
             "                    displayText = UIHelper.TruncateFileName(g, displayText, _bodyFont, maxW, s);\n" +
             "                    g.DrawString(displayText, _bodyFont, fileBrush, fileX * s, (currentY + 13) * s);\n" +
             "                }";
-        Assert.True(paint.Contains(guardedSubtitleRender, StringComparison.Ordinal),
+        string normalizedPaint = paint.Replace("\r\n", "\n", StringComparison.Ordinal);
+        Assert.True(normalizedPaint.Contains(guardedSubtitleRender, StringComparison.Ordinal),
             "Parked task details must only render when space remains before the right-aligned retention label.");
         Assert.True(paint.Contains("DrawParkedQueue(g,", StringComparison.Ordinal),
             "The History page must call the parked block.");
