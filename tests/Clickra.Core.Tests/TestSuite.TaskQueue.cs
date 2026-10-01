@@ -411,14 +411,11 @@ static partial class TestSuite
             "CLI dashboard must check IsExpiringSoon to highlight expiring tasks.");
         Assert.True(paint.Contains("fluent_task_file_index", StringComparison.Ordinal),
             "CLI dashboard must display the file index matching Fluent format.");
-        const string guardedSubtitleRender =
-            "if (maxW > 20)\n" +
-            "                {\n" +
-            "                    displayText = UIHelper.TruncateFileName(g, displayText, _bodyFont, maxW, s);\n" +
-            "                    g.DrawString(displayText, _bodyFont, fileBrush, fileX * s, (currentY + 13) * s);\n" +
-            "                }";
-        string normalizedPaint = paint.Replace("\r\n", "\n", StringComparison.Ordinal);
-        Assert.True(normalizedPaint.Contains(guardedSubtitleRender, StringComparison.Ordinal),
+        string parkedDetails = MethodBody(paint, "private static void DrawParkedTaskDetails(");
+        int widthGuard = parkedDetails.IndexOf("if (maxW <= 20) return;", StringComparison.Ordinal);
+        int truncateCall = parkedDetails.IndexOf("UIHelper.TruncateFileName", StringComparison.Ordinal);
+        int drawCall = parkedDetails.IndexOf("g.DrawString(displayText", StringComparison.Ordinal);
+        Assert.True(widthGuard >= 0 && truncateCall > widthGuard && drawCall > truncateCall,
             "Parked task details must only render when space remains before the right-aligned retention label.");
         Assert.True(paint.Contains("DrawParkedQueue(g,", StringComparison.Ordinal),
             "The History page must call the parked block.");
