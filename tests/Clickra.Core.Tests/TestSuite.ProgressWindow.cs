@@ -82,23 +82,20 @@ static partial class TestSuite
                         restore.Contains("ShowWindow(hwnd, 9)", StringComparison.Ordinal),
                 "Restoring from the tray must show and restore the window, not just re-show it.");
 
-            // Left-click single and double click must restore the window
-            Assert.True(restore.Contains("0x0202", StringComparison.Ordinal),
-                "HandleTrayIcon must handle WM_LBUTTONUP (0x0202) for single-click restore.");
-            Assert.True(restore.Contains("0x0203", StringComparison.Ordinal),
-                "HandleTrayIcon must handle WM_LBUTTONDBLCLK (0x0203) for double-click restore.");
-
-            // Right-click context menu must provide restore and cancel options wired to close workflow
-            Assert.True(restore.Contains("0x0205", StringComparison.Ordinal),
-                "HandleTrayIcon must handle WM_RBUTTONUP (0x0205) for context menu popup.");
-            Assert.True(restore.Contains("ShowTrayActionMenu(", StringComparison.Ordinal),
-                "HandleTrayIcon must delegate native popup-menu lifetime to the Win32 tray menu helper.");
-            Assert.True(restore.Contains("command != TrayPopupCommand.Unavailable", StringComparison.Ordinal),
-                "WM_NULL must only be posted after the native popup menu was successfully created.");
-            Assert.True(restore.Contains("cli_tray_restore", StringComparison.Ordinal),
-                "Tray context menu must contain localized restore item.");
-            Assert.True(restore.Contains("cli_tray_cancel", StringComparison.Ordinal),
-                "Tray context menu must contain localized cancel item.");
+            (string Token, string Failure)[] trayContracts =
+            {
+                ("0x0202", "HandleTrayIcon must handle WM_LBUTTONUP (0x0202) for single-click restore."),
+                ("0x0203", "HandleTrayIcon must handle WM_LBUTTONDBLCLK (0x0203) for double-click restore."),
+                ("0x0205", "HandleTrayIcon must handle WM_RBUTTONUP (0x0205) for context menu popup."),
+                ("ShowTrayActionMenu(", "HandleTrayIcon must delegate native popup-menu lifetime to the Win32 tray menu helper."),
+                ("command != TrayPopupCommand.Unavailable", "WM_NULL must only be posted after the native popup menu was successfully created."),
+                ("cli_tray_restore", "Tray context menu must contain localized restore item."),
+                ("cli_tray_cancel", "Tray context menu must contain localized cancel item.")
+            };
+            foreach ((string token, string failure) in trayContracts)
+            {
+                Assert.True(restore.Contains(token, StringComparison.Ordinal), failure);
+            }
 
             int cancelBranch = restore.IndexOf("else if (command == TrayPopupCommand.Cancel)", StringComparison.Ordinal);
             Assert.True(cancelBranch >= 0,
