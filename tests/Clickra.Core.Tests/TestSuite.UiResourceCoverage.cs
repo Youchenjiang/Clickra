@@ -69,8 +69,8 @@ static partial class TestSuite
             string[] expected = Localization.SupportedLanguages.Select(CultureFolder).OrderBy(c => c, StringComparer.Ordinal).ToArray();
             string[] actual = Directory.GetDirectories(stringsDir).Select(Path.GetFileName).Where(d => !string.IsNullOrEmpty(d)).Cast<string>().OrderBy(c => c, StringComparer.Ordinal).ToArray();
             Assert.True(expected.SequenceEqual(actual),
-                $"The packaged language folders must be exactly the app's supported languages " +
-                $"(expected {string.Join(", ", expected)}; found {string.Join(", ", actual)}).");
+                "The packaged language folders must be exactly the app's supported languages " +
+                "(expected " + string.Join(", ", expected) + "; found " + string.Join(", ", actual) + ").");
 
             foreach (string culture in actual)
             {
@@ -79,26 +79,26 @@ static partial class TestSuite
                 string[] names = entries.Select(e => e.Attribute("name")?.Value ?? "").ToArray();
 
                 Assert.True(names.Length == names.Distinct(StringComparer.Ordinal).Count(),
-                    $"{culture}/Resources.resw declares a <data> name twice; the shell reads the first match.");
+                    culture + "/Resources.resw declares a <data> name twice; the shell reads the first match.");
 
                 string[] missing = consumed.Where(k => !names.Contains(k, StringComparer.Ordinal)).ToArray();
                 Assert.True(missing.Length == 0,
-                    $"{culture}/Resources.resw is missing {missing.Length} key(s) the shell renders: " +
-                    $"{string.Join(", ", missing)}. GetString prints the key name verbatim when it is absent.");
+                    culture + "/Resources.resw is missing " + missing.Length + " key(s) the shell renders: " +
+                    string.Join(", ", missing) + ". GetString prints the key name verbatim when it is absent.");
 
                 string[] residual = names.Where(n => !consumed.Contains(n, StringComparer.Ordinal)).ToArray();
                 Assert.True(residual.Length == 0,
-                    $"{culture}/Resources.resw carries {residual.Length} key(s) nothing reads: " +
-                    $"{string.Join(", ", residual)}. Wire them to a consumer or delete them from all 5 languages.");
+                    culture + "/Resources.resw carries " + residual.Length + " key(s) nothing reads: " +
+                    string.Join(", ", residual) + ". Wire them to a consumer or delete them from all 5 languages.");
 
                 foreach (var entry in entries)
                 {
                     string name = entry.Attribute("name")?.Value ?? "";
                     string value = entry.Element("value")?.Value ?? "";
                     Assert.False(string.IsNullOrWhiteSpace(value),
-                        $"{culture}/Resources.resw has an empty value for {name}; the menu entry would render blank.");
+                        culture + "/Resources.resw has an empty value for " + name + "; the menu entry would render blank.");
                     Assert.False(string.Equals(value, name, StringComparison.Ordinal),
-                        $"{culture}/Resources.resw uses {name} as its own translation.");
+                        culture + "/Resources.resw uses " + name + " as its own translation.");
                 }
             }
         });
@@ -131,9 +131,9 @@ static partial class TestSuite
                 // GetLabelKey falls back to the command id for an unknown command, which the UIs then
                 // render verbatim (e.g. "img-to-png" in the status bar), so that counts as undeclared.
                 Assert.False(string.Equals(key, command, StringComparison.Ordinal),
-                    $"'{command}' has no label key in ConvertCommandRegistry; the raw command id would be shown.");
+                    "'" + command + "' has no label key in ConvertCommandRegistry; the raw command id would be shown.");
                 Assert.True(ConvertCommandRegistry.IsKnownCommand(command),
-                    $"'{command}' is listed under a file type but is not in the command table.");
+                    "'" + command + "' is listed under a file type but is not in the command table.");
             }
 
             string[] reachedKeys = reached.Select(ConvertCommandRegistry.GetLabelKey)
@@ -141,16 +141,16 @@ static partial class TestSuite
                 .OrderBy(k => k, StringComparer.Ordinal)
                 .ToArray();
             Assert.True(declared.SequenceEqual(reachedKeys),
-                $"Every label key in the command table must be reachable from a file type. " +
-                $"Table only: {string.Join(", ", declared.Except(reachedKeys))}; " +
-                $"reachable only: {string.Join(", ", reachedKeys.Except(declared))}.");
+                "Every label key in the command table must be reachable from a file type. " +
+                "Table only: " + string.Join(", ", declared.Except(reachedKeys)) + "; " +
+                "reachable only: " + string.Join(", ", reachedKeys.Except(declared)) + ".");
 
             foreach (string key in declared)
             {
                 foreach (string lang in Localization.SupportedLanguages)
                 {
                     Assert.True(Localization.HasExactTranslation(key, lang),
-                        $"{key} is a command label but has no {lang} translation; the UI would show the key name.");
+                        key + " is a command label but has no " + lang + " translation; the UI would show the key name.");
                 }
             }
         });
