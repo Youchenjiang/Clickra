@@ -307,6 +307,7 @@ public sealed partial class VisualSplitterControl : UserControl
 
         int previewIdx = Math.Clamp(_currentPreviewPageIndex, 0, pageCnt - 1);
         int splitPage = seg.Start + previewIdx;
+        if (splitPage >= seg.End) return;
 
         var first = (seg.Start, splitPage);
         var second = (splitPage + 1, seg.End);
