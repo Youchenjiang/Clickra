@@ -9,6 +9,7 @@ using System.Drawing;
 using System.Drawing.Text;
 using System.Drawing.Drawing2D;
 using Clickra.Core;
+using Clickra.Core.Processors;
 
 using static Clickra.UI.Native.Win32;
 
@@ -419,10 +420,13 @@ namespace Clickra.UI
         {
             if (mouseY < 102 || mouseY > 128) return false;
 
-            if (mouseX >= 36 && mouseX <= 176) _visualSplitMode = 0;
-            else if (mouseX >= 184 && mouseX <= 324) _visualSplitMode = 1;
-            else if (mouseX >= 332 && mouseX <= 484) _visualSplitMode = 2;
-            ApplyVisualSplitMode();
+            int mode = _visualSplitMode;
+            if (mouseX >= 36 && mouseX <= 176) mode = VisualSplitModel.ModeCustom;
+            else if (mouseX >= 184 && mouseX <= 324) mode = VisualSplitModel.ModeEachPage;
+            else if (mouseX >= 332 && mouseX <= 484) mode = VisualSplitModel.ModeFixedPages;
+
+            _visualSplitModel.SetMode(mode);
+            SyncVisualSplitStateFromModel();
             InvalidateRect(hwnd, IntPtr.Zero, true);
             return true;
         }
@@ -434,15 +438,15 @@ namespace Clickra.UI
 
             if (mouseX >= 36 && mouseX <= 60) // [-]
             {
-                _visualSplitNPages = Math.Max(1, _visualSplitNPages - 1);
-                ApplyVisualSplitMode();
+                _visualSplitModel.AdjustPagesPerSegment(-1);
+                SyncVisualSplitStateFromModel();
                 InvalidateRect(hwnd, IntPtr.Zero, true);
                 return true;
             }
             if (mouseX >= 132 && mouseX <= 156) // [+]
             {
-                _visualSplitNPages = Math.Min(_visualSplitTotalPages, _visualSplitNPages + 1);
-                ApplyVisualSplitMode();
+                _visualSplitModel.AdjustPagesPerSegment(+1);
+                SyncVisualSplitStateFromModel();
                 InvalidateRect(hwnd, IntPtr.Zero, true);
                 return true;
             }
@@ -458,8 +462,8 @@ namespace Clickra.UI
             int cardIdx = (mouseY - cardStartY) / 23;
             if (cardIdx >= _visualSplitSegments.Count) return false;
 
-            _visualSplitSelectedSegmentIndex = cardIdx;
-            _visualSplitCurrentPreviewPageIndex = 0;
+            _visualSplitModel.SelectSegment(cardIdx);
+            SyncVisualSplitStateFromModel();
             InvalidateRect(hwnd, IntPtr.Zero, true);
             return true;
         }
@@ -470,22 +474,17 @@ namespace Clickra.UI
             int navOffset = (_visualSplitMode == 2 ? 22 : 0);
             if (mouseX < 260 || mouseX > 484 || mouseY < 170 + navOffset || mouseY > 200 + navOffset) return false;
 
-            int segCnt = 1;
-            if (_visualSplitSelectedSegmentIndex >= 0 && _visualSplitSelectedSegmentIndex < _visualSplitSegments.Count)
-            {
-                var seg = _visualSplitSegments[_visualSplitSelectedSegmentIndex];
-                segCnt = seg.End - seg.Start + 1;
-            }
-
             if (mouseX >= 266 && mouseX <= 292) // <
             {
-                _visualSplitCurrentPreviewPageIndex = Math.Max(0, _visualSplitCurrentPreviewPageIndex - 1);
+                _visualSplitModel.NavigatePreview(-1);
+                SyncVisualSplitStateFromModel();
                 InvalidateRect(hwnd, IntPtr.Zero, true);
                 return true;
             }
             if (mouseX >= 452 && mouseX <= 478) // >
             {
-                _visualSplitCurrentPreviewPageIndex = Math.Min(segCnt - 1, _visualSplitCurrentPreviewPageIndex + 1);
+                _visualSplitModel.NavigatePreview(+1);
+                SyncVisualSplitStateFromModel();
                 InvalidateRect(hwnd, IntPtr.Zero, true);
                 return true;
             }

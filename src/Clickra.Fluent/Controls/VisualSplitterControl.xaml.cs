@@ -29,6 +29,7 @@ public sealed partial class VisualSplitterControl : UserControl
     private const int ZoomWidth = 1500;
     private readonly string _pdfPath;
     private readonly int _totalPages;
+    private readonly VisualSplitModel _splitModel;
 
     // Split mode: 0 = custom segments, 1 = split every page, 2 = fixed pages per segment.
     private int _mode;
@@ -52,7 +53,8 @@ public sealed partial class VisualSplitterControl : UserControl
         _pdfPath = pdfPath;
         _totalPages = FileProcessor.GetPdfPageCount(pdfPath);
         if (_totalPages <= 0) _totalPages = 1;
-        _nPages = Math.Min(5, _totalPages);
+        _splitModel = new VisualSplitModel(_totalPages);
+        SyncModelState();
 
         string L(string key) => Localization.T(key, ClickraStorage.GetSetting(ClickraSettings.Language));
         ModeCustomBtn.Content = L("pdf_split_mode_custom");
@@ -67,18 +69,6 @@ public sealed partial class VisualSplitterControl : UserControl
         RefreshNSelector();
         ZoomLevelText.Text = "100%";
         ZoomFitBtn.Content = L("pdf_split_zoom_fit");
-
-        // Seed custom segments with halves of the document, mirroring the CLI splitter.
-        if (_totalPages == 1)
-        {
-            _customSegments.Add((1, 1));
-        }
-        else
-        {
-            int half = _totalPages / 2;
-            _customSegments.Add((1, half));
-            _customSegments.Add((half + 1, _totalPages));
-        }
 
         ModeCustomBtn.Checked += (_, _) => ApplyMode(0);
         ModeEachBtn.Checked += (_, _) => ApplyMode(1);
@@ -191,64 +181,31 @@ public sealed partial class VisualSplitterControl : UserControl
     /// <summary>Adjusts N in fixed-pages mode (clamped to 1..total pages) and rebuilds the segments.</summary>
     private void AdjustNPages(int delta)
     {
-        int n = Math.Clamp(_nPages + delta, 1, _totalPages);
-        if (n == _nPages) return;
-        _nPages = n;
+        if (!_splitModel.AdjustPagesPerSegment(delta)) return;
+        SyncModelState();
         RefreshModeButtons();
         RefreshNSelector();
-        if (_mode == 2) ApplyMode(2);
+        if (_mode == VisualSplitModel.ModeFixedPages)
+        {
+            RefreshSegmentList();
+            _ = UpdatePreview();
+        }
     }
 
     /// <summary>Builds the page-range spec for the active mode via
     /// <see cref="PdfSplitProcessor.BuildSegmentSpec"/> (always non-null; an empty
     /// custom list falls back to "all", matching the CLI splitter).</summary>
-    public string GetSpec() =>
-        PdfSplitProcessor.BuildSegmentSpec(_mode, _nPages, _totalPages, _segments);
+    public string GetSpec() => _splitModel.BuildSpec();
 
     private void ApplyMode(int mode)
     {
-        _mode = mode;
-        _currentPreviewPageIndex = 0;
+        _splitModel.SetMode(mode);
+        SyncModelState();
 
-        bool fixedMode = mode == 2;
+        bool fixedMode = _mode == VisualSplitModel.ModeFixedPages;
         NSelector.Visibility = fixedMode ? Visibility.Visible : Visibility.Collapsed;
         if (fixedMode) RefreshNSelector();
         RefreshModeButtons();
-
-        switch (mode)
-        {
-            case 1: // split every page
-                _segments.Clear();
-                _customSegments.Clear();
-                for (int p = 1; p <= _totalPages; p++)
-                {
-                    _segments.Add((p, p));
-                    _customSegments.Add((p, p));
-                }
-                break;
-            case 2: // fixed pages per segment
-                _segments.Clear();
-                _customSegments.Clear();
-                int n = Math.Max(1, _nPages);
-                for (int p = 1; p <= _totalPages; p += n)
-                {
-                    int end = Math.Min(p + n - 1, _totalPages);
-                    _segments.Add((p, end));
-                    _customSegments.Add((p, end));
-                }
-                break;
-            default: // custom segments
-                _segments.Clear();
-                _segments.AddRange(_customSegments);
-                if (_segments.Count == 0 && _totalPages > 0)
-                {
-                    _customSegments.Add((1, _totalPages));
-                    _segments.Add((1, _totalPages));
-                }
-                break;
-        }
-
-        _selectedSegmentIndex = _segments.Count > 0 ? 0 : -1;
         RefreshSegmentList();
         _ = UpdatePreview();
     }
@@ -272,8 +229,8 @@ public sealed partial class VisualSplitterControl : UserControl
     private void SegmentList_SelectionChanged(object sender, SelectionChangedEventArgs e)
     {
         if (_suppressSelection || SegmentList.SelectedIndex < 0) return;
-        _selectedSegmentIndex = SegmentList.SelectedIndex;
-        _currentPreviewPageIndex = 0;
+        _splitModel.SelectSegment(SegmentList.SelectedIndex);
+        SyncModelState();
         _ = UpdatePreview();
     }
 
@@ -288,10 +245,8 @@ public sealed partial class VisualSplitterControl : UserControl
 
     private void NavigatePreview(int delta)
     {
-        if (_selectedSegmentIndex < 0 || _selectedSegmentIndex >= _segments.Count) return;
-        var seg = _segments[_selectedSegmentIndex];
-        int pageCnt = seg.End - seg.Start + 1;
-        _currentPreviewPageIndex = Math.Clamp(_currentPreviewPageIndex + delta, 0, pageCnt - 1);
+        _splitModel.NavigatePreview(delta);
+        SyncModelState();
         _ = UpdatePreview();
     }
 
@@ -299,27 +254,8 @@ public sealed partial class VisualSplitterControl : UserControl
     /// adjacent segments, switching to custom mode (mirrors the CLI split action).</summary>
     private void SplitSegmentAtCurrentPage()
     {
-        if (_selectedSegmentIndex < 0 || _selectedSegmentIndex >= _customSegments.Count) return;
-
-        var seg = _customSegments[_selectedSegmentIndex];
-        int pageCnt = seg.End - seg.Start + 1;
-        if (pageCnt <= 1) return;
-
-        int previewIdx = Math.Clamp(_currentPreviewPageIndex, 0, pageCnt - 1);
-        int splitPage = seg.Start + previewIdx;
-        if (splitPage >= seg.End) return;
-
-        var first = (seg.Start, splitPage);
-        var second = (splitPage + 1, seg.End);
-
-        _customSegments.RemoveAt(_selectedSegmentIndex);
-        _customSegments.Insert(_selectedSegmentIndex, second);
-        _customSegments.Insert(_selectedSegmentIndex, first);
-        _segments.Clear();
-        _segments.AddRange(_customSegments);
-        _currentPreviewPageIndex = 0;
-
-        _mode = 0;
+        if (!_splitModel.SplitSelectedAtPreviewPage()) return;
+        SyncModelState();
         SelectCustomMode();
 
         RefreshSegmentList();
@@ -331,54 +267,15 @@ public sealed partial class VisualSplitterControl : UserControl
     private void SelectCustomMode()
     {
         if (ModeCustomBtn.IsChecked is not true) ModeCustomBtn.IsChecked = true; // NOSONAR:S1125 — literal required for nullable IsChecked.
-        _mode = 0;
     }
 
     /// <summary>Adds the first page gap not covered by any custom segment as a new
     /// segment and selects it (switching to custom mode).</summary>
     private void AddVisualSplitSegment()
     {
+        _splitModel.AddSegment();
+        SyncModelState();
         SelectCustomMode();
-
-        if (_customSegments.Count == 0)
-        {
-            _customSegments.Add((1, _totalPages));
-            _segments.Clear();
-            _segments.AddRange(_customSegments);
-            _selectedSegmentIndex = 0;
-            _currentPreviewPageIndex = 0;
-            RefreshSegmentList();
-            _ = UpdatePreview();
-            return;
-        }
-
-        var covered = new HashSet<int>();
-        foreach (var s in _customSegments)
-            for (int p = s.Start; p <= s.End; p++)
-                covered.Add(p);
-
-        int gapStart = -1, gapEnd = -1;
-        for (int p = 1; p <= _totalPages; p++)
-        {
-            if (!covered.Contains(p))
-            {
-                if (gapStart < 0) gapStart = p;
-                gapEnd = p;
-            }
-            else if (gapStart > 0)
-            {
-                break;
-            }
-        }
-
-        if (gapStart < 0) return;
-
-        _customSegments.Add((gapStart, gapEnd));
-        _customSegments.Sort((a, b) => a.Start.CompareTo(b.Start));
-        _segments.Clear();
-        _segments.AddRange(_customSegments);
-        _selectedSegmentIndex = _segments.FindIndex(s => s.Start == gapStart && s.End == gapEnd);
-        _currentPreviewPageIndex = 0;
         RefreshSegmentList();
         _ = UpdatePreview();
     }
@@ -386,17 +283,9 @@ public sealed partial class VisualSplitterControl : UserControl
     /// <summary>Removes the selected custom segment (keeping at least one).</summary>
     private void DeleteVisualSplitSegment()
     {
-        if (_customSegments.Count <= 1) return;
-        if (_selectedSegmentIndex < 0 || _selectedSegmentIndex >= _customSegments.Count) return;
-
+        if (!_splitModel.DeleteSelectedSegment()) return;
+        SyncModelState();
         SelectCustomMode();
-
-        _customSegments.RemoveAt(_selectedSegmentIndex);
-        _segments.Clear();
-        _segments.AddRange(_customSegments);
-        if (_selectedSegmentIndex >= _segments.Count)
-            _selectedSegmentIndex = _segments.Count - 1;
-        _currentPreviewPageIndex = 0;
         RefreshSegmentList();
         _ = UpdatePreview();
     }
@@ -404,13 +293,23 @@ public sealed partial class VisualSplitterControl : UserControl
     /// <summary>Clears all custom segments and switches to custom mode.</summary>
     private void ClearVisualSplitSegments()
     {
+        _splitModel.ClearSegments();
+        SyncModelState();
         SelectCustomMode();
-        _customSegments.Clear();
-        _segments.Clear();
-        _selectedSegmentIndex = -1;
-        _currentPreviewPageIndex = 0;
         RefreshSegmentList();
         _ = UpdatePreview();
+    }
+
+    private void SyncModelState()
+    {
+        _mode = _splitModel.Mode;
+        _nPages = _splitModel.PagesPerSegment;
+        _segments.Clear();
+        _segments.AddRange(_splitModel.Segments);
+        _customSegments.Clear();
+        _customSegments.AddRange(_splitModel.CustomSegments);
+        _selectedSegmentIndex = _splitModel.SelectedSegmentIndex;
+        _currentPreviewPageIndex = _splitModel.PreviewPageIndex;
     }
 
     /// <summary>Renders the current preview page at fit width and swaps it into the

@@ -1,15 +1,13 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
-using System.Linq;
 using Clickra.Core.Processors;
 
 namespace Clickra.Core.Tests;
 
 /// <summary>
-/// 視覺化分割介面的操作序列與頁碼規格（Page Spec）黃金案例表：
-/// 用同一組操作腳本序列同時驅動 Win32 CLI 分割器邏輯與 Fluent WinUI 分割器邏輯，
-/// 嚴密驗證兩者在所有邊界情境下產生完全相同的輸出。
+/// Golden behavior table for the shared production visual-splitter state model.
+/// CLI and Fluent parity is guaranteed by both UI surfaces delegating state transitions to this model.
 /// </summary>
 static partial class TestSuite
 {
@@ -34,428 +32,29 @@ static partial class TestSuite
         void ClearSegments();
     }
 
-    /// <summary>
-    /// 忠實模擬 Win32 CLI ProgressWindow.VisualSplitter.cs 與 ProgressWindow.Controls.cs
-    /// 的狀態機與使用者互動邏輯。
-    /// </summary>
-    public sealed class CliVisualSplitterDriver : IVisualSplitterDriver
+    public sealed class ProductionVisualSplitterDriver : IVisualSplitterDriver
     {
-        private readonly int _visualSplitTotalPages;
-        private int _visualSplitMode;
-        private int _visualSplitNPages;
-        private List<(int Start, int End)> _visualSplitSegments = new();
-        private readonly List<(int Start, int End)> _visualSplitCustomSegments = new();
-        private int _visualSplitSelectedSegmentIndex;
-        private int _visualSplitCurrentPreviewPageIndex;
+        private readonly VisualSplitModel _model;
 
-        public int TotalPages => _visualSplitTotalPages;
-        public int Mode => _visualSplitMode;
-        public int NPages => _visualSplitNPages;
-        public int SelectedSegmentIndex => _visualSplitSelectedSegmentIndex;
-        public int CurrentPreviewPageIndex => _visualSplitCurrentPreviewPageIndex;
-        public IReadOnlyList<(int Start, int End)> Segments => _visualSplitSegments;
-        public IReadOnlyList<(int Start, int End)> CustomSegments => _visualSplitCustomSegments;
+        public ProductionVisualSplitterDriver(int totalPages) => _model = new VisualSplitModel(totalPages);
 
-        public CliVisualSplitterDriver(int totalPages)
-        {
-            if (totalPages <= 0) totalPages = 1;
-            _visualSplitTotalPages = totalPages;
-            _visualSplitMode = 0;
-            _visualSplitNPages = Math.Min(5, totalPages);
-            _visualSplitSegments.Clear();
-            _visualSplitCustomSegments.Clear();
+        public int TotalPages => _model.TotalPages;
+        public int Mode => _model.Mode;
+        public int NPages => _model.PagesPerSegment;
+        public int SelectedSegmentIndex => _model.SelectedSegmentIndex;
+        public int CurrentPreviewPageIndex => _model.PreviewPageIndex;
+        public IReadOnlyList<(int Start, int End)> Segments => _model.Segments;
+        public IReadOnlyList<(int Start, int End)> CustomSegments => _model.CustomSegments;
+        public string GetSpec() => _model.BuildSpec();
 
-            if (totalPages == 1)
-            {
-                _visualSplitCustomSegments.Add((1, 1));
-            }
-            else
-            {
-                int half = totalPages / 2;
-                _visualSplitCustomSegments.Add((1, half));
-                _visualSplitCustomSegments.Add((half + 1, totalPages));
-            }
-
-            _visualSplitSegments = new List<(int, int)>(_visualSplitCustomSegments);
-            _visualSplitSelectedSegmentIndex = 0;
-            _visualSplitCurrentPreviewPageIndex = 0;
-        }
-
-        public void SetMode(int mode)
-        {
-            _visualSplitMode = mode;
-            ApplyVisualSplitMode();
-        }
-
-        private void ApplyVisualSplitMode()
-        {
-            _visualSplitCurrentPreviewPageIndex = 0;
-            if (_visualSplitMode < 0 || _visualSplitMode > 2) _visualSplitMode = 0;
-            switch (_visualSplitMode)
-            {
-                case 0:
-                    _visualSplitSegments = new List<(int, int)>(_visualSplitCustomSegments);
-                    if (_visualSplitSegments.Count == 0 && _visualSplitTotalPages > 0)
-                    {
-                        _visualSplitCustomSegments.Add((1, _visualSplitTotalPages));
-                        _visualSplitSegments = new List<(int, int)>(_visualSplitCustomSegments);
-                    }
-                    _visualSplitSelectedSegmentIndex = _visualSplitSegments.Count > 0 ? 0 : -1;
-                    break;
-                case 1:
-                    _visualSplitSegments.Clear();
-                    _visualSplitCustomSegments.Clear();
-                    for (int p = 1; p <= _visualSplitTotalPages; p++)
-                    {
-                        _visualSplitSegments.Add((p, p));
-                        _visualSplitCustomSegments.Add((p, p));
-                    }
-                    _visualSplitSelectedSegmentIndex = _visualSplitSegments.Count > 0 ? 0 : -1;
-                    break;
-                case 2:
-                    _visualSplitSegments.Clear();
-                    _visualSplitCustomSegments.Clear();
-                    int n = Math.Max(1, _visualSplitNPages);
-                    for (int p = 1; p <= _visualSplitTotalPages; p += n)
-                    {
-                        int end = Math.Min(p + n - 1, _visualSplitTotalPages);
-                        _visualSplitSegments.Add((p, end));
-                        _visualSplitCustomSegments.Add((p, end));
-                    }
-                    _visualSplitSelectedSegmentIndex = _visualSplitSegments.Count > 0 ? 0 : -1;
-                    break;
-            }
-        }
-
-        public void AdjustN(int delta)
-        {
-            int n = Math.Clamp(_visualSplitNPages + delta, 1, _visualSplitTotalPages);
-            if (n == _visualSplitNPages) return;
-            _visualSplitNPages = n;
-            ApplyVisualSplitMode();
-        }
-
-        public void SelectSegment(int index)
-        {
-            if (index >= 0 && index < _visualSplitSegments.Count)
-            {
-                _visualSplitSelectedSegmentIndex = index;
-                _visualSplitCurrentPreviewPageIndex = 0;
-            }
-        }
-
-        public void NavigatePreview(int delta)
-        {
-            if (_visualSplitSelectedSegmentIndex < 0 || _visualSplitSelectedSegmentIndex >= _visualSplitSegments.Count)
-                return;
-
-            var seg = _visualSplitSegments[_visualSplitSelectedSegmentIndex];
-            int segCnt = seg.End - seg.Start + 1;
-            _visualSplitCurrentPreviewPageIndex = Math.Clamp(_visualSplitCurrentPreviewPageIndex + delta, 0, segCnt - 1);
-        }
-
-        public void SplitAtCurrentPage()
-        {
-            if (_visualSplitSelectedSegmentIndex < 0 || _visualSplitSelectedSegmentIndex >= _visualSplitCustomSegments.Count)
-                return;
-
-            var seg = _visualSplitCustomSegments[_visualSplitSelectedSegmentIndex];
-            int pageCnt = seg.End - seg.Start + 1;
-            if (pageCnt <= 1) return;
-
-            int previewIdx = Math.Max(0, Math.Min(_visualSplitCurrentPreviewPageIndex, pageCnt - 1));
-            int splitPage = seg.Start + previewIdx;
-            if (splitPage >= seg.End) return;
-
-            _visualSplitMode = 0;
-            var first = (seg.Start, splitPage);
-            var second = (splitPage + 1, seg.End);
-
-            _visualSplitCustomSegments.RemoveAt(_visualSplitSelectedSegmentIndex);
-            _visualSplitCustomSegments.Insert(_visualSplitSelectedSegmentIndex, second);
-            _visualSplitCustomSegments.Insert(_visualSplitSelectedSegmentIndex, first);
-            _visualSplitSegments = new List<(int, int)>(_visualSplitCustomSegments);
-            _visualSplitCurrentPreviewPageIndex = 0;
-        }
-
-        public void AddSegment()
-        {
-            _visualSplitMode = 0;
-
-            if (_visualSplitCustomSegments.Count == 0)
-            {
-                _visualSplitCustomSegments.Add((1, _visualSplitTotalPages));
-                _visualSplitSegments = new List<(int, int)>(_visualSplitCustomSegments);
-                _visualSplitSelectedSegmentIndex = 0;
-                _visualSplitCurrentPreviewPageIndex = 0;
-                return;
-            }
-
-            var covered = new HashSet<int>();
-            foreach (var s in _visualSplitCustomSegments)
-                for (int p = s.Start; p <= s.End; p++)
-                    covered.Add(p);
-
-            int gapStart = -1, gapEnd = -1;
-            for (int p = 1; p <= _visualSplitTotalPages; p++)
-            {
-                if (!covered.Contains(p))
-                {
-                    if (gapStart < 0) gapStart = p;
-                    gapEnd = p;
-                }
-                else if (gapStart > 0)
-                {
-                    break;
-                }
-            }
-
-            if (gapStart < 0) return;
-
-            _visualSplitCustomSegments.Add((gapStart, gapEnd));
-            _visualSplitCustomSegments.Sort((a, b) => a.Start.CompareTo(b.Start));
-            _visualSplitSegments = new List<(int, int)>(_visualSplitCustomSegments);
-            _visualSplitSelectedSegmentIndex = _visualSplitSegments.FindIndex(s => s.Start == gapStart && s.End == gapEnd);
-            _visualSplitCurrentPreviewPageIndex = 0;
-        }
-
-        public void DeleteSegment()
-        {
-            if (_visualSplitCustomSegments.Count <= 1) return;
-            if (_visualSplitSelectedSegmentIndex < 0 || _visualSplitSelectedSegmentIndex >= _visualSplitCustomSegments.Count)
-                return;
-
-            _visualSplitMode = 0;
-            _visualSplitCustomSegments.RemoveAt(_visualSplitSelectedSegmentIndex);
-            _visualSplitSegments = new List<(int, int)>(_visualSplitCustomSegments);
-            if (_visualSplitSelectedSegmentIndex >= _visualSplitSegments.Count)
-                _visualSplitSelectedSegmentIndex = _visualSplitSegments.Count - 1;
-            _visualSplitCurrentPreviewPageIndex = 0;
-        }
-
-        public void ClearSegments()
-        {
-            _visualSplitMode = 0;
-            _visualSplitCustomSegments.Clear();
-            _visualSplitSegments.Clear();
-            _visualSplitSelectedSegmentIndex = -1;
-            _visualSplitCurrentPreviewPageIndex = 0;
-        }
-
-        public string GetSpec() =>
-            PdfSplitProcessor.BuildSegmentSpec(_visualSplitMode, _visualSplitNPages, _visualSplitTotalPages, _visualSplitSegments);
-    }
-
-    /// <summary>
-    /// 忠實模擬 WinUI Fluent VisualSplitterControl.xaml.cs 的狀態機與使用者互動邏輯。
-    /// </summary>
-    public sealed class FluentVisualSplitterDriver : IVisualSplitterDriver
-    {
-        private readonly int _totalPages;
-        private int _mode;
-        private int _nPages;
-        private readonly List<(int Start, int End)> _segments = new();
-        private readonly List<(int Start, int End)> _customSegments = new();
-        private int _selectedSegmentIndex;
-        private int _currentPreviewPageIndex;
-
-        public int TotalPages => _totalPages;
-        public int Mode => _mode;
-        public int NPages => _nPages;
-        public int SelectedSegmentIndex => _selectedSegmentIndex;
-        public int CurrentPreviewPageIndex => _currentPreviewPageIndex;
-        public IReadOnlyList<(int Start, int End)> Segments => _segments;
-        public IReadOnlyList<(int Start, int End)> CustomSegments => _customSegments;
-
-        public FluentVisualSplitterDriver(int totalPages)
-        {
-            if (totalPages <= 0) totalPages = 1;
-            _totalPages = totalPages;
-            _nPages = Math.Min(5, _totalPages);
-
-            if (_totalPages == 1)
-            {
-                _customSegments.Add((1, 1));
-            }
-            else
-            {
-                int half = _totalPages / 2;
-                _customSegments.Add((1, half));
-                _customSegments.Add((half + 1, _totalPages));
-            }
-
-            ApplyMode(0);
-        }
-
-        private void SelectCustomMode()
-        {
-            _mode = 0;
-        }
-
-        public void SetMode(int mode)
-        {
-            ApplyMode(mode);
-        }
-
-        private void ApplyMode(int mode)
-        {
-            _mode = mode;
-            _currentPreviewPageIndex = 0;
-
-            switch (mode)
-            {
-                case 1:
-                    _segments.Clear();
-                    _customSegments.Clear();
-                    for (int p = 1; p <= _totalPages; p++)
-                    {
-                        _segments.Add((p, p));
-                        _customSegments.Add((p, p));
-                    }
-                    break;
-                case 2:
-                    _segments.Clear();
-                    _customSegments.Clear();
-                    int n = Math.Max(1, _nPages);
-                    for (int p = 1; p <= _totalPages; p += n)
-                    {
-                        int end = Math.Min(p + n - 1, _totalPages);
-                        _segments.Add((p, end));
-                        _customSegments.Add((p, end));
-                    }
-                    break;
-                default:
-                    _segments.Clear();
-                    _segments.AddRange(_customSegments);
-                    if (_segments.Count == 0 && _totalPages > 0)
-                    {
-                        _customSegments.Add((1, _totalPages));
-                        _segments.Add((1, _totalPages));
-                    }
-                    break;
-            }
-
-            _selectedSegmentIndex = _segments.Count > 0 ? 0 : -1;
-        }
-
-        public void AdjustN(int delta)
-        {
-            int n = Math.Clamp(_nPages + delta, 1, _totalPages);
-            if (n == _nPages) return;
-            _nPages = n;
-            if (_mode == 2) ApplyMode(2);
-        }
-
-        public void SelectSegment(int index)
-        {
-            if (index < 0 || index >= _segments.Count) return;
-            _selectedSegmentIndex = index;
-            _currentPreviewPageIndex = 0;
-        }
-
-        public void NavigatePreview(int delta)
-        {
-            if (_selectedSegmentIndex < 0 || _selectedSegmentIndex >= _segments.Count) return;
-            var seg = _segments[_selectedSegmentIndex];
-            int pageCnt = seg.End - seg.Start + 1;
-            _currentPreviewPageIndex = Math.Clamp(_currentPreviewPageIndex + delta, 0, pageCnt - 1);
-        }
-
-        public void SplitAtCurrentPage()
-        {
-            if (_selectedSegmentIndex < 0 || _selectedSegmentIndex >= _customSegments.Count) return;
-
-            var seg = _customSegments[_selectedSegmentIndex];
-            int pageCnt = seg.End - seg.Start + 1;
-            if (pageCnt <= 1) return;
-
-            int previewIdx = Math.Clamp(_currentPreviewPageIndex, 0, pageCnt - 1);
-            int splitPage = seg.Start + previewIdx;
-            if (splitPage >= seg.End) return;
-
-            var first = (seg.Start, splitPage);
-            var second = (splitPage + 1, seg.End);
-
-            _customSegments.RemoveAt(_selectedSegmentIndex);
-            _customSegments.Insert(_selectedSegmentIndex, second);
-            _customSegments.Insert(_selectedSegmentIndex, first);
-            _segments.Clear();
-            _segments.AddRange(_customSegments);
-            _currentPreviewPageIndex = 0;
-
-            _mode = 0;
-            SelectCustomMode();
-        }
-
-        public void AddSegment()
-        {
-            SelectCustomMode();
-
-            if (_customSegments.Count == 0)
-            {
-                _customSegments.Add((1, _totalPages));
-                _segments.Clear();
-                _segments.AddRange(_customSegments);
-                _selectedSegmentIndex = 0;
-                _currentPreviewPageIndex = 0;
-                return;
-            }
-
-            var covered = new HashSet<int>();
-            foreach (var s in _customSegments)
-                for (int p = s.Start; p <= s.End; p++)
-                    covered.Add(p);
-
-            int gapStart = -1, gapEnd = -1;
-            for (int p = 1; p <= _totalPages; p++)
-            {
-                if (!covered.Contains(p))
-                {
-                    if (gapStart < 0) gapStart = p;
-                    gapEnd = p;
-                }
-                else if (gapStart > 0)
-                {
-                    break;
-                }
-            }
-
-            if (gapStart < 0) return;
-
-            _customSegments.Add((gapStart, gapEnd));
-            _customSegments.Sort((a, b) => a.Start.CompareTo(b.Start));
-            _segments.Clear();
-            _segments.AddRange(_customSegments);
-            _selectedSegmentIndex = _segments.FindIndex(s => s.Start == gapStart && s.End == gapEnd);
-            _currentPreviewPageIndex = 0;
-        }
-
-        public void DeleteSegment()
-        {
-            if (_customSegments.Count <= 1) return;
-            if (_selectedSegmentIndex < 0 || _selectedSegmentIndex >= _customSegments.Count) return;
-
-            SelectCustomMode();
-
-            _customSegments.RemoveAt(_selectedSegmentIndex);
-            _segments.Clear();
-            _segments.AddRange(_customSegments);
-            if (_selectedSegmentIndex >= _segments.Count)
-                _selectedSegmentIndex = _segments.Count - 1;
-            _currentPreviewPageIndex = 0;
-        }
-
-        public void ClearSegments()
-        {
-            SelectCustomMode();
-            _customSegments.Clear();
-            _segments.Clear();
-            _selectedSegmentIndex = -1;
-            _currentPreviewPageIndex = 0;
-        }
-
-        public string GetSpec() =>
-            PdfSplitProcessor.BuildSegmentSpec(_mode, _nPages, _totalPages, _segments);
+        public void SetMode(int mode) => _model.SetMode(mode);
+        public void AdjustN(int delta) => _model.AdjustPagesPerSegment(delta);
+        public void SelectSegment(int index) => _model.SelectSegment(index);
+        public void NavigatePreview(int delta) => _model.NavigatePreview(delta);
+        public void SplitAtCurrentPage() => _model.SplitSelectedAtPreviewPage();
+        public void AddSegment() => _model.AddSegment();
+        public void DeleteSegment() => _model.DeleteSelectedSegment();
+        public void ClearSegments() => _model.ClearSegments();
     }
 
     public sealed record GoldenTestCase(
@@ -595,28 +194,30 @@ static partial class TestSuite
 
         foreach (var tc in goldenCases)
         {
-            runner.Run($"Visual splitter parity: {tc.Name}", () =>
+            runner.Run($"Visual splitter production model: {tc.Name}", () =>
             {
-                var cli = new CliVisualSplitterDriver(tc.TotalPages);
-                var fluent = new FluentVisualSplitterDriver(tc.TotalPages);
+                var driver = new ProductionVisualSplitterDriver(tc.TotalPages);
 
-                tc.Script(cli);
-                tc.Script(fluent);
+                tc.Script(driver);
 
-                string cliSpec = cli.GetSpec();
-                string fluentSpec = fluent.GetSpec();
-
-                Assert.Equal(tc.ExpectedSpec, cliSpec);
-                Assert.Equal(tc.ExpectedSpec, fluentSpec);
-                Assert.Equal(cliSpec, fluentSpec);
-                Assert.Equal(cli.Mode, fluent.Mode);
-                Assert.Equal(cli.Segments.Count, fluent.Segments.Count);
-                Assert.Equal(cli.SelectedSegmentIndex, fluent.SelectedSegmentIndex);
-                Assert.Equal(cli.CurrentPreviewPageIndex, fluent.CurrentPreviewPageIndex);
+                Assert.Equal(tc.ExpectedSpec, driver.GetSpec());
+                Assert.True(driver.Mode is >= VisualSplitModel.ModeCustom and <= VisualSplitModel.ModeFixedPages,
+                    "Production model mode must stay inside the supported range.");
             });
         }
 
-        runner.Run("Visual splitter source code contracts enforce parity invariants", () =>
+        runner.Run("Visual splitter production model: no-gap add still switches fixed mode to custom", () =>
+        {
+            var driver = new ProductionVisualSplitterDriver(10);
+            driver.SetMode(VisualSplitModel.ModeFixedPages);
+
+            driver.AddSegment();
+
+            Assert.Equal(VisualSplitModel.ModeCustom, driver.Mode);
+            Assert.Equal("1-5; 6-10", driver.GetSpec());
+        });
+
+        runner.Run("Visual splitter UI surfaces delegate parity state to production model", () =>
         {
             string? root = FindRepoRoot();
             if (root is null) throw new TestSkippedException("Could not locate the repository root from the test output directory.");
@@ -633,25 +234,43 @@ static partial class TestSuite
             string cliSplitter = File.ReadAllText(cliSplitterPath);
             string fluentSplitter = File.ReadAllText(fluentSplitterPath);
 
-            // 1. Both must use floor 1 for N stepper
-            Assert.True(cliControls.Contains("Math.Max(1, _visualSplitNPages - 1)"),
-                "CLI must allow stepping down N to 1 (floor 1).");
-            Assert.False(cliControls.Contains("Math.Max(2, _visualSplitNPages - 1)"),
-                "CLI must not clamp N to floor 2.");
-            Assert.True(fluentSplitter.Contains("Math.Clamp(_nPages + delta, 1, _totalPages)"),
-                "Fluent must clamp N stepper to [1, totalPages].");
+            string[] cliModelCalls =
+            {
+                "new VisualSplitModel(totalPages)",
+                "_visualSplitModel.SetMode(",
+                "_visualSplitModel.AdjustPagesPerSegment(",
+                "_visualSplitModel.SelectSegment(",
+                "_visualSplitModel.NavigatePreview(",
+                "_visualSplitModel.SplitSelectedAtPreviewPage()",
+                "_visualSplitModel.AddSegment()",
+                "_visualSplitModel.DeleteSelectedSegment()",
+                "_visualSplitModel.ClearSegments()",
+                "_visualSplitModel.BuildSpec()"
+            };
+            foreach (string call in cliModelCalls)
+            {
+                Assert.True(cliControls.Contains(call) || cliSplitter.Contains(call),
+                    $"CLI visual splitter must delegate production state through {call}.");
+            }
 
-            // 2. Both must protect against splitting at trailing boundary (splitPage >= seg.End)
-            Assert.True(cliSplitter.Contains("if (splitPage >= seg.End) return;"),
-                "CLI splitter must guard against splitting at segment end.");
-            Assert.True(fluentSplitter.Contains("if (splitPage >= seg.End) return;"),
-                "Fluent splitter must guard against splitting at segment end.");
-
-            // 3. Both must delegate spec generation to PdfSplitProcessor.BuildSegmentSpec
-            Assert.True(cliSplitter.Contains("PdfSplitProcessor.BuildSegmentSpec"),
-                "CLI splitter must delegate spec generation to PdfSplitProcessor.BuildSegmentSpec.");
-            Assert.True(fluentSplitter.Contains("PdfSplitProcessor.BuildSegmentSpec"),
-                "Fluent splitter must delegate spec generation to PdfSplitProcessor.BuildSegmentSpec.");
+            string[] fluentModelCalls =
+            {
+                "new VisualSplitModel(_totalPages)",
+                "_splitModel.SetMode(",
+                "_splitModel.AdjustPagesPerSegment(",
+                "_splitModel.SelectSegment(",
+                "_splitModel.NavigatePreview(",
+                "_splitModel.SplitSelectedAtPreviewPage()",
+                "_splitModel.AddSegment()",
+                "_splitModel.DeleteSelectedSegment()",
+                "_splitModel.ClearSegments()",
+                "_splitModel.BuildSpec()"
+            };
+            foreach (string call in fluentModelCalls)
+            {
+                Assert.True(fluentSplitter.Contains(call),
+                    $"Fluent visual splitter must delegate production state through {call}.");
+            }
         });
     }
 }
