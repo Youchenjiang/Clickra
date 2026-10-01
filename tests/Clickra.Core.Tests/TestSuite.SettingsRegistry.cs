@@ -39,6 +39,7 @@ static partial class TestSuite
         runner.Run("Settings registry: CLI localization keys coverage across all 5 languages", TestCliLocalizationKeysCoverage);
         runner.Run("Settings registry: Diagnostics email localization coverage across all 5 languages", TestDiagnosticsEmailLocalizationCoverage);
         runner.Run("Settings registry: Tray, visual splitter, and progress window localization coverage across all 5 languages", TestTraySplitterLocalizationCoverage);
+        runner.Run("Settings registry: Fluent add-on settings localization coverage across all 5 languages", TestFluentSettingsLocalizationCoverage);
         runner.Run("Settings registry: Localization.T default language and formatting overloads", TestLocalizationDefaultLanguageAndFormatting);
         runner.Run("Settings registry: Fluent-specific copy stays distinct from shared keys", TestFluentSpecificCopyPreserved);
         runner.Run("Localization guard: No hardcoded Chinese strings in Clickra.Fluent, Dashboard paint files, and ProgressWindow paint files", TestNoHardcodedChineseUiStrings);
@@ -331,6 +332,20 @@ static partial class TestSuite
             "progress_header_success",
             "progress_auto_close_hint",
             "progress_tip_processing"
+        };
+
+        AssertLocalizationKeysCoverage(keys);
+    }
+
+    private static void TestFluentSettingsLocalizationCoverage()
+    {
+        string[] keys =
+        {
+            "setting_fluent_title",
+            "setting_fluent_desc",
+            "setting_fluent_ready",
+            "setting_fluent_not_installed",
+            "setting_fluent_install"
         };
 
         AssertLocalizationKeysCoverage(keys);
