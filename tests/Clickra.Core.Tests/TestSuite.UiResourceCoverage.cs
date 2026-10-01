@@ -57,102 +57,99 @@ static partial class TestSuite
 
     public static void RegisterUiResourceCoverageTests(TestRunner runner)
     {
-        runner.Run("Shell resources: resw keys and the keys the shell menu consumes are bidirectionally equal", () =>
+        runner.Run("Shell resources: resw keys and the keys the shell menu consumes are bidirectionally equal", TestShellResourceCoverage);
+        runner.Run("Convert registry: every command label key is declared and translated in all 5 languages", TestConvertRegistryLabelCoverage);
+    }
+
+    private static void TestShellResourceCoverage()
+    {
+        string? root = FindRepoRoot();
+        if (root is null) throw new TestSkippedException(RepoRootNotFoundMessage);
+
+        string[] consumed = GetShellConsumedResourceKeys(root);
+        string stringsDir = Path.Combine(root, "packaging", "msix", "Strings");
+
+        string[] expected = Localization.SupportedLanguages.Select(CultureFolder).OrderBy(c => c, StringComparer.Ordinal).ToArray();
+        string[] actual = Directory.GetDirectories(stringsDir).Select(Path.GetFileName).Where(d => !string.IsNullOrEmpty(d)).Cast<string>().OrderBy(c => c, StringComparer.Ordinal).ToArray();
+        Assert.True(expected.SequenceEqual(actual),
+            "The packaged language folders must be exactly the app's supported languages " +
+            "(expected " + string.Join(", ", expected) + "; found " + string.Join(", ", actual) + ").");
+
+        foreach (string culture in actual)
         {
-            string? root = FindRepoRoot();
-            if (root is null) throw new TestSkippedException("Could not locate the repository root from the test output directory.");
+            var doc = XDocument.Load(Path.Combine(stringsDir, culture, "Resources.resw"));
+            var entries = doc.Root?.Elements("data").ToList() ?? new List<XElement>();
+            string[] names = entries.Select(e => e.Attribute("name")?.Value ?? "").ToArray();
 
-            string[] consumed = GetShellConsumedResourceKeys(root);
-            string stringsDir = Path.Combine(root, "packaging", "msix", "Strings");
+            Assert.True(names.Length == names.Distinct(StringComparer.Ordinal).Count(),
+                culture + "/Resources.resw declares a <data> name twice; the shell reads the first match.");
 
-            // A new UI language must be added on both sides at once, not only to Localization.cs.
-            string[] expected = Localization.SupportedLanguages.Select(CultureFolder).OrderBy(c => c, StringComparer.Ordinal).ToArray();
-            string[] actual = Directory.GetDirectories(stringsDir).Select(Path.GetFileName).Where(d => !string.IsNullOrEmpty(d)).Cast<string>().OrderBy(c => c, StringComparer.Ordinal).ToArray();
-            Assert.True(expected.SequenceEqual(actual),
-                "The packaged language folders must be exactly the app's supported languages " +
-                "(expected " + string.Join(", ", expected) + "; found " + string.Join(", ", actual) + ").");
+            string[] missing = consumed.Where(k => !names.Contains(k, StringComparer.Ordinal)).ToArray();
+            Assert.True(missing.Length == 0,
+                culture + "/Resources.resw is missing " + missing.Length + " key(s) the shell renders: " +
+                string.Join(", ", missing) + ". GetString prints the key name verbatim when it is absent.");
 
-            foreach (string culture in actual)
+            string[] residual = names.Where(n => !consumed.Contains(n, StringComparer.Ordinal)).ToArray();
+            Assert.True(residual.Length == 0,
+                culture + "/Resources.resw carries " + residual.Length + " key(s) nothing reads: " +
+                string.Join(", ", residual) + ". Wire them to a consumer or delete them from all 5 languages.");
+
+            foreach (var entry in entries)
             {
-                var doc = XDocument.Load(Path.Combine(stringsDir, culture, "Resources.resw"));
-                var entries = doc.Root?.Elements("data").ToList() ?? new List<XElement>();
-                string[] names = entries.Select(e => e.Attribute("name")?.Value ?? "").ToArray();
-
-                Assert.True(names.Length == names.Distinct(StringComparer.Ordinal).Count(),
-                    culture + "/Resources.resw declares a <data> name twice; the shell reads the first match.");
-
-                string[] missing = consumed.Where(k => !names.Contains(k, StringComparer.Ordinal)).ToArray();
-                Assert.True(missing.Length == 0,
-                    culture + "/Resources.resw is missing " + missing.Length + " key(s) the shell renders: " +
-                    string.Join(", ", missing) + ". GetString prints the key name verbatim when it is absent.");
-
-                string[] residual = names.Where(n => !consumed.Contains(n, StringComparer.Ordinal)).ToArray();
-                Assert.True(residual.Length == 0,
-                    culture + "/Resources.resw carries " + residual.Length + " key(s) nothing reads: " +
-                    string.Join(", ", residual) + ". Wire them to a consumer or delete them from all 5 languages.");
-
-                foreach (var entry in entries)
-                {
-                    string name = entry.Attribute("name")?.Value ?? "";
-                    string value = entry.Element("value")?.Value ?? "";
-                    Assert.False(string.IsNullOrWhiteSpace(value),
-                        culture + "/Resources.resw has an empty value for " + name + "; the menu entry would render blank.");
-                    Assert.False(string.Equals(value, name, StringComparison.Ordinal),
-                        culture + "/Resources.resw uses " + name + " as its own translation.");
-                }
+                string name = entry.Attribute("name")?.Value ?? "";
+                string value = entry.Element("value")?.Value ?? "";
+                Assert.False(string.IsNullOrWhiteSpace(value),
+                    culture + "/Resources.resw has an empty value for " + name + "; the menu entry would render blank.");
+                Assert.False(string.Equals(value, name, StringComparison.Ordinal),
+                    culture + "/Resources.resw uses " + name + " as its own translation.");
             }
-        });
+        }
+    }
 
-        runner.Run("Convert registry: every command label key is declared and translated in all 5 languages", () =>
+    private static void TestConvertRegistryLabelCoverage()
+    {
+        string? root = FindRepoRoot();
+        if (root is null) throw new TestSkippedException(RepoRootNotFoundMessage);
+
+        string registrySource = File.ReadAllText(Path.Combine(root, "src", "Clickra.Core", "Processors", "ConvertCommandRegistry.cs"));
+        string[] declared = Regex.Matches(registrySource, "\"(?<key>cmd_[a-z_]+)\"", RegexOptions.None, UiResourceRegexTimeout)
+            .Select(m => m.Groups["key"].Value)
+            .Distinct(StringComparer.Ordinal)
+            .OrderBy(k => k, StringComparer.Ordinal)
+            .ToArray();
+        Assert.True(declared.Length > 0, "The convert registry must declare at least one label key.");
+
+        string[] reached = new[] { "pdf", "word", "excel", "ppt", "image" }
+            .SelectMany(ConvertCommandRegistry.GetCommandsForType)
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToArray();
+        Assert.True(reached.Length > 0, "The convert registry must expose its commands per file type.");
+
+        foreach (string command in reached)
         {
-            string? root = FindRepoRoot();
-            if (root is null) throw new TestSkippedException("Could not locate the repository root from the test output directory.");
+            string key = ConvertCommandRegistry.GetLabelKey(command);
+            Assert.False(string.Equals(key, command, StringComparison.Ordinal),
+                "'" + command + "' has no label key in ConvertCommandRegistry; the raw command id would be shown.");
+            Assert.True(ConvertCommandRegistry.IsKnownCommand(command),
+                "'" + command + "' is listed under a file type but is not in the command table.");
+        }
 
-            // Every label key the table declares, straight from the registry source.
-            string registrySource = File.ReadAllText(Path.Combine(root, "src", "Clickra.Core", "Processors", "ConvertCommandRegistry.cs"));
-            string[] declared = Regex.Matches(registrySource, "\"(?<key>cmd_[a-z_]+)\"", RegexOptions.None, UiResourceRegexTimeout)
-                .Select(m => m.Groups["key"].Value)
-                .Distinct(StringComparer.Ordinal)
-                .OrderBy(k => k, StringComparer.Ordinal)
-                .ToArray();
-            Assert.True(declared.Length > 0, "The convert registry must declare at least one label key.");
+        string[] reachedKeys = reached.Select(ConvertCommandRegistry.GetLabelKey)
+            .Distinct(StringComparer.Ordinal)
+            .OrderBy(k => k, StringComparer.Ordinal)
+            .ToArray();
+        Assert.True(declared.SequenceEqual(reachedKeys),
+            "Every label key in the command table must be reachable from a file type. " +
+            "Table only: " + string.Join(", ", declared.Except(reachedKeys)) + "; " +
+            "reachable only: " + string.Join(", ", reachedKeys.Except(declared)) + ".");
 
-            // ... must be exactly the keys reachable through the per-type command lists, so a command
-            // added to the table without a file type cannot slip past this guard.
-            string[] reached = new[] { "pdf", "word", "excel", "ppt", "image" }
-                .SelectMany(ConvertCommandRegistry.GetCommandsForType)
-                .Distinct(StringComparer.OrdinalIgnoreCase)
-                .ToArray();
-            Assert.True(reached.Length > 0, "The convert registry must expose its commands per file type.");
-
-            foreach (string command in reached)
+        foreach (string key in declared)
+        {
+            foreach (string lang in Localization.SupportedLanguages)
             {
-                string key = ConvertCommandRegistry.GetLabelKey(command);
-                // GetLabelKey falls back to the command id for an unknown command, which the UIs then
-                // render verbatim (e.g. "img-to-png" in the status bar), so that counts as undeclared.
-                Assert.False(string.Equals(key, command, StringComparison.Ordinal),
-                    "'" + command + "' has no label key in ConvertCommandRegistry; the raw command id would be shown.");
-                Assert.True(ConvertCommandRegistry.IsKnownCommand(command),
-                    "'" + command + "' is listed under a file type but is not in the command table.");
+                Assert.True(Localization.HasExactTranslation(key, lang),
+                    key + " is a command label but has no " + lang + " translation; the UI would show the key name.");
             }
-
-            string[] reachedKeys = reached.Select(ConvertCommandRegistry.GetLabelKey)
-                .Distinct(StringComparer.Ordinal)
-                .OrderBy(k => k, StringComparer.Ordinal)
-                .ToArray();
-            Assert.True(declared.SequenceEqual(reachedKeys),
-                "Every label key in the command table must be reachable from a file type. " +
-                "Table only: " + string.Join(", ", declared.Except(reachedKeys)) + "; " +
-                "reachable only: " + string.Join(", ", reachedKeys.Except(declared)) + ".");
-
-            foreach (string key in declared)
-            {
-                foreach (string lang in Localization.SupportedLanguages)
-                {
-                    Assert.True(Localization.HasExactTranslation(key, lang),
-                        key + " is a command label but has no " + lang + " translation; the UI would show the key name.");
-                }
-            }
-        });
+        }
     }
 }

@@ -37,6 +37,8 @@ static partial class TestSuite
     private const string LanguageJaJp = "ja-JP";
     private const string LanguageKoKr = "ko-KR";
     private const string ProgressSubCompleted = "progress_sub_completed";
+    private const string SamplePdfFileName = "doc.pdf";
+    private const string SamplePdfStage = "page 2/10";
     private static readonly string[] SupportedLocalizationLanguages =
         { LanguageZhTw, LanguageZhCn, LanguageEnUs, LanguageJaJp, LanguageKoKr };
 
@@ -115,7 +117,7 @@ static partial class TestSuite
     private static void TestSettingReadersUseRegistry()
     {
         string root = FindRepoRoot() ?? throw new TestSkippedException(
-            "Could not locate the repository root from the test output directory.");
+            RepoRootNotFoundMessage);
         string[] files = Directory
             .EnumerateFiles(Path.Combine(root, "src"), "*.cs", SearchOption.AllDirectories)
             .Where(p => !p.Contains($"{Path.DirectorySeparatorChar}obj{Path.DirectorySeparatorChar}", StringComparison.Ordinal) &&
@@ -161,7 +163,7 @@ static partial class TestSuite
     private static void TestNumericAccessorsUseRegistry()
     {
         string root = FindRepoRoot() ?? throw new TestSkippedException(
-            "Could not locate the repository root from the test output directory.");
+            RepoRootNotFoundMessage);
         string storage = File.ReadAllText(Path.Combine(root, "src", "Clickra.Core", "Storage", "ClickraStorage.ActiveRecord.cs"));
         string registry = File.ReadAllText(Path.Combine(root, "src", "Clickra.Core", "Processors", "ConvertCommandRegistry.cs"));
 
@@ -374,15 +376,15 @@ static partial class TestSuite
 
         var placeholderKeys = new (string Key, object[] Args)[]
         {
-            ("cli_progress_compressing_pdf", new object[] { "doc.pdf", 1, 3 }),
-            ("cli_progress_compressing_pdf_stage", new object[] { "page 2/10", 1, 3 }),
+            ("cli_progress_compressing_pdf", new object[] { SamplePdfFileName, 1, 3 }),
+            ("cli_progress_compressing_pdf_stage", new object[] { SamplePdfStage, 1, 3 }),
             ("cli_progress_converting_image", new object[] { "photo.png", 1, 3 }),
-            ("cli_progress_translating_pdf", new object[] { "doc.pdf", 1, 3 }),
-            ("cli_progress_translating_pdf_stage", new object[] { "page 2/10", 1, 3 }),
-            ("cli_progress_splitting_pdf", new object[] { "doc.pdf", 1, 3 }),
-            ("cli_progress_splitting_pdf_stage", new object[] { "page 2/10", 1, 3 }),
-            ("cli_progress_decrypting_pdf", new object[] { "doc.pdf", 1, 3 }),
-            ("cli_progress_decrypting_pdf_stage", new object[] { "page 2/10", 1, 3 }),
+            ("cli_progress_translating_pdf", new object[] { SamplePdfFileName, 1, 3 }),
+            ("cli_progress_translating_pdf_stage", new object[] { SamplePdfStage, 1, 3 }),
+            ("cli_progress_splitting_pdf", new object[] { SamplePdfFileName, 1, 3 }),
+            ("cli_progress_splitting_pdf_stage", new object[] { SamplePdfStage, 1, 3 }),
+            ("cli_progress_decrypting_pdf", new object[] { SamplePdfFileName, 1, 3 }),
+            ("cli_progress_decrypting_pdf_stage", new object[] { SamplePdfStage, 1, 3 }),
             ("cli_progress_toast_body", new object[] { "Compress PDF", 3 }),
             ("cli_tray_converting", new object[] { 42 })
         };
@@ -436,10 +438,10 @@ static partial class TestSuite
             Assert.Equal("作業完成", Localization.T(ProgressSubCompleted));
 
             ClickraStorage.SaveSetting(ClickraSettings.Language, LanguageEnUs);
-            Assert.Equal("[PDF] doc.pdf (5 pages)", Localization.T("pdf_split_badge_format", "doc.pdf", 5));
+            Assert.Equal("[PDF] doc.pdf (5 pages)", Localization.T("pdf_split_badge_format", SamplePdfFileName, 5));
 
             ClickraStorage.SaveSetting(ClickraSettings.Language, LanguageZhTw);
-            Assert.Equal("[PDF] doc.pdf (5 頁)", Localization.T("pdf_split_badge_format", "doc.pdf", 5));
+            Assert.Equal("[PDF] doc.pdf (5 頁)", Localization.T("pdf_split_badge_format", SamplePdfFileName, 5));
         }
         finally
         {
@@ -491,7 +493,7 @@ static partial class TestSuite
     private static void TestEveryCompiledSuiteIsInvoked()
     {
         string? root = FindRepoRoot();
-        if (root is null) throw new TestSkippedException("Could not locate the repository root from the test output directory.");
+        if (root is null) throw new TestSkippedException(RepoRootNotFoundMessage);
 
         var defined = typeof(TestSuite)
             .GetMethods(System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Static)
@@ -531,7 +533,7 @@ static partial class TestSuite
     private static void TestNoHardcodedChineseUiStrings()
     {
         string root = FindRepoRoot() ?? throw new TestSkippedException(
-            "Could not locate the repository root from the test output directory.");
+            RepoRootNotFoundMessage);
         var filesToScan = new List<string>();
 
         string dashboardDir = Path.Combine(root, "src", "Clickra.CLI", "Dashboard");
