@@ -672,15 +672,45 @@ namespace Clickra.UI
             return IntPtr.Zero; // Handled: the window hides rather than entering the minimized state.
         }
 
-        /// <summary>Restores the window when the tray icon is double-clicked.</summary>
+        /// <summary>Handles tray icon interaction: left click/double-click restores the window,
+        /// right click pops up a context menu with restore and cancel actions.</summary>
         private IntPtr HandleTrayIcon(IntPtr hwnd, IntPtr l)
         {
-            if (l.ToInt64() == 0x0203) // WM_LBUTTONDBLCLK
+            long msg = l.ToInt64();
+            if (msg == 0x0202 || msg == 0x0203) // WM_LBUTTONUP or WM_LBUTTONDBLCLK
             {
                 ShowWindow(hwnd, 5); // SW_SHOW
                 ShowWindow(hwnd, 9); // SW_RESTORE
                 SetForegroundWindow(hwnd);
                 RemoveTrayIcon();
+            }
+            else if (msg == 0x0205 || msg == 0x007B) // WM_RBUTTONUP or WM_CONTEXTMENU
+            {
+                SetForegroundWindow(hwnd);
+                GetCursorPos(out Point pt);
+
+                TrayPopupCommand command = ShowTrayActionMenu(
+                    hwnd,
+                    pt.X,
+                    pt.Y,
+                    Loc("cli_tray_restore"),
+                    Loc("cli_tray_cancel"));
+                if (command != TrayPopupCommand.Unavailable)
+                {
+                    PostMessageW(hwnd, 0, IntPtr.Zero, IntPtr.Zero);
+                }
+
+                if (command == TrayPopupCommand.Restore)
+                {
+                    ShowWindow(hwnd, 5); // SW_SHOW
+                    ShowWindow(hwnd, 9); // SW_RESTORE
+                    SetForegroundWindow(hwnd);
+                    RemoveTrayIcon();
+                }
+                else if (command == TrayPopupCommand.Cancel)
+                {
+                    SendMessageW(hwnd, 0x0010, IntPtr.Zero, IntPtr.Zero); // WM_CLOSE -> HandleClose(hwnd)
+                }
             }
             return IntPtr.Zero;
         }
