@@ -121,10 +121,24 @@ namespace Clickra.UI.Native
         public const uint WS_TABSTOP = 0x00010000;
         public const int IDC_HAND = 32649;
 
-        [DllImport("user32.dll", SetLastError = true)] public static extern IntPtr CreatePopupMenu();
-        [DllImport("user32.dll", EntryPoint = "AppendMenuW", CharSet = CharSet.Unicode, SetLastError = true)] public static extern bool AppendMenu(IntPtr hMenu, uint uFlags, IntPtr uIDNewItem, string? lpNewItem);
-        [DllImport("user32.dll", SetLastError = true)] public static extern uint TrackPopupMenuEx(IntPtr hMenu, uint uFlags, int x, int y, IntPtr hwnd, IntPtr lptpm);
-        [DllImport("user32.dll", SetLastError = true)] public static extern bool DestroyMenu(IntPtr hMenu);
+        [DllImport("user32.dll", EntryPoint = "CreatePopupMenu", SetLastError = true)]
+        private static extern IntPtr CreatePopupMenuNative();
+
+        [DllImport("user32.dll", EntryPoint = "AppendMenuW", CharSet = CharSet.Unicode, SetLastError = true)]
+        private static extern bool AppendMenuNative(IntPtr hMenu, uint uFlags, IntPtr uIDNewItem, string? lpNewItem);
+
+        [DllImport("user32.dll", EntryPoint = "TrackPopupMenuEx", SetLastError = true)]
+        private static extern uint TrackPopupMenuExNative(IntPtr hMenu, uint uFlags, int x, int y, IntPtr hwnd, IntPtr lptpm);
+
+        [DllImport("user32.dll", EntryPoint = "DestroyMenu", SetLastError = true)]
+        private static extern bool DestroyMenuNative(IntPtr hMenu);
+
+        public static IntPtr CreatePopupMenu() => CreatePopupMenuNative();
+        public static bool AppendMenu(IntPtr hMenu, uint uFlags, IntPtr uIDNewItem, string? lpNewItem) =>
+            AppendMenuNative(hMenu, uFlags, uIDNewItem, lpNewItem);
+        public static uint TrackPopupMenuEx(IntPtr hMenu, uint uFlags, int x, int y, IntPtr hwnd, IntPtr lptpm) =>
+            TrackPopupMenuExNative(hMenu, uFlags, x, y, hwnd, lptpm);
+        public static bool DestroyMenu(IntPtr hMenu) => DestroyMenuNative(hMenu);
 
         public delegate IntPtr WndProcDelegate(IntPtr h, uint msg, IntPtr w, IntPtr l);
         public static readonly IntPtr TIMER_ID_REFRESH = (IntPtr)1001;
