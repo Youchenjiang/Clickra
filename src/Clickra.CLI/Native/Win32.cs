@@ -133,19 +133,53 @@ namespace Clickra.UI.Native
         [DllImport("user32.dll", EntryPoint = "DestroyMenu", SetLastError = true)]
         private static extern bool DestroyMenuNative(IntPtr hMenu);
 
-        public static IntPtr CreatePopupMenu() => CreatePopupMenuNative();
-        public static bool AppendMenu(IntPtr hMenu, uint uFlags, IntPtr uIDNewItem, string? lpNewItem) =>
-            AppendMenuNative(hMenu, uFlags, uIDNewItem, lpNewItem);
-        public static uint TrackPopupMenuEx(IntPtr hMenu, uint uFlags, int x, int y, IntPtr hwnd, IntPtr lptpm) =>
-            TrackPopupMenuExNative(hMenu, uFlags, x, y, hwnd, lptpm);
-        public static bool DestroyMenu(IntPtr hMenu) => DestroyMenuNative(hMenu);
+        public enum TrayPopupCommand : uint
+        {
+            None = 0,
+            Restore = 1,
+            Cancel = 2,
+            Unavailable = uint.MaxValue
+        }
+
+        public static TrayPopupCommand ShowTrayActionMenu(
+            IntPtr hwnd,
+            int x,
+            int y,
+            string restoreText,
+            string cancelText)
+        {
+            IntPtr menu = CreatePopupMenuNative();
+            if (menu == IntPtr.Zero) return TrayPopupCommand.Unavailable;
+
+            try
+            {
+                AppendMenuNative(menu, MF_STRING, (IntPtr)TrayPopupCommand.Restore, restoreText);
+                AppendMenuNative(menu, MF_SEPARATOR, IntPtr.Zero, null);
+                AppendMenuNative(menu, MF_STRING, (IntPtr)TrayPopupCommand.Cancel, cancelText);
+
+                uint command = TrackPopupMenuExNative(
+                    menu,
+                    TPM_RETURNCMD | TPM_NONOTIFY | TPM_BOTTOMALIGN,
+                    x,
+                    y,
+                    hwnd,
+                    IntPtr.Zero);
+                return command is (uint)TrayPopupCommand.Restore or (uint)TrayPopupCommand.Cancel
+                    ? (TrayPopupCommand)command
+                    : TrayPopupCommand.None;
+            }
+            finally
+            {
+                DestroyMenuNative(menu);
+            }
+        }
 
         public delegate IntPtr WndProcDelegate(IntPtr h, uint msg, IntPtr w, IntPtr l);
         public static readonly IntPtr TIMER_ID_REFRESH = (IntPtr)1001;
-        public const uint MF_STRING = 0x00000000;
-        public const uint MF_SEPARATOR = 0x00000800;
-        public const uint TPM_RETURNCMD = 0x00000100;
-        public const uint TPM_NONOTIFY = 0x00000080;
-        public const uint TPM_BOTTOMALIGN = 0x00000020;
+        private const uint MF_STRING = 0x00000000;
+        private const uint MF_SEPARATOR = 0x00000800;
+        private const uint TPM_RETURNCMD = 0x00000100;
+        private const uint TPM_NONOTIFY = 0x00000080;
+        private const uint TPM_BOTTOMALIGN = 0x00000020;
     }
 }

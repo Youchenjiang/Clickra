@@ -689,38 +689,27 @@ namespace Clickra.UI
                 SetForegroundWindow(hwnd);
                 GetCursorPos(out Point pt);
 
-                IntPtr menu = CreatePopupMenu();
-                if (menu != IntPtr.Zero)
+                TrayPopupCommand command = ShowTrayActionMenu(
+                    hwnd,
+                    pt.X,
+                    pt.Y,
+                    Loc("cli_tray_restore"),
+                    Loc("cli_tray_cancel"));
+                if (command != TrayPopupCommand.Unavailable)
                 {
-                    try
-                    {
-                        const uint idRestore = 1;
-                        const uint idCancel = 2;
+                    PostMessageW(hwnd, 0, IntPtr.Zero, IntPtr.Zero);
+                }
 
-                        AppendMenu(menu, MF_STRING, (IntPtr)idRestore, Loc("cli_tray_restore"));
-                        AppendMenu(menu, MF_SEPARATOR, IntPtr.Zero, null);
-                        AppendMenu(menu, MF_STRING, (IntPtr)idCancel, Loc("cli_tray_cancel"));
-
-                        uint cmd = TrackPopupMenuEx(menu, TPM_RETURNCMD | TPM_NONOTIFY | TPM_BOTTOMALIGN,
-                            pt.X, pt.Y, hwnd, IntPtr.Zero);
-                        PostMessageW(hwnd, 0, IntPtr.Zero, IntPtr.Zero);
-
-                        if (cmd == idRestore)
-                        {
-                            ShowWindow(hwnd, 5); // SW_SHOW
-                            ShowWindow(hwnd, 9); // SW_RESTORE
-                            SetForegroundWindow(hwnd);
-                            RemoveTrayIcon();
-                        }
-                        else if (cmd == idCancel)
-                        {
-                            SendMessageW(hwnd, 0x0010, IntPtr.Zero, IntPtr.Zero); // WM_CLOSE -> HandleClose(hwnd)
-                        }
-                    }
-                    finally
-                    {
-                        DestroyMenu(menu);
-                    }
+                if (command == TrayPopupCommand.Restore)
+                {
+                    ShowWindow(hwnd, 5); // SW_SHOW
+                    ShowWindow(hwnd, 9); // SW_RESTORE
+                    SetForegroundWindow(hwnd);
+                    RemoveTrayIcon();
+                }
+                else if (command == TrayPopupCommand.Cancel)
+                {
+                    SendMessageW(hwnd, 0x0010, IntPtr.Zero, IntPtr.Zero); // WM_CLOSE -> HandleClose(hwnd)
                 }
             }
             return IntPtr.Zero;

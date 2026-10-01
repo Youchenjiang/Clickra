@@ -68,6 +68,7 @@ static partial class TestSuite
             string dir = Path.Combine(root, "src", "Clickra.CLI", "Progress");
             string controls = StripComments(File.ReadAllText(Path.Combine(dir, "ProgressWindow.Controls.cs")));
             string window = StripComments(File.ReadAllText(Path.Combine(dir, "ProgressWindow.cs")));
+            string win32 = StripComments(File.ReadAllText(Path.Combine(root, "src", "Clickra.CLI", "Native", "Win32.cs")));
 
             // Minimizing to the tray is only acceptable because the tray icon restores the window;
             // if the round trip breaks, hiding the window becomes a one-way trip.
@@ -90,26 +91,27 @@ static partial class TestSuite
             // Right-click context menu must provide restore and cancel options wired to close workflow
             Assert.True(restore.Contains("0x0205", StringComparison.Ordinal),
                 "HandleTrayIcon must handle WM_RBUTTONUP (0x0205) for context menu popup.");
-            Assert.True(restore.Contains("CreatePopupMenu()", StringComparison.Ordinal) &&
-                        restore.Contains("TrackPopupMenuEx(", StringComparison.Ordinal) &&
-                        restore.Contains("DestroyMenu(", StringComparison.Ordinal),
-                "HandleTrayIcon must create, track, and destroy the context popup menu.");
+            Assert.True(restore.Contains("ShowTrayActionMenu(", StringComparison.Ordinal),
+                "HandleTrayIcon must delegate native popup-menu lifetime to the Win32 tray menu helper.");
+            Assert.True(restore.Contains("command != TrayPopupCommand.Unavailable", StringComparison.Ordinal),
+                "WM_NULL must only be posted after the native popup menu was successfully created.");
             Assert.True(restore.Contains("cli_tray_restore", StringComparison.Ordinal),
                 "Tray context menu must contain localized restore item.");
             Assert.True(restore.Contains("cli_tray_cancel", StringComparison.Ordinal),
                 "Tray context menu must contain localized cancel item.");
 
-            int cancelBranch = restore.IndexOf("else if (cmd == idCancel)", StringComparison.Ordinal);
-            int finallyBlock = restore.IndexOf("finally", StringComparison.Ordinal);
-            Assert.True(cancelBranch >= 0 && finallyBlock > cancelBranch,
-                "Tray cancel selection must have its own branch before menu cleanup.");
-            string cancelBody = restore[cancelBranch..finallyBlock];
+            int cancelBranch = restore.IndexOf("else if (command == TrayPopupCommand.Cancel)", StringComparison.Ordinal);
+            Assert.True(cancelBranch >= 0,
+                "Tray cancel selection must have its own managed command branch.");
+            string cancelBody = restore[cancelBranch..];
             Assert.True(cancelBody.Contains("SendMessageW(hwnd, 0x0010", StringComparison.Ordinal),
                 "Tray cancel item must forward WM_CLOSE to the existing HandleClose cancellation workflow.");
 
-            string cleanupBody = restore[finallyBlock..];
-            Assert.True(cleanupBody.Contains("DestroyMenu(menu)", StringComparison.Ordinal),
-                "Tray popup menu must be destroyed from the finally block even when menu handling fails.");
+            string trayMenu = MethodBody(win32, "public static TrayPopupCommand ShowTrayActionMenu");
+            int finallyBlock = trayMenu.IndexOf("finally", StringComparison.Ordinal);
+            Assert.True(finallyBlock >= 0 &&
+                        trayMenu[finallyBlock..].Contains("DestroyMenuNative(menu)", StringComparison.Ordinal),
+                "The Win32 tray popup helper must destroy the native menu from its finally block.");
 
             // The icon must never outlive the window.
             Assert.True(MethodBody(window, "private void CleanupResources").Contains("RemoveTrayIcon()", StringComparison.Ordinal),
