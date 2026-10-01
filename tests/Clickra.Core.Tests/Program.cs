@@ -31,6 +31,7 @@ TestSuite.RegisterFileBackupTests(runner);
 TestSuite.RegisterOfficeEngineReliabilityTests(runner);
 TestSuite.RegisterPdfCompressionTests(runner);
 TestSuite.RegisterPdfSplitTests(runner);
+TestSuite.RegisterVisualSplitterParityTests(runner);
 TestSuite.RegisterPdfDecryptTests(runner);
 TestSuite.RegisterTaskQueueTests(runner);
 TestSuite.RegisterWicImageTests(runner);
