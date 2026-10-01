@@ -144,14 +144,17 @@ static partial class TestSuite
             string paintPath = Path.Combine(root, "src", "Clickra.CLI", "Progress", "ProgressWindow.Paint.cs");
             string splitterPath = Path.Combine(root, "src", "Clickra.CLI", "Progress", "ProgressWindow.VisualSplitter.cs");
             string xamlPath = Path.Combine(root, "src", "Clickra.Fluent", "Controls", "VisualSplitterControl.xaml");
+            string xamlCodePath = Path.Combine(root, "src", "Clickra.Fluent", "Controls", "VisualSplitterControl.xaml.cs");
 
             Assert.True(File.Exists(paintPath), "ProgressWindow.Paint.cs must exist.");
             Assert.True(File.Exists(splitterPath), "ProgressWindow.VisualSplitter.cs must exist.");
             Assert.True(File.Exists(xamlPath), "VisualSplitterControl.xaml must exist.");
+            Assert.True(File.Exists(xamlCodePath), "VisualSplitterControl.xaml.cs must exist.");
 
             string paint = File.ReadAllText(paintPath);
             string splitter = File.ReadAllText(splitterPath);
             string xaml = File.ReadAllText(xamlPath);
+            string xamlCode = File.ReadAllText(xamlCodePath);
 
             // 1. Paint error/success headers must not use emoji characters (cross, checkmark)
             Assert.False(paint.Contains("\u274C"), "ProgressWindow.Paint.cs must not contain hardcoded cross emoji.");
@@ -176,6 +179,22 @@ static partial class TestSuite
             Assert.False(xaml.Contains("&#xFF0B;"), "VisualSplitterControl.xaml must not use &#xFF0B; font glyph.");
             Assert.False(xaml.Contains("&#x25C0;"), "VisualSplitterControl.xaml must not use &#x25C0; font glyph.");
             Assert.False(xaml.Contains("&#x25B6;"), "VisualSplitterControl.xaml must not use &#x25B6; font glyph.");
+
+            // 4. Icon-only Fluent buttons must retain localized UI Automation names.
+            var automationNames = new (string Button, string Key)[]
+            {
+                ("NMinusBtn", "pdf_split_decrease_pages"),
+                ("NPlusBtn", "pdf_split_increase_pages"),
+                ("PrevPageBtn", "pdf_split_previous_page"),
+                ("NextPageBtn", "pdf_split_next_page"),
+                ("ZoomOutBtn", "pdf_split_zoom_out"),
+                ("ZoomInBtn", "pdf_split_zoom_in")
+            };
+            foreach (var (button, key) in automationNames)
+            {
+                Assert.True(xamlCode.Contains($"AutomationProperties.SetName({button}, L(\"{key}\"))", StringComparison.Ordinal),
+                    $"{button} must retain a localized UI Automation name after replacing its glyph Content with a vector Path.");
+            }
         });
     }
 
