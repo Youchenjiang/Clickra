@@ -12,6 +12,9 @@ public sealed class VisualSplitModel
     public const int ModeCustom = 0;
     public const int ModeEachPage = 1;
     public const int ModeFixedPages = 2;
+    public const float ZoomMinFactor = 1f;
+    public const float ZoomMaxFactor = 8f;
+    public const float ZoomStepFactor = 1.25f;
 
     private readonly List<(int Start, int End)> _segments = new();
     private readonly List<(int Start, int End)> _customSegments = new();
@@ -181,6 +184,18 @@ public sealed class VisualSplitModel
 
     public string BuildSpec() =>
         PdfSplitProcessor.BuildSegmentSpec(Mode, PagesPerSegment, TotalPages, _segments);
+
+    public static float ClampZoomFactor(float factor) =>
+        Math.Clamp(factor, ZoomMinFactor, ZoomMaxFactor);
+
+    public static float ZoomFactorAfter(float factor, int direction) =>
+        ClampZoomFactor(factor * (direction >= 0 ? ZoomStepFactor : 1f / ZoomStepFactor));
+
+    public static int ZoomPercent(float factor) =>
+        (int)Math.Round(ClampZoomFactor(factor) * 100f);
+
+    public static int ZoomRenderWidth(float factor, int baseWidth, int minWidth, int maxWidth) =>
+        (int)Math.Clamp(baseWidth * ClampZoomFactor(factor), minWidth, maxWidth);
 
     private void ApplyMode(int mode)
     {

@@ -15,9 +15,6 @@
   <data name="AppName" xml:space="preserve">
     <value>Clickra</value>
   </data>
-  <data name="AppDescription" xml:space="preserve">
-    <value>[System Requirements] The "PPT to PDF" and "Word to PDF" features require Microsoft Office (PowerPoint/Word) to be installed on the local device. This ensures the highest conversion fidelity. All other features (PDF merging, image conversion, etc.) run natively without external dependencies.</value>
-  </data>
   <data name="Menu_Ppt2Pdf" xml:space="preserve">
     <value>PPT to PDF</value>
   </data>

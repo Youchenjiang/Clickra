@@ -172,17 +172,17 @@ namespace Clickra.UI
                 }
                 else if (key == 0x6B || key == 0xBB) // numpad + / =
                 {
-                    SetVisualSplitZoomFactor(_visualSplitZoomFactor * 1.25f, ZoomImgLeft + ZoomImgW / 2f, ZoomImgTop + ZoomImgH / 2f);
+                    SetVisualSplitZoomFactor(VisualSplitModel.ZoomFactorAfter(_visualSplitZoomFactor, +1), ZoomImgLeft + ZoomImgW / 2f, ZoomImgTop + ZoomImgH / 2f);
                     InvalidateRect(hwnd, IntPtr.Zero, true);
                 }
                 else if (key == 0x6D || key == 0xBD) // numpad - / -
                 {
-                    SetVisualSplitZoomFactor(_visualSplitZoomFactor / 1.25f, ZoomImgLeft + ZoomImgW / 2f, ZoomImgTop + ZoomImgH / 2f);
+                    SetVisualSplitZoomFactor(VisualSplitModel.ZoomFactorAfter(_visualSplitZoomFactor, -1), ZoomImgLeft + ZoomImgW / 2f, ZoomImgTop + ZoomImgH / 2f);
                     InvalidateRect(hwnd, IntPtr.Zero, true);
                 }
                 else if (key == 0x30 || key == 0x60) // 0 / numpad 0 → fit
                 {
-                    _visualSplitZoomFactor = 1f;
+                    _visualSplitZoomFactor = VisualSplitModel.ZoomMinFactor;
                     _visualSplitZoomPanX = 0f;
                     _visualSplitZoomPanY = 0f;
                     InvalidateRect(hwnd, IntPtr.Zero, true);
@@ -223,7 +223,7 @@ namespace Clickra.UI
                 int sy = (short)((l.ToInt64() >> 16) & 0xFFFF);
                 var pt = new Point(sx, sy);
                 ScreenToClient(hwnd, ref pt);
-                SetVisualSplitZoomFactor(_visualSplitZoomFactor * (delta > 0 ? 1.25f : 0.8f), pt.X / _dpiScale, pt.Y / _dpiScale);
+                SetVisualSplitZoomFactor(VisualSplitModel.ZoomFactorAfter(_visualSplitZoomFactor, delta > 0 ? +1 : -1), pt.X / _dpiScale, pt.Y / _dpiScale);
                 InvalidateRect(hwnd, IntPtr.Zero, true);
                 return IntPtr.Zero;
             }
@@ -381,19 +381,19 @@ namespace Clickra.UI
 
                 if (mouseX >= btnInX && mouseX <= btnInX + 28f)
                 {
-                    SetVisualSplitZoomFactor(_visualSplitZoomFactor / 1.25f, cx, cy);
+                    SetVisualSplitZoomFactor(VisualSplitModel.ZoomFactorAfter(_visualSplitZoomFactor, -1), cx, cy);
                     InvalidateRect(hwnd, IntPtr.Zero, true);
                     return true;
                 }
                 if (mouseX >= btnOutX && mouseX <= btnOutX + 28f)
                 {
-                    SetVisualSplitZoomFactor(_visualSplitZoomFactor * 1.25f, cx, cy);
+                    SetVisualSplitZoomFactor(VisualSplitModel.ZoomFactorAfter(_visualSplitZoomFactor, +1), cx, cy);
                     InvalidateRect(hwnd, IntPtr.Zero, true);
                     return true;
                 }
                 if (mouseX >= btnFitX && mouseX <= btnFitX + 44f)
                 {
-                    _visualSplitZoomFactor = 1f;
+                    _visualSplitZoomFactor = VisualSplitModel.ZoomMinFactor;
                     _visualSplitZoomPanX = 0f;
                     _visualSplitZoomPanY = 0f;
                     InvalidateRect(hwnd, IntPtr.Zero, true);
