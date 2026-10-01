@@ -1,5 +1,6 @@
 using System;
 using System.IO;
+using Clickra.Core.Rendering;
 
 namespace Clickra.Core.Tests;
 
@@ -13,6 +14,8 @@ namespace Clickra.Core.Tests;
 /// </summary>
 static partial class TestSuite
 {
+    private const string ProgressDirectory = "Progress";
+
     public static void RegisterProgressWindowTests(TestRunner runner)
     {
         runner.Run("Progress window: every minimize goes through the tray path", () =>
@@ -20,7 +23,7 @@ static partial class TestSuite
             string? root = FindRepoRoot();
             if (root is null) throw new TestSkippedException("Could not locate the repository root from the test output directory.");
 
-            string dir = Path.Combine(root, "src", "Clickra.CLI", "Progress");
+            string dir = Path.Combine(root, "src", CliProjectDirectory, ProgressDirectory);
             string controls = StripComments(File.ReadAllText(Path.Combine(dir, "ProgressWindow.Controls.cs")));
             string tray = StripComments(File.ReadAllText(Path.Combine(dir, "ProgressWindow.Tray.cs")));
 
@@ -65,10 +68,10 @@ static partial class TestSuite
             string? root = FindRepoRoot();
             if (root is null) throw new TestSkippedException("Could not locate the repository root from the test output directory.");
 
-            string dir = Path.Combine(root, "src", "Clickra.CLI", "Progress");
+            string dir = Path.Combine(root, "src", CliProjectDirectory, ProgressDirectory);
             string controls = StripComments(File.ReadAllText(Path.Combine(dir, "ProgressWindow.Controls.cs")));
             string window = StripComments(File.ReadAllText(Path.Combine(dir, "ProgressWindow.cs")));
-            string win32 = StripComments(File.ReadAllText(Path.Combine(root, "src", "Clickra.CLI", "Native", "Win32.cs")));
+            string win32 = StripComments(File.ReadAllText(Path.Combine(root, "src", CliProjectDirectory, "Native", "Win32.cs")));
 
             // Minimizing to the tray is only acceptable because the tray icon restores the window;
             // if the round trip breaks, hiding the window becomes a one-way trip.
@@ -113,6 +116,87 @@ static partial class TestSuite
             // The icon must never outlive the window.
             Assert.True(MethodBody(window, "private void CleanupResources").Contains("RemoveTrayIcon()", StringComparison.Ordinal),
                 "CleanupResources must remove the tray icon so a closed progress window leaves nothing behind.");
+        });
+
+        runner.Run("Vector icons: all vector drawing routines execute cleanly and geometries are defined", () =>
+        {
+            Assert.False(string.IsNullOrWhiteSpace(VectorIcons.CheckmarkPathData), "CheckmarkPathData must not be empty.");
+            Assert.False(string.IsNullOrWhiteSpace(VectorIcons.CrossPathData), "CrossPathData must not be empty.");
+            Assert.False(string.IsNullOrWhiteSpace(VectorIcons.PlusPathData), "PlusPathData must not be empty.");
+            Assert.False(string.IsNullOrWhiteSpace(VectorIcons.MinusPathData), "MinusPathData must not be empty.");
+            Assert.False(string.IsNullOrWhiteSpace(VectorIcons.ChevronLeftPathData), "ChevronLeftPathData must not be empty.");
+            Assert.False(string.IsNullOrWhiteSpace(VectorIcons.ChevronRightPathData), "ChevronRightPathData must not be empty.");
+
+            using var bmp = new System.Drawing.Bitmap(64, 64);
+            using var g = System.Drawing.Graphics.FromImage(bmp);
+            var color = System.Drawing.Color.Red;
+            VectorIcons.DrawSuccessCheckmark(g, 10, 10, 20, color, 2f);
+            VectorIcons.DrawFailureCross(g, 10, 10, 20, color, 2f);
+            VectorIcons.DrawPlus(g, 32, 32, 8, color, 2f);
+            VectorIcons.DrawMinus(g, 32, 32, 8, color, 2f);
+            VectorIcons.DrawChevronLeft(g, 32, 32, 8, color, 2f);
+            VectorIcons.DrawChevronRight(g, 32, 32, 8, color, 2f);
+        });
+
+        runner.Run("Progress window: status headers and visual splitter buttons are rendered with vector paths instead of font glyphs", () =>
+        {
+            string? root = FindRepoRoot();
+            if (root is null) throw new TestSkippedException("Could not locate repository root.");
+
+            string paintPath = Path.Combine(root, "src", CliProjectDirectory, ProgressDirectory, "ProgressWindow.Paint.cs");
+            string splitterPath = Path.Combine(root, "src", CliProjectDirectory, ProgressDirectory, "ProgressWindow.VisualSplitter.cs");
+            string xamlPath = Path.Combine(root, "src", "Clickra.Fluent", "Controls", "VisualSplitterControl.xaml");
+            string xamlCodePath = Path.Combine(root, "src", "Clickra.Fluent", "Controls", "VisualSplitterControl.xaml.cs");
+
+            Assert.True(File.Exists(paintPath), "ProgressWindow.Paint.cs must exist.");
+            Assert.True(File.Exists(splitterPath), "ProgressWindow.VisualSplitter.cs must exist.");
+            Assert.True(File.Exists(xamlPath), "VisualSplitterControl.xaml must exist.");
+            Assert.True(File.Exists(xamlCodePath), "VisualSplitterControl.xaml.cs must exist.");
+
+            string paint = File.ReadAllText(paintPath);
+            string splitter = File.ReadAllText(splitterPath);
+            string xaml = File.ReadAllText(xamlPath);
+            string xamlCode = File.ReadAllText(xamlCodePath);
+
+            // 1. Paint error/success headers must not use emoji characters (cross, checkmark)
+            Assert.False(paint.Contains("\u274C"), "ProgressWindow.Paint.cs must not contain hardcoded cross emoji.");
+            Assert.False(paint.Contains("\u2714"), "ProgressWindow.Paint.cs must not contain hardcoded checkmark emoji.");
+            Assert.True(paint.Contains("VectorIcons.DrawFailureCross"), "PaintErrorState must use VectorIcons.DrawFailureCross.");
+            Assert.True(paint.Contains("VectorIcons.DrawSuccessCheckmark"), "PaintSuccessState must use VectorIcons.DrawSuccessCheckmark.");
+
+            // 2. Win32 visual splitter buttons must not draw font characters for +/-/<>/＋/−
+            Assert.False(splitter.Contains("DrawString(\"-\""), "VisualSplitter must not draw text '-' for stepper.");
+            Assert.False(splitter.Contains("DrawString(\"+\""), "VisualSplitter must not draw text '+' for stepper.");
+            Assert.False(splitter.Contains("DrawString(\"<\""), "VisualSplitter must not draw text '<' for navigation.");
+            Assert.False(splitter.Contains("DrawString(\">\""), "VisualSplitter must not draw text '>' for navigation.");
+            Assert.False(splitter.Contains("DrawString(\"\u2212\""), "VisualSplitter must not draw text minus for zoom out.");
+            Assert.False(splitter.Contains("DrawString(\"\uFF0B\""), "VisualSplitter must not draw text fullwidth plus for zoom in.");
+            Assert.True(splitter.Contains("VectorIcons.DrawMinus"), "VisualSplitter must use VectorIcons.DrawMinus.");
+            Assert.True(splitter.Contains("VectorIcons.DrawPlus"), "VisualSplitter must use VectorIcons.DrawPlus.");
+            Assert.True(splitter.Contains("VectorIcons.DrawChevronLeft"), "VisualSplitter must use VectorIcons.DrawChevronLeft.");
+            Assert.True(splitter.Contains("VectorIcons.DrawChevronRight"), "VisualSplitter must use VectorIcons.DrawChevronRight.");
+
+            // 3. Fluent visual splitter buttons must use vector Path instead of font glyph entities
+            Assert.False(xaml.Contains("&#x2212;"), "VisualSplitterControl.xaml must not use &#x2212; font glyph.");
+            Assert.False(xaml.Contains("&#xFF0B;"), "VisualSplitterControl.xaml must not use &#xFF0B; font glyph.");
+            Assert.False(xaml.Contains("&#x25C0;"), "VisualSplitterControl.xaml must not use &#x25C0; font glyph.");
+            Assert.False(xaml.Contains("&#x25B6;"), "VisualSplitterControl.xaml must not use &#x25B6; font glyph.");
+
+            // 4. Icon-only Fluent buttons must retain localized UI Automation names.
+            var automationNames = new (string Button, string Key)[]
+            {
+                ("NMinusBtn", "pdf_split_decrease_pages"),
+                ("NPlusBtn", "pdf_split_increase_pages"),
+                ("PrevPageBtn", "pdf_split_previous_page"),
+                ("NextPageBtn", "pdf_split_next_page"),
+                ("ZoomOutBtn", "pdf_split_zoom_out"),
+                ("ZoomInBtn", "pdf_split_zoom_in")
+            };
+            foreach (var (button, key) in automationNames)
+            {
+                Assert.True(xamlCode.Contains($"AutomationProperties.SetName({button}, L(\"{key}\"))", StringComparison.Ordinal),
+                    $"{button} must retain a localized UI Automation name after replacing its glyph Content with a vector Path.");
+            }
         });
     }
 

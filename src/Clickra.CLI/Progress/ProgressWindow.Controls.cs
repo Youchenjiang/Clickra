@@ -379,9 +379,9 @@ namespace Clickra.UI
             float zoomBtnH = 22f;
             if (mouseY >= zoomBtnY && mouseY <= zoomBtnY + zoomBtnH)
             {
-                float btnInX = ZoomModalLeft + ZoomModalW - 120f; // −
-                float btnOutX = ZoomModalLeft + ZoomModalW - 86f; // ＋
-                float btnFitX = ZoomModalLeft + ZoomModalW - 52f; // 適配
+                float btnInX = ZoomModalLeft + ZoomModalW - 120f; // Zoom out (-)
+                float btnOutX = ZoomModalLeft + ZoomModalW - 86f; // Zoom in (+)
+                float btnFitX = ZoomModalLeft + ZoomModalW - 52f; // Fit
                 float cx = ZoomImgLeft + ZoomImgW / 2f;
                 float cy = ZoomImgTop + ZoomImgH / 2f;
 
@@ -518,15 +518,15 @@ namespace Clickra.UI
         {
             if (mouseY < 380 || mouseY > 406) return false;
 
-            if (mouseX >= 36 && mouseX <= 132) // ＋ 新增區段
+            if (mouseX >= 36 && mouseX <= 132) // Add segment
             {
                 AddVisualSplitSegment();
             }
-            else if (mouseX >= 138 && mouseX <= 222) // 刪除區段
+            else if (mouseX >= 138 && mouseX <= 222) // Delete segment
             {
                 DeleteVisualSplitSegment();
             }
-            else if (mouseX >= 228 && mouseX <= 312) // 清空區段
+            else if (mouseX >= 228 && mouseX <= 312) // Clear segments
             {
                 ClearVisualSplitSegments();
             }

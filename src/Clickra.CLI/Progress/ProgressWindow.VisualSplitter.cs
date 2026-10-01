@@ -470,11 +470,12 @@ public partial class ProgressWindow
         g.FillRectangle(nBtnBg, plusX, nSelY, plusW, nSelH);
         g.DrawRectangle(nBtnPen, plusX, nSelY, plusW, nSelH);
 
+        VectorIcons.DrawMinus(g, minusX + minusW / 2f, nSelY + nSelH / 2f, 4 * s, nTextBrush.Color, 1.5f * s);
+        VectorIcons.DrawPlus(g, plusX + plusW / 2f, nSelY + nSelH / 2f, 4 * s, nTextBrush.Color, 1.5f * s);
+
         Font? uiFont = _msgFont ?? _tipFont;
         if (uiFont == null) return 22 * s;
-        g.DrawString("-", uiFont, nTextBrush, minusX + 7 * s, nSelY + 1 * s);
         g.DrawString(Loc("pdf_split_pages_n", _visualSplitNPages), uiFont, nLabelBrush, nLabelX, nSelY + 1 * s);
-        g.DrawString("+", uiFont, nTextBrush, plusX + 7 * s, nSelY + 1 * s);
         return 22 * s;
     }
 
@@ -587,13 +588,13 @@ public partial class ProgressWindow
         g.FillRectangle(navBtnBg, prevBtnX, navY, prevBtnW, navH);
         g.DrawRectangle(navBtnPen, prevBtnX, navY, prevBtnW, navH);
         using var navTextBrush = new SolidBrush(Color.FromArgb(220, 220, 220));
-        g.DrawString("<", tipFont, navTextBrush, prevBtnX + 7 * s, navY + 2 * s);
+        VectorIcons.DrawChevronLeft(g, prevBtnX + prevBtnW / 2f, navY + navH / 2f, 4 * s, navTextBrush.Color, 1.5f * s);
 
         float nextBtnX = badgeX + badgeW - 24 * s;
         float nextBtnW = 24 * s;
         g.FillRectangle(navBtnBg, nextBtnX, navY, nextBtnW, navH);
         g.DrawRectangle(navBtnPen, nextBtnX, navY, nextBtnW, navH);
-        g.DrawString(">", tipFont, navTextBrush, nextBtnX + 7 * s, navY + 2 * s);
+        VectorIcons.DrawChevronRight(g, nextBtnX + nextBtnW / 2f, navY + navH / 2f, 4 * s, navTextBrush.Color, 1.5f * s);
 
         // Split-at-current-page button (between the page label and the ">" button)
         float splitBtnW = 40 * s;
@@ -789,9 +790,9 @@ public partial class ProgressWindow
         // Bottom controls: zoom in/out, reset-to-fit, and a usage hint.
         float zoomBtnY = modalY + modalH - 34 * s;
         float zoomBtnH = 22 * s;
-        float zoomBtnInX = modalX + modalW - 120 * s;   // −
-        float zoomBtnOutX = modalX + modalW - 86 * s;   // ＋
-        float zoomBtnFitX = modalX + modalW - 52 * s;   // 適配
+        float zoomBtnInX = modalX + modalW - 120 * s;   // Zoom out (-)
+        float zoomBtnOutX = modalX + modalW - 86 * s;   // Zoom in (+)
+        float zoomBtnFitX = modalX + modalW - 52 * s;   // Fit
         float zoomBtnW = 28 * s;
         float zoomBtnFitW = 44 * s;
 
@@ -799,9 +800,11 @@ public partial class ProgressWindow
         using var zoomBtnPen = new Pen(Color.FromArgb(80, 80, 80));
         using var zoomBtnText = new SolidBrush(Color.FromArgb(220, 220, 220));
         g.FillRectangle(zoomBtnBg, zoomBtnInX, zoomBtnY, zoomBtnW, zoomBtnH);
-        g.DrawRectangle(zoomBtnPen, zoomBtnInX, zoomBtnY, zoomBtnW, zoomBtnH);            g.DrawString("−", tipFont, zoomBtnText, zoomBtnInX + 9 * s, zoomBtnY + 2 * s);
+        g.DrawRectangle(zoomBtnPen, zoomBtnInX, zoomBtnY, zoomBtnW, zoomBtnH);
+        VectorIcons.DrawMinus(g, zoomBtnInX + zoomBtnW / 2f, zoomBtnY + zoomBtnH / 2f, 4 * s, zoomBtnText.Color, 1.5f * s);
         g.FillRectangle(zoomBtnBg, zoomBtnOutX, zoomBtnY, zoomBtnW, zoomBtnH);
-        g.DrawRectangle(zoomBtnPen, zoomBtnOutX, zoomBtnY, zoomBtnW, zoomBtnH);            g.DrawString("＋", tipFont, zoomBtnText, zoomBtnOutX + 9 * s, zoomBtnY + 2 * s);
+        g.DrawRectangle(zoomBtnPen, zoomBtnOutX, zoomBtnY, zoomBtnW, zoomBtnH);
+        VectorIcons.DrawPlus(g, zoomBtnOutX + zoomBtnW / 2f, zoomBtnY + zoomBtnH / 2f, 4 * s, zoomBtnText.Color, 1.5f * s);
         g.FillRectangle(zoomBtnBg, zoomBtnFitX, zoomBtnY, zoomBtnFitW, zoomBtnH);
         g.DrawRectangle(zoomBtnPen, zoomBtnFitX, zoomBtnY, zoomBtnFitW, zoomBtnH);
         g.DrawString(Loc("pdf_split_zoom_fit"), tipFont, zoomBtnText, zoomBtnFitX + 8 * s, zoomBtnY + 2 * s);

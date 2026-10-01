@@ -29,9 +29,13 @@
                 <RadioButton x:Name="ModeFixedBtn" GroupName="SplitMode" Padding="12,6" VerticalAlignment="Center"/>
             </StackPanel>
             <StackPanel x:Name="NSelector" Grid.Column="1" Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
-                <Button x:Name="NMinusBtn" Content="&#x2212;" MinWidth="36" Padding="8,6"/>
+                <Button x:Name="NMinusBtn" MinWidth="36" Padding="8,6">
+                    <Path Data="M 1,6 H 11" Stroke="{ThemeResource TextFillColorPrimaryBrush}" StrokeThickness="1.5" StrokeStartLineCap="Round" StrokeEndLineCap="Round" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                </Button>
                 <TextBlock x:Name="NLabel" VerticalAlignment="Center" MinWidth="72" TextAlignment="Center"/>
-                <Button x:Name="NPlusBtn" Content="&#xFF0B;" MinWidth="36" Padding="8,6"/>
+                <Button x:Name="NPlusBtn" MinWidth="36" Padding="8,6">
+                    <Path Data="M 1,6 H 11 M 6,1 V 11" Stroke="{ThemeResource TextFillColorPrimaryBrush}" StrokeThickness="1.5" StrokeStartLineCap="Round" StrokeEndLineCap="Round" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                </Button>
             </StackPanel>
         </Grid>
 
@@ -79,10 +83,14 @@
                         <TextBlock x:Name="OutputBadgeText" Foreground="{ThemeResource TextOnAccentFillColorPrimaryBrush}"/>
                     </Border>
                     <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
-                        <Button x:Name="PrevPageBtn" Content="&#x25C0;" MinWidth="34" Padding="8,5"/>
+                        <Button x:Name="PrevPageBtn" MinWidth="34" Padding="8,5">
+                            <Path Data="M 7,2 L 3,6 L 7,10" Stroke="{ThemeResource TextFillColorPrimaryBrush}" StrokeThickness="1.5" StrokeStartLineCap="Round" StrokeEndLineCap="Round" StrokeLineJoin="Round" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Button>
                         <TextBlock x:Name="PageLabel" VerticalAlignment="Center" MinWidth="130" TextAlignment="Center"/>
                         <Button x:Name="SplitAtPageBtn" Content="Split" Padding="10,5"/>
-                        <Button x:Name="NextPageBtn" Content="&#x25B6;" MinWidth="34" Padding="8,5"/>
+                        <Button x:Name="NextPageBtn" MinWidth="34" Padding="8,5">
+                            <Path Data="M 3,2 L 7,6 L 3,10" Stroke="{ThemeResource TextFillColorPrimaryBrush}" StrokeThickness="1.5" StrokeStartLineCap="Round" StrokeEndLineCap="Round" StrokeLineJoin="Round" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Button>
                     </StackPanel>
                 </Grid>
 
@@ -100,9 +108,13 @@
 
                 <!-- Inline zoom controls: zoom out / level / zoom in / fit -->
                 <StackPanel Grid.Row="2" Orientation="Horizontal" Spacing="6" HorizontalAlignment="Right">
-                    <Button x:Name="ZoomOutBtn" Content="&#x2212;" MinWidth="34" Padding="8,5" Click="ZoomOutBtn_Click"/>
+                    <Button x:Name="ZoomOutBtn" MinWidth="34" Padding="8,5" Click="ZoomOutBtn_Click">
+                        <Path Data="M 1,6 H 11" Stroke="{ThemeResource TextFillColorPrimaryBrush}" StrokeThickness="1.5" StrokeStartLineCap="Round" StrokeEndLineCap="Round" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                    </Button>
                     <TextBlock x:Name="ZoomLevelText" VerticalAlignment="Center" MinWidth="56" TextAlignment="Center"/>
-                    <Button x:Name="ZoomInBtn" Content="&#xFF0B;" MinWidth="34" Padding="8,5" Click="ZoomInBtn_Click"/>
+                    <Button x:Name="ZoomInBtn" MinWidth="34" Padding="8,5" Click="ZoomInBtn_Click">
+                        <Path Data="M 1,6 H 11 M 6,1 V 11" Stroke="{ThemeResource TextFillColorPrimaryBrush}" StrokeThickness="1.5" StrokeStartLineCap="Round" StrokeEndLineCap="Round" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                    </Button>
                     <Button x:Name="ZoomFitBtn" Content="Fit" Padding="10,5" Click="ZoomFitBtn_Click"/>
                 </StackPanel>
             </Grid>
