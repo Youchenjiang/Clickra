@@ -9,6 +9,7 @@ using System.Drawing;
 using System.Drawing.Text;
 using System.Drawing.Drawing2D;
 using Clickra.Core;
+using Clickra.Core.Rendering;
 
 using static Clickra.UI.Native.Win32;
 
@@ -97,8 +98,10 @@ namespace Clickra.UI
         {
             if (_headerFont != null)
             {
-                using var errBrush = new SolidBrush(Color.FromArgb(255, 90, 70));
-                g.DrawString($"❌ {Loc("progress_header_failed")}", _headerFont, errBrush, 36 * s, 130 * s);
+                Color errColor = Color.FromArgb(255, 90, 70);
+                using var errBrush = new SolidBrush(errColor);
+                VectorIcons.DrawFailureCross(g, 36 * s, 134 * s, 16 * s, errColor, 2f * s);
+                g.DrawString(Loc("progress_header_failed"), _headerFont, errBrush, 58 * s, 130 * s);
             }
             if (_msgFont != null)
             {
@@ -118,8 +121,10 @@ namespace Clickra.UI
         {
             if (_headerFont != null)
             {
-                using var succBrush = new SolidBrush(Color.FromArgb(100, 220, 100));
-                g.DrawString($"✔ {Loc("progress_header_success")}", _headerFont, succBrush, 36 * s, 130 * s);
+                Color succColor = Color.FromArgb(100, 220, 100);
+                using var succBrush = new SolidBrush(succColor);
+                VectorIcons.DrawSuccessCheckmark(g, 36 * s, 134 * s, 16 * s, succColor, 2f * s);
+                g.DrawString(Loc("progress_header_success"), _headerFont, succBrush, 58 * s, 130 * s);
             }
             if (_msgFont != null)
             {
