@@ -53,8 +53,29 @@ namespace Clickra.UI
 
             // 取得目前進行中的任務佇列（每個任務一列；並行任務各自獨立，不會互搶）
             var activeTasks = ClickraStorage.GetActiveTasks();
-
             int rowW = (int)logW - (int)contentX - 40;
+            DrawActiveHistoryRows(g, contentX, rowW, s, activeTasks);
+
+            DrawParkedQueue(g, contentX, rowW, 90 + activeTasks.Count * HistoryRowStride);
+
+            // ——— 顯示持久化歷史紀錄———
+            if (_historyEntries == null || _historyEntries.Count == 0)
+            {
+                if (activeTasks.Count == 0 && _parkedEntries.Count == 0 && _tabFont != null)
+                {
+                    using var textBrush = new SolidBrush(Color.FromArgb(120, 120, 120));
+                    g.DrawString(GetText("history_empty"), _tabFont, textBrush, contentX * s, 100 * s);
+                }
+                return;
+            }
+
+            // 起點與命中測試／hover／捲動高度共用 GetHistoryListStartY()，不是各自累加出來的。
+            DrawPersistedHistoryRows(g, logH, contentX, rowW, s);
+        }
+
+
+        private static void DrawActiveHistoryRows(Graphics g, float contentX, int rowW, float s, List<ClickraStorage.HistoryEntry> activeTasks)
+        {
             int rowH = 44;
 
             // ——— 顯示進行中任務佇列（置頂）———
@@ -155,23 +176,19 @@ namespace Clickra.UI
             }
 
             // ——— 顯示待繼續（已暫存）任務：逐項顯示還剩幾天過期 ———
-            DrawParkedQueue(g, contentX, rowW, 90 + activeTasks.Count * HistoryRowStride);
+        }
 
-            // ——— 顯示持久化歷史紀錄———
-            if (_historyEntries == null || _historyEntries.Count == 0)
-            {
-                if (activeTasks.Count == 0 && _parkedEntries.Count == 0 && _tabFont != null)
-                {
-                    using var textBrush = new SolidBrush(Color.FromArgb(120, 120, 120));
-                    g.DrawString(GetText("history_empty"), _tabFont, textBrush, contentX * s, 100 * s);
-                }
-                return;
-            }
-
-            // 起點與命中測試／hover／捲動高度共用 GetHistoryListStartY()，不是各自累加出來的。
+        private static void DrawPersistedHistoryRows(Graphics g, float logH, float contentX, int rowW, float s)
+        {
             int currentY = GetHistoryListStartY();
             for (int i = 0; i < _historyEntries.Count; i++)
             {
+                currentY = DrawPersistedHistoryRow(g, i, currentY, logH, contentX, rowW, s);
+            }
+        }
+
+        private static int DrawPersistedHistoryRow(Graphics g, int i, int currentY, float logH, float contentX, int rowW, float s)
+        {
                 var entry = _historyEntries[i];
                 bool isExpanded = (i == _expandedHistoryIndex);
                 int currentH = isExpanded ? 160 : 44;
@@ -179,8 +196,7 @@ namespace Clickra.UI
                 // Optimization: Skip rendering if item is completely outside viewport
                 if (currentY + currentH < _contentScrollY || currentY > _contentScrollY + logH)
                 {
-                    currentY += currentH + 8;
-                    continue;
+                    return currentY + currentH + 8;
                 }
 
                 using var path = UIHelper.GetRoundedRectPath(new RectangleF(contentX * s, currentY * s, rowW * s, currentH * s), 6 * s);
@@ -360,8 +376,7 @@ namespace Clickra.UI
                     }
                 }
 
-                currentY += currentH + 8;
-            }
+            return currentY + currentH + 8;
         }
 
         /// <summary>Formats the file-count display text for a history row.</summary>
@@ -376,6 +391,20 @@ namespace Clickra.UI
 
         /// <summary>畫出待繼續（已暫存）任務，每列帶自己的剩餘保留期限，讓保留期限是逐項可見的，
         /// 而不只是設定頁上那句話。回傳持久化歷史紀錄的起始 Y。</summary>
+        private static Color GetParkedRowBorderColor(ClickraStorage.ParkedRetentionInfo info)
+        {
+            if (info.HasExpired) return Color.FromArgb(200, 60, 60);
+            if (info.IsExpiringSoon) return ParkedAlertColor;
+            return Color.FromArgb(70, 70, 100);
+        }
+
+        private static Color GetParkedRetentionTextColor(ClickraStorage.ParkedRetentionInfo info)
+        {
+            if (info.HasExpired) return Color.FromArgb(255, 90, 70);
+            if (info.IsExpiringSoon) return ParkedAlertColor;
+            return Color.FromArgb(150, 150, 160);
+        }
+
         static int DrawParkedQueue(Graphics g, float contentX, int rowW, int startY)
         {
             if (_parkedEntries.Count == 0) return startY;
@@ -413,9 +442,7 @@ namespace Clickra.UI
                 bool needsAttention = info.IsExpiringSoon || info.HasExpired;
 
                 Color rowBg = needsAttention ? Color.FromArgb(48, 40, 30) : Color.FromArgb(34, 34, 40);
-                Color rowBorder = info.HasExpired
-                    ? Color.FromArgb(200, 60, 60)
-                    : info.IsExpiringSoon ? ParkedAlertColor : Color.FromArgb(70, 70, 100);
+                Color rowBorder = GetParkedRowBorderColor(info);
 
                 using (var path = UIHelper.GetRoundedRectPath(new RectangleF(contentX * s, currentY * s, rowW * s, 44 * s), 6 * s))
                 using (var rowBgBrush = new SolidBrush(rowBg))
@@ -462,9 +489,7 @@ namespace Clickra.UI
 
                 if (_tagFont != null)
                 {
-                    Color ttlColor = info.HasExpired
-                        ? Color.FromArgb(255, 90, 70)
-                        : needsAttention ? ParkedAlertColor : Color.FromArgb(150, 150, 160);
+                    Color ttlColor = GetParkedRetentionTextColor(info);
                     using var ttlBrush = new SolidBrush(ttlColor);
                     g.DrawString(ttlText, _tagFont, ttlBrush, ttlX * s, (currentY + 13) * s);
                 }
