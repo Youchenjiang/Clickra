@@ -38,6 +38,7 @@ TestSuite.RegisterWicImageTests(runner);
 TestSuite.RegisterImageConvertTests(runner);
 TestSuite.RegisterImageCompressionTests(runner);
 TestSuite.RegisterSettingsRegistryTests(runner);
+TestSuite.RegisterXamlLocalizationTests(runner);
 TestSuite.RegisterFluentRuntimeTests(runner);
 
 // Print an explicit summary so CI logs show the actual executed test count

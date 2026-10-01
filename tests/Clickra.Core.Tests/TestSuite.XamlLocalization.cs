@@ -13,6 +13,8 @@ namespace Clickra.Core.Tests;
 /// </summary>
 static partial class TestSuite
 {
+    private static readonly TimeSpan XamlRegexTimeout = TimeSpan.FromSeconds(1);
+
     /// <summary>
     /// CJK 文案字元：CJK 標點、假名、CJK 擴充 A、漢字、諺文、相容漢字、全形字元。
     /// 涵蓋假名與諺文，否則只寫日文或韓文的標記會完全逃過檢查（Hangul 不在
@@ -20,7 +22,8 @@ static partial class TestSuite
     /// </summary>
     private static readonly Regex XamlCjkTextPattern = new(
         @"[\u3000-\u303F\u3040-\u30FF\u3400-\u4DBF\u4E00-\u9FFF\uAC00-\uD7AF\uF900-\uFAFF\uFF00-\uFFEF]",
-        RegexOptions.Compiled);
+        RegexOptions.Compiled,
+        XamlRegexTimeout);
 
     /// <summary>
     /// 允許出現在標記裡的非 ASCII 內容：各語言的自稱，以及後面的語言代碼。這兩者從
@@ -28,7 +31,8 @@ static partial class TestSuite
     /// </summary>
     private static readonly Regex XamlEndonymPattern = new(
         @"繁體中文|简体中文|日本語|한국어|中文|\((?:zh-TW|zh-CN|en-US|ja-JP|ko-KR|en|ja|ko)\)",
-        RegexOptions.Compiled);
+        RegexOptions.Compiled,
+        XamlRegexTimeout);
 
     /// <summary>Clickra.Fluent 的每一個介面標記檔都必須被涵蓋。</summary>
     private static readonly string[] ExpectedFluentXamlFiles =
@@ -71,7 +75,7 @@ static partial class TestSuite
             foreach (string file in ScanXamlFiles(root))
             {
                 string relPath = Path.GetRelativePath(root, file).Replace('\\', '/');
-                string raw = Regex.Replace(File.ReadAllText(file), @"<!--.*?-->", string.Empty, RegexOptions.Singleline);
+                string raw = Regex.Replace(File.ReadAllText(file), @"<!--.*?-->", string.Empty, RegexOptions.Singleline, XamlRegexTimeout);
 
                 string[] lines = raw.Split(new[] { "\r\n", "\r", "\n" }, StringSplitOptions.None);
                 for (int i = 0; i < lines.Length; i++)
