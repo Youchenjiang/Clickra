@@ -18,6 +18,19 @@ namespace Clickra.UI
         /// <summary>待繼續任務即將被清理時使用的警示色（與 Fluent 的琥珀色一致）。</summary>
         private static readonly Color ParkedAlertColor = Color.FromArgb(255, 160, 40);
 
+        private sealed class HistoryDetailRenderContext
+        {
+            public required Graphics Graphics { get; init; }
+            public required Brush LabelBrush { get; init; }
+            public required Brush ValueBrush { get; init; }
+            public int HistoryIndex { get; init; }
+            public int CurrentY { get; init; }
+            public float ContentX { get; init; }
+            public float ValueX { get; init; }
+            public float MaxValueWidth { get; init; }
+            public float Scale { get; init; }
+        }
+
         /// <summary>Draws the history tab: header, filter chips and the scrollable entry list.</summary>
         static void DrawHistoryTab(Graphics g, float logW, float logH, float contentX)
         {
@@ -313,18 +326,28 @@ namespace Clickra.UI
             float maxLabelW = Math.Max(w1, Math.Max(w2, Math.Max(w3, w4)));
             float valX = contentX + 12 + maxLabelW + 16;
             float maxValW = contentX + rowW - 12 - valX;
+            var detailContext = new HistoryDetailRenderContext
+            {
+                Graphics = g,
+                LabelBrush = labelBrush,
+                ValueBrush = valBrush,
+                HistoryIndex = index,
+                CurrentY = currentY,
+                ContentX = contentX,
+                ValueX = valX,
+                MaxValueWidth = maxValW,
+                Scale = s
+            };
 
             g.DrawString(GetText("history_detail_inputs") + ":", _subFont, labelBrush,
                 (contentX + 12) * s, (currentY + 54) * s);
             string inputsText = string.IsNullOrEmpty(entry.InputPaths) ? "N/A" : entry.InputPaths.Replace(";", ", ");
-            DrawScrollableHistoryDetail(
-                g, inputsText, valBrush, index, 0, valX, currentY + 54, currentY + 71, maxValW, s);
+            DrawScrollableHistoryDetail(detailContext, inputsText, 0, currentY + 54, currentY + 71);
 
             g.DrawString(GetText("history_detail_outputs") + ":", _subFont, labelBrush,
                 (contentX + 12) * s, (currentY + 80) * s);
             string outputsText = string.IsNullOrEmpty(entry.OutputPath) ? "N/A" : entry.OutputPath;
-            DrawScrollableHistoryDetail(
-                g, outputsText, valBrush, index, 1, valX, currentY + 80, currentY + 97, maxValW, s);
+            DrawScrollableHistoryDetail(detailContext, outputsText, 1, currentY + 80, currentY + 97);
 
             g.DrawString(GetText("history_detail_time") + ":", _subFont, labelBrush,
                 (contentX + 12) * s, (currentY + 106) * s);
@@ -333,22 +356,22 @@ namespace Clickra.UI
             timeText = UIHelper.TruncateText(g, timeText, _subFont, maxValW, s);
             g.DrawString(timeText, _subFont, valBrush, valX * s, (currentY + 106) * s);
 
-            DrawExpandedHistoryResult(
-                g, entry, index, currentY, contentX, valX, maxValW, labelBrush, valBrush, s);
+            DrawExpandedHistoryResult(detailContext, entry);
         }
 
         private static void DrawExpandedHistoryResult(
-            Graphics g,
-            ClickraStorage.HistoryEntry entry,
-            int index,
-            int currentY,
-            float contentX,
-            float valX,
-            float maxValW,
-            Brush labelBrush,
-            Brush valBrush,
-            float s)
+            HistoryDetailRenderContext context,
+            ClickraStorage.HistoryEntry entry)
         {
+            Graphics g = context.Graphics;
+            int currentY = context.CurrentY;
+            float contentX = context.ContentX;
+            float valX = context.ValueX;
+            float maxValW = context.MaxValueWidth;
+            Brush labelBrush = context.LabelBrush;
+            Brush valBrush = context.ValueBrush;
+            float s = context.Scale;
+
             if (entry.IsSuccess)
             {
                 g.DrawString(GetText("history_detail_elapsed") + ":", _subFont!, labelBrush,
@@ -369,26 +392,25 @@ namespace Clickra.UI
                 errorText = GetText("error_user_aborted");
             }
 
-            DrawScrollableHistoryDetail(
-                g, errorText, valBrush, index, 2, valX, currentY + 132, currentY + 149, maxValW, s);
+            DrawScrollableHistoryDetail(context, errorText, 2, currentY + 132, currentY + 149);
         }
 
         private static void DrawScrollableHistoryDetail(
-            Graphics g,
+            HistoryDetailRenderContext context,
             string text,
-            Brush brush,
-            int historyIndex,
             int detailIndex,
-            float valX,
             float valueY,
-            float scrollbarY,
-            float maxValW,
-            float s)
+            float scrollbarY)
         {
-            DetailScrollOffsets.TryGetValue((historyIndex, detailIndex), out float scrollOffset);
+            Graphics g = context.Graphics;
+            float valX = context.ValueX;
+            float maxValW = context.MaxValueWidth;
+            float s = context.Scale;
+
+            DetailScrollOffsets.TryGetValue((context.HistoryIndex, detailIndex), out float scrollOffset);
             var state = g.Save();
             g.IntersectClip(new RectangleF(valX * s, valueY * s, maxValW * s, 20 * s));
-            g.DrawString(text, _subFont!, brush, (valX - scrollOffset) * s, valueY * s);
+            g.DrawString(text, _subFont!, context.ValueBrush, (valX - scrollOffset) * s, valueY * s);
             g.Restore(state);
 
             float textW = g.MeasureString(text, _subFont!).Width / s;
