@@ -386,7 +386,7 @@ namespace Clickra.UI
             for (int i = 0; i < _parkedEntries.Count; i++)
             {
                 infos[i] = ClickraStorage.GetParkedRetentionInfo(_parkedEntries[i].Id);
-                if (infos[i].IsExpiringSoon || infos[i].IsExpired) expiringSoonCount++;
+                if (infos[i].IsExpiringSoon || infos[i].HasExpired) expiringSoonCount++;
             }
 
             // 區塊標題；有任務即將被清理時，右側補一句聚合警示。
@@ -410,10 +410,10 @@ namespace Clickra.UI
             {
                 var task = _parkedEntries[i];
                 var info = infos[i];
-                bool needsAttention = info.IsExpiringSoon || info.IsExpired;
+                bool needsAttention = info.IsExpiringSoon || info.HasExpired;
 
                 Color rowBg = needsAttention ? Color.FromArgb(48, 40, 30) : Color.FromArgb(34, 34, 40);
-                Color rowBorder = info.IsExpired
+                Color rowBorder = info.HasExpired
                     ? Color.FromArgb(200, 60, 60)
                     : info.IsExpiringSoon ? ParkedAlertColor : Color.FromArgb(70, 70, 100);
 
@@ -462,7 +462,7 @@ namespace Clickra.UI
 
                 if (_tagFont != null)
                 {
-                    Color ttlColor = info.IsExpired
+                    Color ttlColor = info.HasExpired
                         ? Color.FromArgb(255, 90, 70)
                         : needsAttention ? ParkedAlertColor : Color.FromArgb(150, 150, 160);
                     using var ttlBrush = new SolidBrush(ttlColor);
