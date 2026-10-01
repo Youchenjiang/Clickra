@@ -600,7 +600,8 @@ static partial class TestSuite
         {
             string line = ext == ".cs" ? StripSingleLineComment(lines[index]) : lines[index];
             string candidate = DrawnGlyphLiteralPattern.Replace(line, "\"\"");
-            if (!HardcodedCjkTextPattern.IsMatch(candidate) || IsAllowedLanguageAutonym(candidate))
+            candidate = XamlEndonymPattern.Replace(candidate, string.Empty);
+            if (!HardcodedCjkTextPattern.IsMatch(candidate))
             {
                 continue;
             }

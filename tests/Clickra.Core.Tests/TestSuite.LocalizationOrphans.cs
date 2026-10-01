@@ -58,9 +58,7 @@ static partial class TestSuite
         // TestSuite.VisualSplitter.cs 單獨守住。
         // 圖片壓縮／編解碼器：圖片壓縮設定頁與 Codec 商店的文案。這批是進行中的圖片
         // 轉檔／壓縮功能的字串，接上介面之後就該從基線移除。
-        "fluent_image_compression", "fluent_image_max_size", "fluent_image_size_original",
-        "fluent_image_size_4k", "fluent_image_size_fhd", "fluent_image_size_hd",
-        "codec_missing_store_prompt", "codec_heif_extension_name", "codec_webp_extension_name",
+        "codec_missing_store_prompt", "codec_heif_extension_name",
         "codec_missing_install_action"
     };
 
