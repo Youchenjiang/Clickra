@@ -98,8 +98,18 @@ static partial class TestSuite
                 "Tray context menu must contain localized restore item.");
             Assert.True(restore.Contains("cli_tray_cancel", StringComparison.Ordinal),
                 "Tray context menu must contain localized cancel item.");
-            Assert.True(restore.Contains("0x0010", StringComparison.Ordinal) || restore.Contains("HandleClose", StringComparison.Ordinal),
-                "Tray cancel item must forward to the window close/cancel workflow.");
+
+            int cancelBranch = restore.IndexOf("else if (cmd == idCancel)", StringComparison.Ordinal);
+            int finallyBlock = restore.IndexOf("finally", StringComparison.Ordinal);
+            Assert.True(cancelBranch >= 0 && finallyBlock > cancelBranch,
+                "Tray cancel selection must have its own branch before menu cleanup.");
+            string cancelBody = restore[cancelBranch..finallyBlock];
+            Assert.True(cancelBody.Contains("SendMessageW(hwnd, 0x0010", StringComparison.Ordinal),
+                "Tray cancel item must forward WM_CLOSE to the existing HandleClose cancellation workflow.");
+
+            string cleanupBody = restore[finallyBlock..];
+            Assert.True(cleanupBody.Contains("DestroyMenu(menu)", StringComparison.Ordinal),
+                "Tray popup menu must be destroyed from the finally block even when menu handling fails.");
 
             // The icon must never outlive the window.
             Assert.True(MethodBody(window, "private void CleanupResources").Contains("RemoveTrayIcon()", StringComparison.Ordinal),
