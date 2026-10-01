@@ -19,8 +19,6 @@ public partial class ProgressWindow
 {
     /// <summary>True while the visual splitter is active (the password prompt is suppressed).</summary>
     private volatile bool _isPromptingVisualSplitter = false; // skipcq: CS-R1137
-    /// <summary>Total page count of the document being split.</summary>
-    private int _visualSplitTotalPages = 1;
     /// <summary>Split mode: 0 = custom segments, 1 = split every page, 2 = fixed pages per segment.</summary>
     private int _visualSplitMode = 0;
     /// <summary>Pages per segment in fixed-page mode.</summary>
@@ -29,6 +27,8 @@ public partial class ProgressWindow
     private List<(int Start, int End)> _visualSplitSegments = new List<(int, int)>();
     /// <summary>User-defined segments (editable in custom mode).</summary>
     private readonly List<(int Start, int End)> _visualSplitCustomSegments = new List<(int, int)>();
+    /// <summary>Shared Core state model used by both Clickra visual splitter surfaces.</summary>
+    private VisualSplitModel _visualSplitModel = new(1);
     /// <summary>Index of the segment currently selected in the list.</summary>
     private int _visualSplitSelectedSegmentIndex = 0;
     /// <summary>Index of the page being previewed inside the selected segment.</summary>
@@ -90,29 +90,11 @@ public partial class ProgressWindow
         int totalPages = FileProcessor.GetPdfPageCount(filePath);
         if (totalPages <= 0) totalPages = 1;
 
-        _visualSplitTotalPages = totalPages;
         _visualSplitFilePath = filePath;
-        _visualSplitMode = 0;
-        _visualSplitNPages = Math.Min(5, totalPages);
-        _visualSplitSegments.Clear();
-        _visualSplitCustomSegments.Clear();
+        _visualSplitModel = new VisualSplitModel(totalPages);
+        SyncVisualSplitStateFromModel();
 
         CachePdfPageThumbnails(filePath);
-
-        if (totalPages == 1)
-        {
-            _visualSplitCustomSegments.Add((1, 1));
-        }
-        else
-        {
-            int half = totalPages / 2;
-            _visualSplitCustomSegments.Add((1, half));
-            _visualSplitCustomSegments.Add((half + 1, totalPages));
-        }
-
-        _visualSplitSegments = new List<(int, int)>(_visualSplitCustomSegments);
-        _visualSplitSelectedSegmentIndex = 0;
-        _visualSplitCurrentPreviewPageIndex = 0;
         _visualSplitIsZoomed = false;
         _visualSplitZoomFactor = 1f;
         _visualSplitZoomPanX = 0f;
@@ -340,163 +322,77 @@ public partial class ProgressWindow
     /// and selects it (switching to custom mode).</summary>
     private void AddVisualSplitSegment()
     {
-        _visualSplitMode = 0;
-
-        if (_visualSplitCustomSegments.Count == 0)
-        {
-            _visualSplitCustomSegments.Add((1, _visualSplitTotalPages));
-            _visualSplitSegments = new List<(int, int)>(_visualSplitCustomSegments);
-            _visualSplitSelectedSegmentIndex = 0;
-            _visualSplitCurrentPreviewPageIndex = 0;
-            return;
-        }
-
-        var covered = new HashSet<int>();
-        foreach (var s in _visualSplitCustomSegments)
-            for (int p = s.Start; p <= s.End; p++)
-                covered.Add(p);
-
-        int gapStart = -1, gapEnd = -1;
-        for (int p = 1; p <= _visualSplitTotalPages; p++)
-        {
-            if (!covered.Contains(p))
-            {
-                if (gapStart < 0) gapStart = p;
-                gapEnd = p;
-            }
-            else if (gapStart > 0)
-            {
-                break;
-            }
-        }
-
-        if (gapStart < 0) return;
-
-        _visualSplitCustomSegments.Add((gapStart, gapEnd));
-        _visualSplitCustomSegments.Sort((a, b) => a.Start.CompareTo(b.Start));
-        _visualSplitSegments = new List<(int, int)>(_visualSplitCustomSegments);
-        _visualSplitSelectedSegmentIndex = _visualSplitSegments.FindIndex(s => s.Start == gapStart && s.End == gapEnd);
-        _visualSplitCurrentPreviewPageIndex = 0;
+        _visualSplitModel.AddSegment();
+        SyncVisualSplitStateFromModel();
     }
 
     /// <summary>Removes the selected custom segment (keeping at least one) and selects a
     /// neighboring segment.</summary>
     private void DeleteVisualSplitSegment()
     {
-        if (_visualSplitCustomSegments.Count <= 1) return;
-        if (_visualSplitSelectedSegmentIndex < 0 || _visualSplitSelectedSegmentIndex >= _visualSplitCustomSegments.Count)
-            return;
-
-        _visualSplitMode = 0;
-        _visualSplitCustomSegments.RemoveAt(_visualSplitSelectedSegmentIndex);
-        _visualSplitSegments = new List<(int, int)>(_visualSplitCustomSegments);
-        if (_visualSplitSelectedSegmentIndex >= _visualSplitSegments.Count)
-            _visualSplitSelectedSegmentIndex = _visualSplitSegments.Count - 1;
-        _visualSplitCurrentPreviewPageIndex = 0;
+        _visualSplitModel.DeleteSelectedSegment();
+        SyncVisualSplitStateFromModel();
     }
 
     /// <summary>Clears all custom segments and switches to custom mode.</summary>
     private void ClearVisualSplitSegments()
     {
-        _visualSplitMode = 0;
-        _visualSplitCustomSegments.Clear();
-        _visualSplitSegments.Clear();
-        _visualSplitSelectedSegmentIndex = -1;
-        _visualSplitCurrentPreviewPageIndex = 0;
+        _visualSplitModel.ClearSegments();
+        SyncVisualSplitStateFromModel();
     }
 
     /// <summary>Splits the selected segment at the currently previewed page into two
     /// adjacent segments.</summary>
     private void SplitVisualSegmentAtCurrentPage()
     {
-        _visualSplitMode = 0;
-        if (_visualSplitSelectedSegmentIndex < 0 || _visualSplitSelectedSegmentIndex >= _visualSplitCustomSegments.Count)
-            return;
-
-        var seg = _visualSplitCustomSegments[_visualSplitSelectedSegmentIndex];
-        int pageCnt = seg.End - seg.Start + 1;
-        if (pageCnt <= 1) return;
-
-        int previewIdx = Math.Max(0, Math.Min(_visualSplitCurrentPreviewPageIndex, pageCnt - 1));
-        int splitPage = seg.Start + previewIdx;
-
-        var first = (seg.Start, splitPage);
-        var second = (splitPage + 1, seg.End);
-
-        _visualSplitCustomSegments.RemoveAt(_visualSplitSelectedSegmentIndex);
-        _visualSplitCustomSegments.Insert(_visualSplitSelectedSegmentIndex, second);
-        _visualSplitCustomSegments.Insert(_visualSplitSelectedSegmentIndex, first);
-        _visualSplitSegments = new List<(int, int)>(_visualSplitCustomSegments);
-        _visualSplitCurrentPreviewPageIndex = 0;
+        _visualSplitModel.SplitSelectedAtPreviewPage();
+        SyncVisualSplitStateFromModel();
     }
 
     /// <summary>Rebuilds the segment list from the active split mode (custom segments,
     /// split-every-page, or fixed pages per segment).</summary>
     private void ApplyVisualSplitMode()
     {
-        _visualSplitCurrentPreviewPageIndex = 0;
-        if (_visualSplitMode < 0 || _visualSplitMode > 2) _visualSplitMode = 0;
-        switch (_visualSplitMode)
-        {
-            case 0:
-                ApplyCustomSegmentsMode();
-                break;
-            case 1:
-                ApplyEveryPageMode();
-                break;
-            case 2:
-                ApplyFixedPageMode();
-                break;
-            default:
-                // Unreachable: the mode is normalized to 0-2 before the switch.
-                break;
-        }
+        _visualSplitModel.SetMode(_visualSplitMode);
+        SyncVisualSplitStateFromModel();
     }
 
     /// <summary>Rebuilds the segment list from the user's custom segments (mode 0).</summary>
     private void ApplyCustomSegmentsMode()
     {
-        _visualSplitSegments = new List<(int, int)>(_visualSplitCustomSegments);
-        if (_visualSplitSegments.Count == 0 && _visualSplitTotalPages > 0)
-        {
-            _visualSplitCustomSegments.Add((1, _visualSplitTotalPages));
-            _visualSplitSegments = new List<(int, int)>(_visualSplitCustomSegments);
-        }
-        _visualSplitSelectedSegmentIndex = _visualSplitSegments.Count > 0 ? 0 : -1;
+        _visualSplitModel.SetMode(VisualSplitModel.ModeCustom);
+        SyncVisualSplitStateFromModel();
     }
 
     /// <summary>Rebuilds the segment list as one segment per page (mode 1).</summary>
     private void ApplyEveryPageMode()
     {
-        _visualSplitSegments.Clear();
-        _visualSplitCustomSegments.Clear();
-        for (int p = 1; p <= _visualSplitTotalPages; p++)
-        {
-            _visualSplitSegments.Add((p, p));
-            _visualSplitCustomSegments.Add((p, p));
-        }
-        _visualSplitSelectedSegmentIndex = _visualSplitSegments.Count > 0 ? 0 : -1;
+        _visualSplitModel.SetMode(VisualSplitModel.ModeEachPage);
+        SyncVisualSplitStateFromModel();
     }
 
     /// <summary>Rebuilds the segment list as fixed-size page chunks (mode 2).</summary>
     private void ApplyFixedPageMode()
     {
-        _visualSplitSegments.Clear();
-        _visualSplitCustomSegments.Clear();
-        int n = Math.Max(1, _visualSplitNPages);
-        for (int p = 1; p <= _visualSplitTotalPages; p += n)
-        {
-            int end = Math.Min(p + n - 1, _visualSplitTotalPages);
-            _visualSplitSegments.Add((p, end));
-            _visualSplitCustomSegments.Add((p, end));
-        }
-        _visualSplitSelectedSegmentIndex = _visualSplitSegments.Count > 0 ? 0 : -1;
+        _visualSplitModel.SetMode(VisualSplitModel.ModeFixedPages);
+        SyncVisualSplitStateFromModel();
     }
 
     /// <summary>Builds the page-range spec string for the active split mode via
     /// <see cref="PdfSplitProcessor.BuildSegmentSpec"/>.</summary>
-    private string BuildVisualSplitSpec() =>
-        PdfSplitProcessor.BuildSegmentSpec(_visualSplitMode, _visualSplitNPages, _visualSplitTotalPages, _visualSplitSegments);
+    private string BuildVisualSplitSpec() => _visualSplitModel.BuildSpec();
+
+    /// <summary>Copies shared model state into the Win32 view fields used by paint/layout code.</summary>
+    private void SyncVisualSplitStateFromModel()
+    {
+        _visualSplitMode = _visualSplitModel.Mode;
+        _visualSplitNPages = _visualSplitModel.PagesPerSegment;
+        _visualSplitSegments = new List<(int Start, int End)>(_visualSplitModel.Segments);
+        _visualSplitCustomSegments.Clear();
+        _visualSplitCustomSegments.AddRange(_visualSplitModel.CustomSegments);
+        _visualSplitSelectedSegmentIndex = _visualSplitModel.SelectedSegmentIndex;
+        _visualSplitCurrentPreviewPageIndex = _visualSplitModel.PreviewPageIndex;
+    }
 
     /// <summary>Paints the entire splitter UI: mode bar, page-count selector, segment list,
     /// live page preview, bottom action buttons and the zoom lightbox overlay.</summary>
@@ -679,9 +575,8 @@ public partial class ProgressWindow
         string truncOutName = UIHelper.TruncateText(g, outName, tipFont, badgeW - 55 * s, s);
         g.DrawString(Loc("pdf_split_badge_format", truncOutName, cnt), tipFont, badgeTextBrush, badgeX + 4 * s, badgeY + 2 * s);
 
-        if (_visualSplitCurrentPreviewPageIndex < 0) _visualSplitCurrentPreviewPageIndex = 0;
-        if (_visualSplitCurrentPreviewPageIndex >= cnt) _visualSplitCurrentPreviewPageIndex = cnt - 1;
-        int currentPageNum = activeSeg.Start + _visualSplitCurrentPreviewPageIndex;
+        int previewIndex = Math.Clamp(_visualSplitCurrentPreviewPageIndex, 0, cnt - 1);
+        int currentPageNum = activeSeg.Start + previewIndex;
 
         // Page Navigation Bar
         float navY = bodyY + 41 * s;
@@ -712,7 +607,7 @@ public partial class ProgressWindow
         float pageLabelX = prevBtnX + prevBtnW + 4 * s;
         float pageLabelW = splitBtnX - 4 * s - pageLabelX;
         using var pageInfoBrush = new SolidBrush(Color.FromArgb(200, 220, 255));
-        string pageLabelStr = Loc("pdf_split_page_preview_format", currentPageNum, _visualSplitCurrentPreviewPageIndex + 1, cnt);
+        string pageLabelStr = Loc("pdf_split_page_preview_format", currentPageNum, previewIndex + 1, cnt);
         var pageLabelSz = g.MeasureString(pageLabelStr, tipFont);
         g.DrawString(pageLabelStr, tipFont, pageInfoBrush,
             pageLabelX + (pageLabelW - pageLabelSz.Width) / 2f,
