@@ -86,7 +86,7 @@ public sealed partial class MainPage : Page
         }
     }
 
-    private static string L(string key) => Localization.T(key, ClickraStorage.GetSetting(ClickraSettings.Language));
+    private static string L(string key) => Localization.T(key);
 
     private void NavView_SelectionChanged(NavigationView sender, NavigationViewSelectionChangedEventArgs args)
     {
@@ -571,7 +571,7 @@ public sealed partial class MainPage : Page
         DropZoneTypesText.Text = L("fluent_drop_types");
         SelectedFilesTitle.Text = L("fluent_selected_files");
         SelectedFilesDesc.Text = L("fluent_selected_files_desc");
-        ClearFilesButton.Content = L("fluent_clear");
+        ClearFilesButton.Content = L("convert_clear");
         EmptyFileMessage.Text = L("fluent_no_files");
         CommandTitle.Text = L("fluent_command");
         CommandStatusText.Text = _selectedCommand is null ? L("fluent_choose_command") : string.Format(L("fluent_selected_command"), L(ConvertCommandRegistry.GetLabelKey(_selectedCommand)));
@@ -596,12 +596,12 @@ public sealed partial class MainPage : Page
         BtnImgToHeic.Content = L("cmd_img_to_heic");
         RunTitle.Text = L("fluent_run");
         StartButton.Content = L("fluent_start");
-        CancelButton.Content = L("fluent_cancel");
+        CancelButton.Content = L("dialog_cancel");
         if (!_isRunning) ConversionProgressText.Text = L("fluent_ready");
 
         HistoryTitle.Text = L("fluent_nav_history");
         HistorySubtitle.Text = L("fluent_history_subtitle");
-        ClearHistoryButton.Content = L("fluent_clear");
+        ClearHistoryButton.Content = L("convert_clear");
         HistoryTotalLabel.Text = L("fluent_total");
         HistorySuccessLabel.Text = L(SuccessLocalizationKey);
         HistoryFailedLabel.Text = L(FailedLocalizationKey);
@@ -616,12 +616,12 @@ public sealed partial class MainPage : Page
         OutputDirTitle.Text = L("fluent_output_dir");
         OutputDirDesc.Text = L("fluent_output_dir_desc");
         OutputDirSourceItem.Content = L("fluent_output_source");
-        OutputDirDesktopItem.Content = L("fluent_desktop");
-        OutputDirDownloadsItem.Content = L("fluent_downloads");
+        OutputDirDesktopItem.Content = L("setting_output_desktop");
+        OutputDirDownloadsItem.Content = L("setting_output_downloads");
         OutputDirCustomItem.Content = L("fluent_custom");
         OfficeEngineTitle.Text = L("fluent_office_engine");
         OfficeEngineDesc.Text = L("fluent_office_engine_desc");
-        EngineAutoItem.Content = L("fluent_auto");
+        EngineAutoItem.Content = L("setting_engine_auto");
         EngineMicrosoftItem.Content = "Microsoft Office";
         EngineLibreOfficeItem.Content = "LibreOffice";
         LanguageTitle.Text = L("fluent_default_language");
@@ -872,7 +872,7 @@ public sealed partial class MainPage : Page
         };
         var resumeButton = new Button { Content = L("fluent_task_resume"), Padding = new Thickness(14, 6, 14, 6) };
         resumeButton.Click += (_, _) => ResumeParkedTask(task);
-        var cancelButton = new Button { Content = L("fluent_cancel"), Padding = new Thickness(14, 6, 14, 6) };
+        var cancelButton = new Button { Content = L("dialog_cancel"), Padding = new Thickness(14, 6, 14, 6) };
         cancelButton.Click += async (_, _) => await CancelParkedTaskAsync(task);
         actions.Children.Add(resumeButton);
         actions.Children.Add(cancelButton);
@@ -1571,7 +1571,7 @@ public sealed partial class MainPage : Page
             Title = "Clickra",
             Content = message,
             PrimaryButtonText = L("fluent_ok"),
-            CloseButtonText = L("fluent_cancel"),
+            CloseButtonText = L("dialog_cancel"),
             XamlRoot = XamlRoot
         };
         return await dialog.ShowAsync() == ContentDialogResult.Primary;

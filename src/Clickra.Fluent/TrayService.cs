@@ -14,7 +14,7 @@ internal sealed class TrayService
     private TrayIcon? _icon;
 
     private static string L(string key) =>
-        Localization.T(key, ClickraStorage.GetSetting(ClickraSettings.Language));
+        Localization.T(key);
 
     private sealed class TrayEntry
     {

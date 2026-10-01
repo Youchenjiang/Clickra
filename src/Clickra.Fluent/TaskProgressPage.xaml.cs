@@ -83,7 +83,7 @@ public sealed partial class TaskProgressPage : Page
         _arguments = e.Parameter as string ?? "";
     }
 
-    private static string L(string key) => Localization.T(key, ClickraStorage.GetSetting(ClickraSettings.Language));
+    private static string L(string key) => Localization.T(key);
 
     private static void ApplyLanguage(TextBlock titleText, TextBlock fileText, TextBlock stateText, Button openFolderButton, Button cancelButton)
     {
@@ -91,7 +91,7 @@ public sealed partial class TaskProgressPage : Page
         fileText.Text = "";
         stateText.Text = L("fluent_progress_preparing");
         openFolderButton.Content = L("fluent_progress_open_folder");
-        cancelButton.Content = L("fluent_cancel");
+        cancelButton.Content = L("dialog_cancel");
     }
 
     private sealed record ParseResult(string Command, List<string> Files, int StartIndex, string? ExistingTaskId);

@@ -23,10 +23,13 @@ static partial class TestSuite
     private const string RetiredPdfJpegQuality = "PdfCompressJpegQuality";
     private const string RetiredPdfDpi = "PdfCompressDpi";
     private const string LanguageZhTw = "zh-TW";
+    private const string LanguageZhCn = "zh-CN";
     private const string LanguageEnUs = "en-US";
     private const string LanguageJaJp = "ja-JP";
+    private const string LanguageKoKr = "ko-KR";
+    private const string ProgressSubCompleted = "progress_sub_completed";
     private static readonly string[] SupportedLocalizationLanguages =
-        { LanguageZhTw, "zh-CN", LanguageEnUs, LanguageJaJp, "ko-KR" };
+        { LanguageZhTw, LanguageZhCn, LanguageEnUs, LanguageJaJp, LanguageKoKr };
 
     public static void RegisterSettingsRegistryTests(TestRunner runner)
     {
@@ -39,6 +42,9 @@ static partial class TestSuite
         runner.Run("Settings registry: CLI localization keys coverage across all 5 languages", TestCliLocalizationKeysCoverage);
         runner.Run("Settings registry: Diagnostics email localization coverage across all 5 languages", TestDiagnosticsEmailLocalizationCoverage);
         runner.Run("Settings registry: Tray, visual splitter, and progress window localization coverage across all 5 languages", TestTraySplitterLocalizationCoverage);
+        runner.Run("Settings registry: Fluent add-on settings localization coverage across all 5 languages", TestFluentSettingsLocalizationCoverage);
+        runner.Run("Settings registry: Localization.T default language and formatting overloads", TestLocalizationDefaultLanguageAndFormatting);
+        runner.Run("Settings registry: Fluent-specific copy stays distinct from shared keys", TestFluentSpecificCopyPreserved);
         runner.Run("Localization guard: No hardcoded Chinese strings in Clickra.Fluent, Dashboard paint files, and ProgressWindow paint files", TestNoHardcodedChineseUiStrings);
         runner.Run("Settings registry: Translation diagnostics lists gaps grouped by language when translations are missing", TestTranslationDiagnosticsGapReport);
         runner.Run("Settings registry: All registered keys must have complete translations across all 5 languages", TestLocalizationDictionaryParity);
@@ -196,18 +202,18 @@ static partial class TestSuite
 
         try
         {
-            string content = $"Language=zh-CN\n{RetiredPdfTargetDpi}=150\n{RetiredPdfJpegQuality}=75\nOutputDir=desktop\n";
+            string content = $"Language={LanguageZhCn}\n{RetiredPdfTargetDpi}=150\n{RetiredPdfJpegQuality}=75\nOutputDir=desktop\n";
             File.WriteAllText(settingsFile, content, System.Text.Encoding.UTF8);
 
             ClickraStorage.ReloadSettings();
 
-            Assert.Equal("zh-CN", ClickraStorage.GetSetting(ClickraSettings.Language));
+            Assert.Equal(LanguageZhCn, ClickraStorage.GetSetting(ClickraSettings.Language));
             Assert.Equal(ClickraSettings.OutputDirDesktop, ClickraStorage.GetSetting(ClickraSettings.OutputDir));
             Assert.Equal(ClickraSettings.DefaultEmpty, ClickraStorage.GetSetting(RetiredPdfTargetDpi));
             Assert.Equal(ClickraSettings.DefaultEmpty, ClickraStorage.GetSetting(RetiredPdfJpegQuality));
 
             string[] persistedLines = File.ReadAllLines(settingsFile);
-            Assert.True(persistedLines.Any(line => line.StartsWith("Language=zh-CN", StringComparison.OrdinalIgnoreCase)),
+            Assert.True(persistedLines.Any(line => line.StartsWith($"Language={LanguageZhCn}", StringComparison.OrdinalIgnoreCase)),
                 "Active setting Language must remain in the persisted file.");
             Assert.True(persistedLines.Any(line => line.StartsWith("OutputDir=desktop", StringComparison.OrdinalIgnoreCase)),
                 "Active setting OutputDir must remain in the persisted file.");
@@ -322,7 +328,7 @@ static partial class TestSuite
             "pdf_split_badge_format",
             "pdf_split_pages_n",
             "progress_sub_failed",
-            "progress_sub_completed",
+            ProgressSubCompleted,
             "progress_sub_visual_splitter",
             "progress_sub_running",
             "progress_header_failed",
@@ -334,6 +340,66 @@ static partial class TestSuite
         AssertLocalizationKeysCoverage(keys);
     }
 
+    private static void TestFluentSettingsLocalizationCoverage()
+    {
+        string[] keys =
+        {
+            "setting_fluent_title",
+            "setting_fluent_desc",
+            "setting_fluent_ready",
+            "setting_fluent_not_installed",
+            "setting_fluent_install"
+        };
+
+        AssertLocalizationKeysCoverage(keys);
+    }
+
+    private static void TestLocalizationDefaultLanguageAndFormatting()
+    {
+        string origLang = ClickraStorage.GetSetting(ClickraSettings.Language);
+        try
+        {
+            ClickraStorage.SaveSetting(ClickraSettings.Language, LanguageEnUs);
+            Assert.Equal("Overview", Localization.T("fluent_nav_overview"));
+            Assert.Equal("Operation completed", Localization.T(ProgressSubCompleted));
+
+            ClickraStorage.SaveSetting(ClickraSettings.Language, LanguageJaJp);
+            Assert.Equal("概要", Localization.T("fluent_nav_overview"));
+            Assert.Equal("処理完了", Localization.T(ProgressSubCompleted));
+
+            ClickraStorage.SaveSetting(ClickraSettings.Language, LanguageZhTw);
+            Assert.Equal("總覽", Localization.T("fluent_nav_overview"));
+            Assert.Equal("作業完成", Localization.T(ProgressSubCompleted));
+
+            ClickraStorage.SaveSetting(ClickraSettings.Language, LanguageEnUs);
+            Assert.Equal("[PDF] doc.pdf (5 pages)", Localization.T("pdf_split_badge_format", "doc.pdf", 5));
+
+            ClickraStorage.SaveSetting(ClickraSettings.Language, LanguageZhTw);
+            Assert.Equal("[PDF] doc.pdf (5 頁)", Localization.T("pdf_split_badge_format", "doc.pdf", 5));
+        }
+        finally
+        {
+            ClickraStorage.SaveSetting(ClickraSettings.Language, origLang);
+        }
+    }
+
+    private static void TestFluentSpecificCopyPreserved()
+    {
+        Assert.Equal("OK", Localization.T("fluent_ok", LanguageJaJp));
+        Assert.Equal("元と同じ", Localization.T("fluent_output_source", LanguageJaJp));
+        Assert.Equal("원본과 같음", Localization.T("fluent_output_source", LanguageKoKr));
+        Assert.Equal("사용자 지정...", Localization.T("fluent_custom", LanguageKoKr));
+        Assert.Equal("Input paths", Localization.T("fluent_input_paths", LanguageEnUs));
+        Assert.Equal("Output paths", Localization.T("fluent_output_paths", LanguageEnUs));
+        Assert.Equal("错误消息", Localization.T("fluent_error_message", LanguageZhCn));
+        Assert.Equal("Error message", Localization.T("fluent_error_message", LanguageEnUs));
+
+        Assert.False(Localization.T("fluent_ok", LanguageJaJp) == Localization.T("dialog_ok", LanguageJaJp),
+            "Fluent OK copy intentionally differs from the shared dialog label in Japanese.");
+        Assert.False(Localization.T("fluent_output_paths", LanguageEnUs) == Localization.T("history_detail_outputs", LanguageEnUs),
+            "Fluent history output copy intentionally preserves its plural English label.");
+    }
+
     private static void TestTranslationDiagnosticsGapReport()
     {
         string[] testKeys = { "sample_key_tw_only", "sample_key_non_existent" };
@@ -342,7 +408,7 @@ static partial class TestSuite
         Assert.True(missing.Count > 0, "Missing translations must be detected for unregistered test keys.");
         Assert.True(missing.ContainsKey("en-US"), "en-US must be reported as missing test keys.");
         Assert.True(missing.ContainsKey(LanguageJaJp), "ja-JP must be reported as missing test keys.");
-        Assert.True(missing.ContainsKey("ko-KR"), "ko-KR must be reported as missing test keys.");
+        Assert.True(missing.ContainsKey(LanguageKoKr), $"{LanguageKoKr} must be reported as missing test keys.");
 
         string report = Localization.FormatMissingReport(missing);
         Assert.True(report.Contains("[en-US]"), "Report must include language section for en-US.");
@@ -463,10 +529,10 @@ static partial class TestSuite
 
     private static bool IsAllowedLanguageAutonym(string line) =>
         line.Contains("zh-TW", StringComparison.OrdinalIgnoreCase) ||
-        line.Contains("zh-CN", StringComparison.OrdinalIgnoreCase) ||
+        line.Contains(LanguageZhCn, StringComparison.OrdinalIgnoreCase) ||
         line.Contains(LanguageJaJp, StringComparison.OrdinalIgnoreCase) ||
         line.Contains("ja)", StringComparison.OrdinalIgnoreCase) ||
-        line.Contains("ko-KR", StringComparison.OrdinalIgnoreCase);
+        line.Contains(LanguageKoKr, StringComparison.OrdinalIgnoreCase);
 
     private static void AssertLocalizationKeysCoverage(string[] keys)
     {
