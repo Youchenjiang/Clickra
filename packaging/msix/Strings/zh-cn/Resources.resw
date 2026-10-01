@@ -15,9 +15,6 @@
   <data name="AppName" xml:space="preserve">
     <value>Clickra</value>
   </data>
-  <data name="AppDescription" xml:space="preserve">
-    <value>【系统需求】“演示文稿转PDF”与“文档转PDF”功能需在本机设备安装Microsoft Office (PowerPoint/Word)。此举可确保转换过程维持最高还原度。其余所有功能（PDF合并、图片转换等）皆可原生执行，无需额外外部依赖。</value>
-  </data>
   <data name="Menu_Ppt2Pdf" xml:space="preserve">
     <value>演示文稿转 PDF</value>
   </data>
