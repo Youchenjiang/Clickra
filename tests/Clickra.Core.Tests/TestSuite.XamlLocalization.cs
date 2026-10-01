@@ -47,57 +47,59 @@ static partial class TestSuite
 
     public static void RegisterXamlLocalizationTests(TestRunner runner)
     {
-        runner.Run("Localization guard: every Clickra.Fluent XAML file is covered by the markup guard", () =>
-        {
-            string? root = FindRepoRoot();
-            if (root is null) throw new TestSkippedException("Could not locate the repository root from the test output directory.");
-
-            var scanned = ScanXamlFiles(root)
-                .Select(p => Path.GetRelativePath(Path.Combine(root, "src", "Clickra.Fluent"), p).Replace('\\', '/'))
-                .ToList();
-
-            Assert.True(scanned.Count > 0, "Expected to find XAML files to scan under src/.");
-
-            foreach (string expected in ExpectedFluentXamlFiles)
-            {
-                Assert.True(scanned.Contains(expected, StringComparer.Ordinal),
-                    $"The markup guard must cover src/Clickra.Fluent/{expected} (found: {string.Join(", ", scanned)}).");
-            }
-        });
-
-        runner.Run("Localization guard: no hardcoded CJK text in XAML markup", () =>
-        {
-            string? root = FindRepoRoot();
-            if (root is null) throw new TestSkippedException("Could not locate the repository root from the test output directory.");
-
-            var violations = new List<string>();
-
-            foreach (string file in ScanXamlFiles(root))
-            {
-                string relPath = Path.GetRelativePath(root, file).Replace('\\', '/');
-                string raw = Regex.Replace(File.ReadAllText(file), @"<!--.*?-->", string.Empty, RegexOptions.Singleline, XamlRegexTimeout);
-
-                string[] lines = raw.Split(new[] { "\r\n", "\r", "\n" }, StringSplitOptions.None);
-                for (int i = 0; i < lines.Length; i++)
-                {
-                    string line = lines[i];
-                    if (!XamlCjkTextPattern.IsMatch(line)) continue;
-
-                    // Language endonyms are the one intentional exception: strip the autonym
-                    // and its language code, and only an otherwise-CJK-free line passes. A
-                    // literal next to an autonym is still reported.
-                    if (!XamlCjkTextPattern.IsMatch(XamlEndonymPattern.Replace(line, string.Empty))) continue;
-
-                    violations.Add($"{relPath}:{i + 1}: {line.Trim()}");
-                }
-            }
-
-            Assert.True(violations.Count == 0,
-                "XAML markup must not hardcode CJK text; take it from Localization or x:Uid instead." +
-                Environment.NewLine + string.Join(Environment.NewLine, violations));
-        });
+        runner.Run("Localization guard: every Clickra.Fluent XAML file is covered by the markup guard", TestEveryFluentXamlFileIsCovered);
+        runner.Run("Localization guard: no hardcoded CJK text in XAML markup", TestNoHardcodedCjkTextInXaml);
     }
 
+    private static void TestEveryFluentXamlFileIsCovered()
+    {
+        string? root = FindRepoRoot();
+        if (root is null) throw new TestSkippedException("Could not locate the repository root from the test output directory.");
+
+        var scanned = ScanXamlFiles(root)
+            .Select(p => Path.GetRelativePath(Path.Combine(root, "src", "Clickra.Fluent"), p).Replace('\\', '/'))
+            .ToList();
+
+        Assert.True(scanned.Count > 0, "Expected to find XAML files to scan under src/.");
+
+        foreach (string expected in ExpectedFluentXamlFiles)
+        {
+            Assert.True(scanned.Contains(expected, StringComparer.Ordinal),
+                $"The markup guard must cover src/Clickra.Fluent/{expected} (found: {string.Join(", ", scanned)}).");
+        }
+    }
+
+    private static void TestNoHardcodedCjkTextInXaml()
+    {
+        string? root = FindRepoRoot();
+        if (root is null) throw new TestSkippedException("Could not locate the repository root from the test output directory.");
+
+        var violations = new List<string>();
+        foreach (string file in ScanXamlFiles(root))
+        {
+            CollectHardcodedCjkViolations(root, file, violations);
+        }
+
+        Assert.True(violations.Count == 0,
+            "XAML markup must not hardcode CJK text; take it from Localization or x:Uid instead." +
+            Environment.NewLine + string.Join(Environment.NewLine, violations));
+    }
+
+    private static void CollectHardcodedCjkViolations(string root, string file, List<string> violations)
+    {
+        string relPath = Path.GetRelativePath(root, file).Replace('\\', '/');
+        string raw = Regex.Replace(File.ReadAllText(file), @"<!--.*?-->", string.Empty, RegexOptions.Singleline, XamlRegexTimeout);
+        string[] lines = raw.Split(new[] { "\r\n", "\r", "\n" }, StringSplitOptions.None);
+
+        for (int i = 0; i < lines.Length; i++)
+        {
+            string line = lines[i];
+            if (!XamlCjkTextPattern.IsMatch(line)) continue;
+            if (!XamlCjkTextPattern.IsMatch(XamlEndonymPattern.Replace(line, string.Empty))) continue;
+
+            violations.Add($"{relPath}:{i + 1}: {line.Trim()}");
+        }
+    }
     /// <summary>Every .xaml file under src/, excluding build output.</summary>
     private static IEnumerable<string> ScanXamlFiles(string root)
     {
