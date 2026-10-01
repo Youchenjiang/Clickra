@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Text;
 using System.Text.RegularExpressions;
 using Clickra.Core;
 
@@ -92,121 +93,112 @@ static partial class TestSuite
 
     public static void RegisterLocalizationOrphanTests(TestRunner runner)
     {
-        runner.Run("Localization guard: every declared key has a consumer (shrinking orphan baseline)", () =>
-        {
-            string? root = FindRepoRoot();
-            if (root is null) throw new TestSkippedException("Could not locate the repository root from the test output directory.");
-
-            Assert.True(UnconsumedKeyBaseline.Length == UnconsumedKeyBaseline.Distinct(StringComparer.Ordinal).Count(),
-                "The unconsumed-key baseline must not list the same key twice.");
-
-            var keys = Localization.GetAllKeys();
-            Assert.True(keys.Count > 0, "Expected Localization to declare at least one key.");
-
-            // Consumer text: every source and markup file under src/ except the declaration
-            // sites themselves. Comments are stripped so a key merely mentioned in prose
-            // does not count as being wired up.
-            string localizationPath = Path.Combine(root, "src", "Clickra.Core", "Localization", "Localization.cs");
-            Assert.True(File.Exists(localizationPath), $"Expected the localization source to exist: {localizationPath}");
-
-            string searchable = StripDeclarations(StripComments(File.ReadAllText(localizationPath)));
-
-            string srcDir = Path.Combine(root, "src");
-            foreach (string file in EnumerateSources(srcDir))
-            {
-                if (string.Equals(file, localizationPath, StringComparison.OrdinalIgnoreCase)) continue;
-                searchable += "\n" + StripComments(File.ReadAllText(file));
-            }
-
-            var consumed = keys.Where(k => searchable.Contains('"' + k + '"', StringComparison.Ordinal)).ToList();
-            var orphans = keys.Where(k => !consumed.Contains(k, StringComparer.Ordinal))
-                .OrderBy(k => k, StringComparer.Ordinal)
-                .ToList();
-
-            Assert.True(consumed.Count > 0, "Expected at least one localization key to be consumed by src/.");
-
-            // Both directions matter: a new orphan (baseline too short) and a freshly wired
-            // key that is still listed (baseline too long) must both fail.
-            string expected = string.Join(", ", UnconsumedKeyBaseline.OrderBy(k => k, StringComparer.Ordinal));
-            string actual = string.Join(", ", orphans);
-            Assert.True(string.Equals(expected, actual, StringComparison.Ordinal),
-                "The unconsumed-key baseline is stale. Every key still without a consumer must be wired " +
-                "up, or deleted together with its 5 translations, and then dropped from " +
-                "UnconsumedKeyBaseline — the list may only shrink." +
-                $"{Environment.NewLine}  baseline: {expected}{Environment.NewLine}  actual:   {actual}");
-        });
-
-        runner.Run("Localization guard: every localization lookup names a declared key", () =>
-        {
-            string? root = FindRepoRoot();
-            if (root is null) throw new TestSkippedException("Could not locate the repository root from the test output directory.");
-
-            var declared = new HashSet<string>(Localization.GetAllKeys(), StringComparer.Ordinal);
-            Assert.True(declared.Count > 0, "Expected Localization to declare at least one key.");
-
-            string srcDir = Path.Combine(root, "src");
-            string sourceText = string.Concat(EnumerateSources(srcDir)
-                .Where(f => f.EndsWith(".cs", StringComparison.OrdinalIgnoreCase))
-                .Select(f => StripComments(File.ReadAllText(f))));
-
-            // The accessors the pattern above relies on must still be defined, so renaming one
-            // cannot silently shrink this guard to nothing.
-            foreach (string accessor in new[] { "L", "Loc", "GetText", "T" })
-            {
-                Assert.True(Regex.IsMatch(sourceText, $@"static string {accessor}\(string", RegexOptions.None, LocalizationRegexTimeout),
-                    $"The '{accessor}' localization accessor must still be defined in src/.");
-            }
-
-            var violations = new List<string>();
-            foreach (string file in EnumerateSources(srcDir).Where(f => f.EndsWith(".cs", StringComparison.OrdinalIgnoreCase)))
-            {
-                string text = StripComments(File.ReadAllText(file));
-                foreach (Match match in LocalizationLookupPattern.Matches(text))
-                {
-                    string key = match.Groups[1].Value;
-                    if (declared.Contains(key)) continue;
-                    int line = text.Substring(0, match.Index).Count(c => c == '\n') + 1;
-                    violations.Add($"{Path.GetRelativePath(root, file).Replace('\\', '/')}:{line}: {key}");
-                }
-            }
-
-            Assert.True(violations.Count == 0,
-                "Every key handed to a localization lookup must exist in the dictionaries; T() echoes an " +
-                "undeclared key to the user verbatim. Wire it to a declared key or declare the missing " +
-                $"translation in all 5 languages ({violations.Count} site(s)):{Environment.NewLine}" +
-                string.Join(Environment.NewLine, violations));
-        });
-
-        runner.Run("Localization guard: the CLI progress tip is glyph-free and fits one tip line", () =>
-        {
-            // progress_tray_hint is the tray affordance's only label — the minimize button is
-            // an unlabelled glyph — and it occupies the ProgressWindow's single-line tip slot.
-            // Pin both properties here rather than remembering them: a tip that embeds a UI
-            // glyph goes stale the moment the affordance changes, and a tip wider than the
-            // slot is simply cut off.
-            foreach (string lang in Localization.SupportedLanguages)
-            {
-                string tip = Localization.T("progress_tray_hint", lang);
-
-                Assert.False(string.IsNullOrWhiteSpace(tip),
-                    $"progress_tray_hint must have a translation for '{lang}'.");
-                Assert.False(string.Equals(tip, "progress_tray_hint", StringComparison.Ordinal),
-                    $"progress_tray_hint has no dictionary entry for '{lang}'.");
-
-                int glyphIndex = tip.IndexOfAny(UiGlyphsInCopy);
-                string glyph = glyphIndex >= 0 ? $"'{tip[glyphIndex]}'" : "(none)";
-                Assert.True(glyphIndex < 0,
-                    $"progress_tray_hint for '{lang}' embeds the UI glyph {glyph} ('{tip}'). Name the action, " +
-                    "not the button, so the sentence stays true for whichever control draws it.");
-
-                int units = tip.Sum(c => IsFullWidth(c) ? 2 : 1);
-                Assert.True(units <= ProgressTipLineHalfWidthUnits,
-                    $"progress_tray_hint for '{lang}' needs {units} halfwidth units but the CLI tip line " +
-                    $"fits {ProgressTipLineHalfWidthUnits} ('{tip}').");
-            }
-        });
+        runner.Run("Localization guard: every declared key has a consumer (shrinking orphan baseline)", TestEveryDeclaredKeyHasConsumer);
+        runner.Run("Localization guard: every localization lookup names a declared key", TestEveryLookupNamesDeclaredKey);
+        runner.Run("Localization guard: the CLI progress tip is glyph-free and fits one tip line", TestProgressTipFitsOneLine);
     }
 
+    private static void TestEveryDeclaredKeyHasConsumer()
+    {
+        string? root = FindRepoRoot();
+        if (root is null) throw new TestSkippedException("Could not locate the repository root from the test output directory.");
+
+        Assert.True(UnconsumedKeyBaseline.Length == UnconsumedKeyBaseline.Distinct(StringComparer.Ordinal).Count(),
+            "The unconsumed-key baseline must not list the same key twice.");
+
+        var keys = Localization.GetAllKeys();
+        Assert.True(keys.Count > 0, "Expected Localization to declare at least one key.");
+
+        string localizationPath = Path.Combine(root, "src", "Clickra.Core", "Localization", "Localization.cs");
+        Assert.True(File.Exists(localizationPath), $"Expected the localization source to exist: {localizationPath}");
+
+        var searchable = new StringBuilder(StripDeclarations(StripComments(File.ReadAllText(localizationPath))));
+        string srcDir = Path.Combine(root, "src");
+        foreach (string file in EnumerateSources(srcDir))
+        {
+            if (string.Equals(file, localizationPath, StringComparison.OrdinalIgnoreCase)) continue;
+            searchable.Append('\n').Append(StripComments(File.ReadAllText(file)));
+        }
+
+        string searchableText = searchable.ToString();
+        var consumed = keys.Where(k => searchableText.Contains('"' + k + '"', StringComparison.Ordinal)).ToList();
+        var orphans = keys.Where(k => !consumed.Contains(k, StringComparer.Ordinal))
+            .OrderBy(k => k, StringComparer.Ordinal)
+            .ToList();
+
+        Assert.True(consumed.Count > 0, "Expected at least one localization key to be consumed by src/.");
+
+        string expected = string.Join(", ", UnconsumedKeyBaseline.OrderBy(k => k, StringComparer.Ordinal));
+        string actual = string.Join(", ", orphans);
+        Assert.True(string.Equals(expected, actual, StringComparison.Ordinal),
+            "The unconsumed-key baseline is stale. Every key still without a consumer must be wired " +
+            "up, or deleted together with its 5 translations, and then dropped from " +
+            "UnconsumedKeyBaseline - the list may only shrink." +
+            $"{Environment.NewLine}  baseline: {expected}{Environment.NewLine}  actual:   {actual}");
+    }
+
+    private static void TestEveryLookupNamesDeclaredKey()
+    {
+        string? root = FindRepoRoot();
+        if (root is null) throw new TestSkippedException("Could not locate the repository root from the test output directory.");
+
+        var declared = new HashSet<string>(Localization.GetAllKeys(), StringComparer.Ordinal);
+        Assert.True(declared.Count > 0, "Expected Localization to declare at least one key.");
+
+        string srcDir = Path.Combine(root, "src");
+        string sourceText = string.Concat(EnumerateSources(srcDir)
+            .Where(f => f.EndsWith(".cs", StringComparison.OrdinalIgnoreCase))
+            .Select(f => StripComments(File.ReadAllText(f))));
+
+        foreach (string accessor in new[] { "L", "Loc", "GetText", "T" })
+        {
+            Assert.True(Regex.IsMatch(sourceText, $@"static string {accessor}\(string", RegexOptions.None, LocalizationRegexTimeout),
+                $"The '{accessor}' localization accessor must still be defined in src/.");
+        }
+
+        var violations = new List<string>();
+        foreach (string file in EnumerateSources(srcDir).Where(f => f.EndsWith(".cs", StringComparison.OrdinalIgnoreCase)))
+        {
+            string text = StripComments(File.ReadAllText(file));
+            foreach (Match match in LocalizationLookupPattern.Matches(text))
+            {
+                string key = match.Groups[1].Value;
+                if (declared.Contains(key)) continue;
+                int line = text.Substring(0, match.Index).Count(c => c == '\n') + 1;
+                violations.Add($"{Path.GetRelativePath(root, file).Replace('\\', '/')}:{line}: {key}");
+            }
+        }
+
+        Assert.True(violations.Count == 0,
+            "Every key handed to a localization lookup must exist in the dictionaries; T() echoes an " +
+            "undeclared key to the user verbatim. Wire it to a declared key or declare the missing " +
+            $"translation in all 5 languages ({violations.Count} site(s)):{Environment.NewLine}" +
+            string.Join(Environment.NewLine, violations));
+    }
+
+    private static void TestProgressTipFitsOneLine()
+    {
+        foreach (string lang in Localization.SupportedLanguages)
+        {
+            string tip = Localization.T("progress_tray_hint", lang);
+
+            Assert.False(string.IsNullOrWhiteSpace(tip),
+                $"progress_tray_hint must have a translation for '{lang}'.");
+            Assert.False(string.Equals(tip, "progress_tray_hint", StringComparison.Ordinal),
+                $"progress_tray_hint has no dictionary entry for '{lang}'.");
+
+            int glyphIndex = tip.IndexOfAny(UiGlyphsInCopy);
+            string glyph = glyphIndex >= 0 ? $"'{tip[glyphIndex]}'" : "(none)";
+            Assert.True(glyphIndex < 0,
+                $"progress_tray_hint for '{lang}' embeds the UI glyph {glyph} ('{tip}'). Name the action, " +
+                "not the button, so the sentence stays true for whichever control draws it.");
+
+            int units = tip.Sum(c => IsFullWidth(c) ? 2 : 1);
+            Assert.True(units <= ProgressTipLineHalfWidthUnits,
+                $"progress_tray_hint for '{lang}' needs {units} halfwidth units but the CLI tip line " +
+                $"fits {ProgressTipLineHalfWidthUnits} ('{tip}').");
+        }
+    }
     /// <summary>Every .cs and .xaml file under the given directory, excluding build output.</summary>
     private static IEnumerable<string> EnumerateSources(string sourceDir)
     {

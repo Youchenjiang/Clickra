@@ -14,6 +14,11 @@ namespace Clickra.Core
         private const string KeyCmdCompressPdf = "cmd_compress_pdf";
         private const string KeyLibreOfficeExternalNote = "setting_libreoffice_external_note";
         private const string KeyLibreOfficeExternalHint = "setting_libreoffice_external_hint";
+        private const string MicrosoftOfficeLabel = "Microsoft Office";
+        private const string LibreOfficeLabel = "LibreOffice";
+        private const string WordToPdfLabel = "Word → PDF";
+        private const string ExcelToPdfLabel = "Excel → PDF";
+        private const string PptToPdfLabel = "PPT → PDF";
         private const string KeyFluentTitle = "setting_fluent_title";
         private const string KeyFluentDescription = "setting_fluent_desc";
         private const string KeyFluentReady = "setting_fluent_ready";
@@ -234,8 +239,8 @@ namespace Clickra.Core
                 ("setting_engine_title", "Office 轉檔引擎", "Office 转档引擎", "Office Conversion Engine", "Office 変換エンジン", "Office 변환 엔진"),
                 ("setting_engine_desc", "選擇 Word、Excel、PowerPoint 轉 PDF 時使用的引擎", "选择 Word、Excel、PowerPoint 转 PDF 时使用的引擎", "Choose the engine used for Word, Excel, and PowerPoint to PDF conversion", "Word、Excel、PowerPoint から PDF への変換に使うエンジンを選択します", "Word, Excel, PowerPoint를 PDF로 변환할 때 사용할 엔진을 선택합니다"),
                 ("setting_engine_auto", "自動", "自动", "Auto", "自動", "자동"),
-                ("setting_engine_microsoft", "Microsoft Office", "Microsoft Office", "Microsoft Office", "Microsoft Office", "Microsoft Office"),
-                ("setting_engine_libreoffice", "LibreOffice", "LibreOffice", "LibreOffice", "LibreOffice", "LibreOffice"),
+                ("setting_engine_microsoft", MicrosoftOfficeLabel, MicrosoftOfficeLabel, MicrosoftOfficeLabel, MicrosoftOfficeLabel, MicrosoftOfficeLabel),
+                ("setting_engine_libreoffice", LibreOfficeLabel, LibreOfficeLabel, LibreOfficeLabel, LibreOfficeLabel, LibreOfficeLabel),
                 ("setting_libreoffice_ready", "LibreOffice 已就緒", "LibreOffice 已就绪", "LibreOffice ready", "LibreOffice 準備完了", "LibreOffice 준비 완료"),
                 ("setting_libreoffice_missing", "LibreOffice 尚未設定", "LibreOffice 尚未设置", "LibreOffice is not configured", "LibreOffice は未設定です", "LibreOffice가 설정되지 않았습니다"),
                 ("setting_libreoffice_optional", "Microsoft Office 已就緒；LibreOffice 可作為免費備援引擎。", "Microsoft Office 已就绪；LibreOffice 可作为免费备用引擎。", "Microsoft Office is ready; LibreOffice can be used as a free fallback engine.", "Microsoft Office は準備完了です。LibreOffice は無料の予備エンジンとして使用できます。", "Microsoft Office가 준비되었습니다. LibreOffice는 무료 예비 엔진으로 사용할 수 있습니다."),
@@ -271,9 +276,9 @@ namespace Clickra.Core
                 ("setting_engine_auto_using", "自動：使用 {0}", "自动：使用 {0}", "Auto: using {0}", "自動：{0} を使用", "자동: {0} 사용"),
                 ("setting_engine_none_available", "沒有可用的 Office 轉檔引擎。請安裝 Microsoft Office 或取得 LibreOffice。", "没有可用的 Office 转换引擎。请安装 Microsoft Office 或获取 LibreOffice。", "No Office conversion engine is available. Install Microsoft Office or get LibreOffice.", "利用可能な Office 変換エンジンがありません。Microsoft Office をインストールするか、LibreOffice を取得してください。", "사용 가능한 Office 변환 엔진이 없습니다. Microsoft Office를 설치하거나 LibreOffice를 받으세요."),
                 ("overview_tip", "提示：直接在檔案總管選取檔案，右鍵即可呼叫 Clickra 選單進行轉換。", "提示：直接在文件资源管理器中选择文件，右键即可呼叫 Clickra 菜单进行转换。", "Tip: Select files in File Explorer, right-click, and select Clickra to convert.", "ヒント：エクスプローラーでファイルを選択し、右クリックして Clickra から変換します。", "팁: 파일 탐색기에서 파일을 선택하고 마우스 오른쪽 버튼을 클릭하여 Clickra로 변환하세요."),
-                ("cmd_word_to_pdf", "Word → PDF", "Word → PDF", "Word → PDF", "Word → PDF", "Word → PDF"),
-                ("cmd_excel_to_pdf", "Excel → PDF", "Excel → PDF", "Excel → PDF", "Excel → PDF", "Excel → PDF"),
-                ("cmd_ppt_to_pdf", "PPT → PDF", "PPT → PDF", "PPT → PDF", "PPT → PDF", "PPT → PDF"),
+                ("cmd_word_to_pdf", WordToPdfLabel, WordToPdfLabel, WordToPdfLabel, WordToPdfLabel, WordToPdfLabel),
+                ("cmd_excel_to_pdf", ExcelToPdfLabel, ExcelToPdfLabel, ExcelToPdfLabel, ExcelToPdfLabel, ExcelToPdfLabel),
+                ("cmd_ppt_to_pdf", PptToPdfLabel, PptToPdfLabel, PptToPdfLabel, PptToPdfLabel, PptToPdfLabel),
                 ("cmd_merge_pdf", "合併 PDF", "合并 PDF", "Merge PDF", "PDF 結合", "PDF 병합"),
                 ("cmd_img_to_pdf", "圖片 → PDF", "图片 → PDF", "Image → PDF", "画像 → PDF", "이미지 → PDF"),
                 ("cmd_merge_img", "圖片合併", "图片合并", "Merge Images", "画像結合", "이미지 병합"),
