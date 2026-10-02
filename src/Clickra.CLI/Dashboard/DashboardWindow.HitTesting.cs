@@ -43,88 +43,91 @@ namespace Clickra.UI
             float sidebarW = GetSidebarWidth(logW);
             float contentX = GetContentX(logW);
 
-            // Sidebar tabs (always active)：列的 Y 與高度來自版面表，與繪製共用同一個算式。
-            if (x >= 0 && x < sidebarW)
-            {
-                int tab = DashboardLayout.SidebarTabAt(y);
-                if (tab >= 0) return tab;
-            }
+            int sidebarTarget = HitTestSidebar(x, y, sidebarW);
+            if (sidebarTarget >= 0) return sidebarTarget;
 
-            if (_activeTab == 1) // Convert
+            return _activeTab switch
             {
-                // 畫什麼、點什麼都由版面表的同一個矩形決定。
-                LayoutRect zone = DashboardLayout.ConvertZoneRect((int)contentX, (int)logW);
+                1 => HitTestConvert(x, y, logW, contentX),
+                2 => HitTestHistory(x, y, logW, contentX),
+                3 => HitTestSettings(x, y, contentX),
+                4 => HitTestAbout(x, y, contentX),
+                _ => -1
+            };
+        }
 
-                int commandIndex = 0;
-                for (int group = 0; group < ConvertCommandGroupSizes.Length; group++)
+        static int HitTestSidebar(int x, int y, float sidebarW)
+        {
+            if (x < 0 || x >= sidebarW) return -1;
+            return DashboardLayout.SidebarTabAt(y);
+        }
+
+        static int HitTestConvert(int x, int y, float logW, float contentX)
+        {
+            // 畫什麼、點什麼都由版面表的同一個矩形決定。
+            LayoutRect zone = DashboardLayout.ConvertZoneRect((int)contentX, (int)logW);
+
+            int commandIndex = 0;
+            for (int group = 0; group < ConvertCommandGroupSizes.Length; group++)
+            {
+                for (int local = 0; local < ConvertCommandGroupSizes[group]; local++)
                 {
-                    for (int local = 0; local < ConvertCommandGroupSizes[group]; local++)
+                    if (DashboardLayout.ConvertCardRect(group, local, zone.X, zone.Width).Contains(x, y)
+                        && ConvertCommands[commandIndex].ValidateFiles(_selectedFiles, out _))
                     {
-                        if (DashboardLayout.ConvertCardRect(group, local, zone.X, zone.Width).Contains(x, y)
-                            && ConvertCommands[commandIndex].ValidateFiles(_selectedFiles, out _))
-                        {
-                            return 50 + commandIndex;
-                        }
-                        commandIndex++;
+                        return 50 + commandIndex;
                     }
-                }
-
-                if (_selectedFiles.Count > 0 && DashboardLayout.ConvertClearButtonRect((int)logW).Contains(x, y)) return 25; // Clear button
-                if (zone.Contains(x, y)) return 18; // Drag & Drop zone
-                if (_selectedFiles.Count > 0 && _convertCommandIndex != -1 &&
-                    DashboardLayout.ConvertStartButtonRect(zone.X, zone.Width, ConvertCommandGroupSizes.Max()).Contains(x, y)) return 19; // Start button
-            }
-            else if (_activeTab == 2) // History
-            {
-                // Clear history button
-                if (DashboardLayout.HistoryClearButtonRect((int)logW).Contains(x, y)) return 22;
-
-                // 待繼續任務列的期限微調鈕：矩形來自版面表，與繪製端逐像素相同。
-                HistoryBlock parked = GetHistoryBlock(HistoryBlockKind.Parked);
-                if (!parked.IsEmpty)
-                {
-                    int rowW = (int)logW - (int)contentX - 40;
-                    var parkedItems = ParkedItems;
-                    for (int row = 0; row < parkedItems.Count; row++)
-                    {
-                        for (int action = 0; action < ParkedActionCount; action++)
-                        {
-                            if (DashboardLayout.ParkedRowActionRect((int)contentX, rowW, parked.RowTop(row), parked.RowHeight(row), action).Contains(x, y))
-                            {
-                                return ParkedActionElement(row, action);
-                            }
-                        }
-                    }
+                    commandIndex++;
                 }
             }
-            else if (_activeTab == 3) // Settings
+
+            if (_selectedFiles.Count > 0 && DashboardLayout.ConvertClearButtonRect((int)logW).Contains(x, y)) return 25;
+            if (zone.Contains(x, y)) return 18;
+            if (_selectedFiles.Count > 0 && _convertCommandIndex != -1 &&
+                DashboardLayout.ConvertStartButtonRect(zone.X, zone.Width, ConvertCommandGroupSizes.Max()).Contains(x, y)) return 19;
+            return -1;
+        }
+
+        static int HitTestHistory(int x, int y, float logW, float contentX)
+        {
+            if (DashboardLayout.HistoryClearButtonRect((int)logW).Contains(x, y)) return 22;
+
+            HistoryBlock parked = GetHistoryBlock(HistoryBlockKind.Parked);
+            if (parked.IsEmpty) return -1;
+
+            int rowW = (int)logW - (int)contentX - 40;
+            var parkedItems = ParkedItems;
+            for (int row = 0; row < parkedItems.Count; row++)
             {
-                foreach (var item in _settingsHitRects)
+                for (int action = 0; action < ParkedActionCount; action++)
                 {
-                    if (item.Value.Contains(x, y))
-                    {
-                        return item.Key;
-                    }
+                    LayoutRect actionRect = DashboardLayout.ParkedRowActionRect(
+                        (int)contentX, rowW, parked.RowTop(row), parked.RowHeight(row), action);
+                    if (actionRect.Contains(x, y)) return ParkedActionElement(row, action);
                 }
-
-                // Language dropdown button（與設定頁記錄的矩形共用同一份寬高）
-                if (DashboardLayout.DropdownButtonRect((int)contentX, _langDropdownY).Contains(x, y)) return 10;
-
-                // PDF Translation dropdown buttons
-                if (DashboardLayout.DropdownButtonRect((int)contentX, _pdfLangDropdownY).Contains(x, y)) return 31;
             }
-            else if (_activeTab == 4) // About
+            return -1;
+        }
+
+        static int HitTestSettings(int x, int y, float contentX)
+        {
+            foreach (var item in _settingsHitRects)
             {
-                float wGit = _wGit;
-                float wGmail = _wGmail;
-
-                // GitHub Button: x from contentX to contentX + wGit
-                if (x >= contentX && x < contentX + wGit && y >= _githubBtnY && y < _githubBtnY + 32) return 23;
-
-                // Gmail button: x from contentX to contentX + wGmail
-                if (x >= contentX && x < contentX + wGmail && y >= _aboutBtnY && y < _aboutBtnY + 32) return 24;
+                if (item.Value.Contains(x, y)) return item.Key;
             }
 
+            if (DashboardLayout.DropdownButtonRect((int)contentX, _langDropdownY).Contains(x, y)) return 10;
+            if (DashboardLayout.DropdownButtonRect((int)contentX, _pdfLangDropdownY).Contains(x, y)) return 31;
+            return -1;
+        }
+
+        static int HitTestAbout(int x, int y, float contentX)
+        {
+            float wGit = _wGit;
+            float wGmail = _wGmail;
+
+            if (x >= contentX && x < contentX + wGit && y >= _githubBtnY && y < _githubBtnY + 32) return 23;
+            if (x >= contentX && x < contentX + wGmail && y >= _aboutBtnY && y < _aboutBtnY + 32) return 24;
             return -1;
         }
     }
