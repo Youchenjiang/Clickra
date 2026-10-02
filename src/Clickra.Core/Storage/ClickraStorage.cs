@@ -160,16 +160,22 @@ namespace Clickra.Core
             {
                 try
                 {
-                    ReloadSettings();
-                    return;
+                    if (ReloadSettingsCore())
+                    {
+                        return;
+                    }
                 }
                 catch (TimeoutException) when (attempt < maxAttempts)
                 {
-                    Thread.Sleep(50);
                 }
                 catch
                 {
                     return;
+                }
+
+                if (attempt < maxAttempts)
+                {
+                    Thread.Sleep(50);
                 }
             }
         }
@@ -182,7 +188,7 @@ namespace Clickra.Core
             }
         }
 
-        private static void LoadSettingsInternalLocked()
+        private static bool LoadSettingsInternalLocked()
         {
             var newCache = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
             bool cleanedRetiredKeys = false;
@@ -217,7 +223,7 @@ namespace Clickra.Core
                     // A transient read/sharing failure is not an empty settings file.
                     // Preserve the last known-good cache/timestamp so the next freshness
                     // check can retry without publishing a false reset to defaults.
-                    return;
+                    return false;
                 }
             }
 
@@ -253,6 +259,8 @@ namespace Clickra.Core
             {
                 NotifySettingsChanged(changedKeys);
             }
+
+            return true;
         }
 
         private static void PersistSettingsFileLocked()
@@ -302,9 +310,14 @@ namespace Clickra.Core
 
         public static void ReloadSettings()
         {
+            _ = ReloadSettingsCore();
+        }
+
+        private static bool ReloadSettingsCore()
+        {
             lock (FileLock)
             {
-                RunWithMutex(LoadSettingsInternalLocked);
+                return RunWithMutex(LoadSettingsInternalLocked);
             }
         }
 
@@ -335,7 +348,11 @@ namespace Clickra.Core
                 bool changed = false;
                 RunWithMutex(() =>
                 {
-                    LoadSettingsInternalLocked();
+                    if (!LoadSettingsInternalLocked())
+                    {
+                        return;
+                    }
+
                     bool hadOldValue = SettingsCache.TryGetValue(key, out string? oldVal);
                     if (hadOldValue && oldVal == val)
                     {

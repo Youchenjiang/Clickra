@@ -388,7 +388,7 @@ static partial class TestSuite
             Assert.True(saveStart >= 0 && notifyStart > saveStart, "SaveSetting source block must be discoverable.");
             string saveBody = storageSource[saveStart..notifyStart];
             int mutexIndex = saveBody.IndexOf("RunWithMutex", StringComparison.Ordinal);
-            int reloadIndex = saveBody.IndexOf("LoadSettingsInternalLocked()", StringComparison.Ordinal);
+            int reloadIndex = saveBody.IndexOf("if (!LoadSettingsInternalLocked())", StringComparison.Ordinal);
             int writeIndex = saveBody.IndexOf("SettingsCache[key] = val", StringComparison.Ordinal);
             int persistIndex = saveBody.IndexOf("PersistSettingsFileLocked()", StringComparison.Ordinal);
             int changedIndex = saveBody.IndexOf("changed = true", StringComparison.Ordinal);
@@ -400,10 +400,14 @@ static partial class TestSuite
                 "SaveSetting must roll back a newly-added cache entry when persistence fails.");
 
             Assert.True(storageSource.Contains("ReloadSettingsFromWatcher()", StringComparison.Ordinal) &&
+                        storageSource.Contains("if (ReloadSettingsCore())", StringComparison.Ordinal) &&
                         storageSource.Contains("catch (TimeoutException)", StringComparison.Ordinal),
-                "Watcher-triggered reloads must contain bounded failure handling instead of leaking ThreadPool exceptions.");
+                "Watcher-triggered reloads must retry failed reads or mutex acquisition without leaking ThreadPool exceptions.");
             Assert.True(storageSource.Contains("A transient read/sharing failure is not an empty settings file.", StringComparison.Ordinal),
                 "Settings reload must preserve the last known-good cache when reading the settings file fails.");
+            Assert.True(storageSource.Contains("private static bool LoadSettingsInternalLocked()", StringComparison.Ordinal) &&
+                        storageSource.Contains("return false;", StringComparison.Ordinal),
+                "Settings reload must report transient read failure so callers cannot persist stale cache state.");
         }
         finally
         {
