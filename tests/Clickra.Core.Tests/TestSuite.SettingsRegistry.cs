@@ -31,6 +31,7 @@ static partial class TestSuite
     private const string RetiredPdfTargetDpi = "PdfCompressTargetDpi";
     private const string RetiredPdfJpegQuality = "PdfCompressJpegQuality";
     private const string RetiredPdfDpi = "PdfCompressDpi";
+    private const string SettingsRegistryFluentProjectDirectory = "Clickra.Fluent";
     private const string LanguageZhTw = "zh-TW";
     private const string LanguageZhCn = "zh-CN";
     private const string LanguageEnUs = "en-US";
@@ -238,8 +239,8 @@ static partial class TestSuite
     private static void TestNumericUiControlsDeriveBounds()
     {
         string root = FindRepoRoot() ?? throw new TestSkippedException(RepoRootNotFoundMessage);
-        string fluentCode = File.ReadAllText(Path.Combine(root, "src", "Clickra.Fluent", "MainPage.xaml.cs"));
-        string fluentXaml = File.ReadAllText(Path.Combine(root, "src", "Clickra.Fluent", "MainPage.xaml"));
+        string fluentCode = File.ReadAllText(Path.Combine(root, "src", SettingsRegistryFluentProjectDirectory, "MainPage.xaml.cs"));
+        string fluentXaml = File.ReadAllText(Path.Combine(root, "src", SettingsRegistryFluentProjectDirectory, "MainPage.xaml"));
         string cliPaint = File.ReadAllText(Path.Combine(root, "src", CliProjectDirectory, DashboardDirectory, "DashboardWindow.Paint.Settings.cs"));
         string cliEvents = File.ReadAllText(Path.Combine(root, "src", CliProjectDirectory, DashboardDirectory, "DashboardWindow.Events.cs"));
         string cliClick = File.ReadAllText(Path.Combine(root, "src", CliProjectDirectory, DashboardDirectory, "DashboardWindow.Events.Click.cs"));
@@ -427,7 +428,7 @@ static partial class TestSuite
     private static void TestSettingsReloadedUiHooks()
     {
         string root = FindRepoRoot() ?? throw new TestSkippedException(RepoRootNotFoundMessage);
-        string fluentCode = File.ReadAllText(Path.Combine(root, "src", "Clickra.Fluent", "MainPage.xaml.cs"));
+        string fluentCode = File.ReadAllText(Path.Combine(root, "src", SettingsRegistryFluentProjectDirectory, "MainPage.xaml.cs"));
         string cliLifecycle = File.ReadAllText(Path.Combine(root, "src", CliProjectDirectory, DashboardDirectory, "DashboardWindow.Lifecycle.cs"));
         string cliEvents = File.ReadAllText(Path.Combine(root, "src", CliProjectDirectory, DashboardDirectory, "DashboardWindow.Events.cs"));
 
@@ -746,7 +747,7 @@ static partial class TestSuite
             filesToScan.AddRange(Directory.GetFiles(dashboardDir, "DashboardWindow.Paint*.cs"));
         }
 
-        string fluentDir = Path.Combine(root, "src", "Clickra.Fluent");
+        string fluentDir = Path.Combine(root, "src", SettingsRegistryFluentProjectDirectory);
         if (Directory.Exists(fluentDir))
         {
             filesToScan.AddRange(Directory.EnumerateFiles(fluentDir, "*.*", SearchOption.AllDirectories)

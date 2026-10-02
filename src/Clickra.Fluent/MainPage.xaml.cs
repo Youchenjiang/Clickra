@@ -550,7 +550,10 @@ public sealed partial class MainPage : Page
         {
             DispatcherQueue?.TryEnqueue(() => SyncSettingsToUi(refreshDynamicLanguageContent: true));
         }
-        catch { }
+        catch
+        {
+            // Ignore teardown races after the page's dispatcher has become unavailable.
+        }
     }
 
     private void SyncSettingsToUi(bool refreshDynamicLanguageContent = false)

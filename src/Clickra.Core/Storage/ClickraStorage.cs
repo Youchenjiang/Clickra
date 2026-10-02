@@ -167,6 +167,7 @@ namespace Clickra.Core
                 }
                 catch (TimeoutException) when (attempt < maxAttempts)
                 {
+                    // Retry below after a short delay; watcher callbacks must not leak mutex timeouts.
                 }
                 catch
                 {
@@ -190,41 +191,9 @@ namespace Clickra.Core
 
         private static bool LoadSettingsInternalLocked()
         {
-            var newCache = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
-            bool cleanedRetiredKeys = false;
-            DateTime currentWriteTime = DateTime.MinValue;
-
-            if (File.Exists(SettingsFile))
+            if (!TryReadSettingsFile(out var newCache, out bool cleanedRetiredKeys, out DateTime currentWriteTime))
             {
-                try
-                {
-                    currentWriteTime = File.GetLastWriteTimeUtc(SettingsFile);
-                    foreach (string line in File.ReadLines(SettingsFile))
-                    {
-                        if (string.IsNullOrWhiteSpace(line) || line.StartsWith("#")) continue;
-                        int idx = line.IndexOf('=');
-                        if (idx > 0)
-                        {
-                            string key = line.Substring(0, idx).Trim();
-                            string val = line.Substring(idx + 1).Trim();
-
-                            if (ClickraSettings.IsRetired(key))
-                            {
-                                cleanedRetiredKeys = true;
-                                continue;
-                            }
-
-                            newCache[key] = val;
-                        }
-                    }
-                }
-                catch
-                {
-                    // A transient read/sharing failure is not an empty settings file.
-                    // Preserve the last known-good cache/timestamp so the next freshness
-                    // check can retry without publishing a false reset to defaults.
-                    return false;
-                }
+                return false;
             }
 
             var changedKeys = new List<(string Key, string Value)>();
@@ -235,13 +204,9 @@ namespace Clickra.Core
                     changedKeys.Add((kvp.Key, kvp.Value));
                 }
             }
-            foreach (var kvp in SettingsCache)
-            {
-                if (!newCache.ContainsKey(kvp.Key))
-                {
-                    changedKeys.Add((kvp.Key, ClickraSettings.GetDefault(kvp.Key)));
-                }
-            }
+            changedKeys.AddRange(SettingsCache
+                .Where(kvp => !newCache.ContainsKey(kvp.Key))
+                .Select(kvp => (kvp.Key, ClickraSettings.GetDefault(kvp.Key))));
 
             SettingsCache.Clear();
             foreach (var kvp in newCache)
@@ -263,6 +228,70 @@ namespace Clickra.Core
             return true;
         }
 
+        private static bool TryReadSettingsFile(
+            out Dictionary<string, string> newCache,
+            out bool cleanedRetiredKeys,
+            out DateTime currentWriteTime)
+        {
+            newCache = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+            cleanedRetiredKeys = false;
+            currentWriteTime = DateTime.MinValue;
+
+            if (!File.Exists(SettingsFile))
+            {
+                return true;
+            }
+
+            try
+            {
+                currentWriteTime = File.GetLastWriteTimeUtc(SettingsFile);
+                foreach (string line in File.ReadLines(SettingsFile))
+                {
+                    if (!TryParseSettingLine(line, out string key, out string val))
+                    {
+                        continue;
+                    }
+
+                    if (ClickraSettings.IsRetired(key))
+                    {
+                        cleanedRetiredKeys = true;
+                        continue;
+                    }
+
+                    newCache[key] = val;
+                }
+
+                return true;
+            }
+            catch
+            {
+                // A transient read/sharing failure is not an empty settings file.
+                // Preserve the last known-good cache/timestamp so the next freshness
+                // check can retry without publishing a false reset to defaults.
+                return false;
+            }
+        }
+
+        private static bool TryParseSettingLine(string line, out string key, out string val)
+        {
+            key = string.Empty;
+            val = string.Empty;
+            if (string.IsNullOrWhiteSpace(line) || line.StartsWith("#"))
+            {
+                return false;
+            }
+
+            int idx = line.IndexOf('=');
+            if (idx <= 0)
+            {
+                return false;
+            }
+
+            key = line.Substring(0, idx).Trim();
+            val = line.Substring(idx + 1).Trim();
+            return true;
+        }
+
         private static void PersistSettingsFileLocked()
         {
             using (var sw = new StreamWriter(SettingsFile, false, System.Text.Encoding.UTF8))
@@ -276,7 +305,10 @@ namespace Clickra.Core
             {
                 _lastLoadedTimestampUtc = File.GetLastWriteTimeUtc(SettingsFile);
             }
-            catch { }
+            catch
+            {
+                // Persistence already succeeded; a timestamp refresh failure is safe to ignore.
+            }
         }
 
         private static void EnsureFreshSettingsLocked()
