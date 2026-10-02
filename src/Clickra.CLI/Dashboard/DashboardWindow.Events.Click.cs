@@ -530,6 +530,7 @@ namespace Clickra.UI
                 }
 
                 default:
+                    // Ignore unsupported future editor kinds until they have an interaction handler.
                     break;
             }
         }

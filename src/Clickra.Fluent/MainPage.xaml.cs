@@ -842,6 +842,7 @@ public sealed partial class MainPage : Page
                 SyncDynamicChoice(control);
                 break;
             default:
+                // Ignore unsupported future editor kinds until synchronization is defined.
                 break;
         }
     }

@@ -727,6 +727,7 @@ namespace Clickra.UI
                     DrawDynamicChoiceSetting(g, descriptor, contentX, margin, baseElemId, ref y);
                     break;
                 default:
+                    // Ignore unsupported future editor kinds until a renderer is defined.
                     break;
             }
         }
