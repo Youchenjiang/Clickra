@@ -453,6 +453,15 @@ namespace Clickra.UI
 
             y += 50f;
 
+            // Dynamic settings from SettingPageRegistry
+            for (int i = 0; i < SettingPageRegistry.AllDescriptors.Count; i++)
+            {
+                var descriptor = SettingPageRegistry.AllDescriptors[i];
+                if (LegacyPaintedSettings.Contains(descriptor.Key)) continue;
+
+                DrawDynamicSettingDescriptor(g, descriptor, i, logW, contentX, margin, ref y);
+            }
+
             _settingsContentHeight = Math.Max(460f, y + 80f);
         }
 
@@ -651,21 +660,7 @@ namespace Clickra.UI
                 float sx = x + (float)i / (stops - 1) * w;
                 bool active = (i + ClickraSettings.MinPdfCompressLevel == level);
 
-                // Dot
-                float dotR = active ? 7.5f : 3.5f;
-                Color dotColor = i <= level ? accent : Color.FromArgb(65, 65, 65);
-                if (active)
-                {
-                    // White ring around active thumb
-                    using var ringBrush = new SolidBrush(Color.FromArgb(200, 200, 200));
-                    g.FillEllipse(ringBrush,
-                        (sx - dotR - 2f) * s, (trackY + trackH / 2f - dotR - 2f) * s,
-                        (dotR + 2f) * 2f * s, (dotR + 2f) * 2f * s);
-                }
-                using var dotBrush = new SolidBrush(dotColor);
-                g.FillEllipse(dotBrush,
-                    (sx - dotR) * s, (trackY + trackH / 2f - dotR) * s,
-                    dotR * 2f * s, dotR * 2f * s);
+                float dotR = DrawSliderStopMarker(g, sx, trackY, trackH, active, i <= level, accent);
 
                 // Label
                 if (_subFont != null)
@@ -677,6 +672,207 @@ namespace Clickra.UI
                         (trackY + trackH / 2f + dotR + 5f) * s);
                 }
             }
+        }
+
+        private static readonly HashSet<string> LegacyPaintedSettings = new(StringComparer.OrdinalIgnoreCase)
+        {
+            ClickraSettings.QuietMode,
+            ClickraSettings.Notification,
+            ClickraSettings.OutputDir,
+            ClickraSettings.OfficeEngine,
+            ClickraSettings.Language,
+            ClickraSettings.TranslateTargetLang,
+            ClickraSettings.PdfCompressImageLevel,
+            ClickraSettings.PdfCompressStripFonts,
+            ClickraSettings.PdfCompressMinifyContent,
+            ClickraSettings.ParkedTaskRetention,
+        };
+
+        static void DrawDynamicSettingDescriptor(
+            Graphics g,
+            SettingDescriptor descriptor,
+            int descriptorIndex,
+            float logW,
+            float contentX,
+            float margin,
+            ref float y)
+        {
+            int baseElemId = 1000 + descriptorIndex * 10;
+            switch (descriptor.EditorKind)
+            {
+                case SettingEditorKind.Toggle:
+                    DrawDynamicToggleSetting(g, descriptor, logW, contentX, baseElemId, ref y);
+                    break;
+                case SettingEditorKind.Slider:
+                    DrawDynamicSliderSetting(g, descriptor, contentX, baseElemId, ref y);
+                    break;
+                case SettingEditorKind.Number:
+                    DrawDynamicNumberSetting(g, descriptor, contentX, margin, baseElemId, ref y);
+                    break;
+                case SettingEditorKind.Choice:
+                    DrawDynamicChoiceSetting(g, descriptor, contentX, margin, baseElemId, ref y);
+                    break;
+                default:
+                    // Ignore unsupported future editor kinds until a renderer is defined.
+                    break;
+            }
+        }
+
+        static void DrawDynamicSettingHeader(Graphics g, SettingDescriptor descriptor, float contentX, float y)
+        {
+            float s = _dpiScale;
+            if (_tabFont != null)
+                g.DrawString(GetText(descriptor.TitleKey), _tabFont, Brushes.White, contentX * s, y * s);
+            if (string.IsNullOrEmpty(descriptor.DescriptionKey) || _subFont == null) return;
+
+            using var subBrush = new SolidBrush(Color.FromArgb(140, 140, 140));
+            g.DrawString(GetText(descriptor.DescriptionKey), _subFont, subBrush, contentX * s, (y + 22) * s);
+        }
+
+        static void DrawDynamicToggleSetting(
+            Graphics g, SettingDescriptor descriptor, float logW, float contentX, int baseElemId, ref float y)
+        {
+            DrawDynamicSettingHeader(g, descriptor, contentX, y);
+            int toggleX = (int)logW - 100;
+            bool state = ClickraStorage.GetSettingBool(descriptor.Key);
+            DrawToggleSwitch(g, state, _hoveredElement == baseElemId, toggleX, (int)(y + 5), 44, 22);
+            _settingsHitRects[baseElemId] = new RectangleF(toggleX, y + 5, 44, 22);
+            y += 70f;
+        }
+
+        static void DrawDynamicSliderSetting(
+            Graphics g, SettingDescriptor descriptor, float contentX, int baseElemId, ref float y)
+        {
+            DrawDynamicSettingHeader(g, descriptor, contentX, y);
+            y += 48f;
+
+            const float sliderW = 300f;
+            _dynamicSliderTrackX = contentX;
+            _dynamicSliderTrackW = sliderW;
+            var range = descriptor.GetEffectiveNumericRange() ?? new NumericSettingRange(0, 1, 0);
+            int currentLevel = Math.Clamp(ClickraStorage.GetSettingInt(descriptor.Key), range.Min, range.Max);
+            DrawDynamicSlider(g, contentX, y, sliderW, descriptor, currentLevel, range);
+            _settingsHitRects[baseElemId] = new RectangleF(contentX - 10, y - 4, sliderW + 20, 62);
+            y += 72f;
+        }
+
+        static void DrawDynamicNumberSetting(
+            Graphics g, SettingDescriptor descriptor, float contentX, float margin, int baseElemId, ref float y)
+        {
+            DrawDynamicSettingHeader(g, descriptor, contentX, y);
+            y += 50f;
+
+            var range = descriptor.GetEffectiveNumericRange() ?? new NumericSettingRange(0, 100, 0);
+            int value = Math.Clamp(ClickraStorage.GetSettingInt(descriptor.Key), range.Min, range.Max);
+            if (_subFont != null)
+            {
+                using var valBrush = new SolidBrush(Color.FromArgb(200, 200, 200));
+                g.DrawString(value.ToString(), _subFont, valBrush, contentX * _dpiScale, y * _dpiScale);
+            }
+            y += 28f;
+
+            const float buttonWidth = 34f;
+            float buttonY = y;
+            DrawOutputDirButton(g, "-", false, baseElemId + 1, (int)contentX, (int)buttonY, (int)buttonWidth);
+            _settingsHitRects[baseElemId + 1] = new RectangleF(contentX, buttonY, buttonWidth, 30);
+            float plusX = contentX + buttonWidth + margin;
+            DrawOutputDirButton(g, "+", false, baseElemId + 2, (int)plusX, (int)buttonY, (int)buttonWidth);
+            _settingsHitRects[baseElemId + 2] = new RectangleF(plusX, buttonY, buttonWidth, 30);
+            y += 50f;
+        }
+
+        static void DrawDynamicChoiceSetting(
+            Graphics g, SettingDescriptor descriptor, float contentX, float margin, int baseElemId, ref float y)
+        {
+            DrawDynamicSettingHeader(g, descriptor, contentX, y);
+            y += 50f;
+
+            string currentValue = ClickraStorage.GetSetting(descriptor.Key);
+            float buttonX = contentX;
+            var options = descriptor.Options ?? Array.Empty<SettingOption>();
+            for (int optionIndex = 0; optionIndex < options.Count; optionIndex++)
+            {
+                var option = options[optionIndex];
+                bool selected = string.Equals(currentValue, option.Value, StringComparison.OrdinalIgnoreCase);
+                string label = GetText(option.LabelKey);
+                if (string.Equals(label, option.LabelKey, StringComparison.Ordinal) && !string.IsNullOrEmpty(option.FallbackText))
+                    label = option.FallbackText;
+
+                var measureFont = _subFont ?? SystemFonts.DefaultFont;
+                float buttonWidth = Math.Max(60f, g.MeasureString(label, measureFont).Width / _dpiScale + 20f);
+                int elementId = baseElemId + optionIndex;
+                DrawOutputDirButton(g, label, selected, elementId, (int)buttonX, (int)y, (int)buttonWidth);
+                _settingsHitRects[elementId] = new RectangleF(buttonX, y, buttonWidth, 30);
+                buttonX += buttonWidth + margin;
+            }
+            y += 50f;
+        }
+
+        static void DrawDynamicSlider(Graphics g, float x, float y, float w, SettingDescriptor descriptor, int level, NumericSettingRange range)
+        {
+            float s = _dpiScale;
+            int stops = Math.Max(2, range.Max - range.Min + 1);
+            float trackY = y + 18f;
+            float trackH = 5f;
+            Color accent = UIHelper.GetSystemColorizationColor();
+
+            // Track background
+            using var bgPath = UIHelper.GetRoundedRectPath(
+                new RectangleF(x * s, trackY * s, w * s, trackH * s), (trackH / 2f) * s);
+            using var bgBrush = new SolidBrush(Color.FromArgb(55, 55, 55));
+            g.FillPath(bgBrush, bgPath);
+
+            // Filled portion
+            float thumbX = x + (float)(level - range.Min) / (stops - 1) * w;
+            float fillW = thumbX - x;
+            if (fillW > 0.5f)
+            {
+                using var fillPath = UIHelper.GetRoundedRectPath(
+                    new RectangleF(x * s, trackY * s, fillW * s, trackH * s), (trackH / 2f) * s);
+                using var fillBrush = new SolidBrush(accent);
+                g.FillPath(fillBrush, fillPath);
+            }
+
+            // Stop dots + labels
+            var labels = descriptor.SliderLabels;
+            for (int i = 0; i < stops; i++)
+            {
+                float sx = x + (float)i / (stops - 1) * w;
+                bool active = (i + range.Min == level);
+
+                float dotR = DrawSliderStopMarker(
+                    g, sx, trackY, trackH, active, (i + range.Min) <= level, accent);
+
+                if (_subFont != null && labels != null && i < labels.Count)
+                {
+                    string label = GetText(labels[i]);
+                    using var lBrush = new SolidBrush(active ? Color.White : Color.FromArgb(95, 95, 95));
+                    var lSize = g.MeasureString(label, _subFont);
+                    g.DrawString(label, _subFont, lBrush,
+                        (sx - lSize.Width / s / 2f) * s,
+                        (trackY + trackH / 2f + dotR + 5f) * s);
+                }
+            }
+        }
+
+        static float DrawSliderStopMarker(
+            Graphics g, float stopX, float trackY, float trackHeight, bool active, bool reached, Color accent)
+        {
+            float s = _dpiScale;
+            float dotRadius = active ? 7.5f : 3.5f;
+            if (active)
+            {
+                using var ringBrush = new SolidBrush(Color.FromArgb(200, 200, 200));
+                g.FillEllipse(ringBrush,
+                    (stopX - dotRadius - 2f) * s, (trackY + trackHeight / 2f - dotRadius - 2f) * s,
+                    (dotRadius + 2f) * 2f * s, (dotRadius + 2f) * 2f * s);
+            }
+
+            using var dotBrush = new SolidBrush(reached ? accent : Color.FromArgb(65, 65, 65));
+            g.FillEllipse(dotBrush,
+                (stopX - dotRadius) * s, (trackY + trackHeight / 2f - dotRadius) * s,
+                dotRadius * 2f * s, dotRadius * 2f * s);
+            return dotRadius;
         }
     }
 }

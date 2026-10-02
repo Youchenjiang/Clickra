@@ -55,6 +55,8 @@ static partial class TestSuite
         runner.Run("Settings storage: retired keys are purged and rewritten on load", TestRetiredSettingsPurgedOnLoad);
         runner.Run("Settings storage: real-time file watcher and cache synchronization", TestSettingsFileWatcherAndCacheSynchronization);
         runner.Run("Settings storage: UI components hook SettingsReloaded for real-time sync", TestSettingsReloadedUiHooks);
+        runner.Run("Settings descriptors: every registered setting is valid and mapped in SettingPageRegistry", TestSettingDescriptorsAreValid);
+        runner.Run("Settings descriptors: UI components hook descriptor registry for automatic control generation", TestDescriptorUiHooks);
         runner.Run("Settings registry: CLI localization keys coverage across all 5 languages", TestCliLocalizationKeysCoverage);
         runner.Run("Settings registry: Diagnostics email localization coverage across all 5 languages", TestDiagnosticsEmailLocalizationCoverage);
         runner.Run("Settings registry: Tray, visual splitter, and progress window localization coverage across all 5 languages", TestTraySplitterLocalizationCoverage);
@@ -450,6 +452,80 @@ static partial class TestSuite
             "CLI Dashboard must unsubscribe from ClickraStorage.SettingsReloaded on window close.");
         Assert.True(cliEvents.Contains("ClickraStorage.EnsureFreshSettings()", StringComparison.Ordinal),
             "CLI Dashboard timer tick must ensure fresh settings on each refresh.");
+    }
+
+    private static void TestSettingDescriptorsAreValid()
+    {
+        var descriptors = SettingPageRegistry.AllDescriptors;
+        Assert.True(descriptors.Count > 0, "SettingPageRegistry must define descriptors.");
+
+        var descriptorKeys = descriptors.Select(d => d.Key).ToList();
+        Assert.True(descriptorKeys.Count == descriptorKeys.Distinct(StringComparer.OrdinalIgnoreCase).Count(),
+            "Setting descriptor keys must be unique in SettingPageRegistry.");
+
+        var groupKeys = new HashSet<string>(SettingPageRegistry.Groups.Select(g => g.Key), StringComparer.OrdinalIgnoreCase);
+        foreach (var descriptor in descriptors)
+        {
+            Assert.True(ClickraSettings.IsRegistered(descriptor.Key),
+                $"Descriptor key '{descriptor.Key}' must be registered in ClickraSettings.All.");
+            Assert.True(groupKeys.Contains(descriptor.GroupKey),
+                $"Descriptor key '{descriptor.Key}' belongs to unknown group '{descriptor.GroupKey}'.");
+            Assert.False(string.IsNullOrWhiteSpace(descriptor.TitleKey),
+                $"Descriptor '{descriptor.Key}' must define a non-empty TitleKey.");
+
+            if (descriptor.EditorKind is SettingEditorKind.Slider or SettingEditorKind.Number)
+            {
+                var range = descriptor.GetEffectiveNumericRange();
+                Assert.True(range.HasValue, $"Numeric/Slider descriptor '{descriptor.Key}' must have an effective numeric range.");
+                if (range.HasValue)
+                {
+                    Assert.True(range.Value.Min <= range.Value.Max,
+                        $"Range for '{descriptor.Key}' must be valid (Min <= Max).");
+                }
+            }
+
+            if (descriptor.EditorKind == SettingEditorKind.Slider)
+            {
+                Assert.True(descriptor.GetSliderStops() >= 2,
+                    $"Slider descriptor '{descriptor.Key}' must have at least 2 stops.");
+            }
+
+            if (descriptor.EditorKind == SettingEditorKind.Choice)
+            {
+                Assert.True(descriptor.Options is { Count: > 0 },
+                    $"Choice descriptor '{descriptor.Key}' must declare at least one option.");
+                foreach (var option in descriptor.Options!)
+                {
+                    Assert.False(string.IsNullOrWhiteSpace(option.Value),
+                        $"Option in descriptor '{descriptor.Key}' must have non-empty Value.");
+                    Assert.False(string.IsNullOrWhiteSpace(option.LabelKey),
+                        $"Option '{option.Value}' in descriptor '{descriptor.Key}' must have non-empty LabelKey.");
+                }
+            }
+        }
+    }
+
+    private static void TestDescriptorUiHooks()
+    {
+        string root = FindRepoRoot() ?? throw new TestSkippedException(RepoRootNotFoundMessage);
+        string fluentCode = File.ReadAllText(Path.Combine(root, "src", SettingsRegistryFluentProjectDirectory, "MainPage.xaml.cs"));
+        string cliPaint = File.ReadAllText(Path.Combine(root, "src", CliProjectDirectory, DashboardDirectory, "DashboardWindow.Paint.Settings.cs"));
+        string cliClick = File.ReadAllText(Path.Combine(root, "src", CliProjectDirectory, DashboardDirectory, "DashboardWindow.Events.Click.cs"));
+
+        Assert.True(fluentCode.Contains("SettingPageRegistry.AllDescriptors", StringComparison.Ordinal),
+            "Fluent UI must iterate SettingPageRegistry.AllDescriptors for automatic control generation.");
+        Assert.True(fluentCode.Contains("BuildDynamicSettingsControls()", StringComparison.Ordinal),
+            "Fluent UI must provide BuildDynamicSettingsControls() to generate dynamic cards from Core descriptors.");
+        Assert.True(cliPaint.Contains("SettingPageRegistry.AllDescriptors", StringComparison.Ordinal),
+            "CLI Dashboard must iterate SettingPageRegistry.AllDescriptors to paint dynamic settings controls.");
+        Assert.True(cliPaint.Contains("DrawDynamicSettingDescriptor", StringComparison.Ordinal),
+            "CLI Dashboard must include DrawDynamicSettingDescriptor to paint controls derived from descriptors.");
+        Assert.True(cliClick.Contains("HandleDynamicSettingClick", StringComparison.Ordinal),
+            "CLI Dashboard must handle clicks on dynamic settings controls via HandleDynamicSettingClick.");
+        Assert.True(cliClick.Contains("Math.Clamp((long)current + delta", StringComparison.Ordinal),
+            "CLI dynamic number controls must widen arithmetic before clamping to avoid integer overflow.");
+        Assert.True(fluentCode.Contains("ApplySettingsResponsiveLayout(ActualWidth < 1000)", StringComparison.Ordinal),
+            "Fluent dynamic settings must be assigned responsive grid rows and columns after insertion.");
     }
 
     private static void TestCliLocalizationKeysCoverage()
