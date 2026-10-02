@@ -16,7 +16,7 @@ namespace Clickra.UI
         private static readonly Color ParkedAlertColor = Color.FromArgb(255, 160, 40);
 
         /// <summary>Draws the history tab: header, filter chips and the scrollable entry list.</summary>
-        static void DrawHistoryTab(Graphics g, float logW, float logH, float contentX)
+        static void PaintHistoryTab(Graphics g, float logW, float logH, float contentX)
         {
             float s = _dpiScale;
             DrawHistoryHeader(g, logW, contentX, s);

@@ -88,7 +88,7 @@ namespace Clickra.UI
             }
             else if (_activeTab == 2)
             {
-                DrawHistoryTab(g, virtLogW, virtLogH, contentX);
+                PaintHistoryTab(g, virtLogW, virtLogH, contentX);
             }
             else if (_activeTab == 3)
             {
