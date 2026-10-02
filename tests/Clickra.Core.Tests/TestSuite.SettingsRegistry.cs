@@ -402,6 +402,8 @@ static partial class TestSuite
             Assert.True(storageSource.Contains("ReloadSettingsFromWatcher()", StringComparison.Ordinal) &&
                         storageSource.Contains("catch (TimeoutException)", StringComparison.Ordinal),
                 "Watcher-triggered reloads must contain bounded failure handling instead of leaking ThreadPool exceptions.");
+            Assert.True(storageSource.Contains("A transient read/sharing failure is not an empty settings file.", StringComparison.Ordinal),
+                "Settings reload must preserve the last known-good cache when reading the settings file fails.");
         }
         finally
         {

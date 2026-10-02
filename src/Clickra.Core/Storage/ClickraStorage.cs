@@ -212,7 +212,13 @@ namespace Clickra.Core
                         }
                     }
                 }
-                catch { }
+                catch
+                {
+                    // A transient read/sharing failure is not an empty settings file.
+                    // Preserve the last known-good cache/timestamp so the next freshness
+                    // check can retry without publishing a false reset to defaults.
+                    return;
+                }
             }
 
             var changedKeys = new List<(string Key, string Value)>();
