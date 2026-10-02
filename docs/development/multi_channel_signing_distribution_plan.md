@@ -384,7 +384,7 @@ Current behavior:
 - appends a marker-delimited Microsoft Store package note exactly once;
 - does not alter the Microsoft Store submission workflow or direct-download signing channel.
 
-The workflow currently exposes only `workflow_dispatch` with an explicit tag. This keeps release mutation reviewable while the reconciliation logic is qualified. A recurring condition-watch schedule may be added separately after its cadence and target-release selection policy are explicitly chosen; no polling cadence is assumed by this implementation.
+The workflow retains `workflow_dispatch` with an explicit tag as the operator fallback. Manual reconciliation remains useful for qualification, retries, and cases where the maintainer wants to reconcile a specific release directly.
 
 #### 2026-09-30 hosted-runner qualification update
 
@@ -393,6 +393,22 @@ The first two production qualification runs on GitHub-hosted Windows runners fai
 Follow-up probes tested Microsoft-supported acquisition paths without changing the GitHub Release. WinGet could identify the public Store listing but required Microsoft Entra ID authentication for package download in the unattended hosted-runner session. Direct resolver probes also remained unreliable. A final GitHub-hosted Windows probe instead used the Microsoft Store display catalog plus FE3 delivery service and succeeded end to end in Actions run `36724724340`: it downloaded `g1014308.Clickra_3.11.0.0_neutral__mgcm3zc7fc0ty.msix` from a Microsoft delivery host and the unchanged verifier confirmed identity `g1014308.Clickra`, version `3.11.0.0`, package family `g1014308.Clickra_mgcm3zc7fc0ty`, valid Microsoft Marketplace signature, SHA-1 `ED11280D94470C24DEC86676C5CF286A60A541DF`, and SHA-256 `23BC746154BFBDE12463B2B3109205EDBBCD8619398BAD0EBF0919C4E607D3CF`.
 
 Production reconciliation therefore returns to `windows-latest`. The Store protocol support is vendored at a pinned MPL-2.0 source revision, the workflow requires only GitHub-hosted Windows x64 plus GitHub CLI/Python/Windows PowerShell, and the full Store identity/signature/hash verification gate remains unchanged before any Release mutation. No self-hosted runner or maintainer workstation connection is required.
+
+#### 2026-10-02 automatic latest-release reconciliation
+
+Store FE3 qualification showed that historical package availability must not be assumed: while `3.11.0.0` was the currently published Clickra package, FE3 returned that package but no `3.10.0.0` candidate. Automatic reconciliation therefore does **not** attempt N-1/N-2 backfill after a newer Store version is published.
+
+`.github/workflows/store-release-enrichment.yml` now adds an hourly recurring check (minute 17) with these boundaries:
+
+- selects only the latest non-draft, non-prerelease GitHub Release;
+- exits without Store/API work when that Release already contains `Clickra-store.msix`;
+- otherwise uses `scripts/check_store_release_published.py` to make GET-only Partner Center API requests;
+- requires `lastPublishedApplicationSubmission` to have status `Published`, the exact Clickra package identity, and the set of non-`PendingDelete` `applicationPackages[].version` values to equal exactly the target Release version;
+- only after that exact publication gate passes does it run the existing FE3 acquisition and fail-closed package verification/upload path;
+- uses one workflow concurrency group so scheduled and manual reconciliation runs do not mutate the same Release concurrently;
+- keeps explicit `workflow_dispatch` as the manual fallback and does not add the publication probe as a precondition to that operator-requested path.
+
+This schedule is intentionally same-version and latest-release-only. It is designed to capture the Store-signed artifact while Microsoft still exposes that version through FE3, not to recover arbitrary historical Store packages later.
 
 ---
 
