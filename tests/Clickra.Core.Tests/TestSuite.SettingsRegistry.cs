@@ -492,7 +492,7 @@ static partial class TestSuite
 
             if (descriptor.EditorKind == SettingEditorKind.Choice)
             {
-                Assert.True(descriptor.Options != null && descriptor.Options.Count > 0,
+                Assert.True(descriptor.Options is { Count: > 0 },
                     $"Choice descriptor '{descriptor.Key}' must declare at least one option.");
                 foreach (var option in descriptor.Options!)
                 {

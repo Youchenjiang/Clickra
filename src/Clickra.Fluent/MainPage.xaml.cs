@@ -589,127 +589,8 @@ public sealed partial class MainPage : Page
                 stack.Children.Add(descBlock);
             }
 
-            FrameworkElement inputControl;
-            TextBlock? valueLabel = null;
-
-            switch (descriptor.EditorKind)
-            {
-                case SettingEditorKind.Toggle:
-                {
-                    var toggle = new ToggleSwitch
-                    {
-                        VerticalAlignment = VerticalAlignment.Center,
-                    };
-                    toggle.Toggled += (_, _) =>
-                    {
-                        if (_loadingSettings) return;
-                        ClickraStorage.SaveSetting(descriptor.Key, toggle.IsOn ? ClickraSettings.ValueTrue : ClickraSettings.ValueFalse);
-                    };
-                    inputControl = toggle;
-                    stack.Children.Add(toggle);
-                    break;
-                }
-
-                case SettingEditorKind.Slider:
-                {
-                    var sliderGrid = new Grid { ColumnSpacing = 12 };
-                    sliderGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
-                    sliderGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
-
-                    var range = descriptor.GetEffectiveNumericRange() ?? new NumericSettingRange(0, 1, 0);
-                    var slider = new Slider
-                    {
-                        Minimum = range.Min,
-                        Maximum = range.Max,
-                        StepFrequency = 1,
-                        TickFrequency = 1,
-                    };
-                    valueLabel = new TextBlock
-                    {
-                        VerticalAlignment = VerticalAlignment.Center,
-                        FontSize = 13,
-                    };
-                    Grid.SetColumn(slider, 0);
-                    Grid.SetColumn(valueLabel, 1);
-                    sliderGrid.Children.Add(slider);
-                    sliderGrid.Children.Add(valueLabel);
-
-                    var currentValLabel = valueLabel;
-                    slider.ValueChanged += (_, _) =>
-                    {
-                        if (_loadingSettings) return;
-                        int level = Math.Clamp((int)slider.Value, range.Min, range.Max);
-                        ClickraStorage.SaveSetting(descriptor.Key, level.ToString());
-                        UpdateDynamicSliderLabel(currentValLabel, descriptor, level);
-                    };
-
-                    inputControl = slider;
-                    stack.Children.Add(sliderGrid);
-                    break;
-                }
-
-                case SettingEditorKind.Number:
-                {
-                    var numGrid = new Grid { ColumnSpacing = 16 };
-                    numGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
-                    numGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
-
-                    var range = descriptor.GetEffectiveNumericRange() ?? new NumericSettingRange(0, 100, 0);
-                    var numBox = new NumberBox
-                    {
-                        Minimum = range.Min,
-                        Maximum = range.Max,
-                        SmallChange = 1,
-                        SpinButtonPlacementMode = NumberBoxSpinButtonPlacementMode.Compact,
-                        ValidationMode = NumberBoxValidationMode.InvalidInputOverwritten,
-                        VerticalAlignment = VerticalAlignment.Center,
-                        MinWidth = 160,
-                    };
-                    Grid.SetColumn(numBox, 1);
-                    numGrid.Children.Add(numBox);
-
-                    numBox.ValueChanged += (_, _) =>
-                    {
-                        if (_loadingSettings || double.IsNaN(numBox.Value)) return;
-                        int clamped = Math.Clamp((int)numBox.Value, range.Min, range.Max);
-                        ClickraStorage.SaveSetting(descriptor.Key, clamped.ToString());
-                    };
-
-                    inputControl = numBox;
-                    stack.Children.Add(numGrid);
-                    break;
-                }
-
-                case SettingEditorKind.Choice:
-                {
-                    var combo = new ComboBox { MinWidth = 260 };
-                    if (descriptor.Options != null)
-                    {
-                        foreach (var opt in descriptor.Options)
-                        {
-                            string label = L(opt.LabelKey);
-                            if (string.Equals(label, opt.LabelKey, StringComparison.Ordinal) && !string.IsNullOrEmpty(opt.FallbackText))
-                                label = opt.FallbackText;
-                            combo.Items.Add(new ComboBoxItem { Content = label, Tag = opt.Value });
-                        }
-                    }
-                    combo.SelectionChanged += (_, _) =>
-                    {
-                        if (_loadingSettings) return;
-                        if (combo.SelectedItem is ComboBoxItem item && item.Tag is string val)
-                        {
-                            ClickraStorage.SaveSetting(descriptor.Key, val);
-                        }
-                    };
-
-                    inputControl = combo;
-                    stack.Children.Add(combo);
-                    break;
-                }
-
-                default:
-                    continue;
-            }
+            var (inputControl, valueLabel) = CreateDynamicSettingInput(descriptor, stack);
+            if (inputControl is null) continue;
 
             card.Children.Add(stack);
             SettingsLayout.Children.Insert(insertIdx++, card);
@@ -721,16 +602,132 @@ public sealed partial class MainPage : Page
         ApplySettingsResponsiveLayout(ActualWidth < 1000);
     }
 
+    private (FrameworkElement? InputControl, TextBlock? ValueLabel) CreateDynamicSettingInput(
+        SettingDescriptor descriptor,
+        StackPanel stack) => descriptor.EditorKind switch
+        {
+            SettingEditorKind.Toggle => (CreateDynamicToggle(descriptor, stack), null),
+            SettingEditorKind.Slider => CreateDynamicSlider(descriptor, stack),
+            SettingEditorKind.Number => (CreateDynamicNumber(descriptor, stack), null),
+            SettingEditorKind.Choice => (CreateDynamicChoice(descriptor, stack), null),
+            _ => (null, null),
+        };
+
+    private ToggleSwitch CreateDynamicToggle(SettingDescriptor descriptor, StackPanel stack)
+    {
+        var toggle = new ToggleSwitch { VerticalAlignment = VerticalAlignment.Center };
+        toggle.Toggled += (_, _) =>
+        {
+            if (_loadingSettings) return;
+            ClickraStorage.SaveSetting(
+                descriptor.Key,
+                toggle.IsOn ? ClickraSettings.ValueTrue : ClickraSettings.ValueFalse);
+        };
+        stack.Children.Add(toggle);
+        return toggle;
+    }
+
+    private (FrameworkElement InputControl, TextBlock ValueLabel) CreateDynamicSlider(
+        SettingDescriptor descriptor,
+        StackPanel stack)
+    {
+        var sliderGrid = new Grid { ColumnSpacing = 12 };
+        sliderGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+        sliderGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+
+        var range = descriptor.GetEffectiveNumericRange() ?? new NumericSettingRange(0, 1, 0);
+        var slider = new Slider
+        {
+            Minimum = range.Min,
+            Maximum = range.Max,
+            StepFrequency = 1,
+            TickFrequency = 1,
+        };
+        var valueLabel = new TextBlock
+        {
+            VerticalAlignment = VerticalAlignment.Center,
+            FontSize = 13,
+        };
+        Grid.SetColumn(slider, 0);
+        Grid.SetColumn(valueLabel, 1);
+        sliderGrid.Children.Add(slider);
+        sliderGrid.Children.Add(valueLabel);
+
+        slider.ValueChanged += (_, _) =>
+        {
+            if (_loadingSettings) return;
+            int level = Math.Clamp((int)slider.Value, range.Min, range.Max);
+            ClickraStorage.SaveSetting(descriptor.Key, level.ToString());
+            UpdateDynamicSliderLabel(valueLabel, descriptor, level);
+        };
+
+        stack.Children.Add(sliderGrid);
+        return (slider, valueLabel);
+    }
+
+    private NumberBox CreateDynamicNumber(SettingDescriptor descriptor, StackPanel stack)
+    {
+        var numberGrid = new Grid { ColumnSpacing = 16 };
+        numberGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+        numberGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+
+        var range = descriptor.GetEffectiveNumericRange() ?? new NumericSettingRange(0, 100, 0);
+        var numberBox = new NumberBox
+        {
+            Minimum = range.Min,
+            Maximum = range.Max,
+            SmallChange = 1,
+            SpinButtonPlacementMode = NumberBoxSpinButtonPlacementMode.Compact,
+            ValidationMode = NumberBoxValidationMode.InvalidInputOverwritten,
+            VerticalAlignment = VerticalAlignment.Center,
+            MinWidth = 160,
+        };
+        Grid.SetColumn(numberBox, 1);
+        numberGrid.Children.Add(numberBox);
+        numberBox.ValueChanged += (_, _) =>
+        {
+            if (_loadingSettings || double.IsNaN(numberBox.Value)) return;
+            int clamped = Math.Clamp((int)numberBox.Value, range.Min, range.Max);
+            ClickraStorage.SaveSetting(descriptor.Key, clamped.ToString());
+        };
+
+        stack.Children.Add(numberGrid);
+        return numberBox;
+    }
+
+    private ComboBox CreateDynamicChoice(SettingDescriptor descriptor, StackPanel stack)
+    {
+        var combo = new ComboBox { MinWidth = 260 };
+        foreach (var option in descriptor.Options ?? Array.Empty<SettingOption>())
+        {
+            combo.Items.Add(new ComboBoxItem { Content = GetSettingOptionLabel(option), Tag = option.Value });
+        }
+        combo.SelectionChanged += (_, _) =>
+        {
+            if (_loadingSettings) return;
+            if (combo.SelectedItem is ComboBoxItem item && item.Tag is string value)
+            {
+                ClickraStorage.SaveSetting(descriptor.Key, value);
+            }
+        };
+
+        stack.Children.Add(combo);
+        return combo;
+    }
+
+    private static string GetSettingOptionLabel(SettingOption option)
+    {
+        string label = L(option.LabelKey);
+        return string.Equals(label, option.LabelKey, StringComparison.Ordinal) && !string.IsNullOrEmpty(option.FallbackText)
+            ? option.FallbackText
+            : label;
+    }
+
     private static void UpdateDynamicSliderLabel(TextBlock label, SettingDescriptor descriptor, int level)
     {
-        if (descriptor.SliderLabels != null && level >= 0 && level < descriptor.SliderLabels.Count)
-        {
-            label.Text = L(descriptor.SliderLabels[level]);
-        }
-        else
-        {
-            label.Text = level.ToString();
-        }
+        label.Text = descriptor.SliderLabels != null && level >= 0 && level < descriptor.SliderLabels.Count
+            ? L(descriptor.SliderLabels[level])
+            : level.ToString();
     }
 
     private void LoadSettings()
@@ -805,52 +802,7 @@ public sealed partial class MainPage : Page
             ParkedRetentionBox.Maximum = MaxParkedRetentionDays;
             ParkedRetentionBox.Value = ClickraStorage.GetParkedRetentionDays();
 
-            foreach (var dynamicCtrl in _dynamicSettingControls)
-            {
-                var d = dynamicCtrl.Descriptor;
-                switch (d.EditorKind)
-                {
-                    case SettingEditorKind.Toggle:
-                        if (dynamicCtrl.InputControl is ToggleSwitch ts)
-                            ts.IsOn = ClickraStorage.GetSettingBool(d.Key);
-                        break;
-                    case SettingEditorKind.Slider:
-                        if (dynamicCtrl.InputControl is Slider sl)
-                        {
-                            var range = d.GetEffectiveNumericRange() ?? new NumericSettingRange(0, 1, 0);
-                            int val = Math.Clamp(ClickraStorage.GetSettingInt(d.Key), range.Min, range.Max);
-                            sl.Minimum = range.Min;
-                            sl.Maximum = range.Max;
-                            sl.Value = val;
-                            if (dynamicCtrl.ValueLabel != null)
-                                UpdateDynamicSliderLabel(dynamicCtrl.ValueLabel, d, val);
-                        }
-                        break;
-                    case SettingEditorKind.Number:
-                        if (dynamicCtrl.InputControl is NumberBox nb)
-                        {
-                            var range = d.GetEffectiveNumericRange() ?? new NumericSettingRange(0, 100, 0);
-                            nb.Minimum = range.Min;
-                            nb.Maximum = range.Max;
-                            nb.Value = Math.Clamp(ClickraStorage.GetSettingInt(d.Key), range.Min, range.Max);
-                        }
-                        break;
-                    case SettingEditorKind.Choice:
-                        if (dynamicCtrl.InputControl is ComboBox cb)
-                        {
-                            string val = ClickraStorage.GetSetting(d.Key);
-                            for (int i = 0; i < cb.Items.Count; i++)
-                            {
-                                if (cb.Items[i] is ComboBoxItem item && string.Equals(item.Tag as string, val, StringComparison.OrdinalIgnoreCase))
-                                {
-                                    cb.SelectedIndex = i;
-                                    break;
-                                }
-                            }
-                        }
-                        break;
-                }
-            }
+            SyncDynamicSettingControls();
         }
         finally
         {
@@ -863,6 +815,86 @@ public sealed partial class MainPage : Page
             RefreshHistory();
         }
         RefreshLibreOfficeStatus();
+    }
+
+    private void SyncDynamicSettingControls()
+    {
+        foreach (var control in _dynamicSettingControls)
+        {
+            SyncDynamicSettingControl(control);
+        }
+    }
+
+    private static void SyncDynamicSettingControl(DynamicSettingControl control)
+    {
+        switch (control.Descriptor.EditorKind)
+        {
+            case SettingEditorKind.Toggle:
+                SyncDynamicToggle(control);
+                break;
+            case SettingEditorKind.Slider:
+                SyncDynamicSlider(control);
+                break;
+            case SettingEditorKind.Number:
+                SyncDynamicNumber(control);
+                break;
+            case SettingEditorKind.Choice:
+                SyncDynamicChoice(control);
+                break;
+            default:
+                break;
+        }
+    }
+
+    private static void SyncDynamicToggle(DynamicSettingControl control)
+    {
+        if (control.InputControl is ToggleSwitch toggle)
+        {
+            toggle.IsOn = ClickraStorage.GetSettingBool(control.Descriptor.Key);
+        }
+    }
+
+    private static void SyncDynamicSlider(DynamicSettingControl control)
+    {
+        if (control.InputControl is not Slider slider) return;
+
+        var descriptor = control.Descriptor;
+        var range = descriptor.GetEffectiveNumericRange() ?? new NumericSettingRange(0, 1, 0);
+        int value = Math.Clamp(ClickraStorage.GetSettingInt(descriptor.Key), range.Min, range.Max);
+        slider.Minimum = range.Min;
+        slider.Maximum = range.Max;
+        slider.Value = value;
+        if (control.ValueLabel != null)
+        {
+            UpdateDynamicSliderLabel(control.ValueLabel, descriptor, value);
+        }
+    }
+
+    private static void SyncDynamicNumber(DynamicSettingControl control)
+    {
+        if (control.InputControl is not NumberBox numberBox) return;
+
+        var descriptor = control.Descriptor;
+        var range = descriptor.GetEffectiveNumericRange() ?? new NumericSettingRange(0, 100, 0);
+        numberBox.Minimum = range.Min;
+        numberBox.Maximum = range.Max;
+        numberBox.Value = Math.Clamp(ClickraStorage.GetSettingInt(descriptor.Key), range.Min, range.Max);
+    }
+
+    private static void SyncDynamicChoice(DynamicSettingControl control)
+    {
+        if (control.InputControl is not ComboBox comboBox) return;
+
+        string value = ClickraStorage.GetSetting(control.Descriptor.Key);
+        for (int i = 0; i < comboBox.Items.Count; i++)
+        {
+            if (comboBox.Items[i] is ComboBoxItem item &&
+                string.Equals(item.Tag as string, value, StringComparison.OrdinalIgnoreCase))
+            {
+                comboBox.SelectedIndex = i;
+                return;
+            }
+        }
     }
 
     private void ApplyLanguage()
@@ -971,30 +1003,7 @@ public sealed partial class MainPage : Page
         LibreOfficeAdoptButton.Content = L("setting_libreoffice_adopt");
         UpdateCompressionLabel(CompressionLabel, CompressionSlider);
 
-        foreach (var dynamicCtrl in _dynamicSettingControls)
-        {
-            dynamicCtrl.TitleBlock.Text = L(dynamicCtrl.Descriptor.TitleKey);
-            if (dynamicCtrl.DescBlock != null && !string.IsNullOrEmpty(dynamicCtrl.Descriptor.DescriptionKey))
-                dynamicCtrl.DescBlock.Text = L(dynamicCtrl.Descriptor.DescriptionKey);
-            if (dynamicCtrl.Descriptor.EditorKind == SettingEditorKind.Slider && dynamicCtrl.InputControl is Slider sl && dynamicCtrl.ValueLabel != null)
-            {
-                UpdateDynamicSliderLabel(dynamicCtrl.ValueLabel, dynamicCtrl.Descriptor, (int)sl.Value);
-            }
-            if (dynamicCtrl.Descriptor.EditorKind == SettingEditorKind.Choice && dynamicCtrl.InputControl is ComboBox cb && dynamicCtrl.Descriptor.Options != null)
-            {
-                for (int i = 0; i < cb.Items.Count && i < dynamicCtrl.Descriptor.Options.Count; i++)
-                {
-                    if (cb.Items[i] is ComboBoxItem item)
-                    {
-                        var opt = dynamicCtrl.Descriptor.Options[i];
-                        string label = L(opt.LabelKey);
-                        if (string.Equals(label, opt.LabelKey, StringComparison.Ordinal) && !string.IsNullOrEmpty(opt.FallbackText))
-                            label = opt.FallbackText;
-                        item.Content = label;
-                    }
-                }
-            }
-        }
+        ApplyDynamicSettingLanguage();
 
         AboutDescription.Text = L("fluent_about_desc");
         GitHubText.Text = L("about_btn_github");
@@ -1003,6 +1012,49 @@ public sealed partial class MainPage : Page
         PlatformLabel.Text = L("fluent_platform");
         AppModelLabel.Text = L("fluent_app_model");
         RefreshLibreOfficeStatus();
+    }
+
+    private void ApplyDynamicSettingLanguage()
+    {
+        foreach (var control in _dynamicSettingControls)
+        {
+            ApplyDynamicSettingLanguage(control);
+        }
+    }
+
+    private static void ApplyDynamicSettingLanguage(DynamicSettingControl control)
+    {
+        control.TitleBlock.Text = L(control.Descriptor.TitleKey);
+        if (control.DescBlock != null && !string.IsNullOrEmpty(control.Descriptor.DescriptionKey))
+        {
+            control.DescBlock.Text = L(control.Descriptor.DescriptionKey);
+        }
+
+        if (control.Descriptor.EditorKind == SettingEditorKind.Slider &&
+            control.InputControl is Slider slider &&
+            control.ValueLabel != null)
+        {
+            UpdateDynamicSliderLabel(control.ValueLabel, control.Descriptor, (int)slider.Value);
+        }
+
+        if (control.Descriptor.EditorKind == SettingEditorKind.Choice &&
+            control.InputControl is ComboBox comboBox)
+        {
+            ApplyDynamicChoiceLanguage(control.Descriptor, comboBox);
+        }
+    }
+
+    private static void ApplyDynamicChoiceLanguage(SettingDescriptor descriptor, ComboBox comboBox)
+    {
+        var options = descriptor.Options ?? Array.Empty<SettingOption>();
+        int count = Math.Min(comboBox.Items.Count, options.Count);
+        for (int i = 0; i < count; i++)
+        {
+            if (comboBox.Items[i] is ComboBoxItem item)
+            {
+                item.Content = GetSettingOptionLabel(options[i]);
+            }
+        }
     }
 
     private static void UpdateCompressionLabel(TextBlock compressionLabel, Slider compressionSlider)

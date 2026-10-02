@@ -2,8 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 
-namespace Clickra.Core
-{
+namespace Clickra.Core;
     /// <summary>
     /// 設定控制項之編輯器種類。UI 生成引擎根據此欄位推導對應的控制項。
     /// </summary>
@@ -74,6 +73,9 @@ namespace Clickra.Core
     /// </summary>
     public static class SettingPageRegistry
     {
+        private const string TraditionalChineseOptionText = "繁體中文 (zh-TW)";
+        private const string SimplifiedChineseOptionText = "简体中文 (zh-CN)";
+
         // ─── 群組識別常數 ───────────────────────────────────────────────────────
         public const string GroupGeneral = "general";
         public const string GroupOffice = "office";
@@ -198,8 +200,8 @@ namespace Clickra.Core
                 "setting_lang_desc",
                 Options: new SettingOption[]
                 {
-                    new("zh-TW", "繁體中文 (zh-TW)", "繁體中文 (zh-TW)"),
-                    new("zh-CN", "简体中文 (zh-CN)", "简体中文 (zh-CN)"),
+                    new("zh-TW", TraditionalChineseOptionText, TraditionalChineseOptionText),
+                    new("zh-CN", SimplifiedChineseOptionText, SimplifiedChineseOptionText),
                     new("en-US", "English (en-US)", "English (en-US)"),
                     new("ja-JP", "日本語 (ja-JP)", "日本語 (ja-JP)"),
                     new("ko-KR", "한국어 (ko-KR)", "한국어 (ko-KR)"),
@@ -232,9 +234,9 @@ namespace Clickra.Core
                 "setting_pdf_desc",
                 Options: new SettingOption[]
                 {
-                    new("zh-TW", "繁體中文 (zh-TW)", "繁體中文 (zh-TW)"),
+                    new("zh-TW", TraditionalChineseOptionText, TraditionalChineseOptionText),
                     new("en", "English (en)", "English (en)"),
-                    new("zh-CN", "简体中文 (zh-CN)", "简体中文 (zh-CN)"),
+                    new("zh-CN", SimplifiedChineseOptionText, SimplifiedChineseOptionText),
                     new("ja", "日本語 (ja)", "日本語 (ja)"),
                     new("ko", "한국어 (ko)", "한국어 (ko)"),
                 },
@@ -270,4 +272,3 @@ namespace Clickra.Core
         public static bool IsDescriptorRegistered(string key) =>
             !string.IsNullOrWhiteSpace(key) && ByKey.ContainsKey(key);
     }
-}

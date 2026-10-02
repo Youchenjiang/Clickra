@@ -487,8 +487,7 @@ namespace Clickra.UI
                     _isDraggingDynamicSlider = true;
                     SetCapture(hwnd);
 
-                    var pt = new Point();
-                    if (GetCursorPos(out pt))
+                    if (GetCursorPos(out var pt))
                     {
                         ScreenToClient(hwnd, ref pt);
                         float mouseX = (pt.X / _dpiScale) + _contentScrollX;
@@ -509,7 +508,12 @@ namespace Clickra.UI
                 {
                     var range = descriptor.GetEffectiveNumericRange() ?? new NumericSettingRange(0, 100, 0);
                     int current = ClickraStorage.GetSettingInt(descriptor.Key);
-                    int delta = subId == 1 ? -1 : (subId == 2 ? 1 : 0);
+                    int delta = subId switch
+                    {
+                        1 => -1,
+                        2 => 1,
+                        _ => 0,
+                    };
                     int updated = (int)Math.Clamp((long)current + delta, range.Min, range.Max);
                     ClickraStorage.SaveSetting(descriptor.Key, updated.ToString());
                     InvalidateRect(hwnd, IntPtr.Zero, false);
@@ -524,6 +528,9 @@ namespace Clickra.UI
                     }
                     break;
                 }
+
+                default:
+                    break;
             }
         }
 
