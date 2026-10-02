@@ -390,8 +390,18 @@ static partial class TestSuite
             int mutexIndex = saveBody.IndexOf("RunWithMutex", StringComparison.Ordinal);
             int reloadIndex = saveBody.IndexOf("LoadSettingsInternalLocked()", StringComparison.Ordinal);
             int writeIndex = saveBody.IndexOf("SettingsCache[key] = val", StringComparison.Ordinal);
+            int persistIndex = saveBody.IndexOf("PersistSettingsFileLocked()", StringComparison.Ordinal);
+            int changedIndex = saveBody.IndexOf("changed = true", StringComparison.Ordinal);
             Assert.True(mutexIndex >= 0 && reloadIndex > mutexIndex && writeIndex > reloadIndex,
                 "SaveSetting must refresh from disk after acquiring the cross-process mutex before mutating the cache.");
+            Assert.True(persistIndex > writeIndex && changedIndex > persistIndex,
+                "SaveSetting must only mark the change successful after persistence succeeds.");
+            Assert.True(saveBody.Contains("SettingsCache.Remove(key)", StringComparison.Ordinal),
+                "SaveSetting must roll back a newly-added cache entry when persistence fails.");
+
+            Assert.True(storageSource.Contains("ReloadSettingsFromWatcher()", StringComparison.Ordinal) &&
+                        storageSource.Contains("catch (TimeoutException)", StringComparison.Ordinal),
+                "Watcher-triggered reloads must contain bounded failure handling instead of leaking ThreadPool exceptions.");
         }
         finally
         {
@@ -417,6 +427,10 @@ static partial class TestSuite
 
         Assert.True(fluentCode.Contains("ClickraStorage.SettingsReloaded +=", StringComparison.Ordinal),
             "Fluent UI must subscribe to ClickraStorage.SettingsReloaded.");
+        Assert.True(fluentCode.Contains("ClickraStorage.SettingsReloaded -=", StringComparison.Ordinal),
+            "Fluent UI must unsubscribe from ClickraStorage.SettingsReloaded when unloaded.");
+        Assert.True(fluentCode.Contains("_settingsReloadHooked", StringComparison.Ordinal),
+            "Fluent UI must guard reload subscription lifecycle against duplicate hooks.");
         Assert.True(fluentCode.Contains("SyncSettingsToUi()", StringComparison.Ordinal),
             "Fluent UI must invoke SyncSettingsToUi() to synchronize controls without saving back.");
         Assert.True(fluentCode.Contains("SyncSettingsToUi(refreshDynamicLanguageContent: true)", StringComparison.Ordinal) &&

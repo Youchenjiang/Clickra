@@ -39,6 +39,7 @@ public sealed partial class MainPage : Page
     private List<ClickraStorage.HistoryEntry> _historyEntries = new();
     private List<ClickraStorage.HistoryEntry> _parkedTasks = new();
     private bool _parkedRefreshHooked;
+    private bool _settingsReloadHooked;
     private bool _syncingParkedRetention;
     private int _selectedHistoryIndex = -1;
 
@@ -49,8 +50,10 @@ public sealed partial class MainPage : Page
         {
             ApplyResponsiveLayout();
             HookMainWindowActivatedForParkedRefresh();
+            HookExternalSettingsReload();
             await RunStartupCommandAsync();
         };
+        Unloaded += (_, _) => UnhookExternalSettingsReload();
         SizeChanged += (_, _) => ApplyResponsiveLayout();
         NavView.SelectionChanged += NavView_SelectionChanged;
         DropZone.Tapped += DropZone_Tapped;
@@ -525,18 +528,27 @@ public sealed partial class MainPage : Page
         QuietModeToggle.Toggled += (_, _) => SaveSettings();
         NotificationToggle.Toggled += (_, _) => SaveSettings();
         ParkedRetentionBox.ValueChanged += OnParkedRetentionChanged;
+    }
 
+    private void HookExternalSettingsReload()
+    {
+        if (_settingsReloadHooked) return;
         ClickraStorage.SettingsReloaded += OnExternalSettingsReloaded;
+        _settingsReloadHooked = true;
+    }
+
+    private void UnhookExternalSettingsReload()
+    {
+        if (!_settingsReloadHooked) return;
+        ClickraStorage.SettingsReloaded -= OnExternalSettingsReloaded;
+        _settingsReloadHooked = false;
     }
 
     private void OnExternalSettingsReloaded()
     {
         try
         {
-            DispatcherQueue?.TryEnqueue(() =>
-            {
-                SyncSettingsToUi(refreshDynamicLanguageContent: true);
-            });
+            DispatcherQueue?.TryEnqueue(() => SyncSettingsToUi(refreshDynamicLanguageContent: true));
         }
         catch { }
     }

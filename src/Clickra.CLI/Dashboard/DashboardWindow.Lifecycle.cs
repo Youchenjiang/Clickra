@@ -96,14 +96,11 @@ namespace Clickra.UI
 
             ShowWindow(hwnd, 5);
 
-            Action onSettingsReloaded = () =>
+            Action onSettingsReloaded = () => PostDashboardAction(hwnd, () =>
             {
-                PostDashboardAction(hwnd, () =>
-                {
-                    RecreateScaledFonts();
-                    InvalidateRect(hwnd, IntPtr.Zero, false);
-                });
-            };
+                RecreateScaledFonts();
+                InvalidateRect(hwnd, IntPtr.Zero, false);
+            });
             ClickraStorage.SettingsReloaded += onSettingsReloaded;
 
             SetTimer(hwnd, TIMER_ID_REFRESH, 250, IntPtr.Zero);

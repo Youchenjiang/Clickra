@@ -148,8 +148,29 @@ namespace Clickra.Core
                 {
                     Thread.Sleep(25);
                     Interlocked.Exchange(ref _reloadDebounceScheduled, 0);
-                    ReloadSettings();
+                    ReloadSettingsFromWatcher();
                 });
+            }
+        }
+
+        private static void ReloadSettingsFromWatcher()
+        {
+            const int maxAttempts = 2;
+            for (int attempt = 1; attempt <= maxAttempts; attempt++)
+            {
+                try
+                {
+                    ReloadSettings();
+                    return;
+                }
+                catch (TimeoutException) when (attempt < maxAttempts)
+                {
+                    Thread.Sleep(50);
+                }
+                catch
+                {
+                    return;
+                }
             }
         }
 
@@ -157,10 +178,7 @@ namespace Clickra.Core
         {
             lock (FileLock)
             {
-                RunWithMutex(() =>
-                {
-                    LoadSettingsInternalLocked();
-                });
+                RunWithMutex(LoadSettingsInternalLocked);
             }
         }
 
@@ -256,18 +274,12 @@ namespace Clickra.Core
                     DateTime diskTime = File.GetLastWriteTimeUtc(SettingsFile);
                     if (diskTime != _lastLoadedTimestampUtc)
                     {
-                        RunWithMutex(() =>
-                        {
-                            LoadSettingsInternalLocked();
-                        });
+                        RunWithMutex(LoadSettingsInternalLocked);
                     }
                 }
                 else if (_lastLoadedTimestampUtc != DateTime.MinValue)
                 {
-                    RunWithMutex(() =>
-                    {
-                        LoadSettingsInternalLocked();
-                    });
+                    RunWithMutex(LoadSettingsInternalLocked);
                 }
             }
             catch { }
@@ -286,10 +298,7 @@ namespace Clickra.Core
         {
             lock (FileLock)
             {
-                RunWithMutex(() =>
-                {
-                    LoadSettingsInternalLocked();
-                });
+                RunWithMutex(LoadSettingsInternalLocked);
             }
         }
 
@@ -321,18 +330,29 @@ namespace Clickra.Core
                 RunWithMutex(() =>
                 {
                     LoadSettingsInternalLocked();
-                    if (SettingsCache.TryGetValue(key, out string? oldVal) && oldVal == val)
+                    bool hadOldValue = SettingsCache.TryGetValue(key, out string? oldVal);
+                    if (hadOldValue && oldVal == val)
                     {
                         return;
                     }
 
                     SettingsCache[key] = val;
-                    changed = true;
                     try
                     {
                         PersistSettingsFileLocked();
+                        changed = true;
                     }
-                    catch { }
+                    catch
+                    {
+                        if (hadOldValue)
+                        {
+                            SettingsCache[key] = oldVal!;
+                        }
+                        else
+                        {
+                            SettingsCache.Remove(key);
+                        }
+                    }
                 });
 
                 if (changed)
