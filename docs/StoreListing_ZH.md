@@ -1,6 +1,6 @@
 # Microsoft Store 清單 - 中文 (台灣)
 
-以下是供您直接複製貼上至 Microsoft 合作夥伴中心 (Partner Center) 的完整欄位資訊，已更新至 v3.11.0.0 的最新狀態。
+以下是供您直接複製貼上至 Microsoft 合作夥伴中心 (Partner Center) 的完整欄位資訊，已更新至 v3.11.1.0 的最新狀態。
 
 ---
 
@@ -23,6 +23,7 @@ Clickra 是一款專為 Windows 10 與 Windows 11 打造的極速原生右鍵選
 　　PDF 翻譯連字修復：自動重組跨行被斷開的技術術語連字（如 Cop-peliaSim → CoppeliaSim），並調整 CJK 字體縮放比例以提升可讀性。
 　　右鍵選單圖示：所有轉檔指令現在在 Windows 11 及傳統右鍵選單中顯示在地化圖示。
 　　暫存任務保留：安全暫停轉換、自訂保留期間，並在清理前顯示剩餘時間與到期提醒。
+　　進度與系統匣控制：最小化後可從系統匣還原或取消轉換，進度與分割器控制也統一採用在地化向量介面。
 　　圖片轉 PDF：快速將多張圖片封裝為 PDF。
 　　圖片拼接：輕鬆將多張圖片垂直無縫結合。
 
@@ -31,10 +32,10 @@ Clickra 絕大多數功能（文書轉 PDF、PDF 壓縮、PDF 合併、圖片拼
 🔗 開源專案首頁：https://github.com/Youchenjiang/Clickra
 
 ## What's new in this version
-- LibreOffice 既有安裝納管：Native 與 Fluent 設定現在都能將符合條件的既有系統 LibreOffice 明確交由 Clickra 管理。
-- 可驗證的解除安裝管理：只有在唯一 MSI 身分與系統執行檔路徑都可驗證時，Clickra 才會提供受管理的解除安裝。
-- Fail-closed 保護：32/64 位元雙安裝、安裝被替換、路徑不符或 MSI 身分無法唯一確認時，Clickra 會維持未納管而不執行移除。
-- 清楚的管理狀態：新增五語系確認與狀態訊息，明確區分 Clickra 管理與外部管理的 LibreOffice。
+- 進度與分割器一致性：原生進度視窗與 Visual PDF Splitter 補齊五語系標籤、task-progress 行為與向量控制。
+- 系統匣還原／取消：轉換最小化後可快速還原，也可透過系統匣選單直接取消目前轉換。
+- 暫存任務保留資訊更清楚：原生儀表板新增剩餘保留時間、到期警示、檔案位置與停止原因。
+- 無障礙與視覺可靠性：純圖示按鈕保留在地化 automation name，向量圖示也避免不同字型造成狀態 glyph 差異。
 
 ## Product Features
 *(最多 20 個，以項目符號顯示)*
@@ -53,6 +54,7 @@ Clickra 絕大多數功能（文書轉 PDF、PDF 壓縮、PDF 合併、圖片拼
 - 極速 PDF 多檔合併
 - NativeAOT Shell 整合，維持右鍵選單快速回應
 - 原生儀表板與轉換進度介面
+- 系統匣還原與取消最小化中的轉換
 - 暫存轉換保留控制、剩餘時間與到期提醒
 - LibreOffice 驗證式納管與 fail-closed 解除安裝保護
 - 安全本機處理（僅 PDF 翻譯使用選用的雲端翻譯服務）
@@ -68,7 +70,7 @@ Clickra
 Clickra
 
 ## Short description
-Clickra 是一款極速的原生右鍵選單工具，支援文書、PDF、圖片處理、LibreOffice 驗證式納管與可繼續的暫存轉換。安全、以本機處理優先！
+Clickra 是一款極速原生右鍵選單工具，支援文書、PDF、圖片處理、在地化進度控制、系統匣還原／取消與暫存任務保留。安全、以本機處理優先！
 
 ---
 

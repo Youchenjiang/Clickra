@@ -1,5 +1,13 @@
 # Changelog
 
+## [v3.11.1.0] - 2026-10-02
+
+- **進度與分割器介面一致性 (Progress / Splitter UI Parity)**：Visual PDF Splitter 與 Progress Window 補齊五語系文字、邊界行為與 task-progress 對齊，降低 Native / Fluent / Shell 之間的顯示與操作差異。
+- **系統匣還原與取消控制 (Tray Restore / Cancel Controls)**：進度視窗最小化到系統匣後，可從右鍵選單直接還原或取消目前轉換，並保留左鍵快速還原行為。
+- **向量圖示與無障礙名稱 (Vector Icons / Accessibility)**：進度狀態、分割器導覽與縮放控制改用共用向量圖示，避免字型 glyph 差異，同時為 Fluent icon-only controls 保留在地化 UI Automation 名稱。
+- **暫存任務到期可視性 (Parked Retention Visibility)**：Native Dashboard 會顯示暫存任務的剩餘保留時間、即將到期警示、檔案索引與停止原因，狹窄版面也會避免文字覆蓋 retention 標籤。
+- **發佈與 Store 驗證可靠性 (Release / Store Reliability)**：發佈簽章流程改為 provider-neutral fail-closed，並新增已發布 Store 套件的公開解析、Microsoft delivery 驗證與 GitHub Release reconciliation 路徑。
+
 ## [v3.11.0.0] - 2026-09-29
 
 - **LibreOffice 既有安裝納管 (LibreOffice Adoption)**：Native Dashboard 與 Fluent Settings 現在可將符合條件的既有系統 LibreOffice 明確交由 Clickra 管理，不必重新安裝才能使用 Clickra 的更新與解除安裝流程。

@@ -1,6 +1,6 @@
 # Microsoft Store Listing - Korean (Korea)
 
-Microsoft Partner Center에 바로 복사해 넣을 수 있는 v3.11.0.0용 스토어 등록 정보입니다.
+Microsoft Partner Center에 바로 복사해 넣을 수 있는 v3.11.1.0용 스토어 등록 정보입니다.
 
 ---
 
@@ -23,6 +23,7 @@ Clickra는 Windows 10 및 Windows 11용 고성능 네이티브 우클릭 메뉴 
  - PDF 번역 하이phenation 연결: 소스 줄에서 잘린 기술 식별자를 자동으로 재결합 (예: "Cop-peliaSim" → "CoppeliaSim")하고 CJK 글꼴 스케일링을 조정하여 가독성을 향상.
  - 컨텍스트 메뉴 아이콘: 모든 변환 명령이 Windows 11 및 클래식 우클릭 메뉴에 현지화된 아이콘을 표시.
  - 보류 작업 보관: 변환을 안전하게 일시 중지하고 보관 기간을 설정하며, 정리 전에 남은 시간과 만료 알림을 확인할 수 있습니다.
+ - 진행 및 트레이 제어: 최소화한 변환을 시스템 트레이에서 복원하거나 취소할 수 있고, 진행 및 분할 컨트롤은 현지화된 벡터 UI로 통일됩니다.
  - 이미지 to PDF: JPG/PNG/WebP 이미지를 PDF 문서로 변환.
  - 이미지 세로 병합: 여러 이미지를 하나의 긴 이미지로 결합.
 
@@ -31,10 +32,10 @@ Clickra는 개인정보 보호를 중요하게 생각합니다. Office to PDF, P
 🔗 Open Source on GitHub: https://github.com/Youchenjiang/Clickra
 
 ## What's new in this version
- - LibreOffice 기존 설치 관리: Native 및 Fluent 설정에서 조건을 충족하는 기존 시스템 LibreOffice를 명시적으로 Clickra 관리 대상으로 전환할 수 있습니다.
- - 검증된 제거 관리: 하나의 고유한 MSI ID와 시스템 실행 파일 경로를 확인할 수 있을 때만 Clickra에서 관리형 제거를 제공합니다.
- - Fail-closed 보호: 32/64비트 중복 설치, 교체된 설치, 경로 불일치 또는 MSI ID를 고유하게 확인할 수 없는 경우 관리 대상으로 전환하지 않고 Clickra에서 제거하지 않습니다.
- - 명확한 관리 상태: 5개 언어의 확인 및 상태 메시지로 Clickra 관리 설치와 외부 관리 LibreOffice를 구분합니다.
+ - 진행 및 분할 UI 일관성: 네이티브 진행 창과 Visual PDF Splitter의 라벨, task-progress 동작, 벡터 컨트롤을 5개 언어에서 일치시켰습니다.
+ - 시스템 트레이 복원／취소: 최소화한 변환을 빠르게 복원하거나 트레이 메뉴에서 현재 변환을 직접 취소할 수 있습니다.
+ - 보류 작업 보관 정보 강화: 네이티브 대시보드에 남은 보관 시간, 만료 경고, 파일 위치와 중지 이유를 표시합니다.
+ - 접근성 및 시각 안정성: 아이콘 전용 컨트롤에 현지화된 automation name을 유지하고, 폰트 의존 glyph를 벡터 아이콘으로 대체했습니다.
 
 ## Product Features
 *(Max 20, displayed as bullet points)*
@@ -53,6 +54,7 @@ Clickra는 개인정보 보호를 중요하게 생각합니다. Office to PDF, P
  - 빠른 다중 PDF 병합
  - NativeAOT 셸 통합 기반의 빠른 컨텍스트 메뉴 응답
  - 네이티브 대시보드 및 변환 진행 UI
+ - 최소화한 변환의 시스템 트레이 복원 및 취소
  - 보류 변환 보관 기간, 남은 시간 및 만료 알림
  - LibreOffice 검증 관리 및 fail-closed 제거 보호
  - 안전한 로컬 처리(선택형 PDF 번역만 클라우드 번역 사용)
@@ -68,7 +70,7 @@ Clickra
 Clickra
 
 ## Short description
-Clickra는 Office/PDF/이미지 작업과 함께 LibreOffice 검증 관리 및 다시 시작할 수 있는 보류 변환을 제공하는 고성능 네이티브 우클릭 메뉴 도구입니다. 안전하고 로컬 처리를 우선합니다.
+Clickra는 Office/PDF/이미지 작업과 함께 현지화된 진행 제어, 시스템 트레이 복원／취소, 보류 작업 보관을 제공하는 고성능 네이티브 우클릭 메뉴 도구입니다. 로컬 처리를 우선합니다.
 
 ---
 

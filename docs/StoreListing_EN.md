@@ -1,6 +1,6 @@
 # Microsoft Store Listing - English (US)
 
-Below is the complete information for you to copy and paste directly into the Microsoft Partner Center, updated for the v3.11.0.0 release.
+Below is the complete information for you to copy and paste directly into the Microsoft Partner Center, updated for the v3.11.1.0 release.
 
 ---
 
@@ -23,6 +23,7 @@ Core Features:
  - PDF Translation Hyphenation: Automatically rejoins technical identifiers split across source lines (e.g. "Cop-peliaSim" → "CoppeliaSim") and adjusts CJK font scaling for better readability.
  - Context Menu Icons: All conversion commands now display localized icons in the Windows 11 and classic right-click menus.
  - Parked Task Retention: Pause conversions safely, choose how long parked tasks are retained, and see expiration warnings before cleanup.
+ - Progress & Tray Controls: Minimized conversions can be restored or cancelled from the system tray, while progress and splitter controls use consistent localized vector UI.
  - Image to PDF: Quickly wrap images (JPG/PNG/WebP) into PDF documents.
  - Image Stitching: Combine multiple images vertically into a single long-form image.
 
@@ -31,10 +32,10 @@ Clickra respects your privacy. Most processing (Office-to-PDF conversion, PDF co
 🔗 Open Source on GitHub: https://github.com/Youchenjiang/Clickra
 
 ## What's new in this version
- - LibreOffice Adoption: Existing verified system LibreOffice installations can now be explicitly brought under Clickra management from both Native and Fluent settings.
- - Verified Uninstall Management: Clickra only offers managed uninstall when one unique MSI identity and system executable path can be verified.
- - Fail-closed Safety: Ambiguous 32-bit/64-bit installations, replaced installs, path mismatches, and unverifiable MSI identities stay unmanaged instead of being removed by Clickra.
- - Clear Management Status: New localized confirmations and status messages distinguish Clickra-managed installations from externally managed LibreOffice installs.
+ - Progress & Splitter Consistency: Native progress and Visual PDF Splitter UI now share localized labels, task-progress behavior, and vector controls across supported languages.
+ - System Tray Restore / Cancel: Restore minimized conversions with a click, or use the tray menu to restore or cancel the active conversion.
+ - Clearer Parked Task Retention: The Native Dashboard now shows remaining retention, expiry warnings, file position, and stop reason for parked tasks.
+ - Accessibility & Visual Reliability: Icon-only controls retain localized automation names, and vector icons avoid font-dependent status glyph differences.
 
 ## Product Features
 *(Max 20, displayed as bullet points)*
@@ -53,6 +54,7 @@ Clickra respects your privacy. Most processing (Office-to-PDF conversion, PDF co
  - Fast multi-file PDF merging
  - NativeAOT shell integration for responsive context-menu commands
  - Native dashboard and conversion progress UI
+ - System tray restore and cancel controls for minimized conversions
  - Parked conversion retention controls with expiration status and alerts
  - Verified LibreOffice management and fail-closed uninstall protection
  - Safe local processing (optional cloud-based PDF Translation)
@@ -68,7 +70,7 @@ Clickra
 Clickra
 
 ## Short description
-Clickra is a high-performance native context menu utility for Office, PDF, and image workflows, with verified LibreOffice adoption, resumable conversions, and local-first processing.
+Clickra is a high-performance native context menu utility for Office, PDF, and image workflows, with localized progress controls, tray restore/cancel, parked-task retention, and local-first processing.
 
 ---
 
