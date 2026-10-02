@@ -510,7 +510,7 @@ namespace Clickra.UI
                     var range = descriptor.GetEffectiveNumericRange() ?? new NumericSettingRange(0, 100, 0);
                     int current = ClickraStorage.GetSettingInt(descriptor.Key);
                     int delta = subId == 1 ? -1 : (subId == 2 ? 1 : 0);
-                    int updated = Math.Clamp(current + delta, range.Min, range.Max);
+                    int updated = (int)Math.Clamp((long)current + delta, range.Min, range.Max);
                     ClickraStorage.SaveSetting(descriptor.Key, updated.ToString());
                     InvalidateRect(hwnd, IntPtr.Zero, false);
                     break;

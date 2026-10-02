@@ -522,6 +522,10 @@ static partial class TestSuite
             "CLI Dashboard must include DrawDynamicSettingDescriptor to paint controls derived from descriptors.");
         Assert.True(cliClick.Contains("HandleDynamicSettingClick", StringComparison.Ordinal),
             "CLI Dashboard must handle clicks on dynamic settings controls via HandleDynamicSettingClick.");
+        Assert.True(cliClick.Contains("Math.Clamp((long)current + delta", StringComparison.Ordinal),
+            "CLI dynamic number controls must widen arithmetic before clamping to avoid integer overflow.");
+        Assert.True(fluentCode.Contains("ApplySettingsResponsiveLayout(ActualWidth < 1000)", StringComparison.Ordinal),
+            "Fluent dynamic settings must be assigned responsive grid rows and columns after insertion.");
     }
 
     private static void TestCliLocalizationKeysCoverage()

@@ -717,6 +717,8 @@ public sealed partial class MainPage : Page
             _dynamicSettingControls.Add(new DynamicSettingControl(
                 descriptor, card, titleBlock, descBlock, inputControl, valueLabel));
         }
+
+        ApplySettingsResponsiveLayout(ActualWidth < 1000);
     }
 
     private static void UpdateDynamicSliderLabel(TextBlock label, SettingDescriptor descriptor, int level)
