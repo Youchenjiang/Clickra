@@ -8,6 +8,7 @@ submission contains the exact four-part version requested by the release tag.
 from __future__ import annotations
 
 import argparse
+from collections.abc import Mapping
 import json
 import os
 import pathlib
@@ -21,7 +22,7 @@ STORE_RESOURCE = "https://manage.devcenter.microsoft.com"
 DEFAULT_IDENTITY = "g1014308.Clickra"
 
 
-def required_env(env: dict[str, str], name: str) -> str:
+def required_env(env: Mapping[str, str], name: str) -> str:
     value = env.get(name)
     if not value:
         raise RuntimeError(f"Missing required environment variable: {name}")
