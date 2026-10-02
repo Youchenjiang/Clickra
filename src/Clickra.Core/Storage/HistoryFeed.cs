@@ -44,7 +44,7 @@ public sealed class HistoryItem
             ? JoinParts(FirstFileName, StoppedOnText, ErrorMessage)
             : FileCountText;
         RetentionText = retention.HasValue ? ClickraStorage.DescribeParkedRetention(retention.Value) : "";
-        NeedsAttention = retention.HasValue && (retention.Value.IsExpiringSoon || retention.Value.IsExpired);
+        NeedsAttention = retention.HasValue && (retention.Value.IsExpiringSoon || retention.Value.HasExpired);
     }
 
     /// <summary>這個項目是哪一種。</summary>

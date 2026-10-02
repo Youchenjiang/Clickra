@@ -49,14 +49,14 @@ static partial class TestSuite
         string taskId = WriteParkedTaskFile(daysParked: 20, retentionOverride: null);
         try
         {
-            Assert.True(ClickraStorage.GetParkedRetentionInfo(taskId).IsExpired,
+            Assert.True(ClickraStorage.GetParkedRetentionInfo(taskId).HasExpired,
                 "With a 7 day policy, a task parked 20 days ago is expired.");
 
             // 這一件自己延長到 30 天。寫入會更新檔案，但暫存時間已經記下來了，
             // 所以年資仍然是 20 天 —— 不是「從現在起再 30 天」。
             ClickraStorage.SetParkedRetentionOverride(taskId, 30);
             var info = ClickraStorage.GetParkedRetentionInfo(taskId);
-            Assert.False(info.IsExpired, "A task with its own 30 day deadline must survive a 7 day policy.");
+            Assert.False(info.HasExpired, "A task with its own 30 day deadline must survive a 7 day policy.");
             Assert.Equal(10, info.RemainingDays);
             Assert.True(info.IsTaskOverride, "The info must say the deadline is this task's own.");
             Assert.True(ClickraStorage.DescribeParkedRetention(info).EndsWith(Localization.T("task_parked_ttl_override"), StringComparison.Ordinal),
@@ -65,7 +65,7 @@ static partial class TestSuite
             // 回到全域政策：年資不變，所以它又是過期的。
             ClickraStorage.SetParkedRetentionOverride(taskId, null);
             var global = ClickraStorage.GetParkedRetentionInfo(taskId);
-            Assert.True(global.IsExpired, "Back on the global policy the same 20 day old task is expired again.");
+            Assert.True(global.HasExpired, "Back on the global policy the same 20 day old task is expired again.");
             Assert.False(global.IsTaskOverride, "Without an override the deadline is the global one.");
         }
         finally
@@ -90,7 +90,7 @@ static partial class TestSuite
             int floor = ClickraStorage.AdjustParkedRetention(taskId, -step) ?? -1;
             Assert.Equal(1, floor);
             var info = ClickraStorage.GetParkedRetentionInfo(taskId);
-            Assert.False(info.IsExpired, "Shortening a deadline must not delete the task outright.");
+            Assert.False(info.HasExpired, "Shortening a deadline must not delete the task outright.");
             Assert.True(info.IsExpiringSoon, "The shortest window shows up as expiring soon, so the user can still extend it.");
             Assert.True(File.Exists(TaskFilePath(taskId)), "The task file must still exist after shortening past the floor.");
 
