@@ -69,7 +69,7 @@ public static class ClickraSettings
     public const int MinImageCompressLevel = 0;
     public const int MaxImageCompressLevel = 3;
     public const int MinImageCompressMaxDimension = 0;
-    public const int MaxImageCompressMaxDimension = 16384;
+    public const int MaxImageCompressMaxDimension = int.MaxValue;
 
     // ─── 設定值的列舉字彙 ─────────────────────────────────────────────────
     public const string OutputDirDesktop = "desktop";

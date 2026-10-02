@@ -212,15 +212,25 @@ static partial class TestSuite
             Assert.Equal(setting.Default, range.Default.ToString());
 
             Assert.Equal(range.Min, ClickraSettings.ClampNumericSetting(setting.Key, range.Min - 100));
-            Assert.Equal(range.Max, ClickraSettings.ClampNumericSetting(setting.Key, range.Max + 100));
+            if (range.Max <= int.MaxValue - 100)
+            {
+                Assert.Equal(range.Max, ClickraSettings.ClampNumericSetting(setting.Key, range.Max + 100));
+            }
             Assert.Equal(range.Default, ClickraSettings.ClampNumericSetting(setting.Key, range.Default));
 
             Assert.True(ClickraSettings.IsNumericSettingInRange(setting.Key, range.Min), $"{setting.Key} Min must be in range.");
             Assert.True(ClickraSettings.IsNumericSettingInRange(setting.Key, range.Max), $"{setting.Key} Max must be in range.");
             Assert.True(ClickraSettings.IsNumericSettingInRange(setting.Key, range.Default), $"{setting.Key} Default must be in range.");
             Assert.False(ClickraSettings.IsNumericSettingInRange(setting.Key, range.Min - 1), $"{setting.Key} below Min must not be in range.");
-            Assert.False(ClickraSettings.IsNumericSettingInRange(setting.Key, range.Max + 1), $"{setting.Key} above Max must not be in range.");
+            if (range.Max < int.MaxValue)
+            {
+                Assert.False(ClickraSettings.IsNumericSettingInRange(setting.Key, range.Max + 1), $"{setting.Key} above Max must not be in range.");
+            }
         }
+
+        int existingLargeDimension = 20000;
+        Assert.Equal(existingLargeDimension,
+            ClickraSettings.ClampNumericSetting(ClickraSettings.ImageCompressMaxDimension, existingLargeDimension));
     }
 
     private static void TestNumericUiControlsDeriveBounds()
