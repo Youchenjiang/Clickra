@@ -660,21 +660,7 @@ namespace Clickra.UI
                 float sx = x + (float)i / (stops - 1) * w;
                 bool active = (i + ClickraSettings.MinPdfCompressLevel == level);
 
-                // Dot
-                float dotR = active ? 7.5f : 3.5f;
-                Color dotColor = i <= level ? accent : Color.FromArgb(65, 65, 65);
-                if (active)
-                {
-                    // White ring around active thumb
-                    using var ringBrush = new SolidBrush(Color.FromArgb(200, 200, 200));
-                    g.FillEllipse(ringBrush,
-                        (sx - dotR - 2f) * s, (trackY + trackH / 2f - dotR - 2f) * s,
-                        (dotR + 2f) * 2f * s, (dotR + 2f) * 2f * s);
-                }
-                using var dotBrush = new SolidBrush(dotColor);
-                g.FillEllipse(dotBrush,
-                    (sx - dotR) * s, (trackY + trackH / 2f - dotR) * s,
-                    dotR * 2f * s, dotR * 2f * s);
+                float dotR = DrawSliderStopMarker(g, sx, trackY, trackH, active, i <= level, accent);
 
                 // Label
                 if (_subFont != null)
@@ -854,19 +840,8 @@ namespace Clickra.UI
                 float sx = x + (float)i / (stops - 1) * w;
                 bool active = (i + range.Min == level);
 
-                float dotR = active ? 7.5f : 3.5f;
-                Color dotColor = (i + range.Min) <= level ? accent : Color.FromArgb(65, 65, 65);
-                if (active)
-                {
-                    using var ringBrush = new SolidBrush(Color.FromArgb(200, 200, 200));
-                    g.FillEllipse(ringBrush,
-                        (sx - dotR - 2f) * s, (trackY + trackH / 2f - dotR - 2f) * s,
-                        (dotR + 2f) * 2f * s, (dotR + 2f) * 2f * s);
-                }
-                using var dotBrush = new SolidBrush(dotColor);
-                g.FillEllipse(dotBrush,
-                    (sx - dotR) * s, (trackY + trackH / 2f - dotR) * s,
-                    dotR * 2f * s, dotR * 2f * s);
+                float dotR = DrawSliderStopMarker(
+                    g, sx, trackY, trackH, active, (i + range.Min) <= level, accent);
 
                 if (_subFont != null && labels != null && i < labels.Count)
                 {
@@ -878,6 +853,26 @@ namespace Clickra.UI
                         (trackY + trackH / 2f + dotR + 5f) * s);
                 }
             }
+        }
+
+        static float DrawSliderStopMarker(
+            Graphics g, float stopX, float trackY, float trackHeight, bool active, bool reached, Color accent)
+        {
+            float s = _dpiScale;
+            float dotRadius = active ? 7.5f : 3.5f;
+            if (active)
+            {
+                using var ringBrush = new SolidBrush(Color.FromArgb(200, 200, 200));
+                g.FillEllipse(ringBrush,
+                    (stopX - dotRadius - 2f) * s, (trackY + trackHeight / 2f - dotRadius - 2f) * s,
+                    (dotRadius + 2f) * 2f * s, (dotRadius + 2f) * 2f * s);
+            }
+
+            using var dotBrush = new SolidBrush(reached ? accent : Color.FromArgb(65, 65, 65));
+            g.FillEllipse(dotBrush,
+                (stopX - dotRadius) * s, (trackY + trackHeight / 2f - dotRadius) * s,
+                dotRadius * 2f * s, dotRadius * 2f * s);
+            return dotRadius;
         }
     }
 }
