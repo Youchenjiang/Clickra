@@ -108,7 +108,7 @@ public sealed partial class TaskProgressPage : Page
     private static ParseResult? TryParseResume(List<string> args)
     {
         if (args.Count < 2) return null;
-        if (ClickraStorage.GetParkedTaskForResume(args[1]) is not { } resumed) return null;
+        if (ClickraStorage.ClaimParkedTaskForResume(args[1]) is not { } resumed) return null;
         return new ParseResult(resumed.Command, resumed.Files, resumed.StartIndex, resumed.TaskId);
     }
 

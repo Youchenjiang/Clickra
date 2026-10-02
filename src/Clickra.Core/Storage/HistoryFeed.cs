@@ -96,13 +96,16 @@ public sealed class HistoryItem
     public long ElapsedMs => Entry.ElapsedMs;
 
     /// <summary>兩個介面共用的狀態文字鍵。待繼續任務回傳空字串，因為它顯示期限而不是狀態。</summary>
-    private static string ResolveStatusKey(HistoryItemKind kind, ConversionStatus status, bool isCanceled) => kind switch
+    private static string ResolveStatusKey(HistoryItemKind kind, ConversionStatus status, bool isCanceled)
     {
-        HistoryItemKind.Active => status == ConversionStatus.Pending ? "status_pending" : "status_converting",
-        HistoryItemKind.Parked => "",
-        _ => isCanceled ? "status_canceled"
-            : status == ConversionStatus.Success ? "status_success" : "status_failed"
-    };
+        if (kind == HistoryItemKind.Active)
+            return status == ConversionStatus.Pending ? "status_pending" : "status_converting";
+        if (kind == HistoryItemKind.Parked)
+            return "";
+        if (isCanceled)
+            return "status_canceled";
+        return status == ConversionStatus.Success ? "status_success" : "status_failed";
+    }
 
     private static string FirstFileNameOf(ClickraStorage.HistoryEntry entry)
     {

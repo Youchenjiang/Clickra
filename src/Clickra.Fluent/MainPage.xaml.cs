@@ -1368,7 +1368,7 @@ public sealed partial class MainPage : Page
             Content = string.Format(L("task_parked_extend_days"), step),
             Padding = new Thickness(14, 6, 14, 6),
             // 「永久保留」的任務沒有延長可言：它本來就不會過期。
-            IsEnabled = !(item.Retention?.IsUnlimited ?? false)
+            IsEnabled = item.Retention?.IsUnlimited != true
         };
         extendButton.Click += (_, _) => AdjustParkedRetention(item, +step);
         actions.Children.Add(shortenButton);

@@ -31,6 +31,10 @@ static partial class TestSuite
             TestParkedRetentionOverrideBeatsPolicy);
         runner.Run("Parked retention: legacy tasks preserve file age when an override is first written",
             TestLegacyParkedRetentionOverridePreservesAge);
+        runner.Run("Parked retention: re-parking starts a fresh window and keeps the task override",
+            TestReparkingStartsFreshRetentionWindow);
+        runner.Run("Parked retention: expired tasks cannot be claimed for resume",
+            TestExpiredParkedTaskCannotBeClaimed);
         runner.Run("Parked retention: extend and shorten move the shared step and never delete the task",
             TestParkedRetentionAdjustNeverDeletes);
         runner.Run("Parked retention: an unlimited task takes a window only when shortened",
@@ -98,6 +102,54 @@ static partial class TestSuite
         finally
         {
             ClickraStorage.SaveSetting(ClickraSettings.ParkedTaskRetention, ClickraSettings.DefaultParkedTaskRetention);
+            DeleteTaskFile(taskId);
+        }
+    }
+
+    private static void TestReparkingStartsFreshRetentionWindow()
+    {
+        string taskId = WriteParkedTaskFile(daysParked: 20, retentionOverride: 30, fileCount: 2);
+        try
+        {
+            var before = ClickraStorage.GetParkedRetentionInfo(taskId);
+            Assert.Equal(10, before.RemainingDays);
+
+            var claimed = ClickraStorage.ClaimParkedTaskForResume(taskId);
+            Assert.True(claimed != null, "The unexpired parked task must be claimable for resume.");
+            Assert.True(ClickraStorage.GetTask(taskId)?.Status == ConversionStatus.InProgress,
+                "Claiming resume must move the task to InProgress.");
+
+            ClickraStorage.ParkTask(taskId, "Waiting for input again", 1);
+            var after = ClickraStorage.GetParkedRetentionInfo(taskId);
+            Assert.Equal(30, after.RemainingDays);
+            Assert.True(after.IsTaskOverride, "Re-parking must keep the task-specific retention override.");
+
+            string persisted = File.ReadAllText(TaskFilePath(taskId));
+            Assert.True(persisted.Contains("ParkedRetentionDays=30", StringComparison.Ordinal),
+                "Re-parking must preserve the task-specific retention override.");
+            Assert.True(persisted.Contains("ParkedSince=", StringComparison.Ordinal),
+                "Re-parking must persist a fresh ParkedSince timestamp.");
+        }
+        finally
+        {
+            DeleteTaskFile(taskId);
+        }
+    }
+
+    private static void TestExpiredParkedTaskCannotBeClaimed()
+    {
+        string taskId = WriteParkedTaskFile(daysParked: 8, retentionOverride: 7, fileCount: 2);
+        try
+        {
+            Assert.True(ClickraStorage.GetParkedRetentionInfo(taskId).HasExpired,
+                "The fixture must be expired before resume is attempted.");
+            Assert.True(ClickraStorage.ClaimParkedTaskForResume(taskId) == null,
+                "An expired parked task must not cross the resume boundary.");
+            Assert.True(ClickraStorage.GetTask(taskId) == null,
+                "Rejecting an expired resume must enforce the same pruning decision as the history feed.");
+        }
+        finally
+        {
             DeleteTaskFile(taskId);
         }
     }

@@ -38,8 +38,8 @@ static partial class TestSuite
             TestResumingParkedTaskReusesIdentity);
         runner.Run("Task queue: parked retention days come from the setting (0 = unlimited)",
             TestParkedRetentionDaysFromSetting);
-        runner.Run("Task queue: SetTaskInProgress refreshes the owning pid (resume safety)",
-            TestSetTaskInProgressRefreshesPid);
+        runner.Run("Task queue: resume claim refreshes the owning pid",
+            TestResumeClaimRefreshesPid);
         runner.Run("Task queue: active tasks whose owner process died are pruned as Canceled",
             TestDeadPidTaskPrunedAsAbandoned);
         runner.Run("Task queue: legacy active.tmp is preserved and queue orders newest first",
@@ -62,8 +62,8 @@ static partial class TestSuite
             TestFluentParkedExpirationUiContract);
         runner.Run("CLI Dashboard History shows every parked task with its own remaining retention",
             TestCliDashboardParkedTaskVisibility);
-        runner.Run("Task queue: GetParkedTaskForResume validates status, files, and start index",
-            TestGetParkedTaskForResume);
+        runner.Run("Task queue: resume claim validates status, files, index, and single ownership",
+            TestClaimParkedTaskForResume);
         runner.Run("CLI Dashboard History page exposes resume and cancel for parked conversions",
             TestCliDashboardParkedTaskResumeAndCancelEntryPoint);
     }
@@ -563,7 +563,8 @@ static partial class TestSuite
         {
             ClickraStorage.SetTaskInProgress(a);
             ClickraStorage.ParkTask(a, ParkReason, 1);
-            ClickraStorage.SetTaskInProgress(a);
+            var claim = ClickraStorage.ClaimParkedTaskForResume(a);
+            Assert.True(claim != null, "Parked task must be claimed before it resumes.");
             var resumed = ClickraStorage.GetTask(a);
             Assert.True(resumed.HasValue && resumed.Value.Status == ConversionStatus.InProgress,
                 "Resumed task must be InProgress.");
@@ -598,7 +599,7 @@ static partial class TestSuite
         ClickraStorage.SaveSetting(SettingParkedRetention, "7");
     }
 
-    private static void TestSetTaskInProgressRefreshesPid()
+    private static void TestResumeClaimRefreshesPid()
     {
         string a = ClickraStorage.StartTask(CmdSplitPdf, 1, TestInDir + FileA);
         try
@@ -608,10 +609,18 @@ static partial class TestSuite
             Assert.True(entry.HasValue && entry.Value.Pid == Environment.ProcessId,
                 $"InProgress task must carry the current pid, got {entry?.Pid}.");
             ClickraStorage.ParkTask(a, ParkReason, 0);
-            ClickraStorage.SetTaskInProgress(a);
+
+            string path = Path.Combine(ClickraStorage.GetDataDir(), "tasks", $"task-{a}.tmp");
+            var lines = File.ReadAllLines(path)
+                .Select(line => line.StartsWith("Pid=", StringComparison.Ordinal) ? "Pid=0" : line)
+                .ToArray();
+            File.WriteAllLines(path, lines);
+
+            Assert.True(ClickraStorage.ClaimParkedTaskForResume(a) != null,
+                "A parked task must be claimed before it resumes.");
             var resumed = ClickraStorage.GetTask(a);
             Assert.True(resumed.HasValue && resumed.Value.Pid == Environment.ProcessId,
-                $"Resumed task must refresh its pid to the current process, got {resumed?.Pid}.");
+                $"Resume claim must refresh its pid to the current process, got {resumed?.Pid}.");
         }
         finally { ClickraStorage.DeleteTask(a); }
     }
@@ -662,37 +671,43 @@ static partial class TestSuite
         }
     }
 
-    private static void TestGetParkedTaskForResume()
+    private static void TestClaimParkedTaskForResume()
     {
         // 1. Invalid or missing taskId
-        Assert.True(ClickraStorage.GetParkedTaskForResume(null!) == null, "Null taskId must return null.");
-        Assert.True(ClickraStorage.GetParkedTaskForResume("") == null, "Empty taskId must return null.");
-        Assert.True(ClickraStorage.GetParkedTaskForResume("non_existent_id") == null, "Non-existent taskId must return null.");
+        Assert.True(ClickraStorage.ClaimParkedTaskForResume(null!) == null, "Null taskId must return null.");
+        Assert.True(ClickraStorage.ClaimParkedTaskForResume("") == null, "Empty taskId must return null.");
+        Assert.True(ClickraStorage.ClaimParkedTaskForResume("non_existent_id") == null, "Non-existent taskId must return null.");
 
         // 2. Active (in progress) task cannot be resumed
         string a = ClickraStorage.StartTask(CmdSplitPdf, 2, TestInDir + FileA1 + TestInDir + FileA2);
         try
         {
             ClickraStorage.SetTaskInProgress(a);
-            Assert.True(ClickraStorage.GetParkedTaskForResume(a) == null, "InProgress task cannot be resumed.");
+            Assert.True(ClickraStorage.ClaimParkedTaskForResume(a) == null, "InProgress task cannot be resumed.");
 
-            // 3. Parked task can be retrieved with valid files and clamped index
+            // 3. Parked task can be claimed with valid files and its persisted next index.
             ClickraStorage.ParkTask(a, ParkReason, 1);
-            var info = ClickraStorage.GetParkedTaskForResume(a);
+            var info = ClickraStorage.ClaimParkedTaskForResume(a);
             Assert.True(info != null, "Parked task must return ResumedTaskInfo.");
             Assert.Equal(a, info!.TaskId);
             Assert.Equal(CmdSplitPdf, info.Command);
             Assert.Equal(2, info.Files.Count);
             Assert.Equal(1, info.StartIndex);
+            Assert.True(ClickraStorage.GetTask(a)?.Status == ConversionStatus.InProgress,
+                "A successful resume claim must atomically transition the task to InProgress.");
+            Assert.True(ClickraStorage.ClaimParkedTaskForResume(a) == null,
+                "A second consumer must not be able to claim the same parked task.");
 
-            // 4. Index out-of-range clamping
+            // 4. Re-park, then verify out-of-range index clamping on the next claim.
+            ClickraStorage.ParkTask(a, ParkReason, 1);
             ClickraStorage.SetTaskIndex(a, 99);
-            var clamped = ClickraStorage.GetParkedTaskForResume(a);
-            Assert.True(clamped != null && clamped.StartIndex == 2, "Index beyond files count must be clamped to file count.");
+            var clamped = ClickraStorage.ClaimParkedTaskForResume(a);
+            Assert.True(clamped?.StartIndex == 2, "Index beyond files count must be clamped to file count.");
 
-            // 5. Cancelled task cannot be resumed
+            // 5. Re-park and cancel; a removed task cannot be claimed.
+            ClickraStorage.ParkTask(a, ParkReason, 1);
             ClickraStorage.CancelParkedTask(a);
-            Assert.True(ClickraStorage.GetParkedTaskForResume(a) == null, "Cancelled task cannot be resumed.");
+            Assert.True(ClickraStorage.ClaimParkedTaskForResume(a) == null, "Cancelled task cannot be resumed.");
         }
         finally
         {
@@ -724,11 +739,13 @@ static partial class TestSuite
         Assert.True(click.Contains("ClickraStorage.CancelParkedTask", StringComparison.Ordinal),
             "CLI Dashboard cancel click handler must invoke ClickraStorage.CancelParkedTask.");
 
-        // Resume invokes Core shared entry point and launches ProgressWindow.ShowResume
-        Assert.True(click.Contains("ClickraStorage.GetParkedTaskForResume", StringComparison.Ordinal),
-            "CLI Dashboard resume click handler must validate task via ClickraStorage.GetParkedTaskForResume.");
+        // Resume launches ProgressWindow; the window owns the atomic Core claim at execution time.
+        Assert.False(click.Contains("ClaimParkedTaskForResume", StringComparison.Ordinal),
+            "CLI Dashboard must not claim a task before the progress window is ready to execute it.");
         Assert.True(click.Contains("ProgressWindow.ShowResume", StringComparison.Ordinal),
             "CLI Dashboard resume click handler must launch ProgressWindow.ShowResume.");
+        Assert.True(progress.Contains("ClickraStorage.ClaimParkedTaskForResume", StringComparison.Ordinal),
+            "ProgressWindow.ShowResume must atomically claim the parked task before execution.");
 
         // Resume must not mark the task InProgress prematurely
         int resumeStart = click.IndexOf("if (action == ParkedActionResume)", StringComparison.Ordinal);

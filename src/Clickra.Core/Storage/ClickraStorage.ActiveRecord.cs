@@ -110,7 +110,7 @@ namespace Clickra.Core
             RunWithMutex(() =>
             {
                 var entry = ReadTaskFileInternal(taskId);
-                if (entry.HasValue)
+                if (entry.HasValue && entry.Value.Status is ConversionStatus.Pending or ConversionStatus.InProgress)
                 {
                     var data = ToTaskData(entry.Value, ConversionStatus.InProgress, pidOverride: Environment.ProcessId);
                     WriteTaskFileInternal(data);
@@ -227,9 +227,13 @@ namespace Clickra.Core
             RunWithMutex(() =>
             {
                 var entry = ReadTaskFileInternal(taskId);
-                if (entry.HasValue)
+                if (entry.HasValue && entry.Value.Status == ConversionStatus.InProgress)
                 {
-                    var data = ToTaskData(entry.Value, ConversionStatus.Parked, errorMsg: reason) with { CurrentIndex = nextIndex };
+                    var data = ToTaskData(entry.Value, ConversionStatus.Parked, errorMsg: reason) with
+                    {
+                        CurrentIndex = nextIndex,
+                        ParkedSince = DateTime.UtcNow.ToString(DateTimeFormat, CultureInfo.InvariantCulture)
+                    };
                     WriteTaskFileInternal(data);
                 }
             });
@@ -272,7 +276,11 @@ namespace Clickra.Core
         /// <summary>已暫存任務的保留天數（0 = 無限期）。未設定或無法解析時採用登錄表的預設值。</summary>
         public record ResumedTaskInfo(string TaskId, string Command, List<string> Files, int StartIndex);
 
-        public static ResumedTaskInfo? GetParkedTaskForResume(string taskId)
+        /// <summary>
+        /// Atomically claims a parked task for resume. The same mutex covers deadline validation,
+        /// input/index capture, and the Parked -> InProgress transition so only one consumer can win.
+        /// </summary>
+        public static ResumedTaskInfo? ClaimParkedTaskForResume(string taskId)
         {
             if (string.IsNullOrWhiteSpace(taskId)) return null;
             return RunWithMutex(() =>
@@ -280,12 +288,25 @@ namespace Clickra.Core
                 var entry = ReadTaskFileInternal(taskId);
                 if (entry is null || entry.Value.Status != ConversionStatus.Parked) return null;
 
+                string path = TaskFilePath(taskId);
+                var (retentionDays, age) = ParkedWindow(entry.Value, path, DateTime.UtcNow);
+                if (retentionDays > 0 && CalculateRetentionInfo(retentionDays, age).HasExpired)
+                {
+                    if (File.Exists(path)) File.Delete(path);
+                    return null;
+                }
+
                 var files = (entry.Value.InputPaths ?? string.Empty)
                     .Split(';', StringSplitOptions.RemoveEmptyEntries)
                     .ToList();
                 if (files.Count == 0) return null;
 
                 int startIndex = Math.Clamp(entry.Value.CurrentIndex, 0, files.Count);
+                var claimed = ToTaskData(entry.Value, ConversionStatus.InProgress, pidOverride: Environment.ProcessId) with
+                {
+                    ParkedSince = null
+                };
+                if (!WriteTaskFileInternal(claimed)) return null;
                 return new ResumedTaskInfo(taskId, entry.Value.Command, files, startIndex);
             });
         }

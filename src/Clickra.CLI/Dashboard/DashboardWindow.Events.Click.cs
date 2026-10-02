@@ -113,14 +113,11 @@ namespace Clickra.UI
 
             if (action == ParkedActionResume)
             {
-                var resumed = ClickraStorage.GetParkedTaskForResume(taskId);
-                if (resumed is null) return;
-
                 var thread = new System.Threading.Thread(() =>
                 {
                     try
                     {
-                        ProgressWindow.ShowResume(resumed.TaskId);
+                        ProgressWindow.ShowResume(taskId);
                     }
                     catch (Exception ex)
                     {

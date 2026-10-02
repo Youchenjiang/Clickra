@@ -48,7 +48,7 @@ namespace Clickra.UI
         private string? _outputDirOverride;
         private string? _existingTaskId = null;
         private int _startIndex = 0;
-        private string _taskId = "";
+        private string TaskId { get; set; } = "";
         private int _current = 0;
         private int _total = 0;
         private string _message = "";
@@ -115,7 +115,7 @@ namespace Clickra.UI
         /// blocking until the window closes.</summary>
         public static void ShowResume(string taskId)
         {
-            var resumed = ClickraStorage.GetParkedTaskForResume(taskId);
+            var resumed = ClickraStorage.ClaimParkedTaskForResume(taskId);
             if (resumed == null) return;
             var window = new ProgressWindow();
             window.ShowInstance(resumed.Command, resumed.Files, resumed.TaskId, resumed.StartIndex);

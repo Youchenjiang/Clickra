@@ -58,8 +58,8 @@ namespace Clickra.UI
                 string inputsStr = string.Join(";", currentFiles);
                 try
                 {
-                    _taskId = _existingTaskId ?? ClickraStorage.StartTask(cmd, currentFiles.Count, inputsStr);
-                    taskId = _taskId;
+                    TaskId = _existingTaskId ?? ClickraStorage.StartTask(cmd, currentFiles.Count, inputsStr);
+                    taskId = TaskId;
                     ClickraStorage.SetTaskInProgress(taskId);
                 }
                 catch { /* Non-critical: storage unavailability must not block the conversion. */ }
@@ -167,7 +167,7 @@ namespace Clickra.UI
             {
                 _cts.Token.ThrowIfCancellationRequested();
                 try { ClickraStorage.SetActiveRecordIndex(i); } catch { /* Non-critical UI state; ignore if storage unavailable */ }
-                if (!string.IsNullOrEmpty(_taskId)) try { ClickraStorage.SetTaskIndex(_taskId, i); } catch { }
+                if (!string.IsNullOrEmpty(TaskId)) try { ClickraStorage.SetTaskIndex(TaskId, i); } catch { }
                 var f = files[i];
                 string outName = Path.Combine(outputDir, Path.GetFileNameWithoutExtension(f) + "_compressed.pdf");
                 progressCallback((i * 100) + 10, files.Count * 100, Loc("cli_progress_compressing_pdf", Path.GetFileName(f), i + 1, files.Count));
@@ -197,7 +197,7 @@ namespace Clickra.UI
             {
                 _cts.Token.ThrowIfCancellationRequested();
                 try { ClickraStorage.SetActiveRecordIndex(i); } catch { /* Ignored: history recording must not abort processing. */ }
-                if (!string.IsNullOrEmpty(_taskId)) try { ClickraStorage.SetTaskIndex(_taskId, i); } catch { }
+                if (!string.IsNullOrEmpty(TaskId)) try { ClickraStorage.SetTaskIndex(TaskId, i); } catch { }
                 var f = files[i];
                 string outName = Path.Combine(outputDir, Path.GetFileNameWithoutExtension(f) + ".pdf");
                 progressCallback((i * 100) + 50, files.Count * 100, Loc("cli_progress_converting_image", Path.GetFileName(f), i + 1, files.Count));
@@ -230,7 +230,7 @@ namespace Clickra.UI
             {
                 _cts.Token.ThrowIfCancellationRequested();
                 try { ClickraStorage.SetActiveRecordIndex(i); } catch { /* Ignored: history recording must not abort processing. */ }
-                if (!string.IsNullOrEmpty(_taskId)) try { ClickraStorage.SetTaskIndex(_taskId, i); } catch { }
+                if (!string.IsNullOrEmpty(TaskId)) try { ClickraStorage.SetTaskIndex(TaskId, i); } catch { }
                 var f = files[i];
                 string outName = Path.Combine(outputDir, Path.GetFileNameWithoutExtension(f) + "_translated.pdf");
                 progressCallback((i * 100) + 10, files.Count * 100, Loc("cli_progress_translating_pdf", Path.GetFileName(f), i + 1, files.Count));
@@ -252,7 +252,7 @@ namespace Clickra.UI
             {
                 _cts.Token.ThrowIfCancellationRequested();
                 try { ClickraStorage.SetActiveRecordIndex(i); } catch { /* Ignored: history recording must not abort processing. */ }
-                if (!string.IsNullOrEmpty(_taskId)) try { ClickraStorage.SetTaskIndex(_taskId, i); } catch { }
+                if (!string.IsNullOrEmpty(TaskId)) try { ClickraStorage.SetTaskIndex(TaskId, i); } catch { }
                 var f = files[i];
                 string outName = Path.Combine(outputDir, Path.GetFileNameWithoutExtension(f) + "_split.pdf");
 
@@ -342,7 +342,7 @@ namespace Clickra.UI
         private void DecryptSingleFile(IntPtr hwnd, string f, string outputDir, int index, int total, Action<int, int, string> progressCallback)
         {
             try { ClickraStorage.SetActiveRecordIndex(index); } catch { /* Ignored: history recording must not abort processing. */ }
-            if (!string.IsNullOrEmpty(_taskId)) try { ClickraStorage.SetTaskIndex(_taskId, index); } catch { }
+            if (!string.IsNullOrEmpty(TaskId)) try { ClickraStorage.SetTaskIndex(TaskId, index); } catch { }
             string outName = Path.Combine(outputDir, Path.GetFileNameWithoutExtension(f) + "_decrypted.pdf");
             progressCallback((index * 100) + 10, total * 100, Loc("cli_progress_decrypting_pdf", Path.GetFileName(f), index + 1, total));
 
