@@ -238,9 +238,9 @@ static partial class TestSuite
         string root = FindRepoRoot() ?? throw new TestSkippedException(RepoRootNotFoundMessage);
         string fluentCode = File.ReadAllText(Path.Combine(root, "src", "Clickra.Fluent", "MainPage.xaml.cs"));
         string fluentXaml = File.ReadAllText(Path.Combine(root, "src", "Clickra.Fluent", "MainPage.xaml"));
-        string cliPaint = File.ReadAllText(Path.Combine(root, "src", "Clickra.CLI", "Dashboard", "DashboardWindow.Paint.Settings.cs"));
-        string cliEvents = File.ReadAllText(Path.Combine(root, "src", "Clickra.CLI", "Dashboard", "DashboardWindow.Events.cs"));
-        string cliClick = File.ReadAllText(Path.Combine(root, "src", "Clickra.CLI", "Dashboard", "DashboardWindow.Events.Click.cs"));
+        string cliPaint = File.ReadAllText(Path.Combine(root, "src", CliProjectDirectory, DashboardDirectory, "DashboardWindow.Paint.Settings.cs"));
+        string cliEvents = File.ReadAllText(Path.Combine(root, "src", CliProjectDirectory, DashboardDirectory, "DashboardWindow.Events.cs"));
+        string cliClick = File.ReadAllText(Path.Combine(root, "src", CliProjectDirectory, DashboardDirectory, "DashboardWindow.Events.Click.cs"));
 
         Assert.True(fluentCode.Contains("CompressionSlider.Minimum = ClickraSettings.MinPdfCompressLevel", StringComparison.Ordinal),
             "Fluent must derive CompressionSlider.Minimum from ClickraSettings.MinPdfCompressLevel.");
@@ -622,7 +622,7 @@ static partial class TestSuite
             RepoRootNotFoundMessage);
         var filesToScan = new List<string>();
 
-        string dashboardDir = Path.Combine(root, "src", "Clickra.CLI", "Dashboard");
+        string dashboardDir = Path.Combine(root, "src", CliProjectDirectory, DashboardDirectory);
         if (Directory.Exists(dashboardDir))
         {
             filesToScan.AddRange(Directory.GetFiles(dashboardDir, "DashboardWindow.Paint*.cs"));
@@ -635,7 +635,7 @@ static partial class TestSuite
                 .Where(IsLocalizationGuardTarget));
         }
 
-        string progressDir = Path.Combine(root, "src", "Clickra.CLI", "Progress");
+        string progressDir = Path.Combine(root, "src", CliProjectDirectory, "Progress");
         if (Directory.Exists(progressDir))
         {
             filesToScan.AddRange(Directory.GetFiles(progressDir, "*.cs"));
