@@ -251,14 +251,14 @@ static partial class TestSuite
         Assert.True(fluentCode.Contains("ParkedRetentionBox.Maximum = MaxParkedRetentionDays", StringComparison.Ordinal),
             "Fluent must derive ParkedRetentionBox.Maximum from ClickraSettings.");
 
-        Assert.True(fluentXaml.Contains($"Minimum=\"{ClickraSettings.MinPdfCompressLevel}\"", StringComparison.Ordinal),
-            "Fluent XAML CompressionSlider Minimum must match ClickraSettings.MinPdfCompressLevel.");
-        Assert.True(fluentXaml.Contains($"Maximum=\"{ClickraSettings.MaxPdfCompressLevel}\"", StringComparison.Ordinal),
-            "Fluent XAML CompressionSlider Maximum must match ClickraSettings.MaxPdfCompressLevel.");
-        Assert.True(fluentXaml.Contains($"Minimum=\"{ClickraSettings.MinParkedRetentionDays}\"", StringComparison.Ordinal),
-            "Fluent XAML ParkedRetentionBox Minimum must match ClickraSettings.MinParkedRetentionDays.");
-        Assert.True(fluentXaml.Contains($"Maximum=\"{ClickraSettings.MaxParkedRetentionDays}\"", StringComparison.Ordinal),
-            "Fluent XAML ParkedRetentionBox Maximum must match ClickraSettings.MaxParkedRetentionDays.");
+        Assert.True(fluentXaml.Contains("x:Name=\"CompressionSlider\"", StringComparison.Ordinal) &&
+                    !fluentXaml.Contains("x:Name=\"CompressionSlider\" Minimum=", StringComparison.Ordinal) &&
+                    !fluentXaml.Contains("x:Name=\"CompressionSlider\" Maximum=", StringComparison.Ordinal),
+            "Fluent XAML must not duplicate CompressionSlider bounds; LoadSettings owns the centralized range.");
+        Assert.True(fluentXaml.Contains("x:Name=\"ParkedRetentionBox\"", StringComparison.Ordinal) &&
+                    !fluentXaml.Contains("x:Name=\"ParkedRetentionBox\" Grid.Column=\"1\" MinWidth=\"160\" Minimum=", StringComparison.Ordinal) &&
+                    !fluentXaml.Contains("x:Name=\"ParkedRetentionBox\" Grid.Column=\"1\" MinWidth=\"160\" Maximum=", StringComparison.Ordinal),
+            "Fluent XAML must not duplicate ParkedRetentionBox bounds; LoadSettings owns the centralized range.");
 
         Assert.True(cliPaint.Contains("ClickraSettings.MaxPdfCompressLevel - ClickraSettings.MinPdfCompressLevel + 1", StringComparison.Ordinal),
             "CLI slider stop calculation must derive from ClickraSettings bounds.");

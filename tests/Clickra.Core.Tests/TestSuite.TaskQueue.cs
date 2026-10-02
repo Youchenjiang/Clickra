@@ -251,10 +251,9 @@ static partial class TestSuite
             "The Fluent control must set its runtime minimum from the shared bound.");
         Assert.True(fluentCode.Contains("ParkedRetentionBox.Maximum = MaxParkedRetentionDays", StringComparison.Ordinal),
             "The Fluent control must set its runtime maximum from the shared bound.");
-        Assert.True(fluentXaml.Contains($"Minimum=\"{ClickraSettings.MinParkedRetentionDays}\"", StringComparison.Ordinal),
-            "The Fluent markup's Minimum must match the shared retention bound.");
-        Assert.True(fluentXaml.Contains($"Maximum=\"{ClickraSettings.MaxParkedRetentionDays}\"", StringComparison.Ordinal),
-            "The Fluent markup's Maximum must match the shared retention bound.");
+        Assert.True(fluentXaml.Contains("x:Name=\"ParkedRetentionBox\"", StringComparison.Ordinal) &&
+                    !fluentXaml.Contains("Minimum=\"0\" Maximum=\"365\"", StringComparison.Ordinal),
+            "The Fluent markup must not keep a second copy of the retention bounds.");
         Assert.True(cliClick.Contains("ClickraSettings.MinParkedRetentionDays", StringComparison.Ordinal) &&
                     cliClick.Contains("ClickraSettings.MaxParkedRetentionDays", StringComparison.Ordinal),
             "The CLI retention click handler must use the shared retention bounds.");

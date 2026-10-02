@@ -201,8 +201,10 @@ static partial class TestSuite
         string cliClick = File.ReadAllText(Path.Combine(root, "src", "Clickra.CLI", "Dashboard", "DashboardWindow.Events.Click.cs"));
         string cliDrag = File.ReadAllText(Path.Combine(root, "src", "Clickra.CLI", "Dashboard", "DashboardWindow.Events.cs"));
 
-        Assert.True(fluentXaml.Contains("x:Name=\"CompressionSlider\" Minimum=\"0\" Maximum=\"2\" Value=\"1\"", StringComparison.Ordinal),
-            "Fluent PDF compression must expose only the three 0-2 preset positions.");
+        Assert.True(fluentXaml.Contains("x:Name=\"CompressionSlider\"", StringComparison.Ordinal) &&
+                    !fluentXaml.Contains("x:Name=\"CompressionSlider\" Minimum=", StringComparison.Ordinal) &&
+                    !fluentXaml.Contains("x:Name=\"CompressionSlider\" Maximum=", StringComparison.Ordinal),
+            "Fluent PDF compression bounds must come from ClickraSettings at runtime, not duplicated XAML literals.");
         Assert.Equal(3, ClickraSettings.MaxPdfCompressLevel - ClickraSettings.MinPdfCompressLevel + 1);
         Assert.True(cliPaint.Contains("ClickraSettings.MaxPdfCompressLevel - ClickraSettings.MinPdfCompressLevel + 1", StringComparison.Ordinal),
             "The legacy dashboard must derive exactly three PDF compression stops from ClickraSettings.");
