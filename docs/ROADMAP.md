@@ -167,6 +167,7 @@
     - [x] **命名空間整合 (2026/08/08 完成)**：10 個 `TestSuite` partial 檔已移入 `Clickra.Core.Tests` 命名空間並移除 S3903 pragma，解決全域命名空間污染（CS-W1061）。
     - **升級測試框架**：後續規劃將自建的 `TestRunner` 升級為業界標準的單元測試框架（如 xUnit 或 NUnit），以利於在 CI 流程中整合覆蓋率分析。
 - [ ] **[R1-5] Quality Gate Observations**：品質閘門觀察。
+    - [x] **v3.12.0 設定平台現代化 (2026/10/03 完成)**：完成 centralized settings descriptors、Native / Fluent descriptor-driven controls、跨執行中程序的 SettingsReloaded 即時同步與共用 numeric bounds；PR 收斂後 Sonar New Code issues 與 duplication 均為 0，DeepSource C# / Python / Secrets 全數通過。
     - [x] **v3.11.1 介面一致性與靜態分析收斂 (2026/10/02 完成)**：完成 Progress Window / Visual Splitter 在地化與 task-progress parity、系統匣還原/取消、向量圖示與 icon-only accessibility names；Dashboard parked retention alert rendering 亦通過 narrow-row、Sonar cognitive complexity 與 duplication gate 收斂。
     - **NativeAOT build warnings (2026/09/01 記錄)**：`src/ClickraLauncher/Program.cs:53` 產生 CS0652（將 `int` 與超出其範圍的整數常數比較，條件無意義）；`src/ClickraShell/obj/.../ClickraShell.def` 的 `DllGetClassObject`、`DllCanUnloadNow` export 產生 LNK4104（建議標為 `PRIVATE`）。兩者在右鍵命令圖示資源修復的完整 MSIX 建置中發現，與本次缺少 `menu-*.ico` 的根因無關，為維持原子化範圍延後至 Launcher／Shell build-warning 專項處理。
     - [x] **PDF 來源技術識別字斷字重建 (2026/09/01 完成)**：以技術識別字形狀、同欄左邊界與緊鄰行距，安全合併 `Cop-`＋`peliaSim`，同時保留 `long-term` 等真正複合詞。`2502.03297v3.pdf` 第 18 頁診斷不再產生獨立 `peliaSim` 段落，並新增正反向回歸案例。

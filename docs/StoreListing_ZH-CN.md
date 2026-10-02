@@ -1,6 +1,6 @@
 # Microsoft Store 清单 - 中文（简体）
 
-以下是供您直接复制粘贴至 Microsoft 合作伙伴中心 (Partner Center) 的完整字段信息，已更新至 v3.11.1.0。
+以下是供您直接复制粘贴至 Microsoft 合作伙伴中心 (Partner Center) 的完整字段信息，已更新至 v3.12.0.0。
 
 ---
 
@@ -32,10 +32,10 @@ Clickra 尊重您的隐私。大多数处理流程（文档转 PDF、PDF 压缩�
 🔗 开源项目主页：https://github.com/Youchenjiang/Clickra
 
 ## What's new in this version
-- 进度与分割器一致性：原生进度窗口与 Visual PDF Splitter 补齐五种语言标签、task-progress 行为与矢量控件。
-- 系统托盘恢复／取消：转换最小化后可快速恢复，也可通过系统托盘菜单直接取消当前转换。
-- 暂存任务保留信息更清晰：原生仪表板新增剩余保留时间、到期警告、文件位置与停止原因。
-- 无障碍与视觉可靠性：纯图标按钮保留本地化 automation name，矢量图标也避免不同字体造成状态 glyph 差异。
+- 集中式设置平台：共享描述器现在会在 Core registry 中统一定义设置标题、控件类型、选项、默认值与数值范围。
+- 动态设置控件：Native Dashboard 与 Fluent Settings 会从同一份 registry 生成受支持的设置控件，减少新增或调整设置时的界面差异。
+- 实时设置同步：在一个正在运行的 Clickra 设置界面修改设置后，其他正在运行的 Clickra UI 也会同步更新，无需重新启动应用。
+- 更安全的数值设置：滑杆与数字输入共用设置边界，并加入安全步进处理，避免数值超出登记范围。
 
 ## Product Features
 *(最多 20 个，以项目符号显示)*

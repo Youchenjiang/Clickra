@@ -1,6 +1,6 @@
 # Microsoft Store Listing - English (US)
 
-Below is the complete information for you to copy and paste directly into the Microsoft Partner Center, updated for the v3.11.1.0 release.
+Below is the complete information for you to copy and paste directly into the Microsoft Partner Center, updated for the v3.12.0.0 release.
 
 ---
 
@@ -32,10 +32,10 @@ Clickra respects your privacy. Most processing (Office-to-PDF conversion, PDF co
 🔗 Open Source on GitHub: https://github.com/Youchenjiang/Clickra
 
 ## What's new in this version
- - Progress & Splitter Consistency: Native progress and Visual PDF Splitter UI now share localized labels, task-progress behavior, and vector controls across supported languages.
- - System Tray Restore / Cancel: Restore minimized conversions with a click, or use the tray menu to restore or cancel the active conversion.
- - Clearer Parked Task Retention: The Native Dashboard now shows remaining retention, expiry warnings, file position, and stop reason for parked tasks.
- - Accessibility & Visual Reliability: Icon-only controls retain localized automation names, and vector icons avoid font-dependent status glyph differences.
+ - Centralized Settings Platform: Shared descriptors now define setting labels, editor types, choices, defaults, and numeric ranges in one Core registry.
+ - Dynamic Settings Controls: Native Dashboard and Fluent Settings generate supported controls from the same registry, reducing UI drift when settings evolve.
+ - Live Settings Sync: Changes made in one running Clickra settings surface are reflected in other running Clickra UIs without restarting the app.
+ - Safer Numeric Settings: Shared bounds and overflow-safe stepping keep slider and number values inside their registered ranges.
 
 ## Product Features
 *(Max 20, displayed as bullet points)*
