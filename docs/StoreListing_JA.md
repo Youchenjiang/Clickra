@@ -1,6 +1,6 @@
 # Microsoft Store Listing - Japanese (Japan)
 
-Microsoft Partner Center にそのまま貼り付けられる、v3.11.1.0 向けのストア掲載情報です。
+Microsoft Partner Center にそのまま貼り付けられる、v3.12.0.0 向けのストア掲載情報です。
 
 ---
 
@@ -32,10 +32,10 @@ Clickra はプライバシーを重視します。Office から PDF、PDF 圧縮
 🔗 Open Source on GitHub: https://github.com/Youchenjiang/Clickra
 
 ## What's new in this version
- - 進行状況と分割 UI の一貫性: ネイティブ進行状況画面と Visual PDF Splitter のラベル、task-progress 動作、ベクター操作を 5 言語で統一しました。
- - システムトレイから復元／キャンセル: 最小化した変換をすばやく復元し、トレイメニューから現在の変換をキャンセルできます。
- - 一時停止タスクの保持情報を強化: ネイティブ ダッシュボードに残り保持時間、期限警告、ファイル位置、停止理由を表示します。
- - アクセシビリティと表示安定性: アイコンのみの操作にもローカライズ済み automation name を保持し、フォント依存 glyph をベクターアイコンに置き換えました。
+ - 設定プラットフォームの一元化: 共通ディスクリプターが設定名、エディター種別、選択肢、既定値、数値範囲を Core registry で一元管理します。
+ - 動的な設定コントロール: Native Dashboard と Fluent Settings が同じ registry から対応コントロールを生成し、設定追加時の UI 差分を減らします。
+ - 設定のリアルタイム同期: 実行中の一方の Clickra UI で変更した設定が、再起動なしで他の実行中 UI にも反映されます。
+ - より安全な数値設定: スライダーと数値入力で共通の範囲定義を使用し、安全なステップ処理で登録範囲外への値の逸脱を防ぎます。
 
 ## Product Features
 *(Max 20, displayed as bullet points)*

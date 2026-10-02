@@ -1,5 +1,12 @@
 # Changelog
 
+## [v3.12.0.0] - 2026-10-03
+
+- **設定平台現代化 (Settings Platform Modernization)**：Core 新增集中式 `SettingDescriptor` / `SettingPageRegistry`，統一定義設定項目的標題、說明、控制項種類、選項與數值範圍，降低 Native Dashboard 與 Fluent Settings 的規格漂移。
+- **描述器驅動設定介面 (Descriptor-driven Settings UI)**：Native Dashboard 與 Fluent Settings 會從共用 registry 自動產生支援的設定控制項，新設定不再需要在兩套介面重複維護相同 metadata。
+- **跨執行中程序即時同步 (Live Settings Synchronization)**：設定檔變更會安全刷新共用 cache，並透過 `SettingsReloaded` 讓其他正在執行的 Clickra UI 即時更新設定值與相關文字。
+- **數值設定邊界一致性 (Numeric Settings Bounds)**：數值與滑桿設定共用 Core 宣告的範圍、預設值與 clamp 規則，並補強步進溢位保護與 UI 邊界 guard。
+
 ## [v3.11.1.0] - 2026-10-02
 
 - **進度與分割器介面一致性 (Progress / Splitter UI Parity)**：Visual PDF Splitter 與 Progress Window 補齊五語系文字、邊界行為與 task-progress 對齊，降低 Native / Fluent / Shell 之間的顯示與操作差異。
