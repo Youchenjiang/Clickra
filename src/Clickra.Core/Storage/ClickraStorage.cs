@@ -276,7 +276,7 @@ namespace Clickra.Core
         {
             key = string.Empty;
             val = string.Empty;
-            if (string.IsNullOrWhiteSpace(line) || line.StartsWith("#"))
+            if (string.IsNullOrWhiteSpace(line) || line.StartsWith('#'))
             {
                 return false;
             }
