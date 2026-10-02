@@ -29,6 +29,8 @@ static partial class TestSuite
     {
         runner.Run("Parked retention: a task's own deadline overrides the global policy without resetting its age",
             TestParkedRetentionOverrideBeatsPolicy);
+        runner.Run("Parked retention: legacy tasks preserve file age when an override is first written",
+            TestLegacyParkedRetentionOverridePreservesAge);
         runner.Run("Parked retention: extend and shorten move the shared step and never delete the task",
             TestParkedRetentionAdjustNeverDeletes);
         runner.Run("Parked retention: an unlimited task takes a window only when shortened",
@@ -67,6 +69,31 @@ static partial class TestSuite
             var global = ClickraStorage.GetParkedRetentionInfo(taskId);
             Assert.True(global.HasExpired, "Back on the global policy the same 20 day old task is expired again.");
             Assert.False(global.IsTaskOverride, "Without an override the deadline is the global one.");
+        }
+        finally
+        {
+            ClickraStorage.SaveSetting(ClickraSettings.ParkedTaskRetention, ClickraSettings.DefaultParkedTaskRetention);
+            DeleteTaskFile(taskId);
+        }
+    }
+
+    private static void TestLegacyParkedRetentionOverridePreservesAge()
+    {
+        ClickraStorage.SaveSetting(ClickraSettings.ParkedTaskRetention, "7");
+        string taskId = WriteParkedTaskFile(daysParked: 20, retentionOverride: null, includeParkedSince: false);
+        try
+        {
+            Assert.True(ClickraStorage.GetParkedRetentionInfo(taskId).HasExpired,
+                "A legacy 20-day-old task must start expired under the 7-day policy.");
+
+            ClickraStorage.SetParkedRetentionOverride(taskId, 30);
+            var info = ClickraStorage.GetParkedRetentionInfo(taskId);
+            Assert.False(info.HasExpired, "Extending a legacy task must keep its original parked age.");
+            Assert.Equal(10, info.RemainingDays);
+
+            string persisted = File.ReadAllText(TaskFilePath(taskId));
+            Assert.True(persisted.Contains("ParkedSince=", StringComparison.Ordinal),
+                "The first override write must migrate legacy file age into ParkedSince.");
         }
         finally
         {
@@ -242,7 +269,11 @@ static partial class TestSuite
         try { File.Delete(TaskFilePath(taskId)); } catch { }
     }
 
-    private static string WriteParkedTaskFile(int daysParked, int? retentionOverride, int fileCount = 1)
+    private static string WriteParkedTaskFile(
+        int daysParked,
+        int? retentionOverride,
+        int fileCount = 1,
+        bool includeParkedSince = true)
     {
         // 檔名的時間戳前綴決定排序，格式與 NewTaskId() 相同（yyyyMMddHHmmssfff + '-' + 序號）。
         string taskId = $"{DateTime.UtcNow:yyyyMMddHHmmssfff}-parked{Guid.NewGuid().ToString("N")[..6]}";
@@ -265,10 +296,13 @@ static partial class TestSuite
             "ElapsedMs=-1",
             "Pid=0",
             retentionOverride.HasValue ? $"ParkedRetentionDays={retentionOverride.Value}" : "",
-            $"ParkedSince={parkedSince}"
+            includeParkedSince ? $"ParkedSince={parkedSince}" : ""
         };
 
-        File.WriteAllLines(TaskFilePath(taskId), lines.Where(line => line.Length > 0));
+        string path = TaskFilePath(taskId);
+        File.WriteAllLines(path, lines.Where(line => line.Length > 0));
+        if (!includeParkedSince)
+            File.SetLastWriteTimeUtc(path, DateTime.UtcNow.AddDays(-daysParked));
         return taskId;
     }
 }

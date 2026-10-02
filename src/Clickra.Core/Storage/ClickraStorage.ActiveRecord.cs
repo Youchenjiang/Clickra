@@ -307,10 +307,20 @@ namespace Clickra.Core
                 var entry = ReadTaskFileInternal(taskId);
                 if (!entry.HasValue || entry.Value.Status != ConversionStatus.Parked) return;
 
+                string path = TaskFilePath(taskId);
+                var now = DateTime.UtcNow;
+                var age = ParkedAge(entry.Value, path, now);
+                string since = string.IsNullOrEmpty(entry.Value.ParkedSince)
+                    ? (now - age).ToString(DateTimeFormat, CultureInfo.InvariantCulture)
+                    : entry.Value.ParkedSince;
                 int? clamped = days.HasValue
                     ? ClickraSettings.ClampNumericSetting(ClickraSettings.ParkedTaskRetention, days.Value)
                     : null;
-                var data = ToTaskData(entry.Value, ConversionStatus.Parked) with { ParkedRetentionDays = clamped };
+                var data = ToTaskData(entry.Value, ConversionStatus.Parked) with
+                {
+                    ParkedRetentionDays = clamped,
+                    ParkedSince = since
+                };
                 WriteTaskFileInternal(data);
             });
         }
@@ -627,7 +637,8 @@ namespace Clickra.Core
         private static bool IsExpired(bool finished, bool parked, TimeSpan age, int parkedRetentionDays)
         {
             if (finished) return age.TotalMinutes > CompletedTaskTtlMinutes;
-            if (parked) return parkedRetentionDays > 0 && age.TotalDays > parkedRetentionDays;
+            if (parked)
+                return parkedRetentionDays > 0 && CalculateRetentionInfo(parkedRetentionDays, age).HasExpired;
             return false;
         }
 
