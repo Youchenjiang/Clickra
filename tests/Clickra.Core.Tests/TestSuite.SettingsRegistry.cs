@@ -380,6 +380,18 @@ static partial class TestSuite
             Assert.False(ClickraStorage.GetSettingBool(ClickraSettings.QuietMode),
                 "GetSetting must immediately bust stale cache when external process changes settings file.");
             Assert.Equal(42, ClickraStorage.GetParkedRetentionDays());
+
+            string root = FindRepoRoot() ?? throw new TestSkippedException(RepoRootNotFoundMessage);
+            string storageSource = File.ReadAllText(Path.Combine(root, "src", "Clickra.Core", "Storage", "ClickraStorage.cs"));
+            int saveStart = storageSource.IndexOf("public static void SaveSetting", StringComparison.Ordinal);
+            int notifyStart = storageSource.IndexOf("private static void NotifySettingsChanged", saveStart, StringComparison.Ordinal);
+            Assert.True(saveStart >= 0 && notifyStart > saveStart, "SaveSetting source block must be discoverable.");
+            string saveBody = storageSource[saveStart..notifyStart];
+            int mutexIndex = saveBody.IndexOf("RunWithMutex", StringComparison.Ordinal);
+            int reloadIndex = saveBody.IndexOf("LoadSettingsInternalLocked()", StringComparison.Ordinal);
+            int writeIndex = saveBody.IndexOf("SettingsCache[key] = val", StringComparison.Ordinal);
+            Assert.True(mutexIndex >= 0 && reloadIndex > mutexIndex && writeIndex > reloadIndex,
+                "SaveSetting must refresh from disk after acquiring the cross-process mutex before mutating the cache.");
         }
         finally
         {
@@ -407,6 +419,10 @@ static partial class TestSuite
             "Fluent UI must subscribe to ClickraStorage.SettingsReloaded.");
         Assert.True(fluentCode.Contains("SyncSettingsToUi()", StringComparison.Ordinal),
             "Fluent UI must invoke SyncSettingsToUi() to synchronize controls without saving back.");
+        Assert.True(fluentCode.Contains("SyncSettingsToUi(refreshDynamicLanguageContent: true)", StringComparison.Ordinal) &&
+                    fluentCode.Contains("RefreshFiles();", StringComparison.Ordinal) &&
+                    fluentCode.Contains("RefreshHistory();", StringComparison.Ordinal),
+            "Fluent external language reloads must refresh dynamic localized file and history content.");
         Assert.True(cliLifecycle.Contains("ClickraStorage.SettingsReloaded +=", StringComparison.Ordinal),
             "CLI Dashboard must subscribe to ClickraStorage.SettingsReloaded.");
         Assert.True(cliLifecycle.Contains("ClickraStorage.SettingsReloaded -=", StringComparison.Ordinal),

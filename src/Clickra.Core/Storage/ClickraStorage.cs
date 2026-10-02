@@ -317,15 +317,17 @@ namespace Clickra.Core
         {
             lock (FileLock)
             {
-                EnsureFreshSettingsLocked();
-                if (SettingsCache.TryGetValue(key, out string? oldVal) && oldVal == val)
-                {
-                    return;
-                }
-
-                SettingsCache[key] = val;
+                bool changed = false;
                 RunWithMutex(() =>
                 {
+                    LoadSettingsInternalLocked();
+                    if (SettingsCache.TryGetValue(key, out string? oldVal) && oldVal == val)
+                    {
+                        return;
+                    }
+
+                    SettingsCache[key] = val;
+                    changed = true;
                     try
                     {
                         PersistSettingsFileLocked();
@@ -333,7 +335,10 @@ namespace Clickra.Core
                     catch { }
                 });
 
-                NotifySettingsChanged(new List<(string Key, string Value)> { (key, val) });
+                if (changed)
+                {
+                    NotifySettingsChanged(new List<(string Key, string Value)> { (key, val) });
+                }
             }
         }
 

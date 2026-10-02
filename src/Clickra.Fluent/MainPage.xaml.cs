@@ -535,14 +535,15 @@ public sealed partial class MainPage : Page
         {
             DispatcherQueue?.TryEnqueue(() =>
             {
-                SyncSettingsToUi();
+                SyncSettingsToUi(refreshDynamicLanguageContent: true);
             });
         }
         catch { }
     }
 
-    private void SyncSettingsToUi()
+    private void SyncSettingsToUi(bool refreshDynamicLanguageContent = false)
     {
+        int previousLanguageIndex = LanguageCombo.SelectedIndex;
         _loadingSettings = true;
         try
         {
@@ -567,6 +568,11 @@ public sealed partial class MainPage : Page
             _loadingSettings = false;
         }
         ApplyLanguage();
+        if (refreshDynamicLanguageContent && previousLanguageIndex != LanguageCombo.SelectedIndex)
+        {
+            RefreshFiles();
+            RefreshHistory();
+        }
         RefreshLibreOfficeStatus();
     }
 
