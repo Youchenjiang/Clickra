@@ -437,7 +437,7 @@
                                 <TextBlock x:Name="PdfCompressionTitle" Text="PDF Compression" FontSize="15" FontWeight="SemiBold"/>
                                 <Grid ColumnSpacing="12">
                                     <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
-                                    <Slider x:Name="CompressionSlider" Minimum="0" Maximum="2" Value="1"/>
+                                    <Slider x:Name="CompressionSlider" Value="1"/>
                                     <TextBlock x:Name="CompressionLabel" Grid.Column="1" Text="Standard" VerticalAlignment="Center"/>
                                 </Grid>
                                 <Grid ColumnSpacing="16">
@@ -459,7 +459,7 @@
                                     <TextBlock x:Name="ParkedRetentionTitle" Text="Parked Retention" FontSize="15" FontWeight="SemiBold"/>
                                     <TextBlock x:Name="ParkedRetentionDesc" Text="Retention days for parked conversions (0 = unlimited)" FontSize="12" Foreground="{ThemeResource TextFillColorSecondaryBrush}" TextWrapping="Wrap"/>
                                 </StackPanel>
-                                <NumberBox x:Name="ParkedRetentionBox" Grid.Column="1" MinWidth="160" Minimum="0" Maximum="365" SmallChange="1" SpinButtonPlacementMode="Compact" ValidationMode="InvalidInputOverwritten" VerticalAlignment="Center"/>
+                                <NumberBox x:Name="ParkedRetentionBox" Grid.Column="1" MinWidth="160" SmallChange="1" SpinButtonPlacementMode="Compact" ValidationMode="InvalidInputOverwritten" VerticalAlignment="Center"/>
                             </Grid>
                         </Grid>
                         <Grid Grid.Row="4" Grid.ColumnSpan="2" Background="{ThemeResource CardBackgroundFillColorDefaultBrush}" CornerRadius="8" Padding="18">

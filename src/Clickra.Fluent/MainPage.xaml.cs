@@ -24,6 +24,9 @@ public sealed partial class MainPage : Page
     private const string FailedLocalizationKey = "fluent_failed";
     private const string SecondaryCardBrushResource = "CardBackgroundFillColorSecondaryBrush";
     private const string SecondaryTextBrushResource = "TextFillColorSecondaryBrush";
+    // Shared with the CLI dashboard's settings page; see ClickraSettings.MaxParkedRetentionDays.
+    private const int MinParkedRetentionDays = ClickraSettings.MinParkedRetentionDays;
+    private const int MaxParkedRetentionDays = ClickraSettings.MaxParkedRetentionDays;
     private readonly List<string> _selectedFiles = new();
     private readonly Dictionary<string, Button> _commandButtons = new(StringComparer.OrdinalIgnoreCase);
     private CancellationTokenSource? _cts;
@@ -510,10 +513,13 @@ public sealed partial class MainPage : Page
         QuietModeToggle.IsOn = ClickraStorage.GetSettingBool(ClickraSettings.QuietMode);
         NotificationToggle.IsOn = ClickraStorage.GetSettingBool(ClickraSettings.Notification);
         PdfLangCombo.SelectedIndex = ClickraStorage.GetSetting(ClickraSettings.TranslateTargetLang) switch { "en" => 1, SimplifiedChineseLanguage => 2, "ja" => 3, "ko" => 4, _ => 0 };
+        CompressionSlider.Minimum = ClickraSettings.MinPdfCompressLevel;
+        CompressionSlider.Maximum = ClickraSettings.MaxPdfCompressLevel;
         CompressionSlider.Value = ConvertCommandRegistry.GetPdfCompressLevel();
         StripFontsToggle.IsOn = ClickraStorage.GetSettingBool(ClickraSettings.PdfCompressStripFonts);
         MinifyContentToggle.IsOn = ClickraStorage.GetSettingBool(ClickraSettings.PdfCompressMinifyContent);
-        ParkedRetentionBox.Maximum = ClickraSettings.MaxParkedTaskRetentionDays;
+        ParkedRetentionBox.Minimum = MinParkedRetentionDays;
+        ParkedRetentionBox.Maximum = MaxParkedRetentionDays;
         ParkedRetentionBox.Value = ClickraStorage.GetParkedRetentionDays();
         _loadingSettings = false;
         ApplyLanguage();
@@ -664,7 +670,8 @@ public sealed partial class MainPage : Page
         ClickraStorage.SaveSetting(ClickraSettings.OfficeEngine, EngineCombo.SelectedIndex switch { 1 => ClickraSettings.OfficeEngineMicrosoft, 2 => ClickraSettings.OfficeEngineLibreOffice, _ => ClickraSettings.DefaultOfficeEngineAuto });
         ClickraStorage.SaveSetting(ClickraSettings.Language, LanguageCombo.SelectedIndex switch { 1 => SimplifiedChineseLanguage, 2 => "en-US", 3 => "ja-JP", 4 => "ko-KR", _ => "zh-TW" });
         ClickraStorage.SaveSetting(ClickraSettings.TranslateTargetLang, PdfLangCombo.SelectedIndex switch { 1 => "en", 2 => SimplifiedChineseLanguage, 3 => "ja", 4 => "ko", _ => ClickraSettings.DefaultTranslateTargetLang });
-        ClickraStorage.SaveSetting(ClickraSettings.PdfCompressImageLevel, ((int)CompressionSlider.Value).ToString());
+        int compressLevel = ClickraSettings.ClampNumericSetting(ClickraSettings.PdfCompressImageLevel, (int)CompressionSlider.Value);
+        ClickraStorage.SaveSetting(ClickraSettings.PdfCompressImageLevel, compressLevel.ToString());
         ClickraStorage.SaveSetting(ClickraSettings.PdfCompressStripFonts, StripFontsToggle.IsOn ? ClickraSettings.ValueTrue : ClickraSettings.ValueFalse);
         ClickraStorage.SaveSetting(ClickraSettings.PdfCompressMinifyContent, MinifyContentToggle.IsOn ? ClickraSettings.ValueTrue : ClickraSettings.ValueFalse);
         ClickraStorage.SaveSetting(ClickraSettings.QuietMode, QuietModeToggle.IsOn ? ClickraSettings.ValueTrue : ClickraSettings.ValueFalse);
@@ -687,7 +694,7 @@ public sealed partial class MainPage : Page
             return;
         }
 
-        int days = Math.Clamp((int)Math.Round(args.NewValue, MidpointRounding.AwayFromZero), 0, ClickraSettings.MaxParkedTaskRetentionDays);
+        int days = Math.Clamp((int)Math.Round(args.NewValue, MidpointRounding.AwayFromZero), MinParkedRetentionDays, MaxParkedRetentionDays);
         ClickraStorage.SaveSetting(ClickraSettings.ParkedTaskRetention, days.ToString());
         if (Math.Abs(sender.Value - days) > 0.0001)
         {

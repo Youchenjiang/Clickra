@@ -604,7 +604,7 @@ namespace Clickra.UI
         static void DrawCompressSlider(Graphics g, float x, float y, float w, int level)
         {
             float s = _dpiScale;
-            const int stops = 3;
+            int stops = ClickraSettings.MaxPdfCompressLevel - ClickraSettings.MinPdfCompressLevel + 1;
             float trackY = y + 18f;   // guidance labels occupy top 18px
             float trackH = 5f;
             Color accent = UIHelper.GetSystemColorizationColor();
@@ -628,7 +628,7 @@ namespace Clickra.UI
             g.FillPath(bgBrush, bgPath);
 
             // Filled portion (left of active stop)
-            float thumbX = x + (float)level / (stops - 1) * w;
+            float thumbX = x + (float)(level - ClickraSettings.MinPdfCompressLevel) / (stops - 1) * w;
             float fillW = thumbX - x;
             if (fillW > 0.5f)
             {
@@ -649,7 +649,7 @@ namespace Clickra.UI
             for (int i = 0; i < stops; i++)
             {
                 float sx = x + (float)i / (stops - 1) * w;
-                bool active = (i == level);
+                bool active = (i + ClickraSettings.MinPdfCompressLevel == level);
 
                 // Dot
                 float dotR = active ? 7.5f : 3.5f;

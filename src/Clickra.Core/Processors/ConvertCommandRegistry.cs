@@ -181,10 +181,10 @@ public static class ConvertCommandRegistry
             int level = ClickraStorage.GetSettingInt(ClickraSettings.PdfCompressImageLevel);
             if (level == 3)
             {
-                return 2;
+                return ClickraSettings.MaxPdfCompressLevel;
             }
 
-            return level >= 0 && level <= 2
+            return ClickraSettings.IsNumericSettingInRange(ClickraSettings.PdfCompressImageLevel, level)
                 ? level
                 : ClickraSettings.GetDefaultInt(ClickraSettings.PdfCompressImageLevel);
         }
@@ -215,13 +215,17 @@ public static class ConvertCommandRegistry
             };
         }
 
-        /// <summary>The saved image compression quality level, clamped to 0-3.</summary>
+        /// <summary>The saved image compression quality level, clamped to the declared range.</summary>
         public static int GetImageCompressLevel() =>
-            Math.Clamp(ClickraStorage.GetSettingInt(ClickraSettings.ImageCompressLevel), 0, 3);
+            ClickraSettings.ClampNumericSetting(
+                ClickraSettings.ImageCompressLevel,
+                ClickraStorage.GetSettingInt(ClickraSettings.ImageCompressLevel));
 
-        /// <summary>The saved max long-edge dimension for image compression (0 = original).</summary>
+        /// <summary>The saved max long-edge dimension for image compression (0 = original), clamped to the declared range.</summary>
         public static int GetImageCompressMaxDimension() =>
-            Math.Max(ClickraStorage.GetSettingInt(ClickraSettings.ImageCompressMaxDimension), 0);
+            ClickraSettings.ClampNumericSetting(
+                ClickraSettings.ImageCompressMaxDimension,
+                ClickraStorage.GetSettingInt(ClickraSettings.ImageCompressMaxDimension));
 
         /// <summary>Splits a command line string into arguments, honoring double quotes.</summary>
         public static List<string> SplitCommandLine(string value)

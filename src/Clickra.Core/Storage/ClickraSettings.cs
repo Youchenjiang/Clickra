@@ -7,6 +7,13 @@ namespace Clickra.Core;
 /// <summary>一個設定的完整定義：鍵、預設值與用途說明。</summary>
 public sealed record ClickraSetting(string Key, string Default, string Description);
 
+/// <summary>定義一個數值設定的合法邊界（下限、上限與預設值）。</summary>
+public readonly record struct NumericSettingRange(int Min, int Max, int Default)
+{
+    public int Clamp(int value) => Math.Clamp(value, Min, Max);
+    public bool IsInRange(int value) => value >= Min && value <= Max;
+}
+
 /// <summary>
 /// 所有使用者設定的單一登錄表。設定的「鍵」與「預設值」只在這裡定義：
 /// <see cref="ClickraStorage.GetSetting"/> 用它補預設，讀取端一律引用這裡的常數，
@@ -55,6 +62,14 @@ public static class ClickraSettings
     public const string DefaultImageCompressMaxDimension = "0";
     public const string DefaultParkedTaskRetention = "7";
     public const int MaxParkedTaskRetentionDays = 365;
+    public const int MinParkedRetentionDays = 0;
+    public const int MaxParkedRetentionDays = MaxParkedTaskRetentionDays;
+    public const int MinPdfCompressLevel = 0;
+    public const int MaxPdfCompressLevel = 2;
+    public const int MinImageCompressLevel = 0;
+    public const int MaxImageCompressLevel = 3;
+    public const int MinImageCompressMaxDimension = 0;
+    public const int MaxImageCompressMaxDimension = int.MaxValue;
 
     // ─── 設定值的列舉字彙 ─────────────────────────────────────────────────
     public const string OutputDirDesktop = "desktop";
@@ -104,6 +119,34 @@ public static class ClickraSettings
     /// <summary>以布林解讀已註冊鍵的預設值（只有 "true" 為真）。</summary>
     public static bool GetDefaultBool(string key) =>
         GetDefault(key).Equals(ValueTrue, StringComparison.OrdinalIgnoreCase);
+
+    /// <summary>所有整數/數值設定的合法範圍宣告（單一真實來源）。</summary>
+    public static readonly IReadOnlyDictionary<string, NumericSettingRange> NumericRanges =
+        new Dictionary<string, NumericSettingRange>(StringComparer.OrdinalIgnoreCase)
+        {
+            [ParkedTaskRetention] = new(MinParkedRetentionDays, MaxParkedRetentionDays, 7),
+            [PdfCompressImageLevel] = new(MinPdfCompressLevel, MaxPdfCompressLevel, 1),
+            [ImageCompressLevel] = new(MinImageCompressLevel, MaxImageCompressLevel, 1),
+            [ImageCompressMaxDimension] = new(MinImageCompressMaxDimension, MaxImageCompressMaxDimension, 0),
+        };
+
+    /// <summary>取得指定數值設定的合法範圍宣告；若未註冊則回傳 false。</summary>
+    public static bool TryGetNumericRange(string key, out NumericSettingRange range) =>
+        NumericRanges.TryGetValue(key, out range);
+
+    /// <summary>取得指定數值設定的合法範圍宣告；若未註冊則擲出 KeyNotFoundException。</summary>
+    public static NumericSettingRange GetNumericRange(string key) =>
+        NumericRanges.TryGetValue(key, out var range)
+            ? range
+            : throw new KeyNotFoundException($"'{key}' is not registered as a numeric setting with a defined range.");
+
+    /// <summary>將數值限制在指定設定的合法範圍內；若非數值設定則直接回傳原值。</summary>
+    public static int ClampNumericSetting(string key, int value) =>
+        NumericRanges.TryGetValue(key, out var range) ? range.Clamp(value) : value;
+
+    /// <summary>指定數值是否在設定的合法範圍內。</summary>
+    public static bool IsNumericSettingInRange(string key, int value) =>
+        NumericRanges.TryGetValue(key, out var range) && range.IsInRange(value);
 
     /// <summary>
     /// 已退役的舊設定鍵。LoadSettings 時若遇到這些鍵，會自動從記憶體中丟棄並重寫設定檔，

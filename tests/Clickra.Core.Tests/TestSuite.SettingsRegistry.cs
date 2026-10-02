@@ -48,6 +48,8 @@ static partial class TestSuite
         runner.Run("Settings registry: GetSetting applies defaults for unset keys", TestSettingDefaults);
         runner.Run("Settings registry: readers must not invent keys or defaults", TestSettingReadersUseRegistry);
         runner.Run("Settings registry: numeric accessors take their fallback from the registry", TestNumericAccessorsUseRegistry);
+        runner.Run("Settings registry: numeric ranges are declared, valid, and clamp correctly", TestNumericRangesAreDeclaredAndClampCorrectly);
+        runner.Run("Settings registry: UI controls derive bounds and guards from centralized ranges", TestNumericUiControlsDeriveBounds);
         runner.Run("Settings registry: retired keys stay outside the active registry", TestRetiredKeysStayDisjoint);
         runner.Run("Settings storage: retired keys are purged and rewritten on load", TestRetiredSettingsPurgedOnLoad);
         runner.Run("Settings registry: CLI localization keys coverage across all 5 languages", TestCliLocalizationKeysCoverage);
@@ -189,6 +191,88 @@ static partial class TestSuite
         string body = source[start..end];
         Assert.True(body.Contains("ClickraSettings", StringComparison.Ordinal),
             $"{name} must get its fallback default from ClickraSettings, found: {body}");
+    }
+
+    private static void TestNumericRangesAreDeclaredAndClampCorrectly()
+    {
+        var numericSettings = ClickraSettings.All
+            .Where(setting => int.TryParse(setting.Default, out _))
+            .ToList();
+
+        Assert.True(numericSettings.Count > 0, "There must be at least one numeric setting.");
+
+        foreach (var setting in numericSettings)
+        {
+            Assert.True(ClickraSettings.TryGetNumericRange(setting.Key, out var range),
+                $"Setting '{setting.Key}' has an integer default ({setting.Default}) but is missing from ClickraSettings.NumericRanges.");
+            Assert.True(range.Min <= range.Max,
+                $"Setting '{setting.Key}' has Min ({range.Min}) greater than Max ({range.Max}).");
+            Assert.True(range.Min <= range.Default && range.Default <= range.Max,
+                $"Setting '{setting.Key}' default ({range.Default}) is outside range [{range.Min}, {range.Max}].");
+            Assert.Equal(setting.Default, range.Default.ToString());
+
+            Assert.Equal(range.Min, ClickraSettings.ClampNumericSetting(setting.Key, range.Min - 100));
+            if (range.Max <= int.MaxValue - 100)
+            {
+                Assert.Equal(range.Max, ClickraSettings.ClampNumericSetting(setting.Key, range.Max + 100));
+            }
+            Assert.Equal(range.Default, ClickraSettings.ClampNumericSetting(setting.Key, range.Default));
+
+            Assert.True(ClickraSettings.IsNumericSettingInRange(setting.Key, range.Min), $"{setting.Key} Min must be in range.");
+            Assert.True(ClickraSettings.IsNumericSettingInRange(setting.Key, range.Max), $"{setting.Key} Max must be in range.");
+            Assert.True(ClickraSettings.IsNumericSettingInRange(setting.Key, range.Default), $"{setting.Key} Default must be in range.");
+            Assert.False(ClickraSettings.IsNumericSettingInRange(setting.Key, range.Min - 1), $"{setting.Key} below Min must not be in range.");
+            if (range.Max < int.MaxValue)
+            {
+                Assert.False(ClickraSettings.IsNumericSettingInRange(setting.Key, range.Max + 1), $"{setting.Key} above Max must not be in range.");
+            }
+        }
+
+        int existingLargeDimension = 20000;
+        Assert.Equal(existingLargeDimension,
+            ClickraSettings.ClampNumericSetting(ClickraSettings.ImageCompressMaxDimension, existingLargeDimension));
+    }
+
+    private static void TestNumericUiControlsDeriveBounds()
+    {
+        string root = FindRepoRoot() ?? throw new TestSkippedException(RepoRootNotFoundMessage);
+        string fluentCode = File.ReadAllText(Path.Combine(root, "src", "Clickra.Fluent", "MainPage.xaml.cs"));
+        string fluentXaml = File.ReadAllText(Path.Combine(root, "src", "Clickra.Fluent", "MainPage.xaml"));
+        string cliPaint = File.ReadAllText(Path.Combine(root, "src", CliProjectDirectory, DashboardDirectory, "DashboardWindow.Paint.Settings.cs"));
+        string cliEvents = File.ReadAllText(Path.Combine(root, "src", CliProjectDirectory, DashboardDirectory, "DashboardWindow.Events.cs"));
+        string cliClick = File.ReadAllText(Path.Combine(root, "src", CliProjectDirectory, DashboardDirectory, "DashboardWindow.Events.Click.cs"));
+
+        Assert.True(fluentCode.Contains("CompressionSlider.Minimum = ClickraSettings.MinPdfCompressLevel", StringComparison.Ordinal),
+            "Fluent must derive CompressionSlider.Minimum from ClickraSettings.MinPdfCompressLevel.");
+        Assert.True(fluentCode.Contains("CompressionSlider.Maximum = ClickraSettings.MaxPdfCompressLevel", StringComparison.Ordinal),
+            "Fluent must derive CompressionSlider.Maximum from ClickraSettings.MaxPdfCompressLevel.");
+        Assert.True(fluentCode.Contains("ParkedRetentionBox.Minimum = MinParkedRetentionDays", StringComparison.Ordinal),
+            "Fluent must derive ParkedRetentionBox.Minimum from ClickraSettings.");
+        Assert.True(fluentCode.Contains("ParkedRetentionBox.Maximum = MaxParkedRetentionDays", StringComparison.Ordinal),
+            "Fluent must derive ParkedRetentionBox.Maximum from ClickraSettings.");
+
+        Assert.True(fluentXaml.Contains("x:Name=\"CompressionSlider\"", StringComparison.Ordinal) &&
+                    !fluentXaml.Contains("x:Name=\"CompressionSlider\" Minimum=", StringComparison.Ordinal) &&
+                    !fluentXaml.Contains("x:Name=\"CompressionSlider\" Maximum=", StringComparison.Ordinal),
+            "Fluent XAML must not duplicate CompressionSlider bounds; LoadSettings owns the centralized range.");
+        Assert.True(fluentXaml.Contains("x:Name=\"ParkedRetentionBox\"", StringComparison.Ordinal) &&
+                    !fluentXaml.Contains("x:Name=\"ParkedRetentionBox\" Grid.Column=\"1\" MinWidth=\"160\" Minimum=", StringComparison.Ordinal) &&
+                    !fluentXaml.Contains("x:Name=\"ParkedRetentionBox\" Grid.Column=\"1\" MinWidth=\"160\" Maximum=", StringComparison.Ordinal),
+            "Fluent XAML must not duplicate ParkedRetentionBox bounds; LoadSettings owns the centralized range.");
+
+        Assert.True(cliPaint.Contains("ClickraSettings.MaxPdfCompressLevel - ClickraSettings.MinPdfCompressLevel + 1", StringComparison.Ordinal),
+            "CLI slider stop calculation must derive from ClickraSettings bounds.");
+        Assert.True(cliEvents.Contains("ClickraSettings.MaxPdfCompressLevel - ClickraSettings.MinPdfCompressLevel", StringComparison.Ordinal) &&
+                    cliEvents.Contains("ClickraSettings.ClampNumericSetting", StringComparison.Ordinal),
+            "CLI slider drag event must derive its span and clamping from ClickraSettings.");
+        Assert.True(cliClick.Contains("ClickraSettings.MaxPdfCompressLevel - ClickraSettings.MinPdfCompressLevel", StringComparison.Ordinal) &&
+                    cliClick.Contains("ClickraSettings.ClampNumericSetting", StringComparison.Ordinal),
+            "CLI slider click handler must derive its span and clamping from ClickraSettings.");
+        Assert.True(cliClick.Contains("ClickraSettings.ClampNumericSetting(ClickraSettings.PdfCompressImageLevel", StringComparison.Ordinal),
+            "CLI ApplyPdfCompressLevel must clamp using ClickraSettings.");
+        Assert.True(cliClick.Contains("ClickraSettings.MinParkedRetentionDays", StringComparison.Ordinal) &&
+                    cliClick.Contains("ClickraSettings.MaxParkedRetentionDays", StringComparison.Ordinal),
+            "CLI SetParkedRetention must clamp against centralized retention bounds.");
     }
 
     private static void TestRetiredKeysStayDisjoint()
@@ -538,7 +622,7 @@ static partial class TestSuite
             RepoRootNotFoundMessage);
         var filesToScan = new List<string>();
 
-        string dashboardDir = Path.Combine(root, "src", "Clickra.CLI", "Dashboard");
+        string dashboardDir = Path.Combine(root, "src", CliProjectDirectory, DashboardDirectory);
         if (Directory.Exists(dashboardDir))
         {
             filesToScan.AddRange(Directory.GetFiles(dashboardDir, "DashboardWindow.Paint*.cs"));
@@ -551,7 +635,7 @@ static partial class TestSuite
                 .Where(IsLocalizationGuardTarget));
         }
 
-        string progressDir = Path.Combine(root, "src", "Clickra.CLI", "Progress");
+        string progressDir = Path.Combine(root, "src", CliProjectDirectory, "Progress");
         if (Directory.Exists(progressDir))
         {
             filesToScan.AddRange(Directory.GetFiles(progressDir, "*.cs"));
