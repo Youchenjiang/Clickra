@@ -74,9 +74,34 @@ A successful workflow means the submission step completed; it does **not** prove
 Store later reached `Published`. Publication/certification state must be verified separately
 before any later release boundary that requires a `Published + no pending submission` gate.
 
+### Automatic Store package reconciliation
+
+The separate `.github/workflows/store-release-enrichment.yml` workflow reconciles the
+Microsoft Store-signed package back to the matching GitHub Release. It has two trigger modes:
+
+1. **Scheduled check (hourly, at minute 17)**
+   - Selects only the latest non-draft, non-prerelease GitHub Release.
+   - Does nothing if `Clickra-store.msix` is already attached.
+   - Uses the Partner Center submission API in read-only mode to confirm that the current
+     `lastPublishedApplicationSubmission` has status `Published` and that its non-deleted
+     package-version set is exactly the target release version.
+   - Only after that gate passes does it acquire the same version from Microsoft Store
+     catalog/FE3, run the existing identity/version/hash/signature verification, and attach
+     `Clickra-store.msix` idempotently.
+2. **Manual `workflow_dispatch` fallback**
+   - Accepts an explicit four-part release tag.
+   - Runs the existing reconciliation path directly for operator-requested retries or
+     qualification.
+
+The scheduled path deliberately does not scan older releases. FE3 testing demonstrated that
+once a newer Store version becomes current, older Clickra package versions may no longer be
+enumerated, so N-1/N-2 backfill is not considered reliable.
+
 ## 5. Source-of-truth boundaries
 
-- **Pipeline implementation**: `.github/workflows/release.yml`, `scripts/build_msix.ps1`.
+- **Pipeline implementation**: `.github/workflows/release.yml`,
+  `.github/workflows/store-release-enrichment.yml`, `scripts/build_msix.ps1`,
+  `scripts/check_store_release_published.py`, `scripts/enrich_store_release.py`.
 - **Version format and synchronized version surfaces**: `docs/development/release_guideline.md`.
 - **Optional Fluent package proposal/gates**: `docs/development/store_optional_fluent_plan.md`.
 - **Historical release observations** are evidence only; they do not replace a fresh check of

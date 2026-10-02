@@ -1,6 +1,8 @@
 name: Reconcile Store package with GitHub Release
 
 on:
+  schedule:
+    - cron: '17 * * * *'
   workflow_dispatch:
     inputs:
       tag:
@@ -8,13 +10,90 @@ on:
         required: true
         type: string
 
-permissions:
-  contents: write
+concurrency:
+  group: store-release-enrichment
+  cancel-in-progress: false
 
 jobs:
+  probe:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    outputs:
+      tag: ${{ steps.target.outputs.tag }}
+      needs_reconcile: ${{ steps.target.outputs.needs_reconcile }}
+      published: ${{ steps.store-published.outputs.published }}
+    steps:
+      - name: Resolve reconciliation target
+        id: target
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          MANUAL_TAG: ${{ inputs.tag }}
+        run: |
+          set -euo pipefail
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+            tag="$MANUAL_TAG"
+          else
+            tag="$(gh release list \
+              --repo "$GITHUB_REPOSITORY" \
+              --exclude-drafts \
+              --exclude-pre-releases \
+              --limit 1 \
+              --json tagName \
+              --jq '.[0].tagName')"
+          fi
+          if [[ ! "$tag" =~ ^v[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "Unexpected or missing release tag '$tag'." >&2
+            exit 1
+          fi
+
+          asset_names="$(gh release view "$tag" \
+            --repo "$GITHUB_REPOSITORY" \
+            --json assets \
+            --jq '.assets[].name')"
+          if grep -Fxq 'Clickra-store.msix' <<< "$asset_names"; then
+            has_store_asset=true
+            needs_reconcile=false
+          else
+            has_store_asset=false
+            needs_reconcile=true
+          fi
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
+          echo "needs_reconcile=$needs_reconcile" >> "$GITHUB_OUTPUT"
+          echo "Target release: $tag; Store asset present: $has_store_asset"
+
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        if: github.event_name == 'schedule' && steps.target.outputs.needs_reconcile == 'true'
+
+      - name: Setup Python
+        if: github.event_name == 'schedule' && steps.target.outputs.needs_reconcile == 'true'
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: '3.12'
+
+      - name: Check Store publication state
+        id: store-published
+        if: github.event_name == 'schedule' && steps.target.outputs.needs_reconcile == 'true'
+        env:
+          STORE_TENANT_ID: ${{ secrets.STORE_TENANT_ID }}
+          STORE_CLIENT_ID: ${{ secrets.STORE_CLIENT_ID }}
+          STORE_CLIENT_SECRET: ${{ secrets.STORE_CLIENT_SECRET }}
+          STORE_PRODUCT_ID: ${{ secrets.STORE_PRODUCT_ID }}
+        shell: bash
+        run: |
+          python scripts/check_store_release_published.py \
+            --tag "${{ steps.target.outputs.tag }}"
+
   reconcile:
+    needs: probe
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      (needs.probe.outputs.needs_reconcile == 'true' && needs.probe.outputs.published == 'true')
     runs-on: windows-latest
     timeout-minutes: 15
+    permissions:
+      contents: write
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
@@ -49,7 +128,7 @@ jobs:
       - name: Reconcile verified Store package
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          RELEASE_TAG: ${{ inputs.tag }}
+          RELEASE_TAG: ${{ needs.probe.outputs.tag }}
         shell: pwsh
         run: |
           python scripts/enrich_store_release.py `
