@@ -31,6 +31,7 @@ static partial class TestSuite
     private const string RetiredPdfTargetDpi = "PdfCompressTargetDpi";
     private const string RetiredPdfJpegQuality = "PdfCompressJpegQuality";
     private const string RetiredPdfDpi = "PdfCompressDpi";
+    private const string SettingsRegistryFluentProjectDirectory = "Clickra.Fluent";
     private const string LanguageZhTw = "zh-TW";
     private const string LanguageZhCn = "zh-CN";
     private const string LanguageEnUs = "en-US";
@@ -52,6 +53,8 @@ static partial class TestSuite
         runner.Run("Settings registry: UI controls derive bounds and guards from centralized ranges", TestNumericUiControlsDeriveBounds);
         runner.Run("Settings registry: retired keys stay outside the active registry", TestRetiredKeysStayDisjoint);
         runner.Run("Settings storage: retired keys are purged and rewritten on load", TestRetiredSettingsPurgedOnLoad);
+        runner.Run("Settings storage: real-time file watcher and cache synchronization", TestSettingsFileWatcherAndCacheSynchronization);
+        runner.Run("Settings storage: UI components hook SettingsReloaded for real-time sync", TestSettingsReloadedUiHooks);
         runner.Run("Settings registry: CLI localization keys coverage across all 5 languages", TestCliLocalizationKeysCoverage);
         runner.Run("Settings registry: Diagnostics email localization coverage across all 5 languages", TestDiagnosticsEmailLocalizationCoverage);
         runner.Run("Settings registry: Tray, visual splitter, and progress window localization coverage across all 5 languages", TestTraySplitterLocalizationCoverage);
@@ -236,8 +239,8 @@ static partial class TestSuite
     private static void TestNumericUiControlsDeriveBounds()
     {
         string root = FindRepoRoot() ?? throw new TestSkippedException(RepoRootNotFoundMessage);
-        string fluentCode = File.ReadAllText(Path.Combine(root, "src", "Clickra.Fluent", "MainPage.xaml.cs"));
-        string fluentXaml = File.ReadAllText(Path.Combine(root, "src", "Clickra.Fluent", "MainPage.xaml"));
+        string fluentCode = File.ReadAllText(Path.Combine(root, "src", SettingsRegistryFluentProjectDirectory, "MainPage.xaml.cs"));
+        string fluentXaml = File.ReadAllText(Path.Combine(root, "src", SettingsRegistryFluentProjectDirectory, "MainPage.xaml"));
         string cliPaint = File.ReadAllText(Path.Combine(root, "src", CliProjectDirectory, DashboardDirectory, "DashboardWindow.Paint.Settings.cs"));
         string cliEvents = File.ReadAllText(Path.Combine(root, "src", CliProjectDirectory, DashboardDirectory, "DashboardWindow.Events.cs"));
         string cliClick = File.ReadAllText(Path.Combine(root, "src", CliProjectDirectory, DashboardDirectory, "DashboardWindow.Events.Click.cs"));
@@ -331,6 +334,122 @@ static partial class TestSuite
 
             ClickraStorage.ReloadSettings();
         }
+    }
+
+    private static void TestSettingsFileWatcherAndCacheSynchronization()
+    {
+        string settingsFile = ClickraStorage.GetSettingsFilePath();
+        string? backup = File.Exists(settingsFile) ? File.ReadAllText(settingsFile) : null;
+
+        try
+        {
+            string? notifiedKey = null;
+            string? notifiedValue = null;
+            using var reloadedEvent = new System.Threading.ManualResetEventSlim(false);
+
+            Action<string, string> onKeyChanged = (key, value) =>
+            {
+                if (key == ClickraSettings.QuietMode)
+                {
+                    notifiedKey = key;
+                    notifiedValue = value;
+                }
+            };
+            Action onReloaded = () => reloadedEvent.Set();
+
+            ClickraStorage.SettingChanged += onKeyChanged;
+            ClickraStorage.SettingsReloaded += onReloaded;
+            try
+            {
+                ClickraStorage.SaveSetting(ClickraSettings.QuietMode, ClickraSettings.ValueTrue);
+                Assert.True(reloadedEvent.Wait(2000), "SettingsReloaded event must be raised on SaveSetting.");
+                Assert.Equal(ClickraSettings.QuietMode, notifiedKey ?? string.Empty);
+                Assert.Equal(ClickraSettings.ValueTrue, notifiedValue ?? string.Empty);
+                Assert.True(ClickraStorage.GetSettingBool(ClickraSettings.QuietMode),
+                    "QuietMode must be true after SaveSetting.");
+            }
+            finally
+            {
+                ClickraStorage.SettingChanged -= onKeyChanged;
+                ClickraStorage.SettingsReloaded -= onReloaded;
+            }
+
+            string newConfig = "QuietMode=false\nParkedTaskRetention=42\n";
+            File.WriteAllText(settingsFile, newConfig, System.Text.Encoding.UTF8);
+            File.SetLastWriteTimeUtc(settingsFile, DateTime.UtcNow.AddSeconds(1));
+
+            Assert.False(ClickraStorage.GetSettingBool(ClickraSettings.QuietMode),
+                "GetSetting must immediately bust stale cache when external process changes settings file.");
+            Assert.Equal(42, ClickraStorage.GetParkedRetentionDays());
+
+            string root = FindRepoRoot() ?? throw new TestSkippedException(RepoRootNotFoundMessage);
+            string storageSource = File.ReadAllText(Path.Combine(root, "src", "Clickra.Core", "Storage", "ClickraStorage.cs"));
+            int saveStart = storageSource.IndexOf("public static void SaveSetting", StringComparison.Ordinal);
+            int notifyStart = storageSource.IndexOf("private static void NotifySettingsChanged", saveStart, StringComparison.Ordinal);
+            Assert.True(saveStart >= 0 && notifyStart > saveStart, "SaveSetting source block must be discoverable.");
+            string saveBody = storageSource[saveStart..notifyStart];
+            int mutexIndex = saveBody.IndexOf("RunWithMutex", StringComparison.Ordinal);
+            int reloadIndex = saveBody.IndexOf("if (!LoadSettingsInternalLocked())", StringComparison.Ordinal);
+            int writeIndex = saveBody.IndexOf("SettingsCache[key] = val", StringComparison.Ordinal);
+            int persistIndex = saveBody.IndexOf("PersistSettingsFileLocked()", StringComparison.Ordinal);
+            int changedIndex = saveBody.IndexOf("changed = true", StringComparison.Ordinal);
+            Assert.True(mutexIndex >= 0 && reloadIndex > mutexIndex && writeIndex > reloadIndex,
+                "SaveSetting must refresh from disk after acquiring the cross-process mutex before mutating the cache.");
+            Assert.True(persistIndex > writeIndex && changedIndex > persistIndex,
+                "SaveSetting must only mark the change successful after persistence succeeds.");
+            Assert.True(saveBody.Contains("SettingsCache.Remove(key)", StringComparison.Ordinal),
+                "SaveSetting must roll back a newly-added cache entry when persistence fails.");
+
+            Assert.True(storageSource.Contains("ReloadSettingsFromWatcher()", StringComparison.Ordinal) &&
+                        storageSource.Contains("if (ReloadSettingsCore())", StringComparison.Ordinal) &&
+                        storageSource.Contains("catch (TimeoutException)", StringComparison.Ordinal),
+                "Watcher-triggered reloads must retry failed reads or mutex acquisition without leaking ThreadPool exceptions.");
+            Assert.True(storageSource.Contains("A transient read/sharing failure is not an empty settings file.", StringComparison.Ordinal),
+                "Settings reload must preserve the last known-good cache when reading the settings file fails.");
+            Assert.True(storageSource.Contains("private static bool LoadSettingsInternalLocked()", StringComparison.Ordinal) &&
+                        storageSource.Contains("return false;", StringComparison.Ordinal),
+                "Settings reload must report transient read failure so callers cannot persist stale cache state.");
+        }
+        finally
+        {
+            if (backup is not null)
+            {
+                File.WriteAllText(settingsFile, backup, System.Text.Encoding.UTF8);
+            }
+            else if (File.Exists(settingsFile))
+            {
+                File.Delete(settingsFile);
+            }
+
+            ClickraStorage.ReloadSettings();
+        }
+    }
+
+    private static void TestSettingsReloadedUiHooks()
+    {
+        string root = FindRepoRoot() ?? throw new TestSkippedException(RepoRootNotFoundMessage);
+        string fluentCode = File.ReadAllText(Path.Combine(root, "src", SettingsRegistryFluentProjectDirectory, "MainPage.xaml.cs"));
+        string cliLifecycle = File.ReadAllText(Path.Combine(root, "src", CliProjectDirectory, DashboardDirectory, "DashboardWindow.Lifecycle.cs"));
+        string cliEvents = File.ReadAllText(Path.Combine(root, "src", CliProjectDirectory, DashboardDirectory, "DashboardWindow.Events.cs"));
+
+        Assert.True(fluentCode.Contains("ClickraStorage.SettingsReloaded +=", StringComparison.Ordinal),
+            "Fluent UI must subscribe to ClickraStorage.SettingsReloaded.");
+        Assert.True(fluentCode.Contains("ClickraStorage.SettingsReloaded -=", StringComparison.Ordinal),
+            "Fluent UI must unsubscribe from ClickraStorage.SettingsReloaded when unloaded.");
+        Assert.True(fluentCode.Contains("_settingsReloadHooked", StringComparison.Ordinal),
+            "Fluent UI must guard reload subscription lifecycle against duplicate hooks.");
+        Assert.True(fluentCode.Contains("SyncSettingsToUi()", StringComparison.Ordinal),
+            "Fluent UI must invoke SyncSettingsToUi() to synchronize controls without saving back.");
+        Assert.True(fluentCode.Contains("SyncSettingsToUi(refreshDynamicLanguageContent: true)", StringComparison.Ordinal) &&
+                    fluentCode.Contains("RefreshFiles();", StringComparison.Ordinal) &&
+                    fluentCode.Contains("RefreshHistory();", StringComparison.Ordinal),
+            "Fluent external language reloads must refresh dynamic localized file and history content.");
+        Assert.True(cliLifecycle.Contains("ClickraStorage.SettingsReloaded +=", StringComparison.Ordinal),
+            "CLI Dashboard must subscribe to ClickraStorage.SettingsReloaded.");
+        Assert.True(cliLifecycle.Contains("ClickraStorage.SettingsReloaded -=", StringComparison.Ordinal),
+            "CLI Dashboard must unsubscribe from ClickraStorage.SettingsReloaded on window close.");
+        Assert.True(cliEvents.Contains("ClickraStorage.EnsureFreshSettings()", StringComparison.Ordinal),
+            "CLI Dashboard timer tick must ensure fresh settings on each refresh.");
     }
 
     private static void TestCliLocalizationKeysCoverage()
@@ -628,7 +747,7 @@ static partial class TestSuite
             filesToScan.AddRange(Directory.GetFiles(dashboardDir, "DashboardWindow.Paint*.cs"));
         }
 
-        string fluentDir = Path.Combine(root, "src", "Clickra.Fluent");
+        string fluentDir = Path.Combine(root, "src", SettingsRegistryFluentProjectDirectory);
         if (Directory.Exists(fluentDir))
         {
             filesToScan.AddRange(Directory.EnumerateFiles(fluentDir, "*.*", SearchOption.AllDirectories)
