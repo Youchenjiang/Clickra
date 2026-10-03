@@ -303,9 +303,12 @@ static partial class TestSuite
     {
         try
         {
+            string? gitPath = ResolveGitExecutablePath();
+            if (gitPath is null) return null;
+
             var psi = new ProcessStartInfo
             {
-                FileName = "git",
+                FileName = gitPath,
                 Arguments = $"show {revision}:{relativePath.Replace('\\', '/')}",
                 WorkingDirectory = repoRoot,
                 RedirectStandardOutput = true,
@@ -323,6 +326,27 @@ static partial class TestSuite
         {
             return null;
         }
+    }
+
+    /// <summary>從 PATH 中解析可用 Git 執行檔的絕對路徑；找不到時回傳 null。</summary>
+    private static string? ResolveGitExecutablePath()
+    {
+        string? pathValue = Environment.GetEnvironmentVariable("PATH");
+        if (string.IsNullOrWhiteSpace(pathValue)) return null;
+
+        foreach (string rawDirectory in pathValue.Split(Path.PathSeparator, StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
+        {
+            string directory = rawDirectory.Trim('"');
+            if (!Path.IsPathFullyQualified(directory)) continue;
+
+            foreach (string executableName in new[] { "git.exe", "git" })
+            {
+                string candidate = Path.Combine(directory, executableName);
+                if (File.Exists(candidate)) return candidate;
+            }
+        }
+
+        return null;
     }
 
     /// <summary>從原始碼中解析 UnconsumedKeyBaseline 陣列內宣告的鍵清單。</summary>
