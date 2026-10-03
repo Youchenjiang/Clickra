@@ -1241,25 +1241,7 @@ public sealed partial class MainPage : Page
     /// <summary>One running conversion: command, file, and the shared status word.</summary>
     private Grid CreateActiveTaskRow(HistoryItem item)
     {
-        var row = new Grid
-        {
-            ColumnSpacing = 10,
-            Padding = new Thickness(12, 10, 12, 10),
-            Background = (Brush)Application.Current.Resources[SecondaryCardBrushResource],
-            CornerRadius = new CornerRadius(8)
-        };
-        row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
-        row.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
-
-        var texts = new StackPanel { Spacing = 2 };
-        var titleRow = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8 };
-        titleRow.Children.Add(new TextBlock
-        {
-            Text = L(item.CommandLabelKey),
-            FontSize = 14,
-            FontWeight = Microsoft.UI.Text.FontWeights.SemiBold,
-            VerticalAlignment = VerticalAlignment.Center
-        });
+        var row = CreateHistoryTaskRowShell(item, out var texts, out var titleRow);
         titleRow.Children.Add(new TextBlock
         {
             Text = L(item.StatusKey),
@@ -1287,34 +1269,13 @@ public sealed partial class MainPage : Page
     private Grid CreateParkedTaskRow(HistoryItem item)
     {
         var task = item.Entry;
-
-        var row = new Grid
-        {
-            ColumnSpacing = 10,
-            Padding = new Thickness(12, 10, 12, 10),
-            Background = (Brush)Application.Current.Resources[SecondaryCardBrushResource],
-            CornerRadius = new CornerRadius(8)
-        };
+        var row = CreateHistoryTaskRowShell(item, out var texts, out var titleRow);
 
         if (item.NeedsAttention)
         {
             row.BorderThickness = new Thickness(1);
             row.BorderBrush = new SolidColorBrush(Color.FromArgb(180, 255, 140, 0));
         }
-
-        row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
-        row.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
-
-        var texts = new StackPanel { Spacing = 2 };
-
-        var titleRow = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8 };
-        titleRow.Children.Add(new TextBlock
-        {
-            Text = L(item.CommandLabelKey),
-            FontSize = 14,
-            FontWeight = Microsoft.UI.Text.FontWeights.SemiBold,
-            VerticalAlignment = VerticalAlignment.Center
-        });
 
         if (item.NeedsAttention)
         {
@@ -1395,6 +1356,30 @@ public sealed partial class MainPage : Page
         Grid.SetColumn(actions, 1);
         row.Children.Add(texts);
         row.Children.Add(actions);
+        return row;
+    }
+
+    private Grid CreateHistoryTaskRowShell(HistoryItem item, out StackPanel texts, out StackPanel titleRow)
+    {
+        var row = new Grid
+        {
+            ColumnSpacing = 10,
+            Padding = new Thickness(12, 10, 12, 10),
+            Background = (Brush)Application.Current.Resources[SecondaryCardBrushResource],
+            CornerRadius = new CornerRadius(8)
+        };
+        row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+        row.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+
+        texts = new StackPanel { Spacing = 2 };
+        titleRow = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8 };
+        titleRow.Children.Add(new TextBlock
+        {
+            Text = L(item.CommandLabelKey),
+            FontSize = 14,
+            FontWeight = Microsoft.UI.Text.FontWeights.SemiBold,
+            VerticalAlignment = VerticalAlignment.Center
+        });
         return row;
     }
 

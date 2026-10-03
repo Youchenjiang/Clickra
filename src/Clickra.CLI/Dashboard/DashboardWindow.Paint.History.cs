@@ -109,36 +109,7 @@ namespace Clickra.UI
             g.FillPath(rowBg, path);
             g.DrawPath(borderPen, path);
 
-            float timeW = 120;
-            if (_bodyFont != null)
-            {
-                using var timeBrush = new SolidBrush(Color.FromArgb(140, 140, 140));
-                g.DrawString(item.Time, _bodyFont, timeBrush, (contentX + 12) * s, (rowY + 13) * s);
-                timeW = g.MeasureString(item.Time, _bodyFont).Width / s;
-            }
-
-            float tagX = contentX + 12 + timeW + 16;
-            float tagW = DrawCommandTag(g, item, tagX, rowY + 11);
-            string statusText = GetText(item.StatusKey);
-            float statusW = _tagFont != null ? g.MeasureString(statusText, _tagFont).Width / s : 50f;
-            float statusX = contentX + rowW - 16 - statusW;
-
-            if (_bodyFont != null)
-            {
-                using var countBrush = new SolidBrush(Color.FromArgb(200, 200, 200));
-                float fileCountX = tagX + tagW + 16;
-                string displayText = item.FileCountText;
-                float maxW = statusX - 16 - fileCountX;
-                if (maxW > 20)
-                    displayText = UIHelper.TruncateFileName(g, displayText, _bodyFont, maxW, s);
-                g.DrawString(displayText, _bodyFont, countBrush, fileCountX * s, (rowY + 13) * s);
-            }
-
-            if (_tagFont != null)
-            {
-                using var statusBrush = new SolidBrush(ActiveStatusColor(fileStatus));
-                g.DrawString(statusText, _tagFont, statusBrush, statusX * s, (rowY + 13) * s);
-            }
+            DrawHistoryRowSummary(g, contentX, rowW, rowY, item, s, ActiveStatusColor(fileStatus));
         }
 
         static Color ActiveRowBackground(ConversionStatus status) => status switch
@@ -194,16 +165,26 @@ namespace Clickra.UI
             g.FillPath(rowBg, path);
             g.DrawPath(borderPen, path);
 
+            Color statusColor = item.IsSuccess ? Color.FromArgb(100, 220, 100) : Color.FromArgb(255, 90, 70);
+            DrawHistoryRowSummary(g, contentX, rowW, currentY, item, s, statusColor);
+
+            if (index == _expandedHistoryIndex)
+                DrawExpandedHistoryDetails(g, contentX, rowW, currentY, item, index, s);
+        }
+
+        static void DrawHistoryRowSummary(Graphics g, float contentX, int rowW, int rowY,
+            HistoryItem item, float s, Color statusColor)
+        {
             float timeW = 120;
             if (_bodyFont != null)
             {
                 using var timeBrush = new SolidBrush(Color.FromArgb(140, 140, 140));
-                g.DrawString(item.Time, _bodyFont, timeBrush, (contentX + 12) * s, (currentY + 13) * s);
+                g.DrawString(item.Time, _bodyFont, timeBrush, (contentX + 12) * s, (rowY + 13) * s);
                 timeW = g.MeasureString(item.Time, _bodyFont).Width / s;
             }
 
             float tagX = contentX + 12 + timeW + 16;
-            float tagW = DrawCommandTag(g, item, tagX, currentY + 11);
+            float tagW = DrawCommandTag(g, item, tagX, rowY + 11);
             string statusText = GetText(item.StatusKey);
             float statusW = _tagFont != null ? g.MeasureString(statusText, _tagFont).Width / s : 50f;
             float statusX = contentX + rowW - 16 - statusW;
@@ -216,18 +197,14 @@ namespace Clickra.UI
                 float maxW = statusX - 16 - fileCountX;
                 if (maxW > 20)
                     displayText = UIHelper.TruncateFileName(g, displayText, _bodyFont, maxW, s);
-                g.DrawString(displayText, _bodyFont, countBrush, fileCountX * s, (currentY + 13) * s);
+                g.DrawString(displayText, _bodyFont, countBrush, fileCountX * s, (rowY + 13) * s);
             }
 
             if (_tagFont != null)
             {
-                Color statusColor = item.IsSuccess ? Color.FromArgb(100, 220, 100) : Color.FromArgb(255, 90, 70);
                 using var statusBrush = new SolidBrush(statusColor);
-                g.DrawString(statusText, _tagFont, statusBrush, statusX * s, (currentY + 13) * s);
+                g.DrawString(statusText, _tagFont, statusBrush, statusX * s, (rowY + 13) * s);
             }
-
-            if (index == _expandedHistoryIndex)
-                DrawExpandedHistoryDetails(g, contentX, rowW, currentY, item, index, s);
         }
 
         static void DrawExpandedHistoryDetails(Graphics g, float contentX, int rowW, int currentY,
