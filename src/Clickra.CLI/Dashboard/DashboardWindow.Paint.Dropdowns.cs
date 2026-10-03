@@ -6,6 +6,7 @@ using System.Drawing.Drawing2D;
 using System.Collections.Generic;
 using Microsoft.Win32;
 using Clickra.Core;
+using Clickra.Core.Layout;
 
 using static Clickra.UI.Native.Win32;
 
@@ -28,21 +29,21 @@ namespace Clickra.UI
             string displayText = $"{currentLang.NativeName} ({currentLang.EnglishName})";
             bool isHovered = _hoveredElement == 10;
 
-            int x = (int)contentX, w = 240, h = 30;
+            LayoutRect control = DashboardLayout.DropdownButtonRect((int)contentX, y);
+            int x = control.X, w = control.Width;
 
-            UIHelper.DrawDropdownButton(g, x, y, w, h, displayText, _langDropdownOpen, isHovered, _subFont, _iconFont, s);
+            UIHelper.DrawDropdownButton(g, x, y, w, control.Height, displayText, _langDropdownOpen, isHovered, _subFont, _iconFont, s);
 
-            // Draw overlay popup list if open
+            // Draw overlay popup list if open：彈出框、搜尋框與列距都來自版面表。
             if (_langDropdownOpen)
             {
-                int popupH = 180;
-                int popupY = y - popupH; // 210
+                LayoutRect popup = DashboardLayout.DropdownPopupRect(x, y, DashboardLayout.LanguagePopupHeight);
 
-                UIHelper.DrawDropdownPopup(g, x, popupY, w, popupH, s);
+                UIHelper.DrawDropdownPopup(g, popup.X, popup.Y, popup.Width, popup.Height, s);
 
-                // Search input box: y = 216
-                int searchX = x + 6, searchY = popupY + 6, searchW = w - 12, searchH = 26;
-                using (var searchPath = UIHelper.GetRoundedRectPath(new RectangleF(searchX * s, searchY * s, searchW * s, searchH * s), 4 * s))
+                LayoutRect search = DashboardLayout.DropdownSearchRect(popup.X, popup.Y);
+                int searchX = search.X, searchY = search.Y;
+                using (var searchPath = UIHelper.GetRoundedRectPath(new RectangleF(search.X * s, search.Y * s, search.Width * s, search.Height * s), 4 * s))
                 using (var searchBg = new SolidBrush(Color.FromArgb(45, 45, 45)))
                 using (var searchBorder = new Pen(Color.FromArgb(75, 75, 75)))
                 {
@@ -82,8 +83,8 @@ namespace Clickra.UI
 
                 // Draw filtered list
                 var filtered = GetFilteredLanguages();
-                int listStartY = searchY + searchH + 6; // 248
-                int maxVisible = 5;
+                int listStartY = popup.Y + DashboardLayout.LanguagePopupListTop;
+                int maxVisible = DashboardLayout.LanguagePopupVisibleRows;
 
                 if (_langScrollOffset < 0) _langScrollOffset = 0;
                 if (_langScrollOffset > 0 && _langScrollOffset > filtered.Count - maxVisible)
@@ -96,8 +97,8 @@ namespace Clickra.UI
                 {
                     int itemIdx = _langScrollOffset + i;
                     var item = filtered[itemIdx];
-                    int itemY = listStartY + i * 26;
-                    int itemH = 24;
+                    int itemY = DashboardLayout.DropdownItemY(popup.Y, DashboardLayout.LanguagePopupListTop, i);
+                    int itemH = DashboardLayout.DropdownItemHeight;
 
                     bool isItemHovered = _langHoveredIndex == itemIdx;
                     UIHelper.DrawDropdownItem(g, x, itemY, w, itemH, $"{item.NativeName} ({item.EnglishName})", isItemHovered, _subFont, s);
@@ -109,7 +110,7 @@ namespace Clickra.UI
                     float trackX = x + w - 8;
                     float trackY = listStartY;
                     float trackW = 4;
-                    float trackH = maxVisible * 26 - 2; // 128
+                    float trackH = maxVisible * DashboardLayout.DropdownItemStride - 2;
                     using (var sbTrackBrush = new SolidBrush(Color.FromArgb(40, 40, 40)))
                     {
                         g.FillRectangle(sbTrackBrush, trackX * s, trackY * s, trackW * s, trackH * s);
@@ -171,24 +172,24 @@ namespace Clickra.UI
             
             bool isHovered = _hoveredElement == 31;
 
-            int x = (int)contentX, w = 240, h = 30;
+            LayoutRect control = DashboardLayout.DropdownButtonRect((int)contentX, y);
+            int x = control.X, w = control.Width;
 
-            UIHelper.DrawDropdownButton(g, x, y, w, h, displayText, _pdfLangDropdownOpen, isHovered, _subFont, _iconFont, s);
+            UIHelper.DrawDropdownButton(g, x, y, w, control.Height, displayText, _pdfLangDropdownOpen, isHovered, _subFont, _iconFont, s);
 
-            // Draw overlay popup list if open
+            // Draw overlay popup list if open：高度由列數與列距推導，畫什麼就決定了點什麼。
             if (_pdfLangDropdownOpen)
             {
-                int popupH = PdfLangs.Length * 26 + 8;
-                int popupY = y - popupH;
+                int popupH = DashboardLayout.PdfPopupHeight(PdfLangs.Length);
+                LayoutRect popup = DashboardLayout.DropdownPopupRect(x, y, popupH);
 
-                UIHelper.DrawDropdownPopup(g, x, popupY, w, popupH, s);
+                UIHelper.DrawDropdownPopup(g, popup.X, popup.Y, popup.Width, popup.Height, s);
 
-                int listStartY = popupY + 4;
                 for (int i = 0; i < PdfLangs.Length; i++)
                 {
                     var item = PdfLangs[i];
-                    int itemY = listStartY + i * 26;
-                    int itemH = 24;
+                    int itemY = DashboardLayout.DropdownItemY(popup.Y, DashboardLayout.PdfPopupListTop, i);
+                    int itemH = DashboardLayout.DropdownItemHeight;
 
                     bool isItemHovered = _pdfLangHoveredIndex == i;
                     UIHelper.DrawDropdownItem(g, x, itemY, w, itemH, item.Name, isItemHovered, _subFont, s);

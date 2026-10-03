@@ -46,6 +46,9 @@ namespace Clickra.UI
         private string _command = "";
         private List<string> _files = new List<string>();
         private string? _outputDirOverride;
+        private string? _existingTaskId = null;
+        private int _startIndex = 0;
+        private string TaskId { get; set; } = "";
         private int _current = 0;
         private int _total = 0;
         private string _message = "";
@@ -108,9 +111,19 @@ namespace Clickra.UI
             window.ShowInstance(command, files);
         }
 
+        /// <summary>Creates and runs a progress window resuming a parked task,
+        /// blocking until the window closes.</summary>
+        public static void ShowResume(string taskId)
+        {
+            var resumed = ClickraStorage.ClaimParkedTaskForResume(taskId);
+            if (resumed == null) return;
+            var window = new ProgressWindow();
+            window.ShowInstance(resumed.Command, resumed.Files, resumed.TaskId, resumed.StartIndex);
+        }
+
         /// <summary>Registers the window class, creates the progress window and runs the
         /// message loop while the processing runs on a background thread.</summary>
-        private void ShowInstance(string command, List<string> files)
+        private void ShowInstance(string command, List<string> files, string? existingTaskId = null, int startIndex = 0)
         {
             if (files == null || files.Count == 0)
             {
@@ -126,7 +139,9 @@ namespace Clickra.UI
             {
                 _command = command;
                 _files = files;
-                _current = 0;
+                _existingTaskId = existingTaskId;
+                _startIndex = startIndex;
+                _current = startIndex * 100;
                 _total = files.Count * 100;
                 _message = Loc("cli_progress_preparing");
                 _completed = false;

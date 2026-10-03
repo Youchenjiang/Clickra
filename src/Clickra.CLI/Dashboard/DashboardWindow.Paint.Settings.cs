@@ -6,6 +6,7 @@ using System.Drawing.Drawing2D;
 using System.Collections.Generic;
 using Microsoft.Win32;
 using Clickra.Core;
+using Clickra.Core.Layout;
 using Clickra.Core.Processors;
 
 using static Clickra.UI.Native.Win32;
@@ -25,6 +26,12 @@ namespace Clickra.UI
             void AddHitRect(int elementId, float x, float y, float w, float h)
             {
                 _settingsHitRects[elementId] = new RectangleF(x, y, w, h);
+            }
+
+            // 版面表算出來的矩形直接登記為命中區：畫的位置與登記的位置不可能不一致。
+            void AddLayoutHitRect(int elementId, LayoutRect rect)
+            {
+                AddHitRect(elementId, rect.X, rect.Y, rect.Width, rect.Height);
             }
 
             void DrawSectionHeader(string titleKey, string descKey, float y)
@@ -320,7 +327,7 @@ namespace Clickra.UI
             _langDropdownY = (int)(y + 50);
 
             DrawLanguageDropdown(g, _langDropdownY, contentX);
-            AddHitRect(10, contentX, _langDropdownY, 240, 30);
+            AddLayoutHitRect(10, DashboardLayout.DropdownButtonRect((int)contentX, _langDropdownY));
 
             y += 110f;
             DrawSectionHeader("setting_pdf_title", "setting_pdf_desc", y);
@@ -334,7 +341,7 @@ namespace Clickra.UI
             _pdfLangDropdownY = (int)(y + 72);
 
             DrawPdfLangDropdown(g, _pdfLangDropdownY, contentX);
-            AddHitRect(31, contentX, _pdfLangDropdownY, 240, 30);
+            AddLayoutHitRect(31, DashboardLayout.DropdownButtonRect((int)contentX, _pdfLangDropdownY));
 
             y += 117f;
 

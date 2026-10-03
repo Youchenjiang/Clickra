@@ -38,8 +38,8 @@ static partial class TestSuite
             TestResumingParkedTaskReusesIdentity);
         runner.Run("Task queue: parked retention days come from the setting (0 = unlimited)",
             TestParkedRetentionDaysFromSetting);
-        runner.Run("Task queue: SetTaskInProgress refreshes the owning pid (resume safety)",
-            TestSetTaskInProgressRefreshesPid);
+        runner.Run("Task queue: resume claim refreshes the owning pid",
+            TestResumeClaimRefreshesPid);
         runner.Run("Task queue: active tasks whose owner process died are pruned as Canceled",
             TestDeadPidTaskPrunedAsAbandoned);
         runner.Run("Task queue: legacy active.tmp is preserved and queue orders newest first",
@@ -62,6 +62,10 @@ static partial class TestSuite
             TestFluentParkedExpirationUiContract);
         runner.Run("CLI Dashboard History shows every parked task with its own remaining retention",
             TestCliDashboardParkedTaskVisibility);
+        runner.Run("Task queue: resume claim validates status, files, index, and single ownership",
+            TestClaimParkedTaskForResume);
+        runner.Run("CLI Dashboard History page exposes resume and cancel for parked conversions",
+            TestCliDashboardParkedTaskResumeAndCancelEntryPoint);
     }
 
     private static void TestCancellingParkedTaskRecordsCanceledLine()
@@ -105,10 +109,17 @@ static partial class TestSuite
         string xaml = File.ReadAllText(Path.Combine(root, "src", FluentProjectDirectory, "MainPage.xaml"));
 
         Assert.True(xaml.Contains("ParkedTasksSection", StringComparison.Ordinal), "The History page must render a parked-conversions section.");
-        Assert.True(code.Contains("ClickraStorage.GetParkedTasks", StringComparison.Ordinal), "The History page must list parked conversions.");
+        Assert.True(code.Contains("HistoryFeed.Load(", StringComparison.Ordinal) && code.Contains("HistoryItemKind.Parked", StringComparison.Ordinal),
+            "The History page must list parked conversions through the shared Core feed.");
+        Assert.False(code.Contains("ClickraStorage.GetParkedTasks", StringComparison.Ordinal),
+            "The History page must not enumerate parked conversions itself; HistoryFeed is the one source for both UIs.");
         Assert.True(code.Contains("ClickraStorage.CancelParkedTask", StringComparison.Ordinal), "The History page must offer cancel for parked conversions.");
         Assert.True(code.Contains("OpenTaskProgressWindow($\"resume {", StringComparison.Ordinal), "Resume must go through the shared resume entry point.");
-        Assert.True(code.Contains("ClickraStorage.IsUserCanceledReason", StringComparison.Ordinal), "Cancelled rows must be recognised by the shared history marker, including the CLI's legacy one.");
+        string feed = File.ReadAllText(Path.Combine(root, "src", "Clickra.Core", "Storage", "HistoryFeed.cs"));
+        Assert.True(feed.Contains("ClickraStorage.IsUserCanceledReason", StringComparison.Ordinal),
+            "Cancelled rows must be recognised by the shared history marker, including the CLI's legacy one.");
+        Assert.True(feed.Contains("status_canceled", StringComparison.Ordinal),
+            "A cancelled row must resolve to the shared canceled status that both interfaces render.");
 
         // TaskProgressPage.TryParseResume only accepts a task whose status is still Parked, so the
         // UI has to open the resume window before anything flips the status; otherwise the entry
@@ -120,10 +131,12 @@ static partial class TestSuite
         Assert.True(resumeBody.Contains("OpenTaskProgressWindow", StringComparison.Ordinal), "Resume must open the shared task window.");
         Assert.False(resumeBody.Contains("SetTaskInProgress", StringComparison.Ordinal),
             "Resume must not mark the task InProgress first; TaskProgressPage only accepts a Parked task.");
-        foreach (string key in new[] { "task_parked_title", "task_parked_desc", "task_parked_cancel_confirm", "fluent_task_resume", "fluent_status_canceled" })
+        foreach (string key in new[] { "task_parked_title", "task_parked_desc", "task_parked_cancel_confirm", "fluent_task_resume" })
         {
             Assert.True(code.Contains(key, StringComparison.Ordinal), $"{key} must be rendered by the parked-conversion UI.");
         }
+        Assert.True(code.Contains("L(item.StatusKey)", StringComparison.Ordinal),
+            "Row status wording must come from the shared item (status_canceled included), so both interfaces use one key.");
     }
 
     /// <summary>A parked conversion silently disappears once it ages past its retention, so the user
@@ -342,9 +355,12 @@ static partial class TestSuite
         string fluentCode = File.ReadAllText(Path.Combine(root, "src", FluentProjectDirectory, FluentMainPageFile));
         string cliHistory = File.ReadAllText(Path.Combine(root, "src", CliProjectDirectory, DashboardDirectory, DashboardHistoryPaintFile));
         string storageCode = File.ReadAllText(Path.Combine(root, "src", "Clickra.Core", "Storage", "ClickraStorage.ActiveRecord.cs"));
+        string feedCode = File.ReadAllText(Path.Combine(root, "src", "Clickra.Core", "Storage", "HistoryFeed.cs"));
 
-        Assert.True(fluentCode.Contains("ClickraStorage.GetParkedRetentionInfo", StringComparison.Ordinal),
-            "Fluent History page must read task retention info via ClickraStorage.GetParkedRetentionInfo.");
+        Assert.True(feedCode.Contains("ClickraStorage.GetParkedRetentionInfo", StringComparison.Ordinal),
+            "The shared feed must compute each parked item's retention once, not leave it to the two UIs.");
+        Assert.True(fluentCode.Contains("item.RetentionText", StringComparison.Ordinal),
+            "Fluent History page must render the retention phrase the shared item carries.");
 
         foreach (string key in new[]
         {
@@ -366,10 +382,10 @@ static partial class TestSuite
 
         Assert.True(storageCode.Contains("DescribeParkedRetention", StringComparison.Ordinal),
             "ClickraStorage must expose one formatter for parked-task retention text.");
-        Assert.True(fluentCode.Contains("ClickraStorage.DescribeParkedRetention", StringComparison.Ordinal),
-            "The Fluent History row must render the deadline via the shared formatter.");
-        Assert.True(cliHistory.Contains("ClickraStorage.DescribeParkedRetention", StringComparison.Ordinal),
-            "The CLI History row must render the deadline via the shared formatter.");
+        Assert.True(feedCode.Contains("ClickraStorage.DescribeParkedRetention", StringComparison.Ordinal),
+            "The shared feed must word the deadline via ClickraStorage.DescribeParkedRetention.");
+        Assert.True(cliHistory.Contains("item.RetentionText", StringComparison.Ordinal),
+            "The CLI History row must render the same phrase through the shared item.");
 
         foreach ((string name, string source) in new[] { ("Fluent", fluentCode), ("CLI dashboard", cliHistory) })
         {
@@ -387,9 +403,8 @@ static partial class TestSuite
             }
         }
 
-        Assert.True(fluentCode.Contains("info.IsExpiringSoon", StringComparison.Ordinal) &&
-                    fluentCode.Contains("info.HasExpired", StringComparison.Ordinal),
-            "MainPage must alert for both expiring-soon and expired parked tasks.");
+        Assert.True(fluentCode.Contains("item.NeedsAttention", StringComparison.Ordinal),
+            "MainPage must read the shared item's NeedsAttention flag for its badge and alert colors.");
     }
 
     private static void TestCliDashboardParkedTaskVisibility()
@@ -401,10 +416,12 @@ static partial class TestSuite
         string paint = File.ReadAllText(Path.Combine(dir, DashboardHistoryPaintFile));
         string lifecycle = File.ReadAllText(Path.Combine(dir, "DashboardWindow.Lifecycle.cs"));
 
-        Assert.True(lifecycle.Contains("ClickraStorage.GetParkedTasks()", StringComparison.Ordinal),
-            "The dashboard must load parked conversions with the history snapshot.");
-        Assert.True(paint.Contains("ClickraStorage.GetParkedRetentionInfo", StringComparison.Ordinal),
-            "Each parked row must carry its own remaining retention.");
+        Assert.True(lifecycle.Contains("HistoryFeed.Load(", StringComparison.Ordinal),
+            "The dashboard must load parked conversions with the history snapshot from the shared feed.");
+        Assert.False(lifecycle.Contains("ClickraStorage.GetParkedTasks()", StringComparison.Ordinal),
+            "The dashboard must not enumerate parked conversions itself; HistoryFeed is the one source for both UIs.");
+        Assert.True(paint.Contains("ParkedItems", StringComparison.Ordinal) && paint.Contains("item.RetentionText", StringComparison.Ordinal),
+            "Each parked row must carry its own remaining retention from the shared item.");
         Assert.True(paint.Contains("task_parked_title", StringComparison.Ordinal),
             "The parked block needs its localized heading.");
         void AssertPaintContains(string token, string failure) =>
@@ -416,46 +433,37 @@ static partial class TestSuite
             "Parked rows about to be pruned must raise the aggregate warning.");
         AssertPaintContains("task_parked_badge_expiring",
             "Parked tasks that are expiring soon must render the expiring badge.");
-        AssertPaintContains("info.IsExpiringSoon",
-            "CLI dashboard must check IsExpiringSoon to highlight expiring tasks.");
-        AssertPaintContains("fluent_task_file_index",
-            "CLI dashboard must display the file index matching Fluent format.");
-        string parkedDetails = MethodBody(paint, "private static void DrawParkedTaskDetails(");
-        Assert.True(parkedDetails.Contains("DrawHistoryRowText(g, displayText, fileX, ttlX, currentY, s, suppressWhenNarrow: true)", StringComparison.Ordinal),
-            "Parked task details must only render when space remains before the right-aligned retention label.");
-        string sharedRowText = MethodBody(paint, "private static void DrawHistoryRowText(");
-        int widthGuard = sharedRowText.IndexOf("if (suppressWhenNarrow && maxW <= 20) return;", StringComparison.Ordinal);
-        int truncateCall = sharedRowText.IndexOf("UIHelper.TruncateFileName", StringComparison.Ordinal);
-        int drawCall = sharedRowText.IndexOf("g.DrawString(displayText", StringComparison.Ordinal);
-        Assert.True(widthGuard >= 0 && truncateCall > widthGuard && drawCall > truncateCall,
-            "Shared history row text must preserve the narrow-row guard before truncation and drawing.");
+        AssertPaintContains("item.NeedsAttention",
+            "CLI dashboard must highlight rows using the shared item's attention flag.");
+        AssertPaintContains("item.Subtitle",
+            "The parked row must render the shared subtitle instead of composing the file index itself.");
+        Assert.False(paint.Contains("task_file_index", StringComparison.Ordinal),
+            "The dashboard must not word the file index itself; HistoryItem owns that phrase.");
         Assert.True(paint.Contains("DrawParkedQueue(g,", StringComparison.Ordinal),
             "The History page must call the parked block.");
 
         string layout = File.ReadAllText(Path.Combine(dir, "DashboardWindow.cs"));
-        int startYStart = layout.IndexOf("static int GetHistoryListStartY()", StringComparison.Ordinal);
-        Assert.True(startYStart >= 0, "GetHistoryListStartY must exist.");
-        int startYEnd = layout.IndexOf(';', startYStart);
-        string startYBody = startYEnd > startYStart ? layout[startYStart..startYEnd] : layout[startYStart..];
-        Assert.True(startYBody.Contains("ParkedBlockHeight()", StringComparison.Ordinal),
-            "GetHistoryListStartY must count the parked block's height.");
-        Assert.True(startYBody.Contains("HistoryRowStride", StringComparison.Ordinal),
-            "GetHistoryListStartY must derive active rows from the shared stride.");
+        Assert.True(layout.Contains("HistoryLayout.Build(", StringComparison.Ordinal),
+            "The History column must be built through the shared Core layout.");
+        Assert.True(layout.Contains("_historyFeed.ParkedCount", StringComparison.Ordinal),
+            "The parked rows must be counted into the column so the list below cannot overlap them.");
+        Assert.True(layout.Contains("HistoryLayout.ContentHeight(", StringComparison.Ordinal),
+            "The scroll height must come from the same shared History column.");
 
         foreach (string file in new[] { DashboardHistoryPaintFile, "DashboardWindow.HitTesting.cs", DashboardEventsClickFile, "DashboardWindow.Events.cs" })
         {
             string source = File.ReadAllText(Path.Combine(dir, file));
-            Assert.True(source.Contains("GetHistoryListStartY()", StringComparison.Ordinal),
-                $"{file} must take the persisted-history start from GetHistoryListStartY().");
+            Assert.True(source.Contains("HistoryBlock", StringComparison.Ordinal),
+                $"{file} must take history row positions from the shared column.");
         }
 
         foreach (string file in new[] { DashboardHistoryPaintFile, "DashboardWindow.HitTesting.cs", DashboardEventsClickFile, "DashboardWindow.Events.cs", "DashboardWindow.cs" })
         {
             string source = File.ReadAllText(Path.Combine(dir, file));
+            Assert.False(source.Contains("GetHistoryListStartY", StringComparison.Ordinal),
+                $"{file} still computes the history start separately.");
             Assert.False(source.Contains("GetActiveHistoryCount", StringComparison.Ordinal),
                 $"{file} still computes the history start separately.");
-            Assert.False(source.Contains("* 52", StringComparison.Ordinal),
-                $"{file} still hardcodes the queue row stride.");
         }
     }
 
@@ -555,7 +563,8 @@ static partial class TestSuite
         {
             ClickraStorage.SetTaskInProgress(a);
             ClickraStorage.ParkTask(a, ParkReason, 1);
-            ClickraStorage.SetTaskInProgress(a);
+            var claim = ClickraStorage.ClaimParkedTaskForResume(a);
+            Assert.True(claim != null, "Parked task must be claimed before it resumes.");
             var resumed = ClickraStorage.GetTask(a);
             Assert.True(resumed.HasValue && resumed.Value.Status == ConversionStatus.InProgress,
                 "Resumed task must be InProgress.");
@@ -590,7 +599,7 @@ static partial class TestSuite
         ClickraStorage.SaveSetting(SettingParkedRetention, "7");
     }
 
-    private static void TestSetTaskInProgressRefreshesPid()
+    private static void TestResumeClaimRefreshesPid()
     {
         string a = ClickraStorage.StartTask(CmdSplitPdf, 1, TestInDir + FileA);
         try
@@ -600,10 +609,18 @@ static partial class TestSuite
             Assert.True(entry.HasValue && entry.Value.Pid == Environment.ProcessId,
                 $"InProgress task must carry the current pid, got {entry?.Pid}.");
             ClickraStorage.ParkTask(a, ParkReason, 0);
-            ClickraStorage.SetTaskInProgress(a);
+
+            string path = Path.Combine(ClickraStorage.GetDataDir(), "tasks", $"task-{a}.tmp");
+            var lines = File.ReadAllLines(path)
+                .Select(line => line.StartsWith("Pid=", StringComparison.Ordinal) ? "Pid=0" : line)
+                .ToArray();
+            File.WriteAllLines(path, lines);
+
+            Assert.True(ClickraStorage.ClaimParkedTaskForResume(a) != null,
+                "A parked task must be claimed before it resumes.");
             var resumed = ClickraStorage.GetTask(a);
             Assert.True(resumed.HasValue && resumed.Value.Pid == Environment.ProcessId,
-                $"Resumed task must refresh its pid to the current process, got {resumed?.Pid}.");
+                $"Resume claim must refresh its pid to the current process, got {resumed?.Pid}.");
         }
         finally { ClickraStorage.DeleteTask(a); }
     }
@@ -652,5 +669,94 @@ static partial class TestSuite
             ClickraStorage.DeleteTask(second);
             try { File.Delete(legacy); } catch { /* legacy file may already be removed */ }
         }
+    }
+
+    private static void TestClaimParkedTaskForResume()
+    {
+        // 1. Invalid or missing taskId
+        Assert.True(ClickraStorage.ClaimParkedTaskForResume(null!) == null, "Null taskId must return null.");
+        Assert.True(ClickraStorage.ClaimParkedTaskForResume("") == null, "Empty taskId must return null.");
+        Assert.True(ClickraStorage.ClaimParkedTaskForResume("non_existent_id") == null, "Non-existent taskId must return null.");
+
+        // 2. Active (in progress) task cannot be resumed
+        string a = ClickraStorage.StartTask(CmdSplitPdf, 2, TestInDir + FileA1 + TestInDir + FileA2);
+        try
+        {
+            ClickraStorage.SetTaskInProgress(a);
+            Assert.True(ClickraStorage.ClaimParkedTaskForResume(a) == null, "InProgress task cannot be resumed.");
+
+            // 3. Parked task can be claimed with valid files and its persisted next index.
+            ClickraStorage.ParkTask(a, ParkReason, 1);
+            var info = ClickraStorage.ClaimParkedTaskForResume(a);
+            Assert.True(info != null, "Parked task must return ResumedTaskInfo.");
+            Assert.Equal(a, info!.TaskId);
+            Assert.Equal(CmdSplitPdf, info.Command);
+            Assert.Equal(2, info.Files.Count);
+            Assert.Equal(1, info.StartIndex);
+            Assert.True(ClickraStorage.GetTask(a)?.Status == ConversionStatus.InProgress,
+                "A successful resume claim must atomically transition the task to InProgress.");
+            Assert.True(ClickraStorage.ClaimParkedTaskForResume(a) == null,
+                "A second consumer must not be able to claim the same parked task.");
+
+            // 4. Re-park, then verify out-of-range index clamping on the next claim.
+            ClickraStorage.ParkTask(a, ParkReason, 1);
+            ClickraStorage.SetTaskIndex(a, 99);
+            var clamped = ClickraStorage.ClaimParkedTaskForResume(a);
+            Assert.True(clamped?.StartIndex == 2, "Index beyond files count must be clamped to file count.");
+
+            // 5. Re-park and cancel; a removed task cannot be claimed.
+            ClickraStorage.ParkTask(a, ParkReason, 1);
+            ClickraStorage.CancelParkedTask(a);
+            Assert.True(ClickraStorage.ClaimParkedTaskForResume(a) == null, "Cancelled task cannot be resumed.");
+        }
+        finally
+        {
+            ClickraStorage.DeleteTask(a);
+        }
+    }
+
+    private static void TestCliDashboardParkedTaskResumeAndCancelEntryPoint()
+    {
+        string? root = FindRepoRoot();
+        if (root is null) throw new TestSkippedException("Could not locate the repository root from the test output directory.");
+
+        string dir = Path.Combine(root, "src", "Clickra.CLI", "Dashboard");
+        string click = File.ReadAllText(Path.Combine(dir, "DashboardWindow.Events.Click.cs"));
+        string paint = File.ReadAllText(Path.Combine(dir, "DashboardWindow.Paint.History.cs"));
+        string progress = File.ReadAllText(Path.Combine(root, "src", "Clickra.CLI", "Progress", "ProgressWindow.cs"));
+
+        // CLI Dashboard paints Resume and Cancel buttons using the shared localization keys
+        Assert.True(paint.Contains("fluent_task_resume", StringComparison.Ordinal),
+            "CLI Dashboard must render the Resume button using fluent_task_resume.");
+        Assert.True(paint.Contains("dialog_cancel", StringComparison.Ordinal),
+            "CLI Dashboard must render the Cancel button using dialog_cancel.");
+
+        // Confirmation copy matches Fluent
+        Assert.True(click.Contains("task_parked_cancel_confirm", StringComparison.Ordinal),
+            "CLI Dashboard cancel click handler must prompt confirmation using task_parked_cancel_confirm.");
+
+        // Cancellation invokes Core shared entry point
+        Assert.True(click.Contains("ClickraStorage.CancelParkedTask", StringComparison.Ordinal),
+            "CLI Dashboard cancel click handler must invoke ClickraStorage.CancelParkedTask.");
+
+        // Resume launches ProgressWindow; the window owns the atomic Core claim at execution time.
+        Assert.False(click.Contains("ClaimParkedTaskForResume", StringComparison.Ordinal),
+            "CLI Dashboard must not claim a task before the progress window is ready to execute it.");
+        Assert.True(click.Contains("ProgressWindow.ShowResume", StringComparison.Ordinal),
+            "CLI Dashboard resume click handler must launch ProgressWindow.ShowResume.");
+        Assert.True(progress.Contains("ClickraStorage.ClaimParkedTaskForResume", StringComparison.Ordinal),
+            "ProgressWindow.ShowResume must atomically claim the parked task before execution.");
+
+        // Resume must not mark the task InProgress prematurely
+        int resumeStart = click.IndexOf("if (action == ParkedActionResume)", StringComparison.Ordinal);
+        Assert.True(resumeStart >= 0, "ParkedActionResume branch must exist in HandleParkedActionClick.");
+        int resumeEnd = click.IndexOf("RefreshHistoryData()", resumeStart, StringComparison.Ordinal);
+        string resumeBody = resumeEnd > resumeStart ? click[resumeStart..resumeEnd] : click[resumeStart..];
+        Assert.False(resumeBody.Contains("SetTaskInProgress", StringComparison.Ordinal),
+            "CLI click handler must not mark task InProgress before launching the progress window.");
+
+        // ProgressWindow defines ShowResume
+        Assert.True(progress.Contains("ShowResume(string taskId)", StringComparison.Ordinal),
+            "ProgressWindow must declare ShowResume(string taskId).");
     }
 }

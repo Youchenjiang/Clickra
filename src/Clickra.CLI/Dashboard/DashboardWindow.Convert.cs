@@ -6,6 +6,7 @@ using System.Drawing.Drawing2D;
 using System.Collections.Generic;
 using System.Runtime.InteropServices;
 using Clickra.Core;
+using Clickra.Core.Layout;
 using Clickra.Core.Processors;
 
 using static Clickra.UI.Native.Win32;
@@ -148,7 +149,8 @@ namespace Clickra.UI
                 g.DrawLine(divPen, contentX * s, 75 * s, (logW - 40) * s, 75 * s);
             }
 
-            int zoneX = (int)contentX, zoneY = 95, zoneW = (int)logW - (int)contentX - 50, zoneH = 120;
+            LayoutRect zone = DashboardLayout.ConvertZoneRect((int)contentX, (int)logW);
+            int zoneX = zone.X, zoneY = zone.Y, zoneW = zone.Width, zoneH = zone.Height;
             bool isZoneHovered = _hoveredElement == 18;
 
             Color zoneBg = isZoneHovered ? Color.FromArgb(42, 42, 42) : Color.FromArgb(34, 34, 34);
@@ -217,11 +219,11 @@ namespace Clickra.UI
                     g.DrawString($"{GetText("setting_output_title")}: {outPathDesc}", _subFont, descBrush, (zoneX + 20) * s, (zoneY + 85) * s);
                 }
 
-                int clearX = (int)logW - 110;
+                LayoutRect clearButton = DashboardLayout.ConvertClearButtonRect((int)logW);
                 bool isClearHovered = _hoveredElement == 25;
                 Color clearBtnBg = isClearHovered ? Color.FromArgb(60, 60, 60) : Color.FromArgb(45, 45, 45);
                 Color clearBtnBorder = isClearHovered ? Color.FromArgb(80, 80, 80) : Color.FromArgb(55, 55, 55);
-                using (var path = UIHelper.GetRoundedRectPath(new RectangleF(clearX * s, (zoneY + 12) * s, 48 * s, 22 * s), 3 * s))
+                using (var path = UIHelper.GetRoundedRectPath(new RectangleF(clearButton.X * s, clearButton.Y * s, clearButton.Width * s, clearButton.Height * s), 3 * s))
                 using (var bgBrush = new SolidBrush(clearBtnBg))
                 using (var borderPen = new Pen(clearBtnBorder))
                 {
@@ -234,23 +236,19 @@ namespace Clickra.UI
                     using var textBrush = new SolidBrush(btnText);
                     string clearText = GetText("convert_clear");
                     var size = g.MeasureString(clearText, _subFont);
-                    g.DrawString(clearText, _subFont, textBrush, (clearX + (48 - size.Width / s) / 2) * s, (zoneY + 12 + (22 - size.Height / s) / 2) * s);
+                    g.DrawString(clearText, _subFont, textBrush,
+                        (clearButton.X + (clearButton.Width - size.Width / s) / 2) * s,
+                        (clearButton.Y + (clearButton.Height - size.Height / s) / 2) * s);
                 }
             }
 
-            int groupGap = 14;
-            int groupW = (zoneW - 2 * groupGap) / 3;
-            int groupTop = 230;
-            int headerH = 24;
-            int cardH = 38;
-            int cardGap = 8;
-            for (int group = 0; group < 3; group++)
+            for (int group = 0; group < DashboardLayout.ConvertGroupCount; group++)
             {
-                int groupX = zoneX + group * (groupW + groupGap);
+                int groupX = DashboardLayout.ConvertGroupX(group, zoneX, zoneW);
                 if (_subFont != null)
                 {
                     using var headerBrush = new SolidBrush(Color.FromArgb(170, 170, 170));
-                    g.DrawString(GetText(GetCommandGroupKey(group)), _subFont, headerBrush, groupX * s, groupTop * s);
+                    g.DrawString(GetText(GetCommandGroupKey(group)), _subFont, headerBrush, groupX * s, DashboardLayout.ConvertGridTop * s);
                 }
 
                 int commandStart = 0;
@@ -260,9 +258,7 @@ namespace Clickra.UI
                 for (int local = 0; local < ConvertCommandGroupSizes[group]; local++)
                 {
                     int i = commandStart + local;
-                    int cardX = groupX;
-                    int cardY = groupTop + headerH + local * (cardH + cardGap);
-                    int cardW = groupW;
+                    LayoutRect card = DashboardLayout.ConvertCardRect(group, local, zoneX, zoneW);
 
                     bool isSelected = _convertCommandIndex == i;
                     bool isHovered = _hoveredElement == (50 + i);
@@ -291,7 +287,7 @@ namespace Clickra.UI
                         textColor = isHovered ? Color.White : Color.FromArgb(200, 200, 200);
                     }
 
-                    using var path = UIHelper.GetRoundedRectPath(new RectangleF(cardX * s, cardY * s, cardW * s, cardH * s), 5 * s);
+                    using var path = UIHelper.GetRoundedRectPath(new RectangleF(card.X * s, card.Y * s, card.Width * s, card.Height * s), 5 * s);
                     using var bgBrush = new SolidBrush(cardBg);
                     using var borderPen = new Pen(cardBorder, isSelected ? 1.5f * s : 1f * s);
                     g.FillPath(bgBrush, path);
@@ -303,20 +299,22 @@ namespace Clickra.UI
                     {
                         using var textBrush = new SolidBrush(textColor);
                         var size = g.MeasureString(cmdText, _tabFont);
-                        g.DrawString(cmdText, _tabFont, textBrush, (cardX + (cardW - size.Width / s) / 2) * s, (cardY + (cardH - size.Height / s) / 2) * s);
+                        g.DrawString(cmdText, _tabFont, textBrush,
+                            (card.X + (card.Width - size.Width / s) / 2) * s,
+                            (card.Y + (card.Height - size.Height / s) / 2) * s);
                     }
                 }
             }
 
             int maxCommandRows = ConvertCommandGroupSizes.Max();
-            int buttonY = groupTop + headerH + maxCommandRows * (cardH + cardGap) + 16;
+            LayoutRect startButton = DashboardLayout.ConvertStartButtonRect(zoneX, zoneW, maxCommandRows);
             if (_selectedFiles.Count > 0 && _convertCommandIndex != -1)
             {
                 bool isBtnHovered = _hoveredElement == 19;
                 Color btnBg = UIHelper.GetSystemColorizationColor();
                 if (isBtnHovered) btnBg = UIHelper.Lighten(btnBg, 0.15f);
 
-                using (var path = UIHelper.GetRoundedRectPath(new RectangleF(zoneX * s, buttonY * s, zoneW * s, 36 * s), 5 * s))
+                using (var path = UIHelper.GetRoundedRectPath(new RectangleF(startButton.X * s, startButton.Y * s, startButton.Width * s, startButton.Height * s), 5 * s))
                 using (var bgBrush = new SolidBrush(btnBg))
                 {
                     g.FillPath(bgBrush, path);
@@ -327,7 +325,9 @@ namespace Clickra.UI
                     string btnText = GetText("convert_start");
                     using var textBrush = new SolidBrush(Color.White);
                     var size = g.MeasureString(btnText, _tabFont);
-                    g.DrawString(btnText, _tabFont, textBrush, (zoneX + (zoneW - size.Width / s) / 2) * s, (buttonY + (36 - size.Height / s) / 2) * s);
+                    g.DrawString(btnText, _tabFont, textBrush,
+                        (startButton.X + (startButton.Width - size.Width / s) / 2) * s,
+                        (startButton.Y + (startButton.Height - size.Height / s) / 2) * s);
                 }
             }
         }

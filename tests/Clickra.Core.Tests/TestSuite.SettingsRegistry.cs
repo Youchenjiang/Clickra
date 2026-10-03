@@ -62,7 +62,7 @@ static partial class TestSuite
         runner.Run("Settings registry: Tray, visual splitter, and progress window localization coverage across all 5 languages", TestTraySplitterLocalizationCoverage);
         runner.Run("Settings registry: Fluent add-on settings localization coverage across all 5 languages", TestFluentSettingsLocalizationCoverage);
         runner.Run("Settings registry: Localization.T default language and formatting overloads", TestLocalizationDefaultLanguageAndFormatting);
-        runner.Run("Settings registry: Fluent-specific copy stays distinct from shared keys", TestFluentSpecificCopyPreserved);
+        runner.Run("Settings registry: surface-specific copy stays distinct from shared keys", TestFluentSpecificCopyPreserved);
         runner.Run("Localization guard: no hardcoded CJK text in Clickra.Fluent, Dashboard paint files, and the Win32 progress window", TestNoHardcodedChineseUiStrings);
         runner.Run("Settings registry: Translation diagnostics lists gaps grouped by language when translations are missing", TestTranslationDiagnosticsGapReport);
         runner.Run("Settings registry: All registered keys must have complete translations across all 5 languages", TestLocalizationDictionaryParity);
@@ -736,15 +736,15 @@ static partial class TestSuite
         Assert.Equal("元と同じ", Localization.T("fluent_output_source", LanguageJaJp));
         Assert.Equal("원본과 같음", Localization.T("fluent_output_source", LanguageKoKr));
         Assert.Equal("사용자 지정...", Localization.T("fluent_custom", LanguageKoKr));
-        Assert.Equal("Input paths", Localization.T("fluent_input_paths", LanguageEnUs));
-        Assert.Equal("Output paths", Localization.T("fluent_output_paths", LanguageEnUs));
-        Assert.Equal("错误消息", Localization.T("fluent_error_message", LanguageZhCn));
-        Assert.Equal("Error message", Localization.T("fluent_error_message", LanguageEnUs));
+        Assert.Equal("Input Paths", Localization.T("history_detail_inputs", LanguageEnUs));
+        Assert.Equal("Output Path", Localization.T("history_detail_outputs", LanguageEnUs));
+        Assert.Equal("错误信息", Localization.T("history_detail_error", LanguageZhCn));
+        Assert.Equal("Error Message", Localization.T("history_detail_error", LanguageEnUs));
 
         Assert.False(Localization.T("fluent_ok", LanguageJaJp) == Localization.T("dialog_ok", LanguageJaJp),
             "Fluent OK copy intentionally differs from the shared dialog label in Japanese.");
-        Assert.False(Localization.T("fluent_output_paths", LanguageEnUs) == Localization.T("history_detail_outputs", LanguageEnUs),
-            "Fluent history output copy intentionally preserves its plural English label.");
+        Assert.False(Localization.T("fluent_output_source", LanguageJaJp) == Localization.T("setting_output_same_as_source", LanguageJaJp),
+            "Fluent output-source copy intentionally differs from the shared settings label in Japanese.");
     }
 
     private static void TestTranslationDiagnosticsGapReport()

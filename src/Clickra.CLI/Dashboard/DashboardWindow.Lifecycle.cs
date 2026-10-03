@@ -120,16 +120,14 @@ namespace Clickra.UI
         {
             try
             {
-                _historyEntries = ClickraStorage.GetHistory(50);
-                _parkedEntries = ClickraStorage.GetParkedTasks();
-                _statTotal = _historyEntries.Count;
-                _statSuccess = _historyEntries.Count(h => h.IsSuccess);
-                _statFailed = _historyEntries.Count(h => !h.IsSuccess);
+                _historyFeed = HistoryFeed.Load(50);
+                _statTotal = _historyFeed.CompletedCount;
+                _statSuccess = _historyFeed.SuccessCount;
+                _statFailed = _historyFeed.FailedCount;
             }
             catch
             {
-                _historyEntries = new List<ClickraStorage.HistoryEntry>();
-                _parkedEntries = new List<ClickraStorage.HistoryEntry>();
+                _historyFeed = HistoryFeed.Empty;
                 _statTotal = 0;
                 _statSuccess = 0;
                 _statFailed = 0;

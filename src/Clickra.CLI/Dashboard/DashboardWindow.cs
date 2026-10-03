@@ -7,6 +7,7 @@ using System.Drawing.Text;
 using System.Drawing.Drawing2D;
 using System.Collections.Generic;
 using Clickra.Core;
+using Clickra.Core.Layout;
 using static Clickra.UI.Native.Win32;
 
 namespace Clickra.UI
@@ -45,7 +46,7 @@ namespace Clickra.UI
             float contentX = GetContentX(logW);
             float virtLogW = Math.Max(760f, logW);
             float rowW = virtLogW - contentX - 40;
-            
+
             float inputLabelW, outputLabelW, timeLabelW, errorLabelW;
             using (var tempBmp = new Bitmap(1, 1))
             using (var tempG = Graphics.FromImage(tempBmp))
@@ -66,37 +67,29 @@ namespace Clickra.UI
             {
                 0 => _overviewContentHeight,
                 1 => 450,
-                2 => CalcHistoryHeight(),
+                2 => HistoryLayout.ContentHeight(GetHistoryStack()),
                 3 => Math.Max(460f, _settingsContentHeight),
                 4 => Math.Max(460, _aboutBtnY + 60),
                 _ => 460
             };
-
-            float CalcHistoryHeight()
-            {
-                // 進行中任務佇列與待繼續任務各佔一列，持久化歷史紀錄接在後面。
-                int totalHeight = GetHistoryListStartY();
-                for (int i = 0; i < _historyEntries.Count; i++)
-                    totalHeight += (i == _expandedHistoryIndex ? 160 : 44) + 8;
-                return Math.Max(460, totalHeight + 20);
-            }
         }
 
-        /// <summary>一列佇列的間距：列高 44px 加上 8px 間隙。</summary>
-        private const int HistoryRowStride = 52;
+        /// <summary>
+        /// History 頁的縱向堆疊：進行中佇列 → 待繼續任務 → 持久化歷史紀錄。
+        /// 列高、行距與區塊高度都在 Core 的版面表（<see cref="DashboardLayout"/>、
+        /// <see cref="HistoryLayout"/>）裡，繪製、命中測試與這裡的捲動高度共用同一份堆疊，
+        /// 所以在上方插入一列時三者會一起移動。
+        ///
+        /// 三個區塊的列數都取自同一個清單（<see cref="HistoryFeed"/>，與 Fluent 的 History 頁共用），
+        /// 所以不會出現「這裡畫 2 列、命中判定以為有 3 列」這種漂移。
+        /// </summary>
+        static IReadOnlyList<HistoryBlock> GetHistoryStack() =>
+            HistoryLayout.Build(_historyFeed.ActiveCount, _historyFeed.ParkedCount, _historyFeed.CompletedCount, _expandedHistoryIndex);
 
-        /// <summary>待繼續任務區塊上方那一行標題的高度。</summary>
-        private const int ParkedBlockHeaderHeight = 30;
 
-        /// <summary>第一列持久化歷史紀錄的 Y。進行中佇列與待繼續任務都畫在它上方，因此繪製、
-        /// 點擊命中、hover 判定與捲動高度必須全部從這一個數字出發 —— 這個算式曾被各自複製在
-        /// 三處，只要上方多一列，點擊就會展開指標所指的那一列以上。</summary>
-        static int GetHistoryListStartY() =>
-            90 + ClickraStorage.GetActiveTasks().Count * HistoryRowStride + ParkedBlockHeight();
-
-        /// <summary>待繼續任務區塊的高度（含標題行）；沒有暫存任務時為 0。</summary>
-        static int ParkedBlockHeight() =>
-            _parkedEntries.Count == 0 ? 0 : ParkedBlockHeaderHeight + _parkedEntries.Count * HistoryRowStride;
+        /// <summary>堆疊中指定種類的區塊。</summary>
+        static HistoryBlock GetHistoryBlock(HistoryBlockKind kind) =>
+            HistoryLayout.Find(GetHistoryStack(), kind);
 
         static void RecreateBuffer(int w, int h)
         {
@@ -153,13 +146,9 @@ namespace Clickra.UI
             _sidebarWidth = (52f * _dpiScale + maxLabelW + 24f * _dpiScale) / _dpiScale;
             _sidebarWidth = Math.Max(130f, _sidebarWidth); // Ensure it's at least 130px
 
-            CacheButtonWidths();
-        }
-
-        static void CacheButtonWidths()
-        {
-            using var tempBmp = new Bitmap(1, 1);
-            using var tempG = Graphics.FromImage(tempBmp);
+            // Cache button widths to avoid GC pressure in HitTest
+            using var widthBmp = new Bitmap(1, 1);
+            using var tempG = Graphics.FromImage(widthBmp);
             if (_subFont != null)
             {
                 string textSource = GetText("setting_output_same_as_source");

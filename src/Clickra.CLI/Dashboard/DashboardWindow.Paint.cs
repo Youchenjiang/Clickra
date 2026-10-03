@@ -6,6 +6,7 @@ using System.Drawing.Drawing2D;
 using System.Collections.Generic;
 using Microsoft.Win32;
 using Clickra.Core;
+using Clickra.Core.Layout;
 
 using static Clickra.UI.Native.Win32;
 
@@ -61,12 +62,12 @@ namespace Clickra.UI
                 g.DrawString($"v{verStr}", _subFont, verBrush, 24 * s, (logH - 24) * s);
             }
 
-            // Draw Tabs
-            DrawTabButton(g, "\uE80F", GetText("tab_status"), 0, 120, sidebarW);
-            DrawTabButton(g, "\uEC7E", GetText("tab_convert"), 1, 168, sidebarW);
-            DrawTabButton(g, "\uE81C", GetText("tab_history"), 2, 216, sidebarW);
-            DrawTabButton(g, "\uE713", GetText("tab_settings"), 3, 264, sidebarW);
-            DrawTabButton(g, "\uE897", GetText("tab_about"), 4, 312, sidebarW);
+            // Draw Tabs：順序即索引，Y 由版面表推導（DashboardLayout.SidebarTabCount 要對得上）。
+            DrawTabButton(g, "\uE80F", GetText("tab_status"), 0, sidebarW);
+            DrawTabButton(g, "\uEC7E", GetText("tab_convert"), 1, sidebarW);
+            DrawTabButton(g, "\uE81C", GetText("tab_history"), 2, sidebarW);
+            DrawTabButton(g, "\uE713", GetText("tab_settings"), 3, sidebarW);
+            DrawTabButton(g, "\uE897", GetText("tab_about"), 4, sidebarW);
 
             // 2. Draw Content Area (with Clip & Translation)
             var state = g.Save();
@@ -87,7 +88,7 @@ namespace Clickra.UI
             }
             else if (_activeTab == 2)
             {
-                DrawHistoryTab(g, virtLogW, virtLogH, contentX);
+                PaintHistoryTab(g, virtLogW, virtLogH, contentX);
             }
             else if (_activeTab == 3)
             {
@@ -158,21 +159,23 @@ namespace Clickra.UI
             }
         }
 
-        static void DrawTabButton(Graphics g, string icon, string label, int tabIndex, int y, float sidebarW)
+        static void DrawTabButton(Graphics g, string icon, string label, int tabIndex, float sidebarW)
         {
             float s = _dpiScale;
             bool isActive = _activeTab == tabIndex;
             bool isHovered = _hoveredElement == tabIndex;
 
-            float scaledY = y * s;
-            float scaledH = 40 * s;
+            float tabY = DashboardLayout.SidebarTabY(tabIndex);
+            float scaledY = tabY * s;
+            float scaledH = DashboardLayout.SidebarTabHeight * s;
             float width = sidebarW - 4;
 
             if (isActive)
             {
                 // Accent left border
                 using var accentBrush = new SolidBrush(UIHelper.GetSystemColorizationColor());
-                g.FillRectangle(accentBrush, 0, scaledY + 4 * s, 4 * s, 32 * s);
+                g.FillRectangle(accentBrush, 0,
+                    (tabY + DashboardLayout.SidebarTabAccentInset) * s, 4 * s, DashboardLayout.SidebarTabAccentHeight * s);
 
                 // Subtle background for active tab
                 using var activeBg = new SolidBrush(Color.FromArgb(36, 36, 36));
