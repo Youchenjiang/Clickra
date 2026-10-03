@@ -47,8 +47,9 @@ Copy-Item "$publishDir/launcher/ClickraLauncher.exe" "$mainLayout/"
 Copy-Item "$publishDir/shell/ClickraShell.dll" "$mainLayout/"
 Copy-Item "$root/$($script:ThirdPartyNoticesFile)" "$mainLayout/"
 Copy-IconAssets -PackagingDir $packagingDir -LayoutDir $mainLayout
+New-PriResources -LayoutDir $mainLayout
 
-$mainRequired = @("Clickra.exe", "ClickraLauncher.exe", "ClickraShell.dll", "AppxManifest.xml", $script:ThirdPartyNoticesFile) + $script:WebpRuntimeFiles
+$mainRequired = @("Clickra.exe", "ClickraLauncher.exe", "ClickraShell.dll", "AppxManifest.xml", "resources.pri", $script:ThirdPartyNoticesFile) + $script:WebpRuntimeFiles
 $mainMissing = $mainRequired | Where-Object { -not (Test-Path "$mainLayout/$_") }
 if ($mainMissing) { throw "Main layout incomplete: $($mainMissing -join ', ')" }
 

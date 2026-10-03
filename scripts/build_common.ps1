@@ -97,6 +97,27 @@ function Copy-AssemblyLayout {
     Copy-IconAssets -PackagingDir $PackagingDir -LayoutDir $LayoutDir
 }
 
+function New-PriResources {
+    param(
+        [string]$LayoutDir
+    )
+    if (-not (Get-Command "makepri.exe" -ErrorAction SilentlyContinue)) {
+        Add-WindowsSdkToolsToPath
+    }
+    if (-not (Get-Command "makepri.exe" -ErrorAction SilentlyContinue)) {
+        throw "makepri.exe could not be found in PATH. Ensure Windows SDK is installed."
+    }
+    Write-Host "[Build] Generating resources.pri with makepri..." -ForegroundColor Gray
+    $configFile = Join-Path $LayoutDir "priconfig.xml"
+    & "makepri.exe" createconfig /cf "$configFile" /dq "en-US" /pv 10.0.0 /o
+    Assert-NativeSuccess
+    & "makepri.exe" new /pr "$LayoutDir" /cf "$configFile" /of (Join-Path $LayoutDir "resources.pri") /o
+    Assert-NativeSuccess
+    if (Test-Path $configFile) {
+        Remove-Item $configFile -Force
+    }
+}
+
 function Test-LayoutComplete {
     param([string]$LayoutDir)
     $required = @(
@@ -104,6 +125,7 @@ function Test-LayoutComplete {
         "ClickraLauncher.exe",
         "ClickraShell.dll",
         "AppxManifest.xml",
+        "resources.pri",
         $script:ThirdPartyNoticesFile
     ) + $script:WebpRuntimeFiles
     $missing = $required | Where-Object { -not (Test-Path "$LayoutDir/$_") }
@@ -120,6 +142,7 @@ function New-AndSignMsix {
         [string]$LayoutDir,
         [switch]$SkipSigning
     )
+    New-PriResources -LayoutDir $LayoutDir
     Test-LayoutComplete -LayoutDir $LayoutDir
     Write-Host "[Build] Creating MSIX Package..." -ForegroundColor Gray
     $msixPath = "$Root/Clickra.msix"

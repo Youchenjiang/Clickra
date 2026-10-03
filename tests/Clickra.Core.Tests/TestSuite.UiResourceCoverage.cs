@@ -55,9 +55,25 @@ static partial class TestSuite
         return keys.ToArray();
     }
 
+    /// <summary>AppxManifest 透過 ms-resource: 語法引用的 resw 鍵（如 AppName、AppDescription）。</summary>
+    private static string[] GetManifestConsumedResourceKeys(string repoRoot)
+    {
+        string manifestPath = Path.Combine(repoRoot, "packaging", "msix", "AppxManifest.xml");
+        string manifestContent = File.ReadAllText(manifestPath);
+        var matches = Regex.Matches(manifestContent, @"ms-resource:(?<key>[A-Za-z0-9_]+)", RegexOptions.None, UiResourceRegexTimeout);
+        var keys = matches.Select(m => m.Groups["key"].Value).Distinct(StringComparer.Ordinal).ToList();
+
+        Assert.True(keys.Contains("AppName", StringComparer.Ordinal),
+            "AppxManifest.xml must reference ms-resource:AppName.");
+        Assert.True(keys.Contains("AppDescription", StringComparer.Ordinal),
+            "AppxManifest.xml must reference ms-resource:AppDescription.");
+
+        return keys.ToArray();
+    }
+
     public static void RegisterUiResourceCoverageTests(TestRunner runner)
     {
-        runner.Run("Shell resources: resw keys and the keys the shell menu consumes are bidirectionally equal", TestShellResourceCoverage);
+        runner.Run("Package resources: resw keys and the keys consumed by shell menu and manifest are bidirectionally equal", TestShellResourceCoverage);
         runner.Run("Convert registry: every command label key is declared and translated in all 5 languages", TestConvertRegistryLabelCoverage);
     }
 
@@ -66,7 +82,9 @@ static partial class TestSuite
         string? root = FindRepoRoot();
         if (root is null) throw new TestSkippedException(RepoRootNotFoundMessage);
 
-        string[] consumed = GetShellConsumedResourceKeys(root);
+        string[] shellConsumed = GetShellConsumedResourceKeys(root);
+        string[] manifestConsumed = GetManifestConsumedResourceKeys(root);
+        string[] consumed = shellConsumed.Concat(manifestConsumed).Distinct(StringComparer.Ordinal).ToArray();
         string stringsDir = Path.Combine(root, "packaging", "msix", "Strings");
 
         string[] expected = Localization.SupportedLanguages.Select(CultureFolder).OrderBy(c => c, StringComparer.Ordinal).ToArray();
