@@ -23,9 +23,15 @@ if (guardsOnly && functionalOnly)
     return 2;
 }
 
-var filterMode = guardsOnly ? TestFilterMode.GuardsOnly :
-                 functionalOnly ? TestFilterMode.FunctionalOnly :
-                 TestFilterMode.All;
+var filterMode = TestFilterMode.All;
+if (guardsOnly)
+{
+    filterMode = TestFilterMode.GuardsOnly;
+}
+else if (functionalOnly)
+{
+    filterMode = TestFilterMode.FunctionalOnly;
+}
 
 if (clean)
 {
