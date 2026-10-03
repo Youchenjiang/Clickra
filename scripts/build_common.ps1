@@ -1,4 +1,4 @@
-# Shared helpers for Clickra MSIX build scripts.
+﻿# Shared helpers for Clickra MSIX build scripts.
 # Dot-sourced by build_msix.ps1 and build_store.ps1
 # so all build tracks keep a single copy of environment setup, build steps, and signing.
 $ErrorActionPreference = "Stop"

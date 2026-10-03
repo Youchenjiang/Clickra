@@ -1,4 +1,4 @@
-# Clickra Store Submission Build
+﻿# Clickra Store Submission Build
 # Produces two MSIX files ready for Microsoft Store upload:
 #   1. Clickra_Main.msix    — NativeAOT with bundled image codec runtime
 #   2. Clickra_Fluent.msix   — WinUI 3 optional, carries Windows App Runtime
