@@ -32,8 +32,7 @@ static partial class TestSuite
     {
         // 引擎／PDF 設定：這些曾被設定頁與錯誤對話框使用，現在同一個位置改由 Core 的
         // 預設表或別的鍵呈現，字串本身已經沒有讀取端。
-        // （setting_pdf_lang 已接上 PDF 目標語言下拉的標題；setting_pdf_compress_group_image／_other
-        // 已接上設定頁分組標題；setting_pdf_compress_dpi／_quality 描述的是已被退役的兩個設定，兩者連同 5 語言翻譯一起刪除。）
+        // setting_pdf_compress_group_image／_other 已接上設定頁分組標題。
         "engine_pdf", "engine_ppt", "engine_word", "engine_excel", "engine_libreoffice",
         "setting_libreoffice_optional", "error_processing_failed",
 
