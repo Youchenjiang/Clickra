@@ -438,17 +438,8 @@ sealed class TestRunner
 
     public void Run(string name, Action test, TestCategory category)
     {
-        // Auto-detect guard if test name explicitly starts with "Localization guard:"
-        if (category == TestCategory.Functional && name.StartsWith("Localization guard:", StringComparison.OrdinalIgnoreCase))
-        {
-            category = TestCategory.Guard;
-        }
-
-        if (_filterMode == TestFilterMode.GuardsOnly && category != TestCategory.Guard)
-        {
-            return;
-        }
-        if (_filterMode == TestFilterMode.FunctionalOnly && category != TestCategory.Functional)
+        category = NormalizeCategory(name, category);
+        if (!ShouldRun(category))
         {
             return;
         }
@@ -467,29 +458,16 @@ sealed class TestRunner
             CultureInfo.CurrentUICulture = CultureInfo.InvariantCulture;
 
             test();
-            if (category == TestCategory.Guard) GuardPassed++; else FunctionalPassed++;
+            RecordPassed(category);
             Console.WriteLine($"PASS{tag} {name}");
         }
         catch (TestSkippedException ex)
         {
-            // --require-fixtures turns missing fixtures into failures so a
-            // fixture-expecting gate fails loudly (see Program.cs).
-            if (_requireFixtures)
-            {
-                if (category == TestCategory.Guard) GuardFailures++; else FunctionalFailures++;
-                Console.WriteLine($"FAIL{tag} {name}");
-                Console.WriteLine(ex.Message);
-            }
-            else
-            {
-                if (category == TestCategory.Guard) GuardSkipped++; else FunctionalSkipped++;
-                Console.WriteLine($"SKIP{tag} {name}");
-                Console.WriteLine(ex.Message);
-            }
+            HandleSkipped(name, tag, category, ex);
         }
         catch (Exception ex)
         {
-            if (category == TestCategory.Guard) GuardFailures++; else FunctionalFailures++;
+            RecordFailure(category);
             Console.WriteLine($"FAIL{tag} {name}");
             Console.WriteLine(ex.Message);
         }
@@ -497,6 +475,77 @@ sealed class TestRunner
         {
             CultureInfo.CurrentCulture = savedCulture;
             CultureInfo.CurrentUICulture = savedUiCulture;
+        }
+    }
+
+    private static TestCategory NormalizeCategory(string name, TestCategory category)
+    {
+        // Auto-detect guard if test name explicitly starts with "Localization guard:"
+        return category == TestCategory.Functional &&
+               name.StartsWith("Localization guard:", StringComparison.OrdinalIgnoreCase)
+            ? TestCategory.Guard
+            : category;
+    }
+
+    private bool ShouldRun(TestCategory category) =>
+        _filterMode switch
+        {
+            TestFilterMode.GuardsOnly => category == TestCategory.Guard,
+            TestFilterMode.FunctionalOnly => category == TestCategory.Functional,
+            _ => true
+        };
+
+    private void HandleSkipped(string name, string tag, TestCategory category, TestSkippedException ex)
+    {
+        // --require-fixtures turns missing fixtures into failures so a
+        // fixture-expecting gate fails loudly (see Program.cs).
+        if (_requireFixtures)
+        {
+            RecordFailure(category);
+            Console.WriteLine($"FAIL{tag} {name}");
+        }
+        else
+        {
+            RecordSkipped(category);
+            Console.WriteLine($"SKIP{tag} {name}");
+        }
+
+        Console.WriteLine(ex.Message);
+    }
+
+    private void RecordPassed(TestCategory category)
+    {
+        if (category == TestCategory.Guard)
+        {
+            GuardPassed++;
+        }
+        else
+        {
+            FunctionalPassed++;
+        }
+    }
+
+    private void RecordFailure(TestCategory category)
+    {
+        if (category == TestCategory.Guard)
+        {
+            GuardFailures++;
+        }
+        else
+        {
+            FunctionalFailures++;
+        }
+    }
+
+    private void RecordSkipped(TestCategory category)
+    {
+        if (category == TestCategory.Guard)
+        {
+            GuardSkipped++;
+        }
+        else
+        {
+            FunctionalSkipped++;
         }
     }
 

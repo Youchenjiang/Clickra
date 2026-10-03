@@ -19,7 +19,7 @@ bool functionalOnly = args.Contains("--functional", StringComparer.OrdinalIgnore
 
 if (guardsOnly && functionalOnly)
 {
-    Console.Error.WriteLine("Error: Cannot specify both --guards and --functional flags simultaneously.");
+    await Console.Error.WriteLineAsync("Error: Cannot specify both --guards and --functional flags simultaneously.");
     return 2;
 }
 
