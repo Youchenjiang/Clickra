@@ -10,23 +10,106 @@ using Clickra.Core.Processors;
 namespace Clickra.Core.Tests;
 
 /// <summary>
-/// 兩條「畫面上會出現的字都必須有一份宣告過的翻譯」的來源端守門。
+/// 三條「畫面上與上架時會出現的字都必須有一份宣告過的翻譯」的來源端守門：
 ///
 /// 1. Win32 Shell 的右鍵選單直接讀 packaging/msix/Strings/&lt;culture&gt;/Resources.resw，
 ///    而 ShellUtils.GetString 找不到鍵時把**鍵名本身**印給使用者。因此 resw 的鍵集合與
-///    Shell 實際查詢的鍵集合必須雙向相等：少一條就是選單上出現 Menu_Xxx，多一條就是
-///    五種語言都翻好了卻沒有任何人看得到的殘餘鍵。
+///    Shell 及 Manifest 實際查詢的鍵集合必須雙向相等：少一條就是選單上出現 Menu_Xxx，
+///    多一條就是五種語言都翻好了卻沒有任何人看得到的殘餘鍵。
 ///
 /// 2. ConvertCommandRegistry 是命令中繼資料的單一來源，它的 LabelKey 由 Fluent 與 CLI
 ///    Dashboard 動態查表（GetLabelKey）之後才送進 Localization。這種間接查詢不會被任何
 ///    靜態掃描抓到 —— 先前就有 6 個圖片命令的標籤鍵從未被宣告，畫面會直接顯示
 ///    cmd_img_to_png 這種原始鍵名 —— 所以在這裡用執行期的登錄表逐一驗證。
+///
+/// 3. Microsoft Store 上架清單文件（docs/StoreListing_*.md）必須與 Localization 支援語言
+///    雙向嚴格一致、檔案齊全、格式合規且九大 Partner Center 欄位無遺漏。
 /// </summary>
 static partial class TestSuite
 {
     private static readonly TimeSpan UiResourceRegexTimeout = TimeSpan.FromSeconds(1);
     /// <summary>UI 語言的程式碼（zh-TW）與 resw 資料夾名稱（zh-tw）互轉。</summary>
     private static string CultureFolder(string languageCode) => languageCode.ToLowerInvariant();
+
+    /// <summary>
+    /// 應用程式支援語言與 docs/StoreListing_*.md 檔案名稱的對應關係。
+    /// 任何新語言的加入都必須在此處宣告對應的商店說明文件。
+    /// </summary>
+    private static readonly Dictionary<string, string> StoreListingFileByLanguage = new(StringComparer.OrdinalIgnoreCase)
+    {
+        ["zh-TW"] = "StoreListing_ZH.md",
+        ["en-US"] = "StoreListing_EN.md",
+        ["ja-JP"] = "StoreListing_JA.md",
+        ["ko-KR"] = "StoreListing_KO.md",
+        ["zh-CN"] = "StoreListing_ZH-CN.md",
+    };
+
+    /// <summary>
+    /// Microsoft Partner Center 商店清單文件必須具備的 9 個標準 H2 欄位。
+    /// </summary>
+    private static readonly string[] RequiredStoreListingSections =
+    {
+        "Product Name",
+        "Description",
+        "What's new in this version",
+        "Product Features",
+        "Short title",
+        "Voice title",
+        "Short description",
+        "Keywords",
+        "Copyright and trademark info"
+    };
+
+    private static Dictionary<string, string> ParseStoreListingSections(string markdown)
+    {
+        var sections = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        string currentSection = "";
+        var lines = new List<string>();
+
+        using var reader = new StringReader(markdown);
+        string? line;
+        while ((line = reader.ReadLine()) != null)
+        {
+            if (line.StartsWith("## ", StringComparison.Ordinal))
+            {
+                if (!string.IsNullOrEmpty(currentSection))
+                {
+                    sections[currentSection] = string.Join(Environment.NewLine, lines).Trim();
+                    lines.Clear();
+                }
+                currentSection = line.Substring(3).Trim();
+            }
+            else if (!string.IsNullOrEmpty(currentSection))
+            {
+                lines.Add(line);
+            }
+        }
+        if (!string.IsNullOrEmpty(currentSection))
+        {
+            sections[currentSection] = string.Join(Environment.NewLine, lines).Trim();
+        }
+        return sections;
+    }
+
+    private static string[] ExtractBulletItems(string sectionContent)
+    {
+        using var reader = new StringReader(sectionContent);
+        var items = new List<string>();
+        string? line;
+        while ((line = reader.ReadLine()) != null)
+        {
+            string trimmed = line.Trim();
+            if (trimmed.StartsWith("- ", StringComparison.Ordinal) || trimmed.StartsWith("* ", StringComparison.Ordinal))
+            {
+                string item = trimmed.Substring(2).Trim();
+                if (!string.IsNullOrEmpty(item))
+                {
+                    items.Add(item);
+                }
+            }
+        }
+        return items.ToArray();
+    }
 
     /// <summary>Shell 選單會查詢的 resw 鍵：MenuKeys 陣列，加上根項目標題的鍵。</summary>
     private static string[] GetShellConsumedResourceKeys(string repoRoot)
@@ -75,6 +158,7 @@ static partial class TestSuite
     {
         runner.Run("Package resources: resw keys and the keys consumed by shell menu and manifest are bidirectionally equal", TestShellResourceCoverage);
         runner.Run("Convert registry: every command label key is declared and translated in all 5 languages", TestConvertRegistryLabelCoverage);
+        runner.Run("Store listing: docs/StoreListing_*.md covers all supported languages with complete fields", TestStoreListingCoverage);
     }
 
     private static void TestShellResourceCoverage()
@@ -168,6 +252,77 @@ static partial class TestSuite
                 Assert.True(Localization.HasExactTranslation(key, lang),
                     key + " is a command label but has no " + lang + " translation; the UI would show the key name.");
             }
+        }
+    }
+
+    private static void TestStoreListingCoverage()
+    {
+        string? root = FindRepoRoot();
+        if (root is null) throw new TestSkippedException(RepoRootNotFoundMessage);
+
+        string[] mappedLangs = StoreListingFileByLanguage.Keys.OrderBy(k => k, StringComparer.Ordinal).ToArray();
+        string[] supportedLangs = Localization.SupportedLanguages.OrderBy(k => k, StringComparer.Ordinal).ToArray();
+        Assert.True(mappedLangs.SequenceEqual(supportedLangs),
+            "StoreListingFileByLanguage must exactly match Localization.SupportedLanguages. " +
+            "Mapped: [" + string.Join(", ", mappedLangs) + "], Supported: [" + string.Join(", ", supportedLangs) + "]");
+
+        string docsDir = Path.Combine(root, "docs");
+        string[] actualListingFiles = Directory.GetFiles(docsDir, "StoreListing_*.md")
+            .Select(Path.GetFileName)
+            .Where(f => !string.IsNullOrEmpty(f))
+            .Cast<string>()
+            .OrderBy(f => f, StringComparer.OrdinalIgnoreCase)
+            .ToArray();
+        string[] expectedListingFiles = StoreListingFileByLanguage.Values
+            .OrderBy(f => f, StringComparer.OrdinalIgnoreCase)
+            .ToArray();
+        Assert.True(expectedListingFiles.SequenceEqual(actualListingFiles, StringComparer.OrdinalIgnoreCase),
+            "The StoreListing markdown files in docs/ must exactly match the application's supported languages. " +
+            "Expected: [" + string.Join(", ", expectedListingFiles) + "], Found: [" + string.Join(", ", actualListingFiles) + "]");
+
+        foreach (string lang in Localization.SupportedLanguages)
+        {
+            string fileName = StoreListingFileByLanguage[lang];
+            string filePath = Path.Combine(docsDir, fileName);
+            Assert.True(File.Exists(filePath), "Store listing file for " + lang + " (" + fileName + ") must exist.");
+
+            string content = File.ReadAllText(filePath);
+            Assert.False(string.IsNullOrWhiteSpace(content), fileName + " must not be empty.");
+            Assert.True(content.StartsWith("# Microsoft Store", StringComparison.OrdinalIgnoreCase),
+                fileName + " must begin with '# Microsoft Store' header.");
+
+            var sections = ParseStoreListingSections(content);
+            foreach (string requiredSection in RequiredStoreListingSections)
+            {
+                Assert.True(sections.ContainsKey(requiredSection),
+                    fileName + " is missing required section '## " + requiredSection + "'.");
+                Assert.False(string.IsNullOrWhiteSpace(sections[requiredSection]),
+                    fileName + " has empty content for required section '## " + requiredSection + "'.");
+            }
+
+            Assert.True(string.Equals(sections["Product Name"].Trim(), "Clickra", StringComparison.Ordinal),
+                fileName + " Product Name must be 'Clickra', found '" + sections["Product Name"] + "'.");
+            Assert.True(string.Equals(sections["Short title"].Trim(), "Clickra", StringComparison.Ordinal),
+                fileName + " Short title must be 'Clickra'.");
+            Assert.True(string.Equals(sections["Voice title"].Trim(), "Clickra", StringComparison.Ordinal),
+                fileName + " Voice title must be 'Clickra'.");
+
+            string[] features = ExtractBulletItems(sections["Product Features"]);
+            Assert.True(features.Length > 0, fileName + " must have at least one feature bullet in Product Features.");
+            Assert.True(features.Length <= 20,
+                fileName + " has " + features.Length + " features, exceeding Partner Center maximum of 20.");
+
+            string[] keywords = ExtractBulletItems(sections["Keywords"]);
+            Assert.True(keywords.Length > 0, fileName + " must have at least one keyword bullet in Keywords.");
+            Assert.True(keywords.Length <= 7,
+                fileName + " has " + keywords.Length + " keywords, exceeding Partner Center maximum of 7.");
+
+            Assert.True(sections["Description"].Length >= 50,
+                fileName + " Description is too short (" + sections["Description"].Length + " chars).");
+            Assert.True(sections["Short description"].Length >= 20,
+                fileName + " Short description is too short (" + sections["Short description"].Length + " chars).");
+            Assert.True(sections["Copyright and trademark info"].Contains("Youchen Jiang", StringComparison.OrdinalIgnoreCase),
+                fileName + " Copyright info must credit the author.");
         }
     }
 }
