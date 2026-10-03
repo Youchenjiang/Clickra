@@ -13,6 +13,8 @@ namespace Clickra.UI
 {
     public static partial class DashboardWindow
     {
+        private const string AppTitle = "Clickra";
+
         /// <summary>Routes left-button clicks to the active dashboard tab's hit regions.</summary>
         static void HandleLButtonDown(IntPtr hwnd, IntPtr w, IntPtr l)
         {
@@ -91,45 +93,50 @@ namespace Clickra.UI
             if (string.IsNullOrEmpty(taskId)) return;
 
             if (action is ParkedActionShorten or ParkedActionExtend)
-            {
-                int delta = action == ParkedActionExtend
-                    ? ClickraSettings.ParkedRetentionStepDays
-                    : -ClickraSettings.ParkedRetentionStepDays;
-                if (ClickraStorage.AdjustParkedRetention(taskId, delta) is null) return;
+                HandleParkedRetentionAdjustment(hwnd, taskId, action);
+            else if (action == ParkedActionCancel)
+                HandleParkedCancel(hwnd, taskId);
+            else if (action == ParkedActionResume)
+                HandleParkedResume(hwnd, taskId);
+        }
 
-                RefreshHistoryData();
-                InvalidateRect(hwnd, IntPtr.Zero, false);
-                return;
-            }
+        static void HandleParkedRetentionAdjustment(IntPtr hwnd, string taskId, int action)
+        {
+            int delta = action == ParkedActionExtend
+                ? ClickraSettings.ParkedRetentionStepDays
+                : -ClickraSettings.ParkedRetentionStepDays;
+            if (ClickraStorage.AdjustParkedRetention(taskId, delta) is null) return;
 
-            if (action == ParkedActionCancel)
-            {
-                if (MessageBox(hwnd, GetText("task_parked_cancel_confirm"), "Clickra", 0x24) != 6) return;
-                ClickraStorage.CancelParkedTask(taskId);
-                RefreshHistoryData();
-                InvalidateRect(hwnd, IntPtr.Zero, false);
-                return;
-            }
+            RefreshHistoryData();
+            InvalidateRect(hwnd, IntPtr.Zero, false);
+        }
 
-            if (action == ParkedActionResume)
+        static void HandleParkedCancel(IntPtr hwnd, string taskId)
+        {
+            if (MessageBox(hwnd, GetText("task_parked_cancel_confirm"), AppTitle, 0x24) != 6) return;
+            ClickraStorage.CancelParkedTask(taskId);
+            RefreshHistoryData();
+            InvalidateRect(hwnd, IntPtr.Zero, false);
+        }
+
+        static void HandleParkedResume(IntPtr hwnd, string taskId)
+        {
+            var thread = new System.Threading.Thread(() =>
             {
-                var thread = new System.Threading.Thread(() =>
+                try
                 {
-                    try
-                    {
-                        ProgressWindow.ShowResume(taskId);
-                    }
-                    catch (Exception ex)
-                    {
-                        MessageBox(IntPtr.Zero, $"Execution failed: {ex.Message}", "Clickra", 0x10);
-                    }
-                });
-                thread.SetApartmentState(System.Threading.ApartmentState.STA);
-                thread.Start();
+                    ProgressWindow.ShowResume(taskId);
+                }
+                catch (Exception ex)
+                {
+                    MessageBox(IntPtr.Zero, $"Execution failed: {ex.Message}", AppTitle, 0x10);
+                }
+            });
+            thread.SetApartmentState(System.Threading.ApartmentState.STA);
+            thread.Start();
 
-                RefreshHistoryData();
-                InvalidateRect(hwnd, IntPtr.Zero, false);
-            }
+            RefreshHistoryData();
+            InvalidateRect(hwnd, IntPtr.Zero, false);
         }
 
         /// <summary>True when the element is one of the tab-bar buttons (0-4).</summary>
@@ -465,7 +472,7 @@ namespace Clickra.UI
         /// <summary>Handles the history toolbar clear button.</summary>
         static void HandleHistoryToolbarClick(IntPtr hwnd)
         {
-            if (MessageBox(hwnd, GetText("history_clear_confirm"), "Clickra", 0x24) == 6)
+            if (MessageBox(hwnd, GetText("history_clear_confirm"), AppTitle, 0x24) == 6)
             {
                 ClickraStorage.ClearHistory();
                 _expandedHistoryIndex = -1;
@@ -632,7 +639,7 @@ namespace Clickra.UI
             }
             catch (Exception ex)
             {
-                MessageBox(hwnd, $"Cannot open Store: {ex.Message}", "Clickra", 0x10);
+                MessageBox(hwnd, $"Cannot open Store: {ex.Message}", AppTitle, 0x10);
             }
         }
 
@@ -671,16 +678,16 @@ namespace Clickra.UI
                 {
                     ClickraStorage.SaveSetting(ClickraSettings.LibreOfficePath, candidate);
                     ClickraStorage.SaveSetting(ClickraSettings.LibreOfficeRemovalPendingRestart, ClickraSettings.ValueFalse);
-                    MessageBox(hwnd, string.Format(GetText("setting_libreoffice_validated"), Path.GetDirectoryName(candidate)), "Clickra", 0x40);
+                    MessageBox(hwnd, string.Format(GetText("setting_libreoffice_validated"), Path.GetDirectoryName(candidate)), AppTitle, 0x40);
                 }
                 else
                 {
-                    MessageBox(hwnd, GetText("setting_libreoffice_validation_failed"), "Clickra", 0x30);
+                    MessageBox(hwnd, GetText("setting_libreoffice_validation_failed"), AppTitle, 0x30);
                 }
             }
             else
             {
-                MessageBox(hwnd, GetText("setting_libreoffice_invalid"), "Clickra", 0x30);
+                MessageBox(hwnd, GetText("setting_libreoffice_invalid"), AppTitle, 0x30);
             }
             InvalidateRect(hwnd, IntPtr.Zero, false);
         }
@@ -692,7 +699,7 @@ namespace Clickra.UI
             {
                 if (_libreOfficeDownloadInProgress)
                 {
-                    MessageBox(hwnd, GetText("setting_libreoffice_download_in_progress"), "Clickra", 0x40);
+                    MessageBox(hwnd, GetText("setting_libreoffice_download_in_progress"), AppTitle, 0x40);
                     return;
                 }
             }
@@ -713,7 +720,7 @@ namespace Clickra.UI
                 MessageBox(
                     hwnd,
                     string.Format(GetText("setting_libreoffice_already_current"), installedVersion),
-                    "Clickra",
+                    AppTitle,
                     0x40);
                 InvalidateRect(hwnd, IntPtr.Zero, false);
                 return;
@@ -727,7 +734,7 @@ namespace Clickra.UI
                 LibreOfficeEngineInstaller.GetDefaultInstallRoot(),
                 package.Sha256);
 
-            if (MessageBox(hwnd, prompt, "Clickra", 0x41) != 1) return;
+            if (MessageBox(hwnd, prompt, AppTitle, 0x41) != 1) return;
 
             lock (_libreOfficeDownloadLock)
             {
@@ -823,16 +830,16 @@ namespace Clickra.UI
                         ? "setting_libreoffice_install_restart_required"
                         : "setting_libreoffice_download_ready"),
                     string.IsNullOrWhiteSpace(sofficePath) ? LibreOfficeEngineInstaller.GetDefaultInstallRoot() : sofficePath),
-                "Clickra",
+                AppTitle,
                 0x40);
             if (!managementRecorded)
-                MessageBox(hwnd, GetText("setting_libreoffice_management_unverified"), "Clickra", 0x30);
+                MessageBox(hwnd, GetText("setting_libreoffice_management_unverified"), AppTitle, 0x30);
         }
 
         /// <summary>Shows the LibreOffice download/install failure message on the dashboard.</summary>
         private static void ShowDownloadFailureMessage(IntPtr hwnd, string errorMessage)
         {
-            MessageBox(hwnd, string.Format(GetText("setting_libreoffice_download_failed"), errorMessage), "Clickra", 0x10);
+            MessageBox(hwnd, string.Format(GetText("setting_libreoffice_download_failed"), errorMessage), AppTitle, 0x10);
         }
 
         /// <summary>Starts the LibreOffice uninstall flow after the confirmation prompt.</summary>
@@ -842,14 +849,14 @@ namespace Clickra.UI
             {
                 if (_libreOfficeDownloadInProgress)
                 {
-                    MessageBox(hwnd, GetText("setting_libreoffice_download_in_progress"), "Clickra", 0x40);
+                    MessageBox(hwnd, GetText("setting_libreoffice_download_in_progress"), AppTitle, 0x40);
                     return;
                 }
             }
 
             if (ClickraStorage.GetSetting(ClickraSettings.LibreOfficeRemovalPendingRestart).Equals(ClickraSettings.ValueTrue, StringComparison.OrdinalIgnoreCase))
             {
-                MessageBox(hwnd, GetText("setting_libreoffice_removal_pending"), "Clickra", 0x40);
+                MessageBox(hwnd, GetText("setting_libreoffice_removal_pending"), AppTitle, 0x40);
                 return;
             }
 
@@ -857,11 +864,11 @@ namespace Clickra.UI
             // The dashboard hides the button otherwise, but the action still has to refuse on its own.
             if (!LibreOfficeEngineInstaller.WasInstalledByClickra())
             {
-                MessageBox(hwnd, GetText("setting_libreoffice_external_note"), "Clickra", 0x40);
+                MessageBox(hwnd, GetText("setting_libreoffice_external_note"), AppTitle, 0x40);
                 return;
             }
 
-            if (MessageBox(hwnd, GetText("setting_libreoffice_uninstall_confirm"), "Clickra", 0x31) != 1) return;
+            if (MessageBox(hwnd, GetText("setting_libreoffice_uninstall_confirm"), AppTitle, 0x31) != 1) return;
 
             lock (_libreOfficeDownloadLock)
             {
@@ -898,7 +905,7 @@ namespace Clickra.UI
                     GetText(uninstallResult.RestartRequired
                         ? "setting_libreoffice_uninstall_restart_required"
                         : "setting_libreoffice_uninstall_ready"),
-                    "Clickra",
+                    AppTitle,
                     0x40));
             }
             catch (Exception ex)
@@ -906,7 +913,7 @@ namespace Clickra.UI
                 PostDashboardAction(hwnd, () => MessageBox(
                     hwnd,
                     string.Format(GetText("setting_libreoffice_uninstall_failed"), ex.Message),
-                    "Clickra",
+                    AppTitle,
                     0x10));
             }
             finally
@@ -922,7 +929,7 @@ namespace Clickra.UI
             {
                 if (_libreOfficeDownloadInProgress)
                 {
-                    MessageBox(hwnd, GetText("setting_libreoffice_download_in_progress"), "Clickra", 0x40);
+                    MessageBox(hwnd, GetText("setting_libreoffice_download_in_progress"), AppTitle, 0x40);
                     return;
                 }
             }
@@ -938,7 +945,7 @@ namespace Clickra.UI
                 return;
             }
 
-            if (MessageBox(hwnd, GetText("setting_libreoffice_adopt_confirm"), "Clickra", 0x31) != 1) return;
+            if (MessageBox(hwnd, GetText("setting_libreoffice_adopt_confirm"), AppTitle, 0x31) != 1) return;
 
             try
             {
@@ -946,12 +953,12 @@ namespace Clickra.UI
             }
             catch (InvalidOperationException)
             {
-                MessageBox(hwnd, GetText("setting_libreoffice_external_note"), "Clickra", 0x30);
+                MessageBox(hwnd, GetText("setting_libreoffice_external_note"), AppTitle, 0x30);
                 InvalidateRect(hwnd, IntPtr.Zero, false);
                 return;
             }
             InvalidateRect(hwnd, IntPtr.Zero, false);
-            MessageBox(hwnd, GetText("setting_libreoffice_adopt_success"), "Clickra", 0x40);
+            MessageBox(hwnd, GetText("setting_libreoffice_adopt_success"), AppTitle, 0x40);
         }
 
         /// <summary>Toggles the UI-language and PDF-language dropdowns.</summary>
@@ -1075,7 +1082,7 @@ namespace Clickra.UI
                 }
                 catch (Exception ex)
                 {
-                    MessageBox(hwnd, $"Cannot open browser: {ex.Message}", "Clickra", 0x10);
+                    MessageBox(hwnd, $"Cannot open browser: {ex.Message}", AppTitle, 0x10);
                 }
             }
             else if (element == 24)
@@ -1113,7 +1120,7 @@ namespace Clickra.UI
                 }
                 catch (Exception ex)
                 {
-                    MessageBox(hwnd, $"Cannot start feedback: {ex.Message}", "Clickra", 0x10);
+                    MessageBox(hwnd, $"Cannot start feedback: {ex.Message}", AppTitle, 0x10);
                 }
             }
         }

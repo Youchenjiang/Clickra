@@ -166,24 +166,32 @@ namespace Clickra.UI
             for (int i = _startIndex; i < files.Count; i++)
             {
                 _cts.Token.ThrowIfCancellationRequested();
-                try { ClickraStorage.SetActiveRecordIndex(i); } catch { /* Non-critical UI state; ignore if storage unavailable */ }
-                if (!string.IsNullOrEmpty(TaskId)) try { ClickraStorage.SetTaskIndex(TaskId, i); } catch { }
-                var f = files[i];
-                string outName = Path.Combine(outputDir, Path.GetFileNameWithoutExtension(f) + "_compressed.pdf");
-                progressCallback((i * 100) + 10, files.Count * 100, Loc("cli_progress_compressing_pdf", Path.GetFileName(f), i + 1, files.Count));
-
-                var pdfOptions = BuildPdfCompressOptions();
-
-                FileProcessor.CompressPdf(f, outName, pdfOptions, (curr, tot, msg) => {
-                    int progressPct = tot > 0 ? (int)(curr * 80.0 / tot) + 10 : 10;
-                    if (curr >= tot && !string.IsNullOrWhiteSpace(msg))
-                        compressionSummary = msg;
-                    progressCallback((i * 100) + progressPct, files.Count * 100, Loc("cli_progress_compressing_pdf_stage", msg, i + 1, files.Count));
-                }, _cts.Token);
+                TryRecordTaskIndex(i);
+                string fileSummary = RunCompressPdfFile(files[i], outputDir, i, files.Count, progressCallback);
+                if (!string.IsNullOrWhiteSpace(fileSummary)) compressionSummary = fileSummary;
             }
             _cts.Token.ThrowIfCancellationRequested();
             progressCallback(files.Count * 100, files.Count * 100,
                 string.IsNullOrWhiteSpace(compressionSummary) ? Loc("cli_progress_compressing_pdf_done") : compressionSummary);
+        }
+
+        private string RunCompressPdfFile(string file, string outputDir, int index, int total,
+            Action<int, int, string> progressCallback)
+        {
+            string summary = "";
+            string outName = Path.Combine(outputDir, Path.GetFileNameWithoutExtension(file) + "_compressed.pdf");
+            progressCallback((index * 100) + 10, total * 100,
+                Loc("cli_progress_compressing_pdf", Path.GetFileName(file), index + 1, total));
+
+            var pdfOptions = BuildPdfCompressOptions();
+            FileProcessor.CompressPdf(file, outName, pdfOptions, (curr, tot, msg) =>
+            {
+                int progressPct = tot > 0 ? (int)(curr * 80.0 / tot) + 10 : 10;
+                if (curr >= tot && !string.IsNullOrWhiteSpace(msg)) summary = msg;
+                progressCallback((index * 100) + progressPct, total * 100,
+                    Loc("cli_progress_compressing_pdf_stage", msg, index + 1, total));
+            }, _cts.Token);
+            return summary;
         }
 
         /// <summary>Builds the PDF compression options dictionary from saved settings.</summary>
@@ -196,8 +204,7 @@ namespace Clickra.UI
             for (int i = _startIndex; i < files.Count; i++)
             {
                 _cts.Token.ThrowIfCancellationRequested();
-                try { ClickraStorage.SetActiveRecordIndex(i); } catch { /* Ignored: history recording must not abort processing. */ }
-                if (!string.IsNullOrEmpty(TaskId)) try { ClickraStorage.SetTaskIndex(TaskId, i); } catch { }
+                TryRecordTaskIndex(i);
                 var f = files[i];
                 string outName = Path.Combine(outputDir, Path.GetFileNameWithoutExtension(f) + ".pdf");
                 progressCallback((i * 100) + 50, files.Count * 100, Loc("cli_progress_converting_image", Path.GetFileName(f), i + 1, files.Count));
@@ -229,8 +236,7 @@ namespace Clickra.UI
             for (int i = _startIndex; i < files.Count; i++)
             {
                 _cts.Token.ThrowIfCancellationRequested();
-                try { ClickraStorage.SetActiveRecordIndex(i); } catch { /* Ignored: history recording must not abort processing. */ }
-                if (!string.IsNullOrEmpty(TaskId)) try { ClickraStorage.SetTaskIndex(TaskId, i); } catch { }
+                TryRecordTaskIndex(i);
                 var f = files[i];
                 string outName = Path.Combine(outputDir, Path.GetFileNameWithoutExtension(f) + "_translated.pdf");
                 progressCallback((i * 100) + 10, files.Count * 100, Loc("cli_progress_translating_pdf", Path.GetFileName(f), i + 1, files.Count));
@@ -251,8 +257,7 @@ namespace Clickra.UI
             for (int i = _startIndex; i < files.Count; i++)
             {
                 _cts.Token.ThrowIfCancellationRequested();
-                try { ClickraStorage.SetActiveRecordIndex(i); } catch { /* Ignored: history recording must not abort processing. */ }
-                if (!string.IsNullOrEmpty(TaskId)) try { ClickraStorage.SetTaskIndex(TaskId, i); } catch { }
+                TryRecordTaskIndex(i);
                 var f = files[i];
                 string outName = Path.Combine(outputDir, Path.GetFileNameWithoutExtension(f) + "_split.pdf");
 
@@ -341,8 +346,7 @@ namespace Clickra.UI
         /// password is supplied or the user cancels.</summary>
         private void DecryptSingleFile(IntPtr hwnd, string f, string outputDir, int index, int total, Action<int, int, string> progressCallback)
         {
-            try { ClickraStorage.SetActiveRecordIndex(index); } catch { /* Ignored: history recording must not abort processing. */ }
-            if (!string.IsNullOrEmpty(TaskId)) try { ClickraStorage.SetTaskIndex(TaskId, index); } catch { }
+            TryRecordTaskIndex(index);
             string outName = Path.Combine(outputDir, Path.GetFileNameWithoutExtension(f) + "_decrypted.pdf");
             progressCallback((index * 100) + 10, total * 100, Loc("cli_progress_decrypting_pdf", Path.GetFileName(f), index + 1, total));
 
@@ -478,7 +482,32 @@ try {{
                 using var p = System.Diagnostics.Process.Start(startInfo);
                 p?.WaitForExit();
             }
-            catch { }
+            catch
+            {
+                // Toasts are optional UI feedback; notification failures must not fail a completed conversion.
+            }
+        }
+
+        private void TryRecordTaskIndex(int index)
+        {
+            try
+            {
+                ClickraStorage.SetActiveRecordIndex(index);
+            }
+            catch
+            {
+                // Legacy active-record progress is best effort and must not abort file processing.
+            }
+
+            if (string.IsNullOrEmpty(TaskId)) return;
+            try
+            {
+                ClickraStorage.SetTaskIndex(TaskId, index);
+            }
+            catch
+            {
+                // Per-task progress persistence is best effort; conversion output remains authoritative.
+            }
         }
     }
 }

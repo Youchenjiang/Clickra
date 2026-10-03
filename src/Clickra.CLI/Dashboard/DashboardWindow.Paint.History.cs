@@ -15,6 +15,15 @@ namespace Clickra.UI
         /// <summary>待繼續任務即將被清理時使用的警示色（與 Fluent 的琥珀色一致）。</summary>
         private static readonly Color ParkedAlertColor = Color.FromArgb(255, 160, 40);
 
+        private readonly record struct CompletedRowRenderContext(
+            Graphics Graphics, float ContentX, int RowWidth, float LogicalHeight, HistoryBlock Block, float Scale);
+
+        private readonly record struct DetailRenderContext(
+            Graphics Graphics, int CurrentY, float ValueX, float MaxValueWidth, Brush Brush, float Scale);
+
+        private readonly record struct ParkedRowRenderContext(
+            Graphics Graphics, float ContentX, int RowWidth, int CurrentY, float Scale);
+
         /// <summary>Draws the history tab: header, filter chips and the scrollable entry list.</summary>
         static void PaintHistoryTab(Graphics g, float logW, float logH, float contentX)
         {
@@ -161,13 +170,19 @@ namespace Clickra.UI
 
         static void DrawCompletedHistoryRows(Graphics g, float contentX, int rowW, float logH, HistoryBlock block, float s)
         {
+            var context = new CompletedRowRenderContext(g, contentX, rowW, logH, block, s);
             for (int i = 0; i < CompletedItems.Count; i++)
-                DrawCompletedHistoryRow(g, contentX, rowW, logH, block, CompletedItems[i], i, s);
+                DrawCompletedHistoryRow(context, CompletedItems[i], i);
         }
 
-        static void DrawCompletedHistoryRow(Graphics g, float contentX, int rowW, float logH, HistoryBlock block,
-            HistoryItem item, int index, float s)
+        static void DrawCompletedHistoryRow(CompletedRowRenderContext context, HistoryItem item, int index)
         {
+            Graphics g = context.Graphics;
+            float contentX = context.ContentX;
+            int rowW = context.RowWidth;
+            float logH = context.LogicalHeight;
+            HistoryBlock block = context.Block;
+            float s = context.Scale;
             int currentY = block.RowTop(index);
             int currentH = block.RowHeight(index);
             if (currentY + currentH < _contentScrollY || currentY > _contentScrollY + logH)
@@ -244,12 +259,13 @@ namespace Clickra.UI
             g.DrawString(GetText("history_detail_inputs") + ":", _subFont, labelBrush,
                 (contentX + 12) * s, (currentY + inputsY) * s);
             string inputsText = string.IsNullOrEmpty(entry.InputPaths) ? "N/A" : entry.InputPaths.Replace(";", ", ");
-            DrawScrollableHistoryDetail(g, inputsText, index, 0, currentY, inputsY, valX, maxValW, valBrush, s);
+            var detailContext = new DetailRenderContext(g, currentY, valX, maxValW, valBrush, s);
+            DrawScrollableHistoryDetail(detailContext, inputsText, index, 0, inputsY);
 
             g.DrawString(GetText("history_detail_outputs") + ":", _subFont, labelBrush,
                 (contentX + 12) * s, (currentY + outputsY) * s);
             string outputsText = string.IsNullOrEmpty(entry.OutputPath) ? "N/A" : entry.OutputPath;
-            DrawScrollableHistoryDetail(g, outputsText, index, 1, currentY, outputsY, valX, maxValW, valBrush, s);
+            DrawScrollableHistoryDetail(detailContext, outputsText, index, 1, outputsY);
 
             g.DrawString(GetText("history_detail_time") + ":", _subFont, labelBrush,
                 (contentX + 12) * s, (currentY + timeY) * s);
@@ -272,12 +288,17 @@ namespace Clickra.UI
                 errorText = GetText("error_user_aborted");
             else
                 errorText = string.IsNullOrEmpty(entry.ErrorMessage) ? "N/A" : entry.ErrorMessage;
-            DrawScrollableHistoryDetail(g, errorText, index, 2, currentY, resultY, valX, maxValW, valBrush, s);
+            DrawScrollableHistoryDetail(detailContext, errorText, index, 2, resultY);
         }
 
-        static void DrawScrollableHistoryDetail(Graphics g, string text, int rowIndex, int fieldIndex,
-            int currentY, int fieldY, float valX, float maxValW, Brush brush, float s)
+        static void DrawScrollableHistoryDetail(DetailRenderContext context, string text, int rowIndex, int fieldIndex, int fieldY)
         {
+            Graphics g = context.Graphics;
+            int currentY = context.CurrentY;
+            float valX = context.ValueX;
+            float maxValW = context.MaxValueWidth;
+            Brush brush = context.Brush;
+            float s = context.Scale;
             DetailScrollOffsets.TryGetValue((rowIndex, fieldIndex), out float scrollOffset);
             var state = g.Save();
             g.IntersectClip(new RectangleF(valX * s, (currentY + fieldY) * s, maxValW * s, 20 * s));
@@ -300,132 +321,123 @@ namespace Clickra.UI
         {
             if (block.IsEmpty) return;
 
-            int startY = block.Top;
-
             float s = _dpiScale;
-            // 待繼續任務與它們的剩餘期限都來自同一份清單，即將過期的數量也在模型裡算好 ——
-            // 不必（也不該）逐列重算期限，那是每張畫格一次的檔案查詢。
             var parkedItems = ParkedItems;
-            int expiringSoonCount = _historyFeed.ExpiringSoonCount;
-
-            // 區塊標題；有任務即將被清理時，右側補一句聚合警示；否則顯示說明文字。
-            if (_tabFont != null)
-            {
-                using var titleBrush = new SolidBrush(Color.FromArgb(200, 200, 200));
-                g.DrawString(GetText("task_parked_title"), _tabFont, titleBrush, contentX * s, startY * s);
-
-                if (expiringSoonCount > 0)
-                {
-                    string warning = string.Format(GetText("task_parked_expiring_warning"), expiringSoonCount);
-                    using var warningBrush = new SolidBrush(ParkedAlertColor);
-                    var warningSize = g.MeasureString(warning, _tabFont);
-                    g.DrawString(warning, _tabFont, warningBrush,
-                        (contentX + rowW - warningSize.Width / s) * s, startY * s);
-                }
-                else
-                {
-                    string desc = GetText("task_parked_desc");
-                    using var descBrush = new SolidBrush(Color.FromArgb(140, 140, 140));
-                    var fontToUse = _subFont ?? _tabFont;
-                    var descSize = g.MeasureString(desc, fontToUse);
-                    g.DrawString(desc, fontToUse, descBrush,
-                        (contentX + rowW - descSize.Width / s) * s, (startY + 2) * s);
-                }
-            }
+            DrawParkedQueueHeader(g, contentX, rowW, block.Top, _historyFeed.ExpiringSoonCount, s);
 
             for (int i = 0; i < parkedItems.Count; i++)
+                DrawParkedQueueRow(g, contentX, rowW, block, parkedItems[i], i, s);
+        }
+
+        static void DrawParkedQueueHeader(Graphics g, float contentX, int rowW, int startY, int expiringSoonCount, float s)
+        {
+            if (_tabFont == null) return;
+
+            using var titleBrush = new SolidBrush(Color.FromArgb(200, 200, 200));
+            g.DrawString(GetText("task_parked_title"), _tabFont, titleBrush, contentX * s, startY * s);
+            if (expiringSoonCount > 0)
             {
-                var item = parkedItems[i];
-                var info = item.Retention!.Value;
-                int currentY = block.RowTop(i);
-                int rowH = block.RowHeight(i);
-                bool needsAttention = item.NeedsAttention;
+                string warning = string.Format(GetText("task_parked_expiring_warning"), expiringSoonCount);
+                using var warningBrush = new SolidBrush(ParkedAlertColor);
+                var warningSize = g.MeasureString(warning, _tabFont);
+                g.DrawString(warning, _tabFont, warningBrush,
+                    (contentX + rowW - warningSize.Width / s) * s, startY * s);
+                return;
+            }
 
-                Color rowBg = needsAttention ? Color.FromArgb(48, 40, 30) : Color.FromArgb(34, 34, 40);
-                Color rowBorder = ParkedRowBorder(info);
+            string desc = GetText("task_parked_desc");
+            using var descBrush = new SolidBrush(Color.FromArgb(140, 140, 140));
+            var fontToUse = _subFont ?? _tabFont;
+            var descSize = g.MeasureString(desc, fontToUse);
+            g.DrawString(desc, fontToUse, descBrush,
+                (contentX + rowW - descSize.Width / s) * s, (startY + 2) * s);
+        }
 
-                using (var path = UIHelper.GetRoundedRectPath(new RectangleF(contentX * s, currentY * s, rowW * s, rowH * s), 6 * s))
-                using (var rowBgBrush = new SolidBrush(rowBg))
-                {
-                    g.FillPath(rowBgBrush, path);
-                    using var borderPen = new Pen(rowBorder);
-                    g.DrawPath(borderPen, path);
-                }
+        static void DrawParkedQueueRow(Graphics g, float contentX, int rowW, HistoryBlock block, HistoryItem item, int index, float s)
+        {
+            var info = item.Retention!.Value;
+            int currentY = block.RowTop(index);
+            int rowH = block.RowHeight(index);
+            bool needsAttention = item.NeedsAttention;
+            Color rowBg = needsAttention ? Color.FromArgb(48, 40, 30) : Color.FromArgb(34, 34, 40);
 
-                // 時間
-                float timeW = 120;
-                if (_bodyFont != null)
-                {
-                    using var timeBrush = new SolidBrush(Color.FromArgb(140, 140, 140));
-                    g.DrawString(item.Time, _bodyFont, timeBrush, (contentX + 12) * s, (currentY + 13) * s);
-                    timeW = g.MeasureString(item.Time, _bodyFont).Width / s;
-                }
+            using (var path = UIHelper.GetRoundedRectPath(new RectangleF(contentX * s, currentY * s, rowW * s, rowH * s), 6 * s))
+            using (var rowBgBrush = new SolidBrush(rowBg))
+            {
+                g.FillPath(rowBgBrush, path);
+                using var borderPen = new Pen(ParkedRowBorder(info));
+                g.DrawPath(borderPen, path);
+            }
 
-                // 指令標籤
-                float tagX = contentX + 12 + timeW + 16;
-                float tagW = DrawCommandTag(g, item, tagX, currentY + 11);
+            float timeW = 120;
+            if (_bodyFont != null)
+            {
+                using var timeBrush = new SolidBrush(Color.FromArgb(140, 140, 140));
+                g.DrawString(item.Time, _bodyFont, timeBrush, (contentX + 12) * s, (currentY + 13) * s);
+                timeW = g.MeasureString(item.Time, _bodyFont).Width / s;
+            }
 
-                // 即將過期徽章（與 Fluent 對齊）：若有即將過期或已過期任務，顯示醒目標籤
-                float nextContentX = tagX + tagW + 12;
-                if (needsAttention)
-                {
-                    string badgeText = GetText("task_parked_badge_expiring");
-                    float badgeTextW = _tagFont != null ? g.MeasureString(badgeText, _tagFont).Width / s : 48f;
-                    float badgeW = badgeTextW + 14f;
-                    float badgeH = 22f;
+            float tagX = contentX + 12 + timeW + 16;
+            float tagW = DrawCommandTag(g, item, tagX, currentY + 11);
+            float nextContentX = DrawParkedAttentionBadge(g, tagX + tagW + 12, currentY, needsAttention, s);
+            var rowContext = new ParkedRowRenderContext(g, contentX, rowW, currentY, s);
+            DrawParkedRowText(rowContext, nextContentX, item, info, needsAttention);
+            DrawParkedActionButtons(g, contentX, rowW, currentY, rowH, index, info.IsUnlimited);
+        }
 
-                    using var badgePath = UIHelper.GetRoundedRectPath(new RectangleF(nextContentX * s, (currentY + 11) * s, badgeW * s, badgeH * s), 4 * s);
-                    using var badgeBgBrush = new SolidBrush(Color.FromArgb(50, 40, 20));
-                    using var badgeBorderPen = new Pen(ParkedAlertColor);
-                    g.FillPath(badgeBgBrush, badgePath);
-                    g.DrawPath(badgeBorderPen, badgePath);
+        static float DrawParkedAttentionBadge(Graphics g, float x, int currentY, bool needsAttention, float s)
+        {
+            if (!needsAttention) return x;
 
-                    if (_tagFont != null)
-                    {
-                        using var badgeTextBrush = new SolidBrush(ParkedAlertColor);
-                        g.DrawString(badgeText, _tagFont, badgeTextBrush, (nextContentX + 7) * s, (currentY + 14) * s);
-                    }
-                    nextContentX += badgeW + 12;
-                }
+            string badgeText = GetText("task_parked_badge_expiring");
+            float badgeTextW = _tagFont != null ? g.MeasureString(badgeText, _tagFont).Width / s : 48f;
+            float badgeW = badgeTextW + 14f;
+            using var badgePath = UIHelper.GetRoundedRectPath(new RectangleF(x * s, (currentY + 11) * s, badgeW * s, 22f * s), 4 * s);
+            using var badgeBgBrush = new SolidBrush(Color.FromArgb(50, 40, 20));
+            using var badgeBorderPen = new Pen(ParkedAlertColor);
+            g.FillPath(badgeBgBrush, badgePath);
+            g.DrawPath(badgeBorderPen, badgePath);
 
-                // 剩餘保留期限（靠右，但要讓開微調鈕）：一列一期限，就是這個區塊存在的理由。
-                // 右端位置由版面表提供，與命中判定同一個算式。
-                float ttlRight = DashboardLayout.ParkedRowTtlRight((int)contentX, rowW);
-                string ttlText = item.RetentionText;
-                float ttlW = _tagFont != null ? g.MeasureString(ttlText, _tagFont).Width / s : 60f;
-                if (_tagFont != null && ttlW > ttlRight - contentX - 12)
-                {
-                    ttlText = UIHelper.TruncateText(g, ttlText, _tagFont, ttlRight - contentX - 12, s);
-                    ttlW = g.MeasureString(ttlText, _tagFont).Width / s;
-                }
-                float ttlX = Math.Max(contentX + 12, ttlRight - ttlW);
+            if (_tagFont != null)
+            {
+                using var badgeTextBrush = new SolidBrush(ParkedAlertColor);
+                g.DrawString(badgeText, _tagFont, badgeTextBrush, (x + 7) * s, (currentY + 14) * s);
+            }
+            return x + badgeW + 12;
+        }
 
-                if (_bodyFont != null)
-                {
-                    using var fileBrush = new SolidBrush(Color.FromArgb(200, 200, 200));
-                    // 「檔案 · 第 i/n 檔 · 原因」的組合在 Core（HistoryItem.Subtitle），
-                    // 與 Fluent 的待繼續列是同一份文字。
-                    string displayText = item.Subtitle;
+        static void DrawParkedRowText(ParkedRowRenderContext context, float fileX,
+            HistoryItem item, ClickraStorage.ParkedRetentionInfo info, bool needsAttention)
+        {
+            Graphics g = context.Graphics;
+            float contentX = context.ContentX;
+            int rowW = context.RowWidth;
+            int currentY = context.CurrentY;
+            float s = context.Scale;
+            float ttlRight = DashboardLayout.ParkedRowTtlRight((int)contentX, rowW);
+            string ttlText = item.RetentionText;
+            float ttlW = _tagFont != null ? g.MeasureString(ttlText, _tagFont).Width / s : 60f;
+            if (_tagFont != null && ttlW > ttlRight - contentX - 12)
+            {
+                ttlText = UIHelper.TruncateText(g, ttlText, _tagFont, ttlRight - contentX - 12, s);
+                ttlW = g.MeasureString(ttlText, _tagFont).Width / s;
+            }
+            float ttlX = Math.Max(contentX + 12, ttlRight - ttlW);
 
-                    float fileX = nextContentX;
-                    float maxW = ttlX - 16 - fileX;
-                    if (maxW > 20)
-                    {
-                        displayText = UIHelper.TruncateFileName(g, displayText, _bodyFont, maxW, s);
-                    }
-                    g.DrawString(displayText, _bodyFont, fileBrush, fileX * s, (currentY + 13) * s);
-                }
+            if (_bodyFont != null)
+            {
+                using var fileBrush = new SolidBrush(Color.FromArgb(200, 200, 200));
+                string displayText = item.Subtitle;
+                float maxW = ttlX - 16 - fileX;
+                if (maxW > 20)
+                    displayText = UIHelper.TruncateFileName(g, displayText, _bodyFont, maxW, s);
+                g.DrawString(displayText, _bodyFont, fileBrush, fileX * s, (currentY + 13) * s);
+            }
 
-                if (_tagFont != null)
-                {
-                    Color ttlColor = ParkedTtlColor(info, needsAttention);
-                    using var ttlBrush = new SolidBrush(ttlColor);
-                    g.DrawString(ttlText, _tagFont, ttlBrush, ttlX * s, (currentY + 13) * s);
-                }
-
-                // 這一列自己的期限微調鈕（縮短、延長）。標籤用「符號 + 天數」，天數來自
-                // Core 的共用常數，所以兩個介面移動的天數永遠一致。
-                DrawParkedActionButtons(g, contentX, rowW, currentY, rowH, i, info.IsUnlimited);
+            if (_tagFont != null)
+            {
+                using var ttlBrush = new SolidBrush(ParkedTtlColor(info, needsAttention));
+                g.DrawString(ttlText, _tagFont, ttlBrush, ttlX * s, (currentY + 13) * s);
             }
         }
 

@@ -318,7 +318,11 @@ static partial class TestSuite
 
     private static void DeleteTaskFile(string taskId)
     {
-        try { File.Delete(TaskFilePath(taskId)); } catch { }
+        try { File.Delete(TaskFilePath(taskId)); }
+        catch
+        {
+            // Test cleanup is best effort; the next fixture uses a unique task id.
+        }
     }
 
     private static string WriteParkedTaskFile(

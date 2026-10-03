@@ -25,6 +25,8 @@ static partial class TestSuite
     private const string FeedOutDir = @"C:\feed\out";
     private const string FeedDoneInput = FeedInDir + @"\done.pdf";
     private const string FeedCanceledInput = FeedInDir + @"\cancel.pdf";
+    private const string CliDashboardSurface = "CLI dashboard";
+    private const string FluentHistorySurface = "Fluent History page";
 
     public static void RegisterHistoryFeedTests(TestRunner runner)
     {
@@ -210,8 +212,8 @@ static partial class TestSuite
         // 兩個呈現層都載入同一份清單。
         foreach ((string surface, string path) in new[]
         {
-            ("CLI dashboard", Path.Combine(root, "src", "Clickra.CLI", "Dashboard", "DashboardWindow.Lifecycle.cs")),
-            ("Fluent History page", Path.Combine(root, "src", "Clickra.Fluent", "MainPage.xaml.cs"))
+            (CliDashboardSurface, Path.Combine(root, "src", "Clickra.CLI", "Dashboard", "DashboardWindow.Lifecycle.cs")),
+            (FluentHistorySurface, Path.Combine(root, "src", "Clickra.Fluent", "MainPage.xaml.cs"))
         })
         {
             string source = File.ReadAllText(path);
@@ -253,7 +255,7 @@ static partial class TestSuite
         string model = File.ReadAllText(Path.Combine(root, "src", "Clickra.Core", "Storage", "HistoryFeed.cs"));
 
         // 每一列的事實都取自項目，而不是當場重算。
-        foreach ((string surface, string source) in new[] { ("CLI dashboard", cli), ("Fluent History page", fluent) })
+        foreach ((string surface, string source) in new[] { (CliDashboardSurface, cli), (FluentHistorySurface, fluent) })
         {
             foreach (string fact in new[] { "item.StatusKey", "item.FileCountText" })
             {
@@ -263,14 +265,14 @@ static partial class TestSuite
         }
         foreach ((string fact, string source, string surface) in new[]
         {
-            ("item.CommandLabelKey", cli, "CLI dashboard"),
-            ("item.CommandLabelKey", fluent, "Fluent History page"),
-            ("item.Subtitle", cli, "CLI dashboard"),
-            ("item.Subtitle", fluent, "Fluent History page"),
-            ("item.RetentionText", cli, "CLI dashboard"),
-            ("item.RetentionText", fluent, "Fluent History page"),
-            ("item.NeedsAttention", cli, "CLI dashboard"),
-            ("item.NeedsAttention", fluent, "Fluent History page"),
+            ("item.CommandLabelKey", cli, CliDashboardSurface),
+            ("item.CommandLabelKey", fluent, FluentHistorySurface),
+            ("item.Subtitle", cli, CliDashboardSurface),
+            ("item.Subtitle", fluent, FluentHistorySurface),
+            ("item.RetentionText", cli, CliDashboardSurface),
+            ("item.RetentionText", fluent, FluentHistorySurface),
+            ("item.NeedsAttention", cli, CliDashboardSurface),
+            ("item.NeedsAttention", fluent, FluentHistorySurface),
         })
         {
             Assert.True(source.Contains(fact, StringComparison.Ordinal),
@@ -279,7 +281,7 @@ static partial class TestSuite
 
         // 結果用字（成功／失敗／已取消）與檔案描述都不得在介面裡再寫一份。這正是過去兩頁
         // 對同一件任務說出不同字的原因（一邊「錯誤」、一邊「失敗」；一邊不認得取消旗標）。
-        foreach ((string surface, string source) in new[] { ("CLI dashboard", cli), ("Fluent History page", fluent) })
+        foreach ((string surface, string source) in new[] { (CliDashboardSurface, cli), (FluentHistorySurface, fluent) })
         {
             foreach (string worded in new[]
             {
