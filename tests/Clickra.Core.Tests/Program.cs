@@ -12,12 +12,33 @@ Environment.SetEnvironmentVariable("CLICKRA_DATA_DIR", testDataDir);
 // when they are missing rather than quietly passing.
 bool requireFixtures = args.Contains("--require-fixtures", StringComparer.Ordinal);
 bool clean = args.Contains("--clean", StringComparer.OrdinalIgnoreCase);
+bool guardsOnly = args.Contains("--guards", StringComparer.OrdinalIgnoreCase) ||
+                  args.Contains("--guards-only", StringComparer.OrdinalIgnoreCase);
+bool functionalOnly = args.Contains("--functional", StringComparer.OrdinalIgnoreCase) ||
+                      args.Contains("--functional-only", StringComparer.OrdinalIgnoreCase);
+
+if (guardsOnly && functionalOnly)
+{
+    await Console.Error.WriteLineAsync("Error: Cannot specify both --guards and --functional flags simultaneously.");
+    return 2;
+}
+
+var filterMode = TestFilterMode.All;
+if (guardsOnly)
+{
+    filterMode = TestFilterMode.GuardsOnly;
+}
+else if (functionalOnly)
+{
+    filterMode = TestFilterMode.FunctionalOnly;
+}
+
 if (clean)
 {
     var (dirs, files) = TestSuite.CleanStaleArtifacts(testDataDir);
     Console.WriteLine($"[Clean] Cleaned {dirs} stale directory(s) and {files} leftover artifact file(s).");
 }
-var runner = new TestRunner(requireFixtures);
+var runner = new TestRunner(requireFixtures, filterMode);
 
 TestSuite.RegisterPentestGrayPromptTests(runner);
 TestSuite.RegisterFinalProjectTests(runner);
@@ -50,8 +71,11 @@ TestSuite.RegisterFluentRuntimeTests(runner);
 // Print an explicit summary so CI logs show the actual executed test count
 // instead of only a build-success signal. Skipped counts fixture-dependent
 // tests whose git-ignored test_pdfs/ fixtures are absent (fresh CI checkout).
-Console.WriteLine($"[Localization] Orphan baseline: {TestSuite.UnconsumedKeyBaselineCount} keys remaining (ceiling: {TestSuite.BaselineCeiling}, monotonic shrinking)");
-Console.WriteLine($"SUMMARY: {runner.Passed} passed, {runner.Failures} failed, {runner.Skipped} skipped");
+if (filterMode != TestFilterMode.FunctionalOnly)
+{
+    Console.WriteLine($"[Localization] Orphan baseline: {TestSuite.UnconsumedKeyBaselineCount} keys remaining (ceiling: {TestSuite.BaselineCeiling}, monotonic shrinking)");
+}
+runner.PrintSummary();
 
 try
 {

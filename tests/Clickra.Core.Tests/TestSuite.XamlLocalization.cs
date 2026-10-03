@@ -47,8 +47,8 @@ static partial class TestSuite
 
     public static void RegisterXamlLocalizationTests(TestRunner runner)
     {
-        runner.Run("Localization guard: every Clickra.Fluent XAML file is covered by the markup guard", TestEveryFluentXamlFileIsCovered);
-        runner.Run("Localization guard: no hardcoded CJK text in XAML markup", TestNoHardcodedCjkTextInXaml);
+        runner.RunGuard("Localization guard: every Clickra.Fluent XAML file is covered by the markup guard", TestEveryFluentXamlFileIsCovered);
+        runner.RunGuard("Localization guard: no hardcoded CJK text in XAML markup", TestNoHardcodedCjkTextInXaml);
     }
 
     private static void TestEveryFluentXamlFileIsCovered()

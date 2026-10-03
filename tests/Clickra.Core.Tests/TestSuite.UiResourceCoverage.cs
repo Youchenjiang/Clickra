@@ -156,9 +156,9 @@ static partial class TestSuite
 
     public static void RegisterUiResourceCoverageTests(TestRunner runner)
     {
-        runner.Run("Package resources: resw keys and the keys consumed by shell menu and manifest are bidirectionally equal", TestShellResourceCoverage);
-        runner.Run("Convert registry: every command label key is declared and translated in all 5 languages", TestConvertRegistryLabelCoverage);
-        runner.Run("Store listing: docs/StoreListing_*.md covers all supported languages with complete fields", TestStoreListingCoverage);
+        runner.RunGuard("Package resources: resw keys and the keys consumed by shell menu and manifest are bidirectionally equal", TestShellResourceCoverage);
+        runner.RunGuard("Convert registry: every command label key is declared and translated in all 5 languages", TestConvertRegistryLabelCoverage);
+        runner.RunGuard("Store listing: docs/StoreListing_*.md covers all supported languages with complete fields", TestStoreListingCoverage);
     }
 
     private static void TestShellResourceCoverage()

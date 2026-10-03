@@ -239,7 +239,7 @@ static partial class TestSuite
             Assert.Equal(1500, VisualSplitModel.ZoomRenderWidth(8f, 660, 660, 1500));
             Assert.Equal(660, VisualSplitModel.ZoomRenderWidth(0.25f, 660, 660, 1500));
         });
-        runner.Run("Visual splitter UI surfaces delegate parity state to production model", () =>
+        runner.RunGuard("Visual splitter UI surfaces delegate parity state to production model", () =>
         {
             string? root = FindRepoRoot();
             if (root is null) throw new TestSkippedException("Could not locate the repository root from the test output directory.");
