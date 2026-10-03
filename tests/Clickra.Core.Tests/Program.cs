@@ -50,6 +50,7 @@ TestSuite.RegisterFluentRuntimeTests(runner);
 // Print an explicit summary so CI logs show the actual executed test count
 // instead of only a build-success signal. Skipped counts fixture-dependent
 // tests whose git-ignored test_pdfs/ fixtures are absent (fresh CI checkout).
+Console.WriteLine($"[Localization] Orphan baseline: {TestSuite.UnconsumedKeyBaselineCount} keys remaining (ceiling: {TestSuite.BaselineCeiling}, monotonic shrinking)");
 Console.WriteLine($"SUMMARY: {runner.Passed} passed, {runner.Failures} failed, {runner.Skipped} skipped");
 
 try
