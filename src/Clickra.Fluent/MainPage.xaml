@@ -443,11 +443,13 @@
                         <Grid Grid.Row="2" Grid.Column="1" Background="{ThemeResource CardBackgroundFillColorDefaultBrush}" CornerRadius="8" Padding="18">
                             <StackPanel Spacing="12">
                                 <TextBlock x:Name="PdfCompressionTitle" Text="PDF Compression" FontSize="15" FontWeight="SemiBold"/>
+                                <TextBlock x:Name="PdfCompressImageGroupTitle" Text="Image Compression" FontSize="12" FontWeight="SemiBold" Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
                                 <Grid ColumnSpacing="12">
                                     <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
                                     <Slider x:Name="CompressionSlider" Value="1"/>
                                     <TextBlock x:Name="CompressionLabel" Grid.Column="1" Text="Standard" VerticalAlignment="Center"/>
                                 </Grid>
+                                <TextBlock x:Name="PdfCompressOtherGroupTitle" Text="Other Optimization" FontSize="12" FontWeight="SemiBold" Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
                                 <Grid ColumnSpacing="16">
                                     <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
                                     <TextBlock x:Name="StripFontsTitle" Text="Strip embedded fonts" VerticalAlignment="Center"/>

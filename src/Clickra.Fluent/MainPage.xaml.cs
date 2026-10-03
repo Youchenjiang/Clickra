@@ -1002,6 +1002,8 @@ public sealed partial class MainPage : Page
         NotificationTitle.Text = L("fluent_notifications");
         NotificationDesc.Text = L("fluent_notifications_desc");
         PdfCompressionTitle.Text = L("fluent_pdf_compression");
+        PdfCompressImageGroupTitle.Text = L("setting_pdf_compress_group_image");
+        PdfCompressOtherGroupTitle.Text = L("setting_pdf_compress_group_other");
         StripFontsTitle.Text = L("fluent_strip_fonts");
         MinifyContentTitle.Text = L("fluent_minify_content");
         ParkedRetentionTitle.Text = L("setting_parked_ttl_title");

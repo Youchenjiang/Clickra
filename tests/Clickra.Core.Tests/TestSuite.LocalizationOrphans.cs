@@ -32,10 +32,9 @@ static partial class TestSuite
     {
         // 引擎／PDF 設定：這些曾被設定頁與錯誤對話框使用，現在同一個位置改由 Core 的
         // 預設表或別的鍵呈現，字串本身已經沒有讀取端。
+        // setting_pdf_compress_group_image／_other 已接上設定頁分組標題。
         "engine_pdf", "engine_ppt", "engine_word", "engine_excel", "engine_libreoffice",
-        "setting_libreoffice_optional",
-        "setting_pdf_compress_group_image",
-        "setting_pdf_compress_group_other", "error_processing_failed",
+        "setting_libreoffice_optional", "error_processing_failed",
 
         // Fluent 檔案類型／拖放白名單：描述一套以檔案類型過濾拖放內容的介面。
         "fluent_remove_file", "fluent_file_type", "fluent_file_type_pdf", "fluent_file_type_word",

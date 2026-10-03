@@ -45,6 +45,15 @@ namespace Clickra.UI
                 }
             }
 
+            void DrawGroupSubheader(string titleKey, float y)
+            {
+                if (_subFont != null)
+                {
+                    using var subHeaderBrush = new SolidBrush(Color.FromArgb(180, 180, 180));
+                    g.DrawString(GetText(titleKey), _subFont, subHeaderBrush, contentX * s, y * s);
+                }
+            }
+
             void DrawToggleSection(string titleKey, string descKey, bool state, int elementId, float y)
             {
                 DrawSectionHeader(titleKey, descKey, y);
@@ -384,7 +393,11 @@ namespace Clickra.UI
             y += 48f;
 
             DrawSectionHeader("setting_pdf_compress_title", "setting_pdf_compress_desc", y);
-            y += 48f;
+            y += 50f;
+
+            // Image Compression Subheader
+            DrawGroupSubheader("setting_pdf_compress_group_image", y);
+            y += 24f;
 
             // Compact slider: one level maps to both DPI + JPEG quality
             int compressLevel = ConvertCommandRegistry.GetPdfCompressLevel();
@@ -394,6 +407,10 @@ namespace Clickra.UI
             DrawCompressSlider(g, contentX, y, sliderW, compressLevel);
             AddHitRect(83, contentX - 10, y - 4, sliderW + 20, 62);
             y += 72f;
+
+            // Other Optimization Subheader
+            DrawGroupSubheader("setting_pdf_compress_group_other", y);
+            y += 24f;
 
             // Strip Fonts Toggle
             bool stripFonts = ClickraStorage.GetSettingBool(ClickraSettings.PdfCompressStripFonts);
