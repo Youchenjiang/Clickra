@@ -1,8 +1,10 @@
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Text.RegularExpressions;
+using System.Xml.Linq;
 
 namespace Clickra.Core.Tests;
 
@@ -49,7 +51,80 @@ static partial class TestSuite
     {
         runner.RunGuard("Localization guard: every Clickra.Fluent XAML file is covered by the markup guard", TestEveryFluentXamlFileIsCovered);
         runner.RunGuard("Localization guard: no hardcoded CJK text in XAML markup", TestNoHardcodedCjkTextInXaml);
+        runner.RunGuard("Fluent convert workspace: compact surfaces preserve first-screen density", TestCompactConvertWorkspace);
+        runner.RunGuard("Fluent convert workspace: command groups preserve complete responsive wiring", TestConvertCommandGroupWiring);
     }
+
+    private static void TestCompactConvertWorkspace()
+    {
+        string? root = FindRepoRoot();
+        if (root is null) throw new TestSkippedException("Could not locate the repository root from the test output directory.");
+
+        XDocument xaml = XDocument.Load(Path.Combine(root, "src", "Clickra.Fluent", "MainPage.xaml"));
+        XElement dropZone = FindNamedXamlElement(xaml, "DropZone");
+        XElement selectedFilesCard = FindNamedXamlElement(xaml, "SelectedFilesCard");
+        XElement runCard = FindNamedXamlElement(xaml, "ConvertRunCard");
+
+        Assert.True(double.TryParse(dropZone.Attribute("MinHeight")?.Value, NumberStyles.Float, CultureInfo.InvariantCulture, out double minHeight),
+            "DropZone must declare a numeric MinHeight so the compact layout contract is explicit.");
+        Assert.True(minHeight <= 140,
+            $"DropZone MinHeight must stay compact (<= 140); found {minHeight}.");
+        Assert.Equal("2", dropZone.Attribute("Grid.ColumnSpan")?.Value ?? string.Empty);
+        Assert.Equal("Collapsed", selectedFilesCard.Attribute("Visibility")?.Value ?? string.Empty);
+        Assert.Equal("Collapsed", runCard.Attribute("Visibility")?.Value ?? string.Empty);
+
+        string codeBehind = File.ReadAllText(Path.Combine(root, "src", "Clickra.Fluent", "MainPage.xaml.cs"));
+        Assert.True(codeBehind.Contains("SelectedFilesCard.Visibility = _selectedFiles.Count > 0", StringComparison.Ordinal),
+            "Selected files must only consume layout space after files are selected.");
+        Assert.True(codeBehind.Contains("ConvertRunCard.Visibility = _selectedFiles.Count > 0 || _isRunning", StringComparison.Ordinal),
+            "Run controls must stay collapsed until selection or active conversion makes them relevant.");
+    }
+
+    private static void TestConvertCommandGroupWiring()
+    {
+        string? root = FindRepoRoot();
+        if (root is null) throw new TestSkippedException("Could not locate the repository root from the test output directory.");
+
+        XDocument xaml = XDocument.Load(Path.Combine(root, "src", "Clickra.Fluent", "MainPage.xaml"));
+        XElement commandCard = FindNamedXamlElement(xaml, "ConvertCommandCard");
+        string[] actualTags = commandCard.Descendants()
+            .Where(e => e.Name.LocalName == "Button" && e.Attribute("Tag") is not null)
+            .Select(e => e.Attribute("Tag")!.Value)
+            .OrderBy(tag => tag, StringComparer.Ordinal)
+            .ToArray();
+        string[] expectedTags =
+        {
+            "compress-pdf", "decrypt-pdf", "excel2pdf", "img-merge", "img-stitch", "img-to-gif", "img-to-heic", "img-to-jpg",
+            "img-to-png", "img-to-webp", "img2pdf", "merge-pdf", "ppt2pdf", "split-pdf", "translate-pdf", "word2pdf"
+        };
+
+        Assert.True(actualTags.SequenceEqual(expectedTags),
+            "The Fluent convert workspace must expose exactly the registered 16 command buttons. " +
+            $"Expected: [{string.Join(", ", expectedTags)}]; actual: [{string.Join(", ", actualTags)}].");
+        Assert.Equal(3, CountGridColumns(FindNamedXamlElement(xaml, "OfficeCommandGrid")));
+        Assert.Equal(5, CountGridColumns(FindNamedXamlElement(xaml, "PdfCommandGrid")));
+        Assert.Equal(4, CountGridColumns(FindNamedXamlElement(xaml, "ImageCommandGrid")));
+
+        string codeBehind = File.ReadAllText(Path.Combine(root, "src", "Clickra.Fluent", "MainPage.xaml.cs"));
+        Assert.True(codeBehind.Contains("SetActiveColumns(OfficeCommandGrid, narrow ? 2 : 3);", StringComparison.Ordinal),
+            "Office commands must reflow from three wide columns to two narrow columns.");
+        Assert.True(codeBehind.Contains("SetActiveColumns(PdfCommandGrid, narrow ? 2 : 5);", StringComparison.Ordinal),
+            "PDF commands must reflow from five wide columns to two narrow columns.");
+        Assert.True(codeBehind.Contains("SetActiveColumns(ImageCommandGrid, narrow ? 2 : 4);", StringComparison.Ordinal),
+            "Image commands must reflow from four wide columns to two narrow columns.");
+    }
+
+    private static XElement FindNamedXamlElement(XDocument xaml, string name)
+    {
+        XNamespace x = "http://schemas.microsoft.com/winfx/2006/xaml";
+        XElement? element = xaml.Descendants().SingleOrDefault(e => string.Equals(e.Attribute(x + "Name")?.Value, name, StringComparison.Ordinal));
+        Assert.True(element is not null, $"MainPage.xaml must declare x:Name=\"{name}\".");
+        return element!;
+    }
+
+    private static int CountGridColumns(XElement grid) =>
+        grid.Elements().Single(e => e.Name.LocalName == "Grid.ColumnDefinitions")
+            .Elements().Count(e => e.Name.LocalName == "ColumnDefinition");
 
     private static void TestEveryFluentXamlFileIsCovered()
     {
