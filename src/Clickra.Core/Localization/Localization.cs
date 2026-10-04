@@ -598,8 +598,12 @@ namespace Clickra.Core
                 ("setting_image_level_small", "較小", "较小", "Small", "小", "작게"),
                 ("setting_image_level_std", "標準", "标准", "Standard", "標準", "표준"),
                 ("setting_image_level_high", "高壓縮", "高压缩", "High", "高圧縮", "고압축"),
-                ("setting_image_max_dimension_title", "圖片尺寸上限（最長邊）", "图片尺寸上限（最长边）", "Image size limit (long edge)", "画像サイズ上限（長辺）", "이미지 크기 제한 (긴 쪽)"),
-                ("setting_image_max_dimension_desc", "壓縮時若圖片過大，會把最長的一邊縮到此像素數；0 = 保持原尺寸", "压缩时若图片过大，会把最长的一边缩到此像素数；0 = 保持原尺寸", "If an image is larger, its longest edge is resized to this many pixels; 0 keeps the original size", "圧縮時に画像が大きい場合、長辺をこのピクセル数まで縮小します。0 = 元のサイズを維持", "압축할 이미지가 더 크면 긴 쪽을 이 픽셀 수로 줄입니다. 0 = 원본 크기 유지"),
+                ("setting_image_max_dimension_title", "圖片輸出尺寸", "图片输出尺寸", "Image output size", "画像の出力サイズ", "이미지 출력 크기"),
+                ("setting_image_max_dimension_desc", "依用途選擇；小圖不會被放大", "按用途选择；小图不会被放大", "Choose by use case; smaller images are never enlarged", "用途で選択。小さい画像は拡大しません", "용도에 맞게 선택하세요. 작은 이미지는 확대하지 않습니다"),
+                ("setting_image_size_original", "保留原尺寸", "保留原尺寸", "Original size", "元のサイズ", "원본 크기"),
+                ("setting_image_size_large", "大型圖片", "大型图片", "Large image", "大きな画像", "큰 이미지"),
+                ("setting_image_size_balanced", "一般使用", "一般使用", "Everyday use", "一般用途", "일반 사용"),
+                ("setting_image_size_small", "小檔分享", "小文件分享", "Smaller file", "小さいファイル", "작은 파일"),
             };
 
             RegisterTranslations(data);

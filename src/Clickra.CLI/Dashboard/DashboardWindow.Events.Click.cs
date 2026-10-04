@@ -526,6 +526,13 @@ namespace Clickra.UI
             if (descriptorIndex < 0 || descriptorIndex >= SettingPageRegistry.AllDescriptors.Count) return;
             var descriptor = SettingPageRegistry.AllDescriptors[descriptorIndex];
 
+            if (descriptor.Key.Equals(ClickraSettings.ImageCompressMaxDimension, StringComparison.OrdinalIgnoreCase))
+            {
+                if (subId >= 0 && subId < AotImageSizePresets.Length)
+                    ApplySetting(hwnd, descriptor.Key, AotImageSizePresets[subId].Value);
+                return;
+            }
+
             switch (descriptor.EditorKind)
             {
                 case SettingEditorKind.Toggle:

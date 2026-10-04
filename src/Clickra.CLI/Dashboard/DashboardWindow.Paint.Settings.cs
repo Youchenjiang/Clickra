@@ -15,6 +15,14 @@ namespace Clickra.UI
 {
     public static partial class DashboardWindow
     {
+        static readonly SettingOption[] AotImageSizePresets =
+        {
+            new("0", "setting_image_size_original"),
+            new("3840", "setting_image_size_large"),
+            new("1920", "setting_image_size_balanced"),
+            new("1280", "setting_image_size_small"),
+        };
+
         private const string ParkedRetentionDaysTextKey = "setting_parked_ttl_days";
 
         // skipcq: CS-R1140
@@ -594,23 +602,24 @@ namespace Clickra.UI
                         imageX * s, (numberY + 24) * s);
                 }
 
-                var maxRange = maxDimension.GetEffectiveNumericRange() ?? new NumericSettingRange(0, 100, 0);
-                int maxValue = Math.Clamp(ClickraStorage.GetSettingInt(maxDimension.Key), maxRange.Min, maxRange.Max);
-                int valueY = numberY + 48;
-                if (_subFont != null)
+                string currentSize = ClickraStorage.GetSetting(maxDimension.Key);
+                var sizeOptions = AotImageSizePresets;
+                int presetButtonY = numberY + 52;
+                int optionGap = 6;
+                int optionWidth = (innerWidth - optionGap) / 2;
+                int optionHeight = SettingsLayout.ButtonHeight;
+                for (int optionIndex = 0; optionIndex < sizeOptions.Length; optionIndex++)
                 {
-                    using var valueBrush = new SolidBrush(Color.FromArgb(200, 200, 200));
-                    g.DrawString(maxValue.ToString(), _subFont, valueBrush, imageX * s, valueY * s);
+                    int row = optionIndex / 2;
+                    int column = optionIndex % 2;
+                    int optionX = imageX + column * (optionWidth + optionGap);
+                    int optionY = presetButtonY + row * (optionHeight + optionGap);
+                    int elementId = maxDimensionElement + optionIndex;
+                    bool selected = string.Equals(currentSize, sizeOptions[optionIndex].Value, StringComparison.OrdinalIgnoreCase);
+                    DrawOutputDirButton(g, GetText(sizeOptions[optionIndex].LabelKey), selected,
+                        elementId, optionX, optionY, optionWidth);
+                    AddLayoutHitRect(elementId, SettingsLayout.ButtonRect(optionX, optionY, optionWidth));
                 }
-
-                int numberButtonY = valueY + 20;
-                int buttonWidth = SettingsLayout.DynamicNumberButtonWidth;
-                DrawOutputDirButton(g, "-", false, maxDimensionElement + 1, imageX, numberButtonY, buttonWidth);
-                DrawOutputDirButton(g, "+", false, maxDimensionElement + 2,
-                    imageX + buttonWidth + SettingsLayout.InlineGap, numberButtonY, buttonWidth);
-                AddLayoutHitRect(maxDimensionElement + 1, SettingsLayout.ButtonRect(imageX, numberButtonY, buttonWidth));
-                AddLayoutHitRect(maxDimensionElement + 2, SettingsLayout.ButtonRect(
-                    imageX + buttonWidth + SettingsLayout.InlineGap, numberButtonY, buttonWidth));
 
                 y += SettingsLayout.CompressionCardHeight + SettingsLayout.CardGap;
             }
@@ -949,6 +958,12 @@ namespace Clickra.UI
             float? sliderWidth = null)
         {
             int baseElemId = 1000 + descriptorIndex * 10;
+            if (descriptor.Key.Equals(ClickraSettings.ImageCompressMaxDimension, StringComparison.OrdinalIgnoreCase))
+            {
+                DrawDynamicImageSizePresetSetting(g, descriptor, logW, contentX, baseElemId, ref y);
+                return;
+            }
+
             switch (descriptor.EditorKind)
             {
                 case SettingEditorKind.Toggle:
@@ -967,6 +982,53 @@ namespace Clickra.UI
                     // Ignore unsupported future editor kinds until a renderer is defined.
                     break;
             }
+        }
+
+        static void DrawDynamicImageSizePresetSetting(
+            Graphics g,
+            SettingDescriptor descriptor,
+            float logW,
+            float contentX,
+            int baseElemId,
+            ref float y)
+        {
+            DrawDynamicSettingHeader(g, descriptor, contentX, y);
+
+            string current = ClickraStorage.GetSetting(descriptor.Key);
+            int gap = 6;
+            int availableWidth = Math.Max(200,
+                (int)logW - (int)contentX - SettingsLayout.ContentRightMargin);
+            int optionWidth = (availableWidth - gap) / 2;
+            int optionHeight = SettingsLayout.ButtonHeight;
+            int buttonTop = (int)y + 50;
+
+            for (int optionIndex = 0; optionIndex < AotImageSizePresets.Length; optionIndex++)
+            {
+                int row = optionIndex / 2;
+                int column = optionIndex % 2;
+                int optionX = (int)contentX + column * (optionWidth + gap);
+                int optionY = buttonTop + row * (optionHeight + gap);
+                int elementId = baseElemId + optionIndex;
+                bool selected = string.Equals(
+                    current,
+                    AotImageSizePresets[optionIndex].Value,
+                    StringComparison.OrdinalIgnoreCase);
+                DrawOutputDirButton(
+                    g,
+                    GetText(AotImageSizePresets[optionIndex].LabelKey),
+                    selected,
+                    elementId,
+                    optionX,
+                    optionY,
+                    optionWidth);
+                _settingsHitRects[elementId] = new RectangleF(
+                    optionX,
+                    optionY,
+                    optionWidth,
+                    optionHeight);
+            }
+
+            y += 126f;
         }
 
         static void DrawDynamicSettingHeader(Graphics g, SettingDescriptor descriptor, float contentX, float y)

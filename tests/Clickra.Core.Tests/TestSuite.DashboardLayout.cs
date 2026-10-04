@@ -440,6 +440,14 @@ static partial class TestSuite
         Assert.True(paint.Contains("ClickraSettings.ImageCompressLevel", StringComparison.Ordinal)
                     && paint.Contains("ClickraSettings.ImageCompressMaxDimension", StringComparison.Ordinal),
             "The wide compression row must include both image compression descriptors.");
+        Assert.True(paint.Contains("AotImageSizePresets", StringComparison.Ordinal)
+                    && paint.Contains("new(\"3840\", \"setting_image_size_large\")", StringComparison.Ordinal)
+                    && paint.Contains("new(\"1920\", \"setting_image_size_balanced\")", StringComparison.Ordinal)
+                    && paint.Contains("new(\"1280\", \"setting_image_size_small\")", StringComparison.Ordinal),
+            "AOT image sizing must expose bounded use-case presets instead of a pixel-by-pixel stepper.");
+        Assert.True(click.Contains("descriptor.Key.Equals(ClickraSettings.ImageCompressMaxDimension", StringComparison.Ordinal)
+                    && click.Contains("AotImageSizePresets[subId].Value", StringComparison.Ordinal),
+            "AOT image-size preset buttons must save their declared preset values directly.");
 
         foreach (string source in new[] { hitTest, click, events })
         {
