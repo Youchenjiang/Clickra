@@ -65,21 +65,6 @@ namespace Clickra.UI
                 AddLayoutHitRect(elementId, toggle);
             }
 
-            void DrawToggleSectionAt(
-                string titleKey,
-                string descKey,
-                bool state,
-                int elementId,
-                float x,
-                float width,
-                float y)
-            {
-                DrawSectionHeaderAt(titleKey, descKey, x, y);
-                LayoutRect toggle = SettingsLayout.ToggleRectWithin((int)x, (int)width, (int)y);
-                DrawToggleSwitch(g, state, _hoveredElement == elementId, toggle.X, toggle.Y, toggle.Width, toggle.Height);
-                AddLayoutHitRect(elementId, toggle);
-            }
-
             void DrawCard(LayoutRect rect)
             {
                 using var path = UIHelper.GetRoundedRectPath(
@@ -482,53 +467,6 @@ namespace Clickra.UI
             }
             y += 48f;
 
-            float compressionTop = y;
-            float pdfCompressionX = contentX;
-            float pdfCompressionWidth = wideSettings
-                ? SettingsLayout.ColumnWidth((int)contentX, (int)logW)
-                : logW - contentX - SettingsLayout.ContentRightMargin;
-            float pdfCompressionY = compressionTop;
-
-            DrawSectionHeaderAt("setting_pdf_compress_title", "setting_pdf_compress_desc", pdfCompressionX, pdfCompressionY);
-            pdfCompressionY += 50f;
-
-            // Image Compression Subheader
-            DrawGroupSubheader("setting_pdf_compress_group_image", pdfCompressionY);
-            pdfCompressionY += 24f;
-
-            // Compact slider: one level maps to both DPI + JPEG quality
-            int compressLevel = ConvertCommandRegistry.GetPdfCompressLevel();
-            float sliderW = wideSettings
-                ? SettingsLayout.SliderWidthFor((int)pdfCompressionWidth)
-                : SettingsLayout.SliderWidth;
-            _pdfSliderTrackX = pdfCompressionX;
-            _pdfSliderTrackW = sliderW;
-            DrawCompressSlider(g, pdfCompressionX, pdfCompressionY, sliderW, compressLevel);
-            AddLayoutHitRect(83, SettingsLayout.SliderHitRect((int)pdfCompressionX, (int)pdfCompressionY, (int)sliderW));
-            pdfCompressionY += SettingsLayout.SliderSectionHeight;
-
-            // Other Optimization Subheader
-            DrawGroupSubheader("setting_pdf_compress_group_other", pdfCompressionY);
-            pdfCompressionY += 24f;
-
-            // Strip Fonts Toggle
-            bool stripFonts = ClickraStorage.GetSettingBool(ClickraSettings.PdfCompressStripFonts);
-            if (wideSettings)
-                DrawToggleSectionAt("setting_pdf_compress_strip_fonts", "", stripFonts, 81,
-                    pdfCompressionX, pdfCompressionWidth, pdfCompressionY);
-            else
-                DrawToggleSection("setting_pdf_compress_strip_fonts", "", stripFonts, 81, pdfCompressionY);
-            pdfCompressionY += SettingsLayout.CompactToggleSectionHeight;
-
-            // Minify Content Toggle
-            bool minifyContent = ClickraStorage.GetSettingBool(ClickraSettings.PdfCompressMinifyContent);
-            if (wideSettings)
-                DrawToggleSectionAt("setting_pdf_compress_minify_content", "", minifyContent, 82,
-                    pdfCompressionX, pdfCompressionWidth, pdfCompressionY);
-            else
-                DrawToggleSection("setting_pdf_compress_minify_content", "", minifyContent, 82, pdfCompressionY);
-            pdfCompressionY += SettingsLayout.CompactToggleSectionHeight;
-
             int imageCompressLevelIndex = -1;
             int imageCompressMaxDimensionIndex = -1;
             for (int i = 0; i < SettingPageRegistry.AllDescriptors.Count; i++)
@@ -540,33 +478,112 @@ namespace Clickra.UI
                     imageCompressMaxDimensionIndex = i;
             }
 
-            float compressionBottom = pdfCompressionY;
             if (wideSettings && imageCompressLevelIndex >= 0 && imageCompressMaxDimensionIndex >= 0)
             {
-                float imageCompressionX = SettingsLayout.ColumnX((int)contentX, (int)logW, 1);
-                float imageCompressionY = compressionTop;
-                DrawDynamicSettingDescriptor(
-                    g,
-                    SettingPageRegistry.AllDescriptors[imageCompressLevelIndex],
-                    imageCompressLevelIndex,
-                    logW,
-                    imageCompressionX,
-                    margin,
-                    ref imageCompressionY,
-                    SettingsLayout.SliderWidthFor(settingsColumnWidth));
-                DrawDynamicSettingDescriptor(
-                    g,
-                    SettingPageRegistry.AllDescriptors[imageCompressMaxDimensionIndex],
-                    imageCompressMaxDimensionIndex,
-                    logW,
-                    imageCompressionX,
-                    margin,
-                    ref imageCompressionY);
-                compressionBottom = Math.Max(compressionBottom, imageCompressionY);
+                int cardY = (int)y;
+                int leftX = (int)contentX;
+                int rightX = SettingsLayout.ColumnX((int)contentX, (int)logW, 1);
+                LayoutRect pdfCard = SettingsLayout.CardRect(leftX, cardY, settingsColumnWidth, SettingsLayout.CompressionCardHeight);
+                LayoutRect imageCard = SettingsLayout.CardRect(rightX, cardY, settingsColumnWidth, SettingsLayout.CompressionCardHeight);
+                DrawCard(pdfCard);
+                DrawCard(imageCard);
+
+                int innerWidth = settingsColumnWidth - 2 * SettingsLayout.CardPadding;
+                int pdfX = pdfCard.X + SettingsLayout.CardPadding;
+                int imageX = imageCard.X + SettingsLayout.CardPadding;
+                if (_tabFont != null)
+                {
+                    g.DrawString(GetText("setting_pdf_compress_title"), _tabFont, Brushes.White,
+                        pdfX * s, (pdfCard.Y + 12) * s);
+                    var imageLevelDescriptor = SettingPageRegistry.AllDescriptors[imageCompressLevelIndex];
+                    g.DrawString(GetText(imageLevelDescriptor.TitleKey), _tabFont, Brushes.White,
+                        imageX * s, (imageCard.Y + 12) * s);
+                }
+
+                int sliderWidth = SettingsLayout.SliderWidthFor(innerWidth);
+                int pdfSliderY = pdfCard.Y + SettingsLayout.CompressionSliderTop;
+                int imageSliderY = imageCard.Y + SettingsLayout.CompressionSliderTop;
+
+                int compressLevel = ConvertCommandRegistry.GetPdfCompressLevel();
+                _pdfSliderTrackX = pdfX;
+                _pdfSliderTrackW = sliderWidth;
+                DrawCompressSlider(g, pdfX, pdfSliderY, sliderWidth, compressLevel);
+                AddLayoutHitRect(83, SettingsLayout.SliderHitRect(pdfX, pdfSliderY, sliderWidth));
+
+                var imageLevel = SettingPageRegistry.AllDescriptors[imageCompressLevelIndex];
+                var imageRange = imageLevel.GetEffectiveNumericRange() ?? new NumericSettingRange(0, 1, 0);
+                int currentImageLevel = Math.Clamp(
+                    ClickraStorage.GetSettingInt(imageLevel.Key), imageRange.Min, imageRange.Max);
+                int imageLevelElement = 1000 + imageCompressLevelIndex * 10;
+                _dynamicSliderTrackX = imageX;
+                _dynamicSliderTrackW = sliderWidth;
+                DrawDynamicSlider(g, imageX, imageSliderY, sliderWidth, imageLevel, currentImageLevel, imageRange);
+                AddLayoutHitRect(imageLevelElement, SettingsLayout.SliderHitRect(imageX, imageSliderY, sliderWidth));
+
+                bool stripFonts = ClickraStorage.GetSettingBool(ClickraSettings.PdfCompressStripFonts);
+                bool minifyContent = ClickraStorage.GetSettingBool(ClickraSettings.PdfCompressMinifyContent);
+                int pdfSecondaryY = pdfCard.Y + SettingsLayout.CompressionSecondaryTop;
+                DrawCompactToggleRow("setting_pdf_compress_strip_fonts", stripFonts, 81,
+                    pdfX, pdfSecondaryY, innerWidth);
+                DrawCompactToggleRow("setting_pdf_compress_minify_content", minifyContent, 82,
+                    pdfX, pdfSecondaryY + SettingsLayout.OverviewRowGap, innerWidth);
+
+                var maxDimension = SettingPageRegistry.AllDescriptors[imageCompressMaxDimensionIndex];
+                int maxDimensionElement = 1000 + imageCompressMaxDimensionIndex * 10;
+                int numberY = imageCard.Y + SettingsLayout.CompressionSecondaryTop;
+                if (_tabFont != null)
+                    g.DrawString(GetText(maxDimension.TitleKey), _tabFont, Brushes.White, imageX * s, numberY * s);
+
+                var maxRange = maxDimension.GetEffectiveNumericRange() ?? new NumericSettingRange(0, 100, 0);
+                int maxValue = Math.Clamp(ClickraStorage.GetSettingInt(maxDimension.Key), maxRange.Min, maxRange.Max);
+                int valueY = numberY + 30;
+                if (_subFont != null)
+                {
+                    using var valueBrush = new SolidBrush(Color.FromArgb(200, 200, 200));
+                    g.DrawString(maxValue.ToString(), _subFont, valueBrush, imageX * s, valueY * s);
+                }
+
+                int numberButtonY = valueY + 24;
+                int buttonWidth = SettingsLayout.DynamicNumberButtonWidth;
+                DrawOutputDirButton(g, "-", false, maxDimensionElement + 1, imageX, numberButtonY, buttonWidth);
+                DrawOutputDirButton(g, "+", false, maxDimensionElement + 2,
+                    imageX + buttonWidth + SettingsLayout.InlineGap, numberButtonY, buttonWidth);
+                AddLayoutHitRect(maxDimensionElement + 1, SettingsLayout.ButtonRect(imageX, numberButtonY, buttonWidth));
+                AddLayoutHitRect(maxDimensionElement + 2, SettingsLayout.ButtonRect(
+                    imageX + buttonWidth + SettingsLayout.InlineGap, numberButtonY, buttonWidth));
+
+                y += SettingsLayout.CompressionCardHeight + SettingsLayout.CardGap;
+            }
+            else
+            {
+                float pdfCompressionX = contentX;
+                float pdfCompressionY = y;
+                DrawSectionHeaderAt("setting_pdf_compress_title", "setting_pdf_compress_desc", pdfCompressionX, pdfCompressionY);
+                pdfCompressionY += 50f;
+                DrawGroupSubheader("setting_pdf_compress_group_image", pdfCompressionY);
+                pdfCompressionY += 24f;
+
+                int compressLevel = ConvertCommandRegistry.GetPdfCompressLevel();
+                float sliderW = SettingsLayout.SliderWidth;
+                _pdfSliderTrackX = pdfCompressionX;
+                _pdfSliderTrackW = sliderW;
+                DrawCompressSlider(g, pdfCompressionX, pdfCompressionY, sliderW, compressLevel);
+                AddLayoutHitRect(83, SettingsLayout.SliderHitRect((int)pdfCompressionX, (int)pdfCompressionY, (int)sliderW));
+                pdfCompressionY += SettingsLayout.SliderSectionHeight;
+                DrawGroupSubheader("setting_pdf_compress_group_other", pdfCompressionY);
+                pdfCompressionY += 24f;
+
+                bool stripFonts = ClickraStorage.GetSettingBool(ClickraSettings.PdfCompressStripFonts);
+                DrawToggleSection("setting_pdf_compress_strip_fonts", "", stripFonts, 81, pdfCompressionY);
+                pdfCompressionY += SettingsLayout.CompactToggleSectionHeight;
+                bool minifyContent = ClickraStorage.GetSettingBool(ClickraSettings.PdfCompressMinifyContent);
+                DrawToggleSection("setting_pdf_compress_minify_content", "", minifyContent, 82, pdfCompressionY);
+                pdfCompressionY += SettingsLayout.CompactToggleSectionHeight;
+                y = pdfCompressionY;
             }
 
             // Parked Task Retention Section
-            y = compressionBottom + 16f;
+            y += 2f;
             DrawSectionHeader("setting_parked_ttl_title", "setting_parked_ttl_desc", y);
             y += 50f;
 
