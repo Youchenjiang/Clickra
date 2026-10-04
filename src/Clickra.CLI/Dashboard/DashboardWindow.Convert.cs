@@ -170,7 +170,8 @@ namespace Clickra.UI
                 if (_iconFont != null)
                 {
                     using var iconBrush = new SolidBrush(Color.FromArgb(140, 140, 140));
-                    g.DrawString("\uE118", _iconFont, iconBrush, (zoneX + (zoneW - 20) / 2) * s, (zoneY + 25) * s);
+                    g.DrawString("\uE118", _iconFont, iconBrush, (zoneX + (zoneW - 20) / 2) * s,
+                        (zoneY + DashboardLayout.ConvertZoneIconOffset) * s);
                 }
 
                 if (_tabFont != null)
@@ -178,7 +179,8 @@ namespace Clickra.UI
                     string hint = GetText("convert_drag_drop_hint");
                     using var textBrush = new SolidBrush(Color.FromArgb(220, 220, 220));
                     var size = g.MeasureString(hint, _tabFont);
-                    g.DrawString(hint, _tabFont, textBrush, (zoneX + (zoneW - size.Width / s) / 2) * s, (zoneY + 55) * s);
+                    g.DrawString(hint, _tabFont, textBrush, (zoneX + (zoneW - size.Width / s) / 2) * s,
+                        (zoneY + DashboardLayout.ConvertZoneHintOffset) * s);
                 }
 
                 if (_subFont != null)
@@ -186,7 +188,8 @@ namespace Clickra.UI
                     string subHint = GetText("convert_drag_drop_sub");
                     using var subBrush = new SolidBrush(Color.FromArgb(140, 140, 140));
                     var size = g.MeasureString(subHint, _subFont);
-                    g.DrawString(subHint, _subFont, subBrush, (zoneX + (zoneW - size.Width / s) / 2) * s, (zoneY + 80) * s);
+                    g.DrawString(subHint, _subFont, subBrush, (zoneX + (zoneW - size.Width / s) / 2) * s,
+                        (zoneY + DashboardLayout.ConvertZoneSubHintOffset) * s);
                 }
             }
             else
@@ -195,7 +198,8 @@ namespace Clickra.UI
                 {
                     string summary = string.Format(GetText("convert_selected_count"), _selectedFiles.Count);
                     using var textBrush = new SolidBrush(Color.FromArgb(100, 220, 100));
-                    g.DrawString(summary, _tabFont, textBrush, (zoneX + 20) * s, (zoneY + 20) * s);
+                    g.DrawString(summary, _tabFont, textBrush, (zoneX + 20) * s,
+                        (zoneY + DashboardLayout.ConvertZoneSummaryOffset) * s);
                 }
 
                 if (_subFont != null)
@@ -206,7 +210,8 @@ namespace Clickra.UI
                     {
                         joinedNames = joinedNames.Substring(0, 82) + "...";
                     }
-                    g.DrawString(joinedNames, _subFont, listBrush, (zoneX + 20) * s, (zoneY + 50) * s);
+                    g.DrawString(joinedNames, _subFont, listBrush, (zoneX + 20) * s,
+                        (zoneY + DashboardLayout.ConvertZoneFilesOffset) * s);
 
                     string outDirMode = ClickraStorage.GetSetting(ClickraSettings.OutputDir);
                     string outPathDesc = outDirMode.ToLowerInvariant() switch
@@ -216,7 +221,8 @@ namespace Clickra.UI
                         _ => outDirMode.Equals("source", StringComparison.OrdinalIgnoreCase) ? GetText("setting_output_same_as_source") : GetText("setting_output_custom")
                     };
                     using var descBrush = new SolidBrush(Color.FromArgb(130, 130, 130));
-                    g.DrawString($"{GetText("setting_output_title")}: {outPathDesc}", _subFont, descBrush, (zoneX + 20) * s, (zoneY + 85) * s);
+                    g.DrawString($"{GetText("setting_output_title")}: {outPathDesc}", _subFont, descBrush, (zoneX + 20) * s,
+                        (zoneY + DashboardLayout.ConvertZoneOutputOffset) * s);
                 }
 
                 LayoutRect clearButton = DashboardLayout.ConvertClearButtonRect((int)logW);

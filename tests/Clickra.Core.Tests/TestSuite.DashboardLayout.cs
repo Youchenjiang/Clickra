@@ -61,8 +61,8 @@ static partial class TestSuite
         Assert.Equal(5, DashboardLayout.SidebarTabCount);
 
         Assert.Equal(95, DashboardLayout.ConvertZoneTop);
-        Assert.Equal(120, DashboardLayout.ConvertZoneHeight);
-        Assert.Equal(230, DashboardLayout.ConvertGridTop);
+        Assert.Equal(96, DashboardLayout.ConvertZoneHeight);
+        Assert.Equal(205, DashboardLayout.ConvertGridTop);
         Assert.Equal(24, DashboardLayout.ConvertGroupHeaderHeight);
         Assert.Equal(38, DashboardLayout.ConvertCardHeight);
         Assert.Equal(8, DashboardLayout.ConvertCardGap);
