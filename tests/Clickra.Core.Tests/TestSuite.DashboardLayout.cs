@@ -279,36 +279,37 @@ static partial class TestSuite
         Assert.True(zone.Width > 0 && zone.Height == DashboardLayout.ConvertZoneHeight,
             "The drop zone must fit inside the content area.");
 
-        const int maxRows = 3;
+        int[] groupSizes = { 3, 5, 8 };
         for (int group = 0; group < DashboardLayout.ConvertGroupCount; group++)
         {
-            for (int row = 0; row < maxRows; row++)
+            int columns = DashboardLayout.ConvertGroupColumns(group);
+            for (int item = 0; item < groupSizes[group]; item++)
             {
-                LayoutRect card = DashboardLayout.ConvertCardRect(group, row, zone.X, zone.Width);
+                LayoutRect card = DashboardLayout.ConvertCardRect(group, item, zone.X, zone.Width, groupSizes);
 
                 // 格線在拖放區之下，不是疊在它上面。
                 Assert.True(card.Y >= zone.Bottom, "The command grid must sit below the drop zone.");
 
-                if (row > 0)
+                if (item >= columns)
                 {
-                    LayoutRect above = DashboardLayout.ConvertCardRect(group, row - 1, zone.X, zone.Width);
+                    LayoutRect above = DashboardLayout.ConvertCardRect(group, item - columns, zone.X, zone.Width, groupSizes);
                     Assert.Equal(above.Bottom + DashboardLayout.ConvertCardGap, card.Y);
                 }
 
-                if (group > 0)
+                if (item % columns > 0)
                 {
-                    LayoutRect left = DashboardLayout.ConvertCardRect(group - 1, row, zone.X, zone.Width);
+                    LayoutRect left = DashboardLayout.ConvertCardRect(group, item - 1, zone.X, zone.Width, groupSizes);
                     Assert.True(left.Right <= card.X, "Command columns must not overlap.");
                 }
 
-                // 欄位標題與該欄第一張卡片的左緣對齊。
-                Assert.Equal(card.X, DashboardLayout.ConvertGroupX(group, zone.X, zone.Width));
+                // 分類標題與該分類第一張卡片的左緣對齊。
+                if (item == 0)
+                    Assert.Equal(card.X, DashboardLayout.ConvertGroupX(group, zone.X, zone.Width, groupSizes));
             }
         }
 
-        // 每一列保留完整的列距（卡片下方還有一道間隙），開始鈕接在最後一列之下（與原本的算式一致）。
-        LayoutRect lastCard = DashboardLayout.ConvertCardRect(0, maxRows - 1, zone.X, zone.Width);
-        LayoutRect startButton = DashboardLayout.ConvertStartButtonRect(zone.X, zone.Width, maxRows);
+        LayoutRect lastCard = DashboardLayout.ConvertCardRect(2, groupSizes[2] - 1, zone.X, zone.Width, groupSizes);
+        LayoutRect startButton = DashboardLayout.ConvertStartButtonRect(zone.X, zone.Width, groupSizes);
         Assert.Equal(lastCard.Y + DashboardLayout.ConvertCardStride + DashboardLayout.ConvertStartButtonGap, startButton.Y);
         Assert.True(startButton.Y >= lastCard.Bottom, "The start button must clear the last card.");
         Assert.Equal(zone.Width, startButton.Width);

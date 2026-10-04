@@ -132,6 +132,7 @@ public static class DashboardLayout
 
     public const int ConvertGroupCount = 3;
     public const int ConvertGroupGap = 14;
+    public const int ConvertGroupSectionGap = 12;
 
     /// <summary>指令欄標題的 Y（格線頂端）。</summary>
     public const int ConvertGridTop = 205;
@@ -157,31 +158,65 @@ public static class DashboardLayout
             ConvertClearButtonWidth,
             ConvertClearButtonHeight);
 
-    /// <summary>指令欄的寬度：拖放區寬度均分成固定欄數。</summary>
-    public static int ConvertGroupWidth(int zoneWidth) =>
-        (zoneWidth - (ConvertGroupCount - 1) * ConvertGroupGap) / ConvertGroupCount;
-
-    /// <summary>第 groupIndex 欄第 rowIndex 張指令卡的位置。</summary>
-    public static LayoutRect ConvertCardRect(int groupIndex, int rowIndex, int contentX, int zoneWidth)
+    /// <summary>各分類在寬版工作區使用的欄數：Office 3、PDF 5、圖片 4。</summary>
+    public static int ConvertGroupColumns(int groupIndex) => groupIndex switch
     {
-        int groupWidth = ConvertGroupWidth(zoneWidth);
+        0 => 3,
+        1 => 5,
+        2 => 4,
+        _ => 1
+    };
+
+    /// <summary>指定分類在目前項目數下需要幾列。</summary>
+    public static int ConvertGroupRows(int groupIndex, int itemCount)
+    {
+        int columns = ConvertGroupColumns(groupIndex);
+        return Math.Max(1, (itemCount + columns - 1) / columns);
+    }
+
+    /// <summary>指定分類標題的 Y；前面的分類依實際列數往下堆疊。</summary>
+    public static int ConvertGroupTop(int groupIndex, IReadOnlyList<int> groupSizes)
+    {
+        int y = ConvertGridTop;
+        for (int group = 0; group < groupIndex; group++)
+        {
+            y += ConvertGroupHeaderHeight
+                + ConvertGroupRows(group, groupSizes[group]) * ConvertCardStride
+                + ConvertGroupSectionGap;
+        }
+        return y;
+    }
+
+    /// <summary>第 groupIndex 分類第 itemIndex 張指令卡的位置。</summary>
+    public static LayoutRect ConvertCardRect(int groupIndex, int itemIndex, int contentX, int zoneWidth, IReadOnlyList<int> groupSizes)
+    {
+        int columns = ConvertGroupColumns(groupIndex);
+        int cardWidth = (zoneWidth - (columns - 1) * ConvertGroupGap) / columns;
+        int row = itemIndex / columns;
+        int column = itemIndex % columns;
         return new LayoutRect(
-            contentX + groupIndex * (groupWidth + ConvertGroupGap),
-            ConvertGridTop + ConvertGroupHeaderHeight + rowIndex * ConvertCardStride,
-            groupWidth,
+            contentX + column * (cardWidth + ConvertGroupGap),
+            ConvertGroupTop(groupIndex, groupSizes) + ConvertGroupHeaderHeight + row * ConvertCardStride,
+            cardWidth,
             ConvertCardHeight);
     }
 
-    /// <summary>第 groupIndex 欄的 X（標題與該欄卡片左緣對齊）。</summary>
-    public static int ConvertGroupX(int groupIndex, int contentX, int zoneWidth) =>
-        ConvertCardRect(groupIndex, 0, contentX, zoneWidth).X;
+    /// <summary>分類標題與該分類第一張卡片左緣對齊。</summary>
+    public static int ConvertGroupX(int groupIndex, int contentX, int zoneWidth, IReadOnlyList<int> groupSizes) =>
+        ConvertCardRect(groupIndex, 0, contentX, zoneWidth, groupSizes).X;
 
-    /// <summary>開始鈕的 Y：最低一欄的最後一張卡片之下。</summary>
-    public static int ConvertStartButtonY(int maxCardRows) =>
-        ConvertGridTop + ConvertGroupHeaderHeight + maxCardRows * ConvertCardStride + ConvertStartButtonGap;
+    /// <summary>開始鈕的 Y：最後一個分類的最後一列之下。</summary>
+    public static int ConvertStartButtonY(IReadOnlyList<int> groupSizes)
+    {
+        int lastGroup = Math.Min(ConvertGroupCount, groupSizes.Count) - 1;
+        return ConvertGroupTop(lastGroup, groupSizes)
+            + ConvertGroupHeaderHeight
+            + ConvertGroupRows(lastGroup, groupSizes[lastGroup]) * ConvertCardStride
+            + ConvertStartButtonGap;
+    }
 
-    public static LayoutRect ConvertStartButtonRect(int contentX, int zoneWidth, int maxCardRows) =>
-        new LayoutRect(contentX, ConvertStartButtonY(maxCardRows), zoneWidth, ConvertStartButtonHeight);
+    public static LayoutRect ConvertStartButtonRect(int contentX, int zoneWidth, IReadOnlyList<int> groupSizes) =>
+        new LayoutRect(contentX, ConvertStartButtonY(groupSizes), zoneWidth, ConvertStartButtonHeight);
 
     // ── 下拉選單與它彈出的清單 ──────────────────────────────────
     /// <summary>下拉控制項的寬度與高度；彈出框與它同寬。</summary>

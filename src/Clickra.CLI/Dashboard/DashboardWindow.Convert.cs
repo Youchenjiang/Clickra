@@ -250,11 +250,12 @@ namespace Clickra.UI
 
             for (int group = 0; group < DashboardLayout.ConvertGroupCount; group++)
             {
-                int groupX = DashboardLayout.ConvertGroupX(group, zoneX, zoneW);
+                int groupX = DashboardLayout.ConvertGroupX(group, zoneX, zoneW, ConvertCommandGroupSizes);
                 if (_subFont != null)
                 {
                     using var headerBrush = new SolidBrush(Color.FromArgb(170, 170, 170));
-                    g.DrawString(GetText(GetCommandGroupKey(group)), _subFont, headerBrush, groupX * s, DashboardLayout.ConvertGridTop * s);
+                    g.DrawString(GetText(GetCommandGroupKey(group)), _subFont, headerBrush, groupX * s,
+                        DashboardLayout.ConvertGroupTop(group, ConvertCommandGroupSizes) * s);
                 }
 
                 int commandStart = 0;
@@ -264,7 +265,7 @@ namespace Clickra.UI
                 for (int local = 0; local < ConvertCommandGroupSizes[group]; local++)
                 {
                     int i = commandStart + local;
-                    LayoutRect card = DashboardLayout.ConvertCardRect(group, local, zoneX, zoneW);
+                    LayoutRect card = DashboardLayout.ConvertCardRect(group, local, zoneX, zoneW, ConvertCommandGroupSizes);
 
                     bool isSelected = _convertCommandIndex == i;
                     bool isHovered = _hoveredElement == (50 + i);
@@ -312,8 +313,7 @@ namespace Clickra.UI
                 }
             }
 
-            int maxCommandRows = ConvertCommandGroupSizes.Max();
-            LayoutRect startButton = DashboardLayout.ConvertStartButtonRect(zoneX, zoneW, maxCommandRows);
+            LayoutRect startButton = DashboardLayout.ConvertStartButtonRect(zoneX, zoneW, ConvertCommandGroupSizes);
             if (_selectedFiles.Count > 0 && _convertCommandIndex != -1)
             {
                 bool isBtnHovered = _hoveredElement == 19;

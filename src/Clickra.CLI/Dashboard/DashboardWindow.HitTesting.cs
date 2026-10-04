@@ -72,7 +72,7 @@ namespace Clickra.UI
             {
                 for (int local = 0; local < ConvertCommandGroupSizes[group]; local++)
                 {
-                    if (DashboardLayout.ConvertCardRect(group, local, zone.X, zone.Width).Contains(x, y)
+                    if (DashboardLayout.ConvertCardRect(group, local, zone.X, zone.Width, ConvertCommandGroupSizes).Contains(x, y)
                         && ConvertCommands[commandIndex].ValidateFiles(_selectedFiles, out _))
                     {
                         return 50 + commandIndex;
@@ -84,7 +84,7 @@ namespace Clickra.UI
             if (_selectedFiles.Count > 0 && DashboardLayout.ConvertClearButtonRect((int)logW).Contains(x, y)) return 25;
             if (zone.Contains(x, y)) return 18;
             if (_selectedFiles.Count > 0 && _convertCommandIndex != -1 &&
-                DashboardLayout.ConvertStartButtonRect(zone.X, zone.Width, ConvertCommandGroupSizes.Max()).Contains(x, y)) return 19;
+                DashboardLayout.ConvertStartButtonRect(zone.X, zone.Width, ConvertCommandGroupSizes).Contains(x, y)) return 19;
             return -1;
         }
 
