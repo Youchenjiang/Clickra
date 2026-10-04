@@ -113,6 +113,66 @@ function Assert-WideLogoComposition {
     }
 }
 
+function Assert-ManifestIconWiring {
+    param(
+        [string]$Path,
+        [string]$StoreLogo,
+        [string]$Square44,
+        [string]$Square150,
+        [string]$WideLogo
+    )
+
+    [xml]$manifest = Get-Content -LiteralPath $Path -Raw
+    $propertiesLogo = $manifest.SelectSingleNode("/*[local-name()='Package']/*[local-name()='Properties']/*[local-name()='Logo']")
+    $visualElements = $manifest.SelectSingleNode("//*[local-name()='VisualElements']")
+    $defaultTile = $manifest.SelectSingleNode("//*[local-name()='DefaultTile']")
+
+    if ($null -eq $propertiesLogo -or $propertiesLogo.InnerText -ne $StoreLogo) {
+        throw "Unexpected Store logo wiring in ${Path}: expected $StoreLogo"
+    }
+    if ($null -eq $visualElements -or $visualElements.GetAttribute('Square44x44Logo') -ne $Square44) {
+        throw "Unexpected Square44 logo wiring in ${Path}: expected $Square44"
+    }
+    if ($visualElements.GetAttribute('Square150x150Logo') -ne $Square150) {
+        throw "Unexpected Square150 logo wiring in ${Path}: expected $Square150"
+    }
+    if ($null -eq $defaultTile -or $defaultTile.GetAttribute('Wide310x150Logo') -ne $WideLogo) {
+        throw "Unexpected wide logo wiring in ${Path}: expected $WideLogo"
+    }
+}
+
+function Assert-SparseManifestIconWiring {
+    param([string]$Path)
+
+    [xml]$manifest = Get-Content -LiteralPath $Path -Raw
+    $propertiesLogo = $manifest.SelectSingleNode("/*[local-name()='Package']/*[local-name()='Properties']/*[local-name()='Logo']")
+    $visualElements = $manifest.SelectSingleNode("//*[local-name()='VisualElements']")
+    $shellCommand = $manifest.SelectSingleNode("//*[local-name()='ShellExplorerCommand']")
+
+    if ($null -eq $propertiesLogo -or $propertiesLogo.InnerText -ne 'app.png') {
+        throw "Sparse package Properties Logo must remain on A1 app.png"
+    }
+    if ($null -eq $visualElements -or $visualElements.GetAttribute('Square44x44Logo') -ne 'app.png' -or
+        $visualElements.GetAttribute('Square150x150Logo') -ne 'app.png') {
+        throw "Sparse package square logos must remain on A1 app.png"
+    }
+    if ($null -eq $shellCommand -or $shellCommand.GetAttribute('Icon') -ne 'app.png') {
+        throw "Sparse shell command icon must remain on A1 app.png"
+    }
+}
+
+function Assert-BuildIconWiring {
+    param([string]$Path)
+
+    $source = Get-Content -LiteralPath $Path -Raw
+    if ($source -notmatch 'Copy-Item\s+"src/resources/app\.png"\s+"\$LayoutDir/app\.png"') {
+        throw "Copy-IconAssets must stage A1 src/resources/app.png as layout app.png"
+    }
+    if ($source -match 'Copy-Item\s+"\$PackagingDir/Assets/StoreLogo\.png"\s+"\$LayoutDir/app\.png"') {
+        throw "Store A3 must not leak into sparse/system layout app.png"
+    }
+}
+
 $primarySizes = @(16, 24, 32, 44, 48, 64, 128, 150, 256, 1024)
 foreach ($size in $primarySizes) {
     Assert-Png "packaging/brand_assets/primary/clickra-icon-primary-$size.png" $size $size
@@ -143,5 +203,11 @@ Assert-SameFile "packaging/brand_assets/primary/clickra-icon-primary-44.png" "pa
 Assert-SameFile "packaging/brand_assets/primary/clickra-icon-primary-150.png" "packaging/msix/Assets/Square150x150Logo.png"
 Assert-SameFile "packaging/brand_assets/capability/clickra-icon-capability-50.png" "packaging/msix/Assets/StoreLogo.png"
 Assert-WideLogoComposition "packaging/msix/Assets/Wide310x150Logo.png" "packaging/brand_assets/primary/clickra-icon-primary-128.png"
+
+foreach ($manifest in @('packaging/msix/AppxManifest.xml', 'packaging/msix/AppxManifest.Fluent.xml')) {
+    Assert-ManifestIconWiring $manifest 'Assets\StoreLogo.png' 'Assets\Square44x44Logo.png' 'Assets\Square150x150Logo.png' 'Assets\Wide310x150Logo.png'
+}
+Assert-SparseManifestIconWiring 'src/resources/AppxManifest.xml'
+Assert-BuildIconWiring 'scripts/build_common.ps1'
 
 Write-Host "Icon asset verification passed."
