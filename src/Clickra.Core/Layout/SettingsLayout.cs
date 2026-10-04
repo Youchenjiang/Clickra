@@ -58,6 +58,9 @@ public static class SettingsLayout
     public static LayoutRect ToggleRect(int logW, int sectionY) =>
         new LayoutRect(logW - ToggleRightInset, sectionY + ToggleTopOffset, ToggleWidth, ToggleHeight);
 
+    public static LayoutRect ToggleRectWithin(int x, int width, int sectionY) =>
+        new LayoutRect(x + width - ToggleWidth, sectionY + ToggleTopOffset, ToggleWidth, ToggleHeight);
+
     public static LayoutRect ButtonRect(int x, int y, int width) =>
         new LayoutRect(x, y, width, ButtonHeight);
 

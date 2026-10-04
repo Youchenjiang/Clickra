@@ -65,6 +65,21 @@ namespace Clickra.UI
                 AddLayoutHitRect(elementId, toggle);
             }
 
+            void DrawToggleSectionAt(
+                string titleKey,
+                string descKey,
+                bool state,
+                int elementId,
+                float x,
+                float width,
+                float y)
+            {
+                DrawSectionHeaderAt(titleKey, descKey, x, y);
+                LayoutRect toggle = SettingsLayout.ToggleRectWithin((int)x, (int)width, (int)y);
+                DrawToggleSwitch(g, state, _hoveredElement == elementId, toggle.X, toggle.Y, toggle.Width, toggle.Height);
+                AddLayoutHitRect(elementId, toggle);
+            }
+
             if (_contentTitleFont != null)
                 g.DrawString(GetText("tab_settings"), _contentTitleFont, Brushes.White, contentX * s, 30 * s);
 
@@ -403,38 +418,88 @@ namespace Clickra.UI
             }
             y += 48f;
 
-            DrawSectionHeader("setting_pdf_compress_title", "setting_pdf_compress_desc", y);
-            y += 50f;
+            float compressionTop = y;
+            float pdfCompressionX = contentX;
+            float pdfCompressionWidth = wideSettings
+                ? SettingsLayout.ColumnWidth((int)contentX, (int)logW)
+                : logW - contentX - SettingsLayout.ContentRightMargin;
+            float pdfCompressionY = compressionTop;
+
+            DrawSectionHeaderAt("setting_pdf_compress_title", "setting_pdf_compress_desc", pdfCompressionX, pdfCompressionY);
+            pdfCompressionY += 50f;
 
             // Image Compression Subheader
-            DrawGroupSubheader("setting_pdf_compress_group_image", y);
-            y += 24f;
+            DrawGroupSubheader("setting_pdf_compress_group_image", pdfCompressionY);
+            pdfCompressionY += 24f;
 
             // Compact slider: one level maps to both DPI + JPEG quality
             int compressLevel = ConvertCommandRegistry.GetPdfCompressLevel();
             float sliderW = SettingsLayout.SliderWidth;
-            _pdfSliderTrackX = contentX;
+            _pdfSliderTrackX = pdfCompressionX;
             _pdfSliderTrackW = sliderW;
-            DrawCompressSlider(g, contentX, y, sliderW, compressLevel);
-            AddLayoutHitRect(83, SettingsLayout.SliderHitRect((int)contentX, (int)y, (int)sliderW));
-            y += SettingsLayout.SliderSectionHeight;
+            DrawCompressSlider(g, pdfCompressionX, pdfCompressionY, sliderW, compressLevel);
+            AddLayoutHitRect(83, SettingsLayout.SliderHitRect((int)pdfCompressionX, (int)pdfCompressionY, (int)sliderW));
+            pdfCompressionY += SettingsLayout.SliderSectionHeight;
 
             // Other Optimization Subheader
-            DrawGroupSubheader("setting_pdf_compress_group_other", y);
-            y += 24f;
+            DrawGroupSubheader("setting_pdf_compress_group_other", pdfCompressionY);
+            pdfCompressionY += 24f;
 
             // Strip Fonts Toggle
             bool stripFonts = ClickraStorage.GetSettingBool(ClickraSettings.PdfCompressStripFonts);
-            DrawToggleSection("setting_pdf_compress_strip_fonts", "", stripFonts, 81, y);
-            y += SettingsLayout.CompactToggleSectionHeight;
+            if (wideSettings)
+                DrawToggleSectionAt("setting_pdf_compress_strip_fonts", "", stripFonts, 81,
+                    pdfCompressionX, pdfCompressionWidth, pdfCompressionY);
+            else
+                DrawToggleSection("setting_pdf_compress_strip_fonts", "", stripFonts, 81, pdfCompressionY);
+            pdfCompressionY += SettingsLayout.CompactToggleSectionHeight;
 
             // Minify Content Toggle
             bool minifyContent = ClickraStorage.GetSettingBool(ClickraSettings.PdfCompressMinifyContent);
-            DrawToggleSection("setting_pdf_compress_minify_content", "", minifyContent, 82, y);
-            y += SettingsLayout.CompactToggleSectionHeight;
+            if (wideSettings)
+                DrawToggleSectionAt("setting_pdf_compress_minify_content", "", minifyContent, 82,
+                    pdfCompressionX, pdfCompressionWidth, pdfCompressionY);
+            else
+                DrawToggleSection("setting_pdf_compress_minify_content", "", minifyContent, 82, pdfCompressionY);
+            pdfCompressionY += SettingsLayout.CompactToggleSectionHeight;
+
+            int imageCompressLevelIndex = -1;
+            int imageCompressMaxDimensionIndex = -1;
+            for (int i = 0; i < SettingPageRegistry.AllDescriptors.Count; i++)
+            {
+                string key = SettingPageRegistry.AllDescriptors[i].Key;
+                if (key.Equals(ClickraSettings.ImageCompressLevel, StringComparison.OrdinalIgnoreCase))
+                    imageCompressLevelIndex = i;
+                else if (key.Equals(ClickraSettings.ImageCompressMaxDimension, StringComparison.OrdinalIgnoreCase))
+                    imageCompressMaxDimensionIndex = i;
+            }
+
+            float compressionBottom = pdfCompressionY;
+            if (wideSettings && imageCompressLevelIndex >= 0 && imageCompressMaxDimensionIndex >= 0)
+            {
+                float imageCompressionX = SettingsLayout.ColumnX((int)contentX, (int)logW, 1);
+                float imageCompressionY = compressionTop;
+                DrawDynamicSettingDescriptor(
+                    g,
+                    SettingPageRegistry.AllDescriptors[imageCompressLevelIndex],
+                    imageCompressLevelIndex,
+                    logW,
+                    imageCompressionX,
+                    margin,
+                    ref imageCompressionY);
+                DrawDynamicSettingDescriptor(
+                    g,
+                    SettingPageRegistry.AllDescriptors[imageCompressMaxDimensionIndex],
+                    imageCompressMaxDimensionIndex,
+                    logW,
+                    imageCompressionX,
+                    margin,
+                    ref imageCompressionY);
+                compressionBottom = Math.Max(compressionBottom, imageCompressionY);
+            }
 
             // Parked Task Retention Section
-            y += 16f;
+            y = compressionBottom + 16f;
             DrawSectionHeader("setting_parked_ttl_title", "setting_parked_ttl_desc", y);
             y += 50f;
 
@@ -493,6 +558,12 @@ namespace Clickra.UI
             {
                 var descriptor = SettingPageRegistry.AllDescriptors[i];
                 if (LegacyPaintedSettings.Contains(descriptor.Key)) continue;
+                if (wideSettings &&
+                    (descriptor.Key.Equals(ClickraSettings.ImageCompressLevel, StringComparison.OrdinalIgnoreCase) ||
+                     descriptor.Key.Equals(ClickraSettings.ImageCompressMaxDimension, StringComparison.OrdinalIgnoreCase)))
+                {
+                    continue;
+                }
 
                 DrawDynamicSettingDescriptor(g, descriptor, i, logW, contentX, margin, ref y);
             }
