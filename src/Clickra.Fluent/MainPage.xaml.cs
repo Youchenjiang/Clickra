@@ -166,7 +166,7 @@ public sealed partial class MainPage : Page
         var narrow = ActualWidth < 1000;
 
         SetTwoPaneLayout(OverviewSidePane, OverviewMainColumn, OverviewSideColumn, 1.4, 0.85, narrow);
-        ApplyConvertResponsiveLayout(narrow);
+        ApplyConvertResponsiveLayout(this, narrow);
         ApplyHistoryResponsiveLayout(narrow);
         ApplySettingsResponsiveLayout(narrow);
         ApplyAboutResponsiveLayout(narrow);
@@ -185,58 +185,58 @@ public sealed partial class MainPage : Page
         Grid.SetRow(sidePane, narrow ? 1 : 0);
     }
 
-    private void ApplyConvertResponsiveLayout(bool narrow)
+    private static void ApplyConvertResponsiveLayout(MainPage page, bool narrow)
     {
-        ConvertMainColumn.Width = new GridLength(1, GridUnitType.Star);
-        ConvertSideColumn.Width = narrow ? new GridLength(0) : new GridLength(1, GridUnitType.Star);
-        Grid.SetColumn(ConvertRunCard, narrow ? 0 : 1);
-        Grid.SetRow(ConvertRunCard, narrow ? 3 : 1);
+        page.ConvertMainColumn.Width = new GridLength(1, GridUnitType.Star);
+        page.ConvertSideColumn.Width = narrow ? new GridLength(0) : new GridLength(1, GridUnitType.Star);
+        Grid.SetColumn(page.ConvertRunCard, narrow ? 0 : 1);
+        Grid.SetRow(page.ConvertRunCard, narrow ? 3 : 1);
 
-        SetActiveColumns(OfficeCommandGrid, narrow ? 2 : 3);
-        SetActiveColumns(PdfCommandGrid, narrow ? 2 : 5);
-        SetActiveColumns(ImageCommandGrid, narrow ? 2 : 4);
+        SetActiveColumns(page.OfficeCommandGrid, narrow ? 2 : 3);
+        SetActiveColumns(page.PdfCommandGrid, narrow ? 2 : 5);
+        SetActiveColumns(page.ImageCommandGrid, narrow ? 2 : 4);
 
         if (narrow)
         {
-            SetGridCell(BtnWord2Pdf, 0, 0);
-            SetGridCell(BtnExcel2Pdf, 0, 1);
-            SetGridCell(BtnPpt2Pdf, 1, 0, 2);
+            SetGridCell(page.BtnWord2Pdf, 0, 0);
+            SetGridCell(page.BtnExcel2Pdf, 0, 1);
+            SetGridCell(page.BtnPpt2Pdf, 1, 0, 2);
 
-            SetGridCell(BtnMergePdf, 0, 0);
-            SetGridCell(BtnCompressPdf, 0, 1);
-            SetGridCell(BtnTranslatePdf, 1, 0);
-            SetGridCell(BtnDecryptPdf, 1, 1);
-            SetGridCell(BtnSplitPdf, 2, 0, 2);
+            SetGridCell(page.BtnMergePdf, 0, 0);
+            SetGridCell(page.BtnCompressPdf, 0, 1);
+            SetGridCell(page.BtnTranslatePdf, 1, 0);
+            SetGridCell(page.BtnDecryptPdf, 1, 1);
+            SetGridCell(page.BtnSplitPdf, 2, 0, 2);
 
-            SetGridCell(BtnImg2Pdf, 0, 0);
-            SetGridCell(BtnImgMerge, 0, 1);
-            SetGridCell(BtnImgStitch, 1, 0);
-            SetGridCell(BtnImgToPng, 1, 1);
-            SetGridCell(BtnImgToJpg, 2, 0);
-            SetGridCell(BtnImgToWebp, 2, 1);
-            SetGridCell(BtnImgToGif, 3, 0);
-            SetGridCell(BtnImgToHeic, 3, 1);
+            SetGridCell(page.BtnImg2Pdf, 0, 0);
+            SetGridCell(page.BtnImgMerge, 0, 1);
+            SetGridCell(page.BtnImgStitch, 1, 0);
+            SetGridCell(page.BtnImgToPng, 1, 1);
+            SetGridCell(page.BtnImgToJpg, 2, 0);
+            SetGridCell(page.BtnImgToWebp, 2, 1);
+            SetGridCell(page.BtnImgToGif, 3, 0);
+            SetGridCell(page.BtnImgToHeic, 3, 1);
             return;
         }
 
-        SetGridCell(BtnWord2Pdf, 0, 0);
-        SetGridCell(BtnExcel2Pdf, 0, 1);
-        SetGridCell(BtnPpt2Pdf, 0, 2);
+        SetGridCell(page.BtnWord2Pdf, 0, 0);
+        SetGridCell(page.BtnExcel2Pdf, 0, 1);
+        SetGridCell(page.BtnPpt2Pdf, 0, 2);
 
-        SetGridCell(BtnMergePdf, 0, 0);
-        SetGridCell(BtnCompressPdf, 0, 1);
-        SetGridCell(BtnTranslatePdf, 0, 2);
-        SetGridCell(BtnDecryptPdf, 0, 3);
-        SetGridCell(BtnSplitPdf, 0, 4);
+        SetGridCell(page.BtnMergePdf, 0, 0);
+        SetGridCell(page.BtnCompressPdf, 0, 1);
+        SetGridCell(page.BtnTranslatePdf, 0, 2);
+        SetGridCell(page.BtnDecryptPdf, 0, 3);
+        SetGridCell(page.BtnSplitPdf, 0, 4);
 
-        SetGridCell(BtnImg2Pdf, 0, 0);
-        SetGridCell(BtnImgMerge, 0, 1);
-        SetGridCell(BtnImgStitch, 0, 2);
-        SetGridCell(BtnImgToPng, 0, 3);
-        SetGridCell(BtnImgToJpg, 1, 0);
-        SetGridCell(BtnImgToWebp, 1, 1);
-        SetGridCell(BtnImgToGif, 1, 2);
-        SetGridCell(BtnImgToHeic, 1, 3);
+        SetGridCell(page.BtnImg2Pdf, 0, 0);
+        SetGridCell(page.BtnImgMerge, 0, 1);
+        SetGridCell(page.BtnImgStitch, 0, 2);
+        SetGridCell(page.BtnImgToPng, 0, 3);
+        SetGridCell(page.BtnImgToJpg, 1, 0);
+        SetGridCell(page.BtnImgToWebp, 1, 1);
+        SetGridCell(page.BtnImgToGif, 1, 2);
+        SetGridCell(page.BtnImgToHeic, 1, 3);
     }
 
     private static void SetActiveColumns(Grid grid, int activeColumns)

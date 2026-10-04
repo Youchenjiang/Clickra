@@ -58,9 +58,9 @@ static partial class TestSuite
     private static void TestCompactConvertWorkspace()
     {
         string? root = FindRepoRoot();
-        if (root is null) throw new TestSkippedException("Could not locate the repository root from the test output directory.");
+        if (root is null) throw new TestSkippedException(RepoRootNotFoundMessage);
 
-        XDocument xaml = XDocument.Load(Path.Combine(root, "src", "Clickra.Fluent", "MainPage.xaml"));
+        XDocument xaml = XDocument.Load(Path.Combine(root, "src", FluentProjectDirectory, "MainPage.xaml"));
         XElement dropZone = FindNamedXamlElement(xaml, "DropZone");
         XElement selectedFilesCard = FindNamedXamlElement(xaml, "SelectedFilesCard");
         XElement runCard = FindNamedXamlElement(xaml, "ConvertRunCard");
@@ -73,7 +73,7 @@ static partial class TestSuite
         Assert.Equal("Collapsed", selectedFilesCard.Attribute("Visibility")?.Value ?? string.Empty);
         Assert.Equal("Collapsed", runCard.Attribute("Visibility")?.Value ?? string.Empty);
 
-        string codeBehind = File.ReadAllText(Path.Combine(root, "src", "Clickra.Fluent", "MainPage.xaml.cs"));
+        string codeBehind = File.ReadAllText(Path.Combine(root, "src", FluentProjectDirectory, "MainPage.xaml.cs"));
         Assert.True(codeBehind.Contains("SelectedFilesCard.Visibility = _selectedFiles.Count > 0", StringComparison.Ordinal),
             "Selected files must only consume layout space after files are selected.");
         Assert.True(codeBehind.Contains("ConvertRunCard.Visibility = _selectedFiles.Count > 0 || _isRunning", StringComparison.Ordinal),
@@ -83,9 +83,9 @@ static partial class TestSuite
     private static void TestConvertCommandGroupWiring()
     {
         string? root = FindRepoRoot();
-        if (root is null) throw new TestSkippedException("Could not locate the repository root from the test output directory.");
+        if (root is null) throw new TestSkippedException(RepoRootNotFoundMessage);
 
-        XDocument xaml = XDocument.Load(Path.Combine(root, "src", "Clickra.Fluent", "MainPage.xaml"));
+        XDocument xaml = XDocument.Load(Path.Combine(root, "src", FluentProjectDirectory, "MainPage.xaml"));
         XElement commandCard = FindNamedXamlElement(xaml, "ConvertCommandCard");
         string[] actualTags = commandCard.Descendants()
             .Where(e => e.Name.LocalName == "Button" && e.Attribute("Tag") is not null)
@@ -105,12 +105,12 @@ static partial class TestSuite
         Assert.Equal(5, CountGridColumns(FindNamedXamlElement(xaml, "PdfCommandGrid")));
         Assert.Equal(4, CountGridColumns(FindNamedXamlElement(xaml, "ImageCommandGrid")));
 
-        string codeBehind = File.ReadAllText(Path.Combine(root, "src", "Clickra.Fluent", "MainPage.xaml.cs"));
-        Assert.True(codeBehind.Contains("SetActiveColumns(OfficeCommandGrid, narrow ? 2 : 3);", StringComparison.Ordinal),
+        string codeBehind = File.ReadAllText(Path.Combine(root, "src", FluentProjectDirectory, "MainPage.xaml.cs"));
+        Assert.True(codeBehind.Contains("SetActiveColumns(page.OfficeCommandGrid, narrow ? 2 : 3);", StringComparison.Ordinal),
             "Office commands must reflow from three wide columns to two narrow columns.");
-        Assert.True(codeBehind.Contains("SetActiveColumns(PdfCommandGrid, narrow ? 2 : 5);", StringComparison.Ordinal),
+        Assert.True(codeBehind.Contains("SetActiveColumns(page.PdfCommandGrid, narrow ? 2 : 5);", StringComparison.Ordinal),
             "PDF commands must reflow from five wide columns to two narrow columns.");
-        Assert.True(codeBehind.Contains("SetActiveColumns(ImageCommandGrid, narrow ? 2 : 4);", StringComparison.Ordinal),
+        Assert.True(codeBehind.Contains("SetActiveColumns(page.ImageCommandGrid, narrow ? 2 : 4);", StringComparison.Ordinal),
             "Image commands must reflow from four wide columns to two narrow columns.");
     }
 
@@ -129,10 +129,10 @@ static partial class TestSuite
     private static void TestEveryFluentXamlFileIsCovered()
     {
         string? root = FindRepoRoot();
-        if (root is null) throw new TestSkippedException("Could not locate the repository root from the test output directory.");
+        if (root is null) throw new TestSkippedException(RepoRootNotFoundMessage);
 
         var scanned = ScanXamlFiles(root)
-            .Select(p => Path.GetRelativePath(Path.Combine(root, "src", "Clickra.Fluent"), p).Replace('\\', '/'))
+            .Select(p => Path.GetRelativePath(Path.Combine(root, "src", FluentProjectDirectory), p).Replace('\\', '/'))
             .ToList();
 
         Assert.True(scanned.Count > 0, "Expected to find XAML files to scan under src/.");
@@ -147,7 +147,7 @@ static partial class TestSuite
     private static void TestNoHardcodedCjkTextInXaml()
     {
         string? root = FindRepoRoot();
-        if (root is null) throw new TestSkippedException("Could not locate the repository root from the test output directory.");
+        if (root is null) throw new TestSkippedException(RepoRootNotFoundMessage);
 
         var violations = new List<string>();
         foreach (string file in ScanXamlFiles(root))
