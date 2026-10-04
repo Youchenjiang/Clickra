@@ -53,6 +53,8 @@ public static class SettingsLayout
     public const int CompressionCardHeight = 214;
     public const int CompressionSliderTop = 52;
     public const int CompressionSecondaryTop = 122;
+    public const int ChoiceCardHeight = 72;
+    public const int FluentCardHeight = 76;
 
     public static bool IsWide(int logW) => logW >= WideBreakpoint;
 

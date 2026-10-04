@@ -148,7 +148,24 @@ namespace Clickra.UI
                 y += SettingsLayout.PrimaryToggleSectionHeight;
             }
 
-            DrawSectionHeader("setting_output_title", "setting_output_desc", y);
+            int outputContentX = (int)contentX;
+            if (wideSettings)
+            {
+                LayoutRect outputCard = SettingsLayout.CardRect(
+                    (int)contentX,
+                    (int)y,
+                    (int)(logW - contentX - SettingsLayout.ContentRightMargin),
+                    SettingsLayout.ChoiceCardHeight);
+                DrawCard(outputCard);
+                outputContentX = outputCard.X + SettingsLayout.CardPadding;
+                if (_tabFont != null)
+                    g.DrawString(GetText("setting_output_title"), _tabFont, Brushes.White,
+                        outputContentX * s, (outputCard.Y + 10) * s);
+            }
+            else
+            {
+                DrawSectionHeader("setting_output_title", "setting_output_desc", y);
+            }
 
             string outputDirMode = ClickraStorage.GetSetting(ClickraSettings.OutputDir);
             bool isSource = outputDirMode.Equals(ClickraSettings.DefaultOutputDirSource, StringComparison.OrdinalIgnoreCase);
@@ -166,11 +183,11 @@ namespace Clickra.UI
             float wDownloads = _wDownloads;
             float wCustom = _wCustom;
 
-            float xSource = contentX;
+            float xSource = outputContentX;
             float xDesktop = xSource + wSource + margin;
             float xDownloads = xDesktop + wDesktop + margin;
             float xCustom = xDownloads + wDownloads + margin;
-            float buttonY = y + SettingsLayout.ControlTopOffset;
+            float buttonY = wideSettings ? y + 34f : y + SettingsLayout.ControlTopOffset;
 
             DrawOutputDirButton(g, textSource, isSource, 7, (int)xSource, (int)buttonY, (int)wSource);
             DrawOutputDirButton(g, textDesktop, isDesktop, 8, (int)xDesktop, (int)buttonY, (int)wDesktop);
@@ -181,7 +198,9 @@ namespace Clickra.UI
             AddLayoutHitRect(9, SettingsLayout.ButtonRect((int)xDownloads, (int)buttonY, (int)wDownloads));
             AddLayoutHitRect(20, SettingsLayout.ButtonRect((int)xCustom, (int)buttonY, (int)wCustom));
 
-            y += SettingsLayout.PrimaryChoiceSectionHeight;
+            y += wideSettings
+                ? SettingsLayout.ChoiceCardHeight + SettingsLayout.CardGap
+                : SettingsLayout.PrimaryChoiceSectionHeight;
             if (isCustom && !string.IsNullOrEmpty(outputDirMode))
             {
                 if (_subFont != null)
@@ -192,7 +211,7 @@ namespace Clickra.UI
                     {
                         displayText = "..." + displayText.Substring(displayText.Length - 57);
                     }
-                    g.DrawString($"{GetText("setting_output_selected_path")}: {displayText}", _subFont, pathBrush, contentX * s, y * s);
+                    g.DrawString($"{GetText("setting_output_selected_path")}: {displayText}", _subFont, pathBrush, outputContentX * s, y * s);
                 }
                 y += 24f;
             }
@@ -431,41 +450,75 @@ namespace Clickra.UI
 
             // Fluent UI section
             bool fluentAvailable = Clickra.Core.FluentRuntimeHelper.IsAvailable();
-            DrawSectionHeader("setting_fluent_title", "setting_fluent_desc", y);
-            y += 50f;
-
-            if (fluentAvailable)
+            if (wideSettings)
             {
-                // Show status: ready
+                LayoutRect fluentCard = SettingsLayout.CardRect(
+                    (int)contentX,
+                    (int)y,
+                    (int)(logW - contentX - SettingsLayout.ContentRightMargin),
+                    SettingsLayout.FluentCardHeight);
+                DrawCard(fluentCard);
+                int fluentX = fluentCard.X + SettingsLayout.CardPadding;
                 if (_subFont != null)
                 {
-                    using var statusBrush = new SolidBrush(Color.FromArgb(100, 220, 100));
-                    g.DrawString(GetText("setting_fluent_ready"), _subFont, statusBrush, contentX * s, y * s);
+                    if (_tabFont != null)
+                        g.DrawString(GetText("setting_fluent_title"), _tabFont, Brushes.White,
+                            fluentX * s, (fluentCard.Y + 10) * s);
+                    using var statusBrush = new SolidBrush(fluentAvailable
+                        ? Color.FromArgb(100, 220, 100)
+                        : Color.FromArgb(255, 190, 90));
+                    g.DrawString(GetText(fluentAvailable ? "setting_fluent_ready" : "setting_fluent_not_installed"),
+                        _subFont, statusBrush, fluentX * s, (fluentCard.Y + 42) * s);
                 }
+
+                if (!fluentAvailable && Clickra.Core.FluentRuntimeHelper.SupportsStoreFluentAddon())
+                {
+                    int installWidth = 200;
+                    int installX = fluentCard.Right - SettingsLayout.CardPadding - installWidth;
+                    int installY = fluentCard.Y + 32;
+                    DrawOutputDirButton(g, GetText("setting_fluent_install"), false, 40,
+                        installX, installY, installWidth);
+                    AddLayoutHitRect(40, SettingsLayout.ButtonRect(installX, installY, installWidth));
+                }
+
+                y += SettingsLayout.FluentCardHeight + SettingsLayout.CardGap;
             }
             else
             {
-                // Show status: not installed + install button
-                if (_subFont != null)
+                DrawSectionHeader("setting_fluent_title", "setting_fluent_desc", y);
+                y += 50f;
+
+                if (fluentAvailable)
                 {
-                    using var statusBrush = new SolidBrush(Color.FromArgb(255, 190, 90));
-                    g.DrawString(GetText("setting_fluent_not_installed"), _subFont, statusBrush, contentX * s, y * s);
+                    if (_subFont != null)
+                    {
+                        using var statusBrush = new SolidBrush(Color.FromArgb(100, 220, 100));
+                        g.DrawString(GetText("setting_fluent_ready"), _subFont, statusBrush, contentX * s, y * s);
+                    }
                 }
-                if (Clickra.Core.FluentRuntimeHelper.SupportsStoreFluentAddon())
+                else
                 {
-                    y += 28f;
-                    DrawOutputDirButton(
-                        g,
-                        GetText("setting_fluent_install"),
-                        false,
-                        40,
-                        (int)contentX,
-                        (int)y,
-                        200);
-                    AddHitRect(40, contentX, y, 200, 30);
+                    if (_subFont != null)
+                    {
+                        using var statusBrush = new SolidBrush(Color.FromArgb(255, 190, 90));
+                        g.DrawString(GetText("setting_fluent_not_installed"), _subFont, statusBrush, contentX * s, y * s);
+                    }
+                    if (Clickra.Core.FluentRuntimeHelper.SupportsStoreFluentAddon())
+                    {
+                        y += 28f;
+                        DrawOutputDirButton(
+                            g,
+                            GetText("setting_fluent_install"),
+                            false,
+                            40,
+                            (int)contentX,
+                            (int)y,
+                            200);
+                        AddHitRect(40, contentX, y, 200, 30);
+                    }
                 }
+                y += 48f;
             }
-            y += 48f;
 
             int imageCompressLevelIndex = -1;
             int imageCompressMaxDimensionIndex = -1;
