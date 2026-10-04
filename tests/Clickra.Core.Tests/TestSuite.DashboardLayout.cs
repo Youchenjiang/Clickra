@@ -383,12 +383,41 @@ static partial class TestSuite
         Assert.True(toggle.X >= leftX && toggle.Right <= leftX + columnWidth,
             "A column toggle must stay inside its own column.");
 
+        LayoutRect leftOverview = SettingsLayout.CardRect(
+            leftX, SettingsLayout.ContentTop, columnWidth, SettingsLayout.OverviewCardHeight);
+        LayoutRect rightOverview = SettingsLayout.CardRect(
+            rightX, SettingsLayout.ContentTop, columnWidth, SettingsLayout.OverviewCardHeight);
+        Assert.True(leftOverview.Right < rightOverview.X,
+            "Overview cards must be separated by the responsive column gap.");
+
+        LayoutRect leftCompression = SettingsLayout.CardRect(
+            leftX, leftOverview.Bottom + SettingsLayout.CardGap, columnWidth, SettingsLayout.CompressionCardHeight);
+        LayoutRect rightCompression = SettingsLayout.CardRect(
+            rightX, leftCompression.Y, columnWidth, SettingsLayout.CompressionCardHeight);
+        Assert.True(leftCompression.Right < rightCompression.X,
+            "Compression cards must never overlap across columns.");
+        Assert.True(SettingsLayout.CompressionSliderTop + SettingsLayout.SliderHitHeight
+                    < SettingsLayout.CompressionSecondaryTop,
+            "Compression sliders and secondary controls need a real vertical separation band.");
+
         int stackedLanguageHeight = SettingsLayout.LanguageSectionHeight + SettingsLayout.PdfLanguageSectionHeight;
         int pairedLanguageHeight = Math.Max(SettingsLayout.LanguageSectionHeight, SettingsLayout.PdfLanguageSectionHeight);
         Assert.True(pairedLanguageHeight < stackedLanguageHeight,
             "Wide language controls must consume one row instead of two stacked sections.");
         Assert.True(SettingsLayout.PrimaryToggleSectionHeight < SettingsLayout.ToggleSectionHeight,
             "Primary Settings toggles must retain the compact first-screen rhythm.");
+
+        const int actualHighDpiViewportHeight = 488;
+        int commonWideContentHeight = SettingsLayout.ContentTop
+            + SettingsLayout.OverviewCardHeight + SettingsLayout.CardGap
+            + SettingsLayout.ChoiceCardHeight + SettingsLayout.CardGap
+            + SettingsLayout.PrimaryChoiceSectionHeight + 32
+            + SettingsLayout.FluentCardHeight + SettingsLayout.CardGap
+            + SettingsLayout.CompressionCardHeight + SettingsLayout.CardGap + 2
+            + 50 + 28 + 50
+            + 80;
+        Assert.True(commonWideContentHeight <= actualHighDpiViewportHeight * 2,
+            $"Common 200% DPI Settings layout must stay within two viewports, got {commonWideContentHeight}px.");
 
         string dir = DashboardDir();
         string paint = File.ReadAllText(Path.Combine(dir, "DashboardWindow.Paint.Settings.cs"));
@@ -405,6 +434,9 @@ static partial class TestSuite
             "Responsive Settings must not expose the legacy virtual-canvas horizontal scrollbar.");
         Assert.True(paint.Contains("SettingsLayout.ColumnX((int)contentX, (int)logW, 1)", StringComparison.Ordinal),
             "Wide Settings groups must take the second-column X from SettingsLayout.");
+        Assert.True(paint.Contains("SettingsLayout.OverviewCardHeight", StringComparison.Ordinal)
+                    && paint.Contains("SettingsLayout.CompressionCardHeight", StringComparison.Ordinal),
+            "Wide Settings must use bounded overview and compression cards rather than free-running sections.");
         Assert.True(paint.Contains("ClickraSettings.ImageCompressLevel", StringComparison.Ordinal)
                     && paint.Contains("ClickraSettings.ImageCompressMaxDimension", StringComparison.Ordinal),
             "The wide compression row must include both image compression descriptors.");
