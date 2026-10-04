@@ -14,7 +14,7 @@ namespace Clickra.UI
 {
     public static partial class DashboardWindow
     {
-        static void DrawLanguageDropdown(Graphics g, int y, float contentX)
+        static void DrawLanguageDropdown(Graphics g, int y, float contentX, int width = DashboardLayout.DropdownWidth)
         {
             float s = _dpiScale;
             string currentLangCode = ClickraStorage.GetSetting(ClickraSettings.Language);
@@ -29,7 +29,7 @@ namespace Clickra.UI
             string displayText = $"{currentLang.NativeName} ({currentLang.EnglishName})";
             bool isHovered = _hoveredElement == 10;
 
-            LayoutRect control = DashboardLayout.DropdownButtonRect((int)contentX, y);
+            LayoutRect control = DashboardLayout.DropdownButtonRect((int)contentX, y, width);
             int x = control.X, w = control.Width;
 
             UIHelper.DrawDropdownButton(g, x, y, w, control.Height, displayText, _langDropdownOpen, isHovered, _subFont, _iconFont, s);
@@ -37,11 +37,11 @@ namespace Clickra.UI
             // Draw overlay popup list if open：彈出框、搜尋框與列距都來自版面表。
             if (_langDropdownOpen)
             {
-                LayoutRect popup = DashboardLayout.DropdownPopupRect(x, y, DashboardLayout.LanguagePopupHeight);
+                LayoutRect popup = DashboardLayout.DropdownPopupRect(x, y, DashboardLayout.LanguagePopupHeight, width);
 
                 UIHelper.DrawDropdownPopup(g, popup.X, popup.Y, popup.Width, popup.Height, s);
 
-                LayoutRect search = DashboardLayout.DropdownSearchRect(popup.X, popup.Y);
+                LayoutRect search = DashboardLayout.DropdownSearchRect(popup.X, popup.Y, width);
                 int searchX = search.X, searchY = search.Y;
                 using (var searchPath = UIHelper.GetRoundedRectPath(new RectangleF(search.X * s, search.Y * s, search.Width * s, search.Height * s), 4 * s))
                 using (var searchBg = new SolidBrush(Color.FromArgb(45, 45, 45)))
@@ -153,7 +153,7 @@ namespace Clickra.UI
 
 
 
-        static void DrawPdfLangDropdown(Graphics g, int y, float contentX)
+        static void DrawPdfLangDropdown(Graphics g, int y, float contentX, int width = DashboardLayout.DropdownWidth)
         {
             float s = _dpiScale;
 
@@ -172,7 +172,7 @@ namespace Clickra.UI
             
             bool isHovered = _hoveredElement == 31;
 
-            LayoutRect control = DashboardLayout.DropdownButtonRect((int)contentX, y);
+            LayoutRect control = DashboardLayout.DropdownButtonRect((int)contentX, y, width);
             int x = control.X, w = control.Width;
 
             UIHelper.DrawDropdownButton(g, x, y, w, control.Height, displayText, _pdfLangDropdownOpen, isHovered, _subFont, _iconFont, s);
@@ -181,7 +181,7 @@ namespace Clickra.UI
             if (_pdfLangDropdownOpen)
             {
                 int popupH = DashboardLayout.PdfPopupHeight(PdfLangs.Length);
-                LayoutRect popup = DashboardLayout.DropdownPopupRect(x, y, popupH);
+                LayoutRect popup = DashboardLayout.DropdownPopupRect(x, y, popupH, width);
 
                 UIHelper.DrawDropdownPopup(g, popup.X, popup.Y, popup.Width, popup.Height, s);
 

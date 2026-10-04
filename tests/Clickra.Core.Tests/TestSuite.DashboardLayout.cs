@@ -360,7 +360,7 @@ static partial class TestSuite
     private static void TestAotSettingsResponsiveGeometry()
     {
         const int contentX = 200;
-        const int wideLogW = 960;
+        const int wideLogW = 640;
 
         Assert.False(SettingsLayout.IsWide(SettingsLayout.WideBreakpoint - 1),
             "Widths below the Settings breakpoint must keep the single-column layout.");
@@ -373,8 +373,11 @@ static partial class TestSuite
         Assert.Equal(contentX, leftX);
         Assert.Equal(leftX + columnWidth + SettingsLayout.ColumnGap, rightX);
         Assert.Equal(wideLogW - SettingsLayout.ContentRightMargin, rightX + columnWidth);
-        Assert.True(SettingsLayout.SliderWidth + 2 * SettingsLayout.SliderHitHorizontalPadding <= columnWidth,
+        int responsiveSliderWidth = SettingsLayout.SliderWidthFor(columnWidth);
+        Assert.True(responsiveSliderWidth + 2 * SettingsLayout.SliderHitHorizontalPadding <= columnWidth,
             "A wide Settings column must fit a slider and its full hit target.");
+        Assert.True(responsiveSliderWidth < SettingsLayout.SliderWidth,
+            "The 200% DPI viewport must shorten wide-column sliders instead of forcing horizontal scrolling.");
 
         LayoutRect toggle = SettingsLayout.ToggleRectWithin(leftX, columnWidth, SettingsLayout.ContentTop);
         Assert.True(toggle.X >= leftX && toggle.Right <= leftX + columnWidth,
@@ -389,12 +392,17 @@ static partial class TestSuite
 
         string dir = DashboardDir();
         string paint = File.ReadAllText(Path.Combine(dir, "DashboardWindow.Paint.Settings.cs"));
+        string dashboardPaint = File.ReadAllText(Path.Combine(dir, "DashboardWindow.Paint.cs"));
         string hitTest = File.ReadAllText(Path.Combine(dir, "DashboardWindow.HitTesting.cs"));
         string click = File.ReadAllText(Path.Combine(dir, "DashboardWindow.Events.Click.cs"));
         string events = File.ReadAllText(Path.Combine(dir, "DashboardWindow.Events.cs"));
 
         Assert.True(paint.Contains("SettingsLayout.IsWide((int)logW)", StringComparison.Ordinal),
             "AOT Settings painting must branch on logical width through SettingsLayout.");
+        Assert.True(dashboardPaint.Contains("DrawSettingsTab(g, logW, virtLogH, contentX)", StringComparison.Ordinal),
+            "AOT Settings must receive the real viewport width rather than the 760px virtual canvas.");
+        Assert.True(dashboardPaint.Contains("_activeTab != 3 && logW < 760", StringComparison.Ordinal),
+            "Responsive Settings must not expose the legacy virtual-canvas horizontal scrollbar.");
         Assert.True(paint.Contains("SettingsLayout.ColumnX((int)contentX, (int)logW, 1)", StringComparison.Ordinal),
             "Wide Settings groups must take the second-column X from SettingsLayout.");
         Assert.True(paint.Contains("ClickraSettings.ImageCompressLevel", StringComparison.Ordinal)

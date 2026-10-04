@@ -92,7 +92,7 @@ namespace Clickra.UI
             }
             else if (_activeTab == 3)
             {
-                DrawSettingsTab(g, virtLogW, virtLogH, contentX);
+                DrawSettingsTab(g, logW, virtLogH, contentX);
             }
             else if (_activeTab == 4)
             {
@@ -104,7 +104,7 @@ namespace Clickra.UI
             // 3. Draw Viewport Scrollbars (fixed on screen, not translated)
             float contentH = GetContentHeight(hwnd);
             bool showV = logH < contentH;
-            bool showH = logW < 760;
+            bool showH = _activeTab != 3 && logW < 760;
 
             if (showV)
             {

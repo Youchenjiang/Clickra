@@ -353,6 +353,12 @@ namespace Clickra.UI
             bool wideSettings = SettingsLayout.IsWide((int)logW);
             float languageY = y;
             float languageX = contentX;
+            int settingsColumnWidth = wideSettings
+                ? SettingsLayout.ColumnWidth((int)contentX, (int)logW)
+                : (int)(logW - contentX - SettingsLayout.ContentRightMargin);
+            int languageDropdownWidth = wideSettings
+                ? Math.Min(DashboardLayout.DropdownWidth, settingsColumnWidth)
+                : DashboardLayout.DropdownWidth;
             float pdfLanguageY = wideSettings ? y : y + SettingsLayout.LanguageSectionHeight;
             float pdfLanguageX = wideSettings
                 ? SettingsLayout.ColumnX((int)contentX, (int)logW, 1)
@@ -361,8 +367,9 @@ namespace Clickra.UI
             DrawSectionHeaderAt("setting_lang_title", "setting_lang_desc", languageX, languageY);
             _langDropdownX = (int)languageX;
             _langDropdownY = (int)(languageY + SettingsLayout.LanguageDropdownOffset);
-            DrawLanguageDropdown(g, _langDropdownY, languageX);
-            AddLayoutHitRect(10, DashboardLayout.DropdownButtonRect(_langDropdownX, _langDropdownY));
+            _langDropdownWidth = languageDropdownWidth;
+            DrawLanguageDropdown(g, _langDropdownY, languageX, _langDropdownWidth);
+            AddLayoutHitRect(10, DashboardLayout.DropdownButtonRect(_langDropdownX, _langDropdownY, _langDropdownWidth));
 
             DrawSectionHeaderAt("setting_pdf_title", "setting_pdf_desc", pdfLanguageX, pdfLanguageY);
             if (_subFont != null)
@@ -373,8 +380,9 @@ namespace Clickra.UI
             }
             _pdfLangDropdownX = (int)pdfLanguageX;
             _pdfLangDropdownY = (int)(pdfLanguageY + SettingsLayout.PdfLanguageDropdownOffset);
-            DrawPdfLangDropdown(g, _pdfLangDropdownY, pdfLanguageX);
-            AddLayoutHitRect(31, DashboardLayout.DropdownButtonRect(_pdfLangDropdownX, _pdfLangDropdownY));
+            _pdfLangDropdownWidth = languageDropdownWidth;
+            DrawPdfLangDropdown(g, _pdfLangDropdownY, pdfLanguageX, _pdfLangDropdownWidth);
+            AddLayoutHitRect(31, DashboardLayout.DropdownButtonRect(_pdfLangDropdownX, _pdfLangDropdownY, _pdfLangDropdownWidth));
 
             y += wideSettings
                 ? SettingsLayout.PdfLanguageSectionHeight
@@ -434,7 +442,9 @@ namespace Clickra.UI
 
             // Compact slider: one level maps to both DPI + JPEG quality
             int compressLevel = ConvertCommandRegistry.GetPdfCompressLevel();
-            float sliderW = SettingsLayout.SliderWidth;
+            float sliderW = wideSettings
+                ? SettingsLayout.SliderWidthFor((int)pdfCompressionWidth)
+                : SettingsLayout.SliderWidth;
             _pdfSliderTrackX = pdfCompressionX;
             _pdfSliderTrackW = sliderW;
             DrawCompressSlider(g, pdfCompressionX, pdfCompressionY, sliderW, compressLevel);
@@ -486,7 +496,8 @@ namespace Clickra.UI
                     logW,
                     imageCompressionX,
                     margin,
-                    ref imageCompressionY);
+                    ref imageCompressionY,
+                    SettingsLayout.SliderWidthFor(settingsColumnWidth));
                 DrawDynamicSettingDescriptor(
                     g,
                     SettingPageRegistry.AllDescriptors[imageCompressMaxDimensionIndex],
@@ -801,7 +812,8 @@ namespace Clickra.UI
             float logW,
             float contentX,
             float margin,
-            ref float y)
+            ref float y,
+            float? sliderWidth = null)
         {
             int baseElemId = 1000 + descriptorIndex * 10;
             switch (descriptor.EditorKind)
@@ -810,7 +822,7 @@ namespace Clickra.UI
                     DrawDynamicToggleSetting(g, descriptor, logW, contentX, baseElemId, ref y);
                     break;
                 case SettingEditorKind.Slider:
-                    DrawDynamicSliderSetting(g, descriptor, contentX, baseElemId, ref y);
+                    DrawDynamicSliderSetting(g, descriptor, contentX, baseElemId, ref y, sliderWidth);
                     break;
                 case SettingEditorKind.Number:
                     DrawDynamicNumberSetting(g, descriptor, contentX, margin, baseElemId, ref y);
@@ -847,12 +859,12 @@ namespace Clickra.UI
         }
 
         static void DrawDynamicSliderSetting(
-            Graphics g, SettingDescriptor descriptor, float contentX, int baseElemId, ref float y)
+            Graphics g, SettingDescriptor descriptor, float contentX, int baseElemId, ref float y, float? sliderWidth)
         {
             DrawDynamicSettingHeader(g, descriptor, contentX, y);
             y += SettingsLayout.SliderHeaderGap;
 
-            float sliderW = SettingsLayout.SliderWidth;
+            float sliderW = sliderWidth ?? SettingsLayout.SliderWidth;
             _dynamicSliderTrackX = contentX;
             _dynamicSliderTrackW = sliderW;
             var range = descriptor.GetEffectiveNumericRange() ?? new NumericSettingRange(0, 1, 0);

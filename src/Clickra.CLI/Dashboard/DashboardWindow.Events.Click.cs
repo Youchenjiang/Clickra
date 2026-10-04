@@ -185,7 +185,7 @@ namespace Clickra.UI
         static bool HandlePdfLangDropdownClick(IntPtr hwnd, int adjMouseX, int adjMouseY, float contentX)
         {
             int popupHeight = DashboardLayout.PdfPopupHeight(PdfLangs.Length);
-            LayoutRect popup = DashboardLayout.DropdownPopupRect(_pdfLangDropdownX, _pdfLangDropdownY, popupHeight);
+            LayoutRect popup = DashboardLayout.DropdownPopupRect(_pdfLangDropdownX, _pdfLangDropdownY, popupHeight, _pdfLangDropdownWidth);
             if (popup.Contains(adjMouseX, adjMouseY))
             {
                 int clickedIdx = DashboardLayout.DropdownItemAt(popup.Y, DashboardLayout.PdfPopupListTop, popup.Height, adjMouseY);
@@ -206,7 +206,7 @@ namespace Clickra.UI
         /// language or closing the popup on an outside click.</summary>
         static bool HandleLangDropdownClick(IntPtr hwnd, int adjMouseX, int adjMouseY, float logW)
         {
-            var langPopup = DashboardLayout.DropdownPopupRect(_langDropdownX, _langDropdownY, DashboardLayout.LanguagePopupHeight);
+            var langPopup = DashboardLayout.DropdownPopupRect(_langDropdownX, _langDropdownY, DashboardLayout.LanguagePopupHeight, _langDropdownWidth);
             if (langPopup.Contains(adjMouseX, adjMouseY))
             {
                 // 搜尋框佔住清單上方的區域：點在那裡不選任何語言，也不關閉清單。
@@ -381,7 +381,7 @@ namespace Clickra.UI
             float logH = GetLogicalHeight(hwnd);
             float contentH = GetContentHeight(hwnd);
             bool showV = logH < contentH;
-            bool showH = logW < 760;
+            bool showH = _activeTab != 3 && logW < 760;
             if (!showV || mouseX < logW - 8 || mouseX >= logW) return false;
 
             float trackY = 4;
@@ -420,7 +420,7 @@ namespace Clickra.UI
             float contentH = GetContentHeight(hwnd);
             float sidebarW = GetSidebarWidth(logW);
             bool showV = logH < contentH;
-            bool showH = logW < 760;
+            bool showH = _activeTab != 3 && logW < 760;
             if (!showH || mouseY < logH - 8 || mouseY >= logH || mouseX < sidebarW) return false;
 
             float trackX = sidebarW + 4;

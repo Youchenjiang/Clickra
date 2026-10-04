@@ -134,7 +134,7 @@ namespace Clickra.UI
             float contentH = GetContentHeight(hwnd);
 
             float trackH = logH - 8;
-            if (logW < 760) trackH = logH - 16;
+            if (_activeTab != 3 && logW < 760) trackH = logH - 16;
             float thumbH = Math.Max(20f, (logH / contentH) * trackH);
             float scrollRange = contentH - logH;
             float trackRange = trackH - thumbH;
@@ -248,7 +248,7 @@ namespace Clickra.UI
         {
             if (!_langDropdownOpen) return;
 
-            var popup = DashboardLayout.DropdownPopupRect(_langDropdownX, _langDropdownY, DashboardLayout.LanguagePopupHeight);
+            var popup = DashboardLayout.DropdownPopupRect(_langDropdownX, _langDropdownY, DashboardLayout.LanguagePopupHeight, _langDropdownWidth);
             if (popup.Contains(adjMouseX, adjMouseY))
             {
                 int itemIndex = DashboardLayout.DropdownItemAt(
@@ -270,7 +270,7 @@ namespace Clickra.UI
             if (!_pdfLangDropdownOpen) return;
 
             int popupHeight = DashboardLayout.PdfPopupHeight(PdfLangs.Length);
-            var popup = DashboardLayout.DropdownPopupRect(_pdfLangDropdownX, _pdfLangDropdownY, popupHeight);
+            var popup = DashboardLayout.DropdownPopupRect(_pdfLangDropdownX, _pdfLangDropdownY, popupHeight, _pdfLangDropdownWidth);
             if (popup.Contains(adjMouseX, adjMouseY))
             {
                 int idx = DashboardLayout.DropdownItemAt(popup.Y, DashboardLayout.PdfPopupListTop, popup.Height, adjMouseY);
@@ -427,7 +427,7 @@ namespace Clickra.UI
                 float logH = GetLogicalHeight(hwnd);
                 float contentH = GetContentHeight(hwnd);
                 bool showV = logH < contentH;
-                bool showH = logW < 760;
+                bool showH = _activeTab != 3 && logW < 760;
                 if ((showV && mouseX >= logW - 8 && mouseX < logW) ||
                     (showH && mouseY >= logH - 8 && mouseY < logH && mouseX >= GetSidebarWidth(logW)))
                 {
