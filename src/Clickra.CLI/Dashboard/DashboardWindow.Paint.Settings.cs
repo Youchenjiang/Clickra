@@ -583,20 +583,27 @@ namespace Clickra.UI
 
                 var maxDimension = SettingPageRegistry.AllDescriptors[imageCompressMaxDimensionIndex];
                 int maxDimensionElement = 1000 + imageCompressMaxDimensionIndex * 10;
-                int numberY = imageCard.Y + SettingsLayout.CompressionSecondaryTop;
+                int numberY = imageCard.Y + SettingsLayout.CompressionSecondaryTop - 10;
                 if (_tabFont != null)
                     g.DrawString(GetText(maxDimension.TitleKey), _tabFont, Brushes.White, imageX * s, numberY * s);
 
+                if (_subFont != null && !string.IsNullOrEmpty(maxDimension.DescriptionKey))
+                {
+                    using var descBrush = new SolidBrush(Color.FromArgb(150, 150, 150));
+                    g.DrawString(GetText(maxDimension.DescriptionKey), _subFont, descBrush,
+                        imageX * s, (numberY + 24) * s);
+                }
+
                 var maxRange = maxDimension.GetEffectiveNumericRange() ?? new NumericSettingRange(0, 100, 0);
                 int maxValue = Math.Clamp(ClickraStorage.GetSettingInt(maxDimension.Key), maxRange.Min, maxRange.Max);
-                int valueY = numberY + 30;
+                int valueY = numberY + 48;
                 if (_subFont != null)
                 {
                     using var valueBrush = new SolidBrush(Color.FromArgb(200, 200, 200));
                     g.DrawString(maxValue.ToString(), _subFont, valueBrush, imageX * s, valueY * s);
                 }
 
-                int numberButtonY = valueY + 24;
+                int numberButtonY = valueY + 20;
                 int buttonWidth = SettingsLayout.DynamicNumberButtonWidth;
                 DrawOutputDirButton(g, "-", false, maxDimensionElement + 1, imageX, numberButtonY, buttonWidth);
                 DrawOutputDirButton(g, "+", false, maxDimensionElement + 2,

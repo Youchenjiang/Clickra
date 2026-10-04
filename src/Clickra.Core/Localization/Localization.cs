@@ -559,8 +559,8 @@ namespace Clickra.Core
                 ("fluent_task_ledger_empty", "目前沒有進行中的任務。", "当前没有进行中的任务。", "No active tasks.", "実行中のタスクはありません。", "실행 중인 작업이 없습니다."),
                 ("fluent_task_view", "查看", "查看", "View", "表示", "보기"),
                 ("fluent_task_resume", "繼續", "继续", "Resume", "再開", "재개"),
-                ("setting_parked_ttl_title", "暫存保留", "暂存保留", "Parked task retention", "一時停止の保持期間", "보류 작업 보관"),
-                ("setting_parked_ttl_desc", "已暫存轉換的保留天數（0 = 無限期）", "已暂存转换的保留天数（0 = 无期限）", "Days to keep parked conversions (0 = unlimited)", "一時停止した変換の保持日数（0 = 無期限）", "보류된 변환 보관 일수(0 = 무제한)"),
+                ("setting_parked_ttl_title", "待繼續任務保留期限", "待继续任务保留期限", "Paused task retention", "再開待ちタスクの保持期限", "재개 대기 작업 보관 기간"),
+                ("setting_parked_ttl_desc", "暫停後等待繼續的轉換任務，超過此天數會自動清理；0 = 永久保留", "暂停后等待继续的转换任务，超过此天数会自动清理；0 = 永久保留", "Paused conversions are cleaned up after this many days; 0 keeps them indefinitely", "一時停止して再開待ちの変換は、この日数を過ぎると自動的に削除されます。0 = 無期限に保持", "일시 중지되어 재개를 기다리는 변환은 이 기간이 지나면 자동 정리됩니다. 0 = 영구 보관"),
                 ("setting_parked_ttl_days", RetentionDayZh, RetentionDayZh, "{0} days", "{0} 日", "{0} 일"),
                 ("setting_parked_ttl_day_single", RetentionDayZh, RetentionDayZh, "{0} day", "{0} 日", "{0} 일"),
                 ("setting_parked_ttl_unlimited", "0（無限期）", "0（无期限）", "0 (unlimited)", "0（無期限）", "0 (무제한)"),
@@ -598,8 +598,8 @@ namespace Clickra.Core
                 ("setting_image_level_small", "較小", "较小", "Small", "小", "작게"),
                 ("setting_image_level_std", "標準", "标准", "Standard", "標準", "표준"),
                 ("setting_image_level_high", "高壓縮", "高压缩", "High", "高圧縮", "고압축"),
-                ("setting_image_max_dimension_title", "圖片最大長邊", "图片最大长边", "Image Max Dimension", "画像最大長辺", "이미지 최대 긴 변"),
-                ("setting_image_max_dimension_desc", "限制壓縮後圖片的長邊像素（0 = 保持原始尺寸）", "限制压缩后图片的长边像素（0 = 保持原始尺寸）", "Max long-edge pixels for compressed images (0 = keep original size)", "圧縮後画像の長辺ピクセルを制限（0 = 元のサイズを維持）", "압축 후 이미지의 긴 쪽 픽셀 제한 (0 = 원본 크기 유지)"),
+                ("setting_image_max_dimension_title", "圖片尺寸上限（最長邊）", "图片尺寸上限（最长边）", "Image size limit (long edge)", "画像サイズ上限（長辺）", "이미지 크기 제한 (긴 쪽)"),
+                ("setting_image_max_dimension_desc", "壓縮時若圖片過大，會把最長的一邊縮到此像素數；0 = 保持原尺寸", "压缩时若图片过大，会把最长的一边缩到此像素数；0 = 保持原尺寸", "If an image is larger, its longest edge is resized to this many pixels; 0 keeps the original size", "圧縮時に画像が大きい場合、長辺をこのピクセル数まで縮小します。0 = 元のサイズを維持", "압축할 이미지가 더 크면 긴 쪽을 이 픽셀 수로 줄입니다. 0 = 원본 크기 유지"),
             };
 
             RegisterTranslations(data);
