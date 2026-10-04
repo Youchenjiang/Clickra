@@ -30,6 +30,8 @@ static partial class TestSuite
             TestDetailFieldTapBands);
         runner.Run("Dashboard layout: the convert grid, its cards and the start button do not overlap",
             TestConvertGridGeometry);
+        runner.RunGuard("AOT convert workspace: compact command groups stay within first-screen density",
+            TestAotConvertFirstScreenDensity);
         runner.Run("Dashboard layout: dropdown popup rows round-trip between paint and hit-testing",
             TestDropdownPopupGeometry);
         runner.Run("Dashboard layout: the parked adjust buttons sit inside their row and leave the deadline room",
@@ -324,6 +326,33 @@ static partial class TestSuite
         LayoutRect historyClear = DashboardLayout.HistoryClearButtonRect(logW);
         Assert.Equal(DashboardLayout.HistoryClearButtonWidth, historyClear.Width);
         Assert.Equal(DashboardLayout.HistoryClearButtonHeight, historyClear.Height);
+    }
+
+    private static void TestAotConvertFirstScreenDensity()
+    {
+        int[] groupSizes = { 3, 5, 8 };
+        Assert.Equal(3, DashboardLayout.ConvertGroupColumns(0));
+        Assert.Equal(5, DashboardLayout.ConvertGroupColumns(1));
+        Assert.Equal(4, DashboardLayout.ConvertGroupColumns(2));
+        Assert.Equal(1, DashboardLayout.ConvertGroupRows(0, groupSizes[0]));
+        Assert.Equal(1, DashboardLayout.ConvertGroupRows(1, groupSizes[1]));
+        Assert.Equal(2, DashboardLayout.ConvertGroupRows(2, groupSizes[2]));
+
+        LayoutRect zone = DashboardLayout.ConvertZoneRect(contentX: 260, logW: 1520);
+        LayoutRect start = DashboardLayout.ConvertStartButtonRect(zone.X, zone.Width, groupSizes);
+        Assert.True(zone.Bottom < DashboardLayout.ConvertGridTop,
+            "The compact drop zone must leave visible separation before command groups.");
+        Assert.True(start.Bottom <= 540,
+            $"AOT convert controls must stay within the compact first-screen budget; start bottom was {start.Bottom}.");
+
+        string? root = FindRepoRoot();
+        if (root is null) throw new TestSkippedException("Could not locate the repository root from the test output directory.");
+        string paint = File.ReadAllText(Path.Combine(root, "src", "Clickra.CLI", "Dashboard", "DashboardWindow.Convert.cs"));
+        string hitTest = File.ReadAllText(Path.Combine(root, "src", "Clickra.CLI", "Dashboard", "DashboardWindow.HitTesting.cs"));
+        Assert.True(paint.Contains("ConvertCardRect(group, local, zoneX, zoneW, ConvertCommandGroupSizes)", StringComparison.Ordinal),
+            "AOT convert painting must use DashboardLayout command geometry.");
+        Assert.True(hitTest.Contains("ConvertCardRect(group, local, zone.X, zone.Width, ConvertCommandGroupSizes)", StringComparison.Ordinal),
+            "AOT convert hit-testing must use the same DashboardLayout command geometry as painting.");
     }
 
     /// <summary>
