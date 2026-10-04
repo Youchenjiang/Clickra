@@ -77,6 +77,34 @@ function Assert-IcoFrames {
     }
 }
 
+function Assert-TransparentOutsideCenteredIcon {
+    param([System.Drawing.Bitmap]$Wide)
+
+    for ($y = 0; $y -lt 150; $y++) {
+        for ($x = 0; $x -lt 310; $x++) {
+            $insideIcon = $x -ge 91 -and $x -lt 219 -and $y -ge 11 -and $y -lt 139
+            if (-not $insideIcon -and $Wide.GetPixel($x, $y).A -ne 0) {
+                throw "Wide logo canvas is not transparent outside the centered primary icon at ${x},${y}"
+            }
+        }
+    }
+}
+
+function Assert-CenteredIconMatchesPrimary {
+    param(
+        [System.Drawing.Bitmap]$Wide,
+        [System.Drawing.Bitmap]$Primary
+    )
+
+    for ($y = 0; $y -lt 128; $y++) {
+        for ($x = 0; $x -lt 128; $x++) {
+            if ($Wide.GetPixel($x + 91, $y + 11).ToArgb() -ne $Primary.GetPixel($x, $y).ToArgb()) {
+                throw "Wide logo center does not match the canonical 128px primary icon at ${x},${y}"
+            }
+        }
+    }
+}
+
 function Assert-WideLogoComposition {
     param(
         [string]$WidePath,
@@ -90,22 +118,8 @@ function Assert-WideLogoComposition {
             throw "Unexpected wide logo dimensions: $($wide.Width)x$($wide.Height)"
         }
 
-        for ($y = 0; $y -lt 150; $y++) {
-            for ($x = 0; $x -lt 310; $x++) {
-                $insideIcon = $x -ge 91 -and $x -lt 219 -and $y -ge 11 -and $y -lt 139
-                if (-not $insideIcon -and $wide.GetPixel($x, $y).A -ne 0) {
-                    throw "Wide logo canvas is not transparent outside the centered primary icon at ${x},${y}"
-                }
-            }
-        }
-
-        for ($y = 0; $y -lt 128; $y++) {
-            for ($x = 0; $x -lt 128; $x++) {
-                if ($wide.GetPixel($x + 91, $y + 11).ToArgb() -ne $primary.GetPixel($x, $y).ToArgb()) {
-                    throw "Wide logo center does not match the canonical 128px primary icon at ${x},${y}"
-                }
-            }
-        }
+        Assert-TransparentOutsideCenteredIcon $wide
+        Assert-CenteredIconMatchesPrimary $wide $primary
     }
     finally {
         $wide.Dispose()
