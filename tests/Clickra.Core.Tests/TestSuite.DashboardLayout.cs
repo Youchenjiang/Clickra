@@ -32,6 +32,8 @@ static partial class TestSuite
             TestConvertGridGeometry);
         runner.RunGuard("AOT convert workspace: compact command groups stay within first-screen density",
             TestAotConvertFirstScreenDensity);
+        runner.RunGuard("AOT settings workspace: responsive columns preserve geometry and hit parity",
+            TestAotSettingsResponsiveGeometry);
         runner.Run("Dashboard layout: dropdown popup rows round-trip between paint and hit-testing",
             TestDropdownPopupGeometry);
         runner.Run("Dashboard layout: the parked adjust buttons sit inside their row and leave the deadline room",
@@ -353,6 +355,63 @@ static partial class TestSuite
             "AOT convert painting must use DashboardLayout command geometry.");
         Assert.True(hitTest.Contains("ConvertCardRect(group, local, zone.X, zone.Width, ConvertCommandGroupSizes)", StringComparison.Ordinal),
             "AOT convert hit-testing must use the same DashboardLayout command geometry as painting.");
+    }
+
+    private static void TestAotSettingsResponsiveGeometry()
+    {
+        const int contentX = 200;
+        const int wideLogW = 960;
+
+        Assert.False(SettingsLayout.IsWide(SettingsLayout.WideBreakpoint - 1),
+            "Widths below the Settings breakpoint must keep the single-column layout.");
+        Assert.True(SettingsLayout.IsWide(SettingsLayout.WideBreakpoint),
+            "The Settings breakpoint itself must enable the two-column layout.");
+
+        int columnWidth = SettingsLayout.ColumnWidth(contentX, wideLogW);
+        int leftX = SettingsLayout.ColumnX(contentX, wideLogW, 0);
+        int rightX = SettingsLayout.ColumnX(contentX, wideLogW, 1);
+        Assert.Equal(contentX, leftX);
+        Assert.Equal(leftX + columnWidth + SettingsLayout.ColumnGap, rightX);
+        Assert.Equal(wideLogW - SettingsLayout.ContentRightMargin, rightX + columnWidth);
+        Assert.True(SettingsLayout.SliderWidth + 2 * SettingsLayout.SliderHitHorizontalPadding <= columnWidth,
+            "A wide Settings column must fit a slider and its full hit target.");
+
+        LayoutRect toggle = SettingsLayout.ToggleRectWithin(leftX, columnWidth, SettingsLayout.ContentTop);
+        Assert.True(toggle.X >= leftX && toggle.Right <= leftX + columnWidth,
+            "A column toggle must stay inside its own column.");
+
+        int stackedLanguageHeight = SettingsLayout.LanguageSectionHeight + SettingsLayout.PdfLanguageSectionHeight;
+        int pairedLanguageHeight = Math.Max(SettingsLayout.LanguageSectionHeight, SettingsLayout.PdfLanguageSectionHeight);
+        Assert.True(pairedLanguageHeight < stackedLanguageHeight,
+            "Wide language controls must consume one row instead of two stacked sections.");
+        Assert.True(SettingsLayout.PrimaryToggleSectionHeight < SettingsLayout.ToggleSectionHeight,
+            "Primary Settings toggles must retain the compact first-screen rhythm.");
+
+        string dir = DashboardDir();
+        string paint = File.ReadAllText(Path.Combine(dir, "DashboardWindow.Paint.Settings.cs"));
+        string hitTest = File.ReadAllText(Path.Combine(dir, "DashboardWindow.HitTesting.cs"));
+        string click = File.ReadAllText(Path.Combine(dir, "DashboardWindow.Events.Click.cs"));
+        string events = File.ReadAllText(Path.Combine(dir, "DashboardWindow.Events.cs"));
+
+        Assert.True(paint.Contains("SettingsLayout.IsWide((int)logW)", StringComparison.Ordinal),
+            "AOT Settings painting must branch on logical width through SettingsLayout.");
+        Assert.True(paint.Contains("SettingsLayout.ColumnX((int)contentX, (int)logW, 1)", StringComparison.Ordinal),
+            "Wide Settings groups must take the second-column X from SettingsLayout.");
+        Assert.True(paint.Contains("ClickraSettings.ImageCompressLevel", StringComparison.Ordinal)
+                    && paint.Contains("ClickraSettings.ImageCompressMaxDimension", StringComparison.Ordinal),
+            "The wide compression row must include both image compression descriptors.");
+
+        foreach (string source in new[] { hitTest, click, events })
+        {
+            Assert.True(source.Contains("_langDropdownX", StringComparison.Ordinal)
+                        && source.Contains("_pdfLangDropdownX", StringComparison.Ordinal),
+                "Dropdown hit, popup, and hover consumers must use the painted responsive X coordinates.");
+        }
+
+        Assert.False(hitTest.Contains("DropdownButtonRect((int)contentX, _langDropdownY)", StringComparison.Ordinal),
+            "Hit testing must not assume the language dropdown stays in the first column.");
+        Assert.False(events.Contains("DropdownPopupRect((int)GetContentX(logW), _pdfLangDropdownY", StringComparison.Ordinal),
+            "Dropdown hover must not reconstruct the PDF dropdown X from the page origin.");
     }
 
     /// <summary>
