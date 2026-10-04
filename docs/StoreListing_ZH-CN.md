@@ -1,6 +1,6 @@
 # Microsoft Store 清单 - 中文（简体）
 
-以下是供您直接复制粘贴至 Microsoft 合作伙伴中心 (Partner Center) 的完整字段信息，已更新至 v3.12.0.0。
+以下是供您直接复制粘贴至 Microsoft 合作伙伴中心 (Partner Center) 的完整字段信息，已更新至 v3.13.0.0。
 
 ---
 
@@ -32,10 +32,11 @@ Clickra 尊重您的隐私。大多数处理流程（文档转 PDF、PDF 压缩�
 🔗 开源项目主页：https://github.com/Youchenjiang/Clickra
 
 ## What's new in this version
-- 集中式设置平台：共享描述器现在会在 Core registry 中统一定义设置标题、控件类型、选项、默认值与数值范围。
-- 动态设置控件：Native Dashboard 与 Fluent Settings 会从同一份 registry 生成受支持的设置控件，减少新增或调整设置时的界面差异。
-- 实时设置同步：在一个正在运行的 Clickra 设置界面修改设置后，其他正在运行的 Clickra UI 也会同步更新，无需重新启动应用。
-- 更安全的数值设置：滑杆与数字输入共用设置边界，并加入安全步进处理，避免数值超出登记范围。
+- 暂存转换可直接继续：可从 Native Dashboard 或 Fluent History 继续或取消暂存任务，并保留原有进度与输入状态。
+- 每个暂存任务可独立调整保留期限：支持延长、缩短或重置保留时间，并统一显示到期状态与提醒。
+- PDF 压缩设置更清晰：两套设置界面都会以一致方式分组图片与其他优化选项。
+- Windows 包信息本地化：MSIX 显示名称与说明现在会根据包内语言资源显示。
+- 产品图标全面更新：更新 Windows、Fluent、Shell、磁贴与商店图标，并使用经过验证的多尺寸资源。
 
 ## Product Features
 *(最多 20 个，以项目符号显示)*

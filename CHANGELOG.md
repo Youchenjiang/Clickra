@@ -1,5 +1,13 @@
 # Changelog
 
+## [v3.13.0.0] - 2026-10-04
+
+- **暫存任務續跑與保留控制 (Parked Task Resume / Retention Controls)**：Native Dashboard 與 Fluent History 現在可直接續跑或取消暫存轉換，並以共用 Core preflight 保留原 task identity、輸入清單與續跑索引；每個暫存任務也可獨立延長、縮短或重設保留期限。
+- **歷史狀態與版面單一來源 (Shared History Feed / Layout)**：歷史狀態文字、檔案摘要、保留期限、警示狀態與 Native Dashboard 幾何配置移至共用 Core model，降低兩套 UI 對同一任務顯示不一致的風險。
+- **PDF 壓縮設定分組 (PDF Compression Settings Groups)**：Native Dashboard 與 Fluent Settings 新增一致的圖片與其他最佳化分組標題，讓壓縮選項更容易理解與瀏覽。
+- **MSIX 在地化資源 (Localized MSIX Resources)**：套件 DisplayName / Description 改由五語系 `ms-resource` 解析，打包流程會建立並驗證 `resources.pri`，讓安裝後的 Windows 套件資訊能正確套用語系。
+- **產品圖示更新 (Product Icon Refresh)**：導入 A1 system identity 與 A3 Store-facing branding 的正式資產分工，更新 Fluent、Shell、MSIX 與 Windows 多尺寸 ICO，並以 CI/pre-push gate 驗證尺寸、alpha、ICO frame 與角色 wiring。
+
 ## [v3.12.0.0] - 2026-10-03
 
 - **設定平台現代化 (Settings Platform Modernization)**：Core 新增集中式 `SettingDescriptor` / `SettingPageRegistry`，統一定義設定項目的標題、說明、控制項種類、選項與數值範圍，降低 Native Dashboard 與 Fluent Settings 的規格漂移。
