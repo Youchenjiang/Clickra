@@ -154,10 +154,49 @@ static partial class TestSuite
         return keys.ToArray();
     }
 
+    private static (string[] SubArgs, string[] MenuKeys, string[] IconFiles, int[] MultiFileIndices) GetShellCommandDefinitions(string repoRoot)
+    {
+        string comMethods = File.ReadAllText(Path.Combine(repoRoot, "src", "ClickraShell", "ComMethods.cs"));
+
+        string[] ParseArray(string name)
+        {
+            Match match = Regex.Match(
+                comMethods,
+                name + @"\s*=\s*\{(?<body>[^}]*)\}",
+                RegexOptions.None,
+                UiResourceRegexTimeout);
+            Assert.True(match.Success, "ComMethods must declare the " + name + " array.");
+            return Regex.Matches(
+                    match.Groups["body"].Value,
+                    "\"(?<value>[^\"]+)\"",
+                    RegexOptions.None,
+                    UiResourceRegexTimeout)
+                .Select(m => m.Groups["value"].Value)
+                .ToArray();
+        }
+
+        Match multiFile = Regex.Match(
+            comMethods,
+            @"(?<indices>\d+(?:\s+or\s+\d+)*)\s*=>\s*files\.Count\s*>\s*1",
+            RegexOptions.None,
+            UiResourceRegexTimeout);
+        Assert.True(multiFile.Success, "ComMethods must declare the multi-file command gate.");
+        int[] multiFileIndices = Regex.Matches(
+                multiFile.Groups["indices"].Value,
+                @"\b\d+\b",
+                RegexOptions.None,
+                UiResourceRegexTimeout)
+            .Select(m => int.Parse(m.Value))
+            .ToArray();
+
+        return (ParseArray("SubArgs"), ParseArray("MenuKeys"), ParseArray("IconFiles"), multiFileIndices);
+    }
+
     public static void RegisterUiResourceCoverageTests(TestRunner runner)
     {
         runner.RunGuard("Package resources: resw keys and the keys consumed by shell menu and manifest are bidirectionally equal", TestShellResourceCoverage);
         runner.RunGuard("Convert registry: every command label key is declared and translated in all 5 languages", TestConvertRegistryLabelCoverage);
+        runner.RunGuard("Shell menu: commands reconcile with ConvertCommandRegistry metadata", TestShellCommandRegistryCoverage);
         runner.RunGuard("Store listing: docs/StoreListing_*.md covers all supported languages with complete fields", TestStoreListingCoverage);
     }
 
@@ -252,6 +291,41 @@ static partial class TestSuite
                 Assert.True(Localization.HasExactTranslation(key, lang),
                     key + " is a command label but has no " + lang + " translation; the UI would show the key name.");
             }
+        }
+    }
+
+    private static void TestShellCommandRegistryCoverage()
+    {
+        string? root = FindRepoRoot();
+        if (root is null) throw new TestSkippedException(RepoRootNotFoundMessage);
+
+        var (subArgs, menuKeys, iconFiles, multiFileIndices) = GetShellCommandDefinitions(root);
+
+        Assert.True(subArgs.Length > 0, "Shell menu must declare at least one command.");
+        Assert.True(menuKeys.Length == subArgs.Length,
+            "MenuKeys and SubArgs must have the same number of entries.");
+        Assert.True(iconFiles.Length == subArgs.Length,
+            "IconFiles and SubArgs must have the same number of entries.");
+        Assert.True(subArgs.Length == subArgs.Distinct(StringComparer.Ordinal).Count(),
+            "Shell SubArgs must not contain duplicate command ids.");
+
+        for (int i = 0; i < subArgs.Length; i++)
+        {
+            string command = subArgs[i];
+            Assert.True(ConvertCommandRegistry.IsKnownCommand(command),
+                "Shell command '" + command + "' is not registered in ConvertCommandRegistry.");
+
+            string labelKey = ConvertCommandRegistry.GetLabelKey(command);
+            Assert.False(string.Equals(labelKey, command, StringComparison.Ordinal),
+                "Shell command '" + command + "' has no registered localization key.");
+            Assert.True(ConvertCommandRegistry.GetAllowedExtensions(command).Length > 0,
+                "Shell command '" + command + "' has no allowed input extensions.");
+
+            int minFiles = ConvertCommandRegistry.GetMinFiles(command);
+            bool shellRequiresMultiple = multiFileIndices.Contains(i);
+            Assert.True((minFiles > 1) == shellRequiresMultiple,
+                "Shell command '" + command + "' has MinFiles=" + minFiles +
+                " but its ComMethods multi-file gate does not match.");
         }
     }
 
