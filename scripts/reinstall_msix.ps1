@@ -15,7 +15,7 @@ param(
 )
 
 $ErrorActionPreference = "Stop"
-$packageName = "Clickra"
+$packageName = "g1014308.Clickra"
 
 if ([string]::IsNullOrWhiteSpace($MsixPath)) {
     $MsixPath = Join-Path (Get-Location) "Clickra.msix"

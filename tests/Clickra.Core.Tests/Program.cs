@@ -65,6 +65,7 @@ TestSuite.RegisterHistoryFeedTests(runner);
 TestSuite.RegisterParkedRetentionTests(runner);
 TestSuite.RegisterLocalizationOrphanTests(runner);
 TestSuite.RegisterUiResourceCoverageTests(runner);
+TestSuite.RegisterMsixToolingTests(runner);
 TestSuite.RegisterXamlLocalizationTests(runner);
 TestSuite.RegisterFluentRuntimeTests(runner);
 
