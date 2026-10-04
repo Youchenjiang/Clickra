@@ -248,7 +248,7 @@ namespace Clickra.UI
         {
             if (!_langDropdownOpen) return;
 
-            var popup = DashboardLayout.DropdownPopupRect((int)GetContentX(logW), _langDropdownY, DashboardLayout.LanguagePopupHeight);
+            var popup = DashboardLayout.DropdownPopupRect(_langDropdownX, _langDropdownY, DashboardLayout.LanguagePopupHeight);
             if (popup.Contains(adjMouseX, adjMouseY))
             {
                 int itemIndex = DashboardLayout.DropdownItemAt(
@@ -270,7 +270,7 @@ namespace Clickra.UI
             if (!_pdfLangDropdownOpen) return;
 
             int popupHeight = DashboardLayout.PdfPopupHeight(PdfLangs.Length);
-            var popup = DashboardLayout.DropdownPopupRect((int)GetContentX(logW), _pdfLangDropdownY, popupHeight);
+            var popup = DashboardLayout.DropdownPopupRect(_pdfLangDropdownX, _pdfLangDropdownY, popupHeight);
             if (popup.Contains(adjMouseX, adjMouseY))
             {
                 int idx = DashboardLayout.DropdownItemAt(popup.Y, DashboardLayout.PdfPopupListTop, popup.Height, adjMouseY);

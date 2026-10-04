@@ -35,13 +35,16 @@ namespace Clickra.UI
             }
 
             void DrawSectionHeader(string titleKey, string descKey, float y)
+                => DrawSectionHeaderAt(titleKey, descKey, contentX, y);
+
+            void DrawSectionHeaderAt(string titleKey, string descKey, float x, float y)
             {
                 if (_tabFont != null)
-                    g.DrawString(GetText(titleKey), _tabFont, Brushes.White, contentX * s, y * s);
+                    g.DrawString(GetText(titleKey), _tabFont, Brushes.White, x * s, y * s);
                 if (_subFont != null)
                 {
                     using var subBrush = new SolidBrush(Color.FromArgb(140, 140, 140));
-                    g.DrawString(GetText(descKey), _subFont, subBrush, contentX * s, (y + SettingsLayout.HeaderDescriptionOffset) * s);
+                    g.DrawString(GetText(descKey), _subFont, subBrush, x * s, (y + SettingsLayout.HeaderDescriptionOffset) * s);
                 }
             }
 
@@ -332,27 +335,35 @@ namespace Clickra.UI
                 y += 32f;
             }
 
-            DrawSectionHeader("setting_lang_title", "setting_lang_desc", y);
-            _langDropdownY = (int)(y + SettingsLayout.LanguageDropdownOffset);
+            bool wideSettings = SettingsLayout.IsWide((int)logW);
+            float languageY = y;
+            float languageX = contentX;
+            float pdfLanguageY = wideSettings ? y : y + SettingsLayout.LanguageSectionHeight;
+            float pdfLanguageX = wideSettings
+                ? SettingsLayout.ColumnX((int)contentX, (int)logW, 1)
+                : contentX;
 
-            DrawLanguageDropdown(g, _langDropdownY, contentX);
-            AddLayoutHitRect(10, DashboardLayout.DropdownButtonRect((int)contentX, _langDropdownY));
+            DrawSectionHeaderAt("setting_lang_title", "setting_lang_desc", languageX, languageY);
+            _langDropdownX = (int)languageX;
+            _langDropdownY = (int)(languageY + SettingsLayout.LanguageDropdownOffset);
+            DrawLanguageDropdown(g, _langDropdownY, languageX);
+            AddLayoutHitRect(10, DashboardLayout.DropdownButtonRect(_langDropdownX, _langDropdownY));
 
-            y += SettingsLayout.LanguageSectionHeight;
-            DrawSectionHeader("setting_pdf_title", "setting_pdf_desc", y);
-
-            // 這個下拉的唯一內容就是目標語言，所以下拉本身需要一行標題來說明它選的是什麼。
+            DrawSectionHeaderAt("setting_pdf_title", "setting_pdf_desc", pdfLanguageX, pdfLanguageY);
             if (_subFont != null)
             {
                 using var pdfLangLabelBrush = new SolidBrush(Color.FromArgb(180, 180, 180));
-                g.DrawString(GetText("setting_pdf_lang"), _subFont, pdfLangLabelBrush, contentX * s, (y + SettingsLayout.PdfLanguageLabelOffset) * s);
+                g.DrawString(GetText("setting_pdf_lang"), _subFont, pdfLangLabelBrush,
+                    pdfLanguageX * s, (pdfLanguageY + SettingsLayout.PdfLanguageLabelOffset) * s);
             }
-            _pdfLangDropdownY = (int)(y + SettingsLayout.PdfLanguageDropdownOffset);
+            _pdfLangDropdownX = (int)pdfLanguageX;
+            _pdfLangDropdownY = (int)(pdfLanguageY + SettingsLayout.PdfLanguageDropdownOffset);
+            DrawPdfLangDropdown(g, _pdfLangDropdownY, pdfLanguageX);
+            AddLayoutHitRect(31, DashboardLayout.DropdownButtonRect(_pdfLangDropdownX, _pdfLangDropdownY));
 
-            DrawPdfLangDropdown(g, _pdfLangDropdownY, contentX);
-            AddLayoutHitRect(31, DashboardLayout.DropdownButtonRect((int)contentX, _pdfLangDropdownY));
-
-            y += SettingsLayout.PdfLanguageSectionHeight;
+            y += wideSettings
+                ? SettingsLayout.PdfLanguageSectionHeight
+                : SettingsLayout.LanguageSectionHeight + SettingsLayout.PdfLanguageSectionHeight;
 
             // Fluent UI section
             bool fluentAvailable = Clickra.Core.FluentRuntimeHelper.IsAvailable();

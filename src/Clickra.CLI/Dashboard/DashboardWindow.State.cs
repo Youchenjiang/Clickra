@@ -42,6 +42,7 @@ namespace Clickra.UI
             ("zh-TW", "繁體中文 (Traditional Chinese)")
         };
 
+        static int _pdfLangDropdownX = 0;
         static int _pdfLangDropdownY = 0;
         
         // History & Statistics Cache
@@ -100,6 +101,7 @@ namespace Clickra.UI
         static System.Threading.Mutex? _mutex;
         static float _aboutBtnY = 365;
         static float _githubBtnY = 240;
+        static int _langDropdownX = 0;
         static int _langDropdownY = 390;
         static float _sidebarWidth = 170f;
         static IntPtr _hIcon = IntPtr.Zero;

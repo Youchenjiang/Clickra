@@ -43,6 +43,18 @@ public static class SettingsLayout
     public const int DynamicNumberSectionTail = 50;
     public const int DynamicChoiceSectionHeight = 50;
 
+    public const int WideBreakpoint = 900;
+    public const int ContentRightMargin = 40;
+    public const int ColumnGap = 24;
+
+    public static bool IsWide(int logW) => logW >= WideBreakpoint;
+
+    public static int ColumnWidth(int contentX, int logW) =>
+        (logW - contentX - ContentRightMargin - ColumnGap) / 2;
+
+    public static int ColumnX(int contentX, int logW, int columnIndex) =>
+        columnIndex == 0 ? contentX : contentX + ColumnWidth(contentX, logW) + ColumnGap;
+
     public static LayoutRect ToggleRect(int logW, int sectionY) =>
         new LayoutRect(logW - ToggleRightInset, sectionY + ToggleTopOffset, ToggleWidth, ToggleHeight);
 

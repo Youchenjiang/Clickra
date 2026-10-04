@@ -185,7 +185,7 @@ namespace Clickra.UI
         static bool HandlePdfLangDropdownClick(IntPtr hwnd, int adjMouseX, int adjMouseY, float contentX)
         {
             int popupHeight = DashboardLayout.PdfPopupHeight(PdfLangs.Length);
-            LayoutRect popup = DashboardLayout.DropdownPopupRect((int)contentX, _pdfLangDropdownY, popupHeight);
+            LayoutRect popup = DashboardLayout.DropdownPopupRect(_pdfLangDropdownX, _pdfLangDropdownY, popupHeight);
             if (popup.Contains(adjMouseX, adjMouseY))
             {
                 int clickedIdx = DashboardLayout.DropdownItemAt(popup.Y, DashboardLayout.PdfPopupListTop, popup.Height, adjMouseY);
@@ -206,7 +206,7 @@ namespace Clickra.UI
         /// language or closing the popup on an outside click.</summary>
         static bool HandleLangDropdownClick(IntPtr hwnd, int adjMouseX, int adjMouseY, float logW)
         {
-            var langPopup = DashboardLayout.DropdownPopupRect((int)GetContentX(logW), _langDropdownY, DashboardLayout.LanguagePopupHeight);
+            var langPopup = DashboardLayout.DropdownPopupRect(_langDropdownX, _langDropdownY, DashboardLayout.LanguagePopupHeight);
             if (langPopup.Contains(adjMouseX, adjMouseY))
             {
                 // 搜尋框佔住清單上方的區域：點在那裡不選任何語言，也不關閉清單。

@@ -116,8 +116,8 @@ namespace Clickra.UI
                 if (item.Value.Contains(x, y)) return item.Key;
             }
 
-            if (DashboardLayout.DropdownButtonRect((int)contentX, _langDropdownY).Contains(x, y)) return 10;
-            if (DashboardLayout.DropdownButtonRect((int)contentX, _pdfLangDropdownY).Contains(x, y)) return 31;
+            if (DashboardLayout.DropdownButtonRect(_langDropdownX, _langDropdownY).Contains(x, y)) return 10;
+            if (DashboardLayout.DropdownButtonRect(_pdfLangDropdownX, _pdfLangDropdownY).Contains(x, y)) return 31;
             return -1;
         }
 
