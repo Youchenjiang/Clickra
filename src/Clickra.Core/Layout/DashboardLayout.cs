@@ -108,7 +108,7 @@ public static class DashboardLayout
 
     // ── 轉換頁：拖放區、指令格線、開始鈕、清除鈕 ──────────────────
     public const int ConvertZoneTop = 95;
-    public const int ConvertZoneHeight = 96;
+    public const int ConvertZoneHeight = 72;
 
     /// <summary>拖放區右側留白。</summary>
     public const int ConvertZoneRightMargin = 50;
@@ -117,34 +117,34 @@ public static class DashboardLayout
     public const int ConvertClearButtonHeight = 22;
 
     /// <summary>清除鈕相對拖放區上緣的位移。</summary>
-    public const int ConvertClearButtonInset = 10;
+    public const int ConvertClearButtonInset = 7;
     public const int ConvertClearButtonRightMargin = 110;
 
     /// <summary>拖放區空白狀態內各列相對上緣的位置。</summary>
-    public const int ConvertZoneIconOffset = 12;
-    public const int ConvertZoneHintOffset = 38;
-    public const int ConvertZoneSubHintOffset = 62;
+    public const int ConvertZoneIconOffset = 6;
+    public const int ConvertZoneHintOffset = 26;
+    public const int ConvertZoneSubHintOffset = 48;
 
     /// <summary>已有檔案時，摘要、檔名與輸出位置相對拖放區上緣的位置。</summary>
-    public const int ConvertZoneSummaryOffset = 12;
-    public const int ConvertZoneFilesOffset = 38;
-    public const int ConvertZoneOutputOffset = 66;
+    public const int ConvertZoneSummaryOffset = 8;
+    public const int ConvertZoneFilesOffset = 29;
+    public const int ConvertZoneOutputOffset = 51;
 
     public const int ConvertGroupCount = 3;
     public const int ConvertGroupGap = 14;
-    public const int ConvertGroupSectionGap = 12;
+    public const int ConvertGroupSectionGap = 8;
 
     /// <summary>指令欄標題的 Y（格線頂端）。</summary>
-    public const int ConvertGridTop = 205;
+    public const int ConvertGridTop = 176;
 
-    public const int ConvertGroupHeaderHeight = 24;
-    public const int ConvertCardHeight = 38;
-    public const int ConvertCardGap = 8;
+    public const int ConvertGroupHeaderHeight = 20;
+    public const int ConvertCardHeight = 34;
+    public const int ConvertCardGap = 6;
     public const int ConvertCardStride = ConvertCardHeight + ConvertCardGap;
 
     /// <summary>最後一排卡片與開始鈕之間的距離。</summary>
-    public const int ConvertStartButtonGap = 16;
-    public const int ConvertStartButtonHeight = 36;
+    public const int ConvertStartButtonGap = 8;
+    public const int ConvertStartButtonHeight = 32;
 
     /// <summary>拖放區的矩形。</summary>
     public static LayoutRect ConvertZoneRect(int contentX, int logW) =>

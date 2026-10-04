@@ -63,14 +63,14 @@ static partial class TestSuite
         Assert.Equal(5, DashboardLayout.SidebarTabCount);
 
         Assert.Equal(95, DashboardLayout.ConvertZoneTop);
-        Assert.Equal(96, DashboardLayout.ConvertZoneHeight);
-        Assert.Equal(205, DashboardLayout.ConvertGridTop);
-        Assert.Equal(24, DashboardLayout.ConvertGroupHeaderHeight);
-        Assert.Equal(38, DashboardLayout.ConvertCardHeight);
-        Assert.Equal(8, DashboardLayout.ConvertCardGap);
+        Assert.Equal(72, DashboardLayout.ConvertZoneHeight);
+        Assert.Equal(176, DashboardLayout.ConvertGridTop);
+        Assert.Equal(20, DashboardLayout.ConvertGroupHeaderHeight);
+        Assert.Equal(34, DashboardLayout.ConvertCardHeight);
+        Assert.Equal(6, DashboardLayout.ConvertCardGap);
         Assert.Equal(14, DashboardLayout.ConvertGroupGap);
-        Assert.Equal(36, DashboardLayout.ConvertStartButtonHeight);
-        Assert.Equal(16, DashboardLayout.ConvertStartButtonGap);
+        Assert.Equal(32, DashboardLayout.ConvertStartButtonHeight);
+        Assert.Equal(8, DashboardLayout.ConvertStartButtonGap);
         Assert.Equal(3, DashboardLayout.ConvertGroupCount);
 
         // 下拉選單與清單：控制項 240x30、列距 26、語言清單 180 高且同時顯示 5 列。
@@ -342,8 +342,8 @@ static partial class TestSuite
         LayoutRect start = DashboardLayout.ConvertStartButtonRect(zone.X, zone.Width, groupSizes);
         Assert.True(zone.Bottom < DashboardLayout.ConvertGridTop,
             "The compact drop zone must leave visible separation before command groups.");
-        Assert.True(start.Bottom <= 540,
-            $"AOT convert controls must stay within the compact first-screen budget; start bottom was {start.Bottom}.");
+        Assert.True(start.Bottom <= DashboardLayout.MinContentHeight - 8,
+            $"AOT convert controls must stay inside the minimum dashboard content height; start bottom was {start.Bottom}.");
 
         string? root = FindRepoRoot();
         if (root is null) throw new TestSkippedException("Could not locate the repository root from the test output directory.");
