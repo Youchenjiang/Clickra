@@ -175,7 +175,11 @@ static partial class TestSuite
         Assert.True(layoutBody.Contains("Grid.GetColumnSpan", StringComparison.Ordinal),
             "The settings layout must place ColumnSpan=2 cards on their own row.");
 
-        string[] fullWidthCards = xaml.Split('\n')
+        int settingsStart = xaml.IndexOf("x:Name=\"SettingsPanel\"", StringComparison.Ordinal);
+        Assert.True(settingsStart >= 0, "MainPage.xaml must declare SettingsPanel.");
+        int settingsEnd = xaml.IndexOf("x:Name=\"AboutPanel\"", settingsStart, StringComparison.Ordinal);
+        string settingsXaml = settingsEnd > settingsStart ? xaml[settingsStart..settingsEnd] : xaml[settingsStart..];
+        string[] fullWidthCards = settingsXaml.Split('\n')
             .Where(l => l.Contains("Grid.ColumnSpan=\"2\"", StringComparison.Ordinal) && l.Contains("<Grid ", StringComparison.Ordinal))
             .ToArray();
         Assert.True(fullWidthCards.Length == 2,

@@ -30,6 +30,8 @@ static partial class TestSuite
             TestDetailFieldTapBands);
         runner.Run("Dashboard layout: the convert grid, its cards and the start button do not overlap",
             TestConvertGridGeometry);
+        runner.RunGuard("AOT convert workspace: compact command groups stay within first-screen density",
+            TestAotConvertFirstScreenDensity);
         runner.Run("Dashboard layout: dropdown popup rows round-trip between paint and hit-testing",
             TestDropdownPopupGeometry);
         runner.Run("Dashboard layout: the parked adjust buttons sit inside their row and leave the deadline room",
@@ -61,14 +63,14 @@ static partial class TestSuite
         Assert.Equal(5, DashboardLayout.SidebarTabCount);
 
         Assert.Equal(95, DashboardLayout.ConvertZoneTop);
-        Assert.Equal(120, DashboardLayout.ConvertZoneHeight);
-        Assert.Equal(230, DashboardLayout.ConvertGridTop);
-        Assert.Equal(24, DashboardLayout.ConvertGroupHeaderHeight);
-        Assert.Equal(38, DashboardLayout.ConvertCardHeight);
-        Assert.Equal(8, DashboardLayout.ConvertCardGap);
+        Assert.Equal(72, DashboardLayout.ConvertZoneHeight);
+        Assert.Equal(176, DashboardLayout.ConvertGridTop);
+        Assert.Equal(20, DashboardLayout.ConvertGroupHeaderHeight);
+        Assert.Equal(34, DashboardLayout.ConvertCardHeight);
+        Assert.Equal(6, DashboardLayout.ConvertCardGap);
         Assert.Equal(14, DashboardLayout.ConvertGroupGap);
-        Assert.Equal(36, DashboardLayout.ConvertStartButtonHeight);
-        Assert.Equal(16, DashboardLayout.ConvertStartButtonGap);
+        Assert.Equal(32, DashboardLayout.ConvertStartButtonHeight);
+        Assert.Equal(8, DashboardLayout.ConvertStartButtonGap);
         Assert.Equal(3, DashboardLayout.ConvertGroupCount);
 
         // 下拉選單與清單：控制項 240x30、列距 26、語言清單 180 高且同時顯示 5 列。
@@ -279,36 +281,37 @@ static partial class TestSuite
         Assert.True(zone.Width > 0 && zone.Height == DashboardLayout.ConvertZoneHeight,
             "The drop zone must fit inside the content area.");
 
-        const int maxRows = 3;
+        int[] groupSizes = { 3, 5, 8 };
         for (int group = 0; group < DashboardLayout.ConvertGroupCount; group++)
         {
-            for (int row = 0; row < maxRows; row++)
+            int columns = DashboardLayout.ConvertGroupColumns(group);
+            for (int item = 0; item < groupSizes[group]; item++)
             {
-                LayoutRect card = DashboardLayout.ConvertCardRect(group, row, zone.X, zone.Width);
+                LayoutRect card = DashboardLayout.ConvertCardRect(group, item, zone.X, zone.Width, groupSizes);
 
                 // 格線在拖放區之下，不是疊在它上面。
                 Assert.True(card.Y >= zone.Bottom, "The command grid must sit below the drop zone.");
 
-                if (row > 0)
+                if (item >= columns)
                 {
-                    LayoutRect above = DashboardLayout.ConvertCardRect(group, row - 1, zone.X, zone.Width);
+                    LayoutRect above = DashboardLayout.ConvertCardRect(group, item - columns, zone.X, zone.Width, groupSizes);
                     Assert.Equal(above.Bottom + DashboardLayout.ConvertCardGap, card.Y);
                 }
 
-                if (group > 0)
+                if (item % columns > 0)
                 {
-                    LayoutRect left = DashboardLayout.ConvertCardRect(group - 1, row, zone.X, zone.Width);
+                    LayoutRect left = DashboardLayout.ConvertCardRect(group, item - 1, zone.X, zone.Width, groupSizes);
                     Assert.True(left.Right <= card.X, "Command columns must not overlap.");
                 }
 
-                // 欄位標題與該欄第一張卡片的左緣對齊。
-                Assert.Equal(card.X, DashboardLayout.ConvertGroupX(group, zone.X, zone.Width));
+                // 分類標題與該分類第一張卡片的左緣對齊。
+                if (item == 0)
+                    Assert.Equal(card.X, DashboardLayout.ConvertGroupX(group, zone.X, zone.Width, groupSizes));
             }
         }
 
-        // 每一列保留完整的列距（卡片下方還有一道間隙），開始鈕接在最後一列之下（與原本的算式一致）。
-        LayoutRect lastCard = DashboardLayout.ConvertCardRect(0, maxRows - 1, zone.X, zone.Width);
-        LayoutRect startButton = DashboardLayout.ConvertStartButtonRect(zone.X, zone.Width, maxRows);
+        LayoutRect lastCard = DashboardLayout.ConvertCardRect(2, groupSizes[2] - 1, zone.X, zone.Width, groupSizes);
+        LayoutRect startButton = DashboardLayout.ConvertStartButtonRect(zone.X, zone.Width, groupSizes);
         Assert.Equal(lastCard.Y + DashboardLayout.ConvertCardStride + DashboardLayout.ConvertStartButtonGap, startButton.Y);
         Assert.True(startButton.Y >= lastCard.Bottom, "The start button must clear the last card.");
         Assert.Equal(zone.Width, startButton.Width);
@@ -323,6 +326,33 @@ static partial class TestSuite
         LayoutRect historyClear = DashboardLayout.HistoryClearButtonRect(logW);
         Assert.Equal(DashboardLayout.HistoryClearButtonWidth, historyClear.Width);
         Assert.Equal(DashboardLayout.HistoryClearButtonHeight, historyClear.Height);
+    }
+
+    private static void TestAotConvertFirstScreenDensity()
+    {
+        int[] groupSizes = { 3, 5, 8 };
+        Assert.Equal(3, DashboardLayout.ConvertGroupColumns(0));
+        Assert.Equal(5, DashboardLayout.ConvertGroupColumns(1));
+        Assert.Equal(4, DashboardLayout.ConvertGroupColumns(2));
+        Assert.Equal(1, DashboardLayout.ConvertGroupRows(0, groupSizes[0]));
+        Assert.Equal(1, DashboardLayout.ConvertGroupRows(1, groupSizes[1]));
+        Assert.Equal(2, DashboardLayout.ConvertGroupRows(2, groupSizes[2]));
+
+        LayoutRect zone = DashboardLayout.ConvertZoneRect(contentX: 260, logW: 1520);
+        LayoutRect start = DashboardLayout.ConvertStartButtonRect(zone.X, zone.Width, groupSizes);
+        Assert.True(zone.Bottom < DashboardLayout.ConvertGridTop,
+            "The compact drop zone must leave visible separation before command groups.");
+        Assert.True(start.Bottom <= DashboardLayout.MinContentHeight - 8,
+            $"AOT convert controls must stay inside the minimum dashboard content height; start bottom was {start.Bottom}.");
+
+        string? root = FindRepoRoot();
+        if (root is null) throw new TestSkippedException("Could not locate the repository root from the test output directory.");
+        string paint = File.ReadAllText(Path.Combine(root, "src", "Clickra.CLI", "Dashboard", "DashboardWindow.Convert.cs"));
+        string hitTest = File.ReadAllText(Path.Combine(root, "src", "Clickra.CLI", "Dashboard", "DashboardWindow.HitTesting.cs"));
+        Assert.True(paint.Contains("ConvertCardRect(group, local, zoneX, zoneW, ConvertCommandGroupSizes)", StringComparison.Ordinal),
+            "AOT convert painting must use DashboardLayout command geometry.");
+        Assert.True(hitTest.Contains("ConvertCardRect(group, local, zone.X, zone.Width, ConvertCommandGroupSizes)", StringComparison.Ordinal),
+            "AOT convert hit-testing must use the same DashboardLayout command geometry as painting.");
     }
 
     /// <summary>

@@ -166,7 +166,7 @@ public sealed partial class MainPage : Page
         var narrow = ActualWidth < 1000;
 
         SetTwoPaneLayout(OverviewSidePane, OverviewMainColumn, OverviewSideColumn, 1.4, 0.85, narrow);
-        ApplyConvertResponsiveLayout(narrow, ConvertMainColumn, ConvertSideColumn, ConvertCommandCard, ConvertRunCard);
+        ApplyConvertResponsiveLayout(this, narrow);
         ApplyHistoryResponsiveLayout(narrow);
         ApplySettingsResponsiveLayout(narrow);
         ApplyAboutResponsiveLayout(narrow);
@@ -185,15 +185,75 @@ public sealed partial class MainPage : Page
         Grid.SetRow(sidePane, narrow ? 1 : 0);
     }
 
-    private static void ApplyConvertResponsiveLayout(bool narrow, ColumnDefinition mainColumn, ColumnDefinition sideColumn, FrameworkElement commandCard, FrameworkElement runCard)
+    private static void ApplyConvertResponsiveLayout(MainPage page, bool narrow)
     {
-        mainColumn.Width = new GridLength(1, GridUnitType.Star);
-        sideColumn.Width = narrow ? new GridLength(0) : new GridLength(1, GridUnitType.Star);
+        page.ConvertMainColumn.Width = new GridLength(1, GridUnitType.Star);
+        page.ConvertSideColumn.Width = narrow ? new GridLength(0) : new GridLength(1, GridUnitType.Star);
+        Grid.SetColumn(page.ConvertRunCard, narrow ? 0 : 1);
+        Grid.SetRow(page.ConvertRunCard, narrow ? 3 : 1);
 
-        Grid.SetColumn(commandCard, narrow ? 0 : 1);
-        Grid.SetRow(commandCard, narrow ? 2 : 0);
-        Grid.SetColumn(runCard, narrow ? 0 : 1);
-        Grid.SetRow(runCard, narrow ? 3 : 1);
+        SetActiveColumns(page.OfficeCommandGrid, narrow ? 2 : 3);
+        SetActiveColumns(page.PdfCommandGrid, narrow ? 2 : 5);
+        SetActiveColumns(page.ImageCommandGrid, narrow ? 2 : 4);
+
+        if (narrow)
+        {
+            SetGridCell(page.BtnWord2Pdf, 0, 0);
+            SetGridCell(page.BtnExcel2Pdf, 0, 1);
+            SetGridCell(page.BtnPpt2Pdf, 1, 0, 2);
+
+            SetGridCell(page.BtnMergePdf, 0, 0);
+            SetGridCell(page.BtnCompressPdf, 0, 1);
+            SetGridCell(page.BtnTranslatePdf, 1, 0);
+            SetGridCell(page.BtnDecryptPdf, 1, 1);
+            SetGridCell(page.BtnSplitPdf, 2, 0, 2);
+
+            SetGridCell(page.BtnImg2Pdf, 0, 0);
+            SetGridCell(page.BtnImgMerge, 0, 1);
+            SetGridCell(page.BtnImgStitch, 1, 0);
+            SetGridCell(page.BtnImgToPng, 1, 1);
+            SetGridCell(page.BtnImgToJpg, 2, 0);
+            SetGridCell(page.BtnImgToWebp, 2, 1);
+            SetGridCell(page.BtnImgToGif, 3, 0);
+            SetGridCell(page.BtnImgToHeic, 3, 1);
+            return;
+        }
+
+        SetGridCell(page.BtnWord2Pdf, 0, 0);
+        SetGridCell(page.BtnExcel2Pdf, 0, 1);
+        SetGridCell(page.BtnPpt2Pdf, 0, 2);
+
+        SetGridCell(page.BtnMergePdf, 0, 0);
+        SetGridCell(page.BtnCompressPdf, 0, 1);
+        SetGridCell(page.BtnTranslatePdf, 0, 2);
+        SetGridCell(page.BtnDecryptPdf, 0, 3);
+        SetGridCell(page.BtnSplitPdf, 0, 4);
+
+        SetGridCell(page.BtnImg2Pdf, 0, 0);
+        SetGridCell(page.BtnImgMerge, 0, 1);
+        SetGridCell(page.BtnImgStitch, 0, 2);
+        SetGridCell(page.BtnImgToPng, 0, 3);
+        SetGridCell(page.BtnImgToJpg, 1, 0);
+        SetGridCell(page.BtnImgToWebp, 1, 1);
+        SetGridCell(page.BtnImgToGif, 1, 2);
+        SetGridCell(page.BtnImgToHeic, 1, 3);
+    }
+
+    private static void SetActiveColumns(Grid grid, int activeColumns)
+    {
+        for (int i = 0; i < grid.ColumnDefinitions.Count; i++)
+        {
+            grid.ColumnDefinitions[i].Width = i < activeColumns
+                ? new GridLength(1, GridUnitType.Star)
+                : new GridLength(0);
+        }
+    }
+
+    private static void SetGridCell(FrameworkElement element, int row, int column, int columnSpan = 1)
+    {
+        Grid.SetRow(element, row);
+        Grid.SetColumn(element, column);
+        Grid.SetColumnSpan(element, columnSpan);
     }
 
     private void ApplyHistoryResponsiveLayout(bool narrow)
@@ -390,6 +450,7 @@ public sealed partial class MainPage : Page
 
     private void RefreshFiles()
     {
+        SelectedFilesCard.Visibility = _selectedFiles.Count > 0 ? Visibility.Visible : Visibility.Collapsed;
         FileListContainer.Children.Clear();
         if (_selectedFiles.Count == 0)
         {
@@ -416,6 +477,9 @@ public sealed partial class MainPage : Page
         bool canStart = _selectedFiles.Count > 0 &&
                         _selectedCommand is not null &&
                         IsCommandCompatibleWithSelectedFiles(_selectedCommand);
+        ConvertRunCard.Visibility = _selectedFiles.Count > 0 || _isRunning
+            ? Visibility.Visible
+            : Visibility.Collapsed;
         StartButton.Visibility = _isRunning ? Visibility.Collapsed : Visibility.Visible;
         StartButton.IsEnabled = canStart;
         CancelButton.Visibility = _isRunning ? Visibility.Visible : Visibility.Collapsed;
