@@ -204,6 +204,13 @@ Assert-Png "packaging/msix/Assets/Square150x150Logo.png" 150 150
 Assert-Png "packaging/msix/Assets/StoreLogo.png" 50 50
 Assert-Png "packaging/msix/Assets/Wide310x150Logo.png" 310 150
 
+$unplatedTargetSizes = @(16, 24, 32, 44, 48, 256)
+foreach ($size in $unplatedTargetSizes) {
+    $asset = "packaging/msix/Assets/Square44x44Logo.targetsize-${size}_altform-unplated.png"
+    Assert-Png $asset $size $size
+    Assert-SameFile "packaging/brand_assets/primary/clickra-icon-primary-$size.png" $asset
+}
+
 $icoSizes = @(16, 24, 32, 48, 64, 128, 256)
 Assert-IcoFrames "packaging/brand_assets/primary/clickra-icon-primary.ico" $icoSizes
 Assert-IcoFrames "src/resources/app.ico" $icoSizes
