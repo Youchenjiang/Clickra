@@ -1,0 +1,109 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 256 256">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#102750"/>
+      <stop offset="0.42" stop-color="#071838"/>
+      <stop offset="1" stop-color="#06142f"/>
+    </linearGradient>
+    <linearGradient id="cFill" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#ffffff"/>
+      <stop offset="0.47" stop-color="#f4f8ff"/>
+      <stop offset="0.75" stop-color="#dceaff"/>
+      <stop offset="1" stop-color="#ffffff"/>
+    </linearGradient>
+    <linearGradient id="pill" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#173b6f" stop-opacity="0.82"/>
+      <stop offset="0.45" stop-color="#09214d" stop-opacity="0.94"/>
+      <stop offset="1" stop-color="#061735" stop-opacity="0.98"/>
+    </linearGradient>
+    <linearGradient id="overlap" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#4f9eff" stop-opacity="0.72"/>
+      <stop offset="1" stop-color="#2054b8" stop-opacity="0.42"/>
+    </linearGradient>
+    <radialGradient id="blueDot" cx="33%" cy="28%" r="75%">
+      <stop offset="0" stop-color="#42a8ff"/>
+      <stop offset="0.48" stop-color="#1680ff"/>
+      <stop offset="1" stop-color="#0555d9"/>
+    </radialGradient>
+    <radialGradient id="redDot" cx="33%" cy="28%" r="75%">
+      <stop offset="0" stop-color="#ff7a6c"/>
+      <stop offset="0.52" stop-color="#ff5151"/>
+      <stop offset="1" stop-color="#e73542"/>
+    </radialGradient>
+    <radialGradient id="purpleDot" cx="33%" cy="28%" r="75%">
+      <stop offset="0" stop-color="#b76dff"/>
+      <stop offset="0.52" stop-color="#8d42eb"/>
+      <stop offset="1" stop-color="#6527cc"/>
+    </radialGradient>
+    <radialGradient id="cyanDot" cx="33%" cy="28%" r="75%">
+      <stop offset="0" stop-color="#43ebff"/>
+      <stop offset="0.52" stop-color="#10cfe9"/>
+      <stop offset="1" stop-color="#009fc2"/>
+    </radialGradient>
+    <filter id="softShadow" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur in="SourceAlpha" stdDeviation="3.4"/>
+      <feOffset dx="1.5" dy="3" result="off"/>
+      <feColorMatrix in="off" type="matrix" values="0 0 0 0 0 0 0 0 0 0.03 0 0 0 0 0.12 0 0 0 .58 0"/>
+      <feMerge><feMergeNode/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+    <filter id="dotShadow" x="-60%" y="-60%" width="220%" height="220%">
+      <feGaussianBlur in="SourceAlpha" stdDeviation="2.2"/>
+      <feOffset dx="0.8" dy="2" result="off"/>
+      <feColorMatrix in="off" type="matrix" values="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 .55 0"/>
+      <feMerge><feMergeNode/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+  </defs>
+
+  <!-- Original A1 rounded-square silhouette -->
+  <rect x="1.2" y="1.2" width="253.6" height="253.6" rx="60" fill="url(#bg)" stroke="#2c63a6" stroke-width="1.6"/>
+
+  <!-- Original white C reconstructed as a filled silhouette, not a generic stroked arc. -->
+  <path d="M139 43 H101
+           C55 43 24 73 24 113
+           V143
+           C24 184 55 213 101 213
+           H139
+           C151 213 159 205 159 193
+           C159 181 151 173 139 173
+           H104
+           C84 173 72 161 72 142
+           V114
+           C72 95 84 84 104 84
+           H139
+           C151 84 159 76 159 64
+           C159 52 151 43 139 43 Z"
+        fill="url(#cFill)" filter="url(#softShadow)"/>
+
+  <!-- Original light-blue faceting: kept within the C silhouette. -->
+  <path d="M101 43 C72 43 48 55 35 76 L50 89 C61 69 79 58 102 58 H133 C142 58 148 54 151 48 C148 45 144 43 139 43 Z"
+        fill="#ffffff" opacity="0.42"/>
+  <path d="M24 113 C24 91 34 72 51 59 L65 75 C52 85 45 98 45 114 V141 C45 153 49 164 57 173 L39 188 C29 176 24 160 24 143 Z"
+        fill="#dbeaff" opacity="0.62"/>
+  <path d="M39 188 L57 173 C68 185 82 192 103 192 H139 C146 192 152 196 155 201 C152 208 146 213 139 213 H101 C75 213 54 204 39 188 Z"
+        fill="#c9ddfb" opacity="0.68"/>
+  <path d="M139 43 C151 43 159 52 159 64 C159 76 151 84 139 84 H121 L128 70 H139 C143 70 145 68 145 64 C145 60 143 58 139 58 H126 L132 43 Z"
+        fill="#eef6ff" opacity="0.78"/>
+  <path d="M139 173 C151 173 159 181 159 193 C159 205 151 213 139 213 H123 L130 199 H139 C143 199 145 197 145 193 C145 189 143 187 139 187 H121 L128 173 Z"
+        fill="#e8f2ff" opacity="0.75"/>
+
+  <!-- Translucent mid overlay visible behind the pill -->
+  <rect x="147.5" y="100.5" width="31" height="62" rx="13.5" fill="url(#overlap)" stroke="#79b9ff" stroke-opacity="0.62" stroke-width="1.3"/>
+
+  <!-- Right vertical capsule -->
+  <rect x="171.5" y="43.5" width="59" height="184" rx="28.5" fill="url(#pill)" stroke="#285991" stroke-width="1.5" filter="url(#softShadow)"/>
+  <rect x="176.5" y="48.5" width="49" height="174" rx="24" fill="none" stroke="#4d7bb7" stroke-opacity="0.25" stroke-width="1"/>
+
+  <!-- Four original capability dots -->
+  <g filter="url(#dotShadow)">
+    <circle cx="201" cy="72" r="18.2" fill="url(#blueDot)"/>
+    <circle cx="201" cy="114.5" r="18.2" fill="url(#redDot)"/>
+    <circle cx="201" cy="157" r="18.2" fill="url(#purpleDot)"/>
+    <circle cx="201" cy="199.5" r="18.2" fill="url(#cyanDot)"/>
+  </g>
+  <g fill="#ffffff" opacity="0.10">
+    <ellipse cx="195" cy="66" rx="9.5" ry="6"/>
+    <ellipse cx="195" cy="108.5" rx="9.5" ry="6"/>
+    <ellipse cx="195" cy="151" rx="9.5" ry="6"/>
+    <ellipse cx="195" cy="193.5" rx="9.5" ry="6"/>
+  </g>
+</svg>

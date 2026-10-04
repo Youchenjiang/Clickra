@@ -46,8 +46,8 @@ function Copy-IconAssets {
         [string]$PackagingDir,
         [string]$LayoutDir
     )
-    if (Test-Path "$PackagingDir/Assets/StoreLogo.png") {
-        Copy-Item "$PackagingDir/Assets/StoreLogo.png" "$LayoutDir/app.png"
+    if (Test-Path "src/resources/app.png") {
+        Copy-Item "src/resources/app.png" "$LayoutDir/app.png"
     }
     if (Test-Path "src/resources/app.ico") {
         Copy-Item "src/resources/app.ico" "$LayoutDir/"

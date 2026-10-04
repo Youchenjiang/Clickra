@@ -38,6 +38,9 @@ dotnet build src/ClickraLauncher/ClickraLauncher.csproj -c Release -warnaserror
 echo "[pre-push] Building Clickra.Fluent (warnaserror)..."
 dotnet build src/Clickra.Fluent/Clickra.Fluent.csproj -c Release -warnaserror
 
+echo "[pre-push] Verifying product icon assets..."
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File scripts/verify_icon_assets.ps1
+
 
 echo "[pre-push] Running architecture and localization guards (warnaserror)..."
 dotnet run --project tests/Clickra.Core.Tests/Clickra.Core.Tests.csproj -c Release --property:TreatWarningsAsErrors=true -- --guards
