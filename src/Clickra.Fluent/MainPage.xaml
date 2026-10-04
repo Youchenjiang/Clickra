@@ -161,8 +161,8 @@
             </ScrollViewer>
 
             <ScrollViewer x:Name="ConvertPanel" VerticalScrollBarVisibility="Auto" Visibility="Collapsed">
-                <StackPanel Spacing="18" Margin="36,28,36,32">
-                    <TextBlock x:Name="ConvertTitle" Text="Convert" FontSize="34" FontWeight="SemiBold"/>
+                <StackPanel Spacing="14" Margin="32,20,32,24">
+                    <TextBlock x:Name="ConvertTitle" Text="Convert" FontSize="30" FontWeight="SemiBold"/>
                     <Grid x:Name="ConvertLayout" ColumnSpacing="20" RowSpacing="18">
                         <Grid.RowDefinitions>
                             <RowDefinition Height="Auto"/>
@@ -174,11 +174,11 @@
                             <ColumnDefinition x:Name="ConvertMainColumn" Width="1.15*"/>
                             <ColumnDefinition x:Name="ConvertSideColumn" Width="0.85*"/>
                         </Grid.ColumnDefinitions>
-                        <Border x:Name="DropZone" AllowDrop="True" Background="{ThemeResource CardBackgroundFillColorDefaultBrush}" BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" BorderThickness="1" CornerRadius="8" Padding="28" MinHeight="210">
-                            <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="10">
-                                <FontIcon x:Name="DropZoneIcon" Glyph="&#xE896;" FontSize="52" Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}"/>
-                                <TextBlock x:Name="DropZoneTitle" Text="Drag and drop files here" FontSize="20" FontWeight="SemiBold" HorizontalAlignment="Center"/>
-                                <TextBlock x:Name="DropZoneBrowseText" Text="Click to select files" FontSize="14" Foreground="{ThemeResource TextFillColorSecondaryBrush}" HorizontalAlignment="Center"/>
+                        <Border x:Name="DropZone" AllowDrop="True" Background="{ThemeResource CardBackgroundFillColorDefaultBrush}" BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" BorderThickness="1" CornerRadius="8" Padding="20,14" MinHeight="124">
+                            <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="6">
+                                <FontIcon x:Name="DropZoneIcon" Glyph="&#xE896;" FontSize="30" Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}"/>
+                                <TextBlock x:Name="DropZoneTitle" Text="Drag and drop files here" FontSize="16" FontWeight="SemiBold" HorizontalAlignment="Center"/>
+                                <TextBlock x:Name="DropZoneBrowseText" Text="Click to select files" FontSize="13" Foreground="{ThemeResource TextFillColorSecondaryBrush}" HorizontalAlignment="Center"/>
                                 <TextBlock x:Name="DropZoneTypesText" Text="PDF, Office documents, and images" FontSize="12" Foreground="{ThemeResource TextFillColorTertiaryBrush}" HorizontalAlignment="Center"/>
                             </StackPanel>
                         </Border>
