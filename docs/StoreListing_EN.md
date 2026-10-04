@@ -1,6 +1,6 @@
 # Microsoft Store Listing - English (US)
 
-Below is the complete information for you to copy and paste directly into the Microsoft Partner Center, updated for the v3.12.0.0 release.
+Below is the complete information for you to copy and paste directly into the Microsoft Partner Center, updated for the v3.13.0.0 release.
 
 ---
 
@@ -32,10 +32,11 @@ Clickra respects your privacy. Most processing (Office-to-PDF conversion, PDF co
 🔗 Open Source on GitHub: https://github.com/Youchenjiang/Clickra
 
 ## What's new in this version
- - Centralized Settings Platform: Shared descriptors now define setting labels, editor types, choices, defaults, and numeric ranges in one Core registry.
- - Dynamic Settings Controls: Native Dashboard and Fluent Settings generate supported controls from the same registry, reducing UI drift when settings evolve.
- - Live Settings Sync: Changes made in one running Clickra settings surface are reflected in other running Clickra UIs without restarting the app.
- - Safer Numeric Settings: Shared bounds and overflow-safe stepping keep slider and number values inside their registered ranges.
+ - Resume Parked Conversions: Continue or cancel parked tasks directly from Native Dashboard or Fluent History while preserving task progress and input state.
+ - Per-Task Retention Controls: Extend, shorten, or reset the retention window for individual parked tasks, with consistent expiration status and warnings.
+ - Clearer PDF Compression Settings: Image and other optimization options are grouped consistently across both settings interfaces.
+ - Localized Windows Package Identity: MSIX display name and description now resolve through packaged language resources.
+ - Refreshed Product Icons: Updated Windows, Fluent, shell, tile, and Store-facing branding with verified multi-resolution assets.
 
 ## Product Features
 *(Max 20, displayed as bullet points)*

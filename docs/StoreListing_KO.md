@@ -1,6 +1,6 @@
 # Microsoft Store Listing - Korean (Korea)
 
-Microsoft Partner Center에 바로 복사해 넣을 수 있는 v3.12.0.0용 스토어 등록 정보입니다.
+Microsoft Partner Center에 바로 복사해 넣을 수 있는 v3.13.0.0용 스토어 등록 정보입니다.
 
 ---
 
@@ -32,10 +32,11 @@ Clickra는 개인정보 보호를 중요하게 생각합니다. Office to PDF, P
 🔗 Open Source on GitHub: https://github.com/Youchenjiang/Clickra
 
 ## What's new in this version
- - 중앙화된 설정 플랫폼: 공용 descriptor가 설정 제목, 편집기 유형, 선택 항목, 기본값, 숫자 범위를 하나의 Core registry에서 정의합니다.
- - 동적 설정 컨트롤: Native Dashboard와 Fluent Settings가 동일한 registry에서 지원 컨트롤을 생성하여 설정 변경 시 UI 차이를 줄입니다.
- - 실시간 설정 동기화: 실행 중인 한 Clickra 설정 화면에서 변경한 값이 앱을 다시 시작하지 않아도 다른 실행 중인 Clickra UI에 반영됩니다.
- - 더 안전한 숫자 설정: 슬라이더와 숫자 입력이 공용 범위를 사용하고 안전한 증감 처리를 적용하여 등록된 범위를 벗어나지 않도록 합니다.
+ - 보관된 변환 다시 시작: Native Dashboard 또는 Fluent History에서 보관된 작업을 계속하거나 취소할 수 있으며 기존 진행 상태와 입력 정보를 유지합니다.
+ - 작업별 보존 기간 제어: 각 보관 작업의 보존 기간을 연장, 단축 또는 초기화하고 만료 상태와 경고를 일관되게 표시합니다.
+ - 더 명확한 PDF 압축 설정: 이미지 최적화와 기타 최적화 옵션을 두 설정 화면에서 동일하게 그룹화했습니다.
+ - Windows 패키지 정보 현지화: MSIX 표시 이름과 설명이 패키지에 포함된 언어 리소스를 통해 표시됩니다.
+ - 제품 아이콘 새로 고침: Windows, Fluent, Shell, 타일 및 Store용 브랜딩을 검증된 다중 해상도 자산으로 업데이트했습니다.
 
 ## Product Features
 *(Max 20, displayed as bullet points)*
