@@ -46,6 +46,10 @@ public static class SettingsLayout
     public const int WideBreakpoint = 620;
     public const int ContentRightMargin = 10;
     public const int ColumnGap = 10;
+    public const int CardPadding = 12;
+    public const int OverviewCardHeight = 126;
+    public const int OverviewRowGap = 48;
+    public const int CardGap = 14;
 
     public static bool IsWide(int logW) => logW >= WideBreakpoint;
 
@@ -57,6 +61,9 @@ public static class SettingsLayout
 
     public static int SliderWidthFor(int availableWidth) =>
         Math.Min(SliderWidth, Math.Max(120, availableWidth - 2 * SliderHitHorizontalPadding));
+
+    public static LayoutRect CardRect(int x, int y, int width, int height) =>
+        new LayoutRect(x, y, width, height);
 
     public static LayoutRect ToggleRect(int logW, int sectionY) =>
         new LayoutRect(logW - ToggleRightInset, sectionY + ToggleTopOffset, ToggleWidth, ToggleHeight);

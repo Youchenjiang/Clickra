@@ -80,6 +80,26 @@ namespace Clickra.UI
                 AddLayoutHitRect(elementId, toggle);
             }
 
+            void DrawCard(LayoutRect rect)
+            {
+                using var path = UIHelper.GetRoundedRectPath(
+                    new RectangleF(rect.X * s, rect.Y * s, rect.Width * s, rect.Height * s), 6 * s);
+                using var fill = new SolidBrush(Color.FromArgb(38, 38, 38));
+                using var border = new Pen(Color.FromArgb(54, 54, 54));
+                g.FillPath(fill, path);
+                g.DrawPath(border, path);
+            }
+
+            void DrawCompactToggleRow(string titleKey, bool state, int elementId, int x, int y, int width)
+            {
+                if (_tabFont != null)
+                    g.DrawString(GetText(titleKey), _tabFont, Brushes.White, x * s, y * s);
+
+                LayoutRect toggle = SettingsLayout.ToggleRectWithin(x, width, y);
+                DrawToggleSwitch(g, state, _hoveredElement == elementId, toggle.X, toggle.Y, toggle.Width, toggle.Height);
+                AddLayoutHitRect(elementId, toggle);
+            }
+
             if (_contentTitleFont != null)
                 g.DrawString(GetText("tab_settings"), _contentTitleFont, Brushes.White, contentX * s, 30 * s);
 
@@ -90,14 +110,58 @@ namespace Clickra.UI
 
             float y = SettingsLayout.ContentTop;
             float margin = SettingsLayout.InlineGap;
+            bool wideSettings = SettingsLayout.IsWide((int)logW);
+            int settingsColumnWidth = wideSettings
+                ? SettingsLayout.ColumnWidth((int)contentX, (int)logW)
+                : (int)(logW - contentX - SettingsLayout.ContentRightMargin);
 
             bool quietMode = ClickraStorage.GetSettingBool(ClickraSettings.QuietMode);
-            DrawToggleSection("setting_silent_title", "setting_silent_desc", quietMode, 5, y);
-            y += SettingsLayout.PrimaryToggleSectionHeight;
-
             bool notification = ClickraStorage.GetSettingBool(ClickraSettings.Notification);
-            DrawToggleSection("setting_notify_title", "setting_notify_desc", notification, 6, y);
-            y += SettingsLayout.PrimaryToggleSectionHeight;
+            if (wideSettings)
+            {
+                int leftX = (int)contentX;
+                int rightX = SettingsLayout.ColumnX((int)contentX, (int)logW, 1);
+                int cardY = (int)y;
+                LayoutRect behaviorCard = SettingsLayout.CardRect(leftX, cardY, settingsColumnWidth, SettingsLayout.OverviewCardHeight);
+                LayoutRect languageCard = SettingsLayout.CardRect(rightX, cardY, settingsColumnWidth, SettingsLayout.OverviewCardHeight);
+                DrawCard(behaviorCard);
+                DrawCard(languageCard);
+
+                int behaviorX = behaviorCard.X + SettingsLayout.CardPadding;
+                int behaviorWidth = behaviorCard.Width - 2 * SettingsLayout.CardPadding;
+                DrawCompactToggleRow("setting_silent_title", quietMode, 5, behaviorX, behaviorCard.Y + 16, behaviorWidth);
+                DrawCompactToggleRow("setting_notify_title", notification, 6, behaviorX,
+                    behaviorCard.Y + 16 + SettingsLayout.OverviewRowGap, behaviorWidth);
+
+                int languageX = languageCard.X + SettingsLayout.CardPadding;
+                int languageWidth = languageCard.Width - 2 * SettingsLayout.CardPadding;
+                if (_tabFont != null)
+                {
+                    g.DrawString(GetText("setting_lang_title"), _tabFont, Brushes.White, languageX * s, (languageCard.Y + 12) * s);
+                    g.DrawString(GetText("setting_pdf_title"), _tabFont, Brushes.White, languageX * s, (languageCard.Y + 64) * s);
+                }
+
+                _langDropdownX = languageX;
+                _langDropdownY = languageCard.Y + 36;
+                _langDropdownWidth = languageWidth;
+                DrawLanguageDropdown(g, _langDropdownY, _langDropdownX, _langDropdownWidth);
+                AddLayoutHitRect(10, DashboardLayout.DropdownButtonRect(_langDropdownX, _langDropdownY, _langDropdownWidth));
+
+                _pdfLangDropdownX = languageX;
+                _pdfLangDropdownY = languageCard.Y + 88;
+                _pdfLangDropdownWidth = languageWidth;
+                DrawPdfLangDropdown(g, _pdfLangDropdownY, _pdfLangDropdownX, _pdfLangDropdownWidth);
+                AddLayoutHitRect(31, DashboardLayout.DropdownButtonRect(_pdfLangDropdownX, _pdfLangDropdownY, _pdfLangDropdownWidth));
+
+                y += SettingsLayout.OverviewCardHeight + SettingsLayout.CardGap;
+            }
+            else
+            {
+                DrawToggleSection("setting_silent_title", "setting_silent_desc", quietMode, 5, y);
+                y += SettingsLayout.PrimaryToggleSectionHeight;
+                DrawToggleSection("setting_notify_title", "setting_notify_desc", notification, 6, y);
+                y += SettingsLayout.PrimaryToggleSectionHeight;
+            }
 
             DrawSectionHeader("setting_output_title", "setting_output_desc", y);
 
@@ -350,43 +414,35 @@ namespace Clickra.UI
                 y += 32f;
             }
 
-            bool wideSettings = SettingsLayout.IsWide((int)logW);
-            float languageY = y;
-            float languageX = contentX;
-            int settingsColumnWidth = wideSettings
-                ? SettingsLayout.ColumnWidth((int)contentX, (int)logW)
-                : (int)(logW - contentX - SettingsLayout.ContentRightMargin);
-            int languageDropdownWidth = wideSettings
-                ? Math.Min(DashboardLayout.DropdownWidth, settingsColumnWidth)
-                : DashboardLayout.DropdownWidth;
-            float pdfLanguageY = wideSettings ? y : y + SettingsLayout.LanguageSectionHeight;
-            float pdfLanguageX = wideSettings
-                ? SettingsLayout.ColumnX((int)contentX, (int)logW, 1)
-                : contentX;
-
-            DrawSectionHeaderAt("setting_lang_title", "setting_lang_desc", languageX, languageY);
-            _langDropdownX = (int)languageX;
-            _langDropdownY = (int)(languageY + SettingsLayout.LanguageDropdownOffset);
-            _langDropdownWidth = languageDropdownWidth;
-            DrawLanguageDropdown(g, _langDropdownY, languageX, _langDropdownWidth);
-            AddLayoutHitRect(10, DashboardLayout.DropdownButtonRect(_langDropdownX, _langDropdownY, _langDropdownWidth));
-
-            DrawSectionHeaderAt("setting_pdf_title", "setting_pdf_desc", pdfLanguageX, pdfLanguageY);
-            if (_subFont != null)
+            if (!wideSettings)
             {
-                using var pdfLangLabelBrush = new SolidBrush(Color.FromArgb(180, 180, 180));
-                g.DrawString(GetText("setting_pdf_lang"), _subFont, pdfLangLabelBrush,
-                    pdfLanguageX * s, (pdfLanguageY + SettingsLayout.PdfLanguageLabelOffset) * s);
-            }
-            _pdfLangDropdownX = (int)pdfLanguageX;
-            _pdfLangDropdownY = (int)(pdfLanguageY + SettingsLayout.PdfLanguageDropdownOffset);
-            _pdfLangDropdownWidth = languageDropdownWidth;
-            DrawPdfLangDropdown(g, _pdfLangDropdownY, pdfLanguageX, _pdfLangDropdownWidth);
-            AddLayoutHitRect(31, DashboardLayout.DropdownButtonRect(_pdfLangDropdownX, _pdfLangDropdownY, _pdfLangDropdownWidth));
+                float languageY = y;
+                float languageX = contentX;
+                int languageDropdownWidth = DashboardLayout.DropdownWidth;
+                float pdfLanguageY = y + SettingsLayout.LanguageSectionHeight;
 
-            y += wideSettings
-                ? SettingsLayout.PdfLanguageSectionHeight
-                : SettingsLayout.LanguageSectionHeight + SettingsLayout.PdfLanguageSectionHeight;
+                DrawSectionHeaderAt("setting_lang_title", "setting_lang_desc", languageX, languageY);
+                _langDropdownX = (int)languageX;
+                _langDropdownY = (int)(languageY + SettingsLayout.LanguageDropdownOffset);
+                _langDropdownWidth = languageDropdownWidth;
+                DrawLanguageDropdown(g, _langDropdownY, languageX, _langDropdownWidth);
+                AddLayoutHitRect(10, DashboardLayout.DropdownButtonRect(_langDropdownX, _langDropdownY, _langDropdownWidth));
+
+                DrawSectionHeaderAt("setting_pdf_title", "setting_pdf_desc", contentX, pdfLanguageY);
+                if (_subFont != null)
+                {
+                    using var pdfLangLabelBrush = new SolidBrush(Color.FromArgb(180, 180, 180));
+                    g.DrawString(GetText("setting_pdf_lang"), _subFont, pdfLangLabelBrush,
+                        contentX * s, (pdfLanguageY + SettingsLayout.PdfLanguageLabelOffset) * s);
+                }
+                _pdfLangDropdownX = (int)contentX;
+                _pdfLangDropdownY = (int)(pdfLanguageY + SettingsLayout.PdfLanguageDropdownOffset);
+                _pdfLangDropdownWidth = languageDropdownWidth;
+                DrawPdfLangDropdown(g, _pdfLangDropdownY, contentX, _pdfLangDropdownWidth);
+                AddLayoutHitRect(31, DashboardLayout.DropdownButtonRect(_pdfLangDropdownX, _pdfLangDropdownY, _pdfLangDropdownWidth));
+
+                y += SettingsLayout.LanguageSectionHeight + SettingsLayout.PdfLanguageSectionHeight;
+            }
 
             // Fluent UI section
             bool fluentAvailable = Clickra.Core.FluentRuntimeHelper.IsAvailable();
