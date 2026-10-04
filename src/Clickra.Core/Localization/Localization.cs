@@ -284,7 +284,7 @@ namespace Clickra.Core
                 ("cmd_stitch_img", "圖片拼接", "图片拼接", "Stitch Images", "画像結合 (縦/横)", "이미지 이어붙이기"),
                 ("tab_convert", "轉檔", "转档", "Convert", "変換", "변환"),
                 ("convert_drag_drop_hint", "拖曳檔案至此，或點擊此處選取檔案", "拖拽文件至此，或点击此处选择文件", "Drag files here, or click to browse", "ここにファイルをドラッグするか、クリックして選択", "여기에 파일을 끌어다 놓거나 클릭하여 선택"),
-                ("convert_drag_drop_sub", "支援 Word, PPT, PDF 及多種圖片格式", "支持 Word, PPT, PDF 及多种图片格式", "Supports Word, PPT, PDF, and image files", "Word、PPT、PDF、および画像ファイルをサポート", "Word, PPT, PDF 및 이미지 파일 지원"),
+                ("convert_drag_drop_sub", "支援 Office 文件、PDF 及多種圖片格式", "支持 Office 文档、PDF 及多种图片格式", "Supports Office documents, PDF, and image files", "Office 文書、PDF、および画像ファイルをサポート", "Office 문서, PDF 및 이미지 파일 지원"),
                 ("convert_selected_count", "已選取 {0} 個檔案", "已选择 {0} 个文件", "{0} files selected", "{0} 個のファイルが選択されました", "{0}개의 파일이 선택됨"),
                 ("convert_clear", "清除", "清除", "Clear", "クリア", "지우기"),
                 ("convert_start", "開始轉檔", "开始转档", "Start Conversion", "変換開始", "변환 시작"),
