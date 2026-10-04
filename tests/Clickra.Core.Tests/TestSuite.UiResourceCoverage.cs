@@ -28,6 +28,7 @@ namespace Clickra.Core.Tests;
 static partial class TestSuite
 {
     private static readonly TimeSpan UiResourceRegexTimeout = TimeSpan.FromSeconds(1);
+    private const string ShellCommandMessagePrefix = "Shell command '";
     /// <summary>UI 語言的程式碼（zh-TW）與 resw 資料夾名稱（zh-tw）互轉。</summary>
     private static string CultureFolder(string languageCode) => languageCode.ToLowerInvariant();
 
@@ -313,18 +314,18 @@ static partial class TestSuite
         {
             string command = subArgs[i];
             Assert.True(ConvertCommandRegistry.IsKnownCommand(command),
-                "Shell command '" + command + "' is not registered in ConvertCommandRegistry.");
+                ShellCommandMessagePrefix + command + "' is not registered in ConvertCommandRegistry.");
 
             string labelKey = ConvertCommandRegistry.GetLabelKey(command);
             Assert.False(string.Equals(labelKey, command, StringComparison.Ordinal),
-                "Shell command '" + command + "' has no registered localization key.");
+                ShellCommandMessagePrefix + command + "' has no registered localization key.");
             Assert.True(ConvertCommandRegistry.GetAllowedExtensions(command).Length > 0,
-                "Shell command '" + command + "' has no allowed input extensions.");
+                ShellCommandMessagePrefix + command + "' has no allowed input extensions.");
 
             int minFiles = ConvertCommandRegistry.GetMinFiles(command);
             bool shellRequiresMultiple = multiFileIndices.Contains(i);
             Assert.True((minFiles > 1) == shellRequiresMultiple,
-                "Shell command '" + command + "' has MinFiles=" + minFiles +
+                ShellCommandMessagePrefix + command + "' has MinFiles=" + minFiles +
                 " but its ComMethods multi-file gate does not match.");
         }
     }
