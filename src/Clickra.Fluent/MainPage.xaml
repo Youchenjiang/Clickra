@@ -183,7 +183,7 @@
                             </StackPanel>
                         </Border>
 
-                        <Grid Grid.Row="1" Background="{ThemeResource CardBackgroundFillColorDefaultBrush}" CornerRadius="8" Padding="18">
+                        <Grid x:Name="SelectedFilesCard" Grid.Row="1" Background="{ThemeResource CardBackgroundFillColorDefaultBrush}" CornerRadius="8" Padding="14" Visibility="Collapsed">
                             <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
                             <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
                             <StackPanel>
@@ -242,14 +242,17 @@
                             </StackPanel>
                         </Grid>
 
-                        <Grid x:Name="ConvertRunCard" Grid.Row="1" Grid.Column="1" Background="{ThemeResource CardBackgroundFillColorDefaultBrush}" CornerRadius="8" Padding="18">
-                            <StackPanel Spacing="12">
-                                <TextBlock x:Name="RunTitle" Text="Run" FontSize="15" FontWeight="SemiBold"/>
-                                <Grid ColumnSpacing="8">
-                                    <Button x:Name="StartButton" Content="Start Conversion" Style="{StaticResource AccentButtonStyle}" IsEnabled="False" Padding="18,10"/>
-                                    <Button x:Name="CancelButton" Content="Cancel" Visibility="Collapsed" Padding="18,10"/>
+                        <Grid x:Name="ConvertRunCard" Grid.Row="1" Grid.Column="1" Background="{ThemeResource CardBackgroundFillColorDefaultBrush}" CornerRadius="8" Padding="14" Visibility="Collapsed">
+                            <StackPanel Spacing="8">
+                                <Grid ColumnSpacing="12">
+                                    <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+                                    <TextBlock x:Name="RunTitle" Text="Run" FontSize="14" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                                    <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8">
+                                        <Button x:Name="StartButton" Content="Start Conversion" Style="{StaticResource AccentButtonStyle}" IsEnabled="False" Padding="16,7"/>
+                                        <Button x:Name="CancelButton" Content="Cancel" Visibility="Collapsed" Padding="16,7"/>
+                                    </StackPanel>
                                 </Grid>
-                                <Grid x:Name="ConversionProgressSection" Visibility="Collapsed">
+                                <Grid x:Name="ConversionProgressSection" Visibility="Collapsed" Margin="0,2,0,0">
                                     <StackPanel Spacing="8">
                                         <TextBlock x:Name="ConversionProgressText" Text="Ready" FontSize="13" Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
                                         <ProgressBar x:Name="ConversionProgressBar" Minimum="0" Maximum="100"/>

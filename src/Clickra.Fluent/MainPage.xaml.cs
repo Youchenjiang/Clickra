@@ -450,6 +450,7 @@ public sealed partial class MainPage : Page
 
     private void RefreshFiles()
     {
+        SelectedFilesCard.Visibility = _selectedFiles.Count > 0 ? Visibility.Visible : Visibility.Collapsed;
         FileListContainer.Children.Clear();
         if (_selectedFiles.Count == 0)
         {
@@ -476,6 +477,9 @@ public sealed partial class MainPage : Page
         bool canStart = _selectedFiles.Count > 0 &&
                         _selectedCommand is not null &&
                         IsCommandCompatibleWithSelectedFiles(_selectedCommand);
+        ConvertRunCard.Visibility = _selectedFiles.Count > 0 || _isRunning
+            ? Visibility.Visible
+            : Visibility.Collapsed;
         StartButton.Visibility = _isRunning ? Visibility.Collapsed : Visibility.Visible;
         StartButton.IsEnabled = canStart;
         CancelButton.Visibility = _isRunning ? Visibility.Visible : Visibility.Collapsed;
