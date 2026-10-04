@@ -79,6 +79,10 @@ jobs:
           }
           Write-Host "All expected build outputs present."
 
+      - name: Verify product icon assets
+        shell: powershell
+        run: ./scripts/verify_icon_assets.ps1
+
       - name: Validate publisher CN consistency across manifests
         shell: pwsh
         run: |
