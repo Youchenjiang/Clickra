@@ -16,10 +16,12 @@ public static class SettingsLayout
     public const int ToggleWidth = 44;
     public const int ToggleHeight = 22;
     public const int ToggleSectionHeight = 70;
+    public const int PrimaryToggleSectionHeight = 52;
 
     public const int ControlTopOffset = 50;
     public const int ButtonHeight = 30;
     public const int ChoiceSectionHeight = 88;
+    public const int PrimaryChoiceSectionHeight = 84;
 
     public const int LanguageDropdownOffset = 50;
     public const int LanguageSectionHeight = 110;

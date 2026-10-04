@@ -75,11 +75,11 @@ namespace Clickra.UI
 
             bool quietMode = ClickraStorage.GetSettingBool(ClickraSettings.QuietMode);
             DrawToggleSection("setting_silent_title", "setting_silent_desc", quietMode, 5, y);
-            y += SettingsLayout.ToggleSectionHeight;
+            y += SettingsLayout.PrimaryToggleSectionHeight;
 
             bool notification = ClickraStorage.GetSettingBool(ClickraSettings.Notification);
             DrawToggleSection("setting_notify_title", "setting_notify_desc", notification, 6, y);
-            y += SettingsLayout.ToggleSectionHeight;
+            y += SettingsLayout.PrimaryToggleSectionHeight;
 
             DrawSectionHeader("setting_output_title", "setting_output_desc", y);
 
@@ -114,7 +114,7 @@ namespace Clickra.UI
             AddLayoutHitRect(9, SettingsLayout.ButtonRect((int)xDownloads, (int)buttonY, (int)wDownloads));
             AddLayoutHitRect(20, SettingsLayout.ButtonRect((int)xCustom, (int)buttonY, (int)wCustom));
 
-            y += SettingsLayout.ChoiceSectionHeight;
+            y += SettingsLayout.PrimaryChoiceSectionHeight;
             if (isCustom && !string.IsNullOrEmpty(outputDirMode))
             {
                 if (_subFont != null)
@@ -149,7 +149,7 @@ namespace Clickra.UI
             AddLayoutHitRect(33, SettingsLayout.ButtonRect((int)xEngineMicrosoft, (int)engineButtonY, (int)_wEngineMicrosoft));
             AddLayoutHitRect(34, SettingsLayout.ButtonRect((int)xEngineLibreOffice, (int)engineButtonY, (int)_wEngineLibreOffice));
 
-            y += SettingsLayout.ChoiceSectionHeight;
+            y += SettingsLayout.PrimaryChoiceSectionHeight;
             bool isLibreOfficeSetupRunning;
             int downloadProgress;
             string downloadStatus;
