@@ -203,20 +203,17 @@ namespace Clickra.UI
             AddLayoutHitRect(9, SettingsLayout.ButtonRect((int)xDownloads, (int)buttonY, (int)wDownloads));
             AddLayoutHitRect(20, SettingsLayout.ButtonRect((int)xCustom, (int)buttonY, (int)wCustom));
 
-            if (hasCustomPath)
+            if (hasCustomPath && _subFont != null)
             {
-                if (_subFont != null)
+                using var pathBrush = new SolidBrush(Color.FromArgb(180, 180, 180));
+                string displayText = outputDirMode;
+                if (displayText.Length > 60)
                 {
-                    using var pathBrush = new SolidBrush(Color.FromArgb(180, 180, 180));
-                    string displayText = outputDirMode;
-                    if (displayText.Length > 60)
-                    {
-                        displayText = "..." + displayText.Substring(displayText.Length - 57);
-                    }
-                    float pathY = wideSettings ? y + 70f : y + SettingsLayout.PrimaryChoiceSectionHeight;
-                    g.DrawString($"{GetText("setting_output_selected_path")}: {displayText}", _subFont, pathBrush,
-                        outputContentX * s, pathY * s);
+                    displayText = "..." + displayText.Substring(displayText.Length - 57);
                 }
+                float pathY = wideSettings ? y + 70f : y + SettingsLayout.PrimaryChoiceSectionHeight;
+                g.DrawString($"{GetText("setting_output_selected_path")}: {displayText}", _subFont, pathBrush,
+                    outputContentX * s, pathY * s);
             }
 
             y += wideSettings
@@ -880,7 +877,7 @@ namespace Clickra.UI
                     DrawDynamicToggleSetting(g, descriptor, logW, contentX, baseElemId, ref y);
                     break;
                 case SettingEditorKind.Slider:
-                    DrawDynamicSliderSetting(g, descriptor, contentX, baseElemId, ref y, sliderWidth);
+                    DrawDynamicSliderSetting(g, descriptor, contentX, baseElemId, sliderWidth, ref y);
                     break;
                 case SettingEditorKind.Number:
                     DrawDynamicNumberSetting(g, descriptor, contentX, margin, baseElemId, ref y);
@@ -917,7 +914,7 @@ namespace Clickra.UI
         }
 
         static void DrawDynamicSliderSetting(
-            Graphics g, SettingDescriptor descriptor, float contentX, int baseElemId, ref float y, float? sliderWidth)
+            Graphics g, SettingDescriptor descriptor, float contentX, int baseElemId, float? sliderWidth, ref float y)
         {
             DrawDynamicSettingHeader(g, descriptor, contentX, y);
             y += SettingsLayout.SliderHeaderGap;
