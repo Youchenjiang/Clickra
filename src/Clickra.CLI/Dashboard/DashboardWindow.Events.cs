@@ -116,7 +116,7 @@ namespace Clickra.UI
             int adjMouseX = mouseX >= sidebarW ? (int)(mouseX + _contentScrollX) : mouseX;
             int adjMouseY = mouseX >= sidebarW ? (int)(mouseY + _contentScrollY) : mouseY;
 
-            TrackDropdownHover(hwnd, adjMouseX, adjMouseY, logW);
+            TrackDropdownHover(hwnd, adjMouseX, adjMouseY);
 
             int prevHovered = _hoveredElement;
             _hoveredElement = HitTest(hwnd, adjMouseX, adjMouseY);
@@ -237,14 +237,14 @@ namespace Clickra.UI
         }
 
         /// <summary>Tracks the hovered row inside the open language dropdowns.</summary>
-        static void TrackDropdownHover(IntPtr hwnd, int adjMouseX, int adjMouseY, float logW)
+        static void TrackDropdownHover(IntPtr hwnd, int adjMouseX, int adjMouseY)
         {
-            TrackLangDropdownHover(hwnd, adjMouseX, adjMouseY, logW);
-            TrackPdfLangDropdownHover(hwnd, adjMouseX, adjMouseY, logW);
+            TrackLangDropdownHover(hwnd, adjMouseX, adjMouseY);
+            TrackPdfLangDropdownHover(hwnd, adjMouseX, adjMouseY);
         }
 
         /// <summary>Highlights the hovered row of the open UI-language dropdown.</summary>
-        private static void TrackLangDropdownHover(IntPtr hwnd, int adjMouseX, int adjMouseY, float logW)
+        private static void TrackLangDropdownHover(IntPtr hwnd, int adjMouseX, int adjMouseY)
         {
             if (!_langDropdownOpen) return;
 
@@ -265,7 +265,7 @@ namespace Clickra.UI
         }
 
         /// <summary>Highlights the hovered row of the open PDF-language dropdown.</summary>
-        private static void TrackPdfLangDropdownHover(IntPtr hwnd, int adjMouseX, int adjMouseY, float logW)
+        private static void TrackPdfLangDropdownHover(IntPtr hwnd, int adjMouseX, int adjMouseY)
         {
             if (!_pdfLangDropdownOpen) return;
 

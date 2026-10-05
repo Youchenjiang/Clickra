@@ -50,7 +50,7 @@ namespace Clickra.UI
             {
                 1 => HitTestConvert(x, y, logW, contentX),
                 2 => HitTestHistory(x, y, logW, contentX),
-                3 => HitTestSettings(x, y, contentX),
+                3 => HitTestSettings(x, y),
                 4 => HitTestAbout(x, y, contentX),
                 _ => -1
             };
@@ -109,7 +109,7 @@ namespace Clickra.UI
             return -1;
         }
 
-        static int HitTestSettings(int x, int y, float contentX)
+        static int HitTestSettings(int x, int y)
         {
             foreach (var item in _settingsHitRects)
             {

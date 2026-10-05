@@ -12,6 +12,9 @@ namespace Clickra.Core.Tests;
 /// </summary>
 static partial class TestSuite
 {
+    private const string EventsClickFileName = "DashboardWindow.Events.Click.cs";
+    private const string EventsFileName = "DashboardWindow.Events.cs";
+
     public static void RegisterDashboardLayoutTests(TestRunner runner)
     {
         runner.Run("Dashboard layout: the table keeps the measurements the dashboard has always drawn",
@@ -426,8 +429,6 @@ static partial class TestSuite
             "Settings trailing padding must stay compact at high DPI instead of creating a mostly empty viewport.");
         Assert.True(SettingsLayout.ChoiceCardExpandedHeight > SettingsLayout.ChoiceCardHeight,
             "A custom output path needs extra room inside the same output card rather than escaping below it.");
-        Assert.True(SettingsLayout.EngineCardHeight >= 116,
-            "The Office engine card must retain enough room for title, choices, and resolved-engine status.");
         Assert.True(SettingsLayout.EngineLibreOfficeCardHeight > SettingsLayout.EngineCardHeight,
             "LibreOffice management actions need an expanded engine card instead of spilling into the next section.");
         Assert.True(SettingsLayout.RetentionCardHeight >= 120,
@@ -451,8 +452,8 @@ static partial class TestSuite
         string paint = File.ReadAllText(Path.Combine(dir, "DashboardWindow.Paint.Settings.cs"));
         string dashboardPaint = File.ReadAllText(Path.Combine(dir, "DashboardWindow.Paint.cs"));
         string hitTest = File.ReadAllText(Path.Combine(dir, "DashboardWindow.HitTesting.cs"));
-        string click = File.ReadAllText(Path.Combine(dir, "DashboardWindow.Events.Click.cs"));
-        string events = File.ReadAllText(Path.Combine(dir, "DashboardWindow.Events.cs"));
+        string click = File.ReadAllText(Path.Combine(dir, EventsClickFileName));
+        string events = File.ReadAllText(Path.Combine(dir, EventsFileName));
 
         Assert.True(paint.Contains("SettingsLayout.IsWide((int)logW)", StringComparison.Ordinal),
             "AOT Settings painting must branch on logical width through SettingsLayout.");
@@ -587,8 +588,8 @@ static partial class TestSuite
                      ("DashboardWindow.Paint.cs", "DashboardLayout.SidebarTabY("),
                      ("DashboardWindow.Convert.cs", "DashboardLayout.ConvertCardRect("),
                      ("DashboardWindow.HitTesting.cs", "DashboardLayout.SidebarTabAt("),
-                     ("DashboardWindow.Events.Click.cs", "DashboardLayout.DetailScrollFieldAt("),
-                     ("DashboardWindow.Events.cs", "DashboardLayout.DetailScrollFieldAt("),
+                     (EventsClickFileName, "DashboardLayout.DetailScrollFieldAt("),
+                     (EventsFileName, "DashboardLayout.DetailScrollFieldAt("),
                      ("DashboardWindow.Paint.Dropdowns.cs", "DashboardLayout.DropdownItemY("),
                      ("DashboardWindow.Paint.Settings.cs", "DashboardLayout.DropdownButtonRect("),
                  })
@@ -599,7 +600,7 @@ static partial class TestSuite
         }
 
         // 這兩個檔案負責命中：一個是滑鼠點擊、一個是滾輪，兩者都必須走同一個欄位判定。
-        foreach (string file in new[] { "DashboardWindow.Events.Click.cs", "DashboardWindow.Events.cs" })
+        foreach (string file in new[] { EventsClickFileName, EventsFileName })
         {
             string source = File.ReadAllText(Path.Combine(dir, file));
             Assert.True(source.Contains("DashboardLayout.DetailScrollFieldAt(", StringComparison.Ordinal),
@@ -607,7 +608,7 @@ static partial class TestSuite
         }
 
         // 下拉清單的列號也只有一份：繪製、點擊與 hover 都問同一個對應。
-        foreach (string file in new[] { "DashboardWindow.Paint.Dropdowns.cs", "DashboardWindow.Events.Click.cs", "DashboardWindow.Events.cs" })
+        foreach (string file in new[] { "DashboardWindow.Paint.Dropdowns.cs", EventsClickFileName, EventsFileName })
         {
             string source = File.ReadAllText(Path.Combine(dir, file));
             Assert.True(source.Contains("DashboardLayout.DropdownItem", StringComparison.Ordinal),

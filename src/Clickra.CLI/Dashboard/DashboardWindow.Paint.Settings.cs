@@ -216,9 +216,11 @@ namespace Clickra.UI
                     outputContentX * s, pathY * s);
             }
 
+            float narrowOutputHeight = SettingsLayout.PrimaryChoiceSectionHeight;
+            if (hasCustomPath) narrowOutputHeight += 24f;
             y += wideSettings
                 ? outputCardHeight + SettingsLayout.CardGap
-                : SettingsLayout.PrimaryChoiceSectionHeight + (hasCustomPath ? 24f : 0f);
+                : narrowOutputHeight;
 
             float engineStartY = y;
             string engineMode = ClickraStorage.GetSetting(ClickraSettings.OfficeEngine);
@@ -629,7 +631,7 @@ namespace Clickra.UI
                     continue;
                 }
 
-                DrawDynamicSettingDescriptor(g, descriptor, i, logW, contentX, margin, ref y);
+                DrawDynamicSettingDescriptor(g, descriptor, i, logW, contentX, ref y);
             }
 
             _settingsContentHeight = Math.Max(
@@ -866,7 +868,6 @@ namespace Clickra.UI
             int descriptorIndex,
             float logW,
             float contentX,
-            float margin,
             ref float y,
             float? sliderWidth = null)
         {
@@ -880,10 +881,10 @@ namespace Clickra.UI
                     DrawDynamicSliderSetting(g, descriptor, contentX, baseElemId, sliderWidth, ref y);
                     break;
                 case SettingEditorKind.Number:
-                    DrawDynamicNumberSetting(g, descriptor, contentX, margin, baseElemId, ref y);
+                    DrawDynamicNumberSetting(g, descriptor, contentX, SettingsLayout.InlineGap, baseElemId, ref y);
                     break;
                 case SettingEditorKind.Choice:
-                    DrawDynamicChoiceSetting(g, descriptor, contentX, margin, baseElemId, ref y);
+                    DrawDynamicChoiceSetting(g, descriptor, contentX, SettingsLayout.InlineGap, baseElemId, ref y);
                     break;
                 default:
                     // Ignore unsupported future editor kinds until a renderer is defined.

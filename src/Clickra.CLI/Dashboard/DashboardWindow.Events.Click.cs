@@ -32,7 +32,7 @@ namespace Clickra.UI
             int adjMouseX = mouseX >= sidebarW ? (int)(mouseX + _contentScrollX) : mouseX;
             int adjMouseY = mouseX >= sidebarW ? (int)(mouseY + _contentScrollY) : mouseY;
 
-            if (HandleDropdownClick(hwnd, adjMouseX, adjMouseY, logW, contentX)) return;
+            if (HandleDropdownClick(hwnd, adjMouseX, adjMouseY)) return;
 
             if (_activeTab == 2 && HandleHistoryClick(hwnd, mouseX, adjMouseX, adjMouseY, logW, contentX)) return;
 
@@ -167,22 +167,22 @@ namespace Clickra.UI
         static bool IsAboutElement(int element) => element == 23 || element == 24;
 
         /// <summary>Handles PDF-language and UI-language dropdown clicks, closing them on outside clicks.</summary>
-        static bool HandleDropdownClick(IntPtr hwnd, int adjMouseX, int adjMouseY, float logW, float contentX)
+        static bool HandleDropdownClick(IntPtr hwnd, int adjMouseX, int adjMouseY)
         {
             if (_pdfLangDropdownOpen)
             {
-                return HandlePdfLangDropdownClick(hwnd, adjMouseX, adjMouseY, contentX);
+                return HandlePdfLangDropdownClick(hwnd, adjMouseX, adjMouseY);
             }
             if (_langDropdownOpen)
             {
-                return HandleLangDropdownClick(hwnd, adjMouseX, adjMouseY, logW);
+                return HandleLangDropdownClick(hwnd, adjMouseX, adjMouseY);
             }
             return false;
         }
 
         /// <summary>Handles a click on the open PDF-language dropdown, saving the selection
         /// or closing the popup on an outside click.</summary>
-        static bool HandlePdfLangDropdownClick(IntPtr hwnd, int adjMouseX, int adjMouseY, float contentX)
+        static bool HandlePdfLangDropdownClick(IntPtr hwnd, int adjMouseX, int adjMouseY)
         {
             int popupHeight = DashboardLayout.PdfPopupHeight(PdfLangs.Length);
             LayoutRect popup = DashboardLayout.DropdownPopupRect(_pdfLangDropdownX, _pdfLangDropdownY, popupHeight, _pdfLangDropdownWidth);
@@ -204,7 +204,7 @@ namespace Clickra.UI
 
         /// <summary>Handles a click on the open UI-language dropdown, selecting the hovered
         /// language or closing the popup on an outside click.</summary>
-        static bool HandleLangDropdownClick(IntPtr hwnd, int adjMouseX, int adjMouseY, float logW)
+        static bool HandleLangDropdownClick(IntPtr hwnd, int adjMouseX, int adjMouseY)
         {
             var langPopup = DashboardLayout.DropdownPopupRect(_langDropdownX, _langDropdownY, DashboardLayout.LanguagePopupHeight, _langDropdownWidth);
             if (langPopup.Contains(adjMouseX, adjMouseY))
