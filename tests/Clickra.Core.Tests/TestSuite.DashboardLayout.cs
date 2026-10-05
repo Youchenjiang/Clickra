@@ -437,24 +437,11 @@ static partial class TestSuite
         Assert.True(paint.Contains("SettingsLayout.OverviewCardHeight", StringComparison.Ordinal)
                     && paint.Contains("SettingsLayout.CompressionCardHeight", StringComparison.Ordinal),
             "Wide Settings must use bounded overview and compression cards rather than free-running sections.");
-        Assert.True(paint.Contains("ClickraSettings.ImageCompressLevel", StringComparison.Ordinal)
-                    && paint.Contains("ClickraSettings.ImageCompressMaxDimension", StringComparison.Ordinal),
-            "The wide compression row must include both image compression descriptors.");
-        Assert.True(paint.Contains("AotImageCompressionPresets", StringComparison.Ordinal)
-                    && paint.Contains("new(\"setting_image_profile_high\", 3, 0)", StringComparison.Ordinal)
-                    && paint.Contains("new(\"setting_image_profile_balanced\", 1, 0)", StringComparison.Ordinal)
-                    && paint.Contains("new(\"setting_image_profile_small\", 0, 1280)", StringComparison.Ordinal),
-            "AOT image compression must expose bounded use-case profiles instead of raw quality and pixel controls.");
-        Assert.True(click.Contains("preset.QualityLevel.ToString()", StringComparison.Ordinal)
-                    && click.Contains("preset.MaxDimension.ToString()", StringComparison.Ordinal)
-                    && click.Contains("_imageCompressionCustomExpanded = true", StringComparison.Ordinal),
-            "AOT image profiles must apply quality and size together while Custom only expands advanced controls.");
-        Assert.True(click.Contains("element >= AotImageProfileElementBase", StringComparison.Ordinal)
-                    && click.Contains("element <= AotImageProfileCustomElement", StringComparison.Ordinal),
-            "AOT image profile hit IDs must be admitted by the Settings click dispatcher.");
-        Assert.True(paint.Contains("AotImageCustomSizePresets", StringComparison.Ordinal)
-                    && paint.Contains("showImageCustom", StringComparison.Ordinal),
-            "AOT custom image controls must stay hidden until the current values are custom or Custom is selected.");
+        Assert.True(paint.Contains("descriptor.Key.Equals(ClickraSettings.ImageCompressLevel", StringComparison.Ordinal)
+                    && paint.Contains("descriptor.Key.Equals(ClickraSettings.ImageCompressMaxDimension", StringComparison.Ordinal),
+            "AOT Settings must explicitly skip per-conversion image compression controls.");
+        Assert.False(paint.Contains("AotImageCompressionPresets", StringComparison.Ordinal),
+            "AOT Settings must not expose image compression profiles as global preferences.");
 
         foreach (string source in new[] { hitTest, click, events })
         {

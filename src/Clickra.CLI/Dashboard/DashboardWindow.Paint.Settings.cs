@@ -15,42 +15,6 @@ namespace Clickra.UI
 {
     public static partial class DashboardWindow
     {
-        private sealed record AotImageCompressionPreset(string LabelKey, int QualityLevel, int MaxDimension);
-
-        static readonly AotImageCompressionPreset[] AotImageCompressionPresets =
-        {
-            new("setting_image_profile_high", 3, 0),
-            new("setting_image_profile_balanced", 1, 0),
-            new("setting_image_profile_small", 0, 1280),
-        };
-
-        static readonly SettingOption[] AotImageCustomSizePresets =
-        {
-            new("0", "setting_image_size_original"),
-            new("3840", "setting_image_size_4k"),
-            new("1920", "setting_image_size_full_hd"),
-            new("1280", "setting_image_size_1280"),
-        };
-
-        const int AotImageProfileElementBase = 120;
-        const int AotImageProfileCustomElement = 123;
-
-        static int GetAotImageCompressionPresetIndex()
-        {
-            int level = ConvertCommandRegistry.GetImageCompressLevel();
-            int maxDimension = ConvertCommandRegistry.GetImageCompressMaxDimension();
-            for (int i = 0; i < AotImageCompressionPresets.Length; i++)
-            {
-                var preset = AotImageCompressionPresets[i];
-                if (preset.QualityLevel == level && preset.MaxDimension == maxDimension)
-                    return i;
-            }
-            return -1;
-        }
-
-        static bool IsAotImageCompressionCustom() =>
-            _imageCompressionCustomExpanded || GetAotImageCompressionPresetIndex() < 0;
-
         private const string ParkedRetentionDaysTextKey = "setting_parked_ttl_days";
 
         // skipcq: CS-R1140
@@ -556,48 +520,19 @@ namespace Clickra.UI
                 y += 48f;
             }
 
-            int imageCompressLevelIndex = -1;
-            int imageCompressMaxDimensionIndex = -1;
-            for (int i = 0; i < SettingPageRegistry.AllDescriptors.Count; i++)
-            {
-                string key = SettingPageRegistry.AllDescriptors[i].Key;
-                if (key.Equals(ClickraSettings.ImageCompressLevel, StringComparison.OrdinalIgnoreCase))
-                    imageCompressLevelIndex = i;
-                else if (key.Equals(ClickraSettings.ImageCompressMaxDimension, StringComparison.OrdinalIgnoreCase))
-                    imageCompressMaxDimensionIndex = i;
-            }
-
-            if (wideSettings && imageCompressLevelIndex >= 0 && imageCompressMaxDimensionIndex >= 0)
+            if (wideSettings)
             {
                 int cardY = (int)y;
                 int leftX = (int)contentX;
-                int rightX = SettingsLayout.ColumnX((int)contentX, (int)logW, 1);
-                int selectedImageProfile = GetAotImageCompressionPresetIndex();
-                bool showImageCustom = _imageCompressionCustomExpanded || selectedImageProfile < 0;
-                int imageCardHeight = showImageCustom
-                    ? SettingsLayout.ImageCustomCardHeight
-                    : SettingsLayout.ImagePresetCardHeight;
                 LayoutRect pdfCard = SettingsLayout.CardRect(leftX, cardY, settingsColumnWidth, SettingsLayout.CompressionCardHeight);
-                LayoutRect imageCard = SettingsLayout.CardRect(rightX, cardY, settingsColumnWidth, imageCardHeight);
                 DrawCard(pdfCard);
-                DrawCard(imageCard);
 
                 int innerWidth = settingsColumnWidth - 2 * SettingsLayout.CardPadding;
                 int pdfX = pdfCard.X + SettingsLayout.CardPadding;
-                int imageX = imageCard.X + SettingsLayout.CardPadding;
                 if (_tabFont != null)
                 {
                     g.DrawString(GetText("setting_pdf_compress_title"), _tabFont, Brushes.White,
                         pdfX * s, (pdfCard.Y + 12) * s);
-                    g.DrawString(GetText("setting_image_profile_title"), _tabFont, Brushes.White,
-                        imageX * s, (imageCard.Y + 12) * s);
-                }
-
-                if (_subFont != null)
-                {
-                    using var imageDescBrush = new SolidBrush(Color.FromArgb(150, 150, 150));
-                    g.DrawString(GetText("setting_image_profile_desc"), _subFont, imageDescBrush,
-                        imageX * s, (imageCard.Y + 34) * s);
                 }
 
                 int sliderWidth = SettingsLayout.SliderWidthFor(innerWidth);
@@ -616,78 +551,7 @@ namespace Clickra.UI
                 DrawCompactToggleRow("setting_pdf_compress_minify_content", minifyContent, 82,
                     pdfX, pdfSecondaryY + SettingsLayout.OverviewRowGap, innerWidth);
 
-                int optionGap = 6;
-                int optionWidth = (innerWidth - optionGap) / 2;
-                int optionHeight = SettingsLayout.ButtonHeight;
-                int profileButtonY = imageCard.Y + 58;
-                for (int optionIndex = 0; optionIndex < 4; optionIndex++)
-                {
-                    int row = optionIndex / 2;
-                    int column = optionIndex % 2;
-                    int optionX = imageX + column * (optionWidth + optionGap);
-                    int optionY = profileButtonY + row * (optionHeight + optionGap);
-                    int elementId = optionIndex < AotImageCompressionPresets.Length
-                        ? AotImageProfileElementBase + optionIndex
-                        : AotImageProfileCustomElement;
-                    string labelKey = optionIndex < AotImageCompressionPresets.Length
-                        ? AotImageCompressionPresets[optionIndex].LabelKey
-                        : "setting_image_profile_custom";
-                    bool selected = optionIndex < AotImageCompressionPresets.Length
-                        ? !showImageCustom && selectedImageProfile == optionIndex
-                        : showImageCustom;
-                    DrawOutputDirButton(g, GetText(labelKey), selected,
-                        elementId, optionX, optionY, optionWidth);
-                    AddLayoutHitRect(elementId, SettingsLayout.ButtonRect(optionX, optionY, optionWidth));
-                }
-
-                if (showImageCustom)
-                {
-                    var imageLevel = SettingPageRegistry.AllDescriptors[imageCompressLevelIndex];
-                    var imageRange = imageLevel.GetEffectiveNumericRange() ?? new NumericSettingRange(0, 1, 0);
-                    int currentImageLevel = Math.Clamp(
-                        ClickraStorage.GetSettingInt(imageLevel.Key), imageRange.Min, imageRange.Max);
-                    int imageLevelElement = 1000 + imageCompressLevelIndex * 10;
-                    int imageSliderY = imageCard.Y + 164;
-                    if (_tabFont != null)
-                        g.DrawString(GetText("setting_image_custom_quality"), _tabFont, Brushes.White,
-                            imageX * s, (imageCard.Y + 140) * s);
-                    _dynamicSliderTrackX = imageX;
-                    _dynamicSliderTrackW = sliderWidth;
-                    DrawDynamicSlider(g, imageX, imageSliderY, sliderWidth, imageLevel, currentImageLevel, imageRange);
-                    AddLayoutHitRect(imageLevelElement, SettingsLayout.SliderHitRect(imageX, imageSliderY, sliderWidth));
-
-                    var maxDimension = SettingPageRegistry.AllDescriptors[imageCompressMaxDimensionIndex];
-                    int maxDimensionElement = 1000 + imageCompressMaxDimensionIndex * 10;
-                    int sizeTitleY = imageCard.Y + 230;
-                    if (_tabFont != null)
-                        g.DrawString(GetText(maxDimension.TitleKey), _tabFont, Brushes.White, imageX * s, sizeTitleY * s);
-                    if (_subFont != null && !string.IsNullOrEmpty(maxDimension.DescriptionKey))
-                    {
-                        using var descBrush = new SolidBrush(Color.FromArgb(150, 150, 150));
-                        g.DrawString(GetText(maxDimension.DescriptionKey), _subFont, descBrush,
-                            imageX * s, (sizeTitleY + 22) * s);
-                    }
-
-                    string currentSize = ClickraStorage.GetSetting(maxDimension.Key);
-                    int sizeButtonY = sizeTitleY + 46;
-                    for (int optionIndex = 0; optionIndex < AotImageCustomSizePresets.Length; optionIndex++)
-                    {
-                        int row = optionIndex / 2;
-                        int column = optionIndex % 2;
-                        int optionX = imageX + column * (optionWidth + optionGap);
-                        int optionY = sizeButtonY + row * (optionHeight + optionGap);
-                        int elementId = maxDimensionElement + optionIndex;
-                        bool selected = string.Equals(
-                            currentSize,
-                            AotImageCustomSizePresets[optionIndex].Value,
-                            StringComparison.OrdinalIgnoreCase);
-                        DrawOutputDirButton(g, GetText(AotImageCustomSizePresets[optionIndex].LabelKey), selected,
-                            elementId, optionX, optionY, optionWidth);
-                        AddLayoutHitRect(elementId, SettingsLayout.ButtonRect(optionX, optionY, optionWidth));
-                    }
-                }
-
-                y += Math.Max(SettingsLayout.CompressionCardHeight, imageCardHeight) + SettingsLayout.CardGap;
+                y += SettingsLayout.CompressionCardHeight + SettingsLayout.CardGap;
             }
             else
             {
@@ -715,77 +579,6 @@ namespace Clickra.UI
                 DrawToggleSection("setting_pdf_compress_minify_content", "", minifyContent, 82, pdfCompressionY);
                 pdfCompressionY += SettingsLayout.CompactToggleSectionHeight;
                 y = pdfCompressionY + SettingsLayout.CardGap;
-
-                int selectedImageProfile = GetAotImageCompressionPresetIndex();
-                bool showImageCustom = _imageCompressionCustomExpanded || selectedImageProfile < 0;
-                DrawSectionHeader("setting_image_profile_title", "setting_image_profile_desc", y);
-                y += 50f;
-
-                int gap = 6;
-                int availableWidth = Math.Max(200,
-                    (int)logW - (int)contentX - SettingsLayout.ContentRightMargin);
-                int optionWidth = (availableWidth - gap) / 2;
-                for (int optionIndex = 0; optionIndex < 4; optionIndex++)
-                {
-                    int row = optionIndex / 2;
-                    int column = optionIndex % 2;
-                    int optionX = (int)contentX + column * (optionWidth + gap);
-                    int optionY = (int)y + row * (SettingsLayout.ButtonHeight + gap);
-                    int elementId = optionIndex < AotImageCompressionPresets.Length
-                        ? AotImageProfileElementBase + optionIndex
-                        : AotImageProfileCustomElement;
-                    string labelKey = optionIndex < AotImageCompressionPresets.Length
-                        ? AotImageCompressionPresets[optionIndex].LabelKey
-                        : "setting_image_profile_custom";
-                    bool selected = optionIndex < AotImageCompressionPresets.Length
-                        ? !showImageCustom && selectedImageProfile == optionIndex
-                        : showImageCustom;
-                    DrawOutputDirButton(g, GetText(labelKey), selected,
-                        elementId, optionX, optionY, optionWidth);
-                    AddLayoutHitRect(elementId, SettingsLayout.ButtonRect(optionX, optionY, optionWidth));
-                }
-                y += 2 * (SettingsLayout.ButtonHeight + gap) + 8f;
-
-                if (showImageCustom)
-                {
-                    var imageLevel = SettingPageRegistry.AllDescriptors[imageCompressLevelIndex];
-                    if (_tabFont != null)
-                        g.DrawString(GetText("setting_image_custom_quality"), _tabFont, Brushes.White,
-                            contentX * s, y * s);
-                    y += 28f;
-                    var imageRange = imageLevel.GetEffectiveNumericRange() ?? new NumericSettingRange(0, 1, 0);
-                    int currentImageLevel = Math.Clamp(
-                        ClickraStorage.GetSettingInt(imageLevel.Key), imageRange.Min, imageRange.Max);
-                    int imageLevelElement = 1000 + imageCompressLevelIndex * 10;
-                    int sliderWidth = SettingsLayout.SliderWidthFor(availableWidth);
-                    _dynamicSliderTrackX = contentX;
-                    _dynamicSliderTrackW = sliderWidth;
-                    DrawDynamicSlider(g, contentX, y, sliderWidth, imageLevel, currentImageLevel, imageRange);
-                    AddLayoutHitRect(imageLevelElement, SettingsLayout.SliderHitRect((int)contentX, (int)y, sliderWidth));
-                    y += SettingsLayout.SliderSectionHeight;
-
-                    var maxDimension = SettingPageRegistry.AllDescriptors[imageCompressMaxDimensionIndex];
-                    DrawDynamicSettingHeader(g, maxDimension, contentX, y);
-                    y += 50f;
-                    string currentSize = ClickraStorage.GetSetting(maxDimension.Key);
-                    int maxDimensionElement = 1000 + imageCompressMaxDimensionIndex * 10;
-                    for (int optionIndex = 0; optionIndex < AotImageCustomSizePresets.Length; optionIndex++)
-                    {
-                        int row = optionIndex / 2;
-                        int column = optionIndex % 2;
-                        int optionX = (int)contentX + column * (optionWidth + gap);
-                        int optionY = (int)y + row * (SettingsLayout.ButtonHeight + gap);
-                        int elementId = maxDimensionElement + optionIndex;
-                        bool selected = string.Equals(
-                            currentSize,
-                            AotImageCustomSizePresets[optionIndex].Value,
-                            StringComparison.OrdinalIgnoreCase);
-                        DrawOutputDirButton(g, GetText(AotImageCustomSizePresets[optionIndex].LabelKey), selected,
-                            elementId, optionX, optionY, optionWidth);
-                        AddLayoutHitRect(elementId, SettingsLayout.ButtonRect(optionX, optionY, optionWidth));
-                    }
-                    y += 2 * (SettingsLayout.ButtonHeight + gap) + SettingsLayout.CardGap;
-                }
             }
 
             // Parked Task Retention Section

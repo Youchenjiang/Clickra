@@ -45,7 +45,6 @@ namespace Clickra.UI
         static int _pdfLangDropdownX = 0;
         static int _pdfLangDropdownY = 0;
         static int _pdfLangDropdownWidth = DashboardLayout.DropdownWidth;
-        static bool _imageCompressionCustomExpanded = false;
         
         // History & Statistics Cache
         //

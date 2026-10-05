@@ -147,8 +147,7 @@ namespace Clickra.UI
             => (element >= 1000 && element < 2000) ||
                element == 5 || element == 6 || element == 7 || element == 8 || element == 9 ||
                element == 20 || element == 32 || element == 33 || element == 34 || element == 40 ||
-               (element >= 90 && element <= 96) ||
-               (element >= AotImageProfileElementBase && element <= AotImageProfileCustomElement);
+               (element >= 90 && element <= 96);
 
         /// <summary>True when the element is one of the LibreOffice setup buttons.</summary>
         static bool IsLibreOfficeElement(int element) => element == 35 || element == 36 || element == 38 || element == 39;
@@ -515,22 +514,6 @@ namespace Clickra.UI
                 case 94: SetParkedRetention(hwnd, GetDefaultParkedRetentionDays()); break;
                 case 95: SetParkedRetention(hwnd, 14); break;
                 case 96: SetParkedRetention(hwnd, 30); break;
-                case AotImageProfileElementBase:
-                case AotImageProfileElementBase + 1:
-                case AotImageProfileElementBase + 2:
-                {
-                    int presetIndex = element - AotImageProfileElementBase;
-                    var preset = AotImageCompressionPresets[presetIndex];
-                    ClickraStorage.SaveSetting(ClickraSettings.ImageCompressLevel, preset.QualityLevel.ToString());
-                    ClickraStorage.SaveSetting(ClickraSettings.ImageCompressMaxDimension, preset.MaxDimension.ToString());
-                    _imageCompressionCustomExpanded = false;
-                    InvalidateRect(hwnd, IntPtr.Zero, false);
-                    break;
-                }
-                case AotImageProfileCustomElement:
-                    _imageCompressionCustomExpanded = true;
-                    InvalidateRect(hwnd, IntPtr.Zero, false);
-                    break;
                 default: break; // Unhandled settings element — ignore.
             }
         }
@@ -542,13 +525,6 @@ namespace Clickra.UI
 
             if (descriptorIndex < 0 || descriptorIndex >= SettingPageRegistry.AllDescriptors.Count) return;
             var descriptor = SettingPageRegistry.AllDescriptors[descriptorIndex];
-
-            if (descriptor.Key.Equals(ClickraSettings.ImageCompressMaxDimension, StringComparison.OrdinalIgnoreCase))
-            {
-                if (subId >= 0 && subId < AotImageCustomSizePresets.Length)
-                    ApplySetting(hwnd, descriptor.Key, AotImageCustomSizePresets[subId].Value);
-                return;
-            }
 
             switch (descriptor.EditorKind)
             {

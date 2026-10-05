@@ -600,17 +600,6 @@ namespace Clickra.Core
                 ("setting_image_level_high", "高壓縮", "高压缩", "High", "高圧縮", "고압축"),
                 ("setting_image_max_dimension_title", "輸出尺寸", "输出尺寸", "Output size", "出力サイズ", "출력 크기"),
                 ("setting_image_max_dimension_desc", "小圖不會被放大", "小图不会被放大", "Smaller images are never enlarged", "小さい画像は拡大しません", "작은 이미지는 확대하지 않습니다"),
-                ("setting_image_profile_title", "圖片壓縮", "图片压缩", "Image compression", "画像圧縮", "이미지 압축"),
-                ("setting_image_profile_desc", "依用途選擇即可；需要精細調整時再使用自訂", "按用途选择即可；需要精细调整时再使用自定义", "Choose by use case; use Custom only when you need finer control", "用途で選択し、細かく調整したい場合だけカスタムを使用します", "용도에 맞게 선택하고 세밀한 조정이 필요할 때만 사용자 지정을 사용하세요"),
-                ("setting_image_profile_high", "高畫質", "高画质", "High quality", "高画質", "고화질"),
-                ("setting_image_profile_balanced", "平衡", "平衡", "Balanced", "バランス", "균형"),
-                ("setting_image_profile_small", "小檔案", "小文件", "Small file", "小さいファイル", "작은 파일"),
-                ("setting_image_profile_custom", "自訂", "自定义", "Custom", "カスタム", "사용자 지정"),
-                ("setting_image_custom_quality", "壓縮品質", "压缩质量", "Compression quality", "圧縮品質", "압축 품질"),
-                ("setting_image_size_original", "原尺寸", "原尺寸", "Original", "元のサイズ", "원본"),
-                ("setting_image_size_4k", "大型圖片（4K）", "大型图片（4K）", "Large image (4K)", "大きな画像（4K）", "큰 이미지 (4K)"),
-                ("setting_image_size_full_hd", "一般使用（Full HD）", "一般使用（Full HD）", "Everyday use (Full HD)", "一般用途（Full HD）", "일반 사용 (Full HD)"),
-                ("setting_image_size_1280", "小檔分享（1280 px）", "小文件分享（1280 px）", "Small file (1280 px)", "小さいファイル（1280 px）", "작은 파일 (1280 px)"),
             };
 
             RegisterTranslations(data);
