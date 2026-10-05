@@ -34,7 +34,7 @@ Clickra 絕大多數功能（文書轉 PDF、PDF 壓縮、PDF 合併、圖片拼
 ## What's new in this version
 - 轉換工作區更精簡：Native 與 Fluent 轉換畫面改用更緊湊的響應式分組，在高 DPI 環境下也能更自然地容納常用操作。
 - Native 設定頁更清楚：設定卡片、語言選擇、輸出路徑、Office 引擎、PDF 壓縮與暫存任務保留控制採用更一致的響應式版面。
-- 壓縮設定範圍更明確：圖片壓縮不再作為 Native Settings 的全域偏好；PDF 壓縮仍保留在 Settings，而圖片壓縮回歸各次轉換流程。
+- 壓縮設定範圍更明確：圖片壓縮不再作為 Native Settings 的全域偏好；PDF 壓縮仍保留在 Settings。
 - Windows 整合更可靠：補齊 Explorer 所需的 unplated 多尺寸圖示，並讓 MSIX 重新安裝工具更精確地鎖定 Clickra 套件 identity。
 
 ## Product Features

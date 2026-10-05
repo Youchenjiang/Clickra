@@ -34,7 +34,7 @@ Clickra는 개인정보 보호를 중요하게 생각합니다. Office to PDF, P
 ## What's new in this version
  - 더 간결한 변환 작업 영역: Native 및 Fluent 변환 화면을 더 촘촘한 반응형 그룹으로 정리해 높은 DPI에서도 자주 쓰는 동작이 자연스럽게 배치됩니다.
  - 더 정돈된 Native 설정: 설정 카드, 언어 선택, 출력 경로, Office 엔진, PDF 압축 및 보관 작업 유지 설정을 일관된 반응형 레이아웃으로 정리했습니다.
- - 더 명확한 압축 설정 범위: 이미지 압축을 Native Settings의 전역 환경설정에서 제거하고, PDF 압축은 Settings에 유지하면서 이미지 압축은 개별 변환 흐름에 연결했습니다.
+ - 더 명확한 압축 설정 범위: 이미지 압축을 Native Settings의 전역 환경설정에서 제거하고, PDF 압축은 Settings에 유지했습니다.
  - 더 안정적인 Windows 통합: Explorer용 unplated 다중 크기 아이콘을 추가하고 MSIX 재설치 시 올바른 Clickra 패키지 identity를 더 정확하게 대상으로 지정합니다.
 
 ## Product Features

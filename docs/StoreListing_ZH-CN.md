@@ -34,7 +34,7 @@ Clickra 尊重您的隐私。大多数处理流程（文档转 PDF、PDF 压缩�
 ## What's new in this version
 - 转换工作区更紧凑：Native 与 Fluent 转换界面采用更紧凑的响应式分组，在高 DPI 环境下也能更自然地容纳常用操作。
 - Native 设置页更清晰：设置卡片、语言选择、输出路径、Office 引擎、PDF 压缩与暂存任务保留控制采用更一致的响应式布局。
-- 压缩设置范围更明确：图片压缩不再作为 Native Settings 的全局偏好；PDF 压缩仍保留在 Settings，而图片压缩回归每次转换流程。
+- 压缩设置范围更明确：图片压缩不再作为 Native Settings 的全局偏好；PDF 压缩仍保留在 Settings。
 - Windows 集成更可靠：补齐 Explorer 所需的 unplated 多尺寸图标，并让 MSIX 重新安装工具更精确地锁定 Clickra 包 identity。
 
 ## Product Features

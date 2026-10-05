@@ -34,7 +34,7 @@ Clickra respects your privacy. Most processing (Office-to-PDF conversion, PDF co
 ## What's new in this version
  - More Compact Convert Workspaces: Native and Fluent conversion screens use denser responsive grouping so common actions fit more naturally at high DPI.
  - Cleaner Native Settings: Settings cards, language controls, output paths, Office engine options, PDF compression, and parked-task retention now use a more consistent responsive layout.
- - Clearer Compression Scope: Image compression is no longer presented as a global Native Settings preference; PDF compression remains available in Settings while image compression stays tied to individual conversion flows.
+ - Clearer Compression Scope: Image compression is no longer presented as a global Native Settings preference; PDF compression remains available in Settings.
  - More Reliable Windows Integration: Added unplated Explorer icon assets and tightened MSIX reinstall targeting so Clickra resolves the intended package identity more reliably.
 
 ## Product Features

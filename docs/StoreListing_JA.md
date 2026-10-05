@@ -34,7 +34,7 @@ Clickra はプライバシーを重視します。Office から PDF、PDF 圧縮
 ## What's new in this version
  - よりコンパクトな変換画面: Native と Fluent の変換画面を高 DPI でも主要操作が収まりやすい、密度の高いレスポンシブ構成に整理しました。
  - Native 設定画面を整理: 設定カード、言語、出力先、Office エンジン、PDF 圧縮、保留タスクの保持設定を一貫したレスポンシブレイアウトに統一しました。
- - 圧縮設定の役割を明確化: 画像圧縮を Native Settings のグローバル設定から外し、PDF 圧縮は Settings に維持したまま、画像圧縮は個別の変換フローに紐づけました。
+ - 圧縮設定の役割を明確化: 画像圧縮を Native Settings のグローバル設定から外し、PDF 圧縮は Settings に維持しました。
  - Windows 統合の信頼性を向上: Explorer 用の unplated マルチサイズアイコンを追加し、MSIX 再インストール時に Clickra の正しいパッケージ identity をより確実に対象化します。
 
 ## Product Features
