@@ -449,6 +449,9 @@ static partial class TestSuite
                     && click.Contains("preset.MaxDimension.ToString()", StringComparison.Ordinal)
                     && click.Contains("_imageCompressionCustomExpanded = true", StringComparison.Ordinal),
             "AOT image profiles must apply quality and size together while Custom only expands advanced controls.");
+        Assert.True(click.Contains("element >= AotImageProfileElementBase", StringComparison.Ordinal)
+                    && click.Contains("element <= AotImageProfileCustomElement", StringComparison.Ordinal),
+            "AOT image profile hit IDs must be admitted by the Settings click dispatcher.");
         Assert.True(paint.Contains("AotImageCustomSizePresets", StringComparison.Ordinal)
                     && paint.Contains("showImageCustom", StringComparison.Ordinal),
             "AOT custom image controls must stay hidden until the current values are custom or Custom is selected.");

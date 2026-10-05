@@ -147,7 +147,8 @@ namespace Clickra.UI
             => (element >= 1000 && element < 2000) ||
                element == 5 || element == 6 || element == 7 || element == 8 || element == 9 ||
                element == 20 || element == 32 || element == 33 || element == 34 || element == 40 ||
-               (element >= 90 && element <= 96);
+               (element >= 90 && element <= 96) ||
+               (element >= AotImageProfileElementBase && element <= AotImageProfileCustomElement);
 
         /// <summary>True when the element is one of the LibreOffice setup buttons.</summary>
         static bool IsLibreOfficeElement(int element) => element == 35 || element == 36 || element == 38 || element == 39;
