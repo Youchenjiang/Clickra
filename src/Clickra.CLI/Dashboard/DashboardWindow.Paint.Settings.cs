@@ -592,11 +592,11 @@ namespace Clickra.UI
 
             DrawOutputDirButton(g, "-", false, 90, (int)curX, (int)btnY, (int)wStep);
             AddHitRect(90, curX, btnY, wStep, 30);
-            curX += wStep + margin;
+            curX += wStep + SettingsLayout.RetentionPresetGap;
 
             DrawOutputDirButton(g, "+", false, 91, (int)curX, (int)btnY, (int)wStep);
             AddHitRect(91, curX, btnY, wStep, 30);
-            curX += wStep + margin + 8f;
+            curX += wStep + SettingsLayout.RetentionGroupGap;
 
             (int days, int elemId, string label)[] presets = new[]
             {
@@ -614,7 +614,7 @@ namespace Clickra.UI
                 bool isSelected = (currentDays == days);
                 DrawOutputDirButton(g, label, isSelected, elemId, (int)curX, (int)btnY, (int)btnW);
                 AddHitRect(elemId, curX, btnY, btnW, 30);
-                curX += btnW + margin;
+                curX += btnW + SettingsLayout.RetentionPresetGap;
             }
 
             y = wideSettings

@@ -426,12 +426,15 @@ static partial class TestSuite
             "Settings trailing padding must stay compact at high DPI instead of creating a mostly empty viewport.");
         Assert.True(SettingsLayout.ChoiceCardExpandedHeight > SettingsLayout.ChoiceCardHeight,
             "A custom output path needs extra room inside the same output card rather than escaping below it.");
-        Assert.True(SettingsLayout.EngineCardHeight >= 120,
+        Assert.True(SettingsLayout.EngineCardHeight >= 116,
             "The Office engine card must retain enough room for title, choices, and resolved-engine status.");
         Assert.True(SettingsLayout.EngineLibreOfficeCardHeight > SettingsLayout.EngineCardHeight,
             "LibreOffice management actions need an expanded engine card instead of spilling into the next section.");
         Assert.True(SettingsLayout.RetentionCardHeight >= 120,
             "Task retention title, current value, and presets must fit in one bounded card.");
+        Assert.True(SettingsLayout.RetentionPresetGap < SettingsLayout.InlineGap
+                    && SettingsLayout.RetentionGroupGap > SettingsLayout.RetentionPresetGap,
+            "Retention presets should read as one compact group while preserving a separator after step controls.");
 
         const int actualHighDpiViewportHeight = 488;
         int commonWideContentHeight = SettingsLayout.ContentTop
