@@ -13,7 +13,7 @@ Clickra
 Clickra is the ultimate high-performance, native context menu productivity suite for Windows 10 and Windows 11. Designed to seamlessly integrate into your native File Explorer context menu, Clickra provides instant access to essential file operations without the need to open heavy, bloated software.
 
 Core Features:
- - Native Dashboard: A sleek dark-themed interface to monitor PDF and Office conversion engine status in real-time.
+ - Native Dashboard: A responsive dark-themed interface for conversion, settings, and PDF/Office engine status that stays compact on high-DPI displays.
  - Office to PDF: High-quality, silent conversion for Word (.doc/.docx), Excel (.xls/.xlsx), and PowerPoint (.ppt/.pptx) files.
  - LibreOffice Fallback: Download LibreOffice from Clickra, or explicitly adopt a verified existing system installation, as a free local conversion engine when Microsoft Office is unavailable.
  - PDF Compression: Compress PDF files locally using a high-fidelity native engine, reducing file size through content stream minification, font deduplication, and image downsampling.
@@ -53,7 +53,7 @@ Clickra respects your privacy. Most processing (Office-to-PDF conversion, PDF co
  - Seamless vertical image stitching
  - Fast multi-file PDF merging
  - NativeAOT shell integration for responsive context-menu commands
- - Native dashboard and conversion progress UI
+ - Responsive Native Convert and Settings workspaces tuned for high-DPI displays
  - System tray restore and cancel controls for minimized conversions
  - Parked conversion retention controls with expiration status and alerts
  - Verified LibreOffice management and fail-closed uninstall protection
@@ -70,7 +70,7 @@ Clickra
 Clickra
 
 ## Short description
-Clickra is a high-performance native context menu utility for Office, PDF, and image workflows, with localized progress controls, tray restore/cancel, parked-task retention, and local-first processing.
+Clickra is a high-performance native context menu utility for Office, PDF, and image workflows, with responsive high-DPI workspaces, localized progress controls, tray restore/cancel, parked-task retention, and local-first processing.
 
 ---
 

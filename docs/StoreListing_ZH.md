@@ -13,7 +13,7 @@ Clickra
 Clickra 是一款專為 Windows 10 與 Windows 11 打造的極速原生右鍵選單工具集。它能無縫整合至檔案總管選單，無須開啟任何龐大臃腫的軟體，就能瞬間完成檔案處理。
 
 核心功能：
-　　原生儀表板：全新深色模式介面，即時監測 PDF 與 Office 轉檔引擎狀態。
+　　原生儀表板：響應式深色介面，整合轉換、設定與 PDF／Office 引擎狀態，在高 DPI 顯示器上維持精簡版面。
 　　文書轉 PDF：支援 Word (.doc/.docx)、Excel (.xls/.xlsx) 與 PPT (.ppt/.pptx) 靜默轉檔，高品質不跑版。
 　　LibreOffice 備援：未安裝 Microsoft Office 時，可由 Clickra 下載 LibreOffice，或明確納管已驗證的既有系統安裝，作為免費本機轉檔引擎。
 　　PDF 本機壓縮：一鍵在本地端以 C#/GDI+ 高效壓縮 PDF，自動精簡流與大字型剝離、小圖跳過。
@@ -53,7 +53,7 @@ Clickra 絕大多數功能（文書轉 PDF、PDF 壓縮、PDF 合併、圖片拼
 - 圖片垂直無縫拼接
 - 極速 PDF 多檔合併
 - NativeAOT Shell 整合，維持右鍵選單快速回應
-- 原生儀表板與轉換進度介面
+- 高 DPI 友善的響應式 Native Convert／Settings 工作區
 - 系統匣還原與取消最小化中的轉換
 - 暫存轉換保留控制、剩餘時間與到期提醒
 - LibreOffice 驗證式納管與 fail-closed 解除安裝保護
@@ -70,7 +70,7 @@ Clickra
 Clickra
 
 ## Short description
-Clickra 是一款極速原生右鍵選單工具，支援文書、PDF、圖片處理、在地化進度控制、系統匣還原／取消與暫存任務保留。安全、以本機處理優先！
+Clickra 是一款極速原生右鍵選單工具，支援文書、PDF、圖片處理、高 DPI 響應式工作區、在地化進度控制、系統匣還原／取消與暫存任務保留。安全、以本機處理優先！
 
 ---
 
