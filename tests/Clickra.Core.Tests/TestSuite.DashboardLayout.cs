@@ -465,33 +465,55 @@ static partial class TestSuite
         Assert.True(paint.Contains("retentionContentX = retentionCard.X + SettingsLayout.CardPadding", StringComparison.Ordinal)
                     && paint.Contains("engineContentX = wideSettings", StringComparison.Ordinal),
             "Wide Settings card contents must use the shared card inset instead of falling back to naked page coordinates.");
-        Assert.True(paint.Contains("curX += wStep + SettingsLayout.RetentionPresetGap", StringComparison.Ordinal)
-                    && paint.Contains("curX += wStep + SettingsLayout.RetentionGroupGap", StringComparison.Ordinal)
-                    && paint.Contains("curX += btnW + SettingsLayout.RetentionPresetGap", StringComparison.Ordinal),
-            "Retention controls must use the compact preset gap and the distinct separator before the preset group.");
-        Assert.True(paint.Contains("descriptor.Key.Equals(ClickraSettings.ImageCompressLevel", StringComparison.Ordinal)
-                    && paint.Contains("descriptor.Key.Equals(ClickraSettings.ImageCompressMaxDimension", StringComparison.Ordinal),
-            "AOT Settings must explicitly skip per-conversion image compression controls.");
-        Assert.False(paint.Contains("AotImageCompressionPresets", StringComparison.Ordinal),
-            "AOT Settings must not expose image compression profiles as global preferences.");
-        Assert.False(paint.Contains("setting_fluent_title", StringComparison.Ordinal)
-                     || paint.Contains("FluentRuntimeHelper", StringComparison.Ordinal),
-            "AOT Settings must not advertise the Fluent add-on until it has a production-ready distribution path.");
-        Assert.False(click.Contains("element == 40", StringComparison.Ordinal)
-                     || click.Contains("case 40:", StringComparison.Ordinal),
-            "Hidden Fluent Settings UI must not leave a stale clickable element behind.");
+        AssertContainsAll(
+            paint,
+            "Retention controls must use the compact preset gap and the distinct separator before the preset group.",
+            "curX += wStep + SettingsLayout.RetentionPresetGap",
+            "curX += wStep + SettingsLayout.RetentionGroupGap",
+            "curX += btnW + SettingsLayout.RetentionPresetGap");
+        AssertContainsAll(
+            paint,
+            "AOT Settings must explicitly skip per-conversion image compression controls.",
+            "descriptor.Key.Equals(ClickraSettings.ImageCompressLevel",
+            "descriptor.Key.Equals(ClickraSettings.ImageCompressMaxDimension");
+        AssertContainsNone(
+            paint,
+            "AOT Settings must not expose image compression profiles as global preferences.",
+            "AotImageCompressionPresets");
+        AssertContainsNone(
+            paint,
+            "AOT Settings must not advertise the Fluent add-on until it has a production-ready distribution path.",
+            "setting_fluent_title",
+            "FluentRuntimeHelper");
+        AssertContainsNone(
+            click,
+            "Hidden Fluent Settings UI must not leave a stale clickable element behind.",
+            "element == 40",
+            "case 40:");
 
         foreach (string source in new[] { hitTest, click, events })
-        {
-            Assert.True(source.Contains("_langDropdownX", StringComparison.Ordinal)
-                        && source.Contains("_pdfLangDropdownX", StringComparison.Ordinal),
-                "Dropdown hit, popup, and hover consumers must use the painted responsive X coordinates.");
-        }
+            AssertContainsAll(
+                source,
+                "Dropdown hit, popup, and hover consumers must use the painted responsive X coordinates.",
+                "_langDropdownX",
+                "_pdfLangDropdownX");
 
         Assert.False(hitTest.Contains("DropdownButtonRect((int)contentX, _langDropdownY)", StringComparison.Ordinal),
             "Hit testing must not assume the language dropdown stays in the first column.");
         Assert.False(events.Contains("DropdownPopupRect((int)GetContentX(logW), _pdfLangDropdownY", StringComparison.Ordinal),
             "Dropdown hover must not reconstruct the PDF dropdown X from the page origin.");
+    }
+
+    private static void AssertContainsAll(string source, string message, params string[] patterns)
+    {
+        foreach (string pattern in patterns)
+            Assert.True(source.Contains(pattern, StringComparison.Ordinal), message);
+    }
+
+    private static void AssertContainsNone(string source, string message, params string[] patterns)
+    {
+        foreach (string pattern in patterns)
+            Assert.False(source.Contains(pattern, StringComparison.Ordinal), message);
     }
 
     /// <summary>
