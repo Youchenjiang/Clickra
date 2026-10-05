@@ -608,9 +608,9 @@ namespace Clickra.Core
                 ("setting_image_profile_custom", "自訂", "自定义", "Custom", "カスタム", "사용자 지정"),
                 ("setting_image_custom_quality", "壓縮品質", "压缩质量", "Compression quality", "圧縮品質", "압축 품질"),
                 ("setting_image_size_original", "原尺寸", "原尺寸", "Original", "元のサイズ", "원본"),
-                ("setting_image_size_4k", "4K", "4K", "4K", "4K", "4K"),
-                ("setting_image_size_full_hd", "Full HD", "Full HD", "Full HD", "Full HD", "Full HD"),
-                ("setting_image_size_1280", "1280 px", "1280 px", "1280 px", "1280 px", "1280 px"),
+                ("setting_image_size_4k", "大型圖片（4K）", "大型图片（4K）", "Large image (4K)", "大きな画像（4K）", "큰 이미지 (4K)"),
+                ("setting_image_size_full_hd", "一般使用（Full HD）", "一般使用（Full HD）", "Everyday use (Full HD)", "一般用途（Full HD）", "일반 사용 (Full HD)"),
+                ("setting_image_size_1280", "小檔分享（1280 px）", "小文件分享（1280 px）", "Small file (1280 px)", "小さいファイル（1280 px）", "작은 파일 (1280 px)"),
             };
 
             RegisterTranslations(data);
