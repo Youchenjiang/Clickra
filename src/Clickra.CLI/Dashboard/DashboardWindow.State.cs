@@ -42,7 +42,9 @@ namespace Clickra.UI
             ("zh-TW", "繁體中文 (Traditional Chinese)")
         };
 
+        static int _pdfLangDropdownX = 0;
         static int _pdfLangDropdownY = 0;
+        static int _pdfLangDropdownWidth = DashboardLayout.DropdownWidth;
         
         // History & Statistics Cache
         //
@@ -100,7 +102,9 @@ namespace Clickra.UI
         static System.Threading.Mutex? _mutex;
         static float _aboutBtnY = 365;
         static float _githubBtnY = 240;
+        static int _langDropdownX = 0;
         static int _langDropdownY = 390;
+        static int _langDropdownWidth = DashboardLayout.DropdownWidth;
         static float _sidebarWidth = 170f;
         static IntPtr _hIcon = IntPtr.Zero;
         static float _wSource = 110f;

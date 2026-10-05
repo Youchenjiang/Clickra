@@ -19,11 +19,6 @@ namespace Clickra.Core
         private const string WordToPdfLabel = "Word → PDF";
         private const string ExcelToPdfLabel = "Excel → PDF";
         private const string PptToPdfLabel = "PPT → PDF";
-        private const string KeyFluentTitle = "setting_fluent_title";
-        private const string KeyFluentDescription = "setting_fluent_desc";
-        private const string KeyFluentReady = "setting_fluent_ready";
-        private const string KeyFluentNotInstalled = "setting_fluent_not_installed";
-        private const string KeyFluentInstall = "setting_fluent_install";
         private const string RetentionDayZh = "{0} 天";
         private const string OfficeName = "Office";
 
@@ -204,11 +199,6 @@ namespace Clickra.Core
                 ("setting_output_custom", "自訂...", "自定义...", "Custom...", "カスタム...", "사용자 정의..."),
                 ("setting_output_selected_path", "已選取路徑", "已选择路径", "Selected path", "選択されたパス", "선택한 경로"),
                 ("setting_output_browse_title", "選擇預設輸出資料夾", "选择默认输出文件夹", "Select Default Output Folder", "既定の出力フォルダを選択", "기본 출력 폴더 선택"),
-                (KeyFluentTitle, "Fluent 介面", "Fluent 界面", "Fluent Interface", "Fluent インターフェース", "Fluent 인터페이스"),
-                (KeyFluentDescription, "安裝 Fluent 介面附加元件以使用現代化 WinUI 3 介面", "安装 Fluent 界面附加组件以使用现代 WinUI 3 界面", "Install Fluent add-on to enable modern WinUI 3 interface", "Fluent アドオンをインストールして最新の WinUI 3 インターフェースを使用します", "Fluent 추가 기능을 설치하여 최신 WinUI 3 인터페이스를 사용합니다"),
-                (KeyFluentReady, "Fluent 介面已安裝，下次啟動將自動使用", "Fluent 界面已安装，下次启动将自动使用", "Fluent installed. Will be used on next launch.", "Fluent インターフェースはインストール済みです。次回起動時に自動的に使用されます", "Fluent 인터페이스가 설치되었습니다. 다음 시작 시 자동으로 사용됩니다"),
-                (KeyFluentNotInstalled, "Fluent 介面未安裝，目前使用經典介面", "Fluent 界面未安装，当前使用经典界面", "Fluent not installed. Using classic interface.", "Fluent インターフェースは未インストールです。現在クラシックを使用中", "Fluent 인터페이스가 설치되지 않았습니다. 현재 클래식 인터페이스를 사용 중입니다"),
-                (KeyFluentInstall, "從 Store 安裝 Fluent 介面", "从 Store 安装 Fluent 界面", "Install Fluent from Store", "Store から Fluent インターフェースをインストール", "Store에서 Fluent 인터페이스 설치"),
                 ("overview_engine_status", "轉換引擎狀態", "转换引擎状态", "Conversion Engine Status", "変換エンジンの状態", "변환 엔진 상태"),
                 ("overview_stats", "轉換統計", "转换统计", "Conversion Stats", "統計情報", "오늘의 통계"),
                 ("overview_stat_total", "總轉換次數", "总转换次数", "Total Conversions", "総変換回数", "총 변환 횟수"),
@@ -559,8 +549,8 @@ namespace Clickra.Core
                 ("fluent_task_ledger_empty", "目前沒有進行中的任務。", "当前没有进行中的任务。", "No active tasks.", "実行中のタスクはありません。", "실행 중인 작업이 없습니다."),
                 ("fluent_task_view", "查看", "查看", "View", "表示", "보기"),
                 ("fluent_task_resume", "繼續", "继续", "Resume", "再開", "재개"),
-                ("setting_parked_ttl_title", "暫存保留", "暂存保留", "Parked task retention", "一時停止の保持期間", "보류 작업 보관"),
-                ("setting_parked_ttl_desc", "已暫存轉換的保留天數（0 = 無限期）", "已暂存转换的保留天数（0 = 无期限）", "Days to keep parked conversions (0 = unlimited)", "一時停止した変換の保持日数（0 = 無期限）", "보류된 변환 보관 일수(0 = 무제한)"),
+                ("setting_parked_ttl_title", "待繼續任務保留期限", "待继续任务保留期限", "Paused task retention", "再開待ちタスクの保持期限", "재개 대기 작업 보관 기간"),
+                ("setting_parked_ttl_desc", "暫停後等待繼續的轉換任務，超過此天數會自動清理；0 = 永久保留", "暂停后等待继续的转换任务，超过此天数会自动清理；0 = 永久保留", "Paused conversions are cleaned up after this many days; 0 keeps them indefinitely", "一時停止して再開待ちの変換は、この日数を過ぎると自動的に削除されます。0 = 無期限に保持", "일시 중지되어 재개를 기다리는 변환은 이 기간이 지나면 자동 정리됩니다. 0 = 영구 보관"),
                 ("setting_parked_ttl_days", RetentionDayZh, RetentionDayZh, "{0} days", "{0} 日", "{0} 일"),
                 ("setting_parked_ttl_day_single", RetentionDayZh, RetentionDayZh, "{0} day", "{0} 日", "{0} 일"),
                 ("setting_parked_ttl_unlimited", "0（無限期）", "0（无期限）", "0 (unlimited)", "0（無期限）", "0 (무제한)"),
@@ -598,8 +588,8 @@ namespace Clickra.Core
                 ("setting_image_level_small", "較小", "较小", "Small", "小", "작게"),
                 ("setting_image_level_std", "標準", "标准", "Standard", "標準", "표준"),
                 ("setting_image_level_high", "高壓縮", "高压缩", "High", "高圧縮", "고압축"),
-                ("setting_image_max_dimension_title", "圖片最大長邊", "图片最大长边", "Image Max Dimension", "画像最大長辺", "이미지 최대 긴 변"),
-                ("setting_image_max_dimension_desc", "限制壓縮後圖片的長邊像素（0 = 保持原始尺寸）", "限制压缩后图片的长边像素（0 = 保持原始尺寸）", "Max long-edge pixels for compressed images (0 = keep original size)", "圧縮後画像の長辺ピクセルを制限（0 = 元のサイズを維持）", "압축 후 이미지의 긴 쪽 픽셀 제한 (0 = 원본 크기 유지)"),
+                ("setting_image_max_dimension_title", "輸出尺寸", "输出尺寸", "Output size", "出力サイズ", "출력 크기"),
+                ("setting_image_max_dimension_desc", "小圖不會被放大", "小图不会被放大", "Smaller images are never enlarged", "小さい画像は拡大しません", "작은 이미지는 확대하지 않습니다"),
             };
 
             RegisterTranslations(data);

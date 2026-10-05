@@ -32,7 +32,7 @@ namespace Clickra.UI
             int adjMouseX = mouseX >= sidebarW ? (int)(mouseX + _contentScrollX) : mouseX;
             int adjMouseY = mouseX >= sidebarW ? (int)(mouseY + _contentScrollY) : mouseY;
 
-            if (HandleDropdownClick(hwnd, adjMouseX, adjMouseY, logW, contentX)) return;
+            if (HandleDropdownClick(hwnd, adjMouseX, adjMouseY)) return;
 
             if (_activeTab == 2 && HandleHistoryClick(hwnd, mouseX, adjMouseX, adjMouseY, logW, contentX)) return;
 
@@ -146,7 +146,7 @@ namespace Clickra.UI
         static bool IsSettingsElement(int element)
             => (element >= 1000 && element < 2000) ||
                element == 5 || element == 6 || element == 7 || element == 8 || element == 9 ||
-               element == 20 || element == 32 || element == 33 || element == 34 || element == 40 ||
+               element == 20 || element == 32 || element == 33 || element == 34 ||
                (element >= 90 && element <= 96);
 
         /// <summary>True when the element is one of the LibreOffice setup buttons.</summary>
@@ -167,25 +167,25 @@ namespace Clickra.UI
         static bool IsAboutElement(int element) => element == 23 || element == 24;
 
         /// <summary>Handles PDF-language and UI-language dropdown clicks, closing them on outside clicks.</summary>
-        static bool HandleDropdownClick(IntPtr hwnd, int adjMouseX, int adjMouseY, float logW, float contentX)
+        static bool HandleDropdownClick(IntPtr hwnd, int adjMouseX, int adjMouseY)
         {
             if (_pdfLangDropdownOpen)
             {
-                return HandlePdfLangDropdownClick(hwnd, adjMouseX, adjMouseY, contentX);
+                return HandlePdfLangDropdownClick(hwnd, adjMouseX, adjMouseY);
             }
             if (_langDropdownOpen)
             {
-                return HandleLangDropdownClick(hwnd, adjMouseX, adjMouseY, logW);
+                return HandleLangDropdownClick(hwnd, adjMouseX, adjMouseY);
             }
             return false;
         }
 
         /// <summary>Handles a click on the open PDF-language dropdown, saving the selection
         /// or closing the popup on an outside click.</summary>
-        static bool HandlePdfLangDropdownClick(IntPtr hwnd, int adjMouseX, int adjMouseY, float contentX)
+        static bool HandlePdfLangDropdownClick(IntPtr hwnd, int adjMouseX, int adjMouseY)
         {
             int popupHeight = DashboardLayout.PdfPopupHeight(PdfLangs.Length);
-            LayoutRect popup = DashboardLayout.DropdownPopupRect((int)contentX, _pdfLangDropdownY, popupHeight);
+            LayoutRect popup = DashboardLayout.DropdownPopupRect(_pdfLangDropdownX, _pdfLangDropdownY, popupHeight, _pdfLangDropdownWidth);
             if (popup.Contains(adjMouseX, adjMouseY))
             {
                 int clickedIdx = DashboardLayout.DropdownItemAt(popup.Y, DashboardLayout.PdfPopupListTop, popup.Height, adjMouseY);
@@ -204,9 +204,9 @@ namespace Clickra.UI
 
         /// <summary>Handles a click on the open UI-language dropdown, selecting the hovered
         /// language or closing the popup on an outside click.</summary>
-        static bool HandleLangDropdownClick(IntPtr hwnd, int adjMouseX, int adjMouseY, float logW)
+        static bool HandleLangDropdownClick(IntPtr hwnd, int adjMouseX, int adjMouseY)
         {
-            var langPopup = DashboardLayout.DropdownPopupRect((int)GetContentX(logW), _langDropdownY, DashboardLayout.LanguagePopupHeight);
+            var langPopup = DashboardLayout.DropdownPopupRect(_langDropdownX, _langDropdownY, DashboardLayout.LanguagePopupHeight, _langDropdownWidth);
             if (langPopup.Contains(adjMouseX, adjMouseY))
             {
                 // 搜尋框佔住清單上方的區域：點在那裡不選任何語言，也不關閉清單。
@@ -381,7 +381,7 @@ namespace Clickra.UI
             float logH = GetLogicalHeight(hwnd);
             float contentH = GetContentHeight(hwnd);
             bool showV = logH < contentH;
-            bool showH = logW < 760;
+            bool showH = _activeTab != 3 && logW < 760;
             if (!showV || mouseX < logW - 8 || mouseX >= logW) return false;
 
             float trackY = 4;
@@ -420,7 +420,7 @@ namespace Clickra.UI
             float contentH = GetContentHeight(hwnd);
             float sidebarW = GetSidebarWidth(logW);
             bool showV = logH < contentH;
-            bool showH = logW < 760;
+            bool showH = _activeTab != 3 && logW < 760;
             if (!showH || mouseY < logH - 8 || mouseY >= logH || mouseX < sidebarW) return false;
 
             float trackX = sidebarW + 4;
@@ -503,10 +503,6 @@ namespace Clickra.UI
                 case 33: ApplySetting(hwnd, ClickraSettings.OfficeEngine, ClickraSettings.OfficeEngineMicrosoft); break;
                 case 34: ClickraStorage.SaveSetting(ClickraSettings.OfficeEngine, ClickraSettings.OfficeEngineLibreOffice);
                          ApplySetting(hwnd, ClickraSettings.LibreOfficePath, ClickraSettings.DefaultEmpty); break;
-                case 40:
-                    if (Clickra.Core.FluentRuntimeHelper.SupportsStoreFluentAddon())
-                        OpenStorePage(hwnd);
-                    break;
                 case 90: AdjustParkedRetention(hwnd, -1); break;
                 case 91: AdjustParkedRetention(hwnd, 1); break;
                 case 92: SetParkedRetention(hwnd, 0); break;

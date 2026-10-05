@@ -50,7 +50,7 @@ namespace Clickra.UI
             {
                 1 => HitTestConvert(x, y, logW, contentX),
                 2 => HitTestHistory(x, y, logW, contentX),
-                3 => HitTestSettings(x, y, contentX),
+                3 => HitTestSettings(x, y),
                 4 => HitTestAbout(x, y, contentX),
                 _ => -1
             };
@@ -109,15 +109,15 @@ namespace Clickra.UI
             return -1;
         }
 
-        static int HitTestSettings(int x, int y, float contentX)
+        static int HitTestSettings(int x, int y)
         {
             foreach (var item in _settingsHitRects)
             {
                 if (item.Value.Contains(x, y)) return item.Key;
             }
 
-            if (DashboardLayout.DropdownButtonRect((int)contentX, _langDropdownY).Contains(x, y)) return 10;
-            if (DashboardLayout.DropdownButtonRect((int)contentX, _pdfLangDropdownY).Contains(x, y)) return 31;
+            if (DashboardLayout.DropdownButtonRect(_langDropdownX, _langDropdownY, _langDropdownWidth).Contains(x, y)) return 10;
+            if (DashboardLayout.DropdownButtonRect(_pdfLangDropdownX, _pdfLangDropdownY, _pdfLangDropdownWidth).Contains(x, y)) return 31;
             return -1;
         }
 

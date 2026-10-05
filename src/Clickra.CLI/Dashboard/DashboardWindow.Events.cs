@@ -116,7 +116,7 @@ namespace Clickra.UI
             int adjMouseX = mouseX >= sidebarW ? (int)(mouseX + _contentScrollX) : mouseX;
             int adjMouseY = mouseX >= sidebarW ? (int)(mouseY + _contentScrollY) : mouseY;
 
-            TrackDropdownHover(hwnd, adjMouseX, adjMouseY, logW);
+            TrackDropdownHover(hwnd, adjMouseX, adjMouseY);
 
             int prevHovered = _hoveredElement;
             _hoveredElement = HitTest(hwnd, adjMouseX, adjMouseY);
@@ -134,7 +134,7 @@ namespace Clickra.UI
             float contentH = GetContentHeight(hwnd);
 
             float trackH = logH - 8;
-            if (logW < 760) trackH = logH - 16;
+            if (_activeTab != 3 && logW < 760) trackH = logH - 16;
             float thumbH = Math.Max(20f, (logH / contentH) * trackH);
             float scrollRange = contentH - logH;
             float trackRange = trackH - thumbH;
@@ -237,18 +237,18 @@ namespace Clickra.UI
         }
 
         /// <summary>Tracks the hovered row inside the open language dropdowns.</summary>
-        static void TrackDropdownHover(IntPtr hwnd, int adjMouseX, int adjMouseY, float logW)
+        static void TrackDropdownHover(IntPtr hwnd, int adjMouseX, int adjMouseY)
         {
-            TrackLangDropdownHover(hwnd, adjMouseX, adjMouseY, logW);
-            TrackPdfLangDropdownHover(hwnd, adjMouseX, adjMouseY, logW);
+            TrackLangDropdownHover(hwnd, adjMouseX, adjMouseY);
+            TrackPdfLangDropdownHover(hwnd, adjMouseX, adjMouseY);
         }
 
         /// <summary>Highlights the hovered row of the open UI-language dropdown.</summary>
-        private static void TrackLangDropdownHover(IntPtr hwnd, int adjMouseX, int adjMouseY, float logW)
+        private static void TrackLangDropdownHover(IntPtr hwnd, int adjMouseX, int adjMouseY)
         {
             if (!_langDropdownOpen) return;
 
-            var popup = DashboardLayout.DropdownPopupRect((int)GetContentX(logW), _langDropdownY, DashboardLayout.LanguagePopupHeight);
+            var popup = DashboardLayout.DropdownPopupRect(_langDropdownX, _langDropdownY, DashboardLayout.LanguagePopupHeight, _langDropdownWidth);
             if (popup.Contains(adjMouseX, adjMouseY))
             {
                 int itemIndex = DashboardLayout.DropdownItemAt(
@@ -265,12 +265,12 @@ namespace Clickra.UI
         }
 
         /// <summary>Highlights the hovered row of the open PDF-language dropdown.</summary>
-        private static void TrackPdfLangDropdownHover(IntPtr hwnd, int adjMouseX, int adjMouseY, float logW)
+        private static void TrackPdfLangDropdownHover(IntPtr hwnd, int adjMouseX, int adjMouseY)
         {
             if (!_pdfLangDropdownOpen) return;
 
             int popupHeight = DashboardLayout.PdfPopupHeight(PdfLangs.Length);
-            var popup = DashboardLayout.DropdownPopupRect((int)GetContentX(logW), _pdfLangDropdownY, popupHeight);
+            var popup = DashboardLayout.DropdownPopupRect(_pdfLangDropdownX, _pdfLangDropdownY, popupHeight, _pdfLangDropdownWidth);
             if (popup.Contains(adjMouseX, adjMouseY))
             {
                 int idx = DashboardLayout.DropdownItemAt(popup.Y, DashboardLayout.PdfPopupListTop, popup.Height, adjMouseY);
@@ -427,7 +427,7 @@ namespace Clickra.UI
                 float logH = GetLogicalHeight(hwnd);
                 float contentH = GetContentHeight(hwnd);
                 bool showV = logH < contentH;
-                bool showH = logW < 760;
+                bool showH = _activeTab != 3 && logW < 760;
                 if ((showV && mouseX >= logW - 8 && mouseX < logW) ||
                     (showH && mouseY >= logH - 8 && mouseY < logH && mouseX >= GetSidebarWidth(logW)))
                 {

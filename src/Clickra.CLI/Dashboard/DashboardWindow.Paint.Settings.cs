@@ -35,13 +35,16 @@ namespace Clickra.UI
             }
 
             void DrawSectionHeader(string titleKey, string descKey, float y)
+                => DrawSectionHeaderAt(titleKey, descKey, contentX, y);
+
+            void DrawSectionHeaderAt(string titleKey, string descKey, float x, float y)
             {
                 if (_tabFont != null)
-                    g.DrawString(GetText(titleKey), _tabFont, Brushes.White, contentX * s, y * s);
+                    g.DrawString(GetText(titleKey), _tabFont, Brushes.White, x * s, y * s);
                 if (_subFont != null)
                 {
                     using var subBrush = new SolidBrush(Color.FromArgb(140, 140, 140));
-                    g.DrawString(GetText(descKey), _subFont, subBrush, contentX * s, (y + 22) * s);
+                    g.DrawString(GetText(descKey), _subFont, subBrush, x * s, (y + SettingsLayout.HeaderDescriptionOffset) * s);
                 }
             }
 
@@ -57,9 +60,29 @@ namespace Clickra.UI
             void DrawToggleSection(string titleKey, string descKey, bool state, int elementId, float y)
             {
                 DrawSectionHeader(titleKey, descKey, y);
-                int toggleX = (int)logW - 100;
-                DrawToggleSwitch(g, state, _hoveredElement == elementId, toggleX, (int)(y + 5), 44, 22);
-                AddHitRect(elementId, toggleX, y + 5, 44, 22);
+                LayoutRect toggle = SettingsLayout.ToggleRect((int)logW, (int)y);
+                DrawToggleSwitch(g, state, _hoveredElement == elementId, toggle.X, toggle.Y, toggle.Width, toggle.Height);
+                AddLayoutHitRect(elementId, toggle);
+            }
+
+            void DrawCard(LayoutRect rect)
+            {
+                using var path = UIHelper.GetRoundedRectPath(
+                    new RectangleF(rect.X * s, rect.Y * s, rect.Width * s, rect.Height * s), 6 * s);
+                using var fill = new SolidBrush(Color.FromArgb(38, 38, 38));
+                using var border = new Pen(Color.FromArgb(54, 54, 54));
+                g.FillPath(fill, path);
+                g.DrawPath(border, path);
+            }
+
+            void DrawCompactToggleRow(string titleKey, bool state, int elementId, int x, int y, int width)
+            {
+                if (_tabFont != null)
+                    g.DrawString(GetText(titleKey), _tabFont, Brushes.White, x * s, y * s);
+
+                LayoutRect toggle = SettingsLayout.ToggleRectWithin(x, width, y);
+                DrawToggleSwitch(g, state, _hoveredElement == elementId, toggle.X, toggle.Y, toggle.Width, toggle.Height);
+                AddLayoutHitRect(elementId, toggle);
             }
 
             if (_contentTitleFont != null)
@@ -70,24 +93,90 @@ namespace Clickra.UI
                 g.DrawLine(divPen, contentX * s, 75 * s, (logW - 40) * s, 75 * s);
             }
 
-            float y = 100f;
-            float margin = 10f;
+            float y = SettingsLayout.ContentTop;
+            float margin = SettingsLayout.InlineGap;
+            bool wideSettings = SettingsLayout.IsWide((int)logW);
+            int settingsColumnWidth = wideSettings
+                ? SettingsLayout.ColumnWidth((int)contentX, (int)logW)
+                : (int)(logW - contentX - SettingsLayout.ContentRightMargin);
 
             bool quietMode = ClickraStorage.GetSettingBool(ClickraSettings.QuietMode);
-            DrawToggleSection("setting_silent_title", "setting_silent_desc", quietMode, 5, y);
-            y += 70f;
-
             bool notification = ClickraStorage.GetSettingBool(ClickraSettings.Notification);
-            DrawToggleSection("setting_notify_title", "setting_notify_desc", notification, 6, y);
-            y += 70f;
+            if (wideSettings)
+            {
+                int leftX = (int)contentX;
+                int rightX = SettingsLayout.ColumnX((int)contentX, (int)logW, 1);
+                int cardY = (int)y;
+                LayoutRect behaviorCard = SettingsLayout.CardRect(leftX, cardY, settingsColumnWidth, SettingsLayout.OverviewCardHeight);
+                LayoutRect languageCard = SettingsLayout.CardRect(rightX, cardY, settingsColumnWidth, SettingsLayout.OverviewCardHeight);
+                DrawCard(behaviorCard);
+                DrawCard(languageCard);
 
-            DrawSectionHeader("setting_output_title", "setting_output_desc", y);
+                int behaviorX = behaviorCard.X + SettingsLayout.CardPadding;
+                int behaviorWidth = behaviorCard.Width - 2 * SettingsLayout.CardPadding;
+                DrawCompactToggleRow("setting_silent_title", quietMode, 5, behaviorX, behaviorCard.Y + 16, behaviorWidth);
+                DrawCompactToggleRow("setting_notify_title", notification, 6, behaviorX,
+                    behaviorCard.Y + 16 + SettingsLayout.OverviewRowGap, behaviorWidth);
+
+                int languageX = languageCard.X + SettingsLayout.CardPadding;
+                int languageWidth = languageCard.Width - 2 * SettingsLayout.CardPadding;
+                if (_tabFont != null)
+                {
+                    g.DrawString(GetText("setting_lang_title"), _tabFont, Brushes.White, languageX * s, (languageCard.Y + 12) * s);
+                    g.DrawString(GetText("setting_pdf_title"), _tabFont, Brushes.White, languageX * s,
+                        (languageCard.Y + 12 + SettingsLayout.OverviewRowGap) * s);
+                }
+
+                _langDropdownX = languageX;
+                _langDropdownY = languageCard.Y + 36;
+                _langDropdownWidth = languageWidth;
+                DrawLanguageDropdown(g, _langDropdownY, _langDropdownX, _langDropdownWidth);
+                AddLayoutHitRect(10, DashboardLayout.DropdownButtonRect(_langDropdownX, _langDropdownY, _langDropdownWidth));
+
+                _pdfLangDropdownX = languageX;
+                _pdfLangDropdownY = languageCard.Y + 36 + SettingsLayout.OverviewRowGap;
+                _pdfLangDropdownWidth = languageWidth;
+                DrawPdfLangDropdown(g, _pdfLangDropdownY, _pdfLangDropdownX, _pdfLangDropdownWidth);
+                AddLayoutHitRect(31, DashboardLayout.DropdownButtonRect(_pdfLangDropdownX, _pdfLangDropdownY, _pdfLangDropdownWidth));
+
+                y += SettingsLayout.OverviewCardHeight + SettingsLayout.CardGap;
+            }
+            else
+            {
+                DrawToggleSection("setting_silent_title", "setting_silent_desc", quietMode, 5, y);
+                y += SettingsLayout.PrimaryToggleSectionHeight;
+                DrawToggleSection("setting_notify_title", "setting_notify_desc", notification, 6, y);
+                y += SettingsLayout.PrimaryToggleSectionHeight;
+            }
 
             string outputDirMode = ClickraStorage.GetSetting(ClickraSettings.OutputDir);
             bool isSource = outputDirMode.Equals(ClickraSettings.DefaultOutputDirSource, StringComparison.OrdinalIgnoreCase);
             bool isDesktop = outputDirMode.Equals(ClickraSettings.OutputDirDesktop, StringComparison.OrdinalIgnoreCase);
             bool isDownloads = outputDirMode.Equals(ClickraSettings.OutputDirDownloads, StringComparison.OrdinalIgnoreCase);
             bool isCustom = !isSource && !isDesktop && !isDownloads;
+            bool hasCustomPath = isCustom && !string.IsNullOrEmpty(outputDirMode);
+
+            int outputContentX = (int)contentX;
+            int outputCardHeight = hasCustomPath
+                ? SettingsLayout.ChoiceCardExpandedHeight
+                : SettingsLayout.ChoiceCardHeight;
+            if (wideSettings)
+            {
+                LayoutRect outputCard = SettingsLayout.CardRect(
+                    (int)contentX,
+                    (int)y,
+                    (int)(logW - contentX - SettingsLayout.ContentRightMargin),
+                    outputCardHeight);
+                DrawCard(outputCard);
+                outputContentX = outputCard.X + SettingsLayout.CardPadding;
+                if (_tabFont != null)
+                    g.DrawString(GetText("setting_output_title"), _tabFont, Brushes.White,
+                        outputContentX * s, (outputCard.Y + 10) * s);
+            }
+            else
+            {
+                DrawSectionHeader("setting_output_title", "setting_output_desc", y);
+            }
 
             string textSource = GetText("setting_output_same_as_source");
             string textDesktop = GetText("setting_output_desktop");
@@ -99,57 +188,46 @@ namespace Clickra.UI
             float wDownloads = _wDownloads;
             float wCustom = _wCustom;
 
-            float xSource = contentX;
+            float xSource = outputContentX;
             float xDesktop = xSource + wSource + margin;
             float xDownloads = xDesktop + wDesktop + margin;
             float xCustom = xDownloads + wDownloads + margin;
-            float buttonY = y + 50f;
+            float buttonY = wideSettings ? y + 34f : y + SettingsLayout.ControlTopOffset;
 
             DrawOutputDirButton(g, textSource, isSource, 7, (int)xSource, (int)buttonY, (int)wSource);
             DrawOutputDirButton(g, textDesktop, isDesktop, 8, (int)xDesktop, (int)buttonY, (int)wDesktop);
             DrawOutputDirButton(g, textDownloads, isDownloads, 9, (int)xDownloads, (int)buttonY, (int)wDownloads);
             DrawOutputDirButton(g, textCustom, isCustom, 20, (int)xCustom, (int)buttonY, (int)wCustom);
-            AddHitRect(7, xSource, buttonY, wSource, 30);
-            AddHitRect(8, xDesktop, buttonY, wDesktop, 30);
-            AddHitRect(9, xDownloads, buttonY, wDownloads, 30);
-            AddHitRect(20, xCustom, buttonY, wCustom, 30);
+            AddLayoutHitRect(7, SettingsLayout.ButtonRect((int)xSource, (int)buttonY, (int)wSource));
+            AddLayoutHitRect(8, SettingsLayout.ButtonRect((int)xDesktop, (int)buttonY, (int)wDesktop));
+            AddLayoutHitRect(9, SettingsLayout.ButtonRect((int)xDownloads, (int)buttonY, (int)wDownloads));
+            AddLayoutHitRect(20, SettingsLayout.ButtonRect((int)xCustom, (int)buttonY, (int)wCustom));
 
-            y += 88f;
-            if (isCustom && !string.IsNullOrEmpty(outputDirMode))
+            if (hasCustomPath && _subFont != null)
             {
-                if (_subFont != null)
+                using var pathBrush = new SolidBrush(Color.FromArgb(180, 180, 180));
+                string displayText = outputDirMode;
+                if (displayText.Length > 60)
                 {
-                    using var pathBrush = new SolidBrush(Color.FromArgb(180, 180, 180));
-                    string displayText = outputDirMode;
-                    if (displayText.Length > 60)
-                    {
-                        displayText = "..." + displayText.Substring(displayText.Length - 57);
-                    }
-                    g.DrawString($"{GetText("setting_output_selected_path")}: {displayText}", _subFont, pathBrush, contentX * s, y * s);
+                    displayText = "..." + displayText.Substring(displayText.Length - 57);
                 }
-                y += 24f;
+                float pathY = wideSettings ? y + 70f : y + SettingsLayout.PrimaryChoiceSectionHeight;
+                g.DrawString($"{GetText("setting_output_selected_path")}: {displayText}", _subFont, pathBrush,
+                    outputContentX * s, pathY * s);
             }
 
-            DrawSectionHeader("setting_engine_title", "setting_engine_desc", y);
+            float narrowOutputHeight = SettingsLayout.PrimaryChoiceSectionHeight;
+            if (hasCustomPath) narrowOutputHeight += 24f;
+            y += wideSettings
+                ? outputCardHeight + SettingsLayout.CardGap
+                : narrowOutputHeight;
 
+            float engineStartY = y;
             string engineMode = ClickraStorage.GetSetting(ClickraSettings.OfficeEngine);
             bool isAutoEngine = string.IsNullOrEmpty(engineMode) || engineMode.Equals(ClickraSettings.DefaultOfficeEngineAuto, StringComparison.OrdinalIgnoreCase);
             bool isMicrosoftEngine = engineMode.Equals(ClickraSettings.OfficeEngineMicrosoft, StringComparison.OrdinalIgnoreCase);
             bool isLibreOfficeEngine = engineMode.Equals(ClickraSettings.OfficeEngineLibreOffice, StringComparison.OrdinalIgnoreCase);
 
-            float xEngineAuto = contentX;
-            float xEngineMicrosoft = xEngineAuto + _wEngineAuto + margin;
-            float xEngineLibreOffice = xEngineMicrosoft + _wEngineMicrosoft + margin;
-            float engineButtonY = y + 50f;
-
-            DrawOutputDirButton(g, GetText("setting_engine_auto"), isAutoEngine, 32, (int)xEngineAuto, (int)engineButtonY, (int)_wEngineAuto);
-            DrawOutputDirButton(g, GetText("setting_engine_microsoft"), isMicrosoftEngine, 33, (int)xEngineMicrosoft, (int)engineButtonY, (int)_wEngineMicrosoft);
-            DrawOutputDirButton(g, GetText("setting_engine_libreoffice"), isLibreOfficeEngine, 34, (int)xEngineLibreOffice, (int)engineButtonY, (int)_wEngineLibreOffice);
-            AddHitRect(32, xEngineAuto, engineButtonY, _wEngineAuto, 30);
-            AddHitRect(33, xEngineMicrosoft, engineButtonY, _wEngineMicrosoft, 30);
-            AddHitRect(34, xEngineLibreOffice, engineButtonY, _wEngineLibreOffice, 30);
-
-            y += 88f;
             bool isLibreOfficeSetupRunning;
             int downloadProgress;
             string downloadStatus;
@@ -168,6 +246,42 @@ namespace Clickra.UI
             bool canAdoptLibreOffice = !libreOfficeInstalledByClickra &&
                                        LibreOfficeEngineInstaller.CanAdoptExistingInstallation(resolvedLibreOffice);
             bool officeReady = IsOfficeInstalled("Word") && IsOfficeInstalled("Excel") && IsOfficeInstalled("PowerPoint");
+
+            int engineContentX = wideSettings
+                ? (int)contentX + SettingsLayout.CardPadding
+                : (int)contentX;
+            int engineCardHeight = isLibreOfficeEngine
+                ? SettingsLayout.EngineLibreOfficeCardHeight
+                : SettingsLayout.EngineCardHeight;
+            if (wideSettings)
+            {
+                LayoutRect engineCard = SettingsLayout.CardRect(
+                    (int)contentX,
+                    (int)engineStartY,
+                    (int)(logW - contentX - SettingsLayout.ContentRightMargin),
+                    engineCardHeight);
+                DrawCard(engineCard);
+                DrawSectionHeaderAt("setting_engine_title", "setting_engine_desc",
+                    engineContentX, engineCard.Y + 10);
+            }
+            else
+            {
+                DrawSectionHeader("setting_engine_title", "setting_engine_desc", engineStartY);
+            }
+
+            float xEngineAuto = engineContentX;
+            float xEngineMicrosoft = xEngineAuto + _wEngineAuto + margin;
+            float xEngineLibreOffice = xEngineMicrosoft + _wEngineMicrosoft + margin;
+            float engineButtonY = engineStartY + (wideSettings ? 56f : SettingsLayout.ControlTopOffset);
+
+            DrawOutputDirButton(g, GetText("setting_engine_auto"), isAutoEngine, 32, (int)xEngineAuto, (int)engineButtonY, (int)_wEngineAuto);
+            DrawOutputDirButton(g, GetText("setting_engine_microsoft"), isMicrosoftEngine, 33, (int)xEngineMicrosoft, (int)engineButtonY, (int)_wEngineMicrosoft);
+            DrawOutputDirButton(g, GetText("setting_engine_libreoffice"), isLibreOfficeEngine, 34, (int)xEngineLibreOffice, (int)engineButtonY, (int)_wEngineLibreOffice);
+            AddLayoutHitRect(32, SettingsLayout.ButtonRect((int)xEngineAuto, (int)engineButtonY, (int)_wEngineAuto));
+            AddLayoutHitRect(33, SettingsLayout.ButtonRect((int)xEngineMicrosoft, (int)engineButtonY, (int)_wEngineMicrosoft));
+            AddLayoutHitRect(34, SettingsLayout.ButtonRect((int)xEngineLibreOffice, (int)engineButtonY, (int)_wEngineLibreOffice));
+
+            float engineDetailY = engineStartY + (wideSettings ? 96f : SettingsLayout.PrimaryChoiceSectionHeight);
 
             if (_subFont != null)
             {
@@ -218,17 +332,17 @@ namespace Clickra.UI
                 if (!(isLibreOfficeEngine && isLibreOfficeSetupRunning))
                 {
                     using var statusBrush = new SolidBrush(statusColor);
-                    g.DrawString(statusText, _subFont, statusBrush, contentX * s, y * s);
+                    g.DrawString(statusText, _subFont, statusBrush, engineContentX * s, engineDetailY * s);
                 }
             }
 
             if (isLibreOfficeEngine)
             {
-                y += 28f;
+                engineDetailY += 28f;
                 if (isLibreOfficeSetupRunning)
                 {
-                    DrawDownloadProgress(g, downloadStatus, downloadProgress, (int)contentX, (int)y, 360);
-                    y += 42f;
+                    DrawDownloadProgress(g, downloadStatus, downloadProgress, engineContentX, (int)engineDetailY, 360);
+                    engineDetailY += 42f;
                 }
                 else if (removalPendingRestart)
                 {
@@ -237,22 +351,22 @@ namespace Clickra.UI
                         GetText("setting_libreoffice_reinstall"),
                         false,
                         36,
-                        (int)contentX,
-                        (int)y,
+                        engineContentX,
+                        (int)engineDetailY,
                         (int)_wLibreOfficeDownload);
-                    AddHitRect(36, contentX, y, _wLibreOfficeDownload, 30);
+                    AddHitRect(36, engineContentX, engineDetailY, _wLibreOfficeDownload, 30);
 
-                    float browseX = contentX + _wLibreOfficeDownload + margin;
+                    float browseX = engineContentX + _wLibreOfficeDownload + margin;
                     DrawOutputDirButton(
                         g,
                         GetText("setting_libreoffice_browse"),
                         false,
                         35,
                         (int)browseX,
-                        (int)y,
+                        (int)engineDetailY,
                         (int)_wLibreOfficeBrowse);
-                    AddHitRect(35, browseX, y, _wLibreOfficeBrowse, 30);
-                    y += 55f;
+                    AddHitRect(35, browseX, engineDetailY, _wLibreOfficeBrowse, 30);
+                    engineDetailY += 55f;
                 }
                 else if (libreOfficeReady)
                 {
@@ -261,36 +375,36 @@ namespace Clickra.UI
                         GetText("setting_libreoffice_update"),
                         false,
                         36,
-                        (int)contentX,
-                        (int)y,
+                        engineContentX,
+                        (int)engineDetailY,
                         (int)_wLibreOfficeDownload);
-                    AddHitRect(36, contentX, y, _wLibreOfficeDownload, 30);
+                    AddHitRect(36, engineContentX, engineDetailY, _wLibreOfficeDownload, 30);
 
                     if (libreOfficeInstalledByClickra)
                     {
-                        float uninstallX = contentX + _wLibreOfficeDownload + margin;
+                        float uninstallX = engineContentX + _wLibreOfficeDownload + margin;
                         DrawOutputDirButton(
                             g,
                             GetText("setting_libreoffice_uninstall"),
                             false,
                             38,
                             (int)uninstallX,
-                            (int)y,
+                            (int)engineDetailY,
                             (int)_wLibreOfficeUninstall);
-                        AddHitRect(38, uninstallX, y, _wLibreOfficeUninstall, 30);
+                        AddHitRect(38, uninstallX, engineDetailY, _wLibreOfficeUninstall, 30);
                     }
                     else if (canAdoptLibreOffice)
                     {
-                        float adoptX = contentX + _wLibreOfficeDownload + margin;
+                        float adoptX = engineContentX + _wLibreOfficeDownload + margin;
                         DrawOutputDirButton(
                             g,
                             GetText("setting_libreoffice_adopt"),
                             false,
                             39,
                             (int)adoptX,
-                            (int)y,
+                            (int)engineDetailY,
                             (int)_wLibreOfficeAdopt);
-                        AddHitRect(39, adoptX, y, _wLibreOfficeAdopt, 30);
+                        AddHitRect(39, adoptX, engineDetailY, _wLibreOfficeAdopt, 30);
 
                     }
                     if (!libreOfficeInstalledByClickra && _subFont != null)
@@ -298,9 +412,10 @@ namespace Clickra.UI
                         // Explain external installation provenance even when a custom/portable install
                         // cannot safely be adopted for system-MSI management.
                         using var externalBrush = new SolidBrush(Color.FromArgb(150, 150, 150));
-                        g.DrawString(GetText("setting_libreoffice_external_hint"), _subFont, externalBrush, contentX * s, (y + 32f) * s);
+                        g.DrawString(GetText("setting_libreoffice_external_hint"), _subFont, externalBrush,
+                            engineContentX * s, (engineDetailY + 32f) * s);
                     }
-                    y += 55f;
+                    engineDetailY += 55f;
                 }
                 else
                 {
@@ -309,123 +424,148 @@ namespace Clickra.UI
                         GetText("setting_libreoffice_download"),
                         false,
                         36,
-                        (int)contentX,
-                        (int)y,
+                        engineContentX,
+                        (int)engineDetailY,
                         (int)_wLibreOfficeDownload);
-                    AddHitRect(36, contentX, y, _wLibreOfficeDownload, 30);
+                    AddHitRect(36, engineContentX, engineDetailY, _wLibreOfficeDownload, 30);
 
-                    float browseX = contentX + _wLibreOfficeDownload + margin;
+                    float browseX = engineContentX + _wLibreOfficeDownload + margin;
                     DrawOutputDirButton(
                         g,
                         GetText("setting_libreoffice_browse"),
                         false,
                         35,
                         (int)browseX,
-                        (int)y,
+                        (int)engineDetailY,
                         (int)_wLibreOfficeBrowse);
-                    AddHitRect(35, browseX, y, _wLibreOfficeBrowse, 30);
-                    y += 55f;
+                    AddHitRect(35, browseX, engineDetailY, _wLibreOfficeBrowse, 30);
+                    engineDetailY += 55f;
                 }
             }
             else
             {
-                y += 32f;
+                engineDetailY += 32f;
             }
 
-            DrawSectionHeader("setting_lang_title", "setting_lang_desc", y);
-            _langDropdownY = (int)(y + 50);
+            y = wideSettings
+                ? engineStartY + engineCardHeight + SettingsLayout.CardGap
+                : engineDetailY;
 
-            DrawLanguageDropdown(g, _langDropdownY, contentX);
-            AddLayoutHitRect(10, DashboardLayout.DropdownButtonRect((int)contentX, _langDropdownY));
-
-            y += 110f;
-            DrawSectionHeader("setting_pdf_title", "setting_pdf_desc", y);
-
-            // 這個下拉的唯一內容就是目標語言，所以下拉本身需要一行標題來說明它選的是什麼。
-            if (_subFont != null)
+            if (!wideSettings)
             {
-                using var pdfLangLabelBrush = new SolidBrush(Color.FromArgb(180, 180, 180));
-                g.DrawString(GetText("setting_pdf_lang"), _subFont, pdfLangLabelBrush, contentX * s, (y + 50) * s);
-            }
-            _pdfLangDropdownY = (int)(y + 72);
+                float languageY = y;
+                float languageX = contentX;
+                int languageDropdownWidth = DashboardLayout.DropdownWidth;
+                float pdfLanguageY = y + SettingsLayout.LanguageSectionHeight;
 
-            DrawPdfLangDropdown(g, _pdfLangDropdownY, contentX);
-            AddLayoutHitRect(31, DashboardLayout.DropdownButtonRect((int)contentX, _pdfLangDropdownY));
+                DrawSectionHeaderAt("setting_lang_title", "setting_lang_desc", languageX, languageY);
+                _langDropdownX = (int)languageX;
+                _langDropdownY = (int)(languageY + SettingsLayout.LanguageDropdownOffset);
+                _langDropdownWidth = languageDropdownWidth;
+                DrawLanguageDropdown(g, _langDropdownY, languageX, _langDropdownWidth);
+                AddLayoutHitRect(10, DashboardLayout.DropdownButtonRect(_langDropdownX, _langDropdownY, _langDropdownWidth));
 
-            y += 117f;
-
-            // Fluent UI section
-            bool fluentAvailable = Clickra.Core.FluentRuntimeHelper.IsAvailable();
-            DrawSectionHeader("setting_fluent_title", "setting_fluent_desc", y);
-            y += 50f;
-
-            if (fluentAvailable)
-            {
-                // Show status: ready
+                DrawSectionHeaderAt("setting_pdf_title", "setting_pdf_desc", contentX, pdfLanguageY);
                 if (_subFont != null)
                 {
-                    using var statusBrush = new SolidBrush(Color.FromArgb(100, 220, 100));
-                    g.DrawString(GetText("setting_fluent_ready"), _subFont, statusBrush, contentX * s, y * s);
+                    using var pdfLangLabelBrush = new SolidBrush(Color.FromArgb(180, 180, 180));
+                    g.DrawString(GetText("setting_pdf_lang"), _subFont, pdfLangLabelBrush,
+                        contentX * s, (pdfLanguageY + SettingsLayout.PdfLanguageLabelOffset) * s);
                 }
+                _pdfLangDropdownX = (int)contentX;
+                _pdfLangDropdownY = (int)(pdfLanguageY + SettingsLayout.PdfLanguageDropdownOffset);
+                _pdfLangDropdownWidth = languageDropdownWidth;
+                DrawPdfLangDropdown(g, _pdfLangDropdownY, contentX, _pdfLangDropdownWidth);
+                AddLayoutHitRect(31, DashboardLayout.DropdownButtonRect(_pdfLangDropdownX, _pdfLangDropdownY, _pdfLangDropdownWidth));
+
+                y += SettingsLayout.LanguageSectionHeight + SettingsLayout.PdfLanguageSectionHeight;
+            }
+
+            if (wideSettings)
+            {
+                int cardY = (int)y;
+                int leftX = (int)contentX;
+                int fullWidth = (int)(logW - contentX - SettingsLayout.ContentRightMargin);
+                LayoutRect pdfCard = SettingsLayout.CardRect(
+                    leftX, cardY, fullWidth, SettingsLayout.CompressionCardHeight);
+                DrawCard(pdfCard);
+
+                int pdfX = pdfCard.X + SettingsLayout.CardPadding;
+                if (_tabFont != null)
+                {
+                    g.DrawString(GetText("setting_pdf_compress_title"), _tabFont, Brushes.White,
+                        pdfX * s, (pdfCard.Y + 12) * s);
+                }
+
+                int columnInnerWidth = settingsColumnWidth - 2 * SettingsLayout.CardPadding;
+                int sliderWidth = SettingsLayout.SliderWidthFor(columnInnerWidth);
+                int pdfSliderY = pdfCard.Y + SettingsLayout.CompressionSliderTop;
+                int compressLevel = ConvertCommandRegistry.GetPdfCompressLevel();
+                _pdfSliderTrackX = pdfX;
+                _pdfSliderTrackW = sliderWidth;
+                DrawCompressSlider(g, pdfX, pdfSliderY, sliderWidth, compressLevel);
+                AddLayoutHitRect(83, SettingsLayout.SliderHitRect(pdfX, pdfSliderY, sliderWidth));
+
+                bool stripFonts = ClickraStorage.GetSettingBool(ClickraSettings.PdfCompressStripFonts);
+                bool minifyContent = ClickraStorage.GetSettingBool(ClickraSettings.PdfCompressMinifyContent);
+                int pdfSecondaryX = SettingsLayout.ColumnX((int)contentX, (int)logW, 1)
+                    + SettingsLayout.CardPadding;
+                int pdfSecondaryY = pdfCard.Y + SettingsLayout.CompressionSecondaryTop;
+                DrawCompactToggleRow("setting_pdf_compress_strip_fonts", stripFonts, 81,
+                    pdfSecondaryX, pdfSecondaryY, columnInnerWidth);
+                DrawCompactToggleRow("setting_pdf_compress_minify_content", minifyContent, 82,
+                    pdfSecondaryX, pdfSecondaryY + SettingsLayout.OverviewRowGap, columnInnerWidth);
+
+                y += SettingsLayout.CompressionCardHeight + SettingsLayout.CardGap;
             }
             else
             {
-                // Show status: not installed + install button
-                if (_subFont != null)
-                {
-                    using var statusBrush = new SolidBrush(Color.FromArgb(255, 190, 90));
-                    g.DrawString(GetText("setting_fluent_not_installed"), _subFont, statusBrush, contentX * s, y * s);
-                }
-                if (Clickra.Core.FluentRuntimeHelper.SupportsStoreFluentAddon())
-                {
-                    y += 28f;
-                    DrawOutputDirButton(
-                        g,
-                        GetText("setting_fluent_install"),
-                        false,
-                        40,
-                        (int)contentX,
-                        (int)y,
-                        200);
-                    AddHitRect(40, contentX, y, 200, 30);
-                }
+                float pdfCompressionX = contentX;
+                float pdfCompressionY = y;
+                DrawSectionHeaderAt("setting_pdf_compress_title", "setting_pdf_compress_desc", pdfCompressionX, pdfCompressionY);
+                pdfCompressionY += 50f;
+                DrawGroupSubheader("setting_pdf_compress_group_image", pdfCompressionY);
+                pdfCompressionY += 24f;
+
+                int compressLevel = ConvertCommandRegistry.GetPdfCompressLevel();
+                float sliderW = SettingsLayout.SliderWidth;
+                _pdfSliderTrackX = pdfCompressionX;
+                _pdfSliderTrackW = sliderW;
+                DrawCompressSlider(g, pdfCompressionX, pdfCompressionY, sliderW, compressLevel);
+                AddLayoutHitRect(83, SettingsLayout.SliderHitRect((int)pdfCompressionX, (int)pdfCompressionY, (int)sliderW));
+                pdfCompressionY += SettingsLayout.SliderSectionHeight;
+                DrawGroupSubheader("setting_pdf_compress_group_other", pdfCompressionY);
+                pdfCompressionY += 24f;
+
+                bool stripFonts = ClickraStorage.GetSettingBool(ClickraSettings.PdfCompressStripFonts);
+                DrawToggleSection("setting_pdf_compress_strip_fonts", "", stripFonts, 81, pdfCompressionY);
+                pdfCompressionY += SettingsLayout.CompactToggleSectionHeight;
+                bool minifyContent = ClickraStorage.GetSettingBool(ClickraSettings.PdfCompressMinifyContent);
+                DrawToggleSection("setting_pdf_compress_minify_content", "", minifyContent, 82, pdfCompressionY);
+                pdfCompressionY += SettingsLayout.CompactToggleSectionHeight;
+                y = pdfCompressionY + SettingsLayout.CardGap;
             }
-            y += 48f;
-
-            DrawSectionHeader("setting_pdf_compress_title", "setting_pdf_compress_desc", y);
-            y += 50f;
-
-            // Image Compression Subheader
-            DrawGroupSubheader("setting_pdf_compress_group_image", y);
-            y += 24f;
-
-            // Compact slider: one level maps to both DPI + JPEG quality
-            int compressLevel = ConvertCommandRegistry.GetPdfCompressLevel();
-            float sliderW = 300f;
-            _pdfSliderTrackX = contentX;
-            _pdfSliderTrackW = sliderW;
-            DrawCompressSlider(g, contentX, y, sliderW, compressLevel);
-            AddHitRect(83, contentX - 10, y - 4, sliderW + 20, 62);
-            y += 72f;
-
-            // Other Optimization Subheader
-            DrawGroupSubheader("setting_pdf_compress_group_other", y);
-            y += 24f;
-
-            // Strip Fonts Toggle
-            bool stripFonts = ClickraStorage.GetSettingBool(ClickraSettings.PdfCompressStripFonts);
-            DrawToggleSection("setting_pdf_compress_strip_fonts", "", stripFonts, 81, y);
-            y += 44f;
-
-            // Minify Content Toggle
-            bool minifyContent = ClickraStorage.GetSettingBool(ClickraSettings.PdfCompressMinifyContent);
-            DrawToggleSection("setting_pdf_compress_minify_content", "", minifyContent, 82, y);
-            y += 44f;
 
             // Parked Task Retention Section
-            y += 16f;
-            DrawSectionHeader("setting_parked_ttl_title", "setting_parked_ttl_desc", y);
-            y += 50f;
+            float retentionStartY = y + 2f;
+            int retentionContentX = (int)contentX;
+            if (wideSettings)
+            {
+                LayoutRect retentionCard = SettingsLayout.CardRect(
+                    (int)contentX,
+                    (int)retentionStartY,
+                    (int)(logW - contentX - SettingsLayout.ContentRightMargin),
+                    SettingsLayout.RetentionCardHeight);
+                DrawCard(retentionCard);
+                retentionContentX = retentionCard.X + SettingsLayout.CardPadding;
+                DrawSectionHeaderAt("setting_parked_ttl_title", "setting_parked_ttl_desc",
+                    retentionContentX, retentionCard.Y + 10);
+            }
+            else
+            {
+                DrawSectionHeader("setting_parked_ttl_title", "setting_parked_ttl_desc", retentionStartY);
+            }
+            float retentionDetailY = retentionStartY + (wideSettings ? 56f : 50f);
 
             int currentDays = ClickraStorage.GetParkedRetentionDays();
             int defaultDays = GetDefaultParkedRetentionDays();
@@ -440,21 +580,22 @@ namespace Clickra.UI
             if (_subFont != null)
             {
                 using var currentBrush = new SolidBrush(Color.FromArgb(200, 200, 200));
-                g.DrawString(currentLabel, _subFont, currentBrush, contentX * s, y * s);
+                g.DrawString(currentLabel, _subFont, currentBrush,
+                    retentionContentX * s, retentionDetailY * s);
             }
-            y += 28f;
+            retentionDetailY += 28f;
 
-            float curX = contentX;
-            float btnY = y;
+            float curX = retentionContentX;
+            float btnY = retentionDetailY;
             float wStep = 34f;
 
             DrawOutputDirButton(g, "-", false, 90, (int)curX, (int)btnY, (int)wStep);
             AddHitRect(90, curX, btnY, wStep, 30);
-            curX += wStep + margin;
+            curX += wStep + SettingsLayout.RetentionPresetGap;
 
             DrawOutputDirButton(g, "+", false, 91, (int)curX, (int)btnY, (int)wStep);
             AddHitRect(91, curX, btnY, wStep, 30);
-            curX += wStep + margin + 8f;
+            curX += wStep + SettingsLayout.RetentionGroupGap;
 
             (int days, int elemId, string label)[] presets = new[]
             {
@@ -472,21 +613,30 @@ namespace Clickra.UI
                 bool isSelected = (currentDays == days);
                 DrawOutputDirButton(g, label, isSelected, elemId, (int)curX, (int)btnY, (int)btnW);
                 AddHitRect(elemId, curX, btnY, btnW, 30);
-                curX += btnW + margin;
+                curX += btnW + SettingsLayout.RetentionPresetGap;
             }
 
-            y += 50f;
+            y = wideSettings
+                ? retentionStartY + SettingsLayout.RetentionCardHeight + SettingsLayout.CardGap
+                : retentionDetailY + 50f;
 
             // Dynamic settings from SettingPageRegistry
             for (int i = 0; i < SettingPageRegistry.AllDescriptors.Count; i++)
             {
                 var descriptor = SettingPageRegistry.AllDescriptors[i];
                 if (LegacyPaintedSettings.Contains(descriptor.Key)) continue;
+                if (descriptor.Key.Equals(ClickraSettings.ImageCompressLevel, StringComparison.OrdinalIgnoreCase) ||
+                    descriptor.Key.Equals(ClickraSettings.ImageCompressMaxDimension, StringComparison.OrdinalIgnoreCase))
+                {
+                    continue;
+                }
 
-                DrawDynamicSettingDescriptor(g, descriptor, i, logW, contentX, margin, ref y);
+                DrawDynamicSettingDescriptor(g, descriptor, i, logW, contentX, ref y);
             }
 
-            _settingsContentHeight = Math.Max(460f, y + 80f);
+            _settingsContentHeight = Math.Max(
+                DashboardLayout.MinContentHeight,
+                y + SettingsLayout.ContentBottomPadding);
         }
 
         static void DrawDownloadProgress(Graphics g, string status, int progress, int x, int y, int w)
@@ -718,8 +868,8 @@ namespace Clickra.UI
             int descriptorIndex,
             float logW,
             float contentX,
-            float margin,
-            ref float y)
+            ref float y,
+            float? sliderWidth = null)
         {
             int baseElemId = 1000 + descriptorIndex * 10;
             switch (descriptor.EditorKind)
@@ -728,13 +878,13 @@ namespace Clickra.UI
                     DrawDynamicToggleSetting(g, descriptor, logW, contentX, baseElemId, ref y);
                     break;
                 case SettingEditorKind.Slider:
-                    DrawDynamicSliderSetting(g, descriptor, contentX, baseElemId, ref y);
+                    DrawDynamicSliderSetting(g, descriptor, contentX, baseElemId, sliderWidth, ref y);
                     break;
                 case SettingEditorKind.Number:
-                    DrawDynamicNumberSetting(g, descriptor, contentX, margin, baseElemId, ref y);
+                    DrawDynamicNumberSetting(g, descriptor, contentX, SettingsLayout.InlineGap, baseElemId, ref y);
                     break;
                 case SettingEditorKind.Choice:
-                    DrawDynamicChoiceSetting(g, descriptor, contentX, margin, baseElemId, ref y);
+                    DrawDynamicChoiceSetting(g, descriptor, contentX, SettingsLayout.InlineGap, baseElemId, ref y);
                     break;
                 default:
                     // Ignore unsupported future editor kinds until a renderer is defined.
@@ -750,41 +900,42 @@ namespace Clickra.UI
             if (string.IsNullOrEmpty(descriptor.DescriptionKey) || _subFont == null) return;
 
             using var subBrush = new SolidBrush(Color.FromArgb(140, 140, 140));
-            g.DrawString(GetText(descriptor.DescriptionKey), _subFont, subBrush, contentX * s, (y + 22) * s);
+            g.DrawString(GetText(descriptor.DescriptionKey), _subFont, subBrush, contentX * s, (y + SettingsLayout.HeaderDescriptionOffset) * s);
         }
 
         static void DrawDynamicToggleSetting(
             Graphics g, SettingDescriptor descriptor, float logW, float contentX, int baseElemId, ref float y)
         {
             DrawDynamicSettingHeader(g, descriptor, contentX, y);
-            int toggleX = (int)logW - 100;
+            LayoutRect toggle = SettingsLayout.ToggleRect((int)logW, (int)y);
             bool state = ClickraStorage.GetSettingBool(descriptor.Key);
-            DrawToggleSwitch(g, state, _hoveredElement == baseElemId, toggleX, (int)(y + 5), 44, 22);
-            _settingsHitRects[baseElemId] = new RectangleF(toggleX, y + 5, 44, 22);
-            y += 70f;
+            DrawToggleSwitch(g, state, _hoveredElement == baseElemId, toggle.X, toggle.Y, toggle.Width, toggle.Height);
+            _settingsHitRects[baseElemId] = new RectangleF(toggle.X, toggle.Y, toggle.Width, toggle.Height);
+            y += SettingsLayout.ToggleSectionHeight;
         }
 
         static void DrawDynamicSliderSetting(
-            Graphics g, SettingDescriptor descriptor, float contentX, int baseElemId, ref float y)
+            Graphics g, SettingDescriptor descriptor, float contentX, int baseElemId, float? sliderWidth, ref float y)
         {
             DrawDynamicSettingHeader(g, descriptor, contentX, y);
-            y += 48f;
+            y += SettingsLayout.SliderHeaderGap;
 
-            const float sliderW = 300f;
+            float sliderW = sliderWidth ?? SettingsLayout.SliderWidth;
             _dynamicSliderTrackX = contentX;
             _dynamicSliderTrackW = sliderW;
             var range = descriptor.GetEffectiveNumericRange() ?? new NumericSettingRange(0, 1, 0);
             int currentLevel = Math.Clamp(ClickraStorage.GetSettingInt(descriptor.Key), range.Min, range.Max);
             DrawDynamicSlider(g, contentX, y, sliderW, descriptor, currentLevel, range);
-            _settingsHitRects[baseElemId] = new RectangleF(contentX - 10, y - 4, sliderW + 20, 62);
-            y += 72f;
+            LayoutRect sliderHit = SettingsLayout.SliderHitRect((int)contentX, (int)y, (int)sliderW);
+            _settingsHitRects[baseElemId] = new RectangleF(sliderHit.X, sliderHit.Y, sliderHit.Width, sliderHit.Height);
+            y += SettingsLayout.SliderSectionHeight;
         }
 
         static void DrawDynamicNumberSetting(
             Graphics g, SettingDescriptor descriptor, float contentX, float margin, int baseElemId, ref float y)
         {
             DrawDynamicSettingHeader(g, descriptor, contentX, y);
-            y += 50f;
+            y += SettingsLayout.DynamicNumberHeaderGap;
 
             var range = descriptor.GetEffectiveNumericRange() ?? new NumericSettingRange(0, 100, 0);
             int value = Math.Clamp(ClickraStorage.GetSettingInt(descriptor.Key), range.Min, range.Max);
@@ -793,23 +944,25 @@ namespace Clickra.UI
                 using var valBrush = new SolidBrush(Color.FromArgb(200, 200, 200));
                 g.DrawString(value.ToString(), _subFont, valBrush, contentX * _dpiScale, y * _dpiScale);
             }
-            y += 28f;
+            y += SettingsLayout.DynamicNumberValueHeight;
 
-            const float buttonWidth = 34f;
+            float buttonWidth = SettingsLayout.DynamicNumberButtonWidth;
             float buttonY = y;
             DrawOutputDirButton(g, "-", false, baseElemId + 1, (int)contentX, (int)buttonY, (int)buttonWidth);
-            _settingsHitRects[baseElemId + 1] = new RectangleF(contentX, buttonY, buttonWidth, 30);
+            LayoutRect minusRect = SettingsLayout.ButtonRect((int)contentX, (int)buttonY, (int)buttonWidth);
+            _settingsHitRects[baseElemId + 1] = new RectangleF(minusRect.X, minusRect.Y, minusRect.Width, minusRect.Height);
             float plusX = contentX + buttonWidth + margin;
             DrawOutputDirButton(g, "+", false, baseElemId + 2, (int)plusX, (int)buttonY, (int)buttonWidth);
-            _settingsHitRects[baseElemId + 2] = new RectangleF(plusX, buttonY, buttonWidth, 30);
-            y += 50f;
+            LayoutRect plusRect = SettingsLayout.ButtonRect((int)plusX, (int)buttonY, (int)buttonWidth);
+            _settingsHitRects[baseElemId + 2] = new RectangleF(plusRect.X, plusRect.Y, plusRect.Width, plusRect.Height);
+            y += SettingsLayout.DynamicNumberSectionTail;
         }
 
         static void DrawDynamicChoiceSetting(
             Graphics g, SettingDescriptor descriptor, float contentX, float margin, int baseElemId, ref float y)
         {
             DrawDynamicSettingHeader(g, descriptor, contentX, y);
-            y += 50f;
+            y += SettingsLayout.ControlTopOffset;
 
             string currentValue = ClickraStorage.GetSetting(descriptor.Key);
             float buttonX = contentX;
@@ -826,10 +979,11 @@ namespace Clickra.UI
                 float buttonWidth = Math.Max(60f, g.MeasureString(label, measureFont).Width / _dpiScale + 20f);
                 int elementId = baseElemId + optionIndex;
                 DrawOutputDirButton(g, label, selected, elementId, (int)buttonX, (int)y, (int)buttonWidth);
-                _settingsHitRects[elementId] = new RectangleF(buttonX, y, buttonWidth, 30);
+                LayoutRect choiceRect = SettingsLayout.ButtonRect((int)buttonX, (int)y, (int)buttonWidth);
+                _settingsHitRects[elementId] = new RectangleF(choiceRect.X, choiceRect.Y, choiceRect.Width, choiceRect.Height);
                 buttonX += buttonWidth + margin;
             }
-            y += 50f;
+            y += SettingsLayout.DynamicChoiceSectionHeight;
         }
 
         static void DrawDynamicSlider(Graphics g, float x, float y, float w, SettingDescriptor descriptor, int level, NumericSettingRange range)

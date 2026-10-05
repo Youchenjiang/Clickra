@@ -12,6 +12,9 @@ namespace Clickra.Core.Tests;
 /// </summary>
 static partial class TestSuite
 {
+    private const string EventsClickFileName = "DashboardWindow.Events.Click.cs";
+    private const string EventsFileName = "DashboardWindow.Events.cs";
+
     public static void RegisterDashboardLayoutTests(TestRunner runner)
     {
         runner.Run("Dashboard layout: the table keeps the measurements the dashboard has always drawn",
@@ -32,6 +35,8 @@ static partial class TestSuite
             TestConvertGridGeometry);
         runner.RunGuard("AOT convert workspace: compact command groups stay within first-screen density",
             TestAotConvertFirstScreenDensity);
+        runner.RunGuard("AOT settings workspace: responsive columns preserve geometry and hit parity",
+            TestAotSettingsResponsiveGeometry);
         runner.Run("Dashboard layout: dropdown popup rows round-trip between paint and hit-testing",
             TestDropdownPopupGeometry);
         runner.Run("Dashboard layout: the parked adjust buttons sit inside their row and leave the deadline room",
@@ -355,6 +360,162 @@ static partial class TestSuite
             "AOT convert hit-testing must use the same DashboardLayout command geometry as painting.");
     }
 
+    private static void TestAotSettingsResponsiveGeometry()
+    {
+        const int contentX = 200;
+        const int wideLogW = 640;
+
+        Assert.False(SettingsLayout.IsWide(SettingsLayout.WideBreakpoint - 1),
+            "Widths below the Settings breakpoint must keep the single-column layout.");
+        Assert.True(SettingsLayout.IsWide(SettingsLayout.WideBreakpoint),
+            "The Settings breakpoint itself must enable the two-column layout.");
+
+        int columnWidth = SettingsLayout.ColumnWidth(contentX, wideLogW);
+        int leftX = SettingsLayout.ColumnX(contentX, wideLogW, 0);
+        int rightX = SettingsLayout.ColumnX(contentX, wideLogW, 1);
+        Assert.Equal(contentX, leftX);
+        Assert.Equal(leftX + columnWidth + SettingsLayout.ColumnGap, rightX);
+        Assert.Equal(wideLogW - SettingsLayout.ContentRightMargin, rightX + columnWidth);
+        int responsiveSliderWidth = SettingsLayout.SliderWidthFor(columnWidth);
+        Assert.True(responsiveSliderWidth + 2 * SettingsLayout.SliderHitHorizontalPadding <= columnWidth,
+            "A wide Settings column must fit a slider and its full hit target.");
+        Assert.True(responsiveSliderWidth < SettingsLayout.SliderWidth,
+            "The 200% DPI viewport must shorten wide-column sliders instead of forcing horizontal scrolling.");
+
+        LayoutRect toggle = SettingsLayout.ToggleRectWithin(leftX, columnWidth, SettingsLayout.ContentTop);
+        Assert.True(toggle.X >= leftX && toggle.Right <= leftX + columnWidth,
+            "A column toggle must stay inside its own column.");
+
+        LayoutRect leftOverview = SettingsLayout.CardRect(
+            leftX, SettingsLayout.ContentTop, columnWidth, SettingsLayout.OverviewCardHeight);
+        LayoutRect rightOverview = SettingsLayout.CardRect(
+            rightX, SettingsLayout.ContentTop, columnWidth, SettingsLayout.OverviewCardHeight);
+        Assert.True(leftOverview.Right < rightOverview.X,
+            "Overview cards must be separated by the responsive column gap.");
+
+        LayoutRect compression = SettingsLayout.CardRect(
+            leftX,
+            leftOverview.Bottom + SettingsLayout.CardGap,
+            wideLogW - leftX - SettingsLayout.ContentRightMargin,
+            SettingsLayout.CompressionCardHeight);
+        Assert.Equal(leftX, compression.X);
+        Assert.Equal(wideLogW - SettingsLayout.ContentRightMargin, compression.Right);
+        int compressionInnerWidth = columnWidth - 2 * SettingsLayout.CardPadding;
+        int compressionSliderWidth = SettingsLayout.SliderWidthFor(compressionInnerWidth);
+        Assert.True(compressionSliderWidth + 2 * SettingsLayout.SliderHitHorizontalPadding <= columnWidth,
+            "The PDF quality slider must stay inside the left half of the full-width compression card.");
+        LayoutRect secondaryToggle = SettingsLayout.ToggleRectWithin(
+            rightX + SettingsLayout.CardPadding,
+            compressionInnerWidth,
+            compression.Y + SettingsLayout.CompressionSecondaryTop);
+        Assert.True(secondaryToggle.X >= rightX && secondaryToggle.Right <= compression.Right,
+            "PDF structure toggles must stay inside the right half of the full-width compression card.");
+
+        int firstLanguageDropdownBottom = 36 + DashboardLayout.DropdownHeight;
+        int secondLanguageTitleTop = 12 + SettingsLayout.OverviewRowGap;
+        Assert.True(firstLanguageDropdownBottom < secondLanguageTitleTop,
+            "Wide language controls need visible space between the first dropdown and the PDF language label.");
+        int secondLanguageDropdownBottom = 36 + SettingsLayout.OverviewRowGap + DashboardLayout.DropdownHeight;
+        Assert.True(secondLanguageDropdownBottom < SettingsLayout.OverviewCardHeight,
+            "Both language dropdowns must fit inside the overview card with bottom padding.");
+
+        int stackedLanguageHeight = SettingsLayout.LanguageSectionHeight + SettingsLayout.PdfLanguageSectionHeight;
+        int pairedLanguageHeight = Math.Max(SettingsLayout.LanguageSectionHeight, SettingsLayout.PdfLanguageSectionHeight);
+        Assert.True(pairedLanguageHeight < stackedLanguageHeight,
+            "Wide language controls must consume one row instead of two stacked sections.");
+        Assert.True(SettingsLayout.PrimaryToggleSectionHeight < SettingsLayout.ToggleSectionHeight,
+            "Primary Settings toggles must retain the compact first-screen rhythm.");
+        Assert.True(SettingsLayout.ContentBottomPadding <= 32,
+            "Settings trailing padding must stay compact at high DPI instead of creating a mostly empty viewport.");
+        Assert.True(SettingsLayout.ChoiceCardExpandedHeight > SettingsLayout.ChoiceCardHeight,
+            "A custom output path needs extra room inside the same output card rather than escaping below it.");
+        Assert.True(SettingsLayout.EngineLibreOfficeCardHeight > SettingsLayout.EngineCardHeight,
+            "LibreOffice management actions need an expanded engine card instead of spilling into the next section.");
+        Assert.True(SettingsLayout.RetentionCardHeight >= 120,
+            "Task retention title, current value, and presets must fit in one bounded card.");
+        string dir = DashboardDir();
+        string paint = File.ReadAllText(Path.Combine(dir, "DashboardWindow.Paint.Settings.cs"));
+        string dashboardPaint = File.ReadAllText(Path.Combine(dir, "DashboardWindow.Paint.cs"));
+        string hitTest = File.ReadAllText(Path.Combine(dir, "DashboardWindow.HitTesting.cs"));
+        string click = File.ReadAllText(Path.Combine(dir, EventsClickFileName));
+        string events = File.ReadAllText(Path.Combine(dir, EventsFileName));
+
+        Assert.True(paint.Contains("SettingsLayout.IsWide((int)logW)", StringComparison.Ordinal),
+            "AOT Settings painting must branch on logical width through SettingsLayout.");
+        Assert.True(dashboardPaint.Contains("DrawSettingsTab(g, logW, virtLogH, contentX)", StringComparison.Ordinal),
+            "AOT Settings must receive the real viewport width rather than the 760px virtual canvas.");
+        Assert.True(dashboardPaint.Contains("_activeTab != 3 && logW < 760", StringComparison.Ordinal),
+            "Responsive Settings must not expose the legacy virtual-canvas horizontal scrollbar.");
+        Assert.True(paint.Contains("SettingsLayout.ColumnX((int)contentX, (int)logW, 1)", StringComparison.Ordinal),
+            "Wide Settings groups must take the second-column X from SettingsLayout.");
+        Assert.True(paint.Contains("SettingsLayout.OverviewCardHeight", StringComparison.Ordinal)
+                    && paint.Contains("SettingsLayout.CompressionCardHeight", StringComparison.Ordinal),
+            "Wide Settings must use bounded overview and compression cards rather than free-running sections.");
+        Assert.True(paint.Contains("y + SettingsLayout.ContentBottomPadding", StringComparison.Ordinal),
+            "AOT Settings content height must use the compact shared trailing padding.");
+        Assert.False(paint.Contains("y + 80f", StringComparison.Ordinal),
+            "AOT Settings must not restore the oversized trailing padding that created an empty high-DPI viewport.");
+        Assert.True(paint.Contains("int fullWidth = (int)(logW - contentX - SettingsLayout.ContentRightMargin)", StringComparison.Ordinal)
+                    && paint.Contains("int pdfSecondaryX = SettingsLayout.ColumnX((int)contentX, (int)logW, 1)", StringComparison.Ordinal),
+            "Wide PDF compression must use the full card width and place secondary controls in the second column.");
+        Assert.True(paint.Contains("SettingsLayout.ChoiceCardExpandedHeight", StringComparison.Ordinal)
+                    && paint.Contains("SettingsLayout.EngineCardHeight", StringComparison.Ordinal)
+                    && paint.Contains("SettingsLayout.RetentionCardHeight", StringComparison.Ordinal),
+            "Wide Settings groups must keep custom output, Office engine, and task retention inside bounded cards.");
+        Assert.True(paint.Contains("retentionContentX = retentionCard.X + SettingsLayout.CardPadding", StringComparison.Ordinal)
+                    && paint.Contains("engineContentX = wideSettings", StringComparison.Ordinal),
+            "Wide Settings card contents must use the shared card inset instead of falling back to naked page coordinates.");
+        AssertContainsAll(
+            paint,
+            "Retention controls must use the compact preset gap and the distinct separator before the preset group.",
+            "curX += wStep + SettingsLayout.RetentionPresetGap",
+            "curX += wStep + SettingsLayout.RetentionGroupGap",
+            "curX += btnW + SettingsLayout.RetentionPresetGap");
+        AssertContainsAll(
+            paint,
+            "AOT Settings must explicitly skip per-conversion image compression controls.",
+            "descriptor.Key.Equals(ClickraSettings.ImageCompressLevel",
+            "descriptor.Key.Equals(ClickraSettings.ImageCompressMaxDimension");
+        AssertContainsNone(
+            paint,
+            "AOT Settings must not expose image compression profiles as global preferences.",
+            "AotImageCompressionPresets");
+        AssertContainsNone(
+            paint,
+            "AOT Settings must not advertise the Fluent add-on until it has a production-ready distribution path.",
+            "setting_fluent_title",
+            "FluentRuntimeHelper");
+        AssertContainsNone(
+            click,
+            "Hidden Fluent Settings UI must not leave a stale clickable element behind.",
+            "element == 40",
+            "case 40:");
+
+        foreach (string source in new[] { hitTest, click, events })
+            AssertContainsAll(
+                source,
+                "Dropdown hit, popup, and hover consumers must use the painted responsive X coordinates.",
+                "_langDropdownX",
+                "_pdfLangDropdownX");
+
+        Assert.False(hitTest.Contains("DropdownButtonRect((int)contentX, _langDropdownY)", StringComparison.Ordinal),
+            "Hit testing must not assume the language dropdown stays in the first column.");
+        Assert.False(events.Contains("DropdownPopupRect((int)GetContentX(logW), _pdfLangDropdownY", StringComparison.Ordinal),
+            "Dropdown hover must not reconstruct the PDF dropdown X from the page origin.");
+    }
+
+    private static void AssertContainsAll(string source, string message, params string[] patterns)
+    {
+        foreach (string pattern in patterns)
+            Assert.True(source.Contains(pattern, StringComparison.Ordinal), message);
+    }
+
+    private static void AssertContainsNone(string source, string message, params string[] patterns)
+    {
+        foreach (string pattern in patterns)
+            Assert.False(source.Contains(pattern, StringComparison.Ordinal), message);
+    }
+
     /// <summary>
     /// Both dropdowns draw their popup above the control and answer clicks and hover from the same
     /// rows. The popup height, the row stride and the row under the cursor used to be recomputed in
@@ -440,8 +601,8 @@ static partial class TestSuite
                      ("DashboardWindow.Paint.cs", "DashboardLayout.SidebarTabY("),
                      ("DashboardWindow.Convert.cs", "DashboardLayout.ConvertCardRect("),
                      ("DashboardWindow.HitTesting.cs", "DashboardLayout.SidebarTabAt("),
-                     ("DashboardWindow.Events.Click.cs", "DashboardLayout.DetailScrollFieldAt("),
-                     ("DashboardWindow.Events.cs", "DashboardLayout.DetailScrollFieldAt("),
+                     (EventsClickFileName, "DashboardLayout.DetailScrollFieldAt("),
+                     (EventsFileName, "DashboardLayout.DetailScrollFieldAt("),
                      ("DashboardWindow.Paint.Dropdowns.cs", "DashboardLayout.DropdownItemY("),
                      ("DashboardWindow.Paint.Settings.cs", "DashboardLayout.DropdownButtonRect("),
                  })
@@ -452,7 +613,7 @@ static partial class TestSuite
         }
 
         // 這兩個檔案負責命中：一個是滑鼠點擊、一個是滾輪，兩者都必須走同一個欄位判定。
-        foreach (string file in new[] { "DashboardWindow.Events.Click.cs", "DashboardWindow.Events.cs" })
+        foreach (string file in new[] { EventsClickFileName, EventsFileName })
         {
             string source = File.ReadAllText(Path.Combine(dir, file));
             Assert.True(source.Contains("DashboardLayout.DetailScrollFieldAt(", StringComparison.Ordinal),
@@ -460,7 +621,7 @@ static partial class TestSuite
         }
 
         // 下拉清單的列號也只有一份：繪製、點擊與 hover 都問同一個對應。
-        foreach (string file in new[] { "DashboardWindow.Paint.Dropdowns.cs", "DashboardWindow.Events.Click.cs", "DashboardWindow.Events.cs" })
+        foreach (string file in new[] { "DashboardWindow.Paint.Dropdowns.cs", EventsClickFileName, EventsFileName })
         {
             string source = File.ReadAllText(Path.Combine(dir, file));
             Assert.True(source.Contains("DashboardLayout.DropdownItem", StringComparison.Ordinal),

@@ -256,9 +256,15 @@ public static class DashboardLayout
     public static LayoutRect DropdownButtonRect(int contentX, int y) =>
         new LayoutRect(contentX, y, DropdownWidth, DropdownHeight);
 
+    public static LayoutRect DropdownButtonRect(int contentX, int y, int width) =>
+        new LayoutRect(contentX, y, width, DropdownHeight);
+
     /// <summary>彈出框的矩形：畫在控制項正上方，寬度與控制項相同。</summary>
     public static LayoutRect DropdownPopupRect(int contentX, int controlY, int popupHeight) =>
         new LayoutRect(contentX, controlY - popupHeight, DropdownWidth, popupHeight);
+
+    public static LayoutRect DropdownPopupRect(int contentX, int controlY, int popupHeight, int width) =>
+        new LayoutRect(contentX, controlY - popupHeight, width, popupHeight);
 
     /// <summary>語言清單的搜尋框。</summary>
     public static LayoutRect DropdownSearchRect(int popupLeft, int popupTop) =>
@@ -266,6 +272,13 @@ public static class DashboardLayout
             popupLeft + DropdownSearchInset,
             popupTop + DropdownSearchInset,
             DropdownWidth - 2 * DropdownSearchInset,
+            DropdownSearchHeight);
+
+    public static LayoutRect DropdownSearchRect(int popupLeft, int popupTop, int popupWidth) =>
+        new LayoutRect(
+            popupLeft + DropdownSearchInset,
+            popupTop + DropdownSearchInset,
+            popupWidth - 2 * DropdownSearchInset,
             DropdownSearchHeight);
 
     /// <summary>清單第 index 列的 Y（彈出框頂端 + 清單起點 + 列距）。</summary>
