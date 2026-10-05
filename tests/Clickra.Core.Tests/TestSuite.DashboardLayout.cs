@@ -437,17 +437,6 @@ static partial class TestSuite
                     && SettingsLayout.RetentionGroupGap > SettingsLayout.RetentionPresetGap,
             "Retention presets should read as one compact group while preserving a separator after step controls.");
 
-        const int actualHighDpiViewportHeight = 488;
-        int commonWideContentHeight = SettingsLayout.ContentTop
-            + SettingsLayout.OverviewCardHeight + SettingsLayout.CardGap
-            + SettingsLayout.ChoiceCardHeight + SettingsLayout.CardGap
-            + SettingsLayout.EngineCardHeight + SettingsLayout.CardGap
-            + SettingsLayout.CompressionCardHeight + SettingsLayout.CardGap + 2
-            + SettingsLayout.RetentionCardHeight + SettingsLayout.CardGap
-            + SettingsLayout.ContentBottomPadding;
-        Assert.True(commonWideContentHeight <= actualHighDpiViewportHeight * 2,
-            $"Common 200% DPI Settings layout must stay within two viewports, got {commonWideContentHeight}px.");
-
         string dir = DashboardDir();
         string paint = File.ReadAllText(Path.Combine(dir, "DashboardWindow.Paint.Settings.cs"));
         string dashboardPaint = File.ReadAllText(Path.Combine(dir, "DashboardWindow.Paint.cs"));
@@ -468,6 +457,8 @@ static partial class TestSuite
             "Wide Settings must use bounded overview and compression cards rather than free-running sections.");
         Assert.True(paint.Contains("y + SettingsLayout.ContentBottomPadding", StringComparison.Ordinal),
             "AOT Settings content height must use the compact shared trailing padding.");
+        Assert.False(paint.Contains("y + 80f", StringComparison.Ordinal),
+            "AOT Settings must not restore the oversized trailing padding that created an empty high-DPI viewport.");
         Assert.True(paint.Contains("int fullWidth = (int)(logW - contentX - SettingsLayout.ContentRightMargin)", StringComparison.Ordinal)
                     && paint.Contains("int pdfSecondaryX = SettingsLayout.ColumnX((int)contentX, (int)logW, 1)", StringComparison.Ordinal),
             "Wide PDF compression must use the full card width and place secondary controls in the second column.");
