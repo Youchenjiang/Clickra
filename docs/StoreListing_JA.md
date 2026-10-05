@@ -1,6 +1,6 @@
 # Microsoft Store Listing - Japanese (Japan)
 
-Microsoft Partner Center にそのまま貼り付けられる、v3.13.0.0 向けのストア掲載情報です。
+Microsoft Partner Center にそのまま貼り付けられる、v3.13.1.0 向けのストア掲載情報です。
 
 ---
 
@@ -32,11 +32,10 @@ Clickra はプライバシーを重視します。Office から PDF、PDF 圧縮
 🔗 Open Source on GitHub: https://github.com/Youchenjiang/Clickra
 
 ## What's new in this version
- - 保留中の変換を再開: Native Dashboard または Fluent History から保留タスクを再開・キャンセルでき、元の進行状況と入力状態を保持します。
- - タスクごとの保持期間: 各保留タスクの保持期間を延長、短縮、リセットでき、有効期限の状態と警告を一貫して表示します。
- - PDF 圧縮設定を整理: 画像最適化とその他の最適化を両方の設定画面で同じ構成にグループ化しました。
- - Windows パッケージ情報をローカライズ: MSIX の表示名と説明がパッケージ内の言語リソースから解決されます。
- - 製品アイコンを刷新: Windows、Fluent、Shell、タイル、Store 向けのブランド資産を検証済みのマルチサイズ画像へ更新しました。
+ - よりコンパクトな変換画面: Native と Fluent の変換画面を高 DPI でも主要操作が収まりやすい、密度の高いレスポンシブ構成に整理しました。
+ - Native 設定画面を整理: 設定カード、言語、出力先、Office エンジン、PDF 圧縮、保留タスクの保持設定を一貫したレスポンシブレイアウトに統一しました。
+ - 圧縮設定の役割を明確化: 画像圧縮を Native Settings のグローバル設定から外し、PDF 圧縮は Settings に維持したまま、画像圧縮は個別の変換フローに紐づけました。
+ - Windows 統合の信頼性を向上: Explorer 用の unplated マルチサイズアイコンを追加し、MSIX 再インストール時に Clickra の正しいパッケージ identity をより確実に対象化します。
 
 ## Product Features
 *(Max 20, displayed as bullet points)*

@@ -1,6 +1,6 @@
 # Microsoft Store Listing - English (US)
 
-Below is the complete information for you to copy and paste directly into the Microsoft Partner Center, updated for the v3.13.0.0 release.
+Below is the complete information for you to copy and paste directly into the Microsoft Partner Center, updated for the v3.13.1.0 release.
 
 ---
 
@@ -32,11 +32,10 @@ Clickra respects your privacy. Most processing (Office-to-PDF conversion, PDF co
 🔗 Open Source on GitHub: https://github.com/Youchenjiang/Clickra
 
 ## What's new in this version
- - Resume Parked Conversions: Continue or cancel parked tasks directly from Native Dashboard or Fluent History while preserving task progress and input state.
- - Per-Task Retention Controls: Extend, shorten, or reset the retention window for individual parked tasks, with consistent expiration status and warnings.
- - Clearer PDF Compression Settings: Image and other optimization options are grouped consistently across both settings interfaces.
- - Localized Windows Package Identity: MSIX display name and description now resolve through packaged language resources.
- - Refreshed Product Icons: Updated Windows, Fluent, shell, tile, and Store-facing branding with verified multi-resolution assets.
+ - More Compact Convert Workspaces: Native and Fluent conversion screens use denser responsive grouping so common actions fit more naturally at high DPI.
+ - Cleaner Native Settings: Settings cards, language controls, output paths, Office engine options, PDF compression, and parked-task retention now use a more consistent responsive layout.
+ - Clearer Compression Scope: Image compression is no longer presented as a global Native Settings preference; PDF compression remains available in Settings while image compression stays tied to individual conversion flows.
+ - More Reliable Windows Integration: Added unplated Explorer icon assets and tightened MSIX reinstall targeting so Clickra resolves the intended package identity more reliably.
 
 ## Product Features
 *(Max 20, displayed as bullet points)*

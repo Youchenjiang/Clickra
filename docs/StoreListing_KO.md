@@ -1,6 +1,6 @@
 # Microsoft Store Listing - Korean (Korea)
 
-Microsoft Partner Center에 바로 복사해 넣을 수 있는 v3.13.0.0용 스토어 등록 정보입니다.
+Microsoft Partner Center에 바로 복사해 넣을 수 있는 v3.13.1.0용 스토어 등록 정보입니다.
 
 ---
 
@@ -32,11 +32,10 @@ Clickra는 개인정보 보호를 중요하게 생각합니다. Office to PDF, P
 🔗 Open Source on GitHub: https://github.com/Youchenjiang/Clickra
 
 ## What's new in this version
- - 보관된 변환 다시 시작: Native Dashboard 또는 Fluent History에서 보관된 작업을 계속하거나 취소할 수 있으며 기존 진행 상태와 입력 정보를 유지합니다.
- - 작업별 보존 기간 제어: 각 보관 작업의 보존 기간을 연장, 단축 또는 초기화하고 만료 상태와 경고를 일관되게 표시합니다.
- - 더 명확한 PDF 압축 설정: 이미지 최적화와 기타 최적화 옵션을 두 설정 화면에서 동일하게 그룹화했습니다.
- - Windows 패키지 정보 현지화: MSIX 표시 이름과 설명이 패키지에 포함된 언어 리소스를 통해 표시됩니다.
- - 제품 아이콘 새로 고침: Windows, Fluent, Shell, 타일 및 Store용 브랜딩을 검증된 다중 해상도 자산으로 업데이트했습니다.
+ - 더 간결한 변환 작업 영역: Native 및 Fluent 변환 화면을 더 촘촘한 반응형 그룹으로 정리해 높은 DPI에서도 자주 쓰는 동작이 자연스럽게 배치됩니다.
+ - 더 정돈된 Native 설정: 설정 카드, 언어 선택, 출력 경로, Office 엔진, PDF 압축 및 보관 작업 유지 설정을 일관된 반응형 레이아웃으로 정리했습니다.
+ - 더 명확한 압축 설정 범위: 이미지 압축을 Native Settings의 전역 환경설정에서 제거하고, PDF 압축은 Settings에 유지하면서 이미지 압축은 개별 변환 흐름에 연결했습니다.
+ - 더 안정적인 Windows 통합: Explorer용 unplated 다중 크기 아이콘을 추가하고 MSIX 재설치 시 올바른 Clickra 패키지 identity를 더 정확하게 대상으로 지정합니다.
 
 ## Product Features
 *(Max 20, displayed as bullet points)*

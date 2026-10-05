@@ -1,5 +1,11 @@
 # Changelog
 
+## [v3.13.1.0] - 2026-10-05
+
+- **轉換與設定版面精簡 (Responsive Workspace Polish)**：NativeAOT Convert / Settings 與 Fluent Convert 重新整理成更緊湊的響應式版面，在 200% DPI 等高縮放環境下減少不必要捲動與留白，並讓下拉選單的繪製、命中與互動位置保持一致。
+- **設定範圍更清楚 (Settings Scope Cleanup)**：NativeAOT Settings 不再提供屬於單次轉換流程的圖片壓縮全域設定；PDF 壓縮仍保留在 Settings，尚未有正式發行路徑的 Fluent add-on 入口也暫時隱藏。
+- **Windows Shell / MSIX 相容性 (Shell / MSIX Reliability)**：補齊 Explorer 所需的 unplated 多尺寸圖示資產，重新安裝工具改以精確套件 identity 鎖定 Clickra，並強化 Shell command registry 與 UI 命令的一致性驗證。
+
 ## [v3.13.0.0] - 2026-10-04
 
 - **暫存任務續跑與保留控制 (Parked Task Resume / Retention Controls)**：Native Dashboard 與 Fluent History 現在可直接續跑或取消暫存轉換，並以共用 Core preflight 保留原 task identity、輸入清單與續跑索引；每個暫存任務也可獨立延長、縮短或重設保留期限。

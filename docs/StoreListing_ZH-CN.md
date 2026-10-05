@@ -1,6 +1,6 @@
 # Microsoft Store 清单 - 中文（简体）
 
-以下是供您直接复制粘贴至 Microsoft 合作伙伴中心 (Partner Center) 的完整字段信息，已更新至 v3.13.0.0。
+以下是供您直接复制粘贴至 Microsoft 合作伙伴中心 (Partner Center) 的完整字段信息，已更新至 v3.13.1.0。
 
 ---
 
@@ -32,11 +32,10 @@ Clickra 尊重您的隐私。大多数处理流程（文档转 PDF、PDF 压缩�
 🔗 开源项目主页：https://github.com/Youchenjiang/Clickra
 
 ## What's new in this version
-- 暂存转换可直接继续：可从 Native Dashboard 或 Fluent History 继续或取消暂存任务，并保留原有进度与输入状态。
-- 每个暂存任务可独立调整保留期限：支持延长、缩短或重置保留时间，并统一显示到期状态与提醒。
-- PDF 压缩设置更清晰：两套设置界面都会以一致方式分组图片与其他优化选项。
-- Windows 包信息本地化：MSIX 显示名称与说明现在会根据包内语言资源显示。
-- 产品图标全面更新：更新 Windows、Fluent、Shell、磁贴与商店图标，并使用经过验证的多尺寸资源。
+- 转换工作区更紧凑：Native 与 Fluent 转换界面采用更紧凑的响应式分组，在高 DPI 环境下也能更自然地容纳常用操作。
+- Native 设置页更清晰：设置卡片、语言选择、输出路径、Office 引擎、PDF 压缩与暂存任务保留控制采用更一致的响应式布局。
+- 压缩设置范围更明确：图片压缩不再作为 Native Settings 的全局偏好；PDF 压缩仍保留在 Settings，而图片压缩回归每次转换流程。
+- Windows 集成更可靠：补齐 Explorer 所需的 unplated 多尺寸图标，并让 MSIX 重新安装工具更精确地锁定 Clickra 包 identity。
 
 ## Product Features
 *(最多 20 个，以项目符号显示)*
