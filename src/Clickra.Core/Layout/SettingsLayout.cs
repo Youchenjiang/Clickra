@@ -52,8 +52,6 @@ public static class SettingsLayout
     public const int OverviewRowGap = 60;
     public const int CardGap = 14;
     public const int CompressionCardHeight = 138;
-    public const int ImagePresetCardHeight = 172;
-    public const int ImageCustomCardHeight = 358;
     public const int CompressionSliderTop = 52;
     public const int CompressionSecondaryTop = 38;
     public const int ChoiceCardHeight = 72;
