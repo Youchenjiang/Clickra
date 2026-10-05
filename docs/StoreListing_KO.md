@@ -1,6 +1,6 @@
 # Microsoft Store Listing - Korean (Korea)
 
-Microsoft Partner Center에 바로 복사해 넣을 수 있는 v3.13.0.0용 스토어 등록 정보입니다.
+Microsoft Partner Center에 바로 복사해 넣을 수 있는 v3.13.1.0용 스토어 등록 정보입니다.
 
 ---
 
@@ -13,7 +13,7 @@ Clickra
 Clickra는 Windows 10 및 Windows 11용 고성능 네이티브 우클릭 메뉴 생산성 도구입니다. 파일 탐색기 컨텍스트 메뉴에 자연스럽게 통합되어, 무거운 프로그램을 열지 않고도 주요 파일 작업을 빠르게 실행할 수 있습니다.
 
 주요 기능:
- - 네이티브 대시보드: PDF 및 Office 변환 엔진 상태를 실시간으로 확인하는 다크 테마 화면.
+ - 네이티브 대시보드: 변환, 설정, PDF／Office 엔진 상태를 한곳에서 확인하며 높은 DPI에서도 간결하게 유지되는 반응형 다크 테마 화면.
  - Office to PDF: Word (.doc/.docx), Excel (.xls/.xlsx), PowerPoint (.ppt/.pptx) 파일을 고품질 PDF로 조용히 변환.
  - LibreOffice 대체 엔진: Microsoft Office가 없는 환경에서도 Clickra에서 LibreOffice를 내려받거나 검증된 기존 시스템 설치를 명시적으로 Clickra 관리 대상으로 전환하여 로컬 변환 엔진으로 사용.
  - PDF 로컬 압축: C#/GDI+ 엔진을 활용하여 중복 폰트 제거, 스트림 간소화, 저해상도 이미지 압축 우회 등으로 화질 저하를 방지하며 PDF를 로컬에서 강력하게 압축.
@@ -32,11 +32,10 @@ Clickra는 개인정보 보호를 중요하게 생각합니다. Office to PDF, P
 🔗 Open Source on GitHub: https://github.com/Youchenjiang/Clickra
 
 ## What's new in this version
- - 보관된 변환 다시 시작: Native Dashboard 또는 Fluent History에서 보관된 작업을 계속하거나 취소할 수 있으며 기존 진행 상태와 입력 정보를 유지합니다.
- - 작업별 보존 기간 제어: 각 보관 작업의 보존 기간을 연장, 단축 또는 초기화하고 만료 상태와 경고를 일관되게 표시합니다.
- - 더 명확한 PDF 압축 설정: 이미지 최적화와 기타 최적화 옵션을 두 설정 화면에서 동일하게 그룹화했습니다.
- - Windows 패키지 정보 현지화: MSIX 표시 이름과 설명이 패키지에 포함된 언어 리소스를 통해 표시됩니다.
- - 제품 아이콘 새로 고침: Windows, Fluent, Shell, 타일 및 Store용 브랜딩을 검증된 다중 해상도 자산으로 업데이트했습니다.
+ - 더 간결한 변환 작업 영역: Native 및 Fluent 변환 화면을 더 촘촘한 반응형 그룹으로 정리해 높은 DPI에서도 자주 쓰는 동작이 자연스럽게 배치됩니다.
+ - 더 정돈된 Native 설정: 설정 카드, 언어 선택, 출력 경로, Office 엔진, PDF 압축 및 보관 작업 유지 설정을 일관된 반응형 레이아웃으로 정리했습니다.
+ - 더 명확한 압축 설정 범위: 이미지 압축을 Native Settings의 전역 환경설정에서 제거하고, PDF 압축은 Settings에 유지했습니다.
+ - 더 안정적인 Windows 통합: Explorer용 unplated 다중 크기 아이콘을 추가하고 MSIX 재설치 시 올바른 Clickra 패키지 identity를 더 정확하게 대상으로 지정합니다.
 
 ## Product Features
 *(Max 20, displayed as bullet points)*
@@ -54,7 +53,7 @@ Clickra는 개인정보 보호를 중요하게 생각합니다. Office to PDF, P
  - 이미지 세로 병합
  - 빠른 다중 PDF 병합
  - NativeAOT 셸 통합 기반의 빠른 컨텍스트 메뉴 응답
- - 네이티브 대시보드 및 변환 진행 UI
+ - 높은 DPI에 맞춘 반응형 Native Convert／Settings 작업 영역
  - 최소화한 변환의 시스템 트레이 복원 및 취소
  - 보류 변환 보관 기간, 남은 시간 및 만료 알림
  - LibreOffice 검증 관리 및 fail-closed 제거 보호
@@ -71,7 +70,7 @@ Clickra
 Clickra
 
 ## Short description
-Clickra는 Office/PDF/이미지 작업과 함께 현지화된 진행 제어, 시스템 트레이 복원／취소, 보류 작업 보관을 제공하는 고성능 네이티브 우클릭 메뉴 도구입니다. 로컬 처리를 우선합니다.
+Clickra는 Office/PDF/이미지 작업과 함께 높은 DPI용 반응형 작업 영역, 현지화된 진행 제어, 시스템 트레이 복원／취소, 보류 작업 보관을 제공하는 고성능 네이티브 우클릭 메뉴 도구입니다. 로컬 처리를 우선합니다.
 
 ---
 

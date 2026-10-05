@@ -1,6 +1,6 @@
 # Microsoft Store Listing - English (US)
 
-Below is the complete information for you to copy and paste directly into the Microsoft Partner Center, updated for the v3.13.0.0 release.
+Below is the complete information for you to copy and paste directly into the Microsoft Partner Center, updated for the v3.13.1.0 release.
 
 ---
 
@@ -13,7 +13,7 @@ Clickra
 Clickra is the ultimate high-performance, native context menu productivity suite for Windows 10 and Windows 11. Designed to seamlessly integrate into your native File Explorer context menu, Clickra provides instant access to essential file operations without the need to open heavy, bloated software.
 
 Core Features:
- - Native Dashboard: A sleek dark-themed interface to monitor PDF and Office conversion engine status in real-time.
+ - Native Dashboard: A responsive dark-themed interface for conversion, settings, and PDF/Office engine status that stays compact on high-DPI displays.
  - Office to PDF: High-quality, silent conversion for Word (.doc/.docx), Excel (.xls/.xlsx), and PowerPoint (.ppt/.pptx) files.
  - LibreOffice Fallback: Download LibreOffice from Clickra, or explicitly adopt a verified existing system installation, as a free local conversion engine when Microsoft Office is unavailable.
  - PDF Compression: Compress PDF files locally using a high-fidelity native engine, reducing file size through content stream minification, font deduplication, and image downsampling.
@@ -32,11 +32,10 @@ Clickra respects your privacy. Most processing (Office-to-PDF conversion, PDF co
 🔗 Open Source on GitHub: https://github.com/Youchenjiang/Clickra
 
 ## What's new in this version
- - Resume Parked Conversions: Continue or cancel parked tasks directly from Native Dashboard or Fluent History while preserving task progress and input state.
- - Per-Task Retention Controls: Extend, shorten, or reset the retention window for individual parked tasks, with consistent expiration status and warnings.
- - Clearer PDF Compression Settings: Image and other optimization options are grouped consistently across both settings interfaces.
- - Localized Windows Package Identity: MSIX display name and description now resolve through packaged language resources.
- - Refreshed Product Icons: Updated Windows, Fluent, shell, tile, and Store-facing branding with verified multi-resolution assets.
+ - More Compact Convert Workspaces: Native and Fluent conversion screens use denser responsive grouping so common actions fit more naturally at high DPI.
+ - Cleaner Native Settings: Settings cards, language controls, output paths, Office engine options, PDF compression, and parked-task retention now use a more consistent responsive layout.
+ - Clearer Compression Scope: Image compression is no longer presented as a global Native Settings preference; PDF compression remains available in Settings.
+ - More Reliable Windows Integration: Added unplated Explorer icon assets and tightened MSIX reinstall targeting so Clickra resolves the intended package identity more reliably.
 
 ## Product Features
 *(Max 20, displayed as bullet points)*
@@ -54,7 +53,7 @@ Clickra respects your privacy. Most processing (Office-to-PDF conversion, PDF co
  - Seamless vertical image stitching
  - Fast multi-file PDF merging
  - NativeAOT shell integration for responsive context-menu commands
- - Native dashboard and conversion progress UI
+ - Responsive Native Convert and Settings workspaces tuned for high-DPI displays
  - System tray restore and cancel controls for minimized conversions
  - Parked conversion retention controls with expiration status and alerts
  - Verified LibreOffice management and fail-closed uninstall protection
@@ -71,7 +70,7 @@ Clickra
 Clickra
 
 ## Short description
-Clickra is a high-performance native context menu utility for Office, PDF, and image workflows, with localized progress controls, tray restore/cancel, parked-task retention, and local-first processing.
+Clickra is a high-performance native context menu utility for Office, PDF, and image workflows, with responsive high-DPI workspaces, localized progress controls, tray restore/cancel, parked-task retention, and local-first processing.
 
 ---
 
