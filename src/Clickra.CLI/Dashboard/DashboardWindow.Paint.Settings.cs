@@ -123,7 +123,8 @@ namespace Clickra.UI
                 if (_tabFont != null)
                 {
                     g.DrawString(GetText("setting_lang_title"), _tabFont, Brushes.White, languageX * s, (languageCard.Y + 12) * s);
-                    g.DrawString(GetText("setting_pdf_title"), _tabFont, Brushes.White, languageX * s, (languageCard.Y + 64) * s);
+                    g.DrawString(GetText("setting_pdf_title"), _tabFont, Brushes.White, languageX * s,
+                        (languageCard.Y + 12 + SettingsLayout.OverviewRowGap) * s);
                 }
 
                 _langDropdownX = languageX;
@@ -133,7 +134,7 @@ namespace Clickra.UI
                 AddLayoutHitRect(10, DashboardLayout.DropdownButtonRect(_langDropdownX, _langDropdownY, _langDropdownWidth));
 
                 _pdfLangDropdownX = languageX;
-                _pdfLangDropdownY = languageCard.Y + 88;
+                _pdfLangDropdownY = languageCard.Y + 36 + SettingsLayout.OverviewRowGap;
                 _pdfLangDropdownWidth = languageWidth;
                 DrawPdfLangDropdown(g, _pdfLangDropdownY, _pdfLangDropdownX, _pdfLangDropdownWidth);
                 AddLayoutHitRect(31, DashboardLayout.DropdownButtonRect(_pdfLangDropdownX, _pdfLangDropdownY, _pdfLangDropdownWidth));
@@ -524,10 +525,11 @@ namespace Clickra.UI
             {
                 int cardY = (int)y;
                 int leftX = (int)contentX;
-                LayoutRect pdfCard = SettingsLayout.CardRect(leftX, cardY, settingsColumnWidth, SettingsLayout.CompressionCardHeight);
+                int fullWidth = (int)(logW - contentX - SettingsLayout.ContentRightMargin);
+                LayoutRect pdfCard = SettingsLayout.CardRect(
+                    leftX, cardY, fullWidth, SettingsLayout.CompressionCardHeight);
                 DrawCard(pdfCard);
 
-                int innerWidth = settingsColumnWidth - 2 * SettingsLayout.CardPadding;
                 int pdfX = pdfCard.X + SettingsLayout.CardPadding;
                 if (_tabFont != null)
                 {
@@ -535,7 +537,8 @@ namespace Clickra.UI
                         pdfX * s, (pdfCard.Y + 12) * s);
                 }
 
-                int sliderWidth = SettingsLayout.SliderWidthFor(innerWidth);
+                int columnInnerWidth = settingsColumnWidth - 2 * SettingsLayout.CardPadding;
+                int sliderWidth = SettingsLayout.SliderWidthFor(columnInnerWidth);
                 int pdfSliderY = pdfCard.Y + SettingsLayout.CompressionSliderTop;
                 int compressLevel = ConvertCommandRegistry.GetPdfCompressLevel();
                 _pdfSliderTrackX = pdfX;
@@ -545,11 +548,13 @@ namespace Clickra.UI
 
                 bool stripFonts = ClickraStorage.GetSettingBool(ClickraSettings.PdfCompressStripFonts);
                 bool minifyContent = ClickraStorage.GetSettingBool(ClickraSettings.PdfCompressMinifyContent);
+                int pdfSecondaryX = SettingsLayout.ColumnX((int)contentX, (int)logW, 1)
+                    + SettingsLayout.CardPadding;
                 int pdfSecondaryY = pdfCard.Y + SettingsLayout.CompressionSecondaryTop;
                 DrawCompactToggleRow("setting_pdf_compress_strip_fonts", stripFonts, 81,
-                    pdfX, pdfSecondaryY, innerWidth);
+                    pdfSecondaryX, pdfSecondaryY, columnInnerWidth);
                 DrawCompactToggleRow("setting_pdf_compress_minify_content", minifyContent, 82,
-                    pdfX, pdfSecondaryY + SettingsLayout.OverviewRowGap, innerWidth);
+                    pdfSecondaryX, pdfSecondaryY + SettingsLayout.OverviewRowGap, columnInnerWidth);
 
                 y += SettingsLayout.CompressionCardHeight + SettingsLayout.CardGap;
             }

@@ -390,15 +390,31 @@ static partial class TestSuite
         Assert.True(leftOverview.Right < rightOverview.X,
             "Overview cards must be separated by the responsive column gap.");
 
-        LayoutRect leftCompression = SettingsLayout.CardRect(
-            leftX, leftOverview.Bottom + SettingsLayout.CardGap, columnWidth, SettingsLayout.CompressionCardHeight);
-        LayoutRect rightCompression = SettingsLayout.CardRect(
-            rightX, leftCompression.Y, columnWidth, SettingsLayout.CompressionCardHeight);
-        Assert.True(leftCompression.Right < rightCompression.X,
-            "Compression cards must never overlap across columns.");
-        Assert.True(SettingsLayout.CompressionSliderTop + SettingsLayout.SliderHitHeight
-                    < SettingsLayout.CompressionSecondaryTop,
-            "Compression sliders and secondary controls need a real vertical separation band.");
+        LayoutRect compression = SettingsLayout.CardRect(
+            leftX,
+            leftOverview.Bottom + SettingsLayout.CardGap,
+            wideLogW - leftX - SettingsLayout.ContentRightMargin,
+            SettingsLayout.CompressionCardHeight);
+        Assert.Equal(leftX, compression.X);
+        Assert.Equal(wideLogW - SettingsLayout.ContentRightMargin, compression.Right);
+        int compressionInnerWidth = columnWidth - 2 * SettingsLayout.CardPadding;
+        int compressionSliderWidth = SettingsLayout.SliderWidthFor(compressionInnerWidth);
+        Assert.True(compressionSliderWidth + 2 * SettingsLayout.SliderHitHorizontalPadding <= columnWidth,
+            "The PDF quality slider must stay inside the left half of the full-width compression card.");
+        LayoutRect secondaryToggle = SettingsLayout.ToggleRectWithin(
+            rightX + SettingsLayout.CardPadding,
+            compressionInnerWidth,
+            compression.Y + SettingsLayout.CompressionSecondaryTop);
+        Assert.True(secondaryToggle.X >= rightX && secondaryToggle.Right <= compression.Right,
+            "PDF structure toggles must stay inside the right half of the full-width compression card.");
+
+        int firstLanguageDropdownBottom = 36 + DashboardLayout.DropdownHeight;
+        int secondLanguageTitleTop = 12 + SettingsLayout.OverviewRowGap;
+        Assert.True(firstLanguageDropdownBottom < secondLanguageTitleTop,
+            "Wide language controls need visible space between the first dropdown and the PDF language label.");
+        int secondLanguageDropdownBottom = 36 + SettingsLayout.OverviewRowGap + DashboardLayout.DropdownHeight;
+        Assert.True(secondLanguageDropdownBottom < SettingsLayout.OverviewCardHeight,
+            "Both language dropdowns must fit inside the overview card with bottom padding.");
 
         int stackedLanguageHeight = SettingsLayout.LanguageSectionHeight + SettingsLayout.PdfLanguageSectionHeight;
         int pairedLanguageHeight = Math.Max(SettingsLayout.LanguageSectionHeight, SettingsLayout.PdfLanguageSectionHeight);
@@ -437,6 +453,9 @@ static partial class TestSuite
         Assert.True(paint.Contains("SettingsLayout.OverviewCardHeight", StringComparison.Ordinal)
                     && paint.Contains("SettingsLayout.CompressionCardHeight", StringComparison.Ordinal),
             "Wide Settings must use bounded overview and compression cards rather than free-running sections.");
+        Assert.True(paint.Contains("int fullWidth = (int)(logW - contentX - SettingsLayout.ContentRightMargin)", StringComparison.Ordinal)
+                    && paint.Contains("int pdfSecondaryX = SettingsLayout.ColumnX((int)contentX, (int)logW, 1)", StringComparison.Ordinal),
+            "Wide PDF compression must use the full card width and place secondary controls in the second column.");
         Assert.True(paint.Contains("descriptor.Key.Equals(ClickraSettings.ImageCompressLevel", StringComparison.Ordinal)
                     && paint.Contains("descriptor.Key.Equals(ClickraSettings.ImageCompressMaxDimension", StringComparison.Ordinal),
             "AOT Settings must explicitly skip per-conversion image compression controls.");

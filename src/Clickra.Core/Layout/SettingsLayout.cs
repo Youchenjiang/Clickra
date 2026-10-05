@@ -47,14 +47,14 @@ public static class SettingsLayout
     public const int ContentRightMargin = 10;
     public const int ColumnGap = 10;
     public const int CardPadding = 12;
-    public const int OverviewCardHeight = 126;
-    public const int OverviewRowGap = 48;
+    public const int OverviewCardHeight = 138;
+    public const int OverviewRowGap = 60;
     public const int CardGap = 14;
-    public const int CompressionCardHeight = 214;
+    public const int CompressionCardHeight = 138;
     public const int ImagePresetCardHeight = 172;
     public const int ImageCustomCardHeight = 358;
     public const int CompressionSliderTop = 52;
-    public const int CompressionSecondaryTop = 122;
+    public const int CompressionSecondaryTop = 38;
     public const int ChoiceCardHeight = 72;
     public const int FluentCardHeight = 76;
 
