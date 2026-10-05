@@ -438,7 +438,6 @@ static partial class TestSuite
             + SettingsLayout.OverviewCardHeight + SettingsLayout.CardGap
             + SettingsLayout.ChoiceCardHeight + SettingsLayout.CardGap
             + SettingsLayout.EngineCardHeight + SettingsLayout.CardGap
-            + SettingsLayout.FluentCardHeight + SettingsLayout.CardGap
             + SettingsLayout.CompressionCardHeight + SettingsLayout.CardGap + 2
             + SettingsLayout.RetentionCardHeight + SettingsLayout.CardGap
             + SettingsLayout.ContentBottomPadding;
@@ -480,6 +479,12 @@ static partial class TestSuite
             "AOT Settings must explicitly skip per-conversion image compression controls.");
         Assert.False(paint.Contains("AotImageCompressionPresets", StringComparison.Ordinal),
             "AOT Settings must not expose image compression profiles as global preferences.");
+        Assert.False(paint.Contains("setting_fluent_title", StringComparison.Ordinal)
+                     || paint.Contains("FluentRuntimeHelper", StringComparison.Ordinal),
+            "AOT Settings must not advertise the Fluent add-on until it has a production-ready distribution path.");
+        Assert.False(click.Contains("element == 40", StringComparison.Ordinal)
+                     || click.Contains("case 40:", StringComparison.Ordinal),
+            "Hidden Fluent Settings UI must not leave a stale clickable element behind.");
 
         foreach (string source in new[] { hitTest, click, events })
         {

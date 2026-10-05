@@ -146,7 +146,7 @@ namespace Clickra.UI
         static bool IsSettingsElement(int element)
             => (element >= 1000 && element < 2000) ||
                element == 5 || element == 6 || element == 7 || element == 8 || element == 9 ||
-               element == 20 || element == 32 || element == 33 || element == 34 || element == 40 ||
+               element == 20 || element == 32 || element == 33 || element == 34 ||
                (element >= 90 && element <= 96);
 
         /// <summary>True when the element is one of the LibreOffice setup buttons.</summary>
@@ -503,10 +503,6 @@ namespace Clickra.UI
                 case 33: ApplySetting(hwnd, ClickraSettings.OfficeEngine, ClickraSettings.OfficeEngineMicrosoft); break;
                 case 34: ClickraStorage.SaveSetting(ClickraSettings.OfficeEngine, ClickraSettings.OfficeEngineLibreOffice);
                          ApplySetting(hwnd, ClickraSettings.LibreOfficePath, ClickraSettings.DefaultEmpty); break;
-                case 40:
-                    if (Clickra.Core.FluentRuntimeHelper.SupportsStoreFluentAddon())
-                        OpenStorePage(hwnd);
-                    break;
                 case 90: AdjustParkedRetention(hwnd, -1); break;
                 case 91: AdjustParkedRetention(hwnd, 1); break;
                 case 92: SetParkedRetention(hwnd, 0); break;
