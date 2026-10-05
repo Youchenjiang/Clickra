@@ -433,10 +433,6 @@ static partial class TestSuite
             "LibreOffice management actions need an expanded engine card instead of spilling into the next section.");
         Assert.True(SettingsLayout.RetentionCardHeight >= 120,
             "Task retention title, current value, and presets must fit in one bounded card.");
-        Assert.True(SettingsLayout.RetentionPresetGap < SettingsLayout.InlineGap
-                    && SettingsLayout.RetentionGroupGap > SettingsLayout.RetentionPresetGap,
-            "Retention presets should read as one compact group while preserving a separator after step controls.");
-
         string dir = DashboardDir();
         string paint = File.ReadAllText(Path.Combine(dir, "DashboardWindow.Paint.Settings.cs"));
         string dashboardPaint = File.ReadAllText(Path.Combine(dir, "DashboardWindow.Paint.cs"));
@@ -469,6 +465,10 @@ static partial class TestSuite
         Assert.True(paint.Contains("retentionContentX = retentionCard.X + SettingsLayout.CardPadding", StringComparison.Ordinal)
                     && paint.Contains("engineContentX = wideSettings", StringComparison.Ordinal),
             "Wide Settings card contents must use the shared card inset instead of falling back to naked page coordinates.");
+        Assert.True(paint.Contains("curX += wStep + SettingsLayout.RetentionPresetGap", StringComparison.Ordinal)
+                    && paint.Contains("curX += wStep + SettingsLayout.RetentionGroupGap", StringComparison.Ordinal)
+                    && paint.Contains("curX += btnW + SettingsLayout.RetentionPresetGap", StringComparison.Ordinal),
+            "Retention controls must use the compact preset gap and the distinct separator before the preset group.");
         Assert.True(paint.Contains("descriptor.Key.Equals(ClickraSettings.ImageCompressLevel", StringComparison.Ordinal)
                     && paint.Contains("descriptor.Key.Equals(ClickraSettings.ImageCompressMaxDimension", StringComparison.Ordinal),
             "AOT Settings must explicitly skip per-conversion image compression controls.");
