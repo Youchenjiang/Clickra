@@ -8,6 +8,7 @@ namespace Clickra.Core.Layout;
 public static class SettingsLayout
 {
     public const int ContentTop = 100;
+    public const int ContentBottomPadding = 24;
     public const int InlineGap = 10;
     public const int HeaderDescriptionOffset = 22;
 

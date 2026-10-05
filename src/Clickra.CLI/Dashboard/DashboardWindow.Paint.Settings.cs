@@ -655,7 +655,9 @@ namespace Clickra.UI
                 DrawDynamicSettingDescriptor(g, descriptor, i, logW, contentX, margin, ref y);
             }
 
-            _settingsContentHeight = Math.Max(460f, y + 80f);
+            _settingsContentHeight = Math.Max(
+                DashboardLayout.MinContentHeight,
+                y + SettingsLayout.ContentBottomPadding);
         }
 
         static void DrawDownloadProgress(Graphics g, string status, int progress, int x, int y, int w)

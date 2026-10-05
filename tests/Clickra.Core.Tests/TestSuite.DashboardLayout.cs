@@ -422,6 +422,8 @@ static partial class TestSuite
             "Wide language controls must consume one row instead of two stacked sections.");
         Assert.True(SettingsLayout.PrimaryToggleSectionHeight < SettingsLayout.ToggleSectionHeight,
             "Primary Settings toggles must retain the compact first-screen rhythm.");
+        Assert.True(SettingsLayout.ContentBottomPadding <= 32,
+            "Settings trailing padding must stay compact at high DPI instead of creating a mostly empty viewport.");
 
         const int actualHighDpiViewportHeight = 488;
         int commonWideContentHeight = SettingsLayout.ContentTop
@@ -431,7 +433,7 @@ static partial class TestSuite
             + SettingsLayout.FluentCardHeight + SettingsLayout.CardGap
             + SettingsLayout.CompressionCardHeight + SettingsLayout.CardGap + 2
             + 50 + 28 + 50
-            + 80;
+            + SettingsLayout.ContentBottomPadding;
         Assert.True(commonWideContentHeight <= actualHighDpiViewportHeight * 2,
             $"Common 200% DPI Settings layout must stay within two viewports, got {commonWideContentHeight}px.");
 
@@ -453,6 +455,8 @@ static partial class TestSuite
         Assert.True(paint.Contains("SettingsLayout.OverviewCardHeight", StringComparison.Ordinal)
                     && paint.Contains("SettingsLayout.CompressionCardHeight", StringComparison.Ordinal),
             "Wide Settings must use bounded overview and compression cards rather than free-running sections.");
+        Assert.True(paint.Contains("y + SettingsLayout.ContentBottomPadding", StringComparison.Ordinal),
+            "AOT Settings content height must use the compact shared trailing padding.");
         Assert.True(paint.Contains("int fullWidth = (int)(logW - contentX - SettingsLayout.ContentRightMargin)", StringComparison.Ordinal)
                     && paint.Contains("int pdfSecondaryX = SettingsLayout.ColumnX((int)contentX, (int)logW, 1)", StringComparison.Ordinal),
             "Wide PDF compression must use the full card width and place secondary controls in the second column.");
