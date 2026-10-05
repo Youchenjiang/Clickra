@@ -514,6 +514,22 @@ namespace Clickra.UI
                 case 94: SetParkedRetention(hwnd, GetDefaultParkedRetentionDays()); break;
                 case 95: SetParkedRetention(hwnd, 14); break;
                 case 96: SetParkedRetention(hwnd, 30); break;
+                case AotImageProfileElementBase:
+                case AotImageProfileElementBase + 1:
+                case AotImageProfileElementBase + 2:
+                {
+                    int presetIndex = element - AotImageProfileElementBase;
+                    var preset = AotImageCompressionPresets[presetIndex];
+                    ClickraStorage.SaveSetting(ClickraSettings.ImageCompressLevel, preset.QualityLevel.ToString());
+                    ClickraStorage.SaveSetting(ClickraSettings.ImageCompressMaxDimension, preset.MaxDimension.ToString());
+                    _imageCompressionCustomExpanded = false;
+                    InvalidateRect(hwnd, IntPtr.Zero, false);
+                    break;
+                }
+                case AotImageProfileCustomElement:
+                    _imageCompressionCustomExpanded = true;
+                    InvalidateRect(hwnd, IntPtr.Zero, false);
+                    break;
                 default: break; // Unhandled settings element — ignore.
             }
         }
@@ -528,8 +544,8 @@ namespace Clickra.UI
 
             if (descriptor.Key.Equals(ClickraSettings.ImageCompressMaxDimension, StringComparison.OrdinalIgnoreCase))
             {
-                if (subId >= 0 && subId < AotImageSizePresets.Length)
-                    ApplySetting(hwnd, descriptor.Key, AotImageSizePresets[subId].Value);
+                if (subId >= 0 && subId < AotImageCustomSizePresets.Length)
+                    ApplySetting(hwnd, descriptor.Key, AotImageCustomSizePresets[subId].Value);
                 return;
             }
 
