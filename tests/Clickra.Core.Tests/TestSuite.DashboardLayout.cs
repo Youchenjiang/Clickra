@@ -426,7 +426,7 @@ static partial class TestSuite
             "Settings trailing padding must stay compact at high DPI instead of creating a mostly empty viewport.");
         Assert.True(SettingsLayout.ChoiceCardExpandedHeight > SettingsLayout.ChoiceCardHeight,
             "A custom output path needs extra room inside the same output card rather than escaping below it.");
-        Assert.True(SettingsLayout.EngineCardHeight >= SettingsLayout.OverviewCardHeight - 16,
+        Assert.True(SettingsLayout.EngineCardHeight >= 120,
             "The Office engine card must retain enough room for title, choices, and resolved-engine status.");
         Assert.True(SettingsLayout.EngineLibreOfficeCardHeight > SettingsLayout.EngineCardHeight,
             "LibreOffice management actions need an expanded engine card instead of spilling into the next section.");

@@ -213,7 +213,7 @@ namespace Clickra.UI
                     {
                         displayText = "..." + displayText.Substring(displayText.Length - 57);
                     }
-                    float pathY = wideSettings ? y + 72f : y + SettingsLayout.PrimaryChoiceSectionHeight;
+                    float pathY = wideSettings ? y + 70f : y + SettingsLayout.PrimaryChoiceSectionHeight;
                     g.DrawString($"{GetText("setting_output_selected_path")}: {displayText}", _subFont, pathBrush,
                         outputContentX * s, pathY * s);
                 }
@@ -273,7 +273,7 @@ namespace Clickra.UI
             float xEngineAuto = engineContentX;
             float xEngineMicrosoft = xEngineAuto + _wEngineAuto + margin;
             float xEngineLibreOffice = xEngineMicrosoft + _wEngineMicrosoft + margin;
-            float engineButtonY = engineStartY + (wideSettings ? 48f : SettingsLayout.ControlTopOffset);
+            float engineButtonY = engineStartY + (wideSettings ? 56f : SettingsLayout.ControlTopOffset);
 
             DrawOutputDirButton(g, GetText("setting_engine_auto"), isAutoEngine, 32, (int)xEngineAuto, (int)engineButtonY, (int)_wEngineAuto);
             DrawOutputDirButton(g, GetText("setting_engine_microsoft"), isMicrosoftEngine, 33, (int)xEngineMicrosoft, (int)engineButtonY, (int)_wEngineMicrosoft);
@@ -282,7 +282,7 @@ namespace Clickra.UI
             AddLayoutHitRect(33, SettingsLayout.ButtonRect((int)xEngineMicrosoft, (int)engineButtonY, (int)_wEngineMicrosoft));
             AddLayoutHitRect(34, SettingsLayout.ButtonRect((int)xEngineLibreOffice, (int)engineButtonY, (int)_wEngineLibreOffice));
 
-            float engineDetailY = engineStartY + SettingsLayout.PrimaryChoiceSectionHeight;
+            float engineDetailY = engineStartY + (wideSettings ? 96f : SettingsLayout.PrimaryChoiceSectionHeight);
 
             if (_subFont != null)
             {
