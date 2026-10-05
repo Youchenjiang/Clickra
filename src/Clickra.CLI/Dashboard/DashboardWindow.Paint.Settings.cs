@@ -149,14 +149,24 @@ namespace Clickra.UI
                 y += SettingsLayout.PrimaryToggleSectionHeight;
             }
 
+            string outputDirMode = ClickraStorage.GetSetting(ClickraSettings.OutputDir);
+            bool isSource = outputDirMode.Equals(ClickraSettings.DefaultOutputDirSource, StringComparison.OrdinalIgnoreCase);
+            bool isDesktop = outputDirMode.Equals(ClickraSettings.OutputDirDesktop, StringComparison.OrdinalIgnoreCase);
+            bool isDownloads = outputDirMode.Equals(ClickraSettings.OutputDirDownloads, StringComparison.OrdinalIgnoreCase);
+            bool isCustom = !isSource && !isDesktop && !isDownloads;
+            bool hasCustomPath = isCustom && !string.IsNullOrEmpty(outputDirMode);
+
             int outputContentX = (int)contentX;
+            int outputCardHeight = hasCustomPath
+                ? SettingsLayout.ChoiceCardExpandedHeight
+                : SettingsLayout.ChoiceCardHeight;
             if (wideSettings)
             {
                 LayoutRect outputCard = SettingsLayout.CardRect(
                     (int)contentX,
                     (int)y,
                     (int)(logW - contentX - SettingsLayout.ContentRightMargin),
-                    SettingsLayout.ChoiceCardHeight);
+                    outputCardHeight);
                 DrawCard(outputCard);
                 outputContentX = outputCard.X + SettingsLayout.CardPadding;
                 if (_tabFont != null)
@@ -167,12 +177,6 @@ namespace Clickra.UI
             {
                 DrawSectionHeader("setting_output_title", "setting_output_desc", y);
             }
-
-            string outputDirMode = ClickraStorage.GetSetting(ClickraSettings.OutputDir);
-            bool isSource = outputDirMode.Equals(ClickraSettings.DefaultOutputDirSource, StringComparison.OrdinalIgnoreCase);
-            bool isDesktop = outputDirMode.Equals(ClickraSettings.OutputDirDesktop, StringComparison.OrdinalIgnoreCase);
-            bool isDownloads = outputDirMode.Equals(ClickraSettings.OutputDirDownloads, StringComparison.OrdinalIgnoreCase);
-            bool isCustom = !isSource && !isDesktop && !isDownloads;
 
             string textSource = GetText("setting_output_same_as_source");
             string textDesktop = GetText("setting_output_desktop");
@@ -199,10 +203,7 @@ namespace Clickra.UI
             AddLayoutHitRect(9, SettingsLayout.ButtonRect((int)xDownloads, (int)buttonY, (int)wDownloads));
             AddLayoutHitRect(20, SettingsLayout.ButtonRect((int)xCustom, (int)buttonY, (int)wCustom));
 
-            y += wideSettings
-                ? SettingsLayout.ChoiceCardHeight + SettingsLayout.CardGap
-                : SettingsLayout.PrimaryChoiceSectionHeight;
-            if (isCustom && !string.IsNullOrEmpty(outputDirMode))
+            if (hasCustomPath)
             {
                 if (_subFont != null)
                 {
@@ -212,31 +213,22 @@ namespace Clickra.UI
                     {
                         displayText = "..." + displayText.Substring(displayText.Length - 57);
                     }
-                    g.DrawString($"{GetText("setting_output_selected_path")}: {displayText}", _subFont, pathBrush, outputContentX * s, y * s);
+                    float pathY = wideSettings ? y + 72f : y + SettingsLayout.PrimaryChoiceSectionHeight;
+                    g.DrawString($"{GetText("setting_output_selected_path")}: {displayText}", _subFont, pathBrush,
+                        outputContentX * s, pathY * s);
                 }
-                y += 24f;
             }
 
-            DrawSectionHeader("setting_engine_title", "setting_engine_desc", y);
+            y += wideSettings
+                ? outputCardHeight + SettingsLayout.CardGap
+                : SettingsLayout.PrimaryChoiceSectionHeight + (hasCustomPath ? 24f : 0f);
 
+            float engineStartY = y;
             string engineMode = ClickraStorage.GetSetting(ClickraSettings.OfficeEngine);
             bool isAutoEngine = string.IsNullOrEmpty(engineMode) || engineMode.Equals(ClickraSettings.DefaultOfficeEngineAuto, StringComparison.OrdinalIgnoreCase);
             bool isMicrosoftEngine = engineMode.Equals(ClickraSettings.OfficeEngineMicrosoft, StringComparison.OrdinalIgnoreCase);
             bool isLibreOfficeEngine = engineMode.Equals(ClickraSettings.OfficeEngineLibreOffice, StringComparison.OrdinalIgnoreCase);
 
-            float xEngineAuto = contentX;
-            float xEngineMicrosoft = xEngineAuto + _wEngineAuto + margin;
-            float xEngineLibreOffice = xEngineMicrosoft + _wEngineMicrosoft + margin;
-            float engineButtonY = y + SettingsLayout.ControlTopOffset;
-
-            DrawOutputDirButton(g, GetText("setting_engine_auto"), isAutoEngine, 32, (int)xEngineAuto, (int)engineButtonY, (int)_wEngineAuto);
-            DrawOutputDirButton(g, GetText("setting_engine_microsoft"), isMicrosoftEngine, 33, (int)xEngineMicrosoft, (int)engineButtonY, (int)_wEngineMicrosoft);
-            DrawOutputDirButton(g, GetText("setting_engine_libreoffice"), isLibreOfficeEngine, 34, (int)xEngineLibreOffice, (int)engineButtonY, (int)_wEngineLibreOffice);
-            AddLayoutHitRect(32, SettingsLayout.ButtonRect((int)xEngineAuto, (int)engineButtonY, (int)_wEngineAuto));
-            AddLayoutHitRect(33, SettingsLayout.ButtonRect((int)xEngineMicrosoft, (int)engineButtonY, (int)_wEngineMicrosoft));
-            AddLayoutHitRect(34, SettingsLayout.ButtonRect((int)xEngineLibreOffice, (int)engineButtonY, (int)_wEngineLibreOffice));
-
-            y += SettingsLayout.PrimaryChoiceSectionHeight;
             bool isLibreOfficeSetupRunning;
             int downloadProgress;
             string downloadStatus;
@@ -255,6 +247,42 @@ namespace Clickra.UI
             bool canAdoptLibreOffice = !libreOfficeInstalledByClickra &&
                                        LibreOfficeEngineInstaller.CanAdoptExistingInstallation(resolvedLibreOffice);
             bool officeReady = IsOfficeInstalled("Word") && IsOfficeInstalled("Excel") && IsOfficeInstalled("PowerPoint");
+
+            int engineContentX = wideSettings
+                ? (int)contentX + SettingsLayout.CardPadding
+                : (int)contentX;
+            int engineCardHeight = isLibreOfficeEngine
+                ? SettingsLayout.EngineLibreOfficeCardHeight
+                : SettingsLayout.EngineCardHeight;
+            if (wideSettings)
+            {
+                LayoutRect engineCard = SettingsLayout.CardRect(
+                    (int)contentX,
+                    (int)engineStartY,
+                    (int)(logW - contentX - SettingsLayout.ContentRightMargin),
+                    engineCardHeight);
+                DrawCard(engineCard);
+                DrawSectionHeaderAt("setting_engine_title", "setting_engine_desc",
+                    engineContentX, engineCard.Y + 10);
+            }
+            else
+            {
+                DrawSectionHeader("setting_engine_title", "setting_engine_desc", engineStartY);
+            }
+
+            float xEngineAuto = engineContentX;
+            float xEngineMicrosoft = xEngineAuto + _wEngineAuto + margin;
+            float xEngineLibreOffice = xEngineMicrosoft + _wEngineMicrosoft + margin;
+            float engineButtonY = engineStartY + (wideSettings ? 48f : SettingsLayout.ControlTopOffset);
+
+            DrawOutputDirButton(g, GetText("setting_engine_auto"), isAutoEngine, 32, (int)xEngineAuto, (int)engineButtonY, (int)_wEngineAuto);
+            DrawOutputDirButton(g, GetText("setting_engine_microsoft"), isMicrosoftEngine, 33, (int)xEngineMicrosoft, (int)engineButtonY, (int)_wEngineMicrosoft);
+            DrawOutputDirButton(g, GetText("setting_engine_libreoffice"), isLibreOfficeEngine, 34, (int)xEngineLibreOffice, (int)engineButtonY, (int)_wEngineLibreOffice);
+            AddLayoutHitRect(32, SettingsLayout.ButtonRect((int)xEngineAuto, (int)engineButtonY, (int)_wEngineAuto));
+            AddLayoutHitRect(33, SettingsLayout.ButtonRect((int)xEngineMicrosoft, (int)engineButtonY, (int)_wEngineMicrosoft));
+            AddLayoutHitRect(34, SettingsLayout.ButtonRect((int)xEngineLibreOffice, (int)engineButtonY, (int)_wEngineLibreOffice));
+
+            float engineDetailY = engineStartY + SettingsLayout.PrimaryChoiceSectionHeight;
 
             if (_subFont != null)
             {
@@ -305,17 +333,17 @@ namespace Clickra.UI
                 if (!(isLibreOfficeEngine && isLibreOfficeSetupRunning))
                 {
                     using var statusBrush = new SolidBrush(statusColor);
-                    g.DrawString(statusText, _subFont, statusBrush, contentX * s, y * s);
+                    g.DrawString(statusText, _subFont, statusBrush, engineContentX * s, engineDetailY * s);
                 }
             }
 
             if (isLibreOfficeEngine)
             {
-                y += 28f;
+                engineDetailY += 28f;
                 if (isLibreOfficeSetupRunning)
                 {
-                    DrawDownloadProgress(g, downloadStatus, downloadProgress, (int)contentX, (int)y, 360);
-                    y += 42f;
+                    DrawDownloadProgress(g, downloadStatus, downloadProgress, engineContentX, (int)engineDetailY, 360);
+                    engineDetailY += 42f;
                 }
                 else if (removalPendingRestart)
                 {
@@ -324,22 +352,22 @@ namespace Clickra.UI
                         GetText("setting_libreoffice_reinstall"),
                         false,
                         36,
-                        (int)contentX,
-                        (int)y,
+                        engineContentX,
+                        (int)engineDetailY,
                         (int)_wLibreOfficeDownload);
-                    AddHitRect(36, contentX, y, _wLibreOfficeDownload, 30);
+                    AddHitRect(36, engineContentX, engineDetailY, _wLibreOfficeDownload, 30);
 
-                    float browseX = contentX + _wLibreOfficeDownload + margin;
+                    float browseX = engineContentX + _wLibreOfficeDownload + margin;
                     DrawOutputDirButton(
                         g,
                         GetText("setting_libreoffice_browse"),
                         false,
                         35,
                         (int)browseX,
-                        (int)y,
+                        (int)engineDetailY,
                         (int)_wLibreOfficeBrowse);
-                    AddHitRect(35, browseX, y, _wLibreOfficeBrowse, 30);
-                    y += 55f;
+                    AddHitRect(35, browseX, engineDetailY, _wLibreOfficeBrowse, 30);
+                    engineDetailY += 55f;
                 }
                 else if (libreOfficeReady)
                 {
@@ -348,36 +376,36 @@ namespace Clickra.UI
                         GetText("setting_libreoffice_update"),
                         false,
                         36,
-                        (int)contentX,
-                        (int)y,
+                        engineContentX,
+                        (int)engineDetailY,
                         (int)_wLibreOfficeDownload);
-                    AddHitRect(36, contentX, y, _wLibreOfficeDownload, 30);
+                    AddHitRect(36, engineContentX, engineDetailY, _wLibreOfficeDownload, 30);
 
                     if (libreOfficeInstalledByClickra)
                     {
-                        float uninstallX = contentX + _wLibreOfficeDownload + margin;
+                        float uninstallX = engineContentX + _wLibreOfficeDownload + margin;
                         DrawOutputDirButton(
                             g,
                             GetText("setting_libreoffice_uninstall"),
                             false,
                             38,
                             (int)uninstallX,
-                            (int)y,
+                            (int)engineDetailY,
                             (int)_wLibreOfficeUninstall);
-                        AddHitRect(38, uninstallX, y, _wLibreOfficeUninstall, 30);
+                        AddHitRect(38, uninstallX, engineDetailY, _wLibreOfficeUninstall, 30);
                     }
                     else if (canAdoptLibreOffice)
                     {
-                        float adoptX = contentX + _wLibreOfficeDownload + margin;
+                        float adoptX = engineContentX + _wLibreOfficeDownload + margin;
                         DrawOutputDirButton(
                             g,
                             GetText("setting_libreoffice_adopt"),
                             false,
                             39,
                             (int)adoptX,
-                            (int)y,
+                            (int)engineDetailY,
                             (int)_wLibreOfficeAdopt);
-                        AddHitRect(39, adoptX, y, _wLibreOfficeAdopt, 30);
+                        AddHitRect(39, adoptX, engineDetailY, _wLibreOfficeAdopt, 30);
 
                     }
                     if (!libreOfficeInstalledByClickra && _subFont != null)
@@ -385,9 +413,10 @@ namespace Clickra.UI
                         // Explain external installation provenance even when a custom/portable install
                         // cannot safely be adopted for system-MSI management.
                         using var externalBrush = new SolidBrush(Color.FromArgb(150, 150, 150));
-                        g.DrawString(GetText("setting_libreoffice_external_hint"), _subFont, externalBrush, contentX * s, (y + 32f) * s);
+                        g.DrawString(GetText("setting_libreoffice_external_hint"), _subFont, externalBrush,
+                            engineContentX * s, (engineDetailY + 32f) * s);
                     }
-                    y += 55f;
+                    engineDetailY += 55f;
                 }
                 else
                 {
@@ -396,28 +425,32 @@ namespace Clickra.UI
                         GetText("setting_libreoffice_download"),
                         false,
                         36,
-                        (int)contentX,
-                        (int)y,
+                        engineContentX,
+                        (int)engineDetailY,
                         (int)_wLibreOfficeDownload);
-                    AddHitRect(36, contentX, y, _wLibreOfficeDownload, 30);
+                    AddHitRect(36, engineContentX, engineDetailY, _wLibreOfficeDownload, 30);
 
-                    float browseX = contentX + _wLibreOfficeDownload + margin;
+                    float browseX = engineContentX + _wLibreOfficeDownload + margin;
                     DrawOutputDirButton(
                         g,
                         GetText("setting_libreoffice_browse"),
                         false,
                         35,
                         (int)browseX,
-                        (int)y,
+                        (int)engineDetailY,
                         (int)_wLibreOfficeBrowse);
-                    AddHitRect(35, browseX, y, _wLibreOfficeBrowse, 30);
-                    y += 55f;
+                    AddHitRect(35, browseX, engineDetailY, _wLibreOfficeBrowse, 30);
+                    engineDetailY += 55f;
                 }
             }
             else
             {
-                y += 32f;
+                engineDetailY += 32f;
             }
+
+            y = wideSettings
+                ? engineStartY + engineCardHeight + SettingsLayout.CardGap
+                : engineDetailY;
 
             if (!wideSettings)
             {
@@ -587,9 +620,25 @@ namespace Clickra.UI
             }
 
             // Parked Task Retention Section
-            y += 2f;
-            DrawSectionHeader("setting_parked_ttl_title", "setting_parked_ttl_desc", y);
-            y += 50f;
+            float retentionStartY = y + 2f;
+            int retentionContentX = (int)contentX;
+            if (wideSettings)
+            {
+                LayoutRect retentionCard = SettingsLayout.CardRect(
+                    (int)contentX,
+                    (int)retentionStartY,
+                    (int)(logW - contentX - SettingsLayout.ContentRightMargin),
+                    SettingsLayout.RetentionCardHeight);
+                DrawCard(retentionCard);
+                retentionContentX = retentionCard.X + SettingsLayout.CardPadding;
+                DrawSectionHeaderAt("setting_parked_ttl_title", "setting_parked_ttl_desc",
+                    retentionContentX, retentionCard.Y + 10);
+            }
+            else
+            {
+                DrawSectionHeader("setting_parked_ttl_title", "setting_parked_ttl_desc", retentionStartY);
+            }
+            float retentionDetailY = retentionStartY + (wideSettings ? 56f : 50f);
 
             int currentDays = ClickraStorage.GetParkedRetentionDays();
             int defaultDays = GetDefaultParkedRetentionDays();
@@ -604,12 +653,13 @@ namespace Clickra.UI
             if (_subFont != null)
             {
                 using var currentBrush = new SolidBrush(Color.FromArgb(200, 200, 200));
-                g.DrawString(currentLabel, _subFont, currentBrush, contentX * s, y * s);
+                g.DrawString(currentLabel, _subFont, currentBrush,
+                    retentionContentX * s, retentionDetailY * s);
             }
-            y += 28f;
+            retentionDetailY += 28f;
 
-            float curX = contentX;
-            float btnY = y;
+            float curX = retentionContentX;
+            float btnY = retentionDetailY;
             float wStep = 34f;
 
             DrawOutputDirButton(g, "-", false, 90, (int)curX, (int)btnY, (int)wStep);
@@ -639,7 +689,9 @@ namespace Clickra.UI
                 curX += btnW + margin;
             }
 
-            y += 50f;
+            y = wideSettings
+                ? retentionStartY + SettingsLayout.RetentionCardHeight + SettingsLayout.CardGap
+                : retentionDetailY + 50f;
 
             // Dynamic settings from SettingPageRegistry
             for (int i = 0; i < SettingPageRegistry.AllDescriptors.Count; i++)

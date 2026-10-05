@@ -424,15 +424,23 @@ static partial class TestSuite
             "Primary Settings toggles must retain the compact first-screen rhythm.");
         Assert.True(SettingsLayout.ContentBottomPadding <= 32,
             "Settings trailing padding must stay compact at high DPI instead of creating a mostly empty viewport.");
+        Assert.True(SettingsLayout.ChoiceCardExpandedHeight > SettingsLayout.ChoiceCardHeight,
+            "A custom output path needs extra room inside the same output card rather than escaping below it.");
+        Assert.True(SettingsLayout.EngineCardHeight >= SettingsLayout.OverviewCardHeight - 16,
+            "The Office engine card must retain enough room for title, choices, and resolved-engine status.");
+        Assert.True(SettingsLayout.EngineLibreOfficeCardHeight > SettingsLayout.EngineCardHeight,
+            "LibreOffice management actions need an expanded engine card instead of spilling into the next section.");
+        Assert.True(SettingsLayout.RetentionCardHeight >= 120,
+            "Task retention title, current value, and presets must fit in one bounded card.");
 
         const int actualHighDpiViewportHeight = 488;
         int commonWideContentHeight = SettingsLayout.ContentTop
             + SettingsLayout.OverviewCardHeight + SettingsLayout.CardGap
             + SettingsLayout.ChoiceCardHeight + SettingsLayout.CardGap
-            + SettingsLayout.PrimaryChoiceSectionHeight + 32
+            + SettingsLayout.EngineCardHeight + SettingsLayout.CardGap
             + SettingsLayout.FluentCardHeight + SettingsLayout.CardGap
             + SettingsLayout.CompressionCardHeight + SettingsLayout.CardGap + 2
-            + 50 + 28 + 50
+            + SettingsLayout.RetentionCardHeight + SettingsLayout.CardGap
             + SettingsLayout.ContentBottomPadding;
         Assert.True(commonWideContentHeight <= actualHighDpiViewportHeight * 2,
             $"Common 200% DPI Settings layout must stay within two viewports, got {commonWideContentHeight}px.");
@@ -460,6 +468,13 @@ static partial class TestSuite
         Assert.True(paint.Contains("int fullWidth = (int)(logW - contentX - SettingsLayout.ContentRightMargin)", StringComparison.Ordinal)
                     && paint.Contains("int pdfSecondaryX = SettingsLayout.ColumnX((int)contentX, (int)logW, 1)", StringComparison.Ordinal),
             "Wide PDF compression must use the full card width and place secondary controls in the second column.");
+        Assert.True(paint.Contains("SettingsLayout.ChoiceCardExpandedHeight", StringComparison.Ordinal)
+                    && paint.Contains("SettingsLayout.EngineCardHeight", StringComparison.Ordinal)
+                    && paint.Contains("SettingsLayout.RetentionCardHeight", StringComparison.Ordinal),
+            "Wide Settings groups must keep custom output, Office engine, and task retention inside bounded cards.");
+        Assert.True(paint.Contains("retentionContentX = retentionCard.X + SettingsLayout.CardPadding", StringComparison.Ordinal)
+                    && paint.Contains("engineContentX = wideSettings", StringComparison.Ordinal),
+            "Wide Settings card contents must use the shared card inset instead of falling back to naked page coordinates.");
         Assert.True(paint.Contains("descriptor.Key.Equals(ClickraSettings.ImageCompressLevel", StringComparison.Ordinal)
                     && paint.Contains("descriptor.Key.Equals(ClickraSettings.ImageCompressMaxDimension", StringComparison.Ordinal),
             "AOT Settings must explicitly skip per-conversion image compression controls.");
