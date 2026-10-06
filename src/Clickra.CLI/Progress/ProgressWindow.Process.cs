@@ -91,6 +91,9 @@ namespace Clickra.UI
                     case "img-stitch":
                         FileProcessor.StitchImages(currentFiles, Path.Combine(outputDir, "Stitched_Image.png"), progressCallback, _cts.Token);
                         break;
+                    case "img-compress":
+                        RunImageCompression(currentFiles, _outputDirOverride, progressCallback);
+                        break;
                     case "img-to-png":
                     case "img-to-jpg":
                     case "img-to-webp":
@@ -139,7 +142,7 @@ namespace Clickra.UI
                 string endTime = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
                 string inputs = string.Join(";", currentFiles);
                 string outputDir = currentFiles.Count > 0 ? ClickraStorage.GetOutputDir(currentFiles[0]) : "";
-                string outputs = currentFiles.Count > 0 ? GetOutputPath(cmd, currentFiles, outputDir, _outputDirOverride) : "";
+                string outputs = currentFiles.Count > 0 ? GetOutputPathForError(cmd, currentFiles, outputDir, _outputDirOverride) : "";
 
                 bool wasCanceled = _cts.IsCancellationRequested || ex is OperationCanceledException;
                 string errorMsg = wasCanceled ? "User Aborted" : ex.Message;
@@ -226,6 +229,22 @@ namespace Clickra.UI
                 new ConvertCommandRunner.ConversionOptions(
                     _ => System.Threading.Tasks.Task.FromResult<string?>(null),
                     (_, _) => System.Threading.Tasks.Task.FromResult<string?>(null)),
+                _cts.Token);
+        }
+
+        /// <summary>Compresses each selected image through the shared core runner.</summary>
+        private void RunImageCompression(List<string> files, string? outputDirOverride, Action<int, int, string> progressCallback)
+        {
+            var outputs = ConvertCommandRegistry.EstimateImageCompressionOutputs(files, outputDirOverride);
+            ConvertCommandRunner.Run(
+                "img-compress",
+                files,
+                outputs,
+                progressCallback,
+                new ConvertCommandRunner.ConversionOptions(
+                    _ => System.Threading.Tasks.Task.FromResult<string?>(null),
+                    (_, _) => System.Threading.Tasks.Task.FromResult<string?>(null),
+                    _startIndex),
                 _cts.Token);
         }
         /// <summary>Translates each PDF to the saved target language, reporting per-file
@@ -435,6 +454,8 @@ namespace Clickra.UI
                     return string.Join(";", inputFiles.Select(f => Path.Combine(outputDir, Path.GetFileNameWithoutExtension(f) + "_decrypted.pdf")));
                 case "compress-pdf":
                     return string.Join(";", inputFiles.Select(f => Path.Combine(outputDir, Path.GetFileNameWithoutExtension(f) + "_compressed.pdf")));
+                case "img-compress":
+                    return string.Join(";", ConvertCommandRegistry.EstimateImageCompressionOutputs(inputFiles, outputDirOverride));
                 case "img-to-png":
                 case "img-to-jpg":
                 case "img-to-webp":
@@ -443,6 +464,21 @@ namespace Clickra.UI
                     return string.Join(";", ConvertCommandRegistry.EstimateImageFormatOutputs(cmd, inputFiles, outputDirOverride));
                 default:
                     return outputDir;
+            }
+        }
+
+        /// <summary>Best-effort output-path rendering for failure history. Validation failures can
+        /// originate inside output planning itself, so error logging must never invoke the same
+        /// failing planner and mask the original exception or skip task cleanup.</summary>
+        private static string GetOutputPathForError(string cmd, List<string> inputFiles, string outputDir, string? outputDirOverride)
+        {
+            try
+            {
+                return GetOutputPath(cmd, inputFiles, outputDir, outputDirOverride);
+            }
+            catch
+            {
+                return "";
             }
         }
 

@@ -75,13 +75,14 @@ Clickra is designed as a **Local-First, privacy-respecting utility**. By princip
 | **Image Tools** | `img2pdf` | ❌ 100% Offline | None | In-process PDFsharp + GDI+/WIC |
 | | `img-merge` ⚑ | ❌ 100% Offline | None | In-process PDFsharp |
 | | `img-stitch` ⚑ | ❌ 100% Offline | None | In-memory canvas vertical stitching |
+| | `img-compress` | ❌ 100% Offline | Windows HEIF Image Extension for HEIC input/output only | Same-format compression with shared quality presets, optional long-edge resize, bundled WebP encoding, and WIC/WinRT HEIC support |
 | | `img-to-png` / `jpg` / `gif` ⚑ | ❌ 100% Offline | None | Built-in Windows GDI+ / WIC encoders |
 | | `img-to-webp` ⚑ | ⚠️ User-initiated Store preflight if extension is absent | Windows WebP Image Extension (if absent) | Windows WIC encoder with Store preflight fallback |
 | | `img-to-heic` ⚑ | ⚠️ User-initiated Store preflight if extension is absent | Windows HEIF Image Extension (if absent) | Windows WIC / WinRT (`Microsoft HEIF Encoder`) with Store preflight fallback |
 | **Office to PDF** | `word2pdf`<br>`excel2pdf`<br>`ppt2pdf` | ❌ 100% Offline | Microsoft Office or LibreOffice | 1. Local MS Office via COM Automation (preferred)<br>2. Local LibreOffice via headless CLI<br>3. Guided on-demand download of official LibreOffice MSI (~372 MB) if neither is installed |
 | **PDF Translation** | `translate-pdf` | 🌐 **Requires Internet** | None | Text extracted locally and sent over HTTPS to Google Translate / MyMemory API; layout synthesis and PDF rendering are 100% local |
 
-*(Note: Commands marked with ⚑ belong to the image-conversion roadmap. The image-compression preset/settings contract exists in Core, but `img-compress` is not currently exposed as a production command or processor and is therefore not listed as an active command here.)*
+*(Note: Commands marked with ⚑ belong to the image-conversion roadmap.)*
 
 ### Outbound Network Endpoints
 

@@ -15,6 +15,12 @@ $icons = @(
     @{ Name = "menu-img2pdf.ico";      Color = "#7A3E9D"; Kind = "ImageToPage" },
     @{ Name = "menu-img-merge.ico";    Color = "#8E44AD"; Kind = "ImageMerge" },
     @{ Name = "menu-img-stitch.ico";   Color = "#5C4FB5"; Kind = "Stitch" },
+    @{ Name = "menu-img-compress.ico"; Color = "#7A5C00"; Kind = "Compress" },
+    @{ Name = "menu-img-to-png.ico";   Color = "#0078D4"; Kind = "Format"; Letter = "PNG" },
+    @{ Name = "menu-img-to-jpg.ico";   Color = "#FF8C00"; Kind = "Format"; Letter = "JPG" },
+    @{ Name = "menu-img-to-webp.ico";  Color = "#0099BC"; Kind = "Format"; Letter = "WEBP" },
+    @{ Name = "menu-img-to-gif.ico";   Color = "#A349A4"; Kind = "Format"; Letter = "GIF" },
+    @{ Name = "menu-img-to-heic.ico";  Color = "#107C41"; Kind = "Format"; Letter = "HEIC" },
     @{ Name = "menu-translate-pdf.ico";Color = "#007C91"; Kind = "Translate" },
     @{ Name = "menu-decrypt-pdf.ico";  Color = "#C47F00"; Kind = "Unlock" },
     @{ Name = "menu-split-pdf.ico";    Color = "#B83232"; Kind = "Split" }
@@ -101,6 +107,19 @@ function New-IconFrame([int]$size, $definition) {
                 $graphics.DrawLine($whitePen, 32, 27, 32, 38)
                 $graphics.DrawLine($whitePen, 27, 33, 32, 38)
                 $graphics.DrawLine($whitePen, 37, 33, 32, 38)
+            }
+            "Format" {
+                Draw-ImageFrame $graphics 10 11 44 31 $thinWhitePen
+                $font = [System.Drawing.Font]::new("Segoe UI", 14, [System.Drawing.FontStyle]::Bold, [System.Drawing.GraphicsUnit]::Pixel)
+                try {
+                    $format = [System.Drawing.StringFormat]::new()
+                    $format.Alignment = [System.Drawing.StringAlignment]::Center
+                    $format.LineAlignment = [System.Drawing.StringAlignment]::Center
+                    $graphics.FillRectangle($background, 7, 40, 50, 18)
+                    $graphics.DrawString($definition.Letter, $font, $whiteBrush, [System.Drawing.RectangleF]::new(7, 39, 50, 18), $format)
+                    $format.Dispose()
+                }
+                finally { $font.Dispose() }
             }
             "Translate" {
                 # A + 文 is the familiar language/translation symbol and survives 16 px better

@@ -30,17 +30,18 @@ namespace ClickraShell
         private const int E_FAIL = -2_147_467_259;
         private const uint SIGDN_FILESYSPATH = 0x8005_8000;
 
-        private static readonly string[] MenuKeys = { "Menu_Ppt2Pdf", "Menu_Word2Pdf", "Menu_Excel2Pdf", "Menu_MergePdf", "Menu_CompressPdf", "Menu_Img2Pdf", "Menu_ImgMerge", "Menu_ImgStitch", "Menu_TranslatePdf", "Menu_DecryptPdf", "Menu_SplitPdf" };
+        private static readonly string[] MenuKeys = { "Menu_Ppt2Pdf", "Menu_Word2Pdf", "Menu_Excel2Pdf", "Menu_MergePdf", "Menu_CompressPdf", "Menu_Img2Pdf", "Menu_ImgMerge", "Menu_ImgStitch", "Menu_ImgCompress", "Menu_TranslatePdf", "Menu_DecryptPdf", "Menu_SplitPdf", "Menu_ImgToPng", "Menu_ImgToJpg", "Menu_ImgToWebp", "Menu_ImgToGif", "Menu_ImgToHeic" };
 
         /// <summary>Resource key of the root (parent) submenu label, so the app's own name comes from
         /// the same resw as every entry under it instead of a hardcoded literal.</summary>
         private const string RootTitleKey = "AppName";
-        private static readonly string[] SubArgs = { "ppt2pdf", "word2pdf", "excel2pdf", "merge-pdf", "compress-pdf", "img2pdf", "img-merge", "img-stitch", "translate-pdf", "decrypt-pdf", "split-pdf" };
+        private static readonly string[] SubArgs = { "ppt2pdf", "word2pdf", "excel2pdf", "merge-pdf", "compress-pdf", "img2pdf", "img-merge", "img-stitch", "img-compress", "translate-pdf", "decrypt-pdf", "split-pdf", "img-to-png", "img-to-jpg", "img-to-webp", "img-to-gif", "img-to-heic" };
         /// <summary>Per-command icon files, positionally aligned with SubArgs. The root command (-1) uses app.ico.</summary>
         private static readonly string[] IconFiles = {
             "menu-ppt2pdf.ico", "menu-word2pdf.ico", "menu-excel2pdf.ico", "menu-merge-pdf.ico",
             "menu-compress-pdf.ico", "menu-img2pdf.ico", "menu-img-merge.ico", "menu-img-stitch.ico",
-            "menu-translate-pdf.ico", "menu-decrypt-pdf.ico", "menu-split-pdf.ico"
+            "menu-img-compress.ico", "menu-translate-pdf.ico", "menu-decrypt-pdf.ico", "menu-split-pdf.ico",
+            "menu-img-to-png.ico", "menu-img-to-jpg.ico", "menu-img-to-webp.ico", "menu-img-to-gif.ico", "menu-img-to-heic.ico"
         };
 
         /// <summary>Allocates a COM object with the given vtable and type, then performs a
@@ -177,6 +178,7 @@ namespace ClickraShell
         [UnmanagedCallersOnly(CallConvs = new[] { typeof(CallConvStdcall) })] public static unsafe int GetCanonicalName(IntPtr _this, Guid* p) { *p = Guid.Empty; return 0; }
 
         /// <summary>Returns whether the file extension is supported by the command index.</summary>
+        [SuppressMessage("SonarQube", "S1192", Justification = "UiResourceCoverage parses the literal extension lists here to verify Explorer and registry parity.")]
         private static bool IsSupported(string path, int idx)
         {
             string ext = Path.GetExtension(path).ToLowerInvariant();
@@ -184,18 +186,24 @@ namespace ClickraShell
 
             return idx switch
             {
-                -1 => new[] { ".ppt", ".pptx", ".doc", ".docx", ".xlsx", ".xls", ".pdf", ".jpg", ".jpeg", ".png", ".gif", ".webp" }.Contains(ext),
+                -1 => new[] { ".ppt", ".pptx", ".doc", ".docx", ".xlsx", ".xls", ".pdf", ".jpg", ".jpeg", ".png", ".bmp", ".gif", ".tif", ".tiff", ".webp", ".heic", ".heif", ".hif" }.Contains(ext),
                 0 => ext == ".ppt" || ext == ".pptx",
                 1 => ext == ".doc" || ext == ".docx",
                 2 => ext == ".xlsx" || ext == ".xls",
-                3 or 4 or 8 or 9 or 10 => ext == ".pdf",
-                5 or 6 or 7 => new[] { ".jpg", ".jpeg", ".png", ".gif", ".webp" }.Contains(ext),
+                3 or 4 or 9 or 10 or 11 => ext == ".pdf",
+                5 or 6 or 7 => new[] { ".jpg", ".jpeg", ".png", ".bmp", ".gif", ".tiff", ".webp", ".heic" }.Contains(ext),
+                8 => new[] { ".jpg", ".jpeg", ".png", ".bmp", ".gif", ".tif", ".tiff", ".webp", ".heic", ".heif", ".hif" }.Contains(ext),
+                12 => ext != ".png" && new[] { ".jpg", ".jpeg", ".bmp", ".gif", ".tiff", ".webp", ".heic" }.Contains(ext),
+                13 => ext != ".jpg" && ext != ".jpeg" && new[] { ".png", ".bmp", ".gif", ".tiff", ".webp", ".heic" }.Contains(ext),
+                14 => ext != ".webp" && new[] { ".jpg", ".jpeg", ".png", ".bmp", ".gif", ".tiff", ".heic" }.Contains(ext),
+                15 => ext != ".gif" && new[] { ".jpg", ".jpeg", ".png", ".bmp", ".tiff", ".webp", ".heic" }.Contains(ext),
+                16 => ext != ".heic" && new[] { ".jpg", ".jpeg", ".png", ".bmp", ".gif", ".tiff", ".webp" }.Contains(ext),
                 _ => false
             };
         }
 
-        /// <summary>IExplorerCommand.GetState — enables the command when the selection contains
-        /// a supported file (and the multi-file commands receive at least two files).</summary>
+        /// <summary>IExplorerCommand.GetState — enables the command only when every selected file
+        /// is supported (and the multi-file commands receive at least two files).</summary>
         [UnmanagedCallersOnly(CallConvs = new[] { typeof(CallConvStdcall) })]
         public static unsafe int GetState(IntPtr _this, IntPtr psi, int slow, uint* p)
         {
@@ -212,7 +220,7 @@ namespace ClickraShell
                 _ => true
             };
 
-            if (countOk && files.Any(f => IsSupported(f, idx)))
+            if (countOk && files.All(f => IsSupported(f, idx)))
             {
                 *p = 0; // ECS_ENABLED
             }

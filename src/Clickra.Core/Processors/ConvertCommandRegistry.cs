@@ -14,6 +14,9 @@ public static class ConvertCommandRegistry
         private const string CmdImgToWebp = "img-to-webp";
         private const string CmdImgToGif = "img-to-gif";
         private const string CmdImgToHeic = "img-to-heic";
+        private const string CmdImgCompress = "img-compress";
+        private const string ExtensionWebp = ".webp";
+        private const string ExtensionHeic = ".heic";
 
         private sealed record CommandDef(string[] Extensions, int MinFiles, string LabelKey, string[]? ExcludeExtensions = null);
 
@@ -21,7 +24,8 @@ public static class ConvertCommandRegistry
         private static readonly string[] PptExtensions = { ".ppt", ".pptx" };
         private static readonly string[] WordExtensions = { ".doc", ".docx" };
         private static readonly string[] ExcelExtensions = { ".xls", ".xlsx" };
-        private static readonly string[] ImageExtensions = [".jpg", ".jpeg", ".png", ".bmp", ".gif", ".tiff", ".webp", ".heic"];
+        private static readonly string[] ImageExtensions = [".jpg", ".jpeg", ".png", ".bmp", ".gif", ".tiff", ExtensionWebp, ExtensionHeic];
+        private static readonly string[] ImageCompressionExtensions = [".jpg", ".jpeg", ".png", ".bmp", ".gif", ".tif", ".tiff", ExtensionWebp, ExtensionHeic, ".heif", ".hif"];
 
         /// <summary>UI 檔案類型分類：先選類型再選命令，從源頭避免混雜類型。</summary>
         private static readonly (string Type, string[] Extensions, string[] Commands)[] FileTypes =
@@ -30,7 +34,7 @@ public static class ConvertCommandRegistry
             ("word", WordExtensions, ["word2pdf"]),
             ("excel", ExcelExtensions, ["excel2pdf"]),
             ("ppt", PptExtensions, ["ppt2pdf"]),
-            ("image", ImageExtensions, ["img2pdf", "img-merge", "img-stitch", CmdImgToPng, CmdImgToJpg, CmdImgToWebp, CmdImgToGif, CmdImgToHeic])
+            ("image", ImageExtensions, ["img2pdf", "img-merge", "img-stitch", CmdImgCompress, CmdImgToPng, CmdImgToJpg, CmdImgToWebp, CmdImgToGif, CmdImgToHeic])
         };
 
         /// <summary>File extensions accepted by a UI file type ("pdf", "word", "excel", "ppt", "image").</summary>
@@ -59,9 +63,9 @@ public static class ConvertCommandRegistry
         /// and are always excluded together).</summary>
         private static readonly string[] PngExcluded = { ".png" };
         private static readonly string[] JpegExcluded = { ".jpg", ".jpeg" };
-        private static readonly string[] WebpExcluded = { ".webp" };
+        private static readonly string[] WebpExcluded = { ExtensionWebp };
         private static readonly string[] GifExcluded = { ".gif" };
-        private static readonly string[] HeicExcluded = { ".heic" };
+        private static readonly string[] HeicExcluded = { ExtensionHeic };
 
         /// <summary>Every convert command and its metadata, in dashboard order.</summary>
         private static readonly Dictionary<string, CommandDef> Commands = new(StringComparer.OrdinalIgnoreCase)
@@ -77,6 +81,7 @@ public static class ConvertCommandRegistry
             ["img2pdf"] = new(ImageExtensions, 1, "cmd_img_to_pdf"),
             ["img-merge"] = new(ImageExtensions, 2, "cmd_merge_img"),
             ["img-stitch"] = new(ImageExtensions, 2, "cmd_stitch_img"),
+            [CmdImgCompress] = new(ImageCompressionExtensions, 1, "cmd_img_compress"),
             [CmdImgToPng] = new(ImageExtensions, 1, "cmd_img_to_png", PngExcluded),
             [CmdImgToJpg] = new(ImageExtensions, 1, "cmd_img_to_jpg", JpegExcluded),
             [CmdImgToWebp] = new(ImageExtensions, 1, "cmd_img_to_webp", WebpExcluded),
@@ -132,6 +137,7 @@ public static class ConvertCommandRegistry
                 "decrypt-pdf" => files.Select(f => Path.Combine(ClickraStorage.GetOutputDir(f), Path.GetFileNameWithoutExtension(f) + "_decrypted.pdf")).ToList(),
                 "split-pdf" => files.Select(f => Path.Combine(ClickraStorage.GetOutputDir(f), Path.GetFileNameWithoutExtension(f) + "_split.pdf")).ToList(),
                 "img2pdf" => files.Select(f => Path.Combine(ClickraStorage.GetOutputDir(f), Path.GetFileNameWithoutExtension(f) + ".pdf")).ToList(),
+                CmdImgCompress => EstimateImageCompressionOutputs(files),
                 CmdImgToPng or CmdImgToJpg or CmdImgToWebp or CmdImgToGif or CmdImgToHeic
                     => EstimateImageFormatOutputs(command, files),
                 _ => files.Select(f => Path.Combine(ClickraStorage.GetOutputDir(f), Path.GetFileNameWithoutExtension(f) + ".pdf")).ToList()
@@ -146,9 +152,9 @@ public static class ConvertCommandRegistry
             {
                 CmdImgToPng => ".png",
                 CmdImgToJpg => ".jpg",
-                CmdImgToWebp => ".webp",
+                CmdImgToWebp => ExtensionWebp,
                 CmdImgToGif => ".gif",
-                CmdImgToHeic => ".heic",
+                CmdImgToHeic => ExtensionHeic,
                 _ => throw new InvalidOperationException($"Unknown image format command '{command}'.")
             };
             var outputs = files
@@ -158,6 +164,36 @@ public static class ConvertCommandRegistry
                 .ToList();
             EnsureUniqueOutputPaths(outputs);
             return outputs;
+        }
+
+        /// <summary>Predicts one compressed output per image while preserving each input extension.</summary>
+        public static List<string> EstimateImageCompressionOutputs(List<string> files, string? outputDirOverride = null)
+        {
+            var outputs = files.Select(f => Path.Combine(
+                    string.IsNullOrWhiteSpace(outputDirOverride) ? ClickraStorage.GetOutputDir(f) : outputDirOverride,
+                    Path.GetFileNameWithoutExtension(f) + "_compressed" + Path.GetExtension(f)))
+                .ToList();
+            EnsureUniqueOutputPaths(outputs);
+            EnsureOutputsDoNotOverwriteInputs(files, outputs);
+            return outputs;
+        }
+
+        /// <summary>Fails before processing when an output path would overwrite any selected input.
+        /// This matters for sequential per-file operations because an early result must never replace
+        /// a later source before that source has been processed.</summary>
+        private static void EnsureOutputsDoNotOverwriteInputs(IEnumerable<string> inputs, IEnumerable<string> outputs)
+        {
+            var inputPaths = inputs
+                .Select(Path.GetFullPath)
+                .ToHashSet(StringComparer.OrdinalIgnoreCase);
+            string? collision = outputs
+                .Select(Path.GetFullPath)
+                .FirstOrDefault(inputPaths.Contains);
+            if (collision is not null)
+            {
+                string template = Localization.T("error_image_output_overwrites_input", ClickraStorage.GetSetting(ClickraSettings.Language));
+                throw new InvalidOperationException(string.Format(template, collision));
+            }
         }
 
         /// <summary>Fails before conversion when multiple inputs would resolve to the same

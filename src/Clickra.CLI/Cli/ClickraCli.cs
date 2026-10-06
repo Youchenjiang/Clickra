@@ -211,25 +211,43 @@ namespace Clickra
         /// <summary>Handles image conversion, merge and stitching commands.</summary>
         private static bool DispatchImageCommand(string command, List<string> files, bool quiet, string outputDir, string? outputDirOverride)
         {
+            string[] allowed = ConvertCommandRegistry.GetAllowedExtensions(command);
             switch (command)
             {
                 case "img2pdf":
-                    ValidateExtensions(files, command, quiet, ".jpg", ".jpeg", ".png", ".bmp", ".gif", ".tiff", ".webp");
+                    ValidateExtensions(files, command, quiet, allowed);
                     RequireMinFiles(files, command, 1, quiet);
                     if (quiet) HandleImg2PdfQuiet(files, outputDir);
                     else ProgressWindow.Show(command, files);
                     return true;
                 case "img-merge":
-                    ValidateExtensions(files, command, quiet, ".jpg", ".jpeg", ".png", ".bmp", ".gif", ".tiff", ".webp");
+                    ValidateExtensions(files, command, quiet, allowed);
                     RequireMinFiles(files, command, 2, quiet);
                     if (quiet) FileProcessor.ConvertImagesToPdf(files, Path.Combine(outputDir, "Merged_Images.pdf"), (curr, tot, msg) => Console.WriteLine($"[Progress] {msg}"));
                     else ProgressWindow.Show(command, files);
                     return true;
                 case "img-stitch":
-                    ValidateExtensions(files, command, quiet, ".jpg", ".jpeg", ".png", ".bmp", ".gif", ".tiff", ".webp");
+                    ValidateExtensions(files, command, quiet, allowed);
                     RequireMinFiles(files, command, 2, quiet);
                     if (quiet) FileProcessor.StitchImages(files, Path.Combine(outputDir, "Stitched_Image.png"), (curr, tot, msg) => Console.WriteLine($"[Progress] {msg}"));
                     else ProgressWindow.Show(command, files);
+                    return true;
+                case "img-compress":
+                    ValidateExtensions(files, command, quiet, allowed);
+                    RequireMinFiles(files, command, ConvertCommandRegistry.GetMinFiles(command), quiet);
+                    if (quiet)
+                    {
+                        var outputs = ConvertCommandRegistry.EstimateImageCompressionOutputs(files, outputDirOverride ?? outputDir);
+                        ConvertCommandRunner.Run(
+                            command,
+                            files,
+                            outputs,
+                            (curr, total, msg) => Console.WriteLine($"[Progress] {msg}"),
+                            new ConvertCommandRunner.ConversionOptions(
+                                _ => System.Threading.Tasks.Task.FromResult<string?>(null),
+                                (_, _) => System.Threading.Tasks.Task.FromResult<string?>(null)));
+                    }
+                    else ProgressWindow.Show(command, files, outputDirOverride);
                     return true;
                 case "img-to-png":
                 case "img-to-jpg":

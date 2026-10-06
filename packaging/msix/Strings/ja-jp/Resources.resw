@@ -42,6 +42,24 @@
   <data name="Menu_ImgStitch" xml:space="preserve">
     <value>画像を縦に結合</value>
   </data>
+  <data name="Menu_ImgCompress" xml:space="preserve">
+    <value>画像を圧縮</value>
+  </data>
+  <data name="Menu_ImgToPng" xml:space="preserve">
+    <value>PNG に変換</value>
+  </data>
+  <data name="Menu_ImgToJpg" xml:space="preserve">
+    <value>JPG に変換</value>
+  </data>
+  <data name="Menu_ImgToWebp" xml:space="preserve">
+    <value>WEBP に変換</value>
+  </data>
+  <data name="Menu_ImgToGif" xml:space="preserve">
+    <value>GIF に変換</value>
+  </data>
+  <data name="Menu_ImgToHeic" xml:space="preserve">
+    <value>HEIC に変換</value>
+  </data>
   <data name="Menu_TranslatePdf" xml:space="preserve">
     <value>PDF 一括翻訳</value>
   </data>
