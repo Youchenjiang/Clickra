@@ -79,6 +79,7 @@ Clickra is designed as a **Local-First, privacy-respecting utility**. By princip
 | | `img-to-png` / `jpg` / `gif` ⚑ | ❌ 100% Offline | None | Built-in Windows GDI+ / WIC encoders |
 | | `img-to-webp` ⚑ | ⚠️ User-initiated Store preflight if extension is absent | Windows WebP Image Extension (if absent) | Windows WIC encoder with Store preflight fallback |
 | | `img-to-heic` ⚑ | ⚠️ User-initiated Store preflight if extension is absent | Windows HEIF Image Extension (if absent) | Windows WIC / WinRT (`Microsoft HEIF Encoder`) with Store preflight fallback |
+| **Document to PDF** | `md2pdf` | ❌ 100% Offline | None | In-process Markdig AST parsing + PDFsharp rendering; local relative images are embedded without remote fetches |
 | **Office to PDF** | `word2pdf`<br>`excel2pdf`<br>`ppt2pdf` | ❌ 100% Offline | Microsoft Office or LibreOffice | 1. Local MS Office via COM Automation (preferred)<br>2. Local LibreOffice via headless CLI<br>3. Guided on-demand download of official LibreOffice MSI (~372 MB) if neither is installed |
 | **PDF Translation** | `translate-pdf` | 🌐 **Requires Internet** | None | Text extracted locally and sent over HTTPS to Google Translate / MyMemory API; layout synthesis and PDF rendering are 100% local |
 

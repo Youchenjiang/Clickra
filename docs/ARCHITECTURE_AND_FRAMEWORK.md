@@ -6,7 +6,7 @@
 | :--- | :--- | :--- | :--- |
 | **Clickra.CLI** | `src/Clickra.CLI/Clickra.csproj` | C# (.NET 8 LTS) | **NativeAOT** (`PublishAot=true`)，零依賴原生可執行檔 |
 | **ClickraShell** | `src/ClickraShell/ClickraShell.csproj` | C# (.NET 8 LTS) | **NativeAOT** (`PublishAot=true`)，Win32 COM Surrogate Server 右鍵擴充檔 |
-| **Clickra.Core** | `src/Clickra.Core/Clickra.Core.csproj` | C# (.NET 8 LTS) | 共享轉換邏輯庫 (PDF, Office, 圖片處理) |
+| **Clickra.Core** | `src/Clickra.Core/Clickra.Core.csproj` | C# (.NET 8 LTS) | 共享轉換邏輯庫 (PDF, Office, Markdown, 圖片處理) |
 | **Clickra.Fluent** | `src/Clickra.Fluent/Clickra.Fluent.csproj` | C# (.NET 8 LTS) + WinUI 3 | **Framework-Dependent**，主儀表板與工作進度 UI |
 
 ---
