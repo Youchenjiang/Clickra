@@ -171,7 +171,26 @@ public static class ConvertCommandRegistry
                     Path.GetFileNameWithoutExtension(f) + "_compressed" + Path.GetExtension(f)))
                 .ToList();
             EnsureUniqueOutputPaths(outputs);
+            EnsureOutputsDoNotOverwriteInputs(files, outputs);
             return outputs;
+        }
+
+        /// <summary>Fails before processing when an output path would overwrite any selected input.
+        /// This matters for sequential per-file operations because an early result must never replace
+        /// a later source before that source has been processed.</summary>
+        private static void EnsureOutputsDoNotOverwriteInputs(IEnumerable<string> inputs, IEnumerable<string> outputs)
+        {
+            var inputPaths = inputs
+                .Select(Path.GetFullPath)
+                .ToHashSet(StringComparer.OrdinalIgnoreCase);
+            string? collision = outputs
+                .Select(Path.GetFullPath)
+                .FirstOrDefault(inputPaths.Contains);
+            if (collision is not null)
+            {
+                string template = Localization.T("error_image_output_overwrites_input", ClickraStorage.GetSetting(ClickraSettings.Language));
+                throw new InvalidOperationException(string.Format(template, collision));
+            }
         }
 
         /// <summary>Fails before conversion when multiple inputs would resolve to the same

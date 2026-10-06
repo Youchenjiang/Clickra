@@ -198,6 +198,24 @@ static partial class TestSuite
                 Assert.Throws<InvalidOperationException>(() => FileProcessor.CompressImage(source, source));
             });
         });
+
+        runner.Run("Image compression: output planning rejects collisions with selected inputs", () =>
+        {
+            RunWithTempDirectory(tempDir =>
+            {
+                string first = Path.Combine(tempDir, "photo.jpg");
+                string second = Path.Combine(tempDir, "photo_compressed.jpg");
+                File.WriteAllBytes(first, new byte[] { 1 });
+                File.WriteAllBytes(second, new byte[] { 2 });
+
+                InvalidOperationException ex = Assert.Throws<InvalidOperationException>(() =>
+                    ConvertCommandRegistry.EstimateImageCompressionOutputs(new List<string> { first, second }, tempDir));
+                Assert.True(ex.Message.Contains("photo_compressed.jpg", StringComparison.OrdinalIgnoreCase),
+                    "Collision error must identify the selected input that would be overwritten.");
+                Assert.True(File.ReadAllBytes(second).SequenceEqual(new byte[] { 2 }),
+                    "Planning a rejected compression batch must leave every selected input untouched.");
+            });
+        });
     }
 
     private static string CreateCompressionNoiseJpeg(string directory, string fileName, int width, int height, long quality)
