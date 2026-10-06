@@ -338,6 +338,32 @@ static partial class TestSuite
             Assert.True(ConvertCommandRegistry.GetAllowedExtensions(command).Length > 0,
                 ShellCommandMessagePrefix + command + "' has no allowed input extensions.");
 
+            string indexToken = i.ToString();
+            string? supportArm = shellSource
+                .Split(new[] { "\r\n", "\n" }, StringSplitOptions.None)
+                .FirstOrDefault(line =>
+                {
+                    int arrow = line.IndexOf("=>", StringComparison.Ordinal);
+                    if (arrow < 0) return false;
+                    string indices = line[..arrow];
+                    return Regex.Matches(indices, @"\b\d+\b", RegexOptions.None, UiResourceRegexTimeout)
+                        .Any(match => string.Equals(match.Value, indexToken, StringComparison.Ordinal));
+                });
+            Assert.True(supportArm is not null,
+                ShellCommandMessagePrefix + command + "' has no IsSupported switch arm.");
+            foreach (string extension in ConvertCommandRegistry.GetAllowedExtensions(command))
+            {
+                Assert.True(supportArm!.Contains('"' + extension + '"', StringComparison.OrdinalIgnoreCase),
+                    ShellCommandMessagePrefix + command + "' hides registry-supported extension " + extension + ".");
+            }
+            foreach (string extension in ConvertCommandRegistry.GetExcludedExtensions(command))
+            {
+                Assert.False(supportArm!.Contains("new[]", StringComparison.Ordinal)
+                             && !supportArm.Contains("!=", StringComparison.Ordinal)
+                             && supportArm.Contains('"' + extension + '"', StringComparison.OrdinalIgnoreCase),
+                    ShellCommandMessagePrefix + command + "' must not enable excluded extension " + extension + ".");
+            }
+
             int minFiles = ConvertCommandRegistry.GetMinFiles(command);
             bool shellRequiresMultiple = multiFileIndices.Contains(i);
             Assert.True((minFiles > 1) == shellRequiresMultiple,

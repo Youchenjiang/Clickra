@@ -130,8 +130,9 @@ static partial class TestSuite
             var outputs = ConvertCommandRegistry.EstimateImageCompressionOutputs(
                 new List<string> { Path.Combine("C:\\input", "photo.jpg") },
                 "C:\\output");
-            Assert.True(outputs.Count == 1 && outputs[0].EndsWith("photo_compressed.jpg", StringComparison.OrdinalIgnoreCase),
-                "img-compress must preserve the source extension and use the _compressed suffix.");
+            string expectedOutput = Path.GetFullPath(Path.Combine("C:\\output", "photo_compressed.jpg"));
+            Assert.True(outputs.Count == 1 && string.Equals(Path.GetFullPath(outputs[0]), expectedOutput, StringComparison.OrdinalIgnoreCase),
+                "img-compress must honor the output-directory override and preserve the source extension.");
 
             string[] allowed = ConvertCommandRegistry.GetAllowedExtensions("img-compress");
             foreach (string extension in new[] { ".tif", ".tiff", ".heic", ".heif", ".hif" })
@@ -351,10 +352,11 @@ static partial class TestSuite
             string? root = FindRepoRoot();
             if (root is null) throw new TestSkippedException("Could not locate repository root.");
             string progress = File.ReadAllText(Path.Combine(root, "src", "Clickra.CLI", "Progress", "ProgressWindow.Process.cs"));
+            string normalizedProgress = progress.Replace("\r\n", "\n", StringComparison.Ordinal);
             Assert.True(progress.Contains("GetOutputPathForError(cmd, currentFiles, outputDir, _outputDirOverride)", StringComparison.Ordinal),
                 "Progress failure handling must use the non-throwing output-path logger.");
             Assert.True(progress.Contains("private static string GetOutputPathForError", StringComparison.Ordinal)
-                        && progress.Contains("catch\n            {\n                return \"\";\n            }", StringComparison.Ordinal),
+                        && normalizedProgress.Contains("catch\n            {\n                return \"\";\n            }", StringComparison.Ordinal),
                 "Failure-history output rendering must not mask the original exception when output planning also fails.");
         });
     }
@@ -362,12 +364,14 @@ static partial class TestSuite
     private static string CreateCompressionNoiseJpeg(string directory, string fileName, int width, int height, long quality)
     {
         string path = Path.Combine(directory, fileName);
-        var random = new Random(20261006);
         using var bitmap = new Bitmap(width, height, PixelFormat.Format24bppRgb);
         for (int y = 0; y < height; y++)
         {
             for (int x = 0; x < width; x++)
-                bitmap.SetPixel(x, y, Color.FromArgb(random.Next(256), random.Next(256), random.Next(256)));
+            {
+                int value = unchecked(((x + 1) * 73_856_093) ^ ((y + 1) * 19_349_663));
+                bitmap.SetPixel(x, y, Color.FromArgb(value & 0xFF, (value >> 8) & 0xFF, (value >> 16) & 0xFF));
+            }
         }
         var encoder = ImageCodecInfo.GetImageEncoders()
             .First(codec => string.Equals(codec.MimeType, "image/jpeg", StringComparison.OrdinalIgnoreCase));
