@@ -216,6 +216,18 @@ static partial class TestSuite
                     "Planning a rejected compression batch must leave every selected input untouched.");
             });
         });
+
+        runner.Run("Image compression: progress error logging does not rethrow output planning failures", () =>
+        {
+            string? root = FindRepoRoot();
+            if (root is null) throw new TestSkippedException("Could not locate repository root.");
+            string progress = File.ReadAllText(Path.Combine(root, "src", "Clickra.CLI", "Progress", "ProgressWindow.Process.cs"));
+            Assert.True(progress.Contains("GetOutputPathForError(cmd, currentFiles, outputDir, _outputDirOverride)", StringComparison.Ordinal),
+                "Progress failure handling must use the non-throwing output-path logger.");
+            Assert.True(progress.Contains("private static string GetOutputPathForError", StringComparison.Ordinal)
+                        && progress.Contains("catch\n            {\n                return \"\";\n            }", StringComparison.Ordinal),
+                "Failure-history output rendering must not mask the original exception when output planning also fails.");
+        });
     }
 
     private static string CreateCompressionNoiseJpeg(string directory, string fileName, int width, int height, long quality)

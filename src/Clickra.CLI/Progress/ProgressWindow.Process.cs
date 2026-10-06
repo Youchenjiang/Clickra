@@ -142,7 +142,7 @@ namespace Clickra.UI
                 string endTime = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
                 string inputs = string.Join(";", currentFiles);
                 string outputDir = currentFiles.Count > 0 ? ClickraStorage.GetOutputDir(currentFiles[0]) : "";
-                string outputs = currentFiles.Count > 0 ? GetOutputPath(cmd, currentFiles, outputDir, _outputDirOverride) : "";
+                string outputs = currentFiles.Count > 0 ? GetOutputPathForError(cmd, currentFiles, outputDir, _outputDirOverride) : "";
 
                 bool wasCanceled = _cts.IsCancellationRequested || ex is OperationCanceledException;
                 string errorMsg = wasCanceled ? "User Aborted" : ex.Message;
@@ -464,6 +464,21 @@ namespace Clickra.UI
                     return string.Join(";", ConvertCommandRegistry.EstimateImageFormatOutputs(cmd, inputFiles, outputDirOverride));
                 default:
                     return outputDir;
+            }
+        }
+
+        /// <summary>Best-effort output-path rendering for failure history. Validation failures can
+        /// originate inside output planning itself, so error logging must never invoke the same
+        /// failing planner and mask the original exception or skip task cleanup.</summary>
+        private static string GetOutputPathForError(string cmd, List<string> inputFiles, string outputDir, string? outputDirOverride)
+        {
+            try
+            {
+                return GetOutputPath(cmd, inputFiles, outputDir, outputDirOverride);
+            }
+            catch
+            {
+                return "";
             }
         }
 
