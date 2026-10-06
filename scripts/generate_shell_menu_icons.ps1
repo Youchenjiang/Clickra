@@ -1,4 +1,4 @@
-﻿param(
+param(
     [string]$OutputDirectory = (Join-Path $PSScriptRoot "..\src\resources")
 )
 
@@ -23,7 +23,8 @@ $icons = @(
     @{ Name = "menu-img-to-heic.ico";  Color = "#107C41"; Kind = "Format"; Letter = "HEIC" },
     @{ Name = "menu-translate-pdf.ico";Color = "#007C91"; Kind = "Translate" },
     @{ Name = "menu-decrypt-pdf.ico";  Color = "#C47F00"; Kind = "Unlock" },
-    @{ Name = "menu-split-pdf.ico";    Color = "#B83232"; Kind = "Split" }
+    @{ Name = "menu-split-pdf.ico";    Color = "#B83232"; Kind = "Split" },
+    @{ Name = "menu-md2pdf.ico";       Color = "#6048A4"; Kind = "Letter"; Letter = "MD" }
 )
 
 function New-Pen([string]$color, [float]$width) {

@@ -76,6 +76,9 @@ namespace Clickra.UI
                     case "excel2pdf":
                         FileProcessor.ConvertExcelToPdf(currentFiles, progressCallback, _cts.Token);
                         break;
+                    case "md2pdf":
+                        RunMarkdownToPdf(currentFiles, _outputDirOverride, progressCallback);
+                        break;
                     case "merge-pdf":
                         FileProcessor.MergePdfs(currentFiles, Path.Combine(outputDir, "Merged_PDF.pdf"), progressCallback, _cts.Token);
                         break;
@@ -158,6 +161,23 @@ namespace Clickra.UI
 
                 try { ClickraStorage.DeleteTask(taskId); } catch { /* Non-critical: cleanup failure is harmless. */ }
                 PostMessageW(hwnd, 0x0010, IntPtr.Zero, IntPtr.Zero); // WM_CLOSE
+            }
+        }
+
+        private void RunMarkdownToPdf(List<string> files, string? outputDirOverride, Action<int, int, string> progressCallback)
+        {
+            for (int i = _startIndex; i < files.Count; i++)
+            {
+                _cts.Token.ThrowIfCancellationRequested();
+                TryRecordTaskIndex(i);
+                int index = i;
+                string targetDir = string.IsNullOrWhiteSpace(outputDirOverride)
+                    ? ClickraStorage.GetOutputDir(files[i])
+                    : Path.GetFullPath(outputDirOverride);
+                string output = Path.Combine(targetDir, Path.GetFileNameWithoutExtension(files[i]) + ".pdf");
+                FileProcessor.ConvertMarkdownToPdf(files[i], output,
+                    (current, total, message) => progressCallback((index * 100) + current, files.Count * 100, message),
+                    _cts.Token);
             }
         }
 
@@ -448,6 +468,10 @@ namespace Clickra.UI
                 case "excel2pdf":
                 case "img2pdf":
                     return string.Join(";", inputFiles.Select(f => Path.Combine(outputDir, Path.GetFileNameWithoutExtension(f) + ".pdf")));
+                case "md2pdf":
+                    return string.Join(";", inputFiles.Select(f => Path.Combine(
+                        string.IsNullOrWhiteSpace(outputDirOverride) ? ClickraStorage.GetOutputDir(f) : Path.GetFullPath(outputDirOverride),
+                        Path.GetFileNameWithoutExtension(f) + ".pdf")));
                 case "translate-pdf":
                     return string.Join(";", inputFiles.Select(f => Path.Combine(outputDir, Path.GetFileNameWithoutExtension(f) + "_translated.pdf")));
                 case "decrypt-pdf":

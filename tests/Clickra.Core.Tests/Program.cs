@@ -58,6 +58,7 @@ TestSuite.RegisterTaskQueueTests(runner);
 TestSuite.RegisterWicImageTests(runner);
 TestSuite.RegisterImageConvertTests(runner);
 TestSuite.RegisterImageCompressionTests(runner);
+TestSuite.RegisterMarkdownToPdfTests(runner);
 TestSuite.RegisterSettingsRegistryTests(runner);
 TestSuite.RegisterProgressWindowTests(runner);
 TestSuite.RegisterDashboardLayoutTests(runner);

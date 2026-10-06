@@ -201,6 +201,7 @@ public sealed partial class MainPage : Page
             SetGridCell(page.BtnWord2Pdf, 0, 0);
             SetGridCell(page.BtnExcel2Pdf, 0, 1);
             SetGridCell(page.BtnPpt2Pdf, 1, 0, 2);
+            SetGridCell(page.BtnMd2Pdf, 2, 0, 2);
 
             SetGridCell(page.BtnMergePdf, 0, 0);
             SetGridCell(page.BtnCompressPdf, 0, 1);
@@ -222,6 +223,7 @@ public sealed partial class MainPage : Page
         SetGridCell(page.BtnWord2Pdf, 0, 0);
         SetGridCell(page.BtnExcel2Pdf, 0, 1);
         SetGridCell(page.BtnPpt2Pdf, 0, 2);
+        SetGridCell(page.BtnMd2Pdf, 1, 0, 3);
 
         SetGridCell(page.BtnMergePdf, 0, 0);
         SetGridCell(page.BtnCompressPdf, 0, 1);
@@ -366,7 +368,7 @@ public sealed partial class MainPage : Page
 
     private void HookCommandButtons()
     {
-        foreach (var button in new[] { BtnWord2Pdf, BtnExcel2Pdf, BtnPpt2Pdf, BtnMergePdf, BtnCompressPdf, BtnTranslatePdf, BtnDecryptPdf, BtnSplitPdf, BtnImg2Pdf, BtnImgMerge, BtnImgStitch, BtnImgToPng, BtnImgToJpg, BtnImgToWebp, BtnImgToGif, BtnImgToHeic })
+        foreach (var button in new[] { BtnWord2Pdf, BtnExcel2Pdf, BtnPpt2Pdf, BtnMd2Pdf, BtnMergePdf, BtnCompressPdf, BtnTranslatePdf, BtnDecryptPdf, BtnSplitPdf, BtnImg2Pdf, BtnImgMerge, BtnImgStitch, BtnImgToPng, BtnImgToJpg, BtnImgToWebp, BtnImgToGif, BtnImgToHeic })
         {
             if (button.Tag is string command)
             {
@@ -1007,12 +1009,13 @@ public sealed partial class MainPage : Page
         EmptyFileMessage.Text = L("fluent_no_files");
         CommandTitle.Text = L("fluent_command");
         CommandStatusText.Text = _selectedCommand is null ? L("fluent_choose_command") : string.Format(L("fluent_selected_command"), L(ConvertCommandRegistry.GetLabelKey(_selectedCommand)));
-        OfficeCommandLabel.Text = L("fluent_office");
+        OfficeCommandLabel.Text = L("convert_group_office");
         PdfCommandLabel.Text = "PDF";
         ImageCommandLabel.Text = L("fluent_images");
         BtnWord2Pdf.Content = "Word";
         BtnExcel2Pdf.Content = "Excel";
         BtnPpt2Pdf.Content = "PPT";
+        BtnMd2Pdf.Content = L("cmd_md_to_pdf");
         BtnMergePdf.Content = L("cmd_merge_pdf");
         BtnCompressPdf.Content = L("cmd_compress_pdf");
         BtnTranslatePdf.Content = L("cmd_translate_pdf");

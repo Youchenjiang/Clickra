@@ -1,0 +1,169 @@
+using System;
+using System.Collections.Generic;
+using System.Drawing;
+using System.Drawing.Imaging;
+using System.IO;
+using System.Linq;
+using Clickra.Core;
+using Clickra.Core.Processors;
+
+namespace Clickra.Core.Tests;
+
+static partial class TestSuite
+{
+    private const string MarkdownToPdfCommand = "md2pdf";
+
+    public static void RegisterMarkdownToPdfTests(TestRunner runner)
+    {
+        runner.Run("Markdown to PDF: registry exposes Markdown inputs and PDF outputs", () =>
+        {
+            Assert.True(ConvertCommandRegistry.IsKnownCommand(MarkdownToPdfCommand), MarkdownToPdfCommand + " must be a registered conversion command.");
+            string[] allowed = ConvertCommandRegistry.GetAllowedExtensions(MarkdownToPdfCommand);
+            Assert.True(allowed.Contains(".md", StringComparer.OrdinalIgnoreCase), MarkdownToPdfCommand + " must accept .md files.");
+            Assert.True(allowed.Contains(".markdown", StringComparer.OrdinalIgnoreCase), MarkdownToPdfCommand + " must accept .markdown files.");
+            Assert.True(ConvertCommandRegistry.GetCommandsForType("markdown").Contains(MarkdownToPdfCommand, StringComparer.Ordinal),
+                "Markdown command discovery must include " + MarkdownToPdfCommand + ".");
+
+            RunWithTempDirectory(tempDir =>
+            {
+                string input = Path.Combine(tempDir, "notes.md");
+                File.WriteAllText(input, "# Notes");
+                List<string> outputs = ConvertCommandRegistry.EstimateOutputs(MarkdownToPdfCommand, new List<string> { input });
+                Assert.True(outputs.Count == 1, MarkdownToPdfCommand + " must plan one PDF output per Markdown input.");
+                Assert.Equal(Path.GetFullPath(Path.Combine(tempDir, "notes.pdf")), Path.GetFullPath(outputs[0]));
+            });
+        });
+
+        runner.Run("Markdown to PDF: common Markdown structures render to a readable PDF", () =>
+            RunWithTempDirectory(tempDir =>
+            {
+                string input = Path.Combine(tempDir, "document.md");
+                string output = Path.Combine(tempDir, "document.pdf");
+                string markdown = """
+                    # Clickra Markdown
+
+                    A paragraph with **bold**, *italic*, `inline code`, and a [link](https://example.com).
+
+                    > A quoted paragraph.
+
+                    - First item
+                    - Second item
+
+                    1. Ordered one
+                    2. Ordered two
+
+                    | Name | Value |
+                    | --- | --- |
+                    | Alpha | 1 |
+                    | Beta | 2 |
+
+                    ```csharp
+                    Console.WriteLine("hello");
+                    ```
+                    """;
+                File.WriteAllText(input, markdown);
+                byte[] original = File.ReadAllBytes(input);
+
+                FileProcessor.ConvertMarkdownToPdf(input, output);
+
+                Assert.True(File.Exists(output), "Markdown conversion must create the PDF output.");
+                Assert.True(File.ReadAllBytes(output).Take(4).SequenceEqual("%PDF"u8.ToArray()), "Markdown output must have a PDF header.");
+                Assert.True(File.ReadAllBytes(input).SequenceEqual(original), "Markdown conversion must not modify the source file.");
+                using var pdf = UglyToad.PdfPig.PdfDocument.Open(output);
+                Assert.True(pdf.NumberOfPages >= 1, "Converted Markdown PDF must contain at least one page.");
+                string text = string.Join("\n", pdf.GetPages().Select(page => page.Text));
+                Assert.True(text.Contains("Clickra Markdown", StringComparison.Ordinal), "Heading text must survive Markdown rendering.");
+                Assert.True(text.Contains("First item", StringComparison.Ordinal), "List text must survive Markdown rendering.");
+                Assert.True(text.Contains("Alpha", StringComparison.Ordinal), "Table text must survive Markdown rendering.");
+                Assert.True(text.Contains("Console.WriteLine", StringComparison.Ordinal), "Code block text must survive Markdown rendering.");
+            }));
+
+        runner.Run("Markdown to PDF: long documents paginate instead of clipping", () =>
+            RunWithTempDirectory(tempDir =>
+            {
+                string input = Path.Combine(tempDir, "long.md");
+                string output = Path.Combine(tempDir, "long.pdf");
+                string body = string.Join("\n\n", Enumerable.Range(1, 120).Select(i =>
+                    $"Paragraph {i}: This is enough text to verify that Markdown rendering creates additional PDF pages rather than drawing beyond the A4 page boundary."));
+                File.WriteAllText(input, "# Long document\n\n" + body);
+
+                FileProcessor.ConvertMarkdownToPdf(input, output);
+
+                using var pdf = UglyToad.PdfPig.PdfDocument.Open(output);
+                Assert.True(pdf.NumberOfPages > 1, "Long Markdown documents must paginate across multiple PDF pages.");
+                Assert.True(pdf.GetPages().Last().Text.Contains("Paragraph 120", StringComparison.Ordinal),
+                    "The last Markdown paragraph must remain visible after pagination.");
+            }));
+
+        runner.Run("Markdown to PDF: relative local images render inline without network access", () =>
+            RunWithTempDirectory(tempDir =>
+            {
+                string imagePath = Path.Combine(tempDir, "diagram.png");
+                using (var bitmap = new Bitmap(80, 40))
+                {
+                    using Graphics graphics = Graphics.FromImage(bitmap);
+                    graphics.Clear(Color.CornflowerBlue);
+                    bitmap.Save(imagePath, ImageFormat.Png);
+                }
+
+                string input = Path.Combine(tempDir, "image.md");
+                string output = Path.Combine(tempDir, "image.pdf");
+                File.WriteAllText(input, "# Local image\n\nBefore image ![Diagram](diagram.png) after image.");
+
+                FileProcessor.ConvertMarkdownToPdf(input, output);
+
+                using var pdf = UglyToad.PdfPig.PdfDocument.Open(output);
+                Assert.True(pdf.NumberOfPages >= 1, "Markdown with a local image must produce a readable PDF.");
+                var page = pdf.GetPages().Single();
+                Assert.True(page.GetImages().Any(), "A relative Markdown image embedded inside prose must remain an image in the PDF.");
+                Assert.True(page.Text.Contains("Before image", StringComparison.Ordinal)
+                            && page.Text.Contains("after image", StringComparison.Ordinal),
+                    "Rendering an inline relative image must preserve the surrounding Markdown text.");
+            }));
+
+        runner.Run("Markdown to PDF: oversized table rows paginate without clipping", () =>
+            RunWithTempDirectory(tempDir =>
+            {
+                string input = Path.Combine(tempDir, "table.md");
+                string output = Path.Combine(tempDir, "table.pdf");
+                string longCell = string.Join(' ', Enumerable.Range(1, 700).Select(i => "cell" + i));
+                File.WriteAllText(input,
+                    "| Column | Value |\n| --- | --- |\n| Long | " + longCell + " TABLE_END_MARKER |\n\nAfter table.");
+
+                FileProcessor.ConvertMarkdownToPdf(input, output);
+
+                using var pdf = UglyToad.PdfPig.PdfDocument.Open(output);
+                Assert.True(pdf.NumberOfPages > 1, "An oversized Markdown table row must split across pages.");
+                string text = string.Join("\n", pdf.GetPages().Select(page => page.Text));
+                Assert.True(text.Contains("TABLE_END_MARKER", StringComparison.Ordinal),
+                    "The end of an oversized table row must not be clipped past the page boundary.");
+                Assert.True(text.Contains("After table", StringComparison.Ordinal),
+                    "Content after an oversized Markdown table must still render.");
+            }));
+
+        runner.Run("Markdown to PDF: CJK table and code text use Unicode-capable fonts", () =>
+            RunWithTempDirectory(tempDir =>
+            {
+                string input = Path.Combine(tempDir, "unicode.md");
+                string output = Path.Combine(tempDir, "unicode.pdf");
+                File.WriteAllText(input, """
+                    | 類型 | 內容 |
+                    | --- | --- |
+                    | 測試 | 中文表格內容 |
+
+                    ```text
+                    中文程式碼內容
+                    ```
+                    """);
+
+                FileProcessor.ConvertMarkdownToPdf(input, output);
+
+                using var pdf = UglyToad.PdfPig.PdfDocument.Open(output);
+                string text = string.Join("\n", pdf.GetPages().Select(page => page.Text));
+                Assert.True(text.Contains("中文表格內容", StringComparison.Ordinal),
+                    "CJK Markdown table text must remain extractable from the PDF.");
+                Assert.True(text.Contains("中文程式碼內容", StringComparison.Ordinal),
+                    "CJK fenced-code text must remain extractable from the PDF.");
+            }));
+    }
+}

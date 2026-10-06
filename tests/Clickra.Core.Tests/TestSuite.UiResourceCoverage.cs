@@ -261,7 +261,7 @@ static partial class TestSuite
             .ToArray();
         Assert.True(declared.Length > 0, "The convert registry must declare at least one label key.");
 
-        string[] reached = new[] { "pdf", "word", "excel", "ppt", "image" }
+        string[] reached = new[] { "pdf", "word", "excel", "ppt", "markdown", "image" }
             .SelectMany(ConvertCommandRegistry.GetCommandsForType)
             .Distinct(StringComparer.OrdinalIgnoreCase)
             .ToArray();
@@ -312,7 +312,7 @@ static partial class TestSuite
         Assert.True(subArgs.Length == subArgs.Distinct(StringComparer.Ordinal).Count(),
             "Shell SubArgs must not contain duplicate command ids.");
 
-        string[] registryCommands = new[] { "pdf", "word", "excel", "ppt", "image" }
+        string[] registryCommands = new[] { "pdf", "word", "excel", "ppt", "markdown", "image" }
             .SelectMany(ConvertCommandRegistry.GetCommandsForType)
             .Distinct(StringComparer.Ordinal)
             .OrderBy(command => command, StringComparer.Ordinal)

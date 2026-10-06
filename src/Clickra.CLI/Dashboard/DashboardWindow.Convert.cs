@@ -112,6 +112,10 @@ namespace Clickra.UI
             {
                 ConvertCommand.Select(ConvertCommands[GetCommandIndex(files.Count == 1 ? "compress-pdf" : "merge-pdf")]);
             }
+            else if (extensions.All(ext => ext is ".md" or ".markdown"))
+            {
+                ConvertCommand.Select(ConvertCommands[GetCommandIndex("md2pdf")]);
+            }
             else if (extensions.All(ext => new[] { ".jpg", ".jpeg", ".png", ".bmp", ".gif", ".tiff", ".webp" }.Contains(ext)))
             {
                 ConvertCommand.Select(ConvertCommands[GetCommandIndex(files.Count > 1 ? "img-merge" : "img2pdf")]);

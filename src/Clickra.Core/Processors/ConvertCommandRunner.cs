@@ -114,6 +114,9 @@ public static class ConvertCommandRunner
                 case "excel2pdf":
                     FileProcessor.ConvertExcelToPdf(files, progress, token);
                     break;
+                case "md2pdf":
+                    RunPerFile(files, outputs, (f, o, p, t) => FileProcessor.ConvertMarkdownToPdf(f, o, p, t), progress, options.StartIndex, token);
+                    break;
                 case "merge-pdf":
                     FileProcessor.MergePdfs(files, outputs[0], progress, token);
                     break;

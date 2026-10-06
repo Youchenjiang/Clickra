@@ -122,10 +122,38 @@ namespace Clickra
             DispatchOptions options)
         {
             if (DispatchOfficeCommand(command, files, options.Quiet)) return;
+            if (DispatchMarkdownCommand(command, files, options.Quiet, options.OutputDir, options.OutputDirOverride)) return;
             if (DispatchPdfCommand(command, files, options.Quiet, options.OutputDir, options.HasCliLevel, options.CompressionLevel, options.PagesOption)) return;
             if (DispatchImageCommand(command, files, options.Quiet, options.OutputDir, options.OutputDirOverride)) return;
 
             Console.WriteLine(Loc("cli_err_prefix") + Loc("cli_err_unknown_command", command));
+        }
+
+        /// <summary>Handles Markdown-to-PDF conversion without requiring an Office engine.</summary>
+        private static bool DispatchMarkdownCommand(string command, List<string> files, bool quiet, string outputDir, string? outputDirOverride)
+        {
+            if (!command.Equals("md2pdf", StringComparison.OrdinalIgnoreCase)) return false;
+
+            string[] allowed = ConvertCommandRegistry.GetAllowedExtensions(command);
+            ValidateExtensions(files, command, quiet, allowed);
+            RequireMinFiles(files, command, ConvertCommandRegistry.GetMinFiles(command), quiet);
+            if (quiet)
+            {
+                for (int i = 0; i < files.Count; i++)
+                {
+                    string targetDir = string.IsNullOrWhiteSpace(outputDirOverride)
+                        ? ClickraStorage.GetOutputDir(files[i])
+                        : outputDir;
+                    string output = Path.Combine(targetDir, Path.GetFileNameWithoutExtension(files[i]) + ".pdf");
+                    FileProcessor.ConvertMarkdownToPdf(files[i], output,
+                        (_, _, msg) => Console.WriteLine($"[Progress] {msg}"));
+                }
+            }
+            else
+            {
+                ProgressWindow.Show(command, files, outputDirOverride);
+            }
+            return true;
         }
 
         /// <summary>Handles office-conversion commands (ppt2pdf, word2pdf, excel2pdf).</summary>

@@ -85,6 +85,8 @@
               <uap:FileType>.ppt</uap:FileType>
               <uap:FileType>.xlsx</uap:FileType>
               <uap:FileType>.xls</uap:FileType>
+              <uap:FileType>.md</uap:FileType>
+              <uap:FileType>.markdown</uap:FileType>
               <uap:FileType>.png</uap:FileType>
               <uap:FileType>.jpg</uap:FileType>
               <uap:FileType>.jpeg</uap:FileType>
