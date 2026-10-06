@@ -178,6 +178,7 @@ namespace ClickraShell
         [UnmanagedCallersOnly(CallConvs = new[] { typeof(CallConvStdcall) })] public static unsafe int GetCanonicalName(IntPtr _this, Guid* p) { *p = Guid.Empty; return 0; }
 
         /// <summary>Returns whether the file extension is supported by the command index.</summary>
+        [SuppressMessage("SonarQube", "S1192", Justification = "UiResourceCoverage parses the literal extension lists here to verify Explorer and registry parity.")]
         private static bool IsSupported(string path, int idx)
         {
             string ext = Path.GetExtension(path).ToLowerInvariant();
