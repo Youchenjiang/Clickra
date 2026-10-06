@@ -22,36 +22,7 @@ static partial class TestSuite
     {
         runner.Run("Image compression presets live in one table shared by the processor and the UIs", TestImageCompressionPresets);
 
-        runner.Run("Image compression: command registry delegates to single source of truth", () =>
-        {
-            string origLevel = ClickraStorage.GetSetting(ClickraSettings.ImageCompressLevel);
-            try
-            {
-                ClickraStorage.SaveSetting(ClickraSettings.ImageCompressLevel, "0");
-                var opt0 = ConvertCommandRegistry.ImageCompressionOptions();
-                Assert.Equal(ImageCompressionOptions.OptionMin, (string)opt0[ImageCompressionLevelKey]);
-                Assert.Equal(ImageCompressionOptions.GetQuality(ImageCompressionLevel.Minimum), (int)opt0[ImageCompressionQualityKey]);
-
-                ClickraStorage.SaveSetting(ClickraSettings.ImageCompressLevel, "1");
-                var opt1 = ConvertCommandRegistry.ImageCompressionOptions();
-                Assert.Equal(ImageCompressionOptions.OptionSmall, (string)opt1[ImageCompressionLevelKey]);
-                Assert.Equal(ImageCompressionOptions.GetQuality(ImageCompressionLevel.Small), (int)opt1[ImageCompressionQualityKey]);
-
-                ClickraStorage.SaveSetting(ClickraSettings.ImageCompressLevel, "2");
-                var opt2 = ConvertCommandRegistry.ImageCompressionOptions();
-                Assert.Equal(ImageCompressionOptions.OptionStandard, (string)opt2[ImageCompressionLevelKey]);
-                Assert.Equal(ImageCompressionOptions.GetQuality(ImageCompressionLevel.Standard), (int)opt2[ImageCompressionQualityKey]);
-
-                ClickraStorage.SaveSetting(ClickraSettings.ImageCompressLevel, "3");
-                var opt3 = ConvertCommandRegistry.ImageCompressionOptions();
-                Assert.Equal(ImageCompressionOptions.OptionHigh, (string)opt3[ImageCompressionLevelKey]);
-                Assert.Equal(ImageCompressionOptions.GetQuality(ImageCompressionLevel.High), (int)opt3[ImageCompressionQualityKey]);
-            }
-            finally
-            {
-                ClickraStorage.SaveSetting(ClickraSettings.ImageCompressLevel, origLevel);
-            }
-        });
+        runner.Run("Image compression: command registry delegates to single source of truth", TestImageCompressionRegistryOptions);
 
         runner.Run("Image compression: UI and call sites share unified label keys from core", () =>
         {
@@ -77,30 +48,7 @@ static partial class TestSuite
             Assert.Equal("setting_pdf_compress_level_high", PdfCompressionOptions.GetLabelKey(PdfCompressionLevel.HighQuality));
         });
 
-        runner.Run("Image compression: " + ImageCompressCommand + " is a production registry command", () =>
-        {
-            Assert.True(ConvertCommandRegistry.IsKnownCommand(ImageCompressCommand),
-                ImageCompressCommand + " must be registered before the Explorer menu can invoke it.");
-            Assert.Equal("cmd_img_compress", ConvertCommandRegistry.GetLabelKey(ImageCompressCommand));
-            Assert.True(ConvertCommandRegistry.GetCommandsForType("image").Contains(ImageCompressCommand, StringComparer.Ordinal),
-                "Image command discovery must include " + ImageCompressCommand + ".");
-
-            string inputDir = Path.Combine(Path.GetTempPath(), "clickra-registry-input");
-            string outputDir = Path.Combine(Path.GetTempPath(), "clickra-registry-output");
-            var outputs = ConvertCommandRegistry.EstimateImageCompressionOutputs(
-                new List<string> { Path.Combine(inputDir, "photo.jpg") },
-                outputDir);
-            string expectedOutput = Path.GetFullPath(Path.Combine(outputDir, "photo_compressed.jpg"));
-            Assert.True(outputs.Count == 1 && string.Equals(Path.GetFullPath(outputs[0]), expectedOutput, StringComparison.OrdinalIgnoreCase),
-                ImageCompressCommand + " must honor the output-directory override and preserve the source extension.");
-
-            string[] allowed = ConvertCommandRegistry.GetAllowedExtensions(ImageCompressCommand);
-            foreach (string extension in new[] { ".tif", ".tiff", ".heic", ".heif", ".hif" })
-            {
-                Assert.True(allowed.Contains(extension, StringComparer.OrdinalIgnoreCase),
-                    $"{ImageCompressCommand} must accept the processor-supported extension {extension}.");
-            }
-        });
+        runner.Run("Image compression: " + ImageCompressCommand + " is a production registry command", TestImageCompressionProductionRegistryCommand);
 
         runner.Run("Image compression: runner produces a smaller JPEG without overwriting input", () =>
             RunWithTempDirectory(tempDir =>
@@ -212,86 +160,10 @@ static partial class TestSuite
             }));
 
         runner.Run("Image compression: batch snapshots settings before processing", () =>
-            RunWithTempDirectory(tempDir =>
-            {
-                string first = CreateCompressionNoiseJpeg(tempDir, "first.jpg", 192, 192, 95L);
-                string second = Path.Combine(tempDir, "second.jpg");
-                File.Copy(first, second);
-                var files = new List<string> { first, second };
-                var outputs = ConvertCommandRegistry.EstimateImageCompressionOutputs(files, tempDir);
-                string originalLevel = ClickraStorage.GetSetting(ClickraSettings.ImageCompressLevel);
-                try
-                {
-                    ClickraStorage.SaveSetting(ClickraSettings.ImageCompressLevel, "0");
-                    bool changed = false;
-                    ConvertCommandRunner.Run(
-                        ImageCompressCommand,
-                        files,
-                        outputs,
-                        (_, _, _) =>
-                        {
-                            if (changed) return;
-                            changed = true;
-                            ClickraStorage.SaveSetting(ClickraSettings.ImageCompressLevel, "3");
-                        },
-                        new ConvertCommandRunner.ConversionOptions(
-                            _ => Task.FromResult<string?>(null),
-                            (_, _) => Task.FromResult<string?>(null)));
-
-                    Assert.True(new FileInfo(outputs[0]).Length == new FileInfo(outputs[1]).Length,
-                        "One compression batch must use one settings snapshot even if the saved setting changes mid-run.");
-                }
-                finally
-                {
-                    ClickraStorage.SaveSetting(ClickraSettings.ImageCompressLevel, originalLevel);
-                }
-            }));
+            RunWithTempDirectory(TestImageCompressionBatchSnapshotsSettings));
 
         runner.Run("Image compression: newer concurrent request wins output promotion", () =>
-            RunWithTempDirectory(tempDir =>
-            {
-                string source = CreateCompressionNoiseJpeg(tempDir, "race.jpg", 256, 256, 95L);
-                string output = Path.Combine(tempDir, "race_compressed.jpg");
-                string expected = Path.Combine(tempDir, "expected.jpg");
-                var highOptions = new Dictionary<string, object>
-                {
-                    ["level"] = ImageCompressionOptions.OptionHigh,
-                    ["quality"] = ImageCompressionOptions.GetQuality(ImageCompressionLevel.High),
-                    ["max_dimension"] = 0
-                };
-                var lowOptions = new Dictionary<string, object>
-                {
-                    ["level"] = ImageCompressionOptions.OptionMin,
-                    ["quality"] = ImageCompressionOptions.GetQuality(ImageCompressionLevel.Minimum),
-                    ["max_dimension"] = 0
-                };
-                FileProcessor.CompressImage(source, expected, highOptions);
-                long expectedLength = new FileInfo(expected).Length;
-
-                using var oldStarted = new ManualResetEventSlim(false);
-                using var releaseOld = new ManualResetEventSlim(false);
-                bool held = false;
-                Task older = Task.Run(() => FileProcessor.CompressImage(
-                    source,
-                    output,
-                    lowOptions,
-                    (_, _, _) =>
-                    {
-                        if (held) return;
-                        held = true;
-                        oldStarted.Set();
-                        releaseOld.Wait(TimeSpan.FromSeconds(10));
-                    }));
-
-                Assert.True(oldStarted.Wait(TimeSpan.FromSeconds(10)), "Older request did not reach the compression stage.");
-                Task newer = Task.Run(() => FileProcessor.CompressImage(source, output, highOptions));
-                Assert.True(newer.Wait(TimeSpan.FromSeconds(10)), "Newer request did not finish while the older request was paused.");
-                releaseOld.Set();
-                Assert.True(older.Wait(TimeSpan.FromSeconds(10)), "Older request did not finish after release.");
-
-                Assert.True(new FileInfo(output).Length == expectedLength,
-                    "An older request finishing later must not replace the newer request's output.");
-            }));
+            RunWithTempDirectory(TestImageCompressionConcurrentPromotion));
 
         runner.Run("Image compression: progress error logging does not rethrow output planning failures", () =>
         {
@@ -305,6 +177,142 @@ static partial class TestSuite
                         && normalizedProgress.Contains("catch\n            {\n                return \"\";\n            }", StringComparison.Ordinal),
                 "Failure-history output rendering must not mask the original exception when output planning also fails.");
         });
+    }
+
+    private static void TestImageCompressionRegistryOptions()
+    {
+        string origLevel = ClickraStorage.GetSetting(ClickraSettings.ImageCompressLevel);
+        try
+        {
+            ClickraStorage.SaveSetting(ClickraSettings.ImageCompressLevel, "0");
+            var opt0 = ConvertCommandRegistry.ImageCompressionOptions();
+            Assert.Equal(ImageCompressionOptions.OptionMin, (string)opt0[ImageCompressionLevelKey]);
+            Assert.Equal(ImageCompressionOptions.GetQuality(ImageCompressionLevel.Minimum), (int)opt0[ImageCompressionQualityKey]);
+
+            ClickraStorage.SaveSetting(ClickraSettings.ImageCompressLevel, "1");
+            var opt1 = ConvertCommandRegistry.ImageCompressionOptions();
+            Assert.Equal(ImageCompressionOptions.OptionSmall, (string)opt1[ImageCompressionLevelKey]);
+            Assert.Equal(ImageCompressionOptions.GetQuality(ImageCompressionLevel.Small), (int)opt1[ImageCompressionQualityKey]);
+
+            ClickraStorage.SaveSetting(ClickraSettings.ImageCompressLevel, "2");
+            var opt2 = ConvertCommandRegistry.ImageCompressionOptions();
+            Assert.Equal(ImageCompressionOptions.OptionStandard, (string)opt2[ImageCompressionLevelKey]);
+            Assert.Equal(ImageCompressionOptions.GetQuality(ImageCompressionLevel.Standard), (int)opt2[ImageCompressionQualityKey]);
+
+            ClickraStorage.SaveSetting(ClickraSettings.ImageCompressLevel, "3");
+            var opt3 = ConvertCommandRegistry.ImageCompressionOptions();
+            Assert.Equal(ImageCompressionOptions.OptionHigh, (string)opt3[ImageCompressionLevelKey]);
+            Assert.Equal(ImageCompressionOptions.GetQuality(ImageCompressionLevel.High), (int)opt3[ImageCompressionQualityKey]);
+        }
+        finally
+        {
+            ClickraStorage.SaveSetting(ClickraSettings.ImageCompressLevel, origLevel);
+        }
+    }
+
+    private static void TestImageCompressionProductionRegistryCommand()
+    {
+        Assert.True(ConvertCommandRegistry.IsKnownCommand(ImageCompressCommand),
+            ImageCompressCommand + " must be registered before the Explorer menu can invoke it.");
+        Assert.Equal("cmd_img_compress", ConvertCommandRegistry.GetLabelKey(ImageCompressCommand));
+        Assert.True(ConvertCommandRegistry.GetCommandsForType("image").Contains(ImageCompressCommand, StringComparer.Ordinal),
+            "Image command discovery must include " + ImageCompressCommand + ".");
+
+        string inputDir = Path.Combine(Path.GetTempPath(), "clickra-registry-input");
+        string outputDir = Path.Combine(Path.GetTempPath(), "clickra-registry-output");
+        var outputs = ConvertCommandRegistry.EstimateImageCompressionOutputs(
+            new List<string> { Path.Combine(inputDir, "photo.jpg") },
+            outputDir);
+        string expectedOutput = Path.GetFullPath(Path.Combine(outputDir, "photo_compressed.jpg"));
+        Assert.True(outputs.Count == 1 && string.Equals(Path.GetFullPath(outputs[0]), expectedOutput, StringComparison.OrdinalIgnoreCase),
+            ImageCompressCommand + " must honor the output-directory override and preserve the source extension.");
+
+        string[] allowed = ConvertCommandRegistry.GetAllowedExtensions(ImageCompressCommand);
+        foreach (string extension in new[] { ".tif", ".tiff", ".heic", ".heif", ".hif" })
+        {
+            Assert.True(allowed.Contains(extension, StringComparer.OrdinalIgnoreCase),
+                $"{ImageCompressCommand} must accept the processor-supported extension {extension}.");
+        }
+    }
+
+    private static void TestImageCompressionBatchSnapshotsSettings(string tempDir)
+    {
+        string first = CreateCompressionNoiseJpeg(tempDir, "first.jpg", 192, 192, 95L);
+        string second = Path.Combine(tempDir, "second.jpg");
+        File.Copy(first, second);
+        var files = new List<string> { first, second };
+        var outputs = ConvertCommandRegistry.EstimateImageCompressionOutputs(files, tempDir);
+        string originalLevel = ClickraStorage.GetSetting(ClickraSettings.ImageCompressLevel);
+        try
+        {
+            ClickraStorage.SaveSetting(ClickraSettings.ImageCompressLevel, "0");
+            bool changed = false;
+            ConvertCommandRunner.Run(
+                ImageCompressCommand,
+                files,
+                outputs,
+                (_, _, _) =>
+                {
+                    if (changed) return;
+                    changed = true;
+                    ClickraStorage.SaveSetting(ClickraSettings.ImageCompressLevel, "3");
+                },
+                new ConvertCommandRunner.ConversionOptions(
+                    _ => Task.FromResult<string?>(null),
+                    (_, _) => Task.FromResult<string?>(null)));
+
+            Assert.True(new FileInfo(outputs[0]).Length == new FileInfo(outputs[1]).Length,
+                "One compression batch must use one settings snapshot even if the saved setting changes mid-run.");
+        }
+        finally
+        {
+            ClickraStorage.SaveSetting(ClickraSettings.ImageCompressLevel, originalLevel);
+        }
+    }
+
+    private static void TestImageCompressionConcurrentPromotion(string tempDir)
+    {
+        string source = CreateCompressionNoiseJpeg(tempDir, "race.jpg", 256, 256, 95L);
+        string output = Path.Combine(tempDir, "race_compressed.jpg");
+        string expected = Path.Combine(tempDir, "expected.jpg");
+        var highOptions = new Dictionary<string, object>
+        {
+            ["level"] = ImageCompressionOptions.OptionHigh,
+            ["quality"] = ImageCompressionOptions.GetQuality(ImageCompressionLevel.High),
+            ["max_dimension"] = 0
+        };
+        var lowOptions = new Dictionary<string, object>
+        {
+            ["level"] = ImageCompressionOptions.OptionMin,
+            ["quality"] = ImageCompressionOptions.GetQuality(ImageCompressionLevel.Minimum),
+            ["max_dimension"] = 0
+        };
+        FileProcessor.CompressImage(source, expected, highOptions);
+        long expectedLength = new FileInfo(expected).Length;
+
+        using var oldStarted = new ManualResetEventSlim(false);
+        using var releaseOld = new ManualResetEventSlim(false);
+        bool held = false;
+        Task older = Task.Run(() => FileProcessor.CompressImage(
+            source,
+            output,
+            lowOptions,
+            (_, _, _) =>
+            {
+                if (held) return;
+                held = true;
+                oldStarted.Set();
+                releaseOld.Wait(TimeSpan.FromSeconds(10));
+            }));
+
+        Assert.True(oldStarted.Wait(TimeSpan.FromSeconds(10)), "Older request did not reach the compression stage.");
+        Task newer = Task.Run(() => FileProcessor.CompressImage(source, output, highOptions));
+        Assert.True(newer.Wait(TimeSpan.FromSeconds(10)), "Newer request did not finish while the older request was paused.");
+        releaseOld.Set();
+        Assert.True(older.Wait(TimeSpan.FromSeconds(10)), "Older request did not finish after release.");
+
+        Assert.True(new FileInfo(output).Length == expectedLength,
+            "An older request finishing later must not replace the newer request's output.");
     }
 
     private static void TestImageCompressionPresets()
