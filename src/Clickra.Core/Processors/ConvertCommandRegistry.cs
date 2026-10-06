@@ -15,6 +15,8 @@ public static class ConvertCommandRegistry
         private const string CmdImgToGif = "img-to-gif";
         private const string CmdImgToHeic = "img-to-heic";
         private const string CmdImgCompress = "img-compress";
+        private const string ExtensionWebp = ".webp";
+        private const string ExtensionHeic = ".heic";
 
         private sealed record CommandDef(string[] Extensions, int MinFiles, string LabelKey, string[]? ExcludeExtensions = null);
 
@@ -22,8 +24,8 @@ public static class ConvertCommandRegistry
         private static readonly string[] PptExtensions = { ".ppt", ".pptx" };
         private static readonly string[] WordExtensions = { ".doc", ".docx" };
         private static readonly string[] ExcelExtensions = { ".xls", ".xlsx" };
-        private static readonly string[] ImageExtensions = [".jpg", ".jpeg", ".png", ".bmp", ".gif", ".tiff", ".webp", ".heic"];
-        private static readonly string[] ImageCompressionExtensions = [".jpg", ".jpeg", ".png", ".bmp", ".gif", ".tif", ".tiff", ".webp", ".heic", ".heif", ".hif"];
+        private static readonly string[] ImageExtensions = [".jpg", ".jpeg", ".png", ".bmp", ".gif", ".tiff", ExtensionWebp, ExtensionHeic];
+        private static readonly string[] ImageCompressionExtensions = [".jpg", ".jpeg", ".png", ".bmp", ".gif", ".tif", ".tiff", ExtensionWebp, ExtensionHeic, ".heif", ".hif"];
 
         /// <summary>UI 檔案類型分類：先選類型再選命令，從源頭避免混雜類型。</summary>
         private static readonly (string Type, string[] Extensions, string[] Commands)[] FileTypes =
@@ -61,9 +63,9 @@ public static class ConvertCommandRegistry
         /// and are always excluded together).</summary>
         private static readonly string[] PngExcluded = { ".png" };
         private static readonly string[] JpegExcluded = { ".jpg", ".jpeg" };
-        private static readonly string[] WebpExcluded = { ".webp" };
+        private static readonly string[] WebpExcluded = { ExtensionWebp };
         private static readonly string[] GifExcluded = { ".gif" };
-        private static readonly string[] HeicExcluded = { ".heic" };
+        private static readonly string[] HeicExcluded = { ExtensionHeic };
 
         /// <summary>Every convert command and its metadata, in dashboard order.</summary>
         private static readonly Dictionary<string, CommandDef> Commands = new(StringComparer.OrdinalIgnoreCase)
@@ -150,9 +152,9 @@ public static class ConvertCommandRegistry
             {
                 CmdImgToPng => ".png",
                 CmdImgToJpg => ".jpg",
-                CmdImgToWebp => ".webp",
+                CmdImgToWebp => ExtensionWebp,
                 CmdImgToGif => ".gif",
-                CmdImgToHeic => ".heic",
+                CmdImgToHeic => ExtensionHeic,
                 _ => throw new InvalidOperationException($"Unknown image format command '{command}'.")
             };
             var outputs = files
