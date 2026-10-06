@@ -200,8 +200,8 @@ namespace ClickraShell
             };
         }
 
-        /// <summary>IExplorerCommand.GetState — enables the command when the selection contains
-        /// a supported file (and the multi-file commands receive at least two files).</summary>
+        /// <summary>IExplorerCommand.GetState — enables the command only when every selected file
+        /// is supported (and the multi-file commands receive at least two files).</summary>
         [UnmanagedCallersOnly(CallConvs = new[] { typeof(CallConvStdcall) })]
         public static unsafe int GetState(IntPtr _this, IntPtr psi, int slow, uint* p)
         {
@@ -218,7 +218,7 @@ namespace ClickraShell
                 _ => true
             };
 
-            if (countOk && files.Any(f => IsSupported(f, idx)))
+            if (countOk && files.All(f => IsSupported(f, idx)))
             {
                 *p = 0; // ECS_ENABLED
             }
