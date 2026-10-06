@@ -23,6 +23,7 @@ public static class ConvertCommandRegistry
         private static readonly string[] WordExtensions = { ".doc", ".docx" };
         private static readonly string[] ExcelExtensions = { ".xls", ".xlsx" };
         private static readonly string[] ImageExtensions = [".jpg", ".jpeg", ".png", ".bmp", ".gif", ".tiff", ".webp", ".heic"];
+        private static readonly string[] ImageCompressionExtensions = [".jpg", ".jpeg", ".png", ".bmp", ".gif", ".tif", ".tiff", ".webp", ".heic", ".heif", ".hif"];
 
         /// <summary>UI 檔案類型分類：先選類型再選命令，從源頭避免混雜類型。</summary>
         private static readonly (string Type, string[] Extensions, string[] Commands)[] FileTypes =
@@ -78,7 +79,7 @@ public static class ConvertCommandRegistry
             ["img2pdf"] = new(ImageExtensions, 1, "cmd_img_to_pdf"),
             ["img-merge"] = new(ImageExtensions, 2, "cmd_merge_img"),
             ["img-stitch"] = new(ImageExtensions, 2, "cmd_stitch_img"),
-            [CmdImgCompress] = new(ImageExtensions, 1, "cmd_img_compress"),
+            [CmdImgCompress] = new(ImageCompressionExtensions, 1, "cmd_img_compress"),
             [CmdImgToPng] = new(ImageExtensions, 1, "cmd_img_to_png", PngExcluded),
             [CmdImgToJpg] = new(ImageExtensions, 1, "cmd_img_to_jpg", JpegExcluded),
             [CmdImgToWebp] = new(ImageExtensions, 1, "cmd_img_to_webp", WebpExcluded),

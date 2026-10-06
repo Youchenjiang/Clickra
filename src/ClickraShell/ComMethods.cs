@@ -185,12 +185,13 @@ namespace ClickraShell
 
             return idx switch
             {
-                -1 => new[] { ".ppt", ".pptx", ".doc", ".docx", ".xlsx", ".xls", ".pdf", ".jpg", ".jpeg", ".png", ".bmp", ".gif", ".tiff", ".webp", ".heic" }.Contains(ext),
+                -1 => new[] { ".ppt", ".pptx", ".doc", ".docx", ".xlsx", ".xls", ".pdf", ".jpg", ".jpeg", ".png", ".bmp", ".gif", ".tif", ".tiff", ".webp", ".heic", ".heif", ".hif" }.Contains(ext),
                 0 => ext == ".ppt" || ext == ".pptx",
                 1 => ext == ".doc" || ext == ".docx",
                 2 => ext == ".xlsx" || ext == ".xls",
                 3 or 4 or 9 or 10 or 11 => ext == ".pdf",
-                5 or 6 or 7 or 8 => new[] { ".jpg", ".jpeg", ".png", ".bmp", ".gif", ".tiff", ".webp", ".heic" }.Contains(ext),
+                5 or 6 or 7 => new[] { ".jpg", ".jpeg", ".png", ".bmp", ".gif", ".tiff", ".webp", ".heic" }.Contains(ext),
+                8 => new[] { ".jpg", ".jpeg", ".png", ".bmp", ".gif", ".tif", ".tiff", ".webp", ".heic", ".heif", ".hif" }.Contains(ext),
                 12 => ext != ".png" && new[] { ".jpg", ".jpeg", ".bmp", ".gif", ".tiff", ".webp", ".heic" }.Contains(ext),
                 13 => ext != ".jpg" && ext != ".jpeg" && new[] { ".png", ".bmp", ".gif", ".tiff", ".webp", ".heic" }.Contains(ext),
                 14 => ext != ".webp" && new[] { ".jpg", ".jpeg", ".png", ".bmp", ".gif", ".tiff", ".heic" }.Contains(ext),

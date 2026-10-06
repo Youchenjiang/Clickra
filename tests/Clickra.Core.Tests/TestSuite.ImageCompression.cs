@@ -130,6 +130,13 @@ static partial class TestSuite
                 "C:\\output");
             Assert.True(outputs.Count == 1 && outputs[0].EndsWith("photo_compressed.jpg", StringComparison.OrdinalIgnoreCase),
                 "img-compress must preserve the source extension and use the _compressed suffix.");
+
+            string[] allowed = ConvertCommandRegistry.GetAllowedExtensions("img-compress");
+            foreach (string extension in new[] { ".tif", ".tiff", ".heic", ".heif", ".hif" })
+            {
+                Assert.True(allowed.Contains(extension, StringComparer.OrdinalIgnoreCase),
+                    $"img-compress must accept the processor-supported extension {extension}.");
+            }
         });
 
         runner.Run("Image compression: runner produces a smaller JPEG without overwriting input", () =>
@@ -216,6 +223,21 @@ static partial class TestSuite
                 Assert.True(File.Exists(output),
                     "IFileProcessor dispatch must run ImageCompressionProcessor initialization before processing.");
             });
+        });
+
+        runner.RunGuard("Image compression guard: orientation and multi-frame safety stay explicit", () =>
+        {
+            string? root = FindRepoRoot();
+            if (root is null) throw new TestSkippedException("Could not locate repository root.");
+            string processor = File.ReadAllText(Path.Combine(root, "src", "Clickra.Core", "Processors", "FileProcessing", "ImageCompressionProcessor.cs"));
+            string wic = File.ReadAllText(Path.Combine(root, "src", "Clickra.Core", "Processors", "FileProcessing", "WicImageHelper.cs"));
+
+            Assert.True(processor.Contains("IsMultiFrameImage(filePath, extension)", StringComparison.Ordinal)
+                        && processor.Contains("error_img_compress_multiframe_resize", StringComparison.Ordinal),
+                "Compression must preserve or reject multi-frame/page media before single-frame re-encoding.");
+            Assert.True(wic.Contains("ApplyExifOrientation(original, bitmap)", StringComparison.Ordinal)
+                        && wic.Contains("OrientationPropertyId = 0x0112", StringComparison.Ordinal),
+                "Decoded JPEG/TIFF pixels must apply EXIF orientation before resize or re-encode.");
         });
 
         runner.Run("Image compression: output planning rejects collisions with selected inputs", () =>

@@ -105,7 +105,9 @@ public static class WicImageHelper
             {
                 using var fileStream = File.OpenRead(filePath);
                 using var original = new Bitmap(fileStream);
-                return new Bitmap(original);
+                var bitmap = new Bitmap(original);
+                ApplyExifOrientation(original, bitmap);
+                return bitmap;
             }
             catch
             {
@@ -114,6 +116,37 @@ public static class WicImageHelper
         }
 
         return LoadViaWic(filePath);
+    }
+
+    /// <summary>Applies the JPEG/TIFF EXIF orientation to decoded pixels before callers resize
+    /// or re-encode them. The returned bitmap therefore no longer depends on preserving metadata.</summary>
+    private static void ApplyExifOrientation(Image source, Bitmap target)
+    {
+        const int OrientationPropertyId = 0x0112;
+        if (!source.PropertyIdList.Contains(OrientationPropertyId)) return;
+
+        try
+        {
+            PropertyItem? orientation = source.GetPropertyItem(OrientationPropertyId);
+            if (orientation?.Value is not { Length: >= 2 }) return;
+            ushort value = BitConverter.ToUInt16(orientation.Value, 0);
+            RotateFlipType transform = value switch
+            {
+                2 => RotateFlipType.RotateNoneFlipX,
+                3 => RotateFlipType.Rotate180FlipNone,
+                4 => RotateFlipType.Rotate180FlipX,
+                5 => RotateFlipType.Rotate90FlipX,
+                6 => RotateFlipType.Rotate90FlipNone,
+                7 => RotateFlipType.Rotate270FlipX,
+                8 => RotateFlipType.Rotate270FlipNone,
+                _ => RotateFlipType.RotateNoneFlipNone
+            };
+            if (transform != RotateFlipType.RotateNoneFlipNone) target.RotateFlip(transform);
+        }
+        catch (ArgumentException)
+        {
+            // Malformed EXIF orientation must not make an otherwise decodable image unreadable.
+        }
     }
 
     internal static bool IsHeifExtension(string extension) =>

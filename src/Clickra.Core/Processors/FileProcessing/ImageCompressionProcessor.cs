@@ -66,6 +66,22 @@ public class ImageCompressionProcessor : MultiFileProcessorBase
         EnsureCodecAvailable(filePath);
 
         string extension = Path.GetExtension(filePath).ToLowerInvariant();
+        if (IsMultiFrameImage(filePath, extension))
+        {
+            if (_maxDimension > 0)
+                throw new NotSupportedException(Localization.T("error_img_compress_multiframe_resize", Path.GetFileName(filePath)));
+
+            PreserveOriginal(
+                filePath,
+                extension,
+                cancellationToken,
+                onProgress,
+                fileIndex,
+                totalFiles,
+                "img_compress_progress_preserving");
+            return;
+        }
+
         using var source = WicImageHelper.LoadImageSafely(filePath);
         using var resized = ResizeToLongEdge(source, _maxDimension);
         bool wasResized = resized is not null;
@@ -152,6 +168,17 @@ public class ImageCompressionProcessor : MultiFileProcessorBase
         }
         if (extension == ".webp" && !WicImageHelper.IsWebpEncoderAvailable())
             throw new NotSupportedException(Localization.T("error_img_compress_unsupported", "webp"));
+    }
+
+    /// <summary>Returns true when GIF/TIFF input contains multiple frames/pages that a single
+    /// Bitmap re-encode would silently discard.</summary>
+    private static bool IsMultiFrameImage(string filePath, string extension)
+    {
+        if (extension is not (".gif" or ".tif" or ".tiff")) return false;
+
+        using var image = Image.FromFile(filePath);
+        Guid dimension = extension == ".gif" ? FrameDimension.Time.Guid : FrameDimension.Page.Guid;
+        return image.GetFrameCount(new FrameDimension(dimension)) > 1;
     }
 
     /// <summary>Downscales so the long edge lands exactly on <paramref name="maxDimension"/>,
