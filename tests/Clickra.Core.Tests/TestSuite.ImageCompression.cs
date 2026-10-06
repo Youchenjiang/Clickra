@@ -204,7 +204,6 @@ static partial class TestSuite
             }));
 
         runner.Run("Image compression: interface dispatch initializes processor state", () =>
-        {
             RunWithTempDirectory(tempDir =>
             {
                 string source = Path.Combine(tempDir, "interface.png");
@@ -219,8 +218,7 @@ static partial class TestSuite
 
                 Assert.True(File.Exists(output),
                     "IFileProcessor dispatch must run ImageCompressionProcessor initialization before processing.");
-            });
-        });
+            }));
 
         runner.RunGuard("Image compression guard: orientation and multi-frame safety stay explicit", () =>
         {
@@ -254,7 +252,6 @@ static partial class TestSuite
             }));
 
         runner.Run("Image compression: batch snapshots settings before processing", () =>
-        {
             RunWithTempDirectory(tempDir =>
             {
                 string first = CreateCompressionNoiseJpeg(tempDir, "first.jpg", 192, 192, 95L);
@@ -288,11 +285,9 @@ static partial class TestSuite
                 {
                     ClickraStorage.SaveSetting(ClickraSettings.ImageCompressLevel, originalLevel);
                 }
-            });
-        });
+            }));
 
         runner.Run("Image compression: newer concurrent request wins output promotion", () =>
-        {
             RunWithTempDirectory(tempDir =>
             {
                 string source = CreateCompressionNoiseJpeg(tempDir, "race.jpg", 256, 256, 95L);
@@ -336,8 +331,7 @@ static partial class TestSuite
 
                 Assert.True(new FileInfo(output).Length == expectedLength,
                     "An older request finishing later must not replace the newer request's output.");
-            });
-        });
+            }));
 
         runner.Run("Image compression: progress error logging does not rethrow output planning failures", () =>
         {
