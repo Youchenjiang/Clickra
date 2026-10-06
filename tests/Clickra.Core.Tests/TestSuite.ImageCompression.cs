@@ -16,53 +16,11 @@ static partial class TestSuite
 {
     private const string ImageCompressionLevelKey = "level";
     private const string ImageCompressionQualityKey = "quality";
+    private const string ImageCompressCommand = "img-compress";
 
     public static void RegisterImageCompressionTests(TestRunner runner)
     {
-        runner.Run("Image compression presets live in one table shared by the processor and the UIs", () =>
-        {
-            // 1. Slider positions 0-3 must map cleanly onto the four discrete quality levels.
-            Assert.True(ImageCompressionOptions.FromSliderLevel(0) == ImageCompressionLevel.Minimum, "Slider 0 must mean Minimum.");
-            Assert.True(ImageCompressionOptions.FromSliderLevel(1) == ImageCompressionLevel.Small, "Slider 1 must mean Small.");
-            Assert.True(ImageCompressionOptions.FromSliderLevel(2) == ImageCompressionLevel.Standard, "Slider 2 must mean Standard.");
-            Assert.True(ImageCompressionOptions.FromSliderLevel(3) == ImageCompressionLevel.High, "Slider 3 must mean High.");
-
-            // 2. Option names must round-trip with TryParseLevel.
-            var levels = new[]
-            {
-                ImageCompressionLevel.Minimum,
-                ImageCompressionLevel.Small,
-                ImageCompressionLevel.Standard,
-                ImageCompressionLevel.High
-            };
-
-            foreach (var level in levels)
-            {
-                string optionName = ImageCompressionOptions.ToOptionName(level);
-                Assert.True(!string.IsNullOrWhiteSpace(optionName), $"{level} must have a non-empty option name.");
-                Assert.True(ImageCompressionOptions.TryParseLevel(optionName, out var parsed), $"TryParseLevel must accept {optionName}.");
-                Assert.True(parsed == level, $"Round-trip parsed {optionName} must equal {level}.");
-
-                int quality = ImageCompressionOptions.GetQuality(level);
-                Assert.True(quality >= 1 && quality <= 100, $"Quality for {level} must be between 1 and 100, got {quality}.");
-
-                string labelKey = ImageCompressionOptions.GetLabelKey(level);
-                Assert.True(!string.IsNullOrWhiteSpace(labelKey), $"{level} must have a non-empty label key.");
-                foreach (string lang in new[] { "zh-TW", "zh-CN", "en-US", "ja-JP", "ko-KR" })
-                {
-                    string translated = Localization.T(labelKey, lang);
-                    Assert.True(translated != labelKey, $"{labelKey} must be translated in {lang}.");
-                }
-            }
-
-            // Quality percentages must be strictly increasing with the level.
-            Assert.True(ImageCompressionOptions.GetQuality(ImageCompressionLevel.Minimum) <
-                        ImageCompressionOptions.GetQuality(ImageCompressionLevel.Small), "Minimum quality < Small quality.");
-            Assert.True(ImageCompressionOptions.GetQuality(ImageCompressionLevel.Small) <
-                        ImageCompressionOptions.GetQuality(ImageCompressionLevel.Standard), "Small quality < Standard quality.");
-            Assert.True(ImageCompressionOptions.GetQuality(ImageCompressionLevel.Standard) <
-                        ImageCompressionOptions.GetQuality(ImageCompressionLevel.High), "Standard quality < High quality.");
-        });
+        runner.Run("Image compression presets live in one table shared by the processor and the UIs", TestImageCompressionPresets);
 
         runner.Run("Image compression: command registry delegates to single source of truth", () =>
         {
@@ -119,26 +77,28 @@ static partial class TestSuite
             Assert.Equal("setting_pdf_compress_level_high", PdfCompressionOptions.GetLabelKey(PdfCompressionLevel.HighQuality));
         });
 
-        runner.Run("Image compression: img-compress is a production registry command", () =>
+        runner.Run("Image compression: " + ImageCompressCommand + " is a production registry command", () =>
         {
-            Assert.True(ConvertCommandRegistry.IsKnownCommand("img-compress"),
-                "img-compress must be registered before the Explorer menu can invoke it.");
-            Assert.Equal("cmd_img_compress", ConvertCommandRegistry.GetLabelKey("img-compress"));
-            Assert.True(ConvertCommandRegistry.GetCommandsForType("image").Contains("img-compress", StringComparer.Ordinal),
-                "Image command discovery must include img-compress.");
+            Assert.True(ConvertCommandRegistry.IsKnownCommand(ImageCompressCommand),
+                ImageCompressCommand + " must be registered before the Explorer menu can invoke it.");
+            Assert.Equal("cmd_img_compress", ConvertCommandRegistry.GetLabelKey(ImageCompressCommand));
+            Assert.True(ConvertCommandRegistry.GetCommandsForType("image").Contains(ImageCompressCommand, StringComparer.Ordinal),
+                "Image command discovery must include " + ImageCompressCommand + ".");
 
+            string inputDir = Path.Combine(Path.GetTempPath(), "clickra-registry-input");
+            string outputDir = Path.Combine(Path.GetTempPath(), "clickra-registry-output");
             var outputs = ConvertCommandRegistry.EstimateImageCompressionOutputs(
-                new List<string> { Path.Combine("C:\\input", "photo.jpg") },
-                "C:\\output");
-            string expectedOutput = Path.GetFullPath(Path.Combine("C:\\output", "photo_compressed.jpg"));
+                new List<string> { Path.Combine(inputDir, "photo.jpg") },
+                outputDir);
+            string expectedOutput = Path.GetFullPath(Path.Combine(outputDir, "photo_compressed.jpg"));
             Assert.True(outputs.Count == 1 && string.Equals(Path.GetFullPath(outputs[0]), expectedOutput, StringComparison.OrdinalIgnoreCase),
-                "img-compress must honor the output-directory override and preserve the source extension.");
+                ImageCompressCommand + " must honor the output-directory override and preserve the source extension.");
 
-            string[] allowed = ConvertCommandRegistry.GetAllowedExtensions("img-compress");
+            string[] allowed = ConvertCommandRegistry.GetAllowedExtensions(ImageCompressCommand);
             foreach (string extension in new[] { ".tif", ".tiff", ".heic", ".heif", ".hif" })
             {
                 Assert.True(allowed.Contains(extension, StringComparer.OrdinalIgnoreCase),
-                    $"img-compress must accept the processor-supported extension {extension}.");
+                    $"{ImageCompressCommand} must accept the processor-supported extension {extension}.");
             }
         });
 
@@ -155,7 +115,7 @@ static partial class TestSuite
                     ClickraStorage.SaveSetting(ClickraSettings.ImageCompressLevel, "0");
                     ClickraStorage.SaveSetting(ClickraSettings.ImageCompressMaxDimension, "0");
                     ConvertCommandRunner.Run(
-                        "img-compress",
+                        ImageCompressCommand,
                         new List<string> { source },
                         new List<string> { output },
                         (_, _, _) => { },
@@ -169,11 +129,11 @@ static partial class TestSuite
                     ClickraStorage.SaveSetting(ClickraSettings.ImageCompressMaxDimension, originalMax);
                 }
 
-                Assert.True(File.Exists(output), "img-compress must create the expected _compressed output.");
+                Assert.True(File.Exists(output), ImageCompressCommand + " must create the expected _compressed output.");
                 Assert.True(new FileInfo(output).Length < new FileInfo(source).Length,
                     "Low-quality JPEG compression must produce a smaller file for deterministic noisy input.");
                 Assert.True(File.ReadAllBytes(source).SequenceEqual(originalBytes),
-                    "img-compress must never modify the source file.");
+                    ImageCompressCommand + " must never modify the source file.");
             }));
 
         runner.Run("Image compression: explicit resize caps the long edge", () =>
@@ -265,7 +225,7 @@ static partial class TestSuite
                     ClickraStorage.SaveSetting(ClickraSettings.ImageCompressLevel, "0");
                     bool changed = false;
                     ConvertCommandRunner.Run(
-                        "img-compress",
+                        ImageCompressCommand,
                         files,
                         outputs,
                         (_, _, _) =>
@@ -345,6 +305,51 @@ static partial class TestSuite
                         && normalizedProgress.Contains("catch\n            {\n                return \"\";\n            }", StringComparison.Ordinal),
                 "Failure-history output rendering must not mask the original exception when output planning also fails.");
         });
+    }
+
+    private static void TestImageCompressionPresets()
+    {
+        // 1. Slider positions 0-3 must map cleanly onto the four discrete quality levels.
+        Assert.True(ImageCompressionOptions.FromSliderLevel(0) == ImageCompressionLevel.Minimum, "Slider 0 must mean Minimum.");
+        Assert.True(ImageCompressionOptions.FromSliderLevel(1) == ImageCompressionLevel.Small, "Slider 1 must mean Small.");
+        Assert.True(ImageCompressionOptions.FromSliderLevel(2) == ImageCompressionLevel.Standard, "Slider 2 must mean Standard.");
+        Assert.True(ImageCompressionOptions.FromSliderLevel(3) == ImageCompressionLevel.High, "Slider 3 must mean High.");
+
+        // 2. Option names must round-trip with TryParseLevel.
+        var levels = new[]
+        {
+            ImageCompressionLevel.Minimum,
+            ImageCompressionLevel.Small,
+            ImageCompressionLevel.Standard,
+            ImageCompressionLevel.High
+        };
+
+        foreach (var level in levels)
+        {
+            string optionName = ImageCompressionOptions.ToOptionName(level);
+            Assert.True(!string.IsNullOrWhiteSpace(optionName), $"{level} must have a non-empty option name.");
+            Assert.True(ImageCompressionOptions.TryParseLevel(optionName, out var parsed), $"TryParseLevel must accept {optionName}.");
+            Assert.True(parsed == level, $"Round-trip parsed {optionName} must equal {level}.");
+
+            int quality = ImageCompressionOptions.GetQuality(level);
+            Assert.True(quality >= 1 && quality <= 100, $"Quality for {level} must be between 1 and 100, got {quality}.");
+
+            string labelKey = ImageCompressionOptions.GetLabelKey(level);
+            Assert.True(!string.IsNullOrWhiteSpace(labelKey), $"{level} must have a non-empty label key.");
+            foreach (string lang in new[] { "zh-TW", "zh-CN", "en-US", "ja-JP", "ko-KR" })
+            {
+                string translated = Localization.T(labelKey, lang);
+                Assert.True(translated != labelKey, $"{labelKey} must be translated in {lang}.");
+            }
+        }
+
+        // Quality percentages must be strictly increasing with the level.
+        Assert.True(ImageCompressionOptions.GetQuality(ImageCompressionLevel.Minimum) <
+                    ImageCompressionOptions.GetQuality(ImageCompressionLevel.Small), "Minimum quality < Small quality.");
+        Assert.True(ImageCompressionOptions.GetQuality(ImageCompressionLevel.Small) <
+                    ImageCompressionOptions.GetQuality(ImageCompressionLevel.Standard), "Small quality < Standard quality.");
+        Assert.True(ImageCompressionOptions.GetQuality(ImageCompressionLevel.Standard) <
+                    ImageCompressionOptions.GetQuality(ImageCompressionLevel.High), "Standard quality < High quality.");
     }
 
     private static string CreateCompressionNoiseJpeg(string directory, string fileName, int width, int height, long quality)
