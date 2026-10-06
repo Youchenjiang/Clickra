@@ -143,7 +143,6 @@ static partial class TestSuite
         });
 
         runner.Run("Image compression: runner produces a smaller JPEG without overwriting input", () =>
-        {
             RunWithTempDirectory(tempDir =>
             {
                 string source = CreateCompressionNoiseJpeg(tempDir, "noise.jpg", 256, 256, 95L);
@@ -175,11 +174,9 @@ static partial class TestSuite
                     "Low-quality JPEG compression must produce a smaller file for deterministic noisy input.");
                 Assert.True(File.ReadAllBytes(source).SequenceEqual(originalBytes),
                     "img-compress must never modify the source file.");
-            });
-        });
+            }));
 
         runner.Run("Image compression: explicit resize caps the long edge", () =>
-        {
             RunWithTempDirectory(tempDir =>
             {
                 string source = Path.Combine(tempDir, "wide.png");
@@ -196,18 +193,15 @@ static partial class TestSuite
                 using var compressed = new Bitmap(output);
                 Assert.True(compressed.Width == 80 && compressed.Height == 40,
                     $"Expected 80x40 after long-edge resize, got {compressed.Width}x{compressed.Height}.");
-            });
-        });
+            }));
 
         runner.Run("Image compression: processor rejects source overwrite", () =>
-        {
             RunWithTempDirectory(tempDir =>
             {
                 string source = Path.Combine(tempDir, "source.png");
                 using (var image = new Bitmap(32, 32)) image.Save(source, ImageFormat.Png);
                 Assert.Throws<InvalidOperationException>(() => FileProcessor.CompressImage(source, source));
-            });
-        });
+            }));
 
         runner.Run("Image compression: interface dispatch initializes processor state", () =>
         {
@@ -244,7 +238,6 @@ static partial class TestSuite
         });
 
         runner.Run("Image compression: output planning rejects collisions with selected inputs", () =>
-        {
             RunWithTempDirectory(tempDir =>
             {
                 string first = Path.Combine(tempDir, "photo.jpg");
@@ -258,8 +251,7 @@ static partial class TestSuite
                     "Collision error must identify the selected input that would be overwritten.");
                 Assert.True(File.ReadAllBytes(second).SequenceEqual(new byte[] { 2 }),
                     "Planning a rejected compression batch must leave every selected input untouched.");
-            });
-        });
+            }));
 
         runner.Run("Image compression: batch snapshots settings before processing", () =>
         {

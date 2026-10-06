@@ -98,11 +98,11 @@ public class ImageCompressionProcessor : MultiFileProcessorBase
             PreserveOriginal(
                 filePath,
                 extension,
-                cancellationToken,
                 onProgress,
                 fileIndex,
                 totalFiles,
-                "img_compress_progress_preserving");
+                "img_compress_progress_preserving",
+                cancellationToken);
             return;
         }
 
@@ -121,11 +121,11 @@ public class ImageCompressionProcessor : MultiFileProcessorBase
             PreserveOriginal(
                 filePath,
                 extension,
-                cancellationToken,
                 onProgress,
                 fileIndex,
                 totalFiles,
-                "img_compress_progress_preserving");
+                "img_compress_progress_preserving",
+                cancellationToken);
             return;
         }
 
@@ -138,11 +138,11 @@ public class ImageCompressionProcessor : MultiFileProcessorBase
             PreserveOriginal(
                 filePath,
                 extension,
-                cancellationToken,
                 onProgress,
                 fileIndex,
                 totalFiles,
-                "img_compress_progress_preserving");
+                "img_compress_progress_preserving",
+                cancellationToken);
             return;
         }
 
@@ -163,11 +163,11 @@ public class ImageCompressionProcessor : MultiFileProcessorBase
                 PreserveOriginal(
                     filePath,
                     extension,
-                    cancellationToken,
                     onProgress,
                     fileIndex,
                     totalFiles,
-                    "img_compress_progress_not_smaller");
+                    "img_compress_progress_not_smaller",
+                    cancellationToken);
                 return;
             }
 
@@ -397,11 +397,11 @@ public class ImageCompressionProcessor : MultiFileProcessorBase
     private void PreserveOriginal(
         string sourcePath,
         string extension,
-        CancellationToken cancellationToken,
         Action<int, int, string>? onProgress,
         int fileIndex,
         int totalFiles,
-        string progressKey)
+        string progressKey,
+        CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
         onProgress?.Invoke((fileIndex * 100) + 70, totalFiles * 100, Localization.T(
