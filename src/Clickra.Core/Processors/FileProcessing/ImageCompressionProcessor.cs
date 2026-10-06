@@ -31,7 +31,7 @@ public class ImageCompressionProcessor : MultiFileProcessorBase
     private int _quality = ImageCompressionOptions.GetQuality(ImageCompressionLevel.Small);
     private int _maxDimension;
 
-    public new void Process(List<string> files, string? outputPath, Dictionary<string, object>? options = null, Action<int, int, string>? onProgress = null, CancellationToken cancellationToken = default)
+    public override void Process(List<string> files, string? outputPath, Dictionary<string, object>? options = null, Action<int, int, string>? onProgress = null, CancellationToken cancellationToken = default)
     {
         if (string.IsNullOrEmpty(outputPath)) throw new ArgumentException("Output path is required for image compression.");
         _outputPath = outputPath;

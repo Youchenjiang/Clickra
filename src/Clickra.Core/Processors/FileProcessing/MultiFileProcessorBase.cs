@@ -6,7 +6,7 @@ namespace Clickra.Core.Processors
 {
     public abstract class MultiFileProcessorBase : IFileProcessor
     {
-        public void Process(List<string> files, string? outputPath, Dictionary<string, object>? options = null, Action<int, int, string>? onProgress = null, CancellationToken cancellationToken = default)
+        public virtual void Process(List<string> files, string? outputPath, Dictionary<string, object>? options = null, Action<int, int, string>? onProgress = null, CancellationToken cancellationToken = default)
         {
             if (files == null || files.Count == 0) return;
 

@@ -199,6 +199,25 @@ static partial class TestSuite
             });
         });
 
+        runner.Run("Image compression: interface dispatch initializes processor state", () =>
+        {
+            RunWithTempDirectory(tempDir =>
+            {
+                string source = Path.Combine(tempDir, "interface.png");
+                string output = Path.Combine(tempDir, "interface_compressed.png");
+                using (var image = new Bitmap(40, 40)) image.Save(source, ImageFormat.Png);
+
+                IFileProcessor processor = new ImageCompressionProcessor();
+                processor.Process(
+                    new List<string> { source },
+                    output,
+                    ConvertCommandRegistry.ImageCompressionOptions());
+
+                Assert.True(File.Exists(output),
+                    "IFileProcessor dispatch must run ImageCompressionProcessor initialization before processing.");
+            });
+        });
+
         runner.Run("Image compression: output planning rejects collisions with selected inputs", () =>
         {
             RunWithTempDirectory(tempDir =>
