@@ -42,6 +42,9 @@
   <data name="Menu_ImgStitch" xml:space="preserve">
     <value>画像を縦に結合</value>
   </data>
+  <data name="Menu_ImgCompress" xml:space="preserve">
+    <value>画像を圧縮</value>
+  </data>
   <data name="Menu_ImgToPng" xml:space="preserve">
     <value>PNG に変換</value>
   </data>

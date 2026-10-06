@@ -14,6 +14,7 @@ public static class ConvertCommandRegistry
         private const string CmdImgToWebp = "img-to-webp";
         private const string CmdImgToGif = "img-to-gif";
         private const string CmdImgToHeic = "img-to-heic";
+        private const string CmdImgCompress = "img-compress";
 
         private sealed record CommandDef(string[] Extensions, int MinFiles, string LabelKey, string[]? ExcludeExtensions = null);
 
@@ -30,7 +31,7 @@ public static class ConvertCommandRegistry
             ("word", WordExtensions, ["word2pdf"]),
             ("excel", ExcelExtensions, ["excel2pdf"]),
             ("ppt", PptExtensions, ["ppt2pdf"]),
-            ("image", ImageExtensions, ["img2pdf", "img-merge", "img-stitch", CmdImgToPng, CmdImgToJpg, CmdImgToWebp, CmdImgToGif, CmdImgToHeic])
+            ("image", ImageExtensions, ["img2pdf", "img-merge", "img-stitch", CmdImgCompress, CmdImgToPng, CmdImgToJpg, CmdImgToWebp, CmdImgToGif, CmdImgToHeic])
         };
 
         /// <summary>File extensions accepted by a UI file type ("pdf", "word", "excel", "ppt", "image").</summary>
@@ -77,6 +78,7 @@ public static class ConvertCommandRegistry
             ["img2pdf"] = new(ImageExtensions, 1, "cmd_img_to_pdf"),
             ["img-merge"] = new(ImageExtensions, 2, "cmd_merge_img"),
             ["img-stitch"] = new(ImageExtensions, 2, "cmd_stitch_img"),
+            [CmdImgCompress] = new(ImageExtensions, 1, "cmd_img_compress"),
             [CmdImgToPng] = new(ImageExtensions, 1, "cmd_img_to_png", PngExcluded),
             [CmdImgToJpg] = new(ImageExtensions, 1, "cmd_img_to_jpg", JpegExcluded),
             [CmdImgToWebp] = new(ImageExtensions, 1, "cmd_img_to_webp", WebpExcluded),
@@ -132,6 +134,7 @@ public static class ConvertCommandRegistry
                 "decrypt-pdf" => files.Select(f => Path.Combine(ClickraStorage.GetOutputDir(f), Path.GetFileNameWithoutExtension(f) + "_decrypted.pdf")).ToList(),
                 "split-pdf" => files.Select(f => Path.Combine(ClickraStorage.GetOutputDir(f), Path.GetFileNameWithoutExtension(f) + "_split.pdf")).ToList(),
                 "img2pdf" => files.Select(f => Path.Combine(ClickraStorage.GetOutputDir(f), Path.GetFileNameWithoutExtension(f) + ".pdf")).ToList(),
+                CmdImgCompress => EstimateImageCompressionOutputs(files),
                 CmdImgToPng or CmdImgToJpg or CmdImgToWebp or CmdImgToGif or CmdImgToHeic
                     => EstimateImageFormatOutputs(command, files),
                 _ => files.Select(f => Path.Combine(ClickraStorage.GetOutputDir(f), Path.GetFileNameWithoutExtension(f) + ".pdf")).ToList()
@@ -155,6 +158,17 @@ public static class ConvertCommandRegistry
                 .Select(f => Path.Combine(
                     string.IsNullOrWhiteSpace(outputDirOverride) ? ClickraStorage.GetOutputDir(f) : outputDirOverride,
                     Path.GetFileNameWithoutExtension(f) + extension))
+                .ToList();
+            EnsureUniqueOutputPaths(outputs);
+            return outputs;
+        }
+
+        /// <summary>Predicts one compressed output per image while preserving each input extension.</summary>
+        public static List<string> EstimateImageCompressionOutputs(List<string> files, string? outputDirOverride = null)
+        {
+            var outputs = files.Select(f => Path.Combine(
+                    string.IsNullOrWhiteSpace(outputDirOverride) ? ClickraStorage.GetOutputDir(f) : outputDirOverride,
+                    Path.GetFileNameWithoutExtension(f) + "_compressed" + Path.GetExtension(f)))
                 .ToList();
             EnsureUniqueOutputPaths(outputs);
             return outputs;

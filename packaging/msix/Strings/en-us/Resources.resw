@@ -42,6 +42,9 @@
   <data name="Menu_ImgStitch" xml:space="preserve">
     <value>Stitch Images Vertically</value>
   </data>
+  <data name="Menu_ImgCompress" xml:space="preserve">
+    <value>Compress Images</value>
+  </data>
   <data name="Menu_ImgToPng" xml:space="preserve">
     <value>Convert to PNG</value>
   </data>

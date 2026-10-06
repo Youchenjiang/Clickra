@@ -42,6 +42,9 @@
   <data name="Menu_ImgStitch" xml:space="preserve">
     <value>圖片垂直拼接</value>
   </data>
+  <data name="Menu_ImgCompress" xml:space="preserve">
+    <value>壓縮圖片</value>
+  </data>
   <data name="Menu_ImgToPng" xml:space="preserve">
     <value>轉成 PNG</value>
   </data>

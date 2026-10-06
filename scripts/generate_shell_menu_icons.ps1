@@ -15,6 +15,7 @@ $icons = @(
     @{ Name = "menu-img2pdf.ico";      Color = "#7A3E9D"; Kind = "ImageToPage" },
     @{ Name = "menu-img-merge.ico";    Color = "#8E44AD"; Kind = "ImageMerge" },
     @{ Name = "menu-img-stitch.ico";   Color = "#5C4FB5"; Kind = "Stitch" },
+    @{ Name = "menu-img-compress.ico"; Color = "#7A5C00"; Kind = "Compress" },
     @{ Name = "menu-img-to-png.ico";   Color = "#0078D4"; Kind = "Format"; Letter = "PNG" },
     @{ Name = "menu-img-to-jpg.ico";   Color = "#FF8C00"; Kind = "Format"; Letter = "JPG" },
     @{ Name = "menu-img-to-webp.ico";  Color = "#0099BC"; Kind = "Format"; Letter = "WEBP" },

@@ -87,6 +87,24 @@ namespace Clickra.Core
             processor.Process(new List<string> { inputPath }, outputPath, options, onProgress, cancellationToken);
         }
 
+        /// <summary>Compresses an image in its existing format, optionally capping its long edge.</summary>
+        public static void CompressImage(string inputPath, string outputPath, int level = 1, int maxDimension = 0, Action<int, int, string>? onProgress = null, CancellationToken cancellationToken = default)
+        {
+            var options = new Dictionary<string, object>
+            {
+                { "level", ImageCompressionOptions.ToOptionName(ImageCompressionOptions.FromSliderLevel(level)) },
+                { "max_dimension", Math.Max(0, maxDimension) }
+            };
+            CompressImage(inputPath, outputPath, options, onProgress, cancellationToken);
+        }
+
+        /// <summary>Compresses an image using the shared image-compression option dictionary.</summary>
+        public static void CompressImage(string inputPath, string outputPath, Dictionary<string, object> options, Action<int, int, string>? onProgress = null, CancellationToken cancellationToken = default)
+        {
+            var processor = new ImageCompressionProcessor();
+            processor.Process(new List<string> { inputPath }, outputPath, options, onProgress, cancellationToken);
+        }
+
         /// <summary>Converts PowerPoint files to PDF via the LibreOffice engine.</summary>
         /// <param name="files">Input .ppt/.pptx paths.</param>
         /// <param name="onProgress">Optional progress callback receiving (progress, max, message).</param>

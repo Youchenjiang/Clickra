@@ -42,6 +42,9 @@
   <data name="Menu_ImgStitch" xml:space="preserve">
     <value>이미지 세로로 이어붙이기</value>
   </data>
+  <data name="Menu_ImgCompress" xml:space="preserve">
+    <value>이미지 압축</value>
+  </data>
   <data name="Menu_ImgToPng" xml:space="preserve">
     <value>PNG로 변환</value>
   </data>

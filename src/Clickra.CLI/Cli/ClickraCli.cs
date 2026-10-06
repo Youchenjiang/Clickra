@@ -231,6 +231,23 @@ namespace Clickra
                     if (quiet) FileProcessor.StitchImages(files, Path.Combine(outputDir, "Stitched_Image.png"), (curr, tot, msg) => Console.WriteLine($"[Progress] {msg}"));
                     else ProgressWindow.Show(command, files);
                     return true;
+                case "img-compress":
+                    ValidateExtensions(files, command, quiet, ConvertCommandRegistry.GetAllowedExtensions(command));
+                    RequireMinFiles(files, command, ConvertCommandRegistry.GetMinFiles(command), quiet);
+                    if (quiet)
+                    {
+                        var outputs = ConvertCommandRegistry.EstimateImageCompressionOutputs(files, outputDirOverride ?? outputDir);
+                        ConvertCommandRunner.Run(
+                            command,
+                            files,
+                            outputs,
+                            (curr, total, msg) => Console.WriteLine($"[Progress] {msg}"),
+                            new ConvertCommandRunner.ConversionOptions(
+                                _ => System.Threading.Tasks.Task.FromResult<string?>(null),
+                                (_, _) => System.Threading.Tasks.Task.FromResult<string?>(null)));
+                    }
+                    else ProgressWindow.Show(command, files, outputDirOverride);
+                    return true;
                 case "img-to-png":
                 case "img-to-jpg":
                 case "img-to-webp":

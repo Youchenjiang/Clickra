@@ -265,10 +265,16 @@ public static class WicImageHelper
     public static void ConvertFileToWebp(string inputPath, string outputPath, int quality = 90)
     {
         using var source = LoadImageSafely(inputPath);
+        SaveAsWebp(source, outputPath, quality);
+    }
+
+    /// <summary>Encodes an already-loaded image as WebP using Clickra's bundled libwebp runtime.</summary>
+    public static void SaveAsWebp(Bitmap image, string outputPath, int quality = 90)
+    {
         string? dir = Path.GetDirectoryName(outputPath);
         if (!string.IsNullOrEmpty(dir)) Directory.CreateDirectory(dir);
         using var output = File.Create(outputPath);
         var encoder = new SimpleEncoder();
-        encoder.Encode(source, output, Math.Clamp(quality, 1, 100));
+        encoder.Encode(image, output, Math.Clamp(quality, 1, 100));
     }
 }
