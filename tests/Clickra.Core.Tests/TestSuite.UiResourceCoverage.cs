@@ -310,6 +310,16 @@ static partial class TestSuite
         Assert.True(subArgs.Length == subArgs.Distinct(StringComparer.Ordinal).Count(),
             "Shell SubArgs must not contain duplicate command ids.");
 
+        string[] registryCommands = new[] { "pdf", "word", "excel", "ppt", "image" }
+            .SelectMany(ConvertCommandRegistry.GetCommandsForType)
+            .Distinct(StringComparer.Ordinal)
+            .OrderBy(command => command, StringComparer.Ordinal)
+            .ToArray();
+        string[] shellCommands = subArgs.OrderBy(command => command, StringComparer.Ordinal).ToArray();
+        Assert.True(shellCommands.SequenceEqual(registryCommands, StringComparer.Ordinal),
+            "Shell menu must expose every production ConvertCommandRegistry command exactly once. " +
+            "Shell: [" + string.Join(", ", shellCommands) + "] Registry: [" + string.Join(", ", registryCommands) + "]");
+
         for (int i = 0; i < subArgs.Length; i++)
         {
             string command = subArgs[i];

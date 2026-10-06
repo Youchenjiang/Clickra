@@ -42,6 +42,21 @@
   <data name="Menu_ImgStitch" xml:space="preserve">
     <value>图片垂直拼接</value>
   </data>
+  <data name="Menu_ImgToPng" xml:space="preserve">
+    <value>转换为 PNG</value>
+  </data>
+  <data name="Menu_ImgToJpg" xml:space="preserve">
+    <value>转换为 JPG</value>
+  </data>
+  <data name="Menu_ImgToWebp" xml:space="preserve">
+    <value>转换为 WEBP</value>
+  </data>
+  <data name="Menu_ImgToGif" xml:space="preserve">
+    <value>转换为 GIF</value>
+  </data>
+  <data name="Menu_ImgToHeic" xml:space="preserve">
+    <value>转换为 HEIC</value>
+  </data>
   <data name="Menu_TranslatePdf" xml:space="preserve">
     <value>PDF 一键翻译</value>
   </data>

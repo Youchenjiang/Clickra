@@ -30,17 +30,18 @@ namespace ClickraShell
         private const int E_FAIL = -2_147_467_259;
         private const uint SIGDN_FILESYSPATH = 0x8005_8000;
 
-        private static readonly string[] MenuKeys = { "Menu_Ppt2Pdf", "Menu_Word2Pdf", "Menu_Excel2Pdf", "Menu_MergePdf", "Menu_CompressPdf", "Menu_Img2Pdf", "Menu_ImgMerge", "Menu_ImgStitch", "Menu_TranslatePdf", "Menu_DecryptPdf", "Menu_SplitPdf" };
+        private static readonly string[] MenuKeys = { "Menu_Ppt2Pdf", "Menu_Word2Pdf", "Menu_Excel2Pdf", "Menu_MergePdf", "Menu_CompressPdf", "Menu_Img2Pdf", "Menu_ImgMerge", "Menu_ImgStitch", "Menu_TranslatePdf", "Menu_DecryptPdf", "Menu_SplitPdf", "Menu_ImgToPng", "Menu_ImgToJpg", "Menu_ImgToWebp", "Menu_ImgToGif", "Menu_ImgToHeic" };
 
         /// <summary>Resource key of the root (parent) submenu label, so the app's own name comes from
         /// the same resw as every entry under it instead of a hardcoded literal.</summary>
         private const string RootTitleKey = "AppName";
-        private static readonly string[] SubArgs = { "ppt2pdf", "word2pdf", "excel2pdf", "merge-pdf", "compress-pdf", "img2pdf", "img-merge", "img-stitch", "translate-pdf", "decrypt-pdf", "split-pdf" };
+        private static readonly string[] SubArgs = { "ppt2pdf", "word2pdf", "excel2pdf", "merge-pdf", "compress-pdf", "img2pdf", "img-merge", "img-stitch", "translate-pdf", "decrypt-pdf", "split-pdf", "img-to-png", "img-to-jpg", "img-to-webp", "img-to-gif", "img-to-heic" };
         /// <summary>Per-command icon files, positionally aligned with SubArgs. The root command (-1) uses app.ico.</summary>
         private static readonly string[] IconFiles = {
             "menu-ppt2pdf.ico", "menu-word2pdf.ico", "menu-excel2pdf.ico", "menu-merge-pdf.ico",
             "menu-compress-pdf.ico", "menu-img2pdf.ico", "menu-img-merge.ico", "menu-img-stitch.ico",
-            "menu-translate-pdf.ico", "menu-decrypt-pdf.ico", "menu-split-pdf.ico"
+            "menu-translate-pdf.ico", "menu-decrypt-pdf.ico", "menu-split-pdf.ico",
+            "menu-img-to-png.ico", "menu-img-to-jpg.ico", "menu-img-to-webp.ico", "menu-img-to-gif.ico", "menu-img-to-heic.ico"
         };
 
         /// <summary>Allocates a COM object with the given vtable and type, then performs a
@@ -184,12 +185,17 @@ namespace ClickraShell
 
             return idx switch
             {
-                -1 => new[] { ".ppt", ".pptx", ".doc", ".docx", ".xlsx", ".xls", ".pdf", ".jpg", ".jpeg", ".png", ".gif", ".webp" }.Contains(ext),
+                -1 => new[] { ".ppt", ".pptx", ".doc", ".docx", ".xlsx", ".xls", ".pdf", ".jpg", ".jpeg", ".png", ".bmp", ".gif", ".tiff", ".webp", ".heic" }.Contains(ext),
                 0 => ext == ".ppt" || ext == ".pptx",
                 1 => ext == ".doc" || ext == ".docx",
                 2 => ext == ".xlsx" || ext == ".xls",
                 3 or 4 or 8 or 9 or 10 => ext == ".pdf",
-                5 or 6 or 7 => new[] { ".jpg", ".jpeg", ".png", ".gif", ".webp" }.Contains(ext),
+                5 or 6 or 7 => new[] { ".jpg", ".jpeg", ".png", ".bmp", ".gif", ".tiff", ".webp", ".heic" }.Contains(ext),
+                11 => ext != ".png" && new[] { ".jpg", ".jpeg", ".bmp", ".gif", ".tiff", ".webp", ".heic" }.Contains(ext),
+                12 => ext != ".jpg" && ext != ".jpeg" && new[] { ".png", ".bmp", ".gif", ".tiff", ".webp", ".heic" }.Contains(ext),
+                13 => ext != ".webp" && new[] { ".jpg", ".jpeg", ".png", ".bmp", ".gif", ".tiff", ".heic" }.Contains(ext),
+                14 => ext != ".gif" && new[] { ".jpg", ".jpeg", ".png", ".bmp", ".tiff", ".webp", ".heic" }.Contains(ext),
+                15 => ext != ".heic" && new[] { ".jpg", ".jpeg", ".png", ".bmp", ".gif", ".tiff", ".webp" }.Contains(ext),
                 _ => false
             };
         }
