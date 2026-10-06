@@ -139,8 +139,11 @@ public static class ConvertCommandRunner
                     FileProcessor.StitchImages(files, outputs[0], progress, token);
                     break;
                 case "img-compress":
-                    RunPerFile(files, outputs, (f, o, p, t) => FileProcessor.CompressImage(f, o, ConvertCommandRegistry.ImageCompressionOptions(), p, t), progress, options.StartIndex, token);
+                {
+                    Dictionary<string, object> compressionOptions = ConvertCommandRegistry.ImageCompressionOptions();
+                    RunPerFile(files, outputs, (f, o, p, t) => FileProcessor.CompressImage(f, o, compressionOptions, p, t), progress, options.StartIndex, token);
                     break;
+                }
                 case "img-to-png":
                     RunImageConvert(files, outputs, "png", progress, options.StartIndex, token);
                     break;

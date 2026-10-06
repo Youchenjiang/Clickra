@@ -5,6 +5,8 @@ using System.Drawing.Imaging;
 using System.IO;
 using System.Linq;
 using System.Text.RegularExpressions;
+using System.Threading;
+using System.Threading.Tasks;
 using Clickra.Core;
 using Clickra.Core.Processors;
 
@@ -255,6 +257,92 @@ static partial class TestSuite
                     "Collision error must identify the selected input that would be overwritten.");
                 Assert.True(File.ReadAllBytes(second).SequenceEqual(new byte[] { 2 }),
                     "Planning a rejected compression batch must leave every selected input untouched.");
+            });
+        });
+
+        runner.Run("Image compression: batch snapshots settings before processing", () =>
+        {
+            RunWithTempDirectory(tempDir =>
+            {
+                string first = CreateCompressionNoiseJpeg(tempDir, "first.jpg", 192, 192, 95L);
+                string second = Path.Combine(tempDir, "second.jpg");
+                File.Copy(first, second);
+                var files = new List<string> { first, second };
+                var outputs = ConvertCommandRegistry.EstimateImageCompressionOutputs(files, tempDir);
+                string originalLevel = ClickraStorage.GetSetting(ClickraSettings.ImageCompressLevel);
+                try
+                {
+                    ClickraStorage.SaveSetting(ClickraSettings.ImageCompressLevel, "0");
+                    bool changed = false;
+                    ConvertCommandRunner.Run(
+                        "img-compress",
+                        files,
+                        outputs,
+                        (_, _, _) =>
+                        {
+                            if (changed) return;
+                            changed = true;
+                            ClickraStorage.SaveSetting(ClickraSettings.ImageCompressLevel, "3");
+                        },
+                        new ConvertCommandRunner.ConversionOptions(
+                            _ => Task.FromResult<string?>(null),
+                            (_, _) => Task.FromResult<string?>(null)));
+
+                    Assert.True(new FileInfo(outputs[0]).Length == new FileInfo(outputs[1]).Length,
+                        "One compression batch must use one settings snapshot even if the saved setting changes mid-run.");
+                }
+                finally
+                {
+                    ClickraStorage.SaveSetting(ClickraSettings.ImageCompressLevel, originalLevel);
+                }
+            });
+        });
+
+        runner.Run("Image compression: newer concurrent request wins output promotion", () =>
+        {
+            RunWithTempDirectory(tempDir =>
+            {
+                string source = CreateCompressionNoiseJpeg(tempDir, "race.jpg", 256, 256, 95L);
+                string output = Path.Combine(tempDir, "race_compressed.jpg");
+                string expected = Path.Combine(tempDir, "expected.jpg");
+                var highOptions = new Dictionary<string, object>
+                {
+                    ["level"] = ImageCompressionOptions.OptionHigh,
+                    ["quality"] = ImageCompressionOptions.GetQuality(ImageCompressionLevel.High),
+                    ["max_dimension"] = 0
+                };
+                var lowOptions = new Dictionary<string, object>
+                {
+                    ["level"] = ImageCompressionOptions.OptionMin,
+                    ["quality"] = ImageCompressionOptions.GetQuality(ImageCompressionLevel.Minimum),
+                    ["max_dimension"] = 0
+                };
+                FileProcessor.CompressImage(source, expected, highOptions);
+                long expectedLength = new FileInfo(expected).Length;
+
+                using var oldStarted = new ManualResetEventSlim(false);
+                using var releaseOld = new ManualResetEventSlim(false);
+                bool held = false;
+                Task older = Task.Run(() => FileProcessor.CompressImage(
+                    source,
+                    output,
+                    lowOptions,
+                    (_, _, _) =>
+                    {
+                        if (held) return;
+                        held = true;
+                        oldStarted.Set();
+                        releaseOld.Wait(TimeSpan.FromSeconds(10));
+                    }));
+
+                Assert.True(oldStarted.Wait(TimeSpan.FromSeconds(10)), "Older request did not reach the compression stage.");
+                Task newer = Task.Run(() => FileProcessor.CompressImage(source, output, highOptions));
+                Assert.True(newer.Wait(TimeSpan.FromSeconds(10)), "Newer request did not finish while the older request was paused.");
+                releaseOld.Set();
+                Assert.True(older.Wait(TimeSpan.FromSeconds(10)), "Older request did not finish after release.");
+
+                Assert.True(new FileInfo(output).Length == expectedLength,
+                    "An older request finishing later must not replace the newer request's output.");
             });
         });
 

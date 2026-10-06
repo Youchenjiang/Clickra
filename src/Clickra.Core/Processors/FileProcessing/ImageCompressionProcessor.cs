@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Drawing;
 using System.Drawing.Drawing2D;
@@ -21,6 +22,17 @@ namespace Clickra.Core.Processors;
 /// </para></summary>
 public class ImageCompressionProcessor : MultiFileProcessorBase
 {
+    private sealed class PromotionState
+    {
+        public object SyncRoot { get; } = new();
+        public long LatestSequence { get; set; }
+        public int ActiveRequests { get; set; }
+    }
+
+    private static readonly ConcurrentDictionary<string, PromotionState> PromotionStates =
+        new(StringComparer.OrdinalIgnoreCase);
+    private static long _nextRequestSequence;
+
     private const string OptionLevel = "level";
     private const string OptionQuality = "quality";
     private const string OptionMaxDimension = "max_dimension";
@@ -30,11 +42,15 @@ public class ImageCompressionProcessor : MultiFileProcessorBase
     private ImageCompressionLevel _level = ImageCompressionLevel.Small;
     private int _quality = ImageCompressionOptions.GetQuality(ImageCompressionLevel.Small);
     private int _maxDimension;
+    private string? _normalizedOutputPath;
+    private PromotionState? _promotionState;
+    private long _requestSequence;
 
     public override void Process(List<string> files, string? outputPath, Dictionary<string, object>? options = null, Action<int, int, string>? onProgress = null, CancellationToken cancellationToken = default)
     {
         if (string.IsNullOrEmpty(outputPath)) throw new ArgumentException("Output path is required for image compression.");
         _outputPath = outputPath;
+        _normalizedOutputPath = Path.GetFullPath(outputPath);
 
         if (!ImageCompressionOptions.TryParseLevel(GetString(options, OptionLevel), out _level))
             throw new ArgumentException($"Unknown image compression level '{GetString(options, OptionLevel)}'.");
@@ -46,7 +62,15 @@ public class ImageCompressionProcessor : MultiFileProcessorBase
         // 0 keeps the original size, which is what the settings registry documents.
         _maxDimension = Math.Max(0, GetInt(options, OptionMaxDimension) ?? 0);
 
-        base.Process(files, outputPath, options, onProgress, cancellationToken);
+        RegisterPromotionRequest();
+        try
+        {
+            base.Process(files, outputPath, options, onProgress, cancellationToken);
+        }
+        finally
+        {
+            ReleasePromotionRequest();
+        }
     }
 
     protected override void ProcessFile(string filePath, int fileIndex, int totalFiles, Dictionary<string, object>? options, Action<int, int, string>? onProgress, CancellationToken cancellationToken)
@@ -406,8 +430,52 @@ public class ImageCompressionProcessor : MultiFileProcessorBase
             $".{Path.GetFileNameWithoutExtension(outputPath)}.{Guid.NewGuid():N}.clickra{extension}");
     }
 
-    private void PromoteCandidate(string candidatePath) =>
-        File.Move(candidatePath, _outputPath!, overwrite: true);
+    private void RegisterPromotionRequest()
+    {
+        string outputPath = _normalizedOutputPath!;
+        while (true)
+        {
+            PromotionState state = PromotionStates.GetOrAdd(outputPath, _ => new PromotionState());
+            lock (state.SyncRoot)
+            {
+                if (!PromotionStates.TryGetValue(outputPath, out PromotionState? current) || !ReferenceEquals(current, state))
+                    continue;
+
+                long sequence = Interlocked.Increment(ref _nextRequestSequence);
+                state.ActiveRequests++;
+                state.LatestSequence = sequence;
+                _promotionState = state;
+                _requestSequence = sequence;
+                return;
+            }
+        }
+    }
+
+    private void ReleasePromotionRequest()
+    {
+        PromotionState? state = _promotionState;
+        string? outputPath = _normalizedOutputPath;
+        if (state is null || outputPath is null) return;
+
+        lock (state.SyncRoot)
+        {
+            state.ActiveRequests--;
+            if (state.ActiveRequests == 0)
+                PromotionStates.TryRemove(outputPath, out _);
+        }
+        _promotionState = null;
+    }
+
+    private void PromoteCandidate(string candidatePath)
+    {
+        PromotionState state = _promotionState
+            ?? throw new InvalidOperationException("Image compression promotion state was not initialized.");
+        lock (state.SyncRoot)
+        {
+            if (state.LatestSequence != _requestSequence) return;
+            File.Move(candidatePath, _outputPath!, overwrite: true);
+        }
+    }
 
     private static void TryDelete(string path)
     {
