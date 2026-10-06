@@ -39,7 +39,6 @@ public class ImageCompressionProcessor : MultiFileProcessorBase
     private const string MimeJpeg = "image/jpeg";
 
     private string? _outputPath;
-    private ImageCompressionLevel _level = ImageCompressionLevel.Small;
     private int _quality = ImageCompressionOptions.GetQuality(ImageCompressionLevel.Small);
     private int _maxDimension;
     private string? _normalizedOutputPath;
@@ -52,10 +51,10 @@ public class ImageCompressionProcessor : MultiFileProcessorBase
         _outputPath = outputPath;
         _normalizedOutputPath = Path.GetFullPath(outputPath);
 
-        if (!ImageCompressionOptions.TryParseLevel(GetString(options, OptionLevel), out _level))
+        if (!ImageCompressionOptions.TryParseLevel(GetString(options, OptionLevel), out ImageCompressionLevel level))
             throw new ArgumentException($"Unknown image compression level '{GetString(options, OptionLevel)}'.");
 
-        _quality = GetInt(options, OptionQuality) ?? ImageCompressionOptions.GetQuality(_level);
+        _quality = GetInt(options, OptionQuality) ?? ImageCompressionOptions.GetQuality(level);
         if (_quality is < 1 or > 100)
             throw new ArgumentException($"Image compression quality must be between 1 and 100, got {_quality}.");
 
@@ -308,33 +307,8 @@ public class ImageCompressionProcessor : MultiFileProcessorBase
         BitmapData sourceData = source.LockBits(rectangle, ImageLockMode.ReadOnly, PixelFormat.Format32bppArgb);
         try
         {
-            int rowBytes = checked(width * 4);
-            var row = new byte[rowBytes];
-            var paletteMap = new Dictionary<int, byte>();
-            var paletteColors = new List<Color>(256);
-
-            for (int y = 0; y < height; y++)
-            {
-                cancellationToken.ThrowIfCancellationRequested();
-                Marshal.Copy(GetRowPointer(sourceData, y, height), row, 0, rowBytes);
-                for (int x = 0; x < width; x++)
-                {
-                    int offset = x * 4;
-                    int argbValue = (row[offset + 3] << 24) |
-                                    (row[offset + 2] << 16) |
-                                    (row[offset + 1] << 8) |
-                                     row[offset];
-                    if (paletteMap.ContainsKey(argbValue))
-                        continue;
-
-                    if (paletteMap.Count == 256)
-                        return null;
-
-                    byte index = checked((byte)paletteMap.Count);
-                    paletteMap.Add(argbValue, index);
-                    paletteColors.Add(Color.FromArgb(argbValue));
-                }
-            }
+            if (!TryCollectPalette(sourceData, width, height, cancellationToken, out var paletteMap, out var paletteColors))
+                return null;
 
             var indexed = new Bitmap(width, height, PixelFormat.Format8bppIndexed);
             try
@@ -350,24 +324,7 @@ public class ImageCompressionProcessor : MultiFileProcessorBase
                 BitmapData indexedData = indexed.LockBits(rectangle, ImageLockMode.WriteOnly, PixelFormat.Format8bppIndexed);
                 try
                 {
-                    int indexedStride = Math.Abs(indexedData.Stride);
-                    var indexedRow = new byte[indexedStride];
-                    for (int y = 0; y < height; y++)
-                    {
-                        cancellationToken.ThrowIfCancellationRequested();
-                        Marshal.Copy(GetRowPointer(sourceData, y, height), row, 0, rowBytes);
-                        Array.Clear(indexedRow, 0, indexedRow.Length);
-                        for (int x = 0; x < width; x++)
-                        {
-                            int offset = x * 4;
-                            int argbValue = (row[offset + 3] << 24) |
-                                            (row[offset + 2] << 16) |
-                                            (row[offset + 1] << 8) |
-                                             row[offset];
-                            indexedRow[x] = paletteMap[argbValue];
-                        }
-                        Marshal.Copy(indexedRow, 0, GetRowPointer(indexedData, y, height), indexedStride);
-                    }
+                    WriteIndexedPixels(sourceData, indexedData, width, height, paletteMap, cancellationToken);
                 }
                 finally
                 {
@@ -386,6 +343,73 @@ public class ImageCompressionProcessor : MultiFileProcessorBase
         {
             source.UnlockBits(sourceData);
         }
+    }
+
+    private static bool TryCollectPalette(
+        BitmapData sourceData,
+        int width,
+        int height,
+        CancellationToken cancellationToken,
+        out Dictionary<int, byte> paletteMap,
+        out List<Color> paletteColors)
+    {
+        int rowBytes = checked(width * 4);
+        var row = new byte[rowBytes];
+        paletteMap = new Dictionary<int, byte>();
+        paletteColors = new List<Color>(256);
+
+        for (int y = 0; y < height; y++)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            Marshal.Copy(GetRowPointer(sourceData, y, height), row, 0, rowBytes);
+            for (int x = 0; x < width; x++)
+            {
+                int argbValue = ReadArgb(row, x);
+                if (paletteMap.ContainsKey(argbValue))
+                    continue;
+                if (paletteMap.Count == 256)
+                    return false;
+
+                byte index = checked((byte)paletteMap.Count);
+                paletteMap.Add(argbValue, index);
+                paletteColors.Add(Color.FromArgb(argbValue));
+            }
+        }
+
+        return true;
+    }
+
+    private static void WriteIndexedPixels(
+        BitmapData sourceData,
+        BitmapData indexedData,
+        int width,
+        int height,
+        IReadOnlyDictionary<int, byte> paletteMap,
+        CancellationToken cancellationToken)
+    {
+        int rowBytes = checked(width * 4);
+        var row = new byte[rowBytes];
+        int indexedStride = Math.Abs(indexedData.Stride);
+        var indexedRow = new byte[indexedStride];
+
+        for (int y = 0; y < height; y++)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            Marshal.Copy(GetRowPointer(sourceData, y, height), row, 0, rowBytes);
+            Array.Clear(indexedRow, 0, indexedRow.Length);
+            for (int x = 0; x < width; x++)
+                indexedRow[x] = paletteMap[ReadArgb(row, x)];
+            Marshal.Copy(indexedRow, 0, GetRowPointer(indexedData, y, height), indexedStride);
+        }
+    }
+
+    private static int ReadArgb(byte[] row, int x)
+    {
+        int offset = x * 4;
+        return (row[offset + 3] << 24) |
+               (row[offset + 2] << 16) |
+               (row[offset + 1] << 8) |
+                row[offset];
     }
 
     private static IntPtr GetRowPointer(BitmapData data, int y, int height) =>
