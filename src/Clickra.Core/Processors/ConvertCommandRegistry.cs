@@ -15,6 +15,7 @@ public static class ConvertCommandRegistry
         private const string CmdImgToGif = "img-to-gif";
         private const string CmdImgToHeic = "img-to-heic";
         private const string CmdMdToPdf = "md2pdf";
+        private const string CmdMdToWord = "md2word";
         private const string CmdImgCompress = "img-compress";
         private const string ExtensionWebp = ".webp";
         private const string ExtensionHeic = ".heic";
@@ -36,7 +37,7 @@ public static class ConvertCommandRegistry
             ("word", WordExtensions, ["word2pdf"]),
             ("excel", ExcelExtensions, ["excel2pdf"]),
             ("ppt", PptExtensions, ["ppt2pdf"]),
-            ("markdown", MarkdownExtensions, [CmdMdToPdf]),
+            ("markdown", MarkdownExtensions, [CmdMdToPdf, CmdMdToWord]),
             ("image", ImageExtensions, ["img2pdf", "img-merge", "img-stitch", CmdImgCompress, CmdImgToPng, CmdImgToJpg, CmdImgToWebp, CmdImgToGif, CmdImgToHeic])
         };
 
@@ -77,6 +78,7 @@ public static class ConvertCommandRegistry
             ["word2pdf"] = new(WordExtensions, 1, "cmd_word_to_pdf"),
             ["excel2pdf"] = new(ExcelExtensions, 1, "cmd_excel_to_pdf"),
             [CmdMdToPdf] = new(MarkdownExtensions, 1, "cmd_md_to_pdf"),
+            [CmdMdToWord] = new(MarkdownExtensions, 1, "cmd_md_to_word"),
             ["merge-pdf"] = new(PdfExtensions, 2, "cmd_merge_pdf"),
             ["compress-pdf"] = new(PdfExtensions, 1, "cmd_compress_pdf"),
             ["translate-pdf"] = new(PdfExtensions, 1, "cmd_translate_pdf"),
@@ -142,6 +144,7 @@ public static class ConvertCommandRegistry
                 "split-pdf" => files.Select(f => Path.Combine(ClickraStorage.GetOutputDir(f), Path.GetFileNameWithoutExtension(f) + "_split.pdf")).ToList(),
                 "img2pdf" => files.Select(f => Path.Combine(ClickraStorage.GetOutputDir(f), Path.GetFileNameWithoutExtension(f) + ".pdf")).ToList(),
                 CmdMdToPdf => files.Select(f => Path.Combine(ClickraStorage.GetOutputDir(f), Path.GetFileNameWithoutExtension(f) + ".pdf")).ToList(),
+                CmdMdToWord => files.Select(f => Path.Combine(ClickraStorage.GetOutputDir(f), Path.GetFileNameWithoutExtension(f) + ".docx")).ToList(),
                 CmdImgCompress => EstimateImageCompressionOutputs(files),
                 CmdImgToPng or CmdImgToJpg or CmdImgToWebp or CmdImgToGif or CmdImgToHeic
                     => EstimateImageFormatOutputs(command, files),

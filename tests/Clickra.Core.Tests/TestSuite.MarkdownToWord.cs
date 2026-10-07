@@ -15,6 +15,31 @@ static partial class TestSuite
 
     public static void RegisterMarkdownToWordTests(TestRunner runner)
     {
+        runner.Run("Markdown to Word: registry and runner expose DOCX conversion", () =>
+            RunWithTempDirectory(tempDir =>
+            {
+                Assert.True(ConvertCommandRegistry.IsKnownCommand(MarkdownToWordCommand),
+                    "md2word must be a registered conversion command.");
+                string[] allowed = ConvertCommandRegistry.GetAllowedExtensions(MarkdownToWordCommand);
+                Assert.True(allowed.Contains(".md", StringComparer.OrdinalIgnoreCase), "md2word must accept .md files.");
+                Assert.True(allowed.Contains(".markdown", StringComparer.OrdinalIgnoreCase), "md2word must accept .markdown files.");
+                Assert.True(ConvertCommandRegistry.GetCommandsForType("markdown").Contains(MarkdownToWordCommand, StringComparer.Ordinal),
+                    "Markdown command discovery must include md2word.");
+
+                string input = Path.Combine(tempDir, "runner.md");
+                string output = Path.Combine(tempDir, "runner.docx");
+                File.WriteAllText(input, "# Runner\n\nDOCX dispatch works.");
+                var outputs = new List<string> { output };
+                var options = new ConvertCommandRunner.ConversionOptions(
+                    _ => System.Threading.Tasks.Task.FromResult<string?>(null),
+                    (_, _) => System.Threading.Tasks.Task.FromResult<string?>(null),
+                    CommandOptions: MarkdownPdfOptions.Create(MarkdownPdfOptions.ThemeMinimal));
+
+                ConvertCommandRunner.Run(MarkdownToWordCommand, new List<string> { input }, outputs, (_, _, _) => { }, options);
+
+                Assert.True(File.Exists(output), "The shared command runner must produce the planned DOCX output.");
+            }));
+
         runner.Run("Markdown to Word: common structures produce a valid DOCX package", () =>
             RunWithTempDirectory(tempDir =>
             {

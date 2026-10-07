@@ -72,4 +72,7 @@
   <data name="Menu_Md2Pdf" xml:space="preserve">
     <value>Markdown to PDF</value>
   </data>
+  <data name="Menu_Md2Word" xml:space="preserve">
+    <value>Markdown to Word</value>
+  </data>
 </root>

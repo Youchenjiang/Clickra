@@ -77,7 +77,12 @@ namespace Clickra.UI
                         FileProcessor.ConvertExcelToPdf(currentFiles, progressCallback, _cts.Token);
                         break;
                     case "md2pdf":
-                        RunMarkdownToPdf(currentFiles, _outputDirOverride, progressCallback);
+                        RunMarkdownConversion(currentFiles, _outputDirOverride, progressCallback, ".pdf",
+                            (input, output, options, progress, token) => FileProcessor.ConvertMarkdownToPdf(input, output, options, progress, token));
+                        break;
+                    case "md2word":
+                        RunMarkdownConversion(currentFiles, _outputDirOverride, progressCallback, ".docx",
+                            (input, output, options, progress, token) => FileProcessor.ConvertMarkdownToWord(input, output, options, progress, token));
                         break;
                     case "merge-pdf":
                         FileProcessor.MergePdfs(currentFiles, Path.Combine(outputDir, "Merged_PDF.pdf"), progressCallback, _cts.Token);
@@ -164,7 +169,12 @@ namespace Clickra.UI
             }
         }
 
-        private void RunMarkdownToPdf(List<string> files, string? outputDirOverride, Action<int, int, string> progressCallback)
+        private void RunMarkdownConversion(
+            List<string> files,
+            string? outputDirOverride,
+            Action<int, int, string> progressCallback,
+            string extension,
+            Action<string, string, Dictionary<string, object>, Action<int, int, string>?, CancellationToken> converter)
         {
             for (int i = _startIndex; i < files.Count; i++)
             {
@@ -174,8 +184,8 @@ namespace Clickra.UI
                 string targetDir = string.IsNullOrWhiteSpace(outputDirOverride)
                     ? ClickraStorage.GetOutputDir(files[i])
                     : Path.GetFullPath(outputDirOverride);
-                string output = Path.Combine(targetDir, Path.GetFileNameWithoutExtension(files[i]) + ".pdf");
-                FileProcessor.ConvertMarkdownToPdf(files[i], output, _commandOptions ?? MarkdownPdfOptions.Create(),
+                string output = Path.Combine(targetDir, Path.GetFileNameWithoutExtension(files[i]) + extension);
+                converter(files[i], output, _commandOptions ?? MarkdownPdfOptions.Create(),
                     (current, total, message) => progressCallback((index * 100) + current, files.Count * 100, message),
                     _cts.Token);
             }
@@ -472,6 +482,10 @@ namespace Clickra.UI
                     return string.Join(";", inputFiles.Select(f => Path.Combine(
                         string.IsNullOrWhiteSpace(outputDirOverride) ? ClickraStorage.GetOutputDir(f) : Path.GetFullPath(outputDirOverride),
                         Path.GetFileNameWithoutExtension(f) + ".pdf")));
+                case "md2word":
+                    return string.Join(";", inputFiles.Select(f => Path.Combine(
+                        string.IsNullOrWhiteSpace(outputDirOverride) ? ClickraStorage.GetOutputDir(f) : Path.GetFullPath(outputDirOverride),
+                        Path.GetFileNameWithoutExtension(f) + ".docx")));
                 case "translate-pdf":
                     return string.Join(";", inputFiles.Select(f => Path.Combine(outputDir, Path.GetFileNameWithoutExtension(f) + "_translated.pdf")));
                 case "decrypt-pdf":

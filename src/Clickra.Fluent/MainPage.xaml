@@ -210,7 +210,8 @@
                                         <Button x:Name="BtnWord2Pdf" Content="Word" Tag="word2pdf" HorizontalAlignment="Stretch"/>
                                         <Button x:Name="BtnExcel2Pdf" Grid.Column="1" Content="Excel" Tag="excel2pdf" HorizontalAlignment="Stretch"/>
                                         <Button x:Name="BtnPpt2Pdf" Grid.Column="2" Content="PPT" Tag="ppt2pdf" HorizontalAlignment="Stretch"/>
-                                        <Button x:Name="BtnMd2Pdf" Grid.Row="1" Grid.ColumnSpan="3" Content="Markdown" Tag="md2pdf" HorizontalAlignment="Stretch"/>
+                                        <Button x:Name="BtnMd2Pdf" Grid.Row="1" Grid.ColumnSpan="2" Content="Markdown → PDF" Tag="md2pdf" HorizontalAlignment="Stretch"/>
+                                        <Button x:Name="BtnMd2Word" Grid.Row="1" Grid.Column="2" Content="Markdown → Word" Tag="md2word" HorizontalAlignment="Stretch"/>
                                     </Grid>
                                 </StackPanel>
                                 <StackPanel Spacing="8">

@@ -112,7 +112,8 @@ namespace Clickra.UI
             string? outputDirOverride = null,
             Dictionary<string, object>? commandOptions = null)
         {
-            if (command.Equals("md2pdf", StringComparison.OrdinalIgnoreCase))
+            if (command.Equals("md2pdf", StringComparison.OrdinalIgnoreCase) ||
+                command.Equals("md2word", StringComparison.OrdinalIgnoreCase))
             {
                 commandOptions ??= MarkdownOptionsPrompt.Show();
                 if (commandOptions is null) return;

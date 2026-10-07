@@ -129,10 +129,12 @@ namespace Clickra
             Console.WriteLine(Loc("cli_err_prefix") + Loc("cli_err_unknown_command", command));
         }
 
-        /// <summary>Handles Markdown-to-PDF conversion without requiring an Office engine.</summary>
+        /// <summary>Handles local Markdown conversion without requiring an Office engine.</summary>
         private static bool DispatchMarkdownCommand(string command, List<string> files, bool quiet, string outputDir, string? outputDirOverride)
         {
-            if (!command.Equals("md2pdf", StringComparison.OrdinalIgnoreCase)) return false;
+            bool toPdf = command.Equals("md2pdf", StringComparison.OrdinalIgnoreCase);
+            bool toWord = command.Equals("md2word", StringComparison.OrdinalIgnoreCase);
+            if (!toPdf && !toWord) return false;
 
             string[] allowed = ConvertCommandRegistry.GetAllowedExtensions(command);
             ValidateExtensions(files, command, quiet, allowed);
@@ -144,9 +146,11 @@ namespace Clickra
                     string targetDir = string.IsNullOrWhiteSpace(outputDirOverride)
                         ? ClickraStorage.GetOutputDir(files[i])
                         : outputDir;
-                    string output = Path.Combine(targetDir, Path.GetFileNameWithoutExtension(files[i]) + ".pdf");
-                    FileProcessor.ConvertMarkdownToPdf(files[i], output,
-                        (_, _, msg) => Console.WriteLine($"[Progress] {msg}"));
+                    string output = Path.Combine(targetDir, Path.GetFileNameWithoutExtension(files[i]) + (toWord ? ".docx" : ".pdf"));
+                    if (toWord)
+                        FileProcessor.ConvertMarkdownToWord(files[i], output, onProgress: (_, _, msg) => Console.WriteLine($"[Progress] {msg}"));
+                    else
+                        FileProcessor.ConvertMarkdownToPdf(files[i], output, (_, _, msg) => Console.WriteLine($"[Progress] {msg}"));
                 }
             }
             else

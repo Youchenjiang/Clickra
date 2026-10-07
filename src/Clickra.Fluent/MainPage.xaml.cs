@@ -201,7 +201,8 @@ public sealed partial class MainPage : Page
             SetGridCell(page.BtnWord2Pdf, 0, 0);
             SetGridCell(page.BtnExcel2Pdf, 0, 1);
             SetGridCell(page.BtnPpt2Pdf, 1, 0, 2);
-            SetGridCell(page.BtnMd2Pdf, 2, 0, 2);
+            SetGridCell(page.BtnMd2Pdf, 2, 0);
+            SetGridCell(page.BtnMd2Word, 2, 1);
 
             SetGridCell(page.BtnMergePdf, 0, 0);
             SetGridCell(page.BtnCompressPdf, 0, 1);
@@ -223,7 +224,8 @@ public sealed partial class MainPage : Page
         SetGridCell(page.BtnWord2Pdf, 0, 0);
         SetGridCell(page.BtnExcel2Pdf, 0, 1);
         SetGridCell(page.BtnPpt2Pdf, 0, 2);
-        SetGridCell(page.BtnMd2Pdf, 1, 0, 3);
+        SetGridCell(page.BtnMd2Pdf, 1, 0, 2);
+        SetGridCell(page.BtnMd2Word, 1, 2);
 
         SetGridCell(page.BtnMergePdf, 0, 0);
         SetGridCell(page.BtnCompressPdf, 0, 1);
@@ -368,7 +370,7 @@ public sealed partial class MainPage : Page
 
     private void HookCommandButtons()
     {
-        foreach (var button in new[] { BtnWord2Pdf, BtnExcel2Pdf, BtnPpt2Pdf, BtnMd2Pdf, BtnMergePdf, BtnCompressPdf, BtnTranslatePdf, BtnDecryptPdf, BtnSplitPdf, BtnImg2Pdf, BtnImgMerge, BtnImgStitch, BtnImgToPng, BtnImgToJpg, BtnImgToWebp, BtnImgToGif, BtnImgToHeic })
+        foreach (var button in new[] { BtnWord2Pdf, BtnExcel2Pdf, BtnPpt2Pdf, BtnMd2Pdf, BtnMd2Word, BtnMergePdf, BtnCompressPdf, BtnTranslatePdf, BtnDecryptPdf, BtnSplitPdf, BtnImg2Pdf, BtnImgMerge, BtnImgStitch, BtnImgToPng, BtnImgToJpg, BtnImgToWebp, BtnImgToGif, BtnImgToHeic })
         {
             if (button.Tag is string command)
             {
@@ -540,7 +542,8 @@ public sealed partial class MainPage : Page
         string command = _selectedCommand;
         var files = _selectedFiles.ToList();
         Dictionary<string, object>? commandOptions = null;
-        if (command.Equals("md2pdf", StringComparison.OrdinalIgnoreCase))
+        if (command.Equals("md2pdf", StringComparison.OrdinalIgnoreCase) ||
+            command.Equals("md2word", StringComparison.OrdinalIgnoreCase))
         {
             commandOptions = await FluentDialogs.PromptMarkdownPdfOptionsAsync(XamlRoot, L);
             if (commandOptions is null) return;
@@ -1023,6 +1026,7 @@ public sealed partial class MainPage : Page
         BtnExcel2Pdf.Content = "Excel";
         BtnPpt2Pdf.Content = "PPT";
         BtnMd2Pdf.Content = L("cmd_md_to_pdf");
+        BtnMd2Word.Content = L("cmd_md_to_word");
         BtnMergePdf.Content = L("cmd_merge_pdf");
         BtnCompressPdf.Content = L("cmd_compress_pdf");
         BtnTranslatePdf.Content = L("cmd_translate_pdf");

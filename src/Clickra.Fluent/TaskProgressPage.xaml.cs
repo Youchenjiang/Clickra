@@ -141,7 +141,8 @@ public sealed partial class TaskProgressPage : Page
         }
 
         Dictionary<string, object>? commandOptions = null;
-        if (command.Equals("md2pdf", StringComparison.OrdinalIgnoreCase) && existingTaskId is null)
+        if ((command.Equals("md2pdf", StringComparison.OrdinalIgnoreCase) ||
+             command.Equals("md2word", StringComparison.OrdinalIgnoreCase)) && existingTaskId is null)
         {
             commandOptions = await FluentDialogs.PromptMarkdownPdfOptionsAsync(XamlRoot, L, d => _activeDialog = d);
             _activeDialog = null;

@@ -47,6 +47,7 @@ public static partial class DashboardWindow
         new ConvertCommandDef { Command = "excel2pdf",     TextKey = "cmd_excel_to_pdf",   Filter = FilterExcelFiles,      Extensions = new[] { ".xlsx", ".xls" },          MinFiles = 1, RequiresOffice = true, Group = 0, TagColor = Color.FromArgb(16, 124, 65) },
         new ConvertCommandDef { Command = "ppt2pdf",       TextKey = "cmd_ppt_to_pdf",     Filter = FilterPowerPointFiles, Extensions = new[] { ".ppt", ".pptx" },          MinFiles = 1, RequiresOffice = true, Group = 0, TagColor = Color.FromArgb(180, 50, 30) },
         new ConvertCommandDef { Command = "md2pdf",        TextKey = "cmd_md_to_pdf",      Filter = FilterMarkdownFiles,   Extensions = new[] { ".md", ".markdown" },       MinFiles = 1, RequiresOffice = false, Group = 0, TagColor = Color.FromArgb(96, 72, 164) },
+        new ConvertCommandDef { Command = "md2word",       TextKey = "cmd_md_to_word",     Filter = FilterMarkdownFiles,   Extensions = new[] { ".md", ".markdown" },       MinFiles = 1, RequiresOffice = false, Group = 0, TagColor = Color.FromArgb(43, 87, 154) },
 
         // PDF 工具 (Group 1)
         new ConvertCommandDef { Command = "merge-pdf",     TextKey = "cmd_merge_pdf",      Filter = FilterPdfFiles,        Extensions = new[] { ".pdf" },                  MinFiles = 2, Group = 1, TagColor = Color.FromArgb(16, 124, 65) },
@@ -204,7 +205,8 @@ public static partial class DashboardWindow
 
             var filesCopy = new List<string>(_selectedFiles);
             Dictionary<string, object>? commandOptions = null;
-            if (command.Command.Equals("md2pdf", StringComparison.OrdinalIgnoreCase))
+            if (command.Command.Equals("md2pdf", StringComparison.OrdinalIgnoreCase) ||
+                command.Command.Equals("md2word", StringComparison.OrdinalIgnoreCase))
             {
                 commandOptions = MarkdownOptionsPrompt.Show();
                 if (commandOptions is null) return;

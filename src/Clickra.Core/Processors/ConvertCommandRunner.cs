@@ -121,6 +121,12 @@ public static class ConvertCommandRunner
                     RunPerFile(files, outputs, (f, o, p, t) => FileProcessor.ConvertMarkdownToPdf(f, o, markdownOptions, p, t), progress, options.StartIndex, token);
                     break;
                 }
+                case "md2word":
+                {
+                    Dictionary<string, object> markdownOptions = options.CommandOptions ?? MarkdownPdfOptions.Create();
+                    RunPerFile(files, outputs, (f, o, p, t) => FileProcessor.ConvertMarkdownToWord(f, o, markdownOptions, p, t), progress, options.StartIndex, token);
+                    break;
+                }
                 case "merge-pdf":
                     FileProcessor.MergePdfs(files, outputs[0], progress, token);
                     break;
