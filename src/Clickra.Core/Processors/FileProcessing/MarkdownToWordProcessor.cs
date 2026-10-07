@@ -284,7 +284,7 @@ public sealed class MarkdownToWordProcessor : MultiFileProcessorBase
             for (int i = 0; i < lines.Length; i++)
             {
                 if (i > 0) p.Add(new XElement(W + "r", new XElement(W + "br")));
-                p.Add(CreateRun(lines[i], false, false, true, foreground));
+                p.Add(CreateRun(lines[i], false, false, true, foreground, shadeCode: false));
             }
             return p;
         }
@@ -395,7 +395,13 @@ public sealed class MarkdownToWordProcessor : MultiFileProcessorBase
             paragraph.Add(new XElement(W + "hyperlink", new XAttribute(R + "id", id), new XAttribute(W + "history", "1"), run));
         }
 
-        private XElement CreateRun(string text, bool bold, bool italic, bool code, string? colorHex)
+        private XElement CreateRun(
+            string text,
+            bool bold,
+            bool italic,
+            bool code,
+            string? colorHex,
+            bool shadeCode = true)
         {
             double size = code ? _template.Typography.BodySizePoints * _scale * 0.92 : _template.Typography.BodySizePoints * _scale;
             string latin = code ? _template.Typography.MonospaceFont : _template.Typography.LatinFont;
@@ -409,7 +415,7 @@ public sealed class MarkdownToWordProcessor : MultiFileProcessorBase
                 new XElement(W + "szCs", new XAttribute(W + "val", HalfPoints(size))));
             if (bold) rPr.Add(new XElement(W + "b"));
             if (italic) rPr.Add(new XElement(W + "i"));
-            if (code)
+            if (code && shadeCode)
                 rPr.Add(new XElement(W + "shd", new XAttribute(W + "val", "clear"), new XAttribute(W + "fill", "F1F5F9")));
             if (!string.IsNullOrEmpty(colorHex)) rPr.Add(new XElement(W + "color", new XAttribute(W + "val", colorHex)));
             return new XElement(W + "r", rPr,

@@ -84,6 +84,18 @@ static partial class TestSuite
                 Assert.True(document.Descendants(w + "numPr").Any(),
                     "Markdown list paragraphs must use Word numbering properties.");
 
+                XElement codeParagraph = document.Descendants(w + "p")
+                    .Single(p => p.Element(w + "pPr")?.Element(w + "pStyle")?.Attribute(w + "val")?.Value == "CodeBlock");
+                Assert.Equal("0F172A", codeParagraph.Element(w + "pPr")?.Element(w + "shd")?.Attribute(w + "fill")?.Value ?? "");
+                Assert.True(codeParagraph.Descendants(w + "r")
+                    .Where(run => run.Descendants(w + "t").Any())
+                    .All(run => run.Element(w + "rPr")?.Element(w + "shd") is null),
+                    "Fenced code blocks must use only paragraph shading; run shading creates white bars over the dark block.");
+                Assert.True(codeParagraph.Descendants(w + "r")
+                    .Where(run => run.Descendants(w + "t").Any())
+                    .All(run => run.Element(w + "rPr")?.Element(w + "color")?.Attribute(w + "val")?.Value == "F1F5F9"),
+                    "Fenced code block runs must remain light text over the dark paragraph background.");
+
                 ZipArchiveEntry? relEntry = archive.GetEntry("word/_rels/document.xml.rels");
                 Assert.True(relEntry is not null, "A hyperlink must create document relationships.");
                 string relationships = ReadAllText(relEntry!);
