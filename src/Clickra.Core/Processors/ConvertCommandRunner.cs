@@ -24,7 +24,8 @@ public static class ConvertCommandRunner
             Func<int, Task<string?>> PromptPassword,
             Func<int, string, Task<string?>> PromptSplitPages,
             int StartIndex = 0,
-            string? ExistingTaskId = null);
+            string? ExistingTaskId = null,
+            Dictionary<string, object>? CommandOptions = null);
 
         /// <summary>
         /// 任務被「暫存」的信號：由 prompt delegate 在 UI 要求暫存（例如卡在密碼/分割
@@ -115,8 +116,11 @@ public static class ConvertCommandRunner
                     FileProcessor.ConvertExcelToPdf(files, progress, token);
                     break;
                 case "md2pdf":
-                    RunPerFile(files, outputs, (f, o, p, t) => FileProcessor.ConvertMarkdownToPdf(f, o, p, t), progress, options.StartIndex, token);
+                {
+                    Dictionary<string, object> markdownOptions = options.CommandOptions ?? MarkdownPdfOptions.Create();
+                    RunPerFile(files, outputs, (f, o, p, t) => FileProcessor.ConvertMarkdownToPdf(f, o, markdownOptions, p, t), progress, options.StartIndex, token);
                     break;
+                }
                 case "merge-pdf":
                     FileProcessor.MergePdfs(files, outputs[0], progress, token);
                     break;

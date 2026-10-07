@@ -70,6 +70,10 @@ namespace Clickra.Core
         public static void ConvertMarkdownToPdf(string inputPath, string outputPath, Action<int, int, string>? onProgress = null, CancellationToken cancellationToken = default) =>
             new MarkdownToPdfProcessor().Process(new List<string> { inputPath }, outputPath, null, onProgress, cancellationToken);
 
+        /// <summary>Converts one Markdown document using explicit one-shot presentation options.</summary>
+        public static void ConvertMarkdownToPdf(string inputPath, string outputPath, Dictionary<string, object> options, Action<int, int, string>? onProgress = null, CancellationToken cancellationToken = default) =>
+            new MarkdownToPdfProcessor().Process(new List<string> { inputPath }, outputPath, options, onProgress, cancellationToken);
+
         /// <summary>Stitches multiple images vertically into a single image file.</summary>
         /// <param name="files">Input image paths, in stitch order.</param>
         /// <param name="outputPath">Path of the stitched output image.</param>

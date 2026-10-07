@@ -34,6 +34,33 @@ static partial class TestSuite
             });
         });
 
+        runner.Run("Markdown to PDF: one-shot options use safe defaults and affect page setup", () =>
+            RunWithTempDirectory(tempDir =>
+            {
+                var defaults = MarkdownPdfOptions.Create("unknown", "unknown", "unknown", "unknown");
+                Assert.Equal(MarkdownPdfOptions.ThemeDefault, MarkdownPdfOptions.GetTheme(defaults));
+                Assert.Equal(MarkdownPdfOptions.PaperA4, MarkdownPdfOptions.GetPaper(defaults));
+                Assert.Equal(MarkdownPdfOptions.TextStandard, MarkdownPdfOptions.GetTextSize(defaults));
+                Assert.Equal(MarkdownPdfOptions.CodeDark, MarkdownPdfOptions.GetCodeTheme(defaults));
+
+                string input = Path.Combine(tempDir, "letter.md");
+                string output = Path.Combine(tempDir, "letter.pdf");
+                File.WriteAllText(input, "# Options\n\nA short document with `inline code`.");
+                var options = MarkdownPdfOptions.Create(
+                    MarkdownPdfOptions.ThemeMinimal,
+                    MarkdownPdfOptions.PaperLetter,
+                    MarkdownPdfOptions.TextLarge,
+                    MarkdownPdfOptions.CodeLight);
+
+                FileProcessor.ConvertMarkdownToPdf(input, output, options);
+
+                using var pdf = PdfSharp.Pdf.IO.PdfReader.Open(output, PdfSharp.Pdf.IO.PdfDocumentOpenMode.Import);
+                double width = pdf.Pages[0].Width.Point;
+                double height = pdf.Pages[0].Height.Point;
+                Assert.True(Math.Abs(width - 612) < 1 && Math.Abs(height - 792) < 1,
+                    $"Letter paper must render as 612x792pt, got {width:0.##}x{height:0.##}.");
+            }));
+
         runner.Run("Markdown to PDF: common Markdown structures render to a readable PDF", () =>
             RunWithTempDirectory(tempDir =>
             {
