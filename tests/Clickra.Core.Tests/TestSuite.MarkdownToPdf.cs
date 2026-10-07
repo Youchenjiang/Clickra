@@ -218,10 +218,10 @@ static partial class TestSuite
                 File.WriteAllText(input, """
                     | 類型 | 內容 |
                     | --- | --- |
-                    | 測試 | 中文表格內容 |
+                    | 測試 | 中文表格內容：完整標點 |
 
                     ```text
-                    中文程式碼內容
+                    中文程式碼內容：File ➔ Export Objects
                     ```
                     """);
 
@@ -233,6 +233,10 @@ static partial class TestSuite
                     "CJK Markdown table text must remain extractable from the PDF.");
                 Assert.True(text.Contains("中文程式碼內容", StringComparison.Ordinal),
                     "CJK fenced-code text must remain extractable from the PDF.");
+                Assert.True(text.Contains("中文表格內容: 完整標點", StringComparison.Ordinal),
+                    "Full-width CJK punctuation must normalize to a visible supported glyph instead of degrading to a missing glyph.");
+                Assert.True(text.Contains("→", StringComparison.Ordinal),
+                    "Common technical arrow glyphs must render as a supported arrow instead of degrading to a missing glyph.");
             }));
     }
 }

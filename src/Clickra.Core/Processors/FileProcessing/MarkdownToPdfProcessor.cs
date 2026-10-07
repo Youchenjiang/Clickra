@@ -96,8 +96,8 @@ public sealed class MarkdownToPdfProcessor : MultiFileProcessorBase
     private sealed class Renderer : IDisposable
     {
         private const double DefaultMargin = 54;
-        private const double DefaultBodySize = 11;
-        private const double DefaultBodyLineHeight = 17;
+        private const double DefaultBodySize = 11.5;
+        private const double DefaultBodyLineHeight = 18;
         private const double DefaultBlockGap = 9;
         private const double ListIndent = 20;
 
@@ -175,7 +175,7 @@ public sealed class MarkdownToPdfProcessor : MultiFileProcessorBase
                     // A level-2 section should not begin in the last ~quarter page: keeping a
                     // meaningful opening chunk together reads better than leaving the heading,
                     // intro, and first list item cramped at the bottom of the previous page.
-                    double sectionReserve = heading.Level == 2 ? 205 : 0;
+                    double sectionReserve = heading.Level == 2 ? 180 : 0;
                     double keepWithNext = GetHeadingHeight(heading.Level) + EstimateMinimumBlockHeight(blocks[i + 1]);
                     EnsureSpace(Math.Max(sectionReserve, keepWithNext));
                 }
@@ -324,16 +324,18 @@ public sealed class MarkdownToPdfProcessor : MultiFileProcessorBase
             bool firstLine = true;
             foreach (StyledLine line in wrapped)
             {
-                double rowHeight = 20 * _scale;
-                double lineAdvance = 15 * _scale;
-                EnsureSpace(23 * _scale);
+                double rowHeight = 23 * _scale;
+                double lineAdvance = 18 * _scale;
+                EnsureSpace(26 * _scale);
                 if (firstLine)
                 {
-                    _y += 4 * _scale;
+                    _y += 5 * _scale;
                     firstLine = false;
                 }
-                _graphics!.DrawRectangle(new XSolidBrush(_codeBackgroundColor), _margin + indent, _y - (4 * _scale), available, rowHeight);
-                _graphics.DrawString(line.Text, line.Font, new XSolidBrush(_codeTextColor), _margin + indent + (10 * _scale), _y + line.Font.Size);
+                double drawX = _margin + indent + (10 * _scale);
+                double drawY = _y + line.Font.Size;
+                _graphics!.DrawRectangle(new XSolidBrush(_codeBackgroundColor), _margin + indent, _y - (5 * _scale), available, rowHeight);
+                _graphics.DrawString(line.Text, line.Font, new XSolidBrush(_codeTextColor), drawX, drawY);
                 _y += lineAdvance;
             }
             _y += _blockGap + 2;
@@ -341,7 +343,9 @@ public sealed class MarkdownToPdfProcessor : MultiFileProcessorBase
 
         private void AddCodeLine(string line, double maxWidth, List<StyledLine> output)
         {
-            string text = line.Length == 0 ? " " : line.Replace("\t", "    ", StringComparison.Ordinal);
+            string text = line.Length == 0
+                ? " "
+                : NormalizeDisplayGlyphs(line.Replace("\t", "    ", StringComparison.Ordinal));
             XFont font = CreateFont(text, 9.5 * _scale, XFontStyleEx.Regular, monospace: !ContainsCjk(text));
             foreach (string wrappedLine in WrapText(text, font, maxWidth))
                 output.Add(new StyledLine(wrappedLine, font));
@@ -371,7 +375,9 @@ public sealed class MarkdownToPdfProcessor : MultiFileProcessorBase
             var result = new List<TableCellLayout>(columnCount);
             for (int i = 0; i < columnCount; i++)
             {
-                string text = i < row.Count && row[i] is TableCell cell ? ExtractBlockText(cell) : "";
+                string text = i < row.Count && row[i] is TableCell cell
+                    ? NormalizeDisplayGlyphs(ExtractBlockText(cell))
+                    : "";
                 XFont font = CreateFont(text, 9.5 * _scale, row.IsHeader ? XFontStyleEx.Bold : XFontStyleEx.Regular);
                 List<string> lines = WrapText(text, font, columnWidth - (12 * _scale)).ToList();
                 if (lines.Count == 0) lines.Add("");
@@ -424,9 +430,11 @@ public sealed class MarkdownToPdfProcessor : MultiFileProcessorBase
             for (int lineIndex = lineOffset; lineIndex < end; lineIndex++)
             {
                 int visibleIndex = lineIndex - lineOffset;
+                double drawX = x + (8 * _scale);
+                double drawY = _y + (6 * _scale) + cell.Font.Size + (visibleIndex * 13 * _scale);
                 _graphics!.DrawString(
                     cell.Lines[lineIndex], cell.Font, new XSolidBrush(_textColor),
-                    x + (8 * _scale), _y + (6 * _scale) + cell.Font.Size + (visibleIndex * 13 * _scale));
+                    drawX, drawY);
             }
         }
 
@@ -458,11 +466,15 @@ public sealed class MarkdownToPdfProcessor : MultiFileProcessorBase
             }
             if (segment.ImageUrl is not null && TryRenderInlineImage(segment.ImageUrl, indent, ref x, lineHeight)) return;
 
-            XFont font = CreateFont(segment.Text, segment.Code ? size * 0.92 : size, GetInlineStyle(segment), segment.Code && !ContainsCjk(segment.Text));
+            string text = NormalizeDisplayGlyphs(segment.Text);
+            XFont font = CreateFont(text, segment.Code ? size * 0.92 : size, GetInlineStyle(segment), segment.Code && !ContainsCjk(text));
             XBrush brush = segment.Url is null ? baseBrush : new XSolidBrush(_accentColor);
-            foreach (string token in TokenizeForWrapping(segment.Text))
+            foreach (string token in TokenizeForWrapping(text))
                 RenderInlineToken(token, segment.Url, segment.Code, font, brush, indent, lineHeight, maxX, ref x);
         }
+
+        private static string NormalizeDisplayGlyphs(string text) =>
+            text.Replace("：", ": ", StringComparison.Ordinal).Replace('\u2794', '\u2192');
 
         private void RenderInlineToken(string token, string? url, bool isCode, XFont font, XBrush brush, double indent, double lineHeight, double maxX, ref double x)
         {
@@ -583,9 +595,9 @@ public sealed class MarkdownToPdfProcessor : MultiFileProcessorBase
         {
             double baseSize = level switch
             {
-                1 => 24,
-                2 => 17,
-                3 => 14,
+                1 => 25,
+                2 => 18,
+                3 => 14.5,
                 4 => 12.5,
                 5 => 11.5,
                 _ => 11
@@ -644,6 +656,7 @@ public sealed class MarkdownToPdfProcessor : MultiFileProcessorBase
                 if (ch is >= '\u3040' and <= '\u30ff') return "MS Gothic";
                 if (ch is >= '\uac00' and <= '\ud7af') return "Malgun Gothic";
                 if (ch is >= '\u3400' and <= '\u9fff') return "Noto Sans TC";
+                if (ch is >= '\uff00' and <= '\uffef') return "Noto Sans TC";
             }
             return "Segoe UI";
         }
