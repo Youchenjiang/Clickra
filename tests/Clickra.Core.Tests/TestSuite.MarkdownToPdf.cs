@@ -54,6 +54,25 @@ static partial class TestSuite
                 "Regular and bold Markdown CJK faces must remain distinct payloads.");
         });
 
+        runner.Run("Markdown templates differ in layout as well as color", () =>
+        {
+            MarkdownDocumentTemplate modern = MarkdownTemplateCatalog.Default;
+            MarkdownDocumentTemplate minimal = MarkdownTemplateCatalog.Minimal;
+            MarkdownDocumentTemplate academic = MarkdownTemplateCatalog.Academic;
+
+            Assert.False(modern.Layout.MarginPoints == minimal.Layout.MarginPoints && minimal.Layout.MarginPoints == academic.Layout.MarginPoints,
+                "Built-in Markdown templates must not share one page layout.");
+            Assert.False(modern.Typography.BodySizePoints == minimal.Typography.BodySizePoints && minimal.Typography.BodySizePoints == academic.Typography.BodySizePoints,
+                "Built-in Markdown templates must not share one typography scale.");
+            Assert.True(modern.Layout.DrawH2Bar && !minimal.Layout.DrawH2Bar && !academic.Layout.DrawH2Bar,
+                "Only Clickra Default should use the branded H2 accent rule.");
+            Assert.True(modern.Layout.FillTableHeader && !minimal.Layout.FillTableHeader && !academic.Layout.FillTableHeader,
+                "Minimal and Academic tables must remain visually quieter than Clickra Default.");
+            Assert.Equal("Times New Roman", academic.Typography.LatinFont);
+            Assert.True(academic.Layout.MarginPoints > modern.Layout.MarginPoints && modern.Layout.MarginPoints > minimal.Layout.MarginPoints,
+                "Academic, Default, and Minimal should expose visibly different page densities.");
+        });
+
         runner.Run("Markdown to PDF: one-shot options use safe defaults and affect page setup", () =>
             RunWithTempDirectory(tempDir =>
             {

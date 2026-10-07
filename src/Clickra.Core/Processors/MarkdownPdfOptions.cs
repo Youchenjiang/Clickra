@@ -3,7 +3,7 @@ using System.Collections.Generic;
 
 namespace Clickra.Core.Processors;
 
-/// <summary>Shared one-shot Markdown-to-PDF conversion options used by every product surface.</summary>
+/// <summary>Shared one-shot Markdown presentation options used by Markdown renderers.</summary>
 public static class MarkdownPdfOptions
 {
     public const string ThemeKey = "markdown_theme";

@@ -95,16 +95,13 @@ public sealed class MarkdownToPdfProcessor : MultiFileProcessorBase
 
     private sealed class Renderer : IDisposable
     {
-        private const double DefaultMargin = 54;
-        private const double DefaultBodySize = 11.5;
-        private const double DefaultBodyLineHeight = 18;
-        private const double DefaultBlockGap = 9;
         private const double ListIndent = 20;
 
         private readonly PdfDocument _document;
         private readonly string _baseDirectory;
         private readonly CancellationToken _token;
         private readonly PdfSharp.PageSize _pageSize;
+        private readonly MarkdownDocumentTemplate _template;
         private readonly double _scale;
         private readonly double _margin;
         private readonly double _bodySize;
@@ -128,6 +125,7 @@ public sealed class MarkdownToPdfProcessor : MultiFileProcessorBase
             _document = document;
             _baseDirectory = baseDirectory;
             _token = token;
+            _template = MarkdownTemplateCatalog.Resolve(MarkdownPdfOptions.GetTheme(options));
             _pageSize = MarkdownPdfOptions.GetPaper(options) == MarkdownPdfOptions.PaperLetter
                 ? PdfSharp.PageSize.Letter
                 : PdfSharp.PageSize.A4;
@@ -138,24 +136,15 @@ public sealed class MarkdownToPdfProcessor : MultiFileProcessorBase
                 MarkdownPdfOptions.TextLarge => 1.12,
                 _ => 1.0
             };
-            _margin = DefaultMargin;
-            _bodySize = DefaultBodySize * _scale;
-            _bodyLineHeight = DefaultBodyLineHeight * _scale;
-            _blockGap = DefaultBlockGap * _scale;
-
-            string theme = MarkdownPdfOptions.GetTheme(options);
-            (_textColor, _strongTextColor, _accentColor, _accentSoftColor, _borderColor) = theme switch
-            {
-                MarkdownPdfOptions.ThemeMinimal => (
-                    XColor.FromArgb(55, 65, 81), XColor.FromArgb(31, 41, 55), XColor.FromArgb(75, 85, 99),
-                    XColor.FromArgb(249, 250, 251), XColor.FromArgb(209, 213, 219)),
-                MarkdownPdfOptions.ThemeAcademic => (
-                    XColor.FromArgb(51, 65, 85), XColor.FromArgb(30, 41, 59), XColor.FromArgb(30, 64, 175),
-                    XColor.FromArgb(239, 246, 255), XColor.FromArgb(191, 219, 254)),
-                _ => (
-                    XColor.FromArgb(51, 65, 85), XColor.FromArgb(30, 41, 59), XColor.FromArgb(2, 132, 199),
-                    XColor.FromArgb(240, 249, 255), XColor.FromArgb(203, 213, 225))
-            };
+            _margin = _template.Layout.MarginPoints;
+            _bodySize = _template.Typography.BodySizePoints * _scale;
+            _bodyLineHeight = _template.Typography.LineHeightPoints * _scale;
+            _blockGap = _template.Layout.BlockGapPoints * _scale;
+            _textColor = ToXColor(_template.Palette.Body);
+            _strongTextColor = ToXColor(_template.Palette.Strong);
+            _accentColor = ToXColor(_template.Palette.Accent);
+            _accentSoftColor = ToXColor(_template.Palette.SoftAccent);
+            _borderColor = ToXColor(_template.Palette.Border);
 
             bool lightCode = MarkdownPdfOptions.GetCodeTheme(options) == MarkdownPdfOptions.CodeLight;
             _codeBackgroundColor = lightCode ? XColor.FromArgb(241, 245, 249) : XColor.FromArgb(15, 23, 42);
@@ -236,8 +225,8 @@ public sealed class MarkdownToPdfProcessor : MultiFileProcessorBase
             double lineHeight = size * 1.35;
             EnsureSpace(lineHeight + 12);
 
-            XBrush headingBrush = new XSolidBrush(heading.Level == 2 ? _accentColor : _strongTextColor);
-            if (heading.Level == 2)
+            XBrush headingBrush = new XSolidBrush(heading.Level == 2 && _template.Layout.AccentH2 ? _accentColor : _strongTextColor);
+            if (heading.Level == 2 && _template.Layout.DrawH2Bar)
             {
                 _graphics!.DrawRectangle(new XSolidBrush(_accentColor), _margin + indent, _y + 2, 3, lineHeight - 3);
                 indent += 10;
@@ -311,7 +300,7 @@ public sealed class MarkdownToPdfProcessor : MultiFileProcessorBase
         private void DrawQuoteBar(QuoteState state, double endY)
         {
             if (_graphics is null || endY <= state.StartY) return;
-            _graphics.DrawRectangle(new XSolidBrush(_borderColor), state.X, state.StartY, 3, endY - state.StartY);
+            _graphics.DrawRectangle(new XSolidBrush(_borderColor), state.X, state.StartY, _template.Layout.QuoteBarWidthPoints, endY - state.StartY);
         }
 
         private void CloseQuoteBarsForPage()
@@ -422,7 +411,7 @@ public sealed class MarkdownToPdfProcessor : MultiFileProcessorBase
             for (int i = 0; i < cells.Count; i++)
             {
                 double x = _margin + indent + (i * columnWidth);
-                if (isHeader)
+                if (isHeader && _template.Layout.FillTableHeader)
                     _graphics!.DrawRectangle(new XSolidBrush(_accentSoftColor), x, _y, columnWidth, rowHeight);
                 _graphics!.DrawRectangle(new XPen(_borderColor, 0.8), x, _y, columnWidth, rowHeight);
                 DrawTableCellLines(cells[i], x, lineOffset, lineCount);
@@ -604,12 +593,12 @@ public sealed class MarkdownToPdfProcessor : MultiFileProcessorBase
         {
             double baseSize = level switch
             {
-                1 => 25,
-                2 => 18,
-                3 => 14.5,
-                4 => 12.5,
-                5 => 11.5,
-                _ => 11
+                1 => _template.Typography.Headings.H1,
+                2 => _template.Typography.Headings.H2,
+                3 => _template.Typography.Headings.H3,
+                4 => _template.Typography.Headings.H4,
+                5 => _template.Typography.Headings.H5,
+                _ => _template.Typography.Headings.H6
             };
             return baseSize * _scale;
         }
@@ -654,21 +643,24 @@ public sealed class MarkdownToPdfProcessor : MultiFileProcessorBase
 
         private XFont CreateFont(string text, double size, XFontStyleEx style, bool monospace = false)
         {
-            string family = monospace ? "Courier New" : SelectFontFamily(text);
+            string family = monospace ? _template.Typography.MonospaceFont : SelectFontFamily(text);
             return new XFont(family, size, style);
         }
 
-        private static string SelectFontFamily(string text)
+        private string SelectFontFamily(string text)
         {
             foreach (char ch in text)
             {
                 if (ch is >= '\u3040' and <= '\u30ff') return "MS Gothic";
                 if (ch is >= '\uac00' and <= '\ud7af') return "Malgun Gothic";
-                if (ch is >= '\u3400' and <= '\u9fff') return "Microsoft JhengHei";
-                if (ch is >= '\uff00' and <= '\uffef') return "Microsoft JhengHei";
+                if (ch is >= '\u3400' and <= '\u9fff') return _template.Typography.CjkFont;
+                if (ch is >= '\uff00' and <= '\uffef') return _template.Typography.CjkFont;
             }
-            return "Segoe UI";
+            return _template.Typography.LatinFont;
         }
+
+        private static XColor ToXColor(MarkdownThemeColor color) =>
+            XColor.FromArgb(color.R, color.G, color.B);
 
         private IEnumerable<string> WrapText(string text, XFont font, double maxWidth)
         {
