@@ -94,11 +94,13 @@ public static class MarkdownTemplateFile
     private static MarkdownLayout ReadLayout(JsonElement element, MarkdownLayout source)
     {
         RequireObject(element, "layout");
-        EnsureOnly(element, "margin", "blockGap", "accentH2", "drawH2Bar", "fillTableHeader", "quoteBarWidth");
+        EnsureOnly(element, "margin", "blockGap", "firstLineIndent", "centerH1", "accentH2", "drawH2Bar", "fillTableHeader", "quoteBarWidth");
         return source with
         {
             MarginPoints = Number(element, "margin", source.MarginPoints, 18, 144),
             BlockGapPoints = Number(element, "blockGap", source.BlockGapPoints, 0, 40),
+            FirstLineIndentPoints = Number(element, "firstLineIndent", source.FirstLineIndentPoints, 0, 72),
+            CenterH1 = Boolean(element, "centerH1", source.CenterH1),
             AccentH2 = Boolean(element, "accentH2", source.AccentH2),
             DrawH2Bar = Boolean(element, "drawH2Bar", source.DrawH2Bar),
             FillTableHeader = Boolean(element, "fillTableHeader", source.FillTableHeader),

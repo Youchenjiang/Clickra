@@ -23,6 +23,8 @@ Clickra uses the same document-template model for Markdown → PDF and Markdown 
   "layout": {
     "margin": 48,
     "blockGap": 9,
+    "firstLineIndent": 0,
+    "centerH1": false,
     "accentH2": true,
     "drawH2Bar": true,
     "fillTableHeader": true,
@@ -76,6 +78,7 @@ Supported custom font families are normalized case-insensitively so PDF and DOCX
 - Microsoft JhengHei
 - MS Gothic
 - Noto Sans TC
+- PMingLiU
 - Segoe UI
 - Segoe UI Symbol
 - Times New Roman
@@ -90,6 +93,8 @@ All numeric layout values are in points.
 | --- | --- |
 | `margin` | `18`–`144`. |
 | `blockGap` | `0`–`40`. |
+| `firstLineIndent` | `0`–`72`; applied to ordinary body paragraphs, not lists, quotes, or table cells. |
+| `centerH1` | `true` or `false`; centers a level-one title when the renderer can keep it on one line. |
 | `accentH2` | `true` or `false`. |
 | `drawH2Bar` | `true` or `false`. |
 | `fillTableHeader` | `true` or `false`. |

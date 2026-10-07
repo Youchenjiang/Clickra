@@ -21,6 +21,7 @@ namespace Clickra.Core
                 string value when value.Equals("Microsoft JhengHei", StringComparison.OrdinalIgnoreCase) => "Microsoft JhengHei",
                 string value when value.Equals("MS Gothic", StringComparison.OrdinalIgnoreCase) => "MS Gothic",
                 string value when value.Equals("Noto Sans TC", StringComparison.OrdinalIgnoreCase) => "Noto Sans TC",
+                string value when value.Equals("PMingLiU", StringComparison.OrdinalIgnoreCase) => "PMingLiU",
                 string value when value.Equals("Segoe UI", StringComparison.OrdinalIgnoreCase) => "Segoe UI",
                 string value when value.Equals("Segoe UI Symbol", StringComparison.OrdinalIgnoreCase) => "Segoe UI Symbol",
                 string value when value.Equals("Times New Roman", StringComparison.OrdinalIgnoreCase) => "Times New Roman",
@@ -64,6 +65,10 @@ namespace Clickra.Core
             if (name.Contains("noto sans tc"))
             {
                 return new FontResolverInfo("notosanstc");
+            }
+            if (name.Contains("pmingliu") || name.Contains("新細明"))
+            {
+                return new FontResolverInfo("pmingliu", isBold, isItalic);
             }
             if (name.Contains("malgun"))
             {
@@ -115,7 +120,7 @@ namespace Clickra.Core
                 {
                     byte[] bytes = File.ReadAllBytes(fontPath);
                     return Path.GetExtension(fontPath).Equals(".ttc", StringComparison.OrdinalIgnoreCase)
-                        ? ExtractTtcFace(bytes, 0)
+                        ? ExtractTtcFace(bytes, baseFace == "pmingliu" ? 1 : 0)
                         : bytes;
                 }
                 catch { }
@@ -184,6 +189,7 @@ namespace Clickra.Core
                     "b" or "bi" => "msjhbd.ttc",
                     _ => "msjh.ttc"
                 },
+                "pmingliu" => "mingliu.ttc",
                 "msyh" => "msyh.ttc", // Use standard Windows Microsoft YaHei TTC
                 "msgothic" => "msgothic.ttc", // Use standard Windows MS Gothic TTC
                 "malgun" => style switch // Malgun Gothic (Korean)

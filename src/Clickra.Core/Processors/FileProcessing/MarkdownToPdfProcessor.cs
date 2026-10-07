@@ -177,7 +177,7 @@ public sealed class MarkdownToPdfProcessor : MultiFileProcessorBase
 
         public void Dispose() => _graphics?.Dispose();
 
-        private void RenderBlock(Block block, double indent)
+        private void RenderBlock(Block block, double indent, bool bodyParagraph = true)
         {
             switch (block)
             {
@@ -185,7 +185,7 @@ public sealed class MarkdownToPdfProcessor : MultiFileProcessorBase
                     RenderHeading(heading, indent);
                     break;
                 case ParagraphBlock paragraph:
-                    RenderParagraph(paragraph, indent);
+                    RenderParagraph(paragraph, indent, bodyParagraph);
                     break;
                 case ListBlock list:
                     RenderList(list, indent);
@@ -212,7 +212,7 @@ public sealed class MarkdownToPdfProcessor : MultiFileProcessorBase
                     _y += _blockGap;
                     break;
                 case ContainerBlock container:
-                    foreach (Block child in container) RenderBlock(child, indent);
+                    foreach (Block child in container) RenderBlock(child, indent, bodyParagraph);
                     break;
                 case LeafBlock leaf when leaf.Inline is not null:
                     RenderInline(leaf.Inline, _bodySize, XFontStyleEx.Regular, new XSolidBrush(_textColor), indent, _bodyLineHeight);
@@ -233,13 +233,15 @@ public sealed class MarkdownToPdfProcessor : MultiFileProcessorBase
                 _graphics!.DrawRectangle(new XSolidBrush(_accentColor), _margin + indent, _y + 2, 3, lineHeight - 3);
                 indent += 10;
             }
-            RenderInline(heading.Inline, size, XFontStyleEx.Bold, headingBrush, indent, lineHeight);
+            RenderInline(heading.Inline, size, XFontStyleEx.Bold, headingBrush, indent, lineHeight,
+                centerSingleLine: heading.Level == 1 && _template.Layout.CenterH1);
             _y += heading.Level <= 2 ? 12 : 7;
         }
 
-        private void RenderParagraph(ParagraphBlock paragraph, double indent)
+        private void RenderParagraph(ParagraphBlock paragraph, double indent, bool bodyParagraph)
         {
-            RenderInline(paragraph.Inline, _bodySize, XFontStyleEx.Regular, new XSolidBrush(_textColor), indent, _bodyLineHeight);
+            RenderInline(paragraph.Inline, _bodySize, XFontStyleEx.Regular, new XSolidBrush(_textColor), indent, _bodyLineHeight,
+                bodyParagraph ? _template.Layout.FirstLineIndentPoints * _scale : 0);
             _y += _blockGap;
         }
 
@@ -262,7 +264,7 @@ public sealed class MarkdownToPdfProcessor : MultiFileProcessorBase
                     }
                     else
                     {
-                        RenderBlock(itemBlock, indent + ListIndent);
+                        RenderBlock(itemBlock, indent + ListIndent, bodyParagraph: false);
                         first = false;
                     }
                 }
@@ -285,7 +287,7 @@ public sealed class MarkdownToPdfProcessor : MultiFileProcessorBase
             _activeQuotes.Add(state);
             try
             {
-                foreach (Block child in quote) RenderBlock(child, indent + 16);
+                foreach (Block child in quote) RenderBlock(child, indent + 16, bodyParagraph: false);
                 // Paragraph rendering advances by the inter-block gap after its last line.
                 // Keep the quote rule aligned to the actual text line box instead of
                 // extending it through that trailing whitespace.
@@ -434,22 +436,37 @@ public sealed class MarkdownToPdfProcessor : MultiFileProcessorBase
             }
         }
 
-        private void RenderInline(ContainerInline? inline, double size, XFontStyleEx baseStyle, XBrush baseBrush, double indent, double lineHeight)
+        private void RenderInline(ContainerInline? inline, double size, XFontStyleEx baseStyle, XBrush baseBrush, double indent, double lineHeight, double firstLineIndent = 0, bool centerSingleLine = false)
         {
             var segments = new List<InlineSegment>();
             CollectInlineSegments(inline, baseStyle.HasFlag(XFontStyleEx.Bold), baseStyle.HasFlag(XFontStyleEx.Italic), null, false, segments);
-            RenderSegments(segments, size, baseBrush, indent, lineHeight);
+            RenderSegments(segments, size, baseBrush, indent, lineHeight, firstLineIndent, centerSingleLine);
         }
 
-        private void RenderSegments(List<InlineSegment> segments, double size, XBrush baseBrush, double indent, double lineHeight)
+        private void RenderSegments(List<InlineSegment> segments, double size, XBrush baseBrush, double indent, double lineHeight, double firstLineIndent, bool centerSingleLine = false)
         {
-            double x = _margin + indent;
+            double x = _margin + indent + firstLineIndent;
             double maxX = PageRight - indent;
+            if (centerSingleLine && TryMeasureInlineWidth(segments, size, out double measuredWidth) && measuredWidth <= maxX - (_margin + indent))
+                x = _margin + indent + ((maxX - (_margin + indent) - measuredWidth) / 2);
             EnsureSpace(lineHeight);
 
             foreach (InlineSegment segment in segments)
                 RenderSegment(segment, size, baseBrush, indent, lineHeight, maxX, ref x);
             _y += lineHeight;
+        }
+
+        private bool TryMeasureInlineWidth(List<InlineSegment> segments, double size, out double width)
+        {
+            width = 0;
+            foreach (InlineSegment segment in segments)
+            {
+                if (segment.Text == "\n" || segment.ImageUrl is not null) return false;
+                string text = NormalizeDisplayGlyphs(segment.Text);
+                XFont font = CreateFont(text, segment.Code ? size * 0.92 : size, GetInlineStyle(segment), segment.Code && !ContainsCjk(text));
+                width += _graphics!.MeasureString(text, font).Width;
+            }
+            return true;
         }
 
         private void RenderSegment(InlineSegment segment, double size, XBrush baseBrush, double indent, double lineHeight, double maxX, ref double x)
@@ -569,7 +586,7 @@ public sealed class MarkdownToPdfProcessor : MultiFileProcessorBase
         private void RenderPlainText(string text, double size, XFontStyleEx style, XBrush brush, double indent, double lineHeight)
         {
             var segments = new List<InlineSegment> { new(text, style.HasFlag(XFontStyleEx.Bold), style.HasFlag(XFontStyleEx.Italic), false, null) };
-            RenderSegments(segments, size, brush, indent, lineHeight);
+            RenderSegments(segments, size, brush, indent, lineHeight, 0);
         }
 
         private void NewLine(ref double x, double indent, double lineHeight)

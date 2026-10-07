@@ -113,7 +113,7 @@ static partial class TestSuite
             RunWithTempDirectory(tempDir =>
             {
                 string input = Path.Combine(tempDir, "template.md");
-                File.WriteAllText(input, "# Heading\n\nBody text.");
+                File.WriteAllText(input, "# Heading\n\nBody text.\n\nSecond body paragraph.");
 
                 string minimalPath = Path.Combine(tempDir, "minimal.docx");
                 string academicPath = Path.Combine(tempDir, "academic.docx");
@@ -126,18 +126,32 @@ static partial class TestSuite
                 using ZipArchive academic = ZipFile.OpenRead(academicPath);
                 string minimalStyles = ReadAllText(minimal.GetEntry("word/styles.xml")!);
                 string academicStyles = ReadAllText(academic.GetEntry("word/styles.xml")!);
+                XNamespace w = "http://schemas.openxmlformats.org/wordprocessingml/2006/main";
                 Assert.True(minimalStyles.Contains("Segoe UI", StringComparison.Ordinal),
                     "Minimal DOCX must use its configured Latin font.");
                 Assert.True(academicStyles.Contains("Times New Roman", StringComparison.Ordinal),
                     "Academic DOCX must use its configured Latin font.");
+                Assert.True(academicStyles.Contains("PMingLiU", StringComparison.Ordinal),
+                    "Academic DOCX must use a serif Traditional Chinese family rather than JhengHei.");
+                XDocument academicStylesXml = XDocument.Parse(academicStyles);
+                XElement heading1Style = academicStylesXml.Descendants(w + "style")
+                    .Single(style => style.Attribute(w + "styleId")?.Value == "Heading1");
+                Assert.Equal("center", heading1Style.Descendants(w + "jc").Single().Attribute(w + "val")!.Value);
 
                 XDocument minimalDocument = ReadXml(minimal, "word/document.xml");
                 XDocument academicDocument = ReadXml(academic, "word/document.xml");
-                XNamespace w = "http://schemas.openxmlformats.org/wordprocessingml/2006/main";
                 string minimalMargin = minimalDocument.Descendants(w + "pgMar").Single().Attribute(w + "left")!.Value;
                 string academicMargin = academicDocument.Descendants(w + "pgMar").Single().Attribute(w + "left")!.Value;
                 Assert.False(minimalMargin == academicMargin,
                     "Minimal and Academic DOCX templates must use different page margins.");
+                Assert.Equal("1440", academicMargin);
+                var bodyIndents = academicDocument.Descendants(w + "p")
+                    .Where(p => p.Element(w + "pPr")?.Element(w + "pStyle")?.Attribute(w + "val")?.Value == "Normal")
+                    .Select(p => p.Element(w + "pPr")?.Element(w + "ind")?.Attribute(w + "firstLine")?.Value)
+                    .Where(value => value is not null)
+                    .ToList();
+                Assert.True(bodyIndents.Count >= 2 && bodyIndents.All(value => value == "480"),
+                    "Academic DOCX body paragraphs must use a 24pt first-line indent without applying it to every Normal-style container.");
             }));
 
         runner.Run("Markdown to Word: imported template changes DOCX styles and layout", () =>
@@ -170,6 +184,29 @@ static partial class TestSuite
                 XNamespace w = "http://schemas.openxmlformats.org/wordprocessingml/2006/main";
                 string leftMargin = document.Descendants(w + "pgMar").Single().Attribute(w + "left")!.Value;
                 Assert.Equal("960", leftMargin);
+            }));
+
+        runner.Run("Markdown to Word: Academic list paragraphs do not inherit body first-line indent", () =>
+            RunWithTempDirectory(tempDir =>
+            {
+                string input = Path.Combine(tempDir, "academic-list.md");
+                string output = Path.Combine(tempDir, "academic-list.docx");
+                File.WriteAllText(input, "- First list paragraph.\n\n  Second list paragraph in the same item.");
+
+                FileProcessor.ConvertMarkdownToWord(input, output,
+                    MarkdownPdfOptions.Create(MarkdownPdfOptions.ThemeAcademic));
+
+                using ZipArchive archive = ZipFile.OpenRead(output);
+                XDocument document = ReadXml(archive, "word/document.xml");
+                XNamespace w = "http://schemas.openxmlformats.org/wordprocessingml/2006/main";
+                var listIndents = document.Descendants(w + "p")
+                    .Select(p => p.Element(w + "pPr")?.Element(w + "ind"))
+                    .Where(ind => ind?.Attribute(w + "left")?.Value == "360")
+                    .ToList();
+                Assert.True(listIndents.Count >= 2,
+                    "Both paragraphs in a multi-paragraph list item must retain list indentation.");
+                Assert.True(listIndents.All(ind => ind!.Attribute(w + "firstLine") is null),
+                    "Academic list paragraphs must not inherit the ordinary body first-line indent.");
             }));
     }
 

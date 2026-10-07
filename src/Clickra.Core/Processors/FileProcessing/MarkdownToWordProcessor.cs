@@ -175,7 +175,7 @@ public sealed class MarkdownToWordProcessor : MultiFileProcessorBase
                     parent.Add(CreateInlineParagraph(heading.Inline, $"Heading{Math.Clamp(heading.Level, 1, 6)}"));
                     break;
                 case ParagraphBlock paragraph:
-                    parent.Add(CreateInlineParagraph(paragraph.Inline, "Normal"));
+                    parent.Add(CreateInlineParagraph(paragraph.Inline, "Normal", bodyParagraph: true));
                     break;
                 case QuoteBlock quote:
                     foreach (Block child in quote)
@@ -203,7 +203,7 @@ public sealed class MarkdownToWordProcessor : MultiFileProcessorBase
                     break;
                 case HtmlBlock html:
                     string text = StripHtml(html.Lines.ToString());
-                    if (!string.IsNullOrWhiteSpace(text)) parent.Add(CreateTextParagraph(text, "Normal"));
+                    if (!string.IsNullOrWhiteSpace(text)) parent.Add(CreateTextParagraph(text, "Normal", bodyParagraph: true));
                     break;
                 case ContainerBlock container:
                     foreach (Block child in container) RenderBlock(child, parent, listDepth);
@@ -242,16 +242,16 @@ public sealed class MarkdownToWordProcessor : MultiFileProcessorBase
             }
         }
 
-        private XElement CreateInlineParagraph(ContainerInline? inline, string style, string? marker = null, int indentTwips = 0)
+        private XElement CreateInlineParagraph(ContainerInline? inline, string style, string? marker = null, int indentTwips = 0, bool bodyParagraph = false)
         {
-            var p = new XElement(W + "p", ParagraphProperties(style, indentTwips));
+            var p = new XElement(W + "p", ParagraphProperties(style, indentTwips, bodyParagraph));
             if (marker is not null) p.Add(CreateRun(marker, false, false, false, null));
             AppendInlines(p, inline, false, false, null);
             return p;
         }
 
-        private XElement CreateTextParagraph(string text, string style) =>
-            new(W + "p", ParagraphProperties(style, 0), CreateRun(text, false, false, false, null));
+        private XElement CreateTextParagraph(string text, string style, bool bodyParagraph = false) =>
+            new(W + "p", ParagraphProperties(style, 0, bodyParagraph), CreateRun(text, false, false, false, null));
 
         private XElement CreateCodeParagraph(string code)
         {
@@ -513,6 +513,8 @@ public sealed class MarkdownToWordProcessor : MultiFileProcessorBase
                     new XAttribute(W + "lineRule", "auto")));
             if (leftIndent > 0) pPr.Add(new XElement(W + "ind", new XAttribute(W + "left", leftIndent)));
             if (keepNext) pPr.Add(new XElement(W + "keepNext"));
+            if (id == "Heading1" && _template.Layout.CenterH1)
+                pPr.Add(new XElement(W + "jc", new XAttribute(W + "val", "center")));
             if (id == "Quote")
             {
                 pPr.Add(new XElement(W + "pBdr",
@@ -556,10 +558,12 @@ public sealed class MarkdownToWordProcessor : MultiFileProcessorBase
             new XAttribute(W + "space", "0"),
             new XAttribute(W + "color", _template.Palette.Border.Hex));
 
-        private XElement ParagraphProperties(string style, int indentTwips)
+        private XElement ParagraphProperties(string style, int indentTwips, bool bodyParagraph = false)
         {
             var pPr = new XElement(W + "pPr", new XElement(W + "pStyle", new XAttribute(W + "val", style)));
             if (indentTwips > 0) pPr.Add(new XElement(W + "ind", new XAttribute(W + "left", indentTwips)));
+            else if (bodyParagraph && _template.Layout.FirstLineIndentPoints > 0)
+                pPr.Add(new XElement(W + "ind", new XAttribute(W + "firstLine", PointsToTwips(_template.Layout.FirstLineIndentPoints))));
             return pPr;
         }
 

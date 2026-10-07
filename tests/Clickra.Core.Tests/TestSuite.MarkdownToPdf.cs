@@ -69,8 +69,30 @@ static partial class TestSuite
             Assert.True(modern.Layout.FillTableHeader && !minimal.Layout.FillTableHeader && !academic.Layout.FillTableHeader,
                 "Minimal and Academic tables must remain visually quieter than Clickra Default.");
             Assert.Equal("Times New Roman", academic.Typography.LatinFont);
+            Assert.Equal("PMingLiU", academic.Typography.CjkFont);
+            Assert.True(academic.Typography.BodySizePoints == 12d && academic.Typography.LineHeightPoints == 18d,
+                "Academic body typography must use conventional 12pt text with 18pt leading.");
+            Assert.True(academic.Layout.MarginPoints == 72d && academic.Layout.FirstLineIndentPoints == 24d,
+                "Academic layout must use one-inch margins and a two-em first-line indent.");
+            Assert.True(academic.Layout.CenterH1,
+                "Academic documents must center a single-line level-one title instead of reusing report-style heading alignment.");
+            Assert.True(academic.Layout.BlockGapPoints <= 2d,
+                "Academic paragraphs must rely on first-line indentation instead of large card-like gaps.");
+            Assert.Equal("000000", academic.Palette.Strong.Hex);
+            Assert.Equal("000000", academic.Palette.Accent.Hex);
             Assert.True(academic.Layout.MarginPoints > modern.Layout.MarginPoints && modern.Layout.MarginPoints > minimal.Layout.MarginPoints,
                 "Academic, Default, and Minimal should expose visibly different page densities.");
+        });
+
+        runner.Run("Markdown templates: PMingLiU academic CJK face embeds as standalone font", () =>
+        {
+            var resolver = new ClickraFontResolver();
+            var face = resolver.ResolveTypeface("PMingLiU", false, false);
+            Assert.True(face is not null, "Academic PMingLiU must resolve for PDF output.");
+            byte[] bytes = resolver.GetFont(face!.FaceName) ?? Array.Empty<byte>();
+            Assert.True(bytes.Length > 12, "Academic PMingLiU must provide an embeddable font payload.");
+            Assert.False(bytes.AsSpan(0, 4).SequenceEqual("ttcf"u8),
+                "Academic PMingLiU must be extracted from its TTC into a standalone sfnt face.");
         });
 
         runner.Run("Markdown templates: custom JSON safely overrides a built-in base", () =>
@@ -89,6 +111,8 @@ static partial class TestSuite
                       },
                       "layout": {
                         "margin": 48,
+                        "firstLineIndent": 18,
+                        "centerH1": true,
                         "drawH2Bar": true,
                         "fillTableHeader": true
                       },
@@ -105,6 +129,8 @@ static partial class TestSuite
                 Assert.True(custom.Typography.BodySizePoints == 12d, "Custom body size override must apply.");
                 Assert.True(custom.Typography.Headings.H1 == 28d, "Custom H1 override must apply.");
                 Assert.True(custom.Layout.MarginPoints == 48d, "Custom margin override must apply.");
+                Assert.True(custom.Layout.FirstLineIndentPoints == 18d, "Custom first-line indent override must apply.");
+                Assert.True(custom.Layout.CenterH1, "Custom H1 alignment override must apply.");
                 Assert.True(custom.Layout.DrawH2Bar && custom.Layout.FillTableHeader,
                     "Custom layout overrides must apply on top of the selected base.");
                 Assert.Equal("0F766E", custom.Palette.Accent.Hex);
@@ -175,6 +201,58 @@ static partial class TestSuite
                 double customLeft = customPdf.GetPage(1).Letters.Min(letter => letter.BoundingBox.Left);
                 Assert.True(customLeft > defaultLeft + 30,
                     $"A 96pt custom margin must shift rendered text right; default={defaultLeft:0.##}, custom={customLeft:0.##}.");
+            }));
+
+        runner.Run("Markdown to PDF: Academic indents only the first body line", () =>
+            RunWithTempDirectory(tempDir =>
+            {
+                string input = Path.Combine(tempDir, "academic-indent.md");
+                string output = Path.Combine(tempDir, "academic-indent.pdf");
+                File.WriteAllText(input, "# Academic\n\nZebra begins the academic paragraph with enough repeated words to wrap onto another line while preserving the first-line indentation convention. " +
+                    "More words ensure wrapping occurs on an A4 page at the configured academic body size and margin.");
+
+                FileProcessor.ConvertMarkdownToPdf(input, output,
+                    MarkdownPdfOptions.Create(MarkdownPdfOptions.ThemeAcademic));
+
+                using var pdf = UglyToad.PdfPig.PdfDocument.Open(output);
+                var page = pdf.GetPage(1);
+                double paragraphLeft = page.Letters.First(letter => letter.Value == "Z").BoundingBox.Left;
+                Assert.True(paragraphLeft > 90 && paragraphLeft < 102,
+                    $"Academic body first line must begin near 72pt margin + 24pt indent; actual={paragraphLeft:0.##}.");
+            }));
+
+        runner.Run("Markdown to PDF: Academic does not indent blockquote text as body prose", () =>
+            RunWithTempDirectory(tempDir =>
+            {
+                string input = Path.Combine(tempDir, "academic-quote.md");
+                string output = Path.Combine(tempDir, "academic-quote.pdf");
+                File.WriteAllText(input, "# Academic\n\n> Quoted evidence should use the quote inset without the ordinary body first-line indent.");
+
+                FileProcessor.ConvertMarkdownToPdf(input, output,
+                    MarkdownPdfOptions.Create(MarkdownPdfOptions.ThemeAcademic));
+
+                using var pdf = UglyToad.PdfPig.PdfDocument.Open(output);
+                double quoteLeft = pdf.GetPage(1).Letters.First(letter => letter.Value == "Q").BoundingBox.Left;
+                Assert.True(quoteLeft > 84 && quoteLeft < 94,
+                    $"Academic quote text must use only the quote inset, not the 24pt body first-line indent; actual={quoteLeft:0.##}.");
+            }));
+
+        runner.Run("Markdown to PDF: Academic does not indent later list paragraphs as body prose", () =>
+            RunWithTempDirectory(tempDir =>
+            {
+                string input = Path.Combine(tempDir, "academic-list.md");
+                string output = Path.Combine(tempDir, "academic-list.pdf");
+                File.WriteAllText(input, "# Academic\n\n- First list paragraph.\n\n  Second list paragraph in the same item.");
+
+                FileProcessor.ConvertMarkdownToPdf(input, output,
+                    MarkdownPdfOptions.Create(MarkdownPdfOptions.ThemeAcademic));
+
+                using var pdf = UglyToad.PdfPig.PdfDocument.Open(output);
+                var page = pdf.GetPage(1);
+                double firstLeft = page.Letters.First(letter => letter.Value == "F").BoundingBox.Left;
+                double secondLeft = page.Letters.First(letter => letter.Value == "S").BoundingBox.Left;
+                Assert.True(Math.Abs(firstLeft - secondLeft) < 5,
+                    $"Academic list continuation paragraphs must keep list indentation without body first-line indent; first={firstLeft:0.##}, second={secondLeft:0.##}.");
             }));
 
         runner.Run("Markdown to PDF: one-shot options use safe defaults and affect page setup", () =>
