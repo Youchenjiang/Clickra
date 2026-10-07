@@ -249,6 +249,43 @@ static partial class TestSuite
                 Assert.Throws<InvalidDataException>(() => MarkdownTemplateSource.Load(templatePath));
             }));
 
+        runner.Run("Markdown templates: theme fonts override direct fonts at the same style level", () =>
+            RunWithTempDirectory(tempDir =>
+            {
+                string templatePath = Path.Combine(tempDir, "mixed-font-precedence.docx");
+                CreateWordTemplateFixture(templatePath, includeDirectAlongsideTheme: true);
+
+                MarkdownDocumentTemplate template = MarkdownTemplateSource.Load(templatePath);
+                Assert.Equal("Times New Roman", template.Typography.LatinFont);
+                Assert.Equal("KaiU", template.Typography.CjkFont);
+            }));
+
+        runner.Run("Markdown templates: East Asian theme fonts follow the effective Word language", () =>
+            RunWithTempDirectory(tempDir =>
+            {
+                string templatePath = Path.Combine(tempDir, "japanese-theme.docx");
+                CreateWordTemplateFixture(templatePath, eastAsiaLanguage: "ja-JP", multipleEastAsiaFonts: true);
+
+                MarkdownDocumentTemplate template = MarkdownTemplateSource.Load(templatePath);
+                Assert.Equal("MS Gothic", template.Typography.CjkFont);
+            }));
+
+        runner.Run("Markdown templates: ambiguous East Asian theme fonts fail closed without a language", () =>
+            RunWithTempDirectory(tempDir =>
+            {
+                string templatePath = Path.Combine(tempDir, "ambiguous-east-asia.docx");
+                CreateWordTemplateFixture(templatePath, multipleEastAsiaFonts: true);
+                Assert.Throws<InvalidDataException>(() => MarkdownTemplateSource.Load(templatePath));
+            }));
+
+        runner.Run("Markdown templates: unresolved explicit theme fonts fail closed", () =>
+            RunWithTempDirectory(tempDir =>
+            {
+                string templatePath = Path.Combine(tempDir, "missing-theme.docx");
+                CreateWordTemplateFixture(templatePath, includeTheme: false);
+                Assert.Throws<InvalidDataException>(() => MarkdownTemplateSource.Load(templatePath));
+            }));
+
         runner.Run("Markdown to Word: imported DOCX template drives generated Word formatting", () =>
             RunWithTempDirectory(tempDir =>
             {
@@ -328,19 +365,45 @@ static partial class TestSuite
         return reader.ReadToEnd();
     }
 
-    private static void CreateWordTemplateFixture(string path, string latinTypeface = "Times New Roman")
+    private static void CreateWordTemplateFixture(
+        string path,
+        string latinTypeface = "Times New Roman",
+        bool includeDirectAlongsideTheme = false,
+        string? eastAsiaLanguage = null,
+        bool multipleEastAsiaFonts = false,
+        bool includeTheme = true)
     {
         XNamespace w = "http://schemas.openxmlformats.org/wordprocessingml/2006/main";
         using ZipArchive archive = ZipFile.Open(path, ZipArchiveMode.Create);
-        var styles = new XElement(w + "styles");
-        styles.Add(new XElement(w + "docDefaults",
-            new XElement(w + "rPrDefault",
-                new XElement(w + "rPr",
-                    new XElement(w + "rFonts",
-                        new XAttribute(w + "ascii", "Arial"),
-                        new XAttribute(w + "hAnsi", "Arial"),
-                        new XAttribute(w + "eastAsia", "Microsoft JhengHei")),
-                    new XElement(w + "sz", new XAttribute(w + "val", "20"))))));
+
+        var defaultFonts = new XElement(w + "rFonts",
+            new XAttribute(w + "ascii", "Arial"),
+            new XAttribute(w + "hAnsi", "Arial"),
+            new XAttribute(w + "eastAsia", "Microsoft JhengHei"));
+        var styles = new XElement(w + "styles",
+            new XElement(w + "docDefaults",
+                new XElement(w + "rPrDefault",
+                    new XElement(w + "rPr",
+                        defaultFonts,
+                        new XElement(w + "sz", new XAttribute(w + "val", "20"))))));
+
+        var styleFonts = new XElement(w + "rFonts",
+            new XAttribute(w + "asciiTheme", "minorHAnsi"),
+            new XAttribute(w + "hAnsiTheme", "minorHAnsi"),
+            new XAttribute(w + "eastAsiaTheme", "minorEastAsia"));
+        if (includeDirectAlongsideTheme)
+        {
+            styleFonts.SetAttributeValue(w + "ascii", "Arial");
+            styleFonts.SetAttributeValue(w + "hAnsi", "Arial");
+            styleFonts.SetAttributeValue(w + "eastAsia", "Microsoft JhengHei");
+        }
+
+        var baseRunProperties = new XElement(w + "rPr",
+            styleFonts,
+            new XElement(w + "sz", new XAttribute(w + "val", "24")));
+        if (!string.IsNullOrWhiteSpace(eastAsiaLanguage))
+            baseRunProperties.Add(new XElement(w + "lang", new XAttribute(w + "eastAsia", eastAsiaLanguage)));
+
         styles.Add(new XElement(w + "style",
             new XAttribute(w + "type", "paragraph"),
             new XAttribute(w + "styleId", "BaseBody"),
@@ -352,12 +415,7 @@ static partial class TestSuite
                     new XAttribute(w + "lineRule", "auto")),
                 new XElement(w + "ind", new XAttribute(w + "firstLine", "480")),
                 new XElement(w + "jc", new XAttribute(w + "val", "both"))),
-            new XElement(w + "rPr",
-                new XElement(w + "rFonts",
-                    new XAttribute(w + "asciiTheme", "minorHAnsi"),
-                    new XAttribute(w + "hAnsiTheme", "minorHAnsi"),
-                    new XAttribute(w + "eastAsiaTheme", "minorEastAsia")),
-                new XElement(w + "sz", new XAttribute(w + "val", "24")))));
+            baseRunProperties));
         styles.Add(new XElement(w + "style",
             new XAttribute(w + "type", "paragraph"),
             new XAttribute(w + "default", "1"),
@@ -382,19 +440,26 @@ static partial class TestSuite
             new XElement(w + "rPr", new XElement(w + "sz", new XAttribute(w + "val", "32")))));
         WriteXml(archive, "word/styles.xml", new XDocument(styles));
 
-        XNamespace a = "http://schemas.openxmlformats.org/drawingml/2006/main";
-        var theme = new XElement(a + "theme",
-            new XElement(a + "themeElements",
-                new XElement(a + "fontScheme",
-                    new XAttribute("name", "Fixture fonts"),
-                    new XElement(a + "majorFont",
-                        new XElement(a + "latin", new XAttribute("typeface", "Cambria")),
-                        new XElement(a + "ea", new XAttribute("typeface", ""))),
-                    new XElement(a + "minorFont",
-                        new XElement(a + "latin", new XAttribute("typeface", latinTypeface)),
-                        new XElement(a + "ea", new XAttribute("typeface", "")),
-                        new XElement(a + "font", new XAttribute("script", "Hant"), new XAttribute("typeface", "DFKai-SB"))))));
-        WriteXml(archive, "word/theme/theme1.xml", new XDocument(theme));
+        if (includeTheme)
+        {
+            XNamespace a = "http://schemas.openxmlformats.org/drawingml/2006/main";
+            var minorFont = new XElement(a + "minorFont",
+                new XElement(a + "latin", new XAttribute("typeface", latinTypeface)),
+                new XElement(a + "ea", new XAttribute("typeface", "")),
+                new XElement(a + "font", new XAttribute("script", "Hant"), new XAttribute("typeface", "DFKai-SB")));
+            if (multipleEastAsiaFonts)
+                minorFont.Add(new XElement(a + "font", new XAttribute("script", "Jpan"), new XAttribute("typeface", "MS Gothic")));
+
+            var theme = new XElement(a + "theme",
+                new XElement(a + "themeElements",
+                    new XElement(a + "fontScheme",
+                        new XAttribute("name", "Fixture fonts"),
+                        new XElement(a + "majorFont",
+                            new XElement(a + "latin", new XAttribute("typeface", "Cambria")),
+                            new XElement(a + "ea", new XAttribute("typeface", ""))),
+                        minorFont)));
+            WriteXml(archive, "word/theme/theme1.xml", new XDocument(theme));
+        }
 
         var body = new XElement(w + "body",
             new XElement(w + "p", new XElement(w + "r", new XElement(w + "t", "Template"))),

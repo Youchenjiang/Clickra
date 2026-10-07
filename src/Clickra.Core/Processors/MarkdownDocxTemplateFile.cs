@@ -47,8 +47,9 @@ public static class MarkdownDocxTemplateFile
     private static MarkdownTypography ReadTypography(XDocument styles, XElement? normal, XDocument? theme, MarkdownTypography fallback)
     {
         XElement? defaults = styles.Root?.Element(W + "docDefaults")?.Element(W + "rPrDefault")?.Element(W + "rPr");
-        string latin = CanonicalFont(ReadFont(normal, styles, defaults, theme, eastAsia: false), fallback.LatinFont);
-        string cjk = CanonicalFont(ReadFont(normal, styles, defaults, theme, eastAsia: true), fallback.CjkFont);
+        string? eastAsiaLanguage = ReadRunProperty(normal, styles, defaults, W + "lang", "eastAsia");
+        string latin = CanonicalFont(ReadFont(normal, styles, defaults, theme, eastAsia: false, eastAsiaLanguage: null), fallback.LatinFont);
+        string cjk = CanonicalFont(ReadFont(normal, styles, defaults, theme, eastAsia: true, eastAsiaLanguage), fallback.CjkFont);
         double bodySize = ReadHalfPoints(ReadRunProperty(normal, styles, defaults, W + "sz", "val"), fallback.BodySizePoints);
         double lineHeight = ReadLineHeight(normal, styles, bodySize, fallback.LineHeightPoints);
 
@@ -151,52 +152,102 @@ public static class MarkdownDocxTemplateFile
         return value;
     }
 
-    private static string? ReadFont(XElement? style, XDocument styles, XElement? defaults, XDocument? theme, bool eastAsia)
+    private static string? ReadFont(
+        XElement? style,
+        XDocument styles,
+        XElement? defaults,
+        XDocument? theme,
+        bool eastAsia,
+        string? eastAsiaLanguage)
     {
         foreach (XElement item in StyleChain(style, styles))
         {
-            string? resolved = ReadFontFromRunProperties(item.Element(W + "rPr"), theme, eastAsia);
+            string? resolved = ReadFontFromRunProperties(item.Element(W + "rPr"), theme, eastAsia, eastAsiaLanguage);
             if (!string.IsNullOrWhiteSpace(resolved)) return resolved;
         }
-        return ReadFontFromRunProperties(defaults, theme, eastAsia);
+        return ReadFontFromRunProperties(defaults, theme, eastAsia, eastAsiaLanguage);
     }
 
-    private static string? ReadFontFromRunProperties(XElement? rPr, XDocument? theme, bool eastAsia)
+    private static string? ReadFontFromRunProperties(
+        XElement? rPr,
+        XDocument? theme,
+        bool eastAsia,
+        string? eastAsiaLanguage)
     {
         XElement? fonts = rPr?.Element(W + "rFonts");
         if (fonts is null) return null;
-        string? direct = eastAsia
-            ? fonts.Attribute(W + "eastAsia")?.Value
-            : fonts.Attribute(W + "ascii")?.Value ?? fonts.Attribute(W + "hAnsi")?.Value;
-        if (!string.IsNullOrWhiteSpace(direct)) return direct;
-
         string? themeKey = eastAsia
             ? fonts.Attribute(W + "eastAsiaTheme")?.Value
             : fonts.Attribute(W + "asciiTheme")?.Value ?? fonts.Attribute(W + "hAnsiTheme")?.Value;
-        return ResolveThemeFont(theme, themeKey, eastAsia);
+        if (!string.IsNullOrWhiteSpace(themeKey))
+            return ResolveThemeFont(theme, themeKey, eastAsia, eastAsiaLanguage);
+
+        return eastAsia
+            ? fonts.Attribute(W + "eastAsia")?.Value
+            : fonts.Attribute(W + "ascii")?.Value ?? fonts.Attribute(W + "hAnsi")?.Value;
     }
 
-    private static string? ResolveThemeFont(XDocument? theme, string? themeKey, bool eastAsia)
+    private static string ResolveThemeFont(XDocument? theme, string themeKey, bool eastAsia, string? eastAsiaLanguage)
     {
-        if (theme?.Root is null || string.IsNullOrWhiteSpace(themeKey)) return null;
+        if (theme?.Root is null)
+            throw new InvalidDataException($"Word template theme font '{themeKey}' cannot be resolved because theme1.xml is missing.");
+
         string key = themeKey.ToLowerInvariant();
         XElement? scheme = theme.Descendants(A + "fontScheme").FirstOrDefault();
-        XElement? family = key.StartsWith("major", StringComparison.Ordinal) ? scheme?.Element(A + "majorFont") : scheme?.Element(A + "minorFont");
-        if (family is null) return null;
+        XElement? family = key.StartsWith("major", StringComparison.Ordinal)
+            ? scheme?.Element(A + "majorFont")
+            : key.StartsWith("minor", StringComparison.Ordinal)
+                ? scheme?.Element(A + "minorFont")
+                : null;
+        if (family is null)
+            throw new InvalidDataException($"Word template theme font '{themeKey}' cannot be resolved.");
 
         if (!eastAsia)
-            return family.Element(A + "latin")?.Attribute("typeface")?.Value;
+        {
+            string? latin = family.Element(A + "latin")?.Attribute("typeface")?.Value;
+            if (!string.IsNullOrWhiteSpace(latin)) return latin;
+            throw new InvalidDataException($"Word template theme font '{themeKey}' does not define a Latin typeface.");
+        }
 
         string? typeface = family.Element(A + "ea")?.Attribute("typeface")?.Value;
         if (!string.IsNullOrWhiteSpace(typeface)) return typeface;
-        string[] preferredScripts = { "Hant", "Hans", "Jpan", "Hang" };
-        foreach (string script in preferredScripts)
+
+        string? script = EastAsiaScript(eastAsiaLanguage);
+        if (script is not null)
         {
             string? supplemental = family.Elements(A + "font")
                 .FirstOrDefault(font => string.Equals(font.Attribute("script")?.Value, script, StringComparison.OrdinalIgnoreCase))
                 ?.Attribute("typeface")?.Value;
             if (!string.IsNullOrWhiteSpace(supplemental)) return supplemental;
         }
+
+        string[] knownScripts = { "Hant", "Hans", "Jpan", "Hang" };
+        string[] candidates = family.Elements(A + "font")
+            .Where(font => knownScripts.Contains(font.Attribute("script")?.Value, StringComparer.OrdinalIgnoreCase))
+            .Select(font => font.Attribute("typeface")?.Value)
+            .Where(value => !string.IsNullOrWhiteSpace(value))
+            .Select(value => value!)
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToArray();
+        if (script is null && candidates.Length == 1) return candidates[0];
+
+        string language = string.IsNullOrWhiteSpace(eastAsiaLanguage) ? "unspecified East Asian language" : eastAsiaLanguage;
+        throw new InvalidDataException($"Word template theme font '{themeKey}' cannot resolve {language} to one East Asian typeface.");
+    }
+
+    private static string? EastAsiaScript(string? language)
+    {
+        if (string.IsNullOrWhiteSpace(language)) return null;
+        string normalized = language.Replace('_', '-').ToLowerInvariant();
+        if (normalized.StartsWith("ja", StringComparison.Ordinal)) return "Jpan";
+        if (normalized.StartsWith("ko", StringComparison.Ordinal)) return "Hang";
+        if (normalized.StartsWith("zh-hant", StringComparison.Ordinal)
+            || normalized.StartsWith("zh-tw", StringComparison.Ordinal)
+            || normalized.StartsWith("zh-hk", StringComparison.Ordinal)
+            || normalized.StartsWith("zh-mo", StringComparison.Ordinal)) return "Hant";
+        if (normalized.StartsWith("zh-hans", StringComparison.Ordinal)
+            || normalized.StartsWith("zh-cn", StringComparison.Ordinal)
+            || normalized.StartsWith("zh-sg", StringComparison.Ordinal)) return "Hans";
         return null;
     }
 
