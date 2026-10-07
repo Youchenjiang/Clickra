@@ -495,10 +495,19 @@ static partial class TestSuite
                         && fluentDialogs.Contains(".docx", StringComparison.Ordinal)
                         && !fluentDialogs.Contains("FileTypeFilter.Add(\".json\")", StringComparison.Ordinal),
                 "Fluent Markdown options must expose DOCX as the normal custom-template import path.");
+            Assert.True(fluentDialogs.Contains("bool isWord = command.Equals(\"md2word\"", StringComparison.Ordinal)
+                        && fluentDialogs.Contains("md_options_layout_source", StringComparison.Ordinal)
+                        && fluentDialogs.Contains("selectedTemplatePath = isWord", StringComparison.Ordinal),
+                "Fluent Markdown options must expose Word templates only through an explicit Word layout-source choice.");
             Assert.True(nativeOptions.Contains("MarkdownTemplateSource.Load", StringComparison.Ordinal)
                         && nativeOptions.Contains("*.docx", StringComparison.Ordinal)
                         && !nativeOptions.Contains("*.json", StringComparison.Ordinal),
                 "NativeAOT Markdown options must expose DOCX rather than JSON to ordinary users.");
+            Assert.True(nativeOptions.Contains("IsMarkdownWordCommand", StringComparison.Ordinal)
+                        && nativeOptions.Contains("md_options_layout_source", StringComparison.Ordinal)
+                        && nativeOptions.Contains("StartMarkdownConversion(hwnd, null)", StringComparison.Ordinal)
+                        && nativeOptions.Contains("_markdownLayoutSourceIndex == 1 ? _markdownTemplatePath : null", StringComparison.Ordinal),
+                "NativeAOT Markdown options must keep PDF on Clickra styles and make Word template selection mutually exclusive with built-in styles.");
             Assert.True(nativeOptions.Contains("PaintMarkdownOptions", StringComparison.Ordinal)
                         && nativeOptions.Contains("ResizeWindowForMarkdownOptions", StringComparison.Ordinal)
                         && !File.Exists(Path.Combine(root, "src", "Clickra.CLI", "Progress", "MarkdownOptionsPrompt.cs")),

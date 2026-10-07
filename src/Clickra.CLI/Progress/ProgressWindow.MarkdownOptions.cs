@@ -14,6 +14,10 @@ namespace Clickra.UI
         private const float MarkdownOptionWidth = 448f;
         private const float MarkdownOptionButtonHeight = 30f;
 
+        private bool IsMarkdownWordCommand => _command.Equals("md2word", StringComparison.OrdinalIgnoreCase);
+
+        private int GetMarkdownOptionsClientHeight() => IsMarkdownWordCommand ? 500 : 444;
+
         private void PaintMarkdownOptions(Graphics g, float s)
         {
             if (_msgFont is null || _tipFont is null) return;
@@ -22,6 +26,38 @@ namespace Clickra.UI
             using var mutedBrush = new SolidBrush(Color.FromArgb(145, 145, 145));
             g.DrawString(Loc("md_options_hint"), _tipFont, mutedBrush,
                 new RectangleF(36 * s, 126 * s, 448 * s, 36 * s));
+
+            if (IsMarkdownWordCommand)
+            {
+                PaintMarkdownOptionRow(g, s, Loc("md_options_layout_source"), 160,
+                    new[] { Loc("md_options_layout_clickra"), Loc("md_options_layout_word") }, _markdownLayoutSourceIndex);
+
+                if (_markdownLayoutSourceIndex == 0)
+                {
+                    PaintMarkdownOptionRow(g, s, Loc("md_options_style"), 216,
+                        new[] { Loc("md_options_style_default"), Loc("md_options_style_minimal"), Loc("md_options_style_academic") },
+                        _markdownStyleIndex);
+                }
+                else
+                {
+                    g.DrawString(Loc("md_options_template"), _msgFont, bodyBrush, 36 * s, 216 * s);
+                    DrawMarkdownButton(g, s, new RectangleF(36, 240, 132, 30), Loc("md_options_template_browse"), false);
+                    g.DrawString(_markdownTemplateStatus, _tipFont, mutedBrush,
+                        new RectangleF(180 * s, 246 * s, 304 * s, 30 * s));
+                }
+
+                PaintMarkdownOptionRow(g, s, Loc("md_options_paper"), 272,
+                    new[] { "A4", "Letter" }, _markdownPaperIndex);
+                PaintMarkdownOptionRow(g, s, Loc("md_options_text_size"), 328,
+                    new[] { Loc("md_options_text_small"), Loc("md_options_text_standard"), Loc("md_options_text_large") },
+                    _markdownTextSizeIndex);
+                PaintMarkdownOptionRow(g, s, Loc("md_options_code_theme"), 384,
+                    new[] { Loc("md_options_code_dark"), Loc("md_options_code_light") }, _markdownCodeThemeIndex);
+
+                DrawMarkdownButton(g, s, new RectangleF(254, 456, 120, 32), Loc("md_options_convert"), true);
+                DrawMarkdownButton(g, s, new RectangleF(386, 456, 98, 32), Loc("dialog_cancel"), false);
+                return;
+            }
 
             PaintMarkdownOptionRow(g, s, Loc("md_options_style"), 160,
                 new[] { Loc("md_options_style_default"), Loc("md_options_style_minimal"), Loc("md_options_style_academic") },
@@ -34,13 +70,8 @@ namespace Clickra.UI
             PaintMarkdownOptionRow(g, s, Loc("md_options_code_theme"), 328,
                 new[] { Loc("md_options_code_dark"), Loc("md_options_code_light") }, _markdownCodeThemeIndex);
 
-            g.DrawString(Loc("md_options_template"), _msgFont, bodyBrush, 36 * s, 384 * s);
-            DrawMarkdownButton(g, s, new RectangleF(36, 408, 132, 30), Loc("md_options_template_browse"), false);
-            g.DrawString(_markdownTemplateStatus, _tipFont, mutedBrush,
-                new RectangleF(180 * s, 414 * s, 304 * s, 30 * s));
-
-            DrawMarkdownButton(g, s, new RectangleF(276, 456, 100, 32), Loc("md_options_convert"), true);
-            DrawMarkdownButton(g, s, new RectangleF(386, 456, 98, 32), Loc("dialog_cancel"), false);
+            DrawMarkdownButton(g, s, new RectangleF(254, 400, 120, 32), Loc("md_options_convert"), true);
+            DrawMarkdownButton(g, s, new RectangleF(386, 400, 98, 32), Loc("dialog_cancel"), false);
         }
 
         private void PaintMarkdownOptionRow(Graphics g, float s, string label, float labelY, string[] values, int selectedIndex)
@@ -77,6 +108,9 @@ namespace Clickra.UI
 
         private bool HandleMarkdownOptionsClick(IntPtr hwnd, int mouseX, int mouseY)
         {
+            if (IsMarkdownWordCommand)
+                return HandleMarkdownWordOptionsClick(hwnd, mouseX, mouseY);
+
             if (TryHitMarkdownOptionRow(mouseX, mouseY, 184, 3, out int style))
             {
                 _markdownStyleIndex = style;
@@ -102,33 +136,73 @@ namespace Clickra.UI
                 return true;
             }
 
-            if (ContainsMarkdownRect(mouseX, mouseY, new RectangleF(36, 408, 132, 30)))
+            if (ContainsMarkdownRect(mouseX, mouseY, new RectangleF(254, 400, 120, 32)))
+            {
+                StartMarkdownConversion(hwnd, null);
+                return true;
+            }
+            if (ContainsMarkdownRect(mouseX, mouseY, new RectangleF(386, 400, 98, 32)))
+            {
+                ResolveMarkdownDecision(false);
+                DestroyWindow(hwnd);
+                return true;
+            }
+            return true;
+        }
+
+        private bool HandleMarkdownWordOptionsClick(IntPtr hwnd, int mouseX, int mouseY)
+        {
+            if (TryHitMarkdownOptionRow(mouseX, mouseY, 184, 2, out int source))
+            {
+                _markdownLayoutSourceIndex = source;
+                InvalidateRect(hwnd, IntPtr.Zero, false);
+                return true;
+            }
+
+            if (_markdownLayoutSourceIndex == 0)
+            {
+                if (TryHitMarkdownOptionRow(mouseX, mouseY, 240, 3, out int style))
+                {
+                    _markdownStyleIndex = style;
+                    InvalidateRect(hwnd, IntPtr.Zero, false);
+                    return true;
+                }
+            }
+            else if (ContainsMarkdownRect(mouseX, mouseY, new RectangleF(36, 240, 132, 30)))
             {
                 BrowseMarkdownTemplate(hwnd);
                 return true;
             }
-            if (ContainsMarkdownRect(mouseX, mouseY, new RectangleF(276, 456, 100, 32)))
+
+            if (TryHitMarkdownOptionRow(mouseX, mouseY, 296, 2, out int paper))
             {
-                _commandOptions = MarkdownPdfOptions.Create(
-                    _markdownStyleIndex switch
-                    {
-                        1 => MarkdownPdfOptions.ThemeMinimal,
-                        2 => MarkdownPdfOptions.ThemeAcademic,
-                        _ => MarkdownPdfOptions.ThemeDefault
-                    },
-                    _markdownPaperIndex == 1 ? MarkdownPdfOptions.PaperLetter : MarkdownPdfOptions.PaperA4,
-                    _markdownTextSizeIndex switch
-                    {
-                        0 => MarkdownPdfOptions.TextSmall,
-                        2 => MarkdownPdfOptions.TextLarge,
-                        _ => MarkdownPdfOptions.TextStandard
-                    },
-                    _markdownCodeThemeIndex == 1 ? MarkdownPdfOptions.CodeLight : MarkdownPdfOptions.CodeDark,
-                    _markdownTemplatePath);
-                ResolveMarkdownDecision(true);
-                _isPromptingMarkdownOptions = false;
-                ResizeWindowForMarkdownOptions(hwnd, false);
-                StartProcessingThread(hwnd);
+                _markdownPaperIndex = paper;
+                InvalidateRect(hwnd, IntPtr.Zero, false);
+                return true;
+            }
+            if (TryHitMarkdownOptionRow(mouseX, mouseY, 352, 3, out int textSize))
+            {
+                _markdownTextSizeIndex = textSize;
+                InvalidateRect(hwnd, IntPtr.Zero, false);
+                return true;
+            }
+            if (TryHitMarkdownOptionRow(mouseX, mouseY, 408, 2, out int codeTheme))
+            {
+                _markdownCodeThemeIndex = codeTheme;
+                InvalidateRect(hwnd, IntPtr.Zero, false);
+                return true;
+            }
+
+            if (ContainsMarkdownRect(mouseX, mouseY, new RectangleF(254, 456, 120, 32)))
+            {
+                if (_markdownLayoutSourceIndex == 1 && string.IsNullOrWhiteSpace(_markdownTemplatePath))
+                {
+                    _markdownTemplateStatus = Loc("md_options_template_required");
+                    InvalidateRect(hwnd, IntPtr.Zero, false);
+                    return true;
+                }
+
+                StartMarkdownConversion(hwnd, _markdownLayoutSourceIndex == 1 ? _markdownTemplatePath : null);
                 return true;
             }
             if (ContainsMarkdownRect(mouseX, mouseY, new RectangleF(386, 456, 98, 32)))
@@ -138,6 +212,30 @@ namespace Clickra.UI
                 return true;
             }
             return true;
+        }
+
+        private void StartMarkdownConversion(IntPtr hwnd, string? templatePath)
+        {
+            _commandOptions = MarkdownPdfOptions.Create(
+                _markdownStyleIndex switch
+                {
+                    1 => MarkdownPdfOptions.ThemeMinimal,
+                    2 => MarkdownPdfOptions.ThemeAcademic,
+                    _ => MarkdownPdfOptions.ThemeDefault
+                },
+                _markdownPaperIndex == 1 ? MarkdownPdfOptions.PaperLetter : MarkdownPdfOptions.PaperA4,
+                _markdownTextSizeIndex switch
+                {
+                    0 => MarkdownPdfOptions.TextSmall,
+                    2 => MarkdownPdfOptions.TextLarge,
+                    _ => MarkdownPdfOptions.TextStandard
+                },
+                _markdownCodeThemeIndex == 1 ? MarkdownPdfOptions.CodeLight : MarkdownPdfOptions.CodeDark,
+                templatePath);
+            ResolveMarkdownDecision(true);
+            _isPromptingMarkdownOptions = false;
+            ResizeWindowForMarkdownOptions(hwnd, false);
+            StartProcessingThread(hwnd);
         }
 
         private static bool TryHitMarkdownOptionRow(int mouseX, int mouseY, float y, int count, out int index)
@@ -206,7 +304,7 @@ namespace Clickra.UI
         {
             float s = _dpiScale;
             int clientW = (int)(520 * s);
-            int clientH = (int)((expand ? 500 : 280) * s);
+            int clientH = (int)((expand ? GetMarkdownOptionsClientHeight() : 280) * s);
 
             _bufferGraphics?.Dispose();
             _bufferBmp?.Dispose();

@@ -39,6 +39,7 @@ namespace Clickra.UI
         private int _markdownPaperIndex = 0;
         private int _markdownTextSizeIndex = 1;
         private int _markdownCodeThemeIndex = 0;
+        private int _markdownLayoutSourceIndex = 0;
         private string? _markdownTemplatePath;
         private string _markdownTemplateStatus = "";
         private bool _processingStarted = false;
@@ -192,7 +193,7 @@ namespace Clickra.UI
 
             int clientW = (int)(520 * _dpiScale);
             int clientH = _isPromptingMarkdownOptions
-                ? (int)(500 * _dpiScale)
+                ? (int)(GetMarkdownOptionsClientHeight() * _dpiScale)
                 : _isPromptingVisualSplitter ? (int)(420 * _dpiScale) : (int)(280 * _dpiScale);
 
             if (_bufferBmp == null)

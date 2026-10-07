@@ -772,7 +772,7 @@ namespace Clickra.UI
 
             int clientW = (int)(520 * _dpiScale);
             int clientH = _isPromptingMarkdownOptions
-                ? (int)(500 * _dpiScale)
+                ? (int)(GetMarkdownOptionsClientHeight() * _dpiScale)
                 : _isPromptingVisualSplitter ? (int)(420 * _dpiScale) : (int)(280 * _dpiScale);
 
             if (_bufferBmp != null)
