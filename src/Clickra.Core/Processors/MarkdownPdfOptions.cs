@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.IO;
 
 namespace Clickra.Core.Processors;
 
@@ -10,6 +11,7 @@ public static class MarkdownPdfOptions
     public const string PaperKey = "markdown_paper";
     public const string TextSizeKey = "markdown_text_size";
     public const string CodeThemeKey = "markdown_code_theme";
+    public const string TemplatePathKey = "markdown_template_path";
 
     public const string ThemeDefault = "default";
     public const string ThemeMinimal = "minimal";
@@ -29,13 +31,19 @@ public static class MarkdownPdfOptions
         string theme = ThemeDefault,
         string paper = PaperA4,
         string textSize = TextStandard,
-        string codeTheme = CodeDark) => new()
+        string codeTheme = CodeDark,
+        string? templatePath = null)
     {
-        [ThemeKey] = NormalizeTheme(theme),
-        [PaperKey] = NormalizePaper(paper),
-        [TextSizeKey] = NormalizeTextSize(textSize),
-        [CodeThemeKey] = NormalizeCodeTheme(codeTheme)
-    };
+        var options = new Dictionary<string, object>
+        {
+            [ThemeKey] = NormalizeTheme(theme),
+            [PaperKey] = NormalizePaper(paper),
+            [TextSizeKey] = NormalizeTextSize(textSize),
+            [CodeThemeKey] = NormalizeCodeTheme(codeTheme)
+        };
+        if (!string.IsNullOrWhiteSpace(templatePath)) options[TemplatePathKey] = Path.GetFullPath(templatePath);
+        return options;
+    }
 
     public static string GetTheme(IReadOnlyDictionary<string, object>? options) =>
         NormalizeTheme(Read(options, ThemeKey, ThemeDefault));
@@ -48,6 +56,11 @@ public static class MarkdownPdfOptions
 
     public static string GetCodeTheme(IReadOnlyDictionary<string, object>? options) =>
         NormalizeCodeTheme(Read(options, CodeThemeKey, CodeDark));
+
+    public static string? GetTemplatePath(IReadOnlyDictionary<string, object>? options) =>
+        options is not null && options.TryGetValue(TemplatePathKey, out object? value) && !string.IsNullOrWhiteSpace(value?.ToString())
+            ? Path.GetFullPath(value!.ToString()!)
+            : null;
 
     private static string Read(IReadOnlyDictionary<string, object>? options, string key, string fallback) =>
         options is not null && options.TryGetValue(key, out object? value)
@@ -73,4 +86,5 @@ public static class MarkdownPdfOptions
 
     private static string NormalizeCodeTheme(string value) =>
         value.Trim().Equals(CodeLight, StringComparison.OrdinalIgnoreCase) ? CodeLight : CodeDark;
+
 }

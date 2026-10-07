@@ -125,7 +125,9 @@ public sealed class MarkdownToPdfProcessor : MultiFileProcessorBase
             _document = document;
             _baseDirectory = baseDirectory;
             _token = token;
-            _template = MarkdownTemplateCatalog.Resolve(MarkdownPdfOptions.GetTheme(options));
+            _template = MarkdownTemplateCatalog.Resolve(
+                MarkdownPdfOptions.GetTheme(options),
+                MarkdownPdfOptions.GetTemplatePath(options));
             _pageSize = MarkdownPdfOptions.GetPaper(options) == MarkdownPdfOptions.PaperLetter
                 ? PdfSharp.PageSize.Letter
                 : PdfSharp.PageSize.A4;

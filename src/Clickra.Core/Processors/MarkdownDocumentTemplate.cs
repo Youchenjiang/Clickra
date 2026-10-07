@@ -46,7 +46,12 @@ public readonly record struct MarkdownThemeColor(byte R, byte G, byte B)
 /// <summary>Built-in document templates. Values intentionally differ in layout, not only color.</summary>
 public static class MarkdownTemplateCatalog
 {
-    public static MarkdownDocumentTemplate Resolve(string id) => id switch
+    public static MarkdownDocumentTemplate Resolve(string id, string? customTemplatePath = null) =>
+        !string.IsNullOrWhiteSpace(customTemplatePath)
+            ? MarkdownTemplateFile.Load(customTemplatePath)
+            : ResolveBuiltIn(id);
+
+    internal static MarkdownDocumentTemplate ResolveBuiltIn(string id) => id switch
     {
         MarkdownPdfOptions.ThemeMinimal => Minimal,
         MarkdownPdfOptions.ThemeAcademic => Academic,

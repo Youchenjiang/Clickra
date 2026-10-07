@@ -58,7 +58,9 @@ public sealed class MarkdownToWordProcessor : MultiFileProcessorBase
         onProgress?.Invoke(45, 100, Localization.T("md_word_progress_rendering", Path.GetFileName(filePath)));
         string baseDirectory = Path.GetDirectoryName(Path.GetFullPath(filePath)) ?? Directory.GetCurrentDirectory();
         var writer = new DocxWriter(
-            MarkdownTemplateCatalog.Resolve(MarkdownPdfOptions.GetTheme(options)),
+            MarkdownTemplateCatalog.Resolve(
+                MarkdownPdfOptions.GetTheme(options),
+                MarkdownPdfOptions.GetTemplatePath(options)),
             MarkdownPdfOptions.GetPaper(options),
             MarkdownPdfOptions.GetTextSize(options),
             MarkdownPdfOptions.GetCodeTheme(options),

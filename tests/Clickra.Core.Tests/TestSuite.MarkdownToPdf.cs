@@ -73,6 +73,95 @@ static partial class TestSuite
                 "Academic, Default, and Minimal should expose visibly different page densities.");
         });
 
+        runner.Run("Markdown templates: custom JSON safely overrides a built-in base", () =>
+            RunWithTempDirectory(tempDir =>
+            {
+                string templatePath = Path.Combine(tempDir, "custom-theme.json");
+                File.WriteAllText(templatePath, """
+                    {
+                      "version": 1,
+                      "name": "Course Handout",
+                      "base": "academic",
+                      "typography": {
+                        "latinFont": "Segoe UI",
+                        "bodySize": 12,
+                        "headings": { "h1": 28, "h2": 19 }
+                      },
+                      "layout": {
+                        "margin": 48,
+                        "drawH2Bar": true,
+                        "fillTableHeader": true
+                      },
+                      "palette": {
+                        "body": "#334155",
+                        "accent": "#0F766E"
+                      }
+                    }
+                    """);
+
+                MarkdownDocumentTemplate custom = MarkdownTemplateFile.Load(templatePath);
+                Assert.Equal("custom:Course Handout", custom.Id);
+                Assert.Equal("Segoe UI", custom.Typography.LatinFont);
+                Assert.True(custom.Typography.BodySizePoints == 12d, "Custom body size override must apply.");
+                Assert.True(custom.Typography.Headings.H1 == 28d, "Custom H1 override must apply.");
+                Assert.True(custom.Layout.MarginPoints == 48d, "Custom margin override must apply.");
+                Assert.True(custom.Layout.DrawH2Bar && custom.Layout.FillTableHeader,
+                    "Custom layout overrides must apply on top of the selected base.");
+                Assert.Equal("0F766E", custom.Palette.Accent.Hex);
+                Assert.Equal(MarkdownTemplateCatalog.Academic.Palette.Strong.Hex, custom.Palette.Strong.Hex);
+
+                var options = MarkdownPdfOptions.Create(templatePath: templatePath);
+                string? storedTemplatePath = MarkdownPdfOptions.GetTemplatePath(options);
+                Assert.True(storedTemplatePath is not null, "Custom template path must be retained in one-shot options.");
+                Assert.Equal(Path.GetFullPath(templatePath), storedTemplatePath!);
+                Assert.Equal(custom.Id, MarkdownTemplateCatalog.Resolve(MarkdownPdfOptions.GetTheme(options), MarkdownPdfOptions.GetTemplatePath(options)).Id);
+            }));
+
+        runner.Run("Markdown templates: invalid custom JSON fails closed", () =>
+            RunWithTempDirectory(tempDir =>
+            {
+                string unknownPath = Path.Combine(tempDir, "unknown.json");
+                File.WriteAllText(unknownPath, "{\"version\":1,\"layout\":{\"margin\":48,\"mystery\":true}}");
+                Assert.Throws<InvalidDataException>(() => MarkdownTemplateFile.Load(unknownPath));
+
+                string colorPath = Path.Combine(tempDir, "bad-color.json");
+                File.WriteAllText(colorPath, "{\"version\":1,\"palette\":{\"accent\":\"blue\"}}");
+                Assert.Throws<InvalidDataException>(() => MarkdownTemplateFile.Load(colorPath));
+
+                string marginPath = Path.Combine(tempDir, "bad-margin.json");
+                File.WriteAllText(marginPath, "{\"version\":1,\"layout\":{\"margin\":500}}");
+                Assert.Throws<InvalidDataException>(() => MarkdownTemplateFile.Load(marginPath));
+
+                string duplicatePath = Path.Combine(tempDir, "duplicate.json");
+                File.WriteAllText(duplicatePath, "{\"version\":1,\"layout\":{\"margin\":48,\"margin\":52}}");
+                Assert.Throws<InvalidDataException>(() => MarkdownTemplateFile.Load(duplicatePath));
+
+                string lineHeightPath = Path.Combine(tempDir, "bad-line-height.json");
+                File.WriteAllText(lineHeightPath, "{\"version\":1,\"typography\":{\"bodySize\":36,\"lineHeight\":8}}");
+                Assert.Throws<InvalidDataException>(() => MarkdownTemplateFile.Load(lineHeightPath));
+            }));
+
+        runner.Run("Markdown to PDF: custom template changes rendered page geometry", () =>
+            RunWithTempDirectory(tempDir =>
+            {
+                string input = Path.Combine(tempDir, "custom-margin.md");
+                string defaultOutput = Path.Combine(tempDir, "default-margin.pdf");
+                string customOutput = Path.Combine(tempDir, "custom-margin.pdf");
+                string templatePath = Path.Combine(tempDir, "wide-margin.json");
+                File.WriteAllText(input, "# Geometry\n\nRendered body text.");
+                File.WriteAllText(templatePath, "{\"version\":1,\"layout\":{\"margin\":96}}");
+
+                FileProcessor.ConvertMarkdownToPdf(input, defaultOutput, MarkdownPdfOptions.Create());
+                FileProcessor.ConvertMarkdownToPdf(input, customOutput, MarkdownPdfOptions.Create(templatePath: templatePath));
+
+                using var defaultPdf = UglyToad.PdfPig.PdfDocument.Open(defaultOutput);
+                using var customPdf = UglyToad.PdfPig.PdfDocument.Open(customOutput);
+                double defaultLeft = defaultPdf.GetPage(1).Letters.Min(letter => letter.BoundingBox.Left);
+                double customLeft = customPdf.GetPage(1).Letters.Min(letter => letter.BoundingBox.Left);
+                Assert.True(customLeft > defaultLeft + 30,
+                    $"A 96pt custom margin must shift rendered text right; default={defaultLeft:0.##}, custom={customLeft:0.##}.");
+            }));
+
         runner.Run("Markdown to PDF: one-shot options use safe defaults and affect page setup", () =>
             RunWithTempDirectory(tempDir =>
             {

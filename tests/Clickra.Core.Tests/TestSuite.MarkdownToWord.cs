@@ -139,6 +139,38 @@ static partial class TestSuite
                 Assert.False(minimalMargin == academicMargin,
                     "Minimal and Academic DOCX templates must use different page margins.");
             }));
+
+        runner.Run("Markdown to Word: imported template changes DOCX styles and layout", () =>
+            RunWithTempDirectory(tempDir =>
+            {
+                string input = Path.Combine(tempDir, "custom.md");
+                string output = Path.Combine(tempDir, "custom.docx");
+                string templatePath = Path.Combine(tempDir, "custom-template.json");
+                File.WriteAllText(input, "# Heading\n\n## Accent heading\n\nBody text.");
+                File.WriteAllText(templatePath, """
+                    {
+                      "version": 1,
+                      "base": "academic",
+                      "typography": { "latinFont": "Segoe UI", "bodySize": 12, "lineHeight": 18 },
+                      "layout": { "margin": 48, "drawH2Bar": true },
+                      "palette": { "accent": "#0F766E" }
+                    }
+                    """);
+
+                FileProcessor.ConvertMarkdownToWord(input, output, MarkdownPdfOptions.Create(templatePath: templatePath));
+
+                using ZipArchive archive = ZipFile.OpenRead(output);
+                string styles = ReadAllText(archive.GetEntry("word/styles.xml")!);
+                Assert.True(styles.Contains("Segoe UI", StringComparison.Ordinal),
+                    "Imported typography must reach DOCX styles instead of the Academic base font.");
+                Assert.True(styles.Contains("0F766E", StringComparison.OrdinalIgnoreCase),
+                    "Imported accent color must reach DOCX styles.");
+
+                XDocument document = ReadXml(archive, "word/document.xml");
+                XNamespace w = "http://schemas.openxmlformats.org/wordprocessingml/2006/main";
+                string leftMargin = document.Descendants(w + "pgMar").Single().Attribute(w + "left")!.Value;
+                Assert.Equal("960", leftMargin);
+            }));
     }
 
     private static XDocument ReadXml(ZipArchive archive, string name)
