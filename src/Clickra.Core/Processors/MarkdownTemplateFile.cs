@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
 using System.Text.Json;
+using Clickra.Core;
 
 namespace Clickra.Core.Processors;
 
@@ -157,7 +158,9 @@ public static class MarkdownTemplateFile
         if (value is null) return fallback;
         if (value.Length is < 1 or > 128 || ContainsControlCharacter(value) || value.IndexOfAny(new[] { '\\', '/', ':' }) >= 0)
             throw new InvalidDataException($"Template font '{name}' must be an installed font family name, not a path.");
-        return value;
+        if (!ClickraFontResolver.TryGetCanonicalTemplateFamily(value, out string canonicalFamily))
+            throw new InvalidDataException($"Template font '{name}' is not supported by both PDF and DOCX output.");
+        return canonicalFamily;
     }
 
     private static bool ContainsControlCharacter(string value)

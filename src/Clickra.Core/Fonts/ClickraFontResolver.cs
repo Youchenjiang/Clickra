@@ -9,6 +9,26 @@ namespace Clickra.Core
     {
         public string DefaultFontName => "Arial";
 
+        public static bool TryGetCanonicalTemplateFamily(string familyName, out string canonicalFamily)
+        {
+            canonicalFamily = familyName.Trim() switch
+            {
+                string value when value.Equals("Arial", StringComparison.OrdinalIgnoreCase) => "Arial",
+                string value when value.Equals("Cambria", StringComparison.OrdinalIgnoreCase) => "Cambria",
+                string value when value.Equals("Courier New", StringComparison.OrdinalIgnoreCase) => "Courier New",
+                string value when value.Equals("KaiU", StringComparison.OrdinalIgnoreCase) => "KaiU",
+                string value when value.Equals("Malgun Gothic", StringComparison.OrdinalIgnoreCase) => "Malgun Gothic",
+                string value when value.Equals("Microsoft JhengHei", StringComparison.OrdinalIgnoreCase) => "Microsoft JhengHei",
+                string value when value.Equals("MS Gothic", StringComparison.OrdinalIgnoreCase) => "MS Gothic",
+                string value when value.Equals("Noto Sans TC", StringComparison.OrdinalIgnoreCase) => "Noto Sans TC",
+                string value when value.Equals("Segoe UI", StringComparison.OrdinalIgnoreCase) => "Segoe UI",
+                string value when value.Equals("Segoe UI Symbol", StringComparison.OrdinalIgnoreCase) => "Segoe UI Symbol",
+                string value when value.Equals("Times New Roman", StringComparison.OrdinalIgnoreCase) => "Times New Roman",
+                _ => string.Empty
+            };
+            return canonicalFamily.Length > 0;
+        }
+
         public FontResolverInfo? ResolveTypeface(string familyName, bool isBold, bool isItalic)
         {
             string suffix = "";

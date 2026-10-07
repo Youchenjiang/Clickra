@@ -139,6 +139,21 @@ static partial class TestSuite
                 string lineHeightPath = Path.Combine(tempDir, "bad-line-height.json");
                 File.WriteAllText(lineHeightPath, "{\"version\":1,\"typography\":{\"bodySize\":36,\"lineHeight\":8}}");
                 Assert.Throws<InvalidDataException>(() => MarkdownTemplateFile.Load(lineHeightPath));
+
+                string unsupportedFontPath = Path.Combine(tempDir, "unsupported-font.json");
+                File.WriteAllText(unsupportedFontPath, "{\"version\":1,\"typography\":{\"latinFont\":\"Calibri\"}}");
+                Assert.Throws<InvalidDataException>(() => MarkdownTemplateFile.Load(unsupportedFontPath));
+            }));
+
+        runner.Run("Markdown templates: supported font aliases canonicalize for PDF and DOCX parity", () =>
+            RunWithTempDirectory(tempDir =>
+            {
+                string templatePath = Path.Combine(tempDir, "font-case.json");
+                File.WriteAllText(templatePath, "{\"version\":1,\"typography\":{\"latinFont\":\"segoe ui\",\"monospaceFont\":\"courier new\"}}");
+
+                MarkdownDocumentTemplate template = MarkdownTemplateFile.Load(templatePath);
+                Assert.Equal("Segoe UI", template.Typography.LatinFont);
+                Assert.Equal("Courier New", template.Typography.MonospaceFont);
             }));
 
         runner.Run("Markdown to PDF: custom template changes rendered page geometry", () =>
