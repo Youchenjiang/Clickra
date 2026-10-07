@@ -539,6 +539,12 @@ public sealed partial class MainPage : Page
 
         string command = _selectedCommand;
         var files = _selectedFiles.ToList();
+        Dictionary<string, object>? commandOptions = null;
+        if (command.Equals("md2pdf", StringComparison.OrdinalIgnoreCase))
+        {
+            commandOptions = await FluentDialogs.PromptMarkdownPdfOptionsAsync(XamlRoot, L);
+            if (commandOptions is null) return;
+        }
         List<string> outputs;
         try
         {
@@ -562,7 +568,8 @@ public sealed partial class MainPage : Page
                 (percent, message) => DispatcherQueue.TryEnqueue(() => SetProgress(percent, message)),
                 new ConvertCommandRunner.ConversionOptions(
                     (index) => DispatcherQueue.EnqueueAsync(() => FluentDialogs.PromptPasswordAsync(XamlRoot, L)),
-                    (index, pdfPath) => DispatcherQueue.EnqueueAsync(() => SplitOverlay.ShowForAsync(pdfPath))),
+                    (index, pdfPath) => DispatcherQueue.EnqueueAsync(() => SplitOverlay.ShowForAsync(pdfPath)),
+                    CommandOptions: commandOptions),
                 _cts.Token);
 
             switch (result.Status)

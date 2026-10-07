@@ -46,6 +46,7 @@ namespace Clickra.UI
         private string _command = "";
         private List<string> _files = new List<string>();
         private string? _outputDirOverride;
+        private Dictionary<string, object>? _commandOptions;
         private string? _existingTaskId = null;
         private int _startIndex = 0;
         private string TaskId { get; set; } = "";
@@ -105,9 +106,18 @@ namespace Clickra.UI
 
         /// <summary>Creates and runs a progress window for the given command and files,
         /// blocking until the window closes.</summary>
-        public static void Show(string command, List<string> files, string? outputDirOverride = null)
+        public static void Show(
+            string command,
+            List<string> files,
+            string? outputDirOverride = null,
+            Dictionary<string, object>? commandOptions = null)
         {
-            var window = new ProgressWindow { _outputDirOverride = outputDirOverride };
+            if (command.Equals("md2pdf", StringComparison.OrdinalIgnoreCase))
+            {
+                commandOptions ??= MarkdownOptionsPrompt.Show();
+                if (commandOptions is null) return;
+            }
+            var window = new ProgressWindow { _outputDirOverride = outputDirOverride, _commandOptions = commandOptions };
             window.ShowInstance(command, files);
         }
 

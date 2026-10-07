@@ -203,11 +203,17 @@ public static partial class DashboardWindow
             }
 
             var filesCopy = new List<string>(_selectedFiles);
+            Dictionary<string, object>? commandOptions = null;
+            if (command.Command.Equals("md2pdf", StringComparison.OrdinalIgnoreCase))
+            {
+                commandOptions = MarkdownOptionsPrompt.Show();
+                if (commandOptions is null) return;
+            }
             var thread = new System.Threading.Thread(() =>
             {
                 try
                 {
-                    ProgressWindow.Show(command.Command, filesCopy);
+                    ProgressWindow.Show(command.Command, filesCopy, commandOptions: commandOptions);
                 }
                 catch (Exception ex)
                 {

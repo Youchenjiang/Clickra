@@ -61,6 +61,28 @@ static partial class TestSuite
                     $"Letter paper must render as 612x792pt, got {width:0.##}x{height:0.##}.");
             }));
 
+        runner.Run("Markdown to PDF: interactive surfaces prompt before conversion", () =>
+        {
+            string root = FindRepoRoot() ?? throw new TestSkippedException(RepoRootNotFoundMessage);
+            string fluentMain = File.ReadAllText(Path.Combine(root, "src", "Clickra.Fluent", "MainPage.xaml.cs"));
+            string fluentTask = File.ReadAllText(Path.Combine(root, "src", "Clickra.Fluent", "TaskProgressPage.xaml.cs"));
+            string nativeDashboard = File.ReadAllText(Path.Combine(root, "src", "Clickra.CLI", "Dashboard", "DashboardWindow.ConvertRegistry.cs"));
+            string nativeProgress = File.ReadAllText(Path.Combine(root, "src", "Clickra.CLI", "Progress", "ProgressWindow.cs"));
+
+            Assert.True(fluentMain.Contains("PromptMarkdownPdfOptionsAsync", StringComparison.Ordinal),
+                "The Fluent conversion workspace must prompt for one-shot Markdown PDF options.");
+            Assert.True(fluentTask.Contains("PromptMarkdownPdfOptionsAsync", StringComparison.Ordinal),
+                "The Explorer/Fluent task window must prompt for one-shot Markdown PDF options.");
+            int nativePrompt = nativeDashboard.IndexOf("MarkdownOptionsPrompt.Show()", StringComparison.Ordinal);
+            int nativeClear = nativePrompt >= 0
+                ? nativeDashboard.IndexOf("_selectedFiles.Clear()", nativePrompt, StringComparison.Ordinal)
+                : -1;
+            Assert.True(nativePrompt >= 0 && nativeClear > nativePrompt,
+                "The NativeAOT dashboard must resolve Markdown options before clearing the user's selection.");
+            Assert.True(nativeProgress.Contains("MarkdownOptionsPrompt.Show()", StringComparison.Ordinal),
+                "Interactive NativeAOT progress launches must prompt when Markdown options were not preselected.");
+        });
+
         runner.Run("Markdown to PDF: common Markdown structures render to a readable PDF", () =>
             RunWithTempDirectory(tempDir =>
             {

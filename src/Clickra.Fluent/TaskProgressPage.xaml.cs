@@ -140,6 +140,19 @@ public sealed partial class TaskProgressPage : Page
             return;
         }
 
+        Dictionary<string, object>? commandOptions = null;
+        if (command.Equals("md2pdf", StringComparison.OrdinalIgnoreCase) && existingTaskId is null)
+        {
+            commandOptions = await FluentDialogs.PromptMarkdownPdfOptionsAsync(XamlRoot, L, d => _activeDialog = d);
+            _activeDialog = null;
+            if (commandOptions is null)
+            {
+                _finished = true;
+                CloseHostWindow();
+                return;
+            }
+        }
+
         var outputs = ConvertCommandRegistry.EstimateOutputs(command, files);
         _outputFolder = Path.GetDirectoryName(outputs[0]) ?? "";
         _files = files;
@@ -172,7 +185,7 @@ public sealed partial class TaskProgressPage : Page
                 },
                 new ConvertCommandRunner.ConversionOptions(
                     PromptPasswordAsync, PromptSplitAsync,
-                    startIndex, _taskId),
+                    startIndex, _taskId, commandOptions),
                 _cts.Token);
 
             string statusMessage;

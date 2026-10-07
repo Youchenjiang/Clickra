@@ -175,7 +175,7 @@ namespace Clickra.UI
                     ? ClickraStorage.GetOutputDir(files[i])
                     : Path.GetFullPath(outputDirOverride);
                 string output = Path.Combine(targetDir, Path.GetFileNameWithoutExtension(files[i]) + ".pdf");
-                FileProcessor.ConvertMarkdownToPdf(files[i], output,
+                FileProcessor.ConvertMarkdownToPdf(files[i], output, _commandOptions ?? MarkdownPdfOptions.Create(),
                     (current, total, message) => progressCallback((index * 100) + current, files.Count * 100, message),
                     _cts.Token);
             }
