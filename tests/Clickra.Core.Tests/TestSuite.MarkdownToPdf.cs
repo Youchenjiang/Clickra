@@ -202,7 +202,7 @@ static partial class TestSuite
                 Assert.Throws<InvalidDataException>(() => MarkdownTemplateFile.Load(lineHeightPath));
 
                 string unsupportedFontPath = Path.Combine(tempDir, "unsupported-font.json");
-                File.WriteAllText(unsupportedFontPath, "{\"version\":1,\"typography\":{\"latinFont\":\"Calibri\"}}");
+                File.WriteAllText(unsupportedFontPath, "{\"version\":1,\"typography\":{\"latinFont\":\"Aptos\"}}");
                 Assert.Throws<InvalidDataException>(() => MarkdownTemplateFile.Load(unsupportedFontPath));
             }));
 
@@ -210,11 +210,17 @@ static partial class TestSuite
             RunWithTempDirectory(tempDir =>
             {
                 string templatePath = Path.Combine(tempDir, "font-case.json");
-                File.WriteAllText(templatePath, "{\"version\":1,\"typography\":{\"latinFont\":\"segoe ui\",\"monospaceFont\":\"courier new\"}}");
+                File.WriteAllText(templatePath, "{\"version\":1,\"typography\":{\"latinFont\":\"calibri\",\"monospaceFont\":\"courier new\"}}");
 
                 MarkdownDocumentTemplate template = MarkdownTemplateFile.Load(templatePath);
-                Assert.Equal("Segoe UI", template.Typography.LatinFont);
+                Assert.Equal("Calibri", template.Typography.LatinFont);
                 Assert.Equal("Courier New", template.Typography.MonospaceFont);
+                Assert.True(ClickraFontResolver.TryGetCanonicalTemplateFamily("constantia", out string constantia),
+                    "Constantia must be a supported canonical template family.");
+                Assert.Equal("Constantia", constantia);
+                var resolver = new ClickraFontResolver();
+                Assert.True(resolver.GetFont("calibri") is { Length: > 0 }, "Calibri must resolve to real font bytes for PDF output.");
+                Assert.True(resolver.GetFont("constantia") is { Length: > 0 }, "Constantia must resolve to real font bytes for PDF output.");
             }));
 
         runner.Run("Markdown to PDF: custom template changes rendered page geometry", () =>
@@ -254,6 +260,34 @@ static partial class TestSuite
                 double bodyLeft = page.Letters.First(letter => letter.Value == "Z").BoundingBox.Left;
                 Assert.True(bodyLeft > 112 && bodyLeft < 118,
                     $"Imported DOCX left margin plus first-line indent must reach PDF geometry; actual={bodyLeft:0.##}.");
+            }));
+
+        runner.Run("Markdown to PDF: mixed Latin and CJK text keeps imported font families", () =>
+            RunWithTempDirectory(tempDir =>
+            {
+                string input = Path.Combine(tempDir, "mixed-fonts.md");
+                string output = Path.Combine(tempDir, "mixed-fonts.pdf");
+                string templatePath = Path.Combine(tempDir, "mixed-fonts.docx");
+                CreateWordTemplateFixture(templatePath);
+                File.WriteAllText(input, "# Mixed fonts\n\nZebra 測試 text. Qello，vorld.");
+
+                FileProcessor.ConvertMarkdownToPdf(input, output, MarkdownPdfOptions.Create(templatePath: templatePath));
+
+                using var pdf = UglyToad.PdfPig.PdfDocument.Open(output);
+                var page = pdf.GetPage(1);
+                string latinFont = page.Letters.First(letter => letter.Value == "Z").FontName!;
+                string cjkFont = page.Letters.First(letter => letter.Value == "測").FontName!;
+                string attachedLatinBefore = page.Letters.First(letter => letter.Value == "Q").FontName!;
+                string attachedLatinAfter = page.Letters.First(letter => letter.Value == "v").FontName!;
+                Assert.True(latinFont.Contains("Times", StringComparison.OrdinalIgnoreCase),
+                    $"Latin text must use the imported Times New Roman family; actual={latinFont}.");
+                Assert.True(cjkFont.Contains("DFKai", StringComparison.OrdinalIgnoreCase) || cjkFont.Contains("KaiU", StringComparison.OrdinalIgnoreCase),
+                    $"CJK text must use the imported KaiU family; actual={cjkFont}.");
+                Assert.True(attachedLatinBefore.Contains("Times", StringComparison.OrdinalIgnoreCase)
+                            && attachedLatinAfter.Contains("Times", StringComparison.OrdinalIgnoreCase),
+                    $"Latin text attached to full-width punctuation must stay in the imported Latin family; actual={attachedLatinBefore}, {attachedLatinAfter}.");
+                Assert.False(string.Equals(latinFont, cjkFont, StringComparison.OrdinalIgnoreCase),
+                    "Mixed Latin/CJK text must not collapse to one PDF font family.");
             }));
 
         runner.Run("Markdown to PDF: Academic indents only the first body line", () =>

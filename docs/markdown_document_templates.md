@@ -102,7 +102,9 @@ All numeric typography values are in points.
 Supported custom font families are normalized case-insensitively so PDF and DOCX use the same family name:
 
 - Arial
+- Calibri
 - Cambria
+- Constantia
 - Courier New
 - KaiU
 - Malgun Gothic

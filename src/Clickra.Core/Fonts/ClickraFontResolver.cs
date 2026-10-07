@@ -14,7 +14,9 @@ namespace Clickra.Core
             canonicalFamily = familyName.Trim() switch
             {
                 string value when value.Equals("Arial", StringComparison.OrdinalIgnoreCase) => "Arial",
+                string value when value.Equals("Calibri", StringComparison.OrdinalIgnoreCase) => "Calibri",
                 string value when value.Equals("Cambria", StringComparison.OrdinalIgnoreCase) => "Cambria",
+                string value when value.Equals("Constantia", StringComparison.OrdinalIgnoreCase) => "Constantia",
                 string value when value.Equals("Courier New", StringComparison.OrdinalIgnoreCase) => "Courier New",
                 string value when value.Equals("KaiU", StringComparison.OrdinalIgnoreCase) => "KaiU",
                 string value when value.Equals("Malgun Gothic", StringComparison.OrdinalIgnoreCase) => "Malgun Gothic",
@@ -81,6 +83,14 @@ namespace Clickra.Core
             if (name.Contains("cambria"))
             {
                 return new FontResolverInfo("cambria" + suffix);
+            }
+            if (name.Contains("calibri"))
+            {
+                return new FontResolverInfo("calibri" + suffix);
+            }
+            if (name.Contains("constantia"))
+            {
+                return new FontResolverInfo("constantia" + suffix);
             }
             if (name.Contains("times"))
             {
@@ -211,6 +221,20 @@ namespace Clickra.Core
                     "i" => "cambriai.ttf",
                     "bi" => "cambriaz.ttf",
                     _ => "cambria.ttc"
+                },
+                "calibri" => style switch
+                {
+                    "b" => "calibrib.ttf",
+                    "i" => "calibrii.ttf",
+                    "bi" => "calibriz.ttf",
+                    _ => "calibri.ttf"
+                },
+                "constantia" => style switch
+                {
+                    "b" => "constanb.ttf",
+                    "i" => "constani.ttf",
+                    "bi" => "constanz.ttf",
+                    _ => "constan.ttf"
                 },
                 "times" => style switch
                 {

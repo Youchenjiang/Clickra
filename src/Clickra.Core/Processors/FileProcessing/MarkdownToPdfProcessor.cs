@@ -534,7 +534,6 @@ public sealed class MarkdownToPdfProcessor : MultiFileProcessorBase
                 }
 
                 string text = NormalizeDisplayGlyphs(segment.Text);
-                XFont font = CreateFont(text, segment.Code ? size * 0.92 : size, GetInlineStyle(segment), segment.Code && !ContainsCjk(text));
                 XBrush brush = segment.Url is not null
                     ? new XSolidBrush(_accentColor)
                     : segment.Bold
@@ -549,6 +548,7 @@ public sealed class MarkdownToPdfProcessor : MultiFileProcessorBase
                         continue;
                     }
 
+                    XFont font = CreateFont(token, segment.Code ? size * 0.92 : size, GetInlineStyle(segment), segment.Code && !ContainsCjk(token));
                     foreach (string pieceText in BreakToken(token, font, maxPieceWidth))
                         pieces.Add(new InlineDrawPiece(pieceText, segment.Url, segment.Code, font, brush, _graphics!.MeasureString(pieceText, font).Width));
                 }
@@ -599,8 +599,12 @@ public sealed class MarkdownToPdfProcessor : MultiFileProcessorBase
             {
                 if (segment.Text == "\n" || segment.ImageUrl is not null) return false;
                 string text = NormalizeDisplayGlyphs(segment.Text);
-                XFont font = CreateFont(text, segment.Code ? size * 0.92 : size, GetInlineStyle(segment), segment.Code && !ContainsCjk(text));
-                width += _graphics!.MeasureString(text, font).Width;
+                foreach (string token in TokenizeForWrapping(text))
+                {
+                    if (token == "\n") return false;
+                    XFont font = CreateFont(token, segment.Code ? size * 0.92 : size, GetInlineStyle(segment), segment.Code && !ContainsCjk(token));
+                    width += _graphics!.MeasureString(token, font).Width;
+                }
             }
             return true;
         }
@@ -616,14 +620,18 @@ public sealed class MarkdownToPdfProcessor : MultiFileProcessorBase
             if (segment.ImageUrl is not null && TryRenderInlineImage(segment.ImageUrl, indent, ref x, lineHeight)) return;
 
             string text = NormalizeDisplayGlyphs(segment.Text);
-            XFont font = CreateFont(text, segment.Code ? size * 0.92 : size, GetInlineStyle(segment), segment.Code && !ContainsCjk(text));
             XBrush brush = segment.Url is not null
                 ? new XSolidBrush(_accentColor)
                 : segment.Bold
                     ? new XSolidBrush(_strongTextColor)
                     : baseBrush;
             foreach (string token in TokenizeForWrapping(text))
+            {
+                XFont font = token == "\n"
+                    ? CreateFont(string.Empty, segment.Code ? size * 0.92 : size, GetInlineStyle(segment), segment.Code)
+                    : CreateFont(token, segment.Code ? size * 0.92 : size, GetInlineStyle(segment), segment.Code && !ContainsCjk(token));
                 RenderInlineToken(token, segment.Url, segment.Code, font, brush, indent, lineHeight, maxX, ref x);
+            }
         }
 
         private static string NormalizeDisplayGlyphs(string text) =>
@@ -882,7 +890,7 @@ public sealed class MarkdownToPdfProcessor : MultiFileProcessorBase
                     yield return current.ToString();
                     current.Clear();
                 }
-                else if (IsCjk(ch))
+                else if (IsCjk(ch) || IsFullWidth(ch))
                 {
                     if (current.Length > 0) { yield return current.ToString(); current.Clear(); }
                     yield return ch.ToString();
@@ -897,6 +905,8 @@ public sealed class MarkdownToPdfProcessor : MultiFileProcessorBase
 
         private static bool IsCjk(char ch) =>
             ch is >= '\u3040' and <= '\u30ff' or >= '\u3400' and <= '\u9fff' or >= '\uac00' and <= '\ud7af';
+
+        private static bool IsFullWidth(char ch) => ch is >= '\uff00' and <= '\uffef';
 
         private static bool ContainsCjk(string text) => text.Any(IsCjk);
 
