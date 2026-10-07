@@ -477,21 +477,20 @@ static partial class TestSuite
             string fluentTask = File.ReadAllText(Path.Combine(root, "src", "Clickra.Fluent", "TaskProgressPage.xaml.cs"));
             string nativeDashboard = File.ReadAllText(Path.Combine(root, "src", "Clickra.CLI", "Dashboard", "DashboardWindow.ConvertRegistry.cs"));
             string nativeProgress = File.ReadAllText(Path.Combine(root, "src", "Clickra.CLI", "Progress", "ProgressWindow.cs"));
+            string nativeOptions = File.ReadAllText(Path.Combine(root, "src", "Clickra.CLI", "Progress", "ProgressWindow.MarkdownOptions.cs"));
 
             Assert.True(fluentMain.Contains("PromptMarkdownPdfOptionsAsync", StringComparison.Ordinal),
                 "The Fluent conversion workspace must prompt for one-shot Markdown PDF options.");
             Assert.True(fluentTask.Contains("PromptMarkdownPdfOptionsAsync", StringComparison.Ordinal),
                 "The Explorer/Fluent task window must prompt for one-shot Markdown PDF options.");
-            int nativePrompt = nativeDashboard.IndexOf("MarkdownOptionsPrompt.Show(hwnd)", StringComparison.Ordinal);
-            int nativeClear = nativePrompt >= 0
-                ? nativeDashboard.IndexOf("_selectedFiles.Clear()", nativePrompt, StringComparison.Ordinal)
-                : -1;
-            Assert.True(nativePrompt >= 0 && nativeClear > nativePrompt,
-                "The NativeAOT dashboard must resolve Markdown options before clearing the user's selection.");
-            Assert.True(nativeProgress.Contains("MarkdownOptionsPrompt.Show()", StringComparison.Ordinal),
-                "Interactive NativeAOT progress launches must prompt when Markdown options were not preselected.");
+            Assert.True(nativeDashboard.Contains("ProgressWindow.Show(", StringComparison.Ordinal)
+                        && nativeDashboard.Contains("markdownDecision:", StringComparison.Ordinal)
+                        && !nativeDashboard.Contains("MarkdownOptionsPrompt.Show", StringComparison.Ordinal),
+                "The NativeAOT dashboard must hand Markdown conversion and its start/cancel decision directly to the shared Clickra progress window.");
+            Assert.True(nativeProgress.Contains("_isPromptingMarkdownOptions", StringComparison.Ordinal)
+                        && nativeProgress.Contains("StartProcessingThread", StringComparison.Ordinal),
+                "Interactive NativeAOT progress launches must render Markdown choices in the existing Clickra conversion window before processing starts.");
             string fluentDialogs = File.ReadAllText(Path.Combine(root, "src", "Clickra.Fluent", "Controls", "FluentDialogs.cs"));
-            string nativeOptions = File.ReadAllText(Path.Combine(root, "src", "Clickra.CLI", "Progress", "MarkdownOptionsPrompt.cs"));
             Assert.True(fluentDialogs.Contains("MarkdownTemplateSource.Load", StringComparison.Ordinal)
                         && fluentDialogs.Contains(".docx", StringComparison.Ordinal)
                         && !fluentDialogs.Contains("FileTypeFilter.Add(\".json\")", StringComparison.Ordinal),
@@ -500,10 +499,10 @@ static partial class TestSuite
                         && nativeOptions.Contains("*.docx", StringComparison.Ordinal)
                         && !nativeOptions.Contains("*.json", StringComparison.Ordinal),
                 "NativeAOT Markdown options must expose DOCX rather than JSON to ordinary users.");
-            Assert.True(nativeOptions.Contains("EnableWindow(owner, false)", StringComparison.Ordinal)
-                        && nativeOptions.Contains("ownerDisabled = true", StringComparison.Ordinal)
-                        && nativeOptions.Contains("EnableWindow(owner, true)", StringComparison.Ordinal),
-                "The owned NativeAOT Markdown prompt must disable and restore its Dashboard owner while modal.");
+            Assert.True(nativeOptions.Contains("PaintMarkdownOptions", StringComparison.Ordinal)
+                        && nativeOptions.Contains("ResizeWindowForMarkdownOptions", StringComparison.Ordinal)
+                        && !File.Exists(Path.Combine(root, "src", "Clickra.CLI", "Progress", "MarkdownOptionsPrompt.cs")),
+                "NativeAOT Markdown options must reuse the custom-painted Clickra progress surface rather than a separate stock Win32 prompt.");
         });
 
         runner.Run("Markdown to PDF: common Markdown structures render to a readable PDF", () =>

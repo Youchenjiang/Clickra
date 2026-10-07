@@ -34,6 +34,16 @@ namespace Clickra.UI
         private volatile bool _isPromptingPassword = false;
         private string _passwordPromptFilename = "";
         private bool _passwordPromptIsRetry = false;
+        private bool _isPromptingMarkdownOptions = false;
+        private int _markdownStyleIndex = 0;
+        private int _markdownPaperIndex = 0;
+        private int _markdownTextSizeIndex = 1;
+        private int _markdownCodeThemeIndex = 0;
+        private string? _markdownTemplatePath;
+        private string _markdownTemplateStatus = "";
+        private bool _processingStarted = false;
+        private Action<bool>? _markdownDecision;
+        private bool _markdownDecisionResolved = false;
         private IntPtr _hwndEdit = IntPtr.Zero;
         private IntPtr _hwndBtnOk = IntPtr.Zero;
         private IntPtr _hwndBtnCancel = IntPtr.Zero;
@@ -110,15 +120,15 @@ namespace Clickra.UI
             string command,
             List<string> files,
             string? outputDirOverride = null,
-            Dictionary<string, object>? commandOptions = null)
+            Dictionary<string, object>? commandOptions = null,
+            Action<bool>? markdownDecision = null)
         {
-            if (command.Equals("md2pdf", StringComparison.OrdinalIgnoreCase) ||
-                command.Equals("md2word", StringComparison.OrdinalIgnoreCase))
+            var window = new ProgressWindow
             {
-                commandOptions ??= MarkdownOptionsPrompt.Show();
-                if (commandOptions is null) return;
-            }
-            var window = new ProgressWindow { _outputDirOverride = outputDirOverride, _commandOptions = commandOptions };
+                _outputDirOverride = outputDirOverride,
+                _commandOptions = commandOptions,
+                _markdownDecision = markdownDecision
+            };
             window.ShowInstance(command, files);
         }
 
@@ -162,6 +172,10 @@ namespace Clickra.UI
                 _targetWidth = 0;
                 _shimmerOffset = -120;
                 _scrollOffset = 0f;
+                _isPromptingMarkdownOptions = existingTaskId is null
+                    && _commandOptions is null
+                    && IsMarkdownCommand(command);
+                _markdownTemplateStatus = Loc("md_options_template_none");
             }
 
             uint dpi = 96;
@@ -177,7 +191,9 @@ namespace Clickra.UI
             _bgBrush ??= new SolidBrush(Color.FromArgb(45, 45, 45));
 
             int clientW = (int)(520 * _dpiScale);
-            int clientH = _isPromptingVisualSplitter ? (int)(420 * _dpiScale) : (int)(280 * _dpiScale);
+            int clientH = _isPromptingMarkdownOptions
+                ? (int)(500 * _dpiScale)
+                : _isPromptingVisualSplitter ? (int)(420 * _dpiScale) : (int)(280 * _dpiScale);
 
             if (_bufferBmp == null)
             {
@@ -233,13 +249,31 @@ namespace Clickra.UI
             ShowWindow(_hwnd, 5);
             SetTimer(_hwnd, (IntPtr)1, 16, IntPtr.Zero); // 16ms 約 60fps
 
-            Thread bgThread = new Thread(() => RunProcessing(_hwnd));
-            bgThread.IsBackground = true;
-            bgThread.Start();
+            if (!_isPromptingMarkdownOptions)
+                StartProcessingThread(_hwnd);
 
             RunMessageLoop(_hwnd);
 
             Marshal.FreeHGlobal(hClass);
+        }
+
+        private static bool IsMarkdownCommand(string command) =>
+            command.Equals("md2pdf", StringComparison.OrdinalIgnoreCase)
+            || command.Equals("md2word", StringComparison.OrdinalIgnoreCase);
+
+        private void StartProcessingThread(IntPtr hwnd)
+        {
+            if (_processingStarted) return;
+            _processingStarted = true;
+            Thread bgThread = new Thread(() => RunProcessing(hwnd)) { IsBackground = true };
+            bgThread.Start();
+        }
+
+        private void ResolveMarkdownDecision(bool startConversion)
+        {
+            if (_markdownDecisionResolved) return;
+            _markdownDecisionResolved = true;
+            _markdownDecision?.Invoke(startConversion);
         }
 
         /// <summary>Pumps messages until the window closes. The visual splitter renders its

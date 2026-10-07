@@ -52,6 +52,7 @@ namespace Clickra.UI.Native
         [DllImport("user32.dll")] public static extern bool KillTimer(IntPtr hWnd, IntPtr nIDEvent);
         [DllImport("user32.dll")] public static extern bool SetForegroundWindow(IntPtr hWnd);
         [DllImport("user32.dll")] public static extern bool EnableWindow(IntPtr hWnd, bool bEnable);
+        [DllImport("user32.dll")] public static extern bool IsWindow(IntPtr hWnd);
         [DllImport("user32.dll")] public static extern bool IsWindowEnabled(IntPtr hWnd);
         [DllImport("user32.dll")] public static extern IntPtr SetCapture(IntPtr hWnd);
         [DllImport("user32.dll")] public static extern bool ReleaseCapture();

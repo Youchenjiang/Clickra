@@ -204,18 +204,27 @@ public static partial class DashboardWindow
             }
 
             var filesCopy = new List<string>(_selectedFiles);
-            Dictionary<string, object>? commandOptions = null;
-            if (command.Command.Equals("md2pdf", StringComparison.OrdinalIgnoreCase) ||
-                command.Command.Equals("md2word", StringComparison.OrdinalIgnoreCase))
-            {
-                commandOptions = MarkdownOptionsPrompt.Show(hwnd);
-                if (commandOptions is null) return;
-            }
+            bool markdownCommand = command.Command.Equals("md2pdf", StringComparison.OrdinalIgnoreCase)
+                || command.Command.Equals("md2word", StringComparison.OrdinalIgnoreCase);
             var thread = new System.Threading.Thread(() =>
             {
                 try
                 {
-                    ProgressWindow.Show(command.Command, filesCopy, commandOptions: commandOptions);
+                    ProgressWindow.Show(
+                        command.Command,
+                        filesCopy,
+                        markdownDecision: markdownCommand
+                            ? started =>
+                            {
+                                if (!started || !IsWindow(hwnd)) return;
+                                PostDashboardAction(hwnd, () =>
+                                {
+                                    _selectedFiles.Clear();
+                                    _activeTab = 2;
+                                    RefreshHistoryData();
+                                });
+                            }
+                            : null);
                 }
                 catch (Exception ex)
                 {
@@ -224,6 +233,8 @@ public static partial class DashboardWindow
             });
             thread.SetApartmentState(System.Threading.ApartmentState.STA);
             thread.Start();
+
+            if (markdownCommand) return;
 
             _selectedFiles.Clear();
 

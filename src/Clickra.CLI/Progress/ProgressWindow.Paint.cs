@@ -39,7 +39,7 @@ namespace Clickra.UI
                 msg = _message; errMsg = _errorMessage;
                 dispW = _currentDispWidth; shimOff = _shimmerOffset;
                 tot = _total; cur = _current;
-                isPrompting = _isPromptingPassword || _isPromptingVisualSplitter;
+                isPrompting = _isPromptingPassword || _isPromptingVisualSplitter || _isPromptingMarkdownOptions;
                 promptFile = _passwordPromptFilename;
                 isRetry = _passwordPromptIsRetry;
             }
@@ -78,6 +78,9 @@ namespace Clickra.UI
                 string subText;
                 if (hasErr) subText = Loc("progress_sub_failed");
                 else if (comp) subText = Loc("progress_sub_completed");
+                else if (_isPromptingMarkdownOptions) subText = _command.Equals("md2word", StringComparison.OrdinalIgnoreCase)
+                    ? Loc("cmd_md_to_word")
+                    : Loc("cmd_md_to_pdf");
                 else if (_isPromptingVisualSplitter) subText = Loc("progress_sub_visual_splitter");
                 else subText = isPrompting ? Loc("pdf_password_title") : Loc("progress_sub_running");
 
@@ -144,6 +147,10 @@ namespace Clickra.UI
             if (_isPromptingVisualSplitter)
             {
                 PaintVisualSplitter(g, s);
+            }
+            else if (_isPromptingMarkdownOptions)
+            {
+                PaintMarkdownOptions(g, s);
             }
             else if (_msgFont != null)
             {
