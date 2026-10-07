@@ -658,8 +658,8 @@ static partial class TestSuite
                     "CJK fenced-code text must remain extractable from the PDF.");
                 Assert.True(text.Contains("中文表格內容：完整標點", StringComparison.Ordinal),
                     "Full-width CJK punctuation must remain visible without rewriting the Markdown source text.");
-                Assert.True(text.Contains("→", StringComparison.Ordinal),
-                    "Common technical arrow glyphs must render as a supported arrow instead of degrading to a missing glyph.");
+                Assert.False(text.Contains("→", StringComparison.Ordinal),
+                    "Technical arrow glyphs must not be rewritten to a different source character.");
             }));
     }
 }

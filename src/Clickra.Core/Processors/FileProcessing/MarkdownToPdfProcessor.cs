@@ -1014,8 +1014,7 @@ public sealed class MarkdownToPdfProcessor : MultiFileProcessorBase
             }
         }
 
-        private static string NormalizeDisplayGlyphs(string text) =>
-            text.Replace('\u2794', '\u2192');
+        private static string NormalizeDisplayGlyphs(string text) => text;
 
         private void RenderInlineToken(string token, string? url, bool isCode, XFont font, XBrush brush, double indent, double lineHeight, double maxX, ref double x)
         {
@@ -1185,6 +1184,7 @@ public sealed class MarkdownToPdfProcessor : MultiFileProcessorBase
         {
             foreach (char ch in text)
             {
+                if (ch == '\u2794') return "Segoe UI Symbol";
                 if (ch is >= '\u3040' and <= '\u30ff') return "MS Gothic";
                 if (ch is >= '\uac00' and <= '\ud7af') return "Malgun Gothic";
                 if (IsCjkTypographyChar(ch)) return _template.Typography.CjkFont;

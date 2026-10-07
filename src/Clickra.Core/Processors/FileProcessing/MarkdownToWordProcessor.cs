@@ -899,8 +899,7 @@ public sealed class MarkdownToWordProcessor : MultiFileProcessorBase
         private static bool IsWebUrl(string? value) =>
             Uri.TryCreate(value, UriKind.Absolute, out Uri? uri) && (uri.Scheme == Uri.UriSchemeHttp || uri.Scheme == Uri.UriSchemeHttps);
 
-        private static string NormalizeDisplayGlyphs(string text) =>
-            text.Replace('\u2794', '\u2192');
+        private static string NormalizeDisplayGlyphs(string text) => text;
 
         private static string NormalizeNewlines(string value) =>
             value.Replace("\r\n", "\n", StringComparison.Ordinal).Replace('\r', '\n');

@@ -562,7 +562,7 @@ static partial class TestSuite
                 string input = Path.Combine(tempDir, "punctuation-list.md");
                 string output = Path.Combine(tempDir, "punctuation-list.docx");
                 File.WriteAllText(input,
-                    "## 一、作業封包來源\n\n取得：保留中文標點。\n\n- 題目連結：Root-Me\n- 學習核心：保留原文\n\n3. Third\n4. Fourth");
+                    "## 一、作業封包來源\n\n取得：保留中文標點。File ➔ Export Objects\n\n- 題目連結：Root-Me\n- 學習核心：保留原文\n\n3. Third\n4. Fourth");
 
                 FileProcessor.ConvertMarkdownToWord(input, output, MarkdownPdfOptions.Create());
 
@@ -573,8 +573,9 @@ static partial class TestSuite
                 string text = string.Concat(document.Descendants(w + "t").Select(e => e.Value));
                 Assert.True(text.Contains("一、作業封包來源", StringComparison.Ordinal)
                             && text.Contains("取得：保留中文標點。", StringComparison.Ordinal)
-                            && text.Contains("題目連結：Root-Me", StringComparison.Ordinal),
-                    "DOCX conversion must preserve the Markdown source's full-width Chinese punctuation.");
+                            && text.Contains("題目連結：Root-Me", StringComparison.Ordinal)
+                            && text.Contains("File ➔ Export Objects", StringComparison.Ordinal),
+                    "DOCX conversion must preserve source punctuation and technical symbols without rewriting them.");
                 Assert.False(text.Contains("• 題目連結", StringComparison.Ordinal),
                     "Bullet markers must come from Word numbering rather than literal bullet text.");
                 Assert.True(document.Descendants(w + "numPr").Count() == 4,
