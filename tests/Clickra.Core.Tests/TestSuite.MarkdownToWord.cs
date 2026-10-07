@@ -196,6 +196,92 @@ static partial class TestSuite
                     "A legacy uniform custom margin must still set all four DOCX margins.");
             }));
 
+        runner.Run("Markdown templates: DOCX import extracts inherited Word styles and section layout", () =>
+            RunWithTempDirectory(tempDir =>
+            {
+                string templatePath = Path.Combine(tempDir, "university-thesis.docx");
+                CreateWordTemplateFixture(templatePath);
+
+                MarkdownDocumentTemplate template = MarkdownTemplateSource.Load(templatePath);
+                Assert.True(template.Id.StartsWith("docx:", StringComparison.Ordinal),
+                    "A Word template must resolve through the DOCX template source.");
+                Assert.Equal("Times New Roman", template.Typography.LatinFont);
+                Assert.Equal("KaiU", template.Typography.CjkFont);
+                Assert.True(Math.Abs(template.Typography.BodySizePoints - 12) < 0.01,
+                    "DOCX Normal style body size must be imported.");
+                Assert.True(Math.Abs(template.Typography.LineHeightPoints - 18) < 0.01,
+                    "DOCX 1.5-line Normal spacing must be imported.");
+                Assert.True(template.Typography.Headings.H1 == 18 && template.Typography.Headings.H2 == 16,
+                    "DOCX heading sizes must be imported from heading styles.");
+                Assert.True(template.Layout.CenterH1 && template.Layout.JustifyBody,
+                    "DOCX heading/body alignment must be imported.");
+                Assert.True(template.Layout.FirstLineIndentPoints == 24 && template.Layout.BlockGapPoints == 6,
+                    "DOCX paragraph indentation and after-spacing must be imported.");
+                Assert.True(template.Layout.EffectiveMarginTopPoints == 72
+                            && template.Layout.EffectiveMarginRightPoints == 60
+                            && template.Layout.EffectiveMarginBottomPoints == 72
+                            && template.Layout.EffectiveMarginLeftPoints == 90,
+                    "DOCX section margins must be imported independently.");
+            }));
+
+        runner.Run("Markdown templates: malformed DOCX imports fail closed", () =>
+            RunWithTempDirectory(tempDir =>
+            {
+                string malformed = Path.Combine(tempDir, "malformed.docx");
+                using (ZipArchive archive = ZipFile.Open(malformed, ZipArchiveMode.Create))
+                {
+                    ZipArchiveEntry document = archive.CreateEntry("word/document.xml");
+                    using StreamWriter writer = new(document.Open());
+                    writer.Write("<document />");
+                }
+
+                Assert.Throws<InvalidDataException>(() => MarkdownTemplateSource.Load(malformed));
+                string unsupported = Path.Combine(tempDir, "template.txt");
+                File.WriteAllText(unsupported, "not a template");
+                Assert.Throws<InvalidDataException>(() => MarkdownTemplateSource.Load(unsupported));
+            }));
+
+        runner.Run("Markdown templates: unsupported DOCX fonts fail instead of silently changing typography", () =>
+            RunWithTempDirectory(tempDir =>
+            {
+                string templatePath = Path.Combine(tempDir, "unsupported-font.docx");
+                CreateWordTemplateFixture(templatePath, "Aptos");
+                Assert.Throws<InvalidDataException>(() => MarkdownTemplateSource.Load(templatePath));
+            }));
+
+        runner.Run("Markdown to Word: imported DOCX template drives generated Word formatting", () =>
+            RunWithTempDirectory(tempDir =>
+            {
+                string templatePath = Path.Combine(tempDir, "school-format.docx");
+                string input = Path.Combine(tempDir, "paper.md");
+                string output = Path.Combine(tempDir, "paper.docx");
+                CreateWordTemplateFixture(templatePath);
+                File.WriteAllText(input, "# Thesis title\n\nBody paragraph for imported formatting.");
+
+                FileProcessor.ConvertMarkdownToWord(input, output, MarkdownPdfOptions.Create(templatePath: templatePath));
+
+                using ZipArchive archive = ZipFile.OpenRead(output);
+                XNamespace w = "http://schemas.openxmlformats.org/wordprocessingml/2006/main";
+                XDocument styles = ReadXml(archive, "word/styles.xml");
+                XDocument document = ReadXml(archive, "word/document.xml");
+                XElement normal = styles.Descendants(w + "style")
+                    .Single(style => style.Attribute(w + "styleId")?.Value == "Normal");
+                XElement heading1 = styles.Descendants(w + "style")
+                    .Single(style => style.Attribute(w + "styleId")?.Value == "Heading1");
+                XElement margins = document.Descendants(w + "pgMar").Single();
+                XElement body = document.Descendants(w + "p")
+                    .First(p => p.Element(w + "pPr")?.Element(w + "pStyle")?.Attribute(w + "val")?.Value == "Normal");
+
+                Assert.Equal("Times New Roman", normal.Descendants(w + "rFonts").Single().Attribute(w + "ascii")!.Value);
+                Assert.Equal("KaiU", normal.Descendants(w + "rFonts").Single().Attribute(w + "eastAsia")!.Value);
+                Assert.Equal("36", heading1.Descendants(w + "sz").Single().Attribute(w + "val")!.Value);
+                Assert.Equal("center", heading1.Descendants(w + "jc").Single().Attribute(w + "val")!.Value);
+                Assert.Equal("1800", margins.Attribute(w + "left")!.Value);
+                Assert.Equal("1200", margins.Attribute(w + "right")!.Value);
+                Assert.Equal("480", body.Element(w + "pPr")!.Element(w + "ind")!.Attribute(w + "firstLine")!.Value);
+                Assert.Equal("both", body.Element(w + "pPr")!.Element(w + "jc")!.Attribute(w + "val")!.Value);
+            }));
+
         runner.Run("Markdown to Word: Academic list paragraphs do not inherit body first-line indent", () =>
             RunWithTempDirectory(tempDir =>
             {
@@ -240,5 +326,91 @@ static partial class TestSuite
         using Stream stream = entry.Open();
         using var reader = new StreamReader(stream);
         return reader.ReadToEnd();
+    }
+
+    private static void CreateWordTemplateFixture(string path, string latinTypeface = "Times New Roman")
+    {
+        XNamespace w = "http://schemas.openxmlformats.org/wordprocessingml/2006/main";
+        using ZipArchive archive = ZipFile.Open(path, ZipArchiveMode.Create);
+        var styles = new XElement(w + "styles");
+        styles.Add(new XElement(w + "docDefaults",
+            new XElement(w + "rPrDefault",
+                new XElement(w + "rPr",
+                    new XElement(w + "rFonts",
+                        new XAttribute(w + "ascii", "Arial"),
+                        new XAttribute(w + "hAnsi", "Arial"),
+                        new XAttribute(w + "eastAsia", "Microsoft JhengHei")),
+                    new XElement(w + "sz", new XAttribute(w + "val", "20"))))));
+        styles.Add(new XElement(w + "style",
+            new XAttribute(w + "type", "paragraph"),
+            new XAttribute(w + "styleId", "BaseBody"),
+            new XElement(w + "name", new XAttribute(w + "val", "Base Body")),
+            new XElement(w + "pPr",
+                new XElement(w + "spacing",
+                    new XAttribute(w + "after", "120"),
+                    new XAttribute(w + "line", "360"),
+                    new XAttribute(w + "lineRule", "auto")),
+                new XElement(w + "ind", new XAttribute(w + "firstLine", "480")),
+                new XElement(w + "jc", new XAttribute(w + "val", "both"))),
+            new XElement(w + "rPr",
+                new XElement(w + "rFonts",
+                    new XAttribute(w + "asciiTheme", "minorHAnsi"),
+                    new XAttribute(w + "hAnsiTheme", "minorHAnsi"),
+                    new XAttribute(w + "eastAsiaTheme", "minorEastAsia")),
+                new XElement(w + "sz", new XAttribute(w + "val", "24")))));
+        styles.Add(new XElement(w + "style",
+            new XAttribute(w + "type", "paragraph"),
+            new XAttribute(w + "default", "1"),
+            new XAttribute(w + "styleId", "Normal"),
+            new XElement(w + "name", new XAttribute(w + "val", "Normal")),
+            new XElement(w + "basedOn", new XAttribute(w + "val", "BaseBody"))));
+        styles.Add(new XElement(w + "style",
+            new XAttribute(w + "type", "paragraph"),
+            new XAttribute(w + "styleId", "Heading1"),
+            new XElement(w + "name", new XAttribute(w + "val", "heading 1")),
+            new XElement(w + "basedOn", new XAttribute(w + "val", "Normal")),
+            new XElement(w + "pPr",
+                new XElement(w + "outlineLvl", new XAttribute(w + "val", "0")),
+                new XElement(w + "jc", new XAttribute(w + "val", "center"))),
+            new XElement(w + "rPr", new XElement(w + "sz", new XAttribute(w + "val", "36")))));
+        styles.Add(new XElement(w + "style",
+            new XAttribute(w + "type", "paragraph"),
+            new XAttribute(w + "styleId", "ThesisSection"),
+            new XElement(w + "name", new XAttribute(w + "val", "Custom section")),
+            new XElement(w + "basedOn", new XAttribute(w + "val", "Normal")),
+            new XElement(w + "pPr", new XElement(w + "outlineLvl", new XAttribute(w + "val", "1"))),
+            new XElement(w + "rPr", new XElement(w + "sz", new XAttribute(w + "val", "32")))));
+        WriteXml(archive, "word/styles.xml", new XDocument(styles));
+
+        XNamespace a = "http://schemas.openxmlformats.org/drawingml/2006/main";
+        var theme = new XElement(a + "theme",
+            new XElement(a + "themeElements",
+                new XElement(a + "fontScheme",
+                    new XAttribute("name", "Fixture fonts"),
+                    new XElement(a + "majorFont",
+                        new XElement(a + "latin", new XAttribute("typeface", "Cambria")),
+                        new XElement(a + "ea", new XAttribute("typeface", ""))),
+                    new XElement(a + "minorFont",
+                        new XElement(a + "latin", new XAttribute("typeface", latinTypeface)),
+                        new XElement(a + "ea", new XAttribute("typeface", "")),
+                        new XElement(a + "font", new XAttribute("script", "Hant"), new XAttribute("typeface", "DFKai-SB"))))));
+        WriteXml(archive, "word/theme/theme1.xml", new XDocument(theme));
+
+        var body = new XElement(w + "body",
+            new XElement(w + "p", new XElement(w + "r", new XElement(w + "t", "Template"))),
+            new XElement(w + "sectPr",
+                new XElement(w + "pgMar",
+                    new XAttribute(w + "top", "1440"),
+                    new XAttribute(w + "right", "1200"),
+                    new XAttribute(w + "bottom", "1440"),
+                    new XAttribute(w + "left", "1800"))));
+        WriteXml(archive, "word/document.xml", new XDocument(new XElement(w + "document", body)));
+    }
+
+    private static void WriteXml(ZipArchive archive, string name, XDocument document)
+    {
+        ZipArchiveEntry entry = archive.CreateEntry(name);
+        using Stream stream = entry.Open();
+        document.Save(stream);
     }
 }

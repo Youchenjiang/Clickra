@@ -1,8 +1,37 @@
 # Markdown document templates
 
-Clickra uses the same document-template model for Markdown → PDF and Markdown → Word. A custom template is a small, data-only JSON file selected for one conversion. It is not installed into Settings, does not execute code, and does not allow arbitrary template scripts.
+Clickra uses the same renderer-neutral document-template model for Markdown → PDF and Markdown → Word.
 
-## Quick example
+For ordinary users, the supported import workflow is **a Word `.docx` template**. Clickra reads the document's Word styles and page layout, converts the relevant settings into its internal template model, and applies that model consistently to both PDF and DOCX output. Users do not need to author a Clickra-specific JSON file.
+
+The JSON format documented later in this file remains an internal/advanced interchange format for compatibility and automated workflows. It is not exposed as the normal template picker in the product UI.
+
+## Importing a Word template
+
+1. Start Markdown → PDF or Markdown → Word.
+2. Open **More options**.
+3. Choose **Import DOCX...** and select the Word template supplied by a school, organization, or team.
+4. Confirm the selected filename and start the conversion.
+
+The importer currently extracts these semantic settings from `word/styles.xml` and the final section properties in `word/document.xml`:
+
+- Normal-style Latin and East Asian font families.
+- Normal-style body size and line spacing.
+- Normal-style paragraph-after spacing, first-line indent, and full justification.
+- Heading 1–6 sizes, including heading styles identified through Word outline levels.
+- Heading 1 centered alignment.
+- Independent top, right, bottom, and left page margins.
+- `basedOn` style inheritance and Word document defaults where applicable.
+
+Clickra does not copy arbitrary Word XML into the output. Unsupported decorative Word features remain governed by Clickra's renderer-neutral template defaults so PDF and DOCX stay semantically aligned. Paper size, text-size scaling, and code-block theme remain explicit conversion choices.
+
+The selected DOCX applies only to that conversion. It does not modify the original Word file or install a persistent template into Settings.
+
+## Advanced JSON interchange format
+
+The data-only JSON format is retained for backward compatibility, tests, automation, and advanced tooling. It does not execute code or allow arbitrary template scripts.
+
+### Quick example
 
 ```json
 {
@@ -44,7 +73,7 @@ Clickra uses the same document-template model for Markdown → PDF and Markdown 
 
 Only properties present in the JSON override the selected base template. Omitted properties inherit from the base.
 
-## Root properties
+### Root properties
 
 | Property | Required | Meaning |
 | --- | --- | --- |
@@ -57,7 +86,7 @@ Only properties present in the JSON override the selected base template. Omitted
 
 Unknown or duplicate properties are rejected instead of being ignored.
 
-## Typography
+### Typography
 
 All numeric typography values are in points.
 
@@ -87,7 +116,7 @@ Supported custom font families are normalized case-insensitively so PDF and DOCX
 
 Font file paths are not accepted. Unsupported family names fail validation rather than silently falling back to a different PDF font.
 
-## Layout
+### Layout
 
 All numeric layout values are in points.
 
@@ -109,29 +138,22 @@ All numeric layout values are in points.
 
 When `margin` is present, it remains the fallback for every side. A supplied side-specific margin overrides only that side; for example, `"margin": 48, "marginLeft": 72` means 48-point top/right/bottom margins and a 72-point left margin.
 
-Paper size, text-size scaling, and code-block theme remain one-shot conversion choices in the Markdown conversion dialog. A custom JSON template controls the shared semantic document style rather than those separate conversion controls.
+Paper size, text-size scaling, and code-block theme remain one-shot conversion choices in the Markdown conversion dialog. An advanced JSON template controls the shared semantic document style rather than those separate conversion controls.
 
-## Palette
+### Palette
 
 The supported semantic colors are `body`, `strong`, `accent`, `softAccent`, and `border`. Every supplied color must use exact `#RRGGBB` notation, for example `#334155`.
 
-## Validation and safety
+### Validation and safety
 
 Clickra validates a selected template before starting the conversion and validates it again when the renderer loads it. The format is intentionally fail-closed:
 
-- Maximum file size is 64 KiB.
+- DOCX imports are bounded by package and XML-part size limits and must contain `word/styles.xml` plus `word/document.xml`.
+- DOCX font families are resolved through Word style inheritance and theme fonts; an explicitly requested font that cannot be kept consistent between PDF and DOCX rejects the import instead of silently substituting typography.
+- JSON template files have a maximum size of 64 KiB.
 - JSON comments and trailing commas are not accepted.
 - Unknown and duplicate properties are rejected.
 - Wrong JSON types, unsupported versions or bases, non-finite numbers, and out-of-range values are rejected.
 - Font paths, control characters, and font families that cannot be kept consistent between PDF and DOCX are rejected.
-- The JSON contains data only. It cannot execute commands, scripts, LaTeX, plugins, or network requests.
+- Neither DOCX style extraction nor JSON loading executes macros, commands, scripts, LaTeX, plugins, or network requests.
 - Markdown remote images remain offline-only behavior: Clickra does not fetch HTTP(S) images for PDF or DOCX conversion.
-
-## Using a custom template
-
-1. Start either Markdown → PDF or Markdown → Word.
-2. Open **More options** in the Markdown conversion dialog.
-3. Choose the custom-template JSON file.
-4. Confirm the selected filename and start the conversion.
-
-The selected path applies only to that conversion. Choosing a template here does not create a persistent template library or change Clickra Settings.

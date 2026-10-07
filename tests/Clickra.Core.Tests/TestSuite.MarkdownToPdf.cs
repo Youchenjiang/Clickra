@@ -238,6 +238,24 @@ static partial class TestSuite
                     $"A 96pt custom margin must shift rendered text right; default={defaultLeft:0.##}, custom={customLeft:0.##}.");
             }));
 
+        runner.Run("Markdown to PDF: imported DOCX template controls PDF layout", () =>
+            RunWithTempDirectory(tempDir =>
+            {
+                string input = Path.Combine(tempDir, "thesis.md");
+                string output = Path.Combine(tempDir, "thesis.pdf");
+                string templatePath = Path.Combine(tempDir, "school.docx");
+                CreateWordTemplateFixture(templatePath);
+                File.WriteAllText(input, "# Thesis\n\nZebra body paragraph uses the Word template margins and paragraph formatting.");
+
+                FileProcessor.ConvertMarkdownToPdf(input, output, MarkdownPdfOptions.Create(templatePath: templatePath));
+
+                using var pdf = UglyToad.PdfPig.PdfDocument.Open(output);
+                var page = pdf.GetPage(1);
+                double bodyLeft = page.Letters.First(letter => letter.Value == "Z").BoundingBox.Left;
+                Assert.True(bodyLeft > 112 && bodyLeft < 118,
+                    $"Imported DOCX left margin plus first-line indent must reach PDF geometry; actual={bodyLeft:0.##}.");
+            }));
+
         runner.Run("Markdown to PDF: Academic indents only the first body line", () =>
             RunWithTempDirectory(tempDir =>
             {
@@ -386,12 +404,14 @@ static partial class TestSuite
                 "Interactive NativeAOT progress launches must prompt when Markdown options were not preselected.");
             string fluentDialogs = File.ReadAllText(Path.Combine(root, "src", "Clickra.Fluent", "Controls", "FluentDialogs.cs"));
             string nativeOptions = File.ReadAllText(Path.Combine(root, "src", "Clickra.CLI", "Progress", "MarkdownOptionsPrompt.cs"));
-            Assert.True(fluentDialogs.Contains("MarkdownTemplateFile.Load", StringComparison.Ordinal)
-                        && fluentDialogs.Contains("templatePath", StringComparison.Ordinal),
-                "Fluent Markdown options must validate and pass a one-shot custom template path.");
-            Assert.True(nativeOptions.Contains("MarkdownTemplateFile.Load", StringComparison.Ordinal)
-                        && nativeOptions.Contains("IdBrowseTemplate", StringComparison.Ordinal),
-                "NativeAOT Markdown options must validate and pass a one-shot custom template path.");
+            Assert.True(fluentDialogs.Contains("MarkdownTemplateSource.Load", StringComparison.Ordinal)
+                        && fluentDialogs.Contains(".docx", StringComparison.Ordinal)
+                        && !fluentDialogs.Contains("FileTypeFilter.Add(\".json\")", StringComparison.Ordinal),
+                "Fluent Markdown options must expose DOCX as the normal custom-template import path.");
+            Assert.True(nativeOptions.Contains("MarkdownTemplateSource.Load", StringComparison.Ordinal)
+                        && nativeOptions.Contains("*.docx", StringComparison.Ordinal)
+                        && !nativeOptions.Contains("*.json", StringComparison.Ordinal),
+                "NativeAOT Markdown options must expose DOCX rather than JSON to ordinary users.");
             Assert.True(nativeOptions.Contains("EnableWindow(owner, false)", StringComparison.Ordinal)
                         && nativeOptions.Contains("ownerDisabled = true", StringComparison.Ordinal)
                         && nativeOptions.Contains("EnableWindow(owner, true)", StringComparison.Ordinal),

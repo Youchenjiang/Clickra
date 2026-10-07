@@ -144,11 +144,11 @@ internal static class MarkdownOptionsPrompt
             {
                 lStructSize = Marshal.SizeOf<OPENFILENAME>(),
                 hwndOwner = owner,
-                lpstrFilter = "Clickra Markdown Template (*.json)\0*.json\0\0",
+                lpstrFilter = "Word Template (*.docx)\0*.docx\0\0",
                 lpstrFile = fileBuffer,
                 nMaxFile = maxFile,
                 lpstrTitle = Localization.T("md_options_template_picker", lang),
-                lpstrDefExt = "json",
+                lpstrDefExt = "docx",
                 Flags = 0x00080000 | 0x00001000 | 0x00000800 | 0x00000004
             };
             return GetOpenFileName(ref ofn) ? Marshal.PtrToStringUni(fileBuffer) : null;
@@ -187,7 +187,7 @@ internal static class MarkdownOptionsPrompt
                 {
                     try
                     {
-                        _ = MarkdownTemplateFile.Load(state.TemplatePath);
+                        _ = MarkdownTemplateSource.Load(state.TemplatePath);
                     }
                     catch
                     {
@@ -213,7 +213,7 @@ internal static class MarkdownOptionsPrompt
                 if (selectedPath is null) return IntPtr.Zero;
                 try
                 {
-                    _ = MarkdownTemplateFile.Load(selectedPath);
+                    _ = MarkdownTemplateSource.Load(selectedPath);
                     browseState.TemplatePath = selectedPath;
                     string lang = ClickraStorage.GetSetting(ClickraSettings.Language);
                     SetWindowText(browseState.TemplateStatus,

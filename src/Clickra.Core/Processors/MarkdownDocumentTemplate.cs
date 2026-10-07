@@ -61,7 +61,7 @@ public static class MarkdownTemplateCatalog
 {
     public static MarkdownDocumentTemplate Resolve(string id, string? customTemplatePath = null) =>
         !string.IsNullOrWhiteSpace(customTemplatePath)
-            ? MarkdownTemplateFile.Load(customTemplatePath)
+            ? MarkdownTemplateSource.Load(customTemplatePath)
             : ResolveBuiltIn(id);
 
     internal static MarkdownDocumentTemplate ResolveBuiltIn(string id) => id switch

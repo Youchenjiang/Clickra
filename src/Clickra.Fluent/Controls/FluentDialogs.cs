@@ -65,7 +65,7 @@ internal static class FluentDialogs
         templateBrowse.Click += async (_, _) =>
         {
             var picker = new FileOpenPicker();
-            picker.FileTypeFilter.Add(".json");
+            picker.FileTypeFilter.Add(".docx");
             if (ownerWindow is not null)
                 InitializeWithWindow.Initialize(picker, WindowNative.GetWindowHandle(ownerWindow));
 
@@ -73,7 +73,7 @@ internal static class FluentDialogs
             if (file is null) return;
             try
             {
-                MarkdownTemplateFile.Load(file.Path);
+                MarkdownTemplateSource.Load(file.Path);
                 templatePath = file.Path;
                 templateStatus.Text = string.Format(localize("md_options_template_selected"), Path.GetFileName(file.Path));
             }
@@ -106,7 +106,7 @@ internal static class FluentDialogs
             if (templatePath is null) return;
             try
             {
-                MarkdownTemplateFile.Load(templatePath);
+                MarkdownTemplateSource.Load(templatePath);
             }
             catch
             {
