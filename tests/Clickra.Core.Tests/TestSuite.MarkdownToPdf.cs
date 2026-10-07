@@ -216,7 +216,7 @@ static partial class TestSuite
                 "The Fluent conversion workspace must prompt for one-shot Markdown PDF options.");
             Assert.True(fluentTask.Contains("PromptMarkdownPdfOptionsAsync", StringComparison.Ordinal),
                 "The Explorer/Fluent task window must prompt for one-shot Markdown PDF options.");
-            int nativePrompt = nativeDashboard.IndexOf("MarkdownOptionsPrompt.Show()", StringComparison.Ordinal);
+            int nativePrompt = nativeDashboard.IndexOf("MarkdownOptionsPrompt.Show(hwnd)", StringComparison.Ordinal);
             int nativeClear = nativePrompt >= 0
                 ? nativeDashboard.IndexOf("_selectedFiles.Clear()", nativePrompt, StringComparison.Ordinal)
                 : -1;
@@ -224,6 +224,18 @@ static partial class TestSuite
                 "The NativeAOT dashboard must resolve Markdown options before clearing the user's selection.");
             Assert.True(nativeProgress.Contains("MarkdownOptionsPrompt.Show()", StringComparison.Ordinal),
                 "Interactive NativeAOT progress launches must prompt when Markdown options were not preselected.");
+            string fluentDialogs = File.ReadAllText(Path.Combine(root, "src", "Clickra.Fluent", "Controls", "FluentDialogs.cs"));
+            string nativeOptions = File.ReadAllText(Path.Combine(root, "src", "Clickra.CLI", "Progress", "MarkdownOptionsPrompt.cs"));
+            Assert.True(fluentDialogs.Contains("MarkdownTemplateFile.Load", StringComparison.Ordinal)
+                        && fluentDialogs.Contains("templatePath", StringComparison.Ordinal),
+                "Fluent Markdown options must validate and pass a one-shot custom template path.");
+            Assert.True(nativeOptions.Contains("MarkdownTemplateFile.Load", StringComparison.Ordinal)
+                        && nativeOptions.Contains("IdBrowseTemplate", StringComparison.Ordinal),
+                "NativeAOT Markdown options must validate and pass a one-shot custom template path.");
+            Assert.True(nativeOptions.Contains("EnableWindow(owner, false)", StringComparison.Ordinal)
+                        && nativeOptions.Contains("ownerDisabled = true", StringComparison.Ordinal)
+                        && nativeOptions.Contains("EnableWindow(owner, true)", StringComparison.Ordinal),
+                "The owned NativeAOT Markdown prompt must disable and restore its Dashboard owner while modal.");
         });
 
         runner.Run("Markdown to PDF: common Markdown structures render to a readable PDF", () =>

@@ -144,7 +144,7 @@ public sealed partial class TaskProgressPage : Page
         if ((command.Equals("md2pdf", StringComparison.OrdinalIgnoreCase) ||
              command.Equals("md2word", StringComparison.OrdinalIgnoreCase)) && existingTaskId is null)
         {
-            commandOptions = await FluentDialogs.PromptMarkdownPdfOptionsAsync(XamlRoot, L, d => _activeDialog = d);
+            commandOptions = await FluentDialogs.PromptMarkdownPdfOptionsAsync(XamlRoot, L, Window, d => _activeDialog = d);
             _activeDialog = null;
             if (commandOptions is null)
             {

@@ -1,9 +1,12 @@
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using System;
+using System.IO;
 using System.Threading.Tasks;
 using System.Collections.Generic;
 using Clickra.Core.Processors;
+using Windows.Storage.Pickers;
+using WinRT.Interop;
 
 namespace Clickra_Fluent;
 
@@ -15,8 +18,10 @@ internal static class FluentDialogs
     public static async Task<Dictionary<string, object>?> PromptMarkdownPdfOptionsAsync(
         XamlRoot xamlRoot,
         Func<string, string> localize,
+        Window? ownerWindow,
         Action<ContentDialog>? trackDialog = null)
     {
+        string? templatePath = null;
         var style = CreateCombo(
             localize("md_options_style_default"),
             localize("md_options_style_minimal"),
@@ -45,6 +50,41 @@ internal static class FluentDialogs
 
         var advanced = new StackPanel { Spacing = 8 };
         AddLabeledControl(advanced, localize("md_options_code_theme"), codeTheme);
+        advanced.Children.Add(new TextBlock
+        {
+            Text = localize("md_options_template"),
+            FontWeight = Microsoft.UI.Text.FontWeights.SemiBold
+        });
+        var templateBrowse = new Button { Content = localize("md_options_template_browse") };
+        var templateStatus = new TextBlock
+        {
+            Text = localize("md_options_template_none"),
+            TextWrapping = TextWrapping.Wrap,
+            Opacity = 0.75
+        };
+        templateBrowse.Click += async (_, _) =>
+        {
+            var picker = new FileOpenPicker();
+            picker.FileTypeFilter.Add(".json");
+            if (ownerWindow is not null)
+                InitializeWithWindow.Initialize(picker, WindowNative.GetWindowHandle(ownerWindow));
+
+            var file = await picker.PickSingleFileAsync();
+            if (file is null) return;
+            try
+            {
+                MarkdownTemplateFile.Load(file.Path);
+                templatePath = file.Path;
+                templateStatus.Text = string.Format(localize("md_options_template_selected"), Path.GetFileName(file.Path));
+            }
+            catch
+            {
+                templatePath = null;
+                templateStatus.Text = localize("md_options_template_invalid");
+            }
+        };
+        advanced.Children.Add(templateBrowse);
+        advanced.Children.Add(templateStatus);
         primary.Children.Add(new Expander
         {
             Header = localize("md_options_more"),
@@ -60,6 +100,20 @@ internal static class FluentDialogs
             CloseButtonText = localize("dialog_cancel"),
             DefaultButton = ContentDialogButton.Primary,
             XamlRoot = xamlRoot
+        };
+        dialog.PrimaryButtonClick += (_, args) =>
+        {
+            if (templatePath is null) return;
+            try
+            {
+                MarkdownTemplateFile.Load(templatePath);
+            }
+            catch
+            {
+                args.Cancel = true;
+                templatePath = null;
+                templateStatus.Text = localize("md_options_template_invalid");
+            }
         };
         trackDialog?.Invoke(dialog);
         if (await dialog.ShowAsync() != ContentDialogResult.Primary) return null;
@@ -78,7 +132,7 @@ internal static class FluentDialogs
             _ => MarkdownPdfOptions.TextStandard
         };
         string codeValue = codeTheme.SelectedIndex == 1 ? MarkdownPdfOptions.CodeLight : MarkdownPdfOptions.CodeDark;
-        return MarkdownPdfOptions.Create(theme, paperValue, textValue, codeValue);
+        return MarkdownPdfOptions.Create(theme, paperValue, textValue, codeValue, templatePath);
     }
 
     private static ComboBox CreateCombo(params string[] items)

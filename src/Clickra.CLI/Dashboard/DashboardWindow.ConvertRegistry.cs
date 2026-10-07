@@ -208,7 +208,7 @@ public static partial class DashboardWindow
             if (command.Command.Equals("md2pdf", StringComparison.OrdinalIgnoreCase) ||
                 command.Command.Equals("md2word", StringComparison.OrdinalIgnoreCase))
             {
-                commandOptions = MarkdownOptionsPrompt.Show();
+                commandOptions = MarkdownOptionsPrompt.Show(hwnd);
                 if (commandOptions is null) return;
             }
             var thread = new System.Threading.Thread(() =>
