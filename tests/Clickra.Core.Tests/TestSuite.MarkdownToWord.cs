@@ -79,6 +79,11 @@ static partial class TestSuite
                 Assert.True(text.Contains("引用內容", StringComparison.Ordinal), "Quote text must survive DOCX conversion.");
                 Assert.True(text.Contains("code block", StringComparison.Ordinal), "Code block text must survive DOCX conversion.");
                 Assert.True(document.Descendants(w + "tbl").Any(), "Markdown tables must become Word tables.");
+                XElement table = document.Descendants(w + "tbl")
+                    .Single(tbl => tbl.Element(w + "tblPr")?.Element(w + "tblStyle")?.Attribute(w + "val")?.Value == "TableGrid");
+                Assert.Equal("fixed", table.Element(w + "tblPr")?.Element(w + "tblLayout")?.Attribute(w + "type")?.Value ?? "");
+                Assert.True(table.Element(w + "tblGrid")?.Elements(w + "gridCol").Select(c => c.Attribute(w + "w")?.Value).Distinct().Count() == 1,
+                    "Word tables must use the same equal-column policy as the PDF renderer.");
                 Assert.True(archive.GetEntry("word/numbering.xml") is not null,
                     "Markdown lists must create a Word numbering part instead of embedding bullet characters in paragraph text.");
                 Assert.True(document.Descendants(w + "numPr").Any(),
@@ -95,6 +100,11 @@ static partial class TestSuite
                     .Where(run => run.Descendants(w + "t").Any())
                     .All(run => run.Element(w + "rPr")?.Element(w + "color")?.Attribute(w + "val")?.Value == "F1F5F9"),
                     "Fenced code block runs must remain light text over the dark paragraph background.");
+                XElement codeBorders = codeParagraph.Element(w + "pPr")!.Element(w + "pBdr")!;
+                Assert.Equal("10", codeBorders.Element(w + "left")?.Attribute(w + "space")?.Value ?? "");
+                Assert.Equal("10", codeBorders.Element(w + "right")?.Attribute(w + "space")?.Value ?? "");
+                Assert.Equal("5", codeBorders.Element(w + "top")?.Attribute(w + "space")?.Value ?? "");
+                Assert.Equal("5", codeBorders.Element(w + "bottom")?.Attribute(w + "space")?.Value ?? "");
 
                 ZipArchiveEntry? relEntry = archive.GetEntry("word/_rels/document.xml.rels");
                 Assert.True(relEntry is not null, "A hyperlink must create document relationships.");
@@ -153,9 +163,17 @@ static partial class TestSuite
                 XElement heading1Style = academicStylesXml.Descendants(w + "style")
                     .Single(style => style.Attribute(w + "styleId")?.Value == "Heading1");
                 Assert.Equal("center", heading1Style.Descendants(w + "jc").Single().Attribute(w + "val")!.Value);
+                XElement heading1Spacing = heading1Style.Descendants(w + "spacing").Single();
+                Assert.Equal("486", heading1Spacing.Attribute(w + "line")?.Value ?? "");
+                Assert.Equal("exact", heading1Spacing.Attribute(w + "lineRule")?.Value ?? "");
+                Assert.Equal("240", heading1Spacing.Attribute(w + "after")?.Value ?? "");
 
                 XDocument minimalDocument = ReadXml(minimal, "word/document.xml");
                 XDocument academicDocument = ReadXml(academic, "word/document.xml");
+                XElement academicHeading = academicDocument.Descendants(w + "p")
+                    .Single(p => p.Element(w + "pPr")?.Element(w + "pStyle")?.Attribute(w + "val")?.Value == "Heading1");
+                Assert.True(academicHeading.Descendants(w + "rPr").All(rPr => rPr.Element(w + "sz") is null),
+                    "Heading runs must inherit Heading style size instead of overriding it with body text size.");
                 XElement academicMargins = academicDocument.Descendants(w + "pgMar").Single();
                 string minimalMargin = minimalDocument.Descendants(w + "pgMar").Single().Attribute(w + "left")!.Value;
                 string academicMargin = academicMargins.Attribute(w + "left")!.Value;
@@ -177,6 +195,65 @@ static partial class TestSuite
                 Assert.True(bodyParagraphs.Count >= 2
                             && bodyParagraphs.All(p => p.Element(w + "pPr")?.Element(w + "jc")?.Attribute(w + "val")?.Value == "both"),
                     "Academic DOCX body paragraphs must be fully justified.");
+            }));
+
+        runner.Run("Markdown PDF and Word share resolved print typography", () =>
+            RunWithTempDirectory(tempDir =>
+            {
+                string input = Path.Combine(tempDir, "parity.md");
+                string pdfPath = Path.Combine(tempDir, "parity.pdf");
+                string wordPath = Path.Combine(tempDir, "parity.docx");
+                File.WriteAllText(input, """
+                    # ZHEADING
+
+                    ZBODY paragraph.
+
+                    | Column |
+                    | --- |
+                    | ZTABLE |
+
+                    ```text
+                    ZCODE
+                    ```
+                    """);
+
+                FileProcessor.ConvertMarkdownToPdf(input, pdfPath);
+                FileProcessor.ConvertMarkdownToWord(input, wordPath);
+
+                MarkdownResolvedLayout layout = MarkdownResolvedLayout.Create(MarkdownTemplateCatalog.Default, 1);
+                using var pdf = UglyToad.PdfPig.PdfDocument.Open(pdfPath);
+                var page = pdf.GetPage(1);
+                double PdfWordSize(string value) => page.GetWords()
+                    .Single(word => word.Text == value)
+                    .Letters.Average(letter => letter.PointSize);
+
+                Assert.True(Math.Abs(PdfWordSize("ZHEADING") - layout.HeadingSizePoints(MarkdownTemplateCatalog.Default, 1)) < 0.25,
+                    "PDF heading typography must consume the shared resolved layout.");
+                Assert.True(Math.Abs(PdfWordSize("ZBODY") - layout.BodySizePoints) < 0.25,
+                    "PDF body typography must consume the shared resolved layout.");
+                Assert.True(Math.Abs(PdfWordSize("ZTABLE") - layout.TableFontSizePoints) < 0.25,
+                    "PDF table typography must consume the shared resolved layout.");
+                Assert.True(Math.Abs(PdfWordSize("ZCODE") - layout.CodeFontSizePoints) < 0.25,
+                    "PDF code typography must consume the shared resolved layout.");
+
+                using ZipArchive archive = ZipFile.OpenRead(wordPath);
+                XDocument styles = ReadXml(archive, "word/styles.xml");
+                XNamespace w = "http://schemas.openxmlformats.org/wordprocessingml/2006/main";
+                double WordStyleSize(string styleId)
+                {
+                    XElement style = styles.Descendants(w + "style")
+                        .Single(element => element.Attribute(w + "styleId")?.Value == styleId);
+                    return double.Parse(style.Element(w + "rPr")!.Element(w + "sz")!.Attribute(w + "val")!.Value) / 2.0;
+                }
+
+                Assert.True(Math.Abs(WordStyleSize("Heading1") - layout.HeadingSizePoints(MarkdownTemplateCatalog.Default, 1)) < 0.01,
+                    "DOCX Heading1 typography must consume the shared resolved layout.");
+                Assert.True(Math.Abs(WordStyleSize("Normal") - layout.BodySizePoints) < 0.01,
+                    "DOCX Normal typography must consume the shared resolved layout.");
+                Assert.True(Math.Abs(WordStyleSize("TableText") - layout.TableFontSizePoints) < 0.01,
+                    "DOCX table typography must consume the shared resolved layout.");
+                Assert.True(Math.Abs(WordStyleSize("CodeBlock") - layout.CodeFontSizePoints) < 0.01,
+                    "DOCX code typography must consume the shared resolved layout.");
             }));
 
         runner.Run("Markdown to Word: imported template changes DOCX styles and layout", () =>
@@ -357,7 +434,7 @@ static partial class TestSuite
                     .Single(p => p.Descendants(w + "t").Any(t => t.Value.Contains("Second list paragraph", StringComparison.Ordinal)));
                 Assert.True(firstListParagraph.Element(w + "pPr")?.Element(w + "numPr") is not null,
                     "The first paragraph in a Markdown list item must use genuine Word numbering.");
-                Assert.Equal("360", continuationParagraph.Element(w + "pPr")?.Element(w + "ind")?.Attribute(w + "left")?.Value ?? "");
+                Assert.Equal("400", continuationParagraph.Element(w + "pPr")?.Element(w + "ind")?.Attribute(w + "left")?.Value ?? "");
                 Assert.True(firstListParagraph.Element(w + "pPr")?.Element(w + "ind")?.Attribute(w + "firstLine") is null
                             && continuationParagraph.Element(w + "pPr")?.Element(w + "ind")?.Attribute(w + "firstLine") is null,
                     "Academic list paragraphs must not inherit the ordinary body first-line indent.");
@@ -368,6 +445,101 @@ static partial class TestSuite
                     .Single(p => p.Element(w + "pPr")?.Element(w + "pStyle")?.Attribute(w + "val")?.Value == "Quote");
                 Assert.True(quote.Element(w + "pPr")?.Element(w + "jc") is null,
                     "Academic quote paragraphs must not inherit ordinary-body justification.");
+            }));
+
+        runner.Run("Markdown to Word: nested list blocks keep shared print indentation", () =>
+            RunWithTempDirectory(tempDir =>
+            {
+                string input = Path.Combine(tempDir, "nested-list.md");
+                string output = Path.Combine(tempDir, "nested-list.docx");
+                File.WriteAllText(input, """
+                    - Item paragraph
+
+                      ```text
+                      nested code
+                      ```
+
+                      > nested quote
+
+                      | A | B |
+                      | --- | --- |
+                      | one | two |
+                    """);
+
+                FileProcessor.ConvertMarkdownToWord(input, output, MarkdownPdfOptions.Create());
+
+                using ZipArchive archive = ZipFile.OpenRead(output);
+                XDocument document = ReadXml(archive, "word/document.xml");
+                XNamespace w = "http://schemas.openxmlformats.org/wordprocessingml/2006/main";
+                XElement code = document.Descendants(w + "p")
+                    .Single(p => p.Element(w + "pPr")?.Element(w + "pStyle")?.Attribute(w + "val")?.Value == "CodeBlock");
+                Assert.Equal("400", code.Element(w + "pPr")?.Element(w + "ind")?.Attribute(w + "left")?.Value ?? "");
+
+                XElement quote = document.Descendants(w + "p")
+                    .Single(p => p.Element(w + "pPr")?.Element(w + "pStyle")?.Attribute(w + "val")?.Value == "Quote");
+                Assert.Equal("320", quote.Element(w + "pPr")?.Element(w + "ind")?.Attribute(w + "left")?.Value ?? "");
+
+                XElement quoteTable = document.Descendants(w + "tbl")
+                    .Single(tbl => tbl.Element(w + "tblPr")?.Element(w + "tblBorders")?.Element(w + "left")?.Attribute(w + "val")?.Value == "single"
+                                   && tbl.Element(w + "tblPr")?.Element(w + "tblStyle") is null);
+                Assert.Equal("400", quoteTable.Element(w + "tblPr")?.Element(w + "tblInd")?.Attribute(w + "w")?.Value ?? "");
+
+                XElement table = document.Descendants(w + "tbl")
+                    .Single(tbl => tbl.Element(w + "tblPr")?.Element(w + "tblStyle")?.Attribute(w + "val")?.Value == "TableGrid");
+                Assert.Equal("400", table.Element(w + "tblPr")?.Element(w + "tblInd")?.Attribute(w + "w")?.Value ?? "");
+            }));
+
+        runner.Run("Markdown to Word: quote container keeps one bar across nested blocks", () =>
+            RunWithTempDirectory(tempDir =>
+            {
+                string input = Path.Combine(tempDir, "quote-blocks.md");
+                string output = Path.Combine(tempDir, "quote-blocks.docx");
+                File.WriteAllText(input, """
+                    > Quoted paragraph.
+                    >
+                    > ```text
+                    > quoted code
+                    > ```
+                    >
+                    > | A | B |
+                    > | --- | --- |
+                    > | one | two |
+                    """);
+
+                FileProcessor.ConvertMarkdownToWord(input, output, MarkdownPdfOptions.Create());
+
+                using ZipArchive archive = ZipFile.OpenRead(output);
+                XDocument document = ReadXml(archive, "word/document.xml");
+                XNamespace w = "http://schemas.openxmlformats.org/wordprocessingml/2006/main";
+                XElement quoteTable = document.Descendants(w + "tbl")
+                    .Single(tbl => tbl.Element(w + "tblPr")?.Element(w + "tblBorders")?.Element(w + "left")?.Attribute(w + "val")?.Value == "single"
+                                   && tbl.Element(w + "tblPr")?.Element(w + "tblStyle") is null);
+                Assert.True(quoteTable.Descendants(w + "p")
+                    .Any(p => p.Element(w + "pPr")?.Element(w + "pStyle")?.Attribute(w + "val")?.Value == "CodeBlock"),
+                    "Quoted fenced code must remain inside the continuous quote-bar container.");
+                Assert.True(quoteTable.Descendants(w + "tbl")
+                    .Any(tbl => tbl.Element(w + "tblPr")?.Element(w + "tblStyle")?.Attribute(w + "val")?.Value == "TableGrid"),
+                    "Quoted tables must remain inside the continuous quote-bar container.");
+            }));
+
+        runner.Run("Markdown to Word: text-size scaling includes academic first-line indent", () =>
+            RunWithTempDirectory(tempDir =>
+            {
+                string input = Path.Combine(tempDir, "scaled-indent.md");
+                string output = Path.Combine(tempDir, "scaled-indent.docx");
+                File.WriteAllText(input, "# Academic\n\nScaled body paragraph.");
+
+                FileProcessor.ConvertMarkdownToWord(input, output,
+                    MarkdownPdfOptions.Create(
+                        MarkdownPdfOptions.ThemeAcademic,
+                        textSize: MarkdownPdfOptions.TextLarge));
+
+                using ZipArchive archive = ZipFile.OpenRead(output);
+                XDocument document = ReadXml(archive, "word/document.xml");
+                XNamespace w = "http://schemas.openxmlformats.org/wordprocessingml/2006/main";
+                XElement body = document.Descendants(w + "p")
+                    .Single(p => p.Element(w + "pPr")?.Element(w + "pStyle")?.Attribute(w + "val")?.Value == "Normal");
+                Assert.Equal("538", body.Element(w + "pPr")?.Element(w + "ind")?.Attribute(w + "firstLine")?.Value ?? "");
             }));
 
         runner.Run("Markdown to Word: preserves full-width punctuation and real list semantics", () =>

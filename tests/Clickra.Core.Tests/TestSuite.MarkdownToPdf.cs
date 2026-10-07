@@ -333,13 +333,11 @@ static partial class TestSuite
                 string text = page.Text;
                 Assert.False(text.Contains('\0'),
                     "Imported CJK punctuation must never collapse to NUL glyphs in the PDF text layer.");
-                foreach (char punctuation in "\u3001\u3002\u300c\u300d\u300e\u300f\u3010\u3011")
+                foreach (char punctuation in "\u3001\u3002\uff1a\u300c\u300d\u300e\u300f\u3010\u3011")
                 {
                     Assert.True(text.Contains(punctuation),
                         $"Imported CJK punctuation '{punctuation}' must remain extractable from the PDF.");
                 }
-                Assert.True(text.Contains(": ", StringComparison.Ordinal),
-                    "The existing full-width colon normalization must remain intact.");
 
                 string punctuationFont = page.Letters.First(letter => letter.Value == "\u3001").FontName!;
                 Assert.True(punctuationFont.Contains("DFKai", StringComparison.OrdinalIgnoreCase) || punctuationFont.Contains("KaiU", StringComparison.OrdinalIgnoreCase),
@@ -658,8 +656,8 @@ static partial class TestSuite
                     "CJK Markdown table text must remain extractable from the PDF.");
                 Assert.True(text.Contains("中文程式碼內容", StringComparison.Ordinal),
                     "CJK fenced-code text must remain extractable from the PDF.");
-                Assert.True(text.Contains("中文表格內容: 完整標點", StringComparison.Ordinal),
-                    "Full-width CJK punctuation must normalize to a visible supported glyph instead of degrading to a missing glyph.");
+                Assert.True(text.Contains("中文表格內容：完整標點", StringComparison.Ordinal),
+                    "Full-width CJK punctuation must remain visible without rewriting the Markdown source text.");
                 Assert.True(text.Contains("→", StringComparison.Ordinal),
                     "Common technical arrow glyphs must render as a supported arrow instead of degrading to a missing glyph.");
             }));

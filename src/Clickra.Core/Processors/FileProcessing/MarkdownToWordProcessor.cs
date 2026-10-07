@@ -88,6 +88,7 @@ public sealed class MarkdownToWordProcessor : MultiFileProcessorBase
         private static readonly XNamespace PIC = "http://schemas.openxmlformats.org/drawingml/2006/picture";
 
         private readonly MarkdownDocumentTemplate _template;
+        private readonly MarkdownResolvedLayout _layout;
         private readonly string _paper;
         private readonly double _scale;
         private readonly bool _lightCode;
@@ -115,6 +116,7 @@ public sealed class MarkdownToWordProcessor : MultiFileProcessorBase
                 MarkdownPdfOptions.TextLarge => 1.12,
                 _ => 1.0
             };
+            _layout = MarkdownResolvedLayout.Create(_template, _scale);
             _lightCode = codeTheme == MarkdownPdfOptions.CodeLight;
             _baseDirectory = baseDirectory;
             _token = token;
@@ -170,54 +172,68 @@ public sealed class MarkdownToWordProcessor : MultiFileProcessorBase
             }
         }
 
-        private void RenderBlock(Block block, XElement parent, int listDepth)
+        private void RenderBlock(
+            Block block,
+            XElement parent,
+            int listDepth,
+            int blockIndentTwips = 0,
+            int containerWidthTwips = 0)
         {
+            if (containerWidthTwips <= 0) containerWidthTwips = PointsToTwips(UsablePageWidthPoints);
             switch (block)
             {
                 case HeadingBlock heading:
-                    parent.Add(CreateInlineParagraph(heading.Inline, $"Heading{Math.Clamp(heading.Level, 1, 6)}"));
+                    parent.Add(CreateInlineParagraph(
+                        heading.Inline,
+                        $"Heading{Math.Clamp(heading.Level, 1, 6)}",
+                        indentTwips: blockIndentTwips));
                     break;
                 case ParagraphBlock paragraph:
-                    parent.Add(CreateInlineParagraph(paragraph.Inline, "Normal", bodyParagraph: true));
+                    parent.Add(CreateInlineParagraph(
+                        paragraph.Inline,
+                        "Normal",
+                        indentTwips: blockIndentTwips,
+                        bodyParagraph: blockIndentTwips == 0));
                     break;
                 case QuoteBlock quote:
-                    foreach (Block child in quote)
-                    {
-                        if (child is ParagraphBlock quoteParagraph)
-                            parent.Add(CreateInlineParagraph(quoteParagraph.Inline, "Quote"));
-                        else
-                            RenderBlock(child, parent, listDepth);
-                    }
+                    parent.Add(CreateQuoteBlock(quote, listDepth, blockIndentTwips, containerWidthTwips));
                     break;
                 case ListBlock list:
-                    RenderList(list, parent, listDepth);
+                    RenderList(list, parent, listDepth, blockIndentTwips, containerWidthTwips);
                     break;
                 case FencedCodeBlock fenced:
-                    parent.Add(CreateCodeParagraph(fenced.Lines.ToString()));
+                    parent.Add(CreateCodeParagraph(fenced.Lines.ToString(), blockIndentTwips));
                     break;
                 case CodeBlock code:
-                    parent.Add(CreateCodeParagraph(code.Lines.ToString()));
+                    parent.Add(CreateCodeParagraph(code.Lines.ToString(), blockIndentTwips));
                     break;
                 case Table table:
-                    parent.Add(CreateTable(table));
+                    parent.Add(CreateTable(table, blockIndentTwips, containerWidthTwips));
                     break;
                 case ThematicBreakBlock:
-                    parent.Add(CreateRuleParagraph());
+                    parent.Add(CreateRuleParagraph(blockIndentTwips));
                     break;
                 case HtmlBlock html:
                     string text = StripHtml(html.Lines.ToString());
-                    if (!string.IsNullOrWhiteSpace(text)) parent.Add(CreateTextParagraph(text, "Normal", bodyParagraph: true));
+                    if (!string.IsNullOrWhiteSpace(text))
+                        parent.Add(CreateTextParagraph(text, "Normal", blockIndentTwips, bodyParagraph: blockIndentTwips == 0));
                     break;
                 case ContainerBlock container:
-                    foreach (Block child in container) RenderBlock(child, parent, listDepth);
+                    foreach (Block child in container)
+                        RenderBlock(child, parent, listDepth, blockIndentTwips, containerWidthTwips);
                     break;
                 case LeafBlock leaf when leaf.Inline is not null:
-                    parent.Add(CreateInlineParagraph(leaf.Inline, "Normal"));
+                    parent.Add(CreateInlineParagraph(leaf.Inline, "Normal", indentTwips: blockIndentTwips));
                     break;
             }
         }
 
-        private void RenderList(ListBlock list, XElement parent, int depth)
+        private void RenderList(
+            ListBlock list,
+            XElement parent,
+            int depth,
+            int baseIndentTwips,
+            int containerWidthTwips)
         {
             int level = Math.Clamp(depth, 0, 8);
             int start = int.TryParse(list.OrderedStart, out int orderedStart) ? orderedStart : 1;
@@ -233,18 +249,27 @@ public sealed class MarkdownToWordProcessor : MultiFileProcessorBase
                     if (itemChild is ParagraphBlock paragraph)
                     {
                         XElement p = first
-                            ? CreateInlineParagraph(paragraph.Inline, "Normal", numberingId: numberingId, numberingLevel: level)
-                            : CreateInlineParagraph(paragraph.Inline, "Normal", indentTwips: (level + 1) * 360);
+                            ? CreateInlineParagraph(
+                                paragraph.Inline,
+                                "Normal",
+                                indentTwips: baseIndentTwips,
+                                numberingId: numberingId,
+                                numberingLevel: level)
+                            : CreateInlineParagraph(
+                                paragraph.Inline,
+                                "Normal",
+                                indentTwips: baseIndentTwips + PointsToTwips((level + 1) * _layout.ListIndentPoints));
                         parent.Add(p);
                         first = false;
                     }
                     else if (itemChild is ListBlock nested)
                     {
-                        RenderList(nested, parent, depth + 1);
+                        RenderList(nested, parent, depth + 1, baseIndentTwips, containerWidthTwips);
                     }
                     else
                     {
-                        RenderBlock(itemChild, parent, depth + 1);
+                        int contentIndent = baseIndentTwips + PointsToTwips((level + 1) * _layout.ListIndentPoints);
+                        RenderBlock(itemChild, parent, depth + 1, contentIndent, containerWidthTwips);
                     }
                 }
             }
@@ -261,24 +286,38 @@ public sealed class MarkdownToWordProcessor : MultiFileProcessorBase
             var pPr = ParagraphProperties(style, indentTwips, bodyParagraph);
             if (numberingId is not null)
             {
+                pPr.Element(W + "ind")?.Remove();
+                int textIndent = indentTwips + PointsToTwips((numberingLevel + 1) * _layout.ListIndentPoints);
+                pPr.Add(new XElement(W + "ind",
+                    new XAttribute(W + "left", textIndent),
+                    new XAttribute(W + "hanging", PointsToTwips(_layout.ListIndentPoints))));
                 pPr.Add(new XElement(W + "numPr",
                     new XElement(W + "ilvl", new XAttribute(W + "val", numberingLevel)),
                     new XElement(W + "numId", new XAttribute(W + "val", numberingId.Value))));
+                pPr.Add(new XElement(W + "spacing",
+                    new XAttribute(W + "after", 0),
+                    new XAttribute(W + "line", PointsToTwips(_layout.BodyLineHeightPoints)),
+                    new XAttribute(W + "lineRule", "exact")));
             }
             var p = new XElement(W + "p", pPr);
             AppendInlines(p, inline, false, false, null);
             return p;
         }
 
-        private XElement CreateTextParagraph(string text, string style, bool bodyParagraph = false) =>
-            new(W + "p", ParagraphProperties(style, 0, bodyParagraph), CreateRun(text, false, false, false, null));
+        private XElement CreateTextParagraph(string text, string style, int indentTwips = 0, bool bodyParagraph = false) =>
+            new(W + "p", ParagraphProperties(style, indentTwips, bodyParagraph), CreateRun(text, false, false, false, null));
 
-        private XElement CreateCodeParagraph(string code)
+        private XElement CreateCodeParagraph(string code, int indentTwips)
         {
             string background = _lightCode ? "F1F5F9" : "0F172A";
             string foreground = _lightCode ? _template.Palette.Strong.Hex : "F1F5F9";
-            var pPr = ParagraphProperties("CodeBlock", 0);
+            var pPr = ParagraphProperties("CodeBlock", indentTwips);
             pPr.Add(new XElement(W + "shd", new XAttribute(W + "val", "clear"), new XAttribute(W + "fill", background)));
+            pPr.Add(new XElement(W + "pBdr",
+                CodePaddingBorder("top", _layout.CodeVerticalPaddingPoints, background),
+                CodePaddingBorder("left", _layout.CodeHorizontalPaddingPoints, background),
+                CodePaddingBorder("bottom", _layout.CodeVerticalPaddingPoints, background),
+                CodePaddingBorder("right", _layout.CodeHorizontalPaddingPoints, background)));
             var p = new XElement(W + "p", pPr);
             string[] lines = NormalizeNewlines(code).TrimEnd('\n').Split('\n');
             for (int i = 0; i < lines.Length; i++)
@@ -289,19 +328,75 @@ public sealed class MarkdownToWordProcessor : MultiFileProcessorBase
             return p;
         }
 
-        private XElement CreateTable(Table table)
+        private XElement CreateQuoteBlock(
+            QuoteBlock quote,
+            int listDepth,
+            int indentTwips,
+            int containerWidthTwips)
         {
+            int quoteWidth = Math.Max(1, containerWidthTwips - indentTwips);
+            int quoteIndent = PointsToTwips(_layout.QuoteIndentPoints);
+            var table = new XElement(W + "tbl",
+                new XElement(W + "tblPr",
+                    new XElement(W + "tblW", new XAttribute(W + "w", quoteWidth), new XAttribute(W + "type", "dxa")),
+                    new XElement(W + "tblLayout", new XAttribute(W + "type", "fixed")),
+                    indentTwips > 0
+                        ? new XElement(W + "tblInd", new XAttribute(W + "w", indentTwips), new XAttribute(W + "type", "dxa"))
+                        : null,
+                    new XElement(W + "tblBorders",
+                        QuoteBorder("left"),
+                        HiddenBorder("top"),
+                        HiddenBorder("bottom"),
+                        HiddenBorder("right"),
+                        HiddenBorder("insideH"),
+                        HiddenBorder("insideV"))),
+                new XElement(W + "tblGrid",
+                    new XElement(W + "gridCol", new XAttribute(W + "w", quoteWidth))));
+
+            var cell = new XElement(W + "tc",
+                new XElement(W + "tcPr",
+                    new XElement(W + "tcW", new XAttribute(W + "w", quoteWidth), new XAttribute(W + "type", "dxa"))));
+            foreach (Block child in quote)
+            {
+                if (child is ParagraphBlock quoteParagraph)
+                    cell.Add(CreateInlineParagraph(quoteParagraph.Inline, "Quote", indentTwips: quoteIndent));
+                else
+                    RenderBlock(child, cell, listDepth, quoteIndent, quoteWidth);
+            }
+            if (!cell.Elements().Any()) cell.Add(CreateTextParagraph("", "Quote", quoteIndent));
+            if (cell.Elements().Last().Name == W + "tbl") cell.Add(CreateTextParagraph("", "Quote", quoteIndent));
+            table.Add(new XElement(W + "tr", cell));
+            return table;
+        }
+
+        private XElement CreateTable(Table table, int indentTwips, int containerWidthTwips)
+        {
+            int columnCount = Math.Max(1, table.OfType<TableRow>().Select(row => row.Count).DefaultIfEmpty(1).Max());
+            int tableWidth = Math.Max(1, containerWidthTwips - indentTwips);
+            int columnWidth = Math.Max(1, tableWidth / columnCount);
             var element = new XElement(W + "tbl",
                 new XElement(W + "tblPr",
                     new XElement(W + "tblStyle", new XAttribute(W + "val", "TableGrid")),
-                    new XElement(W + "tblW", new XAttribute(W + "w", "0"), new XAttribute(W + "type", "auto"))));
+                    new XElement(W + "tblW", new XAttribute(W + "w", tableWidth), new XAttribute(W + "type", "dxa")),
+                    indentTwips > 0
+                        ? new XElement(W + "tblInd", new XAttribute(W + "w", indentTwips), new XAttribute(W + "type", "dxa"))
+                        : null,
+                    new XElement(W + "tblLayout", new XAttribute(W + "type", "fixed")),
+                    new XElement(W + "tblCellMar",
+                        CellMargin("top", _layout.TableVerticalPaddingPoints),
+                        CellMargin("left", _layout.TableHorizontalPaddingPoints),
+                        CellMargin("bottom", _layout.TableVerticalPaddingPoints),
+                        CellMargin("right", _layout.TableHorizontalPaddingPoints))),
+                new XElement(W + "tblGrid", Enumerable.Range(0, columnCount)
+                    .Select(_ => new XElement(W + "gridCol", new XAttribute(W + "w", columnWidth)))));
 
             foreach (TableRow row in table)
             {
                 var tr = new XElement(W + "tr");
                 foreach (TableCell cell in row)
                 {
-                    var tcPr = new XElement(W + "tcPr");
+                    var tcPr = new XElement(W + "tcPr",
+                        new XElement(W + "tcW", new XAttribute(W + "w", columnWidth), new XAttribute(W + "type", "dxa")));
                     if (row.IsHeader && _template.Layout.FillTableHeader)
                         tcPr.Add(new XElement(W + "shd", new XAttribute(W + "val", "clear"), new XAttribute(W + "fill", _template.Palette.SoftAccent.Hex)));
                     var tc = new XElement(W + "tc", tcPr);
@@ -310,18 +405,19 @@ public sealed class MarkdownToWordProcessor : MultiFileProcessorBase
                     {
                         if (child is ParagraphBlock paragraph)
                         {
-                            XElement p = CreateInlineParagraph(paragraph.Inline, "Normal");
+                            XElement p = CreateInlineParagraph(paragraph.Inline, row.IsHeader ? "TableHeader" : "TableText");
                             if (row.IsHeader) MakeRunsBold(p);
                             tc.Add(p);
                             added = true;
                         }
                         else
                         {
-                            RenderBlock(child, tc, 0);
+                            int cellWidth = Math.Max(1, columnWidth - PointsToTwips(_layout.TableHorizontalPaddingPoints * 2));
+                            RenderBlock(child, tc, 0, 0, cellWidth);
                             added = true;
                         }
                     }
-                    if (!added) tc.Add(CreateTextParagraph("", "Normal"));
+                    if (!added) tc.Add(CreateTextParagraph("", row.IsHeader ? "TableHeader" : "TableText"));
                     tr.Add(tc);
                 }
                 element.Add(tr);
@@ -329,9 +425,10 @@ public sealed class MarkdownToWordProcessor : MultiFileProcessorBase
             return element;
         }
 
-        private XElement CreateRuleParagraph() =>
+        private XElement CreateRuleParagraph(int indentTwips) =>
             new(W + "p",
                 new XElement(W + "pPr",
+                    indentTwips > 0 ? new XElement(W + "ind", new XAttribute(W + "left", indentTwips)) : null,
                     new XElement(W + "pBdr",
                         new XElement(W + "bottom",
                             new XAttribute(W + "val", "single"),
@@ -403,16 +500,19 @@ public sealed class MarkdownToWordProcessor : MultiFileProcessorBase
             string? colorHex,
             bool shadeCode = true)
         {
-            double size = code ? _template.Typography.BodySizePoints * _scale * 0.92 : _template.Typography.BodySizePoints * _scale;
             string latin = code ? _template.Typography.MonospaceFont : _template.Typography.LatinFont;
             string eastAsia = _template.Typography.CjkFont;
             var rPr = new XElement(W + "rPr",
                 new XElement(W + "rFonts",
                     new XAttribute(W + "ascii", latin),
                     new XAttribute(W + "hAnsi", latin),
-                    new XAttribute(W + "eastAsia", eastAsia)),
-                new XElement(W + "sz", new XAttribute(W + "val", HalfPoints(size))),
-                new XElement(W + "szCs", new XAttribute(W + "val", HalfPoints(size))));
+                    new XAttribute(W + "eastAsia", eastAsia)));
+            if (code)
+            {
+                rPr.Add(
+                    new XElement(W + "sz", new XAttribute(W + "val", HalfPoints(_layout.CodeFontSizePoints))),
+                    new XElement(W + "szCs", new XAttribute(W + "val", HalfPoints(_layout.CodeFontSizePoints))));
+            }
             if (bold) rPr.Add(new XElement(W + "b"));
             if (italic) rPr.Add(new XElement(W + "i"));
             if (code && shadeCode)
@@ -473,14 +573,17 @@ public sealed class MarkdownToWordProcessor : MultiFileProcessorBase
         private (long Cx, long Cy) GetImageExtent(string path)
         {
             using Image image = Image.FromFile(path);
-            double usablePoints = (_paper == MarkdownPdfOptions.PaperLetter ? 612 : 595.28)
-                - _template.Layout.EffectiveMarginLeftPoints
-                - _template.Layout.EffectiveMarginRightPoints;
+            double usablePoints = UsablePageWidthPoints;
             double widthPoints = Math.Min(usablePoints, image.Width * 72d / Math.Max(image.HorizontalResolution, 96));
             double scale = widthPoints / Math.Max(1, image.Width * 72d / Math.Max(image.HorizontalResolution, 96));
             double heightPoints = image.Height * 72d / Math.Max(image.VerticalResolution, 96) * scale;
             return ((long)Math.Round(widthPoints * 12700), (long)Math.Round(heightPoints * 12700));
         }
+
+        private double UsablePageWidthPoints =>
+            (_paper == MarkdownPdfOptions.PaperLetter ? 612 : 595.28)
+            - _template.Layout.EffectiveMarginLeftPoints
+            - _template.Layout.EffectiveMarginRightPoints;
 
         private bool TryResolveLocalImagePath(string? url, out string path)
         {
@@ -501,23 +604,23 @@ public sealed class MarkdownToWordProcessor : MultiFileProcessorBase
         {
             var styles = new XElement(W + "styles",
                 new XAttribute(XNamespace.Xmlns + "w", W),
-                CreateParagraphStyle("Normal", "Normal", _template.Typography.BodySizePoints * _scale, _template.Palette.Body.Hex, false),
-                CreateParagraphStyle("Quote", "Quote", _template.Typography.BodySizePoints * _scale, _template.Palette.Body.Hex, false, leftIndent: 360),
-                CreateParagraphStyle("CodeBlock", "Code Block", _template.Typography.BodySizePoints * _scale * 0.92, _template.Palette.Strong.Hex, false));
+                CreateParagraphStyle("Normal", "Normal", _layout.BodySizePoints, _template.Palette.Body.Hex, false),
+                CreateParagraphStyle("Quote", "Quote", _layout.BodySizePoints, _template.Palette.Body.Hex, false),
+                CreateParagraphStyle("CodeBlock", "Code Block", _layout.CodeFontSizePoints, _template.Palette.Strong.Hex, false,
+                    lineHeightPoints: _layout.CodeLineHeightPoints),
+                CreateParagraphStyle("TableText", "Table Text", _layout.TableFontSizePoints, _template.Palette.Body.Hex, false,
+                    lineHeightPoints: _layout.TableLineHeightPoints, afterPoints: 0),
+                CreateParagraphStyle("TableHeader", "Table Header", _layout.TableFontSizePoints, _template.Palette.Body.Hex, true,
+                    lineHeightPoints: _layout.TableLineHeightPoints, afterPoints: 0));
 
             for (int level = 1; level <= 6; level++)
             {
-                double size = level switch
-                {
-                    1 => _template.Typography.Headings.H1,
-                    2 => _template.Typography.Headings.H2,
-                    3 => _template.Typography.Headings.H3,
-                    4 => _template.Typography.Headings.H4,
-                    5 => _template.Typography.Headings.H5,
-                    _ => _template.Typography.Headings.H6
-                } * _scale;
+                double size = _layout.HeadingSizePoints(_template, level);
                 string color = level == 2 && _template.Layout.AccentH2 ? _template.Palette.Accent.Hex : _template.Palette.Strong.Hex;
-                styles.Add(CreateParagraphStyle($"Heading{level}", $"Heading {level}", size, color, true, keepNext: true));
+                styles.Add(CreateParagraphStyle(
+                    $"Heading{level}", $"Heading {level}", size, color, true, keepNext: true,
+                    lineHeightPoints: _layout.HeadingLineHeightPoints(_template, level),
+                    afterPoints: _layout.HeadingAfterPoints(level)));
             }
             styles.Add(new XElement(W + "style",
                 new XAttribute(W + "type", "table"),
@@ -532,27 +635,21 @@ public sealed class MarkdownToWordProcessor : MultiFileProcessorBase
 
         private XElement CreateParagraphStyle(
             string id, string name, double size, string color, bool bold,
-            int leftIndent = 0, bool keepNext = false)
+            int leftIndent = 0, bool keepNext = false,
+            double? lineHeightPoints = null, double? afterPoints = null)
         {
+            double lineHeight = lineHeightPoints ?? _layout.BodyLineHeightPoints;
+            double after = afterPoints ?? _layout.BlockGapPoints;
             var pPr = new XElement(W + "pPr",
                 new XElement(W + "spacing",
-                    new XAttribute(W + "after", PointsToTwips(_template.Layout.BlockGapPoints * _scale)),
-                    new XAttribute(W + "line", LineSpacing(size)),
-                    new XAttribute(W + "lineRule", "auto")));
+                    new XAttribute(W + "after", PointsToTwips(after)),
+                    new XAttribute(W + "line", PointsToTwips(lineHeight)),
+                    new XAttribute(W + "lineRule", "exact")));
             if (leftIndent > 0) pPr.Add(new XElement(W + "ind", new XAttribute(W + "left", leftIndent)));
             if (keepNext) pPr.Add(new XElement(W + "keepNext"));
             if (id == "Heading1" && _template.Layout.CenterH1)
                 pPr.Add(new XElement(W + "jc", new XAttribute(W + "val", "center")));
-            if (id == "Quote")
-            {
-                pPr.Add(new XElement(W + "pBdr",
-                    new XElement(W + "left",
-                        new XAttribute(W + "val", "single"),
-                        new XAttribute(W + "sz", Math.Max(2, (int)Math.Round(_template.Layout.QuoteBarWidthPoints * 8))),
-                        new XAttribute(W + "space", "8"),
-                        new XAttribute(W + "color", _template.Palette.Border.Hex))));
-            }
-            else if (id == "Heading2" && _template.Layout.DrawH2Bar)
+            if (id == "Heading2" && _template.Layout.DrawH2Bar)
             {
                 pPr.Add(new XElement(W + "pBdr",
                     new XElement(W + "left",
@@ -586,14 +683,38 @@ public sealed class MarkdownToWordProcessor : MultiFileProcessorBase
             new XAttribute(W + "space", "0"),
             new XAttribute(W + "color", _template.Palette.Border.Hex));
 
+        private XElement QuoteBorder(string name) => new(W + name,
+            new XAttribute(W + "val", "single"),
+            new XAttribute(W + "sz", Math.Max(2, (int)Math.Round(_template.Layout.QuoteBarWidthPoints * 8))),
+            new XAttribute(W + "space", "0"),
+            new XAttribute(W + "color", _template.Palette.Border.Hex));
+
+        private static XElement HiddenBorder(string name) => new(W + name,
+            new XAttribute(W + "val", "nil"));
+
+        private static XElement CellMargin(string name, double points) => new(W + name,
+            new XAttribute(W + "w", PointsToTwips(points)),
+            new XAttribute(W + "type", "dxa"));
+
+        private static XElement CodePaddingBorder(string name, double spacePoints, string color) => new(W + name,
+            new XAttribute(W + "val", "single"),
+            new XAttribute(W + "sz", "2"),
+            new XAttribute(W + "space", Math.Max(0, (int)Math.Round(spacePoints))),
+            new XAttribute(W + "color", color));
+
         private XElement ParagraphProperties(string style, int indentTwips, bool bodyParagraph = false)
         {
             var pPr = new XElement(W + "pPr", new XElement(W + "pStyle", new XAttribute(W + "val", style)));
             if (indentTwips > 0) pPr.Add(new XElement(W + "ind", new XAttribute(W + "left", indentTwips)));
             else if (bodyParagraph && _template.Layout.FirstLineIndentPoints > 0)
-                pPr.Add(new XElement(W + "ind", new XAttribute(W + "firstLine", PointsToTwips(_template.Layout.FirstLineIndentPoints))));
+                pPr.Add(new XElement(W + "ind", new XAttribute(W + "firstLine", PointsToTwips(_template.Layout.FirstLineIndentPoints * _scale))));
             if (bodyParagraph && _template.Layout.JustifyBody)
                 pPr.Add(new XElement(W + "jc", new XAttribute(W + "val", "both")));
+            if (!bodyParagraph && style == "Normal" && indentTwips > 0)
+                pPr.Add(new XElement(W + "spacing",
+                    new XAttribute(W + "after", 0),
+                    new XAttribute(W + "line", PointsToTwips(_layout.BodyLineHeightPoints)),
+                    new XAttribute(W + "lineRule", "exact")));
             return pPr;
         }
 
@@ -654,7 +775,7 @@ public sealed class MarkdownToWordProcessor : MultiFileProcessorBase
                 new XElement(W + "multiLevelType", new XAttribute(W + "val", "hybridMultilevel")));
             for (int level = 0; level <= 8; level++)
             {
-                int left = (level + 1) * 360;
+                int left = PointsToTwips((level + 1) * _layout.ListIndentPoints);
                 string levelText = ordered ? $"%{level + 1}." : "•";
                 var lvl = new XElement(W + "lvl",
                     new XAttribute(W + "ilvl", level),
@@ -664,7 +785,7 @@ public sealed class MarkdownToWordProcessor : MultiFileProcessorBase
                     new XElement(W + "lvlJc", new XAttribute(W + "val", "left")),
                     new XElement(W + "pPr",
                         new XElement(W + "tabs", new XElement(W + "tab", new XAttribute(W + "val", "num"), new XAttribute(W + "pos", left))),
-                        new XElement(W + "ind", new XAttribute(W + "left", left), new XAttribute(W + "hanging", 360))));
+                        new XElement(W + "ind", new XAttribute(W + "left", left), new XAttribute(W + "hanging", PointsToTwips(_layout.ListIndentPoints)))));
                 if (!ordered)
                 {
                     lvl.Add(new XElement(W + "rPr",
@@ -767,7 +888,6 @@ public sealed class MarkdownToWordProcessor : MultiFileProcessorBase
 
         private static string HalfPoints(double points) => Math.Max(2, (int)Math.Round(points * 2)).ToString();
         private static int PointsToTwips(double points) => Math.Max(0, (int)Math.Round(points * 20));
-        private int LineSpacing(double size) => Math.Max(240, (int)Math.Round((_template.Typography.LineHeightPoints * _scale / Math.Max(size, 1)) * 240));
 
         private sealed record Relationship(string Id, string Type, string Target, bool External);
         private sealed record ImagePart(string SourcePath, string FileName, string ContentType);

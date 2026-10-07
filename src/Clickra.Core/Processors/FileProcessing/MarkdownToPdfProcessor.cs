@@ -95,13 +95,12 @@ public sealed class MarkdownToPdfProcessor : MultiFileProcessorBase
 
     private sealed class Renderer : IDisposable
     {
-        private const double ListIndent = 20;
-
         private readonly PdfDocument _document;
         private readonly string _baseDirectory;
         private readonly CancellationToken _token;
         private readonly PdfSharp.PageSize _pageSize;
         private readonly MarkdownDocumentTemplate _template;
+        private readonly MarkdownResolvedLayout _layout;
         private readonly double _scale;
         private readonly double _marginTop;
         private readonly double _marginRight;
@@ -141,13 +140,14 @@ public sealed class MarkdownToPdfProcessor : MultiFileProcessorBase
                 MarkdownPdfOptions.TextLarge => 1.12,
                 _ => 1.0
             };
+            _layout = MarkdownResolvedLayout.Create(_template, _scale);
             _marginTop = _template.Layout.EffectiveMarginTopPoints;
             _marginRight = _template.Layout.EffectiveMarginRightPoints;
             _marginBottom = _template.Layout.EffectiveMarginBottomPoints;
             _marginLeft = _template.Layout.EffectiveMarginLeftPoints;
-            _bodySize = _template.Typography.BodySizePoints * _scale;
-            _bodyLineHeight = _template.Typography.LineHeightPoints * _scale;
-            _blockGap = _template.Layout.BlockGapPoints * _scale;
+            _bodySize = _layout.BodySizePoints;
+            _bodyLineHeight = _layout.BodyLineHeightPoints;
+            _blockGap = _layout.BlockGapPoints;
             _textColor = ToXColor(_template.Palette.Body);
             _strongTextColor = ToXColor(_template.Palette.Strong);
             _accentColor = ToXColor(_template.Palette.Accent);
@@ -170,12 +170,8 @@ public sealed class MarkdownToPdfProcessor : MultiFileProcessorBase
                 Block block = blocks[i];
                 if (block is HeadingBlock heading && i + 1 < blocks.Count)
                 {
-                    // A level-2 section should not begin in the last ~quarter page: keeping a
-                    // meaningful opening chunk together reads better than leaving the heading,
-                    // intro, and first list item cramped at the bottom of the previous page.
-                    double sectionReserve = heading.Level == 2 ? 180 : 0;
                     double keepWithNext = GetHeadingHeight(heading.Level) + EstimateMinimumBlockHeight(blocks[i + 1]);
-                    EnsureSpace(Math.Max(sectionReserve, keepWithNext));
+                    EnsureSpace(keepWithNext);
                 }
                 RenderBlock(block, 0);
             }
@@ -229,8 +225,8 @@ public sealed class MarkdownToPdfProcessor : MultiFileProcessorBase
 
         private void RenderHeading(HeadingBlock heading, double indent)
         {
-            double size = HeadingSize(heading.Level);
-            double lineHeight = size * 1.35;
+            double size = _layout.HeadingSizePoints(_template, heading.Level);
+            double lineHeight = _layout.HeadingLineHeightPoints(_template, heading.Level);
             EnsureSpace(lineHeight + 12);
 
             XBrush headingBrush = new XSolidBrush(heading.Level == 2 && _template.Layout.AccentH2 ? _accentColor : _strongTextColor);
@@ -241,7 +237,7 @@ public sealed class MarkdownToPdfProcessor : MultiFileProcessorBase
             }
             RenderInline(heading.Inline, size, XFontStyleEx.Bold, headingBrush, indent, lineHeight,
                 centerSingleLine: heading.Level == 1 && _template.Layout.CenterH1);
-            _y += heading.Level <= 2 ? 12 : 7;
+            _y += _layout.HeadingAfterPoints(heading.Level);
         }
 
         private void RenderParagraph(ParagraphBlock paragraph, double indent, bool bodyParagraph)
@@ -271,13 +267,12 @@ public sealed class MarkdownToPdfProcessor : MultiFileProcessorBase
                     }
                     else
                     {
-                        RenderBlock(itemBlock, indent + ListIndent, bodyParagraph: false);
+                        RenderBlock(itemBlock, indent + _layout.ListIndentPoints, bodyParagraph: false);
                         first = false;
                     }
                 }
                 if (first) RenderPlainText(marker, _bodySize, XFontStyleEx.Regular, new XSolidBrush(_textColor), indent, _bodyLineHeight);
             }
-            _y += 2;
         }
 
         private void RenderListParagraph(string marker, ParagraphBlock paragraph, double indent)
@@ -285,7 +280,7 @@ public sealed class MarkdownToPdfProcessor : MultiFileProcessorBase
             EnsureSpace(_bodyLineHeight);
             var markerFont = CreateFont(marker, _bodySize, XFontStyleEx.Regular);
             _graphics!.DrawString(marker, markerFont, new XSolidBrush(_textColor), _marginLeft + indent, _y + markerFont.Size);
-            RenderInline(paragraph.Inline, _bodySize, XFontStyleEx.Regular, new XSolidBrush(_textColor), indent + ListIndent, _bodyLineHeight);
+            RenderInline(paragraph.Inline, _bodySize, XFontStyleEx.Regular, new XSolidBrush(_textColor), indent + _layout.ListIndentPoints, _bodyLineHeight);
         }
 
         private void RenderQuote(QuoteBlock quote, double indent)
@@ -294,7 +289,7 @@ public sealed class MarkdownToPdfProcessor : MultiFileProcessorBase
             _activeQuotes.Add(state);
             try
             {
-                foreach (Block child in quote) RenderBlock(child, indent + 16, bodyParagraph: false);
+                foreach (Block child in quote) RenderBlock(child, indent + _layout.QuoteIndentPoints, bodyParagraph: false);
                 // Paragraph rendering advances by the inter-block gap after its last line.
                 // Keep the quote rule aligned to the actual text line box instead of
                 // extending it through that trailing whitespace.
@@ -305,7 +300,6 @@ public sealed class MarkdownToPdfProcessor : MultiFileProcessorBase
             {
                 _activeQuotes.Remove(state);
             }
-            _y += 2;
         }
 
         private void DrawQuoteBar(QuoteState state, double endY)
@@ -324,26 +318,26 @@ public sealed class MarkdownToPdfProcessor : MultiFileProcessorBase
             string[] lines = NormalizeNewlines(code).Split('\n');
             double available = ContentWidth - indent;
             var wrapped = new List<StyledLine>();
-            foreach (string line in lines) AddCodeLine(line, available - 16, wrapped);
+            foreach (string line in lines) AddCodeLine(line, available - (_layout.CodeHorizontalPaddingPoints * 2), wrapped);
 
             bool firstLine = true;
             foreach (StyledLine line in wrapped)
             {
-                double rowHeight = 23 * _scale;
-                double lineAdvance = 18 * _scale;
-                EnsureSpace(26 * _scale);
+                double rowHeight = _layout.CodeLineHeightPoints + _layout.CodeVerticalPaddingPoints;
+                double lineAdvance = _layout.CodeLineHeightPoints;
+                EnsureSpace(_layout.CodeLineHeightPoints + (_layout.CodeVerticalPaddingPoints * 2));
                 if (firstLine)
                 {
-                    _y += 5 * _scale;
+                    _y += _layout.CodeVerticalPaddingPoints;
                     firstLine = false;
                 }
-                double drawX = _marginLeft + indent + (10 * _scale);
+                double drawX = _marginLeft + indent + _layout.CodeHorizontalPaddingPoints;
                 double drawY = _y + line.Font.Size;
-                _graphics!.DrawRectangle(new XSolidBrush(_codeBackgroundColor), _marginLeft + indent, _y - (5 * _scale), available, rowHeight);
+                _graphics!.DrawRectangle(new XSolidBrush(_codeBackgroundColor), _marginLeft + indent, _y - _layout.CodeVerticalPaddingPoints, available, rowHeight);
                 _graphics.DrawString(line.Text, line.Font, new XSolidBrush(_codeTextColor), drawX, drawY);
                 _y += lineAdvance;
             }
-            _y += _blockGap + 2;
+            _y += _blockGap;
         }
 
         private void AddCodeLine(string line, double maxWidth, List<StyledLine> output)
@@ -351,7 +345,7 @@ public sealed class MarkdownToPdfProcessor : MultiFileProcessorBase
             string text = line.Length == 0
                 ? " "
                 : NormalizeDisplayGlyphs(line.Replace("\t", "    ", StringComparison.Ordinal));
-            XFont font = CreateFont(text, 9.5 * _scale, XFontStyleEx.Regular, monospace: !ContainsCjk(text));
+            XFont font = CreateFont(text, _layout.CodeFontSizePoints, XFontStyleEx.Regular, monospace: !ContainsCjk(text));
             foreach (string wrappedLine in WrapText(text, font, maxWidth))
                 output.Add(new StyledLine(wrappedLine, font));
         }
@@ -383,8 +377,8 @@ public sealed class MarkdownToPdfProcessor : MultiFileProcessorBase
                 string text = i < row.Count && row[i] is TableCell cell
                     ? NormalizeDisplayGlyphs(ExtractBlockText(cell))
                     : "";
-                XFont font = CreateFont(text, 9.5 * _scale, row.IsHeader ? XFontStyleEx.Bold : XFontStyleEx.Regular);
-                List<string> lines = WrapText(text, font, columnWidth - (12 * _scale)).ToList();
+                XFont font = CreateFont(text, _layout.TableFontSizePoints, row.IsHeader ? XFontStyleEx.Bold : XFontStyleEx.Regular);
+                List<string> lines = WrapText(text, font, columnWidth - (_layout.TableHorizontalPaddingPoints * 2)).ToList();
                 if (lines.Count == 0) lines.Add("");
                 result.Add(new TableCellLayout(lines, font));
             }
@@ -397,9 +391,9 @@ public sealed class MarkdownToPdfProcessor : MultiFileProcessorBase
             int maxLines = Math.Max(1, cells.Max(cell => cell.Lines.Count));
             while (lineOffset < maxLines)
             {
-                double tableLineHeight = 13 * _scale;
-                double tablePadding = 8 * _scale;
-                double minimumRowHeight = 22 * _scale;
+                double tableLineHeight = _layout.TableLineHeightPoints;
+                double tablePadding = _layout.TableVerticalPaddingPoints * 2;
+                double minimumRowHeight = tableLineHeight + tablePadding;
                 EnsureSpace(minimumRowHeight);
                 int availableLines = Math.Max(1, (int)Math.Floor((PageBottom - _y - tablePadding) / tableLineHeight));
                 int lineCount = Math.Min(maxLines - lineOffset, availableLines);
@@ -435,8 +429,8 @@ public sealed class MarkdownToPdfProcessor : MultiFileProcessorBase
             for (int lineIndex = lineOffset; lineIndex < end; lineIndex++)
             {
                 int visibleIndex = lineIndex - lineOffset;
-                double drawX = x + (8 * _scale);
-                double drawY = _y + (6 * _scale) + cell.Font.Size + (visibleIndex * 13 * _scale);
+                double drawX = x + _layout.TableHorizontalPaddingPoints;
+                double drawY = _y + _layout.TableVerticalPaddingPoints + cell.Font.Size + (visibleIndex * _layout.TableLineHeightPoints);
                 _graphics!.DrawString(
                     cell.Lines[lineIndex], cell.Font, new XSolidBrush(_textColor),
                     drawX, drawY);
@@ -635,7 +629,7 @@ public sealed class MarkdownToPdfProcessor : MultiFileProcessorBase
         }
 
         private static string NormalizeDisplayGlyphs(string text) =>
-            text.Replace("：", ": ", StringComparison.Ordinal).Replace('\u2794', '\u2192');
+            text.Replace('\u2794', '\u2192');
 
         private void RenderInlineToken(string token, string? url, bool isCode, XFont font, XBrush brush, double indent, double lineHeight, double maxX, ref double x)
         {
@@ -755,33 +749,16 @@ public sealed class MarkdownToPdfProcessor : MultiFileProcessorBase
         }
 
         private double GetHeadingHeight(int level)
-        {
-            double size = HeadingSize(level);
-            return (size * 1.35) + (level <= 2 ? 12 : 7);
-        }
-
-        private double HeadingSize(int level)
-        {
-            double baseSize = level switch
-            {
-                1 => _template.Typography.Headings.H1,
-                2 => _template.Typography.Headings.H2,
-                3 => _template.Typography.Headings.H3,
-                4 => _template.Typography.Headings.H4,
-                5 => _template.Typography.Headings.H5,
-                _ => _template.Typography.Headings.H6
-            };
-            return baseSize * _scale;
-        }
+            => _layout.HeadingLineHeightPoints(_template, level) + _layout.HeadingAfterPoints(level);
 
         private double EstimateMinimumBlockHeight(Block block) => block switch
         {
             ParagraphBlock => _bodyLineHeight * 2,
             ListBlock => _bodyLineHeight * 2,
             QuoteBlock => _bodyLineHeight * 2,
-            Table => 44,
-            FencedCodeBlock => 42,
-            CodeBlock => 42,
+            Table => _layout.TableLineHeightPoints + (_layout.TableVerticalPaddingPoints * 2),
+            FencedCodeBlock => _layout.CodeLineHeightPoints + (_layout.CodeVerticalPaddingPoints * 2),
+            CodeBlock => _layout.CodeLineHeightPoints + (_layout.CodeVerticalPaddingPoints * 2),
             HeadingBlock heading => GetHeadingHeight(heading.Level),
             _ => _bodyLineHeight
         };
@@ -793,7 +770,7 @@ public sealed class MarkdownToPdfProcessor : MultiFileProcessorBase
 
             string text = ExtractInlineText(paragraph.Inline);
             XFont font = CreateFont(text, _bodySize, XFontStyleEx.Regular);
-            int lines = Math.Max(1, WrapText(text, font, ContentWidth - indent - ListIndent).Count());
+            int lines = Math.Max(1, WrapText(text, font, ContentWidth - indent - _layout.ListIndentPoints).Count());
             return Math.Min(lines * _bodyLineHeight, PageBottom - _marginTop);
         }
 

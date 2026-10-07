@@ -56,6 +56,59 @@ public readonly record struct MarkdownThemeColor(byte R, byte G, byte B)
     public string Hex => $"{R:X2}{G:X2}{B:X2}";
 }
 
+/// <summary>
+/// Concrete print-layout metrics resolved once from a template and text scale.
+/// Both PDF and DOCX backends consume this contract so they do not invent
+/// separate spacing, indentation, table, and code-block geometry.
+/// </summary>
+public sealed record MarkdownResolvedLayout(
+    double Scale,
+    double BodySizePoints,
+    double BodyLineHeightPoints,
+    double BlockGapPoints,
+    double ListIndentPoints,
+    double QuoteIndentPoints,
+    double CodeFontSizePoints,
+    double CodeLineHeightPoints,
+    double CodeHorizontalPaddingPoints,
+    double CodeVerticalPaddingPoints,
+    double TableFontSizePoints,
+    double TableLineHeightPoints,
+    double TableHorizontalPaddingPoints,
+    double TableVerticalPaddingPoints)
+{
+    public static MarkdownResolvedLayout Create(MarkdownDocumentTemplate template, double scale) => new(
+        scale,
+        template.Typography.BodySizePoints * scale,
+        template.Typography.LineHeightPoints * scale,
+        template.Layout.BlockGapPoints * scale,
+        20 * scale,
+        16 * scale,
+        9.5 * scale,
+        18 * scale,
+        10 * scale,
+        5 * scale,
+        9.5 * scale,
+        13 * scale,
+        8 * scale,
+        4 * scale);
+
+    public double HeadingSizePoints(MarkdownDocumentTemplate template, int level) => level switch
+    {
+        1 => template.Typography.Headings.H1 * Scale,
+        2 => template.Typography.Headings.H2 * Scale,
+        3 => template.Typography.Headings.H3 * Scale,
+        4 => template.Typography.Headings.H4 * Scale,
+        5 => template.Typography.Headings.H5 * Scale,
+        _ => template.Typography.Headings.H6 * Scale
+    };
+
+    public double HeadingLineHeightPoints(MarkdownDocumentTemplate template, int level) =>
+        HeadingSizePoints(template, level) * 1.35;
+
+    public double HeadingAfterPoints(int level) => (level <= 2 ? 12 : 7) * Scale;
+}
+
 /// <summary>Built-in document templates. Values intentionally differ in layout, not only color.</summary>
 public static class MarkdownTemplateCatalog
 {
