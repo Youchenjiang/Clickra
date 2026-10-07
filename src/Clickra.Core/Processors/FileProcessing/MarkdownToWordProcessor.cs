@@ -95,7 +95,9 @@ public sealed class MarkdownToWordProcessor : MultiFileProcessorBase
         private readonly CancellationToken _token;
         private readonly List<Relationship> _relationships = new();
         private readonly List<ImagePart> _images = new();
+        private readonly List<NumberingInstance> _numberingInstances = new();
         private int _nextRelationshipId = 1;
+        private int _nextNumberingId = 1;
 
         public DocxWriter(
             MarkdownDocumentTemplate template,
@@ -148,6 +150,7 @@ public sealed class MarkdownToWordProcessor : MultiFileProcessorBase
                     WriteXml(archive, "_rels/.rels", CreateRootRelationships());
                     WriteXml(archive, "word/document.xml", new XDocument(new XDeclaration("1.0", "UTF-8", "yes"), root));
                     WriteXml(archive, "word/styles.xml", CreateStyles());
+                    if (_numberingInstances.Count > 0) WriteXml(archive, "word/numbering.xml", CreateNumbering());
                     WriteXml(archive, "word/_rels/document.xml.rels", CreateDocumentRelationships());
                     foreach (ImagePart image in _images)
                     {
@@ -216,17 +219,22 @@ public sealed class MarkdownToWordProcessor : MultiFileProcessorBase
 
         private void RenderList(ListBlock list, XElement parent, int depth)
         {
-            int number = int.TryParse(list.OrderedStart, out int orderedStart) ? orderedStart : 1;
+            int level = Math.Clamp(depth, 0, 8);
+            int start = int.TryParse(list.OrderedStart, out int orderedStart) ? orderedStart : 1;
+            int numberingId = _nextNumberingId++;
+            _numberingInstances.Add(new NumberingInstance(numberingId, list.IsOrdered, level, start));
+
             foreach (Block child in list)
             {
                 if (child is not ListItemBlock item) continue;
-                string marker = list.IsOrdered ? $"{number++}. " : "• ";
                 bool first = true;
                 foreach (Block itemChild in item)
                 {
                     if (itemChild is ParagraphBlock paragraph)
                     {
-                        XElement p = CreateInlineParagraph(paragraph.Inline, "Normal", marker: first ? marker : null, indentTwips: (depth + 1) * 360);
+                        XElement p = first
+                            ? CreateInlineParagraph(paragraph.Inline, "Normal", numberingId: numberingId, numberingLevel: level)
+                            : CreateInlineParagraph(paragraph.Inline, "Normal", indentTwips: (level + 1) * 360);
                         parent.Add(p);
                         first = false;
                     }
@@ -242,10 +250,22 @@ public sealed class MarkdownToWordProcessor : MultiFileProcessorBase
             }
         }
 
-        private XElement CreateInlineParagraph(ContainerInline? inline, string style, string? marker = null, int indentTwips = 0, bool bodyParagraph = false)
+        private XElement CreateInlineParagraph(
+            ContainerInline? inline,
+            string style,
+            int indentTwips = 0,
+            bool bodyParagraph = false,
+            int? numberingId = null,
+            int numberingLevel = 0)
         {
-            var p = new XElement(W + "p", ParagraphProperties(style, indentTwips, bodyParagraph));
-            if (marker is not null) p.Add(CreateRun(marker, false, false, false, null));
+            var pPr = ParagraphProperties(style, indentTwips, bodyParagraph);
+            if (numberingId is not null)
+            {
+                pPr.Add(new XElement(W + "numPr",
+                    new XElement(W + "ilvl", new XAttribute(W + "val", numberingLevel)),
+                    new XElement(W + "numId", new XAttribute(W + "val", numberingId.Value))));
+            }
+            var p = new XElement(W + "p", pPr);
             AppendInlines(p, inline, false, false, null);
             return p;
         }
@@ -593,9 +613,62 @@ public sealed class MarkdownToWordProcessor : MultiFileProcessorBase
                 new XElement(ct + "Default", new XAttribute("Extension", "xml"), new XAttribute("ContentType", "application/xml")),
                 new XElement(ct + "Override", new XAttribute("PartName", "/word/document.xml"), new XAttribute("ContentType", "application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml")),
                 new XElement(ct + "Override", new XAttribute("PartName", "/word/styles.xml"), new XAttribute("ContentType", "application/vnd.openxmlformats-officedocument.wordprocessingml.styles+xml")));
+            if (_numberingInstances.Count > 0)
+                types.Add(new XElement(ct + "Override", new XAttribute("PartName", "/word/numbering.xml"), new XAttribute("ContentType", "application/vnd.openxmlformats-officedocument.wordprocessingml.numbering+xml")));
             foreach (ImagePart image in _images.GroupBy(i => Path.GetExtension(i.FileName), StringComparer.OrdinalIgnoreCase).Select(g => g.First()))
                 types.Add(new XElement(ct + "Default", new XAttribute("Extension", Path.GetExtension(image.FileName).TrimStart('.')), new XAttribute("ContentType", image.ContentType)));
             return new XDocument(new XDeclaration("1.0", "UTF-8", "yes"), types);
+        }
+
+        private XDocument CreateNumbering()
+        {
+            var numbering = new XElement(W + "numbering", new XAttribute(XNamespace.Xmlns + "w", W));
+            numbering.Add(CreateAbstractNumbering(0, ordered: false));
+            numbering.Add(CreateAbstractNumbering(1, ordered: true));
+            foreach (NumberingInstance instance in _numberingInstances)
+            {
+                var num = new XElement(W + "num",
+                    new XAttribute(W + "numId", instance.NumberingId),
+                    new XElement(W + "abstractNumId", new XAttribute(W + "val", instance.Ordered ? 1 : 0)));
+                if (instance.Start != 1)
+                {
+                    num.Add(new XElement(W + "lvlOverride",
+                        new XAttribute(W + "ilvl", instance.Level),
+                        new XElement(W + "startOverride", new XAttribute(W + "val", instance.Start))));
+                }
+                numbering.Add(num);
+            }
+            return new XDocument(new XDeclaration("1.0", "UTF-8", "yes"), numbering);
+        }
+
+        private XElement CreateAbstractNumbering(int abstractId, bool ordered)
+        {
+            var abstractNum = new XElement(W + "abstractNum",
+                new XAttribute(W + "abstractNumId", abstractId),
+                new XElement(W + "multiLevelType", new XAttribute(W + "val", "hybridMultilevel")));
+            for (int level = 0; level <= 8; level++)
+            {
+                int left = (level + 1) * 360;
+                string levelText = ordered ? $"%{level + 1}." : "•";
+                var lvl = new XElement(W + "lvl",
+                    new XAttribute(W + "ilvl", level),
+                    new XElement(W + "start", new XAttribute(W + "val", 1)),
+                    new XElement(W + "numFmt", new XAttribute(W + "val", ordered ? "decimal" : "bullet")),
+                    new XElement(W + "lvlText", new XAttribute(W + "val", levelText)),
+                    new XElement(W + "lvlJc", new XAttribute(W + "val", "left")),
+                    new XElement(W + "pPr",
+                        new XElement(W + "tabs", new XElement(W + "tab", new XAttribute(W + "val", "num"), new XAttribute(W + "pos", left))),
+                        new XElement(W + "ind", new XAttribute(W + "left", left), new XAttribute(W + "hanging", 360))));
+                if (!ordered)
+                {
+                    lvl.Add(new XElement(W + "rPr",
+                        new XElement(W + "rFonts",
+                            new XAttribute(W + "ascii", "Segoe UI Symbol"),
+                            new XAttribute(W + "hAnsi", "Segoe UI Symbol"))));
+                }
+                abstractNum.Add(lvl);
+            }
+            return abstractNum;
         }
 
         private static XDocument CreateRootRelationships()
@@ -617,6 +690,11 @@ public sealed class MarkdownToWordProcessor : MultiFileProcessorBase
                     new XAttribute("Id", "rIdStyles"),
                     new XAttribute("Type", "http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles"),
                     new XAttribute("Target", "styles.xml")));
+            if (_numberingInstances.Count > 0)
+                root.Add(new XElement(rel + "Relationship",
+                    new XAttribute("Id", "rIdNumbering"),
+                    new XAttribute("Type", "http://schemas.openxmlformats.org/officeDocument/2006/relationships/numbering"),
+                    new XAttribute("Target", "numbering.xml")));
             foreach (Relationship relationship in _relationships)
             {
                 var element = new XElement(rel + "Relationship",
@@ -663,7 +741,7 @@ public sealed class MarkdownToWordProcessor : MultiFileProcessorBase
             Uri.TryCreate(value, UriKind.Absolute, out Uri? uri) && (uri.Scheme == Uri.UriSchemeHttp || uri.Scheme == Uri.UriSchemeHttps);
 
         private static string NormalizeDisplayGlyphs(string text) =>
-            text.Replace("：", ": ", StringComparison.Ordinal).Replace('\u2794', '\u2192');
+            text.Replace('\u2794', '\u2192');
 
         private static string NormalizeNewlines(string value) =>
             value.Replace("\r\n", "\n", StringComparison.Ordinal).Replace('\r', '\n');
@@ -687,5 +765,6 @@ public sealed class MarkdownToWordProcessor : MultiFileProcessorBase
 
         private sealed record Relationship(string Id, string Type, string Target, bool External);
         private sealed record ImagePart(string SourcePath, string FileName, string ContentType);
+        private sealed record NumberingInstance(int NumberingId, bool Ordered, int Level, int Start);
     }
 }

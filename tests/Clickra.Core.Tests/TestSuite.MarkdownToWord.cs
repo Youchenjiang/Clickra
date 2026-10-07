@@ -79,6 +79,10 @@ static partial class TestSuite
                 Assert.True(text.Contains("引用內容", StringComparison.Ordinal), "Quote text must survive DOCX conversion.");
                 Assert.True(text.Contains("code block", StringComparison.Ordinal), "Code block text must survive DOCX conversion.");
                 Assert.True(document.Descendants(w + "tbl").Any(), "Markdown tables must become Word tables.");
+                Assert.True(archive.GetEntry("word/numbering.xml") is not null,
+                    "Markdown lists must create a Word numbering part instead of embedding bullet characters in paragraph text.");
+                Assert.True(document.Descendants(w + "numPr").Any(),
+                    "Markdown list paragraphs must use Word numbering properties.");
 
                 ZipArchiveEntry? relEntry = archive.GetEntry("word/_rels/document.xml.rels");
                 Assert.True(relEntry is not null, "A hyperlink must create document relationships.");
@@ -332,22 +336,56 @@ static partial class TestSuite
                 using ZipArchive archive = ZipFile.OpenRead(output);
                 XDocument document = ReadXml(archive, "word/document.xml");
                 XNamespace w = "http://schemas.openxmlformats.org/wordprocessingml/2006/main";
-                var listIndents = document.Descendants(w + "p")
-                    .Select(p => p.Element(w + "pPr")?.Element(w + "ind"))
-                    .Where(ind => ind?.Attribute(w + "left")?.Value == "360")
+                var normalParagraphs = document.Descendants(w + "p")
+                    .Where(p => p.Element(w + "pPr")?.Element(w + "pStyle")?.Attribute(w + "val")?.Value == "Normal")
                     .ToList();
-                Assert.True(listIndents.Count >= 2,
-                    "Both paragraphs in a multi-paragraph list item must retain list indentation.");
-                Assert.True(listIndents.All(ind => ind!.Attribute(w + "firstLine") is null),
+                XElement firstListParagraph = normalParagraphs
+                    .Single(p => p.Descendants(w + "t").Any(t => t.Value.Contains("First list paragraph", StringComparison.Ordinal)));
+                XElement continuationParagraph = normalParagraphs
+                    .Single(p => p.Descendants(w + "t").Any(t => t.Value.Contains("Second list paragraph", StringComparison.Ordinal)));
+                Assert.True(firstListParagraph.Element(w + "pPr")?.Element(w + "numPr") is not null,
+                    "The first paragraph in a Markdown list item must use genuine Word numbering.");
+                Assert.Equal("360", continuationParagraph.Element(w + "pPr")?.Element(w + "ind")?.Attribute(w + "left")?.Value ?? "");
+                Assert.True(firstListParagraph.Element(w + "pPr")?.Element(w + "ind")?.Attribute(w + "firstLine") is null
+                            && continuationParagraph.Element(w + "pPr")?.Element(w + "ind")?.Attribute(w + "firstLine") is null,
                     "Academic list paragraphs must not inherit the ordinary body first-line indent.");
-                Assert.True(document.Descendants(w + "p")
-                    .Where(p => p.Element(w + "pPr")?.Element(w + "ind")?.Attribute(w + "left")?.Value == "360")
-                    .All(p => p.Element(w + "pPr")?.Element(w + "jc") is null),
+                Assert.True(firstListParagraph.Element(w + "pPr")?.Element(w + "jc") is null
+                            && continuationParagraph.Element(w + "pPr")?.Element(w + "jc") is null,
                     "Academic list paragraphs must not inherit ordinary-body justification.");
                 XElement quote = document.Descendants(w + "p")
                     .Single(p => p.Element(w + "pPr")?.Element(w + "pStyle")?.Attribute(w + "val")?.Value == "Quote");
                 Assert.True(quote.Element(w + "pPr")?.Element(w + "jc") is null,
                     "Academic quote paragraphs must not inherit ordinary-body justification.");
+            }));
+
+        runner.Run("Markdown to Word: preserves full-width punctuation and real list semantics", () =>
+            RunWithTempDirectory(tempDir =>
+            {
+                string input = Path.Combine(tempDir, "punctuation-list.md");
+                string output = Path.Combine(tempDir, "punctuation-list.docx");
+                File.WriteAllText(input,
+                    "## 一、作業封包來源\n\n取得：保留中文標點。\n\n- 題目連結：Root-Me\n- 學習核心：保留原文\n\n3. Third\n4. Fourth");
+
+                FileProcessor.ConvertMarkdownToWord(input, output, MarkdownPdfOptions.Create());
+
+                using ZipArchive archive = ZipFile.OpenRead(output);
+                XDocument document = ReadXml(archive, "word/document.xml");
+                XDocument numbering = ReadXml(archive, "word/numbering.xml");
+                XNamespace w = "http://schemas.openxmlformats.org/wordprocessingml/2006/main";
+                string text = string.Concat(document.Descendants(w + "t").Select(e => e.Value));
+                Assert.True(text.Contains("一、作業封包來源", StringComparison.Ordinal)
+                            && text.Contains("取得：保留中文標點。", StringComparison.Ordinal)
+                            && text.Contains("題目連結：Root-Me", StringComparison.Ordinal),
+                    "DOCX conversion must preserve the Markdown source's full-width Chinese punctuation.");
+                Assert.False(text.Contains("• 題目連結", StringComparison.Ordinal),
+                    "Bullet markers must come from Word numbering rather than literal bullet text.");
+                Assert.True(document.Descendants(w + "numPr").Count() == 4,
+                    "Each list item must carry genuine Word numbering properties.");
+                Assert.True(numbering.Descendants(w + "numFmt").Any(e => e.Attribute(w + "val")?.Value == "bullet")
+                            && numbering.Descendants(w + "numFmt").Any(e => e.Attribute(w + "val")?.Value == "decimal"),
+                    "The numbering part must define both bullet and ordered-list formats.");
+                Assert.True(numbering.Descendants(w + "startOverride").Any(e => e.Attribute(w + "val")?.Value == "3"),
+                    "An ordered Markdown list with a non-one start must retain its starting number in Word numbering.");
             }));
     }
 
