@@ -816,8 +816,7 @@ public sealed class MarkdownToPdfProcessor : MultiFileProcessorBase
             {
                 if (ch is >= '\u3040' and <= '\u30ff') return "MS Gothic";
                 if (ch is >= '\uac00' and <= '\ud7af') return "Malgun Gothic";
-                if (ch is >= '\u3400' and <= '\u9fff') return _template.Typography.CjkFont;
-                if (ch is >= '\uff00' and <= '\uffef') return _template.Typography.CjkFont;
+                if (IsCjkTypographyChar(ch)) return _template.Typography.CjkFont;
             }
             return _template.Typography.LatinFont;
         }
@@ -890,7 +889,7 @@ public sealed class MarkdownToPdfProcessor : MultiFileProcessorBase
                     yield return current.ToString();
                     current.Clear();
                 }
-                else if (IsCjk(ch) || IsFullWidth(ch))
+                else if (IsCjkTypographyChar(ch))
                 {
                     if (current.Length > 0) { yield return current.ToString(); current.Clear(); }
                     yield return ch.ToString();
@@ -908,7 +907,15 @@ public sealed class MarkdownToPdfProcessor : MultiFileProcessorBase
 
         private static bool IsFullWidth(char ch) => ch is >= '\uff00' and <= '\uffef';
 
-        private static bool ContainsCjk(string text) => text.Any(IsCjk);
+        private static bool IsCjkTypographyChar(char ch) =>
+            IsCjk(ch) ||
+            ch is >= '\u2e80' and <= '\u303f' or
+                >= '\u31c0' and <= '\u31ef' or
+                >= '\ufe10' and <= '\ufe1f' or
+                >= '\ufe30' and <= '\ufe4f' ||
+            IsFullWidth(ch);
+
+        private static bool ContainsCjk(string text) => text.Any(IsCjkTypographyChar);
 
         private static bool IsWebUrl(string url) =>
             Uri.TryCreate(url, UriKind.Absolute, out Uri? uri) && uri.Scheme is "http" or "https" or "mailto";

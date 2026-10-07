@@ -290,6 +290,36 @@ static partial class TestSuite
                     "Mixed Latin/CJK text must not collapse to one PDF font family.");
             }));
 
+        runner.Run("Markdown to PDF: imported CJK punctuation does not render as null glyphs", () =>
+            RunWithTempDirectory(tempDir =>
+            {
+                string input = Path.Combine(tempDir, "cjk-punctuation.md");
+                string output = Path.Combine(tempDir, "cjk-punctuation.pdf");
+                string templatePath = Path.Combine(tempDir, "cjk-punctuation.docx");
+                CreateWordTemplateFixture(templatePath);
+                const string sentence = "Alpha\u3001Beta\u3002Gamma\uff1a\u300cDelta\u300d\u300eEcho\u300f\u3010Foxtrot\u3011";
+                File.WriteAllText(input, "# Punctuation\n\n" + sentence);
+
+                FileProcessor.ConvertMarkdownToPdf(input, output, MarkdownPdfOptions.Create(templatePath: templatePath));
+
+                using var pdf = UglyToad.PdfPig.PdfDocument.Open(output);
+                var page = pdf.GetPage(1);
+                string text = page.Text;
+                Assert.False(text.Contains('\0'),
+                    "Imported CJK punctuation must never collapse to NUL glyphs in the PDF text layer.");
+                foreach (char punctuation in "\u3001\u3002\u300c\u300d\u300e\u300f\u3010\u3011")
+                {
+                    Assert.True(text.Contains(punctuation),
+                        $"Imported CJK punctuation '{punctuation}' must remain extractable from the PDF.");
+                }
+                Assert.True(text.Contains(": ", StringComparison.Ordinal),
+                    "The existing full-width colon normalization must remain intact.");
+
+                string punctuationFont = page.Letters.First(letter => letter.Value == "\u3001").FontName!;
+                Assert.True(punctuationFont.Contains("DFKai", StringComparison.OrdinalIgnoreCase) || punctuationFont.Contains("KaiU", StringComparison.OrdinalIgnoreCase),
+                    $"CJK punctuation must use the imported CJK font family; actual={punctuationFont}.");
+            }));
+
         runner.Run("Markdown to PDF: Academic indents only the first body line", () =>
             RunWithTempDirectory(tempDir =>
             {
