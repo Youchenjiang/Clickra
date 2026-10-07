@@ -447,7 +447,9 @@ public sealed class MarkdownToWordProcessor : MultiFileProcessorBase
         private (long Cx, long Cy) GetImageExtent(string path)
         {
             using Image image = Image.FromFile(path);
-            double usablePoints = (_paper == MarkdownPdfOptions.PaperLetter ? 612 : 595.28) - (_template.Layout.MarginPoints * 2);
+            double usablePoints = (_paper == MarkdownPdfOptions.PaperLetter ? 612 : 595.28)
+                - _template.Layout.EffectiveMarginLeftPoints
+                - _template.Layout.EffectiveMarginRightPoints;
             double widthPoints = Math.Min(usablePoints, image.Width * 72d / Math.Max(image.HorizontalResolution, 96));
             double scale = widthPoints / Math.Max(1, image.Width * 72d / Math.Max(image.HorizontalResolution, 96));
             double heightPoints = image.Height * 72d / Math.Max(image.VerticalResolution, 96) * scale;
@@ -564,6 +566,8 @@ public sealed class MarkdownToWordProcessor : MultiFileProcessorBase
             if (indentTwips > 0) pPr.Add(new XElement(W + "ind", new XAttribute(W + "left", indentTwips)));
             else if (bodyParagraph && _template.Layout.FirstLineIndentPoints > 0)
                 pPr.Add(new XElement(W + "ind", new XAttribute(W + "firstLine", PointsToTwips(_template.Layout.FirstLineIndentPoints))));
+            if (bodyParagraph && _template.Layout.JustifyBody)
+                pPr.Add(new XElement(W + "jc", new XAttribute(W + "val", "both")));
             return pPr;
         }
 
@@ -571,12 +575,13 @@ public sealed class MarkdownToWordProcessor : MultiFileProcessorBase
         {
             int width = _paper == MarkdownPdfOptions.PaperLetter ? 12240 : 11906;
             int height = _paper == MarkdownPdfOptions.PaperLetter ? 15840 : 16838;
-            int margin = PointsToTwips(_template.Layout.MarginPoints);
             return new XElement(W + "sectPr",
                 new XElement(W + "pgSz", new XAttribute(W + "w", width), new XAttribute(W + "h", height)),
                 new XElement(W + "pgMar",
-                    new XAttribute(W + "top", margin), new XAttribute(W + "right", margin),
-                    new XAttribute(W + "bottom", margin), new XAttribute(W + "left", margin),
+                    new XAttribute(W + "top", PointsToTwips(_template.Layout.EffectiveMarginTopPoints)),
+                    new XAttribute(W + "right", PointsToTwips(_template.Layout.EffectiveMarginRightPoints)),
+                    new XAttribute(W + "bottom", PointsToTwips(_template.Layout.EffectiveMarginBottomPoints)),
+                    new XAttribute(W + "left", PointsToTwips(_template.Layout.EffectiveMarginLeftPoints)),
                     new XAttribute(W + "header", 720), new XAttribute(W + "footer", 720), new XAttribute(W + "gutter", 0)));
         }
 

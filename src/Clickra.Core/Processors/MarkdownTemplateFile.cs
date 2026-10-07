@@ -94,13 +94,20 @@ public static class MarkdownTemplateFile
     private static MarkdownLayout ReadLayout(JsonElement element, MarkdownLayout source)
     {
         RequireObject(element, "layout");
-        EnsureOnly(element, "margin", "blockGap", "firstLineIndent", "centerH1", "accentH2", "drawH2Bar", "fillTableHeader", "quoteBarWidth");
+        EnsureOnly(element, "margin", "marginTop", "marginRight", "marginBottom", "marginLeft", "blockGap", "firstLineIndent", "centerH1", "justifyBody", "accentH2", "drawH2Bar", "fillTableHeader", "quoteBarWidth");
+        bool overridesUniformMargin = element.TryGetProperty("margin", out _);
+        double margin = Number(element, "margin", source.MarginPoints, 18, 144);
         return source with
         {
-            MarginPoints = Number(element, "margin", source.MarginPoints, 18, 144),
+            MarginPoints = margin,
+            MarginTopPoints = OptionalNumber(element, "marginTop", overridesUniformMargin ? null : source.MarginTopPoints, 18, 144),
+            MarginRightPoints = OptionalNumber(element, "marginRight", overridesUniformMargin ? null : source.MarginRightPoints, 18, 144),
+            MarginBottomPoints = OptionalNumber(element, "marginBottom", overridesUniformMargin ? null : source.MarginBottomPoints, 18, 144),
+            MarginLeftPoints = OptionalNumber(element, "marginLeft", overridesUniformMargin ? null : source.MarginLeftPoints, 18, 144),
             BlockGapPoints = Number(element, "blockGap", source.BlockGapPoints, 0, 40),
             FirstLineIndentPoints = Number(element, "firstLineIndent", source.FirstLineIndentPoints, 0, 72),
             CenterH1 = Boolean(element, "centerH1", source.CenterH1),
+            JustifyBody = Boolean(element, "justifyBody", source.JustifyBody),
             AccentH2 = Boolean(element, "accentH2", source.AccentH2),
             DrawH2Bar = Boolean(element, "drawH2Bar", source.DrawH2Bar),
             FillTableHeader = Boolean(element, "fillTableHeader", source.FillTableHeader),
@@ -175,6 +182,14 @@ public static class MarkdownTemplateFile
     }
 
     private static double Number(JsonElement element, string name, double fallback, double min, double max)
+    {
+        if (!element.TryGetProperty(name, out JsonElement value)) return fallback;
+        if (value.ValueKind != JsonValueKind.Number || !value.TryGetDouble(out double result) || !double.IsFinite(result) || result < min || result > max)
+            throw new InvalidDataException($"Template property '{name}' must be between {min.ToString(CultureInfo.InvariantCulture)} and {max.ToString(CultureInfo.InvariantCulture)}.");
+        return result;
+    }
+
+    private static double? OptionalNumber(JsonElement element, string name, double? fallback, double min, double max)
     {
         if (!element.TryGetProperty(name, out JsonElement value)) return fallback;
         if (value.ValueKind != JsonValueKind.Number || !value.TryGetDouble(out double result) || !double.IsFinite(result) || result < min || result > max)

@@ -22,9 +22,11 @@ Clickra uses the same document-template model for Markdown → PDF and Markdown 
   },
   "layout": {
     "margin": 48,
+    "marginLeft": 60,
     "blockGap": 9,
     "firstLineIndent": 0,
     "centerH1": false,
+    "justifyBody": false,
     "accentH2": true,
     "drawH2Bar": true,
     "fillTableHeader": true,
@@ -50,7 +52,7 @@ Only properties present in the JSON override the selected base template. Omitted
 | `name` | No | Display identity for the imported template. Defaults to the JSON filename without its extension. |
 | `base` | No | Built-in template to inherit from: `default`, `minimal`, or `academic`. Defaults to `default`. |
 | `typography` | No | Font families, body metrics, and heading sizes. |
-| `layout` | No | Page margin, spacing, heading/table decoration, and quote-bar width. |
+| `layout` | No | Page margins, paragraph alignment/spacing, heading/table decoration, and quote-bar width. |
 | `palette` | No | Semantic document colors. |
 
 Unknown or duplicate properties are rejected instead of being ignored.
@@ -91,14 +93,21 @@ All numeric layout values are in points.
 
 | Property | Allowed value |
 | --- | --- |
-| `margin` | `18`–`144`. |
+| `margin` | `18`–`144`; uniform shorthand for all four page margins. Existing version-1 templates keep this behavior. |
+| `marginTop` | `18`–`144`; overrides only the top margin. |
+| `marginRight` | `18`–`144`; overrides only the right margin. |
+| `marginBottom` | `18`–`144`; overrides only the bottom margin. |
+| `marginLeft` | `18`–`144`; overrides only the left margin. |
 | `blockGap` | `0`–`40`. |
 | `firstLineIndent` | `0`–`72`; applied to ordinary body paragraphs, not lists, quotes, or table cells. |
 | `centerH1` | `true` or `false`; centers a level-one title when the renderer can keep it on one line. |
+| `justifyBody` | `true` or `false`; fully justifies ordinary body paragraphs while leaving headings, lists, quotes, code, and table cells unchanged. |
 | `accentH2` | `true` or `false`. |
 | `drawH2Bar` | `true` or `false`. |
 | `fillTableHeader` | `true` or `false`. |
 | `quoteBarWidth` | `0.5`–`12`. |
+
+When `margin` is present, it remains the fallback for every side. A supplied side-specific margin overrides only that side; for example, `"margin": 48, "marginLeft": 72` means 48-point top/right/bottom margins and a 72-point left margin.
 
 Paper size, text-size scaling, and code-block theme remain one-shot conversion choices in the Markdown conversion dialog. A custom JSON template controls the shared semantic document style rather than those separate conversion controls.
 

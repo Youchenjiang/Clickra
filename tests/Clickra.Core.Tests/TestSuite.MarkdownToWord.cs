@@ -131,8 +131,8 @@ static partial class TestSuite
                     "Minimal DOCX must use its configured Latin font.");
                 Assert.True(academicStyles.Contains("Times New Roman", StringComparison.Ordinal),
                     "Academic DOCX must use its configured Latin font.");
-                Assert.True(academicStyles.Contains("PMingLiU", StringComparison.Ordinal),
-                    "Academic DOCX must use a serif Traditional Chinese family rather than JhengHei.");
+                Assert.True(academicStyles.Contains("KaiU", StringComparison.Ordinal),
+                    "Academic DOCX must use the conventional Traditional Chinese KaiU family rather than JhengHei.");
                 XDocument academicStylesXml = XDocument.Parse(academicStyles);
                 XElement heading1Style = academicStylesXml.Descendants(w + "style")
                     .Single(style => style.Attribute(w + "styleId")?.Value == "Heading1");
@@ -140,18 +140,27 @@ static partial class TestSuite
 
                 XDocument minimalDocument = ReadXml(minimal, "word/document.xml");
                 XDocument academicDocument = ReadXml(academic, "word/document.xml");
+                XElement academicMargins = academicDocument.Descendants(w + "pgMar").Single();
                 string minimalMargin = minimalDocument.Descendants(w + "pgMar").Single().Attribute(w + "left")!.Value;
-                string academicMargin = academicDocument.Descendants(w + "pgMar").Single().Attribute(w + "left")!.Value;
+                string academicMargin = academicMargins.Attribute(w + "left")!.Value;
                 Assert.False(minimalMargin == academicMargin,
                     "Minimal and Academic DOCX templates must use different page margins.");
-                Assert.Equal("1440", academicMargin);
-                var bodyIndents = academicDocument.Descendants(w + "p")
+                Assert.Equal("1701", academicMargins.Attribute(w + "left")!.Value);
+                Assert.Equal("1134", academicMargins.Attribute(w + "right")!.Value);
+                Assert.Equal("1417", academicMargins.Attribute(w + "top")!.Value);
+                Assert.Equal("1417", academicMargins.Attribute(w + "bottom")!.Value);
+                var bodyParagraphs = academicDocument.Descendants(w + "p")
                     .Where(p => p.Element(w + "pPr")?.Element(w + "pStyle")?.Attribute(w + "val")?.Value == "Normal")
+                    .ToList();
+                var bodyIndents = bodyParagraphs
                     .Select(p => p.Element(w + "pPr")?.Element(w + "ind")?.Attribute(w + "firstLine")?.Value)
                     .Where(value => value is not null)
                     .ToList();
                 Assert.True(bodyIndents.Count >= 2 && bodyIndents.All(value => value == "480"),
                     "Academic DOCX body paragraphs must use a 24pt first-line indent without applying it to every Normal-style container.");
+                Assert.True(bodyParagraphs.Count >= 2
+                            && bodyParagraphs.All(p => p.Element(w + "pPr")?.Element(w + "jc")?.Attribute(w + "val")?.Value == "both"),
+                    "Academic DOCX body paragraphs must be fully justified.");
             }));
 
         runner.Run("Markdown to Word: imported template changes DOCX styles and layout", () =>
@@ -182,8 +191,9 @@ static partial class TestSuite
 
                 XDocument document = ReadXml(archive, "word/document.xml");
                 XNamespace w = "http://schemas.openxmlformats.org/wordprocessingml/2006/main";
-                string leftMargin = document.Descendants(w + "pgMar").Single().Attribute(w + "left")!.Value;
-                Assert.Equal("960", leftMargin);
+                XElement margins = document.Descendants(w + "pgMar").Single();
+                Assert.True(new[] { "top", "right", "bottom", "left" }.All(name => margins.Attribute(w + name)?.Value == "960"),
+                    "A legacy uniform custom margin must still set all four DOCX margins.");
             }));
 
         runner.Run("Markdown to Word: Academic list paragraphs do not inherit body first-line indent", () =>
@@ -191,7 +201,7 @@ static partial class TestSuite
             {
                 string input = Path.Combine(tempDir, "academic-list.md");
                 string output = Path.Combine(tempDir, "academic-list.docx");
-                File.WriteAllText(input, "- First list paragraph.\n\n  Second list paragraph in the same item.");
+                File.WriteAllText(input, "- First list paragraph.\n\n  Second list paragraph in the same item.\n\n> Quoted evidence.");
 
                 FileProcessor.ConvertMarkdownToWord(input, output,
                     MarkdownPdfOptions.Create(MarkdownPdfOptions.ThemeAcademic));
@@ -207,6 +217,14 @@ static partial class TestSuite
                     "Both paragraphs in a multi-paragraph list item must retain list indentation.");
                 Assert.True(listIndents.All(ind => ind!.Attribute(w + "firstLine") is null),
                     "Academic list paragraphs must not inherit the ordinary body first-line indent.");
+                Assert.True(document.Descendants(w + "p")
+                    .Where(p => p.Element(w + "pPr")?.Element(w + "ind")?.Attribute(w + "left")?.Value == "360")
+                    .All(p => p.Element(w + "pPr")?.Element(w + "jc") is null),
+                    "Academic list paragraphs must not inherit ordinary-body justification.");
+                XElement quote = document.Descendants(w + "p")
+                    .Single(p => p.Element(w + "pPr")?.Element(w + "pStyle")?.Attribute(w + "val")?.Value == "Quote");
+                Assert.True(quote.Element(w + "pPr")?.Element(w + "jc") is null,
+                    "Academic quote paragraphs must not inherit ordinary-body justification.");
             }));
     }
 

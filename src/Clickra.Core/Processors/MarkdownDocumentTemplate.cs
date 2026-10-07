@@ -28,10 +28,21 @@ public sealed record MarkdownLayout(
     double BlockGapPoints,
     double FirstLineIndentPoints,
     bool CenterH1,
+    bool JustifyBody,
     bool AccentH2,
     bool DrawH2Bar,
     bool FillTableHeader,
-    double QuoteBarWidthPoints);
+    double QuoteBarWidthPoints,
+    double? MarginTopPoints = null,
+    double? MarginRightPoints = null,
+    double? MarginBottomPoints = null,
+    double? MarginLeftPoints = null)
+{
+    public double EffectiveMarginTopPoints => MarginTopPoints ?? MarginPoints;
+    public double EffectiveMarginRightPoints => MarginRightPoints ?? MarginPoints;
+    public double EffectiveMarginBottomPoints => MarginBottomPoints ?? MarginPoints;
+    public double EffectiveMarginLeftPoints => MarginLeftPoints ?? MarginPoints;
+}
 
 public sealed record MarkdownPalette(
     MarkdownThemeColor Body,
@@ -65,7 +76,7 @@ public static class MarkdownTemplateCatalog
         new MarkdownTypography(
             "Segoe UI", "Microsoft JhengHei", "Courier New", 11.5, 18,
             new MarkdownHeadingScale(25, 18, 14.5, 12.5, 11.5, 11)),
-        new MarkdownLayout(54, 9, FirstLineIndentPoints: 0, CenterH1: false, AccentH2: true, DrawH2Bar: true, FillTableHeader: true, QuoteBarWidthPoints: 3),
+        new MarkdownLayout(54, 9, FirstLineIndentPoints: 0, CenterH1: false, JustifyBody: false, AccentH2: true, DrawH2Bar: true, FillTableHeader: true, QuoteBarWidthPoints: 3),
         new MarkdownPalette(
             new(51, 65, 85), new(30, 41, 59), new(2, 132, 199),
             new(240, 249, 255), new(203, 213, 225)));
@@ -75,7 +86,7 @@ public static class MarkdownTemplateCatalog
         new MarkdownTypography(
             "Segoe UI", "Microsoft JhengHei", "Courier New", 10.8, 16,
             new MarkdownHeadingScale(22, 16, 13, 11.8, 11, 10.5)),
-        new MarkdownLayout(42, 6, FirstLineIndentPoints: 0, CenterH1: false, AccentH2: false, DrawH2Bar: false, FillTableHeader: false, QuoteBarWidthPoints: 2),
+        new MarkdownLayout(42, 6, FirstLineIndentPoints: 0, CenterH1: false, JustifyBody: false, AccentH2: false, DrawH2Bar: false, FillTableHeader: false, QuoteBarWidthPoints: 2),
         new MarkdownPalette(
             new(55, 65, 81), new(31, 41, 55), new(75, 85, 99),
             new(249, 250, 251), new(229, 231, 235)));
@@ -83,9 +94,12 @@ public static class MarkdownTemplateCatalog
     public static MarkdownDocumentTemplate Academic { get; } = new(
         MarkdownPdfOptions.ThemeAcademic,
         new MarkdownTypography(
-            "Times New Roman", "PMingLiU", "Courier New", 12, 18,
-            new MarkdownHeadingScale(16, 14, 12, 12, 11, 11)),
-        new MarkdownLayout(72, 2, FirstLineIndentPoints: 24, CenterH1: true, AccentH2: false, DrawH2Bar: false, FillTableHeader: false, QuoteBarWidthPoints: 0.75),
+            "Times New Roman", "KaiU", "Courier New", 12, 18,
+            new MarkdownHeadingScale(18, 16, 14, 12, 12, 12)),
+        new MarkdownLayout(
+            72, 0, FirstLineIndentPoints: 24, CenterH1: true, JustifyBody: true,
+            AccentH2: false, DrawH2Bar: false, FillTableHeader: false, QuoteBarWidthPoints: 0.75,
+            MarginTopPoints: 70.87, MarginRightPoints: 56.69, MarginBottomPoints: 70.87, MarginLeftPoints: 85.04),
         new MarkdownPalette(
             new(24, 24, 27), new(0, 0, 0), new(0, 0, 0),
             new(255, 255, 255), new(115, 115, 115)));

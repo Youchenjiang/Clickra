@@ -69,30 +69,39 @@ static partial class TestSuite
             Assert.True(modern.Layout.FillTableHeader && !minimal.Layout.FillTableHeader && !academic.Layout.FillTableHeader,
                 "Minimal and Academic tables must remain visually quieter than Clickra Default.");
             Assert.Equal("Times New Roman", academic.Typography.LatinFont);
-            Assert.Equal("PMingLiU", academic.Typography.CjkFont);
+            Assert.Equal("KaiU", academic.Typography.CjkFont);
             Assert.True(academic.Typography.BodySizePoints == 12d && academic.Typography.LineHeightPoints == 18d,
                 "Academic body typography must use conventional 12pt text with 18pt leading.");
-            Assert.True(academic.Layout.MarginPoints == 72d && academic.Layout.FirstLineIndentPoints == 24d,
-                "Academic layout must use one-inch margins and a two-em first-line indent.");
-            Assert.True(academic.Layout.CenterH1,
+            Assert.True(Math.Abs(academic.Layout.EffectiveMarginTopPoints - 70.87) < 0.01
+                        && Math.Abs(academic.Layout.EffectiveMarginRightPoints - 56.69) < 0.01
+                        && Math.Abs(academic.Layout.EffectiveMarginBottomPoints - 70.87) < 0.01
+                        && Math.Abs(academic.Layout.EffectiveMarginLeftPoints - 85.04) < 0.01
+                        && academic.Layout.FirstLineIndentPoints == 24d,
+                "Academic layout must use 2.5/2/2.5/3 cm thesis margins and a two-em first-line indent.");
+            Assert.True(academic.Layout.CenterH1 && academic.Layout.JustifyBody,
                 "Academic documents must center a single-line level-one title instead of reusing report-style heading alignment.");
-            Assert.True(academic.Layout.BlockGapPoints <= 2d,
+            Assert.True(academic.Layout.BlockGapPoints == 0d,
                 "Academic paragraphs must rely on first-line indentation instead of large card-like gaps.");
+            Assert.True(academic.Typography.Headings.H1 == 18d
+                        && academic.Typography.Headings.H2 == 16d
+                        && academic.Typography.Headings.H3 == 14d
+                        && academic.Typography.Headings.H4 == 12d,
+                "Academic heading sizes must follow a restrained thesis hierarchy.");
             Assert.Equal("000000", academic.Palette.Strong.Hex);
             Assert.Equal("000000", academic.Palette.Accent.Hex);
             Assert.True(academic.Layout.MarginPoints > modern.Layout.MarginPoints && modern.Layout.MarginPoints > minimal.Layout.MarginPoints,
                 "Academic, Default, and Minimal should expose visibly different page densities.");
         });
 
-        runner.Run("Markdown templates: PMingLiU academic CJK face embeds as standalone font", () =>
+        runner.Run("Markdown templates: KaiU academic CJK face embeds as a real font", () =>
         {
             var resolver = new ClickraFontResolver();
-            var face = resolver.ResolveTypeface("PMingLiU", false, false);
-            Assert.True(face is not null, "Academic PMingLiU must resolve for PDF output.");
+            var face = resolver.ResolveTypeface("KaiU", false, false);
+            Assert.True(face is not null, "Academic KaiU must resolve for PDF output.");
             byte[] bytes = resolver.GetFont(face!.FaceName) ?? Array.Empty<byte>();
-            Assert.True(bytes.Length > 12, "Academic PMingLiU must provide an embeddable font payload.");
+            Assert.True(bytes.Length > 12, "Academic KaiU must provide an embeddable font payload.");
             Assert.False(bytes.AsSpan(0, 4).SequenceEqual("ttcf"u8),
-                "Academic PMingLiU must be extracted from its TTC into a standalone sfnt face.");
+                "Academic KaiU must be provided as an embeddable standalone sfnt face.");
         });
 
         runner.Run("Markdown templates: custom JSON safely overrides a built-in base", () =>
@@ -129,6 +138,11 @@ static partial class TestSuite
                 Assert.True(custom.Typography.BodySizePoints == 12d, "Custom body size override must apply.");
                 Assert.True(custom.Typography.Headings.H1 == 28d, "Custom H1 override must apply.");
                 Assert.True(custom.Layout.MarginPoints == 48d, "Custom margin override must apply.");
+                Assert.True(custom.Layout.EffectiveMarginTopPoints == 48d
+                            && custom.Layout.EffectiveMarginRightPoints == 48d
+                            && custom.Layout.EffectiveMarginBottomPoints == 48d
+                            && custom.Layout.EffectiveMarginLeftPoints == 48d,
+                    "Legacy uniform margin overrides must continue to override every Academic side margin.");
                 Assert.True(custom.Layout.FirstLineIndentPoints == 18d, "Custom first-line indent override must apply.");
                 Assert.True(custom.Layout.CenterH1, "Custom H1 alignment override must apply.");
                 Assert.True(custom.Layout.DrawH2Bar && custom.Layout.FillTableHeader,
@@ -141,6 +155,27 @@ static partial class TestSuite
                 Assert.True(storedTemplatePath is not null, "Custom template path must be retained in one-shot options.");
                 Assert.Equal(Path.GetFullPath(templatePath), storedTemplatePath!);
                 Assert.Equal(custom.Id, MarkdownTemplateCatalog.Resolve(MarkdownPdfOptions.GetTheme(options), MarkdownPdfOptions.GetTemplatePath(options)).Id);
+            }));
+
+        runner.Run("Markdown templates: side margins override the legacy uniform margin independently", () =>
+            RunWithTempDirectory(tempDir =>
+            {
+                string templatePath = Path.Combine(tempDir, "mixed-margins.json");
+                File.WriteAllText(templatePath, """
+                    {
+                      "version": 1,
+                      "base": "academic",
+                      "layout": { "margin": 48, "marginLeft": 72 }
+                    }
+                    """);
+
+                MarkdownDocumentTemplate custom = MarkdownTemplateFile.Load(templatePath);
+                Assert.True(custom.Layout.EffectiveMarginTopPoints == 48d
+                            && custom.Layout.EffectiveMarginRightPoints == 48d
+                            && custom.Layout.EffectiveMarginBottomPoints == 48d,
+                    "Unspecified sides must inherit the explicit uniform margin.");
+                Assert.True(custom.Layout.EffectiveMarginLeftPoints == 72d,
+                    "An explicit side margin must override only that side.");
             }));
 
         runner.Run("Markdown templates: invalid custom JSON fails closed", () =>
@@ -217,8 +252,55 @@ static partial class TestSuite
                 using var pdf = UglyToad.PdfPig.PdfDocument.Open(output);
                 var page = pdf.GetPage(1);
                 double paragraphLeft = page.Letters.First(letter => letter.Value == "Z").BoundingBox.Left;
-                Assert.True(paragraphLeft > 90 && paragraphLeft < 102,
-                    $"Academic body first line must begin near 72pt margin + 24pt indent; actual={paragraphLeft:0.##}.");
+                Assert.True(paragraphLeft > 106 && paragraphLeft < 112,
+                    $"Academic body first line must begin near the 3 cm left thesis margin + 24pt indent; actual={paragraphLeft:0.##}.");
+            }));
+
+        runner.Run("Markdown to PDF: Academic fully justifies wrapped body lines", () =>
+            RunWithTempDirectory(tempDir =>
+            {
+                string input = Path.Combine(tempDir, "academic-justify.md");
+                string output = Path.Combine(tempDir, "academic-justify.pdf");
+                File.WriteAllText(input,
+                    "# Academic\n\nZebra begins a deliberately long academic paragraph whose first physical line must be expanded across the available thesis measure while the final line remains naturally ragged. " +
+                    "Additional carefully spaced words force several wraps so the geometry check observes a real non-final justified line rather than a short paragraph.");
+
+                FileProcessor.ConvertMarkdownToPdf(input, output,
+                    MarkdownPdfOptions.Create(MarkdownPdfOptions.ThemeAcademic));
+
+                using var pdf = UglyToad.PdfPig.PdfDocument.Open(output);
+                var page = pdf.GetPage(1);
+                var zebra = page.Letters.First(letter => letter.Value == "Z");
+                var firstBodyLine = page.Letters
+                    .Where(letter => Math.Abs(letter.BoundingBox.Bottom - zebra.BoundingBox.Bottom) < 1.5)
+                    .ToList();
+                double rightmostGlyph = firstBodyLine.Max(letter => letter.BoundingBox.Right);
+                double expectedRight = page.Width - MarkdownTemplateCatalog.Academic.Layout.EffectiveMarginRightPoints;
+                Assert.True(rightmostGlyph > expectedRight - 8 && rightmostGlyph <= expectedRight + 2,
+                    $"Academic wrapped body lines must visually reach the thesis right margin; rightmost={rightmostGlyph:0.##}, expected={expectedRight:0.##}.");
+            }));
+
+        runner.Run("Markdown to PDF: Academic CJK justification keeps punctuation attached", () =>
+            RunWithTempDirectory(tempDir =>
+            {
+                string input = Path.Combine(tempDir, "academic-cjk-justify.md");
+                string output = Path.Combine(tempDir, "academic-cjk-justify.pdf");
+                File.WriteAllText(input,
+                    "# 學術排版\n\n中文測試，標點應該貼近文字而不是被左右對齊拉開。中文測試，標點應該貼近文字而不是被左右對齊拉開。" +
+                    "中文測試，標點應該貼近文字而不是被左右對齊拉開。中文測試，標點應該貼近文字而不是被左右對齊拉開。");
+
+                FileProcessor.ConvertMarkdownToPdf(input, output,
+                    MarkdownPdfOptions.Create(MarkdownPdfOptions.ThemeAcademic));
+
+                using var pdf = UglyToad.PdfPig.PdfDocument.Open(output);
+                var letters = pdf.GetPage(1).Letters.ToList();
+                int commaIndex = letters.FindIndex(letter => letter.Value == "，");
+                Assert.True(commaIndex > 0 && commaIndex + 1 < letters.Count,
+                    "The rendered Academic CJK paragraph must retain its full-width comma.");
+                double gapBefore = letters[commaIndex].BoundingBox.Left - letters[commaIndex - 1].BoundingBox.Right;
+                double gapAfter = letters[commaIndex + 1].BoundingBox.Left - letters[commaIndex].BoundingBox.Right;
+                Assert.True(gapBefore < 6 && gapAfter < 6,
+                    $"CJK justification must not detach punctuation from adjacent glyphs; before={gapBefore:0.##}, after={gapAfter:0.##}.");
             }));
 
         runner.Run("Markdown to PDF: Academic does not indent blockquote text as body prose", () =>
@@ -233,7 +315,7 @@ static partial class TestSuite
 
                 using var pdf = UglyToad.PdfPig.PdfDocument.Open(output);
                 double quoteLeft = pdf.GetPage(1).Letters.First(letter => letter.Value == "Q").BoundingBox.Left;
-                Assert.True(quoteLeft > 84 && quoteLeft < 94,
+                Assert.True(quoteLeft > 98 && quoteLeft < 105,
                     $"Academic quote text must use only the quote inset, not the 24pt body first-line indent; actual={quoteLeft:0.##}.");
             }));
 
