@@ -40,6 +40,10 @@ namespace Clickra.Core
             {
                 return new FontResolverInfo("kaiu");
             }
+            if (name.Contains("noto sans tc"))
+            {
+                return new FontResolverInfo("notosanstc");
+            }
             if (name.Contains("malgun"))
             {
                 return new FontResolverInfo("malgun" + suffix);
@@ -94,7 +98,18 @@ namespace Clickra.Core
             }
 
             // Fallback for CJK faces if the file is missing
-            if (baseFace == "kaiu" || baseFace == "msjh" || baseFace == "msgothic" ||
+            if (baseFace == "notosanstc")
+            {
+                string systemDir = Environment.GetFolderPath(Environment.SpecialFolder.System);
+                string winFonts = Path.Combine(systemDir, "..", "Fonts");
+                string malgunPath = Path.Combine(winFonts, "malgun.ttf");
+                if (File.Exists(malgunPath))
+                {
+                    try { return File.ReadAllBytes(malgunPath); } catch { }
+                }
+            }
+
+            if (baseFace == "notosanstc" || baseFace == "kaiu" || baseFace == "msjh" || baseFace == "msgothic" ||
                 baseFace == "msyh" || baseFace == "malgun")
             {
                 string systemDir = Environment.GetFolderPath(Environment.SpecialFolder.System);
@@ -139,6 +154,7 @@ namespace Clickra.Core
             string file = baseFace switch
             {
                 "kaiu" => "kaiu.ttf",
+                "notosanstc" => "NotoSansTC-VF.ttf",
                 "msjh" => "msjh.ttc", // Use standard Windows Microsoft JhengHei TTC
                 "msyh" => "msyh.ttc", // Use standard Windows Microsoft YaHei TTC
                 "msgothic" => "msgothic.ttc", // Use standard Windows MS Gothic TTC

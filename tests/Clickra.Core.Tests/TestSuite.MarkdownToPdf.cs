@@ -95,6 +95,26 @@ static partial class TestSuite
                     "The last Markdown paragraph must remain visible after pagination.");
             }));
 
+        runner.Run("Markdown to PDF: section headings stay with following content", () =>
+            RunWithTempDirectory(tempDir =>
+            {
+                string input = Path.Combine(tempDir, "sections.md");
+                string output = Path.Combine(tempDir, "sections.pdf");
+                string lead = string.Join("\n\n", Enumerable.Range(1, 24).Select(i =>
+                    $"Lead paragraph {i}: enough body text to place the next section close to a page boundary while preserving normal wrapping behavior."));
+                File.WriteAllText(input,
+                    "# Pagination test\n\n" + lead + "\n\n## NEXT_SECTION_HEADING\n\nSECTION_BODY_MARKER should travel with its heading.\n");
+
+                FileProcessor.ConvertMarkdownToPdf(input, output);
+
+                using var pdf = UglyToad.PdfPig.PdfDocument.Open(output);
+                var pages = pdf.GetPages().ToList();
+                int headingPage = pages.FindIndex(page => page.Text.Contains("NEXT_SECTION_HEADING", StringComparison.Ordinal));
+                int bodyPage = pages.FindIndex(page => page.Text.Contains("SECTION_BODY_MARKER", StringComparison.Ordinal));
+                Assert.True(headingPage >= 0 && headingPage == bodyPage,
+                    "A section heading must not be stranded on a different page from its first body paragraph.");
+            }));
+
         runner.Run("Markdown to PDF: relative local images render inline without network access", () =>
             RunWithTempDirectory(tempDir =>
             {
