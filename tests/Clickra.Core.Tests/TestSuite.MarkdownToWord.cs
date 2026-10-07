@@ -55,7 +55,7 @@ static partial class TestSuite
                     - 項目一
                     - 項目二
 
-                    | 欄位 | 值 |
+                    | 較長欄位名稱 | 值 |
                     | --- | --- |
                     | 中文 | 測試 |
 
@@ -82,8 +82,8 @@ static partial class TestSuite
                 XElement table = document.Descendants(w + "tbl")
                     .Single(tbl => tbl.Element(w + "tblPr")?.Element(w + "tblStyle")?.Attribute(w + "val")?.Value == "TableGrid");
                 Assert.Equal("fixed", table.Element(w + "tblPr")?.Element(w + "tblLayout")?.Attribute(w + "type")?.Value ?? "");
-                Assert.True(table.Element(w + "tblGrid")?.Elements(w + "gridCol").Select(c => c.Attribute(w + "w")?.Value).Distinct().Count() == 1,
-                    "Word tables must use the same equal-column policy as the PDF renderer.");
+                Assert.True(table.Element(w + "tblGrid")?.Elements(w + "gridCol").Select(c => c.Attribute(w + "w")?.Value).Distinct().Count() > 1,
+                    "Word tables must retain the shared intrinsic-content column proportions instead of forcing equal widths.");
                 Assert.True(archive.GetEntry("word/numbering.xml") is not null,
                     "Markdown lists must create a Word numbering part instead of embedding bullet characters in paragraph text.");
                 Assert.True(document.Descendants(w + "numPr").Any(),
@@ -101,8 +101,8 @@ static partial class TestSuite
                     .All(run => run.Element(w + "rPr")?.Element(w + "color")?.Attribute(w + "val")?.Value == "F1F5F9"),
                     "Fenced code block runs must remain light text over the dark paragraph background.");
                 XElement codeBorders = codeParagraph.Element(w + "pPr")!.Element(w + "pBdr")!;
-                Assert.Equal("10", codeBorders.Element(w + "left")?.Attribute(w + "space")?.Value ?? "");
-                Assert.Equal("10", codeBorders.Element(w + "right")?.Attribute(w + "space")?.Value ?? "");
+                Assert.Equal("11", codeBorders.Element(w + "left")?.Attribute(w + "space")?.Value ?? "");
+                Assert.Equal("11", codeBorders.Element(w + "right")?.Attribute(w + "space")?.Value ?? "");
                 Assert.Equal("5", codeBorders.Element(w + "top")?.Attribute(w + "space")?.Value ?? "");
                 Assert.Equal("5", codeBorders.Element(w + "bottom")?.Attribute(w + "space")?.Value ?? "");
 
@@ -254,10 +254,10 @@ static partial class TestSuite
                     "DOCX Heading1 typography must consume the shared resolved layout.");
                 Assert.True(Math.Abs(WordStyleSize("Normal") - layout.BodySizePoints) < 0.01,
                     "DOCX Normal typography must consume the shared resolved layout.");
-                Assert.True(Math.Abs(WordStyleSize("TableText") - layout.TableFontSizePoints) < 0.01,
-                    "DOCX table typography must consume the shared resolved layout.");
-                Assert.True(Math.Abs(WordStyleSize("CodeBlock") - layout.CodeFontSizePoints) < 0.01,
-                    "DOCX code typography must consume the shared resolved layout.");
+                Assert.True(Math.Abs(WordStyleSize("TableText") - layout.TableFontSizePoints) <= 0.25,
+                    "DOCX table typography must stay within Word's half-point quantization of the shared resolved layout.");
+                Assert.True(Math.Abs(WordStyleSize("CodeBlock") - layout.CodeFontSizePoints) <= 0.25,
+                    "DOCX code typography must stay within Word's half-point quantization of the shared resolved layout.");
 
                 XDocument document = ReadXml(archive, "word/document.xml");
                 foreach (string marker in new[] { "ZINLINE", "ZTABLECODE" })
@@ -265,8 +265,8 @@ static partial class TestSuite
                     XElement run = document.Descendants(w + "r")
                         .Single(element => element.Element(w + "t")?.Value == marker);
                     double runSize = double.Parse(run.Element(w + "rPr")!.Element(w + "sz")!.Attribute(w + "val")!.Value) / 2.0;
-                    Assert.True(Math.Abs(runSize - layout.CodeFontSizePoints) < 0.01,
-                        $"DOCX inline code run {marker} must use the same shared code size as PDF.");
+                    Assert.True(Math.Abs(runSize - layout.CodeFontSizePoints) <= 0.25,
+                        $"DOCX inline code run {marker} must stay within Word's half-point quantization of the shared PDF code size.");
                 }
             }));
 
@@ -487,20 +487,20 @@ static partial class TestSuite
                 XNamespace w = "http://schemas.openxmlformats.org/wordprocessingml/2006/main";
                 XElement code = document.Descendants(w + "p")
                     .Single(p => p.Element(w + "pPr")?.Element(w + "pStyle")?.Attribute(w + "val")?.Value == "CodeBlock");
-                Assert.Equal("400", code.Element(w + "pPr")?.Element(w + "ind")?.Attribute(w + "left")?.Value ?? "");
+                Assert.Equal("300", code.Element(w + "pPr")?.Element(w + "ind")?.Attribute(w + "left")?.Value ?? "");
 
                 XElement quote = document.Descendants(w + "p")
                     .Single(p => p.Element(w + "pPr")?.Element(w + "pStyle")?.Attribute(w + "val")?.Value == "Quote");
-                Assert.Equal("320", quote.Element(w + "pPr")?.Element(w + "ind")?.Attribute(w + "left")?.Value ?? "");
+                Assert.Equal("270", quote.Element(w + "pPr")?.Element(w + "ind")?.Attribute(w + "left")?.Value ?? "");
 
                 XElement quoteTable = document.Descendants(w + "tbl")
                     .Single(tbl => tbl.Element(w + "tblPr")?.Element(w + "tblBorders")?.Element(w + "left")?.Attribute(w + "val")?.Value == "single"
                                    && tbl.Element(w + "tblPr")?.Element(w + "tblStyle") is null);
-                Assert.Equal("400", quoteTable.Element(w + "tblPr")?.Element(w + "tblInd")?.Attribute(w + "w")?.Value ?? "");
+                Assert.Equal("300", quoteTable.Element(w + "tblPr")?.Element(w + "tblInd")?.Attribute(w + "w")?.Value ?? "");
 
                 XElement table = document.Descendants(w + "tbl")
                     .Single(tbl => tbl.Element(w + "tblPr")?.Element(w + "tblStyle")?.Attribute(w + "val")?.Value == "TableGrid");
-                Assert.Equal("400", table.Element(w + "tblPr")?.Element(w + "tblInd")?.Attribute(w + "w")?.Value ?? "");
+                Assert.Equal("300", table.Element(w + "tblPr")?.Element(w + "tblInd")?.Attribute(w + "w")?.Value ?? "");
             }));
 
         runner.Run("Markdown to Word: quote container keeps one bar across nested blocks", () =>

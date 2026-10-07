@@ -89,6 +89,7 @@ public sealed class MarkdownToWordProcessor : MultiFileProcessorBase
 
         private readonly MarkdownDocumentTemplate _template;
         private readonly MarkdownResolvedLayout _layout;
+        private readonly MarkdownResolvedPalette _resolvedPalette;
         private readonly string _paper;
         private readonly double _scale;
         private readonly bool _lightCode;
@@ -117,6 +118,7 @@ public sealed class MarkdownToWordProcessor : MultiFileProcessorBase
                 _ => 1.0
             };
             _layout = MarkdownResolvedLayout.Create(_template, _scale);
+            _resolvedPalette = MarkdownResolvedPalette.Create(_template);
             _lightCode = codeTheme == MarkdownPdfOptions.CodeLight;
             _baseDirectory = baseDirectory;
             _token = token;
@@ -273,6 +275,13 @@ public sealed class MarkdownToWordProcessor : MultiFileProcessorBase
                     }
                 }
             }
+
+            if (_layout.ListAfterPoints > 0)
+            {
+                XElement? lastParagraph = parent.Elements(W + "p").LastOrDefault();
+                XElement? spacing = lastParagraph?.Element(W + "pPr")?.Element(W + "spacing");
+                spacing?.SetAttributeValue(W + "after", PointsToTwips(_layout.ListAfterPoints));
+            }
         }
 
         private XElement CreateInlineParagraph(
@@ -355,7 +364,15 @@ public sealed class MarkdownToWordProcessor : MultiFileProcessorBase
 
             var cell = new XElement(W + "tc",
                 new XElement(W + "tcPr",
-                    new XElement(W + "tcW", new XAttribute(W + "w", quoteWidth), new XAttribute(W + "type", "dxa"))));
+                    new XElement(W + "tcW", new XAttribute(W + "w", quoteWidth), new XAttribute(W + "type", "dxa")),
+                    _layout.QuoteVerticalPaddingPoints > 0
+                        ? new XElement(W + "tcMar",
+                            CellMargin("top", _layout.QuoteVerticalPaddingPoints),
+                            CellMargin("bottom", _layout.QuoteVerticalPaddingPoints))
+                        : null,
+                    _template.Id == MarkdownPdfOptions.ThemeDefault
+                        ? new XElement(W + "shd", new XAttribute(W + "val", "clear"), new XAttribute(W + "fill", _resolvedPalette.Surface.Hex))
+                        : null));
             foreach (Block child in quote)
             {
                 if (child is ParagraphBlock quoteParagraph)
@@ -373,7 +390,10 @@ public sealed class MarkdownToWordProcessor : MultiFileProcessorBase
         {
             int columnCount = Math.Max(1, table.OfType<TableRow>().Select(row => row.Count).DefaultIfEmpty(1).Max());
             int tableWidth = Math.Max(1, containerWidthTwips - indentTwips);
-            int columnWidth = Math.Max(1, tableWidth / columnCount);
+            IReadOnlyList<double> fractions = MarkdownTableColumnSizer.ResolveFractions(table, columnCount);
+            int[] columnWidths = fractions.Select(fraction => Math.Max(1, (int)Math.Round(tableWidth * fraction))).ToArray();
+            int widthDelta = tableWidth - columnWidths.Sum();
+            if (columnWidths.Length > 0) columnWidths[^1] += widthDelta;
             var element = new XElement(W + "tbl",
                 new XElement(W + "tblPr",
                     new XElement(W + "tblStyle", new XAttribute(W + "val", "TableGrid")),
@@ -388,17 +408,21 @@ public sealed class MarkdownToWordProcessor : MultiFileProcessorBase
                         CellMargin("bottom", _layout.TableVerticalPaddingPoints),
                         CellMargin("right", _layout.TableHorizontalPaddingPoints))),
                 new XElement(W + "tblGrid", Enumerable.Range(0, columnCount)
-                    .Select(_ => new XElement(W + "gridCol", new XAttribute(W + "w", columnWidth)))));
+                    .Select(index => new XElement(W + "gridCol", new XAttribute(W + "w", columnWidths[index])))));
 
             foreach (TableRow row in table)
             {
                 var tr = new XElement(W + "tr");
+                int columnIndex = 0;
                 foreach (TableCell cell in row)
                 {
+                    int columnWidth = columnWidths[Math.Min(columnIndex, columnWidths.Length - 1)];
                     var tcPr = new XElement(W + "tcPr",
                         new XElement(W + "tcW", new XAttribute(W + "w", columnWidth), new XAttribute(W + "type", "dxa")));
                     if (row.IsHeader && _template.Layout.FillTableHeader)
                         tcPr.Add(new XElement(W + "shd", new XAttribute(W + "val", "clear"), new XAttribute(W + "fill", _template.Palette.SoftAccent.Hex)));
+                    else if (_template.Id == MarkdownPdfOptions.ThemeDefault)
+                        tcPr.Add(new XElement(W + "shd", new XAttribute(W + "val", "clear"), new XAttribute(W + "fill", _resolvedPalette.Surface.Hex)));
                     var tc = new XElement(W + "tc", tcPr);
                     bool added = false;
                     foreach (Block child in cell)
@@ -419,6 +443,7 @@ public sealed class MarkdownToWordProcessor : MultiFileProcessorBase
                     }
                     if (!added) tc.Add(CreateTextParagraph("", row.IsHeader ? "TableHeader" : "TableText"));
                     tr.Add(tc);
+                    columnIndex++;
                 }
                 element.Add(tr);
             }
@@ -429,6 +454,10 @@ public sealed class MarkdownToWordProcessor : MultiFileProcessorBase
             new(W + "p",
                 new XElement(W + "pPr",
                     indentTwips > 0 ? new XElement(W + "ind", new XAttribute(W + "left", indentTwips)) : null,
+                    new XElement(W + "spacing",
+                        new XAttribute(W + "after", 0),
+                        new XAttribute(W + "line", PointsToTwips(_layout.RuleBlockHeightPoints(_template))),
+                        new XAttribute(W + "lineRule", "exact")),
                     new XElement(W + "pBdr",
                         new XElement(W + "bottom",
                             new XAttribute(W + "val", "single"),
@@ -607,7 +636,7 @@ public sealed class MarkdownToWordProcessor : MultiFileProcessorBase
                 CreateParagraphStyle("Normal", "Normal", _layout.BodySizePoints, _template.Palette.Body.Hex, false),
                 CreateParagraphStyle("Quote", "Quote", _layout.BodySizePoints, _template.Palette.Body.Hex, false),
                 CreateParagraphStyle("CodeBlock", "Code Block", _layout.CodeFontSizePoints, _template.Palette.Strong.Hex, false,
-                    lineHeightPoints: _layout.CodeLineHeightPoints),
+                    lineHeightPoints: _layout.CodeLineHeightPoints, afterPoints: _layout.CodeAfterPoints(_template)),
                 CreateParagraphStyle("TableText", "Table Text", _layout.TableFontSizePoints, _template.Palette.Body.Hex, false,
                     lineHeightPoints: _layout.TableLineHeightPoints, afterPoints: 0),
                 CreateParagraphStyle("TableHeader", "Table Header", _layout.TableFontSizePoints, _template.Palette.Body.Hex, true,
@@ -620,7 +649,7 @@ public sealed class MarkdownToWordProcessor : MultiFileProcessorBase
                 styles.Add(CreateParagraphStyle(
                     $"Heading{level}", $"Heading {level}", size, color, true, keepNext: true,
                     lineHeightPoints: _layout.HeadingLineHeightPoints(_template, level),
-                    afterPoints: _layout.HeadingAfterPoints(level)));
+                    afterPoints: _layout.HeadingAfterPoints(_template, level)));
             }
             styles.Add(new XElement(W + "style",
                 new XAttribute(W + "type", "table"),
@@ -642,6 +671,9 @@ public sealed class MarkdownToWordProcessor : MultiFileProcessorBase
             double after = afterPoints ?? _layout.BlockGapPoints;
             var pPr = new XElement(W + "pPr",
                 new XElement(W + "spacing",
+                    id == "Heading1" && _layout.HeadingBeforePoints(_template, 1) > 0
+                        ? new XAttribute(W + "before", PointsToTwips(_layout.HeadingBeforePoints(_template, 1)))
+                        : null,
                     new XAttribute(W + "after", PointsToTwips(after)),
                     new XAttribute(W + "line", PointsToTwips(lineHeight)),
                     new XAttribute(W + "lineRule", "exact")));
@@ -687,7 +719,7 @@ public sealed class MarkdownToWordProcessor : MultiFileProcessorBase
             new XAttribute(W + "val", "single"),
             new XAttribute(W + "sz", Math.Max(2, (int)Math.Round(_template.Layout.QuoteBarWidthPoints * 8))),
             new XAttribute(W + "space", "0"),
-            new XAttribute(W + "color", _template.Palette.Border.Hex));
+            new XAttribute(W + "color", _resolvedPalette.QuoteBar.Hex));
 
         private static XElement HiddenBorder(string name) => new(W + name,
             new XAttribute(W + "val", "nil"));

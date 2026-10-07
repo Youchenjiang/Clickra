@@ -114,10 +114,13 @@ public sealed class MarkdownToPdfProcessor : MultiFileProcessorBase
         private readonly XColor _accentColor;
         private readonly XColor _accentSoftColor;
         private readonly XColor _borderColor;
+        private readonly XColor _surfaceColor;
+        private readonly XColor _quoteBarColor;
         private readonly XColor _codeBackgroundColor;
         private readonly XColor _codeTextColor;
         private readonly XColor _inlineCodeBackgroundColor;
         private readonly List<QuoteState> _activeQuotes = new();
+        private readonly List<QuoteSurfaceFragment> _quoteSurfaceFragments = new();
         private PdfPage? _page;
         private XGraphics? _graphics;
         private double _y;
@@ -153,6 +156,9 @@ public sealed class MarkdownToPdfProcessor : MultiFileProcessorBase
             _accentColor = ToXColor(_template.Palette.Accent);
             _accentSoftColor = ToXColor(_template.Palette.SoftAccent);
             _borderColor = ToXColor(_template.Palette.Border);
+            MarkdownResolvedPalette resolvedPalette = MarkdownResolvedPalette.Create(_template);
+            _surfaceColor = ToXColor(resolvedPalette.Surface);
+            _quoteBarColor = ToXColor(resolvedPalette.QuoteBar);
 
             bool lightCode = MarkdownPdfOptions.GetCodeTheme(options) == MarkdownPdfOptions.CodeLight;
             _codeBackgroundColor = lightCode ? XColor.FromArgb(241, 245, 249) : XColor.FromArgb(15, 23, 42);
@@ -175,6 +181,7 @@ public sealed class MarkdownToPdfProcessor : MultiFileProcessorBase
                 }
                 RenderBlock(block, 0);
             }
+            DrawPendingQuoteSurfaces();
         }
 
         public void Dispose() => _graphics?.Dispose();
@@ -205,9 +212,10 @@ public sealed class MarkdownToPdfProcessor : MultiFileProcessorBase
                     RenderCodeBlock(code.Lines.ToString(), indent);
                     break;
                 case ThematicBreakBlock:
-                    EnsureSpace(18);
+                    double ruleHeight = _layout.RuleBlockHeightPoints(_template);
+                    EnsureSpace(ruleHeight);
                     _graphics!.DrawLine(XPens.LightGray, _marginLeft + indent, _y + 6, PageRight - indent, _y + 6);
-                    _y += 18;
+                    _y += ruleHeight;
                     break;
                 case HtmlBlock html:
                     RenderPlainText(StripHtml(html.Lines.ToString()), _bodySize, XFontStyleEx.Regular, new XSolidBrush(_textColor), indent, _bodyLineHeight);
@@ -227,17 +235,21 @@ public sealed class MarkdownToPdfProcessor : MultiFileProcessorBase
         {
             double size = _layout.HeadingSizePoints(_template, heading.Level);
             double lineHeight = _layout.HeadingLineHeightPoints(_template, heading.Level);
-            EnsureSpace(lineHeight + 12);
+            double before = _layout.HeadingBeforePoints(_template, heading.Level);
+            EnsureSpace(before + lineHeight + 12);
+            _y += before;
 
             XBrush headingBrush = new XSolidBrush(heading.Level == 2 && _template.Layout.AccentH2 ? _accentColor : _strongTextColor);
             if (heading.Level == 2 && _template.Layout.DrawH2Bar)
             {
-                _graphics!.DrawRectangle(new XSolidBrush(_accentColor), _marginLeft + indent, _y + 2, 3, lineHeight - 3);
+                double barY = _template.Id == MarkdownPdfOptions.ThemeDefault ? _y - 6 : _y + 2;
+                double barHeight = _template.Id == MarkdownPdfOptions.ThemeDefault ? 24 * _scale : lineHeight - 3;
+                _graphics!.DrawRectangle(new XSolidBrush(_accentColor), _marginLeft + indent, barY, 3, barHeight);
                 indent += 10;
             }
             RenderInline(heading.Inline, size, XFontStyleEx.Bold, headingBrush, indent, lineHeight,
                 centerSingleLine: heading.Level == 1 && _template.Layout.CenterH1);
-            _y += _layout.HeadingAfterPoints(heading.Level);
+            _y += _layout.HeadingAfterPoints(_template, heading.Level);
         }
 
         private void RenderParagraph(ParagraphBlock paragraph, double indent, bool bodyParagraph)
@@ -273,6 +285,7 @@ public sealed class MarkdownToPdfProcessor : MultiFileProcessorBase
                 }
                 if (first) RenderPlainText(marker, _bodySize, XFontStyleEx.Regular, new XSolidBrush(_textColor), indent, _bodyLineHeight);
             }
+            _y += _layout.ListAfterPoints;
         }
 
         private void RenderListParagraph(string marker, ParagraphBlock paragraph, double indent)
@@ -285,7 +298,11 @@ public sealed class MarkdownToPdfProcessor : MultiFileProcessorBase
 
         private void RenderQuote(QuoteBlock quote, double indent)
         {
-            var state = new QuoteState(_marginLeft + indent, _y);
+            double estimatedBackgroundHeight = EstimateQuoteBackgroundHeight(quote, indent);
+            EnsureSpace(estimatedBackgroundHeight + _blockGap);
+            double quoteStart = _y;
+            _y += _layout.QuoteVerticalPaddingPoints;
+            var state = new QuoteState(_marginLeft + indent, quoteStart);
             _activeQuotes.Add(state);
             try
             {
@@ -294,7 +311,10 @@ public sealed class MarkdownToPdfProcessor : MultiFileProcessorBase
                 // Keep the quote rule aligned to the actual text line box instead of
                 // extending it through that trailing whitespace.
                 double contentBottom = Math.Max(_y - _blockGap, state.StartY + _bodyLineHeight);
-                DrawQuoteBar(state, contentBottom);
+                _y += _layout.QuoteVerticalPaddingPoints;
+                double endY = Math.Max(contentBottom + _layout.QuoteVerticalPaddingPoints, state.StartY + _bodyLineHeight);
+                DrawQuoteBar(state, endY);
+                RecordQuoteSurface(state, endY);
             }
             finally
             {
@@ -305,19 +325,246 @@ public sealed class MarkdownToPdfProcessor : MultiFileProcessorBase
         private void DrawQuoteBar(QuoteState state, double endY)
         {
             if (_graphics is null || endY <= state.StartY) return;
-            _graphics.DrawRectangle(new XSolidBrush(_borderColor), state.X, state.StartY, _template.Layout.QuoteBarWidthPoints, endY - state.StartY);
+            _graphics.DrawRectangle(new XSolidBrush(_quoteBarColor), state.X, state.StartY, _template.Layout.QuoteBarWidthPoints, endY - state.StartY);
+        }
+
+        private double EstimateQuoteBackgroundHeight(QuoteBlock quote, double indent)
+        {
+            double height = _layout.QuoteVerticalPaddingPoints * 2;
+            foreach (Block child in quote)
+                height += EstimateBlockAdvance(child, indent + _layout.QuoteIndentPoints);
+            return Math.Max(height, _bodyLineHeight + (_layout.QuoteVerticalPaddingPoints * 2));
+        }
+
+        private double EstimateBlockAdvance(Block block, double indent) =>
+            EstimateBlockVisualHeight(block, indent) + EstimateTrailingSpacing(block);
+
+        private double EstimateTrailingSpacing(Block block) => block switch
+        {
+            ParagraphBlock => _blockGap,
+            HtmlBlock => _blockGap,
+            Table => _blockGap,
+            FencedCodeBlock => _layout.CodeAfterPoints(_template),
+            CodeBlock => _layout.CodeAfterPoints(_template),
+            ListBlock => _layout.ListAfterPoints,
+            HeadingBlock heading => _layout.HeadingAfterPoints(_template, heading.Level),
+            _ => 0
+        };
+
+        private double EstimateBlockVisualHeight(Block block, double indent) => block switch
+        {
+            ParagraphBlock paragraph when paragraph.Inline is not null =>
+                EstimateInlineHeight(paragraph.Inline, _bodySize, indent, _bodyLineHeight),
+            FencedCodeBlock fenced => EstimateCodeVisualHeight(fenced.Lines.ToString(), indent),
+            CodeBlock code => EstimateCodeVisualHeight(code.Lines.ToString(), indent),
+            Table table => EstimateTableVisualHeight(table, indent),
+            ListBlock list => EstimateListVisualHeight(list, indent),
+            QuoteBlock nested => EstimateQuoteBackgroundHeight(nested, indent),
+            HeadingBlock heading => _layout.HeadingBeforePoints(_template, heading.Level)
+                + _layout.HeadingLineHeightPoints(_template, heading.Level),
+            ThematicBreakBlock => _layout.RuleBlockHeightPoints(_template),
+            HtmlBlock html => EstimatePlainTextVisualHeight(StripHtml(html.Lines.ToString()), indent),
+            ContainerBlock container => container.Sum(child => EstimateBlockAdvance(child, indent)),
+            LeafBlock leaf when leaf.Inline is not null => EstimateInlineHeight(leaf.Inline, _bodySize, indent, _bodyLineHeight),
+            _ => _bodyLineHeight
+        };
+
+        private double EstimatePlainTextVisualHeight(string text, double indent)
+        {
+            var inline = new List<InlineSegment> { new(text, false, false, false, null) };
+            return EstimateSegmentsHeight(inline, _bodySize, indent, _bodyLineHeight);
+        }
+
+        private double EstimateCodeVisualHeight(string code, double indent)
+        {
+            string[] lines = NormalizeNewlines(code).Split('\n');
+            double maxWidth = ContentWidth - indent - (_layout.CodeHorizontalPaddingPoints * 2);
+            var wrapped = new List<CodeLineLayout>();
+            foreach (string line in lines) AddCodeLine(line, maxWidth, wrapped);
+            int lineCount = Math.Max(1, wrapped.Count);
+            return (_layout.CodeVerticalPaddingPoints * 2) + (lineCount * _layout.CodeLineHeightPoints);
+        }
+
+        private double EstimateTableVisualHeight(Table table, double indent)
+        {
+            List<TableRow> rows = table.OfType<TableRow>().ToList();
+            if (rows.Count == 0) return 0;
+            int columnCount = rows.Max(row => row.Count);
+            if (columnCount <= 0) return 0;
+
+            double tableWidth = ContentWidth - indent;
+            IReadOnlyList<double> fractions = MarkdownTableColumnSizer.ResolveFractions(table, columnCount);
+            double[] columnWidths = fractions.Select(fraction => tableWidth * fraction).ToArray();
+            double total = 0;
+            foreach (TableRow row in rows)
+            {
+                List<TableCellLayout> cells = BuildTableRow(row, columnCount, columnWidths);
+                int maxLines = Math.Max(1, cells.Max(cell => cell.Lines.Count));
+                total += (maxLines * _layout.TableLineHeightPoints) + (_layout.TableVerticalPaddingPoints * 2);
+            }
+            return total;
+        }
+
+        private double EstimateListVisualHeight(ListBlock list, double indent)
+        {
+            double total = 0;
+            foreach (Block child in list)
+            {
+                if (child is not ListItemBlock item) continue;
+                bool first = true;
+                foreach (Block itemBlock in item)
+                {
+                    if (first && itemBlock is ParagraphBlock paragraph && paragraph.Inline is not null)
+                    {
+                        total += EstimateInlineHeight(
+                            paragraph.Inline,
+                            _bodySize,
+                            indent + _layout.ListIndentPoints,
+                            _bodyLineHeight);
+                    }
+                    else
+                    {
+                        total += EstimateBlockAdvance(itemBlock, indent + _layout.ListIndentPoints);
+                    }
+                    first = false;
+                }
+                if (first) total += _bodyLineHeight;
+            }
+            return total;
+        }
+
+        private double EstimateInlineHeight(ContainerInline? inline, double size, double indent, double lineHeight)
+        {
+            var segments = new List<InlineSegment>();
+            CollectInlineSegments(inline, false, false, null, false, segments);
+            return EstimateSegmentsHeight(segments, size, indent, lineHeight);
+        }
+
+        private double EstimateSegmentsHeight(List<InlineSegment> segments, double size, double indent, double lineHeight)
+        {
+            double maxWidth = ContentWidth - indent;
+            double x = 0;
+            double height = 0;
+
+            foreach (InlineSegment segment in segments)
+            {
+                if (segment.Text == "\n")
+                {
+                    height += lineHeight;
+                    x = 0;
+                    continue;
+                }
+
+                if (segment.ImageUrl is not null && TryMeasureInlineImage(segment.ImageUrl, maxWidth, out double imageHeight))
+                {
+                    if (x > 0) height += lineHeight;
+                    height += imageHeight;
+                    x = 0;
+                    continue;
+                }
+
+                string text = NormalizeDisplayGlyphs(segment.Text);
+                foreach (string token in TokenizeForWrapping(text))
+                {
+                    if (token == "\n")
+                    {
+                        height += lineHeight;
+                        x = 0;
+                        continue;
+                    }
+
+                    XFont font = CreateFont(
+                        token,
+                        segment.Code ? _layout.CodeFontSizePoints : size,
+                        GetInlineStyle(segment),
+                        segment.Code && !ContainsCjk(token));
+                    foreach (string piece in BreakToken(token, font, maxWidth))
+                    {
+                        double width = _graphics!.MeasureString(piece, font).Width;
+                        if (x > 0 && x + width > maxWidth)
+                        {
+                            height += lineHeight;
+                            x = 0;
+                        }
+                        x += width;
+                    }
+                }
+            }
+
+            return height + lineHeight;
+        }
+
+        private bool TryMeasureInlineImage(string url, double availableWidth, out double height)
+        {
+            height = 0;
+            if (!TryResolveLocalImagePath(url, out string imagePath)) return false;
+            try
+            {
+                using XImage image = XImage.FromFile(imagePath);
+                double width = Math.Min(availableWidth, image.PointWidth);
+                double scale = width / image.PointWidth;
+                height = image.PointHeight * scale;
+                double maxHeight = PageBottom - _marginTop;
+                if (height > maxHeight) height = maxHeight;
+                return true;
+            }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or ArgumentException or InvalidOperationException or NotSupportedException)
+            {
+                return false;
+            }
         }
 
         private void CloseQuoteBarsForPage()
         {
-            foreach (QuoteState state in _activeQuotes) DrawQuoteBar(state, PageBottom);
+            foreach (QuoteState state in _activeQuotes)
+            {
+                DrawQuoteBar(state, PageBottom);
+                RecordQuoteSurface(state, PageBottom);
+            }
+        }
+
+        private void RecordQuoteSurface(QuoteState state, double endY)
+        {
+            if (_template.Id != MarkdownPdfOptions.ThemeDefault || _page is null || endY <= state.StartY) return;
+            _quoteSurfaceFragments.Add(new QuoteSurfaceFragment(
+                _page,
+                state.X,
+                state.StartY,
+                PageRight - state.X,
+                endY - state.StartY));
+        }
+
+        private void DrawPendingQuoteSurfaces()
+        {
+            if (_quoteSurfaceFragments.Count == 0) return;
+
+            _graphics?.Dispose();
+            _graphics = null;
+            foreach (IGrouping<PdfPage, QuoteSurfaceFragment> pageFragments in _quoteSurfaceFragments.GroupBy(fragment => fragment.Page))
+            {
+                using XGraphics background = XGraphics.FromPdfPage(pageFragments.Key, XGraphicsPdfPageOptions.Prepend);
+                foreach (QuoteSurfaceFragment fragment in pageFragments
+                    .OrderBy(fragment => fragment.X)
+                    .ThenByDescending(fragment => fragment.Width)
+                    .ThenBy(fragment => fragment.Y))
+                {
+                    background.DrawRectangle(
+                        new XPen(_borderColor, 0.8),
+                        new XSolidBrush(_surfaceColor),
+                        fragment.X,
+                        fragment.Y,
+                        fragment.Width,
+                        fragment.Height);
+                }
+            }
+            _quoteSurfaceFragments.Clear();
         }
 
         private void RenderCodeBlock(string code, double indent)
         {
             string[] lines = NormalizeNewlines(code).Split('\n');
             double available = ContentWidth - indent;
-            var wrapped = new List<StyledLine>();
+            var wrapped = new List<CodeLineLayout>();
             foreach (string line in lines) AddCodeLine(line, available - (_layout.CodeHorizontalPaddingPoints * 2), wrapped);
 
             int lineIndex = 0;
@@ -345,26 +592,47 @@ public sealed class MarkdownToPdfProcessor : MultiFileProcessorBase
                 double drawX = _marginLeft + indent + _layout.CodeHorizontalPaddingPoints;
                 for (int i = 0; i < fragmentLineCount; i++)
                 {
-                    StyledLine line = wrapped[lineIndex++];
-                    double drawY = _y + line.Font.Size;
-                    _graphics.DrawString(line.Text, line.Font, new XSolidBrush(_codeTextColor), drawX, drawY);
+                    CodeLineLayout line = wrapped[lineIndex++];
+                    double pieceX = drawX;
+                    foreach (CodeDrawPiece piece in line.Pieces)
+                    {
+                        double drawY = _y + piece.Font.Size;
+                        _graphics.DrawString(piece.Text, piece.Font, new XSolidBrush(_codeTextColor), pieceX, drawY);
+                        pieceX += piece.Width;
+                    }
                     _y += _layout.CodeLineHeightPoints;
                 }
                 _y += _layout.CodeVerticalPaddingPoints;
 
                 if (lineIndex < wrapped.Count) NewPage();
             }
-            _y += _blockGap;
+            _y += _layout.CodeAfterPoints(_template);
         }
 
-        private void AddCodeLine(string line, double maxWidth, List<StyledLine> output)
+        private void AddCodeLine(string line, double maxWidth, List<CodeLineLayout> output)
         {
             string text = line.Length == 0
                 ? " "
                 : NormalizeDisplayGlyphs(line.Replace("\t", "    ", StringComparison.Ordinal));
-            XFont font = CreateFont(text, _layout.CodeFontSizePoints, XFontStyleEx.Regular, monospace: !ContainsCjk(text));
-            foreach (string wrappedLine in WrapText(text, font, maxWidth))
-                output.Add(new StyledLine(wrappedLine, font));
+            var current = new List<CodeDrawPiece>();
+            double width = 0;
+            foreach (string token in TokenizeForWrapping(text))
+            {
+                XFont font = CreateFont(token, _layout.CodeFontSizePoints, XFontStyleEx.Regular, monospace: !ContainsCjk(token));
+                foreach (string pieceText in BreakToken(token, font, maxWidth))
+                {
+                    double pieceWidth = _graphics!.MeasureString(pieceText, font).Width;
+                    if (current.Count > 0 && width + pieceWidth > maxWidth)
+                    {
+                        output.Add(new CodeLineLayout(current));
+                        current = new List<CodeDrawPiece>();
+                        width = 0;
+                    }
+                    current.Add(new CodeDrawPiece(pieceText, font, pieceWidth));
+                    width += pieceWidth;
+                }
+            }
+            if (current.Count > 0) output.Add(new CodeLineLayout(current));
         }
 
         private void RenderTable(Table table, double indent)
@@ -375,24 +643,25 @@ public sealed class MarkdownToPdfProcessor : MultiFileProcessorBase
             if (columnCount <= 0) return;
 
             double tableWidth = ContentWidth - indent;
-            double columnWidth = tableWidth / columnCount;
+            IReadOnlyList<double> fractions = MarkdownTableColumnSizer.ResolveFractions(table, columnCount);
+            double[] columnWidths = fractions.Select(fraction => tableWidth * fraction).ToArray();
 
             foreach (TableRow row in rows)
             {
                 _token.ThrowIfCancellationRequested();
-                List<TableCellLayout> cells = BuildTableRow(row, columnCount, columnWidth);
-                RenderTableRow(cells, row.IsHeader, indent, columnWidth);
+                List<TableCellLayout> cells = BuildTableRow(row, columnCount, columnWidths);
+                RenderTableRow(cells, row.IsHeader, indent, columnWidths);
             }
             _y += _blockGap;
         }
 
-        private List<TableCellLayout> BuildTableRow(TableRow row, int columnCount, double columnWidth)
+        private List<TableCellLayout> BuildTableRow(TableRow row, int columnCount, IReadOnlyList<double> columnWidths)
         {
             var result = new List<TableCellLayout>(columnCount);
             for (int i = 0; i < columnCount; i++)
             {
                 TableCell? cell = i < row.Count ? row[i] as TableCell : null;
-                result.Add(BuildTableCell(cell, row.IsHeader, columnWidth - (_layout.TableHorizontalPaddingPoints * 2)));
+                result.Add(BuildTableCell(cell, row.IsHeader, columnWidths[i] - (_layout.TableHorizontalPaddingPoints * 2)));
             }
             return result;
         }
@@ -488,7 +757,7 @@ public sealed class MarkdownToPdfProcessor : MultiFileProcessorBase
             return pieces;
         }
 
-        private void RenderTableRow(List<TableCellLayout> cells, bool isHeader, double indent, double columnWidth)
+        private void RenderTableRow(List<TableCellLayout> cells, bool isHeader, double indent, IReadOnlyList<double> columnWidths)
         {
             int lineOffset = 0;
             int maxLines = Math.Max(1, cells.Max(cell => cell.Lines.Count));
@@ -501,7 +770,7 @@ public sealed class MarkdownToPdfProcessor : MultiFileProcessorBase
                 int availableLines = Math.Max(1, (int)Math.Floor((PageBottom - _y - tablePadding) / tableLineHeight));
                 int lineCount = Math.Min(maxLines - lineOffset, availableLines);
                 double rowHeight = Math.Max(minimumRowHeight, (lineCount * tableLineHeight) + tablePadding);
-                DrawTableRowChunk(cells, isHeader, indent, columnWidth, lineOffset, lineCount, rowHeight);
+                DrawTableRowChunk(cells, isHeader, indent, columnWidths, lineOffset, lineCount, rowHeight);
                 _y += rowHeight;
                 lineOffset += lineCount;
             }
@@ -511,18 +780,23 @@ public sealed class MarkdownToPdfProcessor : MultiFileProcessorBase
             List<TableCellLayout> cells,
             bool isHeader,
             double indent,
-            double columnWidth,
+            IReadOnlyList<double> columnWidths,
             int lineOffset,
             int lineCount,
             double rowHeight)
         {
+            double offset = 0;
             for (int i = 0; i < cells.Count; i++)
             {
-                double x = _marginLeft + indent + (i * columnWidth);
+                double columnWidth = columnWidths[i];
+                double x = _marginLeft + indent + offset;
                 if (isHeader && _template.Layout.FillTableHeader)
                     _graphics!.DrawRectangle(new XSolidBrush(_accentSoftColor), x, _y, columnWidth, rowHeight);
+                else if (_template.Id == MarkdownPdfOptions.ThemeDefault)
+                    _graphics!.DrawRectangle(new XSolidBrush(_surfaceColor), x, _y, columnWidth, rowHeight);
                 _graphics!.DrawRectangle(new XPen(_borderColor, 0.8), x, _y, columnWidth, rowHeight);
                 DrawTableCellLines(cells[i], x, lineOffset, lineCount);
+                offset += columnWidth;
             }
         }
 
@@ -861,7 +1135,7 @@ public sealed class MarkdownToPdfProcessor : MultiFileProcessorBase
         }
 
         private double GetHeadingHeight(int level)
-            => _layout.HeadingLineHeightPoints(_template, level) + _layout.HeadingAfterPoints(level);
+            => _layout.HeadingLineHeightPoints(_template, level) + _layout.HeadingAfterPoints(_template, level);
 
         private double EstimateMinimumBlockHeight(Block block) => block switch
         {
@@ -1097,8 +1371,10 @@ public sealed class MarkdownToPdfProcessor : MultiFileProcessorBase
 
         private sealed record InlineSegment(string Text, bool Bold, bool Italic, bool Code, string? Url, string? ImageUrl = null);
         private sealed record InlineDrawPiece(string Text, string? Url, bool IsCode, XFont Font, XBrush Brush, double Width);
-        private sealed record StyledLine(string Text, XFont Font);
+        private sealed record CodeDrawPiece(string Text, XFont Font, double Width);
+        private sealed record CodeLineLayout(List<CodeDrawPiece> Pieces);
         private sealed record TableCellLayout(List<List<InlineDrawPiece>> Lines);
+        private sealed record QuoteSurfaceFragment(PdfPage Page, double X, double Y, double Width, double Height);
         private sealed class QuoteState(double x, double startY)
         {
             public double X { get; } = x;

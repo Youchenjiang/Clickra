@@ -56,6 +56,18 @@ public readonly record struct MarkdownThemeColor(byte R, byte G, byte B)
     public string Hex => $"{R:X2}{G:X2}{B:X2}";
 }
 
+/// <summary>Derived neutral surfaces shared by the PDF and DOCX renderers.</summary>
+public sealed record MarkdownResolvedPalette(
+    MarkdownThemeColor TableHeader,
+    MarkdownThemeColor Surface,
+    MarkdownThemeColor QuoteBar)
+{
+    public static MarkdownResolvedPalette Create(MarkdownDocumentTemplate template) =>
+        template.Id == MarkdownPdfOptions.ThemeDefault
+            ? new(template.Palette.SoftAccent, new(248, 250, 252), new(148, 163, 184))
+            : new(template.Palette.SoftAccent, new(255, 255, 255), template.Palette.Border);
+}
+
 /// <summary>
 /// Concrete print-layout metrics resolved once from a template and text scale.
 /// Both PDF and DOCX backends consume this contract so they do not invent
@@ -67,7 +79,9 @@ public sealed record MarkdownResolvedLayout(
     double BodyLineHeightPoints,
     double BlockGapPoints,
     double ListIndentPoints,
+    double ListAfterPoints,
     double QuoteIndentPoints,
+    double QuoteVerticalPaddingPoints,
     double CodeFontSizePoints,
     double CodeLineHeightPoints,
     double CodeHorizontalPaddingPoints,
@@ -82,16 +96,18 @@ public sealed record MarkdownResolvedLayout(
         template.Typography.BodySizePoints * scale,
         template.Typography.LineHeightPoints * scale,
         template.Layout.BlockGapPoints * scale,
-        20 * scale,
-        16 * scale,
-        9.5 * scale,
+        (template.Id == MarkdownPdfOptions.ThemeDefault ? 15 : 20) * scale,
+        (template.Id == MarkdownPdfOptions.ThemeDefault ? 15 : 0) * scale,
+        (template.Id == MarkdownPdfOptions.ThemeDefault ? 13.5 : 16) * scale,
+        (template.Id == MarkdownPdfOptions.ThemeDefault ? 8 : 0) * scale,
+        (template.Id == MarkdownPdfOptions.ThemeDefault ? 10.875 : 9.5) * scale,
         18 * scale,
-        10 * scale,
+        (template.Id == MarkdownPdfOptions.ThemeDefault ? 11.25 : 10) * scale,
         5 * scale,
-        9.5 * scale,
-        13 * scale,
-        8 * scale,
-        4 * scale);
+        (template.Id == MarkdownPdfOptions.ThemeDefault ? 11.25 : 9.5) * scale,
+        (template.Id == MarkdownPdfOptions.ThemeDefault ? 18 : 13) * scale,
+        (template.Id == MarkdownPdfOptions.ThemeDefault ? 9 : 8) * scale,
+        (template.Id == MarkdownPdfOptions.ThemeDefault ? 6.375 : 4) * scale);
 
     public double HeadingSizePoints(MarkdownDocumentTemplate template, int level) => level switch
     {
@@ -106,7 +122,21 @@ public sealed record MarkdownResolvedLayout(
     public double HeadingLineHeightPoints(MarkdownDocumentTemplate template, int level) =>
         HeadingSizePoints(template, level) * 1.35;
 
-    public double HeadingAfterPoints(int level) => (level <= 2 ? 12 : 7) * Scale;
+    public double HeadingBeforePoints(MarkdownDocumentTemplate template, int level) =>
+        (template.Id == MarkdownPdfOptions.ThemeDefault && level == 1 ? 2 : 0) * Scale;
+
+    public double HeadingAfterPoints(MarkdownDocumentTemplate template, int level) =>
+        (template.Id == MarkdownPdfOptions.ThemeDefault && level == 1
+            ? 14
+            : template.Id == MarkdownPdfOptions.ThemeDefault && level == 2
+                ? 7.5
+                : level <= 2 ? 12 : 7) * Scale;
+
+    public double CodeAfterPoints(MarkdownDocumentTemplate template) =>
+        (template.Id == MarkdownPdfOptions.ThemeDefault ? 13.5 : template.Layout.BlockGapPoints) * Scale;
+
+    public double RuleBlockHeightPoints(MarkdownDocumentTemplate template) =>
+        (template.Id == MarkdownPdfOptions.ThemeDefault ? 28 : 18) * Scale;
 }
 
 /// <summary>Built-in document templates. Values intentionally differ in layout, not only color.</summary>
@@ -127,12 +157,12 @@ public static class MarkdownTemplateCatalog
     public static MarkdownDocumentTemplate Default { get; } = new(
         MarkdownPdfOptions.ThemeDefault,
         new MarkdownTypography(
-            "Segoe UI", "Microsoft JhengHei", "Courier New", 11.5, 18,
-            new MarkdownHeadingScale(25, 18, 14.5, 12.5, 11.5, 11)),
-        new MarkdownLayout(54, 9, FirstLineIndentPoints: 0, CenterH1: false, JustifyBody: false, AccentH2: true, DrawH2Bar: true, FillTableHeader: true, QuoteBarWidthPoints: 3),
+            "Segoe UI", "Microsoft JhengHei", "Consolas", 12, 18,
+            new MarkdownHeadingScale(21, 15, 12.375, 11.25, 11.25, 11.25)),
+        new MarkdownLayout(51, 9, FirstLineIndentPoints: 0, CenterH1: false, JustifyBody: false, AccentH2: true, DrawH2Bar: true, FillTableHeader: true, QuoteBarWidthPoints: 3, MarginTopPoints: 51),
         new MarkdownPalette(
             new(51, 65, 85), new(30, 41, 59), new(2, 132, 199),
-            new(240, 249, 255), new(203, 213, 225)));
+            new(241, 245, 249), new(203, 213, 225)));
 
     public static MarkdownDocumentTemplate Minimal { get; } = new(
         MarkdownPdfOptions.ThemeMinimal,

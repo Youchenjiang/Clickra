@@ -17,6 +17,7 @@ namespace Clickra.Core
                 string value when value.Equals("Calibri", StringComparison.OrdinalIgnoreCase) => "Calibri",
                 string value when value.Equals("Cambria", StringComparison.OrdinalIgnoreCase) => "Cambria",
                 string value when value.Equals("Constantia", StringComparison.OrdinalIgnoreCase) => "Constantia",
+                string value when value.Equals("Consolas", StringComparison.OrdinalIgnoreCase) => "Consolas",
                 string value when value.Equals("Courier New", StringComparison.OrdinalIgnoreCase) => "Courier New",
                 string value when value.Equals("KaiU", StringComparison.OrdinalIgnoreCase) => "KaiU",
                 string value when value.Equals("Malgun Gothic", StringComparison.OrdinalIgnoreCase) => "Malgun Gothic",
@@ -100,7 +101,11 @@ namespace Clickra.Core
             {
                 return new FontResolverInfo("seguisym");
             }
-            if (name.Contains("courier") || name.Contains("mono") || name.Contains("consolas") || name.Contains("nimbusmon") || name.Contains("monl") || name.Contains("cmtt"))
+            if (name.Contains("consolas"))
+            {
+                return new FontResolverInfo("consolas" + suffix);
+            }
+            if (name.Contains("courier") || name.Contains("mono") || name.Contains("nimbusmon") || name.Contains("monl") || name.Contains("cmtt"))
             {
                 return new FontResolverInfo("courier" + suffix);
             }
@@ -213,6 +218,13 @@ namespace Clickra.Core
                     "i" => "couri.ttf",
                     "bi" => "courbi.ttf",
                     _ => "cour.ttf"
+                },
+                "consolas" => style switch
+                {
+                    "b" => "consolab.ttf",
+                    "i" => "consolai.ttf",
+                    "bi" => "consolaz.ttf",
+                    _ => "consola.ttf"
                 },
                 "seguisym" => "seguisym.ttf",
                 "cambria" => style switch
