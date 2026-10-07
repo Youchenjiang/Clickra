@@ -320,22 +320,39 @@ public sealed class MarkdownToPdfProcessor : MultiFileProcessorBase
             var wrapped = new List<StyledLine>();
             foreach (string line in lines) AddCodeLine(line, available - (_layout.CodeHorizontalPaddingPoints * 2), wrapped);
 
-            bool firstLine = true;
-            foreach (StyledLine line in wrapped)
+            int lineIndex = 0;
+            while (lineIndex < wrapped.Count)
             {
-                double rowHeight = _layout.CodeLineHeightPoints + _layout.CodeVerticalPaddingPoints;
-                double lineAdvance = _layout.CodeLineHeightPoints;
-                EnsureSpace(_layout.CodeLineHeightPoints + (_layout.CodeVerticalPaddingPoints * 2));
-                if (firstLine)
+                double availableHeight = PageBottom - _y - (_layout.CodeVerticalPaddingPoints * 2);
+                int fragmentLineCount = (int)Math.Floor(availableHeight / _layout.CodeLineHeightPoints);
+                if (fragmentLineCount <= 0)
                 {
-                    _y += _layout.CodeVerticalPaddingPoints;
-                    firstLine = false;
+                    NewPage();
+                    continue;
                 }
+
+                fragmentLineCount = Math.Min(fragmentLineCount, wrapped.Count - lineIndex);
+                double fragmentHeight = (_layout.CodeVerticalPaddingPoints * 2)
+                    + (fragmentLineCount * _layout.CodeLineHeightPoints);
+                _graphics!.DrawRectangle(
+                    new XSolidBrush(_codeBackgroundColor),
+                    _marginLeft + indent,
+                    _y,
+                    available,
+                    fragmentHeight);
+
+                _y += _layout.CodeVerticalPaddingPoints;
                 double drawX = _marginLeft + indent + _layout.CodeHorizontalPaddingPoints;
-                double drawY = _y + line.Font.Size;
-                _graphics!.DrawRectangle(new XSolidBrush(_codeBackgroundColor), _marginLeft + indent, _y - _layout.CodeVerticalPaddingPoints, available, rowHeight);
-                _graphics.DrawString(line.Text, line.Font, new XSolidBrush(_codeTextColor), drawX, drawY);
-                _y += lineAdvance;
+                for (int i = 0; i < fragmentLineCount; i++)
+                {
+                    StyledLine line = wrapped[lineIndex++];
+                    double drawY = _y + line.Font.Size;
+                    _graphics.DrawString(line.Text, line.Font, new XSolidBrush(_codeTextColor), drawX, drawY);
+                    _y += _layout.CodeLineHeightPoints;
+                }
+                _y += _layout.CodeVerticalPaddingPoints;
+
+                if (lineIndex < wrapped.Count) NewPage();
             }
             _y += _blockGap;
         }
@@ -374,15 +391,101 @@ public sealed class MarkdownToPdfProcessor : MultiFileProcessorBase
             var result = new List<TableCellLayout>(columnCount);
             for (int i = 0; i < columnCount; i++)
             {
-                string text = i < row.Count && row[i] is TableCell cell
-                    ? NormalizeDisplayGlyphs(ExtractBlockText(cell))
-                    : "";
-                XFont font = CreateFont(text, _layout.TableFontSizePoints, row.IsHeader ? XFontStyleEx.Bold : XFontStyleEx.Regular);
-                List<string> lines = WrapText(text, font, columnWidth - (_layout.TableHorizontalPaddingPoints * 2)).ToList();
-                if (lines.Count == 0) lines.Add("");
-                result.Add(new TableCellLayout(lines, font));
+                TableCell? cell = i < row.Count ? row[i] as TableCell : null;
+                result.Add(BuildTableCell(cell, row.IsHeader, columnWidth - (_layout.TableHorizontalPaddingPoints * 2)));
             }
             return result;
+        }
+
+        private TableCellLayout BuildTableCell(TableCell? cell, bool isHeader, double maxWidth)
+        {
+            var segments = new List<InlineSegment>();
+            if (cell is not null)
+            {
+                foreach (Block child in cell)
+                {
+                    if (child is LeafBlock leaf && leaf.Inline is not null)
+                    {
+                        if (segments.Count > 0)
+                            segments.Add(new InlineSegment(" ", isHeader, false, false, null));
+                        CollectInlineSegments(leaf.Inline, isHeader, false, null, false, segments);
+                    }
+                    else
+                    {
+                        string text = child is ContainerBlock nested
+                            ? ExtractBlockText(nested)
+                            : "";
+                        if (!string.IsNullOrWhiteSpace(text))
+                        {
+                            if (segments.Count > 0)
+                                segments.Add(new InlineSegment(" ", isHeader, false, false, null));
+                            segments.Add(new InlineSegment(text, isHeader, false, false, null));
+                        }
+                    }
+                }
+            }
+
+            if (segments.Count == 0)
+                segments.Add(new InlineSegment("", isHeader, false, false, null));
+
+            List<InlineDrawPiece?> pieces = BuildTablePieces(segments, maxWidth);
+            var lines = new List<List<InlineDrawPiece>> { new() };
+            double lineWidth = 0;
+            foreach (InlineDrawPiece? piece in pieces)
+            {
+                if (piece is null)
+                {
+                    lines.Add(new List<InlineDrawPiece>());
+                    lineWidth = 0;
+                    continue;
+                }
+
+                if (lines[^1].Count > 0 && lineWidth + piece.Width > maxWidth)
+                {
+                    lines.Add(new List<InlineDrawPiece>());
+                    lineWidth = 0;
+                }
+
+                lines[^1].Add(piece);
+                lineWidth += piece.Width;
+            }
+
+            return new TableCellLayout(lines);
+        }
+
+        private List<InlineDrawPiece?> BuildTablePieces(List<InlineSegment> segments, double maxPieceWidth)
+        {
+            var pieces = new List<InlineDrawPiece?>();
+            foreach (InlineSegment segment in segments)
+            {
+                if (segment.Text == "\n")
+                {
+                    pieces.Add(null);
+                    continue;
+                }
+
+                string text = NormalizeDisplayGlyphs(segment.Text);
+                XBrush brush = segment.Url is not null
+                    ? new XSolidBrush(_accentColor)
+                    : new XSolidBrush(_textColor);
+                foreach (string token in TokenizeForWrapping(text))
+                {
+                    if (token == "\n")
+                    {
+                        pieces.Add(null);
+                        continue;
+                    }
+
+                    XFont font = CreateFont(
+                        token,
+                        segment.Code ? _layout.CodeFontSizePoints : _layout.TableFontSizePoints,
+                        GetInlineStyle(segment),
+                        segment.Code && !ContainsCjk(token));
+                    foreach (string pieceText in BreakToken(token, font, maxPieceWidth))
+                        pieces.Add(new InlineDrawPiece(pieceText, segment.Url, segment.Code, font, brush, _graphics!.MeasureString(pieceText, font).Width));
+                }
+            }
+            return pieces;
         }
 
         private void RenderTableRow(List<TableCellLayout> cells, bool isHeader, double indent, double columnWidth)
@@ -430,10 +533,19 @@ public sealed class MarkdownToPdfProcessor : MultiFileProcessorBase
             {
                 int visibleIndex = lineIndex - lineOffset;
                 double drawX = x + _layout.TableHorizontalPaddingPoints;
-                double drawY = _y + _layout.TableVerticalPaddingPoints + cell.Font.Size + (visibleIndex * _layout.TableLineHeightPoints);
-                _graphics!.DrawString(
-                    cell.Lines[lineIndex], cell.Font, new XSolidBrush(_textColor),
-                    drawX, drawY);
+                double lineTop = _y + _layout.TableVerticalPaddingPoints + (visibleIndex * _layout.TableLineHeightPoints);
+                foreach (InlineDrawPiece piece in cell.Lines[lineIndex])
+                {
+                    if (piece.IsCode && !string.IsNullOrWhiteSpace(piece.Text))
+                        _graphics!.DrawRectangle(new XSolidBrush(_inlineCodeBackgroundColor), drawX - 1, lineTop + 1, piece.Width + 2, _layout.TableLineHeightPoints - 2);
+                    _graphics!.DrawString(piece.Text, piece.Font, piece.Brush, drawX, lineTop + piece.Font.Size);
+                    if (piece.Url is not null && IsWebUrl(piece.Url))
+                    {
+                        _graphics.DrawLine(new XPen(_accentColor, 0.8), drawX, lineTop + piece.Font.Size + 2, drawX + piece.Width, lineTop + piece.Font.Size + 2);
+                        _page!.AddWebLink(CreateWebLinkRectangle(drawX, lineTop, piece.Width, _layout.TableLineHeightPoints), piece.Url);
+                    }
+                    drawX += piece.Width;
+                }
             }
         }
 
@@ -542,7 +654,7 @@ public sealed class MarkdownToPdfProcessor : MultiFileProcessorBase
                         continue;
                     }
 
-                    XFont font = CreateFont(token, segment.Code ? size * 0.92 : size, GetInlineStyle(segment), segment.Code && !ContainsCjk(token));
+                    XFont font = CreateFont(token, segment.Code ? _layout.CodeFontSizePoints : size, GetInlineStyle(segment), segment.Code && !ContainsCjk(token));
                     foreach (string pieceText in BreakToken(token, font, maxPieceWidth))
                         pieces.Add(new InlineDrawPiece(pieceText, segment.Url, segment.Code, font, brush, _graphics!.MeasureString(pieceText, font).Width));
                 }
@@ -596,7 +708,7 @@ public sealed class MarkdownToPdfProcessor : MultiFileProcessorBase
                 foreach (string token in TokenizeForWrapping(text))
                 {
                     if (token == "\n") return false;
-                    XFont font = CreateFont(token, segment.Code ? size * 0.92 : size, GetInlineStyle(segment), segment.Code && !ContainsCjk(token));
+                    XFont font = CreateFont(token, segment.Code ? _layout.CodeFontSizePoints : size, GetInlineStyle(segment), segment.Code && !ContainsCjk(token));
                     width += _graphics!.MeasureString(token, font).Width;
                 }
             }
@@ -622,8 +734,8 @@ public sealed class MarkdownToPdfProcessor : MultiFileProcessorBase
             foreach (string token in TokenizeForWrapping(text))
             {
                 XFont font = token == "\n"
-                    ? CreateFont(string.Empty, segment.Code ? size * 0.92 : size, GetInlineStyle(segment), segment.Code)
-                    : CreateFont(token, segment.Code ? size * 0.92 : size, GetInlineStyle(segment), segment.Code && !ContainsCjk(token));
+                    ? CreateFont(string.Empty, segment.Code ? _layout.CodeFontSizePoints : size, GetInlineStyle(segment), segment.Code)
+                    : CreateFont(token, segment.Code ? _layout.CodeFontSizePoints : size, GetInlineStyle(segment), segment.Code && !ContainsCjk(token));
                 RenderInlineToken(token, segment.Url, segment.Code, font, brush, indent, lineHeight, maxX, ref x);
             }
         }
@@ -986,7 +1098,7 @@ public sealed class MarkdownToPdfProcessor : MultiFileProcessorBase
         private sealed record InlineSegment(string Text, bool Bold, bool Italic, bool Code, string? Url, string? ImageUrl = null);
         private sealed record InlineDrawPiece(string Text, string? Url, bool IsCode, XFont Font, XBrush Brush, double Width);
         private sealed record StyledLine(string Text, XFont Font);
-        private sealed record TableCellLayout(List<string> Lines, XFont Font);
+        private sealed record TableCellLayout(List<List<InlineDrawPiece>> Lines);
         private sealed class QuoteState(double x, double startY)
         {
             public double X { get; } = x;

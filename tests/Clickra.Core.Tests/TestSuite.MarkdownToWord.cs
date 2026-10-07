@@ -206,11 +206,11 @@ static partial class TestSuite
                 File.WriteAllText(input, """
                     # ZHEADING
 
-                    ZBODY paragraph.
+                    ZBODY paragraph with `ZINLINE`.
 
                     | Column |
                     | --- |
-                    | ZTABLE |
+                    | ZTABLE `ZTABLECODE` |
 
                     ```text
                     ZCODE
@@ -235,6 +235,10 @@ static partial class TestSuite
                     "PDF table typography must consume the shared resolved layout.");
                 Assert.True(Math.Abs(PdfWordSize("ZCODE") - layout.CodeFontSizePoints) < 0.25,
                     "PDF code typography must consume the shared resolved layout.");
+                Assert.True(Math.Abs(PdfWordSize("ZINLINE") - layout.CodeFontSizePoints) < 0.25,
+                    "PDF inline code typography must match the shared code size used by DOCX runs.");
+                Assert.True(Math.Abs(PdfWordSize("ZTABLECODE") - layout.CodeFontSizePoints) < 0.25,
+                    "PDF table inline code typography must match the shared code size used by DOCX runs.");
 
                 using ZipArchive archive = ZipFile.OpenRead(wordPath);
                 XDocument styles = ReadXml(archive, "word/styles.xml");
@@ -254,6 +258,16 @@ static partial class TestSuite
                     "DOCX table typography must consume the shared resolved layout.");
                 Assert.True(Math.Abs(WordStyleSize("CodeBlock") - layout.CodeFontSizePoints) < 0.01,
                     "DOCX code typography must consume the shared resolved layout.");
+
+                XDocument document = ReadXml(archive, "word/document.xml");
+                foreach (string marker in new[] { "ZINLINE", "ZTABLECODE" })
+                {
+                    XElement run = document.Descendants(w + "r")
+                        .Single(element => element.Element(w + "t")?.Value == marker);
+                    double runSize = double.Parse(run.Element(w + "rPr")!.Element(w + "sz")!.Attribute(w + "val")!.Value) / 2.0;
+                    Assert.True(Math.Abs(runSize - layout.CodeFontSizePoints) < 0.01,
+                        $"DOCX inline code run {marker} must use the same shared code size as PDF.");
+                }
             }));
 
         runner.Run("Markdown to Word: imported template changes DOCX styles and layout", () =>
