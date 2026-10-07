@@ -1,0 +1,132 @@
+using System;
+using System.Collections.Generic;
+using System.IO;
+using System.IO.Compression;
+using System.Linq;
+using System.Xml.Linq;
+using Clickra.Core;
+using Clickra.Core.Processors;
+
+namespace Clickra.Core.Tests;
+
+static partial class TestSuite
+{
+    private const string MarkdownToWordCommand = "md2word";
+
+    public static void RegisterMarkdownToWordTests(TestRunner runner)
+    {
+        runner.Run("Markdown to Word: common structures produce a valid DOCX package", () =>
+            RunWithTempDirectory(tempDir =>
+            {
+                string input = Path.Combine(tempDir, "guide.md");
+                string output = Path.Combine(tempDir, "guide.docx");
+                File.WriteAllText(input, """
+                    # 文件標題
+
+                    正文包含 **粗體**、*斜體*、`inline code` 與 [連結](https://example.com)。
+
+                    > 引用內容
+
+                    - 項目一
+                    - 項目二
+
+                    | 欄位 | 值 |
+                    | --- | --- |
+                    | 中文 | 測試 |
+
+                    ```text
+                    code block
+                    ```
+                    """);
+
+                FileProcessor.ConvertMarkdownToWord(input, output, MarkdownPdfOptions.Create());
+
+                Assert.True(File.Exists(output) && new FileInfo(output).Length > 0, "DOCX output must be created.");
+                using ZipArchive archive = ZipFile.OpenRead(output);
+                string[] required = { "[Content_Types].xml", "_rels/.rels", "word/document.xml", "word/styles.xml" };
+                foreach (string entry in required)
+                    Assert.True(archive.GetEntry(entry) is not null, $"DOCX must contain {entry}.");
+
+                XDocument document = ReadXml(archive, "word/document.xml");
+                XNamespace w = "http://schemas.openxmlformats.org/wordprocessingml/2006/main";
+                string text = string.Concat(document.Descendants(w + "t").Select(e => e.Value));
+                Assert.True(text.Contains("文件標題", StringComparison.Ordinal), "Heading text must survive DOCX conversion.");
+                Assert.True(text.Contains("引用內容", StringComparison.Ordinal), "Quote text must survive DOCX conversion.");
+                Assert.True(text.Contains("code block", StringComparison.Ordinal), "Code block text must survive DOCX conversion.");
+                Assert.True(document.Descendants(w + "tbl").Any(), "Markdown tables must become Word tables.");
+
+                ZipArchiveEntry? relEntry = archive.GetEntry("word/_rels/document.xml.rels");
+                Assert.True(relEntry is not null, "A hyperlink must create document relationships.");
+                string relationships = ReadAllText(relEntry!);
+                Assert.True(relationships.Contains("https://example.com", StringComparison.Ordinal),
+                    "External Markdown links must remain hyperlinks in DOCX.");
+            }));
+
+        runner.Run("Markdown to Word: local images are packaged without network access", () =>
+            RunWithTempDirectory(tempDir =>
+            {
+                string imagePath = Path.Combine(tempDir, "pixel.png");
+                File.WriteAllBytes(imagePath, Convert.FromBase64String(
+                    "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII="));
+                string input = Path.Combine(tempDir, "image.md");
+                string output = Path.Combine(tempDir, "image.docx");
+                File.WriteAllText(input, "# Image\n\n![pixel](pixel.png)\n\n![remote](https://example.com/remote.png)");
+
+                FileProcessor.ConvertMarkdownToWord(input, output, MarkdownPdfOptions.Create());
+
+                using ZipArchive archive = ZipFile.OpenRead(output);
+                Assert.True(archive.GetEntry("word/media/image1.png") is not null,
+                    "A relative local Markdown image must be embedded in the DOCX package.");
+                string relationships = ReadAllText(archive.GetEntry("word/_rels/document.xml.rels")!);
+                Assert.True(relationships.Contains("relationships/image", StringComparison.Ordinal),
+                    "An embedded local image must have a Word image relationship.");
+                Assert.False(relationships.Contains("remote.png", StringComparison.Ordinal),
+                    "Remote Markdown images must not be fetched or embedded by the offline converter.");
+            }));
+
+        runner.Run("Markdown to Word: shared templates change Word page and typography styles", () =>
+            RunWithTempDirectory(tempDir =>
+            {
+                string input = Path.Combine(tempDir, "template.md");
+                File.WriteAllText(input, "# Heading\n\nBody text.");
+
+                string minimalPath = Path.Combine(tempDir, "minimal.docx");
+                string academicPath = Path.Combine(tempDir, "academic.docx");
+                FileProcessor.ConvertMarkdownToWord(input, minimalPath,
+                    MarkdownPdfOptions.Create(MarkdownPdfOptions.ThemeMinimal));
+                FileProcessor.ConvertMarkdownToWord(input, academicPath,
+                    MarkdownPdfOptions.Create(MarkdownPdfOptions.ThemeAcademic));
+
+                using ZipArchive minimal = ZipFile.OpenRead(minimalPath);
+                using ZipArchive academic = ZipFile.OpenRead(academicPath);
+                string minimalStyles = ReadAllText(minimal.GetEntry("word/styles.xml")!);
+                string academicStyles = ReadAllText(academic.GetEntry("word/styles.xml")!);
+                Assert.True(minimalStyles.Contains("Segoe UI", StringComparison.Ordinal),
+                    "Minimal DOCX must use its configured Latin font.");
+                Assert.True(academicStyles.Contains("Times New Roman", StringComparison.Ordinal),
+                    "Academic DOCX must use its configured Latin font.");
+
+                XDocument minimalDocument = ReadXml(minimal, "word/document.xml");
+                XDocument academicDocument = ReadXml(academic, "word/document.xml");
+                XNamespace w = "http://schemas.openxmlformats.org/wordprocessingml/2006/main";
+                string minimalMargin = minimalDocument.Descendants(w + "pgMar").Single().Attribute(w + "left")!.Value;
+                string academicMargin = academicDocument.Descendants(w + "pgMar").Single().Attribute(w + "left")!.Value;
+                Assert.False(minimalMargin == academicMargin,
+                    "Minimal and Academic DOCX templates must use different page margins.");
+            }));
+    }
+
+    private static XDocument ReadXml(ZipArchive archive, string name)
+    {
+        ZipArchiveEntry entry = archive.GetEntry(name) ?? throw new InvalidDataException($"Missing DOCX part: {name}");
+        using Stream stream = entry.Open();
+        return XDocument.Load(stream);
+    }
+
+    private static string ReadAllText(ZipArchiveEntry entry)
+    {
+        using Stream stream = entry.Open();
+        using var reader = new StreamReader(stream);
+        return reader.ReadToEnd();
+    }
+}
