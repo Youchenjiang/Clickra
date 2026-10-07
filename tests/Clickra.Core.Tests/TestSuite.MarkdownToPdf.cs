@@ -290,6 +290,32 @@ static partial class TestSuite
                     "Mixed Latin/CJK text must not collapse to one PDF font family.");
             }));
 
+        runner.Run("Markdown to PDF: hyperlink annotations align with rendered link text", () =>
+            RunWithTempDirectory(tempDir =>
+            {
+                string input = Path.Combine(tempDir, "link.md");
+                string output = Path.Combine(tempDir, "link.pdf");
+                File.WriteAllText(input, "# Links\n\nOpen [Root-Me #101](https://www.root-me.org/) now.");
+
+                FileProcessor.ConvertMarkdownToPdf(input, output);
+
+                using var textPdf = UglyToad.PdfPig.PdfDocument.Open(output);
+                var textPage = textPdf.GetPage(1);
+                var linkWord = textPage.GetWords().FirstOrDefault(word => word.Text == "Root-Me");
+                Assert.True(linkWord is not null, "The rendered hyperlink text must be present in the PDF text layer.");
+                double textBottom = linkWord!.BoundingBox.Bottom;
+                double textTop = linkWord.BoundingBox.Top;
+
+                using var annotationPdf = PdfSharp.Pdf.IO.PdfReader.Open(output, PdfSharp.Pdf.IO.PdfDocumentOpenMode.Import);
+                Assert.True(annotationPdf.Pages[0].Annotations.Count > 0, "Markdown links must create a PDF hyperlink annotation.");
+                var rect = annotationPdf.Pages[0].Annotations[0].Rectangle;
+
+                Assert.True(rect.Y1 <= textTop + 3 && rect.Y2 >= textBottom - 3,
+                    $"The hyperlink rectangle must overlap the rendered link text vertically; text={textBottom:0.##}-{textTop:0.##}, rect={rect.Y1:0.##}-{rect.Y2:0.##}.");
+                Assert.True(Math.Abs(((rect.Y1 + rect.Y2) / 2.0) - ((textBottom + textTop) / 2.0)) < 8,
+                    $"The hyperlink rectangle must not be vertically mirrored away from its text; text={textBottom:0.##}-{textTop:0.##}, rect={rect.Y1:0.##}-{rect.Y2:0.##}.");
+            }));
+
         runner.Run("Markdown to PDF: imported CJK punctuation does not render as null glyphs", () =>
             RunWithTempDirectory(tempDir =>
             {

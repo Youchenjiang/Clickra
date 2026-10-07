@@ -577,7 +577,7 @@ public sealed class MarkdownToPdfProcessor : MultiFileProcessorBase
                 if (piece.Url is not null && IsWebUrl(piece.Url))
                 {
                     _graphics.DrawLine(new XPen(_accentColor, 0.8), x, _y + piece.Font.Size + 2, x + piece.Width, _y + piece.Font.Size + 2);
-                    _page!.AddWebLink(new PdfRectangle(new XRect(x, top, piece.Width, lineHeight)), piece.Url);
+                    _page!.AddWebLink(CreateWebLinkRectangle(x, top, piece.Width, lineHeight), piece.Url);
                 }
                 x += piece.Width;
                 if (i + 1 < pieces.Count && CanExpandGap(piece.Text, pieces[i + 1].Text))
@@ -661,9 +661,17 @@ public sealed class MarkdownToPdfProcessor : MultiFileProcessorBase
             if (url is not null && IsWebUrl(url))
             {
                 _graphics.DrawLine(new XPen(_accentColor, 0.8), x, _y + font.Size + 2, x + width, _y + font.Size + 2);
-                _page!.AddWebLink(new PdfRectangle(new XRect(x, top, width, lineHeight)), url);
+                _page!.AddWebLink(CreateWebLinkRectangle(x, top, width, lineHeight), url);
             }
             x += width;
+        }
+
+        private PdfRectangle CreateWebLinkRectangle(double x, double top, double width, double height)
+        {
+            double pageHeight = _page!.Height.Point;
+            return new PdfRectangle(
+                new XPoint(x, pageHeight - (top + height)),
+                new XPoint(x + width, pageHeight - top));
         }
 
         private static XFontStyleEx GetInlineStyle(InlineSegment segment) =>
