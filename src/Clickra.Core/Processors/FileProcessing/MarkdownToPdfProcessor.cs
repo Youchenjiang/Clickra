@@ -111,6 +111,7 @@ public sealed class MarkdownToPdfProcessor : MultiFileProcessorBase
         private readonly double _bodyLineHeight;
         private readonly double _blockGap;
         private readonly XColor _textColor;
+        private readonly XColor _strongTextColor;
         private readonly XColor _accentColor;
         private readonly XColor _accentSoftColor;
         private readonly XColor _borderColor;
@@ -143,16 +144,16 @@ public sealed class MarkdownToPdfProcessor : MultiFileProcessorBase
             _blockGap = DefaultBlockGap * _scale;
 
             string theme = MarkdownPdfOptions.GetTheme(options);
-            (_textColor, _accentColor, _accentSoftColor, _borderColor) = theme switch
+            (_textColor, _strongTextColor, _accentColor, _accentSoftColor, _borderColor) = theme switch
             {
                 MarkdownPdfOptions.ThemeMinimal => (
-                    XColor.FromArgb(31, 41, 55), XColor.FromArgb(75, 85, 99),
+                    XColor.FromArgb(55, 65, 81), XColor.FromArgb(31, 41, 55), XColor.FromArgb(75, 85, 99),
                     XColor.FromArgb(249, 250, 251), XColor.FromArgb(209, 213, 219)),
                 MarkdownPdfOptions.ThemeAcademic => (
-                    XColor.FromArgb(30, 41, 59), XColor.FromArgb(30, 64, 175),
+                    XColor.FromArgb(51, 65, 85), XColor.FromArgb(30, 41, 59), XColor.FromArgb(30, 64, 175),
                     XColor.FromArgb(239, 246, 255), XColor.FromArgb(191, 219, 254)),
                 _ => (
-                    XColor.FromArgb(30, 41, 59), XColor.FromArgb(2, 132, 199),
+                    XColor.FromArgb(51, 65, 85), XColor.FromArgb(30, 41, 59), XColor.FromArgb(2, 132, 199),
                     XColor.FromArgb(240, 249, 255), XColor.FromArgb(203, 213, 225))
             };
 
@@ -235,7 +236,7 @@ public sealed class MarkdownToPdfProcessor : MultiFileProcessorBase
             double lineHeight = size * 1.35;
             EnsureSpace(lineHeight + 12);
 
-            XBrush headingBrush = new XSolidBrush(heading.Level == 1 ? _textColor : _accentColor);
+            XBrush headingBrush = new XSolidBrush(heading.Level == 2 ? _accentColor : _strongTextColor);
             if (heading.Level == 2)
             {
                 _graphics!.DrawRectangle(new XSolidBrush(_accentColor), _margin + indent, _y + 2, 3, lineHeight - 3);
@@ -306,7 +307,7 @@ public sealed class MarkdownToPdfProcessor : MultiFileProcessorBase
         private void DrawQuoteBar(QuoteState state, double endY)
         {
             if (_graphics is null || endY <= state.StartY) return;
-            _graphics.DrawRectangle(new XSolidBrush(_accentColor), state.X, state.StartY, 3, endY - state.StartY);
+            _graphics.DrawRectangle(new XSolidBrush(_borderColor), state.X, state.StartY, 3, endY - state.StartY);
         }
 
         private void CloseQuoteBarsForPage()
@@ -468,7 +469,11 @@ public sealed class MarkdownToPdfProcessor : MultiFileProcessorBase
 
             string text = NormalizeDisplayGlyphs(segment.Text);
             XFont font = CreateFont(text, segment.Code ? size * 0.92 : size, GetInlineStyle(segment), segment.Code && !ContainsCjk(text));
-            XBrush brush = segment.Url is null ? baseBrush : new XSolidBrush(_accentColor);
+            XBrush brush = segment.Url is not null
+                ? new XSolidBrush(_accentColor)
+                : segment.Bold
+                    ? new XSolidBrush(_strongTextColor)
+                    : baseBrush;
             foreach (string token in TokenizeForWrapping(text))
                 RenderInlineToken(token, segment.Url, segment.Code, font, brush, indent, lineHeight, maxX, ref x);
         }
@@ -655,8 +660,8 @@ public sealed class MarkdownToPdfProcessor : MultiFileProcessorBase
             {
                 if (ch is >= '\u3040' and <= '\u30ff') return "MS Gothic";
                 if (ch is >= '\uac00' and <= '\ud7af') return "Malgun Gothic";
-                if (ch is >= '\u3400' and <= '\u9fff') return "Noto Sans TC";
-                if (ch is >= '\uff00' and <= '\uffef') return "Noto Sans TC";
+                if (ch is >= '\u3400' and <= '\u9fff') return "Microsoft JhengHei";
+                if (ch is >= '\uff00' and <= '\uffef') return "Microsoft JhengHei";
             }
             return "Segoe UI";
         }

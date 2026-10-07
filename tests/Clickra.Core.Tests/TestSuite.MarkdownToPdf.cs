@@ -34,6 +34,26 @@ static partial class TestSuite
             });
         });
 
+        runner.Run("Markdown to PDF: Microsoft JhengHei TTC faces embed as standalone fonts", () =>
+        {
+            var resolver = new ClickraFontResolver();
+            var regular = resolver.ResolveTypeface("Microsoft JhengHei", false, false);
+            var bold = resolver.ResolveTypeface("Microsoft JhengHei", true, false);
+            Assert.True(regular is not null && bold is not null,
+                "Microsoft JhengHei regular and bold faces must resolve for Markdown output.");
+
+            byte[] regularBytes = resolver.GetFont(regular!.FaceName) ?? Array.Empty<byte>();
+            byte[] boldBytes = resolver.GetFont(bold!.FaceName) ?? Array.Empty<byte>();
+            Assert.True(regularBytes.Length > 12 && boldBytes.Length > 12,
+                "Resolved JhengHei faces must provide embeddable font payloads.");
+            Assert.False(regularBytes.AsSpan(0, 4).SequenceEqual("ttcf"u8),
+                "Regular JhengHei must be extracted from the TTC into a standalone sfnt face.");
+            Assert.False(boldBytes.AsSpan(0, 4).SequenceEqual("ttcf"u8),
+                "Bold JhengHei must be extracted from the TTC into a standalone sfnt face.");
+            Assert.False(regularBytes.SequenceEqual(boldBytes),
+                "Regular and bold Markdown CJK faces must remain distinct payloads.");
+        });
+
         runner.Run("Markdown to PDF: one-shot options use safe defaults and affect page setup", () =>
             RunWithTempDirectory(tempDir =>
             {

@@ -34,7 +34,8 @@ namespace Clickra.Core
             }
             if (name.Contains("jhenghei") || name.Contains("正黑"))
             {
-                return new FontResolverInfo("kaiu");
+                string face = isBold ? "msjh|b" : "msjh";
+                return new FontResolverInfo(face, false, isItalic);
             }
             if (name.Contains("yahei") || name.Contains("雅黑"))
             {
@@ -92,7 +93,10 @@ namespace Clickra.Core
             {
                 try
                 {
-                    return File.ReadAllBytes(fontPath);
+                    byte[] bytes = File.ReadAllBytes(fontPath);
+                    return Path.GetExtension(fontPath).Equals(".ttc", StringComparison.OrdinalIgnoreCase)
+                        ? ExtractTtcFace(bytes, 0)
+                        : bytes;
                 }
                 catch { }
             }
@@ -155,7 +159,11 @@ namespace Clickra.Core
             {
                 "kaiu" => "kaiu.ttf",
                 "notosanstc" => "NotoSansTC-VF.ttf",
-                "msjh" => "msjh.ttc", // Use standard Windows Microsoft JhengHei TTC
+                "msjh" => style switch
+                {
+                    "b" or "bi" => "msjhbd.ttc",
+                    _ => "msjh.ttc"
+                },
                 "msyh" => "msyh.ttc", // Use standard Windows Microsoft YaHei TTC
                 "msgothic" => "msgothic.ttc", // Use standard Windows MS Gothic TTC
                 "malgun" => style switch // Malgun Gothic (Korean)
@@ -202,6 +210,89 @@ namespace Clickra.Core
             };
 
             return Path.Combine(winFonts, file);
+        }
+
+        private static byte[] ExtractTtcFace(byte[] collection, int faceIndex)
+        {
+            if (collection.Length < 16 || collection[0] != (byte)'t' || collection[1] != (byte)'t' ||
+                collection[2] != (byte)'c' || collection[3] != (byte)'f') return collection;
+
+            int faceCount = checked((int)ReadUInt32(collection, 8));
+            if (faceIndex < 0 || faceIndex >= faceCount) throw new InvalidDataException("Invalid TTC face index.");
+            int faceOffset = checked((int)ReadUInt32(collection, 12 + (faceIndex * 4)));
+            if (faceOffset < 0 || faceOffset + 12 > collection.Length) throw new InvalidDataException("Invalid TTC face offset.");
+
+            int tableCount = ReadUInt16(collection, faceOffset + 4);
+            int directorySize = 12 + (tableCount * 16);
+            if (faceOffset + directorySize > collection.Length) throw new InvalidDataException("Invalid TTC table directory.");
+
+            var tables = new (int Record, int SourceOffset, int Length)[tableCount];
+            int totalSize = directorySize;
+            for (int i = 0; i < tableCount; i++)
+            {
+                int record = faceOffset + 12 + (i * 16);
+                int sourceOffset = checked((int)ReadUInt32(collection, record + 8));
+                int length = checked((int)ReadUInt32(collection, record + 12));
+                if (sourceOffset < 0 || length < 0 || sourceOffset + length > collection.Length)
+                    throw new InvalidDataException("Invalid TTC table range.");
+                tables[i] = (record, sourceOffset, length);
+                totalSize = checked(totalSize + Align4(length));
+            }
+
+            byte[] font = new byte[totalSize];
+            Buffer.BlockCopy(collection, faceOffset, font, 0, directorySize);
+            int destination = directorySize;
+            int headDestination = -1;
+            for (int i = 0; i < tableCount; i++)
+            {
+                (int record, int sourceOffset, int length) = tables[i];
+                int outputRecord = 12 + (i * 16);
+                WriteUInt32(font, outputRecord + 8, (uint)destination);
+                Buffer.BlockCopy(collection, sourceOffset, font, destination, length);
+                if (collection[record] == (byte)'h' && collection[record + 1] == (byte)'e' &&
+                    collection[record + 2] == (byte)'a' && collection[record + 3] == (byte)'d')
+                    headDestination = destination;
+                destination += Align4(length);
+            }
+
+            if (headDestination >= 0 && headDestination + 12 <= font.Length)
+            {
+                WriteUInt32(font, headDestination + 8, 0);
+                uint sum = FontChecksum(font);
+                WriteUInt32(font, headDestination + 8, unchecked(0xB1B0AFBAu - sum));
+            }
+            return font;
+        }
+
+        private static ushort ReadUInt16(byte[] bytes, int offset) =>
+            (ushort)((bytes[offset] << 8) | bytes[offset + 1]);
+
+        private static uint ReadUInt32(byte[] bytes, int offset) =>
+            ((uint)bytes[offset] << 24) | ((uint)bytes[offset + 1] << 16) |
+            ((uint)bytes[offset + 2] << 8) | bytes[offset + 3];
+
+        private static void WriteUInt32(byte[] bytes, int offset, uint value)
+        {
+            bytes[offset] = (byte)(value >> 24);
+            bytes[offset + 1] = (byte)(value >> 16);
+            bytes[offset + 2] = (byte)(value >> 8);
+            bytes[offset + 3] = (byte)value;
+        }
+
+        private static int Align4(int value) => (value + 3) & ~3;
+
+        private static uint FontChecksum(byte[] bytes)
+        {
+            uint sum = 0;
+            for (int i = 0; i < bytes.Length; i += 4)
+            {
+                uint word = (uint)bytes[i] << 24;
+                if (i + 1 < bytes.Length) word |= (uint)bytes[i + 1] << 16;
+                if (i + 2 < bytes.Length) word |= (uint)bytes[i + 2] << 8;
+                if (i + 3 < bytes.Length) word |= bytes[i + 3];
+                sum = unchecked(sum + word);
+            }
+            return sum;
         }
     }
 }
