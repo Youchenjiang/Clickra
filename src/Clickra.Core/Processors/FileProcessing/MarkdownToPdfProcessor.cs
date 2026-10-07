@@ -295,7 +295,11 @@ public sealed class MarkdownToPdfProcessor : MultiFileProcessorBase
             try
             {
                 foreach (Block child in quote) RenderBlock(child, indent + 16);
-                DrawQuoteBar(state, Math.Max(_y, state.StartY + _bodyLineHeight));
+                // Paragraph rendering advances by the inter-block gap after its last line.
+                // Keep the quote rule aligned to the actual text line box instead of
+                // extending it through that trailing whitespace.
+                double contentBottom = Math.Max(_y - _blockGap, state.StartY + _bodyLineHeight);
+                DrawQuoteBar(state, contentBottom);
             }
             finally
             {
