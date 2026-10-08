@@ -232,6 +232,9 @@ public sealed class MarkdownToWordProcessor : MultiFileProcessorBase
                 case LeafBlock leaf when leaf.Inline is not null:
                     parent.Add(CreateInlineParagraph(leaf.Inline, "Normal", indentTwips: blockIndentTwips));
                     break;
+                default:
+                    // Unknown Markdig blocks intentionally render no Word output.
+                    break;
             }
         }
 
