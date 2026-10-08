@@ -69,7 +69,7 @@ namespace Clickra.UI
             if (dpi == 0) dpi = (uint)Math.Max(96, (int)Math.Round(_dpiScale * 96f));
             int minClientWidth = (int)Math.Ceiling(DashboardLayout.MinClientWidth * dpi / 96.0);
             var rect = new RECT { left = 0, top = 0, right = minClientWidth, bottom = 1 };
-            AdjustWindowRectExForDpi(ref rect, WS_OVERLAPPEDWINDOW, false, 0, dpi);
+            AdjustWindowRectExForDpi(WS_OVERLAPPEDWINDOW, false, 0, dpi, ref rect);
             info.ptMinTrackSize.x = Math.Max(info.ptMinTrackSize.x, rect.right - rect.left);
             Marshal.StructureToPtr(info, l, false);
             return IntPtr.Zero;
