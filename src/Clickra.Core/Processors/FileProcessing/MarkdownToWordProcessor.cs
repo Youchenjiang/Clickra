@@ -24,6 +24,7 @@ public sealed class MarkdownToWordProcessor : MultiFileProcessorBase
 
     private string? _outputPath;
 
+    /// <summary>Processes the supplied Markdown files with the configured conversion options.</summary>
     public override void Process(
         List<string> files,
         string? outputPath,
@@ -40,6 +41,7 @@ public sealed class MarkdownToWordProcessor : MultiFileProcessorBase
         base.Process(files, outputPath, options, onProgress, cancellationToken);
     }
 
+    /// <summary>Renders one Markdown input file into the target Word document.</summary>
     protected override void ProcessFile(
         string filePath,
         int fileIndex,
@@ -72,6 +74,7 @@ public sealed class MarkdownToWordProcessor : MultiFileProcessorBase
         writer.Save(document, _outputPath!);
     }
 
+    /// <summary>Finalizes the completed Markdown-to-Word conversion batch.</summary>
     protected override void OnAllFilesProcessed(
         string? outputPath,
         int totalFiles,

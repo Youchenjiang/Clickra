@@ -26,6 +26,7 @@ public sealed class MarkdownToPdfProcessor : MultiFileProcessorBase
 
     private string? _outputPath;
 
+    /// <summary>Processes the supplied Markdown files with the configured conversion options.</summary>
     public override void Process(
         List<string> files,
         string? outputPath,
@@ -42,6 +43,7 @@ public sealed class MarkdownToPdfProcessor : MultiFileProcessorBase
         base.Process(files, outputPath, options, onProgress, cancellationToken);
     }
 
+    /// <summary>Renders one Markdown input file into the target PDF document.</summary>
     protected override void ProcessFile(
         string filePath,
         int fileIndex,
@@ -83,6 +85,7 @@ public sealed class MarkdownToPdfProcessor : MultiFileProcessorBase
         pdf.Save(_outputPath!);
     }
 
+    /// <summary>Finalizes the completed Markdown-to-PDF conversion batch.</summary>
     protected override void OnAllFilesProcessed(
         string? outputPath,
         int totalFiles,

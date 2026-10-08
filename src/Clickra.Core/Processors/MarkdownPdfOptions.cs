@@ -7,24 +7,39 @@ namespace Clickra.Core.Processors;
 /// <summary>Shared one-shot Markdown presentation options used by Markdown renderers.</summary>
 public static class MarkdownPdfOptions
 {
+    /// <summary>Option key selecting the document theme.</summary>
     public const string ThemeKey = "markdown_theme";
+    /// <summary>Option key selecting the paper size.</summary>
     public const string PaperKey = "markdown_paper";
+    /// <summary>Option key selecting the text-size preset.</summary>
     public const string TextSizeKey = "markdown_text_size";
+    /// <summary>Option key selecting the code-block theme.</summary>
     public const string CodeThemeKey = "markdown_code_theme";
+    /// <summary>Option key containing the optional document template path.</summary>
     public const string TemplatePathKey = "markdown_template_path";
 
+    /// <summary>Identifier for the standard Clickra theme.</summary>
     public const string ThemeDefault = "default";
+    /// <summary>Identifier for the minimal document theme.</summary>
     public const string ThemeMinimal = "minimal";
+    /// <summary>Identifier for the academic document theme.</summary>
     public const string ThemeAcademic = "academic";
 
+    /// <summary>Identifier for A4 paper.</summary>
     public const string PaperA4 = "a4";
+    /// <summary>Identifier for US Letter paper.</summary>
     public const string PaperLetter = "letter";
 
+    /// <summary>Identifier for the small text preset.</summary>
     public const string TextSmall = "small";
+    /// <summary>Identifier for the standard text preset.</summary>
     public const string TextStandard = "standard";
+    /// <summary>Identifier for the large text preset.</summary>
     public const string TextLarge = "large";
 
+    /// <summary>Identifier for dark code-block styling.</summary>
     public const string CodeDark = "dark";
+    /// <summary>Identifier for light code-block styling.</summary>
     public const string CodeLight = "light";
 
     /// <summary>Creates normalized one-shot rendering options for Markdown conversions.</summary>

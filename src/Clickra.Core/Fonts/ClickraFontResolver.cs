@@ -5,10 +5,13 @@ using PdfSharp.Fonts;
 
 namespace Clickra.Core
 {
+    /// <summary>Resolves Latin and CJK font faces for PDF generation.</summary>
     public class ClickraFontResolver : IFontResolver
     {
+        /// <summary>Default fallback font family.</summary>
         public string DefaultFontName => "Arial";
 
+        /// <summary>Maps a template font family to a supported canonical font name.</summary>
         public static bool TryGetCanonicalTemplateFamily(string familyName, out string canonicalFamily)
         {
             canonicalFamily = familyName.Trim() switch
@@ -33,6 +36,7 @@ namespace Clickra.Core
             return canonicalFamily.Length > 0;
         }
 
+        /// <summary>Resolves the requested family and emphasis to an available PDF font face.</summary>
         public FontResolverInfo? ResolveTypeface(string familyName, bool isBold, bool isItalic)
         {
             string suffix = "";
@@ -122,6 +126,7 @@ namespace Clickra.Core
             return new FontResolverInfo("arial" + suffix);
         }
 
+        /// <summary>Returns embeddable font data for the specified resolved face.</summary>
         public byte[]? GetFont(string faceName)
         {
             string[] parts = faceName.Split('|');
