@@ -42,9 +42,8 @@ namespace Clickra.UI.Native
         public struct BROWSEINFO { public IntPtr hwndOwner; public IntPtr pidlRoot; public IntPtr pszDisplayName; public IntPtr lpszTitle; public uint ulFlags; public IntPtr lpfn; public IntPtr lParam; public int iImage; }
 
         [DllImport("user32.dll", EntryPoint = "AdjustWindowRectEx", CharSet = CharSet.Unicode)] public static extern bool AdjustWindowRectEx(ref RECT lpRect, uint dwStyle, bool bMenu, uint dwExStyle);
-        // skipcq: CS-R1138 — Win32 ABI requires the in/out RECT as the first parameter.
         [DllImport("user32.dll", EntryPoint = "AdjustWindowRectExForDpi", CharSet = CharSet.Unicode)]
-        private static extern bool AdjustWindowRectExForDpiNative(ref RECT lpRect, uint dwStyle, bool bMenu, uint dwExStyle, uint dpi);
+        private static extern bool AdjustWindowRectExForDpiNative(ref RECT lpRect, uint dwStyle, bool bMenu, uint dwExStyle, uint dpi); // skipcq: CS-R1138 — Win32 ABI requires RECT first.
         public static bool AdjustWindowRectExForDpi(uint dwStyle, bool bMenu, uint dwExStyle, uint dpi, ref RECT lpRect) =>
             AdjustWindowRectExForDpiNative(ref lpRect, dwStyle, bMenu, dwExStyle, dpi);
         [DllImport("user32.dll", EntryPoint = "RegisterClassExW", CharSet = CharSet.Unicode)] public static extern ushort RegisterClassEx(ref WNDCLASSEX c);
