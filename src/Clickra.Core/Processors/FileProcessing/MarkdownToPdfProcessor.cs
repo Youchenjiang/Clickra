@@ -514,10 +514,11 @@ public sealed class MarkdownToPdfProcessor : MultiFileProcessorBase
                 if (height > maxHeight) height = maxHeight;
                 return true;
             }
-            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or ArgumentException or InvalidOperationException or NotSupportedException)
-            {
-                return false;
-            }
+            catch (IOException) { return false; }
+            catch (UnauthorizedAccessException) { return false; }
+            catch (ArgumentException) { return false; }
+            catch (InvalidOperationException) { return false; }
+            catch (NotSupportedException) { return false; }
         }
 
         private void CloseQuoteBarsForPage()
@@ -1000,22 +1001,25 @@ public sealed class MarkdownToPdfProcessor : MultiFileProcessorBase
             _token.ThrowIfCancellationRequested();
             if (segment.Text == "\n")
             {
-                NewLine(ref x, indent, lineHeight);
+                NewLine(indent, lineHeight, ref x);
                 return;
             }
-            if (segment.ImageUrl is not null && TryRenderInlineImage(segment.ImageUrl, indent, ref x, lineHeight)) return;
+            if (segment.ImageUrl is not null && TryRenderInlineImage(segment.ImageUrl, indent, lineHeight, ref x)) return;
 
             string text = NormalizeDisplayGlyphs(segment.Text);
-            XBrush brush = segment.Url is not null
-                ? new XSolidBrush(_accentColor)
-                : segment.Bold
-                    ? new XSolidBrush(_strongTextColor)
-                    : baseBrush;
+            XBrush brush = baseBrush;
+            if (segment.Url is not null)
+                brush = new XSolidBrush(_accentColor);
+            else if (segment.Bold)
+                brush = new XSolidBrush(_strongTextColor);
             foreach (string token in TokenizeForWrapping(text))
             {
-                XFont font = token == "\n"
-                    ? CreateFont(string.Empty, segment.Code ? _layout.CodeFontSizePoints : size, GetInlineStyle(segment), segment.Code)
-                    : CreateFont(token, segment.Code ? _layout.CodeFontSizePoints : size, GetInlineStyle(segment), segment.Code && !ContainsCjk(token));
+                double fontSize = segment.Code ? _layout.CodeFontSizePoints : size;
+                XFont font;
+                if (token == "\n")
+                    font = CreateFont(string.Empty, fontSize, GetInlineStyle(segment), segment.Code);
+                else
+                    font = CreateFont(token, fontSize, GetInlineStyle(segment), segment.Code && !ContainsCjk(token));
                 RenderInlineToken(token, segment.Url, segment.Code, font, brush, indent, lineHeight, maxX, ref x);
             }
         }
@@ -1026,7 +1030,7 @@ public sealed class MarkdownToPdfProcessor : MultiFileProcessorBase
         {
             if (token == "\n")
             {
-                NewLine(ref x, indent, lineHeight);
+                NewLine(indent, lineHeight, ref x);
                 return;
             }
 
@@ -1037,7 +1041,7 @@ public sealed class MarkdownToPdfProcessor : MultiFileProcessorBase
         private void DrawInlinePiece(string piece, string? url, bool isCode, XFont font, XBrush brush, double indent, double lineHeight, double maxX, ref double x)
         {
             double width = _graphics!.MeasureString(piece, font).Width;
-            if (x > _marginLeft + indent && x + width > maxX) NewLine(ref x, indent, lineHeight);
+            if (x > _marginLeft + indent && x + width > maxX) NewLine(indent, lineHeight, ref x);
 
             double top = _y;
             if (isCode && !string.IsNullOrWhiteSpace(piece))
@@ -1066,7 +1070,7 @@ public sealed class MarkdownToPdfProcessor : MultiFileProcessorBase
             return segment.Italic ? XFontStyleEx.Italic : XFontStyleEx.Regular;
         }
 
-        private bool TryRenderInlineImage(string url, double indent, ref double x, double lineHeight)
+        private bool TryRenderInlineImage(string url, double indent, double lineHeight, ref double x)
         {
             if (!TryResolveLocalImagePath(url, out string imagePath)) return false;
 
@@ -1075,15 +1079,16 @@ public sealed class MarkdownToPdfProcessor : MultiFileProcessorBase
             {
                 image = XImage.FromFile(imagePath);
             }
-            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or ArgumentException or InvalidOperationException or NotSupportedException)
-            {
-                return false;
-            }
+            catch (IOException) { return false; }
+            catch (UnauthorizedAccessException) { return false; }
+            catch (ArgumentException) { return false; }
+            catch (InvalidOperationException) { return false; }
+            catch (NotSupportedException) { return false; }
 
             using (image)
             {
                 double lineStart = _marginLeft + indent;
-                if (x > lineStart) NewLine(ref x, indent, lineHeight);
+                if (x > lineStart) NewLine(indent, lineHeight, ref x);
 
                 double availableWidth = ContentWidth - indent;
                 double width = Math.Min(availableWidth, image.PointWidth);
@@ -1128,7 +1133,7 @@ public sealed class MarkdownToPdfProcessor : MultiFileProcessorBase
             RenderSegments(segments, size, brush, indent, lineHeight, 0);
         }
 
-        private void NewLine(ref double x, double indent, double lineHeight)
+        private void NewLine(double indent, double lineHeight, ref double x)
         {
             _y += lineHeight;
             EnsureSpace(lineHeight);
