@@ -27,6 +27,7 @@ public static class MarkdownPdfOptions
     public const string CodeDark = "dark";
     public const string CodeLight = "light";
 
+    /// <summary>Creates normalized one-shot rendering options for Markdown conversions.</summary>
     public static Dictionary<string, object> Create(
         string theme = ThemeDefault,
         string paper = PaperA4,
@@ -45,18 +46,23 @@ public static class MarkdownPdfOptions
         return options;
     }
 
+    /// <summary>Gets the normalized theme identifier or the default theme.</summary>
     public static string GetTheme(IReadOnlyDictionary<string, object>? options) =>
         NormalizeTheme(Read(options, ThemeKey, ThemeDefault));
 
+    /// <summary>Gets the normalized paper size or A4.</summary>
     public static string GetPaper(IReadOnlyDictionary<string, object>? options) =>
         NormalizePaper(Read(options, PaperKey, PaperA4));
 
+    /// <summary>Gets the normalized body text-size selection.</summary>
     public static string GetTextSize(IReadOnlyDictionary<string, object>? options) =>
         NormalizeTextSize(Read(options, TextSizeKey, TextStandard));
 
+    /// <summary>Gets the normalized code-block color theme.</summary>
     public static string GetCodeTheme(IReadOnlyDictionary<string, object>? options) =>
         NormalizeCodeTheme(Read(options, CodeThemeKey, CodeDark));
 
+    /// <summary>Returns the absolute custom template path, if supplied.</summary>
     public static string? GetTemplatePath(IReadOnlyDictionary<string, object>? options) =>
         options is not null && options.TryGetValue(TemplatePathKey, out object? value) && !string.IsNullOrWhiteSpace(value?.ToString())
             ? Path.GetFullPath(value!.ToString()!)

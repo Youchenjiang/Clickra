@@ -7,6 +7,7 @@ public sealed record MarkdownDocumentTemplate(
     MarkdownLayout Layout,
     MarkdownPalette Palette);
 
+/// <summary>Font families, body text metrics, and heading sizes for Markdown output.</summary>
 public sealed record MarkdownTypography(
     string LatinFont,
     string CjkFont,
@@ -15,6 +16,7 @@ public sealed record MarkdownTypography(
     double LineHeightPoints,
     MarkdownHeadingScale Headings);
 
+/// <summary>Heading font sizes in points for Markdown levels one through six.</summary>
 public sealed record MarkdownHeadingScale(
     double H1,
     double H2,
@@ -23,6 +25,7 @@ public sealed record MarkdownHeadingScale(
     double H5,
     double H6);
 
+/// <summary>Page margins, paragraph spacing, and visual layout switches.</summary>
 public sealed record MarkdownLayout(
     double MarginPoints,
     double BlockGapPoints,
@@ -38,12 +41,17 @@ public sealed record MarkdownLayout(
     double? MarginBottomPoints = null,
     double? MarginLeftPoints = null)
 {
+    /// <summary>Top margin, falling back to the uniform margin.</summary>
     public double EffectiveMarginTopPoints => MarginTopPoints ?? MarginPoints;
+    /// <summary>Right margin, falling back to the uniform margin.</summary>
     public double EffectiveMarginRightPoints => MarginRightPoints ?? MarginPoints;
+    /// <summary>Bottom margin, falling back to the uniform margin.</summary>
     public double EffectiveMarginBottomPoints => MarginBottomPoints ?? MarginPoints;
+    /// <summary>Left margin, falling back to the uniform margin.</summary>
     public double EffectiveMarginLeftPoints => MarginLeftPoints ?? MarginPoints;
 }
 
+/// <summary>Semantic colors used by the Markdown PDF and DOCX renderers.</summary>
 public sealed record MarkdownPalette(
     MarkdownThemeColor Body,
     MarkdownThemeColor Strong,
@@ -51,8 +59,10 @@ public sealed record MarkdownPalette(
     MarkdownThemeColor SoftAccent,
     MarkdownThemeColor Border);
 
+/// <summary>An RGB color shared by Markdown renderers.</summary>
 public readonly record struct MarkdownThemeColor(byte R, byte G, byte B)
 {
+    /// <summary>Six-digit uppercase RGB color without a prefix.</summary>
     public string Hex => $"{R:X2}{G:X2}{B:X2}";
 }
 
@@ -62,6 +72,7 @@ public sealed record MarkdownResolvedPalette(
     MarkdownThemeColor Surface,
     MarkdownThemeColor QuoteBar)
 {
+    /// <summary>Derives surface and border colors from the selected template.</summary>
     public static MarkdownResolvedPalette Create(MarkdownDocumentTemplate template) =>
         template.Id == MarkdownPdfOptions.ThemeDefault
             ? new(template.Palette.SoftAccent, new(248, 250, 252), new(148, 163, 184))
@@ -91,6 +102,7 @@ public sealed record MarkdownResolvedLayout(
     double TableHorizontalPaddingPoints,
     double TableVerticalPaddingPoints)
 {
+    /// <summary>Resolves layout measurements in points at the given text scale.</summary>
     public static MarkdownResolvedLayout Create(MarkdownDocumentTemplate template, double scale) => new(
         scale,
         template.Typography.BodySizePoints * scale,
@@ -109,6 +121,7 @@ public sealed record MarkdownResolvedLayout(
         (template.Id == MarkdownPdfOptions.ThemeDefault ? 9 : 8) * scale,
         (template.Id == MarkdownPdfOptions.ThemeDefault ? 6.375 : 4) * scale);
 
+    /// <summary>Returns the font size in points for a Markdown heading level.</summary>
     public double HeadingSizePoints(MarkdownDocumentTemplate template, int level) => level switch
     {
         1 => template.Typography.Headings.H1 * Scale,
@@ -119,12 +132,15 @@ public sealed record MarkdownResolvedLayout(
         _ => template.Typography.Headings.H6 * Scale
     };
 
+    /// <summary>Returns the heading line height for the given level.</summary>
     public double HeadingLineHeightPoints(MarkdownDocumentTemplate template, int level) =>
         HeadingSizePoints(template, level) * 1.35;
 
+    /// <summary>Returns spacing before a heading in points.</summary>
     public double HeadingBeforePoints(MarkdownDocumentTemplate template, int level) =>
         (template.Id == MarkdownPdfOptions.ThemeDefault && level == 1 ? 2 : 0) * Scale;
 
+    /// <summary>Returns spacing after a heading in points.</summary>
     public double HeadingAfterPoints(MarkdownDocumentTemplate template, int level) =>
         (template.Id == MarkdownPdfOptions.ThemeDefault && level == 1
             ? 14
@@ -132,9 +148,11 @@ public sealed record MarkdownResolvedLayout(
                 ? 7.5
                 : level <= 2 ? 12 : 7) * Scale;
 
+    /// <summary>Returns spacing after a fenced code block in points.</summary>
     public double CodeAfterPoints(MarkdownDocumentTemplate template) =>
         (template.Id == MarkdownPdfOptions.ThemeDefault ? 13.5 : template.Layout.BlockGapPoints) * Scale;
 
+    /// <summary>Returns the allocated height for a horizontal rule.</summary>
     public double RuleBlockHeightPoints(MarkdownDocumentTemplate template) =>
         (template.Id == MarkdownPdfOptions.ThemeDefault ? 28 : 18) * Scale;
 }
@@ -142,11 +160,13 @@ public sealed record MarkdownResolvedLayout(
 /// <summary>Built-in document templates. Values intentionally differ in layout, not only color.</summary>
 public static class MarkdownTemplateCatalog
 {
+    /// <summary>Resolves a built-in theme or loads the explicitly selected custom template.</summary>
     public static MarkdownDocumentTemplate Resolve(string id, string? customTemplatePath = null) =>
         !string.IsNullOrWhiteSpace(customTemplatePath)
             ? MarkdownTemplateSource.Load(customTemplatePath)
             : ResolveBuiltIn(id);
 
+    /// <summary>Resolves a built-in theme identifier, defaulting to the Clickra theme.</summary>
     internal static MarkdownDocumentTemplate ResolveBuiltIn(string id) => id switch
     {
         MarkdownPdfOptions.ThemeMinimal => Minimal,
@@ -154,6 +174,7 @@ public static class MarkdownTemplateCatalog
         _ => Default
     };
 
+    /// <summary>Clickra's standard branded document template.</summary>
     public static MarkdownDocumentTemplate Default { get; } = new(
         MarkdownPdfOptions.ThemeDefault,
         new MarkdownTypography(
@@ -164,6 +185,7 @@ public static class MarkdownTemplateCatalog
             new(51, 65, 85), new(30, 41, 59), new(2, 132, 199),
             new(241, 245, 249), new(203, 213, 225)));
 
+    /// <summary>Compact, minimally decorated document template.</summary>
     public static MarkdownDocumentTemplate Minimal { get; } = new(
         MarkdownPdfOptions.ThemeMinimal,
         new MarkdownTypography(
@@ -174,6 +196,7 @@ public static class MarkdownTemplateCatalog
             new(55, 65, 81), new(31, 41, 55), new(75, 85, 99),
             new(249, 250, 251), new(229, 231, 235)));
 
+    /// <summary>Thesis-style document template with academic typography and margins.</summary>
     public static MarkdownDocumentTemplate Academic { get; } = new(
         MarkdownPdfOptions.ThemeAcademic,
         new MarkdownTypography(

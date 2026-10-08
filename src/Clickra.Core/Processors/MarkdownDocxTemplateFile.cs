@@ -18,6 +18,7 @@ public static class MarkdownDocxTemplateFile
     private const long MaxPackageBytes = 32L * 1024 * 1024;
     private const long MaxXmlBytes = 4L * 1024 * 1024;
 
+    /// <summary>Reads typography and page layout from a Word document template.</summary>
     public static MarkdownDocumentTemplate Load(string path)
     {
         if (string.IsNullOrWhiteSpace(path)) throw new ArgumentException("Template path is required.", nameof(path));

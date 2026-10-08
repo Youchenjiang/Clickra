@@ -6,6 +6,7 @@ namespace Clickra.Core.Processors;
 /// <summary>Loads a user-supplied Markdown document template from a supported source format.</summary>
 public static class MarkdownTemplateSource
 {
+    /// <summary>Loads a DOCX or Clickra JSON layout template from disk.</summary>
     public static MarkdownDocumentTemplate Load(string path)
     {
         if (string.IsNullOrWhiteSpace(path)) throw new ArgumentException("Template path is required.", nameof(path));

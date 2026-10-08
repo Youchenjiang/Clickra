@@ -10,9 +10,12 @@ namespace Clickra.Core.Processors;
 /// <summary>Loads a versioned, data-only Markdown document template from JSON.</summary>
 public static class MarkdownTemplateFile
 {
+    /// <summary>Supported JSON template schema version.</summary>
     public const int CurrentVersion = 1;
+    /// <summary>Maximum size in bytes for a JSON template.</summary>
     public const long MaxFileBytes = 64 * 1024;
 
+    /// <summary>Validates and reads a versioned Clickra JSON layout template.</summary>
     public static MarkdownDocumentTemplate Load(string path)
     {
         if (string.IsNullOrWhiteSpace(path)) throw new ArgumentException("Template path is required.", nameof(path));
