@@ -140,11 +140,15 @@ namespace Clickra.Core
                 try
                 {
                     byte[] bytes = File.ReadAllBytes(fontPath);
+                    int ttcFaceIndex = baseFace == "pmingliu" ? 1 : 0;
                     return Path.GetExtension(fontPath).Equals(".ttc", StringComparison.OrdinalIgnoreCase)
-                        ? ExtractTtcFace(bytes, baseFace == "pmingliu" ? 1 : 0)
+                        ? ExtractTtcFace(bytes, ttcFaceIndex)
                         : bytes;
                 }
-                catch { }
+                catch
+                {
+                    // Fall through to the known-safe font fallbacks below.
+                }
             }
 
             // Fallback for CJK faces if the file is missing
@@ -155,7 +159,11 @@ namespace Clickra.Core
                 string malgunPath = Path.Combine(winFonts, "malgun.ttf");
                 if (File.Exists(malgunPath))
                 {
-                    try { return File.ReadAllBytes(malgunPath); } catch { }
+                    try { return File.ReadAllBytes(malgunPath); }
+                    catch
+                    {
+                        // Continue through the remaining CJK fallback chain.
+                    }
                 }
             }
 
@@ -167,12 +175,20 @@ namespace Clickra.Core
                 string kaiuPath = Path.Combine(winFonts, "kaiu.ttf");
                 if (File.Exists(kaiuPath))
                 {
-                    try { return File.ReadAllBytes(kaiuPath); } catch { }
+                    try { return File.ReadAllBytes(kaiuPath); }
+                    catch
+                    {
+                        // Continue through the remaining CJK fallback chain.
+                    }
                 }
                 string simsunbPath = Path.Combine(winFonts, "simsunb.ttf");
                 if (File.Exists(simsunbPath))
                 {
-                    try { return File.ReadAllBytes(simsunbPath); } catch { }
+                    try { return File.ReadAllBytes(simsunbPath); }
+                    catch
+                    {
+                        // Continue through the remaining CJK fallback chain.
+                    }
                 }
             }
 
