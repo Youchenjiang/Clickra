@@ -13,6 +13,9 @@ namespace Clickra.Core.Tests;
 static partial class TestSuite
 {
     private const string MarkdownToPdfCommand = "md2pdf";
+    private const string TimesFontToken = "Times";
+    private const string UnknownMarkdownOptionValue = "unknown";
+    private const string MarkdownPdfCliDirectoryName = "Clickra.CLI";
 
     private static string[] GetMarkdownPdfFontNames(string path)
     {
@@ -328,14 +331,14 @@ static partial class TestSuite
                 string[] embeddedFonts = GetMarkdownPdfFontNames(output);
                 string attachedLatinBefore = page.Letters.First(letter => letter.Value == "Q").FontName!;
                 string attachedLatinAfter = page.Letters.First(letter => letter.Value == "v").FontName!;
-                Assert.True(latinFont.Contains("Times", StringComparison.OrdinalIgnoreCase),
+                Assert.True(latinFont.Contains(TimesFontToken, StringComparison.OrdinalIgnoreCase),
                     $"Latin text must use the imported Times New Roman family; actual={latinFont}.");
-                Assert.True(attachedLatinBefore.Contains("Times", StringComparison.OrdinalIgnoreCase)
-                            && attachedLatinAfter.Contains("Times", StringComparison.OrdinalIgnoreCase),
+                Assert.True(attachedLatinBefore.Contains(TimesFontToken, StringComparison.OrdinalIgnoreCase)
+                            && attachedLatinAfter.Contains(TimesFontToken, StringComparison.OrdinalIgnoreCase),
                     $"Latin text attached to full-width punctuation must stay in the imported Latin family; actual={attachedLatinBefore}, {attachedLatinAfter}.");
-                Assert.True(embeddedFonts.Any(font => font.Contains("Times", StringComparison.OrdinalIgnoreCase)),
+                Assert.True(embeddedFonts.Any(font => font.Contains(TimesFontToken, StringComparison.OrdinalIgnoreCase)),
                     "Mixed Latin/CJK text must retain a separate Times font resource.");
-                Assert.True(embeddedFonts.Any(font => !font.Contains("Times", StringComparison.OrdinalIgnoreCase)),
+                Assert.True(embeddedFonts.Any(font => !font.Contains(TimesFontToken, StringComparison.OrdinalIgnoreCase)),
                     $"Mixed Latin/CJK text must embed a distinct CJK-capable font resource; fonts={string.Join(", ", embeddedFonts)}.");
                 Assert.True(MarkdownRendererUsesCjkTypography('測') && MarkdownRendererUsesCjkTypography('，'),
                     "CJK ideographs and full-width punctuation must route through the renderer's CJK typography path.");
@@ -383,7 +386,7 @@ static partial class TestSuite
                 var page = pdf.GetPage(1);
                 string text = page.Text;
                 string[] fonts = GetMarkdownPdfFontNames(output);
-                Assert.True(fonts.Any(font => !font.Contains("Times", StringComparison.OrdinalIgnoreCase)),
+                Assert.True(fonts.Any(font => !font.Contains(TimesFontToken, StringComparison.OrdinalIgnoreCase)),
                     $"CJK punctuation must select a font resource separate from imported Latin text; fonts={string.Join(", ", fonts)}.");
                 foreach (string marker in new[] { "Alpha", "Beta", "Gamma", "Delta", "Echo", "Foxtrot" })
                     Assert.True(text.Contains(marker, StringComparison.Ordinal),
@@ -457,7 +460,7 @@ static partial class TestSuite
                 Assert.True(anchorGap >= 0 && anchorGap < 35,
                     $"CJK justification must not expand the punctuation interval between adjacent anchors; gap={anchorGap:0.##}.");
                 string[] fonts = GetMarkdownPdfFontNames(output);
-                Assert.True(fonts.Any(font => !font.Contains("Times", StringComparison.OrdinalIgnoreCase)),
+                Assert.True(fonts.Any(font => !font.Contains(TimesFontToken, StringComparison.OrdinalIgnoreCase)),
                     $"Justified CJK content must retain a font resource separate from Latin text; fonts={string.Join(", ", fonts)}.");
                 Assert.True(MarkdownRendererUsesCjkTypography('，'),
                     "Full-width comma must remain on the renderer's CJK typography path during justification.");
@@ -500,7 +503,7 @@ static partial class TestSuite
         runner.Run("Markdown to PDF: one-shot options use safe defaults and affect page setup", () =>
             RunWithTempDirectory(tempDir =>
             {
-                var defaults = MarkdownPdfOptions.Create("unknown", "unknown", "unknown", "unknown");
+                var defaults = MarkdownPdfOptions.Create(UnknownMarkdownOptionValue, UnknownMarkdownOptionValue, UnknownMarkdownOptionValue, UnknownMarkdownOptionValue);
                 Assert.Equal(MarkdownPdfOptions.ThemeDefault, MarkdownPdfOptions.GetTheme(defaults));
                 Assert.Equal(MarkdownPdfOptions.PaperA4, MarkdownPdfOptions.GetPaper(defaults));
                 Assert.Equal(MarkdownPdfOptions.TextStandard, MarkdownPdfOptions.GetTextSize(defaults));
@@ -529,9 +532,9 @@ static partial class TestSuite
             string root = FindRepoRoot() ?? throw new TestSkippedException(RepoRootNotFoundMessage);
             string fluentMain = File.ReadAllText(Path.Combine(root, "src", "Clickra.Fluent", "MainPage.xaml.cs"));
             string fluentTask = File.ReadAllText(Path.Combine(root, "src", "Clickra.Fluent", "TaskProgressPage.xaml.cs"));
-            string nativeDashboard = File.ReadAllText(Path.Combine(root, "src", "Clickra.CLI", "Dashboard", "DashboardWindow.ConvertRegistry.cs"));
-            string nativeProgress = File.ReadAllText(Path.Combine(root, "src", "Clickra.CLI", "Progress", "ProgressWindow.cs"));
-            string nativeOptions = File.ReadAllText(Path.Combine(root, "src", "Clickra.CLI", "Progress", "ProgressWindow.MarkdownOptions.cs"));
+            string nativeDashboard = File.ReadAllText(Path.Combine(root, "src", MarkdownPdfCliDirectoryName, "Dashboard", "DashboardWindow.ConvertRegistry.cs"));
+            string nativeProgress = File.ReadAllText(Path.Combine(root, "src", MarkdownPdfCliDirectoryName, "Progress", "ProgressWindow.cs"));
+            string nativeOptions = File.ReadAllText(Path.Combine(root, "src", MarkdownPdfCliDirectoryName, "Progress", "ProgressWindow.MarkdownOptions.cs"));
 
             Assert.True(fluentMain.Contains("PromptMarkdownPdfOptionsAsync", StringComparison.Ordinal),
                 "The Fluent conversion workspace must prompt for one-shot Markdown PDF options.");
@@ -561,7 +564,7 @@ static partial class TestSuite
                 "NativeAOT Markdown PDF and Word options must make DOCX templates mutually exclusive with built-in styles.");
             Assert.True(nativeOptions.Contains("PaintMarkdownOptions", StringComparison.Ordinal)
                         && nativeOptions.Contains("ResizeWindowForMarkdownOptions", StringComparison.Ordinal)
-                        && !File.Exists(Path.Combine(root, "src", "Clickra.CLI", "Progress", "MarkdownOptionsPrompt.cs")),
+                        && !File.Exists(Path.Combine(root, "src", MarkdownPdfCliDirectoryName, "Progress", "MarkdownOptionsPrompt.cs")),
                 "NativeAOT Markdown options must reuse the custom-painted Clickra progress surface rather than a separate stock Win32 prompt.");
         });
 
