@@ -9,9 +9,9 @@ The JSON format documented later in this file remains an internal/advanced inter
 ## Importing a Word template
 
 1. Start Markdown → PDF or Markdown → Word.
-2. Open **More options**.
+2. In the conversion options, set **Layout source** to **Word template**.
 3. Choose **Import DOCX...** and select the Word template supplied by a school, organization, or team.
-4. Confirm the selected filename and start the conversion.
+4. Confirm that the selected template is valid, then start the conversion.
 
 The importer currently extracts these semantic settings from `word/styles.xml` and the final section properties in `word/document.xml`:
 
