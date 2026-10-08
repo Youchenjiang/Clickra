@@ -8,6 +8,10 @@ namespace Clickra.Core
     /// <summary>Resolves Latin and CJK font faces for PDF generation.</summary>
     public class ClickraFontResolver : IFontResolver
     {
+        private const string NotoSansTcFace = "notosanstc";
+        private const string PMingLiUFace = "pmingliu";
+        private const string FontsDirectoryName = "Fonts";
+
         /// <summary>Default fallback font family.</summary>
         public string DefaultFontName => "Arial";
 
@@ -72,11 +76,11 @@ namespace Clickra.Core
             }
             if (name.Contains("noto sans tc"))
             {
-                return new FontResolverInfo("notosanstc");
+                return new FontResolverInfo(NotoSansTcFace);
             }
-            if (name.Contains("pmingliu") || name.Contains("新細明"))
+            if (name.Contains(PMingLiUFace) || name.Contains("新細明"))
             {
-                return new FontResolverInfo("pmingliu", isBold, isItalic);
+                return new FontResolverInfo(PMingLiUFace, isBold, isItalic);
             }
             if (name.Contains("malgun"))
             {
@@ -140,7 +144,7 @@ namespace Clickra.Core
                 try
                 {
                     byte[] bytes = File.ReadAllBytes(fontPath);
-                    int ttcFaceIndex = baseFace == "pmingliu" ? 1 : 0;
+                    int ttcFaceIndex = baseFace == PMingLiUFace ? 1 : 0;
                     return Path.GetExtension(fontPath).Equals(".ttc", StringComparison.OrdinalIgnoreCase)
                         ? ExtractTtcFace(bytes, ttcFaceIndex)
                         : bytes;
@@ -152,10 +156,10 @@ namespace Clickra.Core
             }
 
             // Fallback for CJK faces if the file is missing
-            if (baseFace == "notosanstc")
+            if (baseFace == NotoSansTcFace)
             {
                 string systemDir = Environment.GetFolderPath(Environment.SpecialFolder.System);
-                string winFonts = Path.Combine(systemDir, "..", "Fonts");
+                string winFonts = Path.Combine(systemDir, "..", FontsDirectoryName);
                 string malgunPath = Path.Combine(winFonts, "malgun.ttf");
                 if (File.Exists(malgunPath))
                 {
@@ -167,11 +171,11 @@ namespace Clickra.Core
                 }
             }
 
-            if (baseFace == "notosanstc" || baseFace == "kaiu" || baseFace == "msjh" || baseFace == "msgothic" ||
+            if (baseFace == NotoSansTcFace || baseFace == "kaiu" || baseFace == "msjh" || baseFace == "msgothic" ||
                 baseFace == "msyh" || baseFace == "malgun")
             {
                 string systemDir = Environment.GetFolderPath(Environment.SpecialFolder.System);
-                string winFonts = Path.Combine(systemDir, "..", "Fonts");
+                string winFonts = Path.Combine(systemDir, "..", FontsDirectoryName);
                 string kaiuPath = Path.Combine(winFonts, "kaiu.ttf");
                 if (File.Exists(kaiuPath))
                 {
@@ -204,7 +208,7 @@ namespace Clickra.Core
 
             // Arial fallback
             string systemDir2 = Environment.GetFolderPath(Environment.SpecialFolder.System);
-            string fallbackPath = Path.Combine(systemDir2, "..", "Fonts", "arial.ttf");
+            string fallbackPath = Path.Combine(systemDir2, "..", FontsDirectoryName, "arial.ttf");
             if (File.Exists(fallbackPath))
             {
                 try { return File.ReadAllBytes(fallbackPath); } catch { }
@@ -218,17 +222,17 @@ namespace Clickra.Core
         private string GetFontPath(string baseFace, string style)
         {
             string systemDir = Environment.GetFolderPath(Environment.SpecialFolder.System);
-            string winFonts = Path.Combine(systemDir, "..", "Fonts");
+            string winFonts = Path.Combine(systemDir, "..", FontsDirectoryName);
             string file = baseFace switch
             {
                 "kaiu" => "kaiu.ttf",
-                "notosanstc" => "NotoSansTC-VF.ttf",
+                NotoSansTcFace => "NotoSansTC-VF.ttf",
                 "msjh" => style switch
                 {
                     "b" or "bi" => "msjhbd.ttc",
                     _ => "msjh.ttc"
                 },
-                "pmingliu" => "mingliu.ttc",
+                PMingLiUFace => "mingliu.ttc",
                 "msyh" => "msyh.ttc", // Use standard Windows Microsoft YaHei TTC
                 "msgothic" => "msgothic.ttc", // Use standard Windows MS Gothic TTC
                 "malgun" => style switch // Malgun Gothic (Korean)
