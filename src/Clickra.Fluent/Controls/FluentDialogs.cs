@@ -18,7 +18,6 @@ internal static class FluentDialogs
     public static async Task<Dictionary<string, object>?> PromptMarkdownPdfOptionsAsync(
         XamlRoot xamlRoot,
         Func<string, string> localize,
-        string command,
         Window? ownerWindow,
         Action<ContentDialog>? trackDialog = null)
     {
@@ -43,32 +42,40 @@ internal static class FluentDialogs
             Text = localize("md_options_hint"),
             TextWrapping = TextWrapping.Wrap,
             Opacity = 0.75,
-            Margin = new Thickness(0, 0, 0, 4)
+            Margin = new Thickness(0, 0, 0, 8)
         });
 
         ComboBox? layoutSource = CreateCombo(
             localize("md_options_layout_clickra"),
             localize("md_options_layout_word"));
         TextBlock? templateStatus = null;
-        AddLabeledControl(primary, localize("md_options_layout_source"), layoutSource);
+        AddCompactLabeledControl(primary, localize("md_options_layout_source"), layoutSource);
 
-        var stylePanel = new StackPanel { Spacing = 4 };
-        AddLabeledControl(stylePanel, localize("md_options_style"), style);
+        var stylePanel = new StackPanel { Spacing = 0 };
+        AddCompactLabeledControl(stylePanel, localize("md_options_style"), style);
         primary.Children.Add(stylePanel);
 
-        var templatePanel = new StackPanel { Spacing = 4, Visibility = Visibility.Collapsed };
-        templatePanel.Children.Add(new TextBlock
+        var templatePicker = new Grid { ColumnSpacing = 8 };
+        templatePicker.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+        templatePicker.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+        var templateBrowse = new Button
         {
-            Text = localize("md_options_template"),
-            FontWeight = Microsoft.UI.Text.FontWeights.SemiBold
-        });
-        var templateBrowse = new Button { Content = localize("md_options_template_browse") };
+            Content = localize("md_options_template_browse"),
+            MinWidth = 132
+        };
         templateStatus = new TextBlock
         {
             Text = localize("md_options_template_none"),
             TextWrapping = TextWrapping.Wrap,
-            Opacity = 0.75
+            Opacity = 0.75,
+            VerticalAlignment = VerticalAlignment.Center
         };
+        Grid.SetColumn(templateBrowse, 0);
+        Grid.SetColumn(templateStatus, 1);
+        templatePicker.Children.Add(templateBrowse);
+        templatePicker.Children.Add(templateStatus);
+        var templatePanel = new StackPanel { Spacing = 0, Visibility = Visibility.Collapsed };
+        AddCompactLabeledControl(templatePanel, localize("md_options_template"), templatePicker);
         templateBrowse.Click += async (_, _) =>
         {
             var picker = new FileOpenPicker();
@@ -90,8 +97,6 @@ internal static class FluentDialogs
                 templateStatus.Text = localize("md_options_template_invalid");
             }
         };
-        templatePanel.Children.Add(templateBrowse);
-        templatePanel.Children.Add(templateStatus);
         primary.Children.Add(templatePanel);
 
         layoutSource.SelectionChanged += (_, _) =>
@@ -100,17 +105,9 @@ internal static class FluentDialogs
             stylePanel.Visibility = useTemplate ? Visibility.Collapsed : Visibility.Visible;
             templatePanel.Visibility = useTemplate ? Visibility.Visible : Visibility.Collapsed;
         };
-        AddLabeledControl(primary, localize("md_options_paper"), paper);
-        AddLabeledControl(primary, localize("md_options_text_size"), textSize);
-
-        var advanced = new StackPanel { Spacing = 8 };
-        AddLabeledControl(advanced, localize("md_options_code_theme"), codeTheme);
-        primary.Children.Add(new Expander
-        {
-            Header = localize("md_options_more"),
-            Content = advanced,
-            HorizontalAlignment = HorizontalAlignment.Stretch
-        });
+        AddCompactLabeledControl(primary, localize("md_options_paper"), paper);
+        AddCompactLabeledControl(primary, localize("md_options_text_size"), textSize);
+        AddCompactLabeledControl(primary, localize("md_options_code_theme"), codeTheme);
 
         var dialog = new ContentDialog
         {
@@ -169,10 +166,24 @@ internal static class FluentDialogs
         return combo;
     }
 
-    private static void AddLabeledControl(StackPanel panel, string label, Control control)
+    private static void AddCompactLabeledControl(StackPanel panel, string label, FrameworkElement control)
     {
-        panel.Children.Add(new TextBlock { Text = label, FontWeight = Microsoft.UI.Text.FontWeights.SemiBold });
-        panel.Children.Add(control);
+        var row = new Grid { ColumnSpacing = 12 };
+        row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(112) });
+        row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+
+        var labelBlock = new TextBlock
+        {
+            Text = label,
+            FontWeight = Microsoft.UI.Text.FontWeights.SemiBold,
+            VerticalAlignment = VerticalAlignment.Center
+        };
+        control.HorizontalAlignment = HorizontalAlignment.Stretch;
+        Grid.SetColumn(labelBlock, 0);
+        Grid.SetColumn(control, 1);
+        row.Children.Add(labelBlock);
+        row.Children.Add(control);
+        panel.Children.Add(row);
     }
 
     /// <summary>Asks for a PDF password; returns null when the user cancels.

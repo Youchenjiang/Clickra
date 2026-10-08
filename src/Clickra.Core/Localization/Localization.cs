@@ -281,7 +281,6 @@ namespace Clickra.Core
                 ("md_options_text_small", "小", "小", "Small", "小", "작게"),
                 ("md_options_text_standard", "標準", "标准", "Standard", "標準", "표준"),
                 ("md_options_text_large", "大", "大", "Large", "大", "크게"),
-                ("md_options_more", "更多選項", "更多选项", "More options", "その他のオプション", "추가 옵션"),
                 ("md_options_code_theme", "程式碼區塊", "代码区块", "Code blocks", "コードブロック", "코드 블록"),
                 ("md_options_code_dark", "深色（建議）", "深色（推荐）", "Dark (Recommended)", "ダーク（推奨）", "어둡게 (권장)"),
                 ("md_options_code_light", "淺色", "浅色", "Light", "ライト", "밝게"),

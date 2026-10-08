@@ -545,7 +545,7 @@ public sealed partial class MainPage : Page
         if (command.Equals("md2pdf", StringComparison.OrdinalIgnoreCase) ||
             command.Equals("md2word", StringComparison.OrdinalIgnoreCase))
         {
-            commandOptions = await FluentDialogs.PromptMarkdownPdfOptionsAsync(XamlRoot, L, command, App.MainWindow);
+            commandOptions = await FluentDialogs.PromptMarkdownPdfOptionsAsync(XamlRoot, L, App.MainWindow);
             if (commandOptions is null) return;
         }
         List<string> outputs;
