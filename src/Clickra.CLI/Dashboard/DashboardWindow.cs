@@ -25,7 +25,7 @@ namespace Clickra.UI
         {
             if (GetClientRect(hwnd, out var rect))
                 return rect.bottom - rect.top;
-            return 460;
+            return DashboardLayout.MinContentHeight;
         }
 
         static float GetLogicalWidth(IntPtr hwnd) => GetClientWidth(hwnd) / _dpiScale;
@@ -66,11 +66,11 @@ namespace Clickra.UI
             return _activeTab switch
             {
                 0 => _overviewContentHeight,
-                1 => 450,
+                1 => DashboardLayout.ConvertContentHeight(ConvertCommandGroupSizes),
                 2 => HistoryLayout.ContentHeight(GetHistoryStack()),
-                3 => Math.Max(460f, _settingsContentHeight),
-                4 => Math.Max(460, _aboutBtnY + 60),
-                _ => 460
+                3 => Math.Max(DashboardLayout.MinContentHeight, _settingsContentHeight),
+                4 => Math.Max(DashboardLayout.MinContentHeight, _aboutBtnY + 60),
+                _ => DashboardLayout.MinContentHeight
             };
         }
 

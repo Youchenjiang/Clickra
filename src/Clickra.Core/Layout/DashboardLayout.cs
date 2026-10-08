@@ -218,6 +218,16 @@ public static class DashboardLayout
     public static LayoutRect ConvertStartButtonRect(int contentX, int zoneWidth, IReadOnlyList<int> groupSizes) =>
         new LayoutRect(contentX, ConvertStartButtonY(groupSizes), zoneWidth, ConvertStartButtonHeight);
 
+    /// <summary>
+    /// 轉檔頁完整內容高度。當指令增加導致卡片多出一列時，捲動範圍也會跟著增加，
+    /// 不會讓最後一列或開始按鈕落在 client area 之外卻又無法捲到。
+    /// </summary>
+    public static int ConvertContentHeight(IReadOnlyList<int> groupSizes)
+    {
+        LayoutRect start = ConvertStartButtonRect(0, 1, groupSizes);
+        return Math.Max(MinContentHeight, start.Bottom + ConvertStartButtonGap);
+    }
+
     // ── 下拉選單與它彈出的清單 ──────────────────────────────────
     /// <summary>下拉控制項的寬度與高度；彈出框與它同寬。</summary>
     public const int DropdownWidth = 240;

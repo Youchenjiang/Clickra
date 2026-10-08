@@ -33,8 +33,8 @@ static partial class TestSuite
             TestDetailFieldTapBands);
         runner.Run("Dashboard layout: the convert grid, its cards and the start button do not overlap",
             TestConvertGridGeometry);
-        runner.RunGuard("AOT convert workspace: compact command groups stay within first-screen density",
-            TestAotConvertFirstScreenDensity);
+        runner.RunGuard("AOT convert workspace: command growth stays reachable by scrolling",
+            TestAotConvertScrollableContent);
         runner.RunGuard("AOT settings workspace: responsive columns preserve geometry and hit parity",
             TestAotSettingsResponsiveGeometry);
         runner.Run("Dashboard layout: dropdown popup rows round-trip between paint and hit-testing",
@@ -189,7 +189,7 @@ static partial class TestSuite
                 cursor += (i == expanded ? 160 : 44) + 8;
             }
 
-            Assert.Equal(Math.Max(460, expectedHeight), HistoryLayout.ContentHeight(stack));
+            Assert.Equal(Math.Max(DashboardLayout.MinContentHeight, expectedHeight), HistoryLayout.ContentHeight(stack));
         }
     }
 
@@ -286,7 +286,7 @@ static partial class TestSuite
         Assert.True(zone.Width > 0 && zone.Height == DashboardLayout.ConvertZoneHeight,
             "The drop zone must fit inside the content area.");
 
-        int[] groupSizes = { 3, 5, 8 };
+        int[] groupSizes = { 5, 5, 8 };
         for (int group = 0; group < DashboardLayout.ConvertGroupCount; group++)
         {
             int columns = DashboardLayout.ConvertGroupColumns(group);
@@ -333,13 +333,13 @@ static partial class TestSuite
         Assert.Equal(DashboardLayout.HistoryClearButtonHeight, historyClear.Height);
     }
 
-    private static void TestAotConvertFirstScreenDensity()
+    private static void TestAotConvertScrollableContent()
     {
-        int[] groupSizes = { 3, 5, 8 };
+        int[] groupSizes = { 5, 5, 8 };
         Assert.Equal(3, DashboardLayout.ConvertGroupColumns(0));
         Assert.Equal(5, DashboardLayout.ConvertGroupColumns(1));
         Assert.Equal(4, DashboardLayout.ConvertGroupColumns(2));
-        Assert.Equal(1, DashboardLayout.ConvertGroupRows(0, groupSizes[0]));
+        Assert.Equal(2, DashboardLayout.ConvertGroupRows(0, groupSizes[0]));
         Assert.Equal(1, DashboardLayout.ConvertGroupRows(1, groupSizes[1]));
         Assert.Equal(2, DashboardLayout.ConvertGroupRows(2, groupSizes[2]));
 
@@ -347,8 +347,14 @@ static partial class TestSuite
         LayoutRect start = DashboardLayout.ConvertStartButtonRect(zone.X, zone.Width, groupSizes);
         Assert.True(zone.Bottom < DashboardLayout.ConvertGridTop,
             "The compact drop zone must leave visible separation before command groups.");
-        Assert.True(start.Bottom <= DashboardLayout.MinContentHeight - 8,
-            $"AOT convert controls must stay inside the minimum dashboard content height; start bottom was {start.Bottom}.");
+        Assert.True(start.Bottom > DashboardLayout.MinContentHeight,
+            "The real command set currently needs vertical scrolling; the viewport must not grow with command count.");
+        Assert.Equal(start.Bottom + DashboardLayout.ConvertStartButtonGap, DashboardLayout.ConvertContentHeight(groupSizes));
+
+        int[] futureGroupSizes = { 8, 5, 8 };
+        LayoutRect futureStart = DashboardLayout.ConvertStartButtonRect(zone.X, zone.Width, futureGroupSizes);
+        Assert.True(DashboardLayout.ConvertContentHeight(futureGroupSizes) >= futureStart.Bottom + DashboardLayout.ConvertStartButtonGap,
+            "Convert content height must grow when additional command rows push the start button below the minimum viewport.");
 
         string? root = FindRepoRoot();
         if (root is null) throw new TestSkippedException("Could not locate the repository root from the test output directory.");
