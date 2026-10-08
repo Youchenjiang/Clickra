@@ -38,6 +38,7 @@ static partial class TestSuite
             ?? throw new InvalidOperationException("Markdown CJK typography classifier returned no result."));
     }
 
+    [System.Diagnostics.CodeAnalysis.SuppressMessage("SonarQube", "S3776", Justification = "This method registers independent Markdown PDF test cases; splitting registration adds indirection without reducing test logic.")]
     public static void RegisterMarkdownToPdfTests(TestRunner runner)
     {
         runner.Run("Markdown to PDF: pre-cancel preserves existing output", () =>

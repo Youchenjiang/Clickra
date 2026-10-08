@@ -14,6 +14,7 @@ static partial class TestSuite
 {
     private const string MarkdownToWordCommand = "md2word";
 
+    [System.Diagnostics.CodeAnalysis.SuppressMessage("SonarQube", "S3776", Justification = "This method registers independent Markdown Word test cases; splitting registration adds indirection without reducing test logic.")]
     public static void RegisterMarkdownToWordTests(TestRunner runner)
     {
         runner.Run("Markdown to Word: pre-cancel preserves existing output", () =>
