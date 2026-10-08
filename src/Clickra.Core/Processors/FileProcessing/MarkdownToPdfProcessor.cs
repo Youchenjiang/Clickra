@@ -20,10 +20,6 @@ namespace Clickra.Core.Processors;
 /// </summary>
 public sealed class MarkdownToPdfProcessor : MarkdownSingleFileProcessorBase
 {
-    private static readonly MarkdownPipeline Pipeline = new MarkdownPipelineBuilder()
-        .UseAdvancedExtensions()
-        .Build();
-
     protected override string TargetFormatName => "PDF";
 
     /// <summary>Renders one Markdown input file into the target PDF document.</summary>
@@ -35,14 +31,7 @@ public sealed class MarkdownToPdfProcessor : MarkdownSingleFileProcessorBase
         Action<int, int, string>? onProgress,
         CancellationToken cancellationToken)
     {
-        cancellationToken.ThrowIfCancellationRequested();
-        if (!File.Exists(filePath)) throw new FileNotFoundException("Markdown file not found", filePath);
-
-        onProgress?.Invoke(15, 100, Localization.T("md_pdf_progress_parsing", Path.GetFileName(filePath)));
-        string markdown = File.ReadAllText(filePath);
-        MarkdownDocument document = Markdown.Parse(markdown, Pipeline);
-
-        cancellationToken.ThrowIfCancellationRequested();
+        MarkdownDocument document = ParseMarkdownFile(filePath, "md_pdf_progress_parsing", onProgress, cancellationToken);
         onProgress?.Invoke(40, 100, Localization.T("md_pdf_progress_rendering", Path.GetFileName(filePath)));
 
         try

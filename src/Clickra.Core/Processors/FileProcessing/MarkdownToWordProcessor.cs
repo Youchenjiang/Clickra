@@ -18,10 +18,6 @@ namespace Clickra.Core.Processors;
 /// <summary>Converts Markdown to a self-contained DOCX using Markdig and WordprocessingML.</summary>
 public sealed class MarkdownToWordProcessor : MarkdownSingleFileProcessorBase
 {
-    private static readonly MarkdownPipeline Pipeline = new MarkdownPipelineBuilder()
-        .UseAdvancedExtensions()
-        .Build();
-
     protected override string TargetFormatName => "Word";
 
     /// <summary>Renders one Markdown input file into the target Word document.</summary>
@@ -33,13 +29,7 @@ public sealed class MarkdownToWordProcessor : MarkdownSingleFileProcessorBase
         Action<int, int, string>? onProgress,
         CancellationToken cancellationToken)
     {
-        cancellationToken.ThrowIfCancellationRequested();
-        if (!File.Exists(filePath)) throw new FileNotFoundException("Markdown file not found", filePath);
-
-        onProgress?.Invoke(15, 100, Localization.T("md_word_progress_parsing", Path.GetFileName(filePath)));
-        MarkdownDocument document = Markdown.Parse(File.ReadAllText(filePath), Pipeline);
-        cancellationToken.ThrowIfCancellationRequested();
-
+        MarkdownDocument document = ParseMarkdownFile(filePath, "md_word_progress_parsing", onProgress, cancellationToken);
         onProgress?.Invoke(45, 100, Localization.T("md_word_progress_rendering", Path.GetFileName(filePath)));
         string baseDirectory = Path.GetDirectoryName(Path.GetFullPath(filePath)) ?? Directory.GetCurrentDirectory();
         var writer = new DocxWriter(
