@@ -141,12 +141,12 @@ public sealed record MarkdownResolvedLayout(
         (template.Id == MarkdownPdfOptions.ThemeDefault && level == 1 ? 2 : 0) * Scale;
 
     /// <summary>Returns spacing after a heading in points.</summary>
-    public double HeadingAfterPoints(MarkdownDocumentTemplate template, int level) =>
-        (template.Id == MarkdownPdfOptions.ThemeDefault && level == 1
-            ? 14
-            : template.Id == MarkdownPdfOptions.ThemeDefault && level == 2
-                ? 7.5
-                : level <= 2 ? 12 : 7) * Scale;
+    public double HeadingAfterPoints(MarkdownDocumentTemplate template, int level)
+    {
+        if (template.Id == MarkdownPdfOptions.ThemeDefault && level == 1) return 14 * Scale;
+        if (template.Id == MarkdownPdfOptions.ThemeDefault && level == 2) return 7.5 * Scale;
+        return (level <= 2 ? 12 : 7) * Scale;
+    }
 
     /// <summary>Returns spacing after a fenced code block in points.</summary>
     public double CodeAfterPoints(MarkdownDocumentTemplate template) =>

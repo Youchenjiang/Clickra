@@ -234,6 +234,8 @@ public sealed class MarkdownToPdfProcessor : MultiFileProcessorBase
                     RenderInline(leaf.Inline, _bodySize, XFontStyleEx.Regular, new XSolidBrush(_textColor), indent, _bodyLineHeight);
                     _y += _blockGap;
                     break;
+                default:
+                    break;
             }
         }
 
