@@ -60,6 +60,7 @@ TestSuite.RegisterImageConvertTests(runner);
 TestSuite.RegisterImageCompressionTests(runner);
 TestSuite.RegisterMarkdownToPdfTests(runner);
 TestSuite.RegisterMarkdownToWordTests(runner);
+TestSuite.RegisterMarkdownUiIntegrationTests(runner);
 TestSuite.RegisterSettingsRegistryTests(runner);
 TestSuite.RegisterProgressWindowTests(runner);
 TestSuite.RegisterDashboardLayoutTests(runner);
