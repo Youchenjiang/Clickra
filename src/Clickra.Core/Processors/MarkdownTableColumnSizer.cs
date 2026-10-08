@@ -11,6 +11,7 @@ namespace Clickra.Core.Processors;
 /// </summary>
 internal static class MarkdownTableColumnSizer
 {
+    /// <summary>Computes normalized table column width fractions from cell content for both PDF and DOCX layout.</summary>
     public static IReadOnlyList<double> ResolveFractions(Table table, int columnCount)
     {
         if (columnCount <= 0) return Array.Empty<double>();

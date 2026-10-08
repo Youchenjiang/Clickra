@@ -156,6 +156,7 @@ namespace Clickra.UI.Native
         [DllImport("user32.dll", EntryPoint = "DestroyMenu", SetLastError = true)]
         private static extern bool DestroyMenuNative(IntPtr hMenu);
 
+        /// <summary>Result of the native progress window's tray action menu.</summary>
         public enum TrayPopupCommand : uint
         {
             None = 0,
@@ -164,6 +165,7 @@ namespace Clickra.UI.Native
             Unavailable = uint.MaxValue
         }
 
+        /// <summary>Shows the native Restore/Cancel popup and returns the selected tray command.</summary>
         public static TrayPopupCommand ShowTrayActionMenu(
             IntPtr hwnd,
             int x,

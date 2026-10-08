@@ -218,6 +218,7 @@ public static class DashboardLayout
             + ConvertStartButtonGap;
     }
 
+    /// <summary>Returns the original scrollable start-button position for conversion content sizing.</summary>
     public static LayoutRect ConvertStartButtonRect(int contentX, int zoneWidth, IReadOnlyList<int> groupSizes) =>
         new LayoutRect(contentX, ConvertStartButtonY(groupSizes), zoneWidth, ConvertStartButtonHeight);
 
