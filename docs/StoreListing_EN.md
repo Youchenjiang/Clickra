@@ -1,6 +1,6 @@
 # Microsoft Store Listing - English (US)
 
-Below is the complete information for you to copy and paste directly into the Microsoft Partner Center, updated for the v3.13.1.0 release.
+Below is the complete information for you to copy and paste directly into the Microsoft Partner Center, updated for the v3.14.0.0 release.
 
 ---
 
@@ -16,6 +16,8 @@ Core Features:
  - Native Dashboard: A responsive dark-themed interface for conversion, settings, and PDF/Office engine status that stays compact on high-DPI displays.
  - Office to PDF: High-quality, silent conversion for Word (.doc/.docx), Excel (.xls/.xlsx), and PowerPoint (.ppt/.pptx) files.
  - LibreOffice Fallback: Download LibreOffice from Clickra, or explicitly adopt a verified existing system installation, as a free local conversion engine when Microsoft Office is unavailable.
+ - Markdown to PDF / Word: Convert Markdown documents to PDF or DOCX with headings, lists, quotes, code blocks, tables, links, and local images.
+ - Markdown Layout Templates: Choose Default, Minimal, or Academic styling, or import a Word document as the shared layout source for both PDF and DOCX output.
  - PDF Compression: Compress PDF files locally using a high-fidelity native engine, reducing file size through content stream minification, font deduplication, and image downsampling.
  - PDF Password Decryption: Decrypt password-protected PDF files directly from the context menu.
  - Instant PDF Merging: Select multiple PDF files and merge them instantly from the right-click menu.
@@ -25,17 +27,18 @@ Core Features:
  - Parked Task Retention: Pause conversions safely, choose how long parked tasks are retained, and see expiration warnings before cleanup.
  - Progress & Tray Controls: Minimized conversions can be restored or cancelled from the system tray, while progress and splitter controls use consistent localized vector UI.
  - Image to PDF: Quickly wrap images (JPG/PNG/WebP) into PDF documents.
+ - Image Format Conversion & Compression: Convert images to PNG, JPG, WebP, GIF, or HEIC and compress images directly from Explorer.
  - Image Stitching: Combine multiple images vertically into a single long-form image.
 
-Clickra respects your privacy. Most processing (Office-to-PDF conversion, PDF compression, PDF merging, image stitching) is done 100% locally on your machine. Note: Using the optional PDF Translation feature securely transmits text to Google Translate for processing. Boost your workflow with Clickra's lightning-fast integrations!
+Clickra respects your privacy. Most processing (Office-to-PDF conversion, Markdown conversion, PDF compression, PDF merging, and image workflows) is done 100% locally on your machine. Markdown rendering and template import do not fetch remote images. Note: Using the optional PDF Translation feature securely transmits text to Google Translate for processing.
 
 🔗 Open Source on GitHub: https://github.com/Youchenjiang/Clickra
 
 ## What's new in this version
- - More Compact Convert Workspaces: Native and Fluent conversion screens use denser responsive grouping so common actions fit more naturally at high DPI.
- - Cleaner Native Settings: Settings cards, language controls, output paths, Office engine options, PDF compression, and parked-task retention now use a more consistent responsive layout.
- - Clearer Compression Scope: Image compression is no longer presented as a global Native Settings preference; PDF compression remains available in Settings.
- - More Reliable Windows Integration: Added unplated Explorer icon assets and tightened MSIX reinstall targeting so Clickra resolves the intended package identity more reliably.
+ - Markdown to PDF and Word: Convert .md and .markdown files into PDF or DOCX from CLI, Native Dashboard, Fluent UI, or Explorer.
+ - Shared Markdown Layouts: Use Default, Minimal, or Academic styles, or import a Word document as the layout source for both PDF and DOCX.
+ - Local-First Markdown Processing: Templates are revalidated before conversion and remote Markdown images are not downloaded.
+ - Complete Explorer Image Actions: Image format conversion to PNG, JPG, WebP, GIF, and HEIC plus image compression are now exposed consistently in the Clickra context menu.
 
 ## Product Features
 *(Max 20, displayed as bullet points)*
@@ -50,6 +53,7 @@ Clickra respects your privacy. Most processing (Office-to-PDF conversion, PDF co
  - Context menu icons for all conversion commands
  - Batch Image to PDF conversion (JPG/PNG/WebP)
  - Image format conversion to PNG, JPG, WebP, GIF, and HEIC
+ - Markdown to PDF and Word with built-in styles or imported Word templates
  - Seamless vertical image stitching
  - Fast multi-file PDF merging
  - NativeAOT shell integration for responsive context-menu commands
@@ -70,7 +74,7 @@ Clickra
 Clickra
 
 ## Short description
-Clickra is a high-performance native context menu utility for Office, PDF, and image workflows, with responsive high-DPI workspaces, localized progress controls, tray restore/cancel, parked-task retention, and local-first processing.
+Clickra is a high-performance native context menu utility for Office, Markdown, PDF, and image workflows, with Markdown-to-PDF/Word templates, responsive high-DPI workspaces, tray controls, and local-first processing.
 
 ---
 

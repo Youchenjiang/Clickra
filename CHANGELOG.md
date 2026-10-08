@@ -1,5 +1,11 @@
 # Changelog
 
+## [v3.14.0.0] - 2026-10-09
+
+- **Markdown 文件轉換 (Markdown → PDF / Word)**：新增 Markdown 轉 PDF 與 Word，支援標題、清單、引用、程式碼區塊、表格、連結與本機圖片，並整合 CLI、Native Dashboard、Fluent 與 Explorer 右鍵選單。
+- **共用文件樣式與 Word 範本 (Shared Layout / Word Template)**：提供 Default、Minimal、Academic 內建樣式，並可匯入 DOCX 作為 PDF 與 Word 共用的排版來源；範本會在轉換前重新驗證，遠端 Markdown 圖片維持不下載的 local-first 行為。
+- **圖片右鍵工作流程補齊 (Image Context Menu Parity)**：Explorer 右鍵選單補齊 PNG、JPG、WebP、GIF、HEIC 格式轉換與圖片壓縮，並加入一致性 guard，避免已註冊的圖片命令日後從 Shell 遺漏。
+
 ## [v3.13.1.0] - 2026-10-05
 
 - **轉換與設定版面精簡 (Responsive Workspace Polish)**：NativeAOT Convert / Settings 與 Fluent Convert 重新整理成更緊湊的響應式版面，在 200% DPI 等高縮放環境下減少不必要捲動與留白，並讓下拉選單的繪製、命中與互動位置保持一致。
