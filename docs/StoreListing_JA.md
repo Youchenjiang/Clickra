@@ -1,6 +1,6 @@
 # Microsoft Store Listing - Japanese (Japan)
 
-Microsoft Partner Center にそのまま貼り付けられる、v3.13.1.0 向けのストア掲載情報です。
+Microsoft Partner Center にそのまま貼り付けられる、v3.14.0.0 向けのストア掲載情報です。
 
 ---
 
@@ -16,6 +16,8 @@ Clickra は、Windows 10 と Windows 11 向けの高速なネイティブ右ク�
  - ネイティブ ダッシュボード: 変換、設定、PDF／Office エンジン状態をまとめて確認でき、高 DPI でもコンパクトに収まるレスポンシブなダークテーマ画面。
  - Office から PDF: Word (.doc/.docx)、Excel (.xls/.xlsx)、PowerPoint (.ppt/.pptx) を高品質な PDF に静かに変換。
  - LibreOffice フォールバック: Microsoft Office がない環境でも、Clickra から LibreOffice を取得するか、検証済みの既存システム インストールを明示的に Clickra 管理へ移行してローカル変換エンジンとして利用可能。
+ - Markdown から PDF／Word: Markdown 文書を PDF または DOCX に変換し、見出し、リスト、引用、コードブロック、表、リンク、ローカル画像を保持。
+ - Markdown レイアウトテンプレート: Default、Minimal、Academic を選択するか、Word 文書を PDF と DOCX 共通のレイアウト元として取り込み可能。
  - PDF 本地圧縮: C#/GDI+ エンジンを使用し、重複フォントの整理、コンテンツストリームの簡素化、低解像度画像の圧縮除外ロジックなど、高度な本地圧縮を実現。
  - PDF パスワード解除: パスワード付き PDF を右クリックメニューから復号し、パスワードなしの PDF を作成。
  - PDF 結合: 複数の PDF を選択してすばやく 1 つのファイルに結合。
@@ -25,17 +27,18 @@ Clickra は、Windows 10 と Windows 11 向けの高速なネイティブ右ク�
  - 一時停止タスクの保持: 変換を安全に一時停止し、保持期間を設定して、削除前に残り時間と期限警告を確認できます。
  - 進行状況とトレイ操作: 最小化した変換をシステムトレイから復元またはキャンセルでき、進行状況と分割 UI はローカライズ済みベクター操作に統一されます。
  - 画像から PDF: JPG/PNG/WebP 画像をまとめて PDF 化。
+ - 画像形式変換と圧縮: Explorer から PNG、JPG、WebP、GIF、HEIC への変換や画像圧縮を直接実行。
  - 画像結合: 複数の画像を縦方向につなげて 1 枚の長い画像に変換。
 
-Clickra はプライバシーを重視します。Office から PDF、PDF 圧縮、PDF 結合、画像結合などの主要処理はローカルで実行されます。任意機能の PDF 翻訳を使用する場合のみ、テキストが安全な接続で Google Translate に送信されます。
+Clickra はプライバシーを重視します。Office から PDF、Markdown 変換、PDF 圧縮、PDF 結合、画像処理などの主要機能はローカルで実行され、Markdown の描画やテンプレート取り込みではリモート画像を取得しません。任意の PDF 翻訳を使用する場合のみ、テキストが安全な接続で送信されます。
 
 🔗 Open Source on GitHub: https://github.com/Youchenjiang/Clickra
 
 ## What's new in this version
- - よりコンパクトな変換画面: Native と Fluent の変換画面を高 DPI でも主要操作が収まりやすい、密度の高いレスポンシブ構成に整理しました。
- - Native 設定画面を整理: 設定カード、言語、出力先、Office エンジン、PDF 圧縮、保留タスクの保持設定を一貫したレスポンシブレイアウトに統一しました。
- - 圧縮設定の役割を明確化: 画像圧縮を Native Settings のグローバル設定から外し、PDF 圧縮は Settings に維持しました。
- - Windows 統合の信頼性を向上: Explorer 用の unplated マルチサイズアイコンを追加し、MSIX 再インストール時に Clickra の正しいパッケージ identity をより確実に対象化します。
+ - Markdown から PDF／Word: CLI、Native Dashboard、Fluent、Explorer から .md／.markdown を PDF または DOCX に変換できます。
+ - 共通 Markdown レイアウト: Default、Minimal、Academic の各スタイルに加え、Word 文書を PDF と DOCX 共通のレイアウト元として取り込めます。
+ - ローカル優先の Markdown 処理: 変換前にテンプレートを再検証し、Markdown 内のリモート画像はダウンロードしません。
+ - Explorer の画像操作を拡充: PNG、JPG、WebP、GIF、HEIC への形式変換と画像圧縮を Clickra の右クリックメニューから一貫して利用できます。
 
 ## Product Features
 *(Max 20, displayed as bullet points)*
@@ -50,6 +53,7 @@ Clickra はプライバシーを重視します。Office から PDF、PDF 圧縮
  - コンテキストメニューのすべての変換コマンドにアイコン表示
  - JPG/PNG/WebP 画像の一括 PDF 変換
  - PNG、JPG、WebP、GIF、HEIC への画像形式変換
+ - Markdown から PDF／Word への変換（内蔵スタイルまたは Word テンプレート）
  - 画像の縦方向結合
  - 複数 PDF の高速結合
  - NativeAOT シェル統合による応答性の高いコンテキストメニュー
@@ -70,7 +74,7 @@ Clickra
 Clickra
 
 ## Short description
-Clickra は Office・PDF・画像処理に加え、高 DPI 対応のレスポンシブ画面、ローカライズ済み進行状況操作、トレイ復元／キャンセル、一時停止タスク保持を備えた高速ネイティブ右クリックメニューツールです。ローカル処理を重視します。
+Clickra は Office・Markdown・PDF・画像処理に対応する高速ネイティブ右クリックメニューツールです。Markdown から PDF／Word、Word テンプレート、高 DPI 対応画面、トレイ操作を備え、ローカル処理を重視します。
 
 ---
 

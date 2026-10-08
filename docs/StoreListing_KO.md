@@ -1,6 +1,6 @@
 # Microsoft Store Listing - Korean (Korea)
 
-Microsoft Partner Center에 바로 복사해 넣을 수 있는 v3.13.1.0용 스토어 등록 정보입니다.
+Microsoft Partner Center에 바로 복사해 넣을 수 있는 v3.14.0.0용 스토어 등록 정보입니다.
 
 ---
 
@@ -16,6 +16,8 @@ Clickra는 Windows 10 및 Windows 11용 고성능 네이티브 우클릭 메뉴 
  - 네이티브 대시보드: 변환, 설정, PDF／Office 엔진 상태를 한곳에서 확인하며 높은 DPI에서도 간결하게 유지되는 반응형 다크 테마 화면.
  - Office to PDF: Word (.doc/.docx), Excel (.xls/.xlsx), PowerPoint (.ppt/.pptx) 파일을 고품질 PDF로 조용히 변환.
  - LibreOffice 대체 엔진: Microsoft Office가 없는 환경에서도 Clickra에서 LibreOffice를 내려받거나 검증된 기존 시스템 설치를 명시적으로 Clickra 관리 대상으로 전환하여 로컬 변환 엔진으로 사용.
+ - Markdown to PDF／Word: Markdown 문서를 PDF 또는 DOCX로 변환하며 제목, 목록, 인용, 코드 블록, 표, 링크, 로컬 이미지를 지원.
+ - Markdown 레이아웃 템플릿: Default, Minimal, Academic 스타일을 선택하거나 Word 문서를 PDF와 DOCX의 공통 레이아웃 원본으로 가져오기.
  - PDF 로컬 압축: C#/GDI+ 엔진을 활용하여 중복 폰트 제거, 스트림 간소화, 저해상도 이미지 압축 우회 등으로 화질 저하를 방지하며 PDF를 로컬에서 강력하게 압축.
  - PDF 암호 제거: 암호로 보호된 PDF를 우클릭 메뉴에서 복호화하고 암호 없는 PDF를 생성.
  - PDF 병합: 여러 PDF를 선택해 빠르게 하나의 파일로 병합.
@@ -25,17 +27,18 @@ Clickra는 Windows 10 및 Windows 11용 고성능 네이티브 우클릭 메뉴 
  - 보류 작업 보관: 변환을 안전하게 일시 중지하고 보관 기간을 설정하며, 정리 전에 남은 시간과 만료 알림을 확인할 수 있습니다.
  - 진행 및 트레이 제어: 최소화한 변환을 시스템 트레이에서 복원하거나 취소할 수 있고, 진행 및 분할 컨트롤은 현지화된 벡터 UI로 통일됩니다.
  - 이미지 to PDF: JPG/PNG/WebP 이미지를 PDF 문서로 변환.
+ - 이미지 형식 변환 및 압축: Explorer에서 PNG, JPG, WebP, GIF, HEIC 형식 변환과 이미지 압축을 직접 실행.
  - 이미지 세로 병합: 여러 이미지를 하나의 긴 이미지로 결합.
 
-Clickra는 개인정보 보호를 중요하게 생각합니다. Office to PDF, PDF 압축, PDF 병합, 이미지 병합 등 대부분의 작업은 로컬 PC에서 처리됩니다. 선택 기능인 PDF 번역을 사용할 때만 텍스트가 보안 연결을 통해 Google Translate로 전송됩니다.
+Clickra는 개인정보 보호를 중요하게 생각합니다. Office to PDF, Markdown 변환, PDF 압축, PDF 병합, 이미지 작업 등 대부분의 기능은 로컬 PC에서 처리되며 Markdown 렌더링과 템플릿 가져오기는 원격 이미지를 내려받지 않습니다. 선택형 PDF 번역을 사용할 때만 텍스트가 보안 연결을 통해 전송됩니다.
 
 🔗 Open Source on GitHub: https://github.com/Youchenjiang/Clickra
 
 ## What's new in this version
- - 더 간결한 변환 작업 영역: Native 및 Fluent 변환 화면을 더 촘촘한 반응형 그룹으로 정리해 높은 DPI에서도 자주 쓰는 동작이 자연스럽게 배치됩니다.
- - 더 정돈된 Native 설정: 설정 카드, 언어 선택, 출력 경로, Office 엔진, PDF 압축 및 보관 작업 유지 설정을 일관된 반응형 레이아웃으로 정리했습니다.
- - 더 명확한 압축 설정 범위: 이미지 압축을 Native Settings의 전역 환경설정에서 제거하고, PDF 압축은 Settings에 유지했습니다.
- - 더 안정적인 Windows 통합: Explorer용 unplated 다중 크기 아이콘을 추가하고 MSIX 재설치 시 올바른 Clickra 패키지 identity를 더 정확하게 대상으로 지정합니다.
+ - Markdown to PDF／Word: CLI, Native Dashboard, Fluent, Explorer에서 .md／.markdown 파일을 PDF 또는 DOCX로 변환할 수 있습니다.
+ - 공통 Markdown 레이아웃: Default, Minimal, Academic 스타일과 Word 문서 가져오기를 PDF와 DOCX에 공통으로 사용할 수 있습니다.
+ - 로컬 우선 Markdown 처리: 변환 전에 템플릿을 다시 검증하며 Markdown의 원격 이미지는 다운로드하지 않습니다.
+ - Explorer 이미지 작업 완성: PNG, JPG, WebP, GIF, HEIC 형식 변환과 이미지 압축을 Clickra 우클릭 메뉴에서 일관되게 사용할 수 있습니다.
 
 ## Product Features
 *(Max 20, displayed as bullet points)*
@@ -50,6 +53,7 @@ Clickra는 개인정보 보호를 중요하게 생각합니다. Office to PDF, P
  - 컨텍스트 메뉴의 모든 변환 명령에 아이콘 표시
  - JPG/PNG/WebP 이미지 일괄 PDF 변환
  - PNG, JPG, WebP, GIF, HEIC 이미지 형식 변환
+ - Markdown to PDF／Word 변환(내장 스타일 또는 Word 템플릿)
  - 이미지 세로 병합
  - 빠른 다중 PDF 병합
  - NativeAOT 셸 통합 기반의 빠른 컨텍스트 메뉴 응답
@@ -70,7 +74,7 @@ Clickra
 Clickra
 
 ## Short description
-Clickra는 Office/PDF/이미지 작업과 함께 높은 DPI용 반응형 작업 영역, 현지화된 진행 제어, 시스템 트레이 복원／취소, 보류 작업 보관을 제공하는 고성능 네이티브 우클릭 메뉴 도구입니다. 로컬 처리를 우선합니다.
+Clickra는 Office, Markdown, PDF, 이미지 작업을 지원하는 고성능 네이티브 우클릭 메뉴 도구입니다. Markdown to PDF／Word, Word 템플릿, 높은 DPI용 반응형 화면과 트레이 제어를 제공하며 로컬 처리를 우선합니다.
 
 ---
 
