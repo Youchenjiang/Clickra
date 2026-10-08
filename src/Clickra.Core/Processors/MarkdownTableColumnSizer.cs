@@ -74,6 +74,9 @@ internal static class MarkdownTableColumnSizer
                 case ContainerInline nested:
                     units += MeasureInlineUnits(nested);
                     break;
+                default:
+                    // Unsupported inline nodes contribute no measurable text width.
+                    break;
             }
         }
         return units;

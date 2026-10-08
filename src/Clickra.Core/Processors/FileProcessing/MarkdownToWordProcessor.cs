@@ -509,6 +509,9 @@ public sealed class MarkdownToWordProcessor : MultiFileProcessorBase
                 case ContainerInline container:
                     foreach (Inline child in container) AppendInline(paragraph, child, bold, italic, url);
                     break;
+                default:
+                    // Ignore unsupported inline nodes without inventing Word content.
+                    break;
             }
         }
 
