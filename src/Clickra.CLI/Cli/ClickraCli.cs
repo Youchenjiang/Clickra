@@ -14,6 +14,7 @@ namespace Clickra
 {
     partial class ClickraCli
     {
+        /// <summary>Immutable options captured before CLI command dispatch begins.</summary>
         internal sealed record DispatchOptions(
             bool Quiet,
             string OutputDir,

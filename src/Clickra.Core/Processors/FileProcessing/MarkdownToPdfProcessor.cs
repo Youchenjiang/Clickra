@@ -128,6 +128,7 @@ public sealed class MarkdownToPdfProcessor : MultiFileProcessorBase
         private XGraphics? _graphics;
         private double _y;
 
+        /// <summary>Initializes a PDF renderer with resolved Markdown presentation options and cancellation state.</summary>
         public Renderer(PdfDocument document, string baseDirectory, IReadOnlyDictionary<string, object>? options, CancellationToken token)
         {
             _document = document;
@@ -170,6 +171,7 @@ public sealed class MarkdownToPdfProcessor : MultiFileProcessorBase
             NewPage();
         }
 
+        /// <summary>Renders every block in a parsed Markdown document into the target PDF.</summary>
         public void Render(MarkdownDocument document)
         {
             List<Block> blocks = document.ToList();
@@ -187,6 +189,7 @@ public sealed class MarkdownToPdfProcessor : MultiFileProcessorBase
             DrawPendingQuoteSurfaces();
         }
 
+        /// <summary>Releases the active PDF graphics context.</summary>
         public void Dispose() => _graphics?.Dispose();
 
         private void RenderBlock(Block block, double indent, bool bodyParagraph = true)
@@ -1382,7 +1385,9 @@ public sealed class MarkdownToPdfProcessor : MultiFileProcessorBase
         private sealed record QuoteSurfaceFragment(PdfPage Page, double X, double Y, double Width, double Height);
         private sealed class QuoteState(double x, double startY)
         {
+            /// <summary>Left edge of the active quote surface.</summary>
             public double X { get; } = x;
+            /// <summary>Current vertical start of the active quote surface.</summary>
             public double StartY { get; set; } = startY;
         }
     }

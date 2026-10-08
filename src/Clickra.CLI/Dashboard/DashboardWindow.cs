@@ -31,11 +31,13 @@ namespace Clickra.UI
         static float GetLogicalWidth(IntPtr hwnd) => GetClientWidth(hwnd) / _dpiScale;
         static float GetLogicalHeight(IntPtr hwnd) => GetClientHeight(hwnd) / _dpiScale;
 
+        /// <summary>Returns the Dashboard sidebar width in logical pixels for the current workspace.</summary>
         public static float GetSidebarWidth(float logW)
         {
             return _sidebarWidth;
         }
 
+        /// <summary>Returns the logical X coordinate where Dashboard content begins.</summary>
         public static float GetContentX(float logW)
         {
             return _sidebarWidth + 30f;

@@ -104,6 +104,7 @@ public sealed class MarkdownToWordProcessor : MultiFileProcessorBase
         private int _nextRelationshipId = 1;
         private int _nextNumberingId = 1;
 
+        /// <summary>Initializes a DOCX writer from the resolved Markdown template and presentation options.</summary>
         public DocxWriter(
             MarkdownDocumentTemplate template,
             string paper,
@@ -127,6 +128,7 @@ public sealed class MarkdownToWordProcessor : MultiFileProcessorBase
             _token = token;
         }
 
+        /// <summary>Writes the parsed Markdown document and related package parts to a DOCX file.</summary>
         public void Save(MarkdownDocument document, string outputPath)
         {
             var body = new XElement(W + "body");
