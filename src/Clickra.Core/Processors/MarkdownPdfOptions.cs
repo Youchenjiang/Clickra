@@ -78,10 +78,12 @@ public static class MarkdownPdfOptions
         NormalizeCodeTheme(Read(options, CodeThemeKey, CodeDark));
 
     /// <summary>Returns the absolute custom template path, if supplied.</summary>
-    public static string? GetTemplatePath(IReadOnlyDictionary<string, object>? options) =>
-        options is not null && options.TryGetValue(TemplatePathKey, out object? value) && !string.IsNullOrWhiteSpace(value?.ToString())
-            ? Path.GetFullPath(value!.ToString()!)
-            : null;
+    public static string? GetTemplatePath(IReadOnlyDictionary<string, object>? options)
+    {
+        if (options is null || !options.TryGetValue(TemplatePathKey, out object? value)) return null;
+        string? path = value?.ToString();
+        return string.IsNullOrWhiteSpace(path) ? null : Path.GetFullPath(path);
+    }
 
     private static string Read(IReadOnlyDictionary<string, object>? options, string key, string fallback) =>
         options is not null && options.TryGetValue(key, out object? value)
