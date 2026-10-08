@@ -141,12 +141,12 @@ public static class MarkdownTemplateFile
     {
         var names = new HashSet<string>(allowed, StringComparer.Ordinal);
         var seen = new HashSet<string>(StringComparer.Ordinal);
-        foreach (JsonProperty property in element.EnumerateObject())
+        foreach (string propertyName in element.EnumerateObject().Select(property => property.Name))
         {
-            if (!names.Contains(property.Name))
-                throw new InvalidDataException($"Unknown Markdown template property: {property.Name}.");
-            if (!seen.Add(property.Name))
-                throw new InvalidDataException($"Duplicate Markdown template property: {property.Name}.");
+            if (!names.Contains(propertyName))
+                throw new InvalidDataException($"Unknown Markdown template property: {propertyName}.");
+            if (!seen.Add(propertyName))
+                throw new InvalidDataException($"Duplicate Markdown template property: {propertyName}.");
         }
     }
 
@@ -175,14 +175,7 @@ public static class MarkdownTemplateFile
         return canonicalFamily;
     }
 
-    private static bool ContainsControlCharacter(string value)
-    {
-        foreach (char character in value)
-        {
-            if (char.IsControl(character)) return true;
-        }
-        return false;
-    }
+    private static bool ContainsControlCharacter(string value) => value.Any(char.IsControl);
 
     private static double Number(JsonElement element, string name, double fallback, double min, double max)
     {
