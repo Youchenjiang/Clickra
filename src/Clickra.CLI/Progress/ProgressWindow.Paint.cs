@@ -68,6 +68,7 @@ namespace Clickra.UI
         }
 
         /// <summary>Paints the window title, the contextual subtitle line and the divider.</summary>
+        [System.Diagnostics.CodeAnalysis.SuppressMessage("SonarQube", "S3776", Justification = "Subtitle text and color intentionally reflect the mutually exclusive progress-window states in one paint pass.")]
         private void PaintTitleAndSubtitle(Graphics g, float s, bool hasErr, bool comp, bool isPrompting)
         {
             if (_titleFont != null)

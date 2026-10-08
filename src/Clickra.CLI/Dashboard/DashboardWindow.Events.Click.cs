@@ -16,6 +16,7 @@ namespace Clickra.UI
         private const string AppTitle = "Clickra";
 
         /// <summary>Routes left-button clicks to the active dashboard tab's hit regions.</summary>
+        [System.Diagnostics.CodeAnalysis.SuppressMessage("SonarQube", "S3776", Justification = "Dashboard hit-testing is intentionally ordered so overlapping UI regions resolve deterministically.")]
         static void HandleLButtonDown(IntPtr hwnd, IntPtr w, IntPtr l)
         {
             int rawX = (short)(l.ToInt64() & 0xFFFF);

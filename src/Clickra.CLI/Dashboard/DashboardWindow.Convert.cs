@@ -83,6 +83,7 @@ namespace Clickra.UI
         }
 
         /// <summary>Queues a conversion action for files dropped onto the dashboard window.</summary>
+        [System.Diagnostics.CodeAnalysis.SuppressMessage("SonarQube", "S3776", Justification = "Ordered file-type routing keeps explicit command precedence and selection behavior visible in one place.")]
         static void HandleDroppedFiles(List<string> files)
         {
             var extensions = files.Select(f => Path.GetExtension(f).ToLowerInvariant()).Distinct().ToList();
