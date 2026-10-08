@@ -725,8 +725,7 @@ public sealed class MarkdownToPdfProcessor : MultiFileProcessorBase
                 {
                     if (child is LeafBlock leaf && leaf.Inline is not null)
                     {
-                        if (segments.Count > 0)
-                            segments.Add(new InlineSegment(" ", isHeader, false, false, null));
+                        AddTableCellSeparator(segments, isHeader);
                         CollectInlineSegments(leaf.Inline, isHeader, false, null, false, segments);
                     }
                     else
@@ -736,8 +735,7 @@ public sealed class MarkdownToPdfProcessor : MultiFileProcessorBase
                             : "";
                         if (!string.IsNullOrWhiteSpace(text))
                         {
-                            if (segments.Count > 0)
-                                segments.Add(new InlineSegment(" ", isHeader, false, false, null));
+                            AddTableCellSeparator(segments, isHeader);
                             segments.Add(new InlineSegment(text, isHeader, false, false, null));
                         }
                     }
@@ -747,6 +745,12 @@ public sealed class MarkdownToPdfProcessor : MultiFileProcessorBase
             if (segments.Count == 0)
                 segments.Add(new InlineSegment("", isHeader, false, false, null));
             return segments;
+        }
+
+        private static void AddTableCellSeparator(List<InlineSegment> segments, bool isHeader)
+        {
+            if (segments.Count > 0)
+                segments.Add(new InlineSegment(" ", isHeader, false, false, null));
         }
 
         [System.Diagnostics.CodeAnalysis.SuppressMessage("SonarQube", "S3776", Justification = "Table token wrapping preserves explicit newline, whitespace, and font fallback behavior in one pass.")]
@@ -851,6 +855,7 @@ public sealed class MarkdownToPdfProcessor : MultiFileProcessorBase
             }
         }
 
+        [System.Diagnostics.CodeAnalysis.SuppressMessage("SonarQube", "S107", Justification = "Inline rendering parameters describe one cohesive layout operation and are passed directly to the renderer.")]
         private void RenderInline(ContainerInline? inline, double size, XFontStyleEx baseStyle, XBrush baseBrush, double indent, double lineHeight, double firstLineIndent = 0, bool centerSingleLine = false, bool justify = false)
         {
             var segments = new List<InlineSegment>();
@@ -858,6 +863,7 @@ public sealed class MarkdownToPdfProcessor : MultiFileProcessorBase
             RenderSegments(segments, size, baseBrush, indent, lineHeight, firstLineIndent, centerSingleLine, justify);
         }
 
+        [System.Diagnostics.CodeAnalysis.SuppressMessage("SonarQube", "S107", Justification = "Segment rendering parameters are cohesive layout state; introducing a DTO would only obscure the hot rendering path.")]
         private void RenderSegments(List<InlineSegment> segments, double size, XBrush baseBrush, double indent, double lineHeight, double firstLineIndent, bool centerSingleLine = false, bool justify = false)
         {
             if (justify && segments.All(segment => segment.ImageUrl is null))
@@ -1056,6 +1062,7 @@ public sealed class MarkdownToPdfProcessor : MultiFileProcessorBase
 
         private static string NormalizeDisplayGlyphs(string text) => text;
 
+        [System.Diagnostics.CodeAnalysis.SuppressMessage("SonarQube", "S107", Justification = "Token rendering carries explicit style and geometry state to avoid hidden mutable layout objects.")]
         private void RenderInlineToken(string token, string? url, bool isCode, XFont font, XBrush brush, double indent, double lineHeight, double maxX, ref double x)
         {
             if (token == "\n")
@@ -1068,6 +1075,7 @@ public sealed class MarkdownToPdfProcessor : MultiFileProcessorBase
                 DrawInlinePiece(piece, url, isCode, font, brush, indent, lineHeight, maxX, ref x);
         }
 
+        [System.Diagnostics.CodeAnalysis.SuppressMessage("SonarQube", "S107", Justification = "Inline piece drawing keeps explicit style and geometry arguments for deterministic PDF layout.")]
         private void DrawInlinePiece(string piece, string? url, bool isCode, XFont font, XBrush brush, double indent, double lineHeight, double maxX, ref double x)
         {
             double width = _graphics!.MeasureString(piece, font).Width;
