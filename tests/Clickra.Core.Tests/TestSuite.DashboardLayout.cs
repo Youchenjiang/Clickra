@@ -392,8 +392,10 @@ static partial class TestSuite
 
         string events = File.ReadAllText(Path.Combine(root, "src", "Clickra.CLI", "Dashboard", "DashboardWindow.Events.cs"));
         Assert.True(events.Contains("WM_GETMINMAXINFO", StringComparison.Ordinal)
-                    && events.Contains("DashboardLayout.MinClientWidth", StringComparison.Ordinal),
-            "The dashboard must keep enough minimum width for the fixed convert action to remain operable.");
+                    && events.Contains("DashboardLayout.MinClientWidth", StringComparison.Ordinal)
+                    && events.Contains("AdjustWindowRectExForDpi", StringComparison.Ordinal)
+                    && events.Contains("GetDpiForWindow(hwnd)", StringComparison.Ordinal),
+            "The dashboard must keep a per-monitor-DPI-correct minimum width for the fixed convert action.");
     }
 
     private static void TestAotSettingsResponsiveGeometry()
