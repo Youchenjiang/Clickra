@@ -15,6 +15,8 @@ public static class MarkdownDocxTemplateFile
 {
     private static readonly XNamespace W = "http://schemas.openxmlformats.org/wordprocessingml/2006/main"; // skipcq: CS-P1003 — XNamespace cannot be const.
     private static readonly XNamespace A = "http://schemas.openxmlformats.org/drawingml/2006/main"; // skipcq: CS-P1003 — XNamespace cannot be const.
+    private const string StyleIdAttributeName = "styleId";
+    private const string TypefaceAttributeName = "typeface";
     private const long MaxPackageBytes = 32L * 1024 * 1024;
     private const long MaxXmlBytes = 4L * 1024 * 1024;
 
@@ -116,7 +118,7 @@ public static class MarkdownDocxTemplateFile
     private static XElement? FindNormalStyle(XDocument styles) => styles.Descendants(W + "style")
         .FirstOrDefault(style => IsParagraphStyle(style) &&
             (style.Attribute(W + "default")?.Value == "1" ||
-             string.Equals(style.Attribute(W + "styleId")?.Value, "Normal", StringComparison.OrdinalIgnoreCase) ||
+             string.Equals(style.Attribute(W + StyleIdAttributeName)?.Value, "Normal", StringComparison.OrdinalIgnoreCase) ||
              string.Equals(style.Element(W + "name")?.Attribute(W + "val")?.Value, "Normal", StringComparison.OrdinalIgnoreCase)));
 
     private static XElement? FindHeadingStyle(XDocument styles, int level) => styles.Descendants(W + "style")
@@ -127,7 +129,7 @@ public static class MarkdownDocxTemplateFile
 
     private static bool IsHeadingStyle(XElement style, int level)
     {
-        string id = style.Attribute(W + "styleId")?.Value ?? string.Empty;
+        string id = style.Attribute(W + StyleIdAttributeName)?.Value ?? string.Empty;
         string name = style.Element(W + "name")?.Attribute(W + "val")?.Value ?? string.Empty;
         string? outline = style.Element(W + "pPr")?.Element(W + "outlineLvl")?.Attribute(W + "val")?.Value;
         return id.Equals("Heading" + level, StringComparison.OrdinalIgnoreCase)
@@ -201,12 +203,12 @@ public static class MarkdownDocxTemplateFile
 
         if (!eastAsia)
         {
-            string? latin = family.Element(A + "latin")?.Attribute("typeface")?.Value;
+            string? latin = family.Element(A + "latin")?.Attribute(TypefaceAttributeName)?.Value;
             if (!string.IsNullOrWhiteSpace(latin)) return latin;
             throw new InvalidDataException($"Word template theme font '{themeKey}' does not define a Latin typeface.");
         }
 
-        string? typeface = family.Element(A + "ea")?.Attribute("typeface")?.Value;
+        string? typeface = family.Element(A + "ea")?.Attribute(TypefaceAttributeName)?.Value;
         if (!string.IsNullOrWhiteSpace(typeface)) return typeface;
 
         string? script = EastAsiaScript(eastAsiaLanguage);
@@ -214,14 +216,14 @@ public static class MarkdownDocxTemplateFile
         {
             string? supplemental = family.Elements(A + "font")
                 .FirstOrDefault(font => string.Equals(font.Attribute("script")?.Value, script, StringComparison.OrdinalIgnoreCase))
-                ?.Attribute("typeface")?.Value;
+                ?.Attribute(TypefaceAttributeName)?.Value;
             if (!string.IsNullOrWhiteSpace(supplemental)) return supplemental;
         }
 
         string[] knownScripts = { "Hant", "Hans", "Jpan", "Hang" };
         string[] candidates = family.Elements(A + "font")
             .Where(font => knownScripts.Contains(font.Attribute("script")?.Value, StringComparer.OrdinalIgnoreCase))
-            .Select(font => font.Attribute("typeface")?.Value)
+            .Select(font => font.Attribute(TypefaceAttributeName)?.Value)
             .Where(value => !string.IsNullOrWhiteSpace(value))
             .Select(value => value!)
             .Distinct(StringComparer.OrdinalIgnoreCase)
@@ -261,12 +263,12 @@ public static class MarkdownDocxTemplateFile
         XElement? current = style;
         while (current is not null)
         {
-            string id = current.Attribute(W + "styleId")?.Value ?? string.Empty;
+            string id = current.Attribute(W + StyleIdAttributeName)?.Value ?? string.Empty;
             if (!seen.Add(id)) yield break;
             yield return current;
             string? basedOn = current.Element(W + "basedOn")?.Attribute(W + "val")?.Value;
             current = string.IsNullOrWhiteSpace(basedOn) ? null : styles.Descendants(W + "style")
-                .FirstOrDefault(candidate => string.Equals(candidate.Attribute(W + "styleId")?.Value, basedOn, StringComparison.OrdinalIgnoreCase));
+                .FirstOrDefault(candidate => string.Equals(candidate.Attribute(W + StyleIdAttributeName)?.Value, basedOn, StringComparison.OrdinalIgnoreCase));
         }
     }
 
