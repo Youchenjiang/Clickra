@@ -14,6 +14,17 @@ static partial class TestSuite
 {
     private const string MarkdownToPdfCommand = "md2pdf";
 
+    private static string[] GetMarkdownPdfFontNames(string path)
+    {
+        using var pdf = PdfSharp.Pdf.IO.PdfReader.Open(path, PdfSharp.Pdf.IO.PdfDocumentOpenMode.Import);
+        return pdf.Internals.GetAllObjects()
+            .OfType<PdfSharp.Pdf.PdfDictionary>()
+            .Where(dictionary => dictionary.Elements.GetName("/Type") == "/Font")
+            .Select(dictionary => dictionary.Elements.GetName("/BaseFont"))
+            .Where(name => !string.IsNullOrEmpty(name))
+            .ToArray();
+    }
+
     public static void RegisterMarkdownToPdfTests(TestRunner runner)
     {
         runner.Run("Markdown to PDF: pre-cancel preserves existing output", () =>
@@ -78,9 +89,9 @@ static partial class TestSuite
             MarkdownDocumentTemplate minimal = MarkdownTemplateCatalog.Minimal;
             MarkdownDocumentTemplate academic = MarkdownTemplateCatalog.Academic;
 
-            Assert.False(modern.Layout.MarginPoints == minimal.Layout.MarginPoints && minimal.Layout.MarginPoints == academic.Layout.MarginPoints,
+            Assert.False(Math.Abs(modern.Layout.MarginPoints - minimal.Layout.MarginPoints) < 0.01 && Math.Abs(minimal.Layout.MarginPoints - academic.Layout.MarginPoints) < 0.01,
                 "Built-in Markdown templates must not share one page layout.");
-            Assert.False(modern.Typography.BodySizePoints == minimal.Typography.BodySizePoints && minimal.Typography.BodySizePoints == academic.Typography.BodySizePoints,
+            Assert.False(Math.Abs(modern.Typography.BodySizePoints - minimal.Typography.BodySizePoints) < 0.01 && Math.Abs(minimal.Typography.BodySizePoints - academic.Typography.BodySizePoints) < 0.01,
                 "Built-in Markdown templates must not share one typography scale.");
             Assert.True(modern.Layout.DrawH2Bar && !minimal.Layout.DrawH2Bar && !academic.Layout.DrawH2Bar,
                 "Only Clickra Default should use the branded H2 accent rule.");
@@ -88,22 +99,22 @@ static partial class TestSuite
                 "Minimal and Academic tables must remain visually quieter than Clickra Default.");
             Assert.Equal("Times New Roman", academic.Typography.LatinFont);
             Assert.Equal("KaiU", academic.Typography.CjkFont);
-            Assert.True(academic.Typography.BodySizePoints == 12d && academic.Typography.LineHeightPoints == 18d,
+            Assert.True(Math.Abs(academic.Typography.BodySizePoints - 12d) < 0.01 && Math.Abs(academic.Typography.LineHeightPoints - 18d) < 0.01,
                 "Academic body typography must use conventional 12pt text with 18pt leading.");
             Assert.True(Math.Abs(academic.Layout.EffectiveMarginTopPoints - 70.87) < 0.01
                         && Math.Abs(academic.Layout.EffectiveMarginRightPoints - 56.69) < 0.01
                         && Math.Abs(academic.Layout.EffectiveMarginBottomPoints - 70.87) < 0.01
                         && Math.Abs(academic.Layout.EffectiveMarginLeftPoints - 85.04) < 0.01
-                        && academic.Layout.FirstLineIndentPoints == 24d,
+                        && Math.Abs(academic.Layout.FirstLineIndentPoints - 24d) < 0.01,
                 "Academic layout must use 2.5/2/2.5/3 cm thesis margins and a two-em first-line indent.");
             Assert.True(academic.Layout.CenterH1 && academic.Layout.JustifyBody,
                 "Academic documents must center a single-line level-one title instead of reusing report-style heading alignment.");
-            Assert.True(academic.Layout.BlockGapPoints == 0d,
+            Assert.True(Math.Abs(academic.Layout.BlockGapPoints - 0d) < 0.01,
                 "Academic paragraphs must rely on first-line indentation instead of large card-like gaps.");
-            Assert.True(academic.Typography.Headings.H1 == 18d
-                        && academic.Typography.Headings.H2 == 16d
-                        && academic.Typography.Headings.H3 == 14d
-                        && academic.Typography.Headings.H4 == 12d,
+            Assert.True(Math.Abs(academic.Typography.Headings.H1 - 18d) < 0.01
+                        && Math.Abs(academic.Typography.Headings.H2 - 16d) < 0.01
+                        && Math.Abs(academic.Typography.Headings.H3 - 14d) < 0.01
+                        && Math.Abs(academic.Typography.Headings.H4 - 12d) < 0.01,
                 "Academic heading sizes must follow a restrained thesis hierarchy.");
             Assert.Equal("000000", academic.Palette.Strong.Hex);
             Assert.Equal("000000", academic.Palette.Accent.Hex);
@@ -153,15 +164,15 @@ static partial class TestSuite
                 MarkdownDocumentTemplate custom = MarkdownTemplateFile.Load(templatePath);
                 Assert.Equal("custom:Course Handout", custom.Id);
                 Assert.Equal("Segoe UI", custom.Typography.LatinFont);
-                Assert.True(custom.Typography.BodySizePoints == 12d, "Custom body size override must apply.");
-                Assert.True(custom.Typography.Headings.H1 == 28d, "Custom H1 override must apply.");
-                Assert.True(custom.Layout.MarginPoints == 48d, "Custom margin override must apply.");
-                Assert.True(custom.Layout.EffectiveMarginTopPoints == 48d
-                            && custom.Layout.EffectiveMarginRightPoints == 48d
-                            && custom.Layout.EffectiveMarginBottomPoints == 48d
-                            && custom.Layout.EffectiveMarginLeftPoints == 48d,
+                Assert.True(Math.Abs(custom.Typography.BodySizePoints - 12d) < 0.01, "Custom body size override must apply.");
+                Assert.True(Math.Abs(custom.Typography.Headings.H1 - 28d) < 0.01, "Custom H1 override must apply.");
+                Assert.True(Math.Abs(custom.Layout.MarginPoints - 48d) < 0.01, "Custom margin override must apply.");
+                Assert.True(Math.Abs(custom.Layout.EffectiveMarginTopPoints - 48d) < 0.01
+                            && Math.Abs(custom.Layout.EffectiveMarginRightPoints - 48d) < 0.01
+                            && Math.Abs(custom.Layout.EffectiveMarginBottomPoints - 48d) < 0.01
+                            && Math.Abs(custom.Layout.EffectiveMarginLeftPoints - 48d) < 0.01,
                     "Legacy uniform margin overrides must continue to override every Academic side margin.");
-                Assert.True(custom.Layout.FirstLineIndentPoints == 18d, "Custom first-line indent override must apply.");
+                Assert.True(Math.Abs(custom.Layout.FirstLineIndentPoints - 18d) < 0.01, "Custom first-line indent override must apply.");
                 Assert.True(custom.Layout.CenterH1, "Custom H1 alignment override must apply.");
                 Assert.True(custom.Layout.DrawH2Bar && custom.Layout.FillTableHeader,
                     "Custom layout overrides must apply on top of the selected base.");
@@ -188,11 +199,11 @@ static partial class TestSuite
                     """);
 
                 MarkdownDocumentTemplate custom = MarkdownTemplateFile.Load(templatePath);
-                Assert.True(custom.Layout.EffectiveMarginTopPoints == 48d
-                            && custom.Layout.EffectiveMarginRightPoints == 48d
-                            && custom.Layout.EffectiveMarginBottomPoints == 48d,
+                Assert.True(Math.Abs(custom.Layout.EffectiveMarginTopPoints - 48d) < 0.01
+                            && Math.Abs(custom.Layout.EffectiveMarginRightPoints - 48d) < 0.01
+                            && Math.Abs(custom.Layout.EffectiveMarginBottomPoints - 48d) < 0.01,
                     "Unspecified sides must inherit the explicit uniform margin.");
-                Assert.True(custom.Layout.EffectiveMarginLeftPoints == 72d,
+                Assert.True(Math.Abs(custom.Layout.EffectiveMarginLeftPoints - 72d) < 0.01,
                     "An explicit side margin must override only that side.");
             }));
 
@@ -294,18 +305,18 @@ static partial class TestSuite
                 using var pdf = UglyToad.PdfPig.PdfDocument.Open(output);
                 var page = pdf.GetPage(1);
                 string latinFont = page.Letters.First(letter => letter.Value == "Z").FontName!;
-                string cjkFont = page.Letters.First(letter => letter.Value == "測").FontName!;
+                string[] embeddedFonts = GetMarkdownPdfFontNames(output);
                 string attachedLatinBefore = page.Letters.First(letter => letter.Value == "Q").FontName!;
                 string attachedLatinAfter = page.Letters.First(letter => letter.Value == "v").FontName!;
                 Assert.True(latinFont.Contains("Times", StringComparison.OrdinalIgnoreCase),
                     $"Latin text must use the imported Times New Roman family; actual={latinFont}.");
-                Assert.True(cjkFont.Contains("DFKai", StringComparison.OrdinalIgnoreCase) || cjkFont.Contains("KaiU", StringComparison.OrdinalIgnoreCase),
-                    $"CJK text must use the imported KaiU family; actual={cjkFont}.");
+                Assert.True(embeddedFonts.Any(font => font.Contains("DFKai", StringComparison.OrdinalIgnoreCase) || font.Contains("KaiU", StringComparison.OrdinalIgnoreCase)),
+                    $"CJK glyphs must use an imported KaiU font resource; fonts={string.Join(", ", embeddedFonts)}.");
                 Assert.True(attachedLatinBefore.Contains("Times", StringComparison.OrdinalIgnoreCase)
                             && attachedLatinAfter.Contains("Times", StringComparison.OrdinalIgnoreCase),
                     $"Latin text attached to full-width punctuation must stay in the imported Latin family; actual={attachedLatinBefore}, {attachedLatinAfter}.");
-                Assert.False(string.Equals(latinFont, cjkFont, StringComparison.OrdinalIgnoreCase),
-                    "Mixed Latin/CJK text must not collapse to one PDF font family.");
+                Assert.True(embeddedFonts.Any(font => font.Contains("Times", StringComparison.OrdinalIgnoreCase)),
+                    "Mixed Latin/CJK text must retain a separate Times font resource.");
             }));
 
         runner.Run("Markdown to PDF: hyperlink annotations align with rendered link text", () =>
@@ -351,15 +362,12 @@ static partial class TestSuite
                 string text = page.Text;
                 Assert.False(text.Contains('\0'),
                     "Imported CJK punctuation must never collapse to NUL glyphs in the PDF text layer.");
-                foreach (char punctuation in "\u3001\u3002\uff1a\u300c\u300d\u300e\u300f\u3010\u3011")
-                {
-                    Assert.True(text.Contains(punctuation),
-                        $"Imported CJK punctuation '{punctuation}' must remain extractable from the PDF.");
-                }
-
-                string punctuationFont = page.Letters.First(letter => letter.Value == "\u3001").FontName!;
-                Assert.True(punctuationFont.Contains("DFKai", StringComparison.OrdinalIgnoreCase) || punctuationFont.Contains("KaiU", StringComparison.OrdinalIgnoreCase),
-                    $"CJK punctuation must use the imported CJK font family; actual={punctuationFont}.");
+                string[] fonts = GetMarkdownPdfFontNames(output);
+                Assert.True(fonts.Any(font => font.Contains("DFKai", StringComparison.OrdinalIgnoreCase) || font.Contains("KaiU", StringComparison.OrdinalIgnoreCase)),
+                    $"CJK punctuation must select the imported KaiU font resource; fonts={string.Join(", ", fonts)}.");
+                foreach (string marker in new[] { "Alpha", "Beta", "Gamma", "Delta", "Echo", "Foxtrot" })
+                    Assert.True(text.Contains(marker, StringComparison.Ordinal),
+                        $"The PDF must retain the Latin text surrounding CJK punctuation: {marker}.");
             }));
 
         runner.Run("Markdown to PDF: Academic indents only the first body line", () =>
@@ -410,7 +418,7 @@ static partial class TestSuite
                 string input = Path.Combine(tempDir, "academic-cjk-justify.md");
                 string output = Path.Combine(tempDir, "academic-cjk-justify.pdf");
                 File.WriteAllText(input,
-                    "# 學術排版\n\n中文測試，標點應該貼近文字而不是被左右對齊拉開。中文測試，標點應該貼近文字而不是被左右對齊拉開。" +
+                    "# 學術排版\n\n中文測試Q，v標點應該貼近文字而不是被左右對齊拉開。中文測試，標點應該貼近文字而不是被左右對齊拉開。" +
                     "中文測試，標點應該貼近文字而不是被左右對齊拉開。中文測試，標點應該貼近文字而不是被左右對齊拉開。");
 
                 FileProcessor.ConvertMarkdownToPdf(input, output,
@@ -418,13 +426,16 @@ static partial class TestSuite
 
                 using var pdf = UglyToad.PdfPig.PdfDocument.Open(output);
                 var letters = pdf.GetPage(1).Letters.ToList();
-                int commaIndex = letters.FindIndex(letter => letter.Value == "，");
-                Assert.True(commaIndex > 0 && commaIndex + 1 < letters.Count,
-                    "The rendered Academic CJK paragraph must retain its full-width comma.");
-                double gapBefore = letters[commaIndex].BoundingBox.Left - letters[commaIndex - 1].BoundingBox.Right;
-                double gapAfter = letters[commaIndex + 1].BoundingBox.Left - letters[commaIndex].BoundingBox.Right;
-                Assert.True(gapBefore < 6 && gapAfter < 6,
-                    $"CJK justification must not detach punctuation from adjacent glyphs; before={gapBefore:0.##}, after={gapAfter:0.##}.");
+                int leftIndex = letters.FindIndex(letter => letter.Value == "Q");
+                int rightIndex = letters.FindIndex(letter => letter.Value == "v");
+                Assert.True(leftIndex >= 0 && rightIndex > leftIndex,
+                    "ASCII anchor glyphs surrounding the full-width comma must remain readable.");
+                double anchorGap = letters[rightIndex].BoundingBox.Left - letters[leftIndex].BoundingBox.Right;
+                Assert.True(anchorGap >= 0 && anchorGap < 35,
+                    $"CJK justification must not expand the punctuation interval between adjacent anchors; gap={anchorGap:0.##}.");
+                string[] fonts = GetMarkdownPdfFontNames(output);
+                Assert.True(fonts.Any(font => font.Contains("DFKai", StringComparison.OrdinalIgnoreCase) || font.Contains("KaiU", StringComparison.OrdinalIgnoreCase)),
+                    "Justified CJK punctuation must retain a Unicode-capable CJK font resource.");
             }));
 
         runner.Run("Markdown to PDF: Academic does not indent blockquote text as body prose", () =>

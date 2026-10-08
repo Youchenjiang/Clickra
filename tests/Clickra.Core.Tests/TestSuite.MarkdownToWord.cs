@@ -376,16 +376,16 @@ static partial class TestSuite
                     "DOCX Normal style body size must be imported.");
                 Assert.True(Math.Abs(template.Typography.LineHeightPoints - 18) < 0.01,
                     "DOCX 1.5-line Normal spacing must be imported.");
-                Assert.True(template.Typography.Headings.H1 == 18 && template.Typography.Headings.H2 == 16,
+                Assert.True(Math.Abs(template.Typography.Headings.H1 - 18) < 0.01 && Math.Abs(template.Typography.Headings.H2 - 16) < 0.01,
                     "DOCX heading sizes must be imported from heading styles.");
                 Assert.True(template.Layout.CenterH1 && template.Layout.JustifyBody,
                     "DOCX heading/body alignment must be imported.");
-                Assert.True(template.Layout.FirstLineIndentPoints == 24 && template.Layout.BlockGapPoints == 6,
+                Assert.True(Math.Abs(template.Layout.FirstLineIndentPoints - 24) < 0.01 && Math.Abs(template.Layout.BlockGapPoints - 6) < 0.01,
                     "DOCX paragraph indentation and after-spacing must be imported.");
-                Assert.True(template.Layout.EffectiveMarginTopPoints == 72
-                            && template.Layout.EffectiveMarginRightPoints == 60
-                            && template.Layout.EffectiveMarginBottomPoints == 72
-                            && template.Layout.EffectiveMarginLeftPoints == 90,
+                Assert.True(Math.Abs(template.Layout.EffectiveMarginTopPoints - 72) < 0.01
+                            && Math.Abs(template.Layout.EffectiveMarginRightPoints - 60) < 0.01
+                            && Math.Abs(template.Layout.EffectiveMarginBottomPoints - 72) < 0.01
+                            && Math.Abs(template.Layout.EffectiveMarginLeftPoints - 90) < 0.01,
                     "DOCX section margins must be imported independently.");
             }));
 
