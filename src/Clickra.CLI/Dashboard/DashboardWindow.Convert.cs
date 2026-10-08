@@ -142,6 +142,7 @@ namespace Clickra.UI
             };
         }
 
+        // skipcq: CS-R1140 — conversion painting intentionally coordinates multiple UI states in one pass.
         static void DrawConvertTab(Graphics g, float logW, float logH, float contentX)
         {
             float s = _dpiScale;
