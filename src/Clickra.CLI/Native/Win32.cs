@@ -20,15 +20,22 @@ namespace Clickra.UI.Native
         public struct RECT { public int left, top, right, bottom; }
 
         [StructLayout(LayoutKind.Sequential)]
+        /// <summary>Native POINT structure used by DPI-aware window size messages.</summary>
         public struct NATIVEPOINT { public int x, y; }
 
         [StructLayout(LayoutKind.Sequential)]
+        /// <summary>Native MINMAXINFO payload used to constrain Dashboard window sizing.</summary>
         public struct MINMAXINFO
         {
+            /// <summary>Reserved native point supplied by Windows.</summary>
             public NATIVEPOINT ptReserved;
+            /// <summary>Maximum tracking size supplied by Windows.</summary>
             public NATIVEPOINT ptMaxSize;
+            /// <summary>Maximum window position supplied by Windows.</summary>
             public NATIVEPOINT ptMaxPosition;
+            /// <summary>Minimum tracking size returned to Windows.</summary>
             public NATIVEPOINT ptMinTrackSize;
+            /// <summary>Maximum tracking size returned to Windows.</summary>
             public NATIVEPOINT ptMaxTrackSize;
         }
 
@@ -44,6 +51,7 @@ namespace Clickra.UI.Native
         [DllImport("user32.dll", EntryPoint = "AdjustWindowRectEx", CharSet = CharSet.Unicode)] public static extern bool AdjustWindowRectEx(ref RECT lpRect, uint dwStyle, bool bMenu, uint dwExStyle);
         [DllImport("user32.dll", EntryPoint = "AdjustWindowRectExForDpi", CharSet = CharSet.Unicode)]
         private static extern bool AdjustWindowRectExForDpiNative(ref RECT lpRect, uint dwStyle, bool bMenu, uint dwExStyle, uint dpi); // skipcq: CS-R1138 — Win32 ABI requires RECT first.
+        /// <summary>Adjusts a client rectangle for the specified window styles at an explicit DPI.</summary>
         public static bool AdjustWindowRectExForDpi(uint dwStyle, bool bMenu, uint dwExStyle, uint dpi, ref RECT lpRect) =>
             AdjustWindowRectExForDpiNative(ref lpRect, dwStyle, bMenu, dwExStyle, dpi);
         [DllImport("user32.dll", EntryPoint = "RegisterClassExW", CharSet = CharSet.Unicode)] public static extern ushort RegisterClassEx(ref WNDCLASSEX c);
@@ -71,8 +79,11 @@ namespace Clickra.UI.Native
         [DllImport("user32.dll", EntryPoint = "EnableWindow")] private static extern bool EnableWindowNative(IntPtr hWnd, bool bEnable);
         [DllImport("user32.dll", EntryPoint = "IsWindow")] private static extern bool IsWindowNative(IntPtr hWnd);
         [DllImport("user32.dll", EntryPoint = "IsWindowEnabled")] private static extern bool IsWindowEnabledNative(IntPtr hWnd);
+        /// <summary>Enables or disables a native window through the managed interop boundary.</summary>
         public static bool EnableWindow(IntPtr hWnd, bool bEnable) => EnableWindowNative(hWnd, bEnable);
+        /// <summary>Returns whether the supplied native window handle is valid.</summary>
         public static bool IsWindow(IntPtr hWnd) => IsWindowNative(hWnd);
+        /// <summary>Returns whether the supplied native window is enabled for input.</summary>
         public static bool IsWindowEnabled(IntPtr hWnd) => IsWindowEnabledNative(hWnd);
         [DllImport("user32.dll")] public static extern IntPtr SetCapture(IntPtr hWnd);
         [DllImport("user32.dll")] public static extern bool ReleaseCapture();
