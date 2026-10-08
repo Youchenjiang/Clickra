@@ -108,7 +108,7 @@ public static class MarkdownDocxTemplateFile
         XElement? spacing = EffectiveParagraphProperties(style, styles)?.Element(W + "spacing");
         if (!double.TryParse(spacing?.Attribute(W + "line")?.Value, NumberStyles.Integer, CultureInfo.InvariantCulture, out double line))
             return fallback;
-        string rule = spacing?.Attribute(W + "lineRule")?.Value ?? "auto";
+        string rule = spacing.Attribute(W + "lineRule")?.Value ?? "auto";
         double points = rule.Equals("auto", StringComparison.OrdinalIgnoreCase) ? bodySize * line / 240d : line / 20d;
         return points is >= 8 and <= 72 ? points : fallback;
     }
