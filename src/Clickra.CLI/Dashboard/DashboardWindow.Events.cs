@@ -134,10 +134,9 @@ namespace Clickra.UI
 
             int prevHovered = _hoveredElement;
             float contentX = GetContentX(logW);
-            if (IsInsideConvertStickyFooter(mouseX, mouseY, logW, logH, contentX))
-                _hoveredElement = HitTestConvertStickyAction(mouseX, mouseY, logW, logH, contentX);
-            else
-                _hoveredElement = HitTest(hwnd, adjMouseX, adjMouseY);
+            _hoveredElement = IsInsideConvertStickyFooter(mouseX, mouseY, logW, logH, contentX)
+                ? HitTestConvertStickyAction(mouseX, mouseY, logW, logH, contentX)
+                : HitTest(hwnd, adjMouseX, adjMouseY);
             if (_hoveredElement != prevHovered)
             {
                 InvalidateRect(hwnd, IntPtr.Zero, false);

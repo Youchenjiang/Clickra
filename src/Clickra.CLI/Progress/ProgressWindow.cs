@@ -192,9 +192,10 @@ namespace Clickra.UI
             _bgBrush ??= new SolidBrush(Color.FromArgb(45, 45, 45));
 
             int clientW = (int)(520 * _dpiScale);
-            int clientH = _isPromptingMarkdownOptions
-                ? (int)(GetMarkdownOptionsClientHeight() * _dpiScale)
-                : _isPromptingVisualSplitter ? (int)(420 * _dpiScale) : (int)(280 * _dpiScale);
+            int logicalClientHeight = _isPromptingMarkdownOptions
+                ? GetMarkdownOptionsClientHeight()
+                : GetStandardClientHeight();
+            int clientH = (int)(logicalClientHeight * _dpiScale);
 
             if (_bufferBmp == null)
             {
@@ -262,11 +263,13 @@ namespace Clickra.UI
             command.Equals("md2pdf", StringComparison.OrdinalIgnoreCase)
             || command.Equals("md2word", StringComparison.OrdinalIgnoreCase);
 
+        private int GetStandardClientHeight() => _isPromptingVisualSplitter ? 420 : 280;
+
         private void StartProcessingThread(IntPtr hwnd)
         {
             if (_processingStarted) return;
             _processingStarted = true;
-            Thread bgThread = new Thread(() => RunProcessing(hwnd)) { IsBackground = true };
+            Thread bgThread = new(() => RunProcessing(hwnd)) { IsBackground = true };
             bgThread.Start();
         }
 
