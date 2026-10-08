@@ -21,10 +21,12 @@ namespace Clickra.UI.Native
 
         [StructLayout(LayoutKind.Sequential)]
         /// <summary>Native POINT structure used by DPI-aware window size messages.</summary>
+        [System.Diagnostics.CodeAnalysis.SuppressMessage("SonarQube", "S101", Justification = "Win32 interop structure names intentionally match the native ABI names.")]
         public struct NATIVEPOINT { public int x, y; }
 
         [StructLayout(LayoutKind.Sequential)]
         /// <summary>Native MINMAXINFO payload used to constrain Dashboard window sizing.</summary>
+        [System.Diagnostics.CodeAnalysis.SuppressMessage("SonarQube", "S101", Justification = "Win32 interop structure names intentionally match the native ABI names.")]
         public struct MINMAXINFO
         {
             /// <summary>Reserved native point supplied by Windows.</summary>
@@ -52,6 +54,7 @@ namespace Clickra.UI.Native
         [DllImport("user32.dll", EntryPoint = "AdjustWindowRectExForDpi", CharSet = CharSet.Unicode)]
         private static extern bool AdjustWindowRectExForDpiNative(ref RECT lpRect, uint dwStyle, bool bMenu, uint dwExStyle, uint dpi); // skipcq: CS-R1138 — Win32 ABI requires RECT first.
         /// <summary>Adjusts a client rectangle for the specified window styles at an explicit DPI.</summary>
+        [System.Diagnostics.CodeAnalysis.SuppressMessage("SonarQube", "S4200", Justification = "The managed wrapper keeps the public parameter order stable while the private P/Invoke matches the Win32 ABI.")]
         public static bool AdjustWindowRectExForDpi(uint dwStyle, bool bMenu, uint dwExStyle, uint dpi, ref RECT lpRect) =>
             AdjustWindowRectExForDpiNative(ref lpRect, dwStyle, bMenu, dwExStyle, dpi);
         [DllImport("user32.dll", EntryPoint = "RegisterClassExW", CharSet = CharSet.Unicode)] public static extern ushort RegisterClassEx(ref WNDCLASSEX c);
@@ -80,10 +83,13 @@ namespace Clickra.UI.Native
         [DllImport("user32.dll", EntryPoint = "IsWindow")] private static extern bool IsWindowNative(IntPtr hWnd);
         [DllImport("user32.dll", EntryPoint = "IsWindowEnabled")] private static extern bool IsWindowEnabledNative(IntPtr hWnd);
         /// <summary>Enables or disables a native window through the managed interop boundary.</summary>
+        [System.Diagnostics.CodeAnalysis.SuppressMessage("SonarQube", "S4200", Justification = "The wrapper keeps unmanaged imports private while exposing a managed interop boundary.")]
         public static bool EnableWindow(IntPtr hWnd, bool bEnable) => EnableWindowNative(hWnd, bEnable);
         /// <summary>Returns whether the supplied native window handle is valid.</summary>
+        [System.Diagnostics.CodeAnalysis.SuppressMessage("SonarQube", "S4200", Justification = "The wrapper keeps unmanaged imports private while exposing a managed interop boundary.")]
         public static bool IsWindow(IntPtr hWnd) => IsWindowNative(hWnd);
         /// <summary>Returns whether the supplied native window is enabled for input.</summary>
+        [System.Diagnostics.CodeAnalysis.SuppressMessage("SonarQube", "S4200", Justification = "The wrapper keeps unmanaged imports private while exposing a managed interop boundary.")]
         public static bool IsWindowEnabled(IntPtr hWnd) => IsWindowEnabledNative(hWnd);
         [DllImport("user32.dll")] public static extern IntPtr SetCapture(IntPtr hWnd);
         [DllImport("user32.dll")] public static extern bool ReleaseCapture();
