@@ -16,30 +16,13 @@ using Markdig.Syntax.Inlines;
 namespace Clickra.Core.Processors;
 
 /// <summary>Converts Markdown to a self-contained DOCX using Markdig and WordprocessingML.</summary>
-public sealed class MarkdownToWordProcessor : MultiFileProcessorBase
+public sealed class MarkdownToWordProcessor : MarkdownSingleFileProcessorBase
 {
     private static readonly MarkdownPipeline Pipeline = new MarkdownPipelineBuilder()
         .UseAdvancedExtensions()
         .Build();
 
-    private string? _outputPath;
-
-    /// <summary>Processes the supplied Markdown files with the configured conversion options.</summary>
-    public override void Process(
-        List<string> files,
-        string? outputPath,
-        Dictionary<string, object>? options = null,
-        Action<int, int, string>? onProgress = null,
-        CancellationToken cancellationToken = default)
-    {
-        if (files.Count != 1)
-            throw new ArgumentException("Markdown to Word converts one input file per output.", nameof(files));
-        if (string.IsNullOrWhiteSpace(outputPath))
-            throw new ArgumentException("Output path is required for Markdown to Word conversion.", nameof(outputPath));
-
-        _outputPath = outputPath;
-        base.Process(files, outputPath, options, onProgress, cancellationToken);
-    }
+    protected override string TargetFormatName => "Word";
 
     /// <summary>Renders one Markdown input file into the target Word document.</summary>
     protected override void ProcessFile(
@@ -70,8 +53,8 @@ public sealed class MarkdownToWordProcessor : MultiFileProcessorBase
             cancellationToken);
 
         cancellationToken.ThrowIfCancellationRequested();
-        onProgress?.Invoke(90, 100, Localization.T("md_word_progress_saving", Path.GetFileName(_outputPath!)));
-        writer.Save(document, _outputPath!);
+        onProgress?.Invoke(90, 100, Localization.T("md_word_progress_saving", Path.GetFileName(OutputPath)));
+        writer.Save(document, OutputPath);
     }
 
     /// <summary>Finalizes the completed Markdown-to-Word conversion batch.</summary>

@@ -18,30 +18,13 @@ namespace Clickra.Core.Processors;
 /// Converts Markdown documents to PDF using Markdig for parsing and PDFsharp for rendering.
 /// The pipeline is fully local and keeps the conversion usable from NativeAOT surfaces.
 /// </summary>
-public sealed class MarkdownToPdfProcessor : MultiFileProcessorBase
+public sealed class MarkdownToPdfProcessor : MarkdownSingleFileProcessorBase
 {
     private static readonly MarkdownPipeline Pipeline = new MarkdownPipelineBuilder()
         .UseAdvancedExtensions()
         .Build();
 
-    private string? _outputPath;
-
-    /// <summary>Processes the supplied Markdown files with the configured conversion options.</summary>
-    public override void Process(
-        List<string> files,
-        string? outputPath,
-        Dictionary<string, object>? options = null,
-        Action<int, int, string>? onProgress = null,
-        CancellationToken cancellationToken = default)
-    {
-        if (files.Count != 1)
-            throw new ArgumentException("Markdown to PDF converts one input file per output.", nameof(files));
-        if (string.IsNullOrWhiteSpace(outputPath))
-            throw new ArgumentException("Output path is required for Markdown to PDF conversion.", nameof(outputPath));
-
-        _outputPath = outputPath;
-        base.Process(files, outputPath, options, onProgress, cancellationToken);
-    }
+    protected override string TargetFormatName => "PDF";
 
     /// <summary>Renders one Markdown input file into the target PDF document.</summary>
     protected override void ProcessFile(
@@ -81,8 +64,8 @@ public sealed class MarkdownToPdfProcessor : MultiFileProcessorBase
         renderer.Render(document);
 
         cancellationToken.ThrowIfCancellationRequested();
-        onProgress?.Invoke(90, 100, Localization.T("md_pdf_progress_saving", Path.GetFileName(_outputPath!)));
-        pdf.Save(_outputPath!);
+        onProgress?.Invoke(90, 100, Localization.T("md_pdf_progress_saving", Path.GetFileName(OutputPath)));
+        pdf.Save(OutputPath);
     }
 
     /// <summary>Finalizes the completed Markdown-to-PDF conversion batch.</summary>
