@@ -722,29 +722,27 @@ public sealed class MarkdownToPdfProcessor : MultiFileProcessorBase
             if (cell is not null)
             {
                 foreach (Block child in cell)
-                {
-                    if (child is LeafBlock leaf && leaf.Inline is not null)
-                    {
-                        AddTableCellSeparator(segments, isHeader);
-                        CollectInlineSegments(leaf.Inline, isHeader, false, null, false, segments);
-                    }
-                    else
-                    {
-                        string text = child is ContainerBlock nested
-                            ? ExtractBlockText(nested)
-                            : "";
-                        if (!string.IsNullOrWhiteSpace(text))
-                        {
-                            AddTableCellSeparator(segments, isHeader);
-                            segments.Add(new InlineSegment(text, isHeader, false, false, null));
-                        }
-                    }
-                }
+                    CollectTableCellChild(child, isHeader, segments);
             }
 
             if (segments.Count == 0)
                 segments.Add(new InlineSegment("", isHeader, false, false, null));
             return segments;
+        }
+
+        private static void CollectTableCellChild(Block child, bool isHeader, List<InlineSegment> segments)
+        {
+            if (child is LeafBlock leaf && leaf.Inline is not null)
+            {
+                AddTableCellSeparator(segments, isHeader);
+                CollectInlineSegments(leaf.Inline, isHeader, false, null, false, segments);
+                return;
+            }
+
+            string text = child is ContainerBlock nested ? ExtractBlockText(nested) : "";
+            if (string.IsNullOrWhiteSpace(text)) return;
+            AddTableCellSeparator(segments, isHeader);
+            segments.Add(new InlineSegment(text, isHeader, false, false, null));
         }
 
         private static void AddTableCellSeparator(List<InlineSegment> segments, bool isHeader)
