@@ -253,35 +253,7 @@ public sealed class MarkdownToWordProcessor : MultiFileProcessorBase
             foreach (Block child in list)
             {
                 if (child is not ListItemBlock item) continue;
-                bool first = true;
-                foreach (Block itemChild in item)
-                {
-                    if (itemChild is ParagraphBlock paragraph)
-                    {
-                        XElement p = first
-                            ? CreateInlineParagraph(
-                                paragraph.Inline,
-                                "Normal",
-                                indentTwips: baseIndentTwips,
-                                numberingId: numberingId,
-                                numberingLevel: level)
-                            : CreateInlineParagraph(
-                                paragraph.Inline,
-                                "Normal",
-                                indentTwips: baseIndentTwips + PointsToTwips((level + 1) * _layout.ListIndentPoints));
-                        parent.Add(p);
-                        first = false;
-                    }
-                    else if (itemChild is ListBlock nested)
-                    {
-                        RenderList(nested, parent, depth + 1, baseIndentTwips, containerWidthTwips);
-                    }
-                    else
-                    {
-                        int contentIndent = baseIndentTwips + PointsToTwips((level + 1) * _layout.ListIndentPoints);
-                        RenderBlock(itemChild, parent, depth + 1, contentIndent, containerWidthTwips);
-                    }
-                }
+                RenderListItemBlocks(item, parent, depth, baseIndentTwips, containerWidthTwips, numberingId, level);
             }
 
             if (_layout.ListAfterPoints > 0)
@@ -289,6 +261,46 @@ public sealed class MarkdownToWordProcessor : MultiFileProcessorBase
                 XElement? lastParagraph = parent.Elements(W + "p").LastOrDefault();
                 XElement? spacing = lastParagraph?.Element(W + "pPr")?.Element(W + "spacing");
                 spacing?.SetAttributeValue(W + "after", PointsToTwips(_layout.ListAfterPoints));
+            }
+        }
+
+        private void RenderListItemBlocks(
+            ListItemBlock item,
+            XElement parent,
+            int depth,
+            int baseIndentTwips,
+            int containerWidthTwips,
+            int numberingId,
+            int level)
+        {
+            bool first = true;
+            foreach (Block itemChild in item)
+            {
+                if (itemChild is ParagraphBlock paragraph)
+                {
+                    XElement p = first
+                        ? CreateInlineParagraph(
+                            paragraph.Inline,
+                            "Normal",
+                            indentTwips: baseIndentTwips,
+                            numberingId: numberingId,
+                            numberingLevel: level)
+                        : CreateInlineParagraph(
+                            paragraph.Inline,
+                            "Normal",
+                            indentTwips: baseIndentTwips + PointsToTwips((level + 1) * _layout.ListIndentPoints));
+                    parent.Add(p);
+                    first = false;
+                }
+                else if (itemChild is ListBlock nested)
+                {
+                    RenderList(nested, parent, depth + 1, baseIndentTwips, containerWidthTwips);
+                }
+                else
+                {
+                    int contentIndent = baseIndentTwips + PointsToTwips((level + 1) * _layout.ListIndentPoints);
+                    RenderBlock(itemChild, parent, depth + 1, contentIndent, containerWidthTwips);
+                }
             }
         }
 
@@ -427,37 +439,43 @@ public sealed class MarkdownToWordProcessor : MultiFileProcessorBase
                 {
                     var cell = (TableCell)cellBlock;
                     int columnWidth = columnWidths[Math.Min(columnIndex, columnWidths.Length - 1)];
-                    var tcPr = new XElement(W + "tcPr",
-                        new XElement(W + "tcW", new XAttribute(W + "w", columnWidth), new XAttribute(W + "type", "dxa")));
-                    if (row.IsHeader && _template.Layout.FillTableHeader)
-                        tcPr.Add(new XElement(W + "shd", new XAttribute(W + "val", "clear"), new XAttribute(W + "fill", _template.Palette.SoftAccent.Hex)));
-                    else if (_template.Id == MarkdownPdfOptions.ThemeDefault)
-                        tcPr.Add(new XElement(W + "shd", new XAttribute(W + "val", "clear"), new XAttribute(W + "fill", _resolvedPalette.Surface.Hex)));
-                    var tc = new XElement(W + "tc", tcPr);
-                    bool added = false;
-                    foreach (Block child in cell)
-                    {
-                        if (child is ParagraphBlock paragraph)
-                        {
-                            XElement p = CreateInlineParagraph(paragraph.Inline, row.IsHeader ? "TableHeader" : "TableText");
-                            if (row.IsHeader) MakeRunsBold(p);
-                            tc.Add(p);
-                            added = true;
-                        }
-                        else
-                        {
-                            int cellWidth = Math.Max(1, columnWidth - PointsToTwips(_layout.TableHorizontalPaddingPoints * 2));
-                            RenderBlock(child, tc, 0, 0, cellWidth);
-                            added = true;
-                        }
-                    }
-                    if (!added) tc.Add(CreateTextParagraph("", row.IsHeader ? "TableHeader" : "TableText"));
-                    tr.Add(tc);
+                    tr.Add(CreateTableCell(row, cell, columnWidth));
                     columnIndex++;
                 }
                 element.Add(tr);
             }
             return element;
+        }
+
+        private XElement CreateTableCell(TableRow row, TableCell cell, int columnWidth)
+        {
+            var tcPr = new XElement(W + "tcPr",
+                new XElement(W + "tcW", new XAttribute(W + "w", columnWidth), new XAttribute(W + "type", "dxa")));
+            if (row.IsHeader && _template.Layout.FillTableHeader)
+                tcPr.Add(new XElement(W + "shd", new XAttribute(W + "val", "clear"), new XAttribute(W + "fill", _template.Palette.SoftAccent.Hex)));
+            else if (_template.Id == MarkdownPdfOptions.ThemeDefault)
+                tcPr.Add(new XElement(W + "shd", new XAttribute(W + "val", "clear"), new XAttribute(W + "fill", _resolvedPalette.Surface.Hex)));
+
+            var tc = new XElement(W + "tc", tcPr);
+            bool added = false;
+            foreach (Block child in cell)
+            {
+                if (child is ParagraphBlock paragraph)
+                {
+                    XElement p = CreateInlineParagraph(paragraph.Inline, row.IsHeader ? "TableHeader" : "TableText");
+                    if (row.IsHeader) MakeRunsBold(p);
+                    tc.Add(p);
+                    added = true;
+                }
+                else
+                {
+                    int cellWidth = Math.Max(1, columnWidth - PointsToTwips(_layout.TableHorizontalPaddingPoints * 2));
+                    RenderBlock(child, tc, 0, 0, cellWidth);
+                    added = true;
+                }
+            }
+            if (!added) tc.Add(CreateTextParagraph("", row.IsHeader ? "TableHeader" : "TableText"));
+            return tc;
         }
 
         private XElement CreateRuleParagraph(int indentTwips) =>
