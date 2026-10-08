@@ -154,38 +154,41 @@ namespace Clickra.UI;
             }
 
             if (ContainsMarkdownRect(mouseX, mouseY, new RectangleF(254, 398, 120, 32)))
-            {
-                if (_markdownLayoutSourceIndex == 1 && string.IsNullOrWhiteSpace(_markdownTemplatePath))
-                {
-                    _markdownTemplateStatus = Loc("md_options_template_required");
-                    InvalidateRect(hwnd, IntPtr.Zero, false);
-                    return true;
-                }
-
-                if (_markdownLayoutSourceIndex == 1)
-                {
-                    try
-                    {
-                        _ = MarkdownTemplateSource.Load(_markdownTemplatePath!);
-                    }
-                    catch
-                    {
-                        _markdownTemplatePath = null;
-                        _markdownTemplateStatus = Loc("md_options_template_invalid");
-                        InvalidateRect(hwnd, IntPtr.Zero, false);
-                        return true;
-                    }
-                }
-
-                StartMarkdownConversion(hwnd, _markdownLayoutSourceIndex == 1 ? _markdownTemplatePath : null);
-                return true;
-            }
+                return TryConfirmMarkdownConversion(hwnd);
             if (ContainsMarkdownRect(mouseX, mouseY, new RectangleF(386, 398, 98, 32)))
             {
                 ResolveMarkdownDecision(false);
                 DestroyWindow(hwnd);
                 return true;
             }
+            return true;
+        }
+
+        private bool TryConfirmMarkdownConversion(IntPtr hwnd)
+        {
+            if (_markdownLayoutSourceIndex == 1 && string.IsNullOrWhiteSpace(_markdownTemplatePath))
+            {
+                _markdownTemplateStatus = Loc("md_options_template_required");
+                InvalidateRect(hwnd, IntPtr.Zero, false);
+                return true;
+            }
+
+            if (_markdownLayoutSourceIndex == 1)
+            {
+                try
+                {
+                    _ = MarkdownTemplateSource.Load(_markdownTemplatePath!);
+                }
+                catch
+                {
+                    _markdownTemplatePath = null;
+                    _markdownTemplateStatus = Loc("md_options_template_invalid");
+                    InvalidateRect(hwnd, IntPtr.Zero, false);
+                    return true;
+                }
+            }
+
+            StartMarkdownConversion(hwnd, _markdownLayoutSourceIndex == 1 ? _markdownTemplatePath : null);
             return true;
         }
 
