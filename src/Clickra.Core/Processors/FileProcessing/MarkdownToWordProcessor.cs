@@ -418,12 +418,14 @@ public sealed class MarkdownToWordProcessor : MultiFileProcessorBase
                 new XElement(W + "tblGrid", Enumerable.Range(0, columnCount)
                     .Select(index => new XElement(W + "gridCol", new XAttribute(W + "w", columnWidths[index])))));
 
-            foreach (TableRow row in table)
+            foreach (Block rowBlock in table)
             {
+                var row = (TableRow)rowBlock;
                 var tr = new XElement(W + "tr");
                 int columnIndex = 0;
-                foreach (TableCell cell in row)
+                foreach (Block cellBlock in row)
                 {
+                    var cell = (TableCell)cellBlock;
                     int columnWidth = columnWidths[Math.Min(columnIndex, columnWidths.Length - 1)];
                     var tcPr = new XElement(W + "tcPr",
                         new XElement(W + "tcW", new XAttribute(W + "w", columnWidth), new XAttribute(W + "type", "dxa")));
