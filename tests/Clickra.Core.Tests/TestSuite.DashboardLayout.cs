@@ -14,6 +14,9 @@ static partial class TestSuite
 {
     private const string EventsClickFileName = "DashboardWindow.Events.Click.cs";
     private const string EventsFileName = "DashboardWindow.Events.cs";
+    private const string DashboardCliDirectoryName = "Clickra.CLI";
+    private const string DashboardSourceDirectoryName = "Dashboard";
+    private const string DashboardPaintFileName = "DashboardWindow.Paint.cs";
 
     public static void RegisterDashboardLayoutTests(TestRunner runner)
     {
@@ -374,10 +377,10 @@ static partial class TestSuite
 
         string? root = FindRepoRoot();
         if (root is null) throw new TestSkippedException("Could not locate the repository root from the test output directory.");
-        string paint = File.ReadAllText(Path.Combine(root, "src", "Clickra.CLI", "Dashboard", "DashboardWindow.Convert.cs"));
-        string hitTest = File.ReadAllText(Path.Combine(root, "src", "Clickra.CLI", "Dashboard", "DashboardWindow.HitTesting.cs"));
-        string paintRoot = File.ReadAllText(Path.Combine(root, "src", "Clickra.CLI", "Dashboard", "DashboardWindow.Paint.cs"));
-        string click = File.ReadAllText(Path.Combine(root, "src", "Clickra.CLI", "Dashboard", "DashboardWindow.Events.Click.cs"));
+        string paint = File.ReadAllText(Path.Combine(root, "src", DashboardCliDirectoryName, DashboardSourceDirectoryName, "DashboardWindow.Convert.cs"));
+        string hitTest = File.ReadAllText(Path.Combine(root, "src", DashboardCliDirectoryName, DashboardSourceDirectoryName, "DashboardWindow.HitTesting.cs"));
+        string paintRoot = File.ReadAllText(Path.Combine(root, "src", DashboardCliDirectoryName, DashboardSourceDirectoryName, DashboardPaintFileName));
+        string click = File.ReadAllText(Path.Combine(root, "src", DashboardCliDirectoryName, DashboardSourceDirectoryName, "DashboardWindow.Events.Click.cs"));
         Assert.True(paint.Contains("ConvertCardRect(group, local, zoneX, zoneW, ConvertCommandGroupSizes)", StringComparison.Ordinal),
             "AOT convert painting must use DashboardLayout command geometry.");
         Assert.True(hitTest.Contains("ConvertCardRect(group, local, zone.X, zone.Width, ConvertCommandGroupSizes)", StringComparison.Ordinal),
@@ -390,7 +393,7 @@ static partial class TestSuite
                     && click.Contains("IsInsideConvertStickyFooter(mouseX, mouseY", StringComparison.Ordinal),
             "The sticky footer must consume viewport-coordinate hits before scrolled cards can receive them.");
 
-        string events = File.ReadAllText(Path.Combine(root, "src", "Clickra.CLI", "Dashboard", "DashboardWindow.Events.cs"));
+        string events = File.ReadAllText(Path.Combine(root, "src", DashboardCliDirectoryName, DashboardSourceDirectoryName, "DashboardWindow.Events.cs"));
         Assert.True(events.Contains("WM_GETMINMAXINFO", StringComparison.Ordinal)
                     && events.Contains("DashboardLayout.MinClientWidth", StringComparison.Ordinal)
                     && events.Contains("AdjustWindowRectExForDpi", StringComparison.Ordinal)
@@ -473,7 +476,7 @@ static partial class TestSuite
             "Task retention title, current value, and presets must fit in one bounded card.");
         string dir = DashboardDir();
         string paint = File.ReadAllText(Path.Combine(dir, "DashboardWindow.Paint.Settings.cs"));
-        string dashboardPaint = File.ReadAllText(Path.Combine(dir, "DashboardWindow.Paint.cs"));
+        string dashboardPaint = File.ReadAllText(Path.Combine(dir, DashboardPaintFileName));
         string hitTest = File.ReadAllText(Path.Combine(dir, "DashboardWindow.HitTesting.cs"));
         string click = File.ReadAllText(Path.Combine(dir, EventsClickFileName));
         string events = File.ReadAllText(Path.Combine(dir, EventsFileName));
@@ -636,7 +639,7 @@ static partial class TestSuite
                  {
                      ("DashboardWindow.cs", "HistoryLayout.Build("),
                      ("DashboardWindow.Paint.History.cs", "HistoryLayout.Find("),
-                     ("DashboardWindow.Paint.cs", "DashboardLayout.SidebarTabY("),
+                     (DashboardPaintFileName, "DashboardLayout.SidebarTabY("),
                      ("DashboardWindow.Convert.cs", "DashboardLayout.ConvertCardRect("),
                      ("DashboardWindow.HitTesting.cs", "DashboardLayout.SidebarTabAt("),
                      (EventsClickFileName, "DashboardLayout.DetailScrollFieldAt("),
@@ -687,7 +690,7 @@ static partial class TestSuite
 
     private static void TestSidebarTabCountMatchesPaint()
     {
-        string paint = File.ReadAllText(Path.Combine(DashboardDir(), "DashboardWindow.Paint.cs"));
+        string paint = File.ReadAllText(Path.Combine(DashboardDir(), DashboardPaintFileName));
 
         Assert.Equal(DashboardLayout.SidebarTabCount, CountOccurrences(paint, "DrawTabButton(g, "));
 
@@ -750,7 +753,7 @@ static partial class TestSuite
     {
         string? root = FindRepoRoot();
         if (root is null) throw new TestSkippedException("Could not locate the repository root from the test output directory.");
-        return Path.Combine(root, "src", "Clickra.CLI", "Dashboard");
+        return Path.Combine(root, "src", DashboardCliDirectoryName, DashboardSourceDirectoryName);
     }
 
     private static void AssertRowsDoNotOverlap(HistoryBlock block, string what)
