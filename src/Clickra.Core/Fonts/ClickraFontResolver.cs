@@ -213,8 +213,8 @@ namespace Clickra.Core
             return null;
         }
 
-        // skipcq: CS-R1140 — the explicit family/style mapping mirrors installed Windows font filenames.
         [System.Diagnostics.CodeAnalysis.SuppressMessage("SonarQube", "S3776", Justification = "Explicit family/style mapping mirrors Windows font filenames and keeps fallback behavior auditable.")]
+        // skipcq: CS-R1140 — the explicit family/style mapping mirrors installed Windows font filenames.
         private string GetFontPath(string baseFace, string style)
         {
             string systemDir = Environment.GetFolderPath(Environment.SpecialFolder.System);
