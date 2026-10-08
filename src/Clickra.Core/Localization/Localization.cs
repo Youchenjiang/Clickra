@@ -19,6 +19,9 @@ namespace Clickra.Core
         private const string WordToPdfLabel = "Word → PDF";
         private const string ExcelToPdfLabel = "Excel → PDF";
         private const string PptToPdfLabel = "PPT → PDF";
+        private const string MarkdownToPdfLabel = "Markdown → PDF";
+        private const string MarkdownToWordLabel = "Markdown → Word";
+        private const string MarkdownParsingZh = "正在解析 Markdown：{0}";
         private const string RetentionDayZh = "{0} 天";
         private const string OfficeName = "Office";
 
@@ -268,8 +271,8 @@ namespace Clickra.Core
                 ("cmd_word_to_pdf", WordToPdfLabel, WordToPdfLabel, WordToPdfLabel, WordToPdfLabel, WordToPdfLabel),
                 ("cmd_excel_to_pdf", ExcelToPdfLabel, ExcelToPdfLabel, ExcelToPdfLabel, ExcelToPdfLabel, ExcelToPdfLabel),
                 ("cmd_ppt_to_pdf", PptToPdfLabel, PptToPdfLabel, PptToPdfLabel, PptToPdfLabel, PptToPdfLabel),
-                ("cmd_md_to_pdf", "Markdown → PDF", "Markdown → PDF", "Markdown → PDF", "Markdown → PDF", "Markdown → PDF"),
-                ("cmd_md_to_word", "Markdown → Word", "Markdown → Word", "Markdown → Word", "Markdown → Word", "Markdown → Word"),
+                ("cmd_md_to_pdf", MarkdownToPdfLabel, MarkdownToPdfLabel, MarkdownToPdfLabel, MarkdownToPdfLabel, MarkdownToPdfLabel),
+                ("cmd_md_to_word", MarkdownToWordLabel, MarkdownToWordLabel, MarkdownToWordLabel, MarkdownToWordLabel, MarkdownToWordLabel),
                 ("md_options_title", "Markdown 轉換選項", "Markdown 转换选项", "Markdown conversion options", "Markdown 変換オプション", "Markdown 변환 옵션"),
                 ("md_options_hint", "已套用預設排版；需要不同呈現時再調整即可。", "已应用默认排版；需要不同呈现时再调整即可。", "The default layout is selected. Change these options only when you need a different presentation.", "既定のレイアウトが選択されています。別の表示が必要な場合のみ変更してください。", "기본 레이아웃이 선택되어 있습니다. 다른 표현이 필요할 때만 변경하세요."),
                 ("md_options_style", "樣式", "样式", "Style", "スタイル", "스타일"),
@@ -459,11 +462,11 @@ namespace Clickra.Core
                 ("cmd_img_to_heic", "轉成 HEIC", "转换为 HEIC", "Convert to HEIC", "HEIC に変換", "HEIC로 변환"),
                 ("cmd_img_to_gif", "轉成 GIF", "转换为 GIF", "Convert to GIF", "GIF に変換", "GIF로 변환"),
                 ("cmd_img_compress", "壓縮圖片", "压缩图片", "Compress Images", "画像圧縮", "이미지 압축"),
-                ("md_pdf_progress_parsing", "正在解析 Markdown：{0}", "正在解析 Markdown：{0}", "Parsing Markdown: {0}", "Markdown を解析中: {0}", "Markdown 분석 중: {0}"),
+                ("md_pdf_progress_parsing", MarkdownParsingZh, MarkdownParsingZh, "Parsing Markdown: {0}", "Markdown を解析中: {0}", "Markdown 분석 중: {0}"),
                 ("md_pdf_progress_rendering", "正在排版 PDF：{0}", "正在排版 PDF：{0}", "Rendering PDF layout: {0}", "PDF レイアウトを生成中: {0}", "PDF 레이아웃 렌더링 중: {0}"),
                 ("md_pdf_progress_saving", "正在儲存 PDF：{0}", "正在保存 PDF：{0}", "Saving PDF: {0}", "PDF を保存中: {0}", "PDF 저장 중: {0}"),
                 ("md_pdf_progress_done", "Markdown 轉 PDF 完成：{0}", "Markdown 转 PDF 完成：{0}", "Markdown to PDF complete: {0}", "Markdown から PDF への変換が完了: {0}", "Markdown PDF 변환 완료: {0}"),
-                ("md_word_progress_parsing", "正在解析 Markdown：{0}", "正在解析 Markdown：{0}", "Parsing Markdown: {0}", "Markdown を解析中: {0}", "Markdown 분석 중: {0}"),
+                ("md_word_progress_parsing", MarkdownParsingZh, MarkdownParsingZh, "Parsing Markdown: {0}", "Markdown を解析中: {0}", "Markdown 분석 중: {0}"),
                 ("md_word_progress_rendering", "正在建立 Word 文件：{0}", "正在创建 Word 文档：{0}", "Building Word document: {0}", "Word 文書を生成中: {0}", "Word 문서 생성 중: {0}"),
                 ("md_word_progress_saving", "正在儲存 Word：{0}", "正在保存 Word：{0}", "Saving Word document: {0}", "Word 文書を保存中: {0}", "Word 문서 저장 중: {0}"),
                 ("md_word_progress_done", "Markdown 轉 Word 完成：{0}", "Markdown 转 Word 完成：{0}", "Markdown to Word complete: {0}", "Markdown から Word への変換が完了: {0}", "Markdown Word 변환 완료: {0}"),
