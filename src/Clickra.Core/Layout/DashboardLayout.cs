@@ -34,6 +34,9 @@ public static class DashboardLayout
     /// <summary>內容區的最小高度。</summary>
     public const int MinContentHeight = 460;
 
+    /// <summary>Dashboard 可縮放的最小 client 寬度；保留側邊欄與可操作的主要內容區。</summary>
+    public const int MinClientWidth = 420;
+
     // ── 展開列的明細欄位 ────────────────────────────────────────
     /// <summary>明細區的分隔線，畫在收合列高的位置。</summary>
     public const int DetailDividerY = RowHeight;
@@ -107,43 +110,60 @@ public static class DashboardLayout
     }
 
     // ── 轉換頁：拖放區、指令格線、開始鈕、清除鈕 ──────────────────
+    /// <summary>Top edge of the conversion drop zone in logical pixels.</summary>
     public const int ConvertZoneTop = 95;
+    /// <summary>Height of the conversion drop zone in logical pixels.</summary>
     public const int ConvertZoneHeight = 72;
 
     /// <summary>拖放區右側留白。</summary>
     public const int ConvertZoneRightMargin = 50;
 
+    /// <summary>Width of the drop-zone clear button.</summary>
     public const int ConvertClearButtonWidth = 48;
+    /// <summary>Height of the drop-zone clear button.</summary>
     public const int ConvertClearButtonHeight = 22;
 
     /// <summary>清除鈕相對拖放區上緣的位移。</summary>
     public const int ConvertClearButtonInset = 7;
+    /// <summary>Right margin used to position the drop-zone clear button.</summary>
     public const int ConvertClearButtonRightMargin = 110;
 
     /// <summary>拖放區空白狀態內各列相對上緣的位置。</summary>
     public const int ConvertZoneIconOffset = 6;
+    /// <summary>Vertical offset of the primary drop-zone hint.</summary>
     public const int ConvertZoneHintOffset = 26;
+    /// <summary>Vertical offset of the secondary drop-zone hint.</summary>
     public const int ConvertZoneSubHintOffset = 48;
 
     /// <summary>已有檔案時，摘要、檔名與輸出位置相對拖放區上緣的位置。</summary>
     public const int ConvertZoneSummaryOffset = 8;
+    /// <summary>Vertical offset of the selected-file list in the drop zone.</summary>
     public const int ConvertZoneFilesOffset = 29;
+    /// <summary>Vertical offset of the output-location line in the drop zone.</summary>
     public const int ConvertZoneOutputOffset = 51;
 
+    /// <summary>Number of conversion command groups rendered by the Dashboard.</summary>
     public const int ConvertGroupCount = 3;
+    /// <summary>Horizontal gap between conversion cards in a group.</summary>
     public const int ConvertGroupGap = 14;
+    /// <summary>Vertical gap between successive conversion command groups.</summary>
     public const int ConvertGroupSectionGap = 8;
 
     /// <summary>指令欄標題的 Y（格線頂端）。</summary>
     public const int ConvertGridTop = 176;
 
+    /// <summary>Height reserved for each conversion group heading.</summary>
     public const int ConvertGroupHeaderHeight = 20;
+    /// <summary>Height of a conversion command card.</summary>
     public const int ConvertCardHeight = 34;
+    /// <summary>Vertical gap between conversion command cards.</summary>
     public const int ConvertCardGap = 6;
+    /// <summary>Vertical stride from one conversion card row to the next.</summary>
     public const int ConvertCardStride = ConvertCardHeight + ConvertCardGap;
 
     /// <summary>最後一排卡片與開始鈕之間的距離。</summary>
     public const int ConvertStartButtonGap = 8;
+    /// <summary>Height of the primary conversion action button.</summary>
     public const int ConvertStartButtonHeight = 32;
 
     /// <summary>拖放區的矩形。</summary>
@@ -205,7 +225,7 @@ public static class DashboardLayout
     public static int ConvertGroupX(int groupIndex, int contentX, int zoneWidth, IReadOnlyList<int> groupSizes) =>
         ConvertCardRect(groupIndex, 0, contentX, zoneWidth, groupSizes).X;
 
-    /// <summary>開始鈕的 Y：最後一個分類的最後一列之下。</summary>
+    /// <summary>內容流中最後一列之後原本會放開始鈕的位置；用來推導可捲動內容高度。</summary>
     public static int ConvertStartButtonY(IReadOnlyList<int> groupSizes)
     {
         int lastGroup = Math.Min(ConvertGroupCount, groupSizes.Count) - 1;
@@ -215,8 +235,38 @@ public static class DashboardLayout
             + ConvertStartButtonGap;
     }
 
+    /// <summary>Returns the original scrollable start-button position for conversion content sizing.</summary>
     public static LayoutRect ConvertStartButtonRect(int contentX, int zoneWidth, IReadOnlyList<int> groupSizes) =>
         new LayoutRect(contentX, ConvertStartButtonY(groupSizes), zoneWidth, ConvertStartButtonHeight);
+
+    /// <summary>固定在轉檔 viewport 底部的開始鈕，不跟內容捲動。</summary>
+    public static LayoutRect ConvertStickyStartButtonRect(int contentX, int zoneWidth, int viewportHeight) =>
+        new LayoutRect(
+            contentX,
+            viewportHeight - ConvertStartButtonHeight - ConvertStartButtonGap,
+            zoneWidth,
+            ConvertStartButtonHeight);
+
+    /// <summary>固定 action footer 的完整覆蓋區；背景也必須攔截命中，避免點到被遮住的卡片。</summary>
+    public static LayoutRect ConvertStickyFooterRect(int contentX, int zoneWidth, int viewportHeight)
+    {
+        LayoutRect button = ConvertStickyStartButtonRect(contentX, zoneWidth, viewportHeight);
+        return new LayoutRect(
+            contentX,
+            button.Y - ConvertStartButtonGap,
+            zoneWidth,
+            ConvertStartButtonHeight + ConvertStartButtonGap * 2);
+    }
+
+    /// <summary>
+    /// 轉檔頁可捲動內容高度。底部保留固定 action footer 的空間；當指令增加導致卡片
+    /// 多出一列時，只增加內容捲動範圍，不增加 Dashboard 視窗高度。
+    /// </summary>
+    public static int ConvertContentHeight(IReadOnlyList<int> groupSizes)
+    {
+        LayoutRect start = ConvertStartButtonRect(0, 1, groupSizes);
+        return Math.Max(MinContentHeight, start.Bottom + ConvertStartButtonGap);
+    }
 
     // ── 下拉選單與它彈出的清單 ──────────────────────────────────
     /// <summary>下拉控制項的寬度與高度；彈出框與它同寬。</summary>

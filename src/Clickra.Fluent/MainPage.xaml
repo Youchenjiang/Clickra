@@ -59,7 +59,7 @@
                         <Grid Background="{ThemeResource CardBackgroundFillColorDefaultBrush}" CornerRadius="8" Padding="20" MinHeight="148">
                             <StackPanel Spacing="8" VerticalAlignment="Center">
                                 <TextBlock x:Name="OverviewConvertTitle" Text="Convert Files" FontSize="30" FontWeight="SemiBold"/>
-                                <TextBlock x:Name="OverviewConvertSubtitle" Text="PDF, Office, and image tools in one workspace." FontSize="14" Foreground="{ThemeResource TextFillColorSecondaryBrush}" TextWrapping="Wrap"/>
+                                <TextBlock x:Name="OverviewConvertSubtitle" Text="PDF, Office, Markdown, and image tools in one workspace." FontSize="14" Foreground="{ThemeResource TextFillColorSecondaryBrush}" TextWrapping="Wrap"/>
                                 <Grid ColumnSpacing="10" Margin="0,2,0,0">
                                     <Grid.ColumnDefinitions>
                                         <ColumnDefinition Width="Auto"/>
@@ -179,7 +179,7 @@
                                 <FontIcon x:Name="DropZoneIcon" Glyph="&#xE896;" FontSize="30" Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}"/>
                                 <TextBlock x:Name="DropZoneTitle" Text="Drag and drop files here" FontSize="16" FontWeight="SemiBold" HorizontalAlignment="Center"/>
                                 <TextBlock x:Name="DropZoneBrowseText" Text="Click to select files" FontSize="13" Foreground="{ThemeResource TextFillColorSecondaryBrush}" HorizontalAlignment="Center"/>
-                                <TextBlock x:Name="DropZoneTypesText" Text="PDF, Office documents, and images" FontSize="12" Foreground="{ThemeResource TextFillColorTertiaryBrush}" HorizontalAlignment="Center"/>
+                                <TextBlock x:Name="DropZoneTypesText" Text="PDF, Office, Markdown, and images" FontSize="12" Foreground="{ThemeResource TextFillColorTertiaryBrush}" HorizontalAlignment="Center"/>
                             </StackPanel>
                         </Border>
 
@@ -206,10 +206,12 @@
                                     <TextBlock x:Name="OfficeCommandLabel" Text="Office" FontSize="12" FontWeight="SemiBold" Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
                                     <Grid x:Name="OfficeCommandGrid" ColumnSpacing="8" RowSpacing="8">
                                         <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="*"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
-                                        <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
+                                        <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
                                         <Button x:Name="BtnWord2Pdf" Content="Word" Tag="word2pdf" HorizontalAlignment="Stretch"/>
                                         <Button x:Name="BtnExcel2Pdf" Grid.Column="1" Content="Excel" Tag="excel2pdf" HorizontalAlignment="Stretch"/>
                                         <Button x:Name="BtnPpt2Pdf" Grid.Column="2" Content="PPT" Tag="ppt2pdf" HorizontalAlignment="Stretch"/>
+                                        <Button x:Name="BtnMd2Pdf" Grid.Row="1" Grid.ColumnSpan="2" Content="Markdown → PDF" Tag="md2pdf" HorizontalAlignment="Stretch"/>
+                                        <Button x:Name="BtnMd2Word" Grid.Row="1" Grid.Column="2" Content="Markdown → Word" Tag="md2word" HorizontalAlignment="Stretch"/>
                                     </Grid>
                                 </StackPanel>
                                 <StackPanel Spacing="8">

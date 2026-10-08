@@ -346,6 +346,10 @@ namespace Clickra.UI
             int mouseX = (int)(rawX / _dpiScale);
             int mouseY = (int)(rawY / _dpiScale);
 
+            if (_isPromptingMarkdownOptions && HandleMarkdownOptionsClick(hwnd, mouseX, mouseY))
+            {
+                return IntPtr.Zero;
+            }
             if (_isPromptingVisualSplitter && HandleVisualSplitterClick(hwnd, mouseX, mouseY))
             {
                 return IntPtr.Zero;
@@ -719,6 +723,13 @@ namespace Clickra.UI
         /// the window.</summary>
         private IntPtr HandleClose(IntPtr hwnd)
         {
+            if (_isPromptingMarkdownOptions)
+            {
+                ResolveMarkdownDecision(false);
+                DestroyWindow(hwnd);
+                return IntPtr.Zero;
+            }
+
             bool needsConfirmation = false;
             lock (_stateLock)
             {
@@ -760,7 +771,10 @@ namespace Clickra.UI
             RecreateScaledFonts();
 
             int clientW = (int)(520 * _dpiScale);
-            int clientH = (int)(280 * _dpiScale);
+            int logicalClientHeight = _isPromptingMarkdownOptions
+                ? MarkdownOptionsClientHeight
+                : GetStandardClientHeight();
+            int clientH = (int)(logicalClientHeight * _dpiScale);
 
             if (_bufferBmp != null)
             {
@@ -782,7 +796,7 @@ namespace Clickra.UI
         {
             lock (_stateLock)
             {
-                if (!_completed && !_hasError && !_isPromptingPassword)
+                if (!_completed && !_hasError && !_isPromptingPassword && !_isPromptingMarkdownOptions)
                 {
                     if (_currentDispWidth < _targetWidth)
                     {

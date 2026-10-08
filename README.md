@@ -26,6 +26,11 @@ A responsive WinUI 3 dashboard for conversion, settings, history, and diagnostic
 ### Office to PDF
 Silently exports Word, Excel, and PowerPoint documents to high-quality PDFs in the background. Supports Auto, Microsoft Office, and LibreOffice engine modes — LibreOffice can be downloaded and managed from Clickra as a free local fallback.
 
+### Markdown Documents
+- **Markdown to PDF / Word** — convert `.md` and `.markdown` files while preserving headings, paragraphs, lists, quotes, code blocks, tables, links, and local relative images.
+- **Document templates** — choose built-in Default, Minimal, or Academic styles, or import a Word `.docx` template for shared PDF/DOCX typography and page layout.
+- **Per-conversion options** — select paper size, text scaling, code theme, and document template before conversion without changing global settings.
+
 ### PDF Tools
 - **Merge** — combine selected PDFs into one document in filename order.
 - **Split** — visual PDF splitter with page previews (custom segments, split-each-page, fixed-page modes).
@@ -45,7 +50,7 @@ Locally tracks every conversion in a Fluent master-detail view with paths, opera
 
 ### Local-First & Privacy
 Clickra operates on a strict **Local-First** philosophy:
-- **100% Offline by Default**: PDF merge/split/compress/decrypt, image conversion/compression/stitching, and Office-to-PDF run entirely on your local machine. Your documents never leave your device.
+- **100% Offline by Default**: PDF merge/split/compress/decrypt, Markdown conversion, image conversion/compression/stitching, and Office-to-PDF run entirely on your local machine. Your documents never leave your device.
 - **Zero Telemetry**: No tracking, analytics, or background telemetry.
 - **Transparent Network Access**: Only the optional PDF Translation connects to public translation APIs, and the optional LibreOffice installer connects to the official Document Foundation repository. See [PRIVACY.md](PRIVACY.md) and [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for details.
 

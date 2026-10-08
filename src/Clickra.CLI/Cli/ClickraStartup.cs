@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.IO;
 using System.Linq;
 using System.Collections.Generic;
@@ -14,7 +14,7 @@ namespace Clickra;
 /// initialization, dashboard launch, CLI argument parsing and dispatch.</summary>
 internal static class ClickraStartup
 {
-    private const string CommandSummary = "Commands: ppt2pdf, word2pdf, excel2pdf, merge-pdf, compress-pdf, translate-pdf, decrypt-pdf, split-pdf, img2pdf, img-merge, img-stitch, img-to-png, img-to-jpg, img-to-webp, img-to-gif, img-to-heic, --deploy";
+    private const string CommandSummary = "Commands: ppt2pdf, word2pdf, excel2pdf, md2pdf, md2word, merge-pdf, compress-pdf, translate-pdf, decrypt-pdf, split-pdf, img2pdf, img-merge, img-stitch, img-to-png, img-to-jpg, img-to-webp, img-to-gif, img-to-heic, --deploy";
     [DllImport("user32.dll")]
     static extern bool SetProcessDpiAwarenessContext(IntPtr value);
 

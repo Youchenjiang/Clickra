@@ -14,6 +14,9 @@ static partial class TestSuite
 {
     private const string EventsClickFileName = "DashboardWindow.Events.Click.cs";
     private const string EventsFileName = "DashboardWindow.Events.cs";
+    private const string DashboardCliDirectoryName = "Clickra.CLI";
+    private const string DashboardSourceDirectoryName = "Dashboard";
+    private const string DashboardPaintFileName = "DashboardWindow.Paint.cs";
 
     public static void RegisterDashboardLayoutTests(TestRunner runner)
     {
@@ -33,8 +36,8 @@ static partial class TestSuite
             TestDetailFieldTapBands);
         runner.Run("Dashboard layout: the convert grid, its cards and the start button do not overlap",
             TestConvertGridGeometry);
-        runner.RunGuard("AOT convert workspace: compact command groups stay within first-screen density",
-            TestAotConvertFirstScreenDensity);
+        runner.RunGuard("AOT convert workspace: command growth keeps a sticky start action",
+            TestAotConvertStickyAction);
         runner.RunGuard("AOT settings workspace: responsive columns preserve geometry and hit parity",
             TestAotSettingsResponsiveGeometry);
         runner.Run("Dashboard layout: dropdown popup rows round-trip between paint and hit-testing",
@@ -61,6 +64,7 @@ static partial class TestSuite
         Assert.Equal(30, DashboardLayout.ParkedHeaderHeight);
         Assert.Equal(20, DashboardLayout.SectionPadding);
         Assert.Equal(460, DashboardLayout.MinContentHeight);
+        Assert.Equal(420, DashboardLayout.MinClientWidth);
 
         Assert.Equal(120, DashboardLayout.SidebarTabTop);
         Assert.Equal(40, DashboardLayout.SidebarTabHeight);
@@ -189,7 +193,7 @@ static partial class TestSuite
                 cursor += (i == expanded ? 160 : 44) + 8;
             }
 
-            Assert.Equal(Math.Max(460, expectedHeight), HistoryLayout.ContentHeight(stack));
+            Assert.Equal(Math.Max(DashboardLayout.MinContentHeight, expectedHeight), HistoryLayout.ContentHeight(stack));
         }
     }
 
@@ -286,7 +290,7 @@ static partial class TestSuite
         Assert.True(zone.Width > 0 && zone.Height == DashboardLayout.ConvertZoneHeight,
             "The drop zone must fit inside the content area.");
 
-        int[] groupSizes = { 3, 5, 8 };
+        int[] groupSizes = { 5, 5, 8 };
         for (int group = 0; group < DashboardLayout.ConvertGroupCount; group++)
         {
             int columns = DashboardLayout.ConvertGroupColumns(group);
@@ -333,31 +337,68 @@ static partial class TestSuite
         Assert.Equal(DashboardLayout.HistoryClearButtonHeight, historyClear.Height);
     }
 
-    private static void TestAotConvertFirstScreenDensity()
+    private static void TestAotConvertStickyAction()
     {
-        int[] groupSizes = { 3, 5, 8 };
+        int[] groupSizes = { 5, 5, 8 };
         Assert.Equal(3, DashboardLayout.ConvertGroupColumns(0));
         Assert.Equal(5, DashboardLayout.ConvertGroupColumns(1));
         Assert.Equal(4, DashboardLayout.ConvertGroupColumns(2));
-        Assert.Equal(1, DashboardLayout.ConvertGroupRows(0, groupSizes[0]));
+        Assert.Equal(2, DashboardLayout.ConvertGroupRows(0, groupSizes[0]));
         Assert.Equal(1, DashboardLayout.ConvertGroupRows(1, groupSizes[1]));
         Assert.Equal(2, DashboardLayout.ConvertGroupRows(2, groupSizes[2]));
 
         LayoutRect zone = DashboardLayout.ConvertZoneRect(contentX: 260, logW: 1520);
         LayoutRect start = DashboardLayout.ConvertStartButtonRect(zone.X, zone.Width, groupSizes);
+        LayoutRect stickyStart = DashboardLayout.ConvertStickyStartButtonRect(
+            zone.X, zone.Width, DashboardLayout.MinContentHeight);
+        LayoutRect stickyFooter = DashboardLayout.ConvertStickyFooterRect(
+            zone.X, 1520 - zone.X, DashboardLayout.MinContentHeight);
         Assert.True(zone.Bottom < DashboardLayout.ConvertGridTop,
             "The compact drop zone must leave visible separation before command groups.");
-        Assert.True(start.Bottom <= DashboardLayout.MinContentHeight - 8,
-            $"AOT convert controls must stay inside the minimum dashboard content height; start bottom was {start.Bottom}.");
+        Assert.True(start.Bottom > DashboardLayout.MinContentHeight,
+            "The real command set should be allowed to overflow without forcing the dashboard viewport to grow.");
+        Assert.Equal(start.Bottom + DashboardLayout.ConvertStartButtonGap, DashboardLayout.ConvertContentHeight(groupSizes));
+        Assert.Equal(DashboardLayout.MinContentHeight - DashboardLayout.ConvertStartButtonHeight - DashboardLayout.ConvertStartButtonGap,
+            stickyStart.Y);
+        Assert.True(stickyStart.Bottom < DashboardLayout.MinContentHeight,
+            "The start action must remain fully visible in the fixed dashboard viewport.");
+        Assert.True(stickyFooter.Contains(stickyStart.X, stickyStart.Y)
+                    && stickyFooter.Contains(stickyStart.Right - 1, stickyStart.Bottom - 1),
+            "The sticky footer must fully cover the start action and intercept its surrounding background.");
+        LayoutRect narrowFooter = DashboardLayout.ConvertStickyFooterRect(
+            contentX: 260, zoneWidth: 600 - 260, viewportHeight: DashboardLayout.MinContentHeight);
+        Assert.True(narrowFooter.Right == 600,
+            "The sticky footer exclusion must cover the full visible content width even when the dashboard is narrow.");
+
+        int[] futureGroupSizes = { 8, 5, 8 };
+        LayoutRect futureStart = DashboardLayout.ConvertStartButtonRect(zone.X, zone.Width, futureGroupSizes);
+        Assert.True(DashboardLayout.ConvertContentHeight(futureGroupSizes) >= futureStart.Bottom + DashboardLayout.ConvertStartButtonGap,
+            "Convert content height must grow when additional command rows push the start button below the minimum viewport.");
 
         string? root = FindRepoRoot();
         if (root is null) throw new TestSkippedException("Could not locate the repository root from the test output directory.");
-        string paint = File.ReadAllText(Path.Combine(root, "src", "Clickra.CLI", "Dashboard", "DashboardWindow.Convert.cs"));
-        string hitTest = File.ReadAllText(Path.Combine(root, "src", "Clickra.CLI", "Dashboard", "DashboardWindow.HitTesting.cs"));
+        string paint = File.ReadAllText(Path.Combine(root, "src", DashboardCliDirectoryName, DashboardSourceDirectoryName, "DashboardWindow.Convert.cs"));
+        string hitTest = File.ReadAllText(Path.Combine(root, "src", DashboardCliDirectoryName, DashboardSourceDirectoryName, "DashboardWindow.HitTesting.cs"));
+        string paintRoot = File.ReadAllText(Path.Combine(root, "src", DashboardCliDirectoryName, DashboardSourceDirectoryName, DashboardPaintFileName));
+        string click = File.ReadAllText(Path.Combine(root, "src", DashboardCliDirectoryName, DashboardSourceDirectoryName, "DashboardWindow.Events.Click.cs"));
         Assert.True(paint.Contains("ConvertCardRect(group, local, zoneX, zoneW, ConvertCommandGroupSizes)", StringComparison.Ordinal),
             "AOT convert painting must use DashboardLayout command geometry.");
         Assert.True(hitTest.Contains("ConvertCardRect(group, local, zone.X, zone.Width, ConvertCommandGroupSizes)", StringComparison.Ordinal),
             "AOT convert hit-testing must use the same DashboardLayout command geometry as painting.");
+        Assert.True(paint.Contains("DrawConvertStickyAction", StringComparison.Ordinal)
+                    && paintRoot.Contains("DrawConvertStickyAction(g, logW, logH, contentX)", StringComparison.Ordinal),
+            "The convert start action must be painted outside the scrolled content transform.");
+        Assert.True(hitTest.Contains("HitTestConvertStickyAction", StringComparison.Ordinal)
+                    && hitTest.Contains("IsInsideConvertStickyFooter", StringComparison.Ordinal)
+                    && click.Contains("IsInsideConvertStickyFooter(mouseX, mouseY", StringComparison.Ordinal),
+            "The sticky footer must consume viewport-coordinate hits before scrolled cards can receive them.");
+
+        string events = File.ReadAllText(Path.Combine(root, "src", DashboardCliDirectoryName, DashboardSourceDirectoryName, "DashboardWindow.Events.cs"));
+        Assert.True(events.Contains("WM_GETMINMAXINFO", StringComparison.Ordinal)
+                    && events.Contains("DashboardLayout.MinClientWidth", StringComparison.Ordinal)
+                    && events.Contains("AdjustWindowRectExForDpi", StringComparison.Ordinal)
+                    && events.Contains("GetDpiForWindow(hwnd)", StringComparison.Ordinal),
+            "The dashboard must keep a per-monitor-DPI-correct minimum width for the fixed convert action.");
     }
 
     private static void TestAotSettingsResponsiveGeometry()
@@ -435,7 +476,7 @@ static partial class TestSuite
             "Task retention title, current value, and presets must fit in one bounded card.");
         string dir = DashboardDir();
         string paint = File.ReadAllText(Path.Combine(dir, "DashboardWindow.Paint.Settings.cs"));
-        string dashboardPaint = File.ReadAllText(Path.Combine(dir, "DashboardWindow.Paint.cs"));
+        string dashboardPaint = File.ReadAllText(Path.Combine(dir, DashboardPaintFileName));
         string hitTest = File.ReadAllText(Path.Combine(dir, "DashboardWindow.HitTesting.cs"));
         string click = File.ReadAllText(Path.Combine(dir, EventsClickFileName));
         string events = File.ReadAllText(Path.Combine(dir, EventsFileName));
@@ -598,7 +639,7 @@ static partial class TestSuite
                  {
                      ("DashboardWindow.cs", "HistoryLayout.Build("),
                      ("DashboardWindow.Paint.History.cs", "HistoryLayout.Find("),
-                     ("DashboardWindow.Paint.cs", "DashboardLayout.SidebarTabY("),
+                     (DashboardPaintFileName, "DashboardLayout.SidebarTabY("),
                      ("DashboardWindow.Convert.cs", "DashboardLayout.ConvertCardRect("),
                      ("DashboardWindow.HitTesting.cs", "DashboardLayout.SidebarTabAt("),
                      (EventsClickFileName, "DashboardLayout.DetailScrollFieldAt("),
@@ -649,7 +690,7 @@ static partial class TestSuite
 
     private static void TestSidebarTabCountMatchesPaint()
     {
-        string paint = File.ReadAllText(Path.Combine(DashboardDir(), "DashboardWindow.Paint.cs"));
+        string paint = File.ReadAllText(Path.Combine(DashboardDir(), DashboardPaintFileName));
 
         Assert.Equal(DashboardLayout.SidebarTabCount, CountOccurrences(paint, "DrawTabButton(g, "));
 
@@ -712,7 +753,7 @@ static partial class TestSuite
     {
         string? root = FindRepoRoot();
         if (root is null) throw new TestSkippedException("Could not locate the repository root from the test output directory.");
-        return Path.Combine(root, "src", "Clickra.CLI", "Dashboard");
+        return Path.Combine(root, "src", DashboardCliDirectoryName, DashboardSourceDirectoryName);
     }
 
     private static void AssertRowsDoNotOverlap(HistoryBlock block, string what)

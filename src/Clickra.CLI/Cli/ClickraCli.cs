@@ -14,6 +14,7 @@ namespace Clickra
 {
     partial class ClickraCli
     {
+        /// <summary>Immutable options captured before CLI command dispatch begins.</summary>
         internal sealed record DispatchOptions(
             bool Quiet,
             string OutputDir,
@@ -122,10 +123,53 @@ namespace Clickra
             DispatchOptions options)
         {
             if (DispatchOfficeCommand(command, files, options.Quiet)) return;
+            if (DispatchMarkdownCommand(command, files, options.Quiet, options.OutputDir, options.OutputDirOverride)) return;
             if (DispatchPdfCommand(command, files, options.Quiet, options.OutputDir, options.HasCliLevel, options.CompressionLevel, options.PagesOption)) return;
             if (DispatchImageCommand(command, files, options.Quiet, options.OutputDir, options.OutputDirOverride)) return;
 
             Console.WriteLine(Loc("cli_err_prefix") + Loc("cli_err_unknown_command", command));
+        }
+
+        /// <summary>Handles local Markdown conversion without requiring an Office engine.</summary>
+        private static bool DispatchMarkdownCommand(string command, List<string> files, bool quiet, string outputDir, string? outputDirOverride)
+        {
+            bool toPdf = command.Equals("md2pdf", StringComparison.OrdinalIgnoreCase);
+            bool toWord = command.Equals("md2word", StringComparison.OrdinalIgnoreCase);
+            if (!toPdf && !toWord) return false;
+
+            string[] allowed = ConvertCommandRegistry.GetAllowedExtensions(command);
+            ValidateExtensions(files, command, quiet, allowed);
+            RequireMinFiles(files, command, ConvertCommandRegistry.GetMinFiles(command), quiet);
+            if (quiet)
+            {
+                DispatchMarkdownQuiet(files, outputDir, outputDirOverride, toWord);
+            }
+            else
+            {
+                ProgressWindow.Show(command, files, outputDirOverride);
+            }
+            return true;
+        }
+
+        private static void DispatchMarkdownQuiet(
+            IReadOnlyList<string> files,
+            string outputDir,
+            string? outputDirOverride,
+            bool toWord)
+        {
+            for (int i = 0; i < files.Count; i++)
+            {
+                string targetDir = string.IsNullOrWhiteSpace(outputDirOverride)
+                    ? ClickraStorage.GetOutputDir(files[i])
+                    : outputDir;
+                string output = Path.Combine(
+                    targetDir,
+                    Path.GetFileNameWithoutExtension(files[i]) + (toWord ? ".docx" : ".pdf"));
+                if (toWord)
+                    FileProcessor.ConvertMarkdownToWord(files[i], output, onProgress: (_, _, msg) => Console.WriteLine($"[Progress] {msg}"));
+                else
+                    FileProcessor.ConvertMarkdownToPdf(files[i], output, (_, _, msg) => Console.WriteLine($"[Progress] {msg}"));
+            }
         }
 
         /// <summary>Handles office-conversion commands (ppt2pdf, word2pdf, excel2pdf).</summary>

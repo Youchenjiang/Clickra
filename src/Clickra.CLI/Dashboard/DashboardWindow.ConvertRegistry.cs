@@ -21,6 +21,7 @@ public static partial class DashboardWindow
     private const string FilterWordFiles = "Word Files (*.doc; *.docx)\0*.doc;*.docx\0All Files (*.*)\0*.*\0\0";
     private const string FilterExcelFiles = "Excel Files (*.xlsx; *.xls)\0*.xlsx;*.xls\0All Files (*.*)\0*.*\0\0";
     private const string FilterPowerPointFiles = "PowerPoint Files (*.ppt; *.pptx)\0*.ppt;*.pptx\0All Files (*.*)\0*.*\0\0";
+    private const string FilterMarkdownFiles = "Markdown Files (*.md; *.markdown)\0*.md;*.markdown\0All Files (*.*)\0*.*\0\0";
     private const string FilterImageFiles = "Image Files (*.jpg; *.jpeg; *.png; *.bmp; *.gif; *.tiff; *.webp; *.heic)\0*.jpg;*.jpeg;*.png;*.bmp;*.gif;*.tiff;*.webp;*.heic\0All Files (*.*)\0*.*\0\0";
 
     private static readonly string[] ImageExtensions = { ".jpg", ".jpeg", ".png", ".bmp", ".gif", ".tiff", ".webp", ".heic" };
@@ -45,6 +46,8 @@ public static partial class DashboardWindow
         new ConvertCommandDef { Command = "word2pdf",      TextKey = "cmd_word_to_pdf",    Filter = FilterWordFiles,       Extensions = new[] { ".doc", ".docx" },          MinFiles = 1, RequiresOffice = true, Group = 0, TagColor = Color.FromArgb(0, 120, 212) },
         new ConvertCommandDef { Command = "excel2pdf",     TextKey = "cmd_excel_to_pdf",   Filter = FilterExcelFiles,      Extensions = new[] { ".xlsx", ".xls" },          MinFiles = 1, RequiresOffice = true, Group = 0, TagColor = Color.FromArgb(16, 124, 65) },
         new ConvertCommandDef { Command = "ppt2pdf",       TextKey = "cmd_ppt_to_pdf",     Filter = FilterPowerPointFiles, Extensions = new[] { ".ppt", ".pptx" },          MinFiles = 1, RequiresOffice = true, Group = 0, TagColor = Color.FromArgb(180, 50, 30) },
+        new ConvertCommandDef { Command = "md2pdf",        TextKey = "cmd_md_to_pdf",      Filter = FilterMarkdownFiles,   Extensions = new[] { ".md", ".markdown" },       MinFiles = 1, RequiresOffice = false, Group = 0, TagColor = Color.FromArgb(96, 72, 164) },
+        new ConvertCommandDef { Command = "md2word",       TextKey = "cmd_md_to_word",     Filter = FilterMarkdownFiles,   Extensions = new[] { ".md", ".markdown" },       MinFiles = 1, RequiresOffice = false, Group = 0, TagColor = Color.FromArgb(43, 87, 154) },
 
         // PDF 工具 (Group 1)
         new ConvertCommandDef { Command = "merge-pdf",     TextKey = "cmd_merge_pdf",      Filter = FilterPdfFiles,        Extensions = new[] { ".pdf" },                  MinFiles = 2, Group = 1, TagColor = Color.FromArgb(16, 124, 65) },
@@ -182,30 +185,60 @@ public static partial class DashboardWindow
             if (command.RequiresOffice && !command.HasAvailableEngine())
             {
                 string language = ClickraStorage.GetSetting(ClickraSettings.Language);
-                string engine = ClickraStorage.GetSetting(ClickraSettings.OfficeEngine);
-                string errorKey = "";
-                if (engine.Equals("libreoffice", StringComparison.OrdinalIgnoreCase))
-                {
-                    errorKey = "error_libreoffice_not_ready";
-                }
-                else if (engine.Equals("microsoft", StringComparison.OrdinalIgnoreCase))
-                {
-                    errorKey = "error_microsoftoffice_not_ready";
-                }
-                else
-                {
-                    errorKey = "setting_engine_none_available";
-                }
+                string errorKey = GetOfficeEngineUnavailableErrorKey();
                 MessageBox(hwnd, Localization.T(errorKey, language), "Clickra", 0x30);
                 return;
             }
 
             var filesCopy = new List<string>(_selectedFiles);
+            bool markdownCommand = command.Command.Equals("md2pdf", StringComparison.OrdinalIgnoreCase)
+                || command.Command.Equals("md2word", StringComparison.OrdinalIgnoreCase);
+            StartConvertProgress(command, hwnd, filesCopy, markdownCommand);
+
+            if (markdownCommand) return;
+
+            _selectedFiles.Clear();
+
+            _activeTab = 2; // Switch to History
+            RefreshHistoryData();
+            InvalidateRect(hwnd, IntPtr.Zero, false);
+        }
+
+        private static string GetOfficeEngineUnavailableErrorKey()
+        {
+            string engine = ClickraStorage.GetSetting(ClickraSettings.OfficeEngine);
+            if (engine.Equals("libreoffice", StringComparison.OrdinalIgnoreCase))
+                return "error_libreoffice_not_ready";
+            if (engine.Equals("microsoft", StringComparison.OrdinalIgnoreCase))
+                return "error_microsoftoffice_not_ready";
+            return "setting_engine_none_available";
+        }
+
+        private static void StartConvertProgress(
+            ConvertCommand command,
+            IntPtr hwnd,
+            List<string> filesCopy,
+            bool markdownCommand)
+        {
             var thread = new System.Threading.Thread(() =>
             {
                 try
                 {
-                    ProgressWindow.Show(command.Command, filesCopy);
+                    ProgressWindow.Show(
+                        command.Command,
+                        filesCopy,
+                        markdownDecision: markdownCommand
+                            ? started =>
+                            {
+                                if (!started || !IsWindow(hwnd)) return;
+                                PostDashboardAction(hwnd, () =>
+                                {
+                                    _selectedFiles.Clear();
+                                    _activeTab = 2;
+                                    RefreshHistoryData();
+                                });
+                            }
+                            : null);
                 }
                 catch (Exception ex)
                 {
@@ -214,12 +247,6 @@ public static partial class DashboardWindow
             });
             thread.SetApartmentState(System.Threading.ApartmentState.STA);
             thread.Start();
-
-            _selectedFiles.Clear();
-
-            _activeTab = 2; // Switch to History
-            RefreshHistoryData();
-            InvalidateRect(hwnd, IntPtr.Zero, false);
         }
     }
 }

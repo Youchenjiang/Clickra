@@ -129,6 +129,17 @@
     - 新增獨立 `img-compress` 命令：0–3 品質等級（比照 PDF 壓縮滑桿，對應 JPEG/WebP/HEIC 編碼品質）與最大長邊尺寸（原始／4K／FHD／HD，Bicubic 高品質縮放）。
     - 輸出 `<名稱>_compressed.<原副檔名>`；JPG/WebP/HEIC 依品質等級重新編碼，PNG 不超過 256 色時以無損索引式調色盤重新編碼（純 managed，無原生依賴），PNG/GIF 其餘情況僅在調整尺寸時重新編碼；壓縮後反而變大時自動略過，不覆蓋來源。
     - 同格式轉換排除：`img-to-*` 命令在選取的檔案已是目標格式時自動停用（jpg/jpeg 視為同格式），避免無意義的轉檔。
+- [ ] **[F2-29] Conversion-time Options & Target Selection**：把一次性轉換參數移到「執行前選擇」，而不是要求使用者先到設定頁修改全域值。
+    - 圖片格式轉換先選目標格式，再開始轉換；壓縮先選壓縮模式、品質／目標大小與尺寸；PDF 等具操作參數的功能亦採相同 preflight UX。
+    - 設定頁只保存「預設值」與長期偏好，當次操作可覆寫且不污染後續任務；Explorer 右鍵、Fluent、NativeAOT Dashboard 與 CLI 必須維持同一套 option contract。
+    - 對需要互動的命令建立共用 conversion-options model／prompt contract，避免每個 UI 各自複製一套參數與驗證邏輯。
+- [ ] **[F2-30] Advanced Image Compression Modes**：擴充圖片壓縮方式，不只依固定 quality 重新編碼。
+    - 支援「品質優先」、「目標檔案大小」、「最大尺寸／解析度」、「移除非必要 metadata」等可組合模式，並評估 JPEG progressive encoding、chroma subsampling 與格式專屬最佳化能力。
+    - 對 JPEG/WebP/HEIC 等有損格式，明確選定壓縮等級後應忠實輸出該次重新編碼結果；若輸出未變小則回報結果與原因，不應靜默改回原始 bytes，讓「選了某個程度」卻實際沒套用。
+    - 對 PNG/GIF/TIFF 等格式分開定義無損／有損策略與多影格安全規則，避免以單一「壓縮」語意涵蓋彼此不同的編碼能力。
+- [x] **[F2-31] Markdown to PDF (2026/10/08 完成)**：將 `.md` / `.markdown` 文件轉為 PDF，保留標題、段落、清單、引用、程式碼區塊、表格、連結與圖片等常用 Markdown 結構，並整合 CLI、Dashboard／Fluent 與 Explorer 右鍵選單。
+    - 同步提供 Markdown → Word（DOCX），PDF / DOCX 共用文件樣式模型與 DOCX 範本匯入，避免兩種輸出各自維護排版規格。
+    - 紙張、文字縮放、程式碼主題與範本採單次轉換 preflight；NativeAOT Dashboard 的主要轉換動作固定於 viewport 底部，新增功能只擴充可捲動卡片區，不增加視窗高度或要求使用者捲到底才能執行。
 - [ ] **[F2-21] Folder & File Batch Renaming**：資料夾與檔案批次命名。支援自訂數字規則、提取建立日期、固定字串與自動編號。可以直接在資料夾右鍵選單對「整個資料夾及其內含檔案」進行操作。
 - [ ] **[F2-22] Batch File Categorization**：批次檔案分類。支援依副檔名、日期區間或檔名關鍵字，將檔案自動分類並移入對應的資料夾。
 - [ ] **[F2-23] Batch Create Empty Folders**：批量建立空資料夾。支援依指定命名規則與結構要求，一次建立多個指定結構的空資料夾。

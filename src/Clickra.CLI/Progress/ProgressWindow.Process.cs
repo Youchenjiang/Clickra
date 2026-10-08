@@ -12,6 +12,12 @@ namespace Clickra.UI
 {
     public partial class ProgressWindow
     {
+        private string? _inputPassword = null;
+        private bool _passwordCancelled = false;
+        private volatile bool _isPromptingPassword = false;
+        private string _passwordPromptFilename = "";
+        private bool _passwordPromptIsRetry = false;
+
         /// <summary>Runs the command on the background thread, driving the progress callback,
         /// password prompts and the visual splitter, then closes the window and records the
         /// outcome in the persistent history.</summary>
@@ -75,6 +81,14 @@ namespace Clickra.UI
                         break;
                     case "excel2pdf":
                         FileProcessor.ConvertExcelToPdf(currentFiles, progressCallback, _cts.Token);
+                        break;
+                    case "md2pdf":
+                        RunMarkdownConversion(currentFiles, _outputDirOverride, progressCallback, ".pdf",
+                            (input, output, options, progress, token) => FileProcessor.ConvertMarkdownToPdf(input, output, options, progress, token));
+                        break;
+                    case "md2word":
+                        RunMarkdownConversion(currentFiles, _outputDirOverride, progressCallback, ".docx",
+                            (input, output, options, progress, token) => FileProcessor.ConvertMarkdownToWord(input, output, options, progress, token));
                         break;
                     case "merge-pdf":
                         FileProcessor.MergePdfs(currentFiles, Path.Combine(outputDir, "Merged_PDF.pdf"), progressCallback, _cts.Token);
@@ -158,6 +172,28 @@ namespace Clickra.UI
 
                 try { ClickraStorage.DeleteTask(taskId); } catch { /* Non-critical: cleanup failure is harmless. */ }
                 PostMessageW(hwnd, 0x0010, IntPtr.Zero, IntPtr.Zero); // WM_CLOSE
+            }
+        }
+
+        private void RunMarkdownConversion(
+            List<string> files,
+            string? outputDirOverride,
+            Action<int, int, string> progressCallback,
+            string extension,
+            Action<string, string, Dictionary<string, object>, Action<int, int, string>?, CancellationToken> converter)
+        {
+            for (int i = _startIndex; i < files.Count; i++)
+            {
+                _cts.Token.ThrowIfCancellationRequested();
+                TryRecordTaskIndex(i);
+                int index = i;
+                string targetDir = string.IsNullOrWhiteSpace(outputDirOverride)
+                    ? ClickraStorage.GetOutputDir(files[i])
+                    : Path.GetFullPath(outputDirOverride);
+                string output = Path.Combine(targetDir, Path.GetFileNameWithoutExtension(files[i]) + extension);
+                converter(files[i], output, _commandOptions ?? MarkdownPdfOptions.Create(),
+                    (current, total, message) => progressCallback((index * 100) + current, files.Count * 100, message),
+                    _cts.Token);
             }
         }
 
@@ -448,6 +484,14 @@ namespace Clickra.UI
                 case "excel2pdf":
                 case "img2pdf":
                     return string.Join(";", inputFiles.Select(f => Path.Combine(outputDir, Path.GetFileNameWithoutExtension(f) + ".pdf")));
+                case "md2pdf":
+                    return string.Join(";", inputFiles.Select(f => Path.Combine(
+                        string.IsNullOrWhiteSpace(outputDirOverride) ? ClickraStorage.GetOutputDir(f) : Path.GetFullPath(outputDirOverride),
+                        Path.GetFileNameWithoutExtension(f) + ".pdf")));
+                case "md2word":
+                    return string.Join(";", inputFiles.Select(f => Path.Combine(
+                        string.IsNullOrWhiteSpace(outputDirOverride) ? ClickraStorage.GetOutputDir(f) : Path.GetFullPath(outputDirOverride),
+                        Path.GetFileNameWithoutExtension(f) + ".docx")));
                 case "translate-pdf":
                     return string.Join(";", inputFiles.Select(f => Path.Combine(outputDir, Path.GetFileNameWithoutExtension(f) + "_translated.pdf")));
                 case "decrypt-pdf":

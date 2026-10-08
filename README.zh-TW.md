@@ -26,6 +26,11 @@
 ### 文書轉 PDF
 在背景靜默將 Word、Excel 與 PowerPoint 文件轉為高品質 PDF。支援自動、Microsoft Office 與 LibreOffice 三種模式 — 未安裝 Office 時，可由 Clickra 下載並管理 LibreOffice 作為免費本機備援引擎。
 
+### Markdown 文件
+- **Markdown 轉 PDF / Word** — 將 `.md` 與 `.markdown` 轉成 PDF 或 DOCX，保留標題、段落、清單、引用、程式碼區塊、表格、連結與本機相對圖片。
+- **文件樣式與範本** — 可選 Default、Minimal、Academic 內建樣式，或匯入 Word `.docx` 範本，讓 PDF 與 DOCX 共用字型、段落與頁面配置。
+- **單次轉換選項** — 紙張大小、文字縮放、程式碼主題與文件範本都在開始轉換前選擇，不會修改全域設定。
+
 ### PDF 工具
 - **合併** — 依檔名順序將多份 PDF 合併為單一檔案。
 - **分割** — 視覺化 PDF 分割器，具頁面預覽（自訂分段、全拆單頁、固定頁數模式）。
@@ -45,7 +50,7 @@
 
 ### 本機優先與隱私保護 (Local-First & Privacy)
 Clickra 秉持嚴格的 **本機優先（Local-First）** 設計準則：
-- **預設 100% 離線運作**：PDF 合併/分割/壓縮/解密、圖片轉檔/壓縮/拼接、Office 轉 PDF 等核心功能完全在您的電腦本機執行，檔案絕不上傳伺服器。
+- **預設 100% 離線運作**：PDF 合併/分割/壓縮/解密、Markdown 轉換、圖片轉檔/壓縮/拼接、Office 轉 PDF 等核心功能完全在您的電腦本機執行，檔案絕不上傳伺服器。
 - **零遙測監控**：不收集任何個人資訊、不內嵌任何遙測追蹤程式碼。
 - **透明的網路連線**：僅可選的「PDF 智慧翻譯」需呼叫翻譯 API，以及在設定中手動選擇下載 LibreOffice 引擎時會自官方伺服器下載安裝檔。詳情請參閱 [PRIVACY.md](PRIVACY.md) 與 [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)。
 

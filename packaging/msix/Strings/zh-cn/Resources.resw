@@ -69,4 +69,10 @@
   <data name="Menu_SplitPdf" xml:space="preserve">
     <value>拆分 PDF</value>
   </data>
+  <data name="Menu_Md2Pdf" xml:space="preserve">
+    <value>Markdown 转 PDF</value>
+  </data>
+  <data name="Menu_Md2Word" xml:space="preserve">
+    <value>Markdown 转 Word</value>
+  </data>
 </root>

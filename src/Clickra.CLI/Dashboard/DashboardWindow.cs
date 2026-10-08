@@ -25,17 +25,19 @@ namespace Clickra.UI
         {
             if (GetClientRect(hwnd, out var rect))
                 return rect.bottom - rect.top;
-            return 460;
+            return DashboardLayout.MinContentHeight;
         }
 
         static float GetLogicalWidth(IntPtr hwnd) => GetClientWidth(hwnd) / _dpiScale;
         static float GetLogicalHeight(IntPtr hwnd) => GetClientHeight(hwnd) / _dpiScale;
 
+        /// <summary>Returns the Dashboard sidebar width in logical pixels for the current workspace.</summary>
         public static float GetSidebarWidth(float logW)
         {
             return _sidebarWidth;
         }
 
+        /// <summary>Returns the logical X coordinate where Dashboard content begins.</summary>
         public static float GetContentX(float logW)
         {
             return _sidebarWidth + 30f;
@@ -66,11 +68,11 @@ namespace Clickra.UI
             return _activeTab switch
             {
                 0 => _overviewContentHeight,
-                1 => 450,
+                1 => DashboardLayout.ConvertContentHeight(ConvertCommandGroupSizes),
                 2 => HistoryLayout.ContentHeight(GetHistoryStack()),
-                3 => Math.Max(460f, _settingsContentHeight),
-                4 => Math.Max(460, _aboutBtnY + 60),
-                _ => 460
+                3 => Math.Max(DashboardLayout.MinContentHeight, _settingsContentHeight),
+                4 => Math.Max(DashboardLayout.MinContentHeight, _aboutBtnY + 60),
+                _ => DashboardLayout.MinContentHeight
             };
         }
 

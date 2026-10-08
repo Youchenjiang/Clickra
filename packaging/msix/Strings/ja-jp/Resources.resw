@@ -69,4 +69,10 @@
   <data name="Menu_SplitPdf" xml:space="preserve">
     <value>PDF 分割</value>
   </data>
+  <data name="Menu_Md2Pdf" xml:space="preserve">
+    <value>Markdown から PDF</value>
+  </data>
+  <data name="Menu_Md2Word" xml:space="preserve">
+    <value>Markdown から Word</value>
+  </data>
 </root>
