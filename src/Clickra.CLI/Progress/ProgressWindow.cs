@@ -29,8 +29,6 @@ namespace Clickra.UI
         private IntPtr _hIcon = IntPtr.Zero;
 
         private readonly AutoResetEvent _passwordEvent = new AutoResetEvent(false);
-        private string? _inputPassword = null;
-        private bool _passwordCancelled = false;
         private bool _isPromptingMarkdownOptions = false;
         private string _markdownTemplateStatus = "";
         private bool _processingStarted = false;

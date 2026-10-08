@@ -12,6 +12,8 @@ namespace Clickra.UI
 {
     public partial class ProgressWindow
     {
+        private string? _inputPassword = null;
+        private bool _passwordCancelled = false;
         private volatile bool _isPromptingPassword = false;
         private string _passwordPromptFilename = "";
         private bool _passwordPromptIsRetry = false;
