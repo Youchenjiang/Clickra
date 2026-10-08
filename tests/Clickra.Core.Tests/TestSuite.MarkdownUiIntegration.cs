@@ -89,11 +89,11 @@ static partial class TestSuite
     private static void TestMarkdownShellMenuContract()
     {
         string shell = MarkdownSource("src/ClickraShell/ComMethods.cs");
-        Match keys = Regex.Match(shell, @"MenuKeys\s*=\s*\{(?<items>[^}]+)\}", RegexOptions.Singleline);
-        Match commands = Regex.Match(shell, @"SubArgs\s*=\s*\{(?<items>[^}]+)\}", RegexOptions.Singleline);
-        Match icons = Regex.Match(shell, @"IconFiles\s*=\s*\{(?<items>[^}]+)\}", RegexOptions.Singleline);
+        Match keys = Regex.Match(shell, @"MenuKeys\s*=\s*\{(?<items>[^}]+)\}", RegexOptions.Singleline, TimeSpan.FromSeconds(1));
+        Match commands = Regex.Match(shell, @"SubArgs\s*=\s*\{(?<items>[^}]+)\}", RegexOptions.Singleline, TimeSpan.FromSeconds(1));
+        Match icons = Regex.Match(shell, @"IconFiles\s*=\s*\{(?<items>[^}]+)\}", RegexOptions.Singleline, TimeSpan.FromSeconds(1));
         Assert.True(keys.Success && commands.Success && icons.Success, "Shell metadata arrays must exist.");
-        static string[] Items(Match match) => Regex.Matches(match.Groups["items"].Value, "\"([^\"]+)\"")
+        static string[] Items(Match match) => Regex.Matches(match.Groups["items"].Value, "\"([^\"]+)\"", RegexOptions.None, TimeSpan.FromSeconds(1))
             .Select(item => item.Groups[1].Value).ToArray();
         string[] keyItems = Items(keys);
         string[] commandItems = Items(commands);
