@@ -22,7 +22,6 @@ internal static class FluentDialogs
         Window? ownerWindow,
         Action<ContentDialog>? trackDialog = null)
     {
-        bool isWord = command.Equals("md2word", StringComparison.OrdinalIgnoreCase);
         string? templatePath = null;
         var style = CreateCombo(
             localize("md_options_style_default"),
@@ -47,68 +46,60 @@ internal static class FluentDialogs
             Margin = new Thickness(0, 0, 0, 4)
         });
 
-        ComboBox? layoutSource = null;
+        ComboBox? layoutSource = CreateCombo(
+            localize("md_options_layout_clickra"),
+            localize("md_options_layout_word"));
         TextBlock? templateStatus = null;
-        if (isWord)
+        AddLabeledControl(primary, localize("md_options_layout_source"), layoutSource);
+
+        var stylePanel = new StackPanel { Spacing = 4 };
+        AddLabeledControl(stylePanel, localize("md_options_style"), style);
+        primary.Children.Add(stylePanel);
+
+        var templatePanel = new StackPanel { Spacing = 4, Visibility = Visibility.Collapsed };
+        templatePanel.Children.Add(new TextBlock
         {
-            layoutSource = CreateCombo(
-                localize("md_options_layout_clickra"),
-                localize("md_options_layout_word"));
-            AddLabeledControl(primary, localize("md_options_layout_source"), layoutSource);
-
-            var stylePanel = new StackPanel { Spacing = 4 };
-            AddLabeledControl(stylePanel, localize("md_options_style"), style);
-            primary.Children.Add(stylePanel);
-
-            var templatePanel = new StackPanel { Spacing = 4, Visibility = Visibility.Collapsed };
-            templatePanel.Children.Add(new TextBlock
-            {
-                Text = localize("md_options_template"),
-                FontWeight = Microsoft.UI.Text.FontWeights.SemiBold
-            });
-            var templateBrowse = new Button { Content = localize("md_options_template_browse") };
-            templateStatus = new TextBlock
-            {
-                Text = localize("md_options_template_none"),
-                TextWrapping = TextWrapping.Wrap,
-                Opacity = 0.75
-            };
-            templateBrowse.Click += async (_, _) =>
-            {
-                var picker = new FileOpenPicker();
-                picker.FileTypeFilter.Add(".docx");
-                if (ownerWindow is not null)
-                    InitializeWithWindow.Initialize(picker, WindowNative.GetWindowHandle(ownerWindow));
-
-                var file = await picker.PickSingleFileAsync();
-                if (file is null) return;
-                try
-                {
-                    MarkdownTemplateSource.Load(file.Path);
-                    templatePath = file.Path;
-                    templateStatus.Text = string.Format(localize("md_options_template_selected"), Path.GetFileName(file.Path));
-                }
-                catch
-                {
-                    templatePath = null;
-                    templateStatus.Text = localize("md_options_template_invalid");
-                }
-            };
-            templatePanel.Children.Add(templateBrowse);
-            templatePanel.Children.Add(templateStatus);
-            primary.Children.Add(templatePanel);
-
-            layoutSource.SelectionChanged += (_, _) =>
-            {
-                bool useTemplate = layoutSource.SelectedIndex == 1;
-                stylePanel.Visibility = useTemplate ? Visibility.Collapsed : Visibility.Visible;
-                templatePanel.Visibility = useTemplate ? Visibility.Visible : Visibility.Collapsed;
-            };
-        }
-        else
+            Text = localize("md_options_template"),
+            FontWeight = Microsoft.UI.Text.FontWeights.SemiBold
+        });
+        var templateBrowse = new Button { Content = localize("md_options_template_browse") };
+        templateStatus = new TextBlock
         {
-            AddLabeledControl(primary, localize("md_options_style"), style);
-        }
+            Text = localize("md_options_template_none"),
+            TextWrapping = TextWrapping.Wrap,
+            Opacity = 0.75
+        };
+        templateBrowse.Click += async (_, _) =>
+        {
+            var picker = new FileOpenPicker();
+            picker.FileTypeFilter.Add(".docx");
+            if (ownerWindow is not null)
+                InitializeWithWindow.Initialize(picker, WindowNative.GetWindowHandle(ownerWindow));
+
+            var file = await picker.PickSingleFileAsync();
+            if (file is null) return;
+            try
+            {
+                MarkdownTemplateSource.Load(file.Path);
+                templatePath = file.Path;
+                templateStatus.Text = string.Format(localize("md_options_template_selected"), Path.GetFileName(file.Path));
+            }
+            catch
+            {
+                templatePath = null;
+                templateStatus.Text = localize("md_options_template_invalid");
+            }
+        };
+        templatePanel.Children.Add(templateBrowse);
+        templatePanel.Children.Add(templateStatus);
+        primary.Children.Add(templatePanel);
+
+        layoutSource.SelectionChanged += (_, _) =>
+        {
+            bool useTemplate = layoutSource.SelectedIndex == 1;
+            stylePanel.Visibility = useTemplate ? Visibility.Collapsed : Visibility.Visible;
+            templatePanel.Visibility = useTemplate ? Visibility.Visible : Visibility.Collapsed;
+        };
         AddLabeledControl(primary, localize("md_options_paper"), paper);
         AddLabeledControl(primary, localize("md_options_text_size"), textSize);
 
@@ -132,7 +123,7 @@ internal static class FluentDialogs
         };
         dialog.PrimaryButtonClick += (_, args) =>
         {
-            if (!isWord || layoutSource?.SelectedIndex != 1) return;
+            if (layoutSource?.SelectedIndex != 1) return;
             if (templatePath is null)
             {
                 args.Cancel = true;
@@ -167,7 +158,7 @@ internal static class FluentDialogs
             _ => MarkdownPdfOptions.TextStandard
         };
         string codeValue = codeTheme.SelectedIndex == 1 ? MarkdownPdfOptions.CodeLight : MarkdownPdfOptions.CodeDark;
-        string? selectedTemplatePath = isWord && layoutSource?.SelectedIndex == 1 ? templatePath : null;
+        string? selectedTemplatePath = layoutSource?.SelectedIndex == 1 ? templatePath : null;
         return MarkdownPdfOptions.Create(theme, paperValue, textValue, codeValue, selectedTemplatePath);
     }
 
