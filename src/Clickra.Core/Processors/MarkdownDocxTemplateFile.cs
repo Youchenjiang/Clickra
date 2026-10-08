@@ -195,11 +195,7 @@ public static class MarkdownDocxTemplateFile
 
         string key = themeKey.ToLowerInvariant();
         XElement? scheme = theme.Descendants(A + "fontScheme").FirstOrDefault();
-        XElement? family = key.StartsWith("major", StringComparison.Ordinal)
-            ? scheme?.Element(A + "majorFont")
-            : key.StartsWith("minor", StringComparison.Ordinal)
-                ? scheme?.Element(A + "minorFont")
-                : null;
+        XElement? family = ResolveThemeFamily(scheme, key);
         if (family is null)
             throw new InvalidDataException($"Word template theme font '{themeKey}' cannot be resolved.");
 
@@ -234,6 +230,13 @@ public static class MarkdownDocxTemplateFile
 
         string language = string.IsNullOrWhiteSpace(eastAsiaLanguage) ? "unspecified East Asian language" : eastAsiaLanguage;
         throw new InvalidDataException($"Word template theme font '{themeKey}' cannot resolve {language} to one East Asian typeface.");
+    }
+
+    private static XElement? ResolveThemeFamily(XElement? scheme, string key)
+    {
+        if (key.StartsWith("major", StringComparison.Ordinal)) return scheme?.Element(A + "majorFont");
+        if (key.StartsWith("minor", StringComparison.Ordinal)) return scheme?.Element(A + "minorFont");
+        return null;
     }
 
     private static string? EastAsiaScript(string? language)

@@ -235,6 +235,7 @@ public sealed class MarkdownToPdfProcessor : MultiFileProcessorBase
                     _y += _blockGap;
                     break;
                 default:
+                    // Unknown Markdig blocks intentionally render no output.
                     break;
             }
         }
@@ -1344,6 +1345,9 @@ public sealed class MarkdownToPdfProcessor : MultiFileProcessorBase
                         break;
                     case ContainerInline nested:
                         CollectInlineSegments(nested, bold, italic, url, code, output);
+                        break;
+                    default:
+                        // Ignore unsupported inline nodes while preserving surrounding content.
                         break;
                 }
             }
