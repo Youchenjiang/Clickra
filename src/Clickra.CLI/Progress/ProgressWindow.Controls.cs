@@ -772,7 +772,7 @@ namespace Clickra.UI
 
             int clientW = (int)(520 * _dpiScale);
             int logicalClientHeight = _isPromptingMarkdownOptions
-                ? GetMarkdownOptionsClientHeight()
+                ? MarkdownOptionsClientHeight
                 : GetStandardClientHeight();
             int clientH = (int)(logicalClientHeight * _dpiScale);
 

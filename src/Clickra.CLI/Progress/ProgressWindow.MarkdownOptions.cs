@@ -14,6 +14,7 @@ namespace Clickra.UI;
         private const float MarkdownControlLeft = 154f;
         private const float MarkdownControlWidth = 330f;
         private const float MarkdownOptionButtonHeight = 30f;
+        private const int MarkdownOptionsClientHeight = 442;
 
         private int _markdownStyleIndex = 0;
         private int _markdownPaperIndex = 0;
@@ -21,8 +22,6 @@ namespace Clickra.UI;
         private int _markdownCodeThemeIndex = 0;
         private int _markdownLayoutSourceIndex = 0;
         private string? _markdownTemplatePath;
-
-        private int GetMarkdownOptionsClientHeight() => 442;
 
         private void PaintMarkdownOptions(Graphics g, float s)
         {
@@ -282,7 +281,7 @@ namespace Clickra.UI;
         {
             float s = _dpiScale;
             int clientW = (int)(520 * s);
-            int clientH = (int)((expand ? GetMarkdownOptionsClientHeight() : 280) * s);
+            int clientH = (int)((expand ? MarkdownOptionsClientHeight : 280) * s);
 
             _bufferGraphics?.Dispose();
             _bufferBmp?.Dispose();
