@@ -31,16 +31,7 @@ namespace Clickra.UI
         private readonly AutoResetEvent _passwordEvent = new AutoResetEvent(false);
         private string? _inputPassword = null;
         private bool _passwordCancelled = false;
-        private volatile bool _isPromptingPassword = false;
-        private string _passwordPromptFilename = "";
-        private bool _passwordPromptIsRetry = false;
         private bool _isPromptingMarkdownOptions = false;
-        private int _markdownStyleIndex = 0;
-        private int _markdownPaperIndex = 0;
-        private int _markdownTextSizeIndex = 1;
-        private int _markdownCodeThemeIndex = 0;
-        private int _markdownLayoutSourceIndex = 0;
-        private string? _markdownTemplatePath;
         private string _markdownTemplateStatus = "";
         private bool _processingStarted = false;
         private Action<bool>? _markdownDecision;

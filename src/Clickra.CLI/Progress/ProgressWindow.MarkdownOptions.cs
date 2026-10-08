@@ -15,6 +15,13 @@ namespace Clickra.UI
         private const float MarkdownControlWidth = 330f;
         private const float MarkdownOptionButtonHeight = 30f;
 
+        private int _markdownStyleIndex = 0;
+        private int _markdownPaperIndex = 0;
+        private int _markdownTextSizeIndex = 1;
+        private int _markdownCodeThemeIndex = 0;
+        private int _markdownLayoutSourceIndex = 0;
+        private string? _markdownTemplatePath;
+
         private int GetMarkdownOptionsClientHeight() => 442;
 
         private void PaintMarkdownOptions(Graphics g, float s)

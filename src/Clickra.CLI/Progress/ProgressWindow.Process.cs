@@ -12,6 +12,10 @@ namespace Clickra.UI
 {
     public partial class ProgressWindow
     {
+        private volatile bool _isPromptingPassword = false;
+        private string _passwordPromptFilename = "";
+        private bool _passwordPromptIsRetry = false;
+
         /// <summary>Runs the command on the background thread, driving the progress callback,
         /// password prompts and the visual splitter, then closes the window and records the
         /// outcome in the persistent history.</summary>
