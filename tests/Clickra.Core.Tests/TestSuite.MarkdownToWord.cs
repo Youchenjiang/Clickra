@@ -305,7 +305,10 @@ static partial class TestSuite
                 {
                     XElement style = styles.Descendants(w + "style")
                         .Single(element => element.Attribute(w + "styleId")?.Value == styleId);
-                    return double.Parse(style.Element(w + "rPr")!.Element(w + "sz")!.Attribute(w + "val")!.Value) / 2.0;
+                    string value = style.Element(w + "rPr")!.Element(w + "sz")!.Attribute(w + "val")!.Value;
+                    Assert.True(double.TryParse(value, out double halfPoints),
+                        $"DOCX style {styleId} must expose a numeric half-point font size.");
+                    return halfPoints / 2.0;
                 }
 
                 Assert.True(Math.Abs(WordStyleSize("Heading1") - layout.HeadingSizePoints(MarkdownTemplateCatalog.Default, 1)) < 0.01,
@@ -322,7 +325,10 @@ static partial class TestSuite
                 {
                     XElement run = document.Descendants(w + "r")
                         .Single(element => element.Element(w + "t")?.Value == marker);
-                    double runSize = double.Parse(run.Element(w + "rPr")!.Element(w + "sz")!.Attribute(w + "val")!.Value) / 2.0;
+                    string value = run.Element(w + "rPr")!.Element(w + "sz")!.Attribute(w + "val")!.Value;
+                    Assert.True(double.TryParse(value, out double halfPoints),
+                        $"DOCX inline code run {marker} must expose a numeric half-point font size.");
+                    double runSize = halfPoints / 2.0;
                     Assert.True(Math.Abs(runSize - layout.CodeFontSizePoints) <= 0.25,
                         $"DOCX inline code run {marker} must stay within Word's half-point quantization of the shared PDF code size.");
                 }
