@@ -185,20 +185,7 @@ public static partial class DashboardWindow
             if (command.RequiresOffice && !command.HasAvailableEngine())
             {
                 string language = ClickraStorage.GetSetting(ClickraSettings.Language);
-                string engine = ClickraStorage.GetSetting(ClickraSettings.OfficeEngine);
-                string errorKey = "";
-                if (engine.Equals("libreoffice", StringComparison.OrdinalIgnoreCase))
-                {
-                    errorKey = "error_libreoffice_not_ready";
-                }
-                else if (engine.Equals("microsoft", StringComparison.OrdinalIgnoreCase))
-                {
-                    errorKey = "error_microsoftoffice_not_ready";
-                }
-                else
-                {
-                    errorKey = "setting_engine_none_available";
-                }
+                string errorKey = GetOfficeEngineUnavailableErrorKey();
                 MessageBox(hwnd, Localization.T(errorKey, language), "Clickra", 0x30);
                 return;
             }
@@ -206,6 +193,33 @@ public static partial class DashboardWindow
             var filesCopy = new List<string>(_selectedFiles);
             bool markdownCommand = command.Command.Equals("md2pdf", StringComparison.OrdinalIgnoreCase)
                 || command.Command.Equals("md2word", StringComparison.OrdinalIgnoreCase);
+            StartConvertProgress(command, hwnd, filesCopy, markdownCommand);
+
+            if (markdownCommand) return;
+
+            _selectedFiles.Clear();
+
+            _activeTab = 2; // Switch to History
+            RefreshHistoryData();
+            InvalidateRect(hwnd, IntPtr.Zero, false);
+        }
+
+        private static string GetOfficeEngineUnavailableErrorKey()
+        {
+            string engine = ClickraStorage.GetSetting(ClickraSettings.OfficeEngine);
+            if (engine.Equals("libreoffice", StringComparison.OrdinalIgnoreCase))
+                return "error_libreoffice_not_ready";
+            if (engine.Equals("microsoft", StringComparison.OrdinalIgnoreCase))
+                return "error_microsoftoffice_not_ready";
+            return "setting_engine_none_available";
+        }
+
+        private static void StartConvertProgress(
+            ConvertCommand command,
+            IntPtr hwnd,
+            List<string> filesCopy,
+            bool markdownCommand)
+        {
             var thread = new System.Threading.Thread(() =>
             {
                 try
@@ -233,14 +247,6 @@ public static partial class DashboardWindow
             });
             thread.SetApartmentState(System.Threading.ApartmentState.STA);
             thread.Start();
-
-            if (markdownCommand) return;
-
-            _selectedFiles.Clear();
-
-            _activeTab = 2; // Switch to History
-            RefreshHistoryData();
-            InvalidateRect(hwnd, IntPtr.Zero, false);
         }
     }
 }
