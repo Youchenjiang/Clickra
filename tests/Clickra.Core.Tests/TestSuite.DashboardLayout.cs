@@ -33,8 +33,8 @@ static partial class TestSuite
             TestDetailFieldTapBands);
         runner.Run("Dashboard layout: the convert grid, its cards and the start button do not overlap",
             TestConvertGridGeometry);
-        runner.RunGuard("AOT convert workspace: command growth stays reachable by scrolling",
-            TestAotConvertScrollableContent);
+        runner.RunGuard("AOT convert workspace: command growth keeps a sticky start action",
+            TestAotConvertStickyAction);
         runner.RunGuard("AOT settings workspace: responsive columns preserve geometry and hit parity",
             TestAotSettingsResponsiveGeometry);
         runner.Run("Dashboard layout: dropdown popup rows round-trip between paint and hit-testing",
@@ -333,7 +333,7 @@ static partial class TestSuite
         Assert.Equal(DashboardLayout.HistoryClearButtonHeight, historyClear.Height);
     }
 
-    private static void TestAotConvertScrollableContent()
+    private static void TestAotConvertStickyAction()
     {
         int[] groupSizes = { 5, 5, 8 };
         Assert.Equal(3, DashboardLayout.ConvertGroupColumns(0));
@@ -345,11 +345,22 @@ static partial class TestSuite
 
         LayoutRect zone = DashboardLayout.ConvertZoneRect(contentX: 260, logW: 1520);
         LayoutRect start = DashboardLayout.ConvertStartButtonRect(zone.X, zone.Width, groupSizes);
+        LayoutRect stickyStart = DashboardLayout.ConvertStickyStartButtonRect(
+            zone.X, zone.Width, DashboardLayout.MinContentHeight);
+        LayoutRect stickyFooter = DashboardLayout.ConvertStickyFooterRect(
+            zone.X, zone.Width, DashboardLayout.MinContentHeight);
         Assert.True(zone.Bottom < DashboardLayout.ConvertGridTop,
             "The compact drop zone must leave visible separation before command groups.");
         Assert.True(start.Bottom > DashboardLayout.MinContentHeight,
-            "The real command set currently needs vertical scrolling; the viewport must not grow with command count.");
+            "The real command set should be allowed to overflow without forcing the dashboard viewport to grow.");
         Assert.Equal(start.Bottom + DashboardLayout.ConvertStartButtonGap, DashboardLayout.ConvertContentHeight(groupSizes));
+        Assert.Equal(DashboardLayout.MinContentHeight - DashboardLayout.ConvertStartButtonHeight - DashboardLayout.ConvertStartButtonGap,
+            stickyStart.Y);
+        Assert.True(stickyStart.Bottom < DashboardLayout.MinContentHeight,
+            "The start action must remain fully visible in the fixed dashboard viewport.");
+        Assert.True(stickyFooter.Contains(stickyStart.X, stickyStart.Y)
+                    && stickyFooter.Contains(stickyStart.Right - 1, stickyStart.Bottom - 1),
+            "The sticky footer must fully cover the start action and intercept its surrounding background.");
 
         int[] futureGroupSizes = { 8, 5, 8 };
         LayoutRect futureStart = DashboardLayout.ConvertStartButtonRect(zone.X, zone.Width, futureGroupSizes);
@@ -360,10 +371,19 @@ static partial class TestSuite
         if (root is null) throw new TestSkippedException("Could not locate the repository root from the test output directory.");
         string paint = File.ReadAllText(Path.Combine(root, "src", "Clickra.CLI", "Dashboard", "DashboardWindow.Convert.cs"));
         string hitTest = File.ReadAllText(Path.Combine(root, "src", "Clickra.CLI", "Dashboard", "DashboardWindow.HitTesting.cs"));
+        string paintRoot = File.ReadAllText(Path.Combine(root, "src", "Clickra.CLI", "Dashboard", "DashboardWindow.Paint.cs"));
+        string click = File.ReadAllText(Path.Combine(root, "src", "Clickra.CLI", "Dashboard", "DashboardWindow.Events.Click.cs"));
         Assert.True(paint.Contains("ConvertCardRect(group, local, zoneX, zoneW, ConvertCommandGroupSizes)", StringComparison.Ordinal),
             "AOT convert painting must use DashboardLayout command geometry.");
         Assert.True(hitTest.Contains("ConvertCardRect(group, local, zone.X, zone.Width, ConvertCommandGroupSizes)", StringComparison.Ordinal),
             "AOT convert hit-testing must use the same DashboardLayout command geometry as painting.");
+        Assert.True(paint.Contains("DrawConvertStickyAction", StringComparison.Ordinal)
+                    && paintRoot.Contains("DrawConvertStickyAction(g, logW, logH, contentX)", StringComparison.Ordinal),
+            "The convert start action must be painted outside the scrolled content transform.");
+        Assert.True(hitTest.Contains("HitTestConvertStickyAction", StringComparison.Ordinal)
+                    && hitTest.Contains("IsInsideConvertStickyFooter", StringComparison.Ordinal)
+                    && click.Contains("IsInsideConvertStickyFooter(mouseX, mouseY", StringComparison.Ordinal),
+            "The sticky footer must consume viewport-coordinate hits before scrolled cards can receive them.");
     }
 
     private static void TestAotSettingsResponsiveGeometry()

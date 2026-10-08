@@ -317,28 +317,46 @@ namespace Clickra.UI
                 }
             }
 
-            LayoutRect startButton = DashboardLayout.ConvertStartButtonRect(zoneX, zoneW, ConvertCommandGroupSizes);
-            if (_selectedFiles.Count > 0 && _convertCommandIndex != -1)
+        }
+
+        static void DrawConvertStickyAction(Graphics g, float logW, float logH, float contentX)
+        {
+            if (_selectedFiles.Count == 0 || _convertCommandIndex == -1) return;
+
+            float s = _dpiScale;
+            int zoneW = Math.Max(0, (int)logW - (int)contentX - DashboardLayout.ConvertZoneRightMargin);
+            LayoutRect startButton = DashboardLayout.ConvertStickyStartButtonRect(
+                (int)contentX, zoneW, (int)logH);
+            LayoutRect footer = DashboardLayout.ConvertStickyFooterRect(
+                (int)contentX, zoneW, (int)logH);
+
+            using var footerBrush = new SolidBrush(Color.FromArgb(32, 32, 32));
+            g.FillRectangle(footerBrush,
+                footer.X * s,
+                footer.Y * s,
+                footer.Width * s,
+                footer.Height * s);
+
+            bool isBtnHovered = _hoveredElement == 19;
+            Color btnBg = UIHelper.GetSystemColorizationColor();
+            if (isBtnHovered) btnBg = UIHelper.Lighten(btnBg, 0.15f);
+
+            using (var path = UIHelper.GetRoundedRectPath(
+                       new RectangleF(startButton.X * s, startButton.Y * s, startButton.Width * s, startButton.Height * s),
+                       5 * s))
+            using (var bgBrush = new SolidBrush(btnBg))
             {
-                bool isBtnHovered = _hoveredElement == 19;
-                Color btnBg = UIHelper.GetSystemColorizationColor();
-                if (isBtnHovered) btnBg = UIHelper.Lighten(btnBg, 0.15f);
+                g.FillPath(bgBrush, path);
+            }
 
-                using (var path = UIHelper.GetRoundedRectPath(new RectangleF(startButton.X * s, startButton.Y * s, startButton.Width * s, startButton.Height * s), 5 * s))
-                using (var bgBrush = new SolidBrush(btnBg))
-                {
-                    g.FillPath(bgBrush, path);
-                }
-
-                if (_tabFont != null)
-                {
-                    string btnText = GetText("convert_start");
-                    using var textBrush = new SolidBrush(Color.White);
-                    var size = g.MeasureString(btnText, _tabFont);
-                    g.DrawString(btnText, _tabFont, textBrush,
-                        (startButton.X + (startButton.Width - size.Width / s) / 2) * s,
-                        (startButton.Y + (startButton.Height - size.Height / s) / 2) * s);
-                }
+            if (_tabFont != null)
+            {
+                string btnText = GetText("convert_start");
+                using var textBrush = new SolidBrush(Color.White);
+                var size = g.MeasureString(btnText, _tabFont);
+                g.DrawString(btnText, _tabFont, textBrush,
+                    (startButton.X + (startButton.Width - size.Width / s) / 2) * s,
+                    (startButton.Y + (startButton.Height - size.Height / s) / 2) * s);
             }
         }
     }

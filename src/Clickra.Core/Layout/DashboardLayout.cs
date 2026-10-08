@@ -205,7 +205,7 @@ public static class DashboardLayout
     public static int ConvertGroupX(int groupIndex, int contentX, int zoneWidth, IReadOnlyList<int> groupSizes) =>
         ConvertCardRect(groupIndex, 0, contentX, zoneWidth, groupSizes).X;
 
-    /// <summary>開始鈕的 Y：最後一個分類的最後一列之下。</summary>
+    /// <summary>內容流中最後一列之後原本會放開始鈕的位置；用來推導可捲動內容高度。</summary>
     public static int ConvertStartButtonY(IReadOnlyList<int> groupSizes)
     {
         int lastGroup = Math.Min(ConvertGroupCount, groupSizes.Count) - 1;
@@ -218,9 +218,28 @@ public static class DashboardLayout
     public static LayoutRect ConvertStartButtonRect(int contentX, int zoneWidth, IReadOnlyList<int> groupSizes) =>
         new LayoutRect(contentX, ConvertStartButtonY(groupSizes), zoneWidth, ConvertStartButtonHeight);
 
+    /// <summary>固定在轉檔 viewport 底部的開始鈕，不跟內容捲動。</summary>
+    public static LayoutRect ConvertStickyStartButtonRect(int contentX, int zoneWidth, int viewportHeight) =>
+        new LayoutRect(
+            contentX,
+            viewportHeight - ConvertStartButtonHeight - ConvertStartButtonGap,
+            zoneWidth,
+            ConvertStartButtonHeight);
+
+    /// <summary>固定 action footer 的完整覆蓋區；背景也必須攔截命中，避免點到被遮住的卡片。</summary>
+    public static LayoutRect ConvertStickyFooterRect(int contentX, int zoneWidth, int viewportHeight)
+    {
+        LayoutRect button = ConvertStickyStartButtonRect(contentX, zoneWidth, viewportHeight);
+        return new LayoutRect(
+            contentX,
+            button.Y - ConvertStartButtonGap,
+            zoneWidth,
+            ConvertStartButtonHeight + ConvertStartButtonGap * 2);
+    }
+
     /// <summary>
-    /// 轉檔頁完整內容高度。當指令增加導致卡片多出一列時，捲動範圍也會跟著增加，
-    /// 不會讓最後一列或開始按鈕落在 client area 之外卻又無法捲到。
+    /// 轉檔頁可捲動內容高度。底部保留固定 action footer 的空間；當指令增加導致卡片
+    /// 多出一列時，只增加內容捲動範圍，不增加 Dashboard 視窗高度。
     /// </summary>
     public static int ConvertContentHeight(IReadOnlyList<int> groupSizes)
     {

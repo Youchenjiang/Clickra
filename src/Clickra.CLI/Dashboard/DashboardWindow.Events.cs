@@ -119,7 +119,11 @@ namespace Clickra.UI
             TrackDropdownHover(hwnd, adjMouseX, adjMouseY);
 
             int prevHovered = _hoveredElement;
-            _hoveredElement = HitTest(hwnd, adjMouseX, adjMouseY);
+            float contentX = GetContentX(logW);
+            if (IsInsideConvertStickyFooter(mouseX, mouseY, logW, logH, contentX))
+                _hoveredElement = HitTestConvertStickyAction(mouseX, mouseY, logW, logH, contentX);
+            else
+                _hoveredElement = HitTest(hwnd, adjMouseX, adjMouseY);
             if (_hoveredElement != prevHovered)
             {
                 InvalidateRect(hwnd, IntPtr.Zero, false);

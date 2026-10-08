@@ -29,6 +29,15 @@ namespace Clickra.UI
 
             if (HandleScrollbarClick(hwnd, mouseX, mouseY)) return;
 
+            float logH = GetLogicalHeight(hwnd);
+            if (IsInsideConvertStickyFooter(mouseX, mouseY, logW, logH, contentX))
+            {
+                int fixedElement = HitTestConvertStickyAction(mouseX, mouseY, logW, logH, contentX);
+                if (fixedElement == 19)
+                    HandleConvertClick(hwnd, fixedElement);
+                return;
+            }
+
             int adjMouseX = mouseX >= sidebarW ? (int)(mouseX + _contentScrollX) : mouseX;
             int adjMouseY = mouseX >= sidebarW ? (int)(mouseY + _contentScrollY) : mouseY;
 

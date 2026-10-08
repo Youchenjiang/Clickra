@@ -72,7 +72,10 @@ namespace Clickra.UI
             // 2. Draw Content Area (with Clip & Translation)
             var state = g.Save();
             float clipW = Math.Max(0f, logW - sidebarW) * s;
-            g.SetClip(new RectangleF(sidebarW * s, 0, clipW, logH * s));
+            float contentClipH = _activeTab == 1
+                ? Math.Max(0f, logH - DashboardLayout.ConvertStartButtonHeight - DashboardLayout.ConvertStartButtonGap * 2)
+                : logH;
+            g.SetClip(new RectangleF(sidebarW * s, 0, clipW, contentClipH * s));
             g.TranslateTransform(-_contentScrollX * s, -_contentScrollY * s);
 
             float virtLogW = Math.Max(760f, logW);
@@ -100,6 +103,9 @@ namespace Clickra.UI
             }
 
             g.Restore(state);
+
+            if (_activeTab == 1)
+                DrawConvertStickyAction(g, logW, logH, contentX);
 
             // 3. Draw Viewport Scrollbars (fixed on screen, not translated)
             float contentH = GetContentHeight(hwnd);
