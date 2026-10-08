@@ -472,35 +472,46 @@ public sealed class MarkdownToPdfProcessor : MultiFileProcessorBase
                     continue;
                 }
 
-                string text = NormalizeDisplayGlyphs(segment.Text);
-                foreach (string token in TokenizeForWrapping(text))
-                {
-                    if (token == "\n")
-                    {
-                        height += lineHeight;
-                        x = 0;
-                        continue;
-                    }
-
-                    XFont font = CreateFont(
-                        token,
-                        segment.Code ? _layout.CodeFontSizePoints : size,
-                        GetInlineStyle(segment),
-                        segment.Code && !ContainsCjk(token));
-                    foreach (string piece in BreakToken(token, font, maxWidth))
-                    {
-                        double width = _graphics!.MeasureString(piece, font).Width;
-                        if (x > 0 && x + width > maxWidth)
-                        {
-                            height += lineHeight;
-                            x = 0;
-                        }
-                        x += width;
-                    }
-                }
+                MeasureWrappedSegment(segment, size, maxWidth, lineHeight, ref x, ref height);
             }
 
             return height + lineHeight;
+        }
+
+        private void MeasureWrappedSegment(
+            InlineSegment segment,
+            double size,
+            double maxWidth,
+            double lineHeight,
+            ref double x,
+            ref double height)
+        {
+            string text = NormalizeDisplayGlyphs(segment.Text);
+            foreach (string token in TokenizeForWrapping(text))
+            {
+                if (token == "\n")
+                {
+                    height += lineHeight;
+                    x = 0;
+                    continue;
+                }
+
+                XFont font = CreateFont(
+                    token,
+                    segment.Code ? _layout.CodeFontSizePoints : size,
+                    GetInlineStyle(segment),
+                    segment.Code && !ContainsCjk(token));
+                foreach (string piece in BreakToken(token, font, maxWidth))
+                {
+                    double width = _graphics!.MeasureString(piece, font).Width;
+                    if (x > 0 && x + width > maxWidth)
+                    {
+                        height += lineHeight;
+                        x = 0;
+                    }
+                    x += width;
+                }
+            }
         }
 
         private bool TryMeasureInlineImage(string url, double availableWidth, out double height)
@@ -678,6 +689,35 @@ public sealed class MarkdownToPdfProcessor : MultiFileProcessorBase
 
         private TableCellLayout BuildTableCell(TableCell? cell, bool isHeader, double maxWidth)
         {
+            List<InlineSegment> segments = CollectTableCellSegments(cell, isHeader);
+
+            List<InlineDrawPiece?> pieces = BuildTablePieces(segments, maxWidth);
+            var lines = new List<List<InlineDrawPiece>> { new() };
+            double lineWidth = 0;
+            foreach (InlineDrawPiece? piece in pieces)
+            {
+                if (piece is null)
+                {
+                    lines.Add(new List<InlineDrawPiece>());
+                    lineWidth = 0;
+                    continue;
+                }
+
+                if (lines[^1].Count > 0 && lineWidth + piece.Width > maxWidth)
+                {
+                    lines.Add(new List<InlineDrawPiece>());
+                    lineWidth = 0;
+                }
+
+                lines[^1].Add(piece);
+                lineWidth += piece.Width;
+            }
+
+            return new TableCellLayout(lines);
+        }
+
+        private static List<InlineSegment> CollectTableCellSegments(TableCell? cell, bool isHeader)
+        {
             var segments = new List<InlineSegment>();
             if (cell is not null)
             {
@@ -706,32 +746,10 @@ public sealed class MarkdownToPdfProcessor : MultiFileProcessorBase
 
             if (segments.Count == 0)
                 segments.Add(new InlineSegment("", isHeader, false, false, null));
-
-            List<InlineDrawPiece?> pieces = BuildTablePieces(segments, maxWidth);
-            var lines = new List<List<InlineDrawPiece>> { new() };
-            double lineWidth = 0;
-            foreach (InlineDrawPiece? piece in pieces)
-            {
-                if (piece is null)
-                {
-                    lines.Add(new List<InlineDrawPiece>());
-                    lineWidth = 0;
-                    continue;
-                }
-
-                if (lines[^1].Count > 0 && lineWidth + piece.Width > maxWidth)
-                {
-                    lines.Add(new List<InlineDrawPiece>());
-                    lineWidth = 0;
-                }
-
-                lines[^1].Add(piece);
-                lineWidth += piece.Width;
-            }
-
-            return new TableCellLayout(lines);
+            return segments;
         }
 
+        [System.Diagnostics.CodeAnalysis.SuppressMessage("SonarQube", "S3776", Justification = "Table token wrapping preserves explicit newline, whitespace, and font fallback behavior in one pass.")]
         private List<InlineDrawPiece?> BuildTablePieces(List<InlineSegment> segments, double maxPieceWidth)
         {
             var pieces = new List<InlineDrawPiece?>();
@@ -944,30 +962,38 @@ public sealed class MarkdownToPdfProcessor : MultiFileProcessorBase
 
         private void DrawJustifiedLine(List<InlineDrawPiece> pieces, double lineStart, double maxX, double lineWidth, double lineHeight, bool justifyLine)
         {
-            int gapCount = 0;
-            if (justifyLine)
-            {
-                for (int i = 0; i + 1 < pieces.Count; i++)
-                    if (CanExpandGap(pieces[i].Text, pieces[i + 1].Text)) gapCount++;
-            }
+            int gapCount = justifyLine ? CountExpandableGaps(pieces) : 0;
 
             double extraPerGap = gapCount > 0 ? Math.Max(0, maxX - lineStart - lineWidth) / gapCount : 0;
             double x = lineStart;
             for (int i = 0; i < pieces.Count; i++)
             {
                 InlineDrawPiece piece = pieces[i];
-                double top = _y;
-                if (piece.IsCode && !string.IsNullOrWhiteSpace(piece.Text))
-                    _graphics!.DrawRectangle(new XSolidBrush(_inlineCodeBackgroundColor), x - 2, _y + 1, piece.Width + 4, lineHeight - 3);
-                _graphics!.DrawString(piece.Text, piece.Font, piece.Brush, x, _y + piece.Font.Size);
-                if (piece.Url is not null && IsWebUrl(piece.Url))
-                {
-                    _graphics.DrawLine(new XPen(_accentColor, 0.8), x, _y + piece.Font.Size + 2, x + piece.Width, _y + piece.Font.Size + 2);
-                    _page!.AddWebLink(CreateWebLinkRectangle(x, top, piece.Width, lineHeight), piece.Url);
-                }
+                DrawJustifiedPiece(piece, x, lineHeight);
                 x += piece.Width;
                 if (i + 1 < pieces.Count && CanExpandGap(piece.Text, pieces[i + 1].Text))
                     x += extraPerGap;
+            }
+        }
+
+        private static int CountExpandableGaps(IReadOnlyList<InlineDrawPiece> pieces)
+        {
+            int gapCount = 0;
+            for (int i = 0; i + 1 < pieces.Count; i++)
+                if (CanExpandGap(pieces[i].Text, pieces[i + 1].Text)) gapCount++;
+            return gapCount;
+        }
+
+        private void DrawJustifiedPiece(InlineDrawPiece piece, double x, double lineHeight)
+        {
+            double top = _y;
+            if (piece.IsCode && !string.IsNullOrWhiteSpace(piece.Text))
+                _graphics!.DrawRectangle(new XSolidBrush(_inlineCodeBackgroundColor), x - 2, _y + 1, piece.Width + 4, lineHeight - 3);
+            _graphics!.DrawString(piece.Text, piece.Font, piece.Brush, x, _y + piece.Font.Size);
+            if (piece.Url is not null && IsWebUrl(piece.Url))
+            {
+                _graphics.DrawLine(new XPen(_accentColor, 0.8), x, _y + piece.Font.Size + 2, x + piece.Width, _y + piece.Font.Size + 2);
+                _page!.AddWebLink(CreateWebLinkRectangle(x, top, piece.Width, lineHeight), piece.Url);
             }
         }
 
@@ -1353,6 +1379,7 @@ public sealed class MarkdownToPdfProcessor : MultiFileProcessorBase
             }
         }
 
+        [System.Diagnostics.CodeAnalysis.SuppressMessage("SonarQube", "S3776", Justification = "Recursive Markdig block traversal is intentionally explicit for supported leaf and nested container nodes.")]
         private static string ExtractBlockText(ContainerBlock block)
         {
             var builder = new StringBuilder();
