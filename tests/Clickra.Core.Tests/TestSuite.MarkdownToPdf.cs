@@ -25,6 +25,7 @@ static partial class TestSuite
             .ToArray();
     }
 
+    [System.Diagnostics.CodeAnalysis.SuppressMessage("SonarQube", "S3011", Justification = "The test intentionally reflects a private renderer classifier to verify typography behavior without widening production visibility.")]
     private static bool MarkdownRendererUsesCjkTypography(char ch)
     {
         Type rendererType = typeof(MarkdownToPdfProcessor).GetNestedType(
