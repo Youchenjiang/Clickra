@@ -88,6 +88,9 @@ All notable changes to Clickra will be documented in this file.
 
 ### Added
 
+- Markdown 文件轉換：新增 `.md` / `.markdown` → PDF 與 DOCX，支援標題、段落、清單、引用、程式碼區塊、表格、連結與本機相對圖片，並整合 CLI、NativeAOT Dashboard、Fluent UI 與 Explorer 右鍵選單。
+- Markdown 文件樣式與範本：提供 Default、Minimal、Academic 內建樣式，以及 DOCX 範本匯入；PDF 與 DOCX 共用 renderer-neutral typography/layout model，Academic 模式支援正文首行縮排與左右對齊。
+- Markdown 單次轉換選項：紙張大小、文字縮放、程式碼主題與文件範本在開始轉換前選擇，不污染全域設定；NativeAOT 轉換頁的主要「開始轉換」動作固定於 viewport 底部，功能卡片增加時僅捲動內容區。
 - HEIC 輸入與 HEIC 輸出支援：圖片轉換命令現已接受 HEIC 輸入，並新增 `img-to-heic` 命令將 PNG/JPG/WEBP/GIF/HEIC 轉出為 HEIC（輸出依賴系統 HEIF/HEIC 編碼器）。
 - 編碼器預檢：`img-to-heic`／`img-to-webp`／`img-compress`（WebP/HEIC 輸入）在轉檔前先檢查系統編碼器；缺少免費的 Windows「HEIF 影像延伸」或「WebP 影像延伸」時，以本地化訊息提示並提供一鍵開啟 Microsoft Store 安裝，不再於轉檔中途直接失敗。
 - 圖片壓縮（`img-compress`）：全新獨立的圖片壓縮功能，支援 0–3 品質等級（比照 PDF 壓縮滑桿）與最大長邊尺寸（原始／4K／FHD／HD），可與改尺寸一併使用；輸出至 `<名稱>_compressed.<原副檔名>`，壓縮後反而變大時自動略過以保護來源。PNG 若不超過 256 色會以無損的索引式調色盤重新編碼（截圖與圖表通常可省 40% 以上）。Fluent 與原生儀表板設定頁皆可調整。

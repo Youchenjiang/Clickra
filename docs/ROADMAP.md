@@ -137,7 +137,9 @@
     - 支援「品質優先」、「目標檔案大小」、「最大尺寸／解析度」、「移除非必要 metadata」等可組合模式，並評估 JPEG progressive encoding、chroma subsampling 與格式專屬最佳化能力。
     - 對 JPEG/WebP/HEIC 等有損格式，明確選定壓縮等級後應忠實輸出該次重新編碼結果；若輸出未變小則回報結果與原因，不應靜默改回原始 bytes，讓「選了某個程度」卻實際沒套用。
     - 對 PNG/GIF/TIFF 等格式分開定義無損／有損策略與多影格安全規則，避免以單一「壓縮」語意涵蓋彼此不同的編碼能力。
-- [ ] **[F2-31] Markdown to PDF**：將 `.md` / `.markdown` 文件轉為 PDF，保留標題、段落、清單、引用、程式碼區塊、表格、連結與圖片等常用 Markdown 結構，並整合 CLI、Dashboard／Fluent 與 Explorer 右鍵選單。
+- [x] **[F2-31] Markdown to PDF (2026/10/08 完成)**：將 `.md` / `.markdown` 文件轉為 PDF，保留標題、段落、清單、引用、程式碼區塊、表格、連結與圖片等常用 Markdown 結構，並整合 CLI、Dashboard／Fluent 與 Explorer 右鍵選單。
+    - 同步提供 Markdown → Word（DOCX），PDF / DOCX 共用文件樣式模型與 DOCX 範本匯入，避免兩種輸出各自維護排版規格。
+    - 紙張、文字縮放、程式碼主題與範本採單次轉換 preflight；NativeAOT Dashboard 的主要轉換動作固定於 viewport 底部，新增功能只擴充可捲動卡片區，不增加視窗高度或要求使用者捲到底才能執行。
 - [ ] **[F2-21] Folder & File Batch Renaming**：資料夾與檔案批次命名。支援自訂數字規則、提取建立日期、固定字串與自動編號。可以直接在資料夾右鍵選單對「整個資料夾及其內含檔案」進行操作。
 - [ ] **[F2-22] Batch File Categorization**：批次檔案分類。支援依副檔名、日期區間或檔名關鍵字，將檔案自動分類並移入對應的資料夾。
 - [ ] **[F2-23] Batch Create Empty Folders**：批量建立空資料夾。支援依指定命名規則與結構要求，一次建立多個指定結構的空資料夾。
