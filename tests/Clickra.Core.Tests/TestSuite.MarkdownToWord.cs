@@ -15,7 +15,7 @@ static partial class TestSuite
     private const string MarkdownToWordCommand = "md2word";
     private const string WordDocumentPart = "word/document.xml";
     private const string WordStylesPart = "word/styles.xml";
-    private const string WordprocessingNamespaceUri = "http://schemas.openxmlformats.org/wordprocessingml/2006/main";
+    private static readonly XNamespace WordprocessingNamespace = MarkdownDocxTemplateFile.WordprocessingNamespace;
     private const string WordTablePropertiesElement = "tblPr";
     private const string WordTableStyleElement = "tblStyle";
     private const string WordParagraphStyleElement = "pStyle";
@@ -154,7 +154,7 @@ static partial class TestSuite
                     Assert.True(archive.GetEntry(entry) is not null, $"DOCX must contain {entry}.");
 
                 XDocument document = ReadXml(archive, WordDocumentPart);
-                XNamespace w = WordprocessingNamespaceUri;
+                XNamespace w = WordprocessingNamespace;
                 string text = string.Concat(document.Descendants(w + "t").Select(e => e.Value));
                 Assert.True(text.Contains("文件標題", StringComparison.Ordinal), "Heading text must survive DOCX conversion.");
                 Assert.True(text.Contains("引用內容", StringComparison.Ordinal), "Quote text must survive DOCX conversion.");
@@ -233,7 +233,7 @@ static partial class TestSuite
                 using ZipArchive academic = ZipFile.OpenRead(academicPath);
                 string minimalStyles = ReadAllText(minimal.GetEntry(WordStylesPart)!);
                 string academicStyles = ReadAllText(academic.GetEntry(WordStylesPart)!);
-                XNamespace w = WordprocessingNamespaceUri;
+                XNamespace w = WordprocessingNamespace;
                 Assert.True(minimalStyles.Contains("Segoe UI", StringComparison.Ordinal),
                     "Minimal DOCX must use its configured Latin font.");
                 Assert.True(academicStyles.Contains(WordTimesNewRoman, StringComparison.Ordinal),
@@ -323,7 +323,7 @@ static partial class TestSuite
 
                 using ZipArchive archive = ZipFile.OpenRead(wordPath);
                 XDocument styles = ReadXml(archive, WordStylesPart);
-                XNamespace w = WordprocessingNamespaceUri;
+                XNamespace w = WordprocessingNamespace;
                 double WordStyleSize(string styleId)
                 {
                     XElement style = styles.Descendants(w + WordStyleElement)
@@ -384,7 +384,7 @@ static partial class TestSuite
                     "Imported accent color must reach DOCX styles.");
 
                 XDocument document = ReadXml(archive, WordDocumentPart);
-                XNamespace w = WordprocessingNamespaceUri;
+                XNamespace w = WordprocessingNamespace;
                 XElement margins = document.Descendants(w + WordPageMarginsElement).Single();
                 Assert.True(new[] { "top", WordRightSideName, WordBottomSideName, "left" }.All(name => margins.Attribute(w + name)?.Value == "960"),
                     "A legacy uniform custom margin must still set all four DOCX margins.");
@@ -492,7 +492,7 @@ static partial class TestSuite
                 FileProcessor.ConvertMarkdownToWord(input, output, MarkdownPdfOptions.Create(templatePath: templatePath));
 
                 using ZipArchive archive = ZipFile.OpenRead(output);
-                XNamespace w = WordprocessingNamespaceUri;
+                XNamespace w = WordprocessingNamespace;
                 XDocument styles = ReadXml(archive, WordStylesPart);
                 XDocument document = ReadXml(archive, WordDocumentPart);
                 XElement normal = styles.Descendants(w + WordStyleElement)
@@ -525,7 +525,7 @@ static partial class TestSuite
 
                 using ZipArchive archive = ZipFile.OpenRead(output);
                 XDocument document = ReadXml(archive, WordDocumentPart);
-                XNamespace w = WordprocessingNamespaceUri;
+                XNamespace w = WordprocessingNamespace;
                 var normalParagraphs = document.Descendants(w + "p")
                     .Where(p => p.Element(w + "pPr")?.Element(w + WordParagraphStyleElement)?.Attribute(w + "val")?.Value == WordNormalStyle)
                     .ToList();
@@ -571,7 +571,7 @@ static partial class TestSuite
 
                 using ZipArchive archive = ZipFile.OpenRead(output);
                 XDocument document = ReadXml(archive, WordDocumentPart);
-                XNamespace w = WordprocessingNamespaceUri;
+                XNamespace w = WordprocessingNamespace;
                 XElement code = document.Descendants(w + "p")
                     .Single(p => p.Element(w + "pPr")?.Element(w + WordParagraphStyleElement)?.Attribute(w + "val")?.Value == WordCodeBlockStyle);
                 Assert.Equal("300", code.Element(w + "pPr")?.Element(w + "ind")?.Attribute(w + "left")?.Value ?? "");
@@ -611,7 +611,7 @@ static partial class TestSuite
 
                 using ZipArchive archive = ZipFile.OpenRead(output);
                 XDocument document = ReadXml(archive, WordDocumentPart);
-                XNamespace w = WordprocessingNamespaceUri;
+                XNamespace w = WordprocessingNamespace;
                 XElement quoteTable = document.Descendants(w + "tbl")
                     .Single(tbl => tbl.Element(w + WordTablePropertiesElement)?.Element(w + "tblBorders")?.Element(w + "left")?.Attribute(w + "val")?.Value == "single"
                                    && tbl.Element(w + WordTablePropertiesElement)?.Element(w + WordTableStyleElement) is null);
@@ -637,7 +637,7 @@ static partial class TestSuite
 
                 using ZipArchive archive = ZipFile.OpenRead(output);
                 XDocument document = ReadXml(archive, WordDocumentPart);
-                XNamespace w = WordprocessingNamespaceUri;
+                XNamespace w = WordprocessingNamespace;
                 XElement body = document.Descendants(w + "p")
                     .Single(p => p.Element(w + "pPr")?.Element(w + WordParagraphStyleElement)?.Attribute(w + "val")?.Value == WordNormalStyle);
                 Assert.Equal("538", body.Element(w + "pPr")?.Element(w + "ind")?.Attribute(w + WordFirstLineAttributeName)?.Value ?? "");
@@ -656,7 +656,7 @@ static partial class TestSuite
                 using ZipArchive archive = ZipFile.OpenRead(output);
                 XDocument document = ReadXml(archive, WordDocumentPart);
                 XDocument numbering = ReadXml(archive, "word/numbering.xml");
-                XNamespace w = WordprocessingNamespaceUri;
+                XNamespace w = WordprocessingNamespace;
                 string text = string.Concat(document.Descendants(w + "t").Select(e => e.Value));
                 Assert.True(text.Contains("一、作業封包來源", StringComparison.Ordinal)
                             && text.Contains("取得：保留中文標點。", StringComparison.Ordinal)
@@ -697,7 +697,7 @@ static partial class TestSuite
         bool multipleEastAsiaFonts = false,
         bool includeTheme = true)
     {
-        XNamespace w = WordprocessingNamespaceUri;
+        XNamespace w = WordprocessingNamespace;
         using ZipArchive archive = ZipFile.Open(path, ZipArchiveMode.Create);
 
         var defaultFonts = new XElement(w + WordRunFontsElement,
