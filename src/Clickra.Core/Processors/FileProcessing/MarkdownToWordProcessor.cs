@@ -626,7 +626,9 @@ public sealed class MarkdownToWordProcessor : MultiFileProcessorBase
                 decoded = uri.LocalPath;
             string candidate = Path.IsPathRooted(decoded) ? decoded : Path.Combine(_baseDirectory, decoded);
             try { candidate = Path.GetFullPath(candidate); }
-            catch { return false; }
+            catch (ArgumentException) { return false; }
+            catch (NotSupportedException) { return false; }
+            catch (PathTooLongException) { return false; }
             if (!File.Exists(candidate)) return false;
             path = candidate;
             return true;

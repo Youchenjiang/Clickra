@@ -1056,10 +1056,12 @@ public sealed class MarkdownToPdfProcessor : MultiFileProcessorBase
                 new XPoint(x + width, pageHeight - top));
         }
 
-        private static XFontStyleEx GetInlineStyle(InlineSegment segment) =>
-            segment.Bold
-                ? (segment.Italic ? XFontStyleEx.BoldItalic : XFontStyleEx.Bold)
-                : (segment.Italic ? XFontStyleEx.Italic : XFontStyleEx.Regular);
+        private static XFontStyleEx GetInlineStyle(InlineSegment segment)
+        {
+            if (segment.Bold && segment.Italic) return XFontStyleEx.BoldItalic;
+            if (segment.Bold) return XFontStyleEx.Bold;
+            return segment.Italic ? XFontStyleEx.Italic : XFontStyleEx.Regular;
+        }
 
         private bool TryRenderInlineImage(string url, double indent, ref double x, double lineHeight)
         {
