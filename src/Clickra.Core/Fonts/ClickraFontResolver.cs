@@ -37,6 +37,7 @@ namespace Clickra.Core
         }
 
         /// <summary>Resolves the requested family and emphasis to an available PDF font face.</summary>
+        // skipcq: CS-R1140 — ordered font aliases must preserve family precedence and style fallback semantics.
         public FontResolverInfo? ResolveTypeface(string familyName, bool isBold, bool isItalic)
         {
             string suffix = "";
@@ -196,6 +197,7 @@ namespace Clickra.Core
             return null;
         }
 
+        // skipcq: CS-R1140 — the explicit family/style mapping mirrors installed Windows font filenames.
         private string GetFontPath(string baseFace, string style)
         {
             string systemDir = Environment.GetFolderPath(Environment.SpecialFolder.System);
