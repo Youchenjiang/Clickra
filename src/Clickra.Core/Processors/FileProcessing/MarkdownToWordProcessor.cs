@@ -449,14 +449,7 @@ public sealed class MarkdownToWordProcessor : MultiFileProcessorBase
 
         private XElement CreateTableCell(TableRow row, TableCell cell, int columnWidth)
         {
-            var tcPr = new XElement(W + "tcPr",
-                new XElement(W + "tcW", new XAttribute(W + "w", columnWidth), new XAttribute(W + "type", "dxa")));
-            if (row.IsHeader && _template.Layout.FillTableHeader)
-                tcPr.Add(new XElement(W + "shd", new XAttribute(W + "val", "clear"), new XAttribute(W + "fill", _template.Palette.SoftAccent.Hex)));
-            else if (_template.Id == MarkdownPdfOptions.ThemeDefault)
-                tcPr.Add(new XElement(W + "shd", new XAttribute(W + "val", "clear"), new XAttribute(W + "fill", _resolvedPalette.Surface.Hex)));
-
-            var tc = new XElement(W + "tc", tcPr);
+            var tc = new XElement(W + "tc", CreateTableCellProperties(row, columnWidth));
             bool added = false;
             foreach (Block child in cell)
             {
@@ -476,6 +469,17 @@ public sealed class MarkdownToWordProcessor : MultiFileProcessorBase
             }
             if (!added) tc.Add(CreateTextParagraph("", row.IsHeader ? "TableHeader" : "TableText"));
             return tc;
+        }
+
+        private XElement CreateTableCellProperties(TableRow row, int columnWidth)
+        {
+            var tcPr = new XElement(W + "tcPr",
+                new XElement(W + "tcW", new XAttribute(W + "w", columnWidth), new XAttribute(W + "type", "dxa")));
+            if (row.IsHeader && _template.Layout.FillTableHeader)
+                tcPr.Add(new XElement(W + "shd", new XAttribute(W + "val", "clear"), new XAttribute(W + "fill", _template.Palette.SoftAccent.Hex)));
+            else if (_template.Id == MarkdownPdfOptions.ThemeDefault)
+                tcPr.Add(new XElement(W + "shd", new XAttribute(W + "val", "clear"), new XAttribute(W + "fill", _resolvedPalette.Surface.Hex)));
+            return tcPr;
         }
 
         private XElement CreateRuleParagraph(int indentTwips) =>
@@ -695,6 +699,7 @@ public sealed class MarkdownToWordProcessor : MultiFileProcessorBase
             return new XDocument(new XDeclaration("1.0", "UTF-8", "yes"), styles);
         }
 
+        [System.Diagnostics.CodeAnalysis.SuppressMessage("SonarQube", "S107", Justification = "Word paragraph style construction exposes the independent OOXML style attributes explicitly at each call site.")]
         private XElement CreateParagraphStyle(
             string id, string name, double size, string color, bool bold,
             int leftIndent = 0, bool keepNext = false,
