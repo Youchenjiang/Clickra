@@ -110,43 +110,60 @@ public static class DashboardLayout
     }
 
     // ── 轉換頁：拖放區、指令格線、開始鈕、清除鈕 ──────────────────
+    /// <summary>Top edge of the conversion drop zone in logical pixels.</summary>
     public const int ConvertZoneTop = 95;
+    /// <summary>Height of the conversion drop zone in logical pixels.</summary>
     public const int ConvertZoneHeight = 72;
 
     /// <summary>拖放區右側留白。</summary>
     public const int ConvertZoneRightMargin = 50;
 
+    /// <summary>Width of the drop-zone clear button.</summary>
     public const int ConvertClearButtonWidth = 48;
+    /// <summary>Height of the drop-zone clear button.</summary>
     public const int ConvertClearButtonHeight = 22;
 
     /// <summary>清除鈕相對拖放區上緣的位移。</summary>
     public const int ConvertClearButtonInset = 7;
+    /// <summary>Right margin used to position the drop-zone clear button.</summary>
     public const int ConvertClearButtonRightMargin = 110;
 
     /// <summary>拖放區空白狀態內各列相對上緣的位置。</summary>
     public const int ConvertZoneIconOffset = 6;
+    /// <summary>Vertical offset of the primary drop-zone hint.</summary>
     public const int ConvertZoneHintOffset = 26;
+    /// <summary>Vertical offset of the secondary drop-zone hint.</summary>
     public const int ConvertZoneSubHintOffset = 48;
 
     /// <summary>已有檔案時，摘要、檔名與輸出位置相對拖放區上緣的位置。</summary>
     public const int ConvertZoneSummaryOffset = 8;
+    /// <summary>Vertical offset of the selected-file list in the drop zone.</summary>
     public const int ConvertZoneFilesOffset = 29;
+    /// <summary>Vertical offset of the output-location line in the drop zone.</summary>
     public const int ConvertZoneOutputOffset = 51;
 
+    /// <summary>Number of conversion command groups rendered by the Dashboard.</summary>
     public const int ConvertGroupCount = 3;
+    /// <summary>Horizontal gap between conversion cards in a group.</summary>
     public const int ConvertGroupGap = 14;
+    /// <summary>Vertical gap between successive conversion command groups.</summary>
     public const int ConvertGroupSectionGap = 8;
 
     /// <summary>指令欄標題的 Y（格線頂端）。</summary>
     public const int ConvertGridTop = 176;
 
+    /// <summary>Height reserved for each conversion group heading.</summary>
     public const int ConvertGroupHeaderHeight = 20;
+    /// <summary>Height of a conversion command card.</summary>
     public const int ConvertCardHeight = 34;
+    /// <summary>Vertical gap between conversion command cards.</summary>
     public const int ConvertCardGap = 6;
+    /// <summary>Vertical stride from one conversion card row to the next.</summary>
     public const int ConvertCardStride = ConvertCardHeight + ConvertCardGap;
 
     /// <summary>最後一排卡片與開始鈕之間的距離。</summary>
     public const int ConvertStartButtonGap = 8;
+    /// <summary>Height of the primary conversion action button.</summary>
     public const int ConvertStartButtonHeight = 32;
 
     /// <summary>拖放區的矩形。</summary>

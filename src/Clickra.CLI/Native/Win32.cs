@@ -128,31 +128,57 @@ namespace Clickra.UI.Native
         [DllImport("comdlg32.dll", EntryPoint = "GetOpenFileNameW", CharSet = CharSet.Unicode)] public static extern bool GetOpenFileName(ref OPENFILENAME ofn);
         [DllImport("ole32.dll")] public static extern void CoTaskMemFree(IntPtr pv);
 
+        /// <summary>Standard overlapped top-level window style.</summary>
         public const uint WS_OVERLAPPEDWINDOW = 0x00CF0000;
+        /// <summary>Fixed-size overlapped style used by modal progress windows.</summary>
         public const uint WS_OVERLAPPED_FIXED = (0x00CF0000 | 0x02000000) & ~0x00040000u & ~0x00010000u;
+        /// <summary>DWM attribute identifier for immersive dark mode.</summary>
         public const int DWMWA_DARK_MODE = 20;
+        /// <summary>Requests the system default window position or dimension.</summary>
         public const int CW_USEDEFAULT = unchecked((int)0x80000000);
+        /// <summary>Application message emitted by the notification-area icon.</summary>
         public const uint WM_TRAYICON = 0x0400 + 1;
+        /// <summary>Application message requesting a progress-window repaint.</summary>
         public const uint WM_USER_INVALIDATE = 0x0400 + 2;
+        /// <summary>Application message requesting password-input controls to be shown.</summary>
         public const uint WM_USER_SHOW_PASSWORD_INPUT = 0x0400 + 3;
+        /// <summary>Application message requesting password-input controls to be hidden.</summary>
         public const uint WM_USER_HIDE_PASSWORD_INPUT = 0x0400 + 4;
+        /// <summary>Application message used to marshal Dashboard actions onto its window thread.</summary>
         public const uint WM_USER_DASHBOARD_ACTION = 0x0400 + 5;
+        /// <summary>Notification-area command that adds an icon.</summary>
         public const uint NIM_ADD = 0;
+        /// <summary>Notification-area command that updates an icon.</summary>
         public const uint NIM_MODIFY = 1;
+        /// <summary>Notification-area command that removes an icon.</summary>
         public const uint NIM_DELETE = 2;
+        /// <summary>Notification-area flag enabling callback messages.</summary>
         public const uint NIF_MESSAGE = 1;
+        /// <summary>Notification-area flag supplying an icon handle.</summary>
         public const uint NIF_ICON = 2;
+        /// <summary>Notification-area flag supplying tooltip text.</summary>
         public const uint NIF_TIP = 4;
+        /// <summary>System-command identifier for minimizing a window.</summary>
         public const uint SC_MINIMIZE = 0xF020;
+        /// <summary>Windows message carrying system-command requests.</summary>
         public const uint WM_SYSCOMMAND = 0x0112;
+        /// <summary>ShowWindow command that hides a window.</summary>
         public const int SW_HIDE = 0;
+        /// <summary>ShowWindow command that shows a window in its current state.</summary>
         public const int SW_SHOW = 5;
+        /// <summary>ShowWindow command that restores a minimized window.</summary>
         public const int SW_RESTORE = 9;
+        /// <summary>Window style that excludes child windows from parent painting.</summary>
         public const uint WS_CLIPCHILDREN = 0x02000000;
+        /// <summary>Window style that creates a child window.</summary>
         public const uint WS_CHILD = 0x40000000;
+        /// <summary>Window style that makes a window initially visible.</summary>
         public const uint WS_VISIBLE = 0x10000000;
+        /// <summary>Window style that draws a thin border.</summary>
         public const uint WS_BORDER = 0x00800000;
+        /// <summary>Window style that includes a control in keyboard tab navigation.</summary>
         public const uint WS_TABSTOP = 0x00010000;
+        /// <summary>System cursor identifier for the pointing-hand cursor.</summary>
         public const int IDC_HAND = 32649;
 
         [DllImport("user32.dll", EntryPoint = "CreatePopupMenu", SetLastError = true)]
@@ -210,7 +236,9 @@ namespace Clickra.UI.Native
             }
         }
 
+        /// <summary>Managed signature for the native window procedure callback.</summary>
         public delegate IntPtr WndProcDelegate(IntPtr h, uint msg, IntPtr w, IntPtr l);
+        /// <summary>Timer identifier reserved for periodic progress-window refreshes.</summary>
         public static readonly IntPtr TIMER_ID_REFRESH = (IntPtr)1001;
         private const uint MF_STRING = 0x00000000;
         private const uint MF_SEPARATOR = 0x00000800;
