@@ -921,11 +921,7 @@ public sealed class MarkdownToPdfProcessor : MultiFileProcessorBase
                 }
 
                 string text = NormalizeDisplayGlyphs(segment.Text);
-                XBrush brush = segment.Url is not null
-                    ? new XSolidBrush(_accentColor)
-                    : segment.Bold
-                        ? new XSolidBrush(_strongTextColor)
-                        : baseBrush;
+                XBrush brush = ResolveInlineBrush(segment, baseBrush);
 
                 foreach (string token in TokenizeForWrapping(text))
                 {
@@ -1015,13 +1011,18 @@ public sealed class MarkdownToPdfProcessor : MultiFileProcessorBase
             foreach (string token in TokenizeForWrapping(text))
             {
                 double fontSize = segment.Code ? _layout.CodeFontSizePoints : size;
-                XFont font;
-                if (token == "\n")
-                    font = CreateFont(string.Empty, fontSize, GetInlineStyle(segment), segment.Code);
-                else
-                    font = CreateFont(token, fontSize, GetInlineStyle(segment), segment.Code && !ContainsCjk(token));
+                XFont font = token == "\n"
+                    ? CreateFont(string.Empty, fontSize, GetInlineStyle(segment), segment.Code)
+                    : CreateFont(token, fontSize, GetInlineStyle(segment), segment.Code && !ContainsCjk(token));
                 RenderInlineToken(token, segment.Url, segment.Code, font, brush, indent, lineHeight, maxX, ref x);
             }
+        }
+
+        private XBrush ResolveInlineBrush(InlineSegment segment, XBrush baseBrush)
+        {
+            if (segment.Url is not null) return new XSolidBrush(_accentColor);
+            if (segment.Bold) return new XSolidBrush(_strongTextColor);
+            return baseBrush;
         }
 
         private static string NormalizeDisplayGlyphs(string text) => text;
