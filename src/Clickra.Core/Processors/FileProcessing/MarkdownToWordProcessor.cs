@@ -84,11 +84,11 @@ public sealed class MarkdownToWordProcessor : MultiFileProcessorBase
 
     private sealed class DocxWriter
     {
-        private static readonly XNamespace W = "http://schemas.openxmlformats.org/wordprocessingml/2006/main";
-        private static readonly XNamespace R = "http://schemas.openxmlformats.org/officeDocument/2006/relationships";
-        private static readonly XNamespace WP = "http://schemas.openxmlformats.org/drawingml/2006/wordprocessingDrawing";
-        private static readonly XNamespace A = "http://schemas.openxmlformats.org/drawingml/2006/main";
-        private static readonly XNamespace PIC = "http://schemas.openxmlformats.org/drawingml/2006/picture";
+        private static readonly XNamespace W = "http://schemas.openxmlformats.org/wordprocessingml/2006/main"; // skipcq: CS-P1003 — XNamespace cannot be const.
+        private static readonly XNamespace R = "http://schemas.openxmlformats.org/officeDocument/2006/relationships"; // skipcq: CS-P1003 — XNamespace cannot be const.
+        private static readonly XNamespace WP = "http://schemas.openxmlformats.org/drawingml/2006/wordprocessingDrawing"; // skipcq: CS-P1003 — XNamespace cannot be const.
+        private static readonly XNamespace A = "http://schemas.openxmlformats.org/drawingml/2006/main"; // skipcq: CS-P1003 — XNamespace cannot be const.
+        private static readonly XNamespace PIC = "http://schemas.openxmlformats.org/drawingml/2006/picture"; // skipcq: CS-P1003 — XNamespace cannot be const.
 
         private readonly MarkdownDocumentTemplate _template;
         private readonly MarkdownResolvedLayout _layout;

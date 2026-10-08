@@ -13,8 +13,8 @@ namespace Clickra.Core.Processors;
 /// <summary>Extracts renderer-neutral Markdown presentation settings from a Word DOCX template.</summary>
 public static class MarkdownDocxTemplateFile
 {
-    private static readonly XNamespace W = "http://schemas.openxmlformats.org/wordprocessingml/2006/main";
-    private static readonly XNamespace A = "http://schemas.openxmlformats.org/drawingml/2006/main";
+    private static readonly XNamespace W = "http://schemas.openxmlformats.org/wordprocessingml/2006/main"; // skipcq: CS-P1003 — XNamespace cannot be const.
+    private static readonly XNamespace A = "http://schemas.openxmlformats.org/drawingml/2006/main"; // skipcq: CS-P1003 — XNamespace cannot be const.
     private const long MaxPackageBytes = 32L * 1024 * 1024;
     private const long MaxXmlBytes = 4L * 1024 * 1024;
 
