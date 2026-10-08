@@ -98,8 +98,8 @@ namespace Clickra.UI
         static bool IsInsideConvertStickyFooter(int x, int y, float logW, float logH, float contentX)
         {
             if (_activeTab != 1 || _selectedFiles.Count == 0 || _convertCommandIndex == -1) return false;
-            int zoneW = Math.Max(0, (int)logW - (int)contentX - DashboardLayout.ConvertZoneRightMargin);
-            return DashboardLayout.ConvertStickyFooterRect((int)contentX, zoneW, (int)logH).Contains(x, y);
+            int footerW = Math.Max(0, (int)logW - (int)contentX);
+            return DashboardLayout.ConvertStickyFooterRect((int)contentX, footerW, (int)logH).Contains(x, y);
         }
 
         static int HitTestHistory(int x, int y, float logW, float contentX)

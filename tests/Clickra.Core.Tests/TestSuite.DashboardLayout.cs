@@ -348,7 +348,7 @@ static partial class TestSuite
         LayoutRect stickyStart = DashboardLayout.ConvertStickyStartButtonRect(
             zone.X, zone.Width, DashboardLayout.MinContentHeight);
         LayoutRect stickyFooter = DashboardLayout.ConvertStickyFooterRect(
-            zone.X, zone.Width, DashboardLayout.MinContentHeight);
+            zone.X, 1520 - zone.X, DashboardLayout.MinContentHeight);
         Assert.True(zone.Bottom < DashboardLayout.ConvertGridTop,
             "The compact drop zone must leave visible separation before command groups.");
         Assert.True(start.Bottom > DashboardLayout.MinContentHeight,
@@ -361,6 +361,10 @@ static partial class TestSuite
         Assert.True(stickyFooter.Contains(stickyStart.X, stickyStart.Y)
                     && stickyFooter.Contains(stickyStart.Right - 1, stickyStart.Bottom - 1),
             "The sticky footer must fully cover the start action and intercept its surrounding background.");
+        LayoutRect narrowFooter = DashboardLayout.ConvertStickyFooterRect(
+            contentX: 260, zoneWidth: 600 - 260, viewportHeight: DashboardLayout.MinContentHeight);
+        Assert.True(narrowFooter.Right == 600,
+            "The sticky footer exclusion must cover the full visible content width even when the dashboard is narrow.");
 
         int[] futureGroupSizes = { 8, 5, 8 };
         LayoutRect futureStart = DashboardLayout.ConvertStartButtonRect(zone.X, zone.Width, futureGroupSizes);

@@ -328,7 +328,7 @@ namespace Clickra.UI
             LayoutRect startButton = DashboardLayout.ConvertStickyStartButtonRect(
                 (int)contentX, zoneW, (int)logH);
             LayoutRect footer = DashboardLayout.ConvertStickyFooterRect(
-                (int)contentX, zoneW, (int)logH);
+                (int)contentX, Math.Max(0, (int)logW - (int)contentX), (int)logH);
 
             using var footerBrush = new SolidBrush(Color.FromArgb(32, 32, 32));
             g.FillRectangle(footerBrush,
