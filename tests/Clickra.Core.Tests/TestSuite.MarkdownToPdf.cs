@@ -25,6 +25,17 @@ static partial class TestSuite
             .ToArray();
     }
 
+    private static string ConvertMarkdownWithWordTemplate(string tempDir, string stem, string markdown)
+    {
+        string input = Path.Combine(tempDir, stem + ".md");
+        string output = Path.Combine(tempDir, stem + ".pdf");
+        string templatePath = Path.Combine(tempDir, stem + ".docx");
+        CreateWordTemplateFixture(templatePath);
+        File.WriteAllText(input, markdown);
+        FileProcessor.ConvertMarkdownToPdf(input, output, MarkdownPdfOptions.Create(templatePath: templatePath));
+        return output;
+    }
+
     [System.Diagnostics.CodeAnalysis.SuppressMessage("SonarQube", "S3011", Justification = "The test intentionally reflects a private renderer classifier to verify typography behavior without widening production visibility.")]
     private static bool MarkdownRendererUsesCjkTypography(char ch)
     {
@@ -291,13 +302,10 @@ static partial class TestSuite
         runner.Run("Markdown to PDF: imported DOCX template controls PDF layout", () =>
             RunWithTempDirectory(tempDir =>
             {
-                string input = Path.Combine(tempDir, "thesis.md");
-                string output = Path.Combine(tempDir, "thesis.pdf");
-                string templatePath = Path.Combine(tempDir, "school.docx");
-                CreateWordTemplateFixture(templatePath);
-                File.WriteAllText(input, "# Thesis\n\nZebra body paragraph uses the Word template margins and paragraph formatting.");
-
-                FileProcessor.ConvertMarkdownToPdf(input, output, MarkdownPdfOptions.Create(templatePath: templatePath));
+                string output = ConvertMarkdownWithWordTemplate(
+                    tempDir,
+                    "thesis",
+                    "# Thesis\n\nZebra body paragraph uses the Word template margins and paragraph formatting.");
 
                 using var pdf = UglyToad.PdfPig.PdfDocument.Open(output);
                 var page = pdf.GetPage(1);
@@ -309,13 +317,10 @@ static partial class TestSuite
         runner.Run("Markdown to PDF: mixed Latin and CJK text keeps imported font families", () =>
             RunWithTempDirectory(tempDir =>
             {
-                string input = Path.Combine(tempDir, "mixed-fonts.md");
-                string output = Path.Combine(tempDir, "mixed-fonts.pdf");
-                string templatePath = Path.Combine(tempDir, "mixed-fonts.docx");
-                CreateWordTemplateFixture(templatePath);
-                File.WriteAllText(input, "# Mixed fonts\n\nZebra 測試 text. Qello，vorld.");
-
-                FileProcessor.ConvertMarkdownToPdf(input, output, MarkdownPdfOptions.Create(templatePath: templatePath));
+                string output = ConvertMarkdownWithWordTemplate(
+                    tempDir,
+                    "mixed-fonts",
+                    "# Mixed fonts\n\nZebra 測試 text. Qello，vorld.");
 
                 using var pdf = UglyToad.PdfPig.PdfDocument.Open(output);
                 var page = pdf.GetPage(1);
