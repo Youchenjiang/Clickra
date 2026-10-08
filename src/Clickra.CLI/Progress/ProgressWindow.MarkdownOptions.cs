@@ -6,8 +6,8 @@ using Clickra.Core.Processors;
 
 using static Clickra.UI.Native.Win32;
 
-namespace Clickra.UI
-{
+namespace Clickra.UI;
+
     public partial class ProgressWindow
     {
         private const float MarkdownOptionLeft = 36f;
@@ -294,4 +294,3 @@ namespace Clickra.UI
             InvalidateRect(hwnd, IntPtr.Zero, false);
         }
     }
-}
