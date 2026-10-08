@@ -138,6 +138,21 @@ namespace Clickra.UI
                     return true;
                 }
 
+                if (_markdownLayoutSourceIndex == 1)
+                {
+                    try
+                    {
+                        _ = MarkdownTemplateSource.Load(_markdownTemplatePath!);
+                    }
+                    catch
+                    {
+                        _markdownTemplatePath = null;
+                        _markdownTemplateStatus = Loc("md_options_template_invalid");
+                        InvalidateRect(hwnd, IntPtr.Zero, false);
+                        return true;
+                    }
+                }
+
                 StartMarkdownConversion(hwnd, _markdownLayoutSourceIndex == 1 ? _markdownTemplatePath : null);
                 return true;
             }
