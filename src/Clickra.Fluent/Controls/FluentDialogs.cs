@@ -15,6 +15,7 @@ internal static class FluentDialogs
 {
     /// <summary>Shows one-shot Markdown presentation choices. Defaults are intentionally
     /// production-quality so users can simply press Convert without tuning anything.</summary>
+    [System.Diagnostics.CodeAnalysis.SuppressMessage("SonarQube", "S3776", Justification = "The dialog composes one cohesive XAML form and its validation callbacks; splitting it would obscure control wiring.")]
     public static async Task<Dictionary<string, object>?> PromptMarkdownPdfOptionsAsync(
         XamlRoot xamlRoot,
         Func<string, string> localize,
