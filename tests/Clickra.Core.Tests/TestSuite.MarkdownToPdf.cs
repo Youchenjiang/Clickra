@@ -4,6 +4,7 @@ using System.Drawing;
 using System.Drawing.Imaging;
 using System.IO;
 using System.Linq;
+using System.Threading;
 using Clickra.Core;
 using Clickra.Core.Processors;
 
@@ -15,6 +16,23 @@ static partial class TestSuite
 
     public static void RegisterMarkdownToPdfTests(TestRunner runner)
     {
+        runner.Run("Markdown to PDF: pre-cancel preserves existing output", () =>
+            RunWithTempDirectory(tempDir =>
+            {
+                string input = Path.Combine(tempDir, "cancel.md");
+                string output = Path.Combine(tempDir, "existing.pdf");
+                File.WriteAllText(input, "# Must not convert");
+                byte[] original = { 11, 12, 13, 14 };
+                File.WriteAllBytes(output, original);
+                using var cancellation = new CancellationTokenSource();
+                cancellation.Cancel();
+                Assert.Throws<OperationCanceledException>(() =>
+                    new MarkdownToPdfProcessor().Process(new List<string> { input }, output,
+                        cancellationToken: cancellation.Token));
+                Assert.True(File.ReadAllBytes(output).SequenceEqual(original),
+                    "Cancellation before parsing must preserve existing PDF bytes.");
+            }));
+
         runner.Run("Markdown to PDF: registry exposes Markdown inputs and PDF outputs", () =>
         {
             Assert.True(ConvertCommandRegistry.IsKnownCommand(MarkdownToPdfCommand), MarkdownToPdfCommand + " must be a registered conversion command.");

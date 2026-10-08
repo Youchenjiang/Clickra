@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.IO.Compression;
 using System.Linq;
+using System.Threading;
 using System.Xml.Linq;
 using Clickra.Core;
 using Clickra.Core.Processors;
@@ -15,6 +16,63 @@ static partial class TestSuite
 
     public static void RegisterMarkdownToWordTests(TestRunner runner)
     {
+        runner.Run("Markdown to Word: pre-cancel preserves existing output", () =>
+            RunWithTempDirectory(tempDir =>
+            {
+                string input = Path.Combine(tempDir, "cancel.md");
+                string output = Path.Combine(tempDir, "existing.docx");
+                File.WriteAllText(input, "# Must not convert");
+                byte[] original = { 1, 2, 3, 4, 5 };
+                File.WriteAllBytes(output, original);
+                using var cancellation = new CancellationTokenSource();
+                cancellation.Cancel();
+                Assert.Throws<OperationCanceledException>(() =>
+                    new MarkdownToWordProcessor().Process(new List<string> { input }, output,
+                        cancellationToken: cancellation.Token));
+                Assert.True(File.ReadAllBytes(output).SequenceEqual(original),
+                    "Cancellation before processing must preserve the existing Word output exactly.");
+                Assert.False(Directory.GetFiles(tempDir, "*.tmp-*").Any(),
+                    "Pre-cancel must leave no temporary Word packages.");
+            }));
+
+        runner.Run("Markdown to Word: invalid local image preserves existing output", () =>
+            RunWithTempDirectory(tempDir =>
+            {
+                string input = Path.Combine(tempDir, "broken-image.md");
+                string output = Path.Combine(tempDir, "existing.docx");
+                File.WriteAllText(input, "# Image\n\n![invalid](broken.png)");
+                File.WriteAllText(Path.Combine(tempDir, "broken.png"), "not an image");
+                byte[] original = { 6, 7, 8, 9 };
+                File.WriteAllBytes(output, original);
+                bool failed = false;
+                try { FileProcessor.ConvertMarkdownToWord(input, output, MarkdownPdfOptions.Create()); }
+                catch (ArgumentException) { failed = true; }
+                catch (OutOfMemoryException) { failed = true; }
+                Assert.True(failed, "Corrupt local image bytes must fail before replacing the document.");
+                Assert.True(File.ReadAllBytes(output).SequenceEqual(original),
+                    "An image rendering failure must preserve existing Word bytes.");
+                Assert.False(Directory.GetFiles(tempDir, "*.tmp-*").Any(),
+                    "Image failures must not leave partial Word packages.");
+            }));
+
+        runner.Run("Markdown templates: DOCX import rejects missing parts and package size limit", () =>
+            RunWithTempDirectory(tempDir =>
+            {
+                string missingStyles = Path.Combine(tempDir, "missing-styles.docx");
+                using (ZipArchive archive = ZipFile.Open(missingStyles, ZipArchiveMode.Create))
+                {
+                    ZipArchiveEntry entry = archive.CreateEntry("word/document.xml");
+                    using var writer = new StreamWriter(entry.Open());
+                    writer.Write("<document />");
+                }
+                Assert.Throws<InvalidDataException>(() => MarkdownDocxTemplateFile.Load(missingStyles));
+
+                string oversized = Path.Combine(tempDir, "oversized.docx");
+                using (FileStream stream = File.Create(oversized))
+                    stream.SetLength(32L * 1024 * 1024 + 1);
+                Assert.Throws<InvalidDataException>(() => MarkdownDocxTemplateFile.Load(oversized));
+            }));
+
         runner.Run("Markdown to Word: registry and runner expose DOCX conversion", () =>
             RunWithTempDirectory(tempDir =>
             {
