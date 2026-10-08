@@ -142,23 +142,34 @@ namespace Clickra
             RequireMinFiles(files, command, ConvertCommandRegistry.GetMinFiles(command), quiet);
             if (quiet)
             {
-                for (int i = 0; i < files.Count; i++)
-                {
-                    string targetDir = string.IsNullOrWhiteSpace(outputDirOverride)
-                        ? ClickraStorage.GetOutputDir(files[i])
-                        : outputDir;
-                    string output = Path.Combine(targetDir, Path.GetFileNameWithoutExtension(files[i]) + (toWord ? ".docx" : ".pdf"));
-                    if (toWord)
-                        FileProcessor.ConvertMarkdownToWord(files[i], output, onProgress: (_, _, msg) => Console.WriteLine($"[Progress] {msg}"));
-                    else
-                        FileProcessor.ConvertMarkdownToPdf(files[i], output, (_, _, msg) => Console.WriteLine($"[Progress] {msg}"));
-                }
+                DispatchMarkdownQuiet(files, outputDir, outputDirOverride, toWord);
             }
             else
             {
                 ProgressWindow.Show(command, files, outputDirOverride);
             }
             return true;
+        }
+
+        private static void DispatchMarkdownQuiet(
+            IReadOnlyList<string> files,
+            string outputDir,
+            string? outputDirOverride,
+            bool toWord)
+        {
+            for (int i = 0; i < files.Count; i++)
+            {
+                string targetDir = string.IsNullOrWhiteSpace(outputDirOverride)
+                    ? ClickraStorage.GetOutputDir(files[i])
+                    : outputDir;
+                string output = Path.Combine(
+                    targetDir,
+                    Path.GetFileNameWithoutExtension(files[i]) + (toWord ? ".docx" : ".pdf"));
+                if (toWord)
+                    FileProcessor.ConvertMarkdownToWord(files[i], output, onProgress: (_, _, msg) => Console.WriteLine($"[Progress] {msg}"));
+                else
+                    FileProcessor.ConvertMarkdownToPdf(files[i], output, (_, _, msg) => Console.WriteLine($"[Progress] {msg}"));
+            }
         }
 
         /// <summary>Handles office-conversion commands (ppt2pdf, word2pdf, excel2pdf).</summary>
