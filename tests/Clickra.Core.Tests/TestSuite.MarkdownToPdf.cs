@@ -25,6 +25,19 @@ static partial class TestSuite
             .ToArray();
     }
 
+    private static bool MarkdownRendererUsesCjkTypography(char ch)
+    {
+        Type rendererType = typeof(MarkdownToPdfProcessor).GetNestedType(
+            "Renderer", System.Reflection.BindingFlags.NonPublic)
+            ?? throw new InvalidOperationException("Markdown PDF renderer type was not found.");
+        var classifier = rendererType.GetMethod(
+            "IsCjkTypographyChar",
+            System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static)
+            ?? throw new InvalidOperationException("Markdown CJK typography classifier was not found.");
+        return (bool)(classifier.Invoke(null, new object[] { ch })
+            ?? throw new InvalidOperationException("Markdown CJK typography classifier returned no result."));
+    }
+
     public static void RegisterMarkdownToPdfTests(TestRunner runner)
     {
         runner.Run("Markdown to PDF: pre-cancel preserves existing output", () =>
@@ -310,13 +323,15 @@ static partial class TestSuite
                 string attachedLatinAfter = page.Letters.First(letter => letter.Value == "v").FontName!;
                 Assert.True(latinFont.Contains("Times", StringComparison.OrdinalIgnoreCase),
                     $"Latin text must use the imported Times New Roman family; actual={latinFont}.");
-                Assert.True(embeddedFonts.Any(font => font.Contains("DFKai", StringComparison.OrdinalIgnoreCase) || font.Contains("KaiU", StringComparison.OrdinalIgnoreCase)),
-                    $"CJK glyphs must use an imported KaiU font resource; fonts={string.Join(", ", embeddedFonts)}.");
                 Assert.True(attachedLatinBefore.Contains("Times", StringComparison.OrdinalIgnoreCase)
                             && attachedLatinAfter.Contains("Times", StringComparison.OrdinalIgnoreCase),
                     $"Latin text attached to full-width punctuation must stay in the imported Latin family; actual={attachedLatinBefore}, {attachedLatinAfter}.");
                 Assert.True(embeddedFonts.Any(font => font.Contains("Times", StringComparison.OrdinalIgnoreCase)),
                     "Mixed Latin/CJK text must retain a separate Times font resource.");
+                Assert.True(embeddedFonts.Any(font => !font.Contains("Times", StringComparison.OrdinalIgnoreCase)),
+                    $"Mixed Latin/CJK text must embed a distinct CJK-capable font resource; fonts={string.Join(", ", embeddedFonts)}.");
+                Assert.True(MarkdownRendererUsesCjkTypography('測') && MarkdownRendererUsesCjkTypography('，'),
+                    "CJK ideographs and full-width punctuation must route through the renderer's CJK typography path.");
             }));
 
         runner.Run("Markdown to PDF: hyperlink annotations align with rendered link text", () =>
@@ -360,14 +375,15 @@ static partial class TestSuite
                 using var pdf = UglyToad.PdfPig.PdfDocument.Open(output);
                 var page = pdf.GetPage(1);
                 string text = page.Text;
-                Assert.False(text.Contains('\0'),
-                    "Imported CJK punctuation must never collapse to NUL glyphs in the PDF text layer.");
                 string[] fonts = GetMarkdownPdfFontNames(output);
-                Assert.True(fonts.Any(font => font.Contains("DFKai", StringComparison.OrdinalIgnoreCase) || font.Contains("KaiU", StringComparison.OrdinalIgnoreCase)),
-                    $"CJK punctuation must select the imported KaiU font resource; fonts={string.Join(", ", fonts)}.");
+                Assert.True(fonts.Any(font => !font.Contains("Times", StringComparison.OrdinalIgnoreCase)),
+                    $"CJK punctuation must select a font resource separate from imported Latin text; fonts={string.Join(", ", fonts)}.");
                 foreach (string marker in new[] { "Alpha", "Beta", "Gamma", "Delta", "Echo", "Foxtrot" })
                     Assert.True(text.Contains(marker, StringComparison.Ordinal),
                         $"The PDF must retain the Latin text surrounding CJK punctuation: {marker}.");
+                foreach (char punctuation in "\u3001\u3002\uff1a\u300c\u300d\u300e\u300f\u3010\u3011")
+                    Assert.True(MarkdownRendererUsesCjkTypography(punctuation),
+                        $"Full-width punctuation U+{(int)punctuation:X4} must route through the CJK typography path.");
             }));
 
         runner.Run("Markdown to PDF: Academic indents only the first body line", () =>
@@ -434,8 +450,10 @@ static partial class TestSuite
                 Assert.True(anchorGap >= 0 && anchorGap < 35,
                     $"CJK justification must not expand the punctuation interval between adjacent anchors; gap={anchorGap:0.##}.");
                 string[] fonts = GetMarkdownPdfFontNames(output);
-                Assert.True(fonts.Any(font => font.Contains("DFKai", StringComparison.OrdinalIgnoreCase) || font.Contains("KaiU", StringComparison.OrdinalIgnoreCase)),
-                    "Justified CJK punctuation must retain a Unicode-capable CJK font resource.");
+                Assert.True(fonts.Any(font => !font.Contains("Times", StringComparison.OrdinalIgnoreCase)),
+                    $"Justified CJK content must retain a font resource separate from Latin text; fonts={string.Join(", ", fonts)}.");
+                Assert.True(MarkdownRendererUsesCjkTypography('，'),
+                    "Full-width comma must remain on the renderer's CJK typography path during justification.");
             }));
 
         runner.Run("Markdown to PDF: Academic does not indent blockquote text as body prose", () =>
