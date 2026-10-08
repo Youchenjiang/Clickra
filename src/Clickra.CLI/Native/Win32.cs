@@ -19,6 +19,19 @@ namespace Clickra.UI.Native
         [StructLayout(LayoutKind.Sequential)]
         public struct RECT { public int left, top, right, bottom; }
 
+        [StructLayout(LayoutKind.Sequential)]
+        public struct NATIVEPOINT { public int x, y; }
+
+        [StructLayout(LayoutKind.Sequential)]
+        public struct MINMAXINFO
+        {
+            public NATIVEPOINT ptReserved;
+            public NATIVEPOINT ptMaxSize;
+            public NATIVEPOINT ptMaxPosition;
+            public NATIVEPOINT ptMinTrackSize;
+            public NATIVEPOINT ptMaxTrackSize;
+        }
+
         [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Unicode)]
         public struct NOTIFYICONDATAW { public uint cbSize; public IntPtr hWnd; public uint uID; public uint uFlags; public uint uCallbackMessage; public IntPtr hIcon; [MarshalAs(UnmanagedType.ByValTStr, SizeConst = 128)] public string szTip; public uint dwState; public uint dwStateMask; [MarshalAs(UnmanagedType.ByValTStr, SizeConst = 256)] public string szInfo; public uint uTimeoutOrVersion; [MarshalAs(UnmanagedType.ByValTStr, SizeConst = 64)] public string szInfoTitle; public uint dwInfoFlags; public Guid guidItem; public IntPtr hBalloonIcon; }
 

@@ -61,6 +61,7 @@ static partial class TestSuite
         Assert.Equal(30, DashboardLayout.ParkedHeaderHeight);
         Assert.Equal(20, DashboardLayout.SectionPadding);
         Assert.Equal(460, DashboardLayout.MinContentHeight);
+        Assert.Equal(420, DashboardLayout.MinClientWidth);
 
         Assert.Equal(120, DashboardLayout.SidebarTabTop);
         Assert.Equal(40, DashboardLayout.SidebarTabHeight);
@@ -388,6 +389,11 @@ static partial class TestSuite
                     && hitTest.Contains("IsInsideConvertStickyFooter", StringComparison.Ordinal)
                     && click.Contains("IsInsideConvertStickyFooter(mouseX, mouseY", StringComparison.Ordinal),
             "The sticky footer must consume viewport-coordinate hits before scrolled cards can receive them.");
+
+        string events = File.ReadAllText(Path.Combine(root, "src", "Clickra.CLI", "Dashboard", "DashboardWindow.Events.cs"));
+        Assert.True(events.Contains("WM_GETMINMAXINFO", StringComparison.Ordinal)
+                    && events.Contains("DashboardLayout.MinClientWidth", StringComparison.Ordinal),
+            "The dashboard must keep enough minimum width for the fixed convert action to remain operable.");
     }
 
     private static void TestAotSettingsResponsiveGeometry()

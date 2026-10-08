@@ -16,6 +16,7 @@ namespace Clickra.UI
             switch (msg)
             {
                 case WM_USER_DASHBOARD_ACTION: return HandleUserDashboardAction(hwnd);
+                case 0x0024: return HandleGetMinMaxInfo(l); // WM_GETMINMAXINFO
                 case 0x0005: return HandleSize(hwnd); // WM_SIZE
                 case 0x02E0: return HandleDpiChanged(hwnd, w, l); // WM_DPICHANGED
                 case 0x0014: return (IntPtr)1; // WM_ERASEBKGND
@@ -58,6 +59,17 @@ namespace Clickra.UI
                 try { action(); } catch { }
             }
             InvalidateRect(hwnd, IntPtr.Zero, false);
+            return IntPtr.Zero;
+        }
+
+        static IntPtr HandleGetMinMaxInfo(IntPtr l)
+        {
+            var info = Marshal.PtrToStructure<MINMAXINFO>(l);
+            int minClientWidth = (int)(DashboardLayout.MinClientWidth * _dpiScale);
+            var rect = new RECT { left = 0, top = 0, right = minClientWidth, bottom = 1 };
+            AdjustWindowRectEx(ref rect, WS_OVERLAPPEDWINDOW, false, 0);
+            info.ptMinTrackSize.x = Math.Max(info.ptMinTrackSize.x, rect.right - rect.left);
+            Marshal.StructureToPtr(info, l, false);
             return IntPtr.Zero;
         }
 

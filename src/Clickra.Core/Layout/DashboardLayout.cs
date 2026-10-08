@@ -34,6 +34,9 @@ public static class DashboardLayout
     /// <summary>內容區的最小高度。</summary>
     public const int MinContentHeight = 460;
 
+    /// <summary>Dashboard 可縮放的最小 client 寬度；保留側邊欄與可操作的主要內容區。</summary>
+    public const int MinClientWidth = 420;
+
     // ── 展開列的明細欄位 ────────────────────────────────────────
     /// <summary>明細區的分隔線，畫在收合列高的位置。</summary>
     public const int DetailDividerY = RowHeight;
