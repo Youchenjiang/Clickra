@@ -57,6 +57,23 @@ public sealed class MarkdownToWordProcessor : MarkdownSingleFileProcessorBase
 
     private sealed class DocxWriter
     {
+        private const string XmlEncodingName = "UTF-8";
+        private const string NormalStyleName = "Normal";
+        private const string QuoteStyleName = "Quote";
+        private const string SpacingElementName = "spacing";
+        private const string AfterAttributeName = "after";
+        private const string LineRuleAttributeName = "lineRule";
+        private const string ExactLineRuleValue = "exact";
+        private const string ClearShadingValue = "clear";
+        private const string BottomSideName = "bottom";
+        private const string RightSideName = "right";
+        private const string SingleBorderValue = "single";
+        private const string SpaceAttributeName = "space";
+        private const string ColorAttributeName = "color";
+        private const string ContentTypeAttributeName = "ContentType";
+        private const string RelationshipElementName = "Relationship";
+        private const string TargetAttributeName = "Target";
+
         private static readonly XNamespace W = "http://schemas.openxmlformats.org/wordprocessingml/2006/main"; // skipcq: CS-P1003 — XNamespace cannot be const.
         private static readonly XNamespace R = "http://schemas.openxmlformats.org/officeDocument/2006/relationships"; // skipcq: CS-P1003 — XNamespace cannot be const.
         private static readonly XNamespace WP = "http://schemas.openxmlformats.org/drawingml/2006/wordprocessingDrawing"; // skipcq: CS-P1003 — XNamespace cannot be const.
@@ -130,7 +147,7 @@ public sealed class MarkdownToWordProcessor : MarkdownSingleFileProcessorBase
                 {
                     WriteXml(archive, "[Content_Types].xml", CreateContentTypes());
                     WriteXml(archive, "_rels/.rels", CreateRootRelationships());
-                    WriteXml(archive, "word/document.xml", new XDocument(new XDeclaration("1.0", "UTF-8", "yes"), root));
+                    WriteXml(archive, "word/document.xml", new XDocument(new XDeclaration("1.0", XmlEncodingName, "yes"), root));
                     WriteXml(archive, "word/styles.xml", CreateStyles());
                     if (_numberingInstances.Count > 0) WriteXml(archive, "word/numbering.xml", CreateNumbering());
                     WriteXml(archive, "word/_rels/document.xml.rels", CreateDocumentRelationships());
@@ -171,7 +188,7 @@ public sealed class MarkdownToWordProcessor : MarkdownSingleFileProcessorBase
                 case ParagraphBlock paragraph:
                     parent.Add(CreateInlineParagraph(
                         paragraph.Inline,
-                        "Normal",
+                        NormalStyleName,
                         indentTwips: blockIndentTwips,
                         bodyParagraph: blockIndentTwips == 0));
                     break;
@@ -196,14 +213,14 @@ public sealed class MarkdownToWordProcessor : MarkdownSingleFileProcessorBase
                 case HtmlBlock html:
                     string text = StripHtml(html.Lines.ToString());
                     if (!string.IsNullOrWhiteSpace(text))
-                        parent.Add(CreateTextParagraph(text, "Normal", blockIndentTwips, bodyParagraph: blockIndentTwips == 0));
+                        parent.Add(CreateTextParagraph(text, NormalStyleName, blockIndentTwips, bodyParagraph: blockIndentTwips == 0));
                     break;
                 case ContainerBlock container:
                     foreach (Block child in container)
                         RenderBlock(child, parent, listDepth, blockIndentTwips, containerWidthTwips);
                     break;
                 case LeafBlock leaf when leaf.Inline is not null:
-                    parent.Add(CreateInlineParagraph(leaf.Inline, "Normal", indentTwips: blockIndentTwips));
+                    parent.Add(CreateInlineParagraph(leaf.Inline, NormalStyleName, indentTwips: blockIndentTwips));
                     break;
                 default:
                     // Unknown Markdig blocks intentionally render no Word output.
@@ -232,8 +249,8 @@ public sealed class MarkdownToWordProcessor : MarkdownSingleFileProcessorBase
             if (_layout.ListAfterPoints > 0)
             {
                 XElement? lastParagraph = parent.Elements(W + "p").LastOrDefault();
-                XElement? spacing = lastParagraph?.Element(W + "pPr")?.Element(W + "spacing");
-                spacing?.SetAttributeValue(W + "after", PointsToTwips(_layout.ListAfterPoints));
+                XElement? spacing = lastParagraph?.Element(W + "pPr")?.Element(W + SpacingElementName);
+                spacing?.SetAttributeValue(W + AfterAttributeName, PointsToTwips(_layout.ListAfterPoints));
             }
         }
 
@@ -254,13 +271,13 @@ public sealed class MarkdownToWordProcessor : MarkdownSingleFileProcessorBase
                     XElement p = first
                         ? CreateInlineParagraph(
                             paragraph.Inline,
-                            "Normal",
+                            NormalStyleName,
                             indentTwips: baseIndentTwips,
                             numberingId: numberingId,
                             numberingLevel: level)
                         : CreateInlineParagraph(
                             paragraph.Inline,
-                            "Normal",
+                            NormalStyleName,
                             indentTwips: baseIndentTwips + PointsToTwips((level + 1) * _layout.ListIndentPoints));
                     parent.Add(p);
                     first = false;
@@ -296,10 +313,10 @@ public sealed class MarkdownToWordProcessor : MarkdownSingleFileProcessorBase
                 pPr.Add(new XElement(W + "numPr",
                     new XElement(W + "ilvl", new XAttribute(W + "val", numberingLevel)),
                     new XElement(W + "numId", new XAttribute(W + "val", numberingId.Value))));
-                pPr.Add(new XElement(W + "spacing",
-                    new XAttribute(W + "after", 0),
+                pPr.Add(new XElement(W + SpacingElementName,
+                    new XAttribute(W + AfterAttributeName, 0),
                     new XAttribute(W + "line", PointsToTwips(_layout.BodyLineHeightPoints)),
-                    new XAttribute(W + "lineRule", "exact")));
+                    new XAttribute(W + LineRuleAttributeName, ExactLineRuleValue)));
             }
             var p = new XElement(W + "p", pPr);
             AppendInlines(p, inline, false, false, null);
@@ -314,12 +331,12 @@ public sealed class MarkdownToWordProcessor : MarkdownSingleFileProcessorBase
             string background = _lightCode ? "F1F5F9" : "0F172A";
             string foreground = _lightCode ? _template.Palette.Strong.Hex : "F1F5F9";
             var pPr = ParagraphProperties("CodeBlock", indentTwips);
-            pPr.Add(new XElement(W + "shd", new XAttribute(W + "val", "clear"), new XAttribute(W + "fill", background)));
+            pPr.Add(new XElement(W + "shd", new XAttribute(W + "val", ClearShadingValue), new XAttribute(W + "fill", background)));
             pPr.Add(new XElement(W + "pBdr",
                 CodePaddingBorder("top", _layout.CodeVerticalPaddingPoints, background),
                 CodePaddingBorder("left", _layout.CodeHorizontalPaddingPoints, background),
-                CodePaddingBorder("bottom", _layout.CodeVerticalPaddingPoints, background),
-                CodePaddingBorder("right", _layout.CodeHorizontalPaddingPoints, background)));
+                CodePaddingBorder(BottomSideName, _layout.CodeVerticalPaddingPoints, background),
+                CodePaddingBorder(RightSideName, _layout.CodeHorizontalPaddingPoints, background)));
             var p = new XElement(W + "p", pPr);
             string[] lines = NormalizeNewlines(code).TrimEnd('\n').Split('\n');
             for (int i = 0; i < lines.Length; i++)
@@ -348,8 +365,8 @@ public sealed class MarkdownToWordProcessor : MarkdownSingleFileProcessorBase
                     new XElement(W + "tblBorders",
                         QuoteBorder("left"),
                         HiddenBorder("top"),
-                        HiddenBorder("bottom"),
-                        HiddenBorder("right"),
+                        HiddenBorder(BottomSideName),
+                        HiddenBorder(RightSideName),
                         HiddenBorder("insideH"),
                         HiddenBorder("insideV"))),
                 new XElement(W + "tblGrid",
@@ -361,20 +378,20 @@ public sealed class MarkdownToWordProcessor : MarkdownSingleFileProcessorBase
                     _layout.QuoteVerticalPaddingPoints > 0
                         ? new XElement(W + "tcMar",
                             CellMargin("top", _layout.QuoteVerticalPaddingPoints),
-                            CellMargin("bottom", _layout.QuoteVerticalPaddingPoints))
+                            CellMargin(BottomSideName, _layout.QuoteVerticalPaddingPoints))
                         : null,
                     _template.Id == MarkdownPdfOptions.ThemeDefault
-                        ? new XElement(W + "shd", new XAttribute(W + "val", "clear"), new XAttribute(W + "fill", _resolvedPalette.Surface.Hex))
+                        ? new XElement(W + "shd", new XAttribute(W + "val", ClearShadingValue), new XAttribute(W + "fill", _resolvedPalette.Surface.Hex))
                         : null));
             foreach (Block child in quote)
             {
                 if (child is ParagraphBlock quoteParagraph)
-                    cell.Add(CreateInlineParagraph(quoteParagraph.Inline, "Quote", indentTwips: quoteIndent));
+                    cell.Add(CreateInlineParagraph(quoteParagraph.Inline, QuoteStyleName, indentTwips: quoteIndent));
                 else
                     RenderBlock(child, cell, listDepth, quoteIndent, quoteWidth);
             }
-            if (!cell.Elements().Any()) cell.Add(CreateTextParagraph("", "Quote", quoteIndent));
-            if (cell.Elements().Last().Name == W + "tbl") cell.Add(CreateTextParagraph("", "Quote", quoteIndent));
+            if (!cell.Elements().Any()) cell.Add(CreateTextParagraph("", QuoteStyleName, quoteIndent));
+            if (cell.Elements().Last().Name == W + "tbl") cell.Add(CreateTextParagraph("", QuoteStyleName, quoteIndent));
             table.Add(new XElement(W + "tr", cell));
             return table;
         }
@@ -398,8 +415,8 @@ public sealed class MarkdownToWordProcessor : MarkdownSingleFileProcessorBase
                     new XElement(W + "tblCellMar",
                         CellMargin("top", _layout.TableVerticalPaddingPoints),
                         CellMargin("left", _layout.TableHorizontalPaddingPoints),
-                        CellMargin("bottom", _layout.TableVerticalPaddingPoints),
-                        CellMargin("right", _layout.TableHorizontalPaddingPoints))),
+                        CellMargin(BottomSideName, _layout.TableVerticalPaddingPoints),
+                        CellMargin(RightSideName, _layout.TableHorizontalPaddingPoints))),
                 new XElement(W + "tblGrid", Enumerable.Range(0, columnCount)
                     .Select(index => new XElement(W + "gridCol", new XAttribute(W + "w", columnWidths[index])))));
 
@@ -449,9 +466,9 @@ public sealed class MarkdownToWordProcessor : MarkdownSingleFileProcessorBase
             var tcPr = new XElement(W + "tcPr",
                 new XElement(W + "tcW", new XAttribute(W + "w", columnWidth), new XAttribute(W + "type", "dxa")));
             if (row.IsHeader && _template.Layout.FillTableHeader)
-                tcPr.Add(new XElement(W + "shd", new XAttribute(W + "val", "clear"), new XAttribute(W + "fill", _template.Palette.SoftAccent.Hex)));
+                tcPr.Add(new XElement(W + "shd", new XAttribute(W + "val", ClearShadingValue), new XAttribute(W + "fill", _template.Palette.SoftAccent.Hex)));
             else if (_template.Id == MarkdownPdfOptions.ThemeDefault)
-                tcPr.Add(new XElement(W + "shd", new XAttribute(W + "val", "clear"), new XAttribute(W + "fill", _resolvedPalette.Surface.Hex)));
+                tcPr.Add(new XElement(W + "shd", new XAttribute(W + "val", ClearShadingValue), new XAttribute(W + "fill", _resolvedPalette.Surface.Hex)));
             return tcPr;
         }
 
@@ -459,16 +476,16 @@ public sealed class MarkdownToWordProcessor : MarkdownSingleFileProcessorBase
             new(W + "p",
                 new XElement(W + "pPr",
                     indentTwips > 0 ? new XElement(W + "ind", new XAttribute(W + "left", indentTwips)) : null,
-                    new XElement(W + "spacing",
-                        new XAttribute(W + "after", 0),
+                    new XElement(W + SpacingElementName,
+                        new XAttribute(W + AfterAttributeName, 0),
                         new XAttribute(W + "line", PointsToTwips(_layout.RuleBlockHeightPoints(_template))),
-                        new XAttribute(W + "lineRule", "exact")),
+                        new XAttribute(W + LineRuleAttributeName, ExactLineRuleValue)),
                     new XElement(W + "pBdr",
-                        new XElement(W + "bottom",
-                            new XAttribute(W + "val", "single"),
+                        new XElement(W + BottomSideName,
+                            new XAttribute(W + "val", SingleBorderValue),
                             new XAttribute(W + "sz", "6"),
-                            new XAttribute(W + "space", "1"),
-                            new XAttribute(W + "color", _template.Palette.Border.Hex)))));
+                            new XAttribute(W + SpaceAttributeName, "1"),
+                            new XAttribute(W + ColorAttributeName, _template.Palette.Border.Hex)))));
 
         private void AppendInlines(XElement paragraph, ContainerInline? inline, bool bold, bool italic, string? url)
         {
@@ -553,10 +570,10 @@ public sealed class MarkdownToWordProcessor : MarkdownSingleFileProcessorBase
             if (bold) rPr.Add(new XElement(W + "b"));
             if (italic) rPr.Add(new XElement(W + "i"));
             if (code && shadeCode)
-                rPr.Add(new XElement(W + "shd", new XAttribute(W + "val", "clear"), new XAttribute(W + "fill", "F1F5F9")));
-            if (!string.IsNullOrEmpty(colorHex)) rPr.Add(new XElement(W + "color", new XAttribute(W + "val", colorHex)));
+                rPr.Add(new XElement(W + "shd", new XAttribute(W + "val", ClearShadingValue), new XAttribute(W + "fill", "F1F5F9")));
+            if (!string.IsNullOrEmpty(colorHex)) rPr.Add(new XElement(W + ColorAttributeName, new XAttribute(W + "val", colorHex)));
             return new XElement(W + "r", rPr,
-                new XElement(W + "t", new XAttribute(XNamespace.Xml + "space", "preserve"), text));
+                new XElement(W + "t", new XAttribute(XNamespace.Xml + SpaceAttributeName, "preserve"), text));
         }
 
         private bool TryAddImage(XElement paragraph, string? url)
@@ -643,8 +660,8 @@ public sealed class MarkdownToWordProcessor : MarkdownSingleFileProcessorBase
         {
             var styles = new XElement(W + "styles",
                 new XAttribute(XNamespace.Xmlns + "w", W),
-                CreateParagraphStyle("Normal", "Normal", _layout.BodySizePoints, _template.Palette.Body.Hex, false),
-                CreateParagraphStyle("Quote", "Quote", _layout.BodySizePoints, _template.Palette.Body.Hex, false),
+                CreateParagraphStyle(NormalStyleName, NormalStyleName, _layout.BodySizePoints, _template.Palette.Body.Hex, false),
+                CreateParagraphStyle(QuoteStyleName, QuoteStyleName, _layout.BodySizePoints, _template.Palette.Body.Hex, false),
                 CreateParagraphStyle("CodeBlock", "Code Block", _layout.CodeFontSizePoints, _template.Palette.Strong.Hex, false,
                     lineHeightPoints: _layout.CodeLineHeightPoints, afterPoints: _layout.CodeAfterPoints(_template)),
                 CreateParagraphStyle("TableText", "Table Text", _layout.TableFontSizePoints, _template.Palette.Body.Hex, false,
@@ -667,9 +684,9 @@ public sealed class MarkdownToWordProcessor : MarkdownSingleFileProcessorBase
                 new XElement(W + "name", new XAttribute(W + "val", "Table Grid")),
                 new XElement(W + "tblPr",
                     new XElement(W + "tblBorders",
-                        TableBorder("top"), TableBorder("left"), TableBorder("bottom"), TableBorder("right"),
+                        TableBorder("top"), TableBorder("left"), TableBorder(BottomSideName), TableBorder(RightSideName),
                         TableBorder("insideH"), TableBorder("insideV")))));
-            return new XDocument(new XDeclaration("1.0", "UTF-8", "yes"), styles);
+            return new XDocument(new XDeclaration("1.0", XmlEncodingName, "yes"), styles);
         }
 
         [System.Diagnostics.CodeAnalysis.SuppressMessage("SonarQube", "S107", Justification = "Word paragraph style construction exposes the independent OOXML style attributes explicitly at each call site.")]
@@ -681,13 +698,13 @@ public sealed class MarkdownToWordProcessor : MarkdownSingleFileProcessorBase
             double lineHeight = lineHeightPoints ?? _layout.BodyLineHeightPoints;
             double after = afterPoints ?? _layout.BlockGapPoints;
             var pPr = new XElement(W + "pPr",
-                new XElement(W + "spacing",
+                new XElement(W + SpacingElementName,
                     id == "Heading1" && _layout.HeadingBeforePoints(_template, 1) > 0
                         ? new XAttribute(W + "before", PointsToTwips(_layout.HeadingBeforePoints(_template, 1)))
                         : null,
-                    new XAttribute(W + "after", PointsToTwips(after)),
+                    new XAttribute(W + AfterAttributeName, PointsToTwips(after)),
                     new XAttribute(W + "line", PointsToTwips(lineHeight)),
-                    new XAttribute(W + "lineRule", "exact")));
+                    new XAttribute(W + LineRuleAttributeName, ExactLineRuleValue)));
             if (leftIndent > 0) pPr.Add(new XElement(W + "ind", new XAttribute(W + "left", leftIndent)));
             if (keepNext) pPr.Add(new XElement(W + "keepNext"));
             if (id == "Heading1" && _template.Layout.CenterH1)
@@ -696,10 +713,10 @@ public sealed class MarkdownToWordProcessor : MarkdownSingleFileProcessorBase
             {
                 pPr.Add(new XElement(W + "pBdr",
                     new XElement(W + "left",
-                        new XAttribute(W + "val", "single"),
+                        new XAttribute(W + "val", SingleBorderValue),
                         new XAttribute(W + "sz", "18"),
-                        new XAttribute(W + "space", "8"),
-                        new XAttribute(W + "color", _template.Palette.Accent.Hex))));
+                        new XAttribute(W + SpaceAttributeName, "8"),
+                        new XAttribute(W + ColorAttributeName, _template.Palette.Accent.Hex))));
             }
 
             string latinFont = id == "CodeBlock" ? _template.Typography.MonospaceFont : _template.Typography.LatinFont;
@@ -708,7 +725,7 @@ public sealed class MarkdownToWordProcessor : MarkdownSingleFileProcessorBase
             var rPr = new XElement(W + "rPr",
                 new XElement(W + "rFonts",
                     new XAttribute(W + "ascii", latinFont), new XAttribute(W + "hAnsi", latinFont), new XAttribute(W + "eastAsia", cjkFont)),
-                new XElement(W + "color", new XAttribute(W + "val", color)),
+                new XElement(W + ColorAttributeName, new XAttribute(W + "val", color)),
                 new XElement(W + "sz", new XAttribute(W + "val", HalfPoints(size))),
                 new XElement(W + "szCs", new XAttribute(W + "val", HalfPoints(size))));
             if (bold) rPr.Add(new XElement(W + "b"));
@@ -716,21 +733,21 @@ public sealed class MarkdownToWordProcessor : MarkdownSingleFileProcessorBase
             return new XElement(W + "style",
                 new XAttribute(W + "type", "paragraph"),
                 new XAttribute(W + "styleId", id),
-                id == "Normal" ? new XAttribute(W + "default", "1") : null,
+                id == NormalStyleName ? new XAttribute(W + "default", "1") : null,
                 new XElement(W + "name", new XAttribute(W + "val", name)), pPr, rPr);
         }
 
         private XElement TableBorder(string name) => new(W + name,
-            new XAttribute(W + "val", "single"),
+            new XAttribute(W + "val", SingleBorderValue),
             new XAttribute(W + "sz", "4"),
-            new XAttribute(W + "space", "0"),
-            new XAttribute(W + "color", _template.Palette.Border.Hex));
+            new XAttribute(W + SpaceAttributeName, "0"),
+            new XAttribute(W + ColorAttributeName, _template.Palette.Border.Hex));
 
         private XElement QuoteBorder(string name) => new(W + name,
-            new XAttribute(W + "val", "single"),
+            new XAttribute(W + "val", SingleBorderValue),
             new XAttribute(W + "sz", Math.Max(2, (int)Math.Round(_template.Layout.QuoteBarWidthPoints * 8))),
-            new XAttribute(W + "space", "0"),
-            new XAttribute(W + "color", _resolvedPalette.QuoteBar.Hex));
+            new XAttribute(W + SpaceAttributeName, "0"),
+            new XAttribute(W + ColorAttributeName, _resolvedPalette.QuoteBar.Hex));
 
         private static XElement HiddenBorder(string name) => new(W + name,
             new XAttribute(W + "val", "nil"));
@@ -740,10 +757,10 @@ public sealed class MarkdownToWordProcessor : MarkdownSingleFileProcessorBase
             new XAttribute(W + "type", "dxa"));
 
         private static XElement CodePaddingBorder(string name, double spacePoints, string color) => new(W + name,
-            new XAttribute(W + "val", "single"),
+            new XAttribute(W + "val", SingleBorderValue),
             new XAttribute(W + "sz", "2"),
-            new XAttribute(W + "space", Math.Max(0, (int)Math.Round(spacePoints))),
-            new XAttribute(W + "color", color));
+            new XAttribute(W + SpaceAttributeName, Math.Max(0, (int)Math.Round(spacePoints))),
+            new XAttribute(W + ColorAttributeName, color));
 
         private XElement ParagraphProperties(string style, int indentTwips, bool bodyParagraph = false)
         {
@@ -753,11 +770,11 @@ public sealed class MarkdownToWordProcessor : MarkdownSingleFileProcessorBase
                 pPr.Add(new XElement(W + "ind", new XAttribute(W + "firstLine", PointsToTwips(_template.Layout.FirstLineIndentPoints * _scale))));
             if (bodyParagraph && _template.Layout.JustifyBody)
                 pPr.Add(new XElement(W + "jc", new XAttribute(W + "val", "both")));
-            if (!bodyParagraph && style == "Normal" && indentTwips > 0)
-                pPr.Add(new XElement(W + "spacing",
-                    new XAttribute(W + "after", 0),
+            if (!bodyParagraph && style == NormalStyleName && indentTwips > 0)
+                pPr.Add(new XElement(W + SpacingElementName,
+                    new XAttribute(W + AfterAttributeName, 0),
                     new XAttribute(W + "line", PointsToTwips(_layout.BodyLineHeightPoints)),
-                    new XAttribute(W + "lineRule", "exact")));
+                    new XAttribute(W + LineRuleAttributeName, ExactLineRuleValue)));
             return pPr;
         }
 
@@ -769,8 +786,8 @@ public sealed class MarkdownToWordProcessor : MarkdownSingleFileProcessorBase
                 new XElement(W + "pgSz", new XAttribute(W + "w", width), new XAttribute(W + "h", height)),
                 new XElement(W + "pgMar",
                     new XAttribute(W + "top", PointsToTwips(_template.Layout.EffectiveMarginTopPoints)),
-                    new XAttribute(W + "right", PointsToTwips(_template.Layout.EffectiveMarginRightPoints)),
-                    new XAttribute(W + "bottom", PointsToTwips(_template.Layout.EffectiveMarginBottomPoints)),
+                    new XAttribute(W + RightSideName, PointsToTwips(_template.Layout.EffectiveMarginRightPoints)),
+                    new XAttribute(W + BottomSideName, PointsToTwips(_template.Layout.EffectiveMarginBottomPoints)),
                     new XAttribute(W + "left", PointsToTwips(_template.Layout.EffectiveMarginLeftPoints)),
                     new XAttribute(W + "header", 720), new XAttribute(W + "footer", 720), new XAttribute(W + "gutter", 0)));
         }
@@ -779,15 +796,15 @@ public sealed class MarkdownToWordProcessor : MarkdownSingleFileProcessorBase
         {
             XNamespace ct = "http://schemas.openxmlformats.org/package/2006/content-types";
             var types = new XElement(ct + "Types",
-                new XElement(ct + "Default", new XAttribute("Extension", "rels"), new XAttribute("ContentType", "application/vnd.openxmlformats-package.relationships+xml")),
-                new XElement(ct + "Default", new XAttribute("Extension", "xml"), new XAttribute("ContentType", "application/xml")),
-                new XElement(ct + "Override", new XAttribute("PartName", "/word/document.xml"), new XAttribute("ContentType", "application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml")),
-                new XElement(ct + "Override", new XAttribute("PartName", "/word/styles.xml"), new XAttribute("ContentType", "application/vnd.openxmlformats-officedocument.wordprocessingml.styles+xml")));
+                new XElement(ct + "Default", new XAttribute("Extension", "rels"), new XAttribute(ContentTypeAttributeName, "application/vnd.openxmlformats-package.relationships+xml")),
+                new XElement(ct + "Default", new XAttribute("Extension", "xml"), new XAttribute(ContentTypeAttributeName, "application/xml")),
+                new XElement(ct + "Override", new XAttribute("PartName", "/word/document.xml"), new XAttribute(ContentTypeAttributeName, "application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml")),
+                new XElement(ct + "Override", new XAttribute("PartName", "/word/styles.xml"), new XAttribute(ContentTypeAttributeName, "application/vnd.openxmlformats-officedocument.wordprocessingml.styles+xml")));
             if (_numberingInstances.Count > 0)
-                types.Add(new XElement(ct + "Override", new XAttribute("PartName", "/word/numbering.xml"), new XAttribute("ContentType", "application/vnd.openxmlformats-officedocument.wordprocessingml.numbering+xml")));
+                types.Add(new XElement(ct + "Override", new XAttribute("PartName", "/word/numbering.xml"), new XAttribute(ContentTypeAttributeName, "application/vnd.openxmlformats-officedocument.wordprocessingml.numbering+xml")));
             foreach (ImagePart image in _images.GroupBy(i => Path.GetExtension(i.FileName), StringComparer.OrdinalIgnoreCase).Select(g => g.First()))
-                types.Add(new XElement(ct + "Default", new XAttribute("Extension", Path.GetExtension(image.FileName).TrimStart('.')), new XAttribute("ContentType", image.ContentType)));
-            return new XDocument(new XDeclaration("1.0", "UTF-8", "yes"), types);
+                types.Add(new XElement(ct + "Default", new XAttribute("Extension", Path.GetExtension(image.FileName).TrimStart('.')), new XAttribute(ContentTypeAttributeName, image.ContentType)));
+            return new XDocument(new XDeclaration("1.0", XmlEncodingName, "yes"), types);
         }
 
         private XDocument CreateNumbering()
@@ -808,7 +825,7 @@ public sealed class MarkdownToWordProcessor : MarkdownSingleFileProcessorBase
                 }
                 numbering.Add(num);
             }
-            return new XDocument(new XDeclaration("1.0", "UTF-8", "yes"), numbering);
+            return new XDocument(new XDeclaration("1.0", XmlEncodingName, "yes"), numbering);
         }
 
         private XElement CreateAbstractNumbering(int abstractId, bool ordered)
@@ -844,37 +861,37 @@ public sealed class MarkdownToWordProcessor : MarkdownSingleFileProcessorBase
         private static XDocument CreateRootRelationships()
         {
             XNamespace rel = "http://schemas.openxmlformats.org/package/2006/relationships";
-            return new XDocument(new XDeclaration("1.0", "UTF-8", "yes"),
+            return new XDocument(new XDeclaration("1.0", XmlEncodingName, "yes"),
                 new XElement(rel + "Relationships",
-                    new XElement(rel + "Relationship",
+                    new XElement(rel + RelationshipElementName,
                         new XAttribute("Id", "rId1"),
                         new XAttribute("Type", "http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument"),
-                        new XAttribute("Target", "word/document.xml"))));
+                        new XAttribute(TargetAttributeName, "word/document.xml"))));
         }
 
         private XDocument CreateDocumentRelationships()
         {
             XNamespace rel = "http://schemas.openxmlformats.org/package/2006/relationships";
             var root = new XElement(rel + "Relationships",
-                new XElement(rel + "Relationship",
+                new XElement(rel + RelationshipElementName,
                     new XAttribute("Id", "rIdStyles"),
                     new XAttribute("Type", "http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles"),
-                    new XAttribute("Target", "styles.xml")));
+                    new XAttribute(TargetAttributeName, "styles.xml")));
             if (_numberingInstances.Count > 0)
-                root.Add(new XElement(rel + "Relationship",
+                root.Add(new XElement(rel + RelationshipElementName,
                     new XAttribute("Id", "rIdNumbering"),
                     new XAttribute("Type", "http://schemas.openxmlformats.org/officeDocument/2006/relationships/numbering"),
-                    new XAttribute("Target", "numbering.xml")));
+                    new XAttribute(TargetAttributeName, "numbering.xml")));
             foreach (Relationship relationship in _relationships)
             {
-                var element = new XElement(rel + "Relationship",
+                var element = new XElement(rel + RelationshipElementName,
                     new XAttribute("Id", relationship.Id),
                     new XAttribute("Type", relationship.Type),
-                    new XAttribute("Target", relationship.Target));
+                    new XAttribute(TargetAttributeName, relationship.Target));
                 if (relationship.External) element.Add(new XAttribute("TargetMode", "External"));
                 root.Add(element);
             }
-            return new XDocument(new XDeclaration("1.0", "UTF-8", "yes"), root);
+            return new XDocument(new XDeclaration("1.0", XmlEncodingName, "yes"), root);
         }
 
         private string AddRelationship(string type, string target, bool external)
