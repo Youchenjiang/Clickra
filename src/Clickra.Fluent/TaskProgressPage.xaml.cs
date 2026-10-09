@@ -169,10 +169,6 @@ public sealed partial class TaskProgressPage : Page
         ProgressBar.Value = 0;
         _stopwatch.Restart();
 
-        // 建立（或沿用暫存的）任務檔並登記實例，供 dashboard 取消/查看定位。
-        _taskId = existingTaskId ?? ClickraStorage.StartTask(command, files.Count, string.Join(";", files));
-        App.RegisterTaskPage(_taskId, this);
-
         try
         {
             var result = await ConvertCommandRunner.RunTrackedAsync(command, files, outputs,
@@ -186,7 +182,12 @@ public sealed partial class TaskProgressPage : Page
                 },
                 new ConvertCommandRunner.ConversionOptions(
                     PromptPasswordAsync, PromptSplitAsync,
-                    startIndex, _taskId, commandOptions),
+                    startIndex, existingTaskId, commandOptions,
+                    OnTaskStarted: taskId =>
+                    {
+                        _taskId = taskId;
+                        App.RegisterTaskPage(taskId, this);
+                    }),
                 _cts.Token);
 
             string statusMessage;

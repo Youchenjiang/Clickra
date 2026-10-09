@@ -4,7 +4,7 @@ namespace Clickra.Core.Tests;
 
 static partial class TestSuite
 {
-    private const int ArchitectureViolationBaselineCeiling = 30;
+    private const int ArchitectureViolationBaselineCeiling = 29;
     private static readonly TimeSpan ArchitectureRegexTimeout = TimeSpan.FromSeconds(1);
 
     private sealed record ArchitectureViolationRule(
@@ -27,10 +27,7 @@ static partial class TestSuite
         new(
             "direct task start",
             new Regex(@"\bClickraStorage\.StartTask\(", RegexOptions.Compiled, ArchitectureRegexTimeout),
-            new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase)
-            {
-                ["src/Clickra.Fluent/TaskProgressPage.xaml.cs"] = 1
-            }),
+            new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase)),
         new(
             "direct task completion",
             new Regex(@"\bClickraStorage\.CompleteTask\(", RegexOptions.Compiled, ArchitectureRegexTimeout),
