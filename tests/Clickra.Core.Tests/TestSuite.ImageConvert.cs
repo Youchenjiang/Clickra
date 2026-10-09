@@ -1,4 +1,5 @@
 using Clickra.Core;
+using Clickra.Core.Application;
 using Clickra.Core.Processors;
 using System;
 using System.Collections.Generic;
@@ -200,6 +201,63 @@ static partial class TestSuite
 
     private static void RegisterCommandRegistryAndRunnerTests(TestRunner runner)
     {
+        runner.Run("Img2Pdf use case owns per-source output planning", () =>
+            RunWithTempDirectory(tempDir =>
+            {
+                string firstDir = Path.Combine(tempDir, "first");
+                string secondDir = Path.Combine(tempDir, "second");
+                Directory.CreateDirectory(firstDir);
+                Directory.CreateDirectory(secondDir);
+                string first = CreateTestImage(firstDir, "a.png", ImageFormat.Png);
+                string second = CreateTestImage(secondDir, "b.jpg", ImageFormat.Jpeg);
+
+                ConversionPlan plan = new Img2PdfUseCase().Plan(new ConversionRequest(
+                    Img2PdfUseCase.CommandName,
+                    new[] { first, second }));
+
+                Assert.Equal(Path.Combine(firstDir, "a.pdf"), plan.Outputs[0]);
+                Assert.Equal(Path.Combine(secondDir, "b.pdf"), plan.Outputs[1]);
+                Assert.True(plan.RequiredCapabilities.Count == 0,
+                    "img2pdf must not require a presentation interaction capability.");
+            }));
+
+        runner.Run("Img2Pdf use case honors a shared output directory", () =>
+            RunWithTempDirectory(tempDir =>
+            {
+                string input = CreateTestImage(tempDir, InputPng, ImageFormat.Png);
+                string outputDir = Path.Combine(tempDir, "out");
+                ConversionPlan plan = new Img2PdfUseCase().Plan(new ConversionRequest(
+                    Img2PdfUseCase.CommandName,
+                    new[] { input },
+                    OutputOverride: outputDir));
+
+                Assert.Equal(Path.Combine(Path.GetFullPath(outputDir), "input.pdf"), plan.Outputs[0]);
+            }));
+
+        runner.Run("Img2Pdf use case can run without task tracking", () =>
+            RunWithTempDirectory(tempDir =>
+            {
+                string input = CreateTestImage(tempDir, InputPng, ImageFormat.Png);
+                string outputDir = Path.Combine(tempDir, "out");
+                Directory.CreateDirectory(outputDir);
+                var useCase = new Img2PdfUseCase();
+                ConversionPlan plan = useCase.Plan(new ConversionRequest(
+                    Img2PdfUseCase.CommandName,
+                    new[] { input },
+                    OutputOverride: outputDir,
+                    TrackTaskLifecycle: false));
+                var interaction = new DelegateConversionInteraction(
+                    (_, _, _, _) => Task.FromResult<string?>(null),
+                    (_, _, _) => Task.FromResult<string?>(null),
+                    (_, _, _) => Task.FromResult<IReadOnlyDictionary<string, object>?>(null));
+
+                ConversionResult result = useCase.ExecuteAsync(plan, interaction, progress: null).GetAwaiter().GetResult();
+
+                Assert.True(result.Status == ConversionResultStatus.Succeeded, result.Error ?? "Expected img2pdf success.");
+                Assert.True(string.IsNullOrEmpty(result.TaskId), "Untracked img2pdf must not create a task identity.");
+                Assert.True(File.Exists(plan.Outputs[0]), "Expected img2pdf output from application use case.");
+            }));
+
         runner.Run("ConvertCommandRegistry registers img-to-* commands with image inputs", () =>
         {
             foreach (var command in new[] { CmdImgToPng, CmdImgToJpg, CmdImgToWebp, CmdImgToGif, CmdImgToHeic })
