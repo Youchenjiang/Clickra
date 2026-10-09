@@ -286,34 +286,6 @@ namespace Clickra.UI
             InvalidateRect(hwnd, IntPtr.Zero, false);
         }
 
-        private static void OpenStorePage(IntPtr hwnd)
-        {
-            try
-            {
-                System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
-                {
-                    FileName = Clickra.Core.FluentRuntimeHelper.StoreUri, // NOSONAR
-                    UseShellExecute = true
-                });
-            }
-            catch (Exception ex)
-            {
-                MessageBox(hwnd, $"Cannot open Store: {ex.Message}", AppTitle, 0x10);
-            }
-        }
-
-        /// <summary>Handles LibreOffice setup clicks: browse, install/download and uninstall.</summary>
-        /// <summary>Lets the user browse for a soffice.exe and validates the selection.</summary>
-        /// <summary>Starts the LibreOffice download/install flow after the confirmation prompt.</summary>
-        /// <summary>Downloads, verifies and installs LibreOffice on a background STA thread,
-        /// reporting progress and result through dashboard actions.</summary>
-        /// <summary>Posts the LibreOffice download progress percentage to the dashboard.</summary>
-        /// <summary>Shows the LibreOffice install result (restart-required or ready) on the dashboard.</summary>
-        /// <summary>Shows the LibreOffice download/install failure message on the dashboard.</summary>
-        /// <summary>Starts the LibreOffice uninstall flow after the confirmation prompt.</summary>
-        /// <summary>Uninstalls LibreOffice on a background STA thread, reporting the result
-        /// through a dashboard action.</summary>
-        /// <summary>Allows the user to explicitly adopt an existing system LibreOffice into Clickra's management.</summary>
         /// <summary>Toggles the UI-language and PDF-language dropdowns.</summary>
         static void HandleDropdownToggleClick(IntPtr hwnd, int element)
         {
