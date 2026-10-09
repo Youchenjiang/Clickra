@@ -70,7 +70,8 @@ public static class ConvertCommandRegistry
                 "img-stitch" => new() { Path.Combine(outputDir, "Stitched_Image.png") },
                 CmdCompressPdf => files.Select(f => Path.Combine(ClickraStorage.GetOutputDir(f), Path.GetFileNameWithoutExtension(f) + "_compressed.pdf")).ToList(),
                 "translate-pdf" => files.Select(f => Path.Combine(ClickraStorage.GetOutputDir(f), Path.GetFileNameWithoutExtension(f) + "_translated.pdf")).ToList(),
-                "decrypt-pdf" => files.Select(f => Path.Combine(ClickraStorage.GetOutputDir(f), Path.GetFileNameWithoutExtension(f) + "_decrypted.pdf")).ToList(),
+                "decrypt-pdf" => throw new InvalidOperationException(
+                    "decrypt-pdf output planning is owned by the application use case."),
                 "split-pdf" => files.Select(f => Path.Combine(ClickraStorage.GetOutputDir(f), Path.GetFileNameWithoutExtension(f) + "_split.pdf")).ToList(),
                 CmdImg2Pdf => files.Select(f => Path.Combine(ClickraStorage.GetOutputDir(f), Path.GetFileNameWithoutExtension(f) + ".pdf")).ToList(),
                 CmdMdToPdf => files.Select(f => Path.Combine(

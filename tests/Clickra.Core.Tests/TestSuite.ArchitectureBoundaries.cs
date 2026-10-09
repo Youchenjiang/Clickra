@@ -196,6 +196,9 @@ static partial class TestSuite
 
         Assert.False(runner.Contains("case \"decrypt-pdf\"", StringComparison.Ordinal),
             "Legacy ConvertCommandRunner must not retain a decrypt execution branch after migration.");
+        string registry = File.ReadAllText(Path.Combine(root, "src", "Clickra.Core", "Processors", "ConvertCommandRegistry.cs"));
+        Assert.False(registry.Contains("_decrypted.pdf", StringComparison.Ordinal),
+            "Legacy ConvertCommandRegistry must not retain decrypt output-path policy after application migration.");
         Assert.False(native.Contains("FileProcessor.DecryptPdf", StringComparison.Ordinal),
             "Native presentation must not execute the decrypt processor directly.");
         Assert.False(quiet.Contains("FileProcessor.DecryptPdf", StringComparison.Ordinal),
