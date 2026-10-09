@@ -66,6 +66,9 @@ static partial class TestSuite
         runner.RunGuard(
             "Architecture boundaries: conversion commands have one registry owner",
             TestConversionUseCaseRegistryRejectsDuplicateOwners);
+        runner.RunGuard(
+            "Architecture boundaries: product use case catalog owns migrated commands",
+            TestProductUseCaseCatalogOwnsMigratedCommands);
     }
 
     private static void TestArchitectureViolationBaseline()
@@ -165,6 +168,16 @@ static partial class TestSuite
                 first,
                 new StubConversionUseCase("DECRYPT-PDF")
             }));
+    }
+
+    private static void TestProductUseCaseCatalogOwnsMigratedCommands()
+    {
+        IConversionUseCase decrypt = ConversionUseCases.GetRequired(DecryptPdfUseCase.CommandName);
+        Assert.True(decrypt is DecryptPdfUseCase,
+            "decrypt-pdf must resolve through the product-wide application use-case catalog.");
+        Assert.True(ConversionUseCases.Commands.Count(command =>
+                command.Equals(DecryptPdfUseCase.CommandName, StringComparison.OrdinalIgnoreCase)) == 1,
+            "The product catalog must expose exactly one decrypt-pdf owner.");
     }
 
     private sealed class StubConversionUseCase(string command) : IConversionUseCase
