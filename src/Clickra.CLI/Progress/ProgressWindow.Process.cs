@@ -18,7 +18,7 @@ namespace Clickra.UI
             public void Report(T value) => callback(value);
         }
 
-        private sealed class NativeExecutionObserver(
+        private sealed class DecryptExecutionObserver(
             ProgressWindow owner,
             IReadOnlyList<string> files,
             Action<int, int, string> progressCallback) : IConversionExecutionObserver
@@ -30,6 +30,20 @@ namespace Clickra.UI
                     (fileIndex * 100) + 10,
                     files.Count * 100,
                     Loc("cli_progress_decrypting_pdf", Path.GetFileName(files[fileIndex]), fileIndex + 1, files.Count));
+        }
+
+        private sealed class SplitExecutionObserver(
+            ProgressWindow owner,
+            IReadOnlyList<string> files,
+            Action<int, int, string> progressCallback) : IConversionExecutionObserver
+        {
+            public void OnTaskStarted(string taskId) => owner.TaskId = taskId;
+
+            public void OnFileStarting(int fileIndex) =>
+                progressCallback(
+                    (fileIndex * 100) + 10,
+                    files.Count * 100,
+                    Loc("cli_progress_splitting_pdf", Path.GetFileName(files[fileIndex]), fileIndex + 1, files.Count));
         }
 
         private string? _inputPassword = null;
@@ -81,6 +95,11 @@ namespace Clickra.UI
                     RunApplicationDecrypt(hwnd, currentFiles, progressCallback);
                     return;
                 }
+                if (cmd.Equals(SplitPdfUseCase.CommandName, StringComparison.OrdinalIgnoreCase))
+                {
+                    RunApplicationSplit(hwnd, currentFiles, progressCallback);
+                    return;
+                }
 
                 // 立即建立 Pending 任務紀錄，讓 Dashboard 可即時看到；每個任務有
                 // 獨立的進度檔（tasks/task-{id}.tmp），並行任務不會互相覆蓋。
@@ -99,9 +118,6 @@ namespace Clickra.UI
                         break;
                     case "translate-pdf":
                         RunTranslatePdf(currentFiles, plannedOutputs, progressCallback);
-                        break;
-                    case "split-pdf":
-                        RunSplitPdf(hwnd, currentFiles, plannedOutputs, progressCallback);
                         break;
                     default:
                         RunSharedCommand(cmd, currentFiles, plannedOutputs, progressCallback);
@@ -183,7 +199,7 @@ namespace Clickra.UI
                     plan,
                     interaction,
                     progress,
-                    new NativeExecutionObserver(this, files, progressCallback),
+                    new DecryptExecutionObserver(this, files, progressCallback),
                     _cts.Token)
                 .GetAwaiter()
                 .GetResult();
@@ -198,6 +214,79 @@ namespace Clickra.UI
                 }
                 PostMessageW(hwnd, WM_USER_INVALIDATE, (IntPtr)1, IntPtr.Zero);
                 ShowToastNotification(DecryptPdfUseCase.CommandName, files.Count);
+                Thread.Sleep(1500);
+                ConversionTaskCleanup.Delete(result.TaskId, bestEffort: true);
+                PostMessageW(hwnd, 0x0010, IntPtr.Zero, IntPtr.Zero); // WM_CLOSE
+                return;
+            }
+
+            bool wasCanceled = result.Status == ConversionResultStatus.Canceled;
+            string errorMsg = wasCanceled ? "User Aborted" : result.Error ?? "";
+            lock (_stateLock)
+            {
+                _hasError = true;
+                _errorMessage = errorMsg;
+            }
+            PostMessageW(hwnd, WM_USER_INVALIDATE, (IntPtr)1, IntPtr.Zero);
+            ConversionTaskCleanup.Delete(result.TaskId, bestEffort: true);
+            PostMessageW(hwnd, 0x0010, IntPtr.Zero, IntPtr.Zero); // WM_CLOSE
+        }
+
+        private void RunApplicationSplit(
+            IntPtr hwnd,
+            List<string> files,
+            Action<int, int, string> progressCallback)
+        {
+            string pagesOption = GetSplitPagesOptionFromCommandLine();
+            IConversionUseCase useCase = ConversionUseCases.GetRequired(SplitPdfUseCase.CommandName);
+            ConversionPlan plan = useCase.Plan(new ConversionRequest(
+                SplitPdfUseCase.CommandName,
+                files,
+                new Dictionary<string, object>
+                {
+                    [SplitPdfUseCase.PagesOptionKey] = pagesOption
+                },
+                ExistingTaskId: _existingTaskId,
+                OutputOverride: _outputDirOverride,
+                BestEffortTaskPersistence: true)) with
+            {
+                ResumeStartIndex = _startIndex
+            };
+            var interaction = new DelegateConversionInteraction(
+                (_, _, _, _) => System.Threading.Tasks.Task.FromResult<string?>(null),
+                (index, inputPath, token) =>
+                    System.Threading.Tasks.Task.FromResult<string?>(PromptVisualSplitPages(hwnd, inputPath)),
+                (_, _, _) => System.Threading.Tasks.Task.FromResult<IReadOnlyDictionary<string, object>?>(null));
+            var progress = new CallbackProgress<ConversionProgress>(state =>
+            {
+                int fileIndex = Math.Clamp((Math.Max(state.Current, 1) - 1) / 100, 0, files.Count - 1);
+                int fileProgress = Math.Clamp(state.Current - (fileIndex * 100), 0, 100);
+                int progressPct = (int)(fileProgress * 0.8) + 10;
+                progressCallback(
+                    (fileIndex * 100) + progressPct,
+                    files.Count * 100,
+                    Loc("cli_progress_splitting_pdf_stage", state.Message, fileIndex + 1, files.Count));
+            });
+
+            ConversionResult result = useCase.ExecuteAsync(
+                    plan,
+                    interaction,
+                    progress,
+                    new SplitExecutionObserver(this, files, progressCallback),
+                    _cts.Token)
+                .GetAwaiter()
+                .GetResult();
+
+            if (result.Status == ConversionResultStatus.Succeeded)
+            {
+                progressCallback(files.Count * 100, files.Count * 100, Loc("cli_progress_splitting_pdf_done"));
+                lock (_stateLock)
+                {
+                    _completed = true;
+                    _message = Loc("cli_progress_all_done");
+                }
+                PostMessageW(hwnd, WM_USER_INVALIDATE, (IntPtr)1, IntPtr.Zero);
+                ShowToastNotification(SplitPdfUseCase.CommandName, files.Count);
                 Thread.Sleep(1500);
                 ConversionTaskCleanup.Delete(result.TaskId, bestEffort: true);
                 PostMessageW(hwnd, 0x0010, IntPtr.Zero, IntPtr.Zero); // WM_CLOSE
@@ -307,28 +396,6 @@ namespace Clickra.UI
             progressCallback(files.Count * 100, files.Count * 100, Loc("cli_progress_translating_pdf_saving"));
         }
 
-        /// <summary>Splits each PDF, prompting the visual splitter when no --pages range
-        /// was supplied on the command line.</summary>
-        private void RunSplitPdf(IntPtr hwnd, List<string> files, List<string> outputs, Action<int, int, string> progressCallback)
-        {
-            string pagesOption = GetSplitPagesOptionFromCommandLine();
-            for (int i = _startIndex; i < files.Count; i++)
-            {
-                _cts.Token.ThrowIfCancellationRequested();
-                TryRecordTaskIndex(i);
-                var f = files[i];
-                string targetPages = ResolveSplitTargetPages(hwnd, f, pagesOption);
-
-                progressCallback((i * 100) + 10, files.Count * 100, Loc("cli_progress_splitting_pdf", Path.GetFileName(f), i + 1, files.Count));
-                FileProcessor.SplitPdf(f, outputs[i], targetPages, (curr, tot, msg) => {
-                    int progressPct = tot > 0 ? (int)(curr * 80.0 / tot) + 10 : 10;
-                    progressCallback((i * 100) + progressPct, files.Count * 100, Loc("cli_progress_splitting_pdf_stage", msg, i + 1, files.Count));
-                }, _cts.Token);
-            }
-            _cts.Token.ThrowIfCancellationRequested();
-            progressCallback(files.Count * 100, files.Count * 100, Loc("cli_progress_splitting_pdf_done"));
-        }
-
         /// <summary>Reads the --pages / -p page-range option from the command line.</summary>
         private static string GetSplitPagesOptionFromCommandLine()
         {
@@ -345,16 +412,9 @@ namespace Clickra.UI
             return pagesOption;
         }
 
-        /// <summary>Returns the page range for a split, launching the visual splitter (or
-        /// password prompt) when no --pages range was supplied.</summary>
-        private string ResolveSplitTargetPages(IntPtr hwnd, string filePath, string pagesOption)
+        /// <summary>Launches the Native visual splitter and returns the selected page specification.</summary>
+        private string PromptVisualSplitPages(IntPtr hwnd, string filePath)
         {
-            string targetPages = pagesOption;
-            if (!string.IsNullOrEmpty(targetPages) && !targetPages.Equals("prompt", StringComparison.OrdinalIgnoreCase))
-            {
-                return targetPages;
-            }
-
             lock (_stateLock)
             {
                 _isPromptingPassword = true;
@@ -370,6 +430,7 @@ namespace Clickra.UI
             _passwordEvent.WaitOne();
 
             bool cancelled = false;
+            string targetPages;
             lock (_stateLock)
             {
                 cancelled = _passwordCancelled;
