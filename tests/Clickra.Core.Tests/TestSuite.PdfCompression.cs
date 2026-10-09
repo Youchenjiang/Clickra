@@ -198,7 +198,7 @@ static partial class TestSuite
             "Could not locate the repository root from the test output directory.");
         string fluentXaml = File.ReadAllText(Path.Combine(root, "src", "Clickra.Fluent", "MainPage.xaml"));
         string cliPaint = File.ReadAllText(Path.Combine(root, "src", "Clickra.CLI", "Dashboard", "DashboardWindow.Paint.Settings.cs"));
-        string cliClick = File.ReadAllText(Path.Combine(root, "src", "Clickra.CLI", "Dashboard", "DashboardWindow.Events.Click.cs"));
+        string cliClick = File.ReadAllText(Path.Combine(root, "src", "Clickra.CLI", "Dashboard", "DashboardWindow.Events.Settings.cs"));
         string cliDrag = File.ReadAllText(Path.Combine(root, "src", "Clickra.CLI", "Dashboard", "DashboardWindow.Events.cs"));
 
         Assert.True(fluentXaml.Contains("x:Name=\"CompressionSlider\"", StringComparison.Ordinal) &&

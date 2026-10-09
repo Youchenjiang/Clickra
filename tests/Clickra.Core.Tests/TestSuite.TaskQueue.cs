@@ -24,6 +24,7 @@ static partial class TestSuite
     private const string DashboardDirectory = "Dashboard";
     private const string DashboardEventsClickFile = "DashboardWindow.Events.Click.cs";
     private const string DashboardEventsHistoryFile = "DashboardWindow.Events.History.cs";
+    private const string DashboardEventsSettingsFile = "DashboardWindow.Events.Settings.cs";
     private const string DashboardHistoryPaintFile = "DashboardWindow.Paint.History.cs";
     public static void RegisterTaskQueueTests(TestRunner runner)
     {
@@ -195,7 +196,9 @@ static partial class TestSuite
         if (root is null) throw new TestSkippedException(RepoRootNotFoundMessage);
 
         string paintCode = File.ReadAllText(Path.Combine(root, "src", CliProjectDirectory, DashboardDirectory, "DashboardWindow.Paint.Settings.cs"));
-        string clickCode = File.ReadAllText(Path.Combine(root, "src", CliProjectDirectory, DashboardDirectory, DashboardEventsClickFile));
+        string dashboardDir = Path.Combine(root, "src", CliProjectDirectory, DashboardDirectory);
+        string clickCode = File.ReadAllText(Path.Combine(dashboardDir, DashboardEventsClickFile))
+                         + File.ReadAllText(Path.Combine(dashboardDir, DashboardEventsSettingsFile));
 
         // Must render the section title and description using localization keys
         foreach (string key in new[] { "setting_parked_ttl_title", "setting_parked_ttl_desc" })
@@ -255,7 +258,7 @@ static partial class TestSuite
 
         string fluentCode = File.ReadAllText(Path.Combine(root, "src", FluentProjectDirectory, FluentMainPageFile));
         string fluentXaml = File.ReadAllText(Path.Combine(root, "src", FluentProjectDirectory, "MainPage.xaml"));
-        string cliClick = File.ReadAllText(Path.Combine(root, "src", CliProjectDirectory, DashboardDirectory, DashboardEventsClickFile));
+        string cliClick = File.ReadAllText(Path.Combine(root, "src", CliProjectDirectory, DashboardDirectory, DashboardEventsSettingsFile));
 
         Assert.True(ClickraSettings.MaxParkedRetentionDays > 0, "The shared retention bound must be positive.");
         Assert.Equal(ClickraSettings.MaxParkedTaskRetentionDays, ClickraSettings.MaxParkedRetentionDays);

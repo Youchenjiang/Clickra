@@ -479,7 +479,8 @@ static partial class TestSuite
         string paint = File.ReadAllText(Path.Combine(dir, "DashboardWindow.Paint.Settings.cs"));
         string dashboardPaint = File.ReadAllText(Path.Combine(dir, DashboardPaintFileName));
         string hitTest = File.ReadAllText(Path.Combine(dir, "DashboardWindow.HitTesting.cs"));
-        string click = File.ReadAllText(Path.Combine(dir, EventsClickFileName));
+        string click = File.ReadAllText(Path.Combine(dir, EventsClickFileName))
+                     + File.ReadAllText(Path.Combine(dir, "DashboardWindow.Events.Settings.cs"));
         string events = File.ReadAllText(Path.Combine(dir, EventsFileName));
 
         Assert.True(paint.Contains("SettingsLayout.IsWide((int)logW)", StringComparison.Ordinal),
