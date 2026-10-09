@@ -59,6 +59,9 @@ static partial class TestSuite
         runner.RunGuard(
             "Architecture boundaries: baseline invariants stay explicit",
             TestArchitectureViolationBaselineInvariants);
+        runner.RunGuard(
+            "Architecture boundaries: application contracts stay UI-independent",
+            TestApplicationContractsStayUiIndependent);
     }
 
     private static void TestArchitectureViolationBaseline()
@@ -110,6 +113,35 @@ static partial class TestSuite
                 .All(entry => entry.Path.StartsWith("src/Clickra.CLI/", StringComparison.Ordinal)
                               || entry.Path.StartsWith("src/Clickra.Fluent/", StringComparison.Ordinal)),
             "The architecture baseline is only for UI/application surface debt, not a general exception list.");
+    }
+
+    private static void TestApplicationContractsStayUiIndependent()
+    {
+        string? root = FindRepoRoot();
+        if (root is null) throw new TestSkippedException("Could not locate the repository root.");
+
+        string applicationDir = Path.Combine(root, "src", "Clickra.Core", "Application");
+        Assert.True(Directory.Exists(applicationDir), "The shared application contract directory must exist.");
+
+        string[] forbidden =
+        {
+            "Microsoft.UI",
+            "Clickra.UI",
+            "System.Windows",
+            "Windows.Win32",
+            "HWND",
+            "System.Drawing"
+        };
+        foreach (string file in Directory.EnumerateFiles(applicationDir, "*.cs", SearchOption.AllDirectories))
+        {
+            string source = File.ReadAllText(file);
+            foreach (string token in forbidden)
+            {
+                Assert.False(
+                    source.Contains(token, StringComparison.Ordinal),
+                    $"{NormalizeRepoPath(root, file)} must not depend on UI/platform token '{token}'.");
+            }
+        }
     }
 
     private static string NormalizeRepoPath(string root, string file) =>
