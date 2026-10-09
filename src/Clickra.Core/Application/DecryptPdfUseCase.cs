@@ -34,10 +34,18 @@ public sealed class DecryptPdfUseCase : IConversionUseCase
             throw new InvalidOperationException(validation.Error);
 
         var inputs = request.InputFiles.ToList();
+        string? outputOverride = string.IsNullOrWhiteSpace(request.OutputOverride)
+            ? null
+            : Path.GetFullPath(request.OutputOverride);
+        List<string> outputs = inputs
+            .Select(input => Path.Combine(
+                outputOverride ?? ClickraStorage.GetOutputDir(input),
+                Path.GetFileNameWithoutExtension(input) + "_decrypted.pdf"))
+            .ToList();
         return new ConversionPlan(
             CommandName,
             inputs,
-            ConvertCommandRegistry.EstimateOutputs(CommandName, inputs, request.OutputOverride),
+            outputs,
             new HashSet<ConversionCapability> { ConversionCapability.Password },
             new Dictionary<string, object>(StringComparer.Ordinal),
             ExistingTaskId: request.ExistingTaskId,

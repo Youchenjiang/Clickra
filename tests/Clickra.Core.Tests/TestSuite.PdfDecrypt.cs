@@ -40,6 +40,23 @@ static partial class TestSuite
             }
         });
         runner.Run("Decrypt use case owns planning and password retry", TestDecryptUseCaseOwnsWorkflow);
+        runner.Run("Decrypt use case honors an explicit output directory", TestDecryptUseCaseHonorsOutputDirectory);
+    }
+
+    private static void TestDecryptUseCaseHonorsOutputDirectory()
+    {
+        string input = Path.Combine(Path.GetTempPath(), "decrypt-plan-source", "secret.pdf");
+        string outputDir = Path.Combine(Path.GetTempPath(), $"clickra-decrypt-output-{Guid.NewGuid():N}");
+        var useCase = new DecryptPdfUseCase();
+
+        ConversionPlan plan = useCase.Plan(new ConversionRequest(
+            DecryptPdfUseCase.CommandName,
+            new[] { input },
+            OutputOverride: outputDir));
+
+        Assert.Equal(
+            Path.Combine(Path.GetFullPath(outputDir), "secret_decrypted.pdf"),
+            plan.Outputs.Single());
     }
 
     private static void TestDecryptUseCaseOwnsWorkflow()
