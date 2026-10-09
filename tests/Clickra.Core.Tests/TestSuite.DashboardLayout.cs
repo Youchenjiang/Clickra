@@ -13,6 +13,7 @@ namespace Clickra.Core.Tests;
 static partial class TestSuite
 {
     private const string EventsClickFileName = "DashboardWindow.Events.Click.cs";
+    private const string EventsHistoryFileName = "DashboardWindow.Events.History.cs";
     private const string EventsFileName = "DashboardWindow.Events.cs";
     private const string DashboardCliDirectoryName = "Clickra.CLI";
     private const string DashboardSourceDirectoryName = "Dashboard";
@@ -642,7 +643,7 @@ static partial class TestSuite
                      (DashboardPaintFileName, "DashboardLayout.SidebarTabY("),
                      ("DashboardWindow.Convert.cs", "DashboardLayout.ConvertCardRect("),
                      ("DashboardWindow.HitTesting.cs", "DashboardLayout.SidebarTabAt("),
-                     (EventsClickFileName, "DashboardLayout.DetailScrollFieldAt("),
+                     (EventsHistoryFileName, "DashboardLayout.DetailScrollFieldAt("),
                      (EventsFileName, "DashboardLayout.DetailScrollFieldAt("),
                      ("DashboardWindow.Paint.Dropdowns.cs", "DashboardLayout.DropdownItemY("),
                      ("DashboardWindow.Paint.Settings.cs", "DashboardLayout.DropdownButtonRect("),
@@ -654,7 +655,7 @@ static partial class TestSuite
         }
 
         // 這兩個檔案負責命中：一個是滑鼠點擊、一個是滾輪，兩者都必須走同一個欄位判定。
-        foreach (string file in new[] { EventsClickFileName, EventsFileName })
+        foreach (string file in new[] { EventsHistoryFileName, EventsFileName })
         {
             string source = File.ReadAllText(Path.Combine(dir, file));
             Assert.True(source.Contains("DashboardLayout.DetailScrollFieldAt(", StringComparison.Ordinal),

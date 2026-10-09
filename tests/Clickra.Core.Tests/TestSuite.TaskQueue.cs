@@ -23,6 +23,7 @@ static partial class TestSuite
     private const string CliProjectDirectory = "Clickra.CLI";
     private const string DashboardDirectory = "Dashboard";
     private const string DashboardEventsClickFile = "DashboardWindow.Events.Click.cs";
+    private const string DashboardEventsHistoryFile = "DashboardWindow.Events.History.cs";
     private const string DashboardHistoryPaintFile = "DashboardWindow.Paint.History.cs";
     public static void RegisterTaskQueueTests(TestRunner runner)
     {
@@ -454,14 +455,14 @@ static partial class TestSuite
         Assert.True(layout.Contains("HistoryLayout.ContentHeight(", StringComparison.Ordinal),
             "The scroll height must come from the same shared History column.");
 
-        foreach (string file in new[] { DashboardHistoryPaintFile, "DashboardWindow.HitTesting.cs", DashboardEventsClickFile, "DashboardWindow.Events.cs" })
+        foreach (string file in new[] { DashboardHistoryPaintFile, "DashboardWindow.HitTesting.cs", DashboardEventsHistoryFile, "DashboardWindow.Events.cs" })
         {
             string source = File.ReadAllText(Path.Combine(dir, file));
             Assert.True(source.Contains("HistoryBlock", StringComparison.Ordinal),
                 $"{file} must take history row positions from the shared column.");
         }
 
-        foreach (string file in new[] { DashboardHistoryPaintFile, "DashboardWindow.HitTesting.cs", DashboardEventsClickFile, "DashboardWindow.Events.cs", "DashboardWindow.cs" })
+        foreach (string file in new[] { DashboardHistoryPaintFile, "DashboardWindow.HitTesting.cs", DashboardEventsHistoryFile, "DashboardWindow.Events.cs", "DashboardWindow.cs" })
         {
             string source = File.ReadAllText(Path.Combine(dir, file));
             Assert.False(source.Contains("GetHistoryListStartY", StringComparison.Ordinal),
@@ -725,7 +726,7 @@ static partial class TestSuite
         if (root is null) throw new TestSkippedException("Could not locate the repository root from the test output directory.");
 
         string dir = Path.Combine(root, "src", "Clickra.CLI", "Dashboard");
-        string click = File.ReadAllText(Path.Combine(dir, "DashboardWindow.Events.Click.cs"));
+        string click = File.ReadAllText(Path.Combine(dir, DashboardEventsHistoryFile));
         string paint = File.ReadAllText(Path.Combine(dir, "DashboardWindow.Paint.History.cs"));
         string progress = File.ReadAllText(Path.Combine(root, "src", "Clickra.CLI", "Progress", "ProgressWindow.cs"));
 
