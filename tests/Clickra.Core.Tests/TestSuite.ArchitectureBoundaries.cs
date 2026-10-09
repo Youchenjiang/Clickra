@@ -4,7 +4,7 @@ namespace Clickra.Core.Tests;
 
 static partial class TestSuite
 {
-    private const int ArchitectureViolationBaselineCeiling = 32;
+    private const int ArchitectureViolationBaselineCeiling = 30;
     private static readonly TimeSpan ArchitectureRegexTimeout = TimeSpan.FromSeconds(1);
 
     private sealed record ArchitectureViolationRule(
@@ -29,16 +29,12 @@ static partial class TestSuite
             new Regex(@"\bClickraStorage\.StartTask\(", RegexOptions.Compiled, ArchitectureRegexTimeout),
             new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase)
             {
-                ["src/Clickra.CLI/Cli/ClickraStartup.cs"] = 1,
                 ["src/Clickra.Fluent/TaskProgressPage.xaml.cs"] = 1
             }),
         new(
             "direct task completion",
             new Regex(@"\bClickraStorage\.CompleteTask\(", RegexOptions.Compiled, ArchitectureRegexTimeout),
-            new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase)
-            {
-                ["src/Clickra.CLI/Cli/ClickraStartup.cs"] = 1
-            }),
+            new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase)),
         new(
             "direct output planning",
             new Regex(@"\bConvertCommandRegistry\.EstimateOutputs\(", RegexOptions.Compiled, ArchitectureRegexTimeout),
@@ -111,9 +107,6 @@ static partial class TestSuite
         int baselineCount = ArchitectureViolationRules.Sum(rule => rule.Baseline.Values.Sum());
         Assert.Equal(ArchitectureViolationBaselineCeiling, baselineCount);
 
-        Assert.True(
-            ArchitectureViolationRules.All(rule => rule.Baseline.Count > 0),
-            "Every architecture violation rule must name its current legacy sites explicitly.");
         Assert.True(
             ArchitectureViolationRules
                 .SelectMany(rule => rule.Baseline.Keys.Select(path => (rule.Name, Path: path)))
