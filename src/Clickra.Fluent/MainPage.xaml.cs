@@ -1,4 +1,5 @@
 using Clickra.Core;
+using Clickra.Core.Application;
 using Clickra.Core.Processors;
 using Microsoft.UI;
 using Microsoft.UI.Xaml;
@@ -532,6 +533,31 @@ public sealed partial class MainPage : Page
 
         try
         {
+            if (command.Equals(DecryptPdfUseCase.CommandName, StringComparison.OrdinalIgnoreCase))
+            {
+                IConversionUseCase useCase = ConversionUseCases.GetRequired(command);
+                ConversionPlan plan = useCase.Plan(new ConversionRequest(command, files));
+                var interaction = new DelegateConversionInteraction(
+                    (index, inputPath, isRetry, token) =>
+                        DispatcherQueue.EnqueueAsync(() => FluentDialogs.PromptPasswordAsync(XamlRoot, L)),
+                    (_, _, _) => Task.FromResult<string?>(null),
+                    (_, _, _) => Task.FromResult<IReadOnlyDictionary<string, object>?>(null));
+                var progress = new Progress<ConversionProgress>(state =>
+                {
+                    int percent = state.Total > 0
+                        ? Math.Clamp((int)(state.Current * 100.0 / state.Total), 0, 100)
+                        : 0;
+                    SetProgress(percent, state.Message);
+                });
+                ConversionResult applicationResult = await useCase.ExecuteAsync(
+                    plan,
+                    interaction,
+                    progress,
+                    cancellationToken: _cts.Token);
+                await HandleApplicationConversionResultAsync(command, files, applicationResult);
+                return;
+            }
+
             var result = await ConvertCommandRunner.RunTrackedAsync(command, files, outputs,
                 (percent, message) => DispatcherQueue.TryEnqueue(() => SetProgress(percent, message)),
                 new ConvertCommandRunner.ConversionOptions(
@@ -566,6 +592,35 @@ public sealed partial class MainPage : Page
             _isRunning = false;
             UpdateStartState();
             RefreshHistory();
+        }
+    }
+
+    private async Task HandleApplicationConversionResultAsync(
+        string command,
+        IReadOnlyCollection<string> files,
+        ConversionResult result)
+    {
+        switch (result.Status)
+        {
+            case ConversionResultStatus.Succeeded:
+                SetProgress(100, L("fluent_progress_completed"));
+                ToastHelper.Show(
+                    L("fluent_toast_done_title"),
+                    string.Format(L("fluent_toast_done_body"), L(ConvertCommandRegistry.GetLabelKey(command)), files.Count));
+                _selectedFiles.Clear();
+                RefreshFiles();
+                break;
+            case ConversionResultStatus.Canceled:
+                SetProgress(0, L("fluent_progress_canceled"));
+                ToastHelper.Show(
+                    L("fluent_toast_canceled_title"),
+                    string.Format(L("fluent_toast_canceled_body"), L(ConvertCommandRegistry.GetLabelKey(command))));
+                break;
+            default:
+                SetProgress(0, string.Format(L("fluent_progress_failed"), result.Error));
+                ToastHelper.Show(L("fluent_toast_failed_title"), result.Error ?? "");
+                await ShowErrorAsync(result.Error ?? "");
+                break;
         }
     }
 
