@@ -8,6 +8,10 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <Compile Include="..\Shared\ConvertCommandMetadata.cs" Link="Shared\ConvertCommandMetadata.cs" />
+  </ItemGroup>
+
+  <ItemGroup>
     <AssemblyAttribute Include="System.Runtime.CompilerServices.InternalsVisibleTo">
       <_Parameter1>Clickra.Core.Tests</_Parameter1>
     </AssemblyAttribute>

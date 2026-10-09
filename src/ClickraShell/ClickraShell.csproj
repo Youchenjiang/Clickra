@@ -20,4 +20,8 @@
     <LinkerArg Include="/IGNORE:4104" />
   </ItemGroup>
 
+  <ItemGroup>
+    <Compile Include="..\Shared\ConvertCommandMetadata.cs" Link="Shared\ConvertCommandMetadata.cs" />
+  </ItemGroup>
+
 </Project>
