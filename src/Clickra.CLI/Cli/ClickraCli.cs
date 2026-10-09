@@ -38,29 +38,35 @@ namespace Clickra
         [STAThread]
         static void Main(string[] args) => ClickraStartup.Run(args);
 
-        /// <summary>Builds the default PDF compression options from saved settings.</summary>
-        private static Dictionary<string, object> BuildDefaultPdfOptions() =>
-            ConvertCommandRegistry.CompressionOptions();
-
         /// <summary>Compresses each PDF in quiet mode, printing progress to the console.</summary>
         private static void HandleCompressPdfQuiet(List<string> files, string outputDir, bool hasCliLevel, string compressionLevel)
         {
-            Dictionary<string, object>? pdfOptions = hasCliLevel ? null : BuildDefaultPdfOptions();
+            IReadOnlyDictionary<string, object>? options = hasCliLevel
+                ? new Dictionary<string, object>
+                {
+                    [CompressPdfUseCase.LevelOptionKey] = compressionLevel
+                }
+                : null;
+            IConversionUseCase useCase = ConversionUseCases.GetRequired(CompressPdfUseCase.CommandName);
+            ConversionPlan plan = useCase.Plan(new ConversionRequest(
+                CompressPdfUseCase.CommandName,
+                files,
+                options,
+                OutputOverride: outputDir,
+                TrackTaskLifecycle: false));
+            var interaction = new DelegateConversionInteraction(
+                (_, _, _, _) => Task.FromResult<string?>(null),
+                (_, _, _) => Task.FromResult<string?>(null),
+                (_, _, _) => Task.FromResult<IReadOnlyDictionary<string, object>?>(null));
+            var progress = new SynchronousProgress<ConversionProgress>(state =>
+                Console.WriteLine($"[Progress] {state.Message}"));
+            var observer = new QuietCompressObserver(files);
 
-            for (int i = 0; i < files.Count; i++)
-            {
-                var f = files[i];
-                string outName = Path.Combine(outputDir, Path.GetFileNameWithoutExtension(f) + "_compressed.pdf");
-                Console.WriteLine($"[Progress] {Loc("cli_progress_compressing_pdf", Path.GetFileName(f), i + 1, files.Count)}");
-                if (pdfOptions != null)
-                {
-                    FileProcessor.CompressPdf(f, outName, pdfOptions, (curr, tot, msg) => Console.WriteLine($"[Progress] {msg}"));
-                }
-                else
-                {
-                    FileProcessor.CompressPdf(f, outName, compressionLevel, (curr, tot, msg) => Console.WriteLine($"[Progress] {msg}"));
-                }
-            }
+            ConversionResult result = useCase.ExecuteAsync(plan, interaction, progress, observer)
+                .GetAwaiter()
+                .GetResult();
+            if (result.Status != ConversionResultStatus.Succeeded)
+                throw new InvalidOperationException(result.Error ?? Loc("error_processing_failed"));
         }
 
         /// <summary>Translates each PDF in quiet mode, saving render debug logs and a health
@@ -403,6 +409,14 @@ namespace Clickra
 
             public void OnFileStarting(int fileIndex) =>
                 Console.WriteLine($"[Progress] {Loc("cli_progress_splitting_pdf", Path.GetFileName(files[fileIndex]), fileIndex + 1, files.Count)}");
+        }
+
+        private sealed class QuietCompressObserver(IReadOnlyList<string> files) : IConversionExecutionObserver
+        {
+            public void OnTaskStarted(string taskId) { }
+
+            public void OnFileStarting(int fileIndex) =>
+                Console.WriteLine($"[Progress] {Loc("cli_progress_compressing_pdf", Path.GetFileName(files[fileIndex]), fileIndex + 1, files.Count)}");
         }
 
         private sealed class SynchronousProgress<T>(Action<T> report) : IProgress<T>
