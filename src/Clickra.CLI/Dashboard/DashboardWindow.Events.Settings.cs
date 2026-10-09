@@ -1,5 +1,4 @@
 using System;
-using System.Diagnostics.CodeAnalysis;
 using Clickra.Core;
 using static Clickra.UI.Native.Win32;
 
@@ -8,7 +7,6 @@ namespace Clickra.UI
     public static partial class DashboardWindow
     {
         /// <summary>Handles settings-tab element clicks: toggles, output dirs and office engine selection.</summary>
-        [SuppressMessage("SonarQube", "S4036", Justification = "StoreUri is an absolute ms-windows-store URI")]
         static void HandleSettingsClick(IntPtr hwnd, int element)
         {
             if (element >= 1000 && element < 2000)
