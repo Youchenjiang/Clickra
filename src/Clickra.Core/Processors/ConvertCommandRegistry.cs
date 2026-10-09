@@ -55,6 +55,30 @@ public static class ConvertCommandRegistry
             return entry.Commands ?? Array.Empty<string>();
         }
 
+        /// <summary>Returns the product-wide default command for a homogeneous file selection.
+        /// Explicit UI selections should take precedence when they remain compatible.</summary>
+        public static string? GetDefaultCommandForFiles(IReadOnlyCollection<string> files)
+        {
+            if (files.Count == 0) return null;
+
+            string[] extensions = files
+                .Select(path => Path.GetExtension(path).ToLowerInvariant())
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .ToArray();
+            if (extensions.Length == 0 || extensions.Any(string.IsNullOrEmpty)) return null;
+
+            if (extensions.All(ext => PptExtensions.Contains(ext, StringComparer.OrdinalIgnoreCase))) return "ppt2pdf";
+            if (extensions.All(ext => WordExtensions.Contains(ext, StringComparer.OrdinalIgnoreCase))) return "word2pdf";
+            if (extensions.All(ext => ExcelExtensions.Contains(ext, StringComparer.OrdinalIgnoreCase))) return "excel2pdf";
+            if (extensions.All(ext => PdfExtensions.Contains(ext, StringComparer.OrdinalIgnoreCase)))
+                return files.Count == 1 ? "compress-pdf" : "merge-pdf";
+            if (extensions.All(ext => MarkdownExtensions.Contains(ext, StringComparer.OrdinalIgnoreCase))) return CmdMdToPdf;
+            if (extensions.All(ext => ImageExtensions.Contains(ext, StringComparer.OrdinalIgnoreCase)))
+                return files.Count == 1 ? "img2pdf" : "img-merge";
+
+            return null;
+        }
+
         /// <summary>The UI file type a command belongs to (defaults to "pdf" for unknown commands).</summary>
         public static string GetFileTypeForCommand(string command)
         {

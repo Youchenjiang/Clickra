@@ -93,40 +93,6 @@ namespace Clickra.UI
             return $"Supported Files ({patterns})\0{patterns}\0All Files (*.*)\0*.*\0\0";
         }
 
-        /// <summary>Chooses the same default command for drag/drop and the file picker.</summary>
-        static ConvertCommand? GetDefaultCommandForFiles(List<string> files)
-        {
-            var extensions = files.Select(f => Path.GetExtension(f).ToLowerInvariant()).Distinct().ToList();
-            if (extensions.Count == 0) return null;
-
-            if (extensions.All(ext => ext == ".ppt" || ext == ".pptx"))
-            {
-                return ConvertCommands[GetCommandIndex("ppt2pdf")];
-            }
-            if (extensions.All(ext => ext == ".doc" || ext == ".docx"))
-            {
-                return ConvertCommands[GetCommandIndex("word2pdf")];
-            }
-            if (extensions.All(ext => ext == ".xlsx" || ext == ".xls"))
-            {
-                return ConvertCommands[GetCommandIndex("excel2pdf")];
-            }
-            if (extensions.All(ext => ext == ".pdf"))
-            {
-                return ConvertCommands[GetCommandIndex(files.Count == 1 ? "compress-pdf" : "merge-pdf")];
-            }
-            if (extensions.All(ext => ext is ".md" or ".markdown"))
-            {
-                return ConvertCommands[GetCommandIndex("md2pdf")];
-            }
-            if (extensions.All(ext => ImageExtensions.Contains(ext, StringComparer.OrdinalIgnoreCase)))
-            {
-                return ConvertCommands[GetCommandIndex(files.Count > 1 ? "img-merge" : "img2pdf")];
-            }
-
-            return null;
-        }
-
         /// <summary>Imports files from any dashboard entry point while preserving an explicit
         /// compatible command and otherwise applying the shared default routing.</summary>
         static void ImportFiles(List<string> files)
@@ -136,10 +102,11 @@ namespace Clickra.UI
             if (!CurrentSelectionAcceptsFiles(files))
             {
                 _convertCommandIndex = -1;
-                var defaultCommand = GetDefaultCommandForFiles(files);
-                if (defaultCommand is not null)
+                string? defaultCommand = ConvertCommandRegistry.GetDefaultCommandForFiles(files);
+                int defaultIndex = defaultCommand is null ? -1 : GetCommandIndex(defaultCommand);
+                if (defaultIndex >= 0)
                 {
-                    ConvertCommand.Select(defaultCommand);
+                    ConvertCommand.Select(ConvertCommands[defaultIndex]);
                 }
             }
 

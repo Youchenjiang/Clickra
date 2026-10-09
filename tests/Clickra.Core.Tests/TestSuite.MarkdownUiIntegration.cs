@@ -2,6 +2,7 @@ using System;
 using System.IO;
 using System.Linq;
 using System.Text.RegularExpressions;
+using Clickra.Core.Processors;
 
 namespace Clickra.Core.Tests;
 
@@ -67,6 +68,7 @@ static partial class TestSuite
     {
         string convert = MarkdownSource("src/Clickra.CLI/Dashboard/DashboardWindow.Convert.cs");
         string clicks = MarkdownSource("src/Clickra.CLI/Dashboard/DashboardWindow.Events.Click.cs");
+        string fluent = MarkdownSource("src/Clickra.Fluent/MainPage.xaml.cs");
 
         Assert.True(clicks.Contains("OpenFiles(hwnd, GetSupportedFilesFilter(), title)", StringComparison.Ordinal)
                     && clicks.Contains("ImportFiles(chosen);", StringComparison.Ordinal),
@@ -79,11 +81,17 @@ static partial class TestSuite
                     && convert.Contains("SelectMany(command => command.Extensions)", StringComparison.Ordinal)
                     && convert.Contains("Distinct(StringComparer.OrdinalIgnoreCase)", StringComparison.Ordinal),
             "The supported-file picker filter must derive from the command registry.");
-        Assert.True(convert.Contains("ext is \".md\" or \".markdown\"", StringComparison.Ordinal)
-                    && convert.Contains("GetCommandIndex(\"md2pdf\")", StringComparison.Ordinal),
-            "Markdown imports must default to Markdown-to-PDF when no compatible command is already selected.");
-        Assert.True(convert.Contains("ImageExtensions.Contains(ext, StringComparer.OrdinalIgnoreCase)", StringComparison.Ordinal),
-            "Image import routing must follow the shared image-extension registry, including newly supported formats.");
+        Assert.True(convert.Contains("ConvertCommandRegistry.GetDefaultCommandForFiles(files)", StringComparison.Ordinal)
+                    && fluent.Contains("ConvertCommandRegistry.GetDefaultCommandForFiles(_selectedFiles)", StringComparison.Ordinal),
+            "NativeAOT and Fluent file imports must use the same Core default-command routing.");
+
+        Assert.Equal("compress-pdf", ConvertCommandRegistry.GetDefaultCommandForFiles(new[] { "a.pdf" }) ?? "");
+        Assert.Equal("merge-pdf", ConvertCommandRegistry.GetDefaultCommandForFiles(new[] { "a.pdf", "b.pdf" }) ?? "");
+        Assert.Equal("md2pdf", ConvertCommandRegistry.GetDefaultCommandForFiles(new[] { "notes.md" }) ?? "");
+        Assert.Equal("img2pdf", ConvertCommandRegistry.GetDefaultCommandForFiles(new[] { "photo.heic" }) ?? "");
+        Assert.Equal("img-merge", ConvertCommandRegistry.GetDefaultCommandForFiles(new[] { "a.png", "b.webp" }) ?? "");
+        Assert.True(ConvertCommandRegistry.GetDefaultCommandForFiles(new[] { "a.pdf", "b.png" }) is null,
+            "Mixed file types must not guess a default command.");
     }
 
     private static void TestMarkdownStickyFooterHitOrder()

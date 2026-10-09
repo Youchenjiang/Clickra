@@ -424,6 +424,14 @@ public sealed partial class MainPage : Page
         {
             _selectedFiles.Add(path);
         }
+
+        if (_selectedCommand is null || !IsCommandCompatibleWithSelectedFiles(_selectedCommand))
+        {
+            _selectedCommand = ConvertCommandRegistry.GetDefaultCommandForFiles(_selectedFiles);
+            CommandStatusText.Text = _selectedCommand is null
+                ? L("fluent_choose_command")
+                : string.Format(L("fluent_selected_command"), L(ConvertCommandRegistry.GetLabelKey(_selectedCommand)));
+        }
         RefreshFiles();
     }
 
