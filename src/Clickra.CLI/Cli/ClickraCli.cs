@@ -357,13 +357,24 @@ namespace Clickra
         /// <summary>Converts each image to its own PDF in quiet mode.</summary>
         private static void HandleImg2PdfQuiet(List<string> files, string outputDir)
         {
-            for (int i = 0; i < files.Count; i++)
-            {
-                var f = files[i];
-                string outName = Path.Combine(outputDir, Path.GetFileNameWithoutExtension(f) + ".pdf");
-                Console.WriteLine($"[Progress] {Loc("cli_progress_converting_image", Path.GetFileName(f), i + 1, files.Count)}");
-                FileProcessor.ConvertImagesToPdf(new List<string> { f }, outName, null);
-            }
+            IConversionUseCase useCase = ConversionUseCases.GetRequired(Img2PdfUseCase.CommandName);
+            ConversionPlan plan = useCase.Plan(new ConversionRequest(
+                Img2PdfUseCase.CommandName,
+                files,
+                OutputOverride: outputDir,
+                TrackTaskLifecycle: false));
+            var interaction = new DelegateConversionInteraction(
+                (_, _, _, _) => Task.FromResult<string?>(null),
+                (_, _, _) => Task.FromResult<string?>(null),
+                (_, _, _) => Task.FromResult<IReadOnlyDictionary<string, object>?>(null));
+            var observer = new QuietImg2PdfObserver(files);
+
+            ConversionResult result = useCase.ExecuteAsync(plan, interaction, progress: null, observer)
+                .GetAwaiter()
+                .GetResult();
+            if (result.Status != ConversionResultStatus.Succeeded)
+                throw new InvalidOperationException(result.Error ?? Loc("error_processing_failed"));
+
             Console.WriteLine($"[Progress] {Loc("cli_progress_converting_image_saving")}");
         }
 
@@ -417,6 +428,14 @@ namespace Clickra
 
             public void OnFileStarting(int fileIndex) =>
                 Console.WriteLine($"[Progress] {Loc("cli_progress_compressing_pdf", Path.GetFileName(files[fileIndex]), fileIndex + 1, files.Count)}");
+        }
+
+        private sealed class QuietImg2PdfObserver(IReadOnlyList<string> files) : IConversionExecutionObserver
+        {
+            public void OnTaskStarted(string taskId) { }
+
+            public void OnFileStarting(int fileIndex) =>
+                Console.WriteLine($"[Progress] {Loc("cli_progress_converting_image", Path.GetFileName(files[fileIndex]), fileIndex + 1, files.Count)}");
         }
 
         private sealed class SynchronousProgress<T>(Action<T> report) : IProgress<T>
