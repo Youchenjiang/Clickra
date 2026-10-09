@@ -209,7 +209,8 @@ static partial class TestSuite
             "Native presentation must not execute the decrypt processor directly.");
         Assert.False(quiet.Contains("FileProcessor.DecryptPdf", StringComparison.Ordinal),
             "Headless CLI must not execute the decrypt processor directly.");
-        Assert.True(fluentMain.Contains("ConversionUseCases.GetRequired(command)", StringComparison.Ordinal)
+        Assert.True((fluentMain.Contains("ConversionUseCases.TryGet(command", StringComparison.Ordinal)
+                     || fluentMain.Contains("ConversionUseCases.GetRequired(command)", StringComparison.Ordinal))
                     && fluentTask.Contains("ConversionUseCases.GetRequired(command)", StringComparison.Ordinal)
                     && native.Contains("ConversionUseCases.GetRequired(DecryptPdfUseCase.CommandName)", StringComparison.Ordinal)
                     && quiet.Contains("ConversionUseCases.GetRequired(DecryptPdfUseCase.CommandName)", StringComparison.Ordinal),

@@ -519,10 +519,9 @@ public sealed partial class MainPage : Page
         List<string> outputs;
         try
         {
-            if (command.Equals(DecryptPdfUseCase.CommandName, StringComparison.OrdinalIgnoreCase))
+            if (ConversionUseCases.TryGet(command, out applicationUseCase))
             {
-                applicationUseCase = ConversionUseCases.GetRequired(command);
-                applicationPlan = applicationUseCase.Plan(new ConversionRequest(command, files));
+                applicationPlan = applicationUseCase!.Plan(new ConversionRequest(command, files));
                 outputs = applicationPlan.Outputs.ToList();
             }
             else
@@ -549,7 +548,8 @@ public sealed partial class MainPage : Page
                 var interaction = new DelegateConversionInteraction(
                     (index, inputPath, isRetry, token) =>
                         DispatcherQueue.EnqueueAsync(() => FluentDialogs.PromptPasswordAsync(XamlRoot, L)),
-                    (_, _, _) => Task.FromResult<string?>(null),
+                    (index, inputPath, token) =>
+                        DispatcherQueue.EnqueueAsync(() => SplitOverlay.ShowForAsync(inputPath)),
                     (_, _, _) => Task.FromResult<IReadOnlyDictionary<string, object>?>(null));
                 var progress = new Progress<ConversionProgress>(state =>
                 {
