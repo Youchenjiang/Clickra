@@ -211,7 +211,8 @@ static partial class TestSuite
             "Headless CLI must not execute the decrypt processor directly.");
         Assert.True((fluentMain.Contains("ConversionUseCases.TryGet(command", StringComparison.Ordinal)
                      || fluentMain.Contains("ConversionUseCases.GetRequired(command)", StringComparison.Ordinal))
-                    && fluentTask.Contains("ConversionUseCases.GetRequired(command)", StringComparison.Ordinal)
+                    && (fluentTask.Contains("ConversionUseCases.TryGet(command", StringComparison.Ordinal)
+                        || fluentTask.Contains("ConversionUseCases.GetRequired(command)", StringComparison.Ordinal))
                     && native.Contains("ConversionUseCases.GetRequired(DecryptPdfUseCase.CommandName)", StringComparison.Ordinal)
                     && quiet.Contains("ConversionUseCases.GetRequired(DecryptPdfUseCase.CommandName)", StringComparison.Ordinal),
             "All product surfaces must resolve decrypt execution through the application use-case catalog.");

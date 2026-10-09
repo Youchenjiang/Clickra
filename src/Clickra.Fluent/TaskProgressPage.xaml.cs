@@ -169,10 +169,9 @@ public sealed partial class TaskProgressPage : Page
         IConversionUseCase? applicationUseCase = null;
         ConversionPlan? applicationPlan = null;
         List<string> outputs;
-        if (command.Equals(DecryptPdfUseCase.CommandName, StringComparison.OrdinalIgnoreCase))
+        if (ConversionUseCases.TryGet(command, out applicationUseCase))
         {
-            applicationUseCase = ConversionUseCases.GetRequired(command);
-            applicationPlan = applicationUseCase.Plan(new ConversionRequest(
+            applicationPlan = applicationUseCase!.Plan(new ConversionRequest(
                 command,
                 files,
                 ExistingTaskId: existingTaskId)) with
@@ -205,7 +204,7 @@ public sealed partial class TaskProgressPage : Page
             {
                 var interaction = new DelegateConversionInteraction(
                     PromptApplicationPasswordAsync,
-                    (_, _, _) => Task.FromResult<string?>(null),
+                    PromptApplicationSplitAsync,
                     (_, _, _) => Task.FromResult<IReadOnlyDictionary<string, object>?>(null));
                 var progress = new Progress<ConversionProgress>(state =>
                 {
@@ -280,6 +279,21 @@ public sealed partial class TaskProgressPage : Page
         try
         {
             return await PromptPasswordAsync(fileIndex);
+        }
+        catch (ConvertCommandRunner.ParkedException ex)
+        {
+            throw new ConversionParkedException(ex.Message, ex.NextFileIndex);
+        }
+    }
+
+    private async Task<string?> PromptApplicationSplitAsync(
+        int fileIndex,
+        string inputPath,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            return await PromptSplitAsync(fileIndex, inputPath);
         }
         catch (ConvertCommandRunner.ParkedException ex)
         {
