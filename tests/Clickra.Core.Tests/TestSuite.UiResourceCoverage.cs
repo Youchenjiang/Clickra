@@ -303,6 +303,8 @@ static partial class TestSuite
         var (subArgs, menuKeys, iconFiles, multiFileIndices) = GetShellCommandDefinitions(root);
         string shellSource = File.ReadAllText(Path.Combine(root, "src", "ClickraShell", "ComMethods.cs"));
         string cliSource = File.ReadAllText(Path.Combine(root, "src", "Clickra.CLI", "Cli", "ClickraCli.cs"));
+        string dashboardRegistrySource = File.ReadAllText(Path.Combine(
+            root, "src", "Clickra.CLI", "Dashboard", "DashboardWindow.ConvertRegistry.cs"));
 
         Assert.True(subArgs.Length > 0, "Shell menu must declare at least one command.");
         Assert.True(menuKeys.Length == subArgs.Length,
@@ -325,6 +327,15 @@ static partial class TestSuite
             "Explorer commands must stay hidden unless every selected file is valid for that command.");
         Assert.True(cliSource.Contains("string[] allowed = ConvertCommandRegistry.GetAllowedExtensions(command);", StringComparison.Ordinal),
             "CLI image dispatch must derive accepted extensions from ConvertCommandRegistry instead of a private list.");
+        Assert.True(dashboardRegistrySource.Contains("ConvertCommandRegistry.GetAllowedExtensions(Command)", StringComparison.Ordinal)
+                    && dashboardRegistrySource.Contains("ConvertCommandRegistry.GetMinFiles(Command)", StringComparison.Ordinal),
+            "NativeAOT dashboard validation must derive extensions and minimum file counts from ConvertCommandRegistry.");
+        Assert.False(Regex.IsMatch(
+                         dashboardRegistrySource,
+                         @"\b(?:Extensions|MinFiles)\s*=(?!>)",
+                         RegexOptions.None,
+                         UiResourceRegexTimeout),
+            "NativeAOT dashboard command definitions must not keep duplicate validation metadata.");
 
         for (int i = 0; i < subArgs.Length; i++)
         {
