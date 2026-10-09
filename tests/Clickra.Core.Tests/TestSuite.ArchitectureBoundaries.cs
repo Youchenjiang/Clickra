@@ -181,6 +181,7 @@ static partial class TestSuite
             ConversionPlan plan,
             IConversionInteraction interaction,
             IProgress<ConversionProgress>? progress,
+            IConversionExecutionObserver? observer = null,
             CancellationToken cancellationToken = default) =>
             throw new NotSupportedException();
     }
