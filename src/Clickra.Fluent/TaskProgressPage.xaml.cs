@@ -16,6 +16,7 @@ namespace Clickra_Fluent;
 /// </summary>
 public sealed partial class TaskProgressPage : Page
 {
+    private enum TaskRunPresentationStatus { Succeeded, Canceled, Parked, Failed }
     /// <summary>一般轉換的視窗尺寸：緊湊單一區塊排版（~460px 寬內容），高度剛好包住
     /// 狀態列+進度條+按鈕，不會有大窗漂小卡的空間感。分割介面需要整片空間時才暫時放大。</summary>
     internal static readonly Windows.Graphics.SizeInt32 CompactWindowSize = new(480, 300);
@@ -190,64 +191,80 @@ public sealed partial class TaskProgressPage : Page
                     }),
                 _cts.Token);
 
-            string statusMessage;
-            bool success;
-            string toastTitle;
-            string toastBody;
-            switch (result.Status)
+            TaskRunPresentationStatus presentationStatus = result.Status switch
             {
-                case ConvertCommandRunner.ConvertRunStatus.Succeeded:
-                    statusMessage = L("fluent_progress_completed");
-                    success = true;
-                    toastTitle = L("fluent_toast_done_title");
-                    toastBody = string.Format(L("fluent_toast_done_body"), L(ConvertCommandRegistry.GetLabelKey(command)), files.Count);
-                    break;
-                case ConvertCommandRunner.ConvertRunStatus.Canceled:
-                    // 使用者取消不是失敗：不秀錯誤畫面，直接關窗（歷史已記錄 Canceled）。
-                    // 縮在匣內時先通知再關；前景時關窗本身就是回饋。
-                    _finished = true;
-                    if (_isBackgrounded)
-                    {
-                        TrayService.Instance.RemoveBackgroundWindow(Window);
-                        ToastHelper.Show(L("fluent_toast_canceled_title"), string.Format(L("fluent_toast_canceled_body"), Path.GetFileName(files[0])));
-                        await Task.Delay(1200, CancellationToken.None);
-                    }
-                    CloseHostWindow();
-                    return;
-                case ConvertCommandRunner.ConvertRunStatus.Parked:
-                    // 已暫存：不寫歷史，留待 dashboard「繼續 / 取消」。通知後自動關窗。
-                    _finished = true;
-                    TrayService.Instance.RemoveBackgroundWindow(Window);
-                    ToastHelper.Show(L("fluent_park_toast_title"), L("fluent_park_toast_body"));
-                    await Task.Delay(800, CancellationToken.None);
-                    CloseHostWindow();
-                    return;
-                default:
-                    statusMessage = result.Error ?? "";
-                    success = false;
-                    toastTitle = L("fluent_toast_failed_title");
-                    toastBody = statusMessage;
-                    break;
-            }
-
-            Complete(statusMessage, success);
-            _finished = true;
-
-            if (_isBackgrounded)
-            {
-                // 縮在系統匣內時任務結束：移除匣圖示、跳出通知，稍候自動關窗——
-                // 最後一個視窗關閉時程序隨之結束（TrackWindow）。
-                TrayService.Instance.RemoveBackgroundWindow(Window);
-                ToastHelper.Show(toastTitle, toastBody);
-                await Task.Delay(1500, CancellationToken.None);
-                CloseHostWindow();
-            }
+                ConvertCommandRunner.ConvertRunStatus.Succeeded => TaskRunPresentationStatus.Succeeded,
+                ConvertCommandRunner.ConvertRunStatus.Canceled => TaskRunPresentationStatus.Canceled,
+                ConvertCommandRunner.ConvertRunStatus.Parked => TaskRunPresentationStatus.Parked,
+                _ => TaskRunPresentationStatus.Failed
+            };
+            await HandleRunResultAsync(presentationStatus, result.Error, command, files);
         }
         finally
         {
             _cts?.Dispose();
             _cts = null;
             App.UnregisterTaskPage(_taskId);
+        }
+    }
+
+    private async Task HandleRunResultAsync(
+        TaskRunPresentationStatus status,
+        string? error,
+        string command,
+        IReadOnlyList<string> files)
+    {
+        string statusMessage;
+        bool success;
+        string toastTitle;
+        string toastBody;
+        switch (status)
+        {
+            case TaskRunPresentationStatus.Succeeded:
+                statusMessage = L("fluent_progress_completed");
+                success = true;
+                toastTitle = L("fluent_toast_done_title");
+                toastBody = string.Format(L("fluent_toast_done_body"), L(ConvertCommandRegistry.GetLabelKey(command)), files.Count);
+                break;
+            case TaskRunPresentationStatus.Canceled:
+                // 使用者取消不是失敗：不秀錯誤畫面，直接關窗（歷史已記錄 Canceled）。
+                // 縮在匣內時先通知再關；前景時關窗本身就是回饋。
+                _finished = true;
+                if (_isBackgrounded)
+                {
+                    TrayService.Instance.RemoveBackgroundWindow(Window);
+                    ToastHelper.Show(L("fluent_toast_canceled_title"), string.Format(L("fluent_toast_canceled_body"), Path.GetFileName(files[0])));
+                    await Task.Delay(1200, CancellationToken.None);
+                }
+                CloseHostWindow();
+                return;
+            case TaskRunPresentationStatus.Parked:
+                // 已暫存：不寫歷史，留待 dashboard「繼續 / 取消」。通知後自動關窗。
+                _finished = true;
+                TrayService.Instance.RemoveBackgroundWindow(Window);
+                ToastHelper.Show(L("fluent_park_toast_title"), L("fluent_park_toast_body"));
+                await Task.Delay(800, CancellationToken.None);
+                CloseHostWindow();
+                return;
+            default:
+                statusMessage = error ?? "";
+                success = false;
+                toastTitle = L("fluent_toast_failed_title");
+                toastBody = statusMessage;
+                break;
+        }
+
+        Complete(statusMessage, success);
+        _finished = true;
+
+        if (_isBackgrounded)
+        {
+            // 縮在系統匣內時任務結束：移除匣圖示、跳出通知，稍候自動關窗——
+            // 最後一個視窗關閉時程序隨之結束（TrackWindow）。
+            TrayService.Instance.RemoveBackgroundWindow(Window);
+            ToastHelper.Show(toastTitle, toastBody);
+            await Task.Delay(1500, CancellationToken.None);
+            CloseHostWindow();
         }
     }
 
