@@ -116,14 +116,22 @@ static partial class TestSuite
         var keys = Localization.GetAllKeys();
         Assert.True(keys.Count > 0, "Expected Localization to declare at least one key.");
 
-        string localizationPath = Path.Combine(root, "src", "Clickra.Core", "Localization", "Localization.cs");
-        Assert.True(File.Exists(localizationPath), $"Expected the localization source to exist: {localizationPath}");
+        string localizationDir = Path.Combine(root, "src", "Clickra.Core", "Localization");
+        Assert.True(Directory.Exists(localizationDir), $"Expected the localization source directory to exist: {localizationDir}");
+        string[] localizationSources = Directory.GetFiles(localizationDir, "Localization*.cs", SearchOption.TopDirectoryOnly);
+        Assert.True(localizationSources.Length > 0, $"Expected localization source files under: {localizationDir}");
+        var localizationSourceSet = localizationSources.ToHashSet(StringComparer.OrdinalIgnoreCase);
 
-        var searchable = new StringBuilder(StripDeclarations(StripComments(File.ReadAllText(localizationPath))));
+        var searchable = new StringBuilder();
+        foreach (string file in localizationSources)
+        {
+            searchable.Append('\n').Append(StripDeclarations(StripComments(File.ReadAllText(file))));
+        }
+
         string srcDir = Path.Combine(root, "src");
         foreach (string file in EnumerateSources(srcDir))
         {
-            if (string.Equals(file, localizationPath, StringComparison.OrdinalIgnoreCase)) continue;
+            if (localizationSourceSet.Contains(file)) continue;
             searchable.Append('\n').Append(StripComments(File.ReadAllText(file)));
         }
 
