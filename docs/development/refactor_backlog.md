@@ -90,7 +90,7 @@ GitHub Release 的 MSIX 必須通過 trusted-signature 驗證才可公開發布�
 
 - **WinAppRuntime 偵測 proxy**：以 System32 的 Bootstrap.dll 是否存在當 proxy；若 runtime 安裝方式改變（例如內建於 Windows）需同步更新。
 - **ARM64**：兩條軌道目前都只打包 x64。
-- **Bootstrapper 的 HKCU 是管理員 hive**：per-user .NET 安裝偵測不到（已有磁碟資料夾 fallback 緩解，見 `dual_track_guide.md` §3.1）。
+- **Bootstrapper 的 HKCU 是管理員 hive**：per-user .NET 安裝偵測不到（已有磁碟資料夾 fallback 緩解，見 `archive/dual_track_guide.md` §3.1）。
 
 ### 2.6 [決策待定] NativeAOT 軌道功能落差策略
 

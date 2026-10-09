@@ -49,7 +49,7 @@
     - 2026/08 決定維持兩條軌道：本機有 .NET 8+ 與 Windows App Runtime → 安裝 Fluent；任一缺失 → 安裝 NativeAOT（零依賴）。
     - 新增 `ClickraLauncher.exe`（NativeAOT bootstrapper）自動偵測 runtime 並安裝對應軌道；新增 `Clickra.msix (Main)` 零依賴套件與 `scripts/build_msix.ps1`。
     - 舊 Win32 Dashboard/Progress 由「過渡 fallback」改為**永久 NativeAOT 軌道**，不再排定移除。
-    - 當時的詳細雙軌設計紀錄見 `docs/development/dual_track_guide.md`；目前 release pipeline 另以實際 workflow/scripts 為準。
+    - 當時的詳細雙軌設計紀錄見 `docs/development/archive/dual_track_guide.md`；目前 release pipeline 另以實際 workflow/scripts 為準。
 - [x] **[F1-14] Shell Context Menu Icons**：右鍵選單圖示（v3.7.0）。
     - 為所有右鍵轉檔命令新增專屬圖示（PDF、Word、Excel、PPT、圖片操作），並提供 PowerShell 產生腳本。
 - [ ] **[F1-13] Store-Resilient Optional Fluent Delivery**：AOT 主套件＋Fluent Optional Package（**目前最高優先級**，Phase 0 待微軟回應）。

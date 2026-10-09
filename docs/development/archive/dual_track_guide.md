@@ -1,4 +1,4 @@
-﻿# Clickra Legacy Dual-Track Distribution Guide (Historical)
+# Clickra Legacy Dual-Track Distribution Guide (Historical)
 
 > **文件角色**：本文件保存 2026/08 的 legacy dual-track distribution 設計與其理由，
 > 不是目前 automated release pipeline 的權威來源。現行 `release.yml` / `build_msix.ps1`
@@ -10,7 +10,7 @@
 > Fluent executable optional package / related set」，讓 AOT 先可靠安裝、Fluent 再按需取得。
 > 這個候選方案必須先取得 Microsoft Store 權限，並通過 WinUI 3 full-trust optional EXE、
 > package graph、更新與 private flight 實測；未通過前不得把 optional package 描述成
-> 已投入 production Store distribution。詳見 `store_optional_fluent_plan.md`。
+> 已投入 production Store distribution。詳見 `../store_optional_fluent_plan.md`。
 
 ---
 
