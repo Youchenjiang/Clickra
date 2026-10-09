@@ -131,6 +131,18 @@ static partial class TestSuite
             "Native conversion output planning must use the same registry as Fluent tracked runs.");
         Assert.False(native.Contains("private static string GetOutputPath(", StringComparison.Ordinal),
             "Native conversion history must not keep a second command-to-output policy.");
+
+        Assert.True(native.Contains("RunSharedCommand(cmd, currentFiles, plannedOutputs, progressCallback)", StringComparison.Ordinal)
+                    && native.Contains("ConvertCommandRunner.Run(", StringComparison.Ordinal),
+            "Native commands without Win32-specific behavior must dispatch through the shared Core runner.");
+        Assert.True(native.Contains("OnFileStarting: TryRecordTaskIndex", StringComparison.Ordinal)
+                    && runner.Contains("onFileStarting?.Invoke(i)", StringComparison.Ordinal),
+            "Shared per-file dispatch must preserve the Native resume checkpoint before processing each file.");
+        foreach (string sharedCommand in new[] { "ppt2pdf", "word2pdf", "excel2pdf", "md2pdf", "md2word", "merge-pdf", "img-merge", "img-stitch", "img-compress", "img-to-png" })
+        {
+            Assert.False(native.Contains($"case \"{sharedCommand}\":", StringComparison.Ordinal),
+                $"{sharedCommand} must not keep a second Native dispatch branch.");
+        }
     }
 
     private static void TestCancellingParkedTaskRecordsCanceledLine()

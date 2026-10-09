@@ -321,7 +321,11 @@ static partial class TestSuite
                 Assert.True(cli.Contains($"case \"{command}\"", StringComparison.Ordinal), $"Legacy CLI must dispatch {command}.");
                 Assert.True(startup.Contains(command, StringComparison.Ordinal), $"CLI help/version must list {command}.");
                 Assert.True(dashboard.Contains($"Command = \"{command}\"", StringComparison.Ordinal), $"Native dashboard must expose {command}.");
-                Assert.True(progress.Contains($"case \"{command}\"", StringComparison.Ordinal), $"Native progress routing must execute {command}.");
+                Assert.True(progress.Contains("RunSharedCommand(cmd, currentFiles, plannedOutputs, progressCallback)", StringComparison.Ordinal)
+                            && progress.Contains("ConvertCommandRunner.Run(", StringComparison.Ordinal),
+                    $"Native progress routing must execute {command} through the shared Core dispatcher.");
+                Assert.False(progress.Contains($"case \"{command}\"", StringComparison.Ordinal),
+                    $"Native progress routing must not keep a second dispatch branch for {command}.");
                 Assert.True(fluentXaml.Contains($"x:Name=\"{buttonName}\"", StringComparison.Ordinal) && fluentXaml.Contains($"Tag=\"{command}\"", StringComparison.Ordinal), $"Fluent XAML must expose {command}.");
                 Assert.True(fluentCode.Contains(buttonName, StringComparison.Ordinal) && fluentCode.Contains(labelKey, StringComparison.Ordinal), $"Fluent code-behind must hook and localize {command}.");
             }

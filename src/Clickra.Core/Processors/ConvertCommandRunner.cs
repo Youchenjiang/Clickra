@@ -24,7 +24,8 @@ public static class ConvertCommandRunner
             Func<int, string, Task<string?>> PromptSplitPages,
             int StartIndex = 0,
             string? ExistingTaskId = null,
-            Dictionary<string, object>? CommandOptions = null);
+            Dictionary<string, object>? CommandOptions = null,
+            Action<int>? OnFileStarting = null);
 
         /// <summary>
         /// 任務被「暫存」的信號：由 prompt delegate 在 UI 要求暫存（例如卡在密碼/分割
@@ -105,32 +106,32 @@ public static class ConvertCommandRunner
                 case "md2pdf":
                 {
                     Dictionary<string, object> markdownOptions = options.CommandOptions ?? MarkdownPdfOptions.Create();
-                    RunPerFile(files, outputs, (f, o, p, t) => FileProcessor.ConvertMarkdownToPdf(f, o, markdownOptions, p, t), progress, options.StartIndex, token);
+                    RunPerFile(files, outputs, (f, o, p, t) => FileProcessor.ConvertMarkdownToPdf(f, o, markdownOptions, p, t), progress, options.StartIndex, options.OnFileStarting, token);
                     break;
                 }
                 case "md2word":
                 {
                     Dictionary<string, object> markdownOptions = options.CommandOptions ?? MarkdownPdfOptions.Create();
-                    RunPerFile(files, outputs, (f, o, p, t) => FileProcessor.ConvertMarkdownToWord(f, o, markdownOptions, p, t), progress, options.StartIndex, token);
+                    RunPerFile(files, outputs, (f, o, p, t) => FileProcessor.ConvertMarkdownToWord(f, o, markdownOptions, p, t), progress, options.StartIndex, options.OnFileStarting, token);
                     break;
                 }
                 case "merge-pdf":
                     FileProcessor.MergePdfs(files, outputs[0], progress, token);
                     break;
                 case "compress-pdf":
-                    RunPerFile(files, outputs, (f, o, p, t) => FileProcessor.CompressPdf(f, o, ConvertCommandRegistry.CompressionOptions(), p, t), progress, options.StartIndex, token);
+                    RunPerFile(files, outputs, (f, o, p, t) => FileProcessor.CompressPdf(f, o, ConvertCommandRegistry.CompressionOptions(), p, t), progress, options.StartIndex, options.OnFileStarting, token);
                     break;
                 case "translate-pdf":
-                    RunPerFile(files, outputs, (f, o, p, t) => FileProcessor.TranslatePdf(f, o, ClickraStorage.GetSetting(ClickraSettings.TranslateTargetLang), p, t), progress, options.StartIndex, token);
+                    RunPerFile(files, outputs, (f, o, p, t) => FileProcessor.TranslatePdf(f, o, ClickraStorage.GetSetting(ClickraSettings.TranslateTargetLang), p, t), progress, options.StartIndex, options.OnFileStarting, token);
                     break;
                 case "decrypt-pdf":
-                    RunDecrypt(files, outputs, options.PromptPassword, progress, options.StartIndex, token);
+                    RunDecrypt(files, outputs, options.PromptPassword, progress, options.StartIndex, options.OnFileStarting, token);
                     break;
                 case "split-pdf":
-                    RunSplit(files, outputs, options.PromptSplitPages, progress, options.StartIndex, token);
+                    RunSplit(files, outputs, options.PromptSplitPages, progress, options.StartIndex, options.OnFileStarting, token);
                     break;
                 case "img2pdf":
-                    RunPerFile(files, outputs, (f, o, p, t) => FileProcessor.ConvertImagesToPdf(new List<string> { f }, o, p, t), progress, options.StartIndex, token);
+                    RunPerFile(files, outputs, (f, o, p, t) => FileProcessor.ConvertImagesToPdf(new List<string> { f }, o, p, t), progress, options.StartIndex, options.OnFileStarting, token);
                     break;
                 case "img-merge":
                     FileProcessor.ConvertImagesToPdf(files, outputs[0], progress, token);
@@ -141,23 +142,23 @@ public static class ConvertCommandRunner
                 case "img-compress":
                 {
                     Dictionary<string, object> compressionOptions = ConvertCommandRegistry.ImageCompressionOptions();
-                    RunPerFile(files, outputs, (f, o, p, t) => FileProcessor.CompressImage(f, o, compressionOptions, p, t), progress, options.StartIndex, token);
+                    RunPerFile(files, outputs, (f, o, p, t) => FileProcessor.CompressImage(f, o, compressionOptions, p, t), progress, options.StartIndex, options.OnFileStarting, token);
                     break;
                 }
                 case "img-to-png":
-                    RunImageConvert(files, outputs, "png", progress, options.StartIndex, token);
+                    RunImageConvert(files, outputs, "png", progress, options.StartIndex, options.OnFileStarting, token);
                     break;
                 case "img-to-jpg":
-                    RunImageConvert(files, outputs, "jpg", progress, options.StartIndex, token);
+                    RunImageConvert(files, outputs, "jpg", progress, options.StartIndex, options.OnFileStarting, token);
                     break;
                 case "img-to-webp":
-                    RunImageConvert(files, outputs, "webp", progress, options.StartIndex, token);
+                    RunImageConvert(files, outputs, "webp", progress, options.StartIndex, options.OnFileStarting, token);
                     break;
                 case "img-to-gif":
-                    RunImageConvert(files, outputs, "gif", progress, options.StartIndex, token);
+                    RunImageConvert(files, outputs, "gif", progress, options.StartIndex, options.OnFileStarting, token);
                     break;
                 case "img-to-heic":
-                    RunImageConvert(files, outputs, "heic", progress, options.StartIndex, token);
+                    RunImageConvert(files, outputs, "heic", progress, options.StartIndex, options.OnFileStarting, token);
                     break;
                 default:
                     throw new InvalidOperationException($"Unknown convert command '{command}'.");
@@ -166,17 +167,18 @@ public static class ConvertCommandRunner
 
         /// <summary>Converts each image to the target format, reusing the per-file
         /// loop with the format baked into the FileProcessor call.</summary>
-        private static void RunImageConvert(List<string> files, List<string> outputs, string format, Action<int, int, string> progress, int startIndex, CancellationToken token)
+        private static void RunImageConvert(List<string> files, List<string> outputs, string format, Action<int, int, string> progress, int startIndex, Action<int>? onFileStarting, CancellationToken token)
         {
             ConvertCommandRegistry.EnsureUniqueOutputPaths(outputs);
-            RunPerFile(files, outputs, (f, o, p, t) => FileProcessor.ConvertImageFormat(f, o, format, p, t), progress, startIndex, token);
+            RunPerFile(files, outputs, (f, o, p, t) => FileProcessor.ConvertImageFormat(f, o, format, p, t), progress, startIndex, onFileStarting, token);
         }
 
-        private static void RunPerFile(List<string> files, List<string> outputs, Action<string, string, Action<int, int, string>, CancellationToken> action, Action<int, int, string> progress, int startIndex, CancellationToken token)
+        private static void RunPerFile(List<string> files, List<string> outputs, Action<string, string, Action<int, int, string>, CancellationToken> action, Action<int, int, string> progress, int startIndex, Action<int>? onFileStarting, CancellationToken token)
         {
             for (int i = startIndex; i < files.Count; i++)
             {
                 token.ThrowIfCancellationRequested();
+                onFileStarting?.Invoke(i);
                 int index = i;
                 action(files[i], outputs[i], (c, t, m) => progress((index * 100) + c, files.Count * 100, m), token);
             }
@@ -185,11 +187,12 @@ public static class ConvertCommandRunner
         /// <summary>Removes the password from each PDF, trying an empty password first
         /// and prompting only when the file is actually encrypted (mirrors the native
         /// CLI flow). A null result from the prompt cancels the operation.</summary>
-        private static void RunDecrypt(List<string> files, List<string> outputs, Func<int, Task<string?>> promptPassword, Action<int, int, string> progress, int startIndex, CancellationToken token)
+        private static void RunDecrypt(List<string> files, List<string> outputs, Func<int, Task<string?>> promptPassword, Action<int, int, string> progress, int startIndex, Action<int>? onFileStarting, CancellationToken token)
         {
             for (int i = startIndex; i < files.Count; i++)
             {
                 token.ThrowIfCancellationRequested();
+                onFileStarting?.Invoke(i);
                 string password = "";
                 bool success = false;
                 while (!success)
@@ -214,11 +217,12 @@ public static class ConvertCommandRunner
             => ex is PdfReaderException &&
                ex.Message.Contains("password", StringComparison.OrdinalIgnoreCase);
 
-        private static void RunSplit(List<string> files, List<string> outputs, Func<int, string, Task<string?>> promptSplitPages, Action<int, int, string> progress, int startIndex, CancellationToken token)
+        private static void RunSplit(List<string> files, List<string> outputs, Func<int, string, Task<string?>> promptSplitPages, Action<int, int, string> progress, int startIndex, Action<int>? onFileStarting, CancellationToken token)
         {
             for (int i = startIndex; i < files.Count; i++)
             {
                 token.ThrowIfCancellationRequested();
+                onFileStarting?.Invoke(i);
                 string? splitPages = promptSplitPages(i, files[i]).GetAwaiter().GetResult();
                 if (string.IsNullOrWhiteSpace(splitPages)) throw new OperationCanceledException(token);
                 int index = i;

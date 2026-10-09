@@ -63,50 +63,13 @@ namespace Clickra.UI
                 TaskId = lifecycle.TaskId;
 
                 List<string> plannedOutputs = ConvertCommandRegistry.EstimateOutputs(cmd, currentFiles, _outputDirOverride);
-                string outputDir = ClickraStorage.GetOutputDir(currentFiles[0]);
                 switch (cmd)
                 {
-                    case "ppt2pdf":
-                        FileProcessor.ConvertPptToPdf(currentFiles, progressCallback, _cts.Token);
-                        break;
-                    case "word2pdf":
-                        FileProcessor.ConvertWordToPdf(currentFiles, progressCallback, _cts.Token);
-                        break;
-                    case "excel2pdf":
-                        FileProcessor.ConvertExcelToPdf(currentFiles, progressCallback, _cts.Token);
-                        break;
-                    case "md2pdf":
-                        RunMarkdownConversion(currentFiles, plannedOutputs, progressCallback,
-                            (input, output, options, progress, token) => FileProcessor.ConvertMarkdownToPdf(input, output, options, progress, token));
-                        break;
-                    case "md2word":
-                        RunMarkdownConversion(currentFiles, plannedOutputs, progressCallback,
-                            (input, output, options, progress, token) => FileProcessor.ConvertMarkdownToWord(input, output, options, progress, token));
-                        break;
-                    case "merge-pdf":
-                        FileProcessor.MergePdfs(currentFiles, Path.Combine(outputDir, "Merged_PDF.pdf"), progressCallback, _cts.Token);
-                        break;
                     case "compress-pdf":
                         RunCompressPdf(currentFiles, plannedOutputs, progressCallback);
                         break;
                     case "img2pdf":
                         RunImg2Pdf(currentFiles, plannedOutputs, progressCallback);
-                        break;
-                    case "img-merge":
-                        FileProcessor.ConvertImagesToPdf(currentFiles, Path.Combine(outputDir, "Merged_Images.pdf"), progressCallback, _cts.Token);
-                        break;
-                    case "img-stitch":
-                        FileProcessor.StitchImages(currentFiles, Path.Combine(outputDir, "Stitched_Image.png"), progressCallback, _cts.Token);
-                        break;
-                    case "img-compress":
-                        RunImageCompression(currentFiles, plannedOutputs, progressCallback);
-                        break;
-                    case "img-to-png":
-                    case "img-to-jpg":
-                    case "img-to-webp":
-                    case "img-to-gif":
-                    case "img-to-heic":
-                        RunImageFormatConvert(cmd, currentFiles, plannedOutputs, progressCallback);
                         break;
                     case "translate-pdf":
                         RunTranslatePdf(currentFiles, plannedOutputs, progressCallback);
@@ -116,6 +79,9 @@ namespace Clickra.UI
                         break;
                     case "decrypt-pdf":
                         RunDecryptPdf(hwnd, currentFiles, plannedOutputs, progressCallback);
+                        break;
+                    default:
+                        RunSharedCommand(cmd, currentFiles, plannedOutputs, progressCallback);
                         break;
                 }
 
@@ -156,23 +122,6 @@ namespace Clickra.UI
                 lifecycle?.CompleteFailure(errorMsg, outputs, endTime);
                 lifecycle?.Delete();
                 PostMessageW(hwnd, 0x0010, IntPtr.Zero, IntPtr.Zero); // WM_CLOSE
-            }
-        }
-
-        private void RunMarkdownConversion(
-            List<string> files,
-            List<string> outputs,
-            Action<int, int, string> progressCallback,
-            Action<string, string, Dictionary<string, object>, Action<int, int, string>?, CancellationToken> converter)
-        {
-            for (int i = _startIndex; i < files.Count; i++)
-            {
-                _cts.Token.ThrowIfCancellationRequested();
-                TryRecordTaskIndex(i);
-                int index = i;
-                converter(files[i], outputs[i], _commandOptions ?? MarkdownPdfOptions.Create(),
-                    (current, total, message) => progressCallback((index * 100) + current, files.Count * 100, message),
-                    _cts.Token);
             }
         }
 
@@ -230,8 +179,9 @@ namespace Clickra.UI
             progressCallback(files.Count * 100, files.Count * 100, Loc("cli_progress_converting_image_saving"));
         }
 
-        /// <summary>Runs a registered img-to-* conversion through the shared core runner.</summary>
-        private void RunImageFormatConvert(string command, List<string> files, List<string> outputs, Action<int, int, string> progressCallback)
+        /// <summary>Runs commands that do not need Native-only progress or prompt handling through
+        /// the shared Core dispatcher. Native-specific cases remain explicit in RunProcessing.</summary>
+        private void RunSharedCommand(string command, List<string> files, List<string> outputs, Action<int, int, string> progressCallback)
         {
             ConvertCommandRunner.Run(
                 command,
@@ -240,22 +190,10 @@ namespace Clickra.UI
                 progressCallback,
                 new ConvertCommandRunner.ConversionOptions(
                     _ => System.Threading.Tasks.Task.FromResult<string?>(null),
-                    (_, _) => System.Threading.Tasks.Task.FromResult<string?>(null)),
-                _cts.Token);
-        }
-
-        /// <summary>Compresses each selected image through the shared core runner.</summary>
-        private void RunImageCompression(List<string> files, List<string> outputs, Action<int, int, string> progressCallback)
-        {
-            ConvertCommandRunner.Run(
-                "img-compress",
-                files,
-                outputs,
-                progressCallback,
-                new ConvertCommandRunner.ConversionOptions(
-                    _ => System.Threading.Tasks.Task.FromResult<string?>(null),
                     (_, _) => System.Threading.Tasks.Task.FromResult<string?>(null),
-                    _startIndex),
+                    _startIndex,
+                    CommandOptions: _commandOptions,
+                    OnFileStarting: TryRecordTaskIndex),
                 _cts.Token);
         }
         /// <summary>Translates each PDF to the saved target language, reporting per-file
