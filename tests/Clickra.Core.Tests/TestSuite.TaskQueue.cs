@@ -69,6 +69,33 @@ static partial class TestSuite
             TestClaimParkedTaskForResume);
         runner.Run("CLI Dashboard History page exposes resume and cancel for parked conversions",
             TestCliDashboardParkedTaskResumeAndCancelEntryPoint);
+        runner.RunGuard("Conversion lifecycle: Native and Fluent runners share task tracking",
+            TestConversionLifecycleIsShared);
+    }
+
+    private static void TestConversionLifecycleIsShared()
+    {
+        string? root = FindRepoRoot();
+        if (root is null) throw new TestSkippedException(RepoRootNotFoundMessage);
+
+        string runner = File.ReadAllText(Path.Combine(root, "src", "Clickra.Core", "Processors", "ConvertCommandRunner.cs"));
+        string native = File.ReadAllText(Path.Combine(root, "src", CliProjectDirectory, "Progress", "ProgressWindow.Process.cs"));
+        string lifecycle = File.ReadAllText(Path.Combine(root, "src", "Clickra.Core", "Processors", "ConversionTaskLifecycle.cs"));
+
+        foreach ((string name, string source) in new[] { ("ConvertCommandRunner", runner), ("ProgressWindow", native) })
+        {
+            Assert.True(source.Contains("ConversionTaskLifecycle.Start(", StringComparison.Ordinal),
+                $"{name} must start task tracking through the shared conversion lifecycle.");
+            Assert.False(source.Contains("ClickraStorage.StartTask(", StringComparison.Ordinal),
+                $"{name} must not create task records outside the shared conversion lifecycle.");
+            Assert.False(source.Contains("ClickraStorage.CompleteTask(", StringComparison.Ordinal),
+                $"{name} must not complete task records outside the shared conversion lifecycle.");
+        }
+
+        Assert.True(lifecycle.Contains("ClickraStorage.StartTask(", StringComparison.Ordinal)
+                    && lifecycle.Contains("ClickraStorage.CompleteTask(", StringComparison.Ordinal)
+                    && lifecycle.Contains("ClickraStorage.ParkTask(", StringComparison.Ordinal),
+            "ConversionTaskLifecycle must own the shared task state transitions.");
     }
 
     private static void TestCancellingParkedTaskRecordsCanceledLine()

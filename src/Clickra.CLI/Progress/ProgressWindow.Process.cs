@@ -24,11 +24,9 @@ namespace Clickra.UI
         // skipcq: CS-R1140
         private void RunProcessing(IntPtr hwnd)
         {
-            string startTimeStr = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
             List<string> currentFiles = new List<string>();
             string cmd = "";
-            string taskId = "";
-            var sw = System.Diagnostics.Stopwatch.StartNew();
+            ConversionTaskLifecycle? lifecycle = null;
             try
             {
                 lock (_stateLock)
@@ -61,14 +59,8 @@ namespace Clickra.UI
                 // 立即建立 Pending 任務紀錄，讓 Dashboard 可即時看到；每個任務有
                 // 獨立的進度檔（tasks/task-{id}.tmp），並行任務不會互相覆蓋。
                 // resume 時沿用原任務檔（_existingTaskId），避免重複建立與歷史重複寫入。
-                string inputsStr = string.Join(";", currentFiles);
-                try
-                {
-                    TaskId = _existingTaskId ?? ClickraStorage.StartTask(cmd, currentFiles.Count, inputsStr);
-                    taskId = TaskId;
-                    ClickraStorage.SetTaskInProgress(taskId);
-                }
-                catch { /* Non-critical: storage unavailability must not block the conversion. */ }
+                lifecycle = ConversionTaskLifecycle.Start(cmd, currentFiles, _existingTaskId, bestEffort: true);
+                TaskId = lifecycle.TaskId;
 
                 string outputDir = ClickraStorage.GetOutputDir(currentFiles[0]);
                 switch (cmd)
@@ -126,10 +118,7 @@ namespace Clickra.UI
                         break;
                 }
 
-                sw.Stop();
-                long elapsedMs = sw.ElapsedMilliseconds;
                 string endTime = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
-                string inputs = string.Join(";", currentFiles);
                 string outputs = GetOutputPath(cmd, currentFiles, outputDir, _outputDirOverride);
 
                 lock (_stateLock)
@@ -140,21 +129,17 @@ namespace Clickra.UI
                 }
                 PostMessageW(hwnd, WM_USER_INVALIDATE, (IntPtr)1, IntPtr.Zero);
 
-                // 完成：寫入持久化日誌並暫留 Success 狀態供 Dashboard 讀取
-                try { ClickraStorage.CompleteTask(taskId, cmd, new() { StartTime = startTimeStr, IsSuccess = true, EndTime = endTime, ElapsedMs = elapsedMs, InputPaths = inputs, OutputPath = outputs }); } catch { /* Non-critical: history write failure must not break the conversion. */ }
+                lifecycle.CompleteSuccess(outputs, endTime);
 
                 ShowToastNotification(cmd, currentFiles.Count);
 
                 Thread.Sleep(1500);
-                try { ClickraStorage.DeleteTask(taskId); } catch { /* Non-critical: cleanup failure is harmless. */ }
+                lifecycle.Delete();
                 PostMessageW(hwnd, 0x0010, IntPtr.Zero, IntPtr.Zero); // WM_CLOSE
             }
             catch (Exception ex)
             {
-                sw.Stop();
-                long elapsedMs = sw.ElapsedMilliseconds;
                 string endTime = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
-                string inputs = string.Join(";", currentFiles);
                 string outputDir = currentFiles.Count > 0 ? ClickraStorage.GetOutputDir(currentFiles[0]) : "";
                 string outputs = currentFiles.Count > 0 ? GetOutputPathForError(cmd, currentFiles, outputDir, _outputDirOverride) : "";
 
@@ -168,9 +153,8 @@ namespace Clickra.UI
                 }
                 PostMessageW(hwnd, WM_USER_INVALIDATE, (IntPtr)1, IntPtr.Zero);
 
-                try { ClickraStorage.CompleteTask(taskId, cmd, new() { StartTime = startTimeStr, IsSuccess = false, ErrorMsg = errorMsg, EndTime = endTime, ElapsedMs = elapsedMs, InputPaths = inputs, OutputPath = outputs }); } catch { /* Non-critical: error logging must not mask the original exception. */ }
-
-                try { ClickraStorage.DeleteTask(taskId); } catch { /* Non-critical: cleanup failure is harmless. */ }
+                lifecycle?.CompleteFailure(errorMsg, outputs, endTime);
+                lifecycle?.Delete();
                 PostMessageW(hwnd, 0x0010, IntPtr.Zero, IntPtr.Zero); // WM_CLOSE
             }
         }

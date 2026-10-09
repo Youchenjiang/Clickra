@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.Threading;
 using System.Threading.Tasks;
 using PdfSharp.Pdf.IO;
@@ -51,45 +50,33 @@ public static class ConvertCommandRunner
             ConversionOptions options,
             CancellationToken token = default)
         {
-            // Display timestamp for the history log; local time is what the user expects.
-            string startTime = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss"); // skipcq: CS-W1091
-            string inputs = string.Join(";", files);
-            var stopwatch = Stopwatch.StartNew();
-
             void Progress(int current, int total, string message)
             {
                 int percent = total > 0 ? Math.Clamp((int)(current * 100.0 / total), 0, 100) : 0;
                 updateProgress(percent, message);
             }
 
-            // 每個任務有獨立的進度檔（tasks/task-{id}.tmp），多個並行任務不會互相覆蓋。
-            // resume 時沿用原任務檔（existingTaskId），避免重複建立與歷史重複寫入。
-            string taskId = options.ExistingTaskId ?? ClickraStorage.StartTask(command, files.Count, inputs);
-            ClickraStorage.SetTaskInProgress(taskId);
+            var lifecycle = ConversionTaskLifecycle.Start(command, files, options.ExistingTaskId);
             try
             {
                 await Task.Run(() => Run(command, files, outputs, Progress, options, token), token);
-                stopwatch.Stop();
-                ClickraStorage.CompleteTask(taskId, command, new() { StartTime = startTime, IsSuccess = true, InputPaths = inputs, OutputPath = string.Join(";", outputs), ElapsedMs = stopwatch.ElapsedMilliseconds });
-                return new ConvertRunResult(ConvertRunStatus.Succeeded, null, taskId);
+                lifecycle.CompleteSuccess(string.Join(";", outputs));
+                return new ConvertRunResult(ConvertRunStatus.Succeeded, null, lifecycle.TaskId);
             }
             catch (ParkedException ex)
             {
-                stopwatch.Stop();
-                ClickraStorage.ParkTask(taskId, ex.Message, ex.NextFileIndex);
-                return new ConvertRunResult(ConvertRunStatus.Parked, ex.Message, taskId);
+                lifecycle.Park(ex.Message, ex.NextFileIndex);
+                return new ConvertRunResult(ConvertRunStatus.Parked, ex.Message, lifecycle.TaskId);
             }
             catch (OperationCanceledException)
             {
-                stopwatch.Stop();
-                ClickraStorage.CompleteTask(taskId, command, new() { StartTime = startTime, IsSuccess = false, ErrorMsg = "Canceled", InputPaths = inputs, OutputPath = string.Join(";", outputs), ElapsedMs = stopwatch.ElapsedMilliseconds });
-                return new ConvertRunResult(ConvertRunStatus.Canceled, null, taskId);
+                lifecycle.CompleteFailure("Canceled", string.Join(";", outputs));
+                return new ConvertRunResult(ConvertRunStatus.Canceled, null, lifecycle.TaskId);
             }
             catch (Exception ex)
             {
-                stopwatch.Stop();
-                ClickraStorage.CompleteTask(taskId, command, new() { StartTime = startTime, IsSuccess = false, ErrorMsg = ex.Message, InputPaths = inputs, OutputPath = string.Join(";", outputs), ElapsedMs = stopwatch.ElapsedMilliseconds });
-                return new ConvertRunResult(ConvertRunStatus.Failed, ex.Message, taskId);
+                lifecycle.CompleteFailure(ex.Message, string.Join(";", outputs));
+                return new ConvertRunResult(ConvertRunStatus.Failed, ex.Message, lifecycle.TaskId);
             }
         }
 
