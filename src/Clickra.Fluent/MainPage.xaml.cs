@@ -514,10 +514,21 @@ public sealed partial class MainPage : Page
             commandOptions = await FluentDialogs.PromptMarkdownPdfOptionsAsync(XamlRoot, L, App.MainWindow);
             if (commandOptions is null) return;
         }
+        IConversionUseCase? applicationUseCase = null;
+        ConversionPlan? applicationPlan = null;
         List<string> outputs;
         try
         {
-            outputs = ConvertCommandRegistry.EstimateOutputs(command, files);
+            if (command.Equals(DecryptPdfUseCase.CommandName, StringComparison.OrdinalIgnoreCase))
+            {
+                applicationUseCase = ConversionUseCases.GetRequired(command);
+                applicationPlan = applicationUseCase.Plan(new ConversionRequest(command, files));
+                outputs = applicationPlan.Outputs.ToList();
+            }
+            else
+            {
+                outputs = ConvertCommandRegistry.EstimateOutputs(command, files);
+            }
         }
         catch (Exception ex)
         {
@@ -533,10 +544,8 @@ public sealed partial class MainPage : Page
 
         try
         {
-            if (command.Equals(DecryptPdfUseCase.CommandName, StringComparison.OrdinalIgnoreCase))
+            if (applicationUseCase is not null && applicationPlan is not null)
             {
-                IConversionUseCase useCase = ConversionUseCases.GetRequired(command);
-                ConversionPlan plan = useCase.Plan(new ConversionRequest(command, files));
                 var interaction = new DelegateConversionInteraction(
                     (index, inputPath, isRetry, token) =>
                         DispatcherQueue.EnqueueAsync(() => FluentDialogs.PromptPasswordAsync(XamlRoot, L)),
@@ -549,8 +558,8 @@ public sealed partial class MainPage : Page
                         : 0;
                     SetProgress(percent, state.Message);
                 });
-                ConversionResult applicationResult = await useCase.ExecuteAsync(
-                    plan,
+                ConversionResult applicationResult = await applicationUseCase.ExecuteAsync(
+                    applicationPlan,
                     interaction,
                     progress,
                     cancellationToken: _cts.Token);
