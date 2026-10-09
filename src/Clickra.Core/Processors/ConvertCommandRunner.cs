@@ -125,9 +125,6 @@ public static class ConvertCommandRunner
                 case "translate-pdf":
                     RunPerFile(files, outputs, (f, o, p, t) => FileProcessor.TranslatePdf(f, o, ClickraStorage.GetSetting(ClickraSettings.TranslateTargetLang), p, t), progress, options.StartIndex, options.OnFileStarting, token);
                     break;
-                case "split-pdf":
-                    RunSplit(files, outputs, options.PromptSplitPages, progress, options.StartIndex, options.OnFileStarting, token);
-                    break;
                 case "img2pdf":
                     RunPerFile(files, outputs, (f, o, p, t) => FileProcessor.ConvertImagesToPdf(new List<string> { f }, o, p, t), progress, options.StartIndex, options.OnFileStarting, token);
                     break;
@@ -181,16 +178,4 @@ public static class ConvertCommandRunner
             }
         }
 
-        private static void RunSplit(List<string> files, List<string> outputs, Func<int, string, Task<string?>> promptSplitPages, Action<int, int, string> progress, int startIndex, Action<int>? onFileStarting, CancellationToken token)
-        {
-            for (int i = startIndex; i < files.Count; i++)
-            {
-                token.ThrowIfCancellationRequested();
-                onFileStarting?.Invoke(i);
-                string? splitPages = promptSplitPages(i, files[i]).GetAwaiter().GetResult();
-                if (string.IsNullOrWhiteSpace(splitPages)) throw new OperationCanceledException(token);
-                int index = i;
-                FileProcessor.SplitPdf(files[i], outputs[i], splitPages, (c, t, m) => progress((index * 100) + c, files.Count * 100, m), token);
-            }
-        }
     }
