@@ -265,6 +265,7 @@ static partial class TestSuite
         if (root is null) throw new TestSkippedException("Could not locate the repository root.");
 
         string runner = File.ReadAllText(Path.Combine(root, "src", "Clickra.Core", "Processors", "ConvertCommandRunner.cs"));
+        string registry = File.ReadAllText(Path.Combine(root, "src", "Clickra.Core", "Processors", "ConvertCommandRegistry.cs"));
         string native = File.ReadAllText(Path.Combine(root, "src", "Clickra.CLI", "Progress", "ProgressWindow.Process.cs"));
         string quiet = File.ReadAllText(Path.Combine(root, "src", "Clickra.CLI", "Cli", "ClickraCli.cs"));
         string fluentMain = File.ReadAllText(Path.Combine(root, "src", "Clickra.Fluent", "MainPage.xaml.cs"));
@@ -272,6 +273,8 @@ static partial class TestSuite
 
         Assert.False(runner.Contains("case \"compress-pdf\"", StringComparison.Ordinal),
             "Legacy ConvertCommandRunner must not retain a compress execution branch after migration.");
+        Assert.False(registry.Contains("_compressed.pdf", StringComparison.Ordinal),
+            "Legacy ConvertCommandRegistry must not retain compression output-path policy after application migration.");
         Assert.False(native.Contains("FileProcessor.CompressPdf", StringComparison.Ordinal),
             "Native presentation must not execute the compression processor directly.");
         Assert.False(quiet.Contains("FileProcessor.CompressPdf", StringComparison.Ordinal),

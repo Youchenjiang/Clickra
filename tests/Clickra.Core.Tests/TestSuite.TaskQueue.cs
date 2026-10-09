@@ -171,7 +171,10 @@ static partial class TestSuite
                 string first = Path.Combine(firstDir, "a.pdf");
                 string second = Path.Combine(secondDir, "b.pdf");
 
-                List<string> outputs = ConvertCommandRegistry.EstimateOutputs("compress-pdf", new List<string> { first, second });
+                ConversionPlan plan = new CompressPdfUseCase().Plan(new ConversionRequest(
+                    CompressPdfUseCase.CommandName,
+                    new List<string> { first, second }));
+                IReadOnlyList<string> outputs = plan.Outputs;
 
                 Assert.Equal(Path.Combine(firstDir, "a_compressed.pdf"), outputs[0]);
                 Assert.Equal(Path.Combine(secondDir, "b_compressed.pdf"), outputs[1]);
