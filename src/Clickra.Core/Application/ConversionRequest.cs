@@ -7,4 +7,5 @@ public sealed record ConversionRequest(
     IReadOnlyDictionary<string, object>? Options = null,
     string? ExistingTaskId = null,
     string? OutputOverride = null,
-    bool BestEffortTaskPersistence = false);
+    bool BestEffortTaskPersistence = false,
+    bool TrackTaskLifecycle = true);

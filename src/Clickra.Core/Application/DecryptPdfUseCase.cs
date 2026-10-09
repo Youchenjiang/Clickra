@@ -49,7 +49,8 @@ public sealed class DecryptPdfUseCase : IConversionUseCase
             new HashSet<ConversionCapability> { ConversionCapability.Password },
             new Dictionary<string, object>(StringComparer.Ordinal),
             ExistingTaskId: request.ExistingTaskId,
-            BestEffortTaskPersistence: request.BestEffortTaskPersistence);
+            BestEffortTaskPersistence: request.BestEffortTaskPersistence,
+            TrackTaskLifecycle: request.TrackTaskLifecycle);
     }
 
     public async Task<ConversionResult> ExecuteAsync(
@@ -67,12 +68,15 @@ public sealed class DecryptPdfUseCase : IConversionUseCase
             throw new InvalidOperationException("Decrypt conversion requires one output per input.");
 
         var stopwatch = Stopwatch.StartNew();
-        ConversionTaskLifecycle lifecycle = ConversionTaskLifecycle.Start(
-            CommandName,
-            plan.Inputs,
-            plan.ExistingTaskId,
-            plan.BestEffortTaskPersistence);
-        observer?.OnTaskStarted(lifecycle.TaskId);
+        ConversionTaskLifecycle? lifecycle = plan.TrackTaskLifecycle
+            ? ConversionTaskLifecycle.Start(
+                CommandName,
+                plan.Inputs,
+                plan.ExistingTaskId,
+                plan.BestEffortTaskPersistence)
+            : null;
+        if (lifecycle is not null)
+            observer?.OnTaskStarted(lifecycle.TaskId);
 
         int completedFiles = Math.Clamp(plan.ResumeStartIndex, 0, plan.Inputs.Count);
         try
@@ -80,7 +84,7 @@ public sealed class DecryptPdfUseCase : IConversionUseCase
             for (int i = completedFiles; i < plan.Inputs.Count; i++)
             {
                 cancellationToken.ThrowIfCancellationRequested();
-                lifecycle.RecordFileStarting(i);
+                lifecycle?.RecordFileStarting(i);
                 observer?.OnFileStarting(i);
 
                 string password = "";
@@ -121,7 +125,7 @@ public sealed class DecryptPdfUseCase : IConversionUseCase
                 }
             }
 
-            lifecycle.CompleteSuccess(string.Join(";", plan.Outputs));
+            lifecycle?.CompleteSuccess(string.Join(";", plan.Outputs));
             stopwatch.Stop();
             return new ConversionResult(
                 ConversionResultStatus.Succeeded,
@@ -129,11 +133,11 @@ public sealed class DecryptPdfUseCase : IConversionUseCase
                 null,
                 stopwatch.Elapsed,
                 completedFiles,
-                lifecycle.TaskId);
+                lifecycle?.TaskId ?? "");
         }
         catch (ConversionParkedException ex)
         {
-            lifecycle.Park(ex.Message, ex.NextFileIndex);
+            lifecycle?.Park(ex.Message, ex.NextFileIndex);
             stopwatch.Stop();
             return new ConversionResult(
                 ConversionResultStatus.Parked,
@@ -141,11 +145,11 @@ public sealed class DecryptPdfUseCase : IConversionUseCase
                 ex.Message,
                 stopwatch.Elapsed,
                 completedFiles,
-                lifecycle.TaskId);
+                lifecycle?.TaskId ?? "");
         }
         catch (OperationCanceledException)
         {
-            lifecycle.CompleteFailure("Canceled", string.Join(";", plan.Outputs));
+            lifecycle?.CompleteFailure("Canceled", string.Join(";", plan.Outputs));
             stopwatch.Stop();
             return new ConversionResult(
                 ConversionResultStatus.Canceled,
@@ -153,11 +157,11 @@ public sealed class DecryptPdfUseCase : IConversionUseCase
                 null,
                 stopwatch.Elapsed,
                 completedFiles,
-                lifecycle.TaskId);
+                lifecycle?.TaskId ?? "");
         }
         catch (Exception ex)
         {
-            lifecycle.CompleteFailure(ex.Message, string.Join(";", plan.Outputs));
+            lifecycle?.CompleteFailure(ex.Message, string.Join(";", plan.Outputs));
             stopwatch.Stop();
             return new ConversionResult(
                 ConversionResultStatus.Failed,
@@ -165,7 +169,7 @@ public sealed class DecryptPdfUseCase : IConversionUseCase
                 ex.Message,
                 stopwatch.Elapsed,
                 completedFiles,
-                lifecycle.TaskId);
+                lifecycle?.TaskId ?? "");
         }
     }
 

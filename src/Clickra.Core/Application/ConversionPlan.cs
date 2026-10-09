@@ -9,7 +9,8 @@ public sealed record ConversionPlan(
     IReadOnlyDictionary<string, object> NormalizedOptions,
     int ResumeStartIndex = 0,
     string? ExistingTaskId = null,
-    bool BestEffortTaskPersistence = false);
+    bool BestEffortTaskPersistence = false,
+    bool TrackTaskLifecycle = true);
 
 /// <summary>UI-independent interaction capabilities a conversion use case can require.</summary>
 public enum ConversionCapability

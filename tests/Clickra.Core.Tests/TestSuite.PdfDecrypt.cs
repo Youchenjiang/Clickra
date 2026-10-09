@@ -41,6 +41,53 @@ static partial class TestSuite
         });
         runner.Run("Decrypt use case owns planning and password retry", TestDecryptUseCaseOwnsWorkflow);
         runner.Run("Decrypt use case honors an explicit output directory", TestDecryptUseCaseHonorsOutputDirectory);
+        runner.Run("Decrypt use case can run without task tracking", TestDecryptUseCaseCanRunWithoutTaskTracking);
+    }
+
+    private static void TestDecryptUseCaseCanRunWithoutTaskTracking()
+    {
+        string input = Path.Combine(Path.GetTempPath(), $"clickra-decrypt-untracked-{Guid.NewGuid():N}.pdf");
+        string outputDir = Path.Combine(Path.GetTempPath(), $"clickra-decrypt-untracked-out-{Guid.NewGuid():N}");
+        const string password = "clickra-untracked-password";
+        int historyBefore = ClickraStorage.GetHistory(100).Count;
+        int activeBefore = ClickraStorage.GetActiveTasks().Count;
+        try
+        {
+            Directory.CreateDirectory(outputDir);
+            using (var document = new PdfDocument())
+            {
+                document.AddPage();
+                document.SecuritySettings.UserPassword = password;
+                document.SecuritySettings.OwnerPassword = "clickra-untracked-owner";
+                document.Save(input);
+            }
+
+            var useCase = new DecryptPdfUseCase();
+            ConversionPlan plan = useCase.Plan(new ConversionRequest(
+                DecryptPdfUseCase.CommandName,
+                new[] { input },
+                OutputOverride: outputDir,
+                TrackTaskLifecycle: false));
+            ConversionResult result = useCase.ExecuteAsync(
+                    plan,
+                    new RetryPasswordInteraction(password),
+                    progress: null)
+                .GetAwaiter()
+                .GetResult();
+
+            Assert.True(result.Status == ConversionResultStatus.Succeeded,
+                $"Expected untracked decrypt success, got {result.Status}: {result.Error}");
+            Assert.Equal("", result.TaskId);
+            Assert.True(ClickraStorage.GetHistory(100).Count == historyBefore,
+                "An untracked application execution must not write conversion history.");
+            Assert.True(ClickraStorage.GetActiveTasks().Count == activeBefore,
+                "An untracked application execution must not create a task record.");
+        }
+        finally
+        {
+            TryDeleteDecryptFixture(input);
+            try { Directory.Delete(outputDir, recursive: true); } catch { /* Best-effort fixture cleanup. */ }
+        }
     }
 
     private static void TestDecryptUseCaseHonorsOutputDirectory()
