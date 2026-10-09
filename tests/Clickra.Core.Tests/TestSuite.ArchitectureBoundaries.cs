@@ -1,4 +1,5 @@
 using System.Text.RegularExpressions;
+using Clickra.Core.Application;
 
 namespace Clickra.Core.Tests;
 
@@ -62,6 +63,9 @@ static partial class TestSuite
         runner.RunGuard(
             "Architecture boundaries: application contracts stay UI-independent",
             TestApplicationContractsStayUiIndependent);
+        runner.RunGuard(
+            "Architecture boundaries: conversion commands have one registry owner",
+            TestConversionUseCaseRegistryRejectsDuplicateOwners);
     }
 
     private static void TestArchitectureViolationBaseline()
@@ -142,6 +146,43 @@ static partial class TestSuite
                     $"{NormalizeRepoPath(root, file)} must not depend on UI/platform token '{token}'.");
             }
         }
+    }
+
+    private static void TestConversionUseCaseRegistryRejectsDuplicateOwners()
+    {
+        var first = new StubConversionUseCase("decrypt-pdf");
+        var second = new StubConversionUseCase("split-pdf");
+        var registry = new ConversionUseCaseRegistry(new IConversionUseCase[] { first, second });
+
+        Assert.True(registry.TryGet("DECRYPT-PDF", out IConversionUseCase? resolved),
+            "Use-case lookup must be case-insensitive like command routing.");
+        Assert.True(ReferenceEquals(first, resolved), "The registry must return the single owner registered for a command.");
+        Assert.True(ReferenceEquals(second, registry.GetRequired("split-pdf")),
+            "GetRequired must return the registered command owner.");
+        Assert.Throws<InvalidOperationException>(() =>
+            new ConversionUseCaseRegistry(new IConversionUseCase[]
+            {
+                first,
+                new StubConversionUseCase("DECRYPT-PDF")
+            }));
+    }
+
+    private sealed class StubConversionUseCase(string command) : IConversionUseCase
+    {
+        public string Command { get; } = command;
+
+        public ConversionValidationResult Validate(ConversionRequest request) =>
+            ConversionValidationResult.Success();
+
+        public ConversionPlan Plan(ConversionRequest request) =>
+            throw new NotSupportedException();
+
+        public Task<ConversionResult> ExecuteAsync(
+            ConversionPlan plan,
+            IConversionInteraction interaction,
+            IProgress<ConversionProgress>? progress,
+            CancellationToken cancellationToken = default) =>
+            throw new NotSupportedException();
     }
 
     private static string NormalizeRepoPath(string root, string file) =>
