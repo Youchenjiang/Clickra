@@ -1,4 +1,5 @@
 using Clickra.Core;
+using Clickra.Core.Application;
 using Clickra.Core.Processors;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
@@ -17,6 +18,16 @@ namespace Clickra_Fluent;
 public sealed partial class TaskProgressPage : Page
 {
     private enum TaskRunPresentationStatus { Succeeded, Canceled, Parked, Failed }
+    private sealed class TaskProgressExecutionObserver(TaskProgressPage page) : IConversionExecutionObserver
+    {
+        public void OnTaskStarted(string taskId)
+        {
+            page._taskId = taskId;
+            App.RegisterTaskPage(taskId, page);
+        }
+
+        public void OnFileStarting(int fileIndex) { }
+    }
     /// <summary>一般轉換的視窗尺寸：緊湊單一區塊排版（~460px 寬內容），高度剛好包住
     /// 狀態列+進度條+按鈕，不會有大窗漂小卡的空間感。分割介面需要整片空間時才暫時放大。</summary>
     internal static readonly Windows.Graphics.SizeInt32 CompactWindowSize = new(480, 300);
@@ -155,7 +166,25 @@ public sealed partial class TaskProgressPage : Page
             }
         }
 
-        var outputs = ConvertCommandRegistry.EstimateOutputs(command, files);
+        IConversionUseCase? applicationUseCase = null;
+        ConversionPlan? applicationPlan = null;
+        List<string> outputs;
+        if (command.Equals(DecryptPdfUseCase.CommandName, StringComparison.OrdinalIgnoreCase))
+        {
+            applicationUseCase = ConversionUseCases.GetRequired(command);
+            applicationPlan = applicationUseCase.Plan(new ConversionRequest(
+                command,
+                files,
+                ExistingTaskId: existingTaskId)) with
+            {
+                ResumeStartIndex = startIndex
+            };
+            outputs = applicationPlan.Outputs.ToList();
+        }
+        else
+        {
+            outputs = ConvertCommandRegistry.EstimateOutputs(command, files);
+        }
         _outputFolder = Path.GetDirectoryName(outputs[0]) ?? "";
         _files = files;
         _cts = new CancellationTokenSource();
@@ -172,6 +201,40 @@ public sealed partial class TaskProgressPage : Page
 
         try
         {
+            if (applicationUseCase is not null && applicationPlan is not null)
+            {
+                var interaction = new DelegateConversionInteraction(
+                    PromptApplicationPasswordAsync,
+                    (_, _, _) => Task.FromResult<string?>(null),
+                    (_, _, _) => Task.FromResult<IReadOnlyDictionary<string, object>?>(null));
+                var progress = new Progress<ConversionProgress>(state =>
+                {
+                    int percent = state.Total > 0
+                        ? Math.Clamp((int)(state.Current * 100.0 / state.Total), 0, 100)
+                        : 0;
+                    if (_isBackgrounded && Window is { } window)
+                    {
+                        TrayService.Instance.UpdateProgress(window, _taskLabel, percent);
+                    }
+                    DispatcherQueue.TryEnqueue(() => SetProgress(percent, state.Message));
+                });
+                ConversionResult applicationResult = await applicationUseCase.ExecuteAsync(
+                    applicationPlan,
+                    interaction,
+                    progress,
+                    new TaskProgressExecutionObserver(this),
+                    _cts.Token);
+                TaskRunPresentationStatus applicationStatus = applicationResult.Status switch
+                {
+                    ConversionResultStatus.Succeeded => TaskRunPresentationStatus.Succeeded,
+                    ConversionResultStatus.Canceled => TaskRunPresentationStatus.Canceled,
+                    ConversionResultStatus.Parked => TaskRunPresentationStatus.Parked,
+                    _ => TaskRunPresentationStatus.Failed
+                };
+                await HandleRunResultAsync(applicationStatus, applicationResult.Error, command, files);
+                return;
+            }
+
             var result = await ConvertCommandRunner.RunTrackedAsync(command, files, outputs,
                 (percent, message) =>
                 {
@@ -205,6 +268,22 @@ public sealed partial class TaskProgressPage : Page
             _cts?.Dispose();
             _cts = null;
             App.UnregisterTaskPage(_taskId);
+        }
+    }
+
+    private async Task<string?> PromptApplicationPasswordAsync(
+        int fileIndex,
+        string inputPath,
+        bool isRetry,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            return await PromptPasswordAsync(fileIndex);
+        }
+        catch (ConvertCommandRunner.ParkedException ex)
+        {
+            throw new ConversionParkedException(ex.Message, ex.NextFileIndex);
         }
     }
 
