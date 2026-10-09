@@ -508,16 +508,22 @@ static partial class TestSuite
     {
         string root = FindRepoRoot() ?? throw new TestSkippedException(RepoRootNotFoundMessage);
         string fluentCode = File.ReadAllText(Path.Combine(root, "src", SettingsRegistryFluentProjectDirectory, "MainPage.xaml.cs"));
+        string fluentDynamicSettings = File.ReadAllText(Path.Combine(root, "src", SettingsRegistryFluentProjectDirectory, "DynamicSettingsController.cs"));
         string dashboardDir = Path.Combine(root, "src", CliProjectDirectory, DashboardDirectory);
         string cliPaint = string.Concat(
             Directory.GetFiles(dashboardDir, "DashboardWindow.Paint.Settings*.cs", SearchOption.TopDirectoryOnly)
                 .Select(File.ReadAllText));
         string cliClick = File.ReadAllText(Path.Combine(dashboardDir, "DashboardWindow.Events.Settings.cs"));
 
-        Assert.True(fluentCode.Contains("SettingPageRegistry.AllDescriptors", StringComparison.Ordinal),
-            "Fluent UI must iterate SettingPageRegistry.AllDescriptors for automatic control generation.");
-        Assert.True(fluentCode.Contains("BuildDynamicSettingsControls()", StringComparison.Ordinal),
-            "Fluent UI must provide BuildDynamicSettingsControls() to generate dynamic cards from Core descriptors.");
+        Assert.True(fluentDynamicSettings.Contains("SettingPageRegistry.AllDescriptors", StringComparison.Ordinal),
+            "Fluent dynamic settings must iterate SettingPageRegistry.AllDescriptors for automatic control generation.");
+        Assert.True(fluentCode.Contains("_dynamicSettings.Build();", StringComparison.Ordinal)
+                    && fluentCode.Contains("_dynamicSettings.Sync();", StringComparison.Ordinal)
+                    && fluentCode.Contains("_dynamicSettings.ApplyLanguage();", StringComparison.Ordinal),
+            "MainPage must delegate dynamic settings creation, synchronization, and localization to the controller.");
+        Assert.True(fluentDynamicSettings.Contains("ClickraStorage.SaveSetting(", StringComparison.Ordinal)
+                    && fluentDynamicSettings.Contains("ClickraStorage.GetSetting", StringComparison.Ordinal),
+            "The Fluent dynamic settings controller must own descriptor persistence and storage-to-control synchronization.");
         Assert.True(cliPaint.Contains("SettingPageRegistry.AllDescriptors", StringComparison.Ordinal),
             "CLI Dashboard must iterate SettingPageRegistry.AllDescriptors to paint dynamic settings controls.");
         Assert.True(cliPaint.Contains("DrawDynamicSettingDescriptor", StringComparison.Ordinal),
@@ -526,8 +532,9 @@ static partial class TestSuite
             "CLI Dashboard must handle clicks on dynamic settings controls via HandleDynamicSettingClick.");
         Assert.True(cliClick.Contains("Math.Clamp((long)current + delta", StringComparison.Ordinal),
             "CLI dynamic number controls must widen arithmetic before clamping to avoid integer overflow.");
-        Assert.True(fluentCode.Contains("ApplySettingsResponsiveLayout(ActualWidth < 1000)", StringComparison.Ordinal),
-            "Fluent dynamic settings must be assigned responsive grid rows and columns after insertion.");
+        Assert.True(fluentCode.Contains("() => ApplySettingsResponsiveLayout(ActualWidth < 1000)", StringComparison.Ordinal)
+                    && fluentDynamicSettings.Contains("_applyResponsiveLayout();", StringComparison.Ordinal),
+            "Fluent dynamic settings must request the MainPage responsive layout after inserting cards.");
     }
 
     private static void TestCliLocalizationKeysCoverage()
