@@ -6,6 +6,7 @@ public static class ConversionUseCases
     private static readonly ConversionUseCaseRegistry Registry = new(
         new IConversionUseCase[]
         {
+            new CompressPdfUseCase(),
             new DecryptPdfUseCase(),
             new SplitPdfUseCase()
         });
