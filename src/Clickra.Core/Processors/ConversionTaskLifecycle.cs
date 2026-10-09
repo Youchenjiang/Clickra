@@ -69,6 +69,9 @@ public sealed class ConversionTaskLifecycle
         RunStorage(() => ClickraStorage.ParkTask(TaskId, reason, nextFileIndex));
     }
 
+    public void RecordFileStarting(int fileIndex) =>
+        RunStorage(() => ClickraStorage.SetTaskIndex(TaskId, fileIndex));
+
     public void Delete() => RunStorage(() => ClickraStorage.DeleteTask(TaskId));
 
     private void Complete(bool isSuccess, string error, string outputPath, string? endTime)

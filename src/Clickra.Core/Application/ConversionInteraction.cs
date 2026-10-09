@@ -6,6 +6,7 @@ public interface IConversionInteraction
     Task<string?> RequestPasswordAsync(
         int fileIndex,
         string inputPath,
+        bool isRetry,
         CancellationToken cancellationToken);
 
     Task<string?> RequestSplitPagesAsync(
@@ -21,3 +22,13 @@ public interface IConversionInteraction
 
 /// <summary>UI-independent progress payload emitted by application use cases.</summary>
 public readonly record struct ConversionProgress(int Current, int Total, string Message);
+
+/// <summary>Signals that an interactive conversion should be parked and resumed later.</summary>
+public sealed class ConversionParkedException : Exception
+{
+    public ConversionParkedException(string reason, int nextFileIndex)
+        : base(reason) =>
+        NextFileIndex = nextFileIndex;
+
+    public int NextFileIndex { get; }
+}

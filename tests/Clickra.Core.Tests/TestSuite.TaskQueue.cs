@@ -72,12 +72,32 @@ static partial class TestSuite
             TestCliDashboardParkedTaskResumeAndCancelEntryPoint);
         runner.Run("Conversion lifecycle preserves an explicit start time",
             TestConversionLifecyclePreservesExplicitStartTime);
+        runner.Run("Conversion lifecycle owns per-file resume checkpoints",
+            TestConversionLifecycleOwnsResumeCheckpoint);
         runner.Run("Conversion runner reports the shared lifecycle task id",
             TestConversionRunnerReportsLifecycleTaskId);
         runner.Run("Conversion output planning preserves each source directory",
             TestConversionOutputPlanningPreservesSourceDirectories);
         runner.RunGuard("Conversion lifecycle: Native and Fluent runners share task tracking",
             TestConversionLifecycleIsShared);
+    }
+
+    private static void TestConversionLifecycleOwnsResumeCheckpoint()
+    {
+        ConversionTaskLifecycle lifecycle = ConversionTaskLifecycle.Start(
+            "decrypt-pdf",
+            new[] { TestInDir + FileA1, TestInDir + FileA2 });
+        try
+        {
+            lifecycle.RecordFileStarting(1);
+            ClickraStorage.HistoryEntry? entry = ClickraStorage.GetTask(lifecycle.TaskId);
+            Assert.True(entry.HasValue && entry.Value.CurrentIndex == 1,
+                "The shared lifecycle must persist the current file index for resume.");
+        }
+        finally
+        {
+            lifecycle.Delete();
+        }
     }
 
     private static void TestConversionRunnerReportsLifecycleTaskId()
