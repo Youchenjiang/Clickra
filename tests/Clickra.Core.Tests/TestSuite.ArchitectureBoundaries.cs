@@ -69,6 +69,9 @@ static partial class TestSuite
         runner.RunGuard(
             "Architecture boundaries: product use case catalog owns migrated commands",
             TestProductUseCaseCatalogOwnsMigratedCommands);
+        runner.RunGuard(
+            "Architecture boundaries: migrated decrypt workflow has one execution owner",
+            TestDecryptWorkflowHasSingleExecutionOwner);
     }
 
     private static void TestArchitectureViolationBaseline()
@@ -178,6 +181,30 @@ static partial class TestSuite
         Assert.True(ConversionUseCases.Commands.Count(command =>
                 command.Equals(DecryptPdfUseCase.CommandName, StringComparison.OrdinalIgnoreCase)) == 1,
             "The product catalog must expose exactly one decrypt-pdf owner.");
+    }
+
+    private static void TestDecryptWorkflowHasSingleExecutionOwner()
+    {
+        string? root = FindRepoRoot();
+        if (root is null) throw new TestSkippedException("Could not locate the repository root.");
+
+        string runner = File.ReadAllText(Path.Combine(root, "src", "Clickra.Core", "Processors", "ConvertCommandRunner.cs"));
+        string native = File.ReadAllText(Path.Combine(root, "src", "Clickra.CLI", "Progress", "ProgressWindow.Process.cs"));
+        string quiet = File.ReadAllText(Path.Combine(root, "src", "Clickra.CLI", "Cli", "ClickraCli.cs"));
+        string fluentMain = File.ReadAllText(Path.Combine(root, "src", "Clickra.Fluent", "MainPage.xaml.cs"));
+        string fluentTask = File.ReadAllText(Path.Combine(root, "src", "Clickra.Fluent", "TaskProgressPage.xaml.cs"));
+
+        Assert.False(runner.Contains("case \"decrypt-pdf\"", StringComparison.Ordinal),
+            "Legacy ConvertCommandRunner must not retain a decrypt execution branch after migration.");
+        Assert.False(native.Contains("FileProcessor.DecryptPdf", StringComparison.Ordinal),
+            "Native presentation must not execute the decrypt processor directly.");
+        Assert.False(quiet.Contains("FileProcessor.DecryptPdf", StringComparison.Ordinal),
+            "Headless CLI must not execute the decrypt processor directly.");
+        Assert.True(fluentMain.Contains("ConversionUseCases.GetRequired(command)", StringComparison.Ordinal)
+                    && fluentTask.Contains("ConversionUseCases.GetRequired(command)", StringComparison.Ordinal)
+                    && native.Contains("ConversionUseCases.GetRequired(DecryptPdfUseCase.CommandName)", StringComparison.Ordinal)
+                    && quiet.Contains("ConversionUseCases.GetRequired(DecryptPdfUseCase.CommandName)", StringComparison.Ordinal),
+            "All product surfaces must resolve decrypt execution through the application use-case catalog.");
     }
 
     private sealed class StubConversionUseCase(string command) : IConversionUseCase
