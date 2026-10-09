@@ -3,6 +3,7 @@ using System.IO;
 using System.Linq;
 using System.Threading;
 using Clickra.Core;
+using Clickra.Core.Application;
 using Clickra.Core.Processors;
 
 namespace Clickra.Core.Tests;
@@ -76,12 +77,22 @@ static partial class TestSuite
             TestConversionLifecyclePreservesExplicitStartTime);
         runner.Run("Conversion lifecycle owns per-file resume checkpoints",
             TestConversionLifecycleOwnsResumeCheckpoint);
+        runner.Run("Conversion task cleanup removes completed presentation records",
+            TestConversionTaskCleanupRemovesTask);
         runner.Run("Conversion runner reports the shared lifecycle task id",
             TestConversionRunnerReportsLifecycleTaskId);
         runner.Run("Conversion output planning preserves each source directory",
             TestConversionOutputPlanningPreservesSourceDirectories);
         runner.RunGuard("Conversion lifecycle: Native and Fluent runners share task tracking",
             TestConversionLifecycleIsShared);
+    }
+
+    private static void TestConversionTaskCleanupRemovesTask()
+    {
+        string taskId = ClickraStorage.StartTask("decrypt-pdf", 1, TestInDir + FileA);
+        Assert.True(ClickraStorage.GetTask(taskId).HasValue, "Task must exist before application cleanup.");
+        ConversionTaskCleanup.Delete(taskId);
+        Assert.False(ClickraStorage.GetTask(taskId).HasValue, "Application cleanup must remove the task record.");
     }
 
     private static void TestConversionLifecycleOwnsResumeCheckpoint()
