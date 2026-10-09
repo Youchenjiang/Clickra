@@ -502,56 +502,15 @@ namespace Clickra.Core
 
         // ─── Internal ──────────────────────────────────────────────────────────
 
-        private static string TaskFilePath(string taskId) => Path.Combine(TasksDir, $"{TaskFilePrefix}{taskId}.tmp");
+        private static string TaskFilePath(string taskId) => TaskRecordStore.PathFor(taskId);
 
         /// <summary>可排序的唯一任務 ID：時間戳 + 短 GUID（檔名排序即建立順序）。</summary>
-        private static string NewTaskId()
-            => $"{DateTime.UtcNow:yyyyMMddHHmmssfff}-{Guid.NewGuid().ToString("N")[..8]}";
+        private static string NewTaskId() => TaskRecordStore.NewTaskId();
 
-        private static void EnsureTasksDir()
-        {
-            try
-            {
-                if (!Directory.Exists(TasksDir))
-                {
-                    Directory.CreateDirectory(TasksDir);
-                }
-                // NOTE: Legacy active.tmp is NOT deleted here. Clickra.CLI
-                // (ProgressWindow, DashboardWindow) still writes to it.
-                // Defer cleanup until the legacy API is fully migrated.
-            }            catch { /* tasks dir may not exist yet on first run */ }
-        }
+        private static void EnsureTasksDir() => TaskRecordStore.EnsureDirectory();
 
 
-        private static List<string> ListTaskFiles()
-        {
-            try
-            {
-                if (!Directory.Exists(TasksDir)) return new List<string>();
-                return Directory.GetFiles(TasksDir, $"{TaskFilePrefix}*.tmp")
-                    .OrderByDescending(GetTaskFileSortKey)
-                    .Select(f => Path.GetFileNameWithoutExtension(f)[TaskFilePrefix.Length..])
-                    .ToList();
-            }
-            catch
-            {
-                return new List<string>();
-            }
-        }
-
-        /// <summary>Extract the creation timestamp from a task filename for ordering.
-        /// File.GetLastWriteTime has only 2-second resolution on NTFS, causing
-        /// ordering instability when two tasks are created within the same window.</summary>
-        private static string GetTaskFileSortKey(string filePath)
-        {
-            string name = Path.GetFileNameWithoutExtension(filePath); // task-{id}
-            string id = name.Length > TaskFilePrefix.Length ? name[TaskFilePrefix.Length..] : name;
-            // NewTaskId format: yyyyMMddHHmmssfff-GUID[0..8]
-            // Timestamp is the first 17 chars; the dash and GUID follow.
-            // Use only the 17-char timestamp for deterministic chronological ordering.
-            string ts = id.Length >= 17 ? id[..17] : id;
-            return ts.PadRight(17, '0');
-        }
+        private static List<string> ListTaskFiles() => TaskRecordStore.ListTaskIds();
 
         /// <summary>清除過期的任務檔：已完成超過 10 分鐘、進行中超過 24 小時（遺棄）、
         /// 或建立進程已死的進行中任務（崩潰/被強制結束/系統重啟）——後者記錄為
@@ -663,75 +622,9 @@ namespace Clickra.Core
             return dict;
         }
 
-        private static bool WriteTaskFileInternal(TaskFileData d)
-        {
-            lock (FileLock)
-            {
-                try
-                {
-                    using var sw = new StreamWriter(TaskFilePath(d.TaskId), false, System.Text.Encoding.UTF8);
-                    sw.WriteLine($"Id={d.TaskId}");
-                    sw.WriteLine($"Time={d.Time ?? DateTime.UtcNow.ToString(DateTimeFormat)}");
-                    sw.WriteLine($"Command={d.Command}");
-                    sw.WriteLine($"FileCount={d.FileCount}");
-                    sw.WriteLine($"Status={d.Status}");
-                    sw.WriteLine($"ErrorMessage={(d.ErrorMessage ?? "").Replace("\r", " ").Replace("\n", " ")}");
-                    sw.WriteLine($"InputPaths={(d.InputPaths ?? "").Replace("\r", " ").Replace("\n", " ")}");
-                    sw.WriteLine($"CurrentIndex={d.CurrentIndex}");
-                    sw.WriteLine($"OutputPath={(d.OutputPath ?? "").Replace("\r", " ").Replace("\n", " ")}");
-                    sw.WriteLine($"EndTime={d.EndTime ?? ""}");
-                    sw.WriteLine($"ElapsedMs={d.ElapsedMs}");
-                    sw.WriteLine($"Pid={d.Pid}");
-                    // 只有被使用者調過期限的任務才寫這兩行；其他任務檔的格式完全不變。
-                    if (d.ParkedRetentionDays.HasValue)
-                        sw.WriteLine($"ParkedRetentionDays={d.ParkedRetentionDays.Value}");
-                    if (!string.IsNullOrEmpty(d.ParkedSince))
-                        sw.WriteLine($"ParkedSince={d.ParkedSince}");
-                    return true;
-                }
-                catch { return false; }
-            }
-        }
+        private static bool WriteTaskFileInternal(TaskFileData d) => TaskRecordStore.Write(d);
 
-        private static HistoryEntry? ReadTaskFileInternal(string taskId)
-        {
-            lock (FileLock)
-            {
-                string path = TaskFilePath(taskId);
-                if (!File.Exists(path)) return null;
-                try
-                {
-                    var dict = ParseKeyValueLines(File.ReadAllLines(path));
-
-                    if (!int.TryParse(dict.GetValueOrDefault("FileCount", "0"), out int fc)) fc = 0;
-                    if (!Enum.TryParse(dict.GetValueOrDefault("Status", "Pending"), out ConversionStatus status)) status = ConversionStatus.Pending;
-                    if (!int.TryParse(dict.GetValueOrDefault("CurrentIndex", "0"), out int ci)) ci = 0;
-                    if (!long.TryParse(dict.GetValueOrDefault("ElapsedMs", "-1"), out long ms)) ms = -1;
-                    if (!int.TryParse(dict.GetValueOrDefault("Pid", "0"), out int pid)) pid = 0;
-                    // 沒有這一行就是「沒有覆寫」（null），而不是 0（無限期）——不要預設成 0。
-                    int? parkedDays = int.TryParse(dict.GetValueOrDefault("ParkedRetentionDays", ""), out int prd) ? prd : null;
-
-                    return new HistoryEntry
-                    {
-                        Id = dict.GetValueOrDefault("Id", taskId),
-                        Time = dict.GetValueOrDefault("Time", ""),
-                        Command = dict.GetValueOrDefault("Command", ""),
-                        FileCount = fc,
-                        Status = status,
-                        ErrorMessage = dict.GetValueOrDefault("ErrorMessage", ""),
-                        InputPaths = dict.GetValueOrDefault("InputPaths", ""),
-                        CurrentIndex = ci,
-                        OutputPath = dict.GetValueOrDefault("OutputPath", ""),
-                        EndTime = dict.GetValueOrDefault("EndTime", ""),
-                        ElapsedMs = ms,
-                        Pid = pid,
-                        ParkedRetentionDays = parkedDays,
-                        ParkedSince = dict.GetValueOrDefault("ParkedSince", "")
-                    };
-                }
-                catch { return null; }
-            }
-        }
+        private static HistoryEntry? ReadTaskFileInternal(string taskId) => TaskRecordStore.Read(taskId);
 
         // ─── Legacy Active Record API (single active.tmp) ──────────────────────
         // These methods are retained for backward compatibility with Clickra.CLI
