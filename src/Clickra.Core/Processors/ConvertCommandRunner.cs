@@ -122,9 +122,6 @@ public static class ConvertCommandRunner
                 case "translate-pdf":
                     RunPerFile(files, outputs, (f, o, p, t) => FileProcessor.TranslatePdf(f, o, ClickraStorage.GetSetting(ClickraSettings.TranslateTargetLang), p, t), progress, options.StartIndex, options.OnFileStarting, token);
                     break;
-                case "img2pdf":
-                    RunPerFile(files, outputs, (f, o, p, t) => FileProcessor.ConvertImagesToPdf(new List<string> { f }, o, p, t), progress, options.StartIndex, options.OnFileStarting, token);
-                    break;
                 case "img-merge":
                     FileProcessor.ConvertImagesToPdf(files, outputs[0], progress, token);
                     break;

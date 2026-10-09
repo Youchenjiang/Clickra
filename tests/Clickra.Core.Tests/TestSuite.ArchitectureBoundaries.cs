@@ -78,6 +78,9 @@ static partial class TestSuite
         runner.RunGuard(
             "Architecture boundaries: migrated compress workflow has one execution owner",
             TestCompressWorkflowHasSingleExecutionOwner);
+        runner.RunGuard(
+            "Architecture boundaries: migrated img2pdf workflow has one execution owner",
+            TestImg2PdfWorkflowHasSingleExecutionOwner);
     }
 
     private static void TestArchitectureViolationBaseline()
@@ -264,6 +267,32 @@ static partial class TestSuite
                     && native.Contains(catalogResolution, StringComparison.Ordinal)
                     && quiet.Contains(catalogResolution, StringComparison.Ordinal),
             $"All product surfaces must resolve {workflowName} execution through the application use-case catalog.");
+    }
+
+    private static void TestImg2PdfWorkflowHasSingleExecutionOwner()
+    {
+        string? root = FindRepoRoot();
+        if (root is null) throw new TestSkippedException("Could not locate the repository root.");
+
+        string runner = File.ReadAllText(Path.Combine(root, "src", "Clickra.Core", "Processors", "ConvertCommandRunner.cs"));
+        string native = File.ReadAllText(Path.Combine(root, "src", "Clickra.CLI", "Progress", "ProgressWindow.Process.cs"));
+        string quiet = File.ReadAllText(Path.Combine(root, "src", "Clickra.CLI", "Cli", "ClickraCli.cs"));
+        string fluentMain = File.ReadAllText(Path.Combine(root, "src", "Clickra.Fluent", "MainPage.xaml.cs"));
+        string fluentTask = File.ReadAllText(Path.Combine(root, "src", "Clickra.Fluent", "TaskProgressPage.xaml.cs"));
+
+        Assert.False(runner.Contains("case \"img2pdf\"", StringComparison.Ordinal),
+            "Legacy ConvertCommandRunner must not retain an img2pdf execution branch after migration.");
+        Assert.False(native.Contains("FileProcessor.ConvertImagesToPdf(new List<string> { f }", StringComparison.Ordinal),
+            "Native presentation must not retain the old single-image img2pdf processor call.");
+        Assert.False(quiet.Contains("FileProcessor.ConvertImagesToPdf(new List<string> { f }", StringComparison.Ordinal),
+            "Headless CLI must not retain the old single-image img2pdf processor call.");
+        Assert.True((fluentMain.Contains("ConversionUseCases.TryGet(command", StringComparison.Ordinal)
+                     || fluentMain.Contains("ConversionUseCases.GetRequired(command)", StringComparison.Ordinal))
+                    && (fluentTask.Contains("ConversionUseCases.TryGet(command", StringComparison.Ordinal)
+                        || fluentTask.Contains("ConversionUseCases.GetRequired(command)", StringComparison.Ordinal))
+                    && native.Contains("ConversionUseCases.GetRequired(Img2PdfUseCase.CommandName)", StringComparison.Ordinal)
+                    && quiet.Contains("ConversionUseCases.GetRequired(Img2PdfUseCase.CommandName)", StringComparison.Ordinal),
+            "All product surfaces must resolve img2pdf execution through the application use-case catalog.");
     }
 
     private sealed class StubConversionUseCase(string command) : IConversionUseCase
