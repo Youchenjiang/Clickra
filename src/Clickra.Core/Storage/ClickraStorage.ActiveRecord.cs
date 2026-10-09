@@ -361,19 +361,9 @@ namespace Clickra.Core
                 var age = ParkedAge(entry, path, now);
                 int current = GetEffectiveParkedRetentionDays(entry);
 
-                int next;
-                if (current <= 0)
-                {
-                    if (deltaDays > 0) return (int?)null;
-                    next = ClickraSettings.MinParkedRetentionDays + 1;
-                }
-                else
-                {
-                    double shortest = Math.Floor(age.TotalDays) + 1.0;
-                    next = (int)Math.Ceiling(Math.Max(current + (double)deltaDays, shortest));
-                }
-
-                next = ClickraSettings.ClampNumericSetting(ClickraSettings.ParkedTaskRetention, next);
+                int? adjusted = TaskRetentionPolicy.CalculateAdjustedDays(current, age, deltaDays);
+                if (!adjusted.HasValue) return (int?)null;
+                int next = adjusted.Value;
                 string since = string.IsNullOrEmpty(entry.ParkedSince)
                     ? (now - age).ToString(DateTimeFormat, CultureInfo.InvariantCulture)
                     : entry.ParkedSince;
@@ -430,32 +420,8 @@ namespace Clickra.Core
         }
 
         /// <summary>根據設定的保留天數與暫存經過時間，計算剩餘保留狀態。</summary>
-        public static ParkedRetentionInfo CalculateRetentionInfo(int retentionDays, TimeSpan age, bool isTaskOverride = false)
-        {
-            if (retentionDays <= 0)
-            {
-                return new ParkedRetentionInfo(
-                    IsUnlimited: true,
-                    RemainingDays: 0,
-                    RemainingTime: TimeSpan.Zero,
-                    IsExpiringSoon: false,
-                    HasExpired: false,
-                    IsTaskOverride: isTaskOverride);
-            }
-
-            TimeSpan remaining = TimeSpan.FromDays(retentionDays) - age;
-            bool isExpired = remaining.TotalSeconds <= 0;
-            int remainingDays = isExpired ? 0 : Math.Max(1, (int)Math.Ceiling(remaining.TotalDays));
-            bool isExpiringSoon = !isExpired && remaining.TotalHours < 24.0;
-
-            return new ParkedRetentionInfo(
-                IsUnlimited: false,
-                RemainingDays: remainingDays,
-                RemainingTime: remaining,
-                IsExpiringSoon: isExpiringSoon,
-                HasExpired: isExpired,
-                IsTaskOverride: isTaskOverride);
-        }
+        public static ParkedRetentionInfo CalculateRetentionInfo(int retentionDays, TimeSpan age, bool isTaskOverride = false) =>
+            TaskRetentionPolicy.CalculateInfo(retentionDays, age, isTaskOverride);
 
         /// <summary>取得指定暫存任務的保留與過期資訊。若任務檔不存在或已過期，傳回對應狀態。</summary>
         public static ParkedRetentionInfo GetParkedRetentionInfo(string taskId)
@@ -655,13 +621,8 @@ namespace Clickra.Core
             return !finished && !parked && age.TotalHours > AbandonedTaskTtlHours;
         }
 
-        private static bool IsExpired(bool finished, bool parked, TimeSpan age, int parkedRetentionDays)
-        {
-            if (finished) return age.TotalMinutes > CompletedTaskTtlMinutes;
-            if (parked)
-                return parkedRetentionDays > 0 && CalculateRetentionInfo(parkedRetentionDays, age).HasExpired;
-            return false;
-        }
+        private static bool IsExpired(bool finished, bool parked, TimeSpan age, int parkedRetentionDays) =>
+            TaskRetentionPolicy.IsExpired(finished, parked, age, parkedRetentionDays, CompletedTaskTtlMinutes);
 
         private static void WriteCanceledHistory(HistoryEntry e, string reason, DateTime now)
         {

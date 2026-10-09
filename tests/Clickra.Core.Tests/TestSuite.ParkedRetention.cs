@@ -264,8 +264,13 @@ static partial class TestSuite
         }
 
         string core = File.ReadAllText(Path.Combine(root, "src", "Clickra.Core", "Storage", "ClickraStorage.ActiveRecord.cs"));
+        string policy = File.ReadAllText(Path.Combine(root, "src", "Clickra.Core", "Storage", "TaskRetentionPolicy.cs"));
         Assert.True(core.Contains("public static int? AdjustParkedRetention(", StringComparison.Ordinal),
-            "ClickraStorage must own the extend/shorten arithmetic.");
+            "ClickraStorage must expose the shared extend/shorten operation.");
+        Assert.True(core.Contains("TaskRetentionPolicy.CalculateAdjustedDays(", StringComparison.Ordinal),
+            "ClickraStorage must delegate retention arithmetic to the retention policy.");
+        Assert.True(policy.Contains("internal static int? CalculateAdjustedDays(", StringComparison.Ordinal),
+            "Retention arithmetic must live in the policy instead of task-file persistence.");
         Assert.True(core.Contains("public static void SetParkedRetentionOverride(", StringComparison.Ordinal),
             "ClickraStorage must own the override/reset operation.");
     }
