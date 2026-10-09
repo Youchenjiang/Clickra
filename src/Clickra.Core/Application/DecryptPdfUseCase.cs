@@ -40,7 +40,8 @@ public sealed class DecryptPdfUseCase : IConversionUseCase
             ConvertCommandRegistry.EstimateOutputs(CommandName, inputs, request.OutputOverride),
             new HashSet<ConversionCapability> { ConversionCapability.Password },
             new Dictionary<string, object>(StringComparer.Ordinal),
-            ExistingTaskId: request.ExistingTaskId);
+            ExistingTaskId: request.ExistingTaskId,
+            BestEffortTaskPersistence: request.BestEffortTaskPersistence);
     }
 
     public async Task<ConversionResult> ExecuteAsync(
@@ -61,7 +62,8 @@ public sealed class DecryptPdfUseCase : IConversionUseCase
         ConversionTaskLifecycle lifecycle = ConversionTaskLifecycle.Start(
             CommandName,
             plan.Inputs,
-            plan.ExistingTaskId);
+            plan.ExistingTaskId,
+            plan.BestEffortTaskPersistence);
         observer?.OnTaskStarted(lifecycle.TaskId);
 
         int completedFiles = Math.Clamp(plan.ResumeStartIndex, 0, plan.Inputs.Count);

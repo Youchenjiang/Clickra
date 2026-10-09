@@ -8,7 +8,8 @@ public sealed record ConversionPlan(
     IReadOnlySet<ConversionCapability> RequiredCapabilities,
     IReadOnlyDictionary<string, object> NormalizedOptions,
     int ResumeStartIndex = 0,
-    string? ExistingTaskId = null);
+    string? ExistingTaskId = null,
+    bool BestEffortTaskPersistence = false);
 
 /// <summary>UI-independent interaction capabilities a conversion use case can require.</summary>
 public enum ConversionCapability
