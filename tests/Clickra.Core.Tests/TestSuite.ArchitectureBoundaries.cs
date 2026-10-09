@@ -275,6 +275,7 @@ static partial class TestSuite
         if (root is null) throw new TestSkippedException("Could not locate the repository root.");
 
         string runner = File.ReadAllText(Path.Combine(root, "src", "Clickra.Core", "Processors", "ConvertCommandRunner.cs"));
+        string registry = File.ReadAllText(Path.Combine(root, "src", "Clickra.Core", "Processors", "ConvertCommandRegistry.cs"));
         string native = File.ReadAllText(Path.Combine(root, "src", "Clickra.CLI", "Progress", "ProgressWindow.Process.cs"));
         string quiet = File.ReadAllText(Path.Combine(root, "src", "Clickra.CLI", "Cli", "ClickraCli.cs"));
         string fluentMain = File.ReadAllText(Path.Combine(root, "src", "Clickra.Fluent", "MainPage.xaml.cs"));
@@ -282,6 +283,8 @@ static partial class TestSuite
 
         Assert.False(runner.Contains("case \"img2pdf\"", StringComparison.Ordinal),
             "Legacy ConvertCommandRunner must not retain an img2pdf execution branch after migration.");
+        Assert.False(registry.Contains("\"img2pdf\" => files.Select", StringComparison.Ordinal),
+            "Legacy ConvertCommandRegistry must not retain img2pdf output-path policy after application migration.");
         Assert.False(native.Contains("FileProcessor.ConvertImagesToPdf(new List<string> { f }", StringComparison.Ordinal),
             "Native presentation must not retain the old single-image img2pdf processor call.");
         Assert.False(quiet.Contains("FileProcessor.ConvertImagesToPdf(new List<string> { f }", StringComparison.Ordinal),
