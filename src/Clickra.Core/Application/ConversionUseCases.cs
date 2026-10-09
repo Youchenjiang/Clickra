@@ -6,7 +6,8 @@ public static class ConversionUseCases
     private static readonly ConversionUseCaseRegistry Registry = new(
         new IConversionUseCase[]
         {
-            new DecryptPdfUseCase()
+            new DecryptPdfUseCase(),
+            new SplitPdfUseCase()
         });
 
     public static IReadOnlyCollection<string> Commands => Registry.Commands;

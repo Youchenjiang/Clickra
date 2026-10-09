@@ -176,11 +176,17 @@ static partial class TestSuite
     private static void TestProductUseCaseCatalogOwnsMigratedCommands()
     {
         IConversionUseCase decrypt = ConversionUseCases.GetRequired(DecryptPdfUseCase.CommandName);
+        IConversionUseCase split = ConversionUseCases.GetRequired(SplitPdfUseCase.CommandName);
         Assert.True(decrypt is DecryptPdfUseCase,
             "decrypt-pdf must resolve through the product-wide application use-case catalog.");
+        Assert.True(split is SplitPdfUseCase,
+            "split-pdf must resolve through the product-wide application use-case catalog.");
         Assert.True(ConversionUseCases.Commands.Count(command =>
                 command.Equals(DecryptPdfUseCase.CommandName, StringComparison.OrdinalIgnoreCase)) == 1,
             "The product catalog must expose exactly one decrypt-pdf owner.");
+        Assert.True(ConversionUseCases.Commands.Count(command =>
+                command.Equals(SplitPdfUseCase.CommandName, StringComparison.OrdinalIgnoreCase)) == 1,
+            "The product catalog must expose exactly one split-pdf owner.");
     }
 
     private static void TestDecryptWorkflowHasSingleExecutionOwner()
