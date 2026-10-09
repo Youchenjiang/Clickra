@@ -4,6 +4,7 @@ using System.Linq;
 using System.Threading;
 using System.Collections.Generic;
 using Clickra.Core;
+using Clickra.Core.Application;
 using Clickra.Core.Processors;
 
 using static Clickra.UI.Native.Win32;
@@ -12,6 +13,25 @@ namespace Clickra.UI
 {
     public partial class ProgressWindow
     {
+        private sealed class CallbackProgress<T>(Action<T> callback) : IProgress<T>
+        {
+            public void Report(T value) => callback(value);
+        }
+
+        private sealed class NativeExecutionObserver(
+            ProgressWindow owner,
+            IReadOnlyList<string> files,
+            Action<int, int, string> progressCallback) : IConversionExecutionObserver
+        {
+            public void OnTaskStarted(string taskId) => owner.TaskId = taskId;
+
+            public void OnFileStarting(int fileIndex) =>
+                progressCallback(
+                    (fileIndex * 100) + 10,
+                    files.Count * 100,
+                    Loc("cli_progress_decrypting_pdf", Path.GetFileName(files[fileIndex]), fileIndex + 1, files.Count));
+        }
+
         private string? _inputPassword = null;
         private bool _passwordCancelled = false;
         private volatile bool _isPromptingPassword = false;
@@ -56,6 +76,12 @@ namespace Clickra.UI
                     UpdateTrayIconProgress();
                 };
 
+                if (cmd.Equals(DecryptPdfUseCase.CommandName, StringComparison.OrdinalIgnoreCase))
+                {
+                    RunApplicationDecrypt(hwnd, currentFiles, progressCallback);
+                    return;
+                }
+
                 // 立即建立 Pending 任務紀錄，讓 Dashboard 可即時看到；每個任務有
                 // 獨立的進度檔（tasks/task-{id}.tmp），並行任務不會互相覆蓋。
                 // resume 時沿用原任務檔（_existingTaskId），避免重複建立與歷史重複寫入。
@@ -76,9 +102,6 @@ namespace Clickra.UI
                         break;
                     case "split-pdf":
                         RunSplitPdf(hwnd, currentFiles, plannedOutputs, progressCallback);
-                        break;
-                    case "decrypt-pdf":
-                        RunDecryptPdf(hwnd, currentFiles, plannedOutputs, progressCallback);
                         break;
                     default:
                         RunSharedCommand(cmd, currentFiles, plannedOutputs, progressCallback);
@@ -123,6 +146,74 @@ namespace Clickra.UI
                 lifecycle?.Delete();
                 PostMessageW(hwnd, 0x0010, IntPtr.Zero, IntPtr.Zero); // WM_CLOSE
             }
+        }
+
+        private void RunApplicationDecrypt(
+            IntPtr hwnd,
+            List<string> files,
+            Action<int, int, string> progressCallback)
+        {
+            IConversionUseCase useCase = ConversionUseCases.GetRequired(DecryptPdfUseCase.CommandName);
+            ConversionPlan plan = useCase.Plan(new ConversionRequest(
+                DecryptPdfUseCase.CommandName,
+                files,
+                ExistingTaskId: _existingTaskId,
+                OutputOverride: _outputDirOverride,
+                BestEffortTaskPersistence: true)) with
+            {
+                ResumeStartIndex = _startIndex
+            };
+            var interaction = new DelegateConversionInteraction(
+                (index, inputPath, isRetry, token) =>
+                    System.Threading.Tasks.Task.FromResult<string?>(ResolveDecryptPassword(hwnd, inputPath, isRetry)),
+                (_, _, _) => System.Threading.Tasks.Task.FromResult<string?>(null),
+                (_, _, _) => System.Threading.Tasks.Task.FromResult<IReadOnlyDictionary<string, object>?>(null));
+            var progress = new CallbackProgress<ConversionProgress>(state =>
+            {
+                int fileIndex = Math.Clamp(state.Current / 100, 0, files.Count - 1);
+                int fileProgress = Math.Clamp(state.Current - (fileIndex * 100), 0, 100);
+                int progressPct = (int)(fileProgress * 0.8) + 10;
+                progressCallback(
+                    (fileIndex * 100) + progressPct,
+                    files.Count * 100,
+                    Loc("cli_progress_decrypting_pdf_stage", state.Message, fileIndex + 1, files.Count));
+            });
+
+            ConversionResult result = useCase.ExecuteAsync(
+                    plan,
+                    interaction,
+                    progress,
+                    new NativeExecutionObserver(this, files, progressCallback),
+                    _cts.Token)
+                .GetAwaiter()
+                .GetResult();
+
+            if (result.Status == ConversionResultStatus.Succeeded)
+            {
+                progressCallback(files.Count * 100, files.Count * 100, Loc("cli_progress_decrypting_pdf_saving"));
+                lock (_stateLock)
+                {
+                    _completed = true;
+                    _message = Loc("cli_progress_all_done");
+                }
+                PostMessageW(hwnd, WM_USER_INVALIDATE, (IntPtr)1, IntPtr.Zero);
+                ShowToastNotification(DecryptPdfUseCase.CommandName, files.Count);
+                Thread.Sleep(1500);
+                ConversionTaskCleanup.Delete(result.TaskId, bestEffort: true);
+                PostMessageW(hwnd, 0x0010, IntPtr.Zero, IntPtr.Zero); // WM_CLOSE
+                return;
+            }
+
+            bool wasCanceled = result.Status == ConversionResultStatus.Canceled;
+            string errorMsg = wasCanceled ? "User Aborted" : result.Error ?? "";
+            lock (_stateLock)
+            {
+                _hasError = true;
+                _errorMessage = errorMsg;
+            }
+            PostMessageW(hwnd, WM_USER_INVALIDATE, (IntPtr)1, IntPtr.Zero);
+            ConversionTaskCleanup.Delete(result.TaskId, bestEffort: true);
+            PostMessageW(hwnd, 0x0010, IntPtr.Zero, IntPtr.Zero); // WM_CLOSE
         }
 
         /// <summary>Compresses each PDF with the saved quality settings, reporting per-file
@@ -293,57 +384,6 @@ namespace Clickra.UI
             }
             return targetPages;
         }
-
-        /// <summary>Removes the password from each PDF, re-prompting until the correct
-        /// password is supplied or the user cancels.</summary>
-        private void RunDecryptPdf(IntPtr hwnd, List<string> files, List<string> outputs, Action<int, int, string> progressCallback)
-        {
-            for (int i = _startIndex; i < files.Count; i++)
-            {
-                _cts.Token.ThrowIfCancellationRequested();
-                DecryptSingleFile(hwnd, files[i], outputs[i], i, files.Count, progressCallback);
-            }
-            _cts.Token.ThrowIfCancellationRequested();
-            progressCallback(files.Count * 100, files.Count * 100, Loc("cli_progress_decrypting_pdf_saving"));
-        }
-
-        /// <summary>Removes the password from one PDF, re-prompting until the correct
-        /// password is supplied or the user cancels.</summary>
-        private void DecryptSingleFile(IntPtr hwnd, string f, string outputPath, int index, int total, Action<int, int, string> progressCallback)
-        {
-            TryRecordTaskIndex(index);
-            progressCallback((index * 100) + 10, total * 100, Loc("cli_progress_decrypting_pdf", Path.GetFileName(f), index + 1, total));
-
-            string currentPassword = "";
-            bool success = false;
-            bool isRetry = false;
-            while (!success)
-            {
-                _cts.Token.ThrowIfCancellationRequested();
-                try
-                {
-                    FileProcessor.DecryptPdf(f, outputPath, currentPassword, (curr, tot, msg) => {
-                        int progressPct = tot > 0 ? (int)(curr * 80.0 / tot) + 10 : 10;
-                        progressCallback((index * 100) + progressPct, total * 100, Loc("cli_progress_decrypting_pdf_stage", msg, index + 1, total));
-                    }, _cts.Token);
-                    success = true;
-                }
-                catch (Exception ex)
-                {
-                    if (!IsPasswordError(ex))
-                    {
-                        throw;
-                    }
-                    currentPassword = ResolveDecryptPassword(hwnd, f, isRetry);
-                    isRetry = true;
-                }
-            }
-        }
-
-        /// <summary>Whether the exception indicates a wrong or missing PDF password.</summary>
-        private static bool IsPasswordError(Exception ex)
-            => ex is PdfSharp.Pdf.IO.PdfReaderException &&
-               ex.Message.Contains("password", StringComparison.OrdinalIgnoreCase);
 
         /// <summary>Shows the password prompt and waits for the user's input, throwing
         /// OperationCanceledException when the prompt is cancelled.</summary>
