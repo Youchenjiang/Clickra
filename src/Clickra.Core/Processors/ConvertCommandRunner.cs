@@ -25,7 +25,8 @@ public static class ConvertCommandRunner
             int StartIndex = 0,
             string? ExistingTaskId = null,
             Dictionary<string, object>? CommandOptions = null,
-            Action<int>? OnFileStarting = null);
+            Action<int>? OnFileStarting = null,
+            Action<string>? OnTaskStarted = null);
 
         /// <summary>
         /// 任務被「暫存」的信號：由 prompt delegate 在 UI 要求暫存（例如卡在密碼/分割
@@ -58,6 +59,7 @@ public static class ConvertCommandRunner
             }
 
             var lifecycle = ConversionTaskLifecycle.Start(command, files, options.ExistingTaskId);
+            options.OnTaskStarted?.Invoke(lifecycle.TaskId);
             try
             {
                 await Task.Run(() => Run(command, files, outputs, Progress, options, token), token);

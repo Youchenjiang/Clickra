@@ -72,10 +72,38 @@ static partial class TestSuite
             TestCliDashboardParkedTaskResumeAndCancelEntryPoint);
         runner.Run("Conversion lifecycle preserves an explicit start time",
             TestConversionLifecyclePreservesExplicitStartTime);
+        runner.Run("Conversion runner reports the shared lifecycle task id",
+            TestConversionRunnerReportsLifecycleTaskId);
         runner.Run("Conversion output planning preserves each source directory",
             TestConversionOutputPlanningPreservesSourceDirectories);
         runner.RunGuard("Conversion lifecycle: Native and Fluent runners share task tracking",
             TestConversionLifecycleIsShared);
+    }
+
+    private static void TestConversionRunnerReportsLifecycleTaskId()
+    {
+        string? observedTaskId = null;
+        ConvertCommandRunner.ConvertRunResult result = ConvertCommandRunner.RunTrackedAsync(
+                "unknown-command",
+                new List<string> { TestInDir + FileA },
+                new List<string> { TestOutDir + FileA },
+                (_, _) => { },
+                new ConvertCommandRunner.ConversionOptions(
+                    _ => Task.FromResult<string?>(null),
+                    (_, _) => Task.FromResult<string?>(null),
+                    OnTaskStarted: taskId => observedTaskId = taskId))
+            .GetAwaiter()
+            .GetResult();
+        try
+        {
+            Assert.False(string.IsNullOrWhiteSpace(observedTaskId), "Tracked runs must report their lifecycle task id.");
+            Assert.Equal(result.TaskId, observedTaskId!);
+        }
+        finally
+        {
+            if (!string.IsNullOrWhiteSpace(result.TaskId))
+                ClickraStorage.DeleteTask(result.TaskId);
+        }
     }
 
     private static void TestConversionLifecyclePreservesExplicitStartTime()
