@@ -1096,7 +1096,7 @@ namespace Clickra.UI
                 try
                 {
                     string dataDir = ClickraStorage.GetDataDir();
-                    string logPath = Path.Combine(dataDir, "history.log");
+                    string logPath = Path.Combine(dataDir, ClickraStorage.HistoryFileName);
 
                     if (File.Exists(logPath))
                     {

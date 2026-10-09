@@ -2081,11 +2081,11 @@ public sealed partial class MainPage : Page
             {
                 // 使用官方 WinRT API 直接獲取硬碟實體路徑
                 string localPath = Windows.Storage.ApplicationData.Current.LocalFolder.Path;
-                logPath = Path.Combine(localPath, "history.log");
+                logPath = Path.Combine(localPath, ClickraStorage.HistoryFileName);
             }
             catch
             {
-                logPath = Path.Combine(ClickraStorage.GetDataDir(), "history.log");
+                logPath = Path.Combine(ClickraStorage.GetDataDir(), ClickraStorage.HistoryFileName);
             }
 
             string? dir = Path.GetDirectoryName(logPath);
