@@ -3,6 +3,7 @@ using System.IO;
 using System.Linq;
 using System.Threading;
 using Clickra.Core;
+using Clickra.Core.Processors;
 
 namespace Clickra.Core.Tests;
 
@@ -69,8 +70,37 @@ static partial class TestSuite
             TestClaimParkedTaskForResume);
         runner.Run("CLI Dashboard History page exposes resume and cancel for parked conversions",
             TestCliDashboardParkedTaskResumeAndCancelEntryPoint);
+        runner.Run("Conversion output planning preserves each source directory",
+            TestConversionOutputPlanningPreservesSourceDirectories);
         runner.RunGuard("Conversion lifecycle: Native and Fluent runners share task tracking",
             TestConversionLifecycleIsShared);
+    }
+
+    private static void TestConversionOutputPlanningPreservesSourceDirectories()
+    {
+        string previous = ClickraStorage.GetSetting(ClickraSettings.OutputDir);
+        try
+        {
+            ClickraStorage.SaveSetting(ClickraSettings.OutputDir, ClickraSettings.DefaultOutputDirSource);
+            RunWithTempDirectory(tempDir =>
+            {
+                string firstDir = Path.Combine(tempDir, "first");
+                string secondDir = Path.Combine(tempDir, "second");
+                Directory.CreateDirectory(firstDir);
+                Directory.CreateDirectory(secondDir);
+                string first = Path.Combine(firstDir, "a.pdf");
+                string second = Path.Combine(secondDir, "b.pdf");
+
+                List<string> outputs = ConvertCommandRegistry.EstimateOutputs("compress-pdf", new List<string> { first, second });
+
+                Assert.Equal(Path.Combine(firstDir, "a_compressed.pdf"), outputs[0]);
+                Assert.Equal(Path.Combine(secondDir, "b_compressed.pdf"), outputs[1]);
+            });
+        }
+        finally
+        {
+            ClickraStorage.SaveSetting(ClickraSettings.OutputDir, previous);
+        }
     }
 
     private static void TestConversionLifecycleIsShared()
@@ -96,6 +126,11 @@ static partial class TestSuite
                     && lifecycle.Contains("ClickraStorage.CompleteTask(", StringComparison.Ordinal)
                     && lifecycle.Contains("ClickraStorage.ParkTask(", StringComparison.Ordinal),
             "ConversionTaskLifecycle must own the shared task state transitions.");
+
+        Assert.True(native.Contains("ConvertCommandRegistry.EstimateOutputs(cmd, currentFiles, _outputDirOverride)", StringComparison.Ordinal),
+            "Native conversion output planning must use the same registry as Fluent tracked runs.");
+        Assert.False(native.Contains("private static string GetOutputPath(", StringComparison.Ordinal),
+            "Native conversion history must not keep a second command-to-output policy.");
     }
 
     private static void TestCancellingParkedTaskRecordsCanceledLine()

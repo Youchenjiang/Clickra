@@ -60,7 +60,7 @@ public static class ConvertCommandRegistry
         public static string GetLabelKey(string command) => ConvertCommandMetadata.GetLabelKey(command);
 
         /// <summary>Predicts the output paths a command will produce for the given files.</summary>
-        public static List<string> EstimateOutputs(string command, List<string> files)
+        public static List<string> EstimateOutputs(string command, List<string> files, string? outputDirOverride = null)
         {
             string outputDir = ClickraStorage.GetOutputDir(files[0]);
             return command switch
@@ -73,11 +73,15 @@ public static class ConvertCommandRegistry
                 "decrypt-pdf" => files.Select(f => Path.Combine(ClickraStorage.GetOutputDir(f), Path.GetFileNameWithoutExtension(f) + "_decrypted.pdf")).ToList(),
                 "split-pdf" => files.Select(f => Path.Combine(ClickraStorage.GetOutputDir(f), Path.GetFileNameWithoutExtension(f) + "_split.pdf")).ToList(),
                 CmdImg2Pdf => files.Select(f => Path.Combine(ClickraStorage.GetOutputDir(f), Path.GetFileNameWithoutExtension(f) + ".pdf")).ToList(),
-                CmdMdToPdf => files.Select(f => Path.Combine(ClickraStorage.GetOutputDir(f), Path.GetFileNameWithoutExtension(f) + ".pdf")).ToList(),
-                CmdMdToWord => files.Select(f => Path.Combine(ClickraStorage.GetOutputDir(f), Path.GetFileNameWithoutExtension(f) + ".docx")).ToList(),
-                CmdImgCompress => EstimateImageCompressionOutputs(files),
+                CmdMdToPdf => files.Select(f => Path.Combine(
+                    string.IsNullOrWhiteSpace(outputDirOverride) ? ClickraStorage.GetOutputDir(f) : Path.GetFullPath(outputDirOverride),
+                    Path.GetFileNameWithoutExtension(f) + ".pdf")).ToList(),
+                CmdMdToWord => files.Select(f => Path.Combine(
+                    string.IsNullOrWhiteSpace(outputDirOverride) ? ClickraStorage.GetOutputDir(f) : Path.GetFullPath(outputDirOverride),
+                    Path.GetFileNameWithoutExtension(f) + ".docx")).ToList(),
+                CmdImgCompress => EstimateImageCompressionOutputs(files, outputDirOverride),
                 CmdImgToPng or CmdImgToJpg or CmdImgToWebp or CmdImgToGif or CmdImgToHeic
-                    => EstimateImageFormatOutputs(command, files),
+                    => EstimateImageFormatOutputs(command, files, outputDirOverride),
                 _ => files.Select(f => Path.Combine(ClickraStorage.GetOutputDir(f), Path.GetFileNameWithoutExtension(f) + ".pdf")).ToList()
             };
         }

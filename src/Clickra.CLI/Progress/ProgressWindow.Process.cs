@@ -62,6 +62,7 @@ namespace Clickra.UI
                 lifecycle = ConversionTaskLifecycle.Start(cmd, currentFiles, _existingTaskId, bestEffort: true);
                 TaskId = lifecycle.TaskId;
 
+                List<string> plannedOutputs = ConvertCommandRegistry.EstimateOutputs(cmd, currentFiles, _outputDirOverride);
                 string outputDir = ClickraStorage.GetOutputDir(currentFiles[0]);
                 switch (cmd)
                 {
@@ -75,21 +76,21 @@ namespace Clickra.UI
                         FileProcessor.ConvertExcelToPdf(currentFiles, progressCallback, _cts.Token);
                         break;
                     case "md2pdf":
-                        RunMarkdownConversion(currentFiles, _outputDirOverride, progressCallback, ".pdf",
+                        RunMarkdownConversion(currentFiles, plannedOutputs, progressCallback,
                             (input, output, options, progress, token) => FileProcessor.ConvertMarkdownToPdf(input, output, options, progress, token));
                         break;
                     case "md2word":
-                        RunMarkdownConversion(currentFiles, _outputDirOverride, progressCallback, ".docx",
+                        RunMarkdownConversion(currentFiles, plannedOutputs, progressCallback,
                             (input, output, options, progress, token) => FileProcessor.ConvertMarkdownToWord(input, output, options, progress, token));
                         break;
                     case "merge-pdf":
                         FileProcessor.MergePdfs(currentFiles, Path.Combine(outputDir, "Merged_PDF.pdf"), progressCallback, _cts.Token);
                         break;
                     case "compress-pdf":
-                        RunCompressPdf(currentFiles, outputDir, progressCallback);
+                        RunCompressPdf(currentFiles, plannedOutputs, progressCallback);
                         break;
                     case "img2pdf":
-                        RunImg2Pdf(currentFiles, outputDir, progressCallback);
+                        RunImg2Pdf(currentFiles, plannedOutputs, progressCallback);
                         break;
                     case "img-merge":
                         FileProcessor.ConvertImagesToPdf(currentFiles, Path.Combine(outputDir, "Merged_Images.pdf"), progressCallback, _cts.Token);
@@ -98,28 +99,28 @@ namespace Clickra.UI
                         FileProcessor.StitchImages(currentFiles, Path.Combine(outputDir, "Stitched_Image.png"), progressCallback, _cts.Token);
                         break;
                     case "img-compress":
-                        RunImageCompression(currentFiles, _outputDirOverride, progressCallback);
+                        RunImageCompression(currentFiles, plannedOutputs, progressCallback);
                         break;
                     case "img-to-png":
                     case "img-to-jpg":
                     case "img-to-webp":
                     case "img-to-gif":
                     case "img-to-heic":
-                        RunImageFormatConvert(cmd, currentFiles, _outputDirOverride, progressCallback);
+                        RunImageFormatConvert(cmd, currentFiles, plannedOutputs, progressCallback);
                         break;
                     case "translate-pdf":
-                        RunTranslatePdf(currentFiles, outputDir, progressCallback);
+                        RunTranslatePdf(currentFiles, plannedOutputs, progressCallback);
                         break;
                     case "split-pdf":
-                        RunSplitPdf(hwnd, currentFiles, outputDir, progressCallback);
+                        RunSplitPdf(hwnd, currentFiles, plannedOutputs, progressCallback);
                         break;
                     case "decrypt-pdf":
-                        RunDecryptPdf(hwnd, currentFiles, outputDir, progressCallback);
+                        RunDecryptPdf(hwnd, currentFiles, plannedOutputs, progressCallback);
                         break;
                 }
 
                 string endTime = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
-                string outputs = GetOutputPath(cmd, currentFiles, outputDir, _outputDirOverride);
+                string outputs = string.Join(";", plannedOutputs);
 
                 lock (_stateLock)
                 {
@@ -140,8 +141,7 @@ namespace Clickra.UI
             catch (Exception ex)
             {
                 string endTime = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
-                string outputDir = currentFiles.Count > 0 ? ClickraStorage.GetOutputDir(currentFiles[0]) : "";
-                string outputs = currentFiles.Count > 0 ? GetOutputPathForError(cmd, currentFiles, outputDir, _outputDirOverride) : "";
+                string outputs = currentFiles.Count > 0 ? GetOutputPathForError(cmd, currentFiles, _outputDirOverride) : "";
 
                 bool wasCanceled = _cts.IsCancellationRequested || ex is OperationCanceledException;
                 string errorMsg = wasCanceled ? "User Aborted" : ex.Message;
@@ -161,9 +161,8 @@ namespace Clickra.UI
 
         private void RunMarkdownConversion(
             List<string> files,
-            string? outputDirOverride,
+            List<string> outputs,
             Action<int, int, string> progressCallback,
-            string extension,
             Action<string, string, Dictionary<string, object>, Action<int, int, string>?, CancellationToken> converter)
         {
             for (int i = _startIndex; i < files.Count; i++)
@@ -171,11 +170,7 @@ namespace Clickra.UI
                 _cts.Token.ThrowIfCancellationRequested();
                 TryRecordTaskIndex(i);
                 int index = i;
-                string targetDir = string.IsNullOrWhiteSpace(outputDirOverride)
-                    ? ClickraStorage.GetOutputDir(files[i])
-                    : Path.GetFullPath(outputDirOverride);
-                string output = Path.Combine(targetDir, Path.GetFileNameWithoutExtension(files[i]) + extension);
-                converter(files[i], output, _commandOptions ?? MarkdownPdfOptions.Create(),
+                converter(files[i], outputs[i], _commandOptions ?? MarkdownPdfOptions.Create(),
                     (current, total, message) => progressCallback((index * 100) + current, files.Count * 100, message),
                     _cts.Token);
             }
@@ -183,14 +178,14 @@ namespace Clickra.UI
 
         /// <summary>Compresses each PDF with the saved quality settings, reporting per-file
         /// progress through the callback.</summary>
-        private void RunCompressPdf(List<string> files, string outputDir, Action<int, int, string> progressCallback)
+        private void RunCompressPdf(List<string> files, List<string> outputs, Action<int, int, string> progressCallback)
         {
             string compressionSummary = "";
             for (int i = _startIndex; i < files.Count; i++)
             {
                 _cts.Token.ThrowIfCancellationRequested();
                 TryRecordTaskIndex(i);
-                string fileSummary = RunCompressPdfFile(files[i], outputDir, i, files.Count, progressCallback);
+                string fileSummary = RunCompressPdfFile(files[i], outputs[i], i, files.Count, progressCallback);
                 if (!string.IsNullOrWhiteSpace(fileSummary)) compressionSummary = fileSummary;
             }
             _cts.Token.ThrowIfCancellationRequested();
@@ -198,16 +193,15 @@ namespace Clickra.UI
                 string.IsNullOrWhiteSpace(compressionSummary) ? Loc("cli_progress_compressing_pdf_done") : compressionSummary);
         }
 
-        private string RunCompressPdfFile(string file, string outputDir, int index, int total,
+        private string RunCompressPdfFile(string file, string outputPath, int index, int total,
             Action<int, int, string> progressCallback)
         {
             string summary = "";
-            string outName = Path.Combine(outputDir, Path.GetFileNameWithoutExtension(file) + "_compressed.pdf");
             progressCallback((index * 100) + 10, total * 100,
                 Loc("cli_progress_compressing_pdf", Path.GetFileName(file), index + 1, total));
 
             var pdfOptions = BuildPdfCompressOptions();
-            FileProcessor.CompressPdf(file, outName, pdfOptions, (curr, tot, msg) =>
+            FileProcessor.CompressPdf(file, outputPath, pdfOptions, (curr, tot, msg) =>
             {
                 int progressPct = tot > 0 ? (int)(curr * 80.0 / tot) + 10 : 10;
                 if (curr >= tot && !string.IsNullOrWhiteSpace(msg)) summary = msg;
@@ -222,25 +216,23 @@ namespace Clickra.UI
             ConvertCommandRegistry.CompressionOptions();
 
         /// <summary>Converts each image to its own PDF, reporting per-file progress.</summary>
-        private void RunImg2Pdf(List<string> files, string outputDir, Action<int, int, string> progressCallback)
+        private void RunImg2Pdf(List<string> files, List<string> outputs, Action<int, int, string> progressCallback)
         {
             for (int i = _startIndex; i < files.Count; i++)
             {
                 _cts.Token.ThrowIfCancellationRequested();
                 TryRecordTaskIndex(i);
                 var f = files[i];
-                string outName = Path.Combine(outputDir, Path.GetFileNameWithoutExtension(f) + ".pdf");
                 progressCallback((i * 100) + 50, files.Count * 100, Loc("cli_progress_converting_image", Path.GetFileName(f), i + 1, files.Count));
-                FileProcessor.ConvertImagesToPdf(new List<string> { f }, outName, null, _cts.Token);
+                FileProcessor.ConvertImagesToPdf(new List<string> { f }, outputs[i], null, _cts.Token);
             }
             _cts.Token.ThrowIfCancellationRequested();
             progressCallback(files.Count * 100, files.Count * 100, Loc("cli_progress_converting_image_saving"));
         }
 
         /// <summary>Runs a registered img-to-* conversion through the shared core runner.</summary>
-        private void RunImageFormatConvert(string command, List<string> files, string? outputDirOverride, Action<int, int, string> progressCallback)
+        private void RunImageFormatConvert(string command, List<string> files, List<string> outputs, Action<int, int, string> progressCallback)
         {
-            var outputs = ConvertCommandRegistry.EstimateImageFormatOutputs(command, files, outputDirOverride);
             ConvertCommandRunner.Run(
                 command,
                 files,
@@ -253,9 +245,8 @@ namespace Clickra.UI
         }
 
         /// <summary>Compresses each selected image through the shared core runner.</summary>
-        private void RunImageCompression(List<string> files, string? outputDirOverride, Action<int, int, string> progressCallback)
+        private void RunImageCompression(List<string> files, List<string> outputs, Action<int, int, string> progressCallback)
         {
-            var outputs = ConvertCommandRegistry.EstimateImageCompressionOutputs(files, outputDirOverride);
             ConvertCommandRunner.Run(
                 "img-compress",
                 files,
@@ -269,7 +260,7 @@ namespace Clickra.UI
         }
         /// <summary>Translates each PDF to the saved target language, reporting per-file
         /// progress through the callback.</summary>
-        private void RunTranslatePdf(List<string> files, string outputDir, Action<int, int, string> progressCallback)
+        private void RunTranslatePdf(List<string> files, List<string> outputs, Action<int, int, string> progressCallback)
         {
             string targetLang = ClickraStorage.GetSetting(ClickraSettings.TranslateTargetLang);
             for (int i = _startIndex; i < files.Count; i++)
@@ -277,9 +268,8 @@ namespace Clickra.UI
                 _cts.Token.ThrowIfCancellationRequested();
                 TryRecordTaskIndex(i);
                 var f = files[i];
-                string outName = Path.Combine(outputDir, Path.GetFileNameWithoutExtension(f) + "_translated.pdf");
                 progressCallback((i * 100) + 10, files.Count * 100, Loc("cli_progress_translating_pdf", Path.GetFileName(f), i + 1, files.Count));
-                FileProcessor.TranslatePdf(f, outName, targetLang, (curr, tot, msg) => {
+                FileProcessor.TranslatePdf(f, outputs[i], targetLang, (curr, tot, msg) => {
                     int progressPct = tot > 0 ? (int)(curr * 80.0 / tot) + 10 : 10;
                     progressCallback((i * 100) + progressPct, files.Count * 100, Loc("cli_progress_translating_pdf_stage", msg, i + 1, files.Count));
                 }, _cts.Token);
@@ -290,7 +280,7 @@ namespace Clickra.UI
 
         /// <summary>Splits each PDF, prompting the visual splitter when no --pages range
         /// was supplied on the command line.</summary>
-        private void RunSplitPdf(IntPtr hwnd, List<string> files, string outputDir, Action<int, int, string> progressCallback)
+        private void RunSplitPdf(IntPtr hwnd, List<string> files, List<string> outputs, Action<int, int, string> progressCallback)
         {
             string pagesOption = GetSplitPagesOptionFromCommandLine();
             for (int i = _startIndex; i < files.Count; i++)
@@ -298,12 +288,10 @@ namespace Clickra.UI
                 _cts.Token.ThrowIfCancellationRequested();
                 TryRecordTaskIndex(i);
                 var f = files[i];
-                string outName = Path.Combine(outputDir, Path.GetFileNameWithoutExtension(f) + "_split.pdf");
-
                 string targetPages = ResolveSplitTargetPages(hwnd, f, pagesOption);
 
                 progressCallback((i * 100) + 10, files.Count * 100, Loc("cli_progress_splitting_pdf", Path.GetFileName(f), i + 1, files.Count));
-                FileProcessor.SplitPdf(f, outName, targetPages, (curr, tot, msg) => {
+                FileProcessor.SplitPdf(f, outputs[i], targetPages, (curr, tot, msg) => {
                     int progressPct = tot > 0 ? (int)(curr * 80.0 / tot) + 10 : 10;
                     progressCallback((i * 100) + progressPct, files.Count * 100, Loc("cli_progress_splitting_pdf_stage", msg, i + 1, files.Count));
                 }, _cts.Token);
@@ -370,12 +358,12 @@ namespace Clickra.UI
 
         /// <summary>Removes the password from each PDF, re-prompting until the correct
         /// password is supplied or the user cancels.</summary>
-        private void RunDecryptPdf(IntPtr hwnd, List<string> files, string outputDir, Action<int, int, string> progressCallback)
+        private void RunDecryptPdf(IntPtr hwnd, List<string> files, List<string> outputs, Action<int, int, string> progressCallback)
         {
             for (int i = _startIndex; i < files.Count; i++)
             {
                 _cts.Token.ThrowIfCancellationRequested();
-                DecryptSingleFile(hwnd, files[i], outputDir, i, files.Count, progressCallback);
+                DecryptSingleFile(hwnd, files[i], outputs[i], i, files.Count, progressCallback);
             }
             _cts.Token.ThrowIfCancellationRequested();
             progressCallback(files.Count * 100, files.Count * 100, Loc("cli_progress_decrypting_pdf_saving"));
@@ -383,10 +371,9 @@ namespace Clickra.UI
 
         /// <summary>Removes the password from one PDF, re-prompting until the correct
         /// password is supplied or the user cancels.</summary>
-        private void DecryptSingleFile(IntPtr hwnd, string f, string outputDir, int index, int total, Action<int, int, string> progressCallback)
+        private void DecryptSingleFile(IntPtr hwnd, string f, string outputPath, int index, int total, Action<int, int, string> progressCallback)
         {
             TryRecordTaskIndex(index);
-            string outName = Path.Combine(outputDir, Path.GetFileNameWithoutExtension(f) + "_decrypted.pdf");
             progressCallback((index * 100) + 10, total * 100, Loc("cli_progress_decrypting_pdf", Path.GetFileName(f), index + 1, total));
 
             string currentPassword = "";
@@ -397,7 +384,7 @@ namespace Clickra.UI
                 _cts.Token.ThrowIfCancellationRequested();
                 try
                 {
-                    FileProcessor.DecryptPdf(f, outName, currentPassword, (curr, tot, msg) => {
+                    FileProcessor.DecryptPdf(f, outputPath, currentPassword, (curr, tot, msg) => {
                         int progressPct = tot > 0 ? (int)(curr * 80.0 / tot) + 10 : 10;
                         progressCallback((index * 100) + progressPct, total * 100, Loc("cli_progress_decrypting_pdf_stage", msg, index + 1, total));
                     }, _cts.Token);
@@ -452,57 +439,14 @@ namespace Clickra.UI
             return input ?? "";
         }
 
-        /// <summary>Returns the expected output path(s) for a completed command, used for history logging.</summary>
-        private static string GetOutputPath(string cmd, List<string> inputFiles, string outputDir, string? outputDirOverride)
-        {
-            switch (cmd)
-            {
-                case "merge-pdf":
-                    return Path.Combine(outputDir, "Merged_PDF.pdf");
-                case "img-merge":
-                    return Path.Combine(outputDir, "Merged_Images.pdf");
-                case "img-stitch":
-                    return Path.Combine(outputDir, "Stitched_Image.png");
-                case "ppt2pdf":
-                case "word2pdf":
-                case "excel2pdf":
-                case "img2pdf":
-                    return string.Join(";", inputFiles.Select(f => Path.Combine(outputDir, Path.GetFileNameWithoutExtension(f) + ".pdf")));
-                case "md2pdf":
-                    return string.Join(";", inputFiles.Select(f => Path.Combine(
-                        string.IsNullOrWhiteSpace(outputDirOverride) ? ClickraStorage.GetOutputDir(f) : Path.GetFullPath(outputDirOverride),
-                        Path.GetFileNameWithoutExtension(f) + ".pdf")));
-                case "md2word":
-                    return string.Join(";", inputFiles.Select(f => Path.Combine(
-                        string.IsNullOrWhiteSpace(outputDirOverride) ? ClickraStorage.GetOutputDir(f) : Path.GetFullPath(outputDirOverride),
-                        Path.GetFileNameWithoutExtension(f) + ".docx")));
-                case "translate-pdf":
-                    return string.Join(";", inputFiles.Select(f => Path.Combine(outputDir, Path.GetFileNameWithoutExtension(f) + "_translated.pdf")));
-                case "decrypt-pdf":
-                    return string.Join(";", inputFiles.Select(f => Path.Combine(outputDir, Path.GetFileNameWithoutExtension(f) + "_decrypted.pdf")));
-                case "compress-pdf":
-                    return string.Join(";", inputFiles.Select(f => Path.Combine(outputDir, Path.GetFileNameWithoutExtension(f) + "_compressed.pdf")));
-                case "img-compress":
-                    return string.Join(";", ConvertCommandRegistry.EstimateImageCompressionOutputs(inputFiles, outputDirOverride));
-                case "img-to-png":
-                case "img-to-jpg":
-                case "img-to-webp":
-                case "img-to-gif":
-                case "img-to-heic":
-                    return string.Join(";", ConvertCommandRegistry.EstimateImageFormatOutputs(cmd, inputFiles, outputDirOverride));
-                default:
-                    return outputDir;
-            }
-        }
-
         /// <summary>Best-effort output-path rendering for failure history. Validation failures can
         /// originate inside output planning itself, so error logging must never invoke the same
         /// failing planner and mask the original exception or skip task cleanup.</summary>
-        private static string GetOutputPathForError(string cmd, List<string> inputFiles, string outputDir, string? outputDirOverride)
+        private static string GetOutputPathForError(string cmd, List<string> inputFiles, string? outputDirOverride)
         {
             try
             {
-                return GetOutputPath(cmd, inputFiles, outputDir, outputDirOverride);
+                return string.Join(";", ConvertCommandRegistry.EstimateOutputs(cmd, inputFiles, outputDirOverride));
             }
             catch
             {
