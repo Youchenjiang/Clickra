@@ -4,7 +4,6 @@ using System.Linq;
 using System.Drawing;
 using System.Drawing.Drawing2D;
 using System.Collections.Generic;
-using Microsoft.Win32;
 using Clickra.Core;
 using Clickra.Core.Layout;
 using Clickra.Core.Processors;
@@ -245,7 +244,7 @@ namespace Clickra.UI
             bool libreOfficeInstalledByClickra = LibreOfficeEngineInstaller.WasInstalledByClickra();
             bool canAdoptLibreOffice = !libreOfficeInstalledByClickra &&
                                        LibreOfficeEngineInstaller.CanAdoptExistingInstallation(resolvedLibreOffice);
-            bool officeReady = IsOfficeInstalled("Word") && IsOfficeInstalled("Excel") && IsOfficeInstalled("PowerPoint");
+            bool officeReady = OfficeEngineDetector.IsMicrosoftSuiteReady();
 
             int engineContentX = wideSettings
                 ? (int)contentX + SettingsLayout.CardPadding

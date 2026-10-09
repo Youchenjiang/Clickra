@@ -137,27 +137,7 @@ public static partial class DashboardWindow
         }
 
         /// <summary>Whether a usable Office engine (Microsoft or LibreOffice) is available for this command.</summary>
-        public bool HasAvailableEngine()
-        {
-            string engine = ClickraStorage.GetSetting(ClickraSettings.OfficeEngine);
-            bool libreOfficeReady = !string.IsNullOrWhiteSpace(LibreOfficeHelper.GetResolvedExecutablePath());
-
-            if (engine.Equals("libreoffice", StringComparison.OrdinalIgnoreCase))
-                return libreOfficeReady;
-
-            string app = Command switch
-            {
-                "ppt2pdf" => "PowerPoint",
-                "word2pdf" => "Word",
-                "excel2pdf" => "Excel",
-                _ => ""
-            };
-            bool microsoftReady = !string.IsNullOrWhiteSpace(app) && IsOfficeInstalled(app);
-
-            return engine.Equals("microsoft", StringComparison.OrdinalIgnoreCase)
-                ? microsoftReady
-                : microsoftReady || libreOfficeReady;
-        }
+        public bool HasAvailableEngine() => OfficeEngineDetector.IsCommandReady(Command);
 
         /// <summary>Activates the given command on the convert tab, clearing incompatible
         /// selections.</summary>
@@ -204,15 +184,8 @@ public static partial class DashboardWindow
             InvalidateRect(hwnd, IntPtr.Zero, false);
         }
 
-        private static string GetOfficeEngineUnavailableErrorKey()
-        {
-            string engine = ClickraStorage.GetSetting(ClickraSettings.OfficeEngine);
-            if (engine.Equals("libreoffice", StringComparison.OrdinalIgnoreCase))
-                return "error_libreoffice_not_ready";
-            if (engine.Equals("microsoft", StringComparison.OrdinalIgnoreCase))
-                return "error_microsoftoffice_not_ready";
-            return "setting_engine_none_available";
-        }
+        private static string GetOfficeEngineUnavailableErrorKey() =>
+            OfficeEngineDetector.GetUnavailableErrorKey();
 
         private static void StartConvertProgress(
             ConvertCommand command,

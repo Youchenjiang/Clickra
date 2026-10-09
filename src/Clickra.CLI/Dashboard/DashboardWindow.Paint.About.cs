@@ -4,7 +4,6 @@ using System.Linq;
 using System.Drawing;
 using System.Drawing.Drawing2D;
 using System.Collections.Generic;
-using Microsoft.Win32;
 using Clickra.Core;
 
 using static Clickra.UI.Native.Win32;
@@ -179,20 +178,5 @@ namespace Clickra.UI
             }
         }
 
-        static bool IsOfficeInstalled(string app)
-        {
-            string progId = app switch
-            {
-                "PowerPoint" => "PowerPoint.Application",
-                "Excel" => "Excel.Application",
-                _ => "Word.Application"
-            };
-            try
-            {
-                using var key = Registry.LocalMachine.OpenSubKey($@"SOFTWARE\Classes\{progId}");
-                return key != null;
-            }
-            catch { return false; }
-        }
     }
 }
