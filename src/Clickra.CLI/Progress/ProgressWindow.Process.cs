@@ -60,6 +60,20 @@ namespace Clickra.UI
                     Loc("cli_progress_compressing_pdf", Path.GetFileName(files[fileIndex]), fileIndex + 1, files.Count));
         }
 
+        private sealed class Img2PdfExecutionObserver(
+            ProgressWindow owner,
+            IReadOnlyList<string> files,
+            Action<int, int, string> progressCallback) : IConversionExecutionObserver
+        {
+            public void OnTaskStarted(string taskId) => owner.TaskId = taskId;
+
+            public void OnFileStarting(int fileIndex) =>
+                progressCallback(
+                    (fileIndex * 100) + 50,
+                    files.Count * 100,
+                    Loc("cli_progress_converting_image", Path.GetFileName(files[fileIndex]), fileIndex + 1, files.Count));
+        }
+
         private string? _inputPassword = null;
         private bool _passwordCancelled = false;
         private volatile bool _isPromptingPassword = false;
@@ -119,6 +133,11 @@ namespace Clickra.UI
                     RunApplicationCompress(hwnd, currentFiles, progressCallback);
                     return;
                 }
+                if (cmd.Equals(Img2PdfUseCase.CommandName, StringComparison.OrdinalIgnoreCase))
+                {
+                    RunApplicationImg2Pdf(hwnd, currentFiles, progressCallback);
+                    return;
+                }
 
                 // 立即建立 Pending 任務紀錄，讓 Dashboard 可即時看到；每個任務有
                 // 獨立的進度檔（tasks/task-{id}.tmp），並行任務不會互相覆蓋。
@@ -129,9 +148,6 @@ namespace Clickra.UI
                 List<string> plannedOutputs = ConvertCommandRegistry.EstimateOutputs(cmd, currentFiles, _outputDirOverride);
                 switch (cmd)
                 {
-                    case "img2pdf":
-                        RunImg2Pdf(currentFiles, plannedOutputs, progressCallback);
-                        break;
                     case "translate-pdf":
                         RunTranslatePdf(currentFiles, plannedOutputs, progressCallback);
                         break;
@@ -378,19 +394,63 @@ namespace Clickra.UI
             PostMessageW(hwnd, 0x0010, IntPtr.Zero, IntPtr.Zero); // WM_CLOSE
         }
 
-        /// <summary>Converts each image to its own PDF, reporting per-file progress.</summary>
-        private void RunImg2Pdf(List<string> files, List<string> outputs, Action<int, int, string> progressCallback)
+        private void RunApplicationImg2Pdf(
+            IntPtr hwnd,
+            List<string> files,
+            Action<int, int, string> progressCallback)
         {
-            for (int i = _startIndex; i < files.Count; i++)
+            IConversionUseCase useCase = ConversionUseCases.GetRequired(Img2PdfUseCase.CommandName);
+            ConversionPlan plan = useCase.Plan(new ConversionRequest(
+                Img2PdfUseCase.CommandName,
+                files,
+                ExistingTaskId: _existingTaskId,
+                BestEffortTaskPersistence: true)) with
             {
-                _cts.Token.ThrowIfCancellationRequested();
-                TryRecordTaskIndex(i);
-                var f = files[i];
-                progressCallback((i * 100) + 50, files.Count * 100, Loc("cli_progress_converting_image", Path.GetFileName(f), i + 1, files.Count));
-                FileProcessor.ConvertImagesToPdf(new List<string> { f }, outputs[i], null, _cts.Token);
+                ResumeStartIndex = _startIndex
+            };
+            var interaction = new DelegateConversionInteraction(
+                (_, _, _, _) => System.Threading.Tasks.Task.FromResult<string?>(null),
+                (_, _, _) => System.Threading.Tasks.Task.FromResult<string?>(null),
+                (_, _, _) => System.Threading.Tasks.Task.FromResult<IReadOnlyDictionary<string, object>?>(null));
+
+            ConversionResult result = useCase.ExecuteAsync(
+                    plan,
+                    interaction,
+                    progress: null,
+                    new Img2PdfExecutionObserver(this, files, progressCallback),
+                    _cts.Token)
+                .GetAwaiter()
+                .GetResult();
+
+            if (result.Status == ConversionResultStatus.Succeeded)
+            {
+                progressCallback(
+                    files.Count * 100,
+                    files.Count * 100,
+                    Loc("cli_progress_converting_image_saving"));
+                lock (_stateLock)
+                {
+                    _completed = true;
+                    _message = Loc("cli_progress_all_done");
+                }
+                PostMessageW(hwnd, WM_USER_INVALIDATE, (IntPtr)1, IntPtr.Zero);
+                ShowToastNotification(Img2PdfUseCase.CommandName, files.Count);
+                Thread.Sleep(1500);
+                ConversionTaskCleanup.Delete(result.TaskId, bestEffort: true);
+                PostMessageW(hwnd, 0x0010, IntPtr.Zero, IntPtr.Zero); // WM_CLOSE
+                return;
             }
-            _cts.Token.ThrowIfCancellationRequested();
-            progressCallback(files.Count * 100, files.Count * 100, Loc("cli_progress_converting_image_saving"));
+
+            bool wasCanceled = result.Status == ConversionResultStatus.Canceled;
+            string errorMsg = wasCanceled ? "User Aborted" : result.Error ?? "";
+            lock (_stateLock)
+            {
+                _hasError = true;
+                _errorMessage = errorMsg;
+            }
+            PostMessageW(hwnd, WM_USER_INVALIDATE, (IntPtr)1, IntPtr.Zero);
+            ConversionTaskCleanup.Delete(result.TaskId, bestEffort: true);
+            PostMessageW(hwnd, 0x0010, IntPtr.Zero, IntPtr.Zero); // WM_CLOSE
         }
 
         /// <summary>Runs commands that do not need Native-only progress or prompt handling through
