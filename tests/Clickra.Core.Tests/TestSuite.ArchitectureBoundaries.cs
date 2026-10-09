@@ -198,6 +198,7 @@ static partial class TestSuite
         if (root is null) throw new TestSkippedException("Could not locate the repository root.");
 
         string runner = File.ReadAllText(Path.Combine(root, "src", "Clickra.Core", "Processors", "ConvertCommandRunner.cs"));
+        string registry = File.ReadAllText(Path.Combine(root, "src", "Clickra.Core", "Processors", "ConvertCommandRegistry.cs"));
         string native = File.ReadAllText(Path.Combine(root, "src", "Clickra.CLI", "Progress", "ProgressWindow.Process.cs"));
         string quiet = File.ReadAllText(Path.Combine(root, "src", "Clickra.CLI", "Cli", "ClickraCli.cs"));
         string fluentMain = File.ReadAllText(Path.Combine(root, "src", "Clickra.Fluent", "MainPage.xaml.cs"));
@@ -205,7 +206,6 @@ static partial class TestSuite
 
         Assert.False(runner.Contains("case \"decrypt-pdf\"", StringComparison.Ordinal),
             "Legacy ConvertCommandRunner must not retain a decrypt execution branch after migration.");
-        string registry = File.ReadAllText(Path.Combine(root, "src", "Clickra.Core", "Processors", "ConvertCommandRegistry.cs"));
         Assert.False(registry.Contains("_decrypted.pdf", StringComparison.Ordinal),
             "Legacy ConvertCommandRegistry must not retain decrypt output-path policy after application migration.");
         Assert.False(native.Contains("FileProcessor.DecryptPdf", StringComparison.Ordinal),
@@ -227,6 +227,7 @@ static partial class TestSuite
         if (root is null) throw new TestSkippedException("Could not locate the repository root.");
 
         string runner = File.ReadAllText(Path.Combine(root, "src", "Clickra.Core", "Processors", "ConvertCommandRunner.cs"));
+        string registry = File.ReadAllText(Path.Combine(root, "src", "Clickra.Core", "Processors", "ConvertCommandRegistry.cs"));
         string native = File.ReadAllText(Path.Combine(root, "src", "Clickra.CLI", "Progress", "ProgressWindow.Process.cs"));
         string quiet = File.ReadAllText(Path.Combine(root, "src", "Clickra.CLI", "Cli", "ClickraCli.cs"));
         string fluentMain = File.ReadAllText(Path.Combine(root, "src", "Clickra.Fluent", "MainPage.xaml.cs"));
@@ -234,6 +235,8 @@ static partial class TestSuite
 
         Assert.False(runner.Contains("case \"split-pdf\"", StringComparison.Ordinal),
             "Legacy ConvertCommandRunner must not retain a split execution branch after migration.");
+        Assert.False(registry.Contains("_split.pdf", StringComparison.Ordinal),
+            "Legacy ConvertCommandRegistry must not retain split output-path policy after application migration.");
         Assert.False(native.Contains("FileProcessor.SplitPdf", StringComparison.Ordinal),
             "Native presentation must not execute the split processor directly.");
         Assert.False(quiet.Contains("FileProcessor.SplitPdf", StringComparison.Ordinal),

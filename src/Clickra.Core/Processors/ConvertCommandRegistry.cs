@@ -72,7 +72,8 @@ public static class ConvertCommandRegistry
                 "translate-pdf" => files.Select(f => Path.Combine(ClickraStorage.GetOutputDir(f), Path.GetFileNameWithoutExtension(f) + "_translated.pdf")).ToList(),
                 "decrypt-pdf" => throw new InvalidOperationException(
                     "decrypt-pdf output planning is owned by the application use case."),
-                "split-pdf" => files.Select(f => Path.Combine(ClickraStorage.GetOutputDir(f), Path.GetFileNameWithoutExtension(f) + "_split.pdf")).ToList(),
+                "split-pdf" => throw new InvalidOperationException(
+                    "split-pdf output planning is owned by the application use case."),
                 CmdImg2Pdf => files.Select(f => Path.Combine(ClickraStorage.GetOutputDir(f), Path.GetFileNameWithoutExtension(f) + ".pdf")).ToList(),
                 CmdMdToPdf => files.Select(f => Path.Combine(
                     string.IsNullOrWhiteSpace(outputDirOverride) ? ClickraStorage.GetOutputDir(f) : Path.GetFullPath(outputDirOverride),
