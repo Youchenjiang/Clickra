@@ -244,13 +244,29 @@ namespace Clickra
         /// <summary>Runs the split-pdf command in quiet mode, writing one output file per input.</summary>
         private static void HandleSplitPdfQuiet(List<string> files, string outputDir, string pagesOption)
         {
-            for (int i = 0; i < files.Count; i++)
-            {
-                var f = files[i];
-                string outName = Path.Combine(outputDir, Path.GetFileNameWithoutExtension(f) + "_split.pdf");
-                Console.WriteLine($"[Progress] {Loc("cli_progress_splitting_pdf", Path.GetFileName(f), i + 1, files.Count)}");
-                FileProcessor.SplitPdf(f, outName, pagesOption, (curr, tot, msg) => Console.WriteLine($"[Progress] {msg}"));
-            }
+            IConversionUseCase useCase = ConversionUseCases.GetRequired(SplitPdfUseCase.CommandName);
+            ConversionPlan plan = useCase.Plan(new ConversionRequest(
+                SplitPdfUseCase.CommandName,
+                files,
+                new Dictionary<string, object>
+                {
+                    [SplitPdfUseCase.PagesOptionKey] = pagesOption
+                },
+                OutputOverride: outputDir,
+                TrackTaskLifecycle: false));
+            var interaction = new DelegateConversionInteraction(
+                (_, _, _, _) => Task.FromResult<string?>(null),
+                (_, _, _) => Task.FromResult<string?>(pagesOption),
+                (_, _, _) => Task.FromResult<IReadOnlyDictionary<string, object>?>(null));
+            var progress = new SynchronousProgress<ConversionProgress>(state =>
+                Console.WriteLine($"[Progress] {state.Message}"));
+            var observer = new QuietSplitObserver(files);
+
+            ConversionResult result = useCase.ExecuteAsync(plan, interaction, progress, observer)
+                .GetAwaiter()
+                .GetResult();
+            if (result.Status != ConversionResultStatus.Succeeded)
+                throw new InvalidOperationException(result.Error ?? Loc("error_processing_failed"));
         }
 
         /// <summary>Handles image conversion, merge and stitching commands.</summary>
@@ -379,6 +395,14 @@ namespace Clickra
 
             public void OnFileStarting(int fileIndex) =>
                 Console.WriteLine($"[Progress] {Loc("cli_progress_decrypting_pdf", Path.GetFileName(files[fileIndex]), fileIndex + 1, files.Count)}");
+        }
+
+        private sealed class QuietSplitObserver(IReadOnlyList<string> files) : IConversionExecutionObserver
+        {
+            public void OnTaskStarted(string taskId) { }
+
+            public void OnFileStarting(int fileIndex) =>
+                Console.WriteLine($"[Progress] {Loc("cli_progress_splitting_pdf", Path.GetFileName(files[fileIndex]), fileIndex + 1, files.Count)}");
         }
 
         private sealed class SynchronousProgress<T>(Action<T> report) : IProgress<T>
