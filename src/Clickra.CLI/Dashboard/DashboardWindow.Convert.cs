@@ -82,48 +82,72 @@ namespace Clickra.UI
                 && ConvertCommands[_convertCommandIndex].ValidateFiles(files, out _);
         }
 
-        /// <summary>Queues a conversion action for files dropped onto the dashboard window.</summary>
-        [System.Diagnostics.CodeAnalysis.SuppressMessage("SonarQube", "S3776", Justification = "Ordered file-type routing keeps explicit command precedence and selection behavior visible in one place.")]
-        static void HandleDroppedFiles(List<string> files)
+        /// <summary>Builds the shared file-picker filter from the command registry so every
+        /// supported input type remains selectable when commands are added or changed.</summary>
+        static string GetSupportedFilesFilter()
+        {
+            string patterns = string.Join(";", ConvertCommands
+                .SelectMany(command => command.Extensions)
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .Select(extension => $"*{extension}"));
+            return $"Supported Files ({patterns})\0{patterns}\0All Files (*.*)\0*.*\0\0";
+        }
+
+        /// <summary>Chooses the same default command for drag/drop and the file picker.</summary>
+        static ConvertCommand? GetDefaultCommandForFiles(List<string> files)
         {
             var extensions = files.Select(f => Path.GetExtension(f).ToLowerInvariant()).Distinct().ToList();
-            if (extensions.Count == 0) return;
-
-            if (CurrentSelectionAcceptsFiles(files))
-            {
-                // Keep the user's explicit command when it accepts the dropped files
-                // (e.g. 分割 PDF stays selected after dropping a PDF).
-                _selectedFiles = files;
-                return;
-            }
+            if (extensions.Count == 0) return null;
 
             if (extensions.All(ext => ext == ".ppt" || ext == ".pptx"))
             {
-                ConvertCommand.Select(ConvertCommands[GetCommandIndex("ppt2pdf")]);
+                return ConvertCommands[GetCommandIndex("ppt2pdf")];
             }
-            else if (extensions.All(ext => ext == ".doc" || ext == ".docx"))
+            if (extensions.All(ext => ext == ".doc" || ext == ".docx"))
             {
-                ConvertCommand.Select(ConvertCommands[GetCommandIndex("word2pdf")]);
+                return ConvertCommands[GetCommandIndex("word2pdf")];
             }
-            else if (extensions.All(ext => ext == ".xlsx" || ext == ".xls"))
+            if (extensions.All(ext => ext == ".xlsx" || ext == ".xls"))
             {
-                ConvertCommand.Select(ConvertCommands[GetCommandIndex("excel2pdf")]);
+                return ConvertCommands[GetCommandIndex("excel2pdf")];
             }
-            else if (extensions.All(ext => ext == ".pdf"))
+            if (extensions.All(ext => ext == ".pdf"))
             {
-                ConvertCommand.Select(ConvertCommands[GetCommandIndex(files.Count == 1 ? "compress-pdf" : "merge-pdf")]);
+                return ConvertCommands[GetCommandIndex(files.Count == 1 ? "compress-pdf" : "merge-pdf")];
             }
-            else if (extensions.All(ext => ext is ".md" or ".markdown"))
+            if (extensions.All(ext => ext is ".md" or ".markdown"))
             {
-                ConvertCommand.Select(ConvertCommands[GetCommandIndex("md2pdf")]);
+                return ConvertCommands[GetCommandIndex("md2pdf")];
             }
-            else if (extensions.All(ext => new[] { ".jpg", ".jpeg", ".png", ".bmp", ".gif", ".tiff", ".webp" }.Contains(ext)))
+            if (extensions.All(ext => ImageExtensions.Contains(ext, StringComparer.OrdinalIgnoreCase)))
             {
-                ConvertCommand.Select(ConvertCommands[GetCommandIndex(files.Count > 1 ? "img-merge" : "img2pdf")]);
+                return ConvertCommands[GetCommandIndex(files.Count > 1 ? "img-merge" : "img2pdf")];
+            }
+
+            return null;
+        }
+
+        /// <summary>Imports files from any dashboard entry point while preserving an explicit
+        /// compatible command and otherwise applying the shared default routing.</summary>
+        static void ImportFiles(List<string> files)
+        {
+            if (files.Count == 0) return;
+
+            if (!CurrentSelectionAcceptsFiles(files))
+            {
+                _convertCommandIndex = -1;
+                var defaultCommand = GetDefaultCommandForFiles(files);
+                if (defaultCommand is not null)
+                {
+                    ConvertCommand.Select(defaultCommand);
+                }
             }
 
             _selectedFiles = files;
         }
+
+        /// <summary>Queues a conversion action for files dropped onto the dashboard window.</summary>
+        static void HandleDroppedFiles(List<string> files) => ImportFiles(files);
 
         /// <summary>Runs the currently selected convert command for the selected files.</summary>
         static void RunConversion(IntPtr hwnd)

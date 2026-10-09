@@ -337,28 +337,10 @@ namespace Clickra.UI
         static void HandlePickFiles(IntPtr hwnd)
         {
             string title = GetText("convert_drag_drop_hint");
-            const string allFilter = "Supported Files (*.doc;*.docx;*.ppt;*.pptx;*.pdf;*.jpg;*.jpeg;*.png;*.bmp;*.gif;*.tiff;*.webp)\0*.doc;*.docx;*.ppt;*.pptx;*.pdf;*.jpg;*.jpeg;*.png;*.bmp;*.gif;*.tiff;*.webp\0All Files (*.*)\0*.*\0\0";
-            var chosen = OpenFiles(hwnd, allFilter, title);
+            var chosen = OpenFiles(hwnd, GetSupportedFilesFilter(), title);
             if (chosen.Count == 0) return;
 
-            _selectedFiles = chosen;
-            if (CurrentSelectionAcceptsFiles(_selectedFiles))
-            {
-                InvalidateRect(hwnd, IntPtr.Zero, false);
-                return;
-            }
-
-            // Only auto-select when the user's current command can't accept the files
-            // (e.g. 分割 PDF stays selected after picking a PDF).
-            _convertCommandIndex = -1;
-            for (int i = 0; i < ConvertCommands.Length; i++)
-            {
-                if (ConvertCommands[i].ValidateFiles(_selectedFiles, out _))
-                {
-                    _convertCommandIndex = i;
-                    break;
-                }
-            }
+            ImportFiles(chosen);
             InvalidateRect(hwnd, IntPtr.Zero, false);
         }
 
