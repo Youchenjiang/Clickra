@@ -46,6 +46,20 @@ namespace Clickra.UI
                     Loc("cli_progress_splitting_pdf", Path.GetFileName(files[fileIndex]), fileIndex + 1, files.Count));
         }
 
+        private sealed class CompressExecutionObserver(
+            ProgressWindow owner,
+            IReadOnlyList<string> files,
+            Action<int, int, string> progressCallback) : IConversionExecutionObserver
+        {
+            public void OnTaskStarted(string taskId) => owner.TaskId = taskId;
+
+            public void OnFileStarting(int fileIndex) =>
+                progressCallback(
+                    (fileIndex * 100) + 10,
+                    files.Count * 100,
+                    Loc("cli_progress_compressing_pdf", Path.GetFileName(files[fileIndex]), fileIndex + 1, files.Count));
+        }
+
         private string? _inputPassword = null;
         private bool _passwordCancelled = false;
         private volatile bool _isPromptingPassword = false;
@@ -100,6 +114,11 @@ namespace Clickra.UI
                     RunApplicationSplit(hwnd, currentFiles, progressCallback);
                     return;
                 }
+                if (cmd.Equals(CompressPdfUseCase.CommandName, StringComparison.OrdinalIgnoreCase))
+                {
+                    RunApplicationCompress(hwnd, currentFiles, progressCallback);
+                    return;
+                }
 
                 // 立即建立 Pending 任務紀錄，讓 Dashboard 可即時看到；每個任務有
                 // 獨立的進度檔（tasks/task-{id}.tmp），並行任務不會互相覆蓋。
@@ -110,9 +129,6 @@ namespace Clickra.UI
                 List<string> plannedOutputs = ConvertCommandRegistry.EstimateOutputs(cmd, currentFiles, _outputDirOverride);
                 switch (cmd)
                 {
-                    case "compress-pdf":
-                        RunCompressPdf(currentFiles, plannedOutputs, progressCallback);
-                        break;
                     case "img2pdf":
                         RunImg2Pdf(currentFiles, plannedOutputs, progressCallback);
                         break;
@@ -130,8 +146,7 @@ namespace Clickra.UI
                 lock (_stateLock)
                 {
                     _completed = true;
-                    if (cmd != "compress-pdf")
-                        _message = Loc("cli_progress_all_done");
+                    _message = Loc("cli_progress_all_done");
                 }
                 PostMessageW(hwnd, WM_USER_INVALIDATE, (IntPtr)1, IntPtr.Zero);
 
@@ -305,44 +320,78 @@ namespace Clickra.UI
             PostMessageW(hwnd, 0x0010, IntPtr.Zero, IntPtr.Zero); // WM_CLOSE
         }
 
-        /// <summary>Compresses each PDF with the saved quality settings, reporting per-file
-        /// progress through the callback.</summary>
-        private void RunCompressPdf(List<string> files, List<string> outputs, Action<int, int, string> progressCallback)
-        {
-            string compressionSummary = "";
-            for (int i = _startIndex; i < files.Count; i++)
-            {
-                _cts.Token.ThrowIfCancellationRequested();
-                TryRecordTaskIndex(i);
-                string fileSummary = RunCompressPdfFile(files[i], outputs[i], i, files.Count, progressCallback);
-                if (!string.IsNullOrWhiteSpace(fileSummary)) compressionSummary = fileSummary;
-            }
-            _cts.Token.ThrowIfCancellationRequested();
-            progressCallback(files.Count * 100, files.Count * 100,
-                string.IsNullOrWhiteSpace(compressionSummary) ? Loc("cli_progress_compressing_pdf_done") : compressionSummary);
-        }
-
-        private string RunCompressPdfFile(string file, string outputPath, int index, int total,
+        private void RunApplicationCompress(
+            IntPtr hwnd,
+            List<string> files,
             Action<int, int, string> progressCallback)
         {
-            string summary = "";
-            progressCallback((index * 100) + 10, total * 100,
-                Loc("cli_progress_compressing_pdf", Path.GetFileName(file), index + 1, total));
-
-            var pdfOptions = BuildPdfCompressOptions();
-            FileProcessor.CompressPdf(file, outputPath, pdfOptions, (curr, tot, msg) =>
+            IConversionUseCase useCase = ConversionUseCases.GetRequired(CompressPdfUseCase.CommandName);
+            ConversionPlan plan = useCase.Plan(new ConversionRequest(
+                CompressPdfUseCase.CommandName,
+                files,
+                ExistingTaskId: _existingTaskId,
+                BestEffortTaskPersistence: true)) with
             {
-                int progressPct = tot > 0 ? (int)(curr * 80.0 / tot) + 10 : 10;
-                if (curr >= tot && !string.IsNullOrWhiteSpace(msg)) summary = msg;
-                progressCallback((index * 100) + progressPct, total * 100,
-                    Loc("cli_progress_compressing_pdf_stage", msg, index + 1, total));
-            }, _cts.Token);
-            return summary;
-        }
+                ResumeStartIndex = _startIndex
+            };
+            var interaction = new DelegateConversionInteraction(
+                (_, _, _, _) => System.Threading.Tasks.Task.FromResult<string?>(null),
+                (_, _, _) => System.Threading.Tasks.Task.FromResult<string?>(null),
+                (_, _, _) => System.Threading.Tasks.Task.FromResult<IReadOnlyDictionary<string, object>?>(null));
+            string compressionSummary = "";
+            var progress = new CallbackProgress<ConversionProgress>(state =>
+            {
+                int fileIndex = Math.Clamp((Math.Max(state.Current, 1) - 1) / 100, 0, files.Count - 1);
+                int fileProgress = Math.Clamp(state.Current - (fileIndex * 100), 0, 100);
+                int progressPct = (int)(fileProgress * 0.8) + 10;
+                if (fileProgress >= 100 && !string.IsNullOrWhiteSpace(state.Message))
+                    compressionSummary = state.Message;
+                progressCallback(
+                    (fileIndex * 100) + progressPct,
+                    files.Count * 100,
+                    Loc("cli_progress_compressing_pdf_stage", state.Message, fileIndex + 1, files.Count));
+            });
 
-        /// <summary>Builds the PDF compression options dictionary from saved settings.</summary>
-        private static Dictionary<string, object> BuildPdfCompressOptions() =>
-            ConvertCommandRegistry.CompressionOptions();
+            ConversionResult result = useCase.ExecuteAsync(
+                    plan,
+                    interaction,
+                    progress,
+                    new CompressExecutionObserver(this, files, progressCallback),
+                    _cts.Token)
+                .GetAwaiter()
+                .GetResult();
+
+            if (result.Status == ConversionResultStatus.Succeeded)
+            {
+                progressCallback(
+                    files.Count * 100,
+                    files.Count * 100,
+                    string.IsNullOrWhiteSpace(compressionSummary)
+                        ? Loc("cli_progress_compressing_pdf_done")
+                        : compressionSummary);
+                lock (_stateLock)
+                {
+                    _completed = true;
+                }
+                PostMessageW(hwnd, WM_USER_INVALIDATE, (IntPtr)1, IntPtr.Zero);
+                ShowToastNotification(CompressPdfUseCase.CommandName, files.Count);
+                Thread.Sleep(1500);
+                ConversionTaskCleanup.Delete(result.TaskId, bestEffort: true);
+                PostMessageW(hwnd, 0x0010, IntPtr.Zero, IntPtr.Zero); // WM_CLOSE
+                return;
+            }
+
+            bool wasCanceled = result.Status == ConversionResultStatus.Canceled;
+            string errorMsg = wasCanceled ? "User Aborted" : result.Error ?? "";
+            lock (_stateLock)
+            {
+                _hasError = true;
+                _errorMessage = errorMsg;
+            }
+            PostMessageW(hwnd, WM_USER_INVALIDATE, (IntPtr)1, IntPtr.Zero);
+            ConversionTaskCleanup.Delete(result.TaskId, bestEffort: true);
+            PostMessageW(hwnd, 0x0010, IntPtr.Zero, IntPtr.Zero); // WM_CLOSE
+        }
 
         /// <summary>Converts each image to its own PDF, reporting per-file progress.</summary>
         private void RunImg2Pdf(List<string> files, List<string> outputs, Action<int, int, string> progressCallback)
