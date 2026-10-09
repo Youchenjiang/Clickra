@@ -186,7 +186,7 @@ namespace Clickra.UI
                 (_, _, _) => System.Threading.Tasks.Task.FromResult<IReadOnlyDictionary<string, object>?>(null));
             var progress = new CallbackProgress<ConversionProgress>(state =>
             {
-                int fileIndex = Math.Clamp(state.Current / 100, 0, files.Count - 1);
+                int fileIndex = Math.Clamp((Math.Max(state.Current, 1) - 1) / 100, 0, files.Count - 1);
                 int fileProgress = Math.Clamp(state.Current - (fileIndex * 100), 0, 100);
                 int progressPct = (int)(fileProgress * 0.8) + 10;
                 progressCallback(
