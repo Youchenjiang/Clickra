@@ -6,6 +6,7 @@ using System.Collections.Generic;
 using System.Reflection;
 using System.Runtime.InteropServices;
 using Clickra.Core;
+using Clickra.Core.Application;
 using Clickra.Core.Models;
 using Clickra.Core.Processors;
 using Clickra.UI;
@@ -348,31 +349,41 @@ namespace Clickra
         /// password errors into a localized message.</summary>
         private static void HandleDecryptPdfQuiet(List<string> files, string outputDir)
         {
-            for (int i = 0; i < files.Count; i++)
-            {
-                var f = files[i];
-                string outName = Path.Combine(outputDir, Path.GetFileNameWithoutExtension(f) + "_decrypted.pdf");
-                Console.WriteLine($"[Progress] {Loc("cli_progress_decrypting_pdf", Path.GetFileName(f), i + 1, files.Count)}");
+            IConversionUseCase useCase = ConversionUseCases.GetRequired(DecryptPdfUseCase.CommandName);
+            ConversionPlan plan = useCase.Plan(new ConversionRequest(
+                DecryptPdfUseCase.CommandName,
+                files,
+                OutputOverride: outputDir,
+                TrackTaskLifecycle: false));
+            string passwordError = Localization.T(
+                "error_pdf_password_quiet",
+                ClickraStorage.GetSetting(ClickraSettings.Language));
+            var interaction = new DelegateConversionInteraction(
+                (_, _, _, _) => Task.FromException<string?>(new InvalidOperationException(passwordError)),
+                (_, _, _) => Task.FromResult<string?>(null),
+                (_, _, _) => Task.FromResult<IReadOnlyDictionary<string, object>?>(null));
+            var progress = new SynchronousProgress<ConversionProgress>(state =>
+                Console.WriteLine($"[Progress] {state.Message}"));
+            var observer = new QuietDecryptObserver(files);
 
-                try
-                {
-                    FileProcessor.DecryptPdf(f, outName, "", (curr, tot, msg) => Console.WriteLine($"[Progress] {msg}"));
-                }
-                catch (Exception ex)
-                {
-                    bool isPasswordError = ex is PdfSharp.Pdf.IO.PdfReaderException &&
-                                           ex.Message.Contains("password", StringComparison.OrdinalIgnoreCase);
+            ConversionResult result = useCase.ExecuteAsync(plan, interaction, progress, observer)
+                .GetAwaiter()
+                .GetResult();
+            if (result.Status != ConversionResultStatus.Succeeded)
+                throw new InvalidOperationException(result.Error ?? Loc("error_processing_failed"));
+        }
 
-                    if (isPasswordError)
-                    {
-                        throw new InvalidOperationException(Localization.T("error_pdf_password_quiet", ClickraStorage.GetSetting(ClickraSettings.Language)));
-                    }
-                    else
-                    {
-                        throw;
-                    }
-                }
-            }
+        private sealed class QuietDecryptObserver(IReadOnlyList<string> files) : IConversionExecutionObserver
+        {
+            public void OnTaskStarted(string taskId) { }
+
+            public void OnFileStarting(int fileIndex) =>
+                Console.WriteLine($"[Progress] {Loc("cli_progress_decrypting_pdf", Path.GetFileName(files[fileIndex]), fileIndex + 1, files.Count)}");
+        }
+
+        private sealed class SynchronousProgress<T>(Action<T> report) : IProgress<T>
+        {
+            public void Report(T value) => report(value);
         }
     }
 }
