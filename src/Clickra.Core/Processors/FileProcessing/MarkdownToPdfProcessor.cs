@@ -458,31 +458,21 @@ public sealed class MarkdownToPdfProcessor : MarkdownSingleFileProcessorBase
             ref double x,
             ref double height)
         {
-            string text = NormalizeDisplayGlyphs(segment.Text);
-            foreach (string token in TokenizeForWrapping(text))
+            foreach (MeasuredInlinePiece? piece in BuildMeasuredInlinePieces(segment, size, maxWidth))
             {
-                if (token == "\n")
+                if (piece is null)
                 {
                     height += lineHeight;
                     x = 0;
                     continue;
                 }
 
-                XFont font = CreateFont(
-                    token,
-                    segment.Code ? _layout.CodeFontSizePoints : size,
-                    GetInlineStyle(segment),
-                    segment.Code && !ContainsCjk(token));
-                foreach (string piece in BreakToken(token, font, maxWidth))
+                if (x > 0 && x + piece.Width > maxWidth)
                 {
-                    double width = _graphics!.MeasureString(piece, font).Width;
-                    if (x > 0 && x + width > maxWidth)
-                    {
-                        height += lineHeight;
-                        x = 0;
-                    }
-                    x += width;
+                    height += lineHeight;
+                    x = 0;
                 }
+                x += piece.Width;
             }
         }
 
@@ -911,26 +901,15 @@ public sealed class MarkdownToPdfProcessor : MarkdownSingleFileProcessorBase
             var pieces = new List<InlineDrawPiece?>();
             foreach (InlineSegment segment in segments)
             {
-                if (segment.Text == "\n")
-                {
-                    pieces.Add(null);
-                    continue;
-                }
-
-                string text = NormalizeDisplayGlyphs(segment.Text);
                 XBrush brush = ResolveInlineBrush(segment, baseBrush);
-
-                foreach (string token in TokenizeForWrapping(text))
+                foreach (MeasuredInlinePiece? piece in BuildMeasuredInlinePieces(segment, size, maxPieceWidth))
                 {
-                    if (token == "\n")
+                    if (piece is null)
                     {
                         pieces.Add(null);
                         continue;
                     }
-
-                    XFont font = CreateFont(token, segment.Code ? _layout.CodeFontSizePoints : size, GetInlineStyle(segment), segment.Code && !ContainsCjk(token));
-                    foreach (string pieceText in BreakToken(token, font, maxPieceWidth))
-                        pieces.Add(new InlineDrawPiece(pieceText, segment.Url, segment.Code, font, brush, _graphics!.MeasureString(pieceText, font).Width));
+                    pieces.Add(new InlineDrawPiece(piece.Text, segment.Url, segment.Code, piece.Font, brush, piece.Width));
                 }
             }
             return pieces;
@@ -985,13 +964,11 @@ public sealed class MarkdownToPdfProcessor : MarkdownSingleFileProcessorBase
             width = 0;
             foreach (InlineSegment segment in segments)
             {
-                if (segment.Text == "\n" || segment.ImageUrl is not null) return false;
-                string text = NormalizeDisplayGlyphs(segment.Text);
-                foreach (string token in TokenizeForWrapping(text))
+                if (segment.ImageUrl is not null) return false;
+                foreach (MeasuredInlinePiece? piece in BuildMeasuredInlinePieces(segment, size, double.MaxValue))
                 {
-                    if (token == "\n") return false;
-                    XFont font = CreateFont(token, segment.Code ? _layout.CodeFontSizePoints : size, GetInlineStyle(segment), segment.Code && !ContainsCjk(token));
-                    width += _graphics!.MeasureString(token, font).Width;
+                    if (piece is null) return false;
+                    width += piece.Width;
                 }
             }
             return true;
@@ -1000,27 +977,59 @@ public sealed class MarkdownToPdfProcessor : MarkdownSingleFileProcessorBase
         private void RenderSegment(InlineSegment segment, double size, XBrush baseBrush, double indent, double lineHeight, double maxX, ref double x)
         {
             _token.ThrowIfCancellationRequested();
-            if (segment.Text == "\n")
-            {
-                NewLine(indent, lineHeight, ref x);
-                return;
-            }
             if (segment.ImageUrl is not null && TryRenderInlineImage(segment.ImageUrl, indent, lineHeight, ref x)) return;
 
-            string text = NormalizeDisplayGlyphs(segment.Text);
             XBrush brush = baseBrush;
             if (segment.Url is not null)
                 brush = new XSolidBrush(_accentColor);
             else if (segment.Bold)
                 brush = new XSolidBrush(_strongTextColor);
+            double maxPieceWidth = maxX - (_marginLeft + indent);
+            foreach (MeasuredInlinePiece? piece in BuildMeasuredInlinePieces(segment, size, maxPieceWidth))
+            {
+                if (piece is null)
+                {
+                    NewLine(indent, lineHeight, ref x);
+                    continue;
+                }
+                DrawInlinePiece(piece.Text, segment.Url, segment.Code, piece.Font, brush, indent, lineHeight, maxX, ref x);
+            }
+        }
+
+        /// <summary>Builds the measured text pieces shared by height estimation, normal drawing,
+        /// justification and single-line width checks. A null entry represents an explicit newline.</summary>
+        private List<MeasuredInlinePiece?> BuildMeasuredInlinePieces(InlineSegment segment, double size, double maxPieceWidth)
+        {
+            var pieces = new List<MeasuredInlinePiece?>();
+            if (segment.Text == "\n")
+            {
+                pieces.Add(null);
+                return pieces;
+            }
+
+            string text = NormalizeDisplayGlyphs(segment.Text);
             foreach (string token in TokenizeForWrapping(text))
             {
-                double fontSize = segment.Code ? _layout.CodeFontSizePoints : size;
-                XFont font = token == "\n"
-                    ? CreateFont(string.Empty, fontSize, GetInlineStyle(segment), segment.Code)
-                    : CreateFont(token, fontSize, GetInlineStyle(segment), segment.Code && !ContainsCjk(token));
-                RenderInlineToken(token, segment.Url, segment.Code, font, brush, indent, lineHeight, maxX, ref x);
+                if (token == "\n")
+                {
+                    pieces.Add(null);
+                    continue;
+                }
+
+                XFont font = CreateFont(
+                    token,
+                    segment.Code ? _layout.CodeFontSizePoints : size,
+                    GetInlineStyle(segment),
+                    segment.Code && !ContainsCjk(token));
+                foreach (string pieceText in BreakToken(token, font, maxPieceWidth))
+                {
+                    pieces.Add(new MeasuredInlinePiece(
+                        pieceText,
+                        font,
+                        _graphics!.MeasureString(pieceText, font).Width));
+                }
             }
+            return pieces;
         }
 
         private XBrush ResolveInlineBrush(InlineSegment segment, XBrush baseBrush)
@@ -1031,19 +1040,6 @@ public sealed class MarkdownToPdfProcessor : MarkdownSingleFileProcessorBase
         }
 
         private static string NormalizeDisplayGlyphs(string text) => text;
-
-        [System.Diagnostics.CodeAnalysis.SuppressMessage("SonarQube", "S107", Justification = "Token rendering carries explicit style and geometry state to avoid hidden mutable layout objects.")]
-        private void RenderInlineToken(string token, string? url, bool isCode, XFont font, XBrush brush, double indent, double lineHeight, double maxX, ref double x)
-        {
-            if (token == "\n")
-            {
-                NewLine(indent, lineHeight, ref x);
-                return;
-            }
-
-            foreach (string piece in BreakToken(token, font, maxX - (_marginLeft + indent)))
-                DrawInlinePiece(piece, url, isCode, font, brush, indent, lineHeight, maxX, ref x);
-        }
 
         [System.Diagnostics.CodeAnalysis.SuppressMessage("SonarQube", "S107", Justification = "Inline piece drawing keeps explicit style and geometry arguments for deterministic PDF layout.")]
         private void DrawInlinePiece(string piece, string? url, bool isCode, XFont font, XBrush brush, double indent, double lineHeight, double maxX, ref double x)
@@ -1395,6 +1391,7 @@ public sealed class MarkdownToPdfProcessor : MarkdownSingleFileProcessorBase
             value.Replace("\r\n", "\n", StringComparison.Ordinal).Replace('\r', '\n');
 
         private sealed record InlineSegment(string Text, bool Bold, bool Italic, bool Code, string? Url, string? ImageUrl = null);
+        private sealed record MeasuredInlinePiece(string Text, XFont Font, double Width);
         private sealed record InlineDrawPiece(string Text, string? Url, bool IsCode, XFont Font, XBrush Brush, double Width);
         private sealed record CodeDrawPiece(string Text, XFont Font, double Width);
         private sealed record CodeLineLayout(List<CodeDrawPiece> Pieces);
