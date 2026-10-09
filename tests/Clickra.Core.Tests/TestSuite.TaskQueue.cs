@@ -20,6 +20,7 @@ static partial class TestSuite
     private const string FluentProjectDirectory = "Clickra.Fluent";
     private const string RepoRootNotFoundMessage = "Could not locate the repository root from the test output directory.";
     private const string FluentMainPageFile = "MainPage.xaml.cs";
+    private const string FluentHistoryPageFile = "MainPage.History.cs";
     private const string CliProjectDirectory = "Clickra.CLI";
     private const string DashboardDirectory = "Dashboard";
     private const string DashboardEventsClickFile = "DashboardWindow.Events.Click.cs";
@@ -107,7 +108,9 @@ static partial class TestSuite
         string? root = FindRepoRoot();
         if (root is null) throw new TestSkippedException(RepoRootNotFoundMessage);
 
-        string code = File.ReadAllText(Path.Combine(root, "src", FluentProjectDirectory, FluentMainPageFile));
+        string code = string.Concat(
+            File.ReadAllText(Path.Combine(root, "src", FluentProjectDirectory, FluentMainPageFile)),
+            File.ReadAllText(Path.Combine(root, "src", FluentProjectDirectory, FluentHistoryPageFile)));
         string xaml = File.ReadAllText(Path.Combine(root, "src", FluentProjectDirectory, "MainPage.xaml"));
 
         Assert.True(xaml.Contains("ParkedTasksSection", StringComparison.Ordinal), "The History page must render a parked-conversions section.");
@@ -360,7 +363,7 @@ static partial class TestSuite
         string? root = FindRepoRoot();
         if (root is null) throw new TestSkippedException(RepoRootNotFoundMessage);
 
-        string fluentCode = File.ReadAllText(Path.Combine(root, "src", FluentProjectDirectory, FluentMainPageFile));
+        string fluentCode = File.ReadAllText(Path.Combine(root, "src", FluentProjectDirectory, FluentHistoryPageFile));
         string cliHistory = File.ReadAllText(Path.Combine(root, "src", CliProjectDirectory, DashboardDirectory, DashboardHistoryPaintFile));
         string storageCode = File.ReadAllText(Path.Combine(root, "src", "Clickra.Core", "Storage", "ClickraStorage.ActiveRecord.cs"));
         string feedCode = File.ReadAllText(Path.Combine(root, "src", "Clickra.Core", "Storage", "HistoryFeed.cs"));

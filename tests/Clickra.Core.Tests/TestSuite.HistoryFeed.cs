@@ -213,7 +213,7 @@ static partial class TestSuite
         foreach ((string surface, string path) in new[]
         {
             (CliDashboardSurface, Path.Combine(root, "src", "Clickra.CLI", "Dashboard", "DashboardWindow.Lifecycle.cs")),
-            (FluentHistorySurface, Path.Combine(root, "src", "Clickra.Fluent", "MainPage.xaml.cs"))
+            (FluentHistorySurface, Path.Combine(root, "src", "Clickra.Fluent", "MainPage.History.cs"))
         })
         {
             string source = File.ReadAllText(path);
@@ -251,7 +251,7 @@ static partial class TestSuite
         if (root is null) throw new TestSkippedException("Could not locate the repository root from the test output directory.");
 
         string cli = File.ReadAllText(Path.Combine(root, "src", "Clickra.CLI", "Dashboard", "DashboardWindow.Paint.History.cs"));
-        string fluent = File.ReadAllText(Path.Combine(root, "src", "Clickra.Fluent", "MainPage.xaml.cs"));
+        string fluent = File.ReadAllText(Path.Combine(root, "src", "Clickra.Fluent", "MainPage.History.cs"));
         string model = File.ReadAllText(Path.Combine(root, "src", "Clickra.Core", "Storage", "HistoryFeed.cs"));
 
         // 每一列的事實都取自項目，而不是當場重算。
