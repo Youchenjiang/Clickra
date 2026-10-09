@@ -75,6 +75,9 @@ static partial class TestSuite
         runner.RunGuard(
             "Architecture boundaries: migrated split workflow has one execution owner",
             TestSplitWorkflowHasSingleExecutionOwner);
+        runner.RunGuard(
+            "Architecture boundaries: migrated compress workflow has one execution owner",
+            TestCompressWorkflowHasSingleExecutionOwner);
     }
 
     private static void TestArchitectureViolationBaseline()
@@ -254,6 +257,32 @@ static partial class TestSuite
                     && native.Contains("ConversionUseCases.GetRequired(SplitPdfUseCase.CommandName)", StringComparison.Ordinal)
                     && quiet.Contains("ConversionUseCases.GetRequired(SplitPdfUseCase.CommandName)", StringComparison.Ordinal),
             "All product surfaces must resolve split execution through the application use-case catalog.");
+    }
+
+    private static void TestCompressWorkflowHasSingleExecutionOwner()
+    {
+        string? root = FindRepoRoot();
+        if (root is null) throw new TestSkippedException("Could not locate the repository root.");
+
+        string runner = File.ReadAllText(Path.Combine(root, "src", "Clickra.Core", "Processors", "ConvertCommandRunner.cs"));
+        string native = File.ReadAllText(Path.Combine(root, "src", "Clickra.CLI", "Progress", "ProgressWindow.Process.cs"));
+        string quiet = File.ReadAllText(Path.Combine(root, "src", "Clickra.CLI", "Cli", "ClickraCli.cs"));
+        string fluentMain = File.ReadAllText(Path.Combine(root, "src", "Clickra.Fluent", "MainPage.xaml.cs"));
+        string fluentTask = File.ReadAllText(Path.Combine(root, "src", "Clickra.Fluent", "TaskProgressPage.xaml.cs"));
+
+        Assert.False(runner.Contains("case \"compress-pdf\"", StringComparison.Ordinal),
+            "Legacy ConvertCommandRunner must not retain a compress execution branch after migration.");
+        Assert.False(native.Contains("FileProcessor.CompressPdf", StringComparison.Ordinal),
+            "Native presentation must not execute the compression processor directly.");
+        Assert.False(quiet.Contains("FileProcessor.CompressPdf", StringComparison.Ordinal),
+            "Headless CLI must not execute the compression processor directly.");
+        Assert.True((fluentMain.Contains("ConversionUseCases.TryGet(command", StringComparison.Ordinal)
+                     || fluentMain.Contains("ConversionUseCases.GetRequired(command)", StringComparison.Ordinal))
+                    && (fluentTask.Contains("ConversionUseCases.TryGet(command", StringComparison.Ordinal)
+                        || fluentTask.Contains("ConversionUseCases.GetRequired(command)", StringComparison.Ordinal))
+                    && native.Contains("ConversionUseCases.GetRequired(CompressPdfUseCase.CommandName)", StringComparison.Ordinal)
+                    && quiet.Contains("ConversionUseCases.GetRequired(CompressPdfUseCase.CommandName)", StringComparison.Ordinal),
+            "All product surfaces must resolve compression execution through the application use-case catalog.");
     }
 
     private sealed class StubConversionUseCase(string command) : IConversionUseCase

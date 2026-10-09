@@ -119,9 +119,6 @@ public static class ConvertCommandRunner
                 case "merge-pdf":
                     FileProcessor.MergePdfs(files, outputs[0], progress, token);
                     break;
-                case "compress-pdf":
-                    RunPerFile(files, outputs, (f, o, p, t) => FileProcessor.CompressPdf(f, o, ConvertCommandRegistry.CompressionOptions(), p, t), progress, options.StartIndex, options.OnFileStarting, token);
-                    break;
                 case "translate-pdf":
                     RunPerFile(files, outputs, (f, o, p, t) => FileProcessor.TranslatePdf(f, o, ClickraStorage.GetSetting(ClickraSettings.TranslateTargetLang), p, t), progress, options.StartIndex, options.OnFileStarting, token);
                     break;
