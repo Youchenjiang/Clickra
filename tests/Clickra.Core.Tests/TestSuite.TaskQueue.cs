@@ -70,10 +70,29 @@ static partial class TestSuite
             TestClaimParkedTaskForResume);
         runner.Run("CLI Dashboard History page exposes resume and cancel for parked conversions",
             TestCliDashboardParkedTaskResumeAndCancelEntryPoint);
+        runner.Run("Conversion lifecycle preserves an explicit start time",
+            TestConversionLifecyclePreservesExplicitStartTime);
         runner.Run("Conversion output planning preserves each source directory",
             TestConversionOutputPlanningPreservesSourceDirectories);
         runner.RunGuard("Conversion lifecycle: Native and Fluent runners share task tracking",
             TestConversionLifecycleIsShared);
+    }
+
+    private static void TestConversionLifecyclePreservesExplicitStartTime()
+    {
+        const string expectedStartTime = "2026-10-10 02:30:00";
+        ConversionTaskLifecycle lifecycle = ConversionTaskLifecycle.Start(
+            "merge-pdf",
+            Array.Empty<string>(),
+            startTimeOverride: expectedStartTime);
+        try
+        {
+            Assert.Equal(expectedStartTime, lifecycle.StartTime);
+        }
+        finally
+        {
+            lifecycle.Delete();
+        }
     }
 
     private static void TestConversionOutputPlanningPreservesSourceDirectories()

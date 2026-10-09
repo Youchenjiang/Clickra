@@ -36,10 +36,11 @@ public sealed class ConversionTaskLifecycle
         string command,
         IReadOnlyCollection<string> files,
         string? existingTaskId = null,
-        bool bestEffort = false)
+        bool bestEffort = false,
+        string? startTimeOverride = null)
     {
         string inputs = string.Join(";", files);
-        string startTime = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
+        string startTime = startTimeOverride ?? DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
         var lifecycle = new ConversionTaskLifecycle(
             command,
             inputs,
