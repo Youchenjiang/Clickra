@@ -201,6 +201,81 @@ static partial class TestSuite
 
     private static void RegisterCommandRegistryAndRunnerTests(TestRunner runner)
     {
+        runner.Run("Image format use cases own per-source output planning", () =>
+            RunWithTempDirectory(tempDir =>
+            {
+                string firstDir = Path.Combine(tempDir, "first");
+                string secondDir = Path.Combine(tempDir, "second");
+                Directory.CreateDirectory(firstDir);
+                Directory.CreateDirectory(secondDir);
+                string first = CreateTestImage(firstDir, "a.png", ImageFormat.Png);
+                string second = CreateTestImage(secondDir, "b.gif", ImageFormat.Gif);
+
+                foreach (var (command, extension) in new[]
+                {
+                    (CmdImgToJpg, ".jpg"),
+                    (CmdImgToWebp, ".webp"),
+                    (CmdImgToHeic, ExtHeic)
+                })
+                {
+                    ConversionPlan plan = new ImageFormatConvertUseCase(command).Plan(new ConversionRequest(
+                        command,
+                        new[] { first, second }));
+
+                    Assert.Equal(Path.Combine(firstDir, "a" + extension), plan.Outputs[0]);
+                    Assert.Equal(Path.Combine(secondDir, "b" + extension), plan.Outputs[1]);
+                    Assert.True(plan.RequiredCapabilities.Count == 0,
+                        $"{command} must not require a presentation interaction capability.");
+                }
+            }));
+
+        runner.Run("Image format use case honors shared output directory and collision safety", () =>
+            RunWithTempDirectory(tempDir =>
+            {
+                string firstDir = Path.Combine(tempDir, "first");
+                string secondDir = Path.Combine(tempDir, "second");
+                string outputDir = Path.Combine(tempDir, "out");
+                Directory.CreateDirectory(firstDir);
+                Directory.CreateDirectory(secondDir);
+                string first = CreateTestImage(firstDir, "photo.png", ImageFormat.Png);
+                string second = CreateTestImage(secondDir, "photo.gif", ImageFormat.Gif);
+                var useCase = new ImageFormatConvertUseCase(CmdImgToJpg);
+
+                InvalidOperationException ex = Assert.Throws<InvalidOperationException>(() =>
+                    useCase.Plan(new ConversionRequest(
+                        CmdImgToJpg,
+                        new[] { first, second },
+                        OutputOverride: outputDir)));
+
+                Assert.True(ex.Message.Contains("photo.jpg", StringComparison.OrdinalIgnoreCase),
+                    "Collision error should identify the conflicting target path.");
+            }));
+
+        runner.Run("Image format use case can run without task tracking", () =>
+            RunWithTempDirectory(tempDir =>
+            {
+                string input = CreateTestImage(tempDir, InputPng, ImageFormat.Png);
+                string outputDir = Path.Combine(tempDir, "out");
+                Directory.CreateDirectory(outputDir);
+                var useCase = new ImageFormatConvertUseCase(CmdImgToWebp);
+                ConversionPlan plan = useCase.Plan(new ConversionRequest(
+                    CmdImgToWebp,
+                    new[] { input },
+                    OutputOverride: outputDir,
+                    TrackTaskLifecycle: false));
+                var interaction = new DelegateConversionInteraction(
+                    (_, _, _, _) => Task.FromResult<string?>(null),
+                    (_, _, _) => Task.FromResult<string?>(null),
+                    (_, _, _) => Task.FromResult<IReadOnlyDictionary<string, object>?>(null));
+
+                ConversionResult result = useCase.ExecuteAsync(plan, interaction, progress: null).GetAwaiter().GetResult();
+
+                Assert.True(result.Status == ConversionResultStatus.Succeeded, result.Error ?? "Expected image format conversion success.");
+                Assert.True(string.IsNullOrEmpty(result.TaskId), "Untracked image format conversion must not create a task identity.");
+                Assert.True(File.Exists(plan.Outputs[0]), "Expected converted image output.");
+                Assert.True(HasWebpMagicBytes(plan.Outputs[0]), "Expected converted output to contain WEBP magic bytes.");
+            }));
+
         runner.Run("ImgStitch use case owns single-output planning", () =>
             RunWithTempDirectory(tempDir =>
             {
