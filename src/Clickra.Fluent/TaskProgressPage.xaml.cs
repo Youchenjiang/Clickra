@@ -161,7 +161,7 @@ public sealed partial class TaskProgressPage : Page
         }
 
         (IConversionUseCase? applicationUseCase, ConversionPlan? applicationPlan, List<string> outputs) =
-            BuildExecutionPlan(command, files, startIndex, existingTaskId);
+            BuildExecutionPlan(command, files, startIndex, existingTaskId, commandOptions);
         _outputFolder = Path.GetDirectoryName(outputs[0]) ?? "";
         _files = files;
         _cts = new CancellationTokenSource();
@@ -217,7 +217,8 @@ public sealed partial class TaskProgressPage : Page
         string command,
         List<string> files,
         int startIndex,
-        string? existingTaskId)
+        string? existingTaskId,
+        IReadOnlyDictionary<string, object>? commandOptions)
     {
         if (!ConversionUseCases.TryGet(command, out IConversionUseCase? useCase))
             return (null, null, ConvertCommandRegistry.EstimateOutputs(command, files));
@@ -225,6 +226,7 @@ public sealed partial class TaskProgressPage : Page
         ConversionPlan plan = useCase!.Plan(new ConversionRequest(
             command,
             files,
+            commandOptions,
             ExistingTaskId: existingTaskId)) with
         {
             ResumeStartIndex = startIndex

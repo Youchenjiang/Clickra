@@ -224,6 +224,7 @@ static partial class TestSuite
         IConversionUseCase img2Pdf = ConversionUseCases.GetRequired(Img2PdfUseCase.CommandName);
         IConversionUseCase imgStitch = ConversionUseCases.GetRequired(ImgStitchUseCase.CommandName);
         IConversionUseCase merge = ConversionUseCases.GetRequired(MergePdfUseCase.CommandName);
+        IConversionUseCase markdownPdf = ConversionUseCases.GetRequired(MarkdownToPdfUseCase.CommandName);
         IConversionUseCase split = ConversionUseCases.GetRequired(SplitPdfUseCase.CommandName);
         IConversionUseCase translate = ConversionUseCases.GetRequired(TranslatePdfUseCase.CommandName);
         IConversionUseCase excel = ConversionUseCases.GetRequired(ExcelToPdfUseCase.CommandName);
@@ -258,6 +259,8 @@ static partial class TestSuite
         }
         Assert.True(merge is MergePdfUseCase,
             "merge-pdf must resolve through the product-wide application use-case catalog.");
+        Assert.True(markdownPdf is MarkdownToPdfUseCase,
+            "md2pdf must resolve through the product-wide application use-case catalog.");
         Assert.True(split is SplitPdfUseCase,
             "split-pdf must resolve through the product-wide application use-case catalog.");
         Assert.True(translate is TranslatePdfUseCase,
@@ -289,6 +292,9 @@ static partial class TestSuite
         Assert.True(ConversionUseCases.Commands.Count(command =>
                 command.Equals(MergePdfUseCase.CommandName, StringComparison.OrdinalIgnoreCase)) == 1,
             "The product catalog must expose exactly one merge-pdf owner.");
+        Assert.True(ConversionUseCases.Commands.Count(command =>
+                command.Equals(MarkdownToPdfUseCase.CommandName, StringComparison.OrdinalIgnoreCase)) == 1,
+            "The product catalog must expose exactly one md2pdf owner.");
         Assert.True(ConversionUseCases.Commands.Count(command =>
                 command.Equals(SplitPdfUseCase.CommandName, StringComparison.OrdinalIgnoreCase)) == 1,
             "The product catalog must expose exactly one split-pdf owner.");
