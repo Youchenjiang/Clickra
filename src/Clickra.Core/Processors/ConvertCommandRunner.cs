@@ -95,12 +95,6 @@ public static class ConvertCommandRunner
         {
             switch (command)
             {
-                case "md2pdf":
-                {
-                    Dictionary<string, object> markdownOptions = options.CommandOptions ?? MarkdownPdfOptions.Create();
-                    RunPerFile(files, outputs, (f, o, p, t) => FileProcessor.ConvertMarkdownToPdf(f, o, markdownOptions, p, t), progress, options.StartIndex, options.OnFileStarting, token);
-                    break;
-                }
                 case "md2word":
                 {
                     Dictionary<string, object> markdownOptions = options.CommandOptions ?? MarkdownPdfOptions.Create();
