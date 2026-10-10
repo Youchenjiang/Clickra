@@ -17,6 +17,12 @@ public abstract class PerFileConversionUseCaseBase : ConversionUseCaseBase
 
     protected virtual object? CreateExecutionState(ConversionPlan plan) => null;
 
+    protected virtual int GetInitialCompletedFiles(ConversionPlan plan) =>
+        Math.Clamp(plan.ResumeStartIndex, 0, plan.Inputs.Count);
+
+    protected virtual ConversionFailureKind ClassifyFailure(Exception exception) =>
+        ConversionFailureKind.None;
+
     protected virtual string NormalizeOutputOverride(string outputOverride) =>
         Path.GetFullPath(outputOverride);
 
@@ -77,7 +83,7 @@ public abstract class PerFileConversionUseCaseBase : ConversionUseCaseBase
             OutputCountError,
             observer);
 
-        int completedFiles = Math.Clamp(plan.ResumeStartIndex, 0, plan.Inputs.Count);
+        int completedFiles = GetInitialCompletedFiles(plan);
         try
         {
             for (int i = completedFiles; i < plan.Inputs.Count; i++)
@@ -115,17 +121,21 @@ public abstract class PerFileConversionUseCaseBase : ConversionUseCaseBase
         {
             lifecycle?.CompleteFailure(ex.Message, string.Join(";", plan.Outputs));
             stopwatch.Stop();
-            return Result(ConversionResultStatus.Failed, ex.Message);
+            return Result(ConversionResultStatus.Failed, ex.Message, ClassifyFailure(ex));
         }
 
-        ConversionResult Result(ConversionResultStatus status, string? error) =>
+        ConversionResult Result(
+            ConversionResultStatus status,
+            string? error,
+            ConversionFailureKind failureKind = ConversionFailureKind.None) =>
             new(
                 status,
                 plan.Outputs,
                 error,
                 stopwatch.Elapsed,
                 completedFiles,
-                lifecycle?.TaskId ?? "");
+                lifecycle?.TaskId ?? "",
+                failureKind);
     }
 
     protected static void ReportFileProgress(
