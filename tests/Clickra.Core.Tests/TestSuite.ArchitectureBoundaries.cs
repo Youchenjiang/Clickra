@@ -84,6 +84,9 @@ static partial class TestSuite
         runner.RunGuard(
             "Architecture boundaries: migrated merge workflow has one execution owner",
             TestMergeWorkflowHasSingleExecutionOwner);
+        runner.RunGuard(
+            "Architecture boundaries: migrated image merge workflow has one execution owner",
+            TestImgMergeWorkflowHasSingleExecutionOwner);
     }
 
     private static void TestArchitectureViolationBaseline()
@@ -340,6 +343,32 @@ static partial class TestSuite
                     && native.Contains("ConversionUseCases.GetRequired(MergePdfUseCase.CommandName)", StringComparison.Ordinal)
                     && quiet.Contains("ConversionUseCases.GetRequired(MergePdfUseCase.CommandName)", StringComparison.Ordinal),
             "All product surfaces must resolve merge execution through the application use-case catalog.");
+    }
+
+    private static void TestImgMergeWorkflowHasSingleExecutionOwner()
+    {
+        string? root = FindRepoRoot();
+        if (root is null) throw new TestSkippedException("Could not locate the repository root.");
+
+        string runner = File.ReadAllText(Path.Combine(root, "src", "Clickra.Core", "Processors", "ConvertCommandRunner.cs"));
+        string native = File.ReadAllText(Path.Combine(root, "src", "Clickra.CLI", "Progress", "ProgressWindow.Process.cs"));
+        string quiet = File.ReadAllText(Path.Combine(root, "src", "Clickra.CLI", "Cli", "ClickraCli.cs"));
+        string fluentMain = File.ReadAllText(Path.Combine(root, "src", "Clickra.Fluent", "MainPage.xaml.cs"));
+        string fluentTask = File.ReadAllText(Path.Combine(root, "src", "Clickra.Fluent", "TaskProgressPage.xaml.cs"));
+
+        Assert.False(runner.Contains("case \"img-merge\"", StringComparison.Ordinal),
+            "Legacy ConvertCommandRunner must not retain an img-merge execution branch after migration.");
+        Assert.False(native.Contains("FileProcessor.ConvertImagesToPdf(files", StringComparison.Ordinal),
+            "Native presentation must not execute the image-merge processor directly.");
+        Assert.False(quiet.Contains("FileProcessor.ConvertImagesToPdf(files", StringComparison.Ordinal),
+            "Headless CLI must not execute the image-merge processor directly.");
+        Assert.True((fluentMain.Contains("ConversionUseCases.TryGet(command", StringComparison.Ordinal)
+                     || fluentMain.Contains("ConversionUseCases.GetRequired(command)", StringComparison.Ordinal))
+                    && (fluentTask.Contains("ConversionUseCases.TryGet(command", StringComparison.Ordinal)
+                        || fluentTask.Contains("ConversionUseCases.GetRequired(command)", StringComparison.Ordinal))
+                    && native.Contains("ConversionUseCases.GetRequired(ImgMergeUseCase.CommandName)", StringComparison.Ordinal)
+                    && quiet.Contains("ConversionUseCases.GetRequired(ImgMergeUseCase.CommandName)", StringComparison.Ordinal),
+            "All product surfaces must resolve img-merge execution through the application use-case catalog.");
     }
 
     private sealed class StubConversionUseCase(string command) : IConversionUseCase
