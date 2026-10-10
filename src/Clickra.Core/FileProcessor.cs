@@ -24,7 +24,7 @@ namespace Clickra.Core
         /// <param name="password">The document open password, when known.</param>
         /// <param name="onProgress">Optional progress callback receiving (progress, max, message).</param>
         /// <param name="cancellationToken">Cancellation token to abort the operation.</param>
-        public static void DecryptPdf(string inputPath, string outputPath, string password = "", Action<int, int, string>? onProgress = null, CancellationToken cancellationToken = default)
+        public static void DecryptPdf(string inputPath, string outputPath, string password, Action<int, int, string>? onProgress = null, CancellationToken cancellationToken = default)
         {
             var processor = new PdfDecryptProcessor();
             var options = new Dictionary<string, object>();
