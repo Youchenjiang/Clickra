@@ -201,6 +201,61 @@ static partial class TestSuite
 
     private static void RegisterCommandRegistryAndRunnerTests(TestRunner runner)
     {
+        runner.Run("ImgStitch use case owns single-output planning", () =>
+            RunWithTempDirectory(tempDir =>
+            {
+                string first = CreateTestImage(tempDir, "a.png", ImageFormat.Png);
+                string second = CreateTestImage(tempDir, "b.jpg", ImageFormat.Jpeg);
+                ConversionPlan plan = new ImgStitchUseCase().Plan(new ConversionRequest(
+                    ImgStitchUseCase.CommandName,
+                    new[] { first, second }));
+
+                Assert.True(plan.Outputs.Count == 1, "img-stitch must plan exactly one output.");
+                Assert.Equal(Path.Combine(tempDir, ImgStitchUseCase.OutputFileName), plan.Outputs[0]);
+                Assert.True(plan.RequiredCapabilities.Count == 0,
+                    "img-stitch must not require a presentation interaction capability.");
+            }));
+
+        runner.Run("ImgStitch use case honors a shared output directory", () =>
+            RunWithTempDirectory(tempDir =>
+            {
+                string first = CreateTestImage(tempDir, "a.png", ImageFormat.Png);
+                string second = CreateTestImage(tempDir, "b.jpg", ImageFormat.Jpeg);
+                string outputDir = Path.Combine(tempDir, "out");
+                ConversionPlan plan = new ImgStitchUseCase().Plan(new ConversionRequest(
+                    ImgStitchUseCase.CommandName,
+                    new[] { first, second },
+                    OutputOverride: outputDir));
+
+                Assert.Equal(Path.Combine(Path.GetFullPath(outputDir), ImgStitchUseCase.OutputFileName), plan.Outputs[0]);
+            }));
+
+        runner.Run("ImgStitch use case can run without task tracking", () =>
+            RunWithTempDirectory(tempDir =>
+            {
+                string first = CreateTestImage(tempDir, "a.png", ImageFormat.Png);
+                string second = CreateTestImage(tempDir, "b.jpg", ImageFormat.Jpeg);
+                string outputDir = Path.Combine(tempDir, "out");
+                Directory.CreateDirectory(outputDir);
+                var useCase = new ImgStitchUseCase();
+                ConversionPlan plan = useCase.Plan(new ConversionRequest(
+                    ImgStitchUseCase.CommandName,
+                    new[] { first, second },
+                    OutputOverride: outputDir,
+                    TrackTaskLifecycle: false));
+                var interaction = new DelegateConversionInteraction(
+                    (_, _, _, _) => Task.FromResult<string?>(null),
+                    (_, _, _) => Task.FromResult<string?>(null),
+                    (_, _, _) => Task.FromResult<IReadOnlyDictionary<string, object>?>(null));
+
+                ConversionResult result = useCase.ExecuteAsync(plan, interaction, progress: null).GetAwaiter().GetResult();
+
+                Assert.True(result.Status == ConversionResultStatus.Succeeded, result.Error ?? "Expected img-stitch success.");
+                Assert.True(string.IsNullOrEmpty(result.TaskId), "Untracked img-stitch must not create a task identity.");
+                Assert.True(File.Exists(plan.Outputs[0]), "Expected stitched PNG output.");
+                Assert.True(HasPngMagicBytes(plan.Outputs[0]), "Expected stitched output to contain PNG magic bytes.");
+            }));
+
         runner.Run("ImgMerge use case owns single-output planning", () =>
             RunWithTempDirectory(tempDir =>
             {
