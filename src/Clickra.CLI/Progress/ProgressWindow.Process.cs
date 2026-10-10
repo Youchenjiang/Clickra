@@ -322,7 +322,7 @@ namespace Clickra.UI
                 setAllDoneMessage: false);
         }
 
-        private CallbackProgress<ConversionProgress> CreatePdfApplicationProgress(
+        private static CallbackProgress<ConversionProgress> CreatePdfApplicationProgress(
             List<string> files,
             Action<int, int, string> progressCallback,
             string stageLocalizationKey,
