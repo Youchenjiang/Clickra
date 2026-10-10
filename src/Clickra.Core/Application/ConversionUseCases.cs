@@ -18,6 +18,7 @@ public static class ConversionUseCases
             new Img2PdfUseCase(),
             new ImgStitchUseCase(),
             new MergePdfUseCase(),
+            new PptToPdfUseCase(),
             new SplitPdfUseCase(),
             new TranslatePdfUseCase(),
             new WordToPdfUseCase()
