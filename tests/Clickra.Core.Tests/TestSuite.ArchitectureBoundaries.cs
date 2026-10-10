@@ -555,12 +555,18 @@ static partial class TestSuite
         if (root is null) throw new TestSkippedException(RepositoryRootMissingMessage);
 
         return new MigrationSurfaceSources(
-            File.ReadAllText(Path.Combine(root, "src", ArchitectureCoreProjectDirectory, ArchitectureProcessorsDirectory, "ConvertCommandRunner.cs")),
+            ReadLegacyConvertCommandRunner(root),
             File.ReadAllText(Path.Combine(root, "src", ArchitectureCoreProjectDirectory, ArchitectureProcessorsDirectory, "ConvertCommandRegistry.cs")),
             File.ReadAllText(Path.Combine(root, "src", ArchitectureCliProjectDirectory, ArchitectureProgressDirectory, ArchitectureProgressProcessFile)),
             File.ReadAllText(Path.Combine(root, "src", ArchitectureCliProjectDirectory, "Cli", ArchitectureCliSourceFile)),
             File.ReadAllText(Path.Combine(root, "src", ArchitectureFluentProjectDirectory, "MainPage.xaml.cs")),
             File.ReadAllText(Path.Combine(root, "src", ArchitectureFluentProjectDirectory, "TaskProgressPage.xaml.cs")));
+    }
+
+    private static string ReadLegacyConvertCommandRunner(string root)
+    {
+        string path = Path.Combine(root, "src", ArchitectureCoreProjectDirectory, ArchitectureProcessorsDirectory, "ConvertCommandRunner.cs");
+        return File.Exists(path) ? File.ReadAllText(path) : string.Empty;
     }
 
     private static void AssertMarkdownWorkflowPreservesPresentationOptions(string command, string workflowName)

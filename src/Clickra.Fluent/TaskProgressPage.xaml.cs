@@ -271,31 +271,13 @@ public sealed partial class TaskProgressPage : Page
         string inputPath,
         bool isRetry,
         CancellationToken cancellationToken)
-    {
-        try
-        {
-            return await PromptPasswordAsync(fileIndex);
-        }
-        catch (ConvertCommandRunner.ParkedException ex)
-        {
-            throw new ConversionParkedException(ex.Message, ex.NextFileIndex);
-        }
-    }
+        => await PromptPasswordAsync(fileIndex);
 
     private async Task<string?> PromptApplicationSplitAsync(
         int fileIndex,
         string inputPath,
         CancellationToken cancellationToken)
-    {
-        try
-        {
-            return await PromptSplitAsync(fileIndex, inputPath);
-        }
-        catch (ConvertCommandRunner.ParkedException ex)
-        {
-            throw new ConversionParkedException(ex.Message, ex.NextFileIndex);
-        }
-    }
+        => await PromptSplitAsync(fileIndex, inputPath);
 
     private async Task HandleRunResultAsync(
         TaskRunPresentationStatus status,
@@ -357,15 +339,15 @@ public sealed partial class TaskProgressPage : Page
         }
     }
 
-    /// <summary>密碼 prompt：若已要求暫存則拋出 ParkedException，讓轉換乾淨停下來。</summary>
+    /// <summary>密碼 prompt：若已要求暫存則拋出 application parking signal，讓轉換乾淨停下來。</summary>
     private async Task<string?> PromptPasswordAsync(int fileIndex)
     {
-        if (_parkRequested) throw new ConvertCommandRunner.ParkedException(_parkReason, fileIndex);
+        if (_parkRequested) throw new ConversionParkedException(_parkReason, fileIndex);
         _promptActive = true;
         try
         {
             var result = await DispatcherQueue.EnqueueAsync(() => FluentDialogs.PromptPasswordAsync(XamlRoot, L, d => _activeDialog = d));
-            if (_parkRequested) throw new ConvertCommandRunner.ParkedException(_parkReason, fileIndex);
+            if (_parkRequested) throw new ConversionParkedException(_parkReason, fileIndex);
             return result;
         }
         finally
@@ -375,10 +357,10 @@ public sealed partial class TaskProgressPage : Page
         }
     }
 
-    /// <summary>分割頁數 prompt：同上，暫存時喚醒並拋出 ParkedException。</summary>
+    /// <summary>分割頁數 prompt：同上，暫存時喚醒並拋出 application parking signal。</summary>
     private async Task<string?> PromptSplitAsync(int fileIndex, string pdfPath)
     {
-        if (_parkRequested) throw new ConvertCommandRunner.ParkedException(_parkReason, fileIndex);
+        if (_parkRequested) throw new ConversionParkedException(_parkReason, fileIndex);
         _promptActive = true;
         try
         {
@@ -394,7 +376,7 @@ public sealed partial class TaskProgressPage : Page
                 ResizeHost(SplitWindowSize);
                 return SplitOverlay.ShowForAsync(pdfPath);
             });
-            if (_parkRequested) throw new ConvertCommandRunner.ParkedException(_parkReason, fileIndex);
+            if (_parkRequested) throw new ConversionParkedException(_parkReason, fileIndex);
             return result;
         }
         finally
@@ -408,7 +390,7 @@ public sealed partial class TaskProgressPage : Page
         }
     }
 
-    /// <summary>暫存目前的轉換：關閉卡住的 prompt，讓背景執行緒拋出 ParkedException（由 TrackWindow 在卡 prompt 關窗時呼叫）。</summary>
+    /// <summary>暫存目前的轉換：關閉卡住的 prompt，讓背景執行緒拋出 application parking signal（由 TrackWindow 在卡 prompt 關窗時呼叫）。</summary>
     internal void ParkAndClose()
     {
         if (_parkRequested) return;

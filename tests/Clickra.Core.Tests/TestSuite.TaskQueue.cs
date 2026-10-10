@@ -79,8 +79,8 @@ static partial class TestSuite
             TestConversionLifecycleOwnsResumeCheckpoint);
         runner.Run("Conversion task cleanup removes completed presentation records",
             TestConversionTaskCleanupRemovesTask);
-        runner.Run("Conversion runner reports the shared lifecycle task id",
-            TestConversionRunnerReportsLifecycleTaskId);
+        runner.Run("Conversion lifecycle task id matches its persisted record",
+            TestConversionLifecycleTaskIdMatchesPersistedRecord);
         runner.Run("Conversion output planning preserves each source directory",
             TestConversionOutputPlanningPreservesSourceDirectories);
         runner.RunGuard("Conversion lifecycle: Native and Fluent runners share task tracking",
@@ -113,29 +113,20 @@ static partial class TestSuite
         }
     }
 
-    private static void TestConversionRunnerReportsLifecycleTaskId()
+    private static void TestConversionLifecycleTaskIdMatchesPersistedRecord()
     {
-        string? observedTaskId = null;
-        ConvertCommandRunner.ConvertRunResult result = ConvertCommandRunner.RunTrackedAsync(
-                "unknown-command",
-                new List<string> { TestInDir + FileA },
-                new List<string> { TestOutDir + FileA },
-                (_, _) => { },
-                new ConvertCommandRunner.ConversionOptions(
-                    _ => Task.FromResult<string?>(null),
-                    (_, _) => Task.FromResult<string?>(null),
-                    OnTaskStarted: taskId => observedTaskId = taskId))
-            .GetAwaiter()
-            .GetResult();
+        ConversionTaskLifecycle lifecycle = ConversionTaskLifecycle.Start(
+            "decrypt-pdf",
+            new[] { TestInDir + FileA });
         try
         {
-            Assert.False(string.IsNullOrWhiteSpace(observedTaskId), "Tracked runs must report their lifecycle task id.");
-            Assert.Equal(result.TaskId, observedTaskId!);
+            ClickraStorage.HistoryEntry? entry = ClickraStorage.GetTask(lifecycle.TaskId);
+            Assert.True(entry.HasValue, "A started conversion lifecycle must persist its task record.");
+            Assert.Equal(lifecycle.TaskId, entry!.Value.Id);
         }
         finally
         {
-            if (!string.IsNullOrWhiteSpace(result.TaskId))
-                ClickraStorage.DeleteTask(result.TaskId);
+            lifecycle.Delete();
         }
     }
 
@@ -191,15 +182,14 @@ static partial class TestSuite
         string? root = FindRepoRoot();
         if (root is null) throw new TestSkippedException(RepoRootNotFoundMessage);
 
-        string runner = File.ReadAllText(Path.Combine(root, "src", CoreProjectDirectory, "Processors", "ConvertCommandRunner.cs"));
         string native = File.ReadAllText(Path.Combine(root, "src", CliProjectDirectory, "Progress", "ProgressWindow.Process.cs"));
+        string fluentMain = File.ReadAllText(Path.Combine(root, "src", FluentProjectDirectory, FluentMainPageFile));
+        string fluentTask = File.ReadAllText(Path.Combine(root, "src", FluentProjectDirectory, "TaskProgressPage.xaml.cs"));
         string lifecycle = File.ReadAllText(Path.Combine(root, "src", CoreProjectDirectory, "Processors", "ConversionTaskLifecycle.cs"));
         string perFileUseCaseBase = File.ReadAllText(Path.Combine(root, "src", CoreProjectDirectory, "Application", "PerFileConversionUseCaseBase.cs"));
         string markdownUseCaseBase = File.ReadAllText(Path.Combine(root, "src", CoreProjectDirectory, "Application", "MarkdownConversionUseCaseBase.cs"));
 
-        Assert.True(runner.Contains("ConversionTaskLifecycle.Start(", StringComparison.Ordinal),
-            "Legacy tracked-runner scaffolding must start task tracking through the shared conversion lifecycle while it remains.");
-        foreach ((string name, string source) in new[] { ("ConvertCommandRunner", runner), ("ProgressWindow", native) })
+        foreach ((string name, string source) in new[] { ("ProgressWindow", native), ("FluentMain", fluentMain), ("FluentTask", fluentTask) })
         {
             Assert.False(source.Contains("ClickraStorage.StartTask(", StringComparison.Ordinal),
                 $"{name} must not create task records outside the shared conversion lifecycle.");
@@ -220,6 +210,11 @@ static partial class TestSuite
         Assert.False(native.Contains("RunSharedCommand(", StringComparison.Ordinal)
                      || native.Contains("ConvertCommandRunner.Run(", StringComparison.Ordinal),
             "Native product commands must not retain the legacy generic runner fallback.");
+        Assert.False(fluentMain.Contains("ConvertCommandRunner", StringComparison.Ordinal)
+                     || fluentTask.Contains("ConvertCommandRunner", StringComparison.Ordinal)
+                     || fluentMain.Contains("ConvertCommandRegistry.EstimateOutputs", StringComparison.Ordinal)
+                     || fluentTask.Contains("ConvertCommandRegistry.EstimateOutputs", StringComparison.Ordinal),
+            "Fluent product commands must not retain legacy runner or output-planning fallbacks.");
         Assert.True(native.Contains("new TaskIdExecutionObserver(this, TryRecordTaskIndex)", StringComparison.Ordinal)
                     && perFileUseCaseBase.Contains("observer?.OnFileStarting(i)", StringComparison.Ordinal)
                     && markdownUseCaseBase.Contains(": PerFileConversionUseCaseBase", StringComparison.Ordinal)
