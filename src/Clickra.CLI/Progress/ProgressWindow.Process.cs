@@ -198,10 +198,7 @@ namespace Clickra.UI
                 TaskId = lifecycle.TaskId;
 
                 List<string> plannedOutputs = ConvertCommandRegistry.EstimateOutputs(cmd, currentFiles, _outputDirOverride);
-                if (string.Equals(cmd, "translate-pdf", StringComparison.Ordinal))
-                    RunTranslatePdf(currentFiles, plannedOutputs, progressCallback);
-                else
-                    RunSharedCommand(cmd, currentFiles, plannedOutputs, progressCallback);
+                RunSharedCommand(cmd, currentFiles, plannedOutputs, progressCallback);
 
                 string endTime = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
                 string outputs = string.Join(";", plannedOutputs);
@@ -607,7 +604,6 @@ namespace Clickra.UI
                 TranslatePdfUseCase.CommandName,
                 files,
                 ExistingTaskId: _existingTaskId,
-                OutputOverride: _outputDirOverride,
                 BestEffortTaskPersistence: true)) with
             {
                 ResumeStartIndex = _startIndex
