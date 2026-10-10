@@ -6,8 +6,9 @@ using Clickra.Shared;
 
 namespace Clickra.Core.Processors;
 
-/// <summary>Single source of truth for convert command metadata shared by the
-/// Fluent and NativeAOT UIs. Adding a command means editing this table once.</summary>
+/// <summary>Core facade for shared conversion metadata, saved compression-option snapshots,
+/// and launch-argument helpers. Command definitions are authoritative in
+/// <see cref="ConvertCommandMetadata"/>.</summary>
 public static class ConvertCommandRegistry
 {
         /// <summary>Returns the product-wide default command for a homogeneous file selection.
