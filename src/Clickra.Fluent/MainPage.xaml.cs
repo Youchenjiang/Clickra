@@ -507,13 +507,8 @@ public sealed partial class MainPage : Page
 
         string command = _selectedCommand;
         var files = _selectedFiles.ToList();
-        Dictionary<string, object>? commandOptions = null;
-        if (command.Equals("md2pdf", StringComparison.OrdinalIgnoreCase) ||
-            command.Equals("md2word", StringComparison.OrdinalIgnoreCase))
-        {
-            commandOptions = await FluentDialogs.PromptMarkdownPdfOptionsAsync(XamlRoot, L, App.MainWindow);
-            if (commandOptions is null) return;
-        }
+        Dictionary<string, object>? commandOptions = await PromptCommandOptionsAsync(command);
+        if (IsMarkdownCommand(command) && commandOptions is null) return;
         IConversionUseCase? applicationUseCase = null;
         ConversionPlan? applicationPlan = null;
         List<string> outputs;
@@ -603,6 +598,16 @@ public sealed partial class MainPage : Page
             RefreshHistory();
         }
     }
+
+    private async Task<Dictionary<string, object>?> PromptCommandOptionsAsync(string command)
+    {
+        if (!IsMarkdownCommand(command)) return null;
+        return await FluentDialogs.PromptMarkdownPdfOptionsAsync(XamlRoot, L, App.MainWindow);
+    }
+
+    private static bool IsMarkdownCommand(string command) =>
+        command.Equals("md2pdf", StringComparison.OrdinalIgnoreCase) ||
+        command.Equals("md2word", StringComparison.OrdinalIgnoreCase);
 
     private async Task HandleApplicationConversionResultAsync(
         string command,

@@ -152,38 +152,16 @@ public sealed partial class TaskProgressPage : Page
             return;
         }
 
-        Dictionary<string, object>? commandOptions = null;
-        if ((command.Equals("md2pdf", StringComparison.OrdinalIgnoreCase) ||
-             command.Equals("md2word", StringComparison.OrdinalIgnoreCase)) && existingTaskId is null)
+        Dictionary<string, object>? commandOptions = await PromptCommandOptionsAsync(command, existingTaskId);
+        if (ShouldPromptMarkdownOptions(command, existingTaskId) && commandOptions is null)
         {
-            commandOptions = await FluentDialogs.PromptMarkdownPdfOptionsAsync(XamlRoot, L, Window, d => _activeDialog = d);
-            _activeDialog = null;
-            if (commandOptions is null)
-            {
-                _finished = true;
-                CloseHostWindow();
-                return;
-            }
+            _finished = true;
+            CloseHostWindow();
+            return;
         }
 
-        IConversionUseCase? applicationUseCase = null;
-        ConversionPlan? applicationPlan = null;
-        List<string> outputs;
-        if (ConversionUseCases.TryGet(command, out applicationUseCase))
-        {
-            applicationPlan = applicationUseCase!.Plan(new ConversionRequest(
-                command,
-                files,
-                ExistingTaskId: existingTaskId)) with
-            {
-                ResumeStartIndex = startIndex
-            };
-            outputs = applicationPlan.Outputs.ToList();
-        }
-        else
-        {
-            outputs = ConvertCommandRegistry.EstimateOutputs(command, files);
-        }
+        (IConversionUseCase? applicationUseCase, ConversionPlan? applicationPlan, List<string> outputs) =
+            BuildExecutionPlan(command, files, startIndex, existingTaskId);
         _outputFolder = Path.GetDirectoryName(outputs[0]) ?? "";
         _files = files;
         _cts = new CancellationTokenSource();
@@ -202,65 +180,11 @@ public sealed partial class TaskProgressPage : Page
         {
             if (applicationUseCase is not null && applicationPlan is not null)
             {
-                var interaction = new DelegateConversionInteraction(
-                    PromptApplicationPasswordAsync,
-                    PromptApplicationSplitAsync,
-                    (_, _, _) => Task.FromResult<IReadOnlyDictionary<string, object>?>(null));
-                var progress = new Progress<ConversionProgress>(state =>
-                {
-                    int percent = state.Total > 0
-                        ? Math.Clamp((int)(state.Current * 100.0 / state.Total), 0, 100)
-                        : 0;
-                    if (_isBackgrounded && Window is { } window)
-                    {
-                        TrayService.Instance.UpdateProgress(window, _taskLabel, percent);
-                    }
-                    DispatcherQueue.TryEnqueue(() => SetProgress(percent, state.Message));
-                });
-                ConversionResult applicationResult = await applicationUseCase.ExecuteAsync(
-                    applicationPlan,
-                    interaction,
-                    progress,
-                    new TaskProgressExecutionObserver(this),
-                    _cts.Token);
-                TaskRunPresentationStatus applicationStatus = applicationResult.Status switch
-                {
-                    ConversionResultStatus.Succeeded => TaskRunPresentationStatus.Succeeded,
-                    ConversionResultStatus.Canceled => TaskRunPresentationStatus.Canceled,
-                    ConversionResultStatus.Parked => TaskRunPresentationStatus.Parked,
-                    _ => TaskRunPresentationStatus.Failed
-                };
-                await HandleRunResultAsync(applicationStatus, applicationResult.Error, command, files);
+                await RunApplicationUseCaseAsync(applicationUseCase, applicationPlan, command, files);
                 return;
             }
 
-            var result = await ConvertCommandRunner.RunTrackedAsync(command, files, outputs,
-                (percent, message) =>
-                {
-                    if (_isBackgrounded && Window is { } window)
-                    {
-                        TrayService.Instance.UpdateProgress(window, _taskLabel, percent);
-                    }
-                    DispatcherQueue.TryEnqueue(() => SetProgress(percent, message));
-                },
-                new ConvertCommandRunner.ConversionOptions(
-                    PromptPasswordAsync, PromptSplitAsync,
-                    startIndex, existingTaskId, commandOptions,
-                    OnTaskStarted: taskId =>
-                    {
-                        _taskId = taskId;
-                        App.RegisterTaskPage(taskId, this);
-                    }),
-                _cts.Token);
-
-            TaskRunPresentationStatus presentationStatus = result.Status switch
-            {
-                ConvertCommandRunner.ConvertRunStatus.Succeeded => TaskRunPresentationStatus.Succeeded,
-                ConvertCommandRunner.ConvertRunStatus.Canceled => TaskRunPresentationStatus.Canceled,
-                ConvertCommandRunner.ConvertRunStatus.Parked => TaskRunPresentationStatus.Parked,
-                _ => TaskRunPresentationStatus.Failed
-            };
-            await HandleRunResultAsync(presentationStatus, result.Error, command, files);
+            await RunLegacyConversionAsync(command, files, outputs, startIndex, existingTaskId, commandOptions);
         }
         finally
         {
@@ -268,6 +192,120 @@ public sealed partial class TaskProgressPage : Page
             _cts = null;
             App.UnregisterTaskPage(_taskId);
         }
+    }
+
+    private async Task<Dictionary<string, object>?> PromptCommandOptionsAsync(
+        string command,
+        string? existingTaskId)
+    {
+        if (!ShouldPromptMarkdownOptions(command, existingTaskId)) return null;
+        Dictionary<string, object>? options = await FluentDialogs.PromptMarkdownPdfOptionsAsync(
+            XamlRoot,
+            L,
+            Window,
+            dialog => _activeDialog = dialog);
+        _activeDialog = null;
+        return options;
+    }
+
+    private static bool ShouldPromptMarkdownOptions(string command, string? existingTaskId) =>
+        existingTaskId is null &&
+        (command.Equals("md2pdf", StringComparison.OrdinalIgnoreCase) ||
+         command.Equals("md2word", StringComparison.OrdinalIgnoreCase));
+
+    private static (IConversionUseCase? UseCase, ConversionPlan? Plan, List<string> Outputs) BuildExecutionPlan(
+        string command,
+        List<string> files,
+        int startIndex,
+        string? existingTaskId)
+    {
+        if (!ConversionUseCases.TryGet(command, out IConversionUseCase? useCase))
+            return (null, null, ConvertCommandRegistry.EstimateOutputs(command, files));
+
+        ConversionPlan plan = useCase!.Plan(new ConversionRequest(
+            command,
+            files,
+            ExistingTaskId: existingTaskId)) with
+        {
+            ResumeStartIndex = startIndex
+        };
+        return (useCase, plan, plan.Outputs.ToList());
+    }
+
+    private async Task RunApplicationUseCaseAsync(
+        IConversionUseCase useCase,
+        ConversionPlan plan,
+        string command,
+        List<string> files)
+    {
+        var interaction = new DelegateConversionInteraction(
+            PromptApplicationPasswordAsync,
+            PromptApplicationSplitAsync,
+            (_, _, _) => Task.FromResult<IReadOnlyDictionary<string, object>?>(null));
+        var progress = new Progress<ConversionProgress>(state =>
+        {
+            int percent = state.Total > 0
+                ? Math.Clamp((int)(state.Current * 100.0 / state.Total), 0, 100)
+                : 0;
+            ReportTaskProgress(percent, state.Message);
+        });
+        ConversionResult result = await useCase.ExecuteAsync(
+            plan,
+            interaction,
+            progress,
+            new TaskProgressExecutionObserver(this),
+            _cts!.Token);
+        TaskRunPresentationStatus status = result.Status switch
+        {
+            ConversionResultStatus.Succeeded => TaskRunPresentationStatus.Succeeded,
+            ConversionResultStatus.Canceled => TaskRunPresentationStatus.Canceled,
+            ConversionResultStatus.Parked => TaskRunPresentationStatus.Parked,
+            _ => TaskRunPresentationStatus.Failed
+        };
+        await HandleRunResultAsync(status, result.Error, command, files);
+    }
+
+    private async Task RunLegacyConversionAsync(
+        string command,
+        List<string> files,
+        List<string> outputs,
+        int startIndex,
+        string? existingTaskId,
+        Dictionary<string, object>? commandOptions)
+    {
+        var result = await ConvertCommandRunner.RunTrackedAsync(
+            command,
+            files,
+            outputs,
+            ReportTaskProgress,
+            new ConvertCommandRunner.ConversionOptions(
+                PromptPasswordAsync,
+                PromptSplitAsync,
+                startIndex,
+                existingTaskId,
+                commandOptions,
+                OnTaskStarted: taskId =>
+                {
+                    _taskId = taskId;
+                    App.RegisterTaskPage(taskId, this);
+                }),
+            _cts!.Token);
+
+        TaskRunPresentationStatus status = result.Status switch
+        {
+            ConvertCommandRunner.ConvertRunStatus.Succeeded => TaskRunPresentationStatus.Succeeded,
+            ConvertCommandRunner.ConvertRunStatus.Canceled => TaskRunPresentationStatus.Canceled,
+            ConvertCommandRunner.ConvertRunStatus.Parked => TaskRunPresentationStatus.Parked,
+            _ => TaskRunPresentationStatus.Failed
+        };
+        await HandleRunResultAsync(status, result.Error, command, files);
+    }
+
+    private void ReportTaskProgress(int percent, string message)
+    {
+        if (_isBackgrounded && Window is { } window)
+            TrayService.Instance.UpdateProgress(window, _taskLabel, percent);
+        DispatcherQueue.TryEnqueue(() => SetProgress(percent, message));
     }
 
     private async Task<string?> PromptApplicationPasswordAsync(
