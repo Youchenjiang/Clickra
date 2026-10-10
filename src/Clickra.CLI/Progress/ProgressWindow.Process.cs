@@ -77,18 +77,21 @@ namespace Clickra.UI
                     Loc("cli_progress_converting_image", Path.GetFileName(files[fileIndex]), fileIndex + 1, files.Count));
         }
 
-        private sealed class TaskIdExecutionObserver(ProgressWindow owner) : IConversionExecutionObserver
+        private sealed class TaskIdExecutionObserver(
+            ProgressWindow owner,
+            Action<int>? onFileStarting = null) : IConversionExecutionObserver
         {
             public void OnTaskStarted(string taskId) => owner.TaskId = taskId;
 
-            public void OnFileStarting(int fileIndex) { }
+            public void OnFileStarting(int fileIndex) => onFileStarting?.Invoke(fileIndex);
         }
 
         private sealed record SimpleApplicationRunOptions(
             string? OutputOverride,
             bool Resume,
             IConversionExecutionObserver Observer,
-            string? SuccessMessage = null);
+            string? SuccessMessage = null,
+            IReadOnlyDictionary<string, object>? CommandOptions = null);
 
         private sealed class TranslateExecutionObserver(
             ProgressWindow owner,
@@ -107,41 +110,6 @@ namespace Clickra.UI
                     files.Count * 100,
                     Loc("cli_progress_translating_pdf", Path.GetFileName(files[fileIndex]), fileIndex + 1, files.Count));
             }
-        }
-
-        private sealed class WordToPdfExecutionObserver(ProgressWindow owner) : IConversionExecutionObserver
-        {
-            public void OnTaskStarted(string taskId) => owner.TaskId = taskId;
-
-            public void OnFileStarting(int fileIndex) { }
-        }
-
-        private sealed class PptToPdfExecutionObserver(ProgressWindow owner) : IConversionExecutionObserver
-        {
-            public void OnTaskStarted(string taskId) => owner.TaskId = taskId;
-
-            public void OnFileStarting(int fileIndex) { }
-        }
-
-        private sealed class ExcelToPdfExecutionObserver(ProgressWindow owner) : IConversionExecutionObserver
-        {
-            public void OnTaskStarted(string taskId) => owner.TaskId = taskId;
-
-            public void OnFileStarting(int fileIndex) { }
-        }
-
-        private sealed class MarkdownToPdfExecutionObserver(ProgressWindow owner) : IConversionExecutionObserver
-        {
-            public void OnTaskStarted(string taskId) => owner.TaskId = taskId;
-
-            public void OnFileStarting(int fileIndex) => owner.TryRecordTaskIndex(fileIndex);
-        }
-
-        private sealed class MarkdownToWordExecutionObserver(ProgressWindow owner) : IConversionExecutionObserver
-        {
-            public void OnTaskStarted(string taskId) => owner.TaskId = taskId;
-
-            public void OnFileStarting(int fileIndex) => owner.TryRecordTaskIndex(fileIndex);
         }
 
         private string? _inputPassword = null;
@@ -521,29 +489,34 @@ namespace Clickra.UI
                 RunApplicationTranslate(hwnd, files, progressCallback);
                 return true;
             }
-            if (command.Equals(WordToPdfUseCase.CommandName, StringComparison.OrdinalIgnoreCase))
+            if (command.Equals(WordToPdfUseCase.CommandName, StringComparison.OrdinalIgnoreCase)
+                || command.Equals(PptToPdfUseCase.CommandName, StringComparison.OrdinalIgnoreCase)
+                || command.Equals(ExcelToPdfUseCase.CommandName, StringComparison.OrdinalIgnoreCase))
             {
-                RunApplicationWordToPdf(hwnd, files, progressCallback);
+                RunSimpleApplicationCommand(
+                    hwnd,
+                    command,
+                    files,
+                    progressCallback,
+                    new SimpleApplicationRunOptions(
+                        _outputDirOverride,
+                        true,
+                        new TaskIdExecutionObserver(this)));
                 return true;
             }
-            if (command.Equals(PptToPdfUseCase.CommandName, StringComparison.OrdinalIgnoreCase))
+            if (command.Equals(MarkdownToPdfUseCase.CommandName, StringComparison.OrdinalIgnoreCase)
+                || command.Equals(MarkdownToWordUseCase.CommandName, StringComparison.OrdinalIgnoreCase))
             {
-                RunApplicationPptToPdf(hwnd, files, progressCallback);
-                return true;
-            }
-            if (command.Equals(ExcelToPdfUseCase.CommandName, StringComparison.OrdinalIgnoreCase))
-            {
-                RunApplicationExcelToPdf(hwnd, files, progressCallback);
-                return true;
-            }
-            if (command.Equals(MarkdownToPdfUseCase.CommandName, StringComparison.OrdinalIgnoreCase))
-            {
-                RunApplicationMarkdownToPdf(hwnd, files, progressCallback);
-                return true;
-            }
-            if (command.Equals(MarkdownToWordUseCase.CommandName, StringComparison.OrdinalIgnoreCase))
-            {
-                RunApplicationMarkdownToWord(hwnd, files, progressCallback);
+                RunSimpleApplicationCommand(
+                    hwnd,
+                    command,
+                    files,
+                    progressCallback,
+                    new SimpleApplicationRunOptions(
+                        _outputDirOverride,
+                        true,
+                        new TaskIdExecutionObserver(this, TryRecordTaskIndex),
+                        CommandOptions: _commandOptions));
                 return true;
             }
             return false;
@@ -560,6 +533,7 @@ namespace Clickra.UI
             ConversionPlan plan = useCase.Plan(new ConversionRequest(
                 command,
                 files,
+                options.CommandOptions,
                 ExistingTaskId: _existingTaskId,
                 OutputOverride: options.OutputOverride,
                 BestEffortTaskPersistence: true));
@@ -647,298 +621,6 @@ namespace Clickra.UI
                 }
                 PostMessageW(hwnd, WM_USER_INVALIDATE, (IntPtr)1, IntPtr.Zero);
                 ShowToastNotification(TranslatePdfUseCase.CommandName, files.Count);
-                Thread.Sleep(1500);
-                ConversionTaskCleanup.Delete(result.TaskId, bestEffort: true);
-                PostMessageW(hwnd, 0x0010, IntPtr.Zero, IntPtr.Zero); // WM_CLOSE
-                return;
-            }
-
-            bool wasCanceled = result.Status == ConversionResultStatus.Canceled;
-            string errorMsg = wasCanceled ? "User Aborted" : result.Error ?? "";
-            lock (_stateLock)
-            {
-                _hasError = true;
-                _errorMessage = errorMsg;
-            }
-            PostMessageW(hwnd, WM_USER_INVALIDATE, (IntPtr)1, IntPtr.Zero);
-            ConversionTaskCleanup.Delete(result.TaskId, bestEffort: true);
-            PostMessageW(hwnd, 0x0010, IntPtr.Zero, IntPtr.Zero); // WM_CLOSE
-        }
-
-        private void RunApplicationWordToPdf(
-            IntPtr hwnd,
-            List<string> files,
-            Action<int, int, string> progressCallback)
-        {
-            IConversionUseCase useCase = ConversionUseCases.GetRequired(WordToPdfUseCase.CommandName);
-            ConversionPlan plan = useCase.Plan(new ConversionRequest(
-                WordToPdfUseCase.CommandName,
-                files,
-                ExistingTaskId: _existingTaskId,
-                OutputOverride: _outputDirOverride,
-                BestEffortTaskPersistence: true)) with
-            {
-                ResumeStartIndex = _startIndex
-            };
-            var interaction = new DelegateConversionInteraction(
-                (_, _, _, _) => System.Threading.Tasks.Task.FromResult<string?>(null),
-                (_, _, _) => System.Threading.Tasks.Task.FromResult<string?>(null),
-                (_, _, _) => System.Threading.Tasks.Task.FromResult<IReadOnlyDictionary<string, object>?>(null));
-            var progress = new CallbackProgress<ConversionProgress>(state =>
-                progressCallback(state.Current, state.Total, state.Message));
-
-            ConversionResult result = useCase.ExecuteAsync(
-                    plan,
-                    interaction,
-                    progress,
-                    new WordToPdfExecutionObserver(this),
-                    _cts.Token)
-                .GetAwaiter()
-                .GetResult();
-
-            if (result.Status == ConversionResultStatus.Succeeded)
-            {
-                lock (_stateLock)
-                {
-                    _completed = true;
-                    _message = Loc("cli_progress_all_done");
-                }
-                PostMessageW(hwnd, WM_USER_INVALIDATE, (IntPtr)1, IntPtr.Zero);
-                ShowToastNotification(WordToPdfUseCase.CommandName, files.Count);
-                Thread.Sleep(1500);
-                ConversionTaskCleanup.Delete(result.TaskId, bestEffort: true);
-                PostMessageW(hwnd, 0x0010, IntPtr.Zero, IntPtr.Zero); // WM_CLOSE
-                return;
-            }
-
-            bool wasCanceled = result.Status == ConversionResultStatus.Canceled;
-            string errorMsg = wasCanceled ? "User Aborted" : result.Error ?? "";
-            lock (_stateLock)
-            {
-                _hasError = true;
-                _errorMessage = errorMsg;
-            }
-            PostMessageW(hwnd, WM_USER_INVALIDATE, (IntPtr)1, IntPtr.Zero);
-            ConversionTaskCleanup.Delete(result.TaskId, bestEffort: true);
-            PostMessageW(hwnd, 0x0010, IntPtr.Zero, IntPtr.Zero); // WM_CLOSE
-        }
-
-        private void RunApplicationPptToPdf(
-            IntPtr hwnd,
-            List<string> files,
-            Action<int, int, string> progressCallback)
-        {
-            IConversionUseCase useCase = ConversionUseCases.GetRequired(PptToPdfUseCase.CommandName);
-            ConversionPlan plan = useCase.Plan(new ConversionRequest(
-                PptToPdfUseCase.CommandName,
-                files,
-                ExistingTaskId: _existingTaskId,
-                OutputOverride: _outputDirOverride,
-                BestEffortTaskPersistence: true)) with
-            {
-                ResumeStartIndex = _startIndex
-            };
-            var interaction = new DelegateConversionInteraction(
-                (_, _, _, _) => System.Threading.Tasks.Task.FromResult<string?>(null),
-                (_, _, _) => System.Threading.Tasks.Task.FromResult<string?>(null),
-                (_, _, _) => System.Threading.Tasks.Task.FromResult<IReadOnlyDictionary<string, object>?>(null));
-            var progress = new CallbackProgress<ConversionProgress>(state =>
-                progressCallback(state.Current, state.Total, state.Message));
-
-            ConversionResult result = useCase.ExecuteAsync(
-                    plan,
-                    interaction,
-                    progress,
-                    new PptToPdfExecutionObserver(this),
-                    _cts.Token)
-                .GetAwaiter()
-                .GetResult();
-
-            if (result.Status == ConversionResultStatus.Succeeded)
-            {
-                lock (_stateLock)
-                {
-                    _completed = true;
-                    _message = Loc("cli_progress_all_done");
-                }
-                PostMessageW(hwnd, WM_USER_INVALIDATE, (IntPtr)1, IntPtr.Zero);
-                ShowToastNotification(PptToPdfUseCase.CommandName, files.Count);
-                Thread.Sleep(1500);
-                ConversionTaskCleanup.Delete(result.TaskId, bestEffort: true);
-                PostMessageW(hwnd, 0x0010, IntPtr.Zero, IntPtr.Zero); // WM_CLOSE
-                return;
-            }
-
-            bool wasCanceled = result.Status == ConversionResultStatus.Canceled;
-            string errorMsg = wasCanceled ? "User Aborted" : result.Error ?? "";
-            lock (_stateLock)
-            {
-                _hasError = true;
-                _errorMessage = errorMsg;
-            }
-            PostMessageW(hwnd, WM_USER_INVALIDATE, (IntPtr)1, IntPtr.Zero);
-            ConversionTaskCleanup.Delete(result.TaskId, bestEffort: true);
-            PostMessageW(hwnd, 0x0010, IntPtr.Zero, IntPtr.Zero); // WM_CLOSE
-        }
-
-        private void RunApplicationExcelToPdf(
-            IntPtr hwnd,
-            List<string> files,
-            Action<int, int, string> progressCallback)
-        {
-            IConversionUseCase useCase = ConversionUseCases.GetRequired(ExcelToPdfUseCase.CommandName);
-            ConversionPlan plan = useCase.Plan(new ConversionRequest(
-                ExcelToPdfUseCase.CommandName,
-                files,
-                ExistingTaskId: _existingTaskId,
-                OutputOverride: _outputDirOverride,
-                BestEffortTaskPersistence: true)) with
-            {
-                ResumeStartIndex = _startIndex
-            };
-            var interaction = new DelegateConversionInteraction(
-                (_, _, _, _) => System.Threading.Tasks.Task.FromResult<string?>(null),
-                (_, _, _) => System.Threading.Tasks.Task.FromResult<string?>(null),
-                (_, _, _) => System.Threading.Tasks.Task.FromResult<IReadOnlyDictionary<string, object>?>(null));
-            var progress = new CallbackProgress<ConversionProgress>(state =>
-                progressCallback(state.Current, state.Total, state.Message));
-
-            ConversionResult result = useCase.ExecuteAsync(
-                    plan,
-                    interaction,
-                    progress,
-                    new ExcelToPdfExecutionObserver(this),
-                    _cts.Token)
-                .GetAwaiter()
-                .GetResult();
-
-            if (result.Status == ConversionResultStatus.Succeeded)
-            {
-                lock (_stateLock)
-                {
-                    _completed = true;
-                    _message = Loc("cli_progress_all_done");
-                }
-                PostMessageW(hwnd, WM_USER_INVALIDATE, (IntPtr)1, IntPtr.Zero);
-                ShowToastNotification(ExcelToPdfUseCase.CommandName, files.Count);
-                Thread.Sleep(1500);
-                ConversionTaskCleanup.Delete(result.TaskId, bestEffort: true);
-                PostMessageW(hwnd, 0x0010, IntPtr.Zero, IntPtr.Zero); // WM_CLOSE
-                return;
-            }
-
-            bool wasCanceled = result.Status == ConversionResultStatus.Canceled;
-            string errorMsg = wasCanceled ? "User Aborted" : result.Error ?? "";
-            lock (_stateLock)
-            {
-                _hasError = true;
-                _errorMessage = errorMsg;
-            }
-            PostMessageW(hwnd, WM_USER_INVALIDATE, (IntPtr)1, IntPtr.Zero);
-            ConversionTaskCleanup.Delete(result.TaskId, bestEffort: true);
-            PostMessageW(hwnd, 0x0010, IntPtr.Zero, IntPtr.Zero); // WM_CLOSE
-        }
-
-        private void RunApplicationMarkdownToPdf(
-            IntPtr hwnd,
-            List<string> files,
-            Action<int, int, string> progressCallback)
-        {
-            IConversionUseCase useCase = ConversionUseCases.GetRequired(MarkdownToPdfUseCase.CommandName);
-            ConversionPlan plan = useCase.Plan(new ConversionRequest(
-                MarkdownToPdfUseCase.CommandName,
-                files,
-                _commandOptions,
-                ExistingTaskId: _existingTaskId,
-                OutputOverride: _outputDirOverride,
-                BestEffortTaskPersistence: true)) with
-            {
-                ResumeStartIndex = _startIndex
-            };
-            var interaction = new DelegateConversionInteraction(
-                (_, _, _, _) => System.Threading.Tasks.Task.FromResult<string?>(null),
-                (_, _, _) => System.Threading.Tasks.Task.FromResult<string?>(null),
-                (_, _, _) => System.Threading.Tasks.Task.FromResult<IReadOnlyDictionary<string, object>?>(null));
-            var progress = new CallbackProgress<ConversionProgress>(state =>
-                progressCallback(state.Current, state.Total, state.Message));
-
-            ConversionResult result = useCase.ExecuteAsync(
-                    plan,
-                    interaction,
-                    progress,
-                    new MarkdownToPdfExecutionObserver(this),
-                    _cts.Token)
-                .GetAwaiter()
-                .GetResult();
-
-            if (result.Status == ConversionResultStatus.Succeeded)
-            {
-                lock (_stateLock)
-                {
-                    _completed = true;
-                    _message = Loc("cli_progress_all_done");
-                }
-                PostMessageW(hwnd, WM_USER_INVALIDATE, (IntPtr)1, IntPtr.Zero);
-                ShowToastNotification(MarkdownToPdfUseCase.CommandName, files.Count);
-                Thread.Sleep(1500);
-                ConversionTaskCleanup.Delete(result.TaskId, bestEffort: true);
-                PostMessageW(hwnd, 0x0010, IntPtr.Zero, IntPtr.Zero); // WM_CLOSE
-                return;
-            }
-
-            bool wasCanceled = result.Status == ConversionResultStatus.Canceled;
-            string errorMsg = wasCanceled ? "User Aborted" : result.Error ?? "";
-            lock (_stateLock)
-            {
-                _hasError = true;
-                _errorMessage = errorMsg;
-            }
-            PostMessageW(hwnd, WM_USER_INVALIDATE, (IntPtr)1, IntPtr.Zero);
-            ConversionTaskCleanup.Delete(result.TaskId, bestEffort: true);
-            PostMessageW(hwnd, 0x0010, IntPtr.Zero, IntPtr.Zero); // WM_CLOSE
-        }
-
-        private void RunApplicationMarkdownToWord(
-            IntPtr hwnd,
-            List<string> files,
-            Action<int, int, string> progressCallback)
-        {
-            IConversionUseCase useCase = ConversionUseCases.GetRequired(MarkdownToWordUseCase.CommandName);
-            ConversionPlan plan = useCase.Plan(new ConversionRequest(
-                MarkdownToWordUseCase.CommandName,
-                files,
-                _commandOptions,
-                ExistingTaskId: _existingTaskId,
-                OutputOverride: _outputDirOverride,
-                BestEffortTaskPersistence: true)) with
-            {
-                ResumeStartIndex = _startIndex
-            };
-            var interaction = new DelegateConversionInteraction(
-                (_, _, _, _) => System.Threading.Tasks.Task.FromResult<string?>(null),
-                (_, _, _) => System.Threading.Tasks.Task.FromResult<string?>(null),
-                (_, _, _) => System.Threading.Tasks.Task.FromResult<IReadOnlyDictionary<string, object>?>(null));
-            var progress = new CallbackProgress<ConversionProgress>(state =>
-                progressCallback(state.Current, state.Total, state.Message));
-
-            ConversionResult result = useCase.ExecuteAsync(
-                    plan,
-                    interaction,
-                    progress,
-                    new MarkdownToWordExecutionObserver(this),
-                    _cts.Token)
-                .GetAwaiter()
-                .GetResult();
-
-            if (result.Status == ConversionResultStatus.Succeeded)
-            {
-                lock (_stateLock)
-                {
-                    _completed = true;
-                    _message = Loc("cli_progress_all_done");
-                }
-                PostMessageW(hwnd, WM_USER_INVALIDATE, (IntPtr)1, IntPtr.Zero);
-                ShowToastNotification(MarkdownToWordUseCase.CommandName, files.Count);
                 Thread.Sleep(1500);
                 ConversionTaskCleanup.Delete(result.TaskId, bestEffort: true);
                 PostMessageW(hwnd, 0x0010, IntPtr.Zero, IntPtr.Zero); // WM_CLOSE

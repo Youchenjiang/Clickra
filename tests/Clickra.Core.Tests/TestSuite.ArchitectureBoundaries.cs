@@ -453,193 +453,125 @@ static partial class TestSuite
     }
 
     private static void TestTranslatePdfWorkflowHasSingleExecutionOwner()
-    {
-        string? root = FindRepoRoot();
-        if (root is null) throw new TestSkippedException("Could not locate the repository root.");
-
-        string runner = File.ReadAllText(Path.Combine(root, "src", "Clickra.Core", "Processors", "ConvertCommandRunner.cs"));
-        string registry = File.ReadAllText(Path.Combine(root, "src", "Clickra.Core", "Processors", "ConvertCommandRegistry.cs"));
-        string native = File.ReadAllText(Path.Combine(root, "src", "Clickra.CLI", "Progress", "ProgressWindow.Process.cs"));
-        string quiet = File.ReadAllText(Path.Combine(root, "src", "Clickra.CLI", "Cli", "ClickraCli.cs"));
-        string fluentMain = File.ReadAllText(Path.Combine(root, "src", "Clickra.Fluent", "MainPage.xaml.cs"));
-        string fluentTask = File.ReadAllText(Path.Combine(root, "src", "Clickra.Fluent", "TaskProgressPage.xaml.cs"));
-
-        Assert.False(runner.Contains("case \"translate-pdf\"", StringComparison.Ordinal),
-            "Legacy ConvertCommandRunner must not retain translate-pdf execution after application migration.");
-        Assert.False(registry.Contains("Path.GetFileNameWithoutExtension(f) + \"_translated.pdf\"", StringComparison.Ordinal),
-            "Legacy ConvertCommandRegistry must not retain translate-pdf output planning after application migration.");
-        Assert.False(native.Contains("FileProcessor.TranslatePdf", StringComparison.Ordinal),
-            "Native presentation must not execute PDF translation directly.");
-        Assert.False(quiet.Contains("FileProcessor.TranslatePdf", StringComparison.Ordinal),
-            "Headless CLI must not execute PDF translation directly.");
-        Assert.True((fluentMain.Contains("ConversionUseCases.TryGet(command", StringComparison.Ordinal)
-                     || fluentMain.Contains("ConversionUseCases.GetRequired(command)", StringComparison.Ordinal))
-                    && (fluentTask.Contains("ConversionUseCases.TryGet(command", StringComparison.Ordinal)
-                        || fluentTask.Contains("ConversionUseCases.GetRequired(command)", StringComparison.Ordinal))
-                    && native.Contains("RunApplicationTranslate(hwnd, currentFiles, progressCallback)", StringComparison.Ordinal)
-                    && native.Contains("ConversionUseCases.GetRequired(TranslatePdfUseCase.CommandName)", StringComparison.Ordinal)
-                    && quiet.Contains("ConversionUseCases.GetRequired(TranslatePdfUseCase.CommandName)", StringComparison.Ordinal),
-            "All product surfaces must resolve translate-pdf through the application use-case catalog.");
-    }
+        => AssertDocumentWorkflowHasSingleExecutionOwner(
+            TranslatePdfUseCase.CommandName,
+            "Path.GetFileNameWithoutExtension(f) + \"_translated.pdf\"",
+            "FileProcessor.TranslatePdf",
+            nameof(TranslatePdfUseCase),
+            "PDF translation",
+            registryMarkerMustBeAbsent: true);
 
     private static void TestWordToPdfWorkflowHasSingleExecutionOwner()
-    {
-        string? root = FindRepoRoot();
-        if (root is null) throw new TestSkippedException("Could not locate the repository root.");
-
-        string runner = File.ReadAllText(Path.Combine(root, "src", "Clickra.Core", "Processors", "ConvertCommandRunner.cs"));
-        string registry = File.ReadAllText(Path.Combine(root, "src", "Clickra.Core", "Processors", "ConvertCommandRegistry.cs"));
-        string native = File.ReadAllText(Path.Combine(root, "src", "Clickra.CLI", "Progress", "ProgressWindow.Process.cs"));
-        string quiet = File.ReadAllText(Path.Combine(root, "src", "Clickra.CLI", "Cli", "ClickraCli.cs"));
-        string fluentMain = File.ReadAllText(Path.Combine(root, "src", "Clickra.Fluent", "MainPage.xaml.cs"));
-        string fluentTask = File.ReadAllText(Path.Combine(root, "src", "Clickra.Fluent", "TaskProgressPage.xaml.cs"));
-
-        Assert.False(runner.Contains("case \"word2pdf\"", StringComparison.Ordinal),
-            "Legacy ConvertCommandRunner must not retain word2pdf execution after application migration.");
-        Assert.True(registry.Contains("word2pdf output planning is owned by the application use case.", StringComparison.Ordinal),
-            "Legacy ConvertCommandRegistry must fail closed instead of planning word2pdf outputs after migration.");
-        Assert.False(native.Contains("FileProcessor.ConvertWordToPdf", StringComparison.Ordinal),
-            "Native presentation must not execute Word conversion directly.");
-        Assert.False(quiet.Contains("FileProcessor.ConvertWordToPdf", StringComparison.Ordinal),
-            "Headless CLI must not execute Word conversion directly.");
-        Assert.True((fluentMain.Contains("ConversionUseCases.TryGet(command", StringComparison.Ordinal)
-                     || fluentMain.Contains("ConversionUseCases.GetRequired(command)", StringComparison.Ordinal))
-                    && (fluentTask.Contains("ConversionUseCases.TryGet(command", StringComparison.Ordinal)
-                        || fluentTask.Contains("ConversionUseCases.GetRequired(command)", StringComparison.Ordinal))
-                    && native.Contains("RunApplicationWordToPdf(hwnd, currentFiles, progressCallback)", StringComparison.Ordinal)
-                    && native.Contains("ConversionUseCases.GetRequired(WordToPdfUseCase.CommandName)", StringComparison.Ordinal)
-                    && quiet.Contains("ConversionUseCases.GetRequired(WordToPdfUseCase.CommandName)", StringComparison.Ordinal),
-            "All product surfaces must resolve word2pdf through the application use-case catalog.");
-    }
+        => AssertDocumentWorkflowHasSingleExecutionOwner(
+            WordToPdfUseCase.CommandName,
+            "word2pdf output planning is owned by the application use case.",
+            "FileProcessor.ConvertWordToPdf",
+            nameof(WordToPdfUseCase),
+            "Word conversion");
 
     private static void TestPptToPdfWorkflowHasSingleExecutionOwner()
-    {
-        string? root = FindRepoRoot();
-        if (root is null) throw new TestSkippedException("Could not locate the repository root.");
-
-        string runner = File.ReadAllText(Path.Combine(root, "src", "Clickra.Core", "Processors", "ConvertCommandRunner.cs"));
-        string registry = File.ReadAllText(Path.Combine(root, "src", "Clickra.Core", "Processors", "ConvertCommandRegistry.cs"));
-        string native = File.ReadAllText(Path.Combine(root, "src", "Clickra.CLI", "Progress", "ProgressWindow.Process.cs"));
-        string quiet = File.ReadAllText(Path.Combine(root, "src", "Clickra.CLI", "Cli", "ClickraCli.cs"));
-        string fluentMain = File.ReadAllText(Path.Combine(root, "src", "Clickra.Fluent", "MainPage.xaml.cs"));
-        string fluentTask = File.ReadAllText(Path.Combine(root, "src", "Clickra.Fluent", "TaskProgressPage.xaml.cs"));
-
-        Assert.False(runner.Contains("case \"ppt2pdf\"", StringComparison.Ordinal),
-            "Legacy ConvertCommandRunner must not retain ppt2pdf execution after application migration.");
-        Assert.True(registry.Contains("ppt2pdf output planning is owned by the application use case.", StringComparison.Ordinal),
-            "Legacy ConvertCommandRegistry must fail closed instead of planning ppt2pdf outputs after migration.");
-        Assert.False(native.Contains("FileProcessor.ConvertPptToPdf", StringComparison.Ordinal),
-            "Native presentation must not execute PowerPoint conversion directly.");
-        Assert.False(quiet.Contains("FileProcessor.ConvertPptToPdf", StringComparison.Ordinal),
-            "Headless CLI must not execute PowerPoint conversion directly.");
-        Assert.True((fluentMain.Contains("ConversionUseCases.TryGet(command", StringComparison.Ordinal)
-                     || fluentMain.Contains("ConversionUseCases.GetRequired(command)", StringComparison.Ordinal))
-                    && (fluentTask.Contains("ConversionUseCases.TryGet(command", StringComparison.Ordinal)
-                        || fluentTask.Contains("ConversionUseCases.GetRequired(command)", StringComparison.Ordinal))
-                    && native.Contains("RunApplicationPptToPdf(hwnd, currentFiles, progressCallback)", StringComparison.Ordinal)
-                    && native.Contains("ConversionUseCases.GetRequired(PptToPdfUseCase.CommandName)", StringComparison.Ordinal)
-                    && quiet.Contains("ConversionUseCases.GetRequired(PptToPdfUseCase.CommandName)", StringComparison.Ordinal),
-            "All product surfaces must resolve ppt2pdf through the application use-case catalog.");
-    }
+        => AssertDocumentWorkflowHasSingleExecutionOwner(
+            PptToPdfUseCase.CommandName,
+            "ppt2pdf output planning is owned by the application use case.",
+            "FileProcessor.ConvertPptToPdf",
+            nameof(PptToPdfUseCase),
+            "PowerPoint conversion");
 
     private static void TestExcelToPdfWorkflowHasSingleExecutionOwner()
-    {
-        string? root = FindRepoRoot();
-        if (root is null) throw new TestSkippedException("Could not locate the repository root.");
-
-        string runner = File.ReadAllText(Path.Combine(root, "src", "Clickra.Core", "Processors", "ConvertCommandRunner.cs"));
-        string registry = File.ReadAllText(Path.Combine(root, "src", "Clickra.Core", "Processors", "ConvertCommandRegistry.cs"));
-        string native = File.ReadAllText(Path.Combine(root, "src", "Clickra.CLI", "Progress", "ProgressWindow.Process.cs"));
-        string quiet = File.ReadAllText(Path.Combine(root, "src", "Clickra.CLI", "Cli", "ClickraCli.cs"));
-        string fluentMain = File.ReadAllText(Path.Combine(root, "src", "Clickra.Fluent", "MainPage.xaml.cs"));
-        string fluentTask = File.ReadAllText(Path.Combine(root, "src", "Clickra.Fluent", "TaskProgressPage.xaml.cs"));
-
-        Assert.False(runner.Contains("case \"excel2pdf\"", StringComparison.Ordinal),
-            "Legacy ConvertCommandRunner must not retain excel2pdf execution after application migration.");
-        Assert.True(registry.Contains("excel2pdf output planning is owned by the application use case.", StringComparison.Ordinal),
-            "Legacy ConvertCommandRegistry must fail closed instead of planning excel2pdf outputs after migration.");
-        Assert.False(native.Contains("FileProcessor.ConvertExcelToPdf", StringComparison.Ordinal),
-            "Native presentation must not execute Excel conversion directly.");
-        Assert.False(quiet.Contains("FileProcessor.ConvertExcelToPdf", StringComparison.Ordinal),
-            "Headless CLI must not execute Excel conversion directly.");
-        Assert.True((fluentMain.Contains("ConversionUseCases.TryGet(command", StringComparison.Ordinal)
-                     || fluentMain.Contains("ConversionUseCases.GetRequired(command)", StringComparison.Ordinal))
-                    && (fluentTask.Contains("ConversionUseCases.TryGet(command", StringComparison.Ordinal)
-                        || fluentTask.Contains("ConversionUseCases.GetRequired(command)", StringComparison.Ordinal))
-                    && native.Contains("RunApplicationExcelToPdf(hwnd, currentFiles, progressCallback)", StringComparison.Ordinal)
-                    && native.Contains("ConversionUseCases.GetRequired(ExcelToPdfUseCase.CommandName)", StringComparison.Ordinal)
-                    && quiet.Contains("ConversionUseCases.GetRequired(ExcelToPdfUseCase.CommandName)", StringComparison.Ordinal),
-            "All product surfaces must resolve excel2pdf through the application use-case catalog.");
-    }
+        => AssertDocumentWorkflowHasSingleExecutionOwner(
+            ExcelToPdfUseCase.CommandName,
+            "excel2pdf output planning is owned by the application use case.",
+            "FileProcessor.ConvertExcelToPdf",
+            nameof(ExcelToPdfUseCase),
+            "Excel conversion");
 
     private static void TestMarkdownToPdfWorkflowHasSingleExecutionOwner()
     {
-        string? root = FindRepoRoot();
-        if (root is null) throw new TestSkippedException("Could not locate the repository root.");
-
-        string runner = File.ReadAllText(Path.Combine(root, "src", "Clickra.Core", "Processors", "ConvertCommandRunner.cs"));
-        string registry = File.ReadAllText(Path.Combine(root, "src", "Clickra.Core", "Processors", "ConvertCommandRegistry.cs"));
-        string native = File.ReadAllText(Path.Combine(root, "src", "Clickra.CLI", "Progress", "ProgressWindow.Process.cs"));
-        string quiet = File.ReadAllText(Path.Combine(root, "src", "Clickra.CLI", "Cli", "ClickraCli.cs"));
-        string fluentMain = File.ReadAllText(Path.Combine(root, "src", "Clickra.Fluent", "MainPage.xaml.cs"));
-        string fluentTask = File.ReadAllText(Path.Combine(root, "src", "Clickra.Fluent", "TaskProgressPage.xaml.cs"));
-
-        Assert.False(runner.Contains("case \"md2pdf\"", StringComparison.Ordinal),
-            "Legacy ConvertCommandRunner must not retain md2pdf execution after application migration.");
-        Assert.True(registry.Contains("md2pdf output planning is owned by the application use case.", StringComparison.Ordinal),
-            "Legacy ConvertCommandRegistry must fail closed instead of planning md2pdf outputs after migration.");
-        Assert.False(native.Contains("FileProcessor.ConvertMarkdownToPdf", StringComparison.Ordinal),
-            "Native presentation must not execute Markdown PDF conversion directly.");
-        Assert.False(quiet.Contains("FileProcessor.ConvertMarkdownToPdf", StringComparison.Ordinal),
-            "Headless CLI must not execute Markdown PDF conversion directly.");
-        Assert.True(native.Contains("RunApplicationMarkdownToPdf(hwnd, currentFiles, progressCallback)", StringComparison.Ordinal)
-                    && native.Contains("ConversionUseCases.GetRequired(MarkdownToPdfUseCase.CommandName)", StringComparison.Ordinal)
-                    && native.Contains("_commandOptions", StringComparison.Ordinal)
-                    && native.Contains("ResumeStartIndex = _startIndex", StringComparison.Ordinal),
-            "Native md2pdf must route its option snapshot and resume index through the application owner.");
-        Assert.True(quiet.Contains("ConversionUseCases.GetRequired(MarkdownToPdfUseCase.CommandName)", StringComparison.Ordinal)
-                    && quiet.Contains("MarkdownPdfOptions.Create()", StringComparison.Ordinal)
-                    && quiet.Contains("TrackTaskLifecycle: false", StringComparison.Ordinal),
-            "Headless md2pdf must use default Markdown options without task lifecycle ownership.");
-        Assert.True(fluentMain.Contains("commandOptions));", StringComparison.Ordinal)
-                    && fluentTask.Contains("commandOptions,", StringComparison.Ordinal)
-                    && fluentTask.Contains("ExistingTaskId: existingTaskId", StringComparison.Ordinal),
-            "Both Fluent md2pdf paths must forward the already-prompted Markdown option snapshot into planning.");
+        AssertDocumentWorkflowHasSingleExecutionOwner(
+            MarkdownToPdfUseCase.CommandName,
+            "md2pdf output planning is owned by the application use case.",
+            "FileProcessor.ConvertMarkdownToPdf",
+            nameof(MarkdownToPdfUseCase),
+            "Markdown PDF conversion");
+        AssertMarkdownWorkflowPreservesPresentationOptions(MarkdownToPdfUseCase.CommandName, "md2pdf");
     }
 
     private static void TestMarkdownToWordWorkflowHasSingleExecutionOwner()
     {
+        AssertDocumentWorkflowHasSingleExecutionOwner(
+            MarkdownToWordUseCase.CommandName,
+            "md2word output planning is owned by the application use case.",
+            "FileProcessor.ConvertMarkdownToWord",
+            nameof(MarkdownToWordUseCase),
+            "Markdown Word conversion");
+        AssertMarkdownWorkflowPreservesPresentationOptions(MarkdownToWordUseCase.CommandName, "md2word");
+    }
+
+    private static void AssertDocumentWorkflowHasSingleExecutionOwner(
+        string command,
+        string registryMarker,
+        string processorCall,
+        string useCaseTypeName,
+        string workflowName,
+        bool registryMarkerMustBeAbsent = false)
+    {
         string? root = FindRepoRoot();
-        if (root is null) throw new TestSkippedException("Could not locate the repository root.");
+        if (root is null) throw new TestSkippedException(RepositoryRootMissingMessage);
 
-        string runner = File.ReadAllText(Path.Combine(root, "src", "Clickra.Core", "Processors", "ConvertCommandRunner.cs"));
-        string registry = File.ReadAllText(Path.Combine(root, "src", "Clickra.Core", "Processors", "ConvertCommandRegistry.cs"));
-        string native = File.ReadAllText(Path.Combine(root, "src", "Clickra.CLI", "Progress", "ProgressWindow.Process.cs"));
-        string quiet = File.ReadAllText(Path.Combine(root, "src", "Clickra.CLI", "Cli", "ClickraCli.cs"));
-        string fluentMain = File.ReadAllText(Path.Combine(root, "src", "Clickra.Fluent", "MainPage.xaml.cs"));
-        string fluentTask = File.ReadAllText(Path.Combine(root, "src", "Clickra.Fluent", "TaskProgressPage.xaml.cs"));
+        string runner = File.ReadAllText(Path.Combine(root, "src", ArchitectureCoreProjectDirectory, "Processors", "ConvertCommandRunner.cs"));
+        string registry = File.ReadAllText(Path.Combine(root, "src", ArchitectureCoreProjectDirectory, "Processors", "ConvertCommandRegistry.cs"));
+        string native = File.ReadAllText(Path.Combine(root, "src", ArchitectureCliProjectDirectory, ArchitectureProgressDirectory, ArchitectureProgressProcessFile));
+        string quiet = File.ReadAllText(Path.Combine(root, "src", ArchitectureCliProjectDirectory, "Cli", ArchitectureCliSourceFile));
+        string fluentMain = File.ReadAllText(Path.Combine(root, "src", ArchitectureFluentProjectDirectory, "MainPage.xaml.cs"));
+        string fluentTask = File.ReadAllText(Path.Combine(root, "src", ArchitectureFluentProjectDirectory, "TaskProgressPage.xaml.cs"));
 
-        Assert.False(runner.Contains("case \"md2word\"", StringComparison.Ordinal),
-            "Legacy ConvertCommandRunner must not retain md2word execution after application migration.");
-        Assert.True(registry.Contains("md2word output planning is owned by the application use case.", StringComparison.Ordinal),
-            "Legacy ConvertCommandRegistry must fail closed instead of planning md2word outputs after migration.");
-        Assert.False(native.Contains("FileProcessor.ConvertMarkdownToWord", StringComparison.Ordinal),
-            "Native presentation must not execute Markdown Word conversion directly.");
-        Assert.False(quiet.Contains("FileProcessor.ConvertMarkdownToWord", StringComparison.Ordinal),
-            "Headless CLI must not execute Markdown Word conversion directly.");
-        Assert.True(native.Contains("RunApplicationMarkdownToWord(hwnd, currentFiles, progressCallback)", StringComparison.Ordinal)
-                    && native.Contains("ConversionUseCases.GetRequired(MarkdownToWordUseCase.CommandName)", StringComparison.Ordinal)
-                    && native.Contains("_commandOptions", StringComparison.Ordinal)
+        Assert.False(runner.Contains($"case \"{command}\"", StringComparison.Ordinal),
+            $"Legacy ConvertCommandRunner must not retain {workflowName} execution after migration.");
+        Assert.True(registry.Contains(registryMarker, StringComparison.Ordinal) != registryMarkerMustBeAbsent,
+            registryMarkerMustBeAbsent
+                ? $"Legacy ConvertCommandRegistry must not retain {workflowName} output planning after migration."
+                : $"Legacy ConvertCommandRegistry must fail closed instead of planning {workflowName} outputs after migration.");
+        Assert.False(native.Contains(processorCall, StringComparison.Ordinal),
+            $"Native presentation must not execute {workflowName} directly.");
+        Assert.False(quiet.Contains(processorCall, StringComparison.Ordinal),
+            $"Headless CLI must not execute {workflowName} directly.");
+
+        string specificCatalogResolution = $"ConversionUseCases.GetRequired({useCaseTypeName}.CommandName)";
+        Assert.True((fluentMain.Contains("ConversionUseCases.TryGet(command", StringComparison.Ordinal)
+                     || fluentMain.Contains(GenericCatalogResolution, StringComparison.Ordinal))
+                    && (fluentTask.Contains("ConversionUseCases.TryGet(command", StringComparison.Ordinal)
+                        || fluentTask.Contains(GenericCatalogResolution, StringComparison.Ordinal))
+                    && (native.Contains(GenericCatalogResolution, StringComparison.Ordinal)
+                        || native.Contains(specificCatalogResolution, StringComparison.Ordinal))
+                    && (quiet.Contains(GenericCatalogResolution, StringComparison.Ordinal)
+                        || quiet.Contains(specificCatalogResolution, StringComparison.Ordinal)),
+            $"All product surfaces must resolve {workflowName} through the application use-case catalog.");
+    }
+
+    private static void AssertMarkdownWorkflowPreservesPresentationOptions(string command, string workflowName)
+    {
+        string? root = FindRepoRoot();
+        if (root is null) throw new TestSkippedException(RepositoryRootMissingMessage);
+
+        string native = File.ReadAllText(Path.Combine(root, "src", ArchitectureCliProjectDirectory, ArchitectureProgressDirectory, ArchitectureProgressProcessFile));
+        string quiet = File.ReadAllText(Path.Combine(root, "src", ArchitectureCliProjectDirectory, "Cli", ArchitectureCliSourceFile));
+        string fluentMain = File.ReadAllText(Path.Combine(root, "src", ArchitectureFluentProjectDirectory, "MainPage.xaml.cs"));
+        string fluentTask = File.ReadAllText(Path.Combine(root, "src", ArchitectureFluentProjectDirectory, "TaskProgressPage.xaml.cs"));
+
+        Assert.True(native.Contains("CommandOptions: _commandOptions", StringComparison.Ordinal)
+                    && native.Contains("new TaskIdExecutionObserver(this, TryRecordTaskIndex)", StringComparison.Ordinal)
                     && native.Contains("ResumeStartIndex = _startIndex", StringComparison.Ordinal),
-            "Native md2word must route its option snapshot and resume index through the application owner.");
-        Assert.True(quiet.Contains("ConversionUseCases.GetRequired(MarkdownToWordUseCase.CommandName)", StringComparison.Ordinal)
+            $"Native {workflowName} must route its option snapshot and resume checkpoint through the application owner.");
+        Assert.True((quiet.Contains(GenericCatalogResolution, StringComparison.Ordinal)
+                     || quiet.Contains($"ConversionUseCases.GetRequired({command})", StringComparison.Ordinal)
+                     || quiet.Contains($"ConversionUseCases.GetRequired({(command == MarkdownToPdfUseCase.CommandName ? nameof(MarkdownToPdfUseCase) : nameof(MarkdownToWordUseCase))}.CommandName)", StringComparison.Ordinal))
                     && quiet.Contains("MarkdownPdfOptions.Create()", StringComparison.Ordinal)
                     && quiet.Contains("TrackTaskLifecycle: false", StringComparison.Ordinal),
-            "Headless md2word must use default Markdown options without task lifecycle ownership.");
+            $"Headless {workflowName} must use default Markdown options without task lifecycle ownership.");
         Assert.True(fluentMain.Contains("commandOptions));", StringComparison.Ordinal)
                     && fluentTask.Contains("commandOptions,", StringComparison.Ordinal)
                     && fluentTask.Contains("ExistingTaskId: existingTaskId", StringComparison.Ordinal),
-            "Both Fluent md2word paths must forward the already-prompted Markdown option snapshot into planning.");
+            $"Both Fluent {workflowName} paths must forward the already-prompted Markdown option snapshot into planning.");
     }
 
     private sealed class StubConversionUseCase(string command) : IConversionUseCase

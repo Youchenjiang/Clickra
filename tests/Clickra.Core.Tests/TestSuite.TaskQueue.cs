@@ -220,7 +220,7 @@ static partial class TestSuite
         Assert.True(native.Contains("RunSharedCommand(cmd, currentFiles, plannedOutputs, progressCallback)", StringComparison.Ordinal)
                     && native.Contains("ConvertCommandRunner.Run(", StringComparison.Ordinal),
             "Native commands without Win32-specific behavior must dispatch through the shared Core runner.");
-        Assert.True(native.Contains("OnFileStarting(int fileIndex) => owner.TryRecordTaskIndex(fileIndex)", StringComparison.Ordinal)
+        Assert.True(native.Contains("new TaskIdExecutionObserver(this, TryRecordTaskIndex)", StringComparison.Ordinal)
                     && markdownPdfUseCase.Contains("observer?.OnFileStarting(i)", StringComparison.Ordinal)
                     && markdownWordUseCase.Contains("observer?.OnFileStarting(i)", StringComparison.Ordinal),
             "Migrated per-file dispatch must preserve the Native resume checkpoint before processing each file.");
