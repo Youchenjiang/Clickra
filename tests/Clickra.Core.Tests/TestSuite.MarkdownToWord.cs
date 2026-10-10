@@ -313,7 +313,7 @@ static partial class TestSuite
                     """);
 
                 FileProcessor.ConvertMarkdownToPdf(input, pdfPath, MarkdownPdfOptions.Create());
-                FileProcessor.ConvertMarkdownToWord(input, wordPath);
+                FileProcessor.ConvertMarkdownToWord(input, wordPath, MarkdownPdfOptions.Create());
 
                 MarkdownResolvedLayout layout = MarkdownResolvedLayout.Create(MarkdownTemplateCatalog.Default, 1);
                 using var pdf = UglyToad.PdfPig.PdfDocument.Open(pdfPath);
