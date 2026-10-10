@@ -172,8 +172,5 @@ namespace Clickra.Core
             processor.Process(new List<string> { inputPath }, outputPath, options, onProgress, cancellationToken);
         }
 
-        /// <summary>Returns the page count of the PDF at <paramref name="inputPath"/>, or 0 when it cannot be opened.</summary>
-        /// <param name="inputPath">Path of the PDF file.</param>
-        public static int GetPdfPageCount(string inputPath) => PdfSplitProcessor.GetPageCount(inputPath);
     }
 }
