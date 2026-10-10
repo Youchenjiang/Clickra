@@ -531,6 +531,7 @@ static partial class TestSuite
         if (root is null) throw new TestSkippedException("Could not locate the repository root.");
 
         string runner = File.ReadAllText(Path.Combine(root, "src", "Clickra.Core", "Processors", "ConvertCommandRunner.cs"));
+        string registry = File.ReadAllText(Path.Combine(root, "src", "Clickra.Core", "Processors", "ConvertCommandRegistry.cs"));
         string native = File.ReadAllText(Path.Combine(root, "src", "Clickra.CLI", "Progress", "ProgressWindow.Process.cs"));
         string quiet = File.ReadAllText(Path.Combine(root, "src", "Clickra.CLI", "Cli", "ClickraCli.cs"));
         string fluentMain = File.ReadAllText(Path.Combine(root, "src", "Clickra.Fluent", "MainPage.xaml.cs"));
@@ -538,6 +539,8 @@ static partial class TestSuite
 
         Assert.False(runner.Contains("case \"excel2pdf\"", StringComparison.Ordinal),
             "Legacy ConvertCommandRunner must not retain excel2pdf execution after application migration.");
+        Assert.True(registry.Contains("excel2pdf output planning is owned by the application use case.", StringComparison.Ordinal),
+            "Legacy ConvertCommandRegistry must fail closed instead of planning excel2pdf outputs after migration.");
         Assert.False(native.Contains("FileProcessor.ConvertExcelToPdf", StringComparison.Ordinal),
             "Native presentation must not execute Excel conversion directly.");
         Assert.False(quiet.Contains("FileProcessor.ConvertExcelToPdf", StringComparison.Ordinal),

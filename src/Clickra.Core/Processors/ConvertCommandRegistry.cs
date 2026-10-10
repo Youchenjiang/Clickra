@@ -93,6 +93,8 @@ public static class ConvertCommandRegistry
                     "ppt2pdf output planning is owned by the application use case."),
                 "word2pdf" => throw new InvalidOperationException(
                     "word2pdf output planning is owned by the application use case."),
+                "excel2pdf" => throw new InvalidOperationException(
+                    "excel2pdf output planning is owned by the application use case."),
                 _ => files.Select(f => Path.Combine(ClickraStorage.GetOutputDir(f), Path.GetFileNameWithoutExtension(f) + ".pdf")).ToList()
             };
         }
