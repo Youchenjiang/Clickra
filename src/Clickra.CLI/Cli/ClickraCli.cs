@@ -153,10 +153,7 @@ namespace Clickra
             RequireMinFiles(files, command, ConvertCommandRegistry.GetMinFiles(command), quiet);
             if (quiet)
             {
-                if (toPdf)
-                    HandleMarkdownToPdfQuiet(files, outputDir, outputDirOverride);
-                else
-                    HandleMarkdownToWordQuiet(files, outputDir, outputDirOverride);
+                HandleMarkdownQuiet(command, files, outputDir, outputDirOverride);
             }
             else
             {
@@ -165,57 +162,16 @@ namespace Clickra
             return true;
         }
 
-        private static void HandleMarkdownToWordQuiet(
+        private static void HandleMarkdownQuiet(
+            string command,
             IReadOnlyList<string> files,
             string outputDir,
             string? outputDirOverride)
-        {
-            IConversionUseCase useCase = ConversionUseCases.GetRequired(MarkdownToWordUseCase.CommandName);
-            ConversionPlan plan = useCase.Plan(new ConversionRequest(
-                MarkdownToWordUseCase.CommandName,
+            => RunQuietUseCase(
+                command,
                 files,
                 MarkdownPdfOptions.Create(),
-                OutputOverride: string.IsNullOrWhiteSpace(outputDirOverride) ? null : outputDir,
-                TrackTaskLifecycle: false));
-            var interaction = new DelegateConversionInteraction(
-                (_, _, _, _) => Task.FromResult<string?>(null),
-                (_, _, _) => Task.FromResult<string?>(null),
-                (_, _, _) => Task.FromResult<IReadOnlyDictionary<string, object>?>(null));
-            var progress = new SynchronousProgress<ConversionProgress>(state =>
-                Console.WriteLine($"[Progress] {state.Message}"));
-
-            ConversionResult result = useCase.ExecuteAsync(plan, interaction, progress)
-                .GetAwaiter()
-                .GetResult();
-            if (result.Status != ConversionResultStatus.Succeeded)
-                throw new InvalidOperationException(result.Error ?? Loc(ErrorProcessingFailedKey));
-        }
-
-        private static void HandleMarkdownToPdfQuiet(
-            IReadOnlyList<string> files,
-            string outputDir,
-            string? outputDirOverride)
-        {
-            IConversionUseCase useCase = ConversionUseCases.GetRequired(MarkdownToPdfUseCase.CommandName);
-            ConversionPlan plan = useCase.Plan(new ConversionRequest(
-                MarkdownToPdfUseCase.CommandName,
-                files,
-                MarkdownPdfOptions.Create(),
-                OutputOverride: string.IsNullOrWhiteSpace(outputDirOverride) ? null : outputDir,
-                TrackTaskLifecycle: false));
-            var interaction = new DelegateConversionInteraction(
-                (_, _, _, _) => Task.FromResult<string?>(null),
-                (_, _, _) => Task.FromResult<string?>(null),
-                (_, _, _) => Task.FromResult<IReadOnlyDictionary<string, object>?>(null));
-            var progress = new SynchronousProgress<ConversionProgress>(state =>
-                Console.WriteLine($"[Progress] {state.Message}"));
-
-            ConversionResult result = useCase.ExecuteAsync(plan, interaction, progress)
-                .GetAwaiter()
-                .GetResult();
-            if (result.Status != ConversionResultStatus.Succeeded)
-                throw new InvalidOperationException(result.Error ?? Loc(ErrorProcessingFailedKey));
-        }
+                string.IsNullOrWhiteSpace(outputDirOverride) ? null : outputDir);
 
         /// <summary>Handles office-conversion commands (ppt2pdf, word2pdf, excel2pdf).</summary>
         private static bool DispatchOfficeCommand(string command, List<string> files, bool quiet)
@@ -224,17 +180,17 @@ namespace Clickra
             {
                 case "ppt2pdf":
                     ValidateExtensions(files, command, quiet, ".pptx", ".ppt");
-                    if (quiet) HandlePptToPdfQuiet(files);
+                    if (quiet) HandleOfficeToPdfQuiet(command, files);
                     else ProgressWindow.Show(command, files);
                     return true;
                 case "word2pdf":
                     ValidateExtensions(files, command, quiet, ".docx", ".doc");
-                    if (quiet) HandleWordToPdfQuiet(files);
+                    if (quiet) HandleOfficeToPdfQuiet(command, files);
                     else ProgressWindow.Show(command, files);
                     return true;
                 case "excel2pdf":
                     ValidateExtensions(files, command, quiet, ".xlsx", ".xls");
-                    if (quiet) HandleExcelToPdfQuiet(files);
+                    if (quiet) HandleOfficeToPdfQuiet(command, files);
                     else ProgressWindow.Show(command, files);
                     return true;
                 default:
@@ -242,68 +198,8 @@ namespace Clickra
             }
         }
 
-        private static void HandleWordToPdfQuiet(List<string> files)
-        {
-            IConversionUseCase useCase = ConversionUseCases.GetRequired(WordToPdfUseCase.CommandName);
-            ConversionPlan plan = useCase.Plan(new ConversionRequest(
-                WordToPdfUseCase.CommandName,
-                files,
-                TrackTaskLifecycle: false));
-            var interaction = new DelegateConversionInteraction(
-                (_, _, _, _) => Task.FromResult<string?>(null),
-                (_, _, _) => Task.FromResult<string?>(null),
-                (_, _, _) => Task.FromResult<IReadOnlyDictionary<string, object>?>(null));
-            var progress = new SynchronousProgress<ConversionProgress>(state =>
-                Console.WriteLine($"[Progress] {state.Message}"));
-
-            ConversionResult result = useCase.ExecuteAsync(plan, interaction, progress)
-                .GetAwaiter()
-                .GetResult();
-            if (result.Status != ConversionResultStatus.Succeeded)
-                throw new InvalidOperationException(result.Error ?? Loc(ErrorProcessingFailedKey));
-        }
-
-        private static void HandlePptToPdfQuiet(List<string> files)
-        {
-            IConversionUseCase useCase = ConversionUseCases.GetRequired(PptToPdfUseCase.CommandName);
-            ConversionPlan plan = useCase.Plan(new ConversionRequest(
-                PptToPdfUseCase.CommandName,
-                files,
-                TrackTaskLifecycle: false));
-            var interaction = new DelegateConversionInteraction(
-                (_, _, _, _) => Task.FromResult<string?>(null),
-                (_, _, _) => Task.FromResult<string?>(null),
-                (_, _, _) => Task.FromResult<IReadOnlyDictionary<string, object>?>(null));
-            var progress = new SynchronousProgress<ConversionProgress>(state =>
-                Console.WriteLine($"[Progress] {state.Message}"));
-
-            ConversionResult result = useCase.ExecuteAsync(plan, interaction, progress)
-                .GetAwaiter()
-                .GetResult();
-            if (result.Status != ConversionResultStatus.Succeeded)
-                throw new InvalidOperationException(result.Error ?? Loc(ErrorProcessingFailedKey));
-        }
-
-        private static void HandleExcelToPdfQuiet(List<string> files)
-        {
-            IConversionUseCase useCase = ConversionUseCases.GetRequired(ExcelToPdfUseCase.CommandName);
-            ConversionPlan plan = useCase.Plan(new ConversionRequest(
-                ExcelToPdfUseCase.CommandName,
-                files,
-                TrackTaskLifecycle: false));
-            var interaction = new DelegateConversionInteraction(
-                (_, _, _, _) => Task.FromResult<string?>(null),
-                (_, _, _) => Task.FromResult<string?>(null),
-                (_, _, _) => Task.FromResult<IReadOnlyDictionary<string, object>?>(null));
-            var progress = new SynchronousProgress<ConversionProgress>(state =>
-                Console.WriteLine($"[Progress] {state.Message}"));
-
-            ConversionResult result = useCase.ExecuteAsync(plan, interaction, progress)
-                .GetAwaiter()
-                .GetResult();
-            if (result.Status != ConversionResultStatus.Succeeded)
-                throw new InvalidOperationException(result.Error ?? Loc(ErrorProcessingFailedKey));
-        }
+        private static void HandleOfficeToPdfQuiet(string command, IReadOnlyList<string> files)
+            => RunQuietUseCase(command, files, null, outputDir: null);
 
         /// <summary>Handles PDF commands (merge, compress, split, translate, decrypt).</summary>
         private static bool DispatchPdfCommand(
@@ -483,9 +379,9 @@ namespace Clickra
 
         private static void RunQuietUseCase(
             string command,
-            List<string> files,
+            IReadOnlyList<string> files,
             IReadOnlyDictionary<string, object>? options,
-            string outputDir,
+            string? outputDir,
             IConversionInteraction? interaction = null,
             IConversionExecutionObserver? observer = null,
             bool reportProgress = true)
