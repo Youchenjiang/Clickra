@@ -29,7 +29,6 @@ static partial class TestSuite
             new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase)
             {
                 ["src/Clickra.CLI/Cli/ClickraCli.cs"] = 6,
-                ["src/Clickra.CLI/Progress/ProgressWindow.Process.cs"] = 1,
                 ["src/Clickra.CLI/Progress/ProgressWindow.VisualSplitter.cs"] = 1,
                 ["src/Clickra.Fluent/Controls/VisualSplitterControl.xaml.cs"] = 1
             }),
