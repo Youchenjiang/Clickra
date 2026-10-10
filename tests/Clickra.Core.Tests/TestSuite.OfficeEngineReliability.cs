@@ -9,6 +9,36 @@ static partial class TestSuite
 
     public static void RegisterOfficeEngineReliabilityTests(TestRunner runner)
     {
+        runner.Run("Excel to PDF use case owns legacy source-directory planning", () =>
+        {
+            string tempDir = Path.Combine(Path.GetTempPath(), $"clickra-excel-plan-{Guid.NewGuid():N}");
+            Directory.CreateDirectory(tempDir);
+            string sourceDir = Path.Combine(tempDir, "source");
+            string overrideDir = Path.Combine(tempDir, "override");
+            Directory.CreateDirectory(sourceDir);
+            Directory.CreateDirectory(overrideDir);
+            string input = Path.Combine(sourceDir, "budget.xlsx");
+            File.WriteAllText(input, "placeholder");
+
+            var useCase = new ExcelToPdfUseCase();
+            ConversionPlan plan = useCase.Plan(new ConversionRequest(
+                ExcelToPdfUseCase.CommandName,
+                new[] { input },
+                OutputOverride: overrideDir,
+                TrackTaskLifecycle: false));
+
+            Assert.Equal(ExcelToPdfUseCase.CommandName, plan.Command);
+            Assert.Equal(1, plan.Outputs.Count);
+            Assert.Equal(
+                Path.Combine(ClickraStorage.GetOutputDir(input), "budget.pdf"),
+                plan.Outputs[0]);
+            Assert.False(
+                Path.GetDirectoryName(plan.Outputs[0])!.Equals(overrideDir, StringComparison.OrdinalIgnoreCase),
+                "excel2pdf must preserve the legacy behavior that ignored Native output overrides.");
+            Assert.False(plan.TrackTaskLifecycle, "Headless execution must be able to disable task tracking.");
+            Assert.Equal(0, plan.RequiredCapabilities.Count);
+        });
+
         runner.Run("PowerPoint to PDF use case owns legacy source-directory planning", () =>
         {
             string tempDir = Path.Combine(Path.GetTempPath(), $"clickra-ppt-plan-{Guid.NewGuid():N}");
