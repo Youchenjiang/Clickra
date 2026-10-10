@@ -8,6 +8,7 @@ using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading.Tasks;
 using Clickra.Core;
+using Clickra.Core.Application;
 using Clickra.Core.Processors;
 using Clickra.Core.Rendering;
 
@@ -87,7 +88,7 @@ public partial class ProgressWindow
     /// </summary>
     private void InitializeVisualSplitter(string filePath)
     {
-        int totalPages = FileProcessor.GetPdfPageCount(filePath);
+        int totalPages = PdfPageCountQuery.Get(filePath);
         if (totalPages <= 0) totalPages = 1;
 
         _visualSplitFilePath = filePath;

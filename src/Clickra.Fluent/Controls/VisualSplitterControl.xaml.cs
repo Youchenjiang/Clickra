@@ -1,4 +1,5 @@
 using Clickra.Core;
+using Clickra.Core.Application;
 using Clickra.Core.Processors;
 using Clickra.Core.Rendering;
 using Microsoft.UI.Xaml;
@@ -52,7 +53,7 @@ public sealed partial class VisualSplitterControl : UserControl
         InitializeComponent();
 
         _pdfPath = pdfPath;
-        _totalPages = FileProcessor.GetPdfPageCount(pdfPath);
+        _totalPages = PdfPageCountQuery.Get(pdfPath);
         if (_totalPages <= 0) _totalPages = 1;
         _splitModel = new VisualSplitModel(_totalPages);
         SyncModelState();

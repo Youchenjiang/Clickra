@@ -14,6 +14,22 @@ static partial class TestSuite
 {
     public static void RegisterPdfSplitTests(TestRunner runner)
     {
+        runner.Run("PDF page-count query delegates unreadable and valid document semantics", () =>
+        {
+            string inputPath = CreateTempPdf($"clickra-page-count-{Guid.NewGuid():N}", 3);
+            try
+            {
+                Assert.True(PdfPageCountQuery.Get(inputPath) == 3,
+                    "Application page-count query must preserve the processor's exact valid-document count.");
+                Assert.True(PdfPageCountQuery.Get(inputPath + ".missing") == 0,
+                    "Application page-count query must preserve the processor's unreadable-document zero result.");
+            }
+            finally
+            {
+                DeleteTempFiles(inputPath);
+            }
+        });
+
         runner.Run("PdfSplitProcessor parses page ranges accurately", () =>
         {
             var r1 = PdfSplitProcessor.ParsePageRange("1-3", 10);
