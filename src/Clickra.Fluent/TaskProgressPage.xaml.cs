@@ -404,9 +404,6 @@ public sealed partial class TaskProgressPage : Page
         SplitOverlay.Cancel();
     }
 
-    /// <summary>取消目前的轉換（dashboard 任務紀錄的取消按鈕）。</summary>
-    internal void RequestCancel() => _cts?.Cancel();
-
     /// <summary>標記為縮到匣背景執行（由 TrackWindow 在關窗縮匣時呼叫）。</summary>
     internal void MarkBackgrounded() => _isBackgrounded = true;
 
