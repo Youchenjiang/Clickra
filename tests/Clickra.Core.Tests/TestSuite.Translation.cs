@@ -4,6 +4,7 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using Clickra.Core;
+using Clickra.Core.Application;
 using Clickra.Core.Models;
 using Clickra.Core.Processors;
 using PdfSharp.Drawing;
@@ -23,9 +24,85 @@ static partial class TestSuite
 
     public static void RegisterTranslationTests(TestRunner runner)
     {
+        RegisterTranslationUseCaseTests(runner);
         RegisterFontAndNormalizationTests(runner);
         RegisterPostProcessAndTextTests(runner);
         RegisterEngineAndProcessorTests(runner);
+    }
+
+    private static void RegisterTranslationUseCaseTests(TestRunner runner)
+    {
+        runner.Run("PDF translation use case owns planning and saved target language", () =>
+        {
+            string first = Path.Combine(Path.GetTempPath(), $"clickra-translate-first-{Guid.NewGuid():N}", "first.pdf");
+            string second = Path.Combine(Path.GetTempPath(), $"clickra-translate-second-{Guid.NewGuid():N}", "second.pdf");
+            string originalTargetLanguage = ClickraStorage.GetSetting(ClickraSettings.TranslateTargetLang);
+            try
+            {
+                ClickraStorage.SaveSetting(ClickraSettings.TranslateTargetLang, "ja");
+                var useCase = new TranslatePdfUseCase();
+                ConversionPlan plan = useCase.Plan(new ConversionRequest(
+                    TranslatePdfUseCase.CommandName,
+                    new[] { first, second }));
+
+                Assert.Equal(
+                    Path.Combine(ClickraStorage.GetOutputDir(first), "first_translated.pdf"),
+                    plan.Outputs[0]);
+                Assert.Equal(
+                    Path.Combine(ClickraStorage.GetOutputDir(second), "second_translated.pdf"),
+                    plan.Outputs[1]);
+                Assert.Equal("ja", (string)plan.NormalizedOptions[TranslatePdfUseCase.TargetLanguageOptionKey]);
+                Assert.True(plan.RequiredCapabilities.Count == 0,
+                    "PDF translation must not require a presentation interaction capability.");
+            }
+            finally
+            {
+                ClickraStorage.SaveSetting(ClickraSettings.TranslateTargetLang, originalTargetLanguage);
+            }
+        });
+
+        runner.Run("PDF translation use case honors explicit language and shared output directory", () =>
+        {
+            string input = Path.Combine(Path.GetTempPath(), $"clickra-translate-{Guid.NewGuid():N}.pdf");
+            string outputDir = Path.Combine(Path.GetTempPath(), $"clickra-translate-out-{Guid.NewGuid():N}");
+            var useCase = new TranslatePdfUseCase();
+            ConversionPlan plan = useCase.Plan(new ConversionRequest(
+                TranslatePdfUseCase.CommandName,
+                new[] { input },
+                new Dictionary<string, object>
+                {
+                    [TranslatePdfUseCase.TargetLanguageOptionKey] = "ko"
+                },
+                OutputOverride: outputDir,
+                TrackTaskLifecycle: false));
+
+            Assert.Equal(
+                Path.Combine(Path.GetFullPath(outputDir), Path.GetFileNameWithoutExtension(input) + "_translated.pdf"),
+                plan.Outputs[0]);
+            Assert.Equal("ko", (string)plan.NormalizedOptions[TranslatePdfUseCase.TargetLanguageOptionKey]);
+            Assert.False(plan.TrackTaskLifecycle, "Quiet translation plans must be able to disable task tracking.");
+        });
+
+        runner.Run("PDF translation use case snapshots target language at plan time", () =>
+        {
+            string input = Path.Combine(Path.GetTempPath(), $"clickra-translate-snapshot-{Guid.NewGuid():N}.pdf");
+            string originalTargetLanguage = ClickraStorage.GetSetting(ClickraSettings.TranslateTargetLang);
+            try
+            {
+                ClickraStorage.SaveSetting(ClickraSettings.TranslateTargetLang, "en");
+                var useCase = new TranslatePdfUseCase();
+                ConversionPlan plan = useCase.Plan(new ConversionRequest(
+                    TranslatePdfUseCase.CommandName,
+                    new[] { input }));
+                ClickraStorage.SaveSetting(ClickraSettings.TranslateTargetLang, "ja");
+
+                Assert.Equal("en", (string)plan.NormalizedOptions[TranslatePdfUseCase.TargetLanguageOptionKey]);
+            }
+            finally
+            {
+                ClickraStorage.SaveSetting(ClickraSettings.TranslateTargetLang, originalTargetLanguage);
+            }
+        });
     }
 
     private static void RegisterFontAndNormalizationTests(TestRunner runner)
