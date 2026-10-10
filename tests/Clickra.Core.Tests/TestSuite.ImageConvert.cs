@@ -21,6 +21,12 @@ static partial class TestSuite
     private const string CmdImg2Pdf = "img2pdf";
     private const string ExtHeic = ".heic";
     private const string CliProjectDir = "Clickra.CLI";
+    private const string FirstDirectoryName = "first";
+    private const string SecondDirectoryName = "second";
+    private const string FileAPng = "a.png";
+    private const string FileBJpg = "b.jpg";
+    private const string PhotoPng = "photo.png";
+    private const string PhotoJpg = "photo.jpg";
 
     public static void RegisterImageConvertTests(TestRunner runner)
     {
@@ -202,11 +208,11 @@ static partial class TestSuite
         runner.Run("Image format use cases own per-source output planning", () =>
             RunWithTempDirectory(tempDir =>
             {
-                string firstDir = Path.Combine(tempDir, "first");
-                string secondDir = Path.Combine(tempDir, "second");
+                string firstDir = Path.Combine(tempDir, FirstDirectoryName);
+                string secondDir = Path.Combine(tempDir, SecondDirectoryName);
                 Directory.CreateDirectory(firstDir);
                 Directory.CreateDirectory(secondDir);
-                string first = CreateTestImage(firstDir, "a.png", ImageFormat.Png);
+                string first = CreateTestImage(firstDir, FileAPng, ImageFormat.Png);
                 string second = CreateTestImage(secondDir, "b.gif", ImageFormat.Gif);
 
                 foreach (var (command, extension) in new[]
@@ -230,12 +236,12 @@ static partial class TestSuite
         runner.Run("Image format use case honors shared output directory and collision safety", () =>
             RunWithTempDirectory(tempDir =>
             {
-                string firstDir = Path.Combine(tempDir, "first");
-                string secondDir = Path.Combine(tempDir, "second");
+                string firstDir = Path.Combine(tempDir, FirstDirectoryName);
+                string secondDir = Path.Combine(tempDir, SecondDirectoryName);
                 string outputDir = Path.Combine(tempDir, "out");
                 Directory.CreateDirectory(firstDir);
                 Directory.CreateDirectory(secondDir);
-                string first = CreateTestImage(firstDir, "photo.png", ImageFormat.Png);
+                string first = CreateTestImage(firstDir, PhotoPng, ImageFormat.Png);
                 string second = CreateTestImage(secondDir, "photo.gif", ImageFormat.Gif);
                 var useCase = new ImageFormatConvertUseCase(CmdImgToJpg);
 
@@ -245,7 +251,7 @@ static partial class TestSuite
                         new[] { first, second },
                         OutputOverride: outputDir)));
 
-                Assert.True(ex.Message.Contains("photo.jpg", StringComparison.OrdinalIgnoreCase),
+                Assert.True(ex.Message.Contains(PhotoJpg, StringComparison.OrdinalIgnoreCase),
                     "Collision error should identify the conflicting target path.");
             }));
 
@@ -277,8 +283,8 @@ static partial class TestSuite
         runner.Run("ImgStitch use case owns single-output planning", () =>
             RunWithTempDirectory(tempDir =>
             {
-                string first = CreateTestImage(tempDir, "a.png", ImageFormat.Png);
-                string second = CreateTestImage(tempDir, "b.jpg", ImageFormat.Jpeg);
+                string first = CreateTestImage(tempDir, FileAPng, ImageFormat.Png);
+                string second = CreateTestImage(tempDir, FileBJpg, ImageFormat.Jpeg);
                 ConversionPlan plan = new ImgStitchUseCase().Plan(new ConversionRequest(
                     ImgStitchUseCase.CommandName,
                     new[] { first, second }));
@@ -292,8 +298,8 @@ static partial class TestSuite
         runner.Run("ImgStitch use case honors a shared output directory", () =>
             RunWithTempDirectory(tempDir =>
             {
-                string first = CreateTestImage(tempDir, "a.png", ImageFormat.Png);
-                string second = CreateTestImage(tempDir, "b.jpg", ImageFormat.Jpeg);
+                string first = CreateTestImage(tempDir, FileAPng, ImageFormat.Png);
+                string second = CreateTestImage(tempDir, FileBJpg, ImageFormat.Jpeg);
                 string outputDir = Path.Combine(tempDir, "out");
                 ConversionPlan plan = new ImgStitchUseCase().Plan(new ConversionRequest(
                     ImgStitchUseCase.CommandName,
@@ -323,8 +329,8 @@ static partial class TestSuite
         runner.Run("ImgStitch use case can run without task tracking", () =>
             RunWithTempDirectory(tempDir =>
             {
-                string first = CreateTestImage(tempDir, "a.png", ImageFormat.Png);
-                string second = CreateTestImage(tempDir, "b.jpg", ImageFormat.Jpeg);
+                string first = CreateTestImage(tempDir, FileAPng, ImageFormat.Png);
+                string second = CreateTestImage(tempDir, FileBJpg, ImageFormat.Jpeg);
                 string outputDir = Path.Combine(tempDir, "out");
                 Directory.CreateDirectory(outputDir);
                 var useCase = new ImgStitchUseCase();
@@ -349,8 +355,8 @@ static partial class TestSuite
         runner.Run("ImgMerge use case owns single-output planning", () =>
             RunWithTempDirectory(tempDir =>
             {
-                string first = CreateTestImage(tempDir, "a.png", ImageFormat.Png);
-                string second = CreateTestImage(tempDir, "b.jpg", ImageFormat.Jpeg);
+                string first = CreateTestImage(tempDir, FileAPng, ImageFormat.Png);
+                string second = CreateTestImage(tempDir, FileBJpg, ImageFormat.Jpeg);
                 ConversionPlan plan = new ImgMergeUseCase().Plan(new ConversionRequest(
                     ImgMergeUseCase.CommandName,
                     new[] { first, second }));
@@ -364,8 +370,8 @@ static partial class TestSuite
         runner.Run("ImgMerge use case honors a shared output directory", () =>
             RunWithTempDirectory(tempDir =>
             {
-                string first = CreateTestImage(tempDir, "a.png", ImageFormat.Png);
-                string second = CreateTestImage(tempDir, "b.jpg", ImageFormat.Jpeg);
+                string first = CreateTestImage(tempDir, FileAPng, ImageFormat.Png);
+                string second = CreateTestImage(tempDir, FileBJpg, ImageFormat.Jpeg);
                 string outputDir = Path.Combine(tempDir, "out");
                 ConversionPlan plan = new ImgMergeUseCase().Plan(new ConversionRequest(
                     ImgMergeUseCase.CommandName,
@@ -378,8 +384,8 @@ static partial class TestSuite
         runner.Run("ImgMerge use case can run without task tracking", () =>
             RunWithTempDirectory(tempDir =>
             {
-                string first = CreateTestImage(tempDir, "a.png", ImageFormat.Png);
-                string second = CreateTestImage(tempDir, "b.jpg", ImageFormat.Jpeg);
+                string first = CreateTestImage(tempDir, FileAPng, ImageFormat.Png);
+                string second = CreateTestImage(tempDir, FileBJpg, ImageFormat.Jpeg);
                 string outputDir = Path.Combine(tempDir, "out");
                 Directory.CreateDirectory(outputDir);
                 var useCase = new ImgMergeUseCase();
@@ -403,12 +409,12 @@ static partial class TestSuite
         runner.Run("Img2Pdf use case owns per-source output planning", () =>
             RunWithTempDirectory(tempDir =>
             {
-                string firstDir = Path.Combine(tempDir, "first");
-                string secondDir = Path.Combine(tempDir, "second");
+                string firstDir = Path.Combine(tempDir, FirstDirectoryName);
+                string secondDir = Path.Combine(tempDir, SecondDirectoryName);
                 Directory.CreateDirectory(firstDir);
                 Directory.CreateDirectory(secondDir);
-                string first = CreateTestImage(firstDir, "a.png", ImageFormat.Png);
-                string second = CreateTestImage(secondDir, "b.jpg", ImageFormat.Jpeg);
+                string first = CreateTestImage(firstDir, FileAPng, ImageFormat.Png);
+                string second = CreateTestImage(secondDir, FileBJpg, ImageFormat.Jpeg);
 
                 ConversionPlan plan = new Img2PdfUseCase().Plan(new ConversionRequest(
                     Img2PdfUseCase.CommandName,
@@ -436,12 +442,12 @@ static partial class TestSuite
         runner.Run("Img2Pdf use case rejects colliding shared outputs", () =>
             RunWithTempDirectory(tempDir =>
             {
-                string firstDir = Path.Combine(tempDir, "first");
-                string secondDir = Path.Combine(tempDir, "second");
+                string firstDir = Path.Combine(tempDir, FirstDirectoryName);
+                string secondDir = Path.Combine(tempDir, SecondDirectoryName);
                 Directory.CreateDirectory(firstDir);
                 Directory.CreateDirectory(secondDir);
-                string first = CreateTestImage(firstDir, "photo.png", ImageFormat.Png);
-                string second = CreateTestImage(secondDir, "photo.jpg", ImageFormat.Jpeg);
+                string first = CreateTestImage(firstDir, PhotoPng, ImageFormat.Png);
+                string second = CreateTestImage(secondDir, PhotoJpg, ImageFormat.Jpeg);
                 string outputDir = Path.Combine(tempDir, "out");
 
                 InvalidOperationException ex = Assert.Throws<InvalidOperationException>(() =>
@@ -509,7 +515,7 @@ static partial class TestSuite
         runner.Run("Image format use case predicts target extension per input", () =>
             RunWithTempDirectory(tempDir =>
             {
-                string input = CreateTestImage(tempDir, "photo.png", ImageFormat.Png);
+                string input = CreateTestImage(tempDir, PhotoPng, ImageFormat.Png);
                 ConversionPlan jpgPlan = new ImageFormatConvertUseCase(CmdImgToJpg).Plan(
                     new ConversionRequest(CmdImgToJpg, new[] { input }));
                 Assert.True(jpgPlan.Outputs.Count == 1, "Expected exactly one predicted output.");
@@ -524,26 +530,26 @@ static partial class TestSuite
         runner.Run("Image format use case rejects colliding image outputs", () =>
             RunWithTempDirectory(tempDir =>
             {
-                string png = CreateTestImage(tempDir, "photo.png", ImageFormat.Png);
+                string png = CreateTestImage(tempDir, PhotoPng, ImageFormat.Png);
                 string gif = CreateTestImage(tempDir, "photo.gif", ImageFormat.Gif);
                 InvalidOperationException ex = Assert.Throws<InvalidOperationException>(() =>
                     new ImageFormatConvertUseCase(CmdImgToJpg).Plan(
                         new ConversionRequest(CmdImgToJpg, new[] { png, gif })));
-                Assert.True(ex.Message.Contains("photo.jpg", StringComparison.OrdinalIgnoreCase), "Collision error should identify the conflicting output path.");
+                Assert.True(ex.Message.Contains(PhotoJpg, StringComparison.OrdinalIgnoreCase), "Collision error should identify the conflicting output path.");
                 Assert.False(ex.Message.Contains("{0}", StringComparison.Ordinal), "Collision error should substitute the output path placeholder.");
             }));
 
         runner.Run("Image format use case rejects outputs that overwrite selected inputs", () =>
             RunWithTempDirectory(tempDir =>
             {
-                string png = CreateTestImage(tempDir, "photo.png", ImageFormat.Png);
-                string jpg = CreateTestImage(tempDir, "photo.jpg", ImageFormat.Jpeg);
+                string png = CreateTestImage(tempDir, PhotoPng, ImageFormat.Png);
+                string jpg = CreateTestImage(tempDir, PhotoJpg, ImageFormat.Jpeg);
                 byte[] original = File.ReadAllBytes(png);
 
                 InvalidOperationException ex = Assert.Throws<InvalidOperationException>(() =>
                     new ImageFormatConvertUseCase(CmdImgToPng).Plan(
                         new ConversionRequest(CmdImgToPng, new[] { jpg, png })));
-                Assert.True(ex.Message.Contains("photo.png", StringComparison.OrdinalIgnoreCase),
+                Assert.True(ex.Message.Contains(PhotoPng, StringComparison.OrdinalIgnoreCase),
                     "Collision error should identify the selected input that would be overwritten.");
                 Assert.True(File.ReadAllBytes(png).SequenceEqual(original),
                     "Rejected planning must leave selected inputs untouched.");

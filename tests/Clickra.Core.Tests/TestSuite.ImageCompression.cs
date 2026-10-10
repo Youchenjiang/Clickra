@@ -18,6 +18,8 @@ static partial class TestSuite
     private const string ImageCompressionLevelKey = "level";
     private const string ImageCompressionQualityKey = "quality";
     private const string ImageCompressCommand = "img-compress";
+    private const string CompressionPhotoJpg = "photo.jpg";
+    private const string CompressionPhotoOutputJpg = "photo_compressed.jpg";
 
     public static void RegisterImageCompressionTests(TestRunner runner)
     {
@@ -26,7 +28,7 @@ static partial class TestSuite
         runner.Run("Image compression use case owns planning and saved options", () =>
             RunWithTempDirectory(tempDir =>
             {
-                string source = CreateCompressionNoiseJpeg(tempDir, "photo.jpg", 96, 96, 90L);
+                string source = CreateCompressionNoiseJpeg(tempDir, CompressionPhotoJpg, 96, 96, 90L);
                 string originalLevel = ClickraStorage.GetSetting(ClickraSettings.ImageCompressLevel);
                 string originalMax = ClickraStorage.GetSetting(ClickraSettings.ImageCompressMaxDimension);
                 try
@@ -37,7 +39,7 @@ static partial class TestSuite
                         ImgCompressUseCase.CommandName,
                         new[] { source }));
 
-                    Assert.Equal(Path.Combine(tempDir, "photo_compressed.jpg"), plan.Outputs[0]);
+                    Assert.Equal(Path.Combine(tempDir, CompressionPhotoOutputJpg), plan.Outputs[0]);
                     Assert.Equal(ImageCompressionOptions.OptionMin, (string)plan.NormalizedOptions[ImageCompressionLevelKey]);
                     Assert.True((int)plan.NormalizedOptions[ImageCompressionQualityKey] == 50,
                         "Minimum image compression must snapshot quality 50.");
@@ -56,8 +58,8 @@ static partial class TestSuite
         runner.Run("Image compression use case honors shared output directory and collision safety", () =>
             RunWithTempDirectory(tempDir =>
             {
-                string first = Path.Combine(tempDir, "photo.jpg");
-                string second = Path.Combine(tempDir, "photo_compressed.jpg");
+                string first = Path.Combine(tempDir, CompressionPhotoJpg);
+                string second = Path.Combine(tempDir, CompressionPhotoOutputJpg);
                 File.WriteAllBytes(first, new byte[] { 1 });
                 File.WriteAllBytes(second, new byte[] { 2 });
                 var useCase = new ImgCompressUseCase();
@@ -67,7 +69,7 @@ static partial class TestSuite
                         ImgCompressUseCase.CommandName,
                         new[] { first, second },
                         OutputOverride: tempDir)));
-                Assert.True(ex.Message.Contains("photo_compressed.jpg", StringComparison.OrdinalIgnoreCase),
+                Assert.True(ex.Message.Contains(CompressionPhotoOutputJpg, StringComparison.OrdinalIgnoreCase),
                     "Application planning must identify an output that would overwrite a selected input.");
                 Assert.True(File.ReadAllBytes(second).SequenceEqual(new byte[] { 2 }),
                     "Rejected application planning must leave selected inputs untouched.");
@@ -227,8 +229,8 @@ static partial class TestSuite
         runner.Run("Image compression: output planning rejects collisions with selected inputs", () =>
             RunWithTempDirectory(tempDir =>
             {
-                string first = Path.Combine(tempDir, "photo.jpg");
-                string second = Path.Combine(tempDir, "photo_compressed.jpg");
+                string first = Path.Combine(tempDir, CompressionPhotoJpg);
+                string second = Path.Combine(tempDir, CompressionPhotoOutputJpg);
                 File.WriteAllBytes(first, new byte[] { 1 });
                 File.WriteAllBytes(second, new byte[] { 2 });
 
@@ -238,7 +240,7 @@ static partial class TestSuite
                         ImgCompressUseCase.CommandName,
                         new[] { first, second },
                         OutputOverride: tempDir)));
-                Assert.True(ex.Message.Contains("photo_compressed.jpg", StringComparison.OrdinalIgnoreCase),
+                Assert.True(ex.Message.Contains(CompressionPhotoOutputJpg, StringComparison.OrdinalIgnoreCase),
                     "Collision error must identify the selected input that would be overwritten.");
                 Assert.True(File.ReadAllBytes(second).SequenceEqual(new byte[] { 2 }),
                     "Planning a rejected compression batch must leave every selected input untouched.");
@@ -308,9 +310,9 @@ static partial class TestSuite
         string outputDir = Path.Combine(Path.GetTempPath(), "clickra-registry-output");
         ConversionPlan plan = new ImgCompressUseCase().Plan(new ConversionRequest(
             ImgCompressUseCase.CommandName,
-            new[] { Path.Combine(inputDir, "photo.jpg") },
+            new[] { Path.Combine(inputDir, CompressionPhotoJpg) },
             OutputOverride: outputDir));
-        string expectedOutput = Path.GetFullPath(Path.Combine(outputDir, "photo_compressed.jpg"));
+        string expectedOutput = Path.GetFullPath(Path.Combine(outputDir, CompressionPhotoOutputJpg));
         Assert.True(plan.Outputs.Count == 1 && string.Equals(Path.GetFullPath(plan.Outputs[0]), expectedOutput, StringComparison.OrdinalIgnoreCase),
             ImageCompressCommand + " must honor the output-directory override and preserve the source extension.");
 

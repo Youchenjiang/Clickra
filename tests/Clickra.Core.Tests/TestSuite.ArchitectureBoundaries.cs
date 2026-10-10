@@ -6,6 +6,13 @@ namespace Clickra.Core.Tests;
 static partial class TestSuite
 {
     private const int ArchitectureViolationBaselineCeiling = 17;
+    private const string RepositoryRootMissingMessage = "Could not locate the repository root.";
+    private const string ArchitectureCliProjectDirectory = "Clickra.CLI";
+    private const string ArchitectureCoreProjectDirectory = "Clickra.Core";
+    private const string ArchitectureFluentProjectDirectory = "Clickra.Fluent";
+    private const string ArchitectureProgressDirectory = "Progress";
+    private const string ArchitectureProgressProcessFile = "ProgressWindow.Process.cs";
+    private const string ArchitectureCliSourceFile = "ClickraCli.cs";
     private static readonly TimeSpan ArchitectureRegexTimeout = TimeSpan.FromSeconds(1);
 
     private sealed record ArchitectureViolationRule(
@@ -101,12 +108,12 @@ static partial class TestSuite
     private static void TestArchitectureViolationBaseline()
     {
         string? root = FindRepoRoot();
-        if (root is null) throw new TestSkippedException("Could not locate the repository root.");
+        if (root is null) throw new TestSkippedException(RepositoryRootMissingMessage);
 
         string[] surfaceRoots =
         {
-            Path.Combine(root, "src", "Clickra.CLI"),
-            Path.Combine(root, "src", "Clickra.Fluent")
+            Path.Combine(root, "src", ArchitectureCliProjectDirectory),
+            Path.Combine(root, "src", ArchitectureFluentProjectDirectory)
         };
         string[] sources = surfaceRoots
             .SelectMany(directory => Directory.EnumerateFiles(directory, "*.cs", SearchOption.AllDirectories))
@@ -152,9 +159,9 @@ static partial class TestSuite
     private static void TestApplicationContractsStayUiIndependent()
     {
         string? root = FindRepoRoot();
-        if (root is null) throw new TestSkippedException("Could not locate the repository root.");
+        if (root is null) throw new TestSkippedException(RepositoryRootMissingMessage);
 
-        string applicationDir = Path.Combine(root, "src", "Clickra.Core", "Application");
+        string applicationDir = Path.Combine(root, "src", ArchitectureCoreProjectDirectory, "Application");
         Assert.True(Directory.Exists(applicationDir), "The shared application contract directory must exist.");
 
         string[] forbidden =
@@ -296,14 +303,14 @@ static partial class TestSuite
         string workflowName)
     {
         string? root = FindRepoRoot();
-        if (root is null) throw new TestSkippedException("Could not locate the repository root.");
+        if (root is null) throw new TestSkippedException(RepositoryRootMissingMessage);
 
-        string runner = File.ReadAllText(Path.Combine(root, "src", "Clickra.Core", "Processors", "ConvertCommandRunner.cs"));
-        string registry = File.ReadAllText(Path.Combine(root, "src", "Clickra.Core", "Processors", "ConvertCommandRegistry.cs"));
-        string native = File.ReadAllText(Path.Combine(root, "src", "Clickra.CLI", "Progress", "ProgressWindow.Process.cs"));
-        string quiet = File.ReadAllText(Path.Combine(root, "src", "Clickra.CLI", "Cli", "ClickraCli.cs"));
-        string fluentMain = File.ReadAllText(Path.Combine(root, "src", "Clickra.Fluent", "MainPage.xaml.cs"));
-        string fluentTask = File.ReadAllText(Path.Combine(root, "src", "Clickra.Fluent", "TaskProgressPage.xaml.cs"));
+        string runner = File.ReadAllText(Path.Combine(root, "src", ArchitectureCoreProjectDirectory, "Processors", "ConvertCommandRunner.cs"));
+        string registry = File.ReadAllText(Path.Combine(root, "src", ArchitectureCoreProjectDirectory, "Processors", "ConvertCommandRegistry.cs"));
+        string native = File.ReadAllText(Path.Combine(root, "src", ArchitectureCliProjectDirectory, ArchitectureProgressDirectory, ArchitectureProgressProcessFile));
+        string quiet = File.ReadAllText(Path.Combine(root, "src", ArchitectureCliProjectDirectory, "Cli", ArchitectureCliSourceFile));
+        string fluentMain = File.ReadAllText(Path.Combine(root, "src", ArchitectureFluentProjectDirectory, "MainPage.xaml.cs"));
+        string fluentTask = File.ReadAllText(Path.Combine(root, "src", ArchitectureFluentProjectDirectory, "TaskProgressPage.xaml.cs"));
 
         Assert.False(runner.Contains($"case \"{command}\"", StringComparison.Ordinal),
             $"Legacy ConvertCommandRunner must not retain a {workflowName} execution branch after migration.");
