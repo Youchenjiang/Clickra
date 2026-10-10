@@ -325,18 +325,7 @@ namespace Clickra
                 case "img-compress":
                     ValidateExtensions(files, command, quiet, allowed);
                     RequireMinFiles(files, command, ConvertCommandRegistry.GetMinFiles(command), quiet);
-                    if (quiet)
-                    {
-                        var outputs = ConvertCommandRegistry.EstimateImageCompressionOutputs(files, outputDirOverride ?? outputDir);
-                        ConvertCommandRunner.Run(
-                            command,
-                            files,
-                            outputs,
-                            (curr, total, msg) => Console.WriteLine($"[Progress] {msg}"),
-                            new ConvertCommandRunner.ConversionOptions(
-                                _ => System.Threading.Tasks.Task.FromResult<string?>(null),
-                                (_, _) => System.Threading.Tasks.Task.FromResult<string?>(null)));
-                    }
+                    if (quiet) HandleImgCompressQuiet(files, outputDirOverride ?? outputDir);
                     else ProgressWindow.Show(command, files, outputDirOverride);
                     return true;
                 case "img-to-png":
@@ -406,6 +395,29 @@ namespace Clickra
             IConversionUseCase useCase = ConversionUseCases.GetRequired(ImgStitchUseCase.CommandName);
             ConversionPlan plan = useCase.Plan(new ConversionRequest(
                 ImgStitchUseCase.CommandName,
+                files,
+                OutputOverride: outputDir,
+                TrackTaskLifecycle: false));
+            var interaction = new DelegateConversionInteraction(
+                (_, _, _, _) => Task.FromResult<string?>(null),
+                (_, _, _) => Task.FromResult<string?>(null),
+                (_, _, _) => Task.FromResult<IReadOnlyDictionary<string, object>?>(null));
+            var progress = new SynchronousProgress<ConversionProgress>(state =>
+                Console.WriteLine($"[Progress] {state.Message}"));
+
+            ConversionResult result = useCase.ExecuteAsync(plan, interaction, progress)
+                .GetAwaiter()
+                .GetResult();
+            if (result.Status != ConversionResultStatus.Succeeded)
+                throw new InvalidOperationException(result.Error ?? Loc("error_processing_failed"));
+        }
+
+        /// <summary>Compresses images in quiet mode using one shared output directory.</summary>
+        private static void HandleImgCompressQuiet(List<string> files, string outputDir)
+        {
+            IConversionUseCase useCase = ConversionUseCases.GetRequired(ImgCompressUseCase.CommandName);
+            ConversionPlan plan = useCase.Plan(new ConversionRequest(
+                ImgCompressUseCase.CommandName,
                 files,
                 OutputOverride: outputDir,
                 TrackTaskLifecycle: false));
