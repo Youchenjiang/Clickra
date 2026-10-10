@@ -5,21 +5,31 @@ namespace Clickra.Core.Tests;
 
 static partial class TestSuite
 {
-    private const int ArchitectureViolationBaselineCeiling = 16;
+    private const int ArchitectureViolationBaselineCeiling = 9;
     private const string RepositoryRootMissingMessage = "Could not locate the repository root.";
     private const string ArchitectureCliProjectDirectory = "Clickra.CLI";
     private const string ArchitectureCoreProjectDirectory = "Clickra.Core";
     private const string ArchitectureFluentProjectDirectory = "Clickra.Fluent";
     private const string ArchitectureProgressDirectory = "Progress";
+    private const string ArchitectureProcessorsDirectory = "Processors";
     private const string ArchitectureProgressProcessFile = "ProgressWindow.Process.cs";
     private const string ArchitectureCliSourceFile = "ClickraCli.cs";
     private const string GenericCatalogResolution = "ConversionUseCases.GetRequired(command)";
+    private const string GenericCatalogTryGet = "ConversionUseCases.TryGet(command";
     private static readonly TimeSpan ArchitectureRegexTimeout = TimeSpan.FromSeconds(1);
 
     private sealed record ArchitectureViolationRule(
         string Name,
         Regex Pattern,
         IReadOnlyDictionary<string, int> Baseline);
+
+    private sealed record MigrationSurfaceSources(
+        string Runner,
+        string Registry,
+        string Native,
+        string Quiet,
+        string FluentMain,
+        string FluentTask);
 
     private static readonly ArchitectureViolationRule[] ArchitectureViolationRules =
     {
@@ -28,8 +38,6 @@ static partial class TestSuite
             new Regex(@"\bFileProcessor\.", RegexOptions.Compiled, ArchitectureRegexTimeout),
             new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase)
             {
-                ["src/Clickra.CLI/Cli/ClickraCli.cs"] = 6,
-                ["src/Clickra.CLI/Progress/ProgressWindow.Process.cs"] = 1,
                 ["src/Clickra.CLI/Progress/ProgressWindow.VisualSplitter.cs"] = 1,
                 ["src/Clickra.Fluent/Controls/VisualSplitterControl.xaml.cs"] = 1
             }),
@@ -103,6 +111,24 @@ static partial class TestSuite
         runner.RunGuard(
             "Architecture boundaries: migrated image format workflows have one execution owner",
             TestImageFormatWorkflowsHaveSingleExecutionOwner);
+        runner.RunGuard(
+            "Architecture boundaries: migrated PDF translation workflow has one execution owner",
+            TestTranslatePdfWorkflowHasSingleExecutionOwner);
+        runner.RunGuard(
+            "Architecture boundaries: migrated Word conversion workflow has one execution owner",
+            TestWordToPdfWorkflowHasSingleExecutionOwner);
+        runner.RunGuard(
+            "Architecture boundaries: migrated PowerPoint conversion workflow has one execution owner",
+            TestPptToPdfWorkflowHasSingleExecutionOwner);
+        runner.RunGuard(
+            "Architecture boundaries: migrated Excel conversion workflow has one execution owner",
+            TestExcelToPdfWorkflowHasSingleExecutionOwner);
+        runner.RunGuard(
+            "Architecture boundaries: migrated Markdown PDF workflow has one execution owner",
+            TestMarkdownToPdfWorkflowHasSingleExecutionOwner);
+        runner.RunGuard(
+            "Architecture boundaries: migrated Markdown Word workflow has one execution owner",
+            TestMarkdownToWordWorkflowHasSingleExecutionOwner);
     }
 
     private static void TestArchitectureViolationBaseline()
@@ -213,7 +239,13 @@ static partial class TestSuite
         IConversionUseCase img2Pdf = ConversionUseCases.GetRequired(Img2PdfUseCase.CommandName);
         IConversionUseCase imgStitch = ConversionUseCases.GetRequired(ImgStitchUseCase.CommandName);
         IConversionUseCase merge = ConversionUseCases.GetRequired(MergePdfUseCase.CommandName);
+        IConversionUseCase markdownPdf = ConversionUseCases.GetRequired(MarkdownToPdfUseCase.CommandName);
+        IConversionUseCase markdownWord = ConversionUseCases.GetRequired(MarkdownToWordUseCase.CommandName);
         IConversionUseCase split = ConversionUseCases.GetRequired(SplitPdfUseCase.CommandName);
+        IConversionUseCase translate = ConversionUseCases.GetRequired(TranslatePdfUseCase.CommandName);
+        IConversionUseCase excel = ConversionUseCases.GetRequired(ExcelToPdfUseCase.CommandName);
+        IConversionUseCase ppt = ConversionUseCases.GetRequired(PptToPdfUseCase.CommandName);
+        IConversionUseCase word = ConversionUseCases.GetRequired(WordToPdfUseCase.CommandName);
         Assert.True(compress is CompressPdfUseCase,
             "compress-pdf must resolve through the product-wide application use-case catalog.");
         Assert.True(decrypt is DecryptPdfUseCase,
@@ -243,8 +275,20 @@ static partial class TestSuite
         }
         Assert.True(merge is MergePdfUseCase,
             "merge-pdf must resolve through the product-wide application use-case catalog.");
+        Assert.True(markdownPdf is MarkdownToPdfUseCase,
+            "md2pdf must resolve through the product-wide application use-case catalog.");
+        Assert.True(markdownWord is MarkdownToWordUseCase,
+            "md2word must resolve through the product-wide application use-case catalog.");
         Assert.True(split is SplitPdfUseCase,
             "split-pdf must resolve through the product-wide application use-case catalog.");
+        Assert.True(translate is TranslatePdfUseCase,
+            "translate-pdf must resolve through the product-wide application use-case catalog.");
+        Assert.True(excel is ExcelToPdfUseCase,
+            "excel2pdf must resolve through the product-wide application use-case catalog.");
+        Assert.True(ppt is PptToPdfUseCase,
+            "ppt2pdf must resolve through the product-wide application use-case catalog.");
+        Assert.True(word is WordToPdfUseCase,
+            "word2pdf must resolve through the product-wide application use-case catalog.");
         Assert.True(ConversionUseCases.Commands.Count(command =>
                 command.Equals(CompressPdfUseCase.CommandName, StringComparison.OrdinalIgnoreCase)) == 1,
             "The product catalog must expose exactly one compress-pdf owner.");
@@ -267,8 +311,26 @@ static partial class TestSuite
                 command.Equals(MergePdfUseCase.CommandName, StringComparison.OrdinalIgnoreCase)) == 1,
             "The product catalog must expose exactly one merge-pdf owner.");
         Assert.True(ConversionUseCases.Commands.Count(command =>
+                command.Equals(MarkdownToPdfUseCase.CommandName, StringComparison.OrdinalIgnoreCase)) == 1,
+            "The product catalog must expose exactly one md2pdf owner.");
+        Assert.True(ConversionUseCases.Commands.Count(command =>
+                command.Equals(MarkdownToWordUseCase.CommandName, StringComparison.OrdinalIgnoreCase)) == 1,
+            "The product catalog must expose exactly one md2word owner.");
+        Assert.True(ConversionUseCases.Commands.Count(command =>
                 command.Equals(SplitPdfUseCase.CommandName, StringComparison.OrdinalIgnoreCase)) == 1,
             "The product catalog must expose exactly one split-pdf owner.");
+        Assert.True(ConversionUseCases.Commands.Count(command =>
+                command.Equals(TranslatePdfUseCase.CommandName, StringComparison.OrdinalIgnoreCase)) == 1,
+            "The product catalog must expose exactly one translate-pdf owner.");
+        Assert.True(ConversionUseCases.Commands.Count(command =>
+                command.Equals(ExcelToPdfUseCase.CommandName, StringComparison.OrdinalIgnoreCase)) == 1,
+            "The product catalog must expose exactly one excel2pdf owner.");
+        Assert.True(ConversionUseCases.Commands.Count(command =>
+                command.Equals(PptToPdfUseCase.CommandName, StringComparison.OrdinalIgnoreCase)) == 1,
+            "The product catalog must expose exactly one ppt2pdf owner.");
+        Assert.True(ConversionUseCases.Commands.Count(command =>
+                command.Equals(WordToPdfUseCase.CommandName, StringComparison.OrdinalIgnoreCase)) == 1,
+            "The product catalog must expose exactly one word2pdf owner.");
     }
 
     private static void TestDecryptWorkflowHasSingleExecutionOwner()
@@ -302,39 +364,31 @@ static partial class TestSuite
         string? useCaseTypeName,
         string workflowName)
     {
-        string? root = FindRepoRoot();
-        if (root is null) throw new TestSkippedException(RepositoryRootMissingMessage);
+        MigrationSurfaceSources sources = ReadMigrationSurfaceSources();
 
-        string runner = File.ReadAllText(Path.Combine(root, "src", ArchitectureCoreProjectDirectory, "Processors", "ConvertCommandRunner.cs"));
-        string registry = File.ReadAllText(Path.Combine(root, "src", ArchitectureCoreProjectDirectory, "Processors", "ConvertCommandRegistry.cs"));
-        string native = File.ReadAllText(Path.Combine(root, "src", ArchitectureCliProjectDirectory, ArchitectureProgressDirectory, ArchitectureProgressProcessFile));
-        string quiet = File.ReadAllText(Path.Combine(root, "src", ArchitectureCliProjectDirectory, "Cli", ArchitectureCliSourceFile));
-        string fluentMain = File.ReadAllText(Path.Combine(root, "src", ArchitectureFluentProjectDirectory, "MainPage.xaml.cs"));
-        string fluentTask = File.ReadAllText(Path.Combine(root, "src", ArchitectureFluentProjectDirectory, "TaskProgressPage.xaml.cs"));
-
-        Assert.False(runner.Contains($"case \"{command}\"", StringComparison.Ordinal),
+        Assert.False(sources.Runner.Contains($"case \"{command}\"", StringComparison.Ordinal),
             $"Legacy ConvertCommandRunner must not retain a {workflowName} execution branch after migration.");
-        Assert.False(registry.Contains(legacyOutputSuffix, StringComparison.Ordinal),
+        Assert.False(sources.Registry.Contains(legacyOutputSuffix, StringComparison.Ordinal),
             $"Legacy ConvertCommandRegistry must not retain {workflowName} output-path policy after application migration.");
-        Assert.False(native.Contains(processorCall, StringComparison.Ordinal),
+        Assert.False(sources.Native.Contains(processorCall, StringComparison.Ordinal),
             $"Native presentation must not execute the {workflowName} processor directly.");
-        Assert.False(quiet.Contains(processorCall, StringComparison.Ordinal),
+        Assert.False(sources.Quiet.Contains(processorCall, StringComparison.Ordinal),
             $"Headless CLI must not execute the {workflowName} processor directly.");
         string? specificCatalogResolution = useCaseTypeName is null
             ? null
             : $"ConversionUseCases.GetRequired({useCaseTypeName}.CommandName)";
         bool nativeCatalogResolution =
-            native.Contains(GenericCatalogResolution, StringComparison.Ordinal)
+            sources.Native.Contains(GenericCatalogResolution, StringComparison.Ordinal)
             || (specificCatalogResolution is not null
-                && native.Contains(specificCatalogResolution, StringComparison.Ordinal));
+                && sources.Native.Contains(specificCatalogResolution, StringComparison.Ordinal));
         bool quietCatalogResolution =
-            quiet.Contains(GenericCatalogResolution, StringComparison.Ordinal)
+            sources.Quiet.Contains(GenericCatalogResolution, StringComparison.Ordinal)
             || (specificCatalogResolution is not null
-                && quiet.Contains(specificCatalogResolution, StringComparison.Ordinal));
-        Assert.True((fluentMain.Contains("ConversionUseCases.TryGet(command", StringComparison.Ordinal)
-                     || fluentMain.Contains(GenericCatalogResolution, StringComparison.Ordinal))
-                    && (fluentTask.Contains("ConversionUseCases.TryGet(command", StringComparison.Ordinal)
-                        || fluentTask.Contains(GenericCatalogResolution, StringComparison.Ordinal))
+                && sources.Quiet.Contains(specificCatalogResolution, StringComparison.Ordinal));
+        Assert.True((sources.FluentMain.Contains(GenericCatalogTryGet, StringComparison.Ordinal)
+                     || sources.FluentMain.Contains(GenericCatalogResolution, StringComparison.Ordinal))
+                    && (sources.FluentTask.Contains(GenericCatalogTryGet, StringComparison.Ordinal)
+                        || sources.FluentTask.Contains(GenericCatalogResolution, StringComparison.Ordinal))
                     && nativeCatalogResolution
                     && quietCatalogResolution,
             $"All product surfaces must resolve {workflowName} execution through the application use-case catalog.");
@@ -398,6 +452,134 @@ static partial class TestSuite
                 null,
                 command);
         }
+    }
+
+    private static void TestTranslatePdfWorkflowHasSingleExecutionOwner()
+        => AssertDocumentWorkflowHasSingleExecutionOwner(
+            TranslatePdfUseCase.CommandName,
+            "Path.GetFileNameWithoutExtension(f) + \"_translated.pdf\"",
+            "FileProcessor.TranslatePdf",
+            nameof(TranslatePdfUseCase),
+            "PDF translation",
+            registryMarkerMustBeAbsent: true);
+
+    private static void TestWordToPdfWorkflowHasSingleExecutionOwner()
+        => AssertDocumentWorkflowHasSingleExecutionOwner(
+            WordToPdfUseCase.CommandName,
+            "word2pdf output planning is owned by the application use case.",
+            "FileProcessor.ConvertWordToPdf",
+            nameof(WordToPdfUseCase),
+            "Word conversion");
+
+    private static void TestPptToPdfWorkflowHasSingleExecutionOwner()
+        => AssertDocumentWorkflowHasSingleExecutionOwner(
+            PptToPdfUseCase.CommandName,
+            "ppt2pdf output planning is owned by the application use case.",
+            "FileProcessor.ConvertPptToPdf",
+            nameof(PptToPdfUseCase),
+            "PowerPoint conversion");
+
+    private static void TestExcelToPdfWorkflowHasSingleExecutionOwner()
+        => AssertDocumentWorkflowHasSingleExecutionOwner(
+            ExcelToPdfUseCase.CommandName,
+            "excel2pdf output planning is owned by the application use case.",
+            "FileProcessor.ConvertExcelToPdf",
+            nameof(ExcelToPdfUseCase),
+            "Excel conversion");
+
+    private static void TestMarkdownToPdfWorkflowHasSingleExecutionOwner()
+    {
+        AssertDocumentWorkflowHasSingleExecutionOwner(
+            MarkdownToPdfUseCase.CommandName,
+            "md2pdf output planning is owned by the application use case.",
+            "FileProcessor.ConvertMarkdownToPdf",
+            nameof(MarkdownToPdfUseCase),
+            "Markdown PDF conversion");
+        AssertMarkdownWorkflowPreservesPresentationOptions(MarkdownToPdfUseCase.CommandName, "md2pdf");
+    }
+
+    private static void TestMarkdownToWordWorkflowHasSingleExecutionOwner()
+    {
+        AssertDocumentWorkflowHasSingleExecutionOwner(
+            MarkdownToWordUseCase.CommandName,
+            "md2word output planning is owned by the application use case.",
+            "FileProcessor.ConvertMarkdownToWord",
+            nameof(MarkdownToWordUseCase),
+            "Markdown Word conversion");
+        AssertMarkdownWorkflowPreservesPresentationOptions(MarkdownToWordUseCase.CommandName, "md2word");
+    }
+
+    private static void AssertDocumentWorkflowHasSingleExecutionOwner(
+        string command,
+        string registryMarker,
+        string processorCall,
+        string useCaseTypeName,
+        string workflowName,
+        bool registryMarkerMustBeAbsent = false)
+    {
+        MigrationSurfaceSources sources = ReadMigrationSurfaceSources();
+
+        Assert.False(sources.Runner.Contains($"case \"{command}\"", StringComparison.Ordinal),
+            $"Legacy ConvertCommandRunner must not retain {workflowName} execution after migration.");
+        Assert.True(sources.Registry.Contains(registryMarker, StringComparison.Ordinal) != registryMarkerMustBeAbsent,
+            registryMarkerMustBeAbsent
+                ? $"Legacy ConvertCommandRegistry must not retain {workflowName} output planning after migration."
+                : $"Legacy ConvertCommandRegistry must fail closed instead of planning {workflowName} outputs after migration.");
+        Assert.False(sources.Native.Contains(processorCall, StringComparison.Ordinal),
+            $"Native presentation must not execute {workflowName} directly.");
+        Assert.False(sources.Quiet.Contains(processorCall, StringComparison.Ordinal),
+            $"Headless CLI must not execute {workflowName} directly.");
+
+        string specificCatalogResolution = $"ConversionUseCases.GetRequired({useCaseTypeName}.CommandName)";
+        Assert.True((sources.FluentMain.Contains(GenericCatalogTryGet, StringComparison.Ordinal)
+                     || sources.FluentMain.Contains(GenericCatalogResolution, StringComparison.Ordinal))
+                    && (sources.FluentTask.Contains(GenericCatalogTryGet, StringComparison.Ordinal)
+                        || sources.FluentTask.Contains(GenericCatalogResolution, StringComparison.Ordinal))
+                    && (sources.Native.Contains(GenericCatalogResolution, StringComparison.Ordinal)
+                        || sources.Native.Contains(specificCatalogResolution, StringComparison.Ordinal))
+                    && (sources.Quiet.Contains(GenericCatalogResolution, StringComparison.Ordinal)
+                        || sources.Quiet.Contains(specificCatalogResolution, StringComparison.Ordinal)),
+            $"All product surfaces must resolve {workflowName} through the application use-case catalog.");
+    }
+
+    private static MigrationSurfaceSources ReadMigrationSurfaceSources()
+    {
+        string? root = FindRepoRoot();
+        if (root is null) throw new TestSkippedException(RepositoryRootMissingMessage);
+
+        return new MigrationSurfaceSources(
+            File.ReadAllText(Path.Combine(root, "src", ArchitectureCoreProjectDirectory, ArchitectureProcessorsDirectory, "ConvertCommandRunner.cs")),
+            File.ReadAllText(Path.Combine(root, "src", ArchitectureCoreProjectDirectory, ArchitectureProcessorsDirectory, "ConvertCommandRegistry.cs")),
+            File.ReadAllText(Path.Combine(root, "src", ArchitectureCliProjectDirectory, ArchitectureProgressDirectory, ArchitectureProgressProcessFile)),
+            File.ReadAllText(Path.Combine(root, "src", ArchitectureCliProjectDirectory, "Cli", ArchitectureCliSourceFile)),
+            File.ReadAllText(Path.Combine(root, "src", ArchitectureFluentProjectDirectory, "MainPage.xaml.cs")),
+            File.ReadAllText(Path.Combine(root, "src", ArchitectureFluentProjectDirectory, "TaskProgressPage.xaml.cs")));
+    }
+
+    private static void AssertMarkdownWorkflowPreservesPresentationOptions(string command, string workflowName)
+    {
+        string? root = FindRepoRoot();
+        if (root is null) throw new TestSkippedException(RepositoryRootMissingMessage);
+
+        string native = File.ReadAllText(Path.Combine(root, "src", ArchitectureCliProjectDirectory, ArchitectureProgressDirectory, ArchitectureProgressProcessFile));
+        string quiet = File.ReadAllText(Path.Combine(root, "src", ArchitectureCliProjectDirectory, "Cli", ArchitectureCliSourceFile));
+        string fluentMain = File.ReadAllText(Path.Combine(root, "src", ArchitectureFluentProjectDirectory, "MainPage.xaml.cs"));
+        string fluentTask = File.ReadAllText(Path.Combine(root, "src", ArchitectureFluentProjectDirectory, "TaskProgressPage.xaml.cs"));
+
+        Assert.True(native.Contains("CommandOptions: _commandOptions", StringComparison.Ordinal)
+                    && native.Contains("new TaskIdExecutionObserver(this, TryRecordTaskIndex)", StringComparison.Ordinal)
+                    && native.Contains("ResumeStartIndex = _startIndex", StringComparison.Ordinal),
+            $"Native {workflowName} must route its option snapshot and resume checkpoint through the application owner.");
+        Assert.True((quiet.Contains(GenericCatalogResolution, StringComparison.Ordinal)
+                     || quiet.Contains($"ConversionUseCases.GetRequired({command})", StringComparison.Ordinal)
+                     || quiet.Contains($"ConversionUseCases.GetRequired({(command == MarkdownToPdfUseCase.CommandName ? nameof(MarkdownToPdfUseCase) : nameof(MarkdownToWordUseCase))}.CommandName)", StringComparison.Ordinal))
+                    && quiet.Contains("MarkdownPdfOptions.Create()", StringComparison.Ordinal)
+                    && quiet.Contains("TrackTaskLifecycle: false", StringComparison.Ordinal),
+            $"Headless {workflowName} must use default Markdown options without task lifecycle ownership.");
+        Assert.True(fluentMain.Contains("commandOptions));", StringComparison.Ordinal)
+                    && fluentTask.Contains("commandOptions,", StringComparison.Ordinal)
+                    && fluentTask.Contains("ExistingTaskId: existingTaskId", StringComparison.Ordinal),
+            $"Both Fluent {workflowName} paths must forward the already-prompted Markdown option snapshot into planning.");
     }
 
     private sealed class StubConversionUseCase(string command) : IConversionUseCase

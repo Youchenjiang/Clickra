@@ -194,6 +194,8 @@ static partial class TestSuite
         string runner = File.ReadAllText(Path.Combine(root, "src", CoreProjectDirectory, "Processors", "ConvertCommandRunner.cs"));
         string native = File.ReadAllText(Path.Combine(root, "src", CliProjectDirectory, "Progress", "ProgressWindow.Process.cs"));
         string lifecycle = File.ReadAllText(Path.Combine(root, "src", CoreProjectDirectory, "Processors", "ConversionTaskLifecycle.cs"));
+        string perFileUseCaseBase = File.ReadAllText(Path.Combine(root, "src", CoreProjectDirectory, "Application", "PerFileConversionUseCaseBase.cs"));
+        string markdownUseCaseBase = File.ReadAllText(Path.Combine(root, "src", CoreProjectDirectory, "Application", "MarkdownConversionUseCaseBase.cs"));
 
         foreach ((string name, string source) in new[] { ("ConvertCommandRunner", runner), ("ProgressWindow", native) })
         {
@@ -218,9 +220,11 @@ static partial class TestSuite
         Assert.True(native.Contains("RunSharedCommand(cmd, currentFiles, plannedOutputs, progressCallback)", StringComparison.Ordinal)
                     && native.Contains("ConvertCommandRunner.Run(", StringComparison.Ordinal),
             "Native commands without Win32-specific behavior must dispatch through the shared Core runner.");
-        Assert.True(native.Contains("OnFileStarting: TryRecordTaskIndex", StringComparison.Ordinal)
-                    && runner.Contains("onFileStarting?.Invoke(i)", StringComparison.Ordinal),
-            "Shared per-file dispatch must preserve the Native resume checkpoint before processing each file.");
+        Assert.True(native.Contains("new TaskIdExecutionObserver(this, TryRecordTaskIndex)", StringComparison.Ordinal)
+                    && perFileUseCaseBase.Contains("observer?.OnFileStarting(i)", StringComparison.Ordinal)
+                    && markdownUseCaseBase.Contains(": PerFileConversionUseCaseBase", StringComparison.Ordinal)
+                    && markdownUseCaseBase.Contains("plan.ResumeStartIndex;", StringComparison.Ordinal),
+            "Migrated per-file dispatch must preserve the Native resume checkpoint before processing each file.");
         foreach (string sharedCommand in new[] { "ppt2pdf", "word2pdf", "excel2pdf", "md2pdf", "md2word", CmdMergePdf, "img-merge", "img-stitch", "img-compress", "img-to-png" })
         {
             Assert.False(native.Contains($"case \"{sharedCommand}\":", StringComparison.Ordinal),

@@ -93,46 +93,7 @@ public static class ConvertCommandRunner
             ConversionOptions options,
             CancellationToken token = default)
         {
-            switch (command)
-            {
-                case "ppt2pdf":
-                    FileProcessor.ConvertPptToPdf(files, progress, token);
-                    break;
-                case "word2pdf":
-                    FileProcessor.ConvertWordToPdf(files, progress, token);
-                    break;
-                case "excel2pdf":
-                    FileProcessor.ConvertExcelToPdf(files, progress, token);
-                    break;
-                case "md2pdf":
-                {
-                    Dictionary<string, object> markdownOptions = options.CommandOptions ?? MarkdownPdfOptions.Create();
-                    RunPerFile(files, outputs, (f, o, p, t) => FileProcessor.ConvertMarkdownToPdf(f, o, markdownOptions, p, t), progress, options.StartIndex, options.OnFileStarting, token);
-                    break;
-                }
-                case "md2word":
-                {
-                    Dictionary<string, object> markdownOptions = options.CommandOptions ?? MarkdownPdfOptions.Create();
-                    RunPerFile(files, outputs, (f, o, p, t) => FileProcessor.ConvertMarkdownToWord(f, o, markdownOptions, p, t), progress, options.StartIndex, options.OnFileStarting, token);
-                    break;
-                }
-                case "translate-pdf":
-                    RunPerFile(files, outputs, (f, o, p, t) => FileProcessor.TranslatePdf(f, o, ClickraStorage.GetSetting(ClickraSettings.TranslateTargetLang), p, t), progress, options.StartIndex, options.OnFileStarting, token);
-                    break;
-                default:
-                    throw new InvalidOperationException($"Unknown convert command '{command}'.");
-            }
-        }
-
-        private static void RunPerFile(List<string> files, List<string> outputs, Action<string, string, Action<int, int, string>, CancellationToken> action, Action<int, int, string> progress, int startIndex, Action<int>? onFileStarting, CancellationToken token)
-        {
-            for (int i = startIndex; i < files.Count; i++)
-            {
-                token.ThrowIfCancellationRequested();
-                onFileStarting?.Invoke(i);
-                int index = i;
-                action(files[i], outputs[i], (c, t, m) => progress((index * 100) + c, files.Count * 100, m), token);
-            }
+            throw new InvalidOperationException($"Unknown convert command '{command}'.");
         }
 
     }

@@ -8,6 +8,7 @@ public static class ConversionUseCases
         {
             new CompressPdfUseCase(),
             new DecryptPdfUseCase(),
+            new ExcelToPdfUseCase(),
             new ImgCompressUseCase(),
             new ImageFormatConvertUseCase(ImageFormatConvertUseCase.PngCommand),
             new ImageFormatConvertUseCase(ImageFormatConvertUseCase.JpgCommand),
@@ -18,7 +19,12 @@ public static class ConversionUseCases
             new Img2PdfUseCase(),
             new ImgStitchUseCase(),
             new MergePdfUseCase(),
-            new SplitPdfUseCase()
+            new MarkdownToPdfUseCase(),
+            new MarkdownToWordUseCase(),
+            new PptToPdfUseCase(),
+            new SplitPdfUseCase(),
+            new TranslatePdfUseCase(),
+            new WordToPdfUseCase()
         });
 
     public static IReadOnlyCollection<string> Commands => Registry.Commands;

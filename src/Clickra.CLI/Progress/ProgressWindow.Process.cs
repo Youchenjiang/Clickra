@@ -77,18 +77,40 @@ namespace Clickra.UI
                     Loc("cli_progress_converting_image", Path.GetFileName(files[fileIndex]), fileIndex + 1, files.Count));
         }
 
-        private sealed class TaskIdExecutionObserver(ProgressWindow owner) : IConversionExecutionObserver
+        private sealed class TaskIdExecutionObserver(
+            ProgressWindow owner,
+            Action<int>? onFileStarting = null) : IConversionExecutionObserver
         {
             public void OnTaskStarted(string taskId) => owner.TaskId = taskId;
 
-            public void OnFileStarting(int fileIndex) { }
+            public void OnFileStarting(int fileIndex) => onFileStarting?.Invoke(fileIndex);
         }
 
         private sealed record SimpleApplicationRunOptions(
             string? OutputOverride,
             bool Resume,
             IConversionExecutionObserver Observer,
-            string? SuccessMessage = null);
+            string? SuccessMessage = null,
+            IReadOnlyDictionary<string, object>? CommandOptions = null);
+
+        private sealed class TranslateExecutionObserver(
+            ProgressWindow owner,
+            IReadOnlyList<string> files,
+            Action<int, int, string> progressCallback) : IConversionExecutionObserver
+        {
+            public int CurrentFileIndex { get; private set; }
+
+            public void OnTaskStarted(string taskId) => owner.TaskId = taskId;
+
+            public void OnFileStarting(int fileIndex)
+            {
+                CurrentFileIndex = fileIndex;
+                progressCallback(
+                    (fileIndex * 100) + 10,
+                    files.Count * 100,
+                    Loc("cli_progress_translating_pdf", Path.GetFileName(files[fileIndex]), fileIndex + 1, files.Count));
+            }
+        }
 
         private string? _inputPassword = null;
         private bool _passwordCancelled = false;
@@ -144,10 +166,7 @@ namespace Clickra.UI
                 TaskId = lifecycle.TaskId;
 
                 List<string> plannedOutputs = ConvertCommandRegistry.EstimateOutputs(cmd, currentFiles, _outputDirOverride);
-                if (string.Equals(cmd, "translate-pdf", StringComparison.Ordinal))
-                    RunTranslatePdf(currentFiles, plannedOutputs, progressCallback);
-                else
-                    RunSharedCommand(cmd, currentFiles, plannedOutputs, progressCallback);
+                RunSharedCommand(cmd, currentFiles, plannedOutputs, progressCallback);
 
                 string endTime = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
                 string outputs = string.Join(";", plannedOutputs);
@@ -465,6 +484,41 @@ namespace Clickra.UI
                         new TaskIdExecutionObserver(this)));
                 return true;
             }
+            if (command.Equals(TranslatePdfUseCase.CommandName, StringComparison.OrdinalIgnoreCase))
+            {
+                RunApplicationTranslate(hwnd, files, progressCallback);
+                return true;
+            }
+            if (command.Equals(WordToPdfUseCase.CommandName, StringComparison.OrdinalIgnoreCase)
+                || command.Equals(PptToPdfUseCase.CommandName, StringComparison.OrdinalIgnoreCase)
+                || command.Equals(ExcelToPdfUseCase.CommandName, StringComparison.OrdinalIgnoreCase))
+            {
+                RunSimpleApplicationCommand(
+                    hwnd,
+                    command,
+                    files,
+                    progressCallback,
+                    new SimpleApplicationRunOptions(
+                        _outputDirOverride,
+                        true,
+                        new TaskIdExecutionObserver(this)));
+                return true;
+            }
+            if (command.Equals(MarkdownToPdfUseCase.CommandName, StringComparison.OrdinalIgnoreCase)
+                || command.Equals(MarkdownToWordUseCase.CommandName, StringComparison.OrdinalIgnoreCase))
+            {
+                RunSimpleApplicationCommand(
+                    hwnd,
+                    command,
+                    files,
+                    progressCallback,
+                    new SimpleApplicationRunOptions(
+                        _outputDirOverride,
+                        true,
+                        new TaskIdExecutionObserver(this, TryRecordTaskIndex),
+                        CommandOptions: _commandOptions));
+                return true;
+            }
             return false;
         }
 
@@ -479,6 +533,7 @@ namespace Clickra.UI
             ConversionPlan plan = useCase.Plan(new ConversionRequest(
                 command,
                 files,
+                options.CommandOptions,
                 ExistingTaskId: _existingTaskId,
                 OutputOverride: options.OutputOverride,
                 BestEffortTaskPersistence: true));
@@ -513,6 +568,77 @@ namespace Clickra.UI
                 setAllDoneMessage: true);
         }
 
+        private void RunApplicationTranslate(
+            IntPtr hwnd,
+            List<string> files,
+            Action<int, int, string> progressCallback)
+        {
+            IConversionUseCase useCase = ConversionUseCases.GetRequired(TranslatePdfUseCase.CommandName);
+            ConversionPlan plan = useCase.Plan(new ConversionRequest(
+                TranslatePdfUseCase.CommandName,
+                files,
+                ExistingTaskId: _existingTaskId,
+                BestEffortTaskPersistence: true)) with
+            {
+                ResumeStartIndex = _startIndex
+            };
+            var interaction = new DelegateConversionInteraction(
+                (_, _, _, _) => System.Threading.Tasks.Task.FromResult<string?>(null),
+                (_, _, _) => System.Threading.Tasks.Task.FromResult<string?>(null),
+                (_, _, _) => System.Threading.Tasks.Task.FromResult<IReadOnlyDictionary<string, object>?>(null));
+            var observer = new TranslateExecutionObserver(this, files, progressCallback);
+            var progress = new CallbackProgress<ConversionProgress>(state =>
+            {
+                int fileIndex = observer.CurrentFileIndex;
+                int localProgress = Math.Clamp(state.Current - (fileIndex * 100), 0, 100);
+                int progressPct = (int)(localProgress * 80.0 / 100) + 10;
+                progressCallback(
+                    (fileIndex * 100) + progressPct,
+                    files.Count * 100,
+                    Loc("cli_progress_translating_pdf_stage", state.Message, fileIndex + 1, files.Count));
+            });
+
+            ConversionResult result = useCase.ExecuteAsync(
+                    plan,
+                    interaction,
+                    progress,
+                    observer,
+                    _cts.Token)
+                .GetAwaiter()
+                .GetResult();
+
+            if (result.Status == ConversionResultStatus.Succeeded)
+            {
+                _cts.Token.ThrowIfCancellationRequested();
+                progressCallback(
+                    files.Count * 100,
+                    files.Count * 100,
+                    Loc("cli_progress_translating_pdf_saving"));
+                lock (_stateLock)
+                {
+                    _completed = true;
+                    _message = Loc("cli_progress_all_done");
+                }
+                PostMessageW(hwnd, WM_USER_INVALIDATE, (IntPtr)1, IntPtr.Zero);
+                ShowToastNotification(TranslatePdfUseCase.CommandName, files.Count);
+                Thread.Sleep(1500);
+                ConversionTaskCleanup.Delete(result.TaskId, bestEffort: true);
+                PostMessageW(hwnd, 0x0010, IntPtr.Zero, IntPtr.Zero); // WM_CLOSE
+                return;
+            }
+
+            bool wasCanceled = result.Status == ConversionResultStatus.Canceled;
+            string errorMsg = wasCanceled ? "User Aborted" : result.Error ?? "";
+            lock (_stateLock)
+            {
+                _hasError = true;
+                _errorMessage = errorMsg;
+            }
+            PostMessageW(hwnd, WM_USER_INVALIDATE, (IntPtr)1, IntPtr.Zero);
+            ConversionTaskCleanup.Delete(result.TaskId, bestEffort: true);
+            PostMessageW(hwnd, 0x0010, IntPtr.Zero, IntPtr.Zero); // WM_CLOSE
+        }
+
         /// <summary>Runs commands that do not need Native-only progress or prompt handling through
         /// the shared Core dispatcher. Native-specific cases remain explicit in RunProcessing.</summary>
         private void RunSharedCommand(string command, List<string> files, List<string> outputs, Action<int, int, string> progressCallback)
@@ -530,26 +656,6 @@ namespace Clickra.UI
                     OnFileStarting: TryRecordTaskIndex),
                 _cts.Token);
         }
-        /// <summary>Translates each PDF to the saved target language, reporting per-file
-        /// progress through the callback.</summary>
-        private void RunTranslatePdf(List<string> files, List<string> outputs, Action<int, int, string> progressCallback)
-        {
-            string targetLang = ClickraStorage.GetSetting(ClickraSettings.TranslateTargetLang);
-            for (int i = _startIndex; i < files.Count; i++)
-            {
-                _cts.Token.ThrowIfCancellationRequested();
-                TryRecordTaskIndex(i);
-                var f = files[i];
-                progressCallback((i * 100) + 10, files.Count * 100, Loc("cli_progress_translating_pdf", Path.GetFileName(f), i + 1, files.Count));
-                FileProcessor.TranslatePdf(f, outputs[i], targetLang, (curr, tot, msg) => {
-                    int progressPct = tot > 0 ? (int)(curr * 80.0 / tot) + 10 : 10;
-                    progressCallback((i * 100) + progressPct, files.Count * 100, Loc("cli_progress_translating_pdf_stage", msg, i + 1, files.Count));
-                }, _cts.Token);
-            }
-            _cts.Token.ThrowIfCancellationRequested();
-            progressCallback(files.Count * 100, files.Count * 100, Loc("cli_progress_translating_pdf_saving"));
-        }
-
         /// <summary>Reads the --pages / -p page-range option from the command line.</summary>
         private static string GetSplitPagesOptionFromCommandLine()
         {
