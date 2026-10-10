@@ -15,6 +15,8 @@ namespace Clickra
 {
     partial class ClickraCli
     {
+        private const string ErrorProcessingFailedKey = "error_processing_failed";
+
         /// <summary>Immutable options captured before CLI command dispatch begins.</summary>
         internal sealed record DispatchOptions(
             bool Quiet,
@@ -47,26 +49,12 @@ namespace Clickra
                     [CompressPdfUseCase.LevelOptionKey] = compressionLevel
                 }
                 : null;
-            IConversionUseCase useCase = ConversionUseCases.GetRequired(CompressPdfUseCase.CommandName);
-            ConversionPlan plan = useCase.Plan(new ConversionRequest(
+            RunQuietUseCase(
                 CompressPdfUseCase.CommandName,
                 files,
                 options,
-                OutputOverride: outputDir,
-                TrackTaskLifecycle: false));
-            var interaction = new DelegateConversionInteraction(
-                (_, _, _, _) => Task.FromResult<string?>(null),
-                (_, _, _) => Task.FromResult<string?>(null),
-                (_, _, _) => Task.FromResult<IReadOnlyDictionary<string, object>?>(null));
-            var progress = new SynchronousProgress<ConversionProgress>(state =>
-                Console.WriteLine($"[Progress] {state.Message}"));
-            var observer = new QuietCompressObserver(files);
-
-            ConversionResult result = useCase.ExecuteAsync(plan, interaction, progress, observer)
-                .GetAwaiter()
-                .GetResult();
-            if (result.Status != ConversionResultStatus.Succeeded)
-                throw new InvalidOperationException(result.Error ?? Loc("error_processing_failed"));
+                outputDir,
+                observer: new QuietCompressObserver(files));
         }
 
         /// <summary>Translates each PDF in quiet mode, saving render debug logs and a health
@@ -249,53 +237,25 @@ namespace Clickra
 
         /// <summary>Runs merge-pdf in quiet mode, preserving the shared output directory.</summary>
         private static void HandleMergePdfQuiet(List<string> files, string outputDir)
-        {
-            IConversionUseCase useCase = ConversionUseCases.GetRequired(MergePdfUseCase.CommandName);
-            ConversionPlan plan = useCase.Plan(new ConversionRequest(
-                MergePdfUseCase.CommandName,
-                files,
-                OutputOverride: outputDir,
-                TrackTaskLifecycle: false));
-            var interaction = new DelegateConversionInteraction(
-                (_, _, _, _) => Task.FromResult<string?>(null),
-                (_, _, _) => Task.FromResult<string?>(null),
-                (_, _, _) => Task.FromResult<IReadOnlyDictionary<string, object>?>(null));
-            var progress = new SynchronousProgress<ConversionProgress>(state =>
-                Console.WriteLine($"[Progress] {state.Message}"));
-
-            ConversionResult result = useCase.ExecuteAsync(plan, interaction, progress)
-                .GetAwaiter()
-                .GetResult();
-            if (result.Status != ConversionResultStatus.Succeeded)
-                throw new InvalidOperationException(result.Error ?? Loc("error_processing_failed"));
-        }
+            => RunQuietUseCase(MergePdfUseCase.CommandName, files, null, outputDir);
 
         /// <summary>Runs the split-pdf command in quiet mode, writing one output file per input.</summary>
         private static void HandleSplitPdfQuiet(List<string> files, string outputDir, string pagesOption)
         {
-            IConversionUseCase useCase = ConversionUseCases.GetRequired(SplitPdfUseCase.CommandName);
-            ConversionPlan plan = useCase.Plan(new ConversionRequest(
+            var interaction = new DelegateConversionInteraction(
+                (_, _, _, _) => Task.FromResult<string?>(null),
+                (_, _, _) => Task.FromResult<string?>(pagesOption),
+                (_, _, _) => Task.FromResult<IReadOnlyDictionary<string, object>?>(null));
+            RunQuietUseCase(
                 SplitPdfUseCase.CommandName,
                 files,
                 new Dictionary<string, object>
                 {
                     [SplitPdfUseCase.PagesOptionKey] = pagesOption
                 },
-                OutputOverride: outputDir,
-                TrackTaskLifecycle: false));
-            var interaction = new DelegateConversionInteraction(
-                (_, _, _, _) => Task.FromResult<string?>(null),
-                (_, _, _) => Task.FromResult<string?>(pagesOption),
-                (_, _, _) => Task.FromResult<IReadOnlyDictionary<string, object>?>(null));
-            var progress = new SynchronousProgress<ConversionProgress>(state =>
-                Console.WriteLine($"[Progress] {state.Message}"));
-            var observer = new QuietSplitObserver(files);
-
-            ConversionResult result = useCase.ExecuteAsync(plan, interaction, progress, observer)
-                .GetAwaiter()
-                .GetResult();
-            if (result.Status != ConversionResultStatus.Succeeded)
-                throw new InvalidOperationException(result.Error ?? Loc("error_processing_failed"));
+                outputDir,
+                interaction,
+                new QuietSplitObserver(files));
         }
 
         /// <summary>Handles image conversion, merge and stitching commands.</summary>
@@ -360,116 +320,30 @@ namespace Clickra
 
         /// <summary>Converts images to the requested format in quiet mode using one shared output directory.</summary>
         private static void HandleImageFormatQuiet(string command, List<string> files, string outputDir)
-        {
-            IConversionUseCase useCase = ConversionUseCases.GetRequired(command);
-            ConversionPlan plan = useCase.Plan(new ConversionRequest(
-                command,
-                files,
-                OutputOverride: outputDir,
-                TrackTaskLifecycle: false));
-            var interaction = new DelegateConversionInteraction(
-                (_, _, _, _) => Task.FromResult<string?>(null),
-                (_, _, _) => Task.FromResult<string?>(null),
-                (_, _, _) => Task.FromResult<IReadOnlyDictionary<string, object>?>(null));
-            var progress = new SynchronousProgress<ConversionProgress>(state =>
-                Console.WriteLine($"[Progress] {state.Message}"));
-
-            ConversionResult result = useCase.ExecuteAsync(plan, interaction, progress)
-                .GetAwaiter()
-                .GetResult();
-            if (result.Status != ConversionResultStatus.Succeeded)
-                throw new InvalidOperationException(result.Error ?? Loc("error_processing_failed"));
-        }
+            => RunQuietUseCase(command, files, null, outputDir);
 
         /// <summary>Merges images into one PDF in quiet mode.</summary>
         private static void HandleImgMergeQuiet(List<string> files, string outputDir)
-        {
-            IConversionUseCase useCase = ConversionUseCases.GetRequired(ImgMergeUseCase.CommandName);
-            ConversionPlan plan = useCase.Plan(new ConversionRequest(
-                ImgMergeUseCase.CommandName,
-                files,
-                OutputOverride: outputDir,
-                TrackTaskLifecycle: false));
-            var interaction = new DelegateConversionInteraction(
-                (_, _, _, _) => Task.FromResult<string?>(null),
-                (_, _, _) => Task.FromResult<string?>(null),
-                (_, _, _) => Task.FromResult<IReadOnlyDictionary<string, object>?>(null));
-            var progress = new SynchronousProgress<ConversionProgress>(state =>
-                Console.WriteLine($"[Progress] {state.Message}"));
-
-            ConversionResult result = useCase.ExecuteAsync(plan, interaction, progress)
-                .GetAwaiter()
-                .GetResult();
-            if (result.Status != ConversionResultStatus.Succeeded)
-                throw new InvalidOperationException(result.Error ?? Loc("error_processing_failed"));
-        }
+            => RunQuietUseCase(ImgMergeUseCase.CommandName, files, null, outputDir);
 
         /// <summary>Stitches images into one PNG in quiet mode.</summary>
         private static void HandleImgStitchQuiet(List<string> files, string outputDir)
-        {
-            IConversionUseCase useCase = ConversionUseCases.GetRequired(ImgStitchUseCase.CommandName);
-            ConversionPlan plan = useCase.Plan(new ConversionRequest(
-                ImgStitchUseCase.CommandName,
-                files,
-                OutputOverride: outputDir,
-                TrackTaskLifecycle: false));
-            var interaction = new DelegateConversionInteraction(
-                (_, _, _, _) => Task.FromResult<string?>(null),
-                (_, _, _) => Task.FromResult<string?>(null),
-                (_, _, _) => Task.FromResult<IReadOnlyDictionary<string, object>?>(null));
-            var progress = new SynchronousProgress<ConversionProgress>(state =>
-                Console.WriteLine($"[Progress] {state.Message}"));
-
-            ConversionResult result = useCase.ExecuteAsync(plan, interaction, progress)
-                .GetAwaiter()
-                .GetResult();
-            if (result.Status != ConversionResultStatus.Succeeded)
-                throw new InvalidOperationException(result.Error ?? Loc("error_processing_failed"));
-        }
+            => RunQuietUseCase(ImgStitchUseCase.CommandName, files, null, outputDir);
 
         /// <summary>Compresses images in quiet mode using one shared output directory.</summary>
         private static void HandleImgCompressQuiet(List<string> files, string outputDir)
-        {
-            IConversionUseCase useCase = ConversionUseCases.GetRequired(ImgCompressUseCase.CommandName);
-            ConversionPlan plan = useCase.Plan(new ConversionRequest(
-                ImgCompressUseCase.CommandName,
-                files,
-                OutputOverride: outputDir,
-                TrackTaskLifecycle: false));
-            var interaction = new DelegateConversionInteraction(
-                (_, _, _, _) => Task.FromResult<string?>(null),
-                (_, _, _) => Task.FromResult<string?>(null),
-                (_, _, _) => Task.FromResult<IReadOnlyDictionary<string, object>?>(null));
-            var progress = new SynchronousProgress<ConversionProgress>(state =>
-                Console.WriteLine($"[Progress] {state.Message}"));
-
-            ConversionResult result = useCase.ExecuteAsync(plan, interaction, progress)
-                .GetAwaiter()
-                .GetResult();
-            if (result.Status != ConversionResultStatus.Succeeded)
-                throw new InvalidOperationException(result.Error ?? Loc("error_processing_failed"));
-        }
+            => RunQuietUseCase(ImgCompressUseCase.CommandName, files, null, outputDir);
 
         /// <summary>Converts each image to its own PDF in quiet mode.</summary>
         private static void HandleImg2PdfQuiet(List<string> files, string outputDir)
         {
-            IConversionUseCase useCase = ConversionUseCases.GetRequired(Img2PdfUseCase.CommandName);
-            ConversionPlan plan = useCase.Plan(new ConversionRequest(
+            RunQuietUseCase(
                 Img2PdfUseCase.CommandName,
                 files,
-                OutputOverride: outputDir,
-                TrackTaskLifecycle: false));
-            var interaction = new DelegateConversionInteraction(
-                (_, _, _, _) => Task.FromResult<string?>(null),
-                (_, _, _) => Task.FromResult<string?>(null),
-                (_, _, _) => Task.FromResult<IReadOnlyDictionary<string, object>?>(null));
-            var observer = new QuietImg2PdfObserver(files);
-
-            ConversionResult result = useCase.ExecuteAsync(plan, interaction, progress: null, observer)
-                .GetAwaiter()
-                .GetResult();
-            if (result.Status != ConversionResultStatus.Succeeded)
-                throw new InvalidOperationException(result.Error ?? Loc("error_processing_failed"));
+                null,
+                outputDir,
+                observer: new QuietImg2PdfObserver(files),
+                reportProgress: false);
 
             Console.WriteLine($"[Progress] {Loc("cli_progress_converting_image_saving")}");
         }
@@ -478,12 +352,6 @@ namespace Clickra
         /// password errors into a localized message.</summary>
         private static void HandleDecryptPdfQuiet(List<string> files, string outputDir)
         {
-            IConversionUseCase useCase = ConversionUseCases.GetRequired(DecryptPdfUseCase.CommandName);
-            ConversionPlan plan = useCase.Plan(new ConversionRequest(
-                DecryptPdfUseCase.CommandName,
-                files,
-                OutputOverride: outputDir,
-                TrackTaskLifecycle: false));
             string passwordError = Localization.T(
                 "error_pdf_password_quiet",
                 ClickraStorage.GetSetting(ClickraSettings.Language));
@@ -491,15 +359,45 @@ namespace Clickra
                 (_, _, _, _) => Task.FromException<string?>(new InvalidOperationException(passwordError)),
                 (_, _, _) => Task.FromResult<string?>(null),
                 (_, _, _) => Task.FromResult<IReadOnlyDictionary<string, object>?>(null));
-            var progress = new SynchronousProgress<ConversionProgress>(state =>
-                Console.WriteLine($"[Progress] {state.Message}"));
-            var observer = new QuietDecryptObserver(files);
+            RunQuietUseCase(
+                DecryptPdfUseCase.CommandName,
+                files,
+                null,
+                outputDir,
+                interaction,
+                new QuietDecryptObserver(files));
+        }
+
+        private static void RunQuietUseCase(
+            string command,
+            List<string> files,
+            IReadOnlyDictionary<string, object>? options,
+            string outputDir,
+            IConversionInteraction? interaction = null,
+            IConversionExecutionObserver? observer = null,
+            bool reportProgress = true)
+        {
+            IConversionUseCase useCase = ConversionUseCases.GetRequired(command);
+            ConversionPlan plan = useCase.Plan(new ConversionRequest(
+                command,
+                files,
+                options,
+                OutputOverride: outputDir,
+                TrackTaskLifecycle: false));
+            interaction ??= new DelegateConversionInteraction(
+                (_, _, _, _) => Task.FromResult<string?>(null),
+                (_, _, _) => Task.FromResult<string?>(null),
+                (_, _, _) => Task.FromResult<IReadOnlyDictionary<string, object>?>(null));
+            IProgress<ConversionProgress>? progress = reportProgress
+                ? new SynchronousProgress<ConversionProgress>(state =>
+                    Console.WriteLine($"[Progress] {state.Message}"))
+                : null;
 
             ConversionResult result = useCase.ExecuteAsync(plan, interaction, progress, observer)
                 .GetAwaiter()
                 .GetResult();
             if (result.Status != ConversionResultStatus.Succeeded)
-                throw new InvalidOperationException(result.Error ?? Loc("error_processing_failed"));
+                throw new InvalidOperationException(result.Error ?? Loc(ErrorProcessingFailedKey));
         }
 
         private sealed class QuietDecryptObserver(IReadOnlyList<string> files) : IConversionExecutionObserver
