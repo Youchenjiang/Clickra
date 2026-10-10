@@ -570,6 +570,7 @@ static partial class TestSuite
         if (root is null) throw new TestSkippedException("Could not locate the repository root.");
 
         string runner = File.ReadAllText(Path.Combine(root, "src", "Clickra.Core", "Processors", "ConvertCommandRunner.cs"));
+        string registry = File.ReadAllText(Path.Combine(root, "src", "Clickra.Core", "Processors", "ConvertCommandRegistry.cs"));
         string native = File.ReadAllText(Path.Combine(root, "src", "Clickra.CLI", "Progress", "ProgressWindow.Process.cs"));
         string quiet = File.ReadAllText(Path.Combine(root, "src", "Clickra.CLI", "Cli", "ClickraCli.cs"));
         string fluentMain = File.ReadAllText(Path.Combine(root, "src", "Clickra.Fluent", "MainPage.xaml.cs"));
@@ -579,6 +580,10 @@ static partial class TestSuite
             "Legacy ConvertCommandRunner must not retain md2pdf execution after application migration.");
         Assert.True(runner.Contains("case \"md2word\"", StringComparison.Ordinal),
             "The independent md2word legacy workflow must remain available until its own migration.");
+        Assert.True(registry.Contains("md2pdf output planning is owned by the application use case.", StringComparison.Ordinal),
+            "Legacy ConvertCommandRegistry must fail closed instead of planning md2pdf outputs after migration.");
+        Assert.True(registry.Contains("CmdMdToWord => files.Select", StringComparison.Ordinal),
+            "The independent md2word legacy planner must remain available until its own migration.");
         Assert.False(native.Contains("FileProcessor.ConvertMarkdownToPdf", StringComparison.Ordinal),
             "Native presentation must not execute Markdown PDF conversion directly.");
         Assert.False(quiet.Contains("FileProcessor.ConvertMarkdownToPdf", StringComparison.Ordinal),

@@ -111,7 +111,7 @@ static partial class TestSuite
                     "Cancellation before parsing must preserve existing PDF bytes.");
             }));
 
-        runner.Run("Markdown to PDF: registry exposes Markdown inputs and PDF outputs", () =>
+        runner.Run("Markdown to PDF: registry exposes inputs and use case owns PDF outputs", () =>
         {
             Assert.True(ConvertCommandRegistry.IsKnownCommand(MarkdownToPdfCommand), MarkdownToPdfCommand + " must be a registered conversion command.");
             string[] allowed = ConvertCommandRegistry.GetAllowedExtensions(MarkdownToPdfCommand);
@@ -124,9 +124,12 @@ static partial class TestSuite
             {
                 string input = Path.Combine(tempDir, "notes.md");
                 File.WriteAllText(input, "# Notes");
-                List<string> outputs = ConvertCommandRegistry.EstimateOutputs(MarkdownToPdfCommand, new List<string> { input });
-                Assert.True(outputs.Count == 1, MarkdownToPdfCommand + " must plan one PDF output per Markdown input.");
-                Assert.Equal(Path.GetFullPath(Path.Combine(tempDir, "notes.pdf")), Path.GetFullPath(outputs[0]));
+                ConversionPlan plan = new MarkdownToPdfUseCase().Plan(new ConversionRequest(
+                    MarkdownToPdfCommand,
+                    new[] { input },
+                    TrackTaskLifecycle: false));
+                Assert.True(plan.Outputs.Count == 1, MarkdownToPdfCommand + " must plan one PDF output per Markdown input.");
+                Assert.Equal(Path.GetFullPath(Path.Combine(tempDir, "notes.pdf")), Path.GetFullPath(plan.Outputs[0]));
             });
         });
 

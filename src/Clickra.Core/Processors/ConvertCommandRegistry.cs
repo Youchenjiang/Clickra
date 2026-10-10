@@ -78,9 +78,8 @@ public static class ConvertCommandRegistry
                     "split-pdf output planning is owned by the application use case."),
                 CmdImg2Pdf => throw new InvalidOperationException(
                     "img2pdf output planning is owned by the application use case."),
-                CmdMdToPdf => files.Select(f => Path.Combine(
-                    string.IsNullOrWhiteSpace(outputDirOverride) ? ClickraStorage.GetOutputDir(f) : Path.GetFullPath(outputDirOverride),
-                    Path.GetFileNameWithoutExtension(f) + ".pdf")).ToList(),
+                CmdMdToPdf => throw new InvalidOperationException(
+                    "md2pdf output planning is owned by the application use case."),
                 CmdMdToWord => files.Select(f => Path.Combine(
                     string.IsNullOrWhiteSpace(outputDirOverride) ? ClickraStorage.GetOutputDir(f) : Path.GetFullPath(outputDirOverride),
                     Path.GetFileNameWithoutExtension(f) + ".docx")).ToList(),
