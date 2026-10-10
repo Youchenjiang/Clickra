@@ -74,13 +74,13 @@ public static class ConvertCommandRegistry
         }
 
         /// <summary>The saved image compression quality level, clamped to the declared range.</summary>
-        public static int GetImageCompressLevel() =>
+        private static int GetImageCompressLevel() =>
             ClickraSettings.ClampNumericSetting(
                 ClickraSettings.ImageCompressLevel,
                 ClickraStorage.GetSettingInt(ClickraSettings.ImageCompressLevel));
 
         /// <summary>The saved max long-edge dimension for image compression (0 = original), clamped to the declared range.</summary>
-        public static int GetImageCompressMaxDimension() =>
+        private static int GetImageCompressMaxDimension() =>
             ClickraSettings.ClampNumericSetting(
                 ClickraSettings.ImageCompressMaxDimension,
                 ClickraStorage.GetSettingInt(ClickraSettings.ImageCompressMaxDimension));
