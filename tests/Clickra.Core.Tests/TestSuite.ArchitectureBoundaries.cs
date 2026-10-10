@@ -5,7 +5,7 @@ namespace Clickra.Core.Tests;
 
 static partial class TestSuite
 {
-    private const int ArchitectureViolationBaselineCeiling = 17;
+    private const int ArchitectureViolationBaselineCeiling = 16;
     private const string RepositoryRootMissingMessage = "Could not locate the repository root.";
     private const string ArchitectureCliProjectDirectory = "Clickra.CLI";
     private const string ArchitectureCoreProjectDirectory = "Clickra.Core";
@@ -55,8 +55,7 @@ static partial class TestSuite
             new Regex(@"\bswitch\s*\(\s*(?:cmd|command)\s*\)", RegexOptions.Compiled, ArchitectureRegexTimeout),
             new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase)
             {
-                ["src/Clickra.CLI/Cli/ClickraCli.cs"] = 3,
-                ["src/Clickra.CLI/Progress/ProgressWindow.Process.cs"] = 1
+                ["src/Clickra.CLI/Cli/ClickraCli.cs"] = 3
             })
     };
 
