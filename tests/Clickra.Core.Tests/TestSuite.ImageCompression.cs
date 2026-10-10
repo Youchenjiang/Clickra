@@ -154,7 +154,12 @@ static partial class TestSuite
                     image.Save(source, ImageFormat.Png);
                 }
 
-                FileProcessor.CompressImage(source, output, level: 1, maxDimension: 80);
+                FileProcessor.CompressImage(source, output, new Dictionary<string, object>
+                {
+                    [ImageCompressionLevelKey] = ImageCompressionOptions.OptionSmall,
+                    [ImageCompressionQualityKey] = ImageCompressionOptions.GetQuality(ImageCompressionLevel.Small),
+                    ["max_dimension"] = 80
+                });
 
                 using var compressed = new Bitmap(output);
                 Assert.True(compressed.Width == 80 && compressed.Height == 40,
@@ -166,7 +171,12 @@ static partial class TestSuite
             {
                 string source = Path.Combine(tempDir, "source.png");
                 using (var image = new Bitmap(32, 32)) image.Save(source, ImageFormat.Png);
-                Assert.Throws<InvalidOperationException>(() => FileProcessor.CompressImage(source, source));
+                Assert.Throws<InvalidOperationException>(() => FileProcessor.CompressImage(source, source, new Dictionary<string, object>
+                {
+                    [ImageCompressionLevelKey] = ImageCompressionOptions.OptionSmall,
+                    [ImageCompressionQualityKey] = ImageCompressionOptions.GetQuality(ImageCompressionLevel.Small),
+                    ["max_dimension"] = 0
+                }));
             }));
 
         runner.Run("Image compression: interface dispatch initializes processor state", () =>
