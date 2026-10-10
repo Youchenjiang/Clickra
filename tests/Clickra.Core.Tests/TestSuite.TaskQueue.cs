@@ -3,6 +3,7 @@ using System.IO;
 using System.Linq;
 using System.Threading;
 using Clickra.Core;
+using Clickra.Core.Processors;
 
 namespace Clickra.Core.Tests;
 
@@ -10,6 +11,8 @@ static partial class TestSuite
 {
     private const string CmdSplitPdf = "split-pdf";
     private const string CmdDecryptPdf = "decrypt-pdf";
+    private const string CmdMergePdf = "merge-pdf";
+    private const string CoreProjectDirectory = "Clickra.Core";
     private const string ParkReason = "Waiting for input";
     private const string SettingParkedRetention = "ParkedTaskRetention";
     private const string TestInDir = @"C:\in";
@@ -69,6 +72,146 @@ static partial class TestSuite
             TestClaimParkedTaskForResume);
         runner.Run("CLI Dashboard History page exposes resume and cancel for parked conversions",
             TestCliDashboardParkedTaskResumeAndCancelEntryPoint);
+        runner.Run("Conversion lifecycle preserves an explicit start time",
+            TestConversionLifecyclePreservesExplicitStartTime);
+        runner.Run("Conversion lifecycle owns per-file resume checkpoints",
+            TestConversionLifecycleOwnsResumeCheckpoint);
+        runner.Run("Conversion runner reports the shared lifecycle task id",
+            TestConversionRunnerReportsLifecycleTaskId);
+        runner.Run("Conversion output planning preserves each source directory",
+            TestConversionOutputPlanningPreservesSourceDirectories);
+        runner.RunGuard("Conversion lifecycle: Native and Fluent runners share task tracking",
+            TestConversionLifecycleIsShared);
+    }
+
+    private static void TestConversionLifecycleOwnsResumeCheckpoint()
+    {
+        ConversionTaskLifecycle lifecycle = ConversionTaskLifecycle.Start(
+            "decrypt-pdf",
+            new[] { TestInDir + FileA1, TestInDir + FileA2 });
+        try
+        {
+            lifecycle.RecordFileStarting(1);
+            ClickraStorage.HistoryEntry? entry = ClickraStorage.GetTask(lifecycle.TaskId);
+            Assert.True(entry.HasValue && entry.Value.CurrentIndex == 1,
+                "The shared lifecycle must persist the current file index for resume.");
+        }
+        finally
+        {
+            lifecycle.Delete();
+        }
+    }
+
+    private static void TestConversionRunnerReportsLifecycleTaskId()
+    {
+        string? observedTaskId = null;
+        ConvertCommandRunner.ConvertRunResult result = ConvertCommandRunner.RunTrackedAsync(
+                "unknown-command",
+                new List<string> { TestInDir + FileA },
+                new List<string> { TestOutDir + FileA },
+                (_, _) => { },
+                new ConvertCommandRunner.ConversionOptions(
+                    _ => Task.FromResult<string?>(null),
+                    (_, _) => Task.FromResult<string?>(null),
+                    OnTaskStarted: taskId => observedTaskId = taskId))
+            .GetAwaiter()
+            .GetResult();
+        try
+        {
+            Assert.False(string.IsNullOrWhiteSpace(observedTaskId), "Tracked runs must report their lifecycle task id.");
+            Assert.Equal(result.TaskId, observedTaskId!);
+        }
+        finally
+        {
+            if (!string.IsNullOrWhiteSpace(result.TaskId))
+                ClickraStorage.DeleteTask(result.TaskId);
+        }
+    }
+
+    private static void TestConversionLifecyclePreservesExplicitStartTime()
+    {
+        const string expectedStartTime = "2026-10-10 02:30:00";
+        ConversionTaskLifecycle lifecycle = ConversionTaskLifecycle.Start(
+            CmdMergePdf,
+            Array.Empty<string>(),
+            startTimeOverride: expectedStartTime);
+        try
+        {
+            Assert.Equal(expectedStartTime, lifecycle.StartTime);
+        }
+        finally
+        {
+            lifecycle.Delete();
+        }
+    }
+
+    private static void TestConversionOutputPlanningPreservesSourceDirectories()
+    {
+        string previous = ClickraStorage.GetSetting(ClickraSettings.OutputDir);
+        try
+        {
+            ClickraStorage.SaveSetting(ClickraSettings.OutputDir, ClickraSettings.DefaultOutputDirSource);
+            RunWithTempDirectory(tempDir =>
+            {
+                string firstDir = Path.Combine(tempDir, "first");
+                string secondDir = Path.Combine(tempDir, "second");
+                Directory.CreateDirectory(firstDir);
+                Directory.CreateDirectory(secondDir);
+                string first = Path.Combine(firstDir, "a.pdf");
+                string second = Path.Combine(secondDir, "b.pdf");
+
+                List<string> outputs = ConvertCommandRegistry.EstimateOutputs("compress-pdf", new List<string> { first, second });
+
+                Assert.Equal(Path.Combine(firstDir, "a_compressed.pdf"), outputs[0]);
+                Assert.Equal(Path.Combine(secondDir, "b_compressed.pdf"), outputs[1]);
+            });
+        }
+        finally
+        {
+            ClickraStorage.SaveSetting(ClickraSettings.OutputDir, previous);
+        }
+    }
+
+    private static void TestConversionLifecycleIsShared()
+    {
+        string? root = FindRepoRoot();
+        if (root is null) throw new TestSkippedException(RepoRootNotFoundMessage);
+
+        string runner = File.ReadAllText(Path.Combine(root, "src", CoreProjectDirectory, "Processors", "ConvertCommandRunner.cs"));
+        string native = File.ReadAllText(Path.Combine(root, "src", CliProjectDirectory, "Progress", "ProgressWindow.Process.cs"));
+        string lifecycle = File.ReadAllText(Path.Combine(root, "src", CoreProjectDirectory, "Processors", "ConversionTaskLifecycle.cs"));
+
+        foreach ((string name, string source) in new[] { ("ConvertCommandRunner", runner), ("ProgressWindow", native) })
+        {
+            Assert.True(source.Contains("ConversionTaskLifecycle.Start(", StringComparison.Ordinal),
+                $"{name} must start task tracking through the shared conversion lifecycle.");
+            Assert.False(source.Contains("ClickraStorage.StartTask(", StringComparison.Ordinal),
+                $"{name} must not create task records outside the shared conversion lifecycle.");
+            Assert.False(source.Contains("ClickraStorage.CompleteTask(", StringComparison.Ordinal),
+                $"{name} must not complete task records outside the shared conversion lifecycle.");
+        }
+
+        Assert.True(lifecycle.Contains("ClickraStorage.StartTask(", StringComparison.Ordinal)
+                    && lifecycle.Contains("ClickraStorage.CompleteTask(", StringComparison.Ordinal)
+                    && lifecycle.Contains("ClickraStorage.ParkTask(", StringComparison.Ordinal),
+            "ConversionTaskLifecycle must own the shared task state transitions.");
+
+        Assert.True(native.Contains("ConvertCommandRegistry.EstimateOutputs(cmd, currentFiles, _outputDirOverride)", StringComparison.Ordinal),
+            "Native conversion output planning must use the same registry as Fluent tracked runs.");
+        Assert.False(native.Contains("private static string GetOutputPath(", StringComparison.Ordinal),
+            "Native conversion history must not keep a second command-to-output policy.");
+
+        Assert.True(native.Contains("RunSharedCommand(cmd, currentFiles, plannedOutputs, progressCallback)", StringComparison.Ordinal)
+                    && native.Contains("ConvertCommandRunner.Run(", StringComparison.Ordinal),
+            "Native commands without Win32-specific behavior must dispatch through the shared Core runner.");
+        Assert.True(native.Contains("OnFileStarting: TryRecordTaskIndex", StringComparison.Ordinal)
+                    && runner.Contains("onFileStarting?.Invoke(i)", StringComparison.Ordinal),
+            "Shared per-file dispatch must preserve the Native resume checkpoint before processing each file.");
+        foreach (string sharedCommand in new[] { "ppt2pdf", "word2pdf", "excel2pdf", "md2pdf", "md2word", CmdMergePdf, "img-merge", "img-stitch", "img-compress", "img-to-png" })
+        {
+            Assert.False(native.Contains($"case \"{sharedCommand}\":", StringComparison.Ordinal),
+                $"{sharedCommand} must not keep a second Native dispatch branch.");
+        }
     }
 
     private static void TestCancellingParkedTaskRecordsCanceledLine()
@@ -120,7 +263,7 @@ static partial class TestSuite
             "The History page must not enumerate parked conversions itself; HistoryFeed is the one source for both UIs.");
         Assert.True(code.Contains("ClickraStorage.CancelParkedTask", StringComparison.Ordinal), "The History page must offer cancel for parked conversions.");
         Assert.True(code.Contains("OpenTaskProgressWindow($\"resume {", StringComparison.Ordinal), "Resume must go through the shared resume entry point.");
-        string feed = File.ReadAllText(Path.Combine(root, "src", "Clickra.Core", "Storage", "HistoryFeed.cs"));
+        string feed = File.ReadAllText(Path.Combine(root, "src", CoreProjectDirectory, "Storage", "HistoryFeed.cs"));
         Assert.True(feed.Contains("ClickraStorage.IsUserCanceledReason", StringComparison.Ordinal),
             "Cancelled rows must be recognised by the shared history marker, including the CLI's legacy one.");
         Assert.True(feed.Contains("status_canceled", StringComparison.Ordinal),
@@ -365,8 +508,8 @@ static partial class TestSuite
 
         string fluentCode = File.ReadAllText(Path.Combine(root, "src", FluentProjectDirectory, FluentHistoryPageFile));
         string cliHistory = File.ReadAllText(Path.Combine(root, "src", CliProjectDirectory, DashboardDirectory, DashboardHistoryPaintFile));
-        string storageCode = File.ReadAllText(Path.Combine(root, "src", "Clickra.Core", "Storage", "ClickraStorage.ActiveRecord.cs"));
-        string feedCode = File.ReadAllText(Path.Combine(root, "src", "Clickra.Core", "Storage", "HistoryFeed.cs"));
+        string storageCode = File.ReadAllText(Path.Combine(root, "src", CoreProjectDirectory, "Storage", "ClickraStorage.ActiveRecord.cs"));
+        string feedCode = File.ReadAllText(Path.Combine(root, "src", CoreProjectDirectory, "Storage", "HistoryFeed.cs"));
 
         Assert.True(feedCode.Contains("ClickraStorage.GetParkedRetentionInfo", StringComparison.Ordinal),
             "The shared feed must compute each parked item's retention once, not leave it to the two UIs.");
@@ -539,7 +682,7 @@ static partial class TestSuite
 
     private static void TestDeletingTaskRemovesProgressFile()
     {
-        string a = ClickraStorage.StartTask("merge-pdf", 2, TestInDir + "\\x.pdf;" + TestInDir + "\\y.pdf");
+        string a = ClickraStorage.StartTask(CmdMergePdf, 2, TestInDir + "\\x.pdf;" + TestInDir + "\\y.pdf");
         Assert.True(ClickraStorage.GetTask(a) != null, "Task should be readable right after StartTask.");
         ClickraStorage.DeleteTask(a);
         Assert.True(ClickraStorage.GetTask(a) == null, "Task must not be readable after DeleteTask.");
@@ -661,8 +804,8 @@ static partial class TestSuite
     {
         string dataDir = ClickraStorage.GetDataDir();
         string legacy = Path.Combine(dataDir, "active.tmp");
-        File.WriteAllText(legacy, "Time=2026-08-16 11:00:00\nCommand=merge-pdf\nStatus=InProgress\n");
-        string first = ClickraStorage.StartTask("merge-pdf", 2, TestInDir + "\\x.pdf;" + TestInDir + "\\y.pdf");
+        File.WriteAllText(legacy, $"Time=2026-08-16 11:00:00\nCommand={CmdMergePdf}\nStatus=InProgress\n");
+        string first = ClickraStorage.StartTask(CmdMergePdf, 2, TestInDir + "\\x.pdf;" + TestInDir + "\\y.pdf");
         // Ensure the two tasks get distinct timestamps (DateTime.UtcNow has ~15ms resolution on Windows).
         Thread.Sleep(20);
         string second = ClickraStorage.StartTask("compress-pdf", 1, TestInDir + "\\z.pdf");

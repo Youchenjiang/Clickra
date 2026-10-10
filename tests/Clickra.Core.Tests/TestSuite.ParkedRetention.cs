@@ -18,6 +18,9 @@ namespace Clickra.Core.Tests;
 /// </summary>
 static partial class TestSuite
 {
+    private const string CoreProjectDirectoryName = "Clickra.Core";
+    private const string StorageDirectoryName = "Storage";
+
     private static readonly string[] ParkedRetentionUiFiles =
     {
         Path.Combine("src", "Clickra.Fluent", "MainPage.xaml.cs"),
@@ -263,9 +266,14 @@ static partial class TestSuite
                 $"{relative} touches the task record's override field; that belongs to ClickraStorage.");
         }
 
-        string core = File.ReadAllText(Path.Combine(root, "src", "Clickra.Core", "Storage", "ClickraStorage.ActiveRecord.cs"));
+        string core = File.ReadAllText(Path.Combine(root, "src", CoreProjectDirectoryName, StorageDirectoryName, "ClickraStorage.ActiveRecord.cs"));
+        string policy = File.ReadAllText(Path.Combine(root, "src", CoreProjectDirectoryName, StorageDirectoryName, "TaskRetentionPolicy.cs"));
         Assert.True(core.Contains("public static int? AdjustParkedRetention(", StringComparison.Ordinal),
-            "ClickraStorage must own the extend/shorten arithmetic.");
+            "ClickraStorage must expose the shared extend/shorten operation.");
+        Assert.True(core.Contains("TaskRetentionPolicy.CalculateAdjustedDays(", StringComparison.Ordinal),
+            "ClickraStorage must delegate retention arithmetic to the retention policy.");
+        Assert.True(policy.Contains("internal static int? CalculateAdjustedDays(", StringComparison.Ordinal),
+            "Retention arithmetic must live in the policy instead of task-file persistence.");
         Assert.True(core.Contains("public static void SetParkedRetentionOverride(", StringComparison.Ordinal),
             "ClickraStorage must own the override/reset operation.");
     }
@@ -277,7 +285,7 @@ static partial class TestSuite
         string? root = FindRepoRoot();
         if (root is null) throw new TestSkippedException("Could not locate the repository root from the test output directory.");
 
-        string core = File.ReadAllText(Path.Combine(root, "src", "Clickra.Core", "Storage", "ClickraStorage.ActiveRecord.cs"));
+        string core = File.ReadAllText(Path.Combine(root, "src", CoreProjectDirectoryName, StorageDirectoryName, "ClickraStorage.ActiveRecord.cs"));
 
         foreach (string method in new[] { "public static ParkedRetentionInfo GetParkedRetentionInfo(string taskId)", "private static void PruneSingleTaskFile(string file, DateTime now)" })
         {
@@ -298,7 +306,7 @@ static partial class TestSuite
         string? root = FindRepoRoot();
         if (root is null) throw new TestSkippedException("Could not locate the repository root from the test output directory.");
 
-        string core = File.ReadAllText(Path.Combine(root, "src", "Clickra.Core", "Storage", "ClickraStorage.ActiveRecord.cs"));
+        string core = File.ReadAllText(Path.Combine(root, "src", CoreProjectDirectoryName, StorageDirectoryName, "ClickraStorage.ActiveRecord.cs"));
         Assert.True(core.Contains("task_parked_ttl_override", StringComparison.Ordinal),
             "DescribeParkedRetention must append the override marker for every interface.");
 

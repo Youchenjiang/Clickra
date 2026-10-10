@@ -171,11 +171,12 @@ static partial class TestSuite
             if (root is null) throw new TestSkippedException("Could not locate repository root.");
             string progress = File.ReadAllText(Path.Combine(root, "src", "Clickra.CLI", "Progress", "ProgressWindow.Process.cs"));
             string normalizedProgress = progress.Replace("\r\n", "\n", StringComparison.Ordinal);
-            Assert.True(progress.Contains("GetOutputPathForError(cmd, currentFiles, outputDir, _outputDirOverride)", StringComparison.Ordinal),
+            Assert.True(progress.Contains("GetOutputPathForError(cmd, currentFiles, _outputDirOverride)", StringComparison.Ordinal),
                 "Progress failure handling must use the non-throwing output-path logger.");
             Assert.True(progress.Contains("private static string GetOutputPathForError", StringComparison.Ordinal)
+                        && progress.Contains("ConvertCommandRegistry.EstimateOutputs(cmd, inputFiles, outputDirOverride)", StringComparison.Ordinal)
                         && normalizedProgress.Contains("catch\n            {\n                return \"\";\n            }", StringComparison.Ordinal),
-                "Failure-history output rendering must not mask the original exception when output planning also fails.");
+                "Failure-history output rendering must use the shared planner without masking the original exception when planning also fails.");
         });
     }
 

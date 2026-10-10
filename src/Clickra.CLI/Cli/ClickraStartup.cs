@@ -6,6 +6,7 @@ using System.Diagnostics;
 using System.Runtime.InteropServices;
 using Microsoft.Win32;
 using Clickra.Core;
+using Clickra.Core.Processors;
 using Clickra.UI;
 
 namespace Clickra;
@@ -93,10 +94,13 @@ internal static class ClickraStartup
             // 1.5 秒供儀表板顯示後清除（每個任務有獨立的進度檔）。
             try
             {
-                string taskId = ClickraStorage.StartTask(command, 0, null);
-                ClickraStorage.CompleteTask(taskId, command, new() { StartTime = startTimeStr, IsSuccess = false, ErrorMsg = ex.Message });
+                ConversionTaskLifecycle lifecycle = ConversionTaskLifecycle.Start(
+                    command,
+                    Array.Empty<string>(),
+                    startTimeOverride: startTimeStr);
+                lifecycle.CompleteFailure(ex.Message, "");
                 System.Threading.Thread.Sleep(1500);
-                ClickraStorage.DeleteTask(taskId);
+                lifecycle.Delete();
             }
             catch (Exception recordEx) { Debug.WriteLine($"Failed to record the failed job: {recordEx.Message}"); }
         }

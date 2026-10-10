@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using Clickra.Shared;
 
 namespace Clickra.Core.Processors;
 
@@ -23,142 +24,43 @@ public static class ConvertCommandRegistry
         private const string CmdImgMerge = "img-merge";
         private const string ExtensionWebp = ".webp";
         private const string ExtensionHeic = ".heic";
-
-        private sealed record CommandDef(string[] Extensions, int MinFiles, string LabelKey, string[]? ExcludeExtensions = null);
-
-        private static readonly string[] PdfExtensions = { ".pdf" };
-        private static readonly string[] PptExtensions = { ".ppt", ".pptx" };
-        private static readonly string[] WordExtensions = { ".doc", ".docx" };
-        private static readonly string[] ExcelExtensions = { ".xls", ".xlsx" };
-        private static readonly string[] MarkdownExtensions = { ".md", ".markdown" };
-        private static readonly string[] ImageExtensions = [".jpg", ".jpeg", ".png", ".bmp", ".gif", ".tiff", ExtensionWebp, ExtensionHeic];
-        private static readonly string[] ImageCompressionExtensions = [".jpg", ".jpeg", ".png", ".bmp", ".gif", ".tif", ".tiff", ExtensionWebp, ExtensionHeic, ".heif", ".hif"];
-
-        /// <summary>UI 檔案類型分類：先選類型再選命令，從源頭避免混雜類型。</summary>
-        private static readonly (string Type, string[] Extensions, string[] Commands)[] FileTypes =
-        {
-            ("pdf", PdfExtensions, [CmdMergePdf, CmdCompressPdf, "translate-pdf", "decrypt-pdf", "split-pdf"]),
-            ("word", WordExtensions, ["word2pdf"]),
-            ("excel", ExcelExtensions, ["excel2pdf"]),
-            ("ppt", PptExtensions, ["ppt2pdf"]),
-            ("markdown", MarkdownExtensions, [CmdMdToPdf, CmdMdToWord]),
-            ("image", ImageExtensions, [CmdImg2Pdf, CmdImgMerge, "img-stitch", CmdImgCompress, CmdImgToPng, CmdImgToJpg, CmdImgToWebp, CmdImgToGif, CmdImgToHeic])
-        };
-
         /// <summary>File extensions accepted by a UI file type ("pdf", "word", "excel", "ppt", "image").</summary>
-        public static string[] GetAllowedExtensionsByType(string type)
-        {
-            var entry = Array.Find(FileTypes, e => string.Equals(e.Type, type, StringComparison.OrdinalIgnoreCase));
-            return entry.Extensions ?? Array.Empty<string>();
-        }
+        public static string[] GetAllowedExtensionsByType(string type) => ConvertCommandMetadata.GetAllowedExtensionsByType(type);
 
         /// <summary>Convert commands available for a UI file type.</summary>
-        public static string[] GetCommandsForType(string type)
-        {
-            var entry = Array.Find(FileTypes, e => string.Equals(e.Type, type, StringComparison.OrdinalIgnoreCase));
-            return entry.Commands ?? Array.Empty<string>();
-        }
+        public static string[] GetCommandsForType(string type) => ConvertCommandMetadata.GetCommandsForType(type);
 
         /// <summary>Returns the product-wide default command for a homogeneous file selection.
         /// Explicit UI selections should take precedence when they remain compatible.</summary>
-        public static string? GetDefaultCommandForFiles(IReadOnlyCollection<string> files)
-        {
-            if (files.Count == 0) return null;
-
-            string[] extensions = files
-                .Select(path => Path.GetExtension(path).ToLowerInvariant())
-                .Distinct(StringComparer.OrdinalIgnoreCase)
-                .ToArray();
-            if (extensions.Any(string.IsNullOrEmpty)) return null;
-
-            if (extensions.All(ext => PptExtensions.Contains(ext, StringComparer.OrdinalIgnoreCase))) return "ppt2pdf";
-            if (extensions.All(ext => WordExtensions.Contains(ext, StringComparer.OrdinalIgnoreCase))) return "word2pdf";
-            if (extensions.All(ext => ExcelExtensions.Contains(ext, StringComparer.OrdinalIgnoreCase))) return "excel2pdf";
-            if (extensions.All(ext => PdfExtensions.Contains(ext, StringComparer.OrdinalIgnoreCase)))
-                return files.Count == 1 ? CmdCompressPdf : CmdMergePdf;
-            if (extensions.All(ext => MarkdownExtensions.Contains(ext, StringComparer.OrdinalIgnoreCase))) return CmdMdToPdf;
-            if (extensions.All(ext => ImageExtensions.Contains(ext, StringComparer.OrdinalIgnoreCase)))
-                return files.Count == 1 ? CmdImg2Pdf : CmdImgMerge;
-
-            return null;
-        }
+        public static string? GetDefaultCommandForFiles(IReadOnlyCollection<string> files) =>
+            ConvertCommandMetadata.GetDefaultCommandForFiles(files);
 
         /// <summary>The UI file type a command belongs to (defaults to "pdf" for unknown commands).</summary>
-        public static string GetFileTypeForCommand(string command)
-        {
-            var entry = Array.Find(FileTypes, e => e.Commands.Contains(command, StringComparer.OrdinalIgnoreCase));
-            return entry.Type ?? "pdf";
-        }
-
-        /// <summary>Converting to a format the file already has is a no-op, so format
-        /// commands declare the source extensions they must exclude (jpg/jpeg are aliases
-        /// and are always excluded together).</summary>
-        private static readonly string[] PngExcluded = { ".png" };
-        private static readonly string[] JpegExcluded = { ".jpg", ".jpeg" };
-        private static readonly string[] WebpExcluded = { ExtensionWebp };
-        private static readonly string[] GifExcluded = { ".gif" };
-        private static readonly string[] HeicExcluded = { ExtensionHeic };
-
-        /// <summary>Every convert command and its metadata, in dashboard order.</summary>
-        private static readonly Dictionary<string, CommandDef> Commands = new(StringComparer.OrdinalIgnoreCase)
-        {
-            ["ppt2pdf"] = new(PptExtensions, 1, "cmd_ppt_to_pdf"),
-            ["word2pdf"] = new(WordExtensions, 1, "cmd_word_to_pdf"),
-            ["excel2pdf"] = new(ExcelExtensions, 1, "cmd_excel_to_pdf"),
-            [CmdMdToPdf] = new(MarkdownExtensions, 1, "cmd_md_to_pdf"),
-            [CmdMdToWord] = new(MarkdownExtensions, 1, "cmd_md_to_word"),
-            [CmdMergePdf] = new(PdfExtensions, 2, "cmd_merge_pdf"),
-            [CmdCompressPdf] = new(PdfExtensions, 1, "cmd_compress_pdf"),
-            ["translate-pdf"] = new(PdfExtensions, 1, "cmd_translate_pdf"),
-            ["decrypt-pdf"] = new(PdfExtensions, 1, "cmd_decrypt_pdf"),
-            ["split-pdf"] = new(PdfExtensions, 1, "cmd_split_pdf"),
-            [CmdImg2Pdf] = new(ImageExtensions, 1, "cmd_img_to_pdf"),
-            [CmdImgMerge] = new(ImageExtensions, 2, "cmd_merge_img"),
-            ["img-stitch"] = new(ImageExtensions, 2, "cmd_stitch_img"),
-            [CmdImgCompress] = new(ImageCompressionExtensions, 1, "cmd_img_compress"),
-            [CmdImgToPng] = new(ImageExtensions, 1, "cmd_img_to_png", PngExcluded),
-            [CmdImgToJpg] = new(ImageExtensions, 1, "cmd_img_to_jpg", JpegExcluded),
-            [CmdImgToWebp] = new(ImageExtensions, 1, "cmd_img_to_webp", WebpExcluded),
-            [CmdImgToGif] = new(ImageExtensions, 1, "cmd_img_to_gif", GifExcluded),
-            [CmdImgToHeic] = new(ImageExtensions, 1, "cmd_img_to_heic", HeicExcluded)
-        };
-
-        private static readonly string[] AllSupportedExtensionsValue =
-            Commands.Values.SelectMany(def => def.Extensions).Distinct().ToArray();
+        public static string GetFileTypeForCommand(string command) => ConvertCommandMetadata.GetFileTypeForCommand(command);
 
         /// <summary>Every file type any convert command accepts, used for unfiltered pickers.</summary>
-        public static string[] AllSupportedExtensions => AllSupportedExtensionsValue;
+        public static string[] AllSupportedExtensions => ConvertCommandMetadata.AllSupportedExtensions;
 
         /// <summary>File extensions a command accepts; empty when the command is unknown.
         /// For format-conversion commands this already excludes the source extensions that
         /// would make the conversion a no-op (e.g. img-to-png does not accept .png).</summary>
-        public static string[] GetAllowedExtensions(string? command)
-        {
-            if (command is null || !Commands.TryGetValue(command, out var def)) return Array.Empty<string>();
-            if (def.ExcludeExtensions is not { Length: > 0 } excluded) return def.Extensions;
-            return def.Extensions.Where(ext => !excluded.Contains(ext, StringComparer.OrdinalIgnoreCase)).ToArray();
-        }
+        public static string[] GetAllowedExtensions(string? command) => ConvertCommandMetadata.GetAllowedExtensions(command);
 
         /// <summary>Source extensions a command must exclude to avoid no-op conversions;
         /// empty when the command accepts everything it lists.</summary>
-        public static string[] GetExcludedExtensions(string? command) =>
-            command is not null && Commands.TryGetValue(command, out var def)
-                ? def.ExcludeExtensions ?? Array.Empty<string>()
-                : Array.Empty<string>();
+        public static string[] GetExcludedExtensions(string? command) => ConvertCommandMetadata.GetExcludedExtensions(command);
 
         /// <summary>Whether the command key maps to a known conversion.</summary>
-        public static bool IsKnownCommand(string command) => Commands.ContainsKey(command);
+        public static bool IsKnownCommand(string command) => ConvertCommandMetadata.IsKnownCommand(command);
 
         /// <summary>Minimum number of files the command requires.</summary>
-        public static int GetMinFiles(string command) =>
-            Commands.TryGetValue(command, out var def) ? def.MinFiles : 1;
+        public static int GetMinFiles(string command) => ConvertCommandMetadata.GetMinFiles(command);
 
         /// <summary>Localization key for the command display name.</summary>
-        public static string GetLabelKey(string command) =>
-            Commands.TryGetValue(command, out var def) ? def.LabelKey : command;
+        public static string GetLabelKey(string command) => ConvertCommandMetadata.GetLabelKey(command);
 
         /// <summary>Predicts the output paths a command will produce for the given files.</summary>
-        public static List<string> EstimateOutputs(string command, List<string> files)
+        public static List<string> EstimateOutputs(string command, List<string> files, string? outputDirOverride = null)
         {
             string outputDir = ClickraStorage.GetOutputDir(files[0]);
             return command switch
@@ -171,11 +73,15 @@ public static class ConvertCommandRegistry
                 "decrypt-pdf" => files.Select(f => Path.Combine(ClickraStorage.GetOutputDir(f), Path.GetFileNameWithoutExtension(f) + "_decrypted.pdf")).ToList(),
                 "split-pdf" => files.Select(f => Path.Combine(ClickraStorage.GetOutputDir(f), Path.GetFileNameWithoutExtension(f) + "_split.pdf")).ToList(),
                 CmdImg2Pdf => files.Select(f => Path.Combine(ClickraStorage.GetOutputDir(f), Path.GetFileNameWithoutExtension(f) + ".pdf")).ToList(),
-                CmdMdToPdf => files.Select(f => Path.Combine(ClickraStorage.GetOutputDir(f), Path.GetFileNameWithoutExtension(f) + ".pdf")).ToList(),
-                CmdMdToWord => files.Select(f => Path.Combine(ClickraStorage.GetOutputDir(f), Path.GetFileNameWithoutExtension(f) + ".docx")).ToList(),
-                CmdImgCompress => EstimateImageCompressionOutputs(files),
+                CmdMdToPdf => files.Select(f => Path.Combine(
+                    string.IsNullOrWhiteSpace(outputDirOverride) ? ClickraStorage.GetOutputDir(f) : Path.GetFullPath(outputDirOverride),
+                    Path.GetFileNameWithoutExtension(f) + ".pdf")).ToList(),
+                CmdMdToWord => files.Select(f => Path.Combine(
+                    string.IsNullOrWhiteSpace(outputDirOverride) ? ClickraStorage.GetOutputDir(f) : Path.GetFullPath(outputDirOverride),
+                    Path.GetFileNameWithoutExtension(f) + ".docx")).ToList(),
+                CmdImgCompress => EstimateImageCompressionOutputs(files, outputDirOverride),
                 CmdImgToPng or CmdImgToJpg or CmdImgToWebp or CmdImgToGif or CmdImgToHeic
-                    => EstimateImageFormatOutputs(command, files),
+                    => EstimateImageFormatOutputs(command, files, outputDirOverride),
                 _ => files.Select(f => Path.Combine(ClickraStorage.GetOutputDir(f), Path.GetFileNameWithoutExtension(f) + ".pdf")).ToList()
             };
         }

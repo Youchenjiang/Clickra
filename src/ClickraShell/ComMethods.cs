@@ -6,6 +6,7 @@ using System.Diagnostics.CodeAnalysis;
 using System.Runtime.InteropServices;
 using System.Runtime.CompilerServices;
 using System.Collections.Generic;
+using Clickra.Shared;
 
 namespace ClickraShell
 {
@@ -179,31 +180,18 @@ namespace ClickraShell
         [UnmanagedCallersOnly(CallConvs = new[] { typeof(CallConvStdcall) })] public static unsafe int GetCanonicalName(IntPtr _this, Guid* p) { *p = Guid.Empty; return 0; }
 
         /// <summary>Returns whether the file extension is supported by the command index.</summary>
-        [SuppressMessage("SonarQube", "S1192", Justification = "UiResourceCoverage parses the literal extension lists here to verify Explorer and registry parity.")]
-        // skipcq: CS-R1140 — literal extension dispatch is intentionally kept in sync with shell parity guards.
         private static bool IsSupported(string path, int idx)
         {
             string ext = Path.GetExtension(path).ToLowerInvariant();
             if (string.IsNullOrEmpty(ext)) return false;
 
-            return idx switch
+            string[] allowed = idx switch
             {
-                -1 => new[] { ".ppt", ".pptx", ".doc", ".docx", ".xlsx", ".xls", ".pdf", ".md", ".markdown", ".jpg", ".jpeg", ".png", ".bmp", ".gif", ".tif", ".tiff", ".webp", ".heic", ".heif", ".hif" }.Contains(ext),
-                0 => ext == ".ppt" || ext == ".pptx",
-                1 => ext == ".doc" || ext == ".docx",
-                2 => ext == ".xlsx" || ext == ".xls",
-                3 or 4 or 9 or 10 or 11 => ext == ".pdf",
-                5 or 6 or 7 => new[] { ".jpg", ".jpeg", ".png", ".bmp", ".gif", ".tiff", ".webp", ".heic" }.Contains(ext),
-                8 => new[] { ".jpg", ".jpeg", ".png", ".bmp", ".gif", ".tif", ".tiff", ".webp", ".heic", ".heif", ".hif" }.Contains(ext),
-                12 => ext != ".png" && new[] { ".jpg", ".jpeg", ".bmp", ".gif", ".tiff", ".webp", ".heic" }.Contains(ext),
-                13 => ext != ".jpg" && ext != ".jpeg" && new[] { ".png", ".bmp", ".gif", ".tiff", ".webp", ".heic" }.Contains(ext),
-                14 => ext != ".webp" && new[] { ".jpg", ".jpeg", ".png", ".bmp", ".gif", ".tiff", ".heic" }.Contains(ext),
-                15 => ext != ".gif" && new[] { ".jpg", ".jpeg", ".png", ".bmp", ".tiff", ".webp", ".heic" }.Contains(ext),
-                16 => ext != ".heic" && new[] { ".jpg", ".jpeg", ".png", ".bmp", ".gif", ".tiff", ".webp" }.Contains(ext),
-                17 => ext == ".md" || ext == ".markdown",
-                18 => ext == ".md" || ext == ".markdown",
-                _ => false
+                -1 => ConvertCommandMetadata.AllSupportedExtensions,
+                >= 0 when idx < SubArgs.Length => ConvertCommandMetadata.GetAllowedExtensions(SubArgs[idx]),
+                _ => []
             };
+            return allowed.Contains(ext, StringComparer.OrdinalIgnoreCase);
         }
 
         /// <summary>IExplorerCommand.GetState — enables the command only when every selected file
@@ -218,11 +206,10 @@ namespace ClickraShell
             var files = GetFiles(psi);
             if (files.Count == 0) return 0;
 
-            // Specific logic for multi-file commands
-            bool countOk = idx switch {
-                3 or 6 or 7 => files.Count > 1, // Merge PDF (3), Image Merge (6), and Image Stitch (7) require at least 2 files
-                _ => true
-            };
+            int minFiles = idx >= 0 && idx < SubArgs.Length
+                ? ConvertCommandMetadata.GetMinFiles(SubArgs[idx])
+                : 1;
+            bool countOk = files.Count >= minFiles;
 
             if (countOk && files.All(f => IsSupported(f, idx)))
             {

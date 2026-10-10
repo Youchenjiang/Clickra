@@ -29,6 +29,7 @@ static partial class TestSuite
 {
     private static readonly TimeSpan UiResourceRegexTimeout = TimeSpan.FromSeconds(1);
     private const string ShellCommandMessagePrefix = "Shell command '";
+    private const string ShellProjectDirectory = "ClickraShell";
     /// <summary>UI 語言的程式碼（zh-TW）與 resw 資料夾名稱（zh-tw）互轉。</summary>
     private static string CultureFolder(string languageCode) => languageCode.ToLowerInvariant();
 
@@ -115,7 +116,7 @@ static partial class TestSuite
     /// <summary>Shell 選單會查詢的 resw 鍵：MenuKeys 陣列，加上根項目標題的鍵。</summary>
     private static string[] GetShellConsumedResourceKeys(string repoRoot)
     {
-        string comMethods = File.ReadAllText(Path.Combine(repoRoot, "src", "ClickraShell", "ComMethods.cs"));
+        string comMethods = File.ReadAllText(Path.Combine(repoRoot, "src", ShellProjectDirectory, "ComMethods.cs"));
 
         Match menuKeys = Regex.Match(comMethods, @"MenuKeys\s*=\s*\{(?<body>[^}]*)\}", RegexOptions.None, UiResourceRegexTimeout);
         Assert.True(menuKeys.Success, "ComMethods must declare the MenuKeys array the shell menu renders.");
@@ -155,9 +156,9 @@ static partial class TestSuite
         return keys.ToArray();
     }
 
-    private static (string[] SubArgs, string[] MenuKeys, string[] IconFiles, int[] MultiFileIndices) GetShellCommandDefinitions(string repoRoot)
+    private static (string[] SubArgs, string[] MenuKeys, string[] IconFiles) GetShellCommandDefinitions(string repoRoot)
     {
-        string comMethods = File.ReadAllText(Path.Combine(repoRoot, "src", "ClickraShell", "ComMethods.cs"));
+        string comMethods = File.ReadAllText(Path.Combine(repoRoot, "src", ShellProjectDirectory, "ComMethods.cs"));
 
         string[] ParseArray(string name)
         {
@@ -176,21 +177,7 @@ static partial class TestSuite
                 .ToArray();
         }
 
-        Match multiFile = Regex.Match(
-            comMethods,
-            @"(?<indices>\d+(?:\s+or\s+\d+)*)\s*=>\s*files\.Count\s*>\s*1",
-            RegexOptions.None,
-            UiResourceRegexTimeout);
-        Assert.True(multiFile.Success, "ComMethods must declare the multi-file command gate.");
-        int[] multiFileIndices = Regex.Matches(
-                multiFile.Groups["indices"].Value,
-                @"\b\d+\b",
-                RegexOptions.None,
-                UiResourceRegexTimeout)
-            .Select(m => int.Parse(m.Value))
-            .ToArray();
-
-        return (ParseArray("SubArgs"), ParseArray("MenuKeys"), ParseArray("IconFiles"), multiFileIndices);
+        return (ParseArray("SubArgs"), ParseArray("MenuKeys"), ParseArray("IconFiles"));
     }
 
     public static void RegisterUiResourceCoverageTests(TestRunner runner)
@@ -253,13 +240,13 @@ static partial class TestSuite
         string? root = FindRepoRoot();
         if (root is null) throw new TestSkippedException(RepoRootNotFoundMessage);
 
-        string registrySource = File.ReadAllText(Path.Combine(root, "src", "Clickra.Core", "Processors", "ConvertCommandRegistry.cs"));
+        string registrySource = File.ReadAllText(Path.Combine(root, "src", "Shared", "ConvertCommandMetadata.cs"));
         string[] declared = Regex.Matches(registrySource, "\"(?<key>cmd_[a-z_]+)\"", RegexOptions.None, UiResourceRegexTimeout)
             .Select(m => m.Groups["key"].Value)
             .Distinct(StringComparer.Ordinal)
             .OrderBy(k => k, StringComparer.Ordinal)
             .ToArray();
-        Assert.True(declared.Length > 0, "The convert registry must declare at least one label key.");
+        Assert.True(declared.Length > 0, "The shared convert metadata must declare at least one label key.");
 
         string[] reached = new[] { "pdf", "word", "excel", "ppt", "markdown", "image" }
             .SelectMany(ConvertCommandRegistry.GetCommandsForType)
@@ -281,7 +268,7 @@ static partial class TestSuite
             .OrderBy(k => k, StringComparer.Ordinal)
             .ToArray();
         Assert.True(declared.SequenceEqual(reachedKeys),
-            "Every label key in the command table must be reachable from a file type. " +
+            "Every label key in shared command metadata must be reachable from a file type. " +
             "Table only: " + string.Join(", ", declared.Except(reachedKeys)) + "; " +
             "reachable only: " + string.Join(", ", reachedKeys.Except(declared)) + ".");
 
@@ -300,9 +287,13 @@ static partial class TestSuite
         string? root = FindRepoRoot();
         if (root is null) throw new TestSkippedException(RepoRootNotFoundMessage);
 
-        var (subArgs, menuKeys, iconFiles, multiFileIndices) = GetShellCommandDefinitions(root);
-        string shellSource = File.ReadAllText(Path.Combine(root, "src", "ClickraShell", "ComMethods.cs"));
+        var (subArgs, menuKeys, iconFiles) = GetShellCommandDefinitions(root);
+        string shellSource = File.ReadAllText(Path.Combine(root, "src", ShellProjectDirectory, "ComMethods.cs"));
+        string shellProject = File.ReadAllText(Path.Combine(root, "src", ShellProjectDirectory, "ClickraShell.csproj"));
+        string coreRegistrySource = File.ReadAllText(Path.Combine(root, "src", "Clickra.Core", "Processors", "ConvertCommandRegistry.cs"));
         string cliSource = File.ReadAllText(Path.Combine(root, "src", "Clickra.CLI", "Cli", "ClickraCli.cs"));
+        string dashboardRegistrySource = File.ReadAllText(Path.Combine(
+            root, "src", "Clickra.CLI", "Dashboard", "DashboardWindow.ConvertRegistry.cs"));
 
         Assert.True(subArgs.Length > 0, "Shell menu must declare at least one command.");
         Assert.True(menuKeys.Length == subArgs.Length,
@@ -323,8 +314,25 @@ static partial class TestSuite
             "Shell: [" + string.Join(", ", shellCommands) + "] Registry: [" + string.Join(", ", registryCommands) + "]");
         Assert.True(shellSource.Contains("files.All(f => IsSupported(f, idx))", StringComparison.Ordinal),
             "Explorer commands must stay hidden unless every selected file is valid for that command.");
+        Assert.True(shellSource.Contains("ConvertCommandMetadata.GetAllowedExtensions(SubArgs[idx])", StringComparison.Ordinal)
+                    && shellSource.Contains("ConvertCommandMetadata.GetMinFiles(SubArgs[idx])", StringComparison.Ordinal),
+            "Explorer command validation must derive extensions and file-count rules from shared metadata.");
+        Assert.True(shellProject.Contains("..\\Shared\\ConvertCommandMetadata.cs", StringComparison.Ordinal),
+            "ClickraShell must compile the dependency-free shared command metadata instead of referencing Clickra.Core.");
+        Assert.True(coreRegistrySource.Contains("ConvertCommandMetadata.GetAllowedExtensions(command)", StringComparison.Ordinal)
+                    && coreRegistrySource.Contains("ConvertCommandMetadata.GetMinFiles(command)", StringComparison.Ordinal),
+            "ConvertCommandRegistry must delegate validation metadata to the shared source used by the shell.");
         Assert.True(cliSource.Contains("string[] allowed = ConvertCommandRegistry.GetAllowedExtensions(command);", StringComparison.Ordinal),
             "CLI image dispatch must derive accepted extensions from ConvertCommandRegistry instead of a private list.");
+        Assert.True(dashboardRegistrySource.Contains("ConvertCommandRegistry.GetAllowedExtensions(Command)", StringComparison.Ordinal)
+                    && dashboardRegistrySource.Contains("ConvertCommandRegistry.GetMinFiles(Command)", StringComparison.Ordinal),
+            "NativeAOT dashboard validation must derive extensions and minimum file counts from ConvertCommandRegistry.");
+        Assert.False(Regex.IsMatch(
+                         dashboardRegistrySource,
+                         @"\b(?:Extensions|MinFiles)\s*=(?!>)",
+                         RegexOptions.None,
+                         UiResourceRegexTimeout),
+            "NativeAOT dashboard command definitions must not keep duplicate validation metadata.");
 
         for (int i = 0; i < subArgs.Length; i++)
         {
@@ -338,37 +346,8 @@ static partial class TestSuite
             Assert.True(ConvertCommandRegistry.GetAllowedExtensions(command).Length > 0,
                 ShellCommandMessagePrefix + command + "' has no allowed input extensions.");
 
-            string indexToken = i.ToString();
-            string? supportArm = shellSource
-                .Split(new[] { "\r\n", "\n" }, StringSplitOptions.None)
-                .FirstOrDefault(line =>
-                {
-                    int arrow = line.IndexOf("=>", StringComparison.Ordinal);
-                    if (arrow < 0) return false;
-                    string indices = line[..arrow];
-                    return Regex.Matches(indices, @"\b\d+\b", RegexOptions.None, UiResourceRegexTimeout)
-                        .Any(match => string.Equals(match.Value, indexToken, StringComparison.Ordinal));
-                });
-            Assert.True(supportArm is not null,
-                ShellCommandMessagePrefix + command + "' has no IsSupported switch arm.");
-            foreach (string extension in ConvertCommandRegistry.GetAllowedExtensions(command))
-            {
-                Assert.True(supportArm!.Contains('"' + extension + '"', StringComparison.OrdinalIgnoreCase),
-                    ShellCommandMessagePrefix + command + "' hides registry-supported extension " + extension + ".");
-            }
-            foreach (string extension in ConvertCommandRegistry.GetExcludedExtensions(command))
-            {
-                Assert.False(supportArm!.Contains("new[]", StringComparison.Ordinal)
-                             && !supportArm.Contains("!=", StringComparison.Ordinal)
-                             && supportArm.Contains('"' + extension + '"', StringComparison.OrdinalIgnoreCase),
-                    ShellCommandMessagePrefix + command + "' must not enable excluded extension " + extension + ".");
-            }
-
-            int minFiles = ConvertCommandRegistry.GetMinFiles(command);
-            bool shellRequiresMultiple = multiFileIndices.Contains(i);
-            Assert.True((minFiles > 1) == shellRequiresMultiple,
-                ShellCommandMessagePrefix + command + "' has MinFiles=" + minFiles +
-                " but its ComMethods multi-file gate does not match.");
+            Assert.True(ConvertCommandRegistry.GetMinFiles(command) >= 1,
+                ShellCommandMessagePrefix + command + "' must declare a valid minimum file count.");
         }
     }
 
