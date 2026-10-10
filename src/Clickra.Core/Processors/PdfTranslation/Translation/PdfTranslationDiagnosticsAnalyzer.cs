@@ -1,7 +1,6 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text;
 using Clickra.Core.Models;
 using UglyToad.PdfPig.Content;
 
@@ -120,67 +119,6 @@ namespace Clickra.Core.Processors
                 EffectiveGrayMaskRegions = effectiveGrayRegions.Select(ToDiagnosticsRegion).ToList(),
                 Paragraphs = paragraphs
             };
-        }
-
-        public static string DumpPageParagraphDiagnostics(TranslationPageDiagnostics diagnostics)
-        {
-            var sb = new StringBuilder();
-            if (diagnostics.TableMaskRegions.Count > 0)
-            {
-                sb.AppendLine($"TableMaskRegions: count={diagnostics.TableMaskRegions.Count} tableCount={diagnostics.TableCount}");
-                for (int ri = 0; ri < diagnostics.TableMaskRegions.Count; ri++)
-                {
-                    var r = diagnostics.TableMaskRegions[ri];
-                    sb.AppendLine($"  [{ri}] X=[{r.X0:F1},{r.X1:F1}] Y=[{r.Y0:F1},{r.Y1:F1}]");
-                }
-            }
-            if (diagnostics.DiagramMaskRegions.Count > 0)
-            {
-                sb.AppendLine($"DiagramMaskRegions: count={diagnostics.DiagramMaskRegions.Count}");
-                for (int ri = 0; ri < diagnostics.DiagramMaskRegions.Count; ri++)
-                {
-                    var r = diagnostics.DiagramMaskRegions[ri];
-                    sb.AppendLine($"  [{ri}] X=[{r.X0:F1},{r.X1:F1}] Y=[{r.Y0:F1},{r.Y1:F1}]");
-                }
-            }
-            if (diagnostics.FigureClipRegions.Count > 0)
-            {
-                sb.AppendLine($"FigureClipRegions: count={diagnostics.FigureClipRegions.Count}");
-                for (int ri = 0; ri < diagnostics.FigureClipRegions.Count; ri++)
-                {
-                    var r = diagnostics.FigureClipRegions[ri];
-                    sb.AppendLine($"  [{ri}] X=[{r.X0:F1},{r.X1:F1}] Y=[{r.Y0:F1},{r.Y1:F1}]");
-                }
-            }
-            if (diagnostics.GrayPromptShadedRegions.Count > 0)
-            {
-                sb.AppendLine($"GrayPromptShadedRegions: count={diagnostics.GrayPromptShadedRegions.Count}");
-                for (int ri = 0; ri < diagnostics.GrayPromptShadedRegions.Count; ri++)
-                {
-                    var r = diagnostics.GrayPromptShadedRegions[ri];
-                    sb.AppendLine($"  [{ri}] X=[{r.X0:F1},{r.X1:F1}] Y=[{r.Y0:F1},{r.Y1:F1}]");
-                }
-            }
-            if (diagnostics.EffectiveGrayMaskRegions.Count > 0)
-            {
-                sb.AppendLine($"EffectiveGrayMaskRegions: count={diagnostics.EffectiveGrayMaskRegions.Count}");
-                for (int ri = 0; ri < diagnostics.EffectiveGrayMaskRegions.Count; ri++)
-                {
-                    var r = diagnostics.EffectiveGrayMaskRegions[ri];
-                    sb.AppendLine($"  [{ri}] X=[{r.X0:F1},{r.X1:F1}] Y=[{r.Y0:F1},{r.Y1:F1}]");
-                }
-            }
-            foreach (var para in diagnostics.Paragraphs)
-            {
-                string preview = para.Text.Length > 90
-                    ? para.Text.Substring(0, 90) + "..."
-                    : para.Text;
-                preview = preview.Replace("\n", " ");
-                sb.AppendLine($"[{para.Index}] {para.Column} [{para.X0:F0},{para.Y0:F0},{para.X1:F0},{para.Y1:F0}] bypass={para.IsBypassed} table={para.IsTable} code={para.IsCode} diagram={para.IsDiagram} grayPrompt={para.IsGrayPromptContent} skipRender={para.WouldSkipRender}");
-                sb.AppendLine($"    isBodyProse={para.IsBodyProse} isCallout={para.IsCalloutProse} isHeading={para.IsHeading} wordCount={para.WordCount} height={para.Height:F1} width={para.Width:F1} hasPeriod={para.HasPeriod}");
-                sb.AppendLine($"    {preview}");
-            }
-            return sb.ToString();
         }
 
         private static TranslationRegionDiagnostics ToDiagnosticsRegion(TableMaskRegion region) => new()

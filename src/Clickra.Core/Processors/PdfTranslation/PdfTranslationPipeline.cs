@@ -19,13 +19,6 @@ namespace Clickra.Core.Processors
                 CreateDiagnosticsDependencies());
         }
 
-        /// <summary>Debug helper: dump paragraph flags after full layout pipeline for one page.</summary>
-        public static string DumpPageParagraphDiagnostics(string inputPath, int pageNum)
-        {
-            var diagnostics = AnalyzePageParagraphDiagnostics(inputPath, pageNum);
-            return PdfTranslationDiagnosticsAnalyzer.DumpPageParagraphDiagnostics(diagnostics);
-        }
-
         private static PdfTranslationDiagnosticsDependencies CreateDiagnosticsDependencies() => new()
         {
             BuildPageParagraphs = PdfPageParagraphBuilder.BuildPageParagraphs,
