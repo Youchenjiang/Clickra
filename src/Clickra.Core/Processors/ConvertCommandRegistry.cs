@@ -10,9 +10,6 @@ namespace Clickra.Core.Processors;
 /// Fluent and NativeAOT UIs. Adding a command means editing this table once.</summary>
 public static class ConvertCommandRegistry
 {
-        /// <summary>File extensions accepted by a UI file type ("pdf", "word", "excel", "ppt", "image").</summary>
-        public static string[] GetAllowedExtensionsByType(string type) => ConvertCommandMetadata.GetAllowedExtensionsByType(type);
-
         /// <summary>Convert commands available for a UI file type.</summary>
         public static string[] GetCommandsForType(string type) => ConvertCommandMetadata.GetCommandsForType(type);
 
