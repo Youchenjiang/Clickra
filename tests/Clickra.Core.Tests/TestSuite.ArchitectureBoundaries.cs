@@ -214,6 +214,7 @@ static partial class TestSuite
         IConversionUseCase imgStitch = ConversionUseCases.GetRequired(ImgStitchUseCase.CommandName);
         IConversionUseCase merge = ConversionUseCases.GetRequired(MergePdfUseCase.CommandName);
         IConversionUseCase split = ConversionUseCases.GetRequired(SplitPdfUseCase.CommandName);
+        IConversionUseCase translate = ConversionUseCases.GetRequired(TranslatePdfUseCase.CommandName);
         Assert.True(compress is CompressPdfUseCase,
             "compress-pdf must resolve through the product-wide application use-case catalog.");
         Assert.True(decrypt is DecryptPdfUseCase,
@@ -245,6 +246,8 @@ static partial class TestSuite
             "merge-pdf must resolve through the product-wide application use-case catalog.");
         Assert.True(split is SplitPdfUseCase,
             "split-pdf must resolve through the product-wide application use-case catalog.");
+        Assert.True(translate is TranslatePdfUseCase,
+            "translate-pdf must resolve through the product-wide application use-case catalog.");
         Assert.True(ConversionUseCases.Commands.Count(command =>
                 command.Equals(CompressPdfUseCase.CommandName, StringComparison.OrdinalIgnoreCase)) == 1,
             "The product catalog must expose exactly one compress-pdf owner.");
@@ -269,6 +272,9 @@ static partial class TestSuite
         Assert.True(ConversionUseCases.Commands.Count(command =>
                 command.Equals(SplitPdfUseCase.CommandName, StringComparison.OrdinalIgnoreCase)) == 1,
             "The product catalog must expose exactly one split-pdf owner.");
+        Assert.True(ConversionUseCases.Commands.Count(command =>
+                command.Equals(TranslatePdfUseCase.CommandName, StringComparison.OrdinalIgnoreCase)) == 1,
+            "The product catalog must expose exactly one translate-pdf owner.");
     }
 
     private static void TestDecryptWorkflowHasSingleExecutionOwner()
