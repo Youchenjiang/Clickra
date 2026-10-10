@@ -187,6 +187,7 @@ static partial class TestSuite
         IConversionUseCase compress = ConversionUseCases.GetRequired(CompressPdfUseCase.CommandName);
         IConversionUseCase decrypt = ConversionUseCases.GetRequired(DecryptPdfUseCase.CommandName);
         IConversionUseCase img2Pdf = ConversionUseCases.GetRequired(Img2PdfUseCase.CommandName);
+        IConversionUseCase merge = ConversionUseCases.GetRequired(MergePdfUseCase.CommandName);
         IConversionUseCase split = ConversionUseCases.GetRequired(SplitPdfUseCase.CommandName);
         Assert.True(compress is CompressPdfUseCase,
             "compress-pdf must resolve through the product-wide application use-case catalog.");
@@ -194,6 +195,8 @@ static partial class TestSuite
             "decrypt-pdf must resolve through the product-wide application use-case catalog.");
         Assert.True(img2Pdf is Img2PdfUseCase,
             "img2pdf must resolve through the product-wide application use-case catalog.");
+        Assert.True(merge is MergePdfUseCase,
+            "merge-pdf must resolve through the product-wide application use-case catalog.");
         Assert.True(split is SplitPdfUseCase,
             "split-pdf must resolve through the product-wide application use-case catalog.");
         Assert.True(ConversionUseCases.Commands.Count(command =>
@@ -205,6 +208,9 @@ static partial class TestSuite
         Assert.True(ConversionUseCases.Commands.Count(command =>
                 command.Equals(Img2PdfUseCase.CommandName, StringComparison.OrdinalIgnoreCase)) == 1,
             "The product catalog must expose exactly one img2pdf owner.");
+        Assert.True(ConversionUseCases.Commands.Count(command =>
+                command.Equals(MergePdfUseCase.CommandName, StringComparison.OrdinalIgnoreCase)) == 1,
+            "The product catalog must expose exactly one merge-pdf owner.");
         Assert.True(ConversionUseCases.Commands.Count(command =>
                 command.Equals(SplitPdfUseCase.CommandName, StringComparison.OrdinalIgnoreCase)) == 1,
             "The product catalog must expose exactly one split-pdf owner.");
