@@ -134,7 +134,7 @@ static partial class TestSuite
                 Assert.Throws<InvalidDataException>(() => MarkdownDocxTemplateFile.Load(oversized));
             }));
 
-        runner.Run("Markdown to Word: registry and runner expose DOCX conversion", () =>
+        runner.Run("Markdown to Word: registry metadata and use case expose DOCX conversion", () =>
             RunWithTempDirectory(tempDir =>
             {
                 Assert.True(ConvertCommandRegistry.IsKnownCommand(MarkdownToWordCommand),
@@ -145,18 +145,24 @@ static partial class TestSuite
                 Assert.True(ConvertCommandRegistry.GetCommandsForType("markdown").Contains(MarkdownToWordCommand, StringComparer.Ordinal),
                     "Markdown command discovery must include md2word.");
 
-                string input = Path.Combine(tempDir, "runner.md");
-                string output = Path.Combine(tempDir, "runner.docx");
-                File.WriteAllText(input, "# Runner\n\nDOCX dispatch works.");
-                var outputs = new List<string> { output };
-                var options = new ConvertCommandRunner.ConversionOptions(
-                    _ => System.Threading.Tasks.Task.FromResult<string?>(null),
-                    (_, _) => System.Threading.Tasks.Task.FromResult<string?>(null),
-                    CommandOptions: MarkdownPdfOptions.Create(MarkdownPdfOptions.ThemeMinimal));
+                string input = Path.Combine(tempDir, "use-case.md");
+                File.WriteAllText(input, "# Use Case\n\nDOCX dispatch works.");
+                IConversionUseCase useCase = ConversionUseCases.GetRequired(MarkdownToWordCommand);
+                ConversionPlan plan = useCase.Plan(new ConversionRequest(
+                    MarkdownToWordCommand,
+                    new List<string> { input },
+                    MarkdownPdfOptions.Create(MarkdownPdfOptions.ThemeMinimal),
+                    TrackTaskLifecycle: false));
+                var interaction = new DelegateConversionInteraction(
+                    (_, _, _, _) => System.Threading.Tasks.Task.FromResult<string?>(null),
+                    (_, _, _) => System.Threading.Tasks.Task.FromResult<string?>(null),
+                    (_, _, _) => System.Threading.Tasks.Task.FromResult<IReadOnlyDictionary<string, object>?>(null));
 
-                ConvertCommandRunner.Run(MarkdownToWordCommand, new List<string> { input }, outputs, (_, _, _) => { }, options);
+                ConversionResult result = useCase.ExecuteAsync(plan, interaction, progress: null).GetAwaiter().GetResult();
 
-                Assert.True(File.Exists(output), "The shared command runner must produce the planned DOCX output.");
+                Assert.True(result.Status == ConversionResultStatus.Succeeded,
+                    result.Error ?? "Expected Markdown to Word use-case execution to succeed.");
+                Assert.True(File.Exists(plan.Outputs[0]), "The application use case must produce the planned DOCX output.");
             }));
 
         runner.Run("Markdown to Word: common structures produce a valid DOCX package", () =>
