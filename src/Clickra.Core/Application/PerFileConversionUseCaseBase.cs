@@ -1,25 +1,11 @@
-using System.Diagnostics;
-using Clickra.Core.Processors;
-
 namespace Clickra.Core.Application;
 
 /// <summary>Shared application lifecycle for one-input/one-output file conversions.</summary>
-public abstract class PerFileConversionUseCaseBase : IConversionUseCase
+public abstract class PerFileConversionUseCaseBase : ConversionUseCaseBase
 {
-    public abstract string Command { get; }
-
-    protected abstract string UseCaseName { get; }
-
-    protected abstract string InputRequirementError { get; }
-
     protected abstract string OutputCountError { get; }
 
-    protected abstract string UnsupportedInputError(string path);
-
     protected abstract string GetOutputFileName(string input);
-
-    protected virtual ConversionValidationResult ValidateOptions(ConversionRequest request) =>
-        ConversionValidationResult.Success();
 
     protected virtual IReadOnlySet<ConversionCapability> GetCapabilities(ConversionRequest request) =>
         new HashSet<ConversionCapability>();
@@ -48,23 +34,7 @@ public abstract class PerFileConversionUseCaseBase : IConversionUseCase
         object? executionState,
         CancellationToken cancellationToken);
 
-    public ConversionValidationResult Validate(ConversionRequest request)
-    {
-        ArgumentNullException.ThrowIfNull(request);
-        if (!request.Command.Equals(Command, StringComparison.OrdinalIgnoreCase))
-            return ConversionValidationResult.Failure($"{UseCaseName} cannot handle '{request.Command}'.");
-        if (request.InputFiles.Count < ConvertCommandRegistry.GetMinFiles(Command))
-            return ConversionValidationResult.Failure(InputRequirementError);
-
-        string[] allowed = ConvertCommandRegistry.GetAllowedExtensions(Command);
-        string? invalid = request.InputFiles.FirstOrDefault(path =>
-            !allowed.Contains(Path.GetExtension(path), StringComparer.OrdinalIgnoreCase));
-        return invalid is null
-            ? ValidateOptions(request)
-            : ConversionValidationResult.Failure(UnsupportedInputError(invalid));
-    }
-
-    public ConversionPlan Plan(ConversionRequest request)
+    public override ConversionPlan Plan(ConversionRequest request)
     {
         ConversionValidationResult validation = Validate(request);
         if (!validation.IsValid)
@@ -92,31 +62,20 @@ public abstract class PerFileConversionUseCaseBase : IConversionUseCase
             TrackTaskLifecycle: request.TrackTaskLifecycle);
     }
 
-    public async Task<ConversionResult> ExecuteAsync(
+    public override async Task<ConversionResult> ExecuteAsync(
         ConversionPlan plan,
         IConversionInteraction interaction,
         IProgress<ConversionProgress>? progress,
         IConversionExecutionObserver? observer = null,
         CancellationToken cancellationToken = default)
     {
-        ArgumentNullException.ThrowIfNull(plan);
-        ArgumentNullException.ThrowIfNull(interaction);
-        if (!plan.Command.Equals(Command, StringComparison.OrdinalIgnoreCase))
-            throw new InvalidOperationException($"{UseCaseName} cannot execute '{plan.Command}'.");
-        if (plan.Inputs.Count != plan.Outputs.Count)
-            throw new InvalidOperationException(OutputCountError);
-
         object? executionState = CreateExecutionState(plan);
-        var stopwatch = Stopwatch.StartNew();
-        ConversionTaskLifecycle? lifecycle = plan.TrackTaskLifecycle
-            ? ConversionTaskLifecycle.Start(
-                Command,
-                plan.Inputs,
-                plan.ExistingTaskId,
-                plan.BestEffortTaskPersistence)
-            : null;
-        if (lifecycle is not null)
-            observer?.OnTaskStarted(lifecycle.TaskId);
+        var (stopwatch, lifecycle) = StartExecution(
+            plan,
+            interaction,
+            plan.Inputs.Count == plan.Outputs.Count,
+            OutputCountError,
+            observer);
 
         int completedFiles = Math.Clamp(plan.ResumeStartIndex, 0, plan.Inputs.Count);
         try
