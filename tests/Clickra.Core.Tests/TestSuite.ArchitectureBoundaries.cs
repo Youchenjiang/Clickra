@@ -202,64 +202,35 @@ static partial class TestSuite
     }
 
     private static void TestDecryptWorkflowHasSingleExecutionOwner()
-    {
-        string? root = FindRepoRoot();
-        if (root is null) throw new TestSkippedException("Could not locate the repository root.");
-
-        string runner = File.ReadAllText(Path.Combine(root, "src", "Clickra.Core", "Processors", "ConvertCommandRunner.cs"));
-        string registry = File.ReadAllText(Path.Combine(root, "src", "Clickra.Core", "Processors", "ConvertCommandRegistry.cs"));
-        string native = File.ReadAllText(Path.Combine(root, "src", "Clickra.CLI", "Progress", "ProgressWindow.Process.cs"));
-        string quiet = File.ReadAllText(Path.Combine(root, "src", "Clickra.CLI", "Cli", "ClickraCli.cs"));
-        string fluentMain = File.ReadAllText(Path.Combine(root, "src", "Clickra.Fluent", "MainPage.xaml.cs"));
-        string fluentTask = File.ReadAllText(Path.Combine(root, "src", "Clickra.Fluent", "TaskProgressPage.xaml.cs"));
-
-        Assert.False(runner.Contains("case \"decrypt-pdf\"", StringComparison.Ordinal),
-            "Legacy ConvertCommandRunner must not retain a decrypt execution branch after migration.");
-        Assert.False(registry.Contains("_decrypted.pdf", StringComparison.Ordinal),
-            "Legacy ConvertCommandRegistry must not retain decrypt output-path policy after application migration.");
-        Assert.False(native.Contains("FileProcessor.DecryptPdf", StringComparison.Ordinal),
-            "Native presentation must not execute the decrypt processor directly.");
-        Assert.False(quiet.Contains("FileProcessor.DecryptPdf", StringComparison.Ordinal),
-            "Headless CLI must not execute the decrypt processor directly.");
-        Assert.True((fluentMain.Contains("ConversionUseCases.TryGet(command", StringComparison.Ordinal)
-                     || fluentMain.Contains("ConversionUseCases.GetRequired(command)", StringComparison.Ordinal))
-                    && (fluentTask.Contains("ConversionUseCases.TryGet(command", StringComparison.Ordinal)
-                        || fluentTask.Contains("ConversionUseCases.GetRequired(command)", StringComparison.Ordinal))
-                    && native.Contains("ConversionUseCases.GetRequired(DecryptPdfUseCase.CommandName)", StringComparison.Ordinal)
-                    && quiet.Contains("ConversionUseCases.GetRequired(DecryptPdfUseCase.CommandName)", StringComparison.Ordinal),
-            "All product surfaces must resolve decrypt execution through the application use-case catalog.");
-    }
+        => AssertMigratedWorkflowHasSingleExecutionOwner(
+            DecryptPdfUseCase.CommandName,
+            "_decrypted.pdf",
+            "FileProcessor.DecryptPdf",
+            nameof(DecryptPdfUseCase),
+            "decrypt");
 
     private static void TestSplitWorkflowHasSingleExecutionOwner()
-    {
-        string? root = FindRepoRoot();
-        if (root is null) throw new TestSkippedException("Could not locate the repository root.");
-
-        string runner = File.ReadAllText(Path.Combine(root, "src", "Clickra.Core", "Processors", "ConvertCommandRunner.cs"));
-        string registry = File.ReadAllText(Path.Combine(root, "src", "Clickra.Core", "Processors", "ConvertCommandRegistry.cs"));
-        string native = File.ReadAllText(Path.Combine(root, "src", "Clickra.CLI", "Progress", "ProgressWindow.Process.cs"));
-        string quiet = File.ReadAllText(Path.Combine(root, "src", "Clickra.CLI", "Cli", "ClickraCli.cs"));
-        string fluentMain = File.ReadAllText(Path.Combine(root, "src", "Clickra.Fluent", "MainPage.xaml.cs"));
-        string fluentTask = File.ReadAllText(Path.Combine(root, "src", "Clickra.Fluent", "TaskProgressPage.xaml.cs"));
-
-        Assert.False(runner.Contains("case \"split-pdf\"", StringComparison.Ordinal),
-            "Legacy ConvertCommandRunner must not retain a split execution branch after migration.");
-        Assert.False(registry.Contains("_split.pdf", StringComparison.Ordinal),
-            "Legacy ConvertCommandRegistry must not retain split output-path policy after application migration.");
-        Assert.False(native.Contains("FileProcessor.SplitPdf", StringComparison.Ordinal),
-            "Native presentation must not execute the split processor directly.");
-        Assert.False(quiet.Contains("FileProcessor.SplitPdf", StringComparison.Ordinal),
-            "Headless CLI must not execute the split processor directly.");
-        Assert.True((fluentMain.Contains("ConversionUseCases.TryGet(command", StringComparison.Ordinal)
-                     || fluentMain.Contains("ConversionUseCases.GetRequired(command)", StringComparison.Ordinal))
-                    && (fluentTask.Contains("ConversionUseCases.TryGet(command", StringComparison.Ordinal)
-                        || fluentTask.Contains("ConversionUseCases.GetRequired(command)", StringComparison.Ordinal))
-                    && native.Contains("ConversionUseCases.GetRequired(SplitPdfUseCase.CommandName)", StringComparison.Ordinal)
-                    && quiet.Contains("ConversionUseCases.GetRequired(SplitPdfUseCase.CommandName)", StringComparison.Ordinal),
-            "All product surfaces must resolve split execution through the application use-case catalog.");
-    }
+        => AssertMigratedWorkflowHasSingleExecutionOwner(
+            SplitPdfUseCase.CommandName,
+            "_split.pdf",
+            "FileProcessor.SplitPdf",
+            nameof(SplitPdfUseCase),
+            "split");
 
     private static void TestCompressWorkflowHasSingleExecutionOwner()
+        => AssertMigratedWorkflowHasSingleExecutionOwner(
+            CompressPdfUseCase.CommandName,
+            "_compressed.pdf",
+            "FileProcessor.CompressPdf",
+            nameof(CompressPdfUseCase),
+            "compression");
+
+    private static void AssertMigratedWorkflowHasSingleExecutionOwner(
+        string command,
+        string legacyOutputSuffix,
+        string processorCall,
+        string useCaseTypeName,
+        string workflowName)
     {
         string? root = FindRepoRoot();
         if (root is null) throw new TestSkippedException("Could not locate the repository root.");
@@ -271,21 +242,22 @@ static partial class TestSuite
         string fluentMain = File.ReadAllText(Path.Combine(root, "src", "Clickra.Fluent", "MainPage.xaml.cs"));
         string fluentTask = File.ReadAllText(Path.Combine(root, "src", "Clickra.Fluent", "TaskProgressPage.xaml.cs"));
 
-        Assert.False(runner.Contains("case \"compress-pdf\"", StringComparison.Ordinal),
-            "Legacy ConvertCommandRunner must not retain a compress execution branch after migration.");
-        Assert.False(registry.Contains("_compressed.pdf", StringComparison.Ordinal),
-            "Legacy ConvertCommandRegistry must not retain compression output-path policy after application migration.");
-        Assert.False(native.Contains("FileProcessor.CompressPdf", StringComparison.Ordinal),
-            "Native presentation must not execute the compression processor directly.");
-        Assert.False(quiet.Contains("FileProcessor.CompressPdf", StringComparison.Ordinal),
-            "Headless CLI must not execute the compression processor directly.");
+        Assert.False(runner.Contains($"case \"{command}\"", StringComparison.Ordinal),
+            $"Legacy ConvertCommandRunner must not retain a {workflowName} execution branch after migration.");
+        Assert.False(registry.Contains(legacyOutputSuffix, StringComparison.Ordinal),
+            $"Legacy ConvertCommandRegistry must not retain {workflowName} output-path policy after application migration.");
+        Assert.False(native.Contains(processorCall, StringComparison.Ordinal),
+            $"Native presentation must not execute the {workflowName} processor directly.");
+        Assert.False(quiet.Contains(processorCall, StringComparison.Ordinal),
+            $"Headless CLI must not execute the {workflowName} processor directly.");
+        string catalogResolution = $"ConversionUseCases.GetRequired({useCaseTypeName}.CommandName)";
         Assert.True((fluentMain.Contains("ConversionUseCases.TryGet(command", StringComparison.Ordinal)
                      || fluentMain.Contains("ConversionUseCases.GetRequired(command)", StringComparison.Ordinal))
                     && (fluentTask.Contains("ConversionUseCases.TryGet(command", StringComparison.Ordinal)
                         || fluentTask.Contains("ConversionUseCases.GetRequired(command)", StringComparison.Ordinal))
-                    && native.Contains("ConversionUseCases.GetRequired(CompressPdfUseCase.CommandName)", StringComparison.Ordinal)
-                    && quiet.Contains("ConversionUseCases.GetRequired(CompressPdfUseCase.CommandName)", StringComparison.Ordinal),
-            "All product surfaces must resolve compression execution through the application use-case catalog.");
+                    && native.Contains(catalogResolution, StringComparison.Ordinal)
+                    && quiet.Contains(catalogResolution, StringComparison.Ordinal),
+            $"All product surfaces must resolve {workflowName} execution through the application use-case catalog.");
     }
 
     private sealed class StubConversionUseCase(string command) : IConversionUseCase
