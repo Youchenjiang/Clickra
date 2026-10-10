@@ -98,7 +98,7 @@ Any failure is fail-closed: the direct MSIX is not published.
 **Purpose:**
 
 - preserve the existing Store publication flow;
-- retain the Microsoft Store package family and Store-owned optional-package relationship;
+- preserve the Microsoft Store package family while treating the proposed optional-package relationship as policy-gated, not production state;
 - allow Microsoft Store to remain operationally independent from GitHub direct signing.
 
 **Requirements:**
@@ -106,7 +106,7 @@ Any failure is fail-closed: the direct MSIX is not published.
 - `build-msix` continues to produce the Store-identity artifact used by `store-publish`;
 - Store submission must never consume the SignPath direct-download artifact;
 - Store Publisher and Store package identity remain unchanged in tracked manifests;
-- Store Fluent optional-package behavior continues to be gated by the exact Store Publisher/runtime package identity.
+- Store Fluent optional-package behavior remains frozen until Microsoft resolves the current Store-policy conflict and all product-specific gates are explicitly cleared.
 
 ---
 

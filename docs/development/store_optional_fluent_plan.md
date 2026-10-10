@@ -1,9 +1,9 @@
 # AOT 主套件與 Fluent Optional Package 可行性及導入計畫
 
-> **狀態**：最高優先級候選架構（Feasibility Gate，尚未核准正式遷移）  
+> **狀態**：政策爭議中的候選架構（Feasibility Gate；凍結正式導入，等待 Microsoft 權威答覆）
 > **記錄日期**：2026-08-29  
 > **關聯里程碑**：`F1-13 Store-Resilient Optional Fluent Delivery`  
-> **目前 automated release state**：`.github/workflows/release.yml` / `scripts/build_msix.ps1` 只發布 NativeAOT Main `Clickra.msix`。`archive/dual_track_guide.md` 保存的是較早的 dual-track distribution 設計，不是 live release authority；本文件全部閘門通過前，也不得把 Fluent optional package 描述成 production Store path。
+> **目前 automated release state**：`.github/workflows/release.yml` / `scripts/build_msix.ps1` 只發布 NativeAOT Main `Clickra.msix`。`archive/dual_track_guide.md` 保存的是較早的 dual-track distribution 設計，不是 live release authority；本文件全部閘門通過前，也不得把 Fluent optional package 描述成 production Store path。2026-10-08 Microsoft support 表示 Optional Packages / Related Sets 已不再接受 Store submission，但此說法與現行 Microsoft Learn 及同一 SR 較早回覆衝突；在權威政策來源或 escalation 結論到位前，Optional/Related-Set 專屬實作一律凍結。
 
 ## 1. 問題與決策目標
 
@@ -49,7 +49,7 @@
 - Related set 的版本同步、optional app 的隱藏 app-list entry、AUMID activation、
   `ApplicationData` 共用位置與 Shell 參數轉交都必須以 Clickra PoC 實測。
 
-因此目前結論是：**平台架構成立，但產品導入仍是有明確退出條件的可行性驗證，不是已核准實作。**
+因此目前結論是：**平台能力與公開文件仍存在，但 Store submission eligibility 已成為政策爭議點；本方案不是已核准實作，且在政策衝突釐清前不得繼續產品化。**
 
 ## 3. 目標套件架構
 
@@ -156,6 +156,17 @@ manifest 產線；不得依賴只能在開發機 GUI 中操作的步驟。
 
 ## 7. Store 與權限閘門
 
+### 7.1 SR 2608310060003141 policy status
+
+截至 2026-10-10，此 SR 的書面回覆存在尚未解決的政策衝突：
+
+- 2026-09-12：Microsoft support 表示此架構是 supported scenario，Store submission 需透過 Windows Developer Support 取得 permission。
+- 2026-09-28：support 再次表示 Optional Packages / Related Sets 需要 approval，並將 Clickra 的 permission request 留在此 SR。
+- 2026-10-08：support 改稱 Optional Packages / Related Sets 已不再提供 Microsoft Store submissions，因此 Clickra 無法取得核准。
+- 2026-10-10：已回信要求提供 authoritative Microsoft policy/source，或將 SR escalation 至 Store submission / ingestion / policy team，以解釋與現行 Microsoft Learn 文件的矛盾。
+
+在取得權威政策來源前，2026-10-08 的回覆視為 **blocking evidence**，但不視為足以改寫平台技術事實的唯一來源。工程上停止新增 Optional Package / Related Set 專屬實作；現有 PoC、manifest 與腳本保留作為證據與可逆研究成果。
+
 在實作正式產品遷移前，必須向 Windows Developer Support 取得 Clickra Store 帳號與產品可用
 以下能力的確認：
 
@@ -173,7 +184,7 @@ capability；首版設計一律使用顯示系統確認的 Store API。權限遭
 
 ### Phase 0 — 帳號與 Store 可用性（硬閘門）
 
-- [ ] 向 Microsoft 送出 optional package / related set 權限申請。
+- [x] 向 Microsoft 送出 optional package / related set 權限申請（SR 2608310060003141）。
 - [ ] 取得書面回覆並保存工單編號、允許範圍與限制。
 - [ ] 在 Partner Center 測試產品中確認能建立 associated optional/DLC package。
 
