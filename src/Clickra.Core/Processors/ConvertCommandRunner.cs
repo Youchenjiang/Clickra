@@ -95,9 +95,6 @@ public static class ConvertCommandRunner
         {
             switch (command)
             {
-                case "ppt2pdf":
-                    FileProcessor.ConvertPptToPdf(files, progress, token);
-                    break;
                 case "excel2pdf":
                     FileProcessor.ConvertExcelToPdf(files, progress, token);
                     break;
