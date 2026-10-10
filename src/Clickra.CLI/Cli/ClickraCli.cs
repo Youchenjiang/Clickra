@@ -72,38 +72,55 @@ namespace Clickra
                     continue;
                 }
 
-                string outName = Path.Combine(outputDir, Path.GetFileNameWithoutExtension(f) + "_translated.pdf");
                 string dbgLog = Path.Combine(outputDir, Path.GetFileNameWithoutExtension(f) + "_renderdbg.log");
                 string healthReport = Path.Combine(outputDir, Path.GetFileNameWithoutExtension(f) + "_translated_health.json");
                 ClickraDebug.Clear();
                 Console.WriteLine($"[Progress] {Loc("cli_progress_translating_pdf_start", Path.GetFileName(f), i + 1, files.Count)}");
                 WriteConsoleProgress(0, 100, Loc("cli_progress_translating_pdf", Path.GetFileName(f), i + 1, files.Count));
-                try
+                IConversionUseCase useCase = ConversionUseCases.GetRequired(TranslatePdfUseCase.CommandName);
+                ConversionPlan plan = useCase.Plan(new ConversionRequest(
+                    TranslatePdfUseCase.CommandName,
+                    new[] { f },
+                    new Dictionary<string, object>
+                    {
+                        [TranslatePdfUseCase.TargetLanguageOptionKey] = targetLang
+                    },
+                    OutputOverride: outputDir,
+                    TrackTaskLifecycle: false));
+                var interaction = new DelegateConversionInteraction(
+                    (_, _, _, _) => Task.FromResult<string?>(null),
+                    (_, _, _) => Task.FromResult<string?>(null),
+                    (_, _, _) => Task.FromResult<IReadOnlyDictionary<string, object>?>(null));
+                var progress = new SynchronousProgress<ConversionProgress>(state =>
+                    WriteConsoleProgress(state.Current, state.Total, state.Message));
+                ConversionResult result = useCase.ExecuteAsync(plan, interaction, progress)
+                    .GetAwaiter()
+                    .GetResult();
+
+                if (result.Status == ConversionResultStatus.Succeeded)
                 {
-                    FileProcessor.TranslatePdf(f, outName, targetLang, WriteConsoleProgress);
                     WriteConsoleProgress(100, 100, Loc("cli_progress_translating_pdf_done", Path.GetFileName(f), i + 1, files.Count));
                     FinishConsoleProgressLine();
                     ClickraDebug.SaveTo(dbgLog);
                     Console.WriteLine($"[Debug] Render log: {dbgLog} ({ClickraDebug.Lines.Count} entries)");
+                    continue;
                 }
-                catch (FileNotFoundException)
+
+                translationFailed = true;
+                FinishConsoleProgressLine();
+                string? sourceDirectory = Path.GetDirectoryName(Path.GetFullPath(f));
+                if (sourceDirectory is not null && !Directory.Exists(sourceDirectory))
                 {
-                    translationFailed = true;
-                    FinishConsoleProgressLine();
-                    Console.WriteLine($"[Warning] {Loc("cli_warn_translate_file_vanished", f)}");
-                }
-                catch (DirectoryNotFoundException)
-                {
-                    translationFailed = true;
-                    FinishConsoleProgressLine();
                     Console.WriteLine($"[Warning] {Loc("cli_warn_translate_dir_vanished", f)}");
                 }
-                catch (Exception ex)
+                else if (!File.Exists(f))
                 {
-                    translationFailed = true;
-                    FinishConsoleProgressLine();
+                    Console.WriteLine($"[Warning] {Loc("cli_warn_translate_file_vanished", f)}");
+                }
+                else
+                {
                     ClickraDebug.SaveTo(dbgLog);
-                    Console.WriteLine($"[Error] {Loc("cli_err_translate_failed", f, ex.Message)}");
+                    Console.WriteLine($"[Error] {Loc("cli_err_translate_failed", f, result.Error ?? "")}");
                     Console.WriteLine($"[Debug] Health report: {healthReport}");
                 }
             }
