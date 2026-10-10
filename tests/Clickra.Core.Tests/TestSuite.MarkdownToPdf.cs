@@ -8,6 +8,7 @@ using System.Threading;
 using Clickra.Core;
 using Clickra.Core.Application;
 using Clickra.Core.Processors;
+using Clickra.Shared;
 
 namespace Clickra.Core.Tests;
 
@@ -86,7 +87,7 @@ static partial class TestSuite
             string[] allowed = ConvertCommandRegistry.GetAllowedExtensions(MarkdownToPdfCommand);
             Assert.True(allowed.Contains(".md", StringComparer.OrdinalIgnoreCase), MarkdownToPdfCommand + " must accept .md files.");
             Assert.True(allowed.Contains(".markdown", StringComparer.OrdinalIgnoreCase), MarkdownToPdfCommand + " must accept .markdown files.");
-            Assert.True(ConvertCommandRegistry.GetCommandsForType("markdown").Contains(MarkdownToPdfCommand, StringComparer.Ordinal),
+            Assert.True(ConvertCommandMetadata.GetCommandsForType("markdown").Contains(MarkdownToPdfCommand, StringComparer.Ordinal),
                 "Markdown command discovery must include " + MarkdownToPdfCommand + ".");
 
             RunWithTempDirectory(tempDir =>

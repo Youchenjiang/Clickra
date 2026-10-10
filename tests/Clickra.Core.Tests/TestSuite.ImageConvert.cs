@@ -1,6 +1,7 @@
 using Clickra.Core;
 using Clickra.Core.Application;
 using Clickra.Core.Processors;
+using Clickra.Shared;
 using System;
 using System.Collections.Generic;
 using System.Drawing;
@@ -467,7 +468,7 @@ static partial class TestSuite
                 Assert.True(ConvertCommandRegistry.GetMinFiles(command) == 1, $"{command} should accept a single file.");
                 Assert.True(ConvertCommandRegistry.GetAllowedExtensions(command).Contains(".png", StringComparer.OrdinalIgnoreCase) || command == CmdImgToPng, $"{command} should accept PNG inputs unless PNG is the target.");
                 Assert.True(ConvertCommandRegistry.GetAllowedExtensions(command).Contains(ExtHeic, StringComparer.OrdinalIgnoreCase) || command == CmdImgToHeic, $"{command} should accept HEIC inputs unless HEIC is the target.");
-                Assert.Equal("image", ConvertCommandRegistry.GetFileTypeForCommand(command));
+                Assert.Equal("image", ConvertCommandMetadata.GetFileTypeForCommand(command));
             }
         });
 
@@ -481,8 +482,8 @@ static partial class TestSuite
             Assert.False(ConvertCommandRegistry.GetAllowedExtensions(CmdImgToHeic).Contains(ExtHeic, StringComparer.OrdinalIgnoreCase), "img-to-heic must not accept .heic inputs.");
 
             Assert.True(ConvertCommandRegistry.GetAllowedExtensions(CmdImgToHeic).Contains(".png", StringComparer.OrdinalIgnoreCase), "img-to-heic should still accept .png inputs.");
-            Assert.True(ConvertCommandRegistry.GetExcludedExtensions(CmdImgToHeic).Contains(ExtHeic, StringComparer.OrdinalIgnoreCase), "img-to-heic should declare .heic as excluded.");
-            Assert.True(ConvertCommandRegistry.GetExcludedExtensions(CmdImg2Pdf).Length == 0, "img2pdf accepts every image input.");
+            Assert.True(ConvertCommandMetadata.GetExcludedExtensions(CmdImgToHeic).Contains(ExtHeic, StringComparer.OrdinalIgnoreCase), "img-to-heic should declare .heic as excluded.");
+            Assert.True(ConvertCommandMetadata.GetExcludedExtensions(CmdImg2Pdf).Length == 0, "img2pdf accepts every image input.");
             Assert.True(ConvertCommandRegistry.GetAllowedExtensions(CmdImg2Pdf).Contains(".bmp", StringComparer.OrdinalIgnoreCase), "img2pdf must accept .bmp inputs.");
             Assert.True(ConvertCommandRegistry.GetAllowedExtensions(CmdImg2Pdf).Contains(".tiff", StringComparer.OrdinalIgnoreCase), "img2pdf must accept .tiff inputs.");
             Assert.True(ConvertCommandRegistry.GetAllowedExtensions(CmdImgToPng).Contains(".bmp", StringComparer.OrdinalIgnoreCase), "img-to-png must accept .bmp inputs.");

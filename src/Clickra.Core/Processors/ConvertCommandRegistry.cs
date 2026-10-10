@@ -10,16 +10,10 @@ namespace Clickra.Core.Processors;
 /// Fluent and NativeAOT UIs. Adding a command means editing this table once.</summary>
 public static class ConvertCommandRegistry
 {
-        /// <summary>Convert commands available for a UI file type.</summary>
-        public static string[] GetCommandsForType(string type) => ConvertCommandMetadata.GetCommandsForType(type);
-
         /// <summary>Returns the product-wide default command for a homogeneous file selection.
         /// Explicit UI selections should take precedence when they remain compatible.</summary>
         public static string? GetDefaultCommandForFiles(IReadOnlyCollection<string> files) =>
             ConvertCommandMetadata.GetDefaultCommandForFiles(files);
-
-        /// <summary>The UI file type a command belongs to (defaults to "pdf" for unknown commands).</summary>
-        public static string GetFileTypeForCommand(string command) => ConvertCommandMetadata.GetFileTypeForCommand(command);
 
         /// <summary>Every file type any convert command accepts, used for unfiltered pickers.</summary>
         public static string[] AllSupportedExtensions => ConvertCommandMetadata.AllSupportedExtensions;
@@ -28,10 +22,6 @@ public static class ConvertCommandRegistry
         /// For format-conversion commands this already excludes the source extensions that
         /// would make the conversion a no-op (e.g. img-to-png does not accept .png).</summary>
         public static string[] GetAllowedExtensions(string? command) => ConvertCommandMetadata.GetAllowedExtensions(command);
-
-        /// <summary>Source extensions a command must exclude to avoid no-op conversions;
-        /// empty when the command accepts everything it lists.</summary>
-        public static string[] GetExcludedExtensions(string? command) => ConvertCommandMetadata.GetExcludedExtensions(command);
 
         /// <summary>Whether the command key maps to a known conversion.</summary>
         public static bool IsKnownCommand(string command) => ConvertCommandMetadata.IsKnownCommand(command);

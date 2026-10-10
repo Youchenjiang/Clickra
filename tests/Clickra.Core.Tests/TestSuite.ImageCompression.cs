@@ -10,6 +10,7 @@ using System.Threading.Tasks;
 using Clickra.Core;
 using Clickra.Core.Application;
 using Clickra.Core.Processors;
+using Clickra.Shared;
 
 namespace Clickra.Core.Tests;
 
@@ -273,7 +274,7 @@ static partial class TestSuite
         Assert.True(ConvertCommandRegistry.IsKnownCommand(ImageCompressCommand),
             ImageCompressCommand + " must be registered before the Explorer menu can invoke it.");
         Assert.Equal("cmd_img_compress", ConvertCommandRegistry.GetLabelKey(ImageCompressCommand));
-        Assert.True(ConvertCommandRegistry.GetCommandsForType("image").Contains(ImageCompressCommand, StringComparer.Ordinal),
+        Assert.True(ConvertCommandMetadata.GetCommandsForType("image").Contains(ImageCompressCommand, StringComparer.Ordinal),
             "Image command discovery must include " + ImageCompressCommand + ".");
 
         string inputDir = Path.Combine(Path.GetTempPath(), "clickra-registry-input");
