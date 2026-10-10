@@ -4,6 +4,7 @@ namespace Clickra.Core.Application;
 public sealed class ConversionUseCaseRegistry
 {
     private readonly IReadOnlyDictionary<string, IConversionUseCase> _useCases;
+    private readonly IReadOnlyCollection<string> _commands;
 
     public ConversionUseCaseRegistry(IEnumerable<IConversionUseCase> useCases)
     {
@@ -20,9 +21,10 @@ public sealed class ConversionUseCaseRegistry
         }
 
         _useCases = map;
+        _commands = Array.AsReadOnly(map.Keys.ToArray());
     }
 
-    public IReadOnlyCollection<string> Commands => _useCases.Keys.ToArray();
+    public IReadOnlyCollection<string> Commands => _commands;
 
     public bool TryGet(string command, out IConversionUseCase? useCase)
     {

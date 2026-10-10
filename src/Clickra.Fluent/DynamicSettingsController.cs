@@ -125,8 +125,6 @@ internal sealed class DynamicSettingsController
                 case SettingEditorKind.Choice:
                     SyncChoice(control);
                     break;
-                default:
-                    break;
             }
         }
     }

@@ -44,10 +44,7 @@ public static partial class ClickraStorage
 
         internal static void Start(string command, int fileCount, string? inputPaths)
         {
-            RunWithMutex(() =>
-            {
-                Write(command, fileCount, ConversionStatus.Pending, "", null, inputPaths);
-            });
+            RunWithMutex(() => Write(command, fileCount, ConversionStatus.Pending, "", null, inputPaths));
         }
 
         internal static void SetInProgress()

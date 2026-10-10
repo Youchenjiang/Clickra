@@ -40,7 +40,7 @@ public sealed class ConversionTaskLifecycle
         string? startTimeOverride = null)
     {
         string inputs = string.Join(";", files);
-        string startTime = startTimeOverride ?? DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
+        string startTime = startTimeOverride ?? DateTime.UtcNow.ToString("yyyy-MM-dd HH:mm:ss");
         var lifecycle = new ConversionTaskLifecycle(
             command,
             inputs,
