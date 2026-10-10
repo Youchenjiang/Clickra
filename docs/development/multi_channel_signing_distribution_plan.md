@@ -77,6 +77,11 @@ release tag
 - the tracked source manifests remain Store-owned and must never be permanently rewritten to the direct Publisher;
 - the direct package and Store package are expected to belong to different package families when their Publishers differ.
 
+The direct channel may eventually contain more than one verified artifact shape. A standalone
+Fluent direct package is a separate fallback candidate governed by
+`fluent_direct_distribution_plan.md`; it must use its own reviewed identity/package layout and
+must not be inferred from the current NativeAOT-only `build_github_msix.ps1` path.
+
 **Verification gate before publication:**
 
 The signed direct artifact must not be attached to a GitHub Release until all of the following pass:

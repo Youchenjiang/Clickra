@@ -232,7 +232,7 @@ capability；首版設計一律使用顯示系統確認的 Store API。權限遭
 
 依優先順序採用：
 
-1. **Store AOT-only；GitHub/官網維持 Fluent + NativeAOT 真雙軌**：可靠性最高。
+1. **Store AOT-only；GitHub/官網提供獨立 Fluent direct package**：目前首選 fallback；具體 identity、Shell ownership、shared-data、signing 與 validation gates 由 `fluent_direct_distribution_plan.md` 管理，不得直接復活 archived same-identity dual-track。
 2. **Store Fluent framework-dependent；GitHub/官網維持真雙軌**：只有 Store flight 證明
    framework 安裝可靠時才接受。
 3. **兩個獨立 Store listing**：不採用。不同 identity 會造成兩個商店頁面、可能同時安裝、
