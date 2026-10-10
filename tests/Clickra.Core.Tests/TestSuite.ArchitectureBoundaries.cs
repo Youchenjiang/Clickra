@@ -102,6 +102,9 @@ static partial class TestSuite
         runner.RunGuard(
             "Architecture boundaries: migrated image format workflows have one execution owner",
             TestImageFormatWorkflowsHaveSingleExecutionOwner);
+        runner.RunGuard(
+            "Architecture boundaries: migrated PDF translation workflow has one execution owner",
+            TestTranslatePdfWorkflowHasSingleExecutionOwner);
     }
 
     private static void TestArchitectureViolationBaseline()
@@ -403,6 +406,36 @@ static partial class TestSuite
                 null,
                 command);
         }
+    }
+
+    private static void TestTranslatePdfWorkflowHasSingleExecutionOwner()
+    {
+        string? root = FindRepoRoot();
+        if (root is null) throw new TestSkippedException("Could not locate the repository root.");
+
+        string runner = File.ReadAllText(Path.Combine(root, "src", "Clickra.Core", "Processors", "ConvertCommandRunner.cs"));
+        string registry = File.ReadAllText(Path.Combine(root, "src", "Clickra.Core", "Processors", "ConvertCommandRegistry.cs"));
+        string native = File.ReadAllText(Path.Combine(root, "src", "Clickra.CLI", "Progress", "ProgressWindow.Process.cs"));
+        string quiet = File.ReadAllText(Path.Combine(root, "src", "Clickra.CLI", "Cli", "ClickraCli.cs"));
+        string fluentMain = File.ReadAllText(Path.Combine(root, "src", "Clickra.Fluent", "MainPage.xaml.cs"));
+        string fluentTask = File.ReadAllText(Path.Combine(root, "src", "Clickra.Fluent", "TaskProgressPage.xaml.cs"));
+
+        Assert.False(runner.Contains("case \"translate-pdf\"", StringComparison.Ordinal),
+            "Legacy ConvertCommandRunner must not retain translate-pdf execution after application migration.");
+        Assert.False(registry.Contains("Path.GetFileNameWithoutExtension(f) + \"_translated.pdf\"", StringComparison.Ordinal),
+            "Legacy ConvertCommandRegistry must not retain translate-pdf output planning after application migration.");
+        Assert.False(native.Contains("FileProcessor.TranslatePdf", StringComparison.Ordinal),
+            "Native presentation must not execute PDF translation directly.");
+        Assert.False(quiet.Contains("FileProcessor.TranslatePdf", StringComparison.Ordinal),
+            "Headless CLI must not execute PDF translation directly.");
+        Assert.True((fluentMain.Contains("ConversionUseCases.TryGet(command", StringComparison.Ordinal)
+                     || fluentMain.Contains("ConversionUseCases.GetRequired(command)", StringComparison.Ordinal))
+                    && (fluentTask.Contains("ConversionUseCases.TryGet(command", StringComparison.Ordinal)
+                        || fluentTask.Contains("ConversionUseCases.GetRequired(command)", StringComparison.Ordinal))
+                    && native.Contains("RunApplicationTranslate(hwnd, currentFiles, progressCallback)", StringComparison.Ordinal)
+                    && native.Contains("ConversionUseCases.GetRequired(TranslatePdfUseCase.CommandName)", StringComparison.Ordinal)
+                    && quiet.Contains("ConversionUseCases.GetRequired(TranslatePdfUseCase.CommandName)", StringComparison.Ordinal),
+            "All product surfaces must resolve translate-pdf through the application use-case catalog.");
     }
 
     private sealed class StubConversionUseCase(string command) : IConversionUseCase
