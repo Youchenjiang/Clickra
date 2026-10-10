@@ -125,6 +125,9 @@ internal sealed class DynamicSettingsController
                 case SettingEditorKind.Choice:
                     SyncChoice(control);
                     break;
+                default:
+                    // Ignore unsupported editor kinds until a matching control is implemented.
+                    break;
             }
         }
     }
