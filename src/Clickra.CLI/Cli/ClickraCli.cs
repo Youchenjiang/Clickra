@@ -153,7 +153,10 @@ namespace Clickra
             RequireMinFiles(files, command, ConvertCommandRegistry.GetMinFiles(command), quiet);
             if (quiet)
             {
-                DispatchMarkdownQuiet(files, outputDir, outputDirOverride, toWord);
+                if (toPdf)
+                    HandleMarkdownToPdfQuiet(files, outputDir, outputDirOverride);
+                else
+                    DispatchMarkdownToWordQuiet(files, outputDir, outputDirOverride);
             }
             else
             {
@@ -162,11 +165,10 @@ namespace Clickra
             return true;
         }
 
-        private static void DispatchMarkdownQuiet(
+        private static void DispatchMarkdownToWordQuiet(
             IReadOnlyList<string> files,
             string outputDir,
-            string? outputDirOverride,
-            bool toWord)
+            string? outputDirOverride)
         {
             for (int i = 0; i < files.Count; i++)
             {
@@ -175,12 +177,38 @@ namespace Clickra
                     : outputDir;
                 string output = Path.Combine(
                     targetDir,
-                    Path.GetFileNameWithoutExtension(files[i]) + (toWord ? ".docx" : ".pdf"));
-                if (toWord)
-                    FileProcessor.ConvertMarkdownToWord(files[i], output, onProgress: (_, _, msg) => Console.WriteLine($"[Progress] {msg}"));
-                else
-                    FileProcessor.ConvertMarkdownToPdf(files[i], output, (_, _, msg) => Console.WriteLine($"[Progress] {msg}"));
+                    Path.GetFileNameWithoutExtension(files[i]) + ".docx");
+                FileProcessor.ConvertMarkdownToWord(
+                    files[i],
+                    output,
+                    onProgress: (_, _, msg) => Console.WriteLine($"[Progress] {msg}"));
             }
+        }
+
+        private static void HandleMarkdownToPdfQuiet(
+            IReadOnlyList<string> files,
+            string outputDir,
+            string? outputDirOverride)
+        {
+            IConversionUseCase useCase = ConversionUseCases.GetRequired(MarkdownToPdfUseCase.CommandName);
+            ConversionPlan plan = useCase.Plan(new ConversionRequest(
+                MarkdownToPdfUseCase.CommandName,
+                files,
+                MarkdownPdfOptions.Create(),
+                OutputOverride: string.IsNullOrWhiteSpace(outputDirOverride) ? null : outputDir,
+                TrackTaskLifecycle: false));
+            var interaction = new DelegateConversionInteraction(
+                (_, _, _, _) => Task.FromResult<string?>(null),
+                (_, _, _) => Task.FromResult<string?>(null),
+                (_, _, _) => Task.FromResult<IReadOnlyDictionary<string, object>?>(null));
+            var progress = new SynchronousProgress<ConversionProgress>(state =>
+                Console.WriteLine($"[Progress] {state.Message}"));
+
+            ConversionResult result = useCase.ExecuteAsync(plan, interaction, progress)
+                .GetAwaiter()
+                .GetResult();
+            if (result.Status != ConversionResultStatus.Succeeded)
+                throw new InvalidOperationException(result.Error ?? Loc("error_processing_failed"));
         }
 
         /// <summary>Handles office-conversion commands (ppt2pdf, word2pdf, excel2pdf).</summary>
