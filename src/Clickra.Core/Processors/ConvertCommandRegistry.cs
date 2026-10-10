@@ -80,9 +80,8 @@ public static class ConvertCommandRegistry
                     "img2pdf output planning is owned by the application use case."),
                 CmdMdToPdf => throw new InvalidOperationException(
                     "md2pdf output planning is owned by the application use case."),
-                CmdMdToWord => files.Select(f => Path.Combine(
-                    string.IsNullOrWhiteSpace(outputDirOverride) ? ClickraStorage.GetOutputDir(f) : Path.GetFullPath(outputDirOverride),
-                    Path.GetFileNameWithoutExtension(f) + ".docx")).ToList(),
+                CmdMdToWord => throw new InvalidOperationException(
+                    "md2word output planning is owned by the application use case."),
                 CmdImgCompress => throw new InvalidOperationException(
                     "img-compress output planning is owned by the application use case."),
                 CmdImgToPng or CmdImgToJpg or CmdImgToWebp or CmdImgToGif or CmdImgToHeic

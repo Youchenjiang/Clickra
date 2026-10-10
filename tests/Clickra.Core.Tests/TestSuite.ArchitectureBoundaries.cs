@@ -116,6 +116,9 @@ static partial class TestSuite
         runner.RunGuard(
             "Architecture boundaries: migrated Markdown PDF workflow has one execution owner",
             TestMarkdownToPdfWorkflowHasSingleExecutionOwner);
+        runner.RunGuard(
+            "Architecture boundaries: migrated Markdown Word workflow has one execution owner",
+            TestMarkdownToWordWorkflowHasSingleExecutionOwner);
     }
 
     private static void TestArchitectureViolationBaseline()
@@ -583,12 +586,8 @@ static partial class TestSuite
 
         Assert.False(runner.Contains("case \"md2pdf\"", StringComparison.Ordinal),
             "Legacy ConvertCommandRunner must not retain md2pdf execution after application migration.");
-        Assert.False(runner.Contains("case \"md2word\"", StringComparison.Ordinal),
-            "Legacy ConvertCommandRunner must not retain md2word execution after application migration.");
         Assert.True(registry.Contains("md2pdf output planning is owned by the application use case.", StringComparison.Ordinal),
             "Legacy ConvertCommandRegistry must fail closed instead of planning md2pdf outputs after migration.");
-        Assert.True(registry.Contains("CmdMdToWord => files.Select", StringComparison.Ordinal),
-            "The independent md2word legacy planner must remain available until its own migration.");
         Assert.False(native.Contains("FileProcessor.ConvertMarkdownToPdf", StringComparison.Ordinal),
             "Native presentation must not execute Markdown PDF conversion directly.");
         Assert.False(quiet.Contains("FileProcessor.ConvertMarkdownToPdf", StringComparison.Ordinal),
@@ -606,6 +605,41 @@ static partial class TestSuite
                     && fluentTask.Contains("commandOptions,", StringComparison.Ordinal)
                     && fluentTask.Contains("ExistingTaskId: existingTaskId", StringComparison.Ordinal),
             "Both Fluent md2pdf paths must forward the already-prompted Markdown option snapshot into planning.");
+    }
+
+    private static void TestMarkdownToWordWorkflowHasSingleExecutionOwner()
+    {
+        string? root = FindRepoRoot();
+        if (root is null) throw new TestSkippedException("Could not locate the repository root.");
+
+        string runner = File.ReadAllText(Path.Combine(root, "src", "Clickra.Core", "Processors", "ConvertCommandRunner.cs"));
+        string registry = File.ReadAllText(Path.Combine(root, "src", "Clickra.Core", "Processors", "ConvertCommandRegistry.cs"));
+        string native = File.ReadAllText(Path.Combine(root, "src", "Clickra.CLI", "Progress", "ProgressWindow.Process.cs"));
+        string quiet = File.ReadAllText(Path.Combine(root, "src", "Clickra.CLI", "Cli", "ClickraCli.cs"));
+        string fluentMain = File.ReadAllText(Path.Combine(root, "src", "Clickra.Fluent", "MainPage.xaml.cs"));
+        string fluentTask = File.ReadAllText(Path.Combine(root, "src", "Clickra.Fluent", "TaskProgressPage.xaml.cs"));
+
+        Assert.False(runner.Contains("case \"md2word\"", StringComparison.Ordinal),
+            "Legacy ConvertCommandRunner must not retain md2word execution after application migration.");
+        Assert.True(registry.Contains("md2word output planning is owned by the application use case.", StringComparison.Ordinal),
+            "Legacy ConvertCommandRegistry must fail closed instead of planning md2word outputs after migration.");
+        Assert.False(native.Contains("FileProcessor.ConvertMarkdownToWord", StringComparison.Ordinal),
+            "Native presentation must not execute Markdown Word conversion directly.");
+        Assert.False(quiet.Contains("FileProcessor.ConvertMarkdownToWord", StringComparison.Ordinal),
+            "Headless CLI must not execute Markdown Word conversion directly.");
+        Assert.True(native.Contains("RunApplicationMarkdownToWord(hwnd, currentFiles, progressCallback)", StringComparison.Ordinal)
+                    && native.Contains("ConversionUseCases.GetRequired(MarkdownToWordUseCase.CommandName)", StringComparison.Ordinal)
+                    && native.Contains("_commandOptions", StringComparison.Ordinal)
+                    && native.Contains("ResumeStartIndex = _startIndex", StringComparison.Ordinal),
+            "Native md2word must route its option snapshot and resume index through the application owner.");
+        Assert.True(quiet.Contains("ConversionUseCases.GetRequired(MarkdownToWordUseCase.CommandName)", StringComparison.Ordinal)
+                    && quiet.Contains("MarkdownPdfOptions.Create()", StringComparison.Ordinal)
+                    && quiet.Contains("TrackTaskLifecycle: false", StringComparison.Ordinal),
+            "Headless md2word must use default Markdown options without task lifecycle ownership.");
+        Assert.True(fluentMain.Contains("commandOptions));", StringComparison.Ordinal)
+                    && fluentTask.Contains("commandOptions,", StringComparison.Ordinal)
+                    && fluentTask.Contains("ExistingTaskId: existingTaskId", StringComparison.Ordinal),
+            "Both Fluent md2word paths must forward the already-prompted Markdown option snapshot into planning.");
     }
 
     private sealed class StubConversionUseCase(string command) : IConversionUseCase
