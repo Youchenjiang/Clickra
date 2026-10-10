@@ -194,6 +194,7 @@ static partial class TestSuite
         IConversionUseCase decrypt = ConversionUseCases.GetRequired(DecryptPdfUseCase.CommandName);
         IConversionUseCase imgMerge = ConversionUseCases.GetRequired(ImgMergeUseCase.CommandName);
         IConversionUseCase img2Pdf = ConversionUseCases.GetRequired(Img2PdfUseCase.CommandName);
+        IConversionUseCase imgStitch = ConversionUseCases.GetRequired(ImgStitchUseCase.CommandName);
         IConversionUseCase merge = ConversionUseCases.GetRequired(MergePdfUseCase.CommandName);
         IConversionUseCase split = ConversionUseCases.GetRequired(SplitPdfUseCase.CommandName);
         Assert.True(compress is CompressPdfUseCase,
@@ -204,6 +205,8 @@ static partial class TestSuite
             "img-merge must resolve through the product-wide application use-case catalog.");
         Assert.True(img2Pdf is Img2PdfUseCase,
             "img2pdf must resolve through the product-wide application use-case catalog.");
+        Assert.True(imgStitch is ImgStitchUseCase,
+            "img-stitch must resolve through the product-wide application use-case catalog.");
         Assert.True(merge is MergePdfUseCase,
             "merge-pdf must resolve through the product-wide application use-case catalog.");
         Assert.True(split is SplitPdfUseCase,
@@ -220,6 +223,9 @@ static partial class TestSuite
         Assert.True(ConversionUseCases.Commands.Count(command =>
                 command.Equals(Img2PdfUseCase.CommandName, StringComparison.OrdinalIgnoreCase)) == 1,
             "The product catalog must expose exactly one img2pdf owner.");
+        Assert.True(ConversionUseCases.Commands.Count(command =>
+                command.Equals(ImgStitchUseCase.CommandName, StringComparison.OrdinalIgnoreCase)) == 1,
+            "The product catalog must expose exactly one img-stitch owner.");
         Assert.True(ConversionUseCases.Commands.Count(command =>
                 command.Equals(MergePdfUseCase.CommandName, StringComparison.OrdinalIgnoreCase)) == 1,
             "The product catalog must expose exactly one merge-pdf owner.");

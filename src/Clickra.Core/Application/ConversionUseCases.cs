@@ -10,6 +10,7 @@ public static class ConversionUseCases
             new DecryptPdfUseCase(),
             new ImgMergeUseCase(),
             new Img2PdfUseCase(),
+            new ImgStitchUseCase(),
             new MergePdfUseCase(),
             new SplitPdfUseCase()
         });
