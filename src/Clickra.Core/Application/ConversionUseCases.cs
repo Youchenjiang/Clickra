@@ -19,7 +19,8 @@ public static class ConversionUseCases
             new ImgStitchUseCase(),
             new MergePdfUseCase(),
             new SplitPdfUseCase(),
-            new TranslatePdfUseCase()
+            new TranslatePdfUseCase(),
+            new WordToPdfUseCase()
         });
 
     public static IReadOnlyCollection<string> Commands => Registry.Commands;
