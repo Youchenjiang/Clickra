@@ -200,7 +200,7 @@ namespace Clickra
                     return true;
                 case "excel2pdf":
                     ValidateExtensions(files, command, quiet, ".xlsx", ".xls");
-                    if (quiet) FileProcessor.ConvertExcelToPdf(files, (curr, tot, msg) => Console.WriteLine($"[Progress] {msg}"));
+                    if (quiet) HandleExcelToPdfQuiet(files);
                     else ProgressWindow.Show(command, files);
                     return true;
                 default:
@@ -234,6 +234,27 @@ namespace Clickra
             IConversionUseCase useCase = ConversionUseCases.GetRequired(PptToPdfUseCase.CommandName);
             ConversionPlan plan = useCase.Plan(new ConversionRequest(
                 PptToPdfUseCase.CommandName,
+                files,
+                TrackTaskLifecycle: false));
+            var interaction = new DelegateConversionInteraction(
+                (_, _, _, _) => Task.FromResult<string?>(null),
+                (_, _, _) => Task.FromResult<string?>(null),
+                (_, _, _) => Task.FromResult<IReadOnlyDictionary<string, object>?>(null));
+            var progress = new SynchronousProgress<ConversionProgress>(state =>
+                Console.WriteLine($"[Progress] {state.Message}"));
+
+            ConversionResult result = useCase.ExecuteAsync(plan, interaction, progress)
+                .GetAwaiter()
+                .GetResult();
+            if (result.Status != ConversionResultStatus.Succeeded)
+                throw new InvalidOperationException(result.Error ?? Loc("error_processing_failed"));
+        }
+
+        private static void HandleExcelToPdfQuiet(List<string> files)
+        {
+            IConversionUseCase useCase = ConversionUseCases.GetRequired(ExcelToPdfUseCase.CommandName);
+            ConversionPlan plan = useCase.Plan(new ConversionRequest(
+                ExcelToPdfUseCase.CommandName,
                 files,
                 TrackTaskLifecycle: false));
             var interaction = new DelegateConversionInteraction(
