@@ -148,19 +148,18 @@ public static class ConvertCommandRunner
                     break;
                 }
                 case "img-to-png":
-                    RunImageConvert(files, outputs, "png", progress, options.StartIndex, options.OnFileStarting, token);
-                    break;
                 case "img-to-jpg":
-                    RunImageConvert(files, outputs, "jpg", progress, options.StartIndex, options.OnFileStarting, token);
-                    break;
                 case "img-to-webp":
-                    RunImageConvert(files, outputs, "webp", progress, options.StartIndex, options.OnFileStarting, token);
-                    break;
                 case "img-to-gif":
-                    RunImageConvert(files, outputs, "gif", progress, options.StartIndex, options.OnFileStarting, token);
-                    break;
                 case "img-to-heic":
-                    RunImageConvert(files, outputs, "heic", progress, options.StartIndex, options.OnFileStarting, token);
+                    RunImageConvert(
+                        files,
+                        outputs,
+                        command["img-to-".Length..],
+                        progress,
+                        options.StartIndex,
+                        options.OnFileStarting,
+                        token);
                     break;
                 default:
                     throw new InvalidOperationException($"Unknown convert command '{command}'.");
