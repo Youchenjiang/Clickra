@@ -1,123 +1,32 @@
-using System.Diagnostics;
 using Clickra.Core.Processors;
 
 namespace Clickra.Core.Application;
 
 /// <summary>Authoritative application workflow for merging images into one PDF document.</summary>
-public sealed class ImgMergeUseCase : IConversionUseCase
+public sealed class ImgMergeUseCase : SingleOutputConversionUseCaseBase
 {
     public const string CommandName = "img-merge";
     public const string OutputFileName = "Merged_Images.pdf";
 
-    public string Command => CommandName;
+    public override string Command => CommandName;
+    protected override string UseCaseName => nameof(ImgMergeUseCase);
+    protected override string InputRequirementError => "At least two image files are required.";
+    protected override string PlannedOutputFileName => OutputFileName;
+    protected override string OutputCountError => "Image merge requires exactly one output.";
+    protected override string UnsupportedInputError(string path) => $"Unsupported image input '{path}'.";
 
-    public ConversionValidationResult Validate(ConversionRequest request)
-    {
-        ArgumentNullException.ThrowIfNull(request);
-        if (!request.Command.Equals(CommandName, StringComparison.OrdinalIgnoreCase))
-            return ConversionValidationResult.Failure($"ImgMergeUseCase cannot handle '{request.Command}'.");
-        if (request.InputFiles.Count < ConvertCommandRegistry.GetMinFiles(CommandName))
-            return ConversionValidationResult.Failure("At least two image files are required.");
-
-        string[] allowed = ConvertCommandRegistry.GetAllowedExtensions(CommandName);
-        string? invalid = request.InputFiles.FirstOrDefault(path =>
-            !allowed.Contains(Path.GetExtension(path), StringComparer.OrdinalIgnoreCase));
-        return invalid is null
-            ? ConversionValidationResult.Success()
-            : ConversionValidationResult.Failure($"Unsupported image input '{invalid}'.");
-    }
-
-    public ConversionPlan Plan(ConversionRequest request)
-    {
-        ConversionValidationResult validation = Validate(request);
-        if (!validation.IsValid)
-            throw new InvalidOperationException(validation.Error);
-
-        var inputs = request.InputFiles.ToList();
-        string outputDir = string.IsNullOrWhiteSpace(request.OutputOverride)
-            ? ClickraStorage.GetOutputDir(inputs[0])
-            : Path.GetFullPath(request.OutputOverride);
-
-        return new ConversionPlan(
-            CommandName,
-            inputs,
-            new[] { Path.Combine(outputDir, OutputFileName) },
-            new HashSet<ConversionCapability>(),
-            new Dictionary<string, object>(),
-            ExistingTaskId: request.ExistingTaskId,
-            BestEffortTaskPersistence: request.BestEffortTaskPersistence,
-            TrackTaskLifecycle: request.TrackTaskLifecycle);
-    }
-
-    public async Task<ConversionResult> ExecuteAsync(
+    protected override async Task ExecuteSingleAsync(
         ConversionPlan plan,
-        IConversionInteraction interaction,
         IProgress<ConversionProgress>? progress,
-        IConversionExecutionObserver? observer = null,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken)
     {
-        ArgumentNullException.ThrowIfNull(plan);
-        ArgumentNullException.ThrowIfNull(interaction);
-        if (!plan.Command.Equals(CommandName, StringComparison.OrdinalIgnoreCase))
-            throw new InvalidOperationException($"ImgMergeUseCase cannot execute '{plan.Command}'.");
-        if (plan.Outputs.Count != 1)
-            throw new InvalidOperationException("Image merge requires exactly one output.");
-
-        var stopwatch = Stopwatch.StartNew();
-        ConversionTaskLifecycle? lifecycle = plan.TrackTaskLifecycle
-            ? ConversionTaskLifecycle.Start(
-                CommandName,
-                plan.Inputs,
-                plan.ExistingTaskId,
-                plan.BestEffortTaskPersistence)
-            : null;
-        if (lifecycle is not null)
-            observer?.OnTaskStarted(lifecycle.TaskId);
-
-        int completedFiles = 0;
-        try
-        {
-            cancellationToken.ThrowIfCancellationRequested();
-            await Task.Run(
-                () => FileProcessor.ConvertImagesToPdf(
-                    plan.Inputs.ToList(),
-                    plan.Outputs[0],
-                    (current, total, message) => progress?.Report(
-                        new ConversionProgress(current, total, message)),
-                    cancellationToken),
-                cancellationToken);
-            completedFiles = plan.Inputs.Count;
-
-            lifecycle?.CompleteSuccess(plan.Outputs[0]);
-            stopwatch.Stop();
-            return Result(ConversionResultStatus.Succeeded, null);
-        }
-        catch (ConversionParkedException ex)
-        {
-            lifecycle?.Park(ex.Message, ex.NextFileIndex);
-            stopwatch.Stop();
-            return Result(ConversionResultStatus.Parked, ex.Message);
-        }
-        catch (OperationCanceledException)
-        {
-            lifecycle?.CompleteFailure("Canceled", plan.Outputs[0]);
-            stopwatch.Stop();
-            return Result(ConversionResultStatus.Canceled, null);
-        }
-        catch (Exception ex)
-        {
-            lifecycle?.CompleteFailure(ex.Message, plan.Outputs[0]);
-            stopwatch.Stop();
-            return Result(ConversionResultStatus.Failed, ex.Message);
-        }
-
-        ConversionResult Result(ConversionResultStatus status, string? error) =>
-            new(
-                status,
-                plan.Outputs,
-                error,
-                stopwatch.Elapsed,
-                completedFiles,
-                lifecycle?.TaskId ?? "");
+        await Task.Run(
+            () => FileProcessor.ConvertImagesToPdf(
+                plan.Inputs.ToList(),
+                plan.Outputs[0],
+                (current, total, message) => progress?.Report(
+                    new ConversionProgress(current, total, message)),
+                cancellationToken),
+            cancellationToken);
     }
 }
