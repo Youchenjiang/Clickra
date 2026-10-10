@@ -11,9 +11,11 @@ static partial class TestSuite
     private const string ArchitectureCoreProjectDirectory = "Clickra.Core";
     private const string ArchitectureFluentProjectDirectory = "Clickra.Fluent";
     private const string ArchitectureProgressDirectory = "Progress";
+    private const string ArchitectureProcessorsDirectory = "Processors";
     private const string ArchitectureProgressProcessFile = "ProgressWindow.Process.cs";
     private const string ArchitectureCliSourceFile = "ClickraCli.cs";
     private const string GenericCatalogResolution = "ConversionUseCases.GetRequired(command)";
+    private const string GenericCatalogTryGet = "ConversionUseCases.TryGet(command";
     private static readonly TimeSpan ArchitectureRegexTimeout = TimeSpan.FromSeconds(1);
 
     private sealed record ArchitectureViolationRule(
@@ -357,8 +359,8 @@ static partial class TestSuite
         string? root = FindRepoRoot();
         if (root is null) throw new TestSkippedException(RepositoryRootMissingMessage);
 
-        string runner = File.ReadAllText(Path.Combine(root, "src", ArchitectureCoreProjectDirectory, "Processors", "ConvertCommandRunner.cs"));
-        string registry = File.ReadAllText(Path.Combine(root, "src", ArchitectureCoreProjectDirectory, "Processors", "ConvertCommandRegistry.cs"));
+        string runner = File.ReadAllText(Path.Combine(root, "src", ArchitectureCoreProjectDirectory, ArchitectureProcessorsDirectory, "ConvertCommandRunner.cs"));
+        string registry = File.ReadAllText(Path.Combine(root, "src", ArchitectureCoreProjectDirectory, ArchitectureProcessorsDirectory, "ConvertCommandRegistry.cs"));
         string native = File.ReadAllText(Path.Combine(root, "src", ArchitectureCliProjectDirectory, ArchitectureProgressDirectory, ArchitectureProgressProcessFile));
         string quiet = File.ReadAllText(Path.Combine(root, "src", ArchitectureCliProjectDirectory, "Cli", ArchitectureCliSourceFile));
         string fluentMain = File.ReadAllText(Path.Combine(root, "src", ArchitectureFluentProjectDirectory, "MainPage.xaml.cs"));
@@ -383,9 +385,9 @@ static partial class TestSuite
             quiet.Contains(GenericCatalogResolution, StringComparison.Ordinal)
             || (specificCatalogResolution is not null
                 && quiet.Contains(specificCatalogResolution, StringComparison.Ordinal));
-        Assert.True((fluentMain.Contains("ConversionUseCases.TryGet(command", StringComparison.Ordinal)
+        Assert.True((fluentMain.Contains(GenericCatalogTryGet, StringComparison.Ordinal)
                      || fluentMain.Contains(GenericCatalogResolution, StringComparison.Ordinal))
-                    && (fluentTask.Contains("ConversionUseCases.TryGet(command", StringComparison.Ordinal)
+                    && (fluentTask.Contains(GenericCatalogTryGet, StringComparison.Ordinal)
                         || fluentTask.Contains(GenericCatalogResolution, StringComparison.Ordinal))
                     && nativeCatalogResolution
                     && quietCatalogResolution,
@@ -518,8 +520,8 @@ static partial class TestSuite
         string? root = FindRepoRoot();
         if (root is null) throw new TestSkippedException(RepositoryRootMissingMessage);
 
-        string runner = File.ReadAllText(Path.Combine(root, "src", ArchitectureCoreProjectDirectory, "Processors", "ConvertCommandRunner.cs"));
-        string registry = File.ReadAllText(Path.Combine(root, "src", ArchitectureCoreProjectDirectory, "Processors", "ConvertCommandRegistry.cs"));
+        string runner = File.ReadAllText(Path.Combine(root, "src", ArchitectureCoreProjectDirectory, ArchitectureProcessorsDirectory, "ConvertCommandRunner.cs"));
+        string registry = File.ReadAllText(Path.Combine(root, "src", ArchitectureCoreProjectDirectory, ArchitectureProcessorsDirectory, "ConvertCommandRegistry.cs"));
         string native = File.ReadAllText(Path.Combine(root, "src", ArchitectureCliProjectDirectory, ArchitectureProgressDirectory, ArchitectureProgressProcessFile));
         string quiet = File.ReadAllText(Path.Combine(root, "src", ArchitectureCliProjectDirectory, "Cli", ArchitectureCliSourceFile));
         string fluentMain = File.ReadAllText(Path.Combine(root, "src", ArchitectureFluentProjectDirectory, "MainPage.xaml.cs"));
@@ -537,9 +539,9 @@ static partial class TestSuite
             $"Headless CLI must not execute {workflowName} directly.");
 
         string specificCatalogResolution = $"ConversionUseCases.GetRequired({useCaseTypeName}.CommandName)";
-        Assert.True((fluentMain.Contains("ConversionUseCases.TryGet(command", StringComparison.Ordinal)
+        Assert.True((fluentMain.Contains(GenericCatalogTryGet, StringComparison.Ordinal)
                      || fluentMain.Contains(GenericCatalogResolution, StringComparison.Ordinal))
-                    && (fluentTask.Contains("ConversionUseCases.TryGet(command", StringComparison.Ordinal)
+                    && (fluentTask.Contains(GenericCatalogTryGet, StringComparison.Ordinal)
                         || fluentTask.Contains(GenericCatalogResolution, StringComparison.Ordinal))
                     && (native.Contains(GenericCatalogResolution, StringComparison.Ordinal)
                         || native.Contains(specificCatalogResolution, StringComparison.Ordinal))

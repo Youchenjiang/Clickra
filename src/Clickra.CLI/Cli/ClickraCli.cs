@@ -188,7 +188,7 @@ namespace Clickra
                 .GetAwaiter()
                 .GetResult();
             if (result.Status != ConversionResultStatus.Succeeded)
-                throw new InvalidOperationException(result.Error ?? Loc("error_processing_failed"));
+                throw new InvalidOperationException(result.Error ?? Loc(ErrorProcessingFailedKey));
         }
 
         private static void HandleMarkdownToPdfQuiet(
@@ -214,7 +214,7 @@ namespace Clickra
                 .GetAwaiter()
                 .GetResult();
             if (result.Status != ConversionResultStatus.Succeeded)
-                throw new InvalidOperationException(result.Error ?? Loc("error_processing_failed"));
+                throw new InvalidOperationException(result.Error ?? Loc(ErrorProcessingFailedKey));
         }
 
         /// <summary>Handles office-conversion commands (ppt2pdf, word2pdf, excel2pdf).</summary>
@@ -260,7 +260,7 @@ namespace Clickra
                 .GetAwaiter()
                 .GetResult();
             if (result.Status != ConversionResultStatus.Succeeded)
-                throw new InvalidOperationException(result.Error ?? Loc("error_processing_failed"));
+                throw new InvalidOperationException(result.Error ?? Loc(ErrorProcessingFailedKey));
         }
 
         private static void HandlePptToPdfQuiet(List<string> files)
@@ -281,7 +281,7 @@ namespace Clickra
                 .GetAwaiter()
                 .GetResult();
             if (result.Status != ConversionResultStatus.Succeeded)
-                throw new InvalidOperationException(result.Error ?? Loc("error_processing_failed"));
+                throw new InvalidOperationException(result.Error ?? Loc(ErrorProcessingFailedKey));
         }
 
         private static void HandleExcelToPdfQuiet(List<string> files)
@@ -302,7 +302,7 @@ namespace Clickra
                 .GetAwaiter()
                 .GetResult();
             if (result.Status != ConversionResultStatus.Succeeded)
-                throw new InvalidOperationException(result.Error ?? Loc("error_processing_failed"));
+                throw new InvalidOperationException(result.Error ?? Loc(ErrorProcessingFailedKey));
         }
 
         /// <summary>Handles PDF commands (merge, compress, split, translate, decrypt).</summary>
