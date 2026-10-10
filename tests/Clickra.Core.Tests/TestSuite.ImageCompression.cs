@@ -232,8 +232,12 @@ static partial class TestSuite
                 File.WriteAllBytes(first, new byte[] { 1 });
                 File.WriteAllBytes(second, new byte[] { 2 });
 
+                var useCase = new ImgCompressUseCase();
                 InvalidOperationException ex = Assert.Throws<InvalidOperationException>(() =>
-                    ConvertCommandRegistry.EstimateImageCompressionOutputs(new List<string> { first, second }, tempDir));
+                    useCase.Plan(new ConversionRequest(
+                        ImgCompressUseCase.CommandName,
+                        new[] { first, second },
+                        OutputOverride: tempDir)));
                 Assert.True(ex.Message.Contains("photo_compressed.jpg", StringComparison.OrdinalIgnoreCase),
                     "Collision error must identify the selected input that would be overwritten.");
                 Assert.True(File.ReadAllBytes(second).SequenceEqual(new byte[] { 2 }),
@@ -302,11 +306,12 @@ static partial class TestSuite
 
         string inputDir = Path.Combine(Path.GetTempPath(), "clickra-registry-input");
         string outputDir = Path.Combine(Path.GetTempPath(), "clickra-registry-output");
-        var outputs = ConvertCommandRegistry.EstimateImageCompressionOutputs(
-            new List<string> { Path.Combine(inputDir, "photo.jpg") },
-            outputDir);
+        ConversionPlan plan = new ImgCompressUseCase().Plan(new ConversionRequest(
+            ImgCompressUseCase.CommandName,
+            new[] { Path.Combine(inputDir, "photo.jpg") },
+            OutputOverride: outputDir));
         string expectedOutput = Path.GetFullPath(Path.Combine(outputDir, "photo_compressed.jpg"));
-        Assert.True(outputs.Count == 1 && string.Equals(Path.GetFullPath(outputs[0]), expectedOutput, StringComparison.OrdinalIgnoreCase),
+        Assert.True(plan.Outputs.Count == 1 && string.Equals(Path.GetFullPath(plan.Outputs[0]), expectedOutput, StringComparison.OrdinalIgnoreCase),
             ImageCompressCommand + " must honor the output-directory override and preserve the source extension.");
 
         string[] allowed = ConvertCommandRegistry.GetAllowedExtensions(ImageCompressCommand);

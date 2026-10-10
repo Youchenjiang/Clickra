@@ -86,7 +86,8 @@ public static class ConvertCommandRegistry
                 CmdMdToWord => files.Select(f => Path.Combine(
                     string.IsNullOrWhiteSpace(outputDirOverride) ? ClickraStorage.GetOutputDir(f) : Path.GetFullPath(outputDirOverride),
                     Path.GetFileNameWithoutExtension(f) + ".docx")).ToList(),
-                CmdImgCompress => EstimateImageCompressionOutputs(files, outputDirOverride),
+                CmdImgCompress => throw new InvalidOperationException(
+                    "img-compress output planning is owned by the application use case."),
                 CmdImgToPng or CmdImgToJpg or CmdImgToWebp or CmdImgToGif or CmdImgToHeic
                     => EstimateImageFormatOutputs(command, files, outputDirOverride),
                 _ => files.Select(f => Path.Combine(ClickraStorage.GetOutputDir(f), Path.GetFileNameWithoutExtension(f) + ".pdf")).ToList()
@@ -113,36 +114,6 @@ public static class ConvertCommandRegistry
                 .ToList();
             EnsureUniqueOutputPaths(outputs);
             return outputs;
-        }
-
-        /// <summary>Predicts one compressed output per image while preserving each input extension.</summary>
-        public static List<string> EstimateImageCompressionOutputs(List<string> files, string? outputDirOverride = null)
-        {
-            var outputs = files.Select(f => Path.Combine(
-                    string.IsNullOrWhiteSpace(outputDirOverride) ? ClickraStorage.GetOutputDir(f) : outputDirOverride,
-                    Path.GetFileNameWithoutExtension(f) + "_compressed" + Path.GetExtension(f)))
-                .ToList();
-            EnsureUniqueOutputPaths(outputs);
-            EnsureOutputsDoNotOverwriteInputs(files, outputs);
-            return outputs;
-        }
-
-        /// <summary>Fails before processing when an output path would overwrite any selected input.
-        /// This matters for sequential per-file operations because an early result must never replace
-        /// a later source before that source has been processed.</summary>
-        private static void EnsureOutputsDoNotOverwriteInputs(IEnumerable<string> inputs, IEnumerable<string> outputs)
-        {
-            var inputPaths = inputs
-                .Select(Path.GetFullPath)
-                .ToHashSet(StringComparer.OrdinalIgnoreCase);
-            string? collision = outputs
-                .Select(Path.GetFullPath)
-                .FirstOrDefault(inputPaths.Contains);
-            if (collision is not null)
-            {
-                string template = Localization.T("error_image_output_overwrites_input", ClickraStorage.GetSetting(ClickraSettings.Language));
-                throw new InvalidOperationException(string.Format(template, collision));
-            }
         }
 
         /// <summary>Fails before conversion when multiple inputs would resolve to the same
