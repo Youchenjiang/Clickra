@@ -130,6 +130,13 @@ namespace Clickra.UI
             public void OnFileStarting(int fileIndex) { }
         }
 
+        private sealed class MarkdownToPdfExecutionObserver(ProgressWindow owner) : IConversionExecutionObserver
+        {
+            public void OnTaskStarted(string taskId) => owner.TaskId = taskId;
+
+            public void OnFileStarting(int fileIndex) => owner.TryRecordTaskIndex(fileIndex);
+        }
+
         private string? _inputPassword = null;
         private bool _passwordCancelled = false;
         private volatile bool _isPromptingPassword = false;
@@ -525,6 +532,11 @@ namespace Clickra.UI
                 RunApplicationExcelToPdf(hwnd, files, progressCallback);
                 return true;
             }
+            if (command.Equals(MarkdownToPdfUseCase.CommandName, StringComparison.OrdinalIgnoreCase))
+            {
+                RunApplicationMarkdownToPdf(hwnd, files, progressCallback);
+                return true;
+            }
             return false;
         }
 
@@ -801,6 +813,65 @@ namespace Clickra.UI
                 }
                 PostMessageW(hwnd, WM_USER_INVALIDATE, (IntPtr)1, IntPtr.Zero);
                 ShowToastNotification(ExcelToPdfUseCase.CommandName, files.Count);
+                Thread.Sleep(1500);
+                ConversionTaskCleanup.Delete(result.TaskId, bestEffort: true);
+                PostMessageW(hwnd, 0x0010, IntPtr.Zero, IntPtr.Zero); // WM_CLOSE
+                return;
+            }
+
+            bool wasCanceled = result.Status == ConversionResultStatus.Canceled;
+            string errorMsg = wasCanceled ? "User Aborted" : result.Error ?? "";
+            lock (_stateLock)
+            {
+                _hasError = true;
+                _errorMessage = errorMsg;
+            }
+            PostMessageW(hwnd, WM_USER_INVALIDATE, (IntPtr)1, IntPtr.Zero);
+            ConversionTaskCleanup.Delete(result.TaskId, bestEffort: true);
+            PostMessageW(hwnd, 0x0010, IntPtr.Zero, IntPtr.Zero); // WM_CLOSE
+        }
+
+        private void RunApplicationMarkdownToPdf(
+            IntPtr hwnd,
+            List<string> files,
+            Action<int, int, string> progressCallback)
+        {
+            IConversionUseCase useCase = ConversionUseCases.GetRequired(MarkdownToPdfUseCase.CommandName);
+            ConversionPlan plan = useCase.Plan(new ConversionRequest(
+                MarkdownToPdfUseCase.CommandName,
+                files,
+                _commandOptions,
+                ExistingTaskId: _existingTaskId,
+                OutputOverride: _outputDirOverride,
+                BestEffortTaskPersistence: true)) with
+            {
+                ResumeStartIndex = _startIndex
+            };
+            var interaction = new DelegateConversionInteraction(
+                (_, _, _, _) => System.Threading.Tasks.Task.FromResult<string?>(null),
+                (_, _, _) => System.Threading.Tasks.Task.FromResult<string?>(null),
+                (_, _, _) => System.Threading.Tasks.Task.FromResult<IReadOnlyDictionary<string, object>?>(null));
+            var progress = new CallbackProgress<ConversionProgress>(state =>
+                progressCallback(state.Current, state.Total, state.Message));
+
+            ConversionResult result = useCase.ExecuteAsync(
+                    plan,
+                    interaction,
+                    progress,
+                    new MarkdownToPdfExecutionObserver(this),
+                    _cts.Token)
+                .GetAwaiter()
+                .GetResult();
+
+            if (result.Status == ConversionResultStatus.Succeeded)
+            {
+                lock (_stateLock)
+                {
+                    _completed = true;
+                    _message = Loc("cli_progress_all_done");
+                }
+                PostMessageW(hwnd, WM_USER_INVALIDATE, (IntPtr)1, IntPtr.Zero);
+                ShowToastNotification(MarkdownToPdfUseCase.CommandName, files.Count);
                 Thread.Sleep(1500);
                 ConversionTaskCleanup.Delete(result.TaskId, bestEffort: true);
                 PostMessageW(hwnd, 0x0010, IntPtr.Zero, IntPtr.Zero); // WM_CLOSE
