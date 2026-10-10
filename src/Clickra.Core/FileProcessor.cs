@@ -32,19 +32,6 @@ namespace Clickra.Core
             processor.Process(new List<string> { inputPath }, outputPath, options, onProgress, cancellationToken);
         }
 
-        /// <summary>Compresses a PDF with a named quality level ("small", "balanced" or "high").</summary>
-        /// <param name="inputPath">Path of the input PDF.</param>
-        /// <param name="outputPath">Path of the compressed output PDF.</param>
-        /// <param name="level">Compression level name; defaults to "balanced".</param>
-        /// <param name="onProgress">Optional progress callback receiving (progress, max, message).</param>
-        /// <param name="cancellationToken">Cancellation token to abort the compression.</param>
-        public static void CompressPdf(string inputPath, string outputPath, string level = "balanced", Action<int, int, string>? onProgress = null, CancellationToken cancellationToken = default)
-        {
-            var processor = new PdfCompressionProcessor();
-            var options = new Dictionary<string, object> { { "level", level } };
-            processor.Process(new List<string> { inputPath }, outputPath, options, onProgress, cancellationToken);
-        }
-
         /// <summary>Compresses a PDF using an explicit options dictionary (target DPI, JPEG
         /// quality, font stripping and content minification).</summary>
         /// <param name="inputPath">Path of the input PDF.</param>
