@@ -156,7 +156,7 @@ namespace Clickra
                 if (toPdf)
                     HandleMarkdownToPdfQuiet(files, outputDir, outputDirOverride);
                 else
-                    DispatchMarkdownToWordQuiet(files, outputDir, outputDirOverride);
+                    HandleMarkdownToWordQuiet(files, outputDir, outputDirOverride);
             }
             else
             {
@@ -165,24 +165,30 @@ namespace Clickra
             return true;
         }
 
-        private static void DispatchMarkdownToWordQuiet(
+        private static void HandleMarkdownToWordQuiet(
             IReadOnlyList<string> files,
             string outputDir,
             string? outputDirOverride)
         {
-            for (int i = 0; i < files.Count; i++)
-            {
-                string targetDir = string.IsNullOrWhiteSpace(outputDirOverride)
-                    ? ClickraStorage.GetOutputDir(files[i])
-                    : outputDir;
-                string output = Path.Combine(
-                    targetDir,
-                    Path.GetFileNameWithoutExtension(files[i]) + ".docx");
-                FileProcessor.ConvertMarkdownToWord(
-                    files[i],
-                    output,
-                    onProgress: (_, _, msg) => Console.WriteLine($"[Progress] {msg}"));
-            }
+            IConversionUseCase useCase = ConversionUseCases.GetRequired(MarkdownToWordUseCase.CommandName);
+            ConversionPlan plan = useCase.Plan(new ConversionRequest(
+                MarkdownToWordUseCase.CommandName,
+                files,
+                MarkdownPdfOptions.Create(),
+                OutputOverride: string.IsNullOrWhiteSpace(outputDirOverride) ? null : outputDir,
+                TrackTaskLifecycle: false));
+            var interaction = new DelegateConversionInteraction(
+                (_, _, _, _) => Task.FromResult<string?>(null),
+                (_, _, _) => Task.FromResult<string?>(null),
+                (_, _, _) => Task.FromResult<IReadOnlyDictionary<string, object>?>(null));
+            var progress = new SynchronousProgress<ConversionProgress>(state =>
+                Console.WriteLine($"[Progress] {state.Message}"));
+
+            ConversionResult result = useCase.ExecuteAsync(plan, interaction, progress)
+                .GetAwaiter()
+                .GetResult();
+            if (result.Status != ConversionResultStatus.Succeeded)
+                throw new InvalidOperationException(result.Error ?? Loc("error_processing_failed"));
         }
 
         private static void HandleMarkdownToPdfQuiet(
