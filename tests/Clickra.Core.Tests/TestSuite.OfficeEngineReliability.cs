@@ -4,19 +4,21 @@ namespace Clickra.Core.Tests;
 
 static partial class TestSuite
 {
+    private const string NullDisplay = "<null>";
+
     public static void RegisterOfficeEngineReliabilityTests(TestRunner runner)
     {
         runner.Run("Office readiness maps commands and supported app types", () =>
         {
             Assert.Equal(
                 "Word.Application",
-                OfficeEngineDetector.GetMicrosoftOfficeProgId("Word") ?? "<null>");
+                OfficeEngineDetector.GetMicrosoftOfficeProgId("Word") ?? NullDisplay);
             Assert.Equal(
                 "Excel.Application",
-                OfficeEngineDetector.GetMicrosoftOfficeProgId("Excel") ?? "<null>");
+                OfficeEngineDetector.GetMicrosoftOfficeProgId("Excel") ?? NullDisplay);
             Assert.Equal(
                 "PowerPoint.Application",
-                OfficeEngineDetector.GetMicrosoftOfficeProgId("PowerPoint") ?? "<null>");
+                OfficeEngineDetector.GetMicrosoftOfficeProgId("PowerPoint") ?? NullDisplay);
             Assert.True(
                 OfficeEngineDetector.GetMicrosoftOfficeProgId("Unknown") is null,
                 "Unknown Office application types must not map to a COM ProgID.");
@@ -36,9 +38,9 @@ static partial class TestSuite
 
         runner.Run("Office readiness maps conversion commands to Office applications", () =>
         {
-            Assert.Equal("Word", OfficeEngineDetector.GetOfficeAppForCommand("word2pdf") ?? "<null>");
-            Assert.Equal("Excel", OfficeEngineDetector.GetOfficeAppForCommand("excel2pdf") ?? "<null>");
-            Assert.Equal("PowerPoint", OfficeEngineDetector.GetOfficeAppForCommand("ppt2pdf") ?? "<null>");
+            Assert.Equal("Word", OfficeEngineDetector.GetOfficeAppForCommand("word2pdf") ?? NullDisplay);
+            Assert.Equal("Excel", OfficeEngineDetector.GetOfficeAppForCommand("excel2pdf") ?? NullDisplay);
+            Assert.Equal("PowerPoint", OfficeEngineDetector.GetOfficeAppForCommand("ppt2pdf") ?? NullDisplay);
             Assert.True(
                 OfficeEngineDetector.GetOfficeAppForCommand("merge-pdf") is null,
                 "Non-Office commands must not require an Office application.");

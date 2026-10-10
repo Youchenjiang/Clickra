@@ -158,11 +158,6 @@ namespace Clickra.UI;
 
             float clickX = adjMouseX - valX;
             float thumbW = Math.Max(15f, (maxValW / textW) * maxValW);
-            float currentOffset = 0;
-            DetailScrollOffsets.TryGetValue((rowIndex, fieldIndex), out currentOffset);
-
-            float thumbX = (currentOffset / textW) * maxValW;
-            if (thumbX + thumbW > maxValW) thumbX = maxValW - thumbW;
 
             float travelRange = maxValW - thumbW;
             float relativePos = travelRange > 0 ? (clickX - thumbW / 2f) / travelRange : 0f;
