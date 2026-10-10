@@ -4,8 +4,8 @@ using Clickra.Core;
 using Clickra.Core.Layout;
 using static Clickra.UI.Native.Win32;
 
-namespace Clickra.UI
-{
+namespace Clickra.UI;
+
     public static partial class DashboardWindow
     {
         /// <summary>
@@ -213,4 +213,3 @@ namespace Clickra.UI
             }
         }
     }
-}

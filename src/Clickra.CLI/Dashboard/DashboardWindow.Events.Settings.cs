@@ -2,8 +2,8 @@ using System;
 using Clickra.Core;
 using static Clickra.UI.Native.Win32;
 
-namespace Clickra.UI
-{
+namespace Clickra.UI;
+
     public static partial class DashboardWindow
     {
         /// <summary>Handles settings-tab element clicks: toggles, output dirs and office engine selection.</summary>
@@ -185,4 +185,3 @@ namespace Clickra.UI
             InvalidateRect(hwnd, IntPtr.Zero, false);
         }
     }
-}

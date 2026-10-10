@@ -4,8 +4,8 @@ using Clickra.Core;
 using Clickra.Core.Processors;
 using static Clickra.UI.Native.Win32;
 
-namespace Clickra.UI
-{
+namespace Clickra.UI;
+
     public static partial class DashboardWindow
     {
         static void HandleLibreOfficeClick(IntPtr hwnd, int element)
@@ -340,4 +340,3 @@ namespace Clickra.UI
             }
         }
     }
-}

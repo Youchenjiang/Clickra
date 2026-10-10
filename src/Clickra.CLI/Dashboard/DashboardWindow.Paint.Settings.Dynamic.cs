@@ -3,8 +3,8 @@ using System.Drawing;
 using Clickra.Core;
 using Clickra.Core.Layout;
 
-namespace Clickra.UI
-{
+namespace Clickra.UI;
+
     public static partial class DashboardWindow
     {
 
@@ -185,4 +185,3 @@ namespace Clickra.UI
             }
         }
     }
-}

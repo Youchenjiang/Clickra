@@ -1,7 +1,7 @@
 using System;
 
-namespace Clickra.Core
-{
+namespace Clickra.Core;
+
     public static partial class Localization
     {
         private static void RegisterCompressionTranslations()
@@ -121,4 +121,3 @@ namespace Clickra.Core
             RegisterTranslations(data);
         }
     }
-}
