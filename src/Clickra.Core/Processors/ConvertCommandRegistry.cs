@@ -10,18 +10,6 @@ namespace Clickra.Core.Processors;
 /// Fluent and NativeAOT UIs. Adding a command means editing this table once.</summary>
 public static class ConvertCommandRegistry
 {
-        private const string CmdImgToPng = "img-to-png";
-        private const string CmdImgToJpg = "img-to-jpg";
-        private const string CmdImgToWebp = "img-to-webp";
-        private const string CmdImgToGif = "img-to-gif";
-        private const string CmdImgToHeic = "img-to-heic";
-        private const string CmdMdToPdf = "md2pdf";
-        private const string CmdMdToWord = "md2word";
-        private const string CmdImgCompress = "img-compress";
-        private const string CmdMergePdf = "merge-pdf";
-        private const string CmdCompressPdf = "compress-pdf";
-        private const string CmdImg2Pdf = "img2pdf";
-        private const string CmdImgMerge = "img-merge";
         /// <summary>File extensions accepted by a UI file type ("pdf", "word", "excel", "ppt", "image").</summary>
         public static string[] GetAllowedExtensionsByType(string type) => ConvertCommandMetadata.GetAllowedExtensionsByType(type);
 
@@ -56,46 +44,6 @@ public static class ConvertCommandRegistry
 
         /// <summary>Localization key for the command display name.</summary>
         public static string GetLabelKey(string command) => ConvertCommandMetadata.GetLabelKey(command);
-
-        /// <summary>Predicts the output paths a command will produce for the given files.</summary>
-        public static List<string> EstimateOutputs(string command, List<string> files, string? outputDirOverride = null)
-        {
-            return command switch
-            {
-                CmdMergePdf => throw new InvalidOperationException(
-                    "merge-pdf output planning is owned by the application use case."),
-                CmdImgMerge => throw new InvalidOperationException(
-                    "img-merge output planning is owned by the application use case."),
-                "img-stitch" => throw new InvalidOperationException(
-                    "img-stitch output planning is owned by the application use case."),
-                CmdCompressPdf => throw new InvalidOperationException(
-                    "compress-pdf output planning is owned by the application use case."),
-                "translate-pdf" => throw new InvalidOperationException(
-                    "translate-pdf output planning is owned by the application use case."),
-                "decrypt-pdf" => throw new InvalidOperationException(
-                    "decrypt-pdf output planning is owned by the application use case."),
-                "split-pdf" => throw new InvalidOperationException(
-                    "split-pdf output planning is owned by the application use case."),
-                CmdImg2Pdf => throw new InvalidOperationException(
-                    "img2pdf output planning is owned by the application use case."),
-                CmdMdToPdf => throw new InvalidOperationException(
-                    "md2pdf output planning is owned by the application use case."),
-                CmdMdToWord => throw new InvalidOperationException(
-                    "md2word output planning is owned by the application use case."),
-                CmdImgCompress => throw new InvalidOperationException(
-                    "img-compress output planning is owned by the application use case."),
-                CmdImgToPng or CmdImgToJpg or CmdImgToWebp or CmdImgToGif or CmdImgToHeic
-                    => throw new InvalidOperationException(
-                        $"{command} output planning is owned by the application use case."),
-                "ppt2pdf" => throw new InvalidOperationException(
-                    "ppt2pdf output planning is owned by the application use case."),
-                "word2pdf" => throw new InvalidOperationException(
-                    "word2pdf output planning is owned by the application use case."),
-                "excel2pdf" => throw new InvalidOperationException(
-                    "excel2pdf output planning is owned by the application use case."),
-                _ => files.Select(f => Path.Combine(ClickraStorage.GetOutputDir(f), Path.GetFileNameWithoutExtension(f) + ".pdf")).ToList()
-            };
-        }
 
         /// <summary>Reads the current slider level from settings (0-2). 未設定或超出範圍時採用
         /// 登錄表的預設值，所以叫位永遠一致（不再有多份換算表）。</summary>

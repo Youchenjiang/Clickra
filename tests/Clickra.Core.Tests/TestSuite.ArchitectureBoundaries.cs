@@ -464,16 +464,13 @@ static partial class TestSuite
     private static void TestTranslatePdfWorkflowHasSingleExecutionOwner()
         => AssertDocumentWorkflowHasSingleExecutionOwner(
             TranslatePdfUseCase.CommandName,
-            "Path.GetFileNameWithoutExtension(f) + \"_translated.pdf\"",
             "FileProcessor.TranslatePdf",
             nameof(TranslatePdfUseCase),
-            "PDF translation",
-            registryMarkerMustBeAbsent: true);
+            "PDF translation");
 
     private static void TestWordToPdfWorkflowHasSingleExecutionOwner()
         => AssertDocumentWorkflowHasSingleExecutionOwner(
             WordToPdfUseCase.CommandName,
-            "word2pdf output planning is owned by the application use case.",
             "FileProcessor.ConvertWordToPdf",
             nameof(WordToPdfUseCase),
             "Word conversion");
@@ -481,7 +478,6 @@ static partial class TestSuite
     private static void TestPptToPdfWorkflowHasSingleExecutionOwner()
         => AssertDocumentWorkflowHasSingleExecutionOwner(
             PptToPdfUseCase.CommandName,
-            "ppt2pdf output planning is owned by the application use case.",
             "FileProcessor.ConvertPptToPdf",
             nameof(PptToPdfUseCase),
             "PowerPoint conversion");
@@ -489,7 +485,6 @@ static partial class TestSuite
     private static void TestExcelToPdfWorkflowHasSingleExecutionOwner()
         => AssertDocumentWorkflowHasSingleExecutionOwner(
             ExcelToPdfUseCase.CommandName,
-            "excel2pdf output planning is owned by the application use case.",
             "FileProcessor.ConvertExcelToPdf",
             nameof(ExcelToPdfUseCase),
             "Excel conversion");
@@ -498,7 +493,6 @@ static partial class TestSuite
     {
         AssertDocumentWorkflowHasSingleExecutionOwner(
             MarkdownToPdfUseCase.CommandName,
-            "md2pdf output planning is owned by the application use case.",
             "FileProcessor.ConvertMarkdownToPdf",
             nameof(MarkdownToPdfUseCase),
             "Markdown PDF conversion");
@@ -509,7 +503,6 @@ static partial class TestSuite
     {
         AssertDocumentWorkflowHasSingleExecutionOwner(
             MarkdownToWordUseCase.CommandName,
-            "md2word output planning is owned by the application use case.",
             "FileProcessor.ConvertMarkdownToWord",
             nameof(MarkdownToWordUseCase),
             "Markdown Word conversion");
@@ -518,20 +511,16 @@ static partial class TestSuite
 
     private static void AssertDocumentWorkflowHasSingleExecutionOwner(
         string command,
-        string registryMarker,
         string processorCall,
         string useCaseTypeName,
-        string workflowName,
-        bool registryMarkerMustBeAbsent = false)
+        string workflowName)
     {
         MigrationSurfaceSources sources = ReadMigrationSurfaceSources();
 
         Assert.False(sources.Runner.Contains($"case \"{command}\"", StringComparison.Ordinal),
             $"Legacy ConvertCommandRunner must not retain {workflowName} execution after migration.");
-        Assert.True(sources.Registry.Contains(registryMarker, StringComparison.Ordinal) != registryMarkerMustBeAbsent,
-            registryMarkerMustBeAbsent
-                ? $"Legacy ConvertCommandRegistry must not retain {workflowName} output planning after migration."
-                : $"Legacy ConvertCommandRegistry must fail closed instead of planning {workflowName} outputs after migration.");
+        Assert.False(sources.Registry.Contains("EstimateOutputs(", StringComparison.Ordinal),
+            "Legacy ConvertCommandRegistry must not retain output planning after application migration.");
         Assert.False(sources.Native.Contains(processorCall, StringComparison.Ordinal),
             $"Native presentation must not execute {workflowName} directly.");
         Assert.False(sources.Quiet.Contains(processorCall, StringComparison.Ordinal),

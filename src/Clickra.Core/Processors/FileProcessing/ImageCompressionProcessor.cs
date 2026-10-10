@@ -80,9 +80,8 @@ public class ImageCompressionProcessor : MultiFileProcessorBase
 
         if (!File.Exists(filePath)) throw new FileNotFoundException("Image file not found", filePath);
 
-        // Compressing into the file being read would destroy the only copy of the input; the
-        // output name comes from ConvertCommandRegistry.EstimateOutputs and never collides, so
-        // reaching this means a caller built its own path.
+        // Compressing into the file being read would destroy the only copy of the input; application
+        // output planning rejects collisions, so reaching this means a caller built its own path.
         if (string.Equals(Path.GetFullPath(filePath), Path.GetFullPath(_outputPath!), StringComparison.OrdinalIgnoreCase))
             throw new InvalidOperationException("Image compression must not write over the file it is compressing.");
 
