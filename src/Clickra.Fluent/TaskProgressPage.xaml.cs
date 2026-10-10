@@ -160,9 +160,9 @@ public sealed partial class TaskProgressPage : Page
             return;
         }
 
-        (IConversionUseCase? applicationUseCase, ConversionPlan? applicationPlan, List<string> outputs) =
+        (IConversionUseCase applicationUseCase, ConversionPlan applicationPlan) =
             BuildExecutionPlan(command, files, startIndex, existingTaskId, commandOptions);
-        _outputFolder = Path.GetDirectoryName(outputs[0]) ?? "";
+        _outputFolder = Path.GetDirectoryName(applicationPlan.Outputs[0]) ?? "";
         _files = files;
         _cts = new CancellationTokenSource();
         _taskLabel = $"{L(ConvertCommandRegistry.GetLabelKey(command))} - {Path.GetFileName(files[0])}";
@@ -178,13 +178,7 @@ public sealed partial class TaskProgressPage : Page
 
         try
         {
-            if (applicationUseCase is not null && applicationPlan is not null)
-            {
-                await RunApplicationUseCaseAsync(applicationUseCase, applicationPlan, command, files);
-                return;
-            }
-
-            await RunLegacyConversionAsync(command, files, outputs, startIndex, existingTaskId, commandOptions);
+            await RunApplicationUseCaseAsync(applicationUseCase, applicationPlan, command, files);
         }
         finally
         {
@@ -213,17 +207,15 @@ public sealed partial class TaskProgressPage : Page
         (command.Equals("md2pdf", StringComparison.OrdinalIgnoreCase) ||
          command.Equals("md2word", StringComparison.OrdinalIgnoreCase));
 
-    private static (IConversionUseCase? UseCase, ConversionPlan? Plan, List<string> Outputs) BuildExecutionPlan(
+    private static (IConversionUseCase UseCase, ConversionPlan Plan) BuildExecutionPlan(
         string command,
         List<string> files,
         int startIndex,
         string? existingTaskId,
         IReadOnlyDictionary<string, object>? commandOptions)
     {
-        if (!ConversionUseCases.TryGet(command, out IConversionUseCase? useCase))
-            return (null, null, ConvertCommandRegistry.EstimateOutputs(command, files));
-
-        ConversionPlan plan = useCase!.Plan(new ConversionRequest(
+        IConversionUseCase useCase = ConversionUseCases.GetRequired(command);
+        ConversionPlan plan = useCase.Plan(new ConversionRequest(
             command,
             files,
             commandOptions,
@@ -231,7 +223,7 @@ public sealed partial class TaskProgressPage : Page
         {
             ResumeStartIndex = startIndex
         };
-        return (useCase, plan, plan.Outputs.ToList());
+        return (useCase, plan);
     }
 
     private async Task RunApplicationUseCaseAsync(
@@ -262,42 +254,6 @@ public sealed partial class TaskProgressPage : Page
             ConversionResultStatus.Succeeded => TaskRunPresentationStatus.Succeeded,
             ConversionResultStatus.Canceled => TaskRunPresentationStatus.Canceled,
             ConversionResultStatus.Parked => TaskRunPresentationStatus.Parked,
-            _ => TaskRunPresentationStatus.Failed
-        };
-        await HandleRunResultAsync(status, result.Error, command, files);
-    }
-
-    private async Task RunLegacyConversionAsync(
-        string command,
-        List<string> files,
-        List<string> outputs,
-        int startIndex,
-        string? existingTaskId,
-        Dictionary<string, object>? commandOptions)
-    {
-        var result = await ConvertCommandRunner.RunTrackedAsync(
-            command,
-            files,
-            outputs,
-            ReportTaskProgress,
-            new ConvertCommandRunner.ConversionOptions(
-                PromptPasswordAsync,
-                PromptSplitAsync,
-                startIndex,
-                existingTaskId,
-                commandOptions,
-                OnTaskStarted: taskId =>
-                {
-                    _taskId = taskId;
-                    App.RegisterTaskPage(taskId, this);
-                }),
-            _cts!.Token);
-
-        TaskRunPresentationStatus status = result.Status switch
-        {
-            ConvertCommandRunner.ConvertRunStatus.Succeeded => TaskRunPresentationStatus.Succeeded,
-            ConvertCommandRunner.ConvertRunStatus.Canceled => TaskRunPresentationStatus.Canceled,
-            ConvertCommandRunner.ConvertRunStatus.Parked => TaskRunPresentationStatus.Parked,
             _ => TaskRunPresentationStatus.Failed
         };
         await HandleRunResultAsync(status, result.Error, command, files);
