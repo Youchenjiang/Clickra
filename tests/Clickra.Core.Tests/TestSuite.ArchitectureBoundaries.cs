@@ -223,6 +223,7 @@ static partial class TestSuite
         IConversionUseCase merge = ConversionUseCases.GetRequired(MergePdfUseCase.CommandName);
         IConversionUseCase split = ConversionUseCases.GetRequired(SplitPdfUseCase.CommandName);
         IConversionUseCase translate = ConversionUseCases.GetRequired(TranslatePdfUseCase.CommandName);
+        IConversionUseCase excel = ConversionUseCases.GetRequired(ExcelToPdfUseCase.CommandName);
         IConversionUseCase ppt = ConversionUseCases.GetRequired(PptToPdfUseCase.CommandName);
         IConversionUseCase word = ConversionUseCases.GetRequired(WordToPdfUseCase.CommandName);
         Assert.True(compress is CompressPdfUseCase,
@@ -258,6 +259,8 @@ static partial class TestSuite
             "split-pdf must resolve through the product-wide application use-case catalog.");
         Assert.True(translate is TranslatePdfUseCase,
             "translate-pdf must resolve through the product-wide application use-case catalog.");
+        Assert.True(excel is ExcelToPdfUseCase,
+            "excel2pdf must resolve through the product-wide application use-case catalog.");
         Assert.True(ppt is PptToPdfUseCase,
             "ppt2pdf must resolve through the product-wide application use-case catalog.");
         Assert.True(word is WordToPdfUseCase,
@@ -289,6 +292,9 @@ static partial class TestSuite
         Assert.True(ConversionUseCases.Commands.Count(command =>
                 command.Equals(TranslatePdfUseCase.CommandName, StringComparison.OrdinalIgnoreCase)) == 1,
             "The product catalog must expose exactly one translate-pdf owner.");
+        Assert.True(ConversionUseCases.Commands.Count(command =>
+                command.Equals(ExcelToPdfUseCase.CommandName, StringComparison.OrdinalIgnoreCase)) == 1,
+            "The product catalog must expose exactly one excel2pdf owner.");
         Assert.True(ConversionUseCases.Commands.Count(command =>
                 command.Equals(PptToPdfUseCase.CommandName, StringComparison.OrdinalIgnoreCase)) == 1,
             "The product catalog must expose exactly one ppt2pdf owner.");

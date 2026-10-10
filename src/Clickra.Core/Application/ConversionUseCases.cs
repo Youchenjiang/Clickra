@@ -8,6 +8,7 @@ public static class ConversionUseCases
         {
             new CompressPdfUseCase(),
             new DecryptPdfUseCase(),
+            new ExcelToPdfUseCase(),
             new ImgCompressUseCase(),
             new ImageFormatConvertUseCase(ImageFormatConvertUseCase.PngCommand),
             new ImageFormatConvertUseCase(ImageFormatConvertUseCase.JpgCommand),
