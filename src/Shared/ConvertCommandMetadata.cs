@@ -8,6 +8,11 @@ namespace Clickra.Shared;
 /// <summary>Dependency-free conversion command metadata shared by Core and the NativeAOT shell.</summary>
 public static class ConvertCommandMetadata
 {
+    private const string CmdMergePdf = "merge-pdf";
+    private const string CmdCompressPdf = "compress-pdf";
+    private const string CmdImg2Pdf = "img2pdf";
+    private const string CmdImgMerge = "img-merge";
+
     private sealed record CommandDef(
         string FileType,
         string[] Extensions,
@@ -40,13 +45,13 @@ public static class ConvertCommandMetadata
         ["excel2pdf"] = new("excel", ExcelExtensions, 1, "cmd_excel_to_pdf"),
         ["md2pdf"] = new("markdown", MarkdownExtensions, 1, "cmd_md_to_pdf"),
         ["md2word"] = new("markdown", MarkdownExtensions, 1, "cmd_md_to_word"),
-        ["merge-pdf"] = new("pdf", PdfExtensions, 2, "cmd_merge_pdf"),
-        ["compress-pdf"] = new("pdf", PdfExtensions, 1, "cmd_compress_pdf"),
+        [CmdMergePdf] = new("pdf", PdfExtensions, 2, "cmd_merge_pdf"),
+        [CmdCompressPdf] = new("pdf", PdfExtensions, 1, "cmd_compress_pdf"),
         ["translate-pdf"] = new("pdf", PdfExtensions, 1, "cmd_translate_pdf"),
         ["decrypt-pdf"] = new("pdf", PdfExtensions, 1, "cmd_decrypt_pdf"),
         ["split-pdf"] = new("pdf", PdfExtensions, 1, "cmd_split_pdf"),
-        ["img2pdf"] = new("image", ImageExtensions, 1, "cmd_img_to_pdf"),
-        ["img-merge"] = new("image", ImageExtensions, 2, "cmd_merge_img"),
+        [CmdImg2Pdf] = new("image", ImageExtensions, 1, "cmd_img_to_pdf"),
+        [CmdImgMerge] = new("image", ImageExtensions, 2, "cmd_merge_img"),
         ["img-stitch"] = new("image", ImageExtensions, 2, "cmd_stitch_img"),
         ["img-compress"] = new("image", ImageCompressionExtensions, 1, "cmd_img_compress"),
         ["img-to-png"] = new("image", ImageExtensions, 1, "cmd_img_to_png", [".png"]),
@@ -104,14 +109,14 @@ public static class ConvertCommandMetadata
             .Select(path => Path.GetExtension(path).ToLowerInvariant())
             .Distinct(StringComparer.OrdinalIgnoreCase)
             .ToArray();
-        if (extensions.Length == 0 || extensions.Any(string.IsNullOrEmpty)) return null;
+        if (extensions.Any(string.IsNullOrEmpty)) return null;
 
         if (AllAllowed(extensions, "ppt2pdf")) return "ppt2pdf";
         if (AllAllowed(extensions, "word2pdf")) return "word2pdf";
         if (AllAllowed(extensions, "excel2pdf")) return "excel2pdf";
-        if (AllAllowed(extensions, "compress-pdf")) return files.Count == 1 ? "compress-pdf" : "merge-pdf";
+        if (AllAllowed(extensions, CmdCompressPdf)) return files.Count == 1 ? CmdCompressPdf : CmdMergePdf;
         if (AllAllowed(extensions, "md2pdf")) return "md2pdf";
-        if (AllAllowed(extensions, "img2pdf")) return files.Count == 1 ? "img2pdf" : "img-merge";
+        if (AllAllowed(extensions, CmdImg2Pdf)) return files.Count == 1 ? CmdImg2Pdf : CmdImgMerge;
 
         return null;
     }
