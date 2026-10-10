@@ -103,6 +103,19 @@ static partial class TestSuite
                 ClickraStorage.SaveSetting(ClickraSettings.TranslateTargetLang, originalTargetLanguage);
             }
         });
+
+        runner.Run("PDF translation failure classification preserves vanished-path exception types", () =>
+        {
+            Assert.True(
+                ConversionFailureClassifier.Classify(new FileNotFoundException()) == ConversionFailureKind.FileNotFound,
+                "FileNotFoundException must remain distinguishable for quiet CLI warning parity.");
+            Assert.True(
+                ConversionFailureClassifier.Classify(new DirectoryNotFoundException()) == ConversionFailureKind.DirectoryNotFound,
+                "DirectoryNotFoundException must remain distinguishable for quiet CLI warning parity.");
+            Assert.True(
+                ConversionFailureClassifier.Classify(new InvalidOperationException()) == ConversionFailureKind.None,
+                "Unrelated failures must continue through the generic quiet translation error path.");
+        });
     }
 
     private static void RegisterFontAndNormalizationTests(TestRunner runner)

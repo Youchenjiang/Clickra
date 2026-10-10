@@ -108,12 +108,11 @@ namespace Clickra
 
                 translationFailed = true;
                 FinishConsoleProgressLine();
-                string? sourceDirectory = Path.GetDirectoryName(Path.GetFullPath(f));
-                if (sourceDirectory is not null && !Directory.Exists(sourceDirectory))
+                if (result.FailureKind == ConversionFailureKind.DirectoryNotFound)
                 {
                     Console.WriteLine($"[Warning] {Loc("cli_warn_translate_dir_vanished", f)}");
                 }
-                else if (!File.Exists(f))
+                else if (result.FailureKind == ConversionFailureKind.FileNotFound)
                 {
                     Console.WriteLine($"[Warning] {Loc("cli_warn_translate_file_vanished", f)}");
                 }

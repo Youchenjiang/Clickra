@@ -147,16 +147,23 @@ public sealed class TranslatePdfUseCase : IConversionUseCase
         {
             lifecycle?.CompleteFailure(ex.Message, string.Join(";", plan.Outputs));
             stopwatch.Stop();
-            return Result(ConversionResultStatus.Failed, ex.Message);
+            return Result(
+                ConversionResultStatus.Failed,
+                ex.Message,
+                ConversionFailureClassifier.Classify(ex));
         }
 
-        ConversionResult Result(ConversionResultStatus status, string? error) =>
+        ConversionResult Result(
+            ConversionResultStatus status,
+            string? error,
+            ConversionFailureKind failureKind = ConversionFailureKind.None) =>
             new(
                 status,
                 plan.Outputs,
                 error,
                 stopwatch.Elapsed,
                 completedFiles,
-                lifecycle?.TaskId ?? "");
+                lifecycle?.TaskId ?? "",
+                failureKind);
     }
 }
