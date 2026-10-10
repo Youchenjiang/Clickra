@@ -201,6 +201,60 @@ static partial class TestSuite
 
     private static void RegisterCommandRegistryAndRunnerTests(TestRunner runner)
     {
+        runner.Run("ImgMerge use case owns single-output planning", () =>
+            RunWithTempDirectory(tempDir =>
+            {
+                string first = CreateTestImage(tempDir, "a.png", ImageFormat.Png);
+                string second = CreateTestImage(tempDir, "b.jpg", ImageFormat.Jpeg);
+                ConversionPlan plan = new ImgMergeUseCase().Plan(new ConversionRequest(
+                    ImgMergeUseCase.CommandName,
+                    new[] { first, second }));
+
+                Assert.True(plan.Outputs.Count == 1, "img-merge must plan exactly one output.");
+                Assert.Equal(Path.Combine(tempDir, ImgMergeUseCase.OutputFileName), plan.Outputs[0]);
+                Assert.True(plan.RequiredCapabilities.Count == 0,
+                    "img-merge must not require a presentation interaction capability.");
+            }));
+
+        runner.Run("ImgMerge use case honors a shared output directory", () =>
+            RunWithTempDirectory(tempDir =>
+            {
+                string first = CreateTestImage(tempDir, "a.png", ImageFormat.Png);
+                string second = CreateTestImage(tempDir, "b.jpg", ImageFormat.Jpeg);
+                string outputDir = Path.Combine(tempDir, "out");
+                ConversionPlan plan = new ImgMergeUseCase().Plan(new ConversionRequest(
+                    ImgMergeUseCase.CommandName,
+                    new[] { first, second },
+                    OutputOverride: outputDir));
+
+                Assert.Equal(Path.Combine(Path.GetFullPath(outputDir), ImgMergeUseCase.OutputFileName), plan.Outputs[0]);
+            }));
+
+        runner.Run("ImgMerge use case can run without task tracking", () =>
+            RunWithTempDirectory(tempDir =>
+            {
+                string first = CreateTestImage(tempDir, "a.png", ImageFormat.Png);
+                string second = CreateTestImage(tempDir, "b.jpg", ImageFormat.Jpeg);
+                string outputDir = Path.Combine(tempDir, "out");
+                Directory.CreateDirectory(outputDir);
+                var useCase = new ImgMergeUseCase();
+                ConversionPlan plan = useCase.Plan(new ConversionRequest(
+                    ImgMergeUseCase.CommandName,
+                    new[] { first, second },
+                    OutputOverride: outputDir,
+                    TrackTaskLifecycle: false));
+                var interaction = new DelegateConversionInteraction(
+                    (_, _, _, _) => Task.FromResult<string?>(null),
+                    (_, _, _) => Task.FromResult<string?>(null),
+                    (_, _, _) => Task.FromResult<IReadOnlyDictionary<string, object>?>(null));
+
+                ConversionResult result = useCase.ExecuteAsync(plan, interaction, progress: null).GetAwaiter().GetResult();
+
+                Assert.True(result.Status == ConversionResultStatus.Succeeded, result.Error ?? "Expected img-merge success.");
+                Assert.True(string.IsNullOrEmpty(result.TaskId), "Untracked img-merge must not create a task identity.");
+                Assert.True(File.Exists(plan.Outputs[0]), "Expected merged image PDF output.");
+            }));
+
         runner.Run("Img2Pdf use case owns per-source output planning", () =>
             RunWithTempDirectory(tempDir =>
             {
