@@ -5,7 +5,15 @@ namespace Clickra.Core.Tests;
 
 static partial class TestSuite
 {
-    private const int ArchitectureViolationBaselineCeiling = 22;
+    private const int ArchitectureViolationBaselineCeiling = 16;
+    private const string RepositoryRootMissingMessage = "Could not locate the repository root.";
+    private const string ArchitectureCliProjectDirectory = "Clickra.CLI";
+    private const string ArchitectureCoreProjectDirectory = "Clickra.Core";
+    private const string ArchitectureFluentProjectDirectory = "Clickra.Fluent";
+    private const string ArchitectureProgressDirectory = "Progress";
+    private const string ArchitectureProgressProcessFile = "ProgressWindow.Process.cs";
+    private const string ArchitectureCliSourceFile = "ClickraCli.cs";
+    private const string GenericCatalogResolution = "ConversionUseCases.GetRequired(command)";
     private static readonly TimeSpan ArchitectureRegexTimeout = TimeSpan.FromSeconds(1);
 
     private sealed record ArchitectureViolationRule(
@@ -20,8 +28,8 @@ static partial class TestSuite
             new Regex(@"\bFileProcessor\.", RegexOptions.Compiled, ArchitectureRegexTimeout),
             new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase)
             {
-                ["src/Clickra.CLI/Cli/ClickraCli.cs"] = 10,
-                ["src/Clickra.CLI/Progress/ProgressWindow.Process.cs"] = 2,
+                ["src/Clickra.CLI/Cli/ClickraCli.cs"] = 6,
+                ["src/Clickra.CLI/Progress/ProgressWindow.Process.cs"] = 1,
                 ["src/Clickra.CLI/Progress/ProgressWindow.VisualSplitter.cs"] = 1,
                 ["src/Clickra.Fluent/Controls/VisualSplitterControl.xaml.cs"] = 1
             }),
@@ -47,8 +55,7 @@ static partial class TestSuite
             new Regex(@"\bswitch\s*\(\s*(?:cmd|command)\s*\)", RegexOptions.Compiled, ArchitectureRegexTimeout),
             new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase)
             {
-                ["src/Clickra.CLI/Cli/ClickraCli.cs"] = 3,
-                ["src/Clickra.CLI/Progress/ProgressWindow.Process.cs"] = 1
+                ["src/Clickra.CLI/Cli/ClickraCli.cs"] = 3
             })
     };
 
@@ -78,17 +85,35 @@ static partial class TestSuite
         runner.RunGuard(
             "Architecture boundaries: migrated compress workflow has one execution owner",
             TestCompressWorkflowHasSingleExecutionOwner);
+        runner.RunGuard(
+            "Architecture boundaries: migrated img2pdf workflow has one execution owner",
+            TestImg2PdfWorkflowHasSingleExecutionOwner);
+        runner.RunGuard(
+            "Architecture boundaries: migrated merge workflow has one execution owner",
+            TestMergeWorkflowHasSingleExecutionOwner);
+        runner.RunGuard(
+            "Architecture boundaries: migrated image merge workflow has one execution owner",
+            TestImgMergeWorkflowHasSingleExecutionOwner);
+        runner.RunGuard(
+            "Architecture boundaries: migrated image stitch workflow has one execution owner",
+            TestImgStitchWorkflowHasSingleExecutionOwner);
+        runner.RunGuard(
+            "Architecture boundaries: migrated image compression workflow has one execution owner",
+            TestImgCompressWorkflowHasSingleExecutionOwner);
+        runner.RunGuard(
+            "Architecture boundaries: migrated image format workflows have one execution owner",
+            TestImageFormatWorkflowsHaveSingleExecutionOwner);
     }
 
     private static void TestArchitectureViolationBaseline()
     {
         string? root = FindRepoRoot();
-        if (root is null) throw new TestSkippedException("Could not locate the repository root.");
+        if (root is null) throw new TestSkippedException(RepositoryRootMissingMessage);
 
         string[] surfaceRoots =
         {
-            Path.Combine(root, "src", "Clickra.CLI"),
-            Path.Combine(root, "src", "Clickra.Fluent")
+            Path.Combine(root, "src", ArchitectureCliProjectDirectory),
+            Path.Combine(root, "src", ArchitectureFluentProjectDirectory)
         };
         string[] sources = surfaceRoots
             .SelectMany(directory => Directory.EnumerateFiles(directory, "*.cs", SearchOption.AllDirectories))
@@ -134,9 +159,9 @@ static partial class TestSuite
     private static void TestApplicationContractsStayUiIndependent()
     {
         string? root = FindRepoRoot();
-        if (root is null) throw new TestSkippedException("Could not locate the repository root.");
+        if (root is null) throw new TestSkippedException(RepositoryRootMissingMessage);
 
-        string applicationDir = Path.Combine(root, "src", "Clickra.Core", "Application");
+        string applicationDir = Path.Combine(root, "src", ArchitectureCoreProjectDirectory, "Application");
         Assert.True(Directory.Exists(applicationDir), "The shared application contract directory must exist.");
 
         string[] forbidden =
@@ -183,11 +208,41 @@ static partial class TestSuite
     {
         IConversionUseCase compress = ConversionUseCases.GetRequired(CompressPdfUseCase.CommandName);
         IConversionUseCase decrypt = ConversionUseCases.GetRequired(DecryptPdfUseCase.CommandName);
+        IConversionUseCase imgCompress = ConversionUseCases.GetRequired(ImgCompressUseCase.CommandName);
+        IConversionUseCase imgMerge = ConversionUseCases.GetRequired(ImgMergeUseCase.CommandName);
+        IConversionUseCase img2Pdf = ConversionUseCases.GetRequired(Img2PdfUseCase.CommandName);
+        IConversionUseCase imgStitch = ConversionUseCases.GetRequired(ImgStitchUseCase.CommandName);
+        IConversionUseCase merge = ConversionUseCases.GetRequired(MergePdfUseCase.CommandName);
         IConversionUseCase split = ConversionUseCases.GetRequired(SplitPdfUseCase.CommandName);
         Assert.True(compress is CompressPdfUseCase,
             "compress-pdf must resolve through the product-wide application use-case catalog.");
         Assert.True(decrypt is DecryptPdfUseCase,
             "decrypt-pdf must resolve through the product-wide application use-case catalog.");
+        Assert.True(imgCompress is ImgCompressUseCase,
+            "img-compress must resolve through the product-wide application use-case catalog.");
+        Assert.True(imgMerge is ImgMergeUseCase,
+            "img-merge must resolve through the product-wide application use-case catalog.");
+        Assert.True(img2Pdf is Img2PdfUseCase,
+            "img2pdf must resolve through the product-wide application use-case catalog.");
+        Assert.True(imgStitch is ImgStitchUseCase,
+            "img-stitch must resolve through the product-wide application use-case catalog.");
+        foreach (string imageFormatCommand in new[]
+        {
+            ImageFormatConvertUseCase.PngCommand,
+            ImageFormatConvertUseCase.JpgCommand,
+            ImageFormatConvertUseCase.WebpCommand,
+            ImageFormatConvertUseCase.GifCommand,
+            ImageFormatConvertUseCase.HeicCommand
+        })
+        {
+            Assert.True(ConversionUseCases.GetRequired(imageFormatCommand) is ImageFormatConvertUseCase,
+                $"{imageFormatCommand} must resolve through the product-wide application use-case catalog.");
+            Assert.True(ConversionUseCases.Commands.Count(command =>
+                    command.Equals(imageFormatCommand, StringComparison.OrdinalIgnoreCase)) == 1,
+                $"The product catalog must expose exactly one {imageFormatCommand} owner.");
+        }
+        Assert.True(merge is MergePdfUseCase,
+            "merge-pdf must resolve through the product-wide application use-case catalog.");
         Assert.True(split is SplitPdfUseCase,
             "split-pdf must resolve through the product-wide application use-case catalog.");
         Assert.True(ConversionUseCases.Commands.Count(command =>
@@ -196,6 +251,21 @@ static partial class TestSuite
         Assert.True(ConversionUseCases.Commands.Count(command =>
                 command.Equals(DecryptPdfUseCase.CommandName, StringComparison.OrdinalIgnoreCase)) == 1,
             "The product catalog must expose exactly one decrypt-pdf owner.");
+        Assert.True(ConversionUseCases.Commands.Count(command =>
+                command.Equals(ImgCompressUseCase.CommandName, StringComparison.OrdinalIgnoreCase)) == 1,
+            "The product catalog must expose exactly one img-compress owner.");
+        Assert.True(ConversionUseCases.Commands.Count(command =>
+                command.Equals(ImgMergeUseCase.CommandName, StringComparison.OrdinalIgnoreCase)) == 1,
+            "The product catalog must expose exactly one img-merge owner.");
+        Assert.True(ConversionUseCases.Commands.Count(command =>
+                command.Equals(Img2PdfUseCase.CommandName, StringComparison.OrdinalIgnoreCase)) == 1,
+            "The product catalog must expose exactly one img2pdf owner.");
+        Assert.True(ConversionUseCases.Commands.Count(command =>
+                command.Equals(ImgStitchUseCase.CommandName, StringComparison.OrdinalIgnoreCase)) == 1,
+            "The product catalog must expose exactly one img-stitch owner.");
+        Assert.True(ConversionUseCases.Commands.Count(command =>
+                command.Equals(MergePdfUseCase.CommandName, StringComparison.OrdinalIgnoreCase)) == 1,
+            "The product catalog must expose exactly one merge-pdf owner.");
         Assert.True(ConversionUseCases.Commands.Count(command =>
                 command.Equals(SplitPdfUseCase.CommandName, StringComparison.OrdinalIgnoreCase)) == 1,
             "The product catalog must expose exactly one split-pdf owner.");
@@ -229,18 +299,18 @@ static partial class TestSuite
         string command,
         string legacyOutputSuffix,
         string processorCall,
-        string useCaseTypeName,
+        string? useCaseTypeName,
         string workflowName)
     {
         string? root = FindRepoRoot();
-        if (root is null) throw new TestSkippedException("Could not locate the repository root.");
+        if (root is null) throw new TestSkippedException(RepositoryRootMissingMessage);
 
-        string runner = File.ReadAllText(Path.Combine(root, "src", "Clickra.Core", "Processors", "ConvertCommandRunner.cs"));
-        string registry = File.ReadAllText(Path.Combine(root, "src", "Clickra.Core", "Processors", "ConvertCommandRegistry.cs"));
-        string native = File.ReadAllText(Path.Combine(root, "src", "Clickra.CLI", "Progress", "ProgressWindow.Process.cs"));
-        string quiet = File.ReadAllText(Path.Combine(root, "src", "Clickra.CLI", "Cli", "ClickraCli.cs"));
-        string fluentMain = File.ReadAllText(Path.Combine(root, "src", "Clickra.Fluent", "MainPage.xaml.cs"));
-        string fluentTask = File.ReadAllText(Path.Combine(root, "src", "Clickra.Fluent", "TaskProgressPage.xaml.cs"));
+        string runner = File.ReadAllText(Path.Combine(root, "src", ArchitectureCoreProjectDirectory, "Processors", "ConvertCommandRunner.cs"));
+        string registry = File.ReadAllText(Path.Combine(root, "src", ArchitectureCoreProjectDirectory, "Processors", "ConvertCommandRegistry.cs"));
+        string native = File.ReadAllText(Path.Combine(root, "src", ArchitectureCliProjectDirectory, ArchitectureProgressDirectory, ArchitectureProgressProcessFile));
+        string quiet = File.ReadAllText(Path.Combine(root, "src", ArchitectureCliProjectDirectory, "Cli", ArchitectureCliSourceFile));
+        string fluentMain = File.ReadAllText(Path.Combine(root, "src", ArchitectureFluentProjectDirectory, "MainPage.xaml.cs"));
+        string fluentTask = File.ReadAllText(Path.Combine(root, "src", ArchitectureFluentProjectDirectory, "TaskProgressPage.xaml.cs"));
 
         Assert.False(runner.Contains($"case \"{command}\"", StringComparison.Ordinal),
             $"Legacy ConvertCommandRunner must not retain a {workflowName} execution branch after migration.");
@@ -250,14 +320,84 @@ static partial class TestSuite
             $"Native presentation must not execute the {workflowName} processor directly.");
         Assert.False(quiet.Contains(processorCall, StringComparison.Ordinal),
             $"Headless CLI must not execute the {workflowName} processor directly.");
-        string catalogResolution = $"ConversionUseCases.GetRequired({useCaseTypeName}.CommandName)";
+        string? specificCatalogResolution = useCaseTypeName is null
+            ? null
+            : $"ConversionUseCases.GetRequired({useCaseTypeName}.CommandName)";
+        bool nativeCatalogResolution =
+            native.Contains(GenericCatalogResolution, StringComparison.Ordinal)
+            || (specificCatalogResolution is not null
+                && native.Contains(specificCatalogResolution, StringComparison.Ordinal));
+        bool quietCatalogResolution =
+            quiet.Contains(GenericCatalogResolution, StringComparison.Ordinal)
+            || (specificCatalogResolution is not null
+                && quiet.Contains(specificCatalogResolution, StringComparison.Ordinal));
         Assert.True((fluentMain.Contains("ConversionUseCases.TryGet(command", StringComparison.Ordinal)
-                     || fluentMain.Contains("ConversionUseCases.GetRequired(command)", StringComparison.Ordinal))
+                     || fluentMain.Contains(GenericCatalogResolution, StringComparison.Ordinal))
                     && (fluentTask.Contains("ConversionUseCases.TryGet(command", StringComparison.Ordinal)
-                        || fluentTask.Contains("ConversionUseCases.GetRequired(command)", StringComparison.Ordinal))
-                    && native.Contains(catalogResolution, StringComparison.Ordinal)
-                    && quiet.Contains(catalogResolution, StringComparison.Ordinal),
+                        || fluentTask.Contains(GenericCatalogResolution, StringComparison.Ordinal))
+                    && nativeCatalogResolution
+                    && quietCatalogResolution,
             $"All product surfaces must resolve {workflowName} execution through the application use-case catalog.");
+    }
+
+    private static void TestImg2PdfWorkflowHasSingleExecutionOwner()
+        => AssertMigratedWorkflowHasSingleExecutionOwner(
+            Img2PdfUseCase.CommandName,
+            "\"img2pdf\" => files.Select",
+            "FileProcessor.ConvertImagesToPdf(new List<string> { f }",
+            nameof(Img2PdfUseCase),
+            "img2pdf");
+
+    private static void TestMergeWorkflowHasSingleExecutionOwner()
+        => AssertMigratedWorkflowHasSingleExecutionOwner(
+            MergePdfUseCase.CommandName,
+            "Merged_PDF.pdf",
+            "FileProcessor.MergePdfs",
+            nameof(MergePdfUseCase),
+            "merge");
+
+    private static void TestImgMergeWorkflowHasSingleExecutionOwner()
+        => AssertMigratedWorkflowHasSingleExecutionOwner(
+            ImgMergeUseCase.CommandName,
+            "Merged_Images.pdf",
+            "FileProcessor.ConvertImagesToPdf(files",
+            nameof(ImgMergeUseCase),
+            "img-merge");
+
+    private static void TestImgStitchWorkflowHasSingleExecutionOwner()
+        => AssertMigratedWorkflowHasSingleExecutionOwner(
+            ImgStitchUseCase.CommandName,
+            "Stitched_Image.png",
+            "FileProcessor.StitchImages",
+            nameof(ImgStitchUseCase),
+            "img-stitch");
+
+    private static void TestImgCompressWorkflowHasSingleExecutionOwner()
+        => AssertMigratedWorkflowHasSingleExecutionOwner(
+            ImgCompressUseCase.CommandName,
+            "EstimateImageCompressionOutputs",
+            "FileProcessor.CompressImage",
+            nameof(ImgCompressUseCase),
+            "img-compress");
+
+    private static void TestImageFormatWorkflowsHaveSingleExecutionOwner()
+    {
+        foreach (string command in new[]
+        {
+            ImageFormatConvertUseCase.PngCommand,
+            ImageFormatConvertUseCase.JpgCommand,
+            ImageFormatConvertUseCase.WebpCommand,
+            ImageFormatConvertUseCase.GifCommand,
+            ImageFormatConvertUseCase.HeicCommand
+        })
+        {
+            AssertMigratedWorkflowHasSingleExecutionOwner(
+                command,
+                "EstimateImageFormatOutputs",
+                "FileProcessor.ConvertImageFormat",
+                null,
+                command);
+        }
     }
 
     private sealed class StubConversionUseCase(string command) : IConversionUseCase

@@ -116,52 +116,12 @@ public static class ConvertCommandRunner
                     RunPerFile(files, outputs, (f, o, p, t) => FileProcessor.ConvertMarkdownToWord(f, o, markdownOptions, p, t), progress, options.StartIndex, options.OnFileStarting, token);
                     break;
                 }
-                case "merge-pdf":
-                    FileProcessor.MergePdfs(files, outputs[0], progress, token);
-                    break;
                 case "translate-pdf":
                     RunPerFile(files, outputs, (f, o, p, t) => FileProcessor.TranslatePdf(f, o, ClickraStorage.GetSetting(ClickraSettings.TranslateTargetLang), p, t), progress, options.StartIndex, options.OnFileStarting, token);
-                    break;
-                case "img2pdf":
-                    RunPerFile(files, outputs, (f, o, p, t) => FileProcessor.ConvertImagesToPdf(new List<string> { f }, o, p, t), progress, options.StartIndex, options.OnFileStarting, token);
-                    break;
-                case "img-merge":
-                    FileProcessor.ConvertImagesToPdf(files, outputs[0], progress, token);
-                    break;
-                case "img-stitch":
-                    FileProcessor.StitchImages(files, outputs[0], progress, token);
-                    break;
-                case "img-compress":
-                {
-                    Dictionary<string, object> compressionOptions = ConvertCommandRegistry.ImageCompressionOptions();
-                    RunPerFile(files, outputs, (f, o, p, t) => FileProcessor.CompressImage(f, o, compressionOptions, p, t), progress, options.StartIndex, options.OnFileStarting, token);
-                    break;
-                }
-                case "img-to-png":
-                case "img-to-jpg":
-                case "img-to-webp":
-                case "img-to-gif":
-                case "img-to-heic":
-                    RunImageConvert(
-                        files,
-                        outputs,
-                        command["img-to-".Length..],
-                        progress,
-                        options.StartIndex,
-                        options.OnFileStarting,
-                        token);
                     break;
                 default:
                     throw new InvalidOperationException($"Unknown convert command '{command}'.");
             }
-        }
-
-        /// <summary>Converts each image to the target format, reusing the per-file
-        /// loop with the format baked into the FileProcessor call.</summary>
-        private static void RunImageConvert(List<string> files, List<string> outputs, string format, Action<int, int, string> progress, int startIndex, Action<int>? onFileStarting, CancellationToken token)
-        {
-            ConvertCommandRegistry.EnsureUniqueOutputPaths(outputs);
-            RunPerFile(files, outputs, (f, o, p, t) => FileProcessor.ConvertImageFormat(f, o, format, p, t), progress, startIndex, onFileStarting, token);
         }
 
         private static void RunPerFile(List<string> files, List<string> outputs, Action<string, string, Action<int, int, string>, CancellationToken> action, Action<int, int, string> progress, int startIndex, Action<int>? onFileStarting, CancellationToken token)

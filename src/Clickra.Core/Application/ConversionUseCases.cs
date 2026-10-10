@@ -8,6 +8,16 @@ public static class ConversionUseCases
         {
             new CompressPdfUseCase(),
             new DecryptPdfUseCase(),
+            new ImgCompressUseCase(),
+            new ImageFormatConvertUseCase(ImageFormatConvertUseCase.PngCommand),
+            new ImageFormatConvertUseCase(ImageFormatConvertUseCase.JpgCommand),
+            new ImageFormatConvertUseCase(ImageFormatConvertUseCase.WebpCommand),
+            new ImageFormatConvertUseCase(ImageFormatConvertUseCase.GifCommand),
+            new ImageFormatConvertUseCase(ImageFormatConvertUseCase.HeicCommand),
+            new ImgMergeUseCase(),
+            new Img2PdfUseCase(),
+            new ImgStitchUseCase(),
+            new MergePdfUseCase(),
             new SplitPdfUseCase()
         });
 

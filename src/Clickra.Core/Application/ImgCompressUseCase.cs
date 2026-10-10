@@ -2,35 +2,31 @@ using Clickra.Core.Processors;
 
 namespace Clickra.Core.Application;
 
-/// <summary>Authoritative application workflow for compressing PDF files.</summary>
-public sealed class CompressPdfUseCase : PerFileConversionUseCaseBase
+/// <summary>Authoritative application workflow for compressing image files.</summary>
+public sealed class ImgCompressUseCase : PerFileConversionUseCaseBase
 {
-    public const string CommandName = "compress-pdf";
-    public const string LevelOptionKey = "level";
+    public const string CommandName = "img-compress";
 
     public override string Command => CommandName;
-    protected override string UseCaseName => nameof(CompressPdfUseCase);
-    protected override string InputRequirementError => "At least one PDF file is required.";
-    protected override string OutputCountError => "PDF compression requires one output per input.";
-    protected override string UnsupportedInputError(string path) => $"Unsupported compression input '{path}'.";
+    protected override string UseCaseName => nameof(ImgCompressUseCase);
+    protected override string InputRequirementError => "At least one image file is required.";
+    protected override string OutputCountError => "Image compression requires one output per input.";
+    protected override string UnsupportedInputError(string path) => $"Unsupported image input '{path}'.";
     protected override string GetOutputFileName(string input) =>
-        Path.GetFileNameWithoutExtension(input) + "_compressed.pdf";
+        Path.GetFileNameWithoutExtension(input) + "_compressed" + Path.GetExtension(input);
+    protected override string NormalizeOutputOverride(string outputOverride) => outputOverride;
 
-    protected override ConversionValidationResult ValidateOptions(ConversionRequest request)
+    protected override void ValidateOutputs(
+        IReadOnlyList<string> inputs,
+        IReadOnlyList<string> outputs)
     {
-        if (request.Options is not null &&
-            request.Options.TryGetValue(LevelOptionKey, out object? levelValue) &&
-            !PdfCompressionOptions.TryParseLevel(levelValue?.ToString(), out _))
-        {
-            return ConversionValidationResult.Failure($"Unsupported PDF compression level: {levelValue}");
-        }
-
-        return ConversionValidationResult.Success();
+        ImageOutputSafety.EnsureUniqueOutputs(outputs);
+        ImageOutputSafety.EnsureOutputsDoNotOverwriteInputs(inputs, outputs);
     }
 
     protected override IReadOnlyDictionary<string, object> NormalizeOptions(ConversionRequest request) =>
         request.Options is null
-            ? ConvertCommandRegistry.CompressionOptions()
+            ? ConvertCommandRegistry.ImageCompressionOptions()
             : new Dictionary<string, object>(request.Options, StringComparer.Ordinal);
 
     protected override object CreateExecutionState(ConversionPlan plan) =>
@@ -47,7 +43,7 @@ public sealed class CompressPdfUseCase : PerFileConversionUseCaseBase
         var options = (IReadOnlyDictionary<string, object>?)executionState
             ?? plan.NormalizedOptions;
         await Task.Run(
-            () => FileProcessor.CompressPdf(
+            () => FileProcessor.CompressImage(
                 plan.Inputs[index],
                 plan.Outputs[index],
                 new Dictionary<string, object>(options, StringComparer.Ordinal),
