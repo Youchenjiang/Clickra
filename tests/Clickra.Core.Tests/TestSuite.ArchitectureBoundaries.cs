@@ -105,6 +105,9 @@ static partial class TestSuite
         runner.RunGuard(
             "Architecture boundaries: migrated PDF translation workflow has one execution owner",
             TestTranslatePdfWorkflowHasSingleExecutionOwner);
+        runner.RunGuard(
+            "Architecture boundaries: migrated Word conversion workflow has one execution owner",
+            TestWordToPdfWorkflowHasSingleExecutionOwner);
     }
 
     private static void TestArchitectureViolationBaseline()
@@ -442,6 +445,33 @@ static partial class TestSuite
                     && native.Contains("ConversionUseCases.GetRequired(TranslatePdfUseCase.CommandName)", StringComparison.Ordinal)
                     && quiet.Contains("ConversionUseCases.GetRequired(TranslatePdfUseCase.CommandName)", StringComparison.Ordinal),
             "All product surfaces must resolve translate-pdf through the application use-case catalog.");
+    }
+
+    private static void TestWordToPdfWorkflowHasSingleExecutionOwner()
+    {
+        string? root = FindRepoRoot();
+        if (root is null) throw new TestSkippedException("Could not locate the repository root.");
+
+        string runner = File.ReadAllText(Path.Combine(root, "src", "Clickra.Core", "Processors", "ConvertCommandRunner.cs"));
+        string native = File.ReadAllText(Path.Combine(root, "src", "Clickra.CLI", "Progress", "ProgressWindow.Process.cs"));
+        string quiet = File.ReadAllText(Path.Combine(root, "src", "Clickra.CLI", "Cli", "ClickraCli.cs"));
+        string fluentMain = File.ReadAllText(Path.Combine(root, "src", "Clickra.Fluent", "MainPage.xaml.cs"));
+        string fluentTask = File.ReadAllText(Path.Combine(root, "src", "Clickra.Fluent", "TaskProgressPage.xaml.cs"));
+
+        Assert.False(runner.Contains("case \"word2pdf\"", StringComparison.Ordinal),
+            "Legacy ConvertCommandRunner must not retain word2pdf execution after application migration.");
+        Assert.False(native.Contains("FileProcessor.ConvertWordToPdf", StringComparison.Ordinal),
+            "Native presentation must not execute Word conversion directly.");
+        Assert.False(quiet.Contains("FileProcessor.ConvertWordToPdf", StringComparison.Ordinal),
+            "Headless CLI must not execute Word conversion directly.");
+        Assert.True((fluentMain.Contains("ConversionUseCases.TryGet(command", StringComparison.Ordinal)
+                     || fluentMain.Contains("ConversionUseCases.GetRequired(command)", StringComparison.Ordinal))
+                    && (fluentTask.Contains("ConversionUseCases.TryGet(command", StringComparison.Ordinal)
+                        || fluentTask.Contains("ConversionUseCases.GetRequired(command)", StringComparison.Ordinal))
+                    && native.Contains("RunApplicationWordToPdf(hwnd, currentFiles, progressCallback)", StringComparison.Ordinal)
+                    && native.Contains("ConversionUseCases.GetRequired(WordToPdfUseCase.CommandName)", StringComparison.Ordinal)
+                    && quiet.Contains("ConversionUseCases.GetRequired(WordToPdfUseCase.CommandName)", StringComparison.Ordinal),
+            "All product surfaces must resolve word2pdf through the application use-case catalog.");
     }
 
     private sealed class StubConversionUseCase(string command) : IConversionUseCase
