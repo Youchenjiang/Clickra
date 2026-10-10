@@ -16,7 +16,6 @@ static partial class TestSuite
     private const string ArchitectureProgressProcessFile = "ProgressWindow.Process.cs";
     private const string ArchitectureCliSourceFile = "ClickraCli.cs";
     private const string GenericCatalogResolution = "ConversionUseCases.GetRequired(command)";
-    private const string GenericCatalogTryGet = "ConversionUseCases.TryGet(command";
     private static readonly TimeSpan ArchitectureRegexTimeout = TimeSpan.FromSeconds(1);
 
     private sealed record ArchitectureViolationRule(
@@ -378,10 +377,8 @@ static partial class TestSuite
             sources.Quiet.Contains(GenericCatalogResolution, StringComparison.Ordinal)
             || (specificCatalogResolution is not null
                 && sources.Quiet.Contains(specificCatalogResolution, StringComparison.Ordinal));
-        Assert.True((sources.FluentMain.Contains(GenericCatalogTryGet, StringComparison.Ordinal)
-                     || sources.FluentMain.Contains(GenericCatalogResolution, StringComparison.Ordinal))
-                    && (sources.FluentTask.Contains(GenericCatalogTryGet, StringComparison.Ordinal)
-                        || sources.FluentTask.Contains(GenericCatalogResolution, StringComparison.Ordinal))
+        Assert.True(sources.FluentMain.Contains(GenericCatalogResolution, StringComparison.Ordinal)
+                    && sources.FluentTask.Contains(GenericCatalogResolution, StringComparison.Ordinal)
                     && nativeCatalogResolution
                     && quietCatalogResolution,
             $"All product surfaces must resolve {workflowName} execution through the application use-case catalog.");
@@ -511,10 +508,8 @@ static partial class TestSuite
             $"Headless CLI must not execute {workflowName} directly.");
 
         string specificCatalogResolution = $"ConversionUseCases.GetRequired({useCaseTypeName}.CommandName)";
-        Assert.True((sources.FluentMain.Contains(GenericCatalogTryGet, StringComparison.Ordinal)
-                     || sources.FluentMain.Contains(GenericCatalogResolution, StringComparison.Ordinal))
-                    && (sources.FluentTask.Contains(GenericCatalogTryGet, StringComparison.Ordinal)
-                        || sources.FluentTask.Contains(GenericCatalogResolution, StringComparison.Ordinal))
+        Assert.True(sources.FluentMain.Contains(GenericCatalogResolution, StringComparison.Ordinal)
+                    && sources.FluentTask.Contains(GenericCatalogResolution, StringComparison.Ordinal)
                     && (sources.Native.Contains(GenericCatalogResolution, StringComparison.Ordinal)
                         || sources.Native.Contains(specificCatalogResolution, StringComparison.Ordinal))
                     && (sources.Quiet.Contains(GenericCatalogResolution, StringComparison.Ordinal)
