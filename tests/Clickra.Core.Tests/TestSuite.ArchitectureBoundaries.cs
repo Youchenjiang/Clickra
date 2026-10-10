@@ -23,6 +23,14 @@ static partial class TestSuite
         Regex Pattern,
         IReadOnlyDictionary<string, int> Baseline);
 
+    private sealed record MigrationSurfaceSources(
+        string Runner,
+        string Registry,
+        string Native,
+        string Quiet,
+        string FluentMain,
+        string FluentTask);
+
     private static readonly ArchitectureViolationRule[] ArchitectureViolationRules =
     {
         new(
@@ -356,39 +364,31 @@ static partial class TestSuite
         string? useCaseTypeName,
         string workflowName)
     {
-        string? root = FindRepoRoot();
-        if (root is null) throw new TestSkippedException(RepositoryRootMissingMessage);
+        MigrationSurfaceSources sources = ReadMigrationSurfaceSources();
 
-        string runner = File.ReadAllText(Path.Combine(root, "src", ArchitectureCoreProjectDirectory, ArchitectureProcessorsDirectory, "ConvertCommandRunner.cs"));
-        string registry = File.ReadAllText(Path.Combine(root, "src", ArchitectureCoreProjectDirectory, ArchitectureProcessorsDirectory, "ConvertCommandRegistry.cs"));
-        string native = File.ReadAllText(Path.Combine(root, "src", ArchitectureCliProjectDirectory, ArchitectureProgressDirectory, ArchitectureProgressProcessFile));
-        string quiet = File.ReadAllText(Path.Combine(root, "src", ArchitectureCliProjectDirectory, "Cli", ArchitectureCliSourceFile));
-        string fluentMain = File.ReadAllText(Path.Combine(root, "src", ArchitectureFluentProjectDirectory, "MainPage.xaml.cs"));
-        string fluentTask = File.ReadAllText(Path.Combine(root, "src", ArchitectureFluentProjectDirectory, "TaskProgressPage.xaml.cs"));
-
-        Assert.False(runner.Contains($"case \"{command}\"", StringComparison.Ordinal),
+        Assert.False(sources.Runner.Contains($"case \"{command}\"", StringComparison.Ordinal),
             $"Legacy ConvertCommandRunner must not retain a {workflowName} execution branch after migration.");
-        Assert.False(registry.Contains(legacyOutputSuffix, StringComparison.Ordinal),
+        Assert.False(sources.Registry.Contains(legacyOutputSuffix, StringComparison.Ordinal),
             $"Legacy ConvertCommandRegistry must not retain {workflowName} output-path policy after application migration.");
-        Assert.False(native.Contains(processorCall, StringComparison.Ordinal),
+        Assert.False(sources.Native.Contains(processorCall, StringComparison.Ordinal),
             $"Native presentation must not execute the {workflowName} processor directly.");
-        Assert.False(quiet.Contains(processorCall, StringComparison.Ordinal),
+        Assert.False(sources.Quiet.Contains(processorCall, StringComparison.Ordinal),
             $"Headless CLI must not execute the {workflowName} processor directly.");
         string? specificCatalogResolution = useCaseTypeName is null
             ? null
             : $"ConversionUseCases.GetRequired({useCaseTypeName}.CommandName)";
         bool nativeCatalogResolution =
-            native.Contains(GenericCatalogResolution, StringComparison.Ordinal)
+            sources.Native.Contains(GenericCatalogResolution, StringComparison.Ordinal)
             || (specificCatalogResolution is not null
-                && native.Contains(specificCatalogResolution, StringComparison.Ordinal));
+                && sources.Native.Contains(specificCatalogResolution, StringComparison.Ordinal));
         bool quietCatalogResolution =
-            quiet.Contains(GenericCatalogResolution, StringComparison.Ordinal)
+            sources.Quiet.Contains(GenericCatalogResolution, StringComparison.Ordinal)
             || (specificCatalogResolution is not null
-                && quiet.Contains(specificCatalogResolution, StringComparison.Ordinal));
-        Assert.True((fluentMain.Contains(GenericCatalogTryGet, StringComparison.Ordinal)
-                     || fluentMain.Contains(GenericCatalogResolution, StringComparison.Ordinal))
-                    && (fluentTask.Contains(GenericCatalogTryGet, StringComparison.Ordinal)
-                        || fluentTask.Contains(GenericCatalogResolution, StringComparison.Ordinal))
+                && sources.Quiet.Contains(specificCatalogResolution, StringComparison.Ordinal));
+        Assert.True((sources.FluentMain.Contains(GenericCatalogTryGet, StringComparison.Ordinal)
+                     || sources.FluentMain.Contains(GenericCatalogResolution, StringComparison.Ordinal))
+                    && (sources.FluentTask.Contains(GenericCatalogTryGet, StringComparison.Ordinal)
+                        || sources.FluentTask.Contains(GenericCatalogResolution, StringComparison.Ordinal))
                     && nativeCatalogResolution
                     && quietCatalogResolution,
             $"All product surfaces must resolve {workflowName} execution through the application use-case catalog.");
@@ -517,37 +517,43 @@ static partial class TestSuite
         string workflowName,
         bool registryMarkerMustBeAbsent = false)
     {
-        string? root = FindRepoRoot();
-        if (root is null) throw new TestSkippedException(RepositoryRootMissingMessage);
+        MigrationSurfaceSources sources = ReadMigrationSurfaceSources();
 
-        string runner = File.ReadAllText(Path.Combine(root, "src", ArchitectureCoreProjectDirectory, ArchitectureProcessorsDirectory, "ConvertCommandRunner.cs"));
-        string registry = File.ReadAllText(Path.Combine(root, "src", ArchitectureCoreProjectDirectory, ArchitectureProcessorsDirectory, "ConvertCommandRegistry.cs"));
-        string native = File.ReadAllText(Path.Combine(root, "src", ArchitectureCliProjectDirectory, ArchitectureProgressDirectory, ArchitectureProgressProcessFile));
-        string quiet = File.ReadAllText(Path.Combine(root, "src", ArchitectureCliProjectDirectory, "Cli", ArchitectureCliSourceFile));
-        string fluentMain = File.ReadAllText(Path.Combine(root, "src", ArchitectureFluentProjectDirectory, "MainPage.xaml.cs"));
-        string fluentTask = File.ReadAllText(Path.Combine(root, "src", ArchitectureFluentProjectDirectory, "TaskProgressPage.xaml.cs"));
-
-        Assert.False(runner.Contains($"case \"{command}\"", StringComparison.Ordinal),
+        Assert.False(sources.Runner.Contains($"case \"{command}\"", StringComparison.Ordinal),
             $"Legacy ConvertCommandRunner must not retain {workflowName} execution after migration.");
-        Assert.True(registry.Contains(registryMarker, StringComparison.Ordinal) != registryMarkerMustBeAbsent,
+        Assert.True(sources.Registry.Contains(registryMarker, StringComparison.Ordinal) != registryMarkerMustBeAbsent,
             registryMarkerMustBeAbsent
                 ? $"Legacy ConvertCommandRegistry must not retain {workflowName} output planning after migration."
                 : $"Legacy ConvertCommandRegistry must fail closed instead of planning {workflowName} outputs after migration.");
-        Assert.False(native.Contains(processorCall, StringComparison.Ordinal),
+        Assert.False(sources.Native.Contains(processorCall, StringComparison.Ordinal),
             $"Native presentation must not execute {workflowName} directly.");
-        Assert.False(quiet.Contains(processorCall, StringComparison.Ordinal),
+        Assert.False(sources.Quiet.Contains(processorCall, StringComparison.Ordinal),
             $"Headless CLI must not execute {workflowName} directly.");
 
         string specificCatalogResolution = $"ConversionUseCases.GetRequired({useCaseTypeName}.CommandName)";
-        Assert.True((fluentMain.Contains(GenericCatalogTryGet, StringComparison.Ordinal)
-                     || fluentMain.Contains(GenericCatalogResolution, StringComparison.Ordinal))
-                    && (fluentTask.Contains(GenericCatalogTryGet, StringComparison.Ordinal)
-                        || fluentTask.Contains(GenericCatalogResolution, StringComparison.Ordinal))
-                    && (native.Contains(GenericCatalogResolution, StringComparison.Ordinal)
-                        || native.Contains(specificCatalogResolution, StringComparison.Ordinal))
-                    && (quiet.Contains(GenericCatalogResolution, StringComparison.Ordinal)
-                        || quiet.Contains(specificCatalogResolution, StringComparison.Ordinal)),
+        Assert.True((sources.FluentMain.Contains(GenericCatalogTryGet, StringComparison.Ordinal)
+                     || sources.FluentMain.Contains(GenericCatalogResolution, StringComparison.Ordinal))
+                    && (sources.FluentTask.Contains(GenericCatalogTryGet, StringComparison.Ordinal)
+                        || sources.FluentTask.Contains(GenericCatalogResolution, StringComparison.Ordinal))
+                    && (sources.Native.Contains(GenericCatalogResolution, StringComparison.Ordinal)
+                        || sources.Native.Contains(specificCatalogResolution, StringComparison.Ordinal))
+                    && (sources.Quiet.Contains(GenericCatalogResolution, StringComparison.Ordinal)
+                        || sources.Quiet.Contains(specificCatalogResolution, StringComparison.Ordinal)),
             $"All product surfaces must resolve {workflowName} through the application use-case catalog.");
+    }
+
+    private static MigrationSurfaceSources ReadMigrationSurfaceSources()
+    {
+        string? root = FindRepoRoot();
+        if (root is null) throw new TestSkippedException(RepositoryRootMissingMessage);
+
+        return new MigrationSurfaceSources(
+            File.ReadAllText(Path.Combine(root, "src", ArchitectureCoreProjectDirectory, ArchitectureProcessorsDirectory, "ConvertCommandRunner.cs")),
+            File.ReadAllText(Path.Combine(root, "src", ArchitectureCoreProjectDirectory, ArchitectureProcessorsDirectory, "ConvertCommandRegistry.cs")),
+            File.ReadAllText(Path.Combine(root, "src", ArchitectureCliProjectDirectory, ArchitectureProgressDirectory, ArchitectureProgressProcessFile)),
+            File.ReadAllText(Path.Combine(root, "src", ArchitectureCliProjectDirectory, "Cli", ArchitectureCliSourceFile)),
+            File.ReadAllText(Path.Combine(root, "src", ArchitectureFluentProjectDirectory, "MainPage.xaml.cs")),
+            File.ReadAllText(Path.Combine(root, "src", ArchitectureFluentProjectDirectory, "TaskProgressPage.xaml.cs")));
     }
 
     private static void AssertMarkdownWorkflowPreservesPresentationOptions(string command, string workflowName)

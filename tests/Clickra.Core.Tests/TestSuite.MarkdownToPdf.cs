@@ -58,41 +58,10 @@ static partial class TestSuite
     public static void RegisterMarkdownToPdfTests(TestRunner runner)
     {
         runner.Run("Markdown to PDF use case snapshots options and output planning", () =>
-            RunWithTempDirectory(tempDir =>
-            {
-                string sourceDir = Path.Combine(tempDir, "source");
-                string outputDir = Path.Combine(tempDir, "output");
-                Directory.CreateDirectory(sourceDir);
-                Directory.CreateDirectory(outputDir);
-                string input = Path.Combine(sourceDir, "notes.md");
-                string template = Path.Combine(tempDir, "template.docx");
-                File.WriteAllText(input, "# Notes");
-                CreateWordTemplateFixture(template);
-
-                var requested = MarkdownPdfOptions.Create(
-                    MarkdownPdfOptions.ThemeAcademic,
-                    MarkdownPdfOptions.PaperLetter,
-                    MarkdownPdfOptions.TextLarge,
-                    MarkdownPdfOptions.CodeLight,
-                    template);
-                var useCase = new MarkdownToPdfUseCase();
-                ConversionPlan plan = useCase.Plan(new ConversionRequest(
-                    MarkdownToPdfUseCase.CommandName,
-                    new[] { input },
-                    requested,
-                    OutputOverride: outputDir,
-                    TrackTaskLifecycle: false));
-
-                Assert.Equal(Path.Combine(Path.GetFullPath(outputDir), "notes.pdf"), plan.Outputs[0]);
-                Assert.Equal(MarkdownPdfOptions.ThemeAcademic, MarkdownPdfOptions.GetTheme(plan.NormalizedOptions));
-                Assert.Equal(MarkdownPdfOptions.PaperLetter, MarkdownPdfOptions.GetPaper(plan.NormalizedOptions));
-                Assert.Equal(MarkdownPdfOptions.TextLarge, MarkdownPdfOptions.GetTextSize(plan.NormalizedOptions));
-                Assert.Equal(MarkdownPdfOptions.CodeLight, MarkdownPdfOptions.GetCodeTheme(plan.NormalizedOptions));
-                Assert.Equal(Path.GetFullPath(template), MarkdownPdfOptions.GetTemplatePath(plan.NormalizedOptions) ?? "");
-                requested[MarkdownPdfOptions.ThemeKey] = MarkdownPdfOptions.ThemeDefault;
-                Assert.Equal(MarkdownPdfOptions.ThemeAcademic, MarkdownPdfOptions.GetTheme(plan.NormalizedOptions));
-                Assert.False(plan.TrackTaskLifecycle, "Quiet Markdown execution must be able to disable task tracking.");
-            }));
+            AssertMarkdownUseCasePlanning(
+                new MarkdownToPdfUseCase(),
+                MarkdownToPdfUseCase.CommandName,
+                ".pdf"));
 
         runner.Run("Markdown to PDF: pre-cancel preserves existing output", () =>
             RunWithTempDirectory(tempDir =>
