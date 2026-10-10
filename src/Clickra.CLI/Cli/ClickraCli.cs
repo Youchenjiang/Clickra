@@ -218,7 +218,7 @@ namespace Clickra
             {
                 case "merge-pdf":
                     return DispatchPdfCase(command, files, quiet, 2,
-                        () => FileProcessor.MergePdfs(files, Path.Combine(outputDir, "Merged_PDF.pdf"), (curr, tot, msg) => Console.WriteLine($"[Progress] {msg}")));
+                        () => HandleMergePdfQuiet(files, outputDir));
                 case "compress-pdf":
                     return DispatchPdfCase(command, files, quiet, 1,
                         () => HandleCompressPdfQuiet(files, outputDir, hasCliLevel, compressionLevel));
@@ -245,6 +245,29 @@ namespace Clickra
             if (quiet) quietAction();
             else ProgressWindow.Show(command, files);
             return true;
+        }
+
+        /// <summary>Runs merge-pdf in quiet mode, preserving the shared output directory.</summary>
+        private static void HandleMergePdfQuiet(List<string> files, string outputDir)
+        {
+            IConversionUseCase useCase = ConversionUseCases.GetRequired(MergePdfUseCase.CommandName);
+            ConversionPlan plan = useCase.Plan(new ConversionRequest(
+                MergePdfUseCase.CommandName,
+                files,
+                OutputOverride: outputDir,
+                TrackTaskLifecycle: false));
+            var interaction = new DelegateConversionInteraction(
+                (_, _, _, _) => Task.FromResult<string?>(null),
+                (_, _, _) => Task.FromResult<string?>(null),
+                (_, _, _) => Task.FromResult<IReadOnlyDictionary<string, object>?>(null));
+            var progress = new SynchronousProgress<ConversionProgress>(state =>
+                Console.WriteLine($"[Progress] {state.Message}"));
+
+            ConversionResult result = useCase.ExecuteAsync(plan, interaction, progress)
+                .GetAwaiter()
+                .GetResult();
+            if (result.Status != ConversionResultStatus.Succeeded)
+                throw new InvalidOperationException(result.Error ?? Loc("error_processing_failed"));
         }
 
         /// <summary>Runs the split-pdf command in quiet mode, writing one output file per input.</summary>
