@@ -25,7 +25,6 @@ static partial class TestSuite
         IReadOnlyDictionary<string, int> Baseline);
 
     private sealed record MigrationSurfaceSources(
-        string Runner,
         string Registry,
         string Native,
         string Quiet,
@@ -362,8 +361,6 @@ static partial class TestSuite
     {
         MigrationSurfaceSources sources = ReadMigrationSurfaceSources();
 
-        Assert.False(sources.Runner.Contains($"case \"{command}\"", StringComparison.Ordinal),
-            $"Legacy ConvertCommandRunner must not retain a {workflowName} execution branch after migration.");
         Assert.False(sources.Registry.Contains(legacyOutputSuffix, StringComparison.Ordinal),
             $"Legacy ConvertCommandRegistry must not retain {workflowName} output-path policy after application migration.");
         Assert.False(sources.Native.Contains(processorCall, StringComparison.Ordinal),
@@ -506,8 +503,6 @@ static partial class TestSuite
     {
         MigrationSurfaceSources sources = ReadMigrationSurfaceSources();
 
-        Assert.False(sources.Runner.Contains($"case \"{command}\"", StringComparison.Ordinal),
-            $"Legacy ConvertCommandRunner must not retain {workflowName} execution after migration.");
         Assert.False(sources.Registry.Contains("EstimateOutputs(", StringComparison.Ordinal),
             "Legacy ConvertCommandRegistry must not retain output planning after application migration.");
         Assert.False(sources.Native.Contains(processorCall, StringComparison.Ordinal),
@@ -533,18 +528,11 @@ static partial class TestSuite
         if (root is null) throw new TestSkippedException(RepositoryRootMissingMessage);
 
         return new MigrationSurfaceSources(
-            ReadLegacyConvertCommandRunner(root),
             File.ReadAllText(Path.Combine(root, "src", ArchitectureCoreProjectDirectory, ArchitectureProcessorsDirectory, "ConvertCommandRegistry.cs")),
             File.ReadAllText(Path.Combine(root, "src", ArchitectureCliProjectDirectory, ArchitectureProgressDirectory, ArchitectureProgressProcessFile)),
             File.ReadAllText(Path.Combine(root, "src", ArchitectureCliProjectDirectory, "Cli", ArchitectureCliSourceFile)),
             File.ReadAllText(Path.Combine(root, "src", ArchitectureFluentProjectDirectory, "MainPage.xaml.cs")),
             File.ReadAllText(Path.Combine(root, "src", ArchitectureFluentProjectDirectory, "TaskProgressPage.xaml.cs")));
-    }
-
-    private static string ReadLegacyConvertCommandRunner(string root)
-    {
-        string path = Path.Combine(root, "src", ArchitectureCoreProjectDirectory, ArchitectureProcessorsDirectory, "ConvertCommandRunner.cs");
-        return File.Exists(path) ? File.ReadAllText(path) : string.Empty;
     }
 
     private static void AssertMarkdownWorkflowPreservesPresentationOptions(string command, string workflowName)
