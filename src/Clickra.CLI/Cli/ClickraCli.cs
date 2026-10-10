@@ -348,15 +348,7 @@ namespace Clickra
 
             if (quiet)
             {
-                var outputs = ConvertCommandRegistry.EstimateImageFormatOutputs(command, files, outputDir);
-                ConvertCommandRunner.Run(
-                    command,
-                    files,
-                    outputs,
-                    (curr, total, msg) => Console.WriteLine($"[Progress] {msg}"),
-                    new ConvertCommandRunner.ConversionOptions(
-                        _ => System.Threading.Tasks.Task.FromResult<string?>(null),
-                        (_, _) => System.Threading.Tasks.Task.FromResult<string?>(null)));
+                HandleImageFormatQuiet(command, files, outputDir);
             }
             else
             {
@@ -364,6 +356,29 @@ namespace Clickra
             }
 
             return true;
+        }
+
+        /// <summary>Converts images to the requested format in quiet mode using one shared output directory.</summary>
+        private static void HandleImageFormatQuiet(string command, List<string> files, string outputDir)
+        {
+            IConversionUseCase useCase = ConversionUseCases.GetRequired(command);
+            ConversionPlan plan = useCase.Plan(new ConversionRequest(
+                command,
+                files,
+                OutputOverride: outputDir,
+                TrackTaskLifecycle: false));
+            var interaction = new DelegateConversionInteraction(
+                (_, _, _, _) => Task.FromResult<string?>(null),
+                (_, _, _) => Task.FromResult<string?>(null),
+                (_, _, _) => Task.FromResult<IReadOnlyDictionary<string, object>?>(null));
+            var progress = new SynchronousProgress<ConversionProgress>(state =>
+                Console.WriteLine($"[Progress] {state.Message}"));
+
+            ConversionResult result = useCase.ExecuteAsync(plan, interaction, progress)
+                .GetAwaiter()
+                .GetResult();
+            if (result.Status != ConversionResultStatus.Succeeded)
+                throw new InvalidOperationException(result.Error ?? Loc("error_processing_failed"));
         }
 
         /// <summary>Merges images into one PDF in quiet mode.</summary>
