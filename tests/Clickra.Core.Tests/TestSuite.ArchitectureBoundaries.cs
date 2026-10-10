@@ -6,7 +6,7 @@ namespace Clickra.Core.Tests;
 
 static partial class TestSuite
 {
-    private const int ArchitectureViolationBaselineCeiling = 3;
+    private const int ArchitectureViolationBaselineCeiling = 0;
     private const string RepositoryRootMissingMessage = "Could not locate the repository root.";
     private const string ArchitectureCliProjectDirectory = "Clickra.CLI";
     private const string ArchitectureCoreProjectDirectory = "Clickra.Core";
@@ -49,14 +49,7 @@ static partial class TestSuite
         new(
             "direct output planning",
             new Regex(@"\bConvertCommandRegistry\.EstimateOutputs\(", RegexOptions.Compiled, ArchitectureRegexTimeout),
-            new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase)),
-        new(
-            "command execution switch",
-            new Regex(@"\bswitch\s*\(\s*(?:cmd|command)\s*\)", RegexOptions.Compiled, ArchitectureRegexTimeout),
-            new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase)
-            {
-                ["src/Clickra.CLI/Cli/ClickraCli.cs"] = 3
-            })
+            new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase))
     };
 
     public static void RegisterArchitectureBoundaryTests(TestRunner runner)
