@@ -628,8 +628,8 @@ static partial class TestSuite
                 Assert.True(cli.Contains($"case \"{command}\"", StringComparison.Ordinal), $"Legacy CLI must dispatch {command}.");
                 Assert.True(startup.Contains(command, StringComparison.Ordinal), $"CLI help/version must list {command}.");
                 Assert.True(dashboard.Contains($"Command = \"{command}\"", StringComparison.Ordinal), $"Native dashboard must expose {command}.");
-                Assert.True(progress.Contains("imageFormatUseCase is ImageFormatConvertUseCase", StringComparison.Ordinal)
-                            && progress.Contains("RunApplicationImageFormat(hwnd, cmd, currentFiles, progressCallback)", StringComparison.Ordinal),
+                Assert.True(progress.Contains("useCase is ImageFormatConvertUseCase", StringComparison.Ordinal)
+                            && progress.Contains("RunSimpleApplicationCommand(", StringComparison.Ordinal),
                     $"Native progress routing must execute {command} through the application use-case catalog.");
                 Assert.False(progress.Contains($"case \"{command}\"", StringComparison.Ordinal),
                     $"Native progress routing must not keep a second dispatch branch for {command}.");

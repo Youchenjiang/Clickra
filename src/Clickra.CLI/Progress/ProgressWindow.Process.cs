@@ -13,6 +13,9 @@ namespace Clickra.UI
 {
     public partial class ProgressWindow
     {
+        private const string ProgressAllDoneKey = "cli_progress_all_done";
+        private const string UserAbortedMessage = "User Aborted";
+
         private sealed class CallbackProgress<T>(Action<T> callback) : IProgress<T>
         {
             public void Report(T value) => callback(value);
@@ -74,35 +77,7 @@ namespace Clickra.UI
                     Loc("cli_progress_converting_image", Path.GetFileName(files[fileIndex]), fileIndex + 1, files.Count));
         }
 
-        private sealed class MergeExecutionObserver(ProgressWindow owner) : IConversionExecutionObserver
-        {
-            public void OnTaskStarted(string taskId) => owner.TaskId = taskId;
-
-            public void OnFileStarting(int fileIndex) { }
-        }
-
-        private sealed class ImgMergeExecutionObserver(ProgressWindow owner) : IConversionExecutionObserver
-        {
-            public void OnTaskStarted(string taskId) => owner.TaskId = taskId;
-
-            public void OnFileStarting(int fileIndex) { }
-        }
-
-        private sealed class ImgStitchExecutionObserver(ProgressWindow owner) : IConversionExecutionObserver
-        {
-            public void OnTaskStarted(string taskId) => owner.TaskId = taskId;
-
-            public void OnFileStarting(int fileIndex) { }
-        }
-
-        private sealed class ImgCompressExecutionObserver(ProgressWindow owner) : IConversionExecutionObserver
-        {
-            public void OnTaskStarted(string taskId) => owner.TaskId = taskId;
-
-            public void OnFileStarting(int fileIndex) { }
-        }
-
-        private sealed class ImageFormatExecutionObserver(ProgressWindow owner) : IConversionExecutionObserver
+        private sealed class TaskIdExecutionObserver(ProgressWindow owner) : IConversionExecutionObserver
         {
             public void OnTaskStarted(string taskId) => owner.TaskId = taskId;
 
@@ -153,52 +128,8 @@ namespace Clickra.UI
                     UpdateTrayIconProgress();
                 };
 
-                if (cmd.Equals(DecryptPdfUseCase.CommandName, StringComparison.OrdinalIgnoreCase))
-                {
-                    RunApplicationDecrypt(hwnd, currentFiles, progressCallback);
+                if (TryRunMigratedApplicationCommand(hwnd, cmd, currentFiles, progressCallback))
                     return;
-                }
-                if (cmd.Equals(SplitPdfUseCase.CommandName, StringComparison.OrdinalIgnoreCase))
-                {
-                    RunApplicationSplit(hwnd, currentFiles, progressCallback);
-                    return;
-                }
-                if (cmd.Equals(CompressPdfUseCase.CommandName, StringComparison.OrdinalIgnoreCase))
-                {
-                    RunApplicationCompress(hwnd, currentFiles, progressCallback);
-                    return;
-                }
-                if (cmd.Equals(Img2PdfUseCase.CommandName, StringComparison.OrdinalIgnoreCase))
-                {
-                    RunApplicationImg2Pdf(hwnd, currentFiles, progressCallback);
-                    return;
-                }
-                if (cmd.Equals(MergePdfUseCase.CommandName, StringComparison.OrdinalIgnoreCase))
-                {
-                    RunApplicationMerge(hwnd, currentFiles, progressCallback);
-                    return;
-                }
-                if (cmd.Equals(ImgMergeUseCase.CommandName, StringComparison.OrdinalIgnoreCase))
-                {
-                    RunApplicationImgMerge(hwnd, currentFiles, progressCallback);
-                    return;
-                }
-                if (cmd.Equals(ImgStitchUseCase.CommandName, StringComparison.OrdinalIgnoreCase))
-                {
-                    RunApplicationImgStitch(hwnd, currentFiles, progressCallback);
-                    return;
-                }
-                if (cmd.Equals(ImgCompressUseCase.CommandName, StringComparison.OrdinalIgnoreCase))
-                {
-                    RunApplicationImgCompress(hwnd, currentFiles, progressCallback);
-                    return;
-                }
-                if (ConversionUseCases.TryGet(cmd, out IConversionUseCase? imageFormatUseCase)
-                    && imageFormatUseCase is ImageFormatConvertUseCase)
-                {
-                    RunApplicationImageFormat(hwnd, cmd, currentFiles, progressCallback);
-                    return;
-                }
 
                 // 立即建立 Pending 任務紀錄，讓 Dashboard 可即時看到；每個任務有
                 // 獨立的進度檔（tasks/task-{id}.tmp），並行任務不會互相覆蓋。
@@ -223,7 +154,7 @@ namespace Clickra.UI
                 lock (_stateLock)
                 {
                     _completed = true;
-                    _message = Loc("cli_progress_all_done");
+                    _message = Loc(ProgressAllDoneKey);
                 }
                 PostMessageW(hwnd, WM_USER_INVALIDATE, (IntPtr)1, IntPtr.Zero);
 
@@ -241,7 +172,7 @@ namespace Clickra.UI
                 string outputs = currentFiles.Count > 0 ? GetOutputPathForError(cmd, currentFiles, _outputDirOverride) : "";
 
                 bool wasCanceled = _cts.IsCancellationRequested || ex is OperationCanceledException;
-                string errorMsg = wasCanceled ? "User Aborted" : ex.Message;
+                string errorMsg = wasCanceled ? UserAbortedMessage : ex.Message;
 
                 lock (_stateLock)
                 {
@@ -290,7 +221,7 @@ namespace Clickra.UI
                 .GetAwaiter()
                 .GetResult();
 
-            CompletePdfApplicationResult(
+            CompleteApplicationResult(
                 hwnd,
                 files,
                 progressCallback,
@@ -339,7 +270,7 @@ namespace Clickra.UI
                 .GetAwaiter()
                 .GetResult();
 
-            CompletePdfApplicationResult(
+            CompleteApplicationResult(
                 hwnd,
                 files,
                 progressCallback,
@@ -387,7 +318,7 @@ namespace Clickra.UI
                 .GetAwaiter()
                 .GetResult();
 
-            CompletePdfApplicationResult(
+            CompleteApplicationResult(
                 hwnd,
                 files,
                 progressCallback,
@@ -416,23 +347,24 @@ namespace Clickra.UI
                     Loc(stageLocalizationKey, state.Message, fileIndex + 1, files.Count));
             });
 
-        private void CompletePdfApplicationResult(
+        private void CompleteApplicationResult(
             IntPtr hwnd,
             List<string> files,
             Action<int, int, string> progressCallback,
             ConversionResult result,
             string command,
-            string successMessage,
+            string? successMessage,
             bool setAllDoneMessage)
         {
             if (result.Status == ConversionResultStatus.Succeeded)
             {
-                progressCallback(files.Count * 100, files.Count * 100, successMessage);
+                if (successMessage is not null)
+                    progressCallback(files.Count * 100, files.Count * 100, successMessage);
                 lock (_stateLock)
                 {
                     _completed = true;
                     if (setAllDoneMessage)
-                        _message = Loc("cli_progress_all_done");
+                        _message = Loc(ProgressAllDoneKey);
                 }
                 PostMessageW(hwnd, WM_USER_INVALIDATE, (IntPtr)1, IntPtr.Zero);
                 ShowToastNotification(command, files.Count);
@@ -443,7 +375,7 @@ namespace Clickra.UI
             }
 
             string errorMsg = result.Status == ConversionResultStatus.Canceled
-                ? "User Aborted"
+                ? UserAbortedMessage
                 : result.Error ?? "";
             lock (_stateLock)
             {
@@ -455,342 +387,112 @@ namespace Clickra.UI
             PostMessageW(hwnd, 0x0010, IntPtr.Zero, IntPtr.Zero); // WM_CLOSE
         }
 
-        private void RunApplicationImg2Pdf(
-            IntPtr hwnd,
-            List<string> files,
-            Action<int, int, string> progressCallback)
-        {
-            IConversionUseCase useCase = ConversionUseCases.GetRequired(Img2PdfUseCase.CommandName);
-            ConversionPlan plan = useCase.Plan(new ConversionRequest(
-                Img2PdfUseCase.CommandName,
-                files,
-                ExistingTaskId: _existingTaskId,
-                BestEffortTaskPersistence: true)) with
-            {
-                ResumeStartIndex = _startIndex
-            };
-            var interaction = new DelegateConversionInteraction(
-                (_, _, _, _) => System.Threading.Tasks.Task.FromResult<string?>(null),
-                (_, _, _) => System.Threading.Tasks.Task.FromResult<string?>(null),
-                (_, _, _) => System.Threading.Tasks.Task.FromResult<IReadOnlyDictionary<string, object>?>(null));
-
-            ConversionResult result = useCase.ExecuteAsync(
-                    plan,
-                    interaction,
-                    progress: null,
-                    new Img2PdfExecutionObserver(this, files, progressCallback),
-                    _cts.Token)
-                .GetAwaiter()
-                .GetResult();
-
-            if (result.Status == ConversionResultStatus.Succeeded)
-            {
-                progressCallback(
-                    files.Count * 100,
-                    files.Count * 100,
-                    Loc("cli_progress_converting_image_saving"));
-                lock (_stateLock)
-                {
-                    _completed = true;
-                    _message = Loc("cli_progress_all_done");
-                }
-                PostMessageW(hwnd, WM_USER_INVALIDATE, (IntPtr)1, IntPtr.Zero);
-                ShowToastNotification(Img2PdfUseCase.CommandName, files.Count);
-                Thread.Sleep(1500);
-                ConversionTaskCleanup.Delete(result.TaskId, bestEffort: true);
-                PostMessageW(hwnd, 0x0010, IntPtr.Zero, IntPtr.Zero); // WM_CLOSE
-                return;
-            }
-
-            bool wasCanceled = result.Status == ConversionResultStatus.Canceled;
-            string errorMsg = wasCanceled ? "User Aborted" : result.Error ?? "";
-            lock (_stateLock)
-            {
-                _hasError = true;
-                _errorMessage = errorMsg;
-            }
-            PostMessageW(hwnd, WM_USER_INVALIDATE, (IntPtr)1, IntPtr.Zero);
-            ConversionTaskCleanup.Delete(result.TaskId, bestEffort: true);
-            PostMessageW(hwnd, 0x0010, IntPtr.Zero, IntPtr.Zero); // WM_CLOSE
-        }
-
-        private void RunApplicationMerge(
-            IntPtr hwnd,
-            List<string> files,
-            Action<int, int, string> progressCallback)
-        {
-            IConversionUseCase useCase = ConversionUseCases.GetRequired(MergePdfUseCase.CommandName);
-            ConversionPlan plan = useCase.Plan(new ConversionRequest(
-                MergePdfUseCase.CommandName,
-                files,
-                ExistingTaskId: _existingTaskId,
-                BestEffortTaskPersistence: true));
-            var interaction = new DelegateConversionInteraction(
-                (_, _, _, _) => System.Threading.Tasks.Task.FromResult<string?>(null),
-                (_, _, _) => System.Threading.Tasks.Task.FromResult<string?>(null),
-                (_, _, _) => System.Threading.Tasks.Task.FromResult<IReadOnlyDictionary<string, object>?>(null));
-            var progress = new CallbackProgress<ConversionProgress>(state =>
-                progressCallback(state.Current, state.Total, state.Message));
-
-            ConversionResult result = useCase.ExecuteAsync(
-                    plan,
-                    interaction,
-                    progress,
-                    new MergeExecutionObserver(this),
-                    _cts.Token)
-                .GetAwaiter()
-                .GetResult();
-
-            if (result.Status == ConversionResultStatus.Succeeded)
-            {
-                lock (_stateLock)
-                {
-                    _completed = true;
-                    _message = Loc("cli_progress_all_done");
-                }
-                PostMessageW(hwnd, WM_USER_INVALIDATE, (IntPtr)1, IntPtr.Zero);
-                ShowToastNotification(MergePdfUseCase.CommandName, files.Count);
-                Thread.Sleep(1500);
-                ConversionTaskCleanup.Delete(result.TaskId, bestEffort: true);
-                PostMessageW(hwnd, 0x0010, IntPtr.Zero, IntPtr.Zero); // WM_CLOSE
-                return;
-            }
-
-            bool wasCanceled = result.Status == ConversionResultStatus.Canceled;
-            string errorMsg = wasCanceled ? "User Aborted" : result.Error ?? "";
-            lock (_stateLock)
-            {
-                _hasError = true;
-                _errorMessage = errorMsg;
-            }
-            PostMessageW(hwnd, WM_USER_INVALIDATE, (IntPtr)1, IntPtr.Zero);
-            ConversionTaskCleanup.Delete(result.TaskId, bestEffort: true);
-            PostMessageW(hwnd, 0x0010, IntPtr.Zero, IntPtr.Zero); // WM_CLOSE
-        }
-
-        private void RunApplicationImgMerge(
-            IntPtr hwnd,
-            List<string> files,
-            Action<int, int, string> progressCallback)
-        {
-            IConversionUseCase useCase = ConversionUseCases.GetRequired(ImgMergeUseCase.CommandName);
-            ConversionPlan plan = useCase.Plan(new ConversionRequest(
-                ImgMergeUseCase.CommandName,
-                files,
-                ExistingTaskId: _existingTaskId,
-                BestEffortTaskPersistence: true));
-            var interaction = new DelegateConversionInteraction(
-                (_, _, _, _) => System.Threading.Tasks.Task.FromResult<string?>(null),
-                (_, _, _) => System.Threading.Tasks.Task.FromResult<string?>(null),
-                (_, _, _) => System.Threading.Tasks.Task.FromResult<IReadOnlyDictionary<string, object>?>(null));
-            var progress = new CallbackProgress<ConversionProgress>(state =>
-                progressCallback(state.Current, state.Total, state.Message));
-
-            ConversionResult result = useCase.ExecuteAsync(
-                    plan,
-                    interaction,
-                    progress,
-                    new ImgMergeExecutionObserver(this),
-                    _cts.Token)
-                .GetAwaiter()
-                .GetResult();
-
-            if (result.Status == ConversionResultStatus.Succeeded)
-            {
-                lock (_stateLock)
-                {
-                    _completed = true;
-                    _message = Loc("cli_progress_all_done");
-                }
-                PostMessageW(hwnd, WM_USER_INVALIDATE, (IntPtr)1, IntPtr.Zero);
-                ShowToastNotification(ImgMergeUseCase.CommandName, files.Count);
-                Thread.Sleep(1500);
-                ConversionTaskCleanup.Delete(result.TaskId, bestEffort: true);
-                PostMessageW(hwnd, 0x0010, IntPtr.Zero, IntPtr.Zero); // WM_CLOSE
-                return;
-            }
-
-            bool wasCanceled = result.Status == ConversionResultStatus.Canceled;
-            string errorMsg = wasCanceled ? "User Aborted" : result.Error ?? "";
-            lock (_stateLock)
-            {
-                _hasError = true;
-                _errorMessage = errorMsg;
-            }
-            PostMessageW(hwnd, WM_USER_INVALIDATE, (IntPtr)1, IntPtr.Zero);
-            ConversionTaskCleanup.Delete(result.TaskId, bestEffort: true);
-            PostMessageW(hwnd, 0x0010, IntPtr.Zero, IntPtr.Zero); // WM_CLOSE
-        }
-
-        private void RunApplicationImgStitch(
-            IntPtr hwnd,
-            List<string> files,
-            Action<int, int, string> progressCallback)
-        {
-            IConversionUseCase useCase = ConversionUseCases.GetRequired(ImgStitchUseCase.CommandName);
-            ConversionPlan plan = useCase.Plan(new ConversionRequest(
-                ImgStitchUseCase.CommandName,
-                files,
-                ExistingTaskId: _existingTaskId,
-                BestEffortTaskPersistence: true));
-            var interaction = new DelegateConversionInteraction(
-                (_, _, _, _) => System.Threading.Tasks.Task.FromResult<string?>(null),
-                (_, _, _) => System.Threading.Tasks.Task.FromResult<string?>(null),
-                (_, _, _) => System.Threading.Tasks.Task.FromResult<IReadOnlyDictionary<string, object>?>(null));
-            var progress = new CallbackProgress<ConversionProgress>(state =>
-                progressCallback(state.Current, state.Total, state.Message));
-
-            ConversionResult result = useCase.ExecuteAsync(
-                    plan,
-                    interaction,
-                    progress,
-                    new ImgStitchExecutionObserver(this),
-                    _cts.Token)
-                .GetAwaiter()
-                .GetResult();
-
-            if (result.Status == ConversionResultStatus.Succeeded)
-            {
-                lock (_stateLock)
-                {
-                    _completed = true;
-                    _message = Loc("cli_progress_all_done");
-                }
-                PostMessageW(hwnd, WM_USER_INVALIDATE, (IntPtr)1, IntPtr.Zero);
-                ShowToastNotification(ImgStitchUseCase.CommandName, files.Count);
-                Thread.Sleep(1500);
-                ConversionTaskCleanup.Delete(result.TaskId, bestEffort: true);
-                PostMessageW(hwnd, 0x0010, IntPtr.Zero, IntPtr.Zero); // WM_CLOSE
-                return;
-            }
-
-            bool wasCanceled = result.Status == ConversionResultStatus.Canceled;
-            string errorMsg = wasCanceled ? "User Aborted" : result.Error ?? "";
-            lock (_stateLock)
-            {
-                _hasError = true;
-                _errorMessage = errorMsg;
-            }
-            PostMessageW(hwnd, WM_USER_INVALIDATE, (IntPtr)1, IntPtr.Zero);
-            ConversionTaskCleanup.Delete(result.TaskId, bestEffort: true);
-            PostMessageW(hwnd, 0x0010, IntPtr.Zero, IntPtr.Zero); // WM_CLOSE
-        }
-
-        private void RunApplicationImgCompress(
-            IntPtr hwnd,
-            List<string> files,
-            Action<int, int, string> progressCallback)
-        {
-            IConversionUseCase useCase = ConversionUseCases.GetRequired(ImgCompressUseCase.CommandName);
-            ConversionPlan plan = useCase.Plan(new ConversionRequest(
-                ImgCompressUseCase.CommandName,
-                files,
-                ExistingTaskId: _existingTaskId,
-                OutputOverride: _outputDirOverride,
-                BestEffortTaskPersistence: true)) with
-            {
-                ResumeStartIndex = _startIndex
-            };
-            var interaction = new DelegateConversionInteraction(
-                (_, _, _, _) => System.Threading.Tasks.Task.FromResult<string?>(null),
-                (_, _, _) => System.Threading.Tasks.Task.FromResult<string?>(null),
-                (_, _, _) => System.Threading.Tasks.Task.FromResult<IReadOnlyDictionary<string, object>?>(null));
-            var progress = new CallbackProgress<ConversionProgress>(state =>
-                progressCallback(state.Current, state.Total, state.Message));
-
-            ConversionResult result = useCase.ExecuteAsync(
-                    plan,
-                    interaction,
-                    progress,
-                    new ImgCompressExecutionObserver(this),
-                    _cts.Token)
-                .GetAwaiter()
-                .GetResult();
-
-            if (result.Status == ConversionResultStatus.Succeeded)
-            {
-                lock (_stateLock)
-                {
-                    _completed = true;
-                    _message = Loc("cli_progress_all_done");
-                }
-                PostMessageW(hwnd, WM_USER_INVALIDATE, (IntPtr)1, IntPtr.Zero);
-                ShowToastNotification(ImgCompressUseCase.CommandName, files.Count);
-                Thread.Sleep(1500);
-                ConversionTaskCleanup.Delete(result.TaskId, bestEffort: true);
-                PostMessageW(hwnd, 0x0010, IntPtr.Zero, IntPtr.Zero); // WM_CLOSE
-                return;
-            }
-
-            bool wasCanceled = result.Status == ConversionResultStatus.Canceled;
-            string errorMsg = wasCanceled ? "User Aborted" : result.Error ?? "";
-            lock (_stateLock)
-            {
-                _hasError = true;
-                _errorMessage = errorMsg;
-            }
-            PostMessageW(hwnd, WM_USER_INVALIDATE, (IntPtr)1, IntPtr.Zero);
-            ConversionTaskCleanup.Delete(result.TaskId, bestEffort: true);
-            PostMessageW(hwnd, 0x0010, IntPtr.Zero, IntPtr.Zero); // WM_CLOSE
-        }
-
-        private void RunApplicationImageFormat(
+        private bool TryRunMigratedApplicationCommand(
             IntPtr hwnd,
             string command,
             List<string> files,
             Action<int, int, string> progressCallback)
+        {
+            if (command.Equals(DecryptPdfUseCase.CommandName, StringComparison.OrdinalIgnoreCase))
+            {
+                RunApplicationDecrypt(hwnd, files, progressCallback);
+                return true;
+            }
+            if (command.Equals(SplitPdfUseCase.CommandName, StringComparison.OrdinalIgnoreCase))
+            {
+                RunApplicationSplit(hwnd, files, progressCallback);
+                return true;
+            }
+            if (command.Equals(CompressPdfUseCase.CommandName, StringComparison.OrdinalIgnoreCase))
+            {
+                RunApplicationCompress(hwnd, files, progressCallback);
+                return true;
+            }
+            if (command.Equals(Img2PdfUseCase.CommandName, StringComparison.OrdinalIgnoreCase))
+            {
+                RunSimpleApplicationCommand(
+                    hwnd, command, files, progressCallback, outputOverride: null,
+                    resume: true,
+                    observer: new Img2PdfExecutionObserver(this, files, progressCallback),
+                    successMessage: Loc("cli_progress_converting_image_saving"));
+                return true;
+            }
+            if (command.Equals(MergePdfUseCase.CommandName, StringComparison.OrdinalIgnoreCase)
+                || command.Equals(ImgMergeUseCase.CommandName, StringComparison.OrdinalIgnoreCase)
+                || command.Equals(ImgStitchUseCase.CommandName, StringComparison.OrdinalIgnoreCase))
+            {
+                RunSimpleApplicationCommand(
+                    hwnd, command, files, progressCallback, outputOverride: null,
+                    resume: false,
+                    observer: new TaskIdExecutionObserver(this));
+                return true;
+            }
+            if (command.Equals(ImgCompressUseCase.CommandName, StringComparison.OrdinalIgnoreCase))
+            {
+                RunSimpleApplicationCommand(
+                    hwnd, command, files, progressCallback, _outputDirOverride,
+                    resume: true,
+                    observer: new TaskIdExecutionObserver(this));
+                return true;
+            }
+            if (ConversionUseCases.TryGet(command, out IConversionUseCase? useCase)
+                && useCase is ImageFormatConvertUseCase)
+            {
+                RunSimpleApplicationCommand(
+                    hwnd, command, files, progressCallback, _outputDirOverride,
+                    resume: true,
+                    observer: new TaskIdExecutionObserver(this));
+                return true;
+            }
+            return false;
+        }
+
+        private void RunSimpleApplicationCommand(
+            IntPtr hwnd,
+            string command,
+            List<string> files,
+            Action<int, int, string> progressCallback,
+            string? outputOverride,
+            bool resume,
+            IConversionExecutionObserver observer,
+            string? successMessage = null)
         {
             IConversionUseCase useCase = ConversionUseCases.GetRequired(command);
             ConversionPlan plan = useCase.Plan(new ConversionRequest(
                 command,
                 files,
                 ExistingTaskId: _existingTaskId,
-                OutputOverride: _outputDirOverride,
-                BestEffortTaskPersistence: true)) with
-            {
-                ResumeStartIndex = _startIndex
-            };
+                OutputOverride: outputOverride,
+                BestEffortTaskPersistence: true));
+            if (resume)
+                plan = plan with { ResumeStartIndex = _startIndex };
+
             var interaction = new DelegateConversionInteraction(
                 (_, _, _, _) => System.Threading.Tasks.Task.FromResult<string?>(null),
                 (_, _, _) => System.Threading.Tasks.Task.FromResult<string?>(null),
                 (_, _, _) => System.Threading.Tasks.Task.FromResult<IReadOnlyDictionary<string, object>?>(null));
-            var progress = new CallbackProgress<ConversionProgress>(state =>
-                progressCallback(state.Current, state.Total, state.Message));
+            IProgress<ConversionProgress>? progress = command == Img2PdfUseCase.CommandName
+                ? null
+                : new CallbackProgress<ConversionProgress>(state =>
+                    progressCallback(state.Current, state.Total, state.Message));
 
             ConversionResult result = useCase.ExecuteAsync(
                     plan,
                     interaction,
                     progress,
-                    new ImageFormatExecutionObserver(this),
+                    observer,
                     _cts.Token)
                 .GetAwaiter()
                 .GetResult();
 
-            if (result.Status == ConversionResultStatus.Succeeded)
-            {
-                lock (_stateLock)
-                {
-                    _completed = true;
-                    _message = Loc("cli_progress_all_done");
-                }
-                PostMessageW(hwnd, WM_USER_INVALIDATE, (IntPtr)1, IntPtr.Zero);
-                ShowToastNotification(command, files.Count);
-                Thread.Sleep(1500);
-                ConversionTaskCleanup.Delete(result.TaskId, bestEffort: true);
-                PostMessageW(hwnd, 0x0010, IntPtr.Zero, IntPtr.Zero); // WM_CLOSE
-                return;
-            }
-
-            bool wasCanceled = result.Status == ConversionResultStatus.Canceled;
-            string errorMsg = wasCanceled ? "User Aborted" : result.Error ?? "";
-            lock (_stateLock)
-            {
-                _hasError = true;
-                _errorMessage = errorMsg;
-            }
-            PostMessageW(hwnd, WM_USER_INVALIDATE, (IntPtr)1, IntPtr.Zero);
-            ConversionTaskCleanup.Delete(result.TaskId, bestEffort: true);
-            PostMessageW(hwnd, 0x0010, IntPtr.Zero, IntPtr.Zero); // WM_CLOSE
+            CompleteApplicationResult(
+                hwnd,
+                files,
+                progressCallback,
+                result,
+                command,
+                successMessage,
+                setAllDoneMessage: true);
         }
 
         /// <summary>Runs commands that do not need Native-only progress or prompt handling through

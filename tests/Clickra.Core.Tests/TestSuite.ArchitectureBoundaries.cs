@@ -292,7 +292,7 @@ static partial class TestSuite
         string command,
         string legacyOutputSuffix,
         string processorCall,
-        string useCaseTypeName,
+        string? useCaseTypeName,
         string workflowName)
     {
         string? root = FindRepoRoot();
@@ -313,173 +313,68 @@ static partial class TestSuite
             $"Native presentation must not execute the {workflowName} processor directly.");
         Assert.False(quiet.Contains(processorCall, StringComparison.Ordinal),
             $"Headless CLI must not execute the {workflowName} processor directly.");
-        string catalogResolution = $"ConversionUseCases.GetRequired({useCaseTypeName}.CommandName)";
+        string? specificCatalogResolution = useCaseTypeName is null
+            ? null
+            : $"ConversionUseCases.GetRequired({useCaseTypeName}.CommandName)";
+        bool nativeCatalogResolution =
+            native.Contains("ConversionUseCases.GetRequired(command)", StringComparison.Ordinal)
+            || (specificCatalogResolution is not null
+                && native.Contains(specificCatalogResolution, StringComparison.Ordinal));
+        bool quietCatalogResolution =
+            quiet.Contains("ConversionUseCases.GetRequired(command)", StringComparison.Ordinal)
+            || (specificCatalogResolution is not null
+                && quiet.Contains(specificCatalogResolution, StringComparison.Ordinal));
         Assert.True((fluentMain.Contains("ConversionUseCases.TryGet(command", StringComparison.Ordinal)
                      || fluentMain.Contains("ConversionUseCases.GetRequired(command)", StringComparison.Ordinal))
                     && (fluentTask.Contains("ConversionUseCases.TryGet(command", StringComparison.Ordinal)
                         || fluentTask.Contains("ConversionUseCases.GetRequired(command)", StringComparison.Ordinal))
-                    && native.Contains(catalogResolution, StringComparison.Ordinal)
-                    && quiet.Contains(catalogResolution, StringComparison.Ordinal),
+                    && nativeCatalogResolution
+                    && quietCatalogResolution,
             $"All product surfaces must resolve {workflowName} execution through the application use-case catalog.");
     }
 
     private static void TestImg2PdfWorkflowHasSingleExecutionOwner()
-    {
-        string? root = FindRepoRoot();
-        if (root is null) throw new TestSkippedException("Could not locate the repository root.");
-
-        string runner = File.ReadAllText(Path.Combine(root, "src", "Clickra.Core", "Processors", "ConvertCommandRunner.cs"));
-        string registry = File.ReadAllText(Path.Combine(root, "src", "Clickra.Core", "Processors", "ConvertCommandRegistry.cs"));
-        string native = File.ReadAllText(Path.Combine(root, "src", "Clickra.CLI", "Progress", "ProgressWindow.Process.cs"));
-        string quiet = File.ReadAllText(Path.Combine(root, "src", "Clickra.CLI", "Cli", "ClickraCli.cs"));
-        string fluentMain = File.ReadAllText(Path.Combine(root, "src", "Clickra.Fluent", "MainPage.xaml.cs"));
-        string fluentTask = File.ReadAllText(Path.Combine(root, "src", "Clickra.Fluent", "TaskProgressPage.xaml.cs"));
-
-        Assert.False(runner.Contains("case \"img2pdf\"", StringComparison.Ordinal),
-            "Legacy ConvertCommandRunner must not retain an img2pdf execution branch after migration.");
-        Assert.False(registry.Contains("\"img2pdf\" => files.Select", StringComparison.Ordinal),
-            "Legacy ConvertCommandRegistry must not retain img2pdf output-path policy after application migration.");
-        Assert.False(native.Contains("FileProcessor.ConvertImagesToPdf(new List<string> { f }", StringComparison.Ordinal),
-            "Native presentation must not retain the old single-image img2pdf processor call.");
-        Assert.False(quiet.Contains("FileProcessor.ConvertImagesToPdf(new List<string> { f }", StringComparison.Ordinal),
-            "Headless CLI must not retain the old single-image img2pdf processor call.");
-        Assert.True((fluentMain.Contains("ConversionUseCases.TryGet(command", StringComparison.Ordinal)
-                     || fluentMain.Contains("ConversionUseCases.GetRequired(command)", StringComparison.Ordinal))
-                    && (fluentTask.Contains("ConversionUseCases.TryGet(command", StringComparison.Ordinal)
-                        || fluentTask.Contains("ConversionUseCases.GetRequired(command)", StringComparison.Ordinal))
-                    && native.Contains("ConversionUseCases.GetRequired(Img2PdfUseCase.CommandName)", StringComparison.Ordinal)
-                    && quiet.Contains("ConversionUseCases.GetRequired(Img2PdfUseCase.CommandName)", StringComparison.Ordinal),
-            "All product surfaces must resolve img2pdf execution through the application use-case catalog.");
-    }
+        => AssertMigratedWorkflowHasSingleExecutionOwner(
+            Img2PdfUseCase.CommandName,
+            "\"img2pdf\" => files.Select",
+            "FileProcessor.ConvertImagesToPdf(new List<string> { f }",
+            nameof(Img2PdfUseCase),
+            "img2pdf");
 
     private static void TestMergeWorkflowHasSingleExecutionOwner()
-    {
-        string? root = FindRepoRoot();
-        if (root is null) throw new TestSkippedException("Could not locate the repository root.");
-
-        string runner = File.ReadAllText(Path.Combine(root, "src", "Clickra.Core", "Processors", "ConvertCommandRunner.cs"));
-        string registry = File.ReadAllText(Path.Combine(root, "src", "Clickra.Core", "Processors", "ConvertCommandRegistry.cs"));
-        string native = File.ReadAllText(Path.Combine(root, "src", "Clickra.CLI", "Progress", "ProgressWindow.Process.cs"));
-        string quiet = File.ReadAllText(Path.Combine(root, "src", "Clickra.CLI", "Cli", "ClickraCli.cs"));
-        string fluentMain = File.ReadAllText(Path.Combine(root, "src", "Clickra.Fluent", "MainPage.xaml.cs"));
-        string fluentTask = File.ReadAllText(Path.Combine(root, "src", "Clickra.Fluent", "TaskProgressPage.xaml.cs"));
-
-        Assert.False(runner.Contains("case \"merge-pdf\"", StringComparison.Ordinal),
-            "Legacy ConvertCommandRunner must not retain a merge execution branch after migration.");
-        Assert.False(registry.Contains("Merged_PDF.pdf", StringComparison.Ordinal),
-            "Legacy ConvertCommandRegistry must not retain merge output-path policy after application migration.");
-        Assert.False(native.Contains("FileProcessor.MergePdfs", StringComparison.Ordinal),
-            "Native presentation must not execute the merge processor directly.");
-        Assert.False(quiet.Contains("FileProcessor.MergePdfs", StringComparison.Ordinal),
-            "Headless CLI must not execute the merge processor directly.");
-        Assert.True((fluentMain.Contains("ConversionUseCases.TryGet(command", StringComparison.Ordinal)
-                     || fluentMain.Contains("ConversionUseCases.GetRequired(command)", StringComparison.Ordinal))
-                    && (fluentTask.Contains("ConversionUseCases.TryGet(command", StringComparison.Ordinal)
-                        || fluentTask.Contains("ConversionUseCases.GetRequired(command)", StringComparison.Ordinal))
-                    && native.Contains("ConversionUseCases.GetRequired(MergePdfUseCase.CommandName)", StringComparison.Ordinal)
-                    && quiet.Contains("ConversionUseCases.GetRequired(MergePdfUseCase.CommandName)", StringComparison.Ordinal),
-            "All product surfaces must resolve merge execution through the application use-case catalog.");
-    }
+        => AssertMigratedWorkflowHasSingleExecutionOwner(
+            MergePdfUseCase.CommandName,
+            "Merged_PDF.pdf",
+            "FileProcessor.MergePdfs",
+            nameof(MergePdfUseCase),
+            "merge");
 
     private static void TestImgMergeWorkflowHasSingleExecutionOwner()
-    {
-        string? root = FindRepoRoot();
-        if (root is null) throw new TestSkippedException("Could not locate the repository root.");
-
-        string runner = File.ReadAllText(Path.Combine(root, "src", "Clickra.Core", "Processors", "ConvertCommandRunner.cs"));
-        string registry = File.ReadAllText(Path.Combine(root, "src", "Clickra.Core", "Processors", "ConvertCommandRegistry.cs"));
-        string native = File.ReadAllText(Path.Combine(root, "src", "Clickra.CLI", "Progress", "ProgressWindow.Process.cs"));
-        string quiet = File.ReadAllText(Path.Combine(root, "src", "Clickra.CLI", "Cli", "ClickraCli.cs"));
-        string fluentMain = File.ReadAllText(Path.Combine(root, "src", "Clickra.Fluent", "MainPage.xaml.cs"));
-        string fluentTask = File.ReadAllText(Path.Combine(root, "src", "Clickra.Fluent", "TaskProgressPage.xaml.cs"));
-
-        Assert.False(runner.Contains("case \"img-merge\"", StringComparison.Ordinal),
-            "Legacy ConvertCommandRunner must not retain an img-merge execution branch after migration.");
-        Assert.False(registry.Contains("Merged_Images.pdf", StringComparison.Ordinal),
-            "Legacy ConvertCommandRegistry must not retain image-merge output-path policy after application migration.");
-        Assert.False(native.Contains("FileProcessor.ConvertImagesToPdf(files", StringComparison.Ordinal),
-            "Native presentation must not execute the image-merge processor directly.");
-        Assert.False(quiet.Contains("FileProcessor.ConvertImagesToPdf(files", StringComparison.Ordinal),
-            "Headless CLI must not execute the image-merge processor directly.");
-        Assert.True((fluentMain.Contains("ConversionUseCases.TryGet(command", StringComparison.Ordinal)
-                     || fluentMain.Contains("ConversionUseCases.GetRequired(command)", StringComparison.Ordinal))
-                    && (fluentTask.Contains("ConversionUseCases.TryGet(command", StringComparison.Ordinal)
-                        || fluentTask.Contains("ConversionUseCases.GetRequired(command)", StringComparison.Ordinal))
-                    && native.Contains("ConversionUseCases.GetRequired(ImgMergeUseCase.CommandName)", StringComparison.Ordinal)
-                    && quiet.Contains("ConversionUseCases.GetRequired(ImgMergeUseCase.CommandName)", StringComparison.Ordinal),
-            "All product surfaces must resolve img-merge execution through the application use-case catalog.");
-    }
+        => AssertMigratedWorkflowHasSingleExecutionOwner(
+            ImgMergeUseCase.CommandName,
+            "Merged_Images.pdf",
+            "FileProcessor.ConvertImagesToPdf(files",
+            nameof(ImgMergeUseCase),
+            "img-merge");
 
     private static void TestImgStitchWorkflowHasSingleExecutionOwner()
-    {
-        string? root = FindRepoRoot();
-        if (root is null) throw new TestSkippedException("Could not locate the repository root.");
-
-        string runner = File.ReadAllText(Path.Combine(root, "src", "Clickra.Core", "Processors", "ConvertCommandRunner.cs"));
-        string registry = File.ReadAllText(Path.Combine(root, "src", "Clickra.Core", "Processors", "ConvertCommandRegistry.cs"));
-        string native = File.ReadAllText(Path.Combine(root, "src", "Clickra.CLI", "Progress", "ProgressWindow.Process.cs"));
-        string quiet = File.ReadAllText(Path.Combine(root, "src", "Clickra.CLI", "Cli", "ClickraCli.cs"));
-        string fluentMain = File.ReadAllText(Path.Combine(root, "src", "Clickra.Fluent", "MainPage.xaml.cs"));
-        string fluentTask = File.ReadAllText(Path.Combine(root, "src", "Clickra.Fluent", "TaskProgressPage.xaml.cs"));
-
-        Assert.False(runner.Contains("case \"img-stitch\"", StringComparison.Ordinal),
-            "Legacy ConvertCommandRunner must not retain an img-stitch execution branch after migration.");
-        Assert.False(registry.Contains("Stitched_Image.png", StringComparison.Ordinal),
-            "Legacy ConvertCommandRegistry must not retain image-stitch output-path policy after application migration.");
-        Assert.False(native.Contains("FileProcessor.StitchImages", StringComparison.Ordinal),
-            "Native presentation must not execute the image-stitch processor directly.");
-        Assert.False(quiet.Contains("FileProcessor.StitchImages", StringComparison.Ordinal),
-            "Headless CLI must not execute the image-stitch processor directly.");
-        Assert.True((fluentMain.Contains("ConversionUseCases.TryGet(command", StringComparison.Ordinal)
-                     || fluentMain.Contains("ConversionUseCases.GetRequired(command)", StringComparison.Ordinal))
-                    && (fluentTask.Contains("ConversionUseCases.TryGet(command", StringComparison.Ordinal)
-                        || fluentTask.Contains("ConversionUseCases.GetRequired(command)", StringComparison.Ordinal))
-                    && native.Contains("ConversionUseCases.GetRequired(ImgStitchUseCase.CommandName)", StringComparison.Ordinal)
-                    && quiet.Contains("ConversionUseCases.GetRequired(ImgStitchUseCase.CommandName)", StringComparison.Ordinal),
-            "All product surfaces must resolve img-stitch execution through the application use-case catalog.");
-    }
+        => AssertMigratedWorkflowHasSingleExecutionOwner(
+            ImgStitchUseCase.CommandName,
+            "Stitched_Image.png",
+            "FileProcessor.StitchImages",
+            nameof(ImgStitchUseCase),
+            "img-stitch");
 
     private static void TestImgCompressWorkflowHasSingleExecutionOwner()
-    {
-        string? root = FindRepoRoot();
-        if (root is null) throw new TestSkippedException("Could not locate the repository root.");
-
-        string runner = File.ReadAllText(Path.Combine(root, "src", "Clickra.Core", "Processors", "ConvertCommandRunner.cs"));
-        string registry = File.ReadAllText(Path.Combine(root, "src", "Clickra.Core", "Processors", "ConvertCommandRegistry.cs"));
-        string native = File.ReadAllText(Path.Combine(root, "src", "Clickra.CLI", "Progress", "ProgressWindow.Process.cs"));
-        string quiet = File.ReadAllText(Path.Combine(root, "src", "Clickra.CLI", "Cli", "ClickraCli.cs"));
-        string fluentMain = File.ReadAllText(Path.Combine(root, "src", "Clickra.Fluent", "MainPage.xaml.cs"));
-        string fluentTask = File.ReadAllText(Path.Combine(root, "src", "Clickra.Fluent", "TaskProgressPage.xaml.cs"));
-
-        Assert.False(runner.Contains("case \"img-compress\"", StringComparison.Ordinal),
-            "Legacy ConvertCommandRunner must not retain an img-compress execution branch after migration.");
-        Assert.False(registry.Contains("EstimateImageCompressionOutputs", StringComparison.Ordinal),
-            "Legacy ConvertCommandRegistry must not retain image-compression output planning after application migration.");
-        Assert.False(native.Contains("FileProcessor.CompressImage", StringComparison.Ordinal),
-            "Native presentation must not execute the image-compression processor directly.");
-        Assert.False(quiet.Contains("FileProcessor.CompressImage", StringComparison.Ordinal),
-            "Headless CLI must not execute the image-compression processor directly.");
-        Assert.True((fluentMain.Contains("ConversionUseCases.TryGet(command", StringComparison.Ordinal)
-                     || fluentMain.Contains("ConversionUseCases.GetRequired(command)", StringComparison.Ordinal))
-                    && (fluentTask.Contains("ConversionUseCases.TryGet(command", StringComparison.Ordinal)
-                        || fluentTask.Contains("ConversionUseCases.GetRequired(command)", StringComparison.Ordinal))
-                    && native.Contains("ConversionUseCases.GetRequired(ImgCompressUseCase.CommandName)", StringComparison.Ordinal)
-                    && quiet.Contains("ConversionUseCases.GetRequired(ImgCompressUseCase.CommandName)", StringComparison.Ordinal),
-            "All product surfaces must resolve img-compress execution through the application use-case catalog.");
-    }
+        => AssertMigratedWorkflowHasSingleExecutionOwner(
+            ImgCompressUseCase.CommandName,
+            "EstimateImageCompressionOutputs",
+            "FileProcessor.CompressImage",
+            nameof(ImgCompressUseCase),
+            "img-compress");
 
     private static void TestImageFormatWorkflowsHaveSingleExecutionOwner()
     {
-        string? root = FindRepoRoot();
-        if (root is null) throw new TestSkippedException("Could not locate the repository root.");
-
-        string runner = File.ReadAllText(Path.Combine(root, "src", "Clickra.Core", "Processors", "ConvertCommandRunner.cs"));
-        string registry = File.ReadAllText(Path.Combine(root, "src", "Clickra.Core", "Processors", "ConvertCommandRegistry.cs"));
-        string native = File.ReadAllText(Path.Combine(root, "src", "Clickra.CLI", "Progress", "ProgressWindow.Process.cs"));
-        string quiet = File.ReadAllText(Path.Combine(root, "src", "Clickra.CLI", "Cli", "ClickraCli.cs"));
-        string fluentMain = File.ReadAllText(Path.Combine(root, "src", "Clickra.Fluent", "MainPage.xaml.cs"));
-        string fluentTask = File.ReadAllText(Path.Combine(root, "src", "Clickra.Fluent", "TaskProgressPage.xaml.cs"));
-
         foreach (string command in new[]
         {
             ImageFormatConvertUseCase.PngCommand,
@@ -489,26 +384,13 @@ static partial class TestSuite
             ImageFormatConvertUseCase.HeicCommand
         })
         {
-            Assert.False(runner.Contains($"case \"{command}\"", StringComparison.Ordinal),
-                $"Legacy ConvertCommandRunner must not retain a {command} execution branch after migration.");
+            AssertMigratedWorkflowHasSingleExecutionOwner(
+                command,
+                "EstimateImageFormatOutputs",
+                "FileProcessor.ConvertImageFormat",
+                null,
+                command);
         }
-        Assert.False(registry.Contains("EstimateImageFormatOutputs", StringComparison.Ordinal),
-            "Legacy ConvertCommandRegistry must not retain image-format output planning after application migration.");
-        Assert.False(registry.Contains("EnsureUniqueOutputPaths", StringComparison.Ordinal),
-            "Legacy ConvertCommandRegistry must not retain image-format collision policy after application migration.");
-        Assert.False(native.Contains("FileProcessor.ConvertImageFormat", StringComparison.Ordinal),
-            "Native presentation must not execute the image-format processor directly.");
-        Assert.False(quiet.Contains("FileProcessor.ConvertImageFormat", StringComparison.Ordinal),
-            "Headless CLI must not execute the image-format processor directly.");
-        Assert.True((fluentMain.Contains("ConversionUseCases.TryGet(command", StringComparison.Ordinal)
-                     || fluentMain.Contains("ConversionUseCases.GetRequired(command)", StringComparison.Ordinal))
-                    && (fluentTask.Contains("ConversionUseCases.TryGet(command", StringComparison.Ordinal)
-                        || fluentTask.Contains("ConversionUseCases.GetRequired(command)", StringComparison.Ordinal))
-                    && native.Contains("imageFormatUseCase is ImageFormatConvertUseCase", StringComparison.Ordinal)
-                    && native.Contains("RunApplicationImageFormat(hwnd, cmd, currentFiles, progressCallback)", StringComparison.Ordinal)
-                    && quiet.Contains("HandleImageFormatQuiet(command, files, outputDir)", StringComparison.Ordinal)
-                    && quiet.Contains("ConversionUseCases.GetRequired(command)", StringComparison.Ordinal),
-            "All product surfaces must resolve img-to-* execution through the application use-case catalog.");
     }
 
     private sealed class StubConversionUseCase(string command) : IConversionUseCase
