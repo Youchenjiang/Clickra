@@ -87,7 +87,7 @@ public sealed class MarkdownToPdfUseCase : IConversionUseCase
         if (lifecycle is not null)
             observer?.OnTaskStarted(lifecycle.TaskId);
 
-        int completedFiles = Math.Clamp(plan.ResumeStartIndex, 0, plan.Inputs.Count);
+        int completedFiles = plan.ResumeStartIndex;
         try
         {
             for (int i = completedFiles; i < plan.Inputs.Count; i++)
