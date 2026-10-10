@@ -199,16 +199,10 @@ namespace Clickra.UI
                     System.Threading.Tasks.Task.FromResult<string?>(ResolveDecryptPassword(hwnd, inputPath, isRetry)),
                 (_, _, _) => System.Threading.Tasks.Task.FromResult<string?>(null),
                 (_, _, _) => System.Threading.Tasks.Task.FromResult<IReadOnlyDictionary<string, object>?>(null));
-            var progress = new CallbackProgress<ConversionProgress>(state =>
-            {
-                int fileIndex = Math.Clamp((Math.Max(state.Current, 1) - 1) / 100, 0, files.Count - 1);
-                int fileProgress = Math.Clamp(state.Current - (fileIndex * 100), 0, 100);
-                int progressPct = (int)(fileProgress * 0.8) + 10;
-                progressCallback(
-                    (fileIndex * 100) + progressPct,
-                    files.Count * 100,
-                    Loc("cli_progress_decrypting_pdf_stage", state.Message, fileIndex + 1, files.Count));
-            });
+            var progress = CreatePdfApplicationProgress(
+                files,
+                progressCallback,
+                "cli_progress_decrypting_pdf_stage");
 
             ConversionResult result = useCase.ExecuteAsync(
                     plan,
@@ -219,32 +213,14 @@ namespace Clickra.UI
                 .GetAwaiter()
                 .GetResult();
 
-            if (result.Status == ConversionResultStatus.Succeeded)
-            {
-                progressCallback(files.Count * 100, files.Count * 100, Loc("cli_progress_decrypting_pdf_saving"));
-                lock (_stateLock)
-                {
-                    _completed = true;
-                    _message = Loc("cli_progress_all_done");
-                }
-                PostMessageW(hwnd, WM_USER_INVALIDATE, (IntPtr)1, IntPtr.Zero);
-                ShowToastNotification(DecryptPdfUseCase.CommandName, files.Count);
-                Thread.Sleep(1500);
-                ConversionTaskCleanup.Delete(result.TaskId, bestEffort: true);
-                PostMessageW(hwnd, 0x0010, IntPtr.Zero, IntPtr.Zero); // WM_CLOSE
-                return;
-            }
-
-            bool wasCanceled = result.Status == ConversionResultStatus.Canceled;
-            string errorMsg = wasCanceled ? "User Aborted" : result.Error ?? "";
-            lock (_stateLock)
-            {
-                _hasError = true;
-                _errorMessage = errorMsg;
-            }
-            PostMessageW(hwnd, WM_USER_INVALIDATE, (IntPtr)1, IntPtr.Zero);
-            ConversionTaskCleanup.Delete(result.TaskId, bestEffort: true);
-            PostMessageW(hwnd, 0x0010, IntPtr.Zero, IntPtr.Zero); // WM_CLOSE
+            CompletePdfApplicationResult(
+                hwnd,
+                files,
+                progressCallback,
+                result,
+                DecryptPdfUseCase.CommandName,
+                Loc("cli_progress_decrypting_pdf_saving"),
+                setAllDoneMessage: true);
         }
 
         private void RunApplicationSplit(
@@ -272,16 +248,10 @@ namespace Clickra.UI
                 (index, inputPath, token) =>
                     System.Threading.Tasks.Task.FromResult<string?>(PromptVisualSplitPages(hwnd, inputPath)),
                 (_, _, _) => System.Threading.Tasks.Task.FromResult<IReadOnlyDictionary<string, object>?>(null));
-            var progress = new CallbackProgress<ConversionProgress>(state =>
-            {
-                int fileIndex = Math.Clamp((Math.Max(state.Current, 1) - 1) / 100, 0, files.Count - 1);
-                int fileProgress = Math.Clamp(state.Current - (fileIndex * 100), 0, 100);
-                int progressPct = (int)(fileProgress * 0.8) + 10;
-                progressCallback(
-                    (fileIndex * 100) + progressPct,
-                    files.Count * 100,
-                    Loc("cli_progress_splitting_pdf_stage", state.Message, fileIndex + 1, files.Count));
-            });
+            var progress = CreatePdfApplicationProgress(
+                files,
+                progressCallback,
+                "cli_progress_splitting_pdf_stage");
 
             ConversionResult result = useCase.ExecuteAsync(
                     plan,
@@ -292,32 +262,14 @@ namespace Clickra.UI
                 .GetAwaiter()
                 .GetResult();
 
-            if (result.Status == ConversionResultStatus.Succeeded)
-            {
-                progressCallback(files.Count * 100, files.Count * 100, Loc("cli_progress_splitting_pdf_done"));
-                lock (_stateLock)
-                {
-                    _completed = true;
-                    _message = Loc("cli_progress_all_done");
-                }
-                PostMessageW(hwnd, WM_USER_INVALIDATE, (IntPtr)1, IntPtr.Zero);
-                ShowToastNotification(SplitPdfUseCase.CommandName, files.Count);
-                Thread.Sleep(1500);
-                ConversionTaskCleanup.Delete(result.TaskId, bestEffort: true);
-                PostMessageW(hwnd, 0x0010, IntPtr.Zero, IntPtr.Zero); // WM_CLOSE
-                return;
-            }
-
-            bool wasCanceled = result.Status == ConversionResultStatus.Canceled;
-            string errorMsg = wasCanceled ? "User Aborted" : result.Error ?? "";
-            lock (_stateLock)
-            {
-                _hasError = true;
-                _errorMessage = errorMsg;
-            }
-            PostMessageW(hwnd, WM_USER_INVALIDATE, (IntPtr)1, IntPtr.Zero);
-            ConversionTaskCleanup.Delete(result.TaskId, bestEffort: true);
-            PostMessageW(hwnd, 0x0010, IntPtr.Zero, IntPtr.Zero); // WM_CLOSE
+            CompletePdfApplicationResult(
+                hwnd,
+                files,
+                progressCallback,
+                result,
+                SplitPdfUseCase.CommandName,
+                Loc("cli_progress_splitting_pdf_done"),
+                setAllDoneMessage: true);
         }
 
         private void RunApplicationCompress(
@@ -339,18 +291,15 @@ namespace Clickra.UI
                 (_, _, _) => System.Threading.Tasks.Task.FromResult<string?>(null),
                 (_, _, _) => System.Threading.Tasks.Task.FromResult<IReadOnlyDictionary<string, object>?>(null));
             string compressionSummary = "";
-            var progress = new CallbackProgress<ConversionProgress>(state =>
-            {
-                int fileIndex = Math.Clamp((Math.Max(state.Current, 1) - 1) / 100, 0, files.Count - 1);
-                int fileProgress = Math.Clamp(state.Current - (fileIndex * 100), 0, 100);
-                int progressPct = (int)(fileProgress * 0.8) + 10;
-                if (fileProgress >= 100 && !string.IsNullOrWhiteSpace(state.Message))
-                    compressionSummary = state.Message;
-                progressCallback(
-                    (fileIndex * 100) + progressPct,
-                    files.Count * 100,
-                    Loc("cli_progress_compressing_pdf_stage", state.Message, fileIndex + 1, files.Count));
-            });
+            var progress = CreatePdfApplicationProgress(
+                files,
+                progressCallback,
+                "cli_progress_compressing_pdf_stage",
+                (fileProgress, message) =>
+                {
+                    if (fileProgress >= 100 && !string.IsNullOrWhiteSpace(message))
+                        compressionSummary = message;
+                });
 
             ConversionResult result = useCase.ExecuteAsync(
                     plan,
@@ -361,28 +310,64 @@ namespace Clickra.UI
                 .GetAwaiter()
                 .GetResult();
 
+            CompletePdfApplicationResult(
+                hwnd,
+                files,
+                progressCallback,
+                result,
+                CompressPdfUseCase.CommandName,
+                string.IsNullOrWhiteSpace(compressionSummary)
+                    ? Loc("cli_progress_compressing_pdf_done")
+                    : compressionSummary,
+                setAllDoneMessage: false);
+        }
+
+        private CallbackProgress<ConversionProgress> CreatePdfApplicationProgress(
+            List<string> files,
+            Action<int, int, string> progressCallback,
+            string stageLocalizationKey,
+            Action<int, string>? observeFileProgress = null) =>
+            new(state =>
+            {
+                int fileIndex = Math.Clamp((Math.Max(state.Current, 1) - 1) / 100, 0, files.Count - 1);
+                int fileProgress = Math.Clamp(state.Current - (fileIndex * 100), 0, 100);
+                int progressPct = (int)(fileProgress * 0.8) + 10;
+                observeFileProgress?.Invoke(fileProgress, state.Message);
+                progressCallback(
+                    (fileIndex * 100) + progressPct,
+                    files.Count * 100,
+                    Loc(stageLocalizationKey, state.Message, fileIndex + 1, files.Count));
+            });
+
+        private void CompletePdfApplicationResult(
+            IntPtr hwnd,
+            List<string> files,
+            Action<int, int, string> progressCallback,
+            ConversionResult result,
+            string command,
+            string successMessage,
+            bool setAllDoneMessage)
+        {
             if (result.Status == ConversionResultStatus.Succeeded)
             {
-                progressCallback(
-                    files.Count * 100,
-                    files.Count * 100,
-                    string.IsNullOrWhiteSpace(compressionSummary)
-                        ? Loc("cli_progress_compressing_pdf_done")
-                        : compressionSummary);
+                progressCallback(files.Count * 100, files.Count * 100, successMessage);
                 lock (_stateLock)
                 {
                     _completed = true;
+                    if (setAllDoneMessage)
+                        _message = Loc("cli_progress_all_done");
                 }
                 PostMessageW(hwnd, WM_USER_INVALIDATE, (IntPtr)1, IntPtr.Zero);
-                ShowToastNotification(CompressPdfUseCase.CommandName, files.Count);
+                ShowToastNotification(command, files.Count);
                 Thread.Sleep(1500);
                 ConversionTaskCleanup.Delete(result.TaskId, bestEffort: true);
                 PostMessageW(hwnd, 0x0010, IntPtr.Zero, IntPtr.Zero); // WM_CLOSE
                 return;
             }
 
-            bool wasCanceled = result.Status == ConversionResultStatus.Canceled;
-            string errorMsg = wasCanceled ? "User Aborted" : result.Error ?? "";
+            string errorMsg = result.Status == ConversionResultStatus.Canceled
+                ? "User Aborted"
+                : result.Error ?? "";
             lock (_stateLock)
             {
                 _hasError = true;
