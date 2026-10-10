@@ -11,6 +11,8 @@ static partial class TestSuite
 {
     private const string CmdSplitPdf = "split-pdf";
     private const string CmdDecryptPdf = "decrypt-pdf";
+    private const string CmdMergePdf = "merge-pdf";
+    private const string CoreProjectDirectory = "Clickra.Core";
     private const string ParkReason = "Waiting for input";
     private const string SettingParkedRetention = "ParkedTaskRetention";
     private const string TestInDir = @"C:\in";
@@ -130,7 +132,7 @@ static partial class TestSuite
     {
         const string expectedStartTime = "2026-10-10 02:30:00";
         ConversionTaskLifecycle lifecycle = ConversionTaskLifecycle.Start(
-            "merge-pdf",
+            CmdMergePdf,
             Array.Empty<string>(),
             startTimeOverride: expectedStartTime);
         try
@@ -175,9 +177,9 @@ static partial class TestSuite
         string? root = FindRepoRoot();
         if (root is null) throw new TestSkippedException(RepoRootNotFoundMessage);
 
-        string runner = File.ReadAllText(Path.Combine(root, "src", "Clickra.Core", "Processors", "ConvertCommandRunner.cs"));
+        string runner = File.ReadAllText(Path.Combine(root, "src", CoreProjectDirectory, "Processors", "ConvertCommandRunner.cs"));
         string native = File.ReadAllText(Path.Combine(root, "src", CliProjectDirectory, "Progress", "ProgressWindow.Process.cs"));
-        string lifecycle = File.ReadAllText(Path.Combine(root, "src", "Clickra.Core", "Processors", "ConversionTaskLifecycle.cs"));
+        string lifecycle = File.ReadAllText(Path.Combine(root, "src", CoreProjectDirectory, "Processors", "ConversionTaskLifecycle.cs"));
 
         foreach ((string name, string source) in new[] { ("ConvertCommandRunner", runner), ("ProgressWindow", native) })
         {
@@ -205,7 +207,7 @@ static partial class TestSuite
         Assert.True(native.Contains("OnFileStarting: TryRecordTaskIndex", StringComparison.Ordinal)
                     && runner.Contains("onFileStarting?.Invoke(i)", StringComparison.Ordinal),
             "Shared per-file dispatch must preserve the Native resume checkpoint before processing each file.");
-        foreach (string sharedCommand in new[] { "ppt2pdf", "word2pdf", "excel2pdf", "md2pdf", "md2word", "merge-pdf", "img-merge", "img-stitch", "img-compress", "img-to-png" })
+        foreach (string sharedCommand in new[] { "ppt2pdf", "word2pdf", "excel2pdf", "md2pdf", "md2word", CmdMergePdf, "img-merge", "img-stitch", "img-compress", "img-to-png" })
         {
             Assert.False(native.Contains($"case \"{sharedCommand}\":", StringComparison.Ordinal),
                 $"{sharedCommand} must not keep a second Native dispatch branch.");
@@ -261,7 +263,7 @@ static partial class TestSuite
             "The History page must not enumerate parked conversions itself; HistoryFeed is the one source for both UIs.");
         Assert.True(code.Contains("ClickraStorage.CancelParkedTask", StringComparison.Ordinal), "The History page must offer cancel for parked conversions.");
         Assert.True(code.Contains("OpenTaskProgressWindow($\"resume {", StringComparison.Ordinal), "Resume must go through the shared resume entry point.");
-        string feed = File.ReadAllText(Path.Combine(root, "src", "Clickra.Core", "Storage", "HistoryFeed.cs"));
+        string feed = File.ReadAllText(Path.Combine(root, "src", CoreProjectDirectory, "Storage", "HistoryFeed.cs"));
         Assert.True(feed.Contains("ClickraStorage.IsUserCanceledReason", StringComparison.Ordinal),
             "Cancelled rows must be recognised by the shared history marker, including the CLI's legacy one.");
         Assert.True(feed.Contains("status_canceled", StringComparison.Ordinal),
@@ -506,8 +508,8 @@ static partial class TestSuite
 
         string fluentCode = File.ReadAllText(Path.Combine(root, "src", FluentProjectDirectory, FluentHistoryPageFile));
         string cliHistory = File.ReadAllText(Path.Combine(root, "src", CliProjectDirectory, DashboardDirectory, DashboardHistoryPaintFile));
-        string storageCode = File.ReadAllText(Path.Combine(root, "src", "Clickra.Core", "Storage", "ClickraStorage.ActiveRecord.cs"));
-        string feedCode = File.ReadAllText(Path.Combine(root, "src", "Clickra.Core", "Storage", "HistoryFeed.cs"));
+        string storageCode = File.ReadAllText(Path.Combine(root, "src", CoreProjectDirectory, "Storage", "ClickraStorage.ActiveRecord.cs"));
+        string feedCode = File.ReadAllText(Path.Combine(root, "src", CoreProjectDirectory, "Storage", "HistoryFeed.cs"));
 
         Assert.True(feedCode.Contains("ClickraStorage.GetParkedRetentionInfo", StringComparison.Ordinal),
             "The shared feed must compute each parked item's retention once, not leave it to the two UIs.");
@@ -680,7 +682,7 @@ static partial class TestSuite
 
     private static void TestDeletingTaskRemovesProgressFile()
     {
-        string a = ClickraStorage.StartTask("merge-pdf", 2, TestInDir + "\\x.pdf;" + TestInDir + "\\y.pdf");
+        string a = ClickraStorage.StartTask(CmdMergePdf, 2, TestInDir + "\\x.pdf;" + TestInDir + "\\y.pdf");
         Assert.True(ClickraStorage.GetTask(a) != null, "Task should be readable right after StartTask.");
         ClickraStorage.DeleteTask(a);
         Assert.True(ClickraStorage.GetTask(a) == null, "Task must not be readable after DeleteTask.");
@@ -802,8 +804,8 @@ static partial class TestSuite
     {
         string dataDir = ClickraStorage.GetDataDir();
         string legacy = Path.Combine(dataDir, "active.tmp");
-        File.WriteAllText(legacy, "Time=2026-08-16 11:00:00\nCommand=merge-pdf\nStatus=InProgress\n");
-        string first = ClickraStorage.StartTask("merge-pdf", 2, TestInDir + "\\x.pdf;" + TestInDir + "\\y.pdf");
+        File.WriteAllText(legacy, $"Time=2026-08-16 11:00:00\nCommand={CmdMergePdf}\nStatus=InProgress\n");
+        string first = ClickraStorage.StartTask(CmdMergePdf, 2, TestInDir + "\\x.pdf;" + TestInDir + "\\y.pdf");
         // Ensure the two tasks get distinct timestamps (DateTime.UtcNow has ~15ms resolution on Windows).
         Thread.Sleep(20);
         string second = ClickraStorage.StartTask("compress-pdf", 1, TestInDir + "\\z.pdf");

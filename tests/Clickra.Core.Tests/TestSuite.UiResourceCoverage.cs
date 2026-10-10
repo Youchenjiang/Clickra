@@ -29,6 +29,7 @@ static partial class TestSuite
 {
     private static readonly TimeSpan UiResourceRegexTimeout = TimeSpan.FromSeconds(1);
     private const string ShellCommandMessagePrefix = "Shell command '";
+    private const string ShellProjectDirectory = "ClickraShell";
     /// <summary>UI 語言的程式碼（zh-TW）與 resw 資料夾名稱（zh-tw）互轉。</summary>
     private static string CultureFolder(string languageCode) => languageCode.ToLowerInvariant();
 
@@ -115,7 +116,7 @@ static partial class TestSuite
     /// <summary>Shell 選單會查詢的 resw 鍵：MenuKeys 陣列，加上根項目標題的鍵。</summary>
     private static string[] GetShellConsumedResourceKeys(string repoRoot)
     {
-        string comMethods = File.ReadAllText(Path.Combine(repoRoot, "src", "ClickraShell", "ComMethods.cs"));
+        string comMethods = File.ReadAllText(Path.Combine(repoRoot, "src", ShellProjectDirectory, "ComMethods.cs"));
 
         Match menuKeys = Regex.Match(comMethods, @"MenuKeys\s*=\s*\{(?<body>[^}]*)\}", RegexOptions.None, UiResourceRegexTimeout);
         Assert.True(menuKeys.Success, "ComMethods must declare the MenuKeys array the shell menu renders.");
@@ -157,7 +158,7 @@ static partial class TestSuite
 
     private static (string[] SubArgs, string[] MenuKeys, string[] IconFiles) GetShellCommandDefinitions(string repoRoot)
     {
-        string comMethods = File.ReadAllText(Path.Combine(repoRoot, "src", "ClickraShell", "ComMethods.cs"));
+        string comMethods = File.ReadAllText(Path.Combine(repoRoot, "src", ShellProjectDirectory, "ComMethods.cs"));
 
         string[] ParseArray(string name)
         {
@@ -287,8 +288,8 @@ static partial class TestSuite
         if (root is null) throw new TestSkippedException(RepoRootNotFoundMessage);
 
         var (subArgs, menuKeys, iconFiles) = GetShellCommandDefinitions(root);
-        string shellSource = File.ReadAllText(Path.Combine(root, "src", "ClickraShell", "ComMethods.cs"));
-        string shellProject = File.ReadAllText(Path.Combine(root, "src", "ClickraShell", "ClickraShell.csproj"));
+        string shellSource = File.ReadAllText(Path.Combine(root, "src", ShellProjectDirectory, "ComMethods.cs"));
+        string shellProject = File.ReadAllText(Path.Combine(root, "src", ShellProjectDirectory, "ClickraShell.csproj"));
         string coreRegistrySource = File.ReadAllText(Path.Combine(root, "src", "Clickra.Core", "Processors", "ConvertCommandRegistry.cs"));
         string cliSource = File.ReadAllText(Path.Combine(root, "src", "Clickra.CLI", "Cli", "ClickraCli.cs"));
         string dashboardRegistrySource = File.ReadAllText(Path.Combine(
