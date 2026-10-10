@@ -6,4 +6,6 @@ public sealed record ConversionRequest(
     IReadOnlyList<string> InputFiles,
     IReadOnlyDictionary<string, object>? Options = null,
     string? ExistingTaskId = null,
-    string? OutputOverride = null);
+    string? OutputOverride = null,
+    bool BestEffortTaskPersistence = false,
+    bool TrackTaskLifecycle = true);

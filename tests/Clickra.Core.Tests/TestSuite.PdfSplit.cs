@@ -1,4 +1,5 @@
 using Clickra.Core;
+using Clickra.Core.Application;
 using Clickra.Core.Processors;
 using PdfSharp.Pdf;
 using PdfSharp.Pdf.IO;
@@ -99,7 +100,92 @@ static partial class TestSuite
             }
         });
 
+        runner.Run("Split use case owns planning and page interaction", TestSplitUseCaseOwnsWorkflow);
+        runner.Run("Split use case accepts headless page ranges without interaction", TestSplitUseCaseAcceptsFixedPages);
         RegisterSplitFailureTests(runner);
+    }
+
+    private static void TestSplitUseCaseOwnsWorkflow()
+    {
+        string input = CreateTempPdf($"clickra-split-usecase-{Guid.NewGuid():N}", 2);
+        string outputDir = Path.Combine(Path.GetTempPath(), $"clickra-split-usecase-out-{Guid.NewGuid():N}");
+        try
+        {
+            Directory.CreateDirectory(outputDir);
+            var useCase = new SplitPdfUseCase();
+            ConversionPlan plan = useCase.Plan(new ConversionRequest(
+                SplitPdfUseCase.CommandName,
+                new[] { input },
+                OutputOverride: outputDir,
+                TrackTaskLifecycle: false));
+
+            Assert.True(plan.RequiredCapabilities.SetEquals(new[] { ConversionCapability.SplitPages }),
+                "Interactive split planning must declare the split-pages capability.");
+
+            var interaction = new SplitPagesInteraction("1");
+            ConversionResult result = useCase.ExecuteAsync(plan, interaction, progress: null)
+                .GetAwaiter()
+                .GetResult();
+
+            Assert.True(result.Status == ConversionResultStatus.Succeeded,
+                $"Expected split success, got {result.Status}: {result.Error}");
+            Assert.True(interaction.Requests == 1,
+                "Interactive split must request one page spec per input file.");
+            Assert.True(File.Exists(plan.Outputs[0]),
+                "Split use case must produce the planned output file.");
+        }
+        finally
+        {
+            DeleteTempFiles(input);
+            try { Directory.Delete(outputDir, recursive: true); } catch { /* Best-effort fixture cleanup. */ }
+        }
+    }
+
+    private static void TestSplitUseCaseAcceptsFixedPages()
+    {
+        string input = Path.Combine(Path.GetTempPath(), "split-plan-source", "source.pdf");
+        string outputDir = Path.Combine(Path.GetTempPath(), $"clickra-split-plan-{Guid.NewGuid():N}");
+        var useCase = new SplitPdfUseCase();
+        ConversionPlan plan = useCase.Plan(new ConversionRequest(
+            SplitPdfUseCase.CommandName,
+            new[] { input },
+            new Dictionary<string, object> { [SplitPdfUseCase.PagesOptionKey] = "1-3" },
+            OutputOverride: outputDir,
+            TrackTaskLifecycle: false));
+
+        Assert.True(plan.RequiredCapabilities.Count == 0,
+            "A supplied page range must not require visual split interaction.");
+        Assert.Equal("1-3", (string)plan.NormalizedOptions[SplitPdfUseCase.PagesOptionKey]);
+        Assert.Equal(
+            Path.Combine(Path.GetFullPath(outputDir), "source_split.pdf"),
+            plan.Outputs.Single());
+    }
+
+    private sealed class SplitPagesInteraction(string pages) : IConversionInteraction
+    {
+        public int Requests { get; private set; }
+
+        public Task<string?> RequestPasswordAsync(
+            int fileIndex,
+            string inputPath,
+            bool isRetry,
+            CancellationToken cancellationToken) =>
+            throw new NotSupportedException();
+
+        public Task<string?> RequestSplitPagesAsync(
+            int fileIndex,
+            string inputPath,
+            CancellationToken cancellationToken)
+        {
+            Requests++;
+            return Task.FromResult<string?>(pages);
+        }
+
+        public Task<IReadOnlyDictionary<string, object>?> RequestMarkdownOptionsAsync(
+            string command,
+            IReadOnlyList<string> inputFiles,
+            CancellationToken cancellationToken) =>
+            throw new NotSupportedException();
     }
 
     /// <summary>Registers the split tests that assert loud failures on invalid input.</summary>

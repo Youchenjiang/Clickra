@@ -32,7 +32,7 @@ static partial class TestSuite
     /// 孤兒鍵基線水位硬上限。任何 PR 若試圖擴大基線，將直接被此上限及 Git 基準比對擋下。
     /// 只能隨著鍵被消費或刪除而單向調低，絕不可調高。
     /// </summary>
-    public const int BaselineCeiling = 22;
+    public const int BaselineCeiling = 21;
 
     /// <summary>
     /// 目前仍沒有消費者的鍵。每一條都必須有一條明確的出路：接上某個介面，或連同五種
@@ -44,7 +44,7 @@ static partial class TestSuite
         // 預設表或別的鍵呈現，字串本身已經沒有讀取端。
         // setting_pdf_compress_group_image／_other 已接上設定頁分組標題。
         "engine_pdf", "engine_ppt", "engine_word", "engine_excel", "engine_libreoffice",
-        "setting_libreoffice_optional", "error_processing_failed",
+        "setting_libreoffice_optional",
 
         // Fluent 檔案類型／拖放白名單鍵（fluent_file_type_* 等 11 條）已隨未採用的類型過濾介面刪除。
         "fluent_github",

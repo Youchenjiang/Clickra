@@ -68,10 +68,13 @@ public static class ConvertCommandRegistry
                 CmdMergePdf => new() { Path.Combine(outputDir, "Merged_PDF.pdf") },
                 CmdImgMerge => new() { Path.Combine(outputDir, "Merged_Images.pdf") },
                 "img-stitch" => new() { Path.Combine(outputDir, "Stitched_Image.png") },
-                CmdCompressPdf => files.Select(f => Path.Combine(ClickraStorage.GetOutputDir(f), Path.GetFileNameWithoutExtension(f) + "_compressed.pdf")).ToList(),
+                CmdCompressPdf => throw new InvalidOperationException(
+                    "compress-pdf output planning is owned by the application use case."),
                 "translate-pdf" => files.Select(f => Path.Combine(ClickraStorage.GetOutputDir(f), Path.GetFileNameWithoutExtension(f) + "_translated.pdf")).ToList(),
-                "decrypt-pdf" => files.Select(f => Path.Combine(ClickraStorage.GetOutputDir(f), Path.GetFileNameWithoutExtension(f) + "_decrypted.pdf")).ToList(),
-                "split-pdf" => files.Select(f => Path.Combine(ClickraStorage.GetOutputDir(f), Path.GetFileNameWithoutExtension(f) + "_split.pdf")).ToList(),
+                "decrypt-pdf" => throw new InvalidOperationException(
+                    "decrypt-pdf output planning is owned by the application use case."),
+                "split-pdf" => throw new InvalidOperationException(
+                    "split-pdf output planning is owned by the application use case."),
                 CmdImg2Pdf => files.Select(f => Path.Combine(ClickraStorage.GetOutputDir(f), Path.GetFileNameWithoutExtension(f) + ".pdf")).ToList(),
                 CmdMdToPdf => files.Select(f => Path.Combine(
                     string.IsNullOrWhiteSpace(outputDirOverride) ? ClickraStorage.GetOutputDir(f) : Path.GetFullPath(outputDirOverride),

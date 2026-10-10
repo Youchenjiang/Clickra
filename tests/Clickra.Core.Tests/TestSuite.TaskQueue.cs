@@ -3,6 +3,7 @@ using System.IO;
 using System.Linq;
 using System.Threading;
 using Clickra.Core;
+using Clickra.Core.Application;
 using Clickra.Core.Processors;
 
 namespace Clickra.Core.Tests;
@@ -76,12 +77,22 @@ static partial class TestSuite
             TestConversionLifecyclePreservesExplicitStartTime);
         runner.Run("Conversion lifecycle owns per-file resume checkpoints",
             TestConversionLifecycleOwnsResumeCheckpoint);
+        runner.Run("Conversion task cleanup removes completed presentation records",
+            TestConversionTaskCleanupRemovesTask);
         runner.Run("Conversion runner reports the shared lifecycle task id",
             TestConversionRunnerReportsLifecycleTaskId);
         runner.Run("Conversion output planning preserves each source directory",
             TestConversionOutputPlanningPreservesSourceDirectories);
         runner.RunGuard("Conversion lifecycle: Native and Fluent runners share task tracking",
             TestConversionLifecycleIsShared);
+    }
+
+    private static void TestConversionTaskCleanupRemovesTask()
+    {
+        string taskId = ClickraStorage.StartTask("decrypt-pdf", 1, TestInDir + FileA);
+        Assert.True(ClickraStorage.GetTask(taskId).HasValue, "Task must exist before application cleanup.");
+        ConversionTaskCleanup.Delete(taskId);
+        Assert.False(ClickraStorage.GetTask(taskId).HasValue, "Application cleanup must remove the task record.");
     }
 
     private static void TestConversionLifecycleOwnsResumeCheckpoint()
@@ -160,7 +171,10 @@ static partial class TestSuite
                 string first = Path.Combine(firstDir, "a.pdf");
                 string second = Path.Combine(secondDir, "b.pdf");
 
-                List<string> outputs = ConvertCommandRegistry.EstimateOutputs("compress-pdf", new List<string> { first, second });
+                ConversionPlan plan = new CompressPdfUseCase().Plan(new ConversionRequest(
+                    CompressPdfUseCase.CommandName,
+                    new List<string> { first, second }));
+                IReadOnlyList<string> outputs = plan.Outputs;
 
                 Assert.Equal(Path.Combine(firstDir, "a_compressed.pdf"), outputs[0]);
                 Assert.Equal(Path.Combine(secondDir, "b_compressed.pdf"), outputs[1]);

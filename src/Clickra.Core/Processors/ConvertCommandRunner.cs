@@ -2,7 +2,6 @@ using System;
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
-using PdfSharp.Pdf.IO;
 
 namespace Clickra.Core.Processors;
 
@@ -120,17 +119,8 @@ public static class ConvertCommandRunner
                 case "merge-pdf":
                     FileProcessor.MergePdfs(files, outputs[0], progress, token);
                     break;
-                case "compress-pdf":
-                    RunPerFile(files, outputs, (f, o, p, t) => FileProcessor.CompressPdf(f, o, ConvertCommandRegistry.CompressionOptions(), p, t), progress, options.StartIndex, options.OnFileStarting, token);
-                    break;
                 case "translate-pdf":
                     RunPerFile(files, outputs, (f, o, p, t) => FileProcessor.TranslatePdf(f, o, ClickraStorage.GetSetting(ClickraSettings.TranslateTargetLang), p, t), progress, options.StartIndex, options.OnFileStarting, token);
-                    break;
-                case "decrypt-pdf":
-                    RunDecrypt(files, outputs, options.PromptPassword, progress, options.StartIndex, options.OnFileStarting, token);
-                    break;
-                case "split-pdf":
-                    RunSplit(files, outputs, options.PromptSplitPages, progress, options.StartIndex, options.OnFileStarting, token);
                     break;
                 case "img2pdf":
                     RunPerFile(files, outputs, (f, o, p, t) => FileProcessor.ConvertImagesToPdf(new List<string> { f }, o, p, t), progress, options.StartIndex, options.OnFileStarting, token);
@@ -185,49 +175,4 @@ public static class ConvertCommandRunner
             }
         }
 
-        /// <summary>Removes the password from each PDF, trying an empty password first
-        /// and prompting only when the file is actually encrypted (mirrors the native
-        /// CLI flow). A null result from the prompt cancels the operation.</summary>
-        private static void RunDecrypt(List<string> files, List<string> outputs, Func<int, Task<string?>> promptPassword, Action<int, int, string> progress, int startIndex, Action<int>? onFileStarting, CancellationToken token)
-        {
-            for (int i = startIndex; i < files.Count; i++)
-            {
-                token.ThrowIfCancellationRequested();
-                onFileStarting?.Invoke(i);
-                string password = "";
-                bool success = false;
-                while (!success)
-                {
-                    token.ThrowIfCancellationRequested();
-                    try
-                    {
-                        int index = i;
-                        FileProcessor.DecryptPdf(files[i], outputs[i], password, (c, t, m) => progress((index * 100) + c, files.Count * 100, m), token);
-                        success = true;
-                    }
-                    catch (PdfReaderException ex) when (IsPasswordError(ex))
-                    {
-                        password = promptPassword(i).GetAwaiter().GetResult() ?? throw new OperationCanceledException(token);
-                    }
-                }
-            }
-        }
-
-        /// <summary>Whether the exception indicates a wrong or missing PDF password.</summary>
-        private static bool IsPasswordError(Exception ex)
-            => ex is PdfReaderException &&
-               ex.Message.Contains("password", StringComparison.OrdinalIgnoreCase);
-
-        private static void RunSplit(List<string> files, List<string> outputs, Func<int, string, Task<string?>> promptSplitPages, Action<int, int, string> progress, int startIndex, Action<int>? onFileStarting, CancellationToken token)
-        {
-            for (int i = startIndex; i < files.Count; i++)
-            {
-                token.ThrowIfCancellationRequested();
-                onFileStarting?.Invoke(i);
-                string? splitPages = promptSplitPages(i, files[i]).GetAwaiter().GetResult();
-                if (string.IsNullOrWhiteSpace(splitPages)) throw new OperationCanceledException(token);
-                int index = i;
-                FileProcessor.SplitPdf(files[i], outputs[i], splitPages, (c, t, m) => progress((index * 100) + c, files.Count * 100, m), token);
-            }
-        }
     }

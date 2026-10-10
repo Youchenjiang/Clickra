@@ -1,4 +1,5 @@
 using Clickra.Core;
+using Clickra.Core.Application;
 using Clickra.Core.Processors;
 using PdfSharp.Drawing;
 using PdfSharp.Pdf;
@@ -188,6 +189,67 @@ static partial class TestSuite
                 ClickraStorage.SaveSetting(ClickraSettings.PdfCompressImageLevel, origLevel);
             }
         });
+
+        runner.Run("PDF compression use case owns planning and saved options", () =>
+        {
+            string input = Path.Combine(Path.GetTempPath(), $"clickra-compress-plan-{Guid.NewGuid():N}.pdf");
+            string originalLevel = ClickraStorage.GetSetting(ClickraSettings.PdfCompressImageLevel);
+            try
+            {
+                ClickraStorage.SaveSetting(ClickraSettings.PdfCompressImageLevel, "0");
+                var useCase = new CompressPdfUseCase();
+                ConversionPlan plan = useCase.Plan(new ConversionRequest(
+                    CompressPdfUseCase.CommandName,
+                    new[] { input }));
+
+                Assert.Equal(Path.Combine(ClickraStorage.GetOutputDir(input), Path.GetFileNameWithoutExtension(input) + "_compressed.pdf"), plan.Outputs[0]);
+                Assert.Equal(LevelSmall, (string)plan.NormalizedOptions[CompressPdfUseCase.LevelOptionKey]);
+                Assert.True(plan.RequiredCapabilities.Count == 0,
+                    "PDF compression must not require a presentation interaction capability.");
+            }
+            finally
+            {
+                ClickraStorage.SaveSetting(ClickraSettings.PdfCompressImageLevel, originalLevel);
+            }
+        });
+
+        runner.Run("PDF compression use case honors explicit level and output directory", () =>
+        {
+            string input = Path.Combine(Path.GetTempPath(), $"clickra-compress-plan-{Guid.NewGuid():N}.pdf");
+            string outputDir = Path.Combine(Path.GetTempPath(), $"clickra-compress-out-{Guid.NewGuid():N}");
+            var useCase = new CompressPdfUseCase();
+            ConversionPlan plan = useCase.Plan(new ConversionRequest(
+                CompressPdfUseCase.CommandName,
+                new[] { input },
+                new Dictionary<string, object> { [CompressPdfUseCase.LevelOptionKey] = LevelHigh },
+                OutputOverride: outputDir));
+
+            Assert.Equal(Path.Combine(Path.GetFullPath(outputDir), Path.GetFileNameWithoutExtension(input) + "_compressed.pdf"), plan.Outputs[0]);
+            Assert.Equal(LevelHigh, (string)plan.NormalizedOptions[CompressPdfUseCase.LevelOptionKey]);
+        });
+
+        runner.Run("PDF compression use case can run without task tracking", () => RunWithTempFiles((input, output) =>
+        {
+            CreateSamplePdf(input);
+            var useCase = new CompressPdfUseCase();
+            ConversionPlan plan = useCase.Plan(new ConversionRequest(
+                CompressPdfUseCase.CommandName,
+                new[] { input },
+                new Dictionary<string, object> { [CompressPdfUseCase.LevelOptionKey] = LevelBalanced },
+                OutputOverride: Path.GetDirectoryName(output),
+                TrackTaskLifecycle: false));
+            var interaction = new DelegateConversionInteraction(
+                (_, _, _, _) => Task.FromResult<string?>(null),
+                (_, _, _) => Task.FromResult<string?>(null),
+                (_, _, _) => Task.FromResult<IReadOnlyDictionary<string, object>?>(null));
+
+            ConversionResult result = useCase.ExecuteAsync(plan, interaction, progress: null).GetAwaiter().GetResult();
+
+            Assert.True(result.Status == ConversionResultStatus.Succeeded, result.Error ?? "Expected compression success.");
+            Assert.True(string.IsNullOrEmpty(result.TaskId), "Untracked compression must not create a task identity.");
+            Assert.True(File.Exists(plan.Outputs[0]), "Expected compressed output from application use case.");
+            TryDelete(plan.Outputs[0]);
+        }));
 
         runner.Run("PDF compression slider surfaces expose exactly three presets", TestPdfCompressionSliderSurfaces);
     }

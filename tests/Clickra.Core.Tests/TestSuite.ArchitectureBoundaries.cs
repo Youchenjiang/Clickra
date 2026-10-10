@@ -5,7 +5,7 @@ namespace Clickra.Core.Tests;
 
 static partial class TestSuite
 {
-    private const int ArchitectureViolationBaselineCeiling = 29;
+    private const int ArchitectureViolationBaselineCeiling = 22;
     private static readonly TimeSpan ArchitectureRegexTimeout = TimeSpan.FromSeconds(1);
 
     private sealed record ArchitectureViolationRule(
@@ -20,8 +20,8 @@ static partial class TestSuite
             new Regex(@"\bFileProcessor\.", RegexOptions.Compiled, ArchitectureRegexTimeout),
             new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase)
             {
-                ["src/Clickra.CLI/Cli/ClickraCli.cs"] = 14,
-                ["src/Clickra.CLI/Progress/ProgressWindow.Process.cs"] = 5,
+                ["src/Clickra.CLI/Cli/ClickraCli.cs"] = 10,
+                ["src/Clickra.CLI/Progress/ProgressWindow.Process.cs"] = 2,
                 ["src/Clickra.CLI/Progress/ProgressWindow.VisualSplitter.cs"] = 1,
                 ["src/Clickra.Fluent/Controls/VisualSplitterControl.xaml.cs"] = 1
             }),
@@ -69,6 +69,15 @@ static partial class TestSuite
         runner.RunGuard(
             "Architecture boundaries: product use case catalog owns migrated commands",
             TestProductUseCaseCatalogOwnsMigratedCommands);
+        runner.RunGuard(
+            "Architecture boundaries: migrated decrypt workflow has one execution owner",
+            TestDecryptWorkflowHasSingleExecutionOwner);
+        runner.RunGuard(
+            "Architecture boundaries: migrated split workflow has one execution owner",
+            TestSplitWorkflowHasSingleExecutionOwner);
+        runner.RunGuard(
+            "Architecture boundaries: migrated compress workflow has one execution owner",
+            TestCompressWorkflowHasSingleExecutionOwner);
     }
 
     private static void TestArchitectureViolationBaseline()
@@ -172,12 +181,83 @@ static partial class TestSuite
 
     private static void TestProductUseCaseCatalogOwnsMigratedCommands()
     {
+        IConversionUseCase compress = ConversionUseCases.GetRequired(CompressPdfUseCase.CommandName);
         IConversionUseCase decrypt = ConversionUseCases.GetRequired(DecryptPdfUseCase.CommandName);
+        IConversionUseCase split = ConversionUseCases.GetRequired(SplitPdfUseCase.CommandName);
+        Assert.True(compress is CompressPdfUseCase,
+            "compress-pdf must resolve through the product-wide application use-case catalog.");
         Assert.True(decrypt is DecryptPdfUseCase,
             "decrypt-pdf must resolve through the product-wide application use-case catalog.");
+        Assert.True(split is SplitPdfUseCase,
+            "split-pdf must resolve through the product-wide application use-case catalog.");
+        Assert.True(ConversionUseCases.Commands.Count(command =>
+                command.Equals(CompressPdfUseCase.CommandName, StringComparison.OrdinalIgnoreCase)) == 1,
+            "The product catalog must expose exactly one compress-pdf owner.");
         Assert.True(ConversionUseCases.Commands.Count(command =>
                 command.Equals(DecryptPdfUseCase.CommandName, StringComparison.OrdinalIgnoreCase)) == 1,
             "The product catalog must expose exactly one decrypt-pdf owner.");
+        Assert.True(ConversionUseCases.Commands.Count(command =>
+                command.Equals(SplitPdfUseCase.CommandName, StringComparison.OrdinalIgnoreCase)) == 1,
+            "The product catalog must expose exactly one split-pdf owner.");
+    }
+
+    private static void TestDecryptWorkflowHasSingleExecutionOwner()
+        => AssertMigratedWorkflowHasSingleExecutionOwner(
+            DecryptPdfUseCase.CommandName,
+            "_decrypted.pdf",
+            "FileProcessor.DecryptPdf",
+            nameof(DecryptPdfUseCase),
+            "decrypt");
+
+    private static void TestSplitWorkflowHasSingleExecutionOwner()
+        => AssertMigratedWorkflowHasSingleExecutionOwner(
+            SplitPdfUseCase.CommandName,
+            "_split.pdf",
+            "FileProcessor.SplitPdf",
+            nameof(SplitPdfUseCase),
+            "split");
+
+    private static void TestCompressWorkflowHasSingleExecutionOwner()
+        => AssertMigratedWorkflowHasSingleExecutionOwner(
+            CompressPdfUseCase.CommandName,
+            "_compressed.pdf",
+            "FileProcessor.CompressPdf",
+            nameof(CompressPdfUseCase),
+            "compression");
+
+    private static void AssertMigratedWorkflowHasSingleExecutionOwner(
+        string command,
+        string legacyOutputSuffix,
+        string processorCall,
+        string useCaseTypeName,
+        string workflowName)
+    {
+        string? root = FindRepoRoot();
+        if (root is null) throw new TestSkippedException("Could not locate the repository root.");
+
+        string runner = File.ReadAllText(Path.Combine(root, "src", "Clickra.Core", "Processors", "ConvertCommandRunner.cs"));
+        string registry = File.ReadAllText(Path.Combine(root, "src", "Clickra.Core", "Processors", "ConvertCommandRegistry.cs"));
+        string native = File.ReadAllText(Path.Combine(root, "src", "Clickra.CLI", "Progress", "ProgressWindow.Process.cs"));
+        string quiet = File.ReadAllText(Path.Combine(root, "src", "Clickra.CLI", "Cli", "ClickraCli.cs"));
+        string fluentMain = File.ReadAllText(Path.Combine(root, "src", "Clickra.Fluent", "MainPage.xaml.cs"));
+        string fluentTask = File.ReadAllText(Path.Combine(root, "src", "Clickra.Fluent", "TaskProgressPage.xaml.cs"));
+
+        Assert.False(runner.Contains($"case \"{command}\"", StringComparison.Ordinal),
+            $"Legacy ConvertCommandRunner must not retain a {workflowName} execution branch after migration.");
+        Assert.False(registry.Contains(legacyOutputSuffix, StringComparison.Ordinal),
+            $"Legacy ConvertCommandRegistry must not retain {workflowName} output-path policy after application migration.");
+        Assert.False(native.Contains(processorCall, StringComparison.Ordinal),
+            $"Native presentation must not execute the {workflowName} processor directly.");
+        Assert.False(quiet.Contains(processorCall, StringComparison.Ordinal),
+            $"Headless CLI must not execute the {workflowName} processor directly.");
+        string catalogResolution = $"ConversionUseCases.GetRequired({useCaseTypeName}.CommandName)";
+        Assert.True((fluentMain.Contains("ConversionUseCases.TryGet(command", StringComparison.Ordinal)
+                     || fluentMain.Contains("ConversionUseCases.GetRequired(command)", StringComparison.Ordinal))
+                    && (fluentTask.Contains("ConversionUseCases.TryGet(command", StringComparison.Ordinal)
+                        || fluentTask.Contains("ConversionUseCases.GetRequired(command)", StringComparison.Ordinal))
+                    && native.Contains(catalogResolution, StringComparison.Ordinal)
+                    && quiet.Contains(catalogResolution, StringComparison.Ordinal),
+            $"All product surfaces must resolve {workflowName} execution through the application use-case catalog.");
     }
 
     private sealed class StubConversionUseCase(string command) : IConversionUseCase
