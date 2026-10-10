@@ -65,7 +65,8 @@ public static class ConvertCommandRegistry
             string outputDir = ClickraStorage.GetOutputDir(files[0]);
             return command switch
             {
-                CmdMergePdf => new() { Path.Combine(outputDir, "Merged_PDF.pdf") },
+                CmdMergePdf => throw new InvalidOperationException(
+                    "merge-pdf output planning is owned by the application use case."),
                 CmdImgMerge => new() { Path.Combine(outputDir, "Merged_Images.pdf") },
                 "img-stitch" => new() { Path.Combine(outputDir, "Stitched_Image.png") },
                 CmdCompressPdf => throw new InvalidOperationException(
