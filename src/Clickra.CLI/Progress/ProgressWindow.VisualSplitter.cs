@@ -350,35 +350,6 @@ public partial class ProgressWindow
         SyncVisualSplitStateFromModel();
     }
 
-    /// <summary>Rebuilds the segment list from the active split mode (custom segments,
-    /// split-every-page, or fixed pages per segment).</summary>
-    private void ApplyVisualSplitMode()
-    {
-        _visualSplitModel.SetMode(_visualSplitMode);
-        SyncVisualSplitStateFromModel();
-    }
-
-    /// <summary>Rebuilds the segment list from the user's custom segments (mode 0).</summary>
-    private void ApplyCustomSegmentsMode()
-    {
-        _visualSplitModel.SetMode(VisualSplitModel.ModeCustom);
-        SyncVisualSplitStateFromModel();
-    }
-
-    /// <summary>Rebuilds the segment list as one segment per page (mode 1).</summary>
-    private void ApplyEveryPageMode()
-    {
-        _visualSplitModel.SetMode(VisualSplitModel.ModeEachPage);
-        SyncVisualSplitStateFromModel();
-    }
-
-    /// <summary>Rebuilds the segment list as fixed-size page chunks (mode 2).</summary>
-    private void ApplyFixedPageMode()
-    {
-        _visualSplitModel.SetMode(VisualSplitModel.ModeFixedPages);
-        SyncVisualSplitStateFromModel();
-    }
-
     /// <summary>Builds the page-range spec string for the active split mode via
     /// <see cref="PdfSplitProcessor.BuildSegmentSpec"/>.</summary>
     private string BuildVisualSplitSpec() => _visualSplitModel.BuildSpec();
