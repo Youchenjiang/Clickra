@@ -119,12 +119,6 @@ public static class ConvertCommandRunner
                 case "translate-pdf":
                     RunPerFile(files, outputs, (f, o, p, t) => FileProcessor.TranslatePdf(f, o, ClickraStorage.GetSetting(ClickraSettings.TranslateTargetLang), p, t), progress, options.StartIndex, options.OnFileStarting, token);
                     break;
-                case "img-compress":
-                {
-                    Dictionary<string, object> compressionOptions = ConvertCommandRegistry.ImageCompressionOptions();
-                    RunPerFile(files, outputs, (f, o, p, t) => FileProcessor.CompressImage(f, o, compressionOptions, p, t), progress, options.StartIndex, options.OnFileStarting, token);
-                    break;
-                }
                 case "img-to-png":
                 case "img-to-jpg":
                 case "img-to-webp":

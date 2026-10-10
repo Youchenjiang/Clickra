@@ -125,26 +125,32 @@ static partial class TestSuite
 
         runner.Run("Image compression: " + ImageCompressCommand + " is a production registry command", TestImageCompressionProductionRegistryCommand);
 
-        runner.Run("Image compression: runner produces a smaller JPEG without overwriting input", () =>
+        runner.Run("Image compression: use case produces a smaller JPEG without overwriting input", () =>
             RunWithTempDirectory(tempDir =>
             {
                 string source = CreateCompressionNoiseJpeg(tempDir, "noise.jpg", 256, 256, 95L);
-                string output = Path.Combine(tempDir, "noise_compressed.jpg");
                 byte[] originalBytes = File.ReadAllBytes(source);
                 string originalLevel = ClickraStorage.GetSetting(ClickraSettings.ImageCompressLevel);
                 string originalMax = ClickraStorage.GetSetting(ClickraSettings.ImageCompressMaxDimension);
+                string output = "";
                 try
                 {
                     ClickraStorage.SaveSetting(ClickraSettings.ImageCompressLevel, "0");
                     ClickraStorage.SaveSetting(ClickraSettings.ImageCompressMaxDimension, "0");
-                    ConvertCommandRunner.Run(
-                        ImageCompressCommand,
-                        new List<string> { source },
-                        new List<string> { output },
-                        (_, _, _) => { },
-                        new ConvertCommandRunner.ConversionOptions(
-                            _ => System.Threading.Tasks.Task.FromResult<string?>(null),
-                            (_, _) => System.Threading.Tasks.Task.FromResult<string?>(null)));
+                    var useCase = new ImgCompressUseCase();
+                    ConversionPlan plan = useCase.Plan(new ConversionRequest(
+                        ImgCompressUseCase.CommandName,
+                        new[] { source },
+                        TrackTaskLifecycle: false));
+                    output = plan.Outputs[0];
+                    ConversionResult result = useCase.ExecuteAsync(
+                            plan,
+                            CreateNoOpConversionInteraction(),
+                            progress: null)
+                        .GetAwaiter()
+                        .GetResult();
+                    Assert.True(result.Status == ConversionResultStatus.Succeeded,
+                        result.Error ?? "Expected image compression success.");
                 }
                 finally
                 {
@@ -317,27 +323,33 @@ static partial class TestSuite
         string second = Path.Combine(tempDir, "second.jpg");
         File.Copy(first, second);
         var files = new List<string> { first, second };
-        var outputs = ConvertCommandRegistry.EstimateImageCompressionOutputs(files, tempDir);
         string originalLevel = ClickraStorage.GetSetting(ClickraSettings.ImageCompressLevel);
         try
         {
             ClickraStorage.SaveSetting(ClickraSettings.ImageCompressLevel, "0");
-            bool changed = false;
-            ConvertCommandRunner.Run(
-                ImageCompressCommand,
+            var useCase = new ImgCompressUseCase();
+            ConversionPlan plan = useCase.Plan(new ConversionRequest(
+                ImgCompressUseCase.CommandName,
                 files,
-                outputs,
-                (_, _, _) =>
-                {
-                    if (changed) return;
-                    changed = true;
-                    ClickraStorage.SaveSetting(ClickraSettings.ImageCompressLevel, "3");
-                },
-                new ConvertCommandRunner.ConversionOptions(
-                    _ => Task.FromResult<string?>(null),
-                    (_, _) => Task.FromResult<string?>(null)));
+                OutputOverride: tempDir,
+                TrackTaskLifecycle: false));
+            bool changed = false;
+            var progress = new ImmediateProgress<ConversionProgress>(_ =>
+            {
+                if (changed) return;
+                changed = true;
+                ClickraStorage.SaveSetting(ClickraSettings.ImageCompressLevel, "3");
+            });
+            ConversionResult result = useCase.ExecuteAsync(
+                    plan,
+                    CreateNoOpConversionInteraction(),
+                    progress)
+                .GetAwaiter()
+                .GetResult();
 
-            Assert.True(new FileInfo(outputs[0]).Length == new FileInfo(outputs[1]).Length,
+            Assert.True(result.Status == ConversionResultStatus.Succeeded,
+                result.Error ?? "Expected image compression batch success.");
+            Assert.True(new FileInfo(plan.Outputs[0]).Length == new FileInfo(plan.Outputs[1]).Length,
                 "One compression batch must use one settings snapshot even if the saved setting changes mid-run.");
         }
         finally
@@ -454,5 +466,16 @@ static partial class TestSuite
         parameters.Param[0] = new EncoderParameter(Encoder.Quality, quality);
         bitmap.Save(path, encoder, parameters);
         return path;
+    }
+
+    private static DelegateConversionInteraction CreateNoOpConversionInteraction() =>
+        new(
+            (_, _, _, _) => Task.FromResult<string?>(null),
+            (_, _, _) => Task.FromResult<string?>(null),
+            (_, _, _) => Task.FromResult<IReadOnlyDictionary<string, object>?>(null));
+
+    private sealed class ImmediateProgress<T>(Action<T> report) : IProgress<T>
+    {
+        public void Report(T value) => report(value);
     }
 }
