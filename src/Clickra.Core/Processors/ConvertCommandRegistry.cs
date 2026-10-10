@@ -67,7 +67,8 @@ public static class ConvertCommandRegistry
             {
                 CmdMergePdf => throw new InvalidOperationException(
                     "merge-pdf output planning is owned by the application use case."),
-                CmdImgMerge => new() { Path.Combine(outputDir, "Merged_Images.pdf") },
+                CmdImgMerge => throw new InvalidOperationException(
+                    "img-merge output planning is owned by the application use case."),
                 "img-stitch" => new() { Path.Combine(outputDir, "Stitched_Image.png") },
                 CmdCompressPdf => throw new InvalidOperationException(
                     "compress-pdf output planning is owned by the application use case."),
