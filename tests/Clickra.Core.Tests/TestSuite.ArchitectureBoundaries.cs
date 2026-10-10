@@ -492,6 +492,7 @@ static partial class TestSuite
         if (root is null) throw new TestSkippedException("Could not locate the repository root.");
 
         string runner = File.ReadAllText(Path.Combine(root, "src", "Clickra.Core", "Processors", "ConvertCommandRunner.cs"));
+        string registry = File.ReadAllText(Path.Combine(root, "src", "Clickra.Core", "Processors", "ConvertCommandRegistry.cs"));
         string native = File.ReadAllText(Path.Combine(root, "src", "Clickra.CLI", "Progress", "ProgressWindow.Process.cs"));
         string quiet = File.ReadAllText(Path.Combine(root, "src", "Clickra.CLI", "Cli", "ClickraCli.cs"));
         string fluentMain = File.ReadAllText(Path.Combine(root, "src", "Clickra.Fluent", "MainPage.xaml.cs"));
@@ -499,6 +500,8 @@ static partial class TestSuite
 
         Assert.False(runner.Contains("case \"ppt2pdf\"", StringComparison.Ordinal),
             "Legacy ConvertCommandRunner must not retain ppt2pdf execution after application migration.");
+        Assert.True(registry.Contains("ppt2pdf output planning is owned by the application use case.", StringComparison.Ordinal),
+            "Legacy ConvertCommandRegistry must fail closed instead of planning ppt2pdf outputs after migration.");
         Assert.False(native.Contains("FileProcessor.ConvertPptToPdf", StringComparison.Ordinal),
             "Native presentation must not execute PowerPoint conversion directly.");
         Assert.False(quiet.Contains("FileProcessor.ConvertPptToPdf", StringComparison.Ordinal),
