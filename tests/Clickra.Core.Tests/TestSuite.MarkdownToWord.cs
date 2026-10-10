@@ -312,7 +312,7 @@ static partial class TestSuite
                     ```
                     """);
 
-                FileProcessor.ConvertMarkdownToPdf(input, pdfPath);
+                FileProcessor.ConvertMarkdownToPdf(input, pdfPath, MarkdownPdfOptions.Create());
                 FileProcessor.ConvertMarkdownToWord(input, wordPath);
 
                 MarkdownResolvedLayout layout = MarkdownResolvedLayout.Create(MarkdownTemplateCatalog.Default, 1);

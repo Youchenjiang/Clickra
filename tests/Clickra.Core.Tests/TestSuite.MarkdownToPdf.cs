@@ -362,7 +362,7 @@ static partial class TestSuite
                 string output = Path.Combine(tempDir, "link.pdf");
                 File.WriteAllText(input, "# Links\n\nOpen [Root-Me #101](https://www.root-me.org/) now.");
 
-                FileProcessor.ConvertMarkdownToPdf(input, output);
+                FileProcessor.ConvertMarkdownToPdf(input, output, MarkdownPdfOptions.Create());
 
                 using var textPdf = UglyToad.PdfPig.PdfDocument.Open(output);
                 var textPage = textPdf.GetPage(1);
@@ -609,7 +609,7 @@ static partial class TestSuite
                 File.WriteAllText(input, markdown);
                 byte[] original = File.ReadAllBytes(input);
 
-                FileProcessor.ConvertMarkdownToPdf(input, output);
+                FileProcessor.ConvertMarkdownToPdf(input, output, MarkdownPdfOptions.Create());
 
                 Assert.True(File.Exists(output), "Markdown conversion must create the PDF output.");
                 Assert.True(File.ReadAllBytes(output).Take(4).SequenceEqual("%PDF"u8.ToArray()), "Markdown output must have a PDF header.");
@@ -632,7 +632,7 @@ static partial class TestSuite
                     $"Paragraph {i}: This is enough text to verify that Markdown rendering creates additional PDF pages rather than drawing beyond the A4 page boundary."));
                 File.WriteAllText(input, "# Long document\n\n" + body);
 
-                FileProcessor.ConvertMarkdownToPdf(input, output);
+                FileProcessor.ConvertMarkdownToPdf(input, output, MarkdownPdfOptions.Create());
 
                 using var pdf = UglyToad.PdfPig.PdfDocument.Open(output);
                 Assert.True(pdf.NumberOfPages > 1, "Long Markdown documents must paginate across multiple PDF pages.");
@@ -650,7 +650,7 @@ static partial class TestSuite
                 File.WriteAllText(input,
                     "# Pagination test\n\n" + lead + "\n\n## NEXT_SECTION_HEADING\n\nSECTION_BODY_MARKER should travel with its heading.\n");
 
-                FileProcessor.ConvertMarkdownToPdf(input, output);
+                FileProcessor.ConvertMarkdownToPdf(input, output, MarkdownPdfOptions.Create());
 
                 using var pdf = UglyToad.PdfPig.PdfDocument.Open(output);
                 var pages = pdf.GetPages().ToList();
@@ -675,7 +675,7 @@ static partial class TestSuite
                 string output = Path.Combine(tempDir, "image.pdf");
                 File.WriteAllText(input, "# Local image\n\nBefore image ![Diagram](diagram.png) after image.");
 
-                FileProcessor.ConvertMarkdownToPdf(input, output);
+                FileProcessor.ConvertMarkdownToPdf(input, output, MarkdownPdfOptions.Create());
 
                 using var pdf = UglyToad.PdfPig.PdfDocument.Open(output);
                 Assert.True(pdf.NumberOfPages >= 1, "Markdown with a local image must produce a readable PDF.");
@@ -695,7 +695,7 @@ static partial class TestSuite
                 File.WriteAllText(input,
                     "| Column | Value |\n| --- | --- |\n| Long | " + longCell + " TABLE_END_MARKER |\n\nAfter table.");
 
-                FileProcessor.ConvertMarkdownToPdf(input, output);
+                FileProcessor.ConvertMarkdownToPdf(input, output, MarkdownPdfOptions.Create());
 
                 using var pdf = UglyToad.PdfPig.PdfDocument.Open(output);
                 Assert.True(pdf.NumberOfPages > 1, "An oversized Markdown table row must split across pages.");
@@ -721,7 +721,7 @@ static partial class TestSuite
                     ```
                     """);
 
-                FileProcessor.ConvertMarkdownToPdf(input, output);
+                FileProcessor.ConvertMarkdownToPdf(input, output, MarkdownPdfOptions.Create());
 
                 using var pdf = UglyToad.PdfPig.PdfDocument.Open(output);
                 string text = string.Join("\n", pdf.GetPages().Select(page => page.Text));
