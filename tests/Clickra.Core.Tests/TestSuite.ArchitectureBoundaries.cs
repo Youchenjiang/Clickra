@@ -216,6 +216,21 @@ static partial class TestSuite
             "img2pdf must resolve through the product-wide application use-case catalog.");
         Assert.True(imgStitch is ImgStitchUseCase,
             "img-stitch must resolve through the product-wide application use-case catalog.");
+        foreach (string imageFormatCommand in new[]
+        {
+            ImageFormatConvertUseCase.PngCommand,
+            ImageFormatConvertUseCase.JpgCommand,
+            ImageFormatConvertUseCase.WebpCommand,
+            ImageFormatConvertUseCase.GifCommand,
+            ImageFormatConvertUseCase.HeicCommand
+        })
+        {
+            Assert.True(ConversionUseCases.GetRequired(imageFormatCommand) is ImageFormatConvertUseCase,
+                $"{imageFormatCommand} must resolve through the product-wide application use-case catalog.");
+            Assert.True(ConversionUseCases.Commands.Count(command =>
+                    command.Equals(imageFormatCommand, StringComparison.OrdinalIgnoreCase)) == 1,
+                $"The product catalog must expose exactly one {imageFormatCommand} owner.");
+        }
         Assert.True(merge is MergePdfUseCase,
             "merge-pdf must resolve through the product-wide application use-case catalog.");
         Assert.True(split is SplitPdfUseCase,
