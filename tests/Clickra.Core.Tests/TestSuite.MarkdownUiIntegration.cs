@@ -2,6 +2,7 @@ using System;
 using System.IO;
 using System.Linq;
 using System.Text.RegularExpressions;
+using Clickra.Core.Processors;
 
 namespace Clickra.Core.Tests;
 
@@ -11,6 +12,7 @@ static partial class TestSuite
     {
         runner.RunGuard("Markdown NativeAOT prompt: start, cancel, close and resume preserve one decision", TestMarkdownNativePromptLifecycle);
         runner.RunGuard("Markdown templates: both UIs revalidate imports at confirmation and isolate layout source", TestMarkdownTemplateSelectionContracts);
+        runner.RunGuard("Dashboard file import: picker and drag-drop share registry routing", TestDashboardFileImportRouting);
         runner.RunGuard("Dashboard sticky footer: viewport hit precedes scrolled content and swallows inactive hits", TestMarkdownStickyFooterHitOrder);
         runner.RunGuard("Fluent Markdown dialog: both entry points await a cancellable options dialog", TestMarkdownFluentDialogContract);
         runner.RunGuard("Shell Markdown commands: menu keys, arguments, and icons remain aligned", TestMarkdownShellMenuContract);
@@ -60,6 +62,36 @@ static partial class TestSuite
         RequireInOrder(fluent, "dialog.PrimaryButtonClick", "if (layoutSource?.SelectedIndex != 1) return;", "if (templatePath is null)", "args.Cancel = true;", "MarkdownTemplateSource.Load(templatePath)", "catch", "args.Cancel = true;");
         Assert.True(fluent.Contains("string? selectedTemplatePath = layoutSource?.SelectedIndex == 1 ? templatePath : null;", StringComparison.Ordinal),
             "Built-in layout must ignore a previously selected DOCX template.");
+    }
+
+    private static void TestDashboardFileImportRouting()
+    {
+        string convert = MarkdownSource("src/Clickra.CLI/Dashboard/DashboardWindow.Convert.cs");
+        string clicks = MarkdownSource("src/Clickra.CLI/Dashboard/DashboardWindow.Events.Click.cs");
+        string fluent = MarkdownSource("src/Clickra.Fluent/MainPage.xaml.cs");
+
+        Assert.True(clicks.Contains("OpenFiles(hwnd, GetSupportedFilesFilter(), title)", StringComparison.Ordinal)
+                    && clicks.Contains("ImportFiles(chosen);", StringComparison.Ordinal),
+            "The dashboard picker must use the shared supported-file filter and import routing.");
+        Assert.False(clicks.Contains("const string allFilter", StringComparison.Ordinal),
+            "The dashboard picker must not keep a second hardcoded extension list.");
+        Assert.True(convert.Contains("HandleDroppedFiles(List<string> files) => ImportFiles(files);", StringComparison.Ordinal),
+            "Drag/drop must use the same file-import routing as the picker.");
+        Assert.True(convert.Contains("ConvertCommands", StringComparison.Ordinal)
+                    && convert.Contains("SelectMany(command => command.Extensions)", StringComparison.Ordinal)
+                    && convert.Contains("Distinct(StringComparer.OrdinalIgnoreCase)", StringComparison.Ordinal),
+            "The supported-file picker filter must derive from the command registry.");
+        Assert.True(convert.Contains("ConvertCommandRegistry.GetDefaultCommandForFiles(files)", StringComparison.Ordinal)
+                    && fluent.Contains("ConvertCommandRegistry.GetDefaultCommandForFiles(_selectedFiles)", StringComparison.Ordinal),
+            "NativeAOT and Fluent file imports must use the same Core default-command routing.");
+
+        Assert.Equal("compress-pdf", ConvertCommandRegistry.GetDefaultCommandForFiles(new[] { "a.pdf" }) ?? "");
+        Assert.Equal("merge-pdf", ConvertCommandRegistry.GetDefaultCommandForFiles(new[] { "a.pdf", "b.pdf" }) ?? "");
+        Assert.Equal("md2pdf", ConvertCommandRegistry.GetDefaultCommandForFiles(new[] { "notes.md" }) ?? "");
+        Assert.Equal("img2pdf", ConvertCommandRegistry.GetDefaultCommandForFiles(new[] { "photo.heic" }) ?? "");
+        Assert.Equal("img-merge", ConvertCommandRegistry.GetDefaultCommandForFiles(new[] { "a.png", "b.webp" }) ?? "");
+        Assert.True(ConvertCommandRegistry.GetDefaultCommandForFiles(new[] { "a.pdf", "b.png" }) is null,
+            "Mixed file types must not guess a default command.");
     }
 
     private static void TestMarkdownStickyFooterHitOrder()

@@ -17,6 +17,8 @@ namespace Clickra.Core
 
     public static partial class ClickraStorage
     {
+        public const string HistoryFileName = "history.log";
+
         private static readonly string DataDir;
         private static readonly string SettingsFile;
         private static readonly string HistoryFile;
@@ -49,7 +51,7 @@ namespace Clickra.Core
                 DataDir = Path.Combine(localApp, "Clickra");
             }
             SettingsFile = Path.Combine(DataDir, "settings.conf");
-            HistoryFile = Path.Combine(DataDir, "history.log");
+            HistoryFile = Path.Combine(DataDir, HistoryFileName);
 
             try
             {

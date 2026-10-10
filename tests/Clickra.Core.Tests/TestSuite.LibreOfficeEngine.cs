@@ -372,9 +372,12 @@ static partial class TestSuite
             string? root = FindRepoRoot();
             if (root is null) throw new TestSkippedException("Could not locate the repository root from the test output directory.");
 
-            string fluent = File.ReadAllText(Path.Combine(root, "src", "Clickra.Fluent", "MainPage.xaml.cs"));
-            string cliEvents = File.ReadAllText(Path.Combine(root, "src", "Clickra.CLI", "Dashboard", "DashboardWindow.Events.Click.cs"));
-            string cliPaint = File.ReadAllText(Path.Combine(root, "src", "Clickra.CLI", "Dashboard", "DashboardWindow.Paint.Settings.cs"));
+            string fluent = File.ReadAllText(Path.Combine(root, "src", "Clickra.Fluent", "MainPage.LibreOffice.cs"));
+            string dashboardDir = Path.Combine(root, "src", "Clickra.CLI", "Dashboard");
+            string cliEvents = string.Concat(
+                Directory.GetFiles(dashboardDir, "DashboardWindow.Events*.cs", SearchOption.TopDirectoryOnly)
+                    .Select(File.ReadAllText));
+            string cliPaint = File.ReadAllText(Path.Combine(dashboardDir, "DashboardWindow.Paint.Settings.cs"));
             string settings = File.ReadAllText(Path.Combine(root, "src", "Clickra.Core", "Storage", "ClickraSettings.cs"));
 
             foreach ((string name, string source) in new[] { ("Fluent", fluent), ("CLI", cliEvents) })

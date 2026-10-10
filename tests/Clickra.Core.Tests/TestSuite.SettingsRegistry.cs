@@ -244,7 +244,7 @@ static partial class TestSuite
         string fluentXaml = File.ReadAllText(Path.Combine(root, "src", SettingsRegistryFluentProjectDirectory, "MainPage.xaml"));
         string cliPaint = File.ReadAllText(Path.Combine(root, "src", CliProjectDirectory, DashboardDirectory, "DashboardWindow.Paint.Settings.cs"));
         string cliEvents = File.ReadAllText(Path.Combine(root, "src", CliProjectDirectory, DashboardDirectory, "DashboardWindow.Events.cs"));
-        string cliClick = File.ReadAllText(Path.Combine(root, "src", CliProjectDirectory, DashboardDirectory, "DashboardWindow.Events.Click.cs"));
+        string cliClick = File.ReadAllText(Path.Combine(root, "src", CliProjectDirectory, DashboardDirectory, "DashboardWindow.Events.Settings.cs"));
 
         Assert.True(fluentCode.Contains("CompressionSlider.Minimum = ClickraSettings.MinPdfCompressLevel", StringComparison.Ordinal),
             "Fluent must derive CompressionSlider.Minimum from ClickraSettings.MinPdfCompressLevel.");
@@ -508,8 +508,11 @@ static partial class TestSuite
     {
         string root = FindRepoRoot() ?? throw new TestSkippedException(RepoRootNotFoundMessage);
         string fluentCode = File.ReadAllText(Path.Combine(root, "src", SettingsRegistryFluentProjectDirectory, "MainPage.xaml.cs"));
-        string cliPaint = File.ReadAllText(Path.Combine(root, "src", CliProjectDirectory, DashboardDirectory, "DashboardWindow.Paint.Settings.cs"));
-        string cliClick = File.ReadAllText(Path.Combine(root, "src", CliProjectDirectory, DashboardDirectory, "DashboardWindow.Events.Click.cs"));
+        string dashboardDir = Path.Combine(root, "src", CliProjectDirectory, DashboardDirectory);
+        string cliPaint = string.Concat(
+            Directory.GetFiles(dashboardDir, "DashboardWindow.Paint.Settings*.cs", SearchOption.TopDirectoryOnly)
+                .Select(File.ReadAllText));
+        string cliClick = File.ReadAllText(Path.Combine(dashboardDir, "DashboardWindow.Events.Settings.cs"));
 
         Assert.True(fluentCode.Contains("SettingPageRegistry.AllDescriptors", StringComparison.Ordinal),
             "Fluent UI must iterate SettingPageRegistry.AllDescriptors for automatic control generation.");

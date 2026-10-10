@@ -17,6 +17,10 @@ public static class ConvertCommandRegistry
         private const string CmdMdToPdf = "md2pdf";
         private const string CmdMdToWord = "md2word";
         private const string CmdImgCompress = "img-compress";
+        private const string CmdMergePdf = "merge-pdf";
+        private const string CmdCompressPdf = "compress-pdf";
+        private const string CmdImg2Pdf = "img2pdf";
+        private const string CmdImgMerge = "img-merge";
         private const string ExtensionWebp = ".webp";
         private const string ExtensionHeic = ".heic";
 
@@ -33,12 +37,12 @@ public static class ConvertCommandRegistry
         /// <summary>UI 檔案類型分類：先選類型再選命令，從源頭避免混雜類型。</summary>
         private static readonly (string Type, string[] Extensions, string[] Commands)[] FileTypes =
         {
-            ("pdf", PdfExtensions, ["merge-pdf", "compress-pdf", "translate-pdf", "decrypt-pdf", "split-pdf"]),
+            ("pdf", PdfExtensions, [CmdMergePdf, CmdCompressPdf, "translate-pdf", "decrypt-pdf", "split-pdf"]),
             ("word", WordExtensions, ["word2pdf"]),
             ("excel", ExcelExtensions, ["excel2pdf"]),
             ("ppt", PptExtensions, ["ppt2pdf"]),
             ("markdown", MarkdownExtensions, [CmdMdToPdf, CmdMdToWord]),
-            ("image", ImageExtensions, ["img2pdf", "img-merge", "img-stitch", CmdImgCompress, CmdImgToPng, CmdImgToJpg, CmdImgToWebp, CmdImgToGif, CmdImgToHeic])
+            ("image", ImageExtensions, [CmdImg2Pdf, CmdImgMerge, "img-stitch", CmdImgCompress, CmdImgToPng, CmdImgToJpg, CmdImgToWebp, CmdImgToGif, CmdImgToHeic])
         };
 
         /// <summary>File extensions accepted by a UI file type ("pdf", "word", "excel", "ppt", "image").</summary>
@@ -53,6 +57,30 @@ public static class ConvertCommandRegistry
         {
             var entry = Array.Find(FileTypes, e => string.Equals(e.Type, type, StringComparison.OrdinalIgnoreCase));
             return entry.Commands ?? Array.Empty<string>();
+        }
+
+        /// <summary>Returns the product-wide default command for a homogeneous file selection.
+        /// Explicit UI selections should take precedence when they remain compatible.</summary>
+        public static string? GetDefaultCommandForFiles(IReadOnlyCollection<string> files)
+        {
+            if (files.Count == 0) return null;
+
+            string[] extensions = files
+                .Select(path => Path.GetExtension(path).ToLowerInvariant())
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .ToArray();
+            if (extensions.Any(string.IsNullOrEmpty)) return null;
+
+            if (extensions.All(ext => PptExtensions.Contains(ext, StringComparer.OrdinalIgnoreCase))) return "ppt2pdf";
+            if (extensions.All(ext => WordExtensions.Contains(ext, StringComparer.OrdinalIgnoreCase))) return "word2pdf";
+            if (extensions.All(ext => ExcelExtensions.Contains(ext, StringComparer.OrdinalIgnoreCase))) return "excel2pdf";
+            if (extensions.All(ext => PdfExtensions.Contains(ext, StringComparer.OrdinalIgnoreCase)))
+                return files.Count == 1 ? CmdCompressPdf : CmdMergePdf;
+            if (extensions.All(ext => MarkdownExtensions.Contains(ext, StringComparer.OrdinalIgnoreCase))) return CmdMdToPdf;
+            if (extensions.All(ext => ImageExtensions.Contains(ext, StringComparer.OrdinalIgnoreCase)))
+                return files.Count == 1 ? CmdImg2Pdf : CmdImgMerge;
+
+            return null;
         }
 
         /// <summary>The UI file type a command belongs to (defaults to "pdf" for unknown commands).</summary>
@@ -79,13 +107,13 @@ public static class ConvertCommandRegistry
             ["excel2pdf"] = new(ExcelExtensions, 1, "cmd_excel_to_pdf"),
             [CmdMdToPdf] = new(MarkdownExtensions, 1, "cmd_md_to_pdf"),
             [CmdMdToWord] = new(MarkdownExtensions, 1, "cmd_md_to_word"),
-            ["merge-pdf"] = new(PdfExtensions, 2, "cmd_merge_pdf"),
-            ["compress-pdf"] = new(PdfExtensions, 1, "cmd_compress_pdf"),
+            [CmdMergePdf] = new(PdfExtensions, 2, "cmd_merge_pdf"),
+            [CmdCompressPdf] = new(PdfExtensions, 1, "cmd_compress_pdf"),
             ["translate-pdf"] = new(PdfExtensions, 1, "cmd_translate_pdf"),
             ["decrypt-pdf"] = new(PdfExtensions, 1, "cmd_decrypt_pdf"),
             ["split-pdf"] = new(PdfExtensions, 1, "cmd_split_pdf"),
-            ["img2pdf"] = new(ImageExtensions, 1, "cmd_img_to_pdf"),
-            ["img-merge"] = new(ImageExtensions, 2, "cmd_merge_img"),
+            [CmdImg2Pdf] = new(ImageExtensions, 1, "cmd_img_to_pdf"),
+            [CmdImgMerge] = new(ImageExtensions, 2, "cmd_merge_img"),
             ["img-stitch"] = new(ImageExtensions, 2, "cmd_stitch_img"),
             [CmdImgCompress] = new(ImageCompressionExtensions, 1, "cmd_img_compress"),
             [CmdImgToPng] = new(ImageExtensions, 1, "cmd_img_to_png", PngExcluded),
@@ -135,14 +163,14 @@ public static class ConvertCommandRegistry
             string outputDir = ClickraStorage.GetOutputDir(files[0]);
             return command switch
             {
-                "merge-pdf" => new() { Path.Combine(outputDir, "Merged_PDF.pdf") },
-                "img-merge" => new() { Path.Combine(outputDir, "Merged_Images.pdf") },
+                CmdMergePdf => new() { Path.Combine(outputDir, "Merged_PDF.pdf") },
+                CmdImgMerge => new() { Path.Combine(outputDir, "Merged_Images.pdf") },
                 "img-stitch" => new() { Path.Combine(outputDir, "Stitched_Image.png") },
-                "compress-pdf" => files.Select(f => Path.Combine(ClickraStorage.GetOutputDir(f), Path.GetFileNameWithoutExtension(f) + "_compressed.pdf")).ToList(),
+                CmdCompressPdf => files.Select(f => Path.Combine(ClickraStorage.GetOutputDir(f), Path.GetFileNameWithoutExtension(f) + "_compressed.pdf")).ToList(),
                 "translate-pdf" => files.Select(f => Path.Combine(ClickraStorage.GetOutputDir(f), Path.GetFileNameWithoutExtension(f) + "_translated.pdf")).ToList(),
                 "decrypt-pdf" => files.Select(f => Path.Combine(ClickraStorage.GetOutputDir(f), Path.GetFileNameWithoutExtension(f) + "_decrypted.pdf")).ToList(),
                 "split-pdf" => files.Select(f => Path.Combine(ClickraStorage.GetOutputDir(f), Path.GetFileNameWithoutExtension(f) + "_split.pdf")).ToList(),
-                "img2pdf" => files.Select(f => Path.Combine(ClickraStorage.GetOutputDir(f), Path.GetFileNameWithoutExtension(f) + ".pdf")).ToList(),
+                CmdImg2Pdf => files.Select(f => Path.Combine(ClickraStorage.GetOutputDir(f), Path.GetFileNameWithoutExtension(f) + ".pdf")).ToList(),
                 CmdMdToPdf => files.Select(f => Path.Combine(ClickraStorage.GetOutputDir(f), Path.GetFileNameWithoutExtension(f) + ".pdf")).ToList(),
                 CmdMdToWord => files.Select(f => Path.Combine(ClickraStorage.GetOutputDir(f), Path.GetFileNameWithoutExtension(f) + ".docx")).ToList(),
                 CmdImgCompress => EstimateImageCompressionOutputs(files),

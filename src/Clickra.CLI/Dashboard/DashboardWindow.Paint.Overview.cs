@@ -4,7 +4,6 @@ using System.Linq;
 using System.Drawing;
 using System.Drawing.Drawing2D;
 using System.Collections.Generic;
-using Microsoft.Win32;
 using Clickra.Core;
 using Clickra.Core.Processors;
 
@@ -30,23 +29,16 @@ namespace Clickra.UI
             if (_sectionFont != null)
                 g.DrawString(GetText("overview_engine_status"), _sectionFont, Brushes.White, contentX * s, 95 * s);
 
-            bool microsoftReady = IsOfficeInstalled("Word") && IsOfficeInstalled("Excel") && IsOfficeInstalled("PowerPoint");
-            bool libreOfficeReady = !string.IsNullOrEmpty(LibreOfficeHelper.GetResolvedExecutablePath());
-            string engineMode = ClickraStorage.GetSetting(ClickraSettings.OfficeEngine);
-            bool isLibreOfficeMode = engineMode.Equals("libreoffice", StringComparison.OrdinalIgnoreCase);
-            bool isMicrosoftMode = engineMode.Equals("microsoft", StringComparison.OrdinalIgnoreCase);
-            bool officeReady = isLibreOfficeMode
-                ? libreOfficeReady
-                : isMicrosoftMode
-                    ? microsoftReady
-                    : microsoftReady || libreOfficeReady;
-            string activeOfficeEngine = isLibreOfficeMode
-                ? GetText("setting_engine_libreoffice")
-                : isMicrosoftMode || microsoftReady
-                    ? GetText("setting_engine_microsoft")
-                    : libreOfficeReady
-                        ? GetText("setting_engine_libreoffice")
-                        : GetText("setting_engine_auto");
+            bool microsoftReady = OfficeEngineDetector.IsMicrosoftSuiteReady();
+            bool libreOfficeReady = OfficeEngineDetector.IsLibreOfficeReady();
+            bool officeReady = OfficeEngineDetector.IsSelectedEngineReady(microsoftReady, libreOfficeReady);
+            string activeEngine = OfficeEngineDetector.GetPreferredReadyEngine(microsoftReady, libreOfficeReady);
+            string activeOfficeEngine = activeEngine switch
+            {
+                ClickraSettings.OfficeEngineMicrosoft => GetText("setting_engine_microsoft"),
+                ClickraSettings.OfficeEngineLibreOffice => GetText("setting_engine_libreoffice"),
+                _ => GetText("setting_engine_auto")
+            };
 
             DrawOverviewStatusLine(g, "PDF", GetText("engine_ready"), true, (int)contentX, 128, 420);
             DrawOverviewStatusLine(

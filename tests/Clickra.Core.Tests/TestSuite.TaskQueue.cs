@@ -20,9 +20,12 @@ static partial class TestSuite
     private const string FluentProjectDirectory = "Clickra.Fluent";
     private const string RepoRootNotFoundMessage = "Could not locate the repository root from the test output directory.";
     private const string FluentMainPageFile = "MainPage.xaml.cs";
+    private const string FluentHistoryPageFile = "MainPage.History.cs";
     private const string CliProjectDirectory = "Clickra.CLI";
     private const string DashboardDirectory = "Dashboard";
     private const string DashboardEventsClickFile = "DashboardWindow.Events.Click.cs";
+    private const string DashboardEventsHistoryFile = "DashboardWindow.Events.History.cs";
+    private const string DashboardEventsSettingsFile = "DashboardWindow.Events.Settings.cs";
     private const string DashboardHistoryPaintFile = "DashboardWindow.Paint.History.cs";
     public static void RegisterTaskQueueTests(TestRunner runner)
     {
@@ -105,7 +108,9 @@ static partial class TestSuite
         string? root = FindRepoRoot();
         if (root is null) throw new TestSkippedException(RepoRootNotFoundMessage);
 
-        string code = File.ReadAllText(Path.Combine(root, "src", FluentProjectDirectory, FluentMainPageFile));
+        string code = string.Concat(
+            File.ReadAllText(Path.Combine(root, "src", FluentProjectDirectory, FluentMainPageFile)),
+            File.ReadAllText(Path.Combine(root, "src", FluentProjectDirectory, FluentHistoryPageFile)));
         string xaml = File.ReadAllText(Path.Combine(root, "src", FluentProjectDirectory, "MainPage.xaml"));
 
         Assert.True(xaml.Contains("ParkedTasksSection", StringComparison.Ordinal), "The History page must render a parked-conversions section.");
@@ -194,7 +199,9 @@ static partial class TestSuite
         if (root is null) throw new TestSkippedException(RepoRootNotFoundMessage);
 
         string paintCode = File.ReadAllText(Path.Combine(root, "src", CliProjectDirectory, DashboardDirectory, "DashboardWindow.Paint.Settings.cs"));
-        string clickCode = File.ReadAllText(Path.Combine(root, "src", CliProjectDirectory, DashboardDirectory, DashboardEventsClickFile));
+        string dashboardDir = Path.Combine(root, "src", CliProjectDirectory, DashboardDirectory);
+        string clickCode = File.ReadAllText(Path.Combine(dashboardDir, DashboardEventsClickFile))
+                         + File.ReadAllText(Path.Combine(dashboardDir, DashboardEventsSettingsFile));
 
         // Must render the section title and description using localization keys
         foreach (string key in new[] { "setting_parked_ttl_title", "setting_parked_ttl_desc" })
@@ -254,7 +261,7 @@ static partial class TestSuite
 
         string fluentCode = File.ReadAllText(Path.Combine(root, "src", FluentProjectDirectory, FluentMainPageFile));
         string fluentXaml = File.ReadAllText(Path.Combine(root, "src", FluentProjectDirectory, "MainPage.xaml"));
-        string cliClick = File.ReadAllText(Path.Combine(root, "src", CliProjectDirectory, DashboardDirectory, DashboardEventsClickFile));
+        string cliClick = File.ReadAllText(Path.Combine(root, "src", CliProjectDirectory, DashboardDirectory, DashboardEventsSettingsFile));
 
         Assert.True(ClickraSettings.MaxParkedRetentionDays > 0, "The shared retention bound must be positive.");
         Assert.Equal(ClickraSettings.MaxParkedTaskRetentionDays, ClickraSettings.MaxParkedRetentionDays);
@@ -356,7 +363,7 @@ static partial class TestSuite
         string? root = FindRepoRoot();
         if (root is null) throw new TestSkippedException(RepoRootNotFoundMessage);
 
-        string fluentCode = File.ReadAllText(Path.Combine(root, "src", FluentProjectDirectory, FluentMainPageFile));
+        string fluentCode = File.ReadAllText(Path.Combine(root, "src", FluentProjectDirectory, FluentHistoryPageFile));
         string cliHistory = File.ReadAllText(Path.Combine(root, "src", CliProjectDirectory, DashboardDirectory, DashboardHistoryPaintFile));
         string storageCode = File.ReadAllText(Path.Combine(root, "src", "Clickra.Core", "Storage", "ClickraStorage.ActiveRecord.cs"));
         string feedCode = File.ReadAllText(Path.Combine(root, "src", "Clickra.Core", "Storage", "HistoryFeed.cs"));
@@ -454,14 +461,14 @@ static partial class TestSuite
         Assert.True(layout.Contains("HistoryLayout.ContentHeight(", StringComparison.Ordinal),
             "The scroll height must come from the same shared History column.");
 
-        foreach (string file in new[] { DashboardHistoryPaintFile, "DashboardWindow.HitTesting.cs", DashboardEventsClickFile, "DashboardWindow.Events.cs" })
+        foreach (string file in new[] { DashboardHistoryPaintFile, "DashboardWindow.HitTesting.cs", DashboardEventsHistoryFile, "DashboardWindow.Events.cs" })
         {
             string source = File.ReadAllText(Path.Combine(dir, file));
             Assert.True(source.Contains("HistoryBlock", StringComparison.Ordinal),
                 $"{file} must take history row positions from the shared column.");
         }
 
-        foreach (string file in new[] { DashboardHistoryPaintFile, "DashboardWindow.HitTesting.cs", DashboardEventsClickFile, "DashboardWindow.Events.cs", "DashboardWindow.cs" })
+        foreach (string file in new[] { DashboardHistoryPaintFile, "DashboardWindow.HitTesting.cs", DashboardEventsHistoryFile, "DashboardWindow.Events.cs", "DashboardWindow.cs" })
         {
             string source = File.ReadAllText(Path.Combine(dir, file));
             Assert.False(source.Contains("GetHistoryListStartY", StringComparison.Ordinal),
@@ -725,7 +732,7 @@ static partial class TestSuite
         if (root is null) throw new TestSkippedException("Could not locate the repository root from the test output directory.");
 
         string dir = Path.Combine(root, "src", "Clickra.CLI", "Dashboard");
-        string click = File.ReadAllText(Path.Combine(dir, "DashboardWindow.Events.Click.cs"));
+        string click = File.ReadAllText(Path.Combine(dir, DashboardEventsHistoryFile));
         string paint = File.ReadAllText(Path.Combine(dir, "DashboardWindow.Paint.History.cs"));
         string progress = File.ReadAllText(Path.Combine(root, "src", "Clickra.CLI", "Progress", "ProgressWindow.cs"));
 

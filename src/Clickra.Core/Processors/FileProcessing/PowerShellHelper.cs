@@ -1,6 +1,5 @@
 using System;
 using System.IO;
-using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading;
 using Clickra.Core;
@@ -70,32 +69,11 @@ namespace Clickra.Core.Processors
             !engine.Equals("microsoft", StringComparison.OrdinalIgnoreCase) &&
             LibreOfficeHelper.CanConvert(appType);
 
-        [DllImport("ole32.dll", CharSet = CharSet.Unicode)]
-        private static extern int CLSIDFromProgID(string lpszProgID, out Guid lpclsid);
+        internal static string? GetMicrosoftOfficeProgId(string appType) =>
+            OfficeEngineDetector.GetMicrosoftOfficeProgId(appType);
 
-        internal static string? GetMicrosoftOfficeProgId(string appType) => appType switch
-        {
-            "Word" => "Word.Application",
-            "Excel" => "Excel.Application",
-            "PowerPoint" => "PowerPoint.Application",
-            _ => null
-        };
-
-        internal static bool IsMicrosoftOfficeReady(string appType)
-        {
-            string? progId = GetMicrosoftOfficeProgId(appType);
-
-            if (progId == null) return false;
-
-            try
-            {
-                return CLSIDFromProgID(progId, out _) == 0;
-            }
-            catch
-            {
-                return false;
-            }
-        }
+        internal static bool IsMicrosoftOfficeReady(string appType) =>
+            OfficeEngineDetector.IsMicrosoftOfficeReady(appType);
 
         private static void ExportMicrosoftOfficeToPdf(
             string appType,

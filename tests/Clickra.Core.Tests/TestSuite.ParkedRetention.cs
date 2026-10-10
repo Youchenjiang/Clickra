@@ -21,7 +21,8 @@ static partial class TestSuite
     private static readonly string[] ParkedRetentionUiFiles =
     {
         Path.Combine("src", "Clickra.Fluent", "MainPage.xaml.cs"),
-        Path.Combine("src", "Clickra.CLI", "Dashboard", "DashboardWindow.Events.Click.cs"),
+        Path.Combine("src", "Clickra.Fluent", "MainPage.History.cs"),
+        Path.Combine("src", "Clickra.CLI", "Dashboard", "DashboardWindow.Events.History.cs"),
         Path.Combine("src", "Clickra.CLI", "Dashboard", "DashboardWindow.Paint.History.cs")
     };
 
@@ -242,8 +243,8 @@ static partial class TestSuite
 
         foreach ((string surface, string path) in new[]
         {
-            ("Fluent History page", Path.Combine(root, "src", "Clickra.Fluent", "MainPage.xaml.cs")),
-            ("CLI dashboard", Path.Combine(root, "src", "Clickra.CLI", "Dashboard", "DashboardWindow.Events.Click.cs"))
+            ("Fluent History page", Path.Combine(root, "src", "Clickra.Fluent", "MainPage.History.cs")),
+            ("CLI dashboard", Path.Combine(root, "src", "Clickra.CLI", "Dashboard", "DashboardWindow.Events.History.cs"))
         })
         {
             string source = File.ReadAllText(path);
