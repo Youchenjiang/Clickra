@@ -22,8 +22,6 @@ public static class ConvertCommandRegistry
         private const string CmdCompressPdf = "compress-pdf";
         private const string CmdImg2Pdf = "img2pdf";
         private const string CmdImgMerge = "img-merge";
-        private const string ExtensionWebp = ".webp";
-        private const string ExtensionHeic = ".heic";
         /// <summary>File extensions accepted by a UI file type ("pdf", "word", "excel", "ppt", "image").</summary>
         public static string[] GetAllowedExtensionsByType(string type) => ConvertCommandMetadata.GetAllowedExtensionsByType(type);
 
@@ -62,7 +60,6 @@ public static class ConvertCommandRegistry
         /// <summary>Predicts the output paths a command will produce for the given files.</summary>
         public static List<string> EstimateOutputs(string command, List<string> files, string? outputDirOverride = null)
         {
-            string outputDir = ClickraStorage.GetOutputDir(files[0]);
             return command switch
             {
                 CmdMergePdf => throw new InvalidOperationException(
@@ -89,45 +86,10 @@ public static class ConvertCommandRegistry
                 CmdImgCompress => throw new InvalidOperationException(
                     "img-compress output planning is owned by the application use case."),
                 CmdImgToPng or CmdImgToJpg or CmdImgToWebp or CmdImgToGif or CmdImgToHeic
-                    => EstimateImageFormatOutputs(command, files, outputDirOverride),
+                    => throw new InvalidOperationException(
+                        $"{command} output planning is owned by the application use case."),
                 _ => files.Select(f => Path.Combine(ClickraStorage.GetOutputDir(f), Path.GetFileNameWithoutExtension(f) + ".pdf")).ToList()
             };
-        }
-
-        /// <summary>Predicts one output path per input file for image format conversion
-        /// commands: same directory and base name, target extension.</summary>
-        public static List<string> EstimateImageFormatOutputs(string command, List<string> files, string? outputDirOverride = null)
-        {
-            string extension = command switch
-            {
-                CmdImgToPng => ".png",
-                CmdImgToJpg => ".jpg",
-                CmdImgToWebp => ExtensionWebp,
-                CmdImgToGif => ".gif",
-                CmdImgToHeic => ExtensionHeic,
-                _ => throw new InvalidOperationException($"Unknown image format command '{command}'.")
-            };
-            var outputs = files
-                .Select(f => Path.Combine(
-                    string.IsNullOrWhiteSpace(outputDirOverride) ? ClickraStorage.GetOutputDir(f) : outputDirOverride,
-                    Path.GetFileNameWithoutExtension(f) + extension))
-                .ToList();
-            EnsureUniqueOutputPaths(outputs);
-            return outputs;
-        }
-
-        /// <summary>Fails before conversion when multiple inputs would resolve to the same
-        /// output path. This prevents silent last-writer-wins data loss across CLI and UI callers.</summary>
-        public static void EnsureUniqueOutputPaths(IEnumerable<string> outputs)
-        {
-            var duplicate = outputs
-                .GroupBy(Path.GetFullPath, StringComparer.OrdinalIgnoreCase)
-                .FirstOrDefault(group => group.Count() > 1);
-            if (duplicate is not null)
-            {
-                string template = Localization.T("error_image_output_collision", ClickraStorage.GetSetting(ClickraSettings.Language));
-                throw new InvalidOperationException(string.Format(template, duplicate.Key));
-            }
         }
 
         /// <summary>Reads the current slider level from settings (0-2). 未設定或超出範圍時採用

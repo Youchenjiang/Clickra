@@ -21,8 +21,6 @@ static partial class TestSuite
     private const string CmdImg2Pdf = "img2pdf";
     private const string ExtHeic = ".heic";
     private const string CliProjectDir = "Clickra.CLI";
-    private const string PasswordPromptErrorMessage = "Password prompt must not run for image conversion.";
-    private const string SplitPromptErrorMessage = "Split prompt must not run for image conversion.";
 
     public static void RegisterImageConvertTests(TestRunner runner)
     {
@@ -471,72 +469,86 @@ static partial class TestSuite
             Assert.True(ConvertCommandRegistry.GetAllowedExtensions(CmdImgToPng).Contains(".bmp", StringComparer.OrdinalIgnoreCase), "img-to-png must accept .bmp inputs.");
         });
 
-        runner.Run("ConvertCommandRegistry.EstimateOutputs predicts target extension per input", () =>
+        runner.Run("Image format use case predicts target extension per input", () =>
             RunWithTempDirectory(tempDir =>
             {
                 string input = CreateTestImage(tempDir, "photo.png", ImageFormat.Png);
-                var outputs = ConvertCommandRegistry.EstimateOutputs(CmdImgToJpg, new List<string> { input });
-                Assert.True(outputs.Count == 1, "Expected exactly one predicted output.");
-                Assert.True(outputs[0].EndsWith(".jpg", StringComparison.OrdinalIgnoreCase), $"Expected .jpg output, got {outputs[0]}.");
+                ConversionPlan jpgPlan = new ImageFormatConvertUseCase(CmdImgToJpg).Plan(
+                    new ConversionRequest(CmdImgToJpg, new[] { input }));
+                Assert.True(jpgPlan.Outputs.Count == 1, "Expected exactly one predicted output.");
+                Assert.True(jpgPlan.Outputs[0].EndsWith(".jpg", StringComparison.OrdinalIgnoreCase), $"Expected .jpg output, got {jpgPlan.Outputs[0]}.");
 
-                outputs = ConvertCommandRegistry.EstimateOutputs(CmdImgToHeic, new List<string> { input });
-                Assert.True(outputs.Count == 1, "Expected exactly one predicted output.");
-                Assert.True(outputs[0].EndsWith(ExtHeic, StringComparison.OrdinalIgnoreCase), $"Expected .heic output, got {outputs[0]}.");
+                ConversionPlan heicPlan = new ImageFormatConvertUseCase(CmdImgToHeic).Plan(
+                    new ConversionRequest(CmdImgToHeic, new[] { input }));
+                Assert.True(heicPlan.Outputs.Count == 1, "Expected exactly one predicted output.");
+                Assert.True(heicPlan.Outputs[0].EndsWith(ExtHeic, StringComparison.OrdinalIgnoreCase), $"Expected .heic output, got {heicPlan.Outputs[0]}.");
             }));
 
-        runner.Run("ConvertCommandRegistry.EstimateOutputs rejects colliding image outputs", () =>
+        runner.Run("Image format use case rejects colliding image outputs", () =>
             RunWithTempDirectory(tempDir =>
             {
                 string png = CreateTestImage(tempDir, "photo.png", ImageFormat.Png);
                 string gif = CreateTestImage(tempDir, "photo.gif", ImageFormat.Gif);
                 InvalidOperationException ex = Assert.Throws<InvalidOperationException>(() =>
-                    ConvertCommandRegistry.EstimateOutputs(CmdImgToJpg, new List<string> { png, gif }));
+                    new ImageFormatConvertUseCase(CmdImgToJpg).Plan(
+                        new ConversionRequest(CmdImgToJpg, new[] { png, gif })));
                 Assert.True(ex.Message.Contains("photo.jpg", StringComparison.OrdinalIgnoreCase), "Collision error should identify the conflicting output path.");
                 Assert.False(ex.Message.Contains("{0}", StringComparison.Ordinal), "Collision error should substitute the output path placeholder.");
             }));
 
-        runner.Run("ConvertCommandRunner runs img-to-heic end to end when a HEIC encoder is available", () =>
+        runner.Run("Image format use case runs img-to-heic end to end when a HEIC encoder is available", () =>
             RunWithTempDirectory(tempDir =>
             {
                 string input = CreateTestImage(tempDir, "source.png", ImageFormat.Png);
-                string output = Path.Combine(tempDir, "source.heic");
                 var messages = new List<string>();
+                var useCase = new ImageFormatConvertUseCase(CmdImgToHeic);
+                ConversionPlan plan = useCase.Plan(new ConversionRequest(
+                    CmdImgToHeic,
+                    new[] { input },
+                    TrackTaskLifecycle: false));
+                var interaction = new DelegateConversionInteraction(
+                    (_, _, _, _) => Task.FromResult<string?>(null),
+                    (_, _, _) => Task.FromResult<string?>(null),
+                    (_, _, _) => Task.FromResult<IReadOnlyDictionary<string, object>?>(null));
+                var progress = new ImmediateProgress<ConversionProgress>(state => messages.Add(state.Message));
+                ConversionResult result = useCase.ExecuteAsync(plan, interaction, progress).GetAwaiter().GetResult();
+
                 if (ImageFormatConvertProcessor.IsHeicEncodingSupported())
                 {
-                    ConvertCommandRunner.Run(CmdImgToHeic, new List<string> { input }, new List<string> { output },
-                        (c, t, m) => messages.Add(m),
-                        new ConvertCommandRunner.ConversionOptions(
-                            _ => throw new InvalidOperationException(PasswordPromptErrorMessage),
-                            (_, _) => throw new InvalidOperationException(SplitPromptErrorMessage)));
-                    Assert.True(File.Exists(output), "Expected HEIC output to exist after ConvertCommandRunner.Run when a HEIC encoder is present.");
-                    Assert.True(HasHeicMagicBytes(output), "Expected HEIC magic bytes on runner output.");
+                    Assert.True(result.Status == ConversionResultStatus.Succeeded, result.Error ?? "Expected HEIC conversion success.");
+                    Assert.True(File.Exists(plan.Outputs[0]), "Expected HEIC output to exist when a HEIC encoder is present.");
+                    Assert.True(HasHeicMagicBytes(plan.Outputs[0]), "Expected HEIC magic bytes on use-case output.");
                 }
                 else
                 {
-                    Assert.Throws<NotSupportedException>(() =>
-                        ConvertCommandRunner.Run(CmdImgToHeic, new List<string> { input }, new List<string> { output },
-                            (c, t, m) => messages.Add(m),
-                            new ConvertCommandRunner.ConversionOptions(
-                                _ => throw new InvalidOperationException(PasswordPromptErrorMessage),
-                                (_, _) => throw new InvalidOperationException(SplitPromptErrorMessage))));
+                    Assert.True(result.Status == ConversionResultStatus.Failed,
+                        "Missing HEIC encoder should fail through the application result instead of succeeding.");
                 }
-                Assert.True(messages.Count > 0, "Expected the runner to attempt the conversion.");
+                Assert.True(messages.Count > 0, "Expected the use case to attempt the conversion.");
             }));
 
-        runner.Run("ConvertCommandRunner runs img-to-webp end to end", () =>
+        runner.Run("Image format use case runs img-to-webp end to end", () =>
             RunWithTempDirectory(tempDir =>
             {
                 string input = CreateTestImage(tempDir, "source.png", ImageFormat.Png);
-                string output = Path.Combine(tempDir, "source.webp");
                 var messages = new List<string>();
-                ConvertCommandRunner.Run(CmdImgToWebp, new List<string> { input }, new List<string> { output },
-                    (c, t, m) => messages.Add(m),
-                    new ConvertCommandRunner.ConversionOptions(
-                        _ => throw new InvalidOperationException(PasswordPromptErrorMessage),
-                        (_, _) => throw new InvalidOperationException(SplitPromptErrorMessage)));
-                Assert.True(File.Exists(output), "Expected WEBP output to exist after ConvertCommandRunner.Run.");
-                Assert.True(HasWebpMagicBytes(output), "Expected runner WEBP output to have RIFF/WEBP magic bytes.");
-                Assert.True(messages.Count > 0, "Expected the runner to attempt the conversion.");
+                var useCase = new ImageFormatConvertUseCase(CmdImgToWebp);
+                ConversionPlan plan = useCase.Plan(new ConversionRequest(
+                    CmdImgToWebp,
+                    new[] { input },
+                    TrackTaskLifecycle: false));
+                var interaction = new DelegateConversionInteraction(
+                    (_, _, _, _) => Task.FromResult<string?>(null),
+                    (_, _, _) => Task.FromResult<string?>(null),
+                    (_, _, _) => Task.FromResult<IReadOnlyDictionary<string, object>?>(null));
+                var progress = new ImmediateProgress<ConversionProgress>(state => messages.Add(state.Message));
+
+                ConversionResult result = useCase.ExecuteAsync(plan, interaction, progress).GetAwaiter().GetResult();
+
+                Assert.True(result.Status == ConversionResultStatus.Succeeded, result.Error ?? "Expected WEBP conversion success.");
+                Assert.True(File.Exists(plan.Outputs[0]), "Expected WEBP output to exist after use-case execution.");
+                Assert.True(HasWebpMagicBytes(plan.Outputs[0]), "Expected use-case WEBP output to have RIFF/WEBP magic bytes.");
+                Assert.True(messages.Count > 0, "Expected the use case to attempt the conversion.");
             }));
 
         runner.Run("Product surfaces expose every img-to-* command", () =>
@@ -563,11 +575,13 @@ static partial class TestSuite
                 Assert.True(cli.Contains($"case \"{command}\"", StringComparison.Ordinal), $"Legacy CLI must dispatch {command}.");
                 Assert.True(startup.Contains(command, StringComparison.Ordinal), $"CLI help/version must list {command}.");
                 Assert.True(dashboard.Contains($"Command = \"{command}\"", StringComparison.Ordinal), $"Native dashboard must expose {command}.");
-                Assert.True(progress.Contains("RunSharedCommand(cmd, currentFiles, plannedOutputs, progressCallback)", StringComparison.Ordinal)
-                            && progress.Contains("ConvertCommandRunner.Run(", StringComparison.Ordinal),
-                    $"Native progress routing must execute {command} through the shared Core dispatcher.");
+                Assert.True(progress.Contains("imageFormatUseCase is ImageFormatConvertUseCase", StringComparison.Ordinal)
+                            && progress.Contains("RunApplicationImageFormat(hwnd, cmd, currentFiles, progressCallback)", StringComparison.Ordinal),
+                    $"Native progress routing must execute {command} through the application use-case catalog.");
                 Assert.False(progress.Contains($"case \"{command}\"", StringComparison.Ordinal),
                     $"Native progress routing must not keep a second dispatch branch for {command}.");
+                Assert.True(cli.Contains("HandleImageFormatQuiet(command, files, outputDir)", StringComparison.Ordinal),
+                    $"Quiet CLI must execute {command} through the application use-case catalog.");
                 Assert.True(fluentXaml.Contains($"x:Name=\"{buttonName}\"", StringComparison.Ordinal) && fluentXaml.Contains($"Tag=\"{command}\"", StringComparison.Ordinal), $"Fluent XAML must expose {command}.");
                 Assert.True(fluentCode.Contains(buttonName, StringComparison.Ordinal) && fluentCode.Contains(labelKey, StringComparison.Ordinal), $"Fluent code-behind must hook and localize {command}.");
             }
