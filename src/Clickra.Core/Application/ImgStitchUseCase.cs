@@ -37,11 +37,13 @@ public sealed class ImgStitchUseCase : IConversionUseCase
         string outputDir = string.IsNullOrWhiteSpace(request.OutputOverride)
             ? ClickraStorage.GetOutputDir(inputs[0])
             : Path.GetFullPath(request.OutputOverride);
+        string output = Path.Combine(outputDir, OutputFileName);
+        ImageOutputSafety.EnsureOutputsDoNotOverwriteInputs(inputs, new[] { output });
 
         return new ConversionPlan(
             CommandName,
             inputs,
-            new[] { Path.Combine(outputDir, OutputFileName) },
+            new[] { output },
             new HashSet<ConversionCapability>(),
             new Dictionary<string, object>(),
             ExistingTaskId: request.ExistingTaskId,

@@ -303,6 +303,23 @@ static partial class TestSuite
                 Assert.Equal(Path.Combine(Path.GetFullPath(outputDir), ImgStitchUseCase.OutputFileName), plan.Outputs[0]);
             }));
 
+        runner.Run("ImgStitch use case rejects output that overwrites a selected input", () =>
+            RunWithTempDirectory(tempDir =>
+            {
+                string first = CreateTestImage(tempDir, ImgStitchUseCase.OutputFileName, ImageFormat.Png);
+                string second = CreateTestImage(tempDir, "second.jpg", ImageFormat.Jpeg);
+                byte[] original = File.ReadAllBytes(first);
+
+                InvalidOperationException ex = Assert.Throws<InvalidOperationException>(() =>
+                    new ImgStitchUseCase().Plan(new ConversionRequest(
+                        ImgStitchUseCase.CommandName,
+                        new[] { first, second })));
+                Assert.True(ex.Message.Contains(ImgStitchUseCase.OutputFileName, StringComparison.OrdinalIgnoreCase),
+                    "Collision error should identify the selected stitch input that would be overwritten.");
+                Assert.True(File.ReadAllBytes(first).SequenceEqual(original),
+                    "Rejected stitch planning must leave selected inputs untouched.");
+            }));
+
         runner.Run("ImgStitch use case can run without task tracking", () =>
             RunWithTempDirectory(tempDir =>
             {
@@ -416,6 +433,26 @@ static partial class TestSuite
                 Assert.Equal(Path.Combine(Path.GetFullPath(outputDir), "input.pdf"), plan.Outputs[0]);
             }));
 
+        runner.Run("Img2Pdf use case rejects colliding shared outputs", () =>
+            RunWithTempDirectory(tempDir =>
+            {
+                string firstDir = Path.Combine(tempDir, "first");
+                string secondDir = Path.Combine(tempDir, "second");
+                Directory.CreateDirectory(firstDir);
+                Directory.CreateDirectory(secondDir);
+                string first = CreateTestImage(firstDir, "photo.png", ImageFormat.Png);
+                string second = CreateTestImage(secondDir, "photo.jpg", ImageFormat.Jpeg);
+                string outputDir = Path.Combine(tempDir, "out");
+
+                InvalidOperationException ex = Assert.Throws<InvalidOperationException>(() =>
+                    new Img2PdfUseCase().Plan(new ConversionRequest(
+                        Img2PdfUseCase.CommandName,
+                        new[] { first, second },
+                        OutputOverride: outputDir)));
+                Assert.True(ex.Message.Contains("photo.pdf", StringComparison.OrdinalIgnoreCase),
+                    "Collision error should identify the shared img2pdf output path.");
+            }));
+
         runner.Run("Img2Pdf use case can run without task tracking", () =>
             RunWithTempDirectory(tempDir =>
             {
@@ -494,6 +531,22 @@ static partial class TestSuite
                         new ConversionRequest(CmdImgToJpg, new[] { png, gif })));
                 Assert.True(ex.Message.Contains("photo.jpg", StringComparison.OrdinalIgnoreCase), "Collision error should identify the conflicting output path.");
                 Assert.False(ex.Message.Contains("{0}", StringComparison.Ordinal), "Collision error should substitute the output path placeholder.");
+            }));
+
+        runner.Run("Image format use case rejects outputs that overwrite selected inputs", () =>
+            RunWithTempDirectory(tempDir =>
+            {
+                string png = CreateTestImage(tempDir, "photo.png", ImageFormat.Png);
+                string jpg = CreateTestImage(tempDir, "photo.jpg", ImageFormat.Jpeg);
+                byte[] original = File.ReadAllBytes(png);
+
+                InvalidOperationException ex = Assert.Throws<InvalidOperationException>(() =>
+                    new ImageFormatConvertUseCase(CmdImgToPng).Plan(
+                        new ConversionRequest(CmdImgToPng, new[] { jpg, png })));
+                Assert.True(ex.Message.Contains("photo.png", StringComparison.OrdinalIgnoreCase),
+                    "Collision error should identify the selected input that would be overwritten.");
+                Assert.True(File.ReadAllBytes(png).SequenceEqual(original),
+                    "Rejected planning must leave selected inputs untouched.");
             }));
 
         runner.Run("Image format use case runs img-to-heic end to end when a HEIC encoder is available", () =>

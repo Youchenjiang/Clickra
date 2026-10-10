@@ -62,7 +62,8 @@ public sealed class ImageFormatConvertUseCase : IConversionUseCase
                 outputOverride ?? ClickraStorage.GetOutputDir(input),
                 Path.GetFileNameWithoutExtension(input) + extension))
             .ToList();
-        EnsureUniqueOutputs(outputs);
+        ImageOutputSafety.EnsureUniqueOutputs(outputs);
+        ImageOutputSafety.EnsureOutputsDoNotOverwriteInputs(inputs, outputs);
 
         return new ConversionPlan(
             Command,
@@ -158,16 +159,4 @@ public sealed class ImageFormatConvertUseCase : IConversionUseCase
                 lifecycle?.TaskId ?? "");
     }
 
-    private static void EnsureUniqueOutputs(IEnumerable<string> outputs)
-    {
-        var duplicate = outputs
-            .GroupBy(Path.GetFullPath, StringComparer.OrdinalIgnoreCase)
-            .FirstOrDefault(group => group.Count() > 1);
-        if (duplicate is null) return;
-
-        string template = Localization.T(
-            "error_image_output_collision",
-            ClickraStorage.GetSetting(ClickraSettings.Language));
-        throw new InvalidOperationException(string.Format(template, duplicate.Key));
-    }
 }

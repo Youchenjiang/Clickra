@@ -41,6 +41,7 @@ public sealed class Img2PdfUseCase : IConversionUseCase
                 outputOverride ?? ClickraStorage.GetOutputDir(input),
                 Path.GetFileNameWithoutExtension(input) + ".pdf"))
             .ToList();
+        ImageOutputSafety.EnsureUniqueOutputs(outputs);
 
         return new ConversionPlan(
             CommandName,
