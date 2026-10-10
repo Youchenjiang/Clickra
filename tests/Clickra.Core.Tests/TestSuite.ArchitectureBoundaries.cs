@@ -189,6 +189,7 @@ static partial class TestSuite
     {
         IConversionUseCase compress = ConversionUseCases.GetRequired(CompressPdfUseCase.CommandName);
         IConversionUseCase decrypt = ConversionUseCases.GetRequired(DecryptPdfUseCase.CommandName);
+        IConversionUseCase imgMerge = ConversionUseCases.GetRequired(ImgMergeUseCase.CommandName);
         IConversionUseCase img2Pdf = ConversionUseCases.GetRequired(Img2PdfUseCase.CommandName);
         IConversionUseCase merge = ConversionUseCases.GetRequired(MergePdfUseCase.CommandName);
         IConversionUseCase split = ConversionUseCases.GetRequired(SplitPdfUseCase.CommandName);
@@ -196,6 +197,8 @@ static partial class TestSuite
             "compress-pdf must resolve through the product-wide application use-case catalog.");
         Assert.True(decrypt is DecryptPdfUseCase,
             "decrypt-pdf must resolve through the product-wide application use-case catalog.");
+        Assert.True(imgMerge is ImgMergeUseCase,
+            "img-merge must resolve through the product-wide application use-case catalog.");
         Assert.True(img2Pdf is Img2PdfUseCase,
             "img2pdf must resolve through the product-wide application use-case catalog.");
         Assert.True(merge is MergePdfUseCase,
@@ -208,6 +211,9 @@ static partial class TestSuite
         Assert.True(ConversionUseCases.Commands.Count(command =>
                 command.Equals(DecryptPdfUseCase.CommandName, StringComparison.OrdinalIgnoreCase)) == 1,
             "The product catalog must expose exactly one decrypt-pdf owner.");
+        Assert.True(ConversionUseCases.Commands.Count(command =>
+                command.Equals(ImgMergeUseCase.CommandName, StringComparison.OrdinalIgnoreCase)) == 1,
+            "The product catalog must expose exactly one img-merge owner.");
         Assert.True(ConversionUseCases.Commands.Count(command =>
                 command.Equals(Img2PdfUseCase.CommandName, StringComparison.OrdinalIgnoreCase)) == 1,
             "The product catalog must expose exactly one img2pdf owner.");

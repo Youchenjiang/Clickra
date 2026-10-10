@@ -8,6 +8,7 @@ public static class ConversionUseCases
         {
             new CompressPdfUseCase(),
             new DecryptPdfUseCase(),
+            new ImgMergeUseCase(),
             new Img2PdfUseCase(),
             new MergePdfUseCase(),
             new SplitPdfUseCase()
