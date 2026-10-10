@@ -3,7 +3,7 @@ using Clickra.Core.Processors;
 namespace Clickra.Core.Application;
 
 /// <summary>Authoritative application workflow for splitting PDF files.</summary>
-public sealed class SplitPdfUseCase : PdfFileConversionUseCaseBase
+public sealed class SplitPdfUseCase : PerFileConversionUseCaseBase
 {
     public const string CommandName = "split-pdf";
     public const string PagesOptionKey = "pages";
@@ -11,9 +11,11 @@ public sealed class SplitPdfUseCase : PdfFileConversionUseCaseBase
 
     public override string Command => CommandName;
     protected override string UseCaseName => nameof(SplitPdfUseCase);
-    protected override string OutputSuffix => "_split.pdf";
+    protected override string InputRequirementError => "At least one PDF file is required.";
     protected override string OutputCountError => "Split conversion requires one output per input.";
     protected override string UnsupportedInputError(string path) => $"Unsupported split input '{path}'.";
+    protected override string GetOutputFileName(string input) =>
+        Path.GetFileNameWithoutExtension(input) + "_split.pdf";
 
     protected override IReadOnlyDictionary<string, object> NormalizeOptions(ConversionRequest request)
     {

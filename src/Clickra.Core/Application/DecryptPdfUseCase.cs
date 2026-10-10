@@ -4,16 +4,18 @@ using PdfSharp.Pdf.IO;
 namespace Clickra.Core.Application;
 
 /// <summary>Authoritative application workflow for removing PDF password protection.</summary>
-public sealed class DecryptPdfUseCase : PdfFileConversionUseCaseBase
+public sealed class DecryptPdfUseCase : PerFileConversionUseCaseBase
 {
     public const string CommandName = "decrypt-pdf";
 
     public override string Command => CommandName;
 
     protected override string UseCaseName => nameof(DecryptPdfUseCase);
-    protected override string OutputSuffix => "_decrypted.pdf";
+    protected override string InputRequirementError => "At least one PDF file is required.";
     protected override string OutputCountError => "Decrypt conversion requires one output per input.";
     protected override string UnsupportedInputError(string path) => $"Unsupported decrypt input '{path}'.";
+    protected override string GetOutputFileName(string input) =>
+        Path.GetFileNameWithoutExtension(input) + "_decrypted.pdf";
     protected override IReadOnlySet<ConversionCapability> GetCapabilities(ConversionRequest request) =>
         new HashSet<ConversionCapability> { ConversionCapability.Password };
 

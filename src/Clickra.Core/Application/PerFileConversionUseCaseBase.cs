@@ -3,18 +3,20 @@ using Clickra.Core.Processors;
 
 namespace Clickra.Core.Application;
 
-/// <summary>Shared application lifecycle for one-input/one-output PDF conversions.</summary>
-public abstract class PdfFileConversionUseCaseBase : IConversionUseCase
+/// <summary>Shared application lifecycle for one-input/one-output file conversions.</summary>
+public abstract class PerFileConversionUseCaseBase : IConversionUseCase
 {
     public abstract string Command { get; }
 
     protected abstract string UseCaseName { get; }
 
-    protected abstract string OutputSuffix { get; }
+    protected abstract string InputRequirementError { get; }
 
     protected abstract string OutputCountError { get; }
 
     protected abstract string UnsupportedInputError(string path);
+
+    protected abstract string GetOutputFileName(string input);
 
     protected virtual ConversionValidationResult ValidateOptions(ConversionRequest request) =>
         ConversionValidationResult.Success();
@@ -28,6 +30,15 @@ public abstract class PdfFileConversionUseCaseBase : IConversionUseCase
             : new Dictionary<string, object>(request.Options, StringComparer.Ordinal);
 
     protected virtual object? CreateExecutionState(ConversionPlan plan) => null;
+
+    protected virtual string NormalizeOutputOverride(string outputOverride) =>
+        Path.GetFullPath(outputOverride);
+
+    protected virtual void ValidateOutputs(
+        IReadOnlyList<string> inputs,
+        IReadOnlyList<string> outputs)
+    {
+    }
 
     protected abstract Task ExecuteFileAsync(
         int index,
@@ -43,7 +54,7 @@ public abstract class PdfFileConversionUseCaseBase : IConversionUseCase
         if (!request.Command.Equals(Command, StringComparison.OrdinalIgnoreCase))
             return ConversionValidationResult.Failure($"{UseCaseName} cannot handle '{request.Command}'.");
         if (request.InputFiles.Count < ConvertCommandRegistry.GetMinFiles(Command))
-            return ConversionValidationResult.Failure("At least one PDF file is required.");
+            return ConversionValidationResult.Failure(InputRequirementError);
 
         string[] allowed = ConvertCommandRegistry.GetAllowedExtensions(Command);
         string? invalid = request.InputFiles.FirstOrDefault(path =>
@@ -62,12 +73,13 @@ public abstract class PdfFileConversionUseCaseBase : IConversionUseCase
         var inputs = request.InputFiles.ToList();
         string? outputOverride = string.IsNullOrWhiteSpace(request.OutputOverride)
             ? null
-            : Path.GetFullPath(request.OutputOverride);
+            : NormalizeOutputOverride(request.OutputOverride);
         List<string> outputs = inputs
             .Select(input => Path.Combine(
                 outputOverride ?? ClickraStorage.GetOutputDir(input),
-                Path.GetFileNameWithoutExtension(input) + OutputSuffix))
+                GetOutputFileName(input)))
             .ToList();
+        ValidateOutputs(inputs, outputs);
 
         return new ConversionPlan(
             Command,

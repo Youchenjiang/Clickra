@@ -3,16 +3,18 @@ using Clickra.Core.Processors;
 namespace Clickra.Core.Application;
 
 /// <summary>Authoritative application workflow for compressing PDF files.</summary>
-public sealed class CompressPdfUseCase : PdfFileConversionUseCaseBase
+public sealed class CompressPdfUseCase : PerFileConversionUseCaseBase
 {
     public const string CommandName = "compress-pdf";
     public const string LevelOptionKey = "level";
 
     public override string Command => CommandName;
     protected override string UseCaseName => nameof(CompressPdfUseCase);
-    protected override string OutputSuffix => "_compressed.pdf";
+    protected override string InputRequirementError => "At least one PDF file is required.";
     protected override string OutputCountError => "PDF compression requires one output per input.";
     protected override string UnsupportedInputError(string path) => $"Unsupported compression input '{path}'.";
+    protected override string GetOutputFileName(string input) =>
+        Path.GetFileNameWithoutExtension(input) + "_compressed.pdf";
 
     protected override ConversionValidationResult ValidateOptions(ConversionRequest request)
     {
