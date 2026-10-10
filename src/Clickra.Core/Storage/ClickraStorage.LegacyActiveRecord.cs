@@ -15,6 +15,10 @@ public static partial class ClickraStorage
 
     public static void SetActiveRecordIndex(int index) => LegacyActiveRecordAdapter.SetIndex(index);
 
+    [System.Diagnostics.CodeAnalysis.SuppressMessage(
+        "Major Code Smell",
+        "S107",
+        Justification = "Legacy compatibility facade preserves the historical public signature for existing callers.")]
     public static void CompleteActiveRecord(
         string command,
         string startTime,
@@ -24,15 +28,17 @@ public static partial class ClickraStorage
         long elapsedMs = -1,
         string? inputPaths = null,
         string? outputPath = null) =>
-        LegacyActiveRecordAdapter.Complete(
-            command,
-            startTime,
-            isSuccess,
-            errorMsg,
-            endTime,
-            elapsedMs,
-            inputPaths,
-            outputPath);
+        LegacyActiveRecordAdapter.Complete(new LegacyActiveRecordAdapter.CompletionData
+        {
+            Command = command,
+            StartTime = startTime,
+            IsSuccess = isSuccess,
+            ErrorMessage = errorMsg,
+            EndTime = endTime,
+            ElapsedMs = elapsedMs,
+            InputPaths = inputPaths,
+            OutputPath = outputPath,
+        });
 
     public static void ClearActiveRecord() => LegacyActiveRecordAdapter.Clear();
 
@@ -40,6 +46,18 @@ public static partial class ClickraStorage
 
     private static class LegacyActiveRecordAdapter
     {
+        internal sealed class CompletionData
+        {
+            internal string Command { get; init; } = "";
+            internal string StartTime { get; init; } = "";
+            internal bool IsSuccess { get; init; }
+            internal string ErrorMessage { get; init; } = "";
+            internal string? EndTime { get; init; }
+            internal long ElapsedMs { get; init; }
+            internal string? InputPaths { get; init; }
+            internal string? OutputPath { get; init; }
+        }
+
         private static string ActiveFile => Path.Combine(DataDir, "active.tmp");
 
         internal static void Start(string command, int fileCount, string? inputPaths)
@@ -84,15 +102,7 @@ public static partial class ClickraStorage
             });
         }
 
-        internal static void Complete(
-            string command,
-            string startTime,
-            bool isSuccess,
-            string errorMsg,
-            string? endTime,
-            long elapsedMs,
-            string? inputPaths,
-            string? outputPath)
+        internal static void Complete(CompletionData data)
         {
             RunWithMutex(() =>
             {
@@ -100,10 +110,10 @@ public static partial class ClickraStorage
                 {
                     try
                     {
-                        string cleanError = (errorMsg ?? "").Replace("\r", " ").Replace("\n", " ").Replace("|", " ");
-                        string completedAt = endTime ?? DateTime.UtcNow.ToString(DateTimeFormat);
-                        string inputs = (inputPaths ?? "").Replace("\r", " ").Replace("\n", " ").Replace("|", " ");
-                        string output = (outputPath ?? "").Replace("\r", " ").Replace("\n", " ").Replace("|", " ");
+                        string cleanError = (data.ErrorMessage ?? "").Replace("\r", " ").Replace("\n", " ").Replace("|", " ");
+                        string completedAt = data.EndTime ?? DateTime.UtcNow.ToString(DateTimeFormat);
+                        string inputs = (data.InputPaths ?? "").Replace("\r", " ").Replace("\n", " ").Replace("|", " ");
+                        string output = (data.OutputPath ?? "").Replace("\r", " ").Replace("\n", " ").Replace("|", " ");
                         string[] inputList = inputs.Split(new[] { ';' }, StringSplitOptions.RemoveEmptyEntries);
 
                         int currentIndex = 0;
@@ -126,15 +136,15 @@ public static partial class ClickraStorage
                         }
 
                         Write(
-                            command,
+                            data.Command,
                             inputList.Length,
-                            isSuccess ? ConversionStatus.Success : ConversionStatus.Failed,
+                            data.IsSuccess ? ConversionStatus.Success : ConversionStatus.Failed,
                             cleanError,
-                            startTime,
+                            data.StartTime,
                             inputs,
                             currentIndex);
 
-                        string historyLine = $"{startTime}|{command}|{inputList.Length}|{(isSuccess ? "Success" : "Failed")}|{cleanError}|{completedAt}|{elapsedMs}|{inputs}|{output}";
+                        string historyLine = $"{data.StartTime}|{data.Command}|{inputList.Length}|{(data.IsSuccess ? "Success" : "Failed")}|{cleanError}|{completedAt}|{data.ElapsedMs}|{inputs}|{output}";
                         File.AppendAllText(HistoryFile, historyLine + Environment.NewLine, System.Text.Encoding.UTF8);
                     }
                     catch

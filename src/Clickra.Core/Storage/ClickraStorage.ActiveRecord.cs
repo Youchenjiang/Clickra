@@ -504,7 +504,7 @@ namespace Clickra.Core
         private static string TaskFilePath(string taskId) => TaskRecordStore.PathFor(taskId);
 
         /// <summary>可排序的唯一任務 ID：時間戳 + 短 GUID（檔名排序即建立順序）。</summary>
-        private static string NewTaskId() => TaskRecordStore.NewTaskId();
+        private static string NewTaskId() => TaskRecordStore.CreateTaskId();
 
         private static void EnsureTasksDir() => TaskRecordStore.EnsureDirectory();
 

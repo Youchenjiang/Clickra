@@ -12,6 +12,7 @@ public static class ConvertCommandMetadata
     private const string CmdCompressPdf = "compress-pdf";
     private const string CmdImg2Pdf = "img2pdf";
     private const string CmdImgMerge = "img-merge";
+    private const string FileTypeImage = "image";
 
     private sealed record CommandDef(
         string FileType,
@@ -35,7 +36,7 @@ public static class ConvertCommandMetadata
         ["excel"] = ExcelExtensions,
         ["ppt"] = PptExtensions,
         ["markdown"] = MarkdownExtensions,
-        ["image"] = ImageExtensions,
+        [FileTypeImage] = ImageExtensions,
     };
 
     private static readonly Dictionary<string, CommandDef> Commands = new(StringComparer.OrdinalIgnoreCase)
@@ -50,15 +51,15 @@ public static class ConvertCommandMetadata
         ["translate-pdf"] = new("pdf", PdfExtensions, 1, "cmd_translate_pdf"),
         ["decrypt-pdf"] = new("pdf", PdfExtensions, 1, "cmd_decrypt_pdf"),
         ["split-pdf"] = new("pdf", PdfExtensions, 1, "cmd_split_pdf"),
-        [CmdImg2Pdf] = new("image", ImageExtensions, 1, "cmd_img_to_pdf"),
-        [CmdImgMerge] = new("image", ImageExtensions, 2, "cmd_merge_img"),
-        ["img-stitch"] = new("image", ImageExtensions, 2, "cmd_stitch_img"),
-        ["img-compress"] = new("image", ImageCompressionExtensions, 1, "cmd_img_compress"),
-        ["img-to-png"] = new("image", ImageExtensions, 1, "cmd_img_to_png", [".png"]),
-        ["img-to-jpg"] = new("image", ImageExtensions, 1, "cmd_img_to_jpg", [".jpg", ".jpeg"]),
-        ["img-to-webp"] = new("image", ImageExtensions, 1, "cmd_img_to_webp", [".webp"]),
-        ["img-to-gif"] = new("image", ImageExtensions, 1, "cmd_img_to_gif", [".gif"]),
-        ["img-to-heic"] = new("image", ImageExtensions, 1, "cmd_img_to_heic", [".heic"]),
+        [CmdImg2Pdf] = new(FileTypeImage, ImageExtensions, 1, "cmd_img_to_pdf"),
+        [CmdImgMerge] = new(FileTypeImage, ImageExtensions, 2, "cmd_merge_img"),
+        ["img-stitch"] = new(FileTypeImage, ImageExtensions, 2, "cmd_stitch_img"),
+        ["img-compress"] = new(FileTypeImage, ImageCompressionExtensions, 1, "cmd_img_compress"),
+        ["img-to-png"] = new(FileTypeImage, ImageExtensions, 1, "cmd_img_to_png", [".png"]),
+        ["img-to-jpg"] = new(FileTypeImage, ImageExtensions, 1, "cmd_img_to_jpg", [".jpg", ".jpeg"]),
+        ["img-to-webp"] = new(FileTypeImage, ImageExtensions, 1, "cmd_img_to_webp", [".webp"]),
+        ["img-to-gif"] = new(FileTypeImage, ImageExtensions, 1, "cmd_img_to_gif", [".gif"]),
+        ["img-to-heic"] = new(FileTypeImage, ImageExtensions, 1, "cmd_img_to_heic", [".heic"]),
     };
 
     private static readonly string[] AllSupportedExtensionsValue = Commands.Values

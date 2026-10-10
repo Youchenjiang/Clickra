@@ -269,7 +269,7 @@ internal sealed class DynamicSettingsController
         return comboBox;
     }
 
-    private void SyncToggle(DynamicSettingControl control)
+    private static void SyncToggle(DynamicSettingControl control)
     {
         if (control.InputControl is ToggleSwitch toggle)
         {

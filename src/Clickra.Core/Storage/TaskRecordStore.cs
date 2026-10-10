@@ -12,7 +12,7 @@ public static partial class ClickraStorage
     {
         internal static string PathFor(string taskId) => Path.Combine(TasksDir, $"{TaskFilePrefix}{taskId}.tmp");
 
-        internal static string NewTaskId() =>
+        internal static string CreateTaskId() =>
             $"{DateTime.UtcNow:yyyyMMddHHmmssfff}-{Guid.NewGuid().ToString("N")[..8]}";
 
         internal static void EnsureDirectory()
