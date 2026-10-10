@@ -313,7 +313,7 @@ namespace Clickra
                 case "img-merge":
                     ValidateExtensions(files, command, quiet, allowed);
                     RequireMinFiles(files, command, 2, quiet);
-                    if (quiet) FileProcessor.ConvertImagesToPdf(files, Path.Combine(outputDir, "Merged_Images.pdf"), (curr, tot, msg) => Console.WriteLine($"[Progress] {msg}"));
+                    if (quiet) HandleImgMergeQuiet(files, outputDir);
                     else ProgressWindow.Show(command, files);
                     return true;
                 case "img-stitch":
@@ -375,6 +375,29 @@ namespace Clickra
             }
 
             return true;
+        }
+
+        /// <summary>Merges images into one PDF in quiet mode.</summary>
+        private static void HandleImgMergeQuiet(List<string> files, string outputDir)
+        {
+            IConversionUseCase useCase = ConversionUseCases.GetRequired(ImgMergeUseCase.CommandName);
+            ConversionPlan plan = useCase.Plan(new ConversionRequest(
+                ImgMergeUseCase.CommandName,
+                files,
+                OutputOverride: outputDir,
+                TrackTaskLifecycle: false));
+            var interaction = new DelegateConversionInteraction(
+                (_, _, _, _) => Task.FromResult<string?>(null),
+                (_, _, _) => Task.FromResult<string?>(null),
+                (_, _, _) => Task.FromResult<IReadOnlyDictionary<string, object>?>(null));
+            var progress = new SynchronousProgress<ConversionProgress>(state =>
+                Console.WriteLine($"[Progress] {state.Message}"));
+
+            ConversionResult result = useCase.ExecuteAsync(plan, interaction, progress)
+                .GetAwaiter()
+                .GetResult();
+            if (result.Status != ConversionResultStatus.Succeeded)
+                throw new InvalidOperationException(result.Error ?? Loc("error_processing_failed"));
         }
 
         /// <summary>Converts each image to its own PDF in quiet mode.</summary>
