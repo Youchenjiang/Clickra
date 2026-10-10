@@ -13,6 +13,7 @@ static partial class TestSuite
     private const string ArchitectureProgressDirectory = "Progress";
     private const string ArchitectureProgressProcessFile = "ProgressWindow.Process.cs";
     private const string ArchitectureCliSourceFile = "ClickraCli.cs";
+    private const string GenericCatalogResolution = "ConversionUseCases.GetRequired(command)";
     private static readonly TimeSpan ArchitectureRegexTimeout = TimeSpan.FromSeconds(1);
 
     private sealed record ArchitectureViolationRule(
@@ -324,17 +325,17 @@ static partial class TestSuite
             ? null
             : $"ConversionUseCases.GetRequired({useCaseTypeName}.CommandName)";
         bool nativeCatalogResolution =
-            native.Contains("ConversionUseCases.GetRequired(command)", StringComparison.Ordinal)
+            native.Contains(GenericCatalogResolution, StringComparison.Ordinal)
             || (specificCatalogResolution is not null
                 && native.Contains(specificCatalogResolution, StringComparison.Ordinal));
         bool quietCatalogResolution =
-            quiet.Contains("ConversionUseCases.GetRequired(command)", StringComparison.Ordinal)
+            quiet.Contains(GenericCatalogResolution, StringComparison.Ordinal)
             || (specificCatalogResolution is not null
                 && quiet.Contains(specificCatalogResolution, StringComparison.Ordinal));
         Assert.True((fluentMain.Contains("ConversionUseCases.TryGet(command", StringComparison.Ordinal)
-                     || fluentMain.Contains("ConversionUseCases.GetRequired(command)", StringComparison.Ordinal))
+                     || fluentMain.Contains(GenericCatalogResolution, StringComparison.Ordinal))
                     && (fluentTask.Contains("ConversionUseCases.TryGet(command", StringComparison.Ordinal)
-                        || fluentTask.Contains("ConversionUseCases.GetRequired(command)", StringComparison.Ordinal))
+                        || fluentTask.Contains(GenericCatalogResolution, StringComparison.Ordinal))
                     && nativeCatalogResolution
                     && quietCatalogResolution,
             $"All product surfaces must resolve {workflowName} execution through the application use-case catalog.");

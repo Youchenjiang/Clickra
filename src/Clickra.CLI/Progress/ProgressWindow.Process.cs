@@ -84,6 +84,12 @@ namespace Clickra.UI
             public void OnFileStarting(int fileIndex) { }
         }
 
+        private sealed record SimpleApplicationRunOptions(
+            string? OutputOverride,
+            bool Resume,
+            IConversionExecutionObserver Observer,
+            string? SuccessMessage = null);
+
         private string? _inputPassword = null;
         private bool _passwordCancelled = false;
         private volatile bool _isPromptingPassword = false;
@@ -411,10 +417,15 @@ namespace Clickra.UI
             if (command.Equals(Img2PdfUseCase.CommandName, StringComparison.OrdinalIgnoreCase))
             {
                 RunSimpleApplicationCommand(
-                    hwnd, command, files, progressCallback, outputOverride: null,
-                    resume: true,
-                    observer: new Img2PdfExecutionObserver(this, files, progressCallback),
-                    successMessage: Loc("cli_progress_converting_image_saving"));
+                    hwnd,
+                    command,
+                    files,
+                    progressCallback,
+                    new SimpleApplicationRunOptions(
+                        null,
+                        true,
+                        new Img2PdfExecutionObserver(this, files, progressCallback),
+                        Loc("cli_progress_converting_image_saving")));
                 return true;
             }
             if (command.Equals(MergePdfUseCase.CommandName, StringComparison.OrdinalIgnoreCase)
@@ -422,26 +433,41 @@ namespace Clickra.UI
                 || command.Equals(ImgStitchUseCase.CommandName, StringComparison.OrdinalIgnoreCase))
             {
                 RunSimpleApplicationCommand(
-                    hwnd, command, files, progressCallback, outputOverride: null,
-                    resume: false,
-                    observer: new TaskIdExecutionObserver(this));
+                    hwnd,
+                    command,
+                    files,
+                    progressCallback,
+                    new SimpleApplicationRunOptions(
+                        null,
+                        false,
+                        new TaskIdExecutionObserver(this)));
                 return true;
             }
             if (command.Equals(ImgCompressUseCase.CommandName, StringComparison.OrdinalIgnoreCase))
             {
                 RunSimpleApplicationCommand(
-                    hwnd, command, files, progressCallback, _outputDirOverride,
-                    resume: true,
-                    observer: new TaskIdExecutionObserver(this));
+                    hwnd,
+                    command,
+                    files,
+                    progressCallback,
+                    new SimpleApplicationRunOptions(
+                        _outputDirOverride,
+                        true,
+                        new TaskIdExecutionObserver(this)));
                 return true;
             }
             if (ConversionUseCases.TryGet(command, out IConversionUseCase? useCase)
                 && useCase is ImageFormatConvertUseCase)
             {
                 RunSimpleApplicationCommand(
-                    hwnd, command, files, progressCallback, _outputDirOverride,
-                    resume: true,
-                    observer: new TaskIdExecutionObserver(this));
+                    hwnd,
+                    command,
+                    files,
+                    progressCallback,
+                    new SimpleApplicationRunOptions(
+                        _outputDirOverride,
+                        true,
+                        new TaskIdExecutionObserver(this)));
                 return true;
             }
             return false;
@@ -452,19 +478,16 @@ namespace Clickra.UI
             string command,
             List<string> files,
             Action<int, int, string> progressCallback,
-            string? outputOverride,
-            bool resume,
-            IConversionExecutionObserver observer,
-            string? successMessage = null)
+            SimpleApplicationRunOptions options)
         {
             IConversionUseCase useCase = ConversionUseCases.GetRequired(command);
             ConversionPlan plan = useCase.Plan(new ConversionRequest(
                 command,
                 files,
                 ExistingTaskId: _existingTaskId,
-                OutputOverride: outputOverride,
+                OutputOverride: options.OutputOverride,
                 BestEffortTaskPersistence: true));
-            if (resume)
+            if (options.Resume)
                 plan = plan with { ResumeStartIndex = _startIndex };
 
             var interaction = new DelegateConversionInteraction(
@@ -480,7 +503,7 @@ namespace Clickra.UI
                     plan,
                     interaction,
                     progress,
-                    observer,
+                    options.Observer,
                     _cts.Token)
                 .GetAwaiter()
                 .GetResult();
@@ -491,7 +514,7 @@ namespace Clickra.UI
                 progressCallback,
                 result,
                 command,
-                successMessage,
+                options.SuccessMessage,
                 setAllDoneMessage: true);
         }
 
