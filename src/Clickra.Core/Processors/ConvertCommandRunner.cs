@@ -95,9 +95,6 @@ public static class ConvertCommandRunner
         {
             switch (command)
             {
-                case "excel2pdf":
-                    FileProcessor.ConvertExcelToPdf(files, progress, token);
-                    break;
                 case "md2pdf":
                 {
                     Dictionary<string, object> markdownOptions = options.CommandOptions ?? MarkdownPdfOptions.Create();

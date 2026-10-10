@@ -111,6 +111,9 @@ static partial class TestSuite
         runner.RunGuard(
             "Architecture boundaries: migrated PowerPoint conversion workflow has one execution owner",
             TestPptToPdfWorkflowHasSingleExecutionOwner);
+        runner.RunGuard(
+            "Architecture boundaries: migrated Excel conversion workflow has one execution owner",
+            TestExcelToPdfWorkflowHasSingleExecutionOwner);
     }
 
     private static void TestArchitectureViolationBaseline()
@@ -520,6 +523,33 @@ static partial class TestSuite
                     && native.Contains("ConversionUseCases.GetRequired(PptToPdfUseCase.CommandName)", StringComparison.Ordinal)
                     && quiet.Contains("ConversionUseCases.GetRequired(PptToPdfUseCase.CommandName)", StringComparison.Ordinal),
             "All product surfaces must resolve ppt2pdf through the application use-case catalog.");
+    }
+
+    private static void TestExcelToPdfWorkflowHasSingleExecutionOwner()
+    {
+        string? root = FindRepoRoot();
+        if (root is null) throw new TestSkippedException("Could not locate the repository root.");
+
+        string runner = File.ReadAllText(Path.Combine(root, "src", "Clickra.Core", "Processors", "ConvertCommandRunner.cs"));
+        string native = File.ReadAllText(Path.Combine(root, "src", "Clickra.CLI", "Progress", "ProgressWindow.Process.cs"));
+        string quiet = File.ReadAllText(Path.Combine(root, "src", "Clickra.CLI", "Cli", "ClickraCli.cs"));
+        string fluentMain = File.ReadAllText(Path.Combine(root, "src", "Clickra.Fluent", "MainPage.xaml.cs"));
+        string fluentTask = File.ReadAllText(Path.Combine(root, "src", "Clickra.Fluent", "TaskProgressPage.xaml.cs"));
+
+        Assert.False(runner.Contains("case \"excel2pdf\"", StringComparison.Ordinal),
+            "Legacy ConvertCommandRunner must not retain excel2pdf execution after application migration.");
+        Assert.False(native.Contains("FileProcessor.ConvertExcelToPdf", StringComparison.Ordinal),
+            "Native presentation must not execute Excel conversion directly.");
+        Assert.False(quiet.Contains("FileProcessor.ConvertExcelToPdf", StringComparison.Ordinal),
+            "Headless CLI must not execute Excel conversion directly.");
+        Assert.True((fluentMain.Contains("ConversionUseCases.TryGet(command", StringComparison.Ordinal)
+                     || fluentMain.Contains("ConversionUseCases.GetRequired(command)", StringComparison.Ordinal))
+                    && (fluentTask.Contains("ConversionUseCases.TryGet(command", StringComparison.Ordinal)
+                        || fluentTask.Contains("ConversionUseCases.GetRequired(command)", StringComparison.Ordinal))
+                    && native.Contains("RunApplicationExcelToPdf(hwnd, currentFiles, progressCallback)", StringComparison.Ordinal)
+                    && native.Contains("ConversionUseCases.GetRequired(ExcelToPdfUseCase.CommandName)", StringComparison.Ordinal)
+                    && quiet.Contains("ConversionUseCases.GetRequired(ExcelToPdfUseCase.CommandName)", StringComparison.Ordinal),
+            "All product surfaces must resolve excel2pdf through the application use-case catalog.");
     }
 
     private sealed class StubConversionUseCase(string command) : IConversionUseCase
