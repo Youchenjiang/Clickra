@@ -137,7 +137,7 @@ namespace Clickra.Core
         /// <param name="pages">Page-range specification ("all" splits every page).</param>
         /// <param name="onProgress">Optional progress callback receiving (progress, max, message).</param>
         /// <param name="cancellationToken">Cancellation token to abort the split.</param>
-        public static void SplitPdf(string inputPath, string outputPath, string pages = "all", Action<int, int, string>? onProgress = null, CancellationToken cancellationToken = default)
+        public static void SplitPdf(string inputPath, string outputPath, string pages, Action<int, int, string>? onProgress = null, CancellationToken cancellationToken = default)
         {
             var processor = new PdfSplitProcessor();
             var options = new Dictionary<string, object> { { "pages", pages } };
