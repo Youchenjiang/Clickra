@@ -262,17 +262,11 @@ static partial class TestSuite
                 string outputDir = Path.Combine(tempDir, "out");
                 Directory.CreateDirectory(outputDir);
                 var useCase = new ImageFormatConvertUseCase(CmdImgToWebp);
-                ConversionPlan plan = useCase.Plan(new ConversionRequest(
+                var (plan, result) = ExecuteUntrackedUseCase(
+                    useCase,
                     CmdImgToWebp,
                     new[] { input },
-                    OutputOverride: outputDir,
-                    TrackTaskLifecycle: false));
-                var interaction = new DelegateConversionInteraction(
-                    (_, _, _, _) => Task.FromResult<string?>(null),
-                    (_, _, _) => Task.FromResult<string?>(null),
-                    (_, _, _) => Task.FromResult<IReadOnlyDictionary<string, object>?>(null));
-
-                ConversionResult result = useCase.ExecuteAsync(plan, interaction, progress: null).GetAwaiter().GetResult();
+                    outputDir);
 
                 Assert.True(result.Status == ConversionResultStatus.Succeeded, result.Error ?? "Expected image format conversion success.");
                 Assert.True(string.IsNullOrEmpty(result.TaskId), "Untracked image format conversion must not create a task identity.");
@@ -334,17 +328,11 @@ static partial class TestSuite
                 string outputDir = Path.Combine(tempDir, "out");
                 Directory.CreateDirectory(outputDir);
                 var useCase = new ImgStitchUseCase();
-                ConversionPlan plan = useCase.Plan(new ConversionRequest(
+                var (plan, result) = ExecuteUntrackedUseCase(
+                    useCase,
                     ImgStitchUseCase.CommandName,
                     new[] { first, second },
-                    OutputOverride: outputDir,
-                    TrackTaskLifecycle: false));
-                var interaction = new DelegateConversionInteraction(
-                    (_, _, _, _) => Task.FromResult<string?>(null),
-                    (_, _, _) => Task.FromResult<string?>(null),
-                    (_, _, _) => Task.FromResult<IReadOnlyDictionary<string, object>?>(null));
-
-                ConversionResult result = useCase.ExecuteAsync(plan, interaction, progress: null).GetAwaiter().GetResult();
+                    outputDir);
 
                 Assert.True(result.Status == ConversionResultStatus.Succeeded, result.Error ?? "Expected img-stitch success.");
                 Assert.True(string.IsNullOrEmpty(result.TaskId), "Untracked img-stitch must not create a task identity.");
@@ -389,17 +377,11 @@ static partial class TestSuite
                 string outputDir = Path.Combine(tempDir, "out");
                 Directory.CreateDirectory(outputDir);
                 var useCase = new ImgMergeUseCase();
-                ConversionPlan plan = useCase.Plan(new ConversionRequest(
+                var (plan, result) = ExecuteUntrackedUseCase(
+                    useCase,
                     ImgMergeUseCase.CommandName,
                     new[] { first, second },
-                    OutputOverride: outputDir,
-                    TrackTaskLifecycle: false));
-                var interaction = new DelegateConversionInteraction(
-                    (_, _, _, _) => Task.FromResult<string?>(null),
-                    (_, _, _) => Task.FromResult<string?>(null),
-                    (_, _, _) => Task.FromResult<IReadOnlyDictionary<string, object>?>(null));
-
-                ConversionResult result = useCase.ExecuteAsync(plan, interaction, progress: null).GetAwaiter().GetResult();
+                    outputDir);
 
                 Assert.True(result.Status == ConversionResultStatus.Succeeded, result.Error ?? "Expected img-merge success.");
                 Assert.True(string.IsNullOrEmpty(result.TaskId), "Untracked img-merge must not create a task identity.");
@@ -466,17 +448,11 @@ static partial class TestSuite
                 string outputDir = Path.Combine(tempDir, "out");
                 Directory.CreateDirectory(outputDir);
                 var useCase = new Img2PdfUseCase();
-                ConversionPlan plan = useCase.Plan(new ConversionRequest(
+                var (plan, result) = ExecuteUntrackedUseCase(
+                    useCase,
                     Img2PdfUseCase.CommandName,
                     new[] { input },
-                    OutputOverride: outputDir,
-                    TrackTaskLifecycle: false));
-                var interaction = new DelegateConversionInteraction(
-                    (_, _, _, _) => Task.FromResult<string?>(null),
-                    (_, _, _) => Task.FromResult<string?>(null),
-                    (_, _, _) => Task.FromResult<IReadOnlyDictionary<string, object>?>(null));
-
-                ConversionResult result = useCase.ExecuteAsync(plan, interaction, progress: null).GetAwaiter().GetResult();
+                    outputDir);
 
                 Assert.True(result.Status == ConversionResultStatus.Succeeded, result.Error ?? "Expected img2pdf success.");
                 Assert.True(string.IsNullOrEmpty(result.TaskId), "Untracked img2pdf must not create a task identity.");

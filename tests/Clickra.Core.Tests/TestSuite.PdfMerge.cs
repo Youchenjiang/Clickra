@@ -66,17 +66,11 @@ static partial class TestSuite
                 CreateSamplePdf(first);
                 CreateSamplePdf(second);
                 var useCase = new MergePdfUseCase();
-                ConversionPlan plan = useCase.Plan(new ConversionRequest(
+                var (plan, result) = ExecuteUntrackedUseCase(
+                    useCase,
                     MergePdfUseCase.CommandName,
                     new[] { first, second },
-                    OutputOverride: outputDir,
-                    TrackTaskLifecycle: false));
-                var interaction = new DelegateConversionInteraction(
-                    (_, _, _, _) => Task.FromResult<string?>(null),
-                    (_, _, _) => Task.FromResult<string?>(null),
-                    (_, _, _) => Task.FromResult<IReadOnlyDictionary<string, object>?>(null));
-
-                ConversionResult result = useCase.ExecuteAsync(plan, interaction, progress: null).GetAwaiter().GetResult();
+                    outputDir);
 
                 Assert.True(result.Status == ConversionResultStatus.Succeeded, result.Error ?? "Expected merge success.");
                 Assert.True(string.IsNullOrEmpty(result.TaskId), "Untracked merge must not create a task identity.");

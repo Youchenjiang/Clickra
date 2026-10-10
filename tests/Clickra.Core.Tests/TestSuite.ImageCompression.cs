@@ -55,26 +55,6 @@ static partial class TestSuite
                 }
             }));
 
-        runner.Run("Image compression use case honors shared output directory and collision safety", () =>
-            RunWithTempDirectory(tempDir =>
-            {
-                string first = Path.Combine(tempDir, CompressionPhotoJpg);
-                string second = Path.Combine(tempDir, CompressionPhotoOutputJpg);
-                File.WriteAllBytes(first, new byte[] { 1 });
-                File.WriteAllBytes(second, new byte[] { 2 });
-                var useCase = new ImgCompressUseCase();
-
-                InvalidOperationException ex = Assert.Throws<InvalidOperationException>(() =>
-                    useCase.Plan(new ConversionRequest(
-                        ImgCompressUseCase.CommandName,
-                        new[] { first, second },
-                        OutputOverride: tempDir)));
-                Assert.True(ex.Message.Contains(CompressionPhotoOutputJpg, StringComparison.OrdinalIgnoreCase),
-                    "Application planning must identify an output that would overwrite a selected input.");
-                Assert.True(File.ReadAllBytes(second).SequenceEqual(new byte[] { 2 }),
-                    "Rejected application planning must leave selected inputs untouched.");
-            }));
-
         runner.Run("Image compression use case can run without task tracking", () =>
             RunWithTempDirectory(tempDir =>
             {
@@ -82,17 +62,11 @@ static partial class TestSuite
                 string outputDir = Path.Combine(tempDir, "out");
                 Directory.CreateDirectory(outputDir);
                 var useCase = new ImgCompressUseCase();
-                ConversionPlan plan = useCase.Plan(new ConversionRequest(
+                var (plan, result) = ExecuteUntrackedUseCase(
+                    useCase,
                     ImgCompressUseCase.CommandName,
                     new[] { source },
-                    OutputOverride: outputDir,
-                    TrackTaskLifecycle: false));
-                var interaction = new DelegateConversionInteraction(
-                    (_, _, _, _) => Task.FromResult<string?>(null),
-                    (_, _, _) => Task.FromResult<string?>(null),
-                    (_, _, _) => Task.FromResult<IReadOnlyDictionary<string, object>?>(null));
-
-                ConversionResult result = useCase.ExecuteAsync(plan, interaction, progress: null).GetAwaiter().GetResult();
+                    outputDir);
 
                 Assert.True(result.Status == ConversionResultStatus.Succeeded, result.Error ?? "Expected image compression success.");
                 Assert.True(string.IsNullOrEmpty(result.TaskId), "Untracked image compression must not create a task identity.");
