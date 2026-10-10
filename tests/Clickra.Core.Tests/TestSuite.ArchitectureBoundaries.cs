@@ -5,7 +5,7 @@ namespace Clickra.Core.Tests;
 
 static partial class TestSuite
 {
-    private const int ArchitectureViolationBaselineCeiling = 14;
+    private const int ArchitectureViolationBaselineCeiling = 13;
     private const string RepositoryRootMissingMessage = "Could not locate the repository root.";
     private const string ArchitectureCliProjectDirectory = "Clickra.CLI";
     private const string ArchitectureCoreProjectDirectory = "Clickra.Core";
@@ -28,7 +28,7 @@ static partial class TestSuite
             new Regex(@"\bFileProcessor\.", RegexOptions.Compiled, ArchitectureRegexTimeout),
             new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase)
             {
-                ["src/Clickra.CLI/Cli/ClickraCli.cs"] = 5,
+                ["src/Clickra.CLI/Cli/ClickraCli.cs"] = 4,
                 ["src/Clickra.CLI/Progress/ProgressWindow.VisualSplitter.cs"] = 1,
                 ["src/Clickra.Fluent/Controls/VisualSplitterControl.xaml.cs"] = 1
             }),

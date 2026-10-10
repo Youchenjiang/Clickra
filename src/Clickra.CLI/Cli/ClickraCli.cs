@@ -195,7 +195,7 @@ namespace Clickra
                     return true;
                 case "word2pdf":
                     ValidateExtensions(files, command, quiet, ".docx", ".doc");
-                    if (quiet) FileProcessor.ConvertWordToPdf(files, (curr, tot, msg) => Console.WriteLine($"[Progress] {msg}"));
+                    if (quiet) HandleWordToPdfQuiet(files);
                     else ProgressWindow.Show(command, files);
                     return true;
                 case "excel2pdf":
@@ -206,6 +206,27 @@ namespace Clickra
                 default:
                     return false;
             }
+        }
+
+        private static void HandleWordToPdfQuiet(List<string> files)
+        {
+            IConversionUseCase useCase = ConversionUseCases.GetRequired(WordToPdfUseCase.CommandName);
+            ConversionPlan plan = useCase.Plan(new ConversionRequest(
+                WordToPdfUseCase.CommandName,
+                files,
+                TrackTaskLifecycle: false));
+            var interaction = new DelegateConversionInteraction(
+                (_, _, _, _) => Task.FromResult<string?>(null),
+                (_, _, _) => Task.FromResult<string?>(null),
+                (_, _, _) => Task.FromResult<IReadOnlyDictionary<string, object>?>(null));
+            var progress = new SynchronousProgress<ConversionProgress>(state =>
+                Console.WriteLine($"[Progress] {state.Message}"));
+
+            ConversionResult result = useCase.ExecuteAsync(plan, interaction, progress)
+                .GetAwaiter()
+                .GetResult();
+            if (result.Status != ConversionResultStatus.Succeeded)
+                throw new InvalidOperationException(result.Error ?? Loc("error_processing_failed"));
         }
 
         /// <summary>Handles PDF commands (merge, compress, split, translate, decrypt).</summary>
