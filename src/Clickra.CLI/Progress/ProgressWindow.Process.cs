@@ -159,32 +159,7 @@ namespace Clickra.UI
                 if (TryRunMigratedApplicationCommand(hwnd, cmd, currentFiles, progressCallback))
                     return;
 
-                // 立即建立 Pending 任務紀錄，讓 Dashboard 可即時看到；每個任務有
-                // 獨立的進度檔（tasks/task-{id}.tmp），並行任務不會互相覆蓋。
-                // resume 時沿用原任務檔（_existingTaskId），避免重複建立與歷史重複寫入。
-                lifecycle = ConversionTaskLifecycle.Start(cmd, currentFiles, _existingTaskId, bestEffort: true);
-                TaskId = lifecycle.TaskId;
-
-                List<string> plannedOutputs = ConvertCommandRegistry.EstimateOutputs(cmd, currentFiles, _outputDirOverride);
-                RunSharedCommand(cmd, currentFiles, plannedOutputs, progressCallback);
-
-                string endTime = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
-                string outputs = string.Join(";", plannedOutputs);
-
-                lock (_stateLock)
-                {
-                    _completed = true;
-                    _message = Loc(ProgressAllDoneKey);
-                }
-                PostMessageW(hwnd, WM_USER_INVALIDATE, (IntPtr)1, IntPtr.Zero);
-
-                lifecycle.CompleteSuccess(outputs, endTime);
-
-                ShowToastNotification(cmd, currentFiles.Count);
-
-                Thread.Sleep(1500);
-                lifecycle.Delete();
-                PostMessageW(hwnd, 0x0010, IntPtr.Zero, IntPtr.Zero); // WM_CLOSE
+                throw new InvalidOperationException($"Unknown convert command '{cmd}'.");
             }
             catch (Exception ex)
             {
@@ -638,23 +613,6 @@ namespace Clickra.UI
             return (useCase, plan, interaction);
         }
 
-        /// <summary>Runs commands that do not need Native-only progress or prompt handling through
-        /// the shared Core dispatcher. Native-specific cases remain explicit in RunProcessing.</summary>
-        private void RunSharedCommand(string command, List<string> files, List<string> outputs, Action<int, int, string> progressCallback)
-        {
-            ConvertCommandRunner.Run(
-                command,
-                files,
-                outputs,
-                progressCallback,
-                new ConvertCommandRunner.ConversionOptions(
-                    _ => System.Threading.Tasks.Task.FromResult<string?>(null),
-                    (_, _) => System.Threading.Tasks.Task.FromResult<string?>(null),
-                    _startIndex,
-                    CommandOptions: _commandOptions,
-                    OnFileStarting: TryRecordTaskIndex),
-                _cts.Token);
-        }
         /// <summary>Reads the --pages / -p page-range option from the command line.</summary>
         private static string GetSplitPagesOptionFromCommandLine()
         {

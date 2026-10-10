@@ -197,10 +197,10 @@ static partial class TestSuite
         string perFileUseCaseBase = File.ReadAllText(Path.Combine(root, "src", CoreProjectDirectory, "Application", "PerFileConversionUseCaseBase.cs"));
         string markdownUseCaseBase = File.ReadAllText(Path.Combine(root, "src", CoreProjectDirectory, "Application", "MarkdownConversionUseCaseBase.cs"));
 
+        Assert.True(runner.Contains("ConversionTaskLifecycle.Start(", StringComparison.Ordinal),
+            "Legacy tracked-runner scaffolding must start task tracking through the shared conversion lifecycle while it remains.");
         foreach ((string name, string source) in new[] { ("ConvertCommandRunner", runner), ("ProgressWindow", native) })
         {
-            Assert.True(source.Contains("ConversionTaskLifecycle.Start(", StringComparison.Ordinal),
-                $"{name} must start task tracking through the shared conversion lifecycle.");
             Assert.False(source.Contains("ClickraStorage.StartTask(", StringComparison.Ordinal),
                 $"{name} must not create task records outside the shared conversion lifecycle.");
             Assert.False(source.Contains("ClickraStorage.CompleteTask(", StringComparison.Ordinal),
@@ -212,14 +212,14 @@ static partial class TestSuite
                     && lifecycle.Contains("ClickraStorage.ParkTask(", StringComparison.Ordinal),
             "ConversionTaskLifecycle must own the shared task state transitions.");
 
-        Assert.True(native.Contains("ConvertCommandRegistry.EstimateOutputs(cmd, currentFiles, _outputDirOverride)", StringComparison.Ordinal),
-            "Native conversion output planning must use the same registry as Fluent tracked runs.");
+        Assert.False(native.Contains("ConvertCommandRegistry.EstimateOutputs(cmd, currentFiles, _outputDirOverride)", StringComparison.Ordinal),
+            "Native product commands must not fall back to legacy registry output planning after catalog migration.");
         Assert.False(native.Contains("private static string GetOutputPath(", StringComparison.Ordinal),
             "Native conversion history must not keep a second command-to-output policy.");
 
-        Assert.True(native.Contains("RunSharedCommand(cmd, currentFiles, plannedOutputs, progressCallback)", StringComparison.Ordinal)
-                    && native.Contains("ConvertCommandRunner.Run(", StringComparison.Ordinal),
-            "Native commands without Win32-specific behavior must dispatch through the shared Core runner.");
+        Assert.False(native.Contains("RunSharedCommand(", StringComparison.Ordinal)
+                     || native.Contains("ConvertCommandRunner.Run(", StringComparison.Ordinal),
+            "Native product commands must not retain the legacy generic runner fallback.");
         Assert.True(native.Contains("new TaskIdExecutionObserver(this, TryRecordTaskIndex)", StringComparison.Ordinal)
                     && perFileUseCaseBase.Contains("observer?.OnFileStarting(i)", StringComparison.Ordinal)
                     && markdownUseCaseBase.Contains(": PerFileConversionUseCaseBase", StringComparison.Ordinal)

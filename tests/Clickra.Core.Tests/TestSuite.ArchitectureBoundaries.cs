@@ -1,11 +1,12 @@
 using System.Text.RegularExpressions;
 using Clickra.Core.Application;
+using Clickra.Shared;
 
 namespace Clickra.Core.Tests;
 
 static partial class TestSuite
 {
-    private const int ArchitectureViolationBaselineCeiling = 9;
+    private const int ArchitectureViolationBaselineCeiling = 7;
     private const string RepositoryRootMissingMessage = "Could not locate the repository root.";
     private const string ArchitectureCliProjectDirectory = "Clickra.CLI";
     private const string ArchitectureCoreProjectDirectory = "Clickra.Core";
@@ -54,7 +55,6 @@ static partial class TestSuite
             new Regex(@"\bConvertCommandRegistry\.EstimateOutputs\(", RegexOptions.Compiled, ArchitectureRegexTimeout),
             new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase)
             {
-                ["src/Clickra.CLI/Progress/ProgressWindow.Process.cs"] = 2,
                 ["src/Clickra.Fluent/MainPage.xaml.cs"] = 1,
                 ["src/Clickra.Fluent/TaskProgressPage.xaml.cs"] = 1
             }),
@@ -232,6 +232,17 @@ static partial class TestSuite
 
     private static void TestProductUseCaseCatalogOwnsMigratedCommands()
     {
+        string[] productCommands = new[] { "pdf", "word", "excel", "ppt", "markdown", "image" }
+            .SelectMany(ConvertCommandMetadata.GetCommandsForType)
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .OrderBy(command => command, StringComparer.OrdinalIgnoreCase)
+            .ToArray();
+        string[] catalogCommands = ConversionUseCases.Commands
+            .OrderBy(command => command, StringComparer.OrdinalIgnoreCase)
+            .ToArray();
+        Assert.True(productCommands.SequenceEqual(catalogCommands, StringComparer.OrdinalIgnoreCase),
+            "Every product conversion command must have exactly one application use-case owner before legacy fallbacks can remain retired.");
+
         IConversionUseCase compress = ConversionUseCases.GetRequired(CompressPdfUseCase.CommandName);
         IConversionUseCase decrypt = ConversionUseCases.GetRequired(DecryptPdfUseCase.CommandName);
         IConversionUseCase imgCompress = ConversionUseCases.GetRequired(ImgCompressUseCase.CommandName);
