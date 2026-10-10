@@ -89,6 +89,8 @@ public static class ConvertCommandRegistry
                 CmdImgToPng or CmdImgToJpg or CmdImgToWebp or CmdImgToGif or CmdImgToHeic
                     => throw new InvalidOperationException(
                         $"{command} output planning is owned by the application use case."),
+                "word2pdf" => throw new InvalidOperationException(
+                    "word2pdf output planning is owned by the application use case."),
                 _ => files.Select(f => Path.Combine(ClickraStorage.GetOutputDir(f), Path.GetFileNameWithoutExtension(f) + ".pdf")).ToList()
             };
         }
