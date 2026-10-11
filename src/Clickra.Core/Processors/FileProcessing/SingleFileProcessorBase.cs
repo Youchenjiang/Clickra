@@ -17,7 +17,11 @@ namespace Clickra.Core.Processors
             for (int i = 0; i < files.Count; i++)
             {
                 cancellationToken.ThrowIfCancellationRequested();
-                try { onFileStarting?.Invoke(i); } catch { }
+                try { onFileStarting?.Invoke(i); }
+                catch
+                {
+                    // Best-effort legacy task-index notification must not abort conversion.
+                }
                 
                 var filePath = files[i];
                 string fullPath = Path.GetFullPath(filePath);

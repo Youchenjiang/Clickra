@@ -7,40 +7,43 @@ using PdfSharp.Pdf.IO;
 
 namespace Clickra.Core.Processors;
 
+internal readonly record struct PdfTranslationRebuildRequest(
+    string InputPath,
+    string OutputPath,
+    string TargetLanguage,
+    string Language,
+    UglyToad.PdfPig.PdfDocument PigDocument,
+    IReadOnlyList<List<PdfParagraph>> PageParagraphs);
+
 internal static class PdfTranslatedPdfRebuilder
 {
     public static PdfTranslationLayoutSummary Rebuild(
-        string inputPath,
-        string outputPath,
-        string targetLang,
-        string language,
-        UglyToad.PdfPig.PdfDocument pigDoc,
-        IReadOnlyList<List<PdfParagraph>> pageParagraphs,
+        PdfTranslationRebuildRequest request,
         Action<int, int, string>? onProgress,
         CancellationToken cancellationToken)
     {
-        int totalPages = pageParagraphs.Count;
+        int totalPages = request.PageParagraphs.Count;
         var layoutSummary = new PdfTranslationLayoutSummary();
-        onProgress?.Invoke(80, 100, Localization.T("pdf_progress_rebuilding", language));
+        onProgress?.Invoke(80, 100, Localization.T("pdf_progress_rebuilding", request.Language));
         cancellationToken.ThrowIfCancellationRequested();
 
-        using var finalDoc = PdfReader.Open(inputPath, PdfDocumentOpenMode.Modify);
-        string targetFontName = GetTargetFontName(targetLang);
+        using var finalDoc = PdfReader.Open(request.InputPath, PdfDocumentOpenMode.Modify);
+        string targetFontName = GetTargetFontName(request.TargetLanguage);
 
         for (int p = 0; p < totalPages; p++)
         {
             RebuildPage(
                 finalDoc.Pages[p],
-                pigDoc.GetPage(p + 1),
+                request.PigDocument.GetPage(p + 1),
                 p,
-                pageParagraphs[p],
+                request.PageParagraphs[p],
                 targetFontName,
                 layoutSummary,
                 cancellationToken);
         }
 
-        onProgress?.Invoke(95, 100, Localization.T("pdf_progress_saving", language));
-        finalDoc.Save(outputPath);
+        onProgress?.Invoke(95, 100, Localization.T("pdf_progress_saving", request.Language));
+        finalDoc.Save(request.OutputPath);
         finalDoc.Close();
         return layoutSummary;
     }

@@ -123,23 +123,19 @@ public static class LibreOfficeHelper
     }
 
     public static void ExportToPdf(
-        string appType,
-        string fullPath,
-        string outputPdfPath,
-        int fileIndex,
-        int totalFiles,
+        OfficeConversionRequest request,
         OfficeConversionSettings settings,
         Action<int, int, string>? onProgress,
         CancellationToken cancellationToken)
     {
-        string executablePath = GetValidatedExecutablePath(appType, settings);
+        string executablePath = GetValidatedExecutablePath(request.AppType, settings);
 
         string tempDir = Path.Combine(Path.GetTempPath(), "ClickraLibreOffice", Guid.NewGuid().ToString("N"));
         string profileDir = Path.Combine(Path.GetTempPath(), "ClickraLibreOfficeProfile", Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(tempDir);
         Directory.CreateDirectory(profileDir);
-        var paths = new ConversionPaths(fullPath, outputPdfPath, tempDir, profileDir);
-        var progress = new ConversionProgress(fileIndex, totalFiles, onProgress);
+        var paths = new ConversionPaths(request.FullPath, request.OutputPdfPath, tempDir, profileDir);
+        var progress = new ConversionProgress(request.FileIndex, request.TotalFiles, onProgress);
 
         try
         {

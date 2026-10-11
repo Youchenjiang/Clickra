@@ -216,11 +216,7 @@ static partial class TestSuite
 
             Assert.Throws<NotSupportedException>(() =>
                 LibreOfficeHelper.ExportToPdf(
-                    "Pdf",
-                    "input.pdf",
-                    "output.pdf",
-                    0,
-                    1,
+                    new OfficeConversionRequest("Pdf", "input.pdf", "output.pdf", 0, 1),
                     new OfficeConversionSettings(
                         ClickraSettings.DefaultOfficeEngineAuto,
                         ClickraSettings.DefaultEmpty,

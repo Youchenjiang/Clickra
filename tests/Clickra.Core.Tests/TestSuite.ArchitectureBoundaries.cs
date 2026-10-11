@@ -441,36 +441,48 @@ static partial class TestSuite
                      .Where(path => !path.Contains($"{Path.DirectorySeparatorChar}bin{Path.DirectorySeparatorChar}", StringComparison.OrdinalIgnoreCase)
                                     && !path.Contains($"{Path.DirectorySeparatorChar}obj{Path.DirectorySeparatorChar}", StringComparison.OrdinalIgnoreCase)))
         {
-            string path = NormalizeRepoPath(root, file);
-            string source = File.ReadAllText(file);
-            int references = InfrastructureStorageReference.Matches(source).Count;
-            if (references == 0) continue;
-
-            MatchCollection calls = InfrastructureSettingsCall.Matches(source);
-            if (calls.Count != references)
-                violations.Add($"{path}: {references - calls.Count} ClickraStorage use(s) are not explicit ClickraSettings reads/writes.");
-
-            if (!InfrastructureSettingsAllowlist.TryGetValue(path, out InfrastructureSettingsAllowance? allowance))
-            {
-                violations.Add($"{path}: settings access is not allowlisted for this infrastructure owner.");
-                continue;
-            }
-
-            foreach (Match call in calls)
-            {
-                string op = call.Groups["op"].Value;
-                string key = call.Groups["key"].Value;
-                bool owned = allowance.OwnedKeys.Contains(key);
-                bool readOnly = allowance.ReadOnlyKeys.Contains(key);
-                if (op == "SaveSetting" ? !owned : !(owned || readOnly))
-                    violations.Add($"{path}: {op}({key}) is outside its allowlist.");
-            }
+            ValidateInfrastructureSettingsFile(root, file, violations);
         }
 
         Assert.True(
             violations.Count == 0,
             "Infrastructure settings access must stay on the explicit per-owner key allowlist:" +
             Environment.NewLine + string.Join(Environment.NewLine, violations));
+    }
+
+    private static void ValidateInfrastructureSettingsFile(string root, string file, List<string> violations)
+    {
+        string path = NormalizeRepoPath(root, file);
+        string source = File.ReadAllText(file);
+        int references = InfrastructureStorageReference.Matches(source).Count;
+        if (references == 0) return;
+
+        MatchCollection calls = InfrastructureSettingsCall.Matches(source);
+        if (calls.Count != references)
+            violations.Add($"{path}: {references - calls.Count} ClickraStorage use(s) are not explicit ClickraSettings reads/writes.");
+
+        if (!InfrastructureSettingsAllowlist.TryGetValue(path, out InfrastructureSettingsAllowance? allowance))
+        {
+            violations.Add($"{path}: settings access is not allowlisted for this infrastructure owner.");
+            return;
+        }
+
+        foreach (Match call in calls)
+            ValidateInfrastructureSettingsCall(path, call, allowance, violations);
+    }
+
+    private static void ValidateInfrastructureSettingsCall(
+        string path,
+        Match call,
+        InfrastructureSettingsAllowance allowance,
+        List<string> violations)
+    {
+        string op = call.Groups["op"].Value;
+        string key = call.Groups["key"].Value;
+        bool owned = allowance.OwnedKeys.Contains(key);
+        bool readable = owned || allowance.ReadOnlyKeys.Contains(key);
+        if ((op == "SaveSetting" && !owned) || (op != "SaveSetting" && !readable))
+            violations.Add($"{path}: {op}({key}) is outside its allowlist.");
     }
 
     private static readonly Regex ProcessorLocalizationCall =
@@ -524,15 +536,13 @@ static partial class TestSuite
         var arguments = new List<string>();
         int depth = 0;
         int segmentStart = start;
-        for (int i = start; i < source.Length; i++)
+        int i = start;
+        while (i < source.Length)
         {
             char c = source[i];
             if (c == '"' || c == '\'')
             {
-                for (i++; i < source.Length && source[i] != c; i++)
-                {
-                    if (source[i] == '\\') i++;
-                }
+                i = SkipQuotedSegment(source, i, c);
                 continue;
             }
 
@@ -556,9 +566,31 @@ static partial class TestSuite
                 arguments.Add(source[segmentStart..i].Trim());
                 segmentStart = i + 1;
             }
+
+            i++;
         }
 
         return arguments;
+    }
+
+    private static int SkipQuotedSegment(string source, int quoteIndex, char quote)
+    {
+        int i = quoteIndex + 1;
+        while (i < source.Length)
+        {
+            if (source[i] == '\\')
+            {
+                i += 2;
+                continue;
+            }
+
+            if (source[i] == quote)
+                return i + 1;
+
+            i++;
+        }
+
+        return i;
     }
 
     private static void TestApplicationContractsStayUiIndependent()

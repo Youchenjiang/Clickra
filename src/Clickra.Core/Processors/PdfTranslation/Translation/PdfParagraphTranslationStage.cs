@@ -56,11 +56,8 @@ internal static class PdfParagraphTranslationStage
                         translator,
                         textsToTranslate,
                         targetLang,
-                        p,
-                        totalPages,
-                        onProgress,
-                        cancellationToken,
-                        language);
+                        new PdfTranslationBatchContext(p, totalPages, onProgress, language),
+                        cancellationToken);
                     if (results.Count == paragraphsToTranslate.Count)
                     {
                         for (int i = 0; i < results.Count; i++)

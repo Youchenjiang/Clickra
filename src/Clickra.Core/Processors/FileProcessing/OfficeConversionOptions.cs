@@ -9,6 +9,21 @@ public readonly record struct OfficeConversionSettings(
     string LibreOfficePath,
     bool LibreOfficeRemovalPendingRestart);
 
+public readonly record struct OfficeConversionRequest(
+    string AppType,
+    string FullPath,
+    string OutputPdfPath,
+    int FileIndex,
+    int TotalFiles);
+
+public readonly record struct OfficeInteropRequest(
+    string Script,
+    int FileIndex,
+    int TotalFiles,
+    string FilePath,
+    string AppName,
+    string Language);
+
 internal static class OfficeConversionOptions
 {
     public const string EngineKey = "office_engine";

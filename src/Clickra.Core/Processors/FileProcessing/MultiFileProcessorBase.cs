@@ -15,7 +15,11 @@ namespace Clickra.Core.Processors
             for (int i = 0; i < files.Count; i++)
             {
                 cancellationToken.ThrowIfCancellationRequested();
-                try { onFileStarting?.Invoke(i); } catch { }
+                try { onFileStarting?.Invoke(i); }
+                catch
+                {
+                    // Best-effort legacy task-index notification must not abort conversion.
+                }
 
                 ProcessFile(files[i], i, total, options, onProgress, cancellationToken);
             }

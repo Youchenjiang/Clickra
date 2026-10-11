@@ -10,7 +10,11 @@ namespace Clickra.Core.Processors
 
         protected override void ProcessSingleFile(string fullPath, string targetOutputPath, int fileIndex, int totalFiles, Dictionary<string, object>? options, Action<int, int, string>? onProgress, CancellationToken cancellationToken)
         {
-            PowerShellHelper.ExportOfficeToPdf("Word", fullPath, targetOutputPath, fileIndex, totalFiles, OfficeConversionOptions.Read(options), onProgress, cancellationToken);
+            PowerShellHelper.ExportOfficeToPdf(
+                new OfficeConversionRequest("Word", fullPath, targetOutputPath, fileIndex, totalFiles),
+                OfficeConversionOptions.Read(options),
+                onProgress,
+                cancellationToken);
         }
     }
 }

@@ -6,17 +6,20 @@ using System.Threading.Tasks;
 
 namespace Clickra.Core.Processors
 {
+    internal readonly record struct PdfTranslationBatchContext(
+        int PageIndex,
+        int TotalPages,
+        Action<int, int, string>? OnProgress,
+        string Language);
+
     internal static class PdfTranslationBatchRunner
     {
         public static List<string> TranslatePageBatches(
             ITranslationEngine translator,
             List<string> textsToTranslate,
             string targetLang,
-            int pageIndex,
-            int totalPages,
-            Action<int, int, string>? onProgress,
-            CancellationToken cancellationToken,
-            string language = "")
+            PdfTranslationBatchContext context,
+            CancellationToken cancellationToken)
         {
             var results = new List<string>(textsToTranslate.Count);
             var chunks = BuildTranslationChunks(textsToTranslate, maxItems: 24, maxChars: 6000).ToList();
@@ -26,13 +29,13 @@ namespace Clickra.Core.Processors
             {
                 cancellationToken.ThrowIfCancellationRequested();
                 var chunk = chunks[chunkIndex];
-                onProgress?.Invoke(
-                    GetTranslationProgress(pageIndex, totalPages, chunkIndex, chunks.Count),
+                context.OnProgress?.Invoke(
+                    GetTranslationProgress(context.PageIndex, context.TotalPages, chunkIndex, chunks.Count),
                     100,
                     string.Format(
-                        Localization.T("pdf_progress_translating_batch", language),
-                        pageIndex + 1,
-                        totalPages,
+                        Localization.T("pdf_progress_translating_batch", context.Language),
+                        context.PageIndex + 1,
+                        context.TotalPages,
                         chunkIndex + 1,
                         chunks.Count,
                         translatedCount + 1,
@@ -43,10 +46,10 @@ namespace Clickra.Core.Processors
                     translator,
                     chunk,
                     targetLang,
-                    pageIndex,
+                    context.PageIndex,
                     chunkIndex,
                     cancellationToken,
-                    language);
+                    context.Language);
 
                 results.AddRange(chunkResults);
                 translatedCount += chunk.Count;

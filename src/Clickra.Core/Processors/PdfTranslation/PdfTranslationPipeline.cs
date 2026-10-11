@@ -91,12 +91,13 @@ namespace Clickra.Core.Processors
 
                 if (File.Exists(partialOutputPath)) File.Delete(partialOutputPath);
                 layoutSummary = PdfTranslatedPdfRebuilder.Rebuild(
-                    inputPath,
-                    partialOutputPath,
-                    targetLang,
-                    language,
-                    pigDoc,
-                    pageParagraphs,
+                    new PdfTranslationRebuildRequest(
+                        inputPath,
+                        partialOutputPath,
+                        targetLang,
+                        language,
+                        pigDoc,
+                        pageParagraphs),
                     onProgress,
                     operationToken);
 
