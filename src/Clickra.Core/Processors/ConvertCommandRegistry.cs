@@ -70,24 +70,29 @@ public static class ConvertCommandRegistry
                     "img-stitch output planning is owned by the application use case."),
                 CmdCompressPdf => throw new InvalidOperationException(
                     "compress-pdf output planning is owned by the application use case."),
-                "translate-pdf" => files.Select(f => Path.Combine(ClickraStorage.GetOutputDir(f), Path.GetFileNameWithoutExtension(f) + "_translated.pdf")).ToList(),
+                "translate-pdf" => throw new InvalidOperationException(
+                    "translate-pdf output planning is owned by the application use case."),
                 "decrypt-pdf" => throw new InvalidOperationException(
                     "decrypt-pdf output planning is owned by the application use case."),
                 "split-pdf" => throw new InvalidOperationException(
                     "split-pdf output planning is owned by the application use case."),
                 CmdImg2Pdf => throw new InvalidOperationException(
                     "img2pdf output planning is owned by the application use case."),
-                CmdMdToPdf => files.Select(f => Path.Combine(
-                    string.IsNullOrWhiteSpace(outputDirOverride) ? ClickraStorage.GetOutputDir(f) : Path.GetFullPath(outputDirOverride),
-                    Path.GetFileNameWithoutExtension(f) + ".pdf")).ToList(),
-                CmdMdToWord => files.Select(f => Path.Combine(
-                    string.IsNullOrWhiteSpace(outputDirOverride) ? ClickraStorage.GetOutputDir(f) : Path.GetFullPath(outputDirOverride),
-                    Path.GetFileNameWithoutExtension(f) + ".docx")).ToList(),
+                CmdMdToPdf => throw new InvalidOperationException(
+                    "md2pdf output planning is owned by the application use case."),
+                CmdMdToWord => throw new InvalidOperationException(
+                    "md2word output planning is owned by the application use case."),
                 CmdImgCompress => throw new InvalidOperationException(
                     "img-compress output planning is owned by the application use case."),
                 CmdImgToPng or CmdImgToJpg or CmdImgToWebp or CmdImgToGif or CmdImgToHeic
                     => throw new InvalidOperationException(
                         $"{command} output planning is owned by the application use case."),
+                "ppt2pdf" => throw new InvalidOperationException(
+                    "ppt2pdf output planning is owned by the application use case."),
+                "word2pdf" => throw new InvalidOperationException(
+                    "word2pdf output planning is owned by the application use case."),
+                "excel2pdf" => throw new InvalidOperationException(
+                    "excel2pdf output planning is owned by the application use case."),
                 _ => files.Select(f => Path.Combine(ClickraStorage.GetOutputDir(f), Path.GetFileNameWithoutExtension(f) + ".pdf")).ToList()
             };
         }

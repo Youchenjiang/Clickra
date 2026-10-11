@@ -1,3 +1,4 @@
+using Clickra.Core.Application;
 using Clickra.Core.Processors;
 
 namespace Clickra.Core.Tests;
@@ -8,6 +9,27 @@ static partial class TestSuite
 
     public static void RegisterOfficeEngineReliabilityTests(TestRunner runner)
     {
+        runner.Run("Excel to PDF use case owns legacy source-directory planning", () =>
+            AssertOfficeUseCasePlanning(
+                new ExcelToPdfUseCase(),
+                ExcelToPdfUseCase.CommandName,
+                "budget.xlsx",
+                "placeholder"));
+
+        runner.Run("PowerPoint to PDF use case owns legacy source-directory planning", () =>
+            AssertOfficeUseCasePlanning(
+                new PptToPdfUseCase(),
+                PptToPdfUseCase.CommandName,
+                "slides.pptx",
+                "placeholder"));
+
+        runner.Run("Word to PDF use case owns legacy source-directory planning", () =>
+            AssertOfficeUseCasePlanning(
+                new WordToPdfUseCase(),
+                WordToPdfUseCase.CommandName,
+                "report.docx",
+                "fixture"));
+
         runner.Run("Office readiness maps commands and supported app types", () =>
         {
             Assert.Equal(

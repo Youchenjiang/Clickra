@@ -6,6 +6,7 @@ using System.IO;
 using System.Linq;
 using System.Threading;
 using Clickra.Core;
+using Clickra.Core.Application;
 using Clickra.Core.Processors;
 
 namespace Clickra.Core.Tests;
@@ -56,6 +57,12 @@ static partial class TestSuite
     [System.Diagnostics.CodeAnalysis.SuppressMessage("SonarQube", "S3776", Justification = "This method registers independent Markdown PDF test cases; splitting registration adds indirection without reducing test logic.")]
     public static void RegisterMarkdownToPdfTests(TestRunner runner)
     {
+        runner.Run("Markdown to PDF use case snapshots options and output planning", () =>
+            AssertMarkdownUseCasePlanning(
+                new MarkdownToPdfUseCase(),
+                MarkdownToPdfUseCase.CommandName,
+                ".pdf"));
+
         runner.Run("Markdown to PDF: pre-cancel preserves existing output", () =>
             RunWithTempDirectory(tempDir =>
             {
@@ -73,7 +80,7 @@ static partial class TestSuite
                     "Cancellation before parsing must preserve existing PDF bytes.");
             }));
 
-        runner.Run("Markdown to PDF: registry exposes Markdown inputs and PDF outputs", () =>
+        runner.Run("Markdown to PDF: registry exposes inputs and use case owns PDF outputs", () =>
         {
             Assert.True(ConvertCommandRegistry.IsKnownCommand(MarkdownToPdfCommand), MarkdownToPdfCommand + " must be a registered conversion command.");
             string[] allowed = ConvertCommandRegistry.GetAllowedExtensions(MarkdownToPdfCommand);
@@ -86,9 +93,12 @@ static partial class TestSuite
             {
                 string input = Path.Combine(tempDir, "notes.md");
                 File.WriteAllText(input, "# Notes");
-                List<string> outputs = ConvertCommandRegistry.EstimateOutputs(MarkdownToPdfCommand, new List<string> { input });
-                Assert.True(outputs.Count == 1, MarkdownToPdfCommand + " must plan one PDF output per Markdown input.");
-                Assert.Equal(Path.GetFullPath(Path.Combine(tempDir, "notes.pdf")), Path.GetFullPath(outputs[0]));
+                ConversionPlan plan = new MarkdownToPdfUseCase().Plan(new ConversionRequest(
+                    MarkdownToPdfCommand,
+                    new[] { input },
+                    TrackTaskLifecycle: false));
+                Assert.True(plan.Outputs.Count == 1, MarkdownToPdfCommand + " must plan one PDF output per Markdown input.");
+                Assert.Equal(Path.GetFullPath(Path.Combine(tempDir, "notes.pdf")), Path.GetFullPath(plan.Outputs[0]));
             });
         });
 

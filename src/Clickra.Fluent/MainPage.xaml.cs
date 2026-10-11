@@ -516,7 +516,10 @@ public sealed partial class MainPage : Page
         {
             if (ConversionUseCases.TryGet(command, out applicationUseCase))
             {
-                applicationPlan = applicationUseCase!.Plan(new ConversionRequest(command, files));
+                applicationPlan = applicationUseCase!.Plan(new ConversionRequest(
+                    command,
+                    files,
+                    commandOptions));
                 outputs = applicationPlan.Outputs.ToList();
             }
             else
