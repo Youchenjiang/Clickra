@@ -44,11 +44,12 @@ public sealed class MarkdownToPdfProcessor : MarkdownSingleFileProcessorBase
             // PDFsharp permits setting the resolver only before its first font is created.
         }
 
+        MarkdownRenderProfile profile = MarkdownRenderProfile.Resolve(options);
         using var pdf = new PdfDocument();
         using var renderer = new Renderer(
             pdf,
             Path.GetDirectoryName(Path.GetFullPath(filePath)) ?? Directory.GetCurrentDirectory(),
-            options,
+            profile,
             cancellationToken);
         renderer.Render(document);
 
@@ -101,25 +102,17 @@ public sealed class MarkdownToPdfProcessor : MarkdownSingleFileProcessorBase
         private double _y;
 
         /// <summary>Initializes a PDF renderer with resolved Markdown presentation options and cancellation state.</summary>
-        public Renderer(PdfDocument document, string baseDirectory, IReadOnlyDictionary<string, object>? options, CancellationToken token)
+        public Renderer(PdfDocument document, string baseDirectory, MarkdownRenderProfile profile, CancellationToken token)
         {
             _document = document;
             _baseDirectory = baseDirectory;
             _token = token;
-            _template = MarkdownTemplateCatalog.Resolve(
-                MarkdownPdfOptions.GetTheme(options),
-                MarkdownPdfOptions.GetTemplatePath(options));
-            _pageSize = MarkdownPdfOptions.GetPaper(options) == MarkdownPdfOptions.PaperLetter
+            _template = profile.Template;
+            _pageSize = profile.Paper == MarkdownPdfOptions.PaperLetter
                 ? PdfSharp.PageSize.Letter
                 : PdfSharp.PageSize.A4;
-
-            _scale = MarkdownPdfOptions.GetTextSize(options) switch
-            {
-                MarkdownPdfOptions.TextSmall => 0.9,
-                MarkdownPdfOptions.TextLarge => 1.12,
-                _ => 1.0
-            };
-            _layout = MarkdownResolvedLayout.Create(_template, _scale);
+            _scale = profile.Scale;
+            _layout = profile.Layout;
             _marginTop = _template.Layout.EffectiveMarginTopPoints;
             _marginRight = _template.Layout.EffectiveMarginRightPoints;
             _marginBottom = _template.Layout.EffectiveMarginBottomPoints;
@@ -132,11 +125,11 @@ public sealed class MarkdownToPdfProcessor : MarkdownSingleFileProcessorBase
             _accentColor = ToXColor(_template.Palette.Accent);
             _accentSoftColor = ToXColor(_template.Palette.SoftAccent);
             _borderColor = ToXColor(_template.Palette.Border);
-            MarkdownResolvedPalette resolvedPalette = MarkdownResolvedPalette.Create(_template);
+            MarkdownResolvedPalette resolvedPalette = profile.Palette;
             _surfaceColor = ToXColor(resolvedPalette.Surface);
             _quoteBarColor = ToXColor(resolvedPalette.QuoteBar);
 
-            bool lightCode = MarkdownPdfOptions.GetCodeTheme(options) == MarkdownPdfOptions.CodeLight;
+            bool lightCode = profile.LightCode;
             _codeBackgroundColor = lightCode ? XColor.FromArgb(241, 245, 249) : XColor.FromArgb(15, 23, 42);
             _codeTextColor = lightCode ? XColor.FromArgb(30, 41, 59) : XColor.FromArgb(241, 245, 249);
             _inlineCodeBackgroundColor = XColor.FromArgb(241, 245, 249);

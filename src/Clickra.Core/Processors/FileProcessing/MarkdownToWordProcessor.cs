@@ -32,13 +32,9 @@ public sealed class MarkdownToWordProcessor : MarkdownSingleFileProcessorBase
         MarkdownDocument document = ParseMarkdownFile(filePath, "md_word_progress_parsing", onProgress, cancellationToken);
         onProgress?.Invoke(45, 100, Localization.T("md_word_progress_rendering", Path.GetFileName(filePath)));
         string baseDirectory = Path.GetDirectoryName(Path.GetFullPath(filePath)) ?? Directory.GetCurrentDirectory();
+        MarkdownRenderProfile profile = MarkdownRenderProfile.Resolve(options);
         var writer = new DocxWriter(
-            MarkdownTemplateCatalog.Resolve(
-                MarkdownPdfOptions.GetTheme(options),
-                MarkdownPdfOptions.GetTemplatePath(options)),
-            MarkdownPdfOptions.GetPaper(options),
-            MarkdownPdfOptions.GetTextSize(options),
-            MarkdownPdfOptions.GetCodeTheme(options),
+            profile,
             baseDirectory,
             cancellationToken);
 
@@ -96,24 +92,16 @@ public sealed class MarkdownToWordProcessor : MarkdownSingleFileProcessorBase
 
         /// <summary>Initializes a DOCX writer from the resolved Markdown template and presentation options.</summary>
         public DocxWriter(
-            MarkdownDocumentTemplate template,
-            string paper,
-            string textSize,
-            string codeTheme,
+            MarkdownRenderProfile profile,
             string baseDirectory,
             CancellationToken token)
         {
-            _template = template;
-            _paper = paper;
-            _scale = textSize switch
-            {
-                MarkdownPdfOptions.TextSmall => 0.9,
-                MarkdownPdfOptions.TextLarge => 1.12,
-                _ => 1.0
-            };
-            _layout = MarkdownResolvedLayout.Create(_template, _scale);
-            _resolvedPalette = MarkdownResolvedPalette.Create(_template);
-            _lightCode = codeTheme == MarkdownPdfOptions.CodeLight;
+            _template = profile.Template;
+            _paper = profile.Paper;
+            _scale = profile.Scale;
+            _layout = profile.Layout;
+            _resolvedPalette = profile.Palette;
+            _lightCode = profile.LightCode;
             _baseDirectory = baseDirectory;
             _token = token;
         }

@@ -67,6 +67,9 @@ static partial class TestSuite
             "Architecture boundaries: parked task orchestration has one storage owner",
             TestParkedTaskOrchestrationHasSingleOwner);
         runner.RunGuard(
+            "Architecture boundaries: Markdown presentation options have one render owner",
+            TestMarkdownPresentationOptionsHaveSingleOwner);
+        runner.RunGuard(
             "Architecture boundaries: conversion commands have one registry owner",
             TestConversionUseCaseRegistryRejectsDuplicateOwners);
         runner.RunGuard(
@@ -155,6 +158,41 @@ static partial class TestSuite
             "ParkedTaskCoordinator must own parked-task cancellation bookkeeping.");
         Assert.False(facade.Contains("TaskRetentionPolicy.CalculateAdjustedDays(", StringComparison.Ordinal),
             "ClickraStorage.ActiveRecord must not take parked retention orchestration back from the coordinator.");
+    }
+
+    private static void TestMarkdownPresentationOptionsHaveSingleOwner()
+    {
+        string root = FindRepoRoot() ?? throw new TestSkippedException(RepositoryRootMissingMessage);
+        string processorsDir = Path.Combine(root, "src", ArchitectureCoreProjectDirectory, ArchitectureProcessorsDirectory);
+        string profile = File.ReadAllText(Path.Combine(processorsDir, "MarkdownRenderProfile.cs"));
+        string fileProcessingDir = Path.Combine(processorsDir, "FileProcessing");
+        string pdf = File.ReadAllText(Path.Combine(fileProcessingDir, "MarkdownToPdfProcessor.cs"));
+        string word = File.ReadAllText(Path.Combine(fileProcessingDir, "MarkdownToWordProcessor.cs"));
+
+        foreach (string resolverCall in new[]
+        {
+            "MarkdownTemplateCatalog.Resolve(",
+            "MarkdownPdfOptions.GetTheme(",
+            "MarkdownPdfOptions.GetTemplatePath(",
+            "MarkdownPdfOptions.GetPaper(",
+            "MarkdownPdfOptions.GetTextSize(",
+            "MarkdownPdfOptions.GetCodeTheme(",
+            "MarkdownResolvedLayout.Create(",
+            "MarkdownResolvedPalette.Create("
+        })
+        {
+            Assert.True(profile.Contains(resolverCall, StringComparison.Ordinal),
+                $"MarkdownRenderProfile must own {resolverCall}.");
+            Assert.False(pdf.Contains(resolverCall, StringComparison.Ordinal),
+                $"Markdown PDF backend must consume the shared render profile instead of calling {resolverCall}.");
+            Assert.False(word.Contains(resolverCall, StringComparison.Ordinal),
+                $"Markdown Word backend must consume the shared render profile instead of calling {resolverCall}.");
+        }
+
+        Assert.True(pdf.Contains("MarkdownRenderProfile.Resolve(options)", StringComparison.Ordinal),
+            "Markdown PDF conversion must resolve one shared render profile.");
+        Assert.True(word.Contains("MarkdownRenderProfile.Resolve(options)", StringComparison.Ordinal),
+            "Markdown Word conversion must resolve one shared render profile.");
     }
 
     private static void TestArchitectureViolationBaseline()
