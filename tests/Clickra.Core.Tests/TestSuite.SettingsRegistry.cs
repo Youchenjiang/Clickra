@@ -840,6 +840,7 @@ static partial class TestSuite
             "ProgressWindow.Paint.cs",
             "ProgressWindow.PasswordInput.cs",
             "ProgressWindow.Process.cs",
+            "NativeConversionExecutionAdapter.cs",
             "ProgressWindow.Tray.cs",
             "ProgressWindow.VisualSplitter.cs"
         };

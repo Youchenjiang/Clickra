@@ -14,6 +14,7 @@ static partial class TestSuite
     private const string ArchitectureProgressDirectory = "Progress";
     private const string ArchitectureProcessorsDirectory = "Processors";
     private const string ArchitectureProgressProcessFile = "ProgressWindow.Process.cs";
+    private const string ArchitectureNativeExecutionAdapterFile = "NativeConversionExecutionAdapter.cs";
     private const string ArchitectureCliSourceFile = "ClickraCli.cs";
     private const string GenericCatalogResolution = "ConversionUseCases.GetRequired(command)";
     private static readonly TimeSpan ArchitectureRegexTimeout = TimeSpan.FromSeconds(1);
@@ -26,6 +27,7 @@ static partial class TestSuite
     private sealed record MigrationSurfaceSources(
         string Registry,
         string Native,
+        string NativeAdapter,
         string Quiet,
         string FluentMain,
         string FluentTask);
@@ -358,7 +360,7 @@ static partial class TestSuite
 
         Assert.False(sources.Registry.Contains(legacyOutputSuffix, StringComparison.Ordinal),
             $"Legacy ConvertCommandRegistry must not retain {workflowName} output-path policy after application migration.");
-        Assert.False(sources.Native.Contains(processorCall, StringComparison.Ordinal),
+        Assert.False((sources.Native + sources.NativeAdapter).Contains(processorCall, StringComparison.Ordinal),
             $"Native presentation must not execute the {workflowName} processor directly.");
         Assert.False(sources.Quiet.Contains(processorCall, StringComparison.Ordinal),
             $"Headless CLI must not execute the {workflowName} processor directly.");
@@ -366,9 +368,9 @@ static partial class TestSuite
             ? null
             : $"ConversionUseCases.GetRequired({useCaseTypeName}.CommandName)";
         bool nativeCatalogResolution =
-            sources.Native.Contains(GenericCatalogResolution, StringComparison.Ordinal)
+            sources.NativeAdapter.Contains(GenericCatalogResolution, StringComparison.Ordinal)
             || (specificCatalogResolution is not null
-                && sources.Native.Contains(specificCatalogResolution, StringComparison.Ordinal));
+                && sources.NativeAdapter.Contains(specificCatalogResolution, StringComparison.Ordinal));
         bool quietCatalogResolution =
             sources.Quiet.Contains(GenericCatalogResolution, StringComparison.Ordinal)
             || (specificCatalogResolution is not null
@@ -485,7 +487,7 @@ static partial class TestSuite
 
         Assert.False(sources.Registry.Contains("EstimateOutputs(", StringComparison.Ordinal),
             "Legacy ConvertCommandRegistry must not retain output planning after application migration.");
-        Assert.False(sources.Native.Contains(processorCall, StringComparison.Ordinal),
+        Assert.False((sources.Native + sources.NativeAdapter).Contains(processorCall, StringComparison.Ordinal),
             $"Native presentation must not execute {workflowName} directly.");
         Assert.False(sources.Quiet.Contains(processorCall, StringComparison.Ordinal),
             $"Headless CLI must not execute {workflowName} directly.");
@@ -493,8 +495,8 @@ static partial class TestSuite
         string specificCatalogResolution = $"ConversionUseCases.GetRequired({useCaseTypeName}.CommandName)";
         Assert.True(sources.FluentMain.Contains(GenericCatalogResolution, StringComparison.Ordinal)
                     && sources.FluentTask.Contains(GenericCatalogResolution, StringComparison.Ordinal)
-                    && (sources.Native.Contains(GenericCatalogResolution, StringComparison.Ordinal)
-                        || sources.Native.Contains(specificCatalogResolution, StringComparison.Ordinal))
+                    && (sources.NativeAdapter.Contains(GenericCatalogResolution, StringComparison.Ordinal)
+                        || sources.NativeAdapter.Contains(specificCatalogResolution, StringComparison.Ordinal))
                     && (sources.Quiet.Contains(GenericCatalogResolution, StringComparison.Ordinal)
                         || sources.Quiet.Contains(specificCatalogResolution, StringComparison.Ordinal)),
             $"All product surfaces must resolve {workflowName} through the application use-case catalog.");
@@ -508,6 +510,7 @@ static partial class TestSuite
         return new MigrationSurfaceSources(
             File.ReadAllText(Path.Combine(root, "src", ArchitectureCoreProjectDirectory, ArchitectureProcessorsDirectory, "ConvertCommandRegistry.cs")),
             File.ReadAllText(Path.Combine(root, "src", ArchitectureCliProjectDirectory, ArchitectureProgressDirectory, ArchitectureProgressProcessFile)),
+            File.ReadAllText(Path.Combine(root, "src", ArchitectureCliProjectDirectory, ArchitectureProgressDirectory, ArchitectureNativeExecutionAdapterFile)),
             File.ReadAllText(Path.Combine(root, "src", ArchitectureCliProjectDirectory, "Cli", ArchitectureCliSourceFile)),
             File.ReadAllText(Path.Combine(root, "src", ArchitectureFluentProjectDirectory, "MainPage.xaml.cs")),
             File.ReadAllText(Path.Combine(root, "src", ArchitectureFluentProjectDirectory, "TaskProgressPage.xaml.cs")));
@@ -519,13 +522,15 @@ static partial class TestSuite
         if (root is null) throw new TestSkippedException(RepositoryRootMissingMessage);
 
         string native = File.ReadAllText(Path.Combine(root, "src", ArchitectureCliProjectDirectory, ArchitectureProgressDirectory, ArchitectureProgressProcessFile));
+        string nativeAdapter = File.ReadAllText(Path.Combine(root, "src", ArchitectureCliProjectDirectory, ArchitectureProgressDirectory, ArchitectureNativeExecutionAdapterFile));
         string quiet = File.ReadAllText(Path.Combine(root, "src", ArchitectureCliProjectDirectory, "Cli", ArchitectureCliSourceFile));
         string fluentMain = File.ReadAllText(Path.Combine(root, "src", ArchitectureFluentProjectDirectory, "MainPage.xaml.cs"));
         string fluentTask = File.ReadAllText(Path.Combine(root, "src", ArchitectureFluentProjectDirectory, "TaskProgressPage.xaml.cs"));
 
-        Assert.True(native.Contains("CommandOptions: _commandOptions", StringComparison.Ordinal)
-                    && native.Contains("new TaskIdExecutionObserver(this, TryRecordTaskIndex)", StringComparison.Ordinal)
-                    && native.Contains("ResumeStartIndex = _startIndex", StringComparison.Ordinal),
+        Assert.True(native.Contains("new NativeConversionExecutionAdapter(", StringComparison.Ordinal)
+                    && nativeAdapter.Contains("CommandOptions: _commandOptions", StringComparison.Ordinal)
+                    && nativeAdapter.Contains("new TaskIdExecutionObserver(_taskStarted, _recordTaskIndex)", StringComparison.Ordinal)
+                    && nativeAdapter.Contains("ResumeStartIndex = _startIndex", StringComparison.Ordinal),
             $"Native {workflowName} must route its option snapshot and resume checkpoint through the application owner.");
         Assert.True((quiet.Contains(GenericCatalogResolution, StringComparison.Ordinal)
                      || quiet.Contains($"ConversionUseCases.GetRequired({command})", StringComparison.Ordinal)

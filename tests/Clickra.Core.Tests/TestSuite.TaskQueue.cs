@@ -183,6 +183,7 @@ static partial class TestSuite
         if (root is null) throw new TestSkippedException(RepoRootNotFoundMessage);
 
         string native = File.ReadAllText(Path.Combine(root, "src", CliProjectDirectory, "Progress", "ProgressWindow.Process.cs"));
+        string nativeAdapter = File.ReadAllText(Path.Combine(root, "src", CliProjectDirectory, "Progress", "NativeConversionExecutionAdapter.cs"));
         string fluentMain = File.ReadAllText(Path.Combine(root, "src", FluentProjectDirectory, FluentMainPageFile));
         string fluentTask = File.ReadAllText(Path.Combine(root, "src", FluentProjectDirectory, "TaskProgressPage.xaml.cs"));
         string lifecycle = File.ReadAllText(Path.Combine(root, "src", CoreProjectDirectory, "Processors", "ConversionTaskLifecycle.cs"));
@@ -210,12 +211,20 @@ static partial class TestSuite
         Assert.False(native.Contains("RunSharedCommand(", StringComparison.Ordinal)
                      || native.Contains("ConvertCommandRunner.Run(", StringComparison.Ordinal),
             "Native product commands must not retain the legacy generic runner fallback.");
+        Assert.False(native.Contains("ConversionUseCases.", StringComparison.Ordinal)
+                     || native.Contains(".ExecuteAsync(", StringComparison.Ordinal),
+            "ProgressWindow must delegate application-use-case routing and execution to NativeConversionExecutionAdapter.");
+        Assert.True(native.Contains("new NativeConversionExecutionAdapter(", StringComparison.Ordinal)
+                    && nativeAdapter.Contains("ConversionUseCases.GetRequired", StringComparison.Ordinal)
+                    && nativeAdapter.Contains("ExecuteAsync(", StringComparison.Ordinal),
+            "NativeConversionExecutionAdapter must own the application-use-case routing moved out of ProgressWindow.");
         Assert.False(fluentMain.Contains("ConvertCommandRunner", StringComparison.Ordinal)
                      || fluentTask.Contains("ConvertCommandRunner", StringComparison.Ordinal)
                      || fluentMain.Contains("ConvertCommandRegistry.EstimateOutputs", StringComparison.Ordinal)
                      || fluentTask.Contains("ConvertCommandRegistry.EstimateOutputs", StringComparison.Ordinal),
             "Fluent product commands must not retain legacy runner or output-planning fallbacks.");
-        Assert.True(native.Contains("new TaskIdExecutionObserver(this, TryRecordTaskIndex)", StringComparison.Ordinal)
+        Assert.True(native.Contains("new NativeConversionExecutionAdapter(", StringComparison.Ordinal)
+                    && nativeAdapter.Contains("new TaskIdExecutionObserver(_taskStarted, _recordTaskIndex)", StringComparison.Ordinal)
                     && perFileUseCaseBase.Contains("observer?.OnFileStarting(i)", StringComparison.Ordinal)
                     && markdownUseCaseBase.Contains(": PerFileConversionUseCaseBase", StringComparison.Ordinal)
                     && markdownUseCaseBase.Contains("plan.ResumeStartIndex;", StringComparison.Ordinal),

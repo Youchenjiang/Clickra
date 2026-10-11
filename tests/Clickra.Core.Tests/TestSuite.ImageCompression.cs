@@ -243,8 +243,9 @@ static partial class TestSuite
             string? root = FindRepoRoot();
             if (root is null) throw new TestSkippedException("Could not locate repository root.");
             string progress = File.ReadAllText(Path.Combine(root, "src", "Clickra.CLI", "Progress", "ProgressWindow.Process.cs"));
-            Assert.False(progress.Contains("GetOutputPathForError", StringComparison.Ordinal)
-                         || progress.Contains("ConvertCommandRegistry.EstimateOutputs", StringComparison.Ordinal),
+            string adapter = File.ReadAllText(Path.Combine(root, "src", "Clickra.CLI", "Progress", "NativeConversionExecutionAdapter.cs"));
+            Assert.False((progress + adapter).Contains("GetOutputPathForError", StringComparison.Ordinal)
+                         || (progress + adapter).Contains("ConvertCommandRegistry.EstimateOutputs", StringComparison.Ordinal),
                 "Native failure handling must not re-enter retired legacy output planning after every product command has an application owner.");
         });
     }
