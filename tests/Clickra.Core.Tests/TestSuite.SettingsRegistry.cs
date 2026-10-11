@@ -276,8 +276,8 @@ static partial class TestSuite
                     cliClick.Contains("int span = range.Max - range.Min", StringComparison.Ordinal),
             "CLI slider click handler must derive its span and clamping from the descriptor range.");
         Assert.True(cliClick.Contains("GetRequiredNumericRange(descriptor)", StringComparison.Ordinal) &&
-                    cliClick.Contains("ClickraStorage.SaveSetting(descriptor.Key, clamped.ToString())", StringComparison.Ordinal),
-            "CLI ApplyPdfCompressLevel must clamp and save through the registered descriptor.");
+                    cliClick.Contains("SettingsController.Set(descriptor.Key, clamped.ToString())", StringComparison.Ordinal),
+            "CLI ApplyPdfCompressLevel must clamp through the registered descriptor and persist through the application settings gateway.");
         Assert.True(cliClick.Contains("ClickraSettings.MinParkedRetentionDays", StringComparison.Ordinal) &&
                     cliClick.Contains("ClickraSettings.MaxParkedRetentionDays", StringComparison.Ordinal),
             "CLI SetParkedRetention must clamp against centralized retention bounds.");
@@ -437,10 +437,10 @@ static partial class TestSuite
         string cliLifecycle = File.ReadAllText(Path.Combine(root, "src", CliProjectDirectory, DashboardDirectory, "DashboardWindow.Lifecycle.cs"));
         string cliEvents = File.ReadAllText(Path.Combine(root, "src", CliProjectDirectory, DashboardDirectory, "DashboardWindow.Events.cs"));
 
-        Assert.True(fluentCode.Contains("ClickraStorage.SettingsReloaded +=", StringComparison.Ordinal),
-            "Fluent UI must subscribe to ClickraStorage.SettingsReloaded.");
-        Assert.True(fluentCode.Contains("ClickraStorage.SettingsReloaded -=", StringComparison.Ordinal),
-            "Fluent UI must unsubscribe from ClickraStorage.SettingsReloaded when unloaded.");
+        Assert.True(fluentCode.Contains("SettingsController.Reloaded +=", StringComparison.Ordinal),
+            "Fluent UI must subscribe through the application settings gateway.");
+        Assert.True(fluentCode.Contains("SettingsController.Reloaded -=", StringComparison.Ordinal),
+            "Fluent UI must unsubscribe from the application settings gateway when unloaded.");
         Assert.True(fluentCode.Contains("_settingsReloadHooked", StringComparison.Ordinal),
             "Fluent UI must guard reload subscription lifecycle against duplicate hooks.");
         Assert.True(fluentCode.Contains("SyncSettingsToUi()", StringComparison.Ordinal),
@@ -449,12 +449,12 @@ static partial class TestSuite
                     fluentCode.Contains("RefreshFiles();", StringComparison.Ordinal) &&
                     fluentCode.Contains("RefreshHistory();", StringComparison.Ordinal),
             "Fluent external language reloads must refresh dynamic localized file and history content.");
-        Assert.True(cliLifecycle.Contains("ClickraStorage.SettingsReloaded +=", StringComparison.Ordinal),
-            "CLI Dashboard must subscribe to ClickraStorage.SettingsReloaded.");
-        Assert.True(cliLifecycle.Contains("ClickraStorage.SettingsReloaded -=", StringComparison.Ordinal),
-            "CLI Dashboard must unsubscribe from ClickraStorage.SettingsReloaded on window close.");
-        Assert.True(cliEvents.Contains("ClickraStorage.EnsureFreshSettings()", StringComparison.Ordinal),
-            "CLI Dashboard timer tick must ensure fresh settings on each refresh.");
+        Assert.True(cliLifecycle.Contains("SettingsController.Reloaded +=", StringComparison.Ordinal),
+            "CLI Dashboard must subscribe through the application settings gateway.");
+        Assert.True(cliLifecycle.Contains("SettingsController.Reloaded -=", StringComparison.Ordinal),
+            "CLI Dashboard must unsubscribe from the application settings gateway on window close.");
+        Assert.True(cliEvents.Contains("SettingsController.EnsureFresh()", StringComparison.Ordinal),
+            "CLI Dashboard timer tick must refresh settings through the application gateway on each refresh.");
     }
 
     private static void TestSettingDescriptorsAreValid()
@@ -525,9 +525,9 @@ static partial class TestSuite
                     && fluentCode.Contains("_dynamicSettings.Sync();", StringComparison.Ordinal)
                     && fluentCode.Contains("_dynamicSettings.ApplyLanguage();", StringComparison.Ordinal),
             "MainPage must delegate dynamic settings creation, synchronization, and localization to the controller.");
-        Assert.True(fluentDynamicSettings.Contains("ClickraStorage.SaveSetting(", StringComparison.Ordinal)
-                    && fluentDynamicSettings.Contains("ClickraStorage.GetSetting", StringComparison.Ordinal),
-            "The Fluent dynamic settings controller must own descriptor persistence and storage-to-control synchronization.");
+        Assert.True(fluentDynamicSettings.Contains("SettingsController.Set(", StringComparison.Ordinal)
+                    && fluentDynamicSettings.Contains("SettingsController.Get", StringComparison.Ordinal),
+            "The Fluent dynamic settings controller must own descriptor synchronization through the application settings gateway.");
         Assert.True(cliPaint.Contains("SettingPageRegistry.AllDescriptors", StringComparison.Ordinal),
             "CLI Dashboard must iterate SettingPageRegistry.AllDescriptors to paint dynamic settings controls.");
         Assert.True(cliPaint.Contains("DrawDynamicSettingDescriptor", StringComparison.Ordinal),
