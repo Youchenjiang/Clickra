@@ -64,6 +64,9 @@ static partial class TestSuite
             "Architecture boundaries: application contracts stay UI-independent",
             TestApplicationContractsStayUiIndependent);
         runner.RunGuard(
+            "Architecture boundaries: parked task orchestration has one storage owner",
+            TestParkedTaskOrchestrationHasSingleOwner);
+        runner.RunGuard(
             "Architecture boundaries: conversion commands have one registry owner",
             TestConversionUseCaseRegistryRejectsDuplicateOwners);
         runner.RunGuard(
@@ -114,6 +117,44 @@ static partial class TestSuite
         runner.RunGuard(
             "Architecture boundaries: migrated Markdown Word workflow has one execution owner",
             TestMarkdownToWordWorkflowHasSingleExecutionOwner);
+    }
+
+    private static void TestParkedTaskOrchestrationHasSingleOwner()
+    {
+        string root = FindRepoRoot() ?? throw new TestSkippedException(RepositoryRootMissingMessage);
+        string storageDir = Path.Combine(root, "src", ArchitectureCoreProjectDirectory, "Storage");
+        string facade = File.ReadAllText(Path.Combine(storageDir, "ClickraStorage.ActiveRecord.cs"));
+        string coordinator = File.ReadAllText(Path.Combine(storageDir, "ParkedTaskCoordinator.cs"));
+
+        foreach ((string publicCall, string delegation) in new[]
+        {
+            ("public static void ParkTask(", "ParkedTaskCoordinator.Park("),
+            ("public static List<HistoryEntry> GetParkedTasks()", "ParkedTaskCoordinator.GetAll("),
+            ("public static void CancelParkedTask(", "ParkedTaskCoordinator.Cancel("),
+            ("public static ResumedTaskInfo? ClaimParkedTaskForResume(", "ParkedTaskCoordinator.ClaimForResume("),
+            ("public static void SetParkedRetentionOverride(", "ParkedTaskCoordinator.SetRetentionOverride("),
+            ("public static int? AdjustParkedRetention(", "ParkedTaskCoordinator.AdjustRetention("),
+            ("public static ParkedRetentionInfo GetParkedRetentionInfo(", "ParkedTaskCoordinator.GetRetentionInfo(")
+        })
+        {
+            int start = facade.IndexOf(publicCall, StringComparison.Ordinal);
+            Assert.True(start >= 0, $"ClickraStorage facade must keep {publicCall}.");
+            int end = facade.IndexOf(';', start);
+            string body = end > start ? facade[start..(end + 1)] : facade[start..];
+            Assert.True(body.Contains(delegation, StringComparison.Ordinal),
+                $"{publicCall} must delegate parked-task orchestration to ParkedTaskCoordinator.");
+            Assert.False(body.Contains("RunWithMutex", StringComparison.Ordinal),
+                $"{publicCall} must stay a facade instead of reclaiming parked-task orchestration.");
+        }
+
+        Assert.True(coordinator.Contains("RunWithMutex", StringComparison.Ordinal),
+            "ParkedTaskCoordinator must own atomic parked-task transitions.");
+        Assert.True(coordinator.Contains("TaskRetentionPolicy.CalculateAdjustedDays(", StringComparison.Ordinal),
+            "ParkedTaskCoordinator must own retention-policy orchestration.");
+        Assert.True(coordinator.Contains("WriteCanceledHistory(", StringComparison.Ordinal),
+            "ParkedTaskCoordinator must own parked-task cancellation bookkeeping.");
+        Assert.False(facade.Contains("TaskRetentionPolicy.CalculateAdjustedDays(", StringComparison.Ordinal),
+            "ClickraStorage.ActiveRecord must not take parked retention orchestration back from the coordinator.");
     }
 
     private static void TestArchitectureViolationBaseline()

@@ -1,7 +1,6 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
-using System.Globalization;
 using System.IO;
 using System.Linq;
 
@@ -222,55 +221,17 @@ namespace Clickra.Core
         /// 不寫歷史——任務仍可從 dashboard「繼續」或「取消」。
         /// </summary>
         public static void ParkTask(string taskId, string reason, int nextIndex)
-        {
-            RunWithMutex(() =>
-            {
-                var entry = ReadTaskFileInternal(taskId);
-                if (entry.HasValue && entry.Value.Status == ConversionStatus.InProgress)
-                {
-                    var data = ToTaskData(entry.Value, ConversionStatus.Parked, errorMsg: reason) with
-                    {
-                        CurrentIndex = nextIndex,
-                        ParkedSince = DateTime.UtcNow.ToString(DateTimeFormat, CultureInfo.InvariantCulture)
-                    };
-                    WriteTaskFileInternal(data);
-                }
-            });
-            if (_threadTaskId == taskId) _threadTaskId = null;
-        }
+            => ParkedTaskCoordinator.Park(taskId, reason, nextIndex);
 
         /// <summary>列出所有已暫存（Parked）的任務，新的在前。</summary>
         public static List<HistoryEntry> GetParkedTasks()
-        {
-            return RunWithMutex(() =>
-            {
-                PruneTasks();
-                return ListTaskFiles()
-                    .Select(ReadTaskFileInternal)
-                    .Where(e => e.HasValue && e.Value.Status == ConversionStatus.Parked)
-                    .Select(e => e.GetValueOrDefault())
-                    .ToList();
-            });
-        }
+            => ParkedTaskCoordinator.GetAll();
 
         /// <summary>取消一個已暫存的任務：寫入 Canceled 歷史（與逾時/遺棄清理相同的記帳）
         /// 並刪除任務檔，讓它離開 dashboard 的「待繼續」清單。
         /// 非暫存或已不存在的任務為 no-op。</summary>
         public static void CancelParkedTask(string taskId)
-        {
-            RunWithMutex(() =>
-            {
-                var entry = ReadTaskFileInternal(taskId);
-                if (entry is null || entry.Value.Status != ConversionStatus.Parked) return;
-
-                string path = TaskFilePath(taskId);
-                if (File.Exists(path))
-                {
-                    File.Delete(path);
-                }
-                WriteCanceledHistory(entry.Value, CanceledReason, DateTime.UtcNow);
-            });
-        }
+            => ParkedTaskCoordinator.Cancel(taskId);
 
         /// <summary>已暫存任務的保留天數（0 = 無限期）。未設定或無法解析時採用登錄表的預設值。</summary>
         public record ResumedTaskInfo(string TaskId, string Command, List<string> Files, int StartIndex);
@@ -280,116 +241,19 @@ namespace Clickra.Core
         /// input/index capture, and the Parked -> InProgress transition so only one consumer can win.
         /// </summary>
         public static ResumedTaskInfo? ClaimParkedTaskForResume(string taskId)
-        {
-            if (string.IsNullOrWhiteSpace(taskId)) return null;
-            return RunWithMutex(() =>
-            {
-                var entry = ReadTaskFileInternal(taskId);
-                if (entry is null || entry.Value.Status != ConversionStatus.Parked) return null;
-
-                string path = TaskFilePath(taskId);
-                var (retentionDays, age) = ParkedWindow(entry.Value, path, DateTime.UtcNow);
-                if (retentionDays > 0 && CalculateRetentionInfo(retentionDays, age).HasExpired)
-                {
-                    if (File.Exists(path)) File.Delete(path);
-                    return null;
-                }
-
-                var files = (entry.Value.InputPaths ?? string.Empty)
-                    .Split(';', StringSplitOptions.RemoveEmptyEntries)
-                    .ToList();
-                if (files.Count == 0) return null;
-
-                int startIndex = Math.Clamp(entry.Value.CurrentIndex, 0, files.Count);
-                var claimed = ToTaskData(entry.Value, ConversionStatus.InProgress, pidOverride: Environment.ProcessId) with
-                {
-                    ParkedSince = null
-                };
-                if (!WriteTaskFileInternal(claimed)) return null;
-                return new ResumedTaskInfo(taskId, entry.Value.Command, files, startIndex);
-            });
-        }
+            => ParkedTaskCoordinator.ClaimForResume(taskId);
 
         public static int GetParkedRetentionDays() =>
-            ClickraSettings.ClampNumericSetting(
-                ClickraSettings.ParkedTaskRetention,
-                GetSettingInt(ClickraSettings.ParkedTaskRetention));
+            ParkedTaskCoordinator.GetRetentionDays();
 
         public static int GetEffectiveParkedRetentionDays(HistoryEntry entry) =>
-            entry.ParkedRetentionDays.HasValue
-                ? ClickraSettings.ClampNumericSetting(ClickraSettings.ParkedTaskRetention, entry.ParkedRetentionDays.Value)
-                : GetParkedRetentionDays();
+            ParkedTaskCoordinator.GetEffectiveRetentionDays(entry);
 
         public static void SetParkedRetentionOverride(string taskId, int? days)
-        {
-            RunWithMutex(() =>
-            {
-                var entry = ReadTaskFileInternal(taskId);
-                if (!entry.HasValue || entry.Value.Status != ConversionStatus.Parked) return;
-
-                string path = TaskFilePath(taskId);
-                var now = DateTime.UtcNow;
-                var age = ParkedAge(entry.Value, path, now);
-                string since = string.IsNullOrEmpty(entry.Value.ParkedSince)
-                    ? (now - age).ToString(DateTimeFormat, CultureInfo.InvariantCulture)
-                    : entry.Value.ParkedSince;
-                int? clamped = days.HasValue
-                    ? ClickraSettings.ClampNumericSetting(ClickraSettings.ParkedTaskRetention, days.Value)
-                    : null;
-                var data = ToTaskData(entry.Value, ConversionStatus.Parked) with
-                {
-                    ParkedRetentionDays = clamped,
-                    ParkedSince = since
-                };
-                WriteTaskFileInternal(data);
-            });
-        }
+            => ParkedTaskCoordinator.SetRetentionOverride(taskId, days);
 
         public static int? AdjustParkedRetention(string taskId, int deltaDays)
-        {
-            if (deltaDays == 0) return null;
-
-            return RunWithMutex(() =>
-            {
-                string path = TaskFilePath(taskId);
-                var maybe = ReadTaskFileInternal(taskId);
-                if (!maybe.HasValue || maybe.Value.Status != ConversionStatus.Parked) return (int?)null;
-
-                var entry = maybe.Value;
-                var now = DateTime.UtcNow;
-                var age = ParkedAge(entry, path, now);
-                int current = GetEffectiveParkedRetentionDays(entry);
-
-                int? adjusted = TaskRetentionPolicy.CalculateAdjustedDays(current, age, deltaDays);
-                if (!adjusted.HasValue) return (int?)null;
-                int next = adjusted.Value;
-                string since = string.IsNullOrEmpty(entry.ParkedSince)
-                    ? (now - age).ToString(DateTimeFormat, CultureInfo.InvariantCulture)
-                    : entry.ParkedSince;
-
-                var data = ToTaskData(entry, ConversionStatus.Parked) with
-                {
-                    ParkedRetentionDays = next,
-                    ParkedSince = since
-                };
-                if (!WriteTaskFileInternal(data)) return (int?)null;
-                return next;
-            });
-        }
-
-        private static TimeSpan ParkedAge(HistoryEntry entry, string path, DateTime now)
-        {
-            if (DateTime.TryParse(entry.ParkedSince, CultureInfo.InvariantCulture,
-                    DateTimeStyles.AdjustToUniversal | DateTimeStyles.AssumeUniversal, out var since))
-            {
-                return now - since;
-            }
-
-            return now - File.GetLastWriteTimeUtc(path);
-        }
-
-        private static (int Days, TimeSpan Age) ParkedWindow(HistoryEntry entry, string path, DateTime now)
-            => (GetEffectiveParkedRetentionDays(entry), ParkedAge(entry, path, now));
+            => ParkedTaskCoordinator.AdjustRetention(taskId, deltaDays);
 
         /// <summary>封裝已暫存任務的保留天數與過期狀態資訊。</summary>
         public readonly record struct ParkedRetentionInfo(
@@ -402,47 +266,15 @@ namespace Clickra.Core
 
         /// <summary>Formats the shared parked-task retention state for every UI surface.</summary>
         public static string DescribeParkedRetention(ParkedRetentionInfo info)
-        {
-            string phrase;
-            if (info.IsUnlimited)
-                phrase = Localization.T("task_parked_ttl_unlimited");
-            else if (info.HasExpired)
-                phrase = Localization.T("task_parked_ttl_expired");
-            else if (info.IsExpiringSoon)
-                phrase = Localization.T("task_parked_ttl_expiring_soon");
-            else if (info.RemainingDays == 1)
-                phrase = Localization.T("task_parked_ttl_days_one", 1);
-            else
-                phrase = Localization.T("task_parked_ttl_days", info.RemainingDays);
-
-            return info.IsTaskOverride ? phrase + Localization.T("task_parked_ttl_override") : phrase;
-        }
+            => ParkedTaskCoordinator.DescribeRetention(info);
 
         /// <summary>根據設定的保留天數與暫存經過時間，計算剩餘保留狀態。</summary>
         public static ParkedRetentionInfo CalculateRetentionInfo(int retentionDays, TimeSpan age, bool isTaskOverride = false) =>
-            TaskRetentionPolicy.CalculateInfo(retentionDays, age, isTaskOverride);
+            ParkedTaskCoordinator.CalculateInfo(retentionDays, age, isTaskOverride);
 
         /// <summary>取得指定暫存任務的保留與過期資訊。若任務檔不存在或已過期，傳回對應狀態。</summary>
         public static ParkedRetentionInfo GetParkedRetentionInfo(string taskId)
-        {
-            return RunWithMutex(() =>
-            {
-                string path = TaskFilePath(taskId);
-                var entry = ReadTaskFileInternal(taskId);
-                if (!entry.HasValue)
-                {
-                    return new ParkedRetentionInfo(
-                        IsUnlimited: false,
-                        RemainingDays: 0,
-                        RemainingTime: TimeSpan.Zero,
-                        IsExpiringSoon: false,
-                        HasExpired: true);
-                }
-
-                var (days, age) = ParkedWindow(entry.Value, path, DateTime.UtcNow);
-                return CalculateRetentionInfo(days, age, entry.Value.ParkedRetentionDays.HasValue);
-            });
-        }
+            => ParkedTaskCoordinator.GetRetentionInfo(taskId);
 
         /// <summary>刪除任務進度檔（例如任務完成且不需保留，或診斷錯誤後清理）。</summary>
         public static void DeleteTask(string taskId)
@@ -561,7 +393,7 @@ namespace Clickra.Core
             int parkedDays = 0;
             if (parked)
             {
-                (parkedDays, expiryAge) = ParkedWindow(e, file, now);
+                (parkedDays, expiryAge) = ParkedTaskCoordinator.GetWindow(e, file, now);
             }
 
             if (IsExpired(finished, parked, expiryAge, parkedDays))

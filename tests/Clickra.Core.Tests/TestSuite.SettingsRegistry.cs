@@ -172,10 +172,10 @@ static partial class TestSuite
     {
         string root = FindRepoRoot() ?? throw new TestSkippedException(
             RepoRootNotFoundMessage);
-        string storage = File.ReadAllText(Path.Combine(root, "src", "Clickra.Core", "Storage", "ClickraStorage.ActiveRecord.cs"));
+        string parkedCoordinator = File.ReadAllText(Path.Combine(root, "src", "Clickra.Core", "Storage", "ParkedTaskCoordinator.cs"));
         string registry = File.ReadAllText(Path.Combine(root, "src", "Clickra.Core", "Processors", "ConvertCommandRegistry.cs"));
 
-        AssertNumericAccessorUsesRegistry("GetParkedRetentionDays", storage);
+        AssertNumericAccessorUsesRegistry("GetRetentionDays", parkedCoordinator);
         AssertNumericAccessorUsesRegistry("GetPdfCompressLevel", registry);
         AssertNumericAccessorUsesRegistry("GetImageCompressLevel", registry);
         AssertNumericAccessorUsesRegistry("GetImageCompressMaxDimension", registry);
