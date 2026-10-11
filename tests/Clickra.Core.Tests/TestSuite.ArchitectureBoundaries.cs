@@ -7,7 +7,7 @@ namespace Clickra.Core.Tests;
 static partial class TestSuite
 {
     private const int ArchitectureViolationBaselineCeiling = 0;
-    private const int ProcessorGlobalStateBaselineCeiling = 30;
+    private const int ProcessorGlobalStateBaselineCeiling = 27;
     private const string RepositoryRootMissingMessage = "Could not locate the repository root.";
     private const string ArchitectureCliProjectDirectory = "Clickra.CLI";
     private const string ArchitectureCoreProjectDirectory = "Clickra.Core";
@@ -68,7 +68,6 @@ static partial class TestSuite
                 ["src/Clickra.Core/Processors/FileProcessing/ImageFormatConvertProcessor.cs"] = 1,
                 ["src/Clickra.Core/Processors/FileProcessing/LibreOfficeEngineInstaller.cs"] = 2,
                 ["src/Clickra.Core/Processors/FileProcessing/LibreOfficeHelper.cs"] = 2,
-                ["src/Clickra.Core/Processors/FileProcessing/OfficeEngineDetector.cs"] = 3,
                 ["src/Clickra.Core/Processors/FileProcessing/PdfDecryptProcessor.cs"] = 1,
                 ["src/Clickra.Core/Processors/FileProcessing/WicImageHelper.cs"] = 2,
                 ["src/Clickra.Core/Processors/PdfTranslation/PdfTranslationPipeline.cs"] = 3,

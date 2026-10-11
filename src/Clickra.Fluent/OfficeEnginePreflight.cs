@@ -8,9 +8,15 @@ internal static class OfficeEnginePreflight
     public static bool TryValidate(string command, Func<string, string> localize, out string error)
     {
         error = "";
-        if (OfficeEngineDetector.IsCommandReady(command)) return true;
+        string engine = ClickraStorage.GetSetting(ClickraSettings.OfficeEngine);
+        if (OfficeEngineDetector.IsCommandReady(
+                command,
+                engine,
+                ClickraStorage.GetSettingBool(ClickraSettings.LibreOfficeRemovalPendingRestart),
+                ClickraStorage.GetSetting(ClickraSettings.LibreOfficePath)))
+            return true;
 
-        error = localize(OfficeEngineDetector.GetUnavailableErrorKey());
+        error = localize(OfficeEngineDetector.GetUnavailableErrorKey(engine));
         return false;
     }
 }

@@ -133,7 +133,11 @@ public static partial class DashboardWindow
         }
 
         /// <summary>Whether a usable Office engine (Microsoft or LibreOffice) is available for this command.</summary>
-        public bool HasAvailableEngine() => OfficeEngineDetector.IsCommandReady(Command);
+        public bool HasAvailableEngine() => OfficeEngineDetector.IsCommandReady(
+            Command,
+            ClickraStorage.GetSetting(ClickraSettings.OfficeEngine),
+            ClickraStorage.GetSettingBool(ClickraSettings.LibreOfficeRemovalPendingRestart),
+            ClickraStorage.GetSetting(ClickraSettings.LibreOfficePath));
 
         /// <summary>Activates the given command on the convert tab, clearing incompatible
         /// selections.</summary>
@@ -181,7 +185,8 @@ public static partial class DashboardWindow
         }
 
         private static string GetOfficeEngineUnavailableErrorKey() =>
-            OfficeEngineDetector.GetUnavailableErrorKey();
+            OfficeEngineDetector.GetUnavailableErrorKey(
+                ClickraStorage.GetSetting(ClickraSettings.OfficeEngine));
 
         private static void StartConvertProgress(
             ConvertCommand command,

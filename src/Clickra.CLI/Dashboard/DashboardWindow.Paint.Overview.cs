@@ -29,10 +29,13 @@ namespace Clickra.UI
             if (_sectionFont != null)
                 g.DrawString(GetText("overview_engine_status"), _sectionFont, Brushes.White, contentX * s, 95 * s);
 
+            string configuredEngine = ClickraStorage.GetSetting(ClickraSettings.OfficeEngine);
             bool microsoftReady = OfficeEngineDetector.IsMicrosoftSuiteReady();
-            bool libreOfficeReady = OfficeEngineDetector.IsLibreOfficeReady();
-            bool officeReady = OfficeEngineDetector.IsSelectedEngineReady(microsoftReady, libreOfficeReady);
-            string activeEngine = OfficeEngineDetector.GetPreferredReadyEngine(microsoftReady, libreOfficeReady);
+            bool libreOfficeReady = OfficeEngineDetector.IsLibreOfficeReady(
+                ClickraStorage.GetSettingBool(ClickraSettings.LibreOfficeRemovalPendingRestart),
+                ClickraStorage.GetSetting(ClickraSettings.LibreOfficePath));
+            bool officeReady = OfficeEngineDetector.IsSelectedEngineReady(configuredEngine, microsoftReady, libreOfficeReady);
+            string activeEngine = OfficeEngineDetector.GetPreferredReadyEngine(configuredEngine, microsoftReady, libreOfficeReady);
             string activeOfficeEngine = activeEngine switch
             {
                 ClickraSettings.OfficeEngineMicrosoft => GetText("setting_engine_microsoft"),

@@ -43,20 +43,26 @@ public static class OfficeEngineDetector
         IsMicrosoftOfficeReady("Excel") &&
         IsMicrosoftOfficeReady("PowerPoint");
 
-    public static bool IsLibreOfficeReady() =>
-        !string.IsNullOrWhiteSpace(LibreOfficeHelper.GetResolvedExecutablePath());
+    public static bool IsLibreOfficeReady(bool removalPending, string configuredPath) =>
+        !string.IsNullOrWhiteSpace(LibreOfficeHelper.GetResolvedExecutablePath(removalPending, configuredPath));
 
-    public static bool IsCommandReady(string command)
+    public static bool IsCommandReady(
+        string command,
+        string engine,
+        bool libreOfficeRemovalPending,
+        string libreOfficePath)
     {
         string? app = GetOfficeAppForCommand(command);
         if (app is null) return true;
 
-        return IsSelectedEngineReady(IsMicrosoftOfficeReady(app), IsLibreOfficeReady());
+        return IsSelectedEngineReady(
+            engine,
+            IsMicrosoftOfficeReady(app),
+            IsLibreOfficeReady(libreOfficeRemovalPending, libreOfficePath));
     }
 
-    public static bool IsSelectedEngineReady(bool microsoftReady, bool libreOfficeReady)
+    public static bool IsSelectedEngineReady(string engine, bool microsoftReady, bool libreOfficeReady)
     {
-        string engine = ClickraStorage.GetSetting(ClickraSettings.OfficeEngine);
         if (engine.Equals(ClickraSettings.OfficeEngineLibreOffice, StringComparison.OrdinalIgnoreCase))
             return libreOfficeReady;
         if (engine.Equals(ClickraSettings.OfficeEngineMicrosoft, StringComparison.OrdinalIgnoreCase))
@@ -64,9 +70,8 @@ public static class OfficeEngineDetector
         return microsoftReady || libreOfficeReady;
     }
 
-    public static string GetUnavailableErrorKey()
+    public static string GetUnavailableErrorKey(string engine)
     {
-        string engine = ClickraStorage.GetSetting(ClickraSettings.OfficeEngine);
         if (engine.Equals(ClickraSettings.OfficeEngineLibreOffice, StringComparison.OrdinalIgnoreCase))
             return "error_libreoffice_not_ready";
         if (engine.Equals(ClickraSettings.OfficeEngineMicrosoft, StringComparison.OrdinalIgnoreCase))
@@ -75,9 +80,8 @@ public static class OfficeEngineDetector
     }
 
     /// <summary>Engine label value to show for the configured mode and currently available engines.</summary>
-    public static string GetPreferredReadyEngine(bool microsoftReady, bool libreOfficeReady)
+    public static string GetPreferredReadyEngine(string engine, bool microsoftReady, bool libreOfficeReady)
     {
-        string engine = ClickraStorage.GetSetting(ClickraSettings.OfficeEngine);
         if (engine.Equals(ClickraSettings.OfficeEngineLibreOffice, StringComparison.OrdinalIgnoreCase))
             return ClickraSettings.OfficeEngineLibreOffice;
         if (engine.Equals(ClickraSettings.OfficeEngineMicrosoft, StringComparison.OrdinalIgnoreCase) || microsoftReady)
