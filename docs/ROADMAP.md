@@ -52,13 +52,14 @@
     - 當時的詳細雙軌設計紀錄見 `docs/development/archive/dual_track_guide.md`；目前 release pipeline 另以實際 workflow/scripts 為準。
 - [x] **[F1-14] Shell Context Menu Icons**：右鍵選單圖示（v3.7.0）。
     - 為所有右鍵轉檔命令新增專屬圖示（PDF、Word、Excel、PPT、圖片操作），並提供 PowerShell 產生腳本。
-- [ ] **[F1-13] Store-Resilient Optional Fluent Delivery**：AOT 主套件＋Fluent Optional Package（**目前最高優先級**，Phase 0 待微軟回應）。
+- [ ] **[F1-13] Store-Resilient Optional Fluent Delivery**：AOT 主套件＋Fluent Optional Package（**政策凍結**；等待 Microsoft 權威政策／escalation 結論）。
     - **v3.7.0 進度**：Clickra 與 Clickra.Fluent 兩份 AppxManifest.xml 版本已同步至 3.7.0.0；Fluent conversion window v2 已合併（PR #54）；Store submission build script 就緒（PR #55）。
     - **2026/08/29 決策狀態**：MSIX 平台已確認支援 executable optional package、related set、activatable optional app 與 Store 按需安裝 API；但公開範例未直接涵蓋 Clickra 的 NativeAOT main + .NET 8 WinUI 3 full-trust optional EXE 組合，且 Store 帳號必須先取得 Microsoft 的 optional package / related set 權限。因此本項目前是有硬性退出條件的 feasibility gate，不是已採用的正式發行架構。
     - **產品目標**：Store 先安裝小於 50 MB、零 Windows App Runtime dependency 的 NativeAOT main（launcher、CLI/legacy UI、Shell）；使用者再按需安裝承擔 Windows App Runtime dependency 的 Fluent optional package。Fluent 安裝、framework 解析或啟動失敗時，AOT 必須持續可用。
     - **Phase 0 硬閘門**：取得 Windows Developer Support 對 Clickra 帳號使用 optional packages、related sets、executable optional package 的書面核准，並確認 Partner Center 能建立 associated DLC/optional product。權限遭拒即停止，不以兩個 Store listing 繞過。
     - **Phase 1–3 技術閘門**：完成最小 related-set PoC、AUMID packaged activation、Unicode/空格參數轉交、AOT fallback、共享 settings/history/tasks、隱藏第二個 Start entry，以及 main-only / main+optional 的安裝、移除、損壞與跨版本更新矩陣。
-    - **Phase 4 發行閘門**：Store private flight 必須通過 ingestion、full-trust WinUI optional certification、乾淨 VM main-first 安裝及 optional 安全失敗測試。全部通過後才能取代現行 Store Fluent-only 路線；未通過前 F1-11 真雙軌與既有產線維持有效。
+    - **2026/10/10 政策狀態**：Microsoft support 對 Optional Packages / Related Sets 的 Store submission eligibility 提供互相衝突的答覆；在 authoritative policy / escalation 結論到位前停止新增 Optional/Related-Set 專屬實作。當前 Store production path 維持 NativeAOT Main `Clickra.msix`，standalone Fluent direct package 僅為 fallback design candidate。
+    - **Phase 4 發行閘門**：若政策重新確認可行，Store private flight 必須通過 ingestion、full-trust WinUI optional certification、乾淨 VM main-first 安裝及 optional 安全失敗測試。全部通過後才可考慮取代目前 NativeAOT-only Store path；未通過前既有 NativeAOT Store 產線維持有效。
     - **已排除方案**：不採用大於 50 MB 的 self-contained Fluent 主套件；不採用兩個可能同時安裝並衝突 Shell CLSID 的 Store listing；不從 Store app 私自下載外部可執行檔繞過 Store servicing。
     - 完整技術決策、風險、驗收矩陣與原子化提交規劃見 `docs/development/store_optional_fluent_plan.md`。
 - [ ] **[F1-12] Fluent Release Stabilization (Dual-Track)**：Fluent 發布穩定化。

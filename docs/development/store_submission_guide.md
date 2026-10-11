@@ -5,7 +5,10 @@
 > 本文件只有在 `store_optional_fluent_plan.md` 的權限／related-set／private-flight gates
 > 明確通過後才可執行。現行 `.github/workflows/release.yml` 只建立並提交 NativeAOT Main
 > `Clickra.msix`，不會建立或上傳 Fluent optional package；不得因本文件存在就推定
-> Partner Center 權限已核准或 optional distribution 已投入 production。
+> Partner Center 權限已核准或 optional distribution 已投入 production。SR 2608310060003141
+> 目前存在「permission required」與「Store 已不再接受此 submission model」兩種互相衝突的
+> Microsoft support 回覆；在 authoritative policy / escalation 結論到位前，本 runbook 僅保留
+> 作為 conditional design evidence，不得執行 Store mutation。
 
 ## 1. 概覽
 

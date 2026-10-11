@@ -109,7 +109,7 @@ PDF password input through a WinUI `ContentDialog`.
 
 | Behavior | Reason |
 |---|---|
-| AOT Dashboard ships as fallback | Main MSIX contains ClickraLauncher (router) + Clickra.exe (AOT). Fluent is an optional Store package installed on demand. |
+| AOT Dashboard ships as fallback | Main MSIX contains ClickraLauncher (router) + Clickra.exe (AOT). Fluent optional Store delivery is only a gated candidate while Microsoft Store policy is being clarified. |
 | Fluent is framework-dependent | MSIX declares the Windows App Runtime dependency instead of bundling the complete runtime into every package. |
 | Explorer must be restarted after reinstalling the same version | Explorer caches the loaded COM DLL and menu state. This is Windows shell behavior. |
 | Packaging aligns only the copied layout manifest | Builds remain deterministic without silently rewriting tracked source files. |
@@ -153,8 +153,10 @@ The current `release.yml` does **not** build or upload `Clickra.Fluent.exe` as p
 `Clickra.msix`, and it does not publish a second Fluent MSIX. The tracked
 `packaging/msix/AppxManifest.Fluent.xml` describes the proposed related-set optional
 package shape, but that distribution path remains gated by
-`development/store_optional_fluent_plan.md` until the required Store/Partner Center
-conditions are explicitly cleared.
+`development/store_optional_fluent_plan.md`. Microsoft support has provided conflicting
+answers about whether Store submissions using optional packages and related sets remain
+available, so this path must stay non-production until an authoritative policy answer and
+the required Partner Center conditions are both confirmed.
 
 This separation matters when reading the source tree: `Clickra.Fluent` is a real maintained
 application and `ClickraLauncher` already contains optional-package activation/fallback logic,

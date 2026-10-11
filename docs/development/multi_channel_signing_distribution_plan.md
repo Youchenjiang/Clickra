@@ -77,6 +77,11 @@ release tag
 - the tracked source manifests remain Store-owned and must never be permanently rewritten to the direct Publisher;
 - the direct package and Store package are expected to belong to different package families when their Publishers differ.
 
+The direct channel may eventually contain more than one verified artifact shape. A standalone
+Fluent direct package is a separate fallback candidate governed by
+`fluent_direct_distribution_plan.md`; it must use its own reviewed identity/package layout and
+must not be inferred from the current NativeAOT-only `build_github_msix.ps1` path.
+
 **Verification gate before publication:**
 
 The signed direct artifact must not be attached to a GitHub Release until all of the following pass:
@@ -98,7 +103,7 @@ Any failure is fail-closed: the direct MSIX is not published.
 **Purpose:**
 
 - preserve the existing Store publication flow;
-- retain the Microsoft Store package family and Store-owned optional-package relationship;
+- preserve the Microsoft Store package family while treating the proposed optional-package relationship as policy-gated, not production state;
 - allow Microsoft Store to remain operationally independent from GitHub direct signing.
 
 **Requirements:**
@@ -106,7 +111,7 @@ Any failure is fail-closed: the direct MSIX is not published.
 - `build-msix` continues to produce the Store-identity artifact used by `store-publish`;
 - Store submission must never consume the SignPath direct-download artifact;
 - Store Publisher and Store package identity remain unchanged in tracked manifests;
-- Store Fluent optional-package behavior continues to be gated by the exact Store Publisher/runtime package identity.
+- Store Fluent optional-package behavior remains frozen until Microsoft resolves the current Store-policy conflict and all product-specific gates are explicitly cleared.
 
 ---
 
