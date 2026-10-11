@@ -238,26 +238,7 @@ try {{
             });
 
             var error = new StringBuilder();
-            process.OutputDataReceived += (s, e) =>
-            {
-                if (string.IsNullOrEmpty(e.Data) || !e.Data.StartsWith("PROGRESS:") ||
-                    !int.TryParse(e.Data.Substring(9), out int subProg))
-                {
-                    return;
-                }
-
-                string fileName = Path.GetFileName(request.FilePath);
-                int currentProgress = (request.FileIndex * 100) + subProg;
-                string statusMsg = subProg switch
-                {
-                    20 => string.Format(Localization.T("status_office_starting", request.Language), request.AppName, request.FileIndex + 1, request.TotalFiles),
-                    50 => string.Format(Localization.T("status_office_reading", request.Language), fileName),
-                    80 => string.Format(Localization.T("status_office_exporting", request.Language), fileName),
-                    100 => string.Format(Localization.T("status_office_completed", request.Language), fileName),
-                    _ => string.Format(Localization.T("status_office_converting", request.Language), request.AppName, fileName)
-                };
-                onProgress?.Invoke(currentProgress, request.TotalFiles * 100, statusMsg);
-            };
+            process.OutputDataReceived += (_, e) => ReportOfficeProgress(e.Data, request, onProgress);
             process.ErrorDataReceived += (_, e) =>
             {
                 if (!string.IsNullOrWhiteSpace(e.Data))
@@ -274,19 +255,51 @@ try {{
 
             cancellationToken.ThrowIfCancellationRequested();
 
-            string errorText = error.ToString();
-            if (!string.IsNullOrWhiteSpace(errorText) && process.ExitCode != 0)
-            {
-                if (errorText.Contains("0x80040154") || errorText.Contains("New-Object"))
-                    throw new InvalidOperationException(string.Format(Localization.T("error_office_not_installed", request.Language), request.AppName));
-                else
-                    throw new InvalidOperationException(string.Format(Localization.T("error_office_failed", request.Language), request.AppName, errorText.Trim()));
-            }
+            ThrowIfOfficeInteropFailed(process.ExitCode, error.ToString(), request);
+        }
 
-            if (process.ExitCode != 0)
+        private static void ReportOfficeProgress(
+            string? output,
+            OfficeInteropRequest request,
+            Action<int, int, string>? onProgress)
+        {
+            if (string.IsNullOrEmpty(output) ||
+                !output.StartsWith("PROGRESS:", StringComparison.Ordinal) ||
+                !int.TryParse(output.AsSpan(9), out int subProgress))
+                return;
+
+            string fileName = Path.GetFileName(request.FilePath);
+            string statusMessage = subProgress switch
             {
-                throw new InvalidOperationException(string.Format(Localization.T("error_office_exit_code", request.Language), request.AppName, process.ExitCode));
-            }
+                20 => string.Format(Localization.T("status_office_starting", request.Language), request.AppName, request.FileIndex + 1, request.TotalFiles),
+                50 => string.Format(Localization.T("status_office_reading", request.Language), fileName),
+                80 => string.Format(Localization.T("status_office_exporting", request.Language), fileName),
+                100 => string.Format(Localization.T("status_office_completed", request.Language), fileName),
+                _ => string.Format(Localization.T("status_office_converting", request.Language), request.AppName, fileName)
+            };
+            onProgress?.Invoke(
+                (request.FileIndex * 100) + subProgress,
+                request.TotalFiles * 100,
+                statusMessage);
+        }
+
+        private static void ThrowIfOfficeInteropFailed(
+            int exitCode,
+            string errorText,
+            OfficeInteropRequest request)
+        {
+            if (exitCode == 0)
+                return;
+
+            if (string.IsNullOrWhiteSpace(errorText))
+                throw new InvalidOperationException(string.Format(Localization.T("error_office_exit_code", request.Language), request.AppName, exitCode));
+
+            if (errorText.Contains("0x80040154", StringComparison.Ordinal) ||
+                errorText.Contains("New-Object", StringComparison.Ordinal))
+                throw new InvalidOperationException(string.Format(Localization.T("error_office_not_installed", request.Language), request.AppName));
+
+            throw new InvalidOperationException(
+                string.Format(Localization.T("error_office_failed", request.Language), request.AppName, errorText.Trim()));
         }
     }
 }
