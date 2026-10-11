@@ -20,6 +20,7 @@ static partial class TestSuite
 {
     private const string CoreProjectDirectoryName = "Clickra.Core";
     private const string StorageDirectoryName = "Storage";
+    private const string ParkedRetentionOverrideKey = "task_parked_ttl_override";
 
     private static readonly string[] ParkedRetentionUiFiles =
     {
@@ -69,7 +70,7 @@ static partial class TestSuite
             Assert.False(info.HasExpired, "A task with its own 30 day deadline must survive a 7 day policy.");
             Assert.Equal(10, info.RemainingDays);
             Assert.True(info.IsTaskOverride, "The info must say the deadline is this task's own.");
-            Assert.True(ClickraStorage.DescribeParkedRetention(info).EndsWith(Localization.T("task_parked_ttl_override"), StringComparison.Ordinal),
+            Assert.True(ClickraStorage.DescribeParkedRetention(info).EndsWith(Localization.T(ParkedRetentionOverrideKey), StringComparison.Ordinal),
                 "An overridden deadline must say so, so the number is not mistaken for the global policy.");
 
             // 回到全域政策：年資不變，所以它又是過期的。
@@ -316,15 +317,15 @@ static partial class TestSuite
 
         string facade = File.ReadAllText(Path.Combine(root, "src", CoreProjectDirectoryName, StorageDirectoryName, "ClickraStorage.ActiveRecord.cs"));
         string coordinator = File.ReadAllText(Path.Combine(root, "src", CoreProjectDirectoryName, StorageDirectoryName, "ParkedTaskCoordinator.cs"));
-        Assert.True(coordinator.Contains("task_parked_ttl_override", StringComparison.Ordinal),
+        Assert.True(coordinator.Contains(ParkedRetentionOverrideKey, StringComparison.Ordinal),
             "The parked-task coordinator must append the override marker for every interface.");
-        Assert.False(facade.Contains("task_parked_ttl_override", StringComparison.Ordinal),
+        Assert.False(facade.Contains(ParkedRetentionOverrideKey, StringComparison.Ordinal),
             "The ClickraStorage facade must not own parked retention wording.");
 
         foreach (string relative in ParkedRetentionUiFiles)
         {
             string source = File.ReadAllText(Path.Combine(root, relative));
-            Assert.False(source.Contains("task_parked_ttl_override", StringComparison.Ordinal),
+            Assert.False(source.Contains(ParkedRetentionOverrideKey, StringComparison.Ordinal),
                 $"{relative} words the override marker itself; the shared deadline sentence owns it.");
         }
     }

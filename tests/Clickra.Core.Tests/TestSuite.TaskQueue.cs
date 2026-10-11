@@ -14,6 +14,7 @@ static partial class TestSuite
     private const string CmdDecryptPdf = "decrypt-pdf";
     private const string CmdMergePdf = "merge-pdf";
     private const string CoreProjectDirectory = "Clickra.Core";
+    private const string StorageDirectory = "Storage";
     private const string ParkReason = "Waiting for input";
     private const string SettingParkedRetention = "ParkedTaskRetention";
     private const string TestInDir = @"C:\in";
@@ -285,7 +286,7 @@ static partial class TestSuite
             "The History page must not enumerate parked conversions itself; HistoryFeed is the one source for both UIs.");
         Assert.True(code.Contains("ClickraStorage.CancelParkedTask", StringComparison.Ordinal), "The History page must offer cancel for parked conversions.");
         Assert.True(code.Contains("OpenTaskProgressWindow($\"resume {", StringComparison.Ordinal), "Resume must go through the shared resume entry point.");
-        string feed = File.ReadAllText(Path.Combine(root, "src", CoreProjectDirectory, "Storage", "HistoryFeed.cs"));
+        string feed = File.ReadAllText(Path.Combine(root, "src", CoreProjectDirectory, StorageDirectory, "HistoryFeed.cs"));
         Assert.True(feed.Contains("ClickraStorage.IsUserCanceledReason", StringComparison.Ordinal),
             "Cancelled rows must be recognised by the shared history marker, including the CLI's legacy one.");
         Assert.True(feed.Contains("status_canceled", StringComparison.Ordinal),
@@ -530,9 +531,9 @@ static partial class TestSuite
 
         string fluentCode = File.ReadAllText(Path.Combine(root, "src", FluentProjectDirectory, FluentHistoryPageFile));
         string cliHistory = File.ReadAllText(Path.Combine(root, "src", CliProjectDirectory, DashboardDirectory, DashboardHistoryPaintFile));
-        string storageCode = File.ReadAllText(Path.Combine(root, "src", CoreProjectDirectory, "Storage", "ClickraStorage.ActiveRecord.cs"));
-        string parkedCoordinator = File.ReadAllText(Path.Combine(root, "src", CoreProjectDirectory, "Storage", "ParkedTaskCoordinator.cs"));
-        string feedCode = File.ReadAllText(Path.Combine(root, "src", CoreProjectDirectory, "Storage", "HistoryFeed.cs"));
+        string storageCode = File.ReadAllText(Path.Combine(root, "src", CoreProjectDirectory, StorageDirectory, "ClickraStorage.ActiveRecord.cs"));
+        string parkedCoordinator = File.ReadAllText(Path.Combine(root, "src", CoreProjectDirectory, StorageDirectory, "ParkedTaskCoordinator.cs"));
+        string feedCode = File.ReadAllText(Path.Combine(root, "src", CoreProjectDirectory, StorageDirectory, "HistoryFeed.cs"));
 
         Assert.True(feedCode.Contains("ClickraStorage.GetParkedRetentionInfo", StringComparison.Ordinal),
             "The shared feed must compute each parked item's retention once, not leave it to the two UIs.");
