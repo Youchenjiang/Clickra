@@ -4,7 +4,7 @@ using System.IO;
 using System.Linq;
 using Clickra.Core.Processors;
 
-namespace Clickra.Core;
+namespace Clickra.Core.Application;
 
 /// <summary>清單中的項目種類；宣告順序即顯示順序（進行中 → 待繼續 → 已完成）。</summary>
 public enum HistoryItemKind

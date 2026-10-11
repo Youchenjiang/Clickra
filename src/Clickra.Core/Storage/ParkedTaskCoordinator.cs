@@ -4,7 +4,7 @@ using System.Globalization;
 using System.IO;
 using System.Linq;
 
-namespace Clickra.Core;
+namespace Clickra.Core.Storage;
 
 public static partial class ClickraStorage
 {

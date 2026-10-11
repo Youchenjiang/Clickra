@@ -2,7 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 
-namespace Clickra.Core;
+namespace Clickra.Core.Storage;
 
 /// <summary>一個設定的完整定義：鍵、預設值與用途說明。</summary>
 public sealed record ClickraSetting(string Key, string Default, string Description);

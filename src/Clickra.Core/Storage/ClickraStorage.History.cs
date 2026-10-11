@@ -2,7 +2,7 @@ using System;
 using System.IO;
 using System.Collections.Generic;
 
-namespace Clickra.Core
+namespace Clickra.Core.Storage
 {
     public static partial class ClickraStorage
     {

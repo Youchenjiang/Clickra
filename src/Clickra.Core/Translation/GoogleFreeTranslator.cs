@@ -6,7 +6,7 @@ using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace Clickra.Core;
+namespace Clickra.Core.Translation;
 
 internal class GoogleFreeTranslator : BaseTranslator
 {

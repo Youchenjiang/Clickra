@@ -2,7 +2,7 @@ using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace Clickra.Core;
+namespace Clickra.Core.Translation;
 
 public interface ITranslationEngine
 {

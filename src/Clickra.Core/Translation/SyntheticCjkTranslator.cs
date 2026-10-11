@@ -1,6 +1,6 @@
 using System.Text;
 
-namespace Clickra.Core;
+namespace Clickra.Core.Translation;
 
 /// <summary>
 /// Deterministic CJK stress engine used only by PDF layout regression tests.

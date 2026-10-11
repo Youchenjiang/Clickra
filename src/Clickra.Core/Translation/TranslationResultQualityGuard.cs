@@ -1,7 +1,7 @@
 using System.Text;
 using System.Text.RegularExpressions;
 
-namespace Clickra.Core;
+namespace Clickra.Core.Translation;
 
 /// <summary>
 /// Rejects provider output that is non-empty but unsafe to render as a
