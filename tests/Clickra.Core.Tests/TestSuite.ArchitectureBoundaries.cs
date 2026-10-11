@@ -7,6 +7,7 @@ namespace Clickra.Core.Tests;
 static partial class TestSuite
 {
     private const int ArchitectureViolationBaselineCeiling = 0;
+    private const int ProcessorGlobalStateBaselineCeiling = 58;
     private const string RepositoryRootMissingMessage = "Could not locate the repository root.";
     private const string ArchitectureCliProjectDirectory = "Clickra.CLI";
     private const string ArchitectureCoreProjectDirectory = "Clickra.Core";
@@ -20,6 +21,11 @@ static partial class TestSuite
     private static readonly TimeSpan ArchitectureRegexTimeout = TimeSpan.FromSeconds(1);
 
     private sealed record ArchitectureViolationRule(
+        string Name,
+        Regex Pattern,
+        IReadOnlyDictionary<string, int> Baseline);
+
+    private sealed record ProcessorGlobalStateRule(
         string Name,
         Regex Pattern,
         IReadOnlyDictionary<string, int> Baseline);
@@ -52,6 +58,50 @@ static partial class TestSuite
             new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase))
     };
 
+    private static readonly ProcessorGlobalStateRule[] ProcessorGlobalStateRules =
+    {
+        new(
+            "ClickraStorage.GetSetting",
+            new Regex(@"\bClickraStorage\.GetSetting\(", RegexOptions.Compiled, ArchitectureRegexTimeout),
+            new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase)
+            {
+                ["src/Clickra.Core/Processors/FileProcessing/ImageFormatConvertProcessor.cs"] = 1,
+                ["src/Clickra.Core/Processors/FileProcessing/LibreOfficeEngineInstaller.cs"] = 2,
+                ["src/Clickra.Core/Processors/FileProcessing/LibreOfficeHelper.cs"] = 13,
+                ["src/Clickra.Core/Processors/FileProcessing/OfficeEngineDetector.cs"] = 3,
+                ["src/Clickra.Core/Processors/FileProcessing/PdfDecryptProcessor.cs"] = 1,
+                ["src/Clickra.Core/Processors/FileProcessing/PowerShellHelper.cs"] = 11,
+                ["src/Clickra.Core/Processors/FileProcessing/WicImageHelper.cs"] = 2,
+                ["src/Clickra.Core/Processors/PdfTranslation/PdfTranslationPipeline.cs"] = 3,
+                ["src/Clickra.Core/Processors/PdfTranslation/Rendering/PdfRewrite/PdfTranslatedPdfRebuilder.cs"] = 1,
+                ["src/Clickra.Core/Processors/PdfTranslation/Translation/PdfParagraphTranslationStage.cs"] = 1,
+                ["src/Clickra.Core/Processors/PdfTranslation/Translation/PdfTranslationBatchRunner.cs"] = 4
+            }),
+        new(
+            "ClickraStorage.GetSettingBool",
+            new Regex(@"\bClickraStorage\.GetSettingBool\(", RegexOptions.Compiled, ArchitectureRegexTimeout),
+            new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase)
+            {
+                ["src/Clickra.Core/Processors/ConvertCommandRegistry.cs"] = 2,
+                ["src/Clickra.Core/Processors/FileProcessing/LibreOfficeEngineInstaller.cs"] = 1,
+                ["src/Clickra.Core/Processors/FileProcessing/LibreOfficeHelper.cs"] = 1
+            }),
+        new(
+            "ClickraStorage.GetSettingInt",
+            new Regex(@"\bClickraStorage\.GetSettingInt\(", RegexOptions.Compiled, ArchitectureRegexTimeout),
+            new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase)
+            {
+                ["src/Clickra.Core/Processors/ConvertCommandRegistry.cs"] = 3
+            }),
+        new(
+            "ClickraStorage.SaveSetting",
+            new Regex(@"\bClickraStorage\.SaveSetting\(", RegexOptions.Compiled, ArchitectureRegexTimeout),
+            new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase)
+            {
+                ["src/Clickra.Core/Processors/FileProcessing/LibreOfficeEngineInstaller.cs"] = 9
+            })
+    };
+
     public static void RegisterArchitectureBoundaryTests(TestRunner runner)
     {
         runner.RunGuard(
@@ -60,6 +110,12 @@ static partial class TestSuite
         runner.RunGuard(
             "Architecture boundaries: baseline invariants stay explicit",
             TestArchitectureViolationBaselineInvariants);
+        runner.RunGuard(
+            "Architecture boundaries: processor global setting access stays on a shrinking baseline",
+            TestProcessorGlobalStateBaseline);
+        runner.RunGuard(
+            "Architecture boundaries: processor global setting baseline invariants stay explicit",
+            TestProcessorGlobalStateBaselineInvariants);
         runner.RunGuard(
             "Architecture boundaries: application contracts stay UI-independent",
             TestApplicationContractsStayUiIndependent);
@@ -276,6 +332,60 @@ static partial class TestSuite
                 .All(entry => entry.Path.StartsWith("src/Clickra.CLI/", StringComparison.Ordinal)
                               || entry.Path.StartsWith("src/Clickra.Fluent/", StringComparison.Ordinal)),
             "The architecture baseline is only for UI/application surface debt, not a general exception list.");
+    }
+
+    private static void TestProcessorGlobalStateBaseline()
+    {
+        string? root = FindRepoRoot();
+        if (root is null) throw new TestSkippedException(RepositoryRootMissingMessage);
+
+        string processorsDir = Path.Combine(root, "src", ArchitectureCoreProjectDirectory, ArchitectureProcessorsDirectory);
+        string[] sources = Directory.EnumerateFiles(processorsDir, "*.cs", SearchOption.AllDirectories)
+            .Where(path => !path.Contains($"{Path.DirectorySeparatorChar}bin{Path.DirectorySeparatorChar}", StringComparison.OrdinalIgnoreCase)
+                           && !path.Contains($"{Path.DirectorySeparatorChar}obj{Path.DirectorySeparatorChar}", StringComparison.OrdinalIgnoreCase))
+            .ToArray();
+
+        foreach (ProcessorGlobalStateRule rule in ProcessorGlobalStateRules)
+        {
+            var actual = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
+            foreach (string file in sources)
+            {
+                int count = rule.Pattern.Matches(File.ReadAllText(file)).Count;
+                if (count == 0) continue;
+                actual[NormalizeRepoPath(root, file)] = count;
+            }
+
+            string expectedText = FormatArchitectureBaseline(rule.Baseline);
+            string actualText = FormatArchitectureBaseline(actual);
+            Assert.True(
+                string.Equals(expectedText, actualText, StringComparison.Ordinal),
+                $"Processor global setting baseline changed for {rule.Name}. Existing entries may only be removed or reduced; " +
+                $"new processor-side global setting access is forbidden.{Environment.NewLine}" +
+                $"  baseline: {expectedText}{Environment.NewLine}" +
+                $"  actual:   {actualText}");
+        }
+    }
+
+    private static void TestProcessorGlobalStateBaselineInvariants()
+    {
+        int baselineCount = ProcessorGlobalStateRules.Sum(rule => rule.Baseline.Values.Sum());
+        Assert.True(baselineCount <= ProcessorGlobalStateBaselineCeiling,
+            $"Processor global setting baseline grew to {baselineCount}; ceiling is {ProcessorGlobalStateBaselineCeiling}.");
+
+        Assert.True(
+            ProcessorGlobalStateRules
+                .SelectMany(rule => rule.Baseline.Keys)
+                .All(path => path.StartsWith("src/Clickra.Core/Processors/", StringComparison.Ordinal)),
+            "Processor global setting exceptions must stay inside the processor tree.");
+
+        string[] names = ProcessorGlobalStateRules.Select(rule => rule.Name).ToArray();
+        Assert.Equal(names.Length, names.Distinct(StringComparer.Ordinal).Count());
+
+        foreach (ProcessorGlobalStateRule rule in ProcessorGlobalStateRules)
+        {
+            string syntheticCall = $"var value = {rule.Name}(ClickraSettings.Language);";
+            Assert.Equal(1, rule.Pattern.Matches(syntheticCall).Count);
+        }
     }
 
     private static void TestApplicationContractsStayUiIndependent()
