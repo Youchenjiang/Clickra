@@ -11,6 +11,7 @@ static partial class TestSuite
     private const string RepositoryRootMissingMessage = "Could not locate the repository root.";
     private const string ArchitectureCliProjectDirectory = "Clickra.CLI";
     private const string ArchitectureCoreProjectDirectory = "Clickra.Core";
+    private const string ArchitectureApplicationDirectory = "Application";
     private const string ArchitectureFluentProjectDirectory = "Clickra.Fluent";
     private const string ArchitectureProgressDirectory = "Progress";
     private const string ArchitectureProcessorsDirectory = "Processors";
@@ -92,6 +93,21 @@ static partial class TestSuite
         runner.RunGuard(
             "Architecture boundaries: settings persistence has one application gateway",
             TestSettingsPersistenceHasSingleApplicationGateway);
+        runner.RunGuard(
+            "Architecture boundaries: parked task actions have one application gateway",
+            TestParkedTaskActionsHaveSingleApplicationGateway);
+        runner.RunGuard(
+            "Architecture boundaries: presentation does not depend on raw ClickraStorage",
+            TestPresentationDoesNotDependOnRawStorage);
+        runner.RunGuard(
+            "Architecture boundaries: Core bounded contexts declare owned namespaces",
+            TestCoreBoundedContextsDeclareOwnedNamespaces);
+        runner.RunGuard(
+            "Architecture boundaries: presentation and platform helpers have explicit ownership",
+            TestPresentationAndPlatformHelpersHaveExplicitOwnership);
+        runner.RunGuard(
+            "Architecture boundaries: translation provider and PDF text contexts stay distinct",
+            TestTranslationContextsStayDistinct);
         runner.RunGuard(
             "Architecture boundaries: parked task orchestration has one storage owner",
             TestParkedTaskOrchestrationHasSingleOwner);
@@ -546,7 +562,7 @@ static partial class TestSuite
             root,
             "src",
             ArchitectureCoreProjectDirectory,
-            "Application",
+            ArchitectureApplicationDirectory,
             "SettingsController.cs");
         Assert.True(File.Exists(settingsGatewayPath), "Application settings gateway must exist.");
 
@@ -555,7 +571,7 @@ static partial class TestSuite
                  {
                      Path.Combine(root, "src", ArchitectureCliProjectDirectory),
                      Path.Combine(root, "src", ArchitectureFluentProjectDirectory),
-                     Path.Combine(root, "src", ArchitectureCoreProjectDirectory, "Application")
+                     Path.Combine(root, "src", ArchitectureCoreProjectDirectory, ArchitectureApplicationDirectory)
                  })
         {
             foreach (string file in Directory.EnumerateFiles(directory, "*.cs", SearchOption.AllDirectories))
@@ -580,6 +596,220 @@ static partial class TestSuite
             "CLI, Fluent, and application workflows must use SettingsController for settings persistence; " +
             "the gateway itself may expose settings APIs only:" + Environment.NewLine +
             string.Join(Environment.NewLine, violations));
+    }
+
+    private static readonly Regex DirectParkedTaskActionStorageAccess =
+        new(@"\bClickraStorage\.(?:GetParkedRetentionDays|AdjustParkedRetention|SetParkedRetentionOverride|CancelParkedTask|ClaimParkedTaskForResume)\b",
+            RegexOptions.Compiled, ArchitectureRegexTimeout);
+
+    private static readonly Regex ParkedTaskGatewayStorageAccess =
+        new(@"\bClickraStorage\.(?<member>[A-Za-z0-9_]+)\b",
+            RegexOptions.Compiled, ArchitectureRegexTimeout);
+
+    private static readonly IReadOnlySet<string> AllowedParkedTaskGatewayMembers =
+        new HashSet<string>(StringComparer.Ordinal)
+        {
+            "GetParkedRetentionDays",
+            "AdjustParkedRetention",
+            "SetParkedRetentionOverride",
+            "CancelParkedTask",
+            "ClaimParkedTaskForResume"
+        };
+
+    private static void TestParkedTaskActionsHaveSingleApplicationGateway()
+    {
+        string? root = FindRepoRoot();
+        if (root is null) throw new TestSkippedException(RepositoryRootMissingMessage);
+
+        string gatewayPath = Path.Combine(
+            root,
+            "src",
+            ArchitectureCoreProjectDirectory,
+            ArchitectureApplicationDirectory,
+            "ParkedTaskController.cs");
+        Assert.True(File.Exists(gatewayPath), "Application parked-task gateway must exist.");
+
+        var violations = new List<string>();
+        foreach (string directory in new[]
+                 {
+                     Path.Combine(root, "src", ArchitectureCliProjectDirectory),
+                     Path.Combine(root, "src", ArchitectureFluentProjectDirectory),
+                     Path.Combine(root, "src", ArchitectureCoreProjectDirectory, ArchitectureApplicationDirectory)
+                 })
+        {
+            foreach (string file in Directory.EnumerateFiles(directory, "*.cs", SearchOption.AllDirectories))
+            {
+                if (string.Equals(file, gatewayPath, StringComparison.OrdinalIgnoreCase)) continue;
+                string source = File.ReadAllText(file);
+                if (!DirectParkedTaskActionStorageAccess.IsMatch(source)) continue;
+                violations.Add(NormalizeRepoPath(root, file));
+            }
+        }
+
+        string gatewaySource = File.ReadAllText(gatewayPath);
+        foreach (Match match in ParkedTaskGatewayStorageAccess.Matches(gatewaySource))
+        {
+            string member = match.Groups["member"].Value;
+            if (!AllowedParkedTaskGatewayMembers.Contains(member))
+                violations.Add($"src/Clickra.Core/Application/ParkedTaskController.cs: unexpected ClickraStorage.{member} access");
+        }
+
+        Assert.True(
+            violations.Count == 0,
+            "CLI, Fluent, and application workflows must use ParkedTaskController for parked-task actions; " +
+            "the gateway itself may expose only parked-task action APIs:" + Environment.NewLine +
+            string.Join(Environment.NewLine, violations));
+    }
+
+    private static readonly Regex RawPresentationStorageAccess =
+        new(@"\bClickraStorage\b", RegexOptions.Compiled, ArchitectureRegexTimeout);
+
+    private static void TestPresentationDoesNotDependOnRawStorage()
+    {
+        string? root = FindRepoRoot();
+        if (root is null) throw new TestSkippedException(RepositoryRootMissingMessage);
+
+        var violations = new List<string>();
+        foreach (string directory in new[]
+                 {
+                     Path.Combine(root, "src", ArchitectureCliProjectDirectory),
+                     Path.Combine(root, "src", ArchitectureFluentProjectDirectory)
+                 })
+        {
+            foreach (string file in Directory.EnumerateFiles(directory, "*.cs", SearchOption.AllDirectories))
+            {
+                string source = File.ReadAllText(file);
+                if (!RawPresentationStorageAccess.IsMatch(source)) continue;
+                violations.Add(NormalizeRepoPath(root, file));
+            }
+        }
+
+        Assert.True(
+            violations.Count == 0,
+            "CLI and Fluent presentation must use narrow application owners instead of ClickraStorage calls or nested storage models:" +
+            Environment.NewLine + string.Join(Environment.NewLine, violations));
+    }
+
+    private static void TestCoreBoundedContextsDeclareOwnedNamespaces()
+    {
+        string? root = FindRepoRoot();
+        if (root is null) throw new TestSkippedException(RepositoryRootMissingMessage);
+
+        string core = Path.Combine(root, "src", ArchitectureCoreProjectDirectory);
+        var violations = new List<string>();
+        foreach ((string folder, string expectedNamespace) in new[]
+                 {
+                     ("Storage", "Clickra.Core.Storage"),
+                     ("Translation", "Clickra.Core.Translation"),
+                     ("Diagnostics", "Clickra.Core.Diagnostics"),
+                     ("Fonts", "Clickra.Core.Fonts")
+                 })
+        {
+            string directory = Path.Combine(core, folder);
+            foreach (string file in Directory.EnumerateFiles(directory, "*.cs", SearchOption.AllDirectories))
+            {
+                string source = File.ReadAllText(file);
+                if (Regex.IsMatch(
+                        source,
+                        $@"\bnamespace\s+{Regex.Escape(expectedNamespace)}\s*(?:;|\{{)",
+                        RegexOptions.CultureInvariant,
+                        ArchitectureRegexTimeout))
+                    continue;
+                violations.Add($"{NormalizeRepoPath(root, file)}: expected namespace {expectedNamespace}");
+            }
+        }
+
+        foreach (string applicationFile in new[] { "HistoryFeed.cs", "ConversionTaskLifecycle.cs" })
+        {
+            string file = Path.Combine(core, ArchitectureApplicationDirectory, applicationFile);
+            string source = File.ReadAllText(file);
+            if (!source.Contains("namespace Clickra.Core.Application;", StringComparison.Ordinal))
+                violations.Add($"{NormalizeRepoPath(root, file)}: expected namespace Clickra.Core.Application");
+        }
+
+        Assert.True(
+            violations.Count == 0,
+            "Physical Core bounded contexts must keep namespaces that encode their ownership:" +
+            Environment.NewLine + string.Join(Environment.NewLine, violations));
+    }
+
+    private static void TestPresentationAndPlatformHelpersHaveExplicitOwnership()
+    {
+        string? root = FindRepoRoot();
+        if (root is null) throw new TestSkippedException(RepositoryRootMissingMessage);
+
+        string core = Path.Combine(root, "src", ArchitectureCoreProjectDirectory);
+        var expectations = new[]
+        {
+            (Path.Combine(core, "Presentation", "Native", "DashboardLayout.cs"), "namespace Clickra.Core.Presentation.Native;"),
+            (Path.Combine(core, "Presentation", "Native", "HistoryLayout.cs"), "namespace Clickra.Core.Presentation.Native;"),
+            (Path.Combine(core, "Presentation", "Shared", "VectorIcons.cs"), "namespace Clickra.Core.Presentation;")
+        };
+
+        foreach ((string file, string namespaceDeclaration) in expectations)
+        {
+            Assert.True(File.Exists(file), $"Presentation owner is missing: {NormalizeRepoPath(root, file)}");
+            Assert.True(
+                File.ReadAllText(file).Contains(namespaceDeclaration, StringComparison.Ordinal),
+                $"{NormalizeRepoPath(root, file)} must declare {namespaceDeclaration}");
+        }
+
+        Assert.False(
+            File.Exists(Path.Combine(core, "FluentRuntimeHelper.cs")),
+            "The zero-production-caller FluentRuntimeHelper must not return to domain/application Core.");
+
+        foreach (string catalog in new[] { "Localization.Cli.cs", "Localization.Fluent.cs" })
+        {
+            string file = Path.Combine(core, "Localization", catalog);
+            Assert.True(File.Exists(file), $"The centralized localization catalog must remain single-source: {catalog}");
+            string source = File.ReadAllText(file);
+            Assert.True(
+                source.Contains("public static partial class Localization", StringComparison.Ordinal),
+                $"{catalog} must stay in the shared Localization registry rather than being duplicated by a UI project.");
+        }
+    }
+
+    private static void TestTranslationContextsStayDistinct()
+    {
+        string? root = FindRepoRoot();
+        if (root is null) throw new TestSkippedException(RepositoryRootMissingMessage);
+
+        string core = Path.Combine(root, "src", ArchitectureCoreProjectDirectory);
+        string providerDirectory = Path.Combine(core, "Translation");
+        string legacyPdfTranslationDirectory = Path.Combine(core, "Processors", "PdfTranslation", "Translation");
+        string textProcessingDirectory = Path.Combine(core, "Processors", "PdfTranslation", "TextProcessing");
+
+        Assert.False(
+            Directory.Exists(legacyPdfTranslationDirectory) &&
+            Directory.EnumerateFiles(legacyPdfTranslationDirectory, "*.cs", SearchOption.AllDirectories).Any(),
+            "The ambiguous Processors/PdfTranslation/Translation source context must not return.");
+        Assert.True(
+            Directory.Exists(textProcessingDirectory),
+            "PDF translation text processing must have an explicit TextProcessing context.");
+
+        foreach (string file in Directory.EnumerateFiles(providerDirectory, "*.cs", SearchOption.AllDirectories))
+        {
+            string source = File.ReadAllText(file);
+            Assert.True(
+                Regex.IsMatch(
+                    source,
+                    @"\bnamespace\s+Clickra\.Core\.Translation\s*(?:;|\{)",
+                    RegexOptions.CultureInvariant,
+                    ArchitectureRegexTimeout),
+                $"{NormalizeRepoPath(root, file)} must remain translation-provider infrastructure.");
+        }
+
+        foreach (string file in Directory.EnumerateFiles(textProcessingDirectory, "*.cs", SearchOption.AllDirectories))
+        {
+            string source = File.ReadAllText(file);
+            Assert.True(
+                Regex.IsMatch(
+                    source,
+                    @"\bnamespace\s+Clickra\.Core\.Processors\.PdfTranslation\.TextProcessing\s*(?:;|\{)",
+                    RegexOptions.CultureInvariant,
+                    ArchitectureRegexTimeout),
+                $"{NormalizeRepoPath(root, file)} must remain inside the PDF TextProcessing context.");
+        }
     }
 
     /// <summary>Splits a call's argument list at top-level commas, starting just after its opening parenthesis.</summary>
@@ -668,7 +898,7 @@ static partial class TestSuite
         string? root = FindRepoRoot();
         if (root is null) throw new TestSkippedException(RepositoryRootMissingMessage);
 
-        string applicationDir = Path.Combine(root, "src", ArchitectureCoreProjectDirectory, "Application");
+        string applicationDir = Path.Combine(root, "src", ArchitectureCoreProjectDirectory, ArchitectureApplicationDirectory);
         Assert.True(Directory.Exists(applicationDir), "The shared application contract directory must exist.");
 
         string[] forbidden =

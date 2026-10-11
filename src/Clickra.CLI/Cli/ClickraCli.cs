@@ -102,7 +102,7 @@ namespace Clickra
                     WriteConsoleProgress(100, 100, Loc("cli_progress_translating_pdf_done", Path.GetFileName(f), i + 1, files.Count));
                     FinishConsoleProgressLine();
                     ClickraDebug.SaveTo(dbgLog);
-                    Console.WriteLine($"[Debug] Render log: {dbgLog} ({ClickraDebug.Lines.Count} entries)");
+                    Console.WriteLine($"[Debug] Render log: {dbgLog} ({ClickraDebug.GetLinesSnapshot().Count} entries)");
                     continue;
                 }
 

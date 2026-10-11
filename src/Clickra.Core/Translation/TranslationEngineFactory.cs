@@ -1,6 +1,6 @@
 using System;
 
-namespace Clickra.Core;
+namespace Clickra.Core.Translation;
 
 public static class TranslationEngineFactory
 {

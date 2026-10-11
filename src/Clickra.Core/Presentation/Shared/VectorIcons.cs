@@ -2,7 +2,7 @@ using System;
 using System.Drawing;
 using System.Drawing.Drawing2D;
 
-namespace Clickra.Core.Rendering;
+namespace Clickra.Core.Presentation;
 
 /// <summary>
 /// Font-independent vector geometries and drawing routines shared across Clickra UIs.

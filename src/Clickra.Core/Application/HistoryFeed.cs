@@ -4,7 +4,7 @@ using System.IO;
 using System.Linq;
 using Clickra.Core.Processors;
 
-namespace Clickra.Core;
+namespace Clickra.Core.Application;
 
 /// <summary>清單中的項目種類；宣告順序即顯示順序（進行中 → 待繼續 → 已完成）。</summary>
 public enum HistoryItemKind
@@ -13,6 +13,35 @@ public enum HistoryItemKind
     Parked,
     Completed
 }
+
+/// <summary>Application-facing immutable task/history facts used by both presentation surfaces.</summary>
+public sealed record HistoryRecord(
+    string Id,
+    string Time,
+    string Command,
+    int FileCount,
+    ConversionStatus Status,
+    string ErrorMessage,
+    string EndTime,
+    long ElapsedMs,
+    string InputPaths,
+    string OutputPath,
+    int CurrentIndex,
+    int Pid,
+    int? ParkedRetentionDays,
+    string ParkedSince)
+{
+    public bool IsSuccess => Status == ConversionStatus.Success;
+}
+
+/// <summary>Application-facing parked-task retention facts without exposing storage implementation types.</summary>
+public readonly record struct ParkedRetentionState(
+    bool IsUnlimited,
+    int RemainingDays,
+    TimeSpan RemainingTime,
+    bool IsExpiringSoon,
+    bool HasExpired,
+    bool IsTaskOverride);
 
 /// <summary>
 /// 歷史清單中的一個項目：原始紀錄，加上兩個介面都要顯示的事實。
@@ -28,8 +57,8 @@ public sealed class HistoryItem
     internal HistoryItem(HistoryItemKind kind, ClickraStorage.HistoryEntry entry, ClickraStorage.ParkedRetentionInfo? retention)
     {
         Kind = kind;
-        Entry = entry;
-        Retention = retention;
+        Entry = Snapshot(entry);
+        Retention = retention.HasValue ? Snapshot(retention.Value) : null;
 
         CommandLabelKey = ConvertCommandRegistry.GetLabelKey(entry.Command ?? "");
         IsCanceled = kind == HistoryItemKind.Completed && ClickraStorage.IsUserCanceledReason(entry.ErrorMessage);
@@ -51,7 +80,7 @@ public sealed class HistoryItem
     public HistoryItemKind Kind { get; }
 
     /// <summary>原始紀錄；具破壞性／需要識別的動作（繼續、取消、明細）都用它。</summary>
-    public ClickraStorage.HistoryEntry Entry { get; }
+    public HistoryRecord Entry { get; }
 
     /// <summary>指令標籤的在地化鍵；未知指令時就是指令本身（與 <c>ConvertCommandRegistry</c> 一致）。</summary>
     public string CommandLabelKey { get; }
@@ -89,7 +118,7 @@ public sealed class HistoryItem
     public bool HasRetentionOverride => Retention?.IsTaskOverride == true;
 
     /// <summary>保留狀態；只有待繼續任務有。</summary>
-    public ClickraStorage.ParkedRetentionInfo? Retention { get; }
+    public ParkedRetentionState? Retention { get; }
 
     public bool IsSuccess => Kind == HistoryItemKind.Completed && Entry.Status == ConversionStatus.Success;
 
@@ -130,6 +159,30 @@ public sealed class HistoryItem
 
     private static string JoinParts(params string[] parts)
         => string.Join(" · ", parts.Where(part => !string.IsNullOrWhiteSpace(part)));
+
+    private static HistoryRecord Snapshot(ClickraStorage.HistoryEntry entry) => new(
+        entry.Id ?? "",
+        entry.Time ?? "",
+        entry.Command ?? "",
+        entry.FileCount,
+        entry.Status,
+        entry.ErrorMessage ?? "",
+        entry.EndTime ?? "",
+        entry.ElapsedMs,
+        entry.InputPaths ?? "",
+        entry.OutputPath ?? "",
+        entry.CurrentIndex,
+        entry.Pid,
+        entry.ParkedRetentionDays,
+        entry.ParkedSince ?? "");
+
+    private static ParkedRetentionState Snapshot(ClickraStorage.ParkedRetentionInfo info) => new(
+        info.IsUnlimited,
+        info.RemainingDays,
+        info.RemainingTime,
+        info.IsExpiringSoon,
+        info.HasExpired,
+        info.IsTaskOverride);
 }
 
 /// <summary>

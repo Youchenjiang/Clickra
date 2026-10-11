@@ -111,7 +111,7 @@ public sealed partial class MainPage
 
         try
         {
-            string downloadDir = Path.Combine(ClickraStorage.GetDataDir(), ClickraSettings.OutputDirDownloads);
+            string downloadDir = StoragePathController.GetDownloadsDirectory();
             var progress = new Progress<int>(percent =>
             {
                 int displayPercent = Math.Min(80, Math.Max(1, percent * 80 / 100));

@@ -1,6 +1,6 @@
 using System.Text.RegularExpressions;
 
-namespace Clickra.Core;
+namespace Clickra.Core.Translation;
 
 internal static class TranslationSourcePreservationClassifier
 {

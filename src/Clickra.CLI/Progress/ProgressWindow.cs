@@ -126,7 +126,7 @@ namespace Clickra.UI
         /// blocking until the window closes.</summary>
         public static void ShowResume(string taskId)
         {
-            var resumed = ClickraStorage.ClaimParkedTaskForResume(taskId);
+            var resumed = ParkedTaskController.ClaimForResume(taskId);
             if (resumed == null) return;
             var window = new ProgressWindow();
             window.ShowInstance(resumed.Command, resumed.Files, resumed.TaskId, resumed.StartIndex);

@@ -1,6 +1,6 @@
 using System;
 
-namespace Clickra.Core;
+namespace Clickra.Core.Storage;
 
 /// <summary>Pure parked-task retention calculations kept separate from task-file persistence.</summary>
 internal static class TaskRetentionPolicy

@@ -5,7 +5,7 @@ using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace Clickra.Core;
+namespace Clickra.Core.Translation;
 
 internal class FallbackTranslator : ITranslationEngine
 {

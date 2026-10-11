@@ -2,8 +2,8 @@ using System;
 using System.IO;
 using System.Collections.Generic;
 
-namespace Clickra.Core
-{
+namespace Clickra.Core.Storage;
+
     public static partial class ClickraStorage
     {
         /// <summary>使用者取消（或任務清理判定為取消）時寫入歷史的原因標記。UI 用它把
@@ -116,4 +116,3 @@ namespace Clickra.Core
             });
         }
     }
-}

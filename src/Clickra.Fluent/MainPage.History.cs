@@ -266,7 +266,7 @@ public sealed partial class MainPage
     private void AdjustParkedRetention(HistoryItem item, int deltaDays)
     {
         if (string.IsNullOrWhiteSpace(item.Entry.Id)) return;
-        if (ClickraStorage.AdjustParkedRetention(item.Entry.Id, deltaDays) is null) return;
+        if (ParkedTaskController.AdjustRetention(item.Entry.Id, deltaDays) is null) return;
         RefreshHistory();
     }
 
@@ -274,14 +274,14 @@ public sealed partial class MainPage
     private void ResetParkedRetention(HistoryItem item)
     {
         if (string.IsNullOrWhiteSpace(item.Entry.Id)) return;
-        ClickraStorage.SetParkedRetentionOverride(item.Entry.Id, null);
+        ParkedTaskController.ResetRetention(item.Entry.Id);
         RefreshHistory();
     }
 
     /// <summary>Resumes a parked conversion through the shared "resume" entry point, so the persisted
     /// task keeps its identity and next-file index. The status is left untouched here: TaskProgressPage
     /// only accepts a Parked task, and it flips the task to InProgress itself once it starts.</summary>
-    private void ResumeParkedTask(ClickraStorage.HistoryEntry task)
+    private void ResumeParkedTask(HistoryRecord task)
     {
         if (string.IsNullOrWhiteSpace(task.Id)) return;
         if (App.FindTaskPage(task.Id) is { } alreadyRunning)
@@ -295,11 +295,11 @@ public sealed partial class MainPage
     }
 
     /// <summary>Cancels a parked conversion after confirmation; the Canceled history line is written by Core.</summary>
-    private async Task CancelParkedTaskAsync(ClickraStorage.HistoryEntry task)
+    private async Task CancelParkedTaskAsync(HistoryRecord task)
     {
         if (string.IsNullOrWhiteSpace(task.Id)) return;
         if (!await ConfirmAsync(L("task_parked_cancel_confirm"))) return;
-        ClickraStorage.CancelParkedTask(task.Id);
+        ParkedTaskController.Cancel(task.Id);
         RefreshHistory();
     }
 
@@ -619,7 +619,7 @@ public sealed partial class MainPage
     private async Task ClearHistoryAsync()
     {
         if (!await ConfirmAsync(L("history_clear_confirm"))) return;
-        ClickraStorage.ClearHistory();
+        HistoryController.Clear();
         _selectedHistoryIndex = -1;
         RefreshHistory();
     }

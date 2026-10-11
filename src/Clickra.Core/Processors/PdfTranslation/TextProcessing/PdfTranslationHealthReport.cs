@@ -1,7 +1,7 @@
 using System.Text.Json;
 using System.Text.Json.Serialization;
 
-namespace Clickra.Core.Processors;
+namespace Clickra.Core.Processors.PdfTranslation.TextProcessing;
 
 public sealed class PdfTranslationHealthReport
 {

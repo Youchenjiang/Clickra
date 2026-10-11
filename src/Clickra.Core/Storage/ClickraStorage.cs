@@ -3,8 +3,8 @@ using System.IO;
 using System.Collections.Generic;
 using System.Threading;
 
-namespace Clickra.Core
-{
+namespace Clickra.Core.Storage;
+
     // 轉換作業的生命週期狀態
     public enum ConversionStatus
     {
@@ -457,4 +457,3 @@ namespace Clickra.Core
         }
 
     }
-}

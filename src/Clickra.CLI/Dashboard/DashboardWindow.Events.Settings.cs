@@ -110,7 +110,7 @@ namespace Clickra.UI;
 
         private static void AdjustParkedRetention(IntPtr hwnd, int delta)
         {
-            int current = ClickraStorage.GetParkedRetentionDays();
+            int current = ParkedTaskController.GetRetentionDays();
             SetParkedRetention(hwnd, current + delta);
         }
 

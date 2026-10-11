@@ -38,7 +38,7 @@ namespace Clickra.UI;
             int delta = action == ParkedActionExtend
                 ? ClickraSettings.ParkedRetentionStepDays
                 : -ClickraSettings.ParkedRetentionStepDays;
-            if (ClickraStorage.AdjustParkedRetention(taskId, delta) is null) return;
+            if (ParkedTaskController.AdjustRetention(taskId, delta) is null) return;
 
             RefreshHistoryData();
             InvalidateRect(hwnd, IntPtr.Zero, false);
@@ -47,7 +47,7 @@ namespace Clickra.UI;
         static void HandleParkedCancel(IntPtr hwnd, string taskId)
         {
             if (MessageBox(hwnd, GetText("task_parked_cancel_confirm"), AppTitle, 0x24) != 6) return;
-            ClickraStorage.CancelParkedTask(taskId);
+            ParkedTaskController.Cancel(taskId);
             RefreshHistoryData();
             InvalidateRect(hwnd, IntPtr.Zero, false);
         }
@@ -201,7 +201,7 @@ namespace Clickra.UI;
         {
             if (MessageBox(hwnd, GetText("history_clear_confirm"), AppTitle, 0x24) == 6)
             {
-                ClickraStorage.ClearHistory();
+                HistoryController.Clear();
                 _expandedHistoryIndex = -1;
                 RefreshHistoryData();
                 InvalidateRect(hwnd, IntPtr.Zero, false);

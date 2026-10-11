@@ -366,8 +366,8 @@ namespace Clickra.UI
             {
                 try
                 {
-                    string dataDir = ClickraStorage.GetDataDir();
-                    string logPath = Path.Combine(dataDir, ClickraStorage.HistoryFileName);
+                    string dataDir = StoragePathController.GetDataDirectory();
+                    string logPath = HistoryController.GetLogPath();
 
                     if (File.Exists(logPath))
                     {

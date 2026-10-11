@@ -52,7 +52,7 @@ internal static class ClickraStartup
         try
         {
             string outputDir = string.IsNullOrWhiteSpace(outputDirOverride)
-                ? ClickraStorage.GetOutputDir(files[0])
+                ? StoragePathController.GetOutputDirectory(files[0])
                 : Path.GetFullPath(outputDirOverride);
             if (!string.IsNullOrWhiteSpace(outputDirOverride))
             {

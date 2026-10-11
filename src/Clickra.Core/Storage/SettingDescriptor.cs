@@ -2,7 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 
-namespace Clickra.Core;
+namespace Clickra.Core.Storage;
     /// <summary>
     /// 設定控制項之編輯器種類。UI 生成引擎根據此欄位推導對應的控制項。
     /// </summary>

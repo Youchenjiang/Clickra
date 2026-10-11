@@ -2,8 +2,8 @@ using System;
 using System.Text.RegularExpressions;
 using Clickra.Core.Models;
 
-namespace Clickra.Core.Processors
-{
+namespace Clickra.Core.Processors.PdfTranslation.TextProcessing;
+
     public static class ReferenceSectionDetector
     {
         private static readonly Regex NumberedHeadingRegex = new(
@@ -98,4 +98,3 @@ namespace Clickra.Core.Processors
             return false;
         }
     }
-}

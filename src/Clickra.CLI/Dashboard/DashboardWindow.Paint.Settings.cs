@@ -581,7 +581,7 @@ namespace Clickra.UI
             }
             float retentionDetailY = retentionStartY + (wideSettings ? 56f : 50f);
 
-            int currentDays = ClickraStorage.GetParkedRetentionDays();
+            int currentDays = ParkedTaskController.GetRetentionDays();
             int defaultDays = GetDefaultParkedRetentionDays();
             string currentDaysText = currentDays switch
             {

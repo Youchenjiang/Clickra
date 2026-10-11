@@ -2,7 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 
-namespace Clickra.Core.Processors;
+namespace Clickra.Core.Application;
 
 /// <summary>Owns the shared task-record lifecycle around a conversion run without owning command dispatch or UI.</summary>
 public sealed class ConversionTaskLifecycle

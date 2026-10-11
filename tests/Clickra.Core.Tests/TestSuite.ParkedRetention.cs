@@ -2,6 +2,7 @@ using System;
 using System.IO;
 using System.Linq;
 using Clickra.Core;
+using Clickra.Core.Application;
 
 namespace Clickra.Core.Tests;
 
@@ -74,7 +75,7 @@ static partial class TestSuite
                 "An overridden deadline must say so, so the number is not mistaken for the global policy.");
 
             // 回到全域政策：年資不變，所以它又是過期的。
-            ClickraStorage.SetParkedRetentionOverride(taskId, null);
+            ParkedTaskController.ResetRetention(taskId);
             var global = ClickraStorage.GetParkedRetentionInfo(taskId);
             Assert.True(global.HasExpired, "Back on the global policy the same 20 day old task is expired again.");
             Assert.False(global.IsTaskOverride, "Without an override the deadline is the global one.");
@@ -252,8 +253,8 @@ static partial class TestSuite
         })
         {
             string source = File.ReadAllText(path);
-            Assert.True(source.Contains("ClickraStorage.AdjustParkedRetention(", StringComparison.Ordinal),
-                $"{surface} must adjust the deadline through Core, not by writing the number itself.");
+            Assert.True(source.Contains("ParkedTaskController.AdjustRetention(", StringComparison.Ordinal),
+                $"{surface} must adjust the deadline through the application parked-task boundary, not by writing the number itself.");
             Assert.True(source.Contains("ClickraSettings.ParkedRetentionStepDays", StringComparison.Ordinal),
                 $"{surface} must move the shared step, so both interfaces move the same number of days.");
         }

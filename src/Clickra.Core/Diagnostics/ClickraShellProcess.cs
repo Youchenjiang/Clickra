@@ -1,7 +1,7 @@
 using System;
 using System.Runtime.InteropServices;
 
-namespace Clickra.Core;
+namespace Clickra.Core.Diagnostics;
 
 /// <summary>RAII wrapper for a Win32 Toolhelp32 snapshot handle.</summary>
 internal readonly struct ToolhelpSnapshot : IDisposable

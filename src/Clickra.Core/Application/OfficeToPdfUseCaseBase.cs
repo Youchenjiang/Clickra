@@ -21,7 +21,7 @@ public abstract class OfficeToPdfUseCaseBase : ConversionUseCaseBase
         var inputs = request.InputFiles.ToList();
         List<string> outputs = inputs
             .Select(input => Path.Combine(
-                ClickraStorage.GetOutputDir(input),
+                StoragePathController.GetOutputDirectory(input),
                 Path.GetFileNameWithoutExtension(input) + ".pdf"))
             .ToList();
 

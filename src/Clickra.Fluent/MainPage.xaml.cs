@@ -679,7 +679,7 @@ public sealed partial class MainPage : Page
             MinifyContentToggle.IsOn = SettingsController.GetBool(ClickraSettings.PdfCompressMinifyContent);
             ParkedRetentionBox.Minimum = MinParkedRetentionDays;
             ParkedRetentionBox.Maximum = MaxParkedRetentionDays;
-            ParkedRetentionBox.Value = ClickraStorage.GetParkedRetentionDays();
+            ParkedRetentionBox.Value = ParkedTaskController.GetRetentionDays();
 
             _dynamicSettings.Sync();
         }
@@ -852,7 +852,7 @@ public sealed partial class MainPage : Page
         if (double.IsNaN(args.NewValue))
         {
             _syncingParkedRetention = true;
-            sender.Value = ClickraStorage.GetParkedRetentionDays();
+            sender.Value = ParkedTaskController.GetRetentionDays();
             _syncingParkedRetention = false;
             return;
         }
@@ -915,11 +915,11 @@ public sealed partial class MainPage : Page
             {
                 // 使用官方 WinRT API 直接獲取硬碟實體路徑
                 string localPath = Windows.Storage.ApplicationData.Current.LocalFolder.Path;
-                logPath = Path.Combine(localPath, ClickraStorage.HistoryFileName);
+                logPath = HistoryController.GetLogPath(localPath);
             }
             catch
             {
-                logPath = Path.Combine(ClickraStorage.GetDataDir(), ClickraStorage.HistoryFileName);
+                logPath = HistoryController.GetLogPath();
             }
 
             string? dir = Path.GetDirectoryName(logPath);
