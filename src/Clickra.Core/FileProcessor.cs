@@ -24,24 +24,11 @@ namespace Clickra.Core
         /// <param name="password">The document open password, when known.</param>
         /// <param name="onProgress">Optional progress callback receiving (progress, max, message).</param>
         /// <param name="cancellationToken">Cancellation token to abort the operation.</param>
-        public static void DecryptPdf(string inputPath, string outputPath, string password = "", Action<int, int, string>? onProgress = null, CancellationToken cancellationToken = default)
+        public static void DecryptPdf(string inputPath, string outputPath, string password, Action<int, int, string>? onProgress = null, CancellationToken cancellationToken = default)
         {
             var processor = new PdfDecryptProcessor();
             var options = new Dictionary<string, object>();
             if (!string.IsNullOrEmpty(password)) options["password"] = password;
-            processor.Process(new List<string> { inputPath }, outputPath, options, onProgress, cancellationToken);
-        }
-
-        /// <summary>Compresses a PDF with a named quality level ("small", "balanced" or "high").</summary>
-        /// <param name="inputPath">Path of the input PDF.</param>
-        /// <param name="outputPath">Path of the compressed output PDF.</param>
-        /// <param name="level">Compression level name; defaults to "balanced".</param>
-        /// <param name="onProgress">Optional progress callback receiving (progress, max, message).</param>
-        /// <param name="cancellationToken">Cancellation token to abort the compression.</param>
-        public static void CompressPdf(string inputPath, string outputPath, string level = "balanced", Action<int, int, string>? onProgress = null, CancellationToken cancellationToken = default)
-        {
-            var processor = new PdfCompressionProcessor();
-            var options = new Dictionary<string, object> { { "level", level } };
             processor.Process(new List<string> { inputPath }, outputPath, options, onProgress, cancellationToken);
         }
 
@@ -66,16 +53,12 @@ namespace Clickra.Core
         public static void ConvertImagesToPdf(List<string> files, string outputPath, Action<int, int, string>? onProgress = null, CancellationToken cancellationToken = default) =>
             new ImageToPdfProcessor().Process(files, outputPath, null, onProgress, cancellationToken);
 
-        /// <summary>Converts one Markdown document to a PDF using the local Markdig + PDFsharp pipeline.</summary>
-        public static void ConvertMarkdownToPdf(string inputPath, string outputPath, Action<int, int, string>? onProgress = null, CancellationToken cancellationToken = default) =>
-            new MarkdownToPdfProcessor().Process(new List<string> { inputPath }, outputPath, null, onProgress, cancellationToken);
-
         /// <summary>Converts one Markdown document using explicit one-shot presentation options.</summary>
         public static void ConvertMarkdownToPdf(string inputPath, string outputPath, Dictionary<string, object> options, Action<int, int, string>? onProgress = null, CancellationToken cancellationToken = default) =>
             new MarkdownToPdfProcessor().Process(new List<string> { inputPath }, outputPath, options, onProgress, cancellationToken);
 
         /// <summary>Converts one Markdown document to an editable Word DOCX using the shared Markdown template.</summary>
-        public static void ConvertMarkdownToWord(string inputPath, string outputPath, Dictionary<string, object>? options = null, Action<int, int, string>? onProgress = null, CancellationToken cancellationToken = default) =>
+        public static void ConvertMarkdownToWord(string inputPath, string outputPath, Dictionary<string, object> options, Action<int, int, string>? onProgress = null, CancellationToken cancellationToken = default) =>
             new MarkdownToWordProcessor().Process(new List<string> { inputPath }, outputPath, options, onProgress, cancellationToken);
 
         /// <summary>Stitches multiple images vertically into a single image file.</summary>
@@ -97,17 +80,6 @@ namespace Clickra.Core
             var processor = new ImageFormatConvertProcessor();
             var options = new Dictionary<string, object> { { "format", format } };
             processor.Process(new List<string> { inputPath }, outputPath, options, onProgress, cancellationToken);
-        }
-
-        /// <summary>Compresses an image in its existing format, optionally capping its long edge.</summary>
-        public static void CompressImage(string inputPath, string outputPath, int level = 1, int maxDimension = 0, Action<int, int, string>? onProgress = null, CancellationToken cancellationToken = default)
-        {
-            var options = new Dictionary<string, object>
-            {
-                { "level", ImageCompressionOptions.ToOptionName(ImageCompressionOptions.FromSliderLevel(level)) },
-                { "max_dimension", Math.Max(0, maxDimension) }
-            };
-            CompressImage(inputPath, outputPath, options, onProgress, cancellationToken);
         }
 
         /// <summary>Compresses an image using the shared image-compression option dictionary.</summary>
@@ -165,15 +137,12 @@ namespace Clickra.Core
         /// <param name="pages">Page-range specification ("all" splits every page).</param>
         /// <param name="onProgress">Optional progress callback receiving (progress, max, message).</param>
         /// <param name="cancellationToken">Cancellation token to abort the split.</param>
-        public static void SplitPdf(string inputPath, string outputPath, string pages = "all", Action<int, int, string>? onProgress = null, CancellationToken cancellationToken = default)
+        public static void SplitPdf(string inputPath, string outputPath, string pages, Action<int, int, string>? onProgress = null, CancellationToken cancellationToken = default)
         {
             var processor = new PdfSplitProcessor();
             var options = new Dictionary<string, object> { { "pages", pages } };
             processor.Process(new List<string> { inputPath }, outputPath, options, onProgress, cancellationToken);
         }
 
-        /// <summary>Returns the page count of the PDF at <paramref name="inputPath"/>, or 0 when it cannot be opened.</summary>
-        /// <param name="inputPath">Path of the PDF file.</param>
-        public static int GetPdfPageCount(string inputPath) => PdfSplitProcessor.GetPageCount(inputPath);
     }
 }

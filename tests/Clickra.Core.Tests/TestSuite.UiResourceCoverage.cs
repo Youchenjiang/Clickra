@@ -6,6 +6,7 @@ using System.Text.RegularExpressions;
 using System.Xml.Linq;
 using Clickra.Core;
 using Clickra.Core.Processors;
+using Clickra.Shared;
 
 namespace Clickra.Core.Tests;
 
@@ -249,7 +250,7 @@ static partial class TestSuite
         Assert.True(declared.Length > 0, "The shared convert metadata must declare at least one label key.");
 
         string[] reached = new[] { "pdf", "word", "excel", "ppt", "markdown", "image" }
-            .SelectMany(ConvertCommandRegistry.GetCommandsForType)
+            .SelectMany(ConvertCommandMetadata.GetCommandsForType)
             .Distinct(StringComparer.OrdinalIgnoreCase)
             .ToArray();
         Assert.True(reached.Length > 0, "The convert registry must expose its commands per file type.");
@@ -304,7 +305,7 @@ static partial class TestSuite
             "Shell SubArgs must not contain duplicate command ids.");
 
         string[] registryCommands = new[] { "pdf", "word", "excel", "ppt", "markdown", "image" }
-            .SelectMany(ConvertCommandRegistry.GetCommandsForType)
+            .SelectMany(ConvertCommandMetadata.GetCommandsForType)
             .Distinct(StringComparer.Ordinal)
             .OrderBy(command => command, StringComparer.Ordinal)
             .ToArray();

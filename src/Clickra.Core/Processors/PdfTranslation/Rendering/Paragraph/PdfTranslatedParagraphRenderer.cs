@@ -632,30 +632,6 @@ internal static class PdfTranslatedParagraphRenderer
             }
         }
 
-        private static void RenderFallbackFormulaText(
-            TextRenderContext ctx,
-            PdfLayoutElement element,
-            double currentX,
-            bool inlineBold)
-        {
-            string normText = FontUtilities.NormalizeRenderValue(element.Text);
-            DrawText(ctx.Gfx, normText, ctx.GetInlineFont(inlineBold), ctx.Brush, currentX, ctx.CurrentY, ctx.UseSyntheticBold(inlineBold));
-            double offset = 0;
-            foreach (char ch in normText)
-            {
-                double tChW = ctx.Gfx.MeasureString(ch.ToString(), ctx.MainFont).Width;
-                ctx.RenderedChars.Add(new RenderedChar
-                {
-                    Character = ch,
-                    Left = currentX + offset,
-                    Right = currentX + offset + tChW,
-                    Bottom = ctx.PageHeight - ctx.CurrentY - ctx.FontSize * 0.15,
-                    Top = ctx.PageHeight - ctx.CurrentY + ctx.FontSize * 0.85
-                });
-                offset += tChW;
-            }
-        }
-
         private static double RenderTextRun(
             TextRenderContext ctx,
             PdfLayoutRow row,

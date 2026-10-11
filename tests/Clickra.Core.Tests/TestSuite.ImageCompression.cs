@@ -10,6 +10,7 @@ using System.Threading.Tasks;
 using Clickra.Core;
 using Clickra.Core.Application;
 using Clickra.Core.Processors;
+using Clickra.Shared;
 
 namespace Clickra.Core.Tests;
 
@@ -17,6 +18,7 @@ static partial class TestSuite
 {
     private const string ImageCompressionLevelKey = "level";
     private const string ImageCompressionQualityKey = "quality";
+    private const string ImageCompressionMaxDimensionKey = "max_dimension";
     private const string ImageCompressCommand = "img-compress";
     private const string CompressionPhotoJpg = "photo.jpg";
     private const string CompressionPhotoOutputJpg = "photo_compressed.jpg";
@@ -43,7 +45,7 @@ static partial class TestSuite
                     Assert.Equal(ImageCompressionOptions.OptionMin, (string)plan.NormalizedOptions[ImageCompressionLevelKey]);
                     Assert.True((int)plan.NormalizedOptions[ImageCompressionQualityKey] == 50,
                         "Minimum image compression must snapshot quality 50.");
-                    Assert.True((int)plan.NormalizedOptions["max_dimension"] == 80,
+                    Assert.True((int)plan.NormalizedOptions[ImageCompressionMaxDimensionKey] == 80,
                         "Image compression plan must snapshot the saved max dimension.");
                     Assert.True(plan.RequiredCapabilities.Count == 0,
                         "Image compression must not require a presentation interaction capability.");
@@ -153,7 +155,12 @@ static partial class TestSuite
                     image.Save(source, ImageFormat.Png);
                 }
 
-                FileProcessor.CompressImage(source, output, level: 1, maxDimension: 80);
+                FileProcessor.CompressImage(source, output, new Dictionary<string, object>
+                {
+                    [ImageCompressionLevelKey] = ImageCompressionOptions.OptionSmall,
+                    [ImageCompressionQualityKey] = ImageCompressionOptions.GetQuality(ImageCompressionLevel.Small),
+                    [ImageCompressionMaxDimensionKey] = 80
+                });
 
                 using var compressed = new Bitmap(output);
                 Assert.True(compressed.Width == 80 && compressed.Height == 40,
@@ -165,7 +172,12 @@ static partial class TestSuite
             {
                 string source = Path.Combine(tempDir, "source.png");
                 using (var image = new Bitmap(32, 32)) image.Save(source, ImageFormat.Png);
-                Assert.Throws<InvalidOperationException>(() => FileProcessor.CompressImage(source, source));
+                Assert.Throws<InvalidOperationException>(() => FileProcessor.CompressImage(source, source, new Dictionary<string, object>
+                {
+                    [ImageCompressionLevelKey] = ImageCompressionOptions.OptionSmall,
+                    [ImageCompressionQualityKey] = ImageCompressionOptions.GetQuality(ImageCompressionLevel.Small),
+                    [ImageCompressionMaxDimensionKey] = 0
+                }));
             }));
 
         runner.Run("Image compression: interface dispatch initializes processor state", () =>
@@ -226,18 +238,14 @@ static partial class TestSuite
         runner.Run("Image compression: newer concurrent request wins output promotion", () =>
             RunWithTempDirectory(TestImageCompressionConcurrentPromotion));
 
-        runner.Run("Image compression: progress error logging does not rethrow output planning failures", () =>
+        runner.Run("Image compression: Native failure handling does not re-enter legacy planning", () =>
         {
             string? root = FindRepoRoot();
             if (root is null) throw new TestSkippedException("Could not locate repository root.");
             string progress = File.ReadAllText(Path.Combine(root, "src", "Clickra.CLI", "Progress", "ProgressWindow.Process.cs"));
-            string normalizedProgress = progress.Replace("\r\n", "\n", StringComparison.Ordinal);
-            Assert.True(progress.Contains("GetOutputPathForError(cmd, currentFiles, _outputDirOverride)", StringComparison.Ordinal),
-                "Progress failure handling must use the non-throwing output-path logger.");
-            Assert.True(progress.Contains("private static string GetOutputPathForError", StringComparison.Ordinal)
-                        && progress.Contains("ConvertCommandRegistry.EstimateOutputs(cmd, inputFiles, outputDirOverride)", StringComparison.Ordinal)
-                        && normalizedProgress.Contains("catch\n            {\n                return \"\";\n            }", StringComparison.Ordinal),
-                "Failure-history output rendering must use the shared planner without masking the original exception when planning also fails.");
+            Assert.False(progress.Contains("GetOutputPathForError", StringComparison.Ordinal)
+                         || progress.Contains("ConvertCommandRegistry.EstimateOutputs", StringComparison.Ordinal),
+                "Native failure handling must not re-enter retired legacy output planning after every product command has an application owner.");
         });
     }
 
@@ -277,7 +285,7 @@ static partial class TestSuite
         Assert.True(ConvertCommandRegistry.IsKnownCommand(ImageCompressCommand),
             ImageCompressCommand + " must be registered before the Explorer menu can invoke it.");
         Assert.Equal("cmd_img_compress", ConvertCommandRegistry.GetLabelKey(ImageCompressCommand));
-        Assert.True(ConvertCommandRegistry.GetCommandsForType("image").Contains(ImageCompressCommand, StringComparer.Ordinal),
+        Assert.True(ConvertCommandMetadata.GetCommandsForType("image").Contains(ImageCompressCommand, StringComparer.Ordinal),
             "Image command discovery must include " + ImageCompressCommand + ".");
 
         string inputDir = Path.Combine(Path.GetTempPath(), "clickra-registry-input");
@@ -348,13 +356,13 @@ static partial class TestSuite
         {
             ["level"] = ImageCompressionOptions.OptionHigh,
             ["quality"] = ImageCompressionOptions.GetQuality(ImageCompressionLevel.High),
-            ["max_dimension"] = 0
+            [ImageCompressionMaxDimensionKey] = 0
         };
         var lowOptions = new Dictionary<string, object>
         {
             ["level"] = ImageCompressionOptions.OptionMin,
             ["quality"] = ImageCompressionOptions.GetQuality(ImageCompressionLevel.Minimum),
-            ["max_dimension"] = 0
+            [ImageCompressionMaxDimensionKey] = 0
         };
         FileProcessor.CompressImage(source, expected, highOptions);
         long expectedLength = new FileInfo(expected).Length;

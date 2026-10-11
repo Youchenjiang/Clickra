@@ -8,6 +8,7 @@ using System.Xml.Linq;
 using Clickra.Core;
 using Clickra.Core.Application;
 using Clickra.Core.Processors;
+using Clickra.Shared;
 
 namespace Clickra.Core.Tests;
 
@@ -111,7 +112,7 @@ static partial class TestSuite
                 string[] allowed = ConvertCommandRegistry.GetAllowedExtensions(MarkdownToWordCommand);
                 Assert.True(allowed.Contains(".md", StringComparer.OrdinalIgnoreCase), "md2word must accept .md files.");
                 Assert.True(allowed.Contains(".markdown", StringComparer.OrdinalIgnoreCase), "md2word must accept .markdown files.");
-                Assert.True(ConvertCommandRegistry.GetCommandsForType("markdown").Contains(MarkdownToWordCommand, StringComparer.Ordinal),
+                Assert.True(ConvertCommandMetadata.GetCommandsForType("markdown").Contains(MarkdownToWordCommand, StringComparer.Ordinal),
                     "Markdown command discovery must include md2word.");
 
                 string input = Path.Combine(tempDir, "use-case.md");
@@ -311,8 +312,8 @@ static partial class TestSuite
                     ```
                     """);
 
-                FileProcessor.ConvertMarkdownToPdf(input, pdfPath);
-                FileProcessor.ConvertMarkdownToWord(input, wordPath);
+                FileProcessor.ConvertMarkdownToPdf(input, pdfPath, MarkdownPdfOptions.Create());
+                FileProcessor.ConvertMarkdownToWord(input, wordPath, MarkdownPdfOptions.Create());
 
                 MarkdownResolvedLayout layout = MarkdownResolvedLayout.Create(MarkdownTemplateCatalog.Default, 1);
                 using var pdf = UglyToad.PdfPig.PdfDocument.Open(pdfPath);

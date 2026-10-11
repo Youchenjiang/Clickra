@@ -509,23 +509,15 @@ public sealed partial class MainPage : Page
         var files = _selectedFiles.ToList();
         Dictionary<string, object>? commandOptions = await PromptCommandOptionsAsync(command);
         if (IsMarkdownCommand(command) && commandOptions is null) return;
-        IConversionUseCase? applicationUseCase = null;
-        ConversionPlan? applicationPlan = null;
-        List<string> outputs;
+        IConversionUseCase applicationUseCase;
+        ConversionPlan applicationPlan;
         try
         {
-            if (ConversionUseCases.TryGet(command, out applicationUseCase))
-            {
-                applicationPlan = applicationUseCase!.Plan(new ConversionRequest(
-                    command,
-                    files,
-                    commandOptions));
-                outputs = applicationPlan.Outputs.ToList();
-            }
-            else
-            {
-                outputs = ConvertCommandRegistry.EstimateOutputs(command, files);
-            }
+            applicationUseCase = ConversionUseCases.GetRequired(command);
+            applicationPlan = applicationUseCase.Plan(new ConversionRequest(
+                command,
+                files,
+                commandOptions));
         }
         catch (Exception ex)
         {
@@ -541,56 +533,25 @@ public sealed partial class MainPage : Page
 
         try
         {
-            if (applicationUseCase is not null && applicationPlan is not null)
+            var interaction = new DelegateConversionInteraction(
+                (index, inputPath, isRetry, token) =>
+                    DispatcherQueue.EnqueueAsync(() => FluentDialogs.PromptPasswordAsync(XamlRoot, L)),
+                (index, inputPath, token) =>
+                    DispatcherQueue.EnqueueAsync(() => SplitOverlay.ShowForAsync(inputPath)),
+                (_, _, _) => Task.FromResult<IReadOnlyDictionary<string, object>?>(null));
+            var progress = new Progress<ConversionProgress>(state =>
             {
-                var interaction = new DelegateConversionInteraction(
-                    (index, inputPath, isRetry, token) =>
-                        DispatcherQueue.EnqueueAsync(() => FluentDialogs.PromptPasswordAsync(XamlRoot, L)),
-                    (index, inputPath, token) =>
-                        DispatcherQueue.EnqueueAsync(() => SplitOverlay.ShowForAsync(inputPath)),
-                    (_, _, _) => Task.FromResult<IReadOnlyDictionary<string, object>?>(null));
-                var progress = new Progress<ConversionProgress>(state =>
-                {
-                    int percent = state.Total > 0
-                        ? Math.Clamp((int)(state.Current * 100.0 / state.Total), 0, 100)
-                        : 0;
-                    SetProgress(percent, state.Message);
-                });
-                ConversionResult applicationResult = await applicationUseCase.ExecuteAsync(
-                    applicationPlan,
-                    interaction,
-                    progress,
-                    cancellationToken: _cts.Token);
-                await HandleApplicationConversionResultAsync(command, files, applicationResult);
-                return;
-            }
-
-            var result = await ConvertCommandRunner.RunTrackedAsync(command, files, outputs,
-                (percent, message) => DispatcherQueue.TryEnqueue(() => SetProgress(percent, message)),
-                new ConvertCommandRunner.ConversionOptions(
-                    (index) => DispatcherQueue.EnqueueAsync(() => FluentDialogs.PromptPasswordAsync(XamlRoot, L)),
-                    (index, pdfPath) => DispatcherQueue.EnqueueAsync(() => SplitOverlay.ShowForAsync(pdfPath)),
-                    CommandOptions: commandOptions),
-                _cts.Token);
-
-            switch (result.Status)
-            {
-                case ConvertCommandRunner.ConvertRunStatus.Succeeded:
-                    SetProgress(100, L("fluent_progress_completed"));
-                    ToastHelper.Show(L("fluent_toast_done_title"), string.Format(L("fluent_toast_done_body"), L(ConvertCommandRegistry.GetLabelKey(command)), files.Count));
-                    _selectedFiles.Clear();
-                    RefreshFiles();
-                    break;
-                case ConvertCommandRunner.ConvertRunStatus.Canceled:
-                    SetProgress(0, L("fluent_progress_canceled"));
-                    ToastHelper.Show(L("fluent_toast_canceled_title"), string.Format(L("fluent_toast_canceled_body"), L(ConvertCommandRegistry.GetLabelKey(command))));
-                    break;
-                default:
-                    SetProgress(0, string.Format(L("fluent_progress_failed"), result.Error));
-                    ToastHelper.Show(L("fluent_toast_failed_title"), result.Error ?? "");
-                    await ShowErrorAsync(result.Error ?? "");
-                    break;
-            }
+                int percent = state.Total > 0
+                    ? Math.Clamp((int)(state.Current * 100.0 / state.Total), 0, 100)
+                    : 0;
+                SetProgress(percent, state.Message);
+            });
+            ConversionResult applicationResult = await applicationUseCase.ExecuteAsync(
+                applicationPlan,
+                interaction,
+                progress,
+                cancellationToken: _cts.Token);
+            await HandleApplicationConversionResultAsync(command, files, applicationResult);
         }
         finally
         {

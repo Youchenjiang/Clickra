@@ -33,9 +33,6 @@ namespace Clickra.Core.Processors
         public static TranslationPageDiagnostics AnalyzePageParagraphDiagnostics(string inputPath, int pageNum) =>
             PdfTranslationPipeline.AnalyzePageParagraphDiagnostics(inputPath, pageNum);
 
-        public static string DumpPageParagraphDiagnostics(string inputPath, int pageNum) =>
-            PdfTranslationPipeline.DumpPageParagraphDiagnostics(inputPath, pageNum);
-
         public static string PostProcessTranslation(string originalText, string translatedText, string targetLang) =>
             PdfTranslationPipeline.PostProcessTranslation(originalText, translatedText, targetLang);
 

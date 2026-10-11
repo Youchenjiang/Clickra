@@ -111,8 +111,10 @@ static partial class TestSuite
         Assert.False(ClickraStorage.GetSettingBool(ClickraSettings.PdfCompressStripFonts), "Unset StripFonts must default to off.");
         Assert.Equal(1, ClickraStorage.GetSettingInt(ClickraSettings.ImageCompressLevel));
         Assert.Equal(1, ConvertCommandRegistry.GetPdfCompressLevel());
-        Assert.Equal(1, ConvertCommandRegistry.GetImageCompressLevel());
-        Assert.Equal(0, ConvertCommandRegistry.GetImageCompressMaxDimension());
+        Dictionary<string, object> imageCompressionOptions = ConvertCommandRegistry.ImageCompressionOptions();
+        Assert.Equal(ImageCompressionOptions.OptionSmall, (string)imageCompressionOptions["level"]);
+        Assert.Equal(ImageCompressionOptions.GetQuality(ImageCompressionLevel.Small), (int)imageCompressionOptions["quality"]);
+        Assert.Equal(0, (int)imageCompressionOptions["max_dimension"]);
 
         // Unknown keys stay empty: the registry is the only place defaults exist.
         Assert.Equal("", ClickraStorage.GetSetting("NoSuchSettingKey"));

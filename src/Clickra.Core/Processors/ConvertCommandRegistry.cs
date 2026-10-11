@@ -6,35 +6,15 @@ using Clickra.Shared;
 
 namespace Clickra.Core.Processors;
 
-/// <summary>Single source of truth for convert command metadata shared by the
-/// Fluent and NativeAOT UIs. Adding a command means editing this table once.</summary>
+/// <summary>Core facade for shared conversion metadata, saved compression-option snapshots,
+/// and launch-argument helpers. Command definitions are authoritative in
+/// <see cref="ConvertCommandMetadata"/>.</summary>
 public static class ConvertCommandRegistry
 {
-        private const string CmdImgToPng = "img-to-png";
-        private const string CmdImgToJpg = "img-to-jpg";
-        private const string CmdImgToWebp = "img-to-webp";
-        private const string CmdImgToGif = "img-to-gif";
-        private const string CmdImgToHeic = "img-to-heic";
-        private const string CmdMdToPdf = "md2pdf";
-        private const string CmdMdToWord = "md2word";
-        private const string CmdImgCompress = "img-compress";
-        private const string CmdMergePdf = "merge-pdf";
-        private const string CmdCompressPdf = "compress-pdf";
-        private const string CmdImg2Pdf = "img2pdf";
-        private const string CmdImgMerge = "img-merge";
-        /// <summary>File extensions accepted by a UI file type ("pdf", "word", "excel", "ppt", "image").</summary>
-        public static string[] GetAllowedExtensionsByType(string type) => ConvertCommandMetadata.GetAllowedExtensionsByType(type);
-
-        /// <summary>Convert commands available for a UI file type.</summary>
-        public static string[] GetCommandsForType(string type) => ConvertCommandMetadata.GetCommandsForType(type);
-
         /// <summary>Returns the product-wide default command for a homogeneous file selection.
         /// Explicit UI selections should take precedence when they remain compatible.</summary>
         public static string? GetDefaultCommandForFiles(IReadOnlyCollection<string> files) =>
             ConvertCommandMetadata.GetDefaultCommandForFiles(files);
-
-        /// <summary>The UI file type a command belongs to (defaults to "pdf" for unknown commands).</summary>
-        public static string GetFileTypeForCommand(string command) => ConvertCommandMetadata.GetFileTypeForCommand(command);
 
         /// <summary>Every file type any convert command accepts, used for unfiltered pickers.</summary>
         public static string[] AllSupportedExtensions => ConvertCommandMetadata.AllSupportedExtensions;
@@ -44,10 +24,6 @@ public static class ConvertCommandRegistry
         /// would make the conversion a no-op (e.g. img-to-png does not accept .png).</summary>
         public static string[] GetAllowedExtensions(string? command) => ConvertCommandMetadata.GetAllowedExtensions(command);
 
-        /// <summary>Source extensions a command must exclude to avoid no-op conversions;
-        /// empty when the command accepts everything it lists.</summary>
-        public static string[] GetExcludedExtensions(string? command) => ConvertCommandMetadata.GetExcludedExtensions(command);
-
         /// <summary>Whether the command key maps to a known conversion.</summary>
         public static bool IsKnownCommand(string command) => ConvertCommandMetadata.IsKnownCommand(command);
 
@@ -56,46 +32,6 @@ public static class ConvertCommandRegistry
 
         /// <summary>Localization key for the command display name.</summary>
         public static string GetLabelKey(string command) => ConvertCommandMetadata.GetLabelKey(command);
-
-        /// <summary>Predicts the output paths a command will produce for the given files.</summary>
-        public static List<string> EstimateOutputs(string command, List<string> files, string? outputDirOverride = null)
-        {
-            return command switch
-            {
-                CmdMergePdf => throw new InvalidOperationException(
-                    "merge-pdf output planning is owned by the application use case."),
-                CmdImgMerge => throw new InvalidOperationException(
-                    "img-merge output planning is owned by the application use case."),
-                "img-stitch" => throw new InvalidOperationException(
-                    "img-stitch output planning is owned by the application use case."),
-                CmdCompressPdf => throw new InvalidOperationException(
-                    "compress-pdf output planning is owned by the application use case."),
-                "translate-pdf" => throw new InvalidOperationException(
-                    "translate-pdf output planning is owned by the application use case."),
-                "decrypt-pdf" => throw new InvalidOperationException(
-                    "decrypt-pdf output planning is owned by the application use case."),
-                "split-pdf" => throw new InvalidOperationException(
-                    "split-pdf output planning is owned by the application use case."),
-                CmdImg2Pdf => throw new InvalidOperationException(
-                    "img2pdf output planning is owned by the application use case."),
-                CmdMdToPdf => throw new InvalidOperationException(
-                    "md2pdf output planning is owned by the application use case."),
-                CmdMdToWord => throw new InvalidOperationException(
-                    "md2word output planning is owned by the application use case."),
-                CmdImgCompress => throw new InvalidOperationException(
-                    "img-compress output planning is owned by the application use case."),
-                CmdImgToPng or CmdImgToJpg or CmdImgToWebp or CmdImgToGif or CmdImgToHeic
-                    => throw new InvalidOperationException(
-                        $"{command} output planning is owned by the application use case."),
-                "ppt2pdf" => throw new InvalidOperationException(
-                    "ppt2pdf output planning is owned by the application use case."),
-                "word2pdf" => throw new InvalidOperationException(
-                    "word2pdf output planning is owned by the application use case."),
-                "excel2pdf" => throw new InvalidOperationException(
-                    "excel2pdf output planning is owned by the application use case."),
-                _ => files.Select(f => Path.Combine(ClickraStorage.GetOutputDir(f), Path.GetFileNameWithoutExtension(f) + ".pdf")).ToList()
-            };
-        }
 
         /// <summary>Reads the current slider level from settings (0-2). 未設定或超出範圍時採用
         /// 登錄表的預設值，所以叫位永遠一致（不再有多份換算表）。</summary>
@@ -139,13 +75,13 @@ public static class ConvertCommandRegistry
         }
 
         /// <summary>The saved image compression quality level, clamped to the declared range.</summary>
-        public static int GetImageCompressLevel() =>
+        private static int GetImageCompressLevel() =>
             ClickraSettings.ClampNumericSetting(
                 ClickraSettings.ImageCompressLevel,
                 ClickraStorage.GetSettingInt(ClickraSettings.ImageCompressLevel));
 
         /// <summary>The saved max long-edge dimension for image compression (0 = original), clamped to the declared range.</summary>
-        public static int GetImageCompressMaxDimension() =>
+        private static int GetImageCompressMaxDimension() =>
             ClickraSettings.ClampNumericSetting(
                 ClickraSettings.ImageCompressMaxDimension,
                 ClickraStorage.GetSettingInt(ClickraSettings.ImageCompressMaxDimension));

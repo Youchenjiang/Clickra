@@ -114,22 +114,6 @@ internal static class PdfOverlayMaskPlanner
         return clampedY1;
     }
 
-    /// <summary>
-    /// Clip translated body text so it cannot extend into a figure region (below or in the adjacent column).
-    /// </summary>
-    public static XGraphicsState? BeginClipRenderAboveDiagramBelow(
-        XGraphics gfx, PdfParagraph para, double pageHeight,
-        IReadOnlyList<TableMaskRegion> diagramMaskRegions,
-        IReadOnlyList<PdfParagraph> pageParagraphs,
-        double renderedHeight,
-        double pageWidth)
-    {
-        // Retained as a compatibility shim for older callers. The old implementation
-        // applied a broad IntersectClip and silently removed translated lines. New
-        // rendering uses reflow plus mask geometry and must never enter this path.
-        return null;
-    }
-
     /// <summary>Tight figure bounds from captions and diagram labels for body-text clip/mask.</summary>
     public static List<TableMaskRegion> GetFigureClipRegions(
         IReadOnlyList<PdfParagraph> pageParagraphs,

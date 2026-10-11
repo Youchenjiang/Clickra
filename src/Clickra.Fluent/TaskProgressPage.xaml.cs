@@ -160,9 +160,9 @@ public sealed partial class TaskProgressPage : Page
             return;
         }
 
-        (IConversionUseCase? applicationUseCase, ConversionPlan? applicationPlan, List<string> outputs) =
+        (IConversionUseCase applicationUseCase, ConversionPlan applicationPlan) =
             BuildExecutionPlan(command, files, startIndex, existingTaskId, commandOptions);
-        _outputFolder = Path.GetDirectoryName(outputs[0]) ?? "";
+        _outputFolder = Path.GetDirectoryName(applicationPlan.Outputs[0]) ?? "";
         _files = files;
         _cts = new CancellationTokenSource();
         _taskLabel = $"{L(ConvertCommandRegistry.GetLabelKey(command))} - {Path.GetFileName(files[0])}";
@@ -178,13 +178,7 @@ public sealed partial class TaskProgressPage : Page
 
         try
         {
-            if (applicationUseCase is not null && applicationPlan is not null)
-            {
-                await RunApplicationUseCaseAsync(applicationUseCase, applicationPlan, command, files);
-                return;
-            }
-
-            await RunLegacyConversionAsync(command, files, outputs, startIndex, existingTaskId, commandOptions);
+            await RunApplicationUseCaseAsync(applicationUseCase, applicationPlan, command, files);
         }
         finally
         {
@@ -213,17 +207,15 @@ public sealed partial class TaskProgressPage : Page
         (command.Equals("md2pdf", StringComparison.OrdinalIgnoreCase) ||
          command.Equals("md2word", StringComparison.OrdinalIgnoreCase));
 
-    private static (IConversionUseCase? UseCase, ConversionPlan? Plan, List<string> Outputs) BuildExecutionPlan(
+    private static (IConversionUseCase UseCase, ConversionPlan Plan) BuildExecutionPlan(
         string command,
         List<string> files,
         int startIndex,
         string? existingTaskId,
         IReadOnlyDictionary<string, object>? commandOptions)
     {
-        if (!ConversionUseCases.TryGet(command, out IConversionUseCase? useCase))
-            return (null, null, ConvertCommandRegistry.EstimateOutputs(command, files));
-
-        ConversionPlan plan = useCase!.Plan(new ConversionRequest(
+        IConversionUseCase useCase = ConversionUseCases.GetRequired(command);
+        ConversionPlan plan = useCase.Plan(new ConversionRequest(
             command,
             files,
             commandOptions,
@@ -231,7 +223,7 @@ public sealed partial class TaskProgressPage : Page
         {
             ResumeStartIndex = startIndex
         };
-        return (useCase, plan, plan.Outputs.ToList());
+        return (useCase, plan);
     }
 
     private async Task RunApplicationUseCaseAsync(
@@ -267,42 +259,6 @@ public sealed partial class TaskProgressPage : Page
         await HandleRunResultAsync(status, result.Error, command, files);
     }
 
-    private async Task RunLegacyConversionAsync(
-        string command,
-        List<string> files,
-        List<string> outputs,
-        int startIndex,
-        string? existingTaskId,
-        Dictionary<string, object>? commandOptions)
-    {
-        var result = await ConvertCommandRunner.RunTrackedAsync(
-            command,
-            files,
-            outputs,
-            ReportTaskProgress,
-            new ConvertCommandRunner.ConversionOptions(
-                PromptPasswordAsync,
-                PromptSplitAsync,
-                startIndex,
-                existingTaskId,
-                commandOptions,
-                OnTaskStarted: taskId =>
-                {
-                    _taskId = taskId;
-                    App.RegisterTaskPage(taskId, this);
-                }),
-            _cts!.Token);
-
-        TaskRunPresentationStatus status = result.Status switch
-        {
-            ConvertCommandRunner.ConvertRunStatus.Succeeded => TaskRunPresentationStatus.Succeeded,
-            ConvertCommandRunner.ConvertRunStatus.Canceled => TaskRunPresentationStatus.Canceled,
-            ConvertCommandRunner.ConvertRunStatus.Parked => TaskRunPresentationStatus.Parked,
-            _ => TaskRunPresentationStatus.Failed
-        };
-        await HandleRunResultAsync(status, result.Error, command, files);
-    }
-
     private void ReportTaskProgress(int percent, string message)
     {
         if (_isBackgrounded && Window is { } window)
@@ -315,31 +271,13 @@ public sealed partial class TaskProgressPage : Page
         string inputPath,
         bool isRetry,
         CancellationToken cancellationToken)
-    {
-        try
-        {
-            return await PromptPasswordAsync(fileIndex);
-        }
-        catch (ConvertCommandRunner.ParkedException ex)
-        {
-            throw new ConversionParkedException(ex.Message, ex.NextFileIndex);
-        }
-    }
+        => await PromptPasswordAsync(fileIndex);
 
     private async Task<string?> PromptApplicationSplitAsync(
         int fileIndex,
         string inputPath,
         CancellationToken cancellationToken)
-    {
-        try
-        {
-            return await PromptSplitAsync(fileIndex, inputPath);
-        }
-        catch (ConvertCommandRunner.ParkedException ex)
-        {
-            throw new ConversionParkedException(ex.Message, ex.NextFileIndex);
-        }
-    }
+        => await PromptSplitAsync(fileIndex, inputPath);
 
     private async Task HandleRunResultAsync(
         TaskRunPresentationStatus status,
@@ -401,15 +339,15 @@ public sealed partial class TaskProgressPage : Page
         }
     }
 
-    /// <summary>密碼 prompt：若已要求暫存則拋出 ParkedException，讓轉換乾淨停下來。</summary>
+    /// <summary>密碼 prompt：若已要求暫存則拋出 application parking signal，讓轉換乾淨停下來。</summary>
     private async Task<string?> PromptPasswordAsync(int fileIndex)
     {
-        if (_parkRequested) throw new ConvertCommandRunner.ParkedException(_parkReason, fileIndex);
+        if (_parkRequested) throw new ConversionParkedException(_parkReason, fileIndex);
         _promptActive = true;
         try
         {
             var result = await DispatcherQueue.EnqueueAsync(() => FluentDialogs.PromptPasswordAsync(XamlRoot, L, d => _activeDialog = d));
-            if (_parkRequested) throw new ConvertCommandRunner.ParkedException(_parkReason, fileIndex);
+            if (_parkRequested) throw new ConversionParkedException(_parkReason, fileIndex);
             return result;
         }
         finally
@@ -419,10 +357,10 @@ public sealed partial class TaskProgressPage : Page
         }
     }
 
-    /// <summary>分割頁數 prompt：同上，暫存時喚醒並拋出 ParkedException。</summary>
+    /// <summary>分割頁數 prompt：同上，暫存時喚醒並拋出 application parking signal。</summary>
     private async Task<string?> PromptSplitAsync(int fileIndex, string pdfPath)
     {
-        if (_parkRequested) throw new ConvertCommandRunner.ParkedException(_parkReason, fileIndex);
+        if (_parkRequested) throw new ConversionParkedException(_parkReason, fileIndex);
         _promptActive = true;
         try
         {
@@ -438,7 +376,7 @@ public sealed partial class TaskProgressPage : Page
                 ResizeHost(SplitWindowSize);
                 return SplitOverlay.ShowForAsync(pdfPath);
             });
-            if (_parkRequested) throw new ConvertCommandRunner.ParkedException(_parkReason, fileIndex);
+            if (_parkRequested) throw new ConversionParkedException(_parkReason, fileIndex);
             return result;
         }
         finally
@@ -452,7 +390,7 @@ public sealed partial class TaskProgressPage : Page
         }
     }
 
-    /// <summary>暫存目前的轉換：關閉卡住的 prompt，讓背景執行緒拋出 ParkedException（由 TrackWindow 在卡 prompt 關窗時呼叫）。</summary>
+    /// <summary>暫存目前的轉換：關閉卡住的 prompt，讓背景執行緒拋出 application parking signal（由 TrackWindow 在卡 prompt 關窗時呼叫）。</summary>
     internal void ParkAndClose()
     {
         if (_parkRequested) return;
@@ -465,9 +403,6 @@ public sealed partial class TaskProgressPage : Page
         }
         SplitOverlay.Cancel();
     }
-
-    /// <summary>取消目前的轉換（dashboard 任務紀錄的取消按鈕）。</summary>
-    internal void RequestCancel() => _cts?.Cancel();
 
     /// <summary>標記為縮到匣背景執行（由 TrackWindow 在關窗縮匣時呼叫）。</summary>
     internal void MarkBackgrounded() => _isBackgrounded = true;
