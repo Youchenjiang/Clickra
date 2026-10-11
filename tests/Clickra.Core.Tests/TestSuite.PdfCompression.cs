@@ -15,6 +15,9 @@ namespace Clickra.Core.Tests;
 
 static partial class TestSuite
 {
+    private const string PdfCompressionCliProjectDirectory = "Clickra.CLI";
+    private const string PdfCompressionDashboardDirectory = "Dashboard";
+
     public static void RegisterPdfCompressionTests(TestRunner runner)
     {
         const string LevelKey = "level";
@@ -259,10 +262,10 @@ static partial class TestSuite
         string root = FindRepoRoot() ?? throw new TestSkippedException(
             "Could not locate the repository root from the test output directory.");
         string fluentXaml = File.ReadAllText(Path.Combine(root, "src", "Clickra.Fluent", "MainPage.xaml"));
-        string cliPaint = File.ReadAllText(Path.Combine(root, "src", "Clickra.CLI", "Dashboard", "DashboardWindow.Paint.Settings.cs"));
-        string cliDynamicPaint = File.ReadAllText(Path.Combine(root, "src", "Clickra.CLI", "Dashboard", "DashboardWindow.Paint.Settings.Dynamic.cs"));
-        string cliClick = File.ReadAllText(Path.Combine(root, "src", "Clickra.CLI", "Dashboard", "DashboardWindow.Events.Settings.cs"));
-        string cliDrag = File.ReadAllText(Path.Combine(root, "src", "Clickra.CLI", "Dashboard", "DashboardWindow.Events.cs"));
+        string cliPaint = File.ReadAllText(Path.Combine(root, "src", PdfCompressionCliProjectDirectory, PdfCompressionDashboardDirectory, "DashboardWindow.Paint.Settings.cs"));
+        string cliDynamicPaint = File.ReadAllText(Path.Combine(root, "src", PdfCompressionCliProjectDirectory, PdfCompressionDashboardDirectory, "DashboardWindow.Paint.Settings.Dynamic.cs"));
+        string cliClick = File.ReadAllText(Path.Combine(root, "src", PdfCompressionCliProjectDirectory, PdfCompressionDashboardDirectory, "DashboardWindow.Events.Settings.cs"));
+        string cliDrag = File.ReadAllText(Path.Combine(root, "src", PdfCompressionCliProjectDirectory, PdfCompressionDashboardDirectory, "DashboardWindow.Events.cs"));
 
         Assert.True(fluentXaml.Contains("x:Name=\"CompressionSlider\"", StringComparison.Ordinal) &&
                     !fluentXaml.Contains("x:Name=\"CompressionSlider\" Minimum=", StringComparison.Ordinal) &&
