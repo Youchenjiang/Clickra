@@ -11,6 +11,7 @@ static partial class TestSuite
     private const string RepositoryRootMissingMessage = "Could not locate the repository root.";
     private const string ArchitectureCliProjectDirectory = "Clickra.CLI";
     private const string ArchitectureCoreProjectDirectory = "Clickra.Core";
+    private const string ArchitectureApplicationDirectory = "Application";
     private const string ArchitectureFluentProjectDirectory = "Clickra.Fluent";
     private const string ArchitectureProgressDirectory = "Progress";
     private const string ArchitectureProcessorsDirectory = "Processors";
@@ -561,7 +562,7 @@ static partial class TestSuite
             root,
             "src",
             ArchitectureCoreProjectDirectory,
-            "Application",
+            ArchitectureApplicationDirectory,
             "SettingsController.cs");
         Assert.True(File.Exists(settingsGatewayPath), "Application settings gateway must exist.");
 
@@ -570,7 +571,7 @@ static partial class TestSuite
                  {
                      Path.Combine(root, "src", ArchitectureCliProjectDirectory),
                      Path.Combine(root, "src", ArchitectureFluentProjectDirectory),
-                     Path.Combine(root, "src", ArchitectureCoreProjectDirectory, "Application")
+                     Path.Combine(root, "src", ArchitectureCoreProjectDirectory, ArchitectureApplicationDirectory)
                  })
         {
             foreach (string file in Directory.EnumerateFiles(directory, "*.cs", SearchOption.AllDirectories))
@@ -624,7 +625,7 @@ static partial class TestSuite
             root,
             "src",
             ArchitectureCoreProjectDirectory,
-            "Application",
+            ArchitectureApplicationDirectory,
             "ParkedTaskController.cs");
         Assert.True(File.Exists(gatewayPath), "Application parked-task gateway must exist.");
 
@@ -633,7 +634,7 @@ static partial class TestSuite
                  {
                      Path.Combine(root, "src", ArchitectureCliProjectDirectory),
                      Path.Combine(root, "src", ArchitectureFluentProjectDirectory),
-                     Path.Combine(root, "src", ArchitectureCoreProjectDirectory, "Application")
+                     Path.Combine(root, "src", ArchitectureCoreProjectDirectory, ArchitectureApplicationDirectory)
                  })
         {
             foreach (string file in Directory.EnumerateFiles(directory, "*.cs", SearchOption.AllDirectories))
@@ -720,7 +721,7 @@ static partial class TestSuite
 
         foreach (string applicationFile in new[] { "HistoryFeed.cs", "ConversionTaskLifecycle.cs" })
         {
-            string file = Path.Combine(core, "Application", applicationFile);
+            string file = Path.Combine(core, ArchitectureApplicationDirectory, applicationFile);
             string source = File.ReadAllText(file);
             if (!source.Contains("namespace Clickra.Core.Application;", StringComparison.Ordinal))
                 violations.Add($"{NormalizeRepoPath(root, file)}: expected namespace Clickra.Core.Application");
@@ -897,7 +898,7 @@ static partial class TestSuite
         string? root = FindRepoRoot();
         if (root is null) throw new TestSkippedException(RepositoryRootMissingMessage);
 
-        string applicationDir = Path.Combine(root, "src", ArchitectureCoreProjectDirectory, "Application");
+        string applicationDir = Path.Combine(root, "src", ArchitectureCoreProjectDirectory, ArchitectureApplicationDirectory);
         Assert.True(Directory.Exists(applicationDir), "The shared application contract directory must exist.");
 
         string[] forbidden =

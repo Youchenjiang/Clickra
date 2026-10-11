@@ -14,6 +14,7 @@ static partial class TestSuite
     private const string CmdDecryptPdf = "decrypt-pdf";
     private const string CmdMergePdf = "merge-pdf";
     private const string CoreProjectDirectory = "Clickra.Core";
+    private const string ApplicationDirectory = "Application";
     private const string StorageDirectory = "Storage";
     private const string ParkReason = "Waiting for input";
     private const string SettingParkedRetention = "ParkedTaskRetention";
@@ -187,9 +188,9 @@ static partial class TestSuite
         string nativeAdapter = File.ReadAllText(Path.Combine(root, "src", CliProjectDirectory, "Progress", "NativeConversionExecutionAdapter.cs"));
         string fluentMain = File.ReadAllText(Path.Combine(root, "src", FluentProjectDirectory, FluentMainPageFile));
         string fluentTask = File.ReadAllText(Path.Combine(root, "src", FluentProjectDirectory, "TaskProgressPage.xaml.cs"));
-            string lifecycle = File.ReadAllText(Path.Combine(root, "src", CoreProjectDirectory, "Application", "ConversionTaskLifecycle.cs"));
-        string perFileUseCaseBase = File.ReadAllText(Path.Combine(root, "src", CoreProjectDirectory, "Application", "PerFileConversionUseCaseBase.cs"));
-        string markdownUseCaseBase = File.ReadAllText(Path.Combine(root, "src", CoreProjectDirectory, "Application", "MarkdownConversionUseCaseBase.cs"));
+        string lifecycle = File.ReadAllText(Path.Combine(root, "src", CoreProjectDirectory, ApplicationDirectory, "ConversionTaskLifecycle.cs"));
+        string perFileUseCaseBase = File.ReadAllText(Path.Combine(root, "src", CoreProjectDirectory, ApplicationDirectory, "PerFileConversionUseCaseBase.cs"));
+        string markdownUseCaseBase = File.ReadAllText(Path.Combine(root, "src", CoreProjectDirectory, ApplicationDirectory, "MarkdownConversionUseCaseBase.cs"));
 
         foreach ((string name, string source) in new[] { ("ProgressWindow", native), ("FluentMain", fluentMain), ("FluentTask", fluentTask) })
         {
@@ -286,7 +287,7 @@ static partial class TestSuite
             "The History page must not enumerate parked conversions itself; HistoryFeed is the one source for both UIs.");
         Assert.True(code.Contains("ParkedTaskController.Cancel", StringComparison.Ordinal), "The History page must offer cancel through the parked-task application boundary.");
         Assert.True(code.Contains("OpenTaskProgressWindow($\"resume {", StringComparison.Ordinal), "Resume must go through the shared resume entry point.");
-        string feed = File.ReadAllText(Path.Combine(root, "src", CoreProjectDirectory, "Application", "HistoryFeed.cs"));
+        string feed = File.ReadAllText(Path.Combine(root, "src", CoreProjectDirectory, ApplicationDirectory, "HistoryFeed.cs"));
         Assert.True(feed.Contains("ClickraStorage.IsUserCanceledReason", StringComparison.Ordinal),
             "Cancelled rows must be recognised by the shared history marker, including the CLI's legacy one.");
         Assert.True(feed.Contains("status_canceled", StringComparison.Ordinal),
@@ -533,7 +534,7 @@ static partial class TestSuite
         string cliHistory = File.ReadAllText(Path.Combine(root, "src", CliProjectDirectory, DashboardDirectory, DashboardHistoryPaintFile));
         string storageCode = File.ReadAllText(Path.Combine(root, "src", CoreProjectDirectory, StorageDirectory, "ClickraStorage.ActiveRecord.cs"));
         string parkedCoordinator = File.ReadAllText(Path.Combine(root, "src", CoreProjectDirectory, StorageDirectory, "ParkedTaskCoordinator.cs"));
-        string feedCode = File.ReadAllText(Path.Combine(root, "src", CoreProjectDirectory, "Application", "HistoryFeed.cs"));
+        string feedCode = File.ReadAllText(Path.Combine(root, "src", CoreProjectDirectory, ApplicationDirectory, "HistoryFeed.cs"));
 
         Assert.True(feedCode.Contains("ClickraStorage.GetParkedRetentionInfo", StringComparison.Ordinal),
             "The shared feed must compute each parked item's retention once, not leave it to the two UIs.");

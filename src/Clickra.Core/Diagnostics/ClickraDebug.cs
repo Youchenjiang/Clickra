@@ -4,8 +4,8 @@ using System.IO;
 using System.Linq;
 using System.Text;
 
-namespace Clickra.Core.Diagnostics
-{
+namespace Clickra.Core.Diagnostics;
+
     public static class ClickraDebug
     {
         private static readonly List<string> _lines = new();
@@ -114,4 +114,3 @@ namespace Clickra.Core.Diagnostics
         bool VerticalOverflow,
         double MeasuredH,
         string Text);
-}

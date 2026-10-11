@@ -3,8 +3,8 @@ using System.IO;
 using System.Reflection;
 using PdfSharp.Fonts;
 
-namespace Clickra.Core.Fonts
-{
+namespace Clickra.Core.Fonts;
+
     /// <summary>Resolves Latin and CJK font faces for PDF generation.</summary>
     public class ClickraFontResolver : IFontResolver
     {
@@ -386,4 +386,3 @@ namespace Clickra.Core.Fonts
             return sum;
         }
     }
-}

@@ -4,8 +4,8 @@ using System.Linq;
 using System.Text;
 using Clickra.Core.Models;
 
-namespace Clickra.Core.Processors.PdfTranslation.TextProcessing
-{
+namespace Clickra.Core.Processors.PdfTranslation.TextProcessing;
+
     public static class FormulaLiteralCleaner
     {
         public static string RemoveDuplicateFormulaLiterals(
@@ -54,4 +54,3 @@ namespace Clickra.Core.Processors.PdfTranslation.TextProcessing
         }
 
     }
-}
