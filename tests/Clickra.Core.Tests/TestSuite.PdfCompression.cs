@@ -260,6 +260,7 @@ static partial class TestSuite
             "Could not locate the repository root from the test output directory.");
         string fluentXaml = File.ReadAllText(Path.Combine(root, "src", "Clickra.Fluent", "MainPage.xaml"));
         string cliPaint = File.ReadAllText(Path.Combine(root, "src", "Clickra.CLI", "Dashboard", "DashboardWindow.Paint.Settings.cs"));
+        string cliDynamicPaint = File.ReadAllText(Path.Combine(root, "src", "Clickra.CLI", "Dashboard", "DashboardWindow.Paint.Settings.Dynamic.cs"));
         string cliClick = File.ReadAllText(Path.Combine(root, "src", "Clickra.CLI", "Dashboard", "DashboardWindow.Events.Settings.cs"));
         string cliDrag = File.ReadAllText(Path.Combine(root, "src", "Clickra.CLI", "Dashboard", "DashboardWindow.Events.cs"));
 
@@ -274,7 +275,7 @@ static partial class TestSuite
         Assert.Equal(3, range.Max - range.Min + 1);
         Assert.Equal(3, descriptor.SliderLabels?.Count ?? 0);
         Assert.True(cliPaint.Contains("GetRequiredNumericRange(pdfLevelDescriptor)", StringComparison.Ordinal) &&
-                    cliPaint.Contains("descriptor.SliderLabels", StringComparison.Ordinal),
+                    cliDynamicPaint.Contains("descriptor.SliderLabels", StringComparison.Ordinal),
             "The dashboard must derive its three PDF compression stops and labels from the registered descriptor.");
         Assert.False(cliPaint.Contains("GetText(\"setting_pdf_compress_level_min\")", StringComparison.Ordinal),
             "The retired fourth/minimum slider label must not be rendered.");

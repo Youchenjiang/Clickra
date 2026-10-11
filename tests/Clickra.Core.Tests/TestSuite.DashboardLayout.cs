@@ -501,14 +501,16 @@ static partial class TestSuite
         Assert.True(paint.Contains("int fullWidth = (int)(logW - contentX - SettingsLayout.ContentRightMargin)", StringComparison.Ordinal)
                     && paint.Contains("int pdfSecondaryX = SettingsLayout.ColumnX((int)contentX, (int)logW, 1)", StringComparison.Ordinal),
             "Wide PDF compression must use the full card width and place secondary controls in the second column.");
+        string dynamicPaint = File.ReadAllText(Path.Combine(dir, "DashboardWindow.Paint.Settings.Dynamic.cs"));
         AssertContainsAll(
             paint,
-            "Native PDF compression must take titles, slider labels, and numeric bounds from SettingPageRegistry descriptors.",
+            "Native PDF compression must take titles, setting keys, and numeric bounds from SettingPageRegistry descriptors.",
             "GetRequiredSettingDescriptor(ClickraSettings.PdfCompressImageLevel)",
             "GetRequiredSettingDescriptor(ClickraSettings.PdfCompressStripFonts)",
             "GetRequiredSettingDescriptor(ClickraSettings.PdfCompressMinifyContent)",
-            "descriptor.SliderLabels",
             "GetRequiredNumericRange(pdfLevelDescriptor)");
+        Assert.True(dynamicPaint.Contains("descriptor.SliderLabels", StringComparison.Ordinal),
+            "Native slider labels must be rendered by the shared descriptor slider renderer.");
         AssertContainsNone(
             paint,
             "Native PDF compression painting must not re-declare descriptor-owned bounds or stop labels.",

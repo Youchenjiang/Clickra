@@ -804,10 +804,6 @@ namespace Clickra.UI
             NumericSettingRange range)
         {
             float s = _dpiScale;
-            int stops = Math.Max(2, range.Max - range.Min + 1);
-            float trackY = y + 18f;   // guidance labels occupy top 18px
-            float trackH = 5f;
-            Color accent = UIHelper.GetSystemColorizationColor();
 
             // Guidance labels from localization
             if (_subFont != null)
@@ -821,44 +817,7 @@ namespace Clickra.UI
                     (x + w - rSize.Width / s) * s, y * s);
             }
 
-            // Track background
-            using var bgPath = UIHelper.GetRoundedRectPath(
-                new RectangleF(x * s, trackY * s, w * s, trackH * s), (trackH / 2f) * s);
-            using var bgBrush = new SolidBrush(Color.FromArgb(55, 55, 55));
-            g.FillPath(bgBrush, bgPath);
-
-            // Filled portion (left of active stop)
-            float thumbX = x + (float)(level - range.Min) / (stops - 1) * w;
-            float fillW = thumbX - x;
-            if (fillW > 0.5f)
-            {
-                using var fillPath = UIHelper.GetRoundedRectPath(
-                    new RectangleF(x * s, trackY * s, fillW * s, trackH * s), (trackH / 2f) * s);
-                using var fillBrush = new SolidBrush(accent);
-                g.FillPath(fillBrush, fillPath);
-            }
-
-            // Stop dots + labels below from localization
-            IReadOnlyList<string> stopLabels = descriptor.SliderLabels ?? Array.Empty<string>();
-
-            for (int i = 0; i < stops; i++)
-            {
-                float sx = x + (float)i / (stops - 1) * w;
-                bool active = (i + range.Min == level);
-
-                float dotR = DrawSliderStopMarker(g, sx, trackY, trackH, active, (i + range.Min) <= level, accent);
-
-                // Label
-                if (_subFont != null && i < stopLabels.Count)
-                {
-                    string stopLabel = GetText(stopLabels[i]);
-                    using var lBrush = new SolidBrush(active ? Color.White : Color.FromArgb(95, 95, 95));
-                    var lSize = g.MeasureString(stopLabel, _subFont);
-                    g.DrawString(stopLabel, _subFont, lBrush,
-                        (sx - lSize.Width / s / 2f) * s,
-                        (trackY + trackH / 2f + dotR + 5f) * s);
-                }
-            }
+            DrawDynamicSlider(g, x, y, w, descriptor, level, range);
         }
 
         private static readonly HashSet<string> LegacyPaintedSettings = new(StringComparer.OrdinalIgnoreCase)

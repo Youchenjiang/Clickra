@@ -270,8 +270,8 @@ static partial class TestSuite
         Assert.True(cliDynamicPaint.Contains("descriptor.GetEffectiveNumericRange()", StringComparison.Ordinal),
             "CLI descriptor controls must derive numeric bounds from SettingDescriptor.");
         Assert.True(cliPaint.Contains("GetRequiredNumericRange(pdfLevelDescriptor)", StringComparison.Ordinal) &&
-                    cliPaint.Contains("descriptor.SliderLabels", StringComparison.Ordinal),
-            "CLI PDF compression painting must derive bounds and labels from its registered descriptor.");
+                    cliDynamicPaint.Contains("descriptor.SliderLabels", StringComparison.Ordinal),
+            "CLI PDF compression painting must derive bounds and labels from its registered descriptor and shared slider renderer.");
         Assert.True(cliEvents.Contains("GetRequiredNumericRange(descriptor)", StringComparison.Ordinal) &&
                     cliEvents.Contains("int span = range.Max - range.Min", StringComparison.Ordinal),
             "CLI slider drag event must derive its span and clamping from the descriptor range.");
