@@ -31,6 +31,7 @@ static partial class TestSuite
     private const string RetiredPdfTargetDpi = "PdfCompressTargetDpi";
     private const string RetiredPdfJpegQuality = "PdfCompressJpegQuality";
     private const string RetiredPdfDpi = "PdfCompressDpi";
+    private const string SettingsRegistryCoreProjectDirectory = "Clickra.Core";
     private const string SettingsRegistryFluentProjectDirectory = "Clickra.Fluent";
     private const string LanguageZhTw = "zh-TW";
     private const string LanguageZhCn = "zh-CN";
@@ -173,9 +174,9 @@ static partial class TestSuite
     {
         string root = FindRepoRoot() ?? throw new TestSkippedException(
             RepoRootNotFoundMessage);
-        string parkedCoordinator = File.ReadAllText(Path.Combine(root, "src", "Clickra.Core", "Storage", "ParkedTaskCoordinator.cs"));
-        string registry = File.ReadAllText(Path.Combine(root, "src", "Clickra.Core", "Processors", "ConvertCommandRegistry.cs"));
-        string settings = File.ReadAllText(Path.Combine(root, "src", "Clickra.Core", "Storage", "ClickraSettings.cs"));
+        string parkedCoordinator = File.ReadAllText(Path.Combine(root, "src", SettingsRegistryCoreProjectDirectory, "Storage", "ParkedTaskCoordinator.cs"));
+        string registry = File.ReadAllText(Path.Combine(root, "src", SettingsRegistryCoreProjectDirectory, "Processors", "ConvertCommandRegistry.cs"));
+        string settings = File.ReadAllText(Path.Combine(root, "src", SettingsRegistryCoreProjectDirectory, "Storage", "ClickraSettings.cs"));
 
         AssertNumericAccessorUsesRegistry("GetRetentionDays", parkedCoordinator);
         AssertNumericAccessorUsesRegistry("NormalizePdfCompressLevel", settings);
@@ -393,7 +394,7 @@ static partial class TestSuite
             Assert.Equal(42, ClickraStorage.GetParkedRetentionDays());
 
             string root = FindRepoRoot() ?? throw new TestSkippedException(RepoRootNotFoundMessage);
-            string storageSource = File.ReadAllText(Path.Combine(root, "src", "Clickra.Core", "Storage", "ClickraStorage.cs"));
+            string storageSource = File.ReadAllText(Path.Combine(root, "src", SettingsRegistryCoreProjectDirectory, "Storage", "ClickraStorage.cs"));
             int saveStart = storageSource.IndexOf("public static void SaveSetting", StringComparison.Ordinal);
             int notifyStart = storageSource.IndexOf("private static void NotifySettingsChanged", saveStart, StringComparison.Ordinal);
             Assert.True(saveStart >= 0 && notifyStart > saveStart, "SaveSetting source block must be discoverable.");
