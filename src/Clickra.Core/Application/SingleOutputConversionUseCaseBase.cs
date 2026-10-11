@@ -34,7 +34,7 @@ public abstract class SingleOutputConversionUseCaseBase : ConversionUseCaseBase
 
         var inputs = request.InputFiles.ToList();
         string outputDir = string.IsNullOrWhiteSpace(request.OutputOverride)
-            ? ClickraStorage.GetOutputDir(inputs[0])
+            ? StoragePathController.GetOutputDirectory(inputs[0])
             : Path.GetFullPath(request.OutputOverride);
         string output = Path.Combine(outputDir, PlannedOutputFileName);
         ValidateOutput(inputs, output);

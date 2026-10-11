@@ -119,7 +119,7 @@ namespace Clickra.UI;
             var package = LibreOfficeEngineInstaller.RecommendedPackage;
             try
             {
-                string downloadDir = Path.Combine(ClickraStorage.GetDataDir(), "downloads");
+                string downloadDir = StoragePathController.GetDownloadsDirectory();
                 var progress = new Progress<int>(percent => ReportDownloadProgress(hwnd, percent));
                 string installerPath = LibreOfficeEngineInstaller.DownloadAndVerifyAsync(
                         package,

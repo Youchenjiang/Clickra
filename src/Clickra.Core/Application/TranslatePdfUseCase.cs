@@ -48,7 +48,7 @@ public sealed class TranslatePdfUseCase : PerFileConversionUseCaseBase
         }
         options[ExecutionLocalizationOptions.LanguageKey] =
             SettingsController.Get(ClickraSettings.Language);
-        options[ProcessorExecutionOptions.DataDirectoryKey] = ClickraStorage.GetDataDir();
+        options[ProcessorExecutionOptions.DataDirectoryKey] = StoragePathController.GetDataDirectory();
         return options;
     }
 

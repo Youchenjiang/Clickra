@@ -52,7 +52,7 @@ public abstract class PerFileConversionUseCaseBase : ConversionUseCaseBase
             : NormalizeOutputOverride(request.OutputOverride);
         List<string> outputs = inputs
             .Select(input => Path.Combine(
-                outputOverride ?? ClickraStorage.GetOutputDir(input),
+                outputOverride ?? StoragePathController.GetOutputDirectory(input),
                 GetOutputFileName(input)))
             .ToList();
         ValidateOutputs(inputs, outputs);
