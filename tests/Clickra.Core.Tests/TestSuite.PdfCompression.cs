@@ -166,26 +166,15 @@ static partial class TestSuite
                 Assert.True(settings.MinifyContent == preset.MinifyContent, $"{level} must use the preset minify flag.");
             }
 
-            // ConvertCommandRegistry.CompressionOptions maps slider settings directly to preset levels
+            // Persisted slider values normalize through the settings registry before the use case snapshots them.
             string origLevel = ClickraStorage.GetSetting(ClickraSettings.PdfCompressImageLevel);
             try
             {
-                ClickraStorage.SaveSetting(ClickraSettings.PdfCompressImageLevel, "0");
-                Assert.Equal(LevelSmall, (string)ConvertCommandRegistry.CompressionOptions()[LevelKey]);
-
-                ClickraStorage.SaveSetting(ClickraSettings.PdfCompressImageLevel, "1");
-                Assert.Equal(LevelBalanced, (string)ConvertCommandRegistry.CompressionOptions()[LevelKey]);
-
-                ClickraStorage.SaveSetting(ClickraSettings.PdfCompressImageLevel, "2");
-                Assert.Equal(LevelHigh, (string)ConvertCommandRegistry.CompressionOptions()[LevelKey]);
-
-                // Level 3 was the previous UI's duplicate High stop; preserve that user preference.
-                ClickraStorage.SaveSetting(ClickraSettings.PdfCompressImageLevel, "3");
-                Assert.Equal(LevelHigh, (string)ConvertCommandRegistry.CompressionOptions()[LevelKey]);
-
-                // Other values outside 0-2 fall back to the registered default (balanced).
-                ClickraStorage.SaveSetting(ClickraSettings.PdfCompressImageLevel, "4");
-                Assert.Equal(LevelBalanced, (string)ConvertCommandRegistry.CompressionOptions()[LevelKey]);
+                Assert.Equal(0, ClickraSettings.NormalizePdfCompressLevel(0));
+                Assert.Equal(1, ClickraSettings.NormalizePdfCompressLevel(1));
+                Assert.Equal(2, ClickraSettings.NormalizePdfCompressLevel(2));
+                Assert.Equal(2, ClickraSettings.NormalizePdfCompressLevel(3));
+                Assert.Equal(1, ClickraSettings.NormalizePdfCompressLevel(4));
             }
             finally
             {
@@ -197,22 +186,36 @@ static partial class TestSuite
         {
             string input = Path.Combine(Path.GetTempPath(), $"clickra-compress-plan-{Guid.NewGuid():N}.pdf");
             string originalLevel = ClickraStorage.GetSetting(ClickraSettings.PdfCompressImageLevel);
+            string originalStripFonts = ClickraStorage.GetSetting(ClickraSettings.PdfCompressStripFonts);
+            string originalMinifyContent = ClickraStorage.GetSetting(ClickraSettings.PdfCompressMinifyContent);
             try
             {
                 ClickraStorage.SaveSetting(ClickraSettings.PdfCompressImageLevel, "0");
+                ClickraStorage.SaveSetting(ClickraSettings.PdfCompressStripFonts, ClickraSettings.ValueTrue);
+                ClickraStorage.SaveSetting(ClickraSettings.PdfCompressMinifyContent, ClickraSettings.ValueFalse);
                 var useCase = new CompressPdfUseCase();
                 ConversionPlan plan = useCase.Plan(new ConversionRequest(
                     CompressPdfUseCase.CommandName,
                     new[] { input }));
 
+                ClickraStorage.SaveSetting(ClickraSettings.PdfCompressImageLevel, "2");
+                ClickraStorage.SaveSetting(ClickraSettings.PdfCompressStripFonts, ClickraSettings.ValueFalse);
+                ClickraStorage.SaveSetting(ClickraSettings.PdfCompressMinifyContent, ClickraSettings.ValueTrue);
+
                 Assert.Equal(Path.Combine(ClickraStorage.GetOutputDir(input), Path.GetFileNameWithoutExtension(input) + "_compressed.pdf"), plan.Outputs[0]);
                 Assert.Equal(LevelSmall, (string)plan.NormalizedOptions[CompressPdfUseCase.LevelOptionKey]);
+                Assert.True((bool)plan.NormalizedOptions["strip_fonts"],
+                    "PDF compression planning must snapshot the saved strip-fonts flag.");
+                Assert.False((bool)plan.NormalizedOptions["minify_content"],
+                    "PDF compression planning must snapshot the saved minify-content flag.");
                 Assert.True(plan.RequiredCapabilities.Count == 0,
                     "PDF compression must not require a presentation interaction capability.");
             }
             finally
             {
                 ClickraStorage.SaveSetting(ClickraSettings.PdfCompressImageLevel, originalLevel);
+                ClickraStorage.SaveSetting(ClickraSettings.PdfCompressStripFonts, originalStripFonts);
+                ClickraStorage.SaveSetting(ClickraSettings.PdfCompressMinifyContent, originalMinifyContent);
             }
         });
 

@@ -26,8 +26,26 @@ public sealed class ImgCompressUseCase : PerFileConversionUseCaseBase
 
     protected override IReadOnlyDictionary<string, object> NormalizeOptions(ConversionRequest request) =>
         request.Options is null
-            ? ConvertCommandRegistry.ImageCompressionOptions()
+            ? SnapshotSavedOptions()
             : new Dictionary<string, object>(request.Options, StringComparer.Ordinal);
+
+    private static IReadOnlyDictionary<string, object> SnapshotSavedOptions()
+    {
+        int sliderLevel = ClickraSettings.ClampNumericSetting(
+            ClickraSettings.ImageCompressLevel,
+            ClickraStorage.GetSettingInt(ClickraSettings.ImageCompressLevel));
+        ImageCompressionLevel level = ImageCompressionOptions.FromSliderLevel(sliderLevel);
+        int maxDimension = ClickraSettings.ClampNumericSetting(
+            ClickraSettings.ImageCompressMaxDimension,
+            ClickraStorage.GetSettingInt(ClickraSettings.ImageCompressMaxDimension));
+
+        return new Dictionary<string, object>(StringComparer.Ordinal)
+        {
+            ["level"] = ImageCompressionOptions.ToOptionName(level),
+            ["quality"] = ImageCompressionOptions.GetQuality(level),
+            ["max_dimension"] = maxDimension
+        };
+    }
 
     protected override object CreateExecutionState(ConversionPlan plan) =>
         new Dictionary<string, object>(plan.NormalizedOptions, StringComparer.Ordinal);

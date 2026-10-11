@@ -6,8 +6,8 @@ using Clickra.Shared;
 
 namespace Clickra.Core.Processors;
 
-/// <summary>Core facade for shared conversion metadata, saved compression-option snapshots,
-/// and launch-argument helpers. Command definitions are authoritative in
+/// <summary>Core facade for shared conversion metadata and launch-argument helpers.
+/// Command definitions are authoritative in
 /// <see cref="ConvertCommandMetadata"/>.</summary>
 public static class ConvertCommandRegistry
 {
@@ -32,59 +32,6 @@ public static class ConvertCommandRegistry
 
         /// <summary>Localization key for the command display name.</summary>
         public static string GetLabelKey(string command) => ConvertCommandMetadata.GetLabelKey(command);
-
-        /// <summary>Reads the current slider level from settings (0-2). 未設定或超出範圍時採用
-        /// 登錄表的預設值，所以叫位永遠一致（不再有多份換算表）。</summary>
-        public static int GetPdfCompressLevel()
-        {
-            int level = ClickraStorage.GetSettingInt(ClickraSettings.PdfCompressImageLevel);
-            if (level == 3)
-            {
-                return ClickraSettings.MaxPdfCompressLevel;
-            }
-
-            return ClickraSettings.IsNumericSettingInRange(ClickraSettings.PdfCompressImageLevel, level)
-                ? level
-                : ClickraSettings.GetDefaultInt(ClickraSettings.PdfCompressImageLevel);
-        }
-
-        /// <summary>Current PDF compression settings as a parameter dictionary.</summary>
-        public static Dictionary<string, object> CompressionOptions()
-        {
-            int sliderLevel = GetPdfCompressLevel();
-            var level = PdfCompressionOptions.FromSliderLevel(sliderLevel);
-            return new Dictionary<string, object>
-            {
-                ["level"] = PdfCompressionOptions.ToOptionName(level),
-                ["strip_fonts"] = ClickraStorage.GetSettingBool(ClickraSettings.PdfCompressStripFonts),
-                ["minify_content"] = ClickraStorage.GetSettingBool(ClickraSettings.PdfCompressMinifyContent)
-            };
-        }
-
-        /// <summary>Current image compression settings as a parameter dictionary: a 0-3
-        /// quality level and a max long-edge dimension (0 = keep original size).</summary>
-        public static Dictionary<string, object> ImageCompressionOptions()
-        {
-            var level = Clickra.Core.Processors.ImageCompressionOptions.FromSliderLevel(GetImageCompressLevel());
-            return new Dictionary<string, object>
-            {
-                ["level"] = Clickra.Core.Processors.ImageCompressionOptions.ToOptionName(level),
-                ["quality"] = Clickra.Core.Processors.ImageCompressionOptions.GetQuality(level),
-                ["max_dimension"] = GetImageCompressMaxDimension()
-            };
-        }
-
-        /// <summary>The saved image compression quality level, clamped to the declared range.</summary>
-        private static int GetImageCompressLevel() =>
-            ClickraSettings.ClampNumericSetting(
-                ClickraSettings.ImageCompressLevel,
-                ClickraStorage.GetSettingInt(ClickraSettings.ImageCompressLevel));
-
-        /// <summary>The saved max long-edge dimension for image compression (0 = original), clamped to the declared range.</summary>
-        private static int GetImageCompressMaxDimension() =>
-            ClickraSettings.ClampNumericSetting(
-                ClickraSettings.ImageCompressMaxDimension,
-                ClickraStorage.GetSettingInt(ClickraSettings.ImageCompressMaxDimension));
 
         /// <summary>Splits a command line string into arguments, honoring double quotes.</summary>
         public static List<string> SplitCommandLine(string value)

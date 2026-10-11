@@ -672,7 +672,8 @@ public sealed partial class MainPage : Page
             PdfLangCombo.SelectedIndex = ClickraStorage.GetSetting(ClickraSettings.TranslateTargetLang) switch { "en" => 1, SimplifiedChineseLanguage => 2, "ja" => 3, "ko" => 4, _ => 0 };
             CompressionSlider.Minimum = ClickraSettings.MinPdfCompressLevel;
             CompressionSlider.Maximum = ClickraSettings.MaxPdfCompressLevel;
-            CompressionSlider.Value = ConvertCommandRegistry.GetPdfCompressLevel();
+            CompressionSlider.Value = ClickraSettings.NormalizePdfCompressLevel(
+                ClickraStorage.GetSettingInt(ClickraSettings.PdfCompressImageLevel));
             UpdateCompressionLabel(CompressionLabel, CompressionSlider);
             StripFontsToggle.IsOn = ClickraStorage.GetSettingBool(ClickraSettings.PdfCompressStripFonts);
             MinifyContentToggle.IsOn = ClickraStorage.GetSettingBool(ClickraSettings.PdfCompressMinifyContent);
