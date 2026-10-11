@@ -99,6 +99,9 @@ static partial class TestSuite
             "Architecture boundaries: presentation does not depend on raw ClickraStorage",
             TestPresentationDoesNotDependOnRawStorage);
         runner.RunGuard(
+            "Architecture boundaries: Core bounded contexts declare owned namespaces",
+            TestCoreBoundedContextsDeclareOwnedNamespaces);
+        runner.RunGuard(
             "Architecture boundaries: parked task orchestration has one storage owner",
             TestParkedTaskOrchestrationHasSingleOwner);
         runner.RunGuard(
@@ -677,6 +680,49 @@ static partial class TestSuite
         Assert.True(
             violations.Count == 0,
             "CLI and Fluent presentation must use narrow application owners instead of ClickraStorage calls or nested storage models:" +
+            Environment.NewLine + string.Join(Environment.NewLine, violations));
+    }
+
+    private static void TestCoreBoundedContextsDeclareOwnedNamespaces()
+    {
+        string? root = FindRepoRoot();
+        if (root is null) throw new TestSkippedException(RepositoryRootMissingMessage);
+
+        string core = Path.Combine(root, "src", ArchitectureCoreProjectDirectory);
+        var violations = new List<string>();
+        foreach ((string folder, string expectedNamespace) in new[]
+                 {
+                     ("Storage", "Clickra.Core.Storage"),
+                     ("Translation", "Clickra.Core.Translation"),
+                     ("Diagnostics", "Clickra.Core.Diagnostics"),
+                     ("Fonts", "Clickra.Core.Fonts")
+                 })
+        {
+            string directory = Path.Combine(core, folder);
+            foreach (string file in Directory.EnumerateFiles(directory, "*.cs", SearchOption.AllDirectories))
+            {
+                string source = File.ReadAllText(file);
+                if (Regex.IsMatch(
+                        source,
+                        $@"\bnamespace\s+{Regex.Escape(expectedNamespace)}\s*(?:;|\{{)",
+                        RegexOptions.CultureInvariant,
+                        ArchitectureRegexTimeout))
+                    continue;
+                violations.Add($"{NormalizeRepoPath(root, file)}: expected namespace {expectedNamespace}");
+            }
+        }
+
+        foreach (string applicationFile in new[] { "HistoryFeed.cs", "ConversionTaskLifecycle.cs" })
+        {
+            string file = Path.Combine(core, "Application", applicationFile);
+            string source = File.ReadAllText(file);
+            if (!source.Contains("namespace Clickra.Core.Application;", StringComparison.Ordinal))
+                violations.Add($"{NormalizeRepoPath(root, file)}: expected namespace Clickra.Core.Application");
+        }
+
+        Assert.True(
+            violations.Count == 0,
+            "Physical Core bounded contexts must keep namespaces that encode their ownership:" +
             Environment.NewLine + string.Join(Environment.NewLine, violations));
     }
 
