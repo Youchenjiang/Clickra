@@ -30,8 +30,21 @@ public sealed class CompressPdfUseCase : PerFileConversionUseCaseBase
 
     protected override IReadOnlyDictionary<string, object> NormalizeOptions(ConversionRequest request) =>
         request.Options is null
-            ? ConvertCommandRegistry.CompressionOptions()
+            ? SnapshotSavedOptions()
             : new Dictionary<string, object>(request.Options, StringComparer.Ordinal);
+
+    private static IReadOnlyDictionary<string, object> SnapshotSavedOptions()
+    {
+        int sliderLevel = ClickraSettings.NormalizePdfCompressLevel(
+            ClickraStorage.GetSettingInt(ClickraSettings.PdfCompressImageLevel));
+        PdfCompressionLevel level = PdfCompressionOptions.FromSliderLevel(sliderLevel);
+        return new Dictionary<string, object>(StringComparer.Ordinal)
+        {
+            [LevelOptionKey] = PdfCompressionOptions.ToOptionName(level),
+            ["strip_fonts"] = ClickraStorage.GetSettingBool(ClickraSettings.PdfCompressStripFonts),
+            ["minify_content"] = ClickraStorage.GetSettingBool(ClickraSettings.PdfCompressMinifyContent)
+        };
+    }
 
     protected override object CreateExecutionState(ConversionPlan plan) =>
         new Dictionary<string, object>(plan.NormalizedOptions, StringComparer.Ordinal);

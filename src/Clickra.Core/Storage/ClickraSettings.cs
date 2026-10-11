@@ -145,6 +145,22 @@ public static class ClickraSettings
     public static int ClampNumericSetting(string key, int value) =>
         NumericRanges.TryGetValue(key, out var range) ? range.Clamp(value) : value;
 
+    /// <summary>
+    /// Normalizes the persisted PDF compression slider value. Level 3 is a legacy duplicate
+    /// of the current High stop; every other out-of-range value falls back to the registered default.
+    /// </summary>
+    public static int NormalizePdfCompressLevel(int value)
+    {
+        if (value == 3)
+        {
+            return ClickraSettings.MaxPdfCompressLevel;
+        }
+
+        return ClickraSettings.IsNumericSettingInRange(ClickraSettings.PdfCompressImageLevel, value)
+            ? value
+            : ClickraSettings.GetDefaultInt(ClickraSettings.PdfCompressImageLevel);
+    }
+
     /// <summary>指定數值是否在設定的合法範圍內。</summary>
     public static bool IsNumericSettingInRange(string key, int value) =>
         NumericRanges.TryGetValue(key, out var range) && range.IsInRange(value);

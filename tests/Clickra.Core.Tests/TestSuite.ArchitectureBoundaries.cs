@@ -7,7 +7,7 @@ namespace Clickra.Core.Tests;
 static partial class TestSuite
 {
     private const int ArchitectureViolationBaselineCeiling = 0;
-    private const int ProcessorGlobalStateBaselineCeiling = 58;
+    private const int ProcessorGlobalStateBaselineCeiling = 55;
     private const string RepositoryRootMissingMessage = "Could not locate the repository root.";
     private const string ArchitectureCliProjectDirectory = "Clickra.CLI";
     private const string ArchitectureCoreProjectDirectory = "Clickra.Core";
@@ -82,7 +82,6 @@ static partial class TestSuite
             new Regex(@"\bClickraStorage\.GetSettingBool\(", RegexOptions.Compiled, ArchitectureRegexTimeout),
             new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase)
             {
-                ["src/Clickra.Core/Processors/ConvertCommandRegistry.cs"] = 2,
                 ["src/Clickra.Core/Processors/FileProcessing/LibreOfficeEngineInstaller.cs"] = 1,
                 ["src/Clickra.Core/Processors/FileProcessing/LibreOfficeHelper.cs"] = 1
             }),
@@ -91,7 +90,7 @@ static partial class TestSuite
             new Regex(@"\bClickraStorage\.GetSettingInt\(", RegexOptions.Compiled, ArchitectureRegexTimeout),
             new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase)
             {
-                ["src/Clickra.Core/Processors/ConvertCommandRegistry.cs"] = 3
+                ["src/Clickra.Core/Processors/ConvertCommandRegistry.cs"] = 2
             }),
         new(
             "ClickraStorage.SaveSetting",
