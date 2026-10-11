@@ -243,8 +243,13 @@ Progress as of 2026-10-11:
 - image compression settings ownership completed in PR #173;
 - Office-to-PDF execution now snapshots engine selection, language, LibreOffice path, and removal-pending state during application planning;
 - Office readiness policy now receives the configured engine and LibreOffice readiness inputs explicitly instead of reading `ClickraStorage` inside the processor layer;
-- the processor global-state shrinking baseline has moved from 58 initially to 27;
-- the remaining `LibreOfficeEngineInstaller` reads/writes and the parameterless LibreOffice resolver are installation/infrastructure lifecycle state, not Office conversion execution options, and must be handled as their own responsibility rather than hidden inside the conversion migration.
+- image-format, image-compression, PDF decrypt, and PDF-translation localization now receive the snapshotted UI language explicitly rather than rereading global language state during processor execution;
+- LibreOffice installation ownership and managed-MSI persistence moved out of `Processors/` into the infrastructure boundary, while processor-side LibreOffice resolution requires explicit persisted state;
+  - note: the installer's **12** former baseline entries (14 setting calls today) were **re-homed, not migrated** — `Infrastructure/LibreOfficeEngineInstaller.cs` still reads and writes LibreOffice ownership state through `ClickraStorage`. This is accepted under §3.6 and guarded by the infrastructure key allowlist; report the baseline drop as "15 migrated + 12 re-homed", not "27 migrated";
+- `ConversionTaskLifecycle` moved to the application boundary because task persistence is application orchestration rather than processor execution;
+- processor file-start callbacks, output paths, translation data-directory state, and other storage-derived execution inputs are now supplied explicitly;
+- the processor global-setting shrinking baseline has moved from 58 initially to 0;
+- `src/Clickra.Core/Processors/**` now has zero direct `ClickraStorage` dependencies, enforced by an architecture guard so storage access cannot silently return to the processor layer.
 
 Recommended order:
 
