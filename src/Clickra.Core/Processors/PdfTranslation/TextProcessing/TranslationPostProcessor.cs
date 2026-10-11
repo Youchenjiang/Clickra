@@ -1,4 +1,4 @@
-namespace Clickra.Core.Processors
+namespace Clickra.Core.Processors.PdfTranslation.TextProcessing
 {
     public static class TranslationPostProcessor
     {

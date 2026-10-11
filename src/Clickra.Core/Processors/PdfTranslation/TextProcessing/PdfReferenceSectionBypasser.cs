@@ -2,7 +2,7 @@ using System;
 using System.Collections.Generic;
 using Clickra.Core.Models;
 
-namespace Clickra.Core.Processors
+namespace Clickra.Core.Processors.PdfTranslation.TextProcessing
 {
     internal static class PdfReferenceSectionBypasser
     {

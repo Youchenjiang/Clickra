@@ -4,7 +4,7 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace Clickra.Core.Processors
+namespace Clickra.Core.Processors.PdfTranslation.TextProcessing
 {
     internal readonly record struct PdfTranslationBatchContext(
         int PageIndex,

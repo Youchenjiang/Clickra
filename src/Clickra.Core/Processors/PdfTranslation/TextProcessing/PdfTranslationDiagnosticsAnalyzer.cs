@@ -4,7 +4,7 @@ using System.Linq;
 using Clickra.Core.Models;
 using UglyToad.PdfPig.Content;
 
-namespace Clickra.Core.Processors
+namespace Clickra.Core.Processors.PdfTranslation.TextProcessing
 {
     internal sealed class PdfTranslationDiagnosticsDependencies
     {
