@@ -142,5 +142,33 @@ static partial class TestSuite
                 PowerShellHelper.ShouldFallBackToLibreOffice("auto", "Word", CancellationToken.None),
                 "An uncancelled automatic Word conversion may recover through LibreOffice.");
         });
+
+        runner.Run("Office fallback policy recognizes recoverable Microsoft launch failures", () =>
+        {
+            Exception[] recoverable =
+            {
+                new InvalidOperationException(),
+                new NotSupportedException(),
+                new TimeoutException(),
+                new System.ComponentModel.Win32Exception(),
+                new IOException(),
+                new UnauthorizedAccessException(),
+                new System.Security.SecurityException()
+            };
+
+            foreach (Exception exception in recoverable)
+            {
+                Assert.True(
+                    PowerShellHelper.IsRecoverableMicrosoftOfficeFailure(exception),
+                    $"{exception.GetType().Name} should allow the automatic engine to recover through LibreOffice.");
+            }
+
+            Assert.False(
+                PowerShellHelper.IsRecoverableMicrosoftOfficeFailure(new OperationCanceledException()),
+                "Cancellation must remain terminal and must not launch a fallback engine.");
+            Assert.False(
+                PowerShellHelper.IsRecoverableMicrosoftOfficeFailure(new ArgumentException()),
+                "Programming/input errors must not be hidden by a fallback engine.");
+        });
     }
 }
