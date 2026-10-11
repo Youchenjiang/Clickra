@@ -1,5 +1,6 @@
 using System;
 using System.IO;
+using System.Runtime.ExceptionServices;
 using System.Text;
 using System.Threading;
 using Clickra.Core;
@@ -43,22 +44,54 @@ namespace Clickra.Core.Processors
                 ExportMicrosoftOfficeToPdf(appType, fullPath, outputPdfPath, fileIndex, totalFiles, settings.Language, onProgress, cancellationToken);
                 return;
             }
-            catch (Exception) when (ShouldFallBackToLibreOffice(engine, appType, cancellationToken))
+            catch (InvalidOperationException ex) when (ShouldFallBackToLibreOffice(engine, appType, cancellationToken))
             {
-                if (string.IsNullOrWhiteSpace(LibreOfficeHelper.GetResolvedExecutablePath(
-                        settings.LibreOfficeRemovalPendingRestart,
-                        settings.LibreOfficePath)))
-                    throw;
-
-                onProgress?.Invoke(
-                    fileIndex * 100,
-                    totalFiles * 100,
-                    string.Format(
-                        Localization.T("status_office_fallback_to_libreoffice", settings.Language),
-                        appType,
-                        Path.GetFileName(fullPath)));
-                LibreOfficeHelper.ExportToPdf(appType, fullPath, outputPdfPath, fileIndex, totalFiles, settings, onProgress, cancellationToken);
+                ExportLibreOfficeFallback(ex, appType, fullPath, outputPdfPath, fileIndex, totalFiles, settings, onProgress, cancellationToken);
             }
+            catch (NotSupportedException ex) when (ShouldFallBackToLibreOffice(engine, appType, cancellationToken))
+            {
+                ExportLibreOfficeFallback(ex, appType, fullPath, outputPdfPath, fileIndex, totalFiles, settings, onProgress, cancellationToken);
+            }
+            catch (TimeoutException ex) when (ShouldFallBackToLibreOffice(engine, appType, cancellationToken))
+            {
+                ExportLibreOfficeFallback(ex, appType, fullPath, outputPdfPath, fileIndex, totalFiles, settings, onProgress, cancellationToken);
+            }
+        }
+
+        private static void ExportLibreOfficeFallback(
+            Exception originalException,
+            string appType,
+            string fullPath,
+            string outputPdfPath,
+            int fileIndex,
+            int totalFiles,
+            OfficeConversionSettings settings,
+            Action<int, int, string>? onProgress,
+            CancellationToken cancellationToken)
+        {
+            if (string.IsNullOrWhiteSpace(LibreOfficeHelper.GetResolvedExecutablePath(
+                    settings.LibreOfficeRemovalPendingRestart,
+                    settings.LibreOfficePath)))
+            {
+                ExceptionDispatchInfo.Capture(originalException).Throw();
+            }
+
+            onProgress?.Invoke(
+                fileIndex * 100,
+                totalFiles * 100,
+                string.Format(
+                    Localization.T("status_office_fallback_to_libreoffice", settings.Language),
+                    appType,
+                    Path.GetFileName(fullPath)));
+            LibreOfficeHelper.ExportToPdf(
+                appType,
+                fullPath,
+                outputPdfPath,
+                fileIndex,
+                totalFiles,
+                settings,
+                onProgress,
+                cancellationToken);
         }
 
         /// <summary>
