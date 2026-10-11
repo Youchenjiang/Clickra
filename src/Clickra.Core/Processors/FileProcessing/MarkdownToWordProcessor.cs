@@ -29,8 +29,8 @@ public sealed class MarkdownToWordProcessor : MarkdownSingleFileProcessorBase
         Action<int, int, string>? onProgress,
         CancellationToken cancellationToken)
     {
-        MarkdownDocument document = ParseMarkdownFile(filePath, "md_word_progress_parsing", onProgress, cancellationToken);
-        onProgress?.Invoke(45, 100, Localization.T("md_word_progress_rendering", Path.GetFileName(filePath)));
+        MarkdownDocument document = ParseMarkdownFile(filePath, "md_word_progress_parsing", Language, onProgress, cancellationToken);
+        onProgress?.Invoke(45, 100, ExecutionLocalizationOptions.Text(Language, "md_word_progress_rendering", Path.GetFileName(filePath)));
         string baseDirectory = Path.GetDirectoryName(Path.GetFullPath(filePath)) ?? Directory.GetCurrentDirectory();
         MarkdownRenderProfile profile = MarkdownRenderProfile.Resolve(options);
         var writer = new DocxWriter(
@@ -39,7 +39,7 @@ public sealed class MarkdownToWordProcessor : MarkdownSingleFileProcessorBase
             cancellationToken);
 
         cancellationToken.ThrowIfCancellationRequested();
-        onProgress?.Invoke(90, 100, Localization.T("md_word_progress_saving", Path.GetFileName(OutputPath)));
+        onProgress?.Invoke(90, 100, ExecutionLocalizationOptions.Text(Language, "md_word_progress_saving", Path.GetFileName(OutputPath)));
         writer.Save(document, OutputPath);
     }
 
@@ -49,7 +49,7 @@ public sealed class MarkdownToWordProcessor : MarkdownSingleFileProcessorBase
         int totalFiles,
         Action<int, int, string>? onProgress,
         CancellationToken cancellationToken) =>
-        onProgress?.Invoke(100, 100, Localization.T("md_word_progress_done", Path.GetFileName(outputPath ?? "")));
+        onProgress?.Invoke(100, 100, ExecutionLocalizationOptions.Text(Language, "md_word_progress_done", Path.GetFileName(outputPath ?? "")));
 
     private sealed class DocxWriter
     {

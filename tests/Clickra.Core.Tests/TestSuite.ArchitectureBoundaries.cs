@@ -99,6 +99,9 @@ static partial class TestSuite
             "Architecture boundaries: infrastructure settings access stays on an explicit key allowlist",
             TestInfrastructureSettingsAccessStaysOnAllowlist);
         runner.RunGuard(
+            "Architecture boundaries: processors localize only with an explicit execution language",
+            TestProcessorsLocalizeWithExplicitLanguage);
+        runner.RunGuard(
             "Architecture boundaries: application contracts stay UI-independent",
             TestApplicationContractsStayUiIndependent);
         runner.RunGuard(
@@ -468,6 +471,94 @@ static partial class TestSuite
             violations.Count == 0,
             "Infrastructure settings access must stay on the explicit per-owner key allowlist:" +
             Environment.NewLine + string.Join(Environment.NewLine, violations));
+    }
+
+    private static readonly Regex ProcessorLocalizationCall =
+        new(@"\bLocalization\.T\(", RegexOptions.Compiled, ArchitectureRegexTimeout);
+
+    private static readonly Regex ExplicitLanguageArgument =
+        new(@"^(?:[A-Za-z_][A-Za-z0-9_]*\.)*(?:language|lang|Language)$", RegexOptions.Compiled, ArchitectureRegexTimeout);
+
+    // The global-language overloads Localization.T(key) and Localization.T(key, params object[])
+    // read ClickraStorage indirectly, and T(key, "value") silently binds a format argument as a
+    // language code. Processors must therefore call only T(key, <language variable>).
+    private static void TestProcessorsLocalizeWithExplicitLanguage()
+    {
+        string? root = FindRepoRoot();
+        if (root is null) throw new TestSkippedException(RepositoryRootMissingMessage);
+
+        string processorsDir = Path.Combine(root, "src", ArchitectureCoreProjectDirectory, ArchitectureProcessorsDirectory);
+        var violations = new List<string>();
+        foreach (string file in Directory.EnumerateFiles(processorsDir, "*.cs", SearchOption.AllDirectories)
+                     .Where(path => !path.Contains($"{Path.DirectorySeparatorChar}bin{Path.DirectorySeparatorChar}", StringComparison.OrdinalIgnoreCase)
+                                    && !path.Contains($"{Path.DirectorySeparatorChar}obj{Path.DirectorySeparatorChar}", StringComparison.OrdinalIgnoreCase)))
+        {
+            string source = File.ReadAllText(file);
+            foreach (Match call in ProcessorLocalizationCall.Matches(source))
+            {
+                IReadOnlyList<string> arguments = ReadTopLevelArguments(source, call.Index + call.Length);
+                bool explicitLanguage = arguments.Count == 2
+                                        && ExplicitLanguageArgument.IsMatch(arguments[1]);
+                if (!explicitLanguage)
+                {
+                    int line = source.AsSpan(0, call.Index).Count('\n') + 1;
+                    violations.Add($"{NormalizeRepoPath(root, file)}:{line}: Localization.T({string.Join(", ", arguments)})");
+                }
+            }
+        }
+
+        Assert.True(
+            violations.Count == 0,
+            "Processors must localize through ExecutionLocalizationOptions.Text(language, key, args) or " +
+            "Localization.T(key, language); global-language overloads are forbidden:" +
+            Environment.NewLine + string.Join(Environment.NewLine, violations));
+
+        Assert.Equal(2, ReadTopLevelArguments("Localization.T(\"k\", language)", "Localization.T(".Length).Count);
+        Assert.Equal(1, ReadTopLevelArguments("Localization.T(\"a,(b)\")", "Localization.T(".Length).Count);
+        Assert.Equal(3, ReadTopLevelArguments("Localization.T(\"k\", Path.Combine(a, b), 'x')", "Localization.T(".Length).Count);
+    }
+
+    /// <summary>Splits a call's argument list at top-level commas, starting just after its opening parenthesis.</summary>
+    private static IReadOnlyList<string> ReadTopLevelArguments(string source, int start)
+    {
+        var arguments = new List<string>();
+        int depth = 0;
+        int segmentStart = start;
+        for (int i = start; i < source.Length; i++)
+        {
+            char c = source[i];
+            if (c == '"' || c == '\'')
+            {
+                for (i++; i < source.Length && source[i] != c; i++)
+                {
+                    if (source[i] == '\\') i++;
+                }
+                continue;
+            }
+
+            if (c is '(' or '[' or '{')
+            {
+                depth++;
+            }
+            else if (c is ')' or ']' or '}')
+            {
+                if (depth == 0)
+                {
+                    string last = source[segmentStart..i].Trim();
+                    if (last.Length > 0 || arguments.Count > 0) arguments.Add(last);
+                    return arguments;
+                }
+
+                depth--;
+            }
+            else if (c == ',' && depth == 0)
+            {
+                arguments.Add(source[segmentStart..i].Trim());
+                segmentStart = i + 1;
+            }
+        }
+
+        return arguments;
     }
 
     private static void TestApplicationContractsStayUiIndependent()

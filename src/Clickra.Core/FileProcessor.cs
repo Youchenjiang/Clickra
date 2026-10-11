@@ -194,6 +194,10 @@ namespace Clickra.Core
                 : new Dictionary<string, object>(options, StringComparer.Ordinal);
             prepared[ProcessorExecutionOptions.FileStartingCallbackKey] =
                 (Action<int>)(index => ClickraStorage.SetActiveRecordIndex(index));
+            // Direct facade callers that did not snapshot a language keep the previous behavior of
+            // localizing with the configured UI language; application use cases always provide one.
+            if (!prepared.ContainsKey(ExecutionLocalizationOptions.LanguageKey))
+                prepared[ExecutionLocalizationOptions.LanguageKey] = ClickraStorage.GetSetting(ClickraSettings.Language);
             if (outputPaths is not null)
                 prepared[ProcessorExecutionOptions.OutputPathsKey] = outputPaths;
             return prepared;

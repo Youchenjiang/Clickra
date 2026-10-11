@@ -17,6 +17,9 @@ public abstract class MarkdownSingleFileProcessorBase : MultiFileProcessorBase
     /// <summary>The validated output path for the current conversion.</summary>
     protected string OutputPath { get; private set; } = "";
 
+    /// <summary>The execution language snapshotted by the application owner for progress text.</summary>
+    protected string Language { get; private set; } = ClickraSettings.DefaultEmpty;
+
     /// <summary>User-facing target format name used in validation errors.</summary>
     protected abstract string TargetFormatName { get; }
 
@@ -34,6 +37,7 @@ public abstract class MarkdownSingleFileProcessorBase : MultiFileProcessorBase
             throw new ArgumentException($"Output path is required for Markdown to {TargetFormatName} conversion.", nameof(outputPath));
 
         OutputPath = outputPath;
+        Language = ExecutionLocalizationOptions.ReadLanguage(options);
         base.Process(files, outputPath, options, onProgress, cancellationToken);
     }
 
@@ -41,13 +45,14 @@ public abstract class MarkdownSingleFileProcessorBase : MultiFileProcessorBase
     protected static MarkdownDocument ParseMarkdownFile(
         string filePath,
         string progressKey,
+        string language,
         Action<int, int, string>? onProgress,
         CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
         if (!File.Exists(filePath)) throw new FileNotFoundException("Markdown file not found", filePath);
 
-        onProgress?.Invoke(15, 100, Localization.T(progressKey, Path.GetFileName(filePath)));
+        onProgress?.Invoke(15, 100, ExecutionLocalizationOptions.Text(language, progressKey, Path.GetFileName(filePath)));
         MarkdownDocument document = Markdown.Parse(File.ReadAllText(filePath), Pipeline);
         cancellationToken.ThrowIfCancellationRequested();
         return document;

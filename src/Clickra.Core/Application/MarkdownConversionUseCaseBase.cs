@@ -10,13 +10,17 @@ public abstract class MarkdownConversionUseCaseBase : PerFileConversionUseCaseBa
     protected override string UnsupportedInputError(string path) =>
         $"Unsupported Markdown input '{path}'.";
 
-    protected override IReadOnlyDictionary<string, object> NormalizeOptions(ConversionRequest request) =>
-        MarkdownPdfOptions.Create(
+    protected override IReadOnlyDictionary<string, object> NormalizeOptions(ConversionRequest request)
+    {
+        Dictionary<string, object> options = MarkdownPdfOptions.Create(
             MarkdownPdfOptions.GetTheme(request.Options),
             MarkdownPdfOptions.GetPaper(request.Options),
             MarkdownPdfOptions.GetTextSize(request.Options),
             MarkdownPdfOptions.GetCodeTheme(request.Options),
             MarkdownPdfOptions.GetTemplatePath(request.Options));
+        options[ExecutionLocalizationOptions.LanguageKey] = ClickraStorage.GetSetting(ClickraSettings.Language);
+        return options;
+    }
 
     protected override object CreateExecutionState(ConversionPlan plan) =>
         new Dictionary<string, object>(plan.NormalizedOptions, StringComparer.Ordinal);
