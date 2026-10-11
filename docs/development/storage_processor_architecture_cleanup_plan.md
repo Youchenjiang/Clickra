@@ -301,7 +301,12 @@ Progress as of 2026-10-11:
 - CLI and Fluent no longer invoke the raw `ClickraStorage` parked-task action APIs directly, while the private `ParkedTaskCoordinator` remains the sole owner of atomic persistence transitions;
 - the parked-task gateway maps resume data into its own application contract instead of exposing `ClickraStorage.ResumedTaskInfo` to UI callers;
 - an architecture guard requires CLI, Fluent, and application workflows to use the parked-task gateway for those action APIs and restricts the gateway to its parked-task-specific storage allowlist;
-- history clearing/feed persistence, task records/index updates, data/output directories, and legacy compatibility remain separate responsibilities for later Slice 4 sub-slices rather than being folded into either application gateway.
+- history presentation now receives immutable `HistoryRecord` / `ParkedRetentionState` snapshots from application-owned `HistoryFeed`, and history clearing goes through `HistoryController`;
+- data, download, history-log, and output-directory resolution now goes through `StoragePathController` instead of UI/application callers reading path persistence directly;
+- Native progress index persistence goes through `ConversionTaskProgressController`, which preserves best-effort writes to both the legacy `active.tmp` compatibility record and the per-task record;
+- task creation/completion/parking remains owned by `ConversionTaskLifecycle`; the cleanup did not replace task persistence or resume semantics with a new generic facade;
+- CLI and Fluent now contain zero direct `ClickraStorage` references, including nested storage model types, enforced by a presentation-wide architecture guard;
+- legacy `active.tmp`, task records, parked-task atomic transitions, and storage file formats remain implemented in the storage boundary and are reached only through their application owners where presentation orchestration is involved.
 
 Do not replace one god facade with another god interface.
 
@@ -320,6 +325,8 @@ Exit criteria:
 - UI code no longer orchestrates persistence/business transitions directly where an application owner exists;
 - `ClickraStorage` trends toward persistence/infrastructure rather than being the product API.
 
+Status: **complete**. Presentation surfaces no longer use `ClickraStorage` as their product API; storage remains the persistence implementation behind narrow application owners.
+
 ### Slice 5 - Introduce meaningful namespace boundaries
 
 Namespace work comes after ownership is stable enough to enforce useful rules.
@@ -337,6 +344,17 @@ Clickra.Core.Processors.PdfTranslation
 
 Do not rename all processor subfolders mechanically in one PR.
 
+Completed boundaries as of 2026-10-11:
+
+- `Storage/` now declares `Clickra.Core.Storage`;
+- translation provider/engine infrastructure now declares `Clickra.Core.Translation`;
+- `Diagnostics/` now declares `Clickra.Core.Diagnostics`;
+- `Fonts/` now declares `Clickra.Core.Fonts`;
+- `HistoryFeed` and `ConversionTaskLifecycle` now declare `Clickra.Core.Application`, matching their application ownership rather than their historical location/consumer namespace;
+- architecture guards enforce those ownership namespaces;
+- `Clickra.Core.Localization` was evaluated but not introduced: the localization files form one partial `Localization` registry with cross-surface completeness/orphan guards, so splitting the partial class would add namespace ceremony without a new dependency boundary;
+- the PDF translation processor boundary is completed separately in Slice 7, where the ambiguous nested context receives a responsibility-derived name and namespace.
+
 Preferred strategy:
 
 - start with a self-contained bounded context;
@@ -348,6 +366,8 @@ Exit criteria:
 
 - namespace boundaries allow CI to prohibit at least one previously unenforceable dependency direction;
 - namespace names reflect responsibility, not merely disk layout.
+
+Status: **complete**. Namespace ownership is now guardable for storage, translation providers, diagnostics, fonts, application feed/lifecycle, and the PDF text-processing context.
 
 ### Slice 6 - Re-home presentation/platform types from Core where justified
 
@@ -371,6 +391,16 @@ Treat as packaging/platform integration. Evaluate an infrastructure/platform own
 
 Each move must preserve NativeAOT and Store/package behavior.
 
+Completed review as of 2026-10-11:
+
+- `DashboardLayout` and its tightly coupled `HistoryLayout` moved to `Clickra.Core.Presentation.Native`; they remain in the Core assembly only as testable single-source Native presentation geometry, not domain/application types;
+- `VectorIcons` moved to `Clickra.Core.Presentation` as shared presentation infrastructure; its GDI drawing code and XAML path data remain single-source rather than being duplicated by UI technology;
+- `Localization.Cli` / `Localization.Fluent` remain in the centralized partial `Localization` registry because the existing translation-completeness and orphan guards depend on one catalog owner; this is an explicit keep decision, not unreviewed Core placement;
+- `FluentRuntimeHelper` had zero production callers and was removed rather than re-homed; deleting the dead platform API is clearer than inventing a new owner for unused code;
+- an architecture guard pins the presentation ownership paths/namespaces, the centralized localization decision, and the absence of the dead runtime helper.
+
+Status: **complete**.
+
 ### Slice 7 - Clarify PDF translation pipeline naming
 
 After namespace and processor ownership work is stable, rename the nested PDF directory/context currently called `Translation` if a clearer name is justified.
@@ -383,9 +413,18 @@ Candidate concepts:
 
 Do not rename `Core/Translation` merely to eliminate visual similarity. It already owns translation-engine infrastructure.
 
+Completed naming decision as of 2026-10-11:
+
+- `Core/Translation/` remains the provider/engine context and now has the explicit namespace `Clickra.Core.Translation`;
+- `Processors/PdfTranslation/Translation/` was renamed to `Processors/PdfTranslation/TextProcessing/`;
+- batching, paragraph translation, reference bypass, post-processing, diagnostics, and health reporting in that directory now declare `Clickra.Core.Processors.PdfTranslation.TextProcessing`;
+- an architecture guard rejects restoration of the ambiguous `PdfTranslation/Translation` directory and requires both contexts to keep their distinct namespaces.
+
 Exit criteria:
 
 - a new contributor can distinguish translation provider infrastructure from the PDF translation pipeline without reconstructing the architecture from call sites.
+
+Status: **complete**. Provider infrastructure and PDF text-processing pipeline stages are distinct in both directory names and namespaces.
 
 ---
 
@@ -491,6 +530,8 @@ This cleanup track is complete when all of the following are true:
 7. translation provider infrastructure and the PDF translation pipeline are clearly distinguishable;
 8. architecture baselines have only shrunk throughout the work;
 9. NativeAOT, Fluent, task persistence, resume, and Store/package behavior remain intact.
+
+Status as of 2026-10-11: **all architecture implementation criteria above are complete**. Final exact-head build/test/NativeAOT validation is required before the work is proposed for merge.
 
 The intended end state is not "fewer files" or "fewer forwarding methods". It is:
 
