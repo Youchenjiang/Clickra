@@ -96,6 +96,9 @@ static partial class TestSuite
             "Architecture boundaries: parked task actions have one application gateway",
             TestParkedTaskActionsHaveSingleApplicationGateway);
         runner.RunGuard(
+            "Architecture boundaries: presentation does not depend on raw ClickraStorage",
+            TestPresentationDoesNotDependOnRawStorage);
+        runner.RunGuard(
             "Architecture boundaries: parked task orchestration has one storage owner",
             TestParkedTaskOrchestrationHasSingleOwner);
         runner.RunGuard(
@@ -646,6 +649,35 @@ static partial class TestSuite
             "CLI, Fluent, and application workflows must use ParkedTaskController for parked-task actions; " +
             "the gateway itself may expose only parked-task action APIs:" + Environment.NewLine +
             string.Join(Environment.NewLine, violations));
+    }
+
+    private static readonly Regex RawPresentationStorageAccess =
+        new(@"\bClickraStorage\b", RegexOptions.Compiled, ArchitectureRegexTimeout);
+
+    private static void TestPresentationDoesNotDependOnRawStorage()
+    {
+        string? root = FindRepoRoot();
+        if (root is null) throw new TestSkippedException(RepositoryRootMissingMessage);
+
+        var violations = new List<string>();
+        foreach (string directory in new[]
+                 {
+                     Path.Combine(root, "src", ArchitectureCliProjectDirectory),
+                     Path.Combine(root, "src", ArchitectureFluentProjectDirectory)
+                 })
+        {
+            foreach (string file in Directory.EnumerateFiles(directory, "*.cs", SearchOption.AllDirectories))
+            {
+                string source = File.ReadAllText(file);
+                if (!RawPresentationStorageAccess.IsMatch(source)) continue;
+                violations.Add(NormalizeRepoPath(root, file));
+            }
+        }
+
+        Assert.True(
+            violations.Count == 0,
+            "CLI and Fluent presentation must use narrow application owners instead of ClickraStorage calls or nested storage models:" +
+            Environment.NewLine + string.Join(Environment.NewLine, violations));
     }
 
     /// <summary>Splits a call's argument list at top-level commas, starting just after its opening parenthesis.</summary>
