@@ -15,6 +15,9 @@ namespace Clickra.Core.Tests;
 
 static partial class TestSuite
 {
+    private const string PdfCompressionCliProjectDirectory = "Clickra.CLI";
+    private const string PdfCompressionDashboardDirectory = "Dashboard";
+
     public static void RegisterPdfCompressionTests(TestRunner runner)
     {
         const string LevelKey = "level";
@@ -259,23 +262,32 @@ static partial class TestSuite
         string root = FindRepoRoot() ?? throw new TestSkippedException(
             "Could not locate the repository root from the test output directory.");
         string fluentXaml = File.ReadAllText(Path.Combine(root, "src", "Clickra.Fluent", "MainPage.xaml"));
-        string cliPaint = File.ReadAllText(Path.Combine(root, "src", "Clickra.CLI", "Dashboard", "DashboardWindow.Paint.Settings.cs"));
-        string cliClick = File.ReadAllText(Path.Combine(root, "src", "Clickra.CLI", "Dashboard", "DashboardWindow.Events.Settings.cs"));
-        string cliDrag = File.ReadAllText(Path.Combine(root, "src", "Clickra.CLI", "Dashboard", "DashboardWindow.Events.cs"));
+        string cliPaint = File.ReadAllText(Path.Combine(root, "src", PdfCompressionCliProjectDirectory, PdfCompressionDashboardDirectory, "DashboardWindow.Paint.Settings.cs"));
+        string cliDynamicPaint = File.ReadAllText(Path.Combine(root, "src", PdfCompressionCliProjectDirectory, PdfCompressionDashboardDirectory, "DashboardWindow.Paint.Settings.Dynamic.cs"));
+        string cliClick = File.ReadAllText(Path.Combine(root, "src", PdfCompressionCliProjectDirectory, PdfCompressionDashboardDirectory, "DashboardWindow.Events.Settings.cs"));
+        string cliDrag = File.ReadAllText(Path.Combine(root, "src", PdfCompressionCliProjectDirectory, PdfCompressionDashboardDirectory, "DashboardWindow.Events.cs"));
 
         Assert.True(fluentXaml.Contains("x:Name=\"CompressionSlider\"", StringComparison.Ordinal) &&
                     !fluentXaml.Contains("x:Name=\"CompressionSlider\" Minimum=", StringComparison.Ordinal) &&
                     !fluentXaml.Contains("x:Name=\"CompressionSlider\" Maximum=", StringComparison.Ordinal),
             "Fluent PDF compression bounds must come from ClickraSettings at runtime, not duplicated XAML literals.");
-        Assert.Equal(3, ClickraSettings.MaxPdfCompressLevel - ClickraSettings.MinPdfCompressLevel + 1);
-        Assert.True(cliPaint.Contains("ClickraSettings.MaxPdfCompressLevel - ClickraSettings.MinPdfCompressLevel + 1", StringComparison.Ordinal),
-            "The legacy dashboard must derive exactly three PDF compression stops from ClickraSettings.");
+        SettingDescriptor descriptor = SettingPageRegistry.GetDescriptor(ClickraSettings.PdfCompressImageLevel)
+            ?? throw new InvalidOperationException("PDF compression descriptor must be registered.");
+        NumericSettingRange range = descriptor.GetEffectiveNumericRange()
+            ?? throw new InvalidOperationException("PDF compression descriptor must expose a numeric range.");
+        Assert.Equal(3, range.Max - range.Min + 1);
+        Assert.Equal(3, descriptor.SliderLabels?.Count ?? 0);
+        Assert.True(cliPaint.Contains("GetRequiredNumericRange(pdfLevelDescriptor)", StringComparison.Ordinal) &&
+                    cliDynamicPaint.Contains("descriptor.SliderLabels", StringComparison.Ordinal),
+            "The dashboard must derive its three PDF compression stops and labels from the registered descriptor.");
         Assert.False(cliPaint.Contains("GetText(\"setting_pdf_compress_level_min\")", StringComparison.Ordinal),
             "The retired fourth/minimum slider label must not be rendered.");
-        Assert.True(cliClick.Contains("int span = ClickraSettings.MaxPdfCompressLevel - ClickraSettings.MinPdfCompressLevel", StringComparison.Ordinal) &&
+        Assert.True(cliClick.Contains("GetRequiredNumericRange(levelDescriptor)", StringComparison.Ordinal) &&
+                    cliClick.Contains("int span = range.Max - range.Min", StringComparison.Ordinal) &&
                     cliClick.Contains("Math.Round(fraction * span", StringComparison.Ordinal),
             "Dashboard slider clicks must derive and snap to the same three preset positions.");
-        Assert.True(cliDrag.Contains("int span = ClickraSettings.MaxPdfCompressLevel - ClickraSettings.MinPdfCompressLevel", StringComparison.Ordinal) &&
+        Assert.True(cliDrag.Contains("GetRequiredNumericRange(descriptor)", StringComparison.Ordinal) &&
+                    cliDrag.Contains("int span = range.Max - range.Min", StringComparison.Ordinal) &&
                     cliDrag.Contains("Math.Round(fraction * span", StringComparison.Ordinal),
             "Dashboard slider dragging must derive and snap to the same three preset positions.");
     }

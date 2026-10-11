@@ -150,29 +150,34 @@ namespace Clickra.UI;
         /// <summary>Handles PDF compression settings: slider drag start and option toggles.</summary>
         static void HandleCompressSettingsClick(IntPtr hwnd, int element, int adjMouseX)
         {
+            SettingDescriptor levelDescriptor = GetRequiredSettingDescriptor(ClickraSettings.PdfCompressImageLevel);
+            SettingDescriptor stripFontsDescriptor = GetRequiredSettingDescriptor(ClickraSettings.PdfCompressStripFonts);
+            SettingDescriptor minifyContentDescriptor = GetRequiredSettingDescriptor(ClickraSettings.PdfCompressMinifyContent);
             if (element == 83)
             {
                 // PDF compress slider clicked — snap to nearest stop via equal-width segments + enable drag
                 float relX = adjMouseX - _pdfSliderTrackX;
                 float fraction = Math.Max(0f, Math.Min(1f, relX / _pdfSliderTrackW));
-                int span = ClickraSettings.MaxPdfCompressLevel - ClickraSettings.MinPdfCompressLevel;
-                int newLevel = ClickraSettings.ClampNumericSetting(
-                    ClickraSettings.PdfCompressImageLevel,
-                    (int)Math.Round(fraction * span, MidpointRounding.AwayFromZero) + ClickraSettings.MinPdfCompressLevel);
+                NumericSettingRange range = GetRequiredNumericRange(levelDescriptor);
+                int span = range.Max - range.Min;
+                int newLevel = Math.Clamp(
+                    (int)Math.Round(fraction * span, MidpointRounding.AwayFromZero) + range.Min,
+                    range.Min,
+                    range.Max);
                 ApplyPdfCompressLevel(hwnd, newLevel);
                 _isDraggingPdfSlider = true;
                 SetCapture(hwnd);
             }
             else if (element == 81)
             {
-                bool current = ClickraStorage.GetSettingBool(ClickraSettings.PdfCompressStripFonts);
-                ClickraStorage.SaveSetting(ClickraSettings.PdfCompressStripFonts, current ? ClickraSettings.ValueFalse : ClickraSettings.ValueTrue);
+                bool current = ClickraStorage.GetSettingBool(stripFontsDescriptor.Key);
+                ClickraStorage.SaveSetting(stripFontsDescriptor.Key, current ? ClickraSettings.ValueFalse : ClickraSettings.ValueTrue);
                 InvalidateRect(hwnd, IntPtr.Zero, false);
             }
             else if (element == 82)
             {
-                bool current = ClickraStorage.GetSettingBool(ClickraSettings.PdfCompressMinifyContent);
-                ClickraStorage.SaveSetting(ClickraSettings.PdfCompressMinifyContent, current ? ClickraSettings.ValueFalse : ClickraSettings.ValueTrue);
+                bool current = ClickraStorage.GetSettingBool(minifyContentDescriptor.Key);
+                ClickraStorage.SaveSetting(minifyContentDescriptor.Key, current ? ClickraSettings.ValueFalse : ClickraSettings.ValueTrue);
                 InvalidateRect(hwnd, IntPtr.Zero, false);
             }
         }
@@ -180,8 +185,10 @@ namespace Clickra.UI;
         /// <summary>Applies a PDF compression level selection and refreshes the settings tab.</summary>
         static void ApplyPdfCompressLevel(IntPtr hwnd, int level)
         {
-            int clamped = ClickraSettings.ClampNumericSetting(ClickraSettings.PdfCompressImageLevel, level);
-            ClickraStorage.SaveSetting(ClickraSettings.PdfCompressImageLevel, clamped.ToString());
+            SettingDescriptor descriptor = GetRequiredSettingDescriptor(ClickraSettings.PdfCompressImageLevel);
+            NumericSettingRange range = GetRequiredNumericRange(descriptor);
+            int clamped = Math.Clamp(level, range.Min, range.Max);
+            ClickraStorage.SaveSetting(descriptor.Key, clamped.ToString());
             InvalidateRect(hwnd, IntPtr.Zero, false);
         }
     }

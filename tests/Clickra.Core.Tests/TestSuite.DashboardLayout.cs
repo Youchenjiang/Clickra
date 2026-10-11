@@ -501,6 +501,29 @@ static partial class TestSuite
         Assert.True(paint.Contains("int fullWidth = (int)(logW - contentX - SettingsLayout.ContentRightMargin)", StringComparison.Ordinal)
                     && paint.Contains("int pdfSecondaryX = SettingsLayout.ColumnX((int)contentX, (int)logW, 1)", StringComparison.Ordinal),
             "Wide PDF compression must use the full card width and place secondary controls in the second column.");
+        string dynamicPaint = File.ReadAllText(Path.Combine(dir, "DashboardWindow.Paint.Settings.Dynamic.cs"));
+        AssertContainsAll(
+            paint,
+            "Native PDF compression must take titles, setting keys, and numeric bounds from SettingPageRegistry descriptors.",
+            "GetRequiredSettingDescriptor(ClickraSettings.PdfCompressImageLevel)",
+            "GetRequiredSettingDescriptor(ClickraSettings.PdfCompressStripFonts)",
+            "GetRequiredSettingDescriptor(ClickraSettings.PdfCompressMinifyContent)",
+            "GetRequiredNumericRange(pdfLevelDescriptor)");
+        Assert.True(dynamicPaint.Contains("descriptor.SliderLabels", StringComparison.Ordinal),
+            "Native slider labels must be rendered by the shared descriptor slider renderer.");
+        AssertContainsNone(
+            paint,
+            "Native PDF compression painting must not re-declare descriptor-owned bounds or stop labels.",
+            "ClickraSettings.MaxPdfCompressLevel",
+            "ClickraSettings.MinPdfCompressLevel",
+            "GetText(\"setting_pdf_compress_level_small\")",
+            "GetText(\"setting_pdf_compress_level_std\")",
+            "GetText(\"setting_pdf_compress_level_high\")");
+        AssertContainsNone(
+            click + events,
+            "Native PDF compression interactions must not re-declare descriptor-owned numeric bounds.",
+            "ClickraSettings.MaxPdfCompressLevel",
+            "ClickraSettings.MinPdfCompressLevel");
         Assert.True(paint.Contains("SettingsLayout.ChoiceCardExpandedHeight", StringComparison.Ordinal)
                     && paint.Contains("SettingsLayout.EngineCardHeight", StringComparison.Ordinal)
                     && paint.Contains("SettingsLayout.RetentionCardHeight", StringComparison.Ordinal),
