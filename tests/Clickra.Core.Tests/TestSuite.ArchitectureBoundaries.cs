@@ -546,31 +546,49 @@ static partial class TestSuite
                 continue;
             }
 
-            if (c is '(' or '[' or '{')
-            {
-                depth++;
-            }
-            else if (c is ')' or ']' or '}')
-            {
-                if (depth == 0)
-                {
-                    string last = source[segmentStart..i].Trim();
-                    if (last.Length > 0 || arguments.Count > 0) arguments.Add(last);
-                    return arguments;
-                }
-
-                depth--;
-            }
-            else if (c == ',' && depth == 0)
-            {
-                arguments.Add(source[segmentStart..i].Trim());
-                segmentStart = i + 1;
-            }
+            if (ProcessTopLevelArgumentCharacter(source, i, c, arguments, ref depth, ref segmentStart))
+                return arguments;
 
             i++;
         }
 
         return arguments;
+    }
+
+    private static bool ProcessTopLevelArgumentCharacter(
+        string source,
+        int index,
+        char character,
+        List<string> arguments,
+        ref int depth,
+        ref int segmentStart)
+    {
+        if (character is '(' or '[' or '{')
+        {
+            depth++;
+            return false;
+        }
+
+        if (character is ')' or ']' or '}')
+        {
+            if (depth > 0)
+            {
+                depth--;
+                return false;
+            }
+
+            string last = source[segmentStart..index].Trim();
+            if (last.Length > 0 || arguments.Count > 0)
+                arguments.Add(last);
+            return true;
+        }
+
+        if (character != ',' || depth != 0)
+            return false;
+
+        arguments.Add(source[segmentStart..index].Trim());
+        segmentStart = index + 1;
+        return false;
     }
 
     private static int SkipQuotedSegment(string source, int quoteIndex, char quote)

@@ -16,10 +16,6 @@ namespace Clickra.Core.Processors
             CancellationToken cancellationToken)
         {
             string appType = request.AppType;
-            string fullPath = request.FullPath;
-            string outputPdfPath = request.OutputPdfPath;
-            int fileIndex = request.FileIndex;
-            int totalFiles = request.TotalFiles;
             string engine = settings.Engine;
             if (engine.Equals("libreoffice", StringComparison.OrdinalIgnoreCase))
             {
