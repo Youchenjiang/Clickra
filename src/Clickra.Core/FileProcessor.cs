@@ -89,28 +89,28 @@ namespace Clickra.Core
             processor.Process(new List<string> { inputPath }, outputPath, options, onProgress, cancellationToken);
         }
 
-        /// <summary>Converts PowerPoint files to PDF via the LibreOffice engine.</summary>
+        /// <summary>Converts PowerPoint files to PDF using explicit Office execution options.</summary>
         /// <param name="files">Input .ppt/.pptx paths.</param>
         /// <param name="onProgress">Optional progress callback receiving (progress, max, message).</param>
         /// <param name="cancellationToken">Cancellation token to abort the conversion.</param>
-        public static void ConvertPptToPdf(List<string> files, Action<int, int, string>? onProgress = null, CancellationToken cancellationToken = default) =>
-            new PptToPdfProcessor().Process(files, null, null, onProgress, cancellationToken);
+        public static void ConvertPptToPdf(List<string> files, Dictionary<string, object> options, Action<int, int, string>? onProgress = null, CancellationToken cancellationToken = default) =>
+            new PptToPdfProcessor().Process(files, null, options, onProgress, cancellationToken);
 
-        /// <summary>Converts Word documents to PDF via the LibreOffice engine.</summary>
+        /// <summary>Converts Word documents to PDF using explicit Office execution options.</summary>
         /// <param name="files">Input .doc/.docx paths.</param>
         /// <param name="onProgress">Optional progress callback receiving (progress, max, message).</param>
         /// <param name="cancellationToken">Cancellation token to abort the conversion.</param>
-        public static void ConvertWordToPdf(List<string> files, Action<int, int, string>? onProgress = null, CancellationToken cancellationToken = default) =>
-            new WordToPdfProcessor().Process(files, null, null, onProgress, cancellationToken);
+        public static void ConvertWordToPdf(List<string> files, Dictionary<string, object> options, Action<int, int, string>? onProgress = null, CancellationToken cancellationToken = default) =>
+            new WordToPdfProcessor().Process(files, null, options, onProgress, cancellationToken);
 
-        /// <summary>Converts Excel workbooks to PDF via the LibreOffice engine.</summary>
+        /// <summary>Converts Excel workbooks to PDF using explicit Office execution options.</summary>
         /// <param name="files">Input .xlsx/.xls paths.</param>
         /// <param name="onProgress">Optional progress callback receiving (progress, max, message).</param>
         /// <param name="cancellationToken">Cancellation token to abort the conversion.</param>
-        public static void ConvertExcelToPdf(List<string> files, Action<int, int, string>? onProgress = null, CancellationToken cancellationToken = default)
+        public static void ConvertExcelToPdf(List<string> files, Dictionary<string, object> options, Action<int, int, string>? onProgress = null, CancellationToken cancellationToken = default)
         {
             var processor = new ExcelToPdfProcessor();
-            processor.Process(files, null, null, onProgress, cancellationToken);
+            processor.Process(files, null, options, onProgress, cancellationToken);
         }
 
         /// <summary>Translates a PDF into <paramref name="targetLang"/> while preserving layout.</summary>

@@ -217,8 +217,13 @@ static partial class TestSuite
                     "output.pdf",
                     0,
                     1,
+                    new OfficeConversionSettings(
+                        ClickraSettings.DefaultOfficeEngineAuto,
+                        ClickraSettings.DefaultEmpty,
+                        ClickraSettings.DefaultEmpty,
+                        false),
                     null,
-                CancellationToken.None));
+                    CancellationToken.None));
         });
 
         runner.Run("LibreOffice uninstall refuses an installation Clickra did not make", () =>

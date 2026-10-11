@@ -10,6 +10,6 @@ public class ExcelToPdfProcessor : SingleFileProcessorBase
 
     protected override void ProcessSingleFile(string fullPath, string targetOutputPath, int fileIndex, int totalFiles, Dictionary<string, object>? options, Action<int, int, string>? onProgress, CancellationToken cancellationToken)
     {
-        PowerShellHelper.ExportOfficeToPdf("Excel", fullPath, targetOutputPath, fileIndex, totalFiles, onProgress, cancellationToken);
+        PowerShellHelper.ExportOfficeToPdf("Excel", fullPath, targetOutputPath, fileIndex, totalFiles, OfficeConversionOptions.Read(options), onProgress, cancellationToken);
     }
 }

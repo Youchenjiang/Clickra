@@ -26,6 +26,7 @@ public sealed class WordToPdfUseCase : OfficeToPdfUseCaseBase
         Task.Run(
             () => FileProcessor.ConvertWordToPdf(
                 plan.Inputs.ToList(),
+                new Dictionary<string, object>(plan.NormalizedOptions, StringComparer.Ordinal),
                 (current, total, message) => progress?.Report(
                     new ConversionProgress(current, total, message)),
                 cancellationToken),
