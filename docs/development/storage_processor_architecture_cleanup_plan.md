@@ -220,6 +220,15 @@ Exit criteria:
 
 Remove global setting reads one vertical family at a time.
 
+Progress as of 2026-10-11:
+
+- PDF compression settings ownership completed in PR #173;
+- image compression settings ownership completed in PR #173;
+- Office-to-PDF execution now snapshots engine selection, language, LibreOffice path, and removal-pending state during application planning;
+- Office readiness policy now receives the configured engine and LibreOffice readiness inputs explicitly instead of reading `ClickraStorage` inside the processor layer;
+- the processor global-state shrinking baseline has moved from 58 initially to 27;
+- the remaining `LibreOfficeEngineInstaller` reads/writes and the parameterless LibreOffice resolver are installation/infrastructure lifecycle state, not Office conversion execution options, and must be handled as their own responsibility rather than hidden inside the conversion migration.
+
 Recommended order:
 
 1. PDF compression;
