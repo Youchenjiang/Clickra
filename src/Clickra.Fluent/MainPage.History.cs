@@ -266,7 +266,7 @@ public sealed partial class MainPage
     private void AdjustParkedRetention(HistoryItem item, int deltaDays)
     {
         if (string.IsNullOrWhiteSpace(item.Entry.Id)) return;
-        if (ClickraStorage.AdjustParkedRetention(item.Entry.Id, deltaDays) is null) return;
+        if (ParkedTaskController.AdjustRetention(item.Entry.Id, deltaDays) is null) return;
         RefreshHistory();
     }
 
@@ -274,7 +274,7 @@ public sealed partial class MainPage
     private void ResetParkedRetention(HistoryItem item)
     {
         if (string.IsNullOrWhiteSpace(item.Entry.Id)) return;
-        ClickraStorage.SetParkedRetentionOverride(item.Entry.Id, null);
+        ParkedTaskController.ResetRetention(item.Entry.Id);
         RefreshHistory();
     }
 
@@ -299,7 +299,7 @@ public sealed partial class MainPage
     {
         if (string.IsNullOrWhiteSpace(task.Id)) return;
         if (!await ConfirmAsync(L("task_parked_cancel_confirm"))) return;
-        ClickraStorage.CancelParkedTask(task.Id);
+        ParkedTaskController.Cancel(task.Id);
         RefreshHistory();
     }
 

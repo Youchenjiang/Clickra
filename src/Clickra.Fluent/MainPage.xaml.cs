@@ -679,7 +679,7 @@ public sealed partial class MainPage : Page
             MinifyContentToggle.IsOn = SettingsController.GetBool(ClickraSettings.PdfCompressMinifyContent);
             ParkedRetentionBox.Minimum = MinParkedRetentionDays;
             ParkedRetentionBox.Maximum = MaxParkedRetentionDays;
-            ParkedRetentionBox.Value = ClickraStorage.GetParkedRetentionDays();
+            ParkedRetentionBox.Value = ParkedTaskController.GetRetentionDays();
 
             _dynamicSettings.Sync();
         }
@@ -852,7 +852,7 @@ public sealed partial class MainPage : Page
         if (double.IsNaN(args.NewValue))
         {
             _syncingParkedRetention = true;
-            sender.Value = ClickraStorage.GetParkedRetentionDays();
+            sender.Value = ParkedTaskController.GetRetentionDays();
             _syncingParkedRetention = false;
             return;
         }
