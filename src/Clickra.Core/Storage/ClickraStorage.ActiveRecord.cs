@@ -241,9 +241,6 @@ namespace Clickra.Core
         public static int GetParkedRetentionDays() =>
             ParkedTaskCoordinator.GetRetentionDays();
 
-        public static int GetEffectiveParkedRetentionDays(HistoryEntry entry) =>
-            ParkedTaskCoordinator.GetEffectiveRetentionDays(entry);
-
         public static void SetParkedRetentionOverride(string taskId, int? days)
             => ParkedTaskCoordinator.SetRetentionOverride(taskId, days);
 
@@ -309,16 +306,6 @@ namespace Clickra.Core
                     .Where(e => e.HasValue && (e.Value.Status == ConversionStatus.Pending || e.Value.Status == ConversionStatus.InProgress))
                     .Select(e => e.GetValueOrDefault())
                     .ToList();
-            });
-        }
-
-        /// <summary>列出所有任務（含已完成），新的在前；同時清理過期檔案。</summary>
-        public static List<HistoryEntry> GetTasks(int limit = 50)
-        {
-            return RunWithMutex(() =>
-            {
-                TaskPruningCoordinator.Prune();
-                return ListTaskFiles().Take(limit).Select(ReadTaskFileInternal).Where(e => e.HasValue).Select(e => e.GetValueOrDefault()).ToList();
             });
         }
 
