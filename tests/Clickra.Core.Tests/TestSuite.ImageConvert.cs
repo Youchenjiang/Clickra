@@ -596,6 +596,7 @@ static partial class TestSuite
             string startup = File.ReadAllText(Path.Combine(root, "src", CliProjectDir, "Cli", "ClickraStartup.cs"));
             string dashboard = File.ReadAllText(Path.Combine(root, "src", CliProjectDir, "Dashboard", "DashboardWindow.ConvertRegistry.cs"));
             string progress = File.ReadAllText(Path.Combine(root, "src", CliProjectDir, "Progress", "ProgressWindow.Process.cs"));
+            string adapter = File.ReadAllText(Path.Combine(root, "src", CliProjectDir, "Progress", "NativeConversionExecutionAdapter.cs"));
             string fluentXaml = File.ReadAllText(Path.Combine(root, "src", "Clickra.Fluent", "MainPage.xaml"));
             string fluentCode = File.ReadAllText(Path.Combine(root, "src", "Clickra.Fluent", "MainPage.xaml.cs"));
 
@@ -611,10 +612,12 @@ static partial class TestSuite
                 Assert.True(cli.Contains($"case \"{command}\"", StringComparison.Ordinal), $"Legacy CLI must dispatch {command}.");
                 Assert.True(startup.Contains(command, StringComparison.Ordinal), $"CLI help/version must list {command}.");
                 Assert.True(dashboard.Contains($"Command = \"{command}\"", StringComparison.Ordinal), $"Native dashboard must expose {command}.");
-                Assert.True(progress.Contains("useCase is ImageFormatConvertUseCase", StringComparison.Ordinal)
-                            && progress.Contains("RunSimpleApplicationCommand(", StringComparison.Ordinal),
+                Assert.True(progress.Contains("new NativeConversionExecutionAdapter(", StringComparison.Ordinal)
+                            && adapter.Contains("useCase is ImageFormatConvertUseCase", StringComparison.Ordinal)
+                            && adapter.Contains("RunSimple(", StringComparison.Ordinal),
                     $"Native progress routing must execute {command} through the application use-case catalog.");
-                Assert.False(progress.Contains($"case \"{command}\"", StringComparison.Ordinal),
+                Assert.False(progress.Contains($"case \"{command}\"", StringComparison.Ordinal)
+                             || adapter.Contains($"case \"{command}\"", StringComparison.Ordinal),
                     $"Native progress routing must not keep a second dispatch branch for {command}.");
                 Assert.True(cli.Contains("HandleImageFormatQuiet(command, files, outputDir)", StringComparison.Ordinal),
                     $"Quiet CLI must execute {command} through the application use-case catalog.");
