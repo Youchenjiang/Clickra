@@ -4,6 +4,8 @@ namespace Clickra.Core.Tests;
 
 static partial class TestSuite
 {
+    private const string WorkspacePdfFile = "a.pdf";
+
     public static void RegisterConversionWorkspaceStateTests(TestRunner runner)
     {
         runner.Run("Conversion workspace keeps explicit compatible command selections", TestConversionWorkspaceKeepsCompatibleSelection);
@@ -16,7 +18,7 @@ static partial class TestSuite
     private static void TestConversionWorkspaceKeepsCompatibleSelection()
     {
         var state = new ConversionWorkspaceState();
-        state.AddFiles(new[] { "a.pdf", "b.pdf" });
+        state.AddFiles(new[] { WorkspacePdfFile, "b.pdf" });
         Assert.True(state.TrySelectCommand("merge-pdf"), "A two-PDF selection must accept merge-pdf.");
 
         state.AddFiles(new[] { "c.pdf", "A.PDF" });
@@ -30,7 +32,7 @@ static partial class TestSuite
     {
         var state = new ConversionWorkspaceState();
         Assert.False(state.TrySelectCommand("not-a-command"), "Unknown commands must never become selected workspace commands.");
-        state.AddFiles(new[] { "a.pdf" });
+        state.AddFiles(new[] { WorkspacePdfFile });
         Assert.True(state.TrySelectCommand("compress-pdf"), "A single PDF must accept compress-pdf.");
 
         state.AddFiles(new[] { "b.png" });
@@ -43,7 +45,7 @@ static partial class TestSuite
     private static void TestConversionWorkspaceStartEligibility()
     {
         var state = new ConversionWorkspaceState();
-        state.AddFiles(new[] { "a.pdf" });
+        state.AddFiles(new[] { WorkspacePdfFile });
 
         Assert.False(state.TrySelectCommand("merge-pdf"), "merge-pdf must reject a single PDF because it requires multiple files.");
         Assert.True(state.TrySelectCommand("compress-pdf"), "compress-pdf must accept a single PDF.");
@@ -81,9 +83,9 @@ static partial class TestSuite
         Assert.True(selectedFiles is ICollection<string> collection && collection.IsReadOnly,
             "SelectedFiles must expose a collection view that rejects direct mutation.");
 
-        state.AddFiles(new[] { "a.pdf" });
+        state.AddFiles(new[] { WorkspacePdfFile });
 
         Assert.Equal(1, selectedFiles.Count);
-        Assert.Equal("a.pdf", selectedFiles[0]);
+        Assert.Equal(WorkspacePdfFile, selectedFiles[0]);
     }
 }
