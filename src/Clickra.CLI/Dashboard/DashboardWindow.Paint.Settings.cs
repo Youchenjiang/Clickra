@@ -99,8 +99,8 @@ namespace Clickra.UI
                 ? SettingsLayout.ColumnWidth((int)contentX, (int)logW)
                 : (int)(logW - contentX - SettingsLayout.ContentRightMargin);
 
-            bool quietMode = ClickraStorage.GetSettingBool(ClickraSettings.QuietMode);
-            bool notification = ClickraStorage.GetSettingBool(ClickraSettings.Notification);
+            bool quietMode = SettingsController.GetBool(ClickraSettings.QuietMode);
+            bool notification = SettingsController.GetBool(ClickraSettings.Notification);
             if (wideSettings)
             {
                 int leftX = (int)contentX;
@@ -148,7 +148,7 @@ namespace Clickra.UI
                 y += SettingsLayout.PrimaryToggleSectionHeight;
             }
 
-            string outputDirMode = ClickraStorage.GetSetting(ClickraSettings.OutputDir);
+            string outputDirMode = SettingsController.Get(ClickraSettings.OutputDir);
             bool isSource = outputDirMode.Equals(ClickraSettings.DefaultOutputDirSource, StringComparison.OrdinalIgnoreCase);
             bool isDesktop = outputDirMode.Equals(ClickraSettings.OutputDirDesktop, StringComparison.OrdinalIgnoreCase);
             bool isDownloads = outputDirMode.Equals(ClickraSettings.OutputDirDownloads, StringComparison.OrdinalIgnoreCase);
@@ -222,7 +222,7 @@ namespace Clickra.UI
                 : narrowOutputHeight;
 
             float engineStartY = y;
-            string engineMode = ClickraStorage.GetSetting(ClickraSettings.OfficeEngine);
+            string engineMode = SettingsController.Get(ClickraSettings.OfficeEngine);
             bool isAutoEngine = string.IsNullOrEmpty(engineMode) || engineMode.Equals(ClickraSettings.DefaultOfficeEngineAuto, StringComparison.OrdinalIgnoreCase);
             bool isMicrosoftEngine = engineMode.Equals(ClickraSettings.OfficeEngineMicrosoft, StringComparison.OrdinalIgnoreCase);
             bool isLibreOfficeEngine = engineMode.Equals(ClickraSettings.OfficeEngineLibreOffice, StringComparison.OrdinalIgnoreCase);
@@ -239,9 +239,9 @@ namespace Clickra.UI
             string resolvedLibreOffice = isLibreOfficeSetupRunning
                 ? ""
                 : LibreOfficeHelper.GetResolvedExecutablePath(
-                    ClickraStorage.GetSettingBool(ClickraSettings.LibreOfficeRemovalPendingRestart),
-                    ClickraStorage.GetSetting(ClickraSettings.LibreOfficePath));
-            bool removalPendingRestart = ClickraStorage.GetSettingBool(ClickraSettings.LibreOfficeRemovalPendingRestart);
+                    SettingsController.GetBool(ClickraSettings.LibreOfficeRemovalPendingRestart),
+                    SettingsController.Get(ClickraSettings.LibreOfficePath));
+            bool removalPendingRestart = SettingsController.GetBool(ClickraSettings.LibreOfficeRemovalPendingRestart);
             bool libreOfficeReady = !string.IsNullOrEmpty(resolvedLibreOffice);
             // Only a LibreOffice with a freshly verified Clickra management identity may be removed
             // from the dashboard; all other installations remain user-managed.
@@ -508,7 +508,7 @@ namespace Clickra.UI
                 int pdfSliderY = pdfCard.Y + SettingsLayout.CompressionSliderTop;
                 NumericSettingRange pdfLevelRange = GetRequiredNumericRange(pdfLevelDescriptor);
                 int compressLevel = Math.Clamp(
-                    ClickraStorage.GetSettingInt(pdfLevelDescriptor.Key),
+                    SettingsController.GetInt(pdfLevelDescriptor.Key),
                     pdfLevelRange.Min,
                     pdfLevelRange.Max);
                 _pdfSliderTrackX = pdfX;
@@ -516,8 +516,8 @@ namespace Clickra.UI
                 DrawCompressSlider(g, pdfX, pdfSliderY, sliderWidth, pdfLevelDescriptor, compressLevel, pdfLevelRange);
                 AddLayoutHitRect(83, SettingsLayout.SliderHitRect(pdfX, pdfSliderY, sliderWidth));
 
-                bool stripFonts = ClickraStorage.GetSettingBool(stripFontsDescriptor.Key);
-                bool minifyContent = ClickraStorage.GetSettingBool(minifyContentDescriptor.Key);
+                bool stripFonts = SettingsController.GetBool(stripFontsDescriptor.Key);
+                bool minifyContent = SettingsController.GetBool(minifyContentDescriptor.Key);
                 int pdfSecondaryX = SettingsLayout.ColumnX((int)contentX, (int)logW, 1)
                     + SettingsLayout.CardPadding;
                 int pdfSecondaryY = pdfCard.Y + SettingsLayout.CompressionSecondaryTop;
@@ -539,7 +539,7 @@ namespace Clickra.UI
 
                 NumericSettingRange pdfLevelRange = GetRequiredNumericRange(pdfLevelDescriptor);
                 int compressLevel = Math.Clamp(
-                    ClickraStorage.GetSettingInt(pdfLevelDescriptor.Key),
+                    SettingsController.GetInt(pdfLevelDescriptor.Key),
                     pdfLevelRange.Min,
                     pdfLevelRange.Max);
                 float sliderW = SettingsLayout.SliderWidth;
@@ -551,10 +551,10 @@ namespace Clickra.UI
                 DrawGroupSubheader("setting_pdf_compress_group_other", pdfCompressionY);
                 pdfCompressionY += 24f;
 
-                bool stripFonts = ClickraStorage.GetSettingBool(stripFontsDescriptor.Key);
+                bool stripFonts = SettingsController.GetBool(stripFontsDescriptor.Key);
                 DrawToggleSection(stripFontsDescriptor.TitleKey, stripFontsDescriptor.DescriptionKey ?? string.Empty, stripFonts, 81, pdfCompressionY);
                 pdfCompressionY += SettingsLayout.CompactToggleSectionHeight;
-                bool minifyContent = ClickraStorage.GetSettingBool(minifyContentDescriptor.Key);
+                bool minifyContent = SettingsController.GetBool(minifyContentDescriptor.Key);
                 DrawToggleSection(minifyContentDescriptor.TitleKey, minifyContentDescriptor.DescriptionKey ?? string.Empty, minifyContent, 82, pdfCompressionY);
                 pdfCompressionY += SettingsLayout.CompactToggleSectionHeight;
                 y = pdfCompressionY + SettingsLayout.CardGap;

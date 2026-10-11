@@ -58,7 +58,7 @@ public sealed partial class VisualSplitterControl : UserControl
         _splitModel = new VisualSplitModel(_totalPages);
         SyncModelState();
 
-        string L(string key) => Localization.T(key, ClickraStorage.GetSetting(ClickraSettings.Language));
+        string L(string key) => Localization.T(key, SettingsController.Get(ClickraSettings.Language));
         ModeCustomBtn.Content = L("pdf_split_mode_custom");
         ModeEachBtn.Content = L("pdf_split_mode_each");
         AddSegmentBtn.Content = L("pdf_split_btn_add");
@@ -175,7 +175,7 @@ public sealed partial class VisualSplitterControl : UserControl
     /// in sync with the current N ("Fixed pages: 5 pages", mirroring the CLI mode bar).</summary>
     private void RefreshModeButtons()
     {
-        string lang = ClickraStorage.GetSetting(ClickraSettings.Language);
+        string lang = SettingsController.Get(ClickraSettings.Language);
         ModeFixedBtn.Content = string.Format(Localization.T("pdf_split_mode_fixed_n", lang),
             Localization.T("pdf_split_mode_fixed", lang), _nPages);
     }
@@ -183,7 +183,7 @@ public sealed partial class VisualSplitterControl : UserControl
     /// <summary>Refreshes the pages-per-segment stepper label ("Every 5 pages").</summary>
     private void RefreshNSelector()
     {
-        NLabel.Text = $"{Localization.T("pdf_split_pages_per_segment", ClickraStorage.GetSetting(ClickraSettings.Language))} {_nPages}";
+        NLabel.Text = $"{Localization.T("pdf_split_pages_per_segment", SettingsController.Get(ClickraSettings.Language))} {_nPages}";
     }
 
     /// <summary>Adjusts N in fixed-pages mode (clamped to 1..total pages) and rebuilds the segments.</summary>
@@ -222,7 +222,7 @@ public sealed partial class VisualSplitterControl : UserControl
     {
         _suppressSelection = true;
         SegmentList.Items.Clear();
-        string lang = ClickraStorage.GetSetting(ClickraSettings.Language);
+        string lang = SettingsController.Get(ClickraSettings.Language);
         for (int i = 0; i < _segments.Count; i++)
         {
             var seg = _segments[i];
@@ -334,7 +334,7 @@ public sealed partial class VisualSplitterControl : UserControl
             var seg = _segments[_selectedSegmentIndex];
             pageCnt = seg.End - seg.Start + 1;
         }
-        string lang = ClickraStorage.GetSetting(ClickraSettings.Language);
+        string lang = SettingsController.Get(ClickraSettings.Language);
         PageLabel.Text = string.Format(Localization.T("pdf_split_page_preview_format", lang),
             page, Math.Min(_currentPreviewPageIndex + 1, pageCnt), pageCnt);
 
@@ -352,7 +352,7 @@ public sealed partial class VisualSplitterControl : UserControl
         {
             // Windows PDF renderer unavailable (e.g. encrypted file): fall back to the
             // shared Core word-overlay renderer.
-            string fontName = PdfPageThumbnailRenderer.GetTextFontName(ClickraStorage.GetSetting(ClickraSettings.Language));
+            string fontName = PdfPageThumbnailRenderer.GetTextFontName(SettingsController.Get(ClickraSettings.Language));
             var bmp = await Task.Run(() => PdfPageThumbnailRenderer.RenderPageFromFile(_pdfPath, page, RenderWidth, fontName));
             source = bmp == null ? null : await ToBitmapImageAsync(bmp);
             bmp?.Dispose();

@@ -39,8 +39,8 @@ namespace Clickra.UI;
             {
                 if (LibreOfficeHelper.LooksLikeLibreOfficeExecutable(candidate))
                 {
-                    ClickraStorage.SaveSetting(ClickraSettings.LibreOfficePath, candidate);
-                    ClickraStorage.SaveSetting(ClickraSettings.LibreOfficeRemovalPendingRestart, ClickraSettings.ValueFalse);
+                    SettingsController.Set(ClickraSettings.LibreOfficePath, candidate);
+                    SettingsController.Set(ClickraSettings.LibreOfficeRemovalPendingRestart, ClickraSettings.ValueFalse);
                     MessageBox(hwnd, string.Format(GetText("setting_libreoffice_validated"), Path.GetDirectoryName(candidate)), AppTitle, 0x40);
                 }
                 else
@@ -66,7 +66,7 @@ namespace Clickra.UI;
                 }
             }
 
-            bool removalPendingRestart = ClickraStorage.GetSetting(ClickraSettings.LibreOfficeRemovalPendingRestart).Equals(ClickraSettings.ValueTrue, StringComparison.OrdinalIgnoreCase);
+            bool removalPendingRestart = SettingsController.Get(ClickraSettings.LibreOfficeRemovalPendingRestart).Equals(ClickraSettings.ValueTrue, StringComparison.OrdinalIgnoreCase);
             var package = LibreOfficeEngineInstaller.RecommendedPackage;
             string installedVersion = LibreOfficeEngineInstaller.GetInstalledSystemVersion();
             if (!removalPendingRestart &&
@@ -76,7 +76,7 @@ namespace Clickra.UI;
                 string resolvedPath = LibreOfficeEngineInstaller.ResolveSystemSofficePath();
                 if (!string.IsNullOrWhiteSpace(resolvedPath))
                 {
-                    ClickraStorage.SaveSetting(ClickraSettings.LibreOfficePath, resolvedPath);
+                    SettingsController.Set(ClickraSettings.LibreOfficePath, resolvedPath);
                 }
 
                 MessageBox(
@@ -144,9 +144,9 @@ namespace Clickra.UI;
                 PostDashboardAction(hwnd, () => SetLibreOfficeSetupStatus(95, GetText("setting_libreoffice_installing")));
 
                 if (!string.IsNullOrWhiteSpace(sofficePath))
-                    ClickraStorage.SaveSetting(ClickraSettings.LibreOfficePath, sofficePath);
+                    SettingsController.Set(ClickraSettings.LibreOfficePath, sofficePath);
                 bool managementRecorded = LibreOfficeEngineInstaller.TryRecordManagedSystemInstallation(sofficePath);
-                ClickraStorage.SaveSetting(ClickraSettings.LibreOfficeRemovalPendingRestart, ClickraSettings.ValueFalse);
+                SettingsController.Set(ClickraSettings.LibreOfficeRemovalPendingRestart, ClickraSettings.ValueFalse);
 
                 PostDashboardAction(hwnd, () => ShowInstallResultMessage(
                     hwnd,
@@ -156,7 +156,7 @@ namespace Clickra.UI;
             }
             catch (Exception ex)
             {
-                ClickraStorage.SaveSetting(ClickraSettings.LibreOfficePath, ClickraSettings.DefaultEmpty);
+                SettingsController.Set(ClickraSettings.LibreOfficePath, ClickraSettings.DefaultEmpty);
                 PostDashboardAction(hwnd, () => ShowDownloadFailureMessage(hwnd, ex.Message));
             }
             finally
@@ -210,7 +210,7 @@ namespace Clickra.UI;
                 }
             }
 
-            if (ClickraStorage.GetSetting(ClickraSettings.LibreOfficeRemovalPendingRestart).Equals(ClickraSettings.ValueTrue, StringComparison.OrdinalIgnoreCase))
+            if (SettingsController.Get(ClickraSettings.LibreOfficeRemovalPendingRestart).Equals(ClickraSettings.ValueTrue, StringComparison.OrdinalIgnoreCase))
             {
                 MessageBox(hwnd, GetText("setting_libreoffice_removal_pending"), AppTitle, 0x40);
                 return;
@@ -249,10 +249,10 @@ namespace Clickra.UI;
                     .GetAwaiter()
                     .GetResult();
 
-                ClickraStorage.SaveSetting(ClickraSettings.LibreOfficePath, ClickraSettings.DefaultEmpty);
+                SettingsController.Set(ClickraSettings.LibreOfficePath, ClickraSettings.DefaultEmpty);
                 LibreOfficeEngineInstaller.ReleaseManagement();
-                ClickraStorage.SaveSetting(ClickraSettings.LibreOfficeRemovalPendingRestart, uninstallResult.RestartRequired ? ClickraSettings.ValueTrue : ClickraSettings.ValueFalse);
-                ClickraStorage.SaveSetting(ClickraSettings.OfficeEngine, ClickraSettings.DefaultOfficeEngineAuto);
+                SettingsController.Set(ClickraSettings.LibreOfficeRemovalPendingRestart, uninstallResult.RestartRequired ? ClickraSettings.ValueTrue : ClickraSettings.ValueFalse);
+                SettingsController.Set(ClickraSettings.OfficeEngine, ClickraSettings.DefaultOfficeEngineAuto);
 
                 PostDashboardAction(hwnd, () => MessageBox(
                     hwnd,
@@ -293,8 +293,8 @@ namespace Clickra.UI;
             }
 
             string resolvedPath = LibreOfficeHelper.GetResolvedExecutablePath(
-                ClickraStorage.GetSettingBool(ClickraSettings.LibreOfficeRemovalPendingRestart),
-                ClickraStorage.GetSetting(ClickraSettings.LibreOfficePath));
+                SettingsController.GetBool(ClickraSettings.LibreOfficeRemovalPendingRestart),
+                SettingsController.Get(ClickraSettings.LibreOfficePath));
             if (!LibreOfficeEngineInstaller.CanAdoptExistingInstallation(resolvedPath))
             {
                 return;

@@ -101,7 +101,7 @@ namespace Clickra.UI
                 RecreateScaledFonts();
                 InvalidateRect(hwnd, IntPtr.Zero, false);
             });
-            ClickraStorage.SettingsReloaded += onSettingsReloaded;
+            SettingsController.Reloaded += onSettingsReloaded;
 
             SetTimer(hwnd, TIMER_ID_REFRESH, 250, IntPtr.Zero);
 
@@ -111,7 +111,7 @@ namespace Clickra.UI
                 DispatchMessage(ref msg);
             }
 
-            ClickraStorage.SettingsReloaded -= onSettingsReloaded;
+            SettingsController.Reloaded -= onSettingsReloaded;
             
             Marshal.FreeHGlobal(hClass);
         }

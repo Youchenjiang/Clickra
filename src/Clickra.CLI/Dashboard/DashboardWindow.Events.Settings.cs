@@ -25,7 +25,7 @@ namespace Clickra.UI;
                 case 20: BrowseOutputDir(hwnd); break;
                 case 32: ApplySetting(hwnd, ClickraSettings.OfficeEngine, ClickraSettings.DefaultOfficeEngineAuto); break;
                 case 33: ApplySetting(hwnd, ClickraSettings.OfficeEngine, ClickraSettings.OfficeEngineMicrosoft); break;
-                case 34: ClickraStorage.SaveSetting(ClickraSettings.OfficeEngine, ClickraSettings.OfficeEngineLibreOffice);
+                case 34: SettingsController.Set(ClickraSettings.OfficeEngine, ClickraSettings.OfficeEngineLibreOffice);
                          ApplySetting(hwnd, ClickraSettings.LibreOfficePath, ClickraSettings.DefaultEmpty); break;
                 case 90: AdjustParkedRetention(hwnd, -1); break;
                 case 91: AdjustParkedRetention(hwnd, 1); break;
@@ -71,7 +71,7 @@ namespace Clickra.UI;
                             (int)Math.Round(fraction * span, MidpointRounding.AwayFromZero) + range.Value.Min,
                             range.Value.Min,
                             range.Value.Max);
-                        ClickraStorage.SaveSetting(descriptor.Key, newLevel.ToString());
+                        SettingsController.Set(descriptor.Key, newLevel.ToString());
                         InvalidateRect(hwnd, IntPtr.Zero, false);
                     }
                     break;
@@ -80,7 +80,7 @@ namespace Clickra.UI;
                 case SettingEditorKind.Number:
                 {
                     var range = descriptor.GetEffectiveNumericRange() ?? new NumericSettingRange(0, 100, 0);
-                    int current = ClickraStorage.GetSettingInt(descriptor.Key);
+                    int current = SettingsController.GetInt(descriptor.Key);
                     int delta = subId switch
                     {
                         1 => -1,
@@ -88,7 +88,7 @@ namespace Clickra.UI;
                         _ => 0,
                     };
                     int updated = (int)Math.Clamp((long)current + delta, range.Min, range.Max);
-                    ClickraStorage.SaveSetting(descriptor.Key, updated.ToString());
+                    SettingsController.Set(descriptor.Key, updated.ToString());
                     InvalidateRect(hwnd, IntPtr.Zero, false);
                     break;
                 }
@@ -122,20 +122,20 @@ namespace Clickra.UI;
             // Same range as the Fluent settings page, from one place: a second copy of the bound
             // would let the two settings pages drift apart.
             int clamped = Math.Clamp(days, ClickraSettings.MinParkedRetentionDays, ClickraSettings.MaxParkedRetentionDays);
-            ClickraStorage.SaveSetting(ClickraSettings.ParkedTaskRetention, clamped.ToString());
+            SettingsController.Set(ClickraSettings.ParkedTaskRetention, clamped.ToString());
             InvalidateRect(hwnd, IntPtr.Zero, false);
         }
 
         private static void ToggleBoolSetting(IntPtr hwnd, string key)
         {
-            bool current = ClickraStorage.GetSetting(key).Equals(ClickraSettings.ValueTrue, StringComparison.OrdinalIgnoreCase);
-            ClickraStorage.SaveSetting(key, current ? ClickraSettings.ValueFalse : ClickraSettings.ValueTrue);
+            bool current = SettingsController.Get(key).Equals(ClickraSettings.ValueTrue, StringComparison.OrdinalIgnoreCase);
+            SettingsController.Set(key, current ? ClickraSettings.ValueFalse : ClickraSettings.ValueTrue);
             InvalidateRect(hwnd, IntPtr.Zero, false);
         }
 
         private static void ApplySetting(IntPtr hwnd, string key, string value)
         {
-            ClickraStorage.SaveSetting(key, value);
+            SettingsController.Set(key, value);
             InvalidateRect(hwnd, IntPtr.Zero, false);
         }
 
@@ -170,14 +170,14 @@ namespace Clickra.UI;
             }
             else if (element == 81)
             {
-                bool current = ClickraStorage.GetSettingBool(stripFontsDescriptor.Key);
-                ClickraStorage.SaveSetting(stripFontsDescriptor.Key, current ? ClickraSettings.ValueFalse : ClickraSettings.ValueTrue);
+                bool current = SettingsController.GetBool(stripFontsDescriptor.Key);
+                SettingsController.Set(stripFontsDescriptor.Key, current ? ClickraSettings.ValueFalse : ClickraSettings.ValueTrue);
                 InvalidateRect(hwnd, IntPtr.Zero, false);
             }
             else if (element == 82)
             {
-                bool current = ClickraStorage.GetSettingBool(minifyContentDescriptor.Key);
-                ClickraStorage.SaveSetting(minifyContentDescriptor.Key, current ? ClickraSettings.ValueFalse : ClickraSettings.ValueTrue);
+                bool current = SettingsController.GetBool(minifyContentDescriptor.Key);
+                SettingsController.Set(minifyContentDescriptor.Key, current ? ClickraSettings.ValueFalse : ClickraSettings.ValueTrue);
                 InvalidateRect(hwnd, IntPtr.Zero, false);
             }
         }
@@ -188,7 +188,7 @@ namespace Clickra.UI;
             SettingDescriptor descriptor = GetRequiredSettingDescriptor(ClickraSettings.PdfCompressImageLevel);
             NumericSettingRange range = GetRequiredNumericRange(descriptor);
             int clamped = Math.Clamp(level, range.Min, range.Max);
-            ClickraStorage.SaveSetting(descriptor.Key, clamped.ToString());
+            SettingsController.Set(descriptor.Key, clamped.ToString());
             InvalidateRect(hwnd, IntPtr.Zero, false);
         }
     }
