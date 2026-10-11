@@ -74,10 +74,14 @@ static partial class TestSuite
         Assert.Equal("Collapsed", runCard.Attribute("Visibility")?.Value ?? string.Empty);
 
         string codeBehind = File.ReadAllText(Path.Combine(root, "src", FluentProjectDirectory, "MainPage.xaml.cs"));
-        Assert.True(codeBehind.Contains("SelectedFilesCard.Visibility = _selectedFiles.Count > 0", StringComparison.Ordinal),
+        Assert.True(codeBehind.Contains("SelectedFilesCard.Visibility = _convertWorkspace.SelectedFiles.Count > 0", StringComparison.Ordinal),
             "Selected files must only consume layout space after files are selected.");
-        Assert.True(codeBehind.Contains("ConvertRunCard.Visibility = _selectedFiles.Count > 0 || _isRunning", StringComparison.Ordinal),
+        Assert.True(codeBehind.Contains("ConvertRunCard.Visibility = _convertWorkspace.SelectedFiles.Count > 0 || _convertWorkspace.IsRunning", StringComparison.Ordinal),
             "Run controls must stay collapsed until selection or active conversion makes them relevant.");
+        Assert.False(codeBehind.Contains("private readonly List<string> _selectedFiles", StringComparison.Ordinal)
+                     || codeBehind.Contains("private string? _selectedCommand", StringComparison.Ordinal)
+                     || codeBehind.Contains("private bool _isRunning", StringComparison.Ordinal),
+            "Fluent conversion selection and run state must remain delegated to ConversionWorkspaceState.");
     }
 
     private static void TestConvertCommandGroupWiring()

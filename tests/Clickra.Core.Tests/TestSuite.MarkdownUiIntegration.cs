@@ -69,6 +69,7 @@ static partial class TestSuite
         string convert = MarkdownSource("src/Clickra.CLI/Dashboard/DashboardWindow.Convert.cs");
         string clicks = MarkdownSource("src/Clickra.CLI/Dashboard/DashboardWindow.Events.Click.cs");
         string fluent = MarkdownSource("src/Clickra.Fluent/MainPage.xaml.cs");
+        string workspace = MarkdownSource("src/Clickra.Core/Application/ConversionWorkspaceState.cs");
 
         Assert.True(clicks.Contains("OpenFiles(hwnd, GetSupportedFilesFilter(), title)", StringComparison.Ordinal)
                     && clicks.Contains("ImportFiles(chosen);", StringComparison.Ordinal),
@@ -82,8 +83,9 @@ static partial class TestSuite
                     && convert.Contains("Distinct(StringComparer.OrdinalIgnoreCase)", StringComparison.Ordinal),
             "The supported-file picker filter must derive from the command registry.");
         Assert.True(convert.Contains("ConvertCommandRegistry.GetDefaultCommandForFiles(files)", StringComparison.Ordinal)
-                    && fluent.Contains("ConvertCommandRegistry.GetDefaultCommandForFiles(_selectedFiles)", StringComparison.Ordinal),
-            "NativeAOT and Fluent file imports must use the same Core default-command routing.");
+                    && fluent.Contains("_convertWorkspace.AddFiles", StringComparison.Ordinal)
+                    && workspace.Contains("ConvertCommandRegistry.GetDefaultCommandForFiles(_selectedFiles)", StringComparison.Ordinal),
+            "NativeAOT and Fluent file imports must use the same Core default-command routing, with Fluent delegating selection state to Core.");
 
         Assert.Equal("compress-pdf", ConvertCommandRegistry.GetDefaultCommandForFiles(new[] { "a.pdf" }) ?? "");
         Assert.Equal("merge-pdf", ConvertCommandRegistry.GetDefaultCommandForFiles(new[] { "a.pdf", "b.pdf" }) ?? "");

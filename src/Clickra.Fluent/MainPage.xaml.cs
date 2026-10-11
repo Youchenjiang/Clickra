@@ -29,14 +29,12 @@ public sealed partial class MainPage : Page
     // Shared with the CLI dashboard's settings page; see ClickraSettings.MaxParkedRetentionDays.
     private const int MinParkedRetentionDays = ClickraSettings.MinParkedRetentionDays;
     private const int MaxParkedRetentionDays = ClickraSettings.MaxParkedRetentionDays;
-    private readonly List<string> _selectedFiles = new();
+    private readonly ConversionWorkspaceState _convertWorkspace = new();
     private readonly Dictionary<string, Button> _commandButtons = new(StringComparer.OrdinalIgnoreCase);
     private CancellationTokenSource? _cts;
     private bool _loadingSettings;
-    private bool _isRunning;
     private bool _startupCommandHandled;
     private string _startupArguments = "";
-    private string? _selectedCommand;
     // 一份清單三個切片（Core 的 HistoryFeed，與 Win32 dashboard 共用）：進行中、待繼續、
     // 已完成。這頁只是它的另一個呈現層，所以狀態用字、檔案描述與剩餘期限都讀模型的欄位。
     private bool _settingsReloadHooked;
@@ -68,7 +66,7 @@ public sealed partial class MainPage : Page
         DropZone.DragOver += DropZone_DragOver;
         DropZone.DragLeave += (_, _) => SetDropZoneHot(DropZone, DropZoneIcon, false);
         DropZone.Drop += DropZone_Drop;
-        ClearFilesButton.Click += (_, _) => { _selectedFiles.Clear(); RefreshFiles(); };
+        ClearFilesButton.Click += (_, _) => { _convertWorkspace.ClearFiles(); RefreshFiles(); };
         StartButton.Click += async (_, _) => await StartConversionAsync();
         CancelButton.Click += (_, _) => _cts?.Cancel();
         ClearHistoryButton.Click += async (_, _) => await ClearHistoryAsync();
@@ -340,11 +338,11 @@ public sealed partial class MainPage : Page
 
     private async void DropZone_Tapped(object sender, TappedRoutedEventArgs e)
     {
-        if (_isRunning) return;
+        if (_convertWorkspace.IsRunning) return;
         var picker = new FileOpenPicker();
-        foreach (var extension in _selectedCommand is null
+        foreach (var extension in _convertWorkspace.SelectedCommand is null
             ? ConvertCommandRegistry.AllSupportedExtensions
-            : ConvertCommandRegistry.GetAllowedExtensions(_selectedCommand))
+            : ConvertCommandRegistry.GetAllowedExtensions(_convertWorkspace.SelectedCommand))
             picker.FileTypeFilter.Add(extension);
         if (App.MainWindow is not null)
         {
@@ -357,13 +355,13 @@ public sealed partial class MainPage : Page
 
     private void DropZone_DragOver(object sender, DragEventArgs e)
     {
-        e.AcceptedOperation = _isRunning ? DataPackageOperation.None : DataPackageOperation.Copy;
-        SetDropZoneHot(DropZone, DropZoneIcon, !_isRunning);
+        e.AcceptedOperation = _convertWorkspace.IsRunning ? DataPackageOperation.None : DataPackageOperation.Copy;
+        SetDropZoneHot(DropZone, DropZoneIcon, !_convertWorkspace.IsRunning);
     }
 
     private async void DropZone_Drop(object sender, DragEventArgs e)
     {
-        if (_isRunning) return;
+        if (_convertWorkspace.IsRunning) return;
         if (!e.DataView.Contains(StandardDataFormats.StorageItems)) return;
         var items = await e.DataView.GetStorageItemsAsync();
         AddFiles(items.OfType<StorageFile>().Select(f => f.Path));
@@ -379,18 +377,10 @@ public sealed partial class MainPage : Page
 
     private void AddFiles(IEnumerable<string> paths)
     {
-        foreach (var path in paths.Where(p => File.Exists(p) && !_selectedFiles.Contains(p, StringComparer.OrdinalIgnoreCase)))
-        {
-            _selectedFiles.Add(path);
-        }
-
-        if (_selectedCommand is null || !IsCommandCompatibleWithSelectedFiles(_selectedCommand))
-        {
-            _selectedCommand = ConvertCommandRegistry.GetDefaultCommandForFiles(_selectedFiles);
-            CommandStatusText.Text = _selectedCommand is null
-                ? L("fluent_choose_command")
-                : string.Format(L("fluent_selected_command"), L(ConvertCommandRegistry.GetLabelKey(_selectedCommand)));
-        }
+        _convertWorkspace.AddFiles(paths.Where(File.Exists));
+        CommandStatusText.Text = _convertWorkspace.SelectedCommand is null
+            ? L("fluent_choose_command")
+            : string.Format(L("fluent_selected_command"), L(ConvertCommandRegistry.GetLabelKey(_convertWorkspace.SelectedCommand)));
         RefreshFiles();
     }
 
@@ -411,8 +401,7 @@ public sealed partial class MainPage : Page
 
     private void SelectCommand(string command)
     {
-        if (!IsCommandCompatibleWithSelectedFiles(command)) return;
-        _selectedCommand = command;
+        if (!_convertWorkspace.TrySelectCommand(command)) return;
         UpdateCommandAvailability();
         CommandStatusText.Text = string.Format(L("fluent_selected_command"), L(ConvertCommandRegistry.GetLabelKey(command)));
         UpdateStartState();
@@ -420,15 +409,15 @@ public sealed partial class MainPage : Page
 
     private void RefreshFiles()
     {
-        SelectedFilesCard.Visibility = _selectedFiles.Count > 0 ? Visibility.Visible : Visibility.Collapsed;
+        SelectedFilesCard.Visibility = _convertWorkspace.SelectedFiles.Count > 0 ? Visibility.Visible : Visibility.Collapsed;
         FileListContainer.Children.Clear();
-        if (_selectedFiles.Count == 0)
+        if (_convertWorkspace.SelectedFiles.Count == 0)
         {
             FileListContainer.Children.Add(EmptyFileMessage);
         }
         else
         {
-            foreach (var file in _selectedFiles)
+            foreach (var file in _convertWorkspace.SelectedFiles)
             {
                 FileListContainer.Children.Add(new TextBlock
                 {
@@ -444,15 +433,12 @@ public sealed partial class MainPage : Page
 
     private void UpdateStartState()
     {
-        bool canStart = _selectedFiles.Count > 0 &&
-                        _selectedCommand is not null &&
-                        IsCommandCompatibleWithSelectedFiles(_selectedCommand);
-        ConvertRunCard.Visibility = _selectedFiles.Count > 0 || _isRunning
+        ConvertRunCard.Visibility = _convertWorkspace.SelectedFiles.Count > 0 || _convertWorkspace.IsRunning
             ? Visibility.Visible
             : Visibility.Collapsed;
-        StartButton.Visibility = _isRunning ? Visibility.Collapsed : Visibility.Visible;
-        StartButton.IsEnabled = canStart;
-        CancelButton.Visibility = _isRunning ? Visibility.Visible : Visibility.Collapsed;
+        StartButton.Visibility = _convertWorkspace.IsRunning ? Visibility.Collapsed : Visibility.Visible;
+        StartButton.IsEnabled = _convertWorkspace.CanStart;
+        CancelButton.Visibility = _convertWorkspace.IsRunning ? Visibility.Visible : Visibility.Collapsed;
         UpdateInteractiveState();
     }
 
@@ -460,53 +446,46 @@ public sealed partial class MainPage : Page
     {
         foreach (var pair in _commandButtons)
         {
-            bool compatible = IsCommandCompatibleWithSelectedFiles(pair.Key);
-            pair.Value.IsEnabled = !_isRunning && compatible;
-            pair.Value.Style = compatible && pair.Key.Equals(_selectedCommand, StringComparison.OrdinalIgnoreCase)
+            bool compatible = _convertWorkspace.IsCommandCompatible(pair.Key);
+            pair.Value.IsEnabled = !_convertWorkspace.IsRunning && compatible;
+            pair.Value.Style = compatible && pair.Key.Equals(_convertWorkspace.SelectedCommand, StringComparison.OrdinalIgnoreCase)
                 ? (Style)Application.Current.Resources["AccentButtonStyle"]
                 : null;
         }
 
-        if (_selectedCommand is not null && !IsCommandCompatibleWithSelectedFiles(_selectedCommand))
+        string? selectedCommand = _convertWorkspace.SelectedCommand;
+        _convertWorkspace.NormalizeSelectedCommand();
+        if (selectedCommand is not null && _convertWorkspace.SelectedCommand is null)
         {
-            _selectedCommand = null;
             CommandStatusText.Text = L("fluent_choose_command");
         }
     }
 
     private void UpdateInteractiveState()
     {
-        DropZone.AllowDrop = !_isRunning;
-        DropZone.Opacity = _isRunning ? 0.55 : 1.0;
-        ClearFilesButton.IsEnabled = !_isRunning && _selectedFiles.Count > 0;
+        DropZone.AllowDrop = !_convertWorkspace.IsRunning;
+        DropZone.Opacity = _convertWorkspace.IsRunning ? 0.55 : 1.0;
+        ClearFilesButton.IsEnabled = !_convertWorkspace.IsRunning && _convertWorkspace.SelectedFiles.Count > 0;
         UpdateCommandAvailability();
-    }
-
-    private bool IsCommandCompatibleWithSelectedFiles(string command)
-    {
-        if (_selectedFiles.Count == 0) return true;
-        int minFiles = ConvertCommandRegistry.GetMinFiles(command);
-        if (_selectedFiles.Count < minFiles) return false;
-        string[] extensions = ConvertCommandRegistry.GetAllowedExtensions(command);
-        return _selectedFiles.All(f => extensions.Contains(Path.GetExtension(f), StringComparer.OrdinalIgnoreCase));
     }
 
     private async Task StartConversionAsync()
     {
-        if (_selectedCommand is null || _selectedFiles.Count == 0 || _isRunning) return;
-        if (!ValidateSelection(_selectedCommand, out var error))
+        string? selectedCommand = _convertWorkspace.SelectedCommand;
+        if (selectedCommand is null || !_convertWorkspace.CanStart) return;
+        if (!ValidateSelection(selectedCommand, out var error))
         {
             await ShowErrorAsync(error);
             return;
         }
-        if (!OfficeEnginePreflight.TryValidate(_selectedCommand, L, out error))
+        if (!OfficeEnginePreflight.TryValidate(selectedCommand, L, out error))
         {
             await ShowErrorAsync(error);
             return;
         }
 
-        string command = _selectedCommand;
-        var files = _selectedFiles.ToList();
+        string command = selectedCommand;
+        var files = _convertWorkspace.SelectedFiles.ToList();
         Dictionary<string, object>? commandOptions = await PromptCommandOptionsAsync(command);
         if (IsMarkdownCommand(command) && commandOptions is null) return;
         IConversionUseCase applicationUseCase;
@@ -525,7 +504,7 @@ public sealed partial class MainPage : Page
             return;
         }
 
-        _isRunning = true;
+        _convertWorkspace.BeginRun();
         _cts = new CancellationTokenSource();
         UpdateStartState();
         ConversionProgressSection.Visibility = Visibility.Visible;
@@ -557,7 +536,7 @@ public sealed partial class MainPage : Page
         {
             _cts.Dispose();
             _cts = null;
-            _isRunning = false;
+            _convertWorkspace.EndRun();
             UpdateStartState();
             RefreshHistory();
         }
@@ -585,7 +564,7 @@ public sealed partial class MainPage : Page
                 ToastHelper.Show(
                     L("fluent_toast_done_title"),
                     string.Format(L("fluent_toast_done_body"), L(ConvertCommandRegistry.GetLabelKey(command)), files.Count));
-                _selectedFiles.Clear();
+                _convertWorkspace.ClearFiles();
                 RefreshFiles();
                 break;
             case ConversionResultStatus.Canceled:
@@ -606,7 +585,7 @@ public sealed partial class MainPage : Page
     {
         ConversionProgressBar.Value = percent;
         ConversionProgressText.Text = string.IsNullOrWhiteSpace(message) ? $"{percent}%" : $"{message}  {percent}%";
-        ActiveJobSection.Visibility = _isRunning ? Visibility.Visible : Visibility.Collapsed;
+        ActiveJobSection.Visibility = _convertWorkspace.IsRunning ? Visibility.Visible : Visibility.Collapsed;
         ActiveJobText.Text = ConversionProgressText.Text;
     }
 
@@ -615,12 +594,12 @@ public sealed partial class MainPage : Page
         error = "";
         string[] extensions = ConvertCommandRegistry.GetAllowedExtensions(command);
         int minFiles = ConvertCommandRegistry.GetMinFiles(command);
-        if (_selectedFiles.Count < minFiles)
+        if (_convertWorkspace.SelectedFiles.Count < minFiles)
         {
             error = string.Format(L("fluent_validate_min_files"), L(ConvertCommandRegistry.GetLabelKey(command)), minFiles);
             return false;
         }
-        var bad = _selectedFiles.FirstOrDefault(f => !extensions.Contains(Path.GetExtension(f), StringComparer.OrdinalIgnoreCase));
+        var bad = _convertWorkspace.SelectedFiles.FirstOrDefault(f => !extensions.Contains(Path.GetExtension(f), StringComparer.OrdinalIgnoreCase));
         if (bad is not null)
         {
             error = string.Format(L("fluent_validate_bad_ext"), Path.GetFileName(bad), L(ConvertCommandRegistry.GetLabelKey(command)));
@@ -754,7 +733,9 @@ public sealed partial class MainPage : Page
         ClearFilesButton.Content = L("convert_clear");
         EmptyFileMessage.Text = L("fluent_no_files");
         CommandTitle.Text = L("fluent_command");
-        CommandStatusText.Text = _selectedCommand is null ? L("fluent_choose_command") : string.Format(L("fluent_selected_command"), L(ConvertCommandRegistry.GetLabelKey(_selectedCommand)));
+        CommandStatusText.Text = _convertWorkspace.SelectedCommand is null
+            ? L("fluent_choose_command")
+            : string.Format(L("fluent_selected_command"), L(ConvertCommandRegistry.GetLabelKey(_convertWorkspace.SelectedCommand)));
         OfficeCommandLabel.Text = L("convert_group_office");
         PdfCommandLabel.Text = "PDF";
         ImageCommandLabel.Text = L("fluent_images");
@@ -779,7 +760,7 @@ public sealed partial class MainPage : Page
         RunTitle.Text = L("fluent_run");
         StartButton.Content = L("fluent_start");
         CancelButton.Content = L("dialog_cancel");
-        if (!_isRunning) ConversionProgressText.Text = L("fluent_ready");
+        if (!_convertWorkspace.IsRunning) ConversionProgressText.Text = L("fluent_ready");
 
         HistoryTitle.Text = L("fluent_nav_history");
         HistorySubtitle.Text = L("fluent_history_subtitle");
