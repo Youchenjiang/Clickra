@@ -89,7 +89,7 @@ static partial class TestSuite
 
     private static void TestConversionTaskCleanupRemovesTask()
     {
-        string taskId = ClickraStorage.StartTask("decrypt-pdf", 1, TestInDir + FileA);
+        string taskId = ClickraStorage.StartTask(CmdDecryptPdf, 1, TestInDir + FileA);
         Assert.True(ClickraStorage.GetTask(taskId).HasValue, "Task must exist before application cleanup.");
         ConversionTaskCleanup.Delete(taskId);
         Assert.False(ClickraStorage.GetTask(taskId).HasValue, "Application cleanup must remove the task record.");
@@ -98,7 +98,7 @@ static partial class TestSuite
     private static void TestConversionLifecycleOwnsResumeCheckpoint()
     {
         ConversionTaskLifecycle lifecycle = ConversionTaskLifecycle.Start(
-            "decrypt-pdf",
+            CmdDecryptPdf,
             new[] { TestInDir + FileA1, TestInDir + FileA2 });
         try
         {
@@ -116,7 +116,7 @@ static partial class TestSuite
     private static void TestConversionLifecycleTaskIdMatchesPersistedRecord()
     {
         ConversionTaskLifecycle lifecycle = ConversionTaskLifecycle.Start(
-            "decrypt-pdf",
+            CmdDecryptPdf,
             new[] { TestInDir + FileA });
         try
         {

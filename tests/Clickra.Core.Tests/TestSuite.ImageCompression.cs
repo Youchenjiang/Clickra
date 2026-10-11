@@ -18,6 +18,7 @@ static partial class TestSuite
 {
     private const string ImageCompressionLevelKey = "level";
     private const string ImageCompressionQualityKey = "quality";
+    private const string ImageCompressionMaxDimensionKey = "max_dimension";
     private const string ImageCompressCommand = "img-compress";
     private const string CompressionPhotoJpg = "photo.jpg";
     private const string CompressionPhotoOutputJpg = "photo_compressed.jpg";
@@ -44,7 +45,7 @@ static partial class TestSuite
                     Assert.Equal(ImageCompressionOptions.OptionMin, (string)plan.NormalizedOptions[ImageCompressionLevelKey]);
                     Assert.True((int)plan.NormalizedOptions[ImageCompressionQualityKey] == 50,
                         "Minimum image compression must snapshot quality 50.");
-                    Assert.True((int)plan.NormalizedOptions["max_dimension"] == 80,
+                    Assert.True((int)plan.NormalizedOptions[ImageCompressionMaxDimensionKey] == 80,
                         "Image compression plan must snapshot the saved max dimension.");
                     Assert.True(plan.RequiredCapabilities.Count == 0,
                         "Image compression must not require a presentation interaction capability.");
@@ -158,7 +159,7 @@ static partial class TestSuite
                 {
                     [ImageCompressionLevelKey] = ImageCompressionOptions.OptionSmall,
                     [ImageCompressionQualityKey] = ImageCompressionOptions.GetQuality(ImageCompressionLevel.Small),
-                    ["max_dimension"] = 80
+                    [ImageCompressionMaxDimensionKey] = 80
                 });
 
                 using var compressed = new Bitmap(output);
@@ -175,7 +176,7 @@ static partial class TestSuite
                 {
                     [ImageCompressionLevelKey] = ImageCompressionOptions.OptionSmall,
                     [ImageCompressionQualityKey] = ImageCompressionOptions.GetQuality(ImageCompressionLevel.Small),
-                    ["max_dimension"] = 0
+                    [ImageCompressionMaxDimensionKey] = 0
                 }));
             }));
 
@@ -355,13 +356,13 @@ static partial class TestSuite
         {
             ["level"] = ImageCompressionOptions.OptionHigh,
             ["quality"] = ImageCompressionOptions.GetQuality(ImageCompressionLevel.High),
-            ["max_dimension"] = 0
+            [ImageCompressionMaxDimensionKey] = 0
         };
         var lowOptions = new Dictionary<string, object>
         {
             ["level"] = ImageCompressionOptions.OptionMin,
             ["quality"] = ImageCompressionOptions.GetQuality(ImageCompressionLevel.Minimum),
-            ["max_dimension"] = 0
+            [ImageCompressionMaxDimensionKey] = 0
         };
         FileProcessor.CompressImage(source, expected, highOptions);
         long expectedLength = new FileInfo(expected).Length;

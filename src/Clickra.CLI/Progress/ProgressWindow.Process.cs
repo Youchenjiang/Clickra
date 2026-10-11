@@ -124,8 +124,8 @@ namespace Clickra.UI
         // skipcq: CS-R1140
         private void RunProcessing(IntPtr hwnd)
         {
-            List<string> currentFiles = new List<string>();
-            string cmd = "";
+            List<string> currentFiles;
+            string cmd;
             try
             {
                 lock (_stateLock)

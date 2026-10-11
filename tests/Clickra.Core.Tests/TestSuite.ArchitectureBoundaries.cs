@@ -329,7 +329,6 @@ static partial class TestSuite
 
     private static void TestDecryptWorkflowHasSingleExecutionOwner()
         => AssertMigratedWorkflowHasSingleExecutionOwner(
-            DecryptPdfUseCase.CommandName,
             "_decrypted.pdf",
             "FileProcessor.DecryptPdf",
             nameof(DecryptPdfUseCase),
@@ -337,7 +336,6 @@ static partial class TestSuite
 
     private static void TestSplitWorkflowHasSingleExecutionOwner()
         => AssertMigratedWorkflowHasSingleExecutionOwner(
-            SplitPdfUseCase.CommandName,
             "_split.pdf",
             "FileProcessor.SplitPdf",
             nameof(SplitPdfUseCase),
@@ -345,14 +343,12 @@ static partial class TestSuite
 
     private static void TestCompressWorkflowHasSingleExecutionOwner()
         => AssertMigratedWorkflowHasSingleExecutionOwner(
-            CompressPdfUseCase.CommandName,
             "_compressed.pdf",
             "FileProcessor.CompressPdf",
             nameof(CompressPdfUseCase),
             "compression");
 
     private static void AssertMigratedWorkflowHasSingleExecutionOwner(
-        string command,
         string legacyOutputSuffix,
         string processorCall,
         string? useCaseTypeName,
@@ -386,7 +382,6 @@ static partial class TestSuite
 
     private static void TestImg2PdfWorkflowHasSingleExecutionOwner()
         => AssertMigratedWorkflowHasSingleExecutionOwner(
-            Img2PdfUseCase.CommandName,
             "\"img2pdf\" => files.Select",
             "FileProcessor.ConvertImagesToPdf(new List<string> { f }",
             nameof(Img2PdfUseCase),
@@ -394,7 +389,6 @@ static partial class TestSuite
 
     private static void TestMergeWorkflowHasSingleExecutionOwner()
         => AssertMigratedWorkflowHasSingleExecutionOwner(
-            MergePdfUseCase.CommandName,
             "Merged_PDF.pdf",
             "FileProcessor.MergePdfs",
             nameof(MergePdfUseCase),
@@ -402,7 +396,6 @@ static partial class TestSuite
 
     private static void TestImgMergeWorkflowHasSingleExecutionOwner()
         => AssertMigratedWorkflowHasSingleExecutionOwner(
-            ImgMergeUseCase.CommandName,
             "Merged_Images.pdf",
             "FileProcessor.ConvertImagesToPdf(files",
             nameof(ImgMergeUseCase),
@@ -410,7 +403,6 @@ static partial class TestSuite
 
     private static void TestImgStitchWorkflowHasSingleExecutionOwner()
         => AssertMigratedWorkflowHasSingleExecutionOwner(
-            ImgStitchUseCase.CommandName,
             "Stitched_Image.png",
             "FileProcessor.StitchImages",
             nameof(ImgStitchUseCase),
@@ -418,7 +410,6 @@ static partial class TestSuite
 
     private static void TestImgCompressWorkflowHasSingleExecutionOwner()
         => AssertMigratedWorkflowHasSingleExecutionOwner(
-            ImgCompressUseCase.CommandName,
             "EstimateImageCompressionOutputs",
             "FileProcessor.CompressImage",
             nameof(ImgCompressUseCase),
@@ -436,7 +427,6 @@ static partial class TestSuite
         })
         {
             AssertMigratedWorkflowHasSingleExecutionOwner(
-                command,
                 "EstimateImageFormatOutputs",
                 "FileProcessor.ConvertImageFormat",
                 null,
@@ -446,28 +436,24 @@ static partial class TestSuite
 
     private static void TestTranslatePdfWorkflowHasSingleExecutionOwner()
         => AssertDocumentWorkflowHasSingleExecutionOwner(
-            TranslatePdfUseCase.CommandName,
             "FileProcessor.TranslatePdf",
             nameof(TranslatePdfUseCase),
             "PDF translation");
 
     private static void TestWordToPdfWorkflowHasSingleExecutionOwner()
         => AssertDocumentWorkflowHasSingleExecutionOwner(
-            WordToPdfUseCase.CommandName,
             "FileProcessor.ConvertWordToPdf",
             nameof(WordToPdfUseCase),
             "Word conversion");
 
     private static void TestPptToPdfWorkflowHasSingleExecutionOwner()
         => AssertDocumentWorkflowHasSingleExecutionOwner(
-            PptToPdfUseCase.CommandName,
             "FileProcessor.ConvertPptToPdf",
             nameof(PptToPdfUseCase),
             "PowerPoint conversion");
 
     private static void TestExcelToPdfWorkflowHasSingleExecutionOwner()
         => AssertDocumentWorkflowHasSingleExecutionOwner(
-            ExcelToPdfUseCase.CommandName,
             "FileProcessor.ConvertExcelToPdf",
             nameof(ExcelToPdfUseCase),
             "Excel conversion");
@@ -475,7 +461,6 @@ static partial class TestSuite
     private static void TestMarkdownToPdfWorkflowHasSingleExecutionOwner()
     {
         AssertDocumentWorkflowHasSingleExecutionOwner(
-            MarkdownToPdfUseCase.CommandName,
             "FileProcessor.ConvertMarkdownToPdf",
             nameof(MarkdownToPdfUseCase),
             "Markdown PDF conversion");
@@ -485,7 +470,6 @@ static partial class TestSuite
     private static void TestMarkdownToWordWorkflowHasSingleExecutionOwner()
     {
         AssertDocumentWorkflowHasSingleExecutionOwner(
-            MarkdownToWordUseCase.CommandName,
             "FileProcessor.ConvertMarkdownToWord",
             nameof(MarkdownToWordUseCase),
             "Markdown Word conversion");
@@ -493,7 +477,6 @@ static partial class TestSuite
     }
 
     private static void AssertDocumentWorkflowHasSingleExecutionOwner(
-        string command,
         string processorCall,
         string useCaseTypeName,
         string workflowName)
