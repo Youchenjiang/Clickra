@@ -137,7 +137,7 @@ namespace Clickra.UI
                 int clickedIdx = DashboardLayout.DropdownItemAt(popup.Y, DashboardLayout.PdfPopupListTop, popup.Height, adjMouseY);
                 if (clickedIdx >= 0 && clickedIdx < PdfLangs.Length)
                 {
-                    ClickraStorage.SaveSetting(ClickraSettings.TranslateTargetLang, PdfLangs[clickedIdx].Code);
+                    SettingsController.Set(ClickraSettings.TranslateTargetLang, PdfLangs[clickedIdx].Code);
                 }
                 _pdfLangDropdownOpen = false;
                 InvalidateRect(hwnd, IntPtr.Zero, false);

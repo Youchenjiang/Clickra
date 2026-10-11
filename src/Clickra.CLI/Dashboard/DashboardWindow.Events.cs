@@ -225,7 +225,7 @@ namespace Clickra.UI
                 (int)Math.Round(fraction * span, MidpointRounding.AwayFromZero) + range.Min,
                 range.Min,
                 range.Max);
-            string current = ClickraStorage.GetSetting(descriptor.Key);
+            string current = SettingsController.Get(descriptor.Key);
             if (current != newLevel.ToString())
             {
                 ApplyPdfCompressLevel(hwnd, newLevel);
@@ -248,10 +248,10 @@ namespace Clickra.UI
                 (int)Math.Round(fraction * span, MidpointRounding.AwayFromZero) + range.Value.Min,
                 range.Value.Min,
                 range.Value.Max);
-            string current = ClickraStorage.GetSetting(descriptor.Key);
+            string current = SettingsController.Get(descriptor.Key);
             if (current != newLevel.ToString())
             {
-                ClickraStorage.SaveSetting(descriptor.Key, newLevel.ToString());
+                SettingsController.Set(descriptor.Key, newLevel.ToString());
                 InvalidateRect(hwnd, IntPtr.Zero, false);
             }
         }
@@ -467,7 +467,7 @@ namespace Clickra.UI
         {
             if (w == TIMER_ID_REFRESH)
             {
-                ClickraStorage.EnsureFreshSettings();
+                SettingsController.EnsureFresh();
                 RefreshHistoryData();
                 InvalidateRect(hwnd, IntPtr.Zero, false);
             }

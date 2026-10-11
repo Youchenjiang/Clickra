@@ -635,14 +635,14 @@ public sealed partial class MainPage : Page
     private void HookExternalSettingsReload()
     {
         if (_settingsReloadHooked) return;
-        ClickraStorage.SettingsReloaded += OnExternalSettingsReloaded;
+        SettingsController.Reloaded += OnExternalSettingsReloaded;
         _settingsReloadHooked = true;
     }
 
     private void UnhookExternalSettingsReload()
     {
         if (!_settingsReloadHooked) return;
-        ClickraStorage.SettingsReloaded -= OnExternalSettingsReloaded;
+        SettingsController.Reloaded -= OnExternalSettingsReloaded;
         _settingsReloadHooked = false;
     }
 
@@ -664,19 +664,19 @@ public sealed partial class MainPage : Page
         _loadingSettings = true;
         try
         {
-            OutputDirCombo.SelectedIndex = ClickraStorage.GetSetting(ClickraSettings.OutputDir) switch { ClickraSettings.OutputDirDesktop => 1, ClickraSettings.OutputDirDownloads => 2, var s when !string.IsNullOrWhiteSpace(s) && s != ClickraSettings.DefaultOutputDirSource => 3, _ => 0 };
-            EngineCombo.SelectedIndex = ClickraStorage.GetSetting(ClickraSettings.OfficeEngine) switch { ClickraSettings.OfficeEngineMicrosoft => 1, ClickraSettings.OfficeEngineLibreOffice => 2, _ => 0 };
-            LanguageCombo.SelectedIndex = ClickraStorage.GetSetting(ClickraSettings.Language) switch { SimplifiedChineseLanguage => 1, "en-US" => 2, "ja-JP" => 3, "ko-KR" => 4, _ => 0 };
-            QuietModeToggle.IsOn = ClickraStorage.GetSettingBool(ClickraSettings.QuietMode);
-            NotificationToggle.IsOn = ClickraStorage.GetSettingBool(ClickraSettings.Notification);
-            PdfLangCombo.SelectedIndex = ClickraStorage.GetSetting(ClickraSettings.TranslateTargetLang) switch { "en" => 1, SimplifiedChineseLanguage => 2, "ja" => 3, "ko" => 4, _ => 0 };
+            OutputDirCombo.SelectedIndex = SettingsController.Get(ClickraSettings.OutputDir) switch { ClickraSettings.OutputDirDesktop => 1, ClickraSettings.OutputDirDownloads => 2, var s when !string.IsNullOrWhiteSpace(s) && s != ClickraSettings.DefaultOutputDirSource => 3, _ => 0 };
+            EngineCombo.SelectedIndex = SettingsController.Get(ClickraSettings.OfficeEngine) switch { ClickraSettings.OfficeEngineMicrosoft => 1, ClickraSettings.OfficeEngineLibreOffice => 2, _ => 0 };
+            LanguageCombo.SelectedIndex = SettingsController.Get(ClickraSettings.Language) switch { SimplifiedChineseLanguage => 1, "en-US" => 2, "ja-JP" => 3, "ko-KR" => 4, _ => 0 };
+            QuietModeToggle.IsOn = SettingsController.GetBool(ClickraSettings.QuietMode);
+            NotificationToggle.IsOn = SettingsController.GetBool(ClickraSettings.Notification);
+            PdfLangCombo.SelectedIndex = SettingsController.Get(ClickraSettings.TranslateTargetLang) switch { "en" => 1, SimplifiedChineseLanguage => 2, "ja" => 3, "ko" => 4, _ => 0 };
             CompressionSlider.Minimum = ClickraSettings.MinPdfCompressLevel;
             CompressionSlider.Maximum = ClickraSettings.MaxPdfCompressLevel;
             CompressionSlider.Value = ClickraSettings.NormalizePdfCompressLevel(
-                ClickraStorage.GetSettingInt(ClickraSettings.PdfCompressImageLevel));
+                SettingsController.GetInt(ClickraSettings.PdfCompressImageLevel));
             UpdateCompressionLabel(CompressionLabel, CompressionSlider);
-            StripFontsToggle.IsOn = ClickraStorage.GetSettingBool(ClickraSettings.PdfCompressStripFonts);
-            MinifyContentToggle.IsOn = ClickraStorage.GetSettingBool(ClickraSettings.PdfCompressMinifyContent);
+            StripFontsToggle.IsOn = SettingsController.GetBool(ClickraSettings.PdfCompressStripFonts);
+            MinifyContentToggle.IsOn = SettingsController.GetBool(ClickraSettings.PdfCompressMinifyContent);
             ParkedRetentionBox.Minimum = MinParkedRetentionDays;
             ParkedRetentionBox.Maximum = MaxParkedRetentionDays;
             ParkedRetentionBox.Value = ClickraStorage.GetParkedRetentionDays();
@@ -830,15 +830,15 @@ public sealed partial class MainPage : Page
     private void SaveSettings()
     {
         if (_loadingSettings) return;
-        ClickraStorage.SaveSetting(ClickraSettings.OfficeEngine, EngineCombo.SelectedIndex switch { 1 => ClickraSettings.OfficeEngineMicrosoft, 2 => ClickraSettings.OfficeEngineLibreOffice, _ => ClickraSettings.DefaultOfficeEngineAuto });
-        ClickraStorage.SaveSetting(ClickraSettings.Language, LanguageCombo.SelectedIndex switch { 1 => SimplifiedChineseLanguage, 2 => "en-US", 3 => "ja-JP", 4 => "ko-KR", _ => "zh-TW" });
-        ClickraStorage.SaveSetting(ClickraSettings.TranslateTargetLang, PdfLangCombo.SelectedIndex switch { 1 => "en", 2 => SimplifiedChineseLanguage, 3 => "ja", 4 => "ko", _ => ClickraSettings.DefaultTranslateTargetLang });
+        SettingsController.Set(ClickraSettings.OfficeEngine, EngineCombo.SelectedIndex switch { 1 => ClickraSettings.OfficeEngineMicrosoft, 2 => ClickraSettings.OfficeEngineLibreOffice, _ => ClickraSettings.DefaultOfficeEngineAuto });
+        SettingsController.Set(ClickraSettings.Language, LanguageCombo.SelectedIndex switch { 1 => SimplifiedChineseLanguage, 2 => "en-US", 3 => "ja-JP", 4 => "ko-KR", _ => "zh-TW" });
+        SettingsController.Set(ClickraSettings.TranslateTargetLang, PdfLangCombo.SelectedIndex switch { 1 => "en", 2 => SimplifiedChineseLanguage, 3 => "ja", 4 => "ko", _ => ClickraSettings.DefaultTranslateTargetLang });
         int compressLevel = ClickraSettings.ClampNumericSetting(ClickraSettings.PdfCompressImageLevel, (int)CompressionSlider.Value);
-        ClickraStorage.SaveSetting(ClickraSettings.PdfCompressImageLevel, compressLevel.ToString());
-        ClickraStorage.SaveSetting(ClickraSettings.PdfCompressStripFonts, StripFontsToggle.IsOn ? ClickraSettings.ValueTrue : ClickraSettings.ValueFalse);
-        ClickraStorage.SaveSetting(ClickraSettings.PdfCompressMinifyContent, MinifyContentToggle.IsOn ? ClickraSettings.ValueTrue : ClickraSettings.ValueFalse);
-        ClickraStorage.SaveSetting(ClickraSettings.QuietMode, QuietModeToggle.IsOn ? ClickraSettings.ValueTrue : ClickraSettings.ValueFalse);
-        ClickraStorage.SaveSetting(ClickraSettings.Notification, NotificationToggle.IsOn ? ClickraSettings.ValueTrue : ClickraSettings.ValueFalse);
+        SettingsController.Set(ClickraSettings.PdfCompressImageLevel, compressLevel.ToString());
+        SettingsController.Set(ClickraSettings.PdfCompressStripFonts, StripFontsToggle.IsOn ? ClickraSettings.ValueTrue : ClickraSettings.ValueFalse);
+        SettingsController.Set(ClickraSettings.PdfCompressMinifyContent, MinifyContentToggle.IsOn ? ClickraSettings.ValueTrue : ClickraSettings.ValueFalse);
+        SettingsController.Set(ClickraSettings.QuietMode, QuietModeToggle.IsOn ? ClickraSettings.ValueTrue : ClickraSettings.ValueFalse);
+        SettingsController.Set(ClickraSettings.Notification, NotificationToggle.IsOn ? ClickraSettings.ValueTrue : ClickraSettings.ValueFalse);
         RefreshLibreOfficeStatus();
     }
 
@@ -858,7 +858,7 @@ public sealed partial class MainPage : Page
         }
 
         int days = Math.Clamp((int)Math.Round(args.NewValue, MidpointRounding.AwayFromZero), MinParkedRetentionDays, MaxParkedRetentionDays);
-        ClickraStorage.SaveSetting(ClickraSettings.ParkedTaskRetention, days.ToString());
+        SettingsController.Set(ClickraSettings.ParkedTaskRetention, days.ToString());
         if (Math.Abs(sender.Value - days) > 0.0001)
         {
             _syncingParkedRetention = true;
@@ -883,15 +883,15 @@ public sealed partial class MainPage : Page
             if (folder is null)
             {
                 _loadingSettings = true;
-                OutputDirCombo.SelectedIndex = ClickraStorage.GetSetting(ClickraSettings.OutputDir) switch { ClickraSettings.OutputDirDesktop => 1, ClickraSettings.OutputDirDownloads => 2, var s when !string.IsNullOrWhiteSpace(s) && s != ClickraSettings.DefaultOutputDirSource => 3, _ => 0 };
+                OutputDirCombo.SelectedIndex = SettingsController.Get(ClickraSettings.OutputDir) switch { ClickraSettings.OutputDirDesktop => 1, ClickraSettings.OutputDirDownloads => 2, var s when !string.IsNullOrWhiteSpace(s) && s != ClickraSettings.DefaultOutputDirSource => 3, _ => 0 };
                 _loadingSettings = false;
                 return;
             }
-            ClickraStorage.SaveSetting(ClickraSettings.OutputDir, folder.Path);
+            SettingsController.Set(ClickraSettings.OutputDir, folder.Path);
             return;
         }
 
-        ClickraStorage.SaveSetting(ClickraSettings.OutputDir, OutputDirCombo.SelectedIndex switch { 1 => ClickraSettings.OutputDirDesktop, 2 => ClickraSettings.OutputDirDownloads, _ => ClickraSettings.DefaultOutputDirSource });
+        SettingsController.Set(ClickraSettings.OutputDir, OutputDirCombo.SelectedIndex switch { 1 => ClickraSettings.OutputDirDesktop, 2 => ClickraSettings.OutputDirDownloads, _ => ClickraSettings.DefaultOutputDirSource });
     }
 
     private async Task OpenUriAsync(string uri)

@@ -327,8 +327,8 @@ static partial class TestSuite
             "The retention control must show the same value the task pruner enforces.");
         Assert.True(code.Contains("ParkedRetentionBox.ValueChanged += OnParkedRetentionChanged", StringComparison.Ordinal),
             "Editing the retention control must persist the setting.");
-        Assert.True(code.Contains("ClickraStorage.SaveSetting(ClickraSettings.ParkedTaskRetention", StringComparison.Ordinal),
-            "Changing the retention control must write the ParkedTaskRetention setting.");
+        Assert.True(code.Contains("SettingsController.Set(ClickraSettings.ParkedTaskRetention", StringComparison.Ordinal),
+            "Changing the retention control must write ParkedTaskRetention through the application settings gateway.");
         Assert.False(code.Contains("const string ParkedRetentionSettingKey", StringComparison.Ordinal),
             "The key must come from the ClickraSettings registry, not a local constant.");
 
@@ -401,8 +401,8 @@ static partial class TestSuite
             "IsSettingsElement must route the entire retention control ID range.");
 
         // Must write using the central registry constant ClickraSettings.ParkedTaskRetention
-        Assert.True(clickCode.Contains("ClickraStorage.SaveSetting(ClickraSettings.ParkedTaskRetention", StringComparison.Ordinal),
-            "Click handler must persist retention using ClickraSettings.ParkedTaskRetention.");
+        Assert.True(clickCode.Contains("SettingsController.Set(ClickraSettings.ParkedTaskRetention", StringComparison.Ordinal),
+            "Click handler must persist retention through the application settings gateway using ClickraSettings.ParkedTaskRetention.");
 
         // The default preset must come from the registry rather than embedding seven days locally.
         Assert.True(paintCode.Contains("GetDefaultParkedRetentionDays()", StringComparison.Ordinal) &&

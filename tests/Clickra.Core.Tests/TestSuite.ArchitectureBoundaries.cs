@@ -90,6 +90,9 @@ static partial class TestSuite
             "Architecture boundaries: application contracts stay UI-independent",
             TestApplicationContractsStayUiIndependent);
         runner.RunGuard(
+            "Architecture boundaries: settings persistence has one application gateway",
+            TestSettingsPersistenceHasSingleApplicationGateway);
+        runner.RunGuard(
             "Architecture boundaries: parked task orchestration has one storage owner",
             TestParkedTaskOrchestrationHasSingleOwner);
         runner.RunGuard(
@@ -513,6 +516,70 @@ static partial class TestSuite
         Assert.Equal(2, ReadTopLevelArguments("Localization.T(\"k\", language)", "Localization.T(".Length).Count);
         Assert.Equal(1, ReadTopLevelArguments("Localization.T(\"a,(b)\")", "Localization.T(".Length).Count);
         Assert.Equal(3, ReadTopLevelArguments("Localization.T(\"k\", Path.Combine(a, b), 'x')", "Localization.T(".Length).Count);
+    }
+
+    private static readonly Regex DirectSettingsStorageAccess =
+        new(@"\bClickraStorage\.(?:GetSetting|GetSettingBool|GetSettingInt|SaveSetting|SettingsReloaded|EnsureFreshSettings)\b",
+            RegexOptions.Compiled, ArchitectureRegexTimeout);
+
+    private static readonly Regex SettingsGatewayStorageAccess =
+        new(@"\bClickraStorage\.(?<member>[A-Za-z0-9_]+)\b",
+            RegexOptions.Compiled, ArchitectureRegexTimeout);
+
+    private static readonly IReadOnlySet<string> AllowedSettingsGatewayMembers =
+        new HashSet<string>(StringComparer.Ordinal)
+        {
+            "GetSetting",
+            "GetSettingBool",
+            "GetSettingInt",
+            "SaveSetting",
+            "SettingsReloaded",
+            "EnsureFreshSettings"
+        };
+
+    private static void TestSettingsPersistenceHasSingleApplicationGateway()
+    {
+        string? root = FindRepoRoot();
+        if (root is null) throw new TestSkippedException(RepositoryRootMissingMessage);
+
+        string settingsGatewayPath = Path.Combine(
+            root,
+            "src",
+            ArchitectureCoreProjectDirectory,
+            "Application",
+            "SettingsController.cs");
+        Assert.True(File.Exists(settingsGatewayPath), "Application settings gateway must exist.");
+
+        var violations = new List<string>();
+        foreach (string directory in new[]
+                 {
+                     Path.Combine(root, "src", ArchitectureCliProjectDirectory),
+                     Path.Combine(root, "src", ArchitectureFluentProjectDirectory),
+                     Path.Combine(root, "src", ArchitectureCoreProjectDirectory, "Application")
+                 })
+        {
+            foreach (string file in Directory.EnumerateFiles(directory, "*.cs", SearchOption.AllDirectories))
+            {
+                if (string.Equals(file, settingsGatewayPath, StringComparison.OrdinalIgnoreCase)) continue;
+                string source = File.ReadAllText(file);
+                if (!DirectSettingsStorageAccess.IsMatch(source)) continue;
+                violations.Add(NormalizeRepoPath(root, file));
+            }
+        }
+
+        string gatewaySource = File.ReadAllText(settingsGatewayPath);
+        foreach (Match match in SettingsGatewayStorageAccess.Matches(gatewaySource))
+        {
+            string member = match.Groups["member"].Value;
+            if (!AllowedSettingsGatewayMembers.Contains(member))
+                violations.Add($"src/Clickra.Core/Application/SettingsController.cs: unexpected ClickraStorage.{member} access");
+        }
+
+        Assert.True(
+            violations.Count == 0,
+            "CLI, Fluent, and application workflows must use SettingsController for settings persistence; " +
+            "the gateway itself may expose settings APIs only:" + Environment.NewLine +
+            string.Join(Environment.NewLine, violations));
     }
 
     /// <summary>Splits a call's argument list at top-level commas, starting just after its opening parenthesis.</summary>

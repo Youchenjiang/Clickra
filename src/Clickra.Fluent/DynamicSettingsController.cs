@@ -173,7 +173,7 @@ internal sealed class DynamicSettingsController
         toggle.Toggled += (_, _) =>
         {
             if (_isLoading()) return;
-            ClickraStorage.SaveSetting(
+            SettingsController.Set(
                 descriptor.Key,
                 toggle.IsOn ? ClickraSettings.ValueTrue : ClickraSettings.ValueFalse);
         };
@@ -211,7 +211,7 @@ internal sealed class DynamicSettingsController
         {
             if (_isLoading()) return;
             int level = Math.Clamp((int)slider.Value, range.Min, range.Max);
-            ClickraStorage.SaveSetting(descriptor.Key, level.ToString());
+            SettingsController.Set(descriptor.Key, level.ToString());
             UpdateSliderLabel(valueLabel, descriptor, level);
         };
 
@@ -242,7 +242,7 @@ internal sealed class DynamicSettingsController
         {
             if (_isLoading() || double.IsNaN(numberBox.Value)) return;
             int clamped = Math.Clamp((int)numberBox.Value, range.Min, range.Max);
-            ClickraStorage.SaveSetting(descriptor.Key, clamped.ToString());
+            SettingsController.Set(descriptor.Key, clamped.ToString());
         };
 
         stack.Children.Add(grid);
@@ -261,7 +261,7 @@ internal sealed class DynamicSettingsController
             if (_isLoading()) return;
             if (comboBox.SelectedItem is ComboBoxItem item && item.Tag is string value)
             {
-                ClickraStorage.SaveSetting(descriptor.Key, value);
+                SettingsController.Set(descriptor.Key, value);
             }
         };
 
@@ -273,7 +273,7 @@ internal sealed class DynamicSettingsController
     {
         if (control.InputControl is ToggleSwitch toggle)
         {
-            toggle.IsOn = ClickraStorage.GetSettingBool(control.Descriptor.Key);
+            toggle.IsOn = SettingsController.GetBool(control.Descriptor.Key);
         }
     }
 
@@ -282,7 +282,7 @@ internal sealed class DynamicSettingsController
         if (control.InputControl is not Slider slider) return;
         SettingDescriptor descriptor = control.Descriptor;
         NumericSettingRange range = descriptor.GetEffectiveNumericRange() ?? new NumericSettingRange(0, 1, 0);
-        int value = Math.Clamp(ClickraStorage.GetSettingInt(descriptor.Key), range.Min, range.Max);
+        int value = Math.Clamp(SettingsController.GetInt(descriptor.Key), range.Min, range.Max);
         slider.Minimum = range.Min;
         slider.Maximum = range.Max;
         slider.Value = value;
@@ -299,13 +299,13 @@ internal sealed class DynamicSettingsController
         NumericSettingRange range = descriptor.GetEffectiveNumericRange() ?? new NumericSettingRange(0, 100, 0);
         numberBox.Minimum = range.Min;
         numberBox.Maximum = range.Max;
-        numberBox.Value = Math.Clamp(ClickraStorage.GetSettingInt(descriptor.Key), range.Min, range.Max);
+        numberBox.Value = Math.Clamp(SettingsController.GetInt(descriptor.Key), range.Min, range.Max);
     }
 
     private static void SyncChoice(DynamicSettingControl control)
     {
         if (control.InputControl is not ComboBox comboBox) return;
-        string value = ClickraStorage.GetSetting(control.Descriptor.Key);
+        string value = SettingsController.Get(control.Descriptor.Key);
         for (int i = 0; i < comboBox.Items.Count; i++)
         {
             if (comboBox.Items[i] is ComboBoxItem item &&

@@ -42,7 +42,7 @@ public sealed class ImageFormatConvertUseCase : PerFileConversionUseCaseBase
         var options = request.Options is null
             ? new Dictionary<string, object>(StringComparer.Ordinal)
             : new Dictionary<string, object>(request.Options, StringComparer.Ordinal);
-        options[ExecutionLocalizationOptions.LanguageKey] = ClickraStorage.GetSetting(ClickraSettings.Language);
+        options[ExecutionLocalizationOptions.LanguageKey] = SettingsController.Get(ClickraSettings.Language);
         return options;
     }
 
