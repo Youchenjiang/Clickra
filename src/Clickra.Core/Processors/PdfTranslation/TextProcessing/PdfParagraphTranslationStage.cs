@@ -142,7 +142,7 @@ internal static class PdfParagraphTranslationStage
         {
             if (string.IsNullOrWhiteSpace(dataDirectory)) return;
             string logPath = Path.Combine(dataDirectory, "translate_errors.log");
-            string logLine = $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss}] [File: {Path.GetFileName(inputPath)}] [Page {pageIndex + 1}] {message}{Environment.NewLine}";
+            string logLine = $"[{DateTimeOffset.Now:yyyy-MM-dd HH:mm:ss}] [File: {Path.GetFileName(inputPath)}] [Page {pageIndex + 1}] {message}{Environment.NewLine}";
             lock (logLock)
             {
                 File.AppendAllText(logPath, logLine);

@@ -4,8 +4,8 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace Clickra.Core.Processors.PdfTranslation.TextProcessing
-{
+namespace Clickra.Core.Processors.PdfTranslation.TextProcessing;
+
     internal readonly record struct PdfTranslationBatchContext(
         int PageIndex,
         int TotalPages,
@@ -194,4 +194,3 @@ namespace Clickra.Core.Processors.PdfTranslation.TextProcessing
             }
         }
     }
-}

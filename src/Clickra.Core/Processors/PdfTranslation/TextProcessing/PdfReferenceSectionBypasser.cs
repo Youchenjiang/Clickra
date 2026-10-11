@@ -2,8 +2,8 @@ using System;
 using System.Collections.Generic;
 using Clickra.Core.Models;
 
-namespace Clickra.Core.Processors.PdfTranslation.TextProcessing
-{
+namespace Clickra.Core.Processors.PdfTranslation.TextProcessing;
+
     internal static class PdfReferenceSectionBypasser
     {
         /// <summary>
@@ -50,4 +50,3 @@ namespace Clickra.Core.Processors.PdfTranslation.TextProcessing
             }
         }
     }
-}

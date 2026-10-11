@@ -3,8 +3,8 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 
-namespace Clickra.Core.Storage
-{
+namespace Clickra.Core.Storage;
+
     public static partial class ClickraStorage
     {
         // ─── Task Queue (File-based IPC) ───────────────────────────────────────
@@ -355,4 +355,3 @@ namespace Clickra.Core.Storage
         private static HistoryEntry? ReadTaskFileInternal(string taskId) => TaskRecordStore.Read(taskId);
 
     }
-}

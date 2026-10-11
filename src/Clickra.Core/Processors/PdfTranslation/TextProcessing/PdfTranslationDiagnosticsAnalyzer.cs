@@ -4,8 +4,8 @@ using System.Linq;
 using Clickra.Core.Models;
 using UglyToad.PdfPig.Content;
 
-namespace Clickra.Core.Processors.PdfTranslation.TextProcessing
-{
+namespace Clickra.Core.Processors.PdfTranslation.TextProcessing;
+
     internal sealed class PdfTranslationDiagnosticsDependencies
     {
         public required Func<Page, List<PdfParagraph>> BuildPageParagraphs { get; init; }
@@ -72,7 +72,7 @@ namespace Clickra.Core.Processors.PdfTranslation.TextProcessing
             foreach (var para in pageList.OrderByDescending(p => p.Y1))
             {
                 string txt = para.TextWithPlaceholders.Trim();
-                int wordCount = txt.Split(new char[] { ' ', '\t', '\n', '\r' }, StringSplitOptions.RemoveEmptyEntries).Length;
+                int wordCount = txt.Split(new[] { ' ', '\t', '\n', '\r' }, StringSplitOptions.RemoveEmptyEntries).Length;
                 bool hasPeriod = txt.IndexOf('.') >= 0;
                 bool isBodyProse = dependencies.IsTranslatableBodyProse(para);
                 bool isCalloutProse = dependencies.IsTranslatableCalloutProse(para);
@@ -129,4 +129,3 @@ namespace Clickra.Core.Processors.PdfTranslation.TextProcessing
             Y1 = region.Y1
         };
     }
-}
