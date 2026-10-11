@@ -291,6 +291,14 @@ After processor settings are explicit, re-audit the remaining CLI and Fluent `Cl
 - data/output directories;
 - legacy compatibility.
 
+Progress as of 2026-10-11:
+
+- settings persistence now has a dedicated application-facing `SettingsController` gateway;
+- CLI and Fluent no longer call `ClickraStorage.GetSetting*`, `SaveSetting`, `SettingsReloaded`, or `EnsureFreshSettings` directly;
+- application conversion workflows also read snapshotted settings through the same gateway instead of individually depending on settings persistence;
+- an architecture guard requires CLI, Fluent, and application workflows to use the gateway and restricts the gateway itself to the six settings-specific storage members it owns;
+- history, parked-task actions, task records, data/output directories, and legacy compatibility remain separate responsibilities for later Slice 4 sub-slices rather than being folded into the settings gateway.
+
 Do not replace one god facade with another god interface.
 
 Introduce narrow application-facing owners only where a coherent responsibility already exists, for example:
