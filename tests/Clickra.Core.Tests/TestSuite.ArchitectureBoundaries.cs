@@ -110,6 +110,9 @@ static partial class TestSuite
             "Architecture boundaries: processor global setting baseline invariants stay explicit",
             TestProcessorGlobalStateBaselineInvariants);
         runner.RunGuard(
+            "Architecture boundaries: infrastructure settings access stays on an explicit key allowlist",
+            TestInfrastructureSettingsAccessStaysOnAllowlist);
+        runner.RunGuard(
             "Architecture boundaries: application contracts stay UI-independent",
             TestApplicationContractsStayUiIndependent);
         runner.RunGuard(
@@ -379,6 +382,82 @@ static partial class TestSuite
             string syntheticCall = $"var value = {rule.Name}(ClickraSettings.Language);";
             Assert.Equal(1, rule.Pattern.Matches(syntheticCall).Count);
         }
+    }
+
+    private sealed record InfrastructureSettingsAllowance(
+        IReadOnlySet<string> OwnedKeys,
+        IReadOnlySet<string> ReadOnlyKeys);
+
+    // Infrastructure may persist its own lifecycle state (for example, which LibreOffice
+    // installation Clickra manages), unlike processors. Every key is listed explicitly so
+    // moving a file into Infrastructure/ cannot be used to escape the processor guard.
+    private static readonly IReadOnlyDictionary<string, InfrastructureSettingsAllowance> InfrastructureSettingsAllowlist =
+        new Dictionary<string, InfrastructureSettingsAllowance>(StringComparer.OrdinalIgnoreCase)
+        {
+            ["src/Clickra.Core/Infrastructure/LibreOfficeEngineInstaller.cs"] = new(
+                OwnedKeys: new HashSet<string>(StringComparer.Ordinal)
+                {
+                    "LibreOfficeInstalledByClickra",
+                    "LibreOfficeManagedProductCode",
+                    "LibreOfficeManagedSofficePath"
+                },
+                ReadOnlyKeys: new HashSet<string>(StringComparer.Ordinal)
+                {
+                    "LibreOfficeRemovalPendingRestart",
+                    "LibreOfficePath"
+                })
+        };
+
+    private static readonly Regex InfrastructureStorageReference =
+        new(@"\bClickraStorage\.", RegexOptions.Compiled, ArchitectureRegexTimeout);
+
+    private static readonly Regex InfrastructureSettingsCall =
+        new(@"\bClickraStorage\.(?<op>GetSetting|GetSettingBool|GetSettingInt|SaveSetting)\(\s*ClickraSettings\.(?<key>[A-Za-z0-9_]+)\b",
+            RegexOptions.Compiled, ArchitectureRegexTimeout);
+
+    private static void TestInfrastructureSettingsAccessStaysOnAllowlist()
+    {
+        string? root = FindRepoRoot();
+        if (root is null) throw new TestSkippedException(RepositoryRootMissingMessage);
+
+        string infrastructureDir = Path.Combine(root, "src", ArchitectureCoreProjectDirectory, "Infrastructure");
+        if (!Directory.Exists(infrastructureDir)) return;
+
+        var violations = new List<string>();
+        foreach (string file in Directory.EnumerateFiles(infrastructureDir, "*.cs", SearchOption.AllDirectories)
+                     .Where(path => !path.Contains($"{Path.DirectorySeparatorChar}bin{Path.DirectorySeparatorChar}", StringComparison.OrdinalIgnoreCase)
+                                    && !path.Contains($"{Path.DirectorySeparatorChar}obj{Path.DirectorySeparatorChar}", StringComparison.OrdinalIgnoreCase)))
+        {
+            string path = NormalizeRepoPath(root, file);
+            string source = File.ReadAllText(file);
+            int references = InfrastructureStorageReference.Matches(source).Count;
+            if (references == 0) continue;
+
+            MatchCollection calls = InfrastructureSettingsCall.Matches(source);
+            if (calls.Count != references)
+                violations.Add($"{path}: {references - calls.Count} ClickraStorage use(s) are not explicit ClickraSettings reads/writes.");
+
+            if (!InfrastructureSettingsAllowlist.TryGetValue(path, out InfrastructureSettingsAllowance? allowance))
+            {
+                violations.Add($"{path}: settings access is not allowlisted for this infrastructure owner.");
+                continue;
+            }
+
+            foreach (Match call in calls)
+            {
+                string op = call.Groups["op"].Value;
+                string key = call.Groups["key"].Value;
+                bool owned = allowance.OwnedKeys.Contains(key);
+                bool readOnly = allowance.ReadOnlyKeys.Contains(key);
+                if (op == "SaveSetting" ? !owned : !(owned || readOnly))
+                    violations.Add($"{path}: {op}({key}) is outside its allowlist.");
+            }
+        }
+
+        Assert.True(
+            violations.Count == 0,
+            "Infrastructure settings access must stay on the explicit per-owner key allowlist:" +
+            Environment.NewLine + string.Join(Environment.NewLine, violations));
     }
 
     private static void TestApplicationContractsStayUiIndependent()
