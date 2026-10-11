@@ -30,6 +30,15 @@ static partial class TestSuite
         Regex Pattern,
         IReadOnlyDictionary<string, int> Baseline);
 
+    private static IReadOnlyDictionary<string, int> EmptyArchitectureBaseline() =>
+        new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
+
+    private static ArchitectureViolationRule ArchitectureRule(string name, string pattern) =>
+        new(name, new Regex(pattern, RegexOptions.Compiled, ArchitectureRegexTimeout), EmptyArchitectureBaseline());
+
+    private static ProcessorGlobalStateRule ProcessorGlobalStateRuleFor(string name, string pattern) =>
+        new(name, new Regex(pattern, RegexOptions.Compiled, ArchitectureRegexTimeout), EmptyArchitectureBaseline());
+
     private sealed record MigrationSurfaceSources(
         string Registry,
         string Native,
@@ -40,42 +49,18 @@ static partial class TestSuite
 
     private static readonly ArchitectureViolationRule[] ArchitectureViolationRules =
     {
-        new(
-            "direct FileProcessor execution",
-            new Regex(@"\bFileProcessor\.", RegexOptions.Compiled, ArchitectureRegexTimeout),
-            new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase)),
-        new(
-            "direct task start",
-            new Regex(@"\bClickraStorage\.StartTask\(", RegexOptions.Compiled, ArchitectureRegexTimeout),
-            new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase)),
-        new(
-            "direct task completion",
-            new Regex(@"\bClickraStorage\.CompleteTask\(", RegexOptions.Compiled, ArchitectureRegexTimeout),
-            new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase)),
-        new(
-            "direct output planning",
-            new Regex(@"\bConvertCommandRegistry\.EstimateOutputs\(", RegexOptions.Compiled, ArchitectureRegexTimeout),
-            new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase))
+        ArchitectureRule("direct FileProcessor execution", @"\bFileProcessor\."),
+        ArchitectureRule("direct task start", @"\bClickraStorage\.StartTask\("),
+        ArchitectureRule("direct task completion", @"\bClickraStorage\.CompleteTask\("),
+        ArchitectureRule("direct output planning", @"\bConvertCommandRegistry\.EstimateOutputs\(")
     };
 
     private static readonly ProcessorGlobalStateRule[] ProcessorGlobalStateRules =
     {
-        new(
-            "ClickraStorage.GetSetting",
-            new Regex(@"\bClickraStorage\.GetSetting\(", RegexOptions.Compiled, ArchitectureRegexTimeout),
-            new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase)),
-        new(
-            "ClickraStorage.GetSettingBool",
-            new Regex(@"\bClickraStorage\.GetSettingBool\(", RegexOptions.Compiled, ArchitectureRegexTimeout),
-            new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase)),
-        new(
-            "ClickraStorage.GetSettingInt",
-            new Regex(@"\bClickraStorage\.GetSettingInt\(", RegexOptions.Compiled, ArchitectureRegexTimeout),
-            new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase)),
-        new(
-            "ClickraStorage.SaveSetting",
-            new Regex(@"\bClickraStorage\.SaveSetting\(", RegexOptions.Compiled, ArchitectureRegexTimeout),
-            new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase))
+        ProcessorGlobalStateRuleFor("ClickraStorage.GetSetting", @"\bClickraStorage\.GetSetting\("),
+        ProcessorGlobalStateRuleFor("ClickraStorage.GetSettingBool", @"\bClickraStorage\.GetSettingBool\("),
+        ProcessorGlobalStateRuleFor("ClickraStorage.GetSettingInt", @"\bClickraStorage\.GetSettingInt\("),
+        ProcessorGlobalStateRuleFor("ClickraStorage.SaveSetting", @"\bClickraStorage\.SaveSetting\(")
     };
 
     public static void RegisterArchitectureBoundaryTests(TestRunner runner)
