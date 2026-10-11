@@ -297,7 +297,11 @@ Progress as of 2026-10-11:
 - CLI and Fluent no longer call `ClickraStorage.GetSetting*`, `SaveSetting`, `SettingsReloaded`, or `EnsureFreshSettings` directly;
 - application conversion workflows also read snapshotted settings through the same gateway instead of individually depending on settings persistence;
 - an architecture guard requires CLI, Fluent, and application workflows to use the gateway and restricts the gateway itself to the six settings-specific storage members it owns;
-- history, parked-task actions, task records, data/output directories, and legacy compatibility remain separate responsibilities for later Slice 4 sub-slices rather than being folded into the settings gateway.
+- parked-task actions now have a dedicated application-facing `ParkedTaskController` gateway for cancellation, atomic resume claims, effective retention reads, and per-task retention adjustment/reset;
+- CLI and Fluent no longer invoke the raw `ClickraStorage` parked-task action APIs directly, while the private `ParkedTaskCoordinator` remains the sole owner of atomic persistence transitions;
+- the parked-task gateway maps resume data into its own application contract instead of exposing `ClickraStorage.ResumedTaskInfo` to UI callers;
+- an architecture guard requires CLI, Fluent, and application workflows to use the parked-task gateway for those action APIs and restricts the gateway to its parked-task-specific storage allowlist;
+- history clearing/feed persistence, task records/index updates, data/output directories, and legacy compatibility remain separate responsibilities for later Slice 4 sub-slices rather than being folded into either application gateway.
 
 Do not replace one god facade with another god interface.
 
