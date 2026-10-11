@@ -7,7 +7,56 @@ on:
   workflow_dispatch:
 
 jobs:
-  build-msix:
+  # NativeAOT dominates release build time. Publish independent binaries on
+  # separate hosted runners, then fan them in for deterministic MSIX assembly.
+  native-publish:
+    name: Publish ${{ matrix.name }} (NativeAOT)
+    runs-on: windows-latest
+    permissions:
+      contents: read
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: CLI
+            project: src/Clickra.CLI/Clickra.csproj
+            artifact: clickra-cli
+            output: cli
+          - name: Shell Extension
+            project: src/ClickraShell/ClickraShell.csproj
+            artifact: clickra-shell
+            output: shell
+          - name: Launcher
+            project: src/ClickraLauncher/ClickraLauncher.csproj
+            artifact: clickra-launcher
+            output: launcher
+
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Publish ${{ matrix.name }}
+        shell: pwsh
+        run: |
+          . ./scripts/build_common.ps1
+          Add-VsInstallerToPath
+          dotnet publish "${{ matrix.project }}" -c Release -r win-x64 --self-contained true -o "publish/${{ matrix.output }}" -warnaserror
+
+      - name: Upload ${{ matrix.name }} artifact
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: ${{ matrix.artifact }}
+          path: publish/${{ matrix.output }}
+          if-no-files-found: error
+          retention-days: 1
+
+  assemble-msix:
+    name: Assemble and sign MSIX
+    needs: native-publish
     runs-on: windows-latest
     permissions:
       contents: read
@@ -30,15 +79,43 @@ jobs:
             echo "is_release=false" >> "$GITHUB_OUTPUT"
           fi
 
-      - name: Setup .NET
-        uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
+      - name: Download CLI artifact
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
-          dotnet-version: '10.0.x'
+          name: clickra-cli
+          path: publish/cli
 
-      - name: Build Main MSIX (NativeAOT)
+      - name: Download Shell Extension artifact
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: clickra-shell
+          path: publish/shell
+
+      - name: Download Launcher artifact
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: clickra-launcher
+          path: publish/launcher
+
+      - name: Assemble Main MSIX
         shell: pwsh
         run: |
-          ./scripts/build_msix.ps1
+          . ./scripts/build_common.ps1
+          Add-WindowsSdkToolsToPath
+
+          Remove-ForceDir "$script:LayoutDir"
+          New-Item -ItemType Directory -Path "$script:LayoutDir" -Force | Out-Null
+          Copy-AssemblyLayout `
+            -Root $script:Root `
+            -PackagingDir $script:PackagingDir `
+            -LayoutDir $script:LayoutDir `
+            -PublishDir $script:PublishDir
+
+          $msixPath = New-AndSignMsix `
+            -Root $script:Root `
+            -PackagingDir $script:PackagingDir `
+            -LayoutDir $script:LayoutDir
+
           if (-not (Test-Path "./Clickra.msix")) {
               throw "Main MSIX was not produced."
           }
@@ -52,8 +129,8 @@ jobs:
           retention-days: 7
 
   github-release:
-    needs: build-msix
-    if: needs.build-msix.outputs.is_release == 'true'
+    needs: assemble-msix
+    if: needs.assemble-msix.outputs.is_release == 'true'
     runs-on: windows-latest
     permissions:
       contents: write
@@ -116,8 +193,8 @@ jobs:
             --title "${{ github.ref_name }}" --notes-file release_notes.md
 
   store-publish:
-    needs: build-msix
-    if: needs.build-msix.outputs.is_release == 'true'
+    needs: assemble-msix
+    if: needs.assemble-msix.outputs.is_release == 'true'
     runs-on: windows-latest
     permissions:
       contents: read

@@ -20,10 +20,36 @@ env:
   DOTNET_VERSION: '10.0.x'
 
 jobs:
-  build:
-    name: Build Core / CLI / Shell / Setup
+  build-components:
+    name: ${{ matrix.name }}
     runs-on: windows-latest
     timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: Build Clickra.Core
+            kind: build
+            project: src/Clickra.Core/Clickra.Core.csproj
+          - name: Build Clickra.Fluent
+            kind: build
+            project: src/Clickra.Fluent/Clickra.Fluent.csproj
+          - name: Publish CLI (NativeAOT)
+            kind: publish
+            project: src/Clickra.CLI/Clickra.csproj
+            output: publish/ci/cli
+            expected: publish/ci/cli/Clickra.exe
+          - name: Publish Shell Extension (NativeAOT)
+            kind: publish
+            project: src/ClickraShell/ClickraShell.csproj
+            output: publish/ci/shell
+            expected: publish/ci/shell/ClickraShell.dll
+          - name: Publish ClickraLauncher (NativeAOT)
+            kind: publish
+            project: src/ClickraLauncher/ClickraLauncher.csproj
+            output: publish/ci/launcher
+            expected: publish/ci/launcher/ClickraLauncher.exe
+
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
@@ -32,52 +58,48 @@ jobs:
         with:
           dotnet-version: ${{ env.DOTNET_VERSION }}
 
-      # Commands mirror scripts/build_msix.ps1
-      # and .github/workflows/release.yml so CI build behavior matches release.
-      - name: Build Clickra.Core
-        run: dotnet build src/Clickra.Core/Clickra.Core.csproj -c Release -warnaserror
-
-      - name: Build Clickra.Fluent
-        run: dotnet build src/Clickra.Fluent/Clickra.Fluent.csproj -c Release -warnaserror
+      - name: Build managed project
+        if: matrix.kind == 'build'
+        run: dotnet build "${{ matrix.project }}" -c Release -warnaserror
 
       # NativeAOT publish resolves the MSVC toolchain through vswhere.exe;
       # the same helper that scripts/build_msix.ps1 uses keeps that on PATH so
       # the build does not fail with MSB3073 on runners where it is missing.
-      - name: Publish CLI (NativeAOT)
+      - name: Publish NativeAOT project
+        if: matrix.kind == 'publish'
         shell: pwsh
         run: |
           . ./scripts/build_common.ps1
           Add-VsInstallerToPath
-          dotnet publish src/Clickra.CLI/Clickra.csproj -c Release -r win-x64 --self-contained true -o publish/ci/cli -warnaserror
+          dotnet publish "${{ matrix.project }}" -c Release -r win-x64 --self-contained true -o "${{ matrix.output }}" -warnaserror
 
-      - name: Publish Shell Extension (NativeAOT)
+      - name: Verify expected NativeAOT output
+        if: matrix.kind == 'publish'
         shell: pwsh
         run: |
-          . ./scripts/build_common.ps1
-          Add-VsInstallerToPath
-          dotnet publish src/ClickraShell/ClickraShell.csproj -c Release -r win-x64 --self-contained true -o publish/ci/shell -warnaserror
-
-      - name: Publish ClickraLauncher (NativeAOT)
-        shell: pwsh
-        run: |
-          . ./scripts/build_common.ps1
-          Add-VsInstallerToPath
-          dotnet publish src/ClickraLauncher/ClickraLauncher.csproj -c Release -r win-x64 --self-contained true -o publish/ci/launcher -warnaserror
-
-      - name: Verify expected build outputs
-        shell: pwsh
-        run: |
-          $required = @(
-            'publish/ci/cli/Clickra.exe',
-            'publish/ci/shell/ClickraShell.dll',
-            'publish/ci/launcher/ClickraLauncher.exe'
-          )
-          foreach ($file in $required) {
-            if (-not (Test-Path $file)) {
-              throw "Missing expected build output: $file"
-            }
+          $expected = "${{ matrix.expected }}"
+          if (-not (Test-Path $expected)) {
+            throw "Missing expected build output: $expected"
           }
-          Write-Host "All expected build outputs present."
+          Write-Host "Expected build output present: $expected"
+
+  build:
+    # Keep the historical required-check name while making the expensive
+    # component builds independent. This job fails closed if any matrix leg fails.
+    name: Build Core / CLI / Shell / Setup
+    needs: build-components
+    if: always()
+    runs-on: windows-latest
+    timeout-minutes: 10
+    steps:
+      - name: Require every component build
+        shell: pwsh
+        run: |
+          if ("${{ needs.build-components.result }}" -ne "success") {
+            throw "One or more component builds failed: ${{ needs.build-components.result }}"
+          }
+
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - name: Verify product icon assets
         shell: powershell
@@ -118,7 +140,8 @@ jobs:
   deterministic-tests:
     name: Deterministic tests (no fixtures)
     runs-on: windows-latest
-    needs: build
+    # Intentionally independent from build: this job checks out the same commit
+    # and dotnet run builds the self-hosted test runner before executing it.
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -175,7 +198,8 @@ jobs:
     # step-level if, so the availability guard step decides the skip.)
     name: Fixture regression tests
     runs-on: windows-latest
-    needs: build
+    # Intentionally independent from build. When fixtures exist, dotnet run
+    # builds its own test runner; without fixtures this job only reports the skip.
     timeout-minutes: 30
     # hashFiles is only valid in step-level if, so the skip decision lives
     # in a guard step. The job itself always runs; with no fixtures the guard
