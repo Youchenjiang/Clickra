@@ -102,6 +102,9 @@ static partial class TestSuite
             "Architecture boundaries: Core bounded contexts declare owned namespaces",
             TestCoreBoundedContextsDeclareOwnedNamespaces);
         runner.RunGuard(
+            "Architecture boundaries: presentation and platform helpers have explicit ownership",
+            TestPresentationAndPlatformHelpersHaveExplicitOwnership);
+        runner.RunGuard(
             "Architecture boundaries: parked task orchestration has one storage owner",
             TestParkedTaskOrchestrationHasSingleOwner);
         runner.RunGuard(
@@ -724,6 +727,42 @@ static partial class TestSuite
             violations.Count == 0,
             "Physical Core bounded contexts must keep namespaces that encode their ownership:" +
             Environment.NewLine + string.Join(Environment.NewLine, violations));
+    }
+
+    private static void TestPresentationAndPlatformHelpersHaveExplicitOwnership()
+    {
+        string? root = FindRepoRoot();
+        if (root is null) throw new TestSkippedException(RepositoryRootMissingMessage);
+
+        string core = Path.Combine(root, "src", ArchitectureCoreProjectDirectory);
+        var expectations = new[]
+        {
+            (Path.Combine(core, "Presentation", "Native", "DashboardLayout.cs"), "namespace Clickra.Core.Presentation.Native;"),
+            (Path.Combine(core, "Presentation", "Native", "HistoryLayout.cs"), "namespace Clickra.Core.Presentation.Native;"),
+            (Path.Combine(core, "Presentation", "Shared", "VectorIcons.cs"), "namespace Clickra.Core.Presentation;")
+        };
+
+        foreach ((string file, string namespaceDeclaration) in expectations)
+        {
+            Assert.True(File.Exists(file), $"Presentation owner is missing: {NormalizeRepoPath(root, file)}");
+            Assert.True(
+                File.ReadAllText(file).Contains(namespaceDeclaration, StringComparison.Ordinal),
+                $"{NormalizeRepoPath(root, file)} must declare {namespaceDeclaration}");
+        }
+
+        Assert.False(
+            File.Exists(Path.Combine(core, "FluentRuntimeHelper.cs")),
+            "The zero-production-caller FluentRuntimeHelper must not return to domain/application Core.");
+
+        foreach (string catalog in new[] { "Localization.Cli.cs", "Localization.Fluent.cs" })
+        {
+            string file = Path.Combine(core, "Localization", catalog);
+            Assert.True(File.Exists(file), $"The centralized localization catalog must remain single-source: {catalog}");
+            string source = File.ReadAllText(file);
+            Assert.True(
+                source.Contains("public static partial class Localization", StringComparison.Ordinal),
+                $"{catalog} must stay in the shared Localization registry rather than being duplicated by a UI project.");
+        }
     }
 
     /// <summary>Splits a call's argument list at top-level commas, starting just after its opening parenthesis.</summary>
