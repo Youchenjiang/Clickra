@@ -1,6 +1,6 @@
 # AOT 主套件與 Fluent Optional Package 可行性及導入計畫
 
-> **狀態**：政策爭議中的候選架構（Feasibility Gate；凍結正式導入，等待 Microsoft 權威答覆）
+> **狀態**：政策爭議中的候選架構（Feasibility Gate；凍結正式導入，等待 Microsoft 權威答覆）<br>
 > **記錄日期**：2026-08-29  
 > **關聯里程碑**：`F1-13 Store-Resilient Optional Fluent Delivery`  
 > **目前 automated release state**：`.github/workflows/release.yml` / `scripts/build_msix.ps1` 只發布 NativeAOT Main `Clickra.msix`。`archive/dual_track_guide.md` 保存的是較早的 dual-track distribution 設計，不是 live release authority；本文件全部閘門通過前，也不得把 Fluent optional package 描述成 production Store path。2026-10-08 Microsoft support 表示 Optional Packages / Related Sets 已不再接受 Store submission，但此說法與現行 Microsoft Learn 及同一 SR 較早回覆衝突；在權威政策來源或 escalation 結論到位前，Optional/Related-Set 專屬實作一律凍結。
