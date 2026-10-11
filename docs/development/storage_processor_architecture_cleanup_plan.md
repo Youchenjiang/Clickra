@@ -163,6 +163,23 @@ Do not move presentation helpers blindly. First classify each type as one of:
 
 Move only when the target owner is clearer than the current one.
 
+### 3.6 Infrastructure may own its lifecycle settings, but only on an explicit allowlist
+
+Infrastructure components (installers, package/runtime integration) may persist state that describes their own lifecycle, such as which LibreOffice installation Clickra manages. That state is not a conversion option and does not need to be snapshotted by an application use case.
+
+Moving a file out of `Processors/` must never be a way to escape the processor guard. Therefore:
+
+- every `ClickraStorage` use under `Infrastructure/` must be an explicit `GetSetting*` / `SaveSetting` call with a `ClickraSettings` key;
+- each infrastructure file has a per-file allowlist of **owned keys** (read/write) and **read-only keys**;
+- writing a read-only key, using an unlisted key, or adding an unlisted infrastructure file fails the architecture guard;
+- extending an allowlist requires a documented ownership reason in the same PR, and a re-homing move must be its own commit, separate from any settings migration.
+
+Current allowlist (enforced by `TestInfrastructureSettingsAccessStaysOnAllowlist`):
+
+| Owner | Owned keys | Read-only keys |
+| --- | --- | --- |
+| `Infrastructure/LibreOfficeEngineInstaller.cs` | `LibreOfficeInstalledByClickra`, `LibreOfficeManagedProductCode`, `LibreOfficeManagedSofficePath` | `LibreOfficeRemovalPendingRestart`, `LibreOfficePath` |
+
 ---
 
 ## 4. Execution Order
