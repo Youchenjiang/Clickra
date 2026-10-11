@@ -113,10 +113,7 @@ static partial class TestSuite
         Assert.Equal(1, ClickraStorage.GetSettingInt(ClickraSettings.ImageCompressLevel));
         Assert.Equal(1, ClickraSettings.NormalizePdfCompressLevel(
             ClickraStorage.GetSettingInt(ClickraSettings.PdfCompressImageLevel)));
-        Dictionary<string, object> imageCompressionOptions = ConvertCommandRegistry.ImageCompressionOptions();
-        Assert.Equal(ImageCompressionOptions.OptionSmall, (string)imageCompressionOptions["level"]);
-        Assert.Equal(ImageCompressionOptions.GetQuality(ImageCompressionLevel.Small), (int)imageCompressionOptions["quality"]);
-        Assert.Equal(0, (int)imageCompressionOptions["max_dimension"]);
+        Assert.Equal(0, ClickraStorage.GetSettingInt(ClickraSettings.ImageCompressMaxDimension));
 
         // Unknown keys stay empty: the registry is the only place defaults exist.
         Assert.Equal("", ClickraStorage.GetSetting("NoSuchSettingKey"));
@@ -175,13 +172,10 @@ static partial class TestSuite
         string root = FindRepoRoot() ?? throw new TestSkippedException(
             RepoRootNotFoundMessage);
         string parkedCoordinator = File.ReadAllText(Path.Combine(root, "src", SettingsRegistryCoreProjectDirectory, "Storage", "ParkedTaskCoordinator.cs"));
-        string registry = File.ReadAllText(Path.Combine(root, "src", SettingsRegistryCoreProjectDirectory, "Processors", "ConvertCommandRegistry.cs"));
         string settings = File.ReadAllText(Path.Combine(root, "src", SettingsRegistryCoreProjectDirectory, "Storage", "ClickraSettings.cs"));
 
         AssertNumericAccessorUsesRegistry("GetRetentionDays", parkedCoordinator);
         AssertNumericAccessorUsesRegistry("NormalizePdfCompressLevel", settings);
-        AssertNumericAccessorUsesRegistry("GetImageCompressLevel", registry);
-        AssertNumericAccessorUsesRegistry("GetImageCompressMaxDimension", registry);
     }
 
     private static void AssertNumericAccessorUsesRegistry(string name, string source)

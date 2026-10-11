@@ -7,7 +7,7 @@ namespace Clickra.Core.Tests;
 static partial class TestSuite
 {
     private const int ArchitectureViolationBaselineCeiling = 0;
-    private const int ProcessorGlobalStateBaselineCeiling = 55;
+    private const int ProcessorGlobalStateBaselineCeiling = 53;
     private const string RepositoryRootMissingMessage = "Could not locate the repository root.";
     private const string ArchitectureCliProjectDirectory = "Clickra.CLI";
     private const string ArchitectureCoreProjectDirectory = "Clickra.Core";
@@ -88,10 +88,7 @@ static partial class TestSuite
         new(
             "ClickraStorage.GetSettingInt",
             new Regex(@"\bClickraStorage\.GetSettingInt\(", RegexOptions.Compiled, ArchitectureRegexTimeout),
-            new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase)
-            {
-                ["src/Clickra.Core/Processors/ConvertCommandRegistry.cs"] = 2
-            }),
+            new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase)),
         new(
             "ClickraStorage.SaveSetting",
             new Regex(@"\bClickraStorage\.SaveSetting\(", RegexOptions.Compiled, ArchitectureRegexTimeout),

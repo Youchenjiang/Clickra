@@ -75,7 +75,7 @@ static partial class TestSuite
                 Assert.True(File.Exists(plan.Outputs[0]), "Expected compressed image output from application use case.");
             }));
 
-        runner.Run("Image compression: command registry delegates to single source of truth", TestImageCompressionRegistryOptions);
+        runner.Run("Image compression: application planning maps every saved quality level", TestImageCompressionSavedOptionMapping);
 
         runner.Run("Image compression: UI and call sites share unified label keys from core", () =>
         {
@@ -191,7 +191,12 @@ static partial class TestSuite
                 processor.Process(
                     new List<string> { source },
                     output,
-                    ConvertCommandRegistry.ImageCompressionOptions());
+                    new Dictionary<string, object>
+                    {
+                        [ImageCompressionLevelKey] = ImageCompressionOptions.OptionSmall,
+                        [ImageCompressionQualityKey] = ImageCompressionOptions.GetQuality(ImageCompressionLevel.Small),
+                        [ImageCompressionMaxDimensionKey] = 0
+                    });
 
                 Assert.True(File.Exists(output),
                     "IFileProcessor dispatch must run ImageCompressionProcessor initialization before processing.");
@@ -250,35 +255,40 @@ static partial class TestSuite
         });
     }
 
-    private static void TestImageCompressionRegistryOptions()
+    private static void TestImageCompressionSavedOptionMapping()
     {
         string origLevel = ClickraStorage.GetSetting(ClickraSettings.ImageCompressLevel);
-        try
+        RunWithTempDirectory(tempDir =>
         {
-            ClickraStorage.SaveSetting(ClickraSettings.ImageCompressLevel, "0");
-            var opt0 = ConvertCommandRegistry.ImageCompressionOptions();
-            Assert.Equal(ImageCompressionOptions.OptionMin, (string)opt0[ImageCompressionLevelKey]);
-            Assert.Equal(ImageCompressionOptions.GetQuality(ImageCompressionLevel.Minimum), (int)opt0[ImageCompressionQualityKey]);
+            string source = Path.Combine(tempDir, CompressionPhotoJpg);
+            File.WriteAllBytes(source, new byte[] { 1 });
+            try
+            {
+                var expected = new[]
+                {
+                    (Saved: "0", Option: ImageCompressionOptions.OptionMin, Level: ImageCompressionLevel.Minimum),
+                    (Saved: "1", Option: ImageCompressionOptions.OptionSmall, Level: ImageCompressionLevel.Small),
+                    (Saved: "2", Option: ImageCompressionOptions.OptionStandard, Level: ImageCompressionLevel.Standard),
+                    (Saved: "3", Option: ImageCompressionOptions.OptionHigh, Level: ImageCompressionLevel.High)
+                };
 
-            ClickraStorage.SaveSetting(ClickraSettings.ImageCompressLevel, "1");
-            var opt1 = ConvertCommandRegistry.ImageCompressionOptions();
-            Assert.Equal(ImageCompressionOptions.OptionSmall, (string)opt1[ImageCompressionLevelKey]);
-            Assert.Equal(ImageCompressionOptions.GetQuality(ImageCompressionLevel.Small), (int)opt1[ImageCompressionQualityKey]);
-
-            ClickraStorage.SaveSetting(ClickraSettings.ImageCompressLevel, "2");
-            var opt2 = ConvertCommandRegistry.ImageCompressionOptions();
-            Assert.Equal(ImageCompressionOptions.OptionStandard, (string)opt2[ImageCompressionLevelKey]);
-            Assert.Equal(ImageCompressionOptions.GetQuality(ImageCompressionLevel.Standard), (int)opt2[ImageCompressionQualityKey]);
-
-            ClickraStorage.SaveSetting(ClickraSettings.ImageCompressLevel, "3");
-            var opt3 = ConvertCommandRegistry.ImageCompressionOptions();
-            Assert.Equal(ImageCompressionOptions.OptionHigh, (string)opt3[ImageCompressionLevelKey]);
-            Assert.Equal(ImageCompressionOptions.GetQuality(ImageCompressionLevel.High), (int)opt3[ImageCompressionQualityKey]);
-        }
-        finally
-        {
-            ClickraStorage.SaveSetting(ClickraSettings.ImageCompressLevel, origLevel);
-        }
+                foreach (var item in expected)
+                {
+                    ClickraStorage.SaveSetting(ClickraSettings.ImageCompressLevel, item.Saved);
+                    ConversionPlan plan = new ImgCompressUseCase().Plan(new ConversionRequest(
+                        ImgCompressUseCase.CommandName,
+                        new[] { source },
+                        TrackTaskLifecycle: false));
+                    Assert.Equal(item.Option, (string)plan.NormalizedOptions[ImageCompressionLevelKey]);
+                    Assert.Equal(ImageCompressionOptions.GetQuality(item.Level),
+                        (int)plan.NormalizedOptions[ImageCompressionQualityKey]);
+                }
+            }
+            finally
+            {
+                ClickraStorage.SaveSetting(ClickraSettings.ImageCompressLevel, origLevel);
+            }
+        });
     }
 
     private static void TestImageCompressionProductionRegistryCommand()
