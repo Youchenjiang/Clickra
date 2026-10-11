@@ -289,13 +289,13 @@ static partial class TestSuite
         string? root = FindRepoRoot();
         if (root is null) throw new TestSkippedException("Could not locate the repository root from the test output directory.");
 
-        string facade = File.ReadAllText(Path.Combine(root, "src", CoreProjectDirectoryName, StorageDirectoryName, "ClickraStorage.ActiveRecord.cs"));
         string coordinator = File.ReadAllText(Path.Combine(root, "src", CoreProjectDirectoryName, StorageDirectoryName, "ParkedTaskCoordinator.cs"));
+        string pruner = File.ReadAllText(Path.Combine(root, "src", CoreProjectDirectoryName, StorageDirectoryName, "TaskPruningCoordinator.cs"));
 
         foreach ((string source, string method) in new[]
         {
             (coordinator, "internal static ParkedRetentionInfo GetRetentionInfo(string taskId)"),
-            (facade, "private static void PruneSingleTaskFile(string file, DateTime now)")
+            (pruner, "private static void PruneSingleTaskFile(string file, DateTime now)")
         })
         {
             int start = source.IndexOf(method, StringComparison.Ordinal);

@@ -67,6 +67,9 @@ static partial class TestSuite
             "Architecture boundaries: parked task orchestration has one storage owner",
             TestParkedTaskOrchestrationHasSingleOwner);
         runner.RunGuard(
+            "Architecture boundaries: task pruning has one storage owner",
+            TestTaskPruningHasSingleOwner);
+        runner.RunGuard(
             "Architecture boundaries: Markdown presentation options have one render owner",
             TestMarkdownPresentationOptionsHaveSingleOwner);
         runner.RunGuard(
@@ -158,6 +161,35 @@ static partial class TestSuite
             "ParkedTaskCoordinator must own parked-task cancellation bookkeeping.");
         Assert.False(facade.Contains("TaskRetentionPolicy.CalculateAdjustedDays(", StringComparison.Ordinal),
             "ClickraStorage.ActiveRecord must not take parked retention orchestration back from the coordinator.");
+    }
+
+    private static void TestTaskPruningHasSingleOwner()
+    {
+        string root = FindRepoRoot() ?? throw new TestSkippedException(RepositoryRootMissingMessage);
+        string storageDir = Path.Combine(root, "src", ArchitectureCoreProjectDirectory, "Storage");
+        string facade = File.ReadAllText(Path.Combine(storageDir, "ClickraStorage.ActiveRecord.cs"));
+        string parked = File.ReadAllText(Path.Combine(storageDir, "ParkedTaskCoordinator.cs"));
+        string pruner = File.ReadAllText(Path.Combine(storageDir, "TaskPruningCoordinator.cs"));
+
+        Assert.True(facade.Contains("TaskPruningCoordinator.Prune()", StringComparison.Ordinal),
+            "Active task reads must delegate stale-task cleanup to TaskPruningCoordinator.");
+        Assert.True(parked.Contains("TaskPruningCoordinator.Prune()", StringComparison.Ordinal),
+            "Parked task reads must delegate stale-task cleanup to TaskPruningCoordinator.");
+
+        foreach (string pruningOwner in new[]
+        {
+            "Process.GetProcessById(",
+            "AbandonedTaskTtlHours",
+            "TaskRetentionPolicy.IsExpired("
+        })
+        {
+            Assert.True(pruner.Contains(pruningOwner, StringComparison.Ordinal),
+                $"TaskPruningCoordinator must own {pruningOwner}.");
+            Assert.False(facade.Contains(pruningOwner, StringComparison.Ordinal),
+                $"ClickraStorage.ActiveRecord must not reclaim {pruningOwner}.");
+            Assert.False(parked.Contains(pruningOwner, StringComparison.Ordinal),
+                $"ParkedTaskCoordinator must not own {pruningOwner}.");
+        }
     }
 
     private static void TestMarkdownPresentationOptionsHaveSingleOwner()
