@@ -105,6 +105,9 @@ static partial class TestSuite
             "Architecture boundaries: presentation and platform helpers have explicit ownership",
             TestPresentationAndPlatformHelpersHaveExplicitOwnership);
         runner.RunGuard(
+            "Architecture boundaries: translation provider and PDF text contexts stay distinct",
+            TestTranslationContextsStayDistinct);
+        runner.RunGuard(
             "Architecture boundaries: parked task orchestration has one storage owner",
             TestParkedTaskOrchestrationHasSingleOwner);
         runner.RunGuard(
@@ -762,6 +765,49 @@ static partial class TestSuite
             Assert.True(
                 source.Contains("public static partial class Localization", StringComparison.Ordinal),
                 $"{catalog} must stay in the shared Localization registry rather than being duplicated by a UI project.");
+        }
+    }
+
+    private static void TestTranslationContextsStayDistinct()
+    {
+        string? root = FindRepoRoot();
+        if (root is null) throw new TestSkippedException(RepositoryRootMissingMessage);
+
+        string core = Path.Combine(root, "src", ArchitectureCoreProjectDirectory);
+        string providerDirectory = Path.Combine(core, "Translation");
+        string legacyPdfTranslationDirectory = Path.Combine(core, "Processors", "PdfTranslation", "Translation");
+        string textProcessingDirectory = Path.Combine(core, "Processors", "PdfTranslation", "TextProcessing");
+
+        Assert.False(
+            Directory.Exists(legacyPdfTranslationDirectory) &&
+            Directory.EnumerateFiles(legacyPdfTranslationDirectory, "*.cs", SearchOption.AllDirectories).Any(),
+            "The ambiguous Processors/PdfTranslation/Translation source context must not return.");
+        Assert.True(
+            Directory.Exists(textProcessingDirectory),
+            "PDF translation text processing must have an explicit TextProcessing context.");
+
+        foreach (string file in Directory.EnumerateFiles(providerDirectory, "*.cs", SearchOption.AllDirectories))
+        {
+            string source = File.ReadAllText(file);
+            Assert.True(
+                Regex.IsMatch(
+                    source,
+                    @"\bnamespace\s+Clickra\.Core\.Translation\s*(?:;|\{)",
+                    RegexOptions.CultureInvariant,
+                    ArchitectureRegexTimeout),
+                $"{NormalizeRepoPath(root, file)} must remain translation-provider infrastructure.");
+        }
+
+        foreach (string file in Directory.EnumerateFiles(textProcessingDirectory, "*.cs", SearchOption.AllDirectories))
+        {
+            string source = File.ReadAllText(file);
+            Assert.True(
+                Regex.IsMatch(
+                    source,
+                    @"\bnamespace\s+Clickra\.Core\.Processors\.PdfTranslation\.TextProcessing\s*(?:;|\{)",
+                    RegexOptions.CultureInvariant,
+                    ArchitectureRegexTimeout),
+                $"{NormalizeRepoPath(root, file)} must remain inside the PDF TextProcessing context.");
         }
     }
 
