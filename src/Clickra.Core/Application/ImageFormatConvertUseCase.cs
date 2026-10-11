@@ -37,6 +37,15 @@ public sealed class ImageFormatConvertUseCase : PerFileConversionUseCaseBase
         ImageFormatConvertProcessor.ToOutputExtension(_targetFormat);
     protected override string NormalizeOutputOverride(string outputOverride) => outputOverride;
 
+    protected override IReadOnlyDictionary<string, object> NormalizeOptions(ConversionRequest request)
+    {
+        var options = request.Options is null
+            ? new Dictionary<string, object>(StringComparer.Ordinal)
+            : new Dictionary<string, object>(request.Options, StringComparer.Ordinal);
+        options[ExecutionLocalizationOptions.LanguageKey] = ClickraStorage.GetSetting(ClickraSettings.Language);
+        return options;
+    }
+
     protected override void ValidateOutputs(
         IReadOnlyList<string> inputs,
         IReadOnlyList<string> outputs)
@@ -58,6 +67,7 @@ public sealed class ImageFormatConvertUseCase : PerFileConversionUseCaseBase
                 plan.Inputs[index],
                 plan.Outputs[index],
                 _targetFormat,
+                plan.NormalizedOptions[ExecutionLocalizationOptions.LanguageKey].ToString() ?? ClickraSettings.DefaultEmpty,
                 (current, total, message) =>
                     ReportFileProgress(plan, index, progress, current, message),
                 cancellationToken),

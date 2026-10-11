@@ -15,7 +15,8 @@ namespace Clickra.Core.Processors
             int pageIndex,
             int totalPages,
             Action<int, int, string>? onProgress,
-            CancellationToken cancellationToken)
+            CancellationToken cancellationToken,
+            string language = "")
         {
             var results = new List<string>(textsToTranslate.Count);
             var chunks = BuildTranslationChunks(textsToTranslate, maxItems: 24, maxChars: 6000).ToList();
@@ -25,7 +26,6 @@ namespace Clickra.Core.Processors
             {
                 cancellationToken.ThrowIfCancellationRequested();
                 var chunk = chunks[chunkIndex];
-                string language = ClickraStorage.GetSetting(ClickraSettings.Language);
                 onProgress?.Invoke(
                     GetTranslationProgress(pageIndex, totalPages, chunkIndex, chunks.Count),
                     100,
@@ -45,7 +45,8 @@ namespace Clickra.Core.Processors
                     targetLang,
                     pageIndex,
                     chunkIndex,
-                    cancellationToken);
+                    cancellationToken,
+                    language);
 
                 results.AddRange(chunkResults);
                 translatedCount += chunk.Count;
@@ -60,7 +61,8 @@ namespace Clickra.Core.Processors
             string targetLang,
             int pageIndex,
             int chunkIndex,
-            CancellationToken cancellationToken)
+            CancellationToken cancellationToken,
+            string language)
         {
             cancellationToken.ThrowIfCancellationRequested();
 
@@ -71,7 +73,8 @@ namespace Clickra.Core.Processors
                     translator is FallbackTranslator
                         ? TranslationTimeouts.ChainCallTimeout
                         : TranslationTimeouts.ProviderCallTimeout,
-                    cancellationToken);
+                    cancellationToken,
+                    language);
                 if (translated.Count != chunk.Count)
                 {
                     throw new InvalidOperationException(
@@ -95,14 +98,16 @@ namespace Clickra.Core.Processors
                     targetLang,
                     pageIndex,
                     chunkIndex,
-                    cancellationToken);
+                    cancellationToken,
+                    language);
                 var right = TranslateChunkWithRecovery(
                     translator,
                     chunk.GetRange(midpoint, chunk.Count - midpoint),
                     targetLang,
                     pageIndex,
                     chunkIndex,
-                    cancellationToken);
+                    cancellationToken,
+                    language);
                 left.AddRange(right);
                 return left;
             }
@@ -115,17 +120,18 @@ namespace Clickra.Core.Processors
                     translator is FallbackTranslator
                         ? TranslationTimeouts.ChainCallTimeout
                         : TranslationTimeouts.ProviderCallTimeout,
-                    cancellationToken);
+                    cancellationToken,
+                    language);
                 if (string.IsNullOrWhiteSpace(translated))
                 {
-                    throw new InvalidOperationException(Localization.T("pdf_error_provider_empty", ClickraStorage.GetSetting(ClickraSettings.Language)));
+                    throw new InvalidOperationException(Localization.T("pdf_error_provider_empty", language));
                 }
                 return new List<string> { translated };
             }
             catch (Exception ex) when (!cancellationToken.IsCancellationRequested)
             {
                 throw new InvalidOperationException(
-                    string.Format(Localization.T("pdf_error_unable_paragraph", ClickraStorage.GetSetting(ClickraSettings.Language)), pageIndex + 1),
+                    string.Format(Localization.T("pdf_error_unable_paragraph", language), pageIndex + 1),
                     ex);
             }
         }
@@ -133,7 +139,8 @@ namespace Clickra.Core.Processors
         private static T RunWithTimeout<T>(
             Func<CancellationToken, Task<T>> operation,
             TimeSpan timeout,
-            CancellationToken cancellationToken)
+            CancellationToken cancellationToken,
+            string language = "")
         {
             using var timeoutCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
             timeoutCts.CancelAfter(timeout);
@@ -144,7 +151,7 @@ namespace Clickra.Core.Processors
             catch (OperationCanceledException) when (
                 !cancellationToken.IsCancellationRequested && timeoutCts.IsCancellationRequested)
             {
-                throw new TimeoutException(string.Format(Localization.T("pdf_error_provider_timeout", ClickraStorage.GetSetting(ClickraSettings.Language)), timeout.TotalSeconds.ToString("0")));
+                throw new TimeoutException(string.Format(Localization.T("pdf_error_provider_timeout", language), timeout.TotalSeconds.ToString("0")));
             }
         }
 

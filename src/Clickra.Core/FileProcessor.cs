@@ -1,6 +1,7 @@
 using System;
 using System.IO;
 using System.Collections.Generic;
+using System.Linq;
 using System.Threading;
 using Clickra.Core.Processors;
 
@@ -16,7 +17,7 @@ namespace Clickra.Core
         /// <param name="onProgress">Optional progress callback receiving (progress, max, message).</param>
         /// <param name="cancellationToken">Cancellation token to abort the merge.</param>
         public static void MergePdfs(List<string> files, string outputPath, Action<int, int, string>? onProgress = null, CancellationToken cancellationToken = default) =>
-            new PdfMergeProcessor().Process(files, outputPath, null, onProgress, cancellationToken);
+            new PdfMergeProcessor().Process(files, outputPath, PrepareOptions(null, new[] { outputPath }), onProgress, cancellationToken);
 
         /// <summary>Removes the password protection from a PDF.</summary>
         /// <param name="inputPath">Path of the password-protected input PDF.</param>
@@ -24,12 +25,24 @@ namespace Clickra.Core
         /// <param name="password">The document open password, when known.</param>
         /// <param name="onProgress">Optional progress callback receiving (progress, max, message).</param>
         /// <param name="cancellationToken">Cancellation token to abort the operation.</param>
-        public static void DecryptPdf(string inputPath, string outputPath, string password, Action<int, int, string>? onProgress = null, CancellationToken cancellationToken = default)
+        public static void DecryptPdf(string inputPath, string outputPath, string password, Action<int, int, string>? onProgress = null, CancellationToken cancellationToken = default) =>
+            DecryptPdf(
+                inputPath,
+                outputPath,
+                password,
+                ClickraStorage.GetSetting(ClickraSettings.Language),
+                onProgress,
+                cancellationToken);
+
+        public static void DecryptPdf(string inputPath, string outputPath, string password, string language, Action<int, int, string>? onProgress = null, CancellationToken cancellationToken = default)
         {
             var processor = new PdfDecryptProcessor();
-            var options = new Dictionary<string, object>();
+            var options = new Dictionary<string, object>
+            {
+                [ExecutionLocalizationOptions.LanguageKey] = language
+            };
             if (!string.IsNullOrEmpty(password)) options["password"] = password;
-            processor.Process(new List<string> { inputPath }, outputPath, options, onProgress, cancellationToken);
+            processor.Process(new List<string> { inputPath }, outputPath, PrepareOptions(options, new[] { outputPath }), onProgress, cancellationToken);
         }
 
         /// <summary>Compresses a PDF using an explicit options dictionary (target DPI, JPEG
@@ -42,7 +55,7 @@ namespace Clickra.Core
         public static void CompressPdf(string inputPath, string outputPath, Dictionary<string, object> options, Action<int, int, string>? onProgress = null, CancellationToken cancellationToken = default)
         {
             var processor = new PdfCompressionProcessor();
-            processor.Process(new List<string> { inputPath }, outputPath, options, onProgress, cancellationToken);
+            processor.Process(new List<string> { inputPath }, outputPath, PrepareOptions(options, new[] { outputPath }), onProgress, cancellationToken);
         }
 
         /// <summary>Converts a list of image files into a single PDF document.</summary>
@@ -51,15 +64,15 @@ namespace Clickra.Core
         /// <param name="onProgress">Optional progress callback receiving (progress, max, message).</param>
         /// <param name="cancellationToken">Cancellation token to abort the conversion.</param>
         public static void ConvertImagesToPdf(List<string> files, string outputPath, Action<int, int, string>? onProgress = null, CancellationToken cancellationToken = default) =>
-            new ImageToPdfProcessor().Process(files, outputPath, null, onProgress, cancellationToken);
+            new ImageToPdfProcessor().Process(files, outputPath, PrepareOptions(null, new[] { outputPath }), onProgress, cancellationToken);
 
         /// <summary>Converts one Markdown document using explicit one-shot presentation options.</summary>
         public static void ConvertMarkdownToPdf(string inputPath, string outputPath, Dictionary<string, object> options, Action<int, int, string>? onProgress = null, CancellationToken cancellationToken = default) =>
-            new MarkdownToPdfProcessor().Process(new List<string> { inputPath }, outputPath, options, onProgress, cancellationToken);
+            new MarkdownToPdfProcessor().Process(new List<string> { inputPath }, outputPath, PrepareOptions(options, new[] { outputPath }), onProgress, cancellationToken);
 
         /// <summary>Converts one Markdown document to an editable Word DOCX using the shared Markdown template.</summary>
         public static void ConvertMarkdownToWord(string inputPath, string outputPath, Dictionary<string, object> options, Action<int, int, string>? onProgress = null, CancellationToken cancellationToken = default) =>
-            new MarkdownToWordProcessor().Process(new List<string> { inputPath }, outputPath, options, onProgress, cancellationToken);
+            new MarkdownToWordProcessor().Process(new List<string> { inputPath }, outputPath, PrepareOptions(options, new[] { outputPath }), onProgress, cancellationToken);
 
         /// <summary>Stitches multiple images vertically into a single image file.</summary>
         /// <param name="files">Input image paths, in stitch order.</param>
@@ -67,7 +80,7 @@ namespace Clickra.Core
         /// <param name="onProgress">Optional progress callback receiving (progress, max, message).</param>
         /// <param name="cancellationToken">Cancellation token to abort the operation.</param>
         public static void StitchImages(List<string> files, string outputPath, Action<int, int, string>? onProgress = null, CancellationToken cancellationToken = default) =>
-            new ImageStitchProcessor().Process(files, outputPath, null, onProgress, cancellationToken);
+            new ImageStitchProcessor().Process(files, outputPath, PrepareOptions(null, new[] { outputPath }), onProgress, cancellationToken);
 
         /// <summary>Converts an image file to a target format (png / jpg / webp / gif / heic).</summary>
         /// <param name="inputPath">Path of the source image.</param>
@@ -75,18 +88,31 @@ namespace Clickra.Core
         /// <param name="format">Target format name ("png", "jpg", "webp", "gif" or "heic").</param>
         /// <param name="onProgress">Optional progress callback receiving (progress, max, message).</param>
         /// <param name="cancellationToken">Cancellation token to abort the conversion.</param>
-        public static void ConvertImageFormat(string inputPath, string outputPath, string format, Action<int, int, string>? onProgress = null, CancellationToken cancellationToken = default)
+        public static void ConvertImageFormat(string inputPath, string outputPath, string format, Action<int, int, string>? onProgress = null, CancellationToken cancellationToken = default) =>
+            ConvertImageFormat(
+                inputPath,
+                outputPath,
+                format,
+                ClickraStorage.GetSetting(ClickraSettings.Language),
+                onProgress,
+                cancellationToken);
+
+        public static void ConvertImageFormat(string inputPath, string outputPath, string format, string language, Action<int, int, string>? onProgress = null, CancellationToken cancellationToken = default)
         {
             var processor = new ImageFormatConvertProcessor();
-            var options = new Dictionary<string, object> { { "format", format } };
-            processor.Process(new List<string> { inputPath }, outputPath, options, onProgress, cancellationToken);
+            var options = new Dictionary<string, object>
+            {
+                ["format"] = format,
+                [ExecutionLocalizationOptions.LanguageKey] = language
+            };
+            processor.Process(new List<string> { inputPath }, outputPath, PrepareOptions(options, new[] { outputPath }), onProgress, cancellationToken);
         }
 
         /// <summary>Compresses an image using the shared image-compression option dictionary.</summary>
         public static void CompressImage(string inputPath, string outputPath, Dictionary<string, object> options, Action<int, int, string>? onProgress = null, CancellationToken cancellationToken = default)
         {
             var processor = new ImageCompressionProcessor();
-            processor.Process(new List<string> { inputPath }, outputPath, options, onProgress, cancellationToken);
+            processor.Process(new List<string> { inputPath }, outputPath, PrepareOptions(options, new[] { outputPath }), onProgress, cancellationToken);
         }
 
         /// <summary>Converts PowerPoint files to PDF using explicit Office execution options.</summary>
@@ -94,14 +120,14 @@ namespace Clickra.Core
         /// <param name="onProgress">Optional progress callback receiving (progress, max, message).</param>
         /// <param name="cancellationToken">Cancellation token to abort the conversion.</param>
         public static void ConvertPptToPdf(List<string> files, Dictionary<string, object> options, Action<int, int, string>? onProgress = null, CancellationToken cancellationToken = default) =>
-            new PptToPdfProcessor().Process(files, null, options, onProgress, cancellationToken);
+            new PptToPdfProcessor().Process(files, null, PrepareOptions(options, ResolveOfficeOutputs(files, options)), onProgress, cancellationToken);
 
         /// <summary>Converts Word documents to PDF using explicit Office execution options.</summary>
         /// <param name="files">Input .doc/.docx paths.</param>
         /// <param name="onProgress">Optional progress callback receiving (progress, max, message).</param>
         /// <param name="cancellationToken">Cancellation token to abort the conversion.</param>
         public static void ConvertWordToPdf(List<string> files, Dictionary<string, object> options, Action<int, int, string>? onProgress = null, CancellationToken cancellationToken = default) =>
-            new WordToPdfProcessor().Process(files, null, options, onProgress, cancellationToken);
+            new WordToPdfProcessor().Process(files, null, PrepareOptions(options, ResolveOfficeOutputs(files, options)), onProgress, cancellationToken);
 
         /// <summary>Converts Excel workbooks to PDF using explicit Office execution options.</summary>
         /// <param name="files">Input .xlsx/.xls paths.</param>
@@ -110,7 +136,7 @@ namespace Clickra.Core
         public static void ConvertExcelToPdf(List<string> files, Dictionary<string, object> options, Action<int, int, string>? onProgress = null, CancellationToken cancellationToken = default)
         {
             var processor = new ExcelToPdfProcessor();
-            processor.Process(files, null, options, onProgress, cancellationToken);
+            processor.Process(files, null, PrepareOptions(options, ResolveOfficeOutputs(files, options)), onProgress, cancellationToken);
         }
 
         /// <summary>Translates a PDF into <paramref name="targetLang"/> while preserving layout.</summary>
@@ -119,11 +145,26 @@ namespace Clickra.Core
         /// <param name="targetLang">Target language key (e.g. "en", "ja").</param>
         /// <param name="onProgress">Optional progress callback receiving (progress, max, message).</param>
         /// <param name="cancellationToken">Cancellation token to abort the translation.</param>
-        public static void TranslatePdf(string inputPath, string outputPath, string targetLang, Action<int, int, string>? onProgress = null, CancellationToken cancellationToken = default)
+        public static void TranslatePdf(string inputPath, string outputPath, string targetLang, Action<int, int, string>? onProgress = null, CancellationToken cancellationToken = default) =>
+            TranslatePdf(
+                inputPath,
+                outputPath,
+                targetLang,
+                ClickraStorage.GetSetting(ClickraSettings.Language),
+                ClickraStorage.GetDataDir(),
+                onProgress,
+                cancellationToken);
+
+        public static void TranslatePdf(string inputPath, string outputPath, string targetLang, string language, string dataDirectory, Action<int, int, string>? onProgress = null, CancellationToken cancellationToken = default)
         {
             var processor = new PdfTranslateProcessor();
-            var options = new Dictionary<string, object> { { "targetLang", targetLang } };
-            processor.Process(new List<string> { inputPath }, outputPath, options, onProgress, cancellationToken);
+            var options = new Dictionary<string, object>
+            {
+                ["targetLang"] = targetLang,
+                [ExecutionLocalizationOptions.LanguageKey] = language,
+                [ProcessorExecutionOptions.DataDirectoryKey] = dataDirectory
+            };
+            processor.Process(new List<string> { inputPath }, outputPath, PrepareOptions(options, new[] { outputPath }), onProgress, cancellationToken);
         }
 
         /// <summary>
@@ -141,7 +182,38 @@ namespace Clickra.Core
         {
             var processor = new PdfSplitProcessor();
             var options = new Dictionary<string, object> { { "pages", pages } };
-            processor.Process(new List<string> { inputPath }, outputPath, options, onProgress, cancellationToken);
+            processor.Process(new List<string> { inputPath }, outputPath, PrepareOptions(options, new[] { outputPath }), onProgress, cancellationToken);
+        }
+
+        private static Dictionary<string, object> PrepareOptions(
+            Dictionary<string, object>? options,
+            IReadOnlyList<string>? outputPaths = null)
+        {
+            var prepared = options is null
+                ? new Dictionary<string, object>(StringComparer.Ordinal)
+                : new Dictionary<string, object>(options, StringComparer.Ordinal);
+            prepared[ProcessorExecutionOptions.FileStartingCallbackKey] =
+                (Action<int>)(index => ClickraStorage.SetActiveRecordIndex(index));
+            if (outputPaths is not null)
+                prepared[ProcessorExecutionOptions.OutputPathsKey] = outputPaths;
+            return prepared;
+        }
+
+        private static IReadOnlyList<string> ResolveOfficeOutputs(
+            IReadOnlyList<string> files,
+            IReadOnlyDictionary<string, object> options)
+        {
+            if (options.TryGetValue(ProcessorExecutionOptions.OutputPathsKey, out object? explicitOutputs)
+                && explicitOutputs is IReadOnlyList<string> outputPaths)
+            {
+                return outputPaths;
+            }
+
+            return files
+                .Select(input => Path.Combine(
+                    ClickraStorage.GetOutputDir(input),
+                    Path.GetFileNameWithoutExtension(input) + ".pdf"))
+                .ToArray();
         }
 
     }

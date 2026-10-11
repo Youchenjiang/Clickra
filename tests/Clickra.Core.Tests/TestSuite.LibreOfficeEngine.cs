@@ -189,10 +189,14 @@ static partial class TestSuite
                 ClickraStorage.SaveSetting("LibreOfficePath", soffice);
                 ClickraStorage.SaveSetting("LibreOfficeRemovalPendingRestart", "true");
 
-                Assert.Equal("", LibreOfficeHelper.GetResolvedExecutablePath());
+                Assert.Equal("", LibreOfficeHelper.GetResolvedExecutablePath(
+                    removalPending: true,
+                    configuredPath: soffice));
 
                 ClickraStorage.SaveSetting("LibreOfficeRemovalPendingRestart", "false");
-                Assert.Equal(soffice, LibreOfficeHelper.GetResolvedExecutablePath());
+                Assert.Equal(soffice, LibreOfficeHelper.GetResolvedExecutablePath(
+                    removalPending: false,
+                    configuredPath: soffice));
             }
             finally
             {

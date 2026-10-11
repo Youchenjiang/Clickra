@@ -21,12 +21,14 @@ namespace Clickra.Core.Processors;
 
         private string? _outputPath;
         private string _format = "";
+        private string _language = ClickraSettings.DefaultEmpty;
 
         public new void Process(List<string> files, string? outputPath, Dictionary<string, object>? options = null, Action<int, int, string>? onProgress = null, CancellationToken cancellationToken = default)
         {
             if (string.IsNullOrEmpty(outputPath)) throw new ArgumentException("Output path is required for image format conversion.");
             _outputPath = outputPath;
             _format = options is not null && options.TryGetValue("format", out var fmt) ? Convert.ToString(fmt) ?? "" : "";
+            _language = ExecutionLocalizationOptions.ReadLanguage(options);
             if (string.IsNullOrWhiteSpace(_format)) throw new ArgumentException("The 'format' option is required for image format conversion.");
             base.Process(files, outputPath, options, onProgress, cancellationToken);
         }
@@ -48,12 +50,12 @@ namespace Clickra.Core.Processors;
 
             if (WicImageHelper.IsHeifExtension(sourceExt) && !WicImageHelper.IsHeicDecoderAvailable())
             {
-                throw new NotSupportedException(Localize("error_heic_decoder_missing"));
+                throw new NotSupportedException(Localize("error_heic_decoder_missing", _language));
             }
 
             if (string.Equals(_format, CodecHeic, StringComparison.OrdinalIgnoreCase))
             {
-                SaveAsHeic(filePath, _outputPath!);
+                SaveAsHeic(filePath, _outputPath!, _language);
             }
             else if (string.Equals(_format, CodecWebp, StringComparison.OrdinalIgnoreCase))
             {
@@ -67,30 +69,30 @@ namespace Clickra.Core.Processors;
             }
         }
 
-        private static string Localize(string key) => Localization.T(key, ClickraStorage.GetSetting(ClickraSettings.Language));
+        private static string Localize(string key, string language) => Localization.T(key, language);
 
         /// <summary>
         /// Saves the image as HEIC using Windows WIC / WinRT (Microsoft HEIF Encoder).
         /// When a Windows HEIF/HEIC extension is present it is used directly; otherwise this throws
         /// with a localized, actionable message rather than producing a non-conformant file.
         /// </summary>
-        public static void SaveAsHeic(string inputPath, string outputPath)
+        public static void SaveAsHeic(string inputPath, string outputPath, string language = "")
         {
             if (!IsHeicEncodingSupported())
             {
-                throw new NotSupportedException(Localize("error_heic_codec_missing"));
+                throw new NotSupportedException(Localize("error_heic_codec_missing", language));
             }
-            WicImageHelper.ConvertFileToHeic(inputPath, outputPath, 90);
+            WicImageHelper.ConvertFileToHeic(inputPath, outputPath, 90, language);
         }
 
         /// <summary>Saves an already-loaded image as HEIC with an explicit encoder quality (1-100).</summary>
-        public static void SaveAsHeic(Image image, string outputPath, long quality)
+        public static void SaveAsHeic(Image image, string outputPath, long quality, string language = "")
         {
             if (!IsHeicEncodingSupported())
             {
-                throw new NotSupportedException(Localize("error_heic_codec_missing"));
+                throw new NotSupportedException(Localize("error_heic_codec_missing", language));
             }
-            WicImageHelper.SaveAsHeic(image, outputPath, quality);
+            WicImageHelper.SaveAsHeic(image, outputPath, quality, language);
         }
 
         /// <summary>Whether the system exposes a HEIF/HEIC encoder (Microsoft HEIF Encoder in WIC/WinRT).</summary>

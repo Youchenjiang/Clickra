@@ -114,7 +114,7 @@ namespace Clickra.Core.Processors
         /// </summary>
         public static void AdoptExistingInstallation()
         {
-            string resolvedPath = LibreOfficeHelper.GetResolvedExecutablePath();
+            string resolvedPath = GetConfiguredResolvedExecutablePath();
             if (!CanAdoptExistingInstallation(resolvedPath))
                 throw new InvalidOperationException(
                     "Only one verified system LibreOffice MSI installation can be adopted by Clickra.");
@@ -133,7 +133,7 @@ namespace Clickra.Core.Processors
         /// </summary>
         public static bool CanAdoptExistingInstallation(string? resolvedPath = null)
         {
-            resolvedPath ??= LibreOfficeHelper.GetResolvedExecutablePath();
+            resolvedPath ??= GetConfiguredResolvedExecutablePath();
             string systemPath = ResolveSystemSofficePath();
             if (!PathsReferToSameInstallation(resolvedPath, systemPath))
                 return false;
@@ -345,7 +345,7 @@ namespace Clickra.Core.Processors
             bool consent = ClickraStorage.GetSettingBool(ClickraSettings.LibreOfficeInstalledByClickra);
             productCode = ClickraStorage.GetSetting(ClickraSettings.LibreOfficeManagedProductCode);
             string managedPath = ClickraStorage.GetSetting(ClickraSettings.LibreOfficeManagedSofficePath);
-            string resolvedPath = LibreOfficeHelper.GetResolvedExecutablePath();
+            string resolvedPath = GetConfiguredResolvedExecutablePath();
             string? uniqueCurrentProductCode = FindUniqueInstalledLibreOfficeProductCode();
 
             return IsManagedIdentityCurrent(
@@ -551,6 +551,11 @@ namespace Clickra.Core.Processors
             ClickraStorage.SaveSetting(ClickraSettings.LibreOfficeManagedSofficePath, canonicalPath);
             ClickraStorage.SaveSetting(ClickraSettings.LibreOfficeInstalledByClickra, ClickraSettings.ValueTrue);
         }
+
+        private static string GetConfiguredResolvedExecutablePath() =>
+            LibreOfficeHelper.GetResolvedExecutablePath(
+                ClickraStorage.GetSettingBool(ClickraSettings.LibreOfficeRemovalPendingRestart),
+                ClickraStorage.GetSetting(ClickraSettings.LibreOfficePath));
 
         private static async Task WaitForSystemUninstallAsync(CancellationToken cancellationToken)
         {

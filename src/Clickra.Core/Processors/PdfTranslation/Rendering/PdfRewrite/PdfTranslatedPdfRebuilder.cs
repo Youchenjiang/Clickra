@@ -13,6 +13,7 @@ internal static class PdfTranslatedPdfRebuilder
         string inputPath,
         string outputPath,
         string targetLang,
+        string language,
         UglyToad.PdfPig.PdfDocument pigDoc,
         IReadOnlyList<List<PdfParagraph>> pageParagraphs,
         Action<int, int, string>? onProgress,
@@ -20,7 +21,6 @@ internal static class PdfTranslatedPdfRebuilder
     {
         int totalPages = pageParagraphs.Count;
         var layoutSummary = new PdfTranslationLayoutSummary();
-        string language = ClickraStorage.GetSetting(ClickraSettings.Language);
         onProgress?.Invoke(80, 100, Localization.T("pdf_progress_rebuilding", language));
         cancellationToken.ThrowIfCancellationRequested();
 

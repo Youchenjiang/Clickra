@@ -39,15 +39,6 @@ public static class LibreOfficeHelper
         return executablePath.Length > 0;
     }
 
-    public static string GetResolvedExecutablePath()
-    {
-        string removalPending = ClickraStorage.GetSetting(ClickraSettings.LibreOfficeRemovalPendingRestart);
-        string configuredPath = ClickraStorage.GetSetting(ClickraSettings.LibreOfficePath);
-        return GetResolvedExecutablePath(
-            removalPending.Equals(ClickraSettings.ValueTrue, StringComparison.OrdinalIgnoreCase),
-            configuredPath);
-    }
-
     public static string GetResolvedExecutablePath(bool removalPending, string configuredPath)
     {
         string envPath = Environment.GetEnvironmentVariable("CLICKRA_LIBREOFFICE_PATH") ?? "";

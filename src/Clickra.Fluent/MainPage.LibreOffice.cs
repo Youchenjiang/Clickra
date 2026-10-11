@@ -12,8 +12,10 @@ public sealed partial class MainPage
 
     private void RefreshLibreOfficeStatus()
     {
-        string resolvedPath = LibreOfficeHelper.GetResolvedExecutablePath();
         bool removalPending = ClickraStorage.GetSettingBool(ClickraSettings.LibreOfficeRemovalPendingRestart);
+        string resolvedPath = LibreOfficeHelper.GetResolvedExecutablePath(
+            removalPending,
+            ClickraStorage.GetSetting(ClickraSettings.LibreOfficePath));
         bool ready = !string.IsNullOrWhiteSpace(resolvedPath);
         string installedVersion = LibreOfficeEngineInstaller.GetInstalledSystemVersion();
         // Only a LibreOffice with a freshly verified Clickra management identity may be removed here.
@@ -225,7 +227,9 @@ public sealed partial class MainPage
     {
         if (_libreOfficeSetupInProgress) return;
         if (LibreOfficeEngineInstaller.WasInstalledByClickra()) return;
-        string resolvedPath = LibreOfficeHelper.GetResolvedExecutablePath();
+        string resolvedPath = LibreOfficeHelper.GetResolvedExecutablePath(
+            ClickraStorage.GetSettingBool(ClickraSettings.LibreOfficeRemovalPendingRestart),
+            ClickraStorage.GetSetting(ClickraSettings.LibreOfficePath));
         if (!LibreOfficeEngineInstaller.CanAdoptExistingInstallation(resolvedPath)) return;
         if (!await ConfirmAsync(L("setting_libreoffice_adopt_confirm"))) return;
 

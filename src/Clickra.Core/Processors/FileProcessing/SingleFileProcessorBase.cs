@@ -11,11 +11,13 @@ namespace Clickra.Core.Processors
         {
             if (files == null || files.Count == 0) return;
             int total = files.Count;
+            Action<int>? onFileStarting = ProcessorExecutionOptions.ReadFileStartingCallback(options);
+            IReadOnlyList<string>? outputPaths = ProcessorExecutionOptions.ReadOutputPaths(options);
             
             for (int i = 0; i < files.Count; i++)
             {
                 cancellationToken.ThrowIfCancellationRequested();
-                try { ClickraStorage.SetActiveRecordIndex(i); } catch { }
+                try { onFileStarting?.Invoke(i); } catch { }
                 
                 var filePath = files[i];
                 string fullPath = Path.GetFullPath(filePath);
@@ -25,13 +27,15 @@ namespace Clickra.Core.Processors
                     continue;
                 }
 
-                string outDir = ClickraStorage.GetOutputDir(fullPath);
-                
                 // If outputPath parameter is provided and this is the first (and only) file, use it.
-                // Otherwise calculate a sensible default output path.
-                string targetOutputPath = (files.Count == 1 && !string.IsNullOrEmpty(outputPath)) 
-                    ? outputPath 
-                    : Path.Combine(outDir, Path.GetFileNameWithoutExtension(filePath) + GetOutputSuffix());
+                // Otherwise use a caller-planned output when available, then fall back to the source directory.
+                string targetOutputPath = outputPaths is not null && i < outputPaths.Count
+                    ? outputPaths[i]
+                    : (files.Count == 1 && !string.IsNullOrEmpty(outputPath))
+                        ? outputPath
+                        : Path.Combine(
+                            Path.GetDirectoryName(fullPath) ?? ".",
+                            Path.GetFileNameWithoutExtension(filePath) + GetOutputSuffix());
 
                 using var backupScope = FileBackupScope.Create(targetOutputPath);
                 ProcessSingleFile(fullPath, targetOutputPath, i, total, options, onProgress, cancellationToken);

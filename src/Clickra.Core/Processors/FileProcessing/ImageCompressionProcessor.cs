@@ -41,6 +41,7 @@ public class ImageCompressionProcessor : MultiFileProcessorBase
     private string? _outputPath;
     private int _quality = ImageCompressionOptions.GetQuality(ImageCompressionLevel.Small);
     private int _maxDimension;
+    private string _language = ClickraSettings.DefaultEmpty;
     private string? _normalizedOutputPath;
     private PromotionState? _promotionState;
     private long _requestSequence;
@@ -60,6 +61,7 @@ public class ImageCompressionProcessor : MultiFileProcessorBase
 
         // 0 keeps the original size, which is what the settings registry documents.
         _maxDimension = Math.Max(0, GetInt(options, OptionMaxDimension) ?? 0);
+        _language = ExecutionLocalizationOptions.ReadLanguage(options);
 
         RegisterPromotionRequest();
         try
@@ -253,7 +255,7 @@ public class ImageCompressionProcessor : MultiFileProcessorBase
             case ".heic":
             case ".heif":
             case ".hif":
-                ImageFormatConvertProcessor.SaveAsHeic(image, outputPath, _quality);
+                ImageFormatConvertProcessor.SaveAsHeic(image, outputPath, _quality, _language);
                 break;
             case ".png":
                 image.Save(outputPath, ImageFormat.Png);

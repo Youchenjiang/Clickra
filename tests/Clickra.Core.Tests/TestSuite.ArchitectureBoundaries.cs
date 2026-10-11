@@ -7,7 +7,7 @@ namespace Clickra.Core.Tests;
 static partial class TestSuite
 {
     private const int ArchitectureViolationBaselineCeiling = 0;
-    private const int ProcessorGlobalStateBaselineCeiling = 27;
+    private const int ProcessorGlobalStateBaselineCeiling = 0;
     private const string RepositoryRootMissingMessage = "Could not locate the repository root.";
     private const string ArchitectureCliProjectDirectory = "Clickra.CLI";
     private const string ArchitectureCoreProjectDirectory = "Clickra.Core";
@@ -63,25 +63,11 @@ static partial class TestSuite
         new(
             "ClickraStorage.GetSetting",
             new Regex(@"\bClickraStorage\.GetSetting\(", RegexOptions.Compiled, ArchitectureRegexTimeout),
-            new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase)
-            {
-                ["src/Clickra.Core/Processors/FileProcessing/ImageFormatConvertProcessor.cs"] = 1,
-                ["src/Clickra.Core/Processors/FileProcessing/LibreOfficeEngineInstaller.cs"] = 2,
-                ["src/Clickra.Core/Processors/FileProcessing/LibreOfficeHelper.cs"] = 2,
-                ["src/Clickra.Core/Processors/FileProcessing/PdfDecryptProcessor.cs"] = 1,
-                ["src/Clickra.Core/Processors/FileProcessing/WicImageHelper.cs"] = 2,
-                ["src/Clickra.Core/Processors/PdfTranslation/PdfTranslationPipeline.cs"] = 3,
-                ["src/Clickra.Core/Processors/PdfTranslation/Rendering/PdfRewrite/PdfTranslatedPdfRebuilder.cs"] = 1,
-                ["src/Clickra.Core/Processors/PdfTranslation/Translation/PdfParagraphTranslationStage.cs"] = 1,
-                ["src/Clickra.Core/Processors/PdfTranslation/Translation/PdfTranslationBatchRunner.cs"] = 4
-            }),
+            new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase)),
         new(
             "ClickraStorage.GetSettingBool",
             new Regex(@"\bClickraStorage\.GetSettingBool\(", RegexOptions.Compiled, ArchitectureRegexTimeout),
-            new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase)
-            {
-                ["src/Clickra.Core/Processors/FileProcessing/LibreOfficeEngineInstaller.cs"] = 1
-            }),
+            new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase)),
         new(
             "ClickraStorage.GetSettingInt",
             new Regex(@"\bClickraStorage\.GetSettingInt\(", RegexOptions.Compiled, ArchitectureRegexTimeout),
@@ -89,10 +75,7 @@ static partial class TestSuite
         new(
             "ClickraStorage.SaveSetting",
             new Regex(@"\bClickraStorage\.SaveSetting\(", RegexOptions.Compiled, ArchitectureRegexTimeout),
-            new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase)
-            {
-                ["src/Clickra.Core/Processors/FileProcessing/LibreOfficeEngineInstaller.cs"] = 9
-            })
+            new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase))
     };
 
     public static void RegisterArchitectureBoundaryTests(TestRunner runner)
@@ -109,6 +92,9 @@ static partial class TestSuite
         runner.RunGuard(
             "Architecture boundaries: processor global setting baseline invariants stay explicit",
             TestProcessorGlobalStateBaselineInvariants);
+        runner.RunGuard(
+            "Architecture boundaries: processors do not depend on ClickraStorage",
+            TestProcessorsDoNotDependOnClickraStorage);
         runner.RunGuard(
             "Architecture boundaries: infrastructure settings access stays on an explicit key allowlist",
             TestInfrastructureSettingsAccessStaysOnAllowlist);
@@ -382,6 +368,30 @@ static partial class TestSuite
             string syntheticCall = $"var value = {rule.Name}(ClickraSettings.Language);";
             Assert.Equal(1, rule.Pattern.Matches(syntheticCall).Count);
         }
+    }
+
+    private static void TestProcessorsDoNotDependOnClickraStorage()
+    {
+        string? root = FindRepoRoot();
+        if (root is null) throw new TestSkippedException(RepositoryRootMissingMessage);
+
+        string processorsDirectory = Path.Combine(
+            root,
+            "src",
+            ArchitectureCoreProjectDirectory,
+            ArchitectureProcessorsDirectory);
+        string[] violations = Directory.GetFiles(processorsDirectory, "*.cs", SearchOption.AllDirectories)
+            .Where(path => !path.Contains($"{Path.DirectorySeparatorChar}bin{Path.DirectorySeparatorChar}", StringComparison.OrdinalIgnoreCase)
+                           && !path.Contains($"{Path.DirectorySeparatorChar}obj{Path.DirectorySeparatorChar}", StringComparison.OrdinalIgnoreCase))
+            .Where(path => File.ReadAllText(path).Contains("ClickraStorage", StringComparison.Ordinal))
+            .Select(path => NormalizeRepoPath(root, path))
+            .OrderBy(path => path, StringComparer.OrdinalIgnoreCase)
+            .ToArray();
+
+        Assert.True(
+            violations.Length == 0,
+            "Processors must receive storage-derived state explicitly instead of depending on ClickraStorage:" +
+            Environment.NewLine + string.Join(Environment.NewLine, violations));
     }
 
     private sealed record InfrastructureSettingsAllowance(

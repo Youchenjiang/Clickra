@@ -49,7 +49,9 @@ public class PdfSplitProcessor : SingleFileProcessorBase
             throw new InvalidOperationException("PDF 檔案不包含任何頁面。");
         }
 
-        string baseDir = Path.GetDirectoryName(targetOutputPath) ?? ClickraStorage.GetOutputDir(fullPath);
+        string baseDir = Path.GetDirectoryName(Path.GetFullPath(targetOutputPath)) ??
+                         Path.GetDirectoryName(fullPath) ??
+                         ".";
         string baseFileName = Path.GetFileNameWithoutExtension(fullPath);
 
         var ctx = new SplitContext(progressBase, totalProgressMax, onProgress, cancellationToken);

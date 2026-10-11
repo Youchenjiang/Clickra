@@ -292,7 +292,9 @@ namespace Clickra.UI;
                 return;
             }
 
-            string resolvedPath = LibreOfficeHelper.GetResolvedExecutablePath();
+            string resolvedPath = LibreOfficeHelper.GetResolvedExecutablePath(
+                ClickraStorage.GetSettingBool(ClickraSettings.LibreOfficeRemovalPendingRestart),
+                ClickraStorage.GetSetting(ClickraSettings.LibreOfficePath));
             if (!LibreOfficeEngineInstaller.CanAdoptExistingInstallation(resolvedPath))
             {
                 return;

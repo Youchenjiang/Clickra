@@ -26,8 +26,10 @@ namespace Clickra.Core.Processors
             {
                 targetLang = langStr;
             }
+            string language = ExecutionLocalizationOptions.ReadLanguage(options);
+            string dataDirectory = ProcessorExecutionOptions.ReadDataDirectory(options);
 
-            PdfTranslationPipeline.TranslatePdf(fullPath, targetOutputPath, targetLang, onProgress, cancellationToken);
+            PdfTranslationPipeline.TranslatePdf(fullPath, targetOutputPath, targetLang, language, dataDirectory, onProgress, cancellationToken);
         }
 
         public static TranslationPageDiagnostics AnalyzePageParagraphDiagnostics(string inputPath, int pageNum) =>

@@ -187,7 +187,7 @@ static partial class TestSuite
         string nativeAdapter = File.ReadAllText(Path.Combine(root, "src", CliProjectDirectory, "Progress", "NativeConversionExecutionAdapter.cs"));
         string fluentMain = File.ReadAllText(Path.Combine(root, "src", FluentProjectDirectory, FluentMainPageFile));
         string fluentTask = File.ReadAllText(Path.Combine(root, "src", FluentProjectDirectory, "TaskProgressPage.xaml.cs"));
-        string lifecycle = File.ReadAllText(Path.Combine(root, "src", CoreProjectDirectory, "Processors", "ConversionTaskLifecycle.cs"));
+            string lifecycle = File.ReadAllText(Path.Combine(root, "src", CoreProjectDirectory, "Application", "ConversionTaskLifecycle.cs"));
         string perFileUseCaseBase = File.ReadAllText(Path.Combine(root, "src", CoreProjectDirectory, "Application", "PerFileConversionUseCaseBase.cs"));
         string markdownUseCaseBase = File.ReadAllText(Path.Combine(root, "src", CoreProjectDirectory, "Application", "MarkdownConversionUseCaseBase.cs"));
 

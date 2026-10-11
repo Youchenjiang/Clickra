@@ -11,10 +11,11 @@ namespace Clickra.Core.Processors
             if (files == null || files.Count == 0) return;
 
             int total = files.Count;
+            Action<int>? onFileStarting = ProcessorExecutionOptions.ReadFileStartingCallback(options);
             for (int i = 0; i < files.Count; i++)
             {
                 cancellationToken.ThrowIfCancellationRequested();
-                try { ClickraStorage.SetActiveRecordIndex(i); } catch { }
+                try { onFileStarting?.Invoke(i); } catch { }
 
                 ProcessFile(files[i], i, total, options, onProgress, cancellationToken);
             }
