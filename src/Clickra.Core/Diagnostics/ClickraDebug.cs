@@ -91,14 +91,11 @@ public static class ClickraDebug
         }
     }
 
-    public static IReadOnlyList<string> Lines
+    public static IReadOnlyList<string> GetLinesSnapshot()
     {
-        get
+        lock (_lock)
         {
-            lock (_lock)
-            {
-                return _lines.ToList();
-            }
+            return _lines.ToList();
         }
     }
 }

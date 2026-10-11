@@ -107,7 +107,7 @@ namespace Clickra.Core.Processors
                     outputPages = rebuiltDoc.PageCount;
                 }
 
-                var debugLines = ClickraDebug.Lines;
+                var debugLines = ClickraDebug.GetLinesSnapshot();
                 int renderEntries = debugLines.Count(line => line.Contains(" RENDER ", StringComparison.Ordinal));
                 // LogRender uses invariant boolean formatting (True/False). Keep the
                 // health report case-insensitive so a real guard clip cannot be
@@ -214,7 +214,7 @@ namespace Clickra.Core.Processors
         {
             try
             {
-                var debugLines = ClickraDebug.Lines;
+                var debugLines = ClickraDebug.GetLinesSnapshot();
                 new PdfTranslationHealthReport
                 {
                     InputPath = Path.GetFullPath(cfg.InputPath),
