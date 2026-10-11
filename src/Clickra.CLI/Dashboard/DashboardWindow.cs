@@ -115,7 +115,7 @@ namespace Clickra.UI
             try { _tagFont?.Dispose(); } catch {}
             try { _iconFont?.Dispose(); } catch {}
 
-            string lang = SettingsController.Get(ClickraSettings.Language);
+            string lang = SettingsController.Language;
             string fontName = LocalizedUiFontSelector.GetTextFontName(lang);
             float s = _dpiScale;
 

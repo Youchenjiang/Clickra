@@ -210,12 +210,13 @@ namespace Clickra.UI
                     g.DrawString(joinedNames, _subFont, listBrush, (zoneX + 20) * s,
                         (zoneY + DashboardLayout.ConvertZoneFilesOffset) * s);
 
-                    string outDirMode = SettingsController.Get(ClickraSettings.OutputDir);
-                    string outPathDesc = outDirMode.ToLowerInvariant() switch
+                    OutputDirectoryPreference outputDirectory = SettingsController.OutputDirectory;
+                    string outPathDesc = outputDirectory.Kind switch
                     {
-                        "desktop" => GetText("setting_output_desktop"),
-                        "downloads" => GetText("setting_output_downloads"),
-                        _ => outDirMode.Equals("source", StringComparison.OrdinalIgnoreCase) ? GetText("setting_output_same_as_source") : GetText("setting_output_custom")
+                        OutputDirectoryKind.Desktop => GetText("setting_output_desktop"),
+                        OutputDirectoryKind.Downloads => GetText("setting_output_downloads"),
+                        OutputDirectoryKind.Source => GetText("setting_output_same_as_source"),
+                        _ => GetText("setting_output_custom")
                     };
                     using var descBrush = new SolidBrush(Color.FromArgb(130, 130, 130));
                     g.DrawString($"{GetText("setting_output_title")}: {outPathDesc}", _subFont, descBrush, (zoneX + 20) * s,

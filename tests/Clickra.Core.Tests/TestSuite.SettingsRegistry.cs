@@ -276,8 +276,8 @@ static partial class TestSuite
                     cliClick.Contains("int span = range.Max - range.Min", StringComparison.Ordinal),
             "CLI slider click handler must derive its span and clamping from the descriptor range.");
         Assert.True(cliClick.Contains("GetRequiredNumericRange(descriptor)", StringComparison.Ordinal) &&
-                    cliClick.Contains("SettingsController.Set(descriptor.Key, clamped.ToString())", StringComparison.Ordinal),
-            "CLI ApplyPdfCompressLevel must clamp through the registered descriptor and persist through the application settings gateway.");
+                    cliClick.Contains("SettingsController.WriteInt(descriptor, clamped)", StringComparison.Ordinal),
+            "CLI ApplyPdfCompressLevel must clamp through the registered descriptor and persist through the typed application settings gateway.");
         Assert.True(cliClick.Contains("ClickraSettings.MinParkedRetentionDays", StringComparison.Ordinal) &&
                     cliClick.Contains("ClickraSettings.MaxParkedRetentionDays", StringComparison.Ordinal),
             "CLI SetParkedRetention must clamp against centralized retention bounds.");
@@ -388,32 +388,31 @@ static partial class TestSuite
             Assert.Equal(42, ClickraStorage.GetParkedRetentionDays());
 
             string root = FindRepoRoot() ?? throw new TestSkippedException(RepoRootNotFoundMessage);
-            string storageSource = File.ReadAllText(Path.Combine(root, "src", SettingsRegistryCoreProjectDirectory, "Storage", "ClickraStorage.cs"));
-            int saveStart = storageSource.IndexOf("public static void SaveSetting", StringComparison.Ordinal);
-            int notifyStart = storageSource.IndexOf("private static void NotifySettingsChanged", saveStart, StringComparison.Ordinal);
-            Assert.True(saveStart >= 0 && notifyStart > saveStart, "SaveSetting source block must be discoverable.");
+            string storageSource = File.ReadAllText(Path.Combine(root, "src", SettingsRegistryCoreProjectDirectory, "Storage", "SettingsStore.cs"));
+            int saveStart = storageSource.IndexOf("internal static void Set(string key, string value)", StringComparison.Ordinal);
+            int notifyStart = storageSource.IndexOf("private static void InitializeWatcher", saveStart, StringComparison.Ordinal);
+            Assert.True(saveStart >= 0 && notifyStart > saveStart, "SettingsStore.Set source block must be discoverable.");
             string saveBody = storageSource[saveStart..notifyStart];
-            int mutexIndex = saveBody.IndexOf("RunWithMutex", StringComparison.Ordinal);
-            int reloadIndex = saveBody.IndexOf("if (!LoadSettingsInternalLocked())", StringComparison.Ordinal);
-            int writeIndex = saveBody.IndexOf("SettingsCache[key] = val", StringComparison.Ordinal);
-            int persistIndex = saveBody.IndexOf("PersistSettingsFileLocked()", StringComparison.Ordinal);
+            int mutexIndex = saveBody.IndexOf("StorageRuntime.RunWithMutex", StringComparison.Ordinal);
+            int reloadIndex = saveBody.IndexOf("if (!LoadInternalLocked())", StringComparison.Ordinal);
+            int writeIndex = saveBody.IndexOf("Cache[key] = value", StringComparison.Ordinal);
+            int persistIndex = saveBody.IndexOf("PersistLocked()", StringComparison.Ordinal);
             int changedIndex = saveBody.IndexOf("changed = true", StringComparison.Ordinal);
             Assert.True(mutexIndex >= 0 && reloadIndex > mutexIndex && writeIndex > reloadIndex,
-                "SaveSetting must refresh from disk after acquiring the cross-process mutex before mutating the cache.");
+                "SettingsStore.Set must refresh from disk after acquiring the cross-process mutex before mutating the cache.");
             Assert.True(persistIndex > writeIndex && changedIndex > persistIndex,
-                "SaveSetting must only mark the change successful after persistence succeeds.");
-            Assert.True(saveBody.Contains("SettingsCache.Remove(key)", StringComparison.Ordinal),
-                "SaveSetting must roll back a newly-added cache entry when persistence fails.");
+                "SettingsStore.Set must only mark the change successful after persistence succeeds.");
+            Assert.True(saveBody.Contains("Cache.Remove(key)", StringComparison.Ordinal),
+                "SettingsStore.Set must roll back a newly-added cache entry when persistence fails.");
 
-            Assert.True(storageSource.Contains("ReloadSettingsFromWatcher()", StringComparison.Ordinal) &&
-                        storageSource.Contains("if (ReloadSettingsCore())", StringComparison.Ordinal) &&
+            Assert.True(storageSource.Contains("ReloadFromWatcher()", StringComparison.Ordinal) &&
+                        storageSource.Contains("if (ReloadCore())", StringComparison.Ordinal) &&
                         storageSource.Contains("catch (TimeoutException)", StringComparison.Ordinal),
                 "Watcher-triggered reloads must retry failed reads or mutex acquisition without leaking ThreadPool exceptions.");
-            Assert.True(storageSource.Contains("A transient read/sharing failure is not an empty settings file.", StringComparison.Ordinal),
-                "Settings reload must preserve the last known-good cache when reading the settings file fails.");
-            Assert.True(storageSource.Contains("private static bool LoadSettingsInternalLocked()", StringComparison.Ordinal) &&
+            Assert.True(storageSource.Contains("private static bool TryReadFile(", StringComparison.Ordinal) &&
+                        storageSource.Contains("catch", StringComparison.Ordinal) &&
                         storageSource.Contains("return false;", StringComparison.Ordinal),
-                "Settings reload must report transient read failure so callers cannot persist stale cache state.");
+                "Settings reload must preserve the last known-good cache and report transient read failure.");
         }
         finally
         {
@@ -525,9 +524,9 @@ static partial class TestSuite
                     && fluentCode.Contains("_dynamicSettings.Sync();", StringComparison.Ordinal)
                     && fluentCode.Contains("_dynamicSettings.ApplyLanguage();", StringComparison.Ordinal),
             "MainPage must delegate dynamic settings creation, synchronization, and localization to the controller.");
-        Assert.True(fluentDynamicSettings.Contains("SettingsController.Set(", StringComparison.Ordinal)
-                    && fluentDynamicSettings.Contains("SettingsController.Get", StringComparison.Ordinal),
-            "The Fluent dynamic settings controller must own descriptor synchronization through the application settings gateway.");
+        Assert.True(fluentDynamicSettings.Contains("SettingsController.Write", StringComparison.Ordinal)
+                    && fluentDynamicSettings.Contains("SettingsController.Read", StringComparison.Ordinal),
+            "The Fluent dynamic settings controller must own descriptor synchronization through the typed application settings gateway.");
         Assert.True(cliPaint.Contains("SettingPageRegistry.AllDescriptors", StringComparison.Ordinal),
             "CLI Dashboard must iterate SettingPageRegistry.AllDescriptors to paint dynamic settings controls.");
         Assert.True(cliPaint.Contains("DrawDynamicSettingDescriptor", StringComparison.Ordinal),

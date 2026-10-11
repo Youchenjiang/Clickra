@@ -119,7 +119,7 @@ internal static class ClickraStartup
     /// compression level and page range) from the argument list.</summary>
     private static void ParseOptions(List<string> argList, out bool quiet, out string? outputDirOverride, out bool hasCliLevel, out string compressionLevel, out string pagesOption)
     {
-        bool quietByDefault = SettingsController.GetBool(ClickraSettings.QuietMode);
+        bool quietByDefault = SettingsController.QuietMode;
         quiet = quietByDefault;
         if (argList.Contains("--quiet")) { quiet = true; argList.Remove("--quiet"); }
         if (argList.Contains("--no-ui")) { quiet = true; argList.Remove("--no-ui"); }

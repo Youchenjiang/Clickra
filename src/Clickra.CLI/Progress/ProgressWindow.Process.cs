@@ -202,7 +202,7 @@ namespace Clickra.UI
 
             if (cancelled)
             {
-                throw new OperationCanceledException(Localization.T("error_user_aborted", SettingsController.Get(ClickraSettings.Language)));
+                throw new OperationCanceledException(Localization.T("error_user_aborted", SettingsController.Language));
             }
             return input ?? "";
         }
@@ -210,7 +210,7 @@ namespace Clickra.UI
         /// <summary>Shows a Windows toast notification on success, unless notifications are disabled.</summary>
         private void ShowToastNotification(string command, int count)
         {
-            if (!SettingsController.GetBool(ClickraSettings.Notification))
+            if (!SettingsController.NotificationsEnabled)
                 return;
 
             try

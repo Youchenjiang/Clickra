@@ -328,8 +328,8 @@ static partial class TestSuite
             "The retention control must show the same value the task pruner enforces.");
         Assert.True(code.Contains("ParkedRetentionBox.ValueChanged += OnParkedRetentionChanged", StringComparison.Ordinal),
             "Editing the retention control must persist the setting.");
-        Assert.True(code.Contains("SettingsController.Set(ClickraSettings.ParkedTaskRetention", StringComparison.Ordinal),
-            "Changing the retention control must write ParkedTaskRetention through the application settings gateway.");
+        Assert.True(code.Contains("SettingsController.ParkedTaskRetentionDays = days", StringComparison.Ordinal),
+            "Changing the retention control must write parked retention through the typed application settings gateway.");
         Assert.False(code.Contains("const string ParkedRetentionSettingKey", StringComparison.Ordinal),
             "The key must come from the ClickraSettings registry, not a local constant.");
 
@@ -401,9 +401,8 @@ static partial class TestSuite
         Assert.True(clickCode.Contains("element >= 90 && element <= 96", StringComparison.Ordinal),
             "IsSettingsElement must route the entire retention control ID range.");
 
-        // Must write using the central registry constant ClickraSettings.ParkedTaskRetention
-        Assert.True(clickCode.Contains("SettingsController.Set(ClickraSettings.ParkedTaskRetention", StringComparison.Ordinal),
-            "Click handler must persist retention through the application settings gateway using ClickraSettings.ParkedTaskRetention.");
+        Assert.True(clickCode.Contains("SettingsController.ParkedTaskRetentionDays = clamped", StringComparison.Ordinal),
+            "Click handler must persist retention through the typed application settings gateway.");
 
         // The default preset must come from the registry rather than embedding seven days locally.
         Assert.True(paintCode.Contains("GetDefaultParkedRetentionDays()", StringComparison.Ordinal) &&
@@ -532,8 +531,6 @@ static partial class TestSuite
 
         string fluentCode = File.ReadAllText(Path.Combine(root, "src", FluentProjectDirectory, FluentHistoryPageFile));
         string cliHistory = File.ReadAllText(Path.Combine(root, "src", CliProjectDirectory, DashboardDirectory, DashboardHistoryPaintFile));
-        string storageCode = File.ReadAllText(Path.Combine(root, "src", CoreProjectDirectory, StorageDirectory, "ClickraStorage.ActiveRecord.cs"));
-        string parkedCoordinator = File.ReadAllText(Path.Combine(root, "src", CoreProjectDirectory, StorageDirectory, "ParkedTaskCoordinator.cs"));
         string feedCode = File.ReadAllText(Path.Combine(root, "src", CoreProjectDirectory, ApplicationDirectory, "HistoryFeed.cs"));
 
         Assert.True(feedCode.Contains("ClickraStorage.GetParkedRetentionInfo", StringComparison.Ordinal),
@@ -554,15 +551,14 @@ static partial class TestSuite
         {
             string owner = key is "task_parked_expiring_warning" or "task_parked_badge_expiring"
                 ? fluentCode
-                : parkedCoordinator;
+                : feedCode;
             Assert.True(owner.Contains(key, StringComparison.Ordinal),
                 $"{key} must be referenced by the surface that renders it.");
         }
 
-        Assert.True(storageCode.Contains("DescribeParkedRetention", StringComparison.Ordinal),
-            "ClickraStorage must expose one formatter for parked-task retention text.");
-        Assert.True(feedCode.Contains("ClickraStorage.DescribeParkedRetention", StringComparison.Ordinal),
-            "The shared feed must word the deadline via ClickraStorage.DescribeParkedRetention.");
+        Assert.True(feedCode.Contains("DescribeRetention", StringComparison.Ordinal)
+                    && feedCode.Contains("Localization.T(\"task_parked_ttl_", StringComparison.Ordinal),
+            "The application feed must own parked-task retention wording with explicit localization.");
         Assert.True(cliHistory.Contains("item.RetentionText", StringComparison.Ordinal),
             "The CLI History row must render the same phrase through the shared item.");
 

@@ -136,7 +136,7 @@ public partial class ProgressWindow
     /// CJK text with a font that actually contains the glyphs (Segoe UI does not).</summary>
     private static string GetThumbnailFontName()
     {
-        string lang = SettingsController.Get(ClickraSettings.Language);
+        string lang = SettingsController.Language;
         return LocalizedUiFontSelector.GetTextFontName(lang);
     }
     /// <summary>

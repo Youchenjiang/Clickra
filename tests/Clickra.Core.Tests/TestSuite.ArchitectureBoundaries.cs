@@ -94,6 +94,9 @@ static partial class TestSuite
             "Architecture boundaries: settings persistence has one application gateway",
             TestSettingsPersistenceHasSingleApplicationGateway);
         runner.RunGuard(
+            "Architecture boundaries: presentation settings use typed application access",
+            TestPresentationSettingsUseTypedApplicationAccess);
+        runner.RunGuard(
             "Architecture boundaries: parked task actions have one application gateway",
             TestParkedTaskActionsHaveSingleApplicationGateway);
         runner.RunGuard(
@@ -102,6 +105,12 @@ static partial class TestSuite
         runner.RunGuard(
             "Architecture boundaries: Core bounded contexts declare owned namespaces",
             TestCoreBoundedContextsDeclareOwnedNamespaces);
+        runner.RunGuard(
+            "Architecture boundaries: storage facade delegates to focused persistence owners",
+            TestStorageFacadeDelegatesToFocusedOwners);
+        runner.RunGuard(
+            "Architecture boundaries: storage does not own localized presentation text",
+            TestStorageDoesNotOwnLocalizedPresentationText);
         runner.RunGuard(
             "Architecture boundaries: presentation and platform helpers have explicit ownership",
             TestPresentationAndPlatformHelpersHaveExplicitOwnership);
@@ -198,11 +207,11 @@ static partial class TestSuite
                 $"{publicCall} must stay a facade instead of reclaiming parked-task orchestration.");
         }
 
-        Assert.True(coordinator.Contains("RunWithMutex", StringComparison.Ordinal),
+        Assert.True(coordinator.Contains("StorageRuntime.RunWithMutex", StringComparison.Ordinal),
             "ParkedTaskCoordinator must own atomic parked-task transitions.");
         Assert.True(coordinator.Contains("TaskRetentionPolicy.CalculateAdjustedDays(", StringComparison.Ordinal),
             "ParkedTaskCoordinator must own retention-policy orchestration.");
-        Assert.True(coordinator.Contains("WriteCanceledHistory(", StringComparison.Ordinal),
+        Assert.True(coordinator.Contains("HistoryStore.AppendCanceled(", StringComparison.Ordinal),
             "ParkedTaskCoordinator must own parked-task cancellation bookkeeping.");
         Assert.False(facade.Contains("TaskRetentionPolicy.CalculateAdjustedDays(", StringComparison.Ordinal),
             "ClickraStorage.ActiveRecord must not take parked retention orchestration back from the coordinator.");
@@ -213,11 +222,12 @@ static partial class TestSuite
         string root = FindRepoRoot() ?? throw new TestSkippedException(RepositoryRootMissingMessage);
         string storageDir = Path.Combine(root, "src", ArchitectureCoreProjectDirectory, "Storage");
         string facade = File.ReadAllText(Path.Combine(storageDir, "ClickraStorage.ActiveRecord.cs"));
+        string queue = File.ReadAllText(Path.Combine(storageDir, "TaskQueueStore.cs"));
         string parked = File.ReadAllText(Path.Combine(storageDir, "ParkedTaskCoordinator.cs"));
         string pruner = File.ReadAllText(Path.Combine(storageDir, "TaskPruningCoordinator.cs"));
 
-        Assert.True(facade.Contains("TaskPruningCoordinator.Prune()", StringComparison.Ordinal),
-            "Active task reads must delegate stale-task cleanup to TaskPruningCoordinator.");
+        Assert.True(queue.Contains("TaskPruningCoordinator.Prune()", StringComparison.Ordinal),
+            "TaskQueueStore active reads must delegate stale-task cleanup to TaskPruningCoordinator.");
         Assert.True(parked.Contains("TaskPruningCoordinator.Prune()", StringComparison.Ordinal),
             "Parked task reads must delegate stale-task cleanup to TaskPruningCoordinator.");
 
@@ -232,6 +242,8 @@ static partial class TestSuite
                 $"TaskPruningCoordinator must own {pruningOwner}.");
             Assert.False(facade.Contains(pruningOwner, StringComparison.Ordinal),
                 $"ClickraStorage.ActiveRecord must not reclaim {pruningOwner}.");
+            Assert.False(queue.Contains(pruningOwner, StringComparison.Ordinal) && pruningOwner != "TaskRetentionPolicy.IsExpired(",
+                $"TaskQueueStore must not reclaim pruning policy {pruningOwner}.");
             Assert.False(parked.Contains(pruningOwner, StringComparison.Ordinal),
                 $"ParkedTaskCoordinator must not own {pruningOwner}.");
         }
@@ -598,6 +610,63 @@ static partial class TestSuite
             string.Join(Environment.NewLine, violations));
     }
 
+    private static readonly Regex RawPresentationSettingsAccess =
+        new(@"\bSettingsController\.(?:Get|GetBool|GetInt|Set)\s*\(",
+            RegexOptions.Compiled, ArchitectureRegexTimeout);
+
+    private static readonly Regex PersistedBooleanRepresentationInPresentation =
+        new(@"\bClickraSettings\.(?:ValueTrue|ValueFalse)\b",
+            RegexOptions.Compiled, ArchitectureRegexTimeout);
+
+    private static void TestPresentationSettingsUseTypedApplicationAccess()
+    {
+        string? root = FindRepoRoot();
+        if (root is null) throw new TestSkippedException(RepositoryRootMissingMessage);
+
+        var violations = new List<string>();
+        foreach (string directory in new[]
+                 {
+                     Path.Combine(root, "src", ArchitectureCliProjectDirectory),
+                     Path.Combine(root, "src", ArchitectureFluentProjectDirectory)
+                 })
+        {
+            foreach (string file in Directory.EnumerateFiles(directory, "*.cs", SearchOption.AllDirectories)
+                         .Where(path => !path.Contains($"{Path.DirectorySeparatorChar}bin{Path.DirectorySeparatorChar}", StringComparison.OrdinalIgnoreCase)
+                                     && !path.Contains($"{Path.DirectorySeparatorChar}obj{Path.DirectorySeparatorChar}", StringComparison.OrdinalIgnoreCase)))
+            {
+                string source = File.ReadAllText(file);
+                if (RawPresentationSettingsAccess.IsMatch(source))
+                    violations.Add($"{NormalizeRepoPath(root, file)}: raw SettingsController key access");
+                if (PersistedBooleanRepresentationInPresentation.IsMatch(source))
+                    violations.Add($"{NormalizeRepoPath(root, file)}: persisted true/false representation leaked into presentation");
+            }
+        }
+
+        string gateway = File.ReadAllText(Path.Combine(
+            root, "src", ArchitectureCoreProjectDirectory, ArchitectureApplicationDirectory, "SettingsController.cs"));
+        foreach (string typedContract in new[]
+                 {
+                     "public static string Language",
+                     "public static bool QuietMode",
+                     "public static bool NotificationsEnabled",
+                     "public static OfficeEnginePreference OfficeEngine",
+                     "public static OutputDirectoryPreference OutputDirectory",
+                     "public static bool ReadBool(SettingDescriptor descriptor)",
+                     "public static int ReadInt(SettingDescriptor descriptor)",
+                     "public static void WriteBool(SettingDescriptor descriptor, bool value)",
+                     "public static void WriteInt(SettingDescriptor descriptor, int value)"
+                 })
+        {
+            if (!gateway.Contains(typedContract, StringComparison.Ordinal))
+                violations.Add($"SettingsController missing typed contract: {typedContract}");
+        }
+
+        Assert.True(
+            violations.Count == 0,
+            "CLI and Fluent must consume typed application settings instead of persisted keys/boolean encodings:" +
+            Environment.NewLine + string.Join(Environment.NewLine, violations));
+    }
+
     private static readonly Regex DirectParkedTaskActionStorageAccess =
         new(@"\bClickraStorage\.(?:GetParkedRetentionDays|AdjustParkedRetention|SetParkedRetentionOverride|CancelParkedTask|ClaimParkedTaskForResume)\b",
             RegexOptions.Compiled, ArchitectureRegexTimeout);
@@ -702,7 +771,8 @@ static partial class TestSuite
                      ("Storage", "Clickra.Core.Storage"),
                      ("Translation", "Clickra.Core.Translation"),
                      ("Diagnostics", "Clickra.Core.Diagnostics"),
-                     ("Fonts", "Clickra.Core.Fonts")
+                     ("Fonts", "Clickra.Core.Fonts"),
+                     ("Infrastructure", "Clickra.Core.Infrastructure")
                  })
         {
             string directory = Path.Combine(core, folder);
@@ -730,6 +800,75 @@ static partial class TestSuite
         Assert.True(
             violations.Count == 0,
             "Physical Core bounded contexts must keep namespaces that encode their ownership:" +
+            Environment.NewLine + string.Join(Environment.NewLine, violations));
+    }
+
+    private static void TestStorageFacadeDelegatesToFocusedOwners()
+    {
+        string root = FindRepoRoot() ?? throw new TestSkippedException(RepositoryRootMissingMessage);
+        string storage = Path.Combine(root, "src", ArchitectureCoreProjectDirectory, "Storage");
+
+        foreach (string owner in new[]
+                 {
+                     "StorageRuntime.cs",
+                     "SettingsStore.cs",
+                     "StoragePathResolver.cs",
+                     "HistoryStore.cs",
+                     "TaskRecordStore.cs",
+                     "TaskQueueStore.cs",
+                     "LegacyActiveRecordStore.cs",
+                     "ParkedTaskCoordinator.cs",
+                     "TaskPruningCoordinator.cs"
+                 })
+        {
+            Assert.True(File.Exists(Path.Combine(storage, owner)), $"Focused storage owner is missing: {owner}");
+        }
+
+        string facade = string.Join(
+            Environment.NewLine,
+            Directory.EnumerateFiles(storage, "ClickraStorage*.cs", SearchOption.TopDirectoryOnly)
+                .Select(File.ReadAllText));
+
+        foreach (string implementationDetail in new[]
+                 {
+                     "FileSystemWatcher",
+                     "new Mutex(",
+                     "File.AppendAllText(",
+                     "TaskRecordStore.Write(",
+                     "Directory.GetFiles("
+                 })
+        {
+            Assert.False(
+                facade.Contains(implementationDetail, StringComparison.Ordinal),
+                $"ClickraStorage compatibility facade reclaimed persistence implementation detail: {implementationDetail}");
+        }
+
+        Assert.True(facade.Contains("SettingsStore.Get(", StringComparison.Ordinal),
+            "Settings persistence must be owned by SettingsStore behind ClickraStorage.");
+        Assert.True(facade.Contains("TaskQueueStore.Start(", StringComparison.Ordinal),
+            "Task lifecycle persistence must be owned by TaskQueueStore behind ClickraStorage.");
+        Assert.True(facade.Contains("HistoryStore.Read(", StringComparison.Ordinal),
+            "History persistence must be owned by HistoryStore behind ClickraStorage.");
+        Assert.True(facade.Contains("LegacyActiveRecordStore.Start(", StringComparison.Ordinal),
+            "legacy active.tmp compatibility must be owned by LegacyActiveRecordStore.");
+    }
+
+    private static void TestStorageDoesNotOwnLocalizedPresentationText()
+    {
+        string root = FindRepoRoot() ?? throw new TestSkippedException(RepositoryRootMissingMessage);
+        string storage = Path.Combine(root, "src", ArchitectureCoreProjectDirectory, "Storage");
+        var violations = new List<string>();
+
+        foreach (string file in Directory.EnumerateFiles(storage, "*.cs", SearchOption.AllDirectories))
+        {
+            string source = File.ReadAllText(file);
+            if (source.Contains("Localization.T(", StringComparison.Ordinal))
+                violations.Add(NormalizeRepoPath(root, file));
+        }
+
+        Assert.True(
+            violations.Count == 0,
+            "Storage must return facts/state; localized presentation wording belongs above storage:" +
             Environment.NewLine + string.Join(Environment.NewLine, violations));
     }
 

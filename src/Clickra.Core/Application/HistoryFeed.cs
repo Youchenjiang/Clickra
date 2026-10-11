@@ -54,7 +54,11 @@ public readonly record struct ParkedRetentionState(
 /// </summary>
 public sealed class HistoryItem
 {
-    internal HistoryItem(HistoryItemKind kind, ClickraStorage.HistoryEntry entry, ClickraStorage.ParkedRetentionInfo? retention)
+    internal HistoryItem(
+        HistoryItemKind kind,
+        ClickraStorage.HistoryEntry entry,
+        ClickraStorage.ParkedRetentionInfo? retention,
+        string language)
     {
         Kind = kind;
         Entry = Snapshot(entry);
@@ -66,13 +70,13 @@ public sealed class HistoryItem
         Time = entry.Time ?? "";
         FileCount = entry.FileCount;
         FirstFileName = FirstFileNameOf(entry);
-        FileCountText = DescribeFiles(entry.FileCount, FirstFileName);
-        StoppedOnText = kind == HistoryItemKind.Parked ? DescribeStoppedOn(entry) : "";
+        FileCountText = DescribeFiles(entry.FileCount, FirstFileName, language);
+        StoppedOnText = kind == HistoryItemKind.Parked ? DescribeStoppedOn(entry, language) : "";
         ErrorMessage = entry.ErrorMessage ?? "";
         Subtitle = kind == HistoryItemKind.Parked
             ? JoinParts(FirstFileName, StoppedOnText, ErrorMessage)
             : FileCountText;
-        RetentionText = retention.HasValue ? ClickraStorage.DescribeParkedRetention(retention.Value) : "";
+        RetentionText = retention.HasValue ? DescribeRetention(retention.Value, language) : "";
         NeedsAttention = retention.HasValue && (retention.Value.IsExpiringSoon || retention.Value.HasExpired);
     }
 
@@ -143,19 +147,41 @@ public sealed class HistoryItem
         return parts.Length == 0 ? "" : Path.GetFileName(parts[0]) ?? "";
     }
 
-    private static string DescribeFiles(int fileCount, string firstFileName)
+    private static string DescribeFiles(int fileCount, string firstFileName, string language)
     {
         if (!string.IsNullOrEmpty(firstFileName))
             return fileCount > 1
-                ? $"{firstFileName} + {fileCount - 1} {Localization.T("label_files")}"
+                ? $"{firstFileName} + {fileCount - 1} {Localization.T("label_files", language)}"
                 : firstFileName;
-        return $"{fileCount} {Localization.T("label_files")}";
+        return $"{fileCount} {Localization.T("label_files", language)}";
     }
 
-    private static string DescribeStoppedOn(ClickraStorage.HistoryEntry entry)
+    private static string DescribeStoppedOn(ClickraStorage.HistoryEntry entry, string language)
         => entry.FileCount > 1
-            ? Localization.T("task_file_index", Math.Clamp(entry.CurrentIndex + 1, 1, entry.FileCount), entry.FileCount)
+            ? string.Format(
+                Localization.T("task_file_index", language),
+                Math.Clamp(entry.CurrentIndex + 1, 1, entry.FileCount),
+                entry.FileCount)
             : "";
+
+    internal static string DescribeRetention(ClickraStorage.ParkedRetentionInfo info, string language)
+    {
+        string phrase;
+        if (info.IsUnlimited)
+            phrase = Localization.T("task_parked_ttl_unlimited", language);
+        else if (info.HasExpired)
+            phrase = Localization.T("task_parked_ttl_expired", language);
+        else if (info.IsExpiringSoon)
+            phrase = Localization.T("task_parked_ttl_expiring_soon", language);
+        else if (info.RemainingDays == 1)
+            phrase = string.Format(Localization.T("task_parked_ttl_days_one", language), 1);
+        else
+            phrase = string.Format(Localization.T("task_parked_ttl_days", language), info.RemainingDays);
+
+        return info.IsTaskOverride
+            ? phrase + Localization.T("task_parked_ttl_override", language)
+            : phrase;
+    }
 
     private static string JoinParts(params string[] parts)
         => string.Join(" · ", parts.Where(part => !string.IsNullOrWhiteSpace(part)));
@@ -215,18 +241,18 @@ public sealed class HistoryFeed
     /// 讀取一次完整清單。進行中與待繼續任務來自任務檔，已完成項目來自歷史檔；
     /// 待繼續任務的剩餘期限在這裡算一次（每個項目一次），呼叫端不必（也不該）逐列重算。
     /// </summary>
-    public static HistoryFeed Load(int completedLimit = 50)
+    public static HistoryFeed Load(string language, int completedLimit = 50)
     {
         var items = new List<HistoryItem>();
 
         foreach (var task in ClickraStorage.GetActiveTasks())
-            items.Add(new HistoryItem(HistoryItemKind.Active, task, null));
+            items.Add(new HistoryItem(HistoryItemKind.Active, task, null, language));
 
         foreach (var task in ClickraStorage.GetParkedTasks())
-            items.Add(new HistoryItem(HistoryItemKind.Parked, task, ClickraStorage.GetParkedRetentionInfo(task.Id)));
+            items.Add(new HistoryItem(HistoryItemKind.Parked, task, ClickraStorage.GetParkedRetentionInfo(task.Id), language));
 
         foreach (var entry in ClickraStorage.GetHistory(completedLimit))
-            items.Add(new HistoryItem(HistoryItemKind.Completed, entry, null));
+            items.Add(new HistoryItem(HistoryItemKind.Completed, entry, null, language));
 
         return new HistoryFeed(items.ToArray());
     }

@@ -11,7 +11,7 @@ internal static class ImageOutputSafety
 
         string template = Localization.T(
             "error_image_output_collision",
-            SettingsController.Get(ClickraSettings.Language));
+            SettingsController.Language);
         throw new InvalidOperationException(string.Format(template, duplicate.Key));
     }
 
@@ -29,7 +29,7 @@ internal static class ImageOutputSafety
 
         string template = Localization.T(
             "error_image_output_overwrites_input",
-            SettingsController.Get(ClickraSettings.Language));
+            SettingsController.Language);
         throw new InvalidOperationException(string.Format(template, collision));
     }
 }

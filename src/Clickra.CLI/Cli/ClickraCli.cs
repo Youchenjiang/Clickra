@@ -61,7 +61,7 @@ namespace Clickra
         /// report per file; sets the exit code when any file fails.</summary>
         private static void HandleTranslatePdfQuiet(List<string> files, string outputDir)
         {
-            string targetLang = SettingsController.Get(ClickraSettings.TranslateTargetLang);
+            string targetLang = SettingsController.TranslationTargetLanguage;
             bool translationFailed = false;
             for (int i = 0; i < files.Count; i++)
             {
@@ -363,7 +363,7 @@ namespace Clickra
         {
             string passwordError = Localization.T(
                 "error_pdf_password_quiet",
-                SettingsController.Get(ClickraSettings.Language));
+                SettingsController.Language);
             var interaction = new DelegateConversionInteraction(
                 (_, _, _, _) => Task.FromException<string?>(new InvalidOperationException(passwordError)),
                 (_, _, _) => Task.FromResult<string?>(null),

@@ -29,7 +29,7 @@ public sealed class ImgCompressUseCase : PerFileConversionUseCaseBase
         var options = request.Options is null
             ? new Dictionary<string, object>(SnapshotSavedOptions(), StringComparer.Ordinal)
             : new Dictionary<string, object>(request.Options, StringComparer.Ordinal);
-        options[ExecutionLocalizationOptions.LanguageKey] = SettingsController.Get(ClickraSettings.Language);
+        options[ExecutionLocalizationOptions.LanguageKey] = SettingsController.Language;
         return options;
     }
 
@@ -37,11 +37,11 @@ public sealed class ImgCompressUseCase : PerFileConversionUseCaseBase
     {
         int sliderLevel = ClickraSettings.ClampNumericSetting(
             ClickraSettings.ImageCompressLevel,
-            SettingsController.GetInt(ClickraSettings.ImageCompressLevel));
+            SettingsController.ImageCompressionLevel);
         ImageCompressionLevel level = ImageCompressionOptions.FromSliderLevel(sliderLevel);
         int maxDimension = ClickraSettings.ClampNumericSetting(
             ClickraSettings.ImageCompressMaxDimension,
-            SettingsController.GetInt(ClickraSettings.ImageCompressMaxDimension));
+            SettingsController.ImageCompressionMaxDimension);
 
         return new Dictionary<string, object>(StringComparer.Ordinal)
         {

@@ -120,7 +120,7 @@ namespace Clickra.UI
         {
             try
             {
-                _historyFeed = HistoryFeed.Load(50);
+                _historyFeed = HistoryFeed.Load(SettingsController.Language, 50);
                 _statTotal = _historyFeed.CompletedCount;
                 _statSuccess = _historyFeed.SuccessCount;
                 _statFailed = _historyFeed.FailedCount;
