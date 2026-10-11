@@ -245,6 +245,7 @@ static partial class TestSuite
         string fluentCode = File.ReadAllText(Path.Combine(root, "src", SettingsRegistryFluentProjectDirectory, "MainPage.xaml.cs"));
         string fluentXaml = File.ReadAllText(Path.Combine(root, "src", SettingsRegistryFluentProjectDirectory, "MainPage.xaml"));
         string cliPaint = File.ReadAllText(Path.Combine(root, "src", CliProjectDirectory, DashboardDirectory, "DashboardWindow.Paint.Settings.cs"));
+        string cliDynamicPaint = File.ReadAllText(Path.Combine(root, "src", CliProjectDirectory, DashboardDirectory, "DashboardWindow.Paint.Settings.Dynamic.cs"));
         string cliEvents = File.ReadAllText(Path.Combine(root, "src", CliProjectDirectory, DashboardDirectory, "DashboardWindow.Events.cs"));
         string cliClick = File.ReadAllText(Path.Combine(root, "src", CliProjectDirectory, DashboardDirectory, "DashboardWindow.Events.Settings.cs"));
 
@@ -266,16 +267,20 @@ static partial class TestSuite
                     !fluentXaml.Contains("x:Name=\"ParkedRetentionBox\" Grid.Column=\"1\" MinWidth=\"160\" Maximum=", StringComparison.Ordinal),
             "Fluent XAML must not duplicate ParkedRetentionBox bounds; LoadSettings owns the centralized range.");
 
-        Assert.True(cliPaint.Contains("ClickraSettings.MaxPdfCompressLevel - ClickraSettings.MinPdfCompressLevel + 1", StringComparison.Ordinal),
-            "CLI slider stop calculation must derive from ClickraSettings bounds.");
-        Assert.True(cliEvents.Contains("ClickraSettings.MaxPdfCompressLevel - ClickraSettings.MinPdfCompressLevel", StringComparison.Ordinal) &&
-                    cliEvents.Contains("ClickraSettings.ClampNumericSetting", StringComparison.Ordinal),
-            "CLI slider drag event must derive its span and clamping from ClickraSettings.");
-        Assert.True(cliClick.Contains("ClickraSettings.MaxPdfCompressLevel - ClickraSettings.MinPdfCompressLevel", StringComparison.Ordinal) &&
-                    cliClick.Contains("ClickraSettings.ClampNumericSetting", StringComparison.Ordinal),
-            "CLI slider click handler must derive its span and clamping from ClickraSettings.");
-        Assert.True(cliClick.Contains("ClickraSettings.ClampNumericSetting(ClickraSettings.PdfCompressImageLevel", StringComparison.Ordinal),
-            "CLI ApplyPdfCompressLevel must clamp using ClickraSettings.");
+        Assert.True(cliDynamicPaint.Contains("descriptor.GetEffectiveNumericRange()", StringComparison.Ordinal),
+            "CLI descriptor controls must derive numeric bounds from SettingDescriptor.");
+        Assert.True(cliPaint.Contains("GetRequiredNumericRange(pdfLevelDescriptor)", StringComparison.Ordinal) &&
+                    cliPaint.Contains("descriptor.SliderLabels", StringComparison.Ordinal),
+            "CLI PDF compression painting must derive bounds and labels from its registered descriptor.");
+        Assert.True(cliEvents.Contains("GetRequiredNumericRange(descriptor)", StringComparison.Ordinal) &&
+                    cliEvents.Contains("int span = range.Max - range.Min", StringComparison.Ordinal),
+            "CLI slider drag event must derive its span and clamping from the descriptor range.");
+        Assert.True(cliClick.Contains("GetRequiredNumericRange(levelDescriptor)", StringComparison.Ordinal) &&
+                    cliClick.Contains("int span = range.Max - range.Min", StringComparison.Ordinal),
+            "CLI slider click handler must derive its span and clamping from the descriptor range.");
+        Assert.True(cliClick.Contains("GetRequiredNumericRange(descriptor)", StringComparison.Ordinal) &&
+                    cliClick.Contains("ClickraStorage.SaveSetting(descriptor.Key, clamped.ToString())", StringComparison.Ordinal),
+            "CLI ApplyPdfCompressLevel must clamp and save through the registered descriptor.");
         Assert.True(cliClick.Contains("ClickraSettings.MinParkedRetentionDays", StringComparison.Ordinal) &&
                     cliClick.Contains("ClickraSettings.MaxParkedRetentionDays", StringComparison.Ordinal),
             "CLI SetParkedRetention must clamp against centralized retention bounds.");

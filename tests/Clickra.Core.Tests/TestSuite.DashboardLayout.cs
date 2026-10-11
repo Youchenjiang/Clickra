@@ -501,6 +501,27 @@ static partial class TestSuite
         Assert.True(paint.Contains("int fullWidth = (int)(logW - contentX - SettingsLayout.ContentRightMargin)", StringComparison.Ordinal)
                     && paint.Contains("int pdfSecondaryX = SettingsLayout.ColumnX((int)contentX, (int)logW, 1)", StringComparison.Ordinal),
             "Wide PDF compression must use the full card width and place secondary controls in the second column.");
+        AssertContainsAll(
+            paint,
+            "Native PDF compression must take titles, slider labels, and numeric bounds from SettingPageRegistry descriptors.",
+            "GetRequiredSettingDescriptor(ClickraSettings.PdfCompressImageLevel)",
+            "GetRequiredSettingDescriptor(ClickraSettings.PdfCompressStripFonts)",
+            "GetRequiredSettingDescriptor(ClickraSettings.PdfCompressMinifyContent)",
+            "descriptor.SliderLabels",
+            "GetRequiredNumericRange(pdfLevelDescriptor)");
+        AssertContainsNone(
+            paint,
+            "Native PDF compression painting must not re-declare descriptor-owned bounds or stop labels.",
+            "ClickraSettings.MaxPdfCompressLevel",
+            "ClickraSettings.MinPdfCompressLevel",
+            "GetText(\"setting_pdf_compress_level_small\")",
+            "GetText(\"setting_pdf_compress_level_std\")",
+            "GetText(\"setting_pdf_compress_level_high\")");
+        AssertContainsNone(
+            click + events,
+            "Native PDF compression interactions must not re-declare descriptor-owned numeric bounds.",
+            "ClickraSettings.MaxPdfCompressLevel",
+            "ClickraSettings.MinPdfCompressLevel");
         Assert.True(paint.Contains("SettingsLayout.ChoiceCardExpandedHeight", StringComparison.Ordinal)
                     && paint.Contains("SettingsLayout.EngineCardHeight", StringComparison.Ordinal)
                     && paint.Contains("SettingsLayout.RetentionCardHeight", StringComparison.Ordinal),

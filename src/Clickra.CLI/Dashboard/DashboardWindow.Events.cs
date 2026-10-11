@@ -214,15 +214,18 @@ namespace Clickra.UI
         /// <summary>Snaps the PDF compression slider to the nearest level while it is dragged.</summary>
         static void UpdatePdfSliderDrag(IntPtr hwnd, int mouseX, float sidebarW)
         {
-            // Drag on compress slider: real-time snap with equal intervals across stops derived from ClickraSettings
+            SettingDescriptor descriptor = GetRequiredSettingDescriptor(ClickraSettings.PdfCompressImageLevel);
+            NumericSettingRange range = GetRequiredNumericRange(descriptor);
+            // Drag on compress slider: real-time snap with equal intervals across descriptor-owned stops.
             float sliderMouseX = mouseX >= sidebarW ? mouseX + _contentScrollX : mouseX;
             float relX = sliderMouseX - _pdfSliderTrackX;
             float fraction = Math.Max(0f, Math.Min(1f, relX / _pdfSliderTrackW));
-            int span = ClickraSettings.MaxPdfCompressLevel - ClickraSettings.MinPdfCompressLevel;
-            int newLevel = ClickraSettings.ClampNumericSetting(
-                ClickraSettings.PdfCompressImageLevel,
-                (int)Math.Round(fraction * span, MidpointRounding.AwayFromZero) + ClickraSettings.MinPdfCompressLevel);
-            string current = ClickraStorage.GetSetting(ClickraSettings.PdfCompressImageLevel);
+            int span = range.Max - range.Min;
+            int newLevel = Math.Clamp(
+                (int)Math.Round(fraction * span, MidpointRounding.AwayFromZero) + range.Min,
+                range.Min,
+                range.Max);
+            string current = ClickraStorage.GetSetting(descriptor.Key);
             if (current != newLevel.ToString())
             {
                 ApplyPdfCompressLevel(hwnd, newLevel);

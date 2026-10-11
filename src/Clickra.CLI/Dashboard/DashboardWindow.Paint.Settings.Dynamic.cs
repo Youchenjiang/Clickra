@@ -8,6 +8,14 @@ namespace Clickra.UI;
     public static partial class DashboardWindow
     {
 
+        private static SettingDescriptor GetRequiredSettingDescriptor(string key) =>
+            SettingPageRegistry.GetDescriptor(key)
+            ?? throw new InvalidOperationException($"Setting descriptor is not registered: {key}");
+
+        private static NumericSettingRange GetRequiredNumericRange(SettingDescriptor descriptor) =>
+            descriptor.GetEffectiveNumericRange()
+            ?? throw new InvalidOperationException($"Numeric setting descriptor has no range: {descriptor.Key}");
+
         static void DrawDynamicSettingDescriptor(
             Graphics g,
             SettingDescriptor descriptor,
