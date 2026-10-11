@@ -46,6 +46,9 @@ public sealed class TranslatePdfUseCase : PerFileConversionUseCaseBase
             options[TargetLanguageOptionKey] =
                 ClickraStorage.GetSetting(ClickraSettings.TranslateTargetLang);
         }
+        options[ExecutionLocalizationOptions.LanguageKey] =
+            ClickraStorage.GetSetting(ClickraSettings.Language);
+        options[ProcessorExecutionOptions.DataDirectoryKey] = ClickraStorage.GetDataDir();
         return options;
     }
 
@@ -57,7 +60,13 @@ public sealed class TranslatePdfUseCase : PerFileConversionUseCaseBase
         {
             throw new InvalidOperationException("PDF translation requires a target language.");
         }
-        return targetLanguage;
+        string uiLanguage = plan.NormalizedOptions.TryGetValue(ExecutionLocalizationOptions.LanguageKey, out object? languageValue)
+            ? languageValue?.ToString() ?? ClickraSettings.DefaultEmpty
+            : ClickraSettings.DefaultEmpty;
+        string dataDirectory = plan.NormalizedOptions.TryGetValue(ProcessorExecutionOptions.DataDirectoryKey, out object? dataDirectoryValue)
+            ? dataDirectoryValue?.ToString() ?? string.Empty
+            : string.Empty;
+        return new TranslationExecutionState(targetLanguage, uiLanguage, dataDirectory);
     }
 
     protected override Task ExecuteFileAsync(
@@ -68,16 +77,20 @@ public sealed class TranslatePdfUseCase : PerFileConversionUseCaseBase
         object? executionState,
         CancellationToken cancellationToken)
     {
-        string targetLanguage = (string)executionState!;
+        var state = (TranslationExecutionState)executionState!;
         return Task.Run(
             () => FileProcessor.TranslatePdf(
                 plan.Inputs[index],
                 plan.Outputs[index],
-                targetLanguage,
+                state.TargetLanguage,
+                state.UiLanguage,
+                state.DataDirectory,
                 (current, _, message) => ReportFileProgress(plan, index, progress, current, message),
                 cancellationToken),
             cancellationToken);
     }
+
+    private readonly record struct TranslationExecutionState(string TargetLanguage, string UiLanguage, string DataDirectory);
 
     protected override ConversionFailureKind ClassifyFailure(Exception exception) =>
         ConversionFailureClassifier.Classify(exception);

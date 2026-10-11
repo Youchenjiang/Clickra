@@ -41,6 +41,7 @@ public class ImageCompressionProcessor : MultiFileProcessorBase
     private string? _outputPath;
     private int _quality = ImageCompressionOptions.GetQuality(ImageCompressionLevel.Small);
     private int _maxDimension;
+    private string _language = ClickraSettings.DefaultEmpty;
     private string? _normalizedOutputPath;
     private PromotionState? _promotionState;
     private long _requestSequence;
@@ -60,6 +61,7 @@ public class ImageCompressionProcessor : MultiFileProcessorBase
 
         // 0 keeps the original size, which is what the settings registry documents.
         _maxDimension = Math.Max(0, GetInt(options, OptionMaxDimension) ?? 0);
+        _language = ExecutionLocalizationOptions.ReadLanguage(options);
 
         RegisterPromotionRequest();
         try
@@ -75,7 +77,7 @@ public class ImageCompressionProcessor : MultiFileProcessorBase
     protected override void ProcessFile(string filePath, int fileIndex, int totalFiles, Dictionary<string, object>? options, Action<int, int, string>? onProgress, CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
-        onProgress?.Invoke((fileIndex * 100) + 10, totalFiles * 100, Localization.T(
+        onProgress?.Invoke((fileIndex * 100) + 10, totalFiles * 100, ExecutionLocalizationOptions.Text(_language,
             "img_compress_progress_compressing", Path.GetFileName(filePath), fileIndex + 1, totalFiles));
 
         if (!File.Exists(filePath)) throw new FileNotFoundException("Image file not found", filePath);
@@ -91,7 +93,7 @@ public class ImageCompressionProcessor : MultiFileProcessorBase
         if (IsMultiFrameImage(filePath, extension))
         {
             if (_maxDimension > 0)
-                throw new NotSupportedException(Localization.T("error_img_compress_multiframe_resize", Path.GetFileName(filePath)));
+                throw new NotSupportedException(ExecutionLocalizationOptions.Text(_language, "error_img_compress_multiframe_resize", Path.GetFileName(filePath)));
 
             PreserveOriginal(
                 filePath,
@@ -144,7 +146,7 @@ public class ImageCompressionProcessor : MultiFileProcessorBase
             return;
         }
 
-        onProgress?.Invoke((fileIndex * 100) + 70, totalFiles * 100, Localization.T(
+        onProgress?.Invoke((fileIndex * 100) + 70, totalFiles * 100, ExecutionLocalizationOptions.Text(_language,
             "img_compress_progress_saving", Path.GetFileName(filePath)));
 
         string candidatePath = CreateCandidatePath(extension);
@@ -178,18 +180,18 @@ public class ImageCompressionProcessor : MultiFileProcessorBase
     }
 
     /// <summary>Fails loudly when compression cannot decode or re-encode the source format.</summary>
-    private static void EnsureCodecAvailable(string filePath)
+    private void EnsureCodecAvailable(string filePath)
     {
         string extension = Path.GetExtension(filePath).ToLowerInvariant();
         if (WicImageHelper.IsHeifExtension(extension))
         {
             if (!WicImageHelper.IsHeicDecoderAvailable())
-                throw new NotSupportedException(Localization.T("error_heic_decoder_missing"));
+                throw new NotSupportedException(ExecutionLocalizationOptions.Text(_language, "error_heic_decoder_missing"));
             if (!WicImageHelper.IsHeicEncoderAvailable())
-                throw new NotSupportedException(Localization.T("error_heic_codec_missing"));
+                throw new NotSupportedException(ExecutionLocalizationOptions.Text(_language, "error_heic_codec_missing"));
         }
         if (extension == ".webp" && !WicImageHelper.IsWebpEncoderAvailable())
-            throw new NotSupportedException(Localization.T("error_img_compress_unsupported", "webp"));
+            throw new NotSupportedException(ExecutionLocalizationOptions.Text(_language, "error_img_compress_unsupported", "webp"));
     }
 
     /// <summary>Returns true when GIF/TIFF input contains multiple frames/pages that a single
@@ -253,7 +255,7 @@ public class ImageCompressionProcessor : MultiFileProcessorBase
             case ".heic":
             case ".heif":
             case ".hif":
-                ImageFormatConvertProcessor.SaveAsHeic(image, outputPath, _quality);
+                ImageFormatConvertProcessor.SaveAsHeic(image, outputPath, _quality, _language);
                 break;
             case ".png":
                 image.Save(outputPath, ImageFormat.Png);
@@ -271,7 +273,7 @@ public class ImageCompressionProcessor : MultiFileProcessorBase
                 image.Save(outputPath, ImageFormat.Tiff);
                 break;
             default:
-                throw new NotSupportedException(Localization.T(
+                throw new NotSupportedException(ExecutionLocalizationOptions.Text(_language,
                     "error_img_compress_unsupported", extension.TrimStart('.')));
         }
     }
@@ -285,7 +287,7 @@ public class ImageCompressionProcessor : MultiFileProcessorBase
         {
             // WebP is the one lossy encoder Windows installs separately; JPEG ships with GDI+,
             // so a missing JPEG encoder is not a "go install something" case.
-            throw new NotSupportedException(Localization.T("error_img_compress_unsupported", formatName));
+            throw new NotSupportedException(ExecutionLocalizationOptions.Text(_language, "error_img_compress_unsupported", formatName));
         }
 
         using var parameters = new EncoderParameters(1);
@@ -427,7 +429,7 @@ public class ImageCompressionProcessor : MultiFileProcessorBase
         CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
-        onProgress?.Invoke((fileIndex * 100) + 70, totalFiles * 100, Localization.T(
+        onProgress?.Invoke((fileIndex * 100) + 70, totalFiles * 100, ExecutionLocalizationOptions.Text(_language,
             progressKey, Path.GetFileName(sourcePath)));
 
         string candidatePath = CreateCandidatePath(extension);

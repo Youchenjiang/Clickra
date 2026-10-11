@@ -238,11 +238,11 @@ public static class WicImageHelper
     /// <summary>
     /// Converts an input image file directly to HEIC using WIC/WinRT BitmapEncoder.
     /// </summary>
-    public static void ConvertFileToHeic(string inputPath, string outputPath, long quality = 90)
+    public static void ConvertFileToHeic(string inputPath, string outputPath, long quality = 90, string language = "")
     {
         if (!IsHeicEncoderAvailable())
         {
-            throw new NotSupportedException(Localization.T("error_heic_codec_missing", ClickraStorage.GetSetting(ClickraSettings.Language)));
+            throw new NotSupportedException(Localization.T("error_heic_codec_missing", language));
         }
 
         using var fileStream = File.OpenRead(inputPath);
@@ -264,11 +264,11 @@ public static class WicImageHelper
     /// <summary>
     /// Saves a System.Drawing.Image to HEIC format using WIC/WinRT BitmapEncoder.
     /// </summary>
-    public static void SaveAsHeic(Image image, string outputPath, long quality = 90)
+    public static void SaveAsHeic(Image image, string outputPath, long quality = 90, string language = "")
     {
         if (!IsHeicEncoderAvailable())
         {
-            throw new NotSupportedException(Localization.T("error_heic_codec_missing", ClickraStorage.GetSetting(ClickraSettings.Language)));
+            throw new NotSupportedException(Localization.T("error_heic_codec_missing", language));
         }
 
         // Convert System.Drawing.Image to pixel buffer in BGRA8 format

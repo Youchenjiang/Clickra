@@ -1080,9 +1080,7 @@ static partial class TestSuite
                 translator,
                 source,
                 "zh-TW",
-                pageIndex: 0,
-                totalPages: 1,
-                onProgress: null,
+                new PdfTranslationBatchContext(0, 1, null, ""),
                 cancellationToken: CancellationToken.None);
 
             Assert.True(source.Count == results.Count, $"Expected {source.Count} results, got {results.Count}.");
@@ -1102,14 +1100,11 @@ static partial class TestSuite
                         translator,
                         new List<string> { "hung" },
                         "zh-TW",
-                        pageIndex: 0,
-                        totalPages: 1,
-                        onProgress: null,
+                        new PdfTranslationBatchContext(0, 1, null, ""),
                         cancellationToken: CancellationToken.None));
 
-                // The recovery error message is localized from the storage
-                // Language setting (zh-TW locally, en-US on CI), so only assert
-                // the culture-neutral page number it embeds.
+                // The recovery error is localized from the explicit execution language,
+                // so only assert the culture-neutral page number it embeds.
                 Assert.True(
                     ex.Message.Contains("1", StringComparison.Ordinal),
                     $"Unexpected timeout recovery error: {ex.Message}");

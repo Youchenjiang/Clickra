@@ -12,8 +12,8 @@ using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Win32;
 
-namespace Clickra.Core.Processors
-{
+namespace Clickra.Core.Processors;
+
     public sealed record LibreOfficeEngineManifest(
         int Schema,
         LibreOfficeEnginePackage LibreOffice);
@@ -114,7 +114,7 @@ namespace Clickra.Core.Processors
         /// </summary>
         public static void AdoptExistingInstallation()
         {
-            string resolvedPath = LibreOfficeHelper.GetResolvedExecutablePath();
+            string resolvedPath = GetConfiguredResolvedExecutablePath();
             if (!CanAdoptExistingInstallation(resolvedPath))
                 throw new InvalidOperationException(
                     "Only one verified system LibreOffice MSI installation can be adopted by Clickra.");
@@ -133,7 +133,7 @@ namespace Clickra.Core.Processors
         /// </summary>
         public static bool CanAdoptExistingInstallation(string? resolvedPath = null)
         {
-            resolvedPath ??= LibreOfficeHelper.GetResolvedExecutablePath();
+            resolvedPath ??= GetConfiguredResolvedExecutablePath();
             string systemPath = ResolveSystemSofficePath();
             if (!PathsReferToSameInstallation(resolvedPath, systemPath))
                 return false;
@@ -345,7 +345,7 @@ namespace Clickra.Core.Processors
             bool consent = ClickraStorage.GetSettingBool(ClickraSettings.LibreOfficeInstalledByClickra);
             productCode = ClickraStorage.GetSetting(ClickraSettings.LibreOfficeManagedProductCode);
             string managedPath = ClickraStorage.GetSetting(ClickraSettings.LibreOfficeManagedSofficePath);
-            string resolvedPath = LibreOfficeHelper.GetResolvedExecutablePath();
+            string resolvedPath = GetConfiguredResolvedExecutablePath();
             string? uniqueCurrentProductCode = FindUniqueInstalledLibreOfficeProductCode();
 
             return IsManagedIdentityCurrent(
@@ -552,6 +552,11 @@ namespace Clickra.Core.Processors
             ClickraStorage.SaveSetting(ClickraSettings.LibreOfficeInstalledByClickra, ClickraSettings.ValueTrue);
         }
 
+        private static string GetConfiguredResolvedExecutablePath() =>
+            LibreOfficeHelper.GetResolvedExecutablePath(
+                ClickraStorage.GetSettingBool(ClickraSettings.LibreOfficeRemovalPendingRestart),
+                ClickraStorage.GetSetting(ClickraSettings.LibreOfficePath));
+
         private static async Task WaitForSystemUninstallAsync(CancellationToken cancellationToken)
         {
             DateTime deadline = DateTime.UtcNow.AddSeconds(10);
@@ -745,22 +750,20 @@ namespace Clickra.Core.Processors
 
                 using (response)
                 {
-                    await using (var source = await response.Content.ReadAsStreamAsync(cancellationToken))
-                    await using (var destination = File.Create(tempPath))
+                    await using var source = await response.Content.ReadAsStreamAsync(cancellationToken);
+                    await using var destination = File.Create(tempPath);
+                    byte[] buffer = new byte[1024 * 128];
+                    long totalRead = 0;
+                    long expectedBytes = response.Content.Headers.ContentLength ?? package.DownloadBytes;
+                    int read;
+                    while ((read = await source.ReadAsync(buffer, cancellationToken)) > 0)
                     {
-                        byte[] buffer = new byte[1024 * 128];
-                        long totalRead = 0;
-                        long expectedBytes = response.Content.Headers.ContentLength ?? package.DownloadBytes;
-                        int read;
-                        while ((read = await source.ReadAsync(buffer, cancellationToken)) > 0)
+                        await destination.WriteAsync(buffer.AsMemory(0, read), cancellationToken);
+                        totalRead += read;
+                        if (expectedBytes > 0)
                         {
-                            await destination.WriteAsync(buffer.AsMemory(0, read), cancellationToken);
-                            totalRead += read;
-                            if (expectedBytes > 0)
-                            {
-                                int percent = (int)Math.Min(99, Math.Max(1, totalRead * 100 / expectedBytes));
-                                progress?.Report(percent);
-                            }
+                            int percent = (int)Math.Min(99, Math.Max(1, totalRead * 100 / expectedBytes));
+                            progress?.Report(percent);
                         }
                     }
                 }
@@ -808,4 +811,3 @@ namespace Clickra.Core.Processors
             catch { }
         }
     }
-}

@@ -6,15 +6,19 @@ using System.Threading.Tasks;
 
 namespace Clickra.Core.Processors
 {
+    internal readonly record struct PdfTranslationBatchContext(
+        int PageIndex,
+        int TotalPages,
+        Action<int, int, string>? OnProgress,
+        string Language);
+
     internal static class PdfTranslationBatchRunner
     {
         public static List<string> TranslatePageBatches(
             ITranslationEngine translator,
             List<string> textsToTranslate,
             string targetLang,
-            int pageIndex,
-            int totalPages,
-            Action<int, int, string>? onProgress,
+            PdfTranslationBatchContext context,
             CancellationToken cancellationToken)
         {
             var results = new List<string>(textsToTranslate.Count);
@@ -25,14 +29,13 @@ namespace Clickra.Core.Processors
             {
                 cancellationToken.ThrowIfCancellationRequested();
                 var chunk = chunks[chunkIndex];
-                string language = ClickraStorage.GetSetting(ClickraSettings.Language);
-                onProgress?.Invoke(
-                    GetTranslationProgress(pageIndex, totalPages, chunkIndex, chunks.Count),
+                context.OnProgress?.Invoke(
+                    GetTranslationProgress(context.PageIndex, context.TotalPages, chunkIndex, chunks.Count),
                     100,
                     string.Format(
-                        Localization.T("pdf_progress_translating_batch", language),
-                        pageIndex + 1,
-                        totalPages,
+                        Localization.T("pdf_progress_translating_batch", context.Language),
+                        context.PageIndex + 1,
+                        context.TotalPages,
                         chunkIndex + 1,
                         chunks.Count,
                         translatedCount + 1,
@@ -43,8 +46,9 @@ namespace Clickra.Core.Processors
                     translator,
                     chunk,
                     targetLang,
-                    pageIndex,
+                    context.PageIndex,
                     chunkIndex,
+                    context.Language,
                     cancellationToken);
 
                 results.AddRange(chunkResults);
@@ -60,6 +64,7 @@ namespace Clickra.Core.Processors
             string targetLang,
             int pageIndex,
             int chunkIndex,
+            string language,
             CancellationToken cancellationToken)
         {
             cancellationToken.ThrowIfCancellationRequested();
@@ -71,7 +76,8 @@ namespace Clickra.Core.Processors
                     translator is FallbackTranslator
                         ? TranslationTimeouts.ChainCallTimeout
                         : TranslationTimeouts.ProviderCallTimeout,
-                    cancellationToken);
+                    cancellationToken,
+                    language);
                 if (translated.Count != chunk.Count)
                 {
                     throw new InvalidOperationException(
@@ -95,6 +101,7 @@ namespace Clickra.Core.Processors
                     targetLang,
                     pageIndex,
                     chunkIndex,
+                    language,
                     cancellationToken);
                 var right = TranslateChunkWithRecovery(
                     translator,
@@ -102,6 +109,7 @@ namespace Clickra.Core.Processors
                     targetLang,
                     pageIndex,
                     chunkIndex,
+                    language,
                     cancellationToken);
                 left.AddRange(right);
                 return left;
@@ -115,17 +123,18 @@ namespace Clickra.Core.Processors
                     translator is FallbackTranslator
                         ? TranslationTimeouts.ChainCallTimeout
                         : TranslationTimeouts.ProviderCallTimeout,
-                    cancellationToken);
+                    cancellationToken,
+                    language);
                 if (string.IsNullOrWhiteSpace(translated))
                 {
-                    throw new InvalidOperationException(Localization.T("pdf_error_provider_empty", ClickraStorage.GetSetting(ClickraSettings.Language)));
+                    throw new InvalidOperationException(Localization.T("pdf_error_provider_empty", language));
                 }
                 return new List<string> { translated };
             }
             catch (Exception ex) when (!cancellationToken.IsCancellationRequested)
             {
                 throw new InvalidOperationException(
-                    string.Format(Localization.T("pdf_error_unable_paragraph", ClickraStorage.GetSetting(ClickraSettings.Language)), pageIndex + 1),
+                    string.Format(Localization.T("pdf_error_unable_paragraph", language), pageIndex + 1),
                     ex);
             }
         }
@@ -133,7 +142,8 @@ namespace Clickra.Core.Processors
         private static T RunWithTimeout<T>(
             Func<CancellationToken, Task<T>> operation,
             TimeSpan timeout,
-            CancellationToken cancellationToken)
+            CancellationToken cancellationToken,
+            string language = "")
         {
             using var timeoutCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
             timeoutCts.CancelAfter(timeout);
@@ -144,7 +154,7 @@ namespace Clickra.Core.Processors
             catch (OperationCanceledException) when (
                 !cancellationToken.IsCancellationRequested && timeoutCts.IsCancellationRequested)
             {
-                throw new TimeoutException(string.Format(Localization.T("pdf_error_provider_timeout", ClickraStorage.GetSetting(ClickraSettings.Language)), timeout.TotalSeconds.ToString("0")));
+                throw new TimeoutException(string.Format(Localization.T("pdf_error_provider_timeout", language), timeout.TotalSeconds.ToString("0")));
             }
         }
 

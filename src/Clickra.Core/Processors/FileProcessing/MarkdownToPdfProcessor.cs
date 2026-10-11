@@ -31,8 +31,8 @@ public sealed class MarkdownToPdfProcessor : MarkdownSingleFileProcessorBase
         Action<int, int, string>? onProgress,
         CancellationToken cancellationToken)
     {
-        MarkdownDocument document = ParseMarkdownFile(filePath, "md_pdf_progress_parsing", onProgress, cancellationToken);
-        onProgress?.Invoke(40, 100, Localization.T("md_pdf_progress_rendering", Path.GetFileName(filePath)));
+        MarkdownDocument document = ParseMarkdownFile(filePath, "md_pdf_progress_parsing", Language, onProgress, cancellationToken);
+        onProgress?.Invoke(40, 100, ExecutionLocalizationOptions.Text(Language, "md_pdf_progress_rendering", Path.GetFileName(filePath)));
 
         try
         {
@@ -54,7 +54,7 @@ public sealed class MarkdownToPdfProcessor : MarkdownSingleFileProcessorBase
         renderer.Render(document);
 
         cancellationToken.ThrowIfCancellationRequested();
-        onProgress?.Invoke(90, 100, Localization.T("md_pdf_progress_saving", Path.GetFileName(OutputPath)));
+        onProgress?.Invoke(90, 100, ExecutionLocalizationOptions.Text(Language, "md_pdf_progress_saving", Path.GetFileName(OutputPath)));
         pdf.Save(OutputPath);
     }
 
@@ -66,7 +66,7 @@ public sealed class MarkdownToPdfProcessor : MarkdownSingleFileProcessorBase
         CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
-        onProgress?.Invoke(100, 100, Localization.T("md_pdf_progress_done", Path.GetFileName(outputPath ?? "")));
+        onProgress?.Invoke(100, 100, ExecutionLocalizationOptions.Text(Language, "md_pdf_progress_done", Path.GetFileName(outputPath ?? "")));
     }
 
     private sealed class Renderer : IDisposable

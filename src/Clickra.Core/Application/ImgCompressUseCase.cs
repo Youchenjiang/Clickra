@@ -24,10 +24,14 @@ public sealed class ImgCompressUseCase : PerFileConversionUseCaseBase
         ImageOutputSafety.EnsureOutputsDoNotOverwriteInputs(inputs, outputs);
     }
 
-    protected override IReadOnlyDictionary<string, object> NormalizeOptions(ConversionRequest request) =>
-        request.Options is null
-            ? SnapshotSavedOptions()
+    protected override IReadOnlyDictionary<string, object> NormalizeOptions(ConversionRequest request)
+    {
+        var options = request.Options is null
+            ? new Dictionary<string, object>(SnapshotSavedOptions(), StringComparer.Ordinal)
             : new Dictionary<string, object>(request.Options, StringComparer.Ordinal);
+        options[ExecutionLocalizationOptions.LanguageKey] = ClickraStorage.GetSetting(ClickraSettings.Language);
+        return options;
+    }
 
     private static IReadOnlyDictionary<string, object> SnapshotSavedOptions()
     {

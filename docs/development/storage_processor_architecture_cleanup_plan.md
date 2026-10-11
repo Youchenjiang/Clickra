@@ -163,6 +163,23 @@ Do not move presentation helpers blindly. First classify each type as one of:
 
 Move only when the target owner is clearer than the current one.
 
+### 3.6 Infrastructure may own its lifecycle settings, but only on an explicit allowlist
+
+Infrastructure components (installers, package/runtime integration) may persist state that describes their own lifecycle, such as which LibreOffice installation Clickra manages. That state is not a conversion option and does not need to be snapshotted by an application use case.
+
+Moving a file out of `Processors/` must never be a way to escape the processor guard. Therefore:
+
+- every `ClickraStorage` use under `Infrastructure/` must be an explicit `GetSetting*` / `SaveSetting` call with a `ClickraSettings` key;
+- each infrastructure file has a per-file allowlist of **owned keys** (read/write) and **read-only keys**;
+- writing a read-only key, using an unlisted key, or adding an unlisted infrastructure file fails the architecture guard;
+- extending an allowlist requires a documented ownership reason in the same PR, and a re-homing move must be its own commit, separate from any settings migration.
+
+Current allowlist (enforced by `TestInfrastructureSettingsAccessStaysOnAllowlist`):
+
+| Owner | Owned keys | Read-only keys |
+| --- | --- | --- |
+| `Infrastructure/LibreOfficeEngineInstaller.cs` | `LibreOfficeInstalledByClickra`, `LibreOfficeManagedProductCode`, `LibreOfficeManagedSofficePath` | `LibreOfficeRemovalPendingRestart`, `LibreOfficePath` |
+
 ---
 
 ## 4. Execution Order
@@ -219,6 +236,20 @@ Exit criteria:
 ### Slice 3 - Migrate processor settings by conversion family
 
 Remove global setting reads one vertical family at a time.
+
+Progress as of 2026-10-11:
+
+- PDF compression settings ownership completed in PR #173;
+- image compression settings ownership completed in PR #173;
+- Office-to-PDF execution now snapshots engine selection, language, LibreOffice path, and removal-pending state during application planning;
+- Office readiness policy now receives the configured engine and LibreOffice readiness inputs explicitly instead of reading `ClickraStorage` inside the processor layer;
+- image-format, image-compression, PDF decrypt, and PDF-translation localization now receive the snapshotted UI language explicitly rather than rereading global language state during processor execution;
+- LibreOffice installation ownership and managed-MSI persistence moved out of `Processors/` into the infrastructure boundary, while processor-side LibreOffice resolution requires explicit persisted state;
+  - note: the installer's **12** former baseline entries (14 setting calls today) were **re-homed, not migrated** — `Infrastructure/LibreOfficeEngineInstaller.cs` still reads and writes LibreOffice ownership state through `ClickraStorage`. This is accepted under §3.6 and guarded by the infrastructure key allowlist; report the baseline drop as "15 migrated + 12 re-homed", not "27 migrated";
+- `ConversionTaskLifecycle` moved to the application boundary because task persistence is application orchestration rather than processor execution;
+- processor file-start callbacks, output paths, translation data-directory state, and other storage-derived execution inputs are now supplied explicitly;
+- the processor global-setting shrinking baseline has moved from 58 initially to 0;
+- `src/Clickra.Core/Processors/**` now has zero direct `ClickraStorage` dependencies, enforced by an architecture guard so storage access cannot silently return to the processor layer.
 
 Recommended order:
 

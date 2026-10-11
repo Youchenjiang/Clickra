@@ -8,6 +8,8 @@ internal static class PdfParagraphTranslationStage
         IReadOnlyList<List<PdfParagraph>> pageParagraphs,
         string inputPath,
         string targetLang,
+        string language,
+        string dataDirectory,
         Action<int, int, string>? onProgress,
         CancellationToken cancellationToken)
     {
@@ -22,7 +24,6 @@ internal static class PdfParagraphTranslationStage
             var paragraphs = pageParagraphs[p];
             if (paragraphs.Count == 0) continue;
 
-            string language = ClickraStorage.GetSetting(ClickraSettings.Language);
             onProgress?.Invoke(
                 30 + (int)(p * 40.0 / totalPages),
                 100,
@@ -55,9 +56,7 @@ internal static class PdfParagraphTranslationStage
                         translator,
                         textsToTranslate,
                         targetLang,
-                        p,
-                        totalPages,
-                        onProgress,
+                        new PdfTranslationBatchContext(p, totalPages, onProgress, language),
                         cancellationToken);
                     if (results.Count == paragraphsToTranslate.Count)
                     {
@@ -125,7 +124,7 @@ internal static class PdfParagraphTranslationStage
                 }
                 catch (Exception ex)
                 {
-                    LogTranslationError(inputPath, p, $"Translation recovery exhausted. Error: {ex.Message}", logLock);
+                    LogTranslationError(inputPath, p, $"Translation recovery exhausted. Error: {ex.Message}", dataDirectory, logLock);
                     report.Failures.Add($"page {p + 1}: {ex.Message}");
                     throw new InvalidOperationException(
                         string.Format(Localization.T("pdf_error_translation_failed_page", language), p + 1),
@@ -137,11 +136,12 @@ internal static class PdfParagraphTranslationStage
         return report;
     }
 
-    private static void LogTranslationError(string inputPath, int pageIndex, string message, object logLock)
+    private static void LogTranslationError(string inputPath, int pageIndex, string message, string dataDirectory, object logLock)
     {
         try
         {
-            string logPath = Path.Combine(ClickraStorage.GetDataDir(), "translate_errors.log");
+            if (string.IsNullOrWhiteSpace(dataDirectory)) return;
+            string logPath = Path.Combine(dataDirectory, "translate_errors.log");
             string logLine = $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss}] [File: {Path.GetFileName(inputPath)}] [Page {pageIndex + 1}] {message}{Environment.NewLine}";
             lock (logLock)
             {

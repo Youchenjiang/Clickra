@@ -1,3 +1,5 @@
+using Clickra.Core.Processors;
+
 namespace Clickra.Core.Application;
 
 /// <summary>Shared application lifecycle for legacy Office batch-to-PDF conversions.</summary>
@@ -28,11 +30,21 @@ public abstract class OfficeToPdfUseCaseBase : ConversionUseCaseBase
             inputs,
             outputs,
             new HashSet<ConversionCapability>(),
-            new Dictionary<string, object>(StringComparer.Ordinal),
+            SnapshotSavedOptions(),
             ExistingTaskId: request.ExistingTaskId,
             BestEffortTaskPersistence: request.BestEffortTaskPersistence,
             TrackTaskLifecycle: request.TrackTaskLifecycle);
     }
+
+    private static IReadOnlyDictionary<string, object> SnapshotSavedOptions() =>
+        new Dictionary<string, object>(StringComparer.Ordinal)
+        {
+            [OfficeConversionOptions.EngineKey] = ClickraStorage.GetSetting(ClickraSettings.OfficeEngine),
+            [OfficeConversionOptions.LanguageKey] = ClickraStorage.GetSetting(ClickraSettings.Language),
+            [OfficeConversionOptions.LibreOfficePathKey] = ClickraStorage.GetSetting(ClickraSettings.LibreOfficePath),
+            [OfficeConversionOptions.LibreOfficeRemovalPendingRestartKey] =
+                ClickraStorage.GetSettingBool(ClickraSettings.LibreOfficeRemovalPendingRestart)
+        };
 
     public override async Task<ConversionResult> ExecuteAsync(
         ConversionPlan plan,

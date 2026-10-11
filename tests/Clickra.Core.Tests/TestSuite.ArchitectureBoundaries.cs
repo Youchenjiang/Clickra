@@ -7,7 +7,7 @@ namespace Clickra.Core.Tests;
 static partial class TestSuite
 {
     private const int ArchitectureViolationBaselineCeiling = 0;
-    private const int ProcessorGlobalStateBaselineCeiling = 53;
+    private const int ProcessorGlobalStateBaselineCeiling = 0;
     private const string RepositoryRootMissingMessage = "Could not locate the repository root.";
     private const string ArchitectureCliProjectDirectory = "Clickra.CLI";
     private const string ArchitectureCoreProjectDirectory = "Clickra.Core";
@@ -30,6 +30,15 @@ static partial class TestSuite
         Regex Pattern,
         IReadOnlyDictionary<string, int> Baseline);
 
+    private static IReadOnlyDictionary<string, int> EmptyArchitectureBaseline() =>
+        new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
+
+    private static ArchitectureViolationRule ArchitectureRule(string name, string pattern) =>
+        new(name, new Regex(pattern, RegexOptions.Compiled, ArchitectureRegexTimeout), EmptyArchitectureBaseline());
+
+    private static ProcessorGlobalStateRule ProcessorGlobalStateRuleFor(string name, string pattern) =>
+        new(name, new Regex(pattern, RegexOptions.Compiled, ArchitectureRegexTimeout), EmptyArchitectureBaseline());
+
     private sealed record MigrationSurfaceSources(
         string Registry,
         string Native,
@@ -40,62 +49,18 @@ static partial class TestSuite
 
     private static readonly ArchitectureViolationRule[] ArchitectureViolationRules =
     {
-        new(
-            "direct FileProcessor execution",
-            new Regex(@"\bFileProcessor\.", RegexOptions.Compiled, ArchitectureRegexTimeout),
-            new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase)),
-        new(
-            "direct task start",
-            new Regex(@"\bClickraStorage\.StartTask\(", RegexOptions.Compiled, ArchitectureRegexTimeout),
-            new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase)),
-        new(
-            "direct task completion",
-            new Regex(@"\bClickraStorage\.CompleteTask\(", RegexOptions.Compiled, ArchitectureRegexTimeout),
-            new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase)),
-        new(
-            "direct output planning",
-            new Regex(@"\bConvertCommandRegistry\.EstimateOutputs\(", RegexOptions.Compiled, ArchitectureRegexTimeout),
-            new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase))
+        ArchitectureRule("direct FileProcessor execution", @"\bFileProcessor\."),
+        ArchitectureRule("direct task start", @"\bClickraStorage\.StartTask\("),
+        ArchitectureRule("direct task completion", @"\bClickraStorage\.CompleteTask\("),
+        ArchitectureRule("direct output planning", @"\bConvertCommandRegistry\.EstimateOutputs\(")
     };
 
     private static readonly ProcessorGlobalStateRule[] ProcessorGlobalStateRules =
     {
-        new(
-            "ClickraStorage.GetSetting",
-            new Regex(@"\bClickraStorage\.GetSetting\(", RegexOptions.Compiled, ArchitectureRegexTimeout),
-            new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase)
-            {
-                ["src/Clickra.Core/Processors/FileProcessing/ImageFormatConvertProcessor.cs"] = 1,
-                ["src/Clickra.Core/Processors/FileProcessing/LibreOfficeEngineInstaller.cs"] = 2,
-                ["src/Clickra.Core/Processors/FileProcessing/LibreOfficeHelper.cs"] = 13,
-                ["src/Clickra.Core/Processors/FileProcessing/OfficeEngineDetector.cs"] = 3,
-                ["src/Clickra.Core/Processors/FileProcessing/PdfDecryptProcessor.cs"] = 1,
-                ["src/Clickra.Core/Processors/FileProcessing/PowerShellHelper.cs"] = 11,
-                ["src/Clickra.Core/Processors/FileProcessing/WicImageHelper.cs"] = 2,
-                ["src/Clickra.Core/Processors/PdfTranslation/PdfTranslationPipeline.cs"] = 3,
-                ["src/Clickra.Core/Processors/PdfTranslation/Rendering/PdfRewrite/PdfTranslatedPdfRebuilder.cs"] = 1,
-                ["src/Clickra.Core/Processors/PdfTranslation/Translation/PdfParagraphTranslationStage.cs"] = 1,
-                ["src/Clickra.Core/Processors/PdfTranslation/Translation/PdfTranslationBatchRunner.cs"] = 4
-            }),
-        new(
-            "ClickraStorage.GetSettingBool",
-            new Regex(@"\bClickraStorage\.GetSettingBool\(", RegexOptions.Compiled, ArchitectureRegexTimeout),
-            new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase)
-            {
-                ["src/Clickra.Core/Processors/FileProcessing/LibreOfficeEngineInstaller.cs"] = 1,
-                ["src/Clickra.Core/Processors/FileProcessing/LibreOfficeHelper.cs"] = 1
-            }),
-        new(
-            "ClickraStorage.GetSettingInt",
-            new Regex(@"\bClickraStorage\.GetSettingInt\(", RegexOptions.Compiled, ArchitectureRegexTimeout),
-            new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase)),
-        new(
-            "ClickraStorage.SaveSetting",
-            new Regex(@"\bClickraStorage\.SaveSetting\(", RegexOptions.Compiled, ArchitectureRegexTimeout),
-            new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase)
-            {
-                ["src/Clickra.Core/Processors/FileProcessing/LibreOfficeEngineInstaller.cs"] = 9
-            })
+        ProcessorGlobalStateRuleFor("ClickraStorage.GetSetting", @"\bClickraStorage\.GetSetting\("),
+        ProcessorGlobalStateRuleFor("ClickraStorage.GetSettingBool", @"\bClickraStorage\.GetSettingBool\("),
+        ProcessorGlobalStateRuleFor("ClickraStorage.GetSettingInt", @"\bClickraStorage\.GetSettingInt\("),
+        ProcessorGlobalStateRuleFor("ClickraStorage.SaveSetting", @"\bClickraStorage\.SaveSetting\(")
     };
 
     public static void RegisterArchitectureBoundaryTests(TestRunner runner)
@@ -112,6 +77,15 @@ static partial class TestSuite
         runner.RunGuard(
             "Architecture boundaries: processor global setting baseline invariants stay explicit",
             TestProcessorGlobalStateBaselineInvariants);
+        runner.RunGuard(
+            "Architecture boundaries: processors do not depend on ClickraStorage",
+            TestProcessorsDoNotDependOnClickraStorage);
+        runner.RunGuard(
+            "Architecture boundaries: infrastructure settings access stays on an explicit key allowlist",
+            TestInfrastructureSettingsAccessStaysOnAllowlist);
+        runner.RunGuard(
+            "Architecture boundaries: processors localize only with an explicit execution language",
+            TestProcessorsLocalizeWithExplicitLanguage);
         runner.RunGuard(
             "Architecture boundaries: application contracts stay UI-independent",
             TestApplicationContractsStayUiIndependent);
@@ -382,6 +356,244 @@ static partial class TestSuite
             string syntheticCall = $"var value = {rule.Name}(ClickraSettings.Language);";
             Assert.Equal(1, rule.Pattern.Matches(syntheticCall).Count);
         }
+    }
+
+    private static void TestProcessorsDoNotDependOnClickraStorage()
+    {
+        string? root = FindRepoRoot();
+        if (root is null) throw new TestSkippedException(RepositoryRootMissingMessage);
+
+        string processorsDirectory = Path.Combine(
+            root,
+            "src",
+            ArchitectureCoreProjectDirectory,
+            ArchitectureProcessorsDirectory);
+        string[] violations = Directory.GetFiles(processorsDirectory, "*.cs", SearchOption.AllDirectories)
+            .Where(path => !path.Contains($"{Path.DirectorySeparatorChar}bin{Path.DirectorySeparatorChar}", StringComparison.OrdinalIgnoreCase)
+                           && !path.Contains($"{Path.DirectorySeparatorChar}obj{Path.DirectorySeparatorChar}", StringComparison.OrdinalIgnoreCase))
+            .Where(path => File.ReadAllText(path).Contains("ClickraStorage", StringComparison.Ordinal))
+            .Select(path => NormalizeRepoPath(root, path))
+            .OrderBy(path => path, StringComparer.OrdinalIgnoreCase)
+            .ToArray();
+
+        Assert.True(
+            violations.Length == 0,
+            "Processors must receive storage-derived state explicitly instead of depending on ClickraStorage:" +
+            Environment.NewLine + string.Join(Environment.NewLine, violations));
+    }
+
+    private sealed record InfrastructureSettingsAllowance(
+        IReadOnlySet<string> OwnedKeys,
+        IReadOnlySet<string> ReadOnlyKeys);
+
+    // Infrastructure may persist its own lifecycle state (for example, which LibreOffice
+    // installation Clickra manages), unlike processors. Every key is listed explicitly so
+    // moving a file into Infrastructure/ cannot be used to escape the processor guard.
+    private static readonly IReadOnlyDictionary<string, InfrastructureSettingsAllowance> InfrastructureSettingsAllowlist =
+        new Dictionary<string, InfrastructureSettingsAllowance>(StringComparer.OrdinalIgnoreCase)
+        {
+            ["src/Clickra.Core/Infrastructure/LibreOfficeEngineInstaller.cs"] = new(
+                OwnedKeys: new HashSet<string>(StringComparer.Ordinal)
+                {
+                    "LibreOfficeInstalledByClickra",
+                    "LibreOfficeManagedProductCode",
+                    "LibreOfficeManagedSofficePath"
+                },
+                ReadOnlyKeys: new HashSet<string>(StringComparer.Ordinal)
+                {
+                    "LibreOfficeRemovalPendingRestart",
+                    "LibreOfficePath"
+                })
+        };
+
+    private static readonly Regex InfrastructureStorageReference =
+        new(@"\bClickraStorage\.", RegexOptions.Compiled, ArchitectureRegexTimeout);
+
+    private static readonly Regex InfrastructureSettingsCall =
+        new(@"\bClickraStorage\.(?<op>GetSetting|GetSettingBool|GetSettingInt|SaveSetting)\(\s*ClickraSettings\.(?<key>[A-Za-z0-9_]+)\b",
+            RegexOptions.Compiled, ArchitectureRegexTimeout);
+
+    private static void TestInfrastructureSettingsAccessStaysOnAllowlist()
+    {
+        string? root = FindRepoRoot();
+        if (root is null) throw new TestSkippedException(RepositoryRootMissingMessage);
+
+        string infrastructureDir = Path.Combine(root, "src", ArchitectureCoreProjectDirectory, "Infrastructure");
+        if (!Directory.Exists(infrastructureDir)) return;
+
+        var violations = new List<string>();
+        foreach (string file in Directory.EnumerateFiles(infrastructureDir, "*.cs", SearchOption.AllDirectories)
+                     .Where(path => !path.Contains($"{Path.DirectorySeparatorChar}bin{Path.DirectorySeparatorChar}", StringComparison.OrdinalIgnoreCase)
+                                    && !path.Contains($"{Path.DirectorySeparatorChar}obj{Path.DirectorySeparatorChar}", StringComparison.OrdinalIgnoreCase)))
+        {
+            ValidateInfrastructureSettingsFile(root, file, violations);
+        }
+
+        Assert.True(
+            violations.Count == 0,
+            "Infrastructure settings access must stay on the explicit per-owner key allowlist:" +
+            Environment.NewLine + string.Join(Environment.NewLine, violations));
+    }
+
+    private static void ValidateInfrastructureSettingsFile(string root, string file, List<string> violations)
+    {
+        string path = NormalizeRepoPath(root, file);
+        string source = File.ReadAllText(file);
+        int references = InfrastructureStorageReference.Matches(source).Count;
+        if (references == 0) return;
+
+        MatchCollection calls = InfrastructureSettingsCall.Matches(source);
+        if (calls.Count != references)
+            violations.Add($"{path}: {references - calls.Count} ClickraStorage use(s) are not explicit ClickraSettings reads/writes.");
+
+        if (!InfrastructureSettingsAllowlist.TryGetValue(path, out InfrastructureSettingsAllowance? allowance))
+        {
+            violations.Add($"{path}: settings access is not allowlisted for this infrastructure owner.");
+            return;
+        }
+
+        foreach (Match call in calls)
+            ValidateInfrastructureSettingsCall(path, call, allowance, violations);
+    }
+
+    private static void ValidateInfrastructureSettingsCall(
+        string path,
+        Match call,
+        InfrastructureSettingsAllowance allowance,
+        List<string> violations)
+    {
+        string op = call.Groups["op"].Value;
+        string key = call.Groups["key"].Value;
+        bool owned = allowance.OwnedKeys.Contains(key);
+        bool readable = owned || allowance.ReadOnlyKeys.Contains(key);
+        if ((op == "SaveSetting" && !owned) || (op != "SaveSetting" && !readable))
+            violations.Add($"{path}: {op}({key}) is outside its allowlist.");
+    }
+
+    private static readonly Regex ProcessorLocalizationCall =
+        new(@"\bLocalization\.T\(", RegexOptions.Compiled, ArchitectureRegexTimeout);
+
+    private static readonly Regex ExplicitLanguageArgument =
+        new(@"^(?:[A-Za-z_][A-Za-z0-9_]*\.)*(?:language|lang|Language)$", RegexOptions.Compiled, ArchitectureRegexTimeout);
+
+    // The global-language overloads Localization.T(key) and Localization.T(key, params object[])
+    // read ClickraStorage indirectly, and T(key, "value") silently binds a format argument as a
+    // language code. Processors must therefore call only T(key, <language variable>).
+    private static void TestProcessorsLocalizeWithExplicitLanguage()
+    {
+        string? root = FindRepoRoot();
+        if (root is null) throw new TestSkippedException(RepositoryRootMissingMessage);
+
+        string processorsDir = Path.Combine(root, "src", ArchitectureCoreProjectDirectory, ArchitectureProcessorsDirectory);
+        var violations = new List<string>();
+        foreach (string file in Directory.EnumerateFiles(processorsDir, "*.cs", SearchOption.AllDirectories)
+                     .Where(path => !path.Contains($"{Path.DirectorySeparatorChar}bin{Path.DirectorySeparatorChar}", StringComparison.OrdinalIgnoreCase)
+                                    && !path.Contains($"{Path.DirectorySeparatorChar}obj{Path.DirectorySeparatorChar}", StringComparison.OrdinalIgnoreCase)))
+        {
+            string source = File.ReadAllText(file);
+            foreach (Match call in ProcessorLocalizationCall.Matches(source))
+            {
+                IReadOnlyList<string> arguments = ReadTopLevelArguments(source, call.Index + call.Length);
+                bool explicitLanguage = arguments.Count == 2
+                                        && ExplicitLanguageArgument.IsMatch(arguments[1]);
+                if (!explicitLanguage)
+                {
+                    int line = source.AsSpan(0, call.Index).Count('\n') + 1;
+                    violations.Add($"{NormalizeRepoPath(root, file)}:{line}: Localization.T({string.Join(", ", arguments)})");
+                }
+            }
+        }
+
+        Assert.True(
+            violations.Count == 0,
+            "Processors must localize through ExecutionLocalizationOptions.Text(language, key, args) or " +
+            "Localization.T(key, language); global-language overloads are forbidden:" +
+            Environment.NewLine + string.Join(Environment.NewLine, violations));
+
+        Assert.Equal(2, ReadTopLevelArguments("Localization.T(\"k\", language)", "Localization.T(".Length).Count);
+        Assert.Equal(1, ReadTopLevelArguments("Localization.T(\"a,(b)\")", "Localization.T(".Length).Count);
+        Assert.Equal(3, ReadTopLevelArguments("Localization.T(\"k\", Path.Combine(a, b), 'x')", "Localization.T(".Length).Count);
+    }
+
+    /// <summary>Splits a call's argument list at top-level commas, starting just after its opening parenthesis.</summary>
+    private static IReadOnlyList<string> ReadTopLevelArguments(string source, int start)
+    {
+        var arguments = new List<string>();
+        int depth = 0;
+        int segmentStart = start;
+        int i = start;
+        while (i < source.Length)
+        {
+            char c = source[i];
+            if (c == '"' || c == '\'')
+            {
+                i = SkipQuotedSegment(source, i, c);
+                continue;
+            }
+
+            if (ProcessTopLevelArgumentCharacter(source, i, c, arguments, ref depth, ref segmentStart))
+                return arguments;
+
+            i++;
+        }
+
+        return arguments;
+    }
+
+    private static bool ProcessTopLevelArgumentCharacter(
+        string source,
+        int index,
+        char character,
+        List<string> arguments,
+        ref int depth,
+        ref int segmentStart)
+    {
+        if (character is '(' or '[' or '{')
+        {
+            depth++;
+            return false;
+        }
+
+        if (character is ')' or ']' or '}')
+        {
+            if (depth > 0)
+            {
+                depth--;
+                return false;
+            }
+
+            string last = source[segmentStart..index].Trim();
+            if (last.Length > 0 || arguments.Count > 0)
+                arguments.Add(last);
+            return true;
+        }
+
+        if (character != ',' || depth != 0)
+            return false;
+
+        arguments.Add(source[segmentStart..index].Trim());
+        segmentStart = index + 1;
+        return false;
+    }
+
+    private static int SkipQuotedSegment(string source, int quoteIndex, char quote)
+    {
+        int i = quoteIndex + 1;
+        while (i < source.Length)
+        {
+            if (source[i] == '\\')
+            {
+                i += 2;
+                continue;
+            }
+
+            if (source[i] == quote)
+                return i + 1;
+
+            i++;
+        }
+
+        return i;
     }
 
     private static void TestApplicationContractsStayUiIndependent()

@@ -44,7 +44,10 @@ namespace Clickra.Core.Processors
             ShouldProtectDiagramRegionFromParagraph = PdfOverlayMaskPlanner.ShouldProtectDiagramRegionFromParagraph
         };
 
-        public static void TranslatePdf(string inputPath, string outputPath, string targetLang, Action<int, int, string>? onProgress = null, CancellationToken cancellationToken = default)
+        public static void TranslatePdf(string inputPath, string outputPath, string targetLang, Action<int, int, string>? onProgress = null, CancellationToken cancellationToken = default) =>
+            TranslatePdf(inputPath, outputPath, targetLang, ClickraSettings.DefaultEmpty, string.Empty, onProgress, cancellationToken);
+
+        public static void TranslatePdf(string inputPath, string outputPath, string targetLang, string language, string dataDirectory, Action<int, int, string>? onProgress = null, CancellationToken cancellationToken = default)
         {
             ClickraDebug.Clear();
             string finalOutputPath = Path.GetFullPath(outputPath);
@@ -65,7 +68,6 @@ namespace Clickra.Core.Processors
                 deadlineCts.CancelAfter(TimeSpan.FromMinutes(10));
                 CancellationToken operationToken = deadlineCts.Token;
 
-                string language = ClickraStorage.GetSetting(ClickraSettings.Language);
                 onProgress?.Invoke(10, 100, Localization.T("pdf_progress_analyzing", language));
                 using var pigDoc = UglyToad.PdfPig.PdfDocument.Open(inputPath);
                 sourcePages = pigDoc.NumberOfPages;
@@ -85,15 +87,17 @@ namespace Clickra.Core.Processors
                 onProgress?.Invoke(30, 100, Localization.T("pdf_progress_translating", language));
                 providerName = TranslationEngineFactory.Create().Name;
                 stageReport = PdfParagraphTranslationStage.TranslatePages(
-                    pageParagraphs, inputPath, targetLang, onProgress, operationToken);
+                    pageParagraphs, inputPath, targetLang, language, dataDirectory, onProgress, operationToken);
 
                 if (File.Exists(partialOutputPath)) File.Delete(partialOutputPath);
                 layoutSummary = PdfTranslatedPdfRebuilder.Rebuild(
-                    inputPath,
-                    partialOutputPath,
-                    targetLang,
-                    pigDoc,
-                    pageParagraphs,
+                    new PdfTranslationRebuildRequest(
+                        inputPath,
+                        partialOutputPath,
+                        targetLang,
+                        language,
+                        pigDoc,
+                        pageParagraphs),
                     onProgress,
                     operationToken);
 
@@ -149,8 +153,8 @@ namespace Clickra.Core.Processors
             {
                 WriteFailureHealthReport(new FailureHealthReportConfig(
                     healthPath, inputPath, finalOutputPath, sourcePages, stageReport, providerName,
-                    Localization.T("pdf_error_deadline", ClickraStorage.GetSetting(ClickraSettings.Language)), layoutSummary));
-                throw new TimeoutException(Localization.T("pdf_error_deadline", ClickraStorage.GetSetting(ClickraSettings.Language)), ex);
+                    Localization.T("pdf_error_deadline", language), layoutSummary));
+                throw new TimeoutException(Localization.T("pdf_error_deadline", language), ex);
             }
             catch (Exception ex)
             {

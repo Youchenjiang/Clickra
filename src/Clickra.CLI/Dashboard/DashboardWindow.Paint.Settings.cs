@@ -236,7 +236,11 @@ namespace Clickra.UI
                 downloadProgress = _libreOfficeDownloadProgress;
                 downloadStatus = _libreOfficeDownloadStatus;
             }
-            string resolvedLibreOffice = isLibreOfficeSetupRunning ? "" : LibreOfficeHelper.GetResolvedExecutablePath();
+            string resolvedLibreOffice = isLibreOfficeSetupRunning
+                ? ""
+                : LibreOfficeHelper.GetResolvedExecutablePath(
+                    ClickraStorage.GetSettingBool(ClickraSettings.LibreOfficeRemovalPendingRestart),
+                    ClickraStorage.GetSetting(ClickraSettings.LibreOfficePath));
             bool removalPendingRestart = ClickraStorage.GetSettingBool(ClickraSettings.LibreOfficeRemovalPendingRestart);
             bool libreOfficeReady = !string.IsNullOrEmpty(resolvedLibreOffice);
             // Only a LibreOffice with a freshly verified Clickra management identity may be removed

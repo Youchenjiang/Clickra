@@ -1,5 +1,6 @@
 using System;
 using System.IO;
+using System.Runtime.ExceptionServices;
 using System.Text;
 using System.Threading;
 using Clickra.Core;
@@ -8,19 +9,17 @@ namespace Clickra.Core.Processors
 {
     public static class PowerShellHelper
     {
-        public static void ExportOfficeToPdf(
-            string appType,
-            string fullPath,
-            string outputPdfPath,
-            int fileIndex,
-            int totalFiles,
+        internal static void ExportOfficeToPdf(
+            OfficeConversionRequest request,
+            OfficeConversionSettings settings,
             Action<int, int, string>? onProgress,
             CancellationToken cancellationToken)
         {
-            string engine = ClickraStorage.GetSetting(ClickraSettings.OfficeEngine);
+            string appType = request.AppType;
+            string engine = settings.Engine;
             if (engine.Equals("libreoffice", StringComparison.OrdinalIgnoreCase))
             {
-                LibreOfficeHelper.ExportToPdf(appType, fullPath, outputPdfPath, fileIndex, totalFiles, onProgress, cancellationToken);
+                LibreOfficeHelper.ExportToPdf(request, settings, onProgress, cancellationToken);
                 return;
             }
 
@@ -28,33 +27,56 @@ namespace Clickra.Core.Processors
                 LibreOfficeHelper.CanConvert(appType) &&
                 !IsMicrosoftOfficeReady(appType))
             {
-                if (string.IsNullOrWhiteSpace(LibreOfficeHelper.GetResolvedExecutablePath()))
-                    throw new InvalidOperationException(Localization.T("error_libreoffice_not_ready", ClickraStorage.GetSetting(ClickraSettings.Language)));
+                if (string.IsNullOrWhiteSpace(LibreOfficeHelper.GetResolvedExecutablePath(
+                        settings.LibreOfficeRemovalPendingRestart,
+                        settings.LibreOfficePath)))
+                    throw new InvalidOperationException(Localization.T("error_libreoffice_not_ready", settings.Language));
 
-                LibreOfficeHelper.ExportToPdf(appType, fullPath, outputPdfPath, fileIndex, totalFiles, onProgress, cancellationToken);
+                LibreOfficeHelper.ExportToPdf(request, settings, onProgress, cancellationToken);
                 return;
             }
 
             try
             {
-                ExportMicrosoftOfficeToPdf(appType, fullPath, outputPdfPath, fileIndex, totalFiles, onProgress, cancellationToken);
+                ExportMicrosoftOfficeToPdf(request, settings.Language, onProgress, cancellationToken);
                 return;
             }
-            catch (Exception) when (ShouldFallBackToLibreOffice(engine, appType, cancellationToken))
+            catch (InvalidOperationException ex) when (ShouldFallBackToLibreOffice(engine, appType, cancellationToken))
             {
-                if (string.IsNullOrWhiteSpace(LibreOfficeHelper.GetResolvedExecutablePath()))
-                    throw;
-
-                string language = ClickraStorage.GetSetting(ClickraSettings.Language);
-                onProgress?.Invoke(
-                    fileIndex * 100,
-                    totalFiles * 100,
-                    string.Format(
-                        Localization.T("status_office_fallback_to_libreoffice", language),
-                        appType,
-                        Path.GetFileName(fullPath)));
-                LibreOfficeHelper.ExportToPdf(appType, fullPath, outputPdfPath, fileIndex, totalFiles, onProgress, cancellationToken);
+                ExportLibreOfficeFallback(ex, request, settings, onProgress, cancellationToken);
             }
+            catch (NotSupportedException ex) when (ShouldFallBackToLibreOffice(engine, appType, cancellationToken))
+            {
+                ExportLibreOfficeFallback(ex, request, settings, onProgress, cancellationToken);
+            }
+            catch (TimeoutException ex) when (ShouldFallBackToLibreOffice(engine, appType, cancellationToken))
+            {
+                ExportLibreOfficeFallback(ex, request, settings, onProgress, cancellationToken);
+            }
+        }
+
+        private static void ExportLibreOfficeFallback(
+            Exception originalException,
+            OfficeConversionRequest request,
+            OfficeConversionSettings settings,
+            Action<int, int, string>? onProgress,
+            CancellationToken cancellationToken)
+        {
+            if (string.IsNullOrWhiteSpace(LibreOfficeHelper.GetResolvedExecutablePath(
+                    settings.LibreOfficeRemovalPendingRestart,
+                    settings.LibreOfficePath)))
+            {
+                ExceptionDispatchInfo.Capture(originalException).Throw();
+            }
+
+            onProgress?.Invoke(
+                request.FileIndex * 100,
+                request.TotalFiles * 100,
+                string.Format(
+                    Localization.T("status_office_fallback_to_libreoffice", settings.Language),
+                    request.AppType,
+                    Path.GetFileName(request.FullPath)));
+            LibreOfficeHelper.ExportToPdf(request, settings, onProgress, cancellationToken);
         }
 
         /// <summary>
@@ -76,14 +98,14 @@ namespace Clickra.Core.Processors
             OfficeEngineDetector.IsMicrosoftOfficeReady(appType);
 
         private static void ExportMicrosoftOfficeToPdf(
-            string appType,
-            string fullPath,
-            string outputPdfPath,
-            int fileIndex,
-            int totalFiles,
+            OfficeConversionRequest request,
+            string language,
             Action<int, int, string>? onProgress,
             CancellationToken cancellationToken)
         {
+            string appType = request.AppType;
+            string fullPath = request.FullPath;
+            string outputPdfPath = request.OutputPdfPath;
             string psScript = "";
             if (appType == "Word")
             {
@@ -166,27 +188,32 @@ try {{
             }
             else
             {
-                throw new NotSupportedException(string.Format(Localization.T("error_office_unsupported", ClickraStorage.GetSetting(ClickraSettings.Language)), appType));
+                throw new NotSupportedException(string.Format(Localization.T("error_office_unsupported", language), appType));
             }
 
-            RunOfficeInteropScript(psScript, fileIndex, totalFiles, fullPath, appType, onProgress, cancellationToken);
+            RunOfficeInteropScript(
+                new OfficeInteropRequest(
+                    psScript,
+                    request.FileIndex,
+                    request.TotalFiles,
+                    fullPath,
+                    appType,
+                    language),
+                onProgress,
+                cancellationToken);
             
             if (!File.Exists(outputPdfPath))
             {
-                throw new InvalidOperationException(string.Format(Localization.T("error_office_output_missing", ClickraStorage.GetSetting(ClickraSettings.Language)), appType));
+                throw new InvalidOperationException(string.Format(Localization.T("error_office_output_missing", language), appType));
             }
         }
 
-        public static void RunOfficeInteropScript(
-            string psScript, 
-            int fileIndex, 
-            int totalFiles, 
-            string filePath, 
-            string appName, 
+        internal static void RunOfficeInteropScript(
+            OfficeInteropRequest request,
             Action<int, int, string>? onProgress, 
             CancellationToken cancellationToken)
         {
-            string encodedScript = Convert.ToBase64String(Encoding.Unicode.GetBytes(psScript));
+            string encodedScript = Convert.ToBase64String(Encoding.Unicode.GetBytes(request.Script));
             var startInfo = new System.Diagnostics.ProcessStartInfo
             {
                 FileName = "powershell.exe",
@@ -198,36 +225,20 @@ try {{
             };
 
             using var process = System.Diagnostics.Process.Start(startInfo)
-                ?? throw new InvalidOperationException(string.Format(Localization.T("error_office_powershell_start", ClickraStorage.GetSetting(ClickraSettings.Language)), appName));
+                ?? throw new InvalidOperationException(string.Format(Localization.T("error_office_powershell_start", request.Language), request.AppName));
 
             // skipcq: CS-W1100 — the registration is kept alive only to dispose it.
             using var registration = cancellationToken.Register(() =>
             {
-                try { process.Kill(true); } catch { }
+                try { process.Kill(true); }
+                catch
+                {
+                    // Best-effort cancellation cleanup; the cancellation result must win.
+                }
             });
 
             var error = new StringBuilder();
-            process.OutputDataReceived += (s, e) =>
-            {
-                if (string.IsNullOrEmpty(e.Data) || !e.Data.StartsWith("PROGRESS:") ||
-                    !int.TryParse(e.Data.Substring(9), out int subProg))
-                {
-                    return;
-                }
-
-                string language = ClickraStorage.GetSetting(ClickraSettings.Language);
-                string fileName = Path.GetFileName(filePath);
-                int currentProgress = (fileIndex * 100) + subProg;
-                string statusMsg = subProg switch
-                {
-                    20 => string.Format(Localization.T("status_office_starting", language), appName, fileIndex + 1, totalFiles),
-                    50 => string.Format(Localization.T("status_office_reading", language), fileName),
-                    80 => string.Format(Localization.T("status_office_exporting", language), fileName),
-                    100 => string.Format(Localization.T("status_office_completed", language), fileName),
-                    _ => string.Format(Localization.T("status_office_converting", language), appName, fileName)
-                };
-                onProgress?.Invoke(currentProgress, totalFiles * 100, statusMsg);
-            };
+            process.OutputDataReceived += (_, e) => ReportOfficeProgress(e.Data, request, onProgress);
             process.ErrorDataReceived += (_, e) =>
             {
                 if (!string.IsNullOrWhiteSpace(e.Data))
@@ -239,24 +250,56 @@ try {{
             if (!process.WaitForExit(TimeSpan.FromMinutes(2)))
             {
                 try { process.Kill(true); } catch { /* Ignored: a hung process must not mask the timeout error. */ }
-                throw new TimeoutException(string.Format(Localization.T("error_office_timeout", ClickraStorage.GetSetting(ClickraSettings.Language)), appName));
+                throw new TimeoutException(string.Format(Localization.T("error_office_timeout", request.Language), request.AppName));
             }
 
             cancellationToken.ThrowIfCancellationRequested();
 
-            string errorText = error.ToString();
-            if (!string.IsNullOrWhiteSpace(errorText) && process.ExitCode != 0)
-            {
-                if (errorText.Contains("0x80040154") || errorText.Contains("New-Object"))
-                    throw new InvalidOperationException(string.Format(Localization.T("error_office_not_installed", ClickraStorage.GetSetting(ClickraSettings.Language)), appName));
-                else
-                    throw new InvalidOperationException(string.Format(Localization.T("error_office_failed", ClickraStorage.GetSetting(ClickraSettings.Language)), appName, errorText.Trim()));
-            }
+            ThrowIfOfficeInteropFailed(process.ExitCode, error.ToString(), request);
+        }
 
-            if (process.ExitCode != 0)
+        private static void ReportOfficeProgress(
+            string? output,
+            OfficeInteropRequest request,
+            Action<int, int, string>? onProgress)
+        {
+            if (string.IsNullOrEmpty(output) ||
+                !output.StartsWith("PROGRESS:", StringComparison.Ordinal) ||
+                !int.TryParse(output.AsSpan(9), out int subProgress))
+                return;
+
+            string fileName = Path.GetFileName(request.FilePath);
+            string statusMessage = subProgress switch
             {
-                throw new InvalidOperationException(string.Format(Localization.T("error_office_exit_code", ClickraStorage.GetSetting(ClickraSettings.Language)), appName, process.ExitCode));
-            }
+                20 => string.Format(Localization.T("status_office_starting", request.Language), request.AppName, request.FileIndex + 1, request.TotalFiles),
+                50 => string.Format(Localization.T("status_office_reading", request.Language), fileName),
+                80 => string.Format(Localization.T("status_office_exporting", request.Language), fileName),
+                100 => string.Format(Localization.T("status_office_completed", request.Language), fileName),
+                _ => string.Format(Localization.T("status_office_converting", request.Language), request.AppName, fileName)
+            };
+            onProgress?.Invoke(
+                (request.FileIndex * 100) + subProgress,
+                request.TotalFiles * 100,
+                statusMessage);
+        }
+
+        private static void ThrowIfOfficeInteropFailed(
+            int exitCode,
+            string errorText,
+            OfficeInteropRequest request)
+        {
+            if (exitCode == 0)
+                return;
+
+            if (string.IsNullOrWhiteSpace(errorText))
+                throw new InvalidOperationException(string.Format(Localization.T("error_office_exit_code", request.Language), request.AppName, exitCode));
+
+            if (errorText.Contains("0x80040154", StringComparison.Ordinal) ||
+                errorText.Contains("New-Object", StringComparison.Ordinal))
+                throw new InvalidOperationException(string.Format(Localization.T("error_office_not_installed", request.Language), request.AppName));
+
+            throw new InvalidOperationException(
+                string.Format(Localization.T("error_office_failed", request.Language), request.AppName, errorText.Trim()));
         }
     }
 }

@@ -30,6 +30,50 @@ static partial class TestSuite
                 "report.docx",
                 "fixture"));
 
+        runner.Run("Office conversion planning snapshots saved execution settings", () =>
+        {
+            string originalEngine = ClickraStorage.GetSetting(ClickraSettings.OfficeEngine);
+            string originalLanguage = ClickraStorage.GetSetting(ClickraSettings.Language);
+            string originalLibreOfficePath = ClickraStorage.GetSetting(ClickraSettings.LibreOfficePath);
+            string originalRemovalPending = ClickraStorage.GetSetting(ClickraSettings.LibreOfficeRemovalPendingRestart);
+            try
+            {
+                ClickraStorage.SaveSetting(ClickraSettings.OfficeEngine, ClickraSettings.OfficeEngineLibreOffice);
+                ClickraStorage.SaveSetting(ClickraSettings.Language, "en-US");
+                ClickraStorage.SaveSetting(ClickraSettings.LibreOfficePath, @"C:\snapshot\soffice.exe");
+                ClickraStorage.SaveSetting(ClickraSettings.LibreOfficeRemovalPendingRestart, ClickraSettings.ValueTrue);
+
+                RunWithTempDirectory(tempDir =>
+                {
+                    string input = Path.Combine(tempDir, "snapshot.docx");
+                    File.WriteAllText(input, "fixture");
+                    ConversionPlan plan = new WordToPdfUseCase().Plan(new ConversionRequest(
+                        WordToPdfUseCase.CommandName,
+                        new[] { input },
+                        TrackTaskLifecycle: false));
+
+                    ClickraStorage.SaveSetting(ClickraSettings.OfficeEngine, ClickraSettings.OfficeEngineMicrosoft);
+                    ClickraStorage.SaveSetting(ClickraSettings.Language, "zh-TW");
+                    ClickraStorage.SaveSetting(ClickraSettings.LibreOfficePath, @"C:\changed\soffice.exe");
+                    ClickraStorage.SaveSetting(ClickraSettings.LibreOfficeRemovalPendingRestart, ClickraSettings.ValueFalse);
+
+                    Assert.Equal(ClickraSettings.OfficeEngineLibreOffice, plan.NormalizedOptions["office_engine"].ToString() ?? "");
+                    Assert.Equal("en-US", plan.NormalizedOptions["office_language"].ToString() ?? "");
+                    Assert.Equal(@"C:\snapshot\soffice.exe", plan.NormalizedOptions["libreoffice_path"].ToString() ?? "");
+                    Assert.True(
+                        plan.NormalizedOptions["libreoffice_removal_pending_restart"] is bool removalPending && removalPending,
+                        "Office conversion must retain the removal-pending value captured during planning.");
+                });
+            }
+            finally
+            {
+                ClickraStorage.SaveSetting(ClickraSettings.OfficeEngine, originalEngine);
+                ClickraStorage.SaveSetting(ClickraSettings.Language, originalLanguage);
+                ClickraStorage.SaveSetting(ClickraSettings.LibreOfficePath, originalLibreOfficePath);
+                ClickraStorage.SaveSetting(ClickraSettings.LibreOfficeRemovalPendingRestart, originalRemovalPending);
+            }
+        });
+
         runner.Run("Office readiness maps commands and supported app types", () =>
         {
             Assert.Equal(
@@ -68,30 +112,19 @@ static partial class TestSuite
                 "Non-Office commands must not require an Office application.");
         });
 
-        runner.Run("Office readiness applies the configured engine policy once", () =>
+        runner.Run("Office readiness applies an explicit engine policy", () =>
         {
-            string original = ClickraStorage.GetSetting(ClickraSettings.OfficeEngine);
-            try
-            {
-                ClickraStorage.SaveSetting(ClickraSettings.OfficeEngine, ClickraSettings.DefaultOfficeEngineAuto);
-                Assert.True(OfficeEngineDetector.IsSelectedEngineReady(true, false), "Auto accepts Microsoft Office.");
-                Assert.True(OfficeEngineDetector.IsSelectedEngineReady(false, true), "Auto accepts LibreOffice.");
-                Assert.False(OfficeEngineDetector.IsSelectedEngineReady(false, false), "Auto rejects when no engine is available.");
+            Assert.True(OfficeEngineDetector.IsSelectedEngineReady(ClickraSettings.DefaultOfficeEngineAuto, true, false), "Auto accepts Microsoft Office.");
+            Assert.True(OfficeEngineDetector.IsSelectedEngineReady(ClickraSettings.DefaultOfficeEngineAuto, false, true), "Auto accepts LibreOffice.");
+            Assert.False(OfficeEngineDetector.IsSelectedEngineReady(ClickraSettings.DefaultOfficeEngineAuto, false, false), "Auto rejects when no engine is available.");
 
-                ClickraStorage.SaveSetting(ClickraSettings.OfficeEngine, ClickraSettings.OfficeEngineMicrosoft);
-                Assert.True(OfficeEngineDetector.IsSelectedEngineReady(true, false), "Microsoft mode requires Microsoft Office.");
-                Assert.False(OfficeEngineDetector.IsSelectedEngineReady(false, true), "Microsoft mode must not silently select LibreOffice.");
-                Assert.Equal("error_microsoftoffice_not_ready", OfficeEngineDetector.GetUnavailableErrorKey());
+            Assert.True(OfficeEngineDetector.IsSelectedEngineReady(ClickraSettings.OfficeEngineMicrosoft, true, false), "Microsoft mode requires Microsoft Office.");
+            Assert.False(OfficeEngineDetector.IsSelectedEngineReady(ClickraSettings.OfficeEngineMicrosoft, false, true), "Microsoft mode must not silently select LibreOffice.");
+            Assert.Equal("error_microsoftoffice_not_ready", OfficeEngineDetector.GetUnavailableErrorKey(ClickraSettings.OfficeEngineMicrosoft));
 
-                ClickraStorage.SaveSetting(ClickraSettings.OfficeEngine, ClickraSettings.OfficeEngineLibreOffice);
-                Assert.True(OfficeEngineDetector.IsSelectedEngineReady(false, true), "LibreOffice mode requires LibreOffice.");
-                Assert.False(OfficeEngineDetector.IsSelectedEngineReady(true, false), "LibreOffice mode must not silently select Microsoft Office.");
-                Assert.Equal("error_libreoffice_not_ready", OfficeEngineDetector.GetUnavailableErrorKey());
-            }
-            finally
-            {
-                ClickraStorage.SaveSetting(ClickraSettings.OfficeEngine, original);
-            }
+            Assert.True(OfficeEngineDetector.IsSelectedEngineReady(ClickraSettings.OfficeEngineLibreOffice, false, true), "LibreOffice mode requires LibreOffice.");
+            Assert.False(OfficeEngineDetector.IsSelectedEngineReady(ClickraSettings.OfficeEngineLibreOffice, true, false), "LibreOffice mode must not silently select Microsoft Office.");
+            Assert.Equal("error_libreoffice_not_ready", OfficeEngineDetector.GetUnavailableErrorKey(ClickraSettings.OfficeEngineLibreOffice));
         });
 
         runner.Run("Office fallback policy never retries a cancelled job", () =>
