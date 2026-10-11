@@ -48,8 +48,8 @@ namespace Clickra.Core.Processors
                     targetLang,
                     context.PageIndex,
                     chunkIndex,
-                    cancellationToken,
-                    context.Language);
+                    context.Language,
+                    cancellationToken);
 
                 results.AddRange(chunkResults);
                 translatedCount += chunk.Count;
@@ -64,8 +64,8 @@ namespace Clickra.Core.Processors
             string targetLang,
             int pageIndex,
             int chunkIndex,
-            CancellationToken cancellationToken,
-            string language)
+            string language,
+            CancellationToken cancellationToken)
         {
             cancellationToken.ThrowIfCancellationRequested();
 
@@ -101,16 +101,16 @@ namespace Clickra.Core.Processors
                     targetLang,
                     pageIndex,
                     chunkIndex,
-                    cancellationToken,
-                    language);
+                    language,
+                    cancellationToken);
                 var right = TranslateChunkWithRecovery(
                     translator,
                     chunk.GetRange(midpoint, chunk.Count - midpoint),
                     targetLang,
                     pageIndex,
                     chunkIndex,
-                    cancellationToken,
-                    language);
+                    language,
+                    cancellationToken);
                 left.AddRange(right);
                 return left;
             }

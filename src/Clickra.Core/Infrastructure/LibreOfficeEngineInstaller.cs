@@ -12,8 +12,8 @@ using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Win32;
 
-namespace Clickra.Core.Processors
-{
+namespace Clickra.Core.Processors;
+
     public sealed record LibreOfficeEngineManifest(
         int Schema,
         LibreOfficeEnginePackage LibreOffice);
@@ -750,22 +750,20 @@ namespace Clickra.Core.Processors
 
                 using (response)
                 {
-                    await using (var source = await response.Content.ReadAsStreamAsync(cancellationToken))
-                    await using (var destination = File.Create(tempPath))
+                    await using var source = await response.Content.ReadAsStreamAsync(cancellationToken);
+                    await using var destination = File.Create(tempPath);
+                    byte[] buffer = new byte[1024 * 128];
+                    long totalRead = 0;
+                    long expectedBytes = response.Content.Headers.ContentLength ?? package.DownloadBytes;
+                    int read;
+                    while ((read = await source.ReadAsync(buffer, cancellationToken)) > 0)
                     {
-                        byte[] buffer = new byte[1024 * 128];
-                        long totalRead = 0;
-                        long expectedBytes = response.Content.Headers.ContentLength ?? package.DownloadBytes;
-                        int read;
-                        while ((read = await source.ReadAsync(buffer, cancellationToken)) > 0)
+                        await destination.WriteAsync(buffer.AsMemory(0, read), cancellationToken);
+                        totalRead += read;
+                        if (expectedBytes > 0)
                         {
-                            await destination.WriteAsync(buffer.AsMemory(0, read), cancellationToken);
-                            totalRead += read;
-                            if (expectedBytes > 0)
-                            {
-                                int percent = (int)Math.Min(99, Math.Max(1, totalRead * 100 / expectedBytes));
-                                progress?.Report(percent);
-                            }
+                            int percent = (int)Math.Min(99, Math.Max(1, totalRead * 100 / expectedBytes));
+                            progress?.Report(percent);
                         }
                     }
                 }
@@ -813,4 +811,3 @@ namespace Clickra.Core.Processors
             catch { }
         }
     }
-}

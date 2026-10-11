@@ -3,20 +3,20 @@ using System.Collections.Generic;
 
 namespace Clickra.Core.Processors;
 
-public readonly record struct OfficeConversionSettings(
+internal readonly record struct OfficeConversionSettings(
     string Engine,
     string Language,
     string LibreOfficePath,
     bool LibreOfficeRemovalPendingRestart);
 
-public readonly record struct OfficeConversionRequest(
+internal readonly record struct OfficeConversionRequest(
     string AppType,
     string FullPath,
     string OutputPdfPath,
     int FileIndex,
     int TotalFiles);
 
-public readonly record struct OfficeInteropRequest(
+internal readonly record struct OfficeInteropRequest(
     string Script,
     int FileIndex,
     int TotalFiles,

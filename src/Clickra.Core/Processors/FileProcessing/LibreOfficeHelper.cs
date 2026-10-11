@@ -122,7 +122,7 @@ public static class LibreOfficeHelper
         }
     }
 
-    public static void ExportToPdf(
+    internal static void ExportToPdf(
         OfficeConversionRequest request,
         OfficeConversionSettings settings,
         Action<int, int, string>? onProgress,

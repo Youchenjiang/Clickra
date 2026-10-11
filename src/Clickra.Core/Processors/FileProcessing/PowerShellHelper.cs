@@ -9,7 +9,7 @@ namespace Clickra.Core.Processors
 {
     public static class PowerShellHelper
     {
-        public static void ExportOfficeToPdf(
+        internal static void ExportOfficeToPdf(
             OfficeConversionRequest request,
             OfficeConversionSettings settings,
             Action<int, int, string>? onProgress,
@@ -208,7 +208,7 @@ try {{
             }
         }
 
-        public static void RunOfficeInteropScript(
+        internal static void RunOfficeInteropScript(
             OfficeInteropRequest request,
             Action<int, int, string>? onProgress, 
             CancellationToken cancellationToken)
