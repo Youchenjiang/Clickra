@@ -64,7 +64,6 @@ namespace Clickra.UI
                     _outputDirOverride,
                     _commandOptions,
                     _startIndex,
-                    _cts.Token,
                     taskId => TaskId = taskId,
                     TryRecordTaskIndex,
                     (inputPath, isRetry) => ResolveDecryptPassword(hwnd, inputPath, isRetry),
@@ -77,7 +76,8 @@ namespace Clickra.UI
                             result,
                             command,
                             successMessage,
-                            setAllDoneMessage));
+                            setAllDoneMessage),
+                    _cts.Token);
 
                 if (adapter.TryRun(cmd, currentFiles, progressCallback))
                     return;

@@ -27,12 +27,12 @@ internal sealed class NativeConversionExecutionAdapter
         string? outputDirOverride,
         IReadOnlyDictionary<string, object>? commandOptions,
         int startIndex,
-        CancellationToken cancellationToken,
         Action<string> taskStarted,
         Action<int> recordTaskIndex,
         Func<string, bool, string> resolveDecryptPassword,
         Func<string, string> promptSplitPages,
-        Action<ConversionResult, string, string?, bool> completeResult)
+        Action<ConversionResult, string, string?, bool> completeResult,
+        CancellationToken cancellationToken)
     {
         _existingTaskId = existingTaskId;
         _outputDirOverride = outputDirOverride;
