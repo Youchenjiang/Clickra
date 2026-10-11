@@ -29,13 +29,21 @@ namespace Clickra.Core.Processors
 
                 // If outputPath parameter is provided and this is the first (and only) file, use it.
                 // Otherwise use a caller-planned output when available, then fall back to the source directory.
-                string targetOutputPath = outputPaths is not null && i < outputPaths.Count
-                    ? outputPaths[i]
-                    : (files.Count == 1 && !string.IsNullOrEmpty(outputPath))
-                        ? outputPath
-                        : Path.Combine(
-                            Path.GetDirectoryName(fullPath) ?? ".",
-                            Path.GetFileNameWithoutExtension(filePath) + GetOutputSuffix());
+                string targetOutputPath;
+                if (outputPaths is not null && i < outputPaths.Count)
+                {
+                    targetOutputPath = outputPaths[i];
+                }
+                else if (files.Count == 1 && !string.IsNullOrEmpty(outputPath))
+                {
+                    targetOutputPath = outputPath;
+                }
+                else
+                {
+                    targetOutputPath = Path.Combine(
+                        Path.GetDirectoryName(fullPath) ?? ".",
+                        Path.GetFileNameWithoutExtension(filePath) + GetOutputSuffix());
+                }
 
                 using var backupScope = FileBackupScope.Create(targetOutputPath);
                 ProcessSingleFile(fullPath, targetOutputPath, i, total, options, onProgress, cancellationToken);
