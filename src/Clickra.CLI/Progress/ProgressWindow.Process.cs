@@ -305,19 +305,9 @@ namespace Clickra.UI
             List<string> files,
             Action<int, int, string> progressCallback)
         {
-            IConversionUseCase useCase = ConversionUseCases.GetRequired(CompressPdfUseCase.CommandName);
-            ConversionPlan plan = useCase.Plan(new ConversionRequest(
+            var (useCase, plan, interaction) = PrepareResumableApplicationExecution(
                 CompressPdfUseCase.CommandName,
-                files,
-                ExistingTaskId: _existingTaskId,
-                BestEffortTaskPersistence: true)) with
-            {
-                ResumeStartIndex = _startIndex
-            };
-            var interaction = new DelegateConversionInteraction(
-                (_, _, _, _) => System.Threading.Tasks.Task.FromResult<string?>(null),
-                (_, _, _) => System.Threading.Tasks.Task.FromResult<string?>(null),
-                (_, _, _) => System.Threading.Tasks.Task.FromResult<IReadOnlyDictionary<string, object>?>(null));
+                files);
             string compressionSummary = "";
             var progress = CreatePdfApplicationProgress(
                 files,
@@ -573,19 +563,9 @@ namespace Clickra.UI
             List<string> files,
             Action<int, int, string> progressCallback)
         {
-            IConversionUseCase useCase = ConversionUseCases.GetRequired(TranslatePdfUseCase.CommandName);
-            ConversionPlan plan = useCase.Plan(new ConversionRequest(
+            var (useCase, plan, interaction) = PrepareResumableApplicationExecution(
                 TranslatePdfUseCase.CommandName,
-                files,
-                ExistingTaskId: _existingTaskId,
-                BestEffortTaskPersistence: true)) with
-            {
-                ResumeStartIndex = _startIndex
-            };
-            var interaction = new DelegateConversionInteraction(
-                (_, _, _, _) => System.Threading.Tasks.Task.FromResult<string?>(null),
-                (_, _, _) => System.Threading.Tasks.Task.FromResult<string?>(null),
-                (_, _, _) => System.Threading.Tasks.Task.FromResult<IReadOnlyDictionary<string, object>?>(null));
+                files);
             var observer = new TranslateExecutionObserver(this, files, progressCallback);
             var progress = new CallbackProgress<ConversionProgress>(state =>
             {
@@ -637,6 +617,25 @@ namespace Clickra.UI
             PostMessageW(hwnd, WM_USER_INVALIDATE, (IntPtr)1, IntPtr.Zero);
             ConversionTaskCleanup.Delete(result.TaskId, bestEffort: true);
             PostMessageW(hwnd, 0x0010, IntPtr.Zero, IntPtr.Zero); // WM_CLOSE
+        }
+
+        private (IConversionUseCase UseCase, ConversionPlan Plan, IConversionInteraction Interaction)
+            PrepareResumableApplicationExecution(string command, IReadOnlyList<string> files)
+        {
+            IConversionUseCase useCase = ConversionUseCases.GetRequired(command);
+            ConversionPlan plan = useCase.Plan(new ConversionRequest(
+                command,
+                files,
+                ExistingTaskId: _existingTaskId,
+                BestEffortTaskPersistence: true)) with
+            {
+                ResumeStartIndex = _startIndex
+            };
+            var interaction = new DelegateConversionInteraction(
+                (_, _, _, _) => System.Threading.Tasks.Task.FromResult<string?>(null),
+                (_, _, _) => System.Threading.Tasks.Task.FromResult<string?>(null),
+                (_, _, _) => System.Threading.Tasks.Task.FromResult<IReadOnlyDictionary<string, object>?>(null));
+            return (useCase, plan, interaction);
         }
 
         /// <summary>Runs commands that do not need Native-only progress or prompt handling through
