@@ -251,24 +251,7 @@ try {{
 
         private void TryRecordTaskIndex(int index)
         {
-            try
-            {
-                ClickraStorage.SetActiveRecordIndex(index);
-            }
-            catch
-            {
-                // Legacy active-record progress is best effort and must not abort file processing.
-            }
-
-            if (string.IsNullOrEmpty(TaskId)) return;
-            try
-            {
-                ClickraStorage.SetTaskIndex(TaskId, index);
-            }
-            catch
-            {
-                // Per-task progress persistence is best effort; conversion output remains authoritative.
-            }
+            ConversionTaskProgressController.RecordFileStarting(TaskId, index);
         }
     }
 }
