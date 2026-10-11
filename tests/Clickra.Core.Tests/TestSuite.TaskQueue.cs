@@ -531,6 +531,7 @@ static partial class TestSuite
         string fluentCode = File.ReadAllText(Path.Combine(root, "src", FluentProjectDirectory, FluentHistoryPageFile));
         string cliHistory = File.ReadAllText(Path.Combine(root, "src", CliProjectDirectory, DashboardDirectory, DashboardHistoryPaintFile));
         string storageCode = File.ReadAllText(Path.Combine(root, "src", CoreProjectDirectory, "Storage", "ClickraStorage.ActiveRecord.cs"));
+        string parkedCoordinator = File.ReadAllText(Path.Combine(root, "src", CoreProjectDirectory, "Storage", "ParkedTaskCoordinator.cs"));
         string feedCode = File.ReadAllText(Path.Combine(root, "src", CoreProjectDirectory, "Storage", "HistoryFeed.cs"));
 
         Assert.True(feedCode.Contains("ClickraStorage.GetParkedRetentionInfo", StringComparison.Ordinal),
@@ -551,7 +552,7 @@ static partial class TestSuite
         {
             string owner = key is "task_parked_expiring_warning" or "task_parked_badge_expiring"
                 ? fluentCode
-                : storageCode;
+                : parkedCoordinator;
             Assert.True(owner.Contains(key, StringComparison.Ordinal),
                 $"{key} must be referenced by the surface that renders it.");
         }

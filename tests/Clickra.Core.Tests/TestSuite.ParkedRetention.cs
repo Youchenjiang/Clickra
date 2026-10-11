@@ -266,15 +266,18 @@ static partial class TestSuite
                 $"{relative} touches the task record's override field; that belongs to ClickraStorage.");
         }
 
-        string core = File.ReadAllText(Path.Combine(root, "src", CoreProjectDirectoryName, StorageDirectoryName, "ClickraStorage.ActiveRecord.cs"));
+        string facade = File.ReadAllText(Path.Combine(root, "src", CoreProjectDirectoryName, StorageDirectoryName, "ClickraStorage.ActiveRecord.cs"));
+        string coordinator = File.ReadAllText(Path.Combine(root, "src", CoreProjectDirectoryName, StorageDirectoryName, "ParkedTaskCoordinator.cs"));
         string policy = File.ReadAllText(Path.Combine(root, "src", CoreProjectDirectoryName, StorageDirectoryName, "TaskRetentionPolicy.cs"));
-        Assert.True(core.Contains("public static int? AdjustParkedRetention(", StringComparison.Ordinal),
+        Assert.True(facade.Contains("public static int? AdjustParkedRetention(", StringComparison.Ordinal),
             "ClickraStorage must expose the shared extend/shorten operation.");
-        Assert.True(core.Contains("TaskRetentionPolicy.CalculateAdjustedDays(", StringComparison.Ordinal),
-            "ClickraStorage must delegate retention arithmetic to the retention policy.");
+        Assert.True(facade.Contains("ParkedTaskCoordinator.AdjustRetention(", StringComparison.Ordinal),
+            "ClickraStorage must delegate parked retention changes to the parked-task coordinator.");
+        Assert.True(coordinator.Contains("TaskRetentionPolicy.CalculateAdjustedDays(", StringComparison.Ordinal),
+            "The parked-task coordinator must delegate retention arithmetic to the retention policy.");
         Assert.True(policy.Contains("internal static int? CalculateAdjustedDays(", StringComparison.Ordinal),
             "Retention arithmetic must live in the policy instead of task-file persistence.");
-        Assert.True(core.Contains("public static void SetParkedRetentionOverride(", StringComparison.Ordinal),
+        Assert.True(facade.Contains("public static void SetParkedRetentionOverride(", StringComparison.Ordinal),
             "ClickraStorage must own the override/reset operation.");
     }
 
@@ -285,18 +288,23 @@ static partial class TestSuite
         string? root = FindRepoRoot();
         if (root is null) throw new TestSkippedException("Could not locate the repository root from the test output directory.");
 
-        string core = File.ReadAllText(Path.Combine(root, "src", CoreProjectDirectoryName, StorageDirectoryName, "ClickraStorage.ActiveRecord.cs"));
+        string facade = File.ReadAllText(Path.Combine(root, "src", CoreProjectDirectoryName, StorageDirectoryName, "ClickraStorage.ActiveRecord.cs"));
+        string coordinator = File.ReadAllText(Path.Combine(root, "src", CoreProjectDirectoryName, StorageDirectoryName, "ParkedTaskCoordinator.cs"));
 
-        foreach (string method in new[] { "public static ParkedRetentionInfo GetParkedRetentionInfo(string taskId)", "private static void PruneSingleTaskFile(string file, DateTime now)" })
+        foreach ((string source, string method) in new[]
         {
-            int start = core.IndexOf(method, StringComparison.Ordinal);
+            (coordinator, "internal static ParkedRetentionInfo GetRetentionInfo(string taskId)"),
+            (facade, "private static void PruneSingleTaskFile(string file, DateTime now)")
+        })
+        {
+            int start = source.IndexOf(method, StringComparison.Ordinal);
             Assert.True(start >= 0, $"{method} must exist.");
-            int end = core.IndexOf("\n        }", start, StringComparison.Ordinal);
-            string body = end > start ? core[start..end] : core[start..];
-            Assert.True(body.Contains("ParkedWindow(", StringComparison.Ordinal),
+            int end = source.IndexOf("\n        }", start, StringComparison.Ordinal);
+            string body = end > start ? source[start..end] : source[start..];
+            Assert.True(body.Contains("GetWindow(", StringComparison.Ordinal),
                 $"{method} must take the task's effective window from the shared calculation.");
             Assert.False(body.Contains("GetParkedRetentionDays()", StringComparison.Ordinal),
-                $"{method} must not fall back to the global policy on its own; the override lives in ParkedWindow.");
+                $"{method} must not fall back to the global policy on its own; the override lives in the coordinator window.");
         }
     }
 
@@ -306,9 +314,12 @@ static partial class TestSuite
         string? root = FindRepoRoot();
         if (root is null) throw new TestSkippedException("Could not locate the repository root from the test output directory.");
 
-        string core = File.ReadAllText(Path.Combine(root, "src", CoreProjectDirectoryName, StorageDirectoryName, "ClickraStorage.ActiveRecord.cs"));
-        Assert.True(core.Contains("task_parked_ttl_override", StringComparison.Ordinal),
-            "DescribeParkedRetention must append the override marker for every interface.");
+        string facade = File.ReadAllText(Path.Combine(root, "src", CoreProjectDirectoryName, StorageDirectoryName, "ClickraStorage.ActiveRecord.cs"));
+        string coordinator = File.ReadAllText(Path.Combine(root, "src", CoreProjectDirectoryName, StorageDirectoryName, "ParkedTaskCoordinator.cs"));
+        Assert.True(coordinator.Contains("task_parked_ttl_override", StringComparison.Ordinal),
+            "The parked-task coordinator must append the override marker for every interface.");
+        Assert.False(facade.Contains("task_parked_ttl_override", StringComparison.Ordinal),
+            "The ClickraStorage facade must not own parked retention wording.");
 
         foreach (string relative in ParkedRetentionUiFiles)
         {
