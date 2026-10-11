@@ -60,24 +60,26 @@ namespace Clickra.UI
                 };
 
                 var adapter = new NativeConversionExecutionAdapter(
-                    _existingTaskId,
-                    _outputDirOverride,
-                    _commandOptions,
-                    _startIndex,
-                    taskId => TaskId = taskId,
-                    TryRecordTaskIndex,
-                    (inputPath, isRetry) => ResolveDecryptPassword(hwnd, inputPath, isRetry),
-                    inputPath => PromptVisualSplitPages(hwnd, inputPath),
-                    (result, command, successMessage, setAllDoneMessage) =>
-                        CompleteApplicationResult(
-                            hwnd,
-                            currentFiles,
-                            progressCallback,
-                            result,
-                            command,
-                            successMessage,
-                            setAllDoneMessage),
-                    _cts.Token);
+                    new NativeConversionExecutionState(
+                        _existingTaskId,
+                        _outputDirOverride,
+                        _commandOptions,
+                        _startIndex,
+                        _cts.Token),
+                    new NativeConversionExecutionCallbacks(
+                        taskId => TaskId = taskId,
+                        TryRecordTaskIndex,
+                        (inputPath, isRetry) => ResolveDecryptPassword(hwnd, inputPath, isRetry),
+                        inputPath => PromptVisualSplitPages(hwnd, inputPath),
+                        (result, command, successMessage, setAllDoneMessage) =>
+                            CompleteApplicationResult(
+                                hwnd,
+                                currentFiles,
+                                progressCallback,
+                                result,
+                                command,
+                                successMessage,
+                                setAllDoneMessage)));
 
                 if (adapter.TryRun(cmd, currentFiles, progressCallback))
                     return;

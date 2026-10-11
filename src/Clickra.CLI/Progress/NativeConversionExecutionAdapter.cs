@@ -23,27 +23,19 @@ internal sealed class NativeConversionExecutionAdapter
     private readonly Action<ConversionResult, string, string?, bool> _completeResult;
 
     public NativeConversionExecutionAdapter(
-        string? existingTaskId,
-        string? outputDirOverride,
-        IReadOnlyDictionary<string, object>? commandOptions,
-        int startIndex,
-        Action<string> taskStarted,
-        Action<int> recordTaskIndex,
-        Func<string, bool, string> resolveDecryptPassword,
-        Func<string, string> promptSplitPages,
-        Action<ConversionResult, string, string?, bool> completeResult,
-        CancellationToken cancellationToken)
+        NativeConversionExecutionState state,
+        NativeConversionExecutionCallbacks callbacks)
     {
-        _existingTaskId = existingTaskId;
-        _outputDirOverride = outputDirOverride;
-        _commandOptions = commandOptions;
-        _startIndex = startIndex;
-        _cancellationToken = cancellationToken;
-        _taskStarted = taskStarted;
-        _recordTaskIndex = recordTaskIndex;
-        _resolveDecryptPassword = resolveDecryptPassword;
-        _promptSplitPages = promptSplitPages;
-        _completeResult = completeResult;
+        _existingTaskId = state.ExistingTaskId;
+        _outputDirOverride = state.OutputDirOverride;
+        _commandOptions = state.CommandOptions;
+        _startIndex = state.StartIndex;
+        _cancellationToken = state.CancellationToken;
+        _taskStarted = callbacks.TaskStarted;
+        _recordTaskIndex = callbacks.RecordTaskIndex;
+        _resolveDecryptPassword = callbacks.ResolveDecryptPassword;
+        _promptSplitPages = callbacks.PromptSplitPages;
+        _completeResult = callbacks.CompleteResult;
     }
 
     public bool TryRun(
@@ -467,3 +459,17 @@ internal sealed class NativeConversionExecutionAdapter
         string? SuccessMessage = null,
         IReadOnlyDictionary<string, object>? CommandOptions = null);
 }
+
+internal sealed record NativeConversionExecutionState(
+    string? ExistingTaskId,
+    string? OutputDirOverride,
+    IReadOnlyDictionary<string, object>? CommandOptions,
+    int StartIndex,
+    CancellationToken CancellationToken);
+
+internal sealed record NativeConversionExecutionCallbacks(
+    Action<string> TaskStarted,
+    Action<int> RecordTaskIndex,
+    Func<string, bool, string> ResolveDecryptPassword,
+    Func<string, string> PromptSplitPages,
+    Action<ConversionResult, string, string?, bool> CompleteResult);
