@@ -9,8 +9,14 @@ namespace Clickra.Core.Application;
 public sealed class ConversionWorkspaceState
 {
     private readonly List<string> _selectedFiles = new();
+    private readonly IReadOnlyList<string> _selectedFilesView;
 
-    public IReadOnlyList<string> SelectedFiles => _selectedFiles;
+    public ConversionWorkspaceState()
+    {
+        _selectedFilesView = _selectedFiles.AsReadOnly();
+    }
+
+    public IReadOnlyList<string> SelectedFiles => _selectedFilesView;
 
     public string? SelectedCommand { get; private set; }
 

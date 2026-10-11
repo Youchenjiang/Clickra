@@ -10,6 +10,7 @@ static partial class TestSuite
         runner.Run("Conversion workspace reroutes incompatible imports to the shared default", TestConversionWorkspaceReroutesIncompatibleImport);
         runner.Run("Conversion workspace enforces minimum files and run state", TestConversionWorkspaceStartEligibility);
         runner.Run("Conversion workspace preserves command choice when files are cleared", TestConversionWorkspaceClearPreservesCommand);
+        runner.Run("Conversion workspace exposes a live read-only file view", TestConversionWorkspaceSelectedFilesView);
     }
 
     private static void TestConversionWorkspaceKeepsCompatibleSelection()
@@ -68,5 +69,21 @@ static partial class TestSuite
         Assert.Equal("md2word", state.SelectedCommand ?? "");
         Assert.False(state.CanStart, "An empty selection must not be startable even when a command remains selected.");
         Assert.True(state.IsCommandCompatible("md2word"), "Commands remain selectable while the workspace has no files.");
+    }
+
+    private static void TestConversionWorkspaceSelectedFilesView()
+    {
+        var state = new ConversionWorkspaceState();
+        IReadOnlyList<string> selectedFiles = state.SelectedFiles;
+
+        Assert.False(selectedFiles is List<string>,
+            "SelectedFiles must not expose the mutable List backing instance.");
+        Assert.True(selectedFiles is ICollection<string> collection && collection.IsReadOnly,
+            "SelectedFiles must expose a collection view that rejects direct mutation.");
+
+        state.AddFiles(new[] { "a.pdf" });
+
+        Assert.Equal(1, selectedFiles.Count);
+        Assert.Equal("a.pdf", selectedFiles[0]);
     }
 }
