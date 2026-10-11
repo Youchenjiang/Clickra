@@ -201,7 +201,7 @@ namespace Clickra.UI;
         {
             if (MessageBox(hwnd, GetText("history_clear_confirm"), AppTitle, 0x24) == 6)
             {
-                ClickraStorage.ClearHistory();
+                HistoryController.Clear();
                 _expandedHistoryIndex = -1;
                 RefreshHistoryData();
                 InvalidateRect(hwnd, IntPtr.Zero, false);
