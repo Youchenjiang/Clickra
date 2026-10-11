@@ -93,6 +93,9 @@ static partial class TestSuite
             "Architecture boundaries: settings persistence has one application gateway",
             TestSettingsPersistenceHasSingleApplicationGateway);
         runner.RunGuard(
+            "Architecture boundaries: parked task actions have one application gateway",
+            TestParkedTaskActionsHaveSingleApplicationGateway);
+        runner.RunGuard(
             "Architecture boundaries: parked task orchestration has one storage owner",
             TestParkedTaskOrchestrationHasSingleOwner);
         runner.RunGuard(
@@ -579,6 +582,69 @@ static partial class TestSuite
             violations.Count == 0,
             "CLI, Fluent, and application workflows must use SettingsController for settings persistence; " +
             "the gateway itself may expose settings APIs only:" + Environment.NewLine +
+            string.Join(Environment.NewLine, violations));
+    }
+
+    private static readonly Regex DirectParkedTaskActionStorageAccess =
+        new(@"\bClickraStorage\.(?:GetParkedRetentionDays|AdjustParkedRetention|SetParkedRetentionOverride|CancelParkedTask|ClaimParkedTaskForResume)\b",
+            RegexOptions.Compiled, ArchitectureRegexTimeout);
+
+    private static readonly Regex ParkedTaskGatewayStorageAccess =
+        new(@"\bClickraStorage\.(?<member>[A-Za-z0-9_]+)\b",
+            RegexOptions.Compiled, ArchitectureRegexTimeout);
+
+    private static readonly IReadOnlySet<string> AllowedParkedTaskGatewayMembers =
+        new HashSet<string>(StringComparer.Ordinal)
+        {
+            "GetParkedRetentionDays",
+            "AdjustParkedRetention",
+            "SetParkedRetentionOverride",
+            "CancelParkedTask",
+            "ClaimParkedTaskForResume"
+        };
+
+    private static void TestParkedTaskActionsHaveSingleApplicationGateway()
+    {
+        string? root = FindRepoRoot();
+        if (root is null) throw new TestSkippedException(RepositoryRootMissingMessage);
+
+        string gatewayPath = Path.Combine(
+            root,
+            "src",
+            ArchitectureCoreProjectDirectory,
+            "Application",
+            "ParkedTaskController.cs");
+        Assert.True(File.Exists(gatewayPath), "Application parked-task gateway must exist.");
+
+        var violations = new List<string>();
+        foreach (string directory in new[]
+                 {
+                     Path.Combine(root, "src", ArchitectureCliProjectDirectory),
+                     Path.Combine(root, "src", ArchitectureFluentProjectDirectory),
+                     Path.Combine(root, "src", ArchitectureCoreProjectDirectory, "Application")
+                 })
+        {
+            foreach (string file in Directory.EnumerateFiles(directory, "*.cs", SearchOption.AllDirectories))
+            {
+                if (string.Equals(file, gatewayPath, StringComparison.OrdinalIgnoreCase)) continue;
+                string source = File.ReadAllText(file);
+                if (!DirectParkedTaskActionStorageAccess.IsMatch(source)) continue;
+                violations.Add(NormalizeRepoPath(root, file));
+            }
+        }
+
+        string gatewaySource = File.ReadAllText(gatewayPath);
+        foreach (Match match in ParkedTaskGatewayStorageAccess.Matches(gatewaySource))
+        {
+            string member = match.Groups["member"].Value;
+            if (!AllowedParkedTaskGatewayMembers.Contains(member))
+                violations.Add($"src/Clickra.Core/Application/ParkedTaskController.cs: unexpected ClickraStorage.{member} access");
+        }
+
+        Assert.True(
+            violations.Count == 0,
+            "CLI, Fluent, and application workflows must use ParkedTaskController for parked-task actions; " +
+            "the gateway itself may expose only parked-task action APIs:" + Environment.NewLine +
             string.Join(Environment.NewLine, violations));
     }
 
