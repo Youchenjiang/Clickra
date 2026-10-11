@@ -118,7 +118,8 @@ jobs:
   deterministic-tests:
     name: Deterministic tests (no fixtures)
     runs-on: windows-latest
-    needs: build
+    # Intentionally independent from build: this job checks out the same commit
+    # and dotnet run builds the self-hosted test runner before executing it.
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -175,7 +176,8 @@ jobs:
     # step-level if, so the availability guard step decides the skip.)
     name: Fixture regression tests
     runs-on: windows-latest
-    needs: build
+    # Intentionally independent from build. When fixtures exist, dotnet run
+    # builds its own test runner; without fixtures this job only reports the skip.
     timeout-minutes: 30
     # hashFiles is only valid in step-level if, so the skip decision lives
     # in a guard step. The job itself always runs; with no fixtures the guard
