@@ -56,6 +56,7 @@ TestSuite.RegisterPdfSplitTests(runner);
 TestSuite.RegisterVisualSplitterParityTests(runner);
 TestSuite.RegisterPdfDecryptTests(runner);
 TestSuite.RegisterTaskQueueTests(runner);
+TestSuite.RegisterConversionWorkspaceStateTests(runner);
 TestSuite.RegisterArchitectureBoundaryTests(runner);
 TestSuite.RegisterWicImageTests(runner);
 TestSuite.RegisterImageConvertTests(runner);
