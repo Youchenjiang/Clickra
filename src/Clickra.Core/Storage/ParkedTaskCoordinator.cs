@@ -33,7 +33,7 @@ public static partial class ClickraStorage
         {
             return RunWithMutex(() =>
             {
-                PruneTasks();
+                TaskPruningCoordinator.Prune();
                 return ListTaskFiles()
                     .Select(ReadTaskFileInternal)
                     .Where(e => e.HasValue && e.Value.Status == ConversionStatus.Parked)
