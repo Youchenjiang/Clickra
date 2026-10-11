@@ -6,51 +6,51 @@ using Clickra.Core.Models;
 
 namespace Clickra.Core.Processors.PdfTranslation.TextProcessing;
 
-    public static class FormulaLiteralCleaner
+public static class FormulaLiteralCleaner
+{
+    public static string RemoveDuplicateFormulaLiterals(
+        string text, IReadOnlyList<MathFormula> formulas)
     {
-        public static string RemoveDuplicateFormulaLiterals(
-            string text, IReadOnlyList<MathFormula> formulas)
+        if (string.IsNullOrEmpty(text) || formulas == null || formulas.Count == 0)
+            return text;
+
+        for (int formulaId = 0; formulaId < formulas.Count; formulaId++)
         {
-            if (string.IsNullOrEmpty(text) || formulas == null || formulas.Count == 0)
-                return text;
+            string placeholder = $"{{v{formulaId}}}";
+            if (!text.Contains(placeholder, StringComparison.Ordinal))
+                continue;
 
-            for (int formulaId = 0; formulaId < formulas.Count; formulaId++)
+            string literal = FontUtilities.NormalizeMathValue(
+                string.Concat(formulas[formulaId].Letters.Select(letter => letter.Value))
+                    .Normalize(NormalizationForm.FormKD));
+            if (literal.Length < 3)
+                continue;
+
+            int placeholderIndex = text.IndexOf(placeholder, StringComparison.Ordinal);
+            int literalIndex = -1;
+            int searchFrom = 0;
+            int closestDistance = int.MaxValue;
+            while (searchFrom < text.Length)
             {
-                string placeholder = $"{{v{formulaId}}}";
-                if (!text.Contains(placeholder, StringComparison.Ordinal))
-                    continue;
-
-                string literal = FontUtilities.NormalizeMathValue(
-                    string.Concat(formulas[formulaId].Letters.Select(letter => letter.Value))
-                        .Normalize(NormalizationForm.FormKD));
-                if (literal.Length < 3)
-                    continue;
-
-                int placeholderIndex = text.IndexOf(placeholder, StringComparison.Ordinal);
-                int literalIndex = -1;
-                int searchFrom = 0;
-                int closestDistance = int.MaxValue;
-                while (searchFrom < text.Length)
+                int candidate = text.IndexOf(literal, searchFrom, StringComparison.Ordinal);
+                if (candidate < 0) break;
+                int distance = Math.Abs(candidate - placeholderIndex);
+                if (distance < closestDistance)
                 {
-                    int candidate = text.IndexOf(literal, searchFrom, StringComparison.Ordinal);
-                    if (candidate < 0) break;
-                    int distance = Math.Abs(candidate - placeholderIndex);
-                    if (distance < closestDistance)
-                    {
-                        closestDistance = distance;
-                        literalIndex = candidate;
-                    }
-                    searchFrom = candidate + literal.Length;
+                    closestDistance = distance;
+                    literalIndex = candidate;
                 }
-
-                if (literalIndex >= 0)
-                {
-                    text = text.Remove(literalIndex, literal.Length);
-                    text = System.Text.RegularExpressions.Regex.Replace(text, @"[ \t]{2,}", " ");
-                }
+                searchFrom = candidate + literal.Length;
             }
 
-            return text;
+            if (literalIndex >= 0)
+            {
+                text = text.Remove(literalIndex, literal.Length);
+                text = System.Text.RegularExpressions.Regex.Replace(text, @"[ \t]{2,}", " ");
+            }
         }
 
+        return text;
     }
+
+}
