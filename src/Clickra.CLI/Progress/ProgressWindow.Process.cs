@@ -126,7 +126,6 @@ namespace Clickra.UI
         {
             List<string> currentFiles = new List<string>();
             string cmd = "";
-            ConversionTaskLifecycle? lifecycle = null;
             try
             {
                 lock (_stateLock)
@@ -163,9 +162,6 @@ namespace Clickra.UI
             }
             catch (Exception ex)
             {
-                string endTime = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
-                string outputs = currentFiles.Count > 0 ? GetOutputPathForError(cmd, currentFiles, _outputDirOverride) : "";
-
                 bool wasCanceled = _cts.IsCancellationRequested || ex is OperationCanceledException;
                 string errorMsg = wasCanceled ? UserAbortedMessage : ex.Message;
 
@@ -175,9 +171,6 @@ namespace Clickra.UI
                     _errorMessage = errorMsg;
                 }
                 PostMessageW(hwnd, WM_USER_INVALIDATE, (IntPtr)1, IntPtr.Zero);
-
-                lifecycle?.CompleteFailure(errorMsg, outputs, endTime);
-                lifecycle?.Delete();
                 PostMessageW(hwnd, 0x0010, IntPtr.Zero, IntPtr.Zero); // WM_CLOSE
             }
         }
@@ -693,21 +686,6 @@ namespace Clickra.UI
                 throw new OperationCanceledException(Localization.T("error_user_aborted", ClickraStorage.GetSetting(ClickraSettings.Language)));
             }
             return input ?? "";
-        }
-
-        /// <summary>Best-effort output-path rendering for failure history. Validation failures can
-        /// originate inside output planning itself, so error logging must never invoke the same
-        /// failing planner and mask the original exception or skip task cleanup.</summary>
-        private static string GetOutputPathForError(string cmd, List<string> inputFiles, string? outputDirOverride)
-        {
-            try
-            {
-                return string.Join(";", ConvertCommandRegistry.EstimateOutputs(cmd, inputFiles, outputDirOverride));
-            }
-            catch
-            {
-                return "";
-            }
         }
 
         /// <summary>Shows a Windows toast notification on success, unless notifications are disabled.</summary>
