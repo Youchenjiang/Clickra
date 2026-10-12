@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using Clickra.Core.Modules.Markdown.Processing;
+using Clickra.Core.Modules.PdfCompression.Processing;
 using Clickra.Core.Modules.PdfTranslation.Execution;
 using Clickra.Core.Processors;
 

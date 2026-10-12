@@ -6,6 +6,7 @@ using System.Threading.Tasks;
 using Clickra.Core;
 using Clickra.Core.Application;
 using Clickra.Core.Modules.Markdown.Application;
+using Clickra.Core.Modules.PdfCompression.Application;
 using Clickra.Core.Modules.PdfTranslation.Application;
 using Clickra.Core.Processors;
 

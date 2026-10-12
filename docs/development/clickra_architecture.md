@@ -35,7 +35,7 @@ flowchart TB
     subgraph Shared["Shared / not-yet-migrated Core boundaries"]
         SharedPresentation["Presentation\nConvert / Progress / Dashboard"]
         SharedApplication["Application\nconversion contracts, lifecycle, gateways"]
-        SharedProcessors["Processors\nPDF tools / Image / Office"]
+        SharedProcessors["Processors\nremaining PDF tools / Image / Office"]
     end
 
     subgraph Pdf["Modules/PdfTranslation"]
@@ -48,6 +48,12 @@ flowchart TB
         PdfExecution --> PdfPipeline
         PdfPipeline --> PdfModel
         PdfPipeline --> PdfProviders
+    end
+
+    subgraph PdfCompression["Modules/PdfCompression"]
+        PdfCompressionApplication["Application\nCompressPdfUseCase"]
+        PdfCompressionProcessing["Processing\noptions / engine / optimizer / processor"]
+        PdfCompressionApplication --> PdfCompressionProcessing
     end
 
     subgraph Settings["Modules/Settings"]
@@ -109,11 +115,13 @@ flowchart TB
     SharedPresentation --> SharedApplication
     SharedApplication --> SharedProcessors
     SharedApplication --> PdfApplication
+    SharedApplication --> PdfCompressionApplication
     SharedApplication --> MarkdownApplication
     SharedApplication --> SettingsApplication
     SharedApplication --> Storage
     SharedProcessors --> SharedTechnical
     PdfPipeline --> SharedTechnical
+    PdfCompressionProcessing --> SharedTechnical
     MarkdownProcessing --> SharedTechnical
     SettingsApplication --> Storage
     SettingsApplication --> Infrastructure
@@ -254,12 +262,12 @@ flowchart TB
 `Clickra.Core.Application` remains the shared workflow kernel while capability-owned use cases move under their modules. Important shared owners include:
 
 - conversion contracts and the use-case registry;
-- non-migrated conversion use cases such as PDF tools, image, Office, and merge workflows;
+- non-migrated conversion use cases such as PDF decrypt/merge/split tools, image, Office, and merge workflows;
 - `ConversionRequest`, `ConversionPlan`, and `ConversionResult`;
 - `ConversionTaskLifecycle` for application-level task creation/completion/parking orchestration;
 - `ConversionTaskProgressController` for progress-index persistence, including compatibility writes.
 
-The PDF translation use case has migrated to `Modules.PdfTranslation.Application.TranslatePdfUseCase`; Markdown document conversion has migrated to `Modules.Markdown`; settings gateways have migrated to `Modules.Settings.Application`; history/parked-task query and action gateways have migrated to `Modules.HistoryTasks.Application`. These continue to consume shared contracts where appropriate. UI surfaces still ask these owners to perform product operations instead of coordinating persistence or processor behavior themselves.
+The PDF translation use case has migrated to `Modules.PdfTranslation.Application.TranslatePdfUseCase`; PDF compression has migrated to `Modules.PdfCompression`; Markdown document conversion has migrated to `Modules.Markdown`; settings gateways have migrated to `Modules.Settings.Application`; history/parked-task query and action gateways have migrated to `Modules.HistoryTasks.Application`. These continue to consume shared contracts where appropriate. UI surfaces still ask these owners to perform product operations instead of coordinating persistence or processor behavior themselves.
 
 #### PDF Translation module
 
@@ -274,6 +282,17 @@ The PDF translation use case has migrated to `Modules.PdfTranslation.Application
 Provider infrastructure and PDF text processing remain distinct namespaces inside the same capability. This keeps their different responsibilities visible without pretending they belong to unrelated top-level layers.
 
 Shared `Fonts`, `Rendering`, `Localization`, and `Diagnostics` remain outside the module because semantic dependency analysis shows real consumers outside PDF translation.
+
+#### PDF Compression module
+
+`Modules/PdfCompression` owns the cohesive PDF compression slice selected by semantic dependency locality:
+
+- `Application/CompressPdfUseCase` — authoritative planning, saved-option snapshot, validation, and execution workflow;
+- `Processing/PdfCompressionOptions` and `PdfCompressionLevel` — the shared compression preset contract used by product surfaces and processing;
+- `Processing/PdfCompressionSettings`, `PdfCompressionEngine`, and `PdfStructuralCompressionOptimizer` — compression policy and native PDF optimization implementation;
+- `Processing/PdfCompressionProcessor` — the capability-specific adapter over the shared single-file processor base.
+
+Shared conversion contracts, `FileProcessor`, generic processor base/progress helpers, Fonts, and Settings remain outside the module because they have real non-PDF-compression consumers. The move changes ownership and namespace boundaries only; compression presets, output planning, saved settings behavior, and NativeAOT execution remain unchanged.
 
 #### Markdown module
 

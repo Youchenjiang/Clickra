@@ -1,7 +1,8 @@
 using Clickra.Core.Modules.Settings.Application;
-using Clickra.Core.Processors;
+using Clickra.Core.Application;
+using Clickra.Core.Modules.PdfCompression.Processing;
 
-namespace Clickra.Core.Application;
+namespace Clickra.Core.Modules.PdfCompression.Application;
 
 /// <summary>Authoritative application workflow for compressing PDF files.</summary>
 public sealed class CompressPdfUseCase : PerFileConversionUseCaseBase

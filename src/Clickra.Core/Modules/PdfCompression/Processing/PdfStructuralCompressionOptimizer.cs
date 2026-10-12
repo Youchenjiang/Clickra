@@ -7,7 +7,7 @@ using PdfSharp.Pdf;
 using PdfSharp.Pdf.Advanced;
 using PdfSharp.Pdf.Filters;
 
-namespace Clickra.Core.Processors;
+namespace Clickra.Core.Modules.PdfCompression.Processing;
 
 internal static class PdfStructuralCompressionOptimizer
 {

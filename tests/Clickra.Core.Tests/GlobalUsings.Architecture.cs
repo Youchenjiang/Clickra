@@ -5,6 +5,8 @@ global using Clickra.Core.Infrastructure;
 global using Clickra.Core.Modules.HistoryTasks.Application;
 global using Clickra.Core.Modules.Markdown.Application;
 global using Clickra.Core.Modules.Markdown.Processing;
+global using Clickra.Core.Modules.PdfCompression.Application;
+global using Clickra.Core.Modules.PdfCompression.Processing;
 global using Clickra.Core.Modules.Settings.Application;
 global using Clickra.Core.Modules.PdfTranslation.Application;
 global using Clickra.Core.Modules.PdfTranslation.Execution;

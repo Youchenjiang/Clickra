@@ -1,7 +1,6 @@
 # Legacy generic-bucket baseline for the module-first migration.
 # Existing entries may be removed/moved, but new production C# files must not be added here.
 # To expand this list requires an explicit architecture decision and guard review.
-src/Clickra.Core/Application/CompressPdfUseCase.cs
 src/Clickra.Core/Application/ConversionInteraction.cs
 src/Clickra.Core/Application/ConversionPlan.cs
 src/Clickra.Core/Application/ConversionRequest.cs
@@ -51,15 +50,9 @@ src/Clickra.Core/Processors/FileProcessing/LibreOfficeHelper.cs
 src/Clickra.Core/Processors/FileProcessing/MultiFileProcessorBase.cs
 src/Clickra.Core/Processors/FileProcessing/OfficeConversionOptions.cs
 src/Clickra.Core/Processors/FileProcessing/OfficeEngineDetector.cs
-src/Clickra.Core/Processors/FileProcessing/PdfCompressionEngine.cs
-src/Clickra.Core/Processors/FileProcessing/PdfCompressionLevel.cs
-src/Clickra.Core/Processors/FileProcessing/PdfCompressionOptions.cs
-src/Clickra.Core/Processors/FileProcessing/PdfCompressionProcessor.cs
-src/Clickra.Core/Processors/FileProcessing/PdfCompressionSettings.cs
 src/Clickra.Core/Processors/FileProcessing/PdfDecryptProcessor.cs
 src/Clickra.Core/Processors/FileProcessing/PdfMergeProcessor.cs
 src/Clickra.Core/Processors/FileProcessing/PdfSplitProcessor.cs
-src/Clickra.Core/Processors/FileProcessing/PdfStructuralCompressionOptimizer.cs
 src/Clickra.Core/Processors/FileProcessing/PostProcessor.cs
 src/Clickra.Core/Processors/FileProcessing/PowerShellHelper.cs
 src/Clickra.Core/Processors/FileProcessing/PptToPdfProcessor.cs

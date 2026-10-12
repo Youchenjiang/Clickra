@@ -1,8 +1,9 @@
 using System;
 using System.Collections.Generic;
 using System.Threading;
+using Clickra.Core.Processors;
 
-namespace Clickra.Core.Processors;
+namespace Clickra.Core.Modules.PdfCompression.Processing;
 
 public class PdfCompressionProcessor : SingleFileProcessorBase
 {

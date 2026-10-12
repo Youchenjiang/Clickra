@@ -5,7 +5,7 @@ using System.Collections.Generic;
 using PdfSharp.Pdf;
 using PdfSharp.Pdf.IO;
 
-namespace Clickra.Core.Processors;
+namespace Clickra.Core.Modules.PdfCompression.Processing;
 
 public interface IPdfCompressionEngine
 {
