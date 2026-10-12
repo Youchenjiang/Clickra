@@ -13,7 +13,7 @@ using System.Threading.Tasks;
 using Clickra.Core.Processors;
 using Microsoft.Win32;
 
-namespace Clickra.Core.Infrastructure;
+namespace Clickra.Core.Modules.Office.Infrastructure;
 
     public sealed record LibreOfficeEngineManifest(
         int Schema,

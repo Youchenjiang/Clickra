@@ -5,6 +5,7 @@ using System.Linq;
 using System.Threading;
 using Clickra.Core.Modules.Image.Processing;
 using Clickra.Core.Modules.Markdown.Processing;
+using Clickra.Core.Modules.Office.Processing;
 using Clickra.Core.Modules.PdfCompression.Processing;
 using Clickra.Core.Modules.PdfSplit.Processing;
 using Clickra.Core.Modules.PdfTranslation.Execution;

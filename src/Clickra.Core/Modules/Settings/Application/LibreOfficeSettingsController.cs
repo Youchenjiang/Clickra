@@ -1,4 +1,4 @@
-using Clickra.Core.Infrastructure;
+using Clickra.Core.Modules.Office.Infrastructure;
 using Clickra.Core.Processors;
 
 namespace Clickra.Core.Modules.Settings.Application;

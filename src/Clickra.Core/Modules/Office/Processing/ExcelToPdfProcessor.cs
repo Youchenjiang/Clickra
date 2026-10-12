@@ -1,8 +1,10 @@
 using System;
 using System.Collections.Generic;
 using System.Threading;
+using Clickra.Core.Modules.Office.Infrastructure;
+using Clickra.Core.Processors;
 
-namespace Clickra.Core.Processors;
+namespace Clickra.Core.Modules.Office.Processing;
 
 public class ExcelToPdfProcessor : SingleFileProcessorBase
 {

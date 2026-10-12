@@ -6,8 +6,10 @@ using System.Security;
 using System.Text;
 using System.Threading;
 using Clickra.Core;
+using Clickra.Core.Modules.Office.Processing;
+using Clickra.Core.Processors;
 
-namespace Clickra.Core.Processors
+namespace Clickra.Core.Modules.Office.Infrastructure
 {
     public static class PowerShellHelper
     {

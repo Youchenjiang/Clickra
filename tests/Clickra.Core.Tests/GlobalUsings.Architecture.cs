@@ -1,7 +1,9 @@
 global using Clickra.Core.Application;
 global using Clickra.Core.Diagnostics;
 global using Clickra.Core.Fonts;
-global using Clickra.Core.Infrastructure;
+global using Clickra.Core.Modules.Office.Application;
+global using Clickra.Core.Modules.Office.Infrastructure;
+global using Clickra.Core.Modules.Office.Processing;
 global using Clickra.Core.Modules.Image.Application;
 global using Clickra.Core.Modules.Image.Processing;
 global using Clickra.Core.Modules.HistoryTasks.Application;

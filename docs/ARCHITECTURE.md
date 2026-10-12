@@ -9,7 +9,7 @@ Clickra ships four Windows-facing pieces:
 - `Clickra.CLI`: command-line and legacy Win32 dashboard/progress fallback.
 - `ClickraShell`: NativeAOT shell extension for the Windows context menu.
 
-`Clickra.Core` is a feature-oriented modular monolith. Capability/module is the primary ownership axis; technical roles such as Application, Model, Pipeline, Processing, and Presentation are secondary inside a capability. Migrated capabilities currently include `Modules/PdfTranslation`, `Modules/PdfCompression`, `Modules/PdfSplit`, `Modules/Image`, `Modules/Markdown`, `Modules/Settings`, and the safe history/parked-task outer boundary in `Modules/HistoryTasks`. Existing top-level Application/Presentation/Processors/Storage folders are migration-era/shared boundaries and must not be treated as the preferred location for new feature-private code.
+`Clickra.Core` is a feature-oriented modular monolith. Capability/module is the primary ownership axis; technical roles such as Application, Model, Pipeline, Processing, Infrastructure, and Presentation are secondary inside a capability. Migrated capabilities currently include `Modules/PdfTranslation`, `Modules/PdfCompression`, `Modules/PdfSplit`, `Modules/Image`, `Modules/Office`, `Modules/Markdown`, `Modules/Settings`, and the safe history/parked-task outer boundary in `Modules/HistoryTasks`. Existing top-level Application/Presentation/Processors/Storage folders are migration-era/shared boundaries and must not be treated as the preferred location for new feature-private code.
 
 ## Why the architecture changed
 

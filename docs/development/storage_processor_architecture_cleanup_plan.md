@@ -178,7 +178,7 @@ Current allowlist (enforced by `TestInfrastructureSettingsAccessStaysOnAllowlist
 
 | Owner | Owned keys | Read-only keys |
 | --- | --- | --- |
-| `Infrastructure/LibreOfficeEngineInstaller.cs` | `LibreOfficeInstalledByClickra`, `LibreOfficeManagedProductCode`, `LibreOfficeManagedSofficePath` | `LibreOfficeRemovalPendingRestart`, `LibreOfficePath` |
+| `Modules/Office/Infrastructure/LibreOfficeEngineInstaller.cs` | `LibreOfficeInstalledByClickra`, `LibreOfficeManagedProductCode`, `LibreOfficeManagedSofficePath` | `LibreOfficeRemovalPendingRestart`, `LibreOfficePath` |
 
 ---
 
@@ -245,7 +245,7 @@ Progress as of 2026-10-11:
 - Office readiness policy now receives the configured engine and LibreOffice readiness inputs explicitly instead of reading `ClickraStorage` inside the processor layer;
 - image-format, image-compression, PDF decrypt, and PDF-translation localization now receive the snapshotted UI language explicitly rather than rereading global language state during processor execution;
 - LibreOffice installation ownership and managed-MSI persistence moved out of `Processors/` into the infrastructure boundary, while processor-side LibreOffice resolution requires explicit persisted state;
-  - note: the installer's **12** former baseline entries (14 setting calls today) were **re-homed, not migrated** — `Infrastructure/LibreOfficeEngineInstaller.cs` still reads and writes LibreOffice ownership state through `ClickraStorage`. This is accepted under §3.6 and guarded by the infrastructure key allowlist; report the baseline drop as "15 migrated + 12 re-homed", not "27 migrated";
+  - note: the installer's **12** former baseline entries (14 setting calls today) were **re-homed, not migrated** — `Modules/Office/Infrastructure/LibreOfficeEngineInstaller.cs` still reads and writes LibreOffice ownership state through `ClickraStorage`. This is accepted under §3.6 and guarded by the infrastructure key allowlist; report the baseline drop as "15 migrated + 12 re-homed", not "27 migrated";
 - `ConversionTaskLifecycle` moved to the application boundary because task persistence is application orchestration rather than processor execution;
 - processor file-start callbacks, output paths, translation data-directory state, and other storage-derived execution inputs are now supplied explicitly;
 - the processor global-setting shrinking baseline has moved from 58 initially to 0;
@@ -335,7 +335,7 @@ The completed boundary work exposed two follow-up opportunities that were intent
 - the historical `ClickraStorage` implementation has been decomposed into focused owners: `StorageRuntime`, `SettingsStore`, `StoragePathResolver`, `HistoryStore`, `TaskRecordStore`, `TaskQueueStore`, `LegacyActiveRecordStore`, `ParkedTaskCoordinator`, and `TaskPruningCoordinator`;
 - the public `ClickraStorage` surface remains only where compatibility is required and delegates to those owners instead of reclaiming their I/O/state responsibilities;
 - `ParkedTaskCoordinator` returns retention facts only. `HistoryFeed` owns localized retention wording and receives the language explicitly;
-- `LibreOfficeEngineInstaller` now declares its actual infrastructure namespace, `Clickra.Core.Infrastructure`;
+- `LibreOfficeEngineInstaller` now declares its capability-owned infrastructure namespace, `Clickra.Core.Modules.Office.Infrastructure`;
 - architecture guards prohibit presentation raw settings access, persisted boolean representations in CLI/Fluent, localized presentation text in Storage, and persistence implementation moving back into `ClickraStorage`.
 
 The decomposition deliberately preserves persisted settings keys, `history.log`, `task-*.tmp`, legacy `active.tmp`, cross-process mutex behavior, parked-task atomic transitions, resume identity/index semantics, and retention semantics.

@@ -1,30 +1,31 @@
+using Clickra.Core.Application;
 using Clickra.Core.Processors;
 
-namespace Clickra.Core.Application;
+namespace Clickra.Core.Modules.Office.Application;
 
-/// <summary>Authoritative application workflow for converting PowerPoint presentations to PDF.</summary>
-public sealed class PptToPdfUseCase : OfficeToPdfUseCaseBase
+/// <summary>Authoritative application workflow for converting Word documents to PDF.</summary>
+public sealed class WordToPdfUseCase : OfficeToPdfUseCaseBase
 {
-    public const string CommandName = "ppt2pdf";
+    public const string CommandName = "word2pdf";
 
     public override string Command => CommandName;
 
-    protected override string UseCaseName => nameof(PptToPdfUseCase);
+    protected override string UseCaseName => nameof(WordToPdfUseCase);
 
-    protected override string InputRequirementError => "At least one PowerPoint presentation is required.";
+    protected override string InputRequirementError => "At least one Word document is required.";
 
     protected override string UnsupportedInputError(string path) =>
-        $"Unsupported PowerPoint input '{path}'.";
+        $"Unsupported Word input '{path}'.";
 
     protected override string OutputCountError =>
-        "PowerPoint to PDF conversion requires one output per input.";
+        "Word to PDF conversion requires one output per input.";
 
     protected override Task ExecuteBatchAsync(
         ConversionPlan plan,
         IProgress<ConversionProgress>? progress,
         CancellationToken cancellationToken) =>
         Task.Run(
-            () => FileProcessor.ConvertPptToPdf(
+            () => FileProcessor.ConvertWordToPdf(
                 plan.Inputs.ToList(),
                 BuildExecutionOptions(plan),
                 (current, total, message) => progress?.Report(

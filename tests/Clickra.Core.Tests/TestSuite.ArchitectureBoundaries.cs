@@ -572,7 +572,7 @@ static partial class TestSuite
     private static readonly IReadOnlyDictionary<string, InfrastructureSettingsAllowance> InfrastructureSettingsAllowlist =
         new Dictionary<string, InfrastructureSettingsAllowance>(StringComparer.OrdinalIgnoreCase)
         {
-            ["src/Clickra.Core/Infrastructure/LibreOfficeEngineInstaller.cs"] = new(
+            ["src/Clickra.Core/Modules/Office/Infrastructure/LibreOfficeEngineInstaller.cs"] = new(
                 OwnedKeys: new HashSet<string>(StringComparer.Ordinal)
                 {
                     "LibreOfficeInstalledByClickra",
@@ -598,13 +598,25 @@ static partial class TestSuite
         string? root = FindRepoRoot();
         if (root is null) throw new TestSkippedException(RepositoryRootMissingMessage);
 
-        string infrastructureDir = Path.Combine(root, "src", ArchitectureCoreProjectDirectory, "Infrastructure");
-        if (!Directory.Exists(infrastructureDir)) return;
-
         var violations = new List<string>();
-        foreach (string file in Directory.EnumerateFiles(infrastructureDir, "*.cs", SearchOption.AllDirectories)
+        string coreDirectory = Path.Combine(root, "src", ArchitectureCoreProjectDirectory);
+        var infrastructureDirectories = new List<string>
+        {
+            Path.Combine(coreDirectory, "Infrastructure")
+        };
+        string modulesDirectory = Path.Combine(coreDirectory, "Modules");
+        if (Directory.Exists(modulesDirectory))
+        {
+            infrastructureDirectories.AddRange(
+                Directory.EnumerateDirectories(modulesDirectory, "Infrastructure", SearchOption.AllDirectories));
+        }
+
+        foreach (string file in infrastructureDirectories
+                     .Where(Directory.Exists)
+                     .SelectMany(directory => Directory.EnumerateFiles(directory, "*.cs", SearchOption.AllDirectories))
                      .Where(path => !path.Contains($"{Path.DirectorySeparatorChar}bin{Path.DirectorySeparatorChar}", StringComparison.OrdinalIgnoreCase)
-                                    && !path.Contains($"{Path.DirectorySeparatorChar}obj{Path.DirectorySeparatorChar}", StringComparison.OrdinalIgnoreCase)))
+                                    && !path.Contains($"{Path.DirectorySeparatorChar}obj{Path.DirectorySeparatorChar}", StringComparison.OrdinalIgnoreCase))
+                     .Distinct(StringComparer.OrdinalIgnoreCase))
         {
             ValidateInfrastructureSettingsFile(root, file, violations);
         }
@@ -741,6 +753,10 @@ static partial class TestSuite
             foreach (string file in Directory.EnumerateFiles(directory, "*.cs", SearchOption.AllDirectories))
             {
                 if (string.Equals(file, settingsGatewayPath, StringComparison.OrdinalIgnoreCase)) continue;
+                if (file.Contains(
+                        $"{Path.DirectorySeparatorChar}Infrastructure{Path.DirectorySeparatorChar}",
+                        StringComparison.OrdinalIgnoreCase))
+                    continue; // Infrastructure owners are checked by the stricter per-owner key allowlist guard.
                 string source = File.ReadAllText(file);
                 if (!DirectSettingsStorageAccess.IsMatch(source)) continue;
                 violations.Add(NormalizeRepoPath(root, file));

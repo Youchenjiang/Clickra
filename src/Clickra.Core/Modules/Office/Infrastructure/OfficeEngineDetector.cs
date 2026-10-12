@@ -1,7 +1,7 @@
 using System;
 using Microsoft.Win32;
 
-namespace Clickra.Core.Processors;
+namespace Clickra.Core.Modules.Office.Infrastructure;
 
 /// <summary>Shared Office-engine readiness contract used by conversion execution and UI preflight.</summary>
 public static class OfficeEngineDetector

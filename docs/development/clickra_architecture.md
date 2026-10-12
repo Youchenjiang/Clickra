@@ -35,7 +35,7 @@ flowchart TB
     subgraph Shared["Shared / not-yet-migrated Core boundaries"]
         SharedPresentation["Presentation\nConvert / Progress / Dashboard"]
         SharedApplication["Application\nconversion contracts, lifecycle, gateways"]
-        SharedProcessors["Processors\nremaining PDF tools / Office"]
+        SharedProcessors["Processors\nremaining PDF tools"]
     end
 
     subgraph Pdf["Modules/PdfTranslation"]
@@ -70,6 +70,14 @@ flowchart TB
         ImageApplication --> ImageProcessing
     end
 
+    subgraph OfficeModule["Modules/Office"]
+        OfficeApplication["Application\nWord / Excel / PowerPoint to PDF"]
+        OfficeProcessing["Processing\nOffice options + per-app processors"]
+        OfficeInfrastructure["Infrastructure\nMicrosoft automation / LibreOffice runtime + installer"]
+        OfficeApplication --> OfficeProcessing
+        OfficeProcessing --> OfficeInfrastructure
+    end
+
     subgraph Settings["Modules/Settings"]
         SettingsPresentation["Presentation\nSettingsPresentationController + descriptors"]
         SettingsApplication["Application\nSettingsController / StoragePathController /\nLibreOfficeSettingsController"]
@@ -91,7 +99,6 @@ flowchart TB
     end
 
     subgraph SharedTechnical["Shared technical / platform boundaries"]
-        Infrastructure["Infrastructure\nLibreOffice / OS / external integration"]
         Fonts["Fonts"]
         Diagnostics["Diagnostics"]
         Localization["Localization"]
@@ -134,6 +141,7 @@ flowchart TB
     SharedApplication --> PdfCompressionApplication
     SharedApplication --> PdfSplitApplication
     SharedApplication --> ImageApplication
+    SharedApplication --> OfficeApplication
     SharedApplication --> MarkdownApplication
     SharedApplication --> SettingsApplication
     SharedApplication --> Storage
@@ -142,7 +150,7 @@ flowchart TB
     PdfCompressionProcessing --> SharedTechnical
     MarkdownProcessing --> SharedTechnical
     SettingsApplication --> Storage
-    SettingsApplication --> Infrastructure
+    SettingsApplication --> OfficeInfrastructure
     HistoryApplication --> Storage
 
     Storage --> SettingsFile
@@ -280,12 +288,12 @@ flowchart TB
 `Clickra.Core.Application` remains the shared workflow kernel while capability-owned use cases move under their modules. Important shared owners include:
 
 - conversion contracts and the use-case registry;
-- non-migrated conversion use cases such as PDF decrypt/merge tools and Office workflows;
+- non-migrated conversion use cases such as PDF decrypt/merge tools;
 - `ConversionRequest`, `ConversionPlan`, and `ConversionResult`;
 - `ConversionTaskLifecycle` for application-level task creation/completion/parking orchestration;
 - `ConversionTaskProgressController` for progress-index persistence, including compatibility writes.
 
-The PDF translation use case has migrated to `Modules.PdfTranslation.Application.TranslatePdfUseCase`; PDF compression has migrated to `Modules/PdfCompression`; PDF splitting has migrated to `Modules/PdfSplit`; image conversion has migrated to `Modules/Image`; Markdown document conversion has migrated to `Modules.Markdown`; settings gateways have migrated to `Modules.Settings.Application`; history/parked-task query and action gateways have migrated to `Modules.HistoryTasks.Application`. These continue to consume shared contracts where appropriate. UI surfaces still ask these owners to perform product operations instead of coordinating persistence or processor behavior themselves.
+The PDF translation use case has migrated to `Modules.PdfTranslation.Application.TranslatePdfUseCase`; PDF compression has migrated to `Modules/PdfCompression`; PDF splitting has migrated to `Modules/PdfSplit`; image conversion has migrated to `Modules/Image`; Office conversion has migrated to `Modules/Office`; Markdown document conversion has migrated to `Modules.Markdown`; settings gateways have migrated to `Modules.Settings.Application`; history/parked-task query and action gateways have migrated to `Modules.HistoryTasks.Application`. These continue to consume shared contracts where appropriate. UI surfaces still ask these owners to perform product operations instead of coordinating persistence or processor behavior themselves.
 
 #### PDF Translation module
 
@@ -328,6 +336,17 @@ The semantic graph shows this slice has no domain-specific outgoing dependencies
 `Modules/Image` owns image format conversion, compression, stitching, image-to-PDF, and image merge workflows together with their shared WIC/output-safety implementation. Keeping these together avoids artificial cross-module coupling around `WicImageHelper`, `ImageFormatConvertProcessor`, and `ImageOutputSafety`.
 
 Shared conversion contracts, `FileProcessor`, generic multi-file execution/localization helpers, Settings, and Localization remain outside the capability because they have consumers beyond image conversion. The move preserves codec checks, saved compression settings, output collision safety, image orientation/multi-frame guards, and NativeAOT behavior.
+
+#### Office module
+
+`Modules/Office` owns the complete Office-to-PDF capability:
+
+- `Application/OfficeToPdfUseCaseBase` plus the Word, Excel, and PowerPoint use cases — authoritative planning, saved engine settings, task lifecycle integration, and execution workflow;
+- `Processing/OfficeConversionOptions` plus the per-application processors — normalized execution inputs and processor adapters;
+- `Infrastructure/PowerShellHelper`, `OfficeEngineDetector`, and `LibreOfficeHelper` — Microsoft Office automation, engine readiness/fallback policy, and LibreOffice execution;
+- `Infrastructure/LibreOfficeEngineInstaller` — LibreOffice installation/adoption/removal infrastructure used by the Settings capability.
+
+Settings may depend on Office infrastructure for LibreOffice management and readiness, but generic conversion contracts, `FileProcessor`, `SingleFileProcessorBase`, `ProcessorExecutionOptions`, lifecycle storage, and localization remain shared. The installer retains its existing explicit per-owner settings allowlist; moving the owner does not change settings keys, management identity, install/uninstall semantics, fallback policy, or NativeAOT behavior.
 
 #### Markdown module
 

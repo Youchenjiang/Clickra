@@ -1,7 +1,7 @@
 using System;
 using System.Collections.Generic;
 
-namespace Clickra.Core.Processors;
+namespace Clickra.Core.Modules.Office.Processing;
 
 internal readonly record struct OfficeConversionSettings(
     string Engine,

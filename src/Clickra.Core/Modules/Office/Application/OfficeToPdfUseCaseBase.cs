@@ -1,7 +1,9 @@
+using Clickra.Core.Application;
+using Clickra.Core.Modules.Office.Processing;
 using Clickra.Core.Modules.Settings.Application;
 using Clickra.Core.Processors;
 
-namespace Clickra.Core.Application;
+namespace Clickra.Core.Modules.Office.Application;
 
 /// <summary>Shared application lifecycle for legacy Office batch-to-PDF conversions.</summary>
 public abstract class OfficeToPdfUseCaseBase : ConversionUseCaseBase
