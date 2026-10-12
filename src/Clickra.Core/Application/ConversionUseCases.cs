@@ -3,6 +3,7 @@ using Clickra.Core.Modules.Markdown.Application;
 using Clickra.Core.Modules.Office.Application;
 using Clickra.Core.Modules.PdfCompression.Application;
 using Clickra.Core.Modules.PdfDecrypt.Application;
+using Clickra.Core.Modules.PdfMerge.Application;
 using Clickra.Core.Modules.PdfSplit.Application;
 using Clickra.Core.Modules.PdfTranslation.Application;
 

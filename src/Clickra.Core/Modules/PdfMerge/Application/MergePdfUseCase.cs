@@ -1,6 +1,7 @@
+using Clickra.Core.Application;
 using Clickra.Core.Processors;
 
-namespace Clickra.Core.Application;
+namespace Clickra.Core.Modules.PdfMerge.Application;
 
 /// <summary>Authoritative application workflow for merging PDF files into one document.</summary>
 public sealed class MergePdfUseCase : SingleOutputConversionUseCaseBase

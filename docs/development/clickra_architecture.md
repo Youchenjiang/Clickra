@@ -62,6 +62,12 @@ flowchart TB
         PdfDecryptApplication --> PdfDecryptProcessing
     end
 
+    subgraph PdfMerge["Modules/PdfMerge"]
+        PdfMergeApplication["Application\nMergePdfUseCase"]
+        PdfMergeProcessing["Processing\nPdfMergeProcessor"]
+        PdfMergeApplication --> PdfMergeProcessing
+    end
+
     subgraph PdfSplit["Modules/PdfSplit"]
         PdfSplitPresentation["Presentation\nVisualSplitModel"]
         PdfSplitApplication["Application\nSplitPdfUseCase / PdfPageCountQuery"]
@@ -146,6 +152,7 @@ flowchart TB
     SharedApplication --> PdfApplication
     SharedApplication --> PdfCompressionApplication
     SharedApplication --> PdfDecryptApplication
+    SharedApplication --> PdfMergeApplication
     SharedApplication --> PdfSplitApplication
     SharedApplication --> ImageApplication
     SharedApplication --> OfficeApplication
@@ -295,12 +302,12 @@ flowchart TB
 `Clickra.Core.Application` remains the shared workflow kernel while capability-owned use cases move under their modules. Important shared owners include:
 
 - conversion contracts and the use-case registry;
-- non-migrated conversion use cases such as PDF merge;
+- shared conversion orchestration and registries;
 - `ConversionRequest`, `ConversionPlan`, and `ConversionResult`;
 - `ConversionTaskLifecycle` for application-level task creation/completion/parking orchestration;
 - `ConversionTaskProgressController` for progress-index persistence, including compatibility writes.
 
-The PDF translation use case has migrated to `Modules.PdfTranslation.Application.TranslatePdfUseCase`; PDF compression has migrated to `Modules/PdfCompression`; PDF decryption has migrated to `Modules/PdfDecrypt`; PDF splitting has migrated to `Modules/PdfSplit`; image conversion has migrated to `Modules/Image`; Office conversion has migrated to `Modules/Office`; Markdown document conversion has migrated to `Modules.Markdown`; settings gateways have migrated to `Modules.Settings.Application`; history/parked-task query and action gateways have migrated to `Modules.HistoryTasks.Application`. These continue to consume shared contracts where appropriate. UI surfaces still ask these owners to perform product operations instead of coordinating persistence or processor behavior themselves.
+The PDF translation use case has migrated to `Modules.PdfTranslation.Application.TranslatePdfUseCase`; PDF compression has migrated to `Modules/PdfCompression`; PDF decryption has migrated to `Modules/PdfDecrypt`; PDF merging has migrated to `Modules/PdfMerge`; PDF splitting has migrated to `Modules/PdfSplit`; image conversion has migrated to `Modules/Image`; Office conversion has migrated to `Modules/Office`; Markdown document conversion has migrated to `Modules.Markdown`; settings gateways have migrated to `Modules.Settings.Application`; history/parked-task query and action gateways have migrated to `Modules.HistoryTasks.Application`. These continue to consume shared contracts where appropriate. UI surfaces still ask these owners to perform product operations instead of coordinating persistence or processor behavior themselves.
 
 #### PDF Translation module
 
@@ -332,6 +339,12 @@ Shared conversion contracts, `FileProcessor`, generic processor base/progress he
 `Modules/PdfDecrypt` owns the password-removal workflow and its PDF processor. The use case remains the authoritative owner of password interaction, planning, saved execution language, and task behavior; the processor remains responsible for opening and rewriting the PDF.
 
 Shared interaction/contracts, localization execution options, `FileProcessor`, Settings, and generic single-file/progress helpers remain outside the module. The ownership move does not change password retry behavior, output naming, exception semantics, or NativeAOT behavior.
+
+#### PDF Merge module
+
+`Modules/PdfMerge` owns the single-output PDF merge workflow and its processor. The application owner keeps output planning, collision semantics, and task behavior authoritative while the processor owns page aggregation.
+
+Shared conversion contracts, `FileProcessor`, and the generic multi-file processor base remain outside the capability. The ownership move does not change input ordering, output naming, overwrite safety, or NativeAOT behavior.
 
 #### PDF Split module
 
