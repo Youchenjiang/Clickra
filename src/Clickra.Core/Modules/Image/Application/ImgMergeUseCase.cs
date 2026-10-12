@@ -1,24 +1,21 @@
+using Clickra.Core.Application;
+using Clickra.Core.Modules.Image.Processing;
 using Clickra.Core.Processors;
 
-namespace Clickra.Core.Application;
+namespace Clickra.Core.Modules.Image.Application;
 
-/// <summary>Authoritative application workflow for stitching images into one PNG.</summary>
-public sealed class ImgStitchUseCase : SingleOutputConversionUseCaseBase
+/// <summary>Authoritative application workflow for merging images into one PDF document.</summary>
+public sealed class ImgMergeUseCase : SingleOutputConversionUseCaseBase
 {
-    public const string CommandName = "img-stitch";
-    public const string OutputFileName = "Stitched_Image.png";
+    public const string CommandName = "img-merge";
+    public const string OutputFileName = "Merged_Images.pdf";
 
     public override string Command => CommandName;
-    protected override string UseCaseName => nameof(ImgStitchUseCase);
+    protected override string UseCaseName => nameof(ImgMergeUseCase);
     protected override string InputRequirementError => "At least two image files are required.";
     protected override string PlannedOutputFileName => OutputFileName;
-    protected override string OutputCountError => "Image stitching requires exactly one output.";
+    protected override string OutputCountError => "Image merge requires exactly one output.";
     protected override string UnsupportedInputError(string path) => $"Unsupported image input '{path}'.";
-
-    protected override void ValidateOutput(
-        IReadOnlyList<string> inputs,
-        string output) =>
-        ImageOutputSafety.EnsureOutputsDoNotOverwriteInputs(inputs, new[] { output });
 
     protected override async Task ExecuteSingleAsync(
         ConversionPlan plan,
@@ -26,7 +23,7 @@ public sealed class ImgStitchUseCase : SingleOutputConversionUseCaseBase
         CancellationToken cancellationToken)
     {
         await Task.Run(
-            () => FileProcessor.StitchImages(
+            () => FileProcessor.ConvertImagesToPdf(
                 plan.Inputs.ToList(),
                 plan.Outputs[0],
                 (current, total, message) => progress?.Report(

@@ -15,12 +15,6 @@ src/Clickra.Core/Application/ConvertCommandRegistry.cs
 src/Clickra.Core/Application/DecryptPdfUseCase.cs
 src/Clickra.Core/Application/ExcelToPdfUseCase.cs
 src/Clickra.Core/Application/IConversionUseCase.cs
-src/Clickra.Core/Application/ImageFormatConvertUseCase.cs
-src/Clickra.Core/Application/ImageOutputSafety.cs
-src/Clickra.Core/Application/Img2PdfUseCase.cs
-src/Clickra.Core/Application/ImgCompressUseCase.cs
-src/Clickra.Core/Application/ImgMergeUseCase.cs
-src/Clickra.Core/Application/ImgStitchUseCase.cs
 src/Clickra.Core/Application/MergePdfUseCase.cs
 src/Clickra.Core/Application/OfficeToPdfUseCaseBase.cs
 src/Clickra.Core/Application/PerFileConversionUseCaseBase.cs
@@ -38,12 +32,6 @@ src/Clickra.Core/Processors/ExecutionLocalizationOptions.cs
 src/Clickra.Core/Processors/FileProcessing/ExcelToPdfProcessor.cs
 src/Clickra.Core/Processors/FileProcessing/FileBackupScope.cs
 src/Clickra.Core/Processors/FileProcessing/IFileProcessor.cs
-src/Clickra.Core/Processors/FileProcessing/ImageCompressionLevel.cs
-src/Clickra.Core/Processors/FileProcessing/ImageCompressionOptions.cs
-src/Clickra.Core/Processors/FileProcessing/ImageCompressionProcessor.cs
-src/Clickra.Core/Processors/FileProcessing/ImageFormatConvertProcessor.cs
-src/Clickra.Core/Processors/FileProcessing/ImageStitchProcessor.cs
-src/Clickra.Core/Processors/FileProcessing/ImageToPdfProcessor.cs
 src/Clickra.Core/Processors/FileProcessing/LibreOfficeHelper.cs
 src/Clickra.Core/Processors/FileProcessing/MultiFileProcessorBase.cs
 src/Clickra.Core/Processors/FileProcessing/OfficeConversionOptions.cs
@@ -55,7 +43,6 @@ src/Clickra.Core/Processors/FileProcessing/PowerShellHelper.cs
 src/Clickra.Core/Processors/FileProcessing/PptToPdfProcessor.cs
 src/Clickra.Core/Processors/FileProcessing/ProgressCalculator.cs
 src/Clickra.Core/Processors/FileProcessing/SingleFileProcessorBase.cs
-src/Clickra.Core/Processors/FileProcessing/WicImageHelper.cs
 src/Clickra.Core/Processors/FileProcessing/WordToPdfProcessor.cs
 src/Clickra.Core/Processors/ProcessorExecutionOptions.cs
 src/Clickra.Core/Storage/ClickraSettings.cs

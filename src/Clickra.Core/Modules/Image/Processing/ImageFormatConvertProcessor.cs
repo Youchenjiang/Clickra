@@ -5,8 +5,9 @@ using System.Drawing.Imaging;
 using System.IO;
 using System.Threading;
 using System.Linq;
+using Clickra.Core.Processors;
 
-namespace Clickra.Core.Processors;
+namespace Clickra.Core.Modules.Image.Processing;
 
 /// <summary>Converts an image file to a target format (png / jpg / webp / gif / heic).
 /// The target format is supplied through the "format" option; files that are
@@ -86,7 +87,7 @@ namespace Clickra.Core.Processors;
         }
 
         /// <summary>Saves an already-loaded image as HEIC with an explicit encoder quality (1-100).</summary>
-        public static void SaveAsHeic(Image image, string outputPath, long quality, string language = "")
+        public static void SaveAsHeic(System.Drawing.Image image, string outputPath, long quality, string language = "")
         {
             if (!IsHeicEncodingSupported())
             {

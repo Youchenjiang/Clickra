@@ -8,8 +8,9 @@ using System.IO;
 using System.Linq;
 using System.Runtime.InteropServices;
 using System.Threading;
+using Clickra.Core.Processors;
 
-namespace Clickra.Core.Processors;
+namespace Clickra.Core.Modules.Image.Processing;
 
 /// <summary>Compresses an image in its existing format: re-encodes at the saved quality level
 /// and, when a max long edge is configured, downscales to it. The caller supplies the output
@@ -200,7 +201,7 @@ public class ImageCompressionProcessor : MultiFileProcessorBase
     {
         if (extension is not (".gif" or ".tif" or ".tiff")) return false;
 
-        using var image = Image.FromFile(filePath);
+        using var image = System.Drawing.Image.FromFile(filePath);
         Guid dimension = extension == ".gif" ? FrameDimension.Time.Guid : FrameDimension.Page.Guid;
         return image.GetFrameCount(new FrameDimension(dimension)) > 1;
     }

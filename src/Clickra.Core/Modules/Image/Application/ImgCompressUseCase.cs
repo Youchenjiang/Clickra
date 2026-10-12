@@ -1,7 +1,9 @@
 using Clickra.Core.Modules.Settings.Application;
+using Clickra.Core.Application;
+using Clickra.Core.Modules.Image.Processing;
 using Clickra.Core.Processors;
 
-namespace Clickra.Core.Application;
+namespace Clickra.Core.Modules.Image.Application;
 
 /// <summary>Authoritative application workflow for compressing image files.</summary>
 public sealed class ImgCompressUseCase : PerFileConversionUseCaseBase

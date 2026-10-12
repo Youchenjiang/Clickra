@@ -35,7 +35,7 @@ flowchart TB
     subgraph Shared["Shared / not-yet-migrated Core boundaries"]
         SharedPresentation["Presentation\nConvert / Progress / Dashboard"]
         SharedApplication["Application\nconversion contracts, lifecycle, gateways"]
-        SharedProcessors["Processors\nremaining PDF tools / Image / Office"]
+        SharedProcessors["Processors\nremaining PDF tools / Office"]
     end
 
     subgraph Pdf["Modules/PdfTranslation"]
@@ -62,6 +62,12 @@ flowchart TB
         PdfSplitProcessing["Processing\nPdfSplitProcessor"]
         PdfSplitPresentation --> PdfSplitProcessing
         PdfSplitApplication --> PdfSplitProcessing
+    end
+
+    subgraph ImageModule["Modules/Image"]
+        ImageApplication["Application\nformat / compression / stitch / merge / img2pdf"]
+        ImageProcessing["Processing\nWIC / format conversion / compression / stitching / PDF"]
+        ImageApplication --> ImageProcessing
     end
 
     subgraph Settings["Modules/Settings"]
@@ -127,6 +133,7 @@ flowchart TB
     SharedApplication --> PdfApplication
     SharedApplication --> PdfCompressionApplication
     SharedApplication --> PdfSplitApplication
+    SharedApplication --> ImageApplication
     SharedApplication --> MarkdownApplication
     SharedApplication --> SettingsApplication
     SharedApplication --> Storage
@@ -273,12 +280,12 @@ flowchart TB
 `Clickra.Core.Application` remains the shared workflow kernel while capability-owned use cases move under their modules. Important shared owners include:
 
 - conversion contracts and the use-case registry;
-- non-migrated conversion use cases such as PDF decrypt/merge tools, image, Office, and merge workflows;
+- non-migrated conversion use cases such as PDF decrypt/merge tools and Office workflows;
 - `ConversionRequest`, `ConversionPlan`, and `ConversionResult`;
 - `ConversionTaskLifecycle` for application-level task creation/completion/parking orchestration;
 - `ConversionTaskProgressController` for progress-index persistence, including compatibility writes.
 
-The PDF translation use case has migrated to `Modules.PdfTranslation.Application.TranslatePdfUseCase`; PDF compression has migrated to `Modules/PdfCompression`; PDF splitting has migrated to `Modules/PdfSplit`; Markdown document conversion has migrated to `Modules.Markdown`; settings gateways have migrated to `Modules.Settings.Application`; history/parked-task query and action gateways have migrated to `Modules.HistoryTasks.Application`. These continue to consume shared contracts where appropriate. UI surfaces still ask these owners to perform product operations instead of coordinating persistence or processor behavior themselves.
+The PDF translation use case has migrated to `Modules.PdfTranslation.Application.TranslatePdfUseCase`; PDF compression has migrated to `Modules/PdfCompression`; PDF splitting has migrated to `Modules/PdfSplit`; image conversion has migrated to `Modules/Image`; Markdown document conversion has migrated to `Modules.Markdown`; settings gateways have migrated to `Modules.Settings.Application`; history/parked-task query and action gateways have migrated to `Modules.HistoryTasks.Application`. These continue to consume shared contracts where appropriate. UI surfaces still ask these owners to perform product operations instead of coordinating persistence or processor behavior themselves.
 
 #### PDF Translation module
 
@@ -315,6 +322,12 @@ Shared conversion contracts, `FileProcessor`, generic processor base/progress he
 - `Presentation/VisualSplitModel` — pure shared Native/Fluent splitter state, selection, segment editing, and zoom behavior.
 
 The semantic graph shows this slice has no domain-specific outgoing dependencies once the shared conversion kernel and processor base helpers are excluded. The Native and Fluent visual splitters render and wire input independently, but both consume the same `VisualSplitModel`. Shared conversion contracts, `FileProcessor`, generic processor base/progress helpers, and rendering helpers remain outside the module. The ownership move does not change split specs, page-count semantics, output naming, interaction flow, or NativeAOT behavior.
+
+#### Image module
+
+`Modules/Image` owns image format conversion, compression, stitching, image-to-PDF, and image merge workflows together with their shared WIC/output-safety implementation. Keeping these together avoids artificial cross-module coupling around `WicImageHelper`, `ImageFormatConvertProcessor`, and `ImageOutputSafety`.
+
+Shared conversion contracts, `FileProcessor`, generic multi-file execution/localization helpers, Settings, and Localization remain outside the capability because they have consumers beyond image conversion. The move preserves codec checks, saved compression settings, output collision safety, image orientation/multi-frame guards, and NativeAOT behavior.
 
 #### Markdown module
 

@@ -1,3 +1,4 @@
+using Clickra.Core.Modules.Image.Application;
 using Clickra.Core.Modules.Markdown.Application;
 using Clickra.Core.Modules.PdfCompression.Application;
 using Clickra.Core.Modules.PdfSplit.Application;

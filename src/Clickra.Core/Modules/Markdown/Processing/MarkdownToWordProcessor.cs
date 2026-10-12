@@ -615,7 +615,7 @@ public sealed class MarkdownToWordProcessor : MarkdownSingleFileProcessorBase
 
         private (long Cx, long Cy) GetImageExtent(string path)
         {
-            using Image image = Image.FromFile(path);
+            using System.Drawing.Image image = System.Drawing.Image.FromFile(path);
             double usablePoints = UsablePageWidthPoints;
             double widthPoints = Math.Min(usablePoints, image.Width * 72d / Math.Max(image.HorizontalResolution, 96));
             double scale = widthPoints / Math.Max(1, image.Width * 72d / Math.Max(image.HorizontalResolution, 96));

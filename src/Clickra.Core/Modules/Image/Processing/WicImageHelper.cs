@@ -8,7 +8,7 @@ using Windows.Graphics.Imaging;
 using Windows.Storage.Streams;
 using Imazen.WebP;
 
-namespace Clickra.Core.Processors;
+namespace Clickra.Core.Modules.Image.Processing;
 
 /// <summary>
 /// Bridges Windows Imaging Component (WIC) and WinRT (Windows.Graphics.Imaging) APIs
@@ -120,7 +120,7 @@ public static class WicImageHelper
 
     /// <summary>Applies the JPEG/TIFF EXIF orientation to decoded pixels before callers resize
     /// or re-encode them. The returned bitmap therefore no longer depends on preserving metadata.</summary>
-    private static void ApplyExifOrientation(Image source, Bitmap target)
+    private static void ApplyExifOrientation(System.Drawing.Image source, Bitmap target)
     {
         const int OrientationPropertyId = 0x0112;
         if (!source.PropertyIdList.Contains(OrientationPropertyId)) return;
@@ -264,7 +264,7 @@ public static class WicImageHelper
     /// <summary>
     /// Saves a System.Drawing.Image to HEIC format using WIC/WinRT BitmapEncoder.
     /// </summary>
-    public static void SaveAsHeic(Image image, string outputPath, long quality = 90, string language = "")
+    public static void SaveAsHeic(System.Drawing.Image image, string outputPath, long quality = 90, string language = "")
     {
         if (!IsHeicEncoderAvailable())
         {

@@ -4,13 +4,14 @@ using System.IO;
 using System.Linq;
 using System.Threading;
 using System.Drawing;
+using Clickra.Core.Processors;
 #pragma warning disable CA1416 // Validate platform compatibility
 
-namespace Clickra.Core.Processors
+namespace Clickra.Core.Modules.Image.Processing
 {
     public class ImageStitchProcessor : MultiFileProcessorBase
     {
-        private List<Image> _images = new List<Image>();
+        private List<System.Drawing.Image> _images = new List<System.Drawing.Image>();
         private Bitmap? _stitched;
         private Graphics? _gfx;
         private int _currentY = 0;

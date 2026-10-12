@@ -1,6 +1,8 @@
+using Clickra.Core.Application;
+using Clickra.Core.Modules.Image.Processing;
 using Clickra.Core.Processors;
 
-namespace Clickra.Core.Application;
+namespace Clickra.Core.Modules.Image.Application;
 
 /// <summary>Authoritative application workflow for converting images to individual PDF files.</summary>
 public sealed class Img2PdfUseCase : PerFileConversionUseCaseBase
