@@ -1,3 +1,4 @@
+using Clickra.Core.Modules.Settings.Application;
 using Clickra.Core.Processors;
 
 namespace Clickra.Core.Application;

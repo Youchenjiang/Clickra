@@ -1,6 +1,6 @@
 using System.IO;
 
-namespace Clickra.Core.Application;
+namespace Clickra.Core.Modules.Settings.Application;
 
 /// <summary>Application-facing access to Clickra-owned data and output locations.</summary>
 public static class StoragePathController

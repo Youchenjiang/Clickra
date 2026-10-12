@@ -2,7 +2,7 @@ global using Clickra.Core.Diagnostics;
 global using Clickra.Core.Fonts;
 global using Clickra.Core.Infrastructure;
 global using Clickra.Core.Presentation;
-global using Clickra.Core.Presentation.Settings;
+global using Clickra.Core.Modules.Settings.Presentation;
 global using Clickra.Core.Presentation.Progress;
 global using Clickra.Core.Presentation.Dashboard;
 global using Clickra.Core.Presentation.History;

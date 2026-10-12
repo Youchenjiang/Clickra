@@ -1,7 +1,7 @@
 using Clickra.Core.Infrastructure;
 using Clickra.Core.Processors;
 
-namespace Clickra.Core.Application;
+namespace Clickra.Core.Modules.Settings.Application;
 
 public sealed record LibreOfficeSettingsState(
     bool RemovalPendingRestart,

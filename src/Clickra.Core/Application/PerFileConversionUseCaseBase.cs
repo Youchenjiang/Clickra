@@ -1,3 +1,4 @@
+using Clickra.Core.Modules.Settings.Application;
 namespace Clickra.Core.Application;
 
 /// <summary>Shared application lifecycle for one-input/one-output file conversions.</summary>

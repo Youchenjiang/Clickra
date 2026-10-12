@@ -1,8 +1,8 @@
-using Clickra.Core.Application;
+using Clickra.Core.Modules.Settings.Application;
 
 using Clickra.Core.Modules.Settings.Model;
 
-namespace Clickra.Core.Presentation.Settings;
+namespace Clickra.Core.Modules.Settings.Presentation;
 
 public sealed record LibreOfficePresentationState(
     bool RemovalPendingRestart,

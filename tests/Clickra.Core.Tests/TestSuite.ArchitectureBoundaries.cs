@@ -724,7 +724,9 @@ static partial class TestSuite
             root,
             "src",
             ArchitectureCoreProjectDirectory,
-            ArchitectureApplicationDirectory,
+            "Modules",
+            "Settings",
+            "Application",
             "SettingsController.cs");
         Assert.True(File.Exists(settingsGatewayPath), "Application settings gateway must exist.");
 
@@ -733,7 +735,8 @@ static partial class TestSuite
                  {
                      Path.Combine(root, "src", ArchitectureCliProjectDirectory),
                      Path.Combine(root, "src", ArchitectureFluentProjectDirectory),
-                     Path.Combine(root, "src", ArchitectureCoreProjectDirectory, ArchitectureApplicationDirectory)
+                     Path.Combine(root, "src", ArchitectureCoreProjectDirectory, ArchitectureApplicationDirectory),
+                     Path.Combine(root, "src", ArchitectureCoreProjectDirectory, "Modules")
                  })
         {
             foreach (string file in Directory.EnumerateFiles(directory, "*.cs", SearchOption.AllDirectories))
@@ -750,7 +753,7 @@ static partial class TestSuite
         {
             string member = match.Groups["member"].Value;
             if (!AllowedSettingsGatewayMembers.Contains(member))
-                violations.Add($"src/Clickra.Core/Application/SettingsController.cs: unexpected ClickraStorage.{member} access");
+                violations.Add($"src/Clickra.Core/Modules/Settings/Application/SettingsController.cs: unexpected ClickraStorage.{member} access");
         }
 
         Assert.True(
@@ -797,7 +800,7 @@ static partial class TestSuite
         var violations = PresentationSettingsViolations(root).ToList();
 
         string gateway = File.ReadAllText(Path.Combine(
-            root, "src", ArchitectureCoreProjectDirectory, ArchitectureApplicationDirectory, "SettingsController.cs"));
+            root, "src", ArchitectureCoreProjectDirectory, "Modules", "Settings", "Application", "SettingsController.cs"));
         foreach (string typedContract in new[]
                  {
                      "public static string Language",
@@ -809,7 +812,8 @@ static partial class TestSuite
             violations.Add($"SettingsController missing typed contract: {typedContract}");
 
         string presentationGateway = File.ReadAllText(Path.Combine(
-            root, "src", ArchitectureCoreProjectDirectory, ArchitecturePresentationDirectory, "Settings", "SettingsPresentationController.cs"));
+            root, "src", ArchitectureCoreProjectDirectory, "Modules", "Settings", "Presentation", "SettingsPresentationController.cs"));
+
         foreach (string typedContract in new[]
                  {
                      "public bool ReadBool(SettingDescriptor descriptor)",
@@ -955,6 +959,7 @@ static partial class TestSuite
         }
 
         foreach (string applicationFile in new[] { "ConversionTaskLifecycle.cs", ArchitectureConvertRegistryFile, "HistoryQueryController.cs", "LibreOfficeSettingsController.cs" })
+
         {
             string file = Path.Combine(core, ArchitectureApplicationDirectory, applicationFile);
             string source = File.ReadAllText(file);
@@ -968,9 +973,9 @@ static partial class TestSuite
                      (Path.Combine(ArchitecturePresentationDirectory, "Convert", "ConversionExecutionController.cs"), "Clickra.Core.Presentation.Convert"),
                      (Path.Combine(ArchitecturePresentationDirectory, "History", "HistoryFeed.cs"), "Clickra.Core.Presentation.History"),
                      (Path.Combine(ArchitecturePresentationDirectory, "History", "HistoryPresentationController.cs"), "Clickra.Core.Presentation.History"),
-                     (Path.Combine(ArchitecturePresentationDirectory, "Settings", "SettingsPresentationController.cs"), "Clickra.Core.Presentation.Settings"),
                      (Path.Combine(ArchitecturePresentationDirectory, "Progress", "TaskProgressController.cs"), "Clickra.Core.Presentation.Progress"),
                      (Path.Combine(ArchitecturePresentationDirectory, "Dashboard", "DashboardPresentationController.cs"), "Clickra.Core.Presentation.Dashboard")
+
                  })
         {
             string file = Path.Combine(core, relativePath);

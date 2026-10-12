@@ -1,3 +1,4 @@
+using Clickra.Core.Modules.Settings.Application;
 using System;
 using Clickra.Core;
 using Clickra.Core.Modules.Settings.Model;

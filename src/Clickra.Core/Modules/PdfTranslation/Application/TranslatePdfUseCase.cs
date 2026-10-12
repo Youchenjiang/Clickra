@@ -1,3 +1,4 @@
+using Clickra.Core.Modules.Settings.Application;
 using Clickra.Core.Application;
 using Clickra.Core.Modules.PdfTranslation.Execution;
 using Clickra.Core.Processors;

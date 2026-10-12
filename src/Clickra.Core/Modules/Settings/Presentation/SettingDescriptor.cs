@@ -2,10 +2,10 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 
-using Clickra.Core.Application;
+using Clickra.Core.Modules.Settings.Application;
 using Clickra.Core.Modules.Settings.Model;
 
-namespace Clickra.Core.Presentation.Settings;
+namespace Clickra.Core.Modules.Settings.Presentation;
     /// <summary>
     /// 設定控制項之編輯器種類。UI 生成引擎根據此欄位推導對應的控制項。
     /// </summary>

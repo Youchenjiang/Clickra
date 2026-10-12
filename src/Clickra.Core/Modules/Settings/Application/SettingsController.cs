@@ -1,4 +1,4 @@
-namespace Clickra.Core.Application;
+namespace Clickra.Core.Modules.Settings.Application;
 
 public enum OfficeEnginePreference
 {

@@ -19,62 +19,61 @@ Related design records:
 
 ### Canonical as-built architecture
 
-This is both the current implementation map and the dependency contract the repository must preserve. Smaller diagrams later in this document are zoomed views of this graph, not alternate architectures.
+This is both the current implementation map and the dependency contract the repository must preserve. The primary organization axis is capability/module ownership; technical roles are local to each capability rather than global repository layers.
 
 ```mermaid
 flowchart TB
     User["User / Windows"]
 
-    subgraph Entry["Executable / OS entry points"]
+    subgraph Hosts["Product hosts / OS adapters"]
         Launcher["ClickraLauncher\npackage activation + Native fallback"]
         Shell["ClickraShell\nWindows shell adapter"]
         Native["Clickra.CLI\nNative Win32 renderer + CLI adapter"]
         Fluent["Clickra.Fluent\nWinUI renderer + platform adapters"]
     end
 
-    subgraph Presentation["Clickra.Core.Presentation — authoritative product state per screen"]
-        DashboardState["DashboardPresentationController"]
-        ConvertState["ConvertWorkspaceController\nConversionExecutionController"]
-        HistoryState["HistoryPresentationController\nHistoryFeed / HistoryItem"]
-        SettingsState["SettingsPresentationController\nSettingPageRegistry / descriptors"]
-        ProgressState["TaskProgressController"]
+    subgraph Shared["Shared / not-yet-migrated Core boundaries"]
+        SharedPresentation["Presentation\nConvert / History / Progress / Dashboard"]
+        SharedApplication["Application\nconversion contracts, lifecycle, gateways"]
+        SharedProcessors["Processors\nPDF tools / Image / Markdown / Office"]
     end
 
-    subgraph Application["Clickra.Core.Application — product workflows"]
-        Catalog["ConvertCommandRegistry / product metadata"]
-        UseCases["Conversion use cases"]
-        Lifecycle["ConversionTaskLifecycle"]
-        HistoryApp["HistoryQueryController / HistoryController"]
-        ParkedApp["ParkedTaskController"]
-        SettingsApp["SettingsController"]
-        LibreOfficeApp["LibreOfficeSettingsController"]
-        PathApp["StoragePathController"]
-        ProgressApp["ConversionTaskProgressController"]
+    subgraph Pdf["Modules/PdfTranslation"]
+        PdfApplication["Application\nTranslatePdfUseCase"]
+        PdfExecution["Execution\nPdfTranslateProcessor"]
+        PdfModel["Model"]
+        PdfPipeline["Pipeline\nanalysis / layout / rendering / text processing"]
+        PdfProviders["Translation\nprovider engines + fallback policy"]
+        PdfApplication --> PdfExecution
+        PdfExecution --> PdfPipeline
+        PdfPipeline --> PdfModel
+        PdfPipeline --> PdfProviders
     end
 
-    subgraph Technical["Technical execution"]
-        Processors["Processors\nPDF / Image / Markdown / Office"]
-        PdfPipeline["PDF translation text-processing pipeline"]
-        Translation["Translation engines / provider chain"]
+    subgraph Settings["Modules/Settings"]
+        SettingsPresentation["Presentation\nSettingsPresentationController + descriptors"]
+        SettingsApplication["Application\nSettingsController / StoragePathController /\nLibreOfficeSettingsController"]
+        SettingsModel["Model\nNumericSettingRange"]
+        SettingsPresentation --> SettingsApplication
+        SettingsApplication --> SettingsModel
+    end
+
+    subgraph SharedTechnical["Shared technical / platform boundaries"]
         Infrastructure["Infrastructure\nLibreOffice / OS / external integration"]
         Fonts["Fonts"]
         Diagnostics["Diagnostics"]
+        Localization["Localization"]
     end
 
-    subgraph Storage["Clickra.Core.Storage — persistence facts only"]
+    subgraph Storage["Storage persistence SCC"]
         Compat["ClickraStorage\ncompatibility facade"]
-        SettingsStore["SettingsStore"]
-        PathStore["StoragePathResolver"]
-        HistoryStore["HistoryStore"]
-        QueueStore["TaskQueueStore"]
-        RecordStore["TaskRecordStore"]
-        ParkedStore["ParkedTaskCoordinator"]
-        Pruner["TaskPruningCoordinator / RetentionPolicy"]
-        LegacyStore["LegacyActiveRecordStore"]
+        PersistenceOwners["Settings / History / Task records /\nParked transitions / Retention / Legacy active"]
         Runtime["StorageRuntime"]
+        Compat --> PersistenceOwners
+        PersistenceOwners --> Runtime
     end
 
-    subgraph Persistence["Physical persistence"]
+    subgraph Files["Physical persistence"]
         SettingsFile["settings.conf"]
         HistoryFile["history.log"]
         TaskFiles["task-*.tmp"]
@@ -87,111 +86,77 @@ flowchart TB
     Launcher --> Native
     Shell -->|"command/arguments only"| Native
 
-    Native -->|"render + forward input"| DashboardState
-    Native --> ConvertState
-    Native --> HistoryState
-    Native --> SettingsState
-    Native --> ProgressState
-    Fluent -->|"render + forward input"| DashboardState
-    Fluent --> ConvertState
-    Fluent --> HistoryState
-    Fluent --> SettingsState
-    Fluent --> ProgressState
+    Native --> SharedPresentation
+    Fluent --> SharedPresentation
+    Native --> SettingsPresentation
+    Fluent --> SettingsPresentation
+    Native -->|"headless CLI only"| SharedApplication
 
-    DashboardState --> HistoryState
-    DashboardState --> SettingsState
-    ConvertState --> Catalog
-    ConvertState --> UseCases
-    ConvertState --> Lifecycle
-    HistoryState --> HistoryApp
-    HistoryState --> ParkedApp
-    SettingsState --> SettingsApp
-    SettingsState --> LibreOfficeApp
-    ProgressState --> ProgressApp
-    ProgressState --> Lifecycle
+    SharedPresentation --> SharedApplication
+    SharedApplication --> SharedProcessors
+    SharedApplication --> PdfApplication
+    SharedApplication --> SettingsApplication
+    SharedApplication --> Storage
+    SharedProcessors --> SharedTechnical
+    PdfPipeline --> SharedTechnical
+    SettingsApplication --> Storage
+    SettingsApplication --> Infrastructure
 
-    UseCases --> Processors
-    UseCases --> PdfPipeline
-    UseCases --> Infrastructure
-    PdfPipeline --> Translation
-    Processors --> Infrastructure
-    Processors --> Fonts
-    Processors --> Diagnostics
-
-    Lifecycle --> Compat
-    HistoryApp --> Compat
-    ParkedApp --> Compat
-    SettingsApp --> Compat
-    LibreOfficeApp --> Compat
-    LibreOfficeApp --> Infrastructure
-    PathApp --> Compat
-    ProgressApp --> Compat
-
-    Compat --> SettingsStore
-    Compat --> PathStore
-    Compat --> HistoryStore
-    Compat --> QueueStore
-    Compat --> ParkedStore
-    Compat --> LegacyStore
-    QueueStore --> RecordStore
-    QueueStore --> HistoryStore
-    ParkedStore --> RecordStore
-    ParkedStore --> HistoryStore
-    QueueStore --> Pruner
-    ParkedStore --> Pruner
-    SettingsStore --> Runtime
-    PathStore --> Runtime
-    HistoryStore --> Runtime
-    RecordStore --> Runtime
-    LegacyStore --> Runtime
-
-    SettingsStore --> SettingsFile
-    HistoryStore --> HistoryFile
-    RecordStore --> TaskFiles
-    LegacyStore --> LegacyFile
+    Storage --> SettingsFile
+    Storage --> HistoryFile
+    Storage --> TaskFiles
+    Storage --> LegacyFile
 ```
 
-The non-negotiable dependency direction is:
+The repository is therefore **module-first, not globally layer-first**. Dependency roles still
+matter, but they are local to the owning capability. For example, Settings has
+`Presentation -> Application -> Storage/Infrastructure`, while PDF Translation has
+`Application -> Execution -> Pipeline/Translation`. Headless CLI may enter an Application boundary
+directly because it is an adapter rather than a screen renderer.
 
-```text
-Renderer -> Presentation -> Application -> Technical / Storage
-```
+Global invariants are smaller and stronger:
 
-Renderers may implement OS/UI capabilities required by the shared workflow (dialogs, pickers, visual page selection, notifications), but product state and product policy must not fork by UI technology. Storage returns persistence facts; it never produces localized presentation wording. Presentation consumes Application contracts rather than Storage, Processor, or Infrastructure implementation details.
+1. product hosts stay at the edge;
+2. a capability owns its private workflow/model/technical code;
+3. module-to-module dependencies are intentional rather than accidental shared-bucket coupling;
+4. persistence and external/platform integration stay behind narrow owners;
+5. multiple UI renderers of the same product screen share one Presentation state/model;
+6. each conversion use case retains one authoritative Application workflow.
 
 ---
 
 ## 2. Architecture in one sentence
 
-> **Thin product surfaces call shared application workflows; application workflows own product behavior; processors perform technical conversion work; storage owns persistence; platform-specific code stays at the edges.**
+> **Clickra is a feature-oriented modular monolith: thin hosts call capability modules; each capability owns its workflow, model, presentation, and technical roles as needed; shared persistence and platform boundaries stay narrow and explicit.**
 
-The intended dependency direction is one-way:
+Layering remains useful **inside** a capability, but it is no longer the primary repository
+organization:
 
 ```mermaid
-flowchart TB
-    Surface["Product surfaces / adapters"]
-    Presentation["Shared presentation state / controllers"]
-    Application["Application use cases and application gateways"]
-    Technical["Processors / translation engines"]
-    Storage["Storage / persistence"]
-    Infrastructure["Infrastructure / platform integrations"]
+flowchart LR
+    Hosts["Hosts / adapters"]
+    subgraph Capability["Capability module"]
+        Presentation["Presentation (when needed)"]
+        Application["Application workflow"]
+        Model["Capability model"]
+        Technical["Execution / Pipeline / Ports"]
+        Presentation --> Application
+        Application --> Technical
+        Technical --> Model
+    end
+    Shared["Explicit shared boundaries\nStorage / Infrastructure / Kernel"]
 
-    Surface --> Presentation
-    Presentation --> Application
-    Application --> Technical
-    Application --> Storage
-    Application --> Infrastructure
-
-    Technical -. "explicit inputs only" .-> Infrastructure
-
-    classDef target stroke-width:2px;
-    class Presentation target;
+    Hosts --> Presentation
+    Hosts -->|"headless adapter"| Application
+    Application --> Shared
+    Technical --> Shared
 ```
 
-The `Presentation` layer in this diagram is the architectural target for shared product state. Some shared presentation ownership already exists, but full per-screen consolidation remains tracked separately.
+Capabilities do not need identical internal folders. Empty symmetry is explicitly avoided. Shared
+code is extracted only when it is genuinely capability-neutral rather than merely reused by two
+call sites.
 
 ---
-
 ## 3. Product and executable boundaries
 
 Clickra is not one executable. It has several product entry points with intentionally different responsibilities.
@@ -275,13 +240,11 @@ flowchart TB
 - non-migrated conversion use cases such as PDF tools, image, Markdown, Office, and merge workflows;
 - `ConversionRequest`, `ConversionPlan`, and `ConversionResult`;
 - `ConversionTaskLifecycle` for application-level task creation/completion/parking orchestration;
-- `SettingsController` for typed application settings access; presentation code does not consume persisted setting keys or boolean string encodings directly;
 - `ParkedTaskController` for parked-task actions and atomic resume claims;
 - `HistoryFeed` / `HistoryController` for application-owned history views/actions;
-- `StoragePathController` for application-facing storage path resolution;
 - `ConversionTaskProgressController` for progress-index persistence, including compatibility writes.
 
-The PDF translation use case has migrated to `Modules.PdfTranslation.Application.TranslatePdfUseCase` while continuing to consume the shared Application contracts. UI surfaces still ask these owners to perform product operations instead of coordinating persistence or processor behavior themselves.
+The PDF translation use case has migrated to `Modules.PdfTranslation.Application.TranslatePdfUseCase`; settings gateways have migrated to `Modules.Settings.Application`. Both continue to consume shared contracts where appropriate. UI surfaces still ask these owners to perform product operations instead of coordinating persistence or processor behavior themselves.
 
 #### PDF Translation module
 
@@ -296,6 +259,19 @@ The PDF translation use case has migrated to `Modules.PdfTranslation.Application
 Provider infrastructure and PDF text processing remain distinct namespaces inside the same capability. This keeps their different responsibilities visible without pretending they belong to unrelated top-level layers.
 
 Shared `Fonts`, `Rendering`, `Localization`, and `Diagnostics` remain outside the module because semantic dependency analysis shows real consumers outside PDF translation.
+
+#### Settings module
+
+`Modules/Settings` owns the product-facing settings capability without splitting persistence out of the shared Storage SCC:
+
+- `Application/SettingsController` — typed settings gateway;
+- `Application/StoragePathController` — application-facing output-path resolution;
+- `Application/LibreOfficeSettingsController` — LibreOffice settings/lifecycle gateway;
+- `Application/SettingsContract` — presentation-neutral setting names and scalar metadata;
+- `Presentation/SettingsPresentationController` and `SettingDescriptor` — shared Native/Fluent settings-screen state and schema;
+- `Model/NumericSettingRange` — settings-specific value type.
+
+`ClickraSettings`, `SettingsStore`, and `StoragePathResolver` intentionally remain in `Clickra.Core.Storage` because the semantic SCC shows persistence is one coupled compatibility boundary. Moving application/presentation ownership does not authorize changing settings keys, file formats, caching, mutex behavior, or watcher semantics.
 
 #### Legacy/shared Processors
 
@@ -351,7 +327,7 @@ Presentation code is intentionally shared in the Core assembly so Native and Flu
 - `Presentation.Convert.ConvertWorkspaceController` — command catalog, selection, compatibility, validation, and run-state owner;
 - `Presentation.Convert.ConversionExecutionController` — presentation-facing execution session over the Application use-case layer;
 - `Presentation.History.HistoryPresentationController` / `HistoryFeed` — history/task state, derived wording, retention presentation, and available actions;
-- `Presentation.Settings.SettingsPresentationController` / `SettingPageRegistry` — settings screen state, descriptors, bounds, and LibreOffice presentation actions;
+- `Modules.Settings.Presentation.SettingsPresentationController` / `SettingDescriptor` — settings screen state, descriptors, bounds, and LibreOffice presentation actions;
 - `Presentation.Progress.TaskProgressController` — semantic progress and terminal-state owner;
 - `Presentation.Dashboard.DashboardPresentationController` — semantic dashboard navigation state;
 - `Presentation.Native.DashboardLayout` / `HistoryLayout` — testable Native presentation geometry;
@@ -462,16 +438,16 @@ Preserved behavior includes:
 
 ## 7. Settings flow
 
-Settings persistence has one typed Application gateway, while settings screen schema and UI-facing state have one Presentation owner. Persisted keys and string encodings stop below those boundaries.
+Settings is now a capability module. Its Application subcontext owns typed gateways, its Presentation subcontext owns screen schema/state, and persistence remains in the shared Storage SCC. Persisted keys and string encodings stop below the module-facing boundaries.
 
 ```mermaid
 flowchart LR
     Native["Native UI"]
     Fluent["Fluent UI"]
     UseCases["Application use cases"]
-    Presentation["SettingsPresentationController\nSettingPageRegistry"]
-    Gateway["SettingsController\ntyped settings contract"]
-    LibreOffice["LibreOfficeSettingsController"]
+    Presentation["Modules.Settings.Presentation\nSettingsPresentationController + descriptors"]
+    Gateway["Modules.Settings.Application\nSettingsController / StoragePathController"]
+    LibreOffice["Modules.Settings.Application\nLibreOfficeSettingsController"]
     Facade["ClickraStorage\ncompatibility facade"]
     Store["SettingsStore\nsettings.conf owner"]
     Processors["Processors"]
@@ -488,7 +464,7 @@ flowchart LR
     Processors -. "forbidden: mutable settings reads" .-> Facade
 ```
 
-CLI and Fluent consume `SettingsPresentationController` plus Presentation-owned `SettingDescriptor` metadata. They do not call raw Application/Storage settings APIs, interpret persisted `"true"` / `"false"` strings, or know `ClickraSettings` keys/ranges. Application use cases snapshot normalized options before processor execution, preventing a conversion from silently changing behavior mid-run because a processor rereads mutable global settings.
+CLI and Fluent consume `Modules.Settings.Presentation.SettingsPresentationController` plus module-owned `SettingDescriptor` metadata. They do not call raw Storage settings APIs, interpret persisted `"true"` / `"false"` strings, or know `ClickraSettings` keys/ranges. Application use cases consume the typed `Modules.Settings.Application` gateways and snapshot normalized options before processor execution, preventing a conversion from silently changing behavior mid-run because a processor rereads mutable global settings.
 
 ---
 

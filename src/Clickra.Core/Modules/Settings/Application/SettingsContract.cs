@@ -1,6 +1,6 @@
 using Clickra.Core.Modules.Settings.Model;
 
-namespace Clickra.Core.Application;
+namespace Clickra.Core.Modules.Settings.Application;
 
 /// <summary>
 /// Presentation-neutral names and scalar metadata for user settings. Persisted storage details

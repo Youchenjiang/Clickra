@@ -1,3 +1,4 @@
+using Clickra.Core.Modules.Settings.Application;
 namespace Clickra.Core.Application;
 
 internal static class ImageOutputSafety
