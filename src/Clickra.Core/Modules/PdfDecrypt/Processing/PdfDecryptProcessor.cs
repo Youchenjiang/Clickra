@@ -1,10 +1,11 @@
 using System;
 using System.Collections.Generic;
 using System.Threading;
+using Clickra.Core.Processors;
 using PdfSharp.Pdf;
 using PdfSharp.Pdf.IO;
 
-namespace Clickra.Core.Processors
+namespace Clickra.Core.Modules.PdfDecrypt.Processing
 {
     public class PdfDecryptProcessor : SingleFileProcessorBase
     {

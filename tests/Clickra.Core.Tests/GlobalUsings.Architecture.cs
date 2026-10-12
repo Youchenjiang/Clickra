@@ -11,6 +11,8 @@ global using Clickra.Core.Modules.Markdown.Application;
 global using Clickra.Core.Modules.Markdown.Processing;
 global using Clickra.Core.Modules.PdfCompression.Application;
 global using Clickra.Core.Modules.PdfCompression.Processing;
+global using Clickra.Core.Modules.PdfDecrypt.Application;
+global using Clickra.Core.Modules.PdfDecrypt.Processing;
 global using Clickra.Core.Modules.PdfSplit.Application;
 global using Clickra.Core.Modules.PdfSplit.Processing;
 global using Clickra.Core.Modules.PdfSplit.Presentation;

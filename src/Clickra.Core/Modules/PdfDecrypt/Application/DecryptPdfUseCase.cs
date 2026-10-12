@@ -1,8 +1,10 @@
 using Clickra.Core.Modules.Settings.Application;
+using Clickra.Core.Application;
+using Clickra.Core.Modules.PdfDecrypt.Processing;
 using Clickra.Core.Processors;
 using PdfSharp.Pdf.IO;
 
-namespace Clickra.Core.Application;
+namespace Clickra.Core.Modules.PdfDecrypt.Application;
 
 /// <summary>Authoritative application workflow for removing PDF password protection.</summary>
 public sealed class DecryptPdfUseCase : PerFileConversionUseCaseBase
