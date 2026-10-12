@@ -130,6 +130,12 @@ static partial class TestSuite
             "Architecture boundaries: command registry belongs to Application",
             TestCommandRegistryBelongsToApplication);
         runner.RunGuard(
+            "Architecture boundaries: legacy layer-first buckets do not expand",
+            TestModuleFirstOrganizationDoesNotExpandLegacyBuckets);
+        runner.RunGuard(
+            "Architecture boundaries: Modules keep capability as the first directory axis",
+            TestModuleFirstModulesKeepCapabilityAsFirstAxis);
+        runner.RunGuard(
             "Architecture boundaries: translation provider and PDF text contexts stay distinct",
             TestTranslationContextsStayDistinct);
         runner.RunGuard(
@@ -192,6 +198,110 @@ static partial class TestSuite
         runner.RunGuard(
             "Architecture boundaries: migrated Markdown Word workflow has one execution owner",
             TestMarkdownToWordWorkflowHasSingleExecutionOwner);
+    }
+
+    private static void TestModuleFirstOrganizationDoesNotExpandLegacyBuckets()
+    {
+        string root = FindRepoRoot() ?? throw new TestSkippedException(RepositoryRootMissingMessage);
+        string baselinePath = Path.Combine(
+            root,
+            "tests",
+            "Clickra.Core.Tests",
+            "Architecture.ModuleFirstLegacyBuckets.txt");
+        Assert.True(
+            File.Exists(baselinePath),
+            "Module-first migration guard baseline must exist.");
+
+        var allowedPrefixes = new[]
+        {
+            "src/Clickra.Core/Application/",
+            "src/Clickra.Core/Presentation/",
+            "src/Clickra.Core/Processors/",
+            "src/Clickra.Core/Storage/",
+            "src/Clickra.Core/Models/"
+        };
+
+        HashSet<string> baseline = File.ReadAllLines(baselinePath)
+            .Select(line => line.Trim())
+            .Where(line => line.Length > 0 && !line.StartsWith('#'))
+            .Select(line => line.Replace('\\', '/'))
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+        Assert.True(
+            baseline.All(path => allowedPrefixes.Any(prefix =>
+                path.StartsWith(prefix, StringComparison.OrdinalIgnoreCase))),
+            "Module-first migration baseline may only contain the explicitly frozen legacy generic buckets.");
+
+        string coreRoot = Path.Combine(root, "src", ArchitectureCoreProjectDirectory);
+        string[] legacyDirectories =
+        {
+            ArchitectureApplicationDirectory,
+            "Presentation",
+            ArchitectureProcessorsDirectory,
+            "Storage",
+            "Models"
+        };
+
+        string[] additions = legacyDirectories
+            .Select(directory => Path.Combine(coreRoot, directory))
+            .Where(Directory.Exists)
+            .SelectMany(directory => Directory.EnumerateFiles(directory, "*.cs", SearchOption.AllDirectories))
+            .Select(path => Path.GetRelativePath(root, path).Replace('\\', '/'))
+            .Where(path => !baseline.Contains(path))
+            .OrderBy(path => path, StringComparer.OrdinalIgnoreCase)
+            .ToArray();
+
+        Assert.True(
+            additions.Length == 0,
+            "Module-first architecture freezes the legacy layer-first buckets. " +
+            "Move new feature-private code under src/Clickra.Core/Modules/<Capability>/... instead of expanding " +
+            $"Application/Presentation/Processors/Storage/Models. Unexpected files: {string.Join(", ", additions)}");
+    }
+
+    private static void TestModuleFirstModulesKeepCapabilityAsFirstAxis()
+    {
+        string root = FindRepoRoot() ?? throw new TestSkippedException(RepositoryRootMissingMessage);
+        string modulesRoot = Path.Combine(root, "src", ArchitectureCoreProjectDirectory, "Modules");
+        if (!Directory.Exists(modulesRoot))
+            return;
+
+        string[] filesAtModulesRoot = Directory.EnumerateFiles(modulesRoot, "*.cs", SearchOption.TopDirectoryOnly)
+            .Select(path => Path.GetFileName(path)!)
+            .OrderBy(name => name, StringComparer.OrdinalIgnoreCase)
+            .ToArray();
+        Assert.True(
+            filesAtModulesRoot.Length == 0,
+            "Production code under Modules must first choose a capability directory. " +
+            $"Files found directly under Modules: {string.Join(", ", filesAtModulesRoot)}");
+
+        var technicalRoleNames = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+        {
+            "Application",
+            "Presentation",
+            "Model",
+            "Models",
+            "Analysis",
+            "Rendering",
+            "Persistence",
+            "Storage",
+            "Processor",
+            "Processors",
+            "Infrastructure",
+            "Ports",
+            "Adapters"
+        };
+
+        string[] invalidFirstAxis = Directory.EnumerateDirectories(modulesRoot, "*", SearchOption.TopDirectoryOnly)
+            .Select(path => Path.GetFileName(path)!)
+            .Where(name => !string.IsNullOrWhiteSpace(name) && technicalRoleNames.Contains(name))
+            .OrderBy(name => name, StringComparer.OrdinalIgnoreCase)
+            .ToArray();
+
+        Assert.True(
+            invalidFirstAxis.Length == 0,
+            "Modules are capability-first. Technical roles belong inside a capability, for example " +
+            "Modules/PdfTranslation/Model rather than Modules/Models/PdfTranslation. " +
+            $"Invalid first-axis directories: {string.Join(", ", invalidFirstAxis)}");
     }
 
     private static void TestParkedTaskOrchestrationHasSingleOwner()

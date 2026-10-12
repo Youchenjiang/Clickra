@@ -561,14 +561,17 @@ Local completion evidence for this consolidation slice:
 
 Before adding a new feature, determine its owner in this order:
 
-1. **Is it product workflow policy?** Put it in an application use case/controller, not in Native or Fluent.
-2. **Is it a technical conversion operation?** Put it in a processor/engine and pass explicit inputs.
-3. **Is it persistence?** Keep it behind storage/application ownership; do not expose raw storage to presentation.
-4. **Is it platform interaction?** Implement a platform adapter/capability and inject it into the shared workflow.
-5. **Is it visual rendering/layout only?** It may remain surface-specific, or shared under explicit presentation ownership when single-source behavior is valuable.
-6. **Is it Windows shell/packaging behavior?** Preserve the dedicated Launcher/Shell/Infrastructure boundary instead of pulling the full Core graph into it.
+1. **Which product capability owns the change?** New Core product code is organized capability-first under Modules/<Capability>/...; technical role is the second axis. See module_first_architecture_decision.md.
+2. **Is it product workflow policy?** Keep it in that capability's application workflow, not in Native or Fluent.
+3. **Is it a technical conversion operation?** Keep it with the owning capability and pass explicit execution inputs.
+4. **Is it persistence?** Keep it behind the owning capability's application/persistence boundary; do not expose raw persistence to presentation.
+5. **Is it platform interaction?** Implement a platform adapter/capability and inject it into the shared workflow.
+6. **Is it visual rendering/layout only?** It may remain surface-specific, or shared under explicit presentation ownership when single-source behavior is valuable.
+7. **Is it Windows shell/packaging behavior?** Preserve the dedicated Launcher/Shell/Infrastructure boundary instead of pulling the full Core graph into it.
 
 When in doubt, dependency direction should continue to point inward from Renderer to Presentation to Application and then to technical/storage owners, never outward from Core into a UI technology.
+
+The existing top-level Application, Presentation, Processors, Storage, and Models directories are a shrinking migration baseline, not the preferred location for new feature-private files. Architecture guards prevent those generic buckets from expanding and prevent technical-role names from becoming the first axis under Modules.
 
 ---
 
