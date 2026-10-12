@@ -2,17 +2,162 @@
 
 ## 1. Purpose
 
-This document describes Clickra's current architecture after the application/storage boundary cleanup and the subsequent decomposition of the historical `ClickraStorage` implementation.
+This document describes Clickra's current as-built architecture after the application/storage boundary cleanup, storage decomposition, and Native/Fluent presentation consolidation.
 
-It is intentionally a **current-state architecture map**, not a claim that Clickra has no remaining architecture work. In particular:
+It is the **canonical current-state architecture map** for the product. The major architecture goals are now implemented and guarded:
 
-- backend workflow ownership, typed settings access, processor isolation, storage ownership, and major Core bounded contexts are now explicit and guarded;
-- the remaining product-level architecture goal is the presentation consolidation described in `application_ui_architecture_consolidation_plan.md`: one authoritative presentation state/controller per major screen, consumed by thin Native and Fluent renderers.
+- application workflows have authoritative owners;
+- processors are isolated from mutable presentation/storage state;
+- persistence has focused storage owners;
+- Convert, History, Settings, Progress, and Dashboard navigation have shared Presentation owners consumed by Native and Fluent;
+- primary renderers no longer own application orchestration, storage policy, processor policy, settings schema, or duplicated screen state.
 
 Related design records:
 
-- `application_ui_architecture_consolidation_plan.md` — product/application/UI target and remaining presentation-consolidation work;
+- `application_ui_architecture_consolidation_plan.md` — completed product/application/UI consolidation plan and rationale;
 - `storage_processor_architecture_cleanup_plan.md` — completed storage, processor-state, namespace, and shared-Core cleanup track.
+
+### Canonical as-built architecture
+
+This is both the current implementation map and the dependency contract the repository must preserve. Smaller diagrams later in this document are zoomed views of this graph, not alternate architectures.
+
+```mermaid
+flowchart TB
+    User["User / Windows"]
+
+    subgraph Entry["Executable / OS entry points"]
+        Launcher["ClickraLauncher\npackage activation + Native fallback"]
+        Shell["ClickraShell\nWindows shell adapter"]
+        Native["Clickra.CLI\nNative Win32 renderer + CLI adapter"]
+        Fluent["Clickra.Fluent\nWinUI renderer + platform adapters"]
+    end
+
+    subgraph Presentation["Clickra.Core.Presentation — authoritative product state per screen"]
+        DashboardState["DashboardPresentationController"]
+        ConvertState["ConvertWorkspaceController\nConversionExecutionController"]
+        HistoryState["HistoryPresentationController\nHistoryFeed / HistoryItem"]
+        SettingsState["SettingsPresentationController\nSettingPageRegistry / descriptors"]
+        ProgressState["TaskProgressController"]
+    end
+
+    subgraph Application["Clickra.Core.Application — product workflows"]
+        Catalog["ConvertCommandRegistry / product metadata"]
+        UseCases["Conversion use cases"]
+        Lifecycle["ConversionTaskLifecycle"]
+        HistoryApp["HistoryQueryController / HistoryController"]
+        ParkedApp["ParkedTaskController"]
+        SettingsApp["SettingsController"]
+        LibreOfficeApp["LibreOfficeSettingsController"]
+        PathApp["StoragePathController"]
+        ProgressApp["ConversionTaskProgressController"]
+    end
+
+    subgraph Technical["Technical execution"]
+        Processors["Processors\nPDF / Image / Markdown / Office"]
+        PdfPipeline["PDF translation text-processing pipeline"]
+        Translation["Translation engines / provider chain"]
+        Infrastructure["Infrastructure\nLibreOffice / OS / external integration"]
+        Fonts["Fonts"]
+        Diagnostics["Diagnostics"]
+    end
+
+    subgraph Storage["Clickra.Core.Storage — persistence facts only"]
+        Compat["ClickraStorage\ncompatibility facade"]
+        SettingsStore["SettingsStore"]
+        PathStore["StoragePathResolver"]
+        HistoryStore["HistoryStore"]
+        QueueStore["TaskQueueStore"]
+        RecordStore["TaskRecordStore"]
+        ParkedStore["ParkedTaskCoordinator"]
+        Pruner["TaskPruningCoordinator / RetentionPolicy"]
+        LegacyStore["LegacyActiveRecordStore"]
+        Runtime["StorageRuntime"]
+    end
+
+    subgraph Persistence["Physical persistence"]
+        SettingsFile["settings.conf"]
+        HistoryFile["history.log"]
+        TaskFiles["task-*.tmp"]
+        LegacyFile["active.tmp"]
+    end
+
+    User --> Launcher
+    User --> Shell
+    Launcher --> Fluent
+    Launcher --> Native
+    Shell -->|"command/arguments only"| Native
+
+    Native -->|"render + forward input"| DashboardState
+    Native --> ConvertState
+    Native --> HistoryState
+    Native --> SettingsState
+    Native --> ProgressState
+    Fluent -->|"render + forward input"| DashboardState
+    Fluent --> ConvertState
+    Fluent --> HistoryState
+    Fluent --> SettingsState
+    Fluent --> ProgressState
+
+    DashboardState --> HistoryState
+    DashboardState --> SettingsState
+    ConvertState --> Catalog
+    ConvertState --> UseCases
+    ConvertState --> Lifecycle
+    HistoryState --> HistoryApp
+    HistoryState --> ParkedApp
+    SettingsState --> SettingsApp
+    SettingsState --> LibreOfficeApp
+    ProgressState --> ProgressApp
+    ProgressState --> Lifecycle
+
+    UseCases --> Processors
+    UseCases --> PdfPipeline
+    UseCases --> Infrastructure
+    PdfPipeline --> Translation
+    Processors --> Infrastructure
+    Processors --> Fonts
+    Processors --> Diagnostics
+
+    Lifecycle --> Compat
+    HistoryApp --> Compat
+    ParkedApp --> Compat
+    SettingsApp --> Compat
+    LibreOfficeApp --> Compat
+    LibreOfficeApp --> Infrastructure
+    PathApp --> Compat
+    ProgressApp --> Compat
+
+    Compat --> SettingsStore
+    Compat --> PathStore
+    Compat --> HistoryStore
+    Compat --> QueueStore
+    Compat --> ParkedStore
+    Compat --> LegacyStore
+    QueueStore --> RecordStore
+    QueueStore --> HistoryStore
+    ParkedStore --> RecordStore
+    ParkedStore --> HistoryStore
+    QueueStore --> Pruner
+    ParkedStore --> Pruner
+    SettingsStore --> Runtime
+    PathStore --> Runtime
+    HistoryStore --> Runtime
+    RecordStore --> Runtime
+    LegacyStore --> Runtime
+
+    SettingsStore --> SettingsFile
+    HistoryStore --> HistoryFile
+    RecordStore --> TaskFiles
+    LegacyStore --> LegacyFile
+```
+
+The non-negotiable dependency direction is:
+
+```text
+Renderer -> Presentation -> Application -> Technical / Storage
+```
+
+Renderers may implement OS/UI capabilities required by the shared workflow (dialogs, pickers, visual page selection, notifications), but product state and product policy must not fork by UI technology. Storage returns persistence facts; it never produces localized presentation wording. Presentation consumes Application contracts rather than Storage, Processor, or Infrastructure implementation details.
 
 ---
 
@@ -167,7 +312,7 @@ Important ownership includes:
 - `TaskPruningCoordinator` / `TaskRetentionPolicy` — stale-task cleanup and retention policy;
 - `ClickraStorage.*` — a compatibility facade that delegates to those focused owners rather than containing their implementations.
 
-`ParkedTaskCoordinator` is intentionally not a presentation/application API. Storage returns retention facts; localized retention wording is owned by `Application/HistoryFeed` with an explicit language input.
+`ParkedTaskCoordinator` is intentionally not a presentation/application API. Storage returns retention facts through the Application query boundary; localized retention wording is owned by `Presentation.History/HistoryFeed` with an explicit language input.
 
 #### Translation versus PDF text processing
 
@@ -193,8 +338,14 @@ Infrastructure persistence is guarded by a per-file/key allowlist rather than be
 
 #### Presentation helpers inside Core
 
-Some presentation code remains intentionally shared in the Core assembly:
+Presentation code is intentionally shared in the Core assembly so Native and Fluent render one product state:
 
+- `Presentation.Convert.ConvertWorkspaceController` — command catalog, selection, compatibility, validation, and run-state owner;
+- `Presentation.Convert.ConversionExecutionController` — presentation-facing execution session over the Application use-case layer;
+- `Presentation.History.HistoryPresentationController` / `HistoryFeed` — history/task state, derived wording, retention presentation, and available actions;
+- `Presentation.Settings.SettingsPresentationController` / `SettingPageRegistry` — settings screen state, descriptors, bounds, and LibreOffice presentation actions;
+- `Presentation.Progress.TaskProgressController` — semantic progress and terminal-state owner;
+- `Presentation.Dashboard.DashboardPresentationController` — semantic dashboard navigation state;
 - `Presentation.Native.DashboardLayout` / `HistoryLayout` — testable Native presentation geometry;
 - `Presentation.Shared.VectorIcons` — single-source presentation geometry shared across UI technologies.
 
@@ -204,19 +355,21 @@ Their presence in the Core assembly does not make them domain/application logic;
 
 ## 5. Conversion workflow
 
-Every migrated conversion command has one authoritative application use-case owner.
+Every migrated conversion command has one authoritative application use-case owner, reached by UI renderers through the shared Presentation execution owner.
 
 ```mermaid
 sequenceDiagram
     actor U as User
     participant UI as Native / Fluent surface
+    participant PS as Presentation controller/state
     participant UC as Application use case
     participant LC as ConversionTaskLifecycle
     participant P as Processor / engine
     participant S as Storage / TaskRecordStore
 
     U->>UI: choose command, files, options
-    UI->>UC: ConversionRequest + interaction capabilities
+    UI->>PS: forward intent + platform callbacks
+    PS->>UC: ConversionRequest + interaction capabilities
     UC->>UC: validate + normalize + plan outputs
     UC->>LC: create / attach task lifecycle
     LC->>S: persist task state
@@ -224,13 +377,14 @@ sequenceDiagram
     P-->>UC: technical result / progress
     UC->>LC: checkpoint / complete / park
     LC->>S: persist transition
-    UC-->>UI: ConversionResult
+    UC-->>PS: ConversionResult
+    PS-->>UI: presentation result/state
     UI-->>U: render result
 ```
 
 ### Ownership rule
 
-The UI may provide platform-specific capabilities (password prompt, visual page splitter, notifications, dialogs), but the shared use case owns the workflow in which those capabilities are used.
+The UI may provide platform-specific capabilities (password prompt, visual page splitter, notifications, dialogs), but Presentation owns screen semantics and the shared Application use case owns the workflow in which those capabilities are used.
 
 In other words:
 
@@ -247,7 +401,9 @@ flowchart TB
     NativeUI["Native / CLI"]
     FluentUI["Fluent"]
 
-    History["HistoryFeed / HistoryController"]
+    HistoryPresentation["HistoryPresentationController\nHistoryFeed / HistoryItem"]
+    ProgressPresentation["TaskProgressController"]
+    HistoryQuery["HistoryQueryController / HistoryController"]
     Parked["ParkedTaskController"]
     Progress["ConversionTaskProgressController"]
     Lifecycle["ConversionTaskLifecycle"]
@@ -260,14 +416,16 @@ flowchart TB
     Legacy["LegacyActiveRecordStore\nactive.tmp compatibility"]
     Pruner["TaskPruningCoordinator"]
 
-    NativeUI --> History
-    FluentUI --> History
-    NativeUI --> Parked
-    FluentUI --> Parked
-    NativeUI --> Progress
-    FluentUI --> Progress
+    NativeUI --> HistoryPresentation
+    FluentUI --> HistoryPresentation
+    NativeUI --> ProgressPresentation
+    FluentUI --> ProgressPresentation
 
-    History --> Facade
+    HistoryPresentation --> HistoryQuery
+    HistoryPresentation --> Parked
+    ProgressPresentation --> Progress
+
+    HistoryQuery --> Facade
     Parked --> Facade
     Progress --> Facade
     Lifecycle --> Facade
@@ -296,20 +454,24 @@ Preserved behavior includes:
 
 ## 7. Settings flow
 
-Settings persistence has one typed application gateway for product/application callers. Persisted keys and string encodings stop at that boundary.
+Settings persistence has one typed Application gateway, while settings screen schema and UI-facing state have one Presentation owner. Persisted keys and string encodings stop below those boundaries.
 
 ```mermaid
 flowchart LR
     Native["Native UI"]
     Fluent["Fluent UI"]
     UseCases["Application use cases"]
+    Presentation["SettingsPresentationController\nSettingPageRegistry"]
     Gateway["SettingsController\ntyped settings contract"]
+    LibreOffice["LibreOfficeSettingsController"]
     Facade["ClickraStorage\ncompatibility facade"]
     Store["SettingsStore\nsettings.conf owner"]
     Processors["Processors"]
 
-    Native --> Gateway
-    Fluent --> Gateway
+    Native --> Presentation
+    Fluent --> Presentation
+    Presentation --> Gateway
+    Presentation --> LibreOffice
     UseCases --> Gateway
     Gateway --> Facade
     Facade --> Store
@@ -318,7 +480,7 @@ flowchart LR
     Processors -. "forbidden: mutable settings reads" .-> Facade
 ```
 
-CLI and Fluent use named typed properties or `SettingDescriptor`-typed read/write operations. They do not call raw `Get`/`Set` APIs or interpret persisted `"true"` / `"false"` strings. This also prevents a conversion from silently changing behavior mid-run because a processor rereads mutable global settings.
+CLI and Fluent consume `SettingsPresentationController` plus Presentation-owned `SettingDescriptor` metadata. They do not call raw Application/Storage settings APIs, interpret persisted `"true"` / `"false"` strings, or know `ClickraSettings` keys/ranges. Application use cases snapshot normalized options before processor execution, preventing a conversion from silently changing behavior mid-run because a processor rereads mutable global settings.
 
 ---
 
@@ -334,9 +496,12 @@ The current architecture-boundary test suite pins, among other rules:
 - infrastructure settings access stays on an explicit allowlist;
 - application contracts stay UI-independent;
 - settings persistence has one application gateway;
-- presentation settings use typed application access rather than raw persisted keys/boolean encodings;
+- presentation settings use one shared Presentation owner and Presentation-owned descriptor catalog;
 - parked-task actions have one application gateway;
 - presentation code does not depend on raw `ClickraStorage`;
+- primary Native/Fluent renderers depend on shared Presentation owners rather than directly orchestrating Application/Processor/Infrastructure policy;
+- `Clickra.Core.Presentation` depends inward through Application contracts and presentation-neutral shared models, not Storage/Processors/Infrastructure implementation details;
+- `ConvertCommandRegistry` belongs to Application rather than Processors;
 - the `ClickraStorage` compatibility facade delegates persistence implementation to focused storage owners;
 - storage code does not own localized presentation wording;
 - Core bounded contexts declare their owned namespaces;
@@ -357,34 +522,38 @@ Important prohibited regressions include:
 
 ---
 
-## 9. What is complete, and what is not
+## 9. Architecture completion status
 
 ### Completed and strongly guarded
 
-The following architecture areas are in a mature state on current `main`:
+The following architecture areas are implemented and guarded in the current codebase:
 
 1. **One application execution owner for migrated conversion commands.**
 2. **Processor isolation from mutable storage/settings state.**
 3. **Typed/narrow application gateways for settings, parked tasks, history, storage paths, task progress, and task lifecycle.**
 4. **Focused storage owners for settings, paths, history, task records/lifecycle, retention/pruning, and legacy compatibility; `ClickraStorage` is a compatibility facade rather than the implementation owner.**
 5. **Meaningful Core namespaces/bounded contexts for Application, Storage, Infrastructure, Translation, Diagnostics, Fonts, and PDF text processing.**
-6. **Explicit presentation/helper ownership instead of flat Core placement.**
-7. **NativeAOT boundaries for CLI, Launcher, and Shell remain intentional.**
-8. **Zero architecture-violation and processor-global-state baselines for the guarded legacy patterns.**
+6. **One authoritative Presentation owner for the major product screens:** Convert, History/Tasks, Settings, Progress, and Dashboard navigation.
+7. **Presentation-owned derived state and UI schema:** command grouping/compatibility/validation, history wording/retention state, settings descriptors/bounds, and progress semantics are not duplicated by Native and Fluent.
+8. **Thin primary renderers:** Native Dashboard and Fluent MainPage/TaskProgressPage forward intent and render shared state rather than directly orchestrating use cases, storage, Office/LibreOffice policy, or settings schema.
+9. **NativeAOT boundaries for CLI, Launcher, and Shell remain intentional.**
+10. **Zero architecture-violation and processor-global-state baselines for the guarded legacy patterns.**
 
-### Still a product-level architecture target
-
-The broader `application_ui_architecture_consolidation_plan.md` has a stricter final definition of done:
+The definition of done from `application_ui_architecture_consolidation_plan.md` is therefore satisfied:
 
 > **One Product Model + One Application Workflow per Use Case + One Presentation State per Screen + Multiple Thin UI Renderers**
 
-The backend/application portion is now substantially established. The remaining question for future architecture work is whether every major Native/Fluent screen has fully converged on one shared presentation-state/controller owner, rather than merely sharing application workflows beneath two presentation implementations.
+This does not mean the repository can never need future architecture work. New product areas can introduce new boundaries, and existing implementation details can still be improved. It means the architecture consolidation project described by the two development plans is complete: the intended ownership graph is now represented by production code and protected by automated guards.
 
-Therefore, the correct statement today is:
+Local completion evidence for this consolidation slice:
 
-> **Clickra now has clear and enforceable backend/application/storage/processor boundaries. The whole product architecture is substantially cleaner and much harder to regress, but full Native/Fluent presentation-state consolidation is still a separate architectural completion criterion.**
-
-This distinction matters because "both UIs call the same use case" is excellent backend architecture, but it is not automatically the same as "both UIs render the same shared presentation state."
+- 5 product warnings-as-errors builds plus the test project: 0 warnings / 0 errors;
+- 77 architecture/localization guards: 77 passed, 0 failed, 0 skipped;
+- 352 functional tests: 352 passed, 0 failed, 0 skipped;
+- fixture-required full runner: 429 passed, 0 failed, 0 skipped;
+- 34 Store publishing unit tests passed;
+- product icon asset verification passed;
+- NativeAOT publish succeeded for CLI, ClickraShell, and ClickraLauncher.
 
 ---
 
@@ -399,7 +568,7 @@ Before adding a new feature, determine its owner in this order:
 5. **Is it visual rendering/layout only?** It may remain surface-specific, or shared under explicit presentation ownership when single-source behavior is valuable.
 6. **Is it Windows shell/packaging behavior?** Preserve the dedicated Launcher/Shell/Infrastructure boundary instead of pulling the full Core graph into it.
 
-When in doubt, dependency direction should continue to point inward toward shared product/application policy, never outward from Core/Application into a UI technology.
+When in doubt, dependency direction should continue to point inward from Renderer to Presentation to Application and then to technical/storage owners, never outward from Core into a UI technology.
 
 ---
 
