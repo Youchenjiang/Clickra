@@ -32,10 +32,10 @@ flowchart TB
         Fluent["Clickra.Fluent\nWinUI renderer + platform adapters"]
     end
 
-    subgraph Shared["Shared / not-yet-migrated Core boundaries"]
+    subgraph Shared["Intentional shared Core boundaries"]
         SharedPresentation["Presentation\nConvert / Progress / Dashboard"]
         SharedApplication["Application\nconversion contracts, lifecycle, gateways"]
-        SharedProcessors["Processors\nremaining PDF tools"]
+        SharedProcessors["Processors\ngeneric execution / file helpers"]
     end
 
     subgraph Pdf["Modules/PdfTranslation"]
@@ -263,33 +263,31 @@ flowchart LR
 
 ## 4. `Clickra.Core` modules and bounded contexts
 
-The Core assembly is shared for deployment and NativeAOT reasons, but repository ownership is capability-first. New product code belongs under `Modules/<Capability>/...`; technical roles are secondary inside the owning capability. The old top-level `Application`, `Presentation`, `Processors`, `Storage`, and `Models` directories are shrinking migration buckets rather than the target organization.
+The Core assembly is shared for deployment and NativeAOT reasons, but repository ownership is capability-first. New feature-private product code belongs under `Modules/<Capability>/...`; technical roles are secondary inside the owning capability. The remaining top-level `Application`, `Presentation`, `Processors`, and `Storage` directories are intentional shared-kernel, cross-capability presentation, generic execution, or persistence boundaries rather than product-feature ownership axes.
 
 ```mermaid
 flowchart TB
     subgraph Core["Clickra.Core"]
-        SharedApp["Legacy/shared Application\nconversion contracts, lifecycle, gateways"]
-        Pdf["Modules.PdfTranslation\nApplication + Execution + Model + Pipeline + Translation"]
-        SettingsModel["Modules.Settings.Model\nsettings value types"]
-        Proc["Legacy/shared Processors\nnon-migrated technical conversion operations"]
+        SharedApp["Shared Application\nconversion contracts, registry, lifecycle"]
+        Modules["Modules/*\nfeature-owned capabilities + local technical roles"]
+        Proc["Shared Processors\ngeneric execution / file helpers"]
         Store["Storage\nsingle persistence cluster + compatibility facade"]
-        Infra["Infrastructure\nowned platform integrations"]
-        Pres["Presentation\nshared / Native presentation helpers"]
+        Pres["Presentation\ncross-capability / Native presentation helpers"]
         Diag["Diagnostics"]
         Fonts["Fonts"]
         Loc["Localization\ncentralized catalog ownership"]
     end
 
     Pres --> SharedApp
-    Pres --> SettingsModel
-    SharedApp --> Pdf
+    Pres --> Modules
+    SharedApp --> Modules
     SharedApp --> Proc
     SharedApp --> Store
-    SharedApp --> Infra
-    Pdf --> Store
-    Pdf --> Loc
-    Pdf --> Diag
-    Pdf --> Fonts
+    Modules --> Store
+    Modules --> Proc
+    Modules --> Loc
+    Modules --> Diag
+    Modules --> Fonts
     Proc --> Loc
     Proc --> Diag
     Proc --> Fonts
@@ -297,12 +295,11 @@ flowchart TB
 
 ### Meaning of the major boundaries
 
-#### Shared Application kernel and migrating use cases
+#### Shared Application kernel
 
-`Clickra.Core.Application` remains the shared workflow kernel while capability-owned use cases move under their modules. Important shared owners include:
+`Clickra.Core.Application` is the shared workflow kernel after feature-private use cases have moved under their modules. Important shared owners include:
 
 - conversion contracts and the use-case registry;
-- shared conversion orchestration and registries;
 - `ConversionRequest`, `ConversionPlan`, and `ConversionResult`;
 - `ConversionTaskLifecycle` for application-level task creation/completion/parking orchestration;
 - `ConversionTaskProgressController` for progress-index persistence, including compatibility writes.
@@ -409,9 +406,9 @@ Shared conversion contracts, `FileProcessor`, generic processor execution/locali
 
 This migration intentionally stops at the lifecycle boundary. `ConversionTaskLifecycle`, `ConversionTaskProgressController`, `ConversionTaskCleanup`, `TaskProgressController`, task-record persistence, `ParkedTaskCoordinator`, and legacy `active.tmp` compatibility remain in their existing owners until a separate evidence-backed migration proves they can move without changing resume identity, atomic transitions, retention, or compatibility semantics.
 
-#### Legacy/shared Processors
+#### Shared Processors
 
-The remaining `Clickra.Core.Processors` bucket owns technical mechanics that have not yet migrated to capability modules. Processors receive explicit, already-normalized execution inputs from application code. Existing guards continue to prevent hidden mutable settings/storage access.
+The remaining `Clickra.Core.Processors` bucket intentionally owns only generic execution mechanics shared by multiple capabilities: execution/localization option carriers, output backup/rollback, generic single- and multi-file bases, processor contracts, and progress calculation. Feature-specific processors live under their owning modules. Existing guards continue to prevent hidden mutable settings/storage access.
 
 #### Storage
 

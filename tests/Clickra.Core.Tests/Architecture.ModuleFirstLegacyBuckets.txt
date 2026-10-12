@@ -1,5 +1,5 @@
-# Legacy generic-bucket baseline for the module-first migration.
-# Existing entries may be removed/moved, but new production C# files must not be added here.
+# Frozen shared generic-bucket baseline after the module-first feature migration.
+# Existing entries may be removed/moved, but new feature-private production C# files must not be added here.
 # To expand this list requires an explicit architecture decision and guard review.
 src/Clickra.Core/Application/ConversionInteraction.cs
 src/Clickra.Core/Application/ConversionPlan.cs
@@ -26,7 +26,6 @@ src/Clickra.Core/Processors/ExecutionLocalizationOptions.cs
 src/Clickra.Core/Processors/FileProcessing/FileBackupScope.cs
 src/Clickra.Core/Processors/FileProcessing/IFileProcessor.cs
 src/Clickra.Core/Processors/FileProcessing/MultiFileProcessorBase.cs
-src/Clickra.Core/Processors/FileProcessing/PostProcessor.cs
 src/Clickra.Core/Processors/FileProcessing/ProgressCalculator.cs
 src/Clickra.Core/Processors/FileProcessing/SingleFileProcessorBase.cs
 src/Clickra.Core/Processors/ProcessorExecutionOptions.cs

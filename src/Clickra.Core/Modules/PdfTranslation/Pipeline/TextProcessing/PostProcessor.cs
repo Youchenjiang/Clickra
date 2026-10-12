@@ -2,7 +2,7 @@ using System;
 using System.Linq;
 using System.Text.RegularExpressions;
 
-namespace Clickra.Core.Processors
+namespace Clickra.Core.Modules.PdfTranslation.Pipeline.TextProcessing
 {
     public static class PostProcessor
     {
