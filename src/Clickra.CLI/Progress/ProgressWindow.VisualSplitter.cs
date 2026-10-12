@@ -9,6 +9,8 @@ using System.Text;
 using System.Threading.Tasks;
 using Clickra.Core;
 using Clickra.Core.Application;
+using Clickra.Core.Modules.PdfSplit.Application;
+using Clickra.Core.Modules.PdfSplit.Presentation;
 using Clickra.Core.Processors;
 using Clickra.Core.Rendering;
 

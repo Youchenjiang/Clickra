@@ -56,6 +56,14 @@ flowchart TB
         PdfCompressionApplication --> PdfCompressionProcessing
     end
 
+    subgraph PdfSplit["Modules/PdfSplit"]
+        PdfSplitPresentation["Presentation\nVisualSplitModel"]
+        PdfSplitApplication["Application\nSplitPdfUseCase / PdfPageCountQuery"]
+        PdfSplitProcessing["Processing\nPdfSplitProcessor"]
+        PdfSplitPresentation --> PdfSplitProcessing
+        PdfSplitApplication --> PdfSplitProcessing
+    end
+
     subgraph Settings["Modules/Settings"]
         SettingsPresentation["Presentation\nSettingsPresentationController + descriptors"]
         SettingsApplication["Application\nSettingsController / StoragePathController /\nLibreOfficeSettingsController"]
@@ -110,12 +118,15 @@ flowchart TB
     Fluent --> SettingsPresentation
     Native --> HistoryPresentation
     Fluent --> HistoryPresentation
+    Native --> PdfSplitPresentation
+    Fluent --> PdfSplitPresentation
     Native -->|"headless CLI only"| SharedApplication
 
     SharedPresentation --> SharedApplication
     SharedApplication --> SharedProcessors
     SharedApplication --> PdfApplication
     SharedApplication --> PdfCompressionApplication
+    SharedApplication --> PdfSplitApplication
     SharedApplication --> MarkdownApplication
     SharedApplication --> SettingsApplication
     SharedApplication --> Storage
@@ -262,12 +273,12 @@ flowchart TB
 `Clickra.Core.Application` remains the shared workflow kernel while capability-owned use cases move under their modules. Important shared owners include:
 
 - conversion contracts and the use-case registry;
-- non-migrated conversion use cases such as PDF decrypt/merge/split tools, image, Office, and merge workflows;
+- non-migrated conversion use cases such as PDF decrypt/merge tools, image, Office, and merge workflows;
 - `ConversionRequest`, `ConversionPlan`, and `ConversionResult`;
 - `ConversionTaskLifecycle` for application-level task creation/completion/parking orchestration;
 - `ConversionTaskProgressController` for progress-index persistence, including compatibility writes.
 
-The PDF translation use case has migrated to `Modules.PdfTranslation.Application.TranslatePdfUseCase`; PDF compression has migrated to `Modules.PdfCompression`; Markdown document conversion has migrated to `Modules.Markdown`; settings gateways have migrated to `Modules.Settings.Application`; history/parked-task query and action gateways have migrated to `Modules.HistoryTasks.Application`. These continue to consume shared contracts where appropriate. UI surfaces still ask these owners to perform product operations instead of coordinating persistence or processor behavior themselves.
+The PDF translation use case has migrated to `Modules.PdfTranslation.Application.TranslatePdfUseCase`; PDF compression has migrated to `Modules/PdfCompression`; PDF splitting has migrated to `Modules/PdfSplit`; Markdown document conversion has migrated to `Modules.Markdown`; settings gateways have migrated to `Modules.Settings.Application`; history/parked-task query and action gateways have migrated to `Modules.HistoryTasks.Application`. These continue to consume shared contracts where appropriate. UI surfaces still ask these owners to perform product operations instead of coordinating persistence or processor behavior themselves.
 
 #### PDF Translation module
 
@@ -293,6 +304,17 @@ Shared `Fonts`, `Rendering`, `Localization`, and `Diagnostics` remain outside th
 - `Processing/PdfCompressionProcessor` — the capability-specific adapter over the shared single-file processor base.
 
 Shared conversion contracts, `FileProcessor`, generic processor base/progress helpers, Fonts, and Settings remain outside the module because they have real non-PDF-compression consumers. The move changes ownership and namespace boundaries only; compression presets, output planning, saved settings behavior, and NativeAOT execution remain unchanged.
+
+#### PDF Split module
+
+`Modules/PdfSplit` owns the PDF split workflow and the shared visual-splitter state used by both renderers:
+
+- `Application/SplitPdfUseCase` — authoritative planning and execution workflow;
+- `Application/PdfPageCountQuery` — presentation-safe page-count query boundary;
+- `Processing/PdfSplitProcessor` — PDF page extraction and segment-spec execution;
+- `Presentation/VisualSplitModel` — pure shared Native/Fluent splitter state, selection, segment editing, and zoom behavior.
+
+The semantic graph shows this slice has no domain-specific outgoing dependencies once the shared conversion kernel and processor base helpers are excluded. The Native and Fluent visual splitters render and wire input independently, but both consume the same `VisualSplitModel`. Shared conversion contracts, `FileProcessor`, generic processor base/progress helpers, and rendering helpers remain outside the module. The ownership move does not change split specs, page-count semantics, output naming, interaction flow, or NativeAOT behavior.
 
 #### Markdown module
 

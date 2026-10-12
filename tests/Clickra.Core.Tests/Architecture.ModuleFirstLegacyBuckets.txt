@@ -23,11 +23,9 @@ src/Clickra.Core/Application/ImgMergeUseCase.cs
 src/Clickra.Core/Application/ImgStitchUseCase.cs
 src/Clickra.Core/Application/MergePdfUseCase.cs
 src/Clickra.Core/Application/OfficeToPdfUseCaseBase.cs
-src/Clickra.Core/Application/PdfPageCountQuery.cs
 src/Clickra.Core/Application/PerFileConversionUseCaseBase.cs
 src/Clickra.Core/Application/PptToPdfUseCase.cs
 src/Clickra.Core/Application/SingleOutputConversionUseCaseBase.cs
-src/Clickra.Core/Application/SplitPdfUseCase.cs
 src/Clickra.Core/Application/WordToPdfUseCase.cs
 src/Clickra.Core/Presentation/Convert/ConversionExecutionController.cs
 src/Clickra.Core/Presentation/Convert/ConvertWorkspaceController.cs
@@ -52,13 +50,11 @@ src/Clickra.Core/Processors/FileProcessing/OfficeConversionOptions.cs
 src/Clickra.Core/Processors/FileProcessing/OfficeEngineDetector.cs
 src/Clickra.Core/Processors/FileProcessing/PdfDecryptProcessor.cs
 src/Clickra.Core/Processors/FileProcessing/PdfMergeProcessor.cs
-src/Clickra.Core/Processors/FileProcessing/PdfSplitProcessor.cs
 src/Clickra.Core/Processors/FileProcessing/PostProcessor.cs
 src/Clickra.Core/Processors/FileProcessing/PowerShellHelper.cs
 src/Clickra.Core/Processors/FileProcessing/PptToPdfProcessor.cs
 src/Clickra.Core/Processors/FileProcessing/ProgressCalculator.cs
 src/Clickra.Core/Processors/FileProcessing/SingleFileProcessorBase.cs
-src/Clickra.Core/Processors/FileProcessing/VisualSplitModel.cs
 src/Clickra.Core/Processors/FileProcessing/WicImageHelper.cs
 src/Clickra.Core/Processors/FileProcessing/WordToPdfProcessor.cs
 src/Clickra.Core/Processors/ProcessorExecutionOptions.cs

@@ -5,8 +5,9 @@ using System.Linq;
 using System.Threading;
 using PdfSharp.Pdf;
 using PdfSharp.Pdf.IO;
+using Clickra.Core.Processors;
 
-namespace Clickra.Core.Processors;
+namespace Clickra.Core.Modules.PdfSplit.Processing;
 
 /// <summary>
 /// Splits a single PDF file into multiple output documents based on a page-range

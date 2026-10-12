@@ -1,6 +1,7 @@
-using Clickra.Core.Processors;
+using Clickra.Core.Application;
+using Clickra.Core.Modules.PdfSplit.Processing;
 
-namespace Clickra.Core.Application;
+namespace Clickra.Core.Modules.PdfSplit.Application;
 
 /// <summary>Authoritative application workflow for splitting PDF files.</summary>
 public sealed class SplitPdfUseCase : PerFileConversionUseCaseBase

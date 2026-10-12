@@ -1,5 +1,6 @@
 using Clickra.Core.Modules.Markdown.Application;
 using Clickra.Core.Modules.PdfCompression.Application;
+using Clickra.Core.Modules.PdfSplit.Application;
 using Clickra.Core.Modules.PdfTranslation.Application;
 
 namespace Clickra.Core.Application;

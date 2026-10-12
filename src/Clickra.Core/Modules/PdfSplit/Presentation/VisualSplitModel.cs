@@ -1,7 +1,8 @@
 using System;
 using System.Collections.Generic;
+using Clickra.Core.Modules.PdfSplit.Processing;
 
-namespace Clickra.Core.Processors;
+namespace Clickra.Core.Modules.PdfSplit.Presentation;
 
 /// <summary>
 /// Pure state model shared by the Win32 and WinUI visual PDF splitters.

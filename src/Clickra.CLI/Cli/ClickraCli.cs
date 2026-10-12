@@ -10,6 +10,7 @@ using Clickra.Core;
 using Clickra.Core.Application;
 using Clickra.Core.Modules.Markdown.Processing;
 using Clickra.Core.Modules.PdfCompression.Application;
+using Clickra.Core.Modules.PdfSplit.Application;
 using Clickra.Core.Modules.PdfTranslation.Application;
 using Clickra.Core.Processors;
 using Clickra.UI;

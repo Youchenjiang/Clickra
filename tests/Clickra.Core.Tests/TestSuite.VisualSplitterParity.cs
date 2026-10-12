@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using Clickra.Core.Modules.PdfSplit.Presentation;
 using Clickra.Core.Processors;
 
 namespace Clickra.Core.Tests;
