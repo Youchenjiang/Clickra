@@ -1,6 +1,6 @@
 using System.Collections.Generic;
 
-namespace Clickra.Core.Application;
+namespace Clickra.Core.Modules.HistoryTasks.Application;
 
 /// <summary>
 /// Application-facing operations for parked conversions. Persistence and atomic task transitions

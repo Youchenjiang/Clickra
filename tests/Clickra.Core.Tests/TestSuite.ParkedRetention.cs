@@ -314,7 +314,7 @@ static partial class TestSuite
 
         string facade = File.ReadAllText(Path.Combine(root, "src", CoreProjectDirectoryName, StorageDirectoryName, "ClickraStorage.ActiveRecord.cs"));
         string coordinator = File.ReadAllText(Path.Combine(root, "src", CoreProjectDirectoryName, StorageDirectoryName, "ParkedTaskCoordinator.cs"));
-        string feed = File.ReadAllText(Path.Combine(root, "src", CoreProjectDirectoryName, "Presentation", "History", "HistoryFeed.cs"));
+        string feed = File.ReadAllText(Path.Combine(root, "src", CoreProjectDirectoryName, "Modules", "HistoryTasks", "Presentation", "HistoryFeed.cs"));
         Assert.True(feed.Contains(ParkedRetentionOverrideKey, StringComparison.Ordinal),
             "The application history model must append the override marker for every interface.");
         Assert.False(facade.Contains(ParkedRetentionOverrideKey, StringComparison.Ordinal),

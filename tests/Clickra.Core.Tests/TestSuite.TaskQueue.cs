@@ -289,7 +289,7 @@ static partial class TestSuite
         Assert.True(code.Contains("_historyPresentation.CancelParked", StringComparison.Ordinal),
             "The History page must offer cancel through the shared Presentation history owner.");
         Assert.True(code.Contains("OpenTaskProgressWindow($\"resume {", StringComparison.Ordinal), "Resume must go through the shared resume entry point.");
-        string feed = File.ReadAllText(Path.Combine(root, "src", CoreProjectDirectory, "Presentation", "History", "HistoryFeed.cs"));
+        string feed = File.ReadAllText(Path.Combine(root, "src", CoreProjectDirectory, "Modules", "HistoryTasks", "Presentation", "HistoryFeed.cs"));
         Assert.True(feed.Contains("HistoryQueryController.IsUserCanceledReason", StringComparison.Ordinal),
             "Cancelled rows must be recognised through the Application history-query boundary, including the CLI's legacy marker.");
         Assert.True(feed.Contains("status_canceled", StringComparison.Ordinal),
@@ -533,7 +533,7 @@ static partial class TestSuite
 
         string fluentCode = File.ReadAllText(Path.Combine(root, "src", FluentProjectDirectory, FluentHistoryPageFile));
         string cliHistory = File.ReadAllText(Path.Combine(root, "src", CliProjectDirectory, DashboardDirectory, DashboardHistoryPaintFile));
-        string feedCode = File.ReadAllText(Path.Combine(root, "src", CoreProjectDirectory, "Presentation", "History", "HistoryFeed.cs"));
+        string feedCode = File.ReadAllText(Path.Combine(root, "src", CoreProjectDirectory, "Modules", "HistoryTasks", "Presentation", "HistoryFeed.cs"));
 
         Assert.True(feedCode.Contains("HistoryQueryController.GetParkedRetention", StringComparison.Ordinal),
             "The shared feed must compute each parked item's retention once through the Application query boundary, not leave it to the two UIs.");

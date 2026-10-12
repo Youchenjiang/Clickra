@@ -1,6 +1,7 @@
+using Clickra.Core.Modules.HistoryTasks.Application;
 using Clickra.Core.Application;
 
-namespace Clickra.Core.Presentation.History;
+namespace Clickra.Core.Modules.HistoryTasks.Presentation;
 
 public sealed record ParkedTaskResumePresentation(string TaskId, string Command, List<string> Files, int StartIndex);
 

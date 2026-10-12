@@ -9,6 +9,7 @@ using System.Drawing;
 using System.Drawing.Text;
 using System.Drawing.Drawing2D;
 using Clickra.Core;
+using Clickra.Core.Modules.HistoryTasks.Application;
 
 using static Clickra.UI.Native.Win32;
 

@@ -33,7 +33,7 @@ flowchart TB
     end
 
     subgraph Shared["Shared / not-yet-migrated Core boundaries"]
-        SharedPresentation["Presentation\nConvert / History / Progress / Dashboard"]
+        SharedPresentation["Presentation\nConvert / Progress / Dashboard"]
         SharedApplication["Application\nconversion contracts, lifecycle, gateways"]
         SharedProcessors["Processors\nPDF tools / Image / Markdown / Office"]
     end
@@ -56,6 +56,12 @@ flowchart TB
         SettingsModel["Model\nNumericSettingRange"]
         SettingsPresentation --> SettingsApplication
         SettingsApplication --> SettingsModel
+    end
+
+    subgraph HistoryTasks["Modules/HistoryTasks"]
+        HistoryPresentation["Presentation\nHistoryPresentationController / HistoryFeed"]
+        HistoryApplication["Application\nHistoryController / HistoryQueryController /\nParkedTaskController"]
+        HistoryPresentation --> HistoryApplication
     end
 
     subgraph SharedTechnical["Shared technical / platform boundaries"]
@@ -90,6 +96,8 @@ flowchart TB
     Fluent --> SharedPresentation
     Native --> SettingsPresentation
     Fluent --> SettingsPresentation
+    Native --> HistoryPresentation
+    Fluent --> HistoryPresentation
     Native -->|"headless CLI only"| SharedApplication
 
     SharedPresentation --> SharedApplication
@@ -101,6 +109,7 @@ flowchart TB
     PdfPipeline --> SharedTechnical
     SettingsApplication --> Storage
     SettingsApplication --> Infrastructure
+    HistoryApplication --> Storage
 
     Storage --> SettingsFile
     Storage --> HistoryFile
@@ -240,11 +249,9 @@ flowchart TB
 - non-migrated conversion use cases such as PDF tools, image, Markdown, Office, and merge workflows;
 - `ConversionRequest`, `ConversionPlan`, and `ConversionResult`;
 - `ConversionTaskLifecycle` for application-level task creation/completion/parking orchestration;
-- `ParkedTaskController` for parked-task actions and atomic resume claims;
-- `HistoryFeed` / `HistoryController` for application-owned history views/actions;
 - `ConversionTaskProgressController` for progress-index persistence, including compatibility writes.
 
-The PDF translation use case has migrated to `Modules.PdfTranslation.Application.TranslatePdfUseCase`; settings gateways have migrated to `Modules.Settings.Application`. Both continue to consume shared contracts where appropriate. UI surfaces still ask these owners to perform product operations instead of coordinating persistence or processor behavior themselves.
+The PDF translation use case has migrated to `Modules.PdfTranslation.Application.TranslatePdfUseCase`; settings gateways have migrated to `Modules.Settings.Application`; history/parked-task query and action gateways have migrated to `Modules.HistoryTasks.Application`. These continue to consume shared contracts where appropriate. UI surfaces still ask these owners to perform product operations instead of coordinating persistence or processor behavior themselves.
 
 #### PDF Translation module
 
@@ -273,6 +280,17 @@ Shared `Fonts`, `Rendering`, `Localization`, and `Diagnostics` remain outside th
 
 `ClickraSettings`, `SettingsStore`, and `StoragePathResolver` intentionally remain in `Clickra.Core.Storage` because the semantic SCC shows persistence is one coupled compatibility boundary. Moving application/presentation ownership does not authorize changing settings keys, file formats, caching, mutex behavior, or watcher semantics.
 
+#### HistoryTasks module
+
+`Modules/HistoryTasks` owns the safe application/presentation boundary around history and parked-task actions:
+
+- `Application/HistoryQueryController` — immutable history/task query facts;
+- `Application/HistoryController` — completed-history actions/path access;
+- `Application/ParkedTaskController` — parked-task retention/cancel/resume gateway;
+- `Presentation/HistoryPresentationController` and `HistoryFeed` — authoritative Native/Fluent History screen state, wording, and available actions.
+
+This migration intentionally stops at the lifecycle boundary. `ConversionTaskLifecycle`, `ConversionTaskProgressController`, `ConversionTaskCleanup`, `TaskProgressController`, task-record persistence, `ParkedTaskCoordinator`, and legacy `active.tmp` compatibility remain in their existing owners until a separate evidence-backed migration proves they can move without changing resume identity, atomic transitions, retention, or compatibility semantics.
+
 #### Legacy/shared Processors
 
 The remaining `Clickra.Core.Processors` bucket owns technical mechanics that have not yet migrated to capability modules. Processors receive explicit, already-normalized execution inputs from application code. Existing guards continue to prevent hidden mutable settings/storage access.
@@ -296,7 +314,7 @@ Important ownership includes:
 - `TaskPruningCoordinator` / `TaskRetentionPolicy` — stale-task cleanup and retention policy;
 - `ClickraStorage.*` — a compatibility facade that delegates to those focused owners rather than containing their implementations.
 
-`ParkedTaskCoordinator` is intentionally not a presentation/application API. Storage returns retention facts through the Application query boundary; localized retention wording is owned by `Presentation.History/HistoryFeed` with an explicit language input.
+`ParkedTaskCoordinator` is intentionally not a presentation/application API. Storage returns retention facts through `Modules.HistoryTasks.Application`; localized retention wording is owned by `Modules.HistoryTasks.Presentation.HistoryFeed` with an explicit language input.
 
 #### Translation providers versus PDF text processing
 
@@ -326,7 +344,7 @@ Presentation code is intentionally shared in the Core assembly so Native and Flu
 
 - `Presentation.Convert.ConvertWorkspaceController` — command catalog, selection, compatibility, validation, and run-state owner;
 - `Presentation.Convert.ConversionExecutionController` — presentation-facing execution session over the Application use-case layer;
-- `Presentation.History.HistoryPresentationController` / `HistoryFeed` — history/task state, derived wording, retention presentation, and available actions;
+- `Modules.HistoryTasks.Presentation.HistoryPresentationController` / `HistoryFeed` — history/task state, derived wording, retention presentation, and available actions;
 - `Modules.Settings.Presentation.SettingsPresentationController` / `SettingDescriptor` — settings screen state, descriptors, bounds, and LibreOffice presentation actions;
 - `Presentation.Progress.TaskProgressController` — semantic progress and terminal-state owner;
 - `Presentation.Dashboard.DashboardPresentationController` — semantic dashboard navigation state;
@@ -385,10 +403,10 @@ flowchart TB
     NativeUI["Native / CLI"]
     FluentUI["Fluent"]
 
-    HistoryPresentation["HistoryPresentationController\nHistoryFeed / HistoryItem"]
+    HistoryPresentation["Modules.HistoryTasks.Presentation\nHistoryPresentationController / HistoryFeed"]
     ProgressPresentation["TaskProgressController"]
-    HistoryQuery["HistoryQueryController / HistoryController"]
-    Parked["ParkedTaskController"]
+    HistoryQuery["Modules.HistoryTasks.Application\nHistoryQueryController / HistoryController"]
+    Parked["Modules.HistoryTasks.Application\nParkedTaskController"]
     Progress["ConversionTaskProgressController"]
     Lifecycle["ConversionTaskLifecycle"]
 

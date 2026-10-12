@@ -2,9 +2,10 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using Clickra.Core.Modules.HistoryTasks.Application;
 using Clickra.Core.Application;
 
-namespace Clickra.Core.Presentation.History;
+namespace Clickra.Core.Modules.HistoryTasks.Presentation;
 
 /// <summary>皜銝剔??蝔桅?嚗恐??摨憿舐內??嚗脰?銝???敺匱蝥???撌脣?????/summary>
 public enum HistoryItemKind

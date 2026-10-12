@@ -15,8 +15,6 @@ src/Clickra.Core/Application/ConversionUseCases.cs
 src/Clickra.Core/Application/ConvertCommandRegistry.cs
 src/Clickra.Core/Application/DecryptPdfUseCase.cs
 src/Clickra.Core/Application/ExcelToPdfUseCase.cs
-src/Clickra.Core/Application/HistoryController.cs
-src/Clickra.Core/Application/HistoryQueryController.cs
 src/Clickra.Core/Application/IConversionUseCase.cs
 src/Clickra.Core/Application/ImageFormatConvertUseCase.cs
 src/Clickra.Core/Application/ImageOutputSafety.cs
@@ -29,7 +27,6 @@ src/Clickra.Core/Application/MarkdownToPdfUseCase.cs
 src/Clickra.Core/Application/MarkdownToWordUseCase.cs
 src/Clickra.Core/Application/MergePdfUseCase.cs
 src/Clickra.Core/Application/OfficeToPdfUseCaseBase.cs
-src/Clickra.Core/Application/ParkedTaskController.cs
 src/Clickra.Core/Application/PdfPageCountQuery.cs
 src/Clickra.Core/Application/PerFileConversionUseCaseBase.cs
 src/Clickra.Core/Application/PptToPdfUseCase.cs
@@ -39,8 +36,6 @@ src/Clickra.Core/Application/WordToPdfUseCase.cs
 src/Clickra.Core/Presentation/Convert/ConversionExecutionController.cs
 src/Clickra.Core/Presentation/Convert/ConvertWorkspaceController.cs
 src/Clickra.Core/Presentation/Dashboard/DashboardPresentationController.cs
-src/Clickra.Core/Presentation/History/HistoryFeed.cs
-src/Clickra.Core/Presentation/History/HistoryPresentationController.cs
 src/Clickra.Core/Presentation/Native/DashboardLayout.cs
 src/Clickra.Core/Presentation/Native/HistoryLayout.cs
 src/Clickra.Core/Presentation/Progress/TaskProgressController.cs

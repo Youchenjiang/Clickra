@@ -5,7 +5,7 @@ using System.Drawing;
 using Clickra.Core;
 using Clickra.Core.Layout;
 using Clickra.Core.Presentation.Convert;
-using Clickra.Core.Presentation.History;
+using Clickra.Core.Modules.HistoryTasks.Presentation;
 using static Clickra.UI.Native.Win32;
 
 namespace Clickra.UI

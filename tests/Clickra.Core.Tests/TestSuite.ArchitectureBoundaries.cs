@@ -856,7 +856,9 @@ static partial class TestSuite
             root,
             "src",
             ArchitectureCoreProjectDirectory,
-            ArchitectureApplicationDirectory,
+            "Modules",
+            "HistoryTasks",
+            "Application",
             "ParkedTaskController.cs");
         Assert.True(File.Exists(gatewayPath), "Application parked-task gateway must exist.");
 
@@ -865,7 +867,8 @@ static partial class TestSuite
                  {
                      Path.Combine(root, "src", ArchitectureCliProjectDirectory),
                      Path.Combine(root, "src", ArchitectureFluentProjectDirectory),
-                     Path.Combine(root, "src", ArchitectureCoreProjectDirectory, ArchitectureApplicationDirectory)
+                     Path.Combine(root, "src", ArchitectureCoreProjectDirectory, ArchitectureApplicationDirectory),
+                     Path.Combine(root, "src", ArchitectureCoreProjectDirectory, "Modules")
                  })
         {
             foreach (string file in Directory.EnumerateFiles(directory, "*.cs", SearchOption.AllDirectories))
@@ -882,7 +885,7 @@ static partial class TestSuite
         {
             string member = match.Groups["member"].Value;
             if (!AllowedParkedTaskGatewayMembers.Contains(member))
-                violations.Add($"src/Clickra.Core/Application/ParkedTaskController.cs: unexpected ClickraStorage.{member} access");
+                violations.Add($"src/Clickra.Core/Modules/HistoryTasks/Application/ParkedTaskController.cs: unexpected ClickraStorage.{member} access");
         }
 
         Assert.True(
@@ -958,7 +961,7 @@ static partial class TestSuite
             }
         }
 
-        foreach (string applicationFile in new[] { "ConversionTaskLifecycle.cs", ArchitectureConvertRegistryFile, "HistoryQueryController.cs", "LibreOfficeSettingsController.cs" })
+        foreach (string applicationFile in new[] { "ConversionTaskLifecycle.cs", "ConvertCommandRegistry.cs" })
 
         {
             string file = Path.Combine(core, ArchitectureApplicationDirectory, applicationFile);
@@ -969,12 +972,10 @@ static partial class TestSuite
 
         foreach ((string relativePath, string expectedNamespace) in new[]
                  {
-                     (Path.Combine(ArchitecturePresentationDirectory, "Convert", "ConvertWorkspaceController.cs"), "Clickra.Core.Presentation.Convert"),
-                     (Path.Combine(ArchitecturePresentationDirectory, "Convert", "ConversionExecutionController.cs"), "Clickra.Core.Presentation.Convert"),
-                     (Path.Combine(ArchitecturePresentationDirectory, "History", "HistoryFeed.cs"), "Clickra.Core.Presentation.History"),
-                     (Path.Combine(ArchitecturePresentationDirectory, "History", "HistoryPresentationController.cs"), "Clickra.Core.Presentation.History"),
-                     (Path.Combine(ArchitecturePresentationDirectory, "Progress", "TaskProgressController.cs"), "Clickra.Core.Presentation.Progress"),
-                     (Path.Combine(ArchitecturePresentationDirectory, "Dashboard", "DashboardPresentationController.cs"), "Clickra.Core.Presentation.Dashboard")
+                     (Path.Combine("Presentation", "Convert", "ConvertWorkspaceController.cs"), "Clickra.Core.Presentation.Convert"),
+                     (Path.Combine("Presentation", "Convert", "ConversionExecutionController.cs"), "Clickra.Core.Presentation.Convert"),
+                     (Path.Combine("Presentation", "Progress", "TaskProgressController.cs"), "Clickra.Core.Presentation.Progress"),
+                     (Path.Combine("Presentation", "Dashboard", "DashboardPresentationController.cs"), "Clickra.Core.Presentation.Dashboard")
 
                  })
         {

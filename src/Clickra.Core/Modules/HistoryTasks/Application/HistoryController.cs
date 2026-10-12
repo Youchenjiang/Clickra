@@ -1,6 +1,6 @@
 using System.IO;
 
-namespace Clickra.Core.Application;
+namespace Clickra.Core.Modules.HistoryTasks.Application;
 
 /// <summary>Application-facing history persistence operations used by presentation surfaces.</summary>
 public static class HistoryController
