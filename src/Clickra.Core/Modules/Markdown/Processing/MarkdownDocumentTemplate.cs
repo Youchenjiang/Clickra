@@ -1,4 +1,4 @@
-namespace Clickra.Core.Processors;
+namespace Clickra.Core.Modules.Markdown.Processing;
 
 /// <summary>Renderer-neutral presentation contract shared by Markdown PDF and DOCX backends.</summary>
 public sealed record MarkdownDocumentTemplate(

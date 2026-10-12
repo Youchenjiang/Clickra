@@ -35,7 +35,7 @@ flowchart TB
     subgraph Shared["Shared / not-yet-migrated Core boundaries"]
         SharedPresentation["Presentation\nConvert / Progress / Dashboard"]
         SharedApplication["Application\nconversion contracts, lifecycle, gateways"]
-        SharedProcessors["Processors\nPDF tools / Image / Markdown / Office"]
+        SharedProcessors["Processors\nPDF tools / Image / Office"]
     end
 
     subgraph Pdf["Modules/PdfTranslation"]
@@ -62,6 +62,12 @@ flowchart TB
         HistoryPresentation["Presentation\nHistoryPresentationController / HistoryFeed"]
         HistoryApplication["Application\nHistoryController / HistoryQueryController /\nParkedTaskController"]
         HistoryPresentation --> HistoryApplication
+    end
+
+    subgraph Markdown["Modules/Markdown"]
+        MarkdownApplication["Application\nMarkdownToPdfUseCase / MarkdownToWordUseCase"]
+        MarkdownProcessing["Processing\nrender profiles / templates / PDF + DOCX backends"]
+        MarkdownApplication --> MarkdownProcessing
     end
 
     subgraph SharedTechnical["Shared technical / platform boundaries"]
@@ -103,10 +109,12 @@ flowchart TB
     SharedPresentation --> SharedApplication
     SharedApplication --> SharedProcessors
     SharedApplication --> PdfApplication
+    SharedApplication --> MarkdownApplication
     SharedApplication --> SettingsApplication
     SharedApplication --> Storage
     SharedProcessors --> SharedTechnical
     PdfPipeline --> SharedTechnical
+    MarkdownProcessing --> SharedTechnical
     SettingsApplication --> Storage
     SettingsApplication --> Infrastructure
     HistoryApplication --> Storage
@@ -246,12 +254,12 @@ flowchart TB
 `Clickra.Core.Application` remains the shared workflow kernel while capability-owned use cases move under their modules. Important shared owners include:
 
 - conversion contracts and the use-case registry;
-- non-migrated conversion use cases such as PDF tools, image, Markdown, Office, and merge workflows;
+- non-migrated conversion use cases such as PDF tools, image, Office, and merge workflows;
 - `ConversionRequest`, `ConversionPlan`, and `ConversionResult`;
 - `ConversionTaskLifecycle` for application-level task creation/completion/parking orchestration;
 - `ConversionTaskProgressController` for progress-index persistence, including compatibility writes.
 
-The PDF translation use case has migrated to `Modules.PdfTranslation.Application.TranslatePdfUseCase`; settings gateways have migrated to `Modules.Settings.Application`; history/parked-task query and action gateways have migrated to `Modules.HistoryTasks.Application`. These continue to consume shared contracts where appropriate. UI surfaces still ask these owners to perform product operations instead of coordinating persistence or processor behavior themselves.
+The PDF translation use case has migrated to `Modules.PdfTranslation.Application.TranslatePdfUseCase`; Markdown document conversion has migrated to `Modules.Markdown`; settings gateways have migrated to `Modules.Settings.Application`; history/parked-task query and action gateways have migrated to `Modules.HistoryTasks.Application`. These continue to consume shared contracts where appropriate. UI surfaces still ask these owners to perform product operations instead of coordinating persistence or processor behavior themselves.
 
 #### PDF Translation module
 
@@ -266,6 +274,17 @@ The PDF translation use case has migrated to `Modules.PdfTranslation.Application
 Provider infrastructure and PDF text processing remain distinct namespaces inside the same capability. This keeps their different responsibilities visible without pretending they belong to unrelated top-level layers.
 
 Shared `Fonts`, `Rendering`, `Localization`, and `Diagnostics` remain outside the module because semantic dependency analysis shows real consumers outside PDF translation.
+
+#### Markdown module
+
+`Modules/Markdown` owns the cohesive Markdown document-conversion slice selected by semantic dependency locality:
+
+- `Application/MarkdownConversionUseCaseBase`, `MarkdownToPdfUseCase`, and `MarkdownToWordUseCase` — authoritative planning and execution workflows;
+- `Processing/MarkdownPdfOptions` and `MarkdownRenderProfile` — normalized renderer-neutral conversion/presentation options;
+- `Processing/MarkdownDocumentTemplate`, template loaders, layout/palette helpers, and table sizing — shared PDF/DOCX rendering policy;
+- `Processing/MarkdownToPdfProcessor`, `MarkdownToWordProcessor`, and `MarkdownSingleFileProcessorBase` — Markdown-specific execution backends.
+
+Shared conversion contracts, `FileProcessor`, generic processor execution/localization helpers, `Fonts`, and Settings remain outside the module because they have real non-Markdown consumers. The move changes ownership and namespace boundaries only; PDF/DOCX output semantics, NativeAOT behavior, and interactive option flow remain unchanged.
 
 #### Settings module
 

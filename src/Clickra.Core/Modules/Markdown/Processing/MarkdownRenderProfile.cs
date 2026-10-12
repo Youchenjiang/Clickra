@@ -1,6 +1,6 @@
 using System.Collections.Generic;
 
-namespace Clickra.Core.Processors;
+namespace Clickra.Core.Modules.Markdown.Processing;
 
 /// <summary>
 /// Renderer-neutral Markdown presentation state resolved once from conversion options.

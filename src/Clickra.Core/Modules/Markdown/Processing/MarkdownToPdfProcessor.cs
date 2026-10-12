@@ -11,8 +11,9 @@ using Markdig.Syntax;
 using Markdig.Syntax.Inlines;
 using PdfSharp.Drawing;
 using PdfSharp.Pdf;
+using Clickra.Core.Processors;
 
-namespace Clickra.Core.Processors;
+namespace Clickra.Core.Modules.Markdown.Processing;
 
 /// <summary>
 /// Converts Markdown documents to PDF using Markdig for parsing and PDFsharp for rendering.

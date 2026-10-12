@@ -402,11 +402,10 @@ static partial class TestSuite
     private static void TestMarkdownPresentationOptionsHaveSingleOwner()
     {
         string root = FindRepoRoot() ?? throw new TestSkippedException(RepositoryRootMissingMessage);
-        string processorsDir = Path.Combine(root, "src", ArchitectureCoreProjectDirectory, ArchitectureProcessorsDirectory);
-        string profile = File.ReadAllText(Path.Combine(processorsDir, "MarkdownRenderProfile.cs"));
-        string fileProcessingDir = Path.Combine(processorsDir, "FileProcessing");
-        string pdf = File.ReadAllText(Path.Combine(fileProcessingDir, "MarkdownToPdfProcessor.cs"));
-        string word = File.ReadAllText(Path.Combine(fileProcessingDir, "MarkdownToWordProcessor.cs"));
+        string processingDir = Path.Combine(root, "src", ArchitectureCoreProjectDirectory, "Modules", "Markdown", "Processing");
+        string profile = File.ReadAllText(Path.Combine(processingDir, "MarkdownRenderProfile.cs"));
+        string pdf = File.ReadAllText(Path.Combine(processingDir, "MarkdownToPdfProcessor.cs"));
+        string word = File.ReadAllText(Path.Combine(processingDir, "MarkdownToWordProcessor.cs"));
 
         foreach (string resolverCall in new[]
         {

@@ -3,6 +3,8 @@ global using Clickra.Core.Diagnostics;
 global using Clickra.Core.Fonts;
 global using Clickra.Core.Infrastructure;
 global using Clickra.Core.Modules.HistoryTasks.Application;
+global using Clickra.Core.Modules.Markdown.Application;
+global using Clickra.Core.Modules.Markdown.Processing;
 global using Clickra.Core.Modules.Settings.Application;
 global using Clickra.Core.Modules.PdfTranslation.Application;
 global using Clickra.Core.Modules.PdfTranslation.Execution;

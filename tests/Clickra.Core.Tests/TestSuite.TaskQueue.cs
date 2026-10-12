@@ -190,7 +190,7 @@ static partial class TestSuite
         string fluentTask = File.ReadAllText(Path.Combine(root, "src", FluentProjectDirectory, "TaskProgressPage.xaml.cs"));
         string lifecycle = File.ReadAllText(Path.Combine(root, "src", CoreProjectDirectory, ApplicationDirectory, "ConversionTaskLifecycle.cs"));
         string perFileUseCaseBase = File.ReadAllText(Path.Combine(root, "src", CoreProjectDirectory, ApplicationDirectory, "PerFileConversionUseCaseBase.cs"));
-        string markdownUseCaseBase = File.ReadAllText(Path.Combine(root, "src", CoreProjectDirectory, ApplicationDirectory, "MarkdownConversionUseCaseBase.cs"));
+        string markdownUseCaseBase = File.ReadAllText(Path.Combine(root, "src", CoreProjectDirectory, "Modules", "Markdown", "Application", "MarkdownConversionUseCaseBase.cs"));
 
         foreach ((string name, string source) in new[] { ("ProgressWindow", native), ("FluentMain", fluentMain), ("FluentTask", fluentTask) })
         {

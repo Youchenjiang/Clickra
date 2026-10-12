@@ -12,8 +12,9 @@ using Markdig;
 using Markdig.Extensions.Tables;
 using Markdig.Syntax;
 using Markdig.Syntax.Inlines;
+using Clickra.Core.Processors;
 
-namespace Clickra.Core.Processors;
+namespace Clickra.Core.Modules.Markdown.Processing;
 
 /// <summary>Converts Markdown to a self-contained DOCX using Markdig and WordprocessingML.</summary>
 public sealed class MarkdownToWordProcessor : MarkdownSingleFileProcessorBase

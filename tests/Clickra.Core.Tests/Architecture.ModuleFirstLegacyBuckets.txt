@@ -22,9 +22,6 @@ src/Clickra.Core/Application/Img2PdfUseCase.cs
 src/Clickra.Core/Application/ImgCompressUseCase.cs
 src/Clickra.Core/Application/ImgMergeUseCase.cs
 src/Clickra.Core/Application/ImgStitchUseCase.cs
-src/Clickra.Core/Application/MarkdownConversionUseCaseBase.cs
-src/Clickra.Core/Application/MarkdownToPdfUseCase.cs
-src/Clickra.Core/Application/MarkdownToWordUseCase.cs
 src/Clickra.Core/Application/MergePdfUseCase.cs
 src/Clickra.Core/Application/OfficeToPdfUseCaseBase.cs
 src/Clickra.Core/Application/PdfPageCountQuery.cs
@@ -51,9 +48,6 @@ src/Clickra.Core/Processors/FileProcessing/ImageFormatConvertProcessor.cs
 src/Clickra.Core/Processors/FileProcessing/ImageStitchProcessor.cs
 src/Clickra.Core/Processors/FileProcessing/ImageToPdfProcessor.cs
 src/Clickra.Core/Processors/FileProcessing/LibreOfficeHelper.cs
-src/Clickra.Core/Processors/FileProcessing/MarkdownSingleFileProcessorBase.cs
-src/Clickra.Core/Processors/FileProcessing/MarkdownToPdfProcessor.cs
-src/Clickra.Core/Processors/FileProcessing/MarkdownToWordProcessor.cs
 src/Clickra.Core/Processors/FileProcessing/MultiFileProcessorBase.cs
 src/Clickra.Core/Processors/FileProcessing/OfficeConversionOptions.cs
 src/Clickra.Core/Processors/FileProcessing/OfficeEngineDetector.cs
@@ -74,13 +68,6 @@ src/Clickra.Core/Processors/FileProcessing/SingleFileProcessorBase.cs
 src/Clickra.Core/Processors/FileProcessing/VisualSplitModel.cs
 src/Clickra.Core/Processors/FileProcessing/WicImageHelper.cs
 src/Clickra.Core/Processors/FileProcessing/WordToPdfProcessor.cs
-src/Clickra.Core/Processors/MarkdownDocumentTemplate.cs
-src/Clickra.Core/Processors/MarkdownDocxTemplateFile.cs
-src/Clickra.Core/Processors/MarkdownPdfOptions.cs
-src/Clickra.Core/Processors/MarkdownRenderProfile.cs
-src/Clickra.Core/Processors/MarkdownTableColumnSizer.cs
-src/Clickra.Core/Processors/MarkdownTemplateFile.cs
-src/Clickra.Core/Processors/MarkdownTemplateSource.cs
 src/Clickra.Core/Processors/ProcessorExecutionOptions.cs
 src/Clickra.Core/Storage/ClickraSettings.cs
 src/Clickra.Core/Storage/ClickraStorage.ActiveRecord.cs

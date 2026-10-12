@@ -1,6 +1,6 @@
-using Clickra.Core.Processors;
+using Clickra.Core.Application;
 
-namespace Clickra.Core.Application;
+namespace Clickra.Core.Modules.Markdown.Application;
 
 /// <summary>Authoritative application workflow for converting Markdown documents to PDF.</summary>
 public sealed class MarkdownToPdfUseCase : MarkdownConversionUseCaseBase

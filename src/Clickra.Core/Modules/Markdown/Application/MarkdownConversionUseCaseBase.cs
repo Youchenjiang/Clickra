@@ -1,7 +1,9 @@
 using Clickra.Core.Modules.Settings.Application;
+using Clickra.Core.Application;
+using Clickra.Core.Modules.Markdown.Processing;
 using Clickra.Core.Processors;
 
-namespace Clickra.Core.Application;
+namespace Clickra.Core.Modules.Markdown.Application;
 
 /// <summary>Shared option and validation behavior for Markdown document conversions.</summary>
 public abstract class MarkdownConversionUseCaseBase : PerFileConversionUseCaseBase

@@ -4,8 +4,9 @@ using System.IO;
 using System.Threading;
 using Markdig;
 using Markdig.Syntax;
+using Clickra.Core.Processors;
 
-namespace Clickra.Core.Processors;
+namespace Clickra.Core.Modules.Markdown.Processing;
 
 /// <summary>Common validation and output state for one-input Markdown conversions.</summary>
 public abstract class MarkdownSingleFileProcessorBase : MultiFileProcessorBase
@@ -53,7 +54,7 @@ public abstract class MarkdownSingleFileProcessorBase : MultiFileProcessorBase
         if (!File.Exists(filePath)) throw new FileNotFoundException("Markdown file not found", filePath);
 
         onProgress?.Invoke(15, 100, ExecutionLocalizationOptions.Text(language, progressKey, Path.GetFileName(filePath)));
-        MarkdownDocument document = Markdown.Parse(File.ReadAllText(filePath), Pipeline);
+        MarkdownDocument document = Markdig.Markdown.Parse(File.ReadAllText(filePath), Pipeline);
         cancellationToken.ThrowIfCancellationRequested();
         return document;
     }

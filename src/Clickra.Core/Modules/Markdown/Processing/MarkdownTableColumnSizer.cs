@@ -2,7 +2,7 @@ using Markdig.Syntax;
 using Markdig.Syntax.Inlines;
 using Markdig.Extensions.Tables;
 
-namespace Clickra.Core.Processors;
+namespace Clickra.Core.Modules.Markdown.Processing;
 
 /// <summary>
 /// Resolves renderer-neutral Markdown table column proportions from intrinsic

@@ -8,7 +8,7 @@ using System.Xml;
 using System.Xml.Linq;
 using Clickra.Core;
 
-namespace Clickra.Core.Processors;
+namespace Clickra.Core.Modules.Markdown.Processing;
 
 /// <summary>Extracts renderer-neutral Markdown presentation settings from a Word DOCX template.</summary>
 public static class MarkdownDocxTemplateFile
