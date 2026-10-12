@@ -302,6 +302,31 @@ static partial class TestSuite
             "Modules are capability-first. Technical roles belong inside a capability, for example " +
             "Modules/PdfTranslation/Model rather than Modules/Models/PdfTranslation. " +
             $"Invalid first-axis directories: {string.Join(", ", invalidFirstAxis)}");
+
+        var namespaceViolations = new List<string>();
+        foreach (string capabilityDirectory in Directory.EnumerateDirectories(modulesRoot, "*", SearchOption.TopDirectoryOnly))
+        {
+            string capability = Path.GetFileName(capabilityDirectory);
+            string expectedPrefix = $"Clickra.Core.Modules.{capability}";
+            string pattern = $@"\bnamespace\s+{Regex.Escape(expectedPrefix)}(?:\.|\s*(?:;|\{{))";
+            foreach (string file in Directory.EnumerateFiles(capabilityDirectory, "*.cs", SearchOption.AllDirectories))
+            {
+                string source = File.ReadAllText(file);
+                if (Regex.IsMatch(
+                        source,
+                        pattern,
+                        RegexOptions.CultureInvariant,
+                        ArchitectureRegexTimeout))
+                    continue;
+                namespaceViolations.Add(
+                    $"{NormalizeRepoPath(root, file)}: expected namespace rooted at {expectedPrefix}");
+            }
+        }
+
+        Assert.True(
+            namespaceViolations.Count == 0,
+            "Module files must declare the namespace of their owning capability:" +
+            Environment.NewLine + string.Join(Environment.NewLine, namespaceViolations));
     }
 
     private static void TestParkedTaskOrchestrationHasSingleOwner()
@@ -866,6 +891,11 @@ static partial class TestSuite
     private static readonly Regex RawPresentationStorageAccess =
         new(@"\bClickraStorage\b", RegexOptions.Compiled, ArchitectureRegexTimeout);
 
+    private static readonly Regex GlobalPresentationStorageImport =
+        new(@"\bglobal\s+using\s+Clickra\.Core\.Storage\s*;",
+            RegexOptions.Compiled,
+            ArchitectureRegexTimeout);
+
     private static void TestPresentationDoesNotDependOnRawStorage()
     {
         string? root = FindRepoRoot();
@@ -881,14 +911,17 @@ static partial class TestSuite
             foreach (string file in Directory.EnumerateFiles(directory, "*.cs", SearchOption.AllDirectories))
             {
                 string source = File.ReadAllText(file);
-                if (!RawPresentationStorageAccess.IsMatch(source)) continue;
+                if (!RawPresentationStorageAccess.IsMatch(source) &&
+                    !GlobalPresentationStorageImport.IsMatch(source))
+                    continue;
                 violations.Add(NormalizeRepoPath(root, file));
             }
         }
 
         Assert.True(
             violations.Count == 0,
-            "CLI and Fluent presentation must use narrow application owners instead of ClickraStorage calls or nested storage models:" +
+            "CLI and Fluent presentation must use narrow application owners instead of ClickraStorage calls, " +
+            "nested storage models, or global Storage imports:" +
             Environment.NewLine + string.Join(Environment.NewLine, violations));
     }
 
@@ -902,7 +935,6 @@ static partial class TestSuite
         foreach ((string folder, string expectedNamespace) in new[]
                  {
                      (ArchitectureStorageDirectory, "Clickra.Core.Storage"),
-                     ("Translation", "Clickra.Core.Translation"),
                      ("Diagnostics", "Clickra.Core.Diagnostics"),
                      ("Fonts", "Clickra.Core.Fonts"),
                      ("Infrastructure", "Clickra.Core.Infrastructure")
@@ -1166,14 +1198,20 @@ static partial class TestSuite
         if (root is null) throw new TestSkippedException(RepositoryRootMissingMessage);
 
         string core = Path.Combine(root, "src", ArchitectureCoreProjectDirectory);
-        string providerDirectory = Path.Combine(core, "Translation");
-        string legacyPdfTranslationDirectory = Path.Combine(core, "Processors", "PdfTranslation", "Translation");
-        string textProcessingDirectory = Path.Combine(core, "Processors", "PdfTranslation", "TextProcessing");
+        string legacyProviderDirectory = Path.Combine(core, "Translation");
+        string module = Path.Combine(core, "Modules", "PdfTranslation");
+        string providerDirectory = Path.Combine(module, "Translation");
+        string legacyPdfTranslationDirectory = Path.Combine(module, "Pipeline", "Translation");
+        string textProcessingDirectory = Path.Combine(module, "Pipeline", "TextProcessing");
 
+        Assert.False(
+            Directory.Exists(legacyProviderDirectory) &&
+            Directory.EnumerateFiles(legacyProviderDirectory, "*.cs", SearchOption.AllDirectories).Any(),
+            "PDF translation providers must stay inside Modules/PdfTranslation rather than returning to Core/Translation.");
         Assert.False(
             Directory.Exists(legacyPdfTranslationDirectory) &&
             Directory.EnumerateFiles(legacyPdfTranslationDirectory, "*.cs", SearchOption.AllDirectories).Any(),
-            "The ambiguous Processors/PdfTranslation/Translation source context must not return.");
+            "The ambiguous PdfTranslation/Pipeline/Translation source context must not return.");
         Assert.True(
             Directory.Exists(textProcessingDirectory),
             "PDF translation text processing must have an explicit TextProcessing context.");
@@ -1184,7 +1222,7 @@ static partial class TestSuite
             Assert.True(
                 Regex.IsMatch(
                     source,
-                    @"\bnamespace\s+Clickra\.Core\.Translation\s*(?:;|\{)",
+                    @"\bnamespace\s+Clickra\.Core\.Modules\.PdfTranslation\.Translation\s*(?:;|\{)",
                     RegexOptions.CultureInvariant,
                     ArchitectureRegexTimeout),
                 $"{NormalizeRepoPath(root, file)} must remain translation-provider infrastructure.");
@@ -1196,7 +1234,7 @@ static partial class TestSuite
             Assert.True(
                 Regex.IsMatch(
                     source,
-                    @"\bnamespace\s+Clickra\.Core\.Processors\.PdfTranslation\.TextProcessing\s*(?:;|\{)",
+                    @"\bnamespace\s+Clickra\.Core\.Modules\.PdfTranslation\.Pipeline\.TextProcessing\s*(?:;|\{)",
                     RegexOptions.CultureInvariant,
                     ArchitectureRegexTimeout),
                 $"{NormalizeRepoPath(root, file)} must remain inside the PDF TextProcessing context.");

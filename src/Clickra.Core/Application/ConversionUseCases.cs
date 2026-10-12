@@ -1,3 +1,5 @@
+using Clickra.Core.Modules.PdfTranslation.Application;
+
 namespace Clickra.Core.Application;
 
 /// <summary>Product-wide catalog of application conversion use cases.</summary>

@@ -2,13 +2,14 @@
 
 ## Current Shape
 
-Clickra ships three Windows-facing pieces:
+Clickra ships four Windows-facing pieces:
 
+- `ClickraLauncher`: thin packaged routing entry point that activates Fluent when available and falls back to the NativeAOT dashboard.
 - `Clickra.Fluent`: WinUI 3 dashboard and right-click task-progress host. It references `Clickra.Core` directly and runs conversions in-process.
 - `Clickra.CLI`: command-line and legacy Win32 dashboard/progress fallback.
 - `ClickraShell`: NativeAOT shell extension for the Windows context menu.
 
-`Clickra.Core` owns conversion logic, storage, localization, Office engine helpers, PDF processing, and history/active-job records.
+`Clickra.Core` is a feature-oriented modular monolith. Capability/module is the primary ownership axis; technical roles such as Application, Model, Pipeline, and Persistence are secondary inside a capability. The first migrated vertical capability is `Modules/PdfTranslation`. Existing top-level Application/Presentation/Processors/Storage folders are migration-era/shared boundaries and must not be treated as the preferred location for new feature-private code.
 
 ## Why the architecture changed
 
@@ -33,24 +34,43 @@ This is a deliberate split, not a failed NativeAOT migration:
 - Keep conversion behavior in `Clickra.Core`.
 - Keep `Clickra.CLI` for command-line use and temporary legacy UI fallback.
 
-## Shared State
+## Shared State and Persistence
 
-The Fluent dashboard and CLI both use `ClickraStorage`:
+The Fluent dashboard and Native/CLI surfaces share the same persisted contracts:
 
 - `settings.conf` for preferences such as language, output directory, Office engine, and PDF options.
 - `history.log` for completed jobs.
 - `active.tmp` for currently running work.
 
-These file formats are compatibility contracts. UI changes should read and write them through `ClickraStorage`.
+These file formats are compatibility contracts. UI surfaces do **not** call raw `ClickraStorage` directly; Presentation and Application owners mediate settings, history, parked tasks, progress, and lifecycle transitions. `ClickraStorage` remains an internal compatibility facade over the focused persistence owners.
 
 ## Fluent Dashboard
 
-The Fluent dashboard is a full UI host, not a thin IPC wrapper:
+The Fluent dashboard is a UI host over the shared Core presentation/application workflows:
 
-- It calls `FileProcessor` methods directly.
+- Convert, history/tasks, settings, dashboard, and progress state are shared through Presentation owners.
+- Conversion execution flows through the authoritative Application use cases rather than a Fluent-specific processor path.
 - It uses `Localization.T(...)` for interface and processing messages.
 - It reuses `LibreOfficeEngineInstaller` and `LibreOfficeHelper` for LibreOffice setup.
 - It preserves the same settings keys as the legacy dashboard.
+
+The Native dashboard follows the same shared Presentation owners. Headless CLI is intentionally not a screen renderer and may call Application use cases directly.
+
+## Core module organization
+
+New Core product code follows:
+
+```text
+Modules/
+  <Capability>/
+    Application/   # when the capability owns workflow policy
+    Model/         # capability-private model
+    Pipeline/      # capability-private processing stages
+    Translation/   # capability-private provider/engine boundary when applicable
+    Persistence/   # only when the capability owns a distinct persistence boundary
+```
+
+Directories are created only when useful; symmetry is not a goal. The rule is **capability first, technical role second**. Architecture guards freeze the legacy top-level `Application/Presentation/Processors/Storage/Models` buckets so they can shrink but cannot gain new feature-private files.
 
 Explorer commands prefer packaged activation through
 `IApplicationActivationManager`, passing the command and selected paths to

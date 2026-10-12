@@ -1,7 +1,8 @@
-﻿using System;
+using System;
 using System.Drawing;
 using Clickra.Core;
 using Clickra.Core.Layout;
+using Clickra.Core.Modules.Settings.Model;
 
 namespace Clickra.UI;
 
@@ -94,6 +95,7 @@ namespace Clickra.UI;
             DrawDynamicSettingHeader(g, descriptor, contentX, y);
             y += SettingsLayout.DynamicNumberHeaderGap;
 
+            var range = descriptor.GetEffectiveNumericRange() ?? new NumericSettingRange(0, 100, 0);
             int value = SettingsPresentationController.Shared.ReadInt(descriptor);
             if (_subFont != null)
             {

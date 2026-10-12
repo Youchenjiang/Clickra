@@ -1,4 +1,5 @@
 using Clickra.Core;
+using Clickra.Core.Modules.Settings.Model;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Media;

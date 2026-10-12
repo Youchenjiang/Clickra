@@ -6,7 +6,4 @@ global using Clickra.Core.Presentation.Settings;
 global using Clickra.Core.Presentation.Progress;
 global using Clickra.Core.Presentation.Dashboard;
 global using Clickra.Core.Presentation.History;
-global using Clickra.Core.Models;
 global using Clickra.Core.Presentation.Native;
-global using Clickra.Core.Storage;
-global using Clickra.Core.Translation;

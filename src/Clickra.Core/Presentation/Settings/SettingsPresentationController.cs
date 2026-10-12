@@ -1,5 +1,7 @@
 using Clickra.Core.Application;
 
+using Clickra.Core.Modules.Settings.Model;
+
 namespace Clickra.Core.Presentation.Settings;
 
 public sealed record LibreOfficePresentationState(

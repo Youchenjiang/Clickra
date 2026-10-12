@@ -50,7 +50,7 @@ static partial class TestSuite
         runner.Run("Final project p1 translated title clip follows rendered CJK height", () =>
         {
             var method = typeof(PdfTranslateProcessor).Assembly
-                .GetType("Clickra.Core.Processors.PageOneLayoutClassifier")
+                .GetType("Clickra.Core.Modules.PdfTranslation.Pipeline.PageOneLayoutClassifier")
                 ?.GetMethod(
                 "GetTitleClipBottom",
                 System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Static);

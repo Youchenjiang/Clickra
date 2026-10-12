@@ -7,7 +7,7 @@ using System.Reflection;
 using System.Runtime.InteropServices;
 using Clickra.Core;
 using Clickra.Core.Application;
-using Clickra.Core.Models;
+using Clickra.Core.Modules.PdfTranslation.Application;
 using Clickra.Core.Processors;
 using Clickra.UI;
 

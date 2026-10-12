@@ -231,49 +231,48 @@ flowchart LR
 
 ---
 
-## 4. `Clickra.Core` bounded contexts
+## 4. `Clickra.Core` modules and bounded contexts
 
-The Core assembly is shared for deployment and NativeAOT reasons, but it is no longer treated as one flat responsibility bucket.
+The Core assembly is shared for deployment and NativeAOT reasons, but repository ownership is capability-first. New product code belongs under `Modules/<Capability>/...`; technical roles are secondary inside the owning capability. The old top-level `Application`, `Presentation`, `Processors`, `Storage`, and `Models` directories are shrinking migration buckets rather than the target organization.
 
 ```mermaid
 flowchart TB
     subgraph Core["Clickra.Core"]
-        App["Application\nuse cases, plans, lifecycle, gateways"]
-        Proc["Processors\ntechnical conversion operations"]
-        PdfText["Processors.PdfTranslation.TextProcessing\nPDF translation pipeline stages"]
-        Trans["Translation\nprovider / engine infrastructure"]
-        Store["Storage\npersistence and task records"]
+        SharedApp["Legacy/shared Application\nconversion contracts, lifecycle, gateways"]
+        Pdf["Modules.PdfTranslation\nApplication + Execution + Model + Pipeline + Translation"]
+        SettingsModel["Modules.Settings.Model\nsettings value types"]
+        Proc["Legacy/shared Processors\nnon-migrated technical conversion operations"]
+        Store["Storage\nsingle persistence cluster + compatibility facade"]
         Infra["Infrastructure\nowned platform integrations"]
         Pres["Presentation\nshared / Native presentation helpers"]
         Diag["Diagnostics"]
         Fonts["Fonts"]
         Loc["Localization\ncentralized catalog ownership"]
-        Models["Models / shared value types"]
     end
 
-    App --> Proc
-    App --> Store
-    App --> Trans
-    App --> Infra
-    Proc --> PdfText
-    PdfText --> Trans
-    Pres --> App
-    App --> Models
-    Proc --> Models
-    Store --> Models
+    Pres --> SharedApp
+    Pres --> SettingsModel
+    SharedApp --> Pdf
+    SharedApp --> Proc
+    SharedApp --> Store
+    SharedApp --> Infra
+    Pdf --> Store
+    Pdf --> Loc
+    Pdf --> Diag
+    Pdf --> Fonts
     Proc --> Loc
-    App --> Loc
     Proc --> Diag
     Proc --> Fonts
 ```
 
 ### Meaning of the major boundaries
 
-#### Application
+#### Shared Application kernel and migrating use cases
 
-`Clickra.Core.Application` is the authoritative owner for user-visible workflows and persistence-facing application actions. Important examples include:
+`Clickra.Core.Application` remains the shared workflow kernel while capability-owned use cases move under their modules. Important shared owners include:
 
-- conversion use cases such as `CompressPdfUseCase`, `SplitPdfUseCase`, `DecryptPdfUseCase`, image, Markdown, Office, merge, and translation workflows;
+- conversion contracts and the use-case registry;
+- non-migrated conversion use cases such as PDF tools, image, Markdown, Office, and merge workflows;
 - `ConversionRequest`, `ConversionPlan`, and `ConversionResult`;
 - `ConversionTaskLifecycle` for application-level task creation/completion/parking orchestration;
 - `SettingsController` for typed application settings access; presentation code does not consume persisted setting keys or boolean string encodings directly;
@@ -282,22 +281,31 @@ flowchart TB
 - `StoragePathController` for application-facing storage path resolution;
 - `ConversionTaskProgressController` for progress-index persistence, including compatibility writes.
 
-The UI should ask these owners to perform product operations instead of coordinating persistence or processor behavior itself.
+The PDF translation use case has migrated to `Modules.PdfTranslation.Application.TranslatePdfUseCase` while continuing to consume the shared Application contracts. UI surfaces still ask these owners to perform product operations instead of coordinating persistence or processor behavior themselves.
 
-#### Processors
+#### PDF Translation module
 
-Processors own technical conversion mechanics. They receive explicit, already-normalized execution inputs from application code.
+`Modules/PdfTranslation` is the first migrated vertical capability:
 
-Current architecture guards enforce:
+- `Application/` — authoritative `TranslatePdfUseCase`;
+- `Execution/` — `PdfTranslateProcessor`, adapting the shared processor execution contract;
+- `Model/` — PDF paragraph, annotation, rendering, and diagnostics models that were previously misleadingly placed in the repository-wide `Models` bucket;
+- `Pipeline/` — PDF-specific analysis, layout, table/diagram detection, rendering, and `TextProcessing`;
+- `Translation/` — translation provider engines, fallback, timeout, and result-quality policy.
 
-- no direct `ClickraStorage` dependency from `src/Clickra.Core/Processors/**`;
-- no hidden mutable global-setting reads inside processors;
-- localization-sensitive processor behavior receives an explicit execution language;
-- processors do not depend on Fluent or Native UI technology.
+Provider infrastructure and PDF text processing remain distinct namespaces inside the same capability. This keeps their different responsibilities visible without pretending they belong to unrelated top-level layers.
+
+Shared `Fonts`, `Rendering`, `Localization`, and `Diagnostics` remain outside the module because semantic dependency analysis shows real consumers outside PDF translation.
+
+#### Legacy/shared Processors
+
+The remaining `Clickra.Core.Processors` bucket owns technical mechanics that have not yet migrated to capability modules. Processors receive explicit, already-normalized execution inputs from application code. Existing guards continue to prevent hidden mutable settings/storage access.
 
 #### Storage
 
 `Clickra.Core.Storage` owns persistence details rather than product presentation behavior.
+
+MSBuild/Roslyn dependency analysis shows these persistence files form one strongly connected cluster. They therefore remain one persistence boundary during the module-first migration rather than being split into artificial Settings/History/Task modules merely to mirror filenames.
 
 Important ownership includes:
 
@@ -314,21 +322,21 @@ Important ownership includes:
 
 `ParkedTaskCoordinator` is intentionally not a presentation/application API. Storage returns retention facts through the Application query boundary; localized retention wording is owned by `Presentation.History/HistoryFeed` with an explicit language input.
 
-#### Translation versus PDF text processing
+#### Translation providers versus PDF text processing
 
 The two translation-related contexts are deliberately separate:
 
 ```mermaid
 flowchart LR
-    PdfUseCase["TranslatePdfUseCase"]
-    PdfPipeline["PdfTranslation.TextProcessing\nbatching, paragraph stages, reference bypass, post-processing"]
-    Engines["Clickra.Core.Translation\nITranslationEngine + providers + quality guards"]
+    PdfUseCase["Modules.PdfTranslation.Application\nTranslatePdfUseCase"]
+    PdfPipeline["Modules.PdfTranslation.Pipeline.TextProcessing\nbatching, paragraph stages, reference bypass, post-processing"]
+    Engines["Modules.PdfTranslation.Translation\nITranslationEngine + providers + quality guards"]
 
     PdfUseCase --> PdfPipeline
     PdfPipeline --> Engines
 ```
 
-`Clickra.Core.Translation` is provider/engine infrastructure. `Clickra.Core.Processors.PdfTranslation.TextProcessing` is the PDF-specific processing pipeline. The old ambiguous `PdfTranslation/Translation` context is retired and guarded against returning.
+`Modules.PdfTranslation.Translation` is provider/engine infrastructure. `Modules.PdfTranslation.Pipeline.TextProcessing` is the PDF-specific text-processing pipeline. The ambiguous `Pipeline/Translation` context is explicitly guarded against returning.
 
 #### Infrastructure
 
@@ -532,7 +540,7 @@ The following architecture areas are implemented and guarded in the current code
 2. **Processor isolation from mutable storage/settings state.**
 3. **Typed/narrow application gateways for settings, parked tasks, history, storage paths, task progress, and task lifecycle.**
 4. **Focused storage owners for settings, paths, history, task records/lifecycle, retention/pruning, and legacy compatibility; `ClickraStorage` is a compatibility facade rather than the implementation owner.**
-5. **Meaningful Core namespaces/bounded contexts for Application, Storage, Infrastructure, Translation, Diagnostics, Fonts, and PDF text processing.**
+5. **Capability-first Core ownership:** PDF Translation now lives under `Modules/PdfTranslation`, Settings has begun migrating under `Modules/Settings`, and shared Storage/Infrastructure/Diagnostics/Fonts boundaries remain explicit.
 6. **One authoritative Presentation owner for the major product screens:** Convert, History/Tasks, Settings, Progress, and Dashboard navigation.
 7. **Presentation-owned derived state and UI schema:** command grouping/compatibility/validation, history wording/retention state, settings descriptors/bounds, and progress semantics are not duplicated by Native and Fluent.
 8. **Thin primary renderers:** Native Dashboard and Fluent MainPage/TaskProgressPage forward intent and render shared state rather than directly orchestrating use cases, storage, Office/LibreOffice policy, or settings schema.
@@ -548,9 +556,9 @@ This does not mean the repository can never need future architecture work. New p
 Local completion evidence for this consolidation slice:
 
 - 5 product warnings-as-errors builds plus the test project: 0 warnings / 0 errors;
-- 77 architecture/localization guards: 77 passed, 0 failed, 0 skipped;
+- 79 architecture/localization guards: 79 passed, 0 failed, 0 skipped;
 - 352 functional tests: 352 passed, 0 failed, 0 skipped;
-- fixture-required full runner: 429 passed, 0 failed, 0 skipped;
+- fixture-required full runner: 431 passed, 0 failed, 0 skipped;
 - 34 Store publishing unit tests passed;
 - product icon asset verification passed;
 - NativeAOT publish succeeded for CLI, ClickraShell, and ClickraLauncher.

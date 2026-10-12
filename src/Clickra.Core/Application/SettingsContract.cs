@@ -1,3 +1,5 @@
+using Clickra.Core.Modules.Settings.Model;
+
 namespace Clickra.Core.Application;
 
 /// <summary>

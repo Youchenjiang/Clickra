@@ -5,7 +5,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Clickra.Core;
 using Clickra.Core.Application;
-using Clickra.Core.Models;
+using Clickra.Core.Modules.PdfTranslation.Model;
 using Clickra.Core.Processors;
 using PdfSharp.Drawing;
 using PdfSharp.Fonts;

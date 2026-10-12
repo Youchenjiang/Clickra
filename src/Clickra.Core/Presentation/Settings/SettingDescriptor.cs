@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 
 using Clickra.Core.Application;
+using Clickra.Core.Modules.Settings.Model;
 
 namespace Clickra.Core.Presentation.Settings;
     /// <summary>

@@ -54,12 +54,15 @@ partition over current Clickra.Core + linked Shared production C# code.
 
 ### Dependency locality
 
-Current source-reference graph: 633 Core/Shared file-to-file edges.
+The first migration slice was re-measured with an MSBuildWorkspace-backed Roslyn semantic graph.
+It loaded all five production projects with **0 semantic errors** and **0 workspace failures**,
+covering 264 production C# files and 1,302 semantic file-to-file edges. Of those, 789 edges are
+inside Clickra.Core + linked Shared code and are used for this partition comparison.
 
 | Partition | Same-group edges | Same-group rate | Size-adjusted lift | Graph modularity |
 | --- | ---: | ---: | ---: | ---: |
-| Layer-first | 443 | 70.0% | 2.13x | 0.3749 |
-| Module-first | 550 | 86.9% | 2.56x | 0.5042 |
+| Layer-first | 481 | 61.0% | 2.01x | 0.3381 |
+| Module-first | 611 | 77.4% | 2.44x | 0.4762 |
 
 The dependency graph therefore clusters more strongly by capability than by technical layer.
 
@@ -77,10 +80,9 @@ small/medium C# commits removes most of that migration bias.
 
 For ordinary changes, capability-first organization also better matches files that evolve together.
 
-These measurements are architectural evidence, not a claim that the current temporary source graph
-is a perfect semantic compiler graph. The repository should still replace the temporary analyzer
-with an MSBuild-backed semantic dependency analyzer before using dependency metrics as a CI truth
-source.
+These measurements are architectural evidence produced from compiler-resolved symbols rather than
+type-name matching. The analyzer is still a temporary engineering tool; it should be productized
+before dependency metrics themselves become a CI truth source.
 
 ## Target shape
 
@@ -237,9 +239,10 @@ project reference for convenience.
 
 ## Follow-up
 
-The next architecture-measurement step should replace the temporary source-name graph with an
-MSBuild-backed Roslyn semantic graph and SCC/module reports.
+The MSBuild-backed Roslyn semantic graph is now the measurement method used for migration review.
+Its SCC report confirms, among other things, that the Storage implementation is one persistence
+cluster while PDF translation has cohesive model/pipeline SCCs inside its capability.
 
-That improved analyzer may refine module boundaries. It does not change the primary rule accepted
-here: **capability first, technical role second**, unless later evidence is strong enough to justify
-an explicit architecture-decision change.
+Future slices should rerun the semantic graph after ownership moves. This does not change the
+primary rule accepted here: **capability first, technical role second**, unless later evidence is
+strong enough to justify an explicit architecture-decision change.
