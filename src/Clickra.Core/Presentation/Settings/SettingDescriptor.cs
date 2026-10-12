@@ -2,7 +2,9 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 
-namespace Clickra.Core.Storage;
+using Clickra.Core.Application;
+
+namespace Clickra.Core.Presentation.Settings;
     /// <summary>
     /// 設定控制項之編輯器種類。UI 生成引擎根據此欄位推導對應的控制項。
     /// </summary>
@@ -48,11 +50,11 @@ namespace Clickra.Core.Storage;
         int Order = 0
     )
     {
-        /// <summary>取得有效的數值範圍宣告；若未自訂則由 ClickraSettings.NumericRanges 自動推導。</summary>
+        /// <summary>取得有效的數值範圍宣告；若未自訂則由 Application settings contract 自動推導。</summary>
         public NumericSettingRange? GetEffectiveNumericRange()
         {
             if (NumericRange.HasValue) return NumericRange.Value;
-            if (ClickraSettings.TryGetNumericRange(Key, out var r)) return r;
+            if (SettingsContract.TryGetNumericRange(Key, out var r)) return r;
             return null;
         }
 
@@ -64,7 +66,7 @@ namespace Clickra.Core.Storage;
         }
 
         /// <summary>取得此設定的預設字串值。</summary>
-        public string GetDefaultValue() => ClickraSettings.GetDefault(Key);
+        public string GetDefaultValue() => SettingsContract.GetDefault(Key);
     }
 
     /// <summary>
@@ -104,7 +106,7 @@ namespace Clickra.Core.Storage;
         {
             // Behavior: 靜默模式與通知開關
             new(
-                ClickraSettings.QuietMode,
+                SettingsContract.QuietMode,
                 GroupBehavior,
                 SettingEditorKind.Toggle,
                 "setting_silent_title",
@@ -112,7 +114,7 @@ namespace Clickra.Core.Storage;
                 Order: 10
             ),
             new(
-                ClickraSettings.Notification,
+                SettingsContract.Notifications,
                 GroupBehavior,
                 SettingEditorKind.Toggle,
                 "setting_notify_title",
@@ -122,7 +124,7 @@ namespace Clickra.Core.Storage;
 
             // PDF Compression: PDF 壓縮等級、字型剝離、內容極小化
             new(
-                ClickraSettings.PdfCompressImageLevel,
+                SettingsContract.PdfCompressionImageLevel,
                 GroupPdfCompression,
                 SettingEditorKind.Slider,
                 "setting_pdf_compress_title",
@@ -131,7 +133,7 @@ namespace Clickra.Core.Storage;
                 Order: 10
             ),
             new(
-                ClickraSettings.PdfCompressStripFonts,
+                SettingsContract.PdfCompressionStripFonts,
                 GroupPdfCompression,
                 SettingEditorKind.Toggle,
                 "setting_pdf_compress_strip_fonts",
@@ -139,7 +141,7 @@ namespace Clickra.Core.Storage;
                 Order: 20
             ),
             new(
-                ClickraSettings.PdfCompressMinifyContent,
+                SettingsContract.PdfCompressionMinifyContent,
                 GroupPdfCompression,
                 SettingEditorKind.Toggle,
                 "setting_pdf_compress_minify_content",
@@ -149,7 +151,7 @@ namespace Clickra.Core.Storage;
 
             // Image Compression: 圖片壓縮品質等級、長邊像素限制
             new(
-                ClickraSettings.ImageCompressLevel,
+                SettingsContract.ImageCompressionLevel,
                 GroupImageCompression,
                 SettingEditorKind.Slider,
                 "setting_image_compress_title",
@@ -158,7 +160,7 @@ namespace Clickra.Core.Storage;
                 Order: 10
             ),
             new(
-                ClickraSettings.ImageCompressMaxDimension,
+                SettingsContract.ImageCompressionMaxDimension,
                 GroupImageCompression,
                 SettingEditorKind.Number,
                 "setting_image_max_dimension_title",
@@ -168,7 +170,7 @@ namespace Clickra.Core.Storage;
 
             // Task Queue: 暫存任務保留天數
             new(
-                ClickraSettings.ParkedTaskRetention,
+                SettingsContract.ParkedTaskRetention,
                 GroupTaskQueue,
                 SettingEditorKind.Number,
                 "setting_parked_ttl_title",
@@ -178,22 +180,22 @@ namespace Clickra.Core.Storage;
 
             // General: 輸出路徑模式與介面語言
             new(
-                ClickraSettings.OutputDir,
+                SettingsContract.OutputDirectory,
                 GroupGeneral,
                 SettingEditorKind.Choice,
                 "setting_output_title",
                 "setting_output_desc",
                 Options: new SettingOption[]
                 {
-                    new(ClickraSettings.DefaultOutputDirSource, "setting_output_same_as_source"),
-                    new(ClickraSettings.OutputDirDesktop, "setting_output_desktop"),
-                    new(ClickraSettings.OutputDirDownloads, "setting_output_downloads"),
+                    new(SettingsContract.OutputDirectorySource, "setting_output_same_as_source"),
+                    new(SettingsContract.OutputDirectoryDesktop, "setting_output_desktop"),
+                    new(SettingsContract.OutputDirectoryDownloads, "setting_output_downloads"),
                     new("custom", "setting_output_custom"),
                 },
                 Order: 10
             ),
             new(
-                ClickraSettings.Language,
+                SettingsContract.Language,
                 GroupGeneral,
                 SettingEditorKind.Choice,
                 "setting_lang_title",
@@ -211,23 +213,23 @@ namespace Clickra.Core.Storage;
 
             // Office: 轉檔引擎
             new(
-                ClickraSettings.OfficeEngine,
+                SettingsContract.OfficeEngine,
                 GroupOffice,
                 SettingEditorKind.Choice,
                 "setting_engine_title",
                 "setting_engine_desc",
                 Options: new SettingOption[]
                 {
-                    new(ClickraSettings.DefaultOfficeEngineAuto, "setting_engine_auto"),
-                    new(ClickraSettings.OfficeEngineMicrosoft, "setting_engine_microsoft"),
-                    new(ClickraSettings.OfficeEngineLibreOffice, "setting_engine_libreoffice"),
+                    new(SettingsContract.OfficeEngineAuto, "setting_engine_auto"),
+                    new(SettingsContract.OfficeEngineMicrosoft, "setting_engine_microsoft"),
+                    new(SettingsContract.OfficeEngineLibreOffice, "setting_engine_libreoffice"),
                 },
                 Order: 10
             ),
 
             // PDF: 翻譯目標語言
             new(
-                ClickraSettings.TranslateTargetLang,
+                SettingsContract.TranslationTargetLanguage,
                 GroupPdf,
                 SettingEditorKind.Choice,
                 "setting_pdf_title",
@@ -250,6 +252,20 @@ namespace Clickra.Core.Storage;
         private static readonly Dictionary<string, SettingGroupDescriptor> GroupByKey =
             Groups.ToDictionary(g => g.Key, StringComparer.OrdinalIgnoreCase);
 
+        private static readonly HashSet<string> PrimaryRendererSettings = new(StringComparer.OrdinalIgnoreCase)
+        {
+            SettingsContract.OutputDirectory,
+            SettingsContract.OfficeEngine,
+            SettingsContract.Language,
+            SettingsContract.TranslationTargetLanguage,
+            SettingsContract.QuietMode,
+            SettingsContract.Notifications,
+            SettingsContract.PdfCompressionImageLevel,
+            SettingsContract.PdfCompressionStripFonts,
+            SettingsContract.PdfCompressionMinifyContent,
+            SettingsContract.ParkedTaskRetention,
+        };
+
         /// <summary>嘗試依照鍵名取得設定介面描述項。</summary>
         public static bool TryGetDescriptor(string key, out SettingDescriptor? descriptor) =>
             ByKey.TryGetValue(key, out descriptor);
@@ -271,4 +287,7 @@ namespace Clickra.Core.Storage;
         /// <summary>是否在設定頁描述表中已註冊此鍵。</summary>
         public static bool IsDescriptorRegistered(string key) =>
             !string.IsNullOrWhiteSpace(key) && ByKey.ContainsKey(key);
+
+        public static bool IsPrimaryRendererSetting(string key) =>
+            PrimaryRendererSettings.Contains(key);
     }

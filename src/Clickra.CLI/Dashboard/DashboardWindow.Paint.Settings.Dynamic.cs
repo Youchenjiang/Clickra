@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Drawing;
 using Clickra.Core;
 using Clickra.Core.Layout;
@@ -9,8 +9,7 @@ namespace Clickra.UI;
     {
 
         private static SettingDescriptor GetRequiredSettingDescriptor(string key) =>
-            SettingPageRegistry.GetDescriptor(key)
-            ?? throw new InvalidOperationException($"Setting descriptor is not registered: {key}");
+            SettingsPresentationController.Shared.GetRequiredDescriptor(key);
 
         private static NumericSettingRange GetRequiredNumericRange(SettingDescriptor descriptor) =>
             descriptor.GetEffectiveNumericRange()
@@ -64,7 +63,7 @@ namespace Clickra.UI;
         {
             DrawDynamicSettingHeader(g, descriptor, contentX, y);
             LayoutRect toggle = SettingsLayout.ToggleRect((int)logW, (int)y);
-            bool state = SettingsController.ReadBool(descriptor);
+            bool state = SettingsPresentationController.Shared.ReadBool(descriptor);
             DrawToggleSwitch(g, state, _hoveredElement == baseElemId, toggle.X, toggle.Y, toggle.Width, toggle.Height);
             _settingsHitRects[baseElemId] = new RectangleF(toggle.X, toggle.Y, toggle.Width, toggle.Height);
             y += SettingsLayout.ToggleSectionHeight;
@@ -81,7 +80,7 @@ namespace Clickra.UI;
             _dynamicSliderTrackX = contentX;
             _dynamicSliderTrackW = sliderW;
             var range = descriptor.GetEffectiveNumericRange() ?? new NumericSettingRange(0, 1, 0);
-            int currentLevel = SettingsController.ReadInt(descriptor);
+            int currentLevel = SettingsPresentationController.Shared.ReadInt(descriptor);
             DrawDynamicSlider(g, contentX, y, sliderW, descriptor, currentLevel, range);
             LayoutRect sliderHit = SettingsLayout.SliderHitRect((int)contentX, (int)y, (int)sliderW);
             _settingsHitRects[baseElemId] = new RectangleF(sliderHit.X, sliderHit.Y, sliderHit.Width, sliderHit.Height);
@@ -95,7 +94,7 @@ namespace Clickra.UI;
             DrawDynamicSettingHeader(g, descriptor, contentX, y);
             y += SettingsLayout.DynamicNumberHeaderGap;
 
-            int value = SettingsController.ReadInt(descriptor);
+            int value = SettingsPresentationController.Shared.ReadInt(descriptor);
             if (_subFont != null)
             {
                 using var valBrush = new SolidBrush(Color.FromArgb(200, 200, 200));
@@ -122,7 +121,7 @@ namespace Clickra.UI;
             DrawDynamicSettingHeader(g, descriptor, contentX, y);
             y += SettingsLayout.ControlTopOffset;
 
-            string currentValue = SettingsController.ReadChoice(descriptor);
+            string currentValue = SettingsPresentationController.Shared.ReadChoice(descriptor);
             float buttonX = contentX;
             var options = descriptor.Options ?? Array.Empty<SettingOption>();
             for (int optionIndex = 0; optionIndex < options.Count; optionIndex++)

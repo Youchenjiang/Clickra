@@ -146,51 +146,6 @@ public static class SettingsController
         });
     }
 
-    public static bool ReadBool(SettingDescriptor descriptor)
-    {
-        RequireEditor(descriptor, SettingEditorKind.Toggle);
-        return ReadBool(descriptor.Key);
-    }
-
-    public static int ReadInt(SettingDescriptor descriptor)
-    {
-        RequireNumericEditor(descriptor);
-        NumericSettingRange? range = descriptor.GetEffectiveNumericRange();
-        int value = ReadInt(descriptor.Key);
-        return range.HasValue ? range.Value.Clamp(value) : value;
-    }
-
-    public static string ReadChoice(SettingDescriptor descriptor)
-    {
-        RequireEditor(descriptor, SettingEditorKind.Choice);
-        return ReadText(descriptor.Key);
-    }
-
-    public static void WriteBool(SettingDescriptor descriptor, bool value)
-    {
-        RequireEditor(descriptor, SettingEditorKind.Toggle);
-        WriteBool(descriptor.Key, value);
-    }
-
-    public static void WriteInt(SettingDescriptor descriptor, int value)
-    {
-        RequireNumericEditor(descriptor);
-        NumericSettingRange? range = descriptor.GetEffectiveNumericRange();
-        WriteInt(descriptor.Key, range.HasValue ? range.Value.Clamp(value) : value);
-    }
-
-    public static void WriteChoice(SettingDescriptor descriptor, string value)
-    {
-        RequireEditor(descriptor, SettingEditorKind.Choice);
-        if (descriptor.Options is { Count: > 0 } &&
-            descriptor.Options.All(option => !string.Equals(option.Value, value, StringComparison.OrdinalIgnoreCase)) &&
-            !string.Equals(descriptor.Key, ClickraSettings.OutputDir, StringComparison.OrdinalIgnoreCase))
-        {
-            throw new ArgumentOutOfRangeException(nameof(value), value, $"Value is not registered for setting '{descriptor.Key}'.");
-        }
-        WriteText(descriptor.Key, value);
-    }
-
     public static void EnsureFresh() => ClickraStorage.EnsureFreshSettings();
 
     internal static string ReadText(string key) => ClickraStorage.GetSetting(key);
@@ -201,17 +156,4 @@ public static class SettingsController
     internal static void WriteBool(string key, bool value) => WriteText(key, value ? ClickraSettings.ValueTrue : ClickraSettings.ValueFalse);
     internal static void WriteInt(string key, int value) => WriteText(key, value.ToString(System.Globalization.CultureInfo.InvariantCulture));
 
-    private static void RequireEditor(SettingDescriptor descriptor, SettingEditorKind expected)
-    {
-        ArgumentNullException.ThrowIfNull(descriptor);
-        if (descriptor.EditorKind != expected)
-            throw new ArgumentException($"Setting '{descriptor.Key}' is {descriptor.EditorKind}, not {expected}.", nameof(descriptor));
-    }
-
-    private static void RequireNumericEditor(SettingDescriptor descriptor)
-    {
-        ArgumentNullException.ThrowIfNull(descriptor);
-        if (descriptor.EditorKind is not (SettingEditorKind.Slider or SettingEditorKind.Number))
-            throw new ArgumentException($"Setting '{descriptor.Key}' is not numeric.", nameof(descriptor));
-    }
 }

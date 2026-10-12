@@ -281,15 +281,17 @@ static partial class TestSuite
         string xaml = File.ReadAllText(Path.Combine(root, "src", FluentProjectDirectory, "MainPage.xaml"));
 
         Assert.True(xaml.Contains("ParkedTasksSection", StringComparison.Ordinal), "The History page must render a parked-conversions section.");
-        Assert.True(code.Contains("HistoryFeed.Load(", StringComparison.Ordinal) && code.Contains("HistoryItemKind.Parked", StringComparison.Ordinal),
-            "The History page must list parked conversions through the shared Core feed.");
+        Assert.True(code.Contains("HistoryPresentationController", StringComparison.Ordinal)
+                    && code.Contains("_historyPresentation.ParkedItems", StringComparison.Ordinal),
+            "The History page must list parked conversions through the shared Presentation owner.");
         Assert.False(code.Contains("ClickraStorage.GetParkedTasks", StringComparison.Ordinal),
             "The History page must not enumerate parked conversions itself; HistoryFeed is the one source for both UIs.");
-        Assert.True(code.Contains("ParkedTaskController.Cancel", StringComparison.Ordinal), "The History page must offer cancel through the parked-task application boundary.");
+        Assert.True(code.Contains("_historyPresentation.CancelParked", StringComparison.Ordinal),
+            "The History page must offer cancel through the shared Presentation history owner.");
         Assert.True(code.Contains("OpenTaskProgressWindow($\"resume {", StringComparison.Ordinal), "Resume must go through the shared resume entry point.");
-        string feed = File.ReadAllText(Path.Combine(root, "src", CoreProjectDirectory, ApplicationDirectory, "HistoryFeed.cs"));
-        Assert.True(feed.Contains("ClickraStorage.IsUserCanceledReason", StringComparison.Ordinal),
-            "Cancelled rows must be recognised by the shared history marker, including the CLI's legacy one.");
+        string feed = File.ReadAllText(Path.Combine(root, "src", CoreProjectDirectory, "Presentation", "History", "HistoryFeed.cs"));
+        Assert.True(feed.Contains("HistoryQueryController.IsUserCanceledReason", StringComparison.Ordinal),
+            "Cancelled rows must be recognised through the Application history-query boundary, including the CLI's legacy marker.");
         Assert.True(feed.Contains("status_canceled", StringComparison.Ordinal),
             "A cancelled row must resolve to the shared canceled status that both interfaces render.");
 
@@ -324,12 +326,12 @@ static partial class TestSuite
 
         Assert.True(xaml.Contains("x:Name=\"ParkedRetentionBox\"", StringComparison.Ordinal) && xaml.Contains("<NumberBox", StringComparison.Ordinal),
             "The settings page must offer a numeric control for the parked-conversion retention.");
-        Assert.True(code.Contains("ParkedRetentionBox.Value = ParkedTaskController.GetRetentionDays()", StringComparison.Ordinal),
-            "The retention control must show the same value the task pruner enforces.");
+        Assert.True(code.Contains("ParkedRetentionBox.Value = SettingsPresentationController.Shared.ParkedTaskRetentionDays", StringComparison.Ordinal),
+            "The retention control must show the shared Presentation setting backed by the same policy the task pruner enforces.");
         Assert.True(code.Contains("ParkedRetentionBox.ValueChanged += OnParkedRetentionChanged", StringComparison.Ordinal),
             "Editing the retention control must persist the setting.");
-        Assert.True(code.Contains("SettingsController.ParkedTaskRetentionDays = days", StringComparison.Ordinal),
-            "Changing the retention control must write parked retention through the typed application settings gateway.");
+        Assert.True(code.Contains("SettingsPresentationController.Shared.ParkedTaskRetentionDays = days", StringComparison.Ordinal),
+            "Changing the retention control must write parked retention through the shared Presentation settings owner.");
         Assert.False(code.Contains("const string ParkedRetentionSettingKey", StringComparison.Ordinal),
             "The key must come from the ClickraSettings registry, not a local constant.");
 
@@ -377,9 +379,9 @@ static partial class TestSuite
                 $"The CLI settings paint file must render {key}.");
         }
 
-        // Must read current retention through the application parked-task boundary.
-        Assert.True(paintCode.Contains("ParkedTaskController.GetRetentionDays()", StringComparison.Ordinal),
-            "CLI dashboard settings must read the retention setting through ParkedTaskController.");
+        // Must read current retention through the shared Presentation settings owner.
+        Assert.True(paintCode.Contains("SettingsPresentationController.Shared.ParkedTaskRetentionDays", StringComparison.Ordinal),
+            "CLI dashboard settings must read the retention setting through SettingsPresentationController.");
 
         // Must offer both stepper hit targets and the five preset IDs through the shared preset loop.
         Assert.True(paintCode.Contains("AddHitRect(90,", StringComparison.Ordinal) &&
@@ -401,18 +403,18 @@ static partial class TestSuite
         Assert.True(clickCode.Contains("element >= 90 && element <= 96", StringComparison.Ordinal),
             "IsSettingsElement must route the entire retention control ID range.");
 
-        Assert.True(clickCode.Contains("SettingsController.ParkedTaskRetentionDays = clamped", StringComparison.Ordinal),
-            "Click handler must persist retention through the typed application settings gateway.");
+        Assert.True(clickCode.Contains("SettingsPresentationController.Shared.ParkedTaskRetentionDays = clamped", StringComparison.Ordinal),
+            "Click handler must persist retention through the shared Presentation settings owner.");
 
         // The default preset must come from the registry rather than embedding seven days locally.
         Assert.True(paintCode.Contains("GetDefaultParkedRetentionDays()", StringComparison.Ordinal) &&
-                    clickCode.Contains("ClickraSettings.GetDefaultInt(ClickraSettings.ParkedTaskRetention)", StringComparison.Ordinal),
-            "CLI retention default must derive from the registered ParkedTaskRetention default.");
+                    clickCode.Contains("SettingsPresentationController.Shared.DefaultParkedRetentionDays", StringComparison.Ordinal),
+            "CLI retention default must derive from the shared Presentation settings contract.");
 
         // Must clamp through the centralized range used by both CLI and Fluent.
-        Assert.True(clickCode.Contains("ClickraSettings.MinParkedRetentionDays", StringComparison.Ordinal) &&
-                    clickCode.Contains("ClickraSettings.MaxParkedRetentionDays", StringComparison.Ordinal),
-            "Retention click handler must clamp through the centralized range.");
+        Assert.True(clickCode.Contains("SettingsPresentationController.Shared.MinParkedRetentionDays", StringComparison.Ordinal) &&
+                    clickCode.Contains("SettingsPresentationController.Shared.MaxParkedRetentionDays", StringComparison.Ordinal),
+            "Retention click handler must clamp through the shared Presentation range.");
 
         // No local hardcoded settings-key literal; localization-key constants are allowed.
         Assert.False(clickCode.Contains("\"ParkedTaskRetention\"", StringComparison.Ordinal) ||
@@ -437,15 +439,15 @@ static partial class TestSuite
                 $"{name} must not keep a second copy of the retention bound.");
         }
 
-        Assert.True(fluentCode.Contains("ParkedRetentionBox.Minimum = MinParkedRetentionDays", StringComparison.Ordinal),
+        Assert.True(fluentCode.Contains("ParkedRetentionBox.Minimum = SettingsPresentationController.Shared.MinParkedRetentionDays", StringComparison.Ordinal),
             "The Fluent control must set its runtime minimum from the shared bound.");
-        Assert.True(fluentCode.Contains("ParkedRetentionBox.Maximum = MaxParkedRetentionDays", StringComparison.Ordinal),
+        Assert.True(fluentCode.Contains("ParkedRetentionBox.Maximum = SettingsPresentationController.Shared.MaxParkedRetentionDays", StringComparison.Ordinal),
             "The Fluent control must set its runtime maximum from the shared bound.");
         Assert.True(fluentXaml.Contains("x:Name=\"ParkedRetentionBox\"", StringComparison.Ordinal) &&
                     !fluentXaml.Contains("Minimum=\"0\" Maximum=\"365\"", StringComparison.Ordinal),
             "The Fluent markup must not keep a second copy of the retention bounds.");
-        Assert.True(cliClick.Contains("ClickraSettings.MinParkedRetentionDays", StringComparison.Ordinal) &&
-                    cliClick.Contains("ClickraSettings.MaxParkedRetentionDays", StringComparison.Ordinal),
+        Assert.True(cliClick.Contains("SettingsPresentationController.Shared.MinParkedRetentionDays", StringComparison.Ordinal) &&
+                    cliClick.Contains("SettingsPresentationController.Shared.MaxParkedRetentionDays", StringComparison.Ordinal),
             "The CLI retention click handler must use the shared retention bounds.");
     }
 
@@ -531,10 +533,10 @@ static partial class TestSuite
 
         string fluentCode = File.ReadAllText(Path.Combine(root, "src", FluentProjectDirectory, FluentHistoryPageFile));
         string cliHistory = File.ReadAllText(Path.Combine(root, "src", CliProjectDirectory, DashboardDirectory, DashboardHistoryPaintFile));
-        string feedCode = File.ReadAllText(Path.Combine(root, "src", CoreProjectDirectory, ApplicationDirectory, "HistoryFeed.cs"));
+        string feedCode = File.ReadAllText(Path.Combine(root, "src", CoreProjectDirectory, "Presentation", "History", "HistoryFeed.cs"));
 
-        Assert.True(feedCode.Contains("ClickraStorage.GetParkedRetentionInfo", StringComparison.Ordinal),
-            "The shared feed must compute each parked item's retention once, not leave it to the two UIs.");
+        Assert.True(feedCode.Contains("HistoryQueryController.GetParkedRetention", StringComparison.Ordinal),
+            "The shared feed must compute each parked item's retention once through the Application query boundary, not leave it to the two UIs.");
         Assert.True(fluentCode.Contains("item.RetentionText", StringComparison.Ordinal),
             "Fluent History page must render the retention phrase the shared item carries.");
 
@@ -591,8 +593,8 @@ static partial class TestSuite
         string paint = File.ReadAllText(Path.Combine(dir, DashboardHistoryPaintFile));
         string lifecycle = File.ReadAllText(Path.Combine(dir, "DashboardWindow.Lifecycle.cs"));
 
-        Assert.True(lifecycle.Contains("HistoryFeed.Load(", StringComparison.Ordinal),
-            "The dashboard must load parked conversions with the history snapshot from the shared feed.");
+        Assert.True(lifecycle.Contains("_historyPresentation.Refresh(", StringComparison.Ordinal),
+            "The dashboard must refresh parked conversions through the shared Presentation history owner.");
         Assert.False(lifecycle.Contains("ClickraStorage.GetParkedTasks()", StringComparison.Ordinal),
             "The dashboard must not enumerate parked conversions itself; HistoryFeed is the one source for both UIs.");
         Assert.True(paint.Contains("ParkedItems", StringComparison.Ordinal) && paint.Contains("item.RetentionText", StringComparison.Ordinal),
@@ -620,7 +622,7 @@ static partial class TestSuite
         string layout = File.ReadAllText(Path.Combine(dir, "DashboardWindow.cs"));
         Assert.True(layout.Contains("HistoryLayout.Build(", StringComparison.Ordinal),
             "The History column must be built through the shared Core layout.");
-        Assert.True(layout.Contains("_historyFeed.ParkedCount", StringComparison.Ordinal),
+        Assert.True(layout.Contains("_historyPresentation.Feed.ParkedCount", StringComparison.Ordinal),
             "The parked rows must be counted into the column so the list below cannot overlap them.");
         Assert.True(layout.Contains("HistoryLayout.ContentHeight(", StringComparison.Ordinal),
             "The scroll height must come from the same shared History column.");
@@ -910,9 +912,9 @@ static partial class TestSuite
         Assert.True(click.Contains("task_parked_cancel_confirm", StringComparison.Ordinal),
             "CLI Dashboard cancel click handler must prompt confirmation using task_parked_cancel_confirm.");
 
-        // Cancellation invokes the application parked-task entry point.
-        Assert.True(click.Contains("ParkedTaskController.Cancel", StringComparison.Ordinal),
-            "CLI Dashboard cancel click handler must invoke ParkedTaskController.Cancel.");
+        // Cancellation invokes the shared Presentation history owner.
+        Assert.True(click.Contains("_historyPresentation.CancelParked", StringComparison.Ordinal),
+            "CLI Dashboard cancel click handler must invoke HistoryPresentationController.CancelParked.");
 
         // Resume launches ProgressWindow; the window owns the atomic Core claim at execution time.
         Assert.False(click.Contains("ClaimParkedTaskForResume", StringComparison.Ordinal),

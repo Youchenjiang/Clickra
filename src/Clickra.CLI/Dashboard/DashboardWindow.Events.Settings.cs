@@ -17,16 +17,16 @@ namespace Clickra.UI;
 
             switch (element)
             {
-                case 5: SettingsController.QuietMode = !SettingsController.QuietMode; InvalidateRect(hwnd, IntPtr.Zero, false); break;
-                case 6: SettingsController.NotificationsEnabled = !SettingsController.NotificationsEnabled; InvalidateRect(hwnd, IntPtr.Zero, false); break;
-                case 7: SettingsController.OutputDirectory = new(OutputDirectoryKind.Source); InvalidateRect(hwnd, IntPtr.Zero, false); break;
-                case 8: SettingsController.OutputDirectory = new(OutputDirectoryKind.Desktop); InvalidateRect(hwnd, IntPtr.Zero, false); break;
-                case 9: SettingsController.OutputDirectory = new(OutputDirectoryKind.Downloads); InvalidateRect(hwnd, IntPtr.Zero, false); break;
+                case 5: SettingsPresentationController.Shared.QuietMode = !SettingsPresentationController.Shared.QuietMode; InvalidateRect(hwnd, IntPtr.Zero, false); break;
+                case 6: SettingsPresentationController.Shared.NotificationsEnabled = !SettingsPresentationController.Shared.NotificationsEnabled; InvalidateRect(hwnd, IntPtr.Zero, false); break;
+                case 7: SettingsPresentationController.Shared.OutputDirectory = new(OutputDirectoryKind.Source); InvalidateRect(hwnd, IntPtr.Zero, false); break;
+                case 8: SettingsPresentationController.Shared.OutputDirectory = new(OutputDirectoryKind.Desktop); InvalidateRect(hwnd, IntPtr.Zero, false); break;
+                case 9: SettingsPresentationController.Shared.OutputDirectory = new(OutputDirectoryKind.Downloads); InvalidateRect(hwnd, IntPtr.Zero, false); break;
                 case 20: BrowseOutputDir(hwnd); break;
-                case 32: SettingsController.OfficeEngine = OfficeEnginePreference.Auto; InvalidateRect(hwnd, IntPtr.Zero, false); break;
-                case 33: SettingsController.OfficeEngine = OfficeEnginePreference.Microsoft; InvalidateRect(hwnd, IntPtr.Zero, false); break;
-                case 34: SettingsController.OfficeEngine = OfficeEnginePreference.LibreOffice;
-                         SettingsController.LibreOfficePath = string.Empty;
+                case 32: SettingsPresentationController.Shared.OfficeEngine = OfficeEnginePreference.Auto; InvalidateRect(hwnd, IntPtr.Zero, false); break;
+                case 33: SettingsPresentationController.Shared.OfficeEngine = OfficeEnginePreference.Microsoft; InvalidateRect(hwnd, IntPtr.Zero, false); break;
+                case 34: SettingsPresentationController.Shared.OfficeEngine = OfficeEnginePreference.LibreOffice;
+                         SettingsPresentationController.Shared.LibreOfficePath = string.Empty;
                          InvalidateRect(hwnd, IntPtr.Zero, false); break;
                 case 90: AdjustParkedRetention(hwnd, -1); break;
                 case 91: AdjustParkedRetention(hwnd, 1); break;
@@ -44,13 +44,14 @@ namespace Clickra.UI;
             int descriptorIndex = (element - 1000) / 10;
             int subId = (element - 1000) % 10;
 
-            if (descriptorIndex < 0 || descriptorIndex >= SettingPageRegistry.AllDescriptors.Count) return;
-            var descriptor = SettingPageRegistry.AllDescriptors[descriptorIndex];
+            IReadOnlyList<SettingDescriptor> descriptors = SettingsPresentationController.Shared.Descriptors;
+            if (descriptorIndex < 0 || descriptorIndex >= descriptors.Count) return;
+            var descriptor = descriptors[descriptorIndex];
 
             switch (descriptor.EditorKind)
             {
                 case SettingEditorKind.Toggle:
-                    SettingsController.WriteBool(descriptor, !SettingsController.ReadBool(descriptor));
+                    SettingsPresentationController.Shared.WriteBool(descriptor, !SettingsPresentationController.Shared.ReadBool(descriptor));
                     InvalidateRect(hwnd, IntPtr.Zero, false);
                     break;
 
@@ -73,7 +74,7 @@ namespace Clickra.UI;
                             (int)Math.Round(fraction * span, MidpointRounding.AwayFromZero) + range.Value.Min,
                             range.Value.Min,
                             range.Value.Max);
-                        SettingsController.WriteInt(descriptor, newLevel);
+                        SettingsPresentationController.Shared.WriteInt(descriptor, newLevel);
                         InvalidateRect(hwnd, IntPtr.Zero, false);
                     }
                     break;
@@ -82,7 +83,7 @@ namespace Clickra.UI;
                 case SettingEditorKind.Number:
                 {
                     var range = descriptor.GetEffectiveNumericRange() ?? new NumericSettingRange(0, 100, 0);
-                    int current = SettingsController.ReadInt(descriptor);
+                    int current = SettingsPresentationController.Shared.ReadInt(descriptor);
                     int delta = subId switch
                     {
                         1 => -1,
@@ -90,7 +91,7 @@ namespace Clickra.UI;
                         _ => 0,
                     };
                     int updated = (int)Math.Clamp((long)current + delta, range.Min, range.Max);
-                    SettingsController.WriteInt(descriptor, updated);
+                    SettingsPresentationController.Shared.WriteInt(descriptor, updated);
                     InvalidateRect(hwnd, IntPtr.Zero, false);
                     break;
                 }
@@ -99,7 +100,7 @@ namespace Clickra.UI;
                 {
                     if (descriptor.Options != null && subId >= 0 && subId < descriptor.Options.Count)
                     {
-                        SettingsController.WriteChoice(descriptor, descriptor.Options[subId].Value);
+                        SettingsPresentationController.Shared.WriteChoice(descriptor, descriptor.Options[subId].Value);
                         InvalidateRect(hwnd, IntPtr.Zero, false);
                     }
                     break;
@@ -113,19 +114,22 @@ namespace Clickra.UI;
 
         private static void AdjustParkedRetention(IntPtr hwnd, int delta)
         {
-            int current = ParkedTaskController.GetRetentionDays();
+            int current = SettingsPresentationController.Shared.ParkedTaskRetentionDays;
             SetParkedRetention(hwnd, current + delta);
         }
 
         private static int GetDefaultParkedRetentionDays()
-            => ClickraSettings.GetDefaultInt(ClickraSettings.ParkedTaskRetention);
+            => SettingsPresentationController.Shared.DefaultParkedRetentionDays;
 
         private static void SetParkedRetention(IntPtr hwnd, int days)
         {
             // Same range as the Fluent settings page, from one place: a second copy of the bound
             // would let the two settings pages drift apart.
-            int clamped = Math.Clamp(days, ClickraSettings.MinParkedRetentionDays, ClickraSettings.MaxParkedRetentionDays);
-            SettingsController.ParkedTaskRetentionDays = clamped;
+            int clamped = Math.Clamp(
+                days,
+                SettingsPresentationController.Shared.MinParkedRetentionDays,
+                SettingsPresentationController.Shared.MaxParkedRetentionDays);
+            SettingsPresentationController.Shared.ParkedTaskRetentionDays = clamped;
             InvalidateRect(hwnd, IntPtr.Zero, false);
         }
 
@@ -135,7 +139,7 @@ namespace Clickra.UI;
             string folder = BrowseForFolder(hwnd, title);
             if (!string.IsNullOrEmpty(folder))
             {
-                SettingsController.OutputDirectory = new(OutputDirectoryKind.Custom, folder);
+                SettingsPresentationController.Shared.OutputDirectory = new(OutputDirectoryKind.Custom, folder);
                 InvalidateRect(hwnd, IntPtr.Zero, false);
             }
         }
@@ -143,9 +147,9 @@ namespace Clickra.UI;
         /// <summary>Handles PDF compression settings: slider drag start and option toggles.</summary>
         static void HandleCompressSettingsClick(IntPtr hwnd, int element, int adjMouseX)
         {
-            SettingDescriptor levelDescriptor = GetRequiredSettingDescriptor(ClickraSettings.PdfCompressImageLevel);
-            SettingDescriptor stripFontsDescriptor = GetRequiredSettingDescriptor(ClickraSettings.PdfCompressStripFonts);
-            SettingDescriptor minifyContentDescriptor = GetRequiredSettingDescriptor(ClickraSettings.PdfCompressMinifyContent);
+            SettingDescriptor levelDescriptor = SettingsPresentationController.Shared.PdfCompressionLevelDescriptor;
+            SettingDescriptor stripFontsDescriptor = SettingsPresentationController.Shared.PdfCompressionStripFontsDescriptor;
+            SettingDescriptor minifyContentDescriptor = SettingsPresentationController.Shared.PdfCompressionMinifyContentDescriptor;
             if (element == 83)
             {
                 // PDF compress slider clicked — snap to nearest stop via equal-width segments + enable drag
@@ -163,14 +167,14 @@ namespace Clickra.UI;
             }
             else if (element == 81)
             {
-                bool current = SettingsController.ReadBool(stripFontsDescriptor);
-                SettingsController.WriteBool(stripFontsDescriptor, !current);
+                bool current = SettingsPresentationController.Shared.ReadBool(stripFontsDescriptor);
+                SettingsPresentationController.Shared.WriteBool(stripFontsDescriptor, !current);
                 InvalidateRect(hwnd, IntPtr.Zero, false);
             }
             else if (element == 82)
             {
-                bool current = SettingsController.ReadBool(minifyContentDescriptor);
-                SettingsController.WriteBool(minifyContentDescriptor, !current);
+                bool current = SettingsPresentationController.Shared.ReadBool(minifyContentDescriptor);
+                SettingsPresentationController.Shared.WriteBool(minifyContentDescriptor, !current);
                 InvalidateRect(hwnd, IntPtr.Zero, false);
             }
         }
@@ -178,10 +182,10 @@ namespace Clickra.UI;
         /// <summary>Applies a PDF compression level selection and refreshes the settings tab.</summary>
         static void ApplyPdfCompressLevel(IntPtr hwnd, int level)
         {
-            SettingDescriptor descriptor = GetRequiredSettingDescriptor(ClickraSettings.PdfCompressImageLevel);
+            SettingDescriptor descriptor = SettingsPresentationController.Shared.PdfCompressionLevelDescriptor;
             NumericSettingRange range = GetRequiredNumericRange(descriptor);
             int clamped = Math.Clamp(level, range.Min, range.Max);
-            SettingsController.WriteInt(descriptor, clamped);
+            SettingsPresentationController.Shared.WriteInt(descriptor, clamped);
             InvalidateRect(hwnd, IntPtr.Zero, false);
         }
     }

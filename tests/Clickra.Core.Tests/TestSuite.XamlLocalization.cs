@@ -81,7 +81,7 @@ static partial class TestSuite
         Assert.False(codeBehind.Contains("private readonly List<string> _selectedFiles", StringComparison.Ordinal)
                      || codeBehind.Contains("private string? _selectedCommand", StringComparison.Ordinal)
                      || codeBehind.Contains("private bool _isRunning", StringComparison.Ordinal),
-            "Fluent conversion selection and run state must remain delegated to ConversionWorkspaceState.");
+            "Fluent conversion selection and run state must remain delegated to ConvertWorkspaceController.");
     }
 
     private static void TestConvertCommandGroupWiring()

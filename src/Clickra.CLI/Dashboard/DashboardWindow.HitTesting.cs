@@ -3,7 +3,6 @@ using System.Drawing;
 using System.Linq;
 using Clickra.Core;
 using Clickra.Core.Layout;
-using Clickra.Core.Processors;
 
 using static Clickra.UI.Native.Win32;
 
@@ -73,7 +72,8 @@ namespace Clickra.UI
                 for (int local = 0; local < ConvertCommandGroupSizes[group]; local++)
                 {
                     if (DashboardLayout.ConvertCardRect(group, local, zone.X, zone.Width, ConvertCommandGroupSizes).Contains(x, y)
-                        && ConvertCommands[commandIndex].ValidateFiles(_selectedFiles, out _))
+                        && !_convertWorkspace.IsRunning
+                        && _convertWorkspace.IsCommandCompatible(ConvertCommands[commandIndex].Command))
                     {
                         return 50 + commandIndex;
                     }
@@ -81,14 +81,14 @@ namespace Clickra.UI
                 }
             }
 
-            if (_selectedFiles.Count > 0 && DashboardLayout.ConvertClearButtonRect((int)logW).Contains(x, y)) return 25;
+            if (_convertWorkspace.HasFiles && DashboardLayout.ConvertClearButtonRect((int)logW).Contains(x, y)) return 25;
             if (zone.Contains(x, y)) return 18;
             return -1;
         }
 
         static int HitTestConvertStickyAction(int x, int y, float logW, float logH, float contentX)
         {
-            if (_activeTab != 1 || _selectedFiles.Count == 0 || _convertCommandIndex == -1) return -1;
+            if (_activeTab != 1 || !_convertWorkspace.HasFiles || _convertWorkspace.SelectedCommand is null || _convertWorkspace.IsRunning) return -1;
             int zoneW = Math.Max(0, (int)logW - (int)contentX - DashboardLayout.ConvertZoneRightMargin);
             return DashboardLayout.ConvertStickyStartButtonRect((int)contentX, zoneW, (int)logH).Contains(x, y)
                 ? 19
@@ -97,7 +97,7 @@ namespace Clickra.UI
 
         static bool IsInsideConvertStickyFooter(int x, int y, float logW, float logH, float contentX)
         {
-            if (_activeTab != 1 || _selectedFiles.Count == 0 || _convertCommandIndex == -1) return false;
+            if (_activeTab != 1 || !_convertWorkspace.HasFiles || _convertWorkspace.SelectedCommand is null || _convertWorkspace.IsRunning) return false;
             int footerW = Math.Max(0, (int)logW - (int)contentX);
             return DashboardLayout.ConvertStickyFooterRect((int)contentX, footerW, (int)logH).Contains(x, y);
         }

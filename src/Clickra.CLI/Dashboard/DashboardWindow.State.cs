@@ -4,6 +4,8 @@ using System.Collections.Concurrent;
 using System.Drawing;
 using Clickra.Core;
 using Clickra.Core.Layout;
+using Clickra.Core.Presentation.Convert;
+using Clickra.Core.Presentation.History;
 using static Clickra.UI.Native.Win32;
 
 namespace Clickra.UI
@@ -11,14 +13,16 @@ namespace Clickra.UI
     public static partial class DashboardWindow
     {
         // UI State Variables
-        static int _activeTab = 0; // 0: Overview, 1: Convert, 2: History, 3: Settings
+        static readonly DashboardPresentationController _dashboardPresentation = new();
+        static int _activeTab
+        {
+            get => (int)_dashboardPresentation.ActiveSection;
+            set => _dashboardPresentation.Select((DashboardSection)value);
+        }
         static int _hoveredElement = -1; // IDs of hovered elements
         
         // Convert tab state
-        static int _convertCommandIndex = 0; // Default: Word to PDF
-        static List<string> _selectedFiles = new List<string>();
-        // ConvertCommands / ConvertCommandGroupSizes are derived from the
-        // ConvertCommandDefs registry (see DashboardWindow.ConvertRegistry.cs).
+        static readonly ConvertWorkspaceController _convertWorkspace = new();
         
         // Language Dropdown state
         static bool _langDropdownOpen = false;
@@ -51,13 +55,13 @@ namespace Clickra.UI
         // 一份清單三個切片（進行中、待繼續、已完成），與 Fluent 的 History 頁共用 Core 的
         // HistoryFeed：狀態文字、剩餘期限、檔案描述都已經在模型裡算好一次，這裡只排版。
         // 一次 250ms 的更新讀取一次，而不是每張畫格重新掃任務目錄、逐列查檔案時間。
-        static HistoryFeed _historyFeed = HistoryFeed.Empty;
+        static readonly HistoryPresentationController _historyPresentation = new();
 
-        static IReadOnlyList<HistoryItem> ActiveItems => _historyFeed.OfKind(HistoryItemKind.Active);
-        static IReadOnlyList<HistoryItem> ParkedItems => _historyFeed.OfKind(HistoryItemKind.Parked);
+        static IReadOnlyList<HistoryItem> ActiveItems => _historyPresentation.ActiveItems;
+        static IReadOnlyList<HistoryItem> ParkedItems => _historyPresentation.ParkedItems;
 
         /// <summary>已完成紀錄：歷史列表可展開明細，也是統計卡的來源。</summary>
-        static IReadOnlyList<HistoryItem> CompletedItems => _historyFeed.OfKind(HistoryItemKind.Completed);
+        static IReadOnlyList<HistoryItem> CompletedItems => _historyPresentation.CompletedItems;
 
         // 待繼續任務列右端的動作按鈕：每列四個（縮短、延長、繼續、取消）。元素 id 由此推導，
         // 幾何則來自 Core 的版面表（DashboardLayout.ParkedRowActionRect）。
@@ -76,9 +80,6 @@ namespace Clickra.UI
             element >= ParkedActionElementBase && element < ParkedActionElementBase + ParkedItems.Count * ParkedActionCount;
 
         static int _langScrollOffset = 0;
-        static int _statTotal = 0;
-        static int _statSuccess = 0;
-        static int _statFailed = 0;
 
         // Double Buffering & Colors
         static Bitmap? _bufferBmp;

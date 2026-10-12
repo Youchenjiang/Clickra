@@ -1,226 +1,168 @@
 using System;
 using System.Collections.Generic;
 using System.Drawing;
-using System.IO;
 using System.Linq;
 using Clickra.Core;
-using Clickra.Core.Processors;
+using Clickra.Core.Presentation.Convert;
 using static Clickra.UI.Native.Win32;
 
 namespace Clickra.UI;
 
 public static partial class DashboardWindow
 {
-    // ---- Convert command registry (single source of truth) ----
-    // The dashboard "轉檔" page is fully data-driven from ConvertCommandDefs:
-    // button list, group layout, localization text, file-open filters,
-    // file validation rules and history tag colors are all derived here.
-    // To add a new feature, add ONE entry below and nothing else.
-
-    private const string FilterPdfFiles = "PDF Files (*.pdf)\0*.pdf\0All Files (*.*)\0*.*\0\0";
-    private const string FilterWordFiles = "Word Files (*.doc; *.docx)\0*.doc;*.docx\0All Files (*.*)\0*.*\0\0";
-    private const string FilterExcelFiles = "Excel Files (*.xlsx; *.xls)\0*.xlsx;*.xls\0All Files (*.*)\0*.*\0\0";
-    private const string FilterPowerPointFiles = "PowerPoint Files (*.ppt; *.pptx)\0*.ppt;*.pptx\0All Files (*.*)\0*.*\0\0";
-    private const string FilterMarkdownFiles = "Markdown Files (*.md; *.markdown)\0*.md;*.markdown\0All Files (*.*)\0*.*\0\0";
-    private const string FilterImageFiles = "Image Files (*.jpg; *.jpeg; *.png; *.bmp; *.gif; *.tiff; *.webp; *.heic)\0*.jpg;*.jpeg;*.png;*.bmp;*.gif;*.tiff;*.webp;*.heic\0All Files (*.*)\0*.*\0\0";
-
-    private sealed class ConvertCommandDef
+    /// <summary>
+    /// Native-only visual metadata layered over the shared presentation catalog.
+    /// Command identity, grouping, compatibility, selection and validation stay in Core Presentation.
+    /// </summary>
+    private sealed record NativeConvertCommand(ConvertCommandPresentation Presentation, Color TagColor)
     {
-        public string Command = "";
-        public string TextKey = "";
-        public string Filter = "";
-        public bool RequiresOffice = false;
-        public int Group = 0; // 0: Office 轉 PDF, 1: PDF 工具, 2: 圖片工具
-        public Color TagColor = Color.FromArgb(100, 100, 100);
-    }
-
-    private static readonly ConvertCommandDef[] ConvertCommandDefs = BuildCommandDefs();
-
-    private static ConvertCommandDef[] BuildCommandDefs() => new[]
-    {
-        // Office 轉 PDF (Group 0)
-        new ConvertCommandDef { Command = "word2pdf",      TextKey = "cmd_word_to_pdf",    Filter = FilterWordFiles, RequiresOffice = true, Group = 0, TagColor = Color.FromArgb(0, 120, 212) },
-        new ConvertCommandDef { Command = "excel2pdf",     TextKey = "cmd_excel_to_pdf",   Filter = FilterExcelFiles, RequiresOffice = true, Group = 0, TagColor = Color.FromArgb(16, 124, 65) },
-        new ConvertCommandDef { Command = "ppt2pdf",       TextKey = "cmd_ppt_to_pdf",     Filter = FilterPowerPointFiles, RequiresOffice = true, Group = 0, TagColor = Color.FromArgb(180, 50, 30) },
-        new ConvertCommandDef { Command = "md2pdf",        TextKey = "cmd_md_to_pdf",      Filter = FilterMarkdownFiles, RequiresOffice = false, Group = 0, TagColor = Color.FromArgb(96, 72, 164) },
-        new ConvertCommandDef { Command = "md2word",       TextKey = "cmd_md_to_word",     Filter = FilterMarkdownFiles, RequiresOffice = false, Group = 0, TagColor = Color.FromArgb(43, 87, 154) },
-
-        // PDF 工具 (Group 1)
-        new ConvertCommandDef { Command = "merge-pdf",     TextKey = "cmd_merge_pdf",      Filter = FilterPdfFiles, Group = 1, TagColor = Color.FromArgb(16, 124, 65) },
-        new ConvertCommandDef { Command = "compress-pdf",  TextKey = "cmd_compress_pdf",   Filter = FilterPdfFiles, Group = 1, TagColor = Color.FromArgb(0, 120, 120) },
-        new ConvertCommandDef { Command = "translate-pdf", TextKey = "cmd_translate_pdf",  Filter = FilterPdfFiles, Group = 1, TagColor = Color.FromArgb(138, 43, 226) },
-        new ConvertCommandDef { Command = "decrypt-pdf",   TextKey = "cmd_decrypt_pdf",    Filter = FilterPdfFiles, Group = 1, TagColor = Color.FromArgb(0, 150, 136) },
-        new ConvertCommandDef { Command = "split-pdf",     TextKey = "cmd_split_pdf",      Filter = FilterPdfFiles, Group = 1, TagColor = Color.FromArgb(0, 188, 212) },
-
-        // 圖片工具 (Group 2)
-        new ConvertCommandDef { Command = "img2pdf",       TextKey = "cmd_img_to_pdf",     Filter = FilterImageFiles, Group = 2, TagColor = Color.FromArgb(100, 60, 180) },
-        new ConvertCommandDef { Command = "img-merge",     TextKey = "cmd_merge_img",      Filter = FilterImageFiles, Group = 2, TagColor = Color.FromArgb(0, 130, 135) },
-        new ConvertCommandDef { Command = "img-stitch",    TextKey = "cmd_stitch_img",     Filter = FilterImageFiles, Group = 2, TagColor = Color.FromArgb(216, 59, 1) },
-        new ConvertCommandDef { Command = "img-to-png",    TextKey = "cmd_img_to_png",     Filter = FilterImageFiles, Group = 2, TagColor = Color.FromArgb(0, 120, 212) },
-        new ConvertCommandDef { Command = "img-to-jpg",    TextKey = "cmd_img_to_jpg",     Filter = FilterImageFiles, Group = 2, TagColor = Color.FromArgb(255, 140, 0) },
-        new ConvertCommandDef { Command = "img-to-webp",   TextKey = "cmd_img_to_webp",    Filter = FilterImageFiles, Group = 2, TagColor = Color.FromArgb(0, 153, 188) },
-        new ConvertCommandDef { Command = "img-to-gif",    TextKey = "cmd_img_to_gif",     Filter = FilterImageFiles, Group = 2, TagColor = Color.FromArgb(163, 73, 164) },
-        new ConvertCommandDef { Command = "img-to-heic",   TextKey = "cmd_img_to_heic",    Filter = FilterImageFiles, Group = 2, TagColor = Color.FromArgb(16, 124, 65) },
-    };
-
-    // Derived state — keep these names so existing layout / hit-test / paint code keeps working.
-    private static readonly ConvertCommand[] ConvertCommands = BuildCommands(ConvertCommandDefs);
-    private static readonly int[] ConvertCommandGroupSizes = BuildGroupSizes(ConvertCommandDefs);
-    private static readonly Dictionary<string, ConvertCommand> ConvertCommandByKey = BuildCommandLookup(ConvertCommands);
-
-    private static ConvertCommand[] BuildCommands(ConvertCommandDef[] defs)
-        => defs.OrderBy(d => d.Group).Select(d => new ConvertCommand(d)).ToArray();
-
-    private static int[] BuildGroupSizes(ConvertCommandDef[] defs)
-    {
-        int maxGroup = defs.Max(d => d.Group);
-        var sizes = new int[maxGroup + 1];
-        foreach (var d in defs)
-            sizes[d.Group]++;
-        return sizes;
-    }
-
-    private static Dictionary<string, ConvertCommand> BuildCommandLookup(ConvertCommand[] commands)
-    {
-        var map = new Dictionary<string, ConvertCommand>(StringComparer.OrdinalIgnoreCase);
-        foreach (var c in commands)
-            map[c.Command] = c;
-        return map;
-    }
-
-    /// <summary>A dashboard convert feature: registry metadata plus its execution behavior.</summary>
-    private sealed class ConvertCommand
-    {
-        private readonly ConvertCommandDef _def;
-
-        public ConvertCommand(ConvertCommandDef def) => _def = def;
-
-        public string Command => _def.Command;
-        public string TextKey => _def.TextKey;
-        public string[] Extensions => ConvertCommandRegistry.GetAllowedExtensions(Command);
-        public int MinFiles => ConvertCommandRegistry.GetMinFiles(Command);
-        public bool RequiresOffice => _def.RequiresOffice;
-        public int Group => _def.Group;
-        public Color TagColor => _def.TagColor;
-
-        /// <summary>The localized button label.</summary>
-        public string DisplayName => GetText(_def.TextKey);
+        public string Command => Presentation.Command;
+        public string TextKey => Presentation.LabelKey;
+        public int Group => Presentation.Group;
+        public bool RequiresOffice => Presentation.RequiresOffice;
+        public string[] Extensions => ConvertWorkspaceController.GetAllowedExtensions(Command);
+        public string DisplayName => GetText(TextKey);
 
         public string GetOpenFilter()
-            => _def.Filter.Length > 0 ? _def.Filter : FilterImageFiles;
-
-        /// <summary>Validates that the selected files are usable for this command, returning
-        /// the translated error message when not.</summary>
-        public bool ValidateFiles(List<string> files, out string errorMsg)
         {
-            errorMsg = "";
-            if (files.Count == 0) return true;
+            string patterns = string.Join(";", Extensions.Select(extension => $"*{extension}"));
+            return $"Supported Files ({patterns})\0{patterns}\0All Files (*.*)\0*.*\0\0";
+        }
+    }
 
-            var invalid = files.Where(f => !Extensions.Contains(Path.GetExtension(f).ToLowerInvariant())).ToList();
-            if (invalid.Count > 0)
-            {
-                errorMsg = GetText("convert_err_invalid_ext");
-                return false;
-            }
+    private static readonly NativeConvertCommand[] ConvertCommands = ConvertWorkspaceController.CommandCatalog
+        .Select(item => new NativeConvertCommand(item, GetCommandTagColor(item.Command)))
+        .ToArray();
 
-            if (files.Count < MinFiles)
-            {
-                errorMsg = string.Format(GetText("convert_err_min_files"), MinFiles);
-                return false;
-            }
+    private static readonly int[] ConvertCommandGroupSizes = ConvertWorkspaceController.CommandCatalog
+        .GroupBy(item => item.Group)
+        .OrderBy(group => group.Key)
+        .Select(group => group.Count())
+        .ToArray();
 
-            return true;
+    private static readonly Dictionary<string, NativeConvertCommand> ConvertCommandByKey = ConvertCommands
+        .ToDictionary(command => command.Command, StringComparer.OrdinalIgnoreCase);
+
+    private static Color GetCommandTagColor(string command) => command switch
+    {
+        "word2pdf" => Color.FromArgb(0, 120, 212),
+        "excel2pdf" => Color.FromArgb(16, 124, 65),
+        "ppt2pdf" => Color.FromArgb(180, 50, 30),
+        "md2pdf" => Color.FromArgb(96, 72, 164),
+        "md2word" => Color.FromArgb(43, 87, 154),
+        "merge-pdf" => Color.FromArgb(16, 124, 65),
+        "compress-pdf" => Color.FromArgb(0, 120, 120),
+        "translate-pdf" => Color.FromArgb(138, 43, 226),
+        "decrypt-pdf" => Color.FromArgb(0, 150, 136),
+        "split-pdf" => Color.FromArgb(0, 188, 212),
+        "img2pdf" => Color.FromArgb(100, 60, 180),
+        "img-merge" => Color.FromArgb(0, 130, 135),
+        "img-stitch" => Color.FromArgb(216, 59, 1),
+        "img-to-png" => Color.FromArgb(0, 120, 212),
+        "img-to-jpg" => Color.FromArgb(255, 140, 0),
+        "img-to-webp" => Color.FromArgb(0, 153, 188),
+        "img-to-gif" => Color.FromArgb(163, 73, 164),
+        "img-to-heic" => Color.FromArgb(16, 124, 65),
+        _ => Color.FromArgb(100, 100, 100)
+    };
+
+    private static int GetCommandIndex(string command) =>
+        Array.FindIndex(ConvertCommands, item => item.Command.Equals(command, StringComparison.OrdinalIgnoreCase));
+
+    private static string DescribeConvertValidation(ConvertWorkspaceValidation validation) => validation.Kind switch
+    {
+        ConvertWorkspaceValidationKind.TooFewFiles =>
+            string.Format(GetText("convert_err_min_files"), validation.MinimumFiles),
+        ConvertWorkspaceValidationKind.InvalidExtension => GetText("convert_err_invalid_ext"),
+        _ => GetText("convert_err_invalid_ext")
+    };
+
+    private static bool HasAvailableEngine(NativeConvertCommand command) =>
+        !command.RequiresOffice || SettingsPresentationController.Shared.IsOfficeCommandReady(command.Command);
+
+    private static void SelectConvertCommand(NativeConvertCommand command)
+    {
+        _convertWorkspace.TrySelectCommand(command.Command);
+    }
+
+    private static void RunConvertCommand(NativeConvertCommand command, IntPtr hwnd)
+    {
+        ConvertWorkspaceValidation validation = _convertWorkspace.ValidateSelection();
+        if (!validation.IsValid)
+        {
+            MessageBox(hwnd, DescribeConvertValidation(validation), "Clickra", 0x30);
+            return;
         }
 
-        /// <summary>Whether a usable Office engine (Microsoft or LibreOffice) is available for this command.</summary>
-        public bool HasAvailableEngine() => OfficeEngineDetector.IsCommandReady(
-            Command,
-            SettingsController.OfficeEngineValue,
-            SettingsController.LibreOfficeRemovalPendingRestart,
-            SettingsController.LibreOfficePath);
-
-        /// <summary>Activates the given command on the convert tab, clearing incompatible
-        /// selections.</summary>
-        public static void Select(ConvertCommand command)
+        if (!HasAvailableEngine(command))
         {
-            _convertCommandIndex = Array.IndexOf(ConvertCommands, command);
-            if (_selectedFiles.Count > 0 && !command.ValidateFiles(_selectedFiles, out _))
-            {
-                _selectedFiles.Clear();
-            }
+            string errorKey = SettingsPresentationController.Shared.GetOfficeUnavailableErrorKey();
+            MessageBox(hwnd, Localization.T(errorKey, SettingsPresentationController.Shared.Language), "Clickra", 0x30);
+            return;
         }
 
-        /// <summary>Runs the given command for the currently selected files and switches
-        /// to the history tab.</summary>
-        public static void Run(ConvertCommand command, IntPtr hwnd)
+        var filesCopy = new List<string>(_convertWorkspace.SelectedFiles);
+        bool markdownCommand = command.Command.Equals("md2pdf", StringComparison.OrdinalIgnoreCase)
+            || command.Command.Equals("md2word", StringComparison.OrdinalIgnoreCase);
+
+        _convertWorkspace.BeginRun();
+        StartConvertProgress(command, hwnd, filesCopy, markdownCommand);
+
+        if (markdownCommand) return;
+
+        _convertWorkspace.ClearFiles();
+        _activeTab = 2;
+        RefreshHistoryData();
+        InvalidateRect(hwnd, IntPtr.Zero, false);
+    }
+
+    private static void StartConvertProgress(
+        NativeConvertCommand command,
+        IntPtr hwnd,
+        List<string> filesCopy,
+        bool markdownCommand)
+    {
+        var thread = new System.Threading.Thread(() =>
         {
-            if (_selectedFiles.Count == 0) return;
-
-            if (!command.ValidateFiles(_selectedFiles, out string error))
+            try
             {
-                MessageBox(hwnd, error, "Clickra", 0x30);
-                return;
-            }
-
-            if (command.RequiresOffice && !command.HasAvailableEngine())
-            {
-                string language = SettingsController.Language;
-                string errorKey = GetOfficeEngineUnavailableErrorKey();
-                MessageBox(hwnd, Localization.T(errorKey, language), "Clickra", 0x30);
-                return;
-            }
-
-            var filesCopy = new List<string>(_selectedFiles);
-            bool markdownCommand = command.Command.Equals("md2pdf", StringComparison.OrdinalIgnoreCase)
-                || command.Command.Equals("md2word", StringComparison.OrdinalIgnoreCase);
-            StartConvertProgress(command, hwnd, filesCopy, markdownCommand);
-
-            if (markdownCommand) return;
-
-            _selectedFiles.Clear();
-
-            _activeTab = 2; // Switch to History
-            RefreshHistoryData();
-            InvalidateRect(hwnd, IntPtr.Zero, false);
-        }
-
-        private static string GetOfficeEngineUnavailableErrorKey() =>
-            OfficeEngineDetector.GetUnavailableErrorKey(
-                SettingsController.OfficeEngineValue);
-
-        private static void StartConvertProgress(
-            ConvertCommand command,
-            IntPtr hwnd,
-            List<string> filesCopy,
-            bool markdownCommand)
-        {
-            var thread = new System.Threading.Thread(() =>
-            {
-                try
-                {
-                    ProgressWindow.Show(
-                        command.Command,
-                        filesCopy,
-                        markdownDecision: markdownCommand
-                            ? started =>
+                ProgressWindow.Show(
+                    command.Command,
+                    filesCopy,
+                    markdownDecision: markdownCommand
+                        ? started =>
+                        {
+                            if (!started || !IsWindow(hwnd)) return;
+                            PostDashboardAction(hwnd, () =>
                             {
-                                if (!started || !IsWindow(hwnd)) return;
-                                PostDashboardAction(hwnd, () =>
-                                {
-                                    _selectedFiles.Clear();
-                                    _activeTab = 2;
-                                    RefreshHistoryData();
-                                });
-                            }
-                            : null);
-                }
-                catch (Exception ex)
+                                _convertWorkspace.ClearFiles();
+                                _activeTab = 2;
+                                RefreshHistoryData();
+                            });
+                        }
+                        : null);
+            }
+            catch (Exception ex)
+            {
+                MessageBox(IntPtr.Zero, $"Execution failed: {ex.Message}", "Clickra", 0x10);
+            }
+            finally
+            {
+                if (IsWindow(hwnd))
                 {
-                    MessageBox(IntPtr.Zero, $"Execution failed: {ex.Message}", "Clickra", 0x10);
+                    PostDashboardAction(hwnd, () =>
+                    {
+                        _convertWorkspace.EndRun();
+                        InvalidateRect(hwnd, IntPtr.Zero, false);
+                    });
                 }
-            });
-            thread.SetApartmentState(System.Threading.ApartmentState.STA);
-            thread.Start();
-        }
+                else
+                {
+                    _convertWorkspace.EndRun();
+                }
+            }
+        });
+        thread.SetApartmentState(System.Threading.ApartmentState.STA);
+        thread.Start();
     }
 }

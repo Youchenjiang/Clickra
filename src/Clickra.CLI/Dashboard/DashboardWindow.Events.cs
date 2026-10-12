@@ -214,7 +214,7 @@ namespace Clickra.UI
         /// <summary>Snaps the PDF compression slider to the nearest level while it is dragged.</summary>
         static void UpdatePdfSliderDrag(IntPtr hwnd, int mouseX, float sidebarW)
         {
-            SettingDescriptor descriptor = GetRequiredSettingDescriptor(ClickraSettings.PdfCompressImageLevel);
+            SettingDescriptor descriptor = SettingsPresentationController.Shared.PdfCompressionLevelDescriptor;
             NumericSettingRange range = GetRequiredNumericRange(descriptor);
             // Drag on compress slider: real-time snap with equal intervals across descriptor-owned stops.
             float sliderMouseX = mouseX >= sidebarW ? mouseX + _contentScrollX : mouseX;
@@ -225,7 +225,7 @@ namespace Clickra.UI
                 (int)Math.Round(fraction * span, MidpointRounding.AwayFromZero) + range.Min,
                 range.Min,
                 range.Max);
-            int current = SettingsController.ReadInt(descriptor);
+            int current = SettingsPresentationController.Shared.ReadInt(descriptor);
             if (current != newLevel)
             {
                 ApplyPdfCompressLevel(hwnd, newLevel);
@@ -235,8 +235,9 @@ namespace Clickra.UI
         /// <summary>Snaps a dynamic settings slider to the nearest level while it is dragged.</summary>
         static void UpdateDynamicSliderDrag(IntPtr hwnd, int mouseX, float sidebarW)
         {
-            if (_dynamicSliderDescriptorIndex < 0 || _dynamicSliderDescriptorIndex >= SettingPageRegistry.AllDescriptors.Count) return;
-            var descriptor = SettingPageRegistry.AllDescriptors[_dynamicSliderDescriptorIndex];
+            IReadOnlyList<SettingDescriptor> descriptors = SettingsPresentationController.Shared.Descriptors;
+            if (_dynamicSliderDescriptorIndex < 0 || _dynamicSliderDescriptorIndex >= descriptors.Count) return;
+            var descriptor = descriptors[_dynamicSliderDescriptorIndex];
             var range = descriptor.GetEffectiveNumericRange();
             if (!range.HasValue) return;
 
@@ -248,10 +249,10 @@ namespace Clickra.UI
                 (int)Math.Round(fraction * span, MidpointRounding.AwayFromZero) + range.Value.Min,
                 range.Value.Min,
                 range.Value.Max);
-            int current = SettingsController.ReadInt(descriptor);
+            int current = SettingsPresentationController.Shared.ReadInt(descriptor);
             if (current != newLevel)
             {
-                SettingsController.WriteInt(descriptor, newLevel);
+                SettingsPresentationController.Shared.WriteInt(descriptor, newLevel);
                 InvalidateRect(hwnd, IntPtr.Zero, false);
             }
         }
@@ -467,7 +468,7 @@ namespace Clickra.UI
         {
             if (w == TIMER_ID_REFRESH)
             {
-                SettingsController.EnsureFresh();
+                SettingsPresentationController.Shared.EnsureFresh();
                 RefreshHistoryData();
                 InvalidateRect(hwnd, IntPtr.Zero, false);
             }

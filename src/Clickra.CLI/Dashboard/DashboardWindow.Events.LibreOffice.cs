@@ -1,7 +1,6 @@
 using System;
 using System.IO;
 using Clickra.Core;
-using Clickra.Core.Processors;
 using static Clickra.UI.Native.Win32;
 
 namespace Clickra.UI;
@@ -37,10 +36,8 @@ namespace Clickra.UI;
             string candidate = chosen[0];
             if (Path.GetFileName(candidate).Equals("soffice.exe", StringComparison.OrdinalIgnoreCase))
             {
-                if (LibreOfficeHelper.LooksLikeLibreOfficeExecutable(candidate))
+                if (SettingsPresentationController.Shared.TryUseLibreOfficeExecutable(candidate))
                 {
-                    SettingsController.LibreOfficePath = candidate;
-                    SettingsController.LibreOfficeRemovalPendingRestart = false;
                     MessageBox(hwnd, string.Format(GetText("setting_libreoffice_validated"), Path.GetDirectoryName(candidate)), AppTitle, 0x40);
                 }
                 else
@@ -66,19 +63,10 @@ namespace Clickra.UI;
                 }
             }
 
-            bool removalPendingRestart = SettingsController.LibreOfficeRemovalPendingRestart;
-            var package = LibreOfficeEngineInstaller.RecommendedPackage;
-            string installedVersion = LibreOfficeEngineInstaller.GetInstalledSystemVersion();
-            if (!removalPendingRestart &&
-                !string.IsNullOrWhiteSpace(installedVersion) &&
-                LibreOfficeEngineInstaller.IsRecommendedVersionInstalled())
+            bool removalPendingRestart = SettingsPresentationController.Shared.LibreOfficeRemovalPendingRestart;
+            var package = SettingsPresentationController.Shared.RecommendedLibreOfficePackage;
+            if (SettingsPresentationController.Shared.TryUseCurrentRecommendedLibreOffice(out string installedVersion))
             {
-                string resolvedPath = LibreOfficeEngineInstaller.ResolveSystemSofficePath();
-                if (!string.IsNullOrWhiteSpace(resolvedPath))
-                {
-                    SettingsController.LibreOfficePath = resolvedPath;
-                }
-
                 MessageBox(
                     hwnd,
                     string.Format(GetText("setting_libreoffice_already_current"), installedVersion),
@@ -93,7 +81,7 @@ namespace Clickra.UI;
                 package.Version,
                 package.Edition,
                 FormatBytes(package.DownloadBytes),
-                LibreOfficeEngineInstaller.GetDefaultInstallRoot(),
+                SettingsPresentationController.Shared.DefaultLibreOfficeInstallRoot,
                 package.Sha256);
 
             if (MessageBox(hwnd, prompt, AppTitle, 0x41) != 1) return;
@@ -116,47 +104,28 @@ namespace Clickra.UI;
 
         static void DownloadLibreOfficeInBackground(IntPtr hwnd)
         {
-            var package = LibreOfficeEngineInstaller.RecommendedPackage;
             try
             {
-                string downloadDir = StoragePathController.GetDownloadsDirectory();
+                string downloadDir = SettingsPresentationController.Shared.GetDownloadsDirectory();
                 var progress = new Progress<int>(percent => ReportDownloadProgress(hwnd, percent));
-                string installerPath = LibreOfficeEngineInstaller.DownloadAndVerifyAsync(
-                        package,
+                LibreOfficeInstallPresentationResult installResult = SettingsPresentationController.Shared.InstallRecommendedLibreOfficeAsync(
                         downloadDir,
                         progress,
                         System.Threading.CancellationToken.None)
                     .GetAwaiter()
                     .GetResult();
-
-                PostDashboardAction(hwnd, () => SetLibreOfficeSetupStatus(85, GetText("setting_libreoffice_installing")));
-
-                LibreOfficeInstallResult installResult = LibreOfficeEngineInstaller.InstallMsiPackageAsync(
-                        installerPath,
-                        System.Threading.CancellationToken.None)
-                    .GetAwaiter()
-                    .GetResult();
-
                 string sofficePath = installResult.SofficePath;
-                if (!installResult.RestartRequired && !LibreOfficeHelper.LooksLikeLibreOfficeExecutable(sofficePath))
-                    throw new InvalidOperationException(GetText("setting_libreoffice_validation_failed"));
-
                 PostDashboardAction(hwnd, () => SetLibreOfficeSetupStatus(95, GetText("setting_libreoffice_installing")));
-
-                if (!string.IsNullOrWhiteSpace(sofficePath))
-                    SettingsController.LibreOfficePath = sofficePath;
-                bool managementRecorded = LibreOfficeEngineInstaller.TryRecordManagedSystemInstallation(sofficePath);
-                SettingsController.LibreOfficeRemovalPendingRestart = false;
 
                 PostDashboardAction(hwnd, () => ShowInstallResultMessage(
                     hwnd,
                     installResult.RestartRequired,
                     sofficePath,
-                    managementRecorded));
+                    installResult.ManagementRecorded));
             }
             catch (Exception ex)
             {
-                SettingsController.LibreOfficePath = string.Empty;
+                SettingsPresentationController.Shared.LibreOfficePath = string.Empty;
                 PostDashboardAction(hwnd, () => ShowDownloadFailureMessage(hwnd, ex.Message));
             }
             finally
@@ -187,7 +156,7 @@ namespace Clickra.UI;
                     GetText(restartRequired
                         ? "setting_libreoffice_install_restart_required"
                         : "setting_libreoffice_download_ready"),
-                    string.IsNullOrWhiteSpace(sofficePath) ? LibreOfficeEngineInstaller.GetDefaultInstallRoot() : sofficePath),
+                    string.IsNullOrWhiteSpace(sofficePath) ? SettingsPresentationController.Shared.DefaultLibreOfficeInstallRoot : sofficePath),
                 AppTitle,
                 0x40);
             if (!managementRecorded)
@@ -210,7 +179,8 @@ namespace Clickra.UI;
                 }
             }
 
-            if (SettingsController.LibreOfficeRemovalPendingRestart)
+            LibreOfficePresentationState state = SettingsPresentationController.Shared.GetLibreOfficeState();
+            if (state.RemovalPendingRestart)
             {
                 MessageBox(hwnd, GetText("setting_libreoffice_removal_pending"), AppTitle, 0x40);
                 return;
@@ -218,7 +188,7 @@ namespace Clickra.UI;
 
             // Only a LibreOffice with a freshly verified Clickra management identity may be removed here.
             // The dashboard hides the button otherwise, but the action still has to refuse on its own.
-            if (!LibreOfficeEngineInstaller.WasInstalledByClickra())
+            if (!state.IsManagedByClickra)
             {
                 MessageBox(hwnd, GetText("setting_libreoffice_external_note"), AppTitle, 0x40);
                 return;
@@ -244,15 +214,10 @@ namespace Clickra.UI;
         {
             try
             {
-                LibreOfficeUninstallResult uninstallResult = LibreOfficeEngineInstaller.UninstallSystemLibreOfficeAsync(
+                LibreOfficeUninstallPresentationResult uninstallResult = SettingsPresentationController.Shared.UninstallManagedLibreOfficeAsync(
                         System.Threading.CancellationToken.None)
                     .GetAwaiter()
                     .GetResult();
-
-                SettingsController.LibreOfficePath = string.Empty;
-                LibreOfficeEngineInstaller.ReleaseManagement();
-                SettingsController.LibreOfficeRemovalPendingRestart = uninstallResult.RestartRequired;
-                SettingsController.OfficeEngine = OfficeEnginePreference.Auto;
 
                 PostDashboardAction(hwnd, () => MessageBox(
                     hwnd,
@@ -287,24 +252,13 @@ namespace Clickra.UI;
                 }
             }
 
-            if (LibreOfficeEngineInstaller.WasInstalledByClickra())
-            {
-                return;
-            }
-
-            string resolvedPath = LibreOfficeHelper.GetResolvedExecutablePath(
-                SettingsController.LibreOfficeRemovalPendingRestart,
-                SettingsController.LibreOfficePath);
-            if (!LibreOfficeEngineInstaller.CanAdoptExistingInstallation(resolvedPath))
-            {
-                return;
-            }
+            if (!SettingsPresentationController.Shared.GetLibreOfficeState().CanAdopt) return;
 
             if (MessageBox(hwnd, GetText("setting_libreoffice_adopt_confirm"), AppTitle, 0x31) != 1) return;
 
             try
             {
-                LibreOfficeEngineInstaller.AdoptExistingInstallation();
+                if (!SettingsPresentationController.Shared.AdoptExistingLibreOffice()) return;
             }
             catch (InvalidOperationException)
             {

@@ -595,6 +595,7 @@ static partial class TestSuite
             string cli = File.ReadAllText(Path.Combine(root, "src", CliProjectDir, "Cli", "ClickraCli.cs"));
             string startup = File.ReadAllText(Path.Combine(root, "src", CliProjectDir, "Cli", "ClickraStartup.cs"));
             string dashboard = File.ReadAllText(Path.Combine(root, "src", CliProjectDir, "Dashboard", "DashboardWindow.ConvertRegistry.cs"));
+            string presentation = File.ReadAllText(Path.Combine(root, "src", "Clickra.Core", "Presentation", "Convert", "ConvertWorkspaceController.cs"));
             string progress = File.ReadAllText(Path.Combine(root, "src", CliProjectDir, "Progress", "ProgressWindow.Process.cs"));
             string adapter = File.ReadAllText(Path.Combine(root, "src", CliProjectDir, "Progress", "NativeConversionExecutionAdapter.cs"));
             string fluentXaml = File.ReadAllText(Path.Combine(root, "src", "Clickra.Fluent", "MainPage.xaml"));
@@ -611,7 +612,9 @@ static partial class TestSuite
             {
                 Assert.True(cli.Contains($"case \"{command}\"", StringComparison.Ordinal), $"Legacy CLI must dispatch {command}.");
                 Assert.True(startup.Contains(command, StringComparison.Ordinal), $"CLI help/version must list {command}.");
-                Assert.True(dashboard.Contains($"Command = \"{command}\"", StringComparison.Ordinal), $"Native dashboard must expose {command}.");
+                Assert.True(presentation.Contains($"new(\"{command}\"", StringComparison.Ordinal), $"Shared presentation catalog must expose {command}.");
+                Assert.True(dashboard.Contains("ConvertWorkspaceController.CommandCatalog", StringComparison.Ordinal),
+                    "Native dashboard must render the shared presentation catalog instead of owning a second command list.");
                 Assert.True(progress.Contains("new NativeConversionExecutionAdapter(", StringComparison.Ordinal)
                             && adapter.Contains("useCase is ImageFormatConvertUseCase", StringComparison.Ordinal)
                             && adapter.Contains("RunSimple(", StringComparison.Ordinal),

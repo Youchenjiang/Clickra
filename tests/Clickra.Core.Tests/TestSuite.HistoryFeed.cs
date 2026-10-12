@@ -210,7 +210,7 @@ static partial class TestSuite
         string? root = FindRepoRoot();
         if (root is null) throw new TestSkippedException("Could not locate the repository root from the test output directory.");
 
-        // 兩個呈現層都載入同一份清單。
+        // 兩個呈現層都透過同一個 Presentation owner 讀取清單。
         foreach ((string surface, string path) in new[]
         {
             (CliDashboardSurface, Path.Combine(root, "src", "Clickra.CLI", "Dashboard", "DashboardWindow.Lifecycle.cs")),
@@ -218,8 +218,8 @@ static partial class TestSuite
         })
         {
             string source = File.ReadAllText(path);
-            Assert.True(source.Contains("HistoryFeed.Load(", StringComparison.Ordinal),
-                $"{surface} must load the shared Core feed instead of querying storage itself.");
+            Assert.True(source.Contains("_historyPresentation", StringComparison.Ordinal),
+                $"{surface} must read history through the shared Presentation owner instead of querying storage itself.");
         }
 
         // 而且都不得自行列舉那三份清單：兩邊各查一次儲存，就有兩個時間點、兩種過濾、兩種順序，
@@ -238,7 +238,7 @@ static partial class TestSuite
         }
 
         // 清單本身住在 Core，兩個介面才可能共用；放進任一個介面就不可能被另一個使用。
-        string feed = File.ReadAllText(Path.Combine(root, "src", "Clickra.Core", "Application", "HistoryFeed.cs"));
+        string feed = File.ReadAllText(Path.Combine(root, "src", "Clickra.Core", "Presentation", "History", "HistoryFeed.cs"));
         foreach (string member in new[] { "HistoryItemKind.Active", "HistoryItemKind.Parked", "HistoryItemKind.Completed", "DescribeRetention" })
         {
             Assert.True(feed.Contains(member, StringComparison.Ordinal),
@@ -253,7 +253,7 @@ static partial class TestSuite
 
         string cli = File.ReadAllText(Path.Combine(root, "src", "Clickra.CLI", "Dashboard", "DashboardWindow.Paint.History.cs"));
         string fluent = File.ReadAllText(Path.Combine(root, "src", "Clickra.Fluent", "MainPage.History.cs"));
-        string model = File.ReadAllText(Path.Combine(root, "src", "Clickra.Core", "Application", "HistoryFeed.cs"));
+        string model = File.ReadAllText(Path.Combine(root, "src", "Clickra.Core", "Presentation", "History", "HistoryFeed.cs"));
 
         // 每一列的事實都取自項目，而不是當場重算。
         foreach ((string surface, string source) in new[] { (CliDashboardSurface, cli), (FluentHistorySurface, fluent) })

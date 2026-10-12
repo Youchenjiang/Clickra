@@ -7,7 +7,7 @@ using System.Collections.Generic;
 using System.Runtime.InteropServices;
 using Clickra.Core;
 using Clickra.Core.Layout;
-using Clickra.Core.Processors;
+using Clickra.Core.Presentation.Convert;
 
 using static Clickra.UI.Native.Win32;
 
@@ -68,26 +68,11 @@ namespace Clickra.UI
             return files;
         }
 
-        /// <summary>Maps a command key to its index in ConvertCommands (-1 when unknown).</summary>
-        static int GetCommandIndex(string cmd)
-        {
-            return ConvertCommandByKey.TryGetValue(cmd, out var command) ? Array.IndexOf(ConvertCommands, command) : -1;
-        }
-
-        /// <summary>Whether the currently selected convert command accepts the given files;
-        /// used to keep the user's explicit choice when importing or dropping files.</summary>
-        static bool CurrentSelectionAcceptsFiles(List<string> files)
-        {
-            return _convertCommandIndex >= 0 && _convertCommandIndex < ConvertCommands.Length
-                && ConvertCommands[_convertCommandIndex].ValidateFiles(files, out _);
-        }
-
         /// <summary>Builds the shared file-picker filter from the command registry so every
         /// supported input type remains selectable when commands are added or changed.</summary>
         static string GetSupportedFilesFilter()
         {
-            string patterns = string.Join(";", ConvertCommands
-                .SelectMany(command => command.Extensions)
+            string patterns = string.Join(";", ConvertWorkspaceController.AllSupportedExtensions
                 .Distinct(StringComparer.OrdinalIgnoreCase)
                 .Select(extension => $"*{extension}"));
             return $"Supported Files ({patterns})\0{patterns}\0All Files (*.*)\0*.*\0\0";
@@ -98,19 +83,7 @@ namespace Clickra.UI
         static void ImportFiles(List<string> files)
         {
             if (files.Count == 0) return;
-
-            if (!CurrentSelectionAcceptsFiles(files))
-            {
-                _convertCommandIndex = -1;
-                string? defaultCommand = ConvertCommandRegistry.GetDefaultCommandForFiles(files);
-                int defaultIndex = defaultCommand is null ? -1 : GetCommandIndex(defaultCommand);
-                if (defaultIndex >= 0)
-                {
-                    ConvertCommand.Select(ConvertCommands[defaultIndex]);
-                }
-            }
-
-            _selectedFiles = files;
+            _convertWorkspace.ReplaceFiles(files);
         }
 
         /// <summary>Queues a conversion action for files dropped onto the dashboard window.</summary>
@@ -119,19 +92,15 @@ namespace Clickra.UI
         /// <summary>Runs the currently selected convert command for the selected files.</summary>
         static void RunConversion(IntPtr hwnd)
         {
-            if (_convertCommandIndex < 0 || _convertCommandIndex >= ConvertCommands.Length) return;
-            ConvertCommand.Run(ConvertCommands[_convertCommandIndex], hwnd);
+            string? selected = _convertWorkspace.SelectedCommand;
+            if (selected is null || !ConvertCommandByKey.TryGetValue(selected, out NativeConvertCommand? command)) return;
+            RunConvertCommand(command, hwnd);
         }
 
         static string GetCommandGroupKey(int groupIndex)
         {
-            return groupIndex switch
-            {
-                0 => "convert_group_office",
-                1 => "convert_group_pdf",
-                2 => "convert_group_image",
-                _ => ""
-            };
+            return ConvertWorkspaceController.CommandCatalog
+                .FirstOrDefault(item => item.Group == groupIndex)?.GroupKey ?? "";
         }
 
         // skipcq: CS-R1140 — conversion painting intentionally coordinates multiple UI states in one pass.
@@ -162,7 +131,7 @@ namespace Clickra.UI
                 g.DrawPath(borderPen, path);
             }
 
-            if (_selectedFiles.Count == 0)
+            if (!_convertWorkspace.HasFiles)
             {
                 if (_iconFont != null)
                 {
@@ -193,7 +162,7 @@ namespace Clickra.UI
             {
                 if (_tabFont != null)
                 {
-                    string summary = string.Format(GetText("convert_selected_count"), _selectedFiles.Count);
+                    string summary = string.Format(GetText("convert_selected_count"), _convertWorkspace.SelectedFiles.Count);
                     using var textBrush = new SolidBrush(Color.FromArgb(100, 220, 100));
                     g.DrawString(summary, _tabFont, textBrush, (zoneX + 20) * s,
                         (zoneY + DashboardLayout.ConvertZoneSummaryOffset) * s);
@@ -202,7 +171,7 @@ namespace Clickra.UI
                 if (_subFont != null)
                 {
                     using var listBrush = new SolidBrush(Color.FromArgb(180, 180, 180));
-                    string joinedNames = string.Join(", ", _selectedFiles.Select(Path.GetFileName));
+                    string joinedNames = string.Join(", ", _convertWorkspace.SelectedFiles.Select(Path.GetFileName));
                     if (joinedNames.Length > 85)
                     {
                         joinedNames = joinedNames.Substring(0, 82) + "...";
@@ -210,7 +179,7 @@ namespace Clickra.UI
                     g.DrawString(joinedNames, _subFont, listBrush, (zoneX + 20) * s,
                         (zoneY + DashboardLayout.ConvertZoneFilesOffset) * s);
 
-                    OutputDirectoryPreference outputDirectory = SettingsController.OutputDirectory;
+                    OutputDirectoryPreference outputDirectory = SettingsPresentationController.Shared.OutputDirectory;
                     string outPathDesc = outputDirectory.Kind switch
                     {
                         OutputDirectoryKind.Desktop => GetText("setting_output_desktop"),
@@ -265,9 +234,9 @@ namespace Clickra.UI
                     int i = commandStart + local;
                     LayoutRect card = DashboardLayout.ConvertCardRect(group, local, zoneX, zoneW, ConvertCommandGroupSizes);
 
-                    bool isSelected = _convertCommandIndex == i;
+                    bool isSelected = ConvertCommands[i].Command.Equals(_convertWorkspace.SelectedCommand, StringComparison.OrdinalIgnoreCase);
                     bool isHovered = _hoveredElement == (50 + i);
-                    bool isEnabled = ConvertCommands[i].ValidateFiles(_selectedFiles, out _);
+                    bool isEnabled = !_convertWorkspace.IsRunning && _convertWorkspace.IsCommandCompatible(ConvertCommands[i].Command);
 
                     Color cardBg;
                     Color cardBorder;
@@ -315,7 +284,7 @@ namespace Clickra.UI
 
         static void DrawConvertStickyAction(Graphics g, float logW, float logH, float contentX)
         {
-            if (_selectedFiles.Count == 0 || _convertCommandIndex == -1) return;
+            if (!_convertWorkspace.HasFiles || _convertWorkspace.SelectedCommand is null || _convertWorkspace.IsRunning) return;
 
             float s = _dpiScale;
             int zoneW = Math.Max(0, (int)logW - (int)contentX - DashboardLayout.ConvertZoneRightMargin);

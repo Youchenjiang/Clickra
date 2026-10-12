@@ -1,6 +1,5 @@
 using Clickra.Core;
-using Clickra.Core.Application;
-using Clickra.Core.Processors;
+using Clickra.Core.Presentation.Convert;
 using Microsoft.UI;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
@@ -26,10 +25,8 @@ public sealed partial class MainPage : Page
     // 歷史清單顯示幾筆已完成紀錄（與 Core 的 HistoryFeed.Load 預設一致）。
     private const string SecondaryCardBrushResource = "CardBackgroundFillColorSecondaryBrush";
     private const string SecondaryTextBrushResource = "TextFillColorSecondaryBrush";
-    // Shared with the CLI dashboard's settings page; see ClickraSettings.MaxParkedRetentionDays.
-    private const int MinParkedRetentionDays = ClickraSettings.MinParkedRetentionDays;
-    private const int MaxParkedRetentionDays = ClickraSettings.MaxParkedRetentionDays;
-    private readonly ConversionWorkspaceState _convertWorkspace = new();
+    private readonly DashboardPresentationController _dashboardPresentation = new();
+    private readonly ConvertWorkspaceController _convertWorkspace = new();
     private readonly Dictionary<string, Button> _commandButtons = new(StringComparer.OrdinalIgnoreCase);
     private CancellationTokenSource? _cts;
     private bool _loadingSettings;
@@ -108,12 +105,14 @@ public sealed partial class MainPage : Page
 
     private void ShowPanel(string name)
     {
-        OverviewPanel.Visibility = name == "Overview" ? Visibility.Visible : Visibility.Collapsed;
-        ConvertPanel.Visibility = name == "Convert" ? Visibility.Visible : Visibility.Collapsed;
-        HistoryPanel.Visibility = name == "History" ? Visibility.Visible : Visibility.Collapsed;
-        SettingsPanel.Visibility = name == "Settings" ? Visibility.Visible : Visibility.Collapsed;
-        AboutPanel.Visibility = name == "About" ? Visibility.Visible : Visibility.Collapsed;
-        if (name is "History" or "Overview") RefreshHistory();
+        if (!_dashboardPresentation.TrySelect(name)) return;
+        DashboardSection section = _dashboardPresentation.ActiveSection;
+        OverviewPanel.Visibility = section == DashboardSection.Overview ? Visibility.Visible : Visibility.Collapsed;
+        ConvertPanel.Visibility = section == DashboardSection.Convert ? Visibility.Visible : Visibility.Collapsed;
+        HistoryPanel.Visibility = section == DashboardSection.History ? Visibility.Visible : Visibility.Collapsed;
+        SettingsPanel.Visibility = section == DashboardSection.Settings ? Visibility.Visible : Visibility.Collapsed;
+        AboutPanel.Visibility = section == DashboardSection.About ? Visibility.Visible : Visibility.Collapsed;
+        if (section is DashboardSection.History or DashboardSection.Overview) RefreshHistory();
         ApplyResponsiveLayout();
     }
 
@@ -340,9 +339,7 @@ public sealed partial class MainPage : Page
     {
         if (_convertWorkspace.IsRunning) return;
         var picker = new FileOpenPicker();
-        foreach (var extension in _convertWorkspace.SelectedCommand is null
-            ? ConvertCommandRegistry.AllSupportedExtensions
-            : ConvertCommandRegistry.GetAllowedExtensions(_convertWorkspace.SelectedCommand))
+        foreach (var extension in _convertWorkspace.GetPickerExtensions())
             picker.FileTypeFilter.Add(extension);
         if (App.MainWindow is not null)
         {
@@ -380,7 +377,7 @@ public sealed partial class MainPage : Page
         _convertWorkspace.AddFiles(paths.Where(File.Exists));
         CommandStatusText.Text = _convertWorkspace.SelectedCommand is null
             ? L("fluent_choose_command")
-            : string.Format(L("fluent_selected_command"), L(ConvertCommandRegistry.GetLabelKey(_convertWorkspace.SelectedCommand)));
+            : string.Format(L("fluent_selected_command"), L(ConvertWorkspaceController.GetCommandLabelKey(_convertWorkspace.SelectedCommand)));
         RefreshFiles();
     }
 
@@ -389,12 +386,12 @@ public sealed partial class MainPage : Page
         if (_startupCommandHandled) return;
         _startupCommandHandled = true;
 
-        var args = ConvertCommandRegistry.SplitCommandLine(_startupArguments);
-        if (args.Count < 2 || !ConvertCommandRegistry.IsKnownCommand(args[0])) return;
+        var args = ConvertWorkspaceController.SplitLaunchArguments(_startupArguments);
+        if (args.Count < 2 || !ConvertWorkspaceController.IsKnownCommand(args[0])) return;
 
         SelectNavItem("Convert");
         string command = args[0];
-        AddFiles(ConvertCommandRegistry.ExpandDirectoryArguments(command, args.Skip(1)));
+        AddFiles(ConvertWorkspaceController.ExpandLaunchArguments(command, args.Skip(1)));
         SelectCommand(command);
         await StartConversionAsync();
     }
@@ -403,7 +400,7 @@ public sealed partial class MainPage : Page
     {
         if (!_convertWorkspace.TrySelectCommand(command)) return;
         UpdateCommandAvailability();
-        CommandStatusText.Text = string.Format(L("fluent_selected_command"), L(ConvertCommandRegistry.GetLabelKey(command)));
+        CommandStatusText.Text = string.Format(L("fluent_selected_command"), L(ConvertWorkspaceController.GetCommandLabelKey(command)));
         UpdateStartState();
     }
 
@@ -453,12 +450,8 @@ public sealed partial class MainPage : Page
                 : null;
         }
 
-        string? selectedCommand = _convertWorkspace.SelectedCommand;
-        _convertWorkspace.NormalizeSelectedCommand();
-        if (selectedCommand is not null && _convertWorkspace.SelectedCommand is null)
-        {
+        if (_convertWorkspace.SelectedCommand is null)
             CommandStatusText.Text = L("fluent_choose_command");
-        }
     }
 
     private void UpdateInteractiveState()
@@ -473,11 +466,13 @@ public sealed partial class MainPage : Page
     {
         string? selectedCommand = _convertWorkspace.SelectedCommand;
         if (selectedCommand is null || !_convertWorkspace.CanStart) return;
-        if (!ValidateSelection(selectedCommand, out var error))
+        ConvertWorkspaceValidation validation = _convertWorkspace.ValidateSelection();
+        if (!validation.IsValid)
         {
-            await ShowErrorAsync(error);
+            await ShowErrorAsync(DescribeConvertValidation(validation));
             return;
         }
+        string error;
         if (!OfficeEnginePreflight.TryValidate(selectedCommand, L, out error))
         {
             await ShowErrorAsync(error);
@@ -488,15 +483,10 @@ public sealed partial class MainPage : Page
         var files = _convertWorkspace.SelectedFiles.ToList();
         Dictionary<string, object>? commandOptions = await PromptCommandOptionsAsync(command);
         if (IsMarkdownCommand(command) && commandOptions is null) return;
-        IConversionUseCase applicationUseCase;
-        ConversionPlan applicationPlan;
+        var execution = new ConversionExecutionController();
         try
         {
-            applicationUseCase = ConversionUseCases.GetRequired(command);
-            applicationPlan = applicationUseCase.Plan(new ConversionRequest(
-                command,
-                files,
-                commandOptions));
+            execution.Prepare(command, files, commandOptions);
         }
         catch (Exception ex)
         {
@@ -512,25 +502,17 @@ public sealed partial class MainPage : Page
 
         try
         {
-            var interaction = new DelegateConversionInteraction(
-                (index, inputPath, isRetry, token) =>
+            var callbacks = new ConversionExecutionCallbacks(
+                PasswordPrompt: (index, inputPath, isRetry, token) =>
                     DispatcherQueue.EnqueueAsync(() => FluentDialogs.PromptPasswordAsync(XamlRoot, L)),
-                (index, inputPath, token) =>
-                    DispatcherQueue.EnqueueAsync(() => SplitOverlay.ShowForAsync(inputPath)),
-                (_, _, _) => Task.FromResult<IReadOnlyDictionary<string, object>?>(null));
-            var progress = new Progress<ConversionProgress>(state =>
-            {
-                int percent = state.Total > 0
-                    ? Math.Clamp((int)(state.Current * 100.0 / state.Total), 0, 100)
-                    : 0;
-                SetProgress(percent, state.Message);
-            });
-            ConversionResult applicationResult = await applicationUseCase.ExecuteAsync(
-                applicationPlan,
-                interaction,
+                SplitPrompt: (index, inputPath, token) =>
+                    DispatcherQueue.EnqueueAsync(() => SplitOverlay.ShowForAsync(inputPath)));
+            var progress = new Progress<TaskProgressReport>(state => SetProgress(state.Percent, state.Message));
+            ConversionExecutionPresentationResult result = await execution.ExecutePreparedAsync(
+                callbacks,
                 progress,
-                cancellationToken: _cts.Token);
-            await HandleApplicationConversionResultAsync(command, files, applicationResult);
+                _cts.Token);
+            await HandleConversionResultAsync(command, files, result);
         }
         finally
         {
@@ -552,26 +534,26 @@ public sealed partial class MainPage : Page
         command.Equals("md2pdf", StringComparison.OrdinalIgnoreCase) ||
         command.Equals("md2word", StringComparison.OrdinalIgnoreCase);
 
-    private async Task HandleApplicationConversionResultAsync(
+    private async Task HandleConversionResultAsync(
         string command,
         IReadOnlyCollection<string> files,
-        ConversionResult result)
+        ConversionExecutionPresentationResult result)
     {
         switch (result.Status)
         {
-            case ConversionResultStatus.Succeeded:
+            case ConversionExecutionPresentationStatus.Succeeded:
                 SetProgress(100, L("fluent_progress_completed"));
                 ToastHelper.Show(
                     L("fluent_toast_done_title"),
-                    string.Format(L("fluent_toast_done_body"), L(ConvertCommandRegistry.GetLabelKey(command)), files.Count));
+                    string.Format(L("fluent_toast_done_body"), L(ConvertWorkspaceController.GetCommandLabelKey(command)), files.Count));
                 _convertWorkspace.ClearFiles();
                 RefreshFiles();
                 break;
-            case ConversionResultStatus.Canceled:
+            case ConversionExecutionPresentationStatus.Canceled:
                 SetProgress(0, L("fluent_progress_canceled"));
                 ToastHelper.Show(
                     L("fluent_toast_canceled_title"),
-                    string.Format(L("fluent_toast_canceled_body"), L(ConvertCommandRegistry.GetLabelKey(command))));
+                    string.Format(L("fluent_toast_canceled_body"), L(ConvertWorkspaceController.GetCommandLabelKey(command))));
                 break;
             default:
                 SetProgress(0, string.Format(L("fluent_progress_failed"), result.Error));
@@ -589,23 +571,19 @@ public sealed partial class MainPage : Page
         ActiveJobText.Text = ConversionProgressText.Text;
     }
 
-    private bool ValidateSelection(string command, out string error)
+    private string DescribeConvertValidation(ConvertWorkspaceValidation validation)
     {
-        error = "";
-        string[] extensions = ConvertCommandRegistry.GetAllowedExtensions(command);
-        int minFiles = ConvertCommandRegistry.GetMinFiles(command);
-        if (_convertWorkspace.SelectedFiles.Count < minFiles)
+        string label = string.IsNullOrEmpty(validation.Command)
+            ? ""
+            : L(ConvertWorkspaceController.GetCommandLabelKey(validation.Command));
+        return validation.Kind switch
         {
-            error = string.Format(L("fluent_validate_min_files"), L(ConvertCommandRegistry.GetLabelKey(command)), minFiles);
-            return false;
-        }
-        var bad = _convertWorkspace.SelectedFiles.FirstOrDefault(f => !extensions.Contains(Path.GetExtension(f), StringComparer.OrdinalIgnoreCase));
-        if (bad is not null)
-        {
-            error = string.Format(L("fluent_validate_bad_ext"), Path.GetFileName(bad), L(ConvertCommandRegistry.GetLabelKey(command)));
-            return false;
-        }
-        return true;
+            ConvertWorkspaceValidationKind.TooFewFiles =>
+                string.Format(L("fluent_validate_min_files"), label, validation.MinimumFiles),
+            ConvertWorkspaceValidationKind.InvalidExtension =>
+                string.Format(L("fluent_validate_bad_ext"), Path.GetFileName(validation.InvalidFile), label),
+            _ => L("fluent_choose_command")
+        };
     }
 
     private void LoadSettings()
@@ -635,14 +613,14 @@ public sealed partial class MainPage : Page
     private void HookExternalSettingsReload()
     {
         if (_settingsReloadHooked) return;
-        SettingsController.Reloaded += OnExternalSettingsReloaded;
+        SettingsPresentationController.Shared.Reloaded += OnExternalSettingsReloaded;
         _settingsReloadHooked = true;
     }
 
     private void UnhookExternalSettingsReload()
     {
         if (!_settingsReloadHooked) return;
-        SettingsController.Reloaded -= OnExternalSettingsReloaded;
+        SettingsPresentationController.Shared.Reloaded -= OnExternalSettingsReloaded;
         _settingsReloadHooked = false;
     }
 
@@ -664,22 +642,21 @@ public sealed partial class MainPage : Page
         _loadingSettings = true;
         try
         {
-            OutputDirCombo.SelectedIndex = SettingsController.OutputDirectory.Kind switch { OutputDirectoryKind.Desktop => 1, OutputDirectoryKind.Downloads => 2, OutputDirectoryKind.Custom => 3, _ => 0 };
-            EngineCombo.SelectedIndex = SettingsController.OfficeEngine switch { OfficeEnginePreference.Microsoft => 1, OfficeEnginePreference.LibreOffice => 2, _ => 0 };
-            LanguageCombo.SelectedIndex = SettingsController.Language switch { SimplifiedChineseLanguage => 1, "en-US" => 2, "ja-JP" => 3, "ko-KR" => 4, _ => 0 };
-            QuietModeToggle.IsOn = SettingsController.QuietMode;
-            NotificationToggle.IsOn = SettingsController.NotificationsEnabled;
-            PdfLangCombo.SelectedIndex = SettingsController.TranslationTargetLanguage switch { "en" => 1, SimplifiedChineseLanguage => 2, "ja" => 3, "ko" => 4, _ => 0 };
-            CompressionSlider.Minimum = ClickraSettings.MinPdfCompressLevel;
-            CompressionSlider.Maximum = ClickraSettings.MaxPdfCompressLevel;
-            CompressionSlider.Value = ClickraSettings.NormalizePdfCompressLevel(
-                SettingsController.PdfCompressionImageLevel);
+            OutputDirCombo.SelectedIndex = SettingsPresentationController.Shared.OutputDirectory.Kind switch { OutputDirectoryKind.Desktop => 1, OutputDirectoryKind.Downloads => 2, OutputDirectoryKind.Custom => 3, _ => 0 };
+            EngineCombo.SelectedIndex = SettingsPresentationController.Shared.OfficeEngine switch { OfficeEnginePreference.Microsoft => 1, OfficeEnginePreference.LibreOffice => 2, _ => 0 };
+            LanguageCombo.SelectedIndex = SettingsPresentationController.Shared.Language switch { SimplifiedChineseLanguage => 1, "en-US" => 2, "ja-JP" => 3, "ko-KR" => 4, _ => 0 };
+            QuietModeToggle.IsOn = SettingsPresentationController.Shared.QuietMode;
+            NotificationToggle.IsOn = SettingsPresentationController.Shared.NotificationsEnabled;
+            PdfLangCombo.SelectedIndex = SettingsPresentationController.Shared.TranslationTargetLanguage switch { "en" => 1, SimplifiedChineseLanguage => 2, "ja" => 3, "ko" => 4, _ => 0 };
+            CompressionSlider.Minimum = SettingsPresentationController.Shared.MinPdfCompressionLevel;
+            CompressionSlider.Maximum = SettingsPresentationController.Shared.MaxPdfCompressionLevel;
+            CompressionSlider.Value = SettingsPresentationController.Shared.PdfCompressionImageLevel;
             UpdateCompressionLabel(CompressionLabel, CompressionSlider);
-            StripFontsToggle.IsOn = SettingsController.PdfCompressionStripFonts;
-            MinifyContentToggle.IsOn = SettingsController.PdfCompressionMinifyContent;
-            ParkedRetentionBox.Minimum = MinParkedRetentionDays;
-            ParkedRetentionBox.Maximum = MaxParkedRetentionDays;
-            ParkedRetentionBox.Value = ParkedTaskController.GetRetentionDays();
+            StripFontsToggle.IsOn = SettingsPresentationController.Shared.PdfCompressionStripFonts;
+            MinifyContentToggle.IsOn = SettingsPresentationController.Shared.PdfCompressionMinifyContent;
+            ParkedRetentionBox.Minimum = SettingsPresentationController.Shared.MinParkedRetentionDays;
+            ParkedRetentionBox.Maximum = SettingsPresentationController.Shared.MaxParkedRetentionDays;
+            ParkedRetentionBox.Value = SettingsPresentationController.Shared.ParkedTaskRetentionDays;
 
             _dynamicSettings.Sync();
         }
@@ -736,7 +713,7 @@ public sealed partial class MainPage : Page
         CommandTitle.Text = L("fluent_command");
         CommandStatusText.Text = _convertWorkspace.SelectedCommand is null
             ? L("fluent_choose_command")
-            : string.Format(L("fluent_selected_command"), L(ConvertCommandRegistry.GetLabelKey(_convertWorkspace.SelectedCommand)));
+            : string.Format(L("fluent_selected_command"), L(ConvertWorkspaceController.GetCommandLabelKey(_convertWorkspace.SelectedCommand)));
         OfficeCommandLabel.Text = L("convert_group_office");
         PdfCommandLabel.Text = "PDF";
         ImageCommandLabel.Text = L("fluent_images");
@@ -823,22 +800,20 @@ public sealed partial class MainPage : Page
 
     private static void UpdateCompressionLabel(TextBlock compressionLabel, Slider compressionSlider)
     {
-        var level = PdfCompressionOptions.FromSliderLevel((int)compressionSlider.Value);
-        compressionLabel.Text = L(PdfCompressionOptions.GetLabelKey(level));
+        compressionLabel.Text = L(SettingsPresentationController.Shared.GetPdfCompressionSliderLabelKey((int)compressionSlider.Value));
     }
 
     private void SaveSettings()
     {
         if (_loadingSettings) return;
-        SettingsController.OfficeEngine = EngineCombo.SelectedIndex switch { 1 => OfficeEnginePreference.Microsoft, 2 => OfficeEnginePreference.LibreOffice, _ => OfficeEnginePreference.Auto };
-        SettingsController.Language = LanguageCombo.SelectedIndex switch { 1 => SimplifiedChineseLanguage, 2 => "en-US", 3 => "ja-JP", 4 => "ko-KR", _ => "zh-TW" };
-        SettingsController.TranslationTargetLanguage = PdfLangCombo.SelectedIndex switch { 1 => "en", 2 => SimplifiedChineseLanguage, 3 => "ja", 4 => "ko", _ => ClickraSettings.DefaultTranslateTargetLang };
-        int compressLevel = ClickraSettings.ClampNumericSetting(ClickraSettings.PdfCompressImageLevel, (int)CompressionSlider.Value);
-        SettingsController.PdfCompressionImageLevel = compressLevel;
-        SettingsController.PdfCompressionStripFonts = StripFontsToggle.IsOn;
-        SettingsController.PdfCompressionMinifyContent = MinifyContentToggle.IsOn;
-        SettingsController.QuietMode = QuietModeToggle.IsOn;
-        SettingsController.NotificationsEnabled = NotificationToggle.IsOn;
+        SettingsPresentationController.Shared.OfficeEngine = EngineCombo.SelectedIndex switch { 1 => OfficeEnginePreference.Microsoft, 2 => OfficeEnginePreference.LibreOffice, _ => OfficeEnginePreference.Auto };
+        SettingsPresentationController.Shared.Language = LanguageCombo.SelectedIndex switch { 1 => SimplifiedChineseLanguage, 2 => "en-US", 3 => "ja-JP", 4 => "ko-KR", _ => "zh-TW" };
+        SettingsPresentationController.Shared.TranslationTargetLanguage = PdfLangCombo.SelectedIndex switch { 1 => "en", 2 => SimplifiedChineseLanguage, 3 => "ja", 4 => "ko", _ => SettingsPresentationController.Shared.DefaultTranslationTargetLanguage };
+        SettingsPresentationController.Shared.PdfCompressionImageLevel = (int)CompressionSlider.Value;
+        SettingsPresentationController.Shared.PdfCompressionStripFonts = StripFontsToggle.IsOn;
+        SettingsPresentationController.Shared.PdfCompressionMinifyContent = MinifyContentToggle.IsOn;
+        SettingsPresentationController.Shared.QuietMode = QuietModeToggle.IsOn;
+        SettingsPresentationController.Shared.NotificationsEnabled = NotificationToggle.IsOn;
         RefreshLibreOfficeStatus();
     }
 
@@ -852,13 +827,16 @@ public sealed partial class MainPage : Page
         if (double.IsNaN(args.NewValue))
         {
             _syncingParkedRetention = true;
-            sender.Value = ParkedTaskController.GetRetentionDays();
+            sender.Value = SettingsPresentationController.Shared.ParkedTaskRetentionDays;
             _syncingParkedRetention = false;
             return;
         }
 
-        int days = Math.Clamp((int)Math.Round(args.NewValue, MidpointRounding.AwayFromZero), MinParkedRetentionDays, MaxParkedRetentionDays);
-        SettingsController.ParkedTaskRetentionDays = days;
+        int days = Math.Clamp(
+            (int)Math.Round(args.NewValue, MidpointRounding.AwayFromZero),
+            SettingsPresentationController.Shared.MinParkedRetentionDays,
+            SettingsPresentationController.Shared.MaxParkedRetentionDays);
+        SettingsPresentationController.Shared.ParkedTaskRetentionDays = days;
         if (Math.Abs(sender.Value - days) > 0.0001)
         {
             _syncingParkedRetention = true;
@@ -883,15 +861,15 @@ public sealed partial class MainPage : Page
             if (folder is null)
             {
                 _loadingSettings = true;
-                OutputDirCombo.SelectedIndex = SettingsController.OutputDirectory.Kind switch { OutputDirectoryKind.Desktop => 1, OutputDirectoryKind.Downloads => 2, OutputDirectoryKind.Custom => 3, _ => 0 };
+                OutputDirCombo.SelectedIndex = SettingsPresentationController.Shared.OutputDirectory.Kind switch { OutputDirectoryKind.Desktop => 1, OutputDirectoryKind.Downloads => 2, OutputDirectoryKind.Custom => 3, _ => 0 };
                 _loadingSettings = false;
                 return;
             }
-            SettingsController.OutputDirectory = new(OutputDirectoryKind.Custom, folder.Path);
+            SettingsPresentationController.Shared.OutputDirectory = new(OutputDirectoryKind.Custom, folder.Path);
             return;
         }
 
-        SettingsController.OutputDirectory = OutputDirCombo.SelectedIndex switch
+        SettingsPresentationController.Shared.OutputDirectory = OutputDirCombo.SelectedIndex switch
         {
             1 => new(OutputDirectoryKind.Desktop),
             2 => new(OutputDirectoryKind.Downloads),
@@ -920,11 +898,11 @@ public sealed partial class MainPage : Page
             {
                 // 使用官方 WinRT API 直接獲取硬碟實體路徑
                 string localPath = Windows.Storage.ApplicationData.Current.LocalFolder.Path;
-                logPath = HistoryController.GetLogPath(localPath);
+                logPath = _historyPresentation.GetLogPath(localPath);
             }
             catch
             {
-                logPath = HistoryController.GetLogPath();
+                logPath = _historyPresentation.GetLogPath();
             }
 
             string? dir = Path.GetDirectoryName(logPath);

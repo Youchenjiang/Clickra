@@ -42,6 +42,7 @@ namespace Clickra.UI
         private IntPtr _hFont = IntPtr.Zero;
 
         private readonly object _stateLock = new object();
+        private readonly TaskProgressController _progressPresentation = new();
 
         private string _command = "";
         private List<string> _files = new List<string>();
@@ -49,13 +50,17 @@ namespace Clickra.UI
         private Dictionary<string, object>? _commandOptions;
         private string? _existingTaskId = null;
         private int _startIndex = 0;
-        private string TaskId { get; set; } = "";
-        private int _current = 0;
-        private int _total = 0;
-        private string _message = "";
-        private bool _completed = false;
-        private bool _hasError = false;
-        private string _errorMessage = "";
+        private string TaskId
+        {
+            get => _progressPresentation.State.TaskId;
+            set => _progressPresentation.SetTaskId(value);
+        }
+        private int _current => _progressPresentation.State.Current;
+        private int _total => _progressPresentation.State.Total;
+        private string _message => _progressPresentation.State.Message;
+        private bool _completed => _progressPresentation.State.Status == TaskProgressPresentationStatus.Succeeded;
+        private bool _hasError => _progressPresentation.State.Status is TaskProgressPresentationStatus.Failed or TaskProgressPresentationStatus.Canceled;
+        private string _errorMessage => _progressPresentation.State.Error;
         private IntPtr _hwnd = IntPtr.Zero;
 
         private double _currentDispWidth = 0;
@@ -92,7 +97,7 @@ namespace Clickra.UI
             try { _tipFont?.Dispose(); _tipFont = null; } catch { }
             try { _pctFont?.Dispose(); _pctFont = null; } catch { }
 
-            string lang = SettingsController.Language;
+            string lang = SettingsPresentationController.Shared.Language;
             string fontName = LocalizedUiFontSelector.GetTextFontName(lang);
 
             float s = _dpiScale;
@@ -152,12 +157,11 @@ namespace Clickra.UI
                 _files = files;
                 _existingTaskId = existingTaskId;
                 _startIndex = startIndex;
-                _current = startIndex * 100;
-                _total = files.Count * 100;
-                _message = Loc("cli_progress_preparing");
-                _completed = false;
-                _hasError = false;
-                _errorMessage = "";
+                _progressPresentation.Prepare(
+                    command,
+                    startIndex * 100,
+                    files.Count * 100,
+                    Loc("cli_progress_preparing"));
                 _currentDispWidth = 0;
                 _targetWidth = 0;
                 _shimmerOffset = -120;
@@ -167,6 +171,8 @@ namespace Clickra.UI
                     && IsMarkdownCommand(command);
                 _markdownTemplateStatus = Loc("md_options_template_none");
             }
+            if (_isPromptingMarkdownOptions)
+                _progressPresentation.WaitForInput();
 
             uint dpi = 96;
             try { dpi = GetDpiForSystem(); } catch {}

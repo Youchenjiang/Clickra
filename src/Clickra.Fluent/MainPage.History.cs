@@ -1,4 +1,5 @@
 using Clickra.Core;
+using Clickra.Core.Presentation.History;
 using Microsoft.UI;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
@@ -10,19 +11,17 @@ namespace Clickra_Fluent;
 public sealed partial class MainPage
 {
     private const int CompletedHistoryLimit = 50;
-    private HistoryFeed _historyFeed = HistoryFeed.Empty;
-    private List<HistoryItem> _activeTasks = new();
-    private List<HistoryItem> _parkedTasks = new();
-    private List<HistoryItem> _historyEntries = new();
+    private readonly HistoryPresentationController _historyPresentation = new();
+    private HistoryFeed _historyFeed => _historyPresentation.Feed;
+    private IReadOnlyList<HistoryItem> _activeTasks => _historyPresentation.ActiveItems;
+    private IReadOnlyList<HistoryItem> _parkedTasks => _historyPresentation.ParkedItems;
+    private IReadOnlyList<HistoryItem> _historyEntries => _historyPresentation.CompletedItems;
     private bool _parkedRefreshHooked;
     private int _selectedHistoryIndex = -1;
     private void RefreshHistory()
     {
         // 讀一次清單：進行中、待繼續、已完成都在裡面，統計卡也是同一份數字。
-        _historyFeed = HistoryFeed.Load(SettingsController.Language, CompletedHistoryLimit);
-        _activeTasks = _historyFeed.OfKind(HistoryItemKind.Active).ToList();
-        _parkedTasks = _historyFeed.OfKind(HistoryItemKind.Parked).ToList();
-        _historyEntries = _historyFeed.OfKind(HistoryItemKind.Completed).ToList();
+        _historyPresentation.Refresh(SettingsPresentationController.Shared.Language, CompletedHistoryLimit);
 
         StatTotal.Text = _historyFeed.CompletedCount.ToString();
         StatSuccess.Text = _historyFeed.SuccessCount.ToString();
@@ -194,7 +193,7 @@ public sealed partial class MainPage
         };
         // 單一任務的保留期限：不必為了某一件改動整個政策。天數的加減、下限與夾取都在
         // Core，所以這兩個介面移動的永遠是同一個天數。
-        int step = ClickraSettings.ParkedRetentionStepDays;
+        int step = _historyPresentation.RetentionStepDays;
         var shortenButton = new Button
         {
             Content = string.Format(L("task_parked_shorten_days"), step),
@@ -266,7 +265,7 @@ public sealed partial class MainPage
     private void AdjustParkedRetention(HistoryItem item, int deltaDays)
     {
         if (string.IsNullOrWhiteSpace(item.Entry.Id)) return;
-        if (ParkedTaskController.AdjustRetention(item.Entry.Id, deltaDays) is null) return;
+        if (!_historyPresentation.AdjustRetention(item.Entry.Id, deltaDays)) return;
         RefreshHistory();
     }
 
@@ -274,7 +273,7 @@ public sealed partial class MainPage
     private void ResetParkedRetention(HistoryItem item)
     {
         if (string.IsNullOrWhiteSpace(item.Entry.Id)) return;
-        ParkedTaskController.ResetRetention(item.Entry.Id);
+        _historyPresentation.ResetRetention(item.Entry.Id);
         RefreshHistory();
     }
 
@@ -299,7 +298,7 @@ public sealed partial class MainPage
     {
         if (string.IsNullOrWhiteSpace(task.Id)) return;
         if (!await ConfirmAsync(L("task_parked_cancel_confirm"))) return;
-        ParkedTaskController.Cancel(task.Id);
+        _historyPresentation.CancelParked(task.Id);
         RefreshHistory();
     }
 
@@ -308,7 +307,7 @@ public sealed partial class MainPage
     private static SolidColorBrush StatusBrushFor(HistoryItem item)
     {
         if (item.Kind == HistoryItemKind.Active)
-            return new(item.Entry.Status == ConversionStatus.Pending
+            return new(item.IsPending
                 ? Color.FromArgb(255, 180, 180, 100)
                 : Color.FromArgb(255, 80, 160, 240));
         if (item.IsSuccess) return new(Colors.LimeGreen);
@@ -619,7 +618,7 @@ public sealed partial class MainPage
     private async Task ClearHistoryAsync()
     {
         if (!await ConfirmAsync(L("history_clear_confirm"))) return;
-        HistoryController.Clear();
+        _historyPresentation.ClearCompleted();
         _selectedHistoryIndex = -1;
         RefreshHistory();
     }

@@ -84,9 +84,9 @@ static partial class TestSuite
 
             string fluent = File.ReadAllText(Path.Combine(root, "src", "Clickra.Fluent", "MainPage.xaml.cs"));
 
-            // Fluent UI must use GetLabelKey instead of an ad-hoc switch with string literals
-            Assert.True(fluent.Contains("PdfCompressionOptions.GetLabelKey", StringComparison.Ordinal),
-                "Fluent UI must delegate PDF compression label keys to core.");
+            // Fluent UI must ask the shared Presentation settings owner instead of owning label policy.
+            Assert.True(fluent.Contains("SettingsPresentationController.Shared.GetPdfCompressionSliderLabelKey", StringComparison.Ordinal),
+                "Fluent UI must delegate PDF compression label keys to the shared Presentation settings owner.");
             Assert.False(fluent.Contains("switch\n        {\n            \"small\"", StringComparison.Ordinal),
                 "Fluent UI must not hardcode private switch on compression level names.");
 

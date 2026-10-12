@@ -101,7 +101,7 @@ namespace Clickra.UI
         {
             int rowY = block.RowTop(activeIndex);
             int rowH = block.RowHeight(activeIndex);
-            ConversionStatus fileStatus = item.Entry.Status;
+            HistoryStatusVisualKind fileStatus = item.StatusVisualKind;
 
             using var path = UIHelper.GetRoundedRectPath(new RectangleF(contentX * s, rowY * s, rowW * s, rowH * s), 6 * s);
             using var rowBg = new SolidBrush(ActiveRowBackground(fileStatus));
@@ -112,30 +112,30 @@ namespace Clickra.UI
             DrawHistoryRowSummary(g, contentX, rowW, rowY, item, s, ActiveStatusColor(fileStatus));
         }
 
-        static Color ActiveRowBackground(ConversionStatus status) => status switch
+        static Color ActiveRowBackground(HistoryStatusVisualKind status) => status switch
         {
-            ConversionStatus.Pending => Color.FromArgb(38, 38, 48),
-            ConversionStatus.InProgress => Color.FromArgb(30, 42, 55),
-            ConversionStatus.Success => Color.FromArgb(30, 44, 34),
-            ConversionStatus.Failed => Color.FromArgb(50, 32, 32),
+            HistoryStatusVisualKind.Pending => Color.FromArgb(38, 38, 48),
+            HistoryStatusVisualKind.InProgress => Color.FromArgb(30, 42, 55),
+            HistoryStatusVisualKind.Success => Color.FromArgb(30, 44, 34),
+            HistoryStatusVisualKind.Failed => Color.FromArgb(50, 32, 32),
             _ => Color.FromArgb(36, 36, 36)
         };
 
-        static Color ActiveRowBorder(ConversionStatus status) => status switch
+        static Color ActiveRowBorder(HistoryStatusVisualKind status) => status switch
         {
-            ConversionStatus.Pending => Color.FromArgb(70, 70, 100),
-            ConversionStatus.InProgress => Color.FromArgb(0, 120, 212),
-            ConversionStatus.Success => Color.FromArgb(50, 160, 80),
-            ConversionStatus.Failed => Color.FromArgb(200, 60, 60),
+            HistoryStatusVisualKind.Pending => Color.FromArgb(70, 70, 100),
+            HistoryStatusVisualKind.InProgress => Color.FromArgb(0, 120, 212),
+            HistoryStatusVisualKind.Success => Color.FromArgb(50, 160, 80),
+            HistoryStatusVisualKind.Failed => Color.FromArgb(200, 60, 60),
             _ => Color.FromArgb(60, 60, 60)
         };
 
-        static Color ActiveStatusColor(ConversionStatus status) => status switch
+        static Color ActiveStatusColor(HistoryStatusVisualKind status) => status switch
         {
-            ConversionStatus.Pending => Color.FromArgb(180, 180, 100),
-            ConversionStatus.InProgress => Color.FromArgb(80, 160, 240),
-            ConversionStatus.Success => Color.FromArgb(100, 220, 100),
-            ConversionStatus.Failed => Color.FromArgb(255, 90, 70),
+            HistoryStatusVisualKind.Pending => Color.FromArgb(180, 180, 100),
+            HistoryStatusVisualKind.InProgress => Color.FromArgb(80, 160, 240),
+            HistoryStatusVisualKind.Success => Color.FromArgb(100, 220, 100),
+            HistoryStatusVisualKind.Failed => Color.FromArgb(255, 90, 70),
             _ => Color.Gray
         };
 
@@ -300,7 +300,7 @@ namespace Clickra.UI
 
             float s = _dpiScale;
             var parkedItems = ParkedItems;
-            DrawParkedQueueHeader(g, contentX, rowW, block.Top, _historyFeed.ExpiringSoonCount, s);
+            DrawParkedQueueHeader(g, contentX, rowW, block.Top, _historyPresentation.ExpiringSoonCount, s);
 
             for (int i = 0; i < parkedItems.Count; i++)
                 DrawParkedQueueRow(g, contentX, rowW, block, parkedItems[i], i, s);
@@ -449,8 +449,8 @@ namespace Clickra.UI
                 {
                     string text = action switch
                     {
-                        ParkedActionShorten => "-" + ClickraSettings.ParkedRetentionStepDays,
-                        ParkedActionExtend  => "+" + ClickraSettings.ParkedRetentionStepDays,
+                        ParkedActionShorten => "-" + _historyPresentation.RetentionStepDays,
+                        ParkedActionExtend  => "+" + _historyPresentation.RetentionStepDays,
                         ParkedActionResume  => GetText("fluent_task_resume"),
                         ParkedActionCancel  => GetText("dialog_cancel"),
                         _                   => ""
