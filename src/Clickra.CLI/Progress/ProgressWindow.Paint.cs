@@ -209,11 +209,7 @@ namespace Clickra.UI
             {
                 logicalPctW = g.MeasureString(drawPctStr, _pctFont).Width / s;
             }
-            float logicalMaxMsgW = 448f;
-            if (logicalPctW > 0)
-            {
-                logicalMaxMsgW = 448f - logicalPctW - 10f;
-            }
+            float logicalMaxMsgW = ProgressLayout.MessageAvailableWidth(logicalPctW);
 
             float fullMsgW = g.MeasureString(msg, _msgFont).Width / s;
             float maxLogicalScroll = Math.Max(0f, fullMsgW - logicalMaxMsgW);
@@ -233,12 +229,12 @@ namespace Clickra.UI
                 g.Clip = oldClip;
 
                 // Draw scrollbar if scrollable
-                float scrollbarY = 152;
+                float scrollbarY = ProgressLayout.ScrollbarDrawY;
                 float thumbW = Math.Max(15f, (logicalMaxMsgW / fullMsgW) * logicalMaxMsgW);
                 float thumbX = 36f + (currentScroll / fullMsgW) * logicalMaxMsgW;
                 if (thumbX + thumbW > 36f + logicalMaxMsgW) thumbX = 36f + logicalMaxMsgW - thumbW;
 
-                UIHelper.DrawHorizontalScrollbar(g, 36, scrollbarY, logicalMaxMsgW, thumbX, thumbW, s);
+                UIHelper.DrawHorizontalScrollbar(g, ProgressLayout.MessageLeft, scrollbarY, logicalMaxMsgW, thumbX, thumbW, s);
             }
             else
             {
@@ -292,7 +288,8 @@ namespace Clickra.UI
         /// <summary>Paints the minimize-to-tray button with its hover state and tooltip.</summary>
         private void PaintTrayButton(Graphics g, float s)
         {
-            var btnRect = new RectangleF(456 * s, 36 * s, 28 * s, 28 * s);
+            var logicalBtn = ProgressLayout.TrayButton;
+            var btnRect = new RectangleF(logicalBtn.X * s, logicalBtn.Y * s, logicalBtn.Width * s, logicalBtn.Height * s);
             using var btnPath = UIHelper.GetRoundedRectPath(btnRect, 4 * s);
 
             Color btnBg = _isTrayBtnHovered ? Color.FromArgb(60, 60, 60) : Color.Transparent;

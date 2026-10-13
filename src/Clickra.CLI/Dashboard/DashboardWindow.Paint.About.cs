@@ -81,7 +81,7 @@ namespace Clickra.UI
             Color gitBtnBorder = isGitBtnHovered ? Color.FromArgb(90, 90, 90) : Color.FromArgb(70, 70, 70);
             using (var btnBgBrush = new SolidBrush(gitBtnBg))
             using (var btnBorderPen = new Pen(gitBtnBorder))
-            using (var path = UIHelper.GetRoundedRectPath(new RectangleF(contentX * s, _githubBtnY * s, wGit * s, 32 * s), 4 * s))
+            using (var path = UIHelper.GetRoundedRectPath(new RectangleF(DashboardLayout.AboutButtonPaintRect(contentX, _githubBtnY, wGit).X * s, _githubBtnY * s, wGit * s, DashboardLayout.AboutButtonPaintRect(contentX, _githubBtnY, wGit).Height * s), 4 * s))
             {
                 g.FillPath(btnBgBrush, path);
                 g.DrawPath(btnBorderPen, path);
@@ -145,7 +145,7 @@ namespace Clickra.UI
             Color gmailBtnBorder = isGmailBtnHovered ? Color.FromArgb(90, 90, 90) : Color.FromArgb(70, 70, 70);
             using (var btnBgBrush = new SolidBrush(gmailBtnBg))
             using (var btnBorderPen = new Pen(gmailBtnBorder))
-            using (var path = UIHelper.GetRoundedRectPath(new RectangleF(contentX * s, _aboutBtnY * s, wGmail * s, 32 * s), 4 * s))
+            using (var path = UIHelper.GetRoundedRectPath(new RectangleF(DashboardLayout.AboutButtonPaintRect(contentX, _aboutBtnY, wGmail).X * s, _aboutBtnY * s, wGmail * s, DashboardLayout.AboutButtonPaintRect(contentX, _aboutBtnY, wGmail).Height * s), 4 * s))
             {
                 g.FillPath(btnBgBrush, path);
                 g.DrawPath(btnBorderPen, path);

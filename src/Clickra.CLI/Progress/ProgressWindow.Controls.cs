@@ -284,7 +284,7 @@ namespace Clickra.UI
                     }
                     else
                     {
-                        bool hovered = (mouseX >= 456 && mouseX <= 484 && mouseY >= 36 && mouseY <= 64);
+                        bool hovered = ProgressLayout.TrayButtonHit(mouseX, mouseY);
                         if (hovered != _isTrayBtnHovered)
                         {
                             _isTrayBtnHovered = hovered;
@@ -308,11 +308,7 @@ namespace Clickra.UI
                 using var tempG = Graphics.FromImage(tempBmp);
                 logicalPctW = tempG.MeasureString(drawPctStr, _pctFont).Width / _dpiScale;
             }
-            float logicalMaxMsgW = 448f;
-            if (logicalPctW > 0)
-            {
-                logicalMaxMsgW = 448f - logicalPctW - 10f;
-            }
+            float logicalMaxMsgW = ProgressLayout.MessageAvailableWidth(logicalPctW);
 
             float fullMsgW = 0f;
             using (var tempBmp = new Bitmap(1, 1))
@@ -582,7 +578,7 @@ namespace Clickra.UI
 
         /// <summary>Whether the point is inside the minimize-to-tray button.</summary>
         private static bool IsTrayButtonHit(int mouseX, int mouseY)
-            => mouseX >= 456 && mouseX <= 484 && mouseY >= 36 && mouseY <= 64;
+            => ProgressLayout.TrayButtonHit(mouseX, mouseY);
 
         /// <summary>Starts dragging the status-message scrollbar when the click lands on its
         /// thumb track.</summary>
@@ -596,13 +592,9 @@ namespace Clickra.UI
                 using var tempG = Graphics.FromImage(tempBmp);
                 logicalPctW = tempG.MeasureString(drawPctStr, _pctFont).Width / _dpiScale;
             }
-            float logicalMaxMsgW = 448f;
-            if (logicalPctW > 0)
-            {
-                logicalMaxMsgW = 448f - logicalPctW - 10f;
-            }
+            float logicalMaxMsgW = ProgressLayout.MessageAvailableWidth(logicalPctW);
 
-            if (mouseX < 36 || mouseX > 36 + logicalMaxMsgW || mouseY < 148 || mouseY > 158) return;
+            if (!ProgressLayout.ScrollbarHit(mouseX, mouseY, logicalMaxMsgW)) return;
 
             string statusMsg = _message;
             float fullMsgW = 0f;

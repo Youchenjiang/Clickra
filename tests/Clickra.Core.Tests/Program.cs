@@ -68,6 +68,7 @@ TestSuite.RegisterMarkdownUiIntegrationTests(runner);
 TestSuite.RegisterMarkdownOptionsLayoutTests(runner);
 TestSuite.RegisterSettingsRegistryTests(runner);
 TestSuite.RegisterProgressWindowTests(runner);
+TestSuite.RegisterProgressLayoutTests(runner);
 TestSuite.RegisterDashboardLayoutTests(runner);
 TestSuite.RegisterHistoryFeedTests(runner);
 TestSuite.RegisterParkedRetentionTests(runner);

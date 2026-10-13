@@ -9,6 +9,17 @@ namespace Clickra.UI.Layout;
 /// </summary>
 public static class DashboardLayout
 {
+    public const int AboutButtonHeight = 32;
+    public static LayoutRect AboutButtonRect(int contentX, int y, int width) =>
+        new(contentX, y, width, AboutButtonHeight);
+    public static System.Drawing.RectangleF AboutButtonPaintRect(float contentX, float y, float width) =>
+        new(contentX, y, width, AboutButtonHeight);
+    // The text-measured width and panel origin can be fractional. Keep the
+    // original float comparisons rather than rounding the hit bounds.
+    public static bool AboutButtonHit(float contentX, float y, float width, int mouseX, int mouseY) =>
+        mouseX >= contentX && mouseX < contentX + width &&
+        mouseY >= y && mouseY < y + AboutButtonHeight;
+
     // ── 內容區原點 ──────────────────────────────────────────────
     /// <summary>標題（30）與分隔線（75）之下，內容第一列的 Y。</summary>
     public const int ContentTop = 90;
