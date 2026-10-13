@@ -164,10 +164,15 @@ static partial class TestSuite
             }
 
             Assert.False(
+                PowerShellHelper.IsRecoverableMicrosoftOfficeFailure(
+                    new PowerShellHelper.OfficeProcessTerminationException("Timed-out Office process still running.")),
+                "A process that could not be terminated must never trigger concurrent LibreOffice fallback.");
+
+            Assert.False(
                 PowerShellHelper.IsRecoverableMicrosoftOfficeFailure(new OperationCanceledException()),
                 "Cancellation must remain terminal and must not launch a fallback engine.");
             Assert.False(
-                PowerShellHelper.IsRecoverableMicrosoftOfficeFailure(new ArgumentException("Invalid Office conversion input.", "appType")),
+                PowerShellHelper.IsRecoverableMicrosoftOfficeFailure(new ArgumentException("Invalid Office conversion input.")),
                 "Programming/input errors must not be hidden by a fallback engine.");
         });
     }

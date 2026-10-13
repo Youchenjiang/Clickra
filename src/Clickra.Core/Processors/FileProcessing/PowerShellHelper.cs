@@ -93,6 +93,13 @@ namespace Clickra.Core.Processors
         /// Failures that may be recovered by switching from Microsoft Office automation to LibreOffice.
         /// Keep this allowlist explicit so cancellation and programming defects never trigger a second engine.
         /// </summary>
+        internal sealed class OfficeProcessTerminationException : Exception
+        {
+            internal OfficeProcessTerminationException(string message) : base(message) { }
+            internal OfficeProcessTerminationException(string message, Exception innerException)
+                : base(message, innerException) { }
+        }
+
         internal static bool IsRecoverableMicrosoftOfficeFailure(Exception exception) =>
             exception is InvalidOperationException
                 or NotSupportedException
@@ -264,7 +271,7 @@ try {{
                 {
                     process.Kill(true);
                     if (!process.WaitForExit(TimeSpan.FromSeconds(10)))
-                        throw new ApplicationException("Microsoft Office process did not exit after termination; refusing concurrent fallback.");
+                        throw new OfficeProcessTerminationException("Microsoft Office process did not exit after termination; refusing concurrent fallback.");
                 }
                 catch (InvalidOperationException) when (process.HasExited)
                 {
@@ -272,7 +279,7 @@ try {{
                 }
                 catch (System.ComponentModel.Win32Exception ex)
                 {
-                    throw new ApplicationException("Unable to terminate the timed-out Microsoft Office process; refusing concurrent fallback.", ex);
+                    throw new OfficeProcessTerminationException("Unable to terminate the timed-out Microsoft Office process; refusing concurrent fallback.", ex);
                 }
                 throw new TimeoutException(string.Format(Localization.T("error_office_timeout", request.Language), request.AppName));
             }
