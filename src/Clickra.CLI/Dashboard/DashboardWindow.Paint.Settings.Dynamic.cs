@@ -1,7 +1,7 @@
 using System;
 using System.Drawing;
 using Clickra.Core;
-using Clickra.Core.Layout;
+using Clickra.UI.Layout;
 using Clickra.Core.Modules.Settings.Model;
 
 namespace Clickra.UI;

@@ -7,7 +7,7 @@ using System.Drawing.Text;
 using System.Drawing.Drawing2D;
 using System.Collections.Generic;
 using Clickra.Core;
-using Clickra.Core.Layout;
+using Clickra.UI.Layout;
 using static Clickra.UI.Native.Win32;
 
 namespace Clickra.UI

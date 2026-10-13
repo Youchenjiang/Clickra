@@ -18,10 +18,7 @@ src/Clickra.Core/Application/SingleOutputConversionUseCaseBase.cs
 src/Clickra.Core/Presentation/Convert/ConversionExecutionController.cs
 src/Clickra.Core/Presentation/Convert/ConvertWorkspaceController.cs
 src/Clickra.Core/Presentation/Dashboard/DashboardPresentationController.cs
-src/Clickra.Core/Presentation/Native/DashboardLayout.cs
-src/Clickra.Core/Presentation/Native/HistoryLayout.cs
 src/Clickra.Core/Presentation/Progress/TaskProgressController.cs
-src/Clickra.Core/Presentation/Shared/VectorIcons.cs
 src/Clickra.Core/Processors/ExecutionLocalizationOptions.cs
 src/Clickra.Core/Processors/FileProcessing/FileBackupScope.cs
 src/Clickra.Core/Processors/FileProcessing/IFileProcessor.cs

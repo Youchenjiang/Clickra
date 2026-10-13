@@ -7,7 +7,7 @@ using System.Drawing.Drawing2D;
 using System.Collections.Generic;
 using System.Runtime.InteropServices;
 using Clickra.Core;
-using Clickra.Core.Layout;
+using Clickra.UI.Layout;
 using Clickra.Core.Presentation.Convert;
 
 using static Clickra.UI.Native.Win32;

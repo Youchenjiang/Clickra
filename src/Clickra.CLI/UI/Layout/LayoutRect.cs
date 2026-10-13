@@ -1,4 +1,4 @@
-namespace Clickra.Core.Layout;
+namespace Clickra.UI.Layout;
 
 /// <summary>
 /// 版面表回傳的一個整數矩形。繪製與命中測試取用同一個值，所以兩邊不會各自

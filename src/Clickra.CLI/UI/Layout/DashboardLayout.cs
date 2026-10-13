@@ -1,6 +1,6 @@
-using Clickra.Core.Layout;
+using Clickra.UI.Layout;
 
-namespace Clickra.Core.Presentation.Native;
+namespace Clickra.UI.Layout;
 
 /// <summary>
 /// Clickra dashboard 的版面表：列高、行距與區塊高度只在此宣告。
