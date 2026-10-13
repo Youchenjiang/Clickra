@@ -16,10 +16,20 @@
 #   baseline tracked as PR-B in docs/development/PR46_POST_MERGE_AUDIT_AND_OPTIONS.md.
 # - `git push --no-verify` remains the documented escape hatch for the known
 #   baseline; the CI gate still records the truth on every push.
-# - CI additionally publishes NativeAOT binaries; this hook only compiles the
-#   projects (Release) to keep push latency reasonable.
+# - The hook intentionally runs full NativeAOT and fixture regression tests.
+#   Missing fixtures fail closed; no green result is inferred from skipped tests.
 
 set -e
+
+echo "[pre-push] Checking latest remote main, branch ancestry and commit policy..."
+if [ -z "${CLICKRA_PR_BODY_FILE:-}" ]; then
+  echo "[pre-push] ERROR: set CLICKRA_PR_BODY_FILE to the finalized PR body draft path." >&2
+  exit 1
+fi
+python scripts/pr_preflight.py --check --body-file "$CLICKRA_PR_BODY_FILE"
+
+echo "[pre-push] Running PR governance script tests..."
+python -m unittest discover -s tests -p 'test_pr_preflight.py' -v
 
 echo "Running pre-push checks (mirrors .github/workflows/ci.yml)..."
 
@@ -48,4 +58,21 @@ dotnet run --project tests/Clickra.Core.Tests/Clickra.Core.Tests.csproj -c Relea
 echo "[pre-push] Running functional unit tests (warnaserror)..."
 dotnet run --project tests/Clickra.Core.Tests/Clickra.Core.Tests.csproj -c Release --property:TreatWarningsAsErrors=true -- --functional
 
-echo "All pre-push checks passed."
+echo "[pre-push] Running Store publishing unit tests..."
+python -m unittest discover -s tests -p 'test_*store*.py' -v
+
+# NativeAOT is a required release-path gate, not an optional follow-up.
+echo "[pre-push] Publishing all three NativeAOT products (warnings as errors)..."
+dotnet publish src/Clickra.CLI/Clickra.csproj -c Release -r win-x64 --self-contained true -o publish/pre-push/cli -warnaserror
+dotnet publish src/ClickraShell/ClickraShell.csproj -c Release -r win-x64 --self-contained true -o publish/pre-push/shell -warnaserror
+dotnet publish src/ClickraLauncher/ClickraLauncher.csproj -c Release -r win-x64 --self-contained true -o publish/pre-push/launcher -warnaserror
+
+if [ -d test_pdfs ]; then
+  echo "[pre-push] Running required fixture regression tests..."
+  dotnet run --project tests/Clickra.Core.Tests/Clickra.Core.Tests.csproj -c Release --property:TreatWarningsAsErrors=true -- --require-fixtures
+else
+  echo "[pre-push] ERROR: test_pdfs fixtures unavailable. Run the fixture CI job or supply fixtures before pushing." >&2
+  exit 1
+fi
+
+echo "All pre-push PR checks passed."
