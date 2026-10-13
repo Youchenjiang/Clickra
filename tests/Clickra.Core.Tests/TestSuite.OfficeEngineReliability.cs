@@ -147,12 +147,12 @@ static partial class TestSuite
         {
             Exception[] recoverable =
             {
-                new InvalidOperationException(),
-                new NotSupportedException(),
-                new TimeoutException(),
+                new InvalidOperationException("Office interop failed."),
+                new NotSupportedException("Office application is unsupported."),
+                new TimeoutException("Office interop timed out."),
                 new System.ComponentModel.Win32Exception(),
-                new IOException(),
-                new UnauthorizedAccessException(),
+                new IOException("Office output cannot be written."),
+                new UnauthorizedAccessException("Office output access denied."),
                 new System.Security.SecurityException()
             };
 
@@ -167,7 +167,7 @@ static partial class TestSuite
                 PowerShellHelper.IsRecoverableMicrosoftOfficeFailure(new OperationCanceledException()),
                 "Cancellation must remain terminal and must not launch a fallback engine.");
             Assert.False(
-                PowerShellHelper.IsRecoverableMicrosoftOfficeFailure(new ArgumentException()),
+                PowerShellHelper.IsRecoverableMicrosoftOfficeFailure(new ArgumentException("Invalid Office conversion input.", "appType")),
                 "Programming/input errors must not be hidden by a fallback engine.");
         });
     }

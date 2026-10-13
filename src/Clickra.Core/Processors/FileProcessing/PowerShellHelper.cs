@@ -65,6 +65,7 @@ namespace Clickra.Core.Processors
                 ExceptionDispatchInfo.Capture(originalException).Throw();
             }
 
+            cancellationToken.ThrowIfCancellationRequested();
             onProgress?.Invoke(
                 request.FileIndex * 100,
                 request.TotalFiles * 100,
@@ -72,6 +73,7 @@ namespace Clickra.Core.Processors
                     Localization.T("status_office_fallback_to_libreoffice", settings.Language),
                     request.AppType,
                     Path.GetFileName(request.FullPath)));
+            cancellationToken.ThrowIfCancellationRequested();
             LibreOfficeHelper.ExportToPdf(request, settings, onProgress, cancellationToken);
         }
 
@@ -258,7 +260,20 @@ try {{
 
             if (!process.WaitForExit(TimeSpan.FromMinutes(2)))
             {
-                try { process.Kill(true); } catch { /* Ignored: a hung process must not mask the timeout error. */ }
+                try
+                {
+                    process.Kill(true);
+                    if (!process.WaitForExit(TimeSpan.FromSeconds(10)))
+                        throw new ApplicationException("Microsoft Office process did not exit after termination; refusing concurrent fallback.");
+                }
+                catch (InvalidOperationException) when (process.HasExited)
+                {
+                    // It exited between the timeout and the kill request.
+                }
+                catch (System.ComponentModel.Win32Exception ex)
+                {
+                    throw new ApplicationException("Unable to terminate the timed-out Microsoft Office process; refusing concurrent fallback.", ex);
+                }
                 throw new TimeoutException(string.Format(Localization.T("error_office_timeout", request.Language), request.AppName));
             }
 
