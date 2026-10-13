@@ -18,6 +18,7 @@ public static class LibreOfficeHelper
     private const uint SemNoGpFaultErrorBox = 0x0002;
     private const uint SemNoOpenFileErrorBox = 0x8000;
     private static readonly object ResolveCacheLock = new();
+    private static readonly object ConversionLaunchLock = new();
     private static DateTime _resolvedExecutableCachedAt = DateTime.MinValue;
     private static string _resolvedExecutableCacheKey = "";
     private static string _resolvedExecutableCacheValue = "";
@@ -185,15 +186,16 @@ public static class LibreOfficeHelper
         var error = new StringBuilder();
         // Install the cancellation callback before launching the fallback engine.
         // Serializing the launch and callback also handles cancellation during Process.Start.
-        object launchGate = new();
         Process? launched = null;
         using var registration = cancellationToken.Register(() =>
         {
-            lock (launchGate)
+            lock (ConversionLaunchLock)
                 if (launched != null) TryKillProcess(launched);
         });
+        // The registration remains alive until conversion finishes.
+        _ = registration;
         Process process;
-        lock (launchGate)
+        lock (ConversionLaunchLock)
         {
             cancellationToken.ThrowIfCancellationRequested();
             uint previousErrorMode = SetErrorMode(SemFailCriticalErrors | SemNoGpFaultErrorBox | SemNoOpenFileErrorBox);
