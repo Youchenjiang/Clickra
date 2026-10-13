@@ -93,10 +93,10 @@ namespace Clickra.Core.Processors
         /// Failures that may be recovered by switching from Microsoft Office automation to LibreOffice.
         /// Keep this allowlist explicit so cancellation and programming defects never trigger a second engine.
         /// </summary>
-        internal sealed class OfficeProcessTerminationException : Exception
+        public sealed class OfficeProcessTerminationException : Exception
         {
-            internal OfficeProcessTerminationException(string message) : base(message) { }
-            internal OfficeProcessTerminationException(string message, Exception innerException)
+            public OfficeProcessTerminationException(string message) : base(message) { }
+            public OfficeProcessTerminationException(string message, Exception innerException)
                 : base(message, innerException) { }
         }
 
