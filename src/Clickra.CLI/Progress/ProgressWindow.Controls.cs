@@ -443,14 +443,14 @@ namespace Clickra.UI
         {
             if (_visualSplitMode != 2 || mouseY < VisualSplitterLayout.PagesHitRow.Y || mouseY > VisualSplitterLayout.PagesHitRow.Bottom) return false;
 
-            if (VisualSplitterLayout.PagesHitButton(false).ContainsInclusive(mouseX, mouseY)) // [-]
+            if (VisualSplitterLayout.PagesButton(false).ContainsInclusive(mouseX, mouseY)) // [-]
             {
                 _visualSplitModel.AdjustPagesPerSegment(-1);
                 SyncVisualSplitStateFromModel();
                 InvalidateRect(hwnd, IntPtr.Zero, true);
                 return true;
             }
-            if (VisualSplitterLayout.PagesHitButton(true).ContainsInclusive(mouseX, mouseY)) // [+]
+            if (VisualSplitterLayout.PagesButton(true).ContainsInclusive(mouseX, mouseY)) // [+]
             {
                 _visualSplitModel.AdjustPagesPerSegment(+1);
                 SyncVisualSplitStateFromModel();

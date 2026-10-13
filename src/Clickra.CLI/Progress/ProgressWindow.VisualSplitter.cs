@@ -537,9 +537,10 @@ public partial class ProgressWindow
         int cnt = activeSeg.End - activeSeg.Start + 1;
         string outName = Path.GetFileNameWithoutExtension(_passwordPromptFilename);
 
-        float badgeX = rightX + 6 * s;
+        LayoutRect previewRect = VisualSplitterLayout.PreviewArea(_visualSplitMode == 2);
+        float badgeX = previewRect.X * s;
         float badgeY = bodyY + 20 * s;
-        float badgeW = rightW - 12 * s;
+        float badgeW = previewRect.Width * s;
         float badgeH = 18 * s;
 
         using var badgeBg = new SolidBrush(Color.FromArgb(25, 60, 35));
@@ -590,14 +591,15 @@ public partial class ProgressWindow
             navY + 2 * s);
 
         // Large Preview Box
-        float cardAreaY = navY + navH + 4 * s;
-        float cardAreaW = badgeW;
-        float cardAreaH = (bodyY + panelH) - cardAreaY - 8 * s;
+        float cardAreaY = previewRect.Y * s;
+        float cardAreaW = previewRect.Width * s;
+        float cardAreaH = previewRect.Height * s;
 
         using var shadowBg = new SolidBrush(Color.FromArgb(20, 20, 20));
-        g.FillRectangle(shadowBg, badgeX + 2 * s, cardAreaY + 2 * s, cardAreaW, cardAreaH);
+        g.FillRectangle(shadowBg, previewRect.X * s + 2 * s, cardAreaY + 2 * s, cardAreaW, cardAreaH);
 
-        PaintPreviewPage(g, s, tipFont, labelFont, currentPageNum, new RectangleF(badgeX, cardAreaY, cardAreaW, cardAreaH));
+        PaintPreviewPage(g, s, tipFont, labelFont, currentPageNum,
+            new RectangleF(previewRect.X * s, cardAreaY, cardAreaW, cardAreaH));
     }
 
     /// <summary>Draws the selected page thumbnail (or a paper placeholder) inside the preview box.</summary>

@@ -26,4 +26,8 @@ public readonly struct LayoutRect
 
     /// <summary>Preserves legacy Native click targets inclusive of the right and bottom edges.</summary>
     public bool ContainsInclusive(int x, int y) => x >= X && x <= Right && y >= Y && y <= Bottom;
+
+    /// <summary>Expands the rectangle on both sides of each axis by the given amount.</summary>
+    public LayoutRect Inflate(int dx, int dy) =>
+        new(X - dx, Y - dy, Width + dx * 2, Height + dy * 2);
 }
