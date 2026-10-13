@@ -41,6 +41,12 @@ public partial class ProgressWindow
 
     /// <summary>Cached page thumbnails keyed by 1-based page number.</summary>
     private readonly Dictionary<int, Bitmap> _visualSplitPageThumbnails = new Dictionary<int, Bitmap>();
+    private readonly Queue<int> _visualSplitDynamicPageOrder = new();
+    private readonly HashSet<int> _visualSplitPendingPages = new();
+    private readonly HashSet<int> _visualSplitFailedPages = new();
+    private readonly System.Threading.SemaphoreSlim _visualSplitRenderSlots = new(2, 2);
+    private int _visualSplitThumbnailGeneration;
+    private int _visualSplitTotalPages;
 
     /// <summary>Path of the PDF being split.</summary>
     private string _visualSplitFilePath = "";
@@ -94,6 +100,7 @@ public partial class ProgressWindow
         if (totalPages <= 0) totalPages = 1;
 
         _visualSplitFilePath = filePath;
+_visualSplitTotalPages = totalPages;
         _visualSplitModel = new VisualSplitModel(totalPages);
         SyncVisualSplitStateFromModel();
 
@@ -112,14 +119,18 @@ public partial class ProgressWindow
     /// </summary>
     private void CachePdfPageThumbnails(string filePath)
     {
+        _visualSplitThumbnailGeneration++;
         foreach (var kvp in _visualSplitPageThumbnails)
             try { kvp.Value.Dispose(); } catch { /* Ignored: disposal must not abort the cache rebuild. */ }
         _visualSplitPageThumbnails.Clear();
+        _visualSplitPendingPages.Clear();
+        _visualSplitFailedPages.Clear();
+        _visualSplitDynamicPageOrder.Clear();
 
         string fontName = GetThumbnailFontName();
         try
         {
-            int maxP = Math.Min(PdfPageThumbnailRenderer.GetPageCount(filePath), 20);
+            int maxP = Math.Min(PdfPageThumbnailRenderer.GetPageCount(filePath), VisualSplitThumbnailPolicy.PreloadedPages);
             for (int p = 1; p <= maxP; p++)
             {
                 try
@@ -132,6 +143,77 @@ public partial class ProgressWindow
             }
         }
         catch { /* Ignored: an unreadable PDF must not crash the splitter window. */ }
+    }
+
+    /// <summary>Fetches uncached pages in the background without blocking the Win32 paint thread.
+    /// Requests for the same page are coalesced, and dynamic thumbnails have a fixed budget.</summary>
+    private void RequestVisualSplitThumbnail(int page)
+    {
+        if (string.IsNullOrEmpty(_visualSplitFilePath)) return;
+        int generation;
+        string filePath;
+        lock (_stateLock)
+        {
+            if (!VisualSplitThumbnailPolicy.NeedsRender(page, _visualSplitTotalPages,
+                _visualSplitPageThumbnails.ContainsKey(page) || _visualSplitFailedPages.Contains(page),
+                _visualSplitPendingPages.Contains(page))) return;
+            _visualSplitPendingPages.Add(page);
+            generation = _visualSplitThumbnailGeneration;
+            filePath = _visualSplitFilePath;
+        }
+
+        _ = Task.Run(() =>
+        {
+            Bitmap? bitmap = null;
+            bool acquired = false;
+            try
+            {
+                _visualSplitRenderSlots.Wait();
+                acquired = true;
+                lock (_stateLock)
+                    if (generation != _visualSplitThumbnailGeneration || !_isPromptingVisualSplitter)
+                        return;
+                bitmap = PdfPageThumbnailRenderer.RenderPageFromFile(filePath, page, 660, GetThumbnailFontName());
+                lock (_stateLock)
+                {
+                    if (generation != _visualSplitThumbnailGeneration || !_isPromptingVisualSplitter)
+                        return;
+                    if (bitmap == null)
+                    {
+                        _visualSplitFailedPages.Add(page);
+                        return;
+                    }
+                    _visualSplitPageThumbnails[page] = bitmap;
+                    bitmap = null; // The cache owns the bitmap from here.
+                    if (page > VisualSplitThumbnailPolicy.PreloadedPages)
+                    {
+                        _visualSplitDynamicPageOrder.Enqueue(page);
+                        while (_visualSplitDynamicPageOrder.Count > VisualSplitThumbnailPolicy.DynamicCacheLimit)
+                        {
+                            int evicted = _visualSplitDynamicPageOrder.Dequeue();
+                            if (_visualSplitPageThumbnails.Remove(evicted, out Bitmap? oldBitmap))
+                                oldBitmap.Dispose();
+                        }
+                    }
+                }
+                if (_hwnd != IntPtr.Zero)
+                    PostMessageW(_hwnd, WM_USER_INVALIDATE, (IntPtr)1, IntPtr.Zero);
+            }
+            catch
+            {
+                lock (_stateLock)
+                    if (generation == _visualSplitThumbnailGeneration)
+                        _visualSplitFailedPages.Add(page);
+            }
+            finally
+            {
+                bitmap?.Dispose();
+                if (acquired) _visualSplitRenderSlots.Release();
+                lock (_stateLock)
+                    if (generation == _visualSplitThumbnailGeneration)
+                        _visualSplitPendingPages.Remove(page);
+            }
+        });
     }
 
     /// <summary>Returns the UI font family for the current language, so thumbnails render
@@ -603,6 +685,10 @@ public partial class ProgressWindow
     /// <summary>Draws the selected page thumbnail (or a paper placeholder) inside the preview box.</summary>
     private void PaintPreviewPage(Graphics g, float s, Font tipFont, Font labelFont, int currentPageNum, RectangleF area)
     {
+        // A missing page (typically page 21+) is rendered asynchronously on demand.
+        // The background renderer never blocks the UI paint path.
+        RequestVisualSplitThumbnail(currentPageNum);
+        lock (_stateLock)
         if (_visualSplitPageThumbnails.TryGetValue(currentPageNum, out var pageBmp) && pageBmp != null)
         {
             float fitW = area.Width;
