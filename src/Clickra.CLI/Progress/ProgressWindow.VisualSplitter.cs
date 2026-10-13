@@ -389,9 +389,9 @@ public partial class ProgressWindow
     /// <summary>Paints the three mode buttons (custom segments, split each page, fixed pages).</summary>
     private void PaintSplitterModeBar(Graphics g, float s)
     {
-        float modeY = 102 * s;
-        float modeWidth = 140 * s;
-        float modeHeight = 26 * s;
+        float modeY = VisualSplitterLayout.ModeButton(0).Y * s;
+        float modeWidth = VisualSplitterLayout.ModeButton(0).Width * s;
+        float modeHeight = VisualSplitterLayout.ModeButton(0).Height * s;
 
         string[] modeTitles =
         {
@@ -401,8 +401,9 @@ public partial class ProgressWindow
         };
         for (int i = 0; i < 3; i++)
         {
-            float modeX = (36 + i * 148) * s;
-            if (i == 2) modeWidth = 152 * s;
+            var modeRect = VisualSplitterLayout.ModeButton(i);
+            float modeX = modeRect.X * s;
+            modeWidth = modeRect.Width * s;
 
             bool isSelected = (_visualSplitMode == i);
 
@@ -426,10 +427,11 @@ public partial class ProgressWindow
     {
         if (_visualSplitMode != 2) return 0f;
 
-        float nSelY = 130 * s;
-        float nSelH = 18 * s;
-        float minusX = 36 * s;
-        float minusW = 24 * s;
+        var minusRect = VisualSplitterLayout.PagesButton(false);
+        float nSelY = minusRect.Y * s;
+        float nSelH = minusRect.Height * s;
+        float minusX = minusRect.X * s;
+        float minusW = minusRect.Width * s;
         using var nBtnBg = new SolidBrush(Color.FromArgb(55, 55, 55));
         using var nBtnPen = new Pen(Color.FromArgb(90, 90, 90));
         g.FillRectangle(nBtnBg, minusX, nSelY, minusW, nSelH);
@@ -439,8 +441,8 @@ public partial class ProgressWindow
         float nLabelX = minusX + minusW + 6 * s;
         using var nLabelBrush = new SolidBrush(Color.FromArgb(200, 200, 200));
 
-        float plusX = nLabelX + 70 * s;
-        float plusW = 24 * s;
+        float plusX = VisualSplitterLayout.PagesButton(true).X * s;
+        float plusW = VisualSplitterLayout.PagesButton(true).Width * s;
         g.FillRectangle(nBtnBg, plusX, nSelY, plusW, nSelH);
         g.DrawRectangle(nBtnPen, plusX, nSelY, plusW, nSelH);
 
@@ -457,7 +459,7 @@ public partial class ProgressWindow
     /// preview-panel painters.</summary>
     private void PaintSplitterBody(Graphics g, float s, float nSelectorHeight)
     {
-        float bodyY = 134 * s + nSelectorHeight;
+        float bodyY = VisualSplitterLayout.BodyTop(_visualSplitMode == 2) * s;
         float leftX = 36 * s;
         float leftW = 216 * s;
         float rightX = 260 * s;
@@ -499,8 +501,9 @@ public partial class ProgressWindow
             using var cardBrush = new SolidBrush(cardBgColor);
             using var cardPen = new Pen(isFocused ? Color.FromArgb(0, 140, 240) : Color.FromArgb(70, 70, 70));
 
-            g.FillRectangle(cardBrush, leftX + 6 * s, cardY + i * (cardH + 3 * s), leftW - 12 * s, cardH);
-            g.DrawRectangle(cardPen, leftX + 6 * s, cardY + i * (cardH + 3 * s), leftW - 12 * s, cardH);
+            var cardRect = VisualSplitterLayout.SegmentCard(i, _visualSplitMode == 2);
+            g.FillRectangle(cardBrush, cardRect.X * s, cardRect.Y * s, cardRect.Width * s, cardRect.Height * s);
+            g.DrawRectangle(cardPen, cardRect.X * s, cardRect.Y * s, cardRect.Width * s, cardRect.Height * s);
 
             if (_tipFont != null)
             {
@@ -552,11 +555,11 @@ public partial class ProgressWindow
         int currentPageNum = activeSeg.Start + previewIndex;
 
         // Page Navigation Bar
-        float navY = bodyY + 41 * s;
-        float navH = 20 * s;
+        float navY = VisualSplitterLayout.NavButton(0, _visualSplitMode == 2).Y * s;
+        float navH = VisualSplitterLayout.NavButton(0, _visualSplitMode == 2).Height * s;
 
-        float prevBtnX = badgeX;
-        float prevBtnW = 24 * s;
+        float prevBtnX = VisualSplitterLayout.NavButton(0, _visualSplitMode == 2).X * s;
+        float prevBtnW = VisualSplitterLayout.NavButton(0, _visualSplitMode == 2).Width * s;
         using var navBtnBg = new SolidBrush(Color.FromArgb(45, 50, 60));
         using var navBtnPen = new Pen(Color.FromArgb(80, 90, 105));
         g.FillRectangle(navBtnBg, prevBtnX, navY, prevBtnW, navH);
@@ -564,15 +567,15 @@ public partial class ProgressWindow
         using var navTextBrush = new SolidBrush(Color.FromArgb(220, 220, 220));
         VectorIcons.DrawChevronLeft(g, prevBtnX + prevBtnW / 2f, navY + navH / 2f, 4 * s, navTextBrush.Color, 1.5f * s);
 
-        float nextBtnX = badgeX + badgeW - 24 * s;
-        float nextBtnW = 24 * s;
+        float nextBtnX = VisualSplitterLayout.NavButton(1, _visualSplitMode == 2).X * s;
+        float nextBtnW = VisualSplitterLayout.NavButton(1, _visualSplitMode == 2).Width * s;
         g.FillRectangle(navBtnBg, nextBtnX, navY, nextBtnW, navH);
         g.DrawRectangle(navBtnPen, nextBtnX, navY, nextBtnW, navH);
         VectorIcons.DrawChevronRight(g, nextBtnX + nextBtnW / 2f, navY + navH / 2f, 4 * s, navTextBrush.Color, 1.5f * s);
 
         // Split-at-current-page button (between the page label and the ">" button)
-        float splitBtnW = 40 * s;
-        float splitBtnX = nextBtnX - splitBtnW - 4 * s;
+        float splitBtnW = VisualSplitterLayout.NavButton(2, _visualSplitMode == 2).Width * s;
+        float splitBtnX = VisualSplitterLayout.NavButton(2, _visualSplitMode == 2).X * s;
         g.FillRectangle(navBtnBg, splitBtnX, navY, splitBtnW, navH);
         g.DrawRectangle(navBtnPen, splitBtnX, navY, splitBtnW, navH);
         g.DrawString(Loc("pdf_split_btn_split_at"), tipFont, navTextBrush, splitBtnX + 8 * s, navY + 2 * s);
@@ -647,31 +650,31 @@ public partial class ProgressWindow
     /// <summary>Paints the four bottom action buttons (add, delete, clear, confirm, cancel).</summary>
     private void PaintSplitterButtons(Graphics g, float s)
     {
-        float btnY = 380 * s;
-        float btnH = 26 * s;
+        float btnY = VisualSplitterLayout.ActionButton(0).Y * s;
+        float btnH = VisualSplitterLayout.ActionButton(0).Height * s;
 
         using var addBg = new SolidBrush(Color.FromArgb(48, 48, 48));
         using var addPen = new Pen(Color.FromArgb(80, 80, 80));
 
-        g.FillRectangle(addBg, 36 * s, btnY, 96 * s, btnH);
-        g.DrawRectangle(addPen, 36 * s, btnY, 96 * s, btnH);
+        g.FillRectangle(addBg, VisualSplitterLayout.ActionButton(0).X * s, btnY, VisualSplitterLayout.ActionButton(0).Width * s, btnH);
+        g.DrawRectangle(addPen, VisualSplitterLayout.ActionButton(0).X * s, btnY, VisualSplitterLayout.ActionButton(0).Width * s, btnH);
 
-        g.FillRectangle(addBg, 138 * s, btnY, 84 * s, btnH);
-        g.DrawRectangle(addPen, 138 * s, btnY, 84 * s, btnH);
+        g.FillRectangle(addBg, VisualSplitterLayout.ActionButton(1).X * s, btnY, VisualSplitterLayout.ActionButton(1).Width * s, btnH);
+        g.DrawRectangle(addPen, VisualSplitterLayout.ActionButton(1).X * s, btnY, VisualSplitterLayout.ActionButton(1).Width * s, btnH);
 
-        g.FillRectangle(addBg, 228 * s, btnY, 84 * s, btnH);
-        g.DrawRectangle(addPen, 228 * s, btnY, 84 * s, btnH);
+        g.FillRectangle(addBg, VisualSplitterLayout.ActionButton(2).X * s, btnY, VisualSplitterLayout.ActionButton(2).Width * s, btnH);
+        g.DrawRectangle(addPen, VisualSplitterLayout.ActionButton(2).X * s, btnY, VisualSplitterLayout.ActionButton(2).Width * s, btnH);
 
         Color confirmBgColor = Color.FromArgb(0, 120, 215);
         using var confirmBg = new SolidBrush(confirmBgColor);
         using var confirmPen = new Pen(Color.FromArgb(0, 150, 255));
-        g.FillRectangle(confirmBg, 336 * s, btnY, 74 * s, btnH);
-        g.DrawRectangle(confirmPen, 336 * s, btnY, 74 * s, btnH);
+        g.FillRectangle(confirmBg, VisualSplitterLayout.ActionButton(3).X * s, btnY, VisualSplitterLayout.ActionButton(3).Width * s, btnH);
+        g.DrawRectangle(confirmPen, VisualSplitterLayout.ActionButton(3).X * s, btnY, VisualSplitterLayout.ActionButton(3).Width * s, btnH);
 
         using var cancelBg = new SolidBrush(Color.FromArgb(60, 60, 60));
         using var cancelPen = new Pen(Color.FromArgb(90, 90, 90));
-        g.FillRectangle(cancelBg, 416 * s, btnY, 68 * s, btnH);
-        g.DrawRectangle(cancelPen, 416 * s, btnY, 68 * s, btnH);
+        g.FillRectangle(cancelBg, VisualSplitterLayout.ActionButton(4).X * s, btnY, VisualSplitterLayout.ActionButton(4).Width * s, btnH);
+        g.DrawRectangle(cancelPen, VisualSplitterLayout.ActionButton(4).X * s, btnY, VisualSplitterLayout.ActionButton(4).Width * s, btnH);
 
         if (_tipFont != null)
         {
@@ -706,10 +709,11 @@ public partial class ProgressWindow
         using var overlayBg = new SolidBrush(Color.FromArgb(235, 15, 18, 24));
         g.FillRectangle(overlayBg, 0, 0, 520 * s, 420 * s);
 
-        float modalX = 24 * s;
-        float modalY = 20 * s;
-        float modalW = 472 * s;
-        float modalH = 380 * s;
+        var modalRect = VisualSplitterLayout.ZoomModal;
+        float modalX = modalRect.X * s;
+        float modalY = modalRect.Y * s;
+        float modalW = modalRect.Width * s;
+        float modalH = modalRect.Height * s;
 
         using var modalBg = new SolidBrush(Color.FromArgb(32, 35, 42));
         using var modalPen = new Pen(Color.FromArgb(80, 90, 110), 1.5f * s);
@@ -762,13 +766,13 @@ public partial class ProgressWindow
         }
 
         // Bottom controls: zoom in/out, reset-to-fit, and a usage hint.
-        float zoomBtnY = modalY + modalH - 34 * s;
-        float zoomBtnH = 22 * s;
-        float zoomBtnInX = modalX + modalW - 120 * s;   // Zoom out (-)
-        float zoomBtnOutX = modalX + modalW - 86 * s;   // Zoom in (+)
-        float zoomBtnFitX = modalX + modalW - 52 * s;   // Fit
-        float zoomBtnW = 28 * s;
-        float zoomBtnFitW = 44 * s;
+        float zoomBtnY = VisualSplitterLayout.ZoomButton(0).Y * s;
+        float zoomBtnH = VisualSplitterLayout.ZoomButton(0).Height * s;
+        float zoomBtnInX = VisualSplitterLayout.ZoomButton(0).X * s;   // Zoom out (-)
+        float zoomBtnOutX = VisualSplitterLayout.ZoomButton(1).X * s;   // Zoom in (+)
+        float zoomBtnFitX = VisualSplitterLayout.ZoomButton(2).X * s;   // Fit
+        float zoomBtnW = VisualSplitterLayout.ZoomButton(0).Width * s;
+        float zoomBtnFitW = VisualSplitterLayout.ZoomButton(2).Width * s;
 
         using var zoomBtnBg = new SolidBrush(Color.FromArgb(48, 48, 48));
         using var zoomBtnPen = new Pen(Color.FromArgb(80, 80, 80));
