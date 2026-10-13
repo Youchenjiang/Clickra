@@ -942,11 +942,11 @@ static partial class TestSuite
                  {
                      (ArchitectureStorageDirectory, "Clickra.Core.Storage"),
                      ("Diagnostics", "Clickra.Core.Diagnostics"),
-                     ("Fonts", "Clickra.Core.Fonts"),
-                     ("Infrastructure", "Clickra.Core.Infrastructure")
+                     ("Fonts", "Clickra.Core.Fonts")
                  })
         {
             string directory = Path.Combine(core, folder);
+            Assert.True(Directory.Exists(directory), $"Expected Core namespace folder is missing: {NormalizeRepoPath(root, directory)}");
             foreach (string file in Directory.EnumerateFiles(directory, "*.cs", SearchOption.AllDirectories))
             {
                 string source = File.ReadAllText(file);
