@@ -142,5 +142,38 @@ static partial class TestSuite
                 PowerShellHelper.ShouldFallBackToLibreOffice("auto", "Word", CancellationToken.None),
                 "An uncancelled automatic Word conversion may recover through LibreOffice.");
         });
+
+        runner.Run("Office fallback policy recognizes recoverable Microsoft launch failures", () =>
+        {
+            Exception[] recoverable =
+            {
+                new InvalidOperationException("Office interop failed."),
+                new NotSupportedException("Office application is unsupported."),
+                new TimeoutException("Office interop timed out."),
+                new System.ComponentModel.Win32Exception(),
+                new IOException("Office output cannot be written."),
+                new UnauthorizedAccessException("Office output access denied."),
+                new System.Security.SecurityException()
+            };
+
+            foreach (Exception exception in recoverable)
+            {
+                Assert.True(
+                    PowerShellHelper.IsRecoverableMicrosoftOfficeFailure(exception),
+                    $"{exception.GetType().Name} should allow the automatic engine to recover through LibreOffice.");
+            }
+
+            Assert.False(
+                PowerShellHelper.IsRecoverableMicrosoftOfficeFailure(
+                    new PowerShellHelper.OfficeProcessTerminationException("Timed-out Office process still running.")),
+                "A process that could not be terminated must never trigger concurrent LibreOffice fallback.");
+
+            Assert.False(
+                PowerShellHelper.IsRecoverableMicrosoftOfficeFailure(new OperationCanceledException()),
+                "Cancellation must remain terminal and must not launch a fallback engine.");
+            Assert.False(
+                PowerShellHelper.IsRecoverableMicrosoftOfficeFailure(new ArgumentException("Invalid Office conversion input.")),
+                "Programming/input errors must not be hidden by a fallback engine.");
+        });
     }
 }

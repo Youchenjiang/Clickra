@@ -1,6 +1,8 @@
 using System;
+using System.ComponentModel;
 using System.IO;
 using System.Runtime.ExceptionServices;
+using System.Security;
 using System.Text;
 using System.Threading;
 using Clickra.Core;
@@ -41,15 +43,9 @@ namespace Clickra.Core.Processors
                 ExportMicrosoftOfficeToPdf(request, settings.Language, onProgress, cancellationToken);
                 return;
             }
-            catch (InvalidOperationException ex) when (ShouldFallBackToLibreOffice(engine, appType, cancellationToken))
-            {
-                ExportLibreOfficeFallback(ex, request, settings, onProgress, cancellationToken);
-            }
-            catch (NotSupportedException ex) when (ShouldFallBackToLibreOffice(engine, appType, cancellationToken))
-            {
-                ExportLibreOfficeFallback(ex, request, settings, onProgress, cancellationToken);
-            }
-            catch (TimeoutException ex) when (ShouldFallBackToLibreOffice(engine, appType, cancellationToken))
+            catch (Exception ex) when (
+                IsRecoverableMicrosoftOfficeFailure(ex) &&
+                ShouldFallBackToLibreOffice(engine, appType, cancellationToken))
             {
                 ExportLibreOfficeFallback(ex, request, settings, onProgress, cancellationToken);
             }
@@ -69,6 +65,7 @@ namespace Clickra.Core.Processors
                 ExceptionDispatchInfo.Capture(originalException).Throw();
             }
 
+            cancellationToken.ThrowIfCancellationRequested();
             onProgress?.Invoke(
                 request.FileIndex * 100,
                 request.TotalFiles * 100,
@@ -76,6 +73,7 @@ namespace Clickra.Core.Processors
                     Localization.T("status_office_fallback_to_libreoffice", settings.Language),
                     request.AppType,
                     Path.GetFileName(request.FullPath)));
+            cancellationToken.ThrowIfCancellationRequested();
             LibreOfficeHelper.ExportToPdf(request, settings, onProgress, cancellationToken);
         }
 
@@ -90,6 +88,26 @@ namespace Clickra.Core.Processors
             !cancellationToken.IsCancellationRequested &&
             !engine.Equals("microsoft", StringComparison.OrdinalIgnoreCase) &&
             LibreOfficeHelper.CanConvert(appType);
+
+        /// <summary>
+        /// Failures that may be recovered by switching from Microsoft Office automation to LibreOffice.
+        /// Keep this allowlist explicit so cancellation and programming defects never trigger a second engine.
+        /// </summary>
+        public sealed class OfficeProcessTerminationException : Exception
+        {
+            public OfficeProcessTerminationException(string message) : base(message) { }
+            public OfficeProcessTerminationException(string message, Exception innerException)
+                : base(message, innerException) { }
+        }
+
+        internal static bool IsRecoverableMicrosoftOfficeFailure(Exception exception) =>
+            exception is InvalidOperationException
+                or NotSupportedException
+                or TimeoutException
+                or Win32Exception
+                or IOException
+                or UnauthorizedAccessException
+                or SecurityException;
 
         internal static string? GetMicrosoftOfficeProgId(string appType) =>
             OfficeEngineDetector.GetMicrosoftOfficeProgId(appType);
@@ -249,7 +267,20 @@ try {{
 
             if (!process.WaitForExit(TimeSpan.FromMinutes(2)))
             {
-                try { process.Kill(true); } catch { /* Ignored: a hung process must not mask the timeout error. */ }
+                try
+                {
+                    process.Kill(true);
+                    if (!process.WaitForExit(TimeSpan.FromSeconds(10)))
+                        throw new OfficeProcessTerminationException("Microsoft Office process did not exit after termination; refusing concurrent fallback.");
+                }
+                catch (InvalidOperationException) when (process.HasExited)
+                {
+                    // It exited between the timeout and the kill request.
+                }
+                catch (System.ComponentModel.Win32Exception ex)
+                {
+                    throw new OfficeProcessTerminationException("Unable to terminate the timed-out Microsoft Office process; refusing concurrent fallback.", ex);
+                }
                 throw new TimeoutException(string.Format(Localization.T("error_office_timeout", request.Language), request.AppName));
             }
 

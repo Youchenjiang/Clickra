@@ -18,6 +18,7 @@ public static class LibreOfficeHelper
     private const uint SemNoGpFaultErrorBox = 0x0002;
     private const uint SemNoOpenFileErrorBox = 0x8000;
     private static readonly object ResolveCacheLock = new();
+    private static readonly object ConversionLaunchLock = new();
     private static DateTime _resolvedExecutableCachedAt = DateTime.MinValue;
     private static string _resolvedExecutableCacheKey = "";
     private static string _resolvedExecutableCacheValue = "";
@@ -183,37 +184,52 @@ public static class LibreOfficeHelper
         ProcessStartInfo startInfo = CreateConversionStartInfo(executablePath, paths);
         var output = new StringBuilder();
         var error = new StringBuilder();
-        uint previousErrorMode = SetErrorMode(SemFailCriticalErrors | SemNoGpFaultErrorBox | SemNoOpenFileErrorBox);
-        using var process = StartProcessAndRestoreErrorMode(startInfo, previousErrorMode);
-        if (process == null)
-            throw new InvalidOperationException(Localization.T("error_libreoffice_start", language));
-
-        // skipcq: CS-W1100 — the registration is kept alive only to dispose it.
-        using var registration = cancellationToken.Register(() => TryKillProcess(process));
-        CaptureProcessOutput(process, output, error);
-
-        progress.Callback?.Invoke(
-            progress.FileIndex * 100 + 60,
-            progress.TotalFiles * 100,
-            string.Format(
-                Localization.T("status_libreoffice_exporting", language),
-                Path.GetFileName(paths.Input)));
-
-        if (!process.WaitForExit(TimeSpan.FromMinutes(2)))
+        // Install the cancellation callback before launching the fallback engine.
+        // Serializing the launch and callback also handles cancellation during Process.Start.
+        Process? launched = null;
+        using var registration = cancellationToken.Register(() =>
         {
-            TryKillProcess(process);
-            throw new TimeoutException(Localization.T("error_libreoffice_timeout", language));
+            lock (ConversionLaunchLock)
+                if (launched != null) TryKillProcess(launched);
+        });
+        // The registration remains alive until conversion finishes.
+        _ = registration;
+        Process process;
+        lock (ConversionLaunchLock)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            uint previousErrorMode = SetErrorMode(SemFailCriticalErrors | SemNoGpFaultErrorBox | SemNoOpenFileErrorBox);
+            launched = StartProcessAndRestoreErrorMode(startInfo, previousErrorMode);
+            process = launched ?? throw new InvalidOperationException(Localization.T("error_libreoffice_start", language));
         }
+        using (process)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            CaptureProcessOutput(process, output, error);
 
-        cancellationToken.ThrowIfCancellationRequested();
-        MoveConversionOutput(process.ExitCode, paths, output, error, language);
+            progress.Callback?.Invoke(
+                progress.FileIndex * 100 + 60,
+                progress.TotalFiles * 100,
+                string.Format(
+                    Localization.T("status_libreoffice_exporting", language),
+                    Path.GetFileName(paths.Input)));
 
-        progress.Callback?.Invoke(
-            progress.FileIndex * 100 + 100,
-            progress.TotalFiles * 100,
-            string.Format(
-                Localization.T("status_libreoffice_completed", language),
-                Path.GetFileName(paths.Input)));
+            if (!process.WaitForExit(TimeSpan.FromMinutes(2)))
+            {
+                TryKillProcess(process);
+                throw new TimeoutException(Localization.T("error_libreoffice_timeout", language));
+            }
+
+            cancellationToken.ThrowIfCancellationRequested();
+            MoveConversionOutput(process.ExitCode, paths, output, error, language);
+
+            progress.Callback?.Invoke(
+                progress.FileIndex * 100 + 100,
+                progress.TotalFiles * 100,
+                string.Format(
+                    Localization.T("status_libreoffice_completed", language),
+                    Path.GetFileName(paths.Input)));
+        }
     }
 
     private static ProcessStartInfo CreateConversionStartInfo(string executablePath, ConversionPaths paths)
