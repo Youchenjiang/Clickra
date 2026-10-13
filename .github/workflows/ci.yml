@@ -177,6 +177,8 @@ jobs:
         run: python -m unittest discover -s tests -p 'test_pr_preflight.py' -v
       - name: Check GitHub command denial cases
         run: python -m unittest discover -s tests -p 'test_gh_guard.py' -v
+      - name: Check high-level PR workflow
+        run: python -m unittest discover -s tests -p 'test_pr_tool.py' -v
 
   store-publishing-tests:
     name: Store publishing unit tests

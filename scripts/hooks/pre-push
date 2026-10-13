@@ -14,8 +14,8 @@
 #   clone the fixture-dependent layout tests print SKIP instead of FAIL (same
 #   behavior as CI). With fixtures present locally the suite still has a known
 #   baseline tracked as PR-B in docs/development/PR46_POST_MERGE_AUDIT_AND_OPTIONS.md.
-# - `git push --no-verify` remains the documented escape hatch for the known
-#   baseline; the CI gate still records the truth on every push.
+# - Never bypass required checks with git push --no-verify. A failed gate must
+#   be repaired or explicitly handled through the project's exception process.
 # - The hook intentionally runs full NativeAOT and fixture regression tests.
 #   Missing fixtures fail closed; no green result is inferred from skipped tests.
 
@@ -31,6 +31,7 @@ python scripts/pr_preflight.py --check --body-file "$CLICKRA_PR_BODY_FILE"
 echo "[pre-push] Running PR governance script tests..."
 python -m unittest discover -s tests -p 'test_pr_preflight.py' -v
 python -m unittest discover -s tests -p 'test_gh_guard.py' -v
+python -m unittest discover -s tests -p 'test_pr_tool.py' -v
 
 echo "Running pre-push checks (mirrors .github/workflows/ci.yml)..."
 
