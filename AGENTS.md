@@ -14,3 +14,9 @@ The complete, authoritative rules are in [.agent/guidelines.md](.agent/guideline
 - If the user objects or withdraws authorization, stop immediately; do not perform cleanup.
 
 The complete, authoritative rules are in [.agent/guidelines.md](.agent/guidelines.md).
+
+## PR Review Safety (Non-negotiable)
+
+- Never create, reply to, edit, repost, or delete GitHub PR review comments or conversation comments. The user explicitly prohibits autonomous replies. Do not use comments to announce a fix.
+- After verifying a finding is fixed, only resolve the existing review thread via GitHub GraphQL, and only with explicit authorization for that exact thread-resolution operation. If unresolved or uncertain, report locally and stop.
+- Before proposing any PR, fresh-fetch `origin/main`, reconstruct the next scope on top of it, run the full push gate, and re-check the remote base. Do not reuse a stale stacked branch.

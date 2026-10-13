@@ -247,6 +247,14 @@ The workflow rules above do not grant an agent permission to perform the workflo
 
 Authorization is not transitive: authorization to push a tag does not authorize creating a branch, opening or merging a PR, changing the workflow, deleting a release, or submitting to Partner Center. If an authorized operation fails and a new operation is needed, stop and ask. After the user objects or revokes permission, stop all mutations; do not perform automatic rollback or cleanup.
 
+### Post-merge PR publication gate
+
+Before preparing the next PR, fetch the latest `origin/main`. Reconstruct **only the next PR scope** on top of that exact commit in a clean worktree, not an obsolete stacked branch. Verify ancestry, patch scope, commit policy, PR body format, all required local tests and NativeAOT publishing. Recheck the actual remote `main` SHA before push and before creating a PR; if it changed, rebuild and retest. Set `CLICKRA_PR_BODY_FILE` to the finalized PR body draft (external path is allowed), run `python scripts/pr_preflight.py --check --body-file <path>`, and use the installed `pre-push` hook. The hook fails closed without a body draft or `test_pdfs` fixtures. It executes the governance tests, project builds, guards, functional and fixture tests, icon checks, Store tests and three NativeAOT publishes. This is intentionally slow; do not bypass it to save time. All external writes still require specific authorization. After a PR is public, prefer additive repair commits, not history rewrites.
+
+**Review threads:** Never post, reply to, edit, repost, or delete PR comments. Check analysis findings, fix and test before explicitly authorized GraphQL-only Resolve. Do not resolve outstanding defects for appearance. GitHub-hosted reviews are post-push gates and cannot be certified by a local script.
+
+**PR body:** Keep `Summary`, `Changes`, `Validation`, optional `Scope`, and `PR Metadata` per `.github/pull_request_template.md`. Avoid internal commit ledgers. Fill metadata before opening a PR. The PR body is not a commit message.
+
 ### Pull Request Convention
 
 Use the canonical [pull request template](.github/pull_request_template.md).
