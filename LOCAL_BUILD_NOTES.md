@@ -249,6 +249,10 @@ Authorization is not transitive: authorization to push a tag does not authorize 
 
 **Branch suffixes:** use lowercase kebab-case with normally 2?5 meaningful words describing the capability or problem. Avoid PR numbers, dates, versions, and vague `cleanup`/`updates`/`misc` suffixes. Examples: `feature/pdf-batch-export`, `hotfix/shell-startup-crash`. Existing prefix rules remain unchanged.
 
+### GitHub CLI operation guard
+
+Use `python scripts/gh_guard.py pr checks 177` or `python scripts/gh_guard.py pr view 177 --json state` for read-only inspection. The wrapper rejects all write verbs and all raw `gh api` requests by default, especially comment creation/replies. It cannot intercept direct `gh`, REST calls or tools given unrestricted GitHub credentials: actual enforcement requires removing direct write credentials and routing authorized mutations through a separately permissioned executor. Resolve remains a separately authorized operation, not implemented in this read-only wrapper. CI runs negative tests to catch guard regressions.
+
 ### Post-merge PR publication gate
 
 Before preparing the next PR, fetch the latest `origin/main`. Reconstruct **only the next PR scope** on top of that exact commit in a clean worktree, not an obsolete stacked branch. Verify ancestry, patch scope, commit policy, PR body format, all required local tests and NativeAOT publishing. Recheck the actual remote `main` SHA before push and before creating a PR; if it changed, rebuild and retest. Set `CLICKRA_PR_BODY_FILE` to the finalized PR body draft (external path is allowed), run `python scripts/pr_preflight.py --check --body-file <path>`, and use the installed `pre-push` hook. The hook fails closed without a body draft or `test_pdfs` fixtures. It executes the governance tests, project builds, guards, functional and fixture tests, icon checks, Store tests and three NativeAOT publishes. This is intentionally slow; do not bypass it to save time. All external writes still require specific authorization. After a PR is public, prefer additive repair commits, not history rewrites.

@@ -30,6 +30,7 @@ python scripts/pr_preflight.py --check --body-file "$CLICKRA_PR_BODY_FILE"
 
 echo "[pre-push] Running PR governance script tests..."
 python -m unittest discover -s tests -p 'test_pr_preflight.py' -v
+python -m unittest discover -s tests -p 'test_gh_guard.py' -v
 
 echo "Running pre-push checks (mirrors .github/workflows/ci.yml)..."
 
