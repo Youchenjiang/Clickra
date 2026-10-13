@@ -23,4 +23,7 @@ public readonly struct LayoutRect
 
     /// <summary>命中判定；右緣與下緣不含，與 Win32 的矩形慣例一致。</summary>
     public bool Contains(int x, int y) => x >= X && x < Right && y >= Y && y < Bottom;
+
+    /// <summary>Preserves legacy Native click targets inclusive of the right and bottom edges.</summary>
+    public bool ContainsInclusive(int x, int y) => x >= X && x <= Right && y >= Y && y <= Bottom;
 }

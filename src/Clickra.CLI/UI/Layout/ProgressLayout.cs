@@ -17,8 +17,5 @@ public static class ProgressLayout
         mouseX >= MessageLeft && mouseX <= MessageLeft + availableWidth &&
         mouseY >= ScrollbarHitTop && mouseY <= ScrollbarHitBottom;
 
-    // The legacy click handler includes the right and bottom border pixel.
-    public static bool TrayButtonHit(int x, int y) =>
-        x >= TrayButton.X && x <= TrayButton.Right &&
-        y >= TrayButton.Y && y <= TrayButton.Bottom;
+    public static bool TrayButtonHit(int x, int y) => TrayButton.ContainsInclusive(x, y);
 }

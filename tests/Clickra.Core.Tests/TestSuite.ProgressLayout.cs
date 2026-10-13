@@ -13,8 +13,11 @@ static partial class TestSuite
             Assert.Equal(36, r.Y);
             Assert.Equal(28, r.Width);
             Assert.Equal(28, r.Height);
-            Assert.True(ProgressLayout.TrayButtonHit(484, 64), "Legacy lower-right corner is clickable.");
-            Assert.True(!ProgressLayout.TrayButtonHit(485, 64), "Outside right edge is excluded.");
+            Assert.True(ProgressLayout.TrayButton.ContainsInclusive(484, 64), "Legacy lower-right corner is clickable.");
+            Assert.True(!ProgressLayout.TrayButton.ContainsInclusive(485, 64), "Outside right edge is excluded.");
+            Assert.True(new LayoutRect(10, 20, 30, 40).ContainsInclusive(40, 60), "Inclusive includes right/bottom.");
+            Assert.True(!new LayoutRect(10, 20, 30, 40).Contains(40, 60), "Normal Contains excludes right/bottom.");
+            Assert.True(!new LayoutRect(10, 20, 30, 40).ContainsInclusive(41, 60), "Next x pixel excluded.");
             Assert.Equal(448, ProgressLayout.MessageMaxWidth);
             Assert.Equal(152, ProgressLayout.ScrollbarDrawY);
             Assert.True(ProgressLayout.MessageAvailableWidth(0) == 448f, "Unrestricted message width is 448.");

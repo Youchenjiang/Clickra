@@ -3,11 +3,6 @@ namespace Clickra.UI.Layout;
 /// <summary>Logical-pixel rectangles for the Native visual PDF splitter.</summary>
 public static class VisualSplitterLayout
 {
-    // Legacy handlers test both edges inclusively. Keep the original hit areas
-    // distinct from paint bounds where they have historically differed.
-    public static bool HitInclusive(LayoutRect r, int x, int y) =>
-        x >= r.X && x <= r.Right && y >= r.Y && y <= r.Bottom;
-
     public static LayoutRect ModeButton(int i) => new(36 + i * 148, 102, i == 2 ? 152 : 140, 26);
     public static LayoutRect ModeHitRow => new(0, 102, 520, 26);
     public static LayoutRect PagesButton(bool plus) => new(plus ? 136 : 36, 130, 24, 18);

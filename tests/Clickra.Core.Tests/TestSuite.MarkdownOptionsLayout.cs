@@ -41,8 +41,8 @@ static partial class TestSuite
                         $"Row {y}, button {i} must include its upper-left corner.");
                     Assert.True(MarkdownOptionsLayout.TryHitRow(x, y + 30, y, count, out int bottomIndex) && bottomIndex == i,
                         $"Row {y}, button {i} must include its bottom edge.");
-                    Assert.True(MarkdownOptionsLayout.ContainsInclusive(rect, x, y + 30), "Bottom edge is inclusive.");
-                    Assert.True(!MarkdownOptionsLayout.ContainsInclusive(rect, x, y + 31), "Below the bottom edge is excluded.");
+                    Assert.True(rect.ContainsInclusive(x, y + 30), "Bottom edge is inclusive.");
+                    Assert.True(!rect.ContainsInclusive(x, y + 31), "Below the bottom edge is excluded.");
                     if (i < count - 1)
                     {
                         int gapX = rect.Right + 2;
@@ -55,9 +55,9 @@ static partial class TestSuite
             }
             foreach (LayoutRect button in new[] { MarkdownOptionsLayout.TemplateBrowseRect, MarkdownOptionsLayout.ConfirmRect, MarkdownOptionsLayout.CancelRect })
             {
-                Assert.True(MarkdownOptionsLayout.ContainsInclusive(button, button.Right, button.Bottom),
+                Assert.True(button.ContainsInclusive(button.Right, button.Bottom),
                     "Legacy action buttons include the exact right-bottom corner.");
-                Assert.True(!MarkdownOptionsLayout.ContainsInclusive(button, button.Right + 1, button.Bottom),
+                Assert.True(!button.ContainsInclusive(button.Right + 1, button.Bottom),
                     "Beyond right edge excluded.");
             }
         });

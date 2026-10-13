@@ -13,8 +13,8 @@ static partial class TestSuite
             Assert.Equal(332, VisualSplitterLayout.ModeButton(2).X);
             Assert.Equal(152, VisualSplitterLayout.ModeButton(2).Width);
             Assert.Equal(26, VisualSplitterLayout.ModeButton(0).Height);
-            Assert.True(VisualSplitterLayout.HitInclusive(VisualSplitterLayout.ModeButton(0), 176, 128), "Right and bottom edge inclusive");
-            Assert.False(VisualSplitterLayout.HitInclusive(VisualSplitterLayout.ModeButton(0), 177, 128), "One pixel beyond is excluded");
+            Assert.True(VisualSplitterLayout.ModeButton(0).ContainsInclusive(176, 128), "Right and bottom edge inclusive");
+            Assert.False(VisualSplitterLayout.ModeButton(0).ContainsInclusive(177, 128), "One pixel beyond is excluded");
             Assert.Equal(136, VisualSplitterLayout.PagesButton(true).X);
             Assert.Equal(132, VisualSplitterLayout.PagesHitButton(true).X);
             Assert.Equal(158, VisualSplitterLayout.SegmentCard(0, false).Y);

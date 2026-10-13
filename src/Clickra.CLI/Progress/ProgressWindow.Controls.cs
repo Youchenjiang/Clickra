@@ -284,7 +284,7 @@ namespace Clickra.UI
                     }
                     else
                     {
-                        bool hovered = ProgressLayout.TrayButtonHit(mouseX, mouseY);
+                        bool hovered = ProgressLayout.TrayButton.ContainsInclusive(mouseX, mouseY);
                         if (hovered != _isTrayBtnHovered)
                         {
                             _isTrayBtnHovered = hovered;
@@ -428,9 +428,9 @@ namespace Clickra.UI
             if (mouseY < VisualSplitterLayout.ModeHitRow.Y || mouseY > VisualSplitterLayout.ModeHitRow.Bottom) return false;
 
             int mode = _visualSplitMode;
-            if (VisualSplitterLayout.HitInclusive(VisualSplitterLayout.ModeButton(0), mouseX, mouseY)) mode = VisualSplitModel.ModeCustom;
-            else if (VisualSplitterLayout.HitInclusive(VisualSplitterLayout.ModeButton(1), mouseX, mouseY)) mode = VisualSplitModel.ModeEachPage;
-            else if (VisualSplitterLayout.HitInclusive(VisualSplitterLayout.ModeButton(2), mouseX, mouseY)) mode = VisualSplitModel.ModeFixedPages;
+            if (VisualSplitterLayout.ModeButton(0).ContainsInclusive(mouseX, mouseY)) mode = VisualSplitModel.ModeCustom;
+            else if (VisualSplitterLayout.ModeButton(1).ContainsInclusive(mouseX, mouseY)) mode = VisualSplitModel.ModeEachPage;
+            else if (VisualSplitterLayout.ModeButton(2).ContainsInclusive(mouseX, mouseY)) mode = VisualSplitModel.ModeFixedPages;
 
             _visualSplitModel.SetMode(mode);
             SyncVisualSplitStateFromModel();
@@ -443,14 +443,14 @@ namespace Clickra.UI
         {
             if (_visualSplitMode != 2 || mouseY < VisualSplitterLayout.PagesHitRow.Y || mouseY > VisualSplitterLayout.PagesHitRow.Bottom) return false;
 
-            if (VisualSplitterLayout.HitInclusive(VisualSplitterLayout.PagesHitButton(false), mouseX, mouseY)) // [-]
+            if (VisualSplitterLayout.PagesHitButton(false).ContainsInclusive(mouseX, mouseY)) // [-]
             {
                 _visualSplitModel.AdjustPagesPerSegment(-1);
                 SyncVisualSplitStateFromModel();
                 InvalidateRect(hwnd, IntPtr.Zero, true);
                 return true;
             }
-            if (VisualSplitterLayout.HitInclusive(VisualSplitterLayout.PagesHitButton(true), mouseX, mouseY)) // [+]
+            if (VisualSplitterLayout.PagesHitButton(true).ContainsInclusive(mouseX, mouseY)) // [+]
             {
                 _visualSplitModel.AdjustPagesPerSegment(+1);
                 SyncVisualSplitStateFromModel();
@@ -464,7 +464,7 @@ namespace Clickra.UI
         private bool HandleSplitterSegmentCardsClick(IntPtr hwnd, int mouseX, int mouseY)
         {
             int cardStartY = VisualSplitterLayout.SegmentHitArea(_visualSplitMode == 2).Y;
-            if (!VisualSplitterLayout.HitInclusive(VisualSplitterLayout.SegmentHitArea(_visualSplitMode == 2), mouseX, mouseY)) return false;
+            if (!VisualSplitterLayout.SegmentHitArea(_visualSplitMode == 2).ContainsInclusive(mouseX, mouseY)) return false;
 
             int cardIdx = (mouseY - cardStartY) / 23;
             if (cardIdx >= _visualSplitSegments.Count) return false;
@@ -479,23 +479,23 @@ namespace Clickra.UI
         private bool HandleSplitterNavBarClick(IntPtr hwnd, int mouseX, int mouseY)
         {
             int navOffset = (_visualSplitMode == 2 ? 22 : 0);
-            if (!VisualSplitterLayout.HitInclusive(VisualSplitterLayout.NavHitArea(_visualSplitMode == 2), mouseX, mouseY)) return false;
+            if (!VisualSplitterLayout.NavHitArea(_visualSplitMode == 2).ContainsInclusive(mouseX, mouseY)) return false;
 
-            if (VisualSplitterLayout.HitInclusive(VisualSplitterLayout.NavHitButton(0, _visualSplitMode == 2), mouseX, mouseY)) // <
+            if (VisualSplitterLayout.NavHitButton(0, _visualSplitMode == 2).ContainsInclusive(mouseX, mouseY)) // <
             {
                 _visualSplitModel.NavigatePreview(-1);
                 SyncVisualSplitStateFromModel();
                 InvalidateRect(hwnd, IntPtr.Zero, true);
                 return true;
             }
-            if (VisualSplitterLayout.HitInclusive(VisualSplitterLayout.NavHitButton(1, _visualSplitMode == 2), mouseX, mouseY)) // >
+            if (VisualSplitterLayout.NavHitButton(1, _visualSplitMode == 2).ContainsInclusive(mouseX, mouseY)) // >
             {
                 _visualSplitModel.NavigatePreview(+1);
                 SyncVisualSplitStateFromModel();
                 InvalidateRect(hwnd, IntPtr.Zero, true);
                 return true;
             }
-            if (VisualSplitterLayout.HitInclusive(VisualSplitterLayout.NavHitButton(2, _visualSplitMode == 2), mouseX, mouseY)) // 切開 (split at current preview page)
+            if (VisualSplitterLayout.NavHitButton(2, _visualSplitMode == 2).ContainsInclusive(mouseX, mouseY)) // 切開 (split at current preview page)
             {
                 SplitVisualSegmentAtCurrentPage();
                 InvalidateRect(hwnd, IntPtr.Zero, true);
@@ -508,7 +508,7 @@ namespace Clickra.UI
         private bool HandleSplitterPreviewZoomClick(IntPtr hwnd, int mouseX, int mouseY)
         {
             int navOffset = (_visualSplitMode == 2 ? 22 : 0);
-            if (!VisualSplitterLayout.HitInclusive(VisualSplitterLayout.PreviewHitArea(_visualSplitMode == 2), mouseX, mouseY)) return false;
+            if (!VisualSplitterLayout.PreviewHitArea(_visualSplitMode == 2).ContainsInclusive(mouseX, mouseY)) return false;
             OpenVisualSplitZoom(hwnd);
             return true;
         }
@@ -519,19 +519,19 @@ namespace Clickra.UI
         {
             if (mouseY < VisualSplitterLayout.ActionHitRow.Y || mouseY > VisualSplitterLayout.ActionHitRow.Bottom) return false;
 
-            if (VisualSplitterLayout.HitInclusive(VisualSplitterLayout.ActionButton(0), mouseX, mouseY)) // Add segment
+            if (VisualSplitterLayout.ActionButton(0).ContainsInclusive(mouseX, mouseY)) // Add segment
             {
                 AddVisualSplitSegment();
             }
-            else if (VisualSplitterLayout.HitInclusive(VisualSplitterLayout.ActionButton(1), mouseX, mouseY)) // Delete segment
+            else if (VisualSplitterLayout.ActionButton(1).ContainsInclusive(mouseX, mouseY)) // Delete segment
             {
                 DeleteVisualSplitSegment();
             }
-            else if (VisualSplitterLayout.HitInclusive(VisualSplitterLayout.ActionButton(2), mouseX, mouseY)) // Clear segments
+            else if (VisualSplitterLayout.ActionButton(2).ContainsInclusive(mouseX, mouseY)) // Clear segments
             {
                 ClearVisualSplitSegments();
             }
-            else if (VisualSplitterLayout.HitInclusive(VisualSplitterLayout.ActionButton(3), mouseX, mouseY)) // 確定分割
+            else if (VisualSplitterLayout.ActionButton(3).ContainsInclusive(mouseX, mouseY)) // 確定分割
             {
                 PostMessageW(hwnd, WM_USER_HIDE_PASSWORD_INPUT, IntPtr.Zero, IntPtr.Zero);
                 ResizeWindowForVisualSplitter(hwnd, false);
@@ -542,7 +542,7 @@ namespace Clickra.UI
                 }
                 _passwordEvent.Set();
             }
-            else if (VisualSplitterLayout.HitInclusive(VisualSplitterLayout.ActionButton(4), mouseX, mouseY)) // 取消
+            else if (VisualSplitterLayout.ActionButton(4).ContainsInclusive(mouseX, mouseY)) // 取消
             {
                 PostMessageW(hwnd, WM_USER_HIDE_PASSWORD_INPUT, IntPtr.Zero, IntPtr.Zero);
                 ResizeWindowForVisualSplitter(hwnd, false);
@@ -578,7 +578,7 @@ namespace Clickra.UI
 
         /// <summary>Whether the point is inside the minimize-to-tray button.</summary>
         private static bool IsTrayButtonHit(int mouseX, int mouseY)
-            => ProgressLayout.TrayButtonHit(mouseX, mouseY);
+            => ProgressLayout.TrayButton.ContainsInclusive(mouseX, mouseY);
 
         /// <summary>Starts dragging the status-message scrollbar when the click lands on its
         /// thumb track.</summary>

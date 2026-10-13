@@ -28,18 +28,13 @@ public static class MarkdownOptionsLayout
     public static LayoutRect ConfirmRect => new(254, 398, 120, 32);
     public static LayoutRect CancelRect => new(386, 398, 98, 32);
 
-    // Legacy Markdown click boundaries are inclusive at the right and bottom edges.
-    // LayoutRect.Contains is intentionally half-open and would change existing behavior.
-    public static bool ContainsInclusive(LayoutRect rect, int x, int y) =>
-        x >= rect.X && x <= rect.Right && y >= rect.Y && y <= rect.Bottom;
-
     public static bool TryHitRow(int x, int y, int rowY, int count, out int index)
     {
         index = -1;
         if (y < rowY || y > rowY + ButtonHeight) return false;
         for (int i = 0; i < count; i++)
         {
-            if (!ContainsInclusive(RowButtonRect(rowY, count, i), x, y)) continue;
+            if (!RowButtonRect(rowY, count, i).ContainsInclusive(x, y)) continue;
             index = i;
             return true;
         }

@@ -125,7 +125,7 @@ namespace Clickra.UI;
                     return true;
                 }
             }
-            else if (MarkdownOptionsLayout.ContainsInclusive(MarkdownOptionsLayout.TemplateBrowseRect, mouseX, mouseY))
+            else if (MarkdownOptionsLayout.TemplateBrowseRect.ContainsInclusive(mouseX, mouseY))
             {
                 BrowseMarkdownTemplate(hwnd);
                 return true;
@@ -150,9 +150,9 @@ namespace Clickra.UI;
                 return true;
             }
 
-            if (MarkdownOptionsLayout.ContainsInclusive(MarkdownOptionsLayout.ConfirmRect, mouseX, mouseY))
+            if (MarkdownOptionsLayout.ConfirmRect.ContainsInclusive(mouseX, mouseY))
                 return TryConfirmMarkdownConversion(hwnd);
-            if (MarkdownOptionsLayout.ContainsInclusive(MarkdownOptionsLayout.CancelRect, mouseX, mouseY))
+            if (MarkdownOptionsLayout.CancelRect.ContainsInclusive(mouseX, mouseY))
             {
                 ResolveMarkdownDecision(false);
                 DestroyWindow(hwnd);
