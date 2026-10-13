@@ -1,4 +1,4 @@
-﻿# Local Build Notes
+# Local Build Notes
 
 > **Agent & Developer Documentation Index**:
 > - [ARCHITECTURE_AND_FRAMEWORK.md](docs/ARCHITECTURE_AND_FRAMEWORK.md): .NET 8 baseline, roll-forward policy, and trimming rules.
@@ -251,7 +251,9 @@ Authorization is not transitive: authorization to push a tag does not authorize 
 
 ### GitHub CLI operation guard
 
-Use `python scripts/gh_guard.py pr checks 177` or `python scripts/gh_guard.py pr view 177 --json state` for read-only inspection. The wrapper rejects all write verbs and all raw `gh api` requests by default, especially comment creation/replies. It cannot intercept direct `gh`, REST calls or tools given unrestricted GitHub credentials: actual enforcement requires removing direct write credentials and routing authorized mutations through a separately permissioned executor. Resolve remains a separately authorized operation, not implemented in this read-only wrapper. CI runs negative tests to catch guard regressions.
+Use `python scripts/gh_guard.py pr checks 177` or `python scripts/gh_guard.py pr view 177 --json state` for read-only inspection. The wrapper rejects ordinary write verbs and all raw `gh api` requests, especially comment creation/replies. Its only write route is `resolve-thread`, which validates the exact PR and `PRRT_` ID, queries the thread, and calls only GraphQL `resolveReviewThread` when the thread remains unresolved and current. Example: `python scripts/gh_guard.py resolve-thread --repo Youchenjiang/Clickra --pr 177 --thread PRRT_EXAMPLE --authorize 177:PRRT_EXAMPLE`. This example is not authorization; the user must specifically authorize the actual thread-resolution operation and the fix must be verified first. Never use this route to post comments or to hide unresolved findings.
+
+The authorization argument is a caller confirmation, **not independent proof of user consent**. This cooperative wrapper cannot intercept direct `gh`, REST calls or other tools given unrestricted GitHub credentials; actual enforcement requires separately restricted execution permissions. CI tests both allowed resolution and denied mutations without contacting GitHub.
 
 ### Post-merge PR publication gate
 

@@ -15,7 +15,7 @@ The complete, authoritative rules are in [.agent/guidelines.md](.agent/guideline
 
 The complete, authoritative rules are in [.agent/guidelines.md](.agent/guidelines.md).
 
-- Use `python scripts/gh_guard.py` for read-only GitHub inspection. It denies all GitHub mutations, including comments, edits, merge and Resolve. It is cooperative guidance, not an OS-enforced interception of direct `gh` or API calls.
+- Use `python scripts/gh_guard.py` for GitHub inspection. All mutations are denied except the dedicated `resolve-thread` route after a verified fix and explicit authorization for the exact thread. Comment operations are always denied. The wrapper is cooperative guidance, not an OS-enforced interception of direct `gh` or API calls.
 ## PR Review Safety (Non-negotiable)
 
 - Never create, reply to, edit, repost, or delete GitHub PR review comments or conversation comments. The user explicitly prohibits autonomous replies. Do not use comments to announce a fix.

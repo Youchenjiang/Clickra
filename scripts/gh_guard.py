@@ -8,6 +8,7 @@ import argparse
 import re
 import subprocess
 import sys
+import json
 
 # Exact read-only command verbs. Unknown options/subcommands fail closed.
 SAFE_COMMANDS = {
@@ -22,6 +23,34 @@ SAFE_FLAGS = {
 }
 BOOL_FLAGS = {"--log", "--log-failed"}
 POSITIONAL = re.compile(r"^[a-zA-Z0-9_.#/:-]+$")
+THREAD_ID = re.compile(r"^PRRT_[A-Za-z0-9_-]+$")
+REPO = re.compile(r"^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$")
+
+
+def resolve_thread(repo, pr_number, thread_id, authorization, *, execute):
+    """Resolve only an existing, verified thread; caller confirms fix evidence.
+
+    The per-invocation authorization is an operator confirmation, not proof of
+    user consent. Agent rules separately require explicit user authorization.
+    """
+    if not REPO.fullmatch(repo) or not pr_number.isdecimal() or int(pr_number) < 1 or not THREAD_ID.fullmatch(thread_id):
+        raise ValueError("invalid repository, PR number or review thread ID")
+    if authorization != f"{pr_number}:{thread_id}":
+        raise ValueError("exact per-thread authorization required")
+    owner, name = repo.split("/")
+    query = "query($owner:String!,$name:String!,$number:Int!){repository(owner:$owner,name:$name){pullRequest(number:$number){reviewThreads(first:100){nodes{id isResolved isOutdated}}}}}"
+    result = execute(["gh", "api", "graphql", "-f", f"query={query}", "-f", f"owner={owner}", "-f", f"name={name}", "-F", f"number={pr_number}"])
+    data = json.loads(result)
+    threads = data["data"]["repository"]["pullRequest"]["reviewThreads"]["nodes"]
+    matches = [t for t in threads if t["id"] == thread_id]
+    if len(matches) != 1 or matches[0]["isResolved"] or matches[0]["isOutdated"]:
+        raise ValueError("thread absent, outdated or already resolved; stop for review")
+    mutation = "mutation($id:ID!){resolveReviewThread(input:{threadId:$id}){thread{id isResolved}}}"
+    response = json.loads(execute(["gh", "api", "graphql", "-f", f"query={mutation}", "-f", f"id={thread_id}"]))
+    thread = response["data"]["resolveReviewThread"]["thread"]
+    if thread["id"] != thread_id or not thread["isResolved"]:
+        raise RuntimeError("resolution not confirmed")
+    return thread
 
 
 def validate_gh_args(args):
@@ -52,6 +81,22 @@ def validate_gh_args(args):
 
 
 def main():
+    if len(sys.argv) > 1 and sys.argv[1] == "resolve-thread":
+        resolver = argparse.ArgumentParser(description="Resolve one authorized, verified PR review thread only")
+        resolver.add_argument("resolve-thread")
+        resolver.add_argument("--repo", required=True)
+        resolver.add_argument("--pr", required=True)
+        resolver.add_argument("--thread", required=True)
+        resolver.add_argument("--authorize", required=True)
+        args = resolver.parse_args()
+        try:
+            result = resolve_thread(args.repo, args.pr, args.thread, args.authorize,
+                                    execute=lambda argv: subprocess.check_output(argv, text=True))
+            print(f"Review thread resolved: {result['id']}")
+            return 0
+        except (ValueError, KeyError, TypeError, json.JSONDecodeError, subprocess.CalledProcessError, RuntimeError) as exc:
+            print(f"GH GUARD DENIED: {exc}", file=sys.stderr)
+            return 2
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("gh_args", nargs=argparse.REMAINDER)
     options = parser.parse_args()
