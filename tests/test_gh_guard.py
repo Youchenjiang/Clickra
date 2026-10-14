@@ -49,9 +49,9 @@ class GhGuardTests(unittest.TestCase):
         for authorization in ("", "177:PRRT_other"):
             with self.assertRaises(ValueError):
                 resolve_thread("Youchenjiang/Clickra", "177", "PRRT_test123",
-                               authorization, execute=lambda argv: self.fail("no network allowed"))
+                               authorization, execute=lambda _argv: self.fail("no network allowed"))
         for resolved, outdated in ((True, False), (False, True)):
-            def fake_execute(argv):
+            def fake_execute(_argv, resolved=resolved, outdated=outdated):
                 return json.dumps({"data": {"repository": {"pullRequest": {
                     "reviewThreads": {"nodes": [{"id": "PRRT_test123", "isResolved": resolved,
                                                  "isOutdated": outdated}], "pageInfo": {"hasNextPage": False}}}}}})
@@ -95,10 +95,9 @@ class GhGuardTests(unittest.TestCase):
                 "nodes": [], "pageInfo": {"hasNextPage": True, "endCursor": None}
             }}}}},
         ):
-            with self.subTest(payload=payload):
-                with self.assertRaises(RuntimeError):
-                    resolve_thread("Youchenjiang/Clickra", "177", "PRRT_target",
-                                   "177:PRRT_target", execute=lambda argv: json.dumps(payload))
+            with self.subTest(payload=payload), self.assertRaises(RuntimeError):
+                resolve_thread("Youchenjiang/Clickra", "177", "PRRT_target",
+                               "177:PRRT_target", execute=lambda _argv, value=payload: json.dumps(value))
 
     def test_command_specific_flags_and_empty_values(self):
         for argv in (["pr", "view", "1", "--workflow", "build"],

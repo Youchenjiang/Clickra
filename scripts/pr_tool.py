@@ -162,7 +162,7 @@ def main(argv=None, run=command):
                                     execute=lambda a: run(a), dry_run=not args.execute)
             print(f"{'Resolved' if args.execute else 'Eligible for resolution (preview only)'}: {thread['id']}; no comment posted")
         return 0
-    except (OSError, ValueError, KeyError, TypeError, RuntimeError, json.JSONDecodeError) as exc:
+    except (OSError, ValueError, KeyError, TypeError, RuntimeError) as exc:
         print(f"PR TOOL ERROR: {exc}", file=sys.stderr)
         return 1
 

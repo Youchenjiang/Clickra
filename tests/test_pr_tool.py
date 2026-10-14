@@ -38,7 +38,7 @@ class PrToolTests(unittest.TestCase):
         self.assertIn("PRRT_first", output.getvalue())
 
     def test_review_rejects_stuck_pagination(self):
-        def fake(argv):
+        def fake(_argv):
             return json.dumps({"data": {"repository": {"pullRequest": {"reviewThreads": {
                 "nodes": [], "pageInfo": {"hasNextPage": True, "endCursor": "repeat"}
             }}}}})
@@ -46,7 +46,7 @@ class PrToolTests(unittest.TestCase):
             pr_tool.review_threads("Youchenjiang/Clickra", 2, fake)
 
     def test_review_fails_closed_on_graphql_errors(self):
-        def fake(argv):
+        def fake(_argv):
             return json.dumps({"errors": [{"message": "rate limit exceeded"}]})
         with self.assertRaisesRegex(RuntimeError, "rate limit exceeded"):
             pr_tool.review_threads("Youchenjiang/Clickra", 2, fake)
