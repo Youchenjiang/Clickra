@@ -78,6 +78,33 @@ def _thread_state(repo, pr_number, thread_id, execute):
             comments["totalCount"], tuple(node["id"] for node in comments["nodes"]))
 
 
+def _resolve_mutation(thread_id, execute):
+    """Issue at most one mutation; its transport response is not authoritative."""
+    mutation = "mutation($id:ID!){resolveReviewThread(input:{threadId:$id}){thread{id isResolved}}}"
+    mutation_error = None
+    try:
+        response = json.loads(execute(["gh", "api", "graphql", "-f", f"query={mutation}", "-f", f"id={thread_id}"]))
+        if response.get("errors"):
+            raise RuntimeError(f"GitHub GraphQL resolution failed: {response['errors']}")
+        thread = response["data"]["resolveReviewThread"]["thread"]
+        if thread["id"] != thread_id or not thread["isResolved"]:
+            raise RuntimeError("resolution response not confirmed")
+    except (RuntimeError, OSError, ValueError, KeyError, TypeError) as exc:
+        mutation_error = exc
+    return mutation_error
+
+
+def _confirm_resolved(repo, pr_number, thread_id, execute, mutation_error):
+    # A lost mutation response may follow a successful write. Never issue a second mutation.
+    try:
+        state = _thread_state(repo, pr_number, thread_id, execute)
+    except (RuntimeError, OSError, ValueError, KeyError, TypeError) as exc:
+        raise RuntimeError("cannot verify review thread after mutation; outcome unknown") from exc
+    if not state[0]:
+        raise RuntimeError("resolution not confirmed by fresh GitHub state") from mutation_error
+    return {"id": thread_id, "isResolved": True}
+
+
 def resolve_thread(repo, pr_number, thread_id, authorization, *, execute, dry_run=False,
                    repair_evidence=None):
     """Resolve a verified repair with exact permission; evidence must be checked independently."""
@@ -94,25 +121,7 @@ def resolve_thread(repo, pr_number, thread_id, authorization, *, execute, dry_ru
         return {"id": thread_id, "isResolved": False, "previewOnly": True}
     if _thread_state(repo, pr_number, thread_id, execute) != snapshot:
         raise RuntimeError("review thread changed since verification; refuse resolution")
-    mutation = "mutation($id:ID!){resolveReviewThread(input:{threadId:$id}){thread{id isResolved}}}"
-    mutation_error = None
-    try:
-        response = json.loads(execute(["gh", "api", "graphql", "-f", f"query={mutation}", "-f", f"id={thread_id}"]))
-        if response.get("errors"):
-            raise RuntimeError(f"GitHub GraphQL resolution failed: {response['errors']}")
-        thread = response["data"]["resolveReviewThread"]["thread"]
-        if thread["id"] != thread_id or not thread["isResolved"]:
-            raise RuntimeError("resolution response not confirmed")
-    except (RuntimeError, OSError, ValueError, KeyError, TypeError) as exc:
-        mutation_error = exc
-    # A lost mutation response may follow a successful write. Never issue a second mutation.
-    try:
-        state = _thread_state(repo, pr_number, thread_id, execute)
-    except (RuntimeError, OSError, ValueError, KeyError, TypeError) as exc:
-        raise RuntimeError("cannot verify review thread after mutation; outcome unknown") from exc
-    if not state[0]:
-        raise RuntimeError("resolution not confirmed by fresh GitHub state") from mutation_error
-    return {"id": thread_id, "isResolved": True}
+    return _confirm_resolved(repo, pr_number, thread_id, execute, _resolve_mutation(thread_id, execute))
 
 
 def validate_gh_args(args):

@@ -47,9 +47,9 @@ class AuditTests(unittest.TestCase):
     def test_inventory_refuses_bad_endpoints_or_api_payload(self):
         for endpoint in ("issues/reviews", "pulls/merge", "../../secrets"):
             with self.assertRaises(ValueError):
-                pr_audit._paged("org/repo", 178, endpoint, lambda _: self.fail("no call"))
+                pr_audit.paged("org/repo", 178, endpoint, lambda _: self.fail("no call"))
         with self.assertRaises(RuntimeError):
-            pr_audit._paged("org/repo", 178, "issues/comments", lambda _: "{}")
+            pr_audit.paged("org/repo", 178, "issues/comments", lambda _: "{}")
 
     def test_cli_audit_outputs_full_json_and_keeps_thread_state(self):
         fake_result = {"pr": 178, "head": "b" * 40, "threads": [], "inline_comments": [],

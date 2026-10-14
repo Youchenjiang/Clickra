@@ -6,7 +6,7 @@ import re
 REPO = re.compile(r"[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+\Z")
 
 
-def _paged(repo, number, endpoint, run):
+def paged(repo, number, endpoint, run):
     """Fetch all REST pages; fail closed on API or pagination anomalies."""
     if not REPO.fullmatch(repo) or not isinstance(number, int) or number < 1:
         raise ValueError("invalid repository or pull request number")
@@ -30,9 +30,9 @@ def _paged(repo, number, endpoint, run):
 
 def inventory(repo, number, head, threads, run):
     """Use thread state only for code-review discussions, not unrelated comments."""
-    general = _paged(repo, number, "issues/comments", run)
-    inline = _paged(repo, number, "pulls/comments", run)
-    reviews = _paged(repo, number, "pulls/reviews", run)
+    general = paged(repo, number, "issues/comments", run)
+    inline = paged(repo, number, "pulls/comments", run)
+    reviews = paged(repo, number, "pulls/reviews", run)
     result = {"pr": number, "head": head, "threads": [], "general_comments": [],
               "inline_comments": [], "reviews": []}
     thread_url_map = {}
