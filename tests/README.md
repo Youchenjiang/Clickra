@@ -21,7 +21,16 @@ Pass `--require-fixtures` to flip that contract (mirroring the Python
 runner's `--require-fixtures`): fixture-dependent tests that cannot run are
 reported as failures and the runner exits non-zero, so a gate that expects
 fixtures fails loudly instead of quietly passing. The `fixture-regression-tests`
-CI job runs with this flag once fixtures are available.
+CI job runs with this flag once fixtures are available. The ordinary PR gate
+does not require every maintainer to download the ignored `test_pdfs/` tree.
+The versioned pre-push hook requires these external fixtures only when the
+changes touch PDF translation code or its regression tests (see
+`scripts/pdf_fixture_scope.py`); otherwise they are supplementary.
+When required fixtures are unavailable, the hook fails rather than claiming
+that the translation-specific regression tests passed. CI currently has no
+fixture provisioning source; its skipped fixture step is **not** evidence of
+translation regression coverage. Before merging translation changes, run
+the required suite in an authorized environment with the fixtures available.
 
 
 PDF regression checks live under `tests/PdfRegression`. They require local
