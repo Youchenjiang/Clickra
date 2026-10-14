@@ -11,6 +11,8 @@ ALLOWED_SCOPES = "cli|core|shell|msix|docs|ci|deps|store|agent"
 SUBJECT = re.compile(rf"^(?:{ALLOWED_TYPES})(?:\((?:{ALLOWED_SCOPES})\))?: [a-z0-9].*$")
 BODY = re.compile(r"(?m)^\s*1[.)]\s+.+$")
 REQUIRED_SECTIONS = ("## Summary", "## Changes", "## Validation", "## PR Metadata")
+REQUIRED_METADATA = ("Assignee", "Label", "Milestone", "External provider")
+PLACEHOLDER = re.compile(r"(?i)\b(?:todo|tbd|placeholder|describe the|assign the|add an appropriate|choose the|not run: full pre-push)\b")
 
 
 def git(*args):
@@ -29,10 +31,28 @@ def validate_message(message):
 
 
 def validate_pr_body(body):
-    missing = [section for section in REQUIRED_SECTIONS if section not in body]
-    if not re.search(r"- \[x\] \*\*External provider\*\*:", body, re.I):
-        missing.append("checked External provider metadata")
-    return missing
+    errors = []
+    sections = {}
+    current = None
+    for line in body.splitlines():
+        if line.startswith("## "):
+            current = line.strip()
+            sections.setdefault(current, [])
+        elif current is not None and not line.lstrip().startswith("<!--"):
+            sections[current].append(line)
+    for heading in REQUIRED_SECTIONS:
+        if heading not in sections:
+            errors.append(heading)
+            continue
+        content = "\n".join(sections[heading]).strip()
+        if not content or (heading != "## PR Metadata" and PLACEHOLDER.search(content)):
+            errors.append(f"empty or placeholder {heading}")
+    for label in REQUIRED_METADATA:
+        pattern = rf"(?mi)^- \[x\] \*\*{re.escape(label)}\*\*:\s*(\S.*)$"
+        match = re.search(pattern, "\n".join(sections.get("## PR Metadata", [])))
+        if not match or PLACEHOLDER.search(match.group(1)):
+            errors.append(f"completed {label} metadata required")
+    return errors
 
 
 def check(base, body_file=None):
