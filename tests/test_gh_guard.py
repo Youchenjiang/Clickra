@@ -8,6 +8,23 @@ from gh_guard import validate_gh_args, resolve_thread
 
 
 class GhGuardTests(unittest.TestCase):
+    def test_new_comment_prevents_thread_resolution(self):
+        calls = []
+        def fake(argv):
+            calls.append(argv)
+            if "mutation(" in " ".join(argv):
+                self.fail("must not resolve a changed thread")
+            count = len(calls)
+            return json.dumps({"data": {"repository": {"pullRequest": {"reviewThreads": {
+                "nodes": [{"id": "PRRT_target", "isResolved": False, "isOutdated": False,
+                           "comments": {"totalCount": count, "nodes": [{"id": f"comment{count}"}]}}],
+                "pageInfo": {"hasNextPage": False}
+            }}}}})
+        with self.assertRaisesRegex(RuntimeError, "changed"):
+            resolve_thread("Youchenjiang/Clickra", "177", "PRRT_target",
+                           "177:PRRT_target", execute=fake)
+        self.assertEqual(2, len(calls))
+
     def test_safe_read_only_calls(self):
         for args in (["pr", "checks", "177"], ["pr", "view", "177", "--json", "state"],
                      ["run", "view", "123", "--log-failed"], ["pr", "list", "--state", "open"]):
@@ -32,18 +49,18 @@ class GhGuardTests(unittest.TestCase):
         calls = []
         def fake_execute(argv):
             calls.append(argv)
-            if len(calls) == 1:
+            if len(calls) <= 2:
                 return json.dumps({"data": {"repository": {"pullRequest": {
                     "reviewThreads": {"nodes": [{"id": "PRRT_test123", "isResolved": False,
-                                                 "isOutdated": False}], "pageInfo": {"hasNextPage": False}}}}}})
+                                                 "isOutdated": False, "comments": {"totalCount": 1, "nodes": [{"id": "comment1"}]}}], "pageInfo": {"hasNextPage": False}}}}}})
             return json.dumps({"data": {"resolveReviewThread": {
                 "thread": {"id": "PRRT_test123", "isResolved": True}}}})
         result = resolve_thread("Youchenjiang/Clickra", "177", "PRRT_test123",
                                 "177:PRRT_test123", execute=fake_execute)
         self.assertTrue(result["isResolved"])
-        self.assertEqual(2, len(calls))
-        self.assertIn("resolveReviewThread(input:", calls[1][4])
-        self.assertNotIn("addPullRequestReviewComment", calls[1][4])
+        self.assertEqual(3, len(calls))
+        self.assertIn("resolveReviewThread(input:", calls[2][4])
+        self.assertNotIn("addPullRequestReviewComment", calls[2][4])
 
     def test_resolve_rejects_invalid_or_unverified_threads(self):
         for authorization in ("", "177:PRRT_other"):
@@ -54,7 +71,7 @@ class GhGuardTests(unittest.TestCase):
             def fake_execute(_argv, resolved=resolved, outdated=outdated):
                 return json.dumps({"data": {"repository": {"pullRequest": {
                     "reviewThreads": {"nodes": [{"id": "PRRT_test123", "isResolved": resolved,
-                                                 "isOutdated": outdated}], "pageInfo": {"hasNextPage": False}}}}}})
+                                                 "isOutdated": outdated, "comments": {"totalCount": 0, "nodes": []}}], "pageInfo": {"hasNextPage": False}}}}}})
             with self.assertRaises(ValueError):
                 resolve_thread("Youchenjiang/Clickra", "177", "PRRT_test123",
                                "177:PRRT_test123", execute=fake_execute)
@@ -67,11 +84,11 @@ class GhGuardTests(unittest.TestCase):
                 return json.dumps({"data": {"resolveReviewThread": {"thread": {"id": "PRRT_target", "isResolved": True}}}})
             later = "after=page2" in argv
             return json.dumps({"data": {"repository": {"pullRequest": {"reviewThreads": {
-                "nodes": [{"id": "PRRT_target" if later else "PRRT_other", "isResolved": False, "isOutdated": False}],
+                "nodes": [{"id": "PRRT_target" if later else "PRRT_other", "isResolved": False, "isOutdated": False, "comments": {"totalCount": 0, "nodes": []}}],
                 "pageInfo": {"hasNextPage": not later, "endCursor": "page2" if not later else None}
             }}}}})
         self.assertTrue(resolve_thread("Youchenjiang/Clickra", "177", "PRRT_target", "177:PRRT_target", execute=fake)["isResolved"])
-        self.assertEqual(3, len(calls))
+        self.assertEqual(5, len(calls))
         self.assertIn("after=page2", calls[1])
 
     def test_resolve_preview_only_queries_without_mutation(self):
@@ -79,7 +96,7 @@ class GhGuardTests(unittest.TestCase):
         def fake(argv):
             calls.append(argv)
             return json.dumps({"data": {"repository": {"pullRequest": {"reviewThreads": {
-                "nodes": [{"id": "PRRT_test123", "isResolved": False, "isOutdated": False}],
+                "nodes": [{"id": "PRRT_test123", "isResolved": False, "isOutdated": False, "comments": {"totalCount": 0, "nodes": []}}],
                 "pageInfo": {"hasNextPage": False}
             }}}}})
         result = resolve_thread("Youchenjiang/Clickra", "177", "PRRT_test123",

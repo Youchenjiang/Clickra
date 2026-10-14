@@ -12,6 +12,57 @@ import pr_tool
 
 
 class PrToolTests(unittest.TestCase):
+    def test_diagnose_reads_failed_action_log_and_external_review(self):
+        calls = []
+        def fake(argv):
+            calls.append(argv)
+            if argv[:3] == ["gh", "run", "view"]:
+                return "failure\x1b[2J details"
+            self.fail(f"unexpected call: {argv}")
+        data = {"statusCheckRollup": [
+            {"name": "unit tests", "conclusion": "FAILURE", "detailsUrl": "https://github.com/org/repo/actions/runs/123/job/5"},
+            {"context": "Sourcery review", "state": "FAILURE", "targetUrl": "https://sourcery.ai"},
+            {"name": "build", "conclusion": "SUCCESS"}]}
+        threads = [{"isResolved": False, "isOutdated": False, "path": "scripts/a.py",
+                    "comments": {"nodes": [{"body": "fix this", "url": "https://github.com/review"}]}}]
+        with patch.object(pr_tool, "inspect", return_value=data), \
+             patch.object(pr_tool, "review_threads", return_value=threads), \
+             redirect_stdout(StringIO()) as output:
+            failed, open_threads = pr_tool.diagnose("org/repo", 123, fake)
+        self.assertEqual(2, len(failed))
+        self.assertEqual(1, len(open_threads))
+        self.assertEqual(["gh", "run", "view", "123", "--repo", "org/repo", "--log-failed"], calls[0])
+        self.assertIn("fix this", output.getvalue())
+        self.assertIn("External provider", output.getvalue())
+        self.assertNotIn("\x1b", output.getvalue())
+
+    def test_diagnose_separates_passing_analyzer_legacy_comments(self):
+        data = {"headRefOid": "a" * 40, "statusCheckRollup": [
+            {"context": "DeepSource: Python", "state": "SUCCESS"}]}
+        threads = [
+            {"isResolved": False, "isOutdated": False, "comments": {"nodes": [{"body": "<!-- DeepSource: old --> historical"}]}},
+            {"isResolved": False, "isOutdated": False, "comments": {"nodes": [{"body": "Sourcery actionable"}]}},
+            {"isResolved": False, "isOutdated": True, "comments": {"nodes": [{"body": "old"}]}}]
+        with patch.object(pr_tool, "inspect", return_value=data), \
+             patch.object(pr_tool, "review_threads", return_value=threads), \
+             redirect_stdout(StringIO()) as output:
+            failed, active = pr_tool.diagnose("org/repo", 123, lambda argv: self.fail(str(argv)))
+        self.assertFalse(failed)
+        self.assertEqual(1, len(active))
+        self.assertIn("potentially historical unresolved thread(s): 2", output.getvalue())
+        self.assertIn("a" * 40, output.getvalue())
+
+    def test_remote_terminal_controls_are_neutralized(self):
+        payload = {"number": 177, "title": "safe\x1b[2Jspoof", "url": "https://example.test/\x1b[H",
+                   "baseRefName": "main", "headRefName": "feature/a", "state": "OPEN",
+                   "statusCheckRollup": [{"name": "build\x1b[2J", "conclusion": "SUCCESS"}]}
+        with patch.object(pr_tool, "inspect", return_value=payload), \
+             patch.object(pr_tool, "print_review", return_value=[]), \
+             redirect_stdout(StringIO()) as output:
+            pr_tool.print_status("Youchenjiang/Clickra", 177)
+        self.assertNotIn("\x1b", output.getvalue())
+        self.assertIn("build [2J", output.getvalue())
+
     def test_origin_and_branch_context(self):
         def fake(argv):
             return "feature/pr-governance-preflight\n" if "branch" in argv else "git@github.com:Youchenjiang/Clickra.git\n"
@@ -66,7 +117,7 @@ class PrToolTests(unittest.TestCase):
             self.assertEqual(["gh", "api", "graphql"], argv[:3])
             self.assertNotIn("mutation", " ".join(argv))
             return json.dumps({"data": {"repository": {"pullRequest": {"reviewThreads": {
-                "nodes": [{"id": "PRRT_test123", "isResolved": False, "isOutdated": False}],
+                "nodes": [{"id": "PRRT_test123", "isResolved": False, "isOutdated": False, "comments": {"totalCount": 0, "nodes": []}}],
                 "pageInfo": {"hasNextPage": False}
             }}}}})
         with redirect_stdout(StringIO()) as output:

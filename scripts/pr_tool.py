@@ -7,12 +7,18 @@ resolve command delegates to gh_guard; publishing requires per-action approval.
 import argparse
 import json
 import os
+import re
 from pathlib import Path
 import shutil
 import subprocess
 import sys
 
 from gh_guard import resolve_thread
+
+
+def safe_terminal(value):
+    """Render untrusted GitHub fields without terminal control sequences."""
+    return re.sub(r"[\x00-\x1f\x7f-\x9f]", " ", str(value))
 
 
 def command(argv):
@@ -45,7 +51,7 @@ def pr_number(value, repo, branch, run=command):
 
 def inspect(repo, number, run=command):
     raw = run(["gh", "pr", "view", str(number), "--repo", repo,
-               "--json", "number,title,state,isDraft,baseRefName,headRefName,mergeable,reviewDecision,statusCheckRollup,url"])
+               "--json", "number,title,state,isDraft,baseRefName,headRefName,headRefOid,mergeable,reviewDecision,statusCheckRollup,url"])
     data = json.loads(raw)
     if not isinstance(data, dict) or data.get("number") != number:
         raise ValueError("GitHub returned an unexpected PR")
@@ -88,27 +94,73 @@ def print_review(repo, number, run=command):
     for thread in items:
         comments = thread.get("comments", {}).get("nodes", [])
         first = comments[0] if comments else {}
-        print(f"- {thread['id']} {thread.get('path') or '?'}:{thread.get('line') or '?'}"
+        print(f"- {safe_terminal(thread['id'])} {safe_terminal(thread.get('path') or '?')}:{safe_terminal(thread.get('line') or '?')}"
               f"{' [outdated]' if thread.get('isOutdated') else ''}")
-        print(f"  {str(first.get('body') or '(no comment text)').replace(chr(10), ' ')[:500]}")
+        print(f"  {safe_terminal(first.get('body') or '(no comment text)')[:500]}")
         if first.get("url"):
-            print(f"  {first['url']}")
+            print(f"  {safe_terminal(first['url'])}")
     return items
 
 
 def print_status(repo, number, run=command):
     pr = inspect(repo, number, run)
-    print(f"PR #{number}: {pr.get('title')}\n{pr.get('url')}")
+    print(f"PR #{number}: {safe_terminal(pr.get('title'))}\n{safe_terminal(pr.get('url'))}")
     print(f"State: {pr.get('state')} | Draft: {pr.get('isDraft')} | "
-          f"Base: {pr.get('baseRefName')} | Head: {pr.get('headRefName')}")
-    print(f"Mergeable: {pr.get('mergeable')} | Review: {pr.get('reviewDecision')}")
+          f"Base: {safe_terminal(pr.get('baseRefName'))} | Head: {safe_terminal(pr.get('headRefName'))}")
+    print(f"Mergeable: {safe_terminal(pr.get('mergeable'))} | Review: {safe_terminal(pr.get('reviewDecision'))}")
     checks = pr.get("statusCheckRollup") or []
     for check in checks:
-        print(f"  CI {check.get('name') or check.get('context') or '?'}: "
-              f"{check.get('conclusion') or check.get('state') or check.get('status') or 'UNKNOWN'}")
+        print(f"  CI {safe_terminal(check.get('name') or check.get('context') or '?')}: "
+              f"{safe_terminal(check.get('conclusion') or check.get('state') or check.get('status') or 'UNKNOWN')}")
     unresolved = print_review(repo, number, run)
     if pr.get("baseRefName") != "main" or unresolved:
         print("Attention: base must be main and all findings must be addressed before merging.")
+
+
+def diagnose(repo, number, run=command):
+    """Read failing check logs and review feedback; never mutate GitHub state."""
+    pr = inspect(repo, number, run)
+    head_sha = pr.get("headRefOid")
+    print(f"PR #{number} HEAD: {safe_terminal(head_sha or 'unknown')}")
+    checks = pr.get("statusCheckRollup") or []
+    failed = [item for item in checks if str(item.get("conclusion") or item.get("state") or "").upper() in
+              ("FAILURE", "FAILED", "ERROR", "TIMED_OUT", "ACTION_REQUIRED")]
+    passed = {str(item.get("name") or item.get("context") or "").lower()
+              for item in checks if str(item.get("conclusion") or item.get("state") or "").upper() in ("SUCCESS", "PASS", "PASSED")}
+    print(f"Current reported checks: {len(failed)} failed")
+    for item in failed:
+        name = safe_terminal(item.get("name") or item.get("context") or "unknown check")
+        url = item.get("detailsUrl") or item.get("targetUrl") or ""
+        print(f"\nFAIL: {name}\nURL: {safe_terminal(url)}")
+        match = re.search(r"github\.com/[^/]+/[^/]+/actions/runs/(\d+)", url)
+        if match:
+            try:
+                log = run(["gh", "run", "view", match.group(1), "--repo", repo, "--log-failed"])
+                print(safe_terminal(log[-12000:]) or "No failed-job log available")
+            except (OSError, RuntimeError) as exc:
+                print(f"Log unavailable: {safe_terminal(exc)}")
+        else:
+            print("External provider: GitHub does not expose its detailed findings in this check.")
+    threads = [item for item in review_threads(repo, number, run) if not item.get("isResolved")]
+    active = []
+    historical = []
+    for item in threads:
+        comments = item.get("comments", {}).get("nodes", [])
+        body = str(comments[0].get("body") or "") if comments else ""
+        if item.get("isOutdated") or ("<!-- DeepSource:" in body and
+                                      any(name.startswith("deepsource:") for name in passed)):
+            historical.append(item)
+        else:
+            active.append(item)
+    print(f"\nActionable unresolved review thread(s): {len(active)}")
+    print(f"Outdated/potentially historical unresolved thread(s): {len(historical)} (not automatically resolved; check status is not proof of resolution)")
+    for item in active:
+        comments = item.get("comments", {}).get("nodes", [])
+        comment = comments[0] if comments else {}
+        print(f"- {safe_terminal(item.get('path') or '?')}: {safe_terminal(comment.get('body') or '')[:700]}")
+        if comment.get("url"):
+            print(f"  {safe_terminal(comment['url'])}")
+    return failed, active
 
 
 def _ready(body_file):
@@ -141,6 +193,8 @@ def _execute_action(args, run):
     number = pr_number(args.pr, repo, branch, run)
     if args.action == "status":
         print_status(repo, number, run)
+    elif args.action == "diagnose":
+        diagnose(repo, number, run)
     elif args.action == "review":
         print_review(repo, number, run)
     else:
@@ -156,7 +210,7 @@ def _execute_action(args, run):
 def main(argv=None, run=command):
     parser = argparse.ArgumentParser(description=__doc__)
     sub = parser.add_subparsers(dest="action", required=True)
-    for name in ("status", "review"):
+    for name in ("status", "review", "diagnose"):
         sub.add_parser(name).add_argument("pr", nargs="?")
     ready = sub.add_parser("ready", help="Execute local pre-push gate without pushing")
     ready.add_argument("--body-file", required=True)

@@ -34,7 +34,7 @@ REPO = re.compile(r"^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$")
 def _verified_thread(repo, pr_number, thread_id, execute):
     """Find exactly one open, current thread across all GraphQL pages."""
     owner, name = repo.split("/")
-    query = "query($owner:String!,$name:String!,$number:Int!,$after:String){repository(owner:$owner,name:$name){pullRequest(number:$number){reviewThreads(first:100,after:$after){pageInfo{hasNextPage endCursor} nodes{id isResolved isOutdated}}}}}"
+    query = "query($owner:String!,$name:String!,$number:Int!,$after:String){repository(owner:$owner,name:$name){pullRequest(number:$number){reviewThreads(first:100,after:$after){pageInfo{hasNextPage endCursor} nodes{id isResolved isOutdated comments(last:1){totalCount nodes{id}}}}}}}"
     matches = []
     cursor = None
     seen = set()
@@ -56,6 +56,10 @@ def _verified_thread(repo, pr_number, thread_id, execute):
         cursor = next_cursor
     if len(matches) != 1 or matches[0]["isResolved"] or matches[0]["isOutdated"]:
         raise ValueError("thread absent, outdated or already resolved; stop for review")
+    comments = matches[0].get("comments")
+    if not isinstance(comments, dict) or "totalCount" not in comments or "nodes" not in comments:
+        raise RuntimeError("cannot verify review comment snapshot; stop for review")
+    return comments["totalCount"], tuple(node["id"] for node in comments["nodes"])
 
 
 def resolve_thread(repo, pr_number, thread_id, authorization, *, execute, dry_run=False):
@@ -64,9 +68,11 @@ def resolve_thread(repo, pr_number, thread_id, authorization, *, execute, dry_ru
         raise ValueError("invalid repository, PR number or review thread ID")
     if authorization != f"{pr_number}:{thread_id}":
         raise ValueError("exact per-thread authorization required")
-    _verified_thread(repo, pr_number, thread_id, execute)
+    snapshot = _verified_thread(repo, pr_number, thread_id, execute)
     if dry_run:
         return {"id": thread_id, "isResolved": False, "previewOnly": True}
+    if _verified_thread(repo, pr_number, thread_id, execute) != snapshot:
+        raise RuntimeError("review thread changed since verification; refuse resolution")
     mutation = "mutation($id:ID!){resolveReviewThread(input:{threadId:$id}){thread{id isResolved}}}"
     response = json.loads(execute(["gh", "api", "graphql", "-f", f"query={mutation}", "-f", f"id={thread_id}"]))
     if response.get("errors"):
