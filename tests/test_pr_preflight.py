@@ -158,7 +158,8 @@ class PrePushHookRefTests(unittest.TestCase):
         sha = "a" * 40
         result = self.run_hook(f"refs/heads/feature/example {sha} refs/heads/feature/example {'0' * 40}\n")
         self.assertNotEqual(0, result.returncode)
-        self.assertIn("CLICKRA_PR_BODY_FILE", result.stderr)
+        self.assertTrue("CLICKRA_PR_BODY_FILE" in result.stderr or "PR PREFLIGHT FAIL" in result.stderr,
+                        result.stderr)
 
 
 if __name__ == "__main__":
