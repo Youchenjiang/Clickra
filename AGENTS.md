@@ -16,6 +16,12 @@ The complete, authoritative rules are in [.agent/guidelines.md](.agent/guideline
 The complete, authoritative rules are in [.agent/guidelines.md](.agent/guidelines.md).
 
 - Use `python scripts/pr_tool.py` as the default PR operations entry point: `prepare` for fast preflight, `push` for separately authorized branch publication, `create` for separately authorized PR creation, `verify` for combined CI/reviews/SonarQube acceptance, and `diagnose` for failure details. `ready` remains an optional **full** local gate when no push follows; do not run it immediately before an approved push because `push` always executes the full versioned hook. Direct `gh`/GraphQL or manual push is an exceptional diagnostic/fallback only when the wrapper cannot perform the operation; explain and record that exception. See `docs/development/pr_tool.md`. These are cooperative rules, not credential isolation or OS-enforced command interception.
+For PR acceptance, `pr_tool.py verify` now includes each check's live status,
+required flag and URL in `checks`. Do not routinely run `gh pr checks` after it.
+Use `pr_tool.py diagnose` for failures. Before exceptional native `gh`, identify
+the specific missing diagnostic capability and record the reason; being
+read-only does not automatically justify bypassing the high-level tool.
+
 ## PR Review Safety (Non-negotiable)
 
 - Never create, reply to, edit, repost, or delete GitHub PR review comments or conversation comments. The user explicitly prohibits autonomous replies. Do not use comments to announce a fix.

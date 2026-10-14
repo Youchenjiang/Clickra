@@ -38,6 +38,13 @@ failed or pending checks, missing required provider jobs, a non-main target,
 or a non-open PR. SonarQube access errors fail closed. A `Skipping` provider
 is never claimed as having independently reviewed the code.
 
+The `verify` JSON `checks` array includes each check's current status,
+whether it is required, and its GitHub/provider details URL. This replaces
+routine `gh pr checks` calls; use `diagnose` for failing check details. Native
+read-only `gh` is an exception only for a specific missing diagnostic capability;
+document that gap and the reason before invoking it. These are cooperative
+agent instructions, not OS-enforced command interception or credential isolation.
+
 `sonar` reads the SonarQube Cloud `api/issues/search` endpoint for the
 selected PR, requesting `OPEN,CONFIRMED` issues and paging through all results.
 It shows issue ID, file/line, rule, impact/severity, and message; `--json`
