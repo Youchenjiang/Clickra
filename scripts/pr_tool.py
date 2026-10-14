@@ -174,6 +174,19 @@ def _is_historical_feedback(item, _passed):
     return bool(item.get("isOutdated"))
 
 
+def _print_review_issue(item):
+    comments = item.get("comments", {}).get("nodes", [])
+    comment = comments[0] if comments else {}
+    body = str(comment.get("body") or "")
+    if "<!-- DeepSource:" in body:
+        heading = re.search(r"<h3\b[^>]*>(.*?)</h3>", body, re.I | re.S)
+        if heading:
+            body = html.unescape(re.sub(r"<[^>]+>", "", heading.group(1))).strip()
+    print(f"- {safe_terminal(item.get('path') or '?')}: {safe_terminal(body)[:700]}")
+    if comment.get("url"):
+        print(f"  {safe_terminal(comment['url'])}")
+
+
 def _review_feedback(repo, number, passed, run):
     """Keep old/outdated threads visible as counts; never resolve them."""
     threads = [item for item in review_threads(repo, number, run) if not item.get("isResolved")]
@@ -187,16 +200,7 @@ def _review_feedback(repo, number, passed, run):
     print(f"\nActionable unresolved review thread(s): {len(active)}")
     print(f"Outdated/potentially historical unresolved thread(s): {len(historical)} (not automatically resolved; check status is not proof of resolution)")
     for item in active:
-        comments = item.get("comments", {}).get("nodes", [])
-        comment = comments[0] if comments else {}
-        body = str(comment.get("body") or "")
-        if "<!-- DeepSource:" in body:
-            heading = re.search(r"<h3\b[^>]*>(.*?)</h3>", body, re.I | re.S)
-            if heading:
-                body = html.unescape(re.sub(r"<[^>]+>", "", heading.group(1))).strip()
-        print(f"- {safe_terminal(item.get('path') or '?')}: {safe_terminal(body)[:700]}")
-        if comment.get("url"):
-            print(f"  {safe_terminal(comment['url'])}")
+        _print_review_issue(item)
     return active
 
 
