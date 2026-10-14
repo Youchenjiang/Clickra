@@ -1,6 +1,7 @@
-using Clickra.Core.Application;
+using Clickra.Core.Modules.Settings.Application;
+using Clickra.Core.Modules.Settings.Model;
 
-namespace Clickra.Core.Presentation.Settings;
+namespace Clickra.Core.Modules.Settings.Presentation;
 
 /// <summary>
 /// Instance-level presentation contract shared by CLI and Fluent. Keeping this

@@ -1,4 +1,4 @@
-namespace Clickra.Core.Presentation.History;
+namespace Clickra.Core.Modules.HistoryTasks.Presentation;
 
 /// <summary>Instance contract for UI history state and parked-task actions.</summary>
 public interface IHistoryPresentationController
