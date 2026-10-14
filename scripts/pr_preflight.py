@@ -208,14 +208,22 @@ def main():
     parser.add_argument("--body-file")
     parser.add_argument("--push-ref")
     parser.add_argument("--push-oid")
+    parser.add_argument("--initial-push", action="store_true",
+                        help="New remote branch without a PR: validate completed draft metadata instead")
     args = parser.parse_args()
     if not args.check:
         parser.error("specify --check")
-    try:
-        metadata = _github_metadata()
-    except (OSError, ValueError, subprocess.TimeoutExpired) as exc:
-        print(f"PR PREFLIGHT FAIL: unable to verify GitHub PR metadata: {exc}", file=sys.stderr)
-        return 1
+    if args.initial_push:
+        if not args.push_ref or not args.push_oid:
+            print("PR PREFLIGHT FAIL: initial push requires an exact branch ref and object", file=sys.stderr)
+            return 1
+        metadata = None
+    else:
+        try:
+            metadata = _github_metadata()
+        except (OSError, ValueError, subprocess.TimeoutExpired) as exc:
+            print(f"PR PREFLIGHT FAIL: unable to verify GitHub PR metadata: {exc}", file=sys.stderr)
+            return 1
     errors = check(args.base, args.body_file, args.push_ref, args.push_oid, metadata)
     for error in errors:
         print(f"PR PREFLIGHT FAIL: {error}", file=sys.stderr)

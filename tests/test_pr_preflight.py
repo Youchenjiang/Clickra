@@ -11,6 +11,25 @@ from pr_preflight import validate_message, validate_pr_body, check, _check_histo
 
 
 class PrPreflightTests(unittest.TestCase):
+    def test_initial_branch_preflight_uses_draft_without_nonexistent_pr_metadata(self):
+        from pr_preflight import main
+        sha = "a" * 40
+        with patch("sys.argv", ["pr_preflight.py", "--check", "--initial-push",
+                                "--push-ref", "refs/heads/feature/new",
+                                "--push-oid", sha]), \
+             patch("pr_preflight._github_metadata") as github, \
+             patch("pr_preflight.check", return_value=[]) as checked:
+            self.assertEqual(0, main())
+        github.assert_not_called()
+        self.assertIsNone(checked.call_args.args[-1])
+
+    def test_initial_branch_preflight_needs_exact_ref(self):
+        from pr_preflight import main
+        with patch("sys.argv", ["pr_preflight.py", "--check", "--initial-push"]), \
+             patch("pr_preflight._github_metadata") as github:
+            self.assertEqual(1, main())
+        github.assert_not_called()
+
     def test_commit_requires_numbered_body(self):
         self.assertTrue(validate_message("fix(core): repair fallback"))
         self.assertEqual([], validate_message("fix(core): repair fallback\n\n1. Repair fallback."))
