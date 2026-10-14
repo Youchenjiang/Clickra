@@ -24,6 +24,8 @@ class PrPreflightTests(unittest.TestCase):
             actual.assert_not_called()
         self.assertIn("--state", github.call_args.args[0])
         self.assertIn("all", github.call_args.args[0])
+        args = github.call_args.args[0]
+        self.assertEqual("user/repo", args[args.index("--repo") + 1])
 
     def test_existing_open_pr_requires_live_metadata(self):
         from pr_preflight import _publication_metadata
@@ -33,10 +35,12 @@ class PrPreflightTests(unittest.TestCase):
         prs = '[{"number":42,"state":"OPEN","headRefName":"feature/new"}]'
         live = {"labels": [{"name": "agent"}], "milestone": {"title": "Roadmap"}}
         with patch("pr_preflight.git", side_effect=read), \
-             patch("pr_preflight.invoke", return_value=CompletedProcess([], 0, prs, "")), \
+             patch("pr_preflight.invoke", return_value=CompletedProcess([], 0, prs, "")) as github, \
              patch("pr_preflight._github_metadata", return_value=live) as actual:
             self.assertEqual(live, _publication_metadata())
             actual.assert_called_once()
+            args = github.call_args.args[0]
+            self.assertEqual("user/repo", args[args.index("--repo") + 1])
 
     def test_failed_or_ambiguous_pr_lookup_fails_closed(self):
         from pr_preflight import _publication_metadata
