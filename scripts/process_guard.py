@@ -8,7 +8,17 @@ import shutil
 import subprocess
 import re
 
-GIT_VERBS = {"branch", "remote", "rev-parse", "ls-remote", "merge-base", "log", "diff", "status"}
+GIT_READ_OPERATIONS = {
+    ("branch", "--show-current"),
+    ("remote", "get-url", "origin"),
+    ("rev-parse", "HEAD"),
+    ("rev-parse", "origin/main"),
+    ("ls-remote", "--heads", "origin", "main"),
+    ("merge-base", "--is-ancestor", "origin/main", "HEAD"),
+    ("log", "--format=%B%x00", "origin/main..HEAD"),
+    ("diff", "--quiet", "origin/main", "HEAD"),
+    ("status", "--porcelain"),
+}
 GH_READ_VERBS = {("pr", "view"), ("pr", "checks"), ("pr", "list"),
                  ("run", "view"), ("run", "list"), ("workflow", "list")}
 REST_READ_PATH = re.compile(r"^repos/[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+/(?:"
@@ -18,7 +28,7 @@ REST_READ_PATH = re.compile(r"^repos/[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+/(?:"
 
 
 def executable(name):
-    if name not in {"git", "gh", "sh", "bash"}:
+    if name not in {"git", "gh"}:
         raise ValueError("unsupported governance executable")
     path = shutil.which(name)
     if not path:
@@ -45,7 +55,7 @@ def _validate_argv(argv):
         raise ValueError("only git and gh are allowed")
     if any(not isinstance(a, str) or "\x00" in a or "\n" in a or "\r" in a for a in argv):
         raise ValueError("invalid subprocess argument")
-    if argv[0] == "git" and (len(argv) < 2 or argv[1] not in GIT_VERBS):
+    if argv[0] == "git" and tuple(argv[1:]) not in GIT_READ_OPERATIONS:
         raise ValueError("unauthorized git operation")
     if argv[0] == "gh":
         _validate_github_args(argv)
