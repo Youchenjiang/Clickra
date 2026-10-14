@@ -111,6 +111,44 @@ def print_status(repo, number, run=command):
         print("Attention: base must be main and all findings must be addressed before merging.")
 
 
+def _execute_action(args, run):
+    if args.action == "publish":
+        print("Publication disabled in this entry point: obtain explicit approval for push and PR creation separately.")
+        return 2
+    if args.action == "ready":
+        body = Path(args.body_file).resolve()
+        if not body.is_file():
+            raise ValueError(f"PR body file does not exist: {body}")
+        env = dict(os.environ, CLICKRA_PR_BODY_FILE=str(body))
+        hook = Path(__file__).resolve().parent / "hooks" / "pre-push"
+        shell = shutil.which("sh")
+        if not shell and os.name == "nt":
+            git = shutil.which("git")
+            if git:
+                candidate = Path(git).resolve().parent.parent / "bin" / "sh.exe"
+                if candidate.is_file():
+                    shell = str(candidate)
+        if not shell:
+            shell = shutil.which("bash") if os.name != "nt" else None
+        if not shell:
+            raise RuntimeError("Git Bash/sh unavailable; install Git for Windows shell and retry")
+        return subprocess.call([shell, str(hook)], env=env)
+    repo, branch = context(run)
+    number = pr_number(args.pr, repo, branch, run)
+    if args.action == "status":
+        print_status(repo, number, run)
+    elif args.action == "review":
+        print_review(repo, number, run)
+    else:
+        if args.execute and not args.authorize:
+            raise ValueError("--execute requires --authorize and explicit user consent")
+        thread = resolve_thread(repo, str(number), args.thread,
+                                args.authorize if args.execute else f"{number}:{args.thread}",
+                                execute=run, dry_run=not args.execute)
+        print(f"{'Resolved' if args.execute else 'Eligible for resolution (preview only)'}: {thread['id']}; no comment posted")
+    return 0
+
+
 def main(argv=None, run=command):
     parser = argparse.ArgumentParser(description=__doc__)
     sub = parser.add_subparsers(dest="action", required=True)
@@ -126,42 +164,7 @@ def main(argv=None, run=command):
     resolver.add_argument("--execute", action="store_true", help="Execute explicitly authorized resolution; default is read-only preview")
     args = parser.parse_args(argv)
     try:
-        if args.action == "publish":
-            print("Publication disabled in this entry point: obtain explicit approval for push and PR creation separately.")
-            return 2
-        if args.action == "ready":
-            body = Path(args.body_file).resolve()
-            if not body.is_file():
-                raise ValueError(f"PR body file does not exist: {body}")
-            env = dict(os.environ, CLICKRA_PR_BODY_FILE=str(body))
-            # Use the exact versioned pre-push gate; never issue 'git push'.
-            hook = Path(__file__).resolve().parent / "hooks" / "pre-push"
-            shell = shutil.which("sh")
-            if not shell and os.name == "nt":
-                git = shutil.which("git")
-                if git:
-                    candidate = Path(git).resolve().parent.parent / "bin" / "sh.exe"
-                    if candidate.is_file():
-                        shell = str(candidate)
-            if not shell:
-                shell = shutil.which("bash") if os.name != "nt" else None
-            if not shell:
-                raise RuntimeError("Git Bash/sh unavailable; install Git for Windows shell and retry")
-            return subprocess.call([shell, str(hook)], env=env)
-        repo, branch = context(run)
-        number = pr_number(args.pr, repo, branch, run)
-        if args.action == "status":
-            print_status(repo, number, run)
-        elif args.action == "review":
-            print_review(repo, number, run)
-        else:
-            if args.execute and not args.authorize:
-                raise ValueError("--execute requires --authorize and explicit user consent")
-            thread = resolve_thread(repo, str(number), args.thread,
-                                    args.authorize if args.execute else f"{number}:{args.thread}",
-                                    execute=lambda a: run(a), dry_run=not args.execute)
-            print(f"{'Resolved' if args.execute else 'Eligible for resolution (preview only)'}: {thread['id']}; no comment posted")
-        return 0
+        return _execute_action(args, run)
     except (OSError, ValueError, KeyError, TypeError, RuntimeError) as exc:
         print(f"PR TOOL ERROR: {exc}", file=sys.stderr)
         return 1

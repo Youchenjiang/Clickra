@@ -4,6 +4,7 @@ import argparse
 import re
 import subprocess
 import sys
+import shutil
 from pathlib import Path
 
 ALLOWED_TYPES = "feat|fix|refactor|docs|test|chore|style|perf|security"
@@ -16,7 +17,10 @@ PLACEHOLDER = re.compile(r"(?i)\b(?:todo|tbd|placeholder|describe the|assign the
 
 
 def git(*args):
-    return subprocess.run(["git", *args], text=True, capture_output=True, check=False)
+    executable = shutil.which("git")
+    if not executable:
+        raise OSError("Git executable not found")
+    return subprocess.run([executable, *args], text=True, capture_output=True, check=False)
 
 
 def validate_message(message):
@@ -55,7 +59,7 @@ def validate_pr_body(body):
     return errors
 
 
-def check(base, body_file=None):
+def _check_history(base):
     errors = []
     branch = git("branch", "--show-current").stdout.strip()
     if not branch or branch in ("main", "master"):
@@ -79,6 +83,11 @@ def check(base, body_file=None):
                     errors.extend(f"commit {n}: {e}" for e in validate_message(message.strip()))
         if git("diff", "--quiet", base, "HEAD").returncode == 0:
             errors.append("PR branch has no changes against latest origin/main")
+    return errors
+
+
+def check(base, body_file=None):
+    errors = _check_history(base)
     if git("status", "--porcelain").stdout.strip():
         errors.append("worktree is dirty; test and push exactly the committed contents")
     if not body_file:

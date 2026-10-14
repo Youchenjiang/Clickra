@@ -9,6 +9,7 @@ import re
 import subprocess
 import sys
 import json
+import shutil
 
 # Exact read-only command verbs. Unknown options/subcommands fail closed.
 SAFE_COMMANDS = {
@@ -30,16 +31,8 @@ THREAD_ID = re.compile(r"^PRRT_[A-Za-z0-9_-]+$")
 REPO = re.compile(r"^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$")
 
 
-def resolve_thread(repo, pr_number, thread_id, authorization, *, execute, dry_run=False):
-    """Resolve only an existing, verified thread; caller confirms fix evidence.
-
-    The per-invocation authorization is an operator confirmation, not proof of
-    user consent. Agent rules separately require explicit user authorization.
-    """
-    if not REPO.fullmatch(repo) or not pr_number.isdecimal() or int(pr_number) < 1 or not THREAD_ID.fullmatch(thread_id):
-        raise ValueError("invalid repository, PR number or review thread ID")
-    if authorization != f"{pr_number}:{thread_id}":
-        raise ValueError("exact per-thread authorization required")
+def _verified_thread(repo, pr_number, thread_id, execute):
+    """Find exactly one open, current thread across all GraphQL pages."""
     owner, name = repo.split("/")
     query = "query($owner:String!,$name:String!,$number:Int!,$after:String){repository(owner:$owner,name:$name){pullRequest(number:$number){reviewThreads(first:100,after:$after){pageInfo{hasNextPage endCursor} nodes{id isResolved isOutdated}}}}}"
     matches = []
@@ -63,6 +56,15 @@ def resolve_thread(repo, pr_number, thread_id, authorization, *, execute, dry_ru
         cursor = next_cursor
     if len(matches) != 1 or matches[0]["isResolved"] or matches[0]["isOutdated"]:
         raise ValueError("thread absent, outdated or already resolved; stop for review")
+
+
+def resolve_thread(repo, pr_number, thread_id, authorization, *, execute, dry_run=False):
+    """Resolve only a verified thread; explicit user permission is still required."""
+    if not REPO.fullmatch(repo) or not pr_number.isdecimal() or int(pr_number) < 1 or not THREAD_ID.fullmatch(thread_id):
+        raise ValueError("invalid repository, PR number or review thread ID")
+    if authorization != f"{pr_number}:{thread_id}":
+        raise ValueError("exact per-thread authorization required")
+    _verified_thread(repo, pr_number, thread_id, execute)
     if dry_run:
         return {"id": thread_id, "isResolved": False, "previewOnly": True}
     mutation = "mutation($id:ID!){resolveReviewThread(input:{threadId:$id}){thread{id isResolved}}}"
@@ -124,7 +126,7 @@ def main():
                                     dry_run=not args.execute)
             print(f"Review thread {'resolved' if args.execute else 'eligible (preview only; not resolved)'}: {result['id']}")
             return 0
-        except (ValueError, KeyError, TypeError, json.JSONDecodeError, subprocess.CalledProcessError, OSError, RuntimeError) as exc:
+        except (ValueError, KeyError, TypeError, subprocess.CalledProcessError, OSError, RuntimeError) as exc:
             print(f"GH GUARD DENIED: {exc}", file=sys.stderr)
             return 2
     parser = argparse.ArgumentParser(description=__doc__)
@@ -135,7 +137,10 @@ def main():
         print(f"GH GUARD DENIED: {error}", file=sys.stderr)
         return 2
     try:
-        return subprocess.call(["gh", *options.gh_args])
+        executable = shutil.which("gh")
+        if not executable:
+            raise OSError("GitHub CLI executable not found")
+        return subprocess.call([executable, *options.gh_args])
     except OSError as exc:
         print(f"GH GUARD ERROR: {exc}", file=sys.stderr)
         return 2
