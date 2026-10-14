@@ -246,14 +246,14 @@ static partial class TestSuite
         string cliEvents = File.ReadAllText(Path.Combine(root, "src", CliProjectDirectory, DashboardDirectory, "DashboardWindow.Events.cs"));
         string cliClick = File.ReadAllText(Path.Combine(root, "src", CliProjectDirectory, DashboardDirectory, "DashboardWindow.Events.Settings.cs"));
 
-        Assert.True(fluentCode.Contains("CompressionSlider.Minimum = ClickraSettings.MinPdfCompressLevel", StringComparison.Ordinal),
-            "Fluent must derive CompressionSlider.Minimum from ClickraSettings.MinPdfCompressLevel.");
-        Assert.True(fluentCode.Contains("CompressionSlider.Maximum = ClickraSettings.MaxPdfCompressLevel", StringComparison.Ordinal),
-            "Fluent must derive CompressionSlider.Maximum from ClickraSettings.MaxPdfCompressLevel.");
-        Assert.True(fluentCode.Contains("ParkedRetentionBox.Minimum = MinParkedRetentionDays", StringComparison.Ordinal),
-            "Fluent must derive ParkedRetentionBox.Minimum from ClickraSettings.");
-        Assert.True(fluentCode.Contains("ParkedRetentionBox.Maximum = MaxParkedRetentionDays", StringComparison.Ordinal),
-            "Fluent must derive ParkedRetentionBox.Maximum from ClickraSettings.");
+        Assert.True(fluentCode.Contains("CompressionSlider.Minimum = SettingsPresentationController.Shared.MinPdfCompressionLevel", StringComparison.Ordinal),
+            "Fluent must derive CompressionSlider.Minimum from the shared Presentation settings owner.");
+        Assert.True(fluentCode.Contains("CompressionSlider.Maximum = SettingsPresentationController.Shared.MaxPdfCompressionLevel", StringComparison.Ordinal),
+            "Fluent must derive CompressionSlider.Maximum from the shared Presentation settings owner.");
+        Assert.True(fluentCode.Contains("ParkedRetentionBox.Minimum = SettingsPresentationController.Shared.MinParkedRetentionDays", StringComparison.Ordinal),
+            "Fluent must derive ParkedRetentionBox.Minimum from the shared Presentation settings owner.");
+        Assert.True(fluentCode.Contains("ParkedRetentionBox.Maximum = SettingsPresentationController.Shared.MaxParkedRetentionDays", StringComparison.Ordinal),
+            "Fluent must derive ParkedRetentionBox.Maximum from the shared Presentation settings owner.");
 
         Assert.True(fluentXaml.Contains("x:Name=\"CompressionSlider\"", StringComparison.Ordinal) &&
                     !fluentXaml.Contains("x:Name=\"CompressionSlider\" Minimum=", StringComparison.Ordinal) &&
@@ -276,11 +276,11 @@ static partial class TestSuite
                     cliClick.Contains("int span = range.Max - range.Min", StringComparison.Ordinal),
             "CLI slider click handler must derive its span and clamping from the descriptor range.");
         Assert.True(cliClick.Contains("GetRequiredNumericRange(descriptor)", StringComparison.Ordinal) &&
-                    cliClick.Contains("SettingsController.WriteInt(descriptor, clamped)", StringComparison.Ordinal),
-            "CLI ApplyPdfCompressLevel must clamp through the registered descriptor and persist through the typed application settings gateway.");
-        Assert.True(cliClick.Contains("ClickraSettings.MinParkedRetentionDays", StringComparison.Ordinal) &&
-                    cliClick.Contains("ClickraSettings.MaxParkedRetentionDays", StringComparison.Ordinal),
-            "CLI SetParkedRetention must clamp against centralized retention bounds.");
+                    cliClick.Contains("SettingsPresentationController.Shared.WriteInt(descriptor, clamped)", StringComparison.Ordinal),
+            "CLI ApplyPdfCompressLevel must clamp through the registered descriptor and persist through the shared Presentation settings owner.");
+        Assert.True(cliClick.Contains("SettingsPresentationController.Shared.MinParkedRetentionDays", StringComparison.Ordinal) &&
+                    cliClick.Contains("SettingsPresentationController.Shared.MaxParkedRetentionDays", StringComparison.Ordinal),
+            "CLI SetParkedRetention must clamp against shared Presentation retention bounds.");
     }
 
     private static void TestRetiredKeysStayDisjoint()
@@ -436,10 +436,10 @@ static partial class TestSuite
         string cliLifecycle = File.ReadAllText(Path.Combine(root, "src", CliProjectDirectory, DashboardDirectory, "DashboardWindow.Lifecycle.cs"));
         string cliEvents = File.ReadAllText(Path.Combine(root, "src", CliProjectDirectory, DashboardDirectory, "DashboardWindow.Events.cs"));
 
-        Assert.True(fluentCode.Contains("SettingsController.Reloaded +=", StringComparison.Ordinal),
-            "Fluent UI must subscribe through the application settings gateway.");
-        Assert.True(fluentCode.Contains("SettingsController.Reloaded -=", StringComparison.Ordinal),
-            "Fluent UI must unsubscribe from the application settings gateway when unloaded.");
+        Assert.True(fluentCode.Contains("SettingsPresentationController.Shared.Reloaded +=", StringComparison.Ordinal),
+            "Fluent UI must subscribe through the shared Presentation settings owner.");
+        Assert.True(fluentCode.Contains("SettingsPresentationController.Shared.Reloaded -=", StringComparison.Ordinal),
+            "Fluent UI must unsubscribe from the shared Presentation settings owner when unloaded.");
         Assert.True(fluentCode.Contains("_settingsReloadHooked", StringComparison.Ordinal),
             "Fluent UI must guard reload subscription lifecycle against duplicate hooks.");
         Assert.True(fluentCode.Contains("SyncSettingsToUi()", StringComparison.Ordinal),
@@ -448,12 +448,12 @@ static partial class TestSuite
                     fluentCode.Contains("RefreshFiles();", StringComparison.Ordinal) &&
                     fluentCode.Contains("RefreshHistory();", StringComparison.Ordinal),
             "Fluent external language reloads must refresh dynamic localized file and history content.");
-        Assert.True(cliLifecycle.Contains("SettingsController.Reloaded +=", StringComparison.Ordinal),
-            "CLI Dashboard must subscribe through the application settings gateway.");
-        Assert.True(cliLifecycle.Contains("SettingsController.Reloaded -=", StringComparison.Ordinal),
-            "CLI Dashboard must unsubscribe from the application settings gateway on window close.");
-        Assert.True(cliEvents.Contains("SettingsController.EnsureFresh()", StringComparison.Ordinal),
-            "CLI Dashboard timer tick must refresh settings through the application gateway on each refresh.");
+        Assert.True(cliLifecycle.Contains("SettingsPresentationController.Shared.Reloaded +=", StringComparison.Ordinal),
+            "CLI Dashboard must subscribe through the shared Presentation settings owner.");
+        Assert.True(cliLifecycle.Contains("SettingsPresentationController.Shared.Reloaded -=", StringComparison.Ordinal),
+            "CLI Dashboard must unsubscribe from the shared Presentation settings owner on window close.");
+        Assert.True(cliEvents.Contains("SettingsPresentationController.Shared.EnsureFresh()", StringComparison.Ordinal),
+            "CLI Dashboard timer tick must refresh settings through the Presentation owner on each refresh.");
     }
 
     private static void TestSettingDescriptorsAreValid()
@@ -518,17 +518,17 @@ static partial class TestSuite
                 .Select(File.ReadAllText));
         string cliClick = File.ReadAllText(Path.Combine(dashboardDir, "DashboardWindow.Events.Settings.cs"));
 
-        Assert.True(fluentDynamicSettings.Contains("SettingPageRegistry.AllDescriptors", StringComparison.Ordinal),
-            "Fluent dynamic settings must iterate SettingPageRegistry.AllDescriptors for automatic control generation.");
+        Assert.True(fluentDynamicSettings.Contains("SettingsPresentationController.Shared.DynamicDescriptors", StringComparison.Ordinal),
+            "Fluent dynamic settings must iterate the shared Presentation descriptor catalog for automatic control generation.");
         Assert.True(fluentCode.Contains("_dynamicSettings.Build();", StringComparison.Ordinal)
                     && fluentCode.Contains("_dynamicSettings.Sync();", StringComparison.Ordinal)
                     && fluentCode.Contains("_dynamicSettings.ApplyLanguage();", StringComparison.Ordinal),
             "MainPage must delegate dynamic settings creation, synchronization, and localization to the controller.");
-        Assert.True(fluentDynamicSettings.Contains("SettingsController.Write", StringComparison.Ordinal)
-                    && fluentDynamicSettings.Contains("SettingsController.Read", StringComparison.Ordinal),
-            "The Fluent dynamic settings controller must own descriptor synchronization through the typed application settings gateway.");
-        Assert.True(cliPaint.Contains("SettingPageRegistry.AllDescriptors", StringComparison.Ordinal),
-            "CLI Dashboard must iterate SettingPageRegistry.AllDescriptors to paint dynamic settings controls.");
+        Assert.True(fluentDynamicSettings.Contains("SettingsPresentationController.Shared.Write", StringComparison.Ordinal)
+                    && fluentDynamicSettings.Contains("SettingsPresentationController.Shared.Read", StringComparison.Ordinal),
+            "The Fluent dynamic settings controller must synchronize descriptors through the shared Presentation settings owner.");
+        Assert.True(cliPaint.Contains("SettingsPresentationController.Shared.Descriptors", StringComparison.Ordinal),
+            "CLI Dashboard must iterate the shared Presentation descriptor catalog to paint dynamic settings controls.");
         Assert.True(cliPaint.Contains("DrawDynamicSettingDescriptor", StringComparison.Ordinal),
             "CLI Dashboard must include DrawDynamicSettingDescriptor to paint controls derived from descriptors.");
         Assert.True(cliClick.Contains("HandleDynamicSettingClick", StringComparison.Ordinal),

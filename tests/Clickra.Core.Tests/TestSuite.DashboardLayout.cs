@@ -504,10 +504,10 @@ static partial class TestSuite
         string dynamicPaint = File.ReadAllText(Path.Combine(dir, "DashboardWindow.Paint.Settings.Dynamic.cs"));
         AssertContainsAll(
             paint,
-            "Native PDF compression must take titles, setting keys, and numeric bounds from SettingPageRegistry descriptors.",
-            "GetRequiredSettingDescriptor(ClickraSettings.PdfCompressImageLevel)",
-            "GetRequiredSettingDescriptor(ClickraSettings.PdfCompressStripFonts)",
-            "GetRequiredSettingDescriptor(ClickraSettings.PdfCompressMinifyContent)",
+            "Native PDF compression must take titles and numeric bounds from shared Presentation descriptors.",
+            "SettingsPresentationController.Shared.PdfCompressionLevelDescriptor",
+            "SettingsPresentationController.Shared.PdfCompressionStripFontsDescriptor",
+            "SettingsPresentationController.Shared.PdfCompressionMinifyContentDescriptor",
             "GetRequiredNumericRange(pdfLevelDescriptor)");
         Assert.True(dynamicPaint.Contains("descriptor.SliderLabels", StringComparison.Ordinal),
             "Native slider labels must be rendered by the shared descriptor slider renderer.");
@@ -540,8 +540,7 @@ static partial class TestSuite
         AssertContainsAll(
             paint,
             "AOT Settings must explicitly skip per-conversion image compression controls.",
-            "descriptor.Key.Equals(ClickraSettings.ImageCompressLevel",
-            "descriptor.Key.Equals(ClickraSettings.ImageCompressMaxDimension");
+            "SettingsPresentationController.Shared.IsImageCompressionDescriptor(descriptor)");
         AssertContainsNone(
             paint,
             "AOT Settings must not expose image compression profiles as global preferences.",

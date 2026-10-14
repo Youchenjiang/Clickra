@@ -1,4 +1,4 @@
-using Clickra.Core.Application;
+using Clickra.Core.Presentation.Convert;
 
 namespace Clickra.Core.Tests;
 
@@ -17,7 +17,7 @@ static partial class TestSuite
 
     private static void TestConversionWorkspaceKeepsCompatibleSelection()
     {
-        var state = new ConversionWorkspaceState();
+        var state = new ConvertWorkspaceController();
         state.AddFiles(new[] { WorkspacePdfFile, "b.pdf" });
         Assert.True(state.TrySelectCommand("merge-pdf"), "A two-PDF selection must accept merge-pdf.");
 
@@ -30,7 +30,7 @@ static partial class TestSuite
 
     private static void TestConversionWorkspaceReroutesIncompatibleImport()
     {
-        var state = new ConversionWorkspaceState();
+        var state = new ConvertWorkspaceController();
         Assert.False(state.TrySelectCommand("not-a-command"), "Unknown commands must never become selected workspace commands.");
         state.AddFiles(new[] { WorkspacePdfFile });
         Assert.True(state.TrySelectCommand("compress-pdf"), "A single PDF must accept compress-pdf.");
@@ -44,7 +44,7 @@ static partial class TestSuite
 
     private static void TestConversionWorkspaceStartEligibility()
     {
-        var state = new ConversionWorkspaceState();
+        var state = new ConvertWorkspaceController();
         state.AddFiles(new[] { WorkspacePdfFile });
 
         Assert.False(state.TrySelectCommand("merge-pdf"), "merge-pdf must reject a single PDF because it requires multiple files.");
@@ -61,7 +61,7 @@ static partial class TestSuite
 
     private static void TestConversionWorkspaceClearPreservesCommand()
     {
-        var state = new ConversionWorkspaceState();
+        var state = new ConvertWorkspaceController();
         state.AddFiles(new[] { "a.md" });
         Assert.True(state.TrySelectCommand("md2word"), "A Markdown selection must accept md2word.");
 
@@ -75,7 +75,7 @@ static partial class TestSuite
 
     private static void TestConversionWorkspaceSelectedFilesView()
     {
-        var state = new ConversionWorkspaceState();
+        var state = new ConvertWorkspaceController();
         IReadOnlyList<string> selectedFiles = state.SelectedFiles;
 
         Assert.False(selectedFiles is List<string>,

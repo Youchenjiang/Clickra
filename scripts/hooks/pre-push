@@ -105,6 +105,7 @@ echo "[pre-push] Running PR governance script tests..."
 python -m unittest discover -s tests -p 'test_pr_preflight.py' -v
 python -m unittest discover -s tests -p 'test_gh_guard.py' -v
 python -m unittest discover -s tests -p 'test_pr_tool.py' -v
+python -m unittest discover -s tests -p 'test_branch_policy.py' -v
 python -m unittest discover -s tests -p 'test_pr_reports.py' -v
 python -m unittest discover -s tests -p 'test_pr_publication.py' -v
 python -m unittest discover -s tests -p 'test_pr_creation.py' -v

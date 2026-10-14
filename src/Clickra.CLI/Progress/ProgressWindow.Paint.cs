@@ -32,13 +32,18 @@ namespace Clickra.UI
             string msg = "", errMsg = "", promptFile = "";
             bool isRetry = false;
             double dispW; float shimOff; int tot, cur;
+            TaskProgressPresentationState presentation = _progressPresentation.State;
 
             lock (_stateLock)
             {
-                hasErr = _hasError; comp = _completed;
-                msg = _message; errMsg = _errorMessage;
+                hasErr = presentation.Status is TaskProgressPresentationStatus.Failed or TaskProgressPresentationStatus.Canceled;
+                comp = presentation.Status == TaskProgressPresentationStatus.Succeeded;
+                msg = presentation.Message;
+                errMsg = presentation.Status == TaskProgressPresentationStatus.Canceled
+                    ? "User Aborted"
+                    : presentation.Error;
                 dispW = _currentDispWidth; shimOff = _shimmerOffset;
-                tot = _total; cur = _current;
+                tot = presentation.Total; cur = presentation.Current;
                 isPrompting = _isPromptingPassword || _isPromptingVisualSplitter || _isPromptingMarkdownOptions;
                 promptFile = _passwordPromptFilename;
                 isRetry = _passwordPromptIsRetry;

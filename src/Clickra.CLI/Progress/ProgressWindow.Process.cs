@@ -40,7 +40,7 @@ namespace Clickra.UI
 
                 if (currentFiles.Count == 0)
                 {
-                    lock (_stateLock) { _completed = true; _message = Loc("cli_progress_no_files"); }
+                    _progressPresentation.Succeed(Loc("cli_progress_no_files"));
                     PostMessageW(hwnd, WM_USER_INVALIDATE, (IntPtr)1, IntPtr.Zero);
                     Thread.Sleep(1000);
                     PostMessageW(hwnd, 0x0010, IntPtr.Zero, IntPtr.Zero); // WM_CLOSE
@@ -49,12 +49,11 @@ namespace Clickra.UI
 
                 Action<int, int, string> progressCallback = (curr, tot, msg) =>
                 {
+                    _progressPresentation.Report(curr, tot, msg);
                     lock (_stateLock)
                     {
-                        _current = curr;
-                        if (tot > 0) _total = tot;
-                        _message = msg;
-                        if (_total > 0) _targetWidth = 448.0 * _current / _total;
+                        TaskProgressPresentationState state = _progressPresentation.State;
+                        if (state.Total > 0) _targetWidth = 448.0 * state.Current / state.Total;
                     }
                     UpdateTrayIconProgress();
                 };
@@ -91,11 +90,8 @@ namespace Clickra.UI
                 bool wasCanceled = _cts.IsCancellationRequested || ex is OperationCanceledException;
                 string errorMsg = wasCanceled ? UserAbortedMessage : ex.Message;
 
-                lock (_stateLock)
-                {
-                    _hasError = true;
-                    _errorMessage = errorMsg;
-                }
+                if (wasCanceled) _progressPresentation.Cancel(errorMsg);
+                else _progressPresentation.Fail(errorMsg);
                 PostMessageW(hwnd, WM_USER_INVALIDATE, (IntPtr)1, IntPtr.Zero);
                 PostMessageW(hwnd, 0x0010, IntPtr.Zero, IntPtr.Zero); // WM_CLOSE
             }
@@ -114,12 +110,10 @@ namespace Clickra.UI
             {
                 if (successMessage is not null)
                     progressCallback(files.Count * 100, files.Count * 100, successMessage);
-                lock (_stateLock)
-                {
-                    _completed = true;
-                    if (setAllDoneMessage)
-                        _message = Loc(ProgressAllDoneKey);
-                }
+                string completedMessage = setAllDoneMessage
+                    ? Loc(ProgressAllDoneKey)
+                    : _progressPresentation.State.Message;
+                _progressPresentation.Succeed(completedMessage);
                 PostMessageW(hwnd, WM_USER_INVALIDATE, (IntPtr)1, IntPtr.Zero);
                 ShowToastNotification(command, files.Count);
                 Thread.Sleep(1500);
@@ -131,11 +125,12 @@ namespace Clickra.UI
             string errorMsg = result.Status == ConversionResultStatus.Canceled
                 ? UserAbortedMessage
                 : result.Error ?? "";
-            lock (_stateLock)
-            {
-                _hasError = true;
-                _errorMessage = errorMsg;
-            }
+            if (result.Status == ConversionResultStatus.Canceled)
+                _progressPresentation.Cancel(errorMsg);
+            else if (result.Status == ConversionResultStatus.Parked)
+                _progressPresentation.Park(errorMsg);
+            else
+                _progressPresentation.Fail(errorMsg);
             PostMessageW(hwnd, WM_USER_INVALIDATE, (IntPtr)1, IntPtr.Zero);
             ConversionTaskCleanup.Delete(result.TaskId, bestEffort: true);
             PostMessageW(hwnd, 0x0010, IntPtr.Zero, IntPtr.Zero); // WM_CLOSE
@@ -154,6 +149,7 @@ namespace Clickra.UI
                 _passwordCancelled = false;
                 InitializeVisualSplitter(filePath);
             }
+            _progressPresentation.WaitForInput();
 
             PostMessageW(hwnd, WM_USER_SHOW_PASSWORD_INPUT, IntPtr.Zero, IntPtr.Zero);
             _passwordEvent.WaitOne();
@@ -167,6 +163,7 @@ namespace Clickra.UI
                 _isPromptingPassword = false;
                 _isPromptingVisualSplitter = false;
             }
+            _progressPresentation.ResumeRunning();
 
             if (cancelled)
             {
@@ -187,6 +184,7 @@ namespace Clickra.UI
                 _inputPassword = null;
                 _passwordCancelled = false;
             }
+            _progressPresentation.WaitForInput();
 
             PostMessageW(hwnd, WM_USER_SHOW_PASSWORD_INPUT, IntPtr.Zero, IntPtr.Zero);
             _passwordEvent.WaitOne();
@@ -199,10 +197,11 @@ namespace Clickra.UI
             {
                 _isPromptingPassword = false;
             }
+            _progressPresentation.ResumeRunning();
 
             if (cancelled)
             {
-                throw new OperationCanceledException(Localization.T("error_user_aborted", SettingsController.Language));
+                throw new OperationCanceledException(Localization.T("error_user_aborted", SettingsPresentationController.Shared.Language));
             }
             return input ?? "";
         }
@@ -210,7 +209,7 @@ namespace Clickra.UI
         /// <summary>Shows a Windows toast notification on success, unless notifications are disabled.</summary>
         private void ShowToastNotification(string command, int count)
         {
-            if (!SettingsController.NotificationsEnabled)
+            if (!SettingsPresentationController.Shared.NotificationsEnabled)
                 return;
 
             try

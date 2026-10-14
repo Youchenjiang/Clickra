@@ -5,7 +5,6 @@ using System.Drawing;
 using System.Drawing.Drawing2D;
 using System.Collections.Generic;
 using Clickra.Core;
-using Clickra.Core.Processors;
 
 using static Clickra.UI.Native.Win32;
 
@@ -29,19 +28,10 @@ namespace Clickra.UI
             if (_sectionFont != null)
                 g.DrawString(GetText("overview_engine_status"), _sectionFont, Brushes.White, contentX * s, 95 * s);
 
-            string configuredEngine = SettingsController.OfficeEngineValue;
-            bool microsoftReady = OfficeEngineDetector.IsMicrosoftSuiteReady();
-            bool libreOfficeReady = OfficeEngineDetector.IsLibreOfficeReady(
-                SettingsController.LibreOfficeRemovalPendingRestart,
-                SettingsController.LibreOfficePath);
-            bool officeReady = OfficeEngineDetector.IsSelectedEngineReady(configuredEngine, microsoftReady, libreOfficeReady);
-            string activeEngine = OfficeEngineDetector.GetPreferredReadyEngine(configuredEngine, microsoftReady, libreOfficeReady);
-            string activeOfficeEngine = activeEngine switch
-            {
-                ClickraSettings.OfficeEngineMicrosoft => GetText("setting_engine_microsoft"),
-                ClickraSettings.OfficeEngineLibreOffice => GetText("setting_engine_libreoffice"),
-                _ => GetText("setting_engine_auto")
-            };
+            OfficeReadinessPresentationState office = SettingsPresentationController.Shared.GetOfficeReadiness();
+            bool officeReady = office.SelectedEngineReady;
+            string activeEngine = office.PreferredReadyEngine;
+            string activeOfficeEngine = GetText(SettingsPresentationController.Shared.GetOfficeEngineLabelKey(activeEngine));
 
             DrawOverviewStatusLine(g, "PDF", GetText("engine_ready"), true, (int)contentX, 128, 420);
             DrawOverviewStatusLine(
@@ -58,9 +48,9 @@ namespace Clickra.UI
                 g.DrawString(GetText("overview_stats"), _sectionFont, Brushes.White, contentX * s, 240 * s);
 
             // Draw Cards
-            DrawStatCard(g, GetText("overview_stat_total"), _statTotal.ToString(), Color.FromArgb(200, 200, 200), (int)contentX, 270, 140);
-            DrawStatCard(g, GetText("overview_stat_success"), _statSuccess.ToString(), Color.FromArgb(100, 220, 100), (int)contentX + 160, 270, 140);
-            DrawStatCard(g, GetText("overview_stat_failed"), _statFailed.ToString(), Color.FromArgb(255, 90, 70), (int)contentX + 320, 270, 140);
+            DrawStatCard(g, GetText("overview_stat_total"), _historyPresentation.CompletedCount.ToString(), Color.FromArgb(200, 200, 200), (int)contentX, 270, 140);
+            DrawStatCard(g, GetText("overview_stat_success"), _historyPresentation.SuccessCount.ToString(), Color.FromArgb(100, 220, 100), (int)contentX + 160, 270, 140);
+            DrawStatCard(g, GetText("overview_stat_failed"), _historyPresentation.FailedCount.ToString(), Color.FromArgb(255, 90, 70), (int)contentX + 320, 270, 140);
             
             if (_subFont != null)
             {

@@ -6,7 +6,6 @@ using System.Diagnostics.CodeAnalysis;
 using System.Runtime.InteropServices;
 using Clickra.Core;
 using Clickra.Core.Layout;
-using Clickra.Core.Processors;
 using static Clickra.UI.Native.Win32;
 
 namespace Clickra.UI
@@ -137,7 +136,7 @@ namespace Clickra.UI
                 int clickedIdx = DashboardLayout.DropdownItemAt(popup.Y, DashboardLayout.PdfPopupListTop, popup.Height, adjMouseY);
                 if (clickedIdx >= 0 && clickedIdx < PdfLangs.Length)
                 {
-                    SettingsController.TranslationTargetLanguage = PdfLangs[clickedIdx].Code;
+                    SettingsPresentationController.Shared.TranslationTargetLanguage = PdfLangs[clickedIdx].Code;
                 }
                 _pdfLangDropdownOpen = false;
                 InvalidateRect(hwnd, IntPtr.Zero, false);
@@ -313,7 +312,7 @@ namespace Clickra.UI
         {
             if (element >= 50 && element < 50 + ConvertCommands.Length)
             {
-                ConvertCommand.Select(ConvertCommands[element - 50]);
+                SelectConvertCommand(ConvertCommands[element - 50]);
                 InvalidateRect(hwnd, IntPtr.Zero, false);
             }
             else if (element == 18)
@@ -326,8 +325,7 @@ namespace Clickra.UI
             }
             else if (element == 25)
             {
-                _selectedFiles.Clear();
-                _convertCommandIndex = -1;
+                _convertWorkspace.ClearFiles();
                 InvalidateRect(hwnd, IntPtr.Zero, false);
             }
         }
@@ -366,8 +364,8 @@ namespace Clickra.UI
             {
                 try
                 {
-                    string dataDir = StoragePathController.GetDataDirectory();
-                    string logPath = HistoryController.GetLogPath();
+                    string dataDir = SettingsPresentationController.Shared.GetDataDirectory();
+                    string logPath = _historyPresentation.GetLogPath();
 
                     if (File.Exists(logPath))
                     {

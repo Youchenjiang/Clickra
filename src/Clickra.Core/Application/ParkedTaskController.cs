@@ -11,6 +11,8 @@ public static class ParkedTaskController
     /// <summary>Data required to resume one parked conversion.</summary>
     public sealed record ResumeInfo(string TaskId, string Command, List<string> Files, int StartIndex);
 
+    public static int RetentionStepDays => ClickraSettings.ParkedRetentionStepDays;
+
     /// <summary>Returns the effective global parked-task retention in days.</summary>
     public static int GetRetentionDays() => ClickraStorage.GetParkedRetentionDays();
 

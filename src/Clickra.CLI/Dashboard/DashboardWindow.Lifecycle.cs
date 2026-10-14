@@ -101,7 +101,7 @@ namespace Clickra.UI
                 RecreateScaledFonts();
                 InvalidateRect(hwnd, IntPtr.Zero, false);
             });
-            SettingsController.Reloaded += onSettingsReloaded;
+            SettingsPresentationController.Shared.Reloaded += onSettingsReloaded;
 
             SetTimer(hwnd, TIMER_ID_REFRESH, 250, IntPtr.Zero);
 
@@ -111,7 +111,7 @@ namespace Clickra.UI
                 DispatchMessage(ref msg);
             }
 
-            SettingsController.Reloaded -= onSettingsReloaded;
+            SettingsPresentationController.Shared.Reloaded -= onSettingsReloaded;
             
             Marshal.FreeHGlobal(hClass);
         }
@@ -120,17 +120,11 @@ namespace Clickra.UI
         {
             try
             {
-                _historyFeed = HistoryFeed.Load(SettingsController.Language, 50);
-                _statTotal = _historyFeed.CompletedCount;
-                _statSuccess = _historyFeed.SuccessCount;
-                _statFailed = _historyFeed.FailedCount;
+                _historyPresentation.Refresh(SettingsPresentationController.Shared.Language, 50);
             }
             catch
             {
-                _historyFeed = HistoryFeed.Empty;
-                _statTotal = 0;
-                _statSuccess = 0;
-                _statFailed = 0;
+                _historyPresentation.Reset();
             }
         }
 

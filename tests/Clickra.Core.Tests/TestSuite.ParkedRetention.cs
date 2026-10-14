@@ -71,7 +71,8 @@ static partial class TestSuite
             Assert.False(info.HasExpired, "A task with its own 30 day deadline must survive a 7 day policy.");
             Assert.Equal(10, info.RemainingDays);
             Assert.True(info.IsTaskOverride, "The info must say the deadline is this task's own.");
-            Assert.True(HistoryItem.DescribeRetention(info, "zh-TW").EndsWith(Localization.T(ParkedRetentionOverrideKey, "zh-TW"), StringComparison.Ordinal),
+            ParkedRetentionQueryState queryState = HistoryQueryController.GetParkedRetention(taskId);
+            Assert.True(HistoryItem.DescribeRetention(queryState, "zh-TW").EndsWith(Localization.T(ParkedRetentionOverrideKey, "zh-TW"), StringComparison.Ordinal),
                 "An overridden deadline must say so, so the number is not mistaken for the global policy.");
 
             // 回到全域政策：年資不變，所以它又是過期的。
@@ -253,10 +254,10 @@ static partial class TestSuite
         })
         {
             string source = File.ReadAllText(path);
-            Assert.True(source.Contains("ParkedTaskController.AdjustRetention(", StringComparison.Ordinal),
-                $"{surface} must adjust the deadline through the application parked-task boundary, not by writing the number itself.");
-            Assert.True(source.Contains("ClickraSettings.ParkedRetentionStepDays", StringComparison.Ordinal),
-                $"{surface} must move the shared step, so both interfaces move the same number of days.");
+            Assert.True(source.Contains("_historyPresentation.AdjustRetention(", StringComparison.Ordinal),
+                $"{surface} must adjust the deadline through the shared Presentation history owner, not by writing the number itself.");
+            Assert.True(source.Contains("_historyPresentation.RetentionStepDays", StringComparison.Ordinal),
+                $"{surface} must use the shared Presentation retention step, so both interfaces move the same number of days.");
         }
 
         foreach (string relative in ParkedRetentionUiFiles)
@@ -313,7 +314,7 @@ static partial class TestSuite
 
         string facade = File.ReadAllText(Path.Combine(root, "src", CoreProjectDirectoryName, StorageDirectoryName, "ClickraStorage.ActiveRecord.cs"));
         string coordinator = File.ReadAllText(Path.Combine(root, "src", CoreProjectDirectoryName, StorageDirectoryName, "ParkedTaskCoordinator.cs"));
-        string feed = File.ReadAllText(Path.Combine(root, "src", CoreProjectDirectoryName, "Application", "HistoryFeed.cs"));
+        string feed = File.ReadAllText(Path.Combine(root, "src", CoreProjectDirectoryName, "Presentation", "History", "HistoryFeed.cs"));
         Assert.True(feed.Contains(ParkedRetentionOverrideKey, StringComparison.Ordinal),
             "The application history model must append the override marker for every interface.");
         Assert.False(facade.Contains(ParkedRetentionOverrideKey, StringComparison.Ordinal),

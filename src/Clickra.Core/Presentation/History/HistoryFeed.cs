@@ -2,16 +2,25 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using Clickra.Core.Processors;
+using Clickra.Core.Application;
 
-namespace Clickra.Core.Application;
+namespace Clickra.Core.Presentation.History;
 
-/// <summary>清單中的項目種類；宣告順序即顯示順序（進行中 → 待繼續 → 已完成）。</summary>
+/// <summary>皜銝剔??蝔桅?嚗恐??摨憿舐內??嚗脰?銝???敺匱蝥???撌脣?????/summary>
 public enum HistoryItemKind
 {
     Active,
     Parked,
     Completed
+}
+
+public enum HistoryStatusVisualKind
+{
+    Pending,
+    InProgress,
+    Success,
+    Failed,
+    Other
 }
 
 /// <summary>Application-facing immutable task/history facts used by both presentation surfaces.</summary>
@@ -20,7 +29,7 @@ public sealed record HistoryRecord(
     string Time,
     string Command,
     int FileCount,
-    ConversionStatus Status,
+    HistoryQueryStatus Status,
     string ErrorMessage,
     string EndTime,
     long ElapsedMs,
@@ -31,7 +40,7 @@ public sealed record HistoryRecord(
     int? ParkedRetentionDays,
     string ParkedSince)
 {
-    public bool IsSuccess => Status == ConversionStatus.Success;
+    public bool IsSuccess => Status == HistoryQueryStatus.Success;
 }
 
 /// <summary>Application-facing parked-task retention facts without exposing storage implementation types.</summary>
@@ -44,20 +53,15 @@ public readonly record struct ParkedRetentionState(
     bool IsTaskOverride);
 
 /// <summary>
-/// 歷史清單中的一個項目：原始紀錄，加上兩個介面都要顯示的事實。
-///
-/// 這些事實（狀態文案鍵、剩餘期限、檔案描述、繼續到第幾個檔案）只在這裡算一次。
-/// 以前 Win32 dashboard 與 Fluent 的 History 頁各自從三份儲存查詢重新推導它們，
-/// 結果同一個任務在兩邊可能有不同說法（一個說「錯誤」另一個說「失敗」、
-/// 一個說「取消」另一個說「已取消」），而且兩邊都得自己重算期限（每張畫格一次檔案查詢）。
-/// 呈現層現在只決定排版與顏色。
-/// </summary>
+/// 甇瑕皜銝剔?銝???殷???蝝?????拙??ａ閬＊蝷箇?鈭祕??///
+/// ??鈭祕嚗???獢?擗???獢?餈啜匱蝥蝚砍嗾??獢??芸?ㄐ蝞?甈～?/// 隞亙? Win32 dashboard ??Fluent ??History ???芸?銝遢?脣??亥岷??典?摰?
+/// 蝯????遙??拚??航???牧瘜?銝?牧?隤扎銝?牧?仃??/// 銝?牧??瘨銝?牧?歇????嚗??拚??賢??芸楛????嚗?撘萇?潔?甈⊥?獢閰ｇ???/// ?撅斤?典瘙箏??????脯?/// </summary>
 public sealed class HistoryItem
 {
     internal HistoryItem(
         HistoryItemKind kind,
-        ClickraStorage.HistoryEntry entry,
-        ClickraStorage.ParkedRetentionInfo? retention,
+        HistoryQueryRecord entry,
+        ParkedRetentionQueryState? retention,
         string language)
     {
         Kind = kind;
@@ -65,7 +69,7 @@ public sealed class HistoryItem
         Retention = retention.HasValue ? Snapshot(retention.Value) : null;
 
         CommandLabelKey = ConvertCommandRegistry.GetLabelKey(entry.Command ?? "");
-        IsCanceled = kind == HistoryItemKind.Completed && ClickraStorage.IsUserCanceledReason(entry.ErrorMessage);
+        IsCanceled = kind == HistoryItemKind.Completed && HistoryQueryController.IsUserCanceledReason(entry.ErrorMessage);
         StatusKey = ResolveStatusKey(kind, entry.Status, IsCanceled);
         Time = entry.Time ?? "";
         FileCount = entry.FileCount;
@@ -80,67 +84,78 @@ public sealed class HistoryItem
         NeedsAttention = retention.HasValue && (retention.Value.IsExpiringSoon || retention.Value.HasExpired);
     }
 
-    /// <summary>這個項目是哪一種。</summary>
+    /// <summary>???格?芯?蝔柴?/summary>
     public HistoryItemKind Kind { get; }
 
-    /// <summary>原始紀錄；具破壞性／需要識別的動作（繼續、取消、明細）都用它。</summary>
+    /// <summary>??蝝???瑞憯改??閬??亦???嚗匱蝥?瘨?蝝堆??賜摰?/summary>
     public HistoryRecord Entry { get; }
 
-    /// <summary>指令標籤的在地化鍵；未知指令時就是指令本身（與 <c>ConvertCommandRegistry</c> 一致）。</summary>
+    /// <summary>?誘璅惜??啣??蛛??芰?誘?停?舀?隞斗頨恬???<c>ConvertCommandRegistry</c> 銝?湛???/summary>
     public string CommandLabelKey { get; }
 
-    /// <summary>已完成且被使用者取消（而非失敗）。</summary>
+    /// <summary>撌脣???鋡思蝙?刻?瘨???憭望?嚗?/summary>
     public bool IsCanceled { get; }
 
-    /// <summary>這一件的狀態文案鍵；待繼續任務沒有狀態文字——它的狀態就是它的期限。</summary>
+    /// <summary>??隞嗥????獢嚗?蝜潛?隞餃?瘝????摮????停?臬?????/summary>
     public string StatusKey { get; }
 
     public string Time { get; }
     public int FileCount { get; }
 
-    /// <summary>第一個輸入檔的檔名；沒有輸入紀錄時為空字串。</summary>
+    /// <summary>蝚砌??撓?交?????瘝?頛詨蝝???箇征摮葡??/summary>
     public string FirstFileName { get; }
 
-    /// <summary>檔案描述：單檔是檔名，多檔是「檔名 + N 個檔案」，無路徑時是「N 個檔案」。</summary>
+    /// <summary>瑼??膩嚗瑼瑼?嚗?瑼????+ N ??獢??∟楝敺??胯 ??獢?/summary>
     public string FileCountText { get; }
 
-    /// <summary>待繼續任務停在「第 i/n 檔」；單檔任務為空字串。</summary>
+    /// <summary>敺匱蝥遙???具洵 i/n 瑼??格?隞餃??箇征摮葡??/summary>
     public string StoppedOnText { get; }
 
     public string ErrorMessage { get; }
 
-    /// <summary>第二行文字：待繼續任務是「檔案 · 第 i/n 檔 · 原因」，其餘是檔案描述。</summary>
+    /// <summary>蝚砌?銵?摮?敺匱蝥遙???獢?繚 蝚?i/n 瑼?繚 ?????園??舀?獢?餈啜?/summary>
     public string Subtitle { get; }
 
-    /// <summary>剩餘保留期限那句話；只有待繼續任務有。</summary>
+    /// <summary>?拚?靽?????閰梧??芣?敺匱蝥遙????/summary>
     public string RetentionText { get; }
 
-    /// <summary>即將過期或已過期：列要變色、要顯示徽章、要計入聚合警示。</summary>
+    /// <summary>?喳????歇??嚗?閬??脯?憿舐內敺賜???閮??霅衣內??/summary>
     public bool NeedsAttention { get; }
 
-    /// <summary>這件任務的保留期限是自己調過的（不隨全域政策走）；介面藉此顯示「恢復全域設定」。</summary>
+    /// <summary>?辣隞餃???????芸楛隤輸???銝?典??輻?韏堆?嚗??Ｚ?甇日＊蝷箝敺拙?身摰?/summary>
     public bool HasRetentionOverride => Retention?.IsTaskOverride == true;
 
-    /// <summary>保留狀態；只有待繼續任務有。</summary>
+    /// <summary>靽?????芣?敺匱蝥遙????/summary>
     public ParkedRetentionState? Retention { get; }
 
-    public bool IsSuccess => Kind == HistoryItemKind.Completed && Entry.Status == ConversionStatus.Success;
+    public bool IsSuccess => Kind == HistoryItemKind.Completed && Entry.Status == HistoryQueryStatus.Success;
+
+    public bool IsPending => Entry.Status == HistoryQueryStatus.Pending;
+
+    public HistoryStatusVisualKind StatusVisualKind => Entry.Status switch
+    {
+        HistoryQueryStatus.Pending => HistoryStatusVisualKind.Pending,
+        HistoryQueryStatus.InProgress => HistoryStatusVisualKind.InProgress,
+        HistoryQueryStatus.Success => HistoryStatusVisualKind.Success,
+        HistoryQueryStatus.Failed => HistoryStatusVisualKind.Failed,
+        _ => HistoryStatusVisualKind.Other
+    };
 
     public long ElapsedMs => Entry.ElapsedMs;
 
-    /// <summary>兩個介面共用的狀態文字鍵。待繼續任務回傳空字串，因為它顯示期限而不是狀態。</summary>
-    private static string ResolveStatusKey(HistoryItemKind kind, ConversionStatus status, bool isCanceled)
+    /// <summary>?拙??Ｗ?函????摮??蝜潛?隞餃??蝛箏?銝莎??摰＊蝷箸????舐???/summary>
+    private static string ResolveStatusKey(HistoryItemKind kind, HistoryQueryStatus status, bool isCanceled)
     {
         if (kind == HistoryItemKind.Active)
-            return status == ConversionStatus.Pending ? "status_pending" : "status_converting";
+            return status == HistoryQueryStatus.Pending ? "status_pending" : "status_converting";
         if (kind == HistoryItemKind.Parked)
             return "";
         if (isCanceled)
             return "status_canceled";
-        return status == ConversionStatus.Success ? "status_success" : "status_failed";
+        return status == HistoryQueryStatus.Success ? "status_success" : "status_failed";
     }
 
-    private static string FirstFileNameOf(ClickraStorage.HistoryEntry entry)
+    private static string FirstFileNameOf(HistoryQueryRecord entry)
     {
         if (string.IsNullOrEmpty(entry.InputPaths)) return "";
         string[] parts = entry.InputPaths.Split(new[] { ';' }, StringSplitOptions.RemoveEmptyEntries);
@@ -156,7 +171,7 @@ public sealed class HistoryItem
         return $"{fileCount} {Localization.T("label_files", language)}";
     }
 
-    private static string DescribeStoppedOn(ClickraStorage.HistoryEntry entry, string language)
+    private static string DescribeStoppedOn(HistoryQueryRecord entry, string language)
         => entry.FileCount > 1
             ? string.Format(
                 Localization.T("task_file_index", language),
@@ -164,7 +179,7 @@ public sealed class HistoryItem
                 entry.FileCount)
             : "";
 
-    internal static string DescribeRetention(ClickraStorage.ParkedRetentionInfo info, string language)
+    internal static string DescribeRetention(ParkedRetentionQueryState info, string language)
     {
         string phrase;
         if (info.IsUnlimited)
@@ -184,9 +199,9 @@ public sealed class HistoryItem
     }
 
     private static string JoinParts(params string[] parts)
-        => string.Join(" · ", parts.Where(part => !string.IsNullOrWhiteSpace(part)));
+        => string.Join(" 繚 ", parts.Where(part => !string.IsNullOrWhiteSpace(part)));
 
-    private static HistoryRecord Snapshot(ClickraStorage.HistoryEntry entry) => new(
+    private static HistoryRecord Snapshot(HistoryQueryRecord entry) => new(
         entry.Id ?? "",
         entry.Time ?? "",
         entry.Command ?? "",
@@ -202,7 +217,7 @@ public sealed class HistoryItem
         entry.ParkedRetentionDays,
         entry.ParkedSince ?? "");
 
-    private static ParkedRetentionState Snapshot(ClickraStorage.ParkedRetentionInfo info) => new(
+    private static ParkedRetentionState Snapshot(ParkedRetentionQueryState info) => new(
         info.IsUnlimited,
         info.RemainingDays,
         info.RemainingTime,
@@ -212,10 +227,8 @@ public sealed class HistoryItem
 }
 
 /// <summary>
-/// 一份歷史清單：進行中、待繼續與已完成三種項目，依顯示順序排好。
-/// Fluent 的 History 頁與 Win32 dashboard 的 History 頁都只讀這一份，
-/// 所以「有幾件在跑」「下一件什麼時候過期」「那件是失敗還是被取消」在三者之間只有一個答案。
-/// </summary>
+/// 銝隞賣風?脫??殷??脰?銝准?蝜潛??歇摰?銝車?嚗?憿舐內???末??/// Fluent ??History ?? Win32 dashboard ??History ??芾???隞踝?
+/// ?隞乓?撟曆辣?刻???銝隞嗡?暻潭????隞嗆憭望??鋡怠?瘨銝??????獢?/// </summary>
 public sealed class HistoryFeed
 {
     private readonly HistoryItem[] _items;
@@ -229,35 +242,34 @@ public sealed class HistoryFeed
             .ToDictionary(group => group.Key, group => group.ToArray());
     }
 
-    /// <summary>顯示順序的完整清單：進行中 → 待繼續 → 已完成。</summary>
+    /// <summary>憿舐內?????湔??殷??脰?銝???敺匱蝥???撌脣???/summary>
     public IReadOnlyList<HistoryItem> Items => _items;
 
-    /// <summary>沒有任何項目（三種都沒有）時為 true。</summary>
+    /// <summary>瘝?隞颱??嚗?蝔桅瘝?嚗???true??/summary>
     public bool IsEmpty => _items.Length == 0;
 
     public static HistoryFeed Empty { get; } = new(Array.Empty<HistoryItem>());
 
     /// <summary>
-    /// 讀取一次完整清單。進行中與待繼續任務來自任務檔，已完成項目來自歷史檔；
-    /// 待繼續任務的剩餘期限在這裡算一次（每個項目一次），呼叫端不必（也不該）逐列重算。
-    /// </summary>
+    /// 霈??甈∪??湔??柴脰?銝剛?敺匱蝥遙???芯遙??嚗歇摰??靘甇瑕瑼?
+    /// 敺匱蝥遙???拚????券ㄐ蝞?甈∴?瘥??桐?甈∴?嚗?怎垢銝?嚗?銝府嚗?????    /// </summary>
     public static HistoryFeed Load(string language, int completedLimit = 50)
     {
         var items = new List<HistoryItem>();
 
-        foreach (var task in ClickraStorage.GetActiveTasks())
+        foreach (var task in HistoryQueryController.GetActive())
             items.Add(new HistoryItem(HistoryItemKind.Active, task, null, language));
 
-        foreach (var task in ClickraStorage.GetParkedTasks())
-            items.Add(new HistoryItem(HistoryItemKind.Parked, task, ClickraStorage.GetParkedRetentionInfo(task.Id), language));
+        foreach (var task in HistoryQueryController.GetParked())
+            items.Add(new HistoryItem(HistoryItemKind.Parked, task, HistoryQueryController.GetParkedRetention(task.Id), language));
 
-        foreach (var entry in ClickraStorage.GetHistory(completedLimit))
+        foreach (var entry in HistoryQueryController.GetCompleted(completedLimit))
             items.Add(new HistoryItem(HistoryItemKind.Completed, entry, null, language));
 
         return new HistoryFeed(items.ToArray());
     }
 
-    /// <summary>指定種類的項目，維持顯示順序。</summary>
+    /// <summary>??蝔桅????殷?蝬剜?憿舐內????/summary>
     public IReadOnlyList<HistoryItem> OfKind(HistoryItemKind kind)
         => _byKind.TryGetValue(kind, out var items) ? items : Array.Empty<HistoryItem>();
 
@@ -267,12 +279,12 @@ public sealed class HistoryFeed
     public int ParkedCount => Count(HistoryItemKind.Parked);
     public int CompletedCount => Count(HistoryItemKind.Completed);
 
-    /// <summary>已完成而且成功。</summary>
+    /// <summary>撌脣???????/summary>
     public int SuccessCount => OfKind(HistoryItemKind.Completed).Count(item => item.IsSuccess);
 
-    /// <summary>已完成但不算成功（失敗與取消都算在內，與兩個介面原本的統計一致）。</summary>
+    /// <summary>撌脣???銝???嚗仃?????賜??典嚗??拙??Ｗ??祉?蝯梯?銝?湛???/summary>
     public int FailedCount => CompletedCount - SuccessCount;
 
-    /// <summary>即將過期或已過期的待繼續任務數。</summary>
+    /// <summary>?喳????歇????蝜潛?隞餃??詻?/summary>
     public int ExpiringSoonCount => OfKind(HistoryItemKind.Parked).Count(item => item.NeedsAttention);
 }

@@ -211,6 +211,7 @@ namespace Clickra.UI;
                 templatePath);
             ResolveMarkdownDecision(true);
             _isPromptingMarkdownOptions = false;
+            _progressPresentation.ResumeRunning();
             ResizeWindowForMarkdownOptions(hwnd, false);
             StartProcessingThread(hwnd);
         }

@@ -291,7 +291,8 @@ static partial class TestSuite
         var (subArgs, menuKeys, iconFiles) = GetShellCommandDefinitions(root);
         string shellSource = File.ReadAllText(Path.Combine(root, "src", ShellProjectDirectory, "ComMethods.cs"));
         string shellProject = File.ReadAllText(Path.Combine(root, "src", ShellProjectDirectory, "ClickraShell.csproj"));
-        string coreRegistrySource = File.ReadAllText(Path.Combine(root, "src", "Clickra.Core", "Processors", "ConvertCommandRegistry.cs"));
+        string coreRegistrySource = File.ReadAllText(Path.Combine(root, "src", "Clickra.Core", "Application", "ConvertCommandRegistry.cs"));
+        string presentationSource = File.ReadAllText(Path.Combine(root, "src", "Clickra.Core", "Presentation", "Convert", "ConvertWorkspaceController.cs"));
         string cliSource = File.ReadAllText(Path.Combine(root, "src", "Clickra.CLI", "Cli", "ClickraCli.cs"));
         string dashboardRegistrySource = File.ReadAllText(Path.Combine(
             root, "src", "Clickra.CLI", "Dashboard", "DashboardWindow.ConvertRegistry.cs"));
@@ -325,9 +326,10 @@ static partial class TestSuite
             "ConvertCommandRegistry must delegate validation metadata to the shared source used by the shell.");
         Assert.True(cliSource.Contains("string[] allowed = ConvertCommandRegistry.GetAllowedExtensions(command);", StringComparison.Ordinal),
             "CLI image dispatch must derive accepted extensions from ConvertCommandRegistry instead of a private list.");
-        Assert.True(dashboardRegistrySource.Contains("ConvertCommandRegistry.GetAllowedExtensions(Command)", StringComparison.Ordinal)
-                    && dashboardRegistrySource.Contains("ConvertCommandRegistry.GetMinFiles(Command)", StringComparison.Ordinal),
-            "NativeAOT dashboard validation must derive extensions and minimum file counts from ConvertCommandRegistry.");
+        Assert.True(dashboardRegistrySource.Contains("ConvertWorkspaceController.CommandCatalog", StringComparison.Ordinal)
+                    && dashboardRegistrySource.Contains("ConvertWorkspaceController.GetAllowedExtensions(Command)", StringComparison.Ordinal)
+                    && presentationSource.Contains("ConvertCommandRegistry.GetMinFiles(command)", StringComparison.Ordinal),
+            "NativeAOT dashboard must render the shared Presentation catalog while validation stays in the Presentation workspace backed by Application metadata.");
         Assert.False(Regex.IsMatch(
                          dashboardRegistrySource,
                          @"\b(?:Extensions|MinFiles)\s*=(?!>)",

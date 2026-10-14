@@ -86,7 +86,11 @@ namespace Clickra.UI
         /// 所以不會出現「這裡畫 2 列、命中判定以為有 3 列」這種漂移。
         /// </summary>
         static IReadOnlyList<HistoryBlock> GetHistoryStack() =>
-            HistoryLayout.Build(_historyFeed.ActiveCount, _historyFeed.ParkedCount, _historyFeed.CompletedCount, _expandedHistoryIndex);
+            HistoryLayout.Build(
+                _historyPresentation.Feed.ActiveCount,
+                _historyPresentation.Feed.ParkedCount,
+                _historyPresentation.Feed.CompletedCount,
+                _expandedHistoryIndex);
 
 
         /// <summary>堆疊中指定種類的區塊。</summary>
@@ -115,7 +119,7 @@ namespace Clickra.UI
             try { _tagFont?.Dispose(); } catch {}
             try { _iconFont?.Dispose(); } catch {}
 
-            string lang = SettingsController.Language;
+            string lang = SettingsPresentationController.Shared.Language;
             string fontName = LocalizedUiFontSelector.GetTextFontName(lang);
             float s = _dpiScale;
 

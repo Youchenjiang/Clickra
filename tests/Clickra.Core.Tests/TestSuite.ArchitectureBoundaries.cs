@@ -12,7 +12,6 @@ static partial class TestSuite
     private const string ArchitectureCliProjectDirectory = "Clickra.CLI";
     private const string ArchitectureCoreProjectDirectory = "Clickra.Core";
     private const string ArchitectureApplicationDirectory = "Application";
-    private const string ArchitectureStorageDirectory = "Storage";
     private const string ArchitectureFluentProjectDirectory = "Clickra.Fluent";
     private const string ArchitectureProgressDirectory = "Progress";
     private const string ArchitectureProcessorsDirectory = "Processors";
@@ -20,6 +19,11 @@ static partial class TestSuite
     private const string ArchitectureNativeExecutionAdapterFile = "NativeConversionExecutionAdapter.cs";
     private const string ArchitectureCliSourceFile = "ClickraCli.cs";
     private const string GenericCatalogResolution = "ConversionUseCases.GetRequired(command)";
+    private const string ArchitectureStorageDirectory = "Storage";
+    private const string ArchitecturePresentationDirectory = "Presentation";
+    private const string ArchitectureLocalizationCall = "Localization.T(";
+    private const string ArchitectureConvertRegistryFile = "ConvertCommandRegistry.cs";
+    private const string ArchitectureConversionExecutionName = "ConversionExecutionController";
     private static readonly TimeSpan ArchitectureRegexTimeout = TimeSpan.FromSeconds(1);
 
     private sealed record ArchitectureViolationRule(
@@ -43,6 +47,7 @@ static partial class TestSuite
 
     private sealed record MigrationSurfaceSources(
         string Registry,
+        string PresentationExecution,
         string Native,
         string NativeAdapter,
         string Quiet,
@@ -115,6 +120,15 @@ static partial class TestSuite
         runner.RunGuard(
             "Architecture boundaries: presentation and platform helpers have explicit ownership",
             TestPresentationAndPlatformHelpersHaveExplicitOwnership);
+        runner.RunGuard(
+            "Architecture boundaries: primary renderers depend on shared Presentation owners",
+            TestPrimaryRenderersDependOnPresentationOwners);
+        runner.RunGuard(
+            "Architecture boundaries: Presentation depends inward through Application contracts",
+            TestPresentationDependsInwardThroughApplication);
+        runner.RunGuard(
+            "Architecture boundaries: command registry belongs to Application",
+            TestCommandRegistryBelongsToApplication);
         runner.RunGuard(
             "Architecture boundaries: translation provider and PDF text contexts stay distinct",
             TestTranslationContextsStayDistinct);
@@ -542,10 +556,9 @@ static partial class TestSuite
             "Localization.T(key, language); global-language overloads are forbidden:" +
             Environment.NewLine + string.Join(Environment.NewLine, violations));
 
-        const string localizationCall = "Localization.T(";
-        Assert.Equal(2, ReadTopLevelArguments("Localization.T(\"k\", language)", localizationCall.Length).Count);
-        Assert.Equal(1, ReadTopLevelArguments("Localization.T(\"a,(b)\")", localizationCall.Length).Count);
-        Assert.Equal(3, ReadTopLevelArguments("Localization.T(\"k\", Path.Combine(a, b), 'x')", localizationCall.Length).Count);
+        Assert.Equal(2, ReadTopLevelArguments("Localization.T(\"k\", language)", ArchitectureLocalizationCall.Length).Count);
+        Assert.Equal(1, ReadTopLevelArguments("Localization.T(\"a,(b)\")", ArchitectureLocalizationCall.Length).Count);
+        Assert.Equal(3, ReadTopLevelArguments("Localization.T(\"k\", Path.Combine(a, b), 'x')", ArchitectureLocalizationCall.Length).Count);
     }
 
     private static readonly Regex DirectSettingsStorageAccess =
@@ -620,12 +633,8 @@ static partial class TestSuite
         new(@"\bClickraSettings\.(?:ValueTrue|ValueFalse)\b",
             RegexOptions.Compiled, ArchitectureRegexTimeout);
 
-    private static void TestPresentationSettingsUseTypedApplicationAccess()
+    private static IEnumerable<string> PresentationSettingsViolations(string root)
     {
-        string? root = FindRepoRoot();
-        if (root is null) throw new TestSkippedException(RepositoryRootMissingMessage);
-
-        var violations = new List<string>();
         foreach (string directory in new[]
                  {
                      Path.Combine(root, "src", ArchitectureCliProjectDirectory),
@@ -638,11 +647,19 @@ static partial class TestSuite
             {
                 string source = File.ReadAllText(file);
                 if (RawPresentationSettingsAccess.IsMatch(source))
-                    violations.Add($"{NormalizeRepoPath(root, file)}: raw SettingsController key access");
+                    yield return $"{NormalizeRepoPath(root, file)}: raw SettingsController key access";
                 if (PersistedBooleanRepresentationInPresentation.IsMatch(source))
-                    violations.Add($"{NormalizeRepoPath(root, file)}: persisted true/false representation leaked into presentation");
+                    yield return $"{NormalizeRepoPath(root, file)}: persisted true/false representation leaked into presentation";
             }
         }
+    }
+
+    private static void TestPresentationSettingsUseTypedApplicationAccess()
+    {
+        string? root = FindRepoRoot();
+        if (root is null) throw new TestSkippedException(RepositoryRootMissingMessage);
+
+        var violations = PresentationSettingsViolations(root).ToList();
 
         string gateway = File.ReadAllText(Path.Combine(
             root, "src", ArchitectureCoreProjectDirectory, ArchitectureApplicationDirectory, "SettingsController.cs"));
@@ -652,19 +669,24 @@ static partial class TestSuite
                      "public static bool QuietMode",
                      "public static bool NotificationsEnabled",
                      "public static OfficeEnginePreference OfficeEngine",
-                     "public static OutputDirectoryPreference OutputDirectory",
-                     "public static bool ReadBool(SettingDescriptor descriptor)",
-                     "public static int ReadInt(SettingDescriptor descriptor)",
-                     "public static void WriteBool(SettingDescriptor descriptor, bool value)",
-                     "public static void WriteInt(SettingDescriptor descriptor, int value)"
-                  }.Where(contract => !gateway.Contains(contract, StringComparison.Ordinal)))
-        {
+                     "public static OutputDirectoryPreference OutputDirectory"
+                 }.Where(contract => !gateway.Contains(contract, StringComparison.Ordinal)))
             violations.Add($"SettingsController missing typed contract: {typedContract}");
-        }
+
+        string presentationGateway = File.ReadAllText(Path.Combine(
+            root, "src", ArchitectureCoreProjectDirectory, ArchitecturePresentationDirectory, "Settings", "SettingsPresentationController.cs"));
+        foreach (string typedContract in new[]
+                 {
+                     "public bool ReadBool(SettingDescriptor descriptor)",
+                     "public int ReadInt(SettingDescriptor descriptor)",
+                     "public void WriteBool(SettingDescriptor descriptor, bool value)",
+                     "public void WriteInt(SettingDescriptor descriptor, int value)"
+                 }.Where(contract => !presentationGateway.Contains(contract, StringComparison.Ordinal)))
+            violations.Add($"SettingsPresentationController missing typed descriptor contract: {typedContract}");
 
         Assert.True(
             violations.Count == 0,
-            "CLI and Fluent must consume typed application settings instead of persisted keys/boolean encodings:" +
+            "CLI and Fluent must consume typed Presentation settings backed by Application values instead of persisted keys/boolean encodings:" +
             Environment.NewLine + string.Join(Environment.NewLine, violations));
     }
 
@@ -790,12 +812,30 @@ static partial class TestSuite
             }
         }
 
-        foreach (string applicationFile in new[] { "HistoryFeed.cs", "ConversionTaskLifecycle.cs" })
+        foreach (string applicationFile in new[] { "ConversionTaskLifecycle.cs", ArchitectureConvertRegistryFile, "HistoryQueryController.cs", "LibreOfficeSettingsController.cs" })
         {
             string file = Path.Combine(core, ArchitectureApplicationDirectory, applicationFile);
             string source = File.ReadAllText(file);
             if (!source.Contains("namespace Clickra.Core.Application;", StringComparison.Ordinal))
                 violations.Add($"{NormalizeRepoPath(root, file)}: expected namespace Clickra.Core.Application");
+        }
+
+        foreach ((string relativePath, string expectedNamespace) in new[]
+                 {
+                     (Path.Combine(ArchitecturePresentationDirectory, "Convert", "ConvertWorkspaceController.cs"), "Clickra.Core.Presentation.Convert"),
+                     (Path.Combine(ArchitecturePresentationDirectory, "Convert", "ConversionExecutionController.cs"), "Clickra.Core.Presentation.Convert"),
+                     (Path.Combine(ArchitecturePresentationDirectory, "History", "HistoryFeed.cs"), "Clickra.Core.Presentation.History"),
+                     (Path.Combine(ArchitecturePresentationDirectory, "History", "HistoryPresentationController.cs"), "Clickra.Core.Presentation.History"),
+                     (Path.Combine(ArchitecturePresentationDirectory, "Settings", "SettingsPresentationController.cs"), "Clickra.Core.Presentation.Settings"),
+                     (Path.Combine(ArchitecturePresentationDirectory, "Progress", "TaskProgressController.cs"), "Clickra.Core.Presentation.Progress"),
+                     (Path.Combine(ArchitecturePresentationDirectory, "Dashboard", "DashboardPresentationController.cs"), "Clickra.Core.Presentation.Dashboard")
+                 })
+        {
+            string file = Path.Combine(core, relativePath);
+            Assert.True(File.Exists(file), $"Presentation owner is missing: {NormalizeRepoPath(root, file)}");
+            string source = File.ReadAllText(file);
+            if (!source.Contains($"namespace {expectedNamespace};", StringComparison.Ordinal))
+                violations.Add($"{NormalizeRepoPath(root, file)}: expected namespace {expectedNamespace}");
         }
 
         Assert.True(
@@ -863,7 +903,7 @@ static partial class TestSuite
         foreach (string file in Directory.EnumerateFiles(storage, "*.cs", SearchOption.AllDirectories))
         {
             string source = File.ReadAllText(file);
-            if (source.Contains("Localization.T(", StringComparison.Ordinal))
+            if (source.Contains(ArchitectureLocalizationCall, StringComparison.Ordinal))
                 violations.Add(NormalizeRepoPath(root, file));
         }
 
@@ -881,9 +921,9 @@ static partial class TestSuite
         string core = Path.Combine(root, "src", ArchitectureCoreProjectDirectory);
         var expectations = new[]
         {
-            (Path.Combine(core, "Presentation", "Native", "DashboardLayout.cs"), "namespace Clickra.Core.Presentation.Native;"),
-            (Path.Combine(core, "Presentation", "Native", "HistoryLayout.cs"), "namespace Clickra.Core.Presentation.Native;"),
-            (Path.Combine(core, "Presentation", "Shared", "VectorIcons.cs"), "namespace Clickra.Core.Presentation;")
+            (Path.Combine(core, ArchitecturePresentationDirectory, "Native", "DashboardLayout.cs"), "namespace Clickra.Core.Presentation.Native;"),
+            (Path.Combine(core, ArchitecturePresentationDirectory, "Native", "HistoryLayout.cs"), "namespace Clickra.Core.Presentation.Native;"),
+            (Path.Combine(core, ArchitecturePresentationDirectory, "Shared", "VectorIcons.cs"), "namespace Clickra.Core.Presentation;")
         };
 
         foreach ((string file, string namespaceDeclaration) in expectations)
@@ -907,6 +947,107 @@ static partial class TestSuite
                 source.Contains("public static partial class Localization", StringComparison.Ordinal),
                 $"{catalog} must stay in the shared Localization registry rather than being duplicated by a UI project.");
         }
+    }
+
+    private static void TestPrimaryRenderersDependOnPresentationOwners()
+    {
+        string root = FindRepoRoot() ?? throw new TestSkippedException(RepositoryRootMissingMessage);
+        var files = new List<string>();
+        files.AddRange(Directory.EnumerateFiles(
+            Path.Combine(root, "src", ArchitectureCliProjectDirectory, "Dashboard"),
+            "*.cs",
+            SearchOption.TopDirectoryOnly));
+
+        string fluent = Path.Combine(root, "src", ArchitectureFluentProjectDirectory);
+        files.AddRange(Directory.EnumerateFiles(fluent, "MainPage*.cs", SearchOption.TopDirectoryOnly));
+        files.Add(Path.Combine(fluent, "TaskProgressPage.xaml.cs"));
+        files.Add(Path.Combine(fluent, "DynamicSettingsController.cs"));
+        files.Add(Path.Combine(fluent, "OfficeEnginePreflight.cs"));
+
+        var prohibited = new (string Name, Regex Pattern)[]
+        {
+            ("raw settings application access", new(@"\bSettingsController\s*\.", RegexOptions.Compiled, ArchitectureRegexTimeout)),
+            ("raw parked-task application access", new(@"\bParkedTaskController\s*\.", RegexOptions.Compiled, ArchitectureRegexTimeout)),
+            ("raw history application access", new(@"\bHistoryController\s*\.", RegexOptions.Compiled, ArchitectureRegexTimeout)),
+            ("raw storage-path application access", new(@"\bStoragePathController\s*\.", RegexOptions.Compiled, ArchitectureRegexTimeout)),
+            ("use-case catalog orchestration", new(@"\bConversionUseCases\s*\.", RegexOptions.Compiled, ArchitectureRegexTimeout)),
+            ("application request construction", new(@"\bnew\s+ConversionRequest\s*\(", RegexOptions.Compiled, ArchitectureRegexTimeout)),
+            ("command registry policy", new(@"\bConvertCommandRegistry\s*\.", RegexOptions.Compiled, ArchitectureRegexTimeout)),
+            ("Office detector policy", new(@"\bOfficeEngineDetector\s*\.", RegexOptions.Compiled, ArchitectureRegexTimeout)),
+            ("LibreOffice infrastructure", new(@"\bLibreOffice(?:EngineInstaller|Helper)\s*\.", RegexOptions.Compiled, ArchitectureRegexTimeout)),
+            ("raw storage", new(@"\bClickraStorage\s*\.", RegexOptions.Compiled, ArchitectureRegexTimeout))
+        };
+
+        var violations = new List<string>();
+        foreach (string file in files.Where(File.Exists))
+        {
+            string source = File.ReadAllText(file);
+            foreach ((string name, Regex pattern) in prohibited)
+            {
+                if (pattern.IsMatch(source))
+                    violations.Add($"{NormalizeRepoPath(root, file)}: {name}");
+            }
+        }
+
+        string nativeDashboard = string.Join(Environment.NewLine,
+            Directory.EnumerateFiles(Path.Combine(root, "src", ArchitectureCliProjectDirectory, "Dashboard"), "*.cs")
+                .Select(File.ReadAllText));
+        string nativeProgress = string.Join(Environment.NewLine,
+            Directory.EnumerateFiles(Path.Combine(root, "src", ArchitectureCliProjectDirectory, ArchitectureProgressDirectory), "ProgressWindow*.cs")
+                .Select(File.ReadAllText));
+        string fluentPrimary = string.Join(Environment.NewLine, files.Where(path => path.Contains(ArchitectureFluentProjectDirectory, StringComparison.OrdinalIgnoreCase)).Select(File.ReadAllText));
+
+        foreach (string owner in new[] { "ConvertWorkspaceController", "HistoryPresentationController", "SettingsPresentationController", "DashboardPresentationController" })
+        {
+            if (!nativeDashboard.Contains(owner, StringComparison.Ordinal)) violations.Add($"Native dashboard missing Presentation owner {owner}");
+            if (!fluentPrimary.Contains(owner, StringComparison.Ordinal)) violations.Add($"Fluent primary renderer missing Presentation owner {owner}");
+        }
+        if (!nativeProgress.Contains("TaskProgressController", StringComparison.Ordinal))
+            violations.Add("Native ProgressWindow must derive semantic state from TaskProgressController");
+        if (!fluentPrimary.Contains("TaskProgressController", StringComparison.Ordinal))
+            violations.Add("Fluent TaskProgressPage must derive semantic state from TaskProgressController");
+        if (!fluentPrimary.Contains(ArchitectureConversionExecutionName, StringComparison.Ordinal))
+            violations.Add("Fluent conversion execution must delegate Application orchestration to ConversionExecutionController");
+
+        Assert.True(
+            violations.Count == 0,
+            "Primary Native/Fluent renderers must render shared Presentation owners rather than own Application/technical policy:" +
+            Environment.NewLine + string.Join(Environment.NewLine, violations));
+    }
+
+    private static void TestPresentationDependsInwardThroughApplication()
+    {
+        string root = FindRepoRoot() ?? throw new TestSkippedException(RepositoryRootMissingMessage);
+        string presentation = Path.Combine(root, "src", ArchitectureCoreProjectDirectory, ArchitecturePresentationDirectory);
+        var violations = new List<string>();
+
+        var forbidden = new Regex(
+            @"\b(?:ClickraStorage|ClickraSettings|ConversionStatus)\b|using\s+Clickra\.Core\.(?:Storage|Processors|Infrastructure)\s*;",
+            RegexOptions.Compiled,
+            ArchitectureRegexTimeout);
+        foreach (string file in Directory.EnumerateFiles(presentation, "*.cs", SearchOption.AllDirectories))
+        {
+            string source = File.ReadAllText(file);
+            if (forbidden.IsMatch(source))
+                violations.Add(NormalizeRepoPath(root, file));
+        }
+
+        Assert.True(
+            violations.Count == 0,
+            "Presentation must consume Application contracts and presentation-neutral shared types, not Storage/Processor/Infrastructure implementation details:" +
+            Environment.NewLine + string.Join(Environment.NewLine, violations));
+    }
+
+    private static void TestCommandRegistryBelongsToApplication()
+    {
+        string root = FindRepoRoot() ?? throw new TestSkippedException(RepositoryRootMissingMessage);
+        string application = Path.Combine(root, "src", ArchitectureCoreProjectDirectory, ArchitectureApplicationDirectory, ArchitectureConvertRegistryFile);
+        string oldProcessor = Path.Combine(root, "src", ArchitectureCoreProjectDirectory, ArchitectureProcessorsDirectory, ArchitectureConvertRegistryFile);
+        Assert.True(File.Exists(application), "ConvertCommandRegistry must be owned by Application.");
+        Assert.False(File.Exists(oldProcessor), "ConvertCommandRegistry must not return to Processors.");
+        Assert.True(
+            File.ReadAllText(application).Contains("namespace Clickra.Core.Application;", StringComparison.Ordinal),
+            "ConvertCommandRegistry must declare the Application namespace.");
     }
 
     private static void TestTranslationContextsStayDistinct()
@@ -1241,11 +1382,12 @@ static partial class TestSuite
             sources.Quiet.Contains(GenericCatalogResolution, StringComparison.Ordinal)
             || (specificCatalogResolution is not null
                 && sources.Quiet.Contains(specificCatalogResolution, StringComparison.Ordinal));
-        Assert.True(sources.FluentMain.Contains(GenericCatalogResolution, StringComparison.Ordinal)
-                    && sources.FluentTask.Contains(GenericCatalogResolution, StringComparison.Ordinal)
+        Assert.True(sources.PresentationExecution.Contains(GenericCatalogResolution, StringComparison.Ordinal)
+                    && sources.FluentMain.Contains(ArchitectureConversionExecutionName, StringComparison.Ordinal)
+                    && sources.FluentTask.Contains(ArchitectureConversionExecutionName, StringComparison.Ordinal)
                     && nativeCatalogResolution
                     && quietCatalogResolution,
-            $"All product surfaces must resolve {workflowName} execution through the application use-case catalog.");
+            $"Fluent surfaces must delegate {workflowName} to the shared Presentation execution owner, which resolves the Application use-case catalog; Native/headless adapters may resolve the catalog directly.");
     }
 
     private static void TestImg2PdfWorkflowHasSingleExecutionOwner()
@@ -1359,8 +1501,9 @@ static partial class TestSuite
             $"Headless CLI must not execute {workflowName} directly.");
 
         string specificCatalogResolution = $"ConversionUseCases.GetRequired({useCaseTypeName}.CommandName)";
-        Assert.True(sources.FluentMain.Contains(GenericCatalogResolution, StringComparison.Ordinal)
-                    && sources.FluentTask.Contains(GenericCatalogResolution, StringComparison.Ordinal)
+        Assert.True(sources.PresentationExecution.Contains(GenericCatalogResolution, StringComparison.Ordinal)
+                    && sources.FluentMain.Contains(ArchitectureConversionExecutionName, StringComparison.Ordinal)
+                    && sources.FluentTask.Contains(ArchitectureConversionExecutionName, StringComparison.Ordinal)
                     && (sources.NativeAdapter.Contains(GenericCatalogResolution, StringComparison.Ordinal)
                         || sources.NativeAdapter.Contains(specificCatalogResolution, StringComparison.Ordinal))
                     && (sources.Quiet.Contains(GenericCatalogResolution, StringComparison.Ordinal)
@@ -1374,7 +1517,8 @@ static partial class TestSuite
         if (root is null) throw new TestSkippedException(RepositoryRootMissingMessage);
 
         return new MigrationSurfaceSources(
-            File.ReadAllText(Path.Combine(root, "src", ArchitectureCoreProjectDirectory, ArchitectureProcessorsDirectory, "ConvertCommandRegistry.cs")),
+            File.ReadAllText(Path.Combine(root, "src", ArchitectureCoreProjectDirectory, ArchitectureApplicationDirectory, ArchitectureConvertRegistryFile)),
+            File.ReadAllText(Path.Combine(root, "src", ArchitectureCoreProjectDirectory, ArchitecturePresentationDirectory, "Convert", "ConversionExecutionController.cs")),
             File.ReadAllText(Path.Combine(root, "src", ArchitectureCliProjectDirectory, ArchitectureProgressDirectory, ArchitectureProgressProcessFile)),
             File.ReadAllText(Path.Combine(root, "src", ArchitectureCliProjectDirectory, ArchitectureProgressDirectory, ArchitectureNativeExecutionAdapterFile)),
             File.ReadAllText(Path.Combine(root, "src", ArchitectureCliProjectDirectory, "Cli", ArchitectureCliSourceFile)),
@@ -1404,10 +1548,11 @@ static partial class TestSuite
                     && quiet.Contains("MarkdownPdfOptions.Create()", StringComparison.Ordinal)
                     && quiet.Contains("TrackTaskLifecycle: false", StringComparison.Ordinal),
             $"Headless {workflowName} must use default Markdown options without task lifecycle ownership.");
-        Assert.True(fluentMain.Contains("commandOptions));", StringComparison.Ordinal)
+        Assert.True(fluentMain.Contains("execution.Prepare(command, files, commandOptions)", StringComparison.Ordinal)
+                    && fluentTask.Contains("ConversionExecutionPlanPresentation executionPlan = _execution.Prepare(", StringComparison.Ordinal)
                     && fluentTask.Contains("commandOptions,", StringComparison.Ordinal)
-                    && fluentTask.Contains("ExistingTaskId: existingTaskId", StringComparison.Ordinal),
-            $"Both Fluent {workflowName} paths must forward the already-prompted Markdown option snapshot into planning.");
+                    && fluentTask.Contains("existingTaskId,", StringComparison.Ordinal),
+            $"Both Fluent {workflowName} paths must forward the already-prompted Markdown option snapshot into the shared Presentation execution planner.");
     }
 
     private sealed class StubConversionUseCase(string command) : IConversionUseCase

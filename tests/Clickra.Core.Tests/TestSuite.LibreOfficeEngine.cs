@@ -387,24 +387,22 @@ static partial class TestSuite
 
             foreach ((string name, string source) in new[] { ("Fluent", fluent), ("CLI", cliEvents) })
             {
-                Assert.True(source.Contains("LibreOfficeEngineInstaller.WasInstalledByClickra()", StringComparison.Ordinal),
-                    $"{name} must refuse to uninstall a LibreOffice Clickra did not install.");
-                Assert.True(source.Contains("LibreOfficeEngineInstaller.AdoptExistingInstallation()", StringComparison.Ordinal),
-                    $"{name} must allow adopting an existing LibreOffice installation.");
-                Assert.True(source.Contains("LibreOfficeEngineInstaller.CanAdoptExistingInstallation", StringComparison.Ordinal),
-                    $"{name} must gate adoption on a verified system MSI identity.");
-                Assert.True(source.Contains("LibreOfficeEngineInstaller.TryRecordManagedSystemInstallation", StringComparison.Ordinal),
-                    $"{name} must bind Clickra-driven installs to a verified MSI identity.");
-                Assert.True(source.Contains("managementRecorded", StringComparison.Ordinal) &&
+                Assert.True(source.Contains("SettingsPresentationController.Shared.GetLibreOfficeState()", StringComparison.Ordinal),
+                    $"{name} must obtain LibreOffice ownership state from the shared Presentation settings owner.");
+                Assert.True(source.Contains("SettingsPresentationController.Shared.AdoptExistingLibreOffice()", StringComparison.Ordinal),
+                    $"{name} must delegate adoption to the shared Presentation settings owner.");
+                Assert.True(source.Contains("SettingsPresentationController.Shared.InstallRecommendedLibreOfficeAsync", StringComparison.Ordinal),
+                    $"{name} must delegate Clickra-managed installation orchestration to the shared Presentation settings owner.");
+                Assert.True(source.Contains("ManagementRecorded", StringComparison.Ordinal) &&
                             source.Contains("setting_libreoffice_management_unverified", StringComparison.Ordinal),
                     $"{name} must tell the user when install succeeds without verified Clickra management.");
-                Assert.True(source.Contains("LibreOfficeEngineInstaller.ReleaseManagement()", StringComparison.Ordinal),
-                    $"{name} must clear the exact management identity after uninstall.");
+                Assert.True(source.Contains("SettingsPresentationController.Shared.UninstallManagedLibreOfficeAsync", StringComparison.Ordinal),
+                    $"{name} must delegate managed uninstall and ownership cleanup to the shared Presentation settings owner.");
                 Assert.False(source.Contains("SaveSetting(\"LibreOfficeInstalledByClickra\"", StringComparison.Ordinal),
                     $"{name} must not write the provenance key directly.");
             }
 
-            Assert.True(cliPaint.Contains("LibreOfficeEngineInstaller.WasInstalledByClickra()", StringComparison.Ordinal) &&
+            Assert.True(cliPaint.Contains("SettingsPresentationController.Shared.GetLibreOfficeState()", StringComparison.Ordinal) &&
                         cliPaint.Contains("setting_libreoffice_external_hint", StringComparison.Ordinal),
                 "The CLI settings page must hide the uninstall button and explain why.");
 

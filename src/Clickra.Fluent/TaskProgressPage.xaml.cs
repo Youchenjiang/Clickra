@@ -1,6 +1,6 @@
 using Clickra.Core;
-using Clickra.Core.Application;
-using Clickra.Core.Processors;
+using Clickra.Core.Presentation.Convert;
+using Clickra.Core.Presentation.History;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Media;
@@ -17,17 +17,6 @@ namespace Clickra_Fluent;
 /// </summary>
 public sealed partial class TaskProgressPage : Page
 {
-    private enum TaskRunPresentationStatus { Succeeded, Canceled, Parked, Failed }
-    private sealed class TaskProgressExecutionObserver(TaskProgressPage page) : IConversionExecutionObserver
-    {
-        public void OnTaskStarted(string taskId)
-        {
-            page._taskId = taskId;
-            App.RegisterTaskPage(taskId, page);
-        }
-
-        public void OnFileStarting(int fileIndex) { }
-    }
     /// <summary>一般轉換的視窗尺寸：緊湊單一區塊排版（~460px 寬內容），高度剛好包住
     /// 狀態列+進度條+按鈕，不會有大窗漂小卡的空間感。分割介面需要整片空間時才暫時放大。</summary>
     internal static readonly Windows.Graphics.SizeInt32 CompactWindowSize = new(480, 300);
@@ -39,9 +28,16 @@ public sealed partial class TaskProgressPage : Page
     public Window? HostWindow { get; set; }
 
     private CancellationTokenSource? _cts;
+    private readonly TaskProgressController _progressPresentation = new();
+    private readonly ConversionExecutionController _execution = new();
+    private readonly HistoryPresentationController _historyExecution = new();
     private string _arguments = "";
     private string _outputFolder = "";
-    private string _taskId = "";
+    private string _taskId
+    {
+        get => _progressPresentation.State.TaskId;
+        set => _progressPresentation.SetTaskId(value);
+    }
     private string _taskLabel = "Clickra";
     private List<string> _files = new();
     private readonly Stopwatch _stopwatch = new();
@@ -110,24 +106,24 @@ public sealed partial class TaskProgressPage : Page
 
     private ParseResult? TryParseArguments()
     {
-        var args = ConvertCommandRegistry.SplitCommandLine(_arguments);
+        var args = ConvertWorkspaceController.SplitLaunchArguments(_arguments);
         bool isResume = args.Count > 0 && args[0].Equals("resume", StringComparison.OrdinalIgnoreCase);
 
         if (isResume) return TryParseResume(args);
         return TryParseFresh(args);
     }
 
-    private static ParseResult? TryParseResume(List<string> args)
+    private ParseResult? TryParseResume(List<string> args)
     {
         if (args.Count < 2) return null;
-        if (ParkedTaskController.ClaimForResume(args[1]) is not { } resumed) return null;
+        if (_historyExecution.ClaimForResume(args[1]) is not { } resumed) return null;
         return new ParseResult(resumed.Command, resumed.Files, resumed.StartIndex, resumed.TaskId);
     }
 
     private static ParseResult? TryParseFresh(List<string> args)
     {
-        if (args.Count < 2 || !ConvertCommandRegistry.IsKnownCommand(args[0])) return null;
-        var files = ConvertCommandRegistry.ExpandDirectoryArguments(args[0], args.Skip(1)).Where(File.Exists).ToList();
+        if (args.Count < 2 || !ConvertWorkspaceController.IsKnownCommand(args[0])) return null;
+        var files = ConvertWorkspaceController.ExpandLaunchArguments(args[0], args.Skip(1)).Where(File.Exists).ToList();
         if (files.Count == 0) return null;
         return new ParseResult(args[0], files, 0, null);
     }
@@ -160,14 +156,21 @@ public sealed partial class TaskProgressPage : Page
             return;
         }
 
-        (IConversionUseCase applicationUseCase, ConversionPlan applicationPlan) =
-            BuildExecutionPlan(command, files, startIndex, existingTaskId, commandOptions);
-        _outputFolder = Path.GetDirectoryName(applicationPlan.Outputs[0]) ?? "";
+        ConversionExecutionPlanPresentation executionPlan = _execution.Prepare(
+            command,
+            files,
+            commandOptions,
+            existingTaskId,
+            startIndex);
+        _outputFolder = executionPlan.Outputs.Count > 0
+            ? Path.GetDirectoryName(executionPlan.Outputs[0]) ?? ""
+            : "";
         _files = files;
         _cts = new CancellationTokenSource();
-        _taskLabel = $"{L(ConvertCommandRegistry.GetLabelKey(command))} - {Path.GetFileName(files[0])}";
+        _progressPresentation.Prepare(command, startIndex * 100, files.Count * 100, L("fluent_progress_preparing"));
+        _taskLabel = $"{L(ConvertWorkspaceController.GetCommandLabelKey(command))} - {Path.GetFileName(files[0])}";
 
-        TitleText.Text = L(ConvertCommandRegistry.GetLabelKey(command));
+        TitleText.Text = L(ConvertWorkspaceController.GetCommandLabelKey(command));
         FileText.Text = files.Count > 1
             ? string.Format(L("fluent_progress_multiple_files"), Path.GetFileName(files[0]), files.Count)
             : Path.GetFileName(files[0]);
@@ -178,7 +181,7 @@ public sealed partial class TaskProgressPage : Page
 
         try
         {
-            await RunApplicationUseCaseAsync(applicationUseCase, applicationPlan, command, files);
+            await RunPresentationExecutionAsync(command, files);
         }
         finally
         {
@@ -207,54 +210,33 @@ public sealed partial class TaskProgressPage : Page
         (command.Equals("md2pdf", StringComparison.OrdinalIgnoreCase) ||
          command.Equals("md2word", StringComparison.OrdinalIgnoreCase));
 
-    private static (IConversionUseCase UseCase, ConversionPlan Plan) BuildExecutionPlan(
-        string command,
-        List<string> files,
-        int startIndex,
-        string? existingTaskId,
-        IReadOnlyDictionary<string, object>? commandOptions)
-    {
-        IConversionUseCase useCase = ConversionUseCases.GetRequired(command);
-        ConversionPlan plan = useCase.Plan(new ConversionRequest(
-            command,
-            files,
-            commandOptions,
-            ExistingTaskId: existingTaskId)) with
-        {
-            ResumeStartIndex = startIndex
-        };
-        return (useCase, plan);
-    }
-
-    private async Task RunApplicationUseCaseAsync(
-        IConversionUseCase useCase,
-        ConversionPlan plan,
+    private async Task RunPresentationExecutionAsync(
         string command,
         List<string> files)
     {
-        var interaction = new DelegateConversionInteraction(
-            PromptApplicationPasswordAsync,
-            PromptApplicationSplitAsync,
-            (_, _, _) => Task.FromResult<IReadOnlyDictionary<string, object>?>(null));
-        var progress = new Progress<ConversionProgress>(state =>
+        var callbacks = new ConversionExecutionCallbacks(
+            PasswordPrompt: PromptApplicationPasswordAsync,
+            SplitPrompt: PromptApplicationSplitAsync,
+            TaskStarted: taskId =>
+            {
+                _taskId = taskId;
+                App.RegisterTaskPage(taskId, this);
+            });
+        var progress = new Progress<TaskProgressReport>(state =>
         {
-            int percent = state.Total > 0
-                ? Math.Clamp((int)(state.Current * 100.0 / state.Total), 0, 100)
-                : 0;
-            ReportTaskProgress(percent, state.Message);
+            _progressPresentation.Report(state.Current, state.Total, state.Message);
+            ReportTaskProgress(state.Percent, state.Message);
         });
-        ConversionResult result = await useCase.ExecuteAsync(
-            plan,
-            interaction,
+        ConversionExecutionPresentationResult result = await _execution.ExecutePreparedAsync(
+            callbacks,
             progress,
-            new TaskProgressExecutionObserver(this),
             _cts!.Token);
-        TaskRunPresentationStatus status = result.Status switch
+        TaskProgressPresentationStatus status = result.Status switch
         {
-            ConversionResultStatus.Succeeded => TaskRunPresentationStatus.Succeeded,
-            ConversionResultStatus.Canceled => TaskRunPresentationStatus.Canceled,
-            ConversionResultStatus.Parked => TaskRunPresentationStatus.Parked,
-            _ => TaskRunPresentationStatus.Failed
+            ConversionExecutionPresentationStatus.Succeeded => TaskProgressPresentationStatus.Succeeded,
+            ConversionExecutionPresentationStatus.Canceled => TaskProgressPresentationStatus.Canceled,
+            ConversionExecutionPresentationStatus.Parked => TaskProgressPresentationStatus.Parked,
+            _ => TaskProgressPresentationStatus.Failed
         };
         await HandleRunResultAsync(status, result.Error, command, files);
     }
@@ -280,7 +262,7 @@ public sealed partial class TaskProgressPage : Page
         => await PromptSplitAsync(fileIndex, inputPath);
 
     private async Task HandleRunResultAsync(
-        TaskRunPresentationStatus status,
+        TaskProgressPresentationStatus status,
         string? error,
         string command,
         IReadOnlyList<string> files)
@@ -291,13 +273,15 @@ public sealed partial class TaskProgressPage : Page
         string toastBody;
         switch (status)
         {
-            case TaskRunPresentationStatus.Succeeded:
+            case TaskProgressPresentationStatus.Succeeded:
+                _progressPresentation.Succeed(L("fluent_progress_completed"));
                 statusMessage = L("fluent_progress_completed");
                 success = true;
                 toastTitle = L("fluent_toast_done_title");
-                toastBody = string.Format(L("fluent_toast_done_body"), L(ConvertCommandRegistry.GetLabelKey(command)), files.Count);
+                toastBody = string.Format(L("fluent_toast_done_body"), L(ConvertWorkspaceController.GetCommandLabelKey(command)), files.Count);
                 break;
-            case TaskRunPresentationStatus.Canceled:
+            case TaskProgressPresentationStatus.Canceled:
+                _progressPresentation.Cancel();
                 // 使用者取消不是失敗：不秀錯誤畫面，直接關窗（歷史已記錄 Canceled）。
                 // 縮在匣內時先通知再關；前景時關窗本身就是回饋。
                 _finished = true;
@@ -309,7 +293,8 @@ public sealed partial class TaskProgressPage : Page
                 }
                 CloseHostWindow();
                 return;
-            case TaskRunPresentationStatus.Parked:
+            case TaskProgressPresentationStatus.Parked:
+                _progressPresentation.Park();
                 // 已暫存：不寫歷史，留待 dashboard「繼續 / 取消」。通知後自動關窗。
                 _finished = true;
                 TrayService.Instance.RemoveBackgroundWindow(Window);
@@ -318,6 +303,7 @@ public sealed partial class TaskProgressPage : Page
                 CloseHostWindow();
                 return;
             default:
+                _progressPresentation.Fail(error ?? "");
                 statusMessage = error ?? "";
                 success = false;
                 toastTitle = L("fluent_toast_failed_title");
@@ -342,17 +328,19 @@ public sealed partial class TaskProgressPage : Page
     /// <summary>密碼 prompt：若已要求暫存則拋出 application parking signal，讓轉換乾淨停下來。</summary>
     private async Task<string?> PromptPasswordAsync(int fileIndex)
     {
-        if (_parkRequested) throw new ConversionParkedException(_parkReason, fileIndex);
+        if (_parkRequested) throw ConversionExecutionController.CreateParkSignal(_parkReason, fileIndex);
         _promptActive = true;
+        _progressPresentation.WaitForInput();
         try
         {
             var result = await DispatcherQueue.EnqueueAsync(() => FluentDialogs.PromptPasswordAsync(XamlRoot, L, d => _activeDialog = d));
-            if (_parkRequested) throw new ConversionParkedException(_parkReason, fileIndex);
+            if (_parkRequested) throw ConversionExecutionController.CreateParkSignal(_parkReason, fileIndex);
             return result;
         }
         finally
         {
             _promptActive = false;
+            _progressPresentation.ResumeRunning();
             _activeDialog = null;
         }
     }
@@ -360,8 +348,9 @@ public sealed partial class TaskProgressPage : Page
     /// <summary>分割頁數 prompt：同上，暫存時喚醒並拋出 application parking signal。</summary>
     private async Task<string?> PromptSplitAsync(int fileIndex, string pdfPath)
     {
-        if (_parkRequested) throw new ConversionParkedException(_parkReason, fileIndex);
+        if (_parkRequested) throw ConversionExecutionController.CreateParkSignal(_parkReason, fileIndex);
         _promptActive = true;
+        _progressPresentation.WaitForInput();
         try
         {
             // 分割介面是全窗覆蓋層且背景透明（讓 Mica 透出）：先把底下的進度卡收合，
@@ -376,12 +365,13 @@ public sealed partial class TaskProgressPage : Page
                 ResizeHost(SplitWindowSize);
                 return SplitOverlay.ShowForAsync(pdfPath);
             });
-            if (_parkRequested) throw new ConversionParkedException(_parkReason, fileIndex);
+            if (_parkRequested) throw ConversionExecutionController.CreateParkSignal(_parkReason, fileIndex);
             return result;
         }
         finally
         {
             _promptActive = false;
+            _progressPresentation.ResumeRunning();
             DispatcherQueue.TryEnqueue(() =>
             {
                 ProgressCardHost.Visibility = Visibility.Visible;

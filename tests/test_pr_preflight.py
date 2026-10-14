@@ -11,6 +11,12 @@ from pr_preflight import validate_message, validate_pr_body, check, _check_histo
 
 
 class PrPreflightTests(unittest.TestCase):
+    def test_pr_sequence_branch_rejected_at_preflight(self):
+        from pr_preflight import _check_pushed_ref
+        with patch("pr_preflight.git", return_value=CompletedProcess([], 0, "feature/dash-pr2", "")):
+            errors = _check_pushed_ref(None, None)
+        self.assertTrue(any("PR sequence" in item for item in errors))
+
     def test_existing_remote_branch_without_pr_uses_draft_metadata(self):
         from pr_preflight import _publication_metadata
         def read(*args):

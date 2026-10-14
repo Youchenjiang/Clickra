@@ -16,20 +16,6 @@ internal sealed class DynamicSettingsController
         FrameworkElement InputControl,
         TextBlock? ValueLabel);
 
-    private static readonly HashSet<string> StaticSettingKeys = new(StringComparer.OrdinalIgnoreCase)
-    {
-        ClickraSettings.OutputDir,
-        ClickraSettings.OfficeEngine,
-        ClickraSettings.Language,
-        ClickraSettings.TranslateTargetLang,
-        ClickraSettings.QuietMode,
-        ClickraSettings.Notification,
-        ClickraSettings.PdfCompressImageLevel,
-        ClickraSettings.PdfCompressStripFonts,
-        ClickraSettings.PdfCompressMinifyContent,
-        ClickraSettings.ParkedTaskRetention,
-    };
-
     private readonly Grid _settingsLayout;
     private readonly FrameworkElement _insertionAnchor;
     private readonly Func<string, string> _localize;
@@ -58,10 +44,8 @@ internal sealed class DynamicSettingsController
         int insertIndex = _settingsLayout.Children.IndexOf(_insertionAnchor);
         if (insertIndex < 0) insertIndex = _settingsLayout.Children.Count;
 
-        foreach (SettingDescriptor descriptor in SettingPageRegistry.AllDescriptors)
+        foreach (SettingDescriptor descriptor in SettingsPresentationController.Shared.DynamicDescriptors)
         {
-            if (StaticSettingKeys.Contains(descriptor.Key)) continue;
-
             var card = new Grid
             {
                 CornerRadius = new CornerRadius(8),
@@ -173,7 +157,7 @@ internal sealed class DynamicSettingsController
         toggle.Toggled += (_, _) =>
         {
             if (_isLoading()) return;
-            SettingsController.WriteBool(descriptor, toggle.IsOn);
+            SettingsPresentationController.Shared.WriteBool(descriptor, toggle.IsOn);
         };
         stack.Children.Add(toggle);
         return toggle;
@@ -209,7 +193,7 @@ internal sealed class DynamicSettingsController
         {
             if (_isLoading()) return;
             int level = Math.Clamp((int)slider.Value, range.Min, range.Max);
-            SettingsController.WriteInt(descriptor, level);
+            SettingsPresentationController.Shared.WriteInt(descriptor, level);
             UpdateSliderLabel(valueLabel, descriptor, level);
         };
 
@@ -240,7 +224,7 @@ internal sealed class DynamicSettingsController
         {
             if (_isLoading() || double.IsNaN(numberBox.Value)) return;
             int clamped = Math.Clamp((int)numberBox.Value, range.Min, range.Max);
-            SettingsController.WriteInt(descriptor, clamped);
+            SettingsPresentationController.Shared.WriteInt(descriptor, clamped);
         };
 
         stack.Children.Add(grid);
@@ -259,7 +243,7 @@ internal sealed class DynamicSettingsController
             if (_isLoading()) return;
             if (comboBox.SelectedItem is ComboBoxItem item && item.Tag is string value)
             {
-                SettingsController.WriteChoice(descriptor, value);
+                SettingsPresentationController.Shared.WriteChoice(descriptor, value);
             }
         };
 
@@ -271,7 +255,7 @@ internal sealed class DynamicSettingsController
     {
         if (control.InputControl is ToggleSwitch toggle)
         {
-            toggle.IsOn = SettingsController.ReadBool(control.Descriptor);
+            toggle.IsOn = SettingsPresentationController.Shared.ReadBool(control.Descriptor);
         }
     }
 
@@ -280,7 +264,7 @@ internal sealed class DynamicSettingsController
         if (control.InputControl is not Slider slider) return;
         SettingDescriptor descriptor = control.Descriptor;
         NumericSettingRange range = descriptor.GetEffectiveNumericRange() ?? new NumericSettingRange(0, 1, 0);
-        int value = SettingsController.ReadInt(descriptor);
+        int value = SettingsPresentationController.Shared.ReadInt(descriptor);
         slider.Minimum = range.Min;
         slider.Maximum = range.Max;
         slider.Value = value;
@@ -297,13 +281,13 @@ internal sealed class DynamicSettingsController
         NumericSettingRange range = descriptor.GetEffectiveNumericRange() ?? new NumericSettingRange(0, 100, 0);
         numberBox.Minimum = range.Min;
         numberBox.Maximum = range.Max;
-        numberBox.Value = SettingsController.ReadInt(descriptor);
+        numberBox.Value = SettingsPresentationController.Shared.ReadInt(descriptor);
     }
 
     private static void SyncChoice(DynamicSettingControl control)
     {
         if (control.InputControl is not ComboBox comboBox) return;
-        string value = SettingsController.ReadChoice(control.Descriptor);
+        string value = SettingsPresentationController.Shared.ReadChoice(control.Descriptor);
         for (int i = 0; i < comboBox.Items.Count; i++)
         {
             if (comboBox.Items[i] is ComboBoxItem item &&

@@ -7,13 +7,6 @@ namespace Clickra.Core.Storage;
 /// <summary>一個設定的完整定義：鍵、預設值與用途說明。</summary>
 public sealed record ClickraSetting(string Key, string Default, string Description);
 
-/// <summary>定義一個數值設定的合法邊界（下限、上限與預設值）。</summary>
-public readonly record struct NumericSettingRange(int Min, int Max, int Default)
-{
-    public int Clamp(int value) => Math.Clamp(value, Min, Max);
-    public bool IsInRange(int value) => value >= Min && value <= Max;
-}
-
 /// <summary>
 /// 所有使用者設定的單一登錄表。設定的「鍵」與「預設值」只在這裡定義：
 /// <see cref="ClickraStorage.GetSetting"/> 用它補預設，讀取端一律引用這裡的常數，

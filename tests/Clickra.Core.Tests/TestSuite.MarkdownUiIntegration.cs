@@ -69,7 +69,7 @@ static partial class TestSuite
         string convert = MarkdownSource("src/Clickra.CLI/Dashboard/DashboardWindow.Convert.cs");
         string clicks = MarkdownSource("src/Clickra.CLI/Dashboard/DashboardWindow.Events.Click.cs");
         string fluent = MarkdownSource("src/Clickra.Fluent/MainPage.xaml.cs");
-        string workspace = MarkdownSource("src/Clickra.Core/Application/ConversionWorkspaceState.cs");
+        string workspace = MarkdownSource("src/Clickra.Core/Presentation/Convert/ConvertWorkspaceController.cs");
 
         Assert.True(clicks.Contains("OpenFiles(hwnd, GetSupportedFilesFilter(), title)", StringComparison.Ordinal)
                     && clicks.Contains("ImportFiles(chosen);", StringComparison.Ordinal),
@@ -78,14 +78,13 @@ static partial class TestSuite
             "The dashboard picker must not keep a second hardcoded extension list.");
         Assert.True(convert.Contains("HandleDroppedFiles(List<string> files) => ImportFiles(files);", StringComparison.Ordinal),
             "Drag/drop must use the same file-import routing as the picker.");
-        Assert.True(convert.Contains("ConvertCommands", StringComparison.Ordinal)
-                    && convert.Contains("SelectMany(command => command.Extensions)", StringComparison.Ordinal)
+        Assert.True(convert.Contains("ConvertWorkspaceController.AllSupportedExtensions", StringComparison.Ordinal)
                     && convert.Contains("Distinct(StringComparer.OrdinalIgnoreCase)", StringComparison.Ordinal),
-            "The supported-file picker filter must derive from the command registry.");
-        Assert.True(convert.Contains("ConvertCommandRegistry.GetDefaultCommandForFiles(files)", StringComparison.Ordinal)
+            "The supported-file picker filter must derive from the shared presentation workspace.");
+        Assert.True(convert.Contains("_convertWorkspace.ReplaceFiles(files)", StringComparison.Ordinal)
                     && fluent.Contains("_convertWorkspace.AddFiles", StringComparison.Ordinal)
                     && workspace.Contains("ConvertCommandRegistry.GetDefaultCommandForFiles(_selectedFiles)", StringComparison.Ordinal),
-            "NativeAOT and Fluent file imports must use the same Core default-command routing, with Fluent delegating selection state to Core.");
+            "NativeAOT and Fluent file imports must delegate selection/default routing to the same presentation controller.");
 
         Assert.Equal("compress-pdf", ConvertCommandRegistry.GetDefaultCommandForFiles(new[] { "a.pdf" }) ?? "");
         Assert.Equal("merge-pdf", ConvertCommandRegistry.GetDefaultCommandForFiles(new[] { "a.pdf", "b.pdf" }) ?? "");

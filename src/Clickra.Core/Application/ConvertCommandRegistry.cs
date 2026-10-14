@@ -4,7 +4,7 @@ using System.IO;
 using System.Linq;
 using Clickra.Shared;
 
-namespace Clickra.Core.Processors;
+namespace Clickra.Core.Application;
 
 /// <summary>Core facade for shared conversion metadata and launch-argument helpers.
 /// Command definitions are authoritative in

@@ -3,6 +3,11 @@
 Use the high-level `scripts/pr_tool.py` interface rather than manually assembling
 `gh`, GraphQL and pre-push commands. From the Clickra repository worktree:
 
+Branch names must describe the work, not their PR sequence. The shared
+preflight, push preview/execution, PR creation, and CI policy reject suffixes
+such as `-pr1`, `-pr2`, or `-pr10`, while retaining meaningful identifiers such
+as `oauth2`, `issue-180`, `net8`, or `cve-2026-12345`.
+
 ```powershell
 python scripts/pr_tool.py status 177
 python scripts/pr_tool.py review 177
