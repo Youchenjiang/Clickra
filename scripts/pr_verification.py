@@ -12,41 +12,54 @@ REQUIRED = {"PR and commit policy", "PR governance script tests", "DeepSource: P
             "Publish ClickraLauncher (NativeAOT)"}
 
 
+def _classify_checks(checks):
+    """Group provider statuses and require all mandatory checks."""
+    groups = {"failed": [], "pending": [], "skipped": [], "passed": []}
+    for item in checks:
+        name = item.get("name") or item.get("context") or "unnamed"
+        status = str(item.get("conclusion") or item.get("state") or item.get("status") or "PENDING").upper()
+        if status in PASS:
+            groups["passed"].append(name)
+        elif status in SKIP:
+            groups["skipped"].append(name)
+        elif status in PENDING:
+            groups["pending"].append(name)
+        else:
+            groups["failed"].append(name)
+    present = set().union(*map(set, groups.values()))
+    groups["pending"].extend(f"Missing required check: {name}" for name in sorted(REQUIRED - present))
+    return groups
+
+
+def _pr_problems(pr, remote_sha):
+    problems = []
+    if pr["headRefOid"] != remote_sha:
+        problems.append("PR HEAD differs from remote SHA")
+    for key, expected, message in (
+            ("baseRefName", "main", "PR target is not main"),
+            ("state", "OPEN", "PR is not open")):
+        if pr.get(key) != expected:
+            problems.append(message)
+    for key, expected, message in (
+            ("isDraft", True, "PR is still a draft"),
+            ("mergeable", "CONFLICTING", "PR has merge conflicts"),
+            ("reviewDecision", "CHANGES_REQUESTED", "PR has changes requested")):
+        if pr.get(key) == expected:
+            problems.append(message)
+    return problems
+
+
 def summarize(pr, report, *, remote_sha):
     """An absent or incomplete check is not a pass. Skip is reported separately."""
     head = pr.get("headRefOid")
     checks = pr.get("statusCheckRollup")
     if not isinstance(head, str) or len(head) != 40 or not isinstance(checks, list):
         raise RuntimeError("missing verified PR HEAD or CI rollup")
-    failed, pending, skipped, passed = [], [], [], []
-    for item in checks:
-        name = item.get("name") or item.get("context") or "unnamed"
-        status = str(item.get("conclusion") or item.get("state") or item.get("status") or "PENDING").upper()
-        if status in PASS:
-            passed.append(name)
-        elif status in SKIP:
-            skipped.append(name)
-        elif status in PENDING:
-            pending.append(name)
-        else:
-            failed.append(name)
-    present = set(passed + pending + failed + skipped)
-    pending.extend(f"Missing required check: {name}" for name in sorted(REQUIRED - present))
+    groups = _classify_checks(checks)
+    failed, pending, skipped, passed = (groups[key] for key in ("failed", "pending", "skipped", "passed"))
     count = report["counts"]["unresolved"]
     sonar_count = report["sonar"]["total"]
-    problems = []
-    if head != remote_sha:
-        problems.append("PR HEAD differs from remote SHA")
-    if pr.get("baseRefName") != "main":
-        problems.append("PR target is not main")
-    if pr.get("state") != "OPEN":
-        problems.append("PR is not open")
-    if pr.get("isDraft"):
-        problems.append("PR is still a draft")
-    if pr.get("mergeable") == "CONFLICTING":
-        problems.append("PR has merge conflicts")
-    if pr.get("reviewDecision") == "CHANGES_REQUESTED":
-        problems.append("PR has changes requested")
+    problems = _pr_problems(pr, remote_sha)
     if count:
         problems.append(f"{count} unresolved review threads")
     if sonar_count:

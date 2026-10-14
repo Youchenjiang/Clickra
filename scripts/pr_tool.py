@@ -21,6 +21,8 @@ from pr_publication import push as guarded_push, remote_head
 from pr_creation import create as guarded_create
 from pr_verification import summarize
 
+SONAR_HOST_DEFAULT = "https://sonarcloud.io"
+
 
 def safe_terminal(value):
     """Render untrusted GitHub fields without terminal control sequences."""
@@ -225,7 +227,7 @@ def audit(repo, number, run=command, as_json=False, include_sonar=False):
     if include_sonar:
         result["sonar"] = sonar_inventory(
             os.environ.get("SONAR_PROJECT_KEY") or repo.replace("/", "_"),
-            number, base_url=os.environ.get("SONAR_HOST_URL", "https://sonarcloud.io"),
+            number, base_url=os.environ.get("SONAR_HOST_URL", SONAR_HOST_DEFAULT),
             token=os.environ.get("SONAR_TOKEN"))
     if as_json:
         print(json.dumps(result, indent=2, ensure_ascii=False))
@@ -320,13 +322,17 @@ def _execute_action(args, run):
         print(json.dumps(result))
         return 0
     number = pr_number(args.pr, repo, branch, run)
+    return _execute_pr_action(args, run, repo, number)
+
+
+def _execute_pr_action(args, run, repo, number):
     if args.action == "status":
         print_status(repo, number, run)
     elif args.action == "audit":
         audit(repo, number, run, args.json, args.sonar)
     elif args.action == "sonar":
         data = sonar_inventory(os.environ.get("SONAR_PROJECT_KEY") or repo.replace("/", "_"),
-                               number, base_url=os.environ.get("SONAR_HOST_URL", "https://sonarcloud.io"),
+                               number, base_url=os.environ.get("SONAR_HOST_URL", SONAR_HOST_DEFAULT),
                                token=os.environ.get("SONAR_TOKEN"))
         if args.json:
             print(json.dumps(data, indent=2, ensure_ascii=False))
@@ -338,7 +344,7 @@ def _execute_action(args, run):
         pr = inspect(repo, number, run)
         report = inventory(repo, number, pr.get("headRefOid"), review_threads(repo, number, run), run)
         report["sonar"] = sonar_inventory(os.environ.get("SONAR_PROJECT_KEY") or repo.replace("/", "_"),
-                                          number, base_url=os.environ.get("SONAR_HOST_URL", "https://sonarcloud.io"),
+                                          number, base_url=os.environ.get("SONAR_HOST_URL", SONAR_HOST_DEFAULT),
                                           token=os.environ.get("SONAR_TOKEN"))
         remote = remote_head(pr.get("headRefName", ""))
         result = summarize(pr, report, remote_sha=remote)

@@ -182,7 +182,7 @@ def _publication_metadata():
     if remote.returncode:
         raise OSError("cannot determine origin repository")
     match = re.fullmatch(
-        r"(?:https://github\.com/|git@github\.com:)([A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+?)(?:\.git)?",
+        r"(?:https://github\.com/|git@github\.com:)([A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+)(?:\.git)?",
         remote.stdout.strip())
     if not match:
         raise ValueError("unrecognized origin repository")
