@@ -42,7 +42,8 @@ class SonarAuditTests(unittest.TestCase):
     def test_http_request_does_not_embed_token_in_url(self):
         class Response:
             status = 200
-            def read(self, *args):
+            @staticmethod
+            def read(*args):
                 return b'{"total":0,"issues":[]}'
 
         with patch.object(sonar_audit, "HTTPSConnection") as connection:
