@@ -15,7 +15,7 @@ The complete, authoritative rules are in [.agent/guidelines.md](.agent/guideline
 
 The complete, authoritative rules are in [.agent/guidelines.md](.agent/guidelines.md).
 
-- Prefer `python scripts/pr_tool.py status [PR]` and `review [PR]` for consolidated read-only GitHub inspection, and `ready --body-file PATH` for the full local gate. See `docs/development/pr_tool.md`. The lower-level `gh_guard.py` remains available; mutations are denied except explicitly authorized per-thread Resolve. Comment operations are always denied. These interfaces are cooperative guidance, not OS-enforced interception of direct `gh` or API calls.
+- Use `python scripts/pr_tool.py` as the default PR operations entry point: `prepare` for fast preflight, `push` for separately authorized publication, `verify` for combined CI/reviews/SonarQube acceptance, and `diagnose` for failure details. `ready` remains an optional **full** local gate when no push follows; do not run it immediately before an approved push because `push` always executes the full versioned hook. Direct `gh`/GraphQL or manual push is an exceptional diagnostic/fallback only when the wrapper cannot perform the operation; explain and record that exception. See `docs/development/pr_tool.md`. These are cooperative rules, not credential isolation or OS-enforced command interception.
 ## PR Review Safety (Non-negotiable)
 
 - Never create, reply to, edit, repost, or delete GitHub PR review comments or conversation comments. The user explicitly prohibits autonomous replies. Do not use comments to announce a fix.
