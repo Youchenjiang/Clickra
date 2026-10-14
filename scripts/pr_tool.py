@@ -65,6 +65,20 @@ def inspect(repo, number, run=command):
     return data
 
 
+def export_body(repo, number, output, run=command):
+    """Recover an existing PR body for the mandatory push policy gate."""
+    payload = json.loads(run(["gh", "pr", "view", str(number), "--repo", repo,
+                              "--json", "number,body,headRefOid"]))
+    if (not isinstance(payload, dict) or payload.get("number") != number
+            or not isinstance(payload.get("body"), str) or not payload["body"].strip()):
+        raise ValueError("cannot verify nonempty PR body for requested PR")
+    path = Path(output).resolve()
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with path.open("x", encoding="utf-8", newline="\n") as handle:
+        handle.write(payload["body"])
+    print(f"Saved PR #{number} body to {path}")
+
+
 def review_threads(repo, number, run=command):
     """Read every page; never post comments or mutate review state."""
     owner, name = repo.split("/", 1)
@@ -326,7 +340,9 @@ def _execute_action(args, run):
 
 
 def _execute_pr_action(args, run, repo, number):
-    if args.action == "status":
+    if args.action == "body":
+        export_body(repo, number, args.output, run)
+    elif args.action == "status":
         print_status(repo, number, run)
     elif args.action == "audit":
         audit(repo, number, run, args.json, args.sonar)
@@ -371,6 +387,9 @@ def main(argv=None, run=command):
     sub = parser.add_subparsers(dest="action", required=True)
     for name in ("status", "review", "diagnose", "verify"):
         sub.add_parser(name).add_argument("pr", nargs="?")
+    body = sub.add_parser("body", help="Export an existing PR body without overwriting files")
+    body.add_argument("pr", nargs="?")
+    body.add_argument("--output", required=True)
     auditor = sub.add_parser("audit", help="Read all PR comment categories, no writes")
     auditor.add_argument("pr", nargs="?")
     auditor.add_argument("--json", action="store_true", help="Output full machine-readable inventory")

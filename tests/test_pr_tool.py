@@ -12,6 +12,26 @@ import pr_tool
 
 
 class PrToolTests(unittest.TestCase):
+    def test_export_body_checks_identity_and_never_overwrites(self):
+        calls = []
+        def fake(argv):
+            calls.append(argv)
+            return json.dumps({"number": 179, "body": "## Summary\nHello\n",
+                               "headRefOid": "a" * 40})
+        with TemporaryDirectory() as folder:
+            target = Path(folder) / "body.md"
+            with redirect_stdout(StringIO()):
+                pr_tool.export_body("Youchenjiang/Clickra", 179, target, fake)
+            self.assertEqual("## Summary\nHello\n", target.read_text(encoding="utf-8"))
+            with self.assertRaises(FileExistsError):
+                pr_tool.export_body("Youchenjiang/Clickra", 179, target, fake)
+            target.unlink()
+            with self.assertRaisesRegex(ValueError, "cannot verify"):
+                pr_tool.export_body("Youchenjiang/Clickra", 180, target, fake)
+            self.assertFalse(target.exists())
+        self.assertEqual(["gh", "pr", "view", "179", "--repo", "Youchenjiang/Clickra",
+                          "--json", "number,body,headRefOid"], calls[0])
+
     def test_diagnose_reads_failed_action_log_and_external_review(self):
         calls = []
         def fake(argv):
