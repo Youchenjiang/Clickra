@@ -91,6 +91,16 @@ from GitHub afterward. Lost or ambiguous responses are **not** retried
 automatically; inspect remote state first. It cannot comment, merge, or
 resolve review threads. A fresh `verify` is required after CI providers run.
 
+The `create` preview validates the selected label, milestone, and optional
+assignee against live GitHub metadata, including pagination. An unknown
+milestone fails **before authorization or creation**, rather than failing
+inside `gh pr create`. If the operation fails after being sent, the tool
+distinguishes rejected label/milestone from an unknown outcome, with no
+automatic retry and no token, stderr, or remote payload disclosure. Inspect
+the remote PR list before issuing a fresh, independently authorized attempt.
+An upstream execution-environment safety denial is separate from a repository
+tool failure; do not bypass it using an alternate command.
+
 **Avoid duplicate full gates:** when an approved push is the next action, use
 the lightweight `prepare` command followed by `push`, and let the mandatory
 hook perform the full build, tests
