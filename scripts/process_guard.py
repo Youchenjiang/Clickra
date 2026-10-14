@@ -24,6 +24,17 @@ def executable(name):
     return str(resolved)
 
 
+def _validate_github_args(argv):
+    if len(argv) < 3:
+        raise ValueError("unauthorized GitHub operation")
+    command = tuple(argv[1:3])
+    if command in GH_READ_VERBS or command == ("api", "graphql"):
+        return
+    if argv[1] == "api" and argv[2].startswith("repos/") and "/check-runs?per_page=" in argv[2]:
+        return
+    raise ValueError("unauthorized GitHub operation")
+
+
 def _validate_argv(argv):
     if not argv or argv[0] not in {"git", "gh"}:
         raise ValueError("only git and gh are allowed")
@@ -31,12 +42,8 @@ def _validate_argv(argv):
         raise ValueError("invalid subprocess argument")
     if argv[0] == "git" and (len(argv) < 2 or argv[1] not in GIT_VERBS):
         raise ValueError("unauthorized git operation")
-    if argv[0] == "gh" and (len(argv) < 3 or
-                             (tuple(argv[1:3]) not in GH_READ_VERBS and
-                              tuple(argv[1:3]) != ("api", "graphql") and
-                              not (argv[1] == "api" and argv[2].startswith("repos/") and
-                                   "/check-runs?per_page=" in argv[2]))):
-        raise ValueError("unauthorized GitHub operation")
+    if argv[0] == "gh":
+        _validate_github_args(argv)
 
 
 def invoke(argv, *, capture=True, env=None, timeout=30):
