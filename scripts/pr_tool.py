@@ -58,7 +58,7 @@ def pr_number(value, repo, branch, run=command):
 
 def inspect(repo, number, run=command):
     raw = run(["gh", "pr", "view", str(number), "--repo", repo,
-               "--json", "number,title,state,isDraft,baseRefName,headRefName,headRefOid,mergeable,reviewDecision,statusCheckRollup,url"])
+               "--json", "number,title,state,isDraft,baseRefName,headRefName,headRefOid,mergeable,reviewDecision,statusCheckRollup,files,url"])
     data = json.loads(raw)
     if not isinstance(data, dict) or data.get("number") != number:
         raise ValueError("GitHub returned an unexpected PR")

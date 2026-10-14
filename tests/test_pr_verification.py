@@ -8,6 +8,19 @@ import pr_verification
 
 
 class VerificationTests(unittest.TestCase):
+    def test_dependency_scan_is_required_only_for_matching_changed_paths(self):
+        pr = {"headRefOid": "a" * 40, "baseRefName": "main", "state": "OPEN",
+              "statusCheckRollup": [{"name": name, "conclusion": "SUCCESS"}
+                                    for name in pr_verification.REQUIRED]}
+        report = {"counts": {"unresolved": 0}, "sonar": {"total": 0}}
+        pr["files"] = [{"path": "scripts/pr_tool.py"}]
+        self.assertTrue(pr_verification.summarize(pr, report, remote_sha="a" * 40)["ready"])
+        pr["files"] = [{"path": "src/Clickra.Core/Example.cs"}]
+        result = pr_verification.summarize(pr, report, remote_sha="a" * 40)
+        self.assertFalse(result["ready"])
+        self.assertTrue(any("NuGet Dependency Vulnerability Scan" in error
+                            for error in result["problems"]))
+
     def test_pending_skipped_and_findings_never_report_green(self):
         pr = {"headRefOid": "a" * 40, "baseRefName": "main",
               "statusCheckRollup": [{"name": "CI", "status": "IN_PROGRESS"},

@@ -6,13 +6,13 @@ PENDING = {"PENDING", "QUEUED", "IN_PROGRESS", "WAITING", "REQUESTED", "EXPECTED
 REQUIRED = {"PR and commit policy", "PR governance script tests", "DeepSource: Python",
             "DeepSource: C#", "DeepSource: Secrets", "SonarCloud", "SonarCloud Code Analysis",
             "Deterministic tests (no fixtures)", "Fixture regression tests",
-            "NuGet Dependency Vulnerability Scan", "Store publishing unit tests",
+            "Store publishing unit tests",
             "Build Clickra.Core", "Build Clickra.Fluent", "Build Core / CLI / Shell / Setup",
             "Publish CLI (NativeAOT)", "Publish Shell Extension (NativeAOT)",
             "Publish ClickraLauncher (NativeAOT)"}
 
 
-def _classify_checks(checks):
+def _classify_checks(checks, required):
     """Group provider statuses and require all mandatory checks."""
     groups = {"failed": [], "pending": [], "skipped": [], "passed": []}
     for item in checks:
@@ -27,7 +27,7 @@ def _classify_checks(checks):
         else:
             groups["failed"].append(name)
     present = set().union(*map(set, groups.values()))
-    groups["pending"].extend(f"Missing required check: {name}" for name in sorted(REQUIRED - present))
+    groups["pending"].extend(f"Missing required check: {name}" for name in sorted(required - present))
     return groups
 
 
@@ -53,9 +53,17 @@ def summarize(pr, report, *, remote_sha):
     """An absent or incomplete check is not a pass. Skip is reported separately."""
     head = pr.get("headRefOid")
     checks = pr.get("statusCheckRollup")
+    files = pr.get("files")
     if not isinstance(head, str) or len(head) != 40 or not isinstance(checks, list):
         raise RuntimeError("missing verified PR HEAD or CI rollup")
-    groups = _classify_checks(checks)
+    if files is not None and not isinstance(files, list):
+        raise RuntimeError("invalid changed-file inventory")
+    required = set(REQUIRED)
+    if files and any(file.get("path", "").startswith("src/") or
+                     file.get("path") == ".github/workflows/dependency-security-scan.yml"
+                     for file in files):
+        required.add("NuGet Dependency Vulnerability Scan")
+    groups = _classify_checks(checks, required)
     failed, pending, skipped, passed = (groups[key] for key in ("failed", "pending", "skipped", "passed"))
     count = report["counts"]["unresolved"]
     sonar_count = report["sonar"]["total"]
