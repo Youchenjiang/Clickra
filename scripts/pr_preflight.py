@@ -11,7 +11,7 @@ from process_guard import invoke
 ALLOWED_TYPES = "feat|fix|refactor|docs|test|chore|style|perf|security"
 ALLOWED_SCOPES = "cli|core|shell|msix|docs|ci|deps|store|agent"
 SUBJECT = re.compile(rf"^(?:{ALLOWED_TYPES})(?:\((?:{ALLOWED_SCOPES})\))?: [a-z0-9].*$")
-BODY = re.compile(r"(?m)^[ \t]*1[.)][ \t]+[^\r\n]+$")
+BODY_NUMBER = re.compile(r"1[.)][ \t]+")
 METADATA_SECTION = "## PR Metadata"
 REQUIRED_SECTIONS = ("## Summary", "## Changes", "## Validation", METADATA_SECTION)
 REQUIRED_METADATA = ("Assignee", "Label", "Milestone", "External provider")
@@ -31,11 +31,13 @@ def validate_message(message):
     if (not SUBJECT.fullmatch(header) or header.endswith(".") or len(header) > 72
             or header.split(": ", 1)[-1].lower() in VAGUE):
         errors.append("invalid conventional commit header")
-    numbered = BODY.search("\n".join(line for line in lines[1:] if not line.startswith("#")))
+    numbered = next((line.lstrip(" \t") for line in lines[1:]
+                     if not line.startswith("#") and BODY_NUMBER.match(line.lstrip(" \t"))
+                     and BODY_NUMBER.sub("", line.lstrip(" \t"), count=1).strip()), None)
     if not numbered:
         errors.append("missing numbered English commit body")
     else:
-        content = re.sub(r"^\s*1[.)]\s+", "", numbered.group(0))
+        content = BODY_NUMBER.sub("", numbered, count=1)
         letters = [char for char in content if char.isalpha()]
         if letters and sum(char.isascii() for char in letters) / len(letters) < 0.7:
             errors.append("numbered commit body must be predominantly English/ASCII letters")
@@ -60,9 +62,11 @@ def _draft_metadata_errors(lines, metadata):
     for label in REQUIRED_METADATA if metadata is None else ("External provider",):
         pattern = rf"(?mi)^- \[x\] \*\*{re.escape(label)}\*\*:[ \t]*([^\s\r\n][^\r\n]*)$"
         match = re.search(pattern, lines)
-        if not match or PLACEHOLDER.search(match.group(1)):
-            errors.append(f"completed {label} metadata required")
-        elif label == "Milestone" and match.group(1).strip().lower() in {"none", "n/a", "not applicable"} and not _draft_exempt_label(lines):
+        invalid = not match or bool(PLACEHOLDER.search(match.group(1)))
+        if not invalid and label == "Milestone":
+            invalid = (match.group(1).strip().lower() in {"none", "n/a", "not applicable"}
+                       and not _draft_exempt_label(lines))
+        if invalid:
             errors.append(f"completed {label} metadata required")
     return errors
 
