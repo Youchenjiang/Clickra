@@ -33,7 +33,7 @@ def _classify_checks(checks, required):
 
 def _pr_problems(pr, remote_sha):
     problems = []
-    if pr.get("state") != "MERGED" and pr["headRefOid"] != remote_sha:
+    if pr.get("state") == "OPEN" and pr["headRefOid"] != remote_sha:
         problems.append("PR HEAD differs from remote SHA")
     for key, expected, message in (
             ("baseRefName", "main", "PR target is not main"),

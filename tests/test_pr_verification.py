@@ -104,7 +104,7 @@ class VerificationTests(unittest.TestCase):
               "statusCheckRollup": [{"name": name, "conclusion": "SUCCESS"}
                                     for name in pr_verification.REQUIRED]}
         report = {"counts": {"unresolved": 0}, "sonar": {"total": 0}}
-        result = pr_verification.summarize(pr, report, remote_sha="a" * 40)
+        result = pr_verification.summarize(pr, report, remote_sha=None)
         self.assertFalse(result["ready"])
         self.assertFalse(result["historical_checks_passed"])
         self.assertIn("PR is not open", result["problems"])
