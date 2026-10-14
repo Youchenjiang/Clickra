@@ -389,7 +389,8 @@ def _execute_pr_action(args, run, repo, number):
         report["sonar"] = sonar_inventory(os.environ.get("SONAR_PROJECT_KEY") or repo.replace("/", "_"),
                                           number, base_url=os.environ.get("SONAR_HOST_URL", SONAR_HOST_DEFAULT),
                                           token=os.environ.get("SONAR_TOKEN"))
-        remote = remote_head(pr.get("headRefName", ""))
+        remote = (None if pr.get("state") == "MERGED"
+                  else remote_head(pr.get("headRefName", "")))
         result = summarize(pr, report, remote_sha=remote)
         print(json.dumps(result, indent=2, ensure_ascii=False))
         return 0 if result["ready"] else 2
