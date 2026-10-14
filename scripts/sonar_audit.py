@@ -27,7 +27,7 @@ def fetch_page(project, pr, page, *, base_url=DEFAULT_HOST, token=None):
         if response.status != 200:
             raise RuntimeError(f"SonarQube API HTTP {response.status} (check project access and token)")
         return json.load(response)
-    except (OSError, HTTPException, TimeoutError) as exc:
+    except (OSError, HTTPException) as exc:
         raise RuntimeError("SonarQube API unavailable") from exc
     finally:
         connection.close()
