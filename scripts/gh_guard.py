@@ -132,6 +132,14 @@ def _flag_error(item, args, index):
     return None
 
 
+def _positional_error(item, seen_positionals):
+    if item.startswith("-"):
+        return f"unrecognized or unsafe option: {item}"
+    if not POSITIONAL.fullmatch(item) or seen_positionals:
+        return "unexpected argument or second positional argument"
+    return None
+
+
 def _validate_gh_tail(args, allowed_flags):
     seen_positionals = 0
     i = 0
@@ -149,10 +157,9 @@ def _validate_gh_tail(args, allowed_flags):
                 i += 1
             i += 1
             continue
-        if item.startswith("-"):
-            return f"unrecognized or unsafe option: {item}"
-        if not POSITIONAL.fullmatch(item) or seen_positionals:
-            return "unexpected argument or second positional argument"
+        error = _positional_error(item, seen_positionals)
+        if error:
+            return error
         seen_positionals += 1
         i += 1
     return None
