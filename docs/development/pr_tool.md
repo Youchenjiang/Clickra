@@ -80,6 +80,13 @@ clean-tree and full build gates remain mandatory. Subsequent pushes require
 live GitHub PR metadata. `prepare --initial` is only a lightweight draft-body
 preview; it does not replace the full initial-push verification.
 
+The same rule also applies to a branch **already pushed remotely but still
+without a PR**. Every pre-push checks GitHub's all-state PR list for the
+exact repository and branch. Zero PRs permits full draft metadata validation;
+one open PR requires live metadata; closed, duplicate, unparseable or
+unavailable PR lookup fails closed. Existing mandatory build and NativeAOT
+gates are unaffected. The draft path is not an exception for an existing PR.
+
 PR creation is a **second, independent external write** and is never implied
 by approval to push. Use `create` without `--execute` to preview the exact
 repository, remote branch commit, body/title/options fingerprint, and ensure
