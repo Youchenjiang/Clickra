@@ -124,6 +124,14 @@ def resolve_thread(repo, pr_number, thread_id, authorization, *, execute, dry_ru
     return _confirm_resolved(repo, pr_number, thread_id, execute, _resolve_mutation(thread_id, execute))
 
 
+def _flag_error(item, args, index):
+    if "=" in item:
+        return None if item.split("=", 1)[1] else f"missing value for {item.split('=', 1)[0]}"
+    if index + 1 >= len(args) or args[index + 1].startswith("-") or not args[index + 1]:
+        return f"missing value for {item}"
+    return None
+
+
 def _validate_gh_tail(args, allowed_flags):
     seen_positionals = 0
     i = 0
@@ -134,12 +142,11 @@ def _validate_gh_tail(args, allowed_flags):
             continue
         flag = item.split("=", 1)[0]
         if flag in allowed_flags:
+            error = _flag_error(item, args, i)
+            if error:
+                return error
             if "=" not in item:
-                if i + 1 >= len(args) or args[i + 1].startswith("-") or not args[i + 1]:
-                    return f"missing value for {item}"
                 i += 1
-            elif not item.split("=", 1)[1]:
-                return f"missing value for {flag}"
             i += 1
             continue
         if item.startswith("-"):

@@ -202,10 +202,13 @@ def _print_open_threads(result):
     for thread in result["threads"]:
         if thread["resolved"]:
             continue
+        _print_one_open_thread(thread, linked.get(thread["id"]))
+
+
+def _print_one_open_thread(thread, first):
         status = "UNRESOLVED, OUTDATED" if thread["outdated"] else "UNRESOLVED"
         print(f"- [{status}] {safe_terminal(thread['id'])} {safe_terminal(thread['path'] or '?')}:"
               f"{safe_terminal(thread['line'] or '?')}")
-        first = linked.get(thread["id"])
         if first:
             print(f"  {safe_terminal(first['body'])[:180]}")
             if first["url"]:
